@@ -10492,7 +10492,19 @@ CheckSatOutcome solve_qf_uf_lra(
     std::optional<sat::Clause> euf_conflict;
     std::optional<EufClosureCheckResult> euf_check;
     std::vector<AssignedTheoryAtom> euf_assignments;
-    std::vector<BooleanClausifier::TheoryAtom> euf_atoms_for_check = euf_atoms;
+    // Only copy euf_atoms when this round actually has an interface equality
+    // to layer in; append_*_interface_equalities need a mutable vector to
+    // push onto, but most rounds append nothing, and every downstream
+    // consumer below (ensure_theory_atoms, align_assignments) only reads
+    // through a const reference, so a plain alias to euf_atoms is exact.
+    const bool euf_atoms_need_interface_equalities =
+        !true_interface_equalities.empty() || !false_interface_equalities.empty();
+    std::vector<BooleanClausifier::TheoryAtom> euf_atoms_for_check_storage;
+    if (euf_atoms_need_interface_equalities) {
+      euf_atoms_for_check_storage = euf_atoms;
+    }
+    const std::vector<BooleanClausifier::TheoryAtom>& euf_atoms_for_check =
+        euf_atoms_need_interface_equalities ? euf_atoms_for_check_storage : euf_atoms;
     std::vector<AssignedTheoryAtom> euf_assignments_for_check;
     EufCarePairDiagnostics euf_care;
     if (!euf_atoms.empty()) {
@@ -10502,10 +10514,12 @@ CheckSatOutcome solve_qf_uf_lra(
         count_filtered_assignment(atom, statistics);
       }
       euf_assignments_for_check = euf_assignments;
-      append_true_interface_equalities(true_interface_equalities, euf_atoms_for_check,
-                                       euf_assignments_for_check);
-      append_interface_equalities(false_interface_equalities, false, euf_atoms_for_check,
-                                  euf_assignments_for_check);
+      if (euf_atoms_need_interface_equalities) {
+        append_true_interface_equalities(true_interface_equalities, euf_atoms_for_check_storage,
+                                         euf_assignments_for_check);
+        append_interface_equalities(false_interface_equalities, false, euf_atoms_for_check_storage,
+                                    euf_assignments_for_check);
+      }
       const std::size_t appended_atoms =
           prepared_euf_theory->ensure_theory_atoms(terms, euf_atoms_for_check);
       euf_assignments_for_check =
@@ -10550,12 +10564,22 @@ CheckSatOutcome solve_qf_uf_lra(
     }
 
     statistics.increment(kStatLraTheoryChecks);
-    std::vector<BooleanClausifier::TheoryAtom> lra_atoms_for_check = lra_atoms;
+    // Same reasoning as euf_atoms_for_check above: LRA only ever appends true
+    // interface equalities, so skip the copy when there are none this round.
+    const bool lra_atoms_need_interface_equalities = !true_interface_equalities.empty();
+    std::vector<BooleanClausifier::TheoryAtom> lra_atoms_for_check_storage;
+    if (lra_atoms_need_interface_equalities) {
+      lra_atoms_for_check_storage = lra_atoms;
+    }
+    const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms_for_check =
+        lra_atoms_need_interface_equalities ? lra_atoms_for_check_storage : lra_atoms;
     std::vector<AssignedTheoryAtom> lra_assignments =
         assigned_atoms_from_backend(backend, lra_atoms);
     std::vector<AssignedTheoryAtom> lra_assignments_for_check = lra_assignments;
-    append_true_interface_equalities(true_interface_equalities, lra_atoms_for_check,
-                                     lra_assignments_for_check);
+    if (lra_atoms_need_interface_equalities) {
+      append_true_interface_equalities(true_interface_equalities, lra_atoms_for_check_storage,
+                                       lra_assignments_for_check);
+    }
     std::optional<sat::Clause> lra_conflict;
     const PreparedLraTheory* prepared_lra_theory_for_check = nullptr;
     const theory::arithmetic::LraTableau* checked_lra_tableau = nullptr;
