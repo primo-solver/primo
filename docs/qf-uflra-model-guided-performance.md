@@ -299,6 +299,34 @@ at commit `9061611` confirms that policy. It ran all six profiles over the same
 | OpenSMT 2.9.2 | 1,265 (754/511) | 19 | 1,374.83 | 5,934.83 |
 | Yices 2.7.0 | 1,276 (765/511) | 8 | 75.77 | 1,995.77 |
 
+```{figure} _static/qf-uflra-cactus.svg
+:alt: Instances solved against per-instance time budget for two Primo profiles, Z3, cvc5, OpenSMT, and Yices over 160 differentiating QF_UFLRA instances.
+:width: 100%
+
+Instances solved against the per-instance time budget on the **160 instances
+that at least one solver did not finish within one second**. The 1,124 common
+easy instances are omitted from every series, so all pairwise vertical gaps are
+preserved. Legend counts refer to this retained subset; the table above reports
+the complete 1,284-file corpus. The source is the 2026-08-12 SLURM campaign at
+commit `9061611`, jobs 125259--125264.
+```
+
+Regenerate the figure from the campaign's copied shard directories with:
+
+```bash
+python3 scripts/plot_cactus.py \
+  --series "Primo all=<artifact-root>/primo-all" \
+  --series "Primo care=<artifact-root>/primo-care" \
+  --series "Z3=<artifact-root>/z3" \
+  --series "cvc5=<artifact-root>/cvc5" \
+  --series "OpenSMT=<artifact-root>/opensmt" \
+  --series "Yices=<artifact-root>/yices" \
+  --timeout 120 --drop-solved-by-all-under 1 \
+  --title "QF_UFLRA, 2026-08-12" \
+  --note "SLURM jobs 125259-125264; benchmark commit 9061611." \
+  --out docs/_static/qf-uflra-cactus.svg
+```
+
 This is the first recorded full-corpus QF_UFLRA evaluation in which Primo
 materially outperforms Z3 on both coverage and PAR2: default `all` solves 18
 more files and reduces PAR2 by 53 percent. It also solves seven more files than

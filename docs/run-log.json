@@ -26657,7 +26657,8 @@
         "cvc5": "contrib/local/bin/cvc5 --lang smt2 --stats",
         "opensmt": "contrib/local/bin/opensmt",
         "yices": "contrib/local/bin/yices-smt2 --stats",
-        "summary": "scripts/summarize_benchmark_shards.py --timeout 120 plus structured pairwise analysis of the durable shard CSVs"
+        "summary": "scripts/summarize_benchmark_shards.py --timeout 120 plus structured pairwise analysis of the durable shard CSVs",
+        "plot": "python3 scripts/plot_cactus.py --series 'Primo all=<artifact-root>/primo-all' --series 'Primo care=<artifact-root>/primo-care' --series 'Z3=<artifact-root>/z3' --series 'cvc5=<artifact-root>/cvc5' --series 'OpenSMT=<artifact-root>/opensmt' --series 'Yices=<artifact-root>/yices' --timeout 120 --drop-solved-by-all-under 1 --title 'QF_UFLRA, 2026-08-12' --note 'SLURM jobs 125259-125264; benchmark commit 9061611.' --out docs/_static/qf-uflra-cactus.svg"
       },
       "results": {
         "primo_all": "1272 solved (761 sat, 511 unsat), 12 timeout, 0 error/unsupported/wrong, solved-row time 805.384529 seconds, PAR2 3685.384529.",

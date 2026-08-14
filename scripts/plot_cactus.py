@@ -44,20 +44,33 @@ from __future__ import annotations
 import argparse
 import collections
 import csv
+import html
 import pathlib
 
 
 def load_series(directory: pathlib.Path, solver: str) -> list[dict[str, str]]:
-    """Merge a solver's shard CSVs from one result directory."""
-    rows: dict[str, dict[str, str]] = {}
+    """Merge a solver's named or directory-scoped shard CSVs."""
+    paths = []
     for path in sorted(directory.glob(f"{solver}*.csv")):
         if path.stem.endswith("-summary"):
             continue
         # `primo.shard-3.csv` and `primo.csv` both belong to `primo`, but
         # `primo-foo.csv` does not.
-        stem = path.stem.split(".shard-")[0]
-        if stem != solver:
-            continue
+        if path.stem.split(".shard-")[0] == solver:
+            paths.append(path)
+
+    # Newer benchmark campaigns put one solver in each directory, so the
+    # directory owns generic `shard-N.csv` files. Prefer named files when both
+    # layouts are present; mixing layouts could silently count a row twice.
+    if not paths:
+        paths = [
+            path
+            for path in sorted(directory.glob("shard-*.csv"))
+            if not path.stem.endswith("-summary")
+        ]
+
+    rows: dict[str, dict[str, str]] = {}
+    for path in paths:
         with path.open() as handle:
             for row in csv.DictReader(handle):
                 rows[row["file"]] = row
@@ -109,11 +122,12 @@ def svg(series: list[tuple[str, list[float]]], timeout: float, total: int,
 
     # Deliberately no red: series are solvers, not severities, and a red curve
     # reads as a verdict on whichever solver happens to be second.
-    palette = ["#1b6ca8", "#c9760a", "#2a9d8f", "#8d5bb5", "#5a6472"]
+    palette = ["#1b6ca8", "#c9760a", "#2a9d8f", "#8d5bb5", "#5a6472", "#b5527d"]
     out = [(f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
            f'viewBox="0 0 {width} {height}" font-family="system-ui,-apple-system,sans-serif">'),
            '<rect width="100%" height="100%" fill="#ffffff"/>',
-           f'<text x="{left}" y="30" font-size="17" font-weight="600">{title}</text>']
+           (f'<text x="{left}" y="30" font-size="17" font-weight="600">'
+            f'{html.escape(title)}</text>')]
 
     for decade in range(-2, 4):
         t = 10.0 ** decade
@@ -151,12 +165,12 @@ def svg(series: list[tuple[str, list[float]]], timeout: float, total: int,
         out.append(f'<line x1="{left+plot_w+18}" y1="{ly}" x2="{left+plot_w+44}" y2="{ly}" '
                    f'stroke="{colour}" stroke-width="2.6"/>')
         out.append(f'<text x="{left+plot_w+52}" y="{ly+4}" font-size="13" fill="#222">'
-                   f'{name} &#8212; {len(solved)}</text>')
+                   f'{html.escape(name)} &#8212; {len(solved)}</text>')
 
     caption_top = height - 12 - caption_leading * (len(caption) - 1)
     for i, line in enumerate(caption):
         out.append(f'<text x="{left}" y="{caption_top+i*caption_leading}" '
-                   f'font-size="11" fill="#666">{line}</text>')
+                   f'font-size="11" fill="#666">{html.escape(line)}</text>')
     out.append("</svg>")
     return "\n".join(out)
 
