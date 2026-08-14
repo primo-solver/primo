@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.plot_cactus import load_series, svg
+from scripts.plot_cactus import load_series, order_series_by_solved, svg
 
 FIELDS = ["file", "status", "seconds", "wrong", "answer", "stderr_head"]
 
@@ -59,6 +59,26 @@ class PlotCactusTests(unittest.TestCase):
         self.assertIn("A &amp; B", document)
         self.assertIn("solver &lt;one&gt;", document)
         self.assertIn("source &lt;artifact&gt;", document)
+
+    def test_orders_by_solved_count_then_name(self) -> None:
+        ordered = order_series_by_solved(
+            [("zeta", [0.1]), ("beta", [0.1, 0.2]), ("alpha", [0.1, 0.2])]
+        )
+
+        self.assertEqual([name for name, _ in ordered], ["alpha", "beta", "zeta"])
+
+    def test_highlight_uses_prominent_blue_and_heavier_line(self) -> None:
+        document = svg(
+            [("Primo all", [0.1]), ("reference", [0.2])],
+            timeout=1,
+            total=1,
+            title="QF_UFLRA",
+            caption=[],
+            highlighted="Primo all",
+        )
+
+        self.assertIn('stroke="#0057b8" stroke-width="3.4"', document)
+        self.assertIn('font-weight="600">Primo all', document)
 
 
 if __name__ == "__main__":

@@ -98,8 +98,21 @@ def summarize(rows: list[dict[str, str]], timeout: float) -> dict[str, object]:
     }
 
 
-def svg(series: list[tuple[str, list[float]]], timeout: float, total: int,
-        title: str, caption: list[str]) -> str:
+def order_series_by_solved(
+    series: list[tuple[str, list[float]]],
+) -> list[tuple[str, list[float]]]:
+    """Order legend and curves by descending solved count, then name."""
+    return sorted(series, key=lambda item: (-len(item[1]), item[0].casefold()))
+
+
+def svg(
+    series: list[tuple[str, list[float]]],
+    timeout: float,
+    total: int,
+    title: str,
+    caption: list[str],
+    highlighted: str | None = None,
+) -> str:
     # The caption grows with the number of provenance notes, so the canvas and
     # the bottom margin grow with it rather than the plot area shrinking --
     # otherwise a fourth line simply falls off the bottom edge, which is how
@@ -121,8 +134,10 @@ def svg(series: list[tuple[str, list[float]]], timeout: float, total: int,
         return top + plot_h * (1 - n / max_solved)
 
     # Deliberately no red: series are solvers, not severities, and a red curve
-    # reads as a verdict on whichever solver happens to be second.
+    # reads as a verdict on whichever solver happens to be second. When one
+    # series is highlighted, reserve the saturated blue for it.
     palette = ["#1b6ca8", "#c9760a", "#2a9d8f", "#8d5bb5", "#5a6472", "#b5527d"]
+    comparison_palette = ["#c9760a", "#2a9d8f", "#8d5bb5", "#5a6472", "#b5527d"]
     out = [(f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
            f'viewBox="0 0 {width} {height}" font-family="system-ui,-apple-system,sans-serif">'),
            '<rect width="100%" height="100%" fill="#ffffff"/>',
@@ -155,16 +170,28 @@ def svg(series: list[tuple[str, list[float]]], timeout: float, total: int,
                f'transform="rotate(-90 18 {top+plot_h/2:.0f})" text-anchor="middle">'
                f'instances solved (of {total})</text>')
 
+    comparison_index = 0
     for index, (name, solved) in enumerate(series):
-        colour = palette[index % len(palette)]
+        is_highlighted = name == highlighted
+        if highlighted is None:
+            colour = palette[index % len(palette)]
+        elif is_highlighted:
+            colour = "#0057b8"
+        else:
+            colour = comparison_palette[comparison_index % len(comparison_palette)]
+            comparison_index += 1
+        curve_width = 3.4 if is_highlighted else 2.2
+        legend_width = 4.0 if is_highlighted else 2.6
+        label_weight = ' font-weight="600"' if is_highlighted else ""
         points = " ".join(f"{x_of(t):.1f},{y_of(i+1):.1f}" for i, t in enumerate(solved))
         if points:
             out.append(f'<polyline points="{points}" fill="none" stroke="{colour}" '
-                       f'stroke-width="2.2" stroke-linejoin="round"/>')
+                       f'stroke-width="{curve_width}" stroke-linejoin="round"/>')
         ly = top + 8 + index * 22
         out.append(f'<line x1="{left+plot_w+18}" y1="{ly}" x2="{left+plot_w+44}" y2="{ly}" '
-                   f'stroke="{colour}" stroke-width="2.6"/>')
-        out.append(f'<text x="{left+plot_w+52}" y="{ly+4}" font-size="13" fill="#222">'
+                   f'stroke="{colour}" stroke-width="{legend_width}"/>')
+        out.append(f'<text x="{left+plot_w+52}" y="{ly+4}" font-size="13" fill="#222"'
+                   f'{label_weight}>'
                    f'{html.escape(name)} &#8212; {len(solved)}</text>')
 
     caption_top = height - 12 - caption_leading * (len(caption) - 1)
@@ -188,6 +215,10 @@ def main() -> int:
     parser.add_argument("--drop-solved-by-all-under", type=float, metavar="SECONDS",
                         help="omit instances every series solved faster than this; "
                              "counts and PAR2 are then over the retained instances")
+    parser.add_argument("--sort-by-solved", action="store_true",
+                        help="order curves and legend by descending solved count")
+    parser.add_argument("--highlight-series", metavar="NAME",
+                        help="draw one named series in a prominent blue with a heavier line")
     args = parser.parse_args()
 
     loaded: list[tuple[str, list[dict[str, str]]]] = []
@@ -237,6 +268,13 @@ def main() -> int:
             problems += 1
         plotted.append((name, list(stats["solved"])))
 
+    if args.highlight_series is not None and all(
+        name != args.highlight_series for name, _ in plotted
+    ):
+        raise SystemExit(f"no plotted series named {args.highlight_series!r}")
+    if args.sort_by_solved:
+        plotted = order_series_by_solved(plotted)
+
     if len(totals) > 1:
         print(f"  NOTE: solvers cover different file counts {sorted(totals)} -- "
               "the curves are not directly comparable")
@@ -252,7 +290,9 @@ def main() -> int:
             f"remaining {total}. Gaps between curves are unaffected.")
     caption += args.note
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(svg(plotted, args.timeout, total, args.title, caption))
+    args.out.write_text(
+        svg(plotted, args.timeout, total, args.title, caption, args.highlight_series)
+    )
     print(f"\nwrote {args.out}")
     if problems:
         print("Review the flagged items above before citing this plot.")

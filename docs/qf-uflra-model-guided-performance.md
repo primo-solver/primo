@@ -300,15 +300,18 @@ at commit `9061611` confirms that policy. It ran all six profiles over the same
 | Yices 2.7.0 | 1,276 (765/511) | 8 | 75.77 | 1,995.77 |
 
 ```{figure} _static/qf-uflra-cactus.svg
-:alt: Instances solved against per-instance time budget for two Primo profiles, Z3, cvc5, OpenSMT, and Yices over 160 differentiating QF_UFLRA instances.
+:alt: Instances solved against per-instance time budget for Primo, Z3, cvc5, OpenSMT, and Yices over 160 differentiating QF_UFLRA instances.
 :width: 100%
 
 Instances solved against the per-instance time budget on the **160 instances
 that at least one solver did not finish within one second**. The 1,124 common
 easy instances are omitted from every series, so all pairwise vertical gaps are
 preserved. Legend counts refer to this retained subset; the table above reports
-the complete 1,284-file corpus. The source is the 2026-08-12 SLURM campaign at
-commit `9061611`, jobs 125259--125264.
+the complete 1,284-file corpus. Legend entries are sorted by solved count, and
+the heavier blue line marks the default Primo `all` profile. The source is the
+2026-08-12 SLURM campaign at commit `9061611`, jobs 125259--125264. The opt-in
+Primo `care` profile remains in the table but is omitted from this reference
+solver comparison.
 ```
 
 Regenerate the figure from the campaign's copied shard directories with:
@@ -316,12 +319,12 @@ Regenerate the figure from the campaign's copied shard directories with:
 ```bash
 python3 scripts/plot_cactus.py \
   --series "Primo all=<artifact-root>/primo-all" \
-  --series "Primo care=<artifact-root>/primo-care" \
   --series "Z3=<artifact-root>/z3" \
   --series "cvc5=<artifact-root>/cvc5" \
   --series "OpenSMT=<artifact-root>/opensmt" \
   --series "Yices=<artifact-root>/yices" \
   --timeout 120 --drop-solved-by-all-under 1 \
+  --sort-by-solved --highlight-series "Primo all" \
   --title "QF_UFLRA, 2026-08-12" \
   --note "SLURM jobs 125259-125264; benchmark commit 9061611." \
   --out docs/_static/qf-uflra-cactus.svg
