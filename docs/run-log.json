@@ -26736,13 +26736,45 @@
         "current_primo": "1272 solved (761 sat, 511 unsat), 12 timeout, 0 error/unsupported/wrong, solved-row time 832.627366 seconds, PAR2 3712.627366.",
         "families": "Solved FFT/BMC/induction/MathSAT 10/7/355/900; family PAR2 0.309430/1926.781648/1685.409697/100.126591.",
         "old_primo_comparison": "All 1284 paths common; the solved set is identical with 1272 common solves, zero recovery, zero loss, and zero decisive-answer disagreement. Solved-row time changed from 805.384529 to 832.627366 seconds and PAR2 from 3685.384529 to 3712.627366. MathSAT solved-row time changed from 70.673076 to 100.126591 seconds.",
+        "local_followup": "A pinned-CPU local A/B did not reproduce the slowdown: summed medians over 40 MathSAT rows changed from 1.623787 to 1.632122 seconds (1.005x), and a seven-repeat subset of ten longer rows changed from 1.863590 to 1.879201 seconds (1.008x). Answers and search statistics matched; only two model-term diagnostic counters differed.",
         "reused_references": "Z3 1254 solved and PAR2 7817.388440; cvc5 1273 and 3606.152165; OpenSMT 1265 and 5934.827663; Yices 1276 and 1995.767448. Current Primo has 18/2/10/0 unique solves and the references have 0/3/3/4 unique solves respectively; zero decisive-answer disagreement.",
         "answer_validation": "All 1282 rows with declared SMT-LIB status matched it. The two rows without declared status timed out. The preceding exact-binary fuzz gate validated 2147 generated SAT models with Dolmen.",
         "plot_filter": "The plot omits the same 1124 instances every displayed solver completed in under one second and retains 160; retained solved counts are Primo 148, Z3 130, cvc5 149, OpenSMT 141, and Yices 152."
       },
       "artifacts": "remote:<isolated-workspace>/slurm-results/qfuflra-full-120s-413179b/primo-all/; local-only:/tmp/primo-qfuflra-120s-413179b/{primo-all,summary.json,all-summary.json}; reused references local-only:/tmp/primo-qfuflra-120s-9061611/{z3,cvc5,opensmt,yices}/",
       "evidence_status": "slurm-complete-current-with-reused-references",
-      "outcome": "Refresh the cactus plot with current Primo. Coverage is exactly unchanged from 9061611, while the single rerun is 3.4 percent slower in aggregate solved-row time and therefore does not demonstrate a performance gain from the intervening bookkeeping changes."
+      "outcome": "Refresh the cactus plot with current Primo. Coverage is exactly unchanged from 9061611. The 3.4 percent SLURM wall-time increase was not reproduced by the paired local A/B and correlates with lower task CPU utilization, so treat it as cluster contention rather than evidence of a solver regression."
+    },
+    {
+      "id": "2026-08-14-qf-uflra-cactus-slowdown-local-ab",
+      "started_at": "2026-08-14",
+      "recorded_at": "2026-08-14",
+      "kind": "local-performance-ablation",
+      "scope": "Determine whether the apparent MathSAT slowdown between QF_UFLRA cactus campaigns reproduces outside SLURM",
+      "commit": "413179b versus 9061611",
+      "branch": "main",
+      "environment": {
+        "type": "local",
+        "builds": "Separate clean Release builds with GCC 13.3.0 and the same repository-local CaDiCaL 3.0.0, ANTLR, CLI11, and GMP installation; binaries report git 9061611 and 413179b.",
+        "execution": "One inherited CPU selected with sched_setaffinity; subprocess order alternated old/current and current/old; each run used a ten-second process timeout and --max-theory-conflicts 1000000.",
+        "cluster_context": "SLURM sacct for old job 125259 reports 2244.057 CPU seconds over 2271 elapsed task-seconds (98.8 percent); refresh job 125763 reports 2174.331 over 2323 (93.6 percent)."
+      },
+      "commands": {
+        "build_old": "git worktree add --detach <temp-worktree> 9061611; cmake -S <temp-worktree> -B <old-build> -DCMAKE_BUILD_TYPE=Release with repository-local dependencies; cmake --build <old-build> --target primo -j4",
+        "build_current": "cmake -S /workspace -B <current-build> -DCMAKE_BUILD_TYPE=Release with the same repository-local dependencies and PRIMO_GIT_REVISION_OVERRIDE=413179b; cmake --build <current-build> --target primo -j4",
+        "solver": "primo --quiet --stats --model-equality-mutation-scope=all --max-theory-conflicts 1000000 FILE",
+        "sample": "Python subprocess runner over the 20 largest absolute MathSAT regressions in the SLURM CSV comparison plus 20 deterministic controls selected with seed 20260814; five alternating repetitions per binary and row. A second probe used the ten largest regressions among rows whose old SLURM time was at least 0.2 seconds, with seven repetitions."
+      },
+      "results": {
+        "forty_rows": "Summed per-row medians 1.623787 seconds old versus 1.632122 current, ratio 1.005x; median per-row ratio 1.007x and geometric-mean ratio 1.007x. Two of 40 rows exceeded 1.05x, none was below 0.95x.",
+        "top_twenty": "The 20 rows with the largest apparent SLURM regressions summed to 0.850851 seconds old versus 0.854677 current, ratio 1.004x.",
+        "controls": "The 20 deterministic controls summed to 0.772935 seconds old versus 0.777444 current, ratio 1.006x.",
+        "longer_ten": "Summed seven-run medians 1.863590 seconds old versus 1.879201 current, ratio 1.008x; individual ratios ranged from 0.992x to 1.017x.",
+        "behavior": "All answers matched. All non-time search statistics matched. The only changed statistics were :no.interface.model-real-terms-before-interface-filter and :no.interface.model-real-terms-filtered, which are bookkeeping diagnostics added after the baseline."
+      },
+      "artifacts": "local-only:/tmp/primo-local-ab-413179b-vs-9061611.json and /tmp/primo-local-ab-mathsat40-413179b-vs-9061611.json; exact temporary build directories /tmp/primo-local-ab-build-{9061611,current}/",
+      "evidence_status": "local-complete-current",
+      "outcome": "The apparent 3.4 percent full-corpus and 41.7 percent MathSAT SLURM wall-time increases do not reproduce locally. Combined with the lower refresh-job CPU-to-elapsed ratio, the evidence favors cluster contention; there is no measured local solver regression beyond approximately one percent."
     },
     {
       "id": "2026-08-12-qf-uflra-joint-z3-yices-gap-profile-0b40649",

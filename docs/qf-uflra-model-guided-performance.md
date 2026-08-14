@@ -336,9 +336,16 @@ python3 scripts/plot_cactus.py \
 The current rerun has exactly the old Primo solved set: 1,272 common solves, no
 recoveries, no losses, and no answer disagreements. Its aggregate solved-row
 time increased from 805.38 to 832.63 seconds (3.4 percent), mostly in the
-MathSAT family (70.67 to 100.13 seconds). A single rerun cannot distinguish
-cluster timing variation from a small regression, but it provides no timing
-evidence that the post-`9061611` bookkeeping changes improved this corpus.
+MathSAT family (70.67 to 100.13 seconds). A follow-up pinned-CPU local A/B used
+identical Release builds of `9061611` and `413179b`. Across 40 MathSAT rows,
+including the 20 largest apparent cluster regressions, summed five-run medians
+changed by only 0.5 percent (1.624 to 1.632 seconds). Ten longer rows changed by
+0.8 percent over seven-run medians (1.864 to 1.879 seconds), with equal answers
+and search statistics. The old SLURM tasks accumulated CPU time equal to 98.8
+percent of elapsed time, versus 93.6 percent in the refresh. The evidence
+therefore attributes the aggregate cactus shift to cluster contention, not a
+reproduced solver regression; it still does not demonstrate a speedup from the
+post-`9061611` bookkeeping changes.
 
 This remains the first recorded full-corpus QF_UFLRA comparison in which Primo
 materially outperforms Z3 on both coverage and PAR2: current `all` solves 18
