@@ -3791,14 +3791,14 @@ void soi_multi_row_conflict_fires_end_to_end() {
 }
 
 void handles_disequality_via_boolean_level_case_splitting() {
-  // Real is a total order, so t1 = t2 <=> t1 <= t2 AND t2 <= t1 -- Frontend
-  // desugars Real equality to that conjunction at parse time (mk_theory_equality),
-  // so NOT(t1=t2) is just NOT(AND(Le,Le)), handled by BooleanClausifier's
-  // ordinary Tseitin/CNF machinery. No case-split/lemma code exists in
-  // LraTableau or OnlineLraPropagator; CDCL branching over the two
-  // underlying Le atoms does the case-splitting for free. This used to be
-  // explicitly rejected ("QF_LRA disequality ... is not yet supported");
-  // now supported without any tableau-level changes at all.
+  // Real is a total order, so t1 = t2 <=> t1 <= t2 AND t2 <= t1. The final
+  // equality-producing preprocessing boundary lowers Real equality to that
+  // conjunction, so NOT(t1=t2) is just NOT(AND(Le,Le)), handled by
+  // BooleanClausifier's ordinary Tseitin/CNF machinery. No case-split/lemma
+  // code exists in LraTableau or OnlineLraPropagator; CDCL branching over the
+  // two underlying Le atoms does the case-splitting for free. This used to be
+  // explicitly rejected ("QF_LRA disequality ... is not yet supported"); now
+  // it is supported without any tableau-level changes.
   const auto satisfiable = check_sat_smtlib(R"(
     (set-logic QF_LRA)
     (declare-fun x () Real)

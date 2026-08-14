@@ -689,7 +689,11 @@ directions: those passes need genuine Real `Equality` nodes as input, and the
 symmetry/finite-domain passes may produce new equality clauses of their own.
 Lowering therefore rewrites the complete generated assertion set before
 monotone elimination, mixed purification, `BooleanClausifier`, or theory
-dispatch. No native Real equality is allowed to reach the LRA atom layer.
+dispatch. No native Real equality from that assertion pipeline is allowed to
+reach the LRA atom layer. The mixed Nelson-Oppen coordinator has a separate
+internal path for layering a SAT-assigned-true shared interface equality onto a
+final LRA check; [](lra-equality-and-disequality) documents that narrow
+exception.
 
 An earlier ordering lowered the input assertions before appending raw
 finite-domain AMO clauses. A Real-domain choice could consequently reintroduce

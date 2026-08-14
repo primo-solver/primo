@@ -12476,7 +12476,9 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       // passes reason about genuine Equality nodes, and symmetry/finite-domain
       // passes above may add new ones. Lower the complete assertion set before
       // any arithmetic-only pass or theory dispatch so native Real equality
-      // never reaches the LRA atom layer.
+      // from the assertion pipeline never reaches the LRA atom layer. The
+      // mixed coordinator may separately layer known-true interface
+      // equalities onto a final LRA check.
       RealEqualityLoweringResult lowered_equalities = lower_real_equalities(
           frontend.terms(), assertions, options.guarded_real_equality_lowering);
       assertions = std::move(lowered_equalities.assertions);
