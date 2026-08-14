@@ -545,39 +545,87 @@ guarded rewrite.
     column measures exactly this item's effect on the default.
 
 - **Fill-in-aware pivot selection** ([heuristics-note item H3](#h3), 2026-07-28,
+  `lra_tableau.{hpp,cpp}`, **the solver default since 2026-07-29**):
+  `PivotingRule::Sparse`, selected by `--lra-pivoting-rule sparse`. The exact
+  definition follows; this is the authoritative description of what Primo
+  calls *Sparse*.
 
-  `lra_tableau.{hpp,cpp}`, **opt-in**): `PivotingRule::Sparse`, via
-  `--lra-pivoting-rule sparse`. `pivot()` rewrites every row in
-  `occurs_in_[entering]`, merging in a row of length `|row(leaving)|`, so a
-  pivot's cost -- and the fill-in it creates -- is the Markowitz product
-  `|occurs_in(entering)| * |row(leaving)|`. Bland prices by index, Dantzig by
-  coefficient magnitude, SOI by global objective decrease; **none of the three
-  prices either factor**. That is defensible in floating-point LP, where
-  stability dominates the entering choice and an LU refactorization layer
-  absorbs fill-in, but Primo has exact rationals and neither constraint, so
-  the fill-in term is unopposed.
-  - **Entering side** (the rule itself): among the eligible candidates,
-    minimise `occurs_in(v).size()`. Once the leaving variable is fixed every
-    eligible candidate repairs the same violation by the same amount, so this
-    choice is free with respect to progress -- Bland and Dantzig already pick
-    arbitrarily among equivalent options, and this picks the cheapest. That is
-    what distinguishes it from roadmap item 8's cost ranking, which was
-    choosing what to *decide* and could steer search wrong.
-  - **Tie-break**: prefer `|coefficient| = 1`, so `1/coeff` is integral and
-    the rewrite introduces no new denominators. Visible in the counters: on
-    `clock_synchro`, `:rational.promotions` falls 358,801 -> 5,916.
-  - **Bounded pricing**: rows reach 691 terms, so the scan scores at most
-    `kSparsePricingCandidateLimit` eligible candidates from a rotating start.
-    The cap governs only how many *eligible* candidates are scored, never how
-    much of the row is read before concluding there are none -- "none" is what
-    `check()` turns into a conflict, so an early exit before finding one would
-    be unsound. Pinned by its own test.
-  - **Leaving side** (`--lra-sparse-leaving`, separate opt-in): Monniaux's
-    other criterion, repair a short row first. Unlike the entering choice this
-    changes *which* infeasibility gets repaired, so it is gated and measured
-    separately.
-  - Source: Monniaux (CAV 2009) p.8 -- see [](papers/lra-related-work.md).
-    Only that sparsity criterion is taken from the paper.
+  Let the current tableau basis be $B$, its nonbasic variables be $N$, and
+  write each basic row as
+
+  \[
+  x_b = \sum_{j\in N} a_{bj}x_j.
+  \]
+
+  `Row` stores exactly the nonzero right-hand-side entries, so define
+
+  \[
+  r(b) = |\{j\in N : a_{bj}\ne 0\}| = \texttt{rows_[b].size()},
+  \qquad
+  c(j) = |\{b\in B : a_{bj}\ne 0\}| =
+  \texttt{occurs_in_[j].size()}.
+  \]
+
+  Thus row length is a nonzero count, not the number of tableau variables and
+  not a byte size. Column length is the number of current basic rows containing
+  the variable; coefficient magnitudes are not stored in `occurs_in_`.
+  `LraTableau` owns both dense outer vectors, and `pivot()` maintains the
+  cross-linked occurrence index as the basis changes.
+
+  Before the Bland fallback engages, one Sparse repair step is:
+
+  1. Form the sorted set $V$ of violated basic variables. For $b\in V$, let
+     $d(b)$ be the exact `DeltaRational` distance from its assignment to the
+     violated bound.
+  2. Under the shipped default leaving policy, choose the lexicographic minimum
+     of $(r(b),-d(b),b)$: shortest row first, then largest violation, then
+     smallest variable id. `--no-lra-sparse-leaving` instead chooses the
+     lexicographic minimum of $(-d(b),b)$, the Dantzig-style policy. The
+     separate experimental `--lra-least-violated-leaving` policy takes
+     precedence when enabled and minimizes $(d(b),r(b),b)$, following
+     Griggio's MathSAT 4 description.
+  3. An entry $j$ in the chosen row is eligible exactly when $x_j$ can move
+     in the direction required to bring $x_b$ to its violated bound without
+     crossing $x_j$'s own bound. Concretely, when $x_b$ is too low,
+     $a_{bj}>0$ requires $x_j<u_j$ and $a_{bj}<0$ requires $x_j>l_j$;
+     when $x_b$ is too high, those directions reverse. A missing relevant
+     bound makes the corresponding movement eligible.
+  4. Scan the chosen row cyclically from `sparse_pricing_cursor_`. Among the
+     first $k$ *eligible* entries, choose the lexicographic minimum of
+     $(c(j),\mathit{nonunit}(a_{bj}),j)$, where `nonunit` is 0 for coefficient
+     $+1$ or $-1$, and 1 otherwise. The option
+     `--lra-sparse-pricing-candidates` supplies $k$, default 16; zero means
+     all eligible entries. The cursor advances after a successful selection.
+     If fewer than $k$ entries are eligible, the entire row is inspected.
+     In particular, the scan never reports that no repair exists without
+     examining the entire row.
+  5. Pivot $j$ into the basis, pivot $b$ out, and assign $x_b$ its
+     violated bound.
+
+  `pivot()` substitutes the leaving row into the rows listed by the entering
+  column, so $c(j)r(b)$ is Primo's upper-level proxy for row-combination work.
+  Classical Markowitz notation instead estimates possible fill with
+  $(c(j)-1)(r(b)-1)$. For a fixed row with $r(b)>1$, both rank entering
+  variables by $c(j)$; when $r(b)=1$, the classical fill estimate is zero for
+  every candidate and provides no ranking. Primo does **not** compute that
+  classical product or minimize either product globally over every feasible
+  $(b,j)$ pair: it chooses the leaving row first, then prices only a bounded
+  prefix of its eligible entering variables. “Markowitz-style” therefore
+  describes the cost intuition, not an implementation of global Markowitz
+  pivot search.
+
+  The minimum-column-length rule and finite Bland fallback are described in
+  King's thesis, Section 2.2.12; Monniaux (CAV 2009), p. 8, motivates sorting
+  by row and occurrence counts. Primo takes only those sparsity criteria from
+  those sources. The unit-coefficient tie-break, rotating bounded scan, exact
+  lexicographic combination, and its defaults are Primo-specific engineering
+  choices. See [](papers/lra-related-work.md).
+
+  After more than
+  `--lra-bland-fallback-factor * variables + --lra-bland-fallback-offset`
+  pivots in one `check()` call (defaults 4 and 64), selection remains Bland for
+  the rest of that call. Consequently, bounded Sparse pricing changes only the
+  heuristic prefix; the finite Bland suffix retains the termination argument.
   - New `:lra.pivot-row-updates` / `:lra.pivot-term-ops` count what the pivots
     cost, not just how many there were; trading fewer-but-costlier pivots for
     more-but-cheaper ones is this rule's whole risk, so both are reported.

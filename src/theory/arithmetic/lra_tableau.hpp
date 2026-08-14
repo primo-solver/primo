@@ -512,7 +512,7 @@ class LraTableau {
   }
 
   // Cumulative count of check() calls (across this tableau's lifetime,
-  // including anything replayed via copy) that hit the Dantzig anti-cycling
+  // including anything replayed via copy) that hit a non-Bland anti-cycling
   // fallback -- always 0 under PivotingRule::Bland. Callers that want a
   // per-round delta (e.g. for a statistics counter) should snapshot this
   // before and after a check() call themselves.

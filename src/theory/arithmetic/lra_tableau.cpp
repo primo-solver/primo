@@ -1506,8 +1506,8 @@ LraTableau::ModelMutationResult LraTableau::diversify_shared_model(
 }
 
 std::optional<std::vector<sat::Lit>> LraTableau::check() {
-  // Anti-cycling fallback for PivotingRule::Dantzig (see the PivotingRule
-  // class comment): once more than this many pivots have happened within
+  // Anti-cycling fallback for every non-Bland rule (see the PivotingRule class
+  // comment): once more than this many pivots have happened within
   // this call, switch to Bland's-rule selection (both loops below) for
   // the remainder. A heuristic threshold, not a formally derived bound --
   // generous relative to the tableau size. Reset every call (cycling risk
@@ -1628,7 +1628,7 @@ std::optional<std::vector<sat::Lit>> LraTableau::check() {
         too_low = candidate_too_low;
         break;
       }
-      // PivotingRule::Sparse with the opt-in leaving-side knob (see
+      // PivotingRule::Sparse with its default-on leaving-side policy (see
       // set_sparse_leaving): repair a *short* row first, since the row being
       // pivoted out becomes the substituted-in row and its length is the
       // second Markowitz factor. Violation magnitude drops to a tie-break.

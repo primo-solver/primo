@@ -422,8 +422,9 @@ was not anticipated:
 | `miplib/pp08a-12000` | 1.63s | **0.86s** | 1.82s | -- |
 | `latendresse/ecoliFBAyicesTest-*` (6 files) | timeout | ~19.5s | timeout | **~0.65s** |
 
-**The unanticipated result is the last row.** The leaving-side knob
-(`--lra-sparse-leaving`, repair a short row first) was planned as a
+**The unanticipated result is the last row.** The leaving-side policy
+(repair a short row first, now default-on and ablated by
+`--no-lra-sparse-leaving`) was planned as a
 lower-priority follow-up precisely because it is *not* progress-neutral. It
 turns out to be what cracks Class A: every `latendresse` file goes from
 "never solved by Primo" to ~0.65s, roughly 30x faster than the only other
@@ -435,12 +436,12 @@ In hindsight it is the expected shape: a pure-LP instance is one `check()`
 call with no Boolean structure, so "which infeasibility to repair" has no
 search-trajectory consequences to get wrong -- the objection that made the
 knob risky simply does not apply to Class A. It is still a real risk on the
-Boolean-heavy classes, which is why it stays a separate flag and gets its own
-column rather than being folded into `sparse`.
+Boolean-heavy classes, which is why it remains separately ablatable and gets
+its own measurement column.
 
-Second finding, also worth keeping: **Dantzig has never been run on the
-237-file bar** in three roadmap cycles, and it solves `latendresse` where
-Bland does not. Any sparse-vs-bland comparison that omits it would
+Second finding, also worth keeping: **Dantzig had not been run on the
+237-file bar before this promotion experiment**, and it solves `latendresse`
+where Bland does not. Any sparse-vs-bland comparison that omits it would
 misattribute part of the win, which is why the promotion run is four-way
 (bland / dantzig / sparse / sparse+leaving).
 
@@ -463,29 +464,22 @@ constraint at all, and no refactorization layer -- so the fill-in term is
 unopposed, and this is where Primo's cost structure genuinely differs from
 the LP literature's assumptions.
 
-**Design.** A new `PivotingRule::Sparse` (opt-in first, same rollout
-precedent as Dantzig/SOI), layered on the existing selection loop:
+**Shipped definition.** The initial entering-side experiment used Dantzig's
+most-violated leaving choice. The promoted profile additionally enables the
+shortest-row leaving choice, so describing current Sparse as merely
+“most-violated plus minimum column length” is stale. The authoritative formal
+definition, including row/column length, movement eligibility, exact
+lexicographic tie-breaks, bounded cyclic pricing, both leaving-policy
+ablations, and the Bland suffix, is in [](arithmetic.md)'s “Fill-in-aware pivot
+selection” section.
 
-- Leaving variable: as Dantzig (most-violated), from `violated_vars_`.
-- Entering variable: among the eligible candidates in `row(leaving)`,
-  minimize the Markowitz-style score `(|occurs_in(v)| - 1) × (|row(leaving)| - 1)`.
-  Since `|row(leaving)|` is fixed once the leaving row is chosen, this
-  reduces to **minimizing `|occurs_in(v)|`** -- an O(1) lookup per
-  candidate, no arithmetic, so the rule is strictly cheaper to evaluate
-  than Dantzig's coefficient comparison.
-- Tie-break 1: prefer `|coefficient| = 1`. Pivoting on ±1 makes
-  `inv = 1/coeff` exact and integral, introducing no new denominators --
-  the exact-arithmetic analogue of numerical stability, and the thing that
-  keeps H2's fast path *on* its fast path.
-- Tie-break 2: smallest index (determinism, and the Bland fallback stays
-  reachable).
-- Partial pricing: cap the candidate scan at *k* entries with a rotating
-  start (standard practice per Bixby's survey), bounding selection cost on
-  the 691-term rows latendresse actually has.
-- Termination: unchanged. Reuse the existing per-call pivot-count
-  threshold that switches to pure Bland selection; the paper's termination
-  argument applies to the Bland suffix exactly as it already does for
-  Dantzig.
+In brief, the default first minimizes
+`(row_length, -violation, variable_id)` over violated basic rows. Within the
+chosen row it scores at most *k* eligible entering variables and minimizes
+`(column_length, nonunit_coefficient, variable_id)`. Row length is the number
+of nonzero right-hand-side terms; column length is the number of current basic
+rows containing that nonbasic variable. This is a sequential, partially priced
+cost heuristic, not a global minimization over every feasible pivot pair.
 
 **Risk: low.** Purely a selection change inside `check()`; no new state, no
 trail interaction, no explanation change. The real risk is *empirical*:
@@ -1662,8 +1656,8 @@ could be trusted.
 
 ### 6.3 What this rules out
 
-- **It is not the sparse-pricing cap.** `kSparsePricingCandidateLimit` is 16
-  and undocumented as a derived value, so raising it was the obvious cheap
+- **It is not the sparse-pricing cap.** The current default of
+  `--lra-sparse-pricing-candidates` is 16, so raising it was the obvious cheap
   fix. Measured on `scrambled312090` at limits 16 / 64 / 256 / 1,000,000, the
   per-pivot cost is essentially flat -- 51,738 / 52,428 / 46,833 / 47,312
   term-ops per pivot across a 60,000x range. Scoring more candidates does not
