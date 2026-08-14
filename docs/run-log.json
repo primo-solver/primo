@@ -26680,6 +26680,71 @@
       "outcome": "At 120 seconds, default all is the strongest Primo scope by solved count, while care is about 18 percent faster on common solves but loses one cutoff-sensitive row. Yices remains the performance target: four additional solves and roughly 13.4x lower aggregate time on the 1272 rows shared with Primo all."
     },
     {
+      "id": "2026-08-14-qf-uflra-current-main-fuzz-413179b",
+      "started_at": "2026-08-14",
+      "recorded_at": "2026-08-14",
+      "kind": "fuzz-and-model-validation",
+      "scope": "Exact-binary QF_UFLRA correctness gate before refreshing the full-corpus cactus plot",
+      "commit": "413179b",
+      "branch": "main",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Primo Release git 413179b with CaDiCaL 3.0.0",
+        "scheduler": "Job 125758, array tasks 0-3; all tasks completed with exit status zero in 1:03.",
+        "workspace": "Existing isolated NO workspace synchronized with scripts/slurm_prepare_benchmark_workspace.py in archive mode; reusable Z3 5.0.0, cvc5 1.3.4, and Dolmen installations were checked immediately before submission."
+      },
+      "commands": {
+        "validation": "scripts/slurm_validate_sbatch.py scripts/slurm_qf_uflra_fuzz_gate.sbatch; bash -n scripts/slurm_qf_uflra_fuzz_gate.sbatch",
+        "preflight": "scripts/slurm_prepare_benchmark_workspace.py --check-only --no-sync --target primo --require-tool contrib/local/bin/z3 --require-tool contrib/local/bin/cvc5 --require-tool contrib/local/bin/dolmen",
+        "submission": "sbatch --export=ALL,PRIMO_FUZZ_COUNT=750,PRIMO_FINITE_DOMAIN_FUZZ_COUNT=125,PRIMO_FUZZ_SEED_BASE=202608140,PRIMO_FUZZ_OUT_DIR=slurm-results/qf-uflra-fuzz-413179b-20260814 scripts/slurm_qf_uflra_fuzz_gate.sbatch",
+        "summary": "python3 scripts/summarize_fuzz_results.py slurm-results/qf-uflra-fuzz-413179b-20260814"
+      },
+      "results": {
+        "general": "Four complete summaries, 3000/3000 PASS against Z3, with zero timeout, disagreement, crash, parser/type error, or bug file.",
+        "finite_domain": "Eight complete summaries, 1000/1000 PASS across QF_UF and QF_UFLRA against Z3 and cvc5, with zero timeout, disagreement, crash, parser/type error, activation failure, or bug file.",
+        "model_validation": "Eight complete summaries covering 3500 generated QF_UFLRA checks: 2147 SAT models passed Dolmen and 1353 UNSAT cases required no model; zero validation failure or bug file.",
+        "seeds": "General seeds 202608140 through 202608143; finite-domain seeds use the gate's documented +100000 and +200000 offsets."
+      },
+      "artifacts": "remote:<isolated-workspace>/slurm-results/qf-uflra-fuzz-413179b-20260814/ and remote:<isolated-workspace>/slurm_logs/primo-qf-uflra-fuzz-125758_*.{out,err}",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "The exact current-main binary passed the QF_UFLRA differential and Dolmen model-validation gate, so the full benchmark refresh was allowed to proceed."
+    },
+    {
+      "id": "2026-08-14-qf-uflra-cactus-refresh-413179b",
+      "started_at": "2026-08-14",
+      "recorded_at": "2026-08-14",
+      "kind": "benchmark-refresh",
+      "scope": "Current-main Primo rerun for the full 120-second QF_UFLRA cactus comparison, reusing unchanged reference-solver artifacts",
+      "commit": "413179b",
+      "baseline_commit": "9061611",
+      "branch": "main",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Primo Release git 413179b with CaDiCaL 3.0.0",
+        "corpus": "tmp/QF_UFLRA; 1284 files; 1645365818 bytes; same staged corpus whose C-locale relative-path/size manifest SHA-256 is 24264774139d25d59f71a4675768e05109d62cee33742fbfeb88619600949bbf",
+        "workspace": "Existing isolated NO workspace synchronized through scripts/slurm_prepare_benchmark_workspace.py; exact revision and linkage checked immediately before submission.",
+        "scheduler": "Job 125763, eight shards; all tasks completed with exit status zero in 3:35-6:40. References reuse jobs 125261-125264 from the 2026-08-12 campaign."
+      },
+      "commands": {
+        "validation": "scripts/slurm_validate_sbatch.py scripts/slurm_qf_uflra_model_mine.sbatch; bash -n scripts/slurm_qf_uflra_model_mine.sbatch",
+        "preflight": "scripts/slurm_prepare_benchmark_workspace.py --check-only --no-sync --target primo; verify 1284 staged SMT2 files",
+        "primo": "scripts/slurm_qf_uflra_model_mine.sbatch tasks 0-7 with PRIMO_MINE_TIMEOUT=120, PRIMO_MINE_SHARDS=8, and build-slurm-rel/primo --quiet --stats --model-equality-mutation-scope=all",
+        "summary": "python3 scripts/summarize_benchmark_shards.py --timeout 120 --run old=<9061611-primo-all> --run current=<413179b-primo-all> --baseline old --candidate current",
+        "plot": "python3 scripts/plot_cactus.py --series 'Primo all=<413179b-artifact>/primo-all' --series 'Z3=<9061611-artifact>/z3' --series 'cvc5=<9061611-artifact>/cvc5' --series 'OpenSMT=<9061611-artifact>/opensmt' --series 'Yices=<9061611-artifact>/yices' --timeout 120 --drop-solved-by-all-under 1 --sort-by-solved --highlight-series 'Primo all' --title 'QF_UFLRA, 2026-08-14' --note 'Primo job 125763 at 413179b; reference jobs 125261-125264 at 9061611.' --out docs/_static/qf-uflra-cactus.svg"
+      },
+      "results": {
+        "current_primo": "1272 solved (761 sat, 511 unsat), 12 timeout, 0 error/unsupported/wrong, solved-row time 832.627366 seconds, PAR2 3712.627366.",
+        "families": "Solved FFT/BMC/induction/MathSAT 10/7/355/900; family PAR2 0.309430/1926.781648/1685.409697/100.126591.",
+        "old_primo_comparison": "All 1284 paths common; the solved set is identical with 1272 common solves, zero recovery, zero loss, and zero decisive-answer disagreement. Solved-row time changed from 805.384529 to 832.627366 seconds and PAR2 from 3685.384529 to 3712.627366. MathSAT solved-row time changed from 70.673076 to 100.126591 seconds.",
+        "reused_references": "Z3 1254 solved and PAR2 7817.388440; cvc5 1273 and 3606.152165; OpenSMT 1265 and 5934.827663; Yices 1276 and 1995.767448. Current Primo has 18/2/10/0 unique solves and the references have 0/3/3/4 unique solves respectively; zero decisive-answer disagreement.",
+        "answer_validation": "All 1282 rows with declared SMT-LIB status matched it. The two rows without declared status timed out. The preceding exact-binary fuzz gate validated 2147 generated SAT models with Dolmen.",
+        "plot_filter": "The plot omits the same 1124 instances every displayed solver completed in under one second and retains 160; retained solved counts are Primo 148, Z3 130, cvc5 149, OpenSMT 141, and Yices 152."
+      },
+      "artifacts": "remote:<isolated-workspace>/slurm-results/qfuflra-full-120s-413179b/primo-all/; local-only:/tmp/primo-qfuflra-120s-413179b/{primo-all,summary.json,all-summary.json}; reused references local-only:/tmp/primo-qfuflra-120s-9061611/{z3,cvc5,opensmt,yices}/",
+      "evidence_status": "slurm-complete-current-with-reused-references",
+      "outcome": "Refresh the cactus plot with current Primo. Coverage is exactly unchanged from 9061611, while the single rerun is 3.4 percent slower in aggregate solved-row time and therefore does not demonstrate a performance gain from the intervening bookkeeping changes."
+    },
+    {
       "id": "2026-08-12-qf-uflra-joint-z3-yices-gap-profile-0b40649",
       "started_at": "2026-08-12",
       "recorded_at": "2026-08-12",

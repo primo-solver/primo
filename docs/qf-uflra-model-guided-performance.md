@@ -286,13 +286,15 @@ global pair guard. The option is retained as a validated performance mode; the
 default remains `all` because the solved-set exchanges and increased SAT work
 need broader policy evidence before promotion.
 
-**Full reference comparison, 2026-08-12.** The 120-second full-corpus comparison
-at commit `9061611` confirms that policy. It ran all six profiles over the same
-1,284 QF_UFLRA files:
+**Full reference comparison, refreshed 2026-08-14.** The original 120-second
+full-corpus comparison at commit `9061611` ran all six profiles over the same
+1,284 QF_UFLRA files. The table and plot below replace only the default Primo
+`all` result with the current-main rerun at `413179b`; the `care` and reference
+rows reuse the unchanged 2026-08-12 artifacts:
 
 | Solver/profile | Solved (sat/unsat) | Timeouts | Solved-row time (s) | PAR2 |
 | --- | ---: | ---: | ---: | ---: |
-| Primo `all` | 1,272 (761/511) | 12 | 805.38 | 3,685.38 |
+| Primo `all` (`413179b`) | 1,272 (761/511) | 12 | 832.63 | 3,712.63 |
 | Primo `care` | 1,271 (760/511) | 13 | 660.98 | 3,780.98 |
 | Z3 5.0.0 | 1,254 (752/502) | 30 | 617.39 | 7,817.39 |
 | cvc5 1.3.4 | 1,273 (762/511) | 11 | 966.15 | 3,606.15 |
@@ -308,34 +310,42 @@ that at least one solver did not finish within one second**. The 1,124 common
 easy instances are omitted from every series, so all pairwise vertical gaps are
 preserved. Legend counts refer to this retained subset; the table above reports
 the complete 1,284-file corpus. Legend entries are sorted by solved count, and
-the heavier blue line marks the default Primo `all` profile. The source is the
-2026-08-12 SLURM campaign at commit `9061611`, jobs 125259--125264. The opt-in
-Primo `care` profile remains in the table but is omitted from this reference
-solver comparison.
+the heavier blue line marks the default Primo `all` profile. Primo comes from
+the 2026-08-14 SLURM job 125763 at `413179b`; Z3, cvc5, OpenSMT, and Yices reuse
+jobs 125261--125264 at `9061611`. The opt-in Primo `care` profile remains in the
+table as historical policy evidence but is omitted from this reference-solver
+comparison.
 ```
 
 Regenerate the figure from the campaign's copied shard directories with:
 
 ```bash
 python3 scripts/plot_cactus.py \
-  --series "Primo all=<artifact-root>/primo-all" \
-  --series "Z3=<artifact-root>/z3" \
-  --series "cvc5=<artifact-root>/cvc5" \
-  --series "OpenSMT=<artifact-root>/opensmt" \
-  --series "Yices=<artifact-root>/yices" \
+  --series "Primo all=<current-primo-root>/primo-all" \
+  --series "Z3=<reference-root>/z3" \
+  --series "cvc5=<reference-root>/cvc5" \
+  --series "OpenSMT=<reference-root>/opensmt" \
+  --series "Yices=<reference-root>/yices" \
   --timeout 120 --drop-solved-by-all-under 1 \
   --sort-by-solved --highlight-series "Primo all" \
-  --title "QF_UFLRA, 2026-08-12" \
-  --note "SLURM jobs 125259-125264; benchmark commit 9061611." \
+  --title "QF_UFLRA, 2026-08-14" \
+  --note "Primo job 125763 at 413179b; reference jobs 125261-125264 at 9061611." \
   --out docs/_static/qf-uflra-cactus.svg
 ```
 
-This is the first recorded full-corpus QF_UFLRA evaluation in which Primo
-materially outperforms Z3 on both coverage and PAR2: default `all` solves 18
+The current rerun has exactly the old Primo solved set: 1,272 common solves, no
+recoveries, no losses, and no answer disagreements. Its aggregate solved-row
+time increased from 805.38 to 832.63 seconds (3.4 percent), mostly in the
+MathSAT family (70.67 to 100.13 seconds). A single rerun cannot distinguish
+cluster timing variation from a small regression, but it provides no timing
+evidence that the post-`9061611` bookkeeping changes improved this corpus.
+
+This remains the first recorded full-corpus QF_UFLRA comparison in which Primo
+materially outperforms Z3 on both coverage and PAR2: current `all` solves 18
 more files and reduces PAR2 by 53 percent. It also solves seven more files than
-OpenSMT with a 38 percent lower PAR2. Primo is within one solve of cvc5, but
+OpenSMT with a 37 percent lower PAR2. Primo is within one solve of cvc5, but
 Yices remains the performance target with four additional solves and roughly
-13.4 times lower aggregate time on the 1,272 rows shared with Primo `all`.
+13.8 times lower aggregate time on the 1,272 rows shared with Primo `all`.
 
 Care reduced aggregate time on the 1,271 common Primo solves from 803.83 to
 660.98 seconds, but timed out on one induction row solved by `all`; this does
