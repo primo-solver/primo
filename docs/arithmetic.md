@@ -550,6 +550,18 @@ guarded rewrite.
   definition follows; this is the authoritative description of what Primo
   calls *Sparse*.
 
+  In plain terms, Sparse aims to limit fill-in (the creation of new nonzero
+  tableau coefficients during pivoting). It first chooses a violated basic
+  variable whose defining row has the fewest nonzero coefficients, breaking
+  ties in favor of the largest bound violation. Among the nonbasic variables
+  that can repair this violation, it then chooses one occurring in the fewest
+  tableau rows, preferring a coefficient of $+1$ or $-1$ on ties. This favors
+  pivots that substitute a short row into as few other rows as possible,
+  following the sparsity-oriented heuristics described by Monniaux and King;
+  after a finite number of heuristic pivots, Primo switches to Bland's rule to
+  guarantee termination. The citations and precise deviations from those
+  sources are given below and in [](papers/lra-related-work.md).
+
   Let the current tableau basis be $B$, its nonbasic variables be $N$, and
   write each basic row as
 
