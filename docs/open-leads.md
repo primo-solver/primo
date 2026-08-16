@@ -37,7 +37,7 @@ notes it points to.
 | [2b](#lead-two-lra-paths) | Dispatch trigger: propositional variables route pure QF_LRA to the NO path | neutral at 15s, but **costs solved files at 300s**; bisected to `ffaf9eb` on main | -- | **reopened 2026-08-07: a main-branch regression** |
 | [3](#lead-leaving-rule) | MathSAT's real leaving rule: least-violated, short-row tie-break | 167 vs 174 on the bar; beats the *other* existing policy by 5 | done | **implemented, opt-in; did not clear its bar** |
 | [3b](#lead-occurs-in) | `occurs_in_` maintenance: the representation is half a sparse matrix | tropical 1/10 -> **2/10** at 1200s, gained 1 / lost 0; bar-neutral on the stratified sample | **large** (representation change) | **implemented, default**; 2 earlier prototypes rejected |
-| [4](#lead-aep) | Adaptive Early Pruning | ~20% total time in its source | small-medium | open |
+| [4](#lead-aep) | Adaptive Early Pruning | ~20% total time in its source | small-medium | **in progress on a concrete QF_UFLRA target, see update** |
 | [5](#lead-relevancy) | Relevancy propagation | unknown, principled | **large** | open, gated on 1 |
 | [6](#lead-justification) | Justification / goal-directed decision heuristics | unknown | medium-large | open, no paper note yet |
 | [7](#lead-row-representation) | Compare row representation against sorted arrays of pairs | already the endorsed design; 0.00% map cost in the profile | done | **closed: already implemented** |
@@ -963,6 +963,57 @@ DPLL/theory interaction, which is where correctness bugs hide.
 **Falsifier.** If `:lra.online-check-calls` is not a material share of runtime
 on the target families, there is nothing to save. **Check this first** -- it is
 one stats run and it gates the whole item.
+
+**Update, 2026-08-16: a concrete QF_UFLRA target, found while chasing the
+Yices gap.** The claim above was framed around pure QF_LRA online-check-call
+frequency and is still open on that framing -- the falsifier for *that*
+version has not been checked. Investigating why Primo trails Yices on
+QF_UFLRA (2026-08-12 six-solver campaign, 120s cap: Primo `all` 1,272 solved /
+805.38s solved-row time versus Yices 1,276 solved / **75.77s** -- a ~10.6x
+time gap on commonly-solved rows despite a 4-file solved-count gap) landed on
+an already-profiled root cause
+(`docs/run-log.json` entry `2026-08-12-qf-uflra-joint-z3-yices-gap-profile-0b40649`):
+`LraTableau::diversify_shared_model`'s Section 5.2 scratch-mutation sweep
+dominates 70-78% of sampled cumulative time on every profiled slow row
+(SOI-breakpoint `introsort` plus hash-set insert/rehash in model-value
+grouping). Re-profiled against `b930a7c` (24 commits after the original
+measurement, including an unrelated equality-classification refactor): same
+mechanism, same shape -- 16.7M introsort calls on `cpachecker-bmc.parport`,
+matching the original count almost exactly. Nothing since has touched it.
+
+The mechanism is called unconditionally once per feasible SAT round whenever
+model mutation is enabled (`model_mutation_enabled`,
+`src/smt/check_sat.cpp:10602-10604`). This is exactly an AEP target: an
+expensive, optional, per-round call whose *usefulness* (pairs pruned, value
+classes gained) is already measured and published
+(`:no.interface.lra-model-mutation-pruned-pairs`,
+`-value-classes-before/after`) but never used to decide whether to call it
+again. The already-implemented `--model-equality-mutation-scope=care` changes
+*which variables* the sweep covers per round, not *whether* it runs, and is
+not a strict win on its own (one profiled row, `m0_opl3`, got slower under
+`care` because the resulting model choice changed the subsequent search --
+SAT decisions 6 to 13, compatibility-projection terms 3.18M to 8.40M). The
+run-log's own conclusion after that profiling session was to "prioritize
+adaptive mixed-coordinator model-mutation scheduling over a blanket
+care-default promotion" -- i.e. this lead, applied specifically to this call
+site, in place of a scope-only fix.
+
+Being implemented on branch `nelson-oppen-adaptive-model-mutation`, following
+Griggio's four rules (reset to 1 on a theory conflict; halve -- here, reset --
+the skip interval when a call is productive; double after two consecutive
+unproductive calls) applied to `diversify_shared_model` specifically, gated
+behind a new opt-in flag so default behavior (call every round) is
+unchanged. Same `m0_opl3`-shaped risk as `care`: skipping a round is cheaper
+immediately but can change the subsequent search for the worse, which is why
+this is measured against the full falsifier below, not shipped on the
+per-row time saving alone.
+
+**Falsifier for the QF_UFLRA target specifically.** If a merge-tier gate does
+not reduce solved-row time on the rows already named as
+`diversify_shared_model`-dominated (`parport`, `tda18271c2dd`, `m0_opl3`,
+`mt20xx`, `mem2mem_testdev`) without losing any currently-solved file on the
+237-file stratified sample or the full 1,284-file corpus, this closes the
+same way lead #3 and lead #9 did: implemented, kept opt-in, not promoted.
 
 (lead-relevancy)=
 ## 5. Relevancy propagation
