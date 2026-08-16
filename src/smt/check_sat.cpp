@@ -11218,8 +11218,8 @@ CheckSatOutcome solve_qf_uf_lra(
         // alone is a sufficient productivity signal -- no separate
         // before/after class count needs to be threaded out of
         // lra_model_equal_partition for this.
-        const bool productive =
-            lra_model_partition->candidate_pair_count < lra_model_partition->candidate_pairs_before_mutation;
+        const bool productive = lra_model_partition->candidate_pair_count <
+                                lra_model_partition->candidate_pairs_before_mutation;
         model_mutation_schedule.record_call(productive);
         statistics.increment(":no.interface.lra-model-mutation-schedule-calls");
         if (!productive) {
