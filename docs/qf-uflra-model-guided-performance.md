@@ -286,6 +286,25 @@ global pair guard. The option is retained as a validated performance mode; the
 default remains `all` because the solved-set exchanges and increased SAT work
 need broader policy evidence before promotion.
 
+**Adaptive scheduling result, 2026-08-16.** A joint gprof re-profile of the
+Yices performance gap (120s six-solver campaign below: Primo `all` 1,272
+solved / 805.38s solved-row time versus Yices 1,276 / 75.77s) confirmed
+`LraTableau::diversify_shared_model` still dominates 70-78% of sampled time
+on the slowest rows, unchanged from the original 0b40649 measurement despite
+24 intervening commits. `--model-equality-adaptive-schedule` (`docs/open-
+leads.md` lead 4) applies Griggio's Adaptive Early Pruning rules to this one
+call site -- skip the sweep on rounds it has proven unproductive, reset to
+eager on any theory conflict -- instead of calling it unconditionally every
+round. Both rows named in the 0b40649 profiling entry solve in roughly half
+the time with the flag on (`parport` 2.32s to 1.03s, `cs_stack` 9.71s to
+4.81s), and the full 1,284-file corpus at 30s goes from 1,268 solved / PAR2
+1,558.54 to 1,269 solved / PAR2 1,451.53 (gained 2, lost 1; zero wrong
+answers or decisive-answer disagreements on any row). The loss is decisive
+rather than boundary churn (7.3s solve to a clean 30s timeout), the same
+shape as `care`'s own `m0_opl3` trade-off above. Kept opt-in alongside
+`care`, not promoted -- see the open-leads.md entry for the full evidence and
+falsifier discussion.
+
 **Full reference comparison, 2026-08-12.** The 120-second full-corpus comparison
 at commit `9061611` confirms that policy. It ran all six profiles over the same
 1,284 QF_UFLRA files:

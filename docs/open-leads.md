@@ -37,7 +37,7 @@ notes it points to.
 | [2b](#lead-two-lra-paths) | Dispatch trigger: propositional variables route pure QF_LRA to the NO path | neutral at 15s, but **costs solved files at 300s**; bisected to `ffaf9eb` on main | -- | **reopened 2026-08-07: a main-branch regression** |
 | [3](#lead-leaving-rule) | MathSAT's real leaving rule: least-violated, short-row tie-break | 167 vs 174 on the bar; beats the *other* existing policy by 5 | done | **implemented, opt-in; did not clear its bar** |
 | [3b](#lead-occurs-in) | `occurs_in_` maintenance: the representation is half a sparse matrix | tropical 1/10 -> **2/10** at 1200s, gained 1 / lost 0; bar-neutral on the stratified sample | **large** (representation change) | **implemented, default**; 2 earlier prototypes rejected |
-| [4](#lead-aep) | Adaptive Early Pruning | ~20% total time in its source | small-medium | **in progress on a concrete QF_UFLRA target, see update** |
+| [4](#lead-aep) | Adaptive Early Pruning | ~20% total time in its source | small-medium | **implemented for the QF_UFLRA target, opt-in; gained 2/lost 1, not promoted** |
 | [5](#lead-relevancy) | Relevancy propagation | unknown, principled | **large** | open, gated on 1 |
 | [6](#lead-justification) | Justification / goal-directed decision heuristics | unknown | medium-large | open, no paper note yet |
 | [7](#lead-row-representation) | Compare row representation against sorted arrays of pairs | already the endorsed design; 0.00% map cost in the profile | done | **closed: already implemented** |
@@ -1014,6 +1014,48 @@ not reduce solved-row time on the rows already named as
 `mt20xx`, `mem2mem_testdev`) without losing any currently-solved file on the
 237-file stratified sample or the full 1,284-file corpus, this closes the
 same way lead #3 and lead #9 did: implemented, kept opt-in, not promoted.
+
+**Correction, same day: the 237-file stratified sample is the wrong bar.**
+That sample is the pure QF_LRA promotion bar used throughout this document
+(leads 1-3, 3b, 9); this lead only touches `solve_qf_uf_lra`'s reconciliation
+path (`model_mutation_enabled` requires `qf_uflra_model_reconciliation` or
+`nelson_oppen_model_equality_branching`, both mixed-only), so pure QF_LRA
+never reaches the changed code and the sample cannot exercise it. The correct
+bar is the QF_UFLRA corpus itself.
+
+**Outcome, 2026-08-16: implemented, and it is a complementarity result, not a
+clean pass of the falsifier as originally stated.** Merge-gate fuzz (3,000
+mixed + 500+500 finite-domain vs z3/cvc5, Dolmen model validation) is clean
+with the flag on: 4,000/4,000, zero wrong answers, zero invalid models,
+byte-identical to default except `:time.*` when the flag is off (verified
+against a worktree build of the pre-change commit). Both profiled rows solve
+in roughly half the time with the flag on:
+`cpachecker-bmc.parport` 2.32s to 1.03s, `cpachecker-induction.cs_stack`
+9.71s to 4.81s.
+
+On the full 1,284-file corpus at 30s (`bench_qf_uf_full.py`, answers checked
+against SMT-LIB `:status`): default 1,268 solved / PAR2 1,558.54; adaptive
+1,269 solved / PAR2 1,451.53 (net +1, PAR2 -6.9%). Zero wrong answers, zero
+decisive-answer disagreements on any of the 1,284 commonly-checked rows. But
+per-file, this is **gained 2, lost 1**, not gained-only: two CPAchecker-
+induction rows flip from a clean 30s timeout to a genuine 17.9s/20.1s solve,
+and one (`uinput.ko-ldv_main0`) flips from a clean 7.3s solve to a genuine
+30s timeout. All three are decisive, not boundary churn (no times land near
+the 30s cutoff on the losing side). This is exactly the `m0_opl3`-shaped risk
+the design already called out -- skipping a round changes the subsequent
+search, for better on two rows and worse on one -- now confirmed on a fourth,
+different row, not a one-off.
+
+Per [](#complementarity), `gained > 0` clears the portfolio bar even though
+`lost > 0` fails the promotion bar as literally stated: this is not a strict
+win, and default stays off. `--model-equality-adaptive-schedule` is kept
+alongside `--model-equality-mutation-scope=care` as a validated, evidenced,
+opt-in performance mode -- same status as `care` itself, which has carried an
+identical unresolved trade-off (own the `m0_opl3` case) since 2026-08-12
+without either being promoted or being reverted. Whether combining the two
+(adaptive scheduling *of* the `care`-scoped sweep, rather than the `all`-scoped
+sweep this run used) changes the trade is not yet measured and would be the
+next step if this is picked up again.
 
 (lead-relevancy)=
 ## 5. Relevancy propagation
