@@ -6176,7 +6176,7 @@ class LraModelPairCursor {
       class_rhs_ = 1;
     }
 
-    while (shared_lhs_ < partition_.shared_terms.size()) {
+    while (!partition_.unmapped_terms.empty() && shared_lhs_ < partition_.shared_terms.size()) {
       if (shared_rhs_ >= partition_.shared_terms.size()) {
         ++shared_lhs_;
         shared_rhs_ = shared_lhs_ + 1;
