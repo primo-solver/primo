@@ -6566,6 +6566,49 @@ struct MixedEufCareEpoch {
   bool valid = false;
 };
 
+// Adaptive Early Pruning (docs/open-leads.md lead 4) for
+// LraTableau::diversify_shared_model, which is otherwise called
+// unconditionally once per feasible SAT round. Solve-scoped: constructed
+// once before the round loop, like MixedLraModelEpoch/MixedEufCareEpoch.
+// Griggio's four rules (thesis Section 2.3.1), applied to this one call
+// site: start eager (call_interval == 1, i.e. never skip); reset to eager on
+// a theory conflict, since that means the search state changed enough that
+// prior unproductive history should not suppress the next round's sweep;
+// double the interval after two consecutive unproductive calls, capped; a
+// productive call or a skipped round both reset the "rounds since the last
+// call" counter but only a call's own outcome grows or resets the interval
+// itself.
+struct AdaptiveMutationSchedule {
+  static constexpr std::uint64_t kMaxInterval = 64;
+
+  std::uint64_t call_interval = 1;
+  std::uint64_t rounds_since_call = 0;
+  bool previous_call_unproductive = false;
+
+  [[nodiscard]] bool should_call() const { return rounds_since_call >= call_interval; }
+
+  void record_skip() { ++rounds_since_call; }
+
+  void record_call(bool productive) {
+    rounds_since_call = 0;
+    if (productive) {
+      call_interval = 1;
+      previous_call_unproductive = false;
+      return;
+    }
+    if (previous_call_unproductive) {
+      call_interval = std::min(call_interval * 2, kMaxInterval);
+    }
+    previous_call_unproductive = true;
+  }
+
+  void record_theory_conflict() {
+    call_interval = 1;
+    rounds_since_call = 0;
+    previous_call_unproductive = false;
+  }
+};
+
 std::optional<sat::Clause> check_lra_theory_in_place(const PreparedLraTheory& prepared,
                                                      const std::vector<AssignedTheoryAtom>& atoms,
                                                      theory::arithmetic::LraTableau& tableau);
@@ -10866,6 +10909,7 @@ CheckSatOutcome solve_qf_uf_lra(
 
   MixedLraModelEpoch lra_model_epoch;
   MixedEufCareEpoch euf_care_epoch;
+  AdaptiveMutationSchedule model_mutation_schedule;
   while (true) {
     statistics.increment(kStatSatSolveCalls);
 #if PRIMO_HAVE_IPASIR
@@ -11003,6 +11047,10 @@ CheckSatOutcome solve_qf_uf_lra(
     }
     if (euf_conflict.has_value()) {
       statistics.increment(kStatTheoryConflicts);
+      model_mutation_schedule.record_theory_conflict();
+      if (options.nelson_oppen_model_equality_adaptive_schedule) {
+        statistics.increment(":no.interface.lra-model-mutation-schedule-conflict-resets");
+      }
       record_interface_conflict(euf_conflict, no_manager, ":no.interface.euf-conflicts",
                                 statistics);
       model_equality_arrangement.record_theory_conflict(active_model_equality_propagation_start,
@@ -11106,6 +11154,10 @@ CheckSatOutcome solve_qf_uf_lra(
     }
     if (lra_conflict.has_value()) {
       statistics.increment(kStatLraTheoryConflicts);
+      model_mutation_schedule.record_theory_conflict();
+      if (options.nelson_oppen_model_equality_adaptive_schedule) {
+        statistics.increment(":no.interface.lra-model-mutation-schedule-conflict-resets");
+      }
       statistics.increment(":no.interface.lra-conflict-lits", lra_conflict->size());
       record_interface_conflict(lra_conflict, no_manager, ":no.interface.lra-conflicts",
                                 statistics);
@@ -11140,11 +11192,40 @@ CheckSatOutcome solve_qf_uf_lra(
         mutation_terms.erase(std::unique(mutation_terms.begin(), mutation_terms.end()),
                              mutation_terms.end());
       }
+      // Adaptive Early Pruning (docs/open-leads.md lead 4): when enabled, skip
+      // diversify_shared_model on rounds the schedule has decided are unlikely
+      // to pay for themselves, instead of calling it every round. Default off
+      // (adaptive_schedule false) reproduces today's unconditional call
+      // exactly -- the schedule is never consulted.
+      const bool run_mutation_this_round =
+          model_mutation_enabled && (!options.nelson_oppen_model_equality_adaptive_schedule ||
+                                     model_mutation_schedule.should_call());
+      if (model_mutation_enabled && options.nelson_oppen_model_equality_adaptive_schedule &&
+          !run_mutation_this_round) {
+        model_mutation_schedule.record_skip();
+        statistics.increment(":no.interface.lra-model-mutation-schedule-skips");
+      }
       lra_model_partition = lra_model_equal_partition(
           *prepared_lra_theory_for_check, *checked_lra_tableau, lra_assignments_for_check,
           shared_real_terms, false_interface_pairs, mutation_terms,
-          options.nelson_oppen_model_equality_mutation_scope, model_mutation_enabled,
+          options.nelson_oppen_model_equality_mutation_scope, run_mutation_this_round,
           options.produce_model && options.qf_uflra_model_reconciliation, statistics);
+      if (model_mutation_enabled && options.nelson_oppen_model_equality_adaptive_schedule &&
+          run_mutation_this_round) {
+        // Pair reduction is the paper's own optimization objective for this
+        // sweep ("fewer coincidences means fewer candidate equalities") and
+        // is monotone in the value-class split the mutation performs, so it
+        // alone is a sufficient productivity signal -- no separate
+        // before/after class count needs to be threaded out of
+        // lra_model_equal_partition for this.
+        const bool productive =
+            lra_model_partition->candidate_pair_count < lra_model_partition->candidate_pairs_before_mutation;
+        model_mutation_schedule.record_call(productive);
+        statistics.increment(":no.interface.lra-model-mutation-schedule-calls");
+        if (!productive) {
+          statistics.increment(":no.interface.lra-model-mutation-schedule-unproductive-calls");
+        }
+      }
       if (options.qf_uflra_model_reconciliation && lra_model_partition->unmapped_terms.empty() &&
           !lra_model_partition->unresolved_forbidden_pairs.empty()) {
         const RealModelSeparationResult targeted_separation =

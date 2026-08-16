@@ -486,6 +486,11 @@ int main(int argc, char** argv) {
                  "QF_UFLRA LRA model-mutation scope: all shared Real terms or current EUF "
                  "care-pair endpoints [default: all]")
       ->check(CLI::IsMember({"all", "care"}));
+  app.add_flag("--model-equality-adaptive-schedule",
+               solver_options.nelson_oppen_model_equality_adaptive_schedule,
+               "Adaptive Early Pruning for the Section 5.2 model-diversification sweep: skip it "
+               "on rounds where it has proven unproductive instead of calling it every round "
+               "[default: off, call every round]");
   app.add_option("--nelson-oppen-prop", nelson_oppen_propagation,
                  "QF_UFLRA Nelson-Oppen interface equality propagation mode: exact, final, or "
                  "online. Exact keeps the mandatory convex closure but disables opportunistic "

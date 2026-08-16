@@ -215,6 +215,11 @@ struct CheckSatOptions {
   bool nelson_oppen_model_equality_mutation = true;
   ModelEqualityMutationScope nelson_oppen_model_equality_mutation_scope =
       ModelEqualityMutationScope::All;
+  // Opt-in Adaptive Early Pruning (docs/open-leads.md lead 4) for
+  // diversify_shared_model: skip the sweep on some rounds once it has proven
+  // unproductive, instead of calling it unconditionally every round. Default
+  // off reproduces today's unconditional per-round call exactly.
+  bool nelson_oppen_model_equality_adaptive_schedule = false;
   ModelEqualityBranchPolicy nelson_oppen_model_equality_branch_policy =
       ModelEqualityBranchPolicy::First;
   NelsonOppenPropagationMode nelson_oppen_propagation = NelsonOppenPropagationMode::Final;
