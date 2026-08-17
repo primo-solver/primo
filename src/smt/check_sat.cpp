@@ -5163,14 +5163,15 @@ std::optional<std::vector<sat::Lit>> assert_lra_atom_bound(
 //
 // Scale-canonical (heuristics-note item H1b, the long-deferred roadmap item
 // 3): every coefficient is divided by the coefficient of the lowest-indexed
-// variable, so proportional polynomials collapse to one key -- `x + y <= 5`,
-// `2x + 2y <= 10` and `-x - y <= -5` all key to `{x: 1, y: 1}` and share a
-// slack, where before they got three separate ones and could not propagate
-// against each other or see each other's bounds. Monniaux (CAV 2009,
+// variable, so proportional polynomials collapse to one key. Thus `x+y<=5`
+// and `2x+2y<=10` both assert the upper bound 5 on one shared slack, while
+// `-x-y<=-5` asserts the lower bound 5 on that same slack. Monniaux (CAV 2009,
 // Section 2.1) describes the same normalization, "so that two inequalities
 // constraining the same direction in space appear with the exact same
 // left-hand side"; his form scales to coprime *integers*, ours to a leading
-// coefficient of 1, which is the same equivalence class.
+// coefficient of 1. These are different coefficient representations but the
+// same rational scale equivalence class; this preparation does not GCD-rewrite
+// the original core term or merge its SAT atom.
 struct PolynomialKey {
   std::vector<std::pair<core::TermId, util::Rational>> sorted_terms;
 
@@ -5217,17 +5218,20 @@ CanonicalPolynomial canonical_polynomial(const theory::arithmetic::LinearPolynom
   return canonical;
 }
 
-// Precomputes the QF_LRA tableau's structural part -- one row per distinct
-// arithmetic-atom polynomial, shared problem variables -- exactly once,
-// independent of any SAT assignment (Dutertre & de Moura Section 4).
+// Precomputes the QF_LRA tableau's structural part from the complete theory-
+// atom list -- one row per scale-canonical compound polynomial, shared problem
+// variables -- exactly once, independent of any SAT assignment (Dutertre & de
+// Moura Section 4). The resulting slack ids and atom-to-bound_var mapping are
+// global to this prepared problem and stable across all theory callbacks.
 // Mirrors PreparedFlatTheory's role for EUF: the per-round work becomes
 // "copy this base and assert bounds", not "re-normalize and re-add rows
 // from scratch every round" (what the fully-lazy path above still does).
 //
-// Atoms that normalize to the exact same LinearPolynomial (e.g. two `x<=...`
-// atoms on the same variable, or the same compound term appearing in two
-// different assertions) share a single slack variable/row rather than each
-// getting its own -- this is what makes same-slack bound propagation
+// Atoms with proportional compound LinearPolynomials share a single slack
+// variable/row rather than each getting its own. Their scaled right-hand sides,
+// orientations and SAT literals remain per atom -- sharing structure does not
+// discard a weaker bound that may be selected alone or negated in another SAT
+// assignment. This is what makes same-slack bound propagation
 // (OnlineLraPropagator, below) find anything to propagate: propagation
 // needs multiple atoms to share a tableau variable, and without this dedup
 // they essentially never would.

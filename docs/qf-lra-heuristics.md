@@ -246,11 +246,23 @@ atoms over a single variable are asserted directly as bounds on it.
 
 **Design.**
 
-- Canonicalize each atom's normalized `LinearPolynomial` by dividing
-  through by the coefficient of its lowest-indexed variable (equivalently,
-  by its leading coefficient), flipping the relation when that coefficient
-  is negative, and folding the scale into the atom's right-hand side.
-  Record the resulting `(canonical polynomial → slack)` map as today.
+- Build the sharing map once in `PreparedLraTheory`, while walking the complete
+  theory-atom list. Normalize each atom to $p\mathrel{\sim}c$ with no constant
+  in $p$, sort $p$'s terms by `TermId`, and divide every coefficient and
+  $c$ by the coefficient of the first term. A negative divisor reverses the
+  bound orientation. The resulting exact sorted coefficient vector is the
+  `PolynomialKey`; relation, strictness and scaled right-hand side are not in
+  the key because they are bounds on the shared polynomial value.
+- This is not a GCD rewrite of the core atom. Leading-coefficient division and
+  primitive-integer GCD normalization choose different representatives but
+  identify the same rational scale classes: `2x+3y<=5` becomes
+  `x+3/2y<=5/2` in Primo rather than remaining `2x+3y<=5`. The original term
+  and SAT atom are not rewritten.
+- Look up each compound key in `slack_by_polynomial`. The first occurrence
+  allocates a slack and defining row; every later proportional atom reuses that
+  slack as its `PreparedAtom::bound_var`. This lookup, rather than a comparison
+  during an individual theory call, is what identifies the opportunity to
+  share.
 - If the canonical polynomial has exactly one term, it is now exactly `x`:
   do **not** allocate a slack or a row. Store
   `PreparedAtom{var = x, relation, rhs}` and assert the bound directly on
@@ -269,10 +281,20 @@ atoms over a single variable are asserted directly as bounds on it.
   atom at all.
 
 **Bonus:** the canonicalization step is exactly the not-yet-scheduled
-roadmap item 3 (scale-invariant polynomial matching). `x ≤ 5` and
-`2x ≤ 10` share a bound; `x + y ≤ 5` and `2x + 2y ≤ 10` share a slack.
-That was listed as a separate future item; it comes for free here because
-it is the same canonicalization.
+roadmap item 3 (scale-invariant polynomial matching). `x <= 5` and
+`2x <= 10` normalize to the same direct bound and need no slack. Compound
+atoms are prepared globally: `PreparedLraTheory` allocates one stable
+`s = x + y` row for the complete scale-equivalence class, before any theory
+call. Thus `x + y <= 5` and `2x + 2y <= 10` both become `s <= 5`, while
+`2x + 2y <= 12` becomes the distinct bound `s <= 6` and
+`-x - y <= -5` becomes `s >= 5`. Every one of those SAT atoms points to the
+same `bound_var` across all theory calls and backtracking states. A currently
+weaker asserted upper bound is ignored by the tableau, but cannot be removed
+from the whole formula because another Boolean assignment may assert it alone
+or negate it. Exact equivalent atoms also remain distinct SAT atoms today;
+interning their canonical semantic identity is a separate preprocessing
+opportunity. Scale-invariant matching had been listed as a separate future
+item; it came for free here because it is the same canonicalization.
 
 **Also fixes**, without extra work, the quirk item 7 documented and worked
 around: "`single_variable_slack` only registers a bare variable's

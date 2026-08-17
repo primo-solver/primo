@@ -4052,8 +4052,13 @@ void single_variable_atom_strictness_survives_the_flip() {
 void proportional_polynomials_share_one_slack() {
   // Item H1b (the long-deferred roadmap item 3): polynomial keys are
   // scale-canonical, so proportional compound polynomials collapse to one
-  // slack instead of getting one each. `x+y <= 5`, `2x+2y <= 10` and
-  // `-x-y <= -5` are the same constraint written three ways.
+  // globally prepared slack instead of getting one each. `2x+3y <= 5` and
+  // `4x+6y <= 10` are equivalent upper bounds, `4x+6y <= 12` is the weaker
+  // upper bound 3 on `x + 3/2y`, and `-2x-3y <= -5` is the opposite lower
+  // bound 5/2. All four must target the same row even though their bounds are
+  // not all interchangeable. The nonuniform coefficients also distinguish
+  // Primo's leading-coefficient representative from primitive-integer GCD
+  // normalization while checking that both detect the same scale class.
   //
   // Checked structurally via :lra.rows rather than only by answer, because
   // the answer would be the same either way -- what H1b changes is how many
@@ -4063,9 +4068,10 @@ void proportional_polynomials_share_one_slack() {
     (set-logic QF_LRA)
     (declare-fun x () Real)
     (declare-fun y () Real)
-    (assert (<= (+ x y) 5))
-    (assert (<= (+ (* 2 x) (* 2 y)) 10))
-    (assert (<= (+ (* (- 1) x) (* (- 1) y)) (- 5)))
+    (assert (<= (+ (* 2 x) (* 3 y)) 5))
+    (assert (<= (+ (* 4 x) (* 6 y)) 10))
+    (assert (<= (+ (* 4 x) (* 6 y)) 12))
+    (assert (<= (+ (* (- 2) x) (* (- 3) y)) (- 5)))
     (check-sat)
   )";
   const auto shared = check_sat_smtlib(proportional);

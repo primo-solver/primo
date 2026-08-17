@@ -149,14 +149,20 @@ guarded rewrite.
   coupled; see the class comment for why the paper's "pivots don't track
   search depth" framing doesn't mean "don't undo them").
 - **DPLL(T) wiring** (`check_sat.cpp`): `PreparedLraTheory` precomputes the
-  tableau's structural part exactly once, mirroring `PreparedFlatTheory` --
-  one row per *distinct compound polynomial*, not per atom: atoms that
-  normalize to the exact same `LinearPolynomial` share a slack variable
-  (`PolynomialKey`/`PolynomialKeyHash`, exact-content matching only, not
-  scale-invariant). A **single-variable** atom gets no slack and no row at
-  all -- it is a bound on that variable itself (see "Direct bounds for
-  single-variable atoms" below). The `atoms_by_bound_var` index records
-  which atoms bound which tableau variable, slack or not.
+  tableau's structural part exactly once per prepared `check-sat` problem,
+  before any theory call and independently of any SAT assignment. It sees the
+  complete theory-atom list and allocates one stable slack variable and row per
+  *scale-canonical compound polynomial*, not per atom. Every corresponding
+  `PreparedAtom` then stores the same `bound_var`, so an atom encountered in
+  any later callback refers to the same tableau variable. Slacks are therefore
+  global to the prepared problem, not allocated afresh for each theory check.
+  The online path copies this base tableau once and trails bounds and pivots;
+  the fallback may copy it for a check, but preserves the prepared variable
+  numbering and atom-to-variable map. A **single-variable** atom gets no slack
+  and no row at all -- it is a bound on that variable itself (see "Direct
+  bounds for single-variable atoms" below). The `atoms_by_bound_var` index,
+  also built once, records every atom that can bound each stable tableau
+  variable.
   `OnlineLraPropagator` (Milestone 3a) is a trail-synced
   `sat::ExternalPropagator`, owning one `LraTableau` (copied once from
   the prepared base) kept in sync via `notify_new_decision_level`/
@@ -523,14 +529,67 @@ guarded rewrite.
   long-deferred competitiveness-roadmap item 3, 2026-07-28, `check_sat.cpp`,
   **unconditional**): `PolynomialKey` divides every coefficient by the
   coefficient of the lowest-indexed variable, so proportional polynomials
-  collapse to one key -- `x + y <= 5`, `2x + 2y <= 10` and `-x - y <= -5` all
-  key to `{x: 1, y: 1}` and share a slack, where before they got three
-  separate ones and could not see each other's bounds. The factor is divided
-  out of the atom's right-hand side and a negative factor reverses the
-  relation, reusing H1a's `asserts_lower_when_true` flag and its single
-  interpretation point. Monniaux (CAV 2009, Section 2.1) describes the same
-  normalization; his form scales to coprime integers, ours to a leading
-  coefficient of 1, which is the same equivalence class.
+  collapse to one key.
+
+  **How sharing is detected.** During `PreparedLraTheory` construction, each
+  arithmetic atom is processed as follows:
+
+  1. `normalize_atom` moves all variable terms to the left and the constant to
+     the right, producing $p \mathrel{\sim} c$, where $p$ has no constant
+     term.
+  2. The terms of $p$ are sorted by `TermId`. Let $a$ be the nonzero
+     coefficient of the first term. Divide every coefficient and $c$ by
+     $a$. If $a<0$, record that the bound orientation is reversed.
+  3. The resulting sorted vector of exact `(TermId, Rational)` coefficients is
+     the `PolynomialKey`. The right-hand side, relation, strictness and
+     orientation are deliberately not part of this key: they describe bounds
+     on the polynomial, not the polynomial whose value the slack represents.
+  4. If the key has one term, its normalized polynomial is just one problem
+     variable and no slack is needed. Otherwise, look up the key in
+     `slack_by_polynomial`. Reuse the existing slack when found; on the first
+     occurrence allocate one slack, add its defining row, and insert the key.
+
+  This is **not** a global GCD rewrite of the SMT term. The core term and its
+  SAT atom remain unchanged, and `PreparedLraTheory` does not clear
+  denominators and reduce the coefficient vector to primitive integers.
+  Dividing by the first nonzero coefficient nevertheless gives a unique
+  representative of the same one-dimensional rational scale class. For
+  example, both `2x + 3y <= 5` and `4x + 6y <= 10` become
+  `x + 3/2 y <= 5/2`; primitive-integer GCD normalization would instead keep
+  `2x + 3y <= 5`. The two conventions identify exactly the same proportional
+  polynomials over the rationals, but their tableau coefficients differ.
+  Primo's leading-coefficient convention guarantees one unit coefficient and
+  avoids an LCM/GCD pass; whether primitive-integer rows would be faster is a
+  separate representation question, not a missing sharing case.
+
+  Because the map is populated while walking the complete theory-atom list,
+  this lookup finds proportional forms regardless of which SAT assignment
+  first activates them. For example, it allocates one global slack
+  `s = x + y` for all of these atoms:
+
+  | source atom | normalized bound on `s` |
+  |---|---|
+  | `x + y <= 5` | `s <= 5` |
+  | `2x + 2y <= 10` | `s <= 5` (an equivalent atom) |
+  | `2x + 2y <= 12` | `s <= 6` (a distinct, weaker upper bound) |
+  | `-x - y <= -5` | `s >= 5` (the opposite orientation) |
+
+  The first two bounds are duplicates at the tableau level, and
+  `LraTableau::assert_upper` ignores the second one once either is installed.
+  The `s <= 6` atom cannot be discarded from the prepared problem, however:
+  under arbitrary Boolean structure it may be assigned without `s <= 5`, or
+  assigned false and therefore assert `s > 6`. What is shared globally is the
+  structural slack; each SAT atom still has its own relation, scaled right-hand
+  side, polarity, and explanation reason. Exact equivalent atoms also remain
+  distinct SAT atoms today; canonical SAT-atom interning would be a separate
+  preprocessing optimization.
+
+  The scale factor is divided out of the atom's right-hand side and a negative
+  factor reverses the relation, reusing H1a's
+  `asserts_lower_when_true` flag and its single interpretation point. Monniaux
+  (CAV 2009, Section 2.1) describes the same scale normalization goal; his form
+  scales to coprime integers, ours to a leading coefficient of 1, which is the
+  same equivalence class but not the same coefficient representation.
   - Row counts fall further on top of H1a: ecoliFBA 1,394 -> 695, TM/p6
     67 -> 38, sc-17 723 -> 433, uart-17 920 -> 511, clock_synchro 259 -> 179,
     tta_startup 500 -> 284, and DTP-Scheduling 3,932 -> 2,882 -- the first
@@ -913,11 +972,12 @@ guarded rewrite.
   per the cited comparative benchmark (fastest per-instance wall time),
   and adding either of the other two is a bigger, separate undertaking.
 - ~~**Polynomial dedup is exact-match only, not scale-invariant**: `x<=5`
-  and `2x<=10` still get separate slacks~~ -- **fixed for single-variable
-  atoms 2026-07-28** (item H1a: both are now bounds on `x` itself, so they
-  propagate against each other). Still exact-match for *compound*
-  polynomials: `x+y<=5` and `2x+2y<=10` continue to get separate slacks.
-  See the `PolynomialKey` comment in `check_sat.cpp`.
+  and `2x<=10` still get separate slacks~~ -- **fixed 2026-07-28**. Item H1a
+  made both single-variable forms direct bounds on `x`, with no slack at all;
+  item H1b made compound `PolynomialKey`s scale-canonical, so `x+y<=5` and
+  `2x+2y<=10` share the one slack for `x+y`. The source atoms remain separate
+  SAT atoms; only their prepared tableau variable is shared. See the
+  `PolynomialKey` and `PreparedLraTheory` comments in `check_sat.cpp`.
 - **Propagation only relates atoms sharing the exact same slack**, not
   Dutertre & de Moura's stronger row-based/interval bound propagation
   across *different* variables via a basic row's children. Also
@@ -1794,15 +1854,12 @@ Bland/Dantzig/SOI prices a pivot by its cost. The note also reclassifies
 the gap into three distinct bottleneck classes (pure-LP single-`check()`,
 pivot-cost-dominated, and assignment-volume-dominated) rather than one.
 
-**Not yet scheduled** (natural next candidates, not designed in detail;
-scale-invariant polynomial matching is now folded into
-[](qf-lra-heuristics.md)'s H1):
-scale-invariant polynomial matching (item 3, would extend both same-slack
-and row-based propagation's reach by letting proportional polynomials like
-`x<=5`/`2x<=10` share a slack); Devex or Steepest-Edge pivoting (Milestone
-4a covered only Dantzig, and SOI-Simplex, item 4, is now done without
-closing the quick-eval sample's gap -- neither pricing rule choice nor a
-global objective alone seems to be the bottleneck for the "hard for
-everyone" families in that narrow sample); a campaign-tier confirmation
-specifically for `--lra-pivoting-rule dantzig`/`soi` if either is ever
-considered for becoming the default.
+**Not yet scheduled** (natural next candidates, not designed in detail):
+Devex or Steepest-Edge pivoting (Milestone 4a covered only Dantzig, and
+SOI-Simplex, item 4, is now done without closing the quick-eval sample's gap --
+neither pricing rule choice nor a global objective alone seems to be the
+bottleneck for the "hard for everyone" families in that narrow sample); a
+campaign-tier confirmation specifically for `--lra-pivoting-rule dantzig`/`soi`
+if either is ever considered for becoming the default. Scale-invariant
+polynomial matching, formerly roadmap item 3, is implemented by H1b; see
+[](qf-lra-heuristics.md).
