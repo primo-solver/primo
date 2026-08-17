@@ -43,6 +43,7 @@ notes it points to.
 | [7](#lead-row-representation) | Compare row representation against sorted arrays of pairs | already the endorsed design; 0.00% map cost in the profile | done | **closed: already implemented** |
 | [8](#lead-dl6) | DL6: decide precision statically before search | unknown | small | blocked on a DL solver |
 | [9](#lead-monotone) | Monotone (one-sided) variable elimination | neutral on the promotion bar | done | **implemented, opt-in; did not clear its bar** |
+| [10](#lead-unconstrained-terms) | Unconstrained-term substitution (Brummayer/Bruttomesso) | 131/4.76M reals (QF_LRA), 1/217K (QF_UFLRA) -- negligible on both local corpora | small-medium | **open; not implemented, evidence says don't -- see falsifier** |
 | -- | D2 floating-point-guided basis selection | ~14% in the literature | medium | open, see [](qf-lra-heuristics.md) |
 | -- | D4 revised simplex, LU-factored basis | unknown | largest | open, see [](qf-lra-heuristics.md) |
 | -- | H4 batched bound assertion; H6 DL fast path; H11 fill-in-aware preprocessing elimination | -- | -- | design only, see [](qf-lra-heuristics.md) |
@@ -1221,6 +1222,92 @@ complete. Two families carry a real blind spot: `sc` (20.8% of atoms opaque)
 and `tta_startup` (12.1%), both from `ite` inside arithmetic terms, where the
 analyzer conservatively forces every variable two-sided. Their zeros therefore
 mean "could not tell", not "none". Every other family is at 0.0% opaque.
+
+(lead-unconstrained-terms)=
+## 10. Unconstrained-term substitution (Brummayer/Bruttomesso)
+
+**Claim.** A term is *unconstrained* if it has exactly one occurrence in the
+whole formula (one parent in the term DAG) and its enclosing operator is
+invertible with respect to that occurrence -- then the term can be replaced
+by a fresh variable of the same sort, because whatever value the rest of the
+formula needs from it, the lone occurrence can always be adjusted to produce.
+Independently discovered by Bruttomesso (PhD thesis, Trento, 2008) and
+Brummayer (PhD thesis, Linz, 2010; `docs/papers/Brummayer-PhD-Thesis-2009.pdf`,
+Sect. 3.4, read 2026-08-17) for bit-vectors and arrays, and generalized to
+partially-constrained terms and quantified formulas by Jonáš & Strejček
+(SAT 2017, `docs/papers/On_Simplification_of_Formulas_with_Unconstrained_Variables_and_Quantifiers.pdf`,
+read in full 2026-08-17). See [](papers/monotone-variable-elimination.md) §3
+for the full reading trail and why this is a genuinely different rule from
+lead 9, not an instance of it: lead 9 needs *many* same-signed occurrences
+of a bare Real leaf in `Le`/`Lt` atoms and explicitly disqualifies anything
+under `f(...)`; this rule needs exactly *one* occurrence anywhere -- nested
+inside `+`/`*`, an `=`, an `ite`, or an EUF application argument -- and does
+not care about polarity or direction at all. Existing solve-eqs/Gaussian
+elimination also does not cover it: those need an explicit top-level
+defining equality (`x = t`), however many times `x` is *used* afterward,
+whereas this rule needs no defining equality anywhere.
+
+For LRA specifically the rule is strictly simpler than the bit-vector
+setting it was designed for: addition and multiplication by a nonzero
+rational constant always invert in `Q`, so the bit-vector corner cases (an
+*even* constant multiplier is not invertible mod `2^n`; a comparison against
+an extremal constant `0`/`2^n-1` is not free either way) do not exist for
+reals at all.
+
+`grep -rn "unconstrained" src/smt/*.cpp` (2026-08-17) finds no such pass --
+only unrelated counter names. Not implemented.
+
+**Evidence: population census, both local corpora, same methodology as
+lead 9.** A throwaway analyzer (scratchpad, not committed; reuses
+`scripts/analyze_smt2.py`'s tokenizer/parser) counted declared Real
+constants with exactly one raw occurrence in the whole assertion set, then
+split them by whether that occurrence is already a bare leaf of an
+`Le`/`Lt`/`Ge`/`Gt`/`=` atom -- i.e. already reachable by monotone
+elimination or solve-eqs today -- versus genuinely new (nested, or under a
+function-application argument):
+
+| corpus | files | total reals | single-occurrence | already covered (bare leaf) | new opportunity |
+|---|---:|---:|---:|---:|---:|
+| `tmp/QF_LRA` (local, 1,753 files, lead 9's corpus) | 1,753 | 4,756,176 | 17,394 | 17,263 | **131** (0.003%) |
+| `tmp/QF_UFLRA` (remote `primo-adaptive-mutation`, 1,284 files) | 1,284 | 217,051 | 3 | 2 | **1** (0.0005%) |
+
+Both counts are zero analysis failures. The "already covered" bucket
+slightly over-credits solve-eqs (it is top-level-conjunct-only; this check
+is not scoped that way), which makes the "new opportunity" column an
+underestimate if anything -- and it is still negligible on both corpora.
+
+**Why the population is this small, and why that might not be the whole
+story.** Bruttomesso and Brummayer's own motivating source is symbolic
+execution of programs: a query variable read at most once, or a program
+variable assigned on an executed path but not yet read, both of which are
+common when analyzing SSA-form code such as LLVM IR. Primo's QF_UFLRA
+corpus is SV-COMP CPAchecker BMC/induction output -- also program-derived,
+but evidently not exhibiting this pattern at the Real-variable level, either
+because CPAchecker's own encoding already simplifies such variables away
+before emitting SMT-LIB, or because the pattern shows up in Boolean/integer
+variables that this LRA-only census does not count, or because it simply
+is not a strong pattern in this specific translation pipeline. This is a
+real unknown, not resolved here: the corpora actually available to Primo
+are not the corpora the technique was designed against.
+
+**Cost.** Small-medium if attempted: propagate outward from a single-occurrence
+leaf through invertible operators (`+`, `-`, scalar `*`), rewriting to a
+fresh variable, with model reconstruction analogous to solved-constant
+substitution's `x -> t` trail (here the direction is reversed -- the fresh
+variable's value must be pulled back through the inverted operator chain to
+recover the eliminated variable's value, which needs its own reconstruction
+logic, unlike Brummayer's array/BV setting where the paper does not discuss
+model recovery in detail either).
+
+**Falsifier, stated in advance.** Given the census above, implementing this
+before a representative benchmark set exists would almost certainly repeat
+lead 9's outcome (correctness-clean, promotion-bar-neutral-to-negative,
+kept opt-in at best) without even lead 9's redeeming 85,120-variable
+LassoRanker population to point to. **Do not implement on the current
+evidence.** Revisit only if a symbolic-execution- or SSA-derived benchmark
+family (the literature's actual motivating source) is added to the corpus,
+and re-run this census against it first -- if that population is also
+negligible, close this lead without ever writing the solver-side pass.
 
 (lead-recursion-audit)=
 ## R1. Audit input-sized recursion across the repository

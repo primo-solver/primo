@@ -125,8 +125,55 @@ independent PhD theses, both worth knowing as the origin of that line:
 All three are bit-vector-centric; the SAT 2017 evaluation is on bit-vector
 formulas. None of them is a source for the arithmetic polarity argument.
 
-**Status of the two theses: NOT READ.** Cited here for provenance of the
-unconstrained-variable line only.
+**Status, 2026-08-17: Brummayer's thesis read** (Section 3.4, "Unconstrained
+Variables", pp. 72-77 -- bit-vectors, arrays, if-then-else). Bruttomesso's
+thesis remains unread; Brummayer's own text says the two results were
+reached independently and states the same definition the SAT 2017 paper
+already gave: a variable is unconstrained "if it has only one parent in the
+abstract syntax DAG representation of `ϕ`" (single occurrence under
+structural hashing), and terms built on it are propagated outward and
+replaced by a fresh variable of the same sort, provided the enclosing
+operator is invertible with respect to that occurrence. The thesis adds
+nothing algorithmically beyond what was already captured here from the SAT
+2017 paper -- it is the same rule, applied concretely to `+`, `&`, `ite`,
+`read`/`write`, and bit-vector predicates, with the same corner cases
+(multiplication by an *even* constant is not invertible in `Z/2^n`; a
+predicate compared against an extremal constant like `0` or `2^n - 1` is not
+free either way). Confirms the read-through above needed no revision.
+
+**This surfaces a rule Primo does not have, distinct from both monotone
+elimination and existing equality-substitution passes.** Primo already has
+two mechanisms in the same neighborhood, and neither is this one:
+
+- [](../preprocessing.md)'s solved-constant substitution / Gaussian
+  elimination eliminates a Real variable that has an **explicit defining
+  equality** among the top-level assertions (`x = t`, or solvable from a
+  linear system), however many times that variable is then *used* elsewhere.
+- This pass eliminates a Real variable with **many** occurrences, provided
+  they all push it the same direction through `Le`/`Lt` atoms; a real under
+  `f(...)` disqualifies it outright.
+
+Brummayer/Bruttomesso's rule needs **neither**: no defining equality has to
+exist anywhere, and the variable can occur inside an EUF application
+argument, an equality, an `ite`, or anything else invertible -- the
+precondition is purely that it occurs exactly *once*, full stop. For
+example, `f(3*x + 2) = y ∧ (y > 5 ∨ y < -5)` has no top-level Real equality
+solve-eqs can use (the defining relation is an EUF equality between two
+function applications, not a Real arithmetic identity), and `x` sits under
+`f(...)`, which disqualifies it from monotone elimination by that pass's own
+stated precondition. Under Brummayer's rule, `x` occurs once, `3*x + 2` is
+invertible (LRA has no even/odd-constant corner case at all: addition and
+multiplication by a nonzero rational always invert in `Q`, so the bit-vector
+side conditions above drop out entirely), so the whole subterm can be
+replaced by a fresh Real variable `v`, shrinking `f(3*x + 2) = y` to
+`f(v) = y` -- eliminating a shared arithmetic term from the EUF/LRA interface
+before Nelson-Oppen ever has to reason about it. `grep -rn "unconstrained"
+src/smt/*.cpp` (2026-08-17) finds no such pass; the only hits are unrelated
+counter names (`model-real-terms`, `lra-opportunistic-unmapped-terms`, etc.).
+Whether this is worth adding is an open question for `docs/open-leads.md`,
+not decided here -- this note only tracks citations.
+
+**Bruttomesso's thesis: still NOT READ.** Cited here for provenance only.
 
 ## 4. The contrast that keeps this sound: the pure-literal rule
 
