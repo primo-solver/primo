@@ -5731,7 +5731,21 @@ std::string build_qf_lra_model(
   const RealModelValues values =
       real_model_values_from_lra(terms, model_terms, preprocessing_model_assignments, prepared,
                                  tableau, assigned_atoms, monotone_eliminated);
-  return build_composed_uf_lra_model(terms, model_terms, preprocessing_model_assignments, values);
+  // A non-arithmetic atom (a plain Boolean, unrelated to any real variable)
+  // left for the main SAT search to decide -- rather than resolved during
+  // preprocessing -- never touches the tableau, so build_composed_uf_lra_model
+  // would otherwise never learn its value and print the congruence closure's
+  // default (false) regardless of what the search actually assigned.
+  std::vector<TheoryModelAssignment> boolean_model_assignments = preprocessing_model_assignments;
+  boolean_model_assignments.reserve(boolean_model_assignments.size() + assigned_atoms.size());
+  for (std::size_t i = 0; i < assigned_atoms.size(); ++i) {
+    if (!prepared.atoms[i].is_arithmetic) {
+      const AssignedTheoryAtom& atom = assigned_atoms[i];
+      boolean_model_assignments.push_back(
+          TheoryModelAssignment{atom.term, atom.value, atom.filtered});
+    }
+  }
+  return build_composed_uf_lra_model(terms, model_terms, boolean_model_assignments, values);
 }
 
 std::string build_qf_lra_preprocessing_only_model(

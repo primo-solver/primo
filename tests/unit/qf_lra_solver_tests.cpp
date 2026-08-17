@@ -220,19 +220,31 @@ void monotone_elimination_handles_bounds_under_ite() {
 
 // One atom reached at both polarities forces its variables two-sided, even
 // though each occurrence on its own would look one-sided.
+//
+// Also a regression test for build_qf_lra_model dropping non-arithmetic
+// atoms the SAT search (rather than preprocessing) decided: this exact
+// shape -- a shared literal across two disjuncts, each paired with a plain
+// Boolean guard -- used to print p/q as false regardless of what was
+// actually assigned. `x <= 0` forces `(<= x 5)` true, which forces q = true
+// as the only way to satisfy the second disjunct; the original bug printed
+// q = false here.
 void monotone_elimination_rejects_atom_shared_across_polarities() {
   const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
     (set-logic QF_LRA)
     (declare-fun x () Real)
     (declare-fun p () Bool)
     (declare-fun q () Bool)
+    (assert (<= x 0))
     (assert (and (or (<= x 5) p) (or (not (<= x 5)) q)))
     (check-sat)
+    (get-model)
   )",
                                        monotone_elimination_options());
   assert(result.result == CheckSatResult::Sat);
   assert(result.statistics.get(StatKey::MonotoneEliminationVariables) == 0);
   assert(result.statistics.get(StatKey::MonotoneEliminationAtomsFolded) == 0);
+  assert(result.model.find("(define-fun q () Bool true)") != std::string::npos);
 }
 
 void accepts_set_logic_and_real_declarations() {
@@ -3438,6 +3450,30 @@ void prints_lra_model_when_requested() {
   assert(result.model.find("$primo_") == std::string::npos);
 }
 
+// Regression: a Boolean atom decided by the main SAT search (not
+// preprocessing) used to be silently dropped from the printed QF_LRA
+// model, defaulting to false in model_builder.cpp's congruence closure
+// regardless of what the search actually assigned. The trigger only needed
+// a Real-sorted declaration to exist somewhere -- even unused -- to route
+// the formula through build_qf_lra_model instead of the plain Boolean
+// solver path; v below is never referenced in any assertion.
+void prints_boolean_atoms_decided_by_search_in_qf_lra_model() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_LRA)
+    (declare-fun v () Real)
+    (declare-fun x () Bool)
+    (declare-fun q () Bool)
+    (assert (not x))
+    (assert (or x q))
+    (check-sat)
+    (get-model)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.model.find("(define-fun x () Bool false)") != std::string::npos);
+  assert(result.model.find("(define-fun q () Bool true)") != std::string::npos);
+}
+
 // Permuting declare-fun lines must not change the search. The two scripts
 // below have identical assertions and differ only in the order the constants
 // are declared, so every solver counter has to match.
@@ -4556,6 +4592,7 @@ int main() {
   deferred_check_runs_once_per_quiescence_point_not_per_literal();
   strict_boundary_is_unsat();
   prints_lra_model_when_requested();
+  prints_boolean_atoms_decided_by_search_in_qf_lra_model();
   divides_a_linear_term_by_a_rational_literal();
   rejects_nonlinear_and_zero_division();
   declaration_order_does_not_change_the_search();
