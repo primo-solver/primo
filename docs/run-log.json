@@ -27374,6 +27374,35 @@
       "artifacts": "local-only:/tmp/primo-canon-default-off-979d911-qfuflra/summary.csv; local-only:/tmp/primo-canon-option-on-979d911-qfuflra/summary.csv; local-only:/tmp/primo-canon-default-off-979d911-qflra-model/summary.csv; local-only:/tmp/primo-canon-option-on-979d911-qflra-model/summary.csv",
       "evidence_status": "local-complete-current",
       "outcome": "Accepted. The experimental pass remains available and correctness-clean when enabled, while the default profile skips all three canonicalization traversals and retains the pre-pass SAT abstraction."
+    },
+    {
+      "id": "2026-08-17-arithmetic-canonicalization-default-off-local-medium-ab",
+      "started_at": "2026-08-17",
+      "recorded_at": "2026-08-17",
+      "kind": "local-performance-ablation",
+      "scope": "Check that the default-off arithmetic canonicalization branch preserves pre-feature answers, search statistics, and seconds-range local performance on five medium QF_UFLRA instances",
+      "commit": "7a6875f candidate versus 098f239 origin/main baseline",
+      "branch": "lra-atom-canonicalization",
+      "environment": {
+        "type": "local",
+        "builds": "Separate exact Release builds with GCC 13.3.0 and the same repository-local CaDiCaL 3.0.0, ANTLR 4.13.2, CLI11, and GMP installation; binaries report git 7a6875f and 098f239.",
+        "execution": "Both arms pinned to CPU 0; three repetitions per binary and file; arm order alternated; 45-second process timeout; --quiet --stats; each JSONL row flushed and fsynced before the next run.",
+        "corpus": "tmp/QF_UFLRA selected by benchmarks/qf-uflra-local-medium-5.txt; one CPAchecker BMC and four CPAchecker induction instances previously observed in the seconds range."
+      },
+      "commands": {
+        "build_baseline": "git worktree add --detach /tmp/primo-main-098f239-local-compare 098f239; cmake -S /tmp/primo-main-098f239-local-compare -B /tmp/primo-main-098f239-local-compare/build-local-compare -DCMAKE_BUILD_TYPE=Release -DCLI11_INCLUDE_DIR=/workspace/contrib/local/include -DANTLR4_RUNTIME_INCLUDE_DIR=/workspace/contrib/local/include/antlr4-runtime -DANTLR4_RUNTIME_LIBRARY=/workspace/contrib/local/lib/libantlr4-runtime.a -DIPASIR_UP_INCLUDE_DIR=/workspace/contrib/local/include -DCADICAL_LIBRARY=/workspace/contrib/local/lib/libcadical.a; cmake --build /tmp/primo-main-098f239-local-compare/build-local-compare -j2",
+        "build_candidate": "cmake -S /workspace -B /workspace/build-local-compare-release -DCMAKE_BUILD_TYPE=Release -DCLI11_INCLUDE_DIR=/workspace/contrib/local/include -DANTLR4_RUNTIME_INCLUDE_DIR=/workspace/contrib/local/include/antlr4-runtime -DANTLR4_RUNTIME_LIBRARY=/workspace/contrib/local/lib/libantlr4-runtime.a -DIPASIR_UP_INCLUDE_DIR=/workspace/contrib/local/include -DCADICAL_LIBRARY=/workspace/contrib/local/lib/libcadical.a; cmake --build /workspace/build-local-compare-release --target primo -j2",
+        "comparison": "python3 scripts/compare_local_solver_stats.py --baseline /tmp/primo-main-098f239-local-compare/build-local-compare/primo --candidate /workspace/build-local-compare-release/primo --root /workspace/tmp/QF_UFLRA --manifest benchmarks/qf-uflra-local-medium-5.txt --output /tmp/primo-default-off-7a6875f-vs-098f239-medium-5 --repeats 3 --timeout 45 --cpu 0"
+      },
+      "results": {
+        "correctness": "All 30 invocations completed with sat; zero timeout, error, answer disagreement, or diagnostic output.",
+        "statistics": "Every non-:time.* statistic matched exactly between revisions and across repetitions on all five files.",
+        "timing": "Sum of per-file medians was 39.228768 seconds at 098f239 and 39.118552 seconds at 7a6875f, candidate/baseline 0.99719x.",
+        "per_file": "parport 2.585281/2.556686 seconds (0.98894x); tda18271c2dd 9.085848/9.056791 (0.99680x); m0 opl3 3.813768/3.804643 (0.99761x); mt20xx 11.896815/11.886709 (0.99915x); mem2mem_testdev 11.847057/11.813722 (0.99719x), baseline/candidate medians."
+      },
+      "artifacts": "local-only:/tmp/primo-default-off-7a6875f-vs-098f239-medium-5/{runs.jsonl,summary.json}; screening local-only:/tmp/primo-default-off-local-screening.tsv",
+      "evidence_status": "local-complete-current",
+      "outcome": "Accepted as focused local evidence that making arithmetic atom canonicalization opt-in restores pre-feature default behavior and does not cause a measurable slowdown on the selected medium cases. This is not a full-corpus performance claim."
     }
   ]
 }

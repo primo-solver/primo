@@ -68,3 +68,17 @@ The JSON printed by the script is an analysis aid, not a replacement for a
 `docs/run-log.json` entry. Raw result directories may remain remote or
 untracked, but the ledger still records the exact commit, environment, command,
 artifact path, and accepted or rejected conclusion.
+
+## Local revision checks
+
+Use `scripts/compare_local_solver_stats.py` for a focused comparison between
+two Primo binaries. It alternates execution order, can pin both binaries to one
+CPU, writes and synchronizes one JSONL record after every run, and compares the
+answer plus every statistic except the `:time.*` counters. Its `summary.json`
+reports per-file timing medians separately; this is a regression check, not a
+replacement for a full-corpus SLURM evaluation.
+
+The reusable medium-runtime QF_UFLRA sample is
+`benchmarks/qf-uflra-local-medium-5.txt`. Pass the corpus checkout as `--root`,
+the two exact Release binaries as `--baseline` and `--candidate`, and an
+artifact directory as `--output`.

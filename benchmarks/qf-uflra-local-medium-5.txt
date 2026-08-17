@@ -1,0 +1,8 @@
+# Five QF_UFLRA rows that historically take roughly 1-20 seconds in Primo.
+# They cover one BMC and four induction instances and are intended for local
+# answer/statistics regression checks, not coverage or headline benchmarking.
+cpachecker-bmc-svcomp14/cpachecker-bmc.parport_false-unreach-call.i.cil.c.smt2
+cpachecker-induction-svcomp14/cpachecker-induction.32_1_cilled_true-unreach-call_ok_nondet_linux-3.4-32_1-drivers--media--dvb--frontends--tda18271c2dd.ko-ldv_main0_sequence_infinite_withcheck_stateful.cil.out.c.smt2
+cpachecker-induction-svcomp14/cpachecker-induction.m0_false-unreach-call_sound-oss-opl3-ko--111_1a--42f9f8d-1.c.smt2
+cpachecker-induction-svcomp14/cpachecker-induction.32_1_cilled_true-unreach-call_ok_nondet_linux-3.4-32_1-drivers--media--common--tuners--mt20xx.ko-ldv_main0_sequence_infinite_withcheck_stateful.cil.out.c.smt2
+cpachecker-induction-svcomp14/cpachecker-induction.32_7_cilled_false-unreach-call_const_ok_linux-32_1-drivers--media--video--mem2mem_testdev.ko-ldv_main0_sequence_infinite_withcheck_stateful.cil.out.c.smt2
