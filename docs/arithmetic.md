@@ -241,19 +241,34 @@ guarded rewrite.
   single-literal reason) -- `OnlineLraPropagator`'s `pending_`/`reasons_`/
   `cb_add_reason_clause_lit` were widened from a single `sat::Lit` to
   `vector<sat::Lit>` to carry this (same-slack entries become singleton
-  vectors, unchanged behavior). Two defensive, non-adaptive caps
-  (`kRowBasedPropagationMaxRowSize`, `kRowBasedPropagationMaxFanout`,
-  both 64) bound the O(row size) per-affected-row cost this technique has
-  that same-slack propagation's O(atoms sharing a slack) doesn't. Reported
+  vectors, unchanged behavior). Two defensive, non-adaptive caps bound the
+  O(row size) per-affected-row cost this technique has that same-slack
+  propagation's O(atoms sharing a slack) doesn't: `--lra-row-propagation-max-row-size`
+  (default 64) skips deriving a bound for any row longer than this, and
+  `--lra-row-propagation-max-fanout` (default 64) caps how many rows a
+  single bound change may trigger a scan over -- a variable occurring in
+  more rows than this propagates nothing that round. Both live in
+  `CheckSatOptions::lra_row_propagation_limits` and actually bind as of
+  2026-08-10; before that the two CLI options parsed but were silently
+  ignored in favor of now-removed hardcoded constants of the same values
+  (`docs/tuning-parameters.md`'s "dead knobs" finding). Reported
   by `:lra.row-propagations`, alongside the existing aggregate
   `:lra.theory-propagations`. **Opt-in**
   (`CheckSatOptions::lra_row_propagation = false`,
   `--lra-row-propagation`), only takes effect when `lra_propagation` is
-  also enabled -- materially new algorithmic machinery, not yet
-  campaign-fuzzed. Only derives a row's *own* implied bound and checks its
-  *own* slack's atoms -- does not (yet) rearrange a row to tighten one of
-  its *children's* bounds from the basic variable's own bound (Section 4's
-  fuller bidirectional treatment), a natural, bigger follow-up.
+  also enabled. Cleared merge-gate-tier fuzz smoke (500 fuzzsmt QF_LRA
+  cases, 2026-07-25; 500 more with bidirectional also on, 2026-07-26) and
+  the 2026-07-31 raised-cap sweep's 2,000-case fuzz gate (job 117767, 0
+  wrong answers), plus a ~4,000-case mixed QF_UFLRA campaign with it
+  enabled (2026-08) -- see `docs/run-log.json`. What is still missing is a
+  dedicated pure-QF_LRA, default-cap, campaign-tier (>=3000-case) run of
+  the kind that gates promotion to default-on; see
+  [](qf-lra-equality-sharing.md). Only derives a row's *own* implied bound and checks its
+  *own* slack's atoms -- rearranging a row to tighten one of its
+  *children's* bounds from the basic variable's own bound (Section 4's
+  fuller bidirectional treatment) is the separate, since-implemented
+  competitiveness-roadmap item 7 below, `compute_implied_child_bound` /
+  `--lra-bidirectional-row-propagation`.
 - **Selectable pivoting rule** (Milestone 4a, `lra_tableau.{hpp,cpp}`):
   `LraTableau::PivotingRule::{Bland, Dantzig}`. Dantzig picks the
   most-violated basic variable and largest-`|coefficient|` entering
@@ -1095,6 +1110,33 @@ item H7's elimination pivots -- which happen inside
 `:lra.pivots` across an H7 ablation is therefore misleading; use
 `:lra.pivot-row-updates` / `:lra.pivot-term-ops`, which count every pivot's
 work wherever it was triggered.
+
+### Model construction for Boolean atoms in QF_LRA (fixed 2026-08-17)
+
+`build_qf_lra_model` (`check_sat.cpp`) previously dropped every
+non-arithmetic (plain Boolean) entry of `assigned_atoms` -- the SAT search's
+own decided values -- before printing the model. Only Booleans resolved
+during *preprocessing* (`preprocessing_model_assignments`) ever reached the
+printed model; a Boolean atom the main SAT search alone decided defaulted
+silently to `false` in `model_builder.cpp`'s congruence closure, regardless
+of what was actually assigned. The search itself was sound throughout --
+confirmed with runtime instrumentation showing the correct internal
+assignment (e.g. `x=true, q=true`) discarded before printing -- this was
+purely a model-printing defect.
+
+Trigger: any `sat` QF_LRA problem containing a Real-sorted declaration
+(used or not, anywhere in the problem) plus a Boolean atom the search
+decides rather than preprocessing. Minimal repro:
+`(declare-fun v () Real) (declare-const x Bool) (declare-fun q () Bool)
+(assert (or x q))`. Fixed by folding `assigned_atoms`'s non-arithmetic
+entries into the assignments passed to `build_composed_uf_lra_model`,
+mirroring how the mixed QF_UFLRA path already folds in `euf_assignments`.
+See [](fuzz-coverage-qf-lra.md) for why the existing QF_LRA fuzzing
+infrastructure never exercised this shape, and
+`tests/unit/qf_lra_solver_tests.cpp`'s
+`prints_boolean_atoms_decided_by_search_in_qf_lra_model` and the
+strengthened `monotone_elimination_rejects_atom_shared_across_polarities`
+for the regression tests.
 
 ### Where QF_LRA work stands, and what is open (2026-08-07)
 

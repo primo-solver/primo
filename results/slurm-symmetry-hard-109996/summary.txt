@@ -1,2 +1,0 @@
-default: solved=3 timeout=2 symmetry_constraints=21
-no-sym: solved=1 timeout=4 symmetry_constraints=0

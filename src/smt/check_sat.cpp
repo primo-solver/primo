@@ -5785,9 +5785,46 @@ std::string build_qf_lra_model(
   const RealModelValues values =
       real_model_values_from_lra(terms, model_terms, preprocessing_model_assignments, prepared,
                                  tableau, assigned_atoms, monotone_eliminated);
-  return build_composed_uf_lra_model(terms, model_terms, preprocessing_model_assignments, values);
+  // A non-arithmetic atom (a plain Boolean, unrelated to any real variable)
+  // left for the main SAT search to decide -- rather than resolved during
+  // preprocessing -- never touches the tableau, so build_composed_uf_lra_model
+  // would otherwise never learn its value and print the congruence closure's
+  // default (false) regardless of what the search actually assigned.
+  if (assigned_atoms.size() != prepared.atoms.size()) {
+    throw UnsupportedInput("internal theory atom mapping mismatch");
+  }
+  std::vector<TheoryModelAssignment> boolean_model_assignments = preprocessing_model_assignments;
+  boolean_model_assignments.reserve(boolean_model_assignments.size() + assigned_atoms.size());
+  std::unordered_set<core::TermId> already_assigned;
+  already_assigned.reserve(preprocessing_model_assignments.size());
+  for (const TheoryModelAssignment& assignment : preprocessing_model_assignments) {
+    already_assigned.insert(assignment.term);
+  }
+  for (std::size_t i = 0; i < assigned_atoms.size(); ++i) {
+    if (!prepared.atoms[i].is_arithmetic) {
+      const AssignedTheoryAtom& atom = assigned_atoms[i];
+      // preprocessing_model_assignments already covers this term -- keep its
+      // value rather than appending a second, possibly conflicting
+      // assignment. QfUfModelBuilder::add_assignment merges every
+      // assignment's term with true_term_/false_term_ in one shared
+      // congruence closure with no dedup of its own; two assignments for
+      // the same term that disagreed would merge true and false into one
+      // class and corrupt the whole printed model.
+      if (already_assigned.insert(atom.term).second) {
+        boolean_model_assignments.push_back(
+            TheoryModelAssignment{atom.term, atom.value, atom.filtered});
+      }
+    }
+  }
+  return build_composed_uf_lra_model(terms, model_terms, boolean_model_assignments, values);
 }
 
+// Unlike build_qf_lra_model, this has no assigned_atoms parameter: its one
+// call site (assertions.empty() after the preprocessing loop) is reached
+// only when preprocessing discharged every assertion to `true` without ever
+// clausifying or running the SAT search, so no search-decided atom can
+// exist here. If a second call site is ever added, re-derive this
+// invariant before reusing the function as-is.
 std::string build_qf_lra_preprocessing_only_model(
     core::TermManager& terms, const std::vector<core::TermId>& model_terms,
     const std::vector<TheoryModelAssignment>& preprocessing_model_assignments,

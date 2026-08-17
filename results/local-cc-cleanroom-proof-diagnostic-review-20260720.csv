@@ -1,5 +1,0 @@
-instance,mode,real_seconds,explain_calls,bfs_searches,bfs_visited,bfs_path_edges,proof_queries,proof_path_edges,proof_shorter,proof_equal,proof_longer,proof_missing_lca,conflict_reason_max,conflict_reason_gt64,answer
-tmp/QF_UF/NEQ/NEQ023_size7.smt2,default,0.35,35552,26728,508681,49176,0,0,0,0,0,0,14,0,unsat
-tmp/QF_UF/NEQ/NEQ023_size7.smt2,proof-forest-diagnostics,0.35,35552,26728,508681,49176,26728,44734,3907,22025,796,0,14,0,unsat
-tmp/QF_UF/QG-classification/qg7/iso_icl_repgen005.smt2,default,2.13,7832965,5341921,15704133,9390461,0,0,0,0,0,0,72,76,unsat
-tmp/QF_UF/QG-classification/qg7/iso_icl_repgen005.smt2,proof-forest-diagnostics,2.13,7832965,5341921,15704133,9390461,5341921,9482620,331218,4547349,463354,0,72,76,unsat

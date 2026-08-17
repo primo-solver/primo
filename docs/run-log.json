@@ -27280,6 +27280,37 @@
       "artifacts": "remote:<prepared-workspace>/fuzz-results/lra-atom-canon-qflra-model60-b08a5a5; fuzz-results/lra-atom-canon-qflra-mutation-real-b08a5a5; fuzz-results/lra-atom-canon-qfuflra-mutation-b08a5a5; rejected:fuzz-results/lra-atom-canon-qflra-b08a5a5",
       "evidence_status": "slurm-complete-current-with-classified-timeouts",
       "outcome": "Accepted as the required fresh QF_LRA and mixed mutation campaign. Timeout-only generated rows are recorded separately and do not block correctness; the campaign makes no completeness or uniform-performance claim."
+    },
+    {
+      "id": "2026-08-17-qf-lra-boolean-atom-model-fix",
+      "started_at": "2026-08-17",
+      "recorded_at": "2026-08-17",
+      "kind": "bugfix-and-fuzz",
+      "scope": "Fix and verify a QF_LRA model-printing defect (build_qf_lra_model dropping non-arithmetic assigned_atoms) found via delta-debugging while hand-testing shapes for a new --monotone-elimination fuzzer, plus a merge-gate campaign for the new generator that fills the coverage gap that let it through.",
+      "commit": "3994604",
+      "environment": {
+        "type": "local",
+        "binary": "build/primo (Release, CaDiCaL 3.0.0), commit 3994604",
+        "notes": "Root cause confirmed with temporary runtime instrumentation (fprintf at the assigned_atoms extraction point in solve_qf_lra_impl), reverted before committing -- not a static-analysis guess."
+      },
+      "commands": {
+        "minimize": "contrib/install_ddsmt.py; scripts/minimize_smt2.py --input <repro>.smt2 --predicate <wrong-model-checker>.py --output <minimized>.smt2 --ddsmt ddsmt",
+        "merge_gate_off": "PATH=/workspace/contrib/local/bin:/home/user/.elan/bin:/home/user/.local/bin:/home/user/.cargo/bin:/home/user/.npm-global/bin:/home/user/.nvm/versions/node/default/bin:/home/mikolas/gap/gap-4.15.1:/home/mikolas/.elan/bin:/home/mikolas/.local/bin:/home/mikolas/bin/:/home/mikolas/.opam/default/bin:/home/mikolas/.opam/default/bin:/home/mikolas/.elan/bin:/home/mikolas/.cargo/bin:/home/mikolas/.local/bin:/home/mikolas/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin python3 scripts/qf_lra_boolean_arithmetic_fuzz.py --solver ./build/primo --z3 z3 --dolmen dolmen --count 1400 --seed 2026081702 --timeout 5 --out /tmp/qflra-boolarith-merge-off",
+        "merge_gate_on": "PATH=/workspace/contrib/local/bin:/home/user/.elan/bin:/home/user/.local/bin:/home/user/.cargo/bin:/home/user/.npm-global/bin:/home/user/.nvm/versions/node/default/bin:/home/mikolas/gap/gap-4.15.1:/home/mikolas/.elan/bin:/home/mikolas/.local/bin:/home/mikolas/bin/:/home/mikolas/.opam/default/bin:/home/mikolas/.opam/default/bin:/home/mikolas/.elan/bin:/home/mikolas/.cargo/bin:/home/mikolas/.local/bin:/home/mikolas/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin python3 scripts/qf_lra_boolean_arithmetic_fuzz.py --solver ./build/primo --solver-arg=--monotone-elimination --z3 z3 --dolmen dolmen --count 1400 --seed 2026081702 --timeout 5 --out /tmp/qflra-boolarith-merge-on"
+      },
+      "summary": {
+        "bug": "build_qf_lra_model (check_sat.cpp) only used assigned_atoms to pick a concrete delta rational; non-arithmetic (plain Boolean) entries never reached the printed model. Minimal repro: (declare-fun v () Real)(declare-const x Bool)(declare-fun q () Bool)(assert (or x q)) printed x=false,q=false, violating the assertion, despite the SAT search correctly deciding x=true,q=true internally (confirmed via instrumentation). Fixed by folding assigned_atoms non-arithmetic entries into build_composed_uf_lra_model, mirroring the mixed QF_UFLRA path which already folds in euf_assignments.",
+        "why_fuzzing_missed_it": "fuzz_external.py compares only the sat/unsat verdict, never requesting get-model. The one model-checking gate (slurm_qf_lra_model_fuzz_gate.sbatch, dolmen-based; see docs/fuzz-coverage-qf-lra.md job 119949/119950, 6000 cases 0 invalid models) uses FuzzSMT/opfuzz/typefuzz, whose predicate/UF-arity flags are documented to apply only to QF_UF* logics and are silently ignored for QF_LRA -- so it never generated a free Boolean atom mixed with arithmetic. The committed mutation seed corpus (benchmarks/seeds/qf_lra/) also declares zero Boolean symbols. Even the closest existing unit test (monotone_elimination_rejects_atom_shared_across_polarities) asserted only the sat verdict, never the model.",
+        "merge_gate_off_result": "1400/1400 PASS -- 0 wrong answers, 0 reference disagreements vs z3, 0 dolmen model errors, seed 2026081702, --monotone-elimination not passed.",
+        "merge_gate_on_result": "1400/1400 PASS -- 0 wrong answers, 0 reference disagreements vs z3, 0 dolmen model errors, 0 activation-missing (candidates/atoms-folded counters nonzero on every eligible shape), seed 2026081702, --monotone-elimination passed as --solver-arg.",
+        "regression_tests": "tests/unit/qf_lra_solver_tests.cpp: strengthened monotone_elimination_rejects_atom_shared_across_polarities to request and check the model; added prints_boolean_atoms_decided_by_search_in_qf_lra_model for the baseline (no --monotone-elimination) case. Both confirmed to fail against the pre-fix binary (assertion abort) and pass against the fix."
+      },
+      "verification": "make lint; ctest --test-dir build (14/14); clang-tidy -p build src/smt/check_sat.cpp (0 warnings); make docs; code-review skill self-review (no findings); python3 -m unittest discover -s tests/python (all pass, including 7 new tests).",
+      "artifacts": "local-only:/tmp/qflra-boolarith-merge-off/summary.csv, local-only:/tmp/qflra-boolarith-merge-on/summary.csv",
+      "evidence_status": "local-complete-current",
+      "docs": "docs/arithmetic.md (Model construction for Boolean atoms in QF_LRA), docs/fuzz-coverage-qf-lra.md (A free-Boolean-mixed-with-arithmetic blind spot)",
+      "followups": "Campaign-tier (>=3000 case) promotion and a Slurm run of scripts/qf_lra_boolean_arithmetic_fuzz.py are natural next steps but out of scope for this entry. Repointing slurm_qf_lra_model_fuzz_gate.sbatch seeds at a committed free-Boolean corpus is explicitly deferred (see docs/fuzz-coverage-qf-lra.md) as a separate, larger-blast-radius change.",
+      "outcome": "Accepted. Fix lands with regression tests, doc sync, and a new durable generator that both verifies the fix and closes the QF_LRA free-Boolean coverage gap that let the bug through."
     }
   ]
 }
