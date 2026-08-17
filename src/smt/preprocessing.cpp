@@ -446,6 +446,241 @@ core::TermId polynomial_to_term(core::TermManager& terms,
   return summands.size() == 1 ? summands.front() : terms.mk_plus(std::move(summands));
 }
 
+core::TermId canonical_linear_side(
+    core::TermManager& terms, const std::vector<std::pair<core::TermId, util::Rational>>& monomials,
+    const util::Rational& constant = util::Rational(0)) {
+  std::vector<core::TermId> summands;
+  summands.reserve(monomials.size() + (constant.is_zero() ? 0 : 1));
+  for (const auto& [variable, coefficient] : monomials) {
+    assert(coefficient.sign() > 0);
+    summands.push_back(coefficient == util::Rational(1) ? variable
+                                                        : terms.mk_times(coefficient, variable));
+  }
+  if (!constant.is_zero() || summands.empty()) {
+    summands.push_back(terms.mk_rational(constant));
+  }
+  return summands.size() == 1 ? summands.front() : terms.mk_plus(std::move(summands));
+}
+
+core::TermId canonicalize_arithmetic_atom(
+    core::TermManager& terms, core::TermId source_atom,
+    ArithmeticAtomCanonicalizationResult& result,
+    std::unordered_map<core::TermId, core::TermId>& first_source_by_canonical) {
+  const theory::arithmetic::LraAtom normalized =
+      theory::arithmetic::normalize_atom(terms, source_atom);
+  ++result.atoms_visited;
+  if (normalized.relation == theory::arithmetic::LraRelation::Eq) {
+    ++result.equalities;
+  } else {
+    ++result.comparisons;
+  }
+
+  std::vector<std::pair<core::TermId, util::Rational>> scaled_terms(
+      normalized.polynomial.terms().begin(), normalized.polynomial.terms().end());
+  std::sort(scaled_terms.begin(), scaled_terms.end(),
+            [](const auto& lhs, const auto& rhs) { return lhs.first < rhs.first; });
+  core::TermId canonical = core::kInvalidTermId;
+  if (scaled_terms.empty()) {
+    const util::Rational zero(0);
+    bool value = false;
+    switch (normalized.relation) {
+      case theory::arithmetic::LraRelation::Le:
+        value = zero <= normalized.rhs;
+        break;
+      case theory::arithmetic::LraRelation::Lt:
+        value = zero < normalized.rhs;
+        break;
+      case theory::arithmetic::LraRelation::Eq:
+        value = zero == normalized.rhs;
+        break;
+    }
+    canonical = terms.mk_bool(value);
+    ++result.constant_folds;
+  } else {
+    std::vector<util::Rational> coefficients;
+    coefficients.reserve(scaled_terms.size());
+    for (const auto& [variable, coefficient] : scaled_terms) {
+      (void)variable;
+      coefficients.push_back(coefficient);
+    }
+    const util::Rational scale = util::Rational::primitive_integer_scale(coefficients);
+    util::Rational rhs = normalized.rhs * scale;
+    for (auto& [variable, coefficient] : scaled_terms) {
+      (void)variable;
+      coefficient *= scale;
+    }
+
+    bool reversed = false;
+    if (scaled_terms.front().second.sign() < 0) {
+      reversed = true;
+      rhs = -rhs;
+      for (auto& [variable, coefficient] : scaled_terms) {
+        (void)variable;
+        coefficient = -coefficient;
+      }
+      if (normalized.relation != theory::arithmetic::LraRelation::Eq) {
+        ++result.orientation_reversals;
+      }
+    }
+
+    std::vector<std::pair<core::TermId, util::Rational>> positive;
+    std::vector<std::pair<core::TermId, util::Rational>> negative;
+    positive.reserve(scaled_terms.size());
+    negative.reserve(scaled_terms.size());
+    for (const auto& [variable, coefficient] : scaled_terms) {
+      if (coefficient.sign() > 0) {
+        positive.emplace_back(variable, coefficient);
+      } else {
+        negative.emplace_back(variable, -coefficient);
+      }
+    }
+    const core::TermId positive_side = canonical_linear_side(terms, positive);
+    const core::TermId negative_side = canonical_linear_side(terms, negative, rhs);
+    switch (normalized.relation) {
+      case theory::arithmetic::LraRelation::Le:
+        canonical = reversed ? terms.mk_le(negative_side, positive_side)
+                             : terms.mk_le(positive_side, negative_side);
+        break;
+      case theory::arithmetic::LraRelation::Lt:
+        canonical = reversed ? terms.mk_lt(negative_side, positive_side)
+                             : terms.mk_lt(positive_side, negative_side);
+        break;
+      case theory::arithmetic::LraRelation::Eq:
+        canonical = terms.mk_eq(positive_side, negative_side);
+        break;
+    }
+  }
+
+  if (canonical != source_atom) {
+    ++result.atoms_rewritten;
+  }
+  if (const auto [existing, inserted] = first_source_by_canonical.emplace(canonical, source_atom);
+      !inserted && existing->second != source_atom) {
+    ++result.aliases_merged;
+  }
+  return canonical;
+}
+
+ArithmeticAtomCanonicalizationResult canonicalize_arithmetic_atoms_impl(
+    core::TermManager& terms, const std::vector<core::TermId>& assertions,
+    ArithmeticAtomCanonicalizationScope scope) {
+  ArithmeticAtomCanonicalizationResult result;
+  const std::size_t source_term_count = terms.size();
+  std::vector<core::TermId> rewritten(source_term_count, core::kInvalidTermId);
+  std::unordered_map<core::TermId, core::TermId> first_source_by_canonical;
+  struct Visit {
+    core::TermId term = core::kInvalidTermId;
+    bool expanded = false;
+  };
+  std::vector<Visit> pending;
+
+  for (const core::TermId assertion : assertions) {
+    pending.push_back(Visit{assertion, false});
+    while (!pending.empty()) {
+      const Visit visit = pending.back();
+      pending.pop_back();
+      if (rewritten.at(visit.term) != core::kInvalidTermId) {
+        continue;
+      }
+      const core::Term& source = terms.get(visit.term);
+      if (source.children.empty()) {
+        rewritten[visit.term] = visit.term;
+        continue;
+      }
+      if (!visit.expanded) {
+        pending.push_back(Visit{visit.term, true});
+        for (auto child = source.children.rbegin(); child != source.children.rend(); ++child) {
+          if (rewritten.at(*child) == core::kInvalidTermId) {
+            pending.push_back(Visit{*child, false});
+          }
+        }
+        continue;
+      }
+
+      // Copy before any TermManager constructor can grow term storage.
+      const core::TermKind kind = source.kind;
+      const core::SymbolId symbol = source.symbol;
+      const util::Rational rational = source.rational_value;
+      const std::vector<core::TermId> source_children = source.children;
+      std::vector<core::TermId> children;
+      children.reserve(source_children.size());
+      bool changed = false;
+      for (const core::TermId child : source_children) {
+        const core::TermId replacement = rewritten.at(child);
+        changed = changed || replacement != child;
+        children.push_back(replacement);
+      }
+
+      core::TermId replacement = core::kInvalidTermId;
+      switch (kind) {
+        case core::TermKind::BoolValue:
+        case core::TermKind::Constant:
+        case core::TermKind::Rational:
+          assert(false && "leaf reached arithmetic canonicalization reconstruction");
+          replacement = visit.term;
+          break;
+        case core::TermKind::Application:
+          replacement = changed ? terms.mk_app(symbol, std::move(children)) : visit.term;
+          break;
+        case core::TermKind::Plus:
+          replacement = changed ? terms.mk_plus(std::move(children)) : visit.term;
+          break;
+        case core::TermKind::Times:
+          replacement = changed ? terms.mk_times(rational, children.at(0)) : visit.term;
+          break;
+        case core::TermKind::Not:
+          replacement = changed ? terms.mk_not(children.at(0)) : visit.term;
+          break;
+        case core::TermKind::And:
+          replacement = changed ? terms.mk_and(std::move(children)) : visit.term;
+          break;
+        case core::TermKind::Or:
+          replacement = changed ? terms.mk_or(std::move(children)) : visit.term;
+          break;
+        case core::TermKind::Implies:
+          replacement = changed ? terms.mk_implies(children.at(0), children.at(1)) : visit.term;
+          break;
+        case core::TermKind::Equality: {
+          const bool real_equality = terms.get(children.at(0)).sort == terms.symbols().real_sort();
+          const core::TermId candidate =
+              changed ? terms.mk_eq(children.at(0), children.at(1)) : visit.term;
+          replacement = real_equality && scope == ArithmeticAtomCanonicalizationScope::All
+                            ? canonicalize_arithmetic_atom(terms, candidate, result,
+                                                           first_source_by_canonical)
+                            : candidate;
+          break;
+        }
+        case core::TermKind::Le:
+        case core::TermKind::Lt: {
+          const core::TermId candidate =
+              kind == core::TermKind::Le
+                  ? (changed ? terms.mk_le(children.at(0), children.at(1)) : visit.term)
+                  : (changed ? terms.mk_lt(children.at(0), children.at(1)) : visit.term);
+          replacement =
+              canonicalize_arithmetic_atom(terms, candidate, result, first_source_by_canonical);
+          break;
+        }
+      }
+      assert(replacement != core::kInvalidTermId);
+      rewritten[visit.term] = replacement;
+    }
+  }
+
+  result.assertions.reserve(assertions.size());
+  std::unordered_map<core::TermId, core::TermId> first_source_by_replacement;
+  for (const core::TermId assertion : assertions) {
+    const core::TermId replacement = rewritten.at(assertion);
+    const auto [existing, inserted] = first_source_by_replacement.emplace(replacement, assertion);
+    if (inserted || existing->second == assertion) {
+      result.assertions.push_back(replacement);
+    } else {
+      ++result.duplicate_assertions_removed;
+    }
+  }
+  result.terms_created = terms.size() - source_term_count;
+  return result;
+}
+
 struct GaussianEliminationRow {
   std::unordered_map<core::TermId, util::Rational> coefficients;
   util::Rational rhs;
@@ -2657,6 +2892,12 @@ void add_value_precedence_constraints(core::TermManager& terms,
 }
 
 }  // namespace
+
+ArithmeticAtomCanonicalizationResult canonicalize_arithmetic_atoms(
+    core::TermManager& terms, const std::vector<core::TermId>& assertions,
+    ArithmeticAtomCanonicalizationScope scope) {
+  return canonicalize_arithmetic_atoms_impl(terms, assertions, scope);
+}
 
 ImplicitConjunctionAnalysis analyze_implicit_conjunction(
     const core::TermManager& terms, const std::vector<core::TermId>& assertions) {

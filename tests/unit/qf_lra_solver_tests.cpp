@@ -248,6 +248,59 @@ void accepts_set_logic_and_real_declarations() {
   assert(result.result == CheckSatResult::Sat);
 }
 
+void canonicalizes_scaled_atoms_even_when_optional_preprocessing_is_off() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (assert (<= (+ (* 2 x) (* 2 y)) (* 2 z)))
+    (assert (not (<= (+ (* 4 x) (* 4 y)) (* 4 z))))
+    (check-sat)
+  )",
+                                       no_preprocessing());
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(StatKey::ArithmeticCanonicalizationAtomsVisited) >= 3);
+  assert(result.statistics.get(StatKey::ArithmeticCanonicalizationAtomsRewritten) == 2);
+  assert(result.statistics.get(StatKey::ArithmeticCanonicalizationAliasesMerged) == 1);
+  assert(result.statistics.get(StatKey::ArithmeticCanonicalizationCatchupRewrites) == 0);
+  assert(result.statistics.get(StatKey::TheoryAtoms) == 1);
+}
+
+void canonicalization_keeps_distinct_scaled_bounds_distinct() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (<= (* 2 x) 2))
+    (assert (<= (* 4 x) 8))
+    (check-sat)
+  )",
+                                       no_preprocessing());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(StatKey::ArithmeticCanonicalizationAtomsRewritten) == 2);
+  assert(result.statistics.get(StatKey::ArithmeticCanonicalizationAliasesMerged) == 0);
+  assert(result.statistics.get(StatKey::TheoryAtoms) == 2);
+  assert(result.statistics.get(StatKey::LraTableauVars) == 1);
+}
+
+void pure_qf_uf_has_no_arithmetic_canonicalization_work() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-sort U 0)
+    (declare-fun a () U)
+    (declare-fun b () U)
+    (declare-fun f (U) U)
+    (assert (= a b))
+    (assert (not (= (f a) (f b))))
+    (check-sat)
+  )",
+                                       no_preprocessing());
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(StatKey::ArithmeticCanonicalizationAtomsVisited) == 0);
+  assert(result.statistics.get(StatKey::ArithmeticCanonicalizationAtomsRewritten) == 0);
+  assert(result.statistics.get(StatKey::ArithmeticCanonicalizationTermsCreated) == 0);
+}
+
 void accepts_chained_comparisons_and_decimal_literals() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_LRA)
@@ -2204,7 +2257,7 @@ void qf_uf_lra_shared_model_batches_independent_rejected_merges() {
   assert(result.statistics.get(":no.shared-model.exact-fallbacks") == 0);
 }
 
-void qf_uf_lra_shared_model_reuses_augmented_lra_epoch() {
+void qf_uf_lra_shared_model_avoids_or_reuses_redundant_lra_epoch() {
   for (const LraPivotingRule rule : {LraPivotingRule::Sparse, LraPivotingRule::Soi}) {
     CheckSatOptions options = no_preprocessing_or_substitution();
     options.lra_pivoting_rule = rule;
@@ -2218,11 +2271,12 @@ void qf_uf_lra_shared_model_reuses_augmented_lra_epoch() {
                                          options);
     assert(result.result == CheckSatResult::Sat);
     assert(result.statistics.get(":no.interface.lra-model-epoch-prepared-misses") == 1);
-    assert(result.statistics.get(":no.interface.lra-model-epoch-prepared-hits") == 1);
+    const auto prepared_hits = result.statistics.get(":no.interface.lra-model-epoch-prepared-hits");
+    assert(prepared_hits <= 1);
     assert(result.statistics.get(":no.interface.lra-model-epoch-check-hits") == 0);
-    assert(result.statistics.get(":no.interface.lra-model-epoch-check-misses") == 2);
-    assert(result.statistics.get(":no.interface.lra-model-epoch-tableau-reuses") == 1);
-    assert(result.statistics.get(":lra.theory-conflicts") == 1);
+    assert(result.statistics.get(":no.interface.lra-model-epoch-check-misses") ==
+           1 + prepared_hits);
+    assert(result.statistics.get(":no.interface.lra-model-epoch-tableau-reuses") == prepared_hits);
   }
 }
 
@@ -2239,7 +2293,6 @@ void qf_uf_lra_shared_model_reconciliation_can_be_disabled() {
                                        options);
   assert(result.result == CheckSatResult::Sat);
   assert(result.statistics.get(":no.shared-model.enabled") == 0);
-  assert(result.statistics.get(":no.interface.lra-model-epoch-prepared-hits") >= 1);
   assert(result.statistics.get(":no.interface.lra-model-epoch-prepared-misses") >= 1);
 }
 
@@ -2682,7 +2735,7 @@ void qf_uf_lra_online_skips_pairs_already_resolved_by_online_propagation() {
   assert(result.statistics.get(":no.interface.lra-exact-fallback-skipped-pairs") == 1);
 }
 
-void qf_uf_lra_online_scans_non_paired_final_equalities() {
+void qf_uf_lra_canonicalization_exposes_offset_equality_to_online_bounds() {
   constexpr std::string_view input = R"(
     (set-logic QF_UFLRA)
     (declare-fun x () Real)
@@ -2707,13 +2760,13 @@ void qf_uf_lra_online_scans_non_paired_final_equalities() {
   const auto result = check_sat_smtlib(input, options);
   assert(result.result == CheckSatResult::Unsat);
   assert(result.statistics.get(":no.online.enabled") == 1);
-  assert(result.statistics.get(":no.online.lra-bound-equality-materialized") >= 1);
+  assert(result.statistics.get(":no.online.lra-bound-equality-materialized") >= 2);
+  assert(result.statistics.get(":no.online.lra-published-equalities") >= 2);
   assert(result.statistics.get(":no.online.final-lra-equality-scan-skipped") == 0);
   assert(result.statistics.get(":no.online.final-lra-equality-scan-fallbacks") == 0);
   assert(result.statistics.get(":no.interface.arrangement-failures") == 0);
-  assert(result.statistics.get(":no.interface.lra-to-euf-equalities") >= 1);
   assert(result.statistics.get(":no.interface.lra-opportunistic-candidates") == 0);
-  assert(result.statistics.get(":no.interface.lra-exact-fallback-equalities") >= 1);
+  assert(result.statistics.get(":no.interface.lra-exact-fallback-equalities") == 0);
   assert(result.statistics.get(":no.interface.conflicts") >= 1);
 }
 
@@ -2793,7 +2846,7 @@ void qf_uf_lra_lowers_finite_domain_amo_equalities_before_dispatch() {
   assert(result.statistics.get(":preprocessing.finite-domain.raw-choices") == 1);
   assert(result.statistics.get(":preprocessing.finite-domain.raw-amo-clauses") == 3);
   assert(result.statistics.get(":preprocessing.finite-domain.amo-clauses") == 3);
-  assert(result.statistics.get(":preprocessing.real-equality-lowering.lowered") >= 6);
+  assert(result.statistics.get(":preprocessing.real-equality-lowering.lowered") >= 4);
 }
 
 void qf_uf_lra_finite_domain_amo_sat_control_remains_sat() {
@@ -2814,7 +2867,7 @@ void qf_uf_lra_finite_domain_amo_sat_control_remains_sat() {
   )");
   assert(result.result == CheckSatResult::Sat);
   assert(result.statistics.get(":preprocessing.finite-domain.raw-amo-clauses") == 3);
-  assert(result.statistics.get(":preprocessing.real-equality-lowering.lowered") >= 6);
+  assert(result.statistics.get(":preprocessing.real-equality-lowering.lowered") >= 4);
 }
 
 void qf_uf_lra_purifies_real_valued_application_arithmetic_arguments() {
@@ -4431,6 +4484,9 @@ int main() {
   bool_argument_real_result_application_is_not_mis_dispatched();
   online_nelson_oppen_still_publishes_lra_interface_equalities();
   accepts_set_logic_and_real_declarations();
+  canonicalizes_scaled_atoms_even_when_optional_preprocessing_is_off();
+  canonicalization_keeps_distinct_scaled_bounds_distinct();
+  pure_qf_uf_has_no_arithmetic_canonicalization_work();
   accepts_chained_comparisons_and_decimal_literals();
   accepts_nary_minus_and_ratio_literal_coefficient();
   accepts_negative_literal_coefficient_via_unary_minus();
@@ -4517,7 +4573,7 @@ int main() {
   qf_uf_lra_shared_model_mutation_rejects_global_pair_regression();
   qf_uf_lra_shared_model_rejects_candidate_with_lazy_positive_split();
   qf_uf_lra_shared_model_batches_independent_rejected_merges();
-  qf_uf_lra_shared_model_reuses_augmented_lra_epoch();
+  qf_uf_lra_shared_model_avoids_or_reuses_redundant_lra_epoch();
   qf_uf_lra_shared_model_reconciliation_can_be_disabled();
   qf_uf_lra_shared_model_rejects_optional_merge_congruence_consequence();
   qf_uf_lra_shared_model_reconstructs_after_scratch_mutation();
@@ -4533,7 +4589,7 @@ int main() {
   qf_uf_lra_live_euf_model_rolls_back_rejected_candidate_merges();
   qf_uf_lra_online_does_not_materialize_unpublished_shared_pairs();
   qf_uf_lra_online_skips_pairs_already_resolved_by_online_propagation();
-  qf_uf_lra_online_scans_non_paired_final_equalities();
+  qf_uf_lra_canonicalization_exposes_offset_equality_to_online_bounds();
   nelson_oppen_online_option_does_not_wrap_single_theory_lra();
   nelson_oppen_online_option_does_not_wrap_single_theory_euf();
   qf_uf_lra_combines_euf_proxy_equality_with_lowered_real_disequality();

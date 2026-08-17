@@ -253,11 +253,11 @@ atoms over a single variable are asserted directly as bounds on it.
   bound orientation. The resulting exact sorted coefficient vector is the
   `PolynomialKey`; relation, strictness and scaled right-hand side are not in
   the key because they are bounds on the shared polynomial value.
-- This is not a GCD rewrite of the core atom. Leading-coefficient division and
-  primitive-integer GCD normalization choose different representatives but
-  identify the same rational scale classes: `2x+3y<=5` becomes
-  `x+3/2y<=5/2` in Primo rather than remaining `2x+3y<=5`. The original term
-  and SAT atom are not rewritten.
+- The mandatory early atom pass now performs the primitive-integer GCD rewrite
+  on the core predicate, so `2x+3y<=5` and `4x+6y<=10` hash-cons to the same
+  SAT atom. `PreparedLraTheory` still applies leading-coefficient division as a
+  defensive boundary, representing that direction internally as
+  `x+3/2y<=5/2`. Both forms identify the same rational scale class.
 - Look up each compound key in `slack_by_polynomial`. The first occurrence
   allocates a slack and defining row; every later proportional atom reuses that
   slack as its `PreparedAtom::bound_var`. This lookup, rather than a comparison
@@ -291,10 +291,10 @@ call. Thus `x + y <= 5` and `2x + 2y <= 10` both become `s <= 5`, while
 same `bound_var` across all theory calls and backtracking states. A currently
 weaker asserted upper bound is ignored by the tableau, but cannot be removed
 from the whole formula because another Boolean assignment may assert it alone
-or negate it. Exact equivalent atoms also remain distinct SAT atoms today;
-interning their canonical semantic identity is a separate preprocessing
-opportunity. Scale-invariant matching had been listed as a separate future
-item; it came for free here because it is the same canonicalization.
+or negate it. Since 2026-08-17, exact equivalent source atoms are interned by
+the mandatory primitive-integer canonicalization pass before clausification;
+distinct right-hand sides remain distinct SAT atoms. See
+[](papers/lra-atom-canonicalization.md).
 
 **Also fixes**, without extra work, the quirk item 7 documented and worked
 around: "`single_variable_slack` only registers a bare variable's

@@ -2,6 +2,7 @@
 #undef NDEBUG
 #endif
 
+#include <array>
 #include <cassert>
 #include <stdexcept>
 #include <string>
@@ -252,6 +253,23 @@ void arithmetic_terms_are_simplified() {
   assert(terms.mk_lt(x, x) == terms.mk_bool(false));
 }
 
+void rational_primitive_integer_scale_clears_denominators_and_content() {
+  const std::array integer_coefficients{Rational(6), Rational(-9), Rational(0)};
+  assert(Rational::primitive_integer_scale(integer_coefficients) == Rational(1, 3));
+
+  const std::array rational_coefficients{Rational(2, 3), Rational(-4, 5)};
+  assert(Rational::primitive_integer_scale(rational_coefficients) == Rational(15, 2));
+  assert(rational_coefficients[0] * Rational::primitive_integer_scale(rational_coefficients) ==
+         Rational(5));
+  assert(rational_coefficients[1] * Rational::primitive_integer_scale(rational_coefficients) ==
+         Rational(-6));
+
+  expect_invalid_argument([] {
+    const std::array zeros{Rational(0), Rational(0)};
+    (void)Rational::primitive_integer_scale(zeros);
+  });
+}
+
 void statistics_preserve_fixed_and_dynamic_counters() {
   Statistics statistics;
   statistics.increment(StatKey::AssertionsInitial);
@@ -279,6 +297,7 @@ int main() {
   associative_boolean_terms_preserve_shared_dag_nodes();
   arithmetic_terms_are_hash_consed_and_checked();
   arithmetic_terms_are_simplified();
+  rational_primitive_integer_scale_clears_denominators_and_content();
   statistics_preserve_fixed_and_dynamic_counters();
   return 0;
 }

@@ -9,6 +9,33 @@
 
 namespace primo::smt {
 
+enum class ArithmeticAtomCanonicalizationScope {
+  All,
+  ComparisonsOnly,
+};
+
+struct ArithmeticAtomCanonicalizationResult {
+  std::vector<core::TermId> assertions;
+  std::size_t atoms_visited = 0;
+  std::size_t atoms_rewritten = 0;
+  std::size_t comparisons = 0;
+  std::size_t equalities = 0;
+  std::size_t constant_folds = 0;
+  std::size_t orientation_reversals = 0;
+  std::size_t aliases_merged = 0;
+  std::size_t duplicate_assertions_removed = 0;
+  std::size_t terms_created = 0;
+};
+
+// Monniaux, CAV 2009, Section 2.1: scales Real linear predicates to primitive
+// integer coefficients with deterministic sign and term order, then rebuilds
+// through TermManager so semantic aliases hash-cons before clausification.
+// The comparison-only scope is used after mixed purification, where Real-sorted
+// Equality nodes define EUF applications and must remain owned by EUF.
+ArithmeticAtomCanonicalizationResult canonicalize_arithmetic_atoms(
+    core::TermManager& terms, const std::vector<core::TermId>& assertions,
+    ArithmeticAtomCanonicalizationScope scope = ArithmeticAtomCanonicalizationScope::All);
+
 enum class BooleanImpliesRewriteMode {
   Off,
   Clause,

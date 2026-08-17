@@ -81,6 +81,18 @@ SHARED_REAL_LRA_ATOMS = [
     "(< z 5)",
 ]
 
+SCALED_LRA_ATOMS = [
+    "(<= (+ (* 2 x) (* 2 y)) (* 2 z))",
+    "(<= (+ (* 4 x) (* 4 y)) (* 4 z))",
+    "(< (* (- 3) x) (* (- 3) y))",
+    "(< (* (/ 2 3) x) (* (/ 4 5) y))",
+    "(= (+ (* 2 x) (* 2 y)) (* 2 z))",
+    "(= (* 6 z) (+ (* 6 x) (* 6 y)))",
+    "(<= (+ x (* (- 1) x)) 0)",
+    "(<= (* 2 x) 2)",
+    "(<= (* 4 x) 8)",
+]
+
 
 NONCONSTANT_REAL_EUF_ATOMS = [
     "(p (+ x 1))",
@@ -211,6 +223,37 @@ def generate_shared_real_case(rng: random.Random, index: int) -> str:
 (declare-fun z () Real)
 (declare-fun p (Real) Bool)
 (declare-fun q (Real Real) Bool)
+{body}
+(check-sat)
+"""
+
+
+def generate_scaled_arithmetic_case(rng: random.Random, index: int) -> str:
+    atoms = rng.sample(SCALED_LRA_ATOMS, 3 + rng.randrange(4))
+    assertions = [atom_with_polarity(rng, atom) for atom in atoms]
+    assertions.extend([atom_with_polarity(rng, "(p x)"), atom_with_polarity(rng, "(p y)")])
+
+    # Equivalent positive scales must remain one Boolean atom even under
+    # opposite polarity. Offset equality exercises cancellation before the
+    # Nelson-Oppen paired-bound producer.
+    if index % 5 == 0:
+        assertions.extend(
+            [
+                "(<= (+ (* 2 x) (* 2 y)) (* 2 z))",
+                "(not (<= (+ (* 4 x) (* 4 y)) (* 4 z)))",
+            ]
+        )
+    if index % 7 == 0:
+        assertions.extend(["(= (+ x 1) (+ y 1))", "(p x)", "(not (p y))"])
+    if index % 11 == 0:
+        assertions.extend(["(<= (* (- 2) x) (* (- 2) y))", "(< y x)"])
+
+    body = "\n".join(f"  (assert {assertion})" for assertion in assertions)
+    return f"""(set-logic QF_UFLRA)
+(declare-fun x () Real)
+(declare-fun y () Real)
+(declare-fun z () Real)
+(declare-fun p (Real) Bool)
 {body}
 (check-sat)
 """
@@ -402,7 +445,9 @@ def generate_case(rng: random.Random, index: int, shape: str) -> str:
         return generate_bool_argument_case(rng, index)
     if shape == "recursive-bool":
         return generate_recursive_bool_case(rng, index)
-    choice = rng.randrange(6)
+    if shape == "scaled-arithmetic":
+        return generate_scaled_arithmetic_case(rng, index)
+    choice = rng.randrange(7)
     if choice == 0:
         return generate_separable_case(rng, index)
     if choice == 1:
@@ -413,7 +458,9 @@ def generate_case(rng: random.Random, index: int, shape: str) -> str:
         return generate_nonconstant_real_case(rng, index)
     if choice == 4:
         return generate_bool_argument_case(rng, index)
-    return generate_recursive_bool_case(rng, index)
+    if choice == 5:
+        return generate_recursive_bool_case(rng, index)
+    return generate_scaled_arithmetic_case(rng, index)
 
 
 def run_solver(command: list[str], timeout: float) -> tuple[str, int]:
@@ -478,6 +525,7 @@ def main() -> int:
             "nonconstant-real",
             "bool-arguments",
             "recursive-bool",
+            "scaled-arithmetic",
             "mixed",
         ],
         default="separable",

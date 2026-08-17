@@ -1,8 +1,11 @@
 #include "util/rational.hpp"
 
+#include <gmp.h>
+
 #include <cassert>
 #include <cctype>
 #include <functional>
+#include <span>
 #include <stdexcept>
 #include <utility>
 
@@ -149,6 +152,56 @@ Rational& Rational::operator=(const Rational& other) {
 
 std::uint64_t Rational::promotion_count() { return g_promotions; }
 std::uint64_t Rational::big_operation_count() { return g_big_operations; }
+
+Rational Rational::primitive_integer_scale(std::span<const Rational> values) {
+  bool saw_nonzero = false;
+  bool all_small_integers = true;
+  std::uint64_t small_gcd = 0;
+  for (const Rational& value : values) {
+    if (value.is_zero()) {
+      continue;
+    }
+    saw_nonzero = true;
+    if (!value.is_small() || value.den_ != 1) {
+      all_small_integers = false;
+      continue;
+    }
+    small_gcd = gcd_u64(small_gcd, magnitude(value.num_));
+  }
+  if (!saw_nonzero) {
+    throw std::invalid_argument("primitive integer scale needs a nonzero coefficient");
+  }
+  if (all_small_integers) {
+    return Rational(1, static_cast<std::int64_t>(small_gcd));
+  }
+
+  mpz_class denominator_lcm = 1;
+  for (const Rational& value : values) {
+    if (value.is_zero()) {
+      continue;
+    }
+    const mpq_class rational = value.as_mpq();
+    mpz_lcm(denominator_lcm.get_mpz_t(), denominator_lcm.get_mpz_t(),
+            mpq_denref(rational.get_mpq_t()));
+  }
+
+  mpz_class integer_gcd = 0;
+  for (const Rational& value : values) {
+    if (value.is_zero()) {
+      continue;
+    }
+    const mpq_class rational = value.as_mpq();
+    mpz_class integer;
+    mpz_set(integer.get_mpz_t(), mpq_numref(rational.get_mpq_t()));
+    mpz_class denominator;
+    mpz_set(denominator.get_mpz_t(), mpq_denref(rational.get_mpq_t()));
+    integer *= denominator_lcm / denominator;
+    mpz_gcd(integer_gcd.get_mpz_t(), integer_gcd.get_mpz_t(), integer.get_mpz_t());
+  }
+  mpq_class scale(denominator_lcm, integer_gcd);
+  scale.canonicalize();
+  return from_mpq(std::move(scale));
+}
 
 // One of the two choke points establishing the canonical-form invariant (see
 // the class comment). Takes an *already reduced* pair, normalizes its sign, and

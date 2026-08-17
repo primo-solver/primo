@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 
@@ -113,6 +114,11 @@ class Rational {
 
   bool is_zero() const;
   int sign() const;  // -1, 0, or 1.
+
+  // Positive exact factor that scales the nonzero input values to coprime
+  // integers. Monniaux, CAV 2009, Section 2.1 uses this normalization for
+  // linear-arithmetic left-hand sides. Throws when every value is zero.
+  static Rational primitive_integer_scale(std::span<const Rational> values);
 
   std::string to_string() const;
 

@@ -59,6 +59,7 @@ parts:
       - file: papers/nelson-oppen-closure-methods
       - file: papers/model-based-theory-combination
       - file: papers/fast-linear-arithmetic-dpllt
+      - file: papers/lra-atom-canonicalization
       - file: papers/griggio-mathsat-thesis
       - file: papers/monotone-variable-elimination
       - file: papers/difference-constraint-propagation

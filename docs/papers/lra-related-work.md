@@ -110,12 +110,16 @@ design, even though they are not what the paper is about:
   side that is *not a variable*, a new variable is introduced". The second
   half is the source for item H1a, the first half for item H1b (the
   long-deferred scale-invariant polynomial matching, roadmap item 3).
-  **Both implemented 2026-07-28, unconditional.** H1a removed 36-95% of
+  **Tableau-level scale sharing and direct bounds were implemented 2026-07-28;
+  pre-clausification primitive-integer atom canonicalization was added
+  2026-08-17. All are unconditional.** H1a removed 36-95% of
   tableau rows on the lagging families -- Primo used to introduce a slack for
   *every* distinct polynomial, including bare variables -- and H1b collapsed
-  proportional polynomials onto one slack. *Deviation:* our canonical form
-  scales to a leading coefficient of 1 rather than to coprime integers, which
-  is the same equivalence class.
+  proportional polynomials onto one slack. The early core form now follows the
+  paper's coprime-integer convention, while `PreparedLraTheory` defensively
+  rescales to a leading coefficient of 1. The two representations denote the
+  same rational direction. The implementation checklist and limitations are in
+  [](lra-atom-canonicalization.md).
 - **Page 8, sparsity-ordered pivoting.** "We sort the variables ... according
   to the number of nonzero coefficients in the corresponding equation ... the
   pivoting steps are faster when the equation defining the basic variable to

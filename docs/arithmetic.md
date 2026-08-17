@@ -41,8 +41,12 @@ Here `t1` and `t2` are Real-sorted linear terms built from rational constants,
 Real constants, addition, and multiplication or division by a rational
 constant. The frontend canonicalizes `t1 >= t2` to `t2 <= t1` and `t1 > t2`
 to `t2 < t1`; chainable comparisons become conjunctions of adjacent binary
-atoms. Nonlinear multiplication and division by a nonliteral term are outside
-the accepted fragment. In QF_UFLRA, mixed purification first replaces each
+atoms. Immediately after frontend construction, the mandatory arithmetic-atom
+pass scales every linear direction to primitive integer coefficients and a
+deterministic sign. Thus proportional source predicates are hash-consed before
+clausification, even with `--preprocessing-mode=off`. Nonlinear multiplication
+and division by a nonliteral term are outside the accepted fragment. In
+QF_UFLRA, mixed purification first replaces each
 Real-valued UF application occurring in arithmetic with a fresh Real proxy, so
 the prepared LRA atom contains no UF application node.
 
@@ -549,18 +553,16 @@ guarded rewrite.
      `slack_by_polynomial`. Reuse the existing slack when found; on the first
      occurrence allocate one slack, add its defining row, and insert the key.
 
-  This is **not** a global GCD rewrite of the SMT term. The core term and its
-  SAT atom remain unchanged, and `PreparedLraTheory` does not clear
-  denominators and reduce the coefficient vector to primitive integers.
-  Dividing by the first nonzero coefficient nevertheless gives a unique
-  representative of the same one-dimensional rational scale class. For
-  example, both `2x + 3y <= 5` and `4x + 6y <= 10` become
-  `x + 3/2 y <= 5/2`; primitive-integer GCD normalization would instead keep
-  `2x + 3y <= 5`. The two conventions identify exactly the same proportional
-  polynomials over the rationals, but their tableau coefficients differ.
-  Primo's leading-coefficient convention guarantees one unit coefficient and
-  avoids an LCM/GCD pass; whether primitive-integer rows would be faster is a
-  separate representation question, not a missing sharing case.
+  Since 2026-08-17 this is also preceded by a global GCD rewrite of the core
+  arithmetic atom. The mandatory pre-clausification pass clears coefficient
+  denominators, divides by integer content, fixes the sign, and rebuilds the
+  predicate through `TermManager`. `PreparedLraTheory` still divides by the
+  first nonzero coefficient as a defensive theory-boundary invariant. For
+  example, the core pass maps both `2x + 3y <= 5` and
+  `4x + 6y <= 10` to `2x + 3y <= 5`; theory preparation may represent that
+  same direction internally as `x + 3/2 y <= 5/2`. The conventions identify
+  the same rational scale class, while the early primitive-integer form also
+  lets Boolean preprocessing and clausification share the atom.
 
   Because the map is populated while walking the complete theory-atom list,
   this lookup finds proportional forms regardless of which SAT assignment
@@ -574,22 +576,23 @@ guarded rewrite.
   | `2x + 2y <= 12` | `s <= 6` (a distinct, weaker upper bound) |
   | `-x - y <= -5` | `s >= 5` (the opposite orientation) |
 
-  The first two bounds are duplicates at the tableau level, and
-  `LraTableau::assert_upper` ignores the second one once either is installed.
+  The first two source bounds become the same hash-consed core atom before
+  clausification. At the tableau level `LraTableau::assert_upper` therefore
+  sees only one SAT atom for that semantic predicate.
   The `s <= 6` atom cannot be discarded from the prepared problem, however:
   under arbitrary Boolean structure it may be assigned without `s <= 5`, or
   assigned false and therefore assert `s > 6`. What is shared globally is the
-  structural slack; each SAT atom still has its own relation, scaled right-hand
-  side, polarity, and explanation reason. Exact equivalent atoms also remain
-  distinct SAT atoms today; canonical SAT-atom interning would be a separate
-  preprocessing optimization.
+  structural slack; each *distinct* predicate still has its own relation,
+  scaled right-hand side, polarity, and explanation reason. In particular,
+  `s <= 5` and `s <= 6` cannot be merged.
 
   The scale factor is divided out of the atom's right-hand side and a negative
   factor reverses the relation, reusing H1a's
   `asserts_lower_when_true` flag and its single interpretation point. Monniaux
-  (CAV 2009, Section 2.1) describes the same scale normalization goal; his form
-  scales to coprime integers, ours to a leading coefficient of 1, which is the
-  same equivalence class but not the same coefficient representation.
+  (CAV 2009, Section 2.1) is the basis for the early coprime-integer form.
+  Prepared theory state retains the leading-coefficient-one form as a defensive
+  internal representation. See
+  [](papers/lra-atom-canonicalization.md) for the ownership and invariants.
   - Row counts fall further on top of H1a: ecoliFBA 1,394 -> 695, TM/p6
     67 -> 38, sc-17 723 -> 433, uart-17 920 -> 511, clock_synchro 259 -> 179,
     tta_startup 500 -> 284, and DTP-Scheduling 3,932 -> 2,882 -- the first
@@ -975,9 +978,10 @@ guarded rewrite.
   and `2x<=10` still get separate slacks~~ -- **fixed 2026-07-28**. Item H1a
   made both single-variable forms direct bounds on `x`, with no slack at all;
   item H1b made compound `PolynomialKey`s scale-canonical, so `x+y<=5` and
-  `2x+2y<=10` share the one slack for `x+y`. The source atoms remain separate
-  SAT atoms; only their prepared tableau variable is shared. See the
-  `PolynomialKey` and `PreparedLraTheory` comments in `check_sat.cpp`.
+  `2x+2y<=10` share the one slack for `x+y`. Since 2026-08-17, the early
+  primitive-integer atom pass also maps equivalent source predicates to one
+  hash-consed SAT atom; `PreparedLraTheory` retains scale-canonical keys as a
+  defensive boundary. See [](papers/lra-atom-canonicalization.md).
 - **Propagation only relates atoms sharing the exact same slack**, not
   Dutertre & de Moura's stronger row-based/interval bound propagation
   across *different* variables via a basic row's children. Also

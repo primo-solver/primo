@@ -56,6 +56,17 @@ scripts and result artifacts. Current counters include:
 - `:preprocessing.adaptive-passes`;
 - `:preprocessing.term-size.initial`;
 - `:preprocessing.term-size.final`;
+- `:preprocessing.arithmetic-canonicalization.atoms-visited`;
+- `:preprocessing.arithmetic-canonicalization.atoms-rewritten`;
+- `:preprocessing.arithmetic-canonicalization.comparisons`;
+- `:preprocessing.arithmetic-canonicalization.equalities`;
+- `:preprocessing.arithmetic-canonicalization.constant-folds`;
+- `:preprocessing.arithmetic-canonicalization.orientation-reversals`;
+- `:preprocessing.arithmetic-canonicalization.aliases-merged`;
+- `:preprocessing.arithmetic-canonicalization.duplicate-assertions-removed`;
+- `:preprocessing.arithmetic-canonicalization.terms-created`;
+- `:preprocessing.arithmetic-canonicalization.catchup-rewrites`;
+- `:preprocessing.arithmetic-canonicalization.post-purification-rewrites`;
 - `:preprocessing.boolean-flatten.attempts`;
 - `:preprocessing.boolean-flatten.accepted`;
 - `:preprocessing.boolean-flatten.threshold-stops`;

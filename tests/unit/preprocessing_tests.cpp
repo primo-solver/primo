@@ -77,6 +77,102 @@ struct RealFixture {
   primo::core::TermId rational(std::int64_t value) { return terms.mk_rational(value); }
 };
 
+void arithmetic_atom_canonicalization_merges_scaled_aliases() {
+  RealFixture fixture;
+  const primo::core::TermId x = fixture.constant(fixture.x);
+  const primo::core::TermId y = fixture.constant(fixture.y);
+  const primo::core::TermId z = fixture.constant(fixture.z);
+  const auto scaled_atom = [&](std::int64_t factor) {
+    return fixture.terms.mk_le(fixture.terms.mk_plus({fixture.terms.mk_times(factor, x),
+                                                      fixture.terms.mk_times(factor, y)}),
+                               fixture.terms.mk_times(factor, z));
+  };
+  const primo::core::TermId twice = scaled_atom(2);
+  const primo::core::TermId four_times = scaled_atom(4);
+
+  const primo::smt::ArithmeticAtomCanonicalizationResult result =
+      primo::smt::canonicalize_arithmetic_atoms(fixture.terms, {twice, four_times});
+  check(result.atoms_visited == 2);
+  check(result.atoms_rewritten == 2);
+  check(result.comparisons == 2);
+  check(result.equalities == 0);
+  check(result.aliases_merged == 1);
+  check(result.duplicate_assertions_removed == 1);
+  check(result.assertions.size() == 1);
+
+  const primo::smt::ArithmeticAtomCanonicalizationResult original_duplicates =
+      primo::smt::canonicalize_arithmetic_atoms(fixture.terms, {twice, twice});
+  check(original_duplicates.assertions.size() == 2);
+  check(original_duplicates.duplicate_assertions_removed == 0);
+
+  const primo::smt::ArithmeticAtomCanonicalizationResult repeated =
+      primo::smt::canonicalize_arithmetic_atoms(fixture.terms, result.assertions);
+  check(repeated.assertions == result.assertions);
+  check(repeated.atoms_rewritten == 0);
+}
+
+void arithmetic_atom_canonicalization_handles_sign_strictness_and_rationals() {
+  RealFixture fixture;
+  const primo::core::TermId x = fixture.constant(fixture.x);
+  const primo::core::TermId y = fixture.constant(fixture.y);
+  const primo::core::TermId negative =
+      fixture.terms.mk_le(fixture.terms.mk_times(-2, x), fixture.terms.mk_times(-2, y));
+  const primo::core::TermId rational =
+      fixture.terms.mk_lt(fixture.terms.mk_times(primo::util::Rational(2, 3), x),
+                          fixture.terms.mk_times(primo::util::Rational(4, 5), y));
+
+  const primo::smt::ArithmeticAtomCanonicalizationResult result =
+      primo::smt::canonicalize_arithmetic_atoms(fixture.terms, {negative, rational});
+  check(result.orientation_reversals == 1);
+  check(result.assertions.at(0) == fixture.terms.mk_le(y, x));
+  check(result.assertions.at(1) ==
+        fixture.terms.mk_lt(fixture.terms.mk_times(5, x), fixture.terms.mk_times(6, y)));
+}
+
+void arithmetic_atom_canonicalization_orients_equalities_and_folds_constants() {
+  RealFixture fixture;
+  const primo::core::TermId x = fixture.constant(fixture.x);
+  const primo::core::TermId y = fixture.constant(fixture.y);
+  const primo::core::TermId lhs =
+      fixture.terms.mk_plus({fixture.terms.mk_times(2, x), fixture.terms.mk_times(2, y)});
+  const primo::core::TermId rhs = fixture.terms.mk_rational(6);
+  const primo::core::TermId equality = fixture.terms.mk_eq(lhs, rhs);
+  const primo::core::TermId swapped = fixture.terms.mk_eq(rhs, lhs);
+  const primo::core::TermId cancellation = fixture.terms.mk_le(
+      fixture.terms.mk_plus({x, fixture.terms.mk_times(-1, x)}), fixture.terms.mk_rational(0));
+
+  const primo::smt::ArithmeticAtomCanonicalizationResult result =
+      primo::smt::canonicalize_arithmetic_atoms(fixture.terms, {equality, swapped, cancellation});
+  check(result.equalities == 2);
+  check(result.constant_folds == 1);
+  check(result.aliases_merged == 1);
+  check(result.duplicate_assertions_removed == 1);
+  check(result.assertions.size() == 2);
+  check(result.assertions.front() ==
+        fixture.terms.mk_eq(fixture.terms.mk_plus({x, y}), fixture.terms.mk_rational(3)));
+  check(result.assertions.back() == fixture.terms.mk_bool(true));
+}
+
+void arithmetic_atom_canonicalization_rewrites_nested_atoms_and_preserves_euf_equalities() {
+  RealFixture fixture;
+  const primo::core::TermId x = fixture.constant(fixture.x);
+  const primo::core::TermId y = fixture.constant(fixture.y);
+  const primo::core::TermId scaled =
+      fixture.terms.mk_le(fixture.terms.mk_times(3, x), fixture.terms.mk_times(3, y));
+  const primo::core::TermId nested = fixture.terms.mk_not(fixture.terms.mk_not(scaled));
+  const primo::core::TermId real_equality =
+      fixture.terms.mk_eq(fixture.terms.mk_times(2, x), fixture.terms.mk_times(2, y));
+
+  const primo::smt::ArithmeticAtomCanonicalizationResult comparisons_only =
+      primo::smt::canonicalize_arithmetic_atoms(
+          fixture.terms, {nested, real_equality},
+          primo::smt::ArithmeticAtomCanonicalizationScope::ComparisonsOnly);
+  check(comparisons_only.assertions.at(0) == fixture.terms.mk_le(x, y));
+  check(comparisons_only.assertions.at(1) == real_equality);
+  check(comparisons_only.comparisons == 1);
+  check(comparisons_only.equalities == 0);
+}
+
 void bounded_boolean_flattening_preserves_threshold_and_handles_deep_dags() {
   Fixture fixture;
   const primo::core::TermId a = fixture.constant(fixture.a);
@@ -1509,6 +1605,10 @@ void finite_domain_evaluator_simplifies_table_tautology() {
 }  // namespace
 
 int main() {
+  arithmetic_atom_canonicalization_merges_scaled_aliases();
+  arithmetic_atom_canonicalization_handles_sign_strictness_and_rationals();
+  arithmetic_atom_canonicalization_orients_equalities_and_folds_constants();
+  arithmetic_atom_canonicalization_rewrites_nested_atoms_and_preserves_euf_equalities();
   bounded_boolean_flattening_preserves_threshold_and_handles_deep_dags();
   implicit_conjunction_analysis_ignores_assertion_packaging();
   implicit_conjunction_analysis_recognizes_clause_implications();

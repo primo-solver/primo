@@ -27113,6 +27113,36 @@
       "artifacts": "local-only:fuzz-results/preprocessing-option-names-68313a8/summary.csv",
       "evidence_status": "local-complete-current",
       "outcome": "Accepted. The rename preserves default solver behavior while exposing --preprocessing-mode and --auto-preprocess-selector as canonical names; the former QF_UF-prefixed spellings remain warning-producing deprecated aliases."
+    },
+    {
+      "id": "2026-08-17-lra-atom-canonicalization-local-smoke",
+      "started_at": "2026-08-17",
+      "recorded_at": "2026-08-17",
+      "kind": "fuzz-smoke",
+      "scope": "Focused differential smoke test for primitive-integer LRA atom canonicalization, sign reversal, rational scales, equality cancellation, and shared-Real EUF use",
+      "commit": "816482e plus uncommitted lra-atom-canonicalization working tree",
+      "branch": "lra-atom-canonicalization",
+      "environment": {
+        "type": "local",
+        "binary": "Debug Primo with CaDiCaL 3.0.0",
+        "generator": "scripts/qf_uflra_smoke_fuzz.py --shape scaled-arithmetic",
+        "reference": "contrib/local/bin/z3",
+        "seed": 2026081701,
+        "count": 100,
+        "timeout": "5 seconds per solver invocation"
+      },
+      "commands": {
+        "rejected_generator_check": "python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref z3 --count 100 --seed 2026081701 --timeout 5 --shape scaled-arithmetic --out fuzz-results/qf_uflra-scaled-arithmetic-local-2026081701",
+        "accepted_smoke": "python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref contrib/local/bin/z3 --count 100 --seed 2026081701 --timeout 5 --shape scaled-arithmetic --out fuzz-results/qf_uflra-scaled-arithmetic-local-2026081701-fixed"
+      },
+      "results": {
+        "accepted_smoke": "100/100 PASS with exact Primo/Z3 agreement",
+        "failures": "Zero wrong answers, crashes, timeouts, unsupported inputs, unknown outputs, or reference disagreements in the corrected run",
+        "rejected_generator_check": "Rejected before use as evidence: 70 malformed negative-numeral templates were unsupported and the unqualified local z3 command was missing. The templates were corrected to SMT-LIB unary minus and the repository-local reference path was used."
+      },
+      "artifacts": "local-only:fuzz-results/qf_uflra-scaled-arithmetic-local-2026081701-fixed/summary.csv; rejected local-only:fuzz-results/qf_uflra-scaled-arithmetic-local-2026081701/summary.csv",
+      "evidence_status": "local-smoke-current",
+      "outcome": "Accepted as a focused smoke gate only. A fresh exact-commit SLURM merge gate remains required before completion."
     }
   ]
 }

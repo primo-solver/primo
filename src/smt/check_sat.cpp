@@ -92,6 +92,10 @@ constexpr util::StatKey kStatSolvedConstantRejectedCycles =
     util::StatKey::SolvedConstantRejectedCycles;
 constexpr util::StatKey kStatSolvedConstantRejectedBlowups =
     util::StatKey::SolvedConstantRejectedBlowups;
+constexpr util::StatKey kStatArithmeticCanonicalizationCatchupRewrites =
+    util::StatKey::ArithmeticCanonicalizationCatchupRewrites;
+constexpr util::StatKey kStatArithmeticCanonicalizationPostPurificationRewrites =
+    util::StatKey::ArithmeticCanonicalizationPostPurificationRewrites;
 constexpr util::StatKey kStatRealEqualityLowered = util::StatKey::RealEqualityLowered;
 constexpr util::StatKey kStatMonotoneEliminationCandidates =
     util::StatKey::MonotoneEliminationCandidates;
@@ -478,6 +482,24 @@ std::size_t reachable_term_count(const core::TermManager& terms,
     work.insert(work.end(), term.children.begin(), term.children.end());
   }
   return count;
+}
+
+void record_arithmetic_canonicalization(const ArithmeticAtomCanonicalizationResult& result,
+                                        util::Statistics& statistics) {
+  statistics.increment(util::StatKey::ArithmeticCanonicalizationAtomsVisited, result.atoms_visited);
+  statistics.increment(util::StatKey::ArithmeticCanonicalizationAtomsRewritten,
+                       result.atoms_rewritten);
+  statistics.increment(util::StatKey::ArithmeticCanonicalizationComparisons, result.comparisons);
+  statistics.increment(util::StatKey::ArithmeticCanonicalizationEqualities, result.equalities);
+  statistics.increment(util::StatKey::ArithmeticCanonicalizationConstantFolds,
+                       result.constant_folds);
+  statistics.increment(util::StatKey::ArithmeticCanonicalizationOrientationReversals,
+                       result.orientation_reversals);
+  statistics.increment(util::StatKey::ArithmeticCanonicalizationAliasesMerged,
+                       result.aliases_merged);
+  statistics.increment(util::StatKey::ArithmeticCanonicalizationDuplicateAssertionsRemoved,
+                       result.duplicate_assertions_removed);
+  statistics.increment(util::StatKey::ArithmeticCanonicalizationTermsCreated, result.terms_created);
 }
 
 void record_ackermann_cost_diagnostics(const core::TermManager& terms,
@@ -12044,6 +12066,12 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       options.produce_model = true;
     }
     const PhaseClock::time_point preprocessing_start = PhaseClock::now();
+    {
+      ArithmeticAtomCanonicalizationResult canonicalized =
+          canonicalize_arithmetic_atoms(frontend.terms(), assertions);
+      assertions = std::move(canonicalized.assertions);
+      record_arithmetic_canonicalization(canonicalized, statistics);
+    }
     const BooleanFlatteningResult boolean_flattening = flatten_associative_booleans(
         frontend.terms(), assertions, options.boolean_flatten_threshold);
     assertions = boolean_flattening.assertions;
@@ -12476,6 +12504,16 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
                            equality_definition_result.rejected_clause_limit);
     }
     {
+      // Preprocessing can create or rewrite arithmetic atoms after the
+      // mandatory frontend pass. Catch them before Real equality is lowered.
+      ArithmeticAtomCanonicalizationResult canonicalized =
+          canonicalize_arithmetic_atoms(frontend.terms(), assertions);
+      assertions = std::move(canonicalized.assertions);
+      record_arithmetic_canonicalization(canonicalized, statistics);
+      statistics.increment(kStatArithmeticCanonicalizationCatchupRewrites,
+                           canonicalized.atoms_rewritten);
+    }
+    {
       // This is the final equality-producing preprocessing boundary. Earlier
       // passes reason about genuine Equality nodes, and symmetry/finite-domain
       // passes above may add new ones. Lower the complete assertion set before
@@ -12520,6 +12558,16 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
                      purification.memoized_arithmetic_rewrites);
       statistics.set(":no.purification.memoized-euf-rewrites", purification.memoized_euf_rewrites);
       statistics.set(":no.purification.skipped-no-sites", purification.skipped_no_sites ? 1 : 0);
+      if (!purification.skipped_no_sites) {
+        // Purification introduces fresh arithmetic comparisons but also
+        // EUF-owned Real equalities. Only the former belong to this pass.
+        ArithmeticAtomCanonicalizationResult canonicalized = canonicalize_arithmetic_atoms(
+            frontend.terms(), assertions, ArithmeticAtomCanonicalizationScope::ComparisonsOnly);
+        assertions = std::move(canonicalized.assertions);
+        record_arithmetic_canonicalization(canonicalized, statistics);
+        statistics.increment(kStatArithmeticCanonicalizationPostPurificationRewrites,
+                             canonicalized.atoms_rewritten);
+      }
     }
     // Keep this normalization after theory preprocessing: it changes only
     // Boolean shape and should not alter which equality or arithmetic terms
