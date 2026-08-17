@@ -27311,6 +27311,35 @@
       "docs": "docs/arithmetic.md (Model construction for Boolean atoms in QF_LRA), docs/fuzz-coverage-qf-lra.md (A free-Boolean-mixed-with-arithmetic blind spot)",
       "followups": "Campaign-tier (>=3000 case) promotion and a Slurm run of scripts/qf_lra_boolean_arithmetic_fuzz.py are natural next steps but out of scope for this entry. Repointing slurm_qf_lra_model_fuzz_gate.sbatch seeds at a committed free-Boolean corpus is explicitly deferred (see docs/fuzz-coverage-qf-lra.md) as a separate, larger-blast-radius change.",
       "outcome": "Accepted. Fix lands with regression tests, doc sync, and a new durable generator that both verifies the fix and closes the QF_LRA free-Boolean coverage gap that let the bug through."
+    },
+    {
+      "id": "2026-08-17-main-merge-model-canonicalization-5ce7488",
+      "started_at": "2026-08-17",
+      "recorded_at": "2026-08-17",
+      "kind": "merge-fuzz-gate",
+      "scope": "Fresh exact-commit compatibility gate after merging origin/main's QF_LRA Boolean-model reconstruction fix and fuzzing support into the LRA atom canonicalization branch",
+      "commit": "5ce7488",
+      "branch": "lra-atom-canonicalization",
+      "environment": {
+        "type": "local",
+        "binary": "Debug git 5ce7488 with CaDiCaL 3.0.0",
+        "references": "repository-local Z3 for answer comparison; Dolmen with the generator's Z3 fallback for QF_LRA model validation",
+        "timeouts": "5 seconds per solver invocation",
+        "notes": "The merge also corrected scripts/qf_lra_boolean_arithmetic_fuzz.py from mode 100644 to 100755 after make check exposed EXE001. This gate checks the combined tree; the larger exact-candidate SLURM campaigns remain recorded separately."
+      },
+      "commands": {
+        "mixed": "python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref contrib/local/bin/z3 --count 1000 --seed 2026081711 --timeout 5 --shape mixed --out /tmp/primo-merge-5ce7488-qfuflra-20260817",
+        "qf_lra_models": "python3 scripts/qf_lra_boolean_arithmetic_fuzz.py --solver ./build/primo --z3 contrib/local/bin/z3 --dolmen /home/user/.opam/default/bin/dolmen --count 1000 --seed 2026081712 --timeout 5 --out /tmp/primo-merge-5ce7488-qflra-bool-20260817",
+        "verification": "make check; make docs; make asan-test; clang-tidy -p build src/smt/check_sat.cpp --quiet; clang-tidy -p build src/smt/check_sat.cpp --checks=-*,misc-include-cleaner --quiet; git diff --check"
+      },
+      "results": {
+        "mixed": "1000/1000 PASS against Z3: 589 SAT and 411 UNSAT; zero disagreement, crash, timeout, unsupported result, or parser/type error.",
+        "qf_lra_models": "1000/1000 PASS: every constructed-SAT case agreed with Z3 and its emitted model validated; all seven generator shapes were covered, with zero model error, crash, timeout, fallback failure, or wrong answer.",
+        "verification": "All 14 CTest targets, 46 Python tests, documentation, ASan tests, lint, focused clang-tidy, and include-cleaner passed."
+      },
+      "artifacts": "local-only:/tmp/primo-merge-5ce7488-qfuflra-20260817/summary.csv; local-only:/tmp/primo-merge-5ce7488-qflra-bool-20260817/summary.csv",
+      "evidence_status": "local-complete-current",
+      "outcome": "Accepted as the post-merge compatibility gate. No interaction bug was found between arithmetic canonicalization, directed Real postsolve reconstruction, and main's SAT-decided Boolean model assignments."
     }
   ]
 }
