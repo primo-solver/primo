@@ -61,7 +61,8 @@ but it requires the existing directed preprocessing postsolve log to be replayed
 in reverse rather than treated as a set of symmetric equalities. The
 finite-domain model regression test covers that interaction explicitly.
 
-The first call runs immediately after frontend expansion and type checking,
+When `CheckSatOptions::arithmetic_atom_canonicalization` is enabled, the first
+call runs immediately after frontend expansion and type checking,
 before Boolean flattening, automatic preprocessing selection, or optional
 preprocessing. Consequently unit propagation, solve-eqs, equality bridging,
 finite-domain analysis, and clausification all see canonical atoms. The final
@@ -88,11 +89,14 @@ rational scale class.
   Boolean parents.
 - Distinct top-level source assertions that canonicalize to the same term are
   deduplicated while preserving first occurrence order. Repeated occurrences
-  of an already identical source assertion remain repeated, so the mandatory
-  pass does not silently change assertion-count-based diagnostics or selectors.
+  of an already identical source assertion remain repeated, so the pass does
+  not silently change assertion-count-based diagnostics or selectors.
 
-There is no size threshold or command-line option. The pass is a mandatory
-arithmetic compilation invariant, including under `--preprocessing-mode=off`.
+The pass is exposed as `--arithmetic-atom-canonicalization` and defaults off.
+It remains independent of `--preprocessing-mode`; explicitly enabling it under
+`--preprocessing-mode=off` still runs the initial and required catch-up phases.
+This preserves the pre-pass default search while retaining the implementation
+for controlled QF_LRA and QF_UFLRA experiments.
 Statistics must expose visited and rewritten atoms, equalities and comparisons,
 constant folds, sign reversals, hash-cons aliases, removed duplicate assertions,
 created terms, and late catch-up rewrites.
@@ -109,7 +113,8 @@ created terms, and late catch-up rewrites.
   canonicalization pass are covered directly.
 - Scaled `a <= b` and `b <= a` forms still exercise the online paired-bound
   Nelson-Oppen path.
-- Pure QF_UF reports zero canonicalization activity.
+- The default profile reports zero canonicalization activity.
+- Pure QF_UF reports zero activity even when the option is enabled.
 
 ## Evaluation
 
@@ -120,7 +125,7 @@ Dolmen directly accepted all 1,989 SAT models; the remaining 1,511 rows were
 UNSAT. The first gate attempt exposed and led to the repair of an independent
 model-postsolve termination bug before this accepted rerun.
 
-The default-profile parent/candidate comparison used exact Release binaries,
+The mandatory-pass parent/candidate comparison used exact Release binaries,
 CaDiCaL 3.0.0, a 60-second per-file limit, and statistics enabled:
 
 | corpus | parent | canonicalized | parent PAR2 | canonicalized PAR2 |
@@ -137,7 +142,9 @@ follow-up on those five files was deterministic: each binary solved three, but
 different, files. Thus early canonicalization changes preprocessing and LRA
 search trajectories; it is a compilation invariant and an enabling
 simplification, not a uniform performance improvement. In particular, these
-results do not justify attributing a QF_LRA speedup to the pass.
+results do not justify attributing a QF_LRA speedup to the pass. Consequently,
+the implementation is now default-off; the candidate column is the option-on
+profile and the parent column represents the restored default behavior.
 
 The exact job identifiers, family summaries, mechanism counters, rejected first
 gate, and artifact locations are recorded in `docs/run-log.json`.
@@ -151,4 +158,4 @@ disagreements. OpFuzz and two typefuzz shards completed 5,600 mutations of the
 real seeds without a bug trigger. A separate mixed typefuzz run completed 6,000
 mutations without a bug trigger. These timeout-only results do not establish
 completeness on arbitrary generated instances, but they do satisfy the fresh
-campaign requirement for this default compilation change.
+campaign requirement for retaining this experimental preprocessing pass.

@@ -46,6 +46,12 @@ CheckSatOptions guarded_real_equality_lowering_options() {
   return options;
 }
 
+CheckSatOptions arithmetic_atom_canonicalization_options() {
+  CheckSatOptions options = no_preprocessing();
+  options.arithmetic_atom_canonicalization = true;
+  return options;
+}
+
 CheckSatOptions monotone_elimination_options() {
   CheckSatOptions options;
   options.monotone_elimination = true;
@@ -267,7 +273,7 @@ void accepts_set_logic_and_real_declarations() {
   assert(result.result == CheckSatResult::Sat);
 }
 
-void canonicalizes_scaled_atoms_even_when_optional_preprocessing_is_off() {
+void does_not_canonicalize_scaled_atoms_by_default() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_LRA)
     (declare-fun x () Real)
@@ -278,6 +284,24 @@ void canonicalizes_scaled_atoms_even_when_optional_preprocessing_is_off() {
     (check-sat)
   )",
                                        no_preprocessing());
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(StatKey::ArithmeticCanonicalizationAtomsVisited) == 0);
+  assert(result.statistics.get(StatKey::ArithmeticCanonicalizationAtomsRewritten) == 0);
+  assert(result.statistics.get(StatKey::ArithmeticCanonicalizationAliasesMerged) == 0);
+  assert(result.statistics.get(StatKey::TheoryAtoms) == 2);
+}
+
+void canonicalizes_scaled_atoms_when_enabled_with_optional_preprocessing_off() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (assert (<= (+ (* 2 x) (* 2 y)) (* 2 z)))
+    (assert (not (<= (+ (* 4 x) (* 4 y)) (* 4 z))))
+    (check-sat)
+  )",
+                                       arithmetic_atom_canonicalization_options());
   assert(result.result == CheckSatResult::Unsat);
   assert(result.statistics.get(StatKey::ArithmeticCanonicalizationAtomsVisited) >= 3);
   assert(result.statistics.get(StatKey::ArithmeticCanonicalizationAtomsRewritten) == 2);
@@ -294,7 +318,7 @@ void canonicalization_keeps_distinct_scaled_bounds_distinct() {
     (assert (<= (* 4 x) 8))
     (check-sat)
   )",
-                                       no_preprocessing());
+                                       arithmetic_atom_canonicalization_options());
   assert(result.result == CheckSatResult::Sat);
   assert(result.statistics.get(StatKey::ArithmeticCanonicalizationAtomsRewritten) == 2);
   assert(result.statistics.get(StatKey::ArithmeticCanonicalizationAliasesMerged) == 0);
@@ -303,6 +327,7 @@ void canonicalization_keeps_distinct_scaled_bounds_distinct() {
 }
 
 void pure_qf_uf_has_no_arithmetic_canonicalization_work() {
+  const CheckSatOptions options = arithmetic_atom_canonicalization_options();
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UF)
     (declare-sort U 0)
@@ -313,7 +338,7 @@ void pure_qf_uf_has_no_arithmetic_canonicalization_work() {
     (assert (not (= (f a) (f b))))
     (check-sat)
   )",
-                                       no_preprocessing());
+                                       options);
   assert(result.result == CheckSatResult::Unsat);
   assert(result.statistics.get(StatKey::ArithmeticCanonicalizationAtomsVisited) == 0);
   assert(result.statistics.get(StatKey::ArithmeticCanonicalizationAtomsRewritten) == 0);
@@ -2776,6 +2801,7 @@ void qf_uf_lra_canonicalization_exposes_offset_equality_to_online_bounds() {
   CheckSatOptions options = exact_no_preprocessing_or_substitution();
   options.nelson_oppen_propagation = NelsonOppenPropagationMode::Online;
   options.qf_uflra_fixed_elimination = false;
+  options.arithmetic_atom_canonicalization = true;
   const auto result = check_sat_smtlib(input, options);
   assert(result.result == CheckSatResult::Unsat);
   assert(result.statistics.get(":no.online.enabled") == 1);
@@ -3690,6 +3716,8 @@ void lra_model_reconstructs_preprocessed_solved_constants() {
 // that log as undirected equalities used to oscillate between stale values
 // forever while get-model was being handled.
 void lra_model_replays_preprocessing_substitutions_in_reverse() {
+  CheckSatOptions options;
+  options.arithmetic_atom_canonicalization = true;
   const auto result = check_sat_smtlib(R"(
     (set-option :produce-models true)
     (set-logic QF_LRA)
@@ -3704,7 +3732,8 @@ void lra_model_replays_preprocessing_substitutions_in_reverse() {
       (not (= x y))))
     (check-sat)
     (get-model)
-  )");
+  )",
+                                       options);
   assert(result.result == CheckSatResult::Sat);
   assert(result.statistics.get(StatKey::SolvedConstantAccepted) > 0);
   assert(result.model.find("(define-fun v0 () Real ") != std::string::npos);
@@ -4562,7 +4591,8 @@ int main() {
   bool_argument_real_result_application_is_not_mis_dispatched();
   online_nelson_oppen_still_publishes_lra_interface_equalities();
   accepts_set_logic_and_real_declarations();
-  canonicalizes_scaled_atoms_even_when_optional_preprocessing_is_off();
+  does_not_canonicalize_scaled_atoms_by_default();
+  canonicalizes_scaled_atoms_when_enabled_with_optional_preprocessing_off();
   canonicalization_keeps_distinct_scaled_bounds_distinct();
   pure_qf_uf_has_no_arithmetic_canonicalization_work();
   accepts_chained_comparisons_and_decimal_literals();

@@ -291,9 +291,9 @@ call. Thus `x + y <= 5` and `2x + 2y <= 10` both become `s <= 5`, while
 same `bound_var` across all theory calls and backtracking states. A currently
 weaker asserted upper bound is ignored by the tableau, but cannot be removed
 from the whole formula because another Boolean assignment may assert it alone
-or negate it. Since 2026-08-17, exact equivalent source atoms are interned by
-the mandatory primitive-integer canonicalization pass before clausification;
-distinct right-hand sides remain distinct SAT atoms. See
+or negate it. With the default-off `--arithmetic-atom-canonicalization`, exact
+equivalent source atoms are interned by the primitive-integer pass before
+clausification; distinct right-hand sides remain distinct SAT atoms. See
 [](papers/lra-atom-canonicalization.md).
 
 **Also fixes**, without extra work, the quirk item 7 documented and worked

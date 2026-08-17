@@ -298,6 +298,10 @@ struct CheckSatOptions {
   bool ground_unit_substitution = false;
   bool guarded_ground_unit_substitution = false;
   bool guarded_real_equality_lowering = false;
+  // Monniaux (CAV 2009), Section 2.1: normalize proportional Real atoms to
+  // one primitive-integer core term before clausification. Opt-in because the
+  // first broad A/B changed QF_LRA search trajectories and lost one net solve.
+  bool arithmetic_atom_canonicalization = false;
   bool monotone_elimination = false;
   bool solved_constant_substitution = true;
   bool gaussian_elimination = true;

@@ -41,10 +41,11 @@ Here `t1` and `t2` are Real-sorted linear terms built from rational constants,
 Real constants, addition, and multiplication or division by a rational
 constant. The frontend canonicalizes `t1 >= t2` to `t2 <= t1` and `t1 > t2`
 to `t2 < t1`; chainable comparisons become conjunctions of adjacent binary
-atoms. Immediately after frontend construction, the mandatory arithmetic-atom
-pass scales every linear direction to primitive integer coefficients and a
+atoms. With `--arithmetic-atom-canonicalization`, an early arithmetic-atom pass
+scales every linear direction to primitive integer coefficients and a
 deterministic sign. Thus proportional source predicates are hash-consed before
-clausification, even with `--preprocessing-mode=off`. Nonlinear multiplication
+clausification; the option can be combined with `--preprocessing-mode=off` but
+defaults off pending stronger performance evidence. Nonlinear multiplication
 and division by a nonliteral term are outside the accepted fragment. In
 QF_UFLRA, mixed purification first replaces each
 Real-valued UF application occurring in arithmetic with a fresh Real proxy, so

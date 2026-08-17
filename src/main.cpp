@@ -377,6 +377,10 @@ int main(int argc, char** argv) {
                "Enable experimental guarded Real equality lowering: rewrite a disjunction "
                "with one Real equality child directly to two guarded inequalities, avoiding "
                "one Tseitin layer on some QF_LRA encodings [default: off]");
+  app.add_flag("--arithmetic-atom-canonicalization",
+               solver_options.arithmetic_atom_canonicalization,
+               "Enable experimental primitive-integer canonicalization of proportional Real "
+               "comparisons and equalities before clausification [default: off]");
   app.add_flag("--top-level-or-tseitin", top_level_or_tseitin,
                "Always encode top-level disjunctions with Tseitin support clauses [default: only "
                "when the automatic rule fires]");
@@ -622,10 +626,11 @@ int main(int argc, char** argv) {
       return kGroupLra;
     }
     if (name == "--preprocessing-mode" || name == "--qf-uf-preprocess" ||
-        name == "--auto-preprocess-selector" || name == "--qf-uf-auto-selector" ||
-        name == "--boolean-flatten-threshold" || name == "--boolean-flatten-post-threshold" ||
-        name == "--boolean-implies-rewrite" || starts_with(name, "--auto-preprocess-") ||
-        starts_with(name, "--preprocessing-") || starts_with(name, "--preprocess-passes")) {
+        name == "--arithmetic-atom-canonicalization" || name == "--auto-preprocess-selector" ||
+        name == "--qf-uf-auto-selector" || name == "--boolean-flatten-threshold" ||
+        name == "--boolean-flatten-post-threshold" || name == "--boolean-implies-rewrite" ||
+        starts_with(name, "--auto-preprocess-") || starts_with(name, "--preprocessing-") ||
+        starts_with(name, "--preprocess-passes")) {
       return kGroupPreprocessing;
     }
     // The SAT layer proper, plus the knobs that sit on the DPLL(T)

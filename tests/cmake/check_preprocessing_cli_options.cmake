@@ -25,6 +25,7 @@ endfunction()
 
 run_primo_case("canonical preprocessing mode" 0 "" --preprocessing-mode=off)
 run_primo_case("canonical auto selector" 0 "" --auto-preprocess-selector=structural)
+run_primo_case("arithmetic atom canonicalization" 0 "" --arithmetic-atom-canonicalization)
 run_primo_case("deprecated preprocessing mode" 0 "--qf-uf-preprocess is deprecated"
                --qf-uf-preprocess=off)
 run_primo_case("deprecated auto selector" 0 "--qf-uf-auto-selector is deprecated"

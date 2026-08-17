@@ -12131,7 +12131,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       options.produce_model = true;
     }
     const PhaseClock::time_point preprocessing_start = PhaseClock::now();
-    {
+    if (options.arithmetic_atom_canonicalization) {
       ArithmeticAtomCanonicalizationResult canonicalized =
           canonicalize_arithmetic_atoms(frontend.terms(), assertions);
       assertions = std::move(canonicalized.assertions);
@@ -12568,9 +12568,9 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       statistics.increment(kStatEqualityDefinitionRejectedClauseLimit,
                            equality_definition_result.rejected_clause_limit);
     }
-    {
+    if (options.arithmetic_atom_canonicalization) {
       // Preprocessing can create or rewrite arithmetic atoms after the
-      // mandatory frontend pass. Catch them before Real equality is lowered.
+      // initial frontend pass. Catch them before Real equality is lowered.
       ArithmeticAtomCanonicalizationResult canonicalized =
           canonicalize_arithmetic_atoms(frontend.terms(), assertions);
       assertions = std::move(canonicalized.assertions);
@@ -12623,7 +12623,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
                      purification.memoized_arithmetic_rewrites);
       statistics.set(":no.purification.memoized-euf-rewrites", purification.memoized_euf_rewrites);
       statistics.set(":no.purification.skipped-no-sites", purification.skipped_no_sites ? 1 : 0);
-      if (!purification.skipped_no_sites) {
+      if (options.arithmetic_atom_canonicalization && !purification.skipped_no_sites) {
         // Purification introduces fresh arithmetic comparisons but also
         // EUF-owned Real equalities. Only the former belong to this pass.
         ArithmeticAtomCanonicalizationResult canonicalized = canonicalize_arithmetic_atoms(

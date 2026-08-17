@@ -67,6 +67,11 @@ scripts and result artifacts. Current counters include:
 - `:preprocessing.arithmetic-canonicalization.terms-created`;
 - `:preprocessing.arithmetic-canonicalization.catchup-rewrites`;
 - `:preprocessing.arithmetic-canonicalization.post-purification-rewrites`;
+
+These arithmetic-canonicalization counters remain zero unless
+`--arithmetic-atom-canonicalization` is enabled; pure QF_UF remains zero even
+with the option enabled.
+
 - `:preprocessing.boolean-flatten.attempts`;
 - `:preprocessing.boolean-flatten.accepted`;
 - `:preprocessing.boolean-flatten.threshold-stops`;

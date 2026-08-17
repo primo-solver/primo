@@ -126,7 +126,9 @@ design, even though they are not what the paper is about:
   long-deferred scale-invariant polynomial matching, roadmap item 3).
   **Tableau-level scale sharing and direct bounds were implemented 2026-07-28;
   pre-clausification primitive-integer atom canonicalization was added
-  2026-08-17. All are unconditional.** H1a removed 36-95% of
+  2026-08-17 and is available through the default-off
+  `--arithmetic-atom-canonicalization` option. The tableau-level mechanisms
+  remain unconditional.** H1a removed 36-95% of
   tableau rows on the lagging families -- Primo used to introduce a slack for
   *every* distinct polynomial, including bare variables -- and H1b collapsed
   proportional polynomials onto one slack. The early core form now follows the
