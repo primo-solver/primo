@@ -77,6 +77,14 @@ class QfLraBooleanArithmeticFuzzTests(unittest.TestCase):
         self.assertIn(") p)", case.text)
         self.assertIn(") q)", case.text)
 
+    def test_negate_equivalent_rejects_nested_operands(self) -> None:
+        self.assertEqual(
+            qf_lra_boolean_arithmetic_fuzz.negate_equivalent("(< v0 v1)"),
+            "(not (<= v1 v0))",
+        )
+        with self.assertRaises(ValueError):
+            qf_lra_boolean_arithmetic_fuzz.negate_equivalent("(< (+ v0 5) v1)")
+
     def test_chains_are_well_formed_smtlib(self) -> None:
         for index in range(3 * len(qf_lra_boolean_arithmetic_fuzz.SHAPES)):
             case = qf_lra_boolean_arithmetic_fuzz.generate_case(random.Random(99), index)

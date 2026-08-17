@@ -151,6 +151,11 @@ def negate_equivalent(atom: str) -> str:
     assert atom.startswith("(< ")
     inner = atom[3:-1]
     a, b = inner.split(" ", 1)
+    if "(" in a or "(" in b:
+        # A naive split on the first space only works for bare-token
+        # operands; a nested/offset term like "(+ v0 5) v1" would silently
+        # produce mismatched parens instead of a clear error.
+        raise ValueError(f"negate_equivalent only supports simple operands: {atom!r}")
     return f"(not (<= {b} {a}))"
 
 
@@ -235,12 +240,16 @@ def run_solver(command: list[str], timeout: float, collect_stats: bool) -> Solve
     output = f"{stdout}\n{stderr}"
     lowered = output.lower()
     answer = next((line.strip() for line in stdout.splitlines() if line.strip() in RESULTS), "")
-    if "unsupported" in lowered:
-        answer = "UNSUPPORTED_INPUT"
-    elif "(error" in lowered:
-        answer = "SOLVER_ERROR"
-    elif not answer:
-        answer = "CRASH" if returncode != 0 else "UNKNOWN_OUTPUT"
+    # Only classify from stray "unsupported"/"(error" substrings when no
+    # clean result line was already found -- a real answer should never be
+    # overridden by incidental text elsewhere in stdout/stderr.
+    if not answer:
+        if "unsupported" in lowered:
+            answer = "UNSUPPORTED_INPUT"
+        elif "(error" in lowered:
+            answer = "SOLVER_ERROR"
+        else:
+            answer = "CRASH" if returncode != 0 else "UNKNOWN_OUTPUT"
     return SolverRun(answer, returncode, parse_stats(output) if collect_stats else {})
 
 
@@ -342,7 +351,10 @@ def main() -> int:
 
     if args.count < len(SHAPES):
         parser.error(f"--count must be at least {len(SHAPES)} to cover every shape")
-    preflight_generation(args.seed, args.count)
+    # One cycle through every shape as a fail-fast smoke check -- not the
+    # full --count, which the main loop below generates for real; a
+    # generator crash surfaces here before any solver invocation runs.
+    preflight_generation(args.seed, len(SHAPES))
 
     monotone_elimination = "--monotone-elimination" in args.solver_arg
     dolmen_path = shutil.which(args.dolmen)
