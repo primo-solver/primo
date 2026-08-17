@@ -14,6 +14,7 @@ struct TheoryModelAssignment {
   core::TermId term = core::kInvalidTermId;
   bool value = false;
   bool filtered = false;
+  bool directed_substitution = false;
 };
 
 struct QfUfModelBuildOptions {

@@ -55,6 +55,12 @@ arguments so a Real predicate used as a Boolean UF argument is normalized too.
 No model-reconstruction entry is needed because every replacement is equivalent
 over the Reals and no user symbol is removed.
 
+Canonical equality orientation can change which side a later solve-eqs pass
+chooses to eliminate. This does not alter the canonicalizer's model obligation,
+but it requires the existing directed preprocessing postsolve log to be replayed
+in reverse rather than treated as a set of symmetric equalities. The
+finite-domain model regression test covers that interaction explicitly.
+
 The first call runs immediately after frontend expansion and type checking,
 before Boolean flattening, automatic preprocessing selection, or optional
 preprocessing. Consequently unit propagation, solve-eqs, equality bridging,

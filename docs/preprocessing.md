@@ -468,14 +468,19 @@ bounded:
 - all terms are rebuilt through `core::TermManager`, preserving hash-consing and
   sort checks.
 
-The pass also records each accepted `x -> t` replacement as a model
-reconstruction equality `x = t`. When `get-model` is requested, `check_sat`
-passes those equalities to the active model builder together with the SAT or
-theory assignment, so the printed model is checked against the original SMT-LIB
-assertions rather than only the rewritten assertion set. The current consumers
-are the QF_UF model builder and the minimal QF_LRA Real-constant model
-printer; this trail is still not a general model object for future
-Nelson-Oppen theory combinations.
+The pass also records each accepted `x -> t` replacement as the directed model
+reconstruction equality `x = t`; the left child remains the eliminated constant
+and the right child remains its surviving definition. When `get-model` is
+requested, `check_sat` passes those entries to the active model builder together
+with the SAT or theory assignment, so the printed model is checked against the
+original SMT-LIB assertions rather than only the rewritten assertion set. EUF
+can add the equalities to its model closure. QF_LRA and QF_UFLRA instead replay
+Real substitutions once in reverse preprocessing order, assigning only `x`
+from the already reconstructed value of `t`. Later passes may eliminate symbols
+used by earlier definitions, which is why forward replay is insufficient.
+Treating the log as undirected equalities is also incorrect: stale values for
+both constants can alternately overwrite each other and prevent model
+construction from terminating.
 
 The reconstruction trail is owned by the preprocessing result objects in
 `src/smt/preprocessing.hpp`: `BooleanUnitPropagationResult::assignments`,
@@ -484,11 +489,12 @@ The reconstruction trail is owned by the preprocessing result objects in
 `GroundEqualitySubstitutionResult::substitutions`. These vectors contain only
 hash-consed `core::TermId` handles and are consumed by `check_sat` before the
 shared `core::TermManager` is destroyed. `check_sat` converts substitutions to
-true equality assignments and Boolean/forced units to `TheoryModelAssignment`
-entries, then `smt::ModelBuilder` adds them to the same EUF closure as the final
-SAT assignment. Future preprocessing rewrites that remove user-visible facts
-must add equivalent reconstruction assignments before they can be enabled under
-`get-model`.
+true `TheoryModelAssignment` equality entries marked `directed_substitution`;
+Boolean/forced units use unmarked entries. `smt::ModelBuilder` can add both to
+the same EUF closure as the final SAT assignment, while Real postsolve replays
+only marked entries directionally. Future preprocessing rewrites that remove
+user-visible facts must add equivalent reconstruction assignments before they
+can be enabled under `get-model`.
 
 The pass is reported by:
 

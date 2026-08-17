@@ -2332,7 +2332,7 @@ void append_equality_model_assignments(
     const std::vector<std::pair<core::TermId, core::TermId>>& equalities) {
   target.reserve(target.size() + equalities.size());
   for (const auto& [lhs, rhs] : equalities) {
-    target.push_back(TheoryModelAssignment{terms.mk_eq(lhs, rhs), true, false});
+    target.push_back(TheoryModelAssignment{terms.mk_eq(lhs, rhs), true, false, true});
   }
 }
 
@@ -5643,11 +5643,39 @@ void apply_monotone_eliminations(const core::TermManager& terms, RealModelValues
 void apply_real_preprocessing_model_assignments(
     const core::TermManager& terms, RealModelValues& values,
     const std::vector<TheoryModelAssignment>& preprocessing_model_assignments) {
+  // These equalities are a directed postsolve log: lhs was eliminated in
+  // favor of rhs. Later eliminations can occur in rhs, so replay the log in
+  // reverse and restore only lhs.
+  for (auto assignment = preprocessing_model_assignments.rbegin();
+       assignment != preprocessing_model_assignments.rend(); ++assignment) {
+    if (assignment->filtered || !assignment->value || !assignment->directed_substitution) {
+      continue;
+    }
+    const core::Term& equality = terms.get(assignment->term);
+    if (equality.kind != core::TermKind::Equality || equality.children.size() != 2) {
+      continue;
+    }
+    const core::TermId lhs = equality.children.at(0);
+    const core::TermId rhs = equality.children.at(1);
+    if (terms.get(lhs).sort != terms.symbols().real_sort() ||
+        terms.get(rhs).sort != terms.symbols().real_sort()) {
+      continue;
+    }
+    const std::optional<util::Rational> rhs_value = evaluate_real_model_term(terms, rhs, values);
+    if (rhs_value.has_value()) {
+      assign_real_model_value(terms, values, lhs, rhs_value.value());
+    }
+  }
+
+  // The same vector also carries ordinary preprocessing facts. Preserve their
+  // symmetric equality-closure behavior, but do not feed directed postsolve
+  // entries back into it: stale values on the eliminated side can otherwise
+  // overwrite each other forever.
   bool changed = true;
   while (changed) {
     changed = false;
     for (const TheoryModelAssignment& assignment : preprocessing_model_assignments) {
-      if (assignment.filtered || !assignment.value) {
+      if (assignment.filtered || !assignment.value || assignment.directed_substitution) {
         continue;
       }
       const core::Term& equality = terms.get(assignment.term);

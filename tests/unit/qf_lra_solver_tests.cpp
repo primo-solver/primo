@@ -3635,6 +3635,34 @@ void lra_model_reconstructs_preprocessed_solved_constants() {
   assert(result.model.find("(define-fun y () Real 5)") != std::string::npos);
 }
 
+// Preprocessing substitutions form a directed postsolve log. Canonicalizing
+// the equality y = v1 can change which constant is eliminated, so replaying
+// that log as undirected equalities used to oscillate between stale values
+// forever while get-model was being handled.
+void lra_model_replays_preprocessing_substitutions_in_reverse() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_LRA)
+    (declare-fun v0 () Real)
+    (declare-fun v1 () Real)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (assert (and
+      (not (= v0 v1))
+      (or (= x v0) (= x v1))
+      (= y v1)
+      (not (= x y))))
+    (check-sat)
+    (get-model)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(StatKey::SolvedConstantAccepted) > 0);
+  assert(result.model.find("(define-fun v0 () Real ") != std::string::npos);
+  assert(result.model.find("(define-fun v1 () Real ") != std::string::npos);
+  assert(result.model.find("(define-fun x () Real ") != std::string::npos);
+  assert(result.model.find("(define-fun y () Real ") != std::string::npos);
+}
+
 void qf_lra_model_requires_get_model_command() {
   const auto result = check_sat_smtlib(R"(
     (set-option :produce-models true)
@@ -4622,6 +4650,7 @@ int main() {
   rejects_nonlinear_and_zero_division();
   declaration_order_does_not_change_the_search();
   lra_model_reconstructs_preprocessed_solved_constants();
+  lra_model_replays_preprocessing_substitutions_in_reverse();
   qf_lra_model_requires_get_model_command();
   get_model_requires_produce_models();
   boolean_structure_over_arithmetic_atoms_can_require_branching();
