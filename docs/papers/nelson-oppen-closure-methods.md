@@ -1375,6 +1375,11 @@ method must preserve.
 
 ## Solver Architecture Sources
 
+Nikolaj Bjørner and Lev Nachmanson. *Arithmetic Solving in Z3.* CAV 2024,
+LNCS 14681, pp. 26-41. DOI:
+<https://doi.org/10.1007/978-3-031-65627-9_2>. See the local deep-study note
+[](arithmetic-solving-in-z3.md), especially Sections 3.2 and 6.
+
 Clark W. Barrett, Christopher L. Conway, Morgan Deters, Liana Hadarean, Dejan
 Jovanovic, Tim King, Andrew Reynolds, and Cesare Tinelli. *CVC4.* CAV 2011.
 PDF: <https://smt-comp.github.io/2012/system-descriptions/cvc4.pdf>.
@@ -1410,6 +1415,17 @@ central equality-engine modes. Primo should start closer to the distributed
 mode: keep EUF congruence closure and LRA arithmetic state local, but let
 `TheoryCombinationManager` own shared/interface terms, interface equality atoms,
 and the combination-layer arrangement over those pairs.
+
+The Z3 arithmetic paper sharpens the LRA producer side of this architecture.
+It independently confirms model-equal shared variables as the candidate
+frontier, but establishes entailment only from fixed-variable tableau shapes.
+Its unit-coefficient recognizer avoids exact fixed-offset construction and
+hashing. Primo currently implements the broader 2008 `EqOffsetRows`/`EqRows`
+rules with exact offsets, so the 2024 recognizer is a missing performance
+mechanism, not a missing convex-combination correctness rule. The same paper's
+sharedness cache is already matched by Primo's solve-scoped immutable
+`shared_real_terms`/`TheoryCombinationManager` interface; a generic dynamic
+combination layer would need explicit invalidation.
 
 The central-equality-engine option in cvc5 is a useful future experiment, not
 the current target. Making every theory depend on one global congruence closure

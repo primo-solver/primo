@@ -14,6 +14,9 @@ The clean-room sources for the intended direction are:
 
 - Leonardo de Moura and Nikolaj Bjorner, "Model-based Theory Combination",
   Electronic Notes in Theoretical Computer Science 198(2), 2008, pp. 37-49;
+- Nikolaj Bjørner and Lev Nachmanson, "Arithmetic Solving in Z3," CAV 2024,
+  Sections 3.2 and 6, with the local audit in
+  `docs/papers/arithmetic-solving-in-z3.md`;
 - the local audit in `docs/papers/model-based-theory-combination.md`;
 - the current Nelson-Oppen design note in
   `docs/papers/nelson-oppen-closure-methods.md`;
@@ -779,6 +782,14 @@ should guide equality sharing. The current implementation covers its convex
 EUF+rational-LRA subset, not the generic transition system.
 
 Missing performance-relevant pieces for QF_UFLRA:
+
+- **Current-model-filtered unit-row equality recognition.** Bjørner and
+  Nachmanson 2024 Section 3.2 avoids computing and hashing exact fixed offsets
+  by filtering shared variables by current model value and recognizing only
+  the useful unit-coefficient one-row/two-row shapes. Primo's sound
+  `EqOffsetRows` and `EqRows` producers still construct those offsets and scan
+  the broader row signatures. This is now the first paper-backed LRA-producer
+  A/B target; the existing explained and exact paths remain the fallback.
 
 - **Model mutation beyond convex QF_UFLRA.** Section 5.2 freedom intervals and
   greedy diversification are implemented in the default convex shared-model

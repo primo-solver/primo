@@ -121,6 +121,18 @@ both fixed row portions. Primo deliberately polls rather than maintaining the
 indexes during every pivot, so this is the paper's logical rule and indexed
 complexity but not its eager pivot-hook scheduling.
 
+Bjørner and Nachmanson, "Arithmetic Solving in Z3" (CAV 2024), Section 3.2,
+changes the performance assessment of this implementation. Their newer
+arithmetic solver first restricts attention to shared variables equal in the
+current model, then recognizes the unit-coefficient one-row and two-row shapes
+without constructing fixed offsets. They report that exact offset computation
+over large numerals and the offset hash table were both expensive, and that a
+non-unit generalization produced no measurable gain. Primo's rules remain
+sound, but `EqOffsetRows`/`EqRows` currently pay precisely that offset cost.
+The paper-backed replacement checklist is in
+[](papers/arithmetic-solving-in-z3.md); it must retain the current explanations
+and exact fallback, and it needs an A/B before the general rule is removed.
+
 ### 3. Model mutation via freedom intervals (§5.2)
 
 The *freedom* of a non-basic `xⱼ` is `[Lⱼ, Uⱼ]`, computed from the rows it

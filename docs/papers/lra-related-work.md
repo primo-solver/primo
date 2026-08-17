@@ -26,6 +26,8 @@ without DOI links because no DOI was found for those editions. An open-copy URL
 is retained alongside the DOI where useful.
 
 Freely accessible (fetched and read the actual PDF):
+- Bjørner/Nachmanson, "Arithmetic Solving in Z3" (CAV 2024, local copy,
+  DOI 10.1007/978-3-031-65627-9_2)
 - Monniaux, "On using floating-point computations to help an exact linear
   arithmetic decision procedure" (CAV 2009, arXiv:0904.3525)
 - King/Barrett/Dutertre, "Simplex with Sum of Infeasibilities for SMT" (FMCAD 2013)
@@ -70,6 +72,18 @@ fetch a copy:
   discrepancy section.
 
 ## Direct extensions of Simplex-for-DPLL(T)
+
+**Nikolaj Bjørner and Lev Nachmanson. "Arithmetic Solving in Z3." CAV
+2024.** DOI:
+<https://doi.org/10.1007/978-3-031-65627-9_2>. The relevant sections were read
+from the supplied local PDF. Section 3.2 describes a current-model-filtered,
+tableau-structural equality producer that avoids constructing and hashing exact
+fixed offsets; Section 3.3 covers direct and row-derived bound propagation;
+Section 6 covers model-based shared equalities and cached shared-term status.
+The equality producer is especially relevant because Primo's current
+`EqOffsetRows` and `EqRows` indexes still compute the offsets the paper reports
+as expensive. The full mapping and implementation checklist are in
+[](arithmetic-solving-in-z3.md).
 
 **David Monniaux. "On using floating-point computations to help an exact
 linear arithmetic decision procedure." CAV 2009 (arXiv:0904.3525).**
