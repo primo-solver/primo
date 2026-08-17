@@ -27340,6 +27340,40 @@
       "artifacts": "local-only:/tmp/primo-merge-5ce7488-qfuflra-20260817/summary.csv; local-only:/tmp/primo-merge-5ce7488-qflra-bool-20260817/summary.csv",
       "evidence_status": "local-complete-current",
       "outcome": "Accepted as the post-merge compatibility gate. No interaction bug was found between arithmetic canonicalization, directed Real postsolve reconstruction, and main's SAT-decided Boolean model assignments."
+    },
+    {
+      "id": "2026-08-17-arithmetic-canonicalization-default-off-979d911",
+      "started_at": "2026-08-17",
+      "recorded_at": "2026-08-17",
+      "kind": "default-policy-fuzz-gate",
+      "scope": "Fresh exact-commit off/on differential and model-validation gate after placing arithmetic atom canonicalization behind a default-off option",
+      "commit": "979d911",
+      "branch": "lra-atom-canonicalization",
+      "environment": {
+        "type": "local",
+        "binary": "Debug git 979d911 with CaDiCaL 3.0.0",
+        "references": "repository-local Z3 for answer comparison; Dolmen for QF_LRA model validation",
+        "timeouts": "5 seconds per solver invocation",
+        "seeds": "2026081713 mixed default-off; 2026081714 mixed option-on; 2026081715 QF_LRA model default-off; 2026081716 QF_LRA model option-on"
+      },
+      "commands": {
+        "mixed_off": "python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref contrib/local/bin/z3 --count 1000 --seed 2026081713 --timeout 5 --shape mixed --out /tmp/primo-canon-default-off-979d911-qfuflra",
+        "mixed_on": "python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --solver-arg=--arithmetic-atom-canonicalization --ref contrib/local/bin/z3 --count 1000 --seed 2026081714 --timeout 5 --shape mixed --out /tmp/primo-canon-option-on-979d911-qfuflra",
+        "models_off": "python3 scripts/qf_lra_boolean_arithmetic_fuzz.py --solver ./build/primo --z3 contrib/local/bin/z3 --dolmen /home/user/.opam/default/bin/dolmen --count 1000 --seed 2026081715 --timeout 5 --out /tmp/primo-canon-default-off-979d911-qflra-model",
+        "models_on": "python3 scripts/qf_lra_boolean_arithmetic_fuzz.py --solver ./build/primo --solver-arg=--arithmetic-atom-canonicalization --z3 contrib/local/bin/z3 --dolmen /home/user/.opam/default/bin/dolmen --count 1000 --seed 2026081716 --timeout 5 --out /tmp/primo-canon-option-on-979d911-qflra-model",
+        "verification": "make check; make docs; make asan-test; focused clang-tidy and misc-include-cleaner on src/main.cpp and src/smt/check_sat.cpp; git diff --check"
+      },
+      "results": {
+        "mixed_off": "1000/1000 PASS against Z3: 571 SAT and 429 UNSAT.",
+        "mixed_on": "1000/1000 PASS against Z3: 589 SAT and 411 UNSAT.",
+        "models_off": "1000/1000 constructed-SAT cases agreed with Z3 and emitted models passed validation.",
+        "models_on": "1000/1000 constructed-SAT cases agreed with Z3 and emitted models passed validation.",
+        "failures": "Zero wrong answer, reference disagreement, invalid model, crash, timeout, unsupported result, parser/type error, or saved bug in all four arms.",
+        "verification": "All 14 CTest targets, 46 Python tests, documentation, lint, ASan, focused clang-tidy, and include-cleaner passed. Unit coverage proves zero default canonicalization activity and explicit-on alias merging."
+      },
+      "artifacts": "local-only:/tmp/primo-canon-default-off-979d911-qfuflra/summary.csv; local-only:/tmp/primo-canon-option-on-979d911-qfuflra/summary.csv; local-only:/tmp/primo-canon-default-off-979d911-qflra-model/summary.csv; local-only:/tmp/primo-canon-option-on-979d911-qflra-model/summary.csv",
+      "evidence_status": "local-complete-current",
+      "outcome": "Accepted. The experimental pass remains available and correctness-clean when enabled, while the default profile skips all three canonicalization traversals and retains the pre-pass SAT abstraction."
     }
   ]
 }
