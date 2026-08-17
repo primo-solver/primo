@@ -6249,7 +6249,9 @@ struct LraModelEqualPartition {
 // an unmapped term; both phases are deterministic.
 class LraModelPairCursor {
  public:
-  explicit LraModelPairCursor(const LraModelEqualPartition& partition) : partition_(partition) {}
+  explicit LraModelPairCursor(const LraModelEqualPartition& partition,
+                              bool skip_class_phase = false)
+      : partition_(partition), class_index_(skip_class_phase ? partition.classes.size() : 0) {}
 
   std::optional<TermPairKey> next() {
     while (class_index_ < partition_.classes.size()) {
@@ -6965,6 +6967,86 @@ LraImpliedRealEqualitiesResult lra_implied_real_equalities_for_pairs(
   return LraImpliedRealEqualitiesResult{std::move(equalities), false};
 }
 
+// Resolves entailed equalities within one LRA model-equal class using at
+// most (k-1) probes when the class is fully entailed-equal, degrading
+// gracefully -- never worse than full pairwise probing -- when it splits
+// into genuinely distinct sub-groups. LRA-entailment of equality is
+// transitive: once probe(anchor, x) and probe(anchor, y) both succeed, x=y
+// is entailed without a direct probe, with reason = union(reason_x, reason_y).
+// Cross-group pairs never need checking: if x fails against anchor but were
+// entailed-equal to some member m of anchor's already-linked group, then
+// x=m and m=anchor would together entail x=anchor by transitivity,
+// contradicting the failure.
+LraImpliedRealEqualitiesResult resolve_class_entailed_equalities(
+    core::TermManager& terms, const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
+    const PreparedLraTheory& prepared, const theory::arithmetic::LraTableau& checked_tableau,
+    const std::vector<AssignedTheoryAtom>& lra_assignments,
+    const std::vector<core::TermId>& class_terms, const FlatEufModelView& euf,
+    const TheoryCombinationManager& manager, const CheckSatOptions& options,
+    util::Statistics& statistics) {
+  std::vector<ExplainedInterfaceEquality> equalities;
+  std::vector<core::TermId> remaining = class_terms;
+  while (remaining.size() > 1) {
+    const core::TermId anchor = remaining.back();
+    remaining.pop_back();
+    std::vector<core::TermId> linked;
+    std::vector<sat::Clause> reason_from_anchor;
+    std::vector<core::TermId> unresolved;
+    for (const core::TermId candidate : remaining) {
+      const TermPairKey pair = canonical_term_pair(anchor, candidate);
+      statistics.increment(":no.interface.lra-model-filter-physical-pairs");
+      statistics.increment(":no.interface.lra-exact-fallback-streamed-pairs");
+      const std::optional<InterfaceEqualityRegistryEntry> registered =
+          manager.interface_equality(pair.lhs, pair.rhs);
+      if ((registered.has_value() && registered->assignment == InterfaceEqualityAssignment::True) ||
+          flat_closure_equal_on_terms(euf, pair.lhs, pair.rhs)) {
+        // Already true against this anchor specifically -- not (yet) known
+        // true against any other class member, so it still needs a real
+        // probe if it's grouped under a different anchor later. Defer it
+        // rather than dropping it, matching what an exhaustive scan would
+        // have found for it.
+        statistics.increment(":no.interface.lra-exact-fallback-skipped-pairs");
+        unresolved.push_back(candidate);
+        continue;
+      }
+      statistics.increment(":no.interface.lra-exact-fallback-pairs");
+      LraImpliedRealEqualityProbeResult probe = probe_lra_implied_real_equality(
+          terms, lra_atoms, prepared, checked_tableau, lra_assignments, pair, options, &statistics);
+      if (probe.probe_limit_hit) {
+        return LraImpliedRealEqualitiesResult{std::move(equalities), true};
+      }
+      if (probe.equality.has_value()) {
+        linked.push_back(candidate);
+        reason_from_anchor.push_back(probe.equality->reason.value());
+        equalities.push_back(std::move(probe.equality.value()));
+      } else {
+        unresolved.push_back(candidate);
+      }
+    }
+    for (std::size_t i = 0; i < linked.size(); ++i) {
+      for (std::size_t j = i + 1; j < linked.size(); ++j) {
+        const TermPairKey transitive_pair = canonical_term_pair(linked[i], linked[j]);
+        const std::optional<InterfaceEqualityRegistryEntry> registered =
+            manager.interface_equality(transitive_pair.lhs, transitive_pair.rhs);
+        if ((registered.has_value() &&
+             registered->assignment == InterfaceEqualityAssignment::True) ||
+            flat_closure_equal_on_terms(euf, transitive_pair.lhs, transitive_pair.rhs)) {
+          continue;
+        }
+        statistics.increment(":no.interface.lra-exact-fallback-transitive-pairs");
+        sat::Clause combined = reason_from_anchor[i];
+        for (const sat::Lit lit : reason_from_anchor[j]) {
+          append_lit_once(combined, lit);
+        }
+        equalities.push_back(
+            ExplainedInterfaceEquality{terms.mk_eq(linked[i], linked[j]), std::move(combined)});
+      }
+    }
+    remaining = std::move(unresolved);
+  }
+  return LraImpliedRealEqualitiesResult{std::move(equalities), false};
+}
+
 LraImpliedRealEqualitiesResult lra_implied_real_equalities_for_partition(
     core::TermManager& terms, const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms,
     const PreparedLraTheory& prepared_lra, const theory::arithmetic::LraTableau& checked_tableau,
@@ -6972,7 +7054,19 @@ LraImpliedRealEqualitiesResult lra_implied_real_equalities_for_partition(
     const FlatEufModelView& euf, const TheoryCombinationManager& manager,
     const CheckSatOptions& options, util::Statistics& statistics) {
   std::vector<ExplainedInterfaceEquality> equalities;
-  LraModelPairCursor cursor(partition);
+  for (const std::vector<core::TermId>& equal_class : partition.classes) {
+    LraImpliedRealEqualitiesResult class_result = resolve_class_entailed_equalities(
+        terms, lra_atoms, prepared_lra, checked_tableau, lra_assignments, equal_class, euf, manager,
+        options, statistics);
+    equalities.insert(equalities.end(), std::make_move_iterator(class_result.equalities.begin()),
+                      std::make_move_iterator(class_result.equalities.end()));
+    if (class_result.probe_limit_hit) {
+      return LraImpliedRealEqualitiesResult{std::move(equalities), true};
+    }
+  }
+  // Unmapped-terms phase: left exactly as-is. There's no class structure to
+  // exploit transitivity over here (these terms aren't grouped by value).
+  LraModelPairCursor cursor(partition, /*skip_class_phase=*/true);
   while (const std::optional<TermPairKey> pair = cursor.next()) {
     statistics.increment(":no.interface.lra-model-filter-physical-pairs");
     statistics.increment(":no.interface.lra-exact-fallback-streamed-pairs");

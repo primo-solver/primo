@@ -452,12 +452,28 @@ recomputed after every SAT re-entry because the accepted assignment and model
 may have changed.
 
 **Complexity expectation.** Partition construction is expected linear in the
-number of mapped shared variables. Pair expansion is proportional to the sum of
-the squares of model-class sizes instead of the square of all shared terms. The
-worst case remains quadratic when all shared values coincide; Section 5.2's
-model diversification is still needed for that case. Each retained pair still
-copies and replays one tableau probe context, so this step reduces the number of
-copies rather than changing their individual cost.
+number of mapped shared variables. Pair expansion used to be proportional to
+the sum of the squares of model-class sizes instead of the square of all
+shared terms; `resolve_class_entailed_equalities` (`check_sat.cpp`) now
+resolves each class's probes in `O(k)` rather than `O(k^2)` when it entails
+its own full pairwise equality closure: LRA-entailment of equality is
+transitive, so one anchor term is probed against every other outstanding
+class member, successes are unioned, and their pairwise equalities are
+synthesized (reason = union of the two anchor-edge reasons) without a direct
+probe. Only probes that fail against the current anchor recurse with a fresh
+anchor, so the total probe count across a class is bounded by the same
+`C(k,2)` as before -- reached only when every single probe fails -- and drops
+to `k-1` when the class is fully entailed-equal. The worst case remains
+quadratic when all shared values coincide but few pairs are actually
+entailed; Section 5.2's model diversification is still needed for that case.
+Each retained probe still copies and replays one tableau probe context, so
+this step reduces the number of copies for genuinely entailed classes rather
+than changing an individual probe's cost. The new
+`:no.interface.lra-exact-fallback-transitive-pairs` counter tracks pairs
+resolved this way, alongside the existing
+`:no.interface.lra-exact-fallback-pairs` (real probes) and
+`:no.interface.lra-exact-fallback-equalities` (total pairs found entailed,
+probed or synthesized) counters.
 
 **Tests and counters.** A focused exact-mode regression fixes three shared Real
 terms to different values and requires all three cross-class pairs to be pruned
@@ -467,6 +483,15 @@ model-equal pair is probed but not propagated. The
 `:no.interface.lra-model-filter-*` counters expose builds, full pairs,
 candidates, pruned pairs, unmapped terms, and conservative pairs. Differential
 QF_UFLRA fuzzing remains mandatory before benchmark evaluation.
+`benchmarks/regressions/nelson-oppen-transitive-class-equality.smt2` is a
+deterministic, deliberately-constructed fixture (not a bug repro) for the
+transitivity shortcut above: eight shared Real terms pinned to the same
+value form one fully entailed size-8 class, giving an exact,
+corpus-independent check of the `C(k,2)` to `k-1` probe reduction (28 probes
+before, 7 real + 21 transitive after, same 28 equalities found, same `unsat`
+answer) -- this exact fallback fires on essentially none of the real QF_UFLRA
+corpus under default settings, so a crafted case is the only reliable way to
+exercise it.
 
 **Measured acceptance.** Commit `84d5e8a` passed all 10 tracked QF_UFLRA seeds
 and 3,000 fresh exact-mode generated cases against Z3 on SLURM job 121888, with
