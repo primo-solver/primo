@@ -43,6 +43,7 @@ notes it points to.
 | [7](#lead-row-representation) | Compare row representation against sorted arrays of pairs | already the endorsed design; 0.00% map cost in the profile | done | **closed: already implemented** |
 | [8](#lead-dl6) | DL6: decide precision statically before search | unknown | small | blocked on a DL solver |
 | [9](#lead-monotone) | Monotone (one-sided) variable elimination | neutral on the promotion bar | done | **implemented, opt-in; did not clear its bar** |
+| [10](#lead-z3-cheap-shared-equality) | Current-model-filtered unit-row equality recognition | unknown; removes exact-offset arithmetic and hashing from mixed equality production | medium | **open; QF_UFLRA only** |
 | -- | D2 floating-point-guided basis selection | ~14% in the literature | medium | open, see [](qf-lra-heuristics.md) |
 | -- | D4 revised simplex, LU-factored basis | unknown | largest | open, see [](qf-lra-heuristics.md) |
 | -- | H4 batched bound assertion; H6 DL fast path; H11 fill-in-aware preprocessing elimination | -- | -- | design only, see [](qf-lra-heuristics.md) |
@@ -1221,6 +1222,63 @@ complete. Two families carry a real blind spot: `sc` (20.8% of atoms opaque)
 and `tta_startup` (12.1%), both from `ite` inside arithmetic terms, where the
 analyzer conservatively forces every variable two-sided. Their zeros therefore
 mean "could not tell", not "none". Every other family is at 0.0% opaque.
+
+(lead-z3-cheap-shared-equality)=
+## 10. Current-model-filtered unit-row equality recognition
+
+**Status: open, added 2026-08-17 after reading Bjørner and Nachmanson,
+"Arithmetic Solving in Z3" (CAV 2024), Section 3.2. This is a mixed-theory
+QF_UFLRA lead, not a pure-QF_LRA lead.** The paper explicitly says Z3 disables
+this equality propagation for pure arithmetic logics such as QF_LRA and
+QF_LIA. Its purpose is to communicate arithmetic equalities to another theory
+(and, outside Primo's fragment, to nonlinear arithmetic reasoning).
+
+**Current cost.** Primo's sound `LraTableau::entailed_equalities()` producer
+implements `FixedEq`, `EqRow`, `EqOffsetRows`, and `EqRows`. The latter two
+construct and hash exact fixed offsets; the general rule also hashes the full
+non-fixed row polynomial. The Z3 paper identifies large-numeral offset
+computation and offset-table hashing as avoidable overhead. It first restricts
+attention to shared variables equal in the current arithmetic model, then
+recognizes the useful one-row and same-sign two-row shapes through a common
+non-basic variable with unit coefficient. The current model equality plus
+fixedness of every remaining row variable establishes equality without
+constructing the offset.
+
+**Why this does not change pure QF_LRA.** Primo calls the producer from
+`lra_entailed_shared_equalities()` in the mixed QF_UFLRA coordinator, over the
+solve-scoped `shared_real_terms` interface. The pure QF_LRA path neither builds
+that interface nor calls this producer. An implementation should remain a
+read-only query on the LRA tableau and should not add pivot hooks, rows, bounds,
+or variables. Pure-QF_LRA regression is still mandatory to verify that this
+isolation was preserved, but no pure arithmetic statistic should change.
+
+Do not conflate this with Section 3.3 of the same paper. Direct and row-derived
+**bound propagation** can help both pure and mixed arithmetic because the
+consequences are existing SAT-visible arithmetic bound atoms. It is a separate
+lead with separate activation and performance evidence.
+
+**Implementation shape.** Reuse the model partition already constructed by the
+mixed coordinator, inspect only non-singleton shared model classes, recognize
+the two unit-row shapes without evaluating fixed offsets, and collect the fixing
+lower/upper literals as the equality explanation. Emit deterministic spanning
+edges. A missed shape means only "not cheaply established": retain the current
+explained general producer or strict-orientation exact fallback for
+completeness. Model-equal pairs remain conjectures unless a structural rule or
+exact fallback supplies an explanation.
+
+**Counters required before promotion.** Model classes and candidate pairs
+visited; one-row and two-row matches; rows and nonzeros inspected; fallthroughs
+to `EqOffsetRows`, `EqRows`, and exact probing; reason literals emitted. A
+large-numeral regression must demonstrate that the fast path avoids fixed-offset
+`Rational` work rather than merely returning the same equality afterward.
+
+**Falsifier.** Close or downgrade the lead if profiling shows the current
+offset construction/hashing is not material on the slow QF_UFLRA families, if
+the unit-row rules rarely fire, or if a full mixed-corpus A/B does not improve
+PAR2/common-solved time without losing solved instances. Any pure-QF_LRA
+non-time statistic change is an implementation-boundary failure, not an
+acceptable tradeoff. See [](papers/arithmetic-solving-in-z3.md) for the full
+paper mapping and test obligations.
 
 (lead-recursion-audit)=
 ## R1. Audit input-sized recursion across the repository
