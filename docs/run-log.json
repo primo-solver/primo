@@ -27403,6 +27403,99 @@
       "artifacts": "local-only:/tmp/primo-default-off-7a6875f-vs-098f239-medium-5/{runs.jsonl,summary.json}; screening local-only:/tmp/primo-default-off-local-screening.tsv",
       "evidence_status": "local-complete-current",
       "outcome": "Accepted as focused local evidence that making arithmetic atom canonicalization opt-in restores pre-feature default behavior and does not cause a measurable slowdown on the selected medium cases. This is not a full-corpus performance claim."
+    },
+    {
+      "id": "2026-08-18-integration-eval-fuzz-gates",
+      "started_at": "2026-08-18",
+      "recorded_at": "2026-08-18",
+      "kind": "fuzz-gate",
+      "scope": "Merge-gate fuzzing for the integration of nelson-oppen-cursor-and-guard + nelson-oppen-class-equality-transitivity onto main f628dbb, default settings, both QF_LRA and QF_UFLRA.",
+      "commit": "8cd7181 (integration-2026-08-eval: f628dbb + bf0b137 + 5fae33d)",
+      "branch": "integration-2026-08-eval",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "workdir": "primo-eval-candidate"
+      },
+      "commands": {
+        "qf_uflra": "sbatch scripts/slurm_qf_uflra_fuzz_gate.sbatch (job 126634)",
+        "qf_lra": "sbatch --export=...PRIMO_WORKDIR=$(pwd) scripts/slurm_qf_lra_model_fuzz_gate.sbatch (job 126638)"
+      },
+      "results": {
+        "qf_uflra": "4,000/4,000 differential PASS (750 mixed + 125 finite-qf-uf + 125 finite-qf-uflra per task x 4 tasks); 3,500/3,500 Dolmen model validations clean.",
+        "qf_lra": "3,000 FuzzSMT differential cases across 6 shards, zero wrong-answer disagreements (only PASS/TIMEOUT outcomes, 11 benign solver-timeouts out of 3,000); 3,000 Dolmen/z3-fallback model validations, zero invalid models (same 11 timeouts counted as validate_qfuf_models_with_dolmen.py 'failures', which is why Slurm marked those 6 array tasks FAILED -- a known script characteristic: unlike slurm_qf_uflra_fuzz_gate.sbatch, this gate's validate_model.py call has no `|| model_status=$?` guard, so a lone solver-timeout among 500 cases fails the whole task even though nothing is wrong. Verified by inspecting every shard's summary.csv and per-outcome breakdown directly, not just the Slurm exit code. 34-seed opfuzz run: 0 bug triggers. Two 1500s-wall typefuzz shards: 0 bug triggers."
+      },
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Clean. Zero wrong answers, zero invalid models across both logics. The QF_LRA gate's per-task FAILED status is a script exit-code artifact (solver-timeouts counted as failures), not a correctness issue -- confirmed by reading every outcome row directly."
+    },
+    {
+      "id": "2026-08-18-integration-eval-full-corpus",
+      "started_at": "2026-08-18",
+      "recorded_at": "2026-08-18",
+      "kind": "benchmark",
+      "scope": "Full QF_LRA (1,753 files) and QF_UFLRA (1,284 files) corpus comparison, baseline (main f628dbb) vs candidate (integration-2026-08-eval 8cd7181), default settings, 120s/file.",
+      "commit": "f628dbb baseline vs 8cd7181 candidate",
+      "branch": "integration-2026-08-eval",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "workdir": "primo-eval-candidate / primo-eval-baseline",
+        "job": "126724 (64 array tasks: 2 corpora x 2 binaries x 16 shards)"
+      },
+      "commands": {
+        "sweep": "sbatch phase2_full_corpus_compare.sbatch; python3 scripts/bench_qf_uf_full.py --root tmp/{QF_LRA,QF_UFLRA} --timeout 120 --shards 16 per (corpus, binary)"
+      },
+      "results": {
+        "qf_lra": "Zero wrong answers either side. Solved: baseline 1596/1753, candidate 1597/1753. PAR2: baseline 50064.64, candidate 49512.15. Apparent complementarity (gained 2 / lost 1) on three LassoRanker files all within ~1s of the 120s cap; re-run directly (no Slurm contention, 200s cap) showed all three solve comfortably on both binaries in 89-98.6s -- confirmed boundary-cap noise, not a real trade.",
+        "qf_uflra": "Zero wrong answers either side. Solved: baseline 1272/1284, candidate 1272/1284 (identical). PAR2: baseline 3681.70, candidate 3655.61. Zero gained/lost/disagreements -- identical solved-set."
+      },
+      "evidence_status": "slurm-complete-current",
+      "outcome": "No major performance change from combining the two branches onto the new main, as expected going in. Zero wrong answers on 3,037 files x 2 binaries. Safe to merge on correctness and performance grounds."
+    },
+    {
+      "id": "2026-08-18-arithmetic-canonicalization-fuzz-gates-on-integration",
+      "started_at": "2026-08-18",
+      "recorded_at": "2026-08-18",
+      "kind": "fuzz-gate",
+      "scope": "Re-run both merge-gate fuzz scripts with --arithmetic-atom-canonicalization on the integration candidate binary (8cd7181) -- the prior canonicalization fuzz-gate record (2026-08-17, docs/papers/lra-atom-canonicalization.md) was against that pass alone, without these two branches.",
+      "commit": "8cd7181 + --arithmetic-atom-canonicalization",
+      "branch": "integration-2026-08-eval",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "workdir": "primo-eval-candidate",
+        "jobs": "126800 (QF_UFLRA), 126804 (QF_LRA)"
+      },
+      "results": {
+        "qf_uflra": "4,000/4,000 differential PASS, 3,500/3,500 Dolmen model validations clean.",
+        "qf_lra": "3,000 FuzzSMT cases, zero disagreements (PASS/TIMEOUT only, 11 benign timeouts, same script exit-code artifact as the default-settings run); 3,000 model validations clean; opfuzz + typefuzz 0 bug triggers."
+      },
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Clean. The specific combination (both branches + canonicalization) has now been fuzzed and is not a new risk surface."
+    },
+    {
+      "id": "2026-08-18-arithmetic-canonicalization-full-corpus",
+      "started_at": "2026-08-18",
+      "recorded_at": "2026-08-18",
+      "kind": "benchmark",
+      "scope": "Full QF_LRA (1,753 files) and QF_UFLRA (1,284 files) corpus comparison, candidate binary (8cd7181), default vs --arithmetic-atom-canonicalization, 120s/file. Supersedes the 2026-08-17 237/1,753 and 100/1,284 SAMPLE comparisons in docs/papers/lra-atom-canonicalization.md with full-corpus numbers.",
+      "commit": "8cd7181",
+      "branch": "integration-2026-08-eval",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "workdir": "primo-eval-candidate",
+        "job": "126819 (64 array tasks: 2 corpora x 2 modes x 16 shards)"
+      },
+      "commands": {
+        "sweep": "sbatch phase3_canon_compare.sbatch; python3 scripts/bench_qf_uf_full.py --root tmp/{QF_LRA,QF_UFLRA} --timeout 120 --shards 16, default vs --solver-arg=--arithmetic-atom-canonicalization"
+      },
+      "results": {
+        "qf_lra": "Zero wrong answers either side. Solved: default 1597/1753, canonicalization-on 1617/1753 (+20, 1.1% of corpus). PAR2: default 49891.78, canon 44394.62 (-11.0%). Complementarity: gained 34 (canon solves, default times out), lost 14 (default solves, canon times out), net +20. Spot-verified three of the largest swings directly at 130s cap outside Slurm: firewire.t2.c (default timeout -> canon sat 4.02s), disj_nightmare.t2.c (default unsat 108.44s -> canon unsat 4.08s), ecoliMILPglycerolYices3-70000 (default sat 12.69s -> canon timeout) -- all reproduced exactly, confirming these are genuine, large, bidirectional search-trajectory changes, not boundary noise or measurement artifacts. Gains cluster heavily in the LassoRanker family (419 files), which the original 237-file stratified sample evidently under-weighted relative to its actual size.",
+        "qf_uflra": "Zero wrong answers either side. Solved: default 1272/1284, canon 1272/1284 (identical). PAR2: default 3682.91, canon 3685.73 (+0.08%, noise). Zero gained/lost/disagreements."
+      },
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Materially different conclusion from the sample-based evaluation: at full-corpus scale, --arithmetic-atom-canonicalization is a clear net win on QF_LRA (+20 solved, -11% PAR2) and neutral on QF_UFLRA, with zero wrong answers throughout. Still not a uniform win (14 genuine losses alongside 34 genuine gains) -- the underlying mechanism (early canonicalization changes preprocessing and LRA search trajectories) is unchanged, but the net effect at full-corpus scale is substantially more positive than the sample suggested. Recorded as new evidence for docs/papers/lra-atom-canonicalization.md; whether this justifies promoting the flag (at least for pure QF_LRA) is a decision left to the user rather than made here."
     }
   ]
 }
