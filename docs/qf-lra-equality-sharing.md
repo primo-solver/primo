@@ -232,7 +232,10 @@ after listing the rules:
 > making `w` a fixed variable, and enabling the application of the rule EqRow.
 
 Reference [8] is Dutertre & de Moura — the paper our tableau is built from, and
-`--lra-row-propagation` is that technique. So bound propagation is not only a
+`--lra-row-propagation` is that technique; see [](arithmetic.md)'s
+"Row-based/interval bound propagation" entry for our implementation of it
+(`compute_implied_bound` in `check_sat.cpp`), rather than just the paper
+citation. So bound propagation is not only a
 search economy here; it is what *makes variables fixed*, which is what makes
 the opportunistic rules fire. Its own evaluation
 ([](qf-lra-heuristics.md)'s D1) found it neutral-to-negative on solved count —

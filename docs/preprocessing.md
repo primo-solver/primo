@@ -591,8 +591,10 @@ depend on each other, and a topological scheme would call that a cycle and
 discard sound eliminations. Instead: for any discharged atom, the eliminated
 variable valued *last* sees every other leaf already valued, so that atom
 yields a real bound on it, and going far enough satisfies all of its
-constraints including that one. Earlier variables may skip the atom; the last
-one repairs it.
+constraints including that one. An earlier variable does not skip the atom --
+it still derives a bound from it, but against whatever placeholder value the
+other leaf currently has (see below), which the later variable's own turn
+then supersedes with its real value.
 
 Verified rather than argued: temporarily reversing the valuation order and
 re-running model validation over 120 benchmark files gave **108 valid models
@@ -609,6 +611,116 @@ disqualified can lose its last constraint and vanish from the tableau. Such a
 variable is pinned to zero during reconstruction rather than left unvalued --
 skipping its bound instead produced models that violated the very constraint
 the pass had discharged.
+
+### Worked example
+
+`apply_monotone_eliminations` (`check_sat.cpp:5551`) processes the eliminated
+variables in a fixed order. For each one, it walks its discharged atoms and,
+for every other leaf in an atom, reads that leaf's current model value --
+**assigning it `0` on the spot if it has none yet** (`check_sat.cpp:5583-5587`).
+That single mechanism is what produces both the order-dependent-but-valid
+models above and the vanish-to-zero case below.
+
+**Order-independence, worked.** Take `x > y ∧ x > 10 ∧ y < 3` again, `x` pushed
+up (only lower bounds) and `y` pushed down (only upper bounds).
+
+*Forward (`x` then `y`):*
+- `x`: `x > 10` gives bound `10`. `x > y` needs `y`, which has no value yet, so
+  `y` is pinned to `0` and the atom gives bound `0`. Tightest lower bound is
+  `max(10, 0) = 10`, so `x = 10 + 1 = 11`.
+- `y`: `x > y` now sees `x = 11`, giving bound `11`. `y < 3` gives bound `3`.
+  Tightest upper bound is `min(11, 3) = 3`, so `y = 3 - 1 = 2`.
+
+Result: `x = 11, y = 2`. Check against the original formula: `11 > 2`,
+`11 > 10`, `2 < 3` -- all hold.
+
+*Reversed (`y` then `x`):*
+- `y`: `x > y` needs `x`, unvalued, so `x` is pinned to `0`; the atom gives
+  bound `0`. `y < 3` gives bound `3`. Tightest upper bound is `min(0, 3) = 0`,
+  so `y = 0 - 1 = -1`.
+- `x`: `x > 10` gives bound `10`. `x > y` now sees `y = -1`, giving bound
+  `-1`. Tightest lower bound is `max(10, -1) = 10`, so `x = 10 + 1 = 11`.
+
+Result: `x = 11, y = -1` -- a different model, and still satisfying:
+`11 > -1`, `11 > 10`, `-1 < 3`.
+
+**Vanish-to-zero, worked.** `ψ = (x > 10) ∧ (v < x) ∧ (x2 < 0) ∧ (x2 < v)`.
+`x` is pushed up by both of its atoms; `x2` is pushed down by both of its
+atoms; `v` is pushed two ways at once -- `v < x` bounds it above, `x2 < v`
+bounds it below -- so `v` is disqualified (`MonotoneSide::Both`,
+`preprocessing.cpp:3844`). Both of `v`'s atoms are folded anyway, since each
+is also in the atom list of an eliminated variable (`x` and `x2`
+respectively), so `v` ends up with no tableau row at all, and -- unlike `x`
+and `y` above -- no entry of its own in `eliminated` to give it a final
+value.
+
+Processing `x` then `x2`:
+- `x`: `x > 10` gives bound `10`. `v < x` needs `v`, unvalued, so `v` is
+  pinned to `0`; the atom gives bound `0`. Tightest is `max(10, 0) = 10`, so
+  `x = 11`.
+- `x2`: `x2 < 0` gives bound `0`. `x2 < v` now sees `v = 0`, giving bound `0`.
+  Tightest is `min(0, 0) = 0`, so `x2 = 0 - 1 = -1`.
+
+`v`'s pin from `x`'s step is never revisited -- `v` has no entry in
+`eliminated` to overwrite it -- so it stays `0`. Result: `x = 11, x2 = -1,
+v = 0`. Check against `ψ`: `11 > 10`, `0 < 11`, `-1 < 0`, `-1 < 0` -- all
+hold, and it is exactly `v`'s pinned `0` that makes the last two checks pass.
+
+**A disqualified variable in the middle of a chain, worked.** The vanish case
+above needed three variables because `v` had to be disqualified by something
+other than the two atoms that fold it away. A two-atom chain gets there with
+only three variables total, and it is the *middle* one that disappears:
+
+```
+χ = (z < x) ∧ (x < y)
+```
+
+- `z` occurs only in `z < x`: for `z`, this is `Hi` (bounded above by `x`).
+  One atom, trivially one-directional -- eligible, pushed down.
+- `y` occurs only in `x < y`: for `y`, this is `Lo` (bounded below by `x`).
+  One atom -- eligible, pushed up.
+- `x` occurs in both: `Lo` from `z < x` (bounded below by `z`) and `Hi` from
+  `x < y` (bounded above by `y`). Both sides marked -- `MonotoneSide::Both`
+  -- so `x` is **disqualified**, not `z` or `y`. It is the endpoints of the
+  chain that are monotone; the interior variable is exactly the one being
+  bounded from both directions, which is the ordinary meaning of "not
+  monotone."
+
+Folding does not care that `x` is disqualified: `z < x` folds because it is
+in `z`'s (eliminated) atom list, and `x < y` folds because it is in `y`'s.
+Both atoms mention `x`, and both get folded regardless -- an atom only needs
+*one* validly eliminated participant. So `x` loses every atom that mentioned
+it and vanishes from the tableau by the same mechanism as `v` above: a
+disqualified variable whose every remaining atom happens to be folded away by
+some other, validly eliminated variable it shares that atom with.
+
+**How each variable gets its value is different, and worth separating out.**
+`z` and `y` are real entries in `eliminated`: their own step in
+`apply_monotone_eliminations` walks their discharged atoms, derives a bound,
+and assigns them one unit past it -- an actual, formula-derived value. `x`
+has no such step; it is never processed as an eliminated variable, because it
+is not one. Its value comes entirely as a *side effect* of whichever of `z`
+or `y` happens to be reconstructed first and needs `x`'s value to evaluate
+its own atom's `rest` term (`check_sat.cpp:5578-5587`): finding no value for
+`x` yet, that step assigns it `0` on the spot and moves on. Nothing about `x`
+itself -- neither its two atoms nor any notion of "the middle of a chain" --
+is consulted; `0` is not derived from `χ`, it is the generic placeholder
+every unvalued leaf gets, and it happens to stick because `x` has no entry of
+its own to overwrite it later.
+
+Reconstructing `z` then `y`:
+- `z` (pushed down): `z < x` -- `x` unvalued, pinned to `0` -- bound `0`.
+  Tightest is `0`, so `z = 0 - 1 = -1`.
+- `y` (pushed up): `x < y` -- `x` already `0` from `z`'s step -- bound `0`.
+  Tightest is `0`, so `y = 0 + 1 = 1`.
+
+Result: `z = -1, x = 0, y = 1`. Check against `χ`: `-1 < 0`, `0 < 1` -- both
+hold. Reconstructing `y` before `z` instead pins `x` during `y`'s step
+rather than `z`'s, but `x` is still pinned to the same generic `0` either
+way, since the pin never reads anything about `x`'s own atoms -- unlike the
+`x`/`y` order-independence example above, where swapping the order changed
+the *result* because both variables there had their own bound-deriving
+entry.
 
 ### Counters
 
