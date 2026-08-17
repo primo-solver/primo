@@ -47,7 +47,6 @@ import os
 import random
 import shutil
 import subprocess
-import tempfile
 from pathlib import Path
 
 RESULTS = {"sat", "unsat", "unknown"}
@@ -80,6 +79,7 @@ class SolverRun:
     answer: str
     returncode: int
     stats: dict[str, int]
+    stdout: str = ""
 
 
 def preamble(extra_bools: list[str]) -> str:
@@ -250,7 +250,7 @@ def run_solver(command: list[str], timeout: float, collect_stats: bool) -> Solve
             answer = "SOLVER_ERROR"
         else:
             answer = "CRASH" if returncode != 0 else "UNKNOWN_OUTPUT"
-    return SolverRun(answer, returncode, parse_stats(output) if collect_stats else {})
+    return SolverRun(answer, returncode, parse_stats(output) if collect_stats else {}, stdout)
 
 
 def extract_real_and_bool_assignments(model_text: str) -> list[tuple[str, str]]:
@@ -265,8 +265,39 @@ def extract_real_and_bool_assignments(model_text: str) -> list[tuple[str, str]]:
     return assignments
 
 
+def without_model_commands(input_text: str) -> str:
+    lines: list[str] = []
+    for line in input_text.splitlines():
+        stripped = line.strip()
+        if stripped == "(get-model)" or stripped.startswith("(set-option :produce-models"):
+            continue
+        lines.append(line)
+    return "\n".join(lines) + "\n"
+
+
+def add_assignments_before_check_sat(input_text: str, assignments: list[tuple[str, str]]) -> str:
+    assignment_text = "".join(f"(assert (= {symbol} {value}))\n" for symbol, value in assignments)
+    marker = "(check-sat)"
+    index = input_text.rfind(marker)
+    if index == -1:
+        return input_text.rstrip() + "\n" + assignment_text + marker + "\n"
+    return input_text[:index] + assignment_text + input_text[index:]
+
+
+def validate_real_and_bool_assignments_with_z3(
+    z3_path: str | None, original_text: str, assignments: list[tuple[str, str]], timeout: float
+) -> tuple[str, int | None, str, str]:
+    if z3_path is None or not assignments:
+        return "unavailable", None, "", "Z3 fallback unavailable\n"
+    validation_input = add_assignments_before_check_sat(
+        without_model_commands(original_text), assignments
+    )
+    return run_command([z3_path, "-smt2", "-in"], timeout, validation_input)
+
+
 def validate_model_with_dolmen(
     dolmen_path: str | None,
+    z3_path: str | None,
     original_text: str,
     solver_response: str,
     out_dir: Path,
@@ -290,6 +321,22 @@ def validate_model_with_dolmen(
     if status == "missing":
         return "DOLMEN_MISSING"
     if returncode == 0:
+        return "PASS"
+    # Dolmen sometimes rejects syntax Z3 accepts (see
+    # validate_qfuf_models_with_dolmen.py's own fallback for the same
+    # reason); re-check the extracted assignments against the original
+    # formula with Z3 before giving up on the model.
+    assignments = extract_real_and_bool_assignments(solver_response)
+    z3_status, z3_returncode, z3_stdout, z3_stderr = validate_real_and_bool_assignments_with_z3(
+        z3_path, original_text, assignments, timeout
+    )
+    if (
+        z3_status == "done"
+        and z3_returncode == 0
+        and "(error" not in z3_stdout.lower()
+        and "(error" not in z3_stderr.lower()
+        and next((line.strip() for line in z3_stdout.splitlines() if line.strip() == "sat"), None)
+    ):
         return "PASS"
     if "(error" in stderr.lower():
         return "DOLMEN_ERROR"
@@ -394,7 +441,16 @@ def main() -> int:
             case = generate_case(rng, index)
             stem = f"case-{index:05d}-{case.shape}"
             case_path = cases_dir / f"{stem}.smt2"
-            case_path.write_text(case.text, encoding="utf-8")
+            # get-model after unsat/unknown is a harmless no-op, so this is
+            # requested unconditionally -- one solver invocation per case
+            # covers both the answer/stats and, when sat, the model dolmen
+            # validates, instead of running the solver twice.
+            exec_text = case.text
+            if ":produce-models" not in exec_text:
+                exec_text = "(set-option :produce-models true)\n" + exec_text
+            if "(get-model)" not in exec_text:
+                exec_text = exec_text.rstrip() + "\n(get-model)\n"
+            case_path.write_text(exec_text, encoding="utf-8")
 
             ours = run_solver(
                 [args.solver, "--quiet", "--stats", *args.solver_arg, str(case_path)],
@@ -405,24 +461,9 @@ def main() -> int:
 
             dolmen_outcome: str | None = None
             if ours.answer == "sat":
-                model_text = case.text
-                if ":produce-models" not in model_text:
-                    model_text = "(set-option :produce-models true)\n" + model_text
-                if "(get-model)" not in model_text:
-                    model_text = model_text.rstrip() + "\n(get-model)\n"
-                with tempfile.NamedTemporaryFile("w", suffix=".smt2", delete=False) as handle:
-                    handle.write(model_text)
-                    model_case_path = handle.name
-                model_status, _code, model_stdout, _stderr = run_command(
-                    [args.solver, "--quiet", *args.solver_arg, model_case_path], args.timeout
+                dolmen_outcome = validate_model_with_dolmen(
+                    dolmen_path, z3_path, case.text, ours.stdout, args.out, stem, args.dolmen_timeout
                 )
-                os.unlink(model_case_path)
-                if model_status == "timeout":
-                    dolmen_outcome = "MODEL_TIMEOUT"
-                else:
-                    dolmen_outcome = validate_model_with_dolmen(
-                        dolmen_path, case.text, model_stdout, args.out, stem, args.dolmen_timeout
-                    )
 
             outcome = classify(case, ours, reference, dolmen_outcome, monotone_elimination)
             counts[outcome] = counts.get(outcome, 0) + 1
@@ -457,7 +498,6 @@ def main() -> int:
         "DOLMEN_TIMEOUT",
         "MISSING",
         "MODEL_ERROR",
-        "MODEL_TIMEOUT",
         "REFERENCE_DISAGREEMENT",
         "REFERENCE_UNUSABLE",
         "SOLVER_ERROR",
