@@ -6909,7 +6909,13 @@ LraImpliedRealEqualitiesResult resolve_class_entailed_equalities(
           manager.interface_equality(pair.lhs, pair.rhs);
       if ((registered.has_value() && registered->assignment == InterfaceEqualityAssignment::True) ||
           flat_closure_equal_on_terms(euf, pair.lhs, pair.rhs)) {
+        // Already true against this anchor specifically -- not (yet) known
+        // true against any other class member, so it still needs a real
+        // probe if it's grouped under a different anchor later. Defer it
+        // rather than dropping it, matching what an exhaustive scan would
+        // have found for it.
         statistics.increment(":no.interface.lra-exact-fallback-skipped-pairs");
+        unresolved.push_back(candidate);
         continue;
       }
       statistics.increment(":no.interface.lra-exact-fallback-pairs");
@@ -6920,15 +6926,22 @@ LraImpliedRealEqualitiesResult resolve_class_entailed_equalities(
       }
       if (probe.equality.has_value()) {
         linked.push_back(candidate);
-        reason_from_anchor.push_back(std::move(probe.equality->reason.value()));
-        equalities.push_back(
-            ExplainedInterfaceEquality{terms.mk_eq(anchor, candidate), reason_from_anchor.back()});
+        reason_from_anchor.push_back(probe.equality->reason.value());
+        equalities.push_back(std::move(probe.equality.value()));
       } else {
         unresolved.push_back(candidate);
       }
     }
     for (std::size_t i = 0; i < linked.size(); ++i) {
       for (std::size_t j = i + 1; j < linked.size(); ++j) {
+        const TermPairKey transitive_pair = canonical_term_pair(linked[i], linked[j]);
+        const std::optional<InterfaceEqualityRegistryEntry> registered =
+            manager.interface_equality(transitive_pair.lhs, transitive_pair.rhs);
+        if ((registered.has_value() &&
+             registered->assignment == InterfaceEqualityAssignment::True) ||
+            flat_closure_equal_on_terms(euf, transitive_pair.lhs, transitive_pair.rhs)) {
+          continue;
+        }
         statistics.increment(":no.interface.lra-exact-fallback-transitive-pairs");
         sat::Clause combined = reason_from_anchor[i];
         for (const sat::Lit lit : reason_from_anchor[j]) {
