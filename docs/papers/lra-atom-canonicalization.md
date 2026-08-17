@@ -159,3 +159,45 @@ real seeds without a bug trigger. A separate mixed typefuzz run completed 6,000
 mutations without a bug trigger. These timeout-only results do not establish
 completeness on arbitrary generated instances, but they do satisfy the fresh
 campaign requirement for retaining this experimental preprocessing pass.
+
+### Full-corpus evaluation, 2026-08-18: a materially different picture
+
+The sample comparison above (237/1,753 QF_LRA, 100/1,284 QF_UFLRA) was never
+re-run at full-corpus scale. It was, as part of a broader re-evaluation
+campaign covering two unrelated `check_sat.cpp` branches landing around the
+same time (`docs/run-log.json`, entries `2026-08-18-arithmetic-canonicalization-*`),
+run over the complete corpora: 1,753 QF_LRA files and 1,284 QF_UFLRA files,
+120-second per-file limit, exact Release candidate binary (git `8cd7181`,
+`main` `f628dbb` plus two unrelated Nelson-Oppen branches) with and without
+`--arithmetic-atom-canonicalization`:
+
+| corpus | files | default solved | canon solved | default PAR2 | canon PAR2 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| QF_LRA, full | 1,753 | 1,597 | 1,617 (+20) | 49,891.78 | 44,394.62 (-11.0%) |
+| QF_UFLRA, full | 1,284 | 1,272 | 1,272 (+0) | 3,682.91 | 3,685.73 (+0.08%, noise) |
+
+Zero wrong answers on either corpus, either configuration. QF_LRA
+complementarity: 34 files gained (canonicalization solves, default times out),
+14 lost (default solves, canonicalization times out) -- net +20, but still not
+a uniform win, exactly the "enabling simplification, not a uniform
+performance improvement" shape the sample already found. What changed is the
+*sign and size* of the net effect: the 237-file stratified sample evidently
+under-weighted the LassoRanker family (419 of the 1,753 QF_LRA files) relative
+to its true size, and that family accounts for most of the gains.
+
+Three of the largest swings were verified by direct re-run outside SLURM
+(130-second cap, no shard contention), confirming they are genuine and
+reproducible rather than measurement noise: `firewire.t2.c` (default:
+timeout; canon: `sat` in 4.02s), `disj_nightmare.t2.c` (default: `unsat` in
+108.44s; canon: `unsat` in 4.08s), and `ecoliMILPglycerolYices3-70000`
+(default: `sat` in 12.69s; canon: timeout) -- the last one confirming the
+losses are equally genuine, not just the gains.
+
+QF_UFLRA remains flat, consistent with the sample. The mechanism -- early
+canonicalization changes preprocessing and LRA search trajectories -- is
+unchanged from the original finding; what this full run adds is that at
+full-corpus scale, on QF_LRA specifically, the net effect is a clear win
+rather than a wash. This is recorded as new evidence rather than as a
+decision: whether it justifies promoting `--arithmetic-atom-canonicalization`
+toward default (for QF_LRA, for QF_UFLRA, or not at all) has not been decided
+here.
