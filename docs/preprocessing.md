@@ -482,6 +482,14 @@ Treating the log as undirected equalities is also incorrect: stale values for
 both constants can alternately overwrite each other and prevent model
 construction from terminating.
 
+The directed/symmetric distinction was exercised by the early arithmetic-atom
+canonicalization gate. Its first exact SLURM run found a finite-domain model
+whose canonical equality orientation made the old undirected postsolve loop
+oscillate. `TheoryModelAssignment::directed_substitution` now marks only actual
+substitution entries; ordinary forced equality facts retain symmetric model
+closure. The minimized QF_LRA regression and the corrected 3,500-row Dolmen gate
+cover both termination and model validity.
+
 The reconstruction trail is owned by the preprocessing result objects in
 `src/smt/preprocessing.hpp`: `BooleanUnitPropagationResult::assignments`,
 `ForcedAtomPropagationResult::assignments`,

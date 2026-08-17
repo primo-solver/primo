@@ -27143,6 +27143,143 @@
       "artifacts": "local-only:fuzz-results/qf_uflra-scaled-arithmetic-local-2026081701-fixed/summary.csv; rejected local-only:fuzz-results/qf_uflra-scaled-arithmetic-local-2026081701/summary.csv",
       "evidence_status": "local-smoke-current",
       "outcome": "Accepted as a focused smoke gate only. A fresh exact-commit SLURM merge gate remains required before completion."
+    },
+    {
+      "id": "2026-08-17-lra-atom-canonicalization-slurm-fuzz-b08a5a5",
+      "started_at": "2026-08-17",
+      "recorded_at": "2026-08-17",
+      "kind": "fuzz-and-model-validation",
+      "scope": "Fresh exact-commit QF_UFLRA differential, finite-domain, and Dolmen model gate for mandatory early primitive-integer arithmetic-atom canonicalization",
+      "commit": "b08a5a5 (canonicalization ff1fc3d plus directed Real postsolve repair)",
+      "branch": "lra-atom-canonicalization",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release git b08a5a5 with CaDiCaL 3.0.0",
+        "jobs": "126423 accepted array 0-3; 126395 rejected predecessor array 0-3",
+        "seed_base": 2026081710,
+        "corpus": "3000 generated general QF_UFLRA cases, 500 finite-domain QF_UF cases, 500 finite-domain QF_UFLRA cases, and 3500 model-validation rows",
+        "timeouts": "5 seconds per differential solver invocation; 10 seconds each for Primo model generation and Dolmen validation",
+        "preflight": "scripts/slurm_prepare_benchmark_workspace.py --check-only --no-sync verified git b08a5a5, CaDiCaL, Z3, and cvc5 immediately before submission; the batch also required Dolmen on PATH."
+      },
+      "commands": {
+        "gate": "scripts/slurm_qf_uflra_fuzz_gate.sbatch array 0-3 with PRIMO_FUZZ_COUNT=750, PRIMO_FINITE_DOMAIN_FUZZ_COUNT=125, and PRIMO_FUZZ_SEED_BASE=2026081710",
+        "summary": "scripts/summarize_fuzz_results.py slurm-results/qf-uflra-atom-canonicalization-b08a5a5",
+        "regression_diagnosis": "Replayed the saved finite-domain case locally with get-model, compared exact parent/candidate behavior, and sampled the blocked Debug process under gdb; the stack was in apply_real_preprocessing_model_assignments repeatedly overwriting Real values.",
+        "verification": "make check; make lint; make docs; make asan-test; git diff --check; whole-tree make tidy and make include-cleaner during the implementation milestone; focused clang-tidy and misc-include-cleaner after the postsolve repair"
+      },
+      "results": {
+        "answer_differential": "3000/3000 general and 1000/1000 finite-domain comparisons passed with zero bug files.",
+        "models": "3500/3500 rows completed: all 1989 SAT models passed direct Dolmen validation and 1511 rows were UNSAT.",
+        "metadata": "All 20 summaries and all 16 metadata records were complete; observed counts equaled expected counts.",
+        "failures": "Zero wrong answer, model error, crash, timeout, unsupported result, parser/type error, reference disagreement, fallback, or saved bug in the accepted run.",
+        "rejected_predecessor": "Job 126395 on git 9bbd2aa passed all 4000 differential cases but failed its model gate: 72 finite-domain rows timed out because canonical equality orientation exposed an undirected Real-postsolve oscillation. The minimized regression led to b08a5a5; the same rows passed there.",
+        "verification": "All unit, Python, CLI, documentation, ASan, lint, formatting, and changed-file static-analysis checks passed. Whole-tree clang-tidy reported only the established advisory baseline; include-cleaner added no warning in the canonicalizer or model-postsolve translation units."
+      },
+      "artifacts": "remote:<prepared-workspace>/slurm-results/qf-uflra-atom-canonicalization-b08a5a5; rejected predecessor:slurm-results/qf-uflra-atom-canonicalization-9bbd2aa",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Accepted as the exact answer and generated-model correctness gate. The rejected predecessor is retained as discovery evidence rather than counted as a passing gate."
+    },
+    {
+      "id": "2026-08-17-lra-atom-canonicalization-qflra-qfuflra-ab-b08a5a5",
+      "started_at": "2026-08-17",
+      "recorded_at": "2026-08-17",
+      "kind": "benchmark",
+      "scope": "Exact parent/candidate regression and mechanism comparison for mandatory early arithmetic-atom canonicalization",
+      "commit": "b08a5a5 candidate vs 816482e parent",
+      "branch": "lra-atom-canonicalization",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Isolated exact Release binaries with CaDiCaL 3.0.0 and --stats",
+        "jobs": "126459 QF_LRA and 126460 QF_UFLRA; eight shards per arm, all 32 tasks completed with exit status zero",
+        "superseded_jobs": "126427 and 126428 were cancelled after about one minute because their solver arms omitted --stats; they are not performance evidence.",
+        "corpora": "benchmarks/qf-lra-stratified-sample.txt (237 files) and benchmarks/qf_uflra-smtlib-broader-100.txt (100 files)",
+        "timeout": "60 seconds per file",
+        "preflight": "scripts/slurm_prepare_benchmark_workspace.py --check-only --no-sync verified both exact binaries and CaDiCaL immediately before submission; shard JSONL journals were flushed per row."
+      },
+      "commands": {
+        "benchmark": "scripts/slurm_qf_lra_scrambled_compare.sbatch with candidate and parent solver arms, PRIMO_COMPARE_SHARDS=8, PRIMO_COMPARE_TIMEOUT=60, and the corpus-specific root/manifest",
+        "summary": "scripts/compare_solver_answers.py <result-root> --timeout 60 plus per-family, common-solved timing, shared-statistic, and canonicalization-counter aggregation from shard CSVs"
+      },
+      "results": {
+        "qf_lra_parent": "202 solved (103 sat, 99 unsat), 35 timeouts, 0 errors, 0 wrong, PAR2 4922.3.",
+        "qf_lra_candidate": "201 solved (102 sat, 99 unsat), 36 timeouts, 0 errors, 0 wrong, PAR2 5031.9.",
+        "qf_lra_timing": "199 common solves: aggregate 661.205574 parent vs 648.860576 candidate seconds. On 61 parent runs of at least one second, median candidate/parent was 1.0143 and mean was 1.0340.",
+        "qf_lra_coverage": "Two candidate-only and three parent-only solves. Family solved counts matched except latendresse (12 parent vs 11 candidate); LassoRanker stayed 11/15 because each arm had one unique solve.",
+        "qf_lra_mechanism": "Candidate totals: 1,385,385 atom visits, 423,970 rewrites, 32,965 aliases merged, 967 constant folds, 2,043 duplicate assertions removed, 31,267 catch-up rewrites, and 904,657 created hash-cons terms.",
+        "qf_uflra_parent": "92 solved (84 sat, 8 unsat), 8 timeouts, 0 errors, 0 wrong, PAR2 1064.9.",
+        "qf_uflra_candidate": "92 solved (84 sat, 8 unsat), 8 timeouts, 0 errors, 0 wrong, PAR2 1064.5.",
+        "qf_uflra_timing": "All 92 solves were common: aggregate 104.934867 parent vs 104.528442 candidate seconds.",
+        "qf_uflra_families": "FFT 10/10, cpachecker-bmc-svcomp14 7/15, cpachecker-induction-svcomp14 50/50, and mathsat 25/25 for both arms.",
+        "qf_uflra_mechanism": "Candidate totals: 16,815,025 atom visits, 30,541 rewrites, 7 aliases merged, 2 constant folds, 3 catch-up rewrites, 24,052 post-purification rewrites, and 912,148 created hash-cons terms.",
+        "correctness": "Zero decisive-answer disagreements, nonstandard rows, unsupported results, errors, or wrong answers in either corpus."
+      },
+      "artifacts": "remote:<prepared-workspace>/results/lra-atom-canon-qflra-stats-b08a5a5-vs-816482e and results/lra-atom-canon-qfuflra-stats-b08a5a5-vs-816482e",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Accepted as regression evidence with an explicit search-trajectory caveat, not as a uniform speedup. Mixed coverage and PAR2 were preserved. QF_LRA common-solved aggregate time improved, but the 60-second solve set lost one net instance and requires the recorded cutoff follow-up."
+    },
+    {
+      "id": "2026-08-17-lra-atom-canonicalization-cutoff-followup-b08a5a5",
+      "started_at": "2026-08-17",
+      "recorded_at": "2026-08-17",
+      "kind": "benchmark",
+      "scope": "Three-repetition, longer-timeout follow-up for all five QF_LRA solve-set changes in the 60-second canonicalization A/B",
+      "commit": "b08a5a5 candidate vs 816482e parent",
+      "branch": "lra-atom-canonicalization",
+      "environment": {
+        "type": "SLURM",
+        "binary": "The same exact Release binaries and CaDiCaL 3.0.0 as the main A/B",
+        "job": "126501, array 0-29; five one-file shards for each of three candidate and three parent arms; all tasks completed with exit status zero",
+        "corpus": "benchmarks/qf-lra-atom-canonicalization-cutoff-followup.txt; five files",
+        "timeout": "180 seconds per file"
+      },
+      "commands": {
+        "benchmark": "scripts/slurm_qf_lra_scrambled_compare.sbatch with six solver arms and PRIMO_COMPARE_SHARDS=5",
+        "summary": "scripts/compare_solver_answers.py <result-root> --timeout 180 plus per-file shard CSV comparison"
+      },
+      "results": {
+        "coverage": "Each binary solved 9/15 repeated rows (three of five files in every repetition), with zero errors, wrong answers, or disagreements.",
+        "candidate_gains": "brp_withassume...Iteration8 solved in 47.85-48.57 seconds while parent timed out three times; ecoli...-90000 solved in 13.33-13.79 seconds while parent timed out three times.",
+        "parent_gains": "ecoli...-70000 solved in 13.18-13.39 seconds and ecoli...-80000 in 17.19-17.54 seconds while candidate timed out three times on both.",
+        "common": "sumit...Iteration1 solved in 32.78-35.76 seconds on parent and 66.74-67.67 seconds on candidate.",
+        "par2": "Across the 15 repeated rows: parent 2356.3, candidate 2546.8. The trajectories and pivot/conflict counts were stable across repetitions."
+      },
+      "artifacts": "remote:<prepared-workspace>/results/lra-atom-canon-cutoff-followup-b08a5a5-vs-816482e",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "The 60-second changes are deterministic search reshaping rather than timing noise. Early canonicalization remains an enabling compilation invariant, but this evidence explicitly rules out a claim of uniform QF_LRA performance improvement."
+    },
+    {
+      "id": "2026-08-17-lra-atom-canonicalization-campaigns-b08a5a5",
+      "started_at": "2026-08-17",
+      "recorded_at": "2026-08-17",
+      "kind": "fuzz-and-mutation-campaign",
+      "scope": "Fresh exact-commit pure-QF_LRA generated/model campaign plus QF_LRA and QF_UFLRA seed mutation for mandatory arithmetic-atom canonicalization",
+      "commit": "b08a5a5",
+      "branch": "lra-atom-canonicalization",
+      "environment": {
+        "type": "SLURM",
+        "binary": "Release git b08a5a5 with CaDiCaL 3.0.0",
+        "jobs": "126550 QF_LRA generated/model array 0-5; 126557 QF_LRA real-seed mutation array 0-2; 126534 mixed QF_UFLRA typefuzz array 0",
+        "rejected_job": "126533 array 0-8: generated shards were superseded by the longer model-timeout rerun, and mutation tasks 6-8 were cancelled after the generated family-complete seed set selected known-unsolved tropical-matrix inputs",
+        "seeds": "Generated base 2026081720; QF_LRA mutation used all 14 tracked benchmarks/seeds/qf_lra_real files; mixed mutation prechecked 11 tracked QF_UFLRA seeds",
+        "timeouts": "10 seconds for generated answer comparison and 60 seconds for model-producing runs in job 126550",
+        "preflight": "scripts/slurm_prepare_benchmark_workspace.py --check-only --no-sync verified the detached b08a5a5 workspace and CaDiCaL; the batch preflight also verified FuzzSMT, the editable YinYang environment, Z3, Yices, and the intended Primo revision."
+      },
+      "commands": {
+        "generated": "scripts/slurm_qf_lra_model_fuzz_gate.sbatch array 0-5 with 500 cases per shard, PRIMO_FUZZ_SEED_BASE=2026081720, PRIMO_FUZZ_TIMEOUT=10, PRIMO_MODEL_TIMEOUT=60, and mutation tasks disabled",
+        "qf_lra_mutation": "scripts/slurm_qf_lra_model_fuzz_gate.sbatch array 0-2 with generated tasks disabled, OpFuzz and two typefuzz shards enabled, and both mutation seed roots set to benchmarks/seeds/qf_lra_real",
+        "mixed_mutation": "scripts/yinyang_fuzz.sh typefuzz over the prechecked benchmarks/seeds/qf_uflra corpus with 2000 mutations per selected seed and Z3 model validation",
+        "summary": "scripts/summarize_fuzz_results.py fuzz-results/lra-atom-canon-qflra-model60-b08a5a5 plus sacct, flushed YinYang log summaries, and bug-directory classification"
+      },
+      "results": {
+        "qf_lra_generated": "3000 cases: 2990 PASS and 10 solver TIMEOUT, with zero wrong answers, crashes, unsupported inputs, parser/type errors, or reference disagreements. The ten saved files are classified timeout artifacts.",
+        "qf_lra_models": "3000 rows: 2609 valid models, 386 not-SAT rows, and five solver timeouts; 2039 models used Z3 fallback validation and 570 used direct Dolmen validation. There were zero invalid models and zero model bug files.",
+        "qf_lra_mutation": "All three tasks completed: OpFuzz generated 2800 mutants and the two typefuzz shards generated 1400 each, for 5600 successful mutations and 16,551 solver calls. No bug files or triggers were produced.",
+        "mixed_mutation": "The typefuzz task completed 6000 successful mutations and 43,902 solver calls with no bug file or trigger.",
+        "rejected_setup": "Job 126533 generated 3000 answer rows with 2986 PASS and 14 timeout and found no wrong answer or invalid model, but its mutation seed construction was rejected because it included known-unsolved benchmark families. It is not counted as the accepted mutation gate."
+      },
+      "artifacts": "remote:<prepared-workspace>/fuzz-results/lra-atom-canon-qflra-model60-b08a5a5; fuzz-results/lra-atom-canon-qflra-mutation-real-b08a5a5; fuzz-results/lra-atom-canon-qfuflra-mutation-b08a5a5; rejected:fuzz-results/lra-atom-canon-qflra-b08a5a5",
+      "evidence_status": "slurm-complete-current-with-classified-timeouts",
+      "outcome": "Accepted as the required fresh QF_LRA and mixed mutation campaign. Timeout-only generated rows are recorded separately and do not block correctness; the campaign makes no completeness or uniform-performance claim."
     }
   ]
 }

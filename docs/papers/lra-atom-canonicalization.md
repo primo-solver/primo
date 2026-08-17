@@ -111,6 +111,44 @@ created terms, and late catch-up rewrites.
   Nelson-Oppen path.
 - Pure QF_UF reports zero canonicalization activity.
 
-Before default acceptance, the implementation requires QF_LRA and QF_UFLRA
-model-validating fuzz campaigns plus before/after QF_LRA and mixed benchmark
-comparisons. The run identifiers and outcomes belong in `docs/run-log.json`.
+## Evaluation
+
+The exact candidate `b08a5a5` passed the 2026-08-17 SLURM merge gate: 3,000
+generated mixed differential cases, 1,000 finite-domain cases, and 3,500 model
+rows completed without a wrong answer, crash, unsupported result, or saved bug.
+Dolmen directly accepted all 1,989 SAT models; the remaining 1,511 rows were
+UNSAT. The first gate attempt exposed and led to the repair of an independent
+model-postsolve termination bug before this accepted rerun.
+
+The default-profile parent/candidate comparison used exact Release binaries,
+CaDiCaL 3.0.0, a 60-second per-file limit, and statistics enabled:
+
+| corpus | parent | canonicalized | parent PAR2 | canonicalized PAR2 |
+| --- | ---: | ---: | ---: | ---: |
+| QF_LRA stratified, 237 files | 202 | 201 | 4922.3 | 5031.9 |
+| QF_UFLRA broader, 100 files | 92 | 92 | 1064.9 | 1064.5 |
+
+There were no wrong answers, errors, unsupported rows, or decisive-answer
+disagreements. On the 199 QF_LRA files solved by both binaries, aggregate time
+improved from 661.21 to 648.86 seconds, while the median candidate/parent ratio
+over the 61 parent runs of at least one second was 1.014. The 60-second solve set
+had two candidate recoveries and three losses. A three-repetition, 180-second
+follow-up on those five files was deterministic: each binary solved three, but
+different, files. Thus early canonicalization changes preprocessing and LRA
+search trajectories; it is a compilation invariant and an enabling
+simplification, not a uniform performance improvement. In particular, these
+results do not justify attributing a QF_LRA speedup to the pass.
+
+The exact job identifiers, family summaries, mechanism counters, rejected first
+gate, and artifact locations are recorded in `docs/run-log.json`.
+
+Additional pure-QF_LRA coverage used 3,000 generated cases and the established
+14-file real benchmark seed set. The generated run produced 2,990 decisive
+agreements and 10 classified solver timeouts; model checking accepted 2,609
+models, classified 386 rows as UNSAT, and timed out on five model-producing
+runs. There were no wrong answers, crashes, invalid models, or reference
+disagreements. OpFuzz and two typefuzz shards completed 5,600 mutations of the
+real seeds without a bug trigger. A separate mixed typefuzz run completed 6,000
+mutations without a bug trigger. These timeout-only results do not establish
+completeness on arbitrary generated instances, but they do satisfy the fresh
+campaign requirement for this default compilation change.

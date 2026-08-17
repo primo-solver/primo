@@ -1,0 +1,7 @@
+# The five 60-second solve-set changes in the 2026-08-17 early LRA atom
+# canonicalization A/B over benchmarks/qf-lra-stratified-sample.txt.
+LassoRanker/CooperatingT2/brp_withassume.t2.c_Iteration8_Loop_7-phaseTemplate.smt2
+LassoRanker/CooperatingT2/sumit.t2.c_Iteration1_Lasso_7-phaseTemplate.smt2
+latendresse/ecoliMILPglycerolYices3-70000.smt2
+latendresse/ecoliMILPglycerolYices3-80000.smt2
+latendresse/ecoliMILPglycerolYices3-90000.smt2
