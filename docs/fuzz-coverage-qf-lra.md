@@ -374,3 +374,62 @@ check within the budget" from "checked and wrong", and only the latter should
 fail the run.
 
 See `docs/run-log.json` for the per-run entries.
+
+(sec-boolean-arithmetic-gap)=
+## A free-Boolean-mixed-with-arithmetic blind spot, and the bug it hid
+
+Found 2026-08-17, while hand-testing shapes for a new
+`--monotone-elimination` generator. `build_qf_lra_model` (`check_sat.cpp`)
+silently dropped every Boolean atom the SAT search decided (rather than
+preprocessing) from the printed model -- see [](arithmetic.md)'s "Model
+construction for Boolean atoms in QF_LRA" for the fix. The verdict was
+always right; the *model* was wrong, for any `sat` QF_LRA problem with
+propositional structure the solver couldn't fully resolve up front.
+
+Three independent reasons this session's own hand-testing found it first,
+all QF_LRA-specific:
+
+- `fuzz_external.py`'s `classify()` -- the mechanism behind the great
+  majority of `docs/run-log.json`'s QF_LRA entries -- only ever compares the
+  `sat`/`unsat` verdict against a reference solver. It never requests
+  `(get-model)`, so a right-answer/wrong-model bug is invisible to it by
+  construction.
+- The one gate that *does* check models,
+  `slurm_qf_lra_model_fuzz_gate.sbatch` (dolmen-based; see
+  [](#sec-failed-is-not-wrong)'s job 119949/119950, "0 wrong answers and 0
+  invalid models across 6,000 FuzzSMT cases"), uses the same
+  FuzzSMT/opfuzz/typefuzz generators as the answer-only gates. FuzzSMT's own
+  predicate/UF-arity flags (`-mf`/`-mp`/`-ma`/`-Ma`,
+  [](#sec-fuzzsmt-profiles)) apply "only to the `QF_UF*` logics" and are
+  silently ignored for QF_LRA -- so no FuzzSMT-generated QF_LRA case has
+  ever contained a free Boolean atom mixed with arithmetic. The gate ran
+  clean 6,000 times not because the bug didn't exist, but because its
+  generator structurally cannot produce the shape that triggers it.
+- The mutation seed corpus has the identical gap:
+  `benchmarks/seeds/qf_lra/`'s three committed files declare zero Boolean
+  symbols, and real SMT-LIB QF_LRA-division benchmarks are almost entirely
+  pure arithmetic, so opfuzz/typefuzz mutation (which perturbs within a
+  seed's existing symbol/sort inventory) never introduces one either.
+
+Even the closest hand-written unit test,
+`monotone_elimination_rejects_atom_shared_across_polarities`
+(`tests/unit/qf_lra_solver_tests.cpp`), had exactly this shape --
+`(and (or (<= x 5) p) (or (not (<= x 5)) q))` -- and asserted only the `sat`
+verdict and the disqualification stat, never the model. Strengthened as
+part of the fix.
+
+**The durable fix is `scripts/qf_lra_boolean_arithmetic_fuzz.py`**, a small
+in-repo generator (not dependent on FuzzSMT's grammar) purpose-built to mix
+free Booleans with LRA chains/fans -- see its own module docstring for the
+shape catalogue. It validates models via dolmen exactly as
+`validate_qfuf_models_with_dolmen.py` does, and doubles as the
+`--monotone-elimination` reconstruction stress test the session originally
+set out to build.
+
+Not pursued here: repointing `slurm_qf_lra_model_fuzz_gate.sbatch`'s
+`PRIMO_FUZZ_OPFUZZ_SEEDS`/`PRIMO_FUZZ_YINYANG_SEEDS` at committed seeds
+containing free Booleans. `benchmarks/seeds/qf_lra_division/` (the gate's
+actual seed source) is gitignored and rebuilt per job from an external
+`tmp/QF_LRA` tree, so a durable version of that fix means either changing
+shared sbatch defaults other campaigns also use, or growing the *external*
+family corpus -- a separate, larger-blast-radius change.
