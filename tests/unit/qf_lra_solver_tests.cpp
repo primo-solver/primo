@@ -228,6 +228,13 @@ void monotone_elimination_handles_bounds_under_ite() {
 // actually assigned. `x <= 0` forces `(<= x 5)` true, which forces q = true
 // as the only way to satisfy the second disjunct; the original bug printed
 // q = false here.
+//
+// Unlike prints_boolean_atoms_decided_by_search_in_qf_lra_model, this one
+// does not need no_preprocessing(): deriving `(<= x 5)` from `(<= x 0)`
+// requires genuine LRA bound reasoning, which preprocessing's forced-atom
+// pass cannot do (it is term-identity unit propagation and `=`-congruence
+// only) -- so q's value here can only come from the SAT-integrated theory
+// search, the exact path this test exists to cover.
 void monotone_elimination_rejects_atom_shared_across_polarities() {
   const auto result = check_sat_smtlib(R"(
     (set-option :produce-models true)
@@ -3457,6 +3464,12 @@ void prints_lra_model_when_requested() {
 // a Real-sorted declaration to exist somewhere -- even unused -- to route
 // the formula through build_qf_lra_model instead of the plain Boolean
 // solver path; v below is never referenced in any assertion.
+//
+// no_preprocessing() is required for this to actually exercise the bug:
+// under default options, preprocessing's forced-atom fixpoint alone
+// resolves both x and q from `(not x)` and `(or x q)` before any SAT
+// search runs, so this test passed even against the pre-fix binary until
+// preprocessing was disabled here.
 void prints_boolean_atoms_decided_by_search_in_qf_lra_model() {
   const auto result = check_sat_smtlib(R"(
     (set-option :produce-models true)
@@ -3468,7 +3481,8 @@ void prints_boolean_atoms_decided_by_search_in_qf_lra_model() {
     (assert (or x q))
     (check-sat)
     (get-model)
-  )");
+  )",
+                                       no_preprocessing());
   assert(result.result == CheckSatResult::Sat);
   assert(result.model.find("(define-fun x () Bool false)") != std::string::npos);
   assert(result.model.find("(define-fun q () Bool true)") != std::string::npos);
