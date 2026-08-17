@@ -688,6 +688,12 @@ int main(int argc, char** argv) {
     return app.exit(error);
   }
 
+  if (qf_uflra_online_euf && nelson_oppen_model_equality_branching) {
+    std::cerr << "error: --qf-uflra-online-euf and --model-equality-branching cannot be used "
+                 "together (untested interaction between online interface-equality "
+                 "backtracking and shared-equality-decision state)\n";
+    return 2;
+  }
   if (deprecated_preprocessing_mode_option->count() > 0) {
     if (preprocessing_mode_option->count() > 0) {
       std::cerr << "error: --preprocessing-mode and deprecated --qf-uf-preprocess cannot be used "

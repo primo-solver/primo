@@ -312,6 +312,17 @@ while the checkpoint is protected are queued and replayed before the next SAT
 call. If the assignment or generated-atom registration is incomplete, the
 coordinator rebuilds the round-local closure as before.
 
+`--qf-uflra-online-euf` and `--model-equality-branching` cannot be combined
+(`main.cpp` rejects the pair at parse time). `TheoryCombinationManager::
+push_level`/`pop_to_level` rewind the interface-equality value/assignment
+trail on every online-mode SAT backtrack, but `SharedEqualityDecisionState`
+(the branching coordinator's own pending/tried-assumption state, see
+`shared_equality_decisions()` below) is not trail-scoped and is never touched
+by that rewind. A 2026-08 fresh-eyes review found no live soundness bug from
+this in a 150-file differential run, but the interaction was never designed
+for and has no test or fuzz coverage, so the combination is blocked rather
+than left silently reachable.
+
 **Implementation checklist and invariants.** This step is based on the
 candidate-model compatibility operations in de Moura and Bjorner, Sections 4
 and 5, and on the observed-variable callback contract in Fazekas et al.,
