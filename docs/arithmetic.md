@@ -117,6 +117,68 @@ of one guarded case to avoid an extra Tseitin variable; it does not change this
 contract. See [](real-equality-lowering) for the precise pass ordering and
 guarded rewrite.
 
+(tableau-sparse-representation)=
+## Tableau sparse-row and occurrence representation
+
+`LraTableau` owns two views of the current sparse tableau. For every current
+basic variable `b`, `rows_[b]` is a contiguous `Row` containing the nonzero
+right-hand-side coefficients in
+
+\[
+x_b = \sum_j a_{bj}x_j.
+\]
+
+The entries are strictly ordered by `var`, with at most one entry per variable:
+
+```cpp
+struct RowEntry {
+  LraVarId var;
+  util::Rational coeff;
+  std::uint32_t occ_slot;
+};
+```
+
+The reverse view, `occurs_in_[v]`, is an unordered vector of the basic variable
+IDs whose rows currently contain `v`. Therefore, for every entry `e` in
+`rows_[b]`, the cross-link invariant is
+
+```cpp
+occurs_in_[e.var][e.occ_slot] == b
+```
+
+`occ_slot` is thus an index into the **column list** `occurs_in_[e.var]`. It is
+not the entry's position inside `rows_[b]`, a variable ID, or an occurrence
+count. Conversely, because each row contains a variable at most once, every
+element `b` of `occurs_in_[v]` identifies exactly one entry for `v` in
+`rows_[b]`.
+
+This is Primo's array-backed, one-direction subset of the doubly cross-linked
+sparse tableau in King, Section 2.2.7 ([](king-thesis)). King links each nonzero
+into both its row and column and leaves both lists unsorted. Primo keeps rows
+sorted and contiguous for linear two-way row merging, so only the row entry
+points into the column; the column entry stores a basic-variable ID rather than
+a direct row position.
+
+Maintenance follows the ownership of the column entry:
+
+- inserting a new row occurrence appends `b` to `occurs_in_[v]` and stores the
+  old column size as the new entry's `occ_slot`;
+- rewriting or moving a surviving entry within its row preserves `occ_slot`,
+  because its element in `occurs_in_[v]` did not move;
+- removing an occurrence swap-pops its column element, then updates the one row
+  entry whose basic-variable ID moved into the vacated column slot;
+- rebuilding the occurrence index, including after restoration from the trail,
+  rewrites every `occ_slot` while repopulating the columns.
+
+Rows remain sorted, but column lists deliberately do not: swap-pop removal
+destroys column order. `occurs_in_index_matches_full_rebuild()` independently
+reconstructs the columns and also checks the cross-link equation above. The
+tests call it after pivots, exact coefficient cancellation, and backtracking,
+because a stale slot normally produces a later wrong row update rather than an
+immediate failure. `occ_slot` is 32-bit to limit row-entry growth; the current
+representation consequently assumes that one variable occurs in fewer than
+$2^{32}$ basic rows.
+
 ## Implemented (Milestones 1-4, supported)
 
 - **Grammar/frontend** (`src/smt/check_sat.cpp`): `(set-logic QF_LRA)`,
@@ -850,17 +912,11 @@ guarded rewrite.
   **unconditional**): each row entry carries a back-index into the column list
   it appears in, so `pivot()` removes a dead occurrence without searching for
   something it is already holding.
-  - **The representation, which is the thing to read if you only read one
-    bullet.** `Row`'s element changed from `std::pair<LraVarId, Rational>` to
-    `struct RowEntry { LraVarId var; Rational coeff; uint32_t occ_slot; }`,
-    where `occ_slot` is that term's index inside `occurs_in_[var]`. Removal is
-    then: read the slot (O(1)), swap-pop `occurs_in_[var]` at that slot (O(1)),
-    and repair the *moved* element's back-index with a `lower_bound` over its
-    row (O(log row)). Insertion sets `occ_slot` from
-    `occurs_in_[var].size()` before the `push_back`; the H8 merge copies slots
-    across unchanged, because rebuilding a row moves an entry within the row
-    but does not touch `occurs_in_[var]` for a surviving term. Rows stay
-    sorted and contiguous, so H8 and H10 are untouched.
+  - **Representation.** See [](#tableau-sparse-representation) for the
+    authoritative row/column invariant and its maintenance rules. The important
+    optimization here is that removal uses the row entry's back-index to
+    swap-pop the column in O(1), then repairs the one moved entry with a
+    `lower_bound` over its sorted row in O(log row).
   - **What it replaced:** a linear scan of `occurs_in_[var]`. Measured at
     12.0M removals scanning 8.17B elements on `constraint-199552`, where
     occurrence lists average 679.
@@ -872,8 +928,9 @@ guarded rewrite.
     [](papers/summaries.md) for the source and
     [open-leads](#lead-occurs-in) for the fork.
   - **Correctness gate:** QF_LRA model fuzz gate on Slurm (job 119566, 9-task
-    array) -- 0 wrong answers, 0 invalid models. `verify_occurs_in_index` was
-    extended to check that every back-index round-trips
+    array) -- 0 wrong answers, 0 invalid models.
+    `occurs_in_index_matches_full_rebuild()` checks that every back-index
+    round-trips
     (`occurs_in_[var][entry.occ_slot] == basic_var`), which is what makes the
     scheme falsifiable in a debug build.
   - **Evidence, mixed and worth reading before relying on it.** Stratified

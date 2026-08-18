@@ -722,10 +722,11 @@ the remaining column-to-row half):
   must reassign every slot. The prototype bug found earlier -- stale index
   after a rebuild, with all 13 suites passing -- was exactly this class, and
   nothing currently tests rebuild-then-remove.
-- **`verify_occurs_in_index`** must additionally check that every back-link
-  round-trips: `occurs_in_[var][row_entry.occ_slot] == basic_var`. That check
-  is what makes the whole scheme falsifiable in a debug build, and is worth
-  writing before the optimisation rather than after.
+- **`occurs_in_index_matches_full_rebuild()`** must additionally check that
+  every back-link round-trips:
+  `occurs_in_[var][row_entry.occ_slot] == basic_var`. That check is what makes
+  the whole scheme falsifiable in a debug build, and is worth writing before
+  the optimisation rather than after.
 - **`add_row`'s public signature** takes `pair`s. Either it keeps doing so and
   fills slots internally, or every caller changes. Keeping it is clearly right.
 
@@ -825,8 +826,8 @@ hash prototype cut tropical 25% with pivot counts unchanged, so the figure was
 read correctly and the falsifier did not fire.
 
 **Gate applied.** This touches the core tableau invariant and
-`verify_occurs_in_index`, so it needed the QF_LRA model fuzz gate on Slurm
-rather than unit tests alone -- job 119566, clean.
+`occurs_in_index_matches_full_rebuild()`, so it needed the QF_LRA model fuzz
+gate on Slurm rather than unit tests alone -- job 119566, clean.
 
 (lead-3b-outcome)=
 ### Outcome: implemented, and it clears the bar on the family it targets
