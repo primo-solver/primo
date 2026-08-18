@@ -169,6 +169,17 @@ This is a search-strength regression, not a correctness failure. The result
 validates the paper's local cost observation, but rejects replacing Primo's
 broader producer wholesale. `legacy` therefore remains the default.
 
+Three exact-commit repetitions made the loss reproducible rather than a
+120-second boundary effect. At commit `fcc8d0e`, `legacy` solved the row in
+70.62--70.67 seconds, while `model-unit` needed 180.53--182.60 seconds. Enabling
+the candidate final scan produced the same search statistics and
+180.82--182.34-second times. The missing early lemmas, rather than the final
+completeness check, are decisive: `legacy` reaches a fixed point in three
+convex rounds after 2,226 general `EqRows` matches, whereas `model-unit` takes
+33 rounds, 22 shared-model splits, 86 assumption solve calls, and 842 equality
+assumptions. Its solve-phase time increases by about 112 seconds even though
+the producer itself remains cheap.
+
 The follow-up `adaptive` mode is a Primo scheduling experiment around the
 paper mechanism. It runs `legacy` until an opportunistic producer round causes
 no SAT recheck, uses `model-unit` on later rounds, and returns permanently to
@@ -183,8 +194,27 @@ semantic escalation trigger rather than a tuned numeric threshold. The
 fallback is permanent within one `check-sat` call because later SAT assignments
 can expose additional fixed-row equalities. Counters distinguish the bootstrap,
 unit rounds, legacy rounds, and the single fallback activation. This adaptive
-policy is not from the paper and remains experimental until its own fuzz and
-corpus A/B are complete.
+policy is not from the paper.
+
+The completed evaluation at commit `d8fc162` shows that this scheduling rule
+repairs the regression conservatively. The lost row solved three times in
+73.65--74.02 seconds with exactly the legacy decision and propagation counts.
+The fresh gate passed 3,000 mixed cases, 500 finite QF_UF cases, 500 finite
+QF_UFLRA cases, and 3,500 model checks; all 1,991 SAT models passed Dolmen. On
+the productive mutation replay, all 11 tracked seeds were valid and 43,854
+solver calls found no bug trigger. On the complete 1,284-file corpus, adaptive
+and legacy both solved 1,272 files with the same 12 timeouts and no wrong
+answers. Adaptive entered `model-unit` on 77 files (93 rounds) and activated the
+permanent fallback on 40 files.
+
+The result does not justify changing the default. Aggregate producer time fell
+only from 2,579,190 to 2,459,320 microseconds (4.6 percent), and 67 of the 77
+files that entered the cheap phase retained identical SAT/combination search
+statistics. The old and new full runs were not concurrent; their 52.57-second
+wall-time difference is therefore not attributable to the mechanism, especially
+because an earlier adaptive version that selected `model-unit` zero times showed
+a similar cluster-time shift. `adaptive` remains an explicit experimental
+profile, while `legacy` remains the default.
 
 ## Section 3.3: bounds propagation
 
@@ -230,5 +260,6 @@ producer is the completed experiment. It substantially reduces producer-local
 work, but the recorded full-corpus loss rejects default promotion. The
 experimental `adaptive` policy tests whether a propagation-fixed-point legacy
 bootstrap can recover useful general `EqRows` lemmas without paying their
-exact-offset cost on every later round; its benchmark result is not yet
-established.
+exact-offset cost on every later round. It recovers the lost row and preserves
+the full solved set, but its small producer-local saving does not justify
+changing the default.

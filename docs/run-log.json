@@ -27588,7 +27588,7 @@
         "correctness": "Both arms covered all 1284 files with zero wrong answer, error, unsupported row, or decisive-answer disagreement.",
         "legacy": "1272 solved (761 sat, 511 unsat), 12 timeouts, solved-row time 837.171267 seconds, PAR2 3717.171267.",
         "model_unit": "1271 solved (760 sat, 511 unsat), 13 timeouts, solved-row time 740.330666 seconds, PAR2 3860.330666.",
-        "families": "Legacy/model-unit solved FFT 10/10, BMC 7/7, induction 355/354, and MathSAT 900/900.",
+        "families": "Legacy/model-unit solved counts were FFT 10/10 in both arms, BMC 7/15 in both arms, induction 355/359 versus 354/359, and MathSAT 900/900 in both arms.",
         "paired_timing": "On 1271 common solves, legacy used 760.052362 seconds and model-unit 740.330666 seconds, a 19.721696-second (2.59 percent) reduction.",
         "producer_work": "Aggregate producer time fell 2,579,190 to 698,229 microseconds (72.9 percent); reason literals fell 26,234,347 to 7,116,559; opportunistic created atoms fell 6420 to 4287. Model-unit inspected 335,052 rows and 5,292,635 nonzeros and used 439 exact fallback pair probes yielding 82 equalities.",
         "loss": "cpachecker-induction.cs_fib_false-unreach-call.i.smt2 was SAT in 77.118905 seconds with legacy and timed out at 120.275457 seconds with model-unit. Legacy reported 2226 general EqRows matches on this row; model-unit intentionally reported none, delivered 1714 versus 2756 LRA-to-EUF equalities, and did not invoke the exact fallback on the omitted pairs."
@@ -27596,6 +27596,94 @@
       "artifacts": "remote:/home/janotmik/primo-model-unit-5e9371a/results/model-unit-full120-5e9371a/{legacy,model-unit}; SLURM jobs 127115 and 127116",
       "evidence_status": "slurm-complete-current",
       "outcome": "Reject default promotion. The paper-inspired producer removes substantial local arithmetic and explanation work and improves common-solved throughput, but replacing the broader general-row producer loses one non-boundary solve and worsens PAR2. Keep legacy as default and retain model-unit as an explicit experimental profile for future adaptive scheduling work."
+    },
+    {
+      "id": "2026-08-18-model-unit-lost-row-controlled-reproduction-fcc8d0e",
+      "started_at": "2026-08-18",
+      "recorded_at": "2026-08-18",
+      "kind": "performance-regression-triage",
+      "scope": "Three-repetition controlled reproduction of the model-unit loss on cpachecker-induction.cs_fib_false-unreach-call.i.smt2, including a candidate-final-scan ablation",
+      "commit": "fcc8d0e",
+      "branch": "qf-uflra-model-unit-equalities",
+      "environment": {
+        "type": "slurm",
+        "jobs": "127215 legacy; 127216 model-unit; 127217 model-unit plus candidate final scan",
+        "binary": "Release git fcc8d0e, CaDiCaL 3.0.0-7b99c07",
+        "timeout": "300 seconds per repetition"
+      },
+      "commands": {
+        "profiles": "build-slurm-rel/primo --quiet --stats --model-equality-mutation-scope=all with --qf-uflra-lra-equality-producer={legacy,model-unit}; the third arm also enabled --qf-uflra-candidate-final-scan"
+      },
+      "results": {
+        "legacy": "70.669896, 70.674530, and 70.618327 seconds; 3 convex rounds, 2226 general EqRows matches, 2756 LRA-to-EUF equalities, 2070581 SAT decisions, and 4773038 SAT propagations.",
+        "model_unit": "182.597241, 181.290869, and 180.528749 seconds; 33 convex rounds, 22 shared-model splits, 86 model-equality assumption solve calls, 842 equality assumptions, 56 model-equality conflicts, 2118612 decisions, and 5008904 propagations.",
+        "candidate_final_scan": "182.340485, 181.359383, and 180.820061 seconds with search statistics identical to model-unit.",
+        "phase_delta": "Solve-phase time increased by about 111.88 seconds. Producer time was only about 65 milliseconds under model-unit, excluding producer CPU as the cause."
+      },
+      "artifacts": "remote:results/model-unit-loss-repro-fcc8d0e/{legacy,model-unit,model-unit-final-scan}; SLURM jobs 127215, 127216, and 127217",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "The lost solve is deterministic and not a timeout-boundary artifact. General EqRows lemmas are needed before shared-model arrangement search; a final exact scan is too late."
+    },
+    {
+      "id": "2026-08-18-model-unit-adaptive-scheduler-iterations",
+      "started_at": "2026-08-18",
+      "recorded_at": "2026-08-18",
+      "kind": "rejected-and-diagnostic-experiments",
+      "scope": "Evaluate delayed fallback, one-round bootstrap, and propagation-fixed-point bootstrap policies before the final refined adaptive scheduler",
+      "commit": "89a6fef, 2edf32e, and e8a3259",
+      "branch": "qf-uflra-model-unit-equalities",
+      "environment": {
+        "type": "slurm",
+        "jobs": "127229 delayed fallback target; 127230 generated gate; 127247 one-round target; 127248 one-round fuzz; 127261 fixed-point target; 127262 fixed-point fuzz; 127268 fixed-point seed gate/canceled mutation; 127269 fixed-point full corpus"
+      },
+      "results": {
+        "delayed_fallback": "The completed target repetition took 183.194064 seconds. Switching only after the first shared-model split is too late to restore the early EqRows search trajectory.",
+        "one_round": "Job 127247 accidentally included --model-equality-branching and is invalid as an A/B timing result; it took 236--240 seconds. Job 127248 itself was a valid exact-commit generated/model gate: 3000 mixed, 500 finite QF_UF, 500 finite QF_UFLRA, and 3500 model classifications were clean.",
+        "fixed_point_target": "Job 127261 solved the target in 73.071100, 73.119298, and 73.206704 seconds with exactly the legacy 3 rounds, 2226 EqRows matches, 2756 LRA-to-EUF equalities, 2070581 decisions, and 4773038 propagations.",
+        "fixed_point_correctness": "Job 127262 passed 3000 mixed, 500 finite QF_UF, 500 finite QF_UFLRA, and 3500 model checks. Job 127268 passed all 11 tracked seeds before its now-obsolete mutation phase was canceled.",
+        "fixed_point_full": "Job 127269 solved 1272/1284 with the same 12 timeouts and no wrong answers. However, it selected model-unit zero times: 1178 bootstrap legacy rounds, 1347 total legacy rounds, and 77 immediate fallback activations. Its 47.54-second apparent timing improvement is cluster/run variation, not evidence for the intended mechanism."
+      },
+      "artifacts": "remote:results/model-unit-loss-adaptive-89a6fef; remote:results/model-unit-bootstrap-target-2edf32e; remote:results/model-unit-fixedpoint-{target,full120}-e8a3259; remote:slurm-results for jobs 127230, 127248, and 127262",
+      "evidence_status": "slurm-complete-diagnostic",
+      "outcome": "Retain the fixed-point bootstrap, but do not treat a split reached directly from bootstrap as model-unit failure. The cheap producer must be attempted once before a later split activates permanent fallback."
+    },
+    {
+      "id": "2026-08-18-model-unit-refined-adaptive-d8fc162",
+      "started_at": "2026-08-18",
+      "recorded_at": "2026-08-18",
+      "kind": "fuzz-gate-and-full-corpus-evaluation",
+      "scope": "Exact-current validation and complete 1284-file QF_UFLRA screening of the refined adaptive policy that attempts model-unit after a bootstrap split and falls back only after a later split",
+      "commit": "d8fc162",
+      "branch": "qf-uflra-model-unit-equalities",
+      "environment": {
+        "type": "slurm",
+        "jobs": "127292 target array; 127293 generated/model gate; 127299 canceled mutation diagnostic; 127300 full-corpus array; 127311 tracked-seed and YinYang mutation replay",
+        "binary": "Release git d8fc162, CaDiCaL 3.0.0-7b99c07",
+        "references": "Z3 and cvc5 for differential checks; Dolmen for SAT-model validation; Z3 model_validate=true for YinYang",
+        "corpus": "Complete staged QF_UFLRA tree: FFT 10, CPAchecker BMC 15, CPAchecker induction 359, MathSAT 900",
+        "timeout": "300 seconds for the target repetitions; 120 seconds per full-corpus file"
+      },
+      "commands": {
+        "local_verification": "focused primo_qf_lra_solver_tests; make lint; make check; make docs; make asan-test; focused clang-tidy and misc-include-cleaner advisory scans; solver-efficiency snapshot; git diff --check",
+        "target": "Three sharded repetitions with build-slurm-rel/primo --quiet --stats --model-equality-mutation-scope=all --qf-uflra-lra-equality-producer=adaptive",
+        "generated": "scripts/slurm_qf_uflra_fuzz_gate.sbatch with four tasks, seed base 202608188, and PRIMO_FUZZ_SOLVER_ARGS=--qf-uflra-lra-equality-producer=adaptive",
+        "mutation": "scripts/slurm_qf_uflra_mutation_fuzz_gate.sbatch task 0, replay seed 2026081810, and PRIMO_FUZZ_EXTRA_SOLVER_ARGS=--qf-uflra-lra-equality-producer=adaptive",
+        "full": "The locally validated eight-shard sbatch wrapper invoked scripts/bench_qf_uf_full.py with --root tmp/QF_UFLRA --timeout 120 --shards 8 and the target solver profile. The tracked reproducible equivalent is scripts/slurm_qf_uflra_model_mine.sbatch with PRIMO_MINE_TIMEOUT=120, PRIMO_MINE_SHARDS=8, PRIMO_MINE_SOLVER='build-slurm-rel/primo --quiet --stats --model-equality-mutation-scope=all --qf-uflra-lra-equality-producer=adaptive', and --mem=24G. Compare against unchanged legacy job 127115 using scripts/summarize_benchmark_shards.py."
+      },
+      "results": {
+        "local_verification": "All 14 C++ and 52 Python tests passed; all 14 C++ tests passed under ASan; lint, docs, focused static analysis, efficiency review, and diff checks passed.",
+        "target": "73.646839, 73.906177, and 74.020637 seconds. Every repetition retained the legacy 2070581 decisions, 4773038 propagations, 3 legacy/bootstrap rounds, 2226 EqRows matches, and 2756 LRA-to-EUF equalities.",
+        "generated": "3000/3000 mixed, 500/500 finite QF_UF, and 500/500 finite QF_UFLRA differential cases passed. Model checking classified all 3500 cases: 1991 SAT models passed Dolmen and 1509 were UNSAT.",
+        "tracked_seeds": "11/11 tracked QF_UFLRA seeds passed before mutation.",
+        "canceled_mutation_diagnostic": "Job 127299 used seed 202608188. It completed three seeds and entered a fourth sequence where both Primo and Z3 timed out while mutant generation advanced at roughly one case per two minutes. It was canceled after 17:23 with zero bug files because the remaining eight-hour run would provide poor coverage. This is diagnostic only, not correctness evidence.",
+        "mutation": "Replay job 127311 processed all 11 seeds, classified all 11 valid, completed 43854 solver calls, and found 0 bug triggers or bug files in 8:51.",
+        "full_correctness": "Adaptive and legacy both solved 1272/1284: FFT 10/10, BMC 7/15, induction 355/359, and MathSAT 900/900. Both had 12 timeouts, zero wrong answers, errors, unsupported rows, gains, losses, or decisive-answer disagreements.",
+        "full_mechanism": "Adaptive selected 1343 producer rounds: 1178 bootstrap legacy, 93 model-unit, and 1250 total legacy rounds. Model-unit ran on 77 files; 40 files activated permanent fallback. Aggregate producer time fell from 2579190 to 2459320 microseconds. Of the 77 selected files, 67 retained identical SAT solve-call, decision, propagation, and convex-round counts.",
+        "full_timing": "Legacy solved-row time was 837.171267 seconds and adaptive was 784.597600 seconds. The runs were not concurrent, and the zero-model-unit e8a3259 run showed a similar timing shift, so the 52.57-second difference is not attributed to adaptive scheduling."
+      },
+      "artifacts": "remote:results/model-unit-refined-target-d8fc162; remote:slurm-results/qf-uflra-refined-fuzz-d8fc162; remote:fuzz-results/qf-uflra-refined-d8fc162; remote:fuzz-results/qf-uflra-refined-replay-d8fc162; remote:results/model-unit-refined-full120-d8fc162/adaptive; SLURM jobs 127292, 127293, 127299, 127300, and 127311",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "The refined scheduler removes the deterministic loss and preserves the complete solved set while exercising model-unit. The producer-local saving is too small for default promotion; legacy remains default and adaptive remains experimental."
     }
   ]
 }
