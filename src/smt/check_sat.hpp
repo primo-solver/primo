@@ -316,8 +316,8 @@ struct CheckSatOptions {
   // current-model-filtered unit-row producer from Bjorner/Nachmanson CAV 2024
   // Section 3.2, and an adaptive mode that bootstraps with legacy through its
   // first propagation fixed point, uses model-unit thereafter, and returns to
-  // legacy after shared-model reconciliation requires a SAT split. Pure QF_LRA
-  // never calls any producer.
+  // legacy when shared-model reconciliation still requires a SAT split after a
+  // model-unit round. Pure QF_LRA never calls any producer.
   QfUflraLraEqualityProducer qf_uflra_lra_equality_producer = QfUflraLraEqualityProducer::Legacy;
   // Default Section 4 shared-model reconciliation for convex QF_UFLRA.
   // LRA-entailed equalities that EUF can absorb are retained in the round's

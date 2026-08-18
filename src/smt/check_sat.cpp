@@ -10695,6 +10695,7 @@ CheckSatOutcome solve_qf_uf_lra(
   ModelEqualityArrangementState model_equality_arrangement(no_manager);
   ModelEqualityCandidateQueue model_equality_candidate_queue;
   bool adaptive_legacy_bootstrap_active = true;
+  bool adaptive_model_unit_attempted = false;
   bool adaptive_legacy_equality_producer = false;
   statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
   statistics.set(":no.boolean-domain.bridged-terms", clausifier.boolean_domain_bridge_count());
@@ -11463,6 +11464,7 @@ CheckSatOutcome solve_qf_uf_lra(
             statistics.increment(":no.interface.lra-adaptive-legacy-rounds");
           } else {
             equality_producer = QfUflraLraEqualityProducer::ModelUnit;
+            adaptive_model_unit_attempted = true;
             statistics.increment(":no.interface.lra-adaptive-model-unit-rounds");
           }
         }
@@ -11530,7 +11532,7 @@ CheckSatOutcome solve_qf_uf_lra(
             }
             if (materialized != 0) {
               if (options.qf_uflra_lra_equality_producer == QfUflraLraEqualityProducer::Adaptive &&
-                  !adaptive_legacy_equality_producer) {
+                  adaptive_model_unit_attempted && !adaptive_legacy_equality_producer) {
                 adaptive_legacy_equality_producer = true;
                 statistics.increment(":no.interface.lra-adaptive-fallback-activations");
               }

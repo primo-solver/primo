@@ -362,8 +362,8 @@ int main(int argc, char** argv) {
   app.add_option("--qf-uflra-lra-equality-producer", qf_uflra_lra_equality_producer,
                  "LRA-to-EUF opportunistic equality producer: legacy exact-offset row indexes "
                  "or model-unit current-model-filtered unit rows; adaptive bootstraps legacy to "
-                 "a propagation fixed point, then uses model-unit until a shared-model split "
-                 "[default: legacy]")
+                 "a propagation fixed point, then uses model-unit until a later shared-model "
+                 "split [default: legacy]")
       ->check(CLI::IsMember({"legacy", "model-unit", "adaptive"}));
   app.add_flag("--qf-uflra-model-reconciliation", qf_uflra_model_reconciliation,
                "Explicitly enable convex QF_UFLRA shared-model reconciliation with scratch "

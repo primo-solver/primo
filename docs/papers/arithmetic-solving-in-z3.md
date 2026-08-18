@@ -172,10 +172,12 @@ broader producer wholesale. `legacy` therefore remains the default.
 The follow-up `adaptive` mode is a Primo scheduling experiment around the
 paper mechanism. It runs `legacy` until an opportunistic producer round causes
 no SAT recheck, uses `model-unit` on later rounds, and returns permanently to
-`legacy` when shared-model reconciliation first has to materialize a SAT
-equality split. This propagation-fixed-point bootstrap preserves general
-`EqRow` clauses that actively change the initial SAT search trajectory. A later
-split means the cheap entailed equalities were
+`legacy` when shared-model reconciliation still has to materialize a SAT
+equality split after a model-unit round. A split reached directly from the
+bootstrap instead starts the cheap phase; model-unit has not failed yet. This
+propagation-fixed-point bootstrap preserves general `EqRow` clauses that
+actively change the initial SAT search trajectory. A later split means the
+cheap entailed equalities were
 insufficient to reconcile the current theory models; it is therefore a
 semantic escalation trigger rather than a tuned numeric threshold. The
 fallback is permanent within one `check-sat` call because later SAT assignments

@@ -1476,10 +1476,12 @@ commands and job IDs.
 
 The follow-up `adaptive` producer runs `legacy` until a producer round causes
 no SAT recheck, uses `model-unit` on later rounds, and returns permanently to
-`legacy` after shared-model reconciliation first materializes a positive
-equality split. This propagation-fixed-point bootstrap preserves general
-`EqRow` clauses that actively shape the initial SAT search. A later split is
-the direct semantic signal that cheap entailed
+`legacy` after shared-model reconciliation still materializes a positive
+equality split following a model-unit round. A split reached directly from the
+bootstrap starts the model-unit phase because the cheap producer has not yet
+been tried. This propagation-fixed-point bootstrap preserves general `EqRow`
+clauses that actively shape the initial SAT search. A later split is the direct
+semantic signal that cheap entailed
 equalities did not make the current LRA and EUF models compatible; using it
 avoids an arbitrary round or size threshold. Once selected, legacy is retained
 for the rest of that `check-sat` call because learned explanations persist but

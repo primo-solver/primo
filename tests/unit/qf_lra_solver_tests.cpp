@@ -1297,7 +1297,7 @@ void qf_uf_lra_adaptive_producer_reaches_a_legacy_propagation_fixed_point() {
   assert(result.statistics.get(":no.interface.lra-adaptive-fallback-activations") == 0);
 }
 
-void qf_uf_lra_adaptive_producer_switches_after_a_shared_model_split() {
+void qf_uf_lra_adaptive_producer_tries_model_unit_after_a_bootstrap_split() {
   CheckSatOptions options = no_preprocessing_or_substitution();
   options.qf_uflra_lra_equality_producer = QfUflraLraEqualityProducer::Adaptive;
   options.qf_uflra_model_reconciliation = true;
@@ -1326,9 +1326,9 @@ void qf_uf_lra_adaptive_producer_switches_after_a_shared_model_split() {
   assert(result.statistics.get(":no.shared-model.compatibility-splits") >= 1);
   assert(result.statistics.get(":no.interface.lra-adaptive-bootstrap-legacy-rounds") == 1);
   assert(result.statistics.get(":no.interface.lra-adaptive-bootstrap-completions") == 1);
-  assert(result.statistics.get(":no.interface.lra-adaptive-model-unit-rounds") == 0);
-  assert(result.statistics.get(":no.interface.lra-adaptive-fallback-activations") == 1);
-  assert(result.statistics.get(":no.interface.lra-adaptive-legacy-rounds") >= 2);
+  assert(result.statistics.get(":no.interface.lra-adaptive-model-unit-rounds") == 1);
+  assert(result.statistics.get(":no.interface.lra-adaptive-fallback-activations") == 0);
+  assert(result.statistics.get(":no.interface.lra-adaptive-legacy-rounds") == 1);
   assert(result.statistics.get(":no.interface.lra-opportunistic-eq-rows") >= 1);
 }
 
@@ -4786,7 +4786,7 @@ int main() {
   qf_uf_lra_model_unit_producer_uses_offset_free_eqrow();
   qf_uf_lra_model_unit_producer_keeps_exact_fallback_for_nonunit_rows();
   qf_uf_lra_adaptive_producer_reaches_a_legacy_propagation_fixed_point();
-  qf_uf_lra_adaptive_producer_switches_after_a_shared_model_split();
+  qf_uf_lra_adaptive_producer_tries_model_unit_after_a_bootstrap_split();
   qf_lra_does_not_run_the_model_unit_mixed_producer();
   qf_uf_lra_fixed_elimination_can_be_disabled_for_ablation();
   qf_uf_lra_euf_publishes_a_spanning_set_per_shared_class();
