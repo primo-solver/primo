@@ -179,6 +179,16 @@ immediate failure. `occ_slot` is 32-bit to limit row-entry growth; the current
 representation consequently assumes that one variable occurs in fewer than
 $2^{32}$ basic rows.
 
+```{figure} _static/lra-tableau-occurrence-index.svg
+:name: lra-tableau-occurrence-index
+:alt: Sparse tableau rows with occ_slot back-links into occurs_in column lists, followed by a swap-pop removal and repair of the moved entry.
+
+The current sparse-row and reverse-occurrence representation. The paired gold
+markers instantiate the cross-link invariant for `x0`; the lower inset shows why
+swap-pop removal must repair the surviving entry that moved within the column.
+The editable TikZ source is `docs/figures/lra-tableau-occurrence-index.tex`.
+```
+
 ## Implemented (Milestones 1-4, supported)
 
 - **Grammar/frontend** (`src/smt/check_sat.cpp`): `(set-logic QF_LRA)`,
