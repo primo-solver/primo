@@ -46,12 +46,15 @@ constraints the SMT layer must obey:
 - `cb_propagate()` must return an observed literal;
 - current external clauses are expected to mention observed variables.
 
-These details are not just backend trivia. They explain why the mixed
-Nelson-Oppen online mode currently precreates and observes interface equality
-atoms before SAT search, and why the next model-based design should instead
-create and observe equality atoms only when a model/care/theory candidate needs
-that pair. Returning a candidate from an ordinary queue is not enough unless the
-candidate's equality literal already exists and is observed.
+These details are not just backend trivia. An earlier mixed Nelson-Oppen
+prototype precreated candidate equality atoms because its adapter could not add
+an observed variable in the callback. The current adapter exposes
+`new_observed_var()`, and `MixedTheoryPropagationDispatcher` now creates and
+observes an equality variable from `cb_propagate()` only after a theory producer
+selects that pair. Returning a term pair from an ordinary queue is still not
+enough by itself: the dispatcher must materialize and observe its SAT literal
+before returning that literal to the backend. See [](../nelson-oppen.md) for
+the current combination path.
 
 ## Tests derived from the interface
 

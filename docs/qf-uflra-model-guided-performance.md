@@ -1,5 +1,10 @@
 # QF_UFLRA Model-Guided Performance Plan
 
+The authoritative description of current solver behavior is
+[](nelson-oppen.md). This page retains performance evidence, implementation
+history, rejected experiments, and remaining optimization work; its dated
+milestone descriptions are not the current architecture reference.
+
 Status stamp: 2026-08-12, branch `qf-uf-structural-preprocessing`, after the
 convex model-reconciliation implementation, exact-commit fuzz and model gate,
 full 120-second QF_UFLRA reference comparison, and full 300-second pure-QF_LRA
