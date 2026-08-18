@@ -193,6 +193,11 @@ enum class NelsonOppenPropagationMode {
   Online,
 };
 
+enum class QfUflraLraEqualityProducer {
+  Legacy,
+  ModelUnit,
+};
+
 struct CheckSatOutcome {
   CheckSatResult result = CheckSatResult::Unknown;
   std::string message;
@@ -306,6 +311,10 @@ struct CheckSatOptions {
   bool solved_constant_substitution = true;
   bool gaussian_elimination = true;
   bool qf_uflra_candidate_final_scan = false;
+  // Mixed-only A/B between the legacy exact-offset row indexes and the
+  // current-model-filtered unit-row producer from Bjorner/Nachmanson CAV 2024,
+  // Section 3.2. Pure QF_LRA never calls either producer.
+  QfUflraLraEqualityProducer qf_uflra_lra_equality_producer = QfUflraLraEqualityProducer::Legacy;
   // Default Section 4 shared-model reconciliation for convex QF_UFLRA.
   // LRA-entailed equalities that EUF can absorb are retained in the round's
   // EUF model instead of being materialized as SAT atoms. The explained exact

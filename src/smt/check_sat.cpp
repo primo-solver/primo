@@ -6169,7 +6169,7 @@ std::vector<ExplainedInterfaceEquality> euf_implied_real_equalities(
 std::vector<ExplainedInterfaceEquality> lra_entailed_shared_equalities(
     core::TermManager& terms, const PreparedLraTheory& prepared,
     const theory::arithmetic::LraTableau& tableau, const std::vector<core::TermId>& shared_terms,
-    util::Statistics& statistics) {
+    QfUflraLraEqualityProducer producer, util::Statistics& statistics) {
   std::vector<theory::arithmetic::LraVarId> shared_variables;
   std::unordered_map<theory::arithmetic::LraVarId, core::TermId> term_by_variable;
   shared_variables.reserve(shared_terms.size());
@@ -6185,8 +6185,37 @@ std::vector<ExplainedInterfaceEquality> lra_entailed_shared_equalities(
     }
   }
 
-  const std::vector<theory::arithmetic::LraTableau::EntailedEquality> entailed =
-      tableau.entailed_equalities(shared_variables);
+  const PhaseClock::time_point producer_start = PhaseClock::now();
+  std::vector<theory::arithmetic::LraTableau::EntailedEquality> entailed;
+  if (producer == QfUflraLraEqualityProducer::ModelUnit) {
+    statistics.increment(":no.interface.lra-model-unit-selected");
+    theory::arithmetic::LraTableau::ModelFilteredEqualityResult query =
+        tableau.model_filtered_unit_equalities(shared_variables);
+    entailed = std::move(query.equalities);
+    statistics.increment(":no.interface.lra-model-unit-classes", query.stats.model_classes);
+    statistics.increment(":no.interface.lra-model-unit-class-terms", query.stats.class_terms);
+    statistics.increment(":no.interface.lra-model-unit-candidate-pairs",
+                         query.stats.candidate_pairs);
+    statistics.increment(":no.interface.lra-model-unit-rows-inspected", query.stats.rows_inspected);
+    statistics.increment(":no.interface.lra-model-unit-nonzeros-inspected",
+                         query.stats.nonzeros_inspected);
+    statistics.increment(":no.interface.lra-model-unit-fixed-matches", query.stats.fixed_matches);
+    statistics.increment(":no.interface.lra-model-unit-one-row-matches",
+                         query.stats.one_row_matches);
+    statistics.increment(":no.interface.lra-model-unit-two-row-matches",
+                         query.stats.two_row_matches);
+    statistics.increment(":no.interface.lra-model-unit-nonunit-rejections",
+                         query.stats.nonunit_rejections);
+    statistics.increment(":no.interface.lra-model-unit-nonfixed-row-rejections",
+                         query.stats.nonfixed_row_rejections);
+    statistics.increment(":no.interface.lra-model-unit-reason-lits", query.stats.reason_literals);
+    statistics.increment(":no.interface.lra-legacy-scan-skipped");
+  } else {
+    statistics.increment(":no.interface.lra-legacy-producer-selected");
+    entailed = tableau.entailed_equalities(shared_variables);
+  }
+  statistics.increment(":time.no-lra-equality-producer-us",
+                       elapsed_microseconds(producer_start, PhaseClock::now()));
   std::vector<ExplainedInterfaceEquality> equalities;
   equalities.reserve(entailed.size());
   for (const theory::arithmetic::LraTableau::EntailedEquality& equality : entailed) {
@@ -11422,7 +11451,8 @@ CheckSatOutcome solve_qf_uf_lra(
       if (options.nelson_oppen_propagation != NelsonOppenPropagationMode::Exact) {
         const std::vector<ExplainedInterfaceEquality> opportunistic_equalities =
             lra_entailed_shared_equalities(terms, *prepared_lra_theory_for_check,
-                                           *checked_lra_tableau, shared_real_terms, statistics);
+                                           *checked_lra_tableau, shared_real_terms,
+                                           options.qf_uflra_lra_equality_producer, statistics);
         statistics.increment(":no.interface.equalities-propagated",
                              opportunistic_equalities.size());
         statistics.increment(":no.interface.lra-to-euf-equalities",

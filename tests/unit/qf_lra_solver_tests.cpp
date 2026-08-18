@@ -18,6 +18,7 @@ using primo::smt::EufEngine;
 using primo::smt::LraPivotingRule;
 using primo::smt::MixedDispatchMode;
 using primo::smt::NelsonOppenPropagationMode;
+using primo::smt::QfUflraLraEqualityProducer;
 using primo::util::StatKey;
 
 namespace {
@@ -1213,6 +1214,74 @@ void qf_uf_lra_uses_eqrow_equalities_when_fixed_elimination_exposes_them() {
   assert(result.statistics.get(":no.interface.lra-opportunistic-reason-lits") >= 2);
   assert(result.statistics.get(":no.interface.lra-exact-fallback-pairs") == 0);
   assert(result.statistics.get(":no.interface.lra-exact-fallback-equalities") == 0);
+}
+
+void qf_uf_lra_model_unit_producer_uses_offset_free_eqrow() {
+  CheckSatOptions options = exact_no_preprocessing_or_substitution();
+  options.qf_uflra_lra_equality_producer = QfUflraLraEqualityProducer::ModelUnit;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun s () Real)
+    (declare-fun x () Real)
+    (declare-fun d () Real)
+    (declare-fun p (Real) Bool)
+    (assert (= s (+ x d)))
+    (assert (<= d 0))
+    (assert (>= d 0))
+    (assert (p s))
+    (assert (not (p x)))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":no.interface.lra-model-unit-selected") >= 1);
+  assert(result.statistics.get(":no.interface.lra-model-unit-one-row-matches") >= 1);
+  assert(result.statistics.get(":no.interface.lra-model-unit-rows-inspected") >= 1);
+  assert(result.statistics.get(":no.interface.lra-legacy-producer-selected") == 0);
+  assert(result.statistics.get(":no.interface.lra-legacy-scan-skipped") >= 1);
+  assert(result.statistics.get(":no.interface.lra-opportunistic-created-atoms") >= 1);
+  assert(result.statistics.get(":no.interface.lra-exact-fallback-pairs") == 0);
+}
+
+void qf_uf_lra_model_unit_producer_keeps_exact_fallback_for_nonunit_rows() {
+  CheckSatOptions options = exact_no_preprocessing_or_substitution();
+  options.qf_uflra_fixed_elimination = false;
+  options.qf_uflra_lra_equality_producer = QfUflraLraEqualityProducer::ModelUnit;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (declare-fun p (Real) Bool)
+    (assert (= x (* 2 z)))
+    (assert (= y (* 2 z)))
+    (assert (p x))
+    (assert (not (p y)))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":no.interface.lra-model-unit-selected") >= 1);
+  assert(result.statistics.get(":no.interface.lra-model-unit-one-row-matches") == 0);
+  assert(result.statistics.get(":no.interface.lra-model-unit-two-row-matches") == 0);
+  assert(result.statistics.get(":no.interface.lra-exact-fallback-pairs") >= 1);
+  assert(result.statistics.get(":no.interface.lra-exact-fallback-equalities") >= 1);
+}
+
+void qf_lra_does_not_run_the_model_unit_mixed_producer() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.qf_uflra_lra_equality_producer = QfUflraLraEqualityProducer::ModelUnit;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (<= x 4))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":solver.qf-lra") == 1);
+  assert(result.statistics.get(":solver.qf-uflra") == 0);
+  assert(result.statistics.get(":no.interface.lra-model-unit-selected") == 0);
 }
 
 void qf_uf_lra_fixed_elimination_can_be_disabled_for_ablation() {
@@ -4646,6 +4715,9 @@ int main() {
   qf_uf_lra_shares_lra_implied_real_equalities_with_euf();
   qf_uf_lra_uses_fixed_equalities_before_exact_pair_probes();
   qf_uf_lra_uses_eqrow_equalities_when_fixed_elimination_exposes_them();
+  qf_uf_lra_model_unit_producer_uses_offset_free_eqrow();
+  qf_uf_lra_model_unit_producer_keeps_exact_fallback_for_nonunit_rows();
+  qf_lra_does_not_run_the_model_unit_mixed_producer();
   qf_uf_lra_fixed_elimination_can_be_disabled_for_ablation();
   qf_uf_lra_euf_publishes_a_spanning_set_per_shared_class();
   qf_uf_lra_reaches_a_convex_equality_fixpoint_across_theories();

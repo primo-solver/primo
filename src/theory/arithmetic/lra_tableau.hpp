@@ -386,6 +386,29 @@ class LraTableau {
     EntailedEqualityRule rule = EntailedEqualityRule::FixedEq;
   };
 
+  // Work counters for the current-model-filtered unit-row producer from
+  // Bjorner and Nachmanson, "Arithmetic Solving in Z3", Section 3.2. They are
+  // returned to the mixed coordinator instead of coupling the theory layer to
+  // util::Statistics.
+  struct ModelFilteredEqualityStats {
+    std::size_t model_classes = 0;
+    std::size_t class_terms = 0;
+    std::size_t candidate_pairs = 0;
+    std::size_t rows_inspected = 0;
+    std::size_t nonzeros_inspected = 0;
+    std::size_t fixed_matches = 0;
+    std::size_t one_row_matches = 0;
+    std::size_t two_row_matches = 0;
+    std::size_t nonunit_rejections = 0;
+    std::size_t nonfixed_row_rejections = 0;
+    std::size_t reason_literals = 0;
+  };
+
+  struct ModelFilteredEqualityResult {
+    std::vector<EntailedEquality> equalities;
+    ModelFilteredEqualityStats stats;
+  };
+
   // Applies the cheap entailment rules from de Moura and Bjorner's
   // Model-based Theory Combination, Section 5.1 (docs/papers/model-guided-no.pdf,
   // and docs/qf-lra-equality-sharing.md for why we care):
@@ -412,6 +435,14 @@ class LraTableau {
   // path is deliberate -- see docs/nelson-oppen-qf-lra-regression.md for what happened last time it
   // was not.
   std::vector<EntailedEquality> entailed_equalities(const std::vector<LraVarId>& shared) const;
+
+  // Section 3.2's offset-free producer. Equal current model values are only a
+  // candidate filter; the fixed/unit-row shapes establish entailment and
+  // provide reasons. Output is a deterministic spanning forest. The method is
+  // deliberately separate from entailed_equalities() so the mixed coordinator
+  // can A/B it against the legacy exact-offset producer.
+  ModelFilteredEqualityResult model_filtered_unit_equalities(
+      const std::vector<LraVarId>& shared) const;
 
   // -- M-Mutate (paper Section 5.2, "Mutation using freedom intervals") ------
   //

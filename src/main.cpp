@@ -179,6 +179,7 @@ int main(int argc, char** argv) {
   std::string lra_soi_minimize = "quickxplain";
   std::string lra_soi_minimize_order = "id";
   std::string mixed_dispatch = "narrow";
+  std::string qf_uflra_lra_equality_producer = "legacy";
   bool no_lra_sparse_leaving = false;
   bool lra_least_violated_leaving = false;
   bool euf_proof_forest_diagnostics = false;
@@ -358,6 +359,10 @@ int main(int argc, char** argv) {
   app.add_flag("--qf-uflra-candidate-final-scan", qf_uflra_candidate_final_scan,
                "Enable experimental mixed QF_UFLRA candidate-first final LRA equality scans before "
                "falling back to the full shared-Real pair scan [default: off]");
+  app.add_option("--qf-uflra-lra-equality-producer", qf_uflra_lra_equality_producer,
+                 "LRA-to-EUF opportunistic equality producer: legacy exact-offset row indexes "
+                 "or model-unit current-model-filtered unit rows [default: legacy]")
+      ->check(CLI::IsMember({"legacy", "model-unit"}));
   app.add_flag("--qf-uflra-model-reconciliation", qf_uflra_model_reconciliation,
                "Explicitly enable convex QF_UFLRA shared-model reconciliation with scratch "
                "LRA mutation, EUF compatibility checks, and lazy positive equality splits "
@@ -619,10 +624,11 @@ int main(int argc, char** argv) {
   const auto group_for = [&starts_with](const std::string& name) -> std::string {
     if (starts_with(name, "--lra-") || starts_with(name, "--no-lra-") ||
         name == "--gaussian-elimination" || name == "--no-gaussian-elimination" ||
-        name == "--qf-uflra-candidate-final-scan" || name == "--qf-uflra-model-reconciliation" ||
-        name == "--no-qf-uflra-model-reconciliation" || name == "--no-qf-uflra-fixed-elimination" ||
-        name == "--guarded-real-equality-lowering" || name == "--monotone-elimination" ||
-        name == "--lra-least-violated-leaving" || name == "--mixed-dispatch") {
+        name == "--qf-uflra-candidate-final-scan" || name == "--qf-uflra-lra-equality-producer" ||
+        name == "--qf-uflra-model-reconciliation" || name == "--no-qf-uflra-model-reconciliation" ||
+        name == "--no-qf-uflra-fixed-elimination" || name == "--guarded-real-equality-lowering" ||
+        name == "--monotone-elimination" || name == "--lra-least-violated-leaving" ||
+        name == "--mixed-dispatch") {
       return kGroupLra;
     }
     if (name == "--preprocessing-mode" || name == "--qf-uf-preprocess" ||
@@ -788,6 +794,10 @@ int main(int argc, char** argv) {
     solver_options.qf_uflra_fixed_elimination = false;
   }
   solver_options.qf_uflra_candidate_final_scan = qf_uflra_candidate_final_scan;
+  solver_options.qf_uflra_lra_equality_producer =
+      qf_uflra_lra_equality_producer == "model-unit"
+          ? primo::smt::QfUflraLraEqualityProducer::ModelUnit
+          : primo::smt::QfUflraLraEqualityProducer::Legacy;
   if (qf_uflra_model_reconciliation) {
     solver_options.qf_uflra_model_reconciliation = true;
   }

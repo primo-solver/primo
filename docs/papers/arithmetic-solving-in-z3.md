@@ -75,9 +75,12 @@ that the paper identifies as avoidable. The general `EqRows` rule may still be
 useful; the paper's negative result for non-unit generalization makes it an A/B
 question rather than a reason to delete it without measurement.
 
-### Implementation checklist for a future fast producer
+### Implementation checklist and experimental producer
 
-This paper mechanism is **not implemented yet**. An implementation must:
+The `model-unit` producer implements this mechanism behind
+`--qf-uflra-lra-equality-producer=model-unit`; `legacy` remains the default
+until differential fuzzing and full-corpus A/B evaluation are complete. The
+implementation obligations are:
 
 1. Build the exact current-model equality classes once and inspect only
    non-singleton shared classes.
@@ -98,6 +101,46 @@ and fallthrough to offset/general/exact producers. Tests need large fixed
 numerals so they exercise avoidance of offset arithmetic, both signs of the
 connecting unit variable, non-unit rejection, transitive spanning output, and
 explanation invalidation when any fixing bound is removed.
+
+### Detailed implementation contract
+
+The fast producer is a read-only query on a feasible `LraTableau`. It receives
+only the LRA variables corresponding to the solve-scoped shared Real interface;
+pure QF_LRA never calls it. It first partitions those variables by their exact
+`DeltaRational` assignment. Singleton classes cannot produce a model-guided
+equality and are discarded. A variable-to-class map then lets the row scan
+reject candidates from different model classes without arithmetic.
+
+For a shared basic variable `x`, write its stored row as `x = sum a_i x_i`.
+The one-row rule accepts a shared `y` in the same model class when `a_y = 1`
+and every other row variable is fixed. Since `beta(x) = beta(y)`, the fixed
+remainder evaluates to zero in the current model; because every variable in
+that remainder is fixed, it evaluates to zero in every model satisfying the
+current bounds. Therefore `x = y` is entailed without constructing the
+remainder's value.
+
+The two-row rule records a shared basic variable when its row has exactly one
+non-fixed variable `z`, whose coefficient is `1` or `-1`; every other row
+variable must be fixed. Two records in the same model class with the same `z`
+and coefficient have equal fixed remainders, again because their basic
+variables have equal current values. Their equality is therefore entailed.
+Opposite signs, non-unit coefficients, or another non-fixed term do not match.
+
+Each fixing premise contributes both bound reasons. Reasons are sorted and
+deduplicated before publication. A deterministic disjoint-set structure over
+each model class emits an edge only when it joins two previously disconnected
+components, bounding output by `n - 1` equalities per class. Missing a match is
+not a negative result: the mixed coordinator retains its complete
+strict-orientation fallback for unresolved pairs.
+
+The expected query cost is `O(S + N + R)`, where `S` is the number of supplied
+shared variables, `N` is the number of nonzeros in rows of candidate shared
+basic variables, and `R` is the number of emitted reason literals. The query
+must not pivot, add rows, assert bounds, create terms, or compute/hash fixed
+numeric offsets. The legacy producer remains available during A/B evaluation.
+Counters under `:no.interface.lra-model-unit-*` expose classes, candidate
+pairs, rows, nonzeros, matches, rejections, and reasons;
+`:time.no-lra-equality-producer-us` records aggregate query time.
 
 ## Section 3.3: bounds propagation
 
@@ -136,7 +179,8 @@ than rediscover sharedness by repeated parent traversal.
 
 For current convex QF_UFLRA, the paper does not reveal a missing correctness
 transition. It reveals a narrower performance opportunity inside an existing
-correct transition: replace or precede exact-offset row bucketing with the
-current-model-filtered unit-row recognizer, retain explanations, and measure
-the general `EqRows` fallback separately. This is the first implementation
-experiment justified by this paper.
+correct transition: replace exact-offset row bucketing with the
+current-model-filtered unit-row recognizer, retain explanations, and leave the
+strict-orientation oracle as the completeness path. The opt-in `model-unit`
+producer is that experiment; default promotion depends on its recorded fuzz and
+benchmark evidence.
