@@ -61,7 +61,7 @@ filter over exact `DeltaRational` values. `LraTableau::entailed_equalities()`
 implements the sound `FixedEq`, `EqRow`, `EqOffsetRows`, and general `EqRows`
 rules from de Moura and Bjørner 2008, with explanations.
 
-The implementation is not yet the 2024 fast path:
+The default `legacy` producer is not the 2024 fast path:
 
 - `EqRow` computes the exact value of the fixed remainder;
 - `EqOffsetRows` constructs and hashes an exact fixed offset;
@@ -78,9 +78,10 @@ question rather than a reason to delete it without measurement.
 ### Implementation checklist and experimental producer
 
 The `model-unit` producer implements this mechanism behind
-`--qf-uflra-lra-equality-producer=model-unit`; `legacy` remains the default
-until differential fuzzing and full-corpus A/B evaluation are complete. The
-implementation obligations are:
+`--qf-uflra-lra-equality-producer=model-unit`. The completed differential
+fuzzing and full-corpus A/B do not justify replacing the default `legacy`
+producer; the measured tradeoff is recorded below. The implementation
+obligations are:
 
 1. Build the exact current-model equality classes once and inspect only
    non-singleton shared classes.
@@ -133,14 +134,40 @@ components, bounding output by `n - 1` equalities per class. Missing a match is
 not a negative result: the mixed coordinator retains its complete
 strict-orientation fallback for unresolved pairs.
 
-The expected query cost is `O(S + N + R)`, where `S` is the number of supplied
-shared variables, `N` is the number of nonzeros in rows of candidate shared
-basic variables, and `R` is the number of emitted reason literals. The query
-must not pivot, add rows, assert bounds, create terms, or compute/hash fixed
-numeric offsets. The legacy producer remains available during A/B evaluation.
+With expected constant-time hash-table operations, the structural scan costs
+`O(S + N)`, where `S` is the number of supplied shared variables and `N` is the
+number of nonzeros in rows of candidate shared basic variables. If emitted
+equality `i` has `r_i` explanation literals, sorting and deduplication adds
+`O(sum_i r_i log r_i)`. The query must not pivot, add rows, assert bounds,
+create terms, or compute/hash fixed numeric offsets. The legacy producer
+remains available and is the default.
 Counters under `:no.interface.lra-model-unit-*` expose classes, candidate
 pairs, rows, nonzeros, matches, rejections, and reasons;
 `:time.no-lra-equality-producer-us` records aggregate query time.
+
+### Evaluation and default decision
+
+Commit `5e9371a` was tested on SLURM with the option enabled. Job `127110`
+passed 3,000 generated mixed QF_UFLRA cases, 1,000 finite-domain cases, and
+3,500 model checks; 1,947 SAT models passed Dolmen. Job `127111` then checked
+all 11 tracked QF_UFLRA seeds and completed 43,936 YinYang solver calls with no
+bug trigger. The full 1,284-file, 120-second A/B used jobs `127115` (`legacy`)
+and `127116` (`model-unit`). Both had zero wrong answers, errors, or unsupported
+rows.
+
+The fast producer reduced aggregate producer time from 2,579,190 to 698,229
+microseconds and explanation literals from 26,234,347 to 7,116,559. On the
+1,271 common solves, aggregate wall time improved from 760.05 to 740.33
+seconds. However, `legacy` solved 1,272 files and `model-unit` solved 1,271. The
+lost CPAchecker induction row was SAT in 77.12 seconds under `legacy` and timed
+out at 120 seconds under `model-unit`. On that row the legacy producer found
+2,226 general `EqRows` matches that the unit-only producer deliberately does
+not implement; the candidate delivered fewer opportunistic equalities and did
+not invoke its strict-orientation fallback for those pairs.
+
+This is a search-strength regression, not a correctness failure. The result
+validates the paper's local cost observation, but rejects replacing Primo's
+broader producer wholesale. `legacy` therefore remains the default.
 
 ## Section 3.3: bounds propagation
 
@@ -182,5 +209,7 @@ transition. It reveals a narrower performance opportunity inside an existing
 correct transition: replace exact-offset row bucketing with the
 current-model-filtered unit-row recognizer, retain explanations, and leave the
 strict-orientation oracle as the completeness path. The opt-in `model-unit`
-producer is that experiment; default promotion depends on its recorded fuzz and
-benchmark evidence.
+producer is the completed experiment. It substantially reduces producer-local
+work, but the recorded full-corpus loss rejects default promotion. A future
+adaptive design would need to recover useful general `EqRows` lemmas without
+paying their exact-offset cost on every round.

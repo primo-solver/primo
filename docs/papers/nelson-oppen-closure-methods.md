@@ -525,6 +525,8 @@ coordinator publishes:
 - `:no.interface.lra-opportunistic-candidates`
 - `:no.interface.lra-opportunistic-fixed-eq`
 - `:no.interface.lra-opportunistic-eq-row`
+- `:no.interface.lra-opportunistic-eq-offset-rows`
+- `:no.interface.lra-opportunistic-eq-rows`
 - `:no.interface.lra-opportunistic-reason-lits`
 - `:no.interface.lra-opportunistic-unmapped-terms`
 - `:no.interface.lra-opportunistic-unmapped-equalities`
@@ -1446,12 +1448,25 @@ The Z3 arithmetic paper sharpens the LRA producer side of this architecture.
 It independently confirms model-equal shared variables as the candidate
 frontier, but establishes entailment only from fixed-variable tableau shapes.
 Its unit-coefficient recognizer avoids exact fixed-offset construction and
-hashing. Primo currently implements the broader 2008 `EqOffsetRows`/`EqRows`
-rules with exact offsets, so the 2024 recognizer is a missing performance
-mechanism, not a missing convex-combination correctness rule. The same paper's
-sharedness cache is already matched by Primo's solve-scoped immutable
-`shared_real_terms`/`TheoryCombinationManager` interface; a generic dynamic
-combination layer would need explicit invalidation.
+hashing. Primo implements this recognizer as the opt-in `model-unit` producer
+and retains the broader 2008 `EqOffsetRows`/`EqRows` producer as `legacy`.
+This is a performance choice, not a missing convex-combination correctness
+rule. The same paper's sharedness cache is already matched by Primo's
+solve-scoped immutable `shared_real_terms`/`TheoryCombinationManager`
+interface; a generic dynamic combination layer would need explicit
+invalidation.
+
+The commit `5e9371a` evaluation explains why `legacy` remains the default.
+Fresh generated, finite-domain, Dolmen-model, seed, and YinYang gates found no
+correctness issue. On all 1,284 QF_UFLRA files, `model-unit` cut measured
+producer time from 2.579 to 0.698 seconds and reduced explanation literals from
+26.2 million to 7.1 million. It was also 19.72 seconds faster over the 1,271
+common solves. But it lost one 120-second CPAchecker induction solve because
+the legacy producer's general `EqRows` lemmas materially strengthened that
+search. The strict-orientation oracle preserves correctness at a final model;
+it does not replace the omitted lemmas as an early search heuristic. See
+`docs/papers/arithmetic-solving-in-z3.md` and `docs/run-log.json` for the full
+commands and job IDs.
 
 The central-equality-engine option in cvc5 is a useful future experiment, not
 the current target. Making every theory depend on one global congruence closure

@@ -27496,6 +27496,106 @@
       },
       "evidence_status": "slurm-complete-current",
       "outcome": "Materially different conclusion from the sample-based evaluation: at full-corpus scale, --arithmetic-atom-canonicalization is a clear net win on QF_LRA (+20 solved, -11% PAR2) and neutral on QF_UFLRA, with zero wrong answers throughout. Still not a uniform win (14 genuine losses alongside 34 genuine gains) -- the underlying mechanism (early canonicalization changes preprocessing and LRA search trajectories) is unchanged, but the net effect at full-corpus scale is substantially more positive than the sample suggested. Recorded as new evidence for docs/papers/lra-atom-canonicalization.md; whether this justifies promoting the flag (at least for pure QF_LRA) is a decision left to the user rather than made here."
+    },
+    {
+      "id": "2026-08-18-model-unit-equality-producer-local-5e9371a",
+      "started_at": "2026-08-18",
+      "recorded_at": "2026-08-18",
+      "kind": "implementation-verification-and-local-ablation",
+      "scope": "Verify the CAV 2024 current-model-filtered unit-row equality producer and screen it against the legacy exact-offset producer on the 45-file QF_UFLRA opportunity sample",
+      "commit": "5e9371a",
+      "branch": "qf-uflra-model-unit-equalities",
+      "environment": {
+        "type": "local",
+        "build": "Release build-model-unit-release plus the repository default, ASan, documentation, and static-analysis builds",
+        "corpus": "tmp/QF_UFLRA selected by benchmarks/qf_uflra-preprocessing-opportunity-sample.txt (45 files)",
+        "timeout": "30 seconds per benchmark row"
+      },
+      "commands": {
+        "verification": "make lint; make python-test; make check; make docs; make asan-test; make tidy; clang-tidy misc-include-cleaner advisory scan on touched translation units; git diff --check",
+        "legacy": "python3 scripts/bench_qf_uf_full.py --repo /workspace --root tmp/QF_UFLRA --manifest benchmarks/qf_uflra-preprocessing-opportunity-sample.txt --solver build-model-unit-release/primo --solver-arg=--quiet --solver-arg=--stats --solver-arg=--qf-uflra-lra-equality-producer=legacy --timeout 30 --out /tmp/primo-model-unit-local45-legacy.csv",
+        "model_unit": "python3 scripts/bench_qf_uf_full.py --repo /workspace --root tmp/QF_UFLRA --manifest benchmarks/qf_uflra-preprocessing-opportunity-sample.txt --solver build-model-unit-release/primo --solver-arg=--quiet --solver-arg=--stats --solver-arg=--qf-uflra-lra-equality-producer=model-unit --timeout 30 --out /tmp/primo-model-unit-local45-candidate.csv",
+        "pure_qf_lra_guard": "Run the same Release binary with default and --qf-uflra-lra-equality-producer=model-unit over 10 tracked benchmarks/seeds/qf_lra{,_real} files and compare answers plus all non-:time.* statistics"
+      },
+      "results": {
+        "verification": "All 14 C++ tests and 52 Python tests passed in the normal build; all 14 C++ tests passed under ASan; lint, docs, whole-tree clang-tidy, touched-file include-cleaner review, and diff checks passed.",
+        "sample_correctness": "Both modes solved 45/45 with zero timeout, error, unsupported, wrong, or answer disagreement.",
+        "sample_timing": "Aggregate wall time was 0.911679 seconds legacy and 0.948694 seconds model-unit; these sub-second totals are noise and are not performance evidence.",
+        "producer_timing": "Aggregate :time.no-lra-equality-producer-us fell from 2497 to 1368 microseconds.",
+        "pure_qf_lra": "All 10 rows had identical answers and every non-time statistic, confirming that the mixed-only producer option does not route pure QF_LRA through the combination path."
+      },
+      "artifacts": "local-only:/tmp/primo-model-unit-local45-{legacy,candidate}.csv{,.jsonl} and corresponding -summary.csv files",
+      "evidence_status": "local-complete-current",
+      "outcome": "The implementation and its mixed-only boundary passed focused verification. The local sample showed the intended producer-local reduction but was too short to decide default policy, so SLURM fuzzing and full-corpus A/B remained mandatory."
+    },
+    {
+      "id": "2026-08-18-model-unit-equality-producer-fuzz-5e9371a",
+      "started_at": "2026-08-18",
+      "recorded_at": "2026-08-18",
+      "kind": "fuzz-and-model-validation",
+      "scope": "Fresh exact-commit differential, finite-domain, Dolmen-model, tracked-seed, and YinYang mutation gates for --qf-uflra-lra-equality-producer=model-unit",
+      "commit": "5e9371a",
+      "branch": "qf-uflra-model-unit-equalities",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "workdir": "/home/janotmik/primo-model-unit-5e9371a",
+        "jobs": "127110 generated/model array 0-3; 127111 tracked-seed and typefuzz task 0",
+        "binary": "Release git 5e9371a, CaDiCaL 3.0.0-7b99c07",
+        "references": "Z3 5.1.0 and cvc5 for differential checks; Dolmen 0.10 for SAT-model checking; Z3 model_validate=true for YinYang"
+      },
+      "commands": {
+        "preflight": "scripts/slurm_prepare_benchmark_workspace.py --check-only verified git 5e9371a, CaDiCaL, Z3, cvc5, Dolmen, and typefuzz immediately before submission",
+        "validation": "python3 scripts/slurm_validate_sbatch.py and bash -n on scripts/slurm_qf_uflra_fuzz_gate.sbatch and scripts/slurm_qf_uflra_mutation_fuzz_gate.sbatch",
+        "generated": "scripts/slurm_qf_uflra_fuzz_gate.sbatch with 4 tasks, PRIMO_FUZZ_COUNT=750, PRIMO_FINITE_DOMAIN_FUZZ_COUNT=125, seed base 202608180, model validation enabled, and PRIMO_FUZZ_SOLVER_ARGS=--qf-uflra-lra-equality-producer=model-unit",
+        "mutation": "scripts/slurm_qf_uflra_mutation_fuzz_gate.sbatch task 0 with all benchmarks/seeds/qf_uflra files, 2000 typefuzz iterations per seed, seed 2026081810, and PRIMO_FUZZ_EXTRA_SOLVER_ARGS=--qf-uflra-lra-equality-producer=model-unit"
+      },
+      "results": {
+        "generated": "3000/3000 mixed QF_UFLRA PASS against Z3; zero timeout, disagreement, crash, parser/type error, or bug file.",
+        "finite_domain": "1000/1000 PASS: 500 QF_UF and 500 QF_UFLRA cases against Z3/cvc5; zero activation failure or bug file.",
+        "models": "3500/3500 checks completed: 1947 SAT models passed Dolmen and 1553 cases were UNSAT; zero validation failure or fallback.",
+        "mutation": "11/11 tracked seeds passed the precheck. Typefuzz processed all 11 seeds, reported 11 valid and 0 invalid, completed 43,936 solver calls, and found 0 bug triggers.",
+        "scheduler": "All five tasks completed with exit status zero; generated tasks took 54 seconds each and mutation took 10:27."
+      },
+      "artifacts": "remote:/home/janotmik/primo-model-unit-5e9371a/slurm-results/qf-uflra-model-unit-5e9371a; remote:/home/janotmik/primo-model-unit-5e9371a/fuzz-results/qf-uflra-model-unit-5e9371a; SLURM jobs 127110 and 127111",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "The option passed the required correctness and model-validation gates. This permits performance evaluation but does not by itself justify default promotion."
+    },
+    {
+      "id": "2026-08-18-model-unit-equality-producer-full-ab-5e9371a",
+      "started_at": "2026-08-18",
+      "recorded_at": "2026-08-18",
+      "kind": "benchmark",
+      "scope": "Full 1,284-file QF_UFLRA A/B of the legacy exact-offset producer against the CAV 2024 model-filtered unit-row producer, 120 seconds per file",
+      "commit": "5e9371a",
+      "branch": "qf-uflra-model-unit-equalities",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "workdir": "/home/janotmik/primo-model-unit-5e9371a",
+        "jobs": "127115 legacy array 0-7; 127116 model-unit array 0-7",
+        "binary": "The same Release git 5e9371a, CaDiCaL 3.0.0-7b99c07 binary for both arms",
+        "corpus": "Complete staged tmp/QF_UFLRA tree: FFT 10, CPAchecker BMC 15, CPAchecker induction 359, MathSAT 900",
+        "timeout": "120 seconds per file"
+      },
+      "commands": {
+        "validation": "python3 scripts/slurm_validate_sbatch.py scripts/slurm_qf_uflra_model_mine.sbatch; bash -n scripts/slurm_qf_uflra_model_mine.sbatch; exact-workspace check-only preflight immediately before sbatch",
+        "legacy": "scripts/slurm_qf_uflra_model_mine.sbatch with build-slurm-rel/primo --quiet --stats --model-equality-mutation-scope=all --qf-uflra-lra-equality-producer=legacy",
+        "model_unit": "scripts/slurm_qf_uflra_model_mine.sbatch with build-slurm-rel/primo --quiet --stats --model-equality-mutation-scope=all --qf-uflra-lra-equality-producer=model-unit",
+        "summary": "python3 scripts/summarize_benchmark_shards.py --timeout 120 --run legacy=results/model-unit-full120-5e9371a/legacy --run model-unit=results/model-unit-full120-5e9371a/model-unit --baseline legacy --candidate model-unit"
+      },
+      "results": {
+        "correctness": "Both arms covered all 1284 files with zero wrong answer, error, unsupported row, or decisive-answer disagreement.",
+        "legacy": "1272 solved (761 sat, 511 unsat), 12 timeouts, solved-row time 837.171267 seconds, PAR2 3717.171267.",
+        "model_unit": "1271 solved (760 sat, 511 unsat), 13 timeouts, solved-row time 740.330666 seconds, PAR2 3860.330666.",
+        "families": "Legacy/model-unit solved FFT 10/10, BMC 7/7, induction 355/354, and MathSAT 900/900.",
+        "paired_timing": "On 1271 common solves, legacy used 760.052362 seconds and model-unit 740.330666 seconds, a 19.721696-second (2.59 percent) reduction.",
+        "producer_work": "Aggregate producer time fell 2,579,190 to 698,229 microseconds (72.9 percent); reason literals fell 26,234,347 to 7,116,559; opportunistic created atoms fell 6420 to 4287. Model-unit inspected 335,052 rows and 5,292,635 nonzeros and used 439 exact fallback pair probes yielding 82 equalities.",
+        "loss": "cpachecker-induction.cs_fib_false-unreach-call.i.smt2 was SAT in 77.118905 seconds with legacy and timed out at 120.275457 seconds with model-unit. Legacy reported 2226 general EqRows matches on this row; model-unit intentionally reported none, delivered 1714 versus 2756 LRA-to-EUF equalities, and did not invoke the exact fallback on the omitted pairs."
+      },
+      "artifacts": "remote:/home/janotmik/primo-model-unit-5e9371a/results/model-unit-full120-5e9371a/{legacy,model-unit}; SLURM jobs 127115 and 127116",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Reject default promotion. The paper-inspired producer removes substantial local arithmetic and explanation work and improves common-solved throughput, but replacing the broader general-row producer loses one non-boundary solve and worsens PAR2. Keep legacy as default and retain model-unit as an explicit experimental profile for future adaptive scheduling work."
     }
   ]
 }

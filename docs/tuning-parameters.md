@@ -66,7 +66,7 @@ precondition without which the option does nothing.
 | `--no-lra-sparse-leaving` | on | **`--lra-pivoting-rule sparse`** | ablation of the leaving-side half |
 | `--lra-fixed-elimination` | off | — | nets to nothing overall, doubles the >5MB band -- textbook portfolio arm. Note it also forces `model_phase_backtrack_may_change_beta` (`check_sat.cpp:7552`), as `soi` does, so it interacts with `--lra-model-phase` |
 | `--no-qf-uflra-fixed-elimination` | mixed elimination on | mixed QF_UFLRA | ablation of the mixed-only default that exposes `EqRow`; pure QF_LRA remains off |
-| `--qf-uflra-lra-equality-producer` | `legacy` | mixed QF_UFLRA | `model-unit` selects the CAV 2024 current-model-filtered unit-row producer; experimental pending fuzz and full-corpus A/B |
+| `--qf-uflra-lra-equality-producer` | `legacy` | mixed QF_UFLRA | `model-unit` selects the CAV 2024 current-model-filtered unit-row producer; fuzz-clean with 73% less producer time, but lost one solve in the 1,284-file A/B, so it is not promoted |
 | `--no-qf-uflra-model-reconciliation` | reconciliation on | mixed QF_UFLRA | ablation of the default convex shared-model path; restores explained exact equality sharing |
 | `--lra-propagation` | on | — | the root of the propagation chain |
 | `--lra-row-propagation` | off | **`--lra-propagation`** | |
