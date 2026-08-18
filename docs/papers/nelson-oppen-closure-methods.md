@@ -549,6 +549,10 @@ coordinator publishes:
 - `:no.interface.lra-model-unit-nonunit-rejections`
 - `:no.interface.lra-model-unit-nonfixed-row-rejections`
 - `:no.interface.lra-model-unit-reason-lits`
+- `:no.interface.lra-adaptive-selected`
+- `:no.interface.lra-adaptive-model-unit-rounds`
+- `:no.interface.lra-adaptive-legacy-rounds`
+- `:no.interface.lra-adaptive-fallback-activations`
 - `:time.no-lra-equality-producer-us`
 - `:no.interface.lra-fixed-elimination-enabled`
 - `:no.interface.lra-exact-fallback-pairs`
@@ -1467,6 +1471,16 @@ search. The strict-orientation oracle preserves correctness at a final model;
 it does not replace the omitted lemmas as an early search heuristic. See
 `docs/papers/arithmetic-solving-in-z3.md` and `docs/run-log.json` for the full
 commands and job IDs.
+
+The follow-up `adaptive` producer starts with `model-unit` and escalates
+monotonically to `legacy` after shared-model reconciliation first materializes
+a positive equality split. A split is the direct semantic signal that cheap
+entailed equalities did not make the current LRA and EUF models compatible;
+using it avoids an arbitrary round or size threshold. Once selected, legacy is
+retained for the rest of that `check-sat` call because learned explanations
+persist but later SAT assignments can expose additional fixed-row equalities.
+This scheduling rule is a Primo design experiment, not an algorithm claimed by
+the CAV 2024 paper. It remains default-off pending fuzzing and full-corpus A/B.
 
 The central-equality-engine option in cvc5 is a useful future experiment, not
 the current target. Making every theory depend on one global congruence closure

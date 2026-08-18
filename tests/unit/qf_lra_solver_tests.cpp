@@ -1268,20 +1268,81 @@ void qf_uf_lra_model_unit_producer_keeps_exact_fallback_for_nonunit_rows() {
   assert(result.statistics.get(":no.interface.lra-exact-fallback-equalities") >= 1);
 }
 
-void qf_lra_does_not_run_the_model_unit_mixed_producer() {
-  CheckSatOptions options = no_preprocessing_or_substitution();
-  options.qf_uflra_lra_equality_producer = QfUflraLraEqualityProducer::ModelUnit;
+void qf_uf_lra_adaptive_producer_stays_on_unit_rows_without_a_model_split() {
+  CheckSatOptions options = exact_no_preprocessing_or_substitution();
+  options.qf_uflra_lra_equality_producer = QfUflraLraEqualityProducer::Adaptive;
   const auto result = check_sat_smtlib(R"(
-    (set-logic QF_LRA)
+    (set-logic QF_UFLRA)
+    (declare-fun s () Real)
     (declare-fun x () Real)
-    (assert (<= x 4))
+    (declare-fun d () Real)
+    (declare-fun p (Real) Bool)
+    (assert (= s (+ x d)))
+    (assert (<= d 0))
+    (assert (>= d 0))
+    (assert (p s))
+    (assert (not (p x)))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":no.interface.lra-adaptive-model-unit-rounds") >= 1);
+  assert(result.statistics.get(":no.interface.lra-adaptive-legacy-rounds") == 0);
+  assert(result.statistics.get(":no.interface.lra-adaptive-fallback-activations") == 0);
+  assert(result.statistics.get(":no.interface.lra-model-unit-one-row-matches") >= 1);
+}
+
+void qf_uf_lra_adaptive_producer_switches_after_a_shared_model_split() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.qf_uflra_lra_equality_producer = QfUflraLraEqualityProducer::Adaptive;
+  options.qf_uflra_model_reconciliation = true;
+  options.nelson_oppen_model_equality_mutation = false;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun u () Real)
+    (declare-fun v () Real)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun z () Real)
+    (declare-fun p (Real) Bool)
+    (declare-fun q (Real) Bool)
+    (assert (<= 0 u))
+    (assert (<= 0 v))
+    (assert (= x (* 2 z)))
+    (assert (= y (* 2 z)))
+    (assert (p u))
+    (assert (not (p v)))
+    (assert (q x))
+    (assert (q y))
     (check-sat)
   )",
                                        options);
   assert(result.result == CheckSatResult::Sat);
-  assert(result.statistics.get(":solver.qf-lra") == 1);
-  assert(result.statistics.get(":solver.qf-uflra") == 0);
-  assert(result.statistics.get(":no.interface.lra-model-unit-selected") == 0);
+  assert(result.statistics.get(":no.shared-model.compatibility-splits") >= 1);
+  assert(result.statistics.get(":no.interface.lra-adaptive-model-unit-rounds") >= 1);
+  assert(result.statistics.get(":no.interface.lra-adaptive-fallback-activations") == 1);
+  assert(result.statistics.get(":no.interface.lra-adaptive-legacy-rounds") >= 1);
+  assert(result.statistics.get(":no.interface.lra-opportunistic-eq-rows") >= 1);
+}
+
+void qf_lra_does_not_run_the_model_unit_mixed_producer() {
+  for (const QfUflraLraEqualityProducer producer :
+       {QfUflraLraEqualityProducer::ModelUnit, QfUflraLraEqualityProducer::Adaptive}) {
+    CheckSatOptions options = no_preprocessing_or_substitution();
+    options.qf_uflra_lra_equality_producer = producer;
+    const auto result = check_sat_smtlib(R"(
+      (set-logic QF_LRA)
+      (declare-fun x () Real)
+      (assert (<= x 4))
+      (check-sat)
+    )",
+                                         options);
+    assert(result.result == CheckSatResult::Sat);
+    assert(result.statistics.get(":solver.qf-lra") == 1);
+    assert(result.statistics.get(":solver.qf-uflra") == 0);
+    assert(result.statistics.get(":no.interface.lra-model-unit-selected") == 0);
+    assert(result.statistics.get(":no.interface.lra-adaptive-selected") == 0);
+  }
 }
 
 void qf_uf_lra_fixed_elimination_can_be_disabled_for_ablation() {
@@ -4717,6 +4778,8 @@ int main() {
   qf_uf_lra_uses_eqrow_equalities_when_fixed_elimination_exposes_them();
   qf_uf_lra_model_unit_producer_uses_offset_free_eqrow();
   qf_uf_lra_model_unit_producer_keeps_exact_fallback_for_nonunit_rows();
+  qf_uf_lra_adaptive_producer_stays_on_unit_rows_without_a_model_split();
+  qf_uf_lra_adaptive_producer_switches_after_a_shared_model_split();
   qf_lra_does_not_run_the_model_unit_mixed_producer();
   qf_uf_lra_fixed_elimination_can_be_disabled_for_ablation();
   qf_uf_lra_euf_publishes_a_spanning_set_per_shared_class();

@@ -10694,6 +10694,7 @@ CheckSatOutcome solve_qf_uf_lra(
   }
   ModelEqualityArrangementState model_equality_arrangement(no_manager);
   ModelEqualityCandidateQueue model_equality_candidate_queue;
+  bool adaptive_legacy_equality_producer = false;
   statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
   statistics.set(":no.boolean-domain.bridged-terms", clausifier.boolean_domain_bridge_count());
   statistics.set(":no.boolean-domain.equality-atoms",
@@ -11449,10 +11450,21 @@ CheckSatOutcome solve_qf_uf_lra(
 
     if (euf_model.has_value() && !shared_real_terms.empty()) {
       if (options.nelson_oppen_propagation != NelsonOppenPropagationMode::Exact) {
+        QfUflraLraEqualityProducer equality_producer = options.qf_uflra_lra_equality_producer;
+        if (equality_producer == QfUflraLraEqualityProducer::Adaptive) {
+          statistics.increment(":no.interface.lra-adaptive-selected");
+          if (adaptive_legacy_equality_producer) {
+            equality_producer = QfUflraLraEqualityProducer::Legacy;
+            statistics.increment(":no.interface.lra-adaptive-legacy-rounds");
+          } else {
+            equality_producer = QfUflraLraEqualityProducer::ModelUnit;
+            statistics.increment(":no.interface.lra-adaptive-model-unit-rounds");
+          }
+        }
         const std::vector<ExplainedInterfaceEquality> opportunistic_equalities =
             lra_entailed_shared_equalities(terms, *prepared_lra_theory_for_check,
                                            *checked_lra_tableau, shared_real_terms,
-                                           options.qf_uflra_lra_equality_producer, statistics);
+                                           equality_producer, statistics);
         statistics.increment(":no.interface.equalities-propagated",
                              opportunistic_equalities.size());
         statistics.increment(":no.interface.lra-to-euf-equalities",
@@ -11507,6 +11519,11 @@ CheckSatOutcome solve_qf_uf_lra(
               }
             }
             if (materialized != 0) {
+              if (options.qf_uflra_lra_equality_producer == QfUflraLraEqualityProducer::Adaptive &&
+                  !adaptive_legacy_equality_producer) {
+                adaptive_legacy_equality_producer = true;
+                statistics.increment(":no.interface.lra-adaptive-fallback-activations");
+              }
               publish_sat_stats(backend.statistics(), statistics);
               continue;
             }

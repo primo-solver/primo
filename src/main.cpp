@@ -361,8 +361,9 @@ int main(int argc, char** argv) {
                "falling back to the full shared-Real pair scan [default: off]");
   app.add_option("--qf-uflra-lra-equality-producer", qf_uflra_lra_equality_producer,
                  "LRA-to-EUF opportunistic equality producer: legacy exact-offset row indexes "
-                 "or model-unit current-model-filtered unit rows [default: legacy]")
-      ->check(CLI::IsMember({"legacy", "model-unit"}));
+                 "or model-unit current-model-filtered unit rows; adaptive starts with model-unit "
+                 "and switches to legacy after a shared-model split [default: legacy]")
+      ->check(CLI::IsMember({"legacy", "model-unit", "adaptive"}));
   app.add_flag("--qf-uflra-model-reconciliation", qf_uflra_model_reconciliation,
                "Explicitly enable convex QF_UFLRA shared-model reconciliation with scratch "
                "LRA mutation, EUF compatibility checks, and lazy positive equality splits "
@@ -794,10 +795,15 @@ int main(int argc, char** argv) {
     solver_options.qf_uflra_fixed_elimination = false;
   }
   solver_options.qf_uflra_candidate_final_scan = qf_uflra_candidate_final_scan;
-  solver_options.qf_uflra_lra_equality_producer =
-      qf_uflra_lra_equality_producer == "model-unit"
-          ? primo::smt::QfUflraLraEqualityProducer::ModelUnit
-          : primo::smt::QfUflraLraEqualityProducer::Legacy;
+  if (qf_uflra_lra_equality_producer == "model-unit") {
+    solver_options.qf_uflra_lra_equality_producer =
+        primo::smt::QfUflraLraEqualityProducer::ModelUnit;
+  } else if (qf_uflra_lra_equality_producer == "adaptive") {
+    solver_options.qf_uflra_lra_equality_producer =
+        primo::smt::QfUflraLraEqualityProducer::Adaptive;
+  } else {
+    solver_options.qf_uflra_lra_equality_producer = primo::smt::QfUflraLraEqualityProducer::Legacy;
+  }
   if (qf_uflra_model_reconciliation) {
     solver_options.qf_uflra_model_reconciliation = true;
   }

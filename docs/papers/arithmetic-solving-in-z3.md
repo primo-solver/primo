@@ -169,6 +169,18 @@ This is a search-strength regression, not a correctness failure. The result
 validates the paper's local cost observation, but rejects replacing Primo's
 broader producer wholesale. `legacy` therefore remains the default.
 
+The follow-up `adaptive` mode is a Primo scheduling experiment around the
+paper mechanism. It begins with `model-unit` and switches permanently to
+`legacy` when shared-model reconciliation first has to materialize a SAT
+equality split. That event means the cheap entailed equalities were
+insufficient to reconcile the current theory models; it is therefore a
+semantic escalation trigger rather than a tuned numeric threshold. The switch
+is permanent within one `check-sat` call because later SAT assignments can
+expose additional fixed-row equalities. Counters distinguish unit rounds,
+legacy rounds, and the single fallback activation. This adaptive policy is not
+from the paper and remains experimental until its own fuzz and corpus A/B are
+complete.
+
 ## Section 3.3: bounds propagation
 
 The paper separates direct from indirect propagation. Direct propagation uses

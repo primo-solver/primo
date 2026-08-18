@@ -422,6 +422,10 @@ The default QF_UFLRA path has its own runnable partial-combination counters:
 - `:no.interface.lra-model-unit-nonunit-rejections`
 - `:no.interface.lra-model-unit-nonfixed-row-rejections`
 - `:no.interface.lra-model-unit-reason-lits`
+- `:no.interface.lra-adaptive-selected`
+- `:no.interface.lra-adaptive-model-unit-rounds`
+- `:no.interface.lra-adaptive-legacy-rounds`
+- `:no.interface.lra-adaptive-fallback-activations`
 - `:time.no-lra-equality-producer-us`
 - `:no.interface.lra-exact-fallback-pairs`
 - `:no.interface.lra-exact-fallback-skipped-pairs`
