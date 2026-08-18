@@ -170,16 +170,18 @@ validates the paper's local cost observation, but rejects replacing Primo's
 broader producer wholesale. `legacy` therefore remains the default.
 
 The follow-up `adaptive` mode is a Primo scheduling experiment around the
-paper mechanism. It begins with `model-unit` and switches permanently to
-`legacy` when shared-model reconciliation first has to materialize a SAT
-equality split. That event means the cheap entailed equalities were
+paper mechanism. It runs `legacy` for the first opportunistic producer round,
+uses `model-unit` on later rounds, and returns permanently to `legacy` when
+shared-model reconciliation first has to materialize a SAT equality split.
+The bootstrap preserves general `EqRow` clauses that can determine the initial
+SAT search trajectory. A later split means the cheap entailed equalities were
 insufficient to reconcile the current theory models; it is therefore a
-semantic escalation trigger rather than a tuned numeric threshold. The switch
-is permanent within one `check-sat` call because later SAT assignments can
-expose additional fixed-row equalities. Counters distinguish unit rounds,
-legacy rounds, and the single fallback activation. This adaptive policy is not
-from the paper and remains experimental until its own fuzz and corpus A/B are
-complete.
+semantic escalation trigger rather than a tuned numeric threshold. The
+fallback is permanent within one `check-sat` call because later SAT assignments
+can expose additional fixed-row equalities. Counters distinguish the bootstrap,
+unit rounds, legacy rounds, and the single fallback activation. This adaptive
+policy is not from the paper and remains experimental until its own fuzz and
+corpus A/B are complete.
 
 ## Section 3.3: bounds propagation
 
@@ -222,6 +224,7 @@ correct transition: replace exact-offset row bucketing with the
 current-model-filtered unit-row recognizer, retain explanations, and leave the
 strict-orientation oracle as the completeness path. The opt-in `model-unit`
 producer is the completed experiment. It substantially reduces producer-local
-work, but the recorded full-corpus loss rejects default promotion. A future
-adaptive design would need to recover useful general `EqRows` lemmas without
-paying their exact-offset cost on every round.
+work, but the recorded full-corpus loss rejects default promotion. The
+experimental `adaptive` policy tests whether one legacy bootstrap round can
+recover useful general `EqRows` lemmas without paying their exact-offset cost
+on every round; its benchmark result is not yet established.

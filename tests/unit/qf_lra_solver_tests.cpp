@@ -1268,7 +1268,7 @@ void qf_uf_lra_model_unit_producer_keeps_exact_fallback_for_nonunit_rows() {
   assert(result.statistics.get(":no.interface.lra-exact-fallback-equalities") >= 1);
 }
 
-void qf_uf_lra_adaptive_producer_stays_on_unit_rows_without_a_model_split() {
+void qf_uf_lra_adaptive_producer_bootstraps_then_uses_unit_rows_without_a_model_split() {
   CheckSatOptions options = exact_no_preprocessing_or_substitution();
   options.qf_uflra_lra_equality_producer = QfUflraLraEqualityProducer::Adaptive;
   const auto result = check_sat_smtlib(R"(
@@ -1277,19 +1277,21 @@ void qf_uf_lra_adaptive_producer_stays_on_unit_rows_without_a_model_split() {
     (declare-fun x () Real)
     (declare-fun d () Real)
     (declare-fun p (Real) Bool)
+    (declare-fun b () Bool)
     (assert (= s (+ x d)))
     (assert (<= d 0))
     (assert (>= d 0))
     (assert (p s))
-    (assert (not (p x)))
+    (assert (p x))
+    (assert (or (not (= s x)) b))
     (check-sat)
   )",
                                        options);
-  assert(result.result == CheckSatResult::Unsat);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.interface.lra-adaptive-bootstrap-legacy-rounds") == 1);
+  assert(result.statistics.get(":no.interface.lra-adaptive-legacy-rounds") == 1);
   assert(result.statistics.get(":no.interface.lra-adaptive-model-unit-rounds") >= 1);
-  assert(result.statistics.get(":no.interface.lra-adaptive-legacy-rounds") == 0);
   assert(result.statistics.get(":no.interface.lra-adaptive-fallback-activations") == 0);
-  assert(result.statistics.get(":no.interface.lra-model-unit-one-row-matches") >= 1);
 }
 
 void qf_uf_lra_adaptive_producer_switches_after_a_shared_model_split() {
@@ -1319,9 +1321,10 @@ void qf_uf_lra_adaptive_producer_switches_after_a_shared_model_split() {
                                        options);
   assert(result.result == CheckSatResult::Sat);
   assert(result.statistics.get(":no.shared-model.compatibility-splits") >= 1);
-  assert(result.statistics.get(":no.interface.lra-adaptive-model-unit-rounds") >= 1);
+  assert(result.statistics.get(":no.interface.lra-adaptive-bootstrap-legacy-rounds") == 1);
+  assert(result.statistics.get(":no.interface.lra-adaptive-model-unit-rounds") == 0);
   assert(result.statistics.get(":no.interface.lra-adaptive-fallback-activations") == 1);
-  assert(result.statistics.get(":no.interface.lra-adaptive-legacy-rounds") >= 1);
+  assert(result.statistics.get(":no.interface.lra-adaptive-legacy-rounds") >= 2);
   assert(result.statistics.get(":no.interface.lra-opportunistic-eq-rows") >= 1);
 }
 
@@ -4778,7 +4781,7 @@ int main() {
   qf_uf_lra_uses_eqrow_equalities_when_fixed_elimination_exposes_them();
   qf_uf_lra_model_unit_producer_uses_offset_free_eqrow();
   qf_uf_lra_model_unit_producer_keeps_exact_fallback_for_nonunit_rows();
-  qf_uf_lra_adaptive_producer_stays_on_unit_rows_without_a_model_split();
+  qf_uf_lra_adaptive_producer_bootstraps_then_uses_unit_rows_without_a_model_split();
   qf_uf_lra_adaptive_producer_switches_after_a_shared_model_split();
   qf_lra_does_not_run_the_model_unit_mixed_producer();
   qf_uf_lra_fixed_elimination_can_be_disabled_for_ablation();
