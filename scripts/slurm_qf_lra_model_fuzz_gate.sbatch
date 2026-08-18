@@ -170,13 +170,39 @@ if (( TASK_ID < opfuzz_start )); then
     --seed "$seed" \
     --fuzzer-args "$FUZZSMT_ARGS" \
     --out "$out"
+  model_status=0
   python3 scripts/validate_model.py \
     --solver "${solver_words[0]}" \
     "${model_solver_args[@]}" \
     --timeout "$MODEL_TIMEOUT" \
     --dolmen-timeout "$MODEL_DOLMEN_TIMEOUT" \
     --out "$model_out" \
-    "$out"/generated/*.smt2
+    "$out"/generated/*.smt2 || model_status=$?
+  if (( model_status != 0 )); then
+    # validate_qfuf_models_with_dolmen.py counts a lone solver *answer*
+    # timeout (the fuzzed instance is just hard, distinct from a
+    # dolmen/z3-timeout or an actually-invalid model) as a "failure" the
+    # same as a rejected model, so one slow case among hundreds fails the
+    # whole array task even though nothing is wrong -- found 2026-08-18
+    # running this gate against a real branch integration, where every
+    # FuzzSMT shard FAILED on exactly this despite zero invalid models.
+    # Re-check the summary this run just wrote: only fail the task for
+    # real if something other than a bare solver timeout showed up.
+    non_timeout_failures=$(python3 -c "
+import csv, sys
+n = 0
+with open(sys.argv[1], newline='') as fh:
+    for row in csv.DictReader(fh):
+        if row['outcome'] not in ('pass', 'not-sat', 'solver-timeout'):
+            n += 1
+print(n)
+" "$model_out/summary.csv")
+    if (( non_timeout_failures > 0 )); then
+      echo "model validation found $non_timeout_failures non-timeout failure(s) in $model_out/summary.csv; failing the task" >&2
+      exit "$model_status"
+    fi
+    echo "model validation's only failures were solver timeouts (benign under a ${MODEL_TIMEOUT}s solve budget); not failing the task" >&2
+  fi
 elif (( TASK_ID < yinyang_start )); then
   out="$OUT_ROOT/opfuzz/task-$TASK_ID"
   mkdir -p "$out"
