@@ -155,6 +155,22 @@ This uses `scripts/build_docs.sh`, which creates `.venv-docs` and installs
 
 Use notebooks only for executable experiments and benchmark reports.
 
+## Source archive
+
+Create a publication-ready source snapshot with rendered HTML documentation:
+
+```bash
+make archive
+```
+
+The deterministic `dist/primo-<revision>.tar.gz` contains the solver source,
+build and test support, SMT-LIB samples, and `html/`. It excludes Git metadata,
+build artifacts, experiment results, and all Markdown/MyST sources, including
+Sphinx's generated `_sources` copies. A matching SHA-256 file is written beside
+the archive. The archive includes `SOURCE-REVISION`, which supplies the version
+banner when the source is built without a Git checkout. Source links are hidden
+in the rendered site because those source files are intentionally absent.
+
 ## Literature
 
 See `docs/papers/` and `docs/literature.md`.

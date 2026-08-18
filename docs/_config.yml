@@ -25,5 +25,8 @@ parse:
 sphinx:
   config:
     html_show_copyright: false
+    html_show_sourcelink: false
+    html_theme_options:
+      use_download_button: false
     suppress_warnings:
       - myst.header
