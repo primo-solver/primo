@@ -170,11 +170,12 @@ validates the paper's local cost observation, but rejects replacing Primo's
 broader producer wholesale. `legacy` therefore remains the default.
 
 The follow-up `adaptive` mode is a Primo scheduling experiment around the
-paper mechanism. It runs `legacy` for the first opportunistic producer round,
-uses `model-unit` on later rounds, and returns permanently to `legacy` when
-shared-model reconciliation first has to materialize a SAT equality split.
-The bootstrap preserves general `EqRow` clauses that can determine the initial
-SAT search trajectory. A later split means the cheap entailed equalities were
+paper mechanism. It runs `legacy` until an opportunistic producer round causes
+no SAT recheck, uses `model-unit` on later rounds, and returns permanently to
+`legacy` when shared-model reconciliation first has to materialize a SAT
+equality split. This propagation-fixed-point bootstrap preserves general
+`EqRow` clauses that actively change the initial SAT search trajectory. A later
+split means the cheap entailed equalities were
 insufficient to reconcile the current theory models; it is therefore a
 semantic escalation trigger rather than a tuned numeric threshold. The
 fallback is permanent within one `check-sat` call because later SAT assignments
@@ -225,6 +226,7 @@ current-model-filtered unit-row recognizer, retain explanations, and leave the
 strict-orientation oracle as the completeness path. The opt-in `model-unit`
 producer is the completed experiment. It substantially reduces producer-local
 work, but the recorded full-corpus loss rejects default promotion. The
-experimental `adaptive` policy tests whether one legacy bootstrap round can
-recover useful general `EqRows` lemmas without paying their exact-offset cost
-on every round; its benchmark result is not yet established.
+experimental `adaptive` policy tests whether a propagation-fixed-point legacy
+bootstrap can recover useful general `EqRows` lemmas without paying their
+exact-offset cost on every later round; its benchmark result is not yet
+established.

@@ -314,9 +314,10 @@ struct CheckSatOptions {
   bool qf_uflra_candidate_final_scan = false;
   // Mixed-only choice between the legacy exact-offset row indexes, the
   // current-model-filtered unit-row producer from Bjorner/Nachmanson CAV 2024
-  // Section 3.2, and an adaptive mode that bootstraps once with legacy, uses
-  // model-unit thereafter, and returns to legacy after shared-model
-  // reconciliation requires a SAT split. Pure QF_LRA never calls any producer.
+  // Section 3.2, and an adaptive mode that bootstraps with legacy through its
+  // first propagation fixed point, uses model-unit thereafter, and returns to
+  // legacy after shared-model reconciliation requires a SAT split. Pure QF_LRA
+  // never calls any producer.
   QfUflraLraEqualityProducer qf_uflra_lra_equality_producer = QfUflraLraEqualityProducer::Legacy;
   // Default Section 4 shared-model reconciliation for convex QF_UFLRA.
   // LRA-entailed equalities that EUF can absorb are retained in the round's

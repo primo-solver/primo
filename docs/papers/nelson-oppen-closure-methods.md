@@ -551,6 +551,7 @@ coordinator publishes:
 - `:no.interface.lra-model-unit-reason-lits`
 - `:no.interface.lra-adaptive-selected`
 - `:no.interface.lra-adaptive-bootstrap-legacy-rounds`
+- `:no.interface.lra-adaptive-bootstrap-completions`
 - `:no.interface.lra-adaptive-model-unit-rounds`
 - `:no.interface.lra-adaptive-legacy-rounds`
 - `:no.interface.lra-adaptive-fallback-activations`
@@ -1473,11 +1474,12 @@ it does not replace the omitted lemmas as an early search heuristic. See
 `docs/papers/arithmetic-solving-in-z3.md` and `docs/run-log.json` for the full
 commands and job IDs.
 
-The follow-up `adaptive` producer runs one `legacy` bootstrap round, uses
-`model-unit` on later rounds, and returns permanently to `legacy` after
-shared-model reconciliation first materializes a positive equality split. The
-bootstrap preserves general `EqRow` clauses that can shape the initial SAT
-search. A later split is the direct semantic signal that cheap entailed
+The follow-up `adaptive` producer runs `legacy` until a producer round causes
+no SAT recheck, uses `model-unit` on later rounds, and returns permanently to
+`legacy` after shared-model reconciliation first materializes a positive
+equality split. This propagation-fixed-point bootstrap preserves general
+`EqRow` clauses that actively shape the initial SAT search. A later split is
+the direct semantic signal that cheap entailed
 equalities did not make the current LRA and EUF models compatible; using it
 avoids an arbitrary round or size threshold. Once selected, legacy is retained
 for the rest of that `check-sat` call because learned explanations persist but

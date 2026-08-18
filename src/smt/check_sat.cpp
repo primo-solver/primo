@@ -10694,7 +10694,7 @@ CheckSatOutcome solve_qf_uf_lra(
   }
   ModelEqualityArrangementState model_equality_arrangement(no_manager);
   ModelEqualityCandidateQueue model_equality_candidate_queue;
-  bool adaptive_legacy_bootstrap_pending = true;
+  bool adaptive_legacy_bootstrap_active = true;
   bool adaptive_legacy_equality_producer = false;
   statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
   statistics.set(":no.boolean-domain.bridged-terms", clausifier.boolean_domain_bridge_count());
@@ -11454,8 +11454,7 @@ CheckSatOutcome solve_qf_uf_lra(
         QfUflraLraEqualityProducer equality_producer = options.qf_uflra_lra_equality_producer;
         if (equality_producer == QfUflraLraEqualityProducer::Adaptive) {
           statistics.increment(":no.interface.lra-adaptive-selected");
-          if (adaptive_legacy_bootstrap_pending) {
-            adaptive_legacy_bootstrap_pending = false;
+          if (adaptive_legacy_bootstrap_active) {
             equality_producer = QfUflraLraEqualityProducer::Legacy;
             statistics.increment(":no.interface.lra-adaptive-bootstrap-legacy-rounds");
             statistics.increment(":no.interface.lra-adaptive-legacy-rounds");
@@ -11497,6 +11496,11 @@ CheckSatOutcome solve_qf_uf_lra(
           }
           publish_sat_stats(backend.statistics(), statistics);
           continue;
+        }
+        if (options.qf_uflra_lra_equality_producer == QfUflraLraEqualityProducer::Adaptive &&
+            adaptive_legacy_bootstrap_active) {
+          adaptive_legacy_bootstrap_active = false;
+          statistics.increment(":no.interface.lra-adaptive-bootstrap-completions");
         }
       } else {
         statistics.increment(":no.interface.lra-opportunistic-skipped-rounds");
