@@ -87,26 +87,26 @@
 % Reverse occurrence index: columns contain basic-row IDs and are unordered.
 \node[font=\sffamily\bfseries\large, anchor=west] (occ title) at (14.25,3.80)
   {Reverse occurrence index};
-\node[font=\sffamily\scriptsize, text=muted, anchor=west] at (14.25,3.30)
-  {\texttt{occurs\_in\_[v]} stores basic-row IDs; inner vectors are unordered};
+\node[font=\sffamily\scriptsize, text=muted, anchor=west] (occ subtitle) at (14.25,3.30)
+  {\texttt{occ[v]}: unordered basic-row IDs};
 
-\node[array label] at (15.60,2.35) {\texttt{occurs\_in\_[x0]}};
+\node[array label] at (15.60,2.35) {\texttt{occ[x0]}};
 \node[column slot, linked entry, anchor=west] (o0s0) at (15.85,2.35)
   {\scriptsize slot 0\\$\mathtt{x5}$};
 \node[column slot, linked entry, right=0pt of o0s0] (o0s1)
   {\scriptsize slot 1\\$\mathtt{x7}$};
 
-\node[array label] at (15.60,1.15) {\texttt{occurs\_in\_[x1]}};
+\node[array label] at (15.60,1.15) {\texttt{occ[x1]}};
 \node[column slot, anchor=west] (o1s0) at (15.85,1.15)
   {\scriptsize slot 0\\$\mathtt{x7}$};
 
-\node[array label] at (15.60,-0.05) {\texttt{occurs\_in\_[x3]}};
+\node[array label] at (15.60,-0.05) {\texttt{occ[x3]}};
 \node[column slot, anchor=west] (o3s0) at (15.85,-0.05)
   {\scriptsize slot 0\\$\mathtt{x5}$};
 \node[column slot, right=0pt of o3s0] (o3s1)
   {\scriptsize slot 1\\$\mathtt{x6}$};
 
-\node[array label] at (15.60,-1.25) {\texttt{occurs\_in\_[x4]}};
+\node[array label] at (15.60,-1.25) {\texttt{occ[x4]}};
 \node[column slot, anchor=west] (o4s0) at (15.85,-1.25)
   {\scriptsize slot 0\\$\mathtt{x6}$};
 \node[column slot, right=0pt of o4s0] (o4s1)
@@ -122,7 +122,7 @@
   text width=2.85cm, font=\sffamily\small] (invariant) at (11.15,0.45)
   {matching A/B markers satisfy\\[2pt]
    for $e \in \mathtt{rows\_[b]}$:\\[2pt]
-   $\mathtt{occurs\_in\_[e.var]}$\\[-1pt]
+   $\mathtt{occ[e.var]}$\\[-1pt]
    $\mathtt{[e.occ\_slot]}=b$};
 
 % Swap-pop inset: removing slot 0 moves x7 and repairs its surviving row entry.
@@ -160,7 +160,7 @@
 
 \begin{scope}[on background layer]
   \node[panel, fit=(rows title)(r5 label)(r7x4)(r7 label)] {};
-  \node[panel, fit=(occ title)(o0s0)(o0s1)(o4s0)(o4s1)] {};
+  \node[panel, fit=(occ title)(occ subtitle)(o0s0)(o0s1)(o4s0)(o4s1)] {};
   \node[panel, fill=repairred!3,
     fit=(repair title)(before0)(before1)(after0)(repair before)(repair after)(repair note)] {};
 \end{scope}

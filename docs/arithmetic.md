@@ -186,6 +186,7 @@ $2^{32}$ basic rows.
 The current sparse-row and reverse-occurrence representation. The paired gold
 markers instantiate the cross-link invariant for `x0`; the lower inset shows why
 swap-pop removal must repair the surviving entry that moved within the column.
+The diagram abbreviates the implementation field `occurs_in_` as `occ`.
 The editable TikZ source is `docs/figures/lra-tableau-occurrence-index.tex`.
 ```
 
