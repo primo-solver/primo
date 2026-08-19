@@ -737,9 +737,10 @@ the actual structures:
 ```text
 rows_ : indexed by variable id                        <- LEVEL 1
   rows_[0..4] = (x0..x4 are not basic, slot unused)
-  rows_[5] = [ {var=x0, coeff=2}, {var=x3, coeff=-1} ]          <- 2 entries, NOT 8
-  rows_[6] = [ {var=x3, coeff=1}, {var=x4, coeff=7} ]           <- 2 entries, NOT 8
-  rows_[7] = [ {var=x0, coeff=1}, {var=x1, coeff=1}, {var=x4, coeff=-3} ]
+  rows_[5] = [ {var=x0, coeff=2,  occ_slot=0}, {var=x3, coeff=-1, occ_slot=0} ]
+  rows_[6] = [ {var=x3, coeff=1,  occ_slot=1}, {var=x4, coeff=7,  occ_slot=0} ]
+  rows_[7] = [ {var=x0, coeff=1,  occ_slot=1}, {var=x1, coeff=1,  occ_slot=0},
+               {var=x4, coeff=-3, occ_slot=1} ]
                     ^--------------- LEVEL 2 ---------------^
 
 occurs_in_ : also indexed by variable id
@@ -759,7 +760,7 @@ entry labelled with the variable it concerns:
 struct RowEntry {
   LraVarId var;         // which variable this term is for
   util::Rational coeff;
-  std::uint32_t occ_slot;
+  std::uint32_t occ_slot;  // this row's index inside occurs_in_[var]
 };
 using Row = std::vector<RowEntry>;
 ```
@@ -767,6 +768,11 @@ using Row = std::vector<RowEntry>;
 `rows_[7][0]` is therefore not "x0's coefficient in row 7"; it is "the first
 stored term of row 7", and only reading its `.var` reveals it concerns x0. The
 row's length is its non-zero count (2, 2, 3 above), never the variable count.
+Its `occ_slot=1` says that this row's basic variable, x7, is stored at index 1
+of `occurs_in_[0]`: `occurs_in_[0][rows_[7][0].occ_slot] == x7`. The slot is a
+back-index into that column list, not an index into `rows_[7]`; see
+[](tableau-sparse-representation) for the complete invariant and maintenance
+rules.
 
 Mathematically `rows_[5]` is the vector `(2, 0, 0, -1, 0, 0, 0, 0)`. Dense
 storage would be 8 slots indexed by variable; sparse storage is 2 entries

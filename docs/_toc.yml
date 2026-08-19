@@ -27,11 +27,12 @@ parts:
           - file: open-leads
           - file: tropical-matrix-structure
           - file: fuzz-coverage-qf-lra
-      - file: qf-uflra-model-guided-performance
+      - file: nelson-oppen
         sections:
+          - file: qf-uflra-model-guided-performance
           - file: qf-uflra-convex-no-merge-plan
-      - file: nelson-oppen-qf-lra-regression
-      - file: qf-lra-equality-sharing
+          - file: nelson-oppen-qf-lra-regression
+          - file: qf-lra-equality-sharing
       - file: bool-argument-congruence-bug
       - file: difference_logic
 

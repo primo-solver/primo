@@ -8,9 +8,10 @@ and [](papers/nelson-oppen-closure-methods.md)).
 This note is about **the arithmetic side of the interface**. The paper's §5 is titled
 "Simplex: an example model-producing theory solver" and is almost entirely a
 specification of what the arithmetic solver must provide. Primo now implements
-the sound `FixedEq` and `EqRow` entailment rules with explanations and consumes
-them in its mixed QF_UFLRA fixpoint. It does not implement the paper's full
-model-producing transition system.
+the sound `FixedEq`, `EqRow`, `EqOffsetRows`, and `EqRows` entailment rules with
+explanations and consumes them in its mixed QF_UFLRA fixpoint. The complete
+current combination path is described in [](nelson-oppen.md). Primo does not
+implement the paper's generic model-producing transition system.
 
 ## Why convexity is the whole point
 
@@ -36,10 +37,11 @@ That is the trade to put on the table before the interface is fixed.
 
 ## What Primo provides today
 
-`theory::arithmetic::LraTableau::entailed_equalities()` implements `FixedEq`
-and `EqRow` over a caller-supplied set of shared variables. Every result carries
-the blocking SAT literals for the bounds that establish it. Results form a
-deterministic spanning set rather than all pairwise equalities in one class.
+`theory::arithmetic::LraTableau::entailed_equalities()` implements `FixedEq`,
+`EqRow`, `EqOffsetRows`, and `EqRows` over a caller-supplied set of shared
+variables. Every result carries the blocking SAT literals for the bounds that
+establish it. Results form a deterministic spanning set rather than all
+pairwise equalities in one class.
 
 `LraTableau::model_equal_classes()` separately implements the paper's linear
 model-value partition over caller-supplied shared variables. It hashes the full
@@ -54,18 +56,19 @@ After a feasible mixed-theory LRA check, `smt::solve_qf_uf_lra` maps shared Real
 terms to their tableau variables, requests these cheap entailments, and routes
 them through `TheoryCombinationManager` and guarded SAT clauses. No equality
 atom is preallocated: `force_implied_interface_equalities()` creates and
-observes only an equality that a producer reports. If either cheap rule adds a
-clause, SAT is re-entered and both theories see the equality on the next round.
+registers only an equality that a producer reports; the online callback path
+also observes a lazily created variable before returning it to SAT. If a
+producer adds a clause, SAT is re-entered and both theories see the equality on
+the next round.
 
-These rules are deliberately incomplete. Once they and the EUF spanning
-equalities reach quiescence for the current SAT assignment, the default
-`final` path first removes pairs whose values differ in the current feasible
-LRA model, then proves every still-unresolved model-equal pair by testing both
-strict separations. An entailed equality must hold in the current model, so this
-filter preserves completeness while avoiding probes for cross-value pairs and
-equalities already established by EUF or the cheap LRA rules. The online
-paired-bound producer remains an additional early source; it is not the
-completeness mechanism.
+These opportunistic rules do not enumerate every entailed equality. After they
+and EUF's spanning equalities reach quiescence, the default path reconciles a
+diversified LRA value partition with a checkpointed EUF model. A failed
+candidate invariant, or explicit `--no-qf-uflra-model-reconciliation`, uses the
+model-filtered exact fallback: pairs with different current LRA values are
+discarded, and every retained unresolved pair is tested in both strict
+orientations. The online paired-bound producer remains an additional early
+source; it is not the completeness mechanism.
 
 ## What the paper asks of the Simplex solver
 
@@ -528,16 +531,19 @@ with no timeout, crash, unsupported result, disagreement, or bug artifact. That
 generator did not contain finite-Real-domain choices and did not assert
 preprocessing activation, so it does not close the revalidation requirement.
 
-## Remaining order of work
+## Remaining arithmetic work
 
-1. **Evaluate row-bound propagation in the mixed path.** Its relevant measure
+1. **Evaluate current-model-filtered row recognition.** Bjørner and Nachmanson
+   avoid constructing the exact fixed offsets used by Primo's broader
+   `EqOffsetRows` and `EqRows` indexes. Any replacement must retain the current
+   explanations and exact fallback.
+2. **Evaluate row-bound propagation in the mixed path.** Its relevant measure
    is newly exposed fixedness and fewer exact fallback probes, not pure-QF_LRA
    solved count alone.
-2. **Complete the shared model transition.** The four Section 5.1 rules and
-   freedom-interval mutation now exist, but using model classes to replace the
-   exact scan still requires arrangement-aware negative equalities and a real
-   `M-Propagate` witness transition. Model equality must remain distinct from
-   entailed propagation.
+
+The convex shared-model reconciliation needed by QF_UFLRA is now implemented.
+The remaining model-state gap is the theory-independent transition system, not
+another LRA entailment rule; see [](nelson-oppen.md).
 
 ## Combination contract
 

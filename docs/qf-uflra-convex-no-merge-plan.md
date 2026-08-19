@@ -1,7 +1,9 @@
 # Convex Nelson-Oppen Merge Plan
 
-This note is the live integration checklist for merging the convex
-Nelson-Oppen work with the QF_LRA equality-sharing mainline. Local `main` was
+This is the historical integration checklist used to merge the convex
+Nelson-Oppen work with the QF_LRA equality-sharing mainline. Current behavior,
+ownership, options, and limitations are documented in [](nelson-oppen.md).
+Local `main` was
 fast-forwarded to `dd58707` and merged into `convex-no-qflra-integration` with
 the mainline LRA implementation, API, tests, and pure-QF_LRA evidence treated
 as authoritative. The NO branch contributes the mixed fixpoint, lazy equality

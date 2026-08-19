@@ -25,8 +25,9 @@ Five parts, in the order they are normally needed:
 - **Theories** gives each implemented theory an entry point. [](euf.md) covers
   congruence closure and Boolean arguments. [](arithmetic.md) is the QF_LRA
   reference, with its heuristics, tuning, open investigations, and fuzz evidence
-  nested below it. [](qf-uflra-model-guided-performance.md) and its convex
-  Nelson-Oppen merge note describe the mixed-theory path.
+  nested below it. [](nelson-oppen.md) is the QF_UFLRA combination reference;
+  its nested notes contain performance history, the convex merge plan, pure-LRA
+  isolation regression, and arithmetic equality-sharing details.
 - **Evidence and practice** explains experiments, the canonical run log, debugging,
   and TermId order sensitivity.
 - **Paper notes** starts with [](literature.md), which defines the reading and
