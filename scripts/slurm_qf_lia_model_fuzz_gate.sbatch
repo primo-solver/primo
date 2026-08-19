@@ -6,10 +6,22 @@
 # per array task (it supports the logic natively -- no fuzzer changes were
 # needed), each shard is checked answer-differentially against z3, and
 # every `sat` result is model-validated with Dolmen
-# (scripts/validate_model.py, which is sort-agnostic already -- its
-# primary check is Dolmen's own generic --check-model=true; only its
-# narrower z3-Real fallback path is Real-specific, and QF_LIA models don't
-# need it).
+# (scripts/validate_model.py).
+#
+# --dolmen-arg=--strict=false below is required, not cosmetic: FuzzSMT's
+# QF_LIA generator routinely produces `(* <let-bound-literal>
+# <compound-expression>)` terms, e.g. `(* e5 e11)` where e5 happens to be
+# a let-bound `1`. That is still linear (a literal times a linear
+# expression is linear) but is stricter than QF_LIA's SMT-LIB grammar,
+# which only allows `(* <literal> <symbol>)`. Dolmen's default --strict=true
+# treats that as a Fatal Warning and aborts the whole check-model run before
+# it ever evaluates the model -- verified on the cluster 2026-08-19: 39/45
+# sat cases from one real shard came back model-error (each falling
+# through to validate_model.py's z3-Real-only fallback, which finds no
+# assignments to check for an Int model and reports validation-unavailable)
+# until this flag was added, after which all 45 passed via Dolmen directly.
+# The z3 fallback stays Real-only/unfixed -- not needed once Dolmen itself
+# accepts the input.
 #
 # Unlike the QF_LRA gate, there is no opfuzz/typefuzz mutation-fuzzing
 # stage: that stage mutates a committed seed corpus
@@ -99,6 +111,7 @@ python3 scripts/validate_model.py \
   "${model_solver_args[@]}" \
   --timeout "$MODEL_TIMEOUT" \
   --dolmen-timeout "$MODEL_DOLMEN_TIMEOUT" \
+  --dolmen-arg=--strict=false \
   --out "$model_out" \
   "$out"/generated/*.smt2 || model_status=$?
 if (( model_status != 0 )); then
