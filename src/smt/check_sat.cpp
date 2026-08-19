@@ -35,6 +35,7 @@
 #include "smtlib/ast.hpp"
 #include "smtlib/commands.hpp"
 #include "smtlib/parser.hpp"
+#include "theory/arithmetic/lia_branch_and_bound.hpp"
 #include "theory/arithmetic/linear_polynomial.hpp"
 #include "theory/arithmetic/lra_atom.hpp"
 #include "theory/arithmetic/lra_tableau.hpp"
@@ -779,7 +780,8 @@ class Frontend {
         }
         return;
       case smtlib::CommandKind::SetLogic:
-        if (command.logic != "QF_UF" && command.logic != "QF_LRA" && command.logic != "QF_UFLRA") {
+        if (command.logic != "QF_UF" && command.logic != "QF_LRA" && command.logic != "QF_UFLRA" &&
+            command.logic != "QF_LIA") {
           throw UnsupportedInput("unsupported logic: " + command.logic);
         }
         logic_ = command.logic;
@@ -818,10 +820,12 @@ class Frontend {
     }
   }
 
+  const std::optional<std::string>& logic() const { return logic_; }
   bool saw_check_sat() const { return saw_check_sat_; }
   bool requested_model() const { return requested_model_; }
   bool produce_models() const { return produce_models_; }
   bool has_declared_real_constants() const { return !declared_real_constant_symbols_.empty(); }
+  bool has_declared_int_constants() const { return !declared_int_constant_symbols_.empty(); }
 
   // Materialises a term per declared Real constant. Only call once the search
   // is over: mk_constant interns, so this assigns TermIds. Constants that
@@ -830,6 +834,17 @@ class Frontend {
     std::vector<core::TermId> model_terms;
     model_terms.reserve(declared_real_constant_symbols_.size());
     for (const core::SymbolId symbol : declared_real_constant_symbols_) {
+      model_terms.push_back(terms_.mk_constant(symbol));
+    }
+    return model_terms;
+  }
+
+  // Same deferred-materialisation reasoning as declared_real_constant_terms(),
+  // for QF_LIA's Int constants.
+  std::vector<core::TermId> declared_int_constant_terms() {
+    std::vector<core::TermId> model_terms;
+    model_terms.reserve(declared_int_constant_symbols_.size());
+    for (const core::SymbolId symbol : declared_int_constant_symbols_) {
       model_terms.push_back(terms_.mk_constant(symbol));
     }
     return model_terms;
@@ -952,6 +967,17 @@ class Frontend {
     if (logic_ == "QF_LRA" && !arg_sorts.empty()) {
       throw UnsupportedInput("QF_LRA supports free constants but not uninterpreted functions");
     }
+    if (logic_ == "QF_LIA") {
+      if (!arg_sorts.empty()) {
+        throw UnsupportedInput("QF_LIA supports free constants but not uninterpreted functions");
+      }
+      if (result_sort == symbols_.real_sort()) {
+        throw UnsupportedInput("QF_LIA does not support Real constants (that's QF_LIRA)");
+      }
+    }
+    if (arg_sorts.empty() && result_sort == symbols_.int_sort() && logic_ != "QF_LIA") {
+      throw UnsupportedInput("Int constants require (set-logic QF_LIA)");
+    }
     if (arg_sorts.empty()) {
       const core::SymbolId symbol = symbols_.declare_constant(command.name, result_sort);
       if (result_sort == symbols_.real_sort()) {
@@ -966,6 +992,8 @@ class Frontend {
         // Terms are materialised in declared_real_constant_terms(), after
         // solving, where they cannot perturb the search.
         declared_real_constant_symbols_.push_back(symbol);
+      } else if (result_sort == symbols_.int_sort()) {
+        declared_int_constant_symbols_.push_back(symbol);
       }
     } else if (result_sort == symbols_.bool_sort()) {
       symbols_.declare_predicate(command.name, std::move(arg_sorts));
@@ -1037,6 +1065,7 @@ class Frontend {
   std::unordered_set<core::TermId> side_assertion_ids_;
   std::unordered_set<core::TermId> emitted_side_assertions_;
   std::vector<core::SymbolId> declared_real_constant_symbols_;
+  std::vector<core::SymbolId> declared_int_constant_symbols_;
   std::optional<std::string> logic_;
   std::size_t auxiliary_counter_ = 0;
   std::size_t boolean_ites_ = 0;
@@ -1107,7 +1136,10 @@ void TermBuilder::dispatch(const smtlib::SExpr& expr, Continuation k) {
       return;
     }
     if (const auto literal = util::Rational::parse(expr.atom); literal.has_value()) {
-      resume(std::move(k), frontend_.terms_.mk_rational(literal.value()));
+      const core::SortId numeral_sort = frontend_.logic_ == "QF_LIA"
+                                            ? frontend_.symbols_.int_sort()
+                                            : frontend_.symbols_.real_sort();
+      resume(std::move(k), frontend_.terms_.mk_rational(literal.value(), numeral_sort));
       return;
     }
     const auto bound = frontend_.lookup_bound_term(expr.atom);
@@ -1521,29 +1553,31 @@ void TermBuilder::dispatch_minus(const smtlib::SExpr& expr, Continuation k) {
 
 void TermBuilder::dispatch_times(const smtlib::SExpr& expr, Continuation k) {
   Frontend::require_arity(expr, 3, "*");
-  schedule_all(collect(expr, 1), [this,
-                                  k = std::move(k)](std::vector<core::TermId> operands) mutable {
-    const core::TermId lhs = operands[0];
-    const core::TermId rhs = operands[1];
-    const bool lhs_is_literal = frontend_.terms_.get(lhs).kind == core::TermKind::Rational;
-    const bool rhs_is_literal = frontend_.terms_.get(rhs).kind == core::TermKind::Rational;
-    if (lhs_is_literal && rhs_is_literal) {
-      resume(std::move(k), frontend_.terms_.mk_rational(frontend_.terms_.get(lhs).rational_value *
-                                                        frontend_.terms_.get(rhs).rational_value));
-      return;
-    }
-    if (lhs_is_literal) {
-      resume(std::move(k),
-             frontend_.terms_.mk_times(frontend_.terms_.get(lhs).rational_value, rhs));
-      return;
-    }
-    if (rhs_is_literal) {
-      resume(std::move(k),
-             frontend_.terms_.mk_times(frontend_.terms_.get(rhs).rational_value, lhs));
-      return;
-    }
-    throw UnsupportedInput("* requires a literal rational coefficient operand (QF_LRA)");
-  });
+  schedule_all(
+      collect(expr, 1), [this, k = std::move(k)](std::vector<core::TermId> operands) mutable {
+        const core::TermId lhs = operands[0];
+        const core::TermId rhs = operands[1];
+        const bool lhs_is_literal = frontend_.terms_.get(lhs).kind == core::TermKind::Rational;
+        const bool rhs_is_literal = frontend_.terms_.get(rhs).kind == core::TermKind::Rational;
+        if (lhs_is_literal && rhs_is_literal) {
+          resume(std::move(k),
+                 frontend_.terms_.mk_rational(frontend_.terms_.get(lhs).rational_value *
+                                                  frontend_.terms_.get(rhs).rational_value,
+                                              frontend_.terms_.get(lhs).sort));
+          return;
+        }
+        if (lhs_is_literal) {
+          resume(std::move(k),
+                 frontend_.terms_.mk_times(frontend_.terms_.get(lhs).rational_value, rhs));
+          return;
+        }
+        if (rhs_is_literal) {
+          resume(std::move(k),
+                 frontend_.terms_.mk_times(frontend_.terms_.get(rhs).rational_value, lhs));
+          return;
+        }
+        throw UnsupportedInput("* requires a literal rational coefficient operand (QF_LRA)");
+      });
 }
 
 void TermBuilder::dispatch_divide(const smtlib::SExpr& expr, Continuation k) {
@@ -1552,6 +1586,10 @@ void TermBuilder::dispatch_divide(const smtlib::SExpr& expr, Continuation k) {
                                   k = std::move(k)](std::vector<core::TermId> operands) mutable {
     const core::TermId lhs = operands[0];
     const core::TermId rhs = operands[1];
+    if (frontend_.terms_.get(lhs).sort == frontend_.symbols_.int_sort() ||
+        frontend_.terms_.get(rhs).sort == frontend_.symbols_.int_sort()) {
+      throw UnsupportedInput("/ is a Real operator; QF_LIA has no division (div/mod unsupported)");
+    }
     // Only the divisor has to be a literal. Dividing a linear term by a
     // nonzero rational is linear -- (/ t c) is (* (1/c) t) -- so it belongs in
     // QF_LRA, and both z3 and Yices accept it. Requiring the dividend to be a
@@ -5062,9 +5100,16 @@ void publish_euf_care_pair_diagnostics(const EufCarePairDiagnostics& diagnostics
       diagnostics.definition_pairs_within_classes - diagnostics.argument_pairs_checked);
 }
 
-bool is_real_equality_term(const core::TermManager& terms, const core::Term& term) {
-  return term.kind == core::TermKind::Equality &&
-         terms.get(term.children.at(0)).sort == terms.symbols().real_sort();
+// Real for QF_LRA/QF_UFLRA, Int for QF_LIA -- both are LraTableau atoms;
+// only the sort differs. mk_eq is sort-agnostic (any Bool/Uninterpreted
+// equality reaches this too), so the sort check is what actually
+// distinguishes an arithmetic equality from an EUF one.
+bool is_arithmetic_equality_term(const core::TermManager& terms, const core::Term& term) {
+  if (term.kind != core::TermKind::Equality) {
+    return false;
+  }
+  const core::SortId sort = terms.get(term.children.at(0)).sort;
+  return sort == terms.symbols().real_sort() || sort == terms.symbols().int_sort();
 }
 
 // Which bound on a prepared atom's tableau variable, and at what value, one
@@ -5097,16 +5142,42 @@ struct BoundAssertion {
 // compares against it, via LraTableau::upper_bound/lower_bound, to check
 // whether some *other* atom on the same variable is already entailed).
 // LraRelation::Eq isn't handled here -- it's unreachable via the frontend
-// (Real equality is lowered to a pair of Le atoms by the
+// (Real/Int equality is lowered to a pair of Le atoms by the
 // lower_real_equalities preprocessing pass, which always runs before theory
 // dispatch) and doesn't fit the single-bound shape these cases share.
+//
+// `is_integer` (PreparedAtom::is_integer) is QF_LIA's hook into this: a
+// non-strict Le atom assigned FALSE is exactly as "strict" here as an
+// explicit Lt atom assigned TRUE (see is_strict below) -- e.g. `distinct`
+// lowers to a negated `And(Le,Le)`, so a negated Le is a completely
+// ordinary way for a QF_LIA disequality to reach this function, not an edge
+// case. Over Real, strictness becomes the infinitesimal-delta trick; over
+// Int, `t < rhs` means `t <= ceil(rhs) - 1` and `t > rhs` means
+// `t >= floor(rhs) + 1` -- NOT a blind `rhs -/+ 1`. `rhs` here is
+// PreparedAtom::rhs, i.e. already divided by the atom's polynomial's
+// leading coefficient (PreparedLraTheory's scale-canonicalization, item
+// H1b) -- so it is not guaranteed to already be an integer even for an
+// Int atom (`5x < 0` canonicalizes to `x < 0`'s rhs 0, but `5x < 1`
+// canonicalizes to rhs 1/5). ceil()/floor() give the right integer
+// threshold either way; a naive +/-1 does not when rhs isn't already
+// integer, and previously left the tableau bound on a fractional value no
+// amount of branch-and-bound could resolve (see the 2026-08-19 bug in
+// docs/qf-lia-branch-and-bound.md, found by local FuzzSMT differential
+// fuzzing against z3 -- 8/100 QF_LIA cases answered wrong before this
+// fix).
 BoundAssertion bound_assertion(theory::arithmetic::LraRelation relation, const util::Rational& rhs,
-                               bool asserts_lower_when_true, bool atom_value) {
+                               bool asserts_lower_when_true, bool atom_value,
+                               bool is_integer = false) {
   const bool strict = relation == theory::arithmetic::LraRelation::Lt;
   const bool is_upper = asserts_lower_when_true ? !atom_value : atom_value;
   const bool is_strict = atom_value ? strict : !strict;
   if (!is_strict) {
     return BoundAssertion{is_upper, theory::arithmetic::DeltaRational::from_rational(rhs)};
+  }
+  if (is_integer) {
+    const util::Rational integer_rhs =
+        is_upper ? rhs.ceil() - util::Rational(1) : rhs.floor() + util::Rational(1);
+    return BoundAssertion{is_upper, theory::arithmetic::DeltaRational::from_rational(integer_rhs)};
   }
   // A strict upper bound is `t <= rhs - delta`; a strict lower one is
   // `t >= rhs + delta`.
@@ -5150,7 +5221,7 @@ std::optional<sat::Lit> bound_entails(const theory::arithmetic::LraTableau& tabl
 std::optional<std::vector<sat::Lit>> assert_lra_atom_bound(
     theory::arithmetic::LraTableau& tableau, theory::arithmetic::LraVarId bound_var,
     theory::arithmetic::LraRelation relation, const util::Rational& rhs, bool atom_value,
-    bool asserts_lower_when_true, sat::Lit reason) {
+    bool asserts_lower_when_true, sat::Lit reason, bool is_integer = false) {
   switch (relation) {
     case theory::arithmetic::LraRelation::Eq: {
       if (!atom_value) {
@@ -5169,7 +5240,7 @@ std::optional<std::vector<sat::Lit>> assert_lra_atom_bound(
     case theory::arithmetic::LraRelation::Le:
     case theory::arithmetic::LraRelation::Lt: {
       const BoundAssertion assertion =
-          bound_assertion(relation, rhs, asserts_lower_when_true, atom_value);
+          bound_assertion(relation, rhs, asserts_lower_when_true, atom_value, is_integer);
       return assertion.is_upper ? tableau.assert_upper(bound_var, assertion.value, reason)
                                 : tableau.assert_lower(bound_var, assertion.value, reason);
     }
@@ -5285,6 +5356,14 @@ struct PreparedLraTheory {
     // once both directions are true. Strict inequalities and normalized
     // internal tableau shape do not matter for that rule.
     TermPairKey non_strict_le_pair;
+    // QF_LIA only (always false for QF_LRA/QF_UFLRA): whether bound_var is
+    // Int-sorted. bound_assertion() uses this to turn a *negated* Le atom's
+    // implicit strictness into an integer +-1 offset instead of the
+    // Real-only infinitesimal-delta trick -- see its own comment. Separate
+    // from lra_atom.cpp's tightening, which only rewrites atoms that are
+    // syntactically Lt; this covers Le atoms that become strict only
+    // because the SAT search assigned them false.
+    bool is_integer = false;
   };
 
   theory::arithmetic::LraTableau base_tableau;
@@ -5329,13 +5408,14 @@ PreparedLraTheory::PreparedLraTheory(const core::TermManager& terms,
   for (const BooleanClausifier::TheoryAtom& atom : theory_atoms) {
     const core::Term& term = terms.get(atom.term);
     const bool is_comparison = term.kind == core::TermKind::Le || term.kind == core::TermKind::Lt;
-    if (!is_comparison && !is_real_equality_term(terms, term)) {
+    if (!is_comparison && !is_arithmetic_equality_term(terms, term)) {
       atoms.push_back(PreparedAtom{});
       continue;
     }
 
     const theory::arithmetic::LraAtom normalized =
         theory::arithmetic::normalize_atom(terms, atom.term);
+    const bool is_integer_atom = terms.get(term.children.at(0)).sort == terms.symbols().int_sort();
     // Scale-canonicalize first (item H1b), then divide the atom's right-hand
     // side by the same factor. A negative factor reverses the relation, which
     // is what asserts_lower_when_true records -- interpreted in exactly one
@@ -5366,8 +5446,8 @@ PreparedLraTheory::PreparedLraTheory(const core::TermManager& terms,
       const TermPairKey non_strict_le_pair =
           term.kind == core::TermKind::Le ? TermPairKey{term.children.at(0), term.children.at(1)}
                                           : TermPairKey{};
-      atoms.push_back(
-          PreparedAtom{true, bound_var, normalized.relation, rhs, flipped, non_strict_le_pair});
+      atoms.push_back(PreparedAtom{true, bound_var, normalized.relation, rhs, flipped,
+                                   non_strict_le_pair, is_integer_atom});
       atoms_by_bound_var[bound_var].push_back(atom_index);
       continue;
     }
@@ -5390,8 +5470,8 @@ PreparedLraTheory::PreparedLraTheory(const core::TermManager& terms,
     const TermPairKey non_strict_le_pair =
         term.kind == core::TermKind::Le ? TermPairKey{term.children.at(0), term.children.at(1)}
                                         : TermPairKey{};
-    atoms.push_back(
-        PreparedAtom{true, slack, normalized.relation, rhs, flipped, non_strict_le_pair});
+    atoms.push_back(PreparedAtom{true, slack, normalized.relation, rhs, flipped, non_strict_le_pair,
+                                 is_integer_atom});
     atoms_by_bound_var[slack].push_back(atom_index);
   }
 
@@ -5433,9 +5513,9 @@ util::Rational choose_concrete_delta(const PreparedLraTheory& prepared,
     if (prepared_atom.relation == theory::arithmetic::LraRelation::Eq) {
       continue;
     }
-    const BoundAssertion assertion =
-        bound_assertion(prepared_atom.relation, prepared_atom.rhs,
-                        prepared_atom.asserts_lower_when_true, assigned_atoms.at(i).value);
+    const BoundAssertion assertion = bound_assertion(
+        prepared_atom.relation, prepared_atom.rhs, prepared_atom.asserts_lower_when_true,
+        assigned_atoms.at(i).value, prepared_atom.is_integer);
     if (assertion.is_upper) {
       tighten_delta_upper_bound(upper, positive_delta_upper_bound(value, assertion.value));
     } else {
@@ -5461,9 +5541,9 @@ util::Rational choose_concrete_delta(
     if (prepared_atom.relation == theory::arithmetic::LraRelation::Eq) {
       continue;
     }
-    const BoundAssertion assertion =
-        bound_assertion(prepared_atom.relation, prepared_atom.rhs,
-                        prepared_atom.asserts_lower_when_true, assigned_atoms.at(i).value);
+    const BoundAssertion assertion = bound_assertion(
+        prepared_atom.relation, prepared_atom.rhs, prepared_atom.asserts_lower_when_true,
+        assigned_atoms.at(i).value, prepared_atom.is_integer);
     if (assertion.is_upper) {
       tighten_delta_upper_bound(upper, positive_delta_upper_bound(value, assertion.value));
     } else {
@@ -5819,6 +5899,34 @@ std::string build_qf_lra_model(
   return build_composed_uf_lra_model(terms, model_terms, boolean_model_assignments, values);
 }
 
+// QF_LIA's model is much simpler than build_qf_lra_model's: every value is
+// an exact integer (no DeltaRational infinitesimal ever gets asserted --
+// see lra_atom.cpp's strict-inequality tightening -- so no concrete-delta
+// choice is needed), model_terms are always plain declared Int constants
+// rather than compound expressions to evaluate, and QF_LIA has no UF to
+// compose a model with.
+std::string build_qf_lia_model(const core::TermManager& terms,
+                               const std::vector<core::TermId>& model_terms,
+                               const PreparedLraTheory& prepared,
+                               const theory::arithmetic::LraTableau& tableau) {
+  std::ostringstream model;
+  model << "(model\n";
+  for (const core::TermId term_id : model_terms) {
+    const core::Term& term = terms.get(term_id);
+    if (term.kind != core::TermKind::Constant || term.sort != terms.symbols().int_sort()) {
+      continue;
+    }
+    const core::Symbol& symbol = terms.symbols().get_symbol(term.symbol);
+    const auto found = prepared.variables_by_term.find(term_id);
+    const util::Rational value = found == prepared.variables_by_term.end()
+                                     ? util::Rational(0)
+                                     : tableau.assignment(found->second).rational;
+    model << "  (define-fun " << symbol.name << " () Int " << smtlib_rational(value) << ")\n";
+  }
+  model << ")";
+  return model.str();
+}
+
 // Unlike build_qf_lra_model, this has no assigned_atoms parameter: its one
 // call site (assertions.empty() after the preprocessing loop) is reached
 // only when preprocessing discharged every assertion to `true` without ever
@@ -5969,7 +6077,7 @@ std::vector<core::TermId> shared_real_constants(
   for (const BooleanClausifier::TheoryAtom& atom : lra_atoms) {
     const core::Term& term = terms.get(atom.term);
     const bool is_comparison = term.kind == core::TermKind::Le || term.kind == core::TermKind::Lt;
-    if (!is_comparison && !is_real_equality_term(terms, term)) {
+    if (!is_comparison && !is_arithmetic_equality_term(terms, term)) {
       continue;
     }
     const theory::arithmetic::LraAtom normalized =
@@ -9288,7 +9396,7 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
     const sat::Lit reason = blocking_lit(assigned);
     const auto direct_conflict = assert_lra_atom_bound(
         tableau_, prepared_atom.bound_var, prepared_atom.relation, prepared_atom.rhs, atom_value,
-        prepared_atom.asserts_lower_when_true, reason);
+        prepared_atom.asserts_lower_when_true, reason, prepared_atom.is_integer);
     // Item H7's counters move inside assert_upper/assert_lower, not inside
     // check(), so they are published here rather than alongside the pivot
     // counters in run_deferred_check_if_needed(). They are cumulative
@@ -9398,9 +9506,9 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
         prepared_atom.relation == theory::arithmetic::LraRelation::Eq) {
       return std::nullopt;
     }
-    const BoundAssertion true_assertion =
-        bound_assertion(prepared_atom.relation, prepared_atom.rhs,
-                        prepared_atom.asserts_lower_when_true, /*atom_value=*/true);
+    const BoundAssertion true_assertion = bound_assertion(
+        prepared_atom.relation, prepared_atom.rhs, prepared_atom.asserts_lower_when_true,
+        /*atom_value=*/true, prepared_atom.is_integer);
     const theory::arithmetic::DeltaRational& beta = tableau_.assignment(prepared_atom.bound_var);
     const bool atom_holds =
         true_assertion.is_upper ? beta <= true_assertion.value : beta >= true_assertion.value;
@@ -9555,18 +9663,20 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
         continue;
       }
       const PreparedLraTheory::PreparedAtom& prepared_atom = prepared_.atoms[atom_index];
-      const auto entails_true = bound_entails(
-          tableau_, prepared_atom.bound_var,
-          bound_assertion(prepared_atom.relation, prepared_atom.rhs,
-                          prepared_atom.asserts_lower_when_true, /*atom_value=*/true));
+      const auto entails_true =
+          bound_entails(tableau_, prepared_atom.bound_var,
+                        bound_assertion(prepared_atom.relation, prepared_atom.rhs,
+                                        prepared_atom.asserts_lower_when_true, /*atom_value=*/true,
+                                        prepared_atom.is_integer));
       if (entails_true.has_value()) {
         pending_.push_back(PendingPropagation{atom.lit.value, {*entails_true}, false});
         continue;
       }
-      const auto entails_false = bound_entails(
-          tableau_, prepared_atom.bound_var,
-          bound_assertion(prepared_atom.relation, prepared_atom.rhs,
-                          prepared_atom.asserts_lower_when_true, /*atom_value=*/false));
+      const auto entails_false =
+          bound_entails(tableau_, prepared_atom.bound_var,
+                        bound_assertion(prepared_atom.relation, prepared_atom.rhs,
+                                        prepared_atom.asserts_lower_when_true, /*atom_value=*/false,
+                                        prepared_atom.is_integer));
       if (entails_false.has_value()) {
         pending_.push_back(PendingPropagation{-atom.lit.value, {*entails_false}, false});
       }
@@ -9625,15 +9735,16 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
         const PreparedLraTheory::PreparedAtom& prepared_atom = prepared_.atoms[atom_index];
         auto reasons = implied_bound_entails(
             basic_var, bound_assertion(prepared_atom.relation, prepared_atom.rhs,
-                                       prepared_atom.asserts_lower_when_true, /*atom_value=*/true));
+                                       prepared_atom.asserts_lower_when_true, /*atom_value=*/true,
+                                       prepared_atom.is_integer));
         if (reasons.has_value()) {
           pending_.push_back(PendingPropagation{atom.lit.value, std::move(*reasons), true});
           continue;
         }
         reasons = implied_bound_entails(
-            basic_var,
-            bound_assertion(prepared_atom.relation, prepared_atom.rhs,
-                            prepared_atom.asserts_lower_when_true, /*atom_value=*/false));
+            basic_var, bound_assertion(prepared_atom.relation, prepared_atom.rhs,
+                                       prepared_atom.asserts_lower_when_true, /*atom_value=*/false,
+                                       prepared_atom.is_integer));
         if (reasons.has_value()) {
           pending_.push_back(PendingPropagation{-atom.lit.value, std::move(*reasons), true});
         }
@@ -9675,7 +9786,8 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
         auto reasons = implied_child_bound_entails(
             basic_var, target_var, target_coeff,
             bound_assertion(prepared_atom.relation, prepared_atom.rhs,
-                            prepared_atom.asserts_lower_when_true, /*atom_value=*/true));
+                            prepared_atom.asserts_lower_when_true, /*atom_value=*/true,
+                            prepared_atom.is_integer));
         if (reasons.has_value()) {
           pending_.push_back(PendingPropagation{atom.lit.value, std::move(*reasons), true, true});
           continue;
@@ -9683,7 +9795,8 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
         reasons = implied_child_bound_entails(
             basic_var, target_var, target_coeff,
             bound_assertion(prepared_atom.relation, prepared_atom.rhs,
-                            prepared_atom.asserts_lower_when_true, /*atom_value=*/false));
+                            prepared_atom.asserts_lower_when_true, /*atom_value=*/false,
+                            prepared_atom.is_integer));
         if (reasons.has_value()) {
           pending_.push_back(PendingPropagation{-atom.lit.value, std::move(*reasons), true, true});
         }
@@ -10280,6 +10393,175 @@ CheckSatOutcome solve_qf_lra_impl(
     backend.add_clause(conflict_clause.value());
     publish_sat_stats(backend.statistics(), statistics);
   }
+}
+
+// QF_LIA, stage 1 (docs/qf-lia-branch-and-bound.md): a close structural
+// parallel of solve_qf_lra_impl above -- same clausifier/tableau/backend
+// loop shape, deliberately NOT a modification of that function or of
+// OnlineLraPropagator/LraTableau themselves. The one real difference: once
+// a round's Boolean+LRA assignment is confirmed consistent, that is not
+// yet an answer here. A branch-and-bound search runs on a private tableau
+// copy to additionally require every Int variable to come out integer --
+// producing a model, discarding the assignment via a whole-assignment
+// conflict clause (this branch is LIA-unsat, not necessarily the whole
+// problem), or giving up at the node limit (Unknown; see
+// LiaBranchAndBoundResult's own comment on why plain branch-and-bound
+// cannot be complete on its own).
+CheckSatOutcome solve_qf_lia_impl(core::TermManager& terms,
+                                  const std::vector<core::TermId>& assertions,
+                                  const std::vector<core::TermId>& model_terms,
+                                  const CheckSatOptions& options, util::Statistics& statistics) {
+  // Same tableau engine as QF_LRA; no separate QF_LIA statistic key yet --
+  // every run that reaches here came from (set-logic QF_LIA), which was
+  // rejected before this branch existed, so there is no historical QF_LRA
+  // data these counters could be confused with.
+  statistics.increment(kStatSolverQfLra);
+  sat::CadicalBackend backend(options.cadical_options);
+  const ActiveSolveStatsGuard active_solve_stats_guard(backend, statistics);
+  BooleanClausifier clausifier(backend, terms, options.top_level_or_tseitin);
+  for (const core::TermId assertion : assertions) {
+    clausifier.assert_formula(assertion);
+  }
+  statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
+  publish_theory_atom_purity_stats(terms, clausifier.theory_atoms(), statistics);
+  publish_sat_stats(backend.statistics(), statistics);
+
+  // Always collect variables_by_term regardless of options.produce_model:
+  // branch-and-bound needs every Int tableau variable to branch on, not
+  // just the ones a requested model would print.
+  const PreparedLraTheory prepared_theory(
+      terms, clausifier.theory_atoms(), lra_pivoting_rule_from_options(options.lra_pivoting_rule),
+      options.lra_sparse_leaving, options.lra_fixed_elimination, /*collect_model_variables=*/true,
+      options.lra_least_violated_leaving, lra_tuning_from_options(options.lra_tuning));
+  publish_lra_tableau_shape_stats(prepared_theory.base_tableau, statistics);
+
+  std::vector<theory::arithmetic::LraVarId> integer_vars;
+  integer_vars.reserve(prepared_theory.variables_by_term.size());
+  for (const auto& [term_id, var_id] : prepared_theory.variables_by_term) {
+    if (terms.get(term_id).sort == terms.symbols().int_sort()) {
+      integer_vars.push_back(var_id);
+    }
+  }
+
+#if PRIMO_HAVE_IPASIR
+  OnlineLraPropagator online_propagator(
+      prepared_theory, clausifier.theory_atoms(), options.lra_propagation,
+      options.lra_row_propagation, options.lra_bidirectional_row_propagation,
+      options.lra_theory_decisions, options.lra_model_phase,
+      options.lra_pivoting_rule == LraPivotingRule::Soi || options.lra_fixed_elimination,
+      options.lra_row_propagation_limits, backend, statistics);
+  backend.connect_external_propagator(&online_propagator);
+  for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
+    const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
+    backend.add_observed_var(var);
+  }
+#endif
+
+  while (true) {
+    statistics.increment(kStatSatSolveCalls);
+    const sat::SatResult sat_result = backend.solve();
+    publish_sat_stats(backend.statistics(), statistics);
+    if (sat_result != sat::SatResult::Sat) {
+      return CheckSatOutcome{map_sat_result(sat_result), "", statistics, ""};
+    }
+    statistics.increment(kStatLraTheoryChecks);
+
+#if PRIMO_HAVE_IPASIR
+    const std::optional<sat::Clause> conflict_clause = online_propagator.conflict();
+#else
+    const std::vector<AssignedTheoryAtom> assigned_atoms =
+        assigned_atoms_from_backend(backend, clausifier.theory_atoms());
+    const std::optional<sat::Clause> conflict_clause =
+        find_incremental_lra_theory_conflict(prepared_theory, assigned_atoms);
+#endif
+    if (!conflict_clause.has_value()) {
+      publish_sat_stats(backend.statistics(), statistics);
+#if PRIMO_HAVE_IPASIR
+      const std::vector<AssignedTheoryAtom> assigned_atoms =
+          assigned_atoms_from_backend(backend, clausifier.theory_atoms());
+      theory::arithmetic::LraTableau lia_tableau = online_propagator.tableau();
+#else
+      theory::arithmetic::LraTableau lia_tableau = prepared_theory.base_tableau;
+      for (std::size_t i = 0; i < assigned_atoms.size(); ++i) {
+        const AssignedTheoryAtom& atom = assigned_atoms[i];
+        const PreparedLraTheory::PreparedAtom& prepared_atom = prepared_theory.atoms[i];
+        if (!prepared_atom.is_arithmetic || atom.filtered) {
+          continue;
+        }
+        const auto bound_conflict = assert_lra_atom_bound(
+            lia_tableau, prepared_atom.bound_var, prepared_atom.relation, prepared_atom.rhs,
+            atom.value, prepared_atom.asserts_lower_when_true, blocking_lit(atom),
+            prepared_atom.is_integer);
+        if (bound_conflict.has_value()) {
+          return CheckSatOutcome{CheckSatResult::Unknown,
+                                 "LIA model reconstruction found a bound conflict", statistics, ""};
+        }
+      }
+      if (lia_tableau.check().has_value()) {
+        return CheckSatOutcome{CheckSatResult::Unknown,
+                               "LIA model reconstruction found a tableau conflict", statistics, ""};
+      }
+#endif
+
+      const theory::arithmetic::LiaBranchAndBoundResult bb_result =
+          theory::arithmetic::branch_and_bound(lia_tableau, integer_vars, options.lia_branch_limit);
+      if (bb_result.status == theory::arithmetic::LiaBranchAndBoundResult::Status::Sat) {
+        return CheckSatOutcome{
+            CheckSatResult::Sat, "", statistics,
+            options.produce_model
+                ? build_qf_lia_model(terms, model_terms, prepared_theory, lia_tableau)
+                : ""};
+      }
+      if (bb_result.status == theory::arithmetic::LiaBranchAndBoundResult::Status::LimitReached) {
+        return CheckSatOutcome{CheckSatResult::Unknown,
+                               "QF_LIA branch-and-bound node limit reached", statistics, ""};
+      }
+      // Unsat: this Boolean+LRA assignment has no all-integer completion.
+      // Block it with the blocking literals of every arithmetic atom that
+      // fed the tableau -- coarse (the whole assignment, not a minimized
+      // explanation) but sound, since it excludes at least this
+      // assignment. See docs/qf-lia-branch-and-bound.md for why stage 1
+      // accepts this over a tighter, tableau-derived explanation.
+      sat::Clause block;
+      for (std::size_t i = 0; i < assigned_atoms.size(); ++i) {
+        if (!prepared_theory.atoms[i].is_arithmetic || assigned_atoms[i].filtered) {
+          continue;
+        }
+        block.push_back(blocking_lit(assigned_atoms[i]));
+      }
+      statistics.increment(kStatLraTheoryConflicts);
+      if (block.empty()) {
+        publish_sat_stats(backend.statistics(), statistics);
+        return CheckSatOutcome{CheckSatResult::Unsat, "", statistics, ""};
+      }
+      backend.add_clause(block);
+      publish_sat_stats(backend.statistics(), statistics);
+      continue;
+    }
+    statistics.increment(kStatLraTheoryConflicts);
+    if (conflict_clause->empty()) {
+      publish_sat_stats(backend.statistics(), statistics);
+      return CheckSatOutcome{CheckSatResult::Unsat, "", statistics, ""};
+    }
+    backend.add_clause(conflict_clause.value());
+    publish_sat_stats(backend.statistics(), statistics);
+  }
+}
+
+CheckSatOutcome solve_qf_lia(core::TermManager& terms, const std::vector<core::TermId>& assertions,
+                             const std::vector<core::TermId>& model_terms,
+                             const CheckSatOptions& options, util::Statistics& statistics) {
+  const std::uint64_t promotions_before = util::Rational::promotion_count();
+  const std::uint64_t big_operations_before = util::Rational::big_operation_count();
+  CheckSatOutcome outcome = solve_qf_lia_impl(terms, assertions, model_terms, options, statistics);
+  const std::uint64_t promotions = util::Rational::promotion_count() - promotions_before;
+  const std::uint64_t big_operations =
+      util::Rational::big_operation_count() - big_operations_before;
+  statistics.increment(util::StatKey::RationalPromotions, promotions);
+  statistics.increment(util::StatKey::RationalBigOperations, big_operations);
+  outcome.statistics.increment(util::StatKey::RationalPromotions, promotions);
+  outcome.statistics.increment(util::StatKey::RationalBigOperations, big_operations);
+  return outcome;
 }
 
 void record_disequality_propagation_opportunities(const core::TermManager& terms,
@@ -12224,6 +12506,19 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       }
       options.produce_model = true;
     }
+    if (frontend.logic() == "QF_LIA") {
+      // Stage 1 (docs/qf-lia-branch-and-bound.md): every simplification
+      // below this point -- Gaussian elimination, monotone elimination,
+      // solved-constant substitution, atom canonicalization -- was written
+      // and measured against Real-only QF_LRA and is not yet known sound
+      // over Int (e.g. Gaussian elimination divides by a pivot coefficient,
+      // which is not an Int-preserving operation). Turning the whole
+      // optional pipeline off sidesteps auditing each pass individually;
+      // solve_qf_lia_impl gets the assertions un-simplified. Boolean
+      // flattening below is unaffected (Off only gates this block, not it)
+      // and needs no such audit -- it only reshapes And/Or nesting.
+      options.preprocessing_mode = PreprocessingMode::Off;
+    }
     const PhaseClock::time_point preprocessing_start = PhaseClock::now();
     if (options.arithmetic_atom_canonicalization) {
       ArithmeticAtomCanonicalizationResult canonicalized =
@@ -12848,6 +13143,19 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       outcome.statistics = statistics;
       return outcome;
     };
+    if (frontend.logic() == "QF_LIA") {
+      // Deliberately not falling through to solve_qf_lra below:
+      // LraAtom::normalize_atom accepts Int atoms too (see its tightening
+      // step), but solve_qf_lra never checks integrality -- routing here
+      // is what makes that safe. See docs/qf-lia-branch-and-bound.md.
+      const std::vector<core::TermId> model_terms = solve_options.produce_model
+                                                        ? frontend.declared_int_constant_terms()
+                                                        : std::vector<core::TermId>{};
+      const PhaseClock::time_point solve_start = PhaseClock::now();
+      return finish_solve(
+          solve_qf_lia(frontend.terms(), assertions, model_terms, solve_options, statistics),
+          solve_start);
+    }
     if ((has_equality || has_euf_predicate) && has_arithmetic) {
       const std::vector<core::TermId> model_terms = solve_options.produce_model
                                                         ? frontend.declared_real_constant_terms()

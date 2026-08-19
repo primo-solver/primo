@@ -49,6 +49,38 @@ void ordering() {
   assert(!(Rational(1, 2) < Rational(1, 2)));
 }
 
+void floor_ceil_is_integer() {
+  assert(Rational(3).is_integer());
+  assert(!Rational(3, 2).is_integer());
+  assert(Rational(3).floor() == Rational(3));
+  assert(Rational(3).ceil() == Rational(3));
+
+  assert(Rational(3, 2).floor() == Rational(1));
+  assert(Rational(3, 2).ceil() == Rational(2));
+  assert(Rational(-3, 2).floor() == Rational(-2));
+  assert(Rational(-3, 2).ceil() == Rational(-1));
+
+  assert(Rational(-4, 2).is_integer());
+  assert(Rational(-4, 2).floor() == Rational(-2));
+  assert(Rational(-4, 2).ceil() == Rational(-2));
+
+  // Forces the big (mpq_class) path -- see representation_transitions()'s
+  // use of the same overflow trick.
+  const Rational big_integer = Rational(INT64_MAX) * Rational(INT64_MAX);
+  assert(big_integer.is_integer());
+  assert(big_integer.floor() == big_integer);
+  assert(big_integer.ceil() == big_integer);
+
+  const Rational big_fraction = big_integer + Rational(1, 2);
+  assert(!big_fraction.is_integer());
+  assert(big_fraction.floor() == big_integer);
+  assert(big_fraction.ceil() == big_integer + Rational(1));
+
+  const Rational negative_big_fraction = -big_fraction;
+  assert(negative_big_fraction.floor() == -(big_integer + Rational(1)));
+  assert(negative_big_fraction.ceil() == -big_integer);
+}
+
 void zero_and_sign() {
   assert(Rational(0).is_zero());
   assert(Rational(0, 5).is_zero());
@@ -576,6 +608,7 @@ int main() {
   construction_and_equality();
   arithmetic();
   ordering();
+  floor_ceil_is_integer();
   zero_and_sign();
   parse_numerals();
   parse_decimals();

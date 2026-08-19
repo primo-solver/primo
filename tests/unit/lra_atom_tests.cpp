@@ -79,6 +79,26 @@ void equality_relation_is_preserved() {
   assert(atom.rhs == Rational(2));
 }
 
+// normalize_atom is sort-agnostic: an Int atom's strictness is left alone
+// here and handled later, in check_sat.cpp's bound_assertion() (see that
+// function's comment for why -- scale-canonicalization runs between this
+// function and bound_assertion, and can turn an integer rhs fractional).
+void int_atoms_are_normalized_like_real_ones() {
+  SymbolTable symbols;
+  const auto x_symbol = symbols.declare_constant("x", symbols.int_sort());
+  TermManager terms(symbols);
+  const auto x = terms.mk_constant(x_symbol);
+
+  const auto lt_atom = terms.mk_lt(x, terms.mk_rational(Rational(5), symbols.int_sort()));
+  const LraAtom lt_normalized = normalize_atom(terms, lt_atom);
+  assert(lt_normalized.relation == LraRelation::Lt);
+  assert(lt_normalized.rhs == Rational(5));
+
+  const auto le_atom = terms.mk_le(x, terms.mk_rational(Rational(5), symbols.int_sort()));
+  assert(normalize_atom(terms, le_atom).relation == LraRelation::Le);
+  assert(normalize_atom(terms, le_atom).rhs == Rational(5));
+}
+
 void rejects_non_atom_terms() {
   SymbolTable symbols;
   const auto p_symbol = symbols.declare_constant("p", symbols.bool_sort());
@@ -93,6 +113,7 @@ int main() {
   moves_constants_to_the_right_hand_side();
   moves_variables_from_both_sides();
   equality_relation_is_preserved();
+  int_atoms_are_normalized_like_real_ones();
   rejects_non_atom_terms();
   return 0;
 }

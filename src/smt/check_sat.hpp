@@ -302,6 +302,13 @@ struct CheckSatOptions {
   // one primitive-integer core term before clausification. Opt-in because the
   // first broad A/B changed QF_LRA search trajectories and lost one net solve.
   bool arithmetic_atom_canonicalization = false;
+  // QF_LIA branch-and-bound's node cap (docs/qf-lia-branch-and-bound.md).
+  // Plain branch-and-bound has no completeness argument of its own -- an
+  // unbounded integer-infeasible polytope can branch forever -- so this is
+  // what turns that into a reported Unknown instead of a hang. Not yet
+  // empirically tuned; picked generously enough to clear small/medium
+  // QF_LIA instances while still bailing out in reasonable time.
+  std::size_t lia_branch_limit = 100000;
   bool monotone_elimination = false;
   bool solved_constant_substitution = true;
   bool gaussian_elimination = true;

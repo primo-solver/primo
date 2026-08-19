@@ -113,7 +113,16 @@ class Rational {
   bool operator>=(const Rational& other) const;
 
   bool is_zero() const;
-  int sign() const;  // -1, 0, or 1.
+  int sign() const;         // -1, 0, or 1.
+  bool is_integer() const;  // true iff the reduced denominator is 1.
+
+  // Largest integer <= this value / smallest integer >= this value (i.e.
+  // round toward -infinity / +infinity, not toward zero). For QF_LIA
+  // branch-and-bound: the two split points for a fractional integer
+  // variable's current value are floor() and floor()+1 (== ceil() when not
+  // already an integer).
+  Rational floor() const;
+  Rational ceil() const;
 
   // Positive exact factor that scales the nonzero input values to coprime
   // integers. Monniaux, CAV 2009, Section 2.1 uses this normalization for

@@ -30,6 +30,7 @@ class SymbolTable {
 
   SortId bool_sort() const;
   SortId real_sort() const;
+  SortId int_sort() const;
   SortId declare_sort(std::string name);
   std::optional<SortId> lookup_sort(const std::string& name) const;
   const Sort& get_sort(SortId id) const;

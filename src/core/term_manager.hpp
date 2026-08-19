@@ -25,10 +25,17 @@ class TermManager {
   TermId mk_or(std::vector<TermId> children);
   TermId mk_implies(TermId lhs, TermId rhs);
 
-  // Linear real arithmetic (QF_LRA). See the TermKind comment in term.hpp
-  // for why mk_times takes a single child (coefficient * child, not
-  // general multiplication) and there is no mk_minus/mk_ge/mk_gt.
+  // Linear arithmetic (QF_LRA and QF_LIA share these -- a term's `sort`
+  // field, Real or Int, is what tells them apart; nothing else about the
+  // representation differs). See the TermKind comment in term.hpp for why
+  // mk_times takes a single child (coefficient * child, not general
+  // multiplication) and there is no mk_minus/mk_ge/mk_gt. `sort` must be
+  // real_sort() or int_sort(); for int_sort() the value must already be an
+  // integer (SortKind::Int has no non-integer literals). The one-argument
+  // overload is real_sort() shorthand, for the many QF_LRA call sites that
+  // predate QF_LIA and only ever meant Real.
   TermId mk_rational(util::Rational value);
+  TermId mk_rational(util::Rational value, SortId sort);
   TermId mk_plus(std::vector<TermId> children);
   TermId mk_times(util::Rational coefficient, TermId child);
   TermId mk_le(TermId lhs, TermId rhs);
@@ -58,6 +65,7 @@ class TermManager {
   TermId intern(Key key);
   const Term& require_term(TermId id) const;
   void require_bool(TermId id) const;
+  bool is_arithmetic_sort(SortId sort) const;
 
   const SymbolTable& symbols_;
   std::vector<Term> terms_;

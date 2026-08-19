@@ -129,6 +129,7 @@ std::optional<std::pair<std::string, int>> parse_cadical_option(const std::strin
 // order in main() -- currently Procedural, QF_UF, QF_LRA, Preprocessing,
 // SAT -- not the order of these declarations.
 constexpr const char* kGroupLra = "QF_LRA theory options";
+constexpr const char* kGroupLia = "QF_LIA theory options";
 constexpr const char* kGroupUf = "QF_UF / EUF theory options";
 constexpr const char* kGroupPreprocessing = "Preprocessing options";
 constexpr const char* kGroupSat = "SAT and DPLL(T) options";
@@ -381,6 +382,12 @@ int main(int argc, char** argv) {
                solver_options.arithmetic_atom_canonicalization,
                "Enable experimental primitive-integer canonicalization of proportional Real "
                "comparisons and equalities before clausification [default: off]");
+  app.add_option("--lia-branch-limit", solver_options.lia_branch_limit,
+                 "QF_LIA branch-and-bound node cap: plain branch-and-bound alone has no "
+                 "completeness argument (an unbounded integer-infeasible polytope can branch "
+                 "forever), so once this many nodes have been explored the search reports "
+                 "Unknown instead of continuing [default: 100000]")
+      ->check(CLI::Range(1, 100000000));
   app.add_flag("--top-level-or-tseitin", top_level_or_tseitin,
                "Always encode top-level disjunctions with Tseitin support clauses [default: only "
                "when the automatic rule fires]");
@@ -624,6 +631,9 @@ int main(int argc, char** argv) {
         name == "--guarded-real-equality-lowering" || name == "--monotone-elimination" ||
         name == "--lra-least-violated-leaving" || name == "--mixed-dispatch") {
       return kGroupLra;
+    }
+    if (starts_with(name, "--lia-")) {
+      return kGroupLia;
     }
     if (name == "--preprocessing-mode" || name == "--qf-uf-preprocess" ||
         name == "--arithmetic-atom-canonicalization" || name == "--auto-preprocess-selector" ||

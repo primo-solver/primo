@@ -460,6 +460,45 @@ int Rational::sign() const {
   return sgn(*big_);
 }
 
+bool Rational::is_integer() const {
+  if (is_small()) {
+    return den_ == 1;
+  }
+  return mpz_cmp_ui(mpq_denref(big_->get_mpq_t()), 1) == 0;
+}
+
+Rational Rational::floor() const {
+  if (is_small()) {
+    if (den_ == 1) {
+      return *this;
+    }
+    std::int64_t quotient = num_ / den_;  // Truncates toward zero.
+    if (num_ % den_ != 0 && num_ < 0) {
+      --quotient;  // Round toward -infinity instead.
+    }
+    return Rational(quotient);
+  }
+  mpz_class quotient;
+  mpz_fdiv_q(quotient.get_mpz_t(), mpq_numref(big_->get_mpq_t()), mpq_denref(big_->get_mpq_t()));
+  return from_mpq(mpq_class(std::move(quotient)));
+}
+
+Rational Rational::ceil() const {
+  if (is_small()) {
+    if (den_ == 1) {
+      return *this;
+    }
+    std::int64_t quotient = num_ / den_;  // Truncates toward zero.
+    if (num_ % den_ != 0 && num_ > 0) {
+      ++quotient;  // Round toward +infinity instead.
+    }
+    return Rational(quotient);
+  }
+  mpz_class quotient;
+  mpz_cdiv_q(quotient.get_mpz_t(), mpq_numref(big_->get_mpq_t()), mpq_denref(big_->get_mpq_t()));
+  return from_mpq(mpq_class(std::move(quotient)));
+}
+
 std::string Rational::to_string() const {
   // Must match mpq_class::get_str()'s shape exactly: bare integer when the
   // denominator is 1, "numerator/denominator" otherwise.

@@ -2358,10 +2358,16 @@ core::TermId rewrite_with_solved_constants(
   return memo.at(term_id);
 }
 
+// Real for QF_LRA/QF_UFLRA, Int for QF_LIA -- both are total orders, so
+// `a = b` lowers to `a <= b AND b <= a` either way (see the Equality case
+// in lower_real_equalities_rewrite below).
 bool is_real_equality(const core::TermManager& terms, core::TermId term_id) {
   const core::Term& term = terms.get(term_id);
-  return term.kind == core::TermKind::Equality &&
-         terms.get(term.children.at(0)).sort == terms.symbols().real_sort();
+  if (term.kind != core::TermKind::Equality) {
+    return false;
+  }
+  const core::SortId sort = terms.get(term.children.at(0)).sort;
+  return sort == terms.symbols().real_sort() || sort == terms.symbols().int_sort();
 }
 
 core::TermId lower_real_equalities_rewrite(core::TermManager& terms, core::TermId term_id,
@@ -2469,7 +2475,8 @@ core::TermId lower_real_equalities_rewrite(core::TermManager& terms, core::TermI
       case core::TermKind::Equality: {
         const core::TermId lhs = memo.at(children.at(0));
         const core::TermId rhs = memo.at(children.at(1));
-        if (terms.get(lhs).sort == terms.symbols().real_sort()) {
+        const core::SortId lhs_sort = terms.get(lhs).sort;
+        if (lhs_sort == terms.symbols().real_sort() || lhs_sort == terms.symbols().int_sort()) {
           rewritten = terms.mk_and({terms.mk_le(lhs, rhs), terms.mk_le(rhs, lhs)});
           ++result.lowered;
         } else {
