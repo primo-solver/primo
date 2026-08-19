@@ -270,25 +270,41 @@ PATH="contrib/local/bin:$PATH" python3 scripts/fuzz_external.py \
   --out /tmp/qf-lia-fuzz-smoke
 ```
 
-**Slurm-scale gate** (`scripts/slurm_qf_lia_model_fuzz_gate.sbatch`, added
-alongside this doc): a fresh sibling of
-`scripts/slurm_qf_lra_model_fuzz_gate.sbatch`'s FuzzSMT-shard portion --
-several FuzzSMT shards generated fresh per array task, each checked
-answer-differentially against z3 and, for `sat` results, model-validated
-with Dolmen (`scripts/validate_model.py`, which already generalizes to
-`Int` models -- its primary check is Dolmen's own generic
-`--check-model=true`, sort-agnostic; only its narrower z3-Real fallback
-path is Real-specific, and QF_LIA models don't need it). Unlike the QF_LRA
-gate, there is no opfuzz/typefuzz mutation-fuzzing stage here yet, because
-that stage mutates a committed seed corpus
+**Slurm-scale gate** (`scripts/slurm_qf_lia_model_fuzz_gate.sbatch`): a
+fresh sibling of `scripts/slurm_qf_lra_model_fuzz_gate.sbatch`'s
+FuzzSMT-shard portion -- several FuzzSMT shards generated fresh per array
+task, each checked answer-differentially against z3 and, for `sat`
+results, model-validated with Dolmen (`scripts/validate_model.py`).
+Unlike the QF_LRA gate, there is no opfuzz/typefuzz mutation-fuzzing stage
+here yet, because that stage mutates a committed seed corpus
 (`benchmarks/seeds/qf_lra_division`) and no equivalent QF_LIA corpus
 exists (`benchmarks/seeds/qf_lra_*` are gitignored generated directories,
 not tracked; see that gate's own comment on why). Adding one is natural
 future work once real QF_LIA benchmarks are collected, not a blocker for
-running the FuzzSMT-only gate as-is. **Not yet run** -- submitting it is a
-deliberate next step for the user to trigger, not something done
-in-session (per this project's standing preference: real fuzz campaigns
-run on Slurm, not locally in an assistant session).
+running the FuzzSMT-only gate as-is.
+
+**Bug 3, found running the gate itself on the cluster (2026-08-19, job
+127439): Dolmen's default `--strict=true` rejects real FuzzSMT QF_LIA
+output.** FuzzSMT's QF_LIA generator routinely produces terms like
+`(* e5 e11)` where `e5` is a let-bound literal (`1`) and `e11` a compound
+expression -- still linear (a literal times a linear expression is
+linear) but stricter than QF_LIA's SMT-LIB grammar, which only allows
+`(* <literal> <symbol>)`. Dolmen's default treats this as a Fatal Warning
+and aborts `--check-model` before it ever evaluates the model, which fell
+through to `validate_model.py`'s Real-only z3 fallback -- a no-op for an
+Int model (it finds no `() Real` assignments to extract), reported as
+`model-error`: 39/45 `sat` cases in that run. `--dolmen-arg=--strict=false`
+(now the gate's default) fixes it: rechecked the same 45 cases, all 45
+pass via Dolmen directly (job 127440, same day). The z3 fallback itself
+stays Real-only/unfixed -- not needed once Dolmen accepts the input.
+
+**Status**: smoke-verified twice on the actual Slurm cluster (not just
+locally) -- job 127439 (50 cases, found bug 3) and job 127440 (50 cases,
+post-fix: 48/50 PASS on the answer-diff, 2 benign solver timeouts, 0 wrong
+answers; 40/40 `sat` cases pass Dolmen model validation, 0 `model-error`).
+The full default-sized run (8 shards x 500 cases) is the natural next
+step, not yet done as of this writing -- see `docs/run-log.json` for
+whichever of these two states is current by the time you're reading this.
 
 ## Tests
 
