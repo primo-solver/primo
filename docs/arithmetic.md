@@ -1018,7 +1018,20 @@ The editable TikZ source is `docs/figures/lra-tableau-occurrence-index.tex`.
 
 ### Implemented subset vs. deviations vs. limitations
 
-- **Real-only arithmetic.** No `Int` sort and no QF_LIA. A partial QF_UFLRA
+- **QF_LIA, stage 1.** `(set-logic QF_LIA)` is supported: an `Int` sort,
+  linear atoms (`+ - *`(literal coefficient) `< <= > >= = distinct`), and a
+  plain branch-and-bound decision procedure layered entirely on top of the
+  existing `LraTableau` (no tableau/simplex change). No `div`/`mod`, and no
+  mixing `Int` with `Real` in one problem (that would be QF_LIRA). Plain
+  branch-and-bound has no completeness argument of its own -- an unbounded
+  integer-infeasible system can branch forever without cutting planes -- so
+  the search is capped by `--lia-branch-limit` and reports `unknown` if the
+  cap is hit rather than looping. See `docs/qf-lia-branch-and-bound.md` for
+  the full design and the cutting-planes stage this sets up but does not
+  implement.
+- **Real-only Real/UF combination.** No `Int` counterpart to the QF_UFLRA
+  coordinator below: QF_LIA cannot currently be combined with EUF or mixed
+  with `Real`. A partial QF_UFLRA
   coordinator exists for separable formulas and for arithmetic atoms containing
   Real-valued UF applications. The SMT layer purifies each such application to
   an internal Real proxy, first replacing any non-constant Real arguments by
