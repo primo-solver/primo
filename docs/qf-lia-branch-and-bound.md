@@ -298,13 +298,23 @@ Int model (it finds no `() Real` assignments to extract), reported as
 pass via Dolmen directly (job 127440, same day). The z3 fallback itself
 stays Real-only/unfixed -- not needed once Dolmen accepts the input.
 
-**Status**: smoke-verified twice on the actual Slurm cluster (not just
-locally) -- job 127439 (50 cases, found bug 3) and job 127440 (50 cases,
-post-fix: 48/50 PASS on the answer-diff, 2 benign solver timeouts, 0 wrong
-answers; 40/40 `sat` cases pass Dolmen model validation, 0 `model-error`).
-The full default-sized run (8 shards x 500 cases) is the natural next
-step, not yet done as of this writing -- see `docs/run-log.json` for
-whichever of these two states is current by the time you're reading this.
+**Status**: full default-sized gate (8 shards x 500 = 4000 FuzzSMT-generated
+QF_LIA cases) run on the actual Slurm cluster, 2026-08-19, job 127441 (see
+`docs/run-log.json`'s `2026-08-19-qf-lia-fuzz-gate-slurm-verification`
+entry for the complete record, including the two smaller jobs, 127439 and
+127440, that found and confirmed the fix for bug 3 above). Aggregate
+results: answer-differential 3926 PASS, 73 benign solver timeouts, 1
+`UNKNOWN_INVOLVED`, **zero wrong answers**; Dolmen model validation 3528
+pass, 423 correctly `not-sat`, 48 benign timeouts, 1 `solver-unknown`,
+**zero invalid models**. The one non-`pass` case beyond timeouts
+(`fuzzsmt_227445__file_247.smt2`) is primo honestly reporting `unknown`
+after exhausting `--lia-branch-limit` on a z3-`sat` instance -- confirmed
+via its `solver.stderr`, which reads exactly "QF_LIA branch-and-bound node
+limit reached" -- i.e. the documented incompleteness above, not a bug.
+That single case did make the gate's shard task exit nonzero the first
+time (the benign-outcome whitelist didn't yet include `solver-unknown`);
+fixed in the gate script afterward, with a comment on exactly what
+assumption ties it to being genuinely benign and when to revisit it.
 
 ## Tests
 

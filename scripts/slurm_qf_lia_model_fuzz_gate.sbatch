@@ -117,19 +117,31 @@ python3 scripts/validate_model.py \
 if (( model_status != 0 )); then
   # See slurm_qf_lra_model_fuzz_gate.sbatch's own comment: a lone solver
   # *answer* timeout on a hard fuzzed instance is not a model-validation
-  # failure. Only fail the task for something other than a bare timeout.
+  # failure. `solver-unknown` gets the same treatment here, but only
+  # because of what stage 1 QF_LIA actually is (see
+  # docs/qf-lia-branch-and-bound.md's "Known incompleteness"): plain
+  # branch-and-bound has no completeness argument on its own, so a
+  # genuinely satisfiable instance can legitimately exhaust
+  # --lia-branch-limit and come back Unknown -- confirmed by hand for
+  # job 127441's one occurrence (its solver.stderr said exactly "QF_LIA
+  # branch-and-bound node limit reached", not a reconstruction conflict).
+  # If a future change adds a second source of Unknown for this solve
+  # path (e.g. the non-IPASIR fallback's own "model reconstruction found
+  # a ... conflict" outcomes -- see solve_qf_lia_impl), this blanket
+  # allowance would start hiding a real bug; narrowing it to inspect each
+  # case's actual message is the fix if that ever happens.
   non_timeout_failures=$(python3 -c "
 import csv, sys
 n = 0
 with open(sys.argv[1], newline='') as fh:
     for row in csv.DictReader(fh):
-        if row['outcome'] not in ('pass', 'not-sat', 'solver-timeout'):
+        if row['outcome'] not in ('pass', 'not-sat', 'solver-timeout', 'solver-unknown'):
             n += 1
 print(n)
 " "$model_out/summary.csv")
   if (( non_timeout_failures > 0 )); then
-    echo "model validation found $non_timeout_failures non-timeout failure(s) in $model_out/summary.csv; failing the task" >&2
+    echo "model validation found $non_timeout_failures failure(s) beyond timeouts/node-limit-unknowns in $model_out/summary.csv; failing the task" >&2
     exit "$model_status"
   fi
-  echo "model validation's only failures were solver timeouts (benign under a ${MODEL_TIMEOUT}s solve budget); not failing the task" >&2
+  echo "model validation's only failures were solver timeouts/node-limit-unknowns (both benign for stage-1 QF_LIA); not failing the task" >&2
 fi

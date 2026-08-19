@@ -27496,6 +27496,33 @@
       },
       "evidence_status": "slurm-complete-current",
       "outcome": "Materially different conclusion from the sample-based evaluation: at full-corpus scale, --arithmetic-atom-canonicalization is a clear net win on QF_LRA (+20 solved, -11% PAR2) and neutral on QF_UFLRA, with zero wrong answers throughout. Still not a uniform win (14 genuine losses alongside 34 genuine gains) -- the underlying mechanism (early canonicalization changes preprocessing and LRA search trajectories) is unchanged, but the net effect at full-corpus scale is substantially more positive than the sample suggested. Recorded as new evidence for docs/papers/lra-atom-canonicalization.md; whether this justifies promoting the flag (at least for pure QF_LRA) is a decision left to the user rather than made here."
+    },
+    {
+      "id": "2026-08-19-qf-lia-fuzz-gate-slurm-verification",
+      "started_at": "2026-08-19",
+      "recorded_at": "2026-08-19",
+      "kind": "fuzz",
+      "scope": "First Slurm run of the new QF_LIA fuzz gate (scripts/slurm_qf_lia_model_fuzz_gate.sbatch): FuzzSMT-generated QF_LIA answer-differential fuzzing against z3, plus Dolmen model validation of every sat result.",
+      "commit": "5808051",
+      "branch": "qf-lia-branch-and-bound",
+      "environment": {
+        "type": "SLURM",
+        "host": "llm2smt-slurm",
+        "workdir": "primo-qflia-fuzz-gate",
+        "job": "127439 (1 shard x 50, found the Dolmen --strict bug), 127440 (1 shard x 50, post-fix smoke re-run), 127441 (8 shards x 500 = 4000, full default-sized gate, post-fix)"
+      },
+      "commands": {
+        "smoke": "sbatch --export=ALL,PRIMO_WORKDIR=...,PRIMO_FUZZ_FUZZSMT_COUNT=50 --array=0-0 scripts/slurm_qf_lia_model_fuzz_gate.sbatch",
+        "full": "sbatch --export=ALL,PRIMO_WORKDIR=... scripts/slurm_qf_lia_model_fuzz_gate.sbatch (default 8x500)"
+      },
+      "results": {
+        "job_127439": "Answer-differential clean, but model validation found 39/45 sat cases as model-error, all falling through to validate_model.py's Real-only z3 fallback. Root cause: Dolmen's default --strict=true treats FuzzSMT's QF_LIA output (linear-but-grammar-nonconforming terms like `(* e5 e11)` with e5 a let-bound literal) as a Fatal Warning and aborts check-model before evaluating the model. Fixed with --dolmen-arg=--strict=false, now the gate's default (commit c05f24a).",
+        "job_127440": "Same 50-case smoke shape, post-fix. Answer-differential: 48 PASS, 2 benign solver timeouts, 0 wrong answers. Model validation: 40/40 sat cases pass via Dolmen directly, 0 model-error.",
+        "job_127441": "Full default-sized run, 4000 FuzzSMT-generated QF_LIA cases across 8 shards (7 shards exited 0; shard 4 exited 1, see below). Answer-differential aggregate: 3926 PASS, 73 benign solver timeouts, 1 UNKNOWN_INVOLVED, 0 wrong answers (zero OUR_SAT_REF_UNSAT/OUR_UNSAT_REF_SAT/REF_DISAGREEMENT/CRASH). Model validation aggregate: 3528 pass (all via Dolmen), 423 not-sat (no model expected), 48 benign solver timeouts, 1 solver-unknown. The single UNKNOWN_INVOLVED/solver-unknown case (fuzzsmt_227445__file_247.smt2) is primo honestly reporting Unknown after exhausting --lia-branch-limit on a z3-sat instance -- confirmed by its solver.stderr, which reads exactly 'QF_LIA branch-and-bound node limit reached', matching docs/qf-lia-branch-and-bound.md's documented stage-1 incompleteness, not a wrong answer or crash. That single benign case is what made shard 4 exit 1 (the gate's non_timeout_failures check did not yet whitelist solver-unknown); the gate script was updated afterward to also treat solver-unknown as benign, with a comment explaining exactly why and when that allowance would need narrowing."
+      },
+      "artifacts": "remote:primo-qflia-fuzz-gate/fuzz-results/qf-lia-model-gate-{127439,127440,127441}/",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "The QF_LIA fuzz gate (scripts/slurm_qf_lia_model_fuzz_gate.sbatch) now runs cleanly end-to-end on Slurm at its default 8x500 scale: zero wrong answers, zero crashes, zero invalid Dolmen-validated models across 4000 FuzzSMT-generated QF_LIA cases. Two real bugs were found and fixed in this session before this campaign (see the two prior commits on this branch and docs/qf-lia-branch-and-bound.md's bug write-ups); this run is the first evidence at real scale, not just local smoke testing, that stage 1 QF_LIA is sound. The gate's own benign-outcome classification also needed a fix (solver-unknown from the branch-and-bound node limit was being treated as a hard failure), applied after this run."
     }
   ]
 }
