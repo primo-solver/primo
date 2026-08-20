@@ -219,6 +219,12 @@ def main() -> int:
                         help="order curves and legend by descending solved count")
     parser.add_argument("--highlight-series", metavar="NAME",
                         help="draw one named series in a prominent blue with a heavier line")
+    parser.add_argument("--public", action="store_true",
+                        help="omit every --note line (job IDs and other run "
+                             "provenance) for external/public presentation, while "
+                             "keeping the instance/timeout summary and the "
+                             "drop-cutoff explanation, since dropping instances "
+                             "silently would misrepresent the plot")
     args = parser.parse_args()
 
     loaded: list[tuple[str, list[dict[str, str]]]] = []
@@ -287,8 +293,9 @@ def main() -> int:
         caption.append(
             f"Excludes {dropped} further instances every solver finished in under "
             f"{args.drop_solved_by_all_under:g}s, so every count here is of the "
-            f"remaining {total}. Gaps between curves are unaffected.")
-    caption += args.note
+            f"remaining {total}.")
+    if not args.public:
+        caption += args.note
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(
         svg(plotted, args.timeout, total, args.title, caption, args.highlight_series)
