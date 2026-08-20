@@ -40,6 +40,33 @@ void trivially_sat_needs_no_branching() {
   assert(result.model.find("(define-fun x () Int 7)") != std::string::npos);
 }
 
+// docs/open-leads.md lead 12a: bare-form solved-constant substitution
+// (x=t, x not occurring in t) is enabled by default for QF_LIA. y=5 and
+// x=y+3 chains across two of the substitution loop's passes -- the first
+// pass accepts y=5 (no other pending candidate depends on it) and
+// rewrites x=y+3 to x=5+3 in the same pass; the second pass then accepts
+// x=5+3 directly. Both eliminated variables never reach the tableau at
+// all (PreparedLraTheory::variables_by_term has no entry for either), so
+// this exercises build_qf_lia_model's substitution-aware fallback
+// (evaluate_qf_lia_model_term), not just the rewrite itself -- the bug
+// this same lead found and fixed defaulted an eliminated variable's
+// model value to 0 instead of resolving it.
+void chained_solved_constant_substitution_reconstructs_the_model() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_LIA)
+    (declare-fun x () Int)
+    (declare-fun y () Int)
+    (assert (= y 5))
+    (assert (= x (+ y 3)))
+    (check-sat)
+    (get-model)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.model.find("(define-fun x () Int 8)") != std::string::npos);
+  assert(result.model.find("(define-fun y () Int 5)") != std::string::npos);
+}
+
 void two_x_equals_three_is_unsat() {
   // 2x == 3 has no integer solution at all: both branches (x<=1, x>=2)
   // contradict the fixed bound 2x==3 immediately.
@@ -281,6 +308,7 @@ void int_constants_require_qf_lia_logic() {
 
 int main() {
   trivially_sat_needs_no_branching();
+  chained_solved_constant_substitution_reconstructs_the_model();
   two_x_equals_three_is_unsat();
   one_branch_finds_an_integer_solution();
   nested_branching_finds_a_solution();

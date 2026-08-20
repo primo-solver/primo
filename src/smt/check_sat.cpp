@@ -5926,10 +5926,67 @@ std::string build_qf_lra_model(
 // choice is needed), model_terms are always plain declared Int constants
 // rather than compound expressions to evaluate, and QF_LIA has no UF to
 // compose a model with.
-std::string build_qf_lia_model(const core::TermManager& terms,
-                               const std::vector<core::TermId>& model_terms,
-                               const PreparedLraTheory& prepared,
-                               const theory::arithmetic::LraTableau& tableau) {
+// Evaluates a QF_LIA solved-constant definition (docs/open-leads.md lead
+// 12a) purely from literals, +/scalar-* structure, and other variables'
+// already-known tableau values -- never from another substitution's
+// definition. That narrower scope is deliberate, not a missing case: each
+// pass of the substitution loop that produced `substitutions` fully
+// rewrites every definition still pending before collecting the next
+// pass's candidates (see the loop's own comment in check_sat.cpp), so by
+// the time a variable becomes a candidate, any other eliminated variable
+// it might have referenced has already been replaced by that variable's
+// own resolved definition -- there is nothing left to chase here.
+std::optional<util::Rational> evaluate_qf_lia_model_term(
+    const core::TermManager& terms, core::TermId term_id, const PreparedLraTheory& prepared,
+    const theory::arithmetic::LraTableau& tableau) {
+  const core::Term& term = terms.get(term_id);
+  if (term.sort != terms.symbols().int_sort()) {
+    return std::nullopt;
+  }
+  switch (term.kind) {
+    case core::TermKind::Rational:
+      return term.rational_value;
+    case core::TermKind::Constant: {
+      const auto found = prepared.variables_by_term.find(term_id);
+      if (found == prepared.variables_by_term.end()) {
+        return std::nullopt;
+      }
+      return tableau.assignment(found->second).rational;
+    }
+    case core::TermKind::Plus: {
+      util::Rational sum(0);
+      for (const core::TermId child : term.children) {
+        const std::optional<util::Rational> child_value =
+            evaluate_qf_lia_model_term(terms, child, prepared, tableau);
+        if (!child_value.has_value()) {
+          return std::nullopt;
+        }
+        sum = sum + child_value.value();
+      }
+      return sum;
+    }
+    case core::TermKind::Times: {
+      const std::optional<util::Rational> child_value =
+          evaluate_qf_lia_model_term(terms, term.children.at(0), prepared, tableau);
+      if (!child_value.has_value()) {
+        return std::nullopt;
+      }
+      return term.rational_value * child_value.value();
+    }
+    default:
+      return std::nullopt;
+  }
+}
+
+std::string build_qf_lia_model(
+    const core::TermManager& terms, const std::vector<core::TermId>& model_terms,
+    const PreparedLraTheory& prepared, const theory::arithmetic::LraTableau& tableau,
+    const std::vector<std::pair<core::TermId, core::TermId>>& solved_constant_substitutions = {}) {
+  std::unordered_map<core::TermId, core::TermId> substitution_definitions;
+  substitution_definitions.reserve(solved_constant_substitutions.size());
+  for (const auto& [variable, definition] : solved_constant_substitutions) {
+    substitution_definitions.emplace(variable, definition);
+  }
   std::ostringstream model;
   model << "(model\n";
   for (const core::TermId term_id : model_terms) {
@@ -5939,9 +5996,21 @@ std::string build_qf_lia_model(const core::TermManager& terms,
     }
     const core::Symbol& symbol = terms.symbols().get_symbol(term.symbol);
     const auto found = prepared.variables_by_term.find(term_id);
-    const util::Rational value = found == prepared.variables_by_term.end()
-                                     ? util::Rational(0)
-                                     : tableau.assignment(found->second).rational;
+    util::Rational value(0);
+    if (found != prepared.variables_by_term.end()) {
+      value = tableau.assignment(found->second).rational;
+    } else if (const auto substitution = substitution_definitions.find(term_id);
+              substitution != substitution_definitions.end()) {
+      // A variable lead 12a's preprocessing eliminated entirely: it never
+      // reached PreparedLraTheory, so it has no tableau variable at all --
+      // recover its value from the definition it was replaced by instead
+      // of defaulting to 0, which would silently print a wrong model.
+      const std::optional<util::Rational> resolved =
+          evaluate_qf_lia_model_term(terms, substitution->second, prepared, tableau);
+      if (resolved.has_value()) {
+        value = resolved.value();
+      }
+    }
     model << "  (define-fun " << symbol.name << " () Int " << smtlib_rational(value) << ")\n";
   }
   model << ")";
@@ -10428,10 +10497,11 @@ CheckSatOutcome solve_qf_lra_impl(
 // problem), or giving up at the node limit (Unknown; see
 // LiaBranchAndBoundResult's own comment on why plain branch-and-bound
 // cannot be complete on its own).
-CheckSatOutcome solve_qf_lia_impl(core::TermManager& terms,
-                                  const std::vector<core::TermId>& assertions,
-                                  const std::vector<core::TermId>& model_terms,
-                                  const CheckSatOptions& options, util::Statistics& statistics) {
+CheckSatOutcome solve_qf_lia_impl(
+    core::TermManager& terms, const std::vector<core::TermId>& assertions,
+    const std::vector<core::TermId>& model_terms, const CheckSatOptions& options,
+    util::Statistics& statistics,
+    const std::vector<std::pair<core::TermId, core::TermId>>& solved_constant_substitutions = {}) {
   // Same tableau engine as QF_LRA; no separate QF_LIA statistic key yet --
   // every run that reaches here came from (set-logic QF_LIA), which was
   // rejected before this branch existed, so there is no historical QF_LRA
@@ -10549,7 +10619,8 @@ CheckSatOutcome solve_qf_lia_impl(core::TermManager& terms,
           return CheckSatOutcome{
               CheckSatResult::Sat, "", statistics,
               options.produce_model
-                  ? build_qf_lia_model(terms, model_terms, prepared_theory, lia_tableau)
+                  ? build_qf_lia_model(terms, model_terms, prepared_theory, lia_tableau,
+                                      solved_constant_substitutions)
                   : ""};
         }
         if (bb_result.status == theory::arithmetic::LiaBranchAndBoundResult::Status::LimitReached) {
@@ -10591,12 +10662,15 @@ CheckSatOutcome solve_qf_lia_impl(core::TermManager& terms,
   }
 }
 
-CheckSatOutcome solve_qf_lia(core::TermManager& terms, const std::vector<core::TermId>& assertions,
-                             const std::vector<core::TermId>& model_terms,
-                             const CheckSatOptions& options, util::Statistics& statistics) {
+CheckSatOutcome solve_qf_lia(
+    core::TermManager& terms, const std::vector<core::TermId>& assertions,
+    const std::vector<core::TermId>& model_terms, const CheckSatOptions& options,
+    util::Statistics& statistics,
+    const std::vector<std::pair<core::TermId, core::TermId>>& solved_constant_substitutions = {}) {
   const std::uint64_t promotions_before = util::Rational::promotion_count();
   const std::uint64_t big_operations_before = util::Rational::big_operation_count();
-  CheckSatOutcome outcome = solve_qf_lia_impl(terms, assertions, model_terms, options, statistics);
+  CheckSatOutcome outcome = solve_qf_lia_impl(terms, assertions, model_terms, options, statistics,
+                                              solved_constant_substitutions);
   const std::uint64_t promotions = util::Rational::promotion_count() - promotions_before;
   const std::uint64_t big_operations =
       util::Rational::big_operation_count() - big_operations_before;
@@ -12549,18 +12623,40 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       }
       options.produce_model = true;
     }
-    if (frontend.logic() == "QF_LIA") {
-      // Stage 1 (docs/qf-lia-branch-and-bound.md): every simplification
-      // below this point -- Gaussian elimination, monotone elimination,
-      // solved-constant substitution, atom canonicalization -- was written
-      // and measured against Real-only QF_LRA and is not yet known sound
-      // over Int (e.g. Gaussian elimination divides by a pivot coefficient,
-      // which is not an Int-preserving operation). Turning the whole
-      // optional pipeline off sidesteps auditing each pass individually;
-      // solve_qf_lia_impl gets the assertions un-simplified. Boolean
-      // flattening below is unaffected (Off only gates this block, not it)
+    const bool is_qf_lia = frontend.logic() == "QF_LIA";
+    if (is_qf_lia) {
+      // docs/open-leads.md lead 12a: the *loop-based* preprocessing pipeline
+      // below (Gaussian elimination, monotone elimination, finite-domain
+      // at-most-one, UF symmetry breaking, ...) reasons about Real-only or
+      // uninterpreted-function structure QF_LIA either doesn't have (no UFs
+      // in scope, docs/qf-lia-branch-and-bound.md's "Scope" section) or
+      // isn't yet known sound over Int (Gaussian elimination divides by a
+      // pivot coefficient, monotone elimination's model reconstruction can
+      // produce a fractional witness for an Int variable). Turning the
+      // whole loop off sidesteps auditing each pass individually. Boolean
+      // flattening below is unaffected (Off only gates this loop, not it)
       // and needs no such audit -- it only reshapes And/Or nesting.
       options.preprocessing_mode = PreprocessingMode::Off;
+      // Atom canonicalization (--arithmetic-atom-canonicalization) is
+      // deliberately NOT enabled here despite docs/open-leads.md lead 12a
+      // first assessing it as safe: that assessment was wrong, caught by
+      // this project's own test suite before it shipped.
+      // primitive_integer_scale does not just clear denominators (an
+      // always-exact multiply-up) -- on already-integer coefficients like
+      // `4x + 4y` it *reduces by their gcd* (returns `1/4`), which is
+      // sound for Real (dividing an inequality by a positive constant is
+      // exact) but not for Int: `4x + 4y >= 2` becomes `x + y >= 1/2`,
+      // and unlike bound_assertion()'s already-int-aware tightening this
+      // pass has none, so the literal `1/2` gets built directly as an
+      // Int-sorted term and the frontend correctly rejects it
+      // ("Int literal must be an integer value") -- caught by
+      // qf_lia_solver_tests.cpp's gcd_uncatchable_divergent_system_hits_
+      // the_node_limit failing outright, not a silent wrong answer.
+      // Fixing this needs the same ceil/floor rhs tightening
+      // bound_assertion() already does, applied here too; see lead 12a's
+      // updated table in docs/open-leads.md. Solved-constant substitution
+      // just below has no such gap (verified: it does no coefficient
+      // arithmetic at all) and stays enabled.
     }
     const PhaseClock::time_point preprocessing_start = PhaseClock::now();
     if (options.arithmetic_atom_canonicalization) {
@@ -12778,6 +12874,15 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     std::vector<MonotoneEliminatedVariable> monotone_eliminated;
     std::vector<std::pair<core::TermId, core::TermId>> forced_equalities;
     std::vector<std::pair<core::TermId, core::TermId>> forced_disequalities;
+    // Populated only for QF_LIA below; build_qf_lia_model resolves an
+    // eliminated variable's value from these rather than defaulting it to
+    // 0. Plain (variable, definition) pairs rather than
+    // preprocessing_model_assignments's TheoryModelAssignment encoding
+    // because QF_LIA's model builder reads directly from the LRA tableau,
+    // not through the generic equality-assignment model path
+    // preprocessing_model_assignments feeds (solve_qf_lia has no
+    // parameter for it at all -- see build_qf_lia_model's own comment).
+    std::vector<std::pair<core::TermId, core::TermId>> qf_lia_solved_constant_substitutions;
     if (use_finite_domain_amo) {
       statistics.increment(kStatFiniteDomainRawChoices, raw_finite_domain_result.choices);
       statistics.increment(kStatFiniteDomainRawAmoClauses, raw_finite_domain_result.clauses.size());
@@ -12785,6 +12890,48 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       statistics.increment(kStatFiniteDomainRawChoices, finite_domain_analysis.choices);
       statistics.increment(kStatFiniteDomainRawAmoClauses,
                            finite_domain_analysis.predicted_amo_clauses);
+    }
+    if (is_qf_lia) {
+      // docs/open-leads.md lead 12a: the bare-variable-shaped half of
+      // solved-constant substitution (`x = t`, x not occurring in t,
+      // straight syntactic replacement) is sound over Int the same way
+      // atom canonicalization is -- no coefficient scaling or division
+      // anywhere. Called directly here rather than through the big
+      // preprocessing loop below (which stays Off for QF_LIA, see the
+      // comment above): that loop's other passes are the ones not yet
+      // audited, and Gaussian elimination specifically MUST stay off
+      // (`enable_gaussian_elimination=false` below, not
+      // `options.gaussian_elimination`, which defaults true and is
+      // unsound over Int as lead 12a's table documents).
+      //
+      // A single call only resolves definitions with no forward
+      // dependency on another candidate in the same call (`x=y, y=5`
+      // rejects `x`'s candidate as pending-dependent, but still rewrites
+      // `x=y` to `x=5` using the substitution it did accept) -- looping a
+      // few times resolves the resulting chain the same way the Real-side
+      // loop's repeated calls do. Capped and change-detected so a formula
+      // with no more definitions to find costs one extra no-op call, not
+      // an unbounded scan.
+      constexpr int kMaxSolvedConstantPasses = 8;
+      for (int pass = 0; pass < kMaxSolvedConstantPasses; ++pass) {
+        SolvedConstantSubstitutionResult solved_constants = substitute_solved_constants(
+            frontend.terms(), assertions, /*enable_gaussian_elimination=*/false);
+        statistics.increment(kStatSolvedConstantCandidates, solved_constants.candidates);
+        statistics.increment(kStatSolvedConstantAccepted, solved_constants.accepted);
+        statistics.increment(kStatSolvedConstantRewrites, solved_constants.rewrites);
+        statistics.increment(kStatSolvedConstantRejectedCycles, solved_constants.rejected_cycles);
+        statistics.increment(kStatSolvedConstantRejectedBlowups,
+                             solved_constants.rejected_blowups);
+        if (solved_constants.accepted == 0) {
+          break;
+        }
+        assertions = std::move(solved_constants.assertions);
+        if (options.produce_model) {
+          qf_lia_solved_constant_substitutions.insert(qf_lia_solved_constant_substitutions.end(),
+                                                       solved_constants.substitutions.begin(),
+                                                       solved_constants.substitutions.end());
+        }
+      }
     }
     if (auto_large_assertion_skip && options.solved_constant_substitution) {
       SolvedConstantSubstitutionResult solved_constants =
@@ -13196,7 +13343,8 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
                                                         : std::vector<core::TermId>{};
       const PhaseClock::time_point solve_start = PhaseClock::now();
       return finish_solve(
-          solve_qf_lia(frontend.terms(), assertions, model_terms, solve_options, statistics),
+          solve_qf_lia(frontend.terms(), assertions, model_terms, solve_options, statistics,
+                       qf_lia_solved_constant_substitutions),
           solve_start);
     }
     if ((has_equality || has_euf_predicate) && has_arithmetic) {

@@ -448,7 +448,7 @@ core::TermId polynomial_to_term(core::TermManager& terms,
 
 core::TermId canonical_linear_side(
     core::TermManager& terms, const std::vector<std::pair<core::TermId, util::Rational>>& monomials,
-    const util::Rational& constant = util::Rational(0)) {
+    core::SortId sort, const util::Rational& constant = util::Rational(0)) {
   std::vector<core::TermId> summands;
   summands.reserve(monomials.size() + (constant.is_zero() ? 0 : 1));
   for (const auto& [variable, coefficient] : monomials) {
@@ -457,7 +457,14 @@ core::TermId canonical_linear_side(
                                                         : terms.mk_times(coefficient, variable));
   }
   if (!constant.is_zero() || summands.empty()) {
-    summands.push_back(terms.mk_rational(constant));
+    // The one-argument mk_rational(value) overload defaults to real_sort(),
+    // which is wrong whenever this atom's own variables are Int-sorted
+    // (found running this pass against real QF_LIA input for the first
+    // time, docs/open-leads.md lead 12a: "expected two terms of the same
+    // Real or Int sort" the moment a constant summand needed building,
+    // e.g. `x >= 1`'s upper side). `sort` is the atom's own operand sort,
+    // threaded in by the caller rather than guessed here.
+    summands.push_back(terms.mk_rational(constant, sort));
   }
   return summands.size() == 1 ? summands.front() : terms.mk_plus(std::move(summands));
 }
@@ -534,8 +541,12 @@ core::TermId canonicalize_arithmetic_atom(
         negative.emplace_back(variable, -coefficient);
       }
     }
-    const core::TermId positive_side = canonical_linear_side(terms, positive);
-    const core::TermId negative_side = canonical_linear_side(terms, negative, rhs);
+    // scaled_terms is non-empty in this branch (the empty case folded to a
+    // Bool value above), so its first variable's sort is this atom's own
+    // operand sort -- every variable in one linear atom shares it.
+    const core::SortId atom_sort = terms.get(scaled_terms.front().first).sort;
+    const core::TermId positive_side = canonical_linear_side(terms, positive, atom_sort);
+    const core::TermId negative_side = canonical_linear_side(terms, negative, atom_sort, rhs);
     switch (normalized.relation) {
       case theory::arithmetic::LraRelation::Le:
         canonical = reversed ? terms.mk_le(negative_side, positive_side)
