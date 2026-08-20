@@ -19,24 +19,31 @@ namespace primo::theory::arithmetic {
 // constant, leaving an equation over the remaining free variables. A
 // *declared* QF_LIA problem variable ranges over all of Z, so if it is
 // one of `integer_vars` and not fixed, the equation is achievable iff
-// gcd(the free variables' coefficients) divides the residual. A row's
-// basic variable specifically needs its own check for this (unlike a
-// row's other terms, which -- see PreparedLraTheory's row construction
-// -- are always declared problem variables, so always in `integer_vars`):
-// PreparedLraTheory's scale-canonicalization (item H1b) can make a
-// non-fixed *basic* variable a slack representing the original
+// gcd(the free variables' coefficients) divides the residual.
+//
+// Both `x_b` and every other row term need this check individually --
+// not just `x_b`. PreparedLraTheory's scale-canonicalization (item H1b)
+// can make a non-fixed variable a slack representing the original
 // polynomial divided by a non-unit scale, which is not itself
 // integer-valued even though every declared variable feeding it is --
 // the same hazard lia_gomory_cuts.cpp's find_eligible_row already
 // documents for exactly this reason. Treating such a slack as if it too
-// ranged over Z (this module's own bug prior to the fix that added
-// `integer_vars` here, found via real-world QF_LIA benchmark evaluation,
-// docs/qf-lia-branch-and-bound.md) fabricates conflicts a correct read
-// of the row's actual value range would not support. When the basic
-// variable isn't fixed and isn't in
-// `integer_vars`, its row carries no GCD information at all (the row is
-// trivially satisfiable by letting that variable take whatever
-// non-integer value the free terms produce) and is reported consistent.
+// ranged over Z (this module's own bug, found twice: first for `x_b`
+// specifically via real-world QF_LIA benchmark evaluation, then for an
+// ordinary row *term* via mutation fuzzing once pivoting was accounted
+// for -- both in docs/qf-lia-branch-and-bound.md) fabricates conflicts a
+// correct read of the row's actual value range would not support. It is
+// not enough to reason "every row term is a declared problem variable
+// because PreparedLraTheory's row construction only ever puts declared
+// variables in a fresh row": true of a row's pristine, freshly-built
+// state, but Simplex pivoting can swap which variable is basic in a
+// given linear relationship and rewrite both rows in terms of each
+// other, so a *former* basic slack can end up as an ordinary term in
+// some other (now-basic) declared variable's row. When a variable here
+// isn't fixed and isn't in `integer_vars`, its row carries no GCD
+// information at all (the row is trivially satisfiable by letting that
+// variable take whatever non-integer value the other terms require) and
+// is reported consistent.
 //
 // Scans every tableau variable, not just declared Int problem variables:
 // a compound equality like `2x - 2y = 1` lives on a slack variable's row

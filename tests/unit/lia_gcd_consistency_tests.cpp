@@ -159,6 +159,45 @@ void does_not_flag_an_unfixed_non_integer_slack() {
   assert(!gcd_inconsistent_row(tableau, {x, y}).has_value());
 }
 
+// The bug the previous fix (integer_vars threaded through, tested above)
+// did not fully close, found via mutation fuzzing (opfuzz) once
+// bound_assertion()'s own scale fix landed: that fix only checked
+// basic_var, on the reasoning that a row's *other* terms are always
+// declared problem variables straight from PreparedLraTheory's row
+// construction. True of a row's pristine, freshly-built state, but not
+// preserved by Simplex pivoting, which can swap which variable is basic
+// in a given linear relationship and rewrite both rows in terms of each
+// other -- so a *former* basic slack can end up as an ordinary *term* in
+// some other (now-basic) declared variable's row. This test builds
+// exactly that post-pivot shape directly (LraTableau::add_row already
+// takes "which variable is basic" as an explicit argument, so no actual
+// pivot is needed to construct it): `dz` (declared Int, free) is basic,
+// with `s` (a slack -- not in integer_vars, free, real-valued) and `t`
+// (declared Int, fixed at 1) as its row's terms -- the row `dz = s +
+// t/2`, i.e. the same `dz - t/2` relationship as the real opfuzz-found
+// bug (`distinct (* 2 dz) t` with `t` forced to 1 elsewhere), just with
+// `s` and `dz` swapped from which one is basic. Before this fix, `s`
+// being unfixed and not integer-confirmed was not checked at all when
+// processing it as a row *term* (only when it was a row's *basic*
+// variable), so its coefficient was folded into free_coefficients
+// unconditionally, treating it as if it too ranged over Z.
+void does_not_flag_a_non_integer_slack_as_an_ordinary_row_term() {
+  LraTableau tableau;
+  const LraVarId dz = tableau.add_variable();
+  const LraVarId s = tableau.add_variable();
+  const LraVarId t = tableau.add_variable();
+  tableau.add_row(dz, {{s, Rational(1)}, {t, Rational(1, 2)}});
+  assert(!tableau.assert_upper(t, rat(1), Lit{1}).has_value());
+  assert(!tableau.assert_lower(t, rat(1), Lit{2}).has_value());
+  assert(!tableau.check().has_value());
+  assert(!tableau.upper_bound(dz).has_value());
+  assert(!tableau.lower_bound(dz).has_value());
+  assert(!tableau.upper_bound(s).has_value());
+  assert(!tableau.lower_bound(s).has_value());
+
+  assert(!gcd_inconsistent_row(tableau, {dz, t}).has_value());
+}
+
 }  // namespace
 
 int main() {
@@ -169,5 +208,6 @@ int main() {
   does_not_flag_a_trivial_coefficient_one_row();
   does_not_flag_a_row_fixed_to_zero();
   does_not_flag_an_unfixed_non_integer_slack();
+  does_not_flag_a_non_integer_slack_as_an_ordinary_row_term();
   return 0;
 }

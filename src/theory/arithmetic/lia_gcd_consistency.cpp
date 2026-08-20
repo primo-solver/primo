@@ -38,18 +38,33 @@ std::optional<util::Rational> fixed_value(const LraTableau& tableau, LraVarId va
 // a residual constant, leaving `sum(free_coeff * free_var) = residual`
 // over the remaining free variables. That is achievable iff gcd(free_coeff)
 // divides residual, but ONLY once every free variable is confirmed to
-// range over all of Z: every row *term* (entry.var) is a declared QF_LIA
-// problem variable and so always qualifies (see the .hpp comment), but a
-// non-fixed *basic_var* can be a scale-canonicalized slack that does not
-// -- checked via `is_declared_integer`, indexed by LraVarId. If
-// basic_var is free and not confirmed integer, this row carries no GCD
-// information (see the .hpp comment) and is reported consistent
-// immediately, before even collecting the row's other terms -- there is
-// nothing sound to conclude from a residual against a variable that may
-// not be integer-valued in the first place. If there are no free
-// variables left, every quantity in the row is already known/fixed and
-// this derives nothing beyond what ordinary LRA consistency already
-// checked.
+// range over all of Z, checked via `is_declared_integer` (indexed by
+// LraVarId) for both basic_var and every row term: a non-fixed variable
+// that is not a declared QF_LIA problem variable -- most commonly a
+// scale-canonicalized slack -- is not guaranteed integer-valued.
+//
+// This check is NOT limited to basic_var. An earlier version of this fix
+// only checked basic_var, on the reasoning that PreparedLraTheory's row
+// construction only ever puts declared problem variables in a row's
+// *terms* (see the .hpp comment's original wording) -- true of a row's
+// pristine, freshly-built state, but not preserved by Simplex pivoting:
+// a pivot can swap which variable is basic in a given linear relationship
+// and rewrite both rows in terms of each other, so a *former* basic slack
+// can end up as an ordinary term in some other (now-basic) declared
+// variable's row. Found via mutation fuzzing (opfuzz, 2026-08-20): `t`
+// forced to 1 by one row, `dz` free, `distinct((* 2 dz), t)` (a compound,
+// scale-canonicalized slack row over {dz, t}) -- once a pivot made a
+// declared Int variable basic in a row whose *term* was the former slack,
+// the term loop below (before this fix) still assumed that term ranged
+// over Z unconditionally and derived a false conflict from it.
+//
+// If any variable here -- basic_var or a term -- is free and not
+// confirmed integer, this row carries no GCD information (see the .hpp
+// comment) and is reported consistent immediately: there is nothing sound
+// to conclude from a residual against a variable that may not be
+// integer-valued in the first place. If there are no free variables left,
+// every quantity in the row is already known/fixed and this derives
+// nothing beyond what ordinary LRA consistency already checked.
 bool row_is_gcd_consistent(const LraTableau& tableau, LraVarId basic_var,
                            const std::vector<bool>& is_declared_integer) {
   std::vector<util::Rational> free_coefficients;
@@ -67,8 +82,10 @@ bool row_is_gcd_consistent(const LraTableau& tableau, LraVarId basic_var,
   for (const auto& entry : tableau.row(basic_var)) {
     if (const auto term_fixed = fixed_value(tableau, entry.var); term_fixed.has_value()) {
       residual += entry.coeff * (*term_fixed);
-    } else {
+    } else if (is_declared_integer[entry.var]) {
       free_coefficients.push_back(entry.coeff);
+    } else {
+      return true;
     }
   }
 
