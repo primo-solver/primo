@@ -525,6 +525,8 @@ coordinator publishes:
 - `:no.interface.lra-opportunistic-candidates`
 - `:no.interface.lra-opportunistic-fixed-eq`
 - `:no.interface.lra-opportunistic-eq-row`
+- `:no.interface.lra-opportunistic-eq-offset-rows`
+- `:no.interface.lra-opportunistic-eq-rows`
 - `:no.interface.lra-opportunistic-reason-lits`
 - `:no.interface.lra-opportunistic-unmapped-terms`
 - `:no.interface.lra-opportunistic-unmapped-equalities`
@@ -533,6 +535,27 @@ coordinator publishes:
 - `:no.interface.lra-opportunistic-created-atoms`
 - `:no.interface.lra-opportunistic-clauses`
 - `:no.interface.lra-opportunistic-rechecks`
+- `:no.interface.lra-legacy-producer-selected`
+- `:no.interface.lra-legacy-scan-skipped`
+- `:no.interface.lra-model-unit-selected`
+- `:no.interface.lra-model-unit-classes`
+- `:no.interface.lra-model-unit-class-terms`
+- `:no.interface.lra-model-unit-candidate-pairs`
+- `:no.interface.lra-model-unit-rows-inspected`
+- `:no.interface.lra-model-unit-nonzeros-inspected`
+- `:no.interface.lra-model-unit-fixed-matches`
+- `:no.interface.lra-model-unit-one-row-matches`
+- `:no.interface.lra-model-unit-two-row-matches`
+- `:no.interface.lra-model-unit-nonunit-rejections`
+- `:no.interface.lra-model-unit-nonfixed-row-rejections`
+- `:no.interface.lra-model-unit-reason-lits`
+- `:no.interface.lra-adaptive-selected`
+- `:no.interface.lra-adaptive-bootstrap-legacy-rounds`
+- `:no.interface.lra-adaptive-bootstrap-completions`
+- `:no.interface.lra-adaptive-model-unit-rounds`
+- `:no.interface.lra-adaptive-legacy-rounds`
+- `:no.interface.lra-adaptive-fallback-activations`
+- `:time.no-lra-equality-producer-us`
 - `:no.interface.lra-fixed-elimination-enabled`
 - `:no.interface.lra-exact-fallback-pairs`
 - `:no.interface.lra-exact-fallback-skipped-pairs`
@@ -1431,12 +1454,68 @@ The Z3 arithmetic paper sharpens the LRA producer side of this architecture.
 It independently confirms model-equal shared variables as the candidate
 frontier, but establishes entailment only from fixed-variable tableau shapes.
 Its unit-coefficient recognizer avoids exact fixed-offset construction and
-hashing. Primo currently implements the broader 2008 `EqOffsetRows`/`EqRows`
-rules with exact offsets, so the 2024 recognizer is a missing performance
-mechanism, not a missing convex-combination correctness rule. The same paper's
-sharedness cache is already matched by Primo's solve-scoped immutable
-`shared_real_terms`/`TheoryCombinationManager` interface; a generic dynamic
-combination layer would need explicit invalidation.
+hashing. Primo implements this recognizer as the opt-in `model-unit` producer
+and retains the broader 2008 `EqOffsetRows`/`EqRows` producer as `legacy`.
+This is a performance choice, not a missing convex-combination correctness
+rule. The same paper's sharedness cache is already matched by Primo's
+solve-scoped immutable `shared_real_terms`/`TheoryCombinationManager`
+interface; a generic dynamic combination layer would need explicit
+invalidation.
+
+The commit `5e9371a` evaluation explains why `legacy` remains the default.
+Fresh generated, finite-domain, Dolmen-model, seed, and YinYang gates found no
+correctness issue. On all 1,284 QF_UFLRA files, `model-unit` cut measured
+producer time from 2.579 to 0.698 seconds and reduced explanation literals from
+26.2 million to 7.1 million. It was also 19.72 seconds faster over the 1,271
+common solves. But it lost one 120-second CPAchecker induction solve because
+the legacy producer's general `EqRows` lemmas materially strengthened that
+search. The strict-orientation oracle preserves correctness at a final model;
+it does not replace the omitted lemmas as an early search heuristic. See
+`docs/papers/arithmetic-solving-in-z3.md` and `docs/run-log.json` for the full
+commands and job IDs.
+
+The follow-up `adaptive` producer runs `legacy` until a producer round causes
+no SAT recheck, uses `model-unit` on later rounds, and returns permanently to
+`legacy` after shared-model reconciliation still materializes a positive
+equality split following a model-unit round. A split reached directly from the
+bootstrap starts the model-unit phase because the cheap producer has not yet
+been tried. This propagation-fixed-point bootstrap preserves general `EqRow`
+clauses that actively shape the initial SAT search. A later split is the direct
+semantic signal that cheap entailed
+equalities did not make the current LRA and EUF models compatible; using it
+avoids an arbitrary round or size threshold. Once selected, legacy is retained
+for the rest of that `check-sat` call because learned explanations persist but
+later SAT assignments can expose additional fixed-row equalities. This
+scheduling rule is a Primo design experiment, not an algorithm claimed by the
+CAV 2024 paper.
+
+Controlled repetitions explain why the bootstrap is necessary. On the lost
+CPAchecker induction row, `legacy` solves in 70.62--70.67 seconds after three
+convex rounds and 2,226 general `EqRows` matches. `model-unit` instead needs
+180.53--182.60 seconds, 33 convex rounds, 22 shared-model splits, and 842
+equality assumptions. Enabling the candidate final scan leaves those search
+statistics unchanged, so final completeness cannot replace the omitted early
+lemmas. A delayed fallback is likewise too late; the bootstrap must continue
+until a legacy producer round causes no SAT recheck.
+
+At commit `d8fc162`, the refined adaptive policy solved that row three times in
+73.65--74.02 seconds with the legacy search counts. Fresh generated, finite,
+model, and tracked-seed gates were clean; the productive mutation replay made
+43,854 solver calls over all 11 seeds without a bug trigger. The complete
+1,284-file run preserved the legacy solved set exactly: 1,272 solved, 12
+timeouts, and no wrong answers. Adaptive selected `model-unit` on 77 files and
+fell back on 40. It reduced aggregate producer time by only 119,870 microseconds
+(4.6 percent), while 67 of the 77 selected files retained identical search
+statistics. Because this is a small local saving and the full-run wall times
+were not measured concurrently, `adaptive` remains default-off and `legacy`
+remains the supported default.
+
+A lower-risk follow-up would preserve the legacy equality set while using the
+already available exact model classes only to skip singleton shared basics
+during `EqRow`/`EqRows` discovery. Any entailed equality must hold in the
+current model, so a singleton basic cannot participate. That experiment belongs
+in the LRA branch: it changes tableau-local scanning and must demonstrate
+identical emitted equalities and search statistics before any timing claim.
 
 The central-equality-engine option in cvc5 is a useful future experiment, not
 the current target. Making every theory depend on one global congruence closure

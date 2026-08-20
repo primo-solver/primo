@@ -4,8 +4,6 @@
 #include <cassert>
 #include <cstddef>
 #include <set>
-#include <stdexcept>
-#include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -1255,6 +1253,204 @@ std::vector<LraTableau::EntailedEquality> LraTableau::entailed_equalities(
                   reasons.end());
     emit(bucket->second.basic, basic, std::move(reasons),
          is_offset ? EntailedEqualityRule::EqOffsetRows : EntailedEqualityRule::EqRows);
+  }
+
+  return result;
+}
+
+LraTableau::ModelFilteredEqualityResult LraTableau::model_filtered_unit_equalities(
+    const std::vector<LraVarId>& shared) const {
+  ModelFilteredEqualityResult result;
+  if (shared.empty()) {
+    return result;
+  }
+
+  const ModelValueGrouping grouping = group_by_model_value(
+      shared, [this](LraVarId var) -> const DeltaRational& { return vars_.at(var).assignment; });
+  result.stats.model_classes = grouping.classes.size();
+
+  struct SharedVarInfo {
+    std::size_t class_index = 0;
+    std::size_t parent_index = 0;
+  };
+  std::unordered_map<LraVarId, SharedVarInfo> shared_var_info;
+  shared_var_info.reserve(shared.size());
+  std::vector<std::size_t> parent;
+  parent.reserve(shared.size());
+  for (std::size_t class_index = 0; class_index < grouping.classes.size(); ++class_index) {
+    const std::vector<LraVarId>& equal_class = grouping.classes[class_index];
+    result.stats.class_terms += equal_class.size();
+    result.stats.candidate_pairs += equal_class.size() * (equal_class.size() - 1) / 2;
+    for (const LraVarId var : equal_class) {
+      shared_var_info.emplace(var, SharedVarInfo{class_index, parent.size()});
+      parent.push_back(parent.size());
+    }
+  }
+
+  const auto fixed = [this](LraVarId var) {
+    const VarState& state = vars_.at(var);
+    return state.lower.has_value() && state.upper.has_value() &&
+           state.lower->value == state.upper->value;
+  };
+  const auto append_fixing_reasons = [this](LraVarId var, std::vector<sat::Lit>& reasons) {
+    const VarState& state = vars_.at(var);
+    reasons.push_back(state.lower->reason);
+    reasons.push_back(state.upper->reason);
+  };
+  const auto root = [&parent](std::size_t index) {
+    while (parent[index] != index) {
+      parent[index] = parent[parent[index]];
+      index = parent[index];
+    }
+    return index;
+  };
+  const auto emit = [&result, &parent, &root, &shared_var_info](LraVarId lhs, LraVarId rhs,
+                                                                std::vector<sat::Lit> reasons,
+                                                                EntailedEqualityRule rule) {
+    const std::size_t lhs_root = root(shared_var_info.at(lhs).parent_index);
+    const std::size_t rhs_root = root(shared_var_info.at(rhs).parent_index);
+    if (lhs_root == rhs_root) {
+      return false;
+    }
+    parent[rhs_root] = lhs_root;
+    std::sort(reasons.begin(), reasons.end(),
+              [](sat::Lit a, sat::Lit b) { return a.value < b.value; });
+    reasons.erase(std::unique(reasons.begin(), reasons.end(),
+                              [](sat::Lit a, sat::Lit b) { return a.value == b.value; }),
+                  reasons.end());
+    result.stats.reason_literals += reasons.size();
+    if (rhs < lhs) {
+      std::swap(lhs, rhs);
+    }
+    result.equalities.push_back(EntailedEquality{lhs, rhs, std::move(reasons), rule});
+    return true;
+  };
+
+  // Fixed variables in one exact model class have the same fixed value. No
+  // numeric value needs to be placed in another hash table.
+  for (const std::vector<LraVarId>& equal_class : grouping.classes) {
+    std::optional<LraVarId> representative;
+    for (const LraVarId var : equal_class) {
+      if (!fixed(var)) {
+        continue;
+      }
+      if (!representative.has_value()) {
+        representative = var;
+        continue;
+      }
+      std::vector<sat::Lit> reasons;
+      reasons.reserve(4);
+      append_fixing_reasons(*representative, reasons);
+      append_fixing_reasons(var, reasons);
+      ++result.stats.fixed_matches;
+      emit(*representative, var, std::move(reasons), EntailedEqualityRule::FixedEq);
+    }
+  }
+
+  struct ConnectorKey {
+    std::size_t class_index = 0;
+    LraVarId connector = 0;
+    int sign = 0;
+
+    bool operator==(const ConnectorKey&) const = default;
+  };
+  struct ConnectorKeyHash {
+    std::size_t operator()(const ConnectorKey& key) const {
+      constexpr std::size_t kHashMix = static_cast<std::size_t>(0x9e3779b97f4a7c15ULL);
+      std::size_t seed = key.class_index;
+      seed ^= key.connector + kHashMix + (seed << 6U) + (seed >> 2U);
+      const std::size_t sign_hash = key.sign > 0 ? std::size_t{1} : std::size_t{0};
+      seed ^= sign_hash + kHashMix + (seed << 6U) + (seed >> 2U);
+      return seed;
+    }
+  };
+  struct ConnectorRow {
+    LraVarId basic = 0;
+    std::vector<LraVarId> fixed_vars;
+  };
+  std::unordered_map<ConnectorKey, ConnectorRow, ConnectorKeyHash> connector_rows;
+  connector_rows.reserve(result.stats.class_terms);
+
+  for (std::size_t class_index = 0; class_index < grouping.classes.size(); ++class_index) {
+    for (const LraVarId basic : grouping.classes[class_index]) {
+      if (!vars_.at(basic).is_basic) {
+        continue;
+      }
+      const Row& row = rows_.at(basic);
+      ++result.stats.rows_inspected;
+      result.stats.nonzeros_inspected += row.size();
+
+      std::vector<LraVarId> fixed_vars;
+      fixed_vars.reserve(row.size());
+      std::size_t nonfixed_count = 0;
+      LraVarId nonfixed_var = 0;
+      int nonfixed_sign = 0;
+      for (const auto& [var, coefficient, slot] : row) {
+        if (fixed(var)) {
+          fixed_vars.push_back(var);
+        } else {
+          ++nonfixed_count;
+          nonfixed_var = var;
+          if (coefficient == util::Rational(1)) {
+            nonfixed_sign = 1;
+          } else if (coefficient == util::Rational(-1)) {
+            nonfixed_sign = -1;
+          } else {
+            nonfixed_sign = 0;
+          }
+        }
+      }
+
+      // x = y + alpha. Equal model values establish beta(alpha) = 0, and
+      // fixedness makes that value invariant across all current models.
+      for (const auto& [var, coefficient, slot] : row) {
+        const auto candidate = shared_var_info.find(var);
+        if (coefficient != util::Rational(1) || candidate == shared_var_info.end() ||
+            candidate->second.class_index != class_index) {
+          continue;
+        }
+        if (nonfixed_count != 0 && (nonfixed_count != 1 || nonfixed_var != var)) {
+          continue;
+        }
+        std::vector<sat::Lit> reasons;
+        reasons.reserve(2 * fixed_vars.size());
+        for (const LraVarId fixed_var : fixed_vars) {
+          if (fixed_var != var) {
+            append_fixing_reasons(fixed_var, reasons);
+          }
+        }
+        ++result.stats.one_row_matches;
+        emit(basic, var, std::move(reasons), EntailedEqualityRule::EqRow);
+      }
+
+      if (nonfixed_count != 1) {
+        if (nonfixed_count > 1) {
+          ++result.stats.nonfixed_row_rejections;
+        }
+        continue;
+      }
+      if (nonfixed_sign == 0) {
+        ++result.stats.nonunit_rejections;
+        continue;
+      }
+
+      const ConnectorKey key{class_index, nonfixed_var, nonfixed_sign};
+      const auto [previous, inserted] =
+          connector_rows.emplace(key, ConnectorRow{basic, fixed_vars});
+      if (inserted) {
+        continue;
+      }
+      std::vector<sat::Lit> reasons;
+      reasons.reserve(2 * (previous->second.fixed_vars.size() + fixed_vars.size()));
+      for (const LraVarId fixed_var : previous->second.fixed_vars) {
+        append_fixing_reasons(fixed_var, reasons);
+      }
+      for (const LraVarId fixed_var : fixed_vars) {
+        append_fixing_reasons(fixed_var, reasons);
+      }
+      ++result.stats.two_row_matches;
+      emit(previous->second.basic, basic, std::move(reasons), EntailedEqualityRule::EqOffsetRows);
+    }
   }
 
   return result;

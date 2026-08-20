@@ -61,7 +61,7 @@ filter over exact `DeltaRational` values. `LraTableau::entailed_equalities()`
 implements the sound `FixedEq`, `EqRow`, `EqOffsetRows`, and general `EqRows`
 rules from de Moura and Bjørner 2008, with explanations.
 
-The implementation is not yet the 2024 fast path:
+The default `legacy` producer is not the 2024 fast path:
 
 - `EqRow` computes the exact value of the fixed remainder;
 - `EqOffsetRows` constructs and hashes an exact fixed offset;
@@ -75,9 +75,13 @@ that the paper identifies as avoidable. The general `EqRows` rule may still be
 useful; the paper's negative result for non-unit generalization makes it an A/B
 question rather than a reason to delete it without measurement.
 
-### Implementation checklist for a future fast producer
+### Implementation checklist and experimental producer
 
-This paper mechanism is **not implemented yet**. An implementation must:
+The `model-unit` producer implements this mechanism behind
+`--qf-uflra-lra-equality-producer=model-unit`. The completed differential
+fuzzing and full-corpus A/B do not justify replacing the default `legacy`
+producer; the measured tradeoff is recorded below. The implementation
+obligations are:
 
 1. Build the exact current-model equality classes once and inspect only
    non-singleton shared classes.
@@ -98,6 +102,119 @@ and fallthrough to offset/general/exact producers. Tests need large fixed
 numerals so they exercise avoidance of offset arithmetic, both signs of the
 connecting unit variable, non-unit rejection, transitive spanning output, and
 explanation invalidation when any fixing bound is removed.
+
+### Detailed implementation contract
+
+The fast producer is a read-only query on a feasible `LraTableau`. It receives
+only the LRA variables corresponding to the solve-scoped shared Real interface;
+pure QF_LRA never calls it. It first partitions those variables by their exact
+`DeltaRational` assignment. Singleton classes cannot produce a model-guided
+equality and are discarded. A variable-to-class map then lets the row scan
+reject candidates from different model classes without arithmetic.
+
+For a shared basic variable `x`, write its stored row as `x = sum a_i x_i`.
+The one-row rule accepts a shared `y` in the same model class when `a_y = 1`
+and every other row variable is fixed. Since `beta(x) = beta(y)`, the fixed
+remainder evaluates to zero in the current model; because every variable in
+that remainder is fixed, it evaluates to zero in every model satisfying the
+current bounds. Therefore `x = y` is entailed without constructing the
+remainder's value.
+
+The two-row rule records a shared basic variable when its row has exactly one
+non-fixed variable `z`, whose coefficient is `1` or `-1`; every other row
+variable must be fixed. Two records in the same model class with the same `z`
+and coefficient have equal fixed remainders, again because their basic
+variables have equal current values. Their equality is therefore entailed.
+Opposite signs, non-unit coefficients, or another non-fixed term do not match.
+
+Each fixing premise contributes both bound reasons. Reasons are sorted and
+deduplicated before publication. A deterministic disjoint-set structure over
+each model class emits an edge only when it joins two previously disconnected
+components, bounding output by `n - 1` equalities per class. Missing a match is
+not a negative result: the mixed coordinator retains its complete
+strict-orientation fallback for unresolved pairs.
+
+With expected constant-time hash-table operations, the structural scan costs
+`O(S + N)`, where `S` is the number of supplied shared variables and `N` is the
+number of nonzeros in rows of candidate shared basic variables. If emitted
+equality `i` has `r_i` explanation literals, sorting and deduplication adds
+`O(sum_i r_i log r_i)`. The query must not pivot, add rows, assert bounds,
+create terms, or compute/hash fixed numeric offsets. The legacy producer
+remains available and is the default.
+Counters under `:no.interface.lra-model-unit-*` expose classes, candidate
+pairs, rows, nonzeros, matches, rejections, and reasons;
+`:time.no-lra-equality-producer-us` records aggregate query time.
+
+### Evaluation and default decision
+
+Commit `5e9371a` was tested on SLURM with the option enabled. Job `127110`
+passed 3,000 generated mixed QF_UFLRA cases, 1,000 finite-domain cases, and
+3,500 model checks; 1,947 SAT models passed Dolmen. Job `127111` then checked
+all 11 tracked QF_UFLRA seeds and completed 43,936 YinYang solver calls with no
+bug trigger. The full 1,284-file, 120-second A/B used jobs `127115` (`legacy`)
+and `127116` (`model-unit`). Both had zero wrong answers, errors, or unsupported
+rows.
+
+The fast producer reduced aggregate producer time from 2,579,190 to 698,229
+microseconds and explanation literals from 26,234,347 to 7,116,559. On the
+1,271 common solves, aggregate wall time improved from 760.05 to 740.33
+seconds. However, `legacy` solved 1,272 files and `model-unit` solved 1,271. The
+lost CPAchecker induction row was SAT in 77.12 seconds under `legacy` and timed
+out at 120 seconds under `model-unit`. On that row the legacy producer found
+2,226 general `EqRows` matches that the unit-only producer deliberately does
+not implement; the candidate delivered fewer opportunistic equalities and did
+not invoke its strict-orientation fallback for those pairs.
+
+This is a search-strength regression, not a correctness failure. The result
+validates the paper's local cost observation, but rejects replacing Primo's
+broader producer wholesale. `legacy` therefore remains the default.
+
+Three exact-commit repetitions made the loss reproducible rather than a
+120-second boundary effect. At commit `fcc8d0e`, `legacy` solved the row in
+70.62--70.67 seconds, while `model-unit` needed 180.53--182.60 seconds. Enabling
+the candidate final scan produced the same search statistics and
+180.82--182.34-second times. The missing early lemmas, rather than the final
+completeness check, are decisive: `legacy` reaches a fixed point in three
+convex rounds after 2,226 general `EqRows` matches, whereas `model-unit` takes
+33 rounds, 22 shared-model splits, 86 assumption solve calls, and 842 equality
+assumptions. Its solve-phase time increases by about 112 seconds even though
+the producer itself remains cheap.
+
+The follow-up `adaptive` mode is a Primo scheduling experiment around the
+paper mechanism. It runs `legacy` until an opportunistic producer round causes
+no SAT recheck, uses `model-unit` on later rounds, and returns permanently to
+`legacy` when shared-model reconciliation still has to materialize a SAT
+equality split after a model-unit round. A split reached directly from the
+bootstrap instead starts the cheap phase; model-unit has not failed yet. This
+propagation-fixed-point bootstrap preserves general `EqRow` clauses that
+actively change the initial SAT search trajectory. A later split means the
+cheap entailed equalities were
+insufficient to reconcile the current theory models; it is therefore a
+semantic escalation trigger rather than a tuned numeric threshold. The
+fallback is permanent within one `check-sat` call because later SAT assignments
+can expose additional fixed-row equalities. Counters distinguish the bootstrap,
+unit rounds, legacy rounds, and the single fallback activation. This adaptive
+policy is not from the paper.
+
+The completed evaluation at commit `d8fc162` shows that this scheduling rule
+repairs the regression conservatively. The lost row solved three times in
+73.65--74.02 seconds with exactly the legacy decision and propagation counts.
+The fresh gate passed 3,000 mixed cases, 500 finite QF_UF cases, 500 finite
+QF_UFLRA cases, and 3,500 model checks; all 1,991 SAT models passed Dolmen. On
+the productive mutation replay, all 11 tracked seeds were valid and 43,854
+solver calls found no bug trigger. On the complete 1,284-file corpus, adaptive
+and legacy both solved 1,272 files with the same 12 timeouts and no wrong
+answers. Adaptive entered `model-unit` on 77 files (93 rounds) and activated the
+permanent fallback on 40 files.
+
+The result does not justify changing the default. Aggregate producer time fell
+only from 2,579,190 to 2,459,320 microseconds (4.6 percent), and 67 of the 77
+files that entered the cheap phase retained identical SAT/combination search
+statistics. The old and new full runs were not concurrent; their 52.57-second
+wall-time difference is therefore not attributable to the mechanism, especially
+because an earlier adaptive version that selected `model-unit` zero times showed
+a similar cluster-time shift. `adaptive` remains an explicit experimental
+profile, while `legacy` remains the default.
 
 ## Section 3.3: bounds propagation
 
@@ -136,7 +253,13 @@ than rediscover sharedness by repeated parent traversal.
 
 For current convex QF_UFLRA, the paper does not reveal a missing correctness
 transition. It reveals a narrower performance opportunity inside an existing
-correct transition: replace or precede exact-offset row bucketing with the
-current-model-filtered unit-row recognizer, retain explanations, and measure
-the general `EqRows` fallback separately. This is the first implementation
-experiment justified by this paper.
+correct transition: replace exact-offset row bucketing with the
+current-model-filtered unit-row recognizer, retain explanations, and leave the
+strict-orientation oracle as the completeness path. The opt-in `model-unit`
+producer is the completed experiment. It substantially reduces producer-local
+work, but the recorded full-corpus loss rejects default promotion. The
+experimental `adaptive` policy tests whether a propagation-fixed-point legacy
+bootstrap can recover useful general `EqRows` lemmas without paying their
+exact-offset cost on every later round. It recovers the lost row and preserves
+the full solved set, but its small producer-local saving does not justify
+changing the default.

@@ -1773,6 +1773,119 @@ void eqrows_rejects_different_nonfixed_polynomials() {
   }));
 }
 
+void model_unit_eqrow_avoids_large_fixed_offset_construction() {
+  LraTableau tableau;
+  const LraVarId y = tableau.add_variable();
+  const LraVarId p = tableau.add_variable();
+  const LraVarId q = tableau.add_variable();
+  const LraVarId x = tableau.add_variable();
+  tableau.add_row(x, {{y, Rational(1)}, {p, Rational(1)}, {q, Rational(-1)}});
+  const Rational huge = *Rational::parse("100000000000000000000000000000000000000000000000001");
+  const DeltaRational fixed_huge = DeltaRational::from_rational(huge);
+  assert(!tableau.assert_lower(p, fixed_huge, Lit{51}).has_value());
+  assert(!tableau.assert_upper(p, fixed_huge, Lit{52}).has_value());
+  assert(!tableau.assert_lower(q, fixed_huge, Lit{53}).has_value());
+  assert(!tableau.assert_upper(q, fixed_huge, Lit{54}).has_value());
+  assert(!tableau.check().has_value());
+
+  const auto query = tableau.model_filtered_unit_equalities({x, y});
+  assert(query.stats.model_classes == 1);
+  assert(query.stats.candidate_pairs == 1);
+  assert(query.stats.rows_inspected == 1);
+  assert(query.stats.nonzeros_inspected == 3);
+  assert(query.stats.one_row_matches == 1);
+  assert(query.equalities.size() == 1);
+  assert(has_equality(query.equalities, x, y));
+  assert(query.equalities.front().reasons.size() == 4);
+}
+
+void model_unit_two_row_accepts_both_same_unit_signs() {
+  const auto run = [](long coefficient) {
+    LraTableau tableau;
+    const LraVarId connector = tableau.add_variable();
+    const LraVarId p = tableau.add_variable();
+    const LraVarId q = tableau.add_variable();
+    const LraVarId x = tableau.add_variable();
+    const LraVarId y = tableau.add_variable();
+    tableau.add_row(x, {{connector, Rational(coefficient)}, {p, Rational(1)}});
+    tableau.add_row(y, {{connector, Rational(coefficient)}, {q, Rational(1)}});
+    assert(!tableau.assert_lower(p, rat(7), Lit{61}).has_value());
+    assert(!tableau.assert_upper(p, rat(7), Lit{62}).has_value());
+    assert(!tableau.assert_lower(q, rat(7), Lit{63}).has_value());
+    assert(!tableau.assert_upper(q, rat(7), Lit{64}).has_value());
+    assert(!tableau.check().has_value());
+
+    const auto query = tableau.model_filtered_unit_equalities({x, y});
+    assert(query.stats.two_row_matches == 1);
+    assert(query.equalities.size() == 1);
+    assert(has_equality(query.equalities, x, y));
+    assert(query.equalities.front().reasons.size() == 4);
+  };
+  run(1);
+  run(-1);
+}
+
+void model_unit_two_row_rejects_opposite_signs_and_nonunit_connectors() {
+  {
+    LraTableau tableau;
+    const LraVarId z = tableau.add_variable();
+    const LraVarId x = tableau.add_variable();
+    const LraVarId y = tableau.add_variable();
+    tableau.add_row(x, {{z, Rational(1)}});
+    tableau.add_row(y, {{z, Rational(-1)}});
+    const auto query = tableau.model_filtered_unit_equalities({x, y});
+    assert(query.stats.model_classes == 1);
+    assert(query.stats.two_row_matches == 0);
+    assert(query.equalities.empty());
+  }
+  {
+    LraTableau tableau;
+    const LraVarId z = tableau.add_variable();
+    const LraVarId x = tableau.add_variable();
+    const LraVarId y = tableau.add_variable();
+    tableau.add_row(x, {{z, Rational(2)}});
+    tableau.add_row(y, {{z, Rational(2)}});
+    const auto query = tableau.model_filtered_unit_equalities({x, y});
+    assert(query.stats.nonunit_rejections == 2);
+    assert(query.stats.two_row_matches == 0);
+    assert(query.equalities.empty());
+  }
+}
+
+void model_unit_output_is_a_deterministic_spanning_set() {
+  LraTableau tableau;
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  const LraVarId z = tableau.add_variable();
+  int reason = 71;
+  for (const LraVarId var : {x, y, z}) {
+    assert(!tableau.assert_lower(var, rat(4), Lit{reason++}).has_value());
+    assert(!tableau.assert_upper(var, rat(4), Lit{reason++}).has_value());
+  }
+  const auto first = tableau.model_filtered_unit_equalities({x, y, z});
+  const auto second = tableau.model_filtered_unit_equalities({x, y, z});
+  assert(first.equalities.size() == 2);
+  assert(second.equalities.size() == first.equalities.size());
+  for (std::size_t index = 0; index < first.equalities.size(); ++index) {
+    assert(first.equalities[index].lhs == second.equalities[index].lhs);
+    assert(first.equalities[index].rhs == second.equalities[index].rhs);
+  }
+}
+
+void model_unit_entailment_disappears_when_a_fixing_bound_is_popped() {
+  LraTableau tableau;
+  const LraVarId x = tableau.add_variable();
+  const LraVarId d = tableau.add_variable();
+  const LraVarId s = tableau.add_variable();
+  tableau.add_row(s, {{x, Rational(1)}, {d, Rational(1)}});
+  const std::size_t checkpoint = tableau.push();
+  assert(!tableau.assert_lower(d, rat(0), Lit{81}).has_value());
+  assert(!tableau.assert_upper(d, rat(0), Lit{82}).has_value());
+  assert(tableau.model_filtered_unit_equalities({s, x}).equalities.size() == 1);
+  tableau.pop(checkpoint);
+  assert(tableau.model_filtered_unit_equalities({s, x}).equalities.empty());
+}
+
 // -- Differential oracle for entailed_equalities --
 //
 // entailed_equalities applies deliberately incomplete rules. To test it we need
@@ -2521,6 +2634,11 @@ int main() {
   eqoffsetrows_rejects_different_offsets();
   eqrows_reports_matching_polynomials_and_emits_a_spanning_set();
   eqrows_rejects_different_nonfixed_polynomials();
+  model_unit_eqrow_avoids_large_fixed_offset_construction();
+  model_unit_two_row_accepts_both_same_unit_signs();
+  model_unit_two_row_rejects_opposite_signs_and_nonunit_connectors();
+  model_unit_output_is_a_deterministic_spanning_set();
+  model_unit_entailment_disappears_when_a_fixing_bound_is_popped();
   fixed_elimination_closes_the_eqrow_basis_gap();
   the_entailment_oracle_is_itself_correct();
   entailed_equalities_agree_with_the_entailment_oracle();

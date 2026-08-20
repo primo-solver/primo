@@ -6169,7 +6169,7 @@ std::vector<ExplainedInterfaceEquality> euf_implied_real_equalities(
 std::vector<ExplainedInterfaceEquality> lra_entailed_shared_equalities(
     core::TermManager& terms, const PreparedLraTheory& prepared,
     const theory::arithmetic::LraTableau& tableau, const std::vector<core::TermId>& shared_terms,
-    util::Statistics& statistics) {
+    QfUflraLraEqualityProducer producer, util::Statistics& statistics) {
   std::vector<theory::arithmetic::LraVarId> shared_variables;
   std::unordered_map<theory::arithmetic::LraVarId, core::TermId> term_by_variable;
   shared_variables.reserve(shared_terms.size());
@@ -6185,8 +6185,37 @@ std::vector<ExplainedInterfaceEquality> lra_entailed_shared_equalities(
     }
   }
 
-  const std::vector<theory::arithmetic::LraTableau::EntailedEquality> entailed =
-      tableau.entailed_equalities(shared_variables);
+  const PhaseClock::time_point producer_start = PhaseClock::now();
+  std::vector<theory::arithmetic::LraTableau::EntailedEquality> entailed;
+  if (producer == QfUflraLraEqualityProducer::ModelUnit) {
+    statistics.increment(":no.interface.lra-model-unit-selected");
+    theory::arithmetic::LraTableau::ModelFilteredEqualityResult query =
+        tableau.model_filtered_unit_equalities(shared_variables);
+    entailed = std::move(query.equalities);
+    statistics.increment(":no.interface.lra-model-unit-classes", query.stats.model_classes);
+    statistics.increment(":no.interface.lra-model-unit-class-terms", query.stats.class_terms);
+    statistics.increment(":no.interface.lra-model-unit-candidate-pairs",
+                         query.stats.candidate_pairs);
+    statistics.increment(":no.interface.lra-model-unit-rows-inspected", query.stats.rows_inspected);
+    statistics.increment(":no.interface.lra-model-unit-nonzeros-inspected",
+                         query.stats.nonzeros_inspected);
+    statistics.increment(":no.interface.lra-model-unit-fixed-matches", query.stats.fixed_matches);
+    statistics.increment(":no.interface.lra-model-unit-one-row-matches",
+                         query.stats.one_row_matches);
+    statistics.increment(":no.interface.lra-model-unit-two-row-matches",
+                         query.stats.two_row_matches);
+    statistics.increment(":no.interface.lra-model-unit-nonunit-rejections",
+                         query.stats.nonunit_rejections);
+    statistics.increment(":no.interface.lra-model-unit-nonfixed-row-rejections",
+                         query.stats.nonfixed_row_rejections);
+    statistics.increment(":no.interface.lra-model-unit-reason-lits", query.stats.reason_literals);
+    statistics.increment(":no.interface.lra-legacy-scan-skipped");
+  } else {
+    statistics.increment(":no.interface.lra-legacy-producer-selected");
+    entailed = tableau.entailed_equalities(shared_variables);
+  }
+  statistics.increment(":time.no-lra-equality-producer-us",
+                       elapsed_microseconds(producer_start, PhaseClock::now()));
   std::vector<ExplainedInterfaceEquality> equalities;
   equalities.reserve(entailed.size());
   for (const theory::arithmetic::LraTableau::EntailedEquality& equality : entailed) {
@@ -10665,6 +10694,9 @@ CheckSatOutcome solve_qf_uf_lra(
   }
   ModelEqualityArrangementState model_equality_arrangement(no_manager);
   ModelEqualityCandidateQueue model_equality_candidate_queue;
+  bool adaptive_legacy_bootstrap_active = true;
+  bool adaptive_model_unit_attempted = false;
+  bool adaptive_legacy_equality_producer = false;
   statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
   statistics.set(":no.boolean-domain.bridged-terms", clausifier.boolean_domain_bridge_count());
   statistics.set(":no.boolean-domain.equality-atoms",
@@ -11420,9 +11452,26 @@ CheckSatOutcome solve_qf_uf_lra(
 
     if (euf_model.has_value() && !shared_real_terms.empty()) {
       if (options.nelson_oppen_propagation != NelsonOppenPropagationMode::Exact) {
+        QfUflraLraEqualityProducer equality_producer = options.qf_uflra_lra_equality_producer;
+        if (equality_producer == QfUflraLraEqualityProducer::Adaptive) {
+          statistics.increment(":no.interface.lra-adaptive-selected");
+          if (adaptive_legacy_bootstrap_active) {
+            equality_producer = QfUflraLraEqualityProducer::Legacy;
+            statistics.increment(":no.interface.lra-adaptive-bootstrap-legacy-rounds");
+            statistics.increment(":no.interface.lra-adaptive-legacy-rounds");
+          } else if (adaptive_legacy_equality_producer) {
+            equality_producer = QfUflraLraEqualityProducer::Legacy;
+            statistics.increment(":no.interface.lra-adaptive-legacy-rounds");
+          } else {
+            equality_producer = QfUflraLraEqualityProducer::ModelUnit;
+            adaptive_model_unit_attempted = true;
+            statistics.increment(":no.interface.lra-adaptive-model-unit-rounds");
+          }
+        }
         const std::vector<ExplainedInterfaceEquality> opportunistic_equalities =
             lra_entailed_shared_equalities(terms, *prepared_lra_theory_for_check,
-                                           *checked_lra_tableau, shared_real_terms, statistics);
+                                           *checked_lra_tableau, shared_real_terms,
+                                           equality_producer, statistics);
         statistics.increment(":no.interface.equalities-propagated",
                              opportunistic_equalities.size());
         statistics.increment(":no.interface.lra-to-euf-equalities",
@@ -11449,6 +11498,11 @@ CheckSatOutcome solve_qf_uf_lra(
           }
           publish_sat_stats(backend.statistics(), statistics);
           continue;
+        }
+        if (options.qf_uflra_lra_equality_producer == QfUflraLraEqualityProducer::Adaptive &&
+            adaptive_legacy_bootstrap_active) {
+          adaptive_legacy_bootstrap_active = false;
+          statistics.increment(":no.interface.lra-adaptive-bootstrap-completions");
         }
       } else {
         statistics.increment(":no.interface.lra-opportunistic-skipped-rounds");
@@ -11477,6 +11531,11 @@ CheckSatOutcome solve_qf_uf_lra(
               }
             }
             if (materialized != 0) {
+              if (options.qf_uflra_lra_equality_producer == QfUflraLraEqualityProducer::Adaptive &&
+                  adaptive_model_unit_attempted && !adaptive_legacy_equality_producer) {
+                adaptive_legacy_equality_producer = true;
+                statistics.increment(":no.interface.lra-adaptive-fallback-activations");
+              }
               publish_sat_stats(backend.statistics(), statistics);
               continue;
             }
