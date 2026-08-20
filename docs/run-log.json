@@ -27523,6 +27523,33 @@
       "artifacts": "remote:primo-qflia-fuzz-gate/fuzz-results/qf-lia-model-gate-{127439,127440,127441}/",
       "evidence_status": "slurm-complete-current",
       "outcome": "The QF_LIA fuzz gate (scripts/slurm_qf_lia_model_fuzz_gate.sbatch) now runs cleanly end-to-end on Slurm at its default 8x500 scale: zero wrong answers, zero crashes, zero invalid Dolmen-validated models across 4000 FuzzSMT-generated QF_LIA cases. Two real bugs were found and fixed in this session before this campaign (see the two prior commits on this branch and docs/qf-lia-branch-and-bound.md's bug write-ups); this run is the first evidence at real scale, not just local smoke testing, that stage 1 QF_LIA is sound. The gate's own benign-outcome classification also needed a fix (solver-unknown from the branch-and-bound node limit was being treated as a hard failure), applied after this run."
+    },
+    {
+      "id": "2026-08-20-qf-lia-gcd-consistency-fuzz-gate-slurm-verification",
+      "started_at": "2026-08-20",
+      "recorded_at": "2026-08-20",
+      "kind": "fuzz",
+      "scope": "Full Slurm run of scripts/slurm_qf_lia_model_fuzz_gate.sbatch against the QF_LIA stage-2 GCD-consistency check (theory::arithmetic::gcd_inconsistent_row), a soundness-risk change: a bug here would report Unsat on a satisfiable instance, strictly worse than stage 1's Unknown-on-unsat gap. Preceded by ~1000 cases of local FuzzSMT smoke fuzzing across 5 seeds (555111, 700200, 800300, 900400, plus the first 200-case batch), all clean.",
+      "commit": "f738402",
+      "branch": "qf-lia-branch-and-bound",
+      "environment": {
+        "type": "SLURM",
+        "host": "llm2smt-slurm",
+        "workdir": "primo-qflia-fuzz-gate",
+        "job": "127449 (8 shards x 500 = 4000 FuzzSMT-generated QF_LIA cases)"
+      },
+      "commands": {
+        "sync": "python3 scripts/slurm_prepare_benchmark_workspace.py --remote-dir primo-qflia-fuzz-gate --reuse-dependencies --local-dir /workspace",
+        "submit": "sbatch --export=ALL,PRIMO_WORKDIR=... scripts/slurm_qf_lia_model_fuzz_gate.sbatch (default 8x500)"
+      },
+      "results": {
+        "all_shards": "All 8 array tasks exited 0 (sacct: COMPLETED, ExitCode 0:0 throughout).",
+        "answer_differential": "3925 PASS, 74 benign solver timeouts, 1 UNKNOWN_INVOLVED (primo timed out where z3 answered sat -- a solver-side timeout, not a disagreement), zero wrong answers (zero OUR_SAT_REF_UNSAT/OUR_UNSAT_REF_SAT/REF_DISAGREEMENT/CRASH across all 8 shards, confirmed by direct grep).",
+        "model_validation": "3517 pass (all via Dolmen), 425 correctly not-sat, 58 benign solver timeouts, zero model-error (confirmed by direct grep across all 8 shards)."
+      },
+      "artifacts": "remote:primo-qflia-fuzz-gate/fuzz-results/qf-lia-model-gate-127449/",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Stage 2's GCD-consistency check (docs/qf-lia-branch-and-bound.md) is confirmed sound at real fuzz scale: zero wrong answers and zero invalid models across 4000 Slurm-generated cases plus ~1000 local smoke cases beforehand, with no soundness regression from stage 1's own already-verified 4000-case baseline (2026-08-19-qf-lia-fuzz-gate-slurm-verification). The one non-pass/timeout answer-differential case (a solver-side timeout on a z3-sat instance) was individually inspected and confirmed unrelated to the GCD check."
     }
   ]
 }

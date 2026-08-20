@@ -329,10 +329,8 @@ note -- see [Stage 3 and beyond](#stage-3-and-beyond).
   stayed entirely read-only or bound-assertion-only against the existing
   API).
 
-(Fuzzing itself is *not* out of scope -- see the next section. Stage 2's
-Slurm-scale re-verification is still outstanding as of this writing; see
-`docs/run-log.json` for whichever state is current by the time you're
-reading this.)
+(Fuzzing itself is *not* out of scope -- see the next section, including
+stage 2's own Slurm-scale verification.)
 
 ## Stage 3 and beyond
 
@@ -433,23 +431,41 @@ Int model (it finds no `() Real` assignments to extract), reported as
 pass via Dolmen directly (job 127440, same day). The z3 fallback itself
 stays Real-only/unfixed -- not needed once Dolmen accepts the input.
 
-**Status**: full default-sized gate (8 shards x 500 = 4000 FuzzSMT-generated
-QF_LIA cases) run on the actual Slurm cluster, 2026-08-19, job 127441 (see
-`docs/run-log.json`'s `2026-08-19-qf-lia-fuzz-gate-slurm-verification`
-entry for the complete record, including the two smaller jobs, 127439 and
-127440, that found and confirmed the fix for bug 3 above). Aggregate
-results: answer-differential 3926 PASS, 73 benign solver timeouts, 1
-`UNKNOWN_INVOLVED`, **zero wrong answers**; Dolmen model validation 3528
-pass, 423 correctly `not-sat`, 48 benign timeouts, 1 `solver-unknown`,
-**zero invalid models**. The one non-`pass` case beyond timeouts
-(`fuzzsmt_227445__file_247.smt2`) is primo honestly reporting `unknown`
-after exhausting `--lia-branch-limit` on a z3-`sat` instance -- confirmed
-via its `solver.stderr`, which reads exactly "QF_LIA branch-and-bound node
-limit reached" -- i.e. the documented incompleteness above, not a bug.
-That single case did make the gate's shard task exit nonzero the first
-time (the benign-outcome whitelist didn't yet include `solver-unknown`);
-fixed in the gate script afterward, with a comment on exactly what
-assumption ties it to being genuinely benign and when to revisit it.
+**Status (stage 1)**: full default-sized gate (8 shards x 500 = 4000
+FuzzSMT-generated QF_LIA cases) run on the actual Slurm cluster,
+2026-08-19, job 127441 (see `docs/run-log.json`'s
+`2026-08-19-qf-lia-fuzz-gate-slurm-verification` entry for the complete
+record, including the two smaller jobs, 127439 and 127440, that found and
+confirmed the fix for bug 3 above). Aggregate results: answer-differential
+3926 PASS, 73 benign solver timeouts, 1 `UNKNOWN_INVOLVED`, **zero wrong
+answers**; Dolmen model validation 3528 pass, 423 correctly `not-sat`, 48
+benign timeouts, 1 `solver-unknown`, **zero invalid models**. The one
+non-`pass` case beyond timeouts (`fuzzsmt_227445__file_247.smt2`) is primo
+honestly reporting `unknown` after exhausting `--lia-branch-limit` on a
+z3-`sat` instance -- confirmed via its `solver.stderr`, which reads
+exactly "QF_LIA branch-and-bound node limit reached" -- i.e. the
+documented incompleteness above, not a bug. That single case did make the
+gate's shard task exit nonzero the first time (the benign-outcome
+whitelist didn't yet include `solver-unknown`); fixed in the gate script
+afterward, with a comment on exactly what assumption ties it to being
+genuinely benign and when to revisit it.
+
+**Status (stage 2)**: GCD-consistency is a soundness-risk change (a bug
+would produce a false `Unsat` on a satisfiable instance, strictly worse
+than stage 1's honest `Unknown`), so verification here was deliberately
+heavier: ~1000 cases of local FuzzSMT smoke fuzzing across 5 seeds first
+(all clean), *then* the full default-sized gate on Slurm, 2026-08-20, job
+127449 (`docs/run-log.json`'s
+`2026-08-20-qf-lia-gcd-consistency-fuzz-gate-slurm-verification` entry).
+All 8 shards exited 0. Aggregate: answer-differential 3925 PASS, 74 benign
+solver timeouts, 1 `UNKNOWN_INVOLVED` (a solver-side timeout on a z3-`sat`
+instance, individually inspected -- unrelated to the GCD check), **zero
+wrong answers**, confirmed by directly grepping every shard's summary for
+`OUR_SAT_REF_UNSAT`/`OUR_UNSAT_REF_SAT`/`REF_DISAGREEMENT`/`CRASH` (none
+found) rather than trusting the aggregate PASS count alone. Dolmen model
+validation: 3517 pass, 425 correctly `not-sat`, 58 benign timeouts,
+**zero `model-error`**, same direct-grep confirmation. No soundness
+regression from stage 1's own already-verified baseline.
 
 ## Tests
 
