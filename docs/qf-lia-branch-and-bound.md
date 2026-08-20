@@ -580,14 +580,25 @@ regression from stage 1's own already-verified baseline.
 **Status (stage 3)**: Gomory cuts are a *second* soundness-risk change,
 same category as stage 2 -- a wrong cut can prove `Unsat` on a
 satisfiable instance -- so the same heavier verification discipline
-applies. The formula itself was hand-verified against two independently
+applied. The formula itself was hand-verified against two independently
 constructed worked examples *before* any tableau-integration code was
 written (see [Gomory cuts](#gomory-cuts) above), and
 `tests/unit/lia_gomory_cuts_tests.cpp` locks those in as regression
-tests, but neither substitutes for real fuzz evidence at the scale stage
-1 and 2 both required. Local smoke fuzzing and the full Slurm gate
-re-run are the mandatory next step, recorded here and in
-`docs/run-log.json` once complete, the same way stages 1 and 2 were.
+tests. ~800 cases of local FuzzSMT smoke fuzzing across 4 seeds followed
+(all clean), then the full default-sized gate on Slurm, 2026-08-20, job
+127457 (`docs/run-log.json`'s
+`2026-08-20-qf-lia-gomory-cuts-fuzz-gate-slurm-verification` entry). All
+8 shards exited 0 -- cleaner even than stage 2's equivalent run, which
+had one benign `solver-unknown` case; this run had none. Aggregate:
+answer-differential 3920 PASS, 80 benign solver timeouts, **zero wrong
+answers**, confirmed by directly grepping every shard's summary for
+`OUR_SAT_REF_UNSAT`/`OUR_UNSAT_REF_SAT`/`REF_DISAGREEMENT`/`CRASH` (none
+found). Dolmen model validation: 3487 pass, 456 correctly `not-sat`, 57
+benign timeouts, **zero `model-error`**, same direct-grep confirmation.
+The hand-derived cut formula -- the trickiest piece of numerics across
+all three stages -- produced zero disagreements against z3 across the
+full campaign, on top of zero disagreements in ~800 local cases and the
+two hand-checked worked examples before that.
 
 ## Tests
 
