@@ -1,26 +1,35 @@
-# QF_LIA, Stage 1: Branch-and-Bound on the Existing Simplex
+# QF_LIA: Branch-and-Bound Plus GCD-Consistency on the Existing Simplex
 
-Implemented 2026-08-19. QF_LIA is now accepted (`(set-logic QF_LIA)`) via a
-plain branch-and-bound decision procedure layered entirely on top of the
-existing `LraTableau` -- no change to `LraTableau` or `OnlineLraPropagator`
-themselves. This is deliberately stage 1 of two: cutting planes (Gomory
-cuts and friends) are a separate, later plan, not implemented here.
+Stage 1 implemented 2026-08-19, stage 2 implemented 2026-08-20. QF_LIA is
+accepted (`(set-logic QF_LIA)`) via a plain branch-and-bound decision
+procedure layered entirely on top of the existing `LraTableau`, plus a
+read-only GCD-consistency pre-check that closes one specific, documented
+gap in branch-and-bound's completeness. Neither stage changes `LraTableau`
+or `OnlineLraPropagator` themselves. Cutting planes (Gomory cuts) remain a
+separate, later stage 3, not implemented here -- see
+[Stage 3 and beyond](#stage-3-and-beyond).
 
-Two papers grounded the design:
+Two papers grounded stage 1's design, joined by a third source for stage
+2:
 
 - Dutertre & de Moura, *Integrating Simplex with DPLL(T)* (SRI-CSL-06-01) --
   already the basis of `LraTableau`; see `docs/papers/fast-linear-arithmetic-dpllt.md`.
   No integer content; cited here only because every QF_LIA bound assertion
   still goes through the exact same Assert-Bound/Check machinery it
   describes.
-- Bjørner & Nachmanson, *Arithmetic Solving in Z3* (CAV 2024), Sect. 4.4:
-  on a fractional integer basic variable with value β(x), split on
-  `x <= floor(β(x))` vs `x >= floor(β(x))+1`. The paper is explicit that
-  branch-and-bound alone is not a complete decision procedure -- it is one
-  layer of a waterfall (patch → cube → GCD → branch-and-bound/Gomory) --
-  which is exactly why this stage accepts and reports its own
-  incompleteness (see [Known incompleteness](#known-incompleteness) below)
-  rather than hiding it.
+- Bjørner & Nachmanson, *Arithmetic Solving in Z3* (CAV 2024), Sect. 4:
+  stage 1 uses Sect. 4.4's plain branch-and-bound (on a fractional integer
+  basic variable with value β(x), split on `x <= floor(β(x))` vs
+  `x >= floor(β(x))+1`); stage 2 uses Sect. 4.3's GCD-consistency test (see
+  [GCD-consistency](#gcd-consistency) below for the exact statement used,
+  including a likely erratum found in the paper's own inequality direction
+  and worked around by independent re-derivation rather than trusted
+  as-printed). The paper is explicit that branch-and-bound and GCD alone
+  are still not jointly complete -- both are single layers of a larger
+  waterfall (patch → cube → GCD → branch-and-bound/Gomory) -- which is
+  exactly why this doc accepts and reports the remaining incompleteness
+  (see [Known incompleteness](#known-incompleteness) below) rather than
+  hiding it.
 
 ## Scope
 
@@ -207,48 +216,174 @@ and confirming z3 still accepts it, 0 bad models. All done locally with
 see [Fuzzing](#fuzzing) below for what a real Slurm-scale campaign (the
 next step, not yet run) adds on top of this.
 
+## GCD-consistency
+
+Stage 2, `theory::arithmetic::gcd_inconsistent_row`
+(`src/theory/arithmetic/lia_gcd_consistency.{hpp,cpp}`). A read-only
+structural check over the tableau's own row data -- zero `LraTableau`
+mutation, called once per outer solve round, right before
+`branch_and_bound` runs, in `solve_qf_lia_impl`.
+
+**Statement.** For a row `x_b = Σ_j a_j·x_j`, fold every currently-*fixed*
+variable in the equation `x_b - Σ_j a_j·x_j = 0` (both `x_b` itself and
+any fixed `x_j`) into a residual constant, leaving an equation over the
+remaining free variables. Since every QF_LIA variable is `Int`-sorted,
+that reduced equation `Σ free_coeff·free_var = residual` is satisfiable
+over the integers iff `gcd(free_coeff)` divides `residual`; if not, no
+integer assignment can satisfy the row at all -- a sound, unconditional
+conflict, independent of every other bound in the problem.
+
+`x_b` itself is folded in on the same footing as any other term, not
+treated as special, because *which* variable in a given linear
+relationship happens to be basic is a Simplex pivoting detail that can
+change without changing which underlying variables are actually fixed --
+confirmed necessary while implementing this: an earlier version that only
+checked "is the row's *basic* variable fixed" silently missed the
+motivating `2x - 2y = 1` example whenever a pivot happened to leave `x` or
+`y` (rather than the equality's own slack) basic.
+
+**Recovering integer coefficients.** `PreparedLraTheory`'s
+scale-canonicalization (item H1b) can leave a row's *stored* coefficients
+non-integer even when the original atom's were integer (`2x - 2y = 1`
+canonicalizes to coefficients `(1, -1)` with the fixed value `1/2`, not
+`1`) -- the same "canonicalization can introduce fractions" trap
+`bound_assertion()`'s stage-1 bug already burned us on once (see below).
+The fix is analogous but simpler: feed the free coefficients and the
+residual together into `util::Rational::primitive_integer_scale`
+(already used for exactly this in `canonical_polynomial`) to get one
+consistent integer scale, then take `util::Rational::gcd` (a new utility,
+alongside `primitive_integer_scale` in `rational.cpp`) of the scaled
+coefficients and check the scaled residual divides it evenly.
+
+**Scope of the check, deliberately narrow.** This implements only the
+"basic"/degenerate case from Bjørner & Nachmanson Sect. 4.3 (their
+Example 5: every variable in the row is fixed, folding the whole row to a
+single residual) -- not their "extended" generalization (a
+bounded-but-not-*fixed* subset of a row's variables, using induced bounds
+`l = a·lb(x)`, `u = a·ub(x)`). Re-reading the paper's printed inequality
+for the extended case at 600dpi during stage-2 planning found what looks
+like a direction erratum (`⌊u/gcd⌋ > ⌈l/gcd⌉` as printed, versus what a
+hand-derivation from the degenerate case `l=u` actually implies); rather
+than trust either the paper's direction or a guessed correction, the
+extended case is left for a future stage once it can be independently
+verified. The interleaved-with-branching cube test (Sect. 4.2,
+Bromberger–Weidenbach rounding) is also deferred -- it needs a genuine
+strengthened-LP solve and only helps find `sat` faster, it doesn't address
+the `Unknown`-on-`unsat` gap this stage targets.
+
+**Not interleaved into `branch_and_bound`'s own per-node loop.** The check
+runs once, before branching starts. Running it again after each branch
+(which could catch cases that only become GCD-detectable once branching
+has narrowed a row's free variables) is a natural, easy-to-add follow-up,
+deferred here since the single pre-check already closes the documented
+gap.
+
 ## Node limit
 
 `CheckSatOptions::lia_branch_limit` (default 100000), CLI
 `--lia-branch-limit` (`kGroupLia`, "QF_LIA theory options" in `--help`).
 Not yet empirically tuned against real QF_LIA benchmarks -- picked
 generously enough to clear small/medium instances while still bailing out
-in reasonable time. A genuinely unbounded integer-infeasible system (e.g.
-`2x - 2y = 1` with `x, y` unbounded) hits this deterministically regardless
-of the limit's value, since no cut/GCD test exists yet to detect that
-infeasibility directly; see the next section.
+in reasonable time. Stage 2's GCD-consistency check now catches the
+`2x - 2y = 1`-shaped case (a row whose value is *fixed* to something its
+coefficients' gcd cannot reach) before branch-and-bound ever starts, so it
+no longer needs the node limit at all. A structurally different
+divergent case -- `4x + 4y` bounded to a *range* that contains no multiple
+of 4 (e.g. `[2, 3]`, with `x, y` unbounded) -- is not GCD-detectable (the
+row is never fixed to one value) and still hits the limit deterministically;
+see the next section.
 
 ## Known incompleteness
 
-Plain branch-and-bound is not a complete decision procedure for QF_LIA on
-its own: an integer-infeasible system whose LRA relaxation is unbounded in
-the relevant direction can branch forever without ever exhausting the
-search (Bjørner & Nachmanson's waterfall exists precisely because plain
-branch-and-bound needs GCD tests, cube tests, or cutting planes alongside
-it for completeness). `tests/unit/lia_branch_and_bound_tests.cpp`'s
-`unbounded_polytope_hits_the_node_limit` test pins this down directly:
-`2x - 2y = 1` with both variables unbounded returns `LimitReached` rather
-than looping, by construction (every node's LRA relaxation stays feasible,
-so the search never runs out of new fractional variables to split on).
+Branch-and-bound plus GCD-consistency together are still not a complete
+decision procedure for QF_LIA: an integer-infeasible system whose LRA
+relaxation stays feasible at every node, and whose infeasibility isn't
+witnessed by any single fixed row, can still branch forever
+(Bjørner & Nachmanson's waterfall exists precisely because these two
+layers need cube tests and cutting planes alongside them for
+completeness).
+`tests/unit/lia_branch_and_bound_tests.cpp`'s
+`unbounded_polytope_hits_the_node_limit` test (unchanged by stage 2 --
+it exercises `branch_and_bound` directly, bypassing the new pre-check, to
+keep pinning down branch-and-bound's own behavior in isolation) and
+`tests/unit/qf_lia_solver_tests.cpp`'s
+`gcd_uncatchable_divergent_system_hits_the_node_limit` (the new
+`4x+4y in [2,3]` case, end to end) both confirm this directly: neither
+converges, by construction, since every node's LRA relaxation stays
+feasible and GCD-consistency has nothing fixed to check.
 
-This is the reason stage 2 (Gomory cuts, GCD consistency, cube tests --
-Bjørner & Nachmanson Sect. 4.2-4.3, 4.5) is a separate, planned follow-up
-rather than a "someday" note.
+This is the reason stage 3 (Gomory cuts, the extended GCD test, cube
+tests) remains a separate, planned follow-up rather than a "someday"
+note -- see [Stage 3 and beyond](#stage-3-and-beyond).
 
-## Explicitly out of scope for stage 1
+## Explicitly out of scope (stages 1 and 2)
 
-- Gomory cuts / GCD test / cube test -- stage 2, a separate plan, after
-  stage 1 is fuzzed at Slurm scale.
+- Gomory cuts / the extended GCD test / cube test -- stage 3, a separate
+  plan; see [Stage 3 and beyond](#stage-3-and-beyond) for what was already
+  investigated toward it.
 - CDCL-integrated branch literals (Z3-style, injecting a fresh SAT literal
   from a callback) -- a possible future performance phase, not needed for
   correctness.
 - `div`/`mod`, mixed QF_LIRA (`Int` + `Real` together).
-- Any change to `LraTableau` or `OnlineLraPropagator` itself.
+- Any change to `LraTableau` or `OnlineLraPropagator` itself (both stages
+  stayed entirely read-only or bound-assertion-only against the existing
+  API).
 
-(Fuzzing itself is *not* out of scope -- see the next section. What is
-still missing is a Slurm-scale campaign; the smoke-level local fuzzing
-that already ran is what found and confirmed the fix for the two bugs
-above.)
+(Fuzzing itself is *not* out of scope -- see the next section. Stage 2's
+Slurm-scale re-verification is still outstanding as of this writing; see
+`docs/run-log.json` for whichever state is current by the time you're
+reading this.)
+
+## Stage 3 and beyond
+
+Investigated during stage 2 planning, not implemented:
+
+- **Gomory cuts need a new tableau row**, added mid-search -- a Gomory cut
+  is, in general, a genuinely new linear combination of a fractional row's
+  non-basic variables, not reducible to a bound on one existing variable
+  (confirmed by inspecting `LraTableau::Row`/`RowEntry`'s representation:
+  strictly `basic_var = Σ coefficient·var`, with `add_row()` the only API
+  that introduces one). Two findings worth recording for whoever picks
+  this up:
+  - `LraTableau::add_row()` is **not actually enforced** to run only
+    before the first `push()` -- the class comment says so, but nothing
+    asserts it, and there is already a working precedent for calling it
+    mid-search on a live, already-pushed tableau:
+    `prepare_lra_equality_probe_context` in `check_sat.cpp` (~line 6822)
+    does exactly this on a *copy* of the live search tableau. The one real
+    hazard, visible in that call site's own comment, is that
+    `add_row()`-added state isn't trailed, so a `pop()` whose checkpoint
+    predates the `add_row()` call silently leaves the row (and its
+    variable) alive rather than undoing it.
+  - Making a cut properly backtrackable (rather than permanent for the
+    rest of the process) needs a small, mechanical `LraTableau` extension:
+    a new `TrailEntry` variant (`RowTrailEntry{LraVarId basic_var}`),
+    pushed by `add_row()`, undone by clearing `rows_[basic_var]` and
+    `is_basic`. `TrailEntry`'s existing variant/`undo()`/`pop()` shape
+    makes this look like a genuinely small, self-contained change (rough
+    estimate: ~15-30 lines) *if* full backtrackability turns out to be
+    wanted -- but deciding whether cuts should be node-scoped or
+    permanent, and how they'd interact with `OnlineLraPropagator`'s own
+    independently-copied live tableau, are real design questions of their
+    own, not resolved here.
+  - An alternative that needs none of the above: derive a cut from a
+    row's current (read-only) state the same way this project already
+    handles branch-and-bound's own `Unsat` case -- as a coarse SAT-level
+    lemma (`backend.add_clause`) blocking the current assignment, rather
+    than a tableau row Simplex can reuse across nodes. Cheaper to build,
+    but the cut only blocks the exact assignment it came from instead of
+    becoming an ordinary, reusable constraint at that search node and its
+    descendants.
+- The paper gives no cut-coefficient formula of its own for Gomory cuts
+  (Sect. 4.5); it points to Dutertre & de Moura (CAV 2006, already
+  `LraTableau`'s own basis) as the starting point, plus two more papers
+  for a Hermite-normal-form-based alternative. Whoever implements stage 3
+  needs to work the derivation from one of those sources directly.
+- The extended GCD test and the cube test (see
+  [GCD-consistency](#gcd-consistency) above) are the two lower-effort
+  stage-3 candidates that don't need any `LraTableau` change at all --
+  worth doing before Gomory cuts if stage 3 is picked up, on cost/benefit
+  grounds alone.
 
 ## Fuzzing
 
@@ -318,8 +453,9 @@ assumption ties it to being genuinely benign and when to revisit it.
 
 ## Tests
 
-- `tests/unit/rational_tests.cpp`: `floor()`/`ceil()`/`is_integer()`,
-  including the big (`mpq_class`) representation path.
+- `tests/unit/rational_tests.cpp`: `floor()`/`ceil()`/`is_integer()`
+  (stage 1) and `gcd()` (stage 2), including the big (`mpq_class`)
+  representation path for each.
 - `tests/unit/lra_atom_tests.cpp`: confirms `normalize_atom` stays
   sort-agnostic (an `Int` `Lt` atom comes out exactly like a `Real` one) --
   see the bug writeups above for where the actual integer-strictness
@@ -327,10 +463,28 @@ assumption ties it to being genuinely benign and when to revisit it.
 - `tests/unit/lia_branch_and_bound_tests.cpp`: white-box tests of
   `branch_and_bound` directly against `LraTableau` -- no branching needed,
   one branch to a solution, every branch infeasible (`Unsat`), and the
-  node-limit/incompleteness case above.
+  node-limit/incompleteness case above. Unchanged by stage 2 on purpose:
+  it exercises `branch_and_bound` in isolation, bypassing the new GCD
+  pre-check, to keep that class's own behavior pinned down independently.
+- `tests/unit/lia_gcd_consistency_tests.cpp` (stage 2): white-box tests of
+  `gcd_inconsistent_row` directly against `LraTableau` -- the motivating
+  `2x-2y=1` row, the same row in its scale-canonicalized (fractional
+  coefficient/bound) form, a coprime-coefficient row that must **not**
+  false-positive (the critical soundness check -- a false positive here
+  means reporting `Unsat` on something satisfiable), an unfixed
+  (bounded-but-not-fixed) row that must be skipped, a trivial
+  coefficient-1 row, and a row fixed to zero (always achievable regardless
+  of coefficients).
 - `tests/unit/qf_lia_solver_tests.cpp`: black-box, end-to-end via
   `check_sat_smtlib`, covering the same shapes through the full frontend
   plus `distinct`, nested/nontrivial branching, the strict-tightening bug
   above exercised end to end, the frontend rejections
-  (UF/`Real`-under-QF_LIA/division/`Int`-under-other-logics), and the node
-  limit.
+  (UF/`Real`-under-QF_LIA/division/`Int`-under-other-logics), and (stage 2)
+  both `gcd_inconsistent_system_is_unsat_without_branching` (the motivating
+  case, now `Unsat` immediately even under a node limit far too small for
+  branch-and-bound alone to ever reach it) and
+  `gcd_uncatchable_divergent_system_hits_the_node_limit` (the
+  `4x+4y in [2,3]` case GCD-consistency deliberately does not catch,
+  confirming the node limit is still reachable and the remaining
+  incompleteness is real, not a leftover artifact of an unexercised code
+  path).

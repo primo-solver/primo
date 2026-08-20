@@ -158,17 +158,44 @@ void strict_inequalities_tighten_to_pin_one_value() {
   assert(unsat_result.result == CheckSatResult::Unsat);
 }
 
-// 2x - 2y == 1 has no integer solution (the left side is always even),
-// and with x, y both unbounded, plain branch-and-bound never runs out of
-// new fractional variables to split on -- the incompleteness
-// docs/qf-lia-branch-and-bound.md documents. A small node limit must
-// report Unknown rather than hang.
-void unbounded_infeasible_system_hits_the_node_limit() {
+// 2x - 2y == 1 has no integer solution (the left side is always even).
+// Stage 2's GCD-consistency check (docs/qf-lia-branch-and-bound.md)
+// catches this directly from the tableau row, without ever invoking
+// branch-and-bound -- so this must come back Unsat immediately even under
+// a node limit far too small for branch-and-bound alone to ever reach
+// Unsat on its own (see lia_branch_and_bound_tests.cpp's
+// unbounded_polytope_hits_the_node_limit for that fact, confirmed at the
+// LraTableau level).
+void gcd_inconsistent_system_is_unsat_without_branching() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_LIA)
     (declare-fun x () Int)
     (declare-fun y () Int)
     (assert (= (* 2 x) (+ (* 2 y) 1)))
+    (check-sat)
+  )",
+                                       small_branch_limit(1));
+  assert(result.result == CheckSatResult::Unsat);
+}
+
+// 4x + 4y in [2,3], x and y unbounded: GCD-consistency does not fire here
+// (the row is bounded on both sides, not fixed to a single value, and
+// 2 and 3 are consecutive integers -- no single fixed residual to check
+// divisibility against), yet no integer x, y satisfies it (4x+4y is
+// always a multiple of 4, and no multiple of 4 lies in [2,3]). This is
+// exactly the kind of instance stage 2 deliberately does NOT close: the
+// LRA relaxation stays feasible at every branch-and-bound node (real x,y
+// can pick 4x+4y anywhere in [2,3]), so the search never runs out of new
+// fractional variables to split on and must report Unknown rather than
+// hang, matching docs/qf-lia-branch-and-bound.md's documented remaining
+// incompleteness after stage 2.
+void gcd_uncatchable_divergent_system_hits_the_node_limit() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LIA)
+    (declare-fun x () Int)
+    (declare-fun y () Int)
+    (assert (>= (+ (* 4 x) (* 4 y)) 2))
+    (assert (<= (+ (* 4 x) (* 4 y)) 3))
     (check-sat)
   )",
                                        small_branch_limit(20));
@@ -224,7 +251,8 @@ int main() {
   distinct_over_tight_range_is_unsat();
   distinct_with_enough_room_is_sat();
   strict_inequalities_tighten_to_pin_one_value();
-  unbounded_infeasible_system_hits_the_node_limit();
+  gcd_inconsistent_system_is_unsat_without_branching();
+  gcd_uncatchable_divergent_system_hits_the_node_limit();
   qf_lia_rejects_uninterpreted_functions();
   qf_lia_rejects_real_constants();
   qf_lia_rejects_division();

@@ -129,6 +129,13 @@ class Rational {
   // linear-arithmetic left-hand sides. Throws when every value is zero.
   static Rational primitive_integer_scale(std::span<const Rational> values);
 
+  // Positive gcd of a set of already-integer-valued Rationals (e.g. a
+  // tableau row's coefficients after clearing denominators with
+  // primitive_integer_scale -- see the QF_LIA GCD-consistency check in
+  // theory/arithmetic/lia_gcd_consistency.cpp). Throws if any value is not
+  // integer-valued, or if every value is zero.
+  static Rational gcd(std::span<const Rational> values);
+
   std::string to_string() const;
 
   // Number of times any Rational left the small form for the big one, in this

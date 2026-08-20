@@ -36,6 +36,7 @@
 #include "smtlib/commands.hpp"
 #include "smtlib/parser.hpp"
 #include "theory/arithmetic/lia_branch_and_bound.hpp"
+#include "theory/arithmetic/lia_gcd_consistency.hpp"
 #include "theory/arithmetic/linear_polynomial.hpp"
 #include "theory/arithmetic/lra_atom.hpp"
 #include "theory/arithmetic/lra_tableau.hpp"
@@ -10503,20 +10504,32 @@ CheckSatOutcome solve_qf_lia_impl(core::TermManager& terms,
       }
 #endif
 
-      const theory::arithmetic::LiaBranchAndBoundResult bb_result =
-          theory::arithmetic::branch_and_bound(lia_tableau, integer_vars, options.lia_branch_limit);
-      if (bb_result.status == theory::arithmetic::LiaBranchAndBoundResult::Status::Sat) {
-        return CheckSatOutcome{
-            CheckSatResult::Sat, "", statistics,
-            options.produce_model
-                ? build_qf_lia_model(terms, model_terms, prepared_theory, lia_tableau)
-                : ""};
+      // Stage 2 (docs/qf-lia-branch-and-bound.md): a read-only structural
+      // pre-check, cheaper than branching and it catches cases plain
+      // branch-and-bound cannot terminate on at all (e.g. `2x - 2y = 1`
+      // with x, y unbounded -- gcd_inconsistent_row proves no integer
+      // assignment can satisfy that row directly; branch-and-bound alone
+      // would branch until --lia-branch-limit and report Unknown).
+      bool arithmetic_unsat = theory::arithmetic::gcd_inconsistent_row(lia_tableau).has_value();
+      if (!arithmetic_unsat) {
+        const theory::arithmetic::LiaBranchAndBoundResult bb_result =
+            theory::arithmetic::branch_and_bound(lia_tableau, integer_vars,
+                                                 options.lia_branch_limit);
+        if (bb_result.status == theory::arithmetic::LiaBranchAndBoundResult::Status::Sat) {
+          return CheckSatOutcome{
+              CheckSatResult::Sat, "", statistics,
+              options.produce_model
+                  ? build_qf_lia_model(terms, model_terms, prepared_theory, lia_tableau)
+                  : ""};
+        }
+        if (bb_result.status == theory::arithmetic::LiaBranchAndBoundResult::Status::LimitReached) {
+          return CheckSatOutcome{CheckSatResult::Unknown,
+                                 "QF_LIA branch-and-bound node limit reached", statistics, ""};
+        }
+        arithmetic_unsat = true;  // bb_result.status == Unsat.
       }
-      if (bb_result.status == theory::arithmetic::LiaBranchAndBoundResult::Status::LimitReached) {
-        return CheckSatOutcome{CheckSatResult::Unknown,
-                               "QF_LIA branch-and-bound node limit reached", statistics, ""};
-      }
-      // Unsat: this Boolean+LRA assignment has no all-integer completion.
+      // Unsat: this Boolean+LRA assignment has no all-integer completion
+      // (found either by the GCD pre-check above or by branch-and-bound).
       // Block it with the blocking literals of every arithmetic atom that
       // fed the tableau -- coarse (the whole assignment, not a minimized
       // explanation) but sound, since it excludes at least this

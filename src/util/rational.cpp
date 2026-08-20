@@ -203,6 +203,43 @@ Rational Rational::primitive_integer_scale(std::span<const Rational> values) {
   return from_mpq(std::move(scale));
 }
 
+Rational Rational::gcd(std::span<const Rational> values) {
+  bool saw_nonzero = false;
+  bool all_small_integers = true;
+  std::uint64_t small_gcd = 0;
+  for (const Rational& value : values) {
+    if (!value.is_integer()) {
+      throw std::invalid_argument("Rational::gcd requires integer-valued inputs");
+    }
+    if (value.is_zero()) {
+      continue;
+    }
+    saw_nonzero = true;
+    if (!value.is_small()) {
+      all_small_integers = false;
+      continue;
+    }
+    small_gcd = gcd_u64(small_gcd, magnitude(value.num_));
+  }
+  if (!saw_nonzero) {
+    throw std::invalid_argument("Rational::gcd needs a nonzero value");
+  }
+  if (all_small_integers) {
+    return Rational(static_cast<std::int64_t>(small_gcd));
+  }
+
+  mpz_class integer_gcd = 0;
+  for (const Rational& value : values) {
+    if (value.is_zero()) {
+      continue;
+    }
+    mpz_class integer;
+    mpz_set(integer.get_mpz_t(), mpq_numref(value.as_mpq().get_mpq_t()));
+    mpz_gcd(integer_gcd.get_mpz_t(), integer_gcd.get_mpz_t(), integer.get_mpz_t());
+  }
+  return from_mpq(mpq_class(std::move(integer_gcd)));
+}
+
 // One of the two choke points establishing the canonical-form invariant (see
 // the class comment). Takes an *already reduced* pair, normalizes its sign, and
 // picks the small form if and only if it fits -- no gcd here, because the
