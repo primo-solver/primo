@@ -1018,18 +1018,21 @@ The editable TikZ source is `docs/figures/lra-tableau-occurrence-index.tex`.
 
 ### Implemented subset vs. deviations vs. limitations
 
-- **QF_LIA, stages 1-2.** `(set-logic QF_LIA)` is supported: an `Int`
+- **QF_LIA, stages 1-3.** `(set-logic QF_LIA)` is supported: an `Int`
   sort, linear atoms (`+ - *`(literal coefficient) `< <= > >= = distinct`),
   a plain branch-and-bound decision procedure layered entirely on top of
-  the existing `LraTableau`, and a read-only GCD-consistency pre-check
-  (both stages, no tableau/simplex change of any kind). No `div`/`mod`,
-  and no mixing `Int` with `Real` in one problem (that would be QF_LIRA).
-  Branch-and-bound plus GCD-consistency together still have no
-  completeness argument of their own -- some integer-infeasible systems
-  can branch forever without genuine cutting planes -- so the search is
-  capped by `--lia-branch-limit` and reports `unknown` if the cap is hit
-  rather than looping. See `docs/qf-lia-branch-and-bound.md` for the full
-  design and the cutting-planes stage this sets up but does not implement.
+  the existing `LraTableau`, a read-only GCD-consistency pre-check, and a
+  Gomory-cut pre-check (King's thesis's mixed-integer cut, eq. 4.9) that
+  adds rows to a private per-round tableau copy via `LraTableau`'s
+  existing public API -- no change to `LraTableau` or
+  `OnlineLraPropagator` themselves in any stage. No `div`/`mod`, and no
+  mixing `Int` with `Real` in one problem (that would be QF_LIRA). The
+  three stages together still have no completeness argument of their own
+  -- some integer-infeasible systems can branch forever regardless (a
+  concrete example is documented and tested) -- so the search is capped
+  by `--lia-branch-limit`/`--lia-gomory-cut-limit` and reports `unknown`
+  if a cap is hit rather than looping. See `docs/qf-lia-branch-and-bound.md`
+  for the full design.
 - **Real-only Real/UF combination.** No `Int` counterpart to the QF_UFLRA
   coordinator below: QF_LIA cannot currently be combined with EUF or mixed
   with `Real`. A partial QF_UFLRA

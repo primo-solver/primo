@@ -20,6 +20,13 @@ CheckSatOptions small_branch_limit(std::size_t limit) {
   return options;
 }
 
+CheckSatOptions branch_and_cut_limits(std::size_t branch_limit, std::size_t cut_limit) {
+  CheckSatOptions options;
+  options.lia_branch_limit = branch_limit;
+  options.lia_gomory_cut_limit = cut_limit;
+  return options;
+}
+
 void trivially_sat_needs_no_branching() {
   const auto result = check_sat_smtlib(R"(
     (set-option :produce-models true)
@@ -203,6 +210,35 @@ void gcd_uncatchable_divergent_system_hits_the_node_limit() {
   assert(result.message.find("node limit") != std::string::npos);
 }
 
+// 3x + 5y = 7, x,y >= 0: no non-negative integer solution exists (y=0
+// needs x=7/3; y=1 needs 3x=2; y>=2 makes 5y>7 alone), confirmed
+// independently against z3 (unsat). The LP relaxation is feasible
+// (e.g. x=7/3, y=0), so branch-and-bound alone needs to actually branch
+// to discover the infeasibility -- with a branch limit of 1 it cannot,
+// and reports Unknown (stage 1's own honest incompleteness). Stage 3's
+// Gomory cut pre-check resolves this from the very first candidate model
+// without branch-and-bound needing to explore anything, demonstrating
+// cuts genuinely extend what stage 1+2 alone could resolve within the
+// same node budget -- the concrete, user-visible point of this stage.
+void gomory_cut_resolves_what_branch_and_bound_alone_cannot() {
+  const char* const problem = R"(
+    (set-logic QF_LIA)
+    (declare-fun x () Int)
+    (declare-fun y () Int)
+    (assert (= (+ (* 3 x) (* 5 y)) 7))
+    (assert (>= x 0))
+    (assert (>= y 0))
+    (check-sat)
+  )";
+
+  const auto without_cuts = check_sat_smtlib(problem, branch_and_cut_limits(1, 0));
+  assert(without_cuts.result == CheckSatResult::Unknown);
+  assert(without_cuts.message.find("node limit") != std::string::npos);
+
+  const auto with_cuts = check_sat_smtlib(problem, branch_and_cut_limits(1, 100));
+  assert(with_cuts.result == CheckSatResult::Unsat);
+}
+
 void qf_lia_rejects_uninterpreted_functions() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_LIA)
@@ -253,6 +289,7 @@ int main() {
   strict_inequalities_tighten_to_pin_one_value();
   gcd_inconsistent_system_is_unsat_without_branching();
   gcd_uncatchable_divergent_system_hits_the_node_limit();
+  gomory_cut_resolves_what_branch_and_bound_alone_cannot();
   qf_lia_rejects_uninterpreted_functions();
   qf_lia_rejects_real_constants();
   qf_lia_rejects_division();

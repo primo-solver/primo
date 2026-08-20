@@ -37,6 +37,7 @@
 #include "smtlib/parser.hpp"
 #include "theory/arithmetic/lia_branch_and_bound.hpp"
 #include "theory/arithmetic/lia_gcd_consistency.hpp"
+#include "theory/arithmetic/lia_gomory_cuts.hpp"
 #include "theory/arithmetic/linear_polynomial.hpp"
 #include "theory/arithmetic/lra_atom.hpp"
 #include "theory/arithmetic/lra_tableau.hpp"
@@ -10511,6 +10512,15 @@ CheckSatOutcome solve_qf_lia_impl(core::TermManager& terms,
       // assignment can satisfy that row directly; branch-and-bound alone
       // would branch until --lia-branch-limit and report Unknown).
       bool arithmetic_unsat = theory::arithmetic::gcd_inconsistent_row(lia_tableau).has_value();
+      // Stage 3: mutates lia_tableau (adds cut rows/bounds -- safe here,
+      // see lia_gomory_cuts.cpp's module comment for why nothing needs to
+      // undo them within this per-round tableau copy) before
+      // branch-and-bound runs, so it only ever tightens what
+      // branch-and-bound has to search.
+      if (!arithmetic_unsat) {
+        arithmetic_unsat = theory::arithmetic::apply_gomory_cuts(lia_tableau, integer_vars,
+                                                                 options.lia_gomory_cut_limit);
+      }
       if (!arithmetic_unsat) {
         const theory::arithmetic::LiaBranchAndBoundResult bb_result =
             theory::arithmetic::branch_and_bound(lia_tableau, integer_vars,

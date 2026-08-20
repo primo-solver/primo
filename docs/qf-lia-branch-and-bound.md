@@ -1,16 +1,19 @@
-# QF_LIA: Branch-and-Bound Plus GCD-Consistency on the Existing Simplex
+# QF_LIA: Branch-and-Bound, GCD-Consistency, and Gomory Cuts on the Existing Simplex
 
-Stage 1 implemented 2026-08-19, stage 2 implemented 2026-08-20. QF_LIA is
-accepted (`(set-logic QF_LIA)`) via a plain branch-and-bound decision
-procedure layered entirely on top of the existing `LraTableau`, plus a
-read-only GCD-consistency pre-check that closes one specific, documented
-gap in branch-and-bound's completeness. Neither stage changes `LraTableau`
-or `OnlineLraPropagator` themselves. Cutting planes (Gomory cuts) remain a
-separate, later stage 3, not implemented here -- see
-[Stage 3 and beyond](#stage-3-and-beyond).
+Stage 1 implemented 2026-08-19, stages 2 and 3 implemented 2026-08-20.
+QF_LIA is accepted (`(set-logic QF_LIA)`) via a plain branch-and-bound
+decision procedure layered entirely on top of the existing `LraTableau`,
+a read-only GCD-consistency pre-check, and a Gomory-cut pre-check --
+together closing several specific, documented gaps in plain
+branch-and-bound's completeness, though not all of them (see
+[Known incompleteness](#known-incompleteness)). None of the three stages
+change `OnlineLraPropagator`, and only stage 3 touches `LraTableau` at
+all, and even then only by *calling* its existing, already-public
+`add_row()`/`add_variable()` API -- see
+[Gomory cuts](#gomory-cuts) for why no change to the class itself was
+needed.
 
-Two papers grounded stage 1's design, joined by a third source for stage
-2:
+Three sources grounded this design:
 
 - Dutertre & de Moura, *Integrating Simplex with DPLL(T)* (SRI-CSL-06-01) --
   already the basis of `LraTableau`; see `docs/papers/fast-linear-arithmetic-dpllt.md`.
@@ -24,12 +27,22 @@ Two papers grounded stage 1's design, joined by a third source for stage
   [GCD-consistency](#gcd-consistency) below for the exact statement used,
   including a likely erratum found in the paper's own inequality direction
   and worked around by independent re-derivation rather than trusted
-  as-printed). The paper is explicit that branch-and-bound and GCD alone
-  are still not jointly complete -- both are single layers of a larger
-  waterfall (patch → cube → GCD → branch-and-bound/Gomory) -- which is
-  exactly why this doc accepts and reports the remaining incompleteness
-  (see [Known incompleteness](#known-incompleteness) below) rather than
-  hiding it.
+  as-printed). This paper motivated *wanting* Gomory cuts (Sect. 4.5) but
+  gives no cut-coefficient formula of its own -- it points elsewhere for
+  that, which is where the third source comes in.
+- Tim King, *Effective Algorithms for the Satisfiability of
+  Quantifier-Free Formulas Over Linear Real and Integer Arithmetic* (PhD
+  thesis, NYU 2014, `docs/papers/king_tim.pdf`) -- already cited in
+  `lra_tableau.hpp` for pivoting-rule details. Stage 3's Gomory cut comes
+  from Sect. 4.4.3, Lemma 4.1, eq. 4.9 ("Mixed Gomory Cuts"); see
+  [Gomory cuts](#gomory-cuts) for the formula and, importantly, why this
+  specific variant was chosen over a self-derived alternative.
+
+All three techniques are single layers of a larger waterfall (patch →
+cube → GCD → branch-and-bound/Gomory, per Bjørner & Nachmanson); none of
+them, individually or together, is claimed to make this a complete
+decision procedure -- see [Known incompleteness](#known-incompleteness),
+which this doc accepts and reports rather than hiding.
 
 ## Scope
 
@@ -278,110 +291,207 @@ has narrowed a row's free variables) is a natural, easy-to-add follow-up,
 deferred here since the single pre-check already closes the documented
 gap.
 
-## Node limit
+## Gomory cuts
 
-`CheckSatOptions::lia_branch_limit` (default 100000), CLI
-`--lia-branch-limit` (`kGroupLia`, "QF_LIA theory options" in `--help`).
-Not yet empirically tuned against real QF_LIA benchmarks -- picked
-generously enough to clear small/medium instances while still bailing out
-in reasonable time. Stage 2's GCD-consistency check now catches the
+Stage 3, `theory::arithmetic::apply_gomory_cuts`
+(`src/theory/arithmetic/lia_gomory_cuts.{hpp,cpp}`). Runs in
+`solve_qf_lia_impl` right after stage 2's `gcd_inconsistent_row`
+pre-check and before `branch_and_bound`, on the same per-round
+`lia_tableau` copy those two already operate on.
+
+**The formula**, King's thesis (NYU 2014) Sect. 4.4.3, Lemma 4.1, eq.
+4.9, "Mixed Gomory Cuts" -- chosen over an independently-derived
+pure-integer variant for a specific, load-bearing reason: King's cut
+requires only that the *basic* variable be integer-valued in every model
+and currently fractional. It places **no integrality requirement on
+non-basic bound values**, which matters here because
+`PreparedLraTheory`'s scale-canonicalization can leave a literal
+fractional bound on a genuinely `Int`-sorted variable (`(<= (* 3 x) 5)`
+stores a bound of `5/3`, not `1`) -- the same effect stage 1's
+`bound_assertion()` bug and stage 2's `primitive_integer_scale` usage
+both already had to account for. A self-derived cut assuming integer
+bounds would need to handle that case separately and risks being
+*wrong*, not just weaker, if the assumption were silently violated;
+King's mixed cut sidesteps the question by not needing it.
+
+Uses `LraTableau::Row`'s own representation directly -- King's tableau
+row `x_i = Σ_{j∈N} T_{i,j} x_j` (basic variable, no separate additive
+constant) is exactly how `LraTableau::Row` already stores a row, so no
+convention translation was needed anywhere in this derivation.
+
+For a basic, integer-sorted `x_i` with fractional current value
+`a_i = β(x_i)`, let `f_0 = a_i - ⌊a_i⌋` (so `f_0 ∈ (0,1)`, never `0` or
+`1`, since `a_i` is fractional by construction -- both `f_0` and `1-f_0`
+below are always safe, nonzero divisors). Partition the row's non-basic
+terms by which bound each currently sits at and the sign of its
+coefficient `T_{i,j}`: `J⁺` (at lower bound `l_j`, `T_{i,j}>0`), `J⁻`
+(lower, `T_{i,j}<0`), `K⁺` (at upper bound `u_j`, `T_{i,j}>0`), `K⁻`
+(upper, `T_{i,j}<0`). The cut:
+
+```
+Σ_{J⁺} T_{i,j}/(1-f_0) · (x_j - l_j)  -  Σ_{J⁻} T_{i,j}/f_0 · (x_j - l_j)
+  -  Σ_{K⁺} T_{i,k}/f_0 · (x_k - u_k)  +  Σ_{K⁻} T_{i,k}/(1-f_0) · (x_k - u_k)  ≥  1
+```
+
+**Eligibility**: `x_i` is basic, drawn from the caller-supplied
+`integer_vars` (the declared `Int` problem variables -- exactly what
+`branch_and_bound`'s own `find_fractional_variable` already scans, not
+slacks: a slack's row can carry non-integer coefficients from
+scale-canonicalization, so a slack is not guaranteed integer-valued in
+every model the way a declared `Int` variable is, and King's theorem
+needs that guarantee specifically for the row's basic variable), and
+`β(x_i)` is not integer; every term in its row must have its variable
+currently *exactly* at one of its bounds (`β(x_j) == lower_bound(x_j)` or
+`== upper_bound(x_j)`, not merely bounded -- `LraTableau`'s own
+documented deviation is that a non-basic variable may sit strictly
+*within* its bounds, and a term doing that disqualifies the *whole* row,
+which is then skipped entirely rather than partially cut).
+
+**Translating to a tableau row + bound**: expand each `(x_j-l_j)`/`(x_k-u_k)`
+term and move every `l_j`/`u_k` constant onto the right-hand side, giving
+a per-term coefficient and one threshold constant, computable directly
+from the row and each term's bound (`src/theory/arithmetic/lia_gomory_cuts.cpp`
+has the exact expansion). `add_variable()` a fresh cut slack,
+`add_row(cut_slack, {...})` with those coefficients, then
+`assert_lower(cut_slack, threshold, synthetic_reason)`. Then `check()` --
+either it finds a conflict (this branch is proven infeasible, blocked
+with the same coarse whole-assignment SAT-level lemma stage 1/2's own
+`Unsat` path already builds) or the tableau is strictly tighter and
+`apply_gomory_cuts` looks for the next eligible row (up to
+`--lia-gomory-cut-limit` rounds).
+
+**No `LraTableau` change was needed for mid-search `add_row()`, once the
+actual cut lifetime is thought through.** `add_row()`'s body computes the
+new row's assignment from whatever the *current* nonbasic assignments
+already are -- it does not assume a pristine, pre-search tableau -- and
+touches no `trail_` state. Cuts here live entirely inside
+`solve_qf_lia_impl`'s per-round `lia_tableau`, a plain copy of the live
+search tableau rebuilt fresh every outer SAT round. Since that copy is
+discarded at the end of every round regardless, a cut added to it never
+needs to be *undone* -- it only needs to survive for the rest of that one
+round, which `add_row()` followed immediately by `assert_lower` (whose
+`is_basic` branch already calls `update_violation_status()`) and then
+`check()` already handle correctly, matching the existing production
+precedent for calling `add_row()` on a live, already-pushed tableau
+(`prepare_lra_equality_probe_context`, `check_sat.cpp` ~line 6822). A
+speculative `RowTrailEntry`/backtrackable-row `LraTableau` extension was
+considered while planning this stage and turned out to be unnecessary --
+not added.
+
+**Worked examples** (hand-derived and independently verified by direct
+boundary enumeration before any code was written; both are now
+`tests/unit/lia_gomory_cuts_tests.cpp` test oracles):
+
+- All-`J⁺`: row `x_i = 2x_1 + 3x_2`, `x_1` at lower bound `0`, `x_2` at
+  lower bound `1/2` (`x_i = 3/2`, `f_0 = 1/2`). Cut: `4x_1 + 6x_2 >= 4`.
+  The current fractional vertex `(0, 1/2)` gives `3 < 4` (excluded); the
+  nearest achievable integer point `(0, 2/3)` (`x_i=2`) gives exactly `4`
+  (included, tight).
+- Mixed `J⁺`/`K⁻`: row `x_i = 2x_1 - 3x_2`, `x_1` at lower bound `1/3`,
+  `x_2` at upper bound `-1` (`x_i = 11/3`, `f_0 = 2/3`). Cut:
+  `6x_1 - 9x_2 >= 12`. The current vertex `(1/3, -1)` gives `11 < 12`
+  (excluded); the nearest achievable integer point `(1/3, -10/9)`
+  (`x_i=4`) gives exactly `12` (included, tight).
+
+**A concrete extension demonstration**: `3x + 5y = 7, x,y >= 0` has no
+non-negative integer solution (`y=0` needs `x=7/3`; `y=1` needs `3x=2`;
+`y>=2` alone exceeds `7`), confirmed independently against z3 (`unsat`).
+The LP relaxation is feasible (e.g. `x=7/3, y=0`), so plain
+branch-and-bound needs to actually branch to discover the infeasibility
+-- with `--lia-branch-limit 1` it cannot, reporting `Unknown`. With
+Gomory cuts enabled, the very first candidate model's cut alone resolves
+it to `Unsat`, no branching needed at all
+(`tests/unit/qf_lia_solver_tests.cpp`'s
+`gomory_cut_resolves_what_branch_and_bound_alone_cannot`).
+
+## Node limits
+
+`CheckSatOptions::lia_branch_limit` (default 100000) and
+`CheckSatOptions::lia_gomory_cut_limit` (default 100), CLI
+`--lia-branch-limit`/`--lia-gomory-cut-limit` (`kGroupLia`, "QF_LIA theory
+options" in `--help`). Neither is yet empirically tuned against real
+QF_LIA benchmarks. Stage 2's GCD-consistency check catches the
 `2x - 2y = 1`-shaped case (a row whose value is *fixed* to something its
-coefficients' gcd cannot reach) before branch-and-bound ever starts, so it
-no longer needs the node limit at all. A structurally different
-divergent case -- `4x + 4y` bounded to a *range* that contains no multiple
-of 4 (e.g. `[2, 3]`, with `x, y` unbounded) -- is not GCD-detectable (the
-row is never fixed to one value) and still hits the limit deterministically;
-see the next section.
+coefficients' gcd cannot reach) before either budget is touched. Stage
+3's Gomory cuts extend that to cases like `3x+5y=7, x,y>=0` above, where
+no single row is ever *fixed* but a cut still proves infeasibility
+directly. A structurally different divergent case -- `4x + 4y` bounded to
+a *range* that contains no multiple of 4 (e.g. `[2, 3]`, with `x, y`
+unbounded) -- is caught by **neither** stage 2 nor stage 3 (confirmed
+directly: `x, y` unbounded means neither ever sits *at* a bound, so the
+row is Gomory-ineligible too, exactly as it was already GCD-ineligible)
+and still hits `--lia-branch-limit` deterministically; see the next
+section.
 
 ## Known incompleteness
 
-Branch-and-bound plus GCD-consistency together are still not a complete
-decision procedure for QF_LIA: an integer-infeasible system whose LRA
-relaxation stays feasible at every node, and whose infeasibility isn't
-witnessed by any single fixed row, can still branch forever
-(Bjørner & Nachmanson's waterfall exists precisely because these two
-layers need cube tests and cutting planes alongside them for
-completeness).
-`tests/unit/lia_branch_and_bound_tests.cpp`'s
-`unbounded_polytope_hits_the_node_limit` test (unchanged by stage 2 --
-it exercises `branch_and_bound` directly, bypassing the new pre-check, to
-keep pinning down branch-and-bound's own behavior in isolation) and
-`tests/unit/qf_lia_solver_tests.cpp`'s
-`gcd_uncatchable_divergent_system_hits_the_node_limit` (the new
-`4x+4y in [2,3]` case, end to end) both confirm this directly: neither
-converges, by construction, since every node's LRA relaxation stays
-feasible and GCD-consistency has nothing fixed to check.
+Branch-and-bound, GCD-consistency, and Gomory cuts together are *still*
+not a complete decision procedure for QF_LIA. Two independent gaps
+remain, both demonstrated directly rather than just asserted:
 
-This is the reason stage 3 (Gomory cuts, the extended GCD test, cube
-tests) remains a separate, planned follow-up rather than a "someday"
-note -- see [Stage 3 and beyond](#stage-3-and-beyond).
+- An integer-infeasible system whose LRA relaxation stays feasible at
+  every branch-and-bound node, and whose infeasibility isn't witnessed by
+  any single fixed row or any row with every term sitting *at* a bound,
+  can still branch forever. `4x + 4y` bounded to `[2, 3]` with `x, y`
+  unbounded is exactly this case: GCD-consistency has nothing fixed to
+  check, and Gomory cuts have nothing to cut either -- unbounded `x, y`
+  never sit *at* a bound, so every candidate row is Gomory-ineligible too
+  (confirmed directly: the case still hits `--lia-branch-limit` with both
+  pre-checks enabled). `tests/unit/lia_branch_and_bound_tests.cpp`'s
+  `unbounded_polytope_hits_the_node_limit` (exercises `branch_and_bound`
+  in isolation) and `tests/unit/qf_lia_solver_tests.cpp`'s
+  `gcd_uncatchable_divergent_system_hits_the_node_limit` (end to end) both
+  confirm this.
+- Even where cuts and branch-and-bound together resolve any *individual*
+  instance, this project does not implement Gomory's specific
+  lexicographic anti-cycling discipline (real MIP theory: without it, a
+  naive cut-and-branch loop has no hard termination guarantee against an
+  adversarial input) -- `--lia-branch-limit`/`--lia-gomory-cut-limit`
+  remain the honest, blunt fallback for whatever this doesn't resolve in
+  practice, reporting `Unknown` rather than hanging.
 
-## Explicitly out of scope (stages 1 and 2)
+Bjørner & Nachmanson's waterfall (patch → cube → GCD → branch-and-bound/Gomory)
+still has two layers this project has not implemented at all -- the cube
+test, and GCD-consistency's own "extended" (bounded-but-not-fixed)
+generalization, both noted as deferred where they were first discussed
+above -- either of which could plausibly close some of the gap the
+`4x+4y in [2,3]`-shaped case represents. A future stage, not attempted
+here.
 
-- Gomory cuts / the extended GCD test / cube test -- stage 3, a separate
-  plan; see [Stage 3 and beyond](#stage-3-and-beyond) for what was already
-  investigated toward it.
+## Explicitly out of scope
+
+- The cube test (Bjørner & Nachmanson Sect. 4.2) and GCD-consistency's
+  extended/bounded-subset generalization (Sect. 4.3) -- see
+  [GCD-consistency](#gcd-consistency) for why the latter specifically was
+  deferred (a likely erratum in the paper's own printed formula).
+- Interleaving Gomory cuts into `branch_and_bound`'s own per-node loop --
+  cuts run once, as a pre-check, before branching starts, not per-branch.
+- The paper's nearest-integer-distance Gomory row-selection heuristic --
+  `apply_gomory_cuts` uses the first eligible row instead, matching the
+  simplicity level `branch_and_bound`'s own `find_fractional_variable`
+  already uses.
+- Exploiting non-basic integrality for a stronger cut than King's mixed
+  formula gives -- King's own thesis flags this as a known possible
+  improvement, citing a further reference not investigated here.
+- Gomory cuts persisting across SAT rounds -- each round's `lia_tableau`
+  is discarded and rebuilt fresh; a cut derived in one round is not
+  carried into the next, even if the same fractional row reappears.
+- Large-coefficient temporary-scope handling for Gomory cuts (Bjørner &
+  Nachmanson mention this for numeric stability on adversarial inputs) --
+  `--lia-gomory-cut-limit` is the blunt safety valve instead.
 - CDCL-integrated branch literals (Z3-style, injecting a fresh SAT literal
   from a callback) -- a possible future performance phase, not needed for
   correctness.
 - `div`/`mod`, mixed QF_LIRA (`Int` + `Real` together).
-- Any change to `LraTableau` or `OnlineLraPropagator` itself (both stages
-  stayed entirely read-only or bound-assertion-only against the existing
-  API).
+- Any change to `LraTableau` or `OnlineLraPropagator` *themselves* --
+  stages 1 and 2 stayed entirely read-only or bound-assertion-only
+  against the existing API; stage 3 adds rows/bounds via `LraTableau`'s
+  own already-public `add_variable()`/`add_row()`, requiring no change to
+  the class (see [Gomory cuts](#gomory-cuts) for why that turned out to
+  be sound without one).
 
 (Fuzzing itself is *not* out of scope -- see the next section, including
-stage 2's own Slurm-scale verification.)
-
-## Stage 3 and beyond
-
-Investigated during stage 2 planning, not implemented:
-
-- **Gomory cuts need a new tableau row**, added mid-search -- a Gomory cut
-  is, in general, a genuinely new linear combination of a fractional row's
-  non-basic variables, not reducible to a bound on one existing variable
-  (confirmed by inspecting `LraTableau::Row`/`RowEntry`'s representation:
-  strictly `basic_var = Σ coefficient·var`, with `add_row()` the only API
-  that introduces one). Two findings worth recording for whoever picks
-  this up:
-  - `LraTableau::add_row()` is **not actually enforced** to run only
-    before the first `push()` -- the class comment says so, but nothing
-    asserts it, and there is already a working precedent for calling it
-    mid-search on a live, already-pushed tableau:
-    `prepare_lra_equality_probe_context` in `check_sat.cpp` (~line 6822)
-    does exactly this on a *copy* of the live search tableau. The one real
-    hazard, visible in that call site's own comment, is that
-    `add_row()`-added state isn't trailed, so a `pop()` whose checkpoint
-    predates the `add_row()` call silently leaves the row (and its
-    variable) alive rather than undoing it.
-  - Making a cut properly backtrackable (rather than permanent for the
-    rest of the process) needs a small, mechanical `LraTableau` extension:
-    a new `TrailEntry` variant (`RowTrailEntry{LraVarId basic_var}`),
-    pushed by `add_row()`, undone by clearing `rows_[basic_var]` and
-    `is_basic`. `TrailEntry`'s existing variant/`undo()`/`pop()` shape
-    makes this look like a genuinely small, self-contained change (rough
-    estimate: ~15-30 lines) *if* full backtrackability turns out to be
-    wanted -- but deciding whether cuts should be node-scoped or
-    permanent, and how they'd interact with `OnlineLraPropagator`'s own
-    independently-copied live tableau, are real design questions of their
-    own, not resolved here.
-  - An alternative that needs none of the above: derive a cut from a
-    row's current (read-only) state the same way this project already
-    handles branch-and-bound's own `Unsat` case -- as a coarse SAT-level
-    lemma (`backend.add_clause`) blocking the current assignment, rather
-    than a tableau row Simplex can reuse across nodes. Cheaper to build,
-    but the cut only blocks the exact assignment it came from instead of
-    becoming an ordinary, reusable constraint at that search node and its
-    descendants.
-- The paper gives no cut-coefficient formula of its own for Gomory cuts
-  (Sect. 4.5); it points to Dutertre & de Moura (CAV 2006, already
-  `LraTableau`'s own basis) as the starting point, plus two more papers
-  for a Hermite-normal-form-based alternative. Whoever implements stage 3
-  needs to work the derivation from one of those sources directly.
-- The extended GCD test and the cube test (see
-  [GCD-consistency](#gcd-consistency) above) are the two lower-effort
-  stage-3 candidates that don't need any `LraTableau` change at all --
-  worth doing before Gomory cuts if stage 3 is picked up, on cost/benefit
-  grounds alone.
+each stage's own Slurm-scale verification.)
 
 ## Fuzzing
 
@@ -467,6 +577,18 @@ validation: 3517 pass, 425 correctly `not-sat`, 58 benign timeouts,
 **zero `model-error`**, same direct-grep confirmation. No soundness
 regression from stage 1's own already-verified baseline.
 
+**Status (stage 3)**: Gomory cuts are a *second* soundness-risk change,
+same category as stage 2 -- a wrong cut can prove `Unsat` on a
+satisfiable instance -- so the same heavier verification discipline
+applies. The formula itself was hand-verified against two independently
+constructed worked examples *before* any tableau-integration code was
+written (see [Gomory cuts](#gomory-cuts) above), and
+`tests/unit/lia_gomory_cuts_tests.cpp` locks those in as regression
+tests, but neither substitutes for real fuzz evidence at the scale stage
+1 and 2 both required. Local smoke fuzzing and the full Slurm gate
+re-run are the mandatory next step, recorded here and in
+`docs/run-log.json` once complete, the same way stages 1 and 2 were.
+
 ## Tests
 
 - `tests/unit/rational_tests.cpp`: `floor()`/`ceil()`/`is_integer()`
@@ -491,16 +613,29 @@ regression from stage 1's own already-verified baseline.
   (bounded-but-not-fixed) row that must be skipped, a trivial
   coefficient-1 row, and a row fixed to zero (always achievable regardless
   of coefficients).
+- `tests/unit/lia_gomory_cuts_tests.cpp` (stage 3): white-box tests of
+  `apply_gomory_cuts` directly against `LraTableau`, using the two
+  hand-verified worked examples above -- an all-`J⁺` row and a mixed
+  `J⁺`/`K⁻` row, each checked semantically (does the resulting tableau
+  correctly *exclude* the exact fractional vertex the cut was derived
+  from, and correctly *admit* the nearest genuine integer point, rather
+  than asserting on the cut's exact internal coefficients) -- plus a case
+  where the cut alone proves `Unsat` (variables fixed so the cut's own
+  slack is forced outside its new bound), a row with one term sitting
+  strictly between its bounds (must be skipped entirely, not partially
+  cut), and `cut_limit=0` as a guaranteed no-op.
 - `tests/unit/qf_lia_solver_tests.cpp`: black-box, end-to-end via
   `check_sat_smtlib`, covering the same shapes through the full frontend
   plus `distinct`, nested/nontrivial branching, the strict-tightening bug
   above exercised end to end, the frontend rejections
-  (UF/`Real`-under-QF_LIA/division/`Int`-under-other-logics), and (stage 2)
+  (UF/`Real`-under-QF_LIA/division/`Int`-under-other-logics), (stage 2)
   both `gcd_inconsistent_system_is_unsat_without_branching` (the motivating
   case, now `Unsat` immediately even under a node limit far too small for
   branch-and-bound alone to ever reach it) and
   `gcd_uncatchable_divergent_system_hits_the_node_limit` (the
-  `4x+4y in [2,3]` case GCD-consistency deliberately does not catch,
+  `4x+4y in [2,3]` case neither GCD-consistency nor Gomory cuts catch,
   confirming the node limit is still reachable and the remaining
   incompleteness is real, not a leftover artifact of an unexercised code
-  path).
+  path), and (stage 3) `gomory_cut_resolves_what_branch_and_bound_alone_cannot`
+  (the `3x+5y=7, x,y>=0` case: `Unknown` under `--lia-branch-limit 1`
+  with cuts off, `Unsat` with cuts on, at the *same* branch budget).

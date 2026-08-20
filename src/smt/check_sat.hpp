@@ -309,6 +309,15 @@ struct CheckSatOptions {
   // empirically tuned; picked generously enough to clear small/medium
   // QF_LIA instances while still bailing out in reasonable time.
   std::size_t lia_branch_limit = 100000;
+  // QF_LIA Gomory-cut budget (docs/qf-lia-branch-and-bound.md, stage 3):
+  // caps how many cut-and-recheck rounds apply_gomory_cuts attempts
+  // before falling through to branch-and-bound regardless. Gomory's
+  // method has no anti-cycling guarantee as implemented here (that would
+  // need a specific lexicographic discipline this project does not
+  // attempt), so an unbounded loop is not safe. Not yet empirically
+  // tuned; picked to be cheap relative to lia_branch_limit, since each
+  // cut round is itself a full check() re-solve.
+  std::size_t lia_gomory_cut_limit = 100;
   bool monotone_elimination = false;
   bool solved_constant_substitution = true;
   bool gaussian_elimination = true;

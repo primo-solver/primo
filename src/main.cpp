@@ -388,6 +388,11 @@ int main(int argc, char** argv) {
                  "forever), so once this many nodes have been explored the search reports "
                  "Unknown instead of continuing [default: 100000]")
       ->check(CLI::Range(1, 100000000));
+  app.add_option("--lia-gomory-cut-limit", solver_options.lia_gomory_cut_limit,
+                 "QF_LIA Gomory-cut round cap, run before branch-and-bound on every candidate "
+                 "model: caps how many cut-and-recheck rounds are attempted before falling "
+                 "through to branch-and-bound regardless [default: 100]")
+      ->check(CLI::Range(0, 100000000));
   app.add_flag("--top-level-or-tseitin", top_level_or_tseitin,
                "Always encode top-level disjunctions with Tseitin support clauses [default: only "
                "when the automatic rule fires]");
