@@ -139,16 +139,36 @@ check.
 - `check_sat.cpp`'s `SetLogic` whitelist accepts `QF_LIA`; `declare-fun`
   rejects uninterpreted functions and `Real` constants under it (and
   rejects `Int` constants under any other logic).
-- Every *optional* preprocessing pass (Gaussian elimination, monotone
-  elimination, solved-constant substitution, atom canonicalization, ...)
-  is turned off for QF_LIA (`options.preprocessing_mode =
-  PreprocessingMode::Off`, forced once `frontend.logic() == "QF_LIA"` is
-  known). None of those passes have been audited for `Int` soundness (e.g.
-  Gaussian elimination divides by a pivot coefficient, which does not
-  preserve integrality); turning the whole optional pipeline off sidesteps
-  that audit rather than risking a silent wrong answer. `lower_real_equalities`
-  and Boolean flattening are unaffected -- they are not gated by
-  `preprocessing_mode`.
+- Every *optional* preprocessing pass under `options.preprocessing_mode`
+  (Gaussian elimination, monotone elimination, finite-domain
+  at-most-one, UF symmetry breaking, ...) is turned off for QF_LIA
+  (`PreprocessingMode::Off`, forced once `frontend.logic() == "QF_LIA"`
+  is known). Most of that pipeline has nothing to fire on anyway --
+  QF_LIA's scope excludes uninterpreted functions -- but Gaussian
+  elimination and monotone elimination specifically are not yet known
+  sound over Int (Gaussian elimination divides by a pivot coefficient;
+  monotone elimination's model reconstruction can produce a fractional
+  witness for an Int variable), so turning the whole pipeline off
+  sidesteps auditing each pass individually rather than risking a silent
+  wrong answer. `lower_real_equalities` and Boolean flattening are
+  unaffected -- they are not gated by `preprocessing_mode`.
+  `docs/open-leads.md` lead 12 tracks the QF_LIA preprocessing/search-gap
+  investigation this note is a summary of.
+- Bare-form solved-constant substitution (`x = t`, `x` a nullary
+  declared symbol not occurring in `t` -> replace every occurrence of
+  `x` with `t`) is enabled by default for QF_LIA regardless -- called
+  directly, in a small capped loop, bypassing the large pipeline above
+  entirely. It is pure syntactic substitution with no coefficient
+  scaling or division, so it needed no Int-specific audit the way the
+  passes above do. `arithmetic_atom_canonicalization` was also
+  attempted and reverted: `primitive_integer_scale` reduces
+  already-integer coefficients by their gcd, which is exact for Real
+  but needs the same ceil/floor rhs tightening `bound_assertion()`
+  already does elsewhere -- caught by this project's own test suite
+  before it shipped. See lead 12a in `docs/open-leads.md` for the full
+  writeup, including the separate `build_qf_lia_model` bug (defaulted
+  an eliminated variable's value to 0) this change's own testing found
+  and fixed.
 
 ### Where integer strictness actually gets handled, and three bugs found here
 

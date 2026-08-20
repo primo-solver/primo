@@ -27662,6 +27662,34 @@
       "artifacts": "remote:primo-cadical-profile/fuzz-results/qf-lia-model-gate-127488/ (bugs found), remote:primo-cadical-profile/fuzz-results/qf-lia-model-gate-127511/ (clean)",
       "evidence_status": "slurm-complete-current",
       "outcome": "The mutation-fuzzing gap identified in the prior entry is closed and immediately paid for itself: its first real run found a genuine wrong-answer bug (bug 5/4, an incomplete fix of the prior GCD-consistency bug) that three separate FuzzSMT-based Slurm campaigns and the prior entry's own targeted wide-bitwidth fuzzing had all missed. After the fix, a full campaign rerun is clean across all three stage types (FuzzSMT answer-differential + model validation, opfuzz, typefuzz). Operational note for future sessions: scripts/slurm_prepare_benchmark_workspace.py only syncs tracked HEAD files, so a gitignored corpus like benchmarks/seeds/qf_lia_division gets silently wiped by any *subsequent* sync (not just the first) -- re-stage it (scp -r) after every sync that follows staging it, and check a mutation task's log for 'seed corpus ... N files' before trusting a 'clean' result."
+    },
+    {
+      "id": "2026-08-20-qf-lia-solved-constant-substitution",
+      "started_at": "2026-08-20",
+      "recorded_at": "2026-08-20",
+      "kind": "feature",
+      "scope": "docs/open-leads.md lead 12a: audited every preprocessing pass QF_LIA's blanket preprocessing_mode=Off disables for Int-safety, following a z3 statistics comparison (lead 12) that found primo doing 210-285x z3's decisions/conflicts on two worst-gap-family instances. Implemented and enabled by default the one pass confirmed safe: bare-form solved-constant substitution (x=t, x not occurring in t, pure syntactic replacement). Attempted arithmetic_atom_canonicalization too; reverted after the project's own test suite caught it producing an unsound rewrite for Int (primitive_integer_scale reduces already-integer coefficients by their gcd, exact for Real but not for Int without ceil/floor rhs tightening).",
+      "commit": "12893e3",
+      "branch": "qf-lia-branch-and-bound",
+      "environment": {
+        "type": "local"
+      },
+      "commands": {
+        "test": "ctest --test-dir build (18 suites)",
+        "fuzz": "PATH=contrib/local/bin:$PATH python3 scripts/fuzz_external.py --fuzzer fuzzsmt --logic QF_LIA --solver ./build/primo --refs z3 --count 500 --timeout 10 --seed 99",
+        "convert_recheck": "full local recheck of sandbox/non-incremental/QF_LIA/convert against its declared :status"
+      },
+      "results": {
+        "bug_found_by_this_change's_own_testing": "build_qf_lia_model defaulted an eliminated variable's model value to 0 instead of resolving it from the substitution that replaced it -- caught immediately by qf_lia_solver_tests.cpp's trivially_sat_needs_no_branching. Fixed by threading (variable, definition) pairs through solve_qf_lia/solve_qf_lia_impl/build_qf_lia_model and adding evaluate_qf_lia_model_term, an Int-sorted analogue of the existing QF_LRA evaluate_real_model_term.",
+        "bug_found_and_reverted": "arithmetic_atom_canonicalization made gcd_uncatchable_divergent_system_hits_the_node_limit fail with 'Int literal must be an integer value' (a real, independently-fixed sort bug in canonical_linear_side's mk_rational call) and, once that was fixed, still produced an unsound rewrite for Int via primitive_integer_scale's gcd reduction. Reverted; flag stays off for QF_LIA.",
+        "test_suite": "18/18 suites pass, including a new regression test (chained_solved_constant_substitution_reconstructs_the_model) and the existing gcd_uncatchable_divergent_system_hits_the_node_limit (now also the regression test for the atom-canonicalization revert).",
+        "fuzzing": "500 local FuzzSMT cases vs z3, seed 99: zero disagreements.",
+        "convert_family_recheck": "0 wrong, matching the post-fix baseline from the prior two run-log entries.",
+        "performance_effect_on_motivating_instances": "none measurable -- prime-cone/prime_cone_unsat_6.smt2 and calypto/problem-002267.cvc.1.smt2 (this lead's own worst-case evidence) still time out with unchanged pivot/decision counts. Solved-constant substitution is a real but narrow win (fewer tableau variables/rows on formulas with actual x=t definitions), not the lever those two files need -- see lead 12c/12d for what likely is."
+      },
+      "artifacts": "none beyond the code change and doc updates",
+      "evidence_status": "local-complete-current",
+      "outcome": "A small, genuinely safe preprocessing capability shipped for QF_LIA, and the process of shipping it caught two real bugs before they reached anyone (one in the new code's own model reconstruction, one in a 6-year-old shared helper function never previously exercised with an Int atom). No measurable performance win on the specific instances that motivated this lead -- consistent with lead 12's own ranking, which named search-time integer inference (12c) and conflict-clause generalization (12d) as the larger levers, not preprocessing."
     }
   ]
 }

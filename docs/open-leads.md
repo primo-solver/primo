@@ -49,7 +49,7 @@ notes it points to.
 | -- | D4 revised simplex, LU-factored basis | unknown | largest | open, see [](qf-lra-heuristics.md) |
 | -- | H4 batched bound assertion; H6 DL fast path; H11 fill-in-aware preprocessing elimination | -- | -- | design only, see [](qf-lra-heuristics.md) |
 | [R1](#lead-recursion-audit) | Audit input-sized recursion across the repository | robustness; prevents depth-dependent crashes | medium-large | **open; deliberately deferred** |
-| [12a](#lead-qflia-preprocessing-safe) | QF_LIA: enable atom canonicalization + bare-form solved-constant substitution | primo 210-285x z3's decisions/conflicts on 2 worst-gap-family instances | small | open |
+| [12a](#lead-qflia-preprocessing-safe) | QF_LIA: enable bare-form solved-constant substitution | no measurable effect on the 2 motivating instances; real but narrow win elsewhere | small | **done: substitution shipped default-on; atom canonicalization attempted and reverted, unsafe as written** |
 | [12b](#lead-qflia-preprocessing-gauss) | QF_LIA: partial (unit-pivot) Gaussian elimination | needs a population census first | medium | open, gated on a census |
 | [12c](#lead-qflia-dio-hnf-cube) | QF_LIA: Diophantine/HNF/cube search-time reasoning | z3 closes 96% of calypto's conflicts via Dio, not branching | large | open, no paper note yet |
 | [12d](#lead-qflia-conflict-generalization) | QF_LIA: generalizing (Farkas-style) arithmetic conflict clauses | 56,864 near-1:1 lra/sat conflicts on one file | large | open, no paper note yet |
@@ -1457,7 +1457,7 @@ in [](qf-lia-branch-and-bound.md)'s "GCD-consistency" section).
 Four separable sub-leads follow, ranked cheapest first.
 
 (lead-qflia-preprocessing-safe)=
-### 12a. Enable the two already-Int-safe preprocessing passes
+### 12a. Enable the already-Int-safe preprocessing passes
 
 Audited every pass QF_LIA's blanket `preprocessing_mode = Off` currently
 disables (2026-08-20, reading `src/smt/preprocessing.cpp` and
@@ -1466,25 +1466,83 @@ domain-unsafe for Int:
 
 | pass | mechanism | Int-safe? | why |
 |---|---|---|---|
-| `arithmetic_atom_canonicalization` | rewrites an atom to a canonical `sum <= sum` form via `primitive_integer_scale` (multiplies both sides by a positive constant that clears denominators/normalizes sign) and dedups syntactically-equivalent atoms onto the same SAT variable | **yes** | multiplying an (in)equality by a positive constant is an exact equivalence over any ordered ring, not an approximation; `LraAtom::normalize_atom` underneath is already sort-agnostic (stage 1 note in [](qf-lia-branch-and-bound.md)) |
-| `substitute_solved_constants` (bare form, `enable_gaussian_elimination=false`) | `x = t` (`x` a nullary declared symbol not occurring in `t`) -> replace every occurrence of `x` with `t` | **yes** | pure syntactic substitution, no coefficient scaling or division anywhere |
+| `arithmetic_atom_canonicalization` | rewrites an atom to a canonical `sum <= sum` form via `primitive_integer_scale` and dedups syntactically-equivalent atoms onto the same SAT variable | **no, as first assessed -- corrected below** | `primitive_integer_scale` does not just clear denominators; on already-integer coefficients it *reduces by their gcd* (`4x+4y` -> scale `1/4`), which is exact for Real but not for Int without the same ceil/floor rhs tightening `bound_assertion()` already does elsewhere |
+| `substitute_solved_constants` (bare form, `enable_gaussian_elimination=false`) | `x = t` (`x` a nullary declared symbol not occurring in `t`) -> replace every occurrence of `x` with `t` | **yes, confirmed** | pure syntactic substitution, no coefficient scaling or division anywhere |
 | `substitute_solved_constants` (`enable_gaussian_elimination=true`, **the `CheckSatOptions` default**) | Gauss-Jordan row reduction over Real-sorted equalities (`collect_real_equalities` is hardcoded to `real_sort()`); divides every other coefficient in a pivot row by the pivot coefficient | **no, as written** | `coefficient / pivot_coefficient` (`preprocessing.cpp:764`) silently drops the divisibility constraint a non-unit pivot needs for the eliminated variable to stay integer -- the same class of bug this session already found and fixed three times in the tableau/GCD code, here at the term-rewriting level instead |
 | Monotone (one-sided) variable elimination | hardcoded to "0-ary **Real** `Constant`" only; discharges one-sided atoms, then reconstructs a witness value as `tightest_bound +/- 1` | **no, as written** (the elimination reasoning generalizes; the model reconstruction does not) | `apply_monotone_eliminations` (`check_sat.cpp:5678`) computes `bound = (atom.rhs - rest) / coefficient` then `chosen = tightest +/- 1` -- for an Int variable this can and will produce a **fractional witness value** whenever the tightest bound isn't already an integer (e.g. `3x <= 7` -> bound `7/3` -> chosen `4/3`), printed straight into the model |
 | everything else under `preprocessing_mode` (finite-domain-at-most-one, UF symmetry breaking, structural selector, congruence-definition generation, eq-bridge, ...) | all reason about uninterpreted functions or Bool-sorted finite-domain structure | **N/A** | QF_LIA's own scope excludes uninterpreted functions entirely ([](qf-lia-branch-and-bound.md)'s "Scope" section); these passes have nothing to fire on in a QF_LIA formula regardless of the flag |
 
-**Cost.** Small: two flags plus one new unconditional call site, mirroring
-how Boolean flattening already runs unconditionally for QF_LIA today
-(`preprocessing_mode = Off` only gates the large pass-limited loop, not
-individual passes called outside it) -- not the large preprocessing loop
-those other mechanisms share.
+**Outcome (2026-08-20): bare-form `substitute_solved_constants` implemented
+and enabled by default for QF_LIA; `arithmetic_atom_canonicalization`
+attempted, found unsafe by this project's own test suite, and reverted --
+worth recording as another data point for how often "should be safe by
+inspection" is wrong on this codebase.**
 
-**Falsifier.** If enabling `arithmetic_atom_canonicalization` and
-bare-form `substitute_solved_constants` for QF_LIA (a) changes any answer
-on the local QF_LIA corpus/fuzz gates, or (b) does not measurably reduce
-`sat.decisions`/`sat.conflicts`/PAR2 on the 428-file representative
-sample, this sub-lead is not worth carrying further -- but (a) failing
-would mean the audit above missed something and needs to be redone, not
-just retuned.
+**What shipped.** `check_sat.cpp` now calls `substitute_solved_constants`
+directly for QF_LIA (`enable_gaussian_elimination=false` explicitly, not
+`options.gaussian_elimination`, which defaults true and stays wrong for
+Int per the table above), in a small capped loop (8 passes, break on no
+acceptance) rather than through the large preprocessing loop -- each pass
+fully rewrites accepted definitions into the remaining assertions before
+the next pass collects fresh candidates, so a chain like `x=y, y=5`
+resolves the same way the Real-side loop's repeated calls do, without
+needing any cross-pass dependency tracking.
+
+**The bug that shipping this caught.** `build_qf_lia_model`
+(`check_sat.cpp:5929`) reads a variable's value straight from
+`PreparedLraTheory::variables_by_term`/the tableau; a variable eliminated
+entirely by substitution never reaches either, and the function defaulted
+it to `0` -- silently wrong whenever the eliminated value wasn't 0
+(caught immediately by `qf_lia_solver_tests.cpp`'s
+`trivially_sat_needs_no_branching`, `(assert (= x 7))` printing `x`'s
+value as `0`). Fixed by threading the accepted `(variable, definition)`
+pairs through `solve_qf_lia`/`solve_qf_lia_impl`/`build_qf_lia_model` and
+adding `evaluate_qf_lia_model_term`, an Int-sorted analogue of the
+existing `evaluate_real_model_term` used for QF_LRA's own monotone-
+elimination model reconstruction -- it only ever needs to resolve
+literals, `+`/scalar-`*` structure, and tableau-resident variables, never
+another substitution's definition, because each pass already inlined any
+such reference before the next pass could collect it as a candidate.
+
+**The bug that reverted `arithmetic_atom_canonicalization`.** Enabling it
+alongside the above made `qf_lia_solver_tests.cpp`'s
+`gcd_uncatchable_divergent_system_hits_the_node_limit`
+(`4x+4y` bounded in `[2,3]`, no integer solution, deliberately meant to
+hit `--lia-branch-limit` and report `Unknown`) fail outright with
+`Int literal must be an integer value` -- `canonical_linear_side`
+(`preprocessing.cpp:449`) builds a constant summand via the one-argument
+`mk_rational(value)` overload, which defaults to `real_sort()`
+regardless of the atom's actual sort (fixed separately, since it is a
+real bug independent of Int-safety -- an Int atom with a nonzero constant
+summand under `arithmetic_atom_canonicalization` would previously have
+built a sort-mismatched term even before the gcd-reduction issue could
+matter). Once that was fixed, the gcd-reduction issue in the table above
+still stood, so the flag itself stays off for QF_LIA. **Do not re-enable
+without first adding rhs ceil/floor tightening to
+`canonicalize_arithmetic_atom`, mirroring `bound_assertion()`'s own,
+including its "worked through explicitly" eight-combination comment as a
+template for what needs re-deriving here.**
+
+**Verification.** Full test suite (18 suites) green; both `convert` repro
+files, the delta-infinitesimal repro, and both opfuzz-found bugs from
+earlier this session re-checked correct; 500 further local FuzzSMT cases
+against z3 (seed 99), zero disagreements; full local `convert`-family
+recheck, 0 wrong. Performance effect on the two z3-comparison files from
+this lead's own motivating evidence (`prime_cone_unsat_6`,
+`calypto/problem-002267`): **none measurable** -- both still time out
+with the same pivot/decision counts as before. Solved-constant
+substitution alone was never expected to move files whose gap comes from
+missing search-time integer inference (12c) or the atom-canonicalization
+dedup this entry had to revert; it is a real but narrow win (fewer
+tableau variables/rows on formulas with actual `x = t` definitions), not
+the lever those two files need.
+
+**Falsifier, satisfied for the shipped half.** Changed no answer on the
+local QF_LIA corpus/fuzz gates (confirmed above). **Falsifier for the
+reverted half**: re-attempt only after the ceil/floor fix, and re-run
+this exact test suite before trusting it -- `gcd_uncatchable_divergent_
+system_hits_the_node_limit` is now the regression test for this specific
+failure mode.
 
 (lead-qflia-preprocessing-gauss)=
 ### 12b. Partial (unit-pivot) Gaussian elimination for Int
