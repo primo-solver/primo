@@ -27631,6 +27631,37 @@
       "artifacts": "remote:primo-cadical-profile/fuzz-results/qf-lia-model-gate-127465/ (failed run), remote:primo-cadical-profile/fuzz-results/qf-lia-model-gate-127473/ (clean run)",
       "evidence_status": "slurm-complete-current",
       "outcome": "Both the original real-world-benchmark bug and the delta-infinitesimal bug it exposed are fixed and verified sound at full campaign scale (4000 Slurm cases, zero wrong answers, zero crashes, zero model errors) plus a full recheck of the real-world family that originally found the first bug. The fuzzing-gap investigation confirms FuzzSMT's default QF_LIA parameters are structurally unable to reach this bug class (not bad luck across three prior 'zero wrong' campaigns), and that widening parameters alone is not a reliable substitute for a real-benchmark-derived seed corpus -- see docs/qf-lia-branch-and-bound.md's 'Real-world benchmark evaluation and the fuzzing gap' section for the actionable next step (not implemented this session)."
+    },
+    {
+      "id": "2026-08-20-qf-lia-mutation-fuzz-gate-slurm-verification",
+      "started_at": "2026-08-20",
+      "recorded_at": "2026-08-20",
+      "kind": "fuzz",
+      "scope": "Closes the actionable gap the prior entry flagged: a real QF_LIA seed corpus (benchmarks/seeds/qf_lia_division, generated from sandbox/non-incremental/QF_LIA, 61 seeds/32 families, gitignored) plus an opfuzz task and two YinYang/typefuzz tasks added to scripts/slurm_qf_lia_model_fuzz_gate.sbatch alongside its existing FuzzSMT-only stage, with restricted mutation configs (benchmarks/fuzz-configs/qf_lia_{operator_mutations,typefuzz}.txt). First real run (job 127488) found two new wrong-answer disagreements the stage was added specifically to catch; fixed (commit b728f62, 'Fix gcd_inconsistent_row's Z-domain assumption for row terms, not just the basic variable' -- see docs/qf-lia-branch-and-bound.md's bug 5 under GCD-consistency / bug 4 under Fuzzing) and reverified clean (job 127511).",
+      "commit": "b728f62",
+      "branch": "qf-lia-branch-and-bound",
+      "environment": {
+        "type": "SLURM",
+        "host": "llm2smt-slurm",
+        "workdir": "primo-cadical-profile",
+        "job": "127488 (11 tasks: 8 FuzzSMT shards + 1 opfuzz + 2 typefuzz, commit e8b2bbf, pre-bug-5-fix -- opfuzz found 2 wrong-answer bugs); 127511 (same 11-task layout, commit b728f62, post-fix -- clean)"
+      },
+      "commands": {
+        "seed_corpus": "python3 scripts/build_fuzz_seed_corpus.py --root sandbox/non-incremental/QF_LIA --out benchmarks/seeds/qf_lia_division --per-family 2 --max-bytes 200000 (run locally, staged onto the remote workspace directly via scp -r since sandbox/ is 7.7GB and not synced -- see the 'corpus needs re-staging after every sync' note below)",
+        "sync": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config /tmp/llm2smt_slurm_ssh_config --remote llm2smt-slurm --remote-dir /home/janotmik/primo-cadical-profile",
+        "submit": "sbatch --export=ALL,PRIMO_WORKDIR=...,PATH=.../contrib/local/bin:.../.venv-yinyang/bin:$PATH scripts/slurm_qf_lia_model_fuzz_gate.sbatch"
+      },
+      "results": {
+        "job_127488_fuzzsmt": "3916 PASS, zero wrong answers, zero model-error -- consistent with every prior FuzzSMT-only campaign.",
+        "job_127488_opfuzz": "Found 2 disagreements (primo unsat, z3 sat), both from calypto-family seeds, both minimizing to the same shape: (assert (distinct (* 2 dz) (ite true 1 1))). Independently hand-verified: z3 correct (dz=1 satisfies it), primo wrong.",
+        "job_127488_typefuzz": "0 bugs (both tasks); typefuzz is markedly slower per-seed than opfuzz on this corpus (deeply nested-let seeds like the Averest family are CPU-bound-slow to process, not hung -- see docs/qf-lia-branch-and-bound.md), so its effective coverage within the 1500s budget is lower.",
+        "job_127511_fuzzsmt": "3907 PASS, 190 benign timeouts, 1 benign UNKNOWN_INVOLVED, zero wrong answers. Model validation: 3482 pass, 454 correctly not-sat, 61 benign timeouts, 3 benign solver-unknown, zero model-error.",
+        "job_127511_opfuzz": "16,662 solver calls, zero bugs.",
+        "job_127511_typefuzz": "0 bugs (both tasks)."
+      },
+      "artifacts": "remote:primo-cadical-profile/fuzz-results/qf-lia-model-gate-127488/ (bugs found), remote:primo-cadical-profile/fuzz-results/qf-lia-model-gate-127511/ (clean)",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "The mutation-fuzzing gap identified in the prior entry is closed and immediately paid for itself: its first real run found a genuine wrong-answer bug (bug 5/4, an incomplete fix of the prior GCD-consistency bug) that three separate FuzzSMT-based Slurm campaigns and the prior entry's own targeted wide-bitwidth fuzzing had all missed. After the fix, a full campaign rerun is clean across all three stage types (FuzzSMT answer-differential + model validation, opfuzz, typefuzz). Operational note for future sessions: scripts/slurm_prepare_benchmark_workspace.py only syncs tracked HEAD files, so a gitignored corpus like benchmarks/seeds/qf_lia_division gets silently wiped by any *subsequent* sync (not just the first) -- re-stage it (scp -r) after every sync that follows staging it, and check a mutation task's log for 'seed corpus ... N files' before trusting a 'clean' result."
     }
   ]
 }

@@ -363,6 +363,18 @@ through an unrelated pivot) -- only for the case a fractionally-scaled
 slack is basic and unfixed, where the old code had nothing sound to
 conclude anyway.
 
+**Bug 5 (found by mutation fuzzing, not the real-world benchmarks --
+see [Fuzzing](#fuzzing)'s "Bug 4" writeup for the full repro and fix):
+bug 4's own fix was incomplete.** It checked `is_declared_integer` for
+`x_b` but not for the row's *other* terms, on the reasoning that those
+always come from `PreparedLraTheory`'s row construction and so are always
+declared variables. True of a row's pristine, freshly-built state, but
+not preserved by Simplex pivoting, which can rewrite both rows in a pivot
+pair in terms of each other -- so a former basic slack can end up as an
+ordinary term in some other (now-basic) declared variable's row. Fixed by
+checking `is_declared_integer` for every row term too, the same treatment
+`x_b` already got.
+
 ## Gomory cuts
 
 Stage 3, `theory::arithmetic::apply_gomory_cuts`
@@ -586,17 +598,116 @@ PATH="contrib/local/bin:$PATH" python3 scripts/fuzz_external.py \
 ```
 
 **Slurm-scale gate** (`scripts/slurm_qf_lia_model_fuzz_gate.sbatch`): a
-fresh sibling of `scripts/slurm_qf_lra_model_fuzz_gate.sbatch`'s
-FuzzSMT-shard portion -- several FuzzSMT shards generated fresh per array
-task, each checked answer-differentially against z3 and, for `sat`
-results, model-validated with Dolmen (`scripts/validate_model.py`).
-Unlike the QF_LRA gate, there is no opfuzz/typefuzz mutation-fuzzing stage
-here yet, because that stage mutates a committed seed corpus
-(`benchmarks/seeds/qf_lra_division`) and no equivalent QF_LIA corpus
-exists (`benchmarks/seeds/qf_lra_*` are gitignored generated directories,
-not tracked; see that gate's own comment on why). Adding one is natural
-future work once real QF_LIA benchmarks are collected, not a blocker for
-running the FuzzSMT-only gate as-is.
+sibling of `scripts/slurm_qf_lra_model_fuzz_gate.sbatch`, with the same
+two kinds of stage. FuzzSMT shards (default 8) generate fresh instances
+per array task, each checked answer-differentially against z3 and, for
+`sat` results, model-validated with Dolmen (`scripts/validate_model.py`).
+An opfuzz task and two YinYang/typefuzz tasks (default: 1 and 2) mutate a
+real QF_LIA seed corpus instead -- added 2026-08-20, closing the gap
+[Real-world benchmark evaluation and the fuzzing gap](#real-world-benchmark-evaluation-and-the-fuzzing-gap)
+below documents: FuzzSMT's own QF_LIA generator cannot produce the large,
+non-unit scale-canonicalization factors that section's bug needed, so
+only real benchmark formulas (mutated, to explore around them rather than
+just replaying them unchanged) can exercise that shape at all.
+
+**The QF_LIA seed corpus** (`benchmarks/seeds/qf_lia_division`, gitignored
+like its QF_LRA counterpart, not committed): built with
+`scripts/build_fuzz_seed_corpus.py --root sandbox/non-incremental/QF_LIA
+--out benchmarks/seeds/qf_lia_division --per-family 2 --max-bytes 200000`
+-- the smallest 1-2 files from every one of the division's 32 families
+(61 seeds, 2.2MB total), including `convert` (the family that found the
+scale-canonicalization bug; both chosen `convert` seeds independently
+verified to still carry dozens of the large scale-canonicalizing
+coefficients that matter, despite being under 10KB each). Unlike
+`sandbox/`, which is 7.7GB and wholesale `.gitignore`'d with no staged
+fallback root on a fresh SLURM workspace, this corpus is small enough to
+stage directly (e.g. `scp`/`rsync` alongside a workspace sync) rather than
+needing `slurm_qf_lra_model_fuzz_gate.sbatch`'s own
+build-it-from-a-staged-root fallback -- `slurm_qf_lia_model_fuzz_gate.sbatch`
+fails loudly instead if the corpus is missing, rather than assuming a
+`tmp/QF_LIA` root that (unlike QF_LRA's) has no established staging
+convention yet.
+
+**Mutation configs**: `benchmarks/fuzz-configs/qf_lia_operator_mutations.txt`
+(opfuzz) and `benchmarks/fuzz-configs/qf_lia_typefuzz.txt` (typefuzz)
+restrict mutations to stay inside Primo's QF_LIA -- linear arithmetic,
+Boolean structure, comparisons -- dropping nonlinear `*`, `div`/`mod`
+(not recognized by Primo's grammar at all, unlike `/`, which parses and
+is then explicitly rejected) and `abs` (also not a recognized symbol).
+Structurally identical to the QF_LRA configs' own restrictions, since
+Primo's QF_LIA is QF_LRA's arithmetic core plus an `Int` sort rather than
+a separately-restricted grammar.
+
+**A real quirk, not a bug, found while smoke-testing this stage locally**:
+typefuzz can take tens of seconds per seed on formulas with deeply nested
+`let` bindings (e.g. the `Averest` family's hardware-style encodings --
+confirmed CPU-bound, not hung, by timing a single 54-line seed directly:
+33.5s user time out of a 40s wall-clock budget). opfuzz does not show this
+slowdown on the same corpus (190 solver calls in 60s locally). This is the
+same class of concern `build_fuzz_seed_corpus.py`'s own docstring already
+flags for QF_LRA's `latendresse`/`LassoRanker` families -- some seed
+shapes are inherently expensive for a mutation tool to process -- and the
+gate's `--seconds 1500` wall-clock per mutation task is designed to absorb
+it: partial seed coverage within one run is expected and acceptable, not
+a failure (`yinyang_fuzz.sh` itself treats hitting the wall as time-boxed
+completion, not an error).
+
+**The corpus needs re-staging after every workspace sync, not just the
+first time.** `scripts/slurm_prepare_benchmark_workspace.py` syncs only
+tracked `HEAD` files; `benchmarks/seeds/qf_lia_division` is gitignored
+(same as its QF_LRA counterpart -- see `.gitignore`'s own comment on
+that directory), so a sync run *after* the corpus was already staged
+wipes it again. Hit directly in this session: the corpus was scp'd onto
+the SLURM workspace, a code fix landed, `slurm_prepare_benchmark_workspace.py`
+ran again to sync that fix, and the very next gate submission failed
+immediately with "seed corpus is empty or missing" -- the sync had
+deleted it. Re-`scp` the corpus after every sync that follows staging it,
+not just once per workspace.
+
+**Bug 4 (this section's own numbering; [GCD-consistency](#gcd-consistency)'s
+"Bug 5" for the same fix), found by the mutation stage's first real run
+(2026-08-20, job 127488, opfuzz): the GCD-consistency fix above did not
+fully close its own bug.** Two `calypto`-family mutants disagreed with z3 (primo `unsat`,
+z3 `sat`), minimized to `(assert (distinct (* 2 dz) (ite true 1 1)))`.
+The GCD-consistency fix earlier in this same investigation (see
+[GCD-consistency](#gcd-consistency)'s bug 4) only checked whether a row's
+*basic* variable was a declared Int problem variable before assuming it
+ranges over Z, reasoning that a row's *other* terms are always declared
+variables straight from `PreparedLraTheory`'s row construction. True of a
+row's pristine, freshly-built state, but not preserved by Simplex
+pivoting, which can swap which variable is basic in a given linear
+relationship and rewrite both rows in terms of each other -- so a former
+basic slack can end up as an ordinary *term* in some other (now-basic)
+declared variable's row. That is exactly what the minimized repro does:
+`t` (the `ite`'s auxiliary variable) gets forced to `1`, `dz` becomes
+basic in a row whose *term* is the scale-canonicalized slack for `2*dz -
+t`, and the term-processing loop (unlike the already-fixed basic-variable
+case) still folded that slack's coefficient into `free_coefficients`
+unconditionally. **Fix**: `is_declared_integer` is now checked for every
+row term too, not just `basic_var` -- see
+`src/theory/arithmetic/lia_gcd_consistency.cpp`'s updated comment and
+`tests/unit/lia_gcd_consistency_tests.cpp`'s
+`does_not_flag_a_non_integer_slack_as_an_ordinary_row_term`, which builds
+the post-pivot row shape directly. Reverified after the fix: both
+minimized reproducers, the two original `convert` repro files, the
+delta-infinitesimal repro, 500 further local FuzzSMT cases, ~2000 further
+local opfuzz solver calls, and a full Slurm re-run all clean (job 127511
+below).
+
+**Status (mutation-fuzzing gate)**: first real run, 2026-08-20, job
+127488 (11 tasks: 8 FuzzSMT shards + 1 opfuzz + 2 typefuzz) -- FuzzSMT
+shards clean (3916 PASS, zero wrong answers, zero model-error), but the
+opfuzz task found the two `calypto` disagreements above (bug 4), the
+concrete payoff of adding this stage in the first place: neither of the
+prior fuzzing approaches (FuzzSMT campaigns, local smoke fuzzing) had
+ever found it. After the fix (commit with bug 4's writeup above), job
+127511 reran the identical gate clean end to end: FuzzSMT shards 3907
+PASS, 190 benign timeouts, 1 benign `UNKNOWN_INVOLVED`, **zero wrong
+answers**; model validation 3482 pass, 454 correctly `not-sat`, 61 benign
+timeouts, 3 benign `solver-unknown`, **zero `model-error`**; opfuzz
+16,662 solver calls, **zero bugs**; both typefuzz tasks, **zero bugs**.
+See `docs/run-log.json`'s `2026-08-20-qf-lia-mutation-fuzz-gate-slurm-verification`
+entry for the complete record of both jobs.
 
 **Bug 3, found running the gate itself on the cluster (2026-08-19, job
 127439): Dolmen's default `--strict=true` rejects real FuzzSMT QF_LIA
@@ -742,17 +853,21 @@ during this same wide-bitwidth batch (see the third bug/fix above) but
 not as the original wrong-answer bug on the old one, in 500 cases either
 way.
 
-**The actionable gap, not yet closed.** `scripts/slurm_qf_lia_model_fuzz_gate.sbatch`'s
-own comment already flagged this direction as "natural future work once
-real QF_LIA benchmarks are collected" back when stage 1 shipped -- true
-today, and now demonstrably load-bearing rather than hypothetical. Real
-QF_LIA benchmarks are collected now (`sandbox/non-incremental/QF_LIA`).
-The concrete next step is the same pattern `scripts/build_fuzz_seed_corpus.py`
-already establishes for QF_LRA: a committed seed corpus of real QF_LIA
-benchmarks (starting with `convert`, the family that actually found this)
-for opfuzz/typefuzz mutation-fuzzing, added to the Slurm gate alongside
-its existing FuzzSMT-only stage -- not attempted in this session, since
-it is genuinely new infrastructure work, not a fix.
+**The actionable gap -- closed 2026-08-20.** `scripts/slurm_qf_lia_model_fuzz_gate.sbatch`'s
+own comment had already flagged this direction as "natural future work
+once real QF_LIA benchmarks are collected" back when stage 1 shipped; this
+evaluation made it demonstrably load-bearing rather than hypothetical.
+Real QF_LIA benchmarks are collected now (`sandbox/non-incremental/QF_LIA`),
+and the same pattern `scripts/build_fuzz_seed_corpus.py` already
+establishes for QF_LRA now has a QF_LIA counterpart: a generated (not
+committed, same as QF_LRA's) seed corpus at
+`benchmarks/seeds/qf_lia_division` covering all 32 families including
+`convert`, an opfuzz task and two YinYang/typefuzz tasks added to
+`scripts/slurm_qf_lia_model_fuzz_gate.sbatch` alongside its existing
+FuzzSMT-only stage, and restricted mutation configs
+(`benchmarks/fuzz-configs/qf_lia_{operator_mutations,typefuzz}.txt`) --
+see [Fuzzing](#fuzzing) above for the full setup and a first Slurm-scale
+run's results.
 
 ## Tests
 
