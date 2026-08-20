@@ -1,5 +1,6 @@
 #include "theory/arithmetic/lia_gcd_consistency.hpp"
 
+#include <algorithm>
 #include <vector>
 
 #include "util/rational.hpp"
@@ -35,19 +36,32 @@ std::optional<util::Rational> fixed_value(const LraTableau& tableau, LraVarId va
 // pivot can move which variable in a given linear relationship happens to
 // be basic without changing which underlying variables are fixed -- into
 // a residual constant, leaving `sum(free_coeff * free_var) = residual`
-// over the remaining free (Int-sorted, ranging over all of Z) variables.
-// That is achievable iff gcd(free_coeff) divides residual; if there are
-// no free variables left, every quantity in the row is already
-// known/fixed and this derives nothing beyond what ordinary LRA
-// consistency already checked.
-bool row_is_gcd_consistent(const LraTableau& tableau, LraVarId basic_var) {
+// over the remaining free variables. That is achievable iff gcd(free_coeff)
+// divides residual, but ONLY once every free variable is confirmed to
+// range over all of Z: every row *term* (entry.var) is a declared QF_LIA
+// problem variable and so always qualifies (see the .hpp comment), but a
+// non-fixed *basic_var* can be a scale-canonicalized slack that does not
+// -- checked via `is_declared_integer`, indexed by LraVarId. If
+// basic_var is free and not confirmed integer, this row carries no GCD
+// information (see the .hpp comment) and is reported consistent
+// immediately, before even collecting the row's other terms -- there is
+// nothing sound to conclude from a residual against a variable that may
+// not be integer-valued in the first place. If there are no free
+// variables left, every quantity in the row is already known/fixed and
+// this derives nothing beyond what ordinary LRA consistency already
+// checked.
+bool row_is_gcd_consistent(const LraTableau& tableau, LraVarId basic_var,
+                           const std::vector<bool>& is_declared_integer) {
   std::vector<util::Rational> free_coefficients;
   util::Rational residual(0);
 
-  if (const auto basic_fixed = fixed_value(tableau, basic_var); basic_fixed.has_value()) {
+  const auto basic_fixed = fixed_value(tableau, basic_var);
+  if (basic_fixed.has_value()) {
     residual -= *basic_fixed;  // basic_var's own signed coefficient is +1.
-  } else {
+  } else if (is_declared_integer[basic_var]) {
     free_coefficients.push_back(util::Rational(1));
+  } else {
+    return true;
   }
 
   for (const auto& entry : tableau.row(basic_var)) {
@@ -83,12 +97,17 @@ bool row_is_gcd_consistent(const LraTableau& tableau, LraVarId basic_var) {
 
 }  // namespace
 
-std::optional<LraVarId> gcd_inconsistent_row(const LraTableau& tableau) {
+std::optional<LraVarId> gcd_inconsistent_row(const LraTableau& tableau,
+                                             const std::vector<LraVarId>& integer_vars) {
+  std::vector<bool> is_declared_integer(tableau.variable_count(), false);
+  for (const LraVarId var : integer_vars) {
+    is_declared_integer[var] = true;
+  }
   for (LraVarId var = 0; var < tableau.variable_count(); ++var) {
     if (!tableau.is_basic(var)) {
       continue;
     }
-    if (!row_is_gcd_consistent(tableau, var)) {
+    if (!row_is_gcd_consistent(tableau, var, is_declared_integer)) {
       return var;
     }
   }

@@ -3,6 +3,7 @@
 #endif
 
 #include <cassert>
+#include <vector>
 
 #include "sat/lit.hpp"
 #include "theory/arithmetic/lia_gcd_consistency.hpp"
@@ -35,7 +36,7 @@ void catches_the_motivating_example() {
   // Which variable ends up basic (and so which row gets checked) is a
   // Bland's-rule/pivot implementation detail, not part of the contract --
   // only that *some* row catches the inconsistency.
-  assert(gcd_inconsistent_row(tableau).has_value());
+  assert(gcd_inconsistent_row(tableau, {x, y}).has_value());
 }
 
 // The same relationship, but stored the way PreparedLraTheory's
@@ -56,7 +57,7 @@ void catches_the_canonicalized_form_of_the_same_row() {
   assert(!canonical_tableau.assert_lower(cs, half, Lit{2}).has_value());
   assert(!canonical_tableau.check().has_value());
 
-  assert(gcd_inconsistent_row(canonical_tableau).has_value());
+  assert(gcd_inconsistent_row(canonical_tableau, {cx, cy}).has_value());
 }
 
 // 2x + 3y = 1: gcd(2,3) = 1 divides everything, so every fixed value is
@@ -73,7 +74,7 @@ void does_not_flag_a_coprime_row() {
   assert(!tableau.assert_lower(s, rat(1), Lit{2}).has_value());
   assert(!tableau.check().has_value());
 
-  assert(!gcd_inconsistent_row(tableau).has_value());
+  assert(!gcd_inconsistent_row(tableau, {x, y}).has_value());
 }
 
 // Same inconsistent row as the motivating example, but bounded on only
@@ -88,7 +89,7 @@ void skips_a_row_that_is_bounded_but_not_fixed() {
   assert(!tableau.assert_upper(s, rat(1), Lit{1}).has_value());
   assert(!tableau.check().has_value());
 
-  assert(!gcd_inconsistent_row(tableau).has_value());
+  assert(!gcd_inconsistent_row(tableau, {x, y}).has_value());
 }
 
 // A row with a single coefficient-1 term (the common shape after
@@ -103,7 +104,7 @@ void does_not_flag_a_trivial_coefficient_one_row() {
   assert(!tableau.assert_lower(s, rat(7), Lit{2}).has_value());
   assert(!tableau.check().has_value());
 
-  assert(!gcd_inconsistent_row(tableau).has_value());
+  assert(!gcd_inconsistent_row(tableau, {x}).has_value());
 }
 
 // A fixed row equal to zero is always achievable (every variable at 0),
@@ -118,7 +119,44 @@ void does_not_flag_a_row_fixed_to_zero() {
   assert(!tableau.assert_lower(s, rat(0), Lit{2}).has_value());
   assert(!tableau.check().has_value());
 
-  assert(!gcd_inconsistent_row(tableau).has_value());
+  assert(!gcd_inconsistent_row(tableau, {x, y}).has_value());
+}
+
+// The bug this module's `integer_vars` parameter fixes (found via a
+// real-world QF_LIA benchmark, docs/qf-lia-branch-and-bound.md): `s`
+// represents `x + y/1000000` -- the scale-canonicalized form of a row
+// whose lowest-indexed variable had a large coefficient (1000000), a
+// routine shape for e.g. bit-position-weighted terms. `s` is fixed on
+// neither side (a strict lower bound with a nonzero infinitesimal, a
+// non-matching exact upper bound), and is NOT itself an integer variable
+// -- it is a slack, not one of {x, y} -- even though x and y, which ARE
+// integer, are both fixed and so make `s`'s row value fully determined
+// at -1/1000000 regardless. Before `integer_vars` was threaded through,
+// this row's free_coefficients unconditionally included a coefficient of
+// 1 for `s` on the assumption that any unfixed basic variable ranges
+// over Z; folding x=0 and y=-1 into the residual then left a
+// non-integer residual (-1/1000000, scaled) that no integer combination
+// of {s} could match, so this was flagged Unsat -- excluding a value
+// (s=-1/1000000) that was never actually claimed to be an integer by
+// anything in the problem.
+void does_not_flag_an_unfixed_non_integer_slack() {
+  LraTableau tableau;
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  const LraVarId s = tableau.add_variable();
+  tableau.add_row(s, {{x, Rational(1)}, {y, Rational(1, 1000000)}});
+  assert(!tableau.assert_upper(x, rat(0), Lit{1}).has_value());
+  assert(!tableau.assert_lower(x, rat(0), Lit{2}).has_value());
+  assert(!tableau.assert_upper(y, rat(-1), Lit{3}).has_value());
+  assert(!tableau.assert_lower(y, rat(-1), Lit{4}).has_value());
+  assert(!tableau
+              .assert_lower(s, DeltaRational{Rational(-1, 2), Rational(1)}, Lit{5})
+              .has_value());
+  assert(!tableau.assert_upper(s, DeltaRational::from_rational(Rational(-1, 1000000)), Lit{6})
+              .has_value());
+  assert(!tableau.check().has_value());
+
+  assert(!gcd_inconsistent_row(tableau, {x, y}).has_value());
 }
 
 }  // namespace
@@ -130,5 +168,6 @@ int main() {
   skips_a_row_that_is_bounded_but_not_fixed();
   does_not_flag_a_trivial_coefficient_one_row();
   does_not_flag_a_row_fixed_to_zero();
+  does_not_flag_an_unfixed_non_integer_slack();
   return 0;
 }

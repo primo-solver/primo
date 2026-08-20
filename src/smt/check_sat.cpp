@@ -5472,8 +5472,27 @@ PreparedLraTheory::PreparedLraTheory(const core::TermManager& terms,
     const TermPairKey non_strict_le_pair =
         term.kind == core::TermKind::Le ? TermPairKey{term.children.at(0), term.children.at(1)}
                                         : TermPairKey{};
+    // Unlike the single-variable case above, `slack` is a fresh tableau
+    // variable satisfying `slack = canonical.polynomial`, i.e. the original
+    // integer-coefficient polynomial divided by `canonical.scale` -- so
+    // `slack` itself is only guaranteed integer-valued when that division
+    // was by +-1. For any other scale (routine here: scale-canonicalizing a
+    // polynomial whose lowest-indexed variable has a large coefficient, e.g.
+    // a bit-position term scaled by 2^32, produces exactly this) `slack`
+    // takes on fractional values even though the underlying polynomial is
+    // integer, and bound_assertion()'s strict-bound floor/ceil tightening
+    // -- sound only for a value that is itself forced to be integer, per its
+    // own comment -- would tighten the *slack's* fractional value directly,
+    // which is unsound: it can fabricate a bound (e.g. rounding a value like
+    // -5/2^32 down to -1) that excludes integer polynomial values the
+    // original atom never ruled out. See lia_gomory_cuts.cpp's
+    // find_eligible_row for the same slack-vs-declared-variable distinction
+    // already made there for exactly this reason.
+    const bool slack_is_integer =
+        is_integer_atom &&
+        (canonical.scale == util::Rational(1) || canonical.scale == util::Rational(-1));
     atoms.push_back(PreparedAtom{true, slack, normalized.relation, rhs, flipped, non_strict_le_pair,
-                                 is_integer_atom});
+                                 slack_is_integer});
     atoms_by_bound_var[slack].push_back(atom_index);
   }
 
@@ -10511,7 +10530,8 @@ CheckSatOutcome solve_qf_lia_impl(core::TermManager& terms,
       // with x, y unbounded -- gcd_inconsistent_row proves no integer
       // assignment can satisfy that row directly; branch-and-bound alone
       // would branch until --lia-branch-limit and report Unknown).
-      bool arithmetic_unsat = theory::arithmetic::gcd_inconsistent_row(lia_tableau).has_value();
+      bool arithmetic_unsat =
+          theory::arithmetic::gcd_inconsistent_row(lia_tableau, integer_vars).has_value();
       // Stage 3: mutates lia_tableau (adds cut rows/bounds -- safe here,
       // see lia_gomory_cuts.cpp's module comment for why nothing needs to
       // undo them within this per-round tableau copy) before
