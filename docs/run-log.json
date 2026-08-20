@@ -27577,6 +27577,60 @@
       "artifacts": "remote:primo-qflia-fuzz-gate/fuzz-results/qf-lia-model-gate-127457/",
       "evidence_status": "slurm-complete-current",
       "outcome": "Stage 3's Gomory-cut check (King's thesis eq. 4.9, docs/qf-lia-branch-and-bound.md) is confirmed sound at real fuzz scale: zero wrong answers and zero invalid models across 4000 Slurm-generated cases plus ~800 local smoke cases beforehand, with no soundness regression from stages 1-2's own already-verified baselines. Combined with the two hand-verified worked examples locked in as unit tests before this campaign ran, this is the strongest evidence yet of the three QF_LIA stages: the hand-derived cut formula, the trickiest piece of numerics in any of the three stages, produced zero disagreements against z3 across the full campaign."
+    },
+    {
+      "id": "2026-08-20-qf-lia-real-world-benchmark-evaluation",
+      "started_at": "2026-08-20",
+      "recorded_at": "2026-08-20",
+      "kind": "benchmark",
+      "scope": "First evaluation of QF_LIA stages 1-3 against real-world SMT-LIB QF_LIA benchmarks (sandbox/non-incremental/QF_LIA, 13,306 files, 32 families) rather than synthetic FuzzSMT fuzzing -- a 428-file size-stratified representative sample (up to 15 files/family, evenly spaced by size percentile) run against both primo and z3.",
+      "commit": "0c8314d",
+      "branch": "qf-lia-branch-and-bound",
+      "environment": {
+        "type": "local"
+      },
+      "commands": {
+        "sample": "scratchpad build_sample.py (not committed): evenly-spaced-by-size-percentile sampling per family",
+        "run": "scripts/bench_qf_uf_full.py --root sandbox/non-incremental/QF_LIA --manifest <428-file list> --solver ./build/primo --timeout 120 (and again with z3 as the solver)"
+      },
+      "results": {
+        "primo": "gap analysis by family showed most of the solved-rate gap vs z3 was ordinary timeouts/incompleteness (branch-and-bound node limit), EXCEPT the convert family: 11 wrong `unsat` answers on `:status sat` instances, all fast (not timeouts) -- the only family with any wrong answers at all.",
+        "root_cause": "Two soundness bugs sharing one cause: PreparedLraTheory's scale-canonicalization (item H1b) can make a compound atom's slack variable represent the original integer polynomial divided by a large non-unit scale (2^32 for convert's bit-position-weighted terms), so the slack is not itself integer-valued -- but bound_assertion()'s is_integer strict-bound tightening and gcd_inconsistent_row's free-variable-ranges-over-Z assumption both applied to it unconditionally anyway. See docs/qf-lia-branch-and-bound.md's bug 3 (under 'Where integer strictness actually gets handled') and bug 4 (under 'GCD-consistency')."
+      },
+      "artifacts": "results/qflia-sample-eval/, results/qflia-sample-eval-z3/ (gitignored, local only)",
+      "evidence_status": "superseded-by-fix",
+      "outcome": "Found a genuine, real-world-triggered soundness bug that ~14,000+ cumulative FuzzSMT-generated cases across three separate Slurm campaigns (stages 1, 2, 3, each independently verified 'zero wrong answers') never caught -- see the fix commits and docs/qf-lia-branch-and-bound.md's 'Real-world benchmark evaluation and the fuzzing gap' section for the fix and the root-cause analysis of why fuzzing missed it."
+    },
+    {
+      "id": "2026-08-20-qf-lia-scale-canonicalization-fix-slurm-verification",
+      "started_at": "2026-08-20",
+      "recorded_at": "2026-08-20",
+      "kind": "fuzz",
+      "scope": "Verification of the fix for the real-world-benchmark-evaluation bug above: three commits on qf-lia-branch-and-bound -- (1) bound_assertion()'s is_integer scale fix + gcd_inconsistent_row's integer_vars fix (commit 9884328), (2) a latent delta-infinitesimal bug in branch_and_bound/lia_gomory_cuts.cpp exposed by fix (1) and found via local wide-bitwidth FuzzSMT fuzzing during this same verification pass, not the real-world benchmarks (commit 4bed60c). Verification: full local re-check of the convert family, local FuzzSMT smoke fuzzing at default and wide-bitwidth parameters (both fixed and, for comparison, the pre-fix binary via a git worktree at 0c8314d), then the full Slurm gate.",
+      "commit": "4bed60c",
+      "branch": "qf-lia-branch-and-bound",
+      "environment": {
+        "type": "SLURM",
+        "host": "llm2smt-slurm",
+        "workdir": "primo-cadical-profile",
+        "job": "127465 (8 shards x 500, commit 9884328, fix 1 only -- FAILED, 23 solver-error crashes from the not-yet-found bug 4/delta-infinitesimal issue); 127473 (8 shards x 500, commit 4bed60c, both fixes -- clean)"
+      },
+      "commands": {
+        "sync": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config /tmp/llm2smt_slurm_ssh_config --remote llm2smt-slurm --remote-dir /home/janotmik/primo-cadical-profile",
+        "submit": "sbatch --export=ALL,PRIMO_WORKDIR=...,PATH=.../contrib/local/bin:$PATH scripts/slurm_qf_lia_model_fuzz_gate.sbatch",
+        "local_convert_recheck": "for f in sandbox/non-incremental/QF_LIA/convert/*.smt2 with a declared :status: compare ./build/primo's answer against it",
+        "local_fuzz_default": "PATH=contrib/local/bin:$PATH python3 scripts/fuzz_external.py --fuzzer fuzzsmt --logic QF_LIA --solver ./build/primo --refs z3 --count 500 --seed 42",
+        "local_fuzz_wide_bitwidth": "same, --fuzzer-args '-mbw 1 -Mbw 32 -mv 2 -Mv 8 -mc 2 -Mc 8' --seed 7, run against both the fixed binary and (via a git worktree at 0c8314d) the pre-fix binary for comparison"
+      },
+      "results": {
+        "job_127465": "All 8 array tasks FAILED (sacct ExitCode 1:0) -- 23 solver-error entries (Rational division by zero) per shard's model-validation summary.csv, root-caused to lia_gomory_cuts.cpp's apply_one_cut computing f0=0 for a basic variable whose value carried a nonzero infinitesimal with an already-integer rational part; fixed (commit 4bed60c) before resubmitting.",
+        "job_127473": "All 8 array tasks COMPLETED (ExitCode 0:0). Answer-differential: 3898 PASS, 207 benign timeouts, 3 benign UNKNOWN_INVOLVED, zero OUR_SAT_REF_UNSAT/OUR_UNSAT_REF_SAT/REF_DISAGREEMENT (direct grep across all 8 shard logs). Model validation: zero solver-error across all 8 shards' summary.csv.",
+        "convert_family_full_recheck": "303/303 files with a declared :status answered correctly (0 wrong), not just the 2 originally-found repro files or the 428-file sample.",
+        "fuzzing_gap_evidence": "500 cases at FuzzSMT's QF_LIA defaults (maxBW=4, maxNumVars=3) against the PRE-FIX binary (0c8314d, rebuilt in a separate git worktree): zero disagreements -- confirms the default fuzz parameters structurally cannot reach this bug class, matching every prior stage's own 'zero wrong' result. 500 cases at widened parameters (-Mbw 32 -Mv 8 -Mc 8) against the same pre-fix binary: also zero disagreements -- an honest negative result showing the bug needs more than a large coefficient in isolation (see docs/qf-lia-branch-and-bound.md's fuzzing-gap section for the full analysis); the same wide-bitwidth batch against the FIXED binary is what surfaced the delta-infinitesimal crash instead."
+      },
+      "artifacts": "remote:primo-cadical-profile/fuzz-results/qf-lia-model-gate-127465/ (failed run), remote:primo-cadical-profile/fuzz-results/qf-lia-model-gate-127473/ (clean run)",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Both the original real-world-benchmark bug and the delta-infinitesimal bug it exposed are fixed and verified sound at full campaign scale (4000 Slurm cases, zero wrong answers, zero crashes, zero model errors) plus a full recheck of the real-world family that originally found the first bug. The fuzzing-gap investigation confirms FuzzSMT's default QF_LIA parameters are structurally unable to reach this bug class (not bad luck across three prior 'zero wrong' campaigns), and that widening parameters alone is not a reliable substitute for a real-benchmark-derived seed corpus -- see docs/qf-lia-branch-and-bound.md's 'Real-world benchmark evaluation and the fuzzing gap' section for the actionable next step (not implemented this session)."
     }
   ]
 }

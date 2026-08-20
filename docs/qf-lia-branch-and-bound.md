@@ -150,7 +150,7 @@ check.
   and Boolean flattening are unaffected -- they are not gated by
   `preprocessing_mode`.
 
-### Where integer strictness actually gets handled, and two bugs fuzzing found
+### Where integer strictness actually gets handled, and three bugs found here
 
 QF_LIA needs *some* mechanism to turn a strict `<`/`>` atom (or a
 non-strict `Le` atom assigned **false** -- see below) into an integer
@@ -220,14 +220,50 @@ matter how tightly it gets bounded (bug 1's symptom) or as a wrong answer
 from a bound that was never actually an integer threshold (bug 2's
 symptom).
 
-**Fuzzing evidence after both fixes**: ~850 FuzzSMT-generated QF_LIA cases
-across multiple seeds and size ranges, answer-differential against z3, 0
-wrong answers; ~400 of the `sat` cases' models independently re-checked by
-substituting primo's own reported values back into the original formula
-and confirming z3 still accepts it, 0 bad models. All done locally with
-`contrib/local/bin/{fuzzsmt,z3}` (both already built in this checkout);
-see [Fuzzing](#fuzzing) below for what a real Slurm-scale campaign (the
-next step, not yet run) adds on top of this.
+**Bug 3 (found by a real-world benchmark evaluation, not fuzzing -- see
+[Real-world benchmark evaluation and the fuzzing gap](#real-world-benchmark-evaluation-and-the-fuzzing-gap)
+below): `ceil()`/`floor()` tightening applied to a non-integer *slack*.**
+Bug 2's fix made `bound_assertion()`'s strict-bound tightening correct for
+any *integer-valued* `rhs`-bearing variable, but `PreparedAtom::is_integer`
+was still set from a single check -- "is the original atom's term
+`Int`-sorted" -- with no regard for *which* tableau variable the bound
+actually lands on. For a single-variable atom that variable is the
+declared `Int` variable itself, always genuinely integer-valued, so bug
+2's fix is sound there. But for a **compound** (multi-variable) atom, the
+bound lands on a fresh slack satisfying `slack = canonical.polynomial`,
+i.e. the original integer-coefficient polynomial divided by
+`canonical.scale` (`PreparedLraTheory`'s scale-canonicalization, item
+H1b) -- and `slack` is only itself integer-valued when that division was
+by `+-1`. For any other scale (routine for terms with a large
+leading-variable coefficient, e.g. a bit-position weight like `2^32` in
+the `convert` family below), `slack` takes on genuinely fractional values,
+and `ceil()`/`floor()`-tightening its own value is unsound: it can
+fabricate a bound that excludes integer polynomial values the original
+atom never ruled out. Concretely, an atom whose scaled `rhs` was
+`-5/2^32` (visibly close to, but not, an integer) got tightened to a
+lower bound of `0` as though the slack itself had to land on a whole
+number -- when the atom's real content only ruled out `slack < -5/2^32`,
+a much weaker constraint. **Fix**: `PreparedLraTheory` now only sets
+`is_integer` true for a compound atom's slack when `canonical.scale` is
+exactly `+-1`; otherwise `bound_assertion()` falls back to the always-sound
+Real delta-trick for that atom, the same fallback bug 1 originally lacked.
+This mirrors a distinction `lia_gomory_cuts.cpp`'s `find_eligible_row`
+already had to make (see its own comment): a slack's row can carry
+non-integer coefficients, so a slack is not guaranteed integer-valued the
+way a declared `Int` problem variable is.
+
+**Fuzzing evidence for bugs 1-2** (recorded at the time, before bug 3 was
+found): ~850 FuzzSMT-generated QF_LIA cases across multiple seeds and size
+ranges, answer-differential against z3, 0 wrong answers; ~400 of the `sat`
+cases' models independently re-checked by substituting primo's own
+reported values back into the original formula and confirming z3 still
+accepts it, 0 bad models -- all done locally with
+`contrib/local/bin/{fuzzsmt,z3}`. This same FuzzSMT-based fuzzing (later
+run at full Slurm-campaign scale too, several times, across all three
+stages -- see [Fuzzing](#fuzzing) below) never found bug 3, for a
+structural reason, not luck: see
+[Real-world benchmark evaluation and the fuzzing gap](#real-world-benchmark-evaluation-and-the-fuzzing-gap),
+which also has the post-bug-3-and-4 verification numbers.
 
 ## GCD-consistency
 
@@ -240,11 +276,18 @@ mutation, called once per outer solve round, right before
 **Statement.** For a row `x_b = Σ_j a_j·x_j`, fold every currently-*fixed*
 variable in the equation `x_b - Σ_j a_j·x_j = 0` (both `x_b` itself and
 any fixed `x_j`) into a residual constant, leaving an equation over the
-remaining free variables. Since every QF_LIA variable is `Int`-sorted,
-that reduced equation `Σ free_coeff·free_var = residual` is satisfiable
-over the integers iff `gcd(free_coeff)` divides `residual`; if not, no
-integer assignment can satisfy the row at all -- a sound, unconditional
-conflict, independent of every other bound in the problem.
+remaining free variables. A row's *term* variables (`x_j`) are always
+declared QF_LIA problem variables (see `PreparedLraTheory`'s row
+construction), so they always range over all of Z; `x_b` needs its own
+check for this (see the bug note below) since it can be a
+scale-canonicalized slack instead. Once every free variable is confirmed
+to range over Z, the reduced equation `Σ free_coeff·free_var = residual`
+is satisfiable over the integers iff `gcd(free_coeff)` divides `residual`;
+if not, no integer assignment can satisfy the row at all -- a sound,
+unconditional conflict, independent of every other bound in the problem.
+If `x_b` is unfixed and not confirmed integer, the row carries no GCD
+information at all and is reported consistent without being examined
+further -- see the bug note.
 
 `x_b` itself is folded in on the same footing as any other term, not
 treated as special, because *which* variable in a given linear
@@ -290,6 +333,35 @@ runs once, before branching starts. Running it again after each branch
 has narrowed a row's free variables) is a natural, easy-to-add follow-up,
 deferred here since the single pre-check already closes the documented
 gap.
+
+**Bug 4 (found by the same real-world benchmark evaluation as bug 3,
+same underlying mistake in a second place -- see
+[Real-world benchmark evaluation and the fuzzing gap](#real-world-benchmark-evaluation-and-the-fuzzing-gap)):
+an unfixed slack treated as ranging over Z.** The original implementation
+folded `x_b` into `free_coefficients` (coefficient `1`, implicitly
+assuming it ranges over all of Z) whenever it was not *fixed* --
+regardless of whether `x_b` was a declared `Int` problem variable or a
+scale-canonicalized slack. A slack representing the original polynomial
+divided by a non-unit scale is not integer-valued at all (the same
+distinction bug 3 above and `lia_gomory_cuts.cpp`'s `find_eligible_row`
+both had to make), so treating it as Z-ranging could fold a fractional
+row term's value into the residual as though it had to land on a whole
+number, fabricating a conflict on a row whose actual value range was
+never inconsistent with anything. Concretely: a slack `x_b = x + y/2^20`
+with `x`, `y` fixed integers and `x_b` itself bounded only on one side by
+a strict, non-integer-tightened bound (i.e. genuinely free within a
+narrow real range, never claimed to be an integer by anything) was
+flagged Unsat purely because `x_b`'s own assumed-integer coefficient
+made the residual's gcd division come out non-integer. **Fix**:
+`gcd_inconsistent_row` now takes the same `integer_vars` list
+`branch_and_bound`/`apply_gomory_cuts` already use, and only folds an
+unfixed `x_b` into `free_coefficients` when it is a member; otherwise the
+row is reported consistent immediately (see the updated Statement above).
+This does not weaken the check for any row whose basic variable is
+genuinely a declared `Int` variable (including one that became basic
+through an unrelated pivot) -- only for the case a fractionally-scaled
+slack is basic and unfixed, where the old code had nothing sound to
+conclude anyway.
 
 ## Gomory cuts
 
@@ -599,6 +671,88 @@ The hand-derived cut formula -- the trickiest piece of numerics across
 all three stages -- produced zero disagreements against z3 across the
 full campaign, on top of zero disagreements in ~800 local cases and the
 two hand-checked worked examples before that.
+
+## Real-world benchmark evaluation and the fuzzing gap
+
+Stages 1-3 were each verified via thousands of FuzzSMT-generated cases
+(the Fuzzing section above) before being called done, with zero wrong
+answers reported every time. A subsequent evaluation against a
+size-stratified representative sample of `sandbox/non-incremental/QF_LIA`
+(SMT-LIB's real-world QF_LIA benchmarks, 13,306 files across 32 families,
+428 files sampled) immediately found 11 wrong `unsat` answers -- all in
+the `convert` family (Alberto Griggio's JPEG/GIF/TIFF converter
+symbolic-execution benchmarks, industrial category), all `:status sat`,
+all fast (not timeouts). Root-causing this (see bug 3 under
+[Where integer strictness actually gets handled](#where-integer-strictness-actually-gets-handled-and-three-bugs-found-here)
+and bug 4 under [GCD-consistency](#gcd-consistency)) found two soundness
+bugs sharing one root cause, and fixing the first of those two exposed a
+third, latent completeness/crash bug (see the third fix's own commit,
+"Fix a latent delta-infinitesimal bug in branch-and-bound and Gomory
+cuts") that fuzzing had never triggered either.
+
+**Verification after all three fixes.** The full `convert` family (303
+files with a declared `:status`, not just the 428-file sample) re-checked
+locally: **zero wrong answers**. Local FuzzSMT smoke fuzzing (500 default-
+parameter cases) and the full Slurm gate (`scripts/slurm_qf_lia_model_fuzz_gate.sbatch`,
+job 127473, 2026-08-20): **3898 PASS, 207 benign timeouts, 3 benign
+`UNKNOWN_INVOLVED`, zero wrong answers, zero crashes, zero model errors** --
+see `docs/run-log.json`'s `2026-08-20-qf-lia-real-world-benchmark-evaluation`
+and `2026-08-20-qf-lia-scale-canonicalization-fix-slurm-verification`
+entries for the complete record, including job 127465's failure (23
+`solver-error` crashes from the delta-infinitesimal bug above) on the
+first fix alone, before the second fix landed.
+
+**Why FuzzSMT's existing gates never found this.** `contrib/src/fuzzsmt`'s
+own QF_LIA defaults (`FuzzSMT.java`, the `QF_LIA` case in its
+per-logic parameter table) are `maxNumVars = 3`, `maxNumConsts = 3`,
+`maxBW = 4` -- every generated integer constant is a random `BigInteger`
+with 1 to 4 *bits*, i.e. magnitude at most 15. None of the fuzz gates run
+so far (stages 1-3's own verification, all using these defaults) ever
+override `-Mbw`/`-Mv`/`-Mc`. The `convert` family's actual trigger --
+scale-canonicalization (item H1b) dividing by a large leading-variable
+coefficient (`2^32` for these bit-position-weighted terms, from
+`(* sigma_N (- 4294967296))`-shaped polynomials) -- is essentially
+unreachable at `maxBW = 4`: the largest possible scale is 15, giving a
+denominator far too coarse to reproduce the same failure mode. Confirmed
+empirically, not just argued: 500 cases at the *default* parameters
+against the pre-fix (buggy) binary found **zero** disagreements (matching
+every prior stage's own "zero wrong" fuzz results, now understood to be a
+structural blind spot rather than actual absence of the bug) --
+reproduced directly for this section by building the parent commit
+(`0c8314d`, pre-fix) in a separate git worktree and re-running the exact
+same FuzzSMT-seeded batch against it.
+
+**Widening the bitwidth alone is not sufficient either -- an honest
+negative result.** A second local batch, same seed, with
+`-mbw 1 -Mbw 32 -mv 2 -Mv 8 -mc 2 -Mc 8` (up to 32-bit coefficients, 2-8
+variables and constants, closer to the `convert` family's own shape),
+run against the *same pre-fix binary*: still **zero** disagreements across
+500 cases. The bug needs more than a large coefficient in isolation -- the
+`convert` family's actual trigger is *many* atoms sharing one
+scale-canonicalized slack (`PreparedLraTheory`'s `slack_by_polynomial`
+dedup) via proportional polynomials with a range of small, close-together
+thresholds that collapse together after the large-scale division (see
+bug 3's writeup). That combination -- proportional compound polynomials
+recurring across many atoms in one instance -- is a natural consequence of
+a real symbolic-execution encoding (many byte/bit-position comparisons
+against the same underlying value) but is comparatively rare for FuzzSMT's
+independent, layer-by-layer random atom generation to produce even with a
+wider coefficient range, so it did surface as a crash on the *new* binary
+during this same wide-bitwidth batch (see the third bug/fix above) but
+not as the original wrong-answer bug on the old one, in 500 cases either
+way.
+
+**The actionable gap, not yet closed.** `scripts/slurm_qf_lia_model_fuzz_gate.sbatch`'s
+own comment already flagged this direction as "natural future work once
+real QF_LIA benchmarks are collected" back when stage 1 shipped -- true
+today, and now demonstrably load-bearing rather than hypothetical. Real
+QF_LIA benchmarks are collected now (`sandbox/non-incremental/QF_LIA`).
+The concrete next step is the same pattern `scripts/build_fuzz_seed_corpus.py`
+already establishes for QF_LRA: a committed seed corpus of real QF_LIA
+benchmarks (starting with `convert`, the family that actually found this)
+for opfuzz/typefuzz mutation-fuzzing, added to the Slurm gate alongside
+its existing FuzzSMT-only stage -- not attempted in this session, since
+it is genuinely new infrastructure work, not a fix.
 
 ## Tests
 
