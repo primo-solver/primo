@@ -68,6 +68,22 @@ struct EligibleRow {
 // bound), or nullopt if none qualifies -- a row with even one term
 // sitting strictly between its bounds is skipped entirely, not partially
 // cut.
+//
+// A basic variable whose *value* carries a nonzero infinitesimal is
+// excluded from eligibility entirely, not just treated as "fractional"
+// the way find_fractional_variable does: King's formula computes
+// `f0 = a0 - floor(a0)` from the value's rational part alone, and a
+// declared Int variable can pick up a nonzero infinitesimal purely by
+// being basic in a row whose other terms carry one (e.g. a slack
+// currently sitting at a strict, delta-trick bound -- see
+// bound_assertion() in check_sat.cpp), with no delta of its own. When
+// that value's rational part happens to already be an integer (the
+// infinitesimal is the only thing making it not-yet-a-clean-integer),
+// `f0` computes to exactly 0 and every J-/K+ term's `entry.coeff / f0`
+// below divides by zero. branch_and_bound handles this shape correctly
+// on its own (its own floor-based branching does not depend on f0 being
+// nonzero), so skipping it here -- falling back to that path -- costs
+// nothing but a missed cut, never soundness or a crash.
 std::optional<EligibleRow> find_eligible_row(const LraTableau& tableau,
                                              const std::vector<LraVarId>& integer_vars) {
   for (const LraVarId var : integer_vars) {
@@ -75,7 +91,10 @@ std::optional<EligibleRow> find_eligible_row(const LraTableau& tableau,
       continue;
     }
     const DeltaRational& value = tableau.assignment(var);
-    if (value.infinitesimal.is_zero() && value.rational.is_integer()) {
+    if (!value.infinitesimal.is_zero()) {
+      continue;
+    }
+    if (value.rational.is_integer()) {
       continue;
     }
     EligibleRow candidate;

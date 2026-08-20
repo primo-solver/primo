@@ -157,6 +157,34 @@ void zero_cut_limit_is_a_no_op() {
   assert(tableau.variable_count() == variables_before);
 }
 
+// x_b = y (single-term row), y pushed onto a solitary strict upper bound
+// y < -3 with no lower bound: Simplex settles y (and so x_b) exactly at
+// "-3 - eps" -- rational part already an integer, infinitesimal negative.
+// Before the fix, find_eligible_row's own definition of "fractional" (a
+// nonzero infinitesimal OR a non-integer rational) made this row eligible,
+// and apply_one_cut's `f0 = a0 - floor(a0)` used only the rational part
+// (a0 = -3), giving f0 = 0 and dividing by it for every J-/K+ term below
+// -- found via a real FuzzSMT instance once bound_assertion() stopped
+// over-tightening scale-canonicalized slacks (see
+// docs/qf-lia-branch-and-bound.md), which made this shape common enough
+// to hit. The fix excludes any basic variable with a nonzero infinitesimal
+// from eligibility entirely, so this must report no cut and no crash --
+// branch_and_bound (not exercised here) is the correct fallback.
+void basic_variable_with_nonzero_infinitesimal_is_not_eligible() {
+  LraTableau tableau;
+  const LraVarId y = tableau.add_variable();
+  const LraVarId x_b = tableau.add_variable();
+  tableau.add_row(x_b, {{y, Rational(1)}});
+  const DeltaRational at_minus_three_from_below{Rational(-3), Rational(-1)};
+  assert(!tableau.assert_upper(y, at_minus_three_from_below, Lit{1}).has_value());
+  assert(!tableau.check().has_value());
+  assert(tableau.assignment(x_b) == at_minus_three_from_below);
+
+  const std::size_t variables_before = tableau.variable_count();
+  assert(!apply_gomory_cuts(tableau, {x_b}, 10));
+  assert(tableau.variable_count() == variables_before);
+}
+
 }  // namespace
 
 int main() {
@@ -165,5 +193,6 @@ int main() {
   cut_alone_proves_unsat();
   row_with_a_term_not_at_a_bound_is_skipped();
   zero_cut_limit_is_a_no_op();
+  basic_variable_with_nonzero_infinitesimal_is_not_eligible();
   return 0;
 }

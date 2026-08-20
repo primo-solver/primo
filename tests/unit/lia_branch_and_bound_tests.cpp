@@ -115,6 +115,34 @@ void unbounded_polytope_hits_the_node_limit() {
   assert(!tableau.lower_bound(y).has_value());
 }
 
+// A declared Int variable can become basic in a row whose value inherits a
+// nonzero infinitesimal from another term, with no delta-bearing bound of
+// its own: here x = y (row), and y is pushed to its own strict upper bound
+// y < -3 (no lower bound, so Simplex settles y exactly at "-3 - eps", the
+// tightest feasible point). x's own assignment is then also "-3 - eps" --
+// rational part already an integer, infinitesimal negative. Before the fix,
+// branch_and_bound's floor_value came from `.rational.floor()` alone,
+// giving -3 here (should be -4), so the low branch asserted `x <= -3` --
+// already true of "-3 - eps" -- a no-op that left x looking fractional
+// forever and exhausted the node limit. With the fix, one branch resolves
+// it (matches lia_gomory_cuts_tests.cpp's analogous eligibility-skip test
+// for the same root cause on the cuts side).
+void delta_only_basic_variable_does_not_exhaust_the_node_limit() {
+  LraTableau tableau;
+  const LraVarId x = tableau.add_variable();
+  const LraVarId y = tableau.add_variable();
+  tableau.add_row(x, {{y, Rational(1)}});
+  const DeltaRational at_minus_three_from_below{Rational(-3), Rational(-1)};
+  assert(!tableau.assert_upper(y, at_minus_three_from_below, Lit{1}).has_value());
+  assert(!tableau.check().has_value());
+  assert(tableau.assignment(x) == at_minus_three_from_below);
+
+  const auto result = branch_and_bound(tableau, {x}, 3);
+  assert(result.status == LiaBranchAndBoundResult::Status::Sat);
+  assert(tableau.assignment(x).rational.is_integer());
+  assert(tableau.assignment(x).infinitesimal.is_zero());
+}
+
 }  // namespace
 
 int main() {
@@ -122,5 +150,6 @@ int main() {
   single_branch_reaches_an_integer_solution();
   every_branch_is_infeasible_returns_unsat();
   unbounded_polytope_hits_the_node_limit();
+  delta_only_basic_variable_does_not_exhaust_the_node_limit();
   return 0;
 }

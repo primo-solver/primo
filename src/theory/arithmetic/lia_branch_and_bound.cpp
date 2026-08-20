@@ -20,6 +20,27 @@ std::optional<LraVarId> find_fractional_variable(const LraTableau& tableau,
   return std::nullopt;
 }
 
+// `value`'s floor, delta-aware: `value.rational.floor()` is correct on its
+// own except in exactly one case -- `value.rational` is already an integer
+// *and* `value.infinitesimal` is negative, i.e. the true value is `n - eps`
+// for integer `n`, infinitesimally below `n` rather than at it. That value
+// belongs to `[n-1, n)`, not `[n, n+1)`, so its floor is `n - 1`, not `n`.
+// A declared Int variable can land here purely by being basic in a row
+// whose other terms carry a delta (e.g. a slack at a strict, delta-trick
+// bound -- see bound_assertion() in check_sat.cpp), with no delta-bearing
+// bound of its own. Getting this wrong here previously meant asserting
+// `var <= n` on a variable already sitting at `n - eps` -- an already-true,
+// no-op bound -- so `find_fractional_variable` would keep re-selecting the
+// same variable node after node until `node_limit`, never resolving a case
+// branch_and_bound should otherwise close quickly.
+util::Rational delta_floor(const DeltaRational& value) {
+  util::Rational floor_value = value.rational.floor();
+  if (value.infinitesimal.sign() < 0 && value.rational.is_integer()) {
+    floor_value = floor_value - util::Rational(1);
+  }
+  return floor_value;
+}
+
 // Asserts one side of the split (var <= floor_value, or var >=
 // floor_value + 1) and checks it. Returns whether that side is feasible;
 // on false, whatever the assert/check touched is left in place for the
@@ -65,7 +86,7 @@ LiaBranchAndBoundResult branch_and_bound(LraTableau& tableau,
 
     Frame frame;
     frame.var = *fractional;
-    frame.floor_value = tableau.assignment(*fractional).rational.floor();
+    frame.floor_value = delta_floor(tableau.assignment(*fractional));
     frame.checkpoint = tableau.push();
     stack.push_back(frame);
 
