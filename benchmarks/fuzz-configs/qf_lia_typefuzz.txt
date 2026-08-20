@@ -1,0 +1,33 @@
+; typefuzz generative signatures restricted to QF_LIA.
+;
+; Mirrors qf_lra_typefuzz.txt's own restriction: typefuzz builds new terms
+; from these signatures, so any signature listed here can appear in a
+; mutant. The stock typefuzz_config.txt covers all of SMT-LIB, and its
+; Int entries that would take a mutant out of Primo's QF_LIA are dropped
+; the same way qf_lra_typefuzz.txt drops the corresponding Real ones:
+;
+;   (* Int Int Int)   product of two Ints is nonlinear
+;   (div Int Int Int) and (mod Int Int Int) -- not recognized by Primo's
+;                      grammar at all (see qf_lia_operator_mutations.txt's
+;                      own comment)
+;   (abs ...)         not a symbol Primo's grammar recognizes
+;
+; Every Real signature is dropped too: QF_LIA has no Real sort in Primo
+; (SetLogic rejects Real constants under it), so those signatures can only
+; ever produce out-of-logic terms.
+;
+; What is left still mutates freely -- Boolean structure, negation,
+; addition/subtraction and all four comparisons, over Int.
+(par (A) (id A A))
+(not Bool Bool)
+(=> Bool Bool Bool :right-assoc)
+(and Bool Bool Bool :left-assoc)
+(or Bool Bool Bool :left-assoc)
+(xor Bool Bool Bool :left-assoc)
+(- Int Int)                  ; negation
+(- Int Int Int :left-assoc)  ; subtraction
+(+ Int Int Int :left-assoc)
+(<= Int Int Bool :chainable)
+(<  Int Int Bool :chainable)
+(>= Int Int Bool :chainable)
+(>  Int Int Bool :chainable)

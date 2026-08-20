@@ -1,0 +1,32 @@
+; Operator-mutation classes restricted to QF_LIA.
+;
+; Mirrors qf_lra_operator_mutations.txt's own restriction, for the same
+; reason: the stock operator_mutations.txt is written for the whole
+; SMT-LIB, so it rewrites within sort signatures without regard to a
+; logic's syntactic restrictions. Against a QF_LIA-only solver that
+; produces mutants outside the logic, which the solver then (correctly)
+; refuses to parse or explicitly rejects as unsupported:
+;
+;   +,-,* :arity 2+   turns (+ x y) into (* x y)  -- nonlinear, not QF_LIA
+;   abs,- :arity 1    turns (- x) into (abs x)    -- abs is not a symbol
+;                      Primo's grammar recognizes at all (grep confirms
+;                      no "abs" TermKind anywhere in src/)
+;   div,mod           not recognized by Primo's grammar either -- unlike
+;                      "/", which Primo parses and then explicitly rejects
+;                      ("division is not a valid QF_LIA literal"), div/mod
+;                      are simply absent from the parser, so a mutant using
+;                      them fails to parse rather than being a
+;                      answer-differential-fuzzable input at all
+;
+; Dropping those lines leaves the mutations that stay inside the logic:
+; Boolean structure, comparison direction, equality/disequality, and +/-.
+; Identical to the QF_LRA config -- Primo's QF_LIA is QF_LRA's own
+; arithmetic core plus an Int sort, not a separately-restricted grammar,
+; so the same operator set is safe here.
+=,distinct
+exists,forall
+not -> and,or
+and,or,=> :arity 3+
+and,or,=>,xor :arity 2
+<=,>=,<,>
++,- :arity 2+
