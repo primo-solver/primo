@@ -27811,6 +27811,30 @@
       "artifacts": "results/qf-lia-full-compare-128125/{primo-patched,primo-unpatched} and fuzz-results/qf-lia-model-gate-128295 on the Slurm remote; baselines 127709 and 127949 preserved.",
       "evidence_status": "slurm-complete-current",
       "outcome": "Patching is the largest single QF_LIA gain measured so far: +300 solves against a same-binary control, against +19 for stage 4's conflict generalization, and it closes 60% of the gap to cvc5 in one layer. The paper put this layer first and Primo had skipped it entirely, which is the substantive lesson -- the gap was found by reading Section 4 properly rather than by more tuning of the layers already built. Model validity is now confirmed by Dolmen at scale rather than by a local stand-in."
+    },
+    {
+      "id": "2026-08-21-qf-lia-gprof-medium-hard",
+      "started_at": "2026-08-21",
+      "recorded_at": "2026-08-21",
+      "kind": "measurement",
+      "scope": "gprof profile of ten medium-hard QF_LIA instances (solved in 5-40s per the full-corpus run 128125), taken after stage 5 landed, to find where QF_LIA time actually goes. Full write-up in docs/qf-lia-profile.md.",
+      "commit": "67ec6e0",
+      "branch": "qf-lia-branch-and-bound",
+      "environment": {
+        "type": "local",
+        "build": "cmake -DCMAKE_BUILD_TYPE=None -DCMAKE_CXX_FLAGS='-pg -O2 -g -DNDEBUG'"
+      },
+      "results": {
+        "build_trap": "The first run used -pg -O2 -g, matching the flags already recorded in the pre-existing build-gprof* directories, and reported Rational::check_invariant as the hottest function in the program at 29.8% of self time. That function is entirely #ifndef NDEBUG and is a no-op in Release, so the result was a pure build artifact -- CMAKE_BUILD_TYPE=None defines no preprocessor symbols, so NDEBUG must be passed by hand. It also inflated total runtime by 56% (153.9s vs 98.5s over the same instances). Rebuilt with -DNDEBUG before drawing any conclusion.",
+        "component_split": "98.5 self-seconds over ten runs: Rational/GMP arithmetic 41.0%, CaDiCaL 24.1%, LraTableau 15.2%, LRA propagator glue 10.1%, other 9.5%, and ALL QF_LIA integer stages combined 0.1%.",
+        "integer_reasoning_is_not_the_bottleneck": "Patching, GCD-consistency, Gomory cuts, branch-and-bound and conflict generalization together account for 0.06 of 98.5 self-seconds. This independently confirms the earlier instrumented finding that 24 of 36 sampled timeouts never execute a single integer round: further work inside the integer layer cannot move these instances.",
+        "hot_path_is_pivot_arithmetic": "Call-graph attribution: Rational::operator* has 844,353,807 calls of which 91.8% come from LraTableau::pivot and 8.0% from LraTableau::update; operator+ has 821,727,887 calls, 58.4% from pivot; operator< has 797,003,808 calls, 55.8% from bound_entails and 27.5% from update_violation_status.",
+        "quantified_opportunity": "Rational::operator*'s small-form path runs two binary gcds per call, and gcd(x,1) is 1 by definition, so a denominator of 1 makes the corresponding gcd pure waste. Measured over the same 844,353,807 multiplies: 55.4% have BOTH denominators equal to 1, 1.4% have one, 43.2% genuinely need both. That is 56.1% of all gcd calls avoidable (947.6M of 1.69B) behind a `den_ == 1` test. The distribution is sharply bimodal per instance -- seven of ten instances are 100% both-integer, three are almost entirely fractional -- so this is a large win on integer-coefficient families and a no-op elsewhere, not a uniform speedup.",
+        "not_implemented": "The fast path was measured, not built. Rational is used by every logic, so it needs its own verification pass (full suite, QF_LRA regression, differential fuzzing) rather than being folded into an unrelated stage."
+      },
+      "artifacts": "docs/qf-lia-profile.md; flat and call-graph profiles under the session scratchpad (not committed).",
+      "evidence_status": "local-complete-current",
+      "outcome": "The QF_LIA bottleneck on medium-hard instances is Simplex pivoting arithmetic, not integer reasoning -- the integer stages are 0.1% of self time. The single most actionable item is a den_==1 fast path in Rational::operator*, where 55% of calls provably waste both of their gcds. Also recorded: a gprof build without -DNDEBUG produces a badly misleading profile, which the repository's existing build-gprof* flag settings would have reproduced."
     }
   ]
 }
