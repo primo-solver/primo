@@ -448,6 +448,29 @@ class LraTableau {
   };
   [[nodiscard]] FreedomInterval freedom_interval(LraVarId nonbasic) const;
 
+  // Moves a NONBASIC variable to `value`, propagating the change to every
+  // dependent basic variable's assignment and refreshing violation status --
+  // i.e. exactly Section 3.1's Update, exposed. QF_LIA patching
+  // (theory/arithmetic/lia_patching.{hpp,cpp}, Bjorner & Nachmanson Sect. 4.1)
+  // is the only caller: it moves nonbasic values so that Int-sorted variables
+  // land on integers.
+  //
+  // The caller owns feasibility. `value` must lie inside
+  // freedom_interval(var), which is precisely the range over which this
+  // variable may move with every basic variable staying within its bounds;
+  // this function does not re-check that and does not call check().
+  //
+  // **Not trailed outside PivotingRule::Soi.** pop() restores bounds only (see
+  // the class comment on H9), so a move made here cannot be undone by
+  // backtracking in the default mode. That is why diversify_shared_model below
+  // deliberately runs its whole sweep against a scratch copy of the assignment
+  // and stays const. Callers of *this* entry point must instead own a tableau
+  // whose assignment need not survive a pop() -- QF_LIA's per-round
+  // `lia_tableau` in solve_qf_lia_impl is such a copy, discarded and rebuilt
+  // every outer round, which is the same argument lia_gomory_cuts.cpp's module
+  // comment already makes for calling add_row() mid-search.
+  void set_nonbasic_value(LraVarId var, const DeltaRational& value);
+
   // The paper's greedy model mutator: walk the nonbasic variables that can
   // move a shared value and, for each, take a value inside its freedom
   // interval if doing so leaves MORE distinct values among `shared`. Fewer

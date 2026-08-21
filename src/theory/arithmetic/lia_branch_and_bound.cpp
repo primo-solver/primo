@@ -3,6 +3,7 @@
 #include <optional>
 
 #include "sat/lit.hpp"
+#include "theory/arithmetic/lia_integer_values.hpp"
 #include "util/rational.hpp"
 
 namespace primo::theory::arithmetic {
@@ -12,33 +13,11 @@ namespace {
 std::optional<LraVarId> find_fractional_variable(const LraTableau& tableau,
                                                  const std::vector<LraVarId>& integer_vars) {
   for (const LraVarId var : integer_vars) {
-    const DeltaRational& value = tableau.assignment(var);
-    if (!value.infinitesimal.is_zero() || !value.rational.is_integer()) {
+    if (!is_integer_valued(tableau.assignment(var))) {
       return var;
     }
   }
   return std::nullopt;
-}
-
-// `value`'s floor, delta-aware: `value.rational.floor()` is correct on its
-// own except in exactly one case -- `value.rational` is already an integer
-// *and* `value.infinitesimal` is negative, i.e. the true value is `n - eps`
-// for integer `n`, infinitesimally below `n` rather than at it. That value
-// belongs to `[n-1, n)`, not `[n, n+1)`, so its floor is `n - 1`, not `n`.
-// A declared Int variable can land here purely by being basic in a row
-// whose other terms carry a delta (e.g. a slack at a strict, delta-trick
-// bound -- see bound_assertion() in check_sat.cpp), with no delta-bearing
-// bound of its own. Getting this wrong here previously meant asserting
-// `var <= n` on a variable already sitting at `n - eps` -- an already-true,
-// no-op bound -- so `find_fractional_variable` would keep re-selecting the
-// same variable node after node until `node_limit`, never resolving a case
-// branch_and_bound should otherwise close quickly.
-util::Rational delta_floor(const DeltaRational& value) {
-  util::Rational floor_value = value.rational.floor();
-  if (value.infinitesimal.sign() < 0 && value.rational.is_integer()) {
-    floor_value = floor_value - util::Rational(1);
-  }
-  return floor_value;
 }
 
 // Asserts one side of the split (var <= floor_value, or var >=
