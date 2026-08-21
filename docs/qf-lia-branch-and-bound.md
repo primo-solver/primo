@@ -583,6 +583,30 @@ A/B-measurable; `:lia.generalized-lemmas`,
 `:lia.generalized-lemma-literals`, `:lia.coarse-lemma-literals` and
 `:lia.generalization-fallbacks` report what happened.
 
+**Full-corpus effect, and where it costs.** All 13,306 QF_LIA files at
+60s, running *both* arms of the same binary so the coarse arm is a control
+(Slurm job 127949): 8,706 solved coarse -> 8,725 generalized, PAR2 43.12
+-> 42.94, zero wrong and zero answer disagreements between the arms. The
+coarse arm reproduces the pre-change baseline (8,704), which is what makes
+the +19 attributable to this change rather than to drift.
+
+The churn behind that +19 is asymmetric in the right direction -- 27 of
+the 30 gains solve in under 5s (many at 0.02s), while 9 of the 11 losses
+had already taken over 45s in the coarse arm and are timeout-boundary
+noise. But one loss is real and worth understanding:
+`rings_preprocessed/ring_2exp4_4vars_3ite_unsat.smt2` goes from 0.18s to
+unsolved at 300s. Coarse runs 995 SAT solve calls in 0.18s (~5,500
+rounds/s); generalized runs 814 in 300s (~2.7 rounds/s). The generalized
+arm needs *fewer* rounds -- the lemma is doing its logical job -- but each
+round costs about 2,000x more. Lemma size is 91 literals coarse vs 23
+generalized, and that is the whole story: a 91-literal clause is nearly
+inert and propagates almost nothing, while a 23-literal clause drives
+heavy unit propagation and conflict analysis in CaDiCaL. **A stronger
+lemma is not free**, and on a family whose rounds are already extremely
+cheap the tradeoff inverts. Preferring the derived lemma only when it is
+substantially smaller, or only when the coarse round rate is low, is the
+obvious refinement and is not attempted here.
+
 This does **not** move branching into CDCL -- branch literals are still
 theory-internal, and the "Where branching lives" tradeoff stands. It only
 stops discarding the explanation the tableau already computes. See

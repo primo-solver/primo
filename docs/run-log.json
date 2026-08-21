@@ -27722,6 +27722,35 @@
       "artifacts": "src/theory/arithmetic/lia_explanation.{hpp,cpp} (new), tests/unit/lia_explanation_tests.cpp (new), CheckSatOptions::lia_conflict_generalization + --no-lia-conflict-generalization, four :lia.* statistics.",
       "evidence_status": "local-complete-current",
       "outcome": "The lead was estimated 'large, needs its own design note' and turned out to be small: the explanation did not need building, only forwarding with one synthetic literal resolved away. The estimate was wrong because it assumed the machinery was missing rather than checking what the existing machinery already returned -- worth remembering for lead 12c, where the same question applies. Full-corpus re-measurement against the pre-generalization baseline (Slurm job 127709, which ran the old binary) is the natural next step."
+    },
+    {
+      "id": "2026-08-21-qf-lia-conflict-generalization-full-corpus",
+      "started_at": "2026-08-21",
+      "recorded_at": "2026-08-21",
+      "kind": "evaluation",
+      "scope": "Full-corpus re-evaluation of conflict generalization (commit 5ff5bfd) over all 13,306 QF_LIA files at 60s. Ran BOTH arms of the new binary -- generalization on and --no-lia-conflict-generalization -- rather than only the new one, so the coarse arm acts as a same-binary control against the pre-change baseline (Slurm job 127709) and any delta is attributable to the flag rather than to drift. z3 and cvc5 were not rerun: neither changed, so job 127709's CSVs are the reference.",
+      "commit": "0e10f30",
+      "branch": "qf-lia-branch-and-bound",
+      "environment": {
+        "type": "slurm",
+        "job": "127949",
+        "array": "0-159 (2 arms x 80 shards)",
+        "elapsed": "01:09:32"
+      },
+      "commands": {
+        "submit": "sbatch --array=0-159 --export=ALL,PRIMO_WORKDIR=...,'PRIMO_COMPARE_SOLVERS=primo-generalized=build-slurm-rel/primo --quiet;primo-coarse=build-slurm-rel/primo --quiet --no-lia-conflict-generalization' scripts/slurm_qf_lia_full_solver_compare.sbatch"
+      },
+      "results": {
+        "table": "primo-base (127709, pre-change) 8,704 solved / PAR2 43.14. primo-coarse (new binary, flag off) 8,706 / 43.12 -- reproduces the baseline within noise, validating the control. primo-generalized 8,725 / 42.94. cvc5 9,239 / 38.13. z3 12,147 / 13.09. All five arms: 0 wrong across all 13,306 files.",
+        "net_effect": "+19 solves over the same-binary control (30 gained, 11 lost), PAR2 43.12 -> 42.94. Zero answer disagreements between the two arms.",
+        "churn_is_asymmetric": "27 of the 30 gains solve in under 5s in the generalized arm (many at 0.02s), i.e. decisive rather than boundary. 9 of the 11 losses had already taken over 45s in the coarse arm (one at 60.06s, exactly at the wall), i.e. timeout-boundary noise from a changed search trajectory. Gains are concentrated in calypto (25), the family the original instrumentation pointed at.",
+        "one_genuine_regression": "rings_preprocessed/ring_2exp4_4vars_3ite_unsat.smt2: 0.18s coarse -> unsolved at 300s generalized, reproduced locally. Diagnosed: coarse does 995 SAT solve calls in 0.18s (~5,500 rounds/s); generalized does 814 calls in 300s (~2.7 rounds/s). The generalized arm needs FEWER rounds (the lemma is doing its logical job) but each round is roughly 2,000x more expensive. Lemma size 91 literals coarse vs 23 generalized -- on this family the coarse clause is nearly inert and propagates almost nothing, while a 23-literal clause drives heavy unit propagation and conflict analysis in CaDiCaL. A stronger lemma is not free, and on a family whose rounds are otherwise extremely cheap the tradeoff inverts.",
+        "complementarity": "primo-generalized solves 553 files cvc5 does not, while trailing cvc5 by 514 overall (8,725 vs 9,239) -- the two are strongly complementary, relevant to open-leads.md's Complementarity section.",
+        "headroom": "The gap to cvc5 barely moved (-535 -> -514). Consistent with the pre-change instrumentation finding that 24 of 36 sampled timeouts never execute a single LIA round, so this lever cannot reach the bulk of the remaining 4,581 unsolved files."
+      },
+      "artifacts": "results/qf-lia-full-compare-127949/{primo-generalized,primo-coarse} on the Slurm remote; baseline results/qf-lia-full-compare-127709/{primo,z3,cvc5} preserved.",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Conflict generalization is a real but modest corpus-level win (+19 solves, PAR2 -0.18) on top of decisive per-instance wins in the family it targets. It does not close the cvc5 gap, and it is not uniformly positive: the rings regression shows that trading a long inert clause for a short propagating one costs real time when rounds are already cheap. A size-guard refinement (prefer the derived lemma only when it is substantially smaller, or when the coarse round rate is low) is the obvious follow-up, and is not attempted here."
     }
   ]
 }

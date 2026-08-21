@@ -52,7 +52,7 @@ notes it points to.
 | [12a](#lead-qflia-preprocessing-safe) | QF_LIA: enable bare-form solved-constant substitution | no measurable effect on the 2 motivating instances; real but narrow win elsewhere | small | **done: substitution shipped default-on; atom canonicalization attempted and reverted, unsafe as written** |
 | [12b](#lead-qflia-preprocessing-gauss) | QF_LIA: partial (unit-pivot) Gaussian elimination | needs a population census first | medium | open, gated on a census |
 | [12c](#lead-qflia-dio-hnf-cube) | QF_LIA: Diophantine/HNF/cube search-time reasoning | z3 closes 96% of calypto's conflicts via Dio, not branching | large | open, no paper note yet |
-| [12d](#lead-qflia-conflict-generalization) | QF_LIA: generalizing (Farkas-style) arithmetic conflict clauses | lemmas 27-55x larger than the certificate the tableau already returned | small (est. large, wrongly) | **done: derived explanation shipped default-on; one timeout turned into a 0.04s unsat** |
+| [12d](#lead-qflia-conflict-generalization) | QF_LIA: generalizing (Farkas-style) arithmetic conflict clauses | lemmas 27-55x larger than the certificate the tableau already returned | small (est. large, wrongly) | **done: shipped default-on; full corpus +19 solves, PAR2 43.12 -> 42.94, 0 wrong** |
 
 (lead-pure-filter-lra)=
 ## 1. Extend `--pure-theory-filter` to LRA atoms
@@ -1652,6 +1652,25 @@ Zero generalization fallbacks on any of them. Kept switchable via
 `--no-lia-conflict-generalization` (default on) so the coarse form stays
 A/B-measurable, and four `:lia.*` statistics report lemma sizes and
 fallback counts.
+
+**Full corpus (Slurm 127949, both arms of the same binary, 60s):** 8,706
+solved coarse -> 8,725 generalized, PAR2 43.12 -> 42.94, 0 wrong, 0 answer
+disagreements. The coarse arm reproduces the pre-change baseline (8,704),
+which is what makes +19 attributable to this change. 27 of 30 gains solve
+in under 5s; 9 of 11 losses were already over 45s and are boundary noise.
+
+One real regression, and it is informative:
+`rings_preprocessed/ring_2exp4_4vars_3ite_unsat.smt2` goes 0.18s ->
+unsolved at 300s. Generalized needs *fewer* rounds (814 vs 995) but each
+costs ~2,000x more, because a 23-literal clause propagates hard where the
+91-literal coarse clause was nearly inert. A stronger lemma is not free.
+Gating the derived lemma on how much smaller it actually is, is the
+obvious refinement -- worth its own lead if anyone picks it up.
+
+This does not close the cvc5 gap (-535 -> -514), and it was never going to:
+24 of 36 sampled timeouts never execute a single LIA round. Notably
+primo still solves 553 files cvc5 does not, so the two are strongly
+complementary -- see [](#complementarity).
 
 Griggio's thesis was not needed after all -- but the note stands for
 whoever takes 12c, where the same "check what the existing machinery
