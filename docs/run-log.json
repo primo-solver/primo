@@ -27697,7 +27697,7 @@
       "recorded_at": "2026-08-21",
       "kind": "feature",
       "scope": "docs/open-leads.md lead 12d. A fresh-eyes review of the QF_LIA code, backed by an instrumented build over a per-family sample (3 files/family, 94 files, 10s), found that solve_qf_lia_impl was discarding the Farkas-style conflict certificate LraTableau already returns and rebuilding a lemma from every arithmetic atom in the problem instead. Replaced that coarse clause with the integer stages' own derivation, via a new LiaExplanation accumulator threaded through GCD-consistency, Gomory cuts, and branch-and-bound.",
-      "commit": "pending",
+      "commit": "5ff5bfd",
       "branch": "qf-lia-branch-and-bound",
       "environment": {
         "type": "local"
