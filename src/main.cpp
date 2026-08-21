@@ -394,6 +394,11 @@ int main(int argc, char** argv) {
                  "model: caps how many cut-and-recheck rounds are attempted before falling "
                  "through to branch-and-bound regardless [default: 100]")
       ->check(CLI::Range(0, 100000000));
+  app.add_option("--lia-patch-limit", solver_options.lia_patch_limit,
+                 "QF_LIA patching budget, run before the integer refutation stages on every "
+                 "candidate model: caps how many nonbasic moves are taken to nudge Int variables "
+                 "onto integer values. 0 disables patching [default: 100]")
+      ->check(CLI::Range(0, 100000000));
   app.add_flag("--no-lia-conflict-generalization", no_lia_conflict_generalization,
                "Disable QF_LIA conflict generalization: build each integer-infeasibility lemma "
                "from every arithmetic atom in the problem instead of from the GCD/cut/branch "

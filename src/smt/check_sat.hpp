@@ -330,6 +330,16 @@ struct CheckSatOptions {
   // search trajectories and so needs to stay A/B-measurable. Turning it
   // off restores the pre-generalization coarse clause exactly.
   bool lia_conflict_generalization = true;
+  // QF_LIA patching budget (docs/qf-lia-branch-and-bound.md, stage 5;
+  // Bjorner & Nachmanson Sect. 4.1): caps how many individual nonbasic moves
+  // patch_integer_variables may take per round. Patching is the paper's FIRST
+  // waterfall layer and the only one Primo has that tries to *find* an integer
+  // model rather than refute a candidate -- which is where the measured gap
+  // is, since the full corpus puts Primo ahead of cvc5 on unsat and 661 solves
+  // behind on sat. Each move costs a scan over the Int variables to score it,
+  // so this is a real budget rather than a safety valve. **Setting it to 0
+  // disables patching**, which is the A/B control. Not yet empirically tuned.
+  std::size_t lia_patch_limit = 100;
   bool monotone_elimination = false;
   bool solved_constant_substitution = true;
   bool gaussian_elimination = true;

@@ -9,7 +9,9 @@
 namespace primo::theory::arithmetic {
 
 // Plain branch-and-bound for QF_LIA, layered entirely on top of an
-// already-built LraTableau -- no tableau/simplex change of any kind (see
+// already-built LraTableau -- no tableau/simplex change of any kind for this
+// stage or the two after it (stage 5's patching later added exactly one narrow
+// accessor, LraTableau::set_nonbasic_value; see
 // docs/qf-lia-branch-and-bound.md). Given a tableau that is already known
 // LRA-sat (a prior tableau.check() returned nullopt), searches for an
 // assignment where every variable in `integer_vars` also has an integer

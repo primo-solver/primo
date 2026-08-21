@@ -46,10 +46,10 @@ atom canonicalization.
 The paper states the order explicitly: first *patch* real solutions into
 integer ones; if patching leaves integer variables fractional, check
 light-weight Diophantine infeasibility criteria; then resort to Gomory cuts and
-branch-and-bound. Primo implements the third and fourth layers and none of the
-first two.
+branch-and-bound. Primo implemented the third and fourth layers first; patching
+(4.1) followed on 2026-08-21, leaving cubes (4.2) as the one absent layer.
 
-### 4.1 Patching -- not implemented in Primo
+### 4.1 Patching -- IMPLEMENTED 2026-08-21 (stage 5)
 
 The observation is that in a feasible tableau with all non-basic variables at
 their bounds, integer-sorted non-basics already hold integer values, so *only
@@ -67,6 +67,16 @@ The paper explicitly reports a **negative** result worth recording: the related
 method of diversifying values via freedom intervals (their citation [18]) "does
 not preserve integral assignments". So freedom intervals bound the search space
 for `delta`, but the diversification heuristic itself is not the technique.
+
+**Two things the paper's description leaves implicit**, both found by building
+Example 3 as a test rather than trusting the prose. First, "|delta| is minimal"
+cannot be read per-variable: the nearest fix for `y` moves `x` to 4 and breaks
+`z`, and the nearest fix for `z` then moves it straight back, so a naive
+implementation oscillates. Candidates have to be scored by their effect on
+*all* integer variables. Second, the two integers bracketing the current value
+are not a sufficient candidate set -- Example 3's own answer `x = 6`
+corresponds to `y = 3`, two integers above `y`'s current `3/2`, so floor/ceil
+alone never proposes it. See [](../qf-lia-branch-and-bound.md)'s "Patching".
 
 ### 4.2 Cubes -- not implemented in Primo
 
@@ -195,7 +205,7 @@ Ranked by expected value for Primo:
 
 | # | Missing piece | Paper | Targets | Notes |
 | --- | --- | --- | --- | --- |
-| 1 | Patching | 4.1 | sat | `LraTableau::freedom_interval()` already exists; bounds the `delta` search |
+| ~~1~~ | ~~Patching~~ | 4.1 | sat | **DONE 2026-08-21** (stage 5). Built on the existing `freedom_interval()`; +4 solved / 0 lost on the per-family sample, all on sat. Two traps: scoring by |delta| alone oscillates, and floor/ceil alone is too narrow a candidate set -- both found by building the paper's Example 3 as a test |
 | 2 | Cube test | 4.2 | sat | Cheapest of the two; one tightened real check. Already named as deferred in Primo's docs |
 | 3 | Extended GCD (bounded, not fixed) | 4.3 | unsat | Closes a documented, test-pinned divergence; beware the printed inequality direction |
 | 4 | Relaxed (row-integral) Gomory rows | 4.5 | both | Addresses Primo's measured eligibility failures; changes explanation rules |
@@ -322,14 +332,20 @@ exact-offset row bucketing with the current-model-filtered unit-row recognizer,
 retain explanations, and measure the general `EqRows` fallback separately.
 
 **For QF_LIA** (the 2026-08-21 re-reading): the paper reveals two entire
-missing *layers*, not a tuning opportunity. Primo's integer waterfall starts at
-the paper's third layer. Patching (4.1) and cubes (4.2) both exist to find
+missing *layers*, not a tuning opportunity. Primo's integer waterfall started
+at the paper's third layer. Patching (4.1) and cubes (4.2) both exist to find
 integer models, and Primo's measured weakness is precisely and only on
-satisfiable instances. Cubes is the cheaper of the two to implement and is
-self-contained (tighten every bound by half the row 1-norm, run one real
-check), so it is the first experiment this re-reading justifies. The extended
-GCD test (4.3) is a smaller, well-scoped second candidate that closes an
-already-documented divergence.
+satisfiable instances.
+
+**Patching shipped the same day** as stage 5 -- see
+[](../qf-lia-branch-and-bound.md)'s "Patching" section. Cubes was considered
+first (cheaper, no tableau change) and rejected on a measurement: 249 of 300
+sampled instances contain equality atoms, and an asserted equality fixes a
+slack, which makes the tightened cube system contradictory. Cubes would be
+inconclusive on most rounds without also building z3's difference/octagon
+twist, so it stays deferred behind that twist rather than as a standalone
+item. The extended GCD test (4.3) is the smaller, well-scoped next candidate,
+and closes an already-documented divergence.
 
 Both should be measured against the same-binary control the stage 4 evaluation
 established, and neither should be expected to close the cvc5 gap alone -- the

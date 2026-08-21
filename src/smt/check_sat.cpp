@@ -38,6 +38,8 @@
 #include "theory/arithmetic/lia_branch_and_bound.hpp"
 #include "theory/arithmetic/lia_gcd_consistency.hpp"
 #include "theory/arithmetic/lia_gomory_cuts.hpp"
+#include "theory/arithmetic/lia_integer_values.hpp"
+#include "theory/arithmetic/lia_patching.hpp"
 #include "theory/arithmetic/linear_polynomial.hpp"
 #include "theory/arithmetic/lra_atom.hpp"
 #include "theory/arithmetic/lra_tableau.hpp"
@@ -10641,6 +10643,31 @@ CheckSatOutcome solve_qf_lia_impl(
                                "LIA model reconstruction found a tableau conflict", statistics, ""};
       }
 #endif
+
+      // Stage 5 (docs/qf-lia-branch-and-bound.md's "Patching"): the paper's
+      // first waterfall layer, and the only one here that tries to *find* an
+      // integer model instead of refuting a candidate. Runs before the
+      // refutation stages, matching Bjorner & Nachmanson Sect. 4's own order.
+      //
+      // It decides nothing and produces no lemma -- it only moves nonbasic
+      // values within their freedom intervals, which preserves feasibility by
+      // construction. When it integralizes everything, branch_and_bound's
+      // find_fractional_variable simply finds nothing to branch on and returns
+      // Sat at zero nodes, through the code below rather than a new path.
+      const std::size_t patched = theory::arithmetic::patch_integer_variables(
+          lia_tableau, integer_vars, options.lia_patch_limit);
+      if (options.lia_patch_limit > 0) {
+        statistics.increment(util::StatKey::LiaPatchSweeps);
+        statistics.increment(util::StatKey::LiaPatchedVariables, patched);
+        const bool fully_integral =
+            std::all_of(integer_vars.begin(), integer_vars.end(),
+                        [&lia_tableau](theory::arithmetic::LraVarId var) {
+                          return theory::arithmetic::is_integer_valued(lia_tableau.assignment(var));
+                        });
+        if (fully_integral) {
+          statistics.increment(util::StatKey::LiaPatchRoundsFullyIntegral);
+        }
+      }
 
       // Stage 4 (docs/qf-lia-branch-and-bound.md's "Conflict
       // generalization"): one explanation accumulator per round, threaded

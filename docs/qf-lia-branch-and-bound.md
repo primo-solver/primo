@@ -505,6 +505,115 @@ it to `Unsat`, no branching needed at all
 (`tests/unit/qf_lia_solver_tests.cpp`'s
 `gomory_cut_resolves_what_branch_and_bound_alone_cannot`).
 
+## Patching
+
+Stage 5 (2026-08-21), and the first stage here that tries to **find** an
+integer model rather than refute a candidate. Bjørner & Nachmanson Sect. 4.1;
+see [](papers/arithmetic-solving-in-z3.md) for the full Section 4 summary.
+
+Re-reading that paper showed Primo's integer waterfall began at the paper's
+*third* layer. Its first two — patching and the cube test — were both absent,
+and both exist to find models. Primo's own corpus data says the same thing
+independently: against cvc5 over all 13,306 files, Primo is **ahead by 147 on
+unsat and behind by 661 on sat**. Every stage 1-4 layer is refutation
+machinery, so the entire deficit sits where none of them can help.
+
+Patching was chosen over the cube test because 249 of 300 sampled instances
+contain equality atoms. An asserted equality fixes a slack, and tightening a
+fixed slack in both directions makes the cube system contradictory, so the cube
+test would be inconclusive on most rounds without also building z3's
+difference/octagon twist. Patching is equality-insensitive: a fixed variable
+simply has an empty freedom interval while others still move.
+
+**Two shapes, and the first is one the paper does not have to describe.** The
+paper assumes every non-basic sits at a bound and is therefore already
+integral. Primo violates that twice over — `LraTableau` deliberately lets
+non-basic variables sit strictly inside their bounds, and scale-canonicalization
+stores literally fractional bounds on `Int` variables (`(<= (* 3 x) 5)` becomes
+a bound of `5/3`). So a fractional non-basic is simply rounded in place, while a
+fractional basic `xb` is fixed by moving a non-basic `y` from its row: with
+coefficient `a`, moving `y` by `δ` moves `xb` by `a·δ`, so
+`δ = (n − β(xb))/a`.
+
+**Feasibility is structural, not re-checked.** `freedom_interval(y)` is exactly
+the range over which `y` may move with *every* basic variable staying inside
+its bounds. No move outside one is ever taken, so no `check()` call is needed.
+
+**Patching decides nothing.** It only improves the assignment; every Sat/Unsat
+conclusion still flows through GCD-consistency, cuts and branch-and-bound. When
+it integralizes everything, `find_fractional_variable` finds nothing to branch
+on and branch-and-bound returns `Sat` at zero nodes through unchanged code.
+That keeps this stage's soundness surface far smaller than stages 2-4: the
+failure mode is not a wrong answer but a wrong *model*, which is why
+verification centres on model validation.
+
+### Two things the obvious implementation gets wrong
+
+Both were found by building the paper's own Example 3 (`y = x/2`, `z = x/3`,
+`x∈[3,10]`, `y∈[−3,4]`, `z∈[−5,12]`) as a test rather than trusting the
+derivation:
+
+1. **Scoring a move by |δ| alone oscillates.** The nearest fix for `y` moves `x`
+   to 4 and breaks `z`; the nearest fix for `z` then moves it straight back.
+   Candidates are instead scored **globally**, by how many `Int` variables end
+   up integral, and only strictly improving moves are taken. That is the same
+   monotonicity argument `diversify_shared_model` already makes for itself, and
+   it carries two more properties for free: termination (each move strictly
+   decreases a count bounded by `|integer_vars|`) and the guarantee that the
+   assignment never comes out worse than it went in — which matters because
+   `set_nonbasic_value` is not trailed and there is no undo.
+2. **Floor and ceiling alone are too narrow a candidate set.** Example 3's
+   answer `x = 6` corresponds to `y = 3`, two integers above `y`'s current
+   `3/2`, so a floor/ceil-only search never proposes it. A small bounded window
+   (`kTargetWindow`) is searched instead, which is what lets one move satisfy
+   several rows at once.
+
+### The one `LraTableau` change
+
+Stages 1-4 needed no tableau change at all. This stage adds exactly one thing:
+`set_nonbasic_value`, a narrow public wrapper over the existing private
+`update()` (which is the only correct way to move a non-basic value, since it
+also repairs dependent basic assignments and refreshes violation status).
+
+Its comment carries the crux: **it is not trailed outside
+`PivotingRule::Soi`**, because `pop()` restores bounds only. A move made
+through it cannot be undone by backtracking. `diversify_shared_model`
+deliberately runs against a scratch copy of the assignment for exactly this
+reason. Patching may mutate the live tableau only because
+`solve_qf_lia_impl`'s `lia_tableau` is a per-round copy that is discarded and
+rebuilt every round — the same argument `lia_gomory_cuts.cpp` already makes for
+calling `add_row()` mid-search.
+
+`delta_floor` also moved out of `lia_branch_and_bound.cpp` into
+`lia_integer_values.hpp`, alongside a new `delta_ceil` and `is_integer_valued`,
+so the two stages cannot drift apart on delta-awareness.
+
+### Result
+
+Per-family sample (94 files, 10s), same binary with `--lia-patch-limit 0` as
+the control:
+
+| | solved | sat | unsat | wrong | PAR2 |
+|---|---|---|---|---|---|
+| patching off | 54 | 26 | 28 | 0 | 8.72 |
+| patching on | **58** | **30** | 28 | 0 | **7.84** |
+
+**+4 gained, 0 lost**, every gain on a satisfiable instance and every one
+decisive rather than boundary (10s timeout → 0.01-0.62s): two `prime-cone`
+and two `CAV_2009_benchmarks/coef-size` instances. Zero answer disagreements
+between the arms.
+
+Models were validated directly against z3 on 142 corpus instances covering
+every file where patching moved something: **66/66 sat models confirmed, zero
+wrong models**. `scripts/validate_model.py` cannot do this job for QF_LIA —
+Dolmen aborts on `Int` models and its fallback is Real-only, so it reports
+`validation-unavailable` for every QF_LIA sat case.
+
+`CheckSatOptions::lia_patch_limit` (default 100) and `--lia-patch-limit`;
+**0 disables patching**, which is the A/B control. `:lia.patch-sweeps`,
+`:lia.patched-variables` and `:lia.patch-rounds-fully-integral` report what
+happened.
+
 ## Conflict generalization
 
 Stage 4 (2026-08-21). Stages 1-3 all decide *whether* a Boolean+LRA

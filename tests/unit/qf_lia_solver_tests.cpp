@@ -346,6 +346,100 @@ void conflict_generalization_does_not_change_answers() {
   assert(coarse_result.statistics.get(primo::util::StatKey::LiaGeneralizedLemmas) == 0);
 }
 
+// docs/qf-lia-branch-and-bound.md's "Patching" section. 2y = x with
+// 3 <= x <= 10: the LRA relaxation puts x at its bound 3, leaving y = 3/2.
+// Patching moves x to 4 instead, making y = 2 with no search at all.
+//
+// A branch limit of *zero* is what makes this discriminating rather than
+// merely passing: branch_and_bound cannot take a single node, so it can only
+// return LimitReached on a fractional assignment. A Sat answer therefore
+// proves patching integralized everything on its own. (Zero is settable
+// programmatically but not on the CLI, where --lia-branch-limit starts at 1.)
+void patching_finds_a_model_without_branching() {
+  const std::string script = R"(
+    (set-option :produce-models true)
+    (set-logic QF_LIA)
+    (declare-fun x () Int)
+    (declare-fun y () Int)
+    (assert (>= x 3))
+    (assert (<= x 10))
+    (assert (= (* 2 y) x))
+    (check-sat)
+    (get-model)
+  )";
+  CheckSatOptions patched;
+  patched.lia_branch_limit = 0;
+  const auto result = check_sat_smtlib(script, patched);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(primo::util::StatKey::LiaPatchedVariables) > 0);
+  assert(result.model.find("(define-fun x () Int 4)") != std::string::npos);
+  assert(result.model.find("(define-fun y () Int 2)") != std::string::npos);
+
+  // The same instance with patching off cannot be solved at that branch
+  // limit, which is what pins the gain to patching specifically.
+  CheckSatOptions unpatched;
+  unpatched.lia_branch_limit = 0;
+  unpatched.lia_patch_limit = 0;
+  assert(check_sat_smtlib(script, unpatched).result == CheckSatResult::Unknown);
+}
+
+// The budget is the A/B control, so turning it off must change no answer --
+// asserted on a sat instance (where patching does the work) and an unsat one
+// (where it can only waste time). A patch that broke feasibility would show up
+// here as a wrong answer rather than a slow one.
+void patching_does_not_change_answers() {
+  const std::string sat_script = R"(
+    (set-logic QF_LIA)
+    (declare-fun x () Int)
+    (declare-fun y () Int)
+    (assert (>= x 1))
+    (assert (<= x 3))
+    (assert (= (* 2 y) (+ x 1)))
+    (check-sat)
+  )";
+  const std::string unsat_script = R"(
+    (set-logic QF_LIA)
+    (declare-fun x () Int)
+    (declare-fun y () Int)
+    (assert (= (+ (* 3 x) (* 5 y)) 7))
+    (assert (>= x 0))
+    (assert (>= y 0))
+    (check-sat)
+  )";
+  CheckSatOptions without;
+  without.lia_patch_limit = 0;
+  const CheckSatOptions with;
+
+  assert(check_sat_smtlib(sat_script, with).result == CheckSatResult::Sat);
+  assert(check_sat_smtlib(sat_script, without).result == CheckSatResult::Sat);
+  assert(check_sat_smtlib(unsat_script, with).result == CheckSatResult::Unsat);
+  assert(check_sat_smtlib(unsat_script, without).result == CheckSatResult::Unsat);
+
+  const auto disabled = check_sat_smtlib(sat_script, without);
+  assert(disabled.statistics.get(primo::util::StatKey::LiaPatchSweeps) == 0);
+}
+
+// A patched model has to be a real model. The tightest end-to-end check
+// available here is an instance whose solution is unique, so any move that
+// broke feasibility would produce a visibly wrong value rather than merely a
+// different one: (< x 5) and (> x 3) over Int pin x = 4 exactly.
+void patched_model_satisfies_a_uniquely_determined_instance() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_LIA)
+    (declare-fun x () Int)
+    (declare-fun y () Int)
+    (assert (< x 5))
+    (assert (> x 3))
+    (assert (= y (* 3 x)))
+    (check-sat)
+    (get-model)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.model.find("(define-fun x () Int 4)") != std::string::npos);
+  assert(result.model.find("(define-fun y () Int 12)") != std::string::npos);
+}
+
 void qf_lia_rejects_uninterpreted_functions() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_LIA)
@@ -400,6 +494,9 @@ int main() {
   gomory_cut_resolves_what_branch_and_bound_alone_cannot();
   conflict_generalization_narrows_the_lemma_to_the_derivation();
   conflict_generalization_does_not_change_answers();
+  patching_finds_a_model_without_branching();
+  patching_does_not_change_answers();
+  patched_model_satisfies_a_uniquely_determined_instance();
   qf_lia_rejects_uninterpreted_functions();
   qf_lia_rejects_real_constants();
   qf_lia_rejects_division();

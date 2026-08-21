@@ -205,6 +205,9 @@ enum class StatKey : std::size_t {
   LiaGeneralizedLemmaLiterals,
   LiaCoarseLemmaLiterals,
   LiaGeneralizationFallbacks,
+  LiaPatchSweeps,
+  LiaPatchedVariables,
+  LiaPatchRoundsFullyIntegral,
   Count,
 };
 

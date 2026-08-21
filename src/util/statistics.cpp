@@ -207,6 +207,9 @@ constexpr std::array<std::string_view, static_cast<std::size_t>(StatKey::Count)>
     ":lia.generalized-lemma-literals"sv,
     ":lia.coarse-lemma-literals"sv,
     ":lia.generalization-fallbacks"sv,
+    ":lia.patch-sweeps"sv,
+    ":lia.patched-variables"sv,
+    ":lia.patch-rounds-fully-integral"sv,
 };
 
 const std::unordered_map<std::string_view, StatKey>& stat_keys_by_name() {

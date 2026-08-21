@@ -27751,6 +27751,40 @@
       "artifacts": "results/qf-lia-full-compare-127949/{primo-generalized,primo-coarse} on the Slurm remote; baseline results/qf-lia-full-compare-127709/{primo,z3,cvc5} preserved.",
       "evidence_status": "slurm-complete-current",
       "outcome": "Conflict generalization is a real but modest corpus-level win (+19 solves, PAR2 -0.18) on top of decisive per-instance wins in the family it targets. It does not close the cvc5 gap, and it is not uniformly positive: the rings regression shows that trading a long inert clause for a short propagating one costs real time when rounds are already cheap. A size-guard refinement (prefer the derived lemma only when it is substantially smaller, or when the coarse round rate is low) is the obvious follow-up, and is not attempted here."
+    },
+    {
+      "id": "2026-08-21-qf-lia-patching",
+      "started_at": "2026-08-21",
+      "recorded_at": "2026-08-21",
+      "kind": "feature",
+      "scope": "QF_LIA stage 5: patching, Bjorner & Nachmanson Sect. 4.1, the first layer of that paper's integer waterfall and the first stage here that tries to FIND an integer model rather than refute a candidate. Prompted by re-reading the paper's Section 4 (now summarized in docs/papers/arithmetic-solving-in-z3.md), which showed Primo's waterfall started at the paper's third layer.",
+      "commit": "pending",
+      "branch": "qf-lia-branch-and-bound",
+      "environment": {
+        "type": "local"
+      },
+      "commands": {
+        "test": "ctest --test-dir build (20 suites, one new: primo_lia_patching_tests)",
+        "lint": "make lint",
+        "fuzz": "PATH=contrib/local/bin:$PATH python3 scripts/fuzz_external.py --fuzzer fuzzsmt --logic QF_LIA --refs z3 --count 400 --timeout 10 --seed {7331,8442,9553}",
+        "model_validation": "direct z3 check: pin every declared constant to Primo's reported value, re-check the original constraints",
+        "ab": "per-family sample (94 files, 10s), same binary, --lia-patch-limit 0 as the control"
+      },
+      "results": {
+        "why_patching_over_cubes": "Cubes (Sect. 4.2) is cheaper to build and needs no tableau change, but a sampled count found 249 of 300 instances contain equality atoms. An asserted equality fixes a slack, and tightening a fixed slack in both directions makes the cube system contradictory, so cubes would be inconclusive on most rounds without also building z3's difference/octagon twist. Patching is equality-insensitive.",
+        "ab": "94-file sample, same binary. Patching off: 54 solved (26 sat, 28 unsat), PAR2 8.72. Patching on: 58 solved (30 sat, 28 unsat), PAR2 7.84. +4 gained, 0 lost, 0 wrong in both arms, 0 answer disagreements between arms.",
+        "gains_are_decisive_and_on_target": "All four gains are satisfiable instances and all four are decisive rather than boundary -- 10s timeout to 0.01-0.62s: prime-cone/prime_cone_sat_10, prime_cone_sat_11, and two CAV_2009_benchmarks/coef-size/size-100 instances. That matches the stage's target exactly: the full-corpus split puts Primo ahead of cvc5 by 147 on unsat and 661 behind on sat.",
+        "two_traps_found_by_testing_the_paper_example": "Building Bjorner & Nachmanson's own Example 3 as a test caught two things the prose leaves implicit. (1) Scoring a move by |delta| alone oscillates: with rows y = x/2 and z = x/3, the nearest fix for y moves x to 4 and breaks z, and the nearest fix for z moves it straight back. Candidates are scored globally instead -- by how many Int variables end up integral -- and only strictly improving moves are taken, which is the same monotonicity argument diversify_shared_model already makes and which also gives termination and no-worse-than-input for free. (2) Floor and ceil alone are too narrow: Example 3's answer x = 6 corresponds to y = 3, two integers above y's current 3/2, so a bounded window is searched.",
+        "activity": "Over the 94-file sample: 310 patch sweeps, 660 variables patched, 26 rounds fully integralized, moves taken on 22 of 94 files.",
+        "model_validation": "The failure mode for patching is a wrong MODEL, not a wrong answer, so model validation is the centre of gravity. scripts/validate_model.py cannot do this job for QF_LIA -- Dolmen aborts on Int models and its fallback is Real-only, so it reports validation-unavailable for every QF_LIA sat case (the same limitation slurm_qf_lia_model_fuzz_gate.sbatch's own comment records). A direct z3 check was used instead over 142 corpus instances covering every file where patching moved something: 66/66 sat models confirmed, zero wrong models.",
+        "fuzzing": "1,200 local FuzzSMT cases vs z3 across seeds 7331/8442/9553: 1,199 PASS, 1 TIMEOUT, zero disagreements.",
+        "test_suite": "20/20 suites pass. New primo_lia_patching_tests (8 cases) including the paper's Example 3 verbatim, with a feasibility assertion after every patch. Three new end-to-end cases, one of which pins the gain to patching by using lia_branch_limit = 0, where branch_and_bound provably cannot take a node.",
+        "tableau_change": "First QF_LIA stage to touch LraTableau, deliberately and minimally: set_nonbasic_value, a narrow public wrapper over the existing private update(). Its comment carries the crux -- it is not trailed outside PivotingRule::Soi, so a move cannot be undone by pop(); safe only because solve_qf_lia_impl's lia_tableau is a per-round copy.",
+        "incidental_fix": "scripts/validate_qfuf_models_with_dolmen.py crashed on the first timed-out instance: subprocess.TimeoutExpired does not honour text=True, so its stdout/stderr are bytes while write_text() expects str. Never seen before because the small fuzz cases the harness was built against do not time out. Fixed separately (commit a625062)."
+      },
+      "artifacts": "src/theory/arithmetic/lia_patching.{hpp,cpp} and lia_integer_values.hpp (new), tests/unit/lia_patching_tests.cpp (new), LraTableau::set_nonbasic_value, CheckSatOptions::lia_patch_limit + --lia-patch-limit, three :lia.patch-* statistics.",
+      "evidence_status": "local-complete-current",
+      "outcome": "A strictly positive result on the sample -- 4 gained, 0 lost, all on satisfiable instances, all decisive -- from the layer the paper puts first and Primo had skipped. Full-corpus A/B against the stage-4 baseline (Slurm 127949) is the next step; z3/cvc5 do not need rerunning."
     }
   ]
 }
