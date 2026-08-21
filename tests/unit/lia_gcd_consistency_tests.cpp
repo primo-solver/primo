@@ -149,9 +149,7 @@ void does_not_flag_an_unfixed_non_integer_slack() {
   assert(!tableau.assert_lower(x, rat(0), Lit{2}).has_value());
   assert(!tableau.assert_upper(y, rat(-1), Lit{3}).has_value());
   assert(!tableau.assert_lower(y, rat(-1), Lit{4}).has_value());
-  assert(!tableau
-              .assert_lower(s, DeltaRational{Rational(-1, 2), Rational(1)}, Lit{5})
-              .has_value());
+  assert(!tableau.assert_lower(s, DeltaRational{Rational(-1, 2), Rational(1)}, Lit{5}).has_value());
   assert(!tableau.assert_upper(s, DeltaRational::from_rational(Rational(-1, 1000000)), Lit{6})
               .has_value());
   assert(!tableau.check().has_value());

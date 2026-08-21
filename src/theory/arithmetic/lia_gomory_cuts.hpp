@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <vector>
 
+#include "theory/arithmetic/lia_explanation.hpp"
 #include "theory/arithmetic/lra_tableau.hpp"
 
 namespace primo::theory::arithmetic {
@@ -38,7 +39,15 @@ namespace primo::theory::arithmetic {
 // regardless of this function's return value when it returns false --
 // this is a pre-check that can only make branch-and-bound's job easier
 // or unnecessary, never harder.
+//
+// When `explanation` is non-null it collects, for every cut applied, the
+// bound reasons of that cut's row terms (the bounds the cut was derived
+// from) plus the literals of the conflict that finally closed the tableau.
+// Antecedents are recorded for cuts that do *not* conflict too, because
+// those cuts stay in the tableau and can underpin a later conflict --
+// including one branch-and-bound runs into afterwards, since the same
+// LiaExplanation is threaded through both.
 bool apply_gomory_cuts(LraTableau& tableau, const std::vector<LraVarId>& integer_vars,
-                       std::size_t cut_limit);
+                       std::size_t cut_limit, LiaExplanation* explanation = nullptr);
 
 }  // namespace primo::theory::arithmetic

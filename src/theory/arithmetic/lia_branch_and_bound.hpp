@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <vector>
 
+#include "theory/arithmetic/lia_explanation.hpp"
 #include "theory/arithmetic/lra_tableau.hpp"
 
 namespace primo::theory::arithmetic {
@@ -18,14 +19,18 @@ namespace primo::theory::arithmetic {
 // On a fractional integer variable with current value v, splits on
 // `var <= floor(v)` vs `var >= floor(v) + 1` (Bjørner & Nachmanson,
 // "Arithmetic Solving in Z3", CAV 2024, Sect. 4.4), asserted as an
-// ordinary tableau bound with a synthetic sat::Lit{0} reason -- the
+// ordinary tableau bound with a synthetic kDerivedBoundReason -- the
 // convention this codebase already uses elsewhere (e.g. check_sat.cpp's
 // augmented_lra_atoms) for a tableau bound with no real SAT literal behind
-// it. These synthetic-reason bounds and any conflict certificate check()
-// derives from them never leave this function: on failure the caller gets
-// only a Status, not a clause, and is expected to build its own conflict
-// from the SAT-level atoms that produced the tableau in the first place
-// (see solve_qf_lia_impl in check_sat.cpp).
+// it.
+//
+// The conflict certificates check() derives along the way are not thrown
+// away: when `explanation` is supplied, each one is folded into it, minus
+// the synthetic split bounds themselves. Dropping those is what makes the
+// result a lemma over real SAT atoms, and it is sound because the split is
+// a tautology over the integers -- see lia_explanation.hpp and try_branch
+// in the .cpp. The caller may still fall back to a coarse
+// whole-assignment clause; see solve_qf_lia_impl in check_sat.cpp.
 //
 // Explicit-stack DFS, not recursion, per this project's standing
 // convention for tree search.
@@ -56,6 +61,7 @@ struct LiaBranchAndBoundResult {
 // not a bug: see docs/qf-lia-branch-and-bound.md.
 LiaBranchAndBoundResult branch_and_bound(LraTableau& tableau,
                                          const std::vector<LraVarId>& integer_vars,
-                                         std::size_t node_limit);
+                                         std::size_t node_limit,
+                                         LiaExplanation* explanation = nullptr);
 
 }  // namespace primo::theory::arithmetic

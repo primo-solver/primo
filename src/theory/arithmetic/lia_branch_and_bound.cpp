@@ -45,24 +45,43 @@ util::Rational delta_floor(const DeltaRational& value) {
 // floor_value + 1) and checks it. Returns whether that side is feasible;
 // on false, whatever the assert/check touched is left in place for the
 // caller to pop().
-bool try_branch(LraTableau& tableau, LraVarId var, const util::Rational& floor_value,
-                bool low_side) {
+//
+// Every conflict that closes a side is folded into `explanation` when one
+// is supplied. The split bound itself is asserted with
+// kDerivedBoundReason and so drops out of that explanation, which is
+// exactly right: `var <= floor_value` or `var >= floor_value + 1` is a
+// tautology over the integers, so once branch_and_bound has closed *both*
+// sides, the union of the two sides' explanations refutes the parent node
+// without needing to mention the split. See lia_explanation.hpp.
+bool try_branch(LraTableau& tableau, LraVarId var, const util::Rational& floor_value, bool low_side,
+                LiaExplanation* explanation) {
   const std::optional<std::vector<sat::Lit>> assert_conflict =
       low_side
-          ? tableau.assert_upper(var, DeltaRational::from_rational(floor_value), sat::Lit{0})
+          ? tableau.assert_upper(var, DeltaRational::from_rational(floor_value),
+                                 kDerivedBoundReason)
           : tableau.assert_lower(var, DeltaRational::from_rational(floor_value + util::Rational(1)),
-                                 sat::Lit{0});
+                                 kDerivedBoundReason);
   if (assert_conflict.has_value()) {
+    if (explanation != nullptr) {
+      explanation->add_all(*assert_conflict);
+    }
     return false;
   }
-  return !tableau.check().has_value();
+  const std::optional<std::vector<sat::Lit>> check_conflict = tableau.check();
+  if (check_conflict.has_value()) {
+    if (explanation != nullptr) {
+      explanation->add_all(*check_conflict);
+    }
+    return false;
+  }
+  return true;
 }
 
 }  // namespace
 
 LiaBranchAndBoundResult branch_and_bound(LraTableau& tableau,
                                          const std::vector<LraVarId>& integer_vars,
-                                         std::size_t node_limit) {
+                                         std::size_t node_limit, LiaExplanation* explanation) {
   struct Frame {
     LraVarId var = 0;
     util::Rational floor_value;
@@ -90,7 +109,7 @@ LiaBranchAndBoundResult branch_and_bound(LraTableau& tableau,
     frame.checkpoint = tableau.push();
     stack.push_back(frame);
 
-    if (try_branch(tableau, frame.var, frame.floor_value, /*low_side=*/true)) {
+    if (try_branch(tableau, frame.var, frame.floor_value, /*low_side=*/true, explanation)) {
       continue;  // Descend: re-scan for the next fractional variable.
     }
 
@@ -104,7 +123,7 @@ LiaBranchAndBoundResult branch_and_bound(LraTableau& tableau,
         tableau.pop(top.checkpoint);
         top.checkpoint = tableau.push();
         top.tried_high = true;
-        if (try_branch(tableau, top.var, top.floor_value, /*low_side=*/false)) {
+        if (try_branch(tableau, top.var, top.floor_value, /*low_side=*/false, explanation)) {
           resumed = true;
           break;
         }

@@ -27690,6 +27690,38 @@
       "artifacts": "none beyond the code change and doc updates",
       "evidence_status": "local-complete-current",
       "outcome": "A small, genuinely safe preprocessing capability shipped for QF_LIA, and the process of shipping it caught two real bugs before they reached anyone (one in the new code's own model reconstruction, one in a 6-year-old shared helper function never previously exercised with an Int atom). No measurable performance win on the specific instances that motivated this lead -- consistent with lead 12's own ranking, which named search-time integer inference (12c) and conflict-clause generalization (12d) as the larger levers, not preprocessing."
+    },
+    {
+      "id": "2026-08-21-qf-lia-conflict-generalization",
+      "started_at": "2026-08-21",
+      "recorded_at": "2026-08-21",
+      "kind": "feature",
+      "scope": "docs/open-leads.md lead 12d. A fresh-eyes review of the QF_LIA code, backed by an instrumented build over a per-family sample (3 files/family, 94 files, 10s), found that solve_qf_lia_impl was discarding the Farkas-style conflict certificate LraTableau already returns and rebuilding a lemma from every arithmetic atom in the problem instead. Replaced that coarse clause with the integer stages' own derivation, via a new LiaExplanation accumulator threaded through GCD-consistency, Gomory cuts, and branch-and-bound.",
+      "commit": "pending",
+      "branch": "qf-lia-branch-and-bound",
+      "environment": {
+        "type": "local"
+      },
+      "commands": {
+        "test": "ctest --test-dir build (19 suites, one new: primo_lia_explanation_tests)",
+        "lint": "make lint",
+        "fuzz": "PATH=contrib/local/bin:$PATH python3 scripts/fuzz_external.py --fuzzer fuzzsmt --logic QF_LIA --solver ./build/primo --refs z3 --count 400 --timeout 10 --seed {4021,5150,6271}",
+        "ab": "per-family sample (3 files/family, 94 files, 10s), same binary, --no-lia-conflict-generalization as the control"
+      },
+      "results": {
+        "measurement_that_motivated_it": "Instrumented counters over the 94-file sample: 25,270 outer SAT rounds, 25,015 of them (99%) closed by a Gomory cut proving the assignment integer-infeasible, each blocked by a maximal-size clause. calypto/problem-001542 emitted a 219-literal clause on each of 6,528 rounds while the tableau conflict it discarded was 5 literals and the cut's antecedents were 4 bounds; convert/convert-jpg2gif-query-1141 emitted 1,266 literals on each of 19,630+ rounds against a 5-literal conflict and ~19 antecedent bounds -- 28M literals of clause in 20 seconds, and it timed out.",
+        "root_cause": "apply_gomory_cuts collapsed a std::vector<sat::Lit> conflict to bool; gcd_inconsistent_row returned only a row id; try_branch returned only a feasibility flag. QF_LRA's check_lra_theory_in_place has always used the same tableau's conflict directly as its clause. The single obstruction was that every conflict contained exactly one sat::Lit{0}, the synthetic reason a cut threshold or branch split bound is asserted with, so the certificate could not be forwarded verbatim.",
+        "instance_effect": "calypto/problem-001542: unsat 1.10s -> 0.02s (6,528 rounds -> 2). calypto/problem-001553: unsat 0.86s -> 0.02s. convert/convert-jpg2gif-query-1141: unknown at 60s -> unsat 0.04s (19,630+ rounds -> 6). Zero generalization fallbacks on any of them.",
+        "test_suite": "19/19 suites pass. New primo_lia_explanation_tests (11 cases) covers the synthetic-reason drop, dedup/ordering, per-stage antecedent recording, and the only-names-real-reasons property generalized_lia_lemma depends on. Two new end-to-end cases in qf_lia_solver_tests.cpp pin the narrowing (8-literal coarse clause vs 4-literal derivation) and that the flag changes no answers.",
+        "fuzzing": "1,200 local FuzzSMT cases vs z3 across seeds 4021/5150/6271: 1,199 PASS, 1 UNKNOWN_INVOLVED, zero disagreements.",
+        "lint": "make lint is clean (exit 0). It had 17 pre-existing violations before this change; the files this change touches were formatted, and the last two (in tests/unit/lia_gcd_consistency_tests.cpp, untouched by this change) were fixed on request.",
+        "safety_design": "generalized_lia_lemma() checks that every literal of the derived explanation already appears in the coarse clause and falls back otherwise. That containment test is what makes the change incapable of turning a correct answer into a wrong one: it rules out both a literal that is not blocking for the current assignment (which would fail to exclude it and spin the outer loop) and a leaked synthetic literal. An empty explanation also falls back.",
+        "ab_on_the_per_family_sample": "94 files, 10s, same binary with --no-lia-conflict-generalization as the control. Coarse: 53 solved, PAR2 8.92, 0 wrong. Generalized: 54 solved, PAR2 8.69, 0 wrong. One outcome change (convert/convert-jpg2gif-query-1141, unknown -> unsat), no file regressed from solved to unsolved, and 47x/42x speedups on the two calypto instances. Modest at sample level by design: an instrumented count found 24 of 36 timeouts in this sample never reach the integer layer at all (zero LIA rounds in 10s), so this lever cannot touch them.",
+        "full_corpus_baseline_for_comparison": "Slurm job 127709 (all 13,306 files, 60s, one array task per solver-shard) ran the PRE-generalization binary and is the baseline to re-measure against: primo 8,704 solved / 0 wrong / PAR2 43.14, cvc5 9,126 solved / 0 wrong / PAR2 38.10 (166 files short at aggregation time), z3 12,147 solved / 0 wrong / PAR2 13.09. primo's zero wrong answers across the full corpus confirms the post-fix soundness baseline at scale."
+      },
+      "artifacts": "src/theory/arithmetic/lia_explanation.{hpp,cpp} (new), tests/unit/lia_explanation_tests.cpp (new), CheckSatOptions::lia_conflict_generalization + --no-lia-conflict-generalization, four :lia.* statistics.",
+      "evidence_status": "local-complete-current",
+      "outcome": "The lead was estimated 'large, needs its own design note' and turned out to be small: the explanation did not need building, only forwarding with one synthetic literal resolved away. The estimate was wrong because it assumed the machinery was missing rather than checking what the existing machinery already returned -- worth remembering for lead 12c, where the same question applies. Full-corpus re-measurement against the pre-generalization baseline (Slurm job 127709, which ran the old binary) is the natural next step."
     }
   ]
 }

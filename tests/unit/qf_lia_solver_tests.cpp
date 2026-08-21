@@ -266,6 +266,86 @@ void gomory_cut_resolves_what_branch_and_bound_alone_cannot() {
   assert(with_cuts.result == CheckSatResult::Unsat);
 }
 
+// docs/qf-lia-branch-and-bound.md's "Conflict generalization" section.
+// `3x + 5y = 7, x,y >= 0` is the same instance the Gomory-cut section uses:
+// unsat, LRA-feasible, and closed by a cut rather than by branching. Here it
+// pins the *lemma* the cut produces rather than the answer.
+//
+// The z and w constraints are deliberately irrelevant to the contradiction:
+// they are satisfiable on their own and share no variable with it, so they
+// are exactly the kind of atom the coarse clause names and the derivation
+// does not. Without them the instance is too small to distinguish the two
+// forms -- all four of its atoms genuinely participate in the cut, so the
+// derived lemma is the same size as the coarse one and the test would prove
+// nothing. With them, the coarse clause is 8 literals and the derivation is
+// still 4.
+void conflict_generalization_narrows_the_lemma_to_the_derivation() {
+  const std::string script = R"(
+    (set-logic QF_LIA)
+    (declare-fun x () Int)
+    (declare-fun y () Int)
+    (declare-fun z () Int)
+    (declare-fun w () Int)
+    (assert (= (+ (* 3 x) (* 5 y)) 7))
+    (assert (>= x 0))
+    (assert (>= y 0))
+    (assert (>= z 0))
+    (assert (<= z 10))
+    (assert (>= w 5))
+    (assert (<= w 20))
+    (check-sat)
+  )";
+  const auto result = check_sat_smtlib(script, CheckSatOptions{});
+  assert(result.result == CheckSatResult::Unsat);
+
+  const auto generalized = result.statistics.get(primo::util::StatKey::LiaGeneralizedLemmas);
+  const auto fallbacks = result.statistics.get(primo::util::StatKey::LiaGeneralizationFallbacks);
+  const auto derived_lits =
+      result.statistics.get(primo::util::StatKey::LiaGeneralizedLemmaLiterals);
+  const auto coarse_lits = result.statistics.get(primo::util::StatKey::LiaCoarseLemmaLiterals);
+  assert(generalized > 0);
+  assert(fallbacks == 0);
+  assert(derived_lits < coarse_lits);
+}
+
+// The switch has to be a pure quality knob: turning generalization off
+// restores the coarse clause and must not change any answer. Asserted on
+// both an unsat instance (where the lemma is what drives the outer loop) and
+// a sat one (where no lemma is emitted at all), since a bad lemma shows up
+// as either a wrong answer or a non-terminating loop.
+void conflict_generalization_does_not_change_answers() {
+  const std::string unsat_script = R"(
+    (set-logic QF_LIA)
+    (declare-fun x () Int)
+    (declare-fun y () Int)
+    (assert (= (+ (* 3 x) (* 5 y)) 7))
+    (assert (>= x 0))
+    (assert (>= y 0))
+    (check-sat)
+  )";
+  const std::string sat_script = R"(
+    (set-logic QF_LIA)
+    (declare-fun x () Int)
+    (declare-fun y () Int)
+    (assert (<= 3 (+ x y)))
+    (assert (<= (+ x y) 4))
+    (assert (distinct x y))
+    (check-sat)
+  )";
+  CheckSatOptions coarse;
+  coarse.lia_conflict_generalization = false;
+  const CheckSatOptions generalized;
+
+  assert(check_sat_smtlib(unsat_script, generalized).result == CheckSatResult::Unsat);
+  assert(check_sat_smtlib(unsat_script, coarse).result == CheckSatResult::Unsat);
+  assert(check_sat_smtlib(sat_script, generalized).result == CheckSatResult::Sat);
+  assert(check_sat_smtlib(sat_script, coarse).result == CheckSatResult::Sat);
+
+  // With generalization off, every lemma is the coarse one, by definition.
+  const auto coarse_result = check_sat_smtlib(unsat_script, coarse);
+  assert(coarse_result.statistics.get(primo::util::StatKey::LiaGeneralizedLemmas) == 0);
+}
+
 void qf_lia_rejects_uninterpreted_functions() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_LIA)
@@ -318,6 +398,8 @@ int main() {
   gcd_inconsistent_system_is_unsat_without_branching();
   gcd_uncatchable_divergent_system_hits_the_node_limit();
   gomory_cut_resolves_what_branch_and_bound_alone_cannot();
+  conflict_generalization_narrows_the_lemma_to_the_derivation();
+  conflict_generalization_does_not_change_answers();
   qf_lia_rejects_uninterpreted_functions();
   qf_lia_rejects_real_constants();
   qf_lia_rejects_division();

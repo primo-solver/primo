@@ -39,15 +39,21 @@ namespace {
 struct BoundSite {
   util::Rational value;
   bool is_lower;
+  // The bound this site sits at is exactly what the derived cut rests on,
+  // so its reason is one of the cut's antecedents -- collected by
+  // apply_gomory_cuts into the round's LiaExplanation, which is what lets
+  // the cut's own synthetic kDerivedBoundReason be dropped from any
+  // conflict the cut later takes part in.
+  sat::Lit reason;
 };
 
 std::optional<BoundSite> current_bound_site(const LraTableau& tableau, LraVarId var) {
   const DeltaRational& value = tableau.assignment(var);
   if (const auto lower = tableau.lower_bound(var); lower.has_value() && lower->value == value) {
-    return BoundSite{lower->value.rational, true};
+    return BoundSite{lower->value.rational, true, lower->reason};
   }
   if (const auto upper = tableau.upper_bound(var); upper.has_value() && upper->value == value) {
-    return BoundSite{upper->value.rational, false};
+    return BoundSite{upper->value.rational, false, upper->reason};
   }
   return std::nullopt;
 }
@@ -151,7 +157,7 @@ std::optional<std::vector<sat::Lit>> apply_one_cut(LraTableau& tableau, const El
   const LraVarId cut_slack = tableau.add_variable();
   tableau.add_row(cut_slack, cut_terms);
   const auto assert_conflict =
-      tableau.assert_lower(cut_slack, DeltaRational::from_rational(threshold), sat::Lit{0});
+      tableau.assert_lower(cut_slack, DeltaRational::from_rational(threshold), kDerivedBoundReason);
   if (assert_conflict.has_value()) {
     return assert_conflict;
   }
@@ -161,14 +167,29 @@ std::optional<std::vector<sat::Lit>> apply_one_cut(LraTableau& tableau, const El
 }  // namespace
 
 bool apply_gomory_cuts(LraTableau& tableau, const std::vector<LraVarId>& integer_vars,
-                       std::size_t cut_limit) {
+                       std::size_t cut_limit, LiaExplanation* explanation) {
   for (std::size_t iteration = 0; iteration < cut_limit; ++iteration) {
     const auto eligible = find_eligible_row(tableau, integer_vars);
     if (!eligible.has_value()) {
       return false;
     }
     const util::Rational a0 = tableau.assignment(eligible->basic_var).rational;
-    if (apply_one_cut(tableau, *eligible, a0).has_value()) {
+    if (explanation != nullptr) {
+      // Record the cut's antecedents *before* checking whether it closes the
+      // tableau, and unconditionally: a cut that does not conflict on its own
+      // still stays in the tableau for the rest of the round, so a later cut
+      // -- or branch-and-bound afterwards -- can produce a conflict resting on
+      // it. Its kDerivedBoundReason is dropped from that conflict, so these
+      // antecedents have to already be in the explanation by then.
+      for (const auto& [entry, site] : eligible->terms) {
+        explanation->add(site.reason);
+      }
+    }
+    const auto cut_conflict = apply_one_cut(tableau, *eligible, a0);
+    if (cut_conflict.has_value()) {
+      if (explanation != nullptr) {
+        explanation->add_all(*cut_conflict);
+      }
       return true;
     }
   }

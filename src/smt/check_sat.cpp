@@ -5488,9 +5488,8 @@ PreparedLraTheory::PreparedLraTheory(const core::TermManager& terms,
     // original atom never ruled out. See lia_gomory_cuts.cpp's
     // find_eligible_row for the same slack-vs-declared-variable distinction
     // already made there for exactly this reason.
-    const bool slack_is_integer =
-        is_integer_atom &&
-        (canonical.scale == util::Rational(1) || canonical.scale == util::Rational(-1));
+    const bool slack_is_integer = is_integer_atom && (canonical.scale == util::Rational(1) ||
+                                                      canonical.scale == util::Rational(-1));
     atoms.push_back(PreparedAtom{true, slack, normalized.relation, rhs, flipped, non_strict_le_pair,
                                  slack_is_integer});
     atoms_by_bound_var[slack].push_back(atom_index);
@@ -6000,7 +5999,7 @@ std::string build_qf_lia_model(
     if (found != prepared.variables_by_term.end()) {
       value = tableau.assignment(found->second).rational;
     } else if (const auto substitution = substitution_definitions.find(term_id);
-              substitution != substitution_definitions.end()) {
+               substitution != substitution_definitions.end()) {
       // A variable lead 12a's preprocessing eliminated entirely: it never
       // reached PreparedLraTheory, so it has no tableau variable at all --
       // recover its value from the definition it was replaced by instead
@@ -10485,6 +10484,55 @@ CheckSatOutcome solve_qf_lra_impl(
   }
 }
 
+// Narrows a round's coarse QF_LIA lemma -- the blocking literals of every
+// arithmetic atom that fed the tableau -- to the derivation-based
+// explanation the integer stages accumulated while proving this branch
+// integer-infeasible (docs/open-leads.md lead 12d).
+//
+// Whether the narrowed clause is used is *checked*, not assumed: every
+// literal in `explanation` must already appear in `coarse`. That single
+// containment test is what keeps this incapable of turning a correct
+// answer into a wrong one, and it covers both ways a derived explanation
+// could be malformed:
+//
+//   * A literal that is not blocking for the current assignment would fail
+//     to exclude it, and the SAT solver would hand back the very same
+//     assignment forever. `coarse` is by construction guaranteed to
+//     exclude it, so a subset of `coarse` is too.
+//   * A leaked kDerivedBoundReason, or any other literal naming no atom of
+//     this problem, is not in `coarse` either.
+//
+// An empty explanation also falls back rather than being emitted: the empty
+// clause asserts the whole problem is unsat, which is far too strong a
+// claim to arrive at by accident from an accumulation that is allowed to be
+// a superset of the true reason.
+sat::Clause generalized_lia_lemma(const sat::Clause& coarse,
+                                  const theory::arithmetic::LiaExplanation& explanation,
+                                  util::Statistics& statistics) {
+  statistics.increment(util::StatKey::LiaCoarseLemmaLiterals, coarse.size());
+  const auto fall_back = [&]() -> sat::Clause {
+    statistics.increment(util::StatKey::LiaGeneralizationFallbacks);
+    statistics.increment(util::StatKey::LiaGeneralizedLemmaLiterals, coarse.size());
+    return coarse;
+  };
+  if (explanation.empty()) {
+    return fall_back();
+  }
+  std::unordered_set<std::int32_t> coarse_lits;
+  coarse_lits.reserve(coarse.size() * 2);
+  for (const sat::Lit lit : coarse) {
+    coarse_lits.insert(lit.value);
+  }
+  for (const sat::Lit lit : explanation.literals()) {
+    if (coarse_lits.find(lit.value) == coarse_lits.end()) {
+      return fall_back();
+    }
+  }
+  statistics.increment(util::StatKey::LiaGeneralizedLemmas);
+  statistics.increment(util::StatKey::LiaGeneralizedLemmaLiterals, explanation.literals().size());
+  return explanation.literals();
+}
+
 // QF_LIA, stage 1 (docs/qf-lia-branch-and-bound.md): a close structural
 // parallel of solve_qf_lra_impl above -- same clausifier/tableau/backend
 // loop shape, deliberately NOT a modification of that function or of
@@ -10594,6 +10642,14 @@ CheckSatOutcome solve_qf_lia_impl(
       }
 #endif
 
+      // Stage 4 (docs/qf-lia-branch-and-bound.md's "Conflict
+      // generalization"): one explanation accumulator per round, threaded
+      // through all three integer stages rather than one per stage. A cut
+      // derived by stage 3 stays in the tableau while branch-and-bound
+      // runs, so a conflict branch-and-bound finds can rest on stage 3's
+      // antecedents -- the two cannot be explained separately.
+      theory::arithmetic::LiaExplanation lia_explanation;
+
       // Stage 2 (docs/qf-lia-branch-and-bound.md): a read-only structural
       // pre-check, cheaper than branching and it catches cases plain
       // branch-and-bound cannot terminate on at all (e.g. `2x - 2y = 1`
@@ -10601,27 +10657,27 @@ CheckSatOutcome solve_qf_lia_impl(
       // assignment can satisfy that row directly; branch-and-bound alone
       // would branch until --lia-branch-limit and report Unknown).
       bool arithmetic_unsat =
-          theory::arithmetic::gcd_inconsistent_row(lia_tableau, integer_vars).has_value();
+          theory::arithmetic::gcd_inconsistent_row(lia_tableau, integer_vars, &lia_explanation)
+              .has_value();
       // Stage 3: mutates lia_tableau (adds cut rows/bounds -- safe here,
       // see lia_gomory_cuts.cpp's module comment for why nothing needs to
       // undo them within this per-round tableau copy) before
       // branch-and-bound runs, so it only ever tightens what
       // branch-and-bound has to search.
       if (!arithmetic_unsat) {
-        arithmetic_unsat = theory::arithmetic::apply_gomory_cuts(lia_tableau, integer_vars,
-                                                                 options.lia_gomory_cut_limit);
+        arithmetic_unsat = theory::arithmetic::apply_gomory_cuts(
+            lia_tableau, integer_vars, options.lia_gomory_cut_limit, &lia_explanation);
       }
       if (!arithmetic_unsat) {
         const theory::arithmetic::LiaBranchAndBoundResult bb_result =
             theory::arithmetic::branch_and_bound(lia_tableau, integer_vars,
-                                                 options.lia_branch_limit);
+                                                 options.lia_branch_limit, &lia_explanation);
         if (bb_result.status == theory::arithmetic::LiaBranchAndBoundResult::Status::Sat) {
           return CheckSatOutcome{
               CheckSatResult::Sat, "", statistics,
-              options.produce_model
-                  ? build_qf_lia_model(terms, model_terms, prepared_theory, lia_tableau,
-                                      solved_constant_substitutions)
-                  : ""};
+              options.produce_model ? build_qf_lia_model(terms, model_terms, prepared_theory,
+                                                         lia_tableau, solved_constant_substitutions)
+                                    : ""};
         }
         if (bb_result.status == theory::arithmetic::LiaBranchAndBoundResult::Status::LimitReached) {
           return CheckSatOutcome{CheckSatResult::Unknown,
@@ -10647,6 +10703,14 @@ CheckSatOutcome solve_qf_lia_impl(
       if (block.empty()) {
         publish_sat_stats(backend.statistics(), statistics);
         return CheckSatOutcome{CheckSatResult::Unsat, "", statistics, ""};
+      }
+      // Narrow the coarse clause to what actually proved this branch
+      // integer-infeasible. Deliberately after the block.empty() check
+      // above: "no arithmetic atom fed the tableau at all" is a statement
+      // about the round, not about the derivation, and must keep answering
+      // Unsat outright.
+      if (options.lia_conflict_generalization) {
+        block = generalized_lia_lemma(block, lia_explanation, statistics);
       }
       backend.add_clause(block);
       publish_sat_stats(backend.statistics(), statistics);
@@ -12920,16 +12984,15 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
         statistics.increment(kStatSolvedConstantAccepted, solved_constants.accepted);
         statistics.increment(kStatSolvedConstantRewrites, solved_constants.rewrites);
         statistics.increment(kStatSolvedConstantRejectedCycles, solved_constants.rejected_cycles);
-        statistics.increment(kStatSolvedConstantRejectedBlowups,
-                             solved_constants.rejected_blowups);
+        statistics.increment(kStatSolvedConstantRejectedBlowups, solved_constants.rejected_blowups);
         if (solved_constants.accepted == 0) {
           break;
         }
         assertions = std::move(solved_constants.assertions);
         if (options.produce_model) {
           qf_lia_solved_constant_substitutions.insert(qf_lia_solved_constant_substitutions.end(),
-                                                       solved_constants.substitutions.begin(),
-                                                       solved_constants.substitutions.end());
+                                                      solved_constants.substitutions.begin(),
+                                                      solved_constants.substitutions.end());
         }
       }
     }
@@ -13342,10 +13405,9 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
                                                         ? frontend.declared_int_constant_terms()
                                                         : std::vector<core::TermId>{};
       const PhaseClock::time_point solve_start = PhaseClock::now();
-      return finish_solve(
-          solve_qf_lia(frontend.terms(), assertions, model_terms, solve_options, statistics,
-                       qf_lia_solved_constant_substitutions),
-          solve_start);
+      return finish_solve(solve_qf_lia(frontend.terms(), assertions, model_terms, solve_options,
+                                       statistics, qf_lia_solved_constant_substitutions),
+                          solve_start);
     }
     if ((has_equality || has_euf_predicate) && has_arithmetic) {
       const std::vector<core::TermId> model_terms = solve_options.produce_model

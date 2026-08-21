@@ -318,6 +318,18 @@ struct CheckSatOptions {
   // tuned; picked to be cheap relative to lia_branch_limit, since each
   // cut round is itself a full check() re-solve.
   std::size_t lia_gomory_cut_limit = 100;
+  // QF_LIA conflict generalization (docs/open-leads.md lead 12d): emit the
+  // integer stages' own derivation-based explanation as the round's theory
+  // lemma instead of the coarse clause naming every arithmetic atom in the
+  // problem. The coarse clause excludes exactly one Boolean assignment, so
+  // without this the outer loop degenerates into model enumeration --
+  // measured at 219 literals per lemma over 6,528 rounds on
+  // calypto/problem-001542 where the derivation used 4 bounds, and 1,266
+  // literals over 19,630 rounds on convert/convert-jpg2gif-query-1141
+  // where it used ~19. On by default; kept switchable because it changes
+  // search trajectories and so needs to stay A/B-measurable. Turning it
+  // off restores the pre-generalization coarse clause exactly.
+  bool lia_conflict_generalization = true;
   bool monotone_elimination = false;
   bool solved_constant_substitution = true;
   bool gaussian_elimination = true;

@@ -66,13 +66,16 @@ std::optional<util::Rational> fixed_value(const LraTableau& tableau, LraVarId va
 // every quantity in the row is already known/fixed and this derives
 // nothing beyond what ordinary LRA consistency already checked.
 bool row_is_gcd_consistent(const LraTableau& tableau, LraVarId basic_var,
-                           const std::vector<bool>& is_declared_integer) {
+                           const std::vector<bool>& is_declared_integer,
+                           std::vector<LraVarId>& fixed_vars) {
   std::vector<util::Rational> free_coefficients;
   util::Rational residual(0);
+  fixed_vars.clear();
 
   const auto basic_fixed = fixed_value(tableau, basic_var);
   if (basic_fixed.has_value()) {
     residual -= *basic_fixed;  // basic_var's own signed coefficient is +1.
+    fixed_vars.push_back(basic_var);
   } else if (is_declared_integer[basic_var]) {
     free_coefficients.push_back(util::Rational(1));
   } else {
@@ -82,6 +85,7 @@ bool row_is_gcd_consistent(const LraTableau& tableau, LraVarId basic_var,
   for (const auto& entry : tableau.row(basic_var)) {
     if (const auto term_fixed = fixed_value(tableau, entry.var); term_fixed.has_value()) {
       residual += entry.coeff * (*term_fixed);
+      fixed_vars.push_back(entry.var);
     } else if (is_declared_integer[entry.var]) {
       free_coefficients.push_back(entry.coeff);
     } else {
@@ -115,16 +119,24 @@ bool row_is_gcd_consistent(const LraTableau& tableau, LraVarId basic_var,
 }  // namespace
 
 std::optional<LraVarId> gcd_inconsistent_row(const LraTableau& tableau,
-                                             const std::vector<LraVarId>& integer_vars) {
+                                             const std::vector<LraVarId>& integer_vars,
+                                             LiaExplanation* explanation) {
   std::vector<bool> is_declared_integer(tableau.variable_count(), false);
   for (const LraVarId var : integer_vars) {
     is_declared_integer[var] = true;
   }
+  std::vector<LraVarId> fixed_vars;
   for (LraVarId var = 0; var < tableau.variable_count(); ++var) {
     if (!tableau.is_basic(var)) {
       continue;
     }
-    if (!row_is_gcd_consistent(tableau, var, is_declared_integer)) {
+    if (!row_is_gcd_consistent(tableau, var, is_declared_integer, fixed_vars)) {
+      if (explanation != nullptr) {
+        // Only the fixed variables are assumptions here; see the .hpp.
+        for (const LraVarId fixed_var : fixed_vars) {
+          explanation->add_fixed_bound_reasons(tableau, fixed_var);
+        }
+      }
       return var;
     }
   }

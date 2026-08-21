@@ -201,6 +201,10 @@ enum class StatKey : std::size_t {
   LraPivotTermOps,
   LraFixedVariables,
   LraEliminationPivots,
+  LiaGeneralizedLemmas,
+  LiaGeneralizedLemmaLiterals,
+  LiaCoarseLemmaLiterals,
+  LiaGeneralizationFallbacks,
   Count,
 };
 

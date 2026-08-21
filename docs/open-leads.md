@@ -52,7 +52,7 @@ notes it points to.
 | [12a](#lead-qflia-preprocessing-safe) | QF_LIA: enable bare-form solved-constant substitution | no measurable effect on the 2 motivating instances; real but narrow win elsewhere | small | **done: substitution shipped default-on; atom canonicalization attempted and reverted, unsafe as written** |
 | [12b](#lead-qflia-preprocessing-gauss) | QF_LIA: partial (unit-pivot) Gaussian elimination | needs a population census first | medium | open, gated on a census |
 | [12c](#lead-qflia-dio-hnf-cube) | QF_LIA: Diophantine/HNF/cube search-time reasoning | z3 closes 96% of calypto's conflicts via Dio, not branching | large | open, no paper note yet |
-| [12d](#lead-qflia-conflict-generalization) | QF_LIA: generalizing (Farkas-style) arithmetic conflict clauses | 56,864 near-1:1 lra/sat conflicts on one file | large | open, no paper note yet |
+| [12d](#lead-qflia-conflict-generalization) | QF_LIA: generalizing (Farkas-style) arithmetic conflict clauses | lemmas 27-55x larger than the certificate the tableau already returned | small (est. large, wrongly) | **done: derived explanation shipped default-on; one timeout turned into a 0.04s unsat** |
 
 (lead-pure-filter-lra)=
 ## 1. Extend `--pure-theory-filter` to LRA atoms
@@ -1594,11 +1594,68 @@ current assignment rather than a minimized explanation. The calypto
 evidence above (56,864 near-1:1 lra/sat conflicts on one file) is the
 first concrete measurement of its cost, not just a theoretical concern.
 
-**Status.** Not started. Same scope note as 12c -- large, needs its own
-design note. Worth reading Griggio's thesis (already cited for the
-leaving-variable rule, lead 3) for whether MathSAT's own arithmetic
-conflict explanation is minimized/Farkas-based, before assuming this
-needs designing from scratch.
+**Status: done (2026-08-21), and it turned out to be neither large nor to
+need a design note.** The estimate above was wrong in a specific and
+instructive way: it assumed the explanation had to be *built*. It did not
+-- `LraTableau` already returns a Farkas-style conflict certificate from
+`assert_upper`/`assert_lower`/`check()`, and QF_LRA has always used it
+directly as its theory lemma (`check_lra_theory_in_place` returns
+`tableau.check()` as the clause). The QF_LIA path was calling exactly the
+same tableau operations and *discarding* what they returned:
+`apply_gomory_cuts` collapsed a `std::vector<sat::Lit>` conflict to
+`bool`, `gcd_inconsistent_row` returned only a row id, and `try_branch`
+returned only a feasibility flag. The coarse clause was then rebuilt from
+scratch out of every arithmetic atom.
+
+**What the discarded certificate was worth.** Measured by instrumenting a
+build and running the per-family sample (3 files/family, 94 files, 10s):
+
+| instance | rounds | coarse lemma | tableau conflict | cut antecedents |
+|---|---|---|---|---|
+| `calypto/problem-001542` | 6,528 | 219 lits | 5 lits | 4 bounds |
+| `convert/convert-jpg2gif-query-1141` | 19,630+ | 1,266 lits | 5 lits | ~19 bounds |
+
+Every conflict contained exactly one `sat::Lit{0}` -- the synthetic reason
+the cut's own threshold bound was asserted with. That single literal is
+the whole reason the certificate could not just be forwarded, and
+resolving it away is what the fix is.
+
+**The fix.** A new `LiaExplanation` accumulator
+(`src/theory/arithmetic/lia_explanation.{hpp,cpp}`) threaded through all
+three integer stages, collecting conflict literals and dropping
+`kDerivedBoundReason`. Dropping it is sound because each stage supplies
+what its derived bound rests on: a Gomory cut contributes the bound
+reasons of its row's terms (the cut is implied by them; the row equation
+is a tableau invariant, not an assumption), while a branch-and-bound split
+needs nothing at all, since `x <= n` or `x >= n+1` is a tautology over the
+integers and the union of both refuted sides already refutes the parent.
+
+Soundness does not rest on those arguments being right, though.
+`generalized_lia_lemma()` in `check_sat.cpp` **checks** that every literal
+of the derived explanation already appears in the coarse clause, and falls
+back to the coarse clause otherwise. A superset of the true explanation is
+always a valid (if weaker) lemma; a literal that is *not* blocking for the
+current assignment would fail to exclude it and spin the outer loop
+forever -- the containment test rules that out, and rules out a leaked
+synthetic literal at the same time. An empty explanation also falls back,
+since the empty clause claims the whole problem is unsat.
+
+**Result** (same instances, 60s):
+
+| instance | coarse | generalized |
+|---|---|---|
+| `calypto/problem-001542` | unsat, 1.10s | unsat, **0.02s** (6,528 rounds -> 2) |
+| `calypto/problem-001553` | unsat, 0.86s | unsat, **0.02s** |
+| `convert/convert-jpg2gif-query-1141` | **unknown, timeout** | unsat, **0.04s** (19,630+ rounds -> 6) |
+
+Zero generalization fallbacks on any of them. Kept switchable via
+`--no-lia-conflict-generalization` (default on) so the coarse form stays
+A/B-measurable, and four `:lia.*` statistics report lemma sizes and
+fallback counts.
+
+Griggio's thesis was not needed after all -- but the note stands for
+whoever takes 12c, where the same "check what the existing machinery
+already hands back" question is worth asking before designing anything.
 
 (complementarity)=
 ## Complementarity: losing on average is not the same as useless

@@ -3,6 +3,7 @@
 #include <optional>
 #include <vector>
 
+#include "theory/arithmetic/lia_explanation.hpp"
 #include "theory/arithmetic/lra_tableau.hpp"
 
 namespace primo::theory::arithmetic {
@@ -55,7 +56,17 @@ namespace primo::theory::arithmetic {
 // solve round, before branch-and-bound: an inconsistent row means
 // branch-and-bound would eventually reach the same Unsat anyway, possibly
 // after exhausting the whole node budget first.
+//
+// When `explanation` is non-null and a row is found inconsistent, the
+// bound reasons that made that row's *fixed* variables fixed are recorded
+// into it -- both directions per variable, since it is the pair of equal
+// bounds that pins the value the residual is built from. Nothing else in
+// the argument is an assumption: the row equation is a tableau invariant,
+// and the free variables contribute only their coefficients. Rows that
+// turn out consistent record nothing, so a scan that finds no conflict
+// leaves `explanation` untouched.
 std::optional<LraVarId> gcd_inconsistent_row(const LraTableau& tableau,
-                                             const std::vector<LraVarId>& integer_vars);
+                                             const std::vector<LraVarId>& integer_vars,
+                                             LiaExplanation* explanation = nullptr);
 
 }  // namespace primo::theory::arithmetic

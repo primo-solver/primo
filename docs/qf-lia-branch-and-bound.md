@@ -77,16 +77,14 @@ branch-and-bound respects).
 
 - All-integer, or the search finds an integer completion: build the model
   from the winning tableau state, same as QF_LRA does today.
-- Every branch infeasible: build a `sat::Clause` blocking the whole current
-  arithmetic-atom assignment (coarse -- every arithmetic atom's blocking
-  literal, not a minimized explanation) and feed it back through the
-  existing `backend.add_clause(...)` + re-`solve()` loop, the same
-  mechanism an ordinary LRA conflict already uses just above it. Sound
-  (excludes at least this assignment) but not tight; a known quality gap,
-  not a soundness gap. Tightening this (e.g. deriving a real Farkas-style
-  certificate from the failed branches, or moving to CDCL-integrated
-  branch literals so conflict learning generalizes) is future work, not
-  blocking for stage 1.
+- Every branch infeasible: build a `sat::Clause` and feed it back through
+  the existing `backend.add_clause(...)` + re-`solve()` loop, the same
+  mechanism an ordinary LRA conflict already uses just above it. Stage 1
+  built that clause coarsely -- every arithmetic atom's blocking literal,
+  not a minimized explanation. Sound (it excludes at least this
+  assignment) but so weak that the outer loop degenerated into model
+  enumeration; **stage 4 replaced it with the integer stages' own
+  derivation, see "Conflict generalization" below.**
 - Node limit hit: `Unknown`, `"QF_LIA branch-and-bound node limit reached"`.
 
 ## The search: `theory::arithmetic::branch_and_bound`
@@ -96,13 +94,12 @@ already-LRA-sat tableau and the list of `Int`-sorted tableau variables, an
 **explicit-stack DFS** (per this project's standing no-recursion
 convention) finds the first fractional `Int` variable, splits on
 `floor`/`floor+1`, and backtracks by re-pushing/popping the tableau at
-each frame's checkpoint. `sat::Lit{0}` is used as the reason literal for
-every branch bound -- the established codebase convention (see
-`check_sat.cpp`'s `augmented_lra_atoms` sites) for a tableau bound with no
-real SAT literal behind it; these synthetic-reason bounds and whatever
-conflict certificate `check()` derives from them never escape the
-function, since a failed branch is just discarded, not turned into a
-clause.
+each frame's checkpoint. `kDerivedBoundReason` (`sat::Lit{0}`) is used as
+the reason literal for every branch bound -- the established codebase
+convention (see `check_sat.cpp`'s `augmented_lra_atoms` sites) for a
+tableau bound with no real SAT literal behind it. Stage 1 discarded the
+conflict certificates `check()` derived from those bounds; stage 4 keeps
+them, minus the synthetic literal itself (see "Conflict generalization").
 
 **Contract on the tableau's final state**: on `Sat`, the tableau is left
 exactly at the winning leaf. On `Unsat`/`LimitReached`, every bound this
@@ -507,6 +504,89 @@ Gomory cuts enabled, the very first candidate model's cut alone resolves
 it to `Unsat`, no branching needed at all
 (`tests/unit/qf_lia_solver_tests.cpp`'s
 `gomory_cut_resolves_what_branch_and_bound_alone_cannot`).
+
+## Conflict generalization
+
+Stage 4 (2026-08-21). Stages 1-3 all decide *whether* a Boolean+LRA
+assignment has an integer completion; this is about what gets said when the
+answer is no.
+
+Until stage 4, the answer was the coarse clause described under "Where
+branching lives": the blocking literal of every arithmetic atom that fed
+the tableau. That clause is sound but excludes essentially one Boolean
+assignment, so the outer loop degenerated into model enumeration. Measured
+by instrumenting a build over the per-family sample (3 files/family, 94
+files, 10s): `calypto/problem-001542` emitted a 219-literal clause on each
+of 6,528 rounds, and `convert/convert-jpg2gif-query-1141` emitted a
+1,266-literal clause on each of 19,630+ rounds -- 28M literals of clause in
+20 seconds, and it timed out.
+
+**The certificate was already there.** `LraTableau` returns a Farkas-style
+conflict from `assert_upper`/`assert_lower`/`check()`, and QF_LRA has
+always used it directly as its lemma (`check_lra_theory_in_place` returns
+`tableau.check()` as the clause). QF_LIA called the same operations and
+threw the result away: `apply_gomory_cuts` collapsed it to `bool`,
+`gcd_inconsistent_row` returned only a row id, `try_branch` only a flag.
+Those conflicts were 5 literals on both instances above.
+
+**Why it could not simply be forwarded.** Every one of those 5-literal
+conflicts contained exactly one `kDerivedBoundReason` -- the synthetic
+`sat::Lit{0}` a cut's threshold bound (and a branch's split bound) is
+asserted with, because neither names a SAT atom. Forwarding it verbatim
+would put literal `0` into a clause. Resolving it away is the entire fix.
+
+**`LiaExplanation`** (`src/theory/arithmetic/lia_explanation.{hpp,cpp}`) is
+one accumulator threaded through all three stages -- one per round, not one
+per stage, because a cut derived by stage 3 stays in the tableau while
+branch-and-bound runs, so a conflict branch-and-bound finds can rest on
+stage 3's antecedents. It collects conflict literals and drops
+`kDerivedBoundReason`, which is sound because each stage supplies what its
+derived bound rests on:
+
+- **Gomory cut**: the bound reasons of its row's terms. The cut is implied
+  by exactly those bounds; the row equation it is read off is a tableau
+  invariant, not an assumption, and contributes nothing. Recorded for every
+  cut applied, including cuts that do not themselves conflict -- those stay
+  in the tableau and can underpin a later conflict.
+- **GCD-consistency**: both bound reasons of every *fixed* variable in the
+  inconsistent row. It is the pair of equal bounds that pins the value the
+  residual is built from; free variables contribute only coefficients.
+- **Branch-and-bound**: nothing extra. `x <= n` or `x >= n+1` is a
+  tautology over the integers, so once both sides are refuted the union of
+  the two sides' explanations refutes the parent without mentioning the
+  split.
+
+**Soundness is checked, not argued.** `generalized_lia_lemma()` in
+`check_sat.cpp` verifies that every literal of the derived explanation
+already appears in the coarse clause, and falls back to the coarse clause
+otherwise. That one containment test is what makes this incapable of
+turning a correct answer into a wrong one, and it covers both failure
+shapes at once: a literal that is not blocking for the current assignment
+would fail to exclude it and spin the outer loop forever, and a leaked
+synthetic literal is not in the coarse clause either. A superset of the
+true explanation is always a valid (if weaker) lemma, which is why the
+accumulation rules above are allowed to be conservative. An empty
+explanation also falls back -- the empty clause claims the whole problem is
+unsat, too strong a claim to reach by accident.
+
+**Result** (60s, same instances):
+
+| instance | coarse | generalized |
+|---|---|---|
+| `calypto/problem-001542` | unsat, 1.10s | unsat, 0.02s (6,528 rounds -> 2) |
+| `calypto/problem-001553` | unsat, 0.86s | unsat, 0.02s |
+| `convert/convert-jpg2gif-query-1141` | **unknown, timeout** | unsat, 0.04s (19,630+ -> 6) |
+
+Zero fallbacks on any of them. `CheckSatOptions::lia_conflict_generalization`
+(default on) and CLI `--no-lia-conflict-generalization` keep the coarse form
+A/B-measurable; `:lia.generalized-lemmas`,
+`:lia.generalized-lemma-literals`, `:lia.coarse-lemma-literals` and
+`:lia.generalization-fallbacks` report what happened.
+
+This does **not** move branching into CDCL -- branch literals are still
+theory-internal, and the "Where branching lives" tradeoff stands. It only
+stops discarding the explanation the tableau already computes. See
+[](open-leads.md)'s lead 12d.
 
 ## Node limits
 

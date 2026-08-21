@@ -151,6 +151,7 @@ int main(int argc, char** argv) {
   bool no_lra_propagation = false;
   bool no_solved_constant_substitution = false;
   bool no_gaussian_elimination = false;
+  bool no_lia_conflict_generalization = false;
   bool no_qf_uflra_fixed_elimination = false;
   bool qf_uflra_candidate_final_scan = false;
   bool qf_uflra_model_reconciliation = false;
@@ -393,6 +394,11 @@ int main(int argc, char** argv) {
                  "model: caps how many cut-and-recheck rounds are attempted before falling "
                  "through to branch-and-bound regardless [default: 100]")
       ->check(CLI::Range(0, 100000000));
+  app.add_flag("--no-lia-conflict-generalization", no_lia_conflict_generalization,
+               "Disable QF_LIA conflict generalization: build each integer-infeasibility lemma "
+               "from every arithmetic atom in the problem instead of from the GCD/cut/branch "
+               "derivation that actually proved it. The coarse form excludes one Boolean "
+               "assignment per round; generalization is on by default [default: on]");
   app.add_flag("--top-level-or-tseitin", top_level_or_tseitin,
                "Always encode top-level disjunctions with Tseitin support clauses [default: only "
                "when the automatic rule fires]");
@@ -637,7 +643,7 @@ int main(int argc, char** argv) {
         name == "--lra-least-violated-leaving" || name == "--mixed-dispatch") {
       return kGroupLra;
     }
-    if (starts_with(name, "--lia-")) {
+    if (starts_with(name, "--lia-") || starts_with(name, "--no-lia-")) {
       return kGroupLia;
     }
     if (name == "--preprocessing-mode" || name == "--qf-uf-preprocess" ||
@@ -798,6 +804,9 @@ int main(int argc, char** argv) {
   }
   if (no_gaussian_elimination) {
     solver_options.gaussian_elimination = false;
+  }
+  if (no_lia_conflict_generalization) {
+    solver_options.lia_conflict_generalization = false;
   }
   if (no_qf_uflra_fixed_elimination) {
     solver_options.qf_uflra_fixed_elimination = false;
