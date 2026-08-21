@@ -51,8 +51,10 @@ notes it points to.
 | [R1](#lead-recursion-audit) | Audit input-sized recursion across the repository | robustness; prevents depth-dependent crashes | medium-large | **open; deliberately deferred** |
 | [12a](#lead-qflia-preprocessing-safe) | QF_LIA: enable bare-form solved-constant substitution | no measurable effect on the 2 motivating instances; real but narrow win elsewhere | small | **done: substitution shipped default-on; atom canonicalization attempted and reverted, unsafe as written** |
 | [12b](#lead-qflia-preprocessing-gauss) | QF_LIA: partial (unit-pivot) Gaussian elimination | needs a population census first | medium | open, gated on a census |
-| [12c](#lead-qflia-dio-hnf-cube) | QF_LIA: Diophantine/HNF/cube search-time reasoning | z3 closes 96% of calypto's conflicts via Dio, not branching | large | open, no paper note yet |
+| [12c](#lead-qflia-dio-hnf-cube) | QF_LIA: Diophantine/HNF/cube search-time reasoning | z3 closes 96% of calypto's conflicts via Dio, not branching | large | open; paper note now exists, split into patching (done), cubes (needs the octagon twist first), Dio/HNF (large) |
 | [12d](#lead-qflia-conflict-generalization) | QF_LIA: generalizing (Farkas-style) arithmetic conflict clauses | lemmas 27-55x larger than the certificate the tableau already returned | small (est. large, wrongly) | **done: shipped default-on; full corpus +19 solves, PAR2 43.12 -> 42.94, 0 wrong** |
+| [12e](#lead-qflia-extended-gcd) | QF_LIA: extended GCD test for bounded-but-not-fixed rows | closes the divergence `gcd_uncatchable_divergent_system_hits_the_node_limit` pins | small | open, gated on a census |
+| [12f](#lead-qflia-patching) | QF_LIA: patching (paper Sect. 4.1) | entire deficit vs cvc5 is on sat; this is the layer that finds models | small | **done: +4 solved / 0 lost on the sample, all on sat, 0 wrong** |
 
 (lead-pure-filter-lra)=
 ## 1. Extend `--pure-theory-filter` to LRA atoms
@@ -1580,10 +1582,113 @@ work in Bjørner & Nachmanson Sect. 4.2 (already cited in
 preprocessing pass; closer in scope to stage 3 (Gomory cuts) than to
 anything in 12a/12b.
 
-**Status.** Not started. Needs its own paper note (Bjørner & Nachmanson
-Sect. 4.2 for the cube test; the Omega test / Pugh 1991 for the
-Diophantine reasoning z3's `arith-dio-*` counters imply) before being
-actionable, per this project's standing rule.
+**Status (updated 2026-08-21).** The paper note this lead was gated on now
+exists: [](papers/arithmetic-solving-in-z3.md) summarizes Bjørner &
+Nachmanson Sect. 4 in full, so the standing "needs a paper note first"
+block is lifted. Reading it split this lead into four separable pieces of
+very different cost, and re-ranked them:
+
+- **Patching (Sect. 4.1) -- DONE**, shipped the same day as stage 5. It
+  was never part of this lead's framing, because the lead was written
+  before the paper's Section 4 had been read: patching is the *first*
+  layer of that waterfall and Primo had skipped it entirely. See
+  [](qf-lia-branch-and-bound.md)'s "Patching".
+- **Cube test (Sect. 4.2) -- deferred behind a prerequisite, not merely
+  unstarted.** Measured 2026-08-21: 249 of 300 sampled instances contain
+  equality atoms, and an asserted equality fixes a slack, which makes the
+  tightened cube system contradictory. Cubes alone would therefore be
+  inconclusive on most rounds. It needs z3's difference/octagon twist
+  (same section) to be worth building, so treat the twist as part of the
+  work rather than a later refinement.
+- **Extended GCD test (Sect. 4.3)** -- the smallest remaining item and
+  the best-scoped: see 12e below.
+- **Diophantine (Omega/Pugh) and HNF cuts** -- still large, still
+  unstarted, and still the pieces z3's `arith-dio-*`/`arith-hnf-calls`
+  counters actually attribute its calypto performance to.
+
+The Sect. 4.5 cut refinements Primo lacks (relaxed "row-integral" Gomory
+rows, cut selection by distance to nearest integer, extremum bound
+deduction, large-numeral temporary scope) are enumerated in the paper
+note's gap table. The relaxed row definition is the one with direct
+measured evidence behind it -- Primo's instrumented `f_unbounded` count is
+exactly the eligibility failure it fixes -- and it also changes the
+antecedent rule stage 4's `LiaExplanation` uses, so it should not be
+treated as an isolated tweak.
+
+(lead-qflia-patching)=
+### 12f. Patching (paper Sect. 4.1) -- done
+
+**Claim.** Primo's integer waterfall began at the paper's *third* layer.
+Patching, its first, nudges nonbasic values so Int variables land on
+integers, turning an LRA model into an integer one with no search.
+
+**Evidence that this was the right target.** The full corpus splits the
+gap by answer: against cvc5 Primo is **ahead by 147 on unsat and behind by
+661 on sat**. Every layer stages 1-4 built is refutation machinery, so the
+entire deficit sat where none of them could help. Patching was chosen over
+the cube test on a measurement -- see 12c.
+
+**Outcome (2026-08-21).** Shipped default-on as stage 5. Per-family sample
+(94 files, 10 s), same binary with `--lia-patch-limit 0` as the control:
+54 -> 58 solved, sat 26 -> 30, unsat unchanged, PAR2 8.72 -> 7.84. **+4
+gained, 0 lost, 0 wrong, 0 answer disagreements**, and every gain decisive
+rather than boundary (10 s timeout -> 0.01-0.62 s).
+
+Two things the paper's prose leaves implicit, both found by building its
+own Example 3 as a test rather than trusting the derivation: scoring a
+move by `|delta|` alone oscillates (the nearest fix for one row breaks
+another, and the two undo each other), so candidates are scored globally
+and only strictly improving moves are taken; and floor/ceil alone is too
+narrow a candidate set, since Example 3's answer `x = 6` is two integers
+away from the current value. See [](qf-lia-branch-and-bound.md)'s
+"Patching".
+
+First QF_LIA stage to touch `LraTableau`, deliberately and minimally:
+`set_nonbasic_value`, a narrow public wrapper over the existing private
+`update()`, whose comment carries the trail caveat that makes it safe only
+on a per-round tableau copy.
+
+(lead-qflia-extended-gcd)=
+### 12e. Extended GCD test for bounded-but-not-fixed rows
+
+**Claim.** Bjørner & Nachmanson Sect. 4.3 extends the basic GCD test from
+*fixed* variables to merely *bounded* ones: for a row `a.x + b.y + c = 0`
+with `x` bounded, if the achievable range `[l, u]` of `a.x` contains no
+value congruent to the required residue modulo `gcd(b, c)`, the row is
+infeasible. Primo's stage 2 implements only the basic test, because
+`fixed_value()` requires equal lower and upper bounds.
+
+**Evidence.** This closes the exact divergence
+[](qf-lia-branch-and-bound.md) documents as caught by neither stage 2 nor
+stage 3, and which `gcd_uncatchable_divergent_system_hits_the_node_limit`
+pins as a test: `4x + 4y` bounded to `[2,3]` with `x, y` unbounded. The
+slack is bounded but not fixed, so nothing currently fires and the search
+diverges to `--lia-branch-limit`.
+
+**Cost.** Small -- an extension to `row_is_gcd_consistent`, in the same
+shape as the existing residual computation, plus the corresponding
+antecedent rule in `LiaExplanation` (the bounds used become the
+explanation, rather than the pair of equal bounds the fixed case uses).
+
+**Falsifier.** A population census: if almost no real QF_LIA row is
+bounded-but-not-fixed with an unbounded integer remainder, this closes a
+crafted-benchmark case and nothing else. Worth counting before building,
+the same way 12b is gated.
+
+**Watch the printed inequality.** The paper renders the condition as
+`floor(u/gcd) > ceil(l/gcd)`, which is backwards -- that direction reports
+infeasibility precisely when a solution exists. The intended test is
+`floor(u/gcd) < ceil(l/gcd)`. Verified against the paper's own shape in
+[](papers/arithmetic-solving-in-z3.md); do not transcribe it as printed.
+
+**Status.** Not started. Unlike 12c's remaining pieces this needs no new
+paper note -- Sect. 4.3 is already summarized.
+
+**Caveat shared with everything in lead 12.** An instrumented run found 24
+of 36 sampled QF_LIA timeouts never execute a single integer round, so no
+Section 4 layer can reach that population; their bottleneck is the Boolean
+and LRA search. Sect. 3.3's indirect bounds propagation is the part of the
+paper aimed at them.
 
 (lead-qflia-conflict-generalization)=
 ### 12d. Conflict-clause generalization (Farkas certificates / CDCL-integrated branching)

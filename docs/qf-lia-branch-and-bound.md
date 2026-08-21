@@ -603,11 +603,27 @@ decisive rather than boundary (10s timeout → 0.01-0.62s): two `prime-cone`
 and two `CAV_2009_benchmarks/coef-size` instances. Zero answer disagreements
 between the arms.
 
-Models were validated directly against z3 on 142 corpus instances covering
-every file where patching moved something: **66/66 sat models confirmed, zero
-wrong models**. `scripts/validate_model.py` cannot do this job for QF_LIA —
-Dolmen aborts on `Int` models and its fallback is Real-only, so it reports
-`validation-unavailable` for every QF_LIA sat case.
+Models were validated on 142 corpus instances covering every file where
+patching moved something: **66/66 sat models confirmed, zero wrong models**.
+
+**That local check used z3 directly, not Dolmen, and the reason is worth
+recording so it is not mistaken for a Dolmen limitation.** Dolmen is this
+project's model checker and it does validate QF_LIA `Int` models — the
+`39/45 model-error` episode recorded in
+`scripts/slurm_qf_lia_model_fuzz_gate.sbatch` was Dolmen's *strict-mode
+grammar* check rejecting FuzzSMT's `(* <let-bound-literal> <compound>)` terms,
+and it was fixed there by passing `--dolmen-arg=--strict=false`, after which
+all 45 passed through Dolmen directly. What actually happened here is narrower:
+Dolmen is not installed in this development environment and `make
+contrib-dolmen` fails locally, so `scripts/validate_model.py` fell through to
+its z3 Real-only fallback and reported `validation-unavailable` for every
+QF_LIA sat case. Passing `--dolmen-arg=--strict=false` would not have helped
+without the binary.
+
+The authoritative model check therefore remains
+`scripts/slurm_qf_lia_model_fuzz_gate.sbatch` on the cluster, where Dolmen is
+present and is listed in the job's own `required_tools`. The z3 check is a
+local stand-in, not a replacement.
 
 `CheckSatOptions::lia_patch_limit` (default 100) and `--lia-patch-limit`;
 **0 disables patching**, which is the A/B control. `:lia.patch-sweeps`,
