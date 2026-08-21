@@ -89,6 +89,96 @@ whether a "basic problem" has a written answer *before* optimizing from a
 profile. Here the profile told us where the time went, but the literature would
 have told us why, and faster.
 
+
+## Standing warning: this tuning is distribution-dependent
+
+Everything above was tuned against **one measured operand distribution** --
+QF_LIA's, where 98.3% of numerators are 4 bits or fewer and the denominator is
+usually exactly 1. That is a real risk worth stating plainly rather than
+discovering later: a workload with a different shape gets less benefit, and one
+particular shape is measurably *worse*.
+
+`tests/bench/word_gcd_bench.cpp` exists so this can be re-answered in minutes.
+It verifies against `std::gcd`, times the shipped form against the original
+textbook loop across distributions chosen to make each guard useless in turn,
+and flags any case where shipped is slower. Build and run it directly:
+
+```sh
+g++ -O2 -std=c++20 -o /tmp/word_gcd_bench tests/bench/word_gcd_bench.cpp && /tmp/word_gcd_bench
+```
+
+Measured, ns/call:
+
+| distribution | textbook | shipped | ratio |
+| --- | --- | --- | --- |
+| **tuned** (b==1, 4-bit a) | 6.58 | 0.83 | **7.89x** |
+| **adverse** tiny 4-bit, b>=3 | 9.25 | 10.09 | **0.92x (slower)** |
+| adverse 8-bit, b>=3 | 18.08 | 14.32 | 1.26x |
+| adverse 16-bit, b>=3 | 39.55 | 23.40 | 1.69x |
+| adverse 32-bit, b>=3 | 77.62 | 40.35 | 1.92x |
+| adverse shared factor 2^8 | 41.64 | 23.93 | 1.74x |
+| adverse just under 2^16 ratio | 22.99 | 22.72 | 1.01x |
+
+**The worst case is real but bounded and narrow: -8%**, on tiny operands where
+neither is 1 and the magnitudes are comparable, so all three guards are dead
+weight while the loop is too short for the branchless form to repay them.
+Everywhere else the change is neutral to 1.9x. There is no distribution in
+which it falls off a cliff, because each guard is a single well-predicted
+compare when it does not fire.
+
+### Why it is not runtime-configurable
+
+The obvious hedge is to make the algorithm selectable behind a function
+pointer. **Measured, that costs far more than the risk it insures against.**
+`gcd_u64` is a static function in an anonymous namespace and inlines into
+`Rational::operator*`; dispatching through a pointer prevents that and adds an
+indirect call:
+
+| distribution | direct | via fn-ptr | overhead |
+| --- | --- | --- | --- |
+| tuned (b==1, 4-bit) | 0.84 ns | 2.32 ns | **+175%** |
+| adverse 16-bit pair | 23.29 ns | 24.51 ns | +5% |
+
+Paying **+175% on the hot path** to hedge an 8% loss on a narrow distribution
+is a bad trade, and it is worst precisely where we are fastest: the whole value
+of the early exits is that the call collapses to a couple of cycles, which an
+indirect call by itself exceeds.
+
+If this ever does need to vary, the mechanism should be **compile-time**
+(a `constexpr` or template parameter, chosen per build) or a cheaper guard --
+not runtime dispatch. Runtime dispatch is the one option the measurement rules
+out.
+
+### The second workload we already have: QF_LRA
+
+`Rational` is not QF_LIA-only, so the concern is concrete rather than
+hypothetical -- QF_LRA has genuinely fractional coefficients and therefore a
+different gcd distribution. Measured on eight QF_LRA instances spanning 0.01s
+to 58s, minimum of three runs each, original gcd vs shipped:
+
+```
+TOTAL                          92.36s     92.13s    1.002x
+```
+
+Individual ratios ran 0.969x to 1.198x with **every answer identical**. So
+QF_LRA is neither helped nor harmed: the win is QF_LIA-specific, and the
+guards cost QF_LRA nothing. That is the outcome the "cheap when they do not
+fire" design predicts, and it is now measured rather than assumed.
+
+### When to revisit
+
+Re-run the benchmark, and re-measure the operand distribution, if any of these
+change:
+
+- a new logic or fragment starts leaning on `Rational` heavily;
+- atom canonicalization changes what coefficients reach the tableau (it is what
+  manufactures the fractional case today -- see [](../qf-lia-profile.md));
+- a profile again shows `gcd_u64` or `Rational::operator*` high in the list.
+
+The instrumentation used to obtain the QF_LIA distribution was a temporary
+histogram of operand bit-widths inside `operator*`; it is described in
+[](../qf-lia-profile.md) and takes about ten minutes to reapply.
+
 ## Sources
 
 - [Fastest way to compute the greatest common divisor — Daniel Lemire (2013)](https://lemire.me/blog/2013/12/26/fastest-way-to-compute-the-greatest-common-divisor/)

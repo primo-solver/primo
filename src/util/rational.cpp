@@ -107,6 +107,18 @@ std::uint64_t gcd_odd(std::uint64_t u, std::uint64_t v) {
 // novel, and the current speed record for word-adjacent GCD (Bernstein & Yang's
 // safegcd) deliberately does NOT apply here: it buys constant time, which
 // forbids exactly the input-dependent early exits that help us most.
+//
+// **These guards are tuned to a measured operand distribution and are not
+// universally optimal.** On tiny operands where neither is 1 and the magnitudes
+// are comparable -- so all three guards are dead weight and the loop is too
+// short for the branchless form to repay them -- this is about 8% SLOWER than
+// the plain textbook loop. Every other shape measured is 1.0x to 1.9x faster,
+// and QF_LRA (which uses Rational just as heavily, with fractional
+// coefficients) came out at 1.002x, i.e. unaffected. Making the choice
+// switchable at runtime was measured and rejected: this function inlines into
+// operator*, and dispatching through a function pointer costs +175% on the hot
+// path to hedge that 8%. tests/bench/word_gcd_bench.cpp re-checks all of it,
+// and word-gcd-notes.md records when to re-run it.
 std::uint64_t gcd_u64(std::uint64_t a, std::uint64_t b) {
   if (a == 0) {
     return b;

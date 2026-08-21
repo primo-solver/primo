@@ -27838,6 +27838,31 @@
       "artifacts": "docs/qf-lia-profile.md; flat and call-graph profiles under the session scratchpad (not committed).",
       "evidence_status": "local-complete-current",
       "outcome": "The QF_LIA bottleneck on medium-hard instances is Simplex pivoting arithmetic, not integer reasoning -- the integer stages are 0.1% of self time, confirmed independently by callgrind. The obvious optimization the profile suggested (a den_==1 fast path in Rational::operator*) was built and measured at ~3%, and the reason it does not pay is itself the useful finding: the gcds it skips are cheap precisely because the operands there are tiny, while the expensive gcds sit in the fractional case where it cannot apply. Also recorded: a gprof build without -DNDEBUG produces a badly misleading profile, which the repository's existing build-gprof* flags would have reproduced."
+    },
+    {
+      "id": "2026-08-22-word-gcd-tuning-and-distribution-warning",
+      "started_at": "2026-08-21",
+      "recorded_at": "2026-08-22",
+      "kind": "feature",
+      "scope": "gcd_u64 turned up as a hot spot in the QF_LIA profile. Rewrote it to follow GMP's structure, surveyed the literature that should have been read first, and -- prompted by the question of whether the tuning is benchmark-dependent -- measured the adversarial case, the cost of making it configurable, and the effect on QF_LRA.",
+      "commit": "3e35625 + 91e12c9 + 883b6e5",
+      "branch": "qf-lia-branch-and-bound",
+      "environment": {
+        "type": "local + slurm",
+        "job": "128402"
+      },
+      "results": {
+        "what_changed": "gcd_u64 now follows GMP 6.3.0's mpn_gcd_1/gcd_11 structure: operand swap, an early b == 1 exit placed before the trailing-zero counts, a Euclidean step gated on a 2^16 magnitude ratio, and a branchless inner loop deriving min/abs from a mask off the sign of u - v. Microbenchmark, ns/call: b==1 4-bit 6.58 -> 0.83 (7.9x), random 16-bit pair 39.55 -> 23.40 (1.7x), random 63-bit 152 -> 72 (2.1x).",
+        "literature_was_the_missing_step": "The first pass went to GMP's source without checking the literature, which was the wrong order. The central pathology is documented: Lemire's 2013 GCD benchmark states that when one operand is 1 the naive algorithm returns immediately while the binary algorithm may need many steps, and suggests hybrid strategies for exactly that. We rediscovered it by instrumentation. The current speed record (Bernstein & Yang safegcd) does NOT apply: it buys constant time for multi-limb crypto inversion, and constant time forbids the input-dependent early exits that help us most. std::gcd is not faster than the plain textbook loop. Written up in docs/papers/word-gcd-notes.md.",
+        "full_corpus": "Slurm 128402, all 13,306 QF_LIA files at 60s, against job 128125's primo-patched arm (rational.cpp was the only code delta): 9,027 -> 9,034 solved, PAR2 40.20 -> 40.15, 0 wrong, 0 answer disagreements, 7 gained and 0 lost. Total solve time over the 9,027 commonly-solved files 21,472s -> 21,198s (1.013x). Small but strictly positive and free.",
+        "distribution_dependence_is_real_and_bounded": "The guards were tuned on one distribution, so the obvious risk is a workload with a different shape. Measured across distributions built to make each guard dead weight: worst case is tiny 4-bit operands with neither equal to 1 and comparable magnitudes, where the shipped form is 0.92x -- an 8% loss. Every other adversarial shape is 1.01x to 1.92x. No cliff exists, because each guard is a single well-predicted compare when it does not fire.",
+        "runtime_configurability_rejected_on_measurement": "Making the algorithm selectable behind a function pointer was measured rather than argued about. gcd_u64 is static in an anonymous namespace and inlines into Rational::operator*; dispatching through a pointer prevents that and adds an indirect call, costing +175% on the tuned hot path (0.84 -> 2.32 ns) against +5% on a general 16-bit pair. Paying 175% on the hot path to hedge an 8% loss on a narrow distribution is a bad trade, and it is worst exactly where we are fastest. If it ever must vary, the mechanism should be compile-time (constexpr/template) or a cheaper guard -- runtime dispatch is the one option the measurement rules out.",
+        "qf_lra_checked": "Rational is not QF_LIA-only, so QF_LRA was measured rather than assumed: eight instances spanning 0.01s to 58s, minimum of three runs each, original gcd vs shipped. Total 92.36s -> 92.13s (1.002x), individual ratios 0.969x to 1.198x, every answer identical. QF_LRA is neither helped nor harmed -- the win is QF_LIA-specific and the guards cost QF_LRA nothing, which is what the cheap-when-not-fired design predicts.",
+        "correctness": "30,251,362 pairs against std::gcd using a harness that extracts the shipped source, plus 5,160,801 more in the committed benchmark. Exhaustive over small pairs, all boundary-value combinations, and randomized across every operand width with b==1, a==b, powers of two, forced trailing zeros and exact multiples injected. Zero mismatches. 20/20 suites pass throughout."
+      },
+      "artifacts": "tests/bench/word_gcd_bench.cpp (new, not in ctest -- timings are not assertions), docs/papers/word-gcd-notes.md (new), src/util/rational.cpp.",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "A real but modest win (+7 solves, 1.3% aggregate solve time on QF_LIA, neutral on QF_LRA) from making one function match the settled practical art. The more durable output is the guard rail: the tuning is distribution-dependent, the worst case is bounded at -8%, runtime configurability is measurably the wrong hedge, and tests/bench/word_gcd_bench.cpp re-answers all of it in minutes if the workload ever changes."
     }
   ]
 }
