@@ -27787,6 +27787,30 @@
       "artifacts": "src/theory/arithmetic/lia_patching.{hpp,cpp} and lia_integer_values.hpp (new), tests/unit/lia_patching_tests.cpp (new), LraTableau::set_nonbasic_value, CheckSatOptions::lia_patch_limit + --lia-patch-limit, three :lia.patch-* statistics.",
       "evidence_status": "local-complete-current",
       "outcome": "A strictly positive result on the sample -- 4 gained, 0 lost, all on satisfiable instances, all decisive -- from the layer the paper puts first and Primo had skipped. Full-corpus A/B against the stage-4 baseline (Slurm 127949) is the next step; z3/cvc5 do not need rerunning."
+    },
+    {
+      "id": "2026-08-21-qf-lia-patching-verification",
+      "started_at": "2026-08-21",
+      "recorded_at": "2026-08-21",
+      "kind": "evaluation",
+      "scope": "Cluster verification of QF_LIA stage 5 (patching): the Dolmen-backed model fuzz gate that the local environment could not run, and the full-corpus A/B of both arms of the same binary. Also the first run of that gate for any QF_LIA stage since patching landed.",
+      "commit": "a1fe9dd",
+      "branch": "qf-lia-branch-and-bound",
+      "environment": {
+        "type": "slurm",
+        "jobs": "128295 (model gate, array 0-10), 128125 (full-corpus A/B, array 0-159)"
+      },
+      "results": {
+        "model_gate_dolmen": "Job 128295, Dolmen 0.10 on the cluster. 4,000 model-validation rows: 3,494 sat models validated by Dolmen and ALL PASS, 449 unsat (nothing to validate), 57 solver timeouts. Zero non-pass, non-benign outcomes. validator=dolmen on every validated row, confirming the --dolmen-arg=--strict=false path works and that the earlier local validation-unavailable result was purely the binary being absent, not a Dolmen limitation.",
+        "model_gate_answer_fuzzing": "Same job's FuzzSMT shards: 4,000 cases, 3,919 PASS and 81 TIMEOUT, zero disagreements. The 81 files written to the shards' bugs/ directories are timeouts saved for inspection, not wrong answers -- worth stating because the directory name invites the opposite reading. The opfuzz task and both typefuzz tasks produced 0 bug files (each time-boxed at 1500s, so seed coverage is not established).",
+        "full_corpus_ab": "Job 128125, all 13,306 files at 60s, both arms of the same binary. Unpatched control: 8,727 solved (5,867 sat, 2,860 unsat), PAR2 42.91 -- reproduces the stage-4 baseline of 8,725, validating the control. Patched: 9,027 solved (6,151 sat, 2,876 unsat), PAR2 40.20. +300 net (356 gained, 56 lost), 0 wrong in both arms, 0 answer disagreements.",
+        "gains_are_on_target": "331 of the 356 gains are satisfiable instances, which is exactly the population the stage targets and the one the entire cvc5 deficit sat in. The gap to cvc5 narrows from -535 to -212; primo's sat count moves 5,867 -> 6,151 while its unsat count stays ahead of cvc5 (2,876 vs 2,712). Gains concentrate in 20180326-Bromberger (112), CAV_2009_benchmarks (64), convert (57), slacks (56), dillig (34), prime-cone (24).",
+        "losses_are_a_real_cost": "280 of 356 gains solve in under a second (median 0.20s), but of the 56 losses, 19 were solved in under a second by the unpatched arm and only 12 were already past 45s. So patching occasionally sends a trivially-easy instance somewhere much worse -- the same trajectory-change pathology stage 4's rings regression showed. Bounding that (e.g. declining to patch when the round was already cheap) is the obvious follow-up and was not attempted.",
+        "comparison_scope": "z3 and cvc5 were not rerun; neither changed, so job 127709's CSVs remain the reference."
+      },
+      "artifacts": "results/qf-lia-full-compare-128125/{primo-patched,primo-unpatched} and fuzz-results/qf-lia-model-gate-128295 on the Slurm remote; baselines 127709 and 127949 preserved.",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Patching is the largest single QF_LIA gain measured so far: +300 solves against a same-binary control, against +19 for stage 4's conflict generalization, and it closes 60% of the gap to cvc5 in one layer. The paper put this layer first and Primo had skipped it entirely, which is the substantive lesson -- the gap was found by reading Section 4 properly rather than by more tuning of the layers already built. Model validity is now confirmed by Dolmen at scale rather than by a local stand-in."
     }
   ]
 }

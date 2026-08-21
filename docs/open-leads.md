@@ -54,7 +54,7 @@ notes it points to.
 | [12c](#lead-qflia-dio-hnf-cube) | QF_LIA: Diophantine/HNF/cube search-time reasoning | z3 closes 96% of calypto's conflicts via Dio, not branching | large | open; paper note now exists, split into patching (done), cubes (needs the octagon twist first), Dio/HNF (large) |
 | [12d](#lead-qflia-conflict-generalization) | QF_LIA: generalizing (Farkas-style) arithmetic conflict clauses | lemmas 27-55x larger than the certificate the tableau already returned | small (est. large, wrongly) | **done: shipped default-on; full corpus +19 solves, PAR2 43.12 -> 42.94, 0 wrong** |
 | [12e](#lead-qflia-extended-gcd) | QF_LIA: extended GCD test for bounded-but-not-fixed rows | closes the divergence `gcd_uncatchable_divergent_system_hits_the_node_limit` pins | small | open, gated on a census |
-| [12f](#lead-qflia-patching) | QF_LIA: patching (paper Sect. 4.1) | entire deficit vs cvc5 is on sat; this is the layer that finds models | small | **done: +4 solved / 0 lost on the sample, all on sat, 0 wrong** |
+| [12f](#lead-qflia-patching) | QF_LIA: patching (paper Sect. 4.1) | entire deficit vs cvc5 is on sat; this is the layer that finds models | small | **done: full corpus +300 solves (356 gained / 56 lost), 331 of them sat, PAR2 42.91 -> 40.20, 0 wrong; cvc5 gap -535 -> -212** |
 
 (lead-pure-filter-lra)=
 ## 1. Extend `--pure-theory-filter` to LRA atoms
@@ -1628,11 +1628,18 @@ gap by answer: against cvc5 Primo is **ahead by 147 on unsat and behind by
 entire deficit sat where none of them could help. Patching was chosen over
 the cube test on a measurement -- see 12c.
 
-**Outcome (2026-08-21).** Shipped default-on as stage 5. Per-family sample
-(94 files, 10 s), same binary with `--lia-patch-limit 0` as the control:
-54 -> 58 solved, sat 26 -> 30, unsat unchanged, PAR2 8.72 -> 7.84. **+4
-gained, 0 lost, 0 wrong, 0 answer disagreements**, and every gain decisive
-rather than boundary (10 s timeout -> 0.01-0.62 s).
+**Outcome (2026-08-21).** Shipped default-on as stage 5. Full corpus
+(13,306 files, 60 s, Slurm 128125), same binary with `--lia-patch-limit 0`
+as the control: **8,727 -> 9,027 solved, PAR2 42.91 -> 40.20, 0 wrong, 0
+answer disagreements**. +300 net (356 gained, 56 lost), and **331 of the
+gains are satisfiable** -- the population the whole cvc5 deficit sat in.
+The gap to cvc5 narrows from -535 to **-212**. Model validity confirmed by
+Dolmen at scale (3,494 sat models, all pass, Slurm 128295).
+
+The 56 losses are a genuine cost rather than boundary noise: 19 of them
+were solved in under a second by the control. Patching occasionally sends
+an easy instance somewhere much worse, the same trajectory-change
+pathology 12d's `rings` regression showed. Bounding it is open follow-up.
 
 Two things the paper's prose leaves implicit, both found by building its
 own Example 3 as a test rather than trusting the derivation: scoring a

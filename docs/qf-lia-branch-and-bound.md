@@ -625,6 +625,38 @@ The authoritative model check therefore remains
 present and is listed in the job's own `required_tools`. The z3 check is a
 local stand-in, not a replacement.
 
+### Full corpus
+
+All 13,306 files at 60s, both arms of the same binary (Slurm 128125):
+
+| arm | solved | sat | unsat | wrong | PAR2 |
+|---|---|---|---|---|---|
+| unpatched (control) | 8,727 | 5,867 | 2,860 | 0 | 42.91 |
+| **patched** | **9,027** | **6,151** | 2,876 | 0 | **40.20** |
+| cvc5 | 9,239 | 6,527 | 2,712 | 0 | 38.13 |
+| z3 | 12,147 | 7,825 | 4,322 | 0 | 13.09 |
+
+**+300 net** (356 gained, 56 lost), zero wrong and zero answer disagreements
+between arms. The control reproduces the stage-4 baseline (8,727 vs 8,725),
+which is what makes the delta attributable to patching.
+
+**331 of the 356 gains are satisfiable instances** — the population this stage
+targets, and the one the entire cvc5 deficit sat in. The gap to cvc5 narrows
+from −535 to **−212**, and primo's own sat count moves 5,867 → 6,151 while
+unsat stays ahead of cvc5 (2,876 vs 2,712). Gains concentrate in
+`20180326-Bromberger` (112), `CAV_2009_benchmarks` (64), `convert` (57),
+`slacks` (56), `dillig` (34) and `prime-cone` (24).
+
+**The 56 losses are a real cost, not all boundary noise.** 280 of the 356 gains
+solve in under a second (median 0.20s), but of the losses **19 were solved in
+under a second by the unpatched arm** (median 4.74s overall; only 12 of 56 were
+already past 45s). So patching occasionally sends a trivially-easy instance
+somewhere much worse. That is the same trajectory-change pathology stage 4's
+`rings` regression showed, and the same honest caveat applies: a strictly
+better assignment is not a strictly better search. Bounding that cost — for
+instance by declining to patch when the round was already cheap — is the
+obvious follow-up and is not attempted here.
+
 `CheckSatOptions::lia_patch_limit` (default 100) and `--lia-patch-limit`;
 **0 disables patching**, which is the A/B control. `:lia.patch-sweeps`,
 `:lia.patched-variables` and `:lia.patch-rounds-fully-integral` report what
