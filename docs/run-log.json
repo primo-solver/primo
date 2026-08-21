@@ -27758,7 +27758,7 @@
       "recorded_at": "2026-08-21",
       "kind": "feature",
       "scope": "QF_LIA stage 5: patching, Bjorner & Nachmanson Sect. 4.1, the first layer of that paper's integer waterfall and the first stage here that tries to FIND an integer model rather than refute a candidate. Prompted by re-reading the paper's Section 4 (now summarized in docs/papers/arithmetic-solving-in-z3.md), which showed Primo's waterfall started at the paper's third layer.",
-      "commit": "pending",
+      "commit": "509be6b + e322af5",
       "branch": "qf-lia-branch-and-bound",
       "environment": {
         "type": "local"
