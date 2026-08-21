@@ -101,6 +101,12 @@ std::uint64_t gcd_odd(std::uint64_t u, std::uint64_t v) {
 // std::gcd was benchmarked as an alternative to all of this and is not faster
 // than the plain textbook loop, so there was no library form to adopt -- only
 // GMP's structure to follow.
+//
+// docs/papers/word-gcd-notes.md surveys the literature behind all of this. The
+// b == 1 pathology in particular is documented (Lemire, 2013) rather than
+// novel, and the current speed record for word-adjacent GCD (Bernstein & Yang's
+// safegcd) deliberately does NOT apply here: it buys constant time, which
+// forbids exactly the input-dependent early exits that help us most.
 std::uint64_t gcd_u64(std::uint64_t a, std::uint64_t b) {
   if (a == 0) {
     return b;
