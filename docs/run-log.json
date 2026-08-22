@@ -27863,6 +27863,29 @@
       "artifacts": "tests/bench/word_gcd_bench.cpp (new, not in ctest -- timings are not assertions), docs/papers/word-gcd-notes.md (new), src/util/rational.cpp.",
       "evidence_status": "slurm-complete-current",
       "outcome": "A real but modest win (+7 solves, 1.3% aggregate solve time on QF_LIA, neutral on QF_LRA) from making one function match the settled practical art. The more durable output is the guard rail: the tuning is distribution-dependent, the worst case is bounded at -8%, runtime configurability is measurably the wrong hedge, and tests/bench/word_gcd_bench.cpp re-answers all of it in minutes if the workload ever changes."
+    },
+    {
+      "id": "2026-08-22-qf-lia-paper-technique-audit",
+      "started_at": "2026-08-22",
+      "recorded_at": "2026-08-22",
+      "kind": "measurement",
+      "scope": "Full audit of which Bjorner & Nachmanson techniques Primo still lacks, prompted by asking whether more remain. Sections 2 and 3 had never been audited against the implementation -- the existing paper note was written in August 2026 for a QF_LRA/QF_UFLRA-only Primo. Includes the first QF_LIA measurement of row-based bounds propagation, and of the options sandbox/paper.tex's own tuning selected.",
+      "commit": "d4f9238",
+      "branch": "qf-lia-branch-and-bound",
+      "environment": {
+        "type": "local"
+      },
+      "results": {
+        "sect_3_2_does_not_apply": "The paper states outright that equality propagation is disabled for pure arithmetic theories, QF_LIA and QF_LRA included. So Sect. 3.2's cheap equal-variable discovery is not a QF_LIA gap at all; it matters only for QF_UFLRA, where Primo has the exact producer rather than the 2024 fast path. Recorded so it is not chased.",
+        "sect_3_3_never_measured_on_qf_lia": "Indirect (row-based) bounds propagation is the one paper technique Primo already implements and simply leaves off (lra_row_propagation = false). It has 17 run-log entries of fuzz gates and A/Bs -- every one QF_LRA or QF_UFLRA, none QF_LIA, which is now the fragment where profiling says the bottleneck lives.",
+        "row_propagation_does_not_transfer": "Measured on the per-family sample (94 files, 10s), six arms. Default 58 solved / PAR2 7.83. Row propagation at default caps 57 / 8.09. Row + bidirectional 58 / 7.94. Row propagation at the widened caps sandbox/paper.tex's RamParILS tuning selected for primo+ (max-row-size 256, max-fanout 1024 against defaults of 64) 57 / 8.12. --lra-model-phase 55 / 8.42. Both together 56 / 8.37. ZERO gains in any arm, 0 wrong, 0 answer disagreements. Individual losses of 1-3 could be noise; the absence of a single gain across six configurations is not.",
+        "tuning_is_fragment_specific": "This is also a result for sandbox/paper.tex: its tuned primo+ configuration is QF_LRA-specific and does not transfer to QF_LIA. Neither lra_row_propagation nor lra_model_phase should be promoted to a global default on this evidence. Worth stating in the paper, since a tuned configuration reads as a better default unless the non-transfer is shown.",
+        "still_missing": "Cube test (4.2, deferred behind the difference/octagon twist); extended GCD for bounded-not-fixed rows (4.3, lead 12e); CDCL-integrated branch literals (4.4, which Sect. 2 names as a deliberate design choice and Primo deliberately scoped out); and four Sect. 4.5 cut refinements -- relaxed row-integral rows (the one with measured evidence, the instrumented f_unbounded count), selection by distance to nearest integer, extremum bound deduction, and large-numeral temporary scope -- plus HNF cuts, which are large.",
+        "caveat_over_all_of_it": "The gprof/callgrind profile puts every QF_LIA integer stage combined at 0.1% of self time, so none of the remaining Sect. 4 items can move the 4,272 unsolved files. The cost is Rational arithmetic (~41%), CaDiCaL (~24%) and Simplex (~15%). That bounds the expected value of the whole remaining list."
+      },
+      "artifacts": "docs/papers/arithmetic-solving-in-z3.md gap table and audit.",
+      "evidence_status": "local-complete-current",
+      "outcome": "Seven or eight paper techniques remain unimplemented, but the profile bounds what any of them can buy. The concrete finding is negative and useful: row-based bounds propagation, the one technique already built and merely disabled, does not help QF_LIA even at the caps the paper's own tuner selected -- so the QF_LRA tuning is fragment-specific and the current defaults are right for QF_LIA."
     }
   ]
 }

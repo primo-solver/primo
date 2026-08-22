@@ -201,25 +201,58 @@ the layers Primo does implement -- GCD consistency, Gomory cuts,
 branch-and-bound, and now conflict generalization -- are all refutation
 machinery.
 
+### Complete audit of what Primo has and lacks (2026-08-22)
+
+| paper | technique | status |
+| --- | --- | --- |
+| 3.1 | dual simplex, bound assertion | **have** |
+| 3.2 | cheap equal-variable discovery | **N/A for QF_LIA** -- the paper states equality propagation is disabled for pure arithmetic theories, QF_LIA and QF_LRA included. Relevant only to QF_UFLRA, where Primo has the exact producer rather than the 2024 fast path |
+| 3.3 | direct bounds propagation | **have**, on by default |
+| 3.3 | **indirect (row-based) bounds propagation** | **implemented but off by default -- and now measured on QF_LIA: it does not help** (see below) |
+| 4.1 | patching | **have** (stage 5, +300 solves) |
+| 4.2 | cube test | **missing**, deferred behind z3's difference/octagon twist |
+| 4.3 | GCD consistency, basic | **have** (stage 2) |
+| 4.3 | GCD consistency, extended to bounded-not-fixed rows | **missing** (lead 12e) |
+| 4.4 | branching on integer bounds | **have**, but theory-internal DFS |
+| 4.4 | **branching as CDCL literals** | **missing** -- z3 creates a real SAT literal so conflict analysis generalizes across branches; Sect. 2 names this eager-case-split design as deliberate |
+| 4.5 | Gomory cuts | **have** (stage 3, King's mixed cut) |
+| 4.5 | relaxed "row-integral" Gomory rows | **missing**; has measured evidence behind it (the instrumented `f_unbounded` count) |
+| 4.5 | cut selection by distance to nearest integer | **missing**; Primo takes the first eligible row |
+| 4.5 | extremum bound deduction | **missing** |
+| 4.5 | Hermite-normal-form cuts | **missing**, large |
+| 4.5 | large-numeral temporary scope | **missing**; `--lia-gomory-cut-limit` is the blunt substitute |
+
+### Row-based propagation does not transfer to QF_LIA
+
+Sect. 3.3's indirect propagation is the one paper technique Primo already
+implements and simply leaves off (`lra_row_propagation = false`). It had been
+fuzz-gated and A/B-tested repeatedly -- 17 run-log entries -- but **every one of
+those was QF_LRA or QF_UFLRA, and none was QF_LIA**, which is now the fragment
+where profiling says the bottleneck lives.
+
+Measured on the per-family sample (94 files, 10 s), including the exact widened
+caps `sandbox/paper.tex`'s RamParILS tuning selected for its `primo+`
+configuration (`max-row-size 256`, `max-fanout 1024`, against defaults of 64):
+
+| arm | solved | sat | unsat | wrong | PAR2 |
+| --- | --- | --- | --- | --- | --- |
+| default | **58** | 30 | 28 | 0 | **7.83** |
+| row propagation, default caps | 57 | 29 | 28 | 0 | 8.09 |
+| row + bidirectional | 58 | 30 | 28 | 0 | 7.94 |
+| row propagation, paper caps | 57 | 29 | 28 | 0 | 8.12 |
+| `--lra-model-phase` | 55 | 27 | 28 | 0 | 8.42 |
+| both (the paper's `primo+`) | 56 | 28 | 28 | 0 | 8.37 |
+
+**Zero gains in any arm.** Individual losses of one to three could be sample
+noise, but the absence of a single gain across six configurations is not. The
+QF_LRA tuning does not transfer: `lra_row_propagation` and `lra_model_phase`
+are both worth keeping off for QF_LIA, and that is now measured rather than
+inherited. This is also a result for the paper itself -- its tuned
+configuration is fragment-specific, not a better default.
+
+### What is worth attempting next, and the caveat over all of it
+
 Ranked by expected value for Primo:
-
-| # | Missing piece | Paper | Targets | Notes |
-| --- | --- | --- | --- | --- |
-| ~~1~~ | ~~Patching~~ | 4.1 | sat | **DONE 2026-08-21** (stage 5). Built on the existing `freedom_interval()`; +4 solved / 0 lost on the per-family sample, all on sat. Two traps: scoring by |delta| alone oscillates, and floor/ceil alone is too narrow a candidate set -- both found by building the paper's Example 3 as a test |
-| 2 | Cube test | 4.2 | sat | Cheapest of the two; one tightened real check. Already named as deferred in Primo's docs |
-| 3 | Extended GCD (bounded, not fixed) | 4.3 | unsat | Closes a documented, test-pinned divergence; beware the printed inequality direction |
-| 4 | Relaxed (row-integral) Gomory rows | 4.5 | both | Addresses Primo's measured eligibility failures; changes explanation rules |
-| 5 | Cut selection by distance to nearest integer | 4.5 | both | Primo takes the first eligible row |
-| 6 | Extremum bound deduction | 4.5 | both | Cheap, and the explanation caveat is stated |
-| 7 | HNF cuts | 4.5 | unsat | A separate cut family, large |
-| 8 | Large-numeral temporary scope | 4.5 | robustness | Primo substitutes a blunt cut limit |
-| 9 | CDCL-integrated branch literals | 4.4 | both | Deliberately out of scope so far |
-
-One caveat that this paper does not address and Primo's own measurement does:
-an instrumented run found that 24 of 36 sampled QF_LIA timeouts never execute a
-single integer round at all. For those files the bottleneck is the Boolean and
-LRA layers, so nothing in Section 4 can reach them. Section 3.3's indirect
-bounds propagation is the part of the paper aimed at that population.
 
 ## Section 3.2: cheap equal-variable discovery
 
