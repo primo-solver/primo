@@ -1456,6 +1456,13 @@ LraTableau::ModelFilteredEqualityResult LraTableau::model_filtered_unit_equaliti
   return result;
 }
 
+void LraTableau::set_nonbasic_value(LraVarId var, const DeltaRational& value) {
+  assert(!vars_.at(var).is_basic &&
+         "set_nonbasic_value is defined for nonbasic variables only -- a basic "
+         "variable's value follows from its row");
+  update(var, value);
+}
+
 LraTableau::FreedomInterval LraTableau::freedom_interval(LraVarId nonbasic) const {
   return freedom_interval_impl(nonbasic, nullptr);
 }

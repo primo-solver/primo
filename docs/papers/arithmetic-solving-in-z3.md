@@ -8,27 +8,251 @@ LNCS 14681, pp. 26-41.
 Local copy: `docs/papers/arithmetic-reimplemented.pdf`.
 
 Read 2026-08-17: Sections 2, 3, 6, and 8 in full; the integer and nonlinear
-sections were read to delimit their relevance to Primo's QF_LRA/QF_UFLRA
-fragment. This note records the paper's algorithmic content independently of
-the Z3 source code. Z3 source is not an implementation source for Primo.
+sections were read only to delimit their relevance to what was then Primo's
+QF_LRA/QF_UFLRA-only fragment.
+
+**Re-read 2026-08-21, Section 4 in full.** The original reading deliberately
+skipped the integer section because QF_LIA did not exist in Primo yet. It does
+now, with four stages shipped, so Section 4 is the directly relevant part of
+this paper and is summarized below. Sections 5 (non-linear) and 7 (evaluation)
+remain out of scope; Section 7's headline numbers are noted only where they
+calibrate expectations.
+
+This note records the paper's algorithmic content independently of the Z3
+source code. Z3 source is not an implementation source for Primo.
 
 ## Relevant scope
 
 The paper describes the arithmetic solver introduced in Z3 4.8.8 and later
-made default. Its complete waterfall also covers integer and nonlinear
-arithmetic, which are outside Primo's current fragment. Four parts matter now:
+made default. Its complete waterfall also covers non-linear arithmetic, which
+is outside Primo's current fragment. The parts that matter:
 
 1. Section 2 motivates an exact, sparse dual-simplex tableau integrated with
    CDCL and efficient backtracking.
 2. Section 3.1 restates the bound-assertion dual-simplex architecture used by
    Primo's LRA solver.
 3. Sections 3.2 and 3.3 describe inexpensive equality and bound propagation.
-4. Section 6 states how arithmetic participates in model-based theory
+4. **Section 4 is the integer waterfall Primo's QF_LIA path is a partial
+   implementation of** -- see the dedicated section below.
+5. Section 6 states how arithmetic participates in model-based theory
    combination and how Z3 caches shared-term membership.
 
 The paper does **not** describe primitive-integer normalization of input atoms.
 Monniaux CAV 2009 Section 2.1 remains the source for Primo's early arithmetic
 atom canonicalization.
+
+## Section 4: the integer waterfall
+
+The paper states the order explicitly: first *patch* real solutions into
+integer ones; if patching leaves integer variables fractional, check
+light-weight Diophantine infeasibility criteria; then resort to Gomory cuts and
+branch-and-bound. Primo implemented the third and fourth layers first; patching
+(4.1) followed on 2026-08-21, leaving cubes (4.2) as the one absent layer.
+
+### 4.1 Patching -- IMPLEMENTED 2026-08-21 (stage 5)
+
+The observation is that in a feasible tableau with all non-basic variables at
+their bounds, integer-sorted non-basics already hold integer values, so *only
+basic variables* can be fractional. Patching changes non-basic values to make
+basic ones integral: for a row with basic `xb`, find a `delta` of minimal
+absolute value such that moving one non-basic `y` by `delta` stays within `y`'s
+bounds, makes `xb` integral, and breaks no other bound.
+
+The paper's example: `y - x/2 = 0`, `z - x/3 = 0`, with `x` in `[3,10]`, `y` in
+`[-3,4]`, `z` in `[-5,12]`. Starting at `x = 3` gives `y = 3/2`. Moving `x`
+within its freedom interval `[3,8]` to `x = 6` makes both `y = 3` and `z = 2`
+integral.
+
+The paper explicitly reports a **negative** result worth recording: the related
+method of diversifying values via freedom intervals (their citation [18]) "does
+not preserve integral assignments". So freedom intervals bound the search space
+for `delta`, but the diversification heuristic itself is not the technique.
+
+**Two things the paper's description leaves implicit**, both found by building
+Example 3 as a test rather than trusting the prose. First, "|delta| is minimal"
+cannot be read per-variable: the nearest fix for `y` moves `x` to 4 and breaks
+`z`, and the nearest fix for `z` then moves it straight back, so a naive
+implementation oscillates. Candidates have to be scored by their effect on
+*all* integer variables. Second, the two integers bracketing the current value
+are not a sufficient candidate set -- Example 3's own answer `x = 6`
+corresponds to `y = 3`, two integers above `y`'s current `3/2`, so floor/ceil
+alone never proposes it. See [](../qf-lia-branch-and-bound.md)'s "Patching".
+
+### 4.2 Cubes -- not implemented in Primo
+
+Bromberger and Weidenbach's test: `Ax <= b` is integer feasible if
+`Ax <= b - (1/2)||A||_1` has a solution over the **reals**, where `||A||_1`
+taken as a column vector has entry `i` equal to the sum of absolute values in
+row `i`. So one real-feasibility check on a uniformly tightened system decides
+integer feasibility positively, and the real solution rounds to an integer one.
+
+The paper's example: for `3x + y <= 9 AND -3y <= -2`, solve
+`3x + y <= 9 - (1/2)(3+1) = 7` and `-3y <= -2 - (1/2)3 = -3.5`; a real model
+`y = 7/6, x = 0` rounds to an integer solution of the original.
+
+Z3's refinement over the original method: difference inequalities `x - y <= k`
+with integer `k` never need strengthening (real-feasible iff integer-feasible),
+and octagon constraints `±x ±y <= k` need it only when the two variables sit at
+midpoints between integral solutions.
+
+The paper calls this "an important factor in solving more **satisfiable**
+integer arithmetic instances" -- which is exactly where Primo's measured
+deficit is (see the gap analysis below).
+
+### 4.3 GCD consistency -- Primo has the basic test, not the extended one
+
+The basic test is the one Primo's stage 2 implements: fold fixed variables into
+a constant offset and check that the gcd of the remaining coefficients divides
+it.
+
+The paper then extends it in a way Primo does not have. For a row
+`a.x + b.y + c = 0` where the coefficients in `a` are all equal and smaller
+than those in `b`, and **the variables `x` are bounded but not necessarily
+fixed**, let `l := a.lb(x)` and `u := a.ub(x)` be the achievable range of the
+bounded part. If that range contains no value congruent to the required residue
+modulo `gcd(b, c)`, there is no solution.
+
+**Caution on the printed inequality.** The paper renders the condition as
+`floor(u/gcd) > ceil(l/gcd)`, which is backwards as written -- that direction
+would report infeasibility precisely when a solution exists. The intended test
+is `floor(u/gcd) < ceil(l/gcd)`, i.e. no multiple of the gcd lies in `[l, u]`.
+Checked against the paper's own shape with `l = 2, u = 3, g = 4`:
+`floor(3/4) = 0 < ceil(2/4) = 1`, correctly infeasible. Anyone implementing
+this should not transcribe the printed direction.
+
+This extension matters concretely: it closes the exact case
+`docs/qf-lia-branch-and-bound.md` documents as caught by neither stage 2 nor
+stage 3 -- `4x + 4y` bounded to `[2,3]` with `x, y` unbounded, which currently
+diverges to `--lia-branch-limit` and is pinned by
+`gcd_uncatchable_divergent_system_hits_the_node_limit` in
+`tests/unit/qf_lia_solver_tests.cpp`. Primo's stage 2 misses it because
+`fixed_value()` requires equal lower and upper bounds, and here the slack is
+bounded but not fixed.
+
+### 4.4 Branching -- Primo's is theory-internal, Z3's is a SAT literal
+
+Z3 "creates somewhat eagerly case splits on bounds of integer variables"; for a
+variable assigned `1/2` it creates *a literal* `x <= 0` that triggers the two
+branches. That is CDCL-integrated branching, so conflict learning generalizes
+across branches. Primo's `branch_and_bound` runs an explicit-stack DFS entirely
+inside the theory with synthetic `kDerivedBoundReason` bounds -- a deliberate
+scoping decision recorded in `docs/qf-lia-branch-and-bound.md`'s "Where
+branching lives", not an oversight.
+
+### 4.5 Cuts -- Primo has the base method, none of the enhancements
+
+Z3 implements Chvatal-Gomory cuts plus cuts derived after transforming the
+linear system into Hermite normal form. Primo implements one mixed Gomory cut
+(King's thesis eq. 4.9). The paper adds five things Primo lacks:
+
+1. **A relaxed Gomory-row definition.** The strict definition requires every
+   non-basic `xj` in the row to sit at a non-strict bound. Z3 relaxes this: a
+   non-basic *integral* `xj` may be away from its bounds provided `beta(xj)`
+   and `aj` are both integers -- such `xj` is called **row integral**. This
+   directly widens eligibility, which is Primo's measured failure mode (the
+   instrumented `f_unbounded` count).
+2. **Explanations must track the relaxation.** The paper notes the Gomory
+   term's explanation does *not* include constraints on the relaxed
+   (row-integral) variables -- but that in the extremum case below, those
+   constraints *do* have to be added. This is a direct constraint on Primo's
+   new `LiaExplanation` antecedent rule if the relaxation is adopted.
+3. **A cut-selection heuristic.** Sort Gomory rows by the distance of
+   `beta(xb)` from the nearest integer and take a few with *minimal* distance,
+   breaking ties toward variables occurring in more terms. The paper notes
+   earlier heuristics used distance to bounds instead. Primo takes the first
+   eligible row.
+4. **Extremum detection.** If every `xj` is at its lower bound and every
+   `aj > 0`, then `xb` is at its maximum and one can deduce `xb <= floor(beta(xb))`
+   directly -- a bound, not a cut.
+5. **Large-numeral discipline.** Cuts with large coefficients are added to a
+   temporary scope first and only re-added to the main scope if the temporary
+   tableau is infeasible; bounds propagation is likewise skipped when it would
+   need big-num arithmetic. Primo uses `--lia-gomory-cut-limit` as a blunt
+   substitute.
+
+The paper also states plainly that "cuts are consequences of the current
+bounds", which is the same justification Primo's stage 4 explanation rests on.
+
+### What Section 7 says about expectations
+
+On QF_LIA the paper reports z3 solving 6,276 and CVC5 3,556 of the same set at
+600 s, with MathSat5 at 6,368 and Yices2 at 6,035. The relevant lesson for
+Primo is the paper's own summary of its ablation: apart from incremental
+linearization (a non-linear feature), "other features have each a relative
+minor effect in isolation. The solver relies on their cumulative effect." A
+single missing layer should not be expected to close a large gap on its own.
+
+## Gap analysis against Primo (2026-08-21)
+
+Primo's own full-corpus measurement points at the same place the paper does.
+Over all 13,306 QF_LIA files at 60 s (Slurm 127949 and 127709):
+
+| solver | sat | unsat | total |
+| --- | --- | --- | --- |
+| primo | 5,866 | 2,859 | 8,725 |
+| cvc5 | 6,527 | 2,712 | 9,239 |
+| z3 | 7,825 | 4,322 | 12,147 |
+
+Primo is **ahead of cvc5 on unsat by 147** and **behind on sat by 661**. The
+entire deficit to cvc5 is on satisfiable instances. That is a precise match for
+what is missing: sections 4.1 (patching) and 4.2 (cubes) are the two layers
+aimed squarely at *finding* integer models, and Primo implements neither, while
+the layers Primo does implement -- GCD consistency, Gomory cuts,
+branch-and-bound, and now conflict generalization -- are all refutation
+machinery.
+
+### Complete audit of what Primo has and lacks (2026-08-22)
+
+| paper | technique | status |
+| --- | --- | --- |
+| 3.1 | dual simplex, bound assertion | **have** |
+| 3.2 | cheap equal-variable discovery | **N/A for QF_LIA** -- the paper states equality propagation is disabled for pure arithmetic theories, QF_LIA and QF_LRA included. Relevant only to QF_UFLRA, where Primo now has both: the legacy exact producer (default) and the 2024 fast path behind `--qf-uflra-lra-equality-producer=model-unit`, measured and not promoted |
+| 3.3 | direct bounds propagation | **have**, on by default |
+| 3.3 | **indirect (row-based) bounds propagation** | **implemented but off by default -- and now measured on QF_LIA: it does not help** (see below) |
+| 4.1 | patching | **have** (stage 5, +300 solves) |
+| 4.2 | cube test | **missing**, deferred behind z3's difference/octagon twist |
+| 4.3 | GCD consistency, basic | **have** (stage 2) |
+| 4.3 | GCD consistency, extended to bounded-not-fixed rows | **missing** (lead 12e) |
+| 4.4 | branching on integer bounds | **have**, but theory-internal DFS |
+| 4.4 | **branching as CDCL literals** | **missing** -- z3 creates a real SAT literal so conflict analysis generalizes across branches; Sect. 2 names this eager-case-split design as deliberate |
+| 4.5 | Gomory cuts | **have** (stage 3, King's mixed cut) |
+| 4.5 | relaxed "row-integral" Gomory rows | **missing**; has measured evidence behind it (the instrumented `f_unbounded` count) |
+| 4.5 | cut selection by distance to nearest integer | **missing**; Primo takes the first eligible row |
+| 4.5 | extremum bound deduction | **missing** |
+| 4.5 | Hermite-normal-form cuts | **missing**, large |
+| 4.5 | large-numeral temporary scope | **missing**; `--lia-gomory-cut-limit` is the blunt substitute |
+
+### Row-based propagation does not transfer to QF_LIA
+
+Sect. 3.3's indirect propagation is the one paper technique Primo already
+implements and simply leaves off (`lra_row_propagation = false`). It had been
+fuzz-gated and A/B-tested repeatedly -- 17 run-log entries -- but **every one of
+those was QF_LRA or QF_UFLRA, and none was QF_LIA**, which is now the fragment
+where profiling says the bottleneck lives.
+
+Measured on the per-family sample (94 files, 10 s), including the exact widened
+caps `sandbox/paper.tex`'s RamParILS tuning selected for its `primo+`
+configuration (`max-row-size 256`, `max-fanout 1024`, against defaults of 64):
+
+| arm | solved | sat | unsat | wrong | PAR2 |
+| --- | --- | --- | --- | --- | --- |
+| default | **58** | 30 | 28 | 0 | **7.83** |
+| row propagation, default caps | 57 | 29 | 28 | 0 | 8.09 |
+| row + bidirectional | 58 | 30 | 28 | 0 | 7.94 |
+| row propagation, paper caps | 57 | 29 | 28 | 0 | 8.12 |
+| `--lra-model-phase` | 55 | 27 | 28 | 0 | 8.42 |
+| both (the paper's `primo+`) | 56 | 28 | 28 | 0 | 8.37 |
+
+**Zero gains in any arm.** Individual losses of one to three could be sample
+noise, but the absence of a single gain across six configurations is not. The
+QF_LRA tuning does not transfer: `lra_row_propagation` and `lra_model_phase`
+are both worth keeping off for QF_LIA, and that is now measured rather than
+inherited. This is also a result for the paper itself -- its tuned
+configuration is fragment-specific, not a better default.
+
+### What is worth attempting next, and the caveat over all of it
+
+Ranked by expected value for Primo:
 
 ## Section 3.2: cheap equal-variable discovery
 
@@ -251,7 +475,8 @@ than rediscover sharedness by repeated parent traversal.
 
 ## Resulting priority
 
-For current convex QF_UFLRA, the paper does not reveal a missing correctness
+**For QF_LRA/QF_UFLRA** (the 2026-08-18 producer experiments): for current
+convex QF_UFLRA the paper does not reveal a missing correctness
 transition. It reveals a narrower performance opportunity inside an existing
 correct transition: replace exact-offset row bucketing with the
 current-model-filtered unit-row recognizer, retain explanations, and leave the
@@ -263,3 +488,24 @@ bootstrap can recover useful general `EqRows` lemmas without paying their
 exact-offset cost on every later round. It recovers the lost row and preserves
 the full solved set, but its small producer-local saving does not justify
 changing the default.
+
+**For QF_LIA** (the 2026-08-21 re-reading): the paper reveals two entire
+missing *layers*, not a tuning opportunity. Primo's integer waterfall started
+at the paper's third layer. Patching (4.1) and cubes (4.2) both exist to find
+integer models, and Primo's measured weakness is precisely and only on
+satisfiable instances.
+
+**Patching shipped the same day** as stage 5 -- see
+[](../qf-lia-branch-and-bound.md)'s "Patching" section. Cubes was considered
+first (cheaper, no tableau change) and rejected on a measurement: 249 of 300
+sampled instances contain equality atoms, and an asserted equality fixes a
+slack, which makes the tightened cube system contradictory. Cubes would be
+inconclusive on most rounds without also building z3's difference/octagon
+twist, so it stays deferred behind that twist rather than as a standalone
+item. The extended GCD test (4.3) is the smaller, well-scoped next candidate,
+and closes an already-documented divergence.
+
+Both should be measured against the same-binary control the stage 4 evaluation
+established, and neither should be expected to close the cvc5 gap alone -- the
+paper's own ablation reports that its features matter cumulatively rather than
+individually.

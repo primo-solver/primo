@@ -181,8 +181,17 @@ TermId TermManager::mk_implies(TermId lhs, TermId rhs) {
 }
 
 TermId TermManager::mk_rational(util::Rational value) {
-  return intern(
-      Key{TermKind::Rational, symbols_.real_sort(), kInvalidSymbolId, {}, false, std::move(value)});
+  return mk_rational(std::move(value), symbols_.real_sort());
+}
+
+TermId TermManager::mk_rational(util::Rational value, SortId sort) {
+  if (!is_arithmetic_sort(sort)) {
+    throw std::invalid_argument("expected Real or Int sort");
+  }
+  if (sort == symbols_.int_sort() && !value.is_integer()) {
+    throw std::invalid_argument("Int literal must be an integer value");
+  }
+  return intern(Key{TermKind::Rational, sort, kInvalidSymbolId, {}, false, std::move(value)});
 }
 
 TermId TermManager::mk_plus(std::vector<TermId> children) {
@@ -190,13 +199,18 @@ TermId TermManager::mk_plus(std::vector<TermId> children) {
     throw std::invalid_argument("+ requires at least one argument");
   }
 
+  const SortId sort = require_term(children.front()).sort;
+  if (!is_arithmetic_sort(sort)) {
+    throw std::invalid_argument("expected Real or Int term");
+  }
+
   std::vector<TermId> flattened;
   flattened.reserve(children.size());
   util::Rational constant(0);
   for (const TermId child : children) {
     const Term& child_term = require_term(child);
-    if (child_term.sort != symbols_.real_sort()) {
-      throw std::invalid_argument("expected Real term");
+    if (child_term.sort != sort) {
+      throw std::invalid_argument("arithmetic terms must share one sort");
     }
     if (child_term.kind == TermKind::Rational) {
       constant += child_term.rational_value;
@@ -210,28 +224,32 @@ TermId TermManager::mk_plus(std::vector<TermId> children) {
   }
 
   if (flattened.empty()) {
-    return mk_rational(constant);
+    return mk_rational(constant, sort);
   }
   if (!constant.is_zero()) {
-    flattened.push_back(mk_rational(constant));
+    flattened.push_back(mk_rational(constant, sort));
   }
   if (flattened.size() == 1) {
     return flattened.front();
   }
-  return intern(Key{TermKind::Plus, symbols_.real_sort(), kInvalidSymbolId, std::move(flattened),
-                    false, util::Rational(0)});
+  return intern(
+      Key{TermKind::Plus, sort, kInvalidSymbolId, std::move(flattened), false, util::Rational(0)});
 }
 
 TermId TermManager::mk_times(util::Rational coefficient, TermId child) {
   const Term& child_term = require_term(child);
-  if (child_term.sort != symbols_.real_sort()) {
-    throw std::invalid_argument("expected Real term");
+  const SortId sort = child_term.sort;
+  if (!is_arithmetic_sort(sort)) {
+    throw std::invalid_argument("expected Real or Int term");
+  }
+  if (sort == symbols_.int_sort() && !coefficient.is_integer()) {
+    throw std::invalid_argument("Int coefficient must be an integer value");
   }
   if (coefficient.is_zero()) {
-    return mk_rational(util::Rational(0));
+    return mk_rational(util::Rational(0), sort);
   }
   if (child_term.kind == TermKind::Rational) {
-    return mk_rational(coefficient * child_term.rational_value);
+    return mk_rational(coefficient * child_term.rational_value, sort);
   }
   if (child_term.kind == TermKind::Times) {
     return mk_times(coefficient * child_term.rational_value, child_term.children.at(0));
@@ -239,19 +257,15 @@ TermId TermManager::mk_times(util::Rational coefficient, TermId child) {
   if (coefficient == util::Rational(1)) {
     return child;
   }
-  return intern(Key{TermKind::Times,
-                    symbols_.real_sort(),
-                    kInvalidSymbolId,
-                    {child},
-                    false,
-                    std::move(coefficient)});
+  return intern(
+      Key{TermKind::Times, sort, kInvalidSymbolId, {child}, false, std::move(coefficient)});
 }
 
 TermId TermManager::mk_le(TermId lhs, TermId rhs) {
   const Term& lhs_term = require_term(lhs);
   const Term& rhs_term = require_term(rhs);
-  if (lhs_term.sort != symbols_.real_sort() || rhs_term.sort != symbols_.real_sort()) {
-    throw std::invalid_argument("expected Real term");
+  if (lhs_term.sort != rhs_term.sort || !is_arithmetic_sort(lhs_term.sort)) {
+    throw std::invalid_argument("expected two terms of the same Real or Int sort");
   }
   if (lhs == rhs) {
     return mk_bool(true);
@@ -266,8 +280,8 @@ TermId TermManager::mk_le(TermId lhs, TermId rhs) {
 TermId TermManager::mk_lt(TermId lhs, TermId rhs) {
   const Term& lhs_term = require_term(lhs);
   const Term& rhs_term = require_term(rhs);
-  if (lhs_term.sort != symbols_.real_sort() || rhs_term.sort != symbols_.real_sort()) {
-    throw std::invalid_argument("expected Real term");
+  if (lhs_term.sort != rhs_term.sort || !is_arithmetic_sort(lhs_term.sort)) {
+    throw std::invalid_argument("expected two terms of the same Real or Int sort");
   }
   if (lhs == rhs) {
     return mk_bool(false);
@@ -331,6 +345,10 @@ void TermManager::require_bool(TermId id) const {
   if (require_term(id).sort != symbols_.bool_sort()) {
     throw std::invalid_argument("expected Boolean term");
   }
+}
+
+bool TermManager::is_arithmetic_sort(SortId sort) const {
+  return sort == symbols_.real_sort() || sort == symbols_.int_sort();
 }
 
 }  // namespace primo::core

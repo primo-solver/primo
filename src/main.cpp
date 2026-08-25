@@ -129,6 +129,7 @@ std::optional<std::pair<std::string, int>> parse_cadical_option(const std::strin
 // order in main() -- currently Procedural, QF_UF, QF_LRA, Preprocessing,
 // SAT -- not the order of these declarations.
 constexpr const char* kGroupLra = "QF_LRA theory options";
+constexpr const char* kGroupLia = "QF_LIA theory options";
 constexpr const char* kGroupUf = "QF_UF / EUF theory options";
 constexpr const char* kGroupPreprocessing = "Preprocessing options";
 constexpr const char* kGroupSat = "SAT and DPLL(T) options";
@@ -150,6 +151,7 @@ int main(int argc, char** argv) {
   bool no_lra_propagation = false;
   bool no_solved_constant_substitution = false;
   bool no_gaussian_elimination = false;
+  bool no_lia_conflict_generalization = false;
   bool no_qf_uflra_fixed_elimination = false;
   bool qf_uflra_candidate_final_scan = false;
   bool qf_uflra_model_reconciliation = false;
@@ -388,6 +390,27 @@ int main(int argc, char** argv) {
                solver_options.arithmetic_atom_canonicalization,
                "Enable experimental primitive-integer canonicalization of proportional Real "
                "comparisons and equalities before clausification [default: off]");
+  app.add_option("--lia-branch-limit", solver_options.lia_branch_limit,
+                 "QF_LIA branch-and-bound node cap: plain branch-and-bound alone has no "
+                 "completeness argument (an unbounded integer-infeasible polytope can branch "
+                 "forever), so once this many nodes have been explored the search reports "
+                 "Unknown instead of continuing [default: 100000]")
+      ->check(CLI::Range(1, 100000000));
+  app.add_option("--lia-gomory-cut-limit", solver_options.lia_gomory_cut_limit,
+                 "QF_LIA Gomory-cut round cap, run before branch-and-bound on every candidate "
+                 "model: caps how many cut-and-recheck rounds are attempted before falling "
+                 "through to branch-and-bound regardless [default: 100]")
+      ->check(CLI::Range(0, 100000000));
+  app.add_option("--lia-patch-limit", solver_options.lia_patch_limit,
+                 "QF_LIA patching budget, run before the integer refutation stages on every "
+                 "candidate model: caps how many nonbasic moves are taken to nudge Int variables "
+                 "onto integer values. 0 disables patching [default: 100]")
+      ->check(CLI::Range(0, 100000000));
+  app.add_flag("--no-lia-conflict-generalization", no_lia_conflict_generalization,
+               "Disable QF_LIA conflict generalization: build each integer-infeasibility lemma "
+               "from every arithmetic atom in the problem instead of from the GCD/cut/branch "
+               "derivation that actually proved it. The coarse form excludes one Boolean "
+               "assignment per round; generalization is on by default [default: on]");
   app.add_flag("--top-level-or-tseitin", top_level_or_tseitin,
                "Always encode top-level disjunctions with Tseitin support clauses [default: only "
                "when the automatic rule fires]");
@@ -633,6 +656,9 @@ int main(int argc, char** argv) {
         name == "--mixed-dispatch") {
       return kGroupLra;
     }
+    if (starts_with(name, "--lia-") || starts_with(name, "--no-lia-")) {
+      return kGroupLia;
+    }
     if (name == "--preprocessing-mode" || name == "--qf-uf-preprocess" ||
         name == "--arithmetic-atom-canonicalization" || name == "--auto-preprocess-selector" ||
         name == "--qf-uf-auto-selector" || name == "--boolean-flatten-threshold" ||
@@ -791,6 +817,9 @@ int main(int argc, char** argv) {
   }
   if (no_gaussian_elimination) {
     solver_options.gaussian_elimination = false;
+  }
+  if (no_lia_conflict_generalization) {
+    solver_options.lia_conflict_generalization = false;
   }
   if (no_qf_uflra_fixed_elimination) {
     solver_options.qf_uflra_fixed_elimination = false;

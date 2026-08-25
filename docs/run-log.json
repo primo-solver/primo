@@ -27684,6 +27684,420 @@
       "artifacts": "remote:results/model-unit-refined-target-d8fc162; remote:slurm-results/qf-uflra-refined-fuzz-d8fc162; remote:fuzz-results/qf-uflra-refined-d8fc162; remote:fuzz-results/qf-uflra-refined-replay-d8fc162; remote:results/model-unit-refined-full120-d8fc162/adaptive; SLURM jobs 127292, 127293, 127299, 127300, and 127311",
       "evidence_status": "slurm-complete-current",
       "outcome": "The refined scheduler removes the deterministic loss and preserves the complete solved set while exercising model-unit. The producer-local saving is too small for default promotion; legacy remains default and adaptive remains experimental."
+    },
+    {
+      "id": "2026-08-19-qf-lia-fuzz-gate-slurm-verification",
+      "started_at": "2026-08-19",
+      "recorded_at": "2026-08-19",
+      "kind": "fuzz",
+      "scope": "First Slurm run of the new QF_LIA fuzz gate (scripts/slurm_qf_lia_model_fuzz_gate.sbatch): FuzzSMT-generated QF_LIA answer-differential fuzzing against z3, plus Dolmen model validation of every sat result.",
+      "commit": "5808051",
+      "branch": "qf-lia-branch-and-bound",
+      "environment": {
+        "type": "SLURM",
+        "host": "llm2smt-slurm",
+        "workdir": "primo-qflia-fuzz-gate",
+        "job": "127439 (1 shard x 50, found the Dolmen --strict bug), 127440 (1 shard x 50, post-fix smoke re-run), 127441 (8 shards x 500 = 4000, full default-sized gate, post-fix)"
+      },
+      "commands": {
+        "smoke": "sbatch --export=ALL,PRIMO_WORKDIR=...,PRIMO_FUZZ_FUZZSMT_COUNT=50 --array=0-0 scripts/slurm_qf_lia_model_fuzz_gate.sbatch",
+        "full": "sbatch --export=ALL,PRIMO_WORKDIR=... scripts/slurm_qf_lia_model_fuzz_gate.sbatch (default 8x500)"
+      },
+      "results": {
+        "job_127439": "Answer-differential clean, but model validation found 39/45 sat cases as model-error, all falling through to validate_model.py's Real-only z3 fallback. Root cause: Dolmen's default --strict=true treats FuzzSMT's QF_LIA output (linear-but-grammar-nonconforming terms like `(* e5 e11)` with e5 a let-bound literal) as a Fatal Warning and aborts check-model before evaluating the model. Fixed with --dolmen-arg=--strict=false, now the gate's default (commit c05f24a).",
+        "job_127440": "Same 50-case smoke shape, post-fix. Answer-differential: 48 PASS, 2 benign solver timeouts, 0 wrong answers. Model validation: 40/40 sat cases pass via Dolmen directly, 0 model-error.",
+        "job_127441": "Full default-sized run, 4000 FuzzSMT-generated QF_LIA cases across 8 shards (7 shards exited 0; shard 4 exited 1, see below). Answer-differential aggregate: 3926 PASS, 73 benign solver timeouts, 1 UNKNOWN_INVOLVED, 0 wrong answers (zero OUR_SAT_REF_UNSAT/OUR_UNSAT_REF_SAT/REF_DISAGREEMENT/CRASH). Model validation aggregate: 3528 pass (all via Dolmen), 423 not-sat (no model expected), 48 benign solver timeouts, 1 solver-unknown. The single UNKNOWN_INVOLVED/solver-unknown case (fuzzsmt_227445__file_247.smt2) is primo honestly reporting Unknown after exhausting --lia-branch-limit on a z3-sat instance -- confirmed by its solver.stderr, which reads exactly 'QF_LIA branch-and-bound node limit reached', matching docs/qf-lia-branch-and-bound.md's documented stage-1 incompleteness, not a wrong answer or crash. That single benign case is what made shard 4 exit 1 (the gate's non_timeout_failures check did not yet whitelist solver-unknown); the gate script was updated afterward to also treat solver-unknown as benign, with a comment explaining exactly why and when that allowance would need narrowing."
+      },
+      "artifacts": "remote:primo-qflia-fuzz-gate/fuzz-results/qf-lia-model-gate-{127439,127440,127441}/",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "The QF_LIA fuzz gate (scripts/slurm_qf_lia_model_fuzz_gate.sbatch) now runs cleanly end-to-end on Slurm at its default 8x500 scale: zero wrong answers, zero crashes, zero invalid Dolmen-validated models across 4000 FuzzSMT-generated QF_LIA cases. Two real bugs were found and fixed in this session before this campaign (see the two prior commits on this branch and docs/qf-lia-branch-and-bound.md's bug write-ups); this run is the first evidence at real scale, not just local smoke testing, that stage 1 QF_LIA is sound. The gate's own benign-outcome classification also needed a fix (solver-unknown from the branch-and-bound node limit was being treated as a hard failure), applied after this run."
+    },
+    {
+      "id": "2026-08-20-qf-lia-gcd-consistency-fuzz-gate-slurm-verification",
+      "started_at": "2026-08-20",
+      "recorded_at": "2026-08-20",
+      "kind": "fuzz",
+      "scope": "Full Slurm run of scripts/slurm_qf_lia_model_fuzz_gate.sbatch against the QF_LIA stage-2 GCD-consistency check (theory::arithmetic::gcd_inconsistent_row), a soundness-risk change: a bug here would report Unsat on a satisfiable instance, strictly worse than stage 1's Unknown-on-unsat gap. Preceded by ~1000 cases of local FuzzSMT smoke fuzzing across 5 seeds (555111, 700200, 800300, 900400, plus the first 200-case batch), all clean.",
+      "commit": "f738402",
+      "branch": "qf-lia-branch-and-bound",
+      "environment": {
+        "type": "SLURM",
+        "host": "llm2smt-slurm",
+        "workdir": "primo-qflia-fuzz-gate",
+        "job": "127449 (8 shards x 500 = 4000 FuzzSMT-generated QF_LIA cases)"
+      },
+      "commands": {
+        "sync": "python3 scripts/slurm_prepare_benchmark_workspace.py --remote-dir primo-qflia-fuzz-gate --reuse-dependencies --local-dir /workspace",
+        "submit": "sbatch --export=ALL,PRIMO_WORKDIR=... scripts/slurm_qf_lia_model_fuzz_gate.sbatch (default 8x500)"
+      },
+      "results": {
+        "all_shards": "All 8 array tasks exited 0 (sacct: COMPLETED, ExitCode 0:0 throughout).",
+        "answer_differential": "3925 PASS, 74 benign solver timeouts, 1 UNKNOWN_INVOLVED (primo timed out where z3 answered sat -- a solver-side timeout, not a disagreement), zero wrong answers (zero OUR_SAT_REF_UNSAT/OUR_UNSAT_REF_SAT/REF_DISAGREEMENT/CRASH across all 8 shards, confirmed by direct grep).",
+        "model_validation": "3517 pass (all via Dolmen), 425 correctly not-sat, 58 benign solver timeouts, zero model-error (confirmed by direct grep across all 8 shards)."
+      },
+      "artifacts": "remote:primo-qflia-fuzz-gate/fuzz-results/qf-lia-model-gate-127449/",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Stage 2's GCD-consistency check (docs/qf-lia-branch-and-bound.md) is confirmed sound at real fuzz scale: zero wrong answers and zero invalid models across 4000 Slurm-generated cases plus ~1000 local smoke cases beforehand, with no soundness regression from stage 1's own already-verified 4000-case baseline (2026-08-19-qf-lia-fuzz-gate-slurm-verification). The one non-pass/timeout answer-differential case (a solver-side timeout on a z3-sat instance) was individually inspected and confirmed unrelated to the GCD check."
+    },
+    {
+      "id": "2026-08-20-qf-lia-gomory-cuts-fuzz-gate-slurm-verification",
+      "started_at": "2026-08-20",
+      "recorded_at": "2026-08-20",
+      "kind": "fuzz",
+      "scope": "Full Slurm run of scripts/slurm_qf_lia_model_fuzz_gate.sbatch against the QF_LIA stage-3 Gomory cut check (theory::arithmetic::apply_gomory_cuts, King's thesis eq. 4.9), a soundness-risk change: a wrong hand-derived cut would report Unsat on a satisfiable instance. Preceded by ~800 cases of local FuzzSMT smoke fuzzing across 4 seeds (313131, 424242, 535353, 646464), all clean, and by two hand-verified numeric worked examples (unit tests, checked before any implementation code was written).",
+      "commit": "5d19930",
+      "branch": "qf-lia-branch-and-bound",
+      "environment": {
+        "type": "SLURM",
+        "host": "llm2smt-slurm",
+        "workdir": "primo-qflia-fuzz-gate",
+        "job": "127457 (8 shards x 500 = 4000 FuzzSMT-generated QF_LIA cases)"
+      },
+      "commands": {
+        "sync": "python3 scripts/slurm_prepare_benchmark_workspace.py --remote-dir primo-qflia-fuzz-gate --reuse-dependencies --local-dir /workspace",
+        "submit": "sbatch --export=ALL,PRIMO_WORKDIR=... scripts/slurm_qf_lia_model_fuzz_gate.sbatch (default 8x500)"
+      },
+      "results": {
+        "all_shards": "All 8 array tasks exited 0 (sacct: COMPLETED, ExitCode 0:0 throughout) -- cleaner than stage 2's equivalent run, which had one benign solver-unknown case.",
+        "answer_differential": "3920 PASS, 80 benign solver timeouts, zero wrong answers (zero OUR_SAT_REF_UNSAT/OUR_UNSAT_REF_SAT/REF_DISAGREEMENT/CRASH across all 8 shards, confirmed by direct grep).",
+        "model_validation": "3487 pass (all via Dolmen), 456 correctly not-sat, 57 benign solver timeouts, zero model-error (confirmed by direct grep across all 8 shards)."
+      },
+      "artifacts": "remote:primo-qflia-fuzz-gate/fuzz-results/qf-lia-model-gate-127457/",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Stage 3's Gomory-cut check (King's thesis eq. 4.9, docs/qf-lia-branch-and-bound.md) is confirmed sound at real fuzz scale: zero wrong answers and zero invalid models across 4000 Slurm-generated cases plus ~800 local smoke cases beforehand, with no soundness regression from stages 1-2's own already-verified baselines. Combined with the two hand-verified worked examples locked in as unit tests before this campaign ran, this is the strongest evidence yet of the three QF_LIA stages: the hand-derived cut formula, the trickiest piece of numerics in any of the three stages, produced zero disagreements against z3 across the full campaign."
+    },
+    {
+      "id": "2026-08-20-qf-lia-real-world-benchmark-evaluation",
+      "started_at": "2026-08-20",
+      "recorded_at": "2026-08-20",
+      "kind": "benchmark",
+      "scope": "First evaluation of QF_LIA stages 1-3 against real-world SMT-LIB QF_LIA benchmarks (sandbox/non-incremental/QF_LIA, 13,306 files, 32 families) rather than synthetic FuzzSMT fuzzing -- a 428-file size-stratified representative sample (up to 15 files/family, evenly spaced by size percentile) run against both primo and z3.",
+      "commit": "0c8314d",
+      "branch": "qf-lia-branch-and-bound",
+      "environment": {
+        "type": "local"
+      },
+      "commands": {
+        "sample": "scratchpad build_sample.py (not committed): evenly-spaced-by-size-percentile sampling per family",
+        "run": "scripts/bench_qf_uf_full.py --root sandbox/non-incremental/QF_LIA --manifest <428-file list> --solver ./build/primo --timeout 120 (and again with z3 as the solver)"
+      },
+      "results": {
+        "primo": "gap analysis by family showed most of the solved-rate gap vs z3 was ordinary timeouts/incompleteness (branch-and-bound node limit), EXCEPT the convert family: 11 wrong `unsat` answers on `:status sat` instances, all fast (not timeouts) -- the only family with any wrong answers at all.",
+        "root_cause": "Two soundness bugs sharing one cause: PreparedLraTheory's scale-canonicalization (item H1b) can make a compound atom's slack variable represent the original integer polynomial divided by a large non-unit scale (2^32 for convert's bit-position-weighted terms), so the slack is not itself integer-valued -- but bound_assertion()'s is_integer strict-bound tightening and gcd_inconsistent_row's free-variable-ranges-over-Z assumption both applied to it unconditionally anyway. See docs/qf-lia-branch-and-bound.md's bug 3 (under 'Where integer strictness actually gets handled') and bug 4 (under 'GCD-consistency')."
+      },
+      "artifacts": "results/qflia-sample-eval/, results/qflia-sample-eval-z3/ (gitignored, local only)",
+      "evidence_status": "superseded-by-fix",
+      "outcome": "Found a genuine, real-world-triggered soundness bug that ~14,000+ cumulative FuzzSMT-generated cases across three separate Slurm campaigns (stages 1, 2, 3, each independently verified 'zero wrong answers') never caught -- see the fix commits and docs/qf-lia-branch-and-bound.md's 'Real-world benchmark evaluation and the fuzzing gap' section for the fix and the root-cause analysis of why fuzzing missed it."
+    },
+    {
+      "id": "2026-08-20-qf-lia-scale-canonicalization-fix-slurm-verification",
+      "started_at": "2026-08-20",
+      "recorded_at": "2026-08-20",
+      "kind": "fuzz",
+      "scope": "Verification of the fix for the real-world-benchmark-evaluation bug above: three commits on qf-lia-branch-and-bound -- (1) bound_assertion()'s is_integer scale fix + gcd_inconsistent_row's integer_vars fix (commit 9884328), (2) a latent delta-infinitesimal bug in branch_and_bound/lia_gomory_cuts.cpp exposed by fix (1) and found via local wide-bitwidth FuzzSMT fuzzing during this same verification pass, not the real-world benchmarks (commit 4bed60c). Verification: full local re-check of the convert family, local FuzzSMT smoke fuzzing at default and wide-bitwidth parameters (both fixed and, for comparison, the pre-fix binary via a git worktree at 0c8314d), then the full Slurm gate.",
+      "commit": "4bed60c",
+      "branch": "qf-lia-branch-and-bound",
+      "environment": {
+        "type": "SLURM",
+        "host": "llm2smt-slurm",
+        "workdir": "primo-cadical-profile",
+        "job": "127465 (8 shards x 500, commit 9884328, fix 1 only -- FAILED, 23 solver-error crashes from the not-yet-found bug 4/delta-infinitesimal issue); 127473 (8 shards x 500, commit 4bed60c, both fixes -- clean)"
+      },
+      "commands": {
+        "sync": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config /tmp/llm2smt_slurm_ssh_config --remote llm2smt-slurm --remote-dir /home/janotmik/primo-cadical-profile",
+        "submit": "sbatch --export=ALL,PRIMO_WORKDIR=...,PATH=.../contrib/local/bin:$PATH scripts/slurm_qf_lia_model_fuzz_gate.sbatch",
+        "local_convert_recheck": "for f in sandbox/non-incremental/QF_LIA/convert/*.smt2 with a declared :status: compare ./build/primo's answer against it",
+        "local_fuzz_default": "PATH=contrib/local/bin:$PATH python3 scripts/fuzz_external.py --fuzzer fuzzsmt --logic QF_LIA --solver ./build/primo --refs z3 --count 500 --seed 42",
+        "local_fuzz_wide_bitwidth": "same, --fuzzer-args '-mbw 1 -Mbw 32 -mv 2 -Mv 8 -mc 2 -Mc 8' --seed 7, run against both the fixed binary and (via a git worktree at 0c8314d) the pre-fix binary for comparison"
+      },
+      "results": {
+        "job_127465": "All 8 array tasks FAILED (sacct ExitCode 1:0) -- 23 solver-error entries (Rational division by zero) per shard's model-validation summary.csv, root-caused to lia_gomory_cuts.cpp's apply_one_cut computing f0=0 for a basic variable whose value carried a nonzero infinitesimal with an already-integer rational part; fixed (commit 4bed60c) before resubmitting.",
+        "job_127473": "All 8 array tasks COMPLETED (ExitCode 0:0). Answer-differential: 3898 PASS, 207 benign timeouts, 3 benign UNKNOWN_INVOLVED, zero OUR_SAT_REF_UNSAT/OUR_UNSAT_REF_SAT/REF_DISAGREEMENT (direct grep across all 8 shard logs). Model validation: zero solver-error across all 8 shards' summary.csv.",
+        "convert_family_full_recheck": "303/303 files with a declared :status answered correctly (0 wrong), not just the 2 originally-found repro files or the 428-file sample.",
+        "fuzzing_gap_evidence": "500 cases at FuzzSMT's QF_LIA defaults (maxBW=4, maxNumVars=3) against the PRE-FIX binary (0c8314d, rebuilt in a separate git worktree): zero disagreements -- confirms the default fuzz parameters structurally cannot reach this bug class, matching every prior stage's own 'zero wrong' result. 500 cases at widened parameters (-Mbw 32 -Mv 8 -Mc 8) against the same pre-fix binary: also zero disagreements -- an honest negative result showing the bug needs more than a large coefficient in isolation (see docs/qf-lia-branch-and-bound.md's fuzzing-gap section for the full analysis); the same wide-bitwidth batch against the FIXED binary is what surfaced the delta-infinitesimal crash instead."
+      },
+      "artifacts": "remote:primo-cadical-profile/fuzz-results/qf-lia-model-gate-127465/ (failed run), remote:primo-cadical-profile/fuzz-results/qf-lia-model-gate-127473/ (clean run)",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Both the original real-world-benchmark bug and the delta-infinitesimal bug it exposed are fixed and verified sound at full campaign scale (4000 Slurm cases, zero wrong answers, zero crashes, zero model errors) plus a full recheck of the real-world family that originally found the first bug. The fuzzing-gap investigation confirms FuzzSMT's default QF_LIA parameters are structurally unable to reach this bug class (not bad luck across three prior 'zero wrong' campaigns), and that widening parameters alone is not a reliable substitute for a real-benchmark-derived seed corpus -- see docs/qf-lia-branch-and-bound.md's 'Real-world benchmark evaluation and the fuzzing gap' section for the actionable next step (not implemented this session)."
+    },
+    {
+      "id": "2026-08-20-qf-lia-mutation-fuzz-gate-slurm-verification",
+      "started_at": "2026-08-20",
+      "recorded_at": "2026-08-20",
+      "kind": "fuzz",
+      "scope": "Closes the actionable gap the prior entry flagged: a real QF_LIA seed corpus (benchmarks/seeds/qf_lia_division, generated from sandbox/non-incremental/QF_LIA, 61 seeds/32 families, gitignored) plus an opfuzz task and two YinYang/typefuzz tasks added to scripts/slurm_qf_lia_model_fuzz_gate.sbatch alongside its existing FuzzSMT-only stage, with restricted mutation configs (benchmarks/fuzz-configs/qf_lia_{operator_mutations,typefuzz}.txt). First real run (job 127488) found two new wrong-answer disagreements the stage was added specifically to catch; fixed (commit b728f62, 'Fix gcd_inconsistent_row's Z-domain assumption for row terms, not just the basic variable' -- see docs/qf-lia-branch-and-bound.md's bug 5 under GCD-consistency / bug 4 under Fuzzing) and reverified clean (job 127511).",
+      "commit": "b728f62",
+      "branch": "qf-lia-branch-and-bound",
+      "environment": {
+        "type": "SLURM",
+        "host": "llm2smt-slurm",
+        "workdir": "primo-cadical-profile",
+        "job": "127488 (11 tasks: 8 FuzzSMT shards + 1 opfuzz + 2 typefuzz, commit e8b2bbf, pre-bug-5-fix -- opfuzz found 2 wrong-answer bugs); 127511 (same 11-task layout, commit b728f62, post-fix -- clean)"
+      },
+      "commands": {
+        "seed_corpus": "python3 scripts/build_fuzz_seed_corpus.py --root sandbox/non-incremental/QF_LIA --out benchmarks/seeds/qf_lia_division --per-family 2 --max-bytes 200000 (run locally, staged onto the remote workspace directly via scp -r since sandbox/ is 7.7GB and not synced -- see the 'corpus needs re-staging after every sync' note below)",
+        "sync": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config /tmp/llm2smt_slurm_ssh_config --remote llm2smt-slurm --remote-dir /home/janotmik/primo-cadical-profile",
+        "submit": "sbatch --export=ALL,PRIMO_WORKDIR=...,PATH=.../contrib/local/bin:.../.venv-yinyang/bin:$PATH scripts/slurm_qf_lia_model_fuzz_gate.sbatch"
+      },
+      "results": {
+        "job_127488_fuzzsmt": "3916 PASS, zero wrong answers, zero model-error -- consistent with every prior FuzzSMT-only campaign.",
+        "job_127488_opfuzz": "Found 2 disagreements (primo unsat, z3 sat), both from calypto-family seeds, both minimizing to the same shape: (assert (distinct (* 2 dz) (ite true 1 1))). Independently hand-verified: z3 correct (dz=1 satisfies it), primo wrong.",
+        "job_127488_typefuzz": "0 bugs (both tasks); typefuzz is markedly slower per-seed than opfuzz on this corpus (deeply nested-let seeds like the Averest family are CPU-bound-slow to process, not hung -- see docs/qf-lia-branch-and-bound.md), so its effective coverage within the 1500s budget is lower.",
+        "job_127511_fuzzsmt": "3907 PASS, 190 benign timeouts, 1 benign UNKNOWN_INVOLVED, zero wrong answers. Model validation: 3482 pass, 454 correctly not-sat, 61 benign timeouts, 3 benign solver-unknown, zero model-error.",
+        "job_127511_opfuzz": "16,662 solver calls, zero bugs.",
+        "job_127511_typefuzz": "0 bugs (both tasks)."
+      },
+      "artifacts": "remote:primo-cadical-profile/fuzz-results/qf-lia-model-gate-127488/ (bugs found), remote:primo-cadical-profile/fuzz-results/qf-lia-model-gate-127511/ (clean)",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "The mutation-fuzzing gap identified in the prior entry is closed and immediately paid for itself: its first real run found a genuine wrong-answer bug (bug 5/4, an incomplete fix of the prior GCD-consistency bug) that three separate FuzzSMT-based Slurm campaigns and the prior entry's own targeted wide-bitwidth fuzzing had all missed. After the fix, a full campaign rerun is clean across all three stage types (FuzzSMT answer-differential + model validation, opfuzz, typefuzz). Operational note for future sessions: scripts/slurm_prepare_benchmark_workspace.py only syncs tracked HEAD files, so a gitignored corpus like benchmarks/seeds/qf_lia_division gets silently wiped by any *subsequent* sync (not just the first) -- re-stage it (scp -r) after every sync that follows staging it, and check a mutation task's log for 'seed corpus ... N files' before trusting a 'clean' result."
+    },
+    {
+      "id": "2026-08-20-qf-lia-solved-constant-substitution",
+      "started_at": "2026-08-20",
+      "recorded_at": "2026-08-20",
+      "kind": "feature",
+      "scope": "docs/open-leads.md lead 12a: audited every preprocessing pass QF_LIA's blanket preprocessing_mode=Off disables for Int-safety, following a z3 statistics comparison (lead 12) that found primo doing 210-285x z3's decisions/conflicts on two worst-gap-family instances. Implemented and enabled by default the one pass confirmed safe: bare-form solved-constant substitution (x=t, x not occurring in t, pure syntactic replacement). Attempted arithmetic_atom_canonicalization too; reverted after the project's own test suite caught it producing an unsound rewrite for Int (primitive_integer_scale reduces already-integer coefficients by their gcd, exact for Real but not for Int without ceil/floor rhs tightening).",
+      "commit": "12893e3",
+      "branch": "qf-lia-branch-and-bound",
+      "environment": {
+        "type": "local"
+      },
+      "commands": {
+        "test": "ctest --test-dir build (18 suites)",
+        "fuzz": "PATH=contrib/local/bin:$PATH python3 scripts/fuzz_external.py --fuzzer fuzzsmt --logic QF_LIA --solver ./build/primo --refs z3 --count 500 --timeout 10 --seed 99",
+        "convert_recheck": "full local recheck of sandbox/non-incremental/QF_LIA/convert against its declared :status"
+      },
+      "results": {
+        "bug_found_by_this_change's_own_testing": "build_qf_lia_model defaulted an eliminated variable's model value to 0 instead of resolving it from the substitution that replaced it -- caught immediately by qf_lia_solver_tests.cpp's trivially_sat_needs_no_branching. Fixed by threading (variable, definition) pairs through solve_qf_lia/solve_qf_lia_impl/build_qf_lia_model and adding evaluate_qf_lia_model_term, an Int-sorted analogue of the existing QF_LRA evaluate_real_model_term.",
+        "bug_found_and_reverted": "arithmetic_atom_canonicalization made gcd_uncatchable_divergent_system_hits_the_node_limit fail with 'Int literal must be an integer value' (a real, independently-fixed sort bug in canonical_linear_side's mk_rational call) and, once that was fixed, still produced an unsound rewrite for Int via primitive_integer_scale's gcd reduction. Reverted; flag stays off for QF_LIA.",
+        "test_suite": "18/18 suites pass, including a new regression test (chained_solved_constant_substitution_reconstructs_the_model) and the existing gcd_uncatchable_divergent_system_hits_the_node_limit (now also the regression test for the atom-canonicalization revert).",
+        "fuzzing": "500 local FuzzSMT cases vs z3, seed 99: zero disagreements.",
+        "convert_family_recheck": "0 wrong, matching the post-fix baseline from the prior two run-log entries.",
+        "performance_effect_on_motivating_instances": "none measurable -- prime-cone/prime_cone_unsat_6.smt2 and calypto/problem-002267.cvc.1.smt2 (this lead's own worst-case evidence) still time out with unchanged pivot/decision counts. Solved-constant substitution is a real but narrow win (fewer tableau variables/rows on formulas with actual x=t definitions), not the lever those two files need -- see lead 12c/12d for what likely is."
+      },
+      "artifacts": "none beyond the code change and doc updates",
+      "evidence_status": "local-complete-current",
+      "outcome": "A small, genuinely safe preprocessing capability shipped for QF_LIA, and the process of shipping it caught two real bugs before they reached anyone (one in the new code's own model reconstruction, one in a 6-year-old shared helper function never previously exercised with an Int atom). No measurable performance win on the specific instances that motivated this lead -- consistent with lead 12's own ranking, which named search-time integer inference (12c) and conflict-clause generalization (12d) as the larger levers, not preprocessing."
+    },
+    {
+      "id": "2026-08-21-qf-lia-conflict-generalization",
+      "started_at": "2026-08-21",
+      "recorded_at": "2026-08-21",
+      "kind": "feature",
+      "scope": "docs/open-leads.md lead 12d. A fresh-eyes review of the QF_LIA code, backed by an instrumented build over a per-family sample (3 files/family, 94 files, 10s), found that solve_qf_lia_impl was discarding the Farkas-style conflict certificate LraTableau already returns and rebuilding a lemma from every arithmetic atom in the problem instead. Replaced that coarse clause with the integer stages' own derivation, via a new LiaExplanation accumulator threaded through GCD-consistency, Gomory cuts, and branch-and-bound.",
+      "commit": "5ff5bfd",
+      "branch": "qf-lia-branch-and-bound",
+      "environment": {
+        "type": "local"
+      },
+      "commands": {
+        "test": "ctest --test-dir build (19 suites, one new: primo_lia_explanation_tests)",
+        "lint": "make lint",
+        "fuzz": "PATH=contrib/local/bin:$PATH python3 scripts/fuzz_external.py --fuzzer fuzzsmt --logic QF_LIA --solver ./build/primo --refs z3 --count 400 --timeout 10 --seed {4021,5150,6271}",
+        "ab": "per-family sample (3 files/family, 94 files, 10s), same binary, --no-lia-conflict-generalization as the control"
+      },
+      "results": {
+        "measurement_that_motivated_it": "Instrumented counters over the 94-file sample: 25,270 outer SAT rounds, 25,015 of them (99%) closed by a Gomory cut proving the assignment integer-infeasible, each blocked by a maximal-size clause. calypto/problem-001542 emitted a 219-literal clause on each of 6,528 rounds while the tableau conflict it discarded was 5 literals and the cut's antecedents were 4 bounds; convert/convert-jpg2gif-query-1141 emitted 1,266 literals on each of 19,630+ rounds against a 5-literal conflict and ~19 antecedent bounds -- 28M literals of clause in 20 seconds, and it timed out.",
+        "root_cause": "apply_gomory_cuts collapsed a std::vector<sat::Lit> conflict to bool; gcd_inconsistent_row returned only a row id; try_branch returned only a feasibility flag. QF_LRA's check_lra_theory_in_place has always used the same tableau's conflict directly as its clause. The single obstruction was that every conflict contained exactly one sat::Lit{0}, the synthetic reason a cut threshold or branch split bound is asserted with, so the certificate could not be forwarded verbatim.",
+        "instance_effect": "calypto/problem-001542: unsat 1.10s -> 0.02s (6,528 rounds -> 2). calypto/problem-001553: unsat 0.86s -> 0.02s. convert/convert-jpg2gif-query-1141: unknown at 60s -> unsat 0.04s (19,630+ rounds -> 6). Zero generalization fallbacks on any of them.",
+        "test_suite": "19/19 suites pass. New primo_lia_explanation_tests (11 cases) covers the synthetic-reason drop, dedup/ordering, per-stage antecedent recording, and the only-names-real-reasons property generalized_lia_lemma depends on. Two new end-to-end cases in qf_lia_solver_tests.cpp pin the narrowing (8-literal coarse clause vs 4-literal derivation) and that the flag changes no answers.",
+        "fuzzing": "1,200 local FuzzSMT cases vs z3 across seeds 4021/5150/6271: 1,199 PASS, 1 UNKNOWN_INVOLVED, zero disagreements.",
+        "lint": "make lint is clean (exit 0). It had 17 pre-existing violations before this change; the files this change touches were formatted, and the last two (in tests/unit/lia_gcd_consistency_tests.cpp, untouched by this change) were fixed on request.",
+        "safety_design": "generalized_lia_lemma() checks that every literal of the derived explanation already appears in the coarse clause and falls back otherwise. That containment test is what makes the change incapable of turning a correct answer into a wrong one: it rules out both a literal that is not blocking for the current assignment (which would fail to exclude it and spin the outer loop) and a leaked synthetic literal. An empty explanation also falls back.",
+        "ab_on_the_per_family_sample": "94 files, 10s, same binary with --no-lia-conflict-generalization as the control. Coarse: 53 solved, PAR2 8.92, 0 wrong. Generalized: 54 solved, PAR2 8.69, 0 wrong. One outcome change (convert/convert-jpg2gif-query-1141, unknown -> unsat), no file regressed from solved to unsolved, and 47x/42x speedups on the two calypto instances. Modest at sample level by design: an instrumented count found 24 of 36 timeouts in this sample never reach the integer layer at all (zero LIA rounds in 10s), so this lever cannot touch them.",
+        "full_corpus_baseline_for_comparison": "Slurm job 127709 (all 13,306 files, 60s, one array task per solver-shard) ran the PRE-generalization binary and is the baseline to re-measure against: primo 8,704 solved / 0 wrong / PAR2 43.14, cvc5 9,126 solved / 0 wrong / PAR2 38.10 (166 files short at aggregation time), z3 12,147 solved / 0 wrong / PAR2 13.09. primo's zero wrong answers across the full corpus confirms the post-fix soundness baseline at scale."
+      },
+      "artifacts": "src/theory/arithmetic/lia_explanation.{hpp,cpp} (new), tests/unit/lia_explanation_tests.cpp (new), CheckSatOptions::lia_conflict_generalization + --no-lia-conflict-generalization, four :lia.* statistics.",
+      "evidence_status": "local-complete-current",
+      "outcome": "The lead was estimated 'large, needs its own design note' and turned out to be small: the explanation did not need building, only forwarding with one synthetic literal resolved away. The estimate was wrong because it assumed the machinery was missing rather than checking what the existing machinery already returned -- worth remembering for lead 12c, where the same question applies. Full-corpus re-measurement against the pre-generalization baseline (Slurm job 127709, which ran the old binary) is the natural next step."
+    },
+    {
+      "id": "2026-08-21-qf-lia-conflict-generalization-full-corpus",
+      "started_at": "2026-08-21",
+      "recorded_at": "2026-08-21",
+      "kind": "evaluation",
+      "scope": "Full-corpus re-evaluation of conflict generalization (commit 5ff5bfd) over all 13,306 QF_LIA files at 60s. Ran BOTH arms of the new binary -- generalization on and --no-lia-conflict-generalization -- rather than only the new one, so the coarse arm acts as a same-binary control against the pre-change baseline (Slurm job 127709) and any delta is attributable to the flag rather than to drift. z3 and cvc5 were not rerun: neither changed, so job 127709's CSVs are the reference.",
+      "commit": "0e10f30",
+      "branch": "qf-lia-branch-and-bound",
+      "environment": {
+        "type": "slurm",
+        "job": "127949",
+        "array": "0-159 (2 arms x 80 shards)",
+        "elapsed": "01:09:32"
+      },
+      "commands": {
+        "submit": "sbatch --array=0-159 --export=ALL,PRIMO_WORKDIR=...,'PRIMO_COMPARE_SOLVERS=primo-generalized=build-slurm-rel/primo --quiet;primo-coarse=build-slurm-rel/primo --quiet --no-lia-conflict-generalization' scripts/slurm_qf_lia_full_solver_compare.sbatch"
+      },
+      "results": {
+        "table": "primo-base (127709, pre-change) 8,704 solved / PAR2 43.14. primo-coarse (new binary, flag off) 8,706 / 43.12 -- reproduces the baseline within noise, validating the control. primo-generalized 8,725 / 42.94. cvc5 9,239 / 38.13. z3 12,147 / 13.09. All five arms: 0 wrong across all 13,306 files.",
+        "net_effect": "+19 solves over the same-binary control (30 gained, 11 lost), PAR2 43.12 -> 42.94. Zero answer disagreements between the two arms.",
+        "churn_is_asymmetric": "27 of the 30 gains solve in under 5s in the generalized arm (many at 0.02s), i.e. decisive rather than boundary. 9 of the 11 losses had already taken over 45s in the coarse arm (one at 60.06s, exactly at the wall), i.e. timeout-boundary noise from a changed search trajectory. Gains are concentrated in calypto (25), the family the original instrumentation pointed at.",
+        "one_genuine_regression": "rings_preprocessed/ring_2exp4_4vars_3ite_unsat.smt2: 0.18s coarse -> unsolved at 300s generalized, reproduced locally. Diagnosed: coarse does 995 SAT solve calls in 0.18s (~5,500 rounds/s); generalized does 814 calls in 300s (~2.7 rounds/s). The generalized arm needs FEWER rounds (the lemma is doing its logical job) but each round is roughly 2,000x more expensive. Lemma size 91 literals coarse vs 23 generalized -- on this family the coarse clause is nearly inert and propagates almost nothing, while a 23-literal clause drives heavy unit propagation and conflict analysis in CaDiCaL. A stronger lemma is not free, and on a family whose rounds are otherwise extremely cheap the tradeoff inverts.",
+        "complementarity": "primo-generalized solves 553 files cvc5 does not, while trailing cvc5 by 514 overall (8,725 vs 9,239) -- the two are strongly complementary, relevant to open-leads.md's Complementarity section.",
+        "headroom": "The gap to cvc5 barely moved (-535 -> -514). Consistent with the pre-change instrumentation finding that 24 of 36 sampled timeouts never execute a single LIA round, so this lever cannot reach the bulk of the remaining 4,581 unsolved files."
+      },
+      "artifacts": "results/qf-lia-full-compare-127949/{primo-generalized,primo-coarse} on the Slurm remote; baseline results/qf-lia-full-compare-127709/{primo,z3,cvc5} preserved.",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Conflict generalization is a real but modest corpus-level win (+19 solves, PAR2 -0.18) on top of decisive per-instance wins in the family it targets. It does not close the cvc5 gap, and it is not uniformly positive: the rings regression shows that trading a long inert clause for a short propagating one costs real time when rounds are already cheap. A size-guard refinement (prefer the derived lemma only when it is substantially smaller, or when the coarse round rate is low) is the obvious follow-up, and is not attempted here."
+    },
+    {
+      "id": "2026-08-21-qf-lia-patching",
+      "started_at": "2026-08-21",
+      "recorded_at": "2026-08-21",
+      "kind": "feature",
+      "scope": "QF_LIA stage 5: patching, Bjorner & Nachmanson Sect. 4.1, the first layer of that paper's integer waterfall and the first stage here that tries to FIND an integer model rather than refute a candidate. Prompted by re-reading the paper's Section 4 (now summarized in docs/papers/arithmetic-solving-in-z3.md), which showed Primo's waterfall started at the paper's third layer.",
+      "commit": "509be6b + e322af5",
+      "branch": "qf-lia-branch-and-bound",
+      "environment": {
+        "type": "local"
+      },
+      "commands": {
+        "test": "ctest --test-dir build (20 suites, one new: primo_lia_patching_tests)",
+        "lint": "make lint",
+        "fuzz": "PATH=contrib/local/bin:$PATH python3 scripts/fuzz_external.py --fuzzer fuzzsmt --logic QF_LIA --refs z3 --count 400 --timeout 10 --seed {7331,8442,9553}",
+        "model_validation": "direct z3 check: pin every declared constant to Primo's reported value, re-check the original constraints",
+        "ab": "per-family sample (94 files, 10s), same binary, --lia-patch-limit 0 as the control"
+      },
+      "results": {
+        "why_patching_over_cubes": "Cubes (Sect. 4.2) is cheaper to build and needs no tableau change, but a sampled count found 249 of 300 instances contain equality atoms. An asserted equality fixes a slack, and tightening a fixed slack in both directions makes the cube system contradictory, so cubes would be inconclusive on most rounds without also building z3's difference/octagon twist. Patching is equality-insensitive.",
+        "ab": "94-file sample, same binary. Patching off: 54 solved (26 sat, 28 unsat), PAR2 8.72. Patching on: 58 solved (30 sat, 28 unsat), PAR2 7.84. +4 gained, 0 lost, 0 wrong in both arms, 0 answer disagreements between arms.",
+        "gains_are_decisive_and_on_target": "All four gains are satisfiable instances and all four are decisive rather than boundary -- 10s timeout to 0.01-0.62s: prime-cone/prime_cone_sat_10, prime_cone_sat_11, and two CAV_2009_benchmarks/coef-size/size-100 instances. That matches the stage's target exactly: the full-corpus split puts Primo ahead of cvc5 by 147 on unsat and 661 behind on sat.",
+        "two_traps_found_by_testing_the_paper_example": "Building Bjorner & Nachmanson's own Example 3 as a test caught two things the prose leaves implicit. (1) Scoring a move by |delta| alone oscillates: with rows y = x/2 and z = x/3, the nearest fix for y moves x to 4 and breaks z, and the nearest fix for z moves it straight back. Candidates are scored globally instead -- by how many Int variables end up integral -- and only strictly improving moves are taken, which is the same monotonicity argument diversify_shared_model already makes and which also gives termination and no-worse-than-input for free. (2) Floor and ceil alone are too narrow: Example 3's answer x = 6 corresponds to y = 3, two integers above y's current 3/2, so a bounded window is searched.",
+        "activity": "Over the 94-file sample: 310 patch sweeps, 660 variables patched, 26 rounds fully integralized, moves taken on 22 of 94 files.",
+        "model_validation": "The failure mode for patching is a wrong MODEL, not a wrong answer, so model validation is the centre of gravity. Validated 142 corpus instances covering every file where patching moved something: 66/66 sat models confirmed, zero wrong models. That check used z3 directly rather than Dolmen, and the reason is NOT a Dolmen limitation: Dolmen does validate QF_LIA Int models, and the 39/45 model-error episode recorded in slurm_qf_lia_model_fuzz_gate.sbatch was its strict-mode grammar check rejecting FuzzSMT's (* <let-bound-literal> <compound>) terms, already fixed there with --dolmen-arg=--strict=false. What happened here is narrower: Dolmen is not installed in this development environment and make contrib-dolmen fails locally (opam exit 20), so validate_model.py fell through to its z3 Real-only fallback and reported validation-unavailable. The authoritative check remains the Slurm model fuzz gate, where Dolmen is present; the z3 check is a local stand-in, not a replacement.",
+        "fuzzing": "1,200 local FuzzSMT cases vs z3 across seeds 7331/8442/9553: 1,199 PASS, 1 TIMEOUT, zero disagreements.",
+        "test_suite": "20/20 suites pass. New primo_lia_patching_tests (8 cases) including the paper's Example 3 verbatim, with a feasibility assertion after every patch. Three new end-to-end cases, one of which pins the gain to patching by using lia_branch_limit = 0, where branch_and_bound provably cannot take a node.",
+        "tableau_change": "First QF_LIA stage to touch LraTableau, deliberately and minimally: set_nonbasic_value, a narrow public wrapper over the existing private update(). Its comment carries the crux -- it is not trailed outside PivotingRule::Soi, so a move cannot be undone by pop(); safe only because solve_qf_lia_impl's lia_tableau is a per-round copy.",
+        "incidental_fix": "scripts/validate_qfuf_models_with_dolmen.py crashed on the first timed-out instance: subprocess.TimeoutExpired does not honour text=True, so its stdout/stderr are bytes while write_text() expects str. Never seen before because the small fuzz cases the harness was built against do not time out. Fixed separately (commit a625062).",
+        "correction_2026_08_21": "An earlier revision of this entry and of docs/qf-lia-branch-and-bound.md stated that validate_model.py 'cannot do this job for QF_LIA' because 'Dolmen aborts on Int models'. That was wrong and is corrected above: Dolmen handles QF_LIA fine with --strict=false, and the fallback was caused by the binary being absent locally. Commit e322af5's message carries the same wrong claim and cannot be amended after the fact.",
+        "documentation_audit_2026_08_21": "Audited on request. Three gaps found and closed. (1) The z3 model check cited as evidence lived only in a scratch directory, so the result was not reproducible; it is now scripts/check_qf_lia_models.py, re-run to confirm it reproduces 66/66 exactly, and its docstring states plainly that Dolmen is the authoritative checker and this is only for environments where Dolmen is absent. (2) docs/open-leads.md still described lead 12c as blocked on a paper note that now exists; it is re-ranked and split, with new sub-leads 12e (extended GCD test) and 12f (patching, done), and the cube test recorded as needing z3's octagon twist as a prerequisite rather than merely being unstarted. (3) The fuzz seed corpus had been wiped from the Slurm workspace by this stage's own sync -- the standing gitignored-content gotcha -- which would have made the model gate fail its require_seed_corpus check; regenerated (61 seeds, 32 families) and the Dolmen-backed gate submitted as job 128295."
+      },
+      "artifacts": "src/theory/arithmetic/lia_patching.{hpp,cpp} and lia_integer_values.hpp (new), tests/unit/lia_patching_tests.cpp (new), LraTableau::set_nonbasic_value, CheckSatOptions::lia_patch_limit + --lia-patch-limit, three :lia.patch-* statistics.",
+      "evidence_status": "local-complete-current",
+      "outcome": "A strictly positive result on the sample -- 4 gained, 0 lost, all on satisfiable instances, all decisive -- from the layer the paper puts first and Primo had skipped. Full-corpus A/B against the stage-4 baseline (Slurm 127949) is the next step; z3/cvc5 do not need rerunning."
+    },
+    {
+      "id": "2026-08-21-qf-lia-patching-verification",
+      "started_at": "2026-08-21",
+      "recorded_at": "2026-08-21",
+      "kind": "evaluation",
+      "scope": "Cluster verification of QF_LIA stage 5 (patching): the Dolmen-backed model fuzz gate that the local environment could not run, and the full-corpus A/B of both arms of the same binary. Also the first run of that gate for any QF_LIA stage since patching landed.",
+      "commit": "a1fe9dd",
+      "branch": "qf-lia-branch-and-bound",
+      "environment": {
+        "type": "slurm",
+        "jobs": "128295 (model gate, array 0-10), 128125 (full-corpus A/B, array 0-159)"
+      },
+      "results": {
+        "model_gate_dolmen": "Job 128295, Dolmen 0.10 on the cluster. 4,000 model-validation rows: 3,494 sat models validated by Dolmen and ALL PASS, 449 unsat (nothing to validate), 57 solver timeouts. Zero non-pass, non-benign outcomes. validator=dolmen on every validated row, confirming the --dolmen-arg=--strict=false path works and that the earlier local validation-unavailable result was purely the binary being absent, not a Dolmen limitation.",
+        "model_gate_answer_fuzzing": "Same job's FuzzSMT shards: 4,000 cases, 3,919 PASS and 81 TIMEOUT, zero disagreements. The 81 files written to the shards' bugs/ directories are timeouts saved for inspection, not wrong answers -- worth stating because the directory name invites the opposite reading. The opfuzz task and both typefuzz tasks produced 0 bug files (each time-boxed at 1500s, so seed coverage is not established).",
+        "full_corpus_ab": "Job 128125, all 13,306 files at 60s, both arms of the same binary. Unpatched control: 8,727 solved (5,867 sat, 2,860 unsat), PAR2 42.91 -- reproduces the stage-4 baseline of 8,725, validating the control. Patched: 9,027 solved (6,151 sat, 2,876 unsat), PAR2 40.20. +300 net (356 gained, 56 lost), 0 wrong in both arms, 0 answer disagreements.",
+        "gains_are_on_target": "331 of the 356 gains are satisfiable instances, which is exactly the population the stage targets and the one the entire cvc5 deficit sat in. The gap to cvc5 narrows from -535 to -212; primo's sat count moves 5,867 -> 6,151 while its unsat count stays ahead of cvc5 (2,876 vs 2,712). Gains concentrate in 20180326-Bromberger (112), CAV_2009_benchmarks (64), convert (57), slacks (56), dillig (34), prime-cone (24).",
+        "losses_are_a_real_cost": "280 of 356 gains solve in under a second (median 0.20s), but of the 56 losses, 19 were solved in under a second by the unpatched arm and only 12 were already past 45s. So patching occasionally sends a trivially-easy instance somewhere much worse -- the same trajectory-change pathology stage 4's rings regression showed. Bounding that (e.g. declining to patch when the round was already cheap) is the obvious follow-up and was not attempted.",
+        "comparison_scope": "z3 and cvc5 were not rerun; neither changed, so job 127709's CSVs remain the reference."
+      },
+      "artifacts": "results/qf-lia-full-compare-128125/{primo-patched,primo-unpatched} and fuzz-results/qf-lia-model-gate-128295 on the Slurm remote; baselines 127709 and 127949 preserved.",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Patching is the largest single QF_LIA gain measured so far: +300 solves against a same-binary control, against +19 for stage 4's conflict generalization, and it closes 60% of the gap to cvc5 in one layer. The paper put this layer first and Primo had skipped it entirely, which is the substantive lesson -- the gap was found by reading Section 4 properly rather than by more tuning of the layers already built. Model validity is now confirmed by Dolmen at scale rather than by a local stand-in."
+    },
+    {
+      "id": "2026-08-21-qf-lia-gprof-medium-hard",
+      "started_at": "2026-08-21",
+      "recorded_at": "2026-08-21",
+      "kind": "measurement",
+      "scope": "gprof profile of ten medium-hard QF_LIA instances (solved in 5-40s per the full-corpus run 128125), taken after stage 5 landed, to find where QF_LIA time actually goes. Full write-up in docs/qf-lia-profile.md.",
+      "commit": "67ec6e0",
+      "branch": "qf-lia-branch-and-bound",
+      "environment": {
+        "type": "local",
+        "build": "cmake -DCMAKE_BUILD_TYPE=None -DCMAKE_CXX_FLAGS='-pg -O2 -g -DNDEBUG'"
+      },
+      "results": {
+        "build_trap": "The first run used -pg -O2 -g, matching the flags already recorded in the pre-existing build-gprof* directories, and reported Rational::check_invariant as the hottest function in the program at 29.8% of self time. That function is entirely #ifndef NDEBUG and is a no-op in Release, so the result was a pure build artifact -- CMAKE_BUILD_TYPE=None defines no preprocessor symbols, so NDEBUG must be passed by hand. It also inflated total runtime by 56% (153.9s vs 98.5s over the same instances). Rebuilt with -DNDEBUG before drawing any conclusion.",
+        "component_split": "98.5 self-seconds over ten runs: Rational/GMP arithmetic 41.0%, CaDiCaL 24.1%, LraTableau 15.2%, LRA propagator glue 10.1%, other 9.5%, and ALL QF_LIA integer stages combined 0.1%.",
+        "integer_reasoning_is_not_the_bottleneck": "Patching, GCD-consistency, Gomory cuts, branch-and-bound and conflict generalization together account for 0.06 of 98.5 self-seconds. This independently confirms the earlier instrumented finding that 24 of 36 sampled timeouts never execute a single integer round: further work inside the integer layer cannot move these instances.",
+        "hot_path_is_pivot_arithmetic": "Call-graph attribution: Rational::operator* has 844,353,807 calls of which 91.8% come from LraTableau::pivot and 8.0% from LraTableau::update; operator+ has 821,727,887 calls, 58.4% from pivot; operator< has 797,003,808 calls, 55.8% from bound_entails and 27.5% from update_violation_status.",
+        "quantified_opportunity": "Rational::operator*'s small-form path runs two binary gcds per call, and gcd(x,1) is 1 by definition, so a denominator of 1 makes the corresponding gcd pure waste. Measured over the same 844,353,807 multiplies: 55.4% have BOTH denominators equal to 1, 1.4% have one, 43.2% genuinely need both. That is 56.1% of all gcd calls avoidable (947.6M of 1.69B) behind a `den_ == 1` test. The distribution is sharply bimodal per instance -- seven of ten instances are 100% both-integer, three are almost entirely fractional -- so this is a large win on integer-coefficient families and a no-op elsewhere, not a uniform speedup.",
+        "not_implemented": "The fast path was measured, not built. Rational is used by every logic, so it needs its own verification pass (full suite, QF_LRA regression, differential fuzzing) rather than being folded into an unrelated stage.",
+        "correction_fast_path_does_not_pay": "Challenged on whether gcd_u64(a,1) is really expensive, and the answer changed the conclusion. Building the den_==1 fast path and timing it end-to-end against unmodified Release on the same ten instances gives a median 1.03x (range 0.98-1.10x), not the ~13% the call counts imply. Three measurements explain it. (1) gcd_u64(a,1) genuinely has no early exit and costs 4.5 iterations / 9.3 ns at 8 bits rising to 32 iterations / 42 ns at 63 bits, so the premise was sound. (2) But histogramming real operand widths shows the fast path fires exactly where they are tiny: on nec-smt/prp-12-47, where 100% of multiplies are both-integer, 98.3% of numerators are 4 bits or fewer, and gcd(a,1) there is two or three iterations. On dillig/25-28, where operands are 17-24 bits and the gcd is genuinely costly, 96% of multiplies are fractional so the fast path never applies. (3) The two conditions are anti-correlated, which is the whole story: eliminating 55% of gcd CALLS removes far less than 55% of gcd WORK. Recorded as a measured and explained dead end so it is not rediscovered from the profile and retried.",
+        "gprof_attribution_cross_checked": "Cross-checked with callgrind, which counts instructions deterministically and has no per-call mcount bias. On dillig/20-20: Rational::operator* 36.3% of instructions, operator+ 24.3%, from_int128_reduced 13.7%, LraTableau::pivot 4.6%, __divti3 (128-bit division) 4.1%. gprof's ranking was therefore right and if anything conservative; the error was in the inference from call counts to recoverable cost, not in the profile. Separately worth knowing: the -pg build is 2.3x slower than Release (34.99s vs 15.19s) and that overhead is charged per call, so gprof shares should be treated as approximate for a workload whose hot functions are called a billion times. perf was unavailable here (perf_event_paranoid = 4).",
+        "next_thread": "Rational arithmetic is ~74% of instructions on dillig/20-20 and is dominated by the FRACTIONAL case, where the gcds are unavoidable as the code stands. The question worth asking is not how to skip gcds but why so many coefficients are fractional: scale-canonicalization divides each row by a leading coefficient, which is what manufactures them. A primitive-integer row representation would make the both-integer case common rather than exceptional. __divti3 at 4.1% is a second, smaller thread."
+      },
+      "artifacts": "docs/qf-lia-profile.md; flat and call-graph profiles under the session scratchpad (not committed).",
+      "evidence_status": "local-complete-current",
+      "outcome": "The QF_LIA bottleneck on medium-hard instances is Simplex pivoting arithmetic, not integer reasoning -- the integer stages are 0.1% of self time, confirmed independently by callgrind. The obvious optimization the profile suggested (a den_==1 fast path in Rational::operator*) was built and measured at ~3%, and the reason it does not pay is itself the useful finding: the gcds it skips are cheap precisely because the operands there are tiny, while the expensive gcds sit in the fractional case where it cannot apply. Also recorded: a gprof build without -DNDEBUG produces a badly misleading profile, which the repository's existing build-gprof* flags would have reproduced."
+    },
+    {
+      "id": "2026-08-22-word-gcd-tuning-and-distribution-warning",
+      "started_at": "2026-08-21",
+      "recorded_at": "2026-08-22",
+      "kind": "feature",
+      "scope": "gcd_u64 turned up as a hot spot in the QF_LIA profile. Rewrote it to follow GMP's structure, surveyed the literature that should have been read first, and -- prompted by the question of whether the tuning is benchmark-dependent -- measured the adversarial case, the cost of making it configurable, and the effect on QF_LRA.",
+      "commit": "3e35625 + 91e12c9 + 883b6e5",
+      "branch": "qf-lia-branch-and-bound",
+      "environment": {
+        "type": "local + slurm",
+        "job": "128402"
+      },
+      "results": {
+        "what_changed": "gcd_u64 now follows GMP 6.3.0's mpn_gcd_1/gcd_11 structure: operand swap, an early b == 1 exit placed before the trailing-zero counts, a Euclidean step gated on a 2^16 magnitude ratio, and a branchless inner loop deriving min/abs from a mask off the sign of u - v. Microbenchmark, ns/call: b==1 4-bit 6.58 -> 0.83 (7.9x), random 16-bit pair 39.55 -> 23.40 (1.7x), random 63-bit 152 -> 72 (2.1x).",
+        "literature_was_the_missing_step": "The first pass went to GMP's source without checking the literature, which was the wrong order. The central pathology is documented: Lemire's 2013 GCD benchmark states that when one operand is 1 the naive algorithm returns immediately while the binary algorithm may need many steps, and suggests hybrid strategies for exactly that. We rediscovered it by instrumentation. The current speed record (Bernstein & Yang safegcd) does NOT apply: it buys constant time for multi-limb crypto inversion, and constant time forbids the input-dependent early exits that help us most. std::gcd is not faster than the plain textbook loop. Written up in docs/papers/word-gcd-notes.md.",
+        "full_corpus": "Slurm 128402, all 13,306 QF_LIA files at 60s, against job 128125's primo-patched arm (rational.cpp was the only code delta): 9,027 -> 9,034 solved, PAR2 40.20 -> 40.15, 0 wrong, 0 answer disagreements, 7 gained and 0 lost. Total solve time over the 9,027 commonly-solved files 21,472s -> 21,198s (1.013x). Small but strictly positive and free.",
+        "distribution_dependence_is_real_and_bounded": "The guards were tuned on one distribution, so the obvious risk is a workload with a different shape. Measured across distributions built to make each guard dead weight: worst case is tiny 4-bit operands with neither equal to 1 and comparable magnitudes, where the shipped form is 0.92x -- an 8% loss. Every other adversarial shape is 1.01x to 1.92x. No cliff exists, because each guard is a single well-predicted compare when it does not fire.",
+        "runtime_configurability_rejected_on_measurement": "Making the algorithm selectable behind a function pointer was measured rather than argued about. gcd_u64 is static in an anonymous namespace and inlines into Rational::operator*; dispatching through a pointer prevents that and adds an indirect call, costing +175% on the tuned hot path (0.84 -> 2.32 ns) against +5% on a general 16-bit pair. Paying 175% on the hot path to hedge an 8% loss on a narrow distribution is a bad trade, and it is worst exactly where we are fastest. If it ever must vary, the mechanism should be compile-time (constexpr/template) or a cheaper guard -- runtime dispatch is the one option the measurement rules out.",
+        "qf_lra_checked": "Rational is not QF_LIA-only, so QF_LRA was measured rather than assumed: eight instances spanning 0.01s to 58s, minimum of three runs each, original gcd vs shipped. Total 92.36s -> 92.13s (1.002x), individual ratios 0.969x to 1.198x, every answer identical. QF_LRA is neither helped nor harmed -- the win is QF_LIA-specific and the guards cost QF_LRA nothing, which is what the cheap-when-not-fired design predicts.",
+        "correctness": "30,251,362 pairs against std::gcd using a harness that extracts the shipped source, plus 5,160,801 more in the committed benchmark. Exhaustive over small pairs, all boundary-value combinations, and randomized across every operand width with b==1, a==b, powers of two, forced trailing zeros and exact multiples injected. Zero mismatches. 20/20 suites pass throughout."
+      },
+      "artifacts": "tests/bench/word_gcd_bench.cpp (new, not in ctest -- timings are not assertions), docs/papers/word-gcd-notes.md (new), src/util/rational.cpp.",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "A real but modest win (+7 solves, 1.3% aggregate solve time on QF_LIA, neutral on QF_LRA) from making one function match the settled practical art. The more durable output is the guard rail: the tuning is distribution-dependent, the worst case is bounded at -8%, runtime configurability is measurably the wrong hedge, and tests/bench/word_gcd_bench.cpp re-answers all of it in minutes if the workload ever changes."
+    },
+    {
+      "id": "2026-08-22-qf-lia-paper-technique-audit",
+      "started_at": "2026-08-22",
+      "recorded_at": "2026-08-22",
+      "kind": "measurement",
+      "scope": "Full audit of which Bjorner & Nachmanson techniques Primo still lacks, prompted by asking whether more remain. Sections 2 and 3 had never been audited against the implementation -- the existing paper note was written in August 2026 for a QF_LRA/QF_UFLRA-only Primo. Includes the first QF_LIA measurement of row-based bounds propagation, and of the options sandbox/paper.tex's own tuning selected.",
+      "commit": "d4f9238",
+      "branch": "qf-lia-branch-and-bound",
+      "environment": {
+        "type": "local"
+      },
+      "results": {
+        "sect_3_2_does_not_apply": "The paper states outright that equality propagation is disabled for pure arithmetic theories, QF_LIA and QF_LRA included. So Sect. 3.2's cheap equal-variable discovery is not a QF_LIA gap at all; it matters only for QF_UFLRA, where Primo has the exact producer rather than the 2024 fast path. Recorded so it is not chased.",
+        "sect_3_3_never_measured_on_qf_lia": "Indirect (row-based) bounds propagation is the one paper technique Primo already implements and simply leaves off (lra_row_propagation = false). It has 17 run-log entries of fuzz gates and A/Bs -- every one QF_LRA or QF_UFLRA, none QF_LIA, which is now the fragment where profiling says the bottleneck lives.",
+        "row_propagation_does_not_transfer": "Measured on the per-family sample (94 files, 10s), six arms. Default 58 solved / PAR2 7.83. Row propagation at default caps 57 / 8.09. Row + bidirectional 58 / 7.94. Row propagation at the widened caps sandbox/paper.tex's RamParILS tuning selected for primo+ (max-row-size 256, max-fanout 1024 against defaults of 64) 57 / 8.12. --lra-model-phase 55 / 8.42. Both together 56 / 8.37. ZERO gains in any arm, 0 wrong, 0 answer disagreements. Individual losses of 1-3 could be noise; the absence of a single gain across six configurations is not.",
+        "tuning_is_fragment_specific": "This is also a result for sandbox/paper.tex: its tuned primo+ configuration is QF_LRA-specific and does not transfer to QF_LIA. Neither lra_row_propagation nor lra_model_phase should be promoted to a global default on this evidence. Worth stating in the paper, since a tuned configuration reads as a better default unless the non-transfer is shown.",
+        "still_missing": "Cube test (4.2, deferred behind the difference/octagon twist); extended GCD for bounded-not-fixed rows (4.3, lead 12e); CDCL-integrated branch literals (4.4, which Sect. 2 names as a deliberate design choice and Primo deliberately scoped out); and four Sect. 4.5 cut refinements -- relaxed row-integral rows (the one with measured evidence, the instrumented f_unbounded count), selection by distance to nearest integer, extremum bound deduction, and large-numeral temporary scope -- plus HNF cuts, which are large.",
+        "caveat_over_all_of_it": "The gprof/callgrind profile puts every QF_LIA integer stage combined at 0.1% of self time, so none of the remaining Sect. 4 items can move the 4,272 unsolved files. The cost is Rational arithmetic (~41%), CaDiCaL (~24%) and Simplex (~15%). That bounds the expected value of the whole remaining list."
+      },
+      "artifacts": "docs/papers/arithmetic-solving-in-z3.md gap table and audit.",
+      "evidence_status": "local-complete-current",
+      "outcome": "Seven or eight paper techniques remain unimplemented, but the profile bounds what any of them can buy. The concrete finding is negative and useful: row-based bounds propagation, the one technique already built and merely disabled, does not help QF_LIA even at the caps the paper's own tuner selected -- so the QF_LRA tuning is fragment-specific and the current defaults are right for QF_LIA."
+    },
+    {
+      "id": "2026-08-25-qf-lra-full-corpus-merge-gate",
+      "started_at": "2026-08-25",
+      "recorded_at": "2026-08-25",
+      "kind": "measurement",
+      "scope": "Pre-merge regression gate for qf-lia-branch-and-bound. Everything on the branch except three files is QF_LIA-only, but rational.cpp (gcd_u64), term_manager.cpp and preprocessing.cpp are on every logic's path, and the only QF_LRA evidence for them was eight instances. This is the full QF_LRA division, both arms, before merging to main.",
+      "commit": "5700533 vs main a004480",
+      "branch": "qf-lia-branch-and-bound",
+      "environment": {
+        "type": "local",
+        "note": "Ran locally on 14 cores rather than on SLURM: /tmp/llm2smt_slurm_ssh_config had been wiped and the cluster host/user are deliberately not recorded in the repository, so the cluster was unreachable. 40 shards, 10 concurrent, 60s timeout, 3GB address-space cap per process to match the --mem=3G the SLURM campaigns use."
+      },
+      "results": {
+        "design": "Arms are the two binaries (main a004480 vs branch 5700533), not two flags -- the merge question is about the whole branch, and diffing only rational.cpp would have missed the term_manager.cpp and preprocessing.cpp deltas. Both arms run inside the same shard back to back, so a shard's two arms see identical machine load, and arm order alternates with shard parity because the first run warms the page cache for the .smt2 file and would otherwise hand the second arm a systematic head start. That control is needed locally and would not be on separate SLURM nodes.",
+        "headline": "1,753 files. main: 1,543 solved (936 sat, 607 unsat), PAR2 18.09. branch: 1,545 solved (938 sat, 607 unsat), PAR2 17.97. Zero wrong answers in either arm and ZERO answer disagreements between them. QF_LRA is not harmed by the merge.",
+        "churn_is_the_timeout_boundary": "The net +2 is 10 gained and 8 lost, which is churn rather than signal -- and the churn is provably at the cutoff: every one of the 18 files sits between 34.8s and 59.2s against a 60s limit, all in LassoRanker, 2017-Heizmann-UltimateInvariantSynthesis and miplib, families dense with instances that finish just either side of the wire. No file changed answer, and nothing moved from fast to slow or the reverse.",
+        "timing": "Over the 1,535 files both arms solve, main 6,125.2s vs branch 6,031.9s (1.0155x). Directionally consistent with the gcd_u64 work but small, and 10-way local parallelism is not a precision timing environment; the answer-agreement result is what this run is for.",
+        "four_bad_alloc_rows": "Four LassoRanker/Ultimate files report std::bad_alloc in BOTH arms. That is the 3GB cap this run imposed, not a frontend gap and not a branch regression -- identical files, identical failure, both binaries. They are excluded from neither arm's totals in a way that could bias the comparison.",
+        "verdict": "The one unmeasured surface named before the merge is now measured. QF_LRA is neutral-to-slightly-positive, which is what the cheap-when-not-fired design of the gcd guards predicts."
+      },
+      "artifacts": "results/qf-lra-merge-ab/{main,branch}/shard-*.csv (per-file) and shard-*-summary.csv.",
+      "evidence_status": "local-complete-current",
+      "outcome": "Clean. Zero wrong answers, zero answer disagreements, +2 solved and PAR2 18.09 -> 17.97 over the full QF_LRA division. The branch does not regress QF_LRA and is safe to merge."
     }
   ]
 }

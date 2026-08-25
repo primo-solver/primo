@@ -308,6 +308,44 @@ struct CheckSatOptions {
   // one primitive-integer core term before clausification. Opt-in because the
   // first broad A/B changed QF_LRA search trajectories and lost one net solve.
   bool arithmetic_atom_canonicalization = false;
+  // QF_LIA branch-and-bound's node cap (docs/qf-lia-branch-and-bound.md).
+  // Plain branch-and-bound has no completeness argument of its own -- an
+  // unbounded integer-infeasible polytope can branch forever -- so this is
+  // what turns that into a reported Unknown instead of a hang. Not yet
+  // empirically tuned; picked generously enough to clear small/medium
+  // QF_LIA instances while still bailing out in reasonable time.
+  std::size_t lia_branch_limit = 100000;
+  // QF_LIA Gomory-cut budget (docs/qf-lia-branch-and-bound.md, stage 3):
+  // caps how many cut-and-recheck rounds apply_gomory_cuts attempts
+  // before falling through to branch-and-bound regardless. Gomory's
+  // method has no anti-cycling guarantee as implemented here (that would
+  // need a specific lexicographic discipline this project does not
+  // attempt), so an unbounded loop is not safe. Not yet empirically
+  // tuned; picked to be cheap relative to lia_branch_limit, since each
+  // cut round is itself a full check() re-solve.
+  std::size_t lia_gomory_cut_limit = 100;
+  // QF_LIA conflict generalization (docs/open-leads.md lead 12d): emit the
+  // integer stages' own derivation-based explanation as the round's theory
+  // lemma instead of the coarse clause naming every arithmetic atom in the
+  // problem. The coarse clause excludes exactly one Boolean assignment, so
+  // without this the outer loop degenerates into model enumeration --
+  // measured at 219 literals per lemma over 6,528 rounds on
+  // calypto/problem-001542 where the derivation used 4 bounds, and 1,266
+  // literals over 19,630 rounds on convert/convert-jpg2gif-query-1141
+  // where it used ~19. On by default; kept switchable because it changes
+  // search trajectories and so needs to stay A/B-measurable. Turning it
+  // off restores the pre-generalization coarse clause exactly.
+  bool lia_conflict_generalization = true;
+  // QF_LIA patching budget (docs/qf-lia-branch-and-bound.md, stage 5;
+  // Bjorner & Nachmanson Sect. 4.1): caps how many individual nonbasic moves
+  // patch_integer_variables may take per round. Patching is the paper's FIRST
+  // waterfall layer and the only one Primo has that tries to *find* an integer
+  // model rather than refute a candidate -- which is where the measured gap
+  // is, since the full corpus puts Primo ahead of cvc5 on unsat and 661 solves
+  // behind on sat. Each move costs a scan over the Int variables to score it,
+  // so this is a real budget rather than a safety valve. **Setting it to 0
+  // disables patching**, which is the A/B control. Not yet empirically tuned.
+  std::size_t lia_patch_limit = 100;
   bool monotone_elimination = false;
   bool solved_constant_substitution = true;
   bool gaussian_elimination = true;

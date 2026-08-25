@@ -175,6 +175,15 @@ def validate_real_assignments_with_z3(
     return run_command([z3_path, "-smt2", "-in"], timeout, validation_input)
 
 
+def _as_text(value: str | bytes | None) -> str:
+    """Normalize a subprocess stream that may arrive as bytes, str, or None."""
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return value
+
+
 def run_command(
     command: list[str], timeout: float, input_text: str | None = None
 ) -> tuple[str, int | None, str, str, float]:
@@ -192,7 +201,14 @@ def run_command(
         return "done", completed.returncode, completed.stdout, completed.stderr, elapsed
     except subprocess.TimeoutExpired as exc:
         elapsed = time.monotonic() - start
-        return "timeout", None, exc.stdout or "", exc.stderr or "", elapsed
+        # TimeoutExpired does NOT honour text=True: its stdout/stderr come back
+        # as bytes even though the same fields on a completed run are str. Every
+        # caller writes these straight to a file with write_text(), so leaving
+        # them undecoded raises "data must be str, not bytes" and takes down the
+        # whole validation run at the first instance that times out. That is why
+        # this only ever showed up on real benchmarks and never on the small
+        # fuzz cases the harness was built against.
+        return "timeout", None, _as_text(exc.stdout), _as_text(exc.stderr), elapsed
 
 
 def main() -> int:

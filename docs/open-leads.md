@@ -49,6 +49,12 @@ notes it points to.
 | -- | D4 revised simplex, LU-factored basis | unknown | largest | open, see [](qf-lra-heuristics.md) |
 | -- | H4 batched bound assertion; H6 DL fast path; H11 fill-in-aware preprocessing elimination | -- | -- | design only, see [](qf-lra-heuristics.md) |
 | [R1](#lead-recursion-audit) | Audit input-sized recursion across the repository | robustness; prevents depth-dependent crashes | medium-large | **open; deliberately deferred** |
+| [12a](#lead-qflia-preprocessing-safe) | QF_LIA: enable bare-form solved-constant substitution | no measurable effect on the 2 motivating instances; real but narrow win elsewhere | small | **done: substitution shipped default-on; atom canonicalization attempted and reverted, unsafe as written** |
+| [12b](#lead-qflia-preprocessing-gauss) | QF_LIA: partial (unit-pivot) Gaussian elimination | needs a population census first | medium | open, gated on a census |
+| [12c](#lead-qflia-dio-hnf-cube) | QF_LIA: Diophantine/HNF/cube search-time reasoning | z3 closes 96% of calypto's conflicts via Dio, not branching | large | open; paper note now exists, split into patching (done), cubes (needs the octagon twist first), Dio/HNF (large) |
+| [12d](#lead-qflia-conflict-generalization) | QF_LIA: generalizing (Farkas-style) arithmetic conflict clauses | lemmas 27-55x larger than the certificate the tableau already returned | small (est. large, wrongly) | **done: shipped default-on; full corpus +19 solves, PAR2 43.12 -> 42.94, 0 wrong** |
+| [12e](#lead-qflia-extended-gcd) | QF_LIA: extended GCD test for bounded-but-not-fixed rows | closes the divergence `gcd_uncatchable_divergent_system_hits_the_node_limit` pins | small | open, gated on a census |
+| [12f](#lead-qflia-patching) | QF_LIA: patching (paper Sect. 4.1) | entire deficit vs cvc5 is on sat; this is the layer that finds models | small | **done: full corpus +300 solves (356 gained / 56 lost), 331 of them sat, PAR2 42.91 -> 40.20, 0 wrong; cvc5 gap -535 -> -212** |
 
 (lead-pure-filter-lra)=
 ## 1. Extend `--pure-theory-filter` to LRA atoms
@@ -1402,6 +1408,385 @@ every finding, iterative replacements for all unbounded production paths,
 deep-chain and deep-shared-DAG regressions for each affected layer, ASAN runs of
 those regressions, and the ordinary merge fuzz gate. A grep for self-calls is
 only a starting aid and does not complete the audit.
+
+(lead-qflia-preprocessing)=
+## 12. QF_LIA preprocessing is fully disabled, and conflict clauses don't generalize
+
+**Status: open, added 2026-08-20.** Follows directly from the 428-file
+representative-sample evaluation against z3 in
+[](qf-lia-branch-and-bound.md)'s "Real-world benchmark evaluation and the
+fuzzing gap" section (that section covers the four soundness/completeness
+bugs the evaluation and the mutation-fuzz gate found and fixed; this lead
+is the performance follow-up on the same evaluation, once the answers
+were trustworthy).
+
+**Claim.** Two compounding causes, not one, explain why primo takes
+orders of magnitude more search steps than z3 on QF_LIA instances it
+should solve trivially: (a) QF_LIA preprocessing is forced off wholesale
+(`options.preprocessing_mode = PreprocessingMode::Off`), including passes
+that turn out to be already Int-safe or cheaply made so; (b) primo's
+arithmetic conflict clauses (from branch-and-bound, GCD-consistency, or a
+Gomory cut) block the *entire* current arithmetic-atom assignment rather
+than a minimized/generalizing explanation, so the SAT solver re-derives
+near-identical conflicts thousands of times instead of learning once.
+
+**Evidence.** Two files from the sample evaluation's worst-gap families
+([](qf-lia-branch-and-bound.md)'s gap table: `calypto` 3/15, `prime-cone`
+4/15 against z3's 15/15 on both), same local machine, z3 `-st` vs primo
+`--stats`:
+
+| file | z3 | primo |
+|---|---|---|
+| `prime-cone/prime_cone_unsat_6.smt2` (1KB) | unsat, 0.01s, 33 conflicts, 60 decisions | **times out at 20s**, 6 pivots, 0 `sat.decisions` (a candidate model is found almost instantly, then the search never returns from branch-and-bound's node loop to let the SAT solver backtrack) |
+| `calypto/problem-002267.cvc.1.smt2` (3.5KB) | unsat, 0.02s, 266 conflicts, 9,089 decisions | **times out at 20s**, **56,870 `sat.conflicts`, 2,585,255 `sat.decisions`** (210x / 285x z3's counts, still unresolved) |
+
+On the calypto file `:lra.theory-conflicts` (56,864) sits within 6 of
+`:sat.conflicts` (56,870) -- essentially every SAT conflict traces to a
+fresh arithmetic conflict, the signature of coarse, non-generalizing
+blocking clauses. This is already named as a known gap in
+[](qf-lia-branch-and-bound.md)'s "Where branching lives" section ("Sound
+... but not tight ... Tightening this ... is future work, not blocking
+for stage 1"); this is the first concrete measurement of its cost.
+
+z3's own stats point at what closes these instances instead of
+branching: `arith-dio-calls`/`arith-dio-tighten-conflicts` (Diophantine/
+Omega-test reasoning -- 256 of 266 total conflicts on the calypto file
+are closed via Dio, not branching), `arith-hnf-calls` (Hermite Normal
+Form cuts), `arith-cube-calls` (the Bromberger-Weidenbach cube test,
+Bjørner & Nachmanson Sect. 4.2 -- already named and explicitly deferred
+in [](qf-lia-branch-and-bound.md)'s "GCD-consistency" section).
+
+Four separable sub-leads follow, ranked cheapest first.
+
+(lead-qflia-preprocessing-safe)=
+### 12a. Enable the already-Int-safe preprocessing passes
+
+Audited every pass QF_LIA's blanket `preprocessing_mode = Off` currently
+disables (2026-08-20, reading `src/smt/preprocessing.cpp` and
+`src/smt/check_sat.cpp`), classified by whether it does anything
+domain-unsafe for Int:
+
+| pass | mechanism | Int-safe? | why |
+|---|---|---|---|
+| `arithmetic_atom_canonicalization` | rewrites an atom to a canonical `sum <= sum` form via `primitive_integer_scale` and dedups syntactically-equivalent atoms onto the same SAT variable | **no, as first assessed -- corrected below** | `primitive_integer_scale` does not just clear denominators; on already-integer coefficients it *reduces by their gcd* (`4x+4y` -> scale `1/4`), which is exact for Real but not for Int without the same ceil/floor rhs tightening `bound_assertion()` already does elsewhere |
+| `substitute_solved_constants` (bare form, `enable_gaussian_elimination=false`) | `x = t` (`x` a nullary declared symbol not occurring in `t`) -> replace every occurrence of `x` with `t` | **yes, confirmed** | pure syntactic substitution, no coefficient scaling or division anywhere |
+| `substitute_solved_constants` (`enable_gaussian_elimination=true`, **the `CheckSatOptions` default**) | Gauss-Jordan row reduction over Real-sorted equalities (`collect_real_equalities` is hardcoded to `real_sort()`); divides every other coefficient in a pivot row by the pivot coefficient | **no, as written** | `coefficient / pivot_coefficient` (`preprocessing.cpp:764`) silently drops the divisibility constraint a non-unit pivot needs for the eliminated variable to stay integer -- the same class of bug this session already found and fixed three times in the tableau/GCD code, here at the term-rewriting level instead |
+| Monotone (one-sided) variable elimination | hardcoded to "0-ary **Real** `Constant`" only; discharges one-sided atoms, then reconstructs a witness value as `tightest_bound +/- 1` | **no, as written** (the elimination reasoning generalizes; the model reconstruction does not) | `apply_monotone_eliminations` (`check_sat.cpp:5678`) computes `bound = (atom.rhs - rest) / coefficient` then `chosen = tightest +/- 1` -- for an Int variable this can and will produce a **fractional witness value** whenever the tightest bound isn't already an integer (e.g. `3x <= 7` -> bound `7/3` -> chosen `4/3`), printed straight into the model |
+| everything else under `preprocessing_mode` (finite-domain-at-most-one, UF symmetry breaking, structural selector, congruence-definition generation, eq-bridge, ...) | all reason about uninterpreted functions or Bool-sorted finite-domain structure | **N/A** | QF_LIA's own scope excludes uninterpreted functions entirely ([](qf-lia-branch-and-bound.md)'s "Scope" section); these passes have nothing to fire on in a QF_LIA formula regardless of the flag |
+
+**Outcome (2026-08-20): bare-form `substitute_solved_constants` implemented
+and enabled by default for QF_LIA; `arithmetic_atom_canonicalization`
+attempted, found unsafe by this project's own test suite, and reverted --
+worth recording as another data point for how often "should be safe by
+inspection" is wrong on this codebase.**
+
+**What shipped.** `check_sat.cpp` now calls `substitute_solved_constants`
+directly for QF_LIA (`enable_gaussian_elimination=false` explicitly, not
+`options.gaussian_elimination`, which defaults true and stays wrong for
+Int per the table above), in a small capped loop (8 passes, break on no
+acceptance) rather than through the large preprocessing loop -- each pass
+fully rewrites accepted definitions into the remaining assertions before
+the next pass collects fresh candidates, so a chain like `x=y, y=5`
+resolves the same way the Real-side loop's repeated calls do, without
+needing any cross-pass dependency tracking.
+
+**The bug that shipping this caught.** `build_qf_lia_model`
+(`check_sat.cpp:5929`) reads a variable's value straight from
+`PreparedLraTheory::variables_by_term`/the tableau; a variable eliminated
+entirely by substitution never reaches either, and the function defaulted
+it to `0` -- silently wrong whenever the eliminated value wasn't 0
+(caught immediately by `qf_lia_solver_tests.cpp`'s
+`trivially_sat_needs_no_branching`, `(assert (= x 7))` printing `x`'s
+value as `0`). Fixed by threading the accepted `(variable, definition)`
+pairs through `solve_qf_lia`/`solve_qf_lia_impl`/`build_qf_lia_model` and
+adding `evaluate_qf_lia_model_term`, an Int-sorted analogue of the
+existing `evaluate_real_model_term` used for QF_LRA's own monotone-
+elimination model reconstruction -- it only ever needs to resolve
+literals, `+`/scalar-`*` structure, and tableau-resident variables, never
+another substitution's definition, because each pass already inlined any
+such reference before the next pass could collect it as a candidate.
+
+**The bug that reverted `arithmetic_atom_canonicalization`.** Enabling it
+alongside the above made `qf_lia_solver_tests.cpp`'s
+`gcd_uncatchable_divergent_system_hits_the_node_limit`
+(`4x+4y` bounded in `[2,3]`, no integer solution, deliberately meant to
+hit `--lia-branch-limit` and report `Unknown`) fail outright with
+`Int literal must be an integer value` -- `canonical_linear_side`
+(`preprocessing.cpp:449`) builds a constant summand via the one-argument
+`mk_rational(value)` overload, which defaults to `real_sort()`
+regardless of the atom's actual sort (fixed separately, since it is a
+real bug independent of Int-safety -- an Int atom with a nonzero constant
+summand under `arithmetic_atom_canonicalization` would previously have
+built a sort-mismatched term even before the gcd-reduction issue could
+matter). Once that was fixed, the gcd-reduction issue in the table above
+still stood, so the flag itself stays off for QF_LIA. **Do not re-enable
+without first adding rhs ceil/floor tightening to
+`canonicalize_arithmetic_atom`, mirroring `bound_assertion()`'s own,
+including its "worked through explicitly" eight-combination comment as a
+template for what needs re-deriving here.**
+
+**Verification.** Full test suite (18 suites) green; both `convert` repro
+files, the delta-infinitesimal repro, and both opfuzz-found bugs from
+earlier this session re-checked correct; 500 further local FuzzSMT cases
+against z3 (seed 99), zero disagreements; full local `convert`-family
+recheck, 0 wrong. Performance effect on the two z3-comparison files from
+this lead's own motivating evidence (`prime_cone_unsat_6`,
+`calypto/problem-002267`): **none measurable** -- both still time out
+with the same pivot/decision counts as before. Solved-constant
+substitution alone was never expected to move files whose gap comes from
+missing search-time integer inference (12c) or the atom-canonicalization
+dedup this entry had to revert; it is a real but narrow win (fewer
+tableau variables/rows on formulas with actual `x = t` definitions), not
+the lever those two files need.
+
+**Falsifier, satisfied for the shipped half.** Changed no answer on the
+local QF_LIA corpus/fuzz gates (confirmed above). **Falsifier for the
+reverted half**: re-attempt only after the ceil/floor fix, and re-run
+this exact test suite before trusting it -- `gcd_uncatchable_divergent_
+system_hits_the_node_limit` is now the regression test for this specific
+failure mode.
+
+(lead-qflia-preprocessing-gauss)=
+### 12b. Partial (unit-pivot) Gaussian elimination for Int
+
+**Claim.** Restricting Gaussian-elimination pivot selection to
+coefficients of exactly +-1 needs no division at all
+(`coefficient / (+-1) = +-coefficient`, exact), so it is unconditionally
+Int-safe while still catching definitions the bare-form pass in 12a
+can't (e.g. `x + y = 5` solved for `x`, or a variable only solvable
+jointly from several equations).
+
+**Cost.** Medium: `collect_real_equalities` needs generalizing to accept
+Int equalities too (rename or parameterize), and
+`collect_gaussian_elimination_candidates`'s pivot search needs an
+`is_integer_domain` restriction that skips non-unit pivots when true.
+Real's existing (unrestricted, division-based) behavior must not change.
+
+**Falsifier.** If real QF_LIA formulas rarely contain a unit-coefficient
+variable in an equality, this is a small win not worth the fuzz-gate
+obligation -- run the same kind of population census lead 9/11 ran for
+QF_LRA (`scripts/analyze_smt2.py` or a throwaway variant) over
+`sandbox/non-incremental/QF_LIA` before implementing, not after.
+
+(lead-qflia-dio-hnf-cube)=
+### 12c. Search-time integer inference: Dio/HNF/cube
+
+**Claim.** The bigger lever, per the evidence above -- z3 closes the
+calypto file almost entirely through Diophantine tightening
+(`arith-dio-tighten-conflicts` is 96% of its conflicts) rather than
+branching, and the cube test is explicitly named as deferred waterfall
+work in Bjørner & Nachmanson Sect. 4.2 (already cited in
+[](qf-lia-branch-and-bound.md)).
+
+**Cost.** Large -- new algorithmic machinery in the theory solver, not a
+preprocessing pass; closer in scope to stage 3 (Gomory cuts) than to
+anything in 12a/12b.
+
+**Status (updated 2026-08-21).** The paper note this lead was gated on now
+exists: [](papers/arithmetic-solving-in-z3.md) summarizes Bjørner &
+Nachmanson Sect. 4 in full, so the standing "needs a paper note first"
+block is lifted. Reading it split this lead into four separable pieces of
+very different cost, and re-ranked them:
+
+- **Patching (Sect. 4.1) -- DONE**, shipped the same day as stage 5. It
+  was never part of this lead's framing, because the lead was written
+  before the paper's Section 4 had been read: patching is the *first*
+  layer of that waterfall and Primo had skipped it entirely. See
+  [](qf-lia-branch-and-bound.md)'s "Patching".
+- **Cube test (Sect. 4.2) -- deferred behind a prerequisite, not merely
+  unstarted.** Measured 2026-08-21: 249 of 300 sampled instances contain
+  equality atoms, and an asserted equality fixes a slack, which makes the
+  tightened cube system contradictory. Cubes alone would therefore be
+  inconclusive on most rounds. It needs z3's difference/octagon twist
+  (same section) to be worth building, so treat the twist as part of the
+  work rather than a later refinement.
+- **Extended GCD test (Sect. 4.3)** -- the smallest remaining item and
+  the best-scoped: see 12e below.
+- **Diophantine (Omega/Pugh) and HNF cuts** -- still large, still
+  unstarted, and still the pieces z3's `arith-dio-*`/`arith-hnf-calls`
+  counters actually attribute its calypto performance to.
+
+The Sect. 4.5 cut refinements Primo lacks (relaxed "row-integral" Gomory
+rows, cut selection by distance to nearest integer, extremum bound
+deduction, large-numeral temporary scope) are enumerated in the paper
+note's gap table. The relaxed row definition is the one with direct
+measured evidence behind it -- Primo's instrumented `f_unbounded` count is
+exactly the eligibility failure it fixes -- and it also changes the
+antecedent rule stage 4's `LiaExplanation` uses, so it should not be
+treated as an isolated tweak.
+
+(lead-qflia-patching)=
+### 12f. Patching (paper Sect. 4.1) -- done
+
+**Claim.** Primo's integer waterfall began at the paper's *third* layer.
+Patching, its first, nudges nonbasic values so Int variables land on
+integers, turning an LRA model into an integer one with no search.
+
+**Evidence that this was the right target.** The full corpus splits the
+gap by answer: against cvc5 Primo is **ahead by 147 on unsat and behind by
+661 on sat**. Every layer stages 1-4 built is refutation machinery, so the
+entire deficit sat where none of them could help. Patching was chosen over
+the cube test on a measurement -- see 12c.
+
+**Outcome (2026-08-21).** Shipped default-on as stage 5. Full corpus
+(13,306 files, 60 s, Slurm 128125), same binary with `--lia-patch-limit 0`
+as the control: **8,727 -> 9,027 solved, PAR2 42.91 -> 40.20, 0 wrong, 0
+answer disagreements**. +300 net (356 gained, 56 lost), and **331 of the
+gains are satisfiable** -- the population the whole cvc5 deficit sat in.
+The gap to cvc5 narrows from -535 to **-212**. Model validity confirmed by
+Dolmen at scale (3,494 sat models, all pass, Slurm 128295).
+
+The 56 losses are a genuine cost rather than boundary noise: 19 of them
+were solved in under a second by the control. Patching occasionally sends
+an easy instance somewhere much worse, the same trajectory-change
+pathology 12d's `rings` regression showed. Bounding it is open follow-up.
+
+Two things the paper's prose leaves implicit, both found by building its
+own Example 3 as a test rather than trusting the derivation: scoring a
+move by `|delta|` alone oscillates (the nearest fix for one row breaks
+another, and the two undo each other), so candidates are scored globally
+and only strictly improving moves are taken; and floor/ceil alone is too
+narrow a candidate set, since Example 3's answer `x = 6` is two integers
+away from the current value. See [](qf-lia-branch-and-bound.md)'s
+"Patching".
+
+First QF_LIA stage to touch `LraTableau`, deliberately and minimally:
+`set_nonbasic_value`, a narrow public wrapper over the existing private
+`update()`, whose comment carries the trail caveat that makes it safe only
+on a per-round tableau copy.
+
+(lead-qflia-extended-gcd)=
+### 12e. Extended GCD test for bounded-but-not-fixed rows
+
+**Claim.** Bjørner & Nachmanson Sect. 4.3 extends the basic GCD test from
+*fixed* variables to merely *bounded* ones: for a row `a.x + b.y + c = 0`
+with `x` bounded, if the achievable range `[l, u]` of `a.x` contains no
+value congruent to the required residue modulo `gcd(b, c)`, the row is
+infeasible. Primo's stage 2 implements only the basic test, because
+`fixed_value()` requires equal lower and upper bounds.
+
+**Evidence.** This closes the exact divergence
+[](qf-lia-branch-and-bound.md) documents as caught by neither stage 2 nor
+stage 3, and which `gcd_uncatchable_divergent_system_hits_the_node_limit`
+pins as a test: `4x + 4y` bounded to `[2,3]` with `x, y` unbounded. The
+slack is bounded but not fixed, so nothing currently fires and the search
+diverges to `--lia-branch-limit`.
+
+**Cost.** Small -- an extension to `row_is_gcd_consistent`, in the same
+shape as the existing residual computation, plus the corresponding
+antecedent rule in `LiaExplanation` (the bounds used become the
+explanation, rather than the pair of equal bounds the fixed case uses).
+
+**Falsifier.** A population census: if almost no real QF_LIA row is
+bounded-but-not-fixed with an unbounded integer remainder, this closes a
+crafted-benchmark case and nothing else. Worth counting before building,
+the same way 12b is gated.
+
+**Watch the printed inequality.** The paper renders the condition as
+`floor(u/gcd) > ceil(l/gcd)`, which is backwards -- that direction reports
+infeasibility precisely when a solution exists. The intended test is
+`floor(u/gcd) < ceil(l/gcd)`. Verified against the paper's own shape in
+[](papers/arithmetic-solving-in-z3.md); do not transcribe it as printed.
+
+**Status.** Not started. Unlike 12c's remaining pieces this needs no new
+paper note -- Sect. 4.3 is already summarized.
+
+**Caveat shared with everything in lead 12.** An instrumented run found 24
+of 36 sampled QF_LIA timeouts never execute a single integer round, so no
+Section 4 layer can reach that population; their bottleneck is the Boolean
+and LRA search. Sect. 3.3's indirect bounds propagation is the part of the
+paper aimed at them.
+
+(lead-qflia-conflict-generalization)=
+### 12d. Conflict-clause generalization (Farkas certificates / CDCL-integrated branching)
+
+Already named as a known gap in [](qf-lia-branch-and-bound.md)'s "Where
+branching lives" section: every arithmetic conflict blocks the whole
+current assignment rather than a minimized explanation. The calypto
+evidence above (56,864 near-1:1 lra/sat conflicts on one file) is the
+first concrete measurement of its cost, not just a theoretical concern.
+
+**Status: done (2026-08-21), and it turned out to be neither large nor to
+need a design note.** The estimate above was wrong in a specific and
+instructive way: it assumed the explanation had to be *built*. It did not
+-- `LraTableau` already returns a Farkas-style conflict certificate from
+`assert_upper`/`assert_lower`/`check()`, and QF_LRA has always used it
+directly as its theory lemma (`check_lra_theory_in_place` returns
+`tableau.check()` as the clause). The QF_LIA path was calling exactly the
+same tableau operations and *discarding* what they returned:
+`apply_gomory_cuts` collapsed a `std::vector<sat::Lit>` conflict to
+`bool`, `gcd_inconsistent_row` returned only a row id, and `try_branch`
+returned only a feasibility flag. The coarse clause was then rebuilt from
+scratch out of every arithmetic atom.
+
+**What the discarded certificate was worth.** Measured by instrumenting a
+build and running the per-family sample (3 files/family, 94 files, 10s):
+
+| instance | rounds | coarse lemma | tableau conflict | cut antecedents |
+|---|---|---|---|---|
+| `calypto/problem-001542` | 6,528 | 219 lits | 5 lits | 4 bounds |
+| `convert/convert-jpg2gif-query-1141` | 19,630+ | 1,266 lits | 5 lits | ~19 bounds |
+
+Every conflict contained exactly one `sat::Lit{0}` -- the synthetic reason
+the cut's own threshold bound was asserted with. That single literal is
+the whole reason the certificate could not just be forwarded, and
+resolving it away is what the fix is.
+
+**The fix.** A new `LiaExplanation` accumulator
+(`src/theory/arithmetic/lia_explanation.{hpp,cpp}`) threaded through all
+three integer stages, collecting conflict literals and dropping
+`kDerivedBoundReason`. Dropping it is sound because each stage supplies
+what its derived bound rests on: a Gomory cut contributes the bound
+reasons of its row's terms (the cut is implied by them; the row equation
+is a tableau invariant, not an assumption), while a branch-and-bound split
+needs nothing at all, since `x <= n` or `x >= n+1` is a tautology over the
+integers and the union of both refuted sides already refutes the parent.
+
+Soundness does not rest on those arguments being right, though.
+`generalized_lia_lemma()` in `check_sat.cpp` **checks** that every literal
+of the derived explanation already appears in the coarse clause, and falls
+back to the coarse clause otherwise. A superset of the true explanation is
+always a valid (if weaker) lemma; a literal that is *not* blocking for the
+current assignment would fail to exclude it and spin the outer loop
+forever -- the containment test rules that out, and rules out a leaked
+synthetic literal at the same time. An empty explanation also falls back,
+since the empty clause claims the whole problem is unsat.
+
+**Result** (same instances, 60s):
+
+| instance | coarse | generalized |
+|---|---|---|
+| `calypto/problem-001542` | unsat, 1.10s | unsat, **0.02s** (6,528 rounds -> 2) |
+| `calypto/problem-001553` | unsat, 0.86s | unsat, **0.02s** |
+| `convert/convert-jpg2gif-query-1141` | **unknown, timeout** | unsat, **0.04s** (19,630+ rounds -> 6) |
+
+Zero generalization fallbacks on any of them. Kept switchable via
+`--no-lia-conflict-generalization` (default on) so the coarse form stays
+A/B-measurable, and four `:lia.*` statistics report lemma sizes and
+fallback counts.
+
+**Full corpus (Slurm 127949, both arms of the same binary, 60s):** 8,706
+solved coarse -> 8,725 generalized, PAR2 43.12 -> 42.94, 0 wrong, 0 answer
+disagreements. The coarse arm reproduces the pre-change baseline (8,704),
+which is what makes +19 attributable to this change. 27 of 30 gains solve
+in under 5s; 9 of 11 losses were already over 45s and are boundary noise.
+
+One real regression, and it is informative:
+`rings_preprocessed/ring_2exp4_4vars_3ite_unsat.smt2` goes 0.18s ->
+unsolved at 300s. Generalized needs *fewer* rounds (814 vs 995) but each
+costs ~2,000x more, because a 23-literal clause propagates hard where the
+91-literal coarse clause was nearly inert. A stronger lemma is not free.
+Gating the derived lemma on how much smaller it actually is, is the
+obvious refinement -- worth its own lead if anyone picks it up.
+
+This does not close the cvc5 gap (-535 -> -514), and it was never going to:
+24 of 36 sampled timeouts never execute a single LIA round. Notably
+primo still solves 553 files cvc5 does not, so the two are strongly
+complementary -- see [](#complementarity).
+
+Griggio's thesis was not needed after all -- but the note stands for
+whoever takes 12c, where the same "check what the existing machinery
+already hands back" question is worth asking before designing anything.
 
 (complementarity)=
 ## Complementarity: losing on average is not the same as useless

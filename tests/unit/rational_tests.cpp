@@ -49,6 +49,75 @@ void ordering() {
   assert(!(Rational(1, 2) < Rational(1, 2)));
 }
 
+void floor_ceil_is_integer() {
+  assert(Rational(3).is_integer());
+  assert(!Rational(3, 2).is_integer());
+  assert(Rational(3).floor() == Rational(3));
+  assert(Rational(3).ceil() == Rational(3));
+
+  assert(Rational(3, 2).floor() == Rational(1));
+  assert(Rational(3, 2).ceil() == Rational(2));
+  assert(Rational(-3, 2).floor() == Rational(-2));
+  assert(Rational(-3, 2).ceil() == Rational(-1));
+
+  assert(Rational(-4, 2).is_integer());
+  assert(Rational(-4, 2).floor() == Rational(-2));
+  assert(Rational(-4, 2).ceil() == Rational(-2));
+
+  // Forces the big (mpq_class) path -- see representation_transitions()'s
+  // use of the same overflow trick.
+  const Rational big_integer = Rational(INT64_MAX) * Rational(INT64_MAX);
+  assert(big_integer.is_integer());
+  assert(big_integer.floor() == big_integer);
+  assert(big_integer.ceil() == big_integer);
+
+  const Rational big_fraction = big_integer + Rational(1, 2);
+  assert(!big_fraction.is_integer());
+  assert(big_fraction.floor() == big_integer);
+  assert(big_fraction.ceil() == big_integer + Rational(1));
+
+  const Rational negative_big_fraction = -big_fraction;
+  assert(negative_big_fraction.floor() == -(big_integer + Rational(1)));
+  assert(negative_big_fraction.ceil() == -big_integer);
+}
+
+void gcd_of_integer_valued_rationals() {
+  const std::vector<Rational> two_and_neg_two = {Rational(2), Rational(-2)};
+  assert(Rational::gcd(two_and_neg_two) == Rational(2));
+
+  const std::vector<Rational> coprime = {Rational(2), Rational(3)};
+  assert(Rational::gcd(coprime) == Rational(1));
+
+  const std::vector<Rational> with_zero = {Rational(0), Rational(6), Rational(-9)};
+  assert(Rational::gcd(with_zero) == Rational(3));
+
+  const std::vector<Rational> single = {Rational(-7)};
+  assert(Rational::gcd(single) == Rational(7));
+
+  // Forces the big (mpq_class) path.
+  const Rational big_multiple_of_six = (Rational(INT64_MAX) * Rational(INT64_MAX)) * Rational(6);
+  const std::vector<Rational> big_values = {big_multiple_of_six, Rational(6)};
+  assert(Rational::gcd(big_values) == Rational(6));
+
+  bool threw = false;
+  try {
+    const std::vector<Rational> all_zero = {Rational(0), Rational(0)};
+    (void)Rational::gcd(all_zero);
+  } catch (const std::invalid_argument&) {
+    threw = true;
+  }
+  assert(threw);
+
+  threw = false;
+  try {
+    const std::vector<Rational> has_fraction = {Rational(2), Rational(1, 2)};
+    (void)Rational::gcd(has_fraction);
+  } catch (const std::invalid_argument&) {
+    threw = true;
+  }
+  assert(threw);
+}
+
 void zero_and_sign() {
   assert(Rational(0).is_zero());
   assert(Rational(0, 5).is_zero());
@@ -576,6 +645,8 @@ int main() {
   construction_and_equality();
   arithmetic();
   ordering();
+  floor_ceil_is_integer();
+  gcd_of_integer_valued_rationals();
   zero_and_sign();
   parse_numerals();
   parse_decimals();

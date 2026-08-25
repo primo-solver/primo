@@ -22,6 +22,7 @@ parts:
           - file: qfuf-disequality-propagation
       - file: arithmetic
         sections:
+          - file: qf-lia-branch-and-bound
           - file: qf-lra-heuristics
           - file: tuning-parameters
           - file: open-leads
