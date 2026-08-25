@@ -28098,6 +28098,28 @@
       "artifacts": "results/qf-lra-merge-ab/{main,branch}/shard-*.csv (per-file) and shard-*-summary.csv.",
       "evidence_status": "local-complete-current",
       "outcome": "Clean. Zero wrong answers, zero answer disagreements, +2 solved and PAR2 18.09 -> 17.97 over the full QF_LRA division. The branch does not regress QF_LRA and is safe to merge."
+    },
+    {
+      "id": "2026-08-25-qf-lia-branch-merge-integration-check",
+      "started_at": "2026-08-25",
+      "recorded_at": "2026-08-25",
+      "kind": "measurement",
+      "scope": "origin/main had moved 10 commits (the model-filtered QF_UFLRA equality producer) while qf-lia-branch-and-bound was being evaluated, so the merged tree is a combination neither side measured. This checks that the merged binary reproduces the branch's QF_LRA behaviour.",
+      "commit": "a459496",
+      "branch": "main",
+      "environment": {
+        "type": "local",
+        "note": "8 QF_LRA shards (352 files) at 60s, 8 concurrent, 3GB cap. Note the gate itself ran 10 concurrent -- see the confound below."
+      },
+      "results": {
+        "no_contradictory_answers": "Zero. All 8 answer differences against the branch reference are timeout boundary crossings, where one side reports unknown: 7 files the merged binary solves that timed out before, 1 the reverse. No file changed sat to unsat or unsat to sat, and the merged binary produced no wrong answers.",
+        "the_gain_is_a_load_confound_not_a_result": "On the overlap the merged binary solves 303 against the branch's 297 and needs 865s where the branch needed 982s. This run used 8 concurrent processes and the gate used 10, so the merged binary simply had a quieter machine. That difference is not evidence of a speedup and must not be quoted as one.",
+        "a_vacuous_pass_was_caught": "The first attempt at this check reported ANSWER MISMATCHES: 0 while having produced zero CSV files -- the xargs wrapper spawned shells that never inherited the output directory, every shard wrote nowhere, and the wrapper still exited 0. An empty comparison looks exactly like a clean one. The rerun reports its own CSV count and failure flag in the completion line so an empty run cannot pass silently again.",
+        "merge_conflicts": "Three, all resolved by keeping both sides: lra_tableau.cpp (model_filtered_unit_equalities and set_nonbasic_value added at the same point, independent), run-log.json (both appended; merged to 538+6+15=559), and arithmetic-solving-in-z3.md (both rewrote 'Resulting priority'; kept upstream's newer QF_UFLRA verdict beside the branch's QF_LIA half). The merge also made one of the branch's own audit rows stale -- Sect. 3.2 said Primo has the exact producer 'rather than' the 2024 fast path, and upstream now has both -- so that row was refreshed."
+      },
+      "artifacts": "results/qf-lra-merge-ab/postmerge/shard-*.csv.",
+      "evidence_status": "local-complete-current",
+      "outcome": "The merge integrates cleanly: no contradictory answers, no wrong answers, 20/20 suites and lint clean on the merged tree. The apparent solve gain is a parallelism artifact, not a finding."
     }
   ]
 }
