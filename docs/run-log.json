@@ -27886,6 +27886,30 @@
       "artifacts": "docs/papers/arithmetic-solving-in-z3.md gap table and audit.",
       "evidence_status": "local-complete-current",
       "outcome": "Seven or eight paper techniques remain unimplemented, but the profile bounds what any of them can buy. The concrete finding is negative and useful: row-based bounds propagation, the one technique already built and merely disabled, does not help QF_LIA even at the caps the paper's own tuner selected -- so the QF_LRA tuning is fragment-specific and the current defaults are right for QF_LIA."
+    },
+    {
+      "id": "2026-08-25-qf-lra-full-corpus-merge-gate",
+      "started_at": "2026-08-25",
+      "recorded_at": "2026-08-25",
+      "kind": "measurement",
+      "scope": "Pre-merge regression gate for qf-lia-branch-and-bound. Everything on the branch except three files is QF_LIA-only, but rational.cpp (gcd_u64), term_manager.cpp and preprocessing.cpp are on every logic's path, and the only QF_LRA evidence for them was eight instances. This is the full QF_LRA division, both arms, before merging to main.",
+      "commit": "5700533 vs main a004480",
+      "branch": "qf-lia-branch-and-bound",
+      "environment": {
+        "type": "local",
+        "note": "Ran locally on 14 cores rather than on SLURM: /tmp/llm2smt_slurm_ssh_config had been wiped and the cluster host/user are deliberately not recorded in the repository, so the cluster was unreachable. 40 shards, 10 concurrent, 60s timeout, 3GB address-space cap per process to match the --mem=3G the SLURM campaigns use."
+      },
+      "results": {
+        "design": "Arms are the two binaries (main a004480 vs branch 5700533), not two flags -- the merge question is about the whole branch, and diffing only rational.cpp would have missed the term_manager.cpp and preprocessing.cpp deltas. Both arms run inside the same shard back to back, so a shard's two arms see identical machine load, and arm order alternates with shard parity because the first run warms the page cache for the .smt2 file and would otherwise hand the second arm a systematic head start. That control is needed locally and would not be on separate SLURM nodes.",
+        "headline": "1,753 files. main: 1,543 solved (936 sat, 607 unsat), PAR2 18.09. branch: 1,545 solved (938 sat, 607 unsat), PAR2 17.97. Zero wrong answers in either arm and ZERO answer disagreements between them. QF_LRA is not harmed by the merge.",
+        "churn_is_the_timeout_boundary": "The net +2 is 10 gained and 8 lost, which is churn rather than signal -- and the churn is provably at the cutoff: every one of the 18 files sits between 34.8s and 59.2s against a 60s limit, all in LassoRanker, 2017-Heizmann-UltimateInvariantSynthesis and miplib, families dense with instances that finish just either side of the wire. No file changed answer, and nothing moved from fast to slow or the reverse.",
+        "timing": "Over the 1,535 files both arms solve, main 6,125.2s vs branch 6,031.9s (1.0155x). Directionally consistent with the gcd_u64 work but small, and 10-way local parallelism is not a precision timing environment; the answer-agreement result is what this run is for.",
+        "four_bad_alloc_rows": "Four LassoRanker/Ultimate files report std::bad_alloc in BOTH arms. That is the 3GB cap this run imposed, not a frontend gap and not a branch regression -- identical files, identical failure, both binaries. They are excluded from neither arm's totals in a way that could bias the comparison.",
+        "verdict": "The one unmeasured surface named before the merge is now measured. QF_LRA is neutral-to-slightly-positive, which is what the cheap-when-not-fired design of the gcd guards predicts."
+      },
+      "artifacts": "results/qf-lra-merge-ab/{main,branch}/shard-*.csv (per-file) and shard-*-summary.csv.",
+      "evidence_status": "local-complete-current",
+      "outcome": "Clean. Zero wrong answers, zero answer disagreements, +2 solved and PAR2 18.09 -> 17.97 over the full QF_LRA division. The branch does not regress QF_LRA and is safe to merge."
     }
   ]
 }
