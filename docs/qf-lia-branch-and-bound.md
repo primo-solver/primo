@@ -823,6 +823,84 @@ above -- either of which could plausibly close some of the gap the
 `4x+4y in [2,3]`-shaped case represents. A future stage, not attempted
 here.
 
+(qf-lira)=
+## QF_LIRA: the search core is already mixed, the frontend is not
+
+Primo cannot read a QF_LIRA problem. That is a frontend limitation, and
+the natural assumption -- that the integer machinery would also need
+generalizing -- is wrong: **every stage below is already written for "a
+subset of the variables is integer", not "all of them are"**, and each
+was written that way deliberately, because Primo already runs mixed
+tableaus on ordinary QF_LIA input.
+
+The reason is scale-canonicalization. `PreparedLraTheory` rewrites
+`(<= (* 3 x) 5)` into a slack with the bound `5/3`, and that slack is
+*not* an integer-valued variable even though every declared variable in
+the problem is `Int`-sorted. Rows therefore already mix integer and
+non-integer variables today, and the stages already have to be correct
+under that mixture. QF_LIRA does not introduce the situation; it only
+makes it visible in the input language.
+
+### What each stage does with a non-integer variable
+
+`solve_qf_lia_impl` builds the integer set as a filter over declared
+sorts, not as an assumption about all variables
+(`src/smt/check_sat.cpp`, `integer_vars`), and the Sat condition is
+`all_of(integer_vars, ...)` -- not "the whole assignment is integral".
+Everything downstream takes that subset as a parameter:
+
+| stage | behaviour on a Real variable | consequence |
+| --- | --- | --- |
+| Branch-and-bound | branches only over `integer_vars` | textbook mixed branch-and-bound; nothing to change |
+| GCD-consistency | `is_declared_integer[]` is checked for the basic variable *and* every row term; a free non-integer variable makes the row yield nothing | sound, and weaker exactly where it must be |
+| Gomory cuts | King's thesis eq. 4.9 is the **mixed** cut, chosen because it needs only the *basic* variable to be integer-valued and places no integrality requirement on non-basic bounds | already the mixed-integer formula |
+| Patching | moves any non-basic within its `freedom_interval()` to integralize an `Int` variable | a Real non-basic is the *ideal* mover: it can absorb the move without becoming fractional itself |
+
+The GCD guard is not incidental. Its comment states the rule outright --
+a conclusion is only drawn "once every free variable is confirmed to
+range over all of Z" -- and it exists because mutation fuzzing
+(2026-08-20) found a false conflict derived from a former slack that a
+pivot had turned into an ordinary row term. That bug *was* the mixed
+case, caught before QF_LIRA was ever considered.
+
+One real weakening carries over: `apply_one_cut` applies the continuous
+formula to every non-basic term, including `Int`-sorted ones, so it
+forgoes the strengthening a full mixed-integer-rounding cut would get
+from `frac()` on integer non-basics. That is already recorded in the "Explicitly out of
+scope" section below as a known possible improvement King's own thesis
+flags. It costs cut strength, never soundness.
+
+### What actually blocks it
+
+| blocker | where |
+| --- | --- |
+| Logic whitelist accepts only `QF_UF`, `QF_LRA`, `QF_UFLRA`, `QF_LIA` | `check_sat.cpp`, `SetLogic` |
+| **Numeral sort is a global function of the logic**: `Int` iff the logic is `QF_LIA`, `Real` otherwise | `check_sat.cpp`, the `Rational::parse` branch in the atom handler |
+| `mk_plus`/`mk_times` reject operands of differing sorts ("arithmetic terms must share one sort") | `core/term_manager.cpp` |
+| No `to_real`, `to_int`, or `divisible` anywhere in the frontend | -- |
+| `declare_fun` rejects a `Real` constant under `QF_LIA` with a message that already names the missing logic | `check_sat.cpp` |
+| Model output selects `declared_int_constant_terms()` *or* the Real path, not both | `check_sat.cpp`, the solve dispatch |
+
+**The numeral rule is the work.** Today a literal's sort is decided once,
+from the logic; under QF_LIRA it has to be inferred from context, so that
+the `1` in `(+ x 1)` follows `x`. That is type inference threaded through
+term construction, and it is what makes this a project rather than an
+afternoon. `to_real` is not optional either -- SMT-LIB's QF_LIRA division
+uses it heavily.
+
+### Status of this claim
+
+**Read from the code, not run.** No QF_LIRA problem can reach the solver,
+so nothing here has been executed end to end. The cheap way to convert it
+into evidence is a unit test that builds a mixed tableau directly --
+`Int` `x`, `Real` `y`, shared rows -- and drives patching,
+GCD-consistency, cuts and branch-and-bound against it, with the same
+post-condition the existing stage tests use (`check()` still feasible,
+and every `Int` variable integral on Sat). That exercises the real code
+paths with no frontend involvement, and would falsify the claim in an
+hour if one of the stages turns out to assume total integrality after
+all.
+
 ## Explicitly out of scope
 
 - The cube test (Bjørner & Nachmanson Sect. 4.2) and GCD-consistency's
@@ -847,7 +925,9 @@ here.
 - CDCL-integrated branch literals (Z3-style, injecting a fresh SAT literal
   from a callback) -- a possible future performance phase, not needed for
   correctness.
-- `div`/`mod`, mixed QF_LIRA (`Int` + `Real` together).
+- `div`/`mod`, and mixed QF_LIRA (`Int` + `Real` together) -- the latter
+  is a *frontend* gap rather than a search-core one, analysed in
+  [](#qf-lira) above.
 - Any change to `LraTableau` or `OnlineLraPropagator` *themselves* --
   stages 1 and 2 stayed entirely read-only or bound-assertion-only
   against the existing API; stage 3 adds rows/bounds via `LraTableau`'s

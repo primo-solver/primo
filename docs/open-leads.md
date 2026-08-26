@@ -1789,6 +1789,49 @@ whoever takes 12c, where the same "check what the existing machinery
 already hands back" question is worth asking before designing anything.
 
 (complementarity)=
+(lead-qflira)=
+## 13. QF_LIRA -- the search core is already mixed, only the frontend is missing
+
+**Status: open, added 2026-08-26.** Analysis only; nothing measured.
+
+**Claim.** Supporting mixed `Int`/`Real` linear arithmetic needs no new
+solving algorithm. Every QF_LIA stage is already parameterized by *which*
+variables are integer rather than assuming all of them are, because
+scale-canonicalized slacks are non-integer variables sitting in rows with
+`Int` variables -- so Primo already solves mixed tableaus on ordinary
+QF_LIA input. The work is entirely in the frontend. Full analysis, with
+the per-stage behaviour and the exact blockers, in
+[](qf-lia-branch-and-bound.md)'s [](#qf-lira) section.
+
+**Evidence.** Read from the code, not run -- no QF_LIRA input can reach
+the solver. Branch-and-bound splits only over `integer_vars`;
+GCD-consistency checks `is_declared_integer[]` per row term and declines
+to conclude when a free variable is not integer (a guard added after
+mutation fuzzing found a false conflict from exactly this in August);
+Gomory uses King's *mixed* cut, which requires integrality of the basic
+variable only; patching moves any non-basic within its freedom interval,
+and a Real non-basic is the ideal mover. The Sat condition is already
+`all_of(integer_vars, ...)`, not "the whole assignment is integral".
+
+**Cost.** The frontend is the project. Ranked by what actually bites:
+context-sensitive numeral sorting (today a literal is `Int` iff the logic
+is `QF_LIA`, so `(+ x 1)` must instead take its sort from `x`), then
+`to_real`/`to_int`, then mixed-sort operands in `mk_plus`/`mk_times`,
+then the logic whitelist and a model printer that emits both sorts.
+Cut *strength* is a separate, optional follow-up: `apply_one_cut` treats
+every non-basic as continuous, forgoing mixed-integer-rounding
+strengthening on `Int` non-basics -- valid, weaker, already recorded as
+out of scope.
+
+**Falsifier, stated before the work.** A unit test that builds a mixed
+tableau directly (`Int` `x`, `Real` `y`, shared rows) and drives
+patching, GCD-consistency, cuts and branch-and-bound against it, asserting
+the existing stage post-conditions (`check()` still feasible; every `Int`
+variable integral on Sat). If any stage assumes total integrality, that
+test fails and this lead is wrong about the core -- which would make the
+frontend work pointless to start. **Run the falsifier first**: it costs an
+hour and gates a project.
+
 ## Complementarity: losing on average is not the same as useless
 
 The promotion bar -- solved count and PAR2 on the 237-file stratified sample
