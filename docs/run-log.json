@@ -28120,6 +28120,31 @@
       "artifacts": "results/qf-lra-merge-ab/postmerge/shard-*.csv.",
       "evidence_status": "local-complete-current",
       "outcome": "The merge integrates cleanly: no contradictory answers, no wrong answers, 20/20 suites and lint clean on the merged tree. The apparent solve gain is a parallelism artifact, not a finding."
+    },
+    {
+      "id": "2026-08-26-qf-lia-qf-lra-cluster-merge-verification",
+      "started_at": "2026-08-26",
+      "recorded_at": "2026-08-26",
+      "kind": "measurement",
+      "scope": "Cluster re-run of both fragments after the merge, replacing the locally-measured numbers this session had been quoting. Local runs used 8-10 concurrent solvers on one box; SLURM gives one solver per core, which is what the QF_LIA result deserved and what the QF_LRA gate had lacked.",
+      "commit": "3c2fbf1 vs b4d3221 (QF_LIA); 3c2fbf1 vs 2480db9 (QF_LRA)",
+      "branch": "main",
+      "environment": {
+        "type": "slurm",
+        "job": "128768 (QF_LIA merged), 128968 (QF_LIA pre-merge), 128769 (QF_LRA both arms)",
+        "note": "60s, --mem=3G, one file at a time per task. Reference z3/cvc5 come from job 127709 on the same cluster and corpus at the same timeout, not re-run."
+      },
+      "results": {
+        "qf_lia_the_session_result_holds": "Answered (sat+unsat) over all 13,306 files: dc960eb 8,704 -> pre-merge b4d3221 9,043, PAR2 43.14 -> 40.08, zero wrong. That is +339 on the cluster against the +330 measured locally, so the local box was not distorting the result -- the two environments agree to within boundary churn. The gap to cvc5 (9,239) narrows from 535 to 196.",
+        "the_merge_is_neutral_on_qf_lia": "9,043 -> 9,032 answered, PAR2 40.08 -> 40.16. The -11 is 16 lost and 5 gained, and every one of those 21 files finishes between 53.2s and 59.9s against a 60s limit -- the cutoff band, where 101 further both-solved files also sit. Per-file time ratio over the 2,150 files both arms solve in more than a second: median 1.001, mean 1.009, p10 0.975, p90 1.050. No systematic slowdown.",
+        "qf_lra_is_flat": "1,535 answered in both arms, zero contradictions, 4 gained and 4 lost, PAR2 18.92 -> 18.88, and 1.0132x on the 1,531 files both solve. This supersedes the local gate's +2/1.0155x, which was measured under 10-way parallelism.",
+        "reporting_trap_status_solved_over_counts_primo": "bench_qf_uf_full.py's `solved` counts status == ok, and primo exits CLEANLY with `unknown` when branch-and-bound hits its node limit: 750 such files in each QF_LIA arm (569 at dc960eb). cvc5 and z3 have zero -- their non-answers are errors/timeouts. So status-based `solved` reads 9,781 for the merged arm against cvc5's 9,239 and would invert the true standing, and the summary CSV's PAR2 charges those 750 their elapsed time rather than the 2T penalty (34.37 vs the correct 40.16). Every primo-vs-reference number in this project must be computed from sat+unsat, not from status. The numbers this session reported were already answer-based and are unaffected.",
+        "an_invalid_arm_was_caught_before_aggregation": "The first QF_LIA submission used upstream main (2480db9) as the baseline. It reported 167 of 167 files `unsupported` per shard: QF_LIA support IS this branch, so upstream main cannot parse the division at all. Cancelled and replaced with the pre-merge branch tip, which is the control that answers the actual question. A frontend gap and a timeout look nothing alike in the data -- unsupported rows, PAR2 pinned at 2T -- but only if the rows are read rather than the totals.",
+        "harness_constraint_worth_recording": "bench_qf_uf_full.py resolves root as (repo / args.root).resolve() and then calls path.relative_to(repo) per row, so the corpus MUST live under the repo directory; pointing PRIMO_COMPARE_ROOT at an absolute path outside it fails every task, and symlinking the corpus in does not help because .resolve() follows the link. The campaigns therefore run FROM the corpus workdirs with both arms given as absolute binary paths -- which also means no sync ever touches a corpus directory."
+      },
+      "artifacts": "primo-cadical-profile/results/qf-lia-full-compare-128768 and qf-lia-premerge-control; primo-qflra/results/qf-lia-full-compare-128769.",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "The merge is safe on both fragments: zero wrong answers and zero contradictory answers across 15,059 files, with QF_LIA -11 and QF_LRA 0 net, both entirely inside the timeout band. The session's QF_LIA gain is confirmed at cluster scale: +339 answered, PAR2 43.14 -> 40.08."
     }
   ]
 }
