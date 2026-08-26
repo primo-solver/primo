@@ -44,6 +44,15 @@ Shapes, and the capacity each covers:
                   congruence, and pigeonhole over three distinct Bool terms
   converse        the specific shape the old harness could not express -- an
                   argument equality derivable ONLY from injectivity
+  pure-polarity   a Bool constant occurring at a SINGLE propositional polarity
+                  while also being a UF argument. Polarity is collected from
+                  formula structure only, so such a term looks "pure" to the
+                  pure-theory filter, which then drops the very assignment the
+                  theory needs. Added 2026-08-26 after a code review found the
+                  first version of the fix wrong on exactly this shape and this
+                  generator reporting PASS on the build that got it wrong --
+                  every Bool constant here reached an assertion wrapped in a
+                  function, so none was ever propositionally pure
   all             uniform mix of the above (default)
 
 Exit code is nonzero if any case disagrees with the reference, crashes, or is
@@ -73,6 +82,7 @@ SHAPES = (
     "mixed-sort",
     "two-valued",
     "converse",
+    "pure-polarity",
     "all",
 )
 
@@ -193,6 +203,32 @@ def two_valued_atoms(rng: random.Random) -> list[str]:
     return atoms
 
 
+def pure_polarity_case(rng: random.Random) -> list[str]:
+    """A Bool constant that is propositionally pure AND a UF argument.
+
+    `collect_theory_atom_polarities` records only propositional occurrences and
+    never descends into arguments, so `p` in `(or p q)` is classified
+    pure-positive. The pure-theory filter is then entitled to drop the `p =
+    false` assignment -- except that congruence over `tb(p)` needs it whichever
+    way `p` is assigned. Emitted verbatim: the bare literal is the whole point,
+    and sampling a subset would drop it.
+    """
+    x, y = rng.sample(["p", "q", "r"], k=2)
+    bare = rng.choice([f"(or {x} {y})", f"(or (not {x}) {y})", x, f"(not {x})"])
+    return rng.choice(
+        [
+            # Constant image: tb collapses both elements of Bool.
+            ["(= (tb true) (tb false))", f"(not (= (tb {x}) (tb true)))", bare],
+            # Injective f, contradiction through the argument's own value.
+            ["(distinct (f true) (f false))",
+             f"(= (f {x}) (f true))", f"(= (f {x}) (f false))", bare],
+            # Through an uninterpreted sort.
+            [f"(= (tb {x}) a)", "(= (tb true) (tb false))",
+             "(not (= a (tb false)))", bare],
+        ]
+    )
+
+
 def converse_case(rng: random.Random) -> list[str]:
     """The shape the QF_UFLRA seeds could not express.
 
@@ -242,7 +278,9 @@ def generate_case(rng: random.Random, index: int, shape: str) -> str:
     if shape == "all":
         shape = rng.choice([name for name in SHAPES if name != "all"])
 
-    if shape == "converse":
+    if shape == "pure-polarity":
+        assertions = pure_polarity_case(rng)
+    elif shape == "converse":
         # Emitted verbatim: every assertion is load-bearing, and dropping or
         # negating one turns the intended unsat into a satisfiable formula
         # that proves nothing.
@@ -251,6 +289,13 @@ def generate_case(rng: random.Random, index: int, shape: str) -> str:
         atoms = ATOM_BUILDERS[shape](rng)
         keep = rng.randint(2, len(atoms))
         assertions = rng.sample(atoms, k=keep)
+        # A bare propositional literal over a Bool constant that is also used
+        # as an argument elsewhere: this is what makes a term look "pure" to
+        # the pure-theory filter, and its absence is why this generator missed
+        # the 2026-08-26 filter bug entirely.
+        if rng.randrange(2):
+            bare = rng.choice(["p", "q", "r"])
+            assertions.append(bare if rng.randrange(2) else f"(not {bare})")
         # Mix in a clause so the SAT solver has real case analysis to do
         # rather than a conjunction of units.
         if rng.randrange(2) and len(atoms) >= 2:

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=primo-qfuf-boolean-fuzz-gate
-#SBATCH --array=0-7
+#SBATCH --array=0-8
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=2G
 #SBATCH --time=02:00:00
@@ -25,9 +25,12 @@
 # One shard per shape, so a failure names the capacity that broke rather than
 # a case number. Array size must stay in step with the shape list below.
 #
-# The known-open converse bug means this gate FAILS on current main by design.
-# Once bugs/qf-uf-boolean-argument-congruence is fixed it becomes a clean gate
-# and any future failure is a regression.
+# bugs/qf-uf-boolean-argument-congruence is fixed (fa44295 + the pure-polarity
+# follow-up), so this gate is expected to be CLEAN and any failure is a
+# regression. It is also worth knowing what a failure looks like when the
+# reference is simply absent: every case comes back REFERENCE_UNUSABLE, which
+# the classifier deliberately treats as a failure rather than a pass. Point
+# PRIMO_FUZZ_REF at an installed z3 if the workspace does not build one.
 
 set -uo pipefail
 
@@ -40,7 +43,7 @@ SEED_BASE=${PRIMO_FUZZ_SEED_BASE:-0}
 OUT_ROOT=${PRIMO_FUZZ_OUT_ROOT:-"$WORKDIR/fuzz-results/qf-uf-boolean-${SLURM_ARRAY_JOB_ID:-manual}"}
 TASK_ID=${SLURM_ARRAY_TASK_ID:-0}
 
-SHAPES=(argument result compound nested mixed-sort two-valued converse all)
+SHAPES=(argument result compound nested mixed-sort two-valued converse pure-polarity all)
 
 cd "$WORKDIR" || exit 2
 mkdir -p logs "$OUT_ROOT"

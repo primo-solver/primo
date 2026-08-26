@@ -14,10 +14,13 @@ as the reason. It costs no SAT variable and no clause. Both solver paths now go
 through one `apply_boolean_domain_encoding` dispatcher so they cannot drift
 apart again, which is what produced this bug.
 
-Verified: the Bool harness went 91 disagreements in 600 cases to 0, the SLURM
-gate ran 8,000 cases across all eight shapes clean, the QF_UF division showed
-**zero answer changes** against the pre-fix binary, and the QF_UFLRA A/B showed
-zero disagreements between the two encodings. See `docs/run-log.json`'s
+Verified: the Bool harness is clean across all shapes and seeds, the QF_UF
+division shows **zero answer changes** against the pre-fix binary, and the
+QF_UFLRA A/B between the two encodings shows zero disagreements **on those
+corpora**. That last claim was originally written without the qualifier and
+was wrong as a general statement: the encodings *do* differ on a term that is
+both a UF argument and propositionally pure, which is the shape the corpora
+happen not to contain. See `docs/run-log.json`'s
 `2026-08-26-qf-uf-boolean-cardinality-fix`.
 
 ## Reproduction
@@ -146,11 +149,34 @@ Promotion is blocked on this: it would make the bug reachable for any QF_UFLRA
 input whose only Real atoms are one-sided. See `docs/run-log.json`'s
 `2026-08-26-lra-model-phase-monotone-promotion-test`.
 
-## Fix sketch, not yet attempted
+## What the fix turned out to be
 
-Call `materialize_boolean_argument_literals()` from `solve_qf_uf` as well, and
-check whether the QF_UF EUF setup needs the canonical `true`/`false` constants
-created the same way the mixed path creates them. Regression tests must cover
-**both** shapes -- with and without arithmetic -- because the existing suite
-only covers the one that works, and a QF_UF-only case is the one that was
-missing.
+Not the sketch this section originally proposed (calling
+`materialize_boolean_argument_literals()` from `solve_qf_uf`), which was
+measured and rejected: it bridges every Bool-VALUED application, costing 2
+atoms and 3 clauses per term on a fragment where no benchmark needs it.
+
+`register_boolean_argument_terms()` registers Bool-sorted *arguments* as theory
+atoms instead, and the existing per-atom handling supplies `t = true/false`
+with a one-literal reason. No SAT variable, no clause.
+
+**It took two attempts.** The first (`fa44295`) was wrong: a registered atom
+kept the polarity flags `collect_theory_atom_polarities` had given it, and
+those record *propositional* occurrences only -- the walk never descends into
+UF arguments. A Bool constant occurring at a single polarity in the formula
+therefore looked pure to the pure-theory filter, which dropped exactly the
+assignment congruence needed. `(or p q)` is enough to trigger it, and the
+QF_UFLRA form was a **regression**: `main` answered it `unsat` before the fix
+and `sat` after, because the mixed path had been switched from the bridge
+(immune, since its atoms are created after polarity collection) to
+registration.
+
+Found by code review, not by the harness -- which could not generate a bare
+propositional literal at all, so every Bool constant it produced reached an
+assertion wrapped in a function and was never propositionally pure. The
+harness now has a `pure-polarity` shape and mixes bare literals into the
+general ones; on the buggy binary it reports **70 disagreements in 200 cases**.
+
+`TheoryAtom::theory_relevant_at_both_polarities` is the repair:
+`should_filter_assignment` never drops an atom the theory reads through a
+route other than its propositional occurrence.

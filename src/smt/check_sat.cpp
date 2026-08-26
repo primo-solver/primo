@@ -1689,8 +1689,19 @@ class BooleanClausifier {
   struct TheoryAtom {
     sat::Lit lit;
     core::TermId term;
+    // Propositional occurrences only: collect_theory_atom_polarities walks the
+    // formula structure and does NOT descend into uninterpreted-function
+    // arguments.
     bool occurs_positive = false;
     bool occurs_negative = false;
+    // Set for atoms whose meaning to the theory does not follow from their
+    // propositional occurrences, so the pure-theory filter must not drop
+    // either assignment of them. A Bool constant used as a UF argument is the
+    // case this exists for: congruence over `f(p)` needs `p = true/false`
+    // whichever way the SAT solver assigns `p`, even when `p` occurs at a
+    // single polarity in the formula. Filtering it out is a wrong answer --
+    // see bugs/qf-uf-boolean-argument-congruence.
+    bool theory_relevant_at_both_polarities = false;
   };
 
   BooleanClausifier(sat::IpasirUpBackend& backend, core::TermManager& terms,
@@ -1848,7 +1859,9 @@ class BooleanClausifier {
     if (!registered_boolean_argument_terms_.insert(term_id).second) {
       return;
     }
-    theory_atom_for_term(term_id);
+    // May return an atom that already exists with polarity flags set from the
+    // formula structure; the flag has to be set either way.
+    theory_atom_for_term(term_id).theory_relevant_at_both_polarities = true;
   }
 
   void ensure_boolean_domain_constants() {
@@ -2524,6 +2537,13 @@ bool pure_theory_filter_enabled(PureTheoryFilterMode mode) {
 bool should_filter_assignment(PureTheoryFilterMode mode, const BooleanClausifier::TheoryAtom& atom,
                               bool value) {
   if (!pure_theory_filter_enabled(mode)) {
+    return false;
+  }
+  // The filter's argument is that a purely-positive atom cannot matter to the
+  // theory when assigned false. That holds only when the atom's meaning IS its
+  // propositional occurrence, which is untrue for a term the theory reads
+  // through some other route.
+  if (atom.theory_relevant_at_both_polarities) {
     return false;
   }
   return (is_pure_positive(atom) && !value) || (is_pure_negative(atom) && value);
@@ -11004,6 +11024,9 @@ CheckSatOutcome solve_qf_uf(
   // PreparedFlatTheory::align_assignments requires the atom count to be final
   // for the whole solve, and every heuristic below reads theory_atoms().
   apply_boolean_domain_encoding(clausifier, options, statistics);
+  // Published here too, so --euf-boolean-domain=bridge-atoms is measurable on
+  // QF_UF rather than only on the mixed path.
+  statistics.set(":no.boolean-domain.bridged-terms", clausifier.boolean_domain_bridge_count());
   statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
   statistics.set(kStatPureTheoryFilterEnabled,
                  pure_theory_filter_enabled(options.pure_theory_filter) ? 1 : 0);
@@ -11287,8 +11310,15 @@ CheckSatOutcome solve_qf_uf_lra(
   bool adaptive_legacy_equality_producer = false;
   statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
   statistics.set(":no.boolean-domain.bridged-terms", clausifier.boolean_domain_bridge_count());
+  // The two equality atoms per bridged term, plus the single (= true false)
+  // atom ensure_boolean_domain_constants creates -- and that one exists only
+  // when at least one term was actually bridged, which is false under the
+  // Registration encoding. Reporting a phantom atom made the counter say 1 on
+  // a run with no bridging at all.
   statistics.set(":no.boolean-domain.equality-atoms",
-                 clausifier.boolean_domain_bridge_count() * 2 + 1);
+                 clausifier.boolean_domain_bridge_count() == 0
+                     ? 0
+                     : clausifier.boolean_domain_bridge_count() * 2 + 1);
   statistics.set(":no.mixed.euf-atoms", euf_atoms.size());
   statistics.set(":no.mixed.lra-atoms", lra_atoms.size());
   statistics.set(":no.interface.shared-real-terms", shared_real_terms.size());

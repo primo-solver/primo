@@ -2730,6 +2730,45 @@ void boolean_unit_simplification_handles_nested_rewrites() {
 // path did not, which is precisely how the gap survived nineteen days after
 // docs/bool-argument-congruence-bug.md's fix.
 
+void bool_argument_survives_the_pure_theory_filter() {
+  // `p` occurs at one polarity propositionally, in `(or p q)`, and also as an
+  // argument of `tb`. Polarity is collected from formula structure only and
+  // never descends into arguments, so `p` looked pure to the pure-theory
+  // filter, which dropped exactly the assignment congruence needed. Found by
+  // code review after the first version of this fix shipped; the fix answered
+  // it `sat`, and `main` before the fix answered the QF_UFLRA form `unsat`,
+  // so it was a regression as well as a gap.
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-sort U 0)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (declare-fun tb (Bool) U)
+    (assert (= (tb true) (tb false)))
+    (assert (not (= (tb p) (tb true))))
+    (assert (or p q))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+}
+
+void bool_argument_survives_the_filter_at_negative_polarity() {
+  // The mirror: purely-negative occurrence, dropped by the other half of the
+  // filter's condition.
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-sort U 0)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (declare-fun tb (Bool) U)
+    (assert (= (tb true) (tb false)))
+    (assert (not (= (tb p) (tb true))))
+    (assert (or (not p) q))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+}
+
 void bool_argument_domain_is_two_valued_in_qf_uf() {
   // The smallest witness: tb collapses both elements of Bool, so tb(p) and
   // tb(q) cannot differ whatever p and q are. No Bool-valued function is
@@ -3155,5 +3194,7 @@ int main() {
   bool_argument_converse_of_congruence_in_qf_uf();
   bool_argument_two_valued_case_stays_satisfiable();
   ordinary_predicates_register_no_boolean_arguments();
+  bool_argument_survives_the_pure_theory_filter();
+  bool_argument_survives_the_filter_at_negative_polarity();
   return 0;
 }
