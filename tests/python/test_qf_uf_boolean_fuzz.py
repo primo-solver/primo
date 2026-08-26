@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import random
+import re
 import unittest
 from pathlib import Path
 
@@ -64,6 +65,50 @@ class ClassificationTests(unittest.TestCase):
 
     def test_agreement_is_a_pass(self) -> None:
         self.assertEqual(MODULE.classify("unsat", "unsat"), "PASS")
+
+
+
+class RandomShapeTests(unittest.TestCase):
+    """The grammar-based shape, which exists to reach shapes nobody wrote down.
+
+    A template generator fails loudly when it is wrong. A random one fails on
+    one draw in a few hundred, halfway through a campaign -- which is exactly
+    what happened on its first run (`empty range in randrange(2, 2)` when a
+    single formula survived the skeleton fold), so these tests hammer the
+    generator itself rather than the solver.
+    """
+
+    def test_thousands_of_draws_never_raise(self) -> None:
+        rng = random.Random(99)
+        for index in range(3000):
+            case = MODULE.generate_case(rng, index, "random")
+            self.assertIn("(check-sat)", case)
+            self.assertIn("(set-logic QF_UF)", case)
+
+    def test_generated_cases_are_balanced_and_declared(self) -> None:
+        rng = random.Random(7)
+        for index in range(500):
+            case = MODULE.generate_case(rng, index, "random")
+            self.assertEqual(case.count("("), case.count(")"),
+                             msg=f"unbalanced parentheses in case {index}")
+            used = set(re.findall(r"\(fn(\d+) ", case))
+            declared = set(re.findall(r"\(declare-fun fn(\d+) ", case))
+            self.assertTrue(used <= declared,
+                            msg=f"case {index} applies an undeclared function")
+
+    def test_random_shape_puts_bool_constants_in_the_skeleton(self) -> None:
+        # The property the hand-written shapes all lacked: a Bool constant
+        # appearing as a propositional literal, not only as an argument.
+        rng = random.Random(5)
+        skeleton_hits = 0
+        for index in range(400):
+            case = MODULE.generate_case(rng, index, "random")
+            for line in case.splitlines():
+                m = re.match(r"^\(assert (b\d+)\)$", line)
+                if m:
+                    skeleton_hits += 1
+                    break
+        self.assertGreater(skeleton_hits, 20)
 
 
 if __name__ == "__main__":

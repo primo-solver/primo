@@ -44,6 +44,26 @@ Shapes, and the capacity each covers:
                   congruence, and pigeonhole over three distinct Bool terms
   converse        the specific shape the old harness could not express -- an
                   argument equality derivable ONLY from injectivity
+  random          a grammar-based generator rather than a template: random
+                  signatures over Bool and two uninterpreted sorts, random
+                  terms built bottom-up, and -- the part the shapes above all
+                  fix rather than vary -- a RANDOM PROPOSITIONAL SKELETON over
+                  those atoms. The 2026-08-26 filter bug lived on that axis:
+                  every hand-written shape wrapped Bool constants in a function
+                  and none ever placed one in the Boolean structure, so no
+                  amount of sampling within them could reach it.
+
+                  It does NOT subsume the templates, and that was measured
+                  rather than assumed. Against the binary carrying the filter
+                  bug, `pure-polarity` finds a disagreement in ~35% of cases
+                  and `random` found ZERO in 1,000 -- because triggering that
+                  bug needs four things at once (a Bool constant in argument
+                  position, the same constant bare at a single polarity, a
+                  finite-domain axiom on the same function, and a disequality
+                  that makes the proof need the dropped assignment). Random
+                  draws reached two of the four in 7 cases per 600 and all
+                  four in none. Use both: `random` for shapes nobody wrote
+                  down, the templates for shapes known to be hard.
   pure-polarity   a Bool constant occurring at a SINGLE propositional polarity
                   while also being a UF argument. Polarity is collected from
                   formula structure only, so such a term looks "pure" to the
@@ -69,6 +89,7 @@ import argparse
 import csv
 import os
 import random
+import re
 import subprocess
 from pathlib import Path
 
@@ -83,6 +104,7 @@ SHAPES = (
     "two-valued",
     "converse",
     "pure-polarity",
+    "random",
     "all",
 )
 
@@ -203,6 +225,185 @@ def two_valued_atoms(rng: random.Random) -> list[str]:
     return atoms
 
 
+# --- grammar-based generation -------------------------------------------
+#
+# Everything above is a template: the term shape varies, the propositional
+# context does not. This builds both at random, which is the only way to reach
+# a shape nobody thought to write down.
+#
+# Terms are built BOTTOM-UP by level rather than by recursive descent: a level
+# applies random signatures to terms already built, so depth is a loop bound
+# and there is no call stack to overflow on a deep signature chain.
+
+RANDOM_SORTS = ("Bool", "U", "V")
+
+
+def random_signature(rng: random.Random, index: int) -> tuple[str, list[str], str]:
+    """One uninterpreted function: (name, argument sorts, result sort).
+
+    Bool is over-weighted in argument position on purpose -- it is the sort
+    with a fixed finite domain, so it is where congruence closure needs help
+    that no other sort requires.
+    """
+    arity = rng.choice([1, 1, 2, 2, 3])
+    args = [rng.choice(("Bool", "Bool", "U", "V")) for _ in range(arity)]
+    result = rng.choice(("Bool", "Bool", "U", "V"))
+    return (f"fn{index}", args, result)
+
+
+def build_term_pool(rng: random.Random, signatures, constants, depth: int):
+    """Terms grouped by sort, built level by level."""
+    pool = {sort: list(names) for sort, names in constants.items()}
+    pool["Bool"] = pool.get("Bool", []) + ["true", "false"]
+    for _ in range(depth):
+        additions = []
+        for name, args, result in signatures:
+            # Skip a signature whose arguments cannot be supplied yet.
+            if any(not pool.get(sort) for sort in args):
+                continue
+            for _ in range(rng.randint(0, 2)):
+                chosen = [rng.choice(pool[sort]) for sort in args]
+                additions.append((result, f"({name} {' '.join(chosen)})"))
+        for result, term in additions:
+            pool.setdefault(result, []).append(term)
+        for sort in pool:
+            # Keep the pool from exploding; retain a random slice so later
+            # levels do not always build on the same few terms.
+            if len(pool[sort]) > 24:
+                pool[sort] = rng.sample(pool[sort], 24)
+    return pool
+
+
+def random_atoms(rng: random.Random, pool) -> list[str]:
+    atoms = []
+    for _ in range(rng.randint(3, 9)):
+        kind = rng.random()
+        usable = [s for s in RANDOM_SORTS if len(pool.get(s, [])) >= 2]
+        if not usable:
+            break
+        sort = rng.choice(usable)
+        terms = pool[sort]
+        if kind < 0.35:
+            a, b = rng.sample(terms, 2)
+            atoms.append(f"(= {a} {b})")
+        elif kind < 0.6:
+            a, b = rng.sample(terms, 2)
+            atoms.append(f"(distinct {a} {b})")
+        elif kind < 0.7 and len(terms) >= 3:
+            a, b, c = rng.sample(terms, 3)
+            atoms.append(f"(distinct {a} {b} {c})")
+        elif pool.get("Bool"):
+            # A Bool term used directly as a formula -- including a bare
+            # constant, which is what puts it in the propositional skeleton.
+            atoms.append(rng.choice(pool["Bool"]))
+    return [a for a in atoms if a not in ("true", "false")]
+
+
+def random_skeleton(rng: random.Random, atoms: list[str], polarity_bias=None) -> list[str]:
+    """Fold atoms into a random propositional structure, iteratively.
+
+    Negation is NOT an independent coin per occurrence. Doing that was the
+    first version and it measured badly: a constant appearing more than once
+    almost always ends up at both polarities, so nothing is ever pure, and the
+    shape has zero probability of exercising the pure-theory filter -- 1,000
+    cases found nothing on a binary a targeted shape breaks 35% of the time.
+    Real formulas are not like that; single-polarity variables are ordinary.
+    So each Bool constant gets a polarity bias for the whole case, and only
+    unbiased atoms flip per occurrence.
+    """
+    polarity_bias = polarity_bias or {}
+    formulas = []
+    for atom in atoms:
+        bias = polarity_bias.get(atom)
+        if bias is True:
+            formulas.append(atom)
+        elif bias is False:
+            formulas.append(f"(not {atom})")
+        else:
+            formulas.append(atom if rng.randrange(2) else f"(not {atom})")
+    for _ in range(rng.randint(1, 3)):
+        if len(formulas) < 2:
+            break
+        picked = rng.sample(formulas, min(len(formulas), rng.choice([2, 2, 3])))
+        connective = rng.choice(["or", "and", "or", "=>", "xor"])
+        if connective == "=>" and len(picked) > 2:
+            picked = picked[:2]
+        formulas.append(f"({connective} {' '.join(picked)})")
+        if rng.randrange(4) == 0 and len(formulas) >= 3:
+            cond, then, other = rng.sample(formulas, 3)
+            formulas.append(f"(ite {cond} {then} {other})")
+    if not formulas:
+        return []
+    keep = rng.randint(1, min(len(formulas), 7))
+    return rng.sample(formulas, keep)
+
+
+def random_case(rng: random.Random) -> tuple[str, list[str]]:
+    """Returns (declarations, assertions)."""
+    signatures = [random_signature(rng, i) for i in range(rng.randint(2, 4))]
+    constants = {
+        "Bool": [f"b{i}" for i in range(rng.randint(2, 4))],
+        "U": [f"u{i}" for i in range(rng.randint(1, 3))],
+        "V": [f"v{i}" for i in range(rng.randint(1, 2))],
+    }
+    decls = ["(declare-sort U 0)", "(declare-sort V 0)"]
+    for sort, names in constants.items():
+        decls += [f"(declare-fun {n} () {sort})" for n in names]
+    for name, args, result in signatures:
+        decls.append(f"(declare-fun {name} ({' '.join(args)}) {result})")
+
+    pool = build_term_pool(rng, signatures, constants, rng.randint(1, 3))
+    atoms = random_atoms(rng, pool)
+    if not atoms:
+        atoms = [rng.choice(constants["Bool"])]
+    # Give each Bool constant a fixed polarity for this case, some of the time.
+    # A constant that also appears as a function argument is then exactly the
+    # shape whose theory meaning does not follow from its propositional
+    # occurrences.
+    polarity_bias = {}
+    for name in constants["Bool"]:
+        roll = rng.random()
+        if roll < 0.35:
+            polarity_bias[name] = True
+        elif roll < 0.7:
+            polarity_bias[name] = False
+    assertions = random_skeleton(rng, atoms, polarity_bias)
+
+    # Two nudges toward the interesting region. Neither is required for
+    # validity; both raise the rate at which a case is unsat for a reason that
+    # needs |Bool| = 2 rather than for a propositional reason.
+    # Relate the finite-domain axiom to a function the case actually uses on a
+    # Bool constant. Picking an unrelated function was measured and does
+    # nothing: 28 of 1,000 cases had a pure bare constant, an argument
+    # occurrence AND an axiom, yet none connected them, so the shape found
+    # zero bugs on a binary the targeted shape breaks 35% of the time. An
+    # incoherent random case is a case about nothing.
+    body_so_far = " ".join(assertions)
+    bool_unary = [n for n, a, r in signatures if a == ["Bool"]]
+    connected = [n for n in bool_unary if re.search(r"\(%s b\d+" % n, body_so_far)]
+    candidates = connected or bool_unary
+    if candidates and rng.randrange(2):
+        f = rng.choice(candidates)
+        assertions.append(rng.choice([f"(distinct ({f} true) ({f} false))",
+                                      f"(= ({f} true) ({f} false))"]))
+        # And give the axiom something to bite on: compare that function at a
+        # Bool constant against its value at a constant.
+        applied = re.findall(r"\(%s (b\d+)\)" % f, body_so_far)
+        if applied and rng.randrange(2):
+            arg = rng.choice(applied)
+            other = rng.choice(["true", "false"])
+            assertions.append(rng.choice([f"(distinct ({f} {arg}) ({f} {other}))",
+                                          f"(= ({f} {arg}) ({f} {other}))"]))
+    if rng.randrange(2):
+        # A bare Bool constant, so the term is in the Boolean skeleton as well
+        # as in argument position -- at its biased polarity, so the occurrence
+        # does not accidentally cancel the bias set above.
+        name = rng.choice(constants["Bool"])
+        bias = polarity_bias.get(name)
+        assertions.append(f"(not {name})" if bias is False else name)
+    return "\n".join(decls), assertions
+
+
 def pure_polarity_case(rng: random.Random) -> list[str]:
     """A Bool constant that is propositionally pure AND a UF argument.
 
@@ -277,6 +478,12 @@ ATOM_BUILDERS = {
 def generate_case(rng: random.Random, index: int, shape: str) -> str:
     if shape == "all":
         shape = rng.choice([name for name in SHAPES if name != "all"])
+
+    if shape == "random":
+        decls, assertions = random_case(rng)
+        body = "\n".join(f"(assert {a})" for a in assertions)
+        return (f"; qf_uf boolean fuzz case {index}, shape random\n"
+                f"(set-logic QF_UF)\n{decls}\n{body}\n(check-sat)\n")
 
     if shape == "pure-polarity":
         assertions = pure_polarity_case(rng)
