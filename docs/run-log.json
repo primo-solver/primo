@@ -28145,6 +28145,32 @@
       "artifacts": "primo-cadical-profile/results/qf-lia-full-compare-128768 and qf-lia-premerge-control; primo-qflra/results/qf-lia-full-compare-128769.",
       "evidence_status": "slurm-complete-current",
       "outcome": "The merge is safe on both fragments: zero wrong answers and zero contradictory answers across 15,059 files, with QF_LIA -11 and QF_LRA 0 net, both entirely inside the timeout band. The session's QF_LIA gain is confirmed at cluster scale: +339 answered, PAR2 43.14 -> 40.08."
+    },
+    {
+      "id": "2026-08-26-lra-model-phase-monotone-promotion-test",
+      "started_at": "2026-08-26",
+      "recorded_at": "2026-08-26",
+      "kind": "measurement",
+      "scope": "Promotion test for --lra-model-phase and --monotone-elimination, both default-off, across all three arithmetic fragments at their standard timeouts. Monotone elimination was rejected in August on a 237-file 10s sample (lead 9); this is the first full-corpus reading of either flag.",
+      "commit": "3c2fbf1",
+      "branch": "main",
+      "environment": {
+        "type": "slurm",
+        "job": "129188-129194 (7 arms, 320 tasks); baselines are 129088 (QF_LRA), 129148 (QF_UFLRA), 128768 (QF_LIA), same binary and corpora"
+      },
+      "results": {
+        "which_fragment_each_flag_can_reach": "Measured before spending cluster time rather than assumed. --monotone-elimination eliminates variables on 24 of 48 sampled QF_LRA files (2,157 variables), 4 of 35 QF_UFLRA files, and 0 of 58 QF_LIA files -- it is Real-variable elimination, so a pure-Int problem has no candidates and that arm was not run. See lead 14: the QF_LIA zero is definitional, not evidence that Int has no one-sided variables.",
+        "qf_lra_300s_both_flags_win": "1,753 files. default 1,655 (994 sat / 661 unsat) PAR2 46.33; --lra-model-phase 1,678 PAR2 36.53; --monotone-elimination 1,668 PAR2 41.51; both 1,680 PAR2 35.14. Zero wrong answers and zero answer contradictions in every arm. At 1,680 primo would pass OpenSMT's 1,670 and lead this division.",
+        "the_model_phase_gain_is_mechanism_not_churn": "34 gained and 11 lost, and only 4 of the 34 finish past 85% of the limit -- these are files that now complete in 3-59s against a 300s timeout, not boundary crossings. The paired time ratio over the 576 files both arms solve in more than a second has median 0.775, with 344 files more than 10% faster against 135 more than 10% slower. That is a broad speedup, not a lucky tail.",
+        "the_11_losses_are_real_and_should_not_be_hidden": "None of the 11 lost files were anywhere near the limit under the default: they took 9, 18, 21, 22, 22, 63, 112, 203, 220, 228 and 234 seconds and now time out. A heuristic that reorders search has genuine losers; the net is +23 and the recommendation stands, but the losses are mechanism too, not noise.",
+        "monotone_overturns_its_own_rejection_but_weakly": "17 gained, 4 lost, PAR2 46.33 -> 41.51. The paired median ratio is 0.999 -- exactly the neutrality lead 9 measured on the 237-file 10s sample -- so this is not a speedup; it converts a specific set of timeouts into solves without making the median instance faster. The August rejection was not wrong about the mechanism, it was wrong about the population: at 10s on 237 files the instances this helps had not yet begun to time out.",
+        "qf_uflra_says_no_to_model_phase": "default 1,272, --lra-model-phase 1,269 (0 gained, 3 lost), --monotone-elimination 1,273 (1 gained, 0 lost), both 1,269. Model phase is 11% faster on the median non-trivial file (ratio 0.889) and still loses three instances outright. Monotone is inert here, firing on 4 of 35 sampled files.",
+        "qf_lia_is_a_coin_flip_with_a_bias": "13,306 files: default 9,031, --lra-model-phase 9,072, PAR2 40.17 -> 39.84. But 178 files were gained and 137 lost, and their times are the give-away: the gained files solve in under a second under model phase and time out by default, the lost ones the reverse. This flag either finds the path immediately or never on this fragment. The paired ratio on everything else is median 0.997 with 344 files faster and 344 slower -- perfectly symmetric. Net +41 against a churn of 315 is about 2.3 standard deviations under a sign test: suggestive, not decisive, and high variance either way.",
+        "baseline_sanity": "The QF_LRA default arm reads 1,655 against the 1,657 recorded on 2026-08-07 at 300s, so the gains are measured against a normal baseline rather than a depressed one."
+      },
+      "artifacts": "primo-qflra/results/promo-lra-{phase,mono,both}; primo-no-euf-scan-20c8db1/slurm-results/promo-ufl-{phase,mono,both}; primo-cadical-profile/results/promo-lia-phase.",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Promote both on QF_LRA: +25 solved together, PAR2 46.33 -> 35.14, zero wrong. Do NOT promote --lra-model-phase globally -- it costs 3 files on QF_UFLRA and is a high-variance coin flip on QF_LIA. --monotone-elimination is safe everywhere it was measured but only pays on QF_LRA. The decision this leaves open is whether Primo wants per-fragment defaults, which it does not currently have."
     }
   ]
 }
