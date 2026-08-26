@@ -1,0 +1,19 @@
+Local reproduction, 2026-08-26, primo 28e44b6 (main):
+
+./build/primo --quiet witness.smt2
+sat
+
+contrib/local/bin/z3 witness.smt2
+unsat
+
+contrib/local/bin/cvc5 witness.smt2
+unsat
+
+Primo reports sat; z3 5.0.0 and cvc5 1.3.4 both report unsat.
+
+Adding any Real atom, e.g. (assert (< 0 x)), makes Primo agree on unsat:
+  ./build/primo --quiet   -> unsat
+
+Statistics, with and without a Real atom present:
+  with    (< 0 x): :no.boolean-domain.bridged-terms 8, :no.boolean-domain.equality-atoms 17
+  without        : neither counter is emitted at all
