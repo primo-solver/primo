@@ -48,6 +48,7 @@ notes it points to.
 | [12](#lead-qflia) | QF_LIA preprocessing disabled; conflict clauses do not generalize | +339 answered on the full division from 12d and 12f so far | done/partial | **12d and 12f implemented; 12b, 12c, 12e open** |
 | [13](#lead-qflira) | QF_LIRA -- frontend gap, not a solver gap | search core already runs mixed tableaus | medium (frontend) | **open; run the falsifier first** |
 | [14](#lead-monotone-int) | Monotone elimination for `Int`, not just `Real` | unmeasured -- the QF_LIA zero is definitional | small, gated on 9 | **open; measure candidate density first** |
+| [15](#lead-boolean-bridge-exclusion) | Drop the Boolean bridge's mutual-exclusion clause | redundant for soundness; 223 vs 270 conflicts on 208 files | small, gated on the QF_UF fix | **open; do not bundle with the fix** |
 | -- | D2 floating-point-guided basis selection | ~14% in the literature | medium | open, see [](qf-lra-heuristics.md) |
 | -- | D4 revised simplex, LU-factored basis | unknown | largest | open, see [](qf-lra-heuristics.md) |
 | -- | H4 batched bound assertion; H6 DL fast path; H11 fill-in-aware preprocessing elimination | -- | -- | design only, see [](qf-lra-heuristics.md) |
@@ -1900,6 +1901,52 @@ conservative disqualification rules. If the median instance has zero such
 variables -- as the QF_LRA-shaped intuition may not survive contact with
 `slacks`, `convert` and `miplib` -- the lead closes on a measurement that
 costs an afternoon, with no solver change written.
+
+(lead-boolean-bridge-exclusion)=
+## 15. Drop the Boolean bridge's mutual-exclusion clause
+
+**Status: open, added 2026-08-26.** Small, and worth doing only alongside the
+fix in [](../bugs/qf-uf-boolean-argument-congruence/README.md), which will
+multiply this clause across a second solver path.
+
+**Claim.** The third clause `ensure_boolean_domain_bridge` emits --
+`(not (t = true)) or (not (t = false))` -- is redundant for soundness and
+does not appear to buy propagation. Asserting both equalities merges
+`t ~ true` and `t ~ false`, hence `true ~ false` by transitivity, which
+contradicts the unit `not (true = false)` that
+`ensure_boolean_domain_constants` already asserts. EUF raises that conflict
+itself; the clause only lets SAT prune the combination without a theory
+round-trip.
+
+**Evidence, 2026-08-26.** Removed the clause, rebuilt, and measured: 20/20
+ctest suites pass, all eight `benchmarks/seeds/qf_uflra/seed_bool_*` seeds
+return identical answers, and a 200-case differential run of
+`qf_uflra_smoke_fuzz.py --shape bool-arguments` against z3 is 200 PASS.
+Summing `:sat.conflicts` over those 208 files gives **223 without the clause
+against 270 with it** -- so there is no sign it reduces search. That number is
+a search-trajectory difference on small files, not a work measure, and it is
+not evidence the clause *hurts* either; it is evidence the clause has not been
+shown to help.
+
+**Why it is worth the trouble at all.** The bridge is the cardinality axiom
+for `Bool`, and its cost is what makes the QF_UF fix delicate: 2 atoms and 3
+clauses per bridged term, on a fragment where a naive bridge would touch every
+predicate application. Dropping this clause cuts the per-term clause cost by a
+third.
+
+**Sequencing.** Do NOT bundle it with the soundness fix. The clause lives on
+the mixed path, which is currently correct, so removing it changes QF_UFLRA
+behaviour and a fix that also changes behaviour elsewhere is hard to bisect
+when something later regresses. Land the narrow bridge first, then measure
+removal on both paths together.
+
+**Falsifier, stated before the work.** Full QF_UFLRA division at 120s and
+QF_UF at its standard timeout, with and without the clause, same binary
+otherwise. If solved counts or PAR2 move measurably in either direction the
+clause is not free and the question is settled either way; if both are flat,
+remove it and keep the smaller encoding. Zero answer disagreements is a
+precondition, not a result -- the clause is redundant, so any disagreement
+means the redundancy argument is wrong and the lead closes immediately.
 
 ## Complementarity: losing on average is not the same as useless
 

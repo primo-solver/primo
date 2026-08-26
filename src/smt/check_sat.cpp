@@ -1807,8 +1807,12 @@ class BooleanClausifier {
     // The SAT value of the Boolean term selects its canonical EUF value.
     backend_.add_clause(sat::Clause{negate(term_lit), equal_true});
     backend_.add_clause(sat::Clause{term_lit, equal_false});
-    // Keep the two canonical equalities mutually exclusive. The unit
-    // disequality above separately establishes true != false in EUF.
+    // Propagation shortcut, NOT a soundness requirement: asserting both
+    // equalities merges t with true and with false, hence true with false,
+    // which the unit disequality above already forbids -- EUF raises that
+    // conflict on its own. This clause only lets SAT prune the combination
+    // without the theory round-trip, and it has not been shown to pay for
+    // itself. See open-leads.md lead 15 before assuming it is load-bearing.
     backend_.add_clause(sat::Clause{negate(equal_true), negate(equal_false)});
   }
 
