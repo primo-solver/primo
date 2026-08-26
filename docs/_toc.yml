@@ -23,6 +23,8 @@ parts:
       - file: arithmetic
         sections:
           - file: qf-lia-branch-and-bound
+            sections:
+              - file: qf-lia-profile
           - file: qf-lra-heuristics
           - file: tuning-parameters
           - file: open-leads
@@ -62,6 +64,8 @@ parts:
       - file: papers/model-based-theory-combination
       - file: papers/fast-linear-arithmetic-dpllt
       - file: papers/arithmetic-solving-in-z3
+        sections:
+          - file: papers/word-gcd-notes
       - file: papers/lra-atom-canonicalization
       - file: papers/griggio-mathsat-thesis
       - file: papers/monotone-variable-elimination

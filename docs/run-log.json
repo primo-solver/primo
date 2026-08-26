@@ -28196,6 +28196,37 @@
       "artifacts": "primo-cadical-profile/results/boolfix-qfuf-{new,bridge,prefix}; primo-no-euf-scan-20c8db1/slurm-results/boolfix-uflra-{new,bridge}; primo-boolfix/fuzz-results/qf-uf-boolean-129705.",
       "evidence_status": "slurm-complete-current",
       "outcome": "Fixed and verified. Zero answer changes on the QF_UF division, zero disagreements between the two encodings on either fragment, 8,000 fuzz cases clean across all shapes, and QF_UF 3% faster on non-trivial files. bridge-atoms remains selectable only to keep this A/B reproducible and should be deleted."
+    },
+    {
+      "id": "2026-08-26-merged-main-qf-lia-current-tip-fuzz-gate",
+      "started_at": "2026-08-26",
+      "recorded_at": "2026-08-26",
+      "kind": "fuzz",
+      "scope": "Current-tip post-merge QF_LIA correctness campaign after the word-GCD Rational changes and merge-readiness repairs: the full checked-in 11-task FuzzSMT/model-validation plus real-seed opfuzz/typefuzz gate, followed by a strict direct replay of all 61 original mutation seeds against z3.",
+      "commit": "8a4048b",
+      "branch": "main",
+      "environment": {
+        "type": "slurm",
+        "host": "llm2smt-slurm",
+        "workdir": "primo-qflia-fuzz-gate",
+        "job": "129508 (11-task campaign, all COMPLETED 0:0); 129527 (strict seed replay, FAILED 1:0 because 10 results were incomplete rather than all-pass)",
+        "binary": "primo 0.1.0, git 8a4048b, Release, CaDiCaL cadical-3.0.0-7b99c07"
+      },
+      "commands": {
+        "workspace": "python3 scripts/slurm_prepare_benchmark_workspace.py --remote-dir primo-qflia-fuzz-gate --reuse-dependencies --contrib-target contrib-required --contrib-target contrib-yinyang --require-tool {z3,fuzzsmt,dolmen,typefuzz,opfuzz}; mandatory --check-only repeated immediately before each submission",
+        "seed_corpus": "python3 scripts/build_fuzz_seed_corpus.py --root sandbox/non-incremental/QF_LIA --out benchmarks/seeds/qf_lia_division --per-family 2 --max-bytes 200000; 32 families, 61 seeds, content-manifest SHA-256 896f215200ff397b862648bb6113ae01eb08e61a9bb23be53fd0e61f8d604873",
+        "campaign": "sbatch --export=ALL,PRIMO_WORKDIR=<prepared-workspace> scripts/slurm_qf_lia_model_fuzz_gate.sbatch",
+        "strict_seed_replay": "python3 scripts/check_solver_seed_corpus.py --seeds benchmarks/seeds/qf_lia_division --solver build-slurm-rel/primo --solver-arg=--quiet --ref z3 --timeout 10 --out fuzz-results/qf-lia-seed-check-8a4048b/summary.csv (submitted through a locally validated temporary sbatch file)"
+      },
+      "results": {
+        "fuzzsmt_answer_differential": "4,000 generated QF_LIA formulas, seeds 229508 through 229515: 3,909 PASS; 91 TIMEOUT (79 Primo timeout / z3 sat, 12 timeout in both); zero OUR_SAT_REF_UNSAT, OUR_UNSAT_REF_SAT, REF_DISAGREEMENT, crash, parser/type error, or unknown classification.",
+        "model_validation": "4,000 rows: 3,475 pass, 450 not-sat, 75 solver-timeout; zero model-error, solver-error, invalid model, crash, or unexpected outcome.",
+        "mutation": "The 61-seed corpus covered all 32 QF_LIA families. One 1,500-second opfuzz task reached 19,456 solver calls; two 1,500-second typefuzz tasks reached 1,306 and 944 calls. All three reported zero bug files. The mutation tools skipped the two seeds larger than their 200,000-byte limit, and all tasks were time-boxed before exhausting the whole corpus; neither limitation is hidden as full-seed coverage.",
+        "strict_seed_replay": "51 PASS, 10 INCOMPLETE, zero DISAGREEMENT and zero STATUS_MISMATCH. The incomplete pairs were five Primo timeout / z3 sat, three timeout in both, and two Primo unknown / z3 unsat. Because check_solver_seed_corpus.py is intentionally all-pass-strict, job 129527 exited 1:0; this is incompleteness/performance evidence, not a clean strict seed gate and not a wrong answer."
+      },
+      "artifacts": "remote:primo-qflia-fuzz-gate/fuzz-results/qf-lia-model-gate-129508/ (2.2GB full campaign); remote:primo-qflia-fuzz-gate/fuzz-results/qf-lia-seed-check-8a4048b/summary.csv; lightweight local ignored copies: fuzz-results/qf-lia-model-gate-129508/, fuzz-results/qf-lia-seed-check-8a4048b/, slurm_logs/qf-lia-model-gate-129508/",
+      "evidence_status": "slurm-complete-current; mutation campaign clean, strict seed complement non-passing only for 10 incomplete results",
+      "outcome": "The current merged-main candidate passes the required 4,000-case answer/model campaign and the real-seed mutation campaign with zero wrong answers, crashes, invalid models, or mutation bug files. The additional direct seed replay honestly exposes ten timeout/unknown cases and therefore is not called a strict pass; none is a concrete disagreement or status mismatch."
     }
   ]
 }
