@@ -47,20 +47,40 @@ universe where the `Bool` sort has more than two elements.
 ## Root cause
 
 `p` and `q` occur as **arguments of uninterpreted functions**, so they are EUF
-terms as well as SAT variables. Nothing in the pure QF_UF path connects the EUF
-term `p` to the EUF constants `true` and `false`, so congruence closure may give
-it a third value -- and then `f(p)` need not equal either `f(true)` or
-`f(false)`, and the contradiction never arises.
+terms as well as SAT variables. Deciding this formula needs the step
+`f(p) = f(q)` **implies** `p = q`, which is not congruence -- it is the
+converse, and it holds only because `Bool` has exactly two elements and
+`(distinct (f false) (f true))` makes `f` injective on them. To derive it, the
+solver has to case-split on the argument terms, which requires the EUF terms
+`p` and `q` to be linked to the EUF constants `true` and `false`.
 
-The step that establishes the link exists and is correct:
-`BooleanClausifier::materialize_boolean_argument_literals()` (check_sat.cpp),
-which creates the `(= term true)` / `(= term false)` atoms, selects them from
-the term's SAT literal, and asserts the two constants distinct. Its counters
-are `:no.boolean-domain.bridged-terms` and `:no.boolean-domain.equality-atoms`.
+`BooleanClausifier::materialize_boolean_argument_literals()` (check_sat.cpp)
+is that link: it creates the `(= term true)` / `(= term false)` atoms, selects
+them from the term's SAT literal, enforces mutual exclusion, and asserts the
+two constants distinct. Counters `:no.boolean-domain.bridged-terms` and
+`:no.boolean-domain.equality-atoms`.
 
 **It is called from exactly one place: `solve_qf_uf_lra`.** `solve_qf_uf` never
-calls it. On the witness the counters read 8 and 17 when a Real atom keeps the
-input on the mixed path, and are not emitted at all otherwise.
+calls it.
+
+## What still works, and why that hid the bug
+
+The QF_UF path is *not* broadly broken, which is why this went unnoticed. Every
+shape whose contradiction is reachable without that case split is answered
+correctly, because SAT plus ordinary congruence closure is enough:
+
+| shape | QF_UF result |
+| --- | --- |
+| `(= p q)` asserted, `(distinct (f p) (f q))` -- plain congruence | correct |
+| `(= p q)` asserted, contradiction through a Bool-valued result `(g p q)` | correct |
+| `f(p) = f(q)`, `f` injective, and `p != q` stated as `xor`, as two clauses, or as `(not (= p q))` | correct |
+| three pairwise-distinct Bool-valued applications | correct (decided propositionally) |
+| **`f(p) = f(q)`, `f` injective, and `p != q` only derivable** | **WRONG** |
+
+Six of the eight `benchmarks/seeds/qf_uflra/seed_bool_*` seeds, converted to
+QF_UF by hand, are answered correctly. The failing case is specifically the one
+where the argument equality must be *derived* from two-valuedness rather than
+being given.
 
 ## Why the test suite did not catch it
 
