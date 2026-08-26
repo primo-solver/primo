@@ -206,7 +206,7 @@ uninterpreted-sort variant must keep answering `unsat`.
 
 The fix above landed with five regression tests and a seed corpus. Nineteen
 days later the same shape produced another wrong answer:
-[](../bugs/qf-uf-boolean-argument-congruence/README.md). It is not a
+[bugs/qf-uf-boolean-argument-congruence](../bugs/qf-uf-boolean-argument-congruence/README.md). It is not a
 regression of this fix -- forward congruence still works -- but the
 **converse**:
 
@@ -257,7 +257,12 @@ minimal witness, the converse witness, a pigeonhole case, and -- deliberately
 -- two shapes that already pass, so a future fix is measured against what must
 not regress rather than only against what currently fails.
 
-## Fixed 2026-08-26 (`fa44295`)
+## Fixed 2026-08-26 (`fa44295`, corrected in `d8e8595`)
+
+The mechanism, the correctness argument for it, and the invariant the
+pure-theory filter has to respect are written up in
+[](euf-boolean-arguments.md) -- this section records the history and the
+measurements.
 
 `register_boolean_argument_terms()` registers Bool-sorted arguments of
 uninterpreted applications as theory atoms; the existing per-atom handling
@@ -285,6 +290,6 @@ baseline run is what actually established the fix is answer-neutral.
 **Reference solvers on the same shapes.** cvc5 1.3.4 and Yices 2.7.0 agree with
 z3 on 1,900 generated QF_UF cases and 600 mixed QF_UFLRA cases each. OpenSMT
 2.9.2 is clean on pure QF_UF but wrong on **58 of 600** mixed cases,
-reproducing [](../bugs/opensmt-qf-uflra-boolean-disagreement/README.md) at
+reproducing [the OpenSMT bug report](../bugs/opensmt-qf-uflra-boolean-disagreement/README.md) at
 scale. Two of the five solvers we compare against have had a bug in this exact
 corner.
