@@ -2,13 +2,23 @@
 
 ## Status
 
-**Open Primo soundness bug.** Primo answers `sat` on an unsatisfiable QF_UF
-formula, and the model it prints does not satisfy that formula. z3 5.0.0 and
-cvc5 1.3.4 both answer `unsat`.
+**FIXED 2026-08-26 in `fa44295`.** Kept as the reproduction record; the
+witnesses are regression seeds under `benchmarks/seeds/qf_uf/` and unit tests
+in `tests/unit/boolean_solver_tests.cpp`.
 
-Scope is the **pure QF_UF solving path** (`solve_qf_uf`). That path also
-handles QF_UFLRA inputs with no surviving Real atom, so `witness-uflra.smt2`
-is wrong for the same reason. The mixed QF_UFLRA path is unaffected.
+The fix is registration, not new clauses: `register_boolean_argument_terms()`
+registers Bool-sorted *arguments* of uninterpreted applications as theory
+atoms, and the branches described under "Root cause" -- which already existed
+in both EUF engines -- then assert `t = true/false` with the term's own literal
+as the reason. It costs no SAT variable and no clause. Both solver paths now go
+through one `apply_boolean_domain_encoding` dispatcher so they cannot drift
+apart again, which is what produced this bug.
+
+Verified: the Bool harness went 91 disagreements in 600 cases to 0, the SLURM
+gate ran 8,000 cases across all eight shapes clean, the QF_UF division showed
+**zero answer changes** against the pre-fix binary, and the QF_UFLRA A/B showed
+zero disagreements between the two encodings. See `docs/run-log.json`'s
+`2026-08-26-qf-uf-boolean-cardinality-fix`.
 
 ## Reproduction
 

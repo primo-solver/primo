@@ -48,7 +48,7 @@ notes it points to.
 | [12](#lead-qflia) | QF_LIA preprocessing disabled; conflict clauses do not generalize | +339 answered on the full division from 12d and 12f so far | done/partial | **12d and 12f implemented; 12b, 12c, 12e open** |
 | [13](#lead-qflira) | QF_LIRA -- frontend gap, not a solver gap | search core already runs mixed tableaus | medium (frontend) | **open; run the falsifier first** |
 | [14](#lead-monotone-int) | Monotone elimination for `Int`, not just `Real` | unmeasured -- the QF_LIA zero is definitional | small, gated on 9 | **open; measure candidate density first** |
-| [15](#lead-boolean-bridge-exclusion) | Drop the Boolean bridge's mutual-exclusion clause | redundant for soundness; 223 vs 270 conflicts on 208 files | small, gated on the QF_UF fix | **open; do not bundle with the fix** |
+| [15](#lead-boolean-bridge-exclusion) | Delete the `bridge-atoms` Boolean-domain encoding | superseded by registration: 0 disagreements on both fragments, 3% faster on QF_UF | small (deletion) | **open; the A/B is done and came out flat** |
 | -- | D2 floating-point-guided basis selection | ~14% in the literature | medium | open, see [](qf-lra-heuristics.md) |
 | -- | D4 revised simplex, LU-factored basis | unknown | largest | open, see [](qf-lra-heuristics.md) |
 | -- | H4 batched bound assertion; H6 DL fast path; H11 fill-in-aware preprocessing elimination | -- | -- | design only, see [](qf-lra-heuristics.md) |
@@ -1903,50 +1903,46 @@ variables -- as the QF_LRA-shaped intuition may not survive contact with
 costs an afternoon, with no solver change written.
 
 (lead-boolean-bridge-exclusion)=
-## 15. Drop the Boolean bridge's mutual-exclusion clause
+## 15. Delete the `bridge-atoms` Boolean-domain encoding
 
-**Status: open, added 2026-08-26.** Small, and worth doing only alongside the
-fix in [](../bugs/qf-uf-boolean-argument-congruence/README.md), which will
-multiply this clause across a second solver path.
+**Status: open, added 2026-08-26, rewritten the same day after the QF_UF
+cardinality fix (`fa44295`) landed.**
 
-**Claim.** The third clause `ensure_boolean_domain_bridge` emits --
-`(not (t = true)) or (not (t = false))` -- is redundant for soundness and
-does not appear to buy propagation. Asserting both equalities merges
-`t ~ true` and `t ~ false`, hence `true ~ false` by transitivity, which
-contradicts the unit `not (true = false)` that
-`ensure_boolean_domain_constants` already asserts. EUF raises that conflict
-itself; the clause only lets SAT prune the combination without a theory
-round-trip.
+**Claim.** `EufBooleanDomain::BridgeAtoms` should be deleted, along with
+`materialize_boolean_argument_literals`, `ensure_boolean_domain_bridge`,
+`ensure_boolean_domain_constants` and the `--euf-boolean-domain` flag. The
+default `Registration` encoding supersedes it: same information to congruence
+closure, no SAT variable and no clause per term instead of 2 atoms and 3
+clauses, and it does not bridge Bool-VALUED applications, which are already
+theory atoms.
 
-**Evidence, 2026-08-26.** Removed the clause, rebuilt, and measured: 20/20
-ctest suites pass, all eight `benchmarks/seeds/qf_uflra/seed_bool_*` seeds
-return identical answers, and a 200-case differential run of
-`qf_uflra_smoke_fuzz.py --shape bool-arguments` against z3 is 200 PASS.
-Summing `:sat.conflicts` over those 208 files gives **223 without the clause
-against 270 with it** -- so there is no sign it reduces search. That number is
-a search-trajectory difference on small files, not a work measure, and it is
-not evidence the clause *hurts* either; it is evidence the clause has not been
-shown to help.
+**Evidence already in hand.** Both encodings were A/B-ed on one binary
+(2026-08-26). QF_UF division, 7,503 files at 60s: zero answer disagreements,
+and registration 3% faster over the 881 files both solve in more than a second.
+QF_UFLRA, 1,284 files at 120s: 1,272 answered in both arms, identical 761/511
+split, zero gained, zero lost, zero disagreements. The Bool fuzz gate is clean
+under both. See `docs/run-log.json`'s
+`2026-08-26-qf-uf-boolean-cardinality-fix`.
 
-**Why it is worth the trouble at all.** The bridge is the cardinality axiom
-for `Bool`, and its cost is what makes the QF_UF fix delicate: 2 atoms and 3
-clauses per bridged term, on a fragment where a naive bridge would touch every
-predicate application. Dropping this clause cuts the per-term clause cost by a
-third.
+**The original form of this lead is now moot.** It asked whether the bridge's
+third clause -- `(not (t = true)) or (not (t = false))` -- was redundant. It
+is: asserting both merges `true` with `false`, which the unit disequality
+already forbids, so EUF raises that conflict itself. Removing it kept 20/20
+suites, all eight QF_UFLRA bool seeds and a 200-case differential run
+unchanged, with conflicts over those 208 files going 270 -> 223. But the clause
+only exists inside the encoding this lead now proposes to delete outright, so
+the narrower question does not need answering separately.
 
-**Sequencing.** Do NOT bundle it with the soundness fix. The clause lives on
-the mixed path, which is currently correct, so removing it changes QF_UFLRA
-behaviour and a fix that also changes behaviour elsewhere is hard to bisect
-when something later regresses. Land the narrow bridge first, then measure
-removal on both paths together.
+**Cost.** Small: a deletion plus removing one option and its plumbing. The only
+reason it is not already done is that the flag is what makes the A/B above
+reproducible, and deleting it in the same commit as the fix would have made a
+later regression harder to bisect.
 
-**Falsifier, stated before the work.** Full QF_UFLRA division at 120s and
-QF_UF at its standard timeout, with and without the clause, same binary
-otherwise. If solved counts or PAR2 move measurably in either direction the
-clause is not free and the question is settled either way; if both are flat,
-remove it and keep the smaller encoding. Zero answer disagreements is a
-precondition, not a result -- the clause is redundant, so any disagreement
-means the redundancy argument is wrong and the lead closes immediately.
+**Falsifier.** None needed beyond what is recorded -- the measurement that
+would have justified keeping `bridge-atoms` has already been taken and came
+out flat. If anything, delete it only after one more full QF_UFLRA run at the
+next opportunity, so the deletion rests on two independent readings rather
+than one.
 
 ## Complementarity: losing on average is not the same as useless
 

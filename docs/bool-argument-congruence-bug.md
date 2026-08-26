@@ -256,3 +256,35 @@ regression.
 minimal witness, the converse witness, a pigeonhole case, and -- deliberately
 -- two shapes that already pass, so a future fix is measured against what must
 not regress rather than only against what currently fails.
+
+## Fixed 2026-08-26 (`fa44295`)
+
+`register_boolean_argument_terms()` registers Bool-sorted arguments of
+uninterpreted applications as theory atoms; the existing per-atom handling
+supplies `t = true/false` to the closure with a one-literal reason. Both paths
+now share `apply_boolean_domain_encoding`, so the QF_UF and mixed encodings
+cannot diverge a third time.
+
+Measured, not assumed:
+
+| check | result |
+| --- | --- |
+| Bool harness, 600 cases | 91 disagreements -> **0** |
+| SLURM gate, 8 shapes x 1,000 | **8,000 PASS** |
+| QF_UF division, pre-fix vs fixed | **0 answer changes** (7,496 -> 7,497 answered) |
+| QF_UF, registration vs bridge-atoms | 0 disagreements; registration **3% faster** on the 881 files both solve in >1s |
+| QF_UFLRA 1,284 at 120s | 1,272 both arms, identical sat/unsat, **0 disagreements** |
+
+One claim in the seed corpus is wrong and worth correcting here: it says no
+SMT-LIB QF_UF file uses Bool-sorted arguments. Sampling 289 division files
+found **five** that do -- four `2018-Goel-hwbench` and one `20190906-CLEARSY`.
+None of them changed answer, so the hole was reachable but unexercised; the
+point is that "no benchmark does this" was an assumption, and the pre-fix
+baseline run is what actually established the fix is answer-neutral.
+
+**Reference solvers on the same shapes.** cvc5 1.3.4 and Yices 2.7.0 agree with
+z3 on 1,900 generated QF_UF cases and 600 mixed QF_UFLRA cases each. OpenSMT
+2.9.2 is clean on pure QF_UF but wrong on **58 of 600** mixed cases,
+reproducing [](../bugs/opensmt-qf-uflra-boolean-disagreement/README.md) at
+scale. Two of the five solvers we compare against have had a bug in this exact
+corner.

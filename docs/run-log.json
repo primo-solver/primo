@@ -28172,6 +28172,30 @@
       "artifacts": "primo-qflra/results/promo-lra-{phase,mono,both}; primo-no-euf-scan-20c8db1/slurm-results/promo-ufl-{phase,mono,both}; primo-cadical-profile/results/promo-lia-phase.",
       "evidence_status": "slurm-complete-current",
       "outcome": "Corpus evidence supports promoting --monotone-elimination on QF_LRA (+13 solved, PAR2 46.33 -> 41.51, zero wrong) and rejects promoting --lra-model-phase globally (-3 on QF_UFLRA, a 178-gained/137-lost coin flip on QF_LIA). The promotion itself is BLOCKED: flipping the default exposed the pre-existing QF_UFLRA wrong answer above, and a default that makes a latent soundness bug reachable is not shippable. Fix the bridging path, then re-promote."
+    },
+    {
+      "id": "2026-08-26-qf-uf-boolean-cardinality-fix",
+      "started_at": "2026-08-26",
+      "recorded_at": "2026-08-26",
+      "kind": "bugfix",
+      "scope": "Fix for the QF_UF wrong answer in bugs/qf-uf-boolean-argument-congruence: congruence closure was not told that Bool has exactly two elements, so it could give a Bool-sorted argument a third value. Both solver paths unified on one encoding.",
+      "commit": "fa44295",
+      "branch": "main",
+      "environment": {
+        "type": "local + slurm",
+        "job": "129537/129538 (QF_UF A/B), 129539/129540 (QF_UFLRA A/B), 129713 (pre-fix QF_UF baseline), 129705 (Bool fuzz gate)"
+      },
+      "results": {
+        "the_fix_is_registration_not_clauses": "add_explained_theory_equality and flatten_assigned_atom already assert t = true/false into the closure for any Bool-sorted Constant theory atom, with the term's own literal as a one-literal reason. A plain Bool constant was simply never registered as an atom, so neither branch fired. register_boolean_argument_terms() registers Bool-sorted arguments of uninterpreted applications: no new SAT variable and no clause, because theory_atom_for_term reuses the literal the term already has. The older bridge encoding cost 2 atoms and 3 clauses per term and bridged Bool-VALUED applications as well, which are already atoms.",
+        "harness_is_the_arbiter_and_it_passed": "scripts/qf_uf_boolean_fuzz.py went from 91 disagreements in 600 cases to 0, plus 0 in two further 500-case seeds. The SLURM gate (129705) ran 1,000 cases per shape across all eight shapes: 8,000 PASS, exit 0 on every shard. It had failed by design before the fix -- and its first post-fix run failed for an unrelated reason worth keeping: z3 is not installed in the new workspace, so all 1,000 comparisons were REFERENCE_UNUSABLE, which the gate correctly refuses to call a pass.",
+        "qf_uf_division_no_answer_changed": "7,503 files at 60s, pre-fix 3c2fbf1 against the fix: 7,496 -> 7,497 answered, zero wrong in both, and ZERO answer changes. So no real SMT-LIB QF_UF benchmark was being decided incorrectly -- the hole was reachable but unexercised by the division.",
+        "the_two_encodings_agree": "QF_UF, registration vs bridge-atoms on one binary: 7,497 vs 7,498 answered, zero answer disagreements; the -1 is the cutoff, the single gain takes 12.5s while the two losses took 59.8s and 59.2s against a 60s limit. Registration is 3% faster over the 881 files both solve in more than a second (3,000s -> 2,912s). QF_UFLRA at 120s: 1,272 answered in both arms, identical 761/511 split, zero gained, zero lost, zero disagreements, and zero disagreements against the pre-fix run. The unification is safe.",
+        "a_claim_of_mine_was_wrong": "I asserted that no SMT-LIB QF_UF file applies a function to a Bool, repeating a comment in the repo's own seed. Sampling 289 division files found 5 that do, registering 40 terms: four 2018-Goel-hwbench hardware benchmarks and one 20190906-CLEARSY file. The cost is still negligible, but 'free by vacuity' was the wrong argument -- which is why the pre-fix baseline above was run rather than assumed.",
+        "reference_solvers_on_the_same_shapes": "cvc5 1.3.4 and Yices 2.7.0 are clean: 1,900 QF_UF cases each and 600 QF_UFLRA bool-argument cases each, all agreeing with z3. OpenSMT 2.9.2 is clean on the 1,900 pure QF_UF cases but reports sat where z3 reports unsat on 58 of 600 mixed QF_UFLRA cases, reproducing bugs/opensmt-qf-uflra-boolean-disagreement at scale without being aimed at it."
+      },
+      "artifacts": "primo-cadical-profile/results/boolfix-qfuf-{new,bridge,prefix}; primo-no-euf-scan-20c8db1/slurm-results/boolfix-uflra-{new,bridge}; primo-boolfix/fuzz-results/qf-uf-boolean-129705.",
+      "evidence_status": "slurm-complete-current",
+      "outcome": "Fixed and verified. Zero answer changes on the QF_UF division, zero disagreements between the two encodings on either fragment, 8,000 fuzz cases clean across all shapes, and QF_UF 3% faster on non-trivial files. bridge-atoms remains selectable only to keep this A/B reproducible and should be deleted."
     }
   ]
 }
