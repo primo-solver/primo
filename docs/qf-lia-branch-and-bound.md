@@ -977,6 +977,30 @@ non-unit scale-canonicalization factors that section's bug needed, so
 only real benchmark formulas (mutated, to explore around them rather than
 just replaying them unchanged) can exercise that shape at all.
 
+**Latest merged-main campaign (2026-08-26, commit `8a4048b`, Slurm job
+129508):** all 11 array tasks completed successfully.  The eight FuzzSMT
+shards checked 4,000 generated formulas against z3: 3,909 agreed and 91
+were timeouts (79 Primo-only and 12 in both solvers), with zero answer
+disagreements, crashes, or parser/type errors.  Independent model checking
+reported 3,475 valid models, 450 formulas for which no model was expected,
+and 75 Primo timeouts, with zero invalid models or solver errors.  The
+time-boxed real-seed phase made 19,456 opfuzz solver calls and 2,250
+typefuzz solver calls, producing zero bug files.  Each mutation task reached
+its 1,500-second wall, so this is partial mutation coverage rather than a
+claim that every seed was exhausted; two seeds above the configured
+200,000-byte mutation limit were also skipped by the mutation tools.
+
+A separate strict replay of all 61 original seeds (job 129527, 10 seconds
+per solver) deliberately included those two large seeds.  It was
+non-passing because only 51 seeds completed in both solvers: five timed out
+only in Primo while z3 answered `sat`, three timed out in both, and two
+returned Primo `unknown` while z3 answered `unsat`.  It found zero concrete
+answer disagreements and zero declared-status mismatches.  This replay is
+therefore useful incompleteness/performance evidence, not a clean strict
+seed gate and not evidence of a wrong answer.  The canonical counts,
+commands, limitations, and artifact locations are recorded in
+`docs/run-log.json`.
+
 **The QF_LIA seed corpus** (`benchmarks/seeds/qf_lia_division`, gitignored
 like its QF_LRA counterpart, not committed): built with
 `scripts/build_fuzz_seed_corpus.py --root sandbox/non-incremental/QF_LIA
