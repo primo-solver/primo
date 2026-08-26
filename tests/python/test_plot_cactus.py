@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.plot_cactus import load_series, order_series_by_solved, svg
+from scripts.plot_cactus import answered, load_series, order_series_by_solved, summarize, svg
 
 FIELDS = ["file", "status", "seconds", "wrong", "answer", "stderr_head"]
 
@@ -83,3 +83,73 @@ class PlotCactusTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SolvedDefinitionTests(unittest.TestCase):
+    """A clean exit is not a decision.
+
+    primo returns status `ok` with answer `unknown` when QF_LIA
+    branch-and-bound exhausts its node limit -- 750 files per arm on the
+    13,306-file division, against zero for cvc5 and z3. Scoring `status ==
+    ok` put primo's curve 750 instances above the truth.
+    """
+
+    def rows(self) -> list[dict[str, str]]:
+        def row(name, status, answer, seconds):
+            return {"file": name, "status": status, "answer": answer,
+                    "seconds": seconds, "wrong": "false", "stderr_head": ""}
+        return [
+            row("sat.smt2", "ok", "sat", "1.0"),
+            row("unsat.smt2", "ok", "unsat", "2.0"),
+            row("nodelimit.smt2", "ok", "unknown", "0.5"),
+            row("timeout.smt2", "timeout", "unknown", "60.0"),
+        ]
+
+    def test_clean_unknown_is_not_solved(self) -> None:
+        self.assertFalse(answered(self.rows()[2]))
+        stats = summarize(self.rows(), timeout=60.0)
+        self.assertEqual(stats["solved"], [1.0, 2.0])
+        self.assertEqual(stats["clean_unknown"], 1)
+
+    def test_clean_unknown_is_penalised_in_par2(self) -> None:
+        stats = summarize(self.rows(), timeout=60.0)
+        # 1.0 + 2.0 solved, and BOTH non-answers charged 2T -- the node-limit
+        # exit must not be charged its own 0.5s just for exiting cleanly.
+        self.assertEqual(stats["par2"], 1.0 + 2.0 + 2 * 60.0 * 2)
+
+    def test_a_timeout_is_still_not_solved(self) -> None:
+        self.assertFalse(answered(self.rows()[3]))
+
+
+class LegendBreakdownTests(unittest.TestCase):
+    """The sat/unsat split belongs in the legend, not just the console table.
+
+    The two halves move independently -- QF_LIA patching is a sat-side
+    mechanism -- so a pooled solved count can hide the whole effect of a
+    change.
+    """
+
+    def test_summarize_splits_sat_and_unsat(self) -> None:
+        rows = [
+            {"file": "a", "status": "ok", "answer": "sat", "seconds": "1",
+             "wrong": "false", "stderr_head": ""},
+            {"file": "b", "status": "ok", "answer": "unsat", "seconds": "2",
+             "wrong": "false", "stderr_head": ""},
+            {"file": "c", "status": "ok", "answer": "unknown", "seconds": "3",
+             "wrong": "false", "stderr_head": ""},
+        ]
+        stats = summarize(rows, timeout=60.0)
+        self.assertEqual((stats["sat"], stats["unsat"]), (1, 1))
+        self.assertEqual(len(stats["solved"]), 2)
+
+    def test_legend_shows_the_split_when_given_one(self) -> None:
+        out = svg([("primo", [1.0, 2.0, 3.0])], timeout=60.0, total=10,
+                  title="t", caption=["c"], breakdown={"primo": (2, 1)})
+        self.assertIn("primo", out)
+        self.assertIn("2 sat", out)
+        self.assertIn("1 unsat", out)
+
+    def test_legend_without_a_breakdown_is_unchanged(self) -> None:
+        out = svg([("primo", [1.0])], timeout=60.0, total=10,
+                  title="t", caption=["c"])
+        self.assertNotIn("sat &#183;", out)

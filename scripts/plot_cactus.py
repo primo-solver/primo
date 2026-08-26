@@ -10,8 +10,14 @@ solving most instances quickly.
 Two things this script insists on, because a cactus plot is easy to draw
 dishonestly:
 
-* **Only `status == ok` rows count as solved.** A timeout is not a data point
-  on the curve; neither is a crash or an unsupported input.
+* **Only rows that actually answered `sat` or `unsat` count as solved.** A
+  timeout is not a data point on the curve; neither is a crash or an
+  unsupported input -- and neither is a clean `unknown`. That last one is not
+  hypothetical: primo exits with status `ok` and answer `unknown` when QF_LIA
+  branch-and-bound hits its node limit, 750 times per arm on the 13,306-file
+  division, while cvc5 and z3 never do. Scoring `status == ok` would have
+  drawn primo's curve 750 instances above the truth and inverted a standing it
+  is actually behind on (2026-08-26).
 * **Non-standard failures are reported separately and loudly.** A benchmark we
   could not parse is a frontend gap, not a performance result, and it must not
   disappear into the gap between a curve and the instance count. See
@@ -77,8 +83,31 @@ def load_series(directory: pathlib.Path, solver: str) -> list[dict[str, str]]:
     return list(rows.values())
 
 
+def answered(row: dict[str, str]) -> bool:
+    """Whether this row is a decision, not merely a clean exit.
+
+    A solver that stops early on its own budget -- primo's QF_LIA node limit
+    is the case that prompted this -- exits with status `ok` and answer
+    `unknown`. That is not a solve, and it must not be plotted as one.
+    """
+    return row["status"] == "ok" and row.get("answer") in {"sat", "unsat"}
+
+
 def summarize(rows: list[dict[str, str]], timeout: float) -> dict[str, object]:
-    solved = sorted(float(r["seconds"]) for r in rows if r["status"] == "ok")
+    # `status == ok` means the process exited cleanly, NOT that it decided the
+    # instance -- see the module docstring. Answering is the requirement.
+    solved = sorted(
+        float(r["seconds"]) for r in rows if answered(r)
+    )
+    # Clean non-answers, counted and shown separately: they are neither solves
+    # nor failures, and silently folding them into either is how a cactus plot
+    # lies.
+    clean_unknown = sum(1 for r in rows if r["status"] == "ok" and not answered(r))
+    # Kept alongside the total because the two halves move independently: a
+    # change that only helps sat instances (patching, in QF_LIA) is invisible
+    # in a solved count that pools them.
+    sat = sum(1 for r in rows if answered(r) and r["answer"] == "sat")
+    unsat = sum(1 for r in rows if answered(r) and r["answer"] == "unsat")
     wrong = sum(1 for r in rows if r.get("wrong") == "true")
     nonstandard: collections.Counter[str] = collections.Counter()
     for r in rows:
@@ -92,6 +121,9 @@ def summarize(rows: list[dict[str, str]], timeout: float) -> dict[str, object]:
     return {
         "total": len(rows),
         "solved": solved,
+        "clean_unknown": clean_unknown,
+        "sat": sat,
+        "unsat": unsat,
         "wrong": wrong,
         "nonstandard": nonstandard,
         "par2": par2,
@@ -112,6 +144,7 @@ def svg(
     title: str,
     caption: list[str],
     highlighted: str | None = None,
+    breakdown: dict[str, tuple[int, int]] | None = None,
 ) -> str:
     # The caption grows with the number of provenance notes, so the canvas and
     # the bottom margin grow with it rather than the plot area shrinking --
@@ -170,6 +203,9 @@ def svg(
                f'transform="rotate(-90 18 {top+plot_h/2:.0f})" text-anchor="middle">'
                f'instances solved (of {total})</text>')
 
+    # Two-line legend entries need the extra room; a single-line legend keeps
+    # the tighter spacing it always had.
+    legend_step = 30 if breakdown else 22
     comparison_index = 0
     for index, (name, solved) in enumerate(series):
         is_highlighted = name == highlighted
@@ -187,12 +223,17 @@ def svg(
         if points:
             out.append(f'<polyline points="{points}" fill="none" stroke="{colour}" '
                        f'stroke-width="{curve_width}" stroke-linejoin="round"/>')
-        ly = top + 8 + index * 22
+        ly = top + 8 + index * legend_step
         out.append(f'<line x1="{left+plot_w+18}" y1="{ly}" x2="{left+plot_w+44}" y2="{ly}" '
                    f'stroke="{colour}" stroke-width="{legend_width}"/>')
         out.append(f'<text x="{left+plot_w+52}" y="{ly+4}" font-size="13" fill="#222"'
                    f'{label_weight}>'
                    f'{html.escape(name)} &#8212; {len(solved)}</text>')
+        split = (breakdown or {}).get(name)
+        if split is not None:
+            sat, unsat = split
+            out.append(f'<text x="{left+plot_w+52}" y="{ly+19}" font-size="11" '
+                       f'fill="#666">{sat} sat &#183; {unsat} unsat</text>')
 
     caption_top = height - 12 - caption_leading * (len(caption) - 1)
     for i, line in enumerate(caption):
@@ -248,7 +289,7 @@ def main() -> int:
         for _, rows in loaded:
             for row in rows:
                 seen[row["file"]] += 1
-                if row["status"] == "ok" and float(row["seconds"]) < cutoff:
+                if answered(row) and float(row["seconds"]) < cutoff:
                     fast[row["file"]] += 1
         easy = {f for f, count in fast.items() if count == len(loaded) == seen[f]}
         dropped = len(easy)
@@ -258,17 +299,24 @@ def main() -> int:
               f"{cutoff:g}s; counts and PAR2 below are over what remains")
 
     plotted: list[tuple[str, list[float]]] = []
+    breakdown: dict[str, tuple[int, int]] = {}
     totals: set[int] = set()
     problems = 0
-    print(f"{'solver':10s} {'files':>6} {'solved':>7} {'wrong':>6} {'PAR2':>10}")
+    print(f"{'solver':16s} {'files':>6} {'solved':>7} {'sat':>6} {'unsat':>6} "
+          f"{'wrong':>6} {'PAR2':>10}")
     for name, rows in loaded:
         stats = summarize(rows, args.timeout)
         totals.add(int(stats["total"]))
-        print(f"{name:10s} {stats['total']:6d} {len(stats['solved']):7d} "
+        breakdown[name] = (int(stats["sat"]), int(stats["unsat"]))
+        print(f"{name:16s} {stats['total']:6d} {len(stats['solved']):7d} "
+              f"{stats['sat']:6d} {stats['unsat']:6d} "
               f"{stats['wrong']:6d} {stats['par2']:10.0f}")
         if stats["wrong"]:
             print(f"  WRONG ANSWERS from {name}: {stats['wrong']} -- do not publish this plot")
             problems += 1
+        if stats["clean_unknown"]:
+            print(f"  clean `unknown` exits ({name}): {stats['clean_unknown']:5d}  "
+                  f"(exited 0 without deciding; not plotted as solved)")
         for cause, count in stats["nonstandard"].most_common():
             print(f"  non-standard unsolved ({name}): {count:5d}  {cause}")
             problems += 1
@@ -298,7 +346,8 @@ def main() -> int:
         caption += args.note
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(
-        svg(plotted, args.timeout, total, args.title, caption, args.highlight_series)
+        svg(plotted, args.timeout, total, args.title, caption, args.highlight_series,
+            breakdown)
     )
     print(f"\nwrote {args.out}")
     if problems:
