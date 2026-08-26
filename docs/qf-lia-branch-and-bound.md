@@ -1177,14 +1177,19 @@ two hand-checked worked examples before that.
 ## Where QF_LIA stands (2026-08-26)
 
 The complete division, 13,306 files at 60s, one solver per core (SLURM job
-128768 at `3c2fbf1`; z3 and cvc5 reuse job 127709 on the same cluster,
+130136 at `16d0d96`; z3 and cvc5 reuse job 127709 on the same cluster,
 corpus and timeout):
 
 | solver | solved | sat | unsat | PAR2 |
 | --- | --- | --- | --- | --- |
 | z3 | 12,147 | 7,825 | 4,322 | 174,179 |
 | cvc5 | 9,239 | 6,527 | **2,712** | 507,295 |
-| **primo `3c2fbf1`** | **9,031** | 6,153 | **2,878** | 534,466 |
+| **primo `16d0d96`** | **9,046** | 6,158 | **2,888** | 533,219 |
+
+(The previous reading at `3c2fbf1` was 9,031. The difference is the cutoff, not
+a change: 24 files gained and 9 lost, every one of them finishing between 54.1s
+and 60.0s against a 60s limit, with zero answer contradictions. Nothing merged
+since touches QF_LIA.)
 
 ```{figure} _static/qf-lia-cactus.svg
 :alt: Instances solved against per-instance time budget for z3, cvc5 and primo over the 13,306-file QF_LIA division.

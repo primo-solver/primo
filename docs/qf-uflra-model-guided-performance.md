@@ -302,7 +302,7 @@ rows reuse the unchanged 2026-08-12 artifacts:
 
 | Solver/profile | Solved (sat/unsat) | Timeouts | Solved-row time (s) | PAR2 |
 | --- | ---: | ---: | ---: | ---: |
-| **Primo `all` (`3c2fbf1`, 2026-08-26)** | **1,272 (761/511)** | **12** | 805.52 | 3,685.52 |
+| **Primo `all` (`16d0d96`, 2026-08-26)** | **1,272 (761/511)** | **12** | 816.81 | 3,696.81 |
 | Primo `all` (`413179b`) | 1,272 (761/511) | 12 | 832.63 | 3,712.63 |
 | Primo `care` | 1,271 (760/511) | 13 | 660.98 | 3,780.98 |
 | Z3 5.0.0 | 1,254 (752/502) | 30 | 617.39 | 7,817.39 |
@@ -321,7 +321,7 @@ easy instances are omitted from every series, so all pairwise vertical gaps are
 preserved. Legend counts refer to this retained subset; the table above reports
 the complete 1,284-file corpus. Legend entries are sorted by solved count, and
 the heavier blue line marks the default Primo `all` profile. Primo comes from
-the 2026-08-26 SLURM job 129148 at `3c2fbf1`; Z3, cvc5, OpenSMT, and Yices are
+the 2026-08-26 SLURM job 130138 at `16d0d96`; Z3, cvc5, OpenSMT, and Yices are
 jobs 125261--125264 at `9061611`, rebuilt from their logs (see above). Legend
 entries carry each solver's sat/unsat split below the total. The opt-in Primo `care` profile remains in the
 table as historical policy evidence but is omitted from this reference-solver
@@ -330,10 +330,10 @@ comparison.
 
 ### 2026-08-26 refresh at 120s, and a recovered reference set
 
-Primo `all` at `3c2fbf1` scores **1,272 (761/511)** with zero wrong answers --
+Primo `all` at `16d0d96` scores **1,272 (761/511)** with zero wrong answers --
 identical to `413179b`'s solved set, which is the expected outcome: everything
 merged since is QF_LIA machinery this fragment never enters. Solved-row time
-moved 832.63 -> 805.52 seconds (3.3% faster) and PAR2 3,712.63 -> 3,685.52,
+moved 832.63 -> 816.81 seconds (1.9% faster) and PAR2 3,712.63 -> 3,696.81,
 the same order as the run-to-run variation the 2026-08-14 refresh already
 documented below, and in the same direction the pinned-CPU A/B there found.
 
@@ -367,7 +367,7 @@ python3 scripts/plot_cactus.py \
   --timeout 120 --drop-solved-by-all-under 1 \
   --sort-by-solved --highlight-series "Primo 3c2fbf1" \
   --title "QF_UFLRA, 1,284 instances, 120s" \
-  --note "Primo job 129148 at 3c2fbf1; references rebuilt from jobs 125261-125264 at 9061611." \
+  --note "Primo job 130138 at 16d0d96; references rebuilt from jobs 125261-125264 at 9061611." \
   --out docs/_static/qf-uflra-cactus.svg
 ```
 

@@ -1227,7 +1227,7 @@ for the regression tests.
 ### Where QF_LRA work stands, and what is open (2026-08-07)
 
 **The complete non-incremental QF_LRA division, 1,753 files, 300s**
-(primo re-run 2026-08-26 at `3c2fbf1`, SLURM job 129088; references not
+(primo re-run 2026-08-26 at `16d0d96`, SLURM job 130137; references not
 re-run -- z3 and cvc5 from 118382, Yices from 118904, OpenSMT from 119045,
 and their PAR2 figures below are byte-identical to the 2026-08-07 reading,
 which is the check that the two primo runs are comparable):
@@ -1235,14 +1235,14 @@ which is the check that the two primo runs are comparable):
 | solver | solved | PAR2 | wrong |
 |---|---|---|---|
 | **OpenSMT 2.9.2** | **1670** (95.3%) | **68068** | **0** |
-| **primo `3c2fbf1`** | **1655** (94.4%) | **81218** | **0** |
+| **primo `16d0d96`** | **1656** (94.5%) | **80616** | **0** |
 | Yices 2.7.0 | 1645 (93.8%) | 80585 | 0 |
 | z3 5.0.0 | 1584 (90.4%) | 128079 | 0 |
 | cvc5 1.3.4 | 1511 (86.2%) | 181248 | 0 |
 
-**The 2026-08-26 re-run changes nothing here.** primo scores 1655 against
-job 120784's 1657 -- two files, both inside the timeout band -- and holds
-second place, 15 behind OpenSMT and 10 ahead of Yices. That is the expected
+**The 2026-08-26 re-runs change nothing here.** primo scores 1656 against
+job 120784's 1657 -- one file, inside the timeout band -- and holds second
+place, 14 behind OpenSMT and 11 ahead of Yices. That is the expected
 outcome rather than a disappointment: everything merged since 120784 is
 QF_LIA machinery that QF_LRA never enters, plus a word-GCD change measured
 flat on this fragment. The run exists to confirm that, and it does. PAR2
@@ -1268,7 +1268,7 @@ range stops being dominated by the shared easy majority. **The counts in the
 legend are therefore of 656, not of 1,753** -- the table above has the full
 numbers. Regenerate with `--drop-solved-by-all-under 10`; omit that flag for
 the unfiltered version. Legend entries carry each solver's sat/unsat split
-below the total. primo is job 129088 at `3c2fbf1` (2026-08-26); the
+below the total. primo is job 130137 at `16d0d96` (2026-08-26); the
 references are jobs 119045, 118904 and 118382, not re-run.
 ```
 
@@ -1281,7 +1281,7 @@ budgets and overtakes Yices only between 60s and 300s:
 |---|---|---|---|---|---|---|
 | OpenSMT | 868 | 1103 | **1370** | **1527** | **1595** | **1670** |
 | Yices | **1003** | **1173** | 1428 | 1525 | 1575 | 1645 |
-| primo `3c2fbf1` | 795 | 1068 | 1301 | 1460 | 1537 | 1655 |
+| primo `16d0d96` | 800 | 1066 | 1303 | 1463 | 1537 | 1656 |
 | z3 | 861 | 1028 | 1227 | 1346 | 1430 | 1584 |
 | cvc5 | 711 | 945 | 1118 | 1209 | 1296 | 1511 |
 
@@ -1302,7 +1302,7 @@ and per-dispatch overhead that dominates long searches; on instances that
 finish in under a tenth of a second there is nothing to recover and the
 cross-link change's larger `RowEntry` is the visible term.
 
-**OpenSMT still leads at 300s; primo is second, 15 behind it and 10 ahead of
+**OpenSMT still leads at 300s; primo is second, 14 behind it and 11 ahead of
 Yices** (13 and 12 at the 2026-08-07 reading). Two separate lessons sit in that sentence, and they are worth keeping
 apart.
 
