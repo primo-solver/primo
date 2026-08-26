@@ -49,7 +49,7 @@ def primo_model(solver: list[str], path: Path, timeout: float) -> tuple[str, dic
     script = "(set-option :produce-models true)\n" + script
     try:
         completed = subprocess.run([*solver, "/dev/stdin"], input=script, text=True,
-                                   capture_output=True, timeout=timeout)
+                                   capture_output=True, timeout=timeout, check=False)
     except subprocess.TimeoutExpired:
         return "timeout", {}
     model: dict[str, str] = {}
@@ -70,7 +70,7 @@ def z3_confirms(z3: str, path: Path, model: dict[str, str], timeout: float) -> s
     pins = "\n".join(f"(assert (= {name} {value}))" for name, value in model.items())
     try:
         completed = subprocess.run([z3, "-in"], input=f"{prefix}\n{pins}\n(check-sat)\n",
-                                   text=True, capture_output=True, timeout=timeout)
+                                   text=True, capture_output=True, timeout=timeout, check=False)
     except subprocess.TimeoutExpired:
         return "timeout"
     return first_answer(completed.stdout)

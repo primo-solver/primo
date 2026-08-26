@@ -10739,7 +10739,6 @@ CheckSatOutcome solve_qf_lia_impl(
           return CheckSatOutcome{CheckSatResult::Unknown,
                                  "QF_LIA branch-and-bound node limit reached", statistics, ""};
         }
-        arithmetic_unsat = true;  // bb_result.status == Unsat.
       }
       // Unsat: this Boolean+LRA assignment has no all-integer completion
       // (found either by the GCD pre-check above or by branch-and-bound).

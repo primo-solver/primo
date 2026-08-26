@@ -167,6 +167,7 @@ check.
   an eliminated variable's value to 0) this change's own testing found
   and fixed.
 
+(where-integer-strictness-actually-gets-handled-and-three-bugs-found-here)=
 ### Where integer strictness actually gets handled, and three bugs found here
 
 QF_LIA needs *some* mechanism to turn a strict `<`/`>` atom (or a
@@ -282,6 +283,7 @@ structural reason, not luck: see
 [Real-world benchmark evaluation and the fuzzing gap](#real-world-benchmark-evaluation-and-the-fuzzing-gap),
 which also has the post-bug-3-and-4 verification numbers.
 
+(gcd-consistency)=
 ## GCD-consistency
 
 Stage 2, `theory::arithmetic::gcd_inconsistent_row`
@@ -392,6 +394,7 @@ ordinary term in some other (now-basic) declared variable's row. Fixed by
 checking `is_declared_integer` for every row term too, the same treatment
 `x_b` already got.
 
+(gomory-cuts)=
 ## Gomory cuts
 
 Stage 3, `theory::arithmetic::apply_gomory_cuts`
@@ -505,6 +508,7 @@ it to `Unsat`, no branching needed at all
 (`tests/unit/qf_lia_solver_tests.cpp`'s
 `gomory_cut_resolves_what_branch_and_bound_alone_cannot`).
 
+(patching)=
 ## Patching
 
 Stage 5 (2026-08-21), and the first stage here that tries to **find** an
@@ -788,6 +792,7 @@ row is Gomory-ineligible too, exactly as it was already GCD-ineligible)
 and still hits `--lia-branch-limit` deterministically; see the next
 section.
 
+(known-incompleteness)=
 ## Known incompleteness
 
 Branch-and-bound, GCD-consistency, and Gomory cuts together are *still*
@@ -938,6 +943,7 @@ all.
 (Fuzzing itself is *not* out of scope -- see the next section, including
 each stage's own Slurm-scale verification.)
 
+(fuzzing)=
 ## Fuzzing
 
 **Local smoke fuzzing** (already run, see the bug writeups above for
@@ -1176,10 +1182,13 @@ the Diophantine/HNF/cube machinery [](open-leads.md)'s lead 12 names.
 cleanly with `unknown` when branch-and-bound hits its node limit: 750 files
 here. `bench_qf_uf_full.py`'s `solved` column counts `status == ok` and so
 reads 9,781 for this arm, which would put primo *ahead* of cvc5 on a
-division it is 208 behind on. Every number in this section is sat+unsat.
+division it is 208 behind on. Every number in this section requires both
+`status == ok` and an answer of `sat` or `unsat`; one timed-out row printed
+`sat` before the harness killed it and therefore does not count as solved.
 `scripts/plot_cactus.py` was corrected to score answers rather than clean
 exits (2026-08-26) and reports the clean-`unknown` count separately.
 
+(real-world-benchmark-evaluation-and-the-fuzzing-gap)=
 ## Real-world benchmark evaluation and the fuzzing gap
 
 Stages 1-3 were each verified via thousands of FuzzSMT-generated cases
