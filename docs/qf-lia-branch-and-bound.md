@@ -1144,6 +1144,42 @@ all three stages -- produced zero disagreements against z3 across the
 full campaign, on top of zero disagreements in ~800 local cases and the
 two hand-checked worked examples before that.
 
+## Where QF_LIA stands (2026-08-26)
+
+The complete division, 13,306 files at 60s, one solver per core (SLURM job
+128768 at `3c2fbf1`; z3 and cvc5 reuse job 127709 on the same cluster,
+corpus and timeout):
+
+| solver | solved | sat | unsat | PAR2 |
+| --- | --- | --- | --- | --- |
+| z3 | 12,147 | 7,825 | 4,322 | 174,179 |
+| cvc5 | 9,239 | 6,527 | **2,712** | 507,295 |
+| **primo `3c2fbf1`** | **9,031** | 6,153 | **2,878** | 534,466 |
+
+```{figure} _static/qf-lia-cactus.svg
+:alt: Instances solved against per-instance time budget for z3, cvc5 and primo over the 13,306-file QF_LIA division.
+:width: 100%
+
+Instances solved against the per-instance time budget, whole division,
+nothing filtered out. Legend entries carry each solver's sat/unsat split
+below the total.
+```
+
+**The sat/unsat split is the part worth reading.** Against cvc5 primo is
+*ahead* on unsat by 166 and behind on sat by 374; the whole deficit, and
+more, is on satisfiable instances. That is what motivated patching
+([](#patching)), and it is still where the remaining gap lives. Against z3
+the shape is different -- 1,444 of the 3,116-file gap is unsat -- which is
+the Diophantine/HNF/cube machinery [](open-leads.md)'s lead 12 names.
+
+**A counting caveat that applies to every QF_LIA figure.** primo exits
+cleanly with `unknown` when branch-and-bound hits its node limit: 750 files
+here. `bench_qf_uf_full.py`'s `solved` column counts `status == ok` and so
+reads 9,781 for this arm, which would put primo *ahead* of cvc5 on a
+division it is 208 behind on. Every number in this section is sat+unsat.
+`scripts/plot_cactus.py` was corrected to score answers rather than clean
+exits (2026-08-26) and reports the clean-`unknown` count separately.
+
 ## Real-world benchmark evaluation and the fuzzing gap
 
 Stages 1-3 were each verified via thousands of FuzzSMT-generated cases

@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="560" viewBox="0 0 900 560" font-family="system-ui,-apple-system,sans-serif">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="78" y="30" font-size="17" font-weight="600">QF_UFLRA: 1,284 instances, 30s</text>
+<line x1="78.0" y1="56" x2="78.0" y2="464" stroke="#e6e6e6" stroke-width="1"/>
+<text x="78.0" y="484" font-size="12" text-anchor="middle" fill="#444">0.01s</text>
+<line x1="242.5" y1="56" x2="242.5" y2="464" stroke="#e6e6e6" stroke-width="1"/>
+<text x="242.5" y="484" font-size="12" text-anchor="middle" fill="#444">0.1s</text>
+<line x1="407.0" y1="56" x2="407.0" y2="464" stroke="#e6e6e6" stroke-width="1"/>
+<text x="407.0" y="484" font-size="12" text-anchor="middle" fill="#444">1s</text>
+<line x1="571.5" y1="56" x2="571.5" y2="464" stroke="#e6e6e6" stroke-width="1"/>
+<text x="571.5" y="484" font-size="12" text-anchor="middle" fill="#444">10s</text>
+<line x1="78" y1="464.0" x2="650" y2="464.0" stroke="#e6e6e6" stroke-width="1"/>
+<text x="68" y="468.0" font-size="12" text-anchor="end" fill="#444">0</text>
+<line x1="78" y1="363.5" x2="650" y2="363.5" stroke="#e6e6e6" stroke-width="1"/>
+<text x="68" y="367.5" font-size="12" text-anchor="end" fill="#444">17</text>
+<line x1="78" y1="263.0" x2="650" y2="263.0" stroke="#e6e6e6" stroke-width="1"/>
+<text x="68" y="267.0" font-size="12" text-anchor="end" fill="#444">34</text>
+<line x1="78" y1="162.4" x2="650" y2="162.4" stroke="#e6e6e6" stroke-width="1"/>
+<text x="68" y="166.4" font-size="12" text-anchor="end" fill="#444">51</text>
+<line x1="78" y1="56.0" x2="650" y2="56.0" stroke="#e6e6e6" stroke-width="1"/>
+<text x="68" y="60.0" font-size="12" text-anchor="end" fill="#444">69</text>
+<text x="364" y="502" font-size="13" text-anchor="middle" fill="#222">per-instance time budget (log scale)</text>
+<text x="18" y="260" font-size="13" fill="#222" transform="rotate(-90 18 260)" text-anchor="middle">instances solved (of 77)</text>
+<polyline points="145.9,458.1 166.5,452.2 179.1,446.3 182.7,440.3 186.7,434.4 194.2,428.5 194.5,422.6 200.9,416.7 208.3,410.8 213.2,404.9 213.9,399.0 214.2,393.0 222.0,387.1 222.2,381.2 229.5,375.3 230.6,369.4 231.2,363.5 231.5,357.6 233.0,351.7 233.5,345.7 233.7,339.8 235.7,333.9 237.5,328.0 237.6,322.1 238.8,316.2 243.5,310.3 244.3,304.3 246.3,298.4 259.0,292.5 259.9,286.6 260.0,280.7 261.4,274.8 263.0,268.9 263.7,263.0 271.9,257.0 272.8,251.1 274.3,245.2 279.3,239.3 280.6,233.4 282.1,227.5 293.3,221.6 297.8,215.7 306.4,209.7 311.1,203.8 311.7,197.9 314.4,192.0 323.5,186.1 331.3,180.2 336.8,174.3 340.3,168.3 380.6,162.4 390.5,156.5 406.3,150.6 417.0,144.7 448.4,138.8 449.9,132.9 456.4,127.0 458.9,121.0 479.5,115.1 484.3,109.2 493.0,103.3 497.8,97.4 502.7,91.5 504.3,85.6 538.8,79.7 544.0,73.7 545.2,67.8 545.3,61.9 567.2,56.0" fill="none" stroke="#c9760a" stroke-width="2.2" stroke-linejoin="round"/>
+<line x1="668" y1="64" x2="694" y2="64" stroke="#c9760a" stroke-width="2.6"/>
+<text x="702" y="68" font-size="13" fill="#222">Yices 2.7.0 &#8212; 69</text>
+<text x="702" y="83" font-size="11" fill="#666">57 sat &#183; 12 unsat</text>
+<polyline points="405.0,458.1 407.0,452.2 415.5,446.3 420.8,440.3 422.5,434.4 430.4,428.5 433.4,422.6 434.9,416.7 436.8,410.8 436.8,404.9 438.8,399.0 439.1,393.0 440.3,387.1 444.7,381.2 447.3,375.3 459.2,369.4 462.0,363.5 465.6,357.6 466.2,351.7 466.4,345.7 467.7,339.8 468.8,333.9 476.8,328.0 477.6,322.1 477.7,316.2 478.0,310.3 481.2,304.3 482.3,298.4 483.6,292.5 483.8,286.6 488.5,280.7 493.8,274.8 508.5,268.9 510.9,263.0 518.4,257.0 531.3,251.1 535.1,245.2 539.3,239.3 541.1,233.4 545.0,227.5 547.3,221.6 547.7,215.7 554.4,209.7 560.7,203.8 564.3,197.9 569.7,192.0 573.0,186.1 575.7,180.2 584.4,174.3 594.6,168.3 620.7,162.4 621.9,156.5 625.9,150.6 636.7,144.7 636.8,138.8 639.1,132.9 639.7,127.0 640.4,121.0 641.3,115.1 641.8,109.2 643.1,103.3" fill="none" stroke="#0057b8" stroke-width="3.4" stroke-linejoin="round"/>
+<line x1="668" y1="94" x2="694" y2="94" stroke="#0057b8" stroke-width="4.0"/>
+<text x="702" y="98" font-size="13" fill="#222" font-weight="600">primo 3c2fbf1 &#8212; 61</text>
+<text x="702" y="113" font-size="11" fill="#666">49 sat &#183; 12 unsat</text>
+<polyline points="402.6,458.1 404.4,452.2 409.7,446.3 413.9,440.3 419.0,434.4 421.8,428.5 428.0,422.6 428.9,416.7 430.5,410.8 431.6,404.9 431.7,399.0 435.1,393.0 437.0,387.1 445.5,381.2 449.6,375.3 460.7,369.4 462.3,363.5 462.9,357.6 463.3,351.7 464.3,345.7 465.7,339.8 466.5,333.9 470.9,328.0 474.5,322.1 474.6,316.2 474.7,310.3 475.1,304.3 477.4,298.4 479.1,292.5 481.3,286.6 491.8,280.7 504.1,274.8 510.7,268.9 514.1,263.0 529.3,257.0 534.1,251.1 534.6,245.2 535.2,239.3 537.4,233.4 540.1,227.5 541.6,221.6 548.7,215.7 556.3,209.7 556.9,203.8 558.4,197.9 562.3,192.0 605.6,186.1 616.9,180.2 620.3,174.3 621.5,168.3 624.5,162.4 626.7,156.5 626.7,150.6 635.1,144.7 637.7,138.8 638.7,132.9 640.7,127.0" fill="none" stroke="#2a9d8f" stroke-width="2.2" stroke-linejoin="round"/>
+<line x1="668" y1="124" x2="694" y2="124" stroke="#2a9d8f" stroke-width="2.6"/>
+<text x="702" y="128" font-size="13" fill="#222">primo 4e19d1b &#8212; 57</text>
+<text x="702" y="143" font-size="11" fill="#666">45 sat &#183; 12 unsat</text>
+<text x="78" y="520" font-size="11" fill="#666">77 instances, 30s per instance. Only solved instances contribute a point; timeouts do not.</text>
+<text x="78" y="534" font-size="11" fill="#666">Excludes 1207 further instances every solver finished in under 1s, so every count here is of the remaining 77.</text>
+<text x="78" y="548" font-size="11" fill="#666">primo 3c2fbf1 SLURM job 129049 (2026-08-26); primo 4e19d1b and Yices 2.7.0 reuse the 30s runs in primo-shared-model-4c360a3, same corpus, not re-run.</text>
+</svg>

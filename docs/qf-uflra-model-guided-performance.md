@@ -325,6 +325,34 @@ table as historical policy evidence but is omitted from this reference-solver
 comparison.
 ```
 
+### 2026-08-26 refresh at 30s
+
+The 120s reference jobs (125261--125264) no longer exist on the cluster, so
+the figure above cannot be regenerated with a current primo. What can be
+compared on the same 1,284-file corpus is the set of 30s runs that survive:
+
+| solver | solved | sat | unsat | PAR2 |
+| --- | --- | --- | --- | --- |
+| Yices 2.7.0 | 1,276 | -- | -- | 591 |
+| **primo `3c2fbf1`** | **1,268** | -- | -- | **1,541** |
+| primo `4e19d1b` | 1,264 | -- | -- | 1,671 |
+
+```{figure} _static/qf-uflra-cactus-30s-2026-08-26.svg
+:alt: Instances solved against per-instance time budget for primo 3c2fbf1, primo 4e19d1b and Yices 2.7.0 over 77 differentiating QF_UFLRA instances.
+:width: 100%
+
+The **77 instances at least one solver did not finish within one second**,
+at a 30s timeout. primo is SLURM job 129049 at `3c2fbf1` (2026-08-26);
+`4e19d1b` and Yices 2.7.0 reuse the existing 30s runs, same corpus, not
+re-run. This is a narrower comparison than the 120s figure above -- three
+series rather than five -- and replaces neither it nor its table.
+```
+
+**All three solvers take exactly the same 12 unsat instances** on that hard
+subset; every difference between them, including primo's +4 over `4e19d1b`,
+is on the sat side. The pooled solved count hides that completely, which is
+why `plot_cactus.py` now prints and plots the split.
+
 Regenerate the figure from the campaign's copied shard directories with:
 
 ```bash
