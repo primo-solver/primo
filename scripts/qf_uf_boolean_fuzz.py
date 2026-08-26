@@ -251,6 +251,52 @@ def random_signature(rng: random.Random, index: int) -> tuple[str, list[str], st
     return (f"fn{index}", args, result)
 
 
+def compound_terms(rng: random.Random, pool) -> list[tuple[str, str]]:
+    """Non-application terms: Boolean connectives, ite, and (dis)equality.
+
+    These matter to Primo specifically because a compound Bool term in
+    ARGUMENT position is not passed through -- the frontend replaces it with a
+    fresh Bool constant plus a defining propositional equivalence
+    (`bind_bool_argument_if_needed`). That auxiliary is then a UF argument
+    whose polarity comes from the equivalence rather than from anything the
+    user wrote, which is the same interaction that produced the 2026-08-26
+    pure-theory-filter bug. Generating them only at the top level, as the
+    `compound` template does, never exercises that path under a random
+    skeleton.
+    """
+    additions = []
+    bools = pool.get("Bool", [])
+    for _ in range(rng.randint(1, 3)):
+        kind = rng.random()
+        if kind < 0.3 and len(bools) >= 2:
+            a, b = rng.sample(bools, 2)
+            connective = rng.choice(["and", "or", "=>", "xor"])
+            additions.append(("Bool", f"({connective} {a} {b})"))
+        elif kind < 0.45 and bools:
+            additions.append(("Bool", f"(not {rng.choice(bools)})"))
+        elif kind < 0.6 and len(bools) >= 3:
+            c, a, b = rng.sample(bools, 3)
+            additions.append(("Bool", f"(ite {c} {a} {b})"))
+        elif kind < 0.8:
+            # (dis)equality over any sort is itself a Bool TERM, usable as an
+            # argument, not only as a top-level atom.
+            usable = [s for s in RANDOM_SORTS if len(pool.get(s, [])) >= 2]
+            if usable:
+                sort = rng.choice(usable)
+                a, b = rng.sample(pool[sort], 2)
+                head = rng.choice(["=", "distinct"])
+                additions.append(("Bool", f"({head} {a} {b})"))
+        elif bools:
+            # ite over an uninterpreted sort, which Primo accepts and which
+            # puts a Bool term in the condition of a non-Bool term.
+            usable = [s for s in ("U", "V") if len(pool.get(s, [])) >= 2]
+            if usable:
+                sort = rng.choice(usable)
+                a, b = rng.sample(pool[sort], 2)
+                additions.append((sort, f"(ite {rng.choice(bools)} {a} {b})"))
+    return additions
+
+
 def build_term_pool(rng: random.Random, signatures, constants, depth: int):
     """Terms grouped by sort, built level by level."""
     pool = {sort: list(names) for sort, names in constants.items()}
@@ -264,6 +310,7 @@ def build_term_pool(rng: random.Random, signatures, constants, depth: int):
             for _ in range(rng.randint(0, 2)):
                 chosen = [rng.choice(pool[sort]) for sort in args]
                 additions.append((result, f"({name} {' '.join(chosen)})"))
+        additions.extend(compound_terms(rng, pool))
         for result, term in additions:
             pool.setdefault(result, []).append(term)
         for sort in pool:

@@ -96,6 +96,24 @@ class RandomShapeTests(unittest.TestCase):
             self.assertTrue(used <= declared,
                             msg=f"case {index} applies an undeclared function")
 
+    def test_compound_terms_reach_argument_position(self) -> None:
+        # A compound Bool term as a function ARGUMENT is not passed through:
+        # the frontend binds it to a fresh Bool constant with a defining
+        # equivalence, and that auxiliary is then a UF argument whose polarity
+        # comes from the equivalence. That is the same interaction that
+        # produced the pure-theory-filter bug, so the coverage matters.
+        rng = random.Random(17)
+        in_argument = 0
+        with_ite = 0
+        for index in range(600):
+            case = MODULE.generate_case(rng, index, "random")
+            if re.search(r"\(fn\d+[^()]*\((and|or|not|=>|xor|ite|=|distinct) ", case):
+                in_argument += 1
+            if "(ite " in case:
+                with_ite += 1
+        self.assertGreater(in_argument, 30)
+        self.assertGreater(with_ite, 100)
+
     def test_random_shape_puts_bool_constants_in_the_skeleton(self) -> None:
         # The property the hand-written shapes all lacked: a Bool constant
         # appearing as a propositional literal, not only as an argument.
