@@ -1776,9 +1776,81 @@ class BooleanClausifier {
     }
   }
 
+  // Registers Bool-sorted terms that occur as ARGUMENTS of uninterpreted
+  // applications as theory atoms. Registration is all that is needed: once a
+  // term is an atom, `add_explained_theory_equality` and
+  // `flatten_assigned_atom` already assert `t = true` / `t = false` into the
+  // closure with the term's own SAT literal as the reason.
+  //
+  // This is the cardinality axiom for Bool. Congruence closure is complete
+  // only for sorts whose domain may be as large as it needs; Bool has exactly
+  // two elements, so without this it may place an argument in a third class
+  // and report sat for an unsatisfiable formula -- see
+  // bugs/qf-uf-boolean-argument-congruence.
+  //
+  // Costs no SAT variable and no clause: theory_atom_for_term reaches
+  // encode_theory_atom_lit, which reuses the literal the term already has.
+  //
+  // Deliberately NOT registered:
+  //   * Bool-VALUED applications -- already theory atoms, and their branch in
+  //     add_explained_theory_equality already links them to the constants.
+  //   * operands of Bool equality/disequality -- lowered to iff/XOR before
+  //     Boolean abstraction, so the closure never sees them as equalities.
+  //   * true/false themselves -- they ARE the canonical constants.
+  //
+  // Compound arguments need no special case: the frontend replaces
+  // `(f (and p q))` with a fresh Bool Constant plus a propositional
+  // equivalence, and that constant is what sits in argument position.
+  std::size_t register_boolean_argument_terms() {
+    const std::size_t before = registered_boolean_argument_terms_.size();
+    std::unordered_set<core::TermId> visited;
+    // theory_atoms_ grows as terms are registered; re-reading size() each
+    // iteration walks the new entries too, exactly as
+    // materialize_boolean_argument_literals does. Newly registered entries are
+    // childless constants, so this terminates.
+    for (std::size_t index = 0; index < theory_atoms_.size(); ++index) {
+      std::vector<core::TermId> pending{theory_atoms_[index].term};
+      while (!pending.empty()) {
+        const core::TermId term_id = pending.back();
+        pending.pop_back();
+        if (!visited.insert(term_id).second) {
+          continue;
+        }
+        const std::vector<core::TermId> children = terms_.get(term_id).children;
+        if (terms_.get(term_id).kind == core::TermKind::Application) {
+          for (const core::TermId child : children) {
+            register_boolean_argument_term(child);
+          }
+        }
+        pending.insert(pending.end(), children.begin(), children.end());
+      }
+    }
+    return registered_boolean_argument_terms_.size() - before;
+  }
+
+  std::size_t boolean_argument_registration_count() const {
+    return registered_boolean_argument_terms_.size();
+  }
+
   std::size_t boolean_domain_bridge_count() const { return boolean_domain_bridged_terms_.size(); }
 
  private:
+  void register_boolean_argument_term(core::TermId term_id) {
+    const core::Term& term = terms_.get(term_id);
+    if (term.sort != terms_.symbols().bool_sort()) {
+      return;
+    }
+    // Only nullary Bool constants: applications are already atoms, and
+    // BoolValue terms are the canonical true/false the others are linked to.
+    if (term.kind != core::TermKind::Constant) {
+      return;
+    }
+    if (!registered_boolean_argument_terms_.insert(term_id).second) {
+      return;
+    }
+    theory_atom_for_term(term_id);
+  }
+
   void ensure_boolean_domain_constants() {
     if (boolean_domain_constants_initialized_) {
       return;
@@ -2143,6 +2215,7 @@ class BooleanClausifier {
   std::vector<TheoryAtom> theory_atoms_;
   bool boolean_domain_constants_initialized_ = false;
   std::unordered_set<core::TermId> boolean_domain_bridged_terms_;
+  std::unordered_set<core::TermId> registered_boolean_argument_terms_;
   sat::Lit true_lit_{0};
 };
 
@@ -10899,6 +10972,23 @@ void record_disequality_propagation_opportunities(const core::TermManager& terms
   }
 }
 
+// Communicates Bool's fixed cardinality to congruence closure, by whichever
+// encoding is selected. Both callers use this rather than either encoding
+// directly, so QF_UF and the mixed path cannot drift apart again -- they did,
+// and bugs/qf-uf-boolean-argument-congruence is what that cost.
+void apply_boolean_domain_encoding(BooleanClausifier& clausifier, const CheckSatOptions& options,
+                                   util::Statistics& statistics) {
+  switch (options.euf_boolean_domain) {
+    case EufBooleanDomain::Registration:
+      statistics.increment(util::StatKey::BooleanDomainRegisteredTerms,
+                           clausifier.register_boolean_argument_terms());
+      break;
+    case EufBooleanDomain::BridgeAtoms:
+      clausifier.materialize_boolean_argument_literals();
+      break;
+  }
+}
+
 CheckSatOutcome solve_qf_uf(
     core::TermManager& terms, const std::vector<core::TermId>& assertions,
     const CheckSatOptions& options, util::Statistics& statistics,
@@ -10910,6 +11000,10 @@ CheckSatOutcome solve_qf_uf(
   for (const core::TermId assertion : assertions) {
     clausifier.assert_formula(assertion);
   }
+  // Bool's two-element domain, before the atom list is measured or consumed:
+  // PreparedFlatTheory::align_assignments requires the atom count to be final
+  // for the whole solve, and every heuristic below reads theory_atoms().
+  apply_boolean_domain_encoding(clausifier, options, statistics);
   statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
   statistics.set(kStatPureTheoryFilterEnabled,
                  pure_theory_filter_enabled(options.pure_theory_filter) ? 1 : 0);
@@ -11155,7 +11249,7 @@ CheckSatOutcome solve_qf_uf_lra(
   for (const core::TermId assertion : assertions) {
     clausifier.assert_formula(assertion);
   }
-  clausifier.materialize_boolean_argument_literals();
+  apply_boolean_domain_encoding(clausifier, options, statistics);
 
   std::vector<BooleanClausifier::TheoryAtom> euf_atoms;
   std::vector<BooleanClausifier::TheoryAtom> lra_atoms;
