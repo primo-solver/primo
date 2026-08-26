@@ -219,7 +219,9 @@ under [Verification cases](#verification-cases).
 
 The pure-theory filter drops the assignment of an atom that occurs at a single
 polarity in the formula, on the reasoning that the other assignment cannot
-matter. That reasoning has a precondition:
+matter. That reasoning has a precondition -- spelled out, with the soundness
+argument it comes from and the rule for future mechanisms, in [](euf.md)'s
+[](#pure-theory-filter-precondition):
 
 > An atom may be filtered only if its meaning to the theory is **exhausted by
 > its propositional occurrences**.

@@ -45,6 +45,88 @@ to satisfying the Boolean abstraction.
 policy is the same as `on`; `off` is intended for ablation runs and for
 benchmark families where filtering removes useful early theory conflicts.
 
+(pure-theory-filter-precondition)=
+### Why it is sound, and the precondition that makes it so
+
+The argument is short, and worth writing out because its *precondition* is
+implicit and was violated once (2026-08-26, a wrong answer -- see below).
+
+Let atom `a` occur only positively in the formula, let `M` be a SAT assignment
+satisfying the Boolean abstraction, and let `M(a) = false`.
+
+1. Every occurrence of `a` is positive, so no clause is satisfied *because* `a`
+   is false. Each clause `M` satisfies has some other satisfying literal.
+2. Ask the theory about `M`'s literals minus `not a`. Suppose that smaller set
+   is `T`-consistent, and let `I` be a `T`-model of it.
+3. In `I` the atom `a` may take either value. If it is true, every clause
+   remains satisfied -- `a`'s occurrences are all positive, so turning `a` from
+   false to true can only satisfy *more* clauses.
+
+So a `T`-model of the filtered set extends to a `T`-model of the whole formula,
+and the filtered consistency verdict is trustworthy. The mirror argument covers
+purely-negative atoms.
+
+**Step 3 is the precondition.** It moves `a`'s value freely, and that is
+legitimate only when the atom's value has no consequence outside the clauses
+`a` occurs in. Stated as a rule:
+
+> An atom may be filtered only if its meaning to the theory is **exhausted by
+> its propositional occurrences**.
+
+For an ordinary equality atom or predicate application this holds: the atom's
+entire role is the truth value it contributes to clauses, and the theory learns
+about it only through the assignment.
+
+### Where the precondition fails
+
+It fails when the atom is *also a term the theory reasons about*, because then
+its value has consequences the propositional structure does not record.
+
+A `Bool` constant used as an argument of an uninterpreted function is exactly
+that case. `p` in `f(p)` is both a SAT variable and an EUF term, so flipping
+`p` changes the value of the term `p`, hence the congruence class of `f(p)`,
+hence the truth of atoms in which `p` does not syntactically occur at all.
+Step 3 is then invalid: turning `p` from false to true is not free.
+
+The witness, where `p` occurs at a single polarity in `(or p q)` and is also an
+argument:
+
+```smt2
+(declare-fun tb (Bool) U)
+(assert (= (tb true) (tb false)))
+(assert (not (= (tb p) (tb true))))
+(assert (or p q))
+```
+
+This is unsatisfiable -- `tb` collapses both elements of `Bool`. With `p`
+filtered, congruence closure never learns `p = true` or `p = false`, and Primo
+answered `sat`. `--pure-theory-filter off` answered `unsat` on the same build,
+which is what identified the filter as the mechanism.
+
+Note what is *not* wrong here: polarity collection is doing its job.
+`collect_theory_atom_polarities` records propositional occurrences, and
+argument position is not one. The defect was combining a correct polarity
+record with a filter whose precondition no longer held.
+
+### The rule for future mechanisms
+
+`TheoryAtom::theory_relevant_at_both_polarities` records that an atom's
+precondition fails; `should_filter_assignment` refuses to filter such an atom.
+Today it is set by `register_boolean_argument_terms` (see
+[](euf-boolean-arguments.md)).
+
+**Any mechanism that gives an atom theory meaning beyond its propositional
+occurrences must set it.** The shapes to watch for are mechanisms that
+*register* atoms not derived from the formula structure, and mechanisms that
+make a term's value observable to the theory through some route other than the
+clauses it appears in -- a finite-domain encoding for some future sort, an
+Ackermann literal, or an interface equality introduced by theory combination
+would each need checking against the precondition rather than assumed safe.
+
+The cheap test for a new mechanism is the one that found this: run the relevant
+differential harness with `--pure-theory-filter off` as a second arm. A
+disagreement that disappears with the filter off is this bug class.
+
 Filtered literals are also omitted from model-time propagation premises and
 from the incremental external-conflict closure. Candidate theory propagations
 whose candidate literal would be filtered are skipped. This follows the same

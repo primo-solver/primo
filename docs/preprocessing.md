@@ -798,6 +798,16 @@ assignment cannot be what satisfies any clause, so the theory need not check
 its consistency. Dropping a constraint from a consistency check is safe in a
 way that adding one is not.
 
+**With one precondition, which this passage originally omitted.** The
+justification silently assumes the atom's value can be flipped freely, which
+holds only when the atom's meaning to the theory is exhausted by its
+propositional occurrences. An atom that is also a *term* the theory reasons
+about -- a `Bool` constant used as a function argument -- breaks that, and
+filtering it produced a wrong answer on 2026-08-26. The full argument and the
+rule for future mechanisms are in
+[](euf.md)'s [](#pure-theory-filter-precondition). The sentence above is still
+true of every atom that meets the precondition; it is not true unconditionally.
+
 **The sound preprocessing cousin is about variables, not atoms.** If a real
 variable `x` occurs only *one-sided* -- every constraint mentioning it pushes
 `x` the same direction, after accounting for Boolean polarity -- then `x` can
