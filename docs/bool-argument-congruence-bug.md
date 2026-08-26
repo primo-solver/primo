@@ -201,3 +201,58 @@ uninterpreted-sort variant must keep answering `unsat`.
 5. `(f (and p q))` -- a *compound* Boolean argument, which
    [](architecture.md) says the frontend normalizes with a fresh constant and
    a propositional equivalence; that path needs its own coverage.
+
+## The same area produced a second wrong answer (2026-08-26)
+
+The fix above landed with five regression tests and a seed corpus. Nineteen
+days later the same shape produced another wrong answer:
+[](../bugs/qf-uf-boolean-argument-congruence/README.md). It is not a
+regression of this fix -- forward congruence still works -- but the
+**converse**:
+
+```smt2
+(declare-sort U 0)
+(declare-fun tb (Bool) U)
+(assert (= (tb true) (tb false)))     ; tb is constant on Bool
+(assert (not (= (tb p) (tb q))))      ; so this cannot hold
+```
+
+`tb` sends both elements of `Bool` to the same value, so `tb(p) = tb(q)` for
+every `p` and `q`. Deciding that needs the *argument* terms to be known equal
+to one of the two constants, which is `|Bool| = 2` reasoning rather than
+congruence. Primo answers `sat`.
+
+**Why the tests written for the first bug could not catch the second.** Every
+one of them asserts an argument equality and checks that congruence carries it
+forward. Look at the list above: "the reproducer", "a Bool-argument congruence
+chain", "a compound Boolean argument". Each encodes the shape that was being
+fixed. None expresses an argument equality the solver has to *derive*, and the
+second bug lives exactly there. The QF_UFLRA seed corpus has the same
+property, plus a second filter -- it is all mixed-path.
+
+That is the general trap, and it is worth stating plainly because this project
+now has two instances of it: **regression tests written after a fix encode the
+shape that was fixed.** They defend the boundary that was already found, and
+say nothing about the rest of the surface.
+
+## The harness that answers it
+
+`scripts/qf_uf_boolean_fuzz.py` generates pure-QF_UF cases -- no arithmetic
+anywhere, so only the pure path can be exercised -- across seven capacities:
+`argument`, `result`, `compound`, `nested`, `mixed-sort`, `two-valued`, and
+`converse`. It compares against z3 and exits nonzero on any disagreement,
+crash, or unsupported input, the same contract the other fuzz scripts use.
+`scripts/slurm_qf_uf_boolean_fuzz_gate.sbatch` runs one shard per shape, so a
+failure names the capacity rather than a case number.
+
+First run, 600 cases, 2026-08-26: **91 disagreements**, concentrated in
+`converse` (65), `mixed-sort` (13), `argument` (12) and `two-valued` (1), with
+`result`, `nested` and `compound` clean. All of them reduce to the same
+missing fact. The gate therefore **fails on current main by design**; once the
+open bug is fixed it becomes a clean gate and any later failure is a real
+regression.
+
+`benchmarks/seeds/qf_uf/` gained the distilled shapes: the two-assertion
+minimal witness, the converse witness, a pigeonhole case, and -- deliberately
+-- two shapes that already pass, so a future fix is measured against what must
+not regress rather than only against what currently fails.

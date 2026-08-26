@@ -12,12 +12,33 @@ is wrong for the same reason. The mixed QF_UFLRA path is unaffected.
 
 ## Reproduction
 
-```bash
-./build/primo --quiet bugs/qf-uf-boolean-argument-congruence/witness.smt2         # sat  (wrong)
-./build/primo --quiet bugs/qf-uf-boolean-argument-congruence/witness-uflra.smt2   # sat  (wrong)
-contrib/local/bin/z3   bugs/qf-uf-boolean-argument-congruence/witness.smt2        # unsat
-contrib/local/bin/cvc5 bugs/qf-uf-boolean-argument-congruence/witness.smt2        # unsat
+The smallest case has two assertions and no Bool-valued function at all:
+
+```smt2
+(set-logic QF_UF)
+(declare-sort U 0)
+(declare-fun p () Bool)
+(declare-fun q () Bool)
+(declare-fun tb (Bool) U)
+(assert (= (tb true) (tb false)))       ; tb is constant on Bool
+(assert (not (= (tb p) (tb q))))        ; so this cannot hold
+(check-sat)
 ```
+
+`tb` maps both elements of `Bool` to the same `U` value, so `tb(p) = tb(q)`
+for every `p` and `q`. Primo answers `sat`; z3 and cvc5 answer `unsat`. It is
+`benchmarks/seeds/qf_uf/seed_bool_argument_domain_unsat.smt2`.
+
+```bash
+for f in benchmarks/seeds/qf_uf/seed_bool_*_unsat.smt2; do
+  echo "$f $(./build/primo --quiet "$f") $(contrib/local/bin/z3 "$f")"
+done
+python3 scripts/qf_uf_boolean_fuzz.py --count 600 --shape all   # 91/600 disagree
+```
+
+The four-assertion witness below is the case the promotion originally
+surfaced; it is kept because it exercises the same gap through congruence on a
+second function rather than through a constant image.
 
 ## The formula is unsat
 
@@ -65,22 +86,25 @@ calls it.
 
 ## What still works, and why that hid the bug
 
-The QF_UF path is *not* broadly broken, which is why this went unnoticed. Every
-shape whose contradiction is reachable without that case split is answered
-correctly, because SAT plus ordinary congruence closure is enough:
+The QF_UF path is *not* broadly broken. Everything whose contradiction is
+reachable without reasoning about `Bool` being two-valued is answered
+correctly, because SAT plus ordinary congruence closure suffices.
+`scripts/qf_uf_boolean_fuzz.py`, 600 cases over all shapes, 2026-08-26:
 
-| shape | QF_UF result |
-| --- | --- |
-| `(= p q)` asserted, `(distinct (f p) (f q))` -- plain congruence | correct |
-| `(= p q)` asserted, contradiction through a Bool-valued result `(g p q)` | correct |
-| `f(p) = f(q)`, `f` injective, and `p != q` stated as `xor`, as two clauses, or as `(not (= p q))` | correct |
-| three pairwise-distinct Bool-valued applications | correct (decided propositionally) |
-| **`f(p) = f(q)`, `f` injective, and `p != q` only derivable** | **WRONG** |
+| shape | cases | disagreements |
+| --- | ---: | ---: |
+| result (Bool-valued applications as formulas) | 80 | **0** |
+| nested (applications feeding applications) | 81 | **0** |
+| compound (`and`/`or`/`ite` in argument position) | 86 | **0** |
+| argument | 88 | 12 |
+| mixed-sort (`Bool -> U`, `U -> Bool` chains) | 92 | 13 |
+| two-valued (needs `|Bool| = 2`) | 90 | 1 |
+| converse (argument equality derivable only from injectivity) | 83 | 65 |
 
-Six of the eight `benchmarks/seeds/qf_uflra/seed_bool_*` seeds, converted to
-QF_UF by hand, are answered correctly. The failing case is specifically the one
-where the argument equality must be *derived* from two-valuedness rather than
-being given.
+Every disagreement reduces to the same missing fact -- that a Bool-sorted
+*argument* term equals one of the two constants. Forward congruence, the
+Bool-valued result link, and the injectivity shape when the argument
+disequality is stated propositionally are all correct.
 
 ## Why the test suite did not catch it
 
