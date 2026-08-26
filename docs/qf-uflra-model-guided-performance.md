@@ -302,6 +302,7 @@ rows reuse the unchanged 2026-08-12 artifacts:
 
 | Solver/profile | Solved (sat/unsat) | Timeouts | Solved-row time (s) | PAR2 |
 | --- | ---: | ---: | ---: | ---: |
+| **Primo `all` (`3c2fbf1`, 2026-08-26)** | **1,272 (761/511)** | **12** | 805.52 | 3,685.52 |
 | Primo `all` (`413179b`) | 1,272 (761/511) | 12 | 832.63 | 3,712.63 |
 | Primo `care` | 1,271 (760/511) | 13 | 660.98 | 3,780.98 |
 | Z3 5.0.0 | 1,254 (752/502) | 30 | 617.39 | 7,817.39 |
@@ -313,45 +314,46 @@ rows reuse the unchanged 2026-08-12 artifacts:
 :alt: Instances solved against per-instance time budget for Primo, Z3, cvc5, OpenSMT, and Yices over 160 differentiating QF_UFLRA instances.
 :width: 100%
 
-Instances solved against the per-instance time budget on the **160 instances
-that at least one solver did not finish within one second**. The 1,124 common
+Instances solved against the per-instance time budget on the **159 instances
+that at least one solver did not finish within one second** (160 at the
+2026-08-14 reading; one instance crossed the one-second line). The 1,125 common
 easy instances are omitted from every series, so all pairwise vertical gaps are
 preserved. Legend counts refer to this retained subset; the table above reports
 the complete 1,284-file corpus. Legend entries are sorted by solved count, and
 the heavier blue line marks the default Primo `all` profile. Primo comes from
-the 2026-08-14 SLURM job 125763 at `413179b`; Z3, cvc5, OpenSMT, and Yices reuse
-jobs 125261--125264 at `9061611`. The opt-in Primo `care` profile remains in the
+the 2026-08-26 SLURM job 129148 at `3c2fbf1`; Z3, cvc5, OpenSMT, and Yices are
+jobs 125261--125264 at `9061611`, rebuilt from their logs (see above). Legend
+entries carry each solver's sat/unsat split below the total. The opt-in Primo `care` profile remains in the
 table as historical policy evidence but is omitted from this reference-solver
 comparison.
 ```
 
-### 2026-08-26 refresh at 30s
+### 2026-08-26 refresh at 120s, and a recovered reference set
 
-The 120s reference jobs (125261--125264) no longer exist on the cluster, so
-the figure above cannot be regenerated with a current primo. What can be
-compared on the same 1,284-file corpus is the set of 30s runs that survive:
+Primo `all` at `3c2fbf1` scores **1,272 (761/511)** with zero wrong answers --
+identical to `413179b`'s solved set, which is the expected outcome: everything
+merged since is QF_LIA machinery this fragment never enters. Solved-row time
+moved 832.63 -> 805.52 seconds (3.3% faster) and PAR2 3,712.63 -> 3,685.52,
+the same order as the run-to-run variation the 2026-08-14 refresh already
+documented below, and in the same direction the pinned-CPU A/B there found.
 
-| solver | solved | sat | unsat | PAR2 |
-| --- | --- | --- | --- | --- |
-| Yices 2.7.0 | 1,276 | -- | -- | 591 |
-| **primo `3c2fbf1`** | **1,268** | -- | -- | **1,541** |
-| primo `4e19d1b` | 1,264 | -- | -- | 1,671 |
+**The reference CSVs had to be recovered before this plot could be drawn.**
+The directory jobs 125261--125264 wrote to no longer exists, and the first
+conclusion drawn from that -- recorded here briefly, and wrong -- was that the
+120s comparison could not be refreshed at all. It could: `sacct` still names
+the jobs' working directory, and `bench_qf_uf_full.py` prints one progress line
+per instance carrying file, family, status, answer and elapsed seconds. All
+four solvers' logs were complete, 1,284 lines each, zero unparsed. The CSVs
+were rebuilt from them into
+`slurm-results/reference-qf-uflra-120s-9061611-rebuilt/`, with `expected` and
+`wrong` recomputed from each benchmark's own `set-info :status` rather than
+assumed, and the columns a progress line cannot carry left empty rather than
+guessed. The rebuilt counts reproduce the table above digit for digit, which is
+what establishes they are the same data. See that directory's `PROVENANCE.txt`.
 
-```{figure} _static/qf-uflra-cactus-30s-2026-08-26.svg
-:alt: Instances solved against per-instance time budget for primo 3c2fbf1, primo 4e19d1b and Yices 2.7.0 over 77 differentiating QF_UFLRA instances.
-:width: 100%
-
-The **77 instances at least one solver did not finish within one second**,
-at a 30s timeout. primo is SLURM job 129049 at `3c2fbf1` (2026-08-26);
-`4e19d1b` and Yices 2.7.0 reuse the existing 30s runs, same corpus, not
-re-run. This is a narrower comparison than the 120s figure above -- three
-series rather than five -- and replaces neither it nor its table.
-```
-
-**All three solvers take exactly the same 12 unsat instances** on that hard
-subset; every difference between them, including primo's +4 over `4e19d1b`,
-is on the sat side. The pooled solved count hides that completely, which is
-why `plot_cactus.py` now prints and plots the split.
+The lesson generalises past this figure: a vanished results directory is not
+the same as vanished results, and `find` over directory names is not a search
+for the data.
 
 Regenerate the figure from the campaign's copied shard directories with:
 
@@ -363,9 +365,9 @@ python3 scripts/plot_cactus.py \
   --series "OpenSMT=<reference-root>/opensmt" \
   --series "Yices=<reference-root>/yices" \
   --timeout 120 --drop-solved-by-all-under 1 \
-  --sort-by-solved --highlight-series "Primo all" \
-  --title "QF_UFLRA, 2026-08-14" \
-  --note "Primo job 125763 at 413179b; reference jobs 125261-125264 at 9061611." \
+  --sort-by-solved --highlight-series "Primo 3c2fbf1" \
+  --title "QF_UFLRA, 1,284 instances, 120s" \
+  --note "Primo job 129148 at 3c2fbf1; references rebuilt from jobs 125261-125264 at 9061611." \
   --out docs/_static/qf-uflra-cactus.svg
 ```
 
