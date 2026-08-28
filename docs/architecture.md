@@ -10,8 +10,10 @@ Primo is organized as layered components with explicit data ownership. This page
   backend-neutral IPASIR-UP callback interfaces, and the concrete CaDiCaL
   adapter.
 - `smt/` owns SMT-LIB command processing, preprocessing, Boolean abstraction,
-  clausification, QF_UF/QF_LRA solver orchestration, and the current separable
-  mixed QF_UFLRA coordinator.
+  clausification, tactic composition, QF_UF/QF_LRA solver orchestration, and the
+  current separable mixed QF_UFLRA coordinator. The tactic data structures,
+  ownership rules, and current migration boundary are described in
+  [](tactics.md).
 - `theory/` owns equality reasoning, congruence closure, and arithmetic
   tableau solving.
 

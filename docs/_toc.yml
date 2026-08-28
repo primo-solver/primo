@@ -7,6 +7,7 @@ parts:
   - caption: Core architecture
     chapters:
       - file: architecture
+      - file: tactics
       - file: boolean-dag-flattening
       - file: root-polarity-clausification
       - file: sat-ipasir-up

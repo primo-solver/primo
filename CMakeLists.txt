@@ -308,6 +308,12 @@ primo_enable_sanitizers(primo_preprocessing_tests)
 target_link_libraries(primo_preprocessing_tests PRIVATE primo_core)
 add_test(NAME primo_preprocessing_tests COMMAND primo_preprocessing_tests)
 
+add_executable(primo_tactic_tests tests/unit/tactic_tests.cpp)
+primo_enable_warnings(primo_tactic_tests)
+primo_enable_sanitizers(primo_tactic_tests)
+target_link_libraries(primo_tactic_tests PRIVATE primo_core)
+add_test(NAME primo_tactic_tests COMMAND primo_tactic_tests)
+
 add_executable(primo_theory_combination_tests tests/unit/theory_combination_tests.cpp)
 primo_enable_warnings(primo_theory_combination_tests)
 primo_enable_sanitizers(primo_theory_combination_tests)
