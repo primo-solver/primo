@@ -346,6 +346,15 @@ simplifications. Finite-domain AMO clauses, equality-definition clauses, and
 symmetry constraints are emitted once after the repeated simplification loop so
 generated lemmas are not fed back into every pass.
 
+Control of this loop is implemented by the formula-level tactic API described in
+{doc}`tactics`: one `preprocessing-round` leaf owns the established pass order,
+and the `preprocessing-fixed-point` repeat tactical owns termination and adaptive
+continuation. Assertions move into and out of the tactic goal without changing
+their `TermManager` ownership. Model-reconstruction and forced-atom records still
+belong to the surrounding single-goal solve session, so this production tactic
+does not split into alternatives. The migration changes orchestration only; the
+individual algorithms, option meanings, and defaults are unchanged.
+
 The fixed pass count is a baseline cap, not always a hard stop. After the cap is
 reached, Primo may run up to four additional adaptive passes when the previous
 pass reduced the number of unique reachable formula terms by at least ten

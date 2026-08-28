@@ -42,8 +42,9 @@ the cancellation probe used by future schedulers.
 `smt::Tactic` is a named type-erased callable with the signature
 `AnyOf(TacticContext&, AnyOf)`. Input is passed by value so a composition can
 move assertion vectors forward without a required deep copy. The same semantic
-type is accepted and returned. Named invocation and elapsed-microsecond counters
-are emitted under `:tactic.<name>.*`. Change detection is confined to tacticals
+type is accepted and returned. Named invocation counters are emitted under
+`:tactic.<name>.invocations`, and elapsed microseconds under
+`:time.tactic.<name>-us`. Change detection is confined to tacticals
 such as `repeat` that require it, rather than copying every tactic input merely
 for instrumentation.
 
@@ -61,6 +62,32 @@ goal and its context. The initial built-in numeric probe reports assertion
 count. Preprocessing-specific structural probes are added with the preprocessing
 migration rather than hidden inside the generic layer.
 
+## Production composition
+
+The repeated preprocessing round is now a leaf tactic. The generic `repeat`
+tactical applies it to a structural fixed point, respects the existing baseline
+pass limit, and consults a reachable-term-count continuation predicate for the
+configured adaptive extra passes. The ordering and implementations of the
+individual preprocessing transformations are unchanged. Existing command-line
+options still construct this built-in composition; this change does not add a
+user-facing tactic expression syntax or alter option defaults.
+
+The Boolean, QF_UF, QF_LRA, QF_LIA, and combined QF_UFLRA solvers are adapted as
+formula-returning leaf tactics. A solving leaf represents `sat` by an empty
+goal, `unsat` by a goal containing `false`, and `unknown` or unsupported input
+by the unchanged inconclusive goal plus a diagnostic. A dispatch tactic probes
+the formula features and logic, then invokes the selected leaf. The pure
+Boolean path uses the generic first-terminal scheduler with QF_UF as a fallback.
+The existing QF_UF preprocessing portfolio remains outside this layer because
+each arm deliberately reparses the original SMT-LIB text into a fresh term
+manager; `TermId` values and goals must never cross that session boundary.
+
+The scheduler API is independent of its current execution policy. The supplied
+implementation runs alternatives sequentially and in declaration order. A
+future parallel scheduler can implement the same interface, but it must give
+each arm an isolated context, combine only terminal results, propagate
+cancellation, and define deterministic statistics before it is enabled.
+
 ## Deliberate deviations and limitations
 
 The paper's tactic return type separately represents `sat`, `unsat`, `unknown`,
@@ -71,9 +98,11 @@ contracts and backend failures use exceptions (`TacticError` or the originating
 standard exception); they are not tactical alternatives.
 
 The current framework carries a final model string on a terminal goal, but the
-existing preprocessing reconstruction records have not yet moved into `Goal`.
-Until that migration is complete, tactic alternatives must not independently
-perform model-changing preprocessing. Proof converters, unsat-core converters,
+production preprocessing reconstruction records are still owned by the one
+active solve session rather than by `Goal`. The migrated preprocessing schedule
+therefore operates on exactly one goal. Until reconstruction ownership moves
+with each goal, a tactic must not split a model-changing preprocessing result
+into independent alternatives. Proof converters, unsat-core converters,
 incremental tactics, a user-facing tactic language, and true parallel execution
 are not implemented.
 
@@ -90,6 +119,17 @@ are not implemented.
 - The generic framework adds no whole-term-DAG scans. Such scans belong to
   explicit probes and remain visible in tactic statistics.
 
+The principal proof obligation for every transformation leaf is that the
+disjunction of its output goals is equisatisfiable with its input goal. A leaf
+that changes the model vocabulary additionally owes a reconstruction operation;
+the single-goal production pipeline continues to use the existing reconstruction
+records for that purpose. Solver leaves must agree with the truth represented by
+their returned goal, and the dispatch boundary checks this agreement for `sat`
+and `unsat`. Serious contract violations and unexpected backend failures escape
+as exceptions and are reported only at the command-line boundary.
+
 `tests/unit/tactic_tests.cpp` covers terminal classification, disjunctive
 alternatives, the non-empty invariant, fixed-point repetition, conditional
-selection, statistics, and pristine-input fallback.
+selection, statistics, pristine-input fallback, and production dispatch to each
+supported solver family. Existing preprocessing and solver suites cover the
+migrated control flow with their prior correctness and adaptive-pass assertions.

@@ -22,6 +22,10 @@ std::string stat_name(std::string_view tactic, std::string_view suffix) {
   return ":tactic." + std::string(tactic) + "." + std::string(suffix);
 }
 
+std::string time_stat_name(std::string_view tactic) {
+  return ":time.tactic." + std::string(tactic) + "-us";
+}
+
 }  // namespace
 
 AnyOf::AnyOf(std::vector<Goal> alternatives) : alternatives_(std::move(alternatives)) {
@@ -93,7 +97,7 @@ AnyOf Tactic::operator()(TacticContext& context, AnyOf input) const {
   const TacticClock::time_point start = TacticClock::now();
   context.statistics().increment(stat_name(name_, "invocations"));
   AnyOf output = function_(context, std::move(input));
-  context.statistics().increment(stat_name(name_, "time-us"),
+  context.statistics().increment(time_stat_name(name_),
                                  elapsed_microseconds(start, TacticClock::now()));
   return output;
 }

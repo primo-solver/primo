@@ -6,6 +6,7 @@
 
 #include "core/symbol_table.hpp"
 #include "core/term_manager.hpp"
+#include "smt/check_sat.hpp"
 #include "smt/tactic.hpp"
 #include "util/statistics.hpp"
 
@@ -131,6 +132,68 @@ void sequential_scheduler_tries_each_arm_from_the_original_goal() {
   check(primo::smt::truth(result, fixture.context) == primo::smt::GoalTruth::True);
 }
 
+void solver_dispatch_uses_formula_tactics() {
+  primo::smt::CheckSatOptions options;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
+  options.solved_constant_substitution = false;
+
+  const auto boolean_result = primo::smt::check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-fun p () Bool)
+    (assert p)
+    (check-sat)
+  )",
+                                                           options);
+  check(boolean_result.result == primo::smt::CheckSatResult::Sat);
+  check(boolean_result.statistics.get(":tactic.solver-dispatch.invocations") == 1);
+  check(boolean_result.statistics.get(":tactic.solve-boolean.invocations") == 1);
+
+  const auto euf_result = primo::smt::check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-sort U 0)
+    (declare-fun a () U)
+    (declare-fun b () U)
+    (declare-fun f (U) U)
+    (assert (= (f a) (f b)))
+    (check-sat)
+  )",
+                                                       options);
+  check(euf_result.result == primo::smt::CheckSatResult::Sat);
+  check(euf_result.statistics.get(":tactic.solve-qf-uf.invocations") == 1);
+
+  const auto lra_result = primo::smt::check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (assert (< x 0))
+    (check-sat)
+  )",
+                                                       options);
+  check(lra_result.result == primo::smt::CheckSatResult::Sat);
+  check(lra_result.statistics.get(":tactic.solve-qf-lra.invocations") == 1);
+
+  const auto mixed_result = primo::smt::check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun f (Real) Real)
+    (assert (< x 0))
+    (assert (= (f x) x))
+    (check-sat)
+  )",
+                                                         options);
+  check(mixed_result.result == primo::smt::CheckSatResult::Sat);
+  check(mixed_result.statistics.get(":tactic.solve-qf-uflra.invocations") == 1);
+
+  const auto lia_result = primo::smt::check_sat_smtlib(R"(
+    (set-logic QF_LIA)
+    (declare-fun x () Int)
+    (assert (< x 0))
+    (check-sat)
+  )",
+                                                       options);
+  check(lia_result.result == primo::smt::CheckSatResult::Sat);
+  check(lia_result.statistics.get(":tactic.solve-qf-lia.invocations") == 1);
+}
+
 }  // namespace
 
 int main() {
@@ -141,4 +204,5 @@ int main() {
   sequence_and_repeat_stop_at_a_fixed_point();
   conditional_uses_a_probe();
   sequential_scheduler_tries_each_arm_from_the_original_goal();
+  solver_dispatch_uses_formula_tactics();
 }

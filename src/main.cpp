@@ -144,7 +144,7 @@ constexpr const char* kGroupProcedural = "Procedural options";
 
 }  // namespace
 
-int main(int argc, char** argv) {
+int run_main(int argc, char** argv) {
   std::signal(SIGTERM, handle_sigterm);
   primo::smt::CheckSatOptions solver_options;
   std::vector<std::string> files;
@@ -1079,4 +1079,13 @@ int main(int argc, char** argv) {
     }
   }
   return exit_code;
+}
+
+int main(int argc, char** argv) {
+  try {
+    return run_main(argc, argv);
+  } catch (const std::exception& error) {
+    std::cerr << "error: " << error.what() << "\n";
+    return 1;
+  }
 }
