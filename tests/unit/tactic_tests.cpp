@@ -4,6 +4,7 @@
 #include <utility>
 #include <vector>
 
+#include "core/ids.hpp"
 #include "core/symbol_table.hpp"
 #include "core/term_manager.hpp"
 #include "smt/check_sat.hpp"

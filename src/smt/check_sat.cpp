@@ -6,7 +6,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <deque>
-#include <exception>
 #include <functional>
 #include <iterator>
 #include <memory>
@@ -37,6 +36,7 @@
 #include "smtlib/commands.hpp"
 #include "smtlib/parser.hpp"
 #include "theory/arithmetic/lia_branch_and_bound.hpp"
+#include "theory/arithmetic/lia_explanation.hpp"
 #include "theory/arithmetic/lia_gcd_consistency.hpp"
 #include "theory/arithmetic/lia_gomory_cuts.hpp"
 #include "theory/arithmetic/lia_integer_values.hpp"

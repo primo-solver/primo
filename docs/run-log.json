@@ -28254,6 +28254,35 @@
       "artifacts": "local ignored artifact fuzz-results/tactics-qf-uf-boolean-06af8df/summary.csv",
       "evidence_status": "local-complete-current",
       "outcome": "The tactic control-flow migration passes the required 1,000-case merge gate with exact answer agreement and no failures."
+    },
+    {
+      "id": "2026-08-28-tactic-control-flow-local-performance-check",
+      "started_at": "2026-08-28",
+      "recorded_at": "2026-08-28",
+      "kind": "measurement",
+      "scope": "Release-build before/after check for overhead or answer changes introduced by routing preprocessing repetition and solver dispatch through tactics. The corpus contains all 34 checked-in QF_UF, QF_LRA, and QF_UFLRA smoke and seed files, run five times per arm in alternating baseline/current order.",
+      "commit": "56515aa (tactic integration plus fuzz evidence) vs dacf6db (tactic data structures before production integration)",
+      "branch": "tactics",
+      "environment": {
+        "type": "local",
+        "host": "mikolas-ThinkPad-T14s-Gen-5",
+        "binary": "Release builds, GCC 13.3.0, CaDiCaL cadical-3.0.0-7b99c07",
+        "timeout": "5 seconds per file"
+      },
+      "commands": {
+        "build_current": "cmake -S . -B build-release-tactics -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=/workspace/contrib/local && cmake --build build-release-tactics --target primo -j2",
+        "build_baseline": "git worktree add --detach /tmp/primo-tactics-baseline dacf6db; cmake -S /tmp/primo-tactics-baseline -B /tmp/primo-tactics-baseline/build-release -DCMAKE_BUILD_TYPE=Release; cmake --build /tmp/primo-tactics-baseline/build-release --target primo -j2",
+        "measurement": "For runs 1 through 5, scripts/bench.py over benchmarks/smoke plus benchmarks/seeds/{qf_uf,qf_lra,qf_uflra}, first with the dacf6db binary and then the 56515aa binary, --timeout 5."
+      },
+      "results": {
+        "correctness": "All 34 answers were identical in every run; no timeout or nonzero exit occurred.",
+        "baseline": "Per-run summed runtimes: 0.093953, 0.086008, 0.086629, 0.085898, 0.088396 seconds; median 0.086629 seconds.",
+        "tactics": "Per-run summed runtimes: 0.085386, 0.085458, 0.087603, 0.087643, 0.086627 seconds; median 0.086627 seconds.",
+        "paired_reading": "Median per-file runtime ratio is 0.9785x. Every file completes in roughly 2-4 ms, so process startup and scheduler noise dominate; this is evidence of no visible regression on the checked-in corpus, not a performance improvement claim."
+      },
+      "artifacts": "local ignored artifacts results/tactics-baseline-dacf6db-{1..5}.csv and results/tactics-current-56515aa-{1..5}.csv",
+      "evidence_status": "local-complete-current",
+      "outcome": "No answer change and no measurable orchestration regression on the checked-in smoke/seed corpus; the measured median totals differ by 0.002 ms."
     }
   ]
 }

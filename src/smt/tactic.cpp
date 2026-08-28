@@ -1,9 +1,17 @@
 #include "smt/tactic.hpp"
 
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
+#include <functional>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <string_view>
 #include <utility>
+#include <vector>
 
+#include "core/ids.hpp"
 #include "core/term.hpp"
 #include "core/term_manager.hpp"
 #include "util/statistics.hpp"
