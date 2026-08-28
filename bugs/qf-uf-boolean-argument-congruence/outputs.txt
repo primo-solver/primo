@@ -1,0 +1,16 @@
+Local reproduction, 2026-08-26, primo 6b1ba61 (main):
+
+witness.smt2                 ./build/primo --quiet        sat
+witness.smt2                 contrib/local/bin/z3         unsat
+witness.smt2                 contrib/local/bin/cvc5       unsat
+
+witness-uflra.smt2           ./build/primo --quiet        sat
+witness-uflra.smt2           contrib/local/bin/z3         unsat
+witness-uflra.smt2           contrib/local/bin/cvc5       unsat
+
+Primo reports sat for both; z3 and cvc5 report unsat for both.
+
+Solver-path counters (--stats):
+  witness.smt2         : :solver.qf-uf         (no boolean-domain counters emitted)
+  witness-uflra.smt2   : :solver.qf-uf         (no boolean-domain counters emitted)
+  + (assert (< 0 x))   : :solver.qf-uflra      :no.boolean-domain.bridged-terms 8, equality-atoms 17 -> unsat

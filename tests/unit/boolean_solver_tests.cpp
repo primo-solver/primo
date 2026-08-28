@@ -2723,6 +2723,130 @@ void boolean_unit_simplification_handles_nested_rewrites() {
   assert(result.statistics.get(":preprocessing.boolean-units.rewrites") >= 1);
 }
 
+// The 2026-08-26 cardinality bug: Bool has exactly two elements, so a
+// Bool-sorted ARGUMENT is congruent with true or false, and congruence closure
+// is incomplete without that fact. These four cases are pure QF_UF -- no
+// arithmetic -- because the mixed path had the fact all along and the pure
+// path did not, which is precisely how the gap survived nineteen days after
+// docs/bool-argument-congruence-bug.md's fix.
+
+void bool_argument_survives_the_pure_theory_filter() {
+  // `p` occurs at one polarity propositionally, in `(or p q)`, and also as an
+  // argument of `tb`. Polarity is collected from formula structure only and
+  // never descends into arguments, so `p` looked pure to the pure-theory
+  // filter, which dropped exactly the assignment congruence needed. Found by
+  // code review after the first version of this fix shipped; the fix answered
+  // it `sat`, and `main` before the fix answered the QF_UFLRA form `unsat`,
+  // so it was a regression as well as a gap.
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-sort U 0)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (declare-fun tb (Bool) U)
+    (assert (= (tb true) (tb false)))
+    (assert (not (= (tb p) (tb true))))
+    (assert (or p q))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+}
+
+void bool_argument_survives_the_filter_at_negative_polarity() {
+  // The mirror: purely-negative occurrence, dropped by the other half of the
+  // filter's condition.
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-sort U 0)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (declare-fun tb (Bool) U)
+    (assert (= (tb true) (tb false)))
+    (assert (not (= (tb p) (tb true))))
+    (assert (or (not p) q))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+}
+
+void bool_argument_domain_is_two_valued_in_qf_uf() {
+  // The smallest witness: tb collapses both elements of Bool, so tb(p) and
+  // tb(q) cannot differ whatever p and q are. No Bool-valued function is
+  // involved, which isolates the missing fact to argument position.
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-sort U 0)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (declare-fun tb (Bool) U)
+    (assert (= (tb true) (tb false)))
+    (assert (not (= (tb p) (tb q))))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":no.boolean-domain.registered-terms") == 2);
+}
+
+void bool_argument_converse_of_congruence_in_qf_uf() {
+  // f is injective on Bool, so (= (f p) (f q)) forces p = q -- the CONVERSE of
+  // congruence, which holds only because the domain has two elements. g then
+  // turns that derived equality into a contradiction. Every earlier regression
+  // test asserts the argument equality instead of deriving it.
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (declare-fun f (Bool) Bool)
+    (declare-fun g (Bool Bool) Bool)
+    (assert (= (f p) (f q)))
+    (assert (distinct (f true) (f false)))
+    (assert (g p q))
+    (assert (not (g q q)))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Unsat);
+}
+
+void bool_argument_two_valued_case_stays_satisfiable() {
+  // The failure mode a cardinality axiom has when it is too strong: turning
+  // sat into unsat. Invisible if every test in the group is an unsat case, so
+  // this one is deliberately satisfiable while still registering arguments.
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-sort U 0)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (declare-fun f (Bool) Bool)
+    (declare-fun tb (Bool) U)
+    (assert (distinct (f true) (f false)))
+    (assert (= (f p) (f q)))
+    (assert (= (tb p) (tb q)))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.boolean-domain.registered-terms") >= 1);
+}
+
+void ordinary_predicates_register_no_boolean_arguments() {
+  // The cost claim, asserted rather than argued: a formula whose functions
+  // take no Bool argument registers nothing, so the QF_UF division pays
+  // nothing. The older bridge encoding bridged 4 terms on this same shape.
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-sort U 0)
+    (declare-fun a () U)
+    (declare-fun b () U)
+    (declare-fun P (U) Bool)
+    (declare-fun Q (U U) Bool)
+    (assert (or (P a) (P b)))
+    (assert (or (not (P a)) (Q a b)))
+    (assert (= a b))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":no.boolean-domain.registered-terms") == 0);
+}
+
 void bool_argument_congruence_preserves_boolean_domain() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLRA)
@@ -2739,7 +2863,12 @@ void bool_argument_congruence_preserves_boolean_domain() {
     (check-sat)
   )");
   assert(result.result == CheckSatResult::Unsat);
-  assert(result.statistics.get(":no.boolean-domain.bridged-terms") >= 1);
+  // Asserts that Bool's two-element domain reached the closure, not which
+  // encoding carried it: this counter moved from bridged-terms to
+  // registered-terms on 2026-08-26 when both solver paths were unified on
+  // registration. The `unsat` above is the property; the counter only rules
+  // out reaching it by accident.
+  assert(result.statistics.get(":no.boolean-domain.registered-terms") >= 1);
 }
 
 void bool_result_and_complement_congruence_preserves_boolean_domain() {
@@ -3061,5 +3190,11 @@ int main() {
   bool_argument_congruence_chains_through_two_applications();
   compound_bool_argument_congruence_is_not_dropped();
   purely_propositional_input_still_uses_the_boolean_solver();
+  bool_argument_domain_is_two_valued_in_qf_uf();
+  bool_argument_converse_of_congruence_in_qf_uf();
+  bool_argument_two_valued_case_stays_satisfiable();
+  ordinary_predicates_register_no_boolean_arguments();
+  bool_argument_survives_the_pure_theory_filter();
+  bool_argument_survives_the_filter_at_negative_polarity();
   return 0;
 }

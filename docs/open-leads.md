@@ -45,6 +45,10 @@ notes it points to.
 | [9](#lead-monotone) | Monotone (one-sided) variable elimination | neutral on the promotion bar | done | **implemented, opt-in; did not clear its bar** |
 | [10](#lead-z3-cheap-shared-equality) | Current-model-filtered unit-row equality recognition | unknown; removes exact-offset arithmetic and hashing from mixed equality production | medium | **open; QF_UFLRA only** |
 | [11](#lead-unconstrained-terms) | Unconstrained-term substitution (Brummayer/Bruttomesso) | 131/4.76M reals (QF_LRA), 1/217K (QF_UFLRA) -- negligible on both local corpora | small-medium | **open; not implemented, evidence says don't -- see falsifier** |
+| [12](#lead-qflia) | QF_LIA preprocessing disabled; conflict clauses do not generalize | +339 answered on the full division from 12d and 12f so far | done/partial | **12d and 12f implemented; 12b, 12c, 12e open** |
+| [13](#lead-qflira) | QF_LIRA -- frontend gap, not a solver gap | search core already runs mixed tableaus | medium (frontend) | **open; run the falsifier first** |
+| [14](#lead-monotone-int) | Monotone elimination for `Int`, not just `Real` | unmeasured -- the QF_LIA zero is definitional | small, gated on 9 | **open; measure candidate density first** |
+| [15](#lead-boolean-bridge-exclusion) | Delete the `bridge-atoms` Boolean-domain encoding | superseded by registration: 0 disagreements on both fragments, 3% faster on QF_UF | small (deletion) | **open; the A/B is done and came out flat** |
 | -- | D2 floating-point-guided basis selection | ~14% in the literature | medium | open, see [](qf-lra-heuristics.md) |
 | -- | D4 revised simplex, LU-factored basis | unknown | largest | open, see [](qf-lra-heuristics.md) |
 | -- | H4 batched bound assertion; H6 DL fast path; H11 fill-in-aware preprocessing elimination | -- | -- | design only, see [](qf-lra-heuristics.md) |
@@ -1410,6 +1414,7 @@ those regressions, and the ordinary merge fuzz gate. A grep for self-calls is
 only a starting aid and does not complete the audit.
 
 (lead-qflia-preprocessing)=
+(lead-qflia)=
 ## 12. QF_LIA preprocessing is fully disabled, and conflict clauses don't generalize
 
 **Status: open, added 2026-08-20.** Follows directly from the 428-file
@@ -1831,6 +1836,113 @@ variable integral on Sat). If any stage assumes total integrality, that
 test fails and this lead is wrong about the core -- which would make the
 frontend work pointless to start. **Run the falsifier first**: it costs an
 hour and gates a project.
+
+(lead-monotone-int)=
+## 14. Monotone (one-sided) elimination for `Int`, not just `Real`
+
+**Status: open, added 2026-08-26.** Follows from [](#lead-monotone), whose
+pass is `Real`-only for no stated reason.
+
+**Claim.** The one-sided elimination rule is sound over `Int` by exactly the
+argument that makes it sound over `Real`, and the implementation restriction
+is a sort predicate rather than an algorithmic one.
+
+**Why it transfers.** The rule is Fourier-Motzkin on a single-sign variable:
+if every atom mentioning `x` pushes it the same direction, some extreme value
+of `x` satisfies all of them at once, so each atom can be replaced by the
+constant its own occurrence needs. The only property of the domain that
+argument uses is that it is *unbounded in the pushing direction*, and `Z` is
+unbounded in both. The saving is also the same shape -- mostly Boolean, since
+the atom leaves the CNF and the clauses it satisfies disappear.
+
+**What would change.** `is_real_constant` in `preprocessing.cpp` gates
+candidacy on `sort == real_sort()`, and it is used in exactly two places.
+Model reconstruction is the part that needs actual thought rather than a
+widened predicate: `MonotoneEliminatedVariable` re-derives a satisfying value
+from the discharged constraints, and for an `Int` variable that value must be
+an *integer* in the satisfying ray. The ray is unbounded, so one always
+exists, but the reconstruction has to round into it rather than take the
+rational extreme -- `delta_floor`/`delta_ceil` in
+`theory/arithmetic/lia_integer_values.hpp` are the existing helpers, and
+scale-canonicalization means an `Int` variable's bound may itself be
+fractional (`(<= (* 3 x) 5)` stores `5/3`), so the rounding has to be done
+against the bound rather than assumed integral.
+
+**What would break it, and does not exist here.** A divisibility constraint on
+`x` (`div`, `mod`, `divisible`) makes the ray no longer uniformly satisfying:
+pushing `x` far in one direction does not preserve `x mod 3 = 1`. Primo
+implements none of those, and they are listed as out of scope in
+[](qf-lia-branch-and-bound.md). Any future work adding them, or adding
+QF_LIRA's `to_int` ([](#lead-qflira)), must disqualify variables under them --
+the same way the pass already disqualifies a variable occurring under an
+uninterpreted application.
+
+**Evidence: none yet, and one number that must not be misread.** Sampling
+`--monotone-elimination --stats` across the corpora on 2026-08-26 gave 24 of
+48 QF_LRA files firing (2,157 variables eliminated), 4 of 35 QF_UFLRA files,
+and **0 of 58 QF_LIA files**. That zero is definitional, not empirical: the
+pass refuses `Int` candidates before counting them. The first step of this
+lead is therefore to measure *candidate density on QF_LIA at all*, either by
+relaxing the predicate behind a flag or by an offline scan, before any
+performance question is asked.
+
+**Sequencing.** [](#lead-monotone) is currently being re-tested at full
+QF_LRA scale (300s, 1,753 files) after its rejection on a 237-file 10s
+sample. If the `Real` pass does not clear the bar there, extending it to `Int`
+buys a wider domain for a mechanism that does not pay -- so wait for that
+result before starting. The QF_LIA fragment is also the one where the profile
+puts all integer-specific stages at 0.1% of runtime, which bounds the upside
+of anything acting *inside* the integer search; this pass acts before it, on
+the Boolean structure, which is the reason it is worth asking about at all.
+
+**Falsifier, stated before the work.** An offline scan of the QF_LIA division
+counting `Int` variables that occur one-sidedly under the pass's own
+conservative disqualification rules. If the median instance has zero such
+variables -- as the QF_LRA-shaped intuition may not survive contact with
+`slacks`, `convert` and `miplib` -- the lead closes on a measurement that
+costs an afternoon, with no solver change written.
+
+(lead-boolean-bridge-exclusion)=
+## 15. Delete the `bridge-atoms` Boolean-domain encoding
+
+**Status: open, added 2026-08-26, rewritten the same day after the QF_UF
+cardinality fix (`fa44295`) landed.**
+
+**Claim.** `EufBooleanDomain::BridgeAtoms` should be deleted, along with
+`materialize_boolean_argument_literals`, `ensure_boolean_domain_bridge`,
+`ensure_boolean_domain_constants` and the `--euf-boolean-domain` flag. The
+default `Registration` encoding supersedes it: same information to congruence
+closure, no SAT variable and no clause per term instead of 2 atoms and 3
+clauses, and it does not bridge Bool-VALUED applications, which are already
+theory atoms.
+
+**Evidence already in hand.** Both encodings were A/B-ed on one binary
+(2026-08-26). QF_UF division, 7,503 files at 60s: zero answer disagreements,
+and registration 3% faster over the 881 files both solve in more than a second.
+QF_UFLRA, 1,284 files at 120s: 1,272 answered in both arms, identical 761/511
+split, zero gained, zero lost, zero disagreements. The Bool fuzz gate is clean
+under both. See `docs/run-log.json`'s
+`2026-08-26-qf-uf-boolean-cardinality-fix`.
+
+**The original form of this lead is now moot.** It asked whether the bridge's
+third clause -- `(not (t = true)) or (not (t = false))` -- was redundant. It
+is: asserting both merges `true` with `false`, which the unit disequality
+already forbids, so EUF raises that conflict itself. Removing it kept 20/20
+suites, all eight QF_UFLRA bool seeds and a 200-case differential run
+unchanged, with conflicts over those 208 files going 270 -> 223. But the clause
+only exists inside the encoding this lead now proposes to delete outright, so
+the narrower question does not need answering separately.
+
+**Cost.** Small: a deletion plus removing one option and its plumbing. The only
+reason it is not already done is that the flag is what makes the A/B above
+reproducible, and deleting it in the same commit as the fix would have made a
+later regression harder to bisect.
+
+**Falsifier.** None needed beyond what is recorded -- the measurement that
+would have justified keeping `bridge-atoms` has already been taken and came
+out flat. If anything, delete it only after one more full QF_UFLRA run at the
+next opportunity, so the deletion rests on two independent readings rather
+than one.
 
 ## Complementarity: losing on average is not the same as useless
 

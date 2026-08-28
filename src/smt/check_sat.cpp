@@ -1689,8 +1689,19 @@ class BooleanClausifier {
   struct TheoryAtom {
     sat::Lit lit;
     core::TermId term;
+    // Propositional occurrences only: collect_theory_atom_polarities walks the
+    // formula structure and does NOT descend into uninterpreted-function
+    // arguments.
     bool occurs_positive = false;
     bool occurs_negative = false;
+    // Set for atoms whose meaning to the theory does not follow from their
+    // propositional occurrences, so the pure-theory filter must not drop
+    // either assignment of them. A Bool constant used as a UF argument is the
+    // case this exists for: congruence over `f(p)` needs `p = true/false`
+    // whichever way the SAT solver assigns `p`, even when `p` occurs at a
+    // single polarity in the formula. Filtering it out is a wrong answer --
+    // see bugs/qf-uf-boolean-argument-congruence.
+    bool theory_relevant_at_both_polarities = false;
   };
 
   BooleanClausifier(sat::IpasirUpBackend& backend, core::TermManager& terms,
@@ -1776,9 +1787,83 @@ class BooleanClausifier {
     }
   }
 
+  // Registers Bool-sorted terms that occur as ARGUMENTS of uninterpreted
+  // applications as theory atoms. Registration is all that is needed: once a
+  // term is an atom, `add_explained_theory_equality` and
+  // `flatten_assigned_atom` already assert `t = true` / `t = false` into the
+  // closure with the term's own SAT literal as the reason.
+  //
+  // This is the cardinality axiom for Bool. Congruence closure is complete
+  // only for sorts whose domain may be as large as it needs; Bool has exactly
+  // two elements, so without this it may place an argument in a third class
+  // and report sat for an unsatisfiable formula -- see
+  // bugs/qf-uf-boolean-argument-congruence.
+  //
+  // Costs no SAT variable and no clause: theory_atom_for_term reaches
+  // encode_theory_atom_lit, which reuses the literal the term already has.
+  //
+  // Deliberately NOT registered:
+  //   * Bool-VALUED applications -- already theory atoms, and their branch in
+  //     add_explained_theory_equality already links them to the constants.
+  //   * operands of Bool equality/disequality -- lowered to iff/XOR before
+  //     Boolean abstraction, so the closure never sees them as equalities.
+  //   * true/false themselves -- they ARE the canonical constants.
+  //
+  // Compound arguments need no special case: the frontend replaces
+  // `(f (and p q))` with a fresh Bool Constant plus a propositional
+  // equivalence, and that constant is what sits in argument position.
+  std::size_t register_boolean_argument_terms() {
+    const std::size_t before = registered_boolean_argument_terms_.size();
+    std::unordered_set<core::TermId> visited;
+    // theory_atoms_ grows as terms are registered; re-reading size() each
+    // iteration walks the new entries too, exactly as
+    // materialize_boolean_argument_literals does. Newly registered entries are
+    // childless constants, so this terminates.
+    for (std::size_t index = 0; index < theory_atoms_.size(); ++index) {
+      std::vector<core::TermId> pending{theory_atoms_[index].term};
+      while (!pending.empty()) {
+        const core::TermId term_id = pending.back();
+        pending.pop_back();
+        if (!visited.insert(term_id).second) {
+          continue;
+        }
+        const std::vector<core::TermId> children = terms_.get(term_id).children;
+        if (terms_.get(term_id).kind == core::TermKind::Application) {
+          for (const core::TermId child : children) {
+            register_boolean_argument_term(child);
+          }
+        }
+        pending.insert(pending.end(), children.begin(), children.end());
+      }
+    }
+    return registered_boolean_argument_terms_.size() - before;
+  }
+
+  std::size_t boolean_argument_registration_count() const {
+    return registered_boolean_argument_terms_.size();
+  }
+
   std::size_t boolean_domain_bridge_count() const { return boolean_domain_bridged_terms_.size(); }
 
  private:
+  void register_boolean_argument_term(core::TermId term_id) {
+    const core::Term& term = terms_.get(term_id);
+    if (term.sort != terms_.symbols().bool_sort()) {
+      return;
+    }
+    // Only nullary Bool constants: applications are already atoms, and
+    // BoolValue terms are the canonical true/false the others are linked to.
+    if (term.kind != core::TermKind::Constant) {
+      return;
+    }
+    if (!registered_boolean_argument_terms_.insert(term_id).second) {
+      return;
+    }
+    // May return an atom that already exists with polarity flags set from the
+    // formula structure; the flag has to be set either way.
+    theory_atom_for_term(term_id).theory_relevant_at_both_polarities = true;
+  }
+
   void ensure_boolean_domain_constants() {
     if (boolean_domain_constants_initialized_) {
       return;
@@ -1807,8 +1892,12 @@ class BooleanClausifier {
     // The SAT value of the Boolean term selects its canonical EUF value.
     backend_.add_clause(sat::Clause{negate(term_lit), equal_true});
     backend_.add_clause(sat::Clause{term_lit, equal_false});
-    // Keep the two canonical equalities mutually exclusive. The unit
-    // disequality above separately establishes true != false in EUF.
+    // Propagation shortcut, NOT a soundness requirement: asserting both
+    // equalities merges t with true and with false, hence true with false,
+    // which the unit disequality above already forbids -- EUF raises that
+    // conflict on its own. This clause only lets SAT prune the combination
+    // without the theory round-trip, and it has not been shown to pay for
+    // itself. See open-leads.md lead 15 before assuming it is load-bearing.
     backend_.add_clause(sat::Clause{negate(equal_true), negate(equal_false)});
   }
 
@@ -2139,6 +2228,7 @@ class BooleanClausifier {
   std::vector<TheoryAtom> theory_atoms_;
   bool boolean_domain_constants_initialized_ = false;
   std::unordered_set<core::TermId> boolean_domain_bridged_terms_;
+  std::unordered_set<core::TermId> registered_boolean_argument_terms_;
   sat::Lit true_lit_{0};
 };
 
@@ -2447,6 +2537,13 @@ bool pure_theory_filter_enabled(PureTheoryFilterMode mode) {
 bool should_filter_assignment(PureTheoryFilterMode mode, const BooleanClausifier::TheoryAtom& atom,
                               bool value) {
   if (!pure_theory_filter_enabled(mode)) {
+    return false;
+  }
+  // The filter's argument is that a purely-positive atom cannot matter to the
+  // theory when assigned false. That holds only when the atom's meaning IS its
+  // propositional occurrence, which is untrue for a term the theory reads
+  // through some other route.
+  if (atom.theory_relevant_at_both_polarities) {
     return false;
   }
   return (is_pure_positive(atom) && !value) || (is_pure_negative(atom) && value);
@@ -10894,6 +10991,23 @@ void record_disequality_propagation_opportunities(const core::TermManager& terms
   }
 }
 
+// Communicates Bool's fixed cardinality to congruence closure, by whichever
+// encoding is selected. Both callers use this rather than either encoding
+// directly, so QF_UF and the mixed path cannot drift apart again -- they did,
+// and bugs/qf-uf-boolean-argument-congruence is what that cost.
+void apply_boolean_domain_encoding(BooleanClausifier& clausifier, const CheckSatOptions& options,
+                                   util::Statistics& statistics) {
+  switch (options.euf_boolean_domain) {
+    case EufBooleanDomain::Registration:
+      statistics.increment(util::StatKey::BooleanDomainRegisteredTerms,
+                           clausifier.register_boolean_argument_terms());
+      break;
+    case EufBooleanDomain::BridgeAtoms:
+      clausifier.materialize_boolean_argument_literals();
+      break;
+  }
+}
+
 CheckSatOutcome solve_qf_uf(
     core::TermManager& terms, const std::vector<core::TermId>& assertions,
     const CheckSatOptions& options, util::Statistics& statistics,
@@ -10905,6 +11019,13 @@ CheckSatOutcome solve_qf_uf(
   for (const core::TermId assertion : assertions) {
     clausifier.assert_formula(assertion);
   }
+  // Bool's two-element domain, before the atom list is measured or consumed:
+  // PreparedFlatTheory::align_assignments requires the atom count to be final
+  // for the whole solve, and every heuristic below reads theory_atoms().
+  apply_boolean_domain_encoding(clausifier, options, statistics);
+  // Published here too, so --euf-boolean-domain=bridge-atoms is measurable on
+  // QF_UF rather than only on the mixed path.
+  statistics.set(":no.boolean-domain.bridged-terms", clausifier.boolean_domain_bridge_count());
   statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
   statistics.set(kStatPureTheoryFilterEnabled,
                  pure_theory_filter_enabled(options.pure_theory_filter) ? 1 : 0);
@@ -11150,7 +11271,7 @@ CheckSatOutcome solve_qf_uf_lra(
   for (const core::TermId assertion : assertions) {
     clausifier.assert_formula(assertion);
   }
-  clausifier.materialize_boolean_argument_literals();
+  apply_boolean_domain_encoding(clausifier, options, statistics);
 
   std::vector<BooleanClausifier::TheoryAtom> euf_atoms;
   std::vector<BooleanClausifier::TheoryAtom> lra_atoms;
@@ -11188,8 +11309,15 @@ CheckSatOutcome solve_qf_uf_lra(
   bool adaptive_legacy_equality_producer = false;
   statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
   statistics.set(":no.boolean-domain.bridged-terms", clausifier.boolean_domain_bridge_count());
+  // The two equality atoms per bridged term, plus the single (= true false)
+  // atom ensure_boolean_domain_constants creates -- and that one exists only
+  // when at least one term was actually bridged, which is false under the
+  // Registration encoding. Reporting a phantom atom made the counter say 1 on
+  // a run with no bridging at all.
   statistics.set(":no.boolean-domain.equality-atoms",
-                 clausifier.boolean_domain_bridge_count() * 2 + 1);
+                 clausifier.boolean_domain_bridge_count() == 0
+                     ? 0
+                     : clausifier.boolean_domain_bridge_count() * 2 + 1);
   statistics.set(":no.mixed.euf-atoms", euf_atoms.size());
   statistics.set(":no.mixed.lra-atoms", lra_atoms.size());
   statistics.set(":no.interface.shared-real-terms", shared_real_terms.size());

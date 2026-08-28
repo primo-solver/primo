@@ -47,6 +47,29 @@ enum class EufEngine {
   Incremental,
 };
 
+// How the two-element domain of `Bool` is communicated to congruence closure.
+// Bool has fixed cardinality 2, which puts EUF outside Nelson-Oppen's
+// stably-infinite assumption, so a Bool term reachable by congruence has to be
+// known equal to `true` or `false` -- otherwise the closure may give it a
+// third value and report sat for an unsatisfiable formula (see
+// bugs/qf-uf-boolean-argument-congruence).
+//
+//   Registration  registers Bool-sorted ARGUMENTS of uninterpreted
+//                 applications as theory atoms; the existing atom handling
+//                 then asserts `t = true/false` with the term's own literal as
+//                 the reason. No new SAT variable, no clause.
+//   BridgeAtoms   the older encoding: manufacture `(= t true)` / `(= t false)`
+//                 as atoms with selector and exclusion clauses -- 2 atoms and
+//                 3 clauses per bridged term, and it bridges Bool-VALUED
+//                 applications too, which are already atoms.
+//
+// Kept selectable only so the two can be A/B-ed on one binary; BridgeAtoms
+// goes away once that measurement is recorded.
+enum class EufBooleanDomain {
+  Registration,
+  BridgeAtoms,
+};
+
 enum class PureTheoryFilterMode {
   Auto,
   On,
@@ -209,6 +232,7 @@ struct CheckSatOutcome {
 struct CheckSatOptions {
   PreprocessingMode preprocessing_mode = PreprocessingMode::Auto;
   EufEngine euf_engine = EufEngine::Incremental;
+  EufBooleanDomain euf_boolean_domain = EufBooleanDomain::Registration;
   EufPropagationMode euf_propagation = EufPropagationMode::Auto;
   PureTheoryFilterMode pure_theory_filter = PureTheoryFilterMode::Auto;
   TheoryPhaseMode theory_phase = TheoryPhaseMode::Negative;
