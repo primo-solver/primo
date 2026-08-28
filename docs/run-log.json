@@ -28227,6 +28227,33 @@
       "artifacts": "remote:primo-qflia-fuzz-gate/fuzz-results/qf-lia-model-gate-129508/ (2.2GB full campaign); remote:primo-qflia-fuzz-gate/fuzz-results/qf-lia-seed-check-8a4048b/summary.csv; lightweight local ignored copies: fuzz-results/qf-lia-model-gate-129508/, fuzz-results/qf-lia-seed-check-8a4048b/, slurm_logs/qf-lia-model-gate-129508/",
       "evidence_status": "slurm-complete-current; mutation campaign clean, strict seed complement non-passing only for 10 incomplete results",
       "outcome": "The current merged-main candidate passes the required 4,000-case answer/model campaign and the real-seed mutation campaign with zero wrong answers, crashes, invalid models, or mutation bug files. The additional direct seed replay honestly exposes ten timeout/unknown cases and therefore is not called a strict pass; none is a concrete disagreement or status mismatch."
+    },
+    {
+      "id": "2026-08-28-tactic-control-flow-qf-uf-fuzz-gate",
+      "started_at": "2026-08-28",
+      "recorded_at": "2026-08-28",
+      "kind": "fuzz",
+      "scope": "Local merge fuzz gate for the tactic-control-flow migration. The campaign exercises pure QF_UF Boolean arguments, results, compound and nested applications, mixed uninterpreted sorts, two-valued reasoning, converse shapes, pure-polarity filtering, and random propositional skeletons through the migrated preprocessing repeat and solver dispatch.",
+      "commit": "06af8df10af038ef931504936556a9b091fa7c13",
+      "branch": "tactics",
+      "environment": {
+        "type": "local",
+        "host": "mikolas-ThinkPad-T14s-Gen-5",
+        "binary": "primo 0.1.0, git 06af8df, Debug, sanitizers none, CaDiCaL cadical-3.0.0-7b99c07",
+        "reference": "Z3 5.0.0"
+      },
+      "commands": {
+        "fuzz": "PATH=/workspace/contrib/local/bin:$PATH python3 scripts/qf_uf_boolean_fuzz.py --count 1000 --shape all --seed 0 --solver ./build/primo --ref ./contrib/local/bin/z3 --timeout 5 --out fuzz-results/tactics-qf-uf-boolean-06af8df",
+        "asan": "make asan-test (ASAN_OPTIONS=detect_leaks=1:strict_init_order=1)"
+      },
+      "results": {
+        "answer_differential": "1,000 PASS: Primo and Z3 both returned 559 sat and 441 unsat. Zero wrong answers, reference disagreements, crashes, parser/type errors, unsupported results, unknown results, or timeouts.",
+        "shape_coverage": "argument 117, result 85, compound 87, nested 115, mixed-sort 133, two-valued 115, converse 119, pure-polarity 116, random 113.",
+        "asan": "21/21 CTest targets passed with leak detection and strict initialization ordering."
+      },
+      "artifacts": "local ignored artifact fuzz-results/tactics-qf-uf-boolean-06af8df/summary.csv",
+      "evidence_status": "local-complete-current",
+      "outcome": "The tactic control-flow migration passes the required 1,000-case merge gate with exact answer agreement and no failures."
     }
   ]
 }
