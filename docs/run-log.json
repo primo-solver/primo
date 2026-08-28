@@ -28249,7 +28249,7 @@
       "results": {
         "answer_differential": "1,000 PASS: Primo and Z3 both returned 559 sat and 441 unsat. Zero wrong answers, reference disagreements, crashes, parser/type errors, unsupported results, unknown results, or timeouts.",
         "shape_coverage": "argument 117, result 85, compound 87, nested 115, mixed-sort 133, two-valued 115, converse 119, pure-polarity 116, random 113.",
-        "asan": "21/21 CTest targets passed with leak detection and strict initialization ordering."
+        "asan": "21/21 CTest targets passed with leak detection and strict initialization ordering on 06af8df. The later e3aea56 source change only corrected direct includes after the advisory include-cleaner scan; its ordinary 21/21 CTest run also passed."
       },
       "artifacts": "local ignored artifact fuzz-results/tactics-qf-uf-boolean-e3aea56/summary.csv",
       "evidence_status": "local-complete-current",
