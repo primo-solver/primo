@@ -28234,16 +28234,16 @@
       "recorded_at": "2026-08-28",
       "kind": "fuzz",
       "scope": "Local merge fuzz gate for the tactic-control-flow migration. The campaign exercises pure QF_UF Boolean arguments, results, compound and nested applications, mixed uninterpreted sorts, two-valued reasoning, converse shapes, pure-polarity filtering, and random propositional skeletons through the migrated preprocessing repeat and solver dispatch.",
-      "commit": "06af8df10af038ef931504936556a9b091fa7c13",
+      "commit": "e3aea5641ebb6cea417a62ee71d5e8a488fa4a88",
       "branch": "tactics",
       "environment": {
         "type": "local",
         "host": "mikolas-ThinkPad-T14s-Gen-5",
-        "binary": "primo 0.1.0, git 06af8df, Debug, sanitizers none, CaDiCaL cadical-3.0.0-7b99c07",
+        "binary": "primo 0.1.0, git e3aea56, Debug, sanitizers none, CaDiCaL cadical-3.0.0-7b99c07",
         "reference": "Z3 5.0.0"
       },
       "commands": {
-        "fuzz": "PATH=/workspace/contrib/local/bin:$PATH python3 scripts/qf_uf_boolean_fuzz.py --count 1000 --shape all --seed 0 --solver ./build/primo --ref ./contrib/local/bin/z3 --timeout 5 --out fuzz-results/tactics-qf-uf-boolean-06af8df",
+        "fuzz": "PATH=/workspace/contrib/local/bin:$PATH python3 scripts/qf_uf_boolean_fuzz.py --count 1000 --shape all --seed 0 --solver ./build/primo --ref ./contrib/local/bin/z3 --timeout 5 --out fuzz-results/tactics-qf-uf-boolean-e3aea56",
         "asan": "make asan-test (ASAN_OPTIONS=detect_leaks=1:strict_init_order=1)"
       },
       "results": {
@@ -28251,7 +28251,7 @@
         "shape_coverage": "argument 117, result 85, compound 87, nested 115, mixed-sort 133, two-valued 115, converse 119, pure-polarity 116, random 113.",
         "asan": "21/21 CTest targets passed with leak detection and strict initialization ordering."
       },
-      "artifacts": "local ignored artifact fuzz-results/tactics-qf-uf-boolean-06af8df/summary.csv",
+      "artifacts": "local ignored artifact fuzz-results/tactics-qf-uf-boolean-e3aea56/summary.csv",
       "evidence_status": "local-complete-current",
       "outcome": "The tactic control-flow migration passes the required 1,000-case merge gate with exact answer agreement and no failures."
     },
