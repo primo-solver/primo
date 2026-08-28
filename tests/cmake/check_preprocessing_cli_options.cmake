@@ -66,3 +66,27 @@ compare_alias("preprocessing mode alias" "--preprocessing-mode=off" "--qf-uf-pre
 compare_alias("auto selector alias" "--auto-preprocess-selector=structural"
               "--qf-uf-auto-selector=structural"
               "warning: --qf-uf-auto-selector is deprecated; use --auto-preprocess-selector")
+
+execute_process(
+  COMMAND "${PRIMO_EXECUTABLE}" --help
+  RESULT_VARIABLE help_exit
+  OUTPUT_VARIABLE help_stdout
+  ERROR_VARIABLE help_stderr
+)
+if(NOT help_exit EQUAL 0)
+  message(FATAL_ERROR
+    "help defaults: expected exit 0, got ${help_exit}\n"
+    "stdout: ${help_stdout}\nstderr: ${help_stderr}")
+endif()
+
+foreach(option_pattern IN ITEMS
+    "--auto-basic-multi \\[default: (on|off)\\]"
+    "--preprocessing-mode[^\n]*\\[[^]]+\\]"
+    "--preprocessing-passes[^\n]*\\[[^]]+\\]"
+    "--preprocessing-adaptive-extra-passes[^\n]*\\[[^]]+\\]"
+    "--preprocessing-adaptive-shrink-percent[^\n]*\\[[^]]+\\]")
+  if(NOT help_stdout MATCHES "${option_pattern}")
+    message(FATAL_ERROR
+      "help defaults: no generated default matched '${option_pattern}'\n${help_stdout}")
+  endif()
+endforeach()

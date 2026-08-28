@@ -360,6 +360,10 @@ The adaptive continuation is configurable. `--preprocessing-adaptive-extra-passe
 N` sets the maximum number of passes beyond `--preprocessing-passes`; `0`
 disables adaptive continuation. `--preprocessing-adaptive-shrink-percent N`
 sets the required reachable-term shrink threshold, from `0` to `100`.
+`primo --help` prints the active defaults for these and the other CLI options
+from their bound configuration values. Help descriptions deliberately do not
+repeat numeric or Boolean defaults, so changing a C++ default cannot leave a
+second hand-maintained value behind in the prose.
 
 ## Boolean Unit Propagation
 
