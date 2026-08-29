@@ -464,7 +464,22 @@ bound that
    parentheses that this is *always possible*; and
 2. is, if possible, satisfied by the current arithmetic assignment.
 
-Credited to Yices.
+Credited to Yices -- **but the credit does not carry a usable citation.**
+Bromberger's parenthesis is "(The SMT solver Yices also uses decision
+recommendations [56].)", and [56] is Dutertre, *Yices 2.2*, CAV 2014. That paper
+was fetched and read on 2026-08-29
+(<https://yices.csl.sri.com/papers/cav2014.pdf>, 6 pages) and contains no
+mention of decision recommendations, phase selection, or theory-supplied
+polarity: it cites the *solver*, not a description of the technique.
+
+So **§8.1 is the citable source**, which is consistent with what the authors say
+themselves -- the SPASS-SATT v1.1 system description lists this among techniques
+that "are contained in existing SMT solvers" but where "not all have been
+described in the respective literature", and names the CADE-27 paper as the
+remedy. Sebastiani's survey §7.2.5 confirms the gap from the other side: as of
+2007 "there seem to be no really-satisfactory proposal in the direction of
+building theory-aware heuristics". The full chain, and what to write in a
+bibliography, is in [](h5-attribution).
 
 Measured: QF_LRA 1607 vs. 1596 (+11), and **QF_LIA 6806 vs. 6677 (+129)** --
 +116 `convert`, +11 `tropical-matrix`, +2 `nec-smt`, +1 each

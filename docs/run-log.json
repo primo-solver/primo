@@ -28291,6 +28291,36 @@
       "caveats": "The IJCAR 2022 subsumption paper is marked CC-BY open access but both Springer and HAL serve a bot challenge instead of the PDF, so only its abstract was obtained and it is filed at the abstract-only tier. A guessed arXiv id for it (2205.06541) turned out to be an unrelated fracture-mechanics paper; every link recorded here was individually resolved.",
       "evidence_status": "current",
       "docs": "docs/papers/bromberger-linear-arithmetic-thesis.md; docs/papers/lra-related-work.md; docs/open-leads.md lead 20; docs/qf-lra-heuristics.md H5"
+    },
+    {
+      "id": "2026-08-29-lra-model-phase-attribution-trace",
+      "started_at": "2026-08-29",
+      "recorded_at": "2026-08-29",
+      "kind": "literature",
+      "scope": "Establish the correct citation for --lra-model-phase (heuristics item H5, model-based SAT phase hints), for both the documentation and any future publication. Bibliographic only.",
+      "commit": "8385b82",
+      "branch": "main",
+      "environment": {
+        "type": "local",
+        "host": "workstation"
+      },
+      "commands": {
+        "yices": "curl https://yices.csl.sri.com/papers/cav2014.pdf; pdftotext -layout; grep -i 'branch|decision|heuristic|phase|polarity'",
+        "sebastiani": "curl -k http://disi.unitn.it/rseba/papers/JSAT-2007.pdf; pdftotext -layout; read section 7.2.5",
+        "local_primaries": "pdftotext -layout docs/papers/qflra-sri-csl-06-01.pdf and docs/papers/griggio.pdf; grep -i 'phase|polarity|decision heuristic|branching heuristic'",
+        "phase_saving": "curl https://dblp.org/search/publ/api?q=Lightweight+Component+Caching+Scheme+Satisfiability+Solvers",
+        "link_checks": "curl -sSk -o /dev/null -w '%{http_code}' -L for every cited URL"
+      },
+      "results": {
+        "bromberger_citation_does_not_support_it": "Bromberger thesis section 8.1 credits decision recommendations to Yices citing [56] = Dutertre, Yices 2.2, CAV 2014. That paper was fetched and read in full (6 pages): zero occurrences of decision recommendation, phase selection, polarity, or any theory-supplied decision heuristic. The citation names the solver, not a description of the technique.",
+        "sebastiani_7_2_5": "Survey section 7.2.5 'DPLL branching heuristics for SMT' states 'there seem to be no really-satisfactory proposal in the direction of building theory-aware heuristics, and most tools simply use standard DPLL heuristics'. Its suggested directions are look-ahead and privileged branching variables -- neither is phase selection. Prior context, not prior art.",
+        "local_primaries_negative": "Dutertre & de Moura CSL-06-01 and Griggio's thesis: no match for phase, polarity, decision heuristic or branching heuristic anywhere in either.",
+        "authors_own_admission": "SPASS-SATT v1.1 SMT-COMP 2019 system description lists decision recommendations among techniques 'contained in existing SMT solvers' where 'not all have been described in the respective literature', naming the CADE-27 paper as the remedy.",
+        "conclusion": "Cite Bromberger, Fleury, Schwarz, Weidenbach, SPASS-SATT: A CDCL(LA) Solver, CADE 2019 (DOI 10.1007/978-3-030-29436-6_7), and/or thesis section 8.1, for the technique; attribute origin to Yices without citing the Yices 2.2 paper as its description; position against Sebastiani JSAT 2007 section 7.2.5; cite Pipatsrisawat & Darwiche SAT 2007 for the SAT-side phase-saving mechanism H5 overrides."
+      },
+      "caveats": "The CADE 2019 paper itself could not be read -- Springer and the HAL deposit (hal-02405524, record verified via the HAL API against the DOI) both serve a bot challenge instead of the PDF. That it covers decision recommendations is inferred from the thesis naming it as the summary of chapters 7-8 and from the v1.1 system description. Confirm the section before it enters a bibliography, or cite the thesis, which was read directly. Sebastiani's JSAT DOI resolves 302 to the publisher, whose landing page returns 403 to an automated fetch; the author copy was the one read.",
+      "evidence_status": "current",
+      "docs": "docs/qf-lra-heuristics.md H5 'What to cite for --lra-model-phase'; docs/arithmetic.md; docs/papers/bromberger-linear-arithmetic-thesis.md section 8.1"
     }
   ]
 }

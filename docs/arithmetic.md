@@ -277,6 +277,13 @@ The editable TikZ source is `docs/figures/lra-tableau-occurrence-index.tex`.
   `IpasirUpBackend::phase()` only when the preferred literal changed since
   the previous refresh. This is a search hint only; it does not add clauses,
   propagations, or theory decisions.
+  *Attribution:* designed independently here (2026-08-04); the closest published
+  description is SPASS-SATT's **decision recommendation**, Bromberger, Fleury,
+  Schwarz and Weidenbach, *SPASS-SATT: A CDCL(LA) Solver*, CADE 2019, treated at
+  length in [](papers/bromberger-linear-arithmetic-thesis.md) §8.1. Primo
+  implements the model-satisfaction half of their rule only. See
+  [](qf-lra-heuristics.md) H5 for the full attribution chain, which is less
+  straightforward than it looks.
 - **QF_LRA fragment boundary** (`Frontend::declare_fun`): QF_LRA accepts free
   constants, but rejects non-nullary `declare-fun` declarations. Uninterpreted
   functions or predicates over arithmetic terms are QF_UFLRA/NO work, not pure

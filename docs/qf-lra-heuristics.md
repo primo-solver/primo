@@ -1026,6 +1026,82 @@ missing criterion covers exactly the case H5 goes quiet on, where β satisfies
 neither polarity. Registered as
 [lead 20](lead-decision-recommendation).
 
+(h5-attribution)=
+#### What to cite for `--lra-model-phase`
+
+Traced 2026-08-29, because the obvious answer is wrong and the chain is worth
+recording once rather than re-deriving.
+
+**Cite, for the technique:** Martin Bromberger, Mathias Fleury, Simon Schwarz,
+Christoph Weidenbach. *SPASS-SATT: A CDCL(LA) Solver.* CADE 2019, LNCS 11716.
+DOI
+[10.1007/978-3-030-29436-6_7](https://doi.org/10.1007/978-3-030-29436-6_7);
+open deposit <https://inria.hal.science/hal-02405524>. For the fuller treatment,
+[](papers/bromberger-linear-arithmetic-thesis.md) §8.1 — the thesis is what was
+actually read here; see the caveat at the end.
+
+**Do not cite Dutertre, *Yices 2.2*, CAV 2014 for it.** Bromberger writes "(The
+SMT solver Yices also uses decision recommendations [56].)" with [56] = that
+paper. The paper was fetched and read
+(<https://yices.csl.sri.com/papers/cav2014.pdf>, 6 pages): it describes Yices'
+architecture and **contains no mention of decision recommendations, phase
+selection, or theory-supplied polarity**. The citation identifies the *solver*,
+not a description of the technique. Passing it on as the source would be citing
+a paper for something it does not say. The correct form is the one Bromberger's
+own wording supports: attribute the origin to Yices, cite Bromberger et al. for
+the description.
+
+**This is a documented gap, not an oversight.** The SPASS-SATT v1.1 SMT-COMP
+2019 system description
+(<https://smt-comp.github.io/2019/system-descriptions/SPASS-SATT.pdf>, read in
+full) lists decision recommendations among techniques that "are contained in
+existing SMT solvers" but where "not all have been described in the respective
+literature", and names the CADE-27 paper as the remedy. So Bromberger et al. is
+the first written description, by their own account.
+
+**Position it against:** Sebastiani, *Lazy Satisfiability Modulo Theories*,
+JSAT 3(3-4):141-224, 2007, **§7.2.5 "DPLL branching heuristics for SMT"** --
+a paper this project already cites for §6.10. §7.2.5 is the survey statement
+that this was open:
+
+> "So far there seem to be no really-satisfactory proposal in the direction of
+> building theory-aware heuristics, and most tools simply use standard DPLL
+> heuristics."
+
+It then points at *look-ahead* and *privileged branching variables* -- neither
+is phase selection, so §7.2.5 is prior context, not prior art. DOI
+[10.3233/SAT190034](https://doi.org/10.3233/SAT190034) (resolves 302 to the
+publisher, whose landing page returns 403 to an automated fetch); author copy
+<http://disi.unitn.it/rseba/papers/JSAT-2007.pdf>, which is the one read.
+
+**Checked and found *not* to contain it**, recorded so nobody re-checks:
+Dutertre and de Moura's SRI technical report CSL-06-01
+(`docs/papers/qflra-sri-csl-06-01.pdf`) and Griggio's thesis
+(`docs/papers/griggio.pdf`, [](papers/griggio-mathsat-thesis.md)). Neither
+mentions phase, polarity, or a theory-driven decision heuristic anywhere.
+
+**For the SAT-side mechanism** H5 rides on, if a paper needs it: phase saving,
+Pipatsrisawat and Darwiche, *A Lightweight Component Caching Scheme for
+Satisfiability Solvers*, SAT 2007, DOI
+[10.1007/978-3-540-72788-0_28](https://doi.org/10.1007/978-3-540-72788-0_28).
+H5 *overrides* that saved phase for arithmetic atoms; it does not implement it.
+
+**How to phrase Primo's own claim.** H5 was designed here on 2026-08-04 from the
+tableau argument -- "the polarity β satisfies needs no assignment move and no
+pivot" -- and this literature was read on 2026-08-29. So it is an independent
+rediscovery of *half* of a published technique. The honest form is to say that
+and cite Bromberger et al. as the closest prior description. Claiming novelty
+for the mechanism would be wrong; claiming to implement decision recommendation
+would also be wrong, because criterion 1 is absent (see
+[lead 20](lead-decision-recommendation)).
+
+**Caveat on the CADE 2019 citation.** It could not be read: Springer and the HAL
+deposit both serve a bot challenge instead of the PDF. That it covers decision
+recommendations is *inferred* -- from the thesis naming it as the summary of
+Chapters 7-8, and from the v1.1 system description naming it as the remedy for
+exactly this gap. Confirm the section before it goes into a bibliography, or
+cite the thesis, which was read directly.
+
 **Risk: low.** Phase hints cannot affect soundness; the worst case is a
 worse search order. Keep `--lra-theory-decisions` as-is (it stays a useful
 lever for its file shape) and keep this as a separate opt-in flag unless the
