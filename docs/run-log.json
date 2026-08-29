@@ -28315,8 +28315,8 @@
         "sigterm": "The timeout wrapper returned 124 after sending SIGTERM; Primo printed unknown and the per-file diagnostic 'cancelled', with no crash or unsafe signal-context output."
       },
       "artifacts": "local ignored artifacts fuzz-results/tactics-modular-qfuf-1000-a101be4/, fuzz-results/tactics-modular-qflra-1000-a101be4/, and fuzz-results/tactics-modular-qfuflra-1000-a101be4/",
-      "evidence_status": "local-complete-current",
-      "outcome": "The modular tactic/control-flow implementation passes the ordinary multi-logic merge gate with no wrong answers or failures; the only incomplete results are three QF_LRA timeouts."
+      "evidence_status": "historical-pre-review-fix",
+      "outcome": "Historical evidence for a101be4. The later tactic review found fixed-point, terminal-cancellation, terminal-change-accounting, and payload-copying defects, so this is not current-head evidence; the 2026-08-30 review-fix gate supersedes it."
     },
     {
       "id": "2026-08-29-tactic-modularization-local-performance-check",
@@ -28344,8 +28344,77 @@
         "paired_reading": "The modular median is 4.1% lower, but each file completes in roughly 2-4 ms and subprocess startup/scheduler noise dominates. This is evidence of no visible regression, not a speedup claim. The code review separately removed eager whole-assertion and reconstruction copies from every preprocessing phase."
       },
       "artifacts": "local ignored artifacts results/tactics-modular-final-ab-{56515aa,a101be4}-{1..5}.csv",
+      "evidence_status": "historical-pre-review-fix",
+      "outcome": "Historical performance evidence for a101be4. It predates the tactic review fixes and is superseded by the 2026-08-30 A/B comparison."
+    },
+    {
+      "id": "2026-08-30-tactic-review-fix-multi-logic-fuzz-gate",
+      "started_at": "2026-08-30",
+      "recorded_at": "2026-08-30",
+      "kind": "fuzz",
+      "scope": "Exact-commit local merge gate for preprocessing assertion-based fixed-point detection, terminal change accounting, cancellation precedence over formula truth, and separately shared immutable Goal payloads. QF_UF, QF_LRA, and mixed QF_UFLRA each receive 1,000 fresh generated formulas.",
+      "commit": "7b01deb798bcabb8e8e28769284d06ba73e9a593",
+      "branch": "tactics",
+      "environment": {
+        "type": "local",
+        "host": "mikolas-ThinkPad-T14s-Gen-5",
+        "binary": "primo 0.1.0, git 7b01deb, Release, CaDiCaL cadical-3.0.0-7b99c07",
+        "reference": "Z3 5.0.0",
+        "timeout": "5 seconds per solver invocation"
+      },
+      "commands": {
+        "qf_uf": "PATH=/workspace/contrib/local/bin:$PATH python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build-release-tactics/primo --quiet' --refs z3 --logic QF_UF --count 1000 --timeout 5 --seed 2026083001 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/tactics-review-fix-qfuf-1000-7b01deb",
+        "qf_lra": "PATH=/workspace/contrib/local/bin:$PATH python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build-release-tactics/primo --quiet' --refs z3 --logic QF_LRA --count 1000 --timeout 5 --seed 2026083002 --out fuzz-results/tactics-review-fix-qflra-1000-7b01deb",
+        "qf_uflra": "PATH=/workspace/contrib/local/bin:$PATH python3 scripts/qf_uflra_smoke_fuzz.py --solver build-release-tactics/primo --solver-arg=--quiet --ref z3 --count 1000 --seed 2026083003 --timeout 5 --shape mixed --out fuzz-results/tactics-review-fix-qfuflra-1000-7b01deb",
+        "unit": "make test && make python-test",
+        "asan": "make asan-test (ASAN_OPTIONS=detect_leaks=1:strict_init_order=1)",
+        "lint_and_check": "make lint; make check"
+      },
+      "results": {
+        "qf_uf": "1,000 PASS: 900 sat and 100 unsat in exact agreement. Zero timeout, wrong answer, reference disagreement, crash, parser/type error, unknown, or unsupported result.",
+        "qf_lra": "993 PASS: 856 sat and 137 unsat in exact agreement; seven Primo timeout-only cases. Zero wrong answer, reference disagreement, crash, parser/type error, unknown, or unsupported result.",
+        "qf_uflra": "1,000 PASS: 572 sat and 428 unsat in exact agreement. Zero timeout, wrong answer, reference disagreement, crash, parser/type error, unknown, or unsupported result.",
+        "aggregate": "3,000 generated formulas: 2,993 exact agreements, seven timeout-only incomplete cases, and zero correctness failures.",
+        "unit": "21/21 CTest targets and 69/69 Python tests passed.",
+        "asan": "21/21 CTest targets passed with leak detection and strict initialization ordering.",
+        "lint_and_check": "Both stop on the same four retained Ruff findings in scripts/qf_uf_boolean_fuzz.py: EXE001 at line 1, PLC0206 at line 316, and UP031 at lines 430 and 438. make check reaches make lint first. The tactic-review diff introduces no lint diagnostic."
+      },
+      "artifacts": "Local ignored artifacts fuzz-results/tactics-review-fix-qfuf-1000-7b01deb/, fuzz-results/tactics-review-fix-qflra-1000-7b01deb/, and fuzz-results/tactics-review-fix-qfuflra-1000-7b01deb/.",
       "evidence_status": "local-complete-current",
-      "outcome": "No answer change and no measurable orchestration regression on the checked-in multi-logic corpus."
+      "outcome": "The review fixes pass the fresh multi-logic merge gate with no wrong answers, disagreements, crashes, or parser/type failures. Seven QF_LRA cases are timeout-only."
+    },
+    {
+      "id": "2026-08-30-tactic-review-fix-local-performance-check",
+      "started_at": "2026-08-30",
+      "recorded_at": "2026-08-30",
+      "kind": "measurement",
+      "scope": "Release-build answer and overhead comparison of the complete tactic review fixes against the reviewed pre-fix implementation. The primary corpus is all 34 checked-in QF_UF, QF_LRA, and QF_UFLRA smoke and seed files. A generated 10,000-Boolean-assertion :produce-models true case provides a payload-heavy secondary check. Each arm is run five times in alternating order.",
+      "commit": "7b01deb798bcabb8e8e28769284d06ba73e9a593 vs 1404cca6fa6582d33f068a992c7eadc3451e3015",
+      "branch": "tactics",
+      "environment": {
+        "type": "local",
+        "host": "mikolas-ThinkPad-T14s-Gen-5",
+        "binary": "Release builds, GCC 13.3.0, CaDiCaL cadical-3.0.0-7b99c07",
+        "timeout": "5 seconds per checked-in file; 30 seconds for the generated model-producing file"
+      },
+      "commands": {
+        "build_current": "cmake -S . -B build-release-tactics -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=/workspace/contrib/local && cmake --build build-release-tactics --target primo -j2",
+        "build_baseline": "git worktree add --detach /tmp/primo-tactics-review-baseline 1404cca; configure /tmp/primo-tactics-review-baseline/build-release as Release; cmake --build /tmp/primo-tactics-review-baseline/build-release --target primo -j2",
+        "checked_in_corpus": "For runs 1 through 5, alternate arm order and invoke scripts/bench.py over benchmarks/smoke plus benchmarks/seeds/{qf_uf,qf_lra,qf_uflra}, --timeout 5, writing results/tactics-review-final-ab-{revision}-{run}.csv.",
+        "large_model_generator": "python3 /tmp/generate_tactic_large_model.py; emits /tmp/tactic-large-model.smt2 with 10,000 declared Boolean constants, 10,000 positive assertions, :produce-models true, and check-sat.",
+        "large_model_measurement": "For runs 1 through 5, alternate arm order and invoke scripts/bench.py --timeout 30 on /tmp/tactic-large-model.smt2, writing results/tactics-review-large-model-{revision}-{run}.csv."
+      },
+      "results": {
+        "correctness": "All 34 checked-in answers were identical in every run: 13 sat and 21 unsat; no timeout, unknown, nonzero exit, or answer change occurred. Both binaries returned sat in all five generated large-model runs.",
+        "baseline_corpus": "Per-run summed runtimes: 0.087751, 0.090047, 0.088540, 0.089295, 0.086725 seconds; median 0.088540 seconds.",
+        "fixed_corpus": "Per-run summed runtimes: 0.085343, 0.085006, 0.084877, 0.088712, 0.085989 seconds; median 0.085343 seconds.",
+        "baseline_large_model": "Per-run runtimes: 0.045805, 0.042268, 0.040848, 0.040644, 0.043170 seconds; median 0.042268 seconds.",
+        "fixed_large_model": "Per-run runtimes: 0.039426, 0.040054, 0.043596, 0.042243, 0.040972 seconds; median 0.040972 seconds.",
+        "interpretation": "No visible regression. The checked-in corpus median is 3.6% lower and the large-model median 3.1% lower, but process startup and scheduler noise are material at these runtimes, so this is not a speedup claim. The unit test directly verifies unchanged Goal payload address sharing; timing is only a smoke check."
+      },
+      "artifacts": "Local ignored artifacts results/tactics-review-final-ab-{1404cca,7b01deb}-{1..5}.csv and results/tactics-review-large-model-{1404cca,7b01deb}-{1..5}.csv. The generated /tmp input and generator are local-only and reproducible from the recorded shape.",
+      "evidence_status": "local-complete-current",
+      "outcome": "No answer change or measurable overhead regression from the review fixes; the immutable shared-payload design is additionally enforced by a deterministic address-sharing unit test."
     }
   ]
 }

@@ -104,8 +104,9 @@ definitions, Boolean-unit propagation, forced-atom propagation, solved-constant
 substitution, ground-unit substitution, and unit-equality propagation each have
 their own invocation/time counters. A round deliberately finishes all selected
 phases before exposing a terminal goal, preserving the established pass
-ordering and reconstruction/statistics behavior. Each output owns its own
-reconstruction records. Phase adapters read assertions directly from the
+ordering and reconstruction/statistics behavior. Each output carries its own
+immutable reconstruction value; outputs that do not change it may share the
+same backing storage. Phase adapters read assertions directly from the
 immutable input and copy assertion or reconstruction containers only when that
 phase must extend them; counting and unchanged append-only phases return the
 shared input goal. The transformation implementations are unchanged.
@@ -188,7 +189,9 @@ Serious contract violations and unexpected backend failures escape as exceptions
 and are reported only at the command-line boundary.
 
 `tests/unit/tactic_tests.cpp` covers terminal classification, disjunctive
-alternatives, the non-empty invariant, fixed-point repetition, conditional
-selection, statistics, pristine-input fallback, and production dispatch to each
-supported solver family. Existing preprocessing and solver suites cover the
-migrated control flow with their prior correctness and adaptive-pass assertions.
+alternatives, the non-empty invariant, fixed-point repetition (including
+attribute-preserving equivalence and terminal change observation), immutable
+payload sharing, cancellation precedence, conditional selection, statistics,
+pristine-input fallback, and production dispatch to each supported solver
+family. Existing preprocessing and solver suites cover the migrated control
+flow with their prior correctness and adaptive-pass assertions.
