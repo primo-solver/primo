@@ -26,6 +26,18 @@ Chapters 7--8. **Not read**: Chapter 2 (preliminaries) beyond what the above
 sections quote, Chapter 3 (CutSat++) beyond its summary in §1.5 and §6.1, and
 the detailed Mixed-Echelon-Hermite algorithms in §6.2/§6.4 (Figures 6.4--6.10).
 
+**Companion paper, also read 2026-08-29**: Martin Bromberger, Mathias Fleury,
+Simon Schwarz, Christoph Weidenbach. *SPASS-SATT: A CDCL(LA) Solver.* CADE 2019,
+LNAI 11716, 111--122. DOI
+[10.1007/978-3-030-29436-6_7](https://doi.org/10.1007/978-3-030-29436-6_7).
+Local copy `docs/papers/SPASS-SATT.pdf`, supplied by the user -- **untracked**,
+copyrighted, and covered by `.gitignore`'s `*.pdf`. Twelve pages summarising
+Chapters 7--8. It is mostly redundant against the thesis, with two exceptions
+that are *not*: **footnote 3**, which gives the decision-recommendation rule
+exactly where the thesis gives only prose (see §8.1 below, where it overturns a
+conclusion this note reached from the thesis alone), and §4's account of shared
+monomial lifting and CITE bounding.
+
 ## Why this note exists
 
 [](lra-related-work.md) has carried Bromberger--Weidenbach entries since
@@ -457,12 +469,24 @@ looks like from the inside.
 ### Decision recommendation -- +129 on QF_LIA, and 116 of them on `convert`
 
 When the SAT solver is about to decide a variable that corresponds to a
-**bound**, it asks the theory solver for the phase. The theory recommends a
-bound that
+**bound**, it asks the theory solver for the phase. The thesis gives this as
+prose -- recommend a bound that (i) cannot cause a conflict if asserted, "this is
+always possible", and (ii) is, if possible, satisfied by the current arithmetic
+assignment.
 
-1. **cannot cause a conflict if asserted** -- and Bromberger notes in
-   parentheses that this is *always possible*; and
-2. is, if possible, satisfied by the current arithmetic assignment.
+**Read the CADE 2019 paper for this one, not the thesis.** Its footnote 3 gives
+the rule exactly, and the exact form matters:
+
+> "In our own theory solver, `GetPhase(L) = ⊤` if the current theory assignment
+> satisfies `L` or if `Assert(¬L)` would return `⊥`. Otherwise,
+> `GetPhase(L) = ⊥`. (If unate propagations are enabled, then the case that
+> `Assert(¬L)` would return `⊥` is impossible because `L` would have been unate
+> propagated.)"
+
+The two conditions are a **disjunction**, not a filter plus a tie-break, and the
+conflict-freedom disjunct is **unreachable in their default configuration**,
+where unate propagation is on. So the measured +129 comes from
+model-satisfaction alone.
 
 Credited to Yices -- **but the credit does not carry a usable citation.**
 Bromberger's parenthesis is "(The SMT solver Yices also uses decision
@@ -472,12 +496,11 @@ was fetched and read on 2026-08-29
 mention of decision recommendations, phase selection, or theory-supplied
 polarity: it cites the *solver*, not a description of the technique.
 
-So **§8.1 is the citable source**, which is consistent with what the authors say
-themselves -- the SPASS-SATT v1.1 system description lists this among techniques
-that "are contained in existing SMT solvers" but where "not all have been
-described in the respective literature", and names the CADE-27 paper as the
-remedy. Sebastiani's survey §7.2.5 confirms the gap from the other side: as of
-2007 "there seem to be no really-satisfactory proposal in the direction of
+So **the CADE 2019 paper is the citable source**, which is consistent with what
+the authors say themselves -- it lists this among techniques that "are contained
+in existing SMT solvers" but where "not all have been described in the respective
+literature". Sebastiani's survey §7.2.5 confirms the gap from the other side: as
+of 2007 "there seem to be no really-satisfactory proposal in the direction of
 building theory-aware heuristics". The full chain, and what to write in a
 bibliography, is in [](h5-attribution).
 
@@ -487,18 +510,20 @@ Measured: QF_LRA 1607 vs. 1596 (+11), and **QF_LIA 6806 vs. 6677 (+129)** --
 `arctic-matrix`. More than twice as fast on 389 QF_LIA instances against 58 the
 other way.
 
-**Primo already has the hook and most of the idea.** `cb_decide` is wired
-through `sat::CadicalBackend`, and there are two existing experiments:
-`--lra-theory-decisions` (roadmap item 8 -- the theory picks the *variable*,
-round-robin; a narrow win and a net loss, off by default) and
-`--lra-model-phase` (H5 -- keep CaDiCaL's variable, supply the polarity that the
-current β satisfies; see [](../qf-lra-heuristics.md) H5).
-
-H5 is condition 2. **Condition 1 is the part Primo does not have**, and it is
-the stronger half: β-satisfaction is a hint that goes quiet exactly when β
-satisfies neither polarity, whereas "a bound that cannot cause a conflict when
-asserted" is claimed to be *always* available. Registered as
+**What this means for Primo, corrected.** `--lra-model-phase` (H5) supplies "the
+polarity the current β satisfies", which is footnote 3's reachable disjunct. So
+**Primo already implements the mechanism their +129 measures** -- this note's
+first pass called H5 "half" of the technique and the missing half "the stronger"
+one, and footnote 3 says the opposite. The flag is off by default and has only
+been evaluated on QF_LRA, the fragment where the same source puts it at +11.
+`solve_qf_lia_impl` already passes `options.lra_model_phase` into
+`OnlineLraPropagator`, so the QF_LIA A/B needs no new code. Registered as
 [lead 20](lead-decision-recommendation).
+
+Two leftovers, neither load-bearing. Primo has no unate propagation, so the
+conflict-freedom disjunct is not provably unreachable *here* and could be added.
+And their `GetPhase` is **pulled** at decision time while H5 **pushes** hints at
+quiescence points, so H5's hints can be stale where theirs cannot.
 
 ### Multiple conflicts per theory check
 
@@ -589,6 +614,32 @@ The census confirms the shape locally: **`rings_preprocessed` contains 0 files
 with `(ite`** against `rings`'s 245 of 294 -- the two families are otherwise the
 same problems.
 
+**`rings` needs two techniques this note did not name on the first pass**, and
+the CADE 2019 paper §4 is clearer about them than the thesis. CITE simplification
+and compression are what carry `nec-smt`; `rings` is carried by a different pair:
+
+- **Shared monomial lifting** (`−PPIL`): rewrite
+  `(ite c (+ q q') (+ q q̂))` into `(+ q (* 1 (ite c (+ q') (+ q̂))))`, bottom-up,
+  extracting whatever the two branches share. Its purpose is to *manufacture*
+  CITEs -- constant-leaf ITE trees -- out of terms that are not one yet, so the
+  CITE machinery applies at all.
+- **CITE bounding** (`−PPIB`): eliminate the remaining CITEs with **one** fresh
+  integer variable per *topmost* CITE rather than one per branch. The new
+  variable `x_j` replaces the whole tree; `f` is extended with a copy of the tree
+  in which each leaf `a_ij` becomes `(= x_j a_ij)`, plus
+  `min_j <= x_j <= max_j` over the tree's leaves; then every `x_j` is rewritten
+  as `(* g_j x_j)` where `g_j` is the gcd of the leaves. The variable therefore
+  ranges over a small, tightly bounded, gcd-scaled set instead of an unbounded
+  integer.
+
+With those two, "these problems become almost trivial to solve ... SPASS-SATT
+needs less than one second for each problem instance and needs only techniques
+for linear rational arithmetic to solve each of them." Paper footnote 4 adds that
+**every one of these preprocessing techniques except small CNF is also in CVC4**,
+and that what makes their implementation fast is a shared term representation
+plus caching of all intermediate results -- the same two things
+[](../preprocessing.md) would need.
+
 ### `pb2010`
 
 81 files, **no `ite` and no `let` at all** -- so the relevant technique here is
@@ -637,7 +688,7 @@ linear-arithmetic paper Bromberger has written is a chapter of this thesis, and
 after 2019 he moved to first-order reasoning (SCL) and stopped publishing on
 ground arithmetic entirely.
 
-### Subsumed by the thesis -- do not read separately
+### Subsumed by the thesis -- with one exception
 
 | year | venue | paper | thesis chapter |
 |---|---|---|---|
@@ -646,7 +697,7 @@ ground arithmetic entirely.
 | 2016 | SMT@IJCAR | Computing a Complete Basis for Equalities Implied by a System of LRA Constraints | 5 |
 | 2017 | FMSD | New techniques for linear arithmetic: cubes and equalities | 4 + 5 (journal merge of the two 2016 papers) |
 | 2018 | IJCAR | A Reduction from Unbounded Linear Mixed Arithmetic Problems into Bounded Problems | 6 |
-| 2019 | CADE | SPASS-SATT -- A CDCL(LA) Solver | 7 + 8 (the thesis names it as their summary) |
+| 2019 | CADE | SPASS-SATT -- A CDCL(LA) Solver | 7 + 8 -- **read 2026-08-29; not fully redundant, see the citation block above** |
 | 2020 | J. Symb. Comput. | A complete and terminating approach to linear integer solving | 3, extended -- the thesis announces it as forthcoming |
 
 The SMT-COMP 2019 system description *SPASS-SATT v1.1*
@@ -743,8 +794,15 @@ Explicitly **not** leads, on this thesis's own measurements: greedy conflict
 detection, multiple conflicts per check, further leaving-rule tuning, unate
 propagation, and bound-propagation threshold tuning.
 
-**`convert` (319 files here) is named by three of these independently** --
-decision recommendation +116, `HardBacktrack` +117, small CNF +101. The
-ablations are single-factor against a full default build, so those sets may
-largely coincide. Check whether they are the same files before costing any of
-the three separately.
+**`convert` (319 files here) is named by three of these, and they are one
+target, not three.** The CADE 2019 paper settles what the thesis left ambiguous:
+
+> "SPASS-SATT solves only two-thirds of the 319 instances if **one** of the
+> following three techniques is missing: (i) recalculating simplex states during
+> backtracking, (ii) decision recommendations, or (iii) the small CNF
+> transformation. SPASS-SATT with all three techniques solves all instances in
+> less than 2 s."
+
+Each is individually necessary and none individually sufficient, so the +117 /
++116 / +101 figures count roughly the same ~106 instances three times. See
+[](convert-cluster).

@@ -53,7 +53,7 @@ notes it points to.
 | [17](#lead-equality-basis) | Complete implied-equality basis (Bromberger thesis Ch. 5) | replaces per-pair two-orientation probing with one strict-system check + normal-form hashing | medium-large | **open; also the gate for 12c and 19** |
 | [18](#lead-hard-backtrack) | `HardBacktrack`: revert bounds only, recompute the assignment | +123 QF_LIA, **+117 on `convert` alone** in the source's ablation | **small (a deletion)** | **open; cheapest entry on this list** |
 | [19](#lead-bounding-transformations) | Double-Bounded reduction + Mixed-Echelon-Hermite: make branch-and-bound terminate | +169 QF_LIA, 162 of them in `20180326-Bromberger` (806 files here) | large | open, gated on 17 |
-| [20](#lead-decision-recommendation) | Decision recommendation: theory picks a bound phase that *cannot conflict*, not merely one β satisfies | +129 QF_LIA, **116 of them `convert`** | small -- H5's hook already exists | **open; strictly stronger than H5's criterion** |
+| [20](#lead-decision-recommendation) | Evaluate `--lra-model-phase` on QF_LIA and consider promoting it | +129 QF_LIA, **116 of them `convert`**; the source's number is for the mechanism Primo already has | **none -- an A/B of an existing flag** | **open; cheapest lead in this register** |
 | -- | D2 floating-point-guided basis selection | ~14% in the literature | medium | open, see [](qf-lra-heuristics.md) |
 | -- | D4 revised simplex, LU-factored basis | unknown | largest | open, see [](qf-lra-heuristics.md) |
 | -- | H4 batched bound assertion; H6 DL fast path; H11 fill-in-aware preprocessing elimination | -- | -- | design only, see [](qf-lra-heuristics.md) |
@@ -2195,48 +2195,81 @@ transfer to +169 at 60s, and the classification census is the honest way to size
 it before building anything.
 
 (lead-decision-recommendation)=
-## 20. Decision recommendation: a phase that cannot conflict
+## 20. Evaluate `--lra-model-phase` on QF_LIA and consider promoting it
 
-**Source.** [](papers/bromberger-linear-arithmetic-thesis.md) §8.1, read
-2026-08-29. Credited there to Yices.
+**Rewritten 2026-08-29 after reading the CADE 2019 paper.** The first version of
+this lead, written from the thesis prose alone, said Primo had "half" of decision
+recommendation and that the missing half was the stronger one. The paper's
+footnote 3 says that is backwards, and the lead is now a different and cheaper
+piece of work: not "add the missing criterion" but "measure the mechanism we
+already have, on the fragment where it was measured to matter."
 
-**Claim.** When the SAT solver decides a variable that corresponds to a *bound*,
-the theory solver supplies the phase, choosing a bound that
+**Source.** Bromberger, Fleury, Schwarz, Weidenbach, *SPASS-SATT: A CDCL(LA)
+Solver*, CADE 2019, §3 and **footnote 3**; fuller prose in
+[](papers/bromberger-linear-arithmetic-thesis.md) §8.1. Full citation guidance,
+including what not to cite, is in
+[](h5-attribution).
 
-1. **cannot cause a conflict if asserted** -- stated as *always possible*; and
-2. is, if possible, satisfied by the current arithmetic assignment.
+**The rule, exactly** (footnote 3): `GetPhase(L) = ⊤` if the current theory
+assignment satisfies `L`, **or** if `Assert(¬L)` would conflict; otherwise `⊥`.
+And: "If unate propagations are enabled, then the case that `Assert(¬L)` would
+return `⊥` is impossible because `L` would have been unate propagated."
 
-**Primo has criterion 2 and not criterion 1.** `--lra-model-phase`
-([](qf-lra-heuristics.md) H5) supplies "the polarity that the current β
-satisfies", which is exactly 2. The difference matters where it is most likely
-to bite: β-satisfaction is silent precisely when β satisfies neither polarity,
-which is when a decision is most likely to cost a pivot, whereas criterion 1 is
-claimed to be always available. The two are compatible -- 1 as the filter, 2 as
-the tie-break.
+**Why that changes the lead.** SPASS-SATT runs unate propagation by default, so
+their measured numbers come from the *model-satisfaction* disjunct alone --
+which is precisely what `--lra-model-phase` already does. So the published
+figures are an estimate of what **Primo's existing H5 is worth**, not of a gap:
 
-Note this is a *phase* hint, so it is the H5 design and not roadmap item 8's
-`--lra-theory-decisions`, which overrides the *variable* and was rejected for
-discarding VSIDS focus.
+| | with | without |
+|---|---:|---:|
+| QF_LIA | 6806 | 6677 (**+129**) |
+| QF_LIA `convert` | 319 | ~212 (**+116**) |
+| QF_LRA | 1607 | 1596 (+11) |
 
-**Size, measured.** QF_LRA 1607 vs. 1596 (+11); QF_LIA **6806 vs. 6677 (+129)**
--- +116 `convert`, +11 `tropical-matrix`, +2 `nec-smt`, +1 `bofill-scheduling`,
-+1 `miplib2003`, −1 `20180326-Bromberger`, −1 `arctic-matrix`. More than twice as
-fast on 389 QF_LIA instances against 58 the other way.
+Also >2x faster on 389 QF_LIA instances against 58 the other way.
 
-**Cost.** Small. `cb_decide` and the `phase(lit)` hook are already wired through
-`sat::CadicalBackend`, and H5 already maintains per-atom phase literals with
-dirty-scoped refreshes. This is a change to the choice rule, not new plumbing.
+**What makes this cheap.** `--lra-model-phase` is off by default and has only
+ever been evaluated on QF_LRA, where the same source puts the technique at +11 --
+i.e. Primo measured the mechanism on the fragment where it is worth almost
+nothing. `solve_qf_lia_impl` already constructs `OnlineLraPropagator` with
+`options.lra_model_phase` (`check_sat.cpp`), so **the QF_LIA evaluation needs no
+new code at all** -- it is an A/B of an existing flag.
 
-**Falsifier.** Instrument H5 for how often β satisfies *neither* polarity of the
-atom being decided. **If that is under ~10% of phase decisions, close this lead**
--- criterion 1 would then be refining a case that barely arises, and the +129
-must be coming from something else in SPASS-SATT's decision loop.
+**Falsifier.** Run `--lra-model-phase` on/off over the full QF_LIA corpus with
+the same-binary control the stage 4 evaluation established. **If `convert` does
+not gain and the corpus is net-neutral or worse, close this lead** and leave the
+flag off; the mechanism will have been measured on both fragments and lost on
+both.
 
-**`convert` is now named by three separate levers** in the same source --
-this (+116), [18](#lead-hard-backtrack) (+117) and small CNF (+101). Primo runs
-all 319 files. Before taking any of the three individually, it is worth checking
-whether they are the same 116 files; the thesis's own ablations are single-factor
-against a full default build, so they may well overlap.
+**Then, and only then, the leftover.** Primo has no unate propagation (`grep -rn
+unate src/` is empty), so footnote 3's unreachability argument does not transfer
+and the `Assert(¬L)`-conflicts disjunct *could* fire here. It is a possible small
+addition on top, not a prerequisite, and not where the +129 came from.
+
+**Suspect staleness before suspecting the technique.** Their `GetPhase` is
+pulled by the SAT solver at decision time and is always current; H5 pushes hints
+at quiescence points and can be stale. `cb_decide` would allow the pull form if
+the push form underperforms.
+
+(convert-cluster)=
+### The `convert` family: three techniques, one set of instances
+
+Worth stating separately, because the paper answers a question this register had
+left open. Three of these leads name `convert`: this one (+116),
+[18](lead-hard-backtrack) (+117), and small CNF (+101). The note previously asked
+whether those are the same instances. **They are, and the paper is explicit that
+the three are conjunctive rather than additive:**
+
+> "SPASS-SATT solves only two-thirds of the 319 instances if **one** of the
+> following three techniques is missing: (i) recalculating simplex states during
+> backtracking, (ii) decision recommendations, or (iii) the small CNF
+> transformation. SPASS-SATT with all three techniques solves all instances in
+> less than 2 s."
+
+So each is individually *necessary* and none is individually sufficient, and
+~106 instances are being counted three times across the three ablations. Do not
+cost them separately, do not expect any one of them to deliver ~+110 on
+`convert` alone, and treat `convert` as a single target requiring all three.
 
 ## Complementarity: losing on average is not the same as useless
 

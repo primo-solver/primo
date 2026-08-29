@@ -277,13 +277,17 @@ The editable TikZ source is `docs/figures/lra-tableau-occurrence-index.tex`.
   `IpasirUpBackend::phase()` only when the preferred literal changed since
   the previous refresh. This is a search hint only; it does not add clauses,
   propagations, or theory decisions.
-  *Attribution:* designed independently here (2026-08-04); the closest published
-  description is SPASS-SATT's **decision recommendation**, Bromberger, Fleury,
-  Schwarz and Weidenbach, *SPASS-SATT: A CDCL(LA) Solver*, CADE 2019, treated at
-  length in [](papers/bromberger-linear-arithmetic-thesis.md) §8.1. Primo
-  implements the model-satisfaction half of their rule only. See
-  [](qf-lra-heuristics.md) H5 for the full attribution chain, which is less
-  straightforward than it looks.
+  *Attribution:* designed independently here (2026-08-04). The published
+  description is SPASS-SATT's **decision recommendation** -- Bromberger, Fleury,
+  Schwarz and Weidenbach, *SPASS-SATT: A CDCL(LA) Solver*, CADE 2019, §3 and
+  footnote 3; DOI
+  [10.1007/978-3-030-29436-6_7](https://doi.org/10.1007/978-3-030-29436-6_7).
+  Their rule is a disjunction, and its second disjunct is unreachable whenever
+  unate propagation is on, so **this is their technique, not half of it**, and
+  their +129 on QF_LIA is a measurement of this mechanism. The flag is off by
+  default and has only been evaluated on QF_LRA; see
+  [lead 20](lead-decision-recommendation). Full attribution chain,
+  including what *not* to cite, in [](h5-attribution).
 - **QF_LRA fragment boundary** (`Frontend::declare_fun`): QF_LRA accepts free
   constants, but rejects non-nullary `declare-fun` declarations. Uninterpreted
   functions or predicates over arithmetic terms are QF_UFLRA/NO work, not pure

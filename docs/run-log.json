@@ -28318,9 +28318,42 @@
         "authors_own_admission": "SPASS-SATT v1.1 SMT-COMP 2019 system description lists decision recommendations among techniques 'contained in existing SMT solvers' where 'not all have been described in the respective literature', naming the CADE-27 paper as the remedy.",
         "conclusion": "Cite Bromberger, Fleury, Schwarz, Weidenbach, SPASS-SATT: A CDCL(LA) Solver, CADE 2019 (DOI 10.1007/978-3-030-29436-6_7), and/or thesis section 8.1, for the technique; attribute origin to Yices without citing the Yices 2.2 paper as its description; position against Sebastiani JSAT 2007 section 7.2.5; cite Pipatsrisawat & Darwiche SAT 2007 for the SAT-side phase-saving mechanism H5 overrides."
       },
-      "caveats": "The CADE 2019 paper itself could not be read -- Springer and the HAL deposit (hal-02405524, record verified via the HAL API against the DOI) both serve a bot challenge instead of the PDF. That it covers decision recommendations is inferred from the thesis naming it as the summary of chapters 7-8 and from the v1.1 system description. Confirm the section before it enters a bibliography, or cite the thesis, which was read directly. Sebastiani's JSAT DOI resolves 302 to the publisher, whose landing page returns 403 to an automated fetch; the author copy was the one read.",
+      "caveats": "SUPERSEDED IN PART on the same day: the CADE 2019 paper was afterwards supplied by the user (docs/papers/SPASS-SATT.pdf, untracked) and read. It does describe decision recommendations in section 3, so the citation is confirmed rather than inferred, and its footnote 3 corrected the reading taken from the thesis prose -- see 2026-08-29-spass-satt-cade-paper-read. Sebastiani's JSAT DOI resolves 302 to the publisher, whose landing page returns 403 to an automated fetch; the author copy was the one read.",
       "evidence_status": "current",
-      "docs": "docs/qf-lra-heuristics.md H5 'What to cite for --lra-model-phase'; docs/arithmetic.md; docs/papers/bromberger-linear-arithmetic-thesis.md section 8.1"
+      "docs": "docs/qf-lra-heuristics.md H5 'What to cite for --lra-model-phase'; docs/arithmetic.md; docs/papers/bromberger-linear-arithmetic-thesis.md section 8.1",
+      "superseded_by": "2026-08-29-spass-satt-cade-paper-read"
+    },
+    {
+      "id": "2026-08-29-spass-satt-cade-paper-read",
+      "started_at": "2026-08-29",
+      "recorded_at": "2026-08-29",
+      "kind": "literature",
+      "scope": "Read the CADE 2019 SPASS-SATT paper, supplied by the user after the attribution trace could not obtain it, to confirm the decision-recommendation citation and check what it adds over thesis chapters 7-8.",
+      "commit": "7bc9a4b",
+      "branch": "main",
+      "environment": {
+        "type": "local",
+        "host": "workstation"
+      },
+      "commands": {
+        "source": "docs/papers/SPASS-SATT.pdf, supplied by the user; untracked and covered by .gitignore's *.pdf (copyrighted)",
+        "verify": "pdfinfo confirms Subject 'Automated Deduction - CADE 27, doi:10.1007/978-3-030-29436-6_7', 12 pages",
+        "read": "pdftotext -layout, read in full",
+        "code_checks": "grep -rn unate src/ (empty); grep -n lra_model_phase src/smt/check_sat.cpp (solve_qf_lia_impl passes it into OnlineLraPropagator)"
+      },
+      "results": {
+        "citation_confirmed": "Section 3 describes decision recommendations. The CADE 2019 citation is verified, not inferred; the earlier caveat is removed.",
+        "footnote_3_corrects_the_thesis_reading": "GetPhase(L) = TRUE iff the current theory assignment satisfies L OR Assert(not L) would conflict; otherwise FALSE. The footnote adds that the second disjunct is impossible when unate propagation is enabled. The thesis prose reads as two criteria and had been recorded here as 'conflict-freedom plus model-satisfaction, Primo has only the second'. That was wrong: the disjuncts are alternatives, and SPASS-SATT's default has unate propagation on, so their measured +129 comes from the model-satisfaction disjunct alone -- exactly what --lra-model-phase already implements.",
+        "convert_family_is_one_target": "Paper: 'SPASS-SATT solves only two-thirds of the 319 instances if ONE of the following three techniques is missing: (i) recalculating simplex states during backtracking, (ii) decision recommendations, or (iii) the small CNF transformation. SPASS-SATT with all three techniques solves all instances in less than 2s.' The +117/+116/+101 figures therefore count roughly the same ~106 instances three times; each is necessary, none sufficient.",
+        "new_over_the_thesis": "Section 4 details shared monomial lifting (-PPIL) and CITE bounding (-PPIB, one fresh integer variable per topmost CITE, bounded by the leaf min/max and gcd-scaled), which carry `rings` where CITE simplification plus compression carry `nec-smt`. Footnote 4: all preprocessing techniques except small CNF are also in CVC4, and the implementation is fast because of a shared term representation plus caching of intermediate results.",
+        "additional_numbers": "4894 of 6947 QF_LIA instances are solved by the simplex implementation alone; unit cube test +56 and 705 instances more than 2x faster; bounding transformations +169 and 167 instances more than 2x faster; bound refinements +24; simple rounding 1 instance faster; bound propagation +10; unate propagation no consistent benefit or drawback; pb2010 +22, all solved without branch-and-bound; nec_smt 2782 of 2800 with preprocessing (the thesis figure legend says 2772).",
+        "design_note": "SPASS-SATT deliberately rejected splitting-on-demand, implementing branch-and-bound as a theory solver separate from the SAT solver to keep control of the branch-and-bound reasoning."
+      },
+      "interpretation": "Lead 20 changes from 'implement the criterion Primo lacks' to 'A/B an existing flag on QF_LIA'. --lra-model-phase is off by default and has only been evaluated on QF_LRA, the fragment where the same source measures the technique at +11; the +129 is for QF_LIA, where solve_qf_lia_impl already wires the flag through. No new code is needed for the evaluation.",
+      "caveats": "Primo has no unate propagation, so footnote 3's unreachability argument does not transfer and the conflict-freedom disjunct could fire here; it is a possible small addition, not the source of the measured win. Their GetPhase is pulled at decision time whereas H5 pushes hints at quiescence points, so H5's hints can be stale; suspect that before suspecting the technique if an evaluation underperforms.",
+      "evidence_status": "current",
+      "supersedes": "2026-08-29-lra-model-phase-attribution-trace (in part)",
+      "docs": "docs/papers/bromberger-linear-arithmetic-thesis.md; docs/qf-lra-heuristics.md H5; docs/open-leads.md lead 20 and the convert-cluster note; docs/arithmetic.md"
     }
   ]
 }

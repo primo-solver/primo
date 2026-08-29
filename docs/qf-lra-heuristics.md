@@ -1095,12 +1095,50 @@ for the mechanism would be wrong; claiming to implement decision recommendation
 would also be wrong, because criterion 1 is absent (see
 [lead 20](lead-decision-recommendation)).
 
-**Caveat on the CADE 2019 citation.** It could not be read: Springer and the HAL
-deposit both serve a bot challenge instead of the PDF. That it covers decision
-recommendations is *inferred* -- from the thesis naming it as the summary of
-Chapters 7-8, and from the v1.1 system description naming it as the remedy for
-exactly this gap. Confirm the section before it goes into a bibliography, or
-cite the thesis, which was read directly.
+**The CADE 2019 citation is now verified, and it changes the claim.** The paper
+was supplied by the user and read on 2026-08-29
+(`docs/papers/SPASS-SATT.pdf`, untracked -- copyrighted, and `.gitignore`
+excludes `*.pdf`). §3 does describe decision recommendations, so the citation
+above stands without a caveat. It is also the better citation than the thesis
+here, because its **footnote 3 gives the rule exactly**, where the thesis gives
+only prose:
+
+> "In our own theory solver, `GetPhase(L) = ⊤` if the current theory assignment
+> satisfies `L` or if `Assert(¬L)` would return `⊥`. Otherwise,
+> `GetPhase(L) = ⊥`. (If unate propagations are enabled, then the case that
+> `Assert(¬L)` would return `⊥` is impossible because `L` would have been unate
+> propagated.)"
+
+Two corrections to what this note said before reading it.
+
+**H5 is not "half" of the technique — under their default configuration it is
+effectively all of it.** The thesis prose reads as two criteria, conflict-freedom
+and model-satisfaction, and this note previously called the first "the stronger
+half" that Primo lacks. The footnote says the opposite: the conflict-freedom
+disjunct is *unreachable* when unate propagation is enabled, which it is by
+default in SPASS-SATT. **Their +129 was therefore measured with only the
+model-satisfaction disjunct doing work — which is exactly what H5 implements.**
+
+That makes +129 QF_LIA / +116 `convert` an estimate of what **H5 itself** is
+worth, not of what H5 is missing. H5 is off by default and has only ever been
+evaluated on QF_LRA, where the same source measures the technique at +11.
+`solve_qf_lia_impl` already constructs `OnlineLraPropagator` with
+`options.lra_model_phase`, so this is measurable today with no new code. See
+[lead 20](lead-decision-recommendation).
+
+**The conflict-freedom disjunct is not dead for *us*, though.** Primo has no
+unate propagation (`grep -rn unate src/` is empty), so the footnote's
+unreachability argument does not transfer, and the disjunct could fire here. It
+is a possible small addition — not the source of the measured win, and not a
+prerequisite.
+
+**One design difference worth keeping in view.** Their `GetPhase(L)` is *pulled*
+by the SAT solver at the moment it decides `L`, so it is always current. H5
+*pushes* hints via `IpasirUpBackend::phase()` at quiescence points, so a hint can
+be stale between refreshes — which is what all the dirty-scoping machinery above
+exists to bound. If an H5 evaluation underperforms the published numbers,
+staleness is the first thing to suspect, and CaDiCaL's `cb_decide` would allow
+the pull form.
 
 **Risk: low.** Phase hints cannot affect soundness; the worst case is a
 worse search order. Keep `--lra-theory-decisions` as-is (it stays a useful
