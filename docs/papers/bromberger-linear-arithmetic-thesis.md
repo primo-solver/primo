@@ -520,10 +520,18 @@ been evaluated on QF_LRA, the fragment where the same source puts it at +11.
 `OnlineLraPropagator`, so the QF_LIA A/B needs no new code. Registered as
 [lead 20](lead-decision-recommendation).
 
-Two leftovers, neither load-bearing. Primo has no unate propagation, so the
-conflict-freedom disjunct is not provably unreachable *here* and could be added.
-And their `GetPhase` is **pulled** at decision time while H5 **pushes** hints at
-quiescence points, so H5's hints can be stale where theirs cannot.
+One leftover, not load-bearing: their `GetPhase` is **pulled** at decision time
+while H5 **pushes** hints at quiescence points, so H5's hints can be stale where
+theirs cannot.
+
+A second supposed leftover was recorded here and then withdrawn. `grep -rn unate
+src/` returns nothing, and this note briefly took that to mean Primo lacks unate
+propagation, so that the conflict-freedom disjunct might still fire here. It is a
+naming false-negative: Primo's **same-variable bound propagation**
+(`--lra-propagation`, default on) is the same rule, cited in
+[](../arithmetic.md) to Dutertre and de Moura §4.2 "deriving satisfied atoms"
+rather than to the name Bromberger uses. Footnote 3 therefore applies to Primo
+unchanged.
 
 ### Multiple conflicts per theory check
 
@@ -539,6 +547,17 @@ phase rather than only inside branch-and-bound.
 Unate propagation measures at nothing (1607 vs. 1608 LRA; 6806 vs. 6806 LIA) and
 is nonetheless kept on by default -- explicitly on the assumption, not the
 measurement, "that there exist some theory combinations where it is beneficial".
+
+**Primo has this one already**, as `--lra-propagation` (default on), under the
+name *same-variable bound propagation*: [](../arithmetic.md) cites it to
+Dutertre and de Moura §4.2 "deriving satisfied atoms", and §3.2.5 of the same
+technical report calls the identical rule unate propagation. So it is not a lead
+in either direction -- not to implement, and not (yet) to remove. The tension
+worth recording is that Bromberger measures it at zero while Primo's own
+profiling of cvc5 recorded `unatePropagateCalls = 15,595` against
+`pivots = 129`, concluding that cvc5 wins "via far more complete propagation,
+not cheaper pivoting". `--no-lra-propagation` exists and has never been run
+against the corpus.
 
 ## Chapter 8.2 -- preprocessing is the largest measured lever in this document
 
@@ -791,8 +810,10 @@ rule. All of these are registered there; this list is the ordering argument.
    the equality basis of the homogeneous system.
 
 Explicitly **not** leads, on this thesis's own measurements: greedy conflict
-detection, multiple conflicts per check, further leaving-rule tuning, unate
-propagation, and bound-propagation threshold tuning.
+detection, multiple conflicts per check, further leaving-rule tuning, and
+bound-propagation threshold tuning. **Unate propagation** is not a lead either,
+but for a different reason -- Primo already has it as `--lra-propagation`
+(default on), under the name same-variable bound propagation.
 
 **`convert` (319 files here) is named by three of these, and they are one
 target, not three.** The CADE 2019 paper settles what the thesis left ambiguous:

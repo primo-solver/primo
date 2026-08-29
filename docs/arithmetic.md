@@ -306,6 +306,23 @@ The editable TikZ source is `docs/figures/lra-tableau-occurrence-index.tex`.
   (no candidate/budget/backoff machinery like EUF's propagation needs).
   Gated behind `CheckSatOptions::lra_propagation` (default on),
   `--lra-propagation`/`--no-lra-propagation` CLI flags.
+  **Also known as *unate propagation***, which is the name Dutertre and de Moura
+  use for it in §3.2.5 of the CSL-06-01 technical report ("if bound `xi >= ci`
+  has been asserted then any unassigned atom of the form `xi >= c'` with
+  `c' < ci` is immediately implied. Similarly, the negation of any atom
+  `xi <= u` with `u < ci` is implied"), and the name it goes by in SPASS-SATT
+  and cvc5. The alias is recorded here because searching the tree for "unate"
+  otherwise returns nothing and invites the false conclusion that Primo lacks
+  the technique -- which it did once, on 2026-08-29; see
+  [](h5-attribution).
+  Calibration, for anyone tempted to tune it: SPASS-SATT measures unate
+  propagation at **exactly zero** on both divisions (1607 vs. 1608 QF_LRA, 6806
+  vs. 6806 QF_LIA) and keeps it on by default anyway, on a stated assumption
+  about theory combinations rather than a measurement
+  ([](papers/bromberger-linear-arithmetic-thesis.md) §8.1). Against that,
+  cvc5's own counters on a Primo dramatic-gap file show
+  `unatePropagateCalls = 15,595` against `pivots = 129` (below). Primo has never
+  A/B'd `--no-lra-propagation`; it is cheap to.
 - **Row-based/interval bound propagation** (competitiveness-roadmap item 2,
   2026-07-25, `check_sat.cpp`): generalizes same-slack propagation to a
   *derived* rather than only directly-asserted bound. For a row `basic_var

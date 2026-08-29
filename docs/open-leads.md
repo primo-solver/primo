@@ -2241,10 +2241,14 @@ not gain and the corpus is net-neutral or worse, close this lead** and leave the
 flag off; the mechanism will have been measured on both fragments and lost on
 both.
 
-**Then, and only then, the leftover.** Primo has no unate propagation (`grep -rn
-unate src/` is empty), so footnote 3's unreachability argument does not transfer
-and the `Assert(¬L)`-conflicts disjunct *could* fire here. It is a possible small
-addition on top, not a prerequisite, and not where the +129 came from.
+**There is no leftover** (corrected 2026-08-29). This lead briefly claimed that
+Primo lacks unate propagation -- from `grep -rn unate src/` being empty -- and
+that footnote 3's unreachability argument therefore did not transfer. Wrong:
+Primo's *same-variable bound propagation* (`--lra-propagation`, **default on**)
+is unate propagation under the other name Dutertre and de Moura give it. So the
+`Assert(¬L)`-conflicts disjunct is unreachable here too, and `--lra-model-phase`
+is the entire technique rather than a part of it. Nothing further to implement;
+only to measure.
 
 **Suspect staleness before suspecting the technique.** Their `GetPhase` is
 pulled by the SAT solver at decision time and is always current; H5 pushes hints

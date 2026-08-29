@@ -1126,11 +1126,18 @@ evaluated on QF_LRA, where the same source measures the technique at +11.
 `options.lra_model_phase`, so this is measurable today with no new code. See
 [lead 20](lead-decision-recommendation).
 
-**The conflict-freedom disjunct is not dead for *us*, though.** Primo has no
-unate propagation (`grep -rn unate src/` is empty), so the footnote's
-unreachability argument does not transfer, and the disjunct could fire here. It
-is a possible small addition — not the source of the measured win, and not a
-prerequisite.
+**The conflict-freedom disjunct is dead for us too** -- corrected 2026-08-29,
+having first got this backwards. `grep -rn unate src/` is empty, and this note
+briefly concluded from that that Primo lacks unate propagation and so the
+disjunct could still fire here. **That was a naming false-negative.** Primo's
+*same-variable bound propagation* (`--lra-propagation`, **default on**;
+[](arithmetic.md)) is the same rule under Dutertre and de Moura's other name for
+it: after each bound assertion it scans the remaining unassigned atoms on that
+variable and propagates the ones the new bound now entails true or false, with
+the single asserting literal as the reason -- a 2-literal clause, exactly
+Bromberger's unate propagation clause. So footnote 3's argument transfers intact
+and there is no leftover: **H5 is the whole of decision recommendation for Primo
+as well.**
 
 **One design difference worth keeping in view.** Their `GetPhase(L)` is *pulled*
 by the SAT solver at the moment it decides `L`, so it is always current. H5
