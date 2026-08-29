@@ -28260,6 +28260,37 @@
       "caveats": "A file-level 'contains (ite' count is an upper bound on relevance and says nothing about how many ITEs survive Primo's own lowering, nor about solve time. It sizes the candidate population only. No claim about Primo's solved counts on these families is made from this run.",
       "evidence_status": "current",
       "docs": "docs/papers/bromberger-linear-arithmetic-thesis.md; docs/open-leads.md lead 16; docs/preprocessing.md"
+    },
+    {
+      "id": "2026-08-29-bromberger-publication-audit",
+      "started_at": "2026-08-29",
+      "recorded_at": "2026-08-29",
+      "kind": "literature",
+      "scope": "Completeness audit of Martin Bromberger's publication record, to establish whether reading the 2019 PhD thesis leaves any linear-arithmetic work unread. Bibliographic only; no solver, no benchmark.",
+      "commit": "c4bb76a",
+      "branch": "main",
+      "environment": {
+        "type": "local",
+        "host": "workstation"
+      },
+      "commands": {
+        "record": "curl https://dblp.org/pid/160/8783.xml, parsed with ElementTree (the rendered HTML page truncates; the XML does not)",
+        "link_check": "curl -sS -o /dev/null -w '%{http_code}' -L for every URL cited",
+        "abstract": "curl https://api.semanticscholar.org/graph/v1/paper/DOI:10.1007/978-3-031-10769-6_10?fields=abstract,openAccessPdf",
+        "hal_verification": "curl https://api.archives-ouvertes.fr/search/?q=halId_s:hal-03881893 to confirm the record matches the DOI"
+      },
+      "results": {
+        "total_entries": "30, spanning 2015-2026",
+        "subsumed_by_thesis": "7: CADE 2015, IJCAR 2016, SMT@IJCAR 2016, FMSD 2017, IJCAR 2018, CADE 2019 (SPASS-SATT), JSC 2020",
+        "post_thesis_line": "first-order from 2021 on (SCL(FOL), Isabelle/HOL formalisation, two-watched literals, constrained Horn clauses, Datalog hammer, eBPF verification); none applies to a ground QF solver",
+        "checked_not_assumed": "VMCAI 2021 BS(BD) via SCL(T) -- a first-order fragment, not a difference-logic decision procedure; IJCAR 2022 BS(LRA) subsumption -- abstract obtained, full text not",
+        "smt_comp_system_description": "SPASS-SATT v1.1 (SMT-COMP 2019) read in full; adds nothing over thesis chapters 7-8 and defers to the CADE-27 paper",
+        "second_pass_finding": "re-reading thesis section 8.1 rather than only its ablation legends corrected an error in the first pass: decision recommendation is +129 on QF_LIA (116 of them `convert`), not a null result. Registered as lead 20."
+      },
+      "interpretation": "Reading the thesis is sufficient for the arithmetic line; there is nothing further to obtain. The single adjacent post-thesis result is the BS(LRA) subsumption pipeline, whose sample-point heuristic pre-empts ~94% of expensive LRA implication checks -- structurally the same move as Primo's model-value filter, in a first-order setting.",
+      "caveats": "The IJCAR 2022 subsumption paper is marked CC-BY open access but both Springer and HAL serve a bot challenge instead of the PDF, so only its abstract was obtained and it is filed at the abstract-only tier. A guessed arXiv id for it (2205.06541) turned out to be an unrelated fracture-mechanics paper; every link recorded here was individually resolved.",
+      "evidence_status": "current",
+      "docs": "docs/papers/bromberger-linear-arithmetic-thesis.md; docs/papers/lra-related-work.md; docs/open-leads.md lead 20; docs/qf-lra-heuristics.md H5"
     }
   ]
 }

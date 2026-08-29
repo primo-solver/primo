@@ -62,6 +62,14 @@ not yet read for this survey):
 
 Paywalled, no open mirror found — need institutional access or the user to
 fetch a copy:
+- Bromberger, Leutgeb, Weidenbach, "An Efficient Subsumption Test Pipeline for
+  BS(LRA) Clauses" (IJCAR 2022, LNCS 13385, 147–168,
+  DOI [10.1007/978-3-031-10769-6_10](https://doi.org/10.1007/978-3-031-10769-6_10),
+  link checked 2026-08-29). Marked open-access CC-BY by Unpaywall, and a HAL
+  deposit exists (<https://inria.hal.science/hal-03881893>, record verified
+  through the HAL API against the same DOI), but **both Springer and HAL serve a
+  bot challenge rather than the PDF**, so only the abstract could be obtained.
+  See below for why it is listed at all.
 - Bland, "New Finite Pivoting Rules for the Simplex Method" (Math. of OR, 1977)
 - Harris, "Pivot Selection Methods of the Devex LP Code" (Math. Programming, 1973)
 - Forrest & Goldfarb, "Steepest-Edge Simplex Algorithms for Linear Programming" (Math. Programming, 1992)
@@ -547,6 +555,36 @@ method is a complete replacement for the per-pair exact fallback in
 [](../qf-lra-equality-sharing.md), and it is also the applicability test the
 Chapter 6 bounding transformations depend on. Registered as
 [lead 17](lead-equality-basis).
+
+**Martin Bromberger, Lorenz Leutgeb, Christoph Weidenbach. "An Efficient
+Subsumption Test Pipeline for BS(LRA) Clauses" (IJCAR 2022).**
+DOI: <https://doi.org/10.1007/978-3-031-10769-6_10>.
+**Abstract only** — see the access note above; the full text could not be
+retrieved, so nothing here may be relied on for implementation.
+
+Found during the 2026-08-29 audit of Bromberger's complete publication record
+(see [](bromberger-linear-arithmetic-thesis.md)), and the only post-thesis paper
+of his with a plausible connection to Primo. The setting is first-order clause
+subsumption, which Primo does not do. What makes it worth a line is the
+bottleneck the abstract names and how they attack it:
+
+> "The bottleneck in this setup is deciding implication between the LRA
+> constraints of two clauses. Our new sample point heuristic pre-empts expensive
+> implication decisions in about 94% of all cases in benchmarks."
+
+That is structurally the same move as Primo's model-value filter in
+[](../qf-lra-equality-sharing.md) — use a cheap point evaluation to refute an
+implication before paying for an exact LRA probe — reached independently in a
+different setting. Primo's filter uses *the current tableau assignment*; a
+deliberately *chosen* sample point is a different design with, at least there, a
+measured 94% pre-emption rate.
+
+**Do not treat that number as a target.** Their implications are between two
+clauses' constraint sets; Primo's probes are strict-orientation feasibility
+checks on shared pairs. Whether the ideas transfer at all is unknown and cannot
+be settled from an abstract. The concrete action, if
+[lead 17](lead-equality-basis) is ever taken up and the exact fallback turns out
+to be the cost: ask for a copy of this paper first.
 
 ## Out of scope for QF_LRA (LIA/mixed/quantified — for later, if ever)
 

@@ -1015,6 +1015,17 @@ on the 4 files item 8 regressed. If instead the win came from the stable
 *order*, this will show up as a much smaller 9-file effect -- a clean,
 informative negative result either way.
 
+**Prior art located 2026-08-29, after this design was written.** This is
+SPASS-SATT's *decision recommendation*
+([](papers/bromberger-linear-arithmetic-thesis.md) §8.1, credited there to
+Yices), and it is measured: QF_LRA +11, QF_LIA **+129, of which 116 are
+`convert`**. Their rule has two criteria and H5 implements only the second:
+prefer a bound that **cannot cause a conflict if asserted** — described as
+always possible — and, among those, one the current assignment satisfies. The
+missing criterion covers exactly the case H5 goes quiet on, where β satisfies
+neither polarity. Registered as
+[lead 20](lead-decision-recommendation).
+
 **Risk: low.** Phase hints cannot affect soundness; the worst case is a
 worse search order. Keep `--lra-theory-decisions` as-is (it stays a useful
 lever for its file shape) and keep this as a separate opt-in flag unless the

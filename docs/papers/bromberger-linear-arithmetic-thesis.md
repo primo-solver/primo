@@ -399,9 +399,12 @@ Recorded so they are not proposed as leads:
   switching dynamically to hardware types for small numbers. [](../qf-lia-profile.md)
   already measured that 98.3% of `nec-smt` numerator/denominator values fit in
   4 bits, which is exactly the regime this addresses.
-- **Unate propagation** (§8.1): 1607 vs. 1608 (LRA), 6806 vs. 6806 (LIA) --
-  measurably nothing, despite the `Bound.smaller`/`Bound.larger` ordered
-  linked-list machinery built to support it.
+- **Unate propagation** (§8.1, below): measurably nothing, despite the
+  `Bound.smaller`/`Bound.larger` ordered linked-list machinery built to support
+  it.
+
+Not on this list, though the first pass through the ablation legends put it
+here: **decision recommendation**. See §8.1 below -- it is +129 on QF_LIA.
 
 ### 7.2.4 The waterfall
 
@@ -425,7 +428,79 @@ bound computation, and the Mixed-Echelon-Hermite transformation all need the
 *original* coefficient matrix, which pivoting has destroyed in the dynamic
 instance. Partially unbounded problems need three more instances.
 
-## Chapter 8 -- preprocessing is the largest measured lever in this document
+## Chapter 8.1 -- SAT/theory interaction
+
+Added 2026-08-29 on a second pass. The first pass through this chapter read only
+the ablation legends and concluded from them that §8.1 was a section of null
+results. That was wrong about one of the four techniques, and the one it was
+wrong about is the largest number in the chapter outside preprocessing.
+
+Bromberger lists four deliberate departures from textbook CDCL(T), all four
+"first appeared in other SMT solvers":
+
+### Weakened early pruning -- and the reason it is *weakened*
+
+Partial propositional models are checked for a **rational** solution only. The
+integer check runs once per *complete* model, because
+
+> "checking for an integer solution is too expensive and not incrementally
+> efficient enough to be done more than once per complete (propositionally
+> abstracted) model."
+
+This is the design [lead 4](lead-aep) (Adaptive Early Pruning) is about, stated
+as settled practice with its rationale. It also independently explains the
+counter Primo measured under [lead 1](lead-pure-filter-lra):
+`:lra.theory-checks 1` against
+`:lra.online-check-calls 6528` is not an anomaly, it is what this architecture
+looks like from the inside.
+
+### Decision recommendation -- +129 on QF_LIA, and 116 of them on `convert`
+
+When the SAT solver is about to decide a variable that corresponds to a
+**bound**, it asks the theory solver for the phase. The theory recommends a
+bound that
+
+1. **cannot cause a conflict if asserted** -- and Bromberger notes in
+   parentheses that this is *always possible*; and
+2. is, if possible, satisfied by the current arithmetic assignment.
+
+Credited to Yices.
+
+Measured: QF_LRA 1607 vs. 1596 (+11), and **QF_LIA 6806 vs. 6677 (+129)** --
++116 `convert`, +11 `tropical-matrix`, +2 `nec-smt`, +1 each
+`bofill-scheduling` and `miplib2003`, −1 each `20180326-Bromberger` and
+`arctic-matrix`. More than twice as fast on 389 QF_LIA instances against 58 the
+other way.
+
+**Primo already has the hook and most of the idea.** `cb_decide` is wired
+through `sat::CadicalBackend`, and there are two existing experiments:
+`--lra-theory-decisions` (roadmap item 8 -- the theory picks the *variable*,
+round-robin; a narrow win and a net loss, off by default) and
+`--lra-model-phase` (H5 -- keep CaDiCaL's variable, supply the polarity that the
+current β satisfies; see [](../qf-lra-heuristics.md) H5).
+
+H5 is condition 2. **Condition 1 is the part Primo does not have**, and it is
+the stronger half: β-satisfaction is a hint that goes quiet exactly when β
+satisfies neither polarity, whereas "a bound that cannot cause a conflict when
+asserted" is claimed to be *always* available. Registered as
+[lead 20](lead-decision-recommendation).
+
+### Multiple conflicts per theory check
+
+Also listed here; measured in §7.1.2 as noise (see above).
+
+### Unate propagation and bound refinements
+
+Bound refinements here are the interaction-layer ones: unlike branch-and-bound's
+bound propagation they only propagate bounds **corresponding to literals that
+already exist in the clause set**, and they run during every theory verification
+phase rather than only inside branch-and-bound.
+
+Unate propagation measures at nothing (1607 vs. 1608 LRA; 6806 vs. 6806 LIA) and
+is nonetheless kept on by default -- explicitly on the assumption, not the
+measurement, "that there exist some theory combinations where it is beneficial".
+
+## Chapter 8.2 -- preprocessing is the largest measured lever in this document
 
 Full QF_LIA division, all of SPASS-SATT's preprocessing (if-then-else, defined
 variables, pseudo-boolean) on vs. off:
@@ -535,6 +610,66 @@ Run 2026-08-29 on this workspace, `sandbox/non-incremental/QF_LIA`, pure
 | `convert` | 319 | 17 | 319 |
 | `calypto` | 37 | 37 | 35 |
 
+## Is anything of his missing? A complete publication audit
+
+Done 2026-08-29 against the full DBLP record (<https://dblp.org/pid/160/8783.html>,
+30 entries, 2015--2026; fetched as XML and enumerated rather than read off the
+rendered page, which truncates). The question this answers is whether reading
+one thesis is enough, so that nobody repeats the search.
+
+**Short answer: yes for arithmetic, and there is nothing to chase.** Every
+linear-arithmetic paper Bromberger has written is a chapter of this thesis, and
+after 2019 he moved to first-order reasoning (SCL) and stopped publishing on
+ground arithmetic entirely.
+
+### Subsumed by the thesis -- do not read separately
+
+| year | venue | paper | thesis chapter |
+|---|---|---|---|
+| 2015 | CADE | Linear Integer Arithmetic Revisited | 3 (CutSat++) |
+| 2016 | IJCAR | Fast Cube Tests for LIA Constraint Solving | 4 |
+| 2016 | SMT@IJCAR | Computing a Complete Basis for Equalities Implied by a System of LRA Constraints | 5 |
+| 2017 | FMSD | New techniques for linear arithmetic: cubes and equalities | 4 + 5 (journal merge of the two 2016 papers) |
+| 2018 | IJCAR | A Reduction from Unbounded Linear Mixed Arithmetic Problems into Bounded Problems | 6 |
+| 2019 | CADE | SPASS-SATT -- A CDCL(LA) Solver | 7 + 8 (the thesis names it as their summary) |
+| 2020 | J. Symb. Comput. | A complete and terminating approach to linear integer solving | 3, extended -- the thesis announces it as forthcoming |
+
+The SMT-COMP 2019 system description *SPASS-SATT v1.1*
+(<https://smt-comp.github.io/2019/system-descriptions/SPASS-SATT.pdf>) was read
+in full on 2026-08-29 to check for divergence. It is two pages and adds nothing:
+it names the unit cube test, bounding transformations, small CNF, branch-and-bound
+as a separate theory solver, the pivot priority queue, integer coefficients,
+dynamic native/arbitrary precision switching, backup-versus-recalculate
+backtracking, weakened early pruning, decision recommendations, unate
+propagation, bound refinements, and ITE/pseudo-boolean preprocessing -- all of
+which are Chapters 7--8 at greater length -- and explicitly defers to the CADE-27
+paper for detail.
+
+The 2020 JSC paper is the only post-thesis item on the arithmetic line, and it
+extends the chapter whose own author argues against implementing it (§6.1's four
+objections). Not worth obtaining.
+
+### Post-thesis: a different research line
+
+From 2021 on the output is first-order -- SCL(FOL) and its Isabelle/HOL
+formalisation, superposition simulation, two-watched literals for first-order
+logic, symbolic model construction for constrained Horn clauses, Datalog hammers
+for supervisor verification, and eBPF verification. Primo is a ground
+quantifier-free solver over QF_UF/QF_LRA/QF_LIA/QF_UFLRA, so none of it applies.
+Two were checked rather than assumed, because their titles name linear
+arithmetic:
+
+- **VMCAI 2021, "Deciding the Bernays-Schoenfinkel Fragment over Bounded
+  Difference Constraints by SCL(T)"**
+  (DOI [10.1007/978-3-030-67067-2_23](https://doi.org/10.1007/978-3-030-67067-2_23)).
+  A first-order fragment with difference constraints, decided by clause learning
+  over theories. Despite the difference-logic wording it is not about a DL
+  decision procedure, so it does not bear on
+  [](../difference_logic.md) or on [lead 8](lead-dl6).
+- **IJCAR 2022, "An Efficient Subsumption Test Pipeline for BS(LRA) Clauses"** --
+  the one adjacent result; see [](lra-related-work.md), where it is filed at the
+  abstract-only tier.
+
 ## What this thesis does not answer
 
 - **Nothing for QF_UF.** Arithmetic only; no congruence closure, no theory
@@ -578,6 +713,10 @@ rule. All of these are registered there; this list is the ordering argument.
 4. **`HardBacktrack`** -- lead [18](lead-hard-backtrack).
    +123 QF_LIA, +117 on `convert` alone, and it is a *deletion*: stop restoring
    the backup assignment, call `Check()` instead.
+4b. **Decision recommendation's conflict-freedom criterion** -- lead
+   [20](lead-decision-recommendation). +129 QF_LIA, and the smallest change on
+   this list: `--lra-model-phase` already owns the hook and the refresh
+   scheduling, and this is a change to the choice rule.
 5. **Integer coefficients with a per-row denominator** -- worth a census of
    Primo's `Rational` traffic in `pivot` first; [](../qf-lia-profile.md)'s
    4-bit finding suggests the same regime FLINT exploits.
@@ -588,3 +727,9 @@ rule. All of these are registered there; this list is the ordering argument.
 Explicitly **not** leads, on this thesis's own measurements: greedy conflict
 detection, multiple conflicts per check, further leaving-rule tuning, unate
 propagation, and bound-propagation threshold tuning.
+
+**`convert` (319 files here) is named by three of these independently** --
+decision recommendation +116, `HardBacktrack` +117, small CNF +101. The
+ablations are single-factor against a full default build, so those sets may
+largely coincide. Check whether they are the same files before costing any of
+the three separately.
