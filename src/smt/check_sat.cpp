@@ -12647,11 +12647,11 @@ struct PreprocessingRoundState {
   std::vector<std::pair<core::TermId, core::TermId>>& forced_disequalities;
 };
 
-void run_preprocessing_round(core::TermManager& terms, Goal& goal,
+Goal run_preprocessing_round(core::TermManager& terms, const Goal& goal,
                              const PreprocessingRoundConfiguration& configuration,
                              PreprocessingRoundState state, util::Statistics& statistics) {
   const CheckSatOptions& options = configuration.options;
-  std::vector<core::TermId>& assertions = goal.assertions;
+  std::vector<core::TermId> assertions = goal.assertions();
   statistics.increment(kStatPreprocessingPasses);
 
   if (configuration.use_eq_bridge) {
@@ -12757,6 +12757,7 @@ void run_preprocessing_round(core::TermManager& terms, Goal& goal,
   statistics.increment(kStatEqualityQueryMemoHits, unit_equality_stats.query_memo_hits);
   statistics.increment(kStatEqualityQueryAddTermRequests, unit_equality_stats.add_term_requests);
   statistics.increment(kStatEqualityQueryAddTermSeenHits, unit_equality_stats.add_term_seen_hits);
+  return goal.with_assertions(std::move(assertions));
 }
 
 }  // namespace
@@ -13364,14 +13365,15 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       PreprocessingRoundState round_state{preprocessing_model_assignments, forced_equalities,
                                           forced_disequalities};
       TacticContext tactic_context(frontend.terms(), statistics);
-      const Tactic round = Tactic("preprocessing-round", [&](TacticContext&, AnyOf input_goals) {
-        if (input_goals.size() != 1) {
-          throw TacticError("preprocessing round expects one goal");
-        }
-        run_preprocessing_round(frontend.terms(), input_goals.alternatives().front(),
-                                round_configuration, round_state, statistics);
-        return input_goals;
-      });
+      const Tactic round =
+          Tactic("preprocessing-round", [&](TacticContext&, const AnyOf& input_goals) {
+            if (input_goals.size() != 1) {
+              throw TacticError("preprocessing round expects one goal");
+            }
+            return AnyOf::single(
+                run_preprocessing_round(frontend.terms(), input_goals.alternatives().front(),
+                                        round_configuration, round_state, statistics));
+          });
       const std::size_t max_preprocessing_passes =
           preprocessing_passes + options.preprocessing_adaptive_extra_passes;
       const Tactic preprocessing = repeat(
@@ -13383,9 +13385,9 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
               return true;
             }
             const std::size_t before_term_size =
-                reachable_term_count(frontend.terms(), before.alternatives().front().assertions);
+                reachable_term_count(frontend.terms(), before.alternatives().front().assertions());
             const std::size_t after_term_size =
-                reachable_term_count(frontend.terms(), after.alternatives().front().assertions);
+                reachable_term_count(frontend.terms(), after.alternatives().front().assertions());
             const bool shrank_enough =
                 after_term_size < before_term_size &&
                 after_term_size * 100 <= before_term_size * (100 - adaptive_shrink_percent);
@@ -13397,7 +13399,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
           });
       AnyOf preprocessed =
           preprocessing(tactic_context, AnyOf::single(Goal(std::move(assertions))));
-      assertions = std::move(preprocessed.alternatives().front().assertions);
+      assertions = preprocessed.alternatives().front().assertions();
     }
     if (use_symmetry_breaking) {
       if (!symmetry_result.has_value()) {
@@ -13652,25 +13654,33 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     const auto make_solver_tactic =
         [&](std::string name,
             std::function<CheckSatOutcome(const std::vector<core::TermId>&)> solve) {
-          return make_goal_tactic(
-              std::move(name), [&, solve = std::move(solve)](TacticContext&, Goal goal) {
-                try {
-                  solver_outcome = solve(goal.assertions);
-                } catch (const UnsupportedInput& error) {
-                  solver_outcome =
-                      CheckSatOutcome{CheckSatResult::Unsupported, error.what(), statistics, ""};
-                }
-                goal.model = solver_outcome->model.empty()
-                                 ? std::optional<std::string>{}
-                                 : std::optional<std::string>{solver_outcome->model};
-                goal.diagnostic = solver_outcome->message;
-                if (solver_outcome->result == CheckSatResult::Sat) {
-                  goal.assertions.clear();
-                } else if (solver_outcome->result == CheckSatResult::Unsat) {
-                  goal.assertions = {frontend.terms().mk_bool(false)};
-                }
-                return AnyOf::single(std::move(goal));
-              });
+          return make_goal_tactic(std::move(name), [&, solve = std::move(solve)](TacticContext&,
+                                                                                 const Goal& goal) {
+            try {
+              solver_outcome = solve(goal.assertions());
+            } catch (const UnsupportedInput& error) {
+              solver_outcome =
+                  CheckSatOutcome{CheckSatResult::Unsupported, error.what(), statistics, ""};
+            }
+            const InconclusiveReason reason =
+                solver_outcome->result == CheckSatResult::Unsupported
+                    ? InconclusiveReason::Unsupported
+                : solver_outcome->result == CheckSatResult::Unknown
+                    ? (solver_outcome->message == "theory conflict limit reached"
+                           ? InconclusiveReason::ResourceLimit
+                           : InconclusiveReason::Unknown)
+                    : InconclusiveReason::None;
+            Goal result = goal.with_model(solver_outcome->model.empty()
+                                              ? std::optional<std::string>{}
+                                              : std::optional<std::string>{solver_outcome->model})
+                              .with_diagnostic(reason, solver_outcome->message);
+            if (solver_outcome->result == CheckSatResult::Sat) {
+              result = result.with_assertions({});
+            } else if (solver_outcome->result == CheckSatResult::Unsat) {
+              result = result.with_assertions({frontend.terms().mk_bool(false)});
+            }
+            return AnyOf::single(std::move(result));
+          });
         };
 
     const Tactic boolean_solver =
@@ -13719,12 +13729,12 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     const Tactic boolean_then_euf =
         first_terminal("boolean-then-euf", scheduler, {boolean_solver, euf_solver});
     const Tactic solver_dispatch =
-        Tactic("solver-dispatch", [&](TacticContext& context, AnyOf input_goals) {
+        Tactic("solver-dispatch", [&](TacticContext& context, const AnyOf& input_goals) {
           if (input_goals.size() != 1) {
             throw TacticError("solver dispatch expects one goal");
           }
-          Goal& goal = input_goals.alternatives().front();
-          const std::vector<core::TermId>& goal_assertions = goal.assertions;
+          const Goal& goal = input_goals.alternatives().front();
+          const std::vector<core::TermId>& goal_assertions = goal.assertions();
 
           FormulaFeatureSummary formula_features;
           std::unordered_map<core::TermId, FormulaFeatureSummary> formula_feature_memo;
@@ -13761,7 +13771,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
           } else {
             selected = &boolean_then_euf;
           }
-          return selected->operator()(context, std::move(input_goals));
+          return selected->operator()(context, input_goals);
         });
 
     const PhaseClock::time_point solve_start = PhaseClock::now();

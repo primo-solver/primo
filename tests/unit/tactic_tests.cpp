@@ -1,6 +1,7 @@
 #include <cstdlib>
 #include <memory>
 #include <stdexcept>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -31,11 +32,20 @@ struct Fixture {
 
 void goal_truth_is_derived_from_assertions() {
   Fixture fixture;
+  static_assert(std::is_same_v<decltype(std::declval<const primo::smt::Goal&>().assertions()),
+                               const std::vector<primo::core::TermId>&>);
   check(primo::smt::truth(primo::smt::Goal{}, fixture.context) == primo::smt::GoalTruth::True);
   check(primo::smt::truth(primo::smt::Goal{{fixture.terms.mk_bool(false)}}, fixture.context) ==
         primo::smt::GoalTruth::False);
   check(primo::smt::truth(primo::smt::Goal{{fixture.p_term()}}, fixture.context) ==
         primo::smt::GoalTruth::Inconclusive);
+
+  const primo::smt::Goal original{{fixture.p_term()}};
+  const primo::smt::Goal diagnosed =
+      original.with_diagnostic(primo::smt::InconclusiveReason::ResourceLimit, "budget");
+  check(original.diagnostic().empty());
+  check(diagnosed.reason() == primo::smt::InconclusiveReason::ResourceLimit);
+  check(diagnosed.assertions() == original.assertions());
 }
 
 void anyof_has_disjunctive_semantics() {
@@ -79,10 +89,11 @@ void sequence_and_repeat_stop_at_a_fixed_point() {
   const primo::core::TermId p = fixture.p_term();
   std::size_t applications = 0;
   const primo::smt::Tactic remove_one = primo::smt::make_goal_tactic(
-      "remove-one", [&applications](primo::smt::TacticContext&, primo::smt::Goal goal) {
+      "remove-one", [&applications](primo::smt::TacticContext&, const primo::smt::Goal& goal) {
         ++applications;
-        goal.assertions.pop_back();
-        return primo::smt::AnyOf::single(std::move(goal));
+        std::vector<primo::core::TermId> assertions = goal.assertions();
+        assertions.pop_back();
+        return primo::smt::AnyOf::single(goal.with_assertions(std::move(assertions)));
       });
   const primo::smt::Tactic repeated = primo::smt::repeat("repeat-remove", remove_one, 8);
   const primo::smt::AnyOf result =
@@ -95,14 +106,13 @@ void sequence_and_repeat_stop_at_a_fixed_point() {
 void conditional_uses_a_probe() {
   Fixture fixture;
   const primo::smt::Tactic make_true = primo::smt::make_goal_tactic(
-      "make-true", [](primo::smt::TacticContext&, primo::smt::Goal goal) {
-        goal.assertions.clear();
-        return primo::smt::AnyOf::single(std::move(goal));
+      "make-true", [](primo::smt::TacticContext&, const primo::smt::Goal& goal) {
+        return primo::smt::AnyOf::single(goal.with_assertions({}));
       });
   const primo::smt::Tactic choose = primo::smt::conditional(
       "choose",
       [](const primo::smt::TacticContext&, const primo::smt::Goal& goal) {
-        return goal.assertions.size() == 1;
+        return goal.assertions().size() == 1;
       },
       make_true, primo::smt::skip());
   const primo::smt::AnyOf result =
@@ -114,16 +124,14 @@ void sequential_scheduler_tries_each_arm_from_the_original_goal() {
   Fixture fixture;
   const primo::core::TermId p = fixture.p_term();
   const primo::smt::Tactic inconclusive = primo::smt::make_goal_tactic(
-      "inconclusive", [](primo::smt::TacticContext&, primo::smt::Goal goal) {
-        goal.diagnostic = "budget";
-        return primo::smt::AnyOf::single(std::move(goal));
+      "inconclusive", [](primo::smt::TacticContext&, const primo::smt::Goal& goal) {
+        return primo::smt::AnyOf::single(goal.with_diagnostic("budget"));
       });
-  const primo::smt::Tactic solve =
-      primo::smt::make_goal_tactic("solve", [p](primo::smt::TacticContext&, primo::smt::Goal goal) {
-        check(goal.assertions == std::vector<primo::core::TermId>{p});
-        check(goal.diagnostic.empty());
-        goal.assertions.clear();
-        return primo::smt::AnyOf::single(std::move(goal));
+  const primo::smt::Tactic solve = primo::smt::make_goal_tactic(
+      "solve", [p](primo::smt::TacticContext&, const primo::smt::Goal& goal) {
+        check(goal.assertions() == std::vector<primo::core::TermId>{p});
+        check(goal.diagnostic().empty());
+        return primo::smt::AnyOf::single(goal.with_assertions({}));
       });
   const auto scheduler = std::make_shared<primo::smt::SequentialTacticScheduler>();
   const primo::smt::Tactic portfolio =

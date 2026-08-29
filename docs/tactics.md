@@ -21,17 +21,22 @@ definition was copied from Z3 or another solver.
 
 ## Implemented data structures
 
-`smt::Goal` owns an ordered `std::vector<core::TermId>` of assertions. The
+`smt::Goal` is an immutable shared value containing an ordered
+`std::vector<core::TermId>` of assertions. The
 assertions are a conjunction. A goal with no assertions denotes `true`; a goal
 containing the Boolean constant `false` denotes `false`; every other goal is
-inconclusive. Goal equality is structural and includes the terminal model and
-diagnostic fields, so fixed-point tacticals can detect every observable change.
+inconclusive. Transformations construct a new goal with `with_assertions`,
+`with_model`, or `with_diagnostic`; unchanged goals reuse their storage. Goal
+equality is structural and includes the terminal model, typed inconclusive
+reason, and diagnostic fields.
 
-`smt::AnyOf` owns a non-empty ordered vector of goals with disjunctive
+`smt::AnyOf` owns an immutable shared non-empty ordered vector of goals with disjunctive
 semantics. It is true when any goal is true, false when every goal is false, and
 otherwise inconclusive. An empty `AnyOf` is rejected: truth is represented by
 one empty `Goal`, not by overloading the absence of alternatives. This avoids a
 separate sat/unsat/residual return variant while retaining the formula semantics.
+The vector has no mutable accessor, so construction is the only place where the
+non-empty invariant needs enforcement.
 
 `smt::TacticContext` borrows a `core::TermManager` and `util::Statistics`.
 Consequently all `TermId` values stored in goals are valid only for the lifetime
@@ -40,13 +45,14 @@ of that term manager. Tactics may intern new terms but must never retain a
 the cancellation probe used by future schedulers.
 
 `smt::Tactic` is a named type-erased callable with the signature
-`AnyOf(TacticContext&, AnyOf)`. Input is passed by value so a composition can
-move assertion vectors forward without a required deep copy. The same semantic
-type is accepted and returned. Named invocation counters are emitted under
+`AnyOf(TacticContext&, const AnyOf&)`. A tactic handle and its implementation
+are immutable; inputs share their immutable goal storage and outputs reuse it on
+no-op paths. The same semantic type is accepted and returned. Named invocation
+counters are emitted under
 `:tactic.<name>.invocations`, and elapsed microseconds under
-`:time.tactic.<name>-us`. Change detection is confined to tacticals
-such as `repeat` that require it, rather than copying every tactic input merely
-for instrumentation.
+`:time.tactic.<name>-us`; both statistic names are computed once when the tactic
+is constructed. Change detection is confined to tacticals such as `repeat` that
+require it and immutable handle copies do not duplicate assertion vectors.
 
 ## Implemented tacticals and probes
 
@@ -92,8 +98,9 @@ cancellation, and define deterministic statistics before it is enabled.
 
 The paper's tactic return type separately represents `sat`, `unsat`, `unknown`,
 and `fail`. Primo instead derives true, false, or inconclusive from `AnyOf` and
-uses an unchanged goal for ordinary inapplicability. A diagnostic distinguishes
-resource or applicability reasons without changing the logical value. Broken
+uses an unchanged goal for ordinary inapplicability. `InconclusiveReason`
+distinguishes cancellation, resource, unsupported, applicability, and ordinary
+unknown reasons without changing the logical value. Broken
 contracts and backend failures use exceptions (`TacticError` or the originating
 standard exception); they are not tactical alternatives.
 
@@ -108,14 +115,16 @@ are not implemented.
 
 ## Invariants and complexity
 
+- `Goal`, its assertion vector, and `AnyOf` are immutable shared values.
 - `AnyOf` always contains at least one goal.
 - Every assertion is a Bool-sorted `TermId` owned by the context term manager.
 - A leaf tactic is not applied to an already true or false goal.
 - Sequential fallback gives every arm the same original `AnyOf`, not the
   previous arm's inconclusive output.
-- Fixed-point detection compares ordered goal contents. One repeat iteration is
-  linear in the size of the tactic output in addition to the wrapped tactic's
-  own cost; the explicit iteration bound prevents nontermination.
+- Fixed-point detection first compares shared storage and falls back to ordered
+  goal contents. Unchanged iterations are constant time when a leaf returns its
+  input; changed iterations may compare the produced assertions linearly. The
+  explicit iteration bound prevents nontermination.
 - The generic framework adds no whole-term-DAG scans. Such scans belong to
   explicit probes and remain visible in tactic statistics.
 

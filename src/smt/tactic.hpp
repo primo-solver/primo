@@ -22,18 +22,38 @@ class Statistics;
 
 namespace primo::smt {
 
+enum class InconclusiveReason {
+  None,
+  Inapplicable,
+  ResourceLimit,
+  Unsupported,
+  Cancelled,
+  Unknown,
+};
+
 // A goal is the conjunction of its ordered assertions.  The order is retained
 // because preprocessing and search heuristics are allowed to observe it.
 struct Goal {
-  Goal() = default;
-  explicit Goal(std::vector<core::TermId> goal_assertions)
-      : assertions(std::move(goal_assertions)) {}
+  Goal();
+  explicit Goal(std::vector<core::TermId> assertions);
 
-  std::vector<core::TermId> assertions;
-  std::optional<std::string> model;
-  std::string diagnostic;
+  const std::vector<core::TermId>& assertions() const;
+  const std::optional<std::string>& model() const;
+  InconclusiveReason reason() const;
+  const std::string& diagnostic() const;
 
-  bool operator==(const Goal&) const = default;
+  Goal with_assertions(std::vector<core::TermId> assertions) const;
+  Goal with_model(std::optional<std::string> model) const;
+  Goal with_diagnostic(InconclusiveReason reason, std::string diagnostic) const;
+  Goal with_diagnostic(std::string diagnostic) const;
+
+  bool operator==(const Goal& other) const;
+
+ private:
+  struct Data;
+  explicit Goal(std::shared_ptr<const Data> data);
+
+  std::shared_ptr<const Data> data_;
 };
 
 // Alternative goals have disjunctive semantics.  An AnyOf is deliberately
@@ -45,14 +65,13 @@ class AnyOf {
 
   static AnyOf single(Goal goal);
 
-  const std::vector<Goal>& alternatives() const { return alternatives_; }
-  std::vector<Goal>& alternatives() { return alternatives_; }
-  std::size_t size() const { return alternatives_.size(); }
+  const std::vector<Goal>& alternatives() const { return *alternatives_; }
+  std::size_t size() const { return alternatives_->size(); }
 
-  bool operator==(const AnyOf&) const = default;
+  bool operator==(const AnyOf& other) const;
 
  private:
-  std::vector<Goal> alternatives_;
+  std::shared_ptr<const std::vector<Goal>> alternatives_;
 };
 
 enum class GoalTruth {
@@ -88,19 +107,19 @@ GoalTruth truth(const AnyOf& goals, const TacticContext& context);
 
 class Tactic {
  public:
-  using Function = std::function<AnyOf(TacticContext&, AnyOf)>;
+  using Function = std::function<AnyOf(TacticContext&, const AnyOf&)>;
 
   Tactic(std::string name, Function function);
 
-  AnyOf operator()(TacticContext& context, AnyOf input) const;
-  const std::string& name() const { return name_; }
+  AnyOf operator()(TacticContext& context, const AnyOf& input) const;
+  const std::string& name() const;
 
  private:
-  std::string name_;
-  Function function_;
+  struct Implementation;
+  std::shared_ptr<const Implementation> implementation_;
 };
 
-using GoalTactic = std::function<AnyOf(TacticContext&, Goal)>;
+using GoalTactic = std::function<AnyOf(TacticContext&, const Goal&)>;
 using NumericProbe = std::function<double(const TacticContext&, const Goal&)>;
 using GoalPredicate = std::function<bool(const TacticContext&, const Goal&)>;
 using RepeatPredicate =
