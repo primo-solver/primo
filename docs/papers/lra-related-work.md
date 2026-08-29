@@ -34,6 +34,8 @@ Freely accessible (fetched and read the actual PDF):
 - King/Barrett/Tinelli, "Leveraging Linear and Mixed Integer Programming for SMT" (FMCAD 2014)
 - Nalbach et al., "FMplex" (arXiv 2310.00995)
 - Bromberger/Weidenbach, "Computing a Complete Basis for Equalities..." (SMT@IJCAR 2016, MPI repository)
+  -- superseded for reading purposes by Bromberger's thesis, **read 2026-08-29**;
+  see [](bromberger-linear-arithmetic-thesis.md)
 - Bixby, "Solving Real-World Linear Programs" (Operations Research 2002, gwern.net mirror)
 - Rueß & Shankar, "Solving Linear Arithmetic Constraints" (CSL-SRI-04-01,
   2004) -- the SRI technical-report URLs on Shankar's page are dead `ftp://`
@@ -41,6 +43,13 @@ Freely accessible (fetched and read the actual PDF):
   2026-08-01
 - "Local Search For SMT On Linear and Multilinear Real Arithmetic" (arXiv 2303.06676)
 - Fast Cube Tests for LIA / New Techniques for Linear Arithmetic (MPI-hosted, same publisher pattern as the equalities paper above — not individually re-verified)
+  -- also subsumed by the thesis; **read 2026-08-29** in that form, see
+  [](bromberger-linear-arithmetic-thesis.md)
+- Bromberger, *Decision Procedures for Linear Arithmetic* (PhD thesis, Saarland
+  University, 2019; HAL `tel-02427371`, link checked 2026-08-29). Local copy
+  `docs/papers/Bromberger_Decision_Procedures_for_Linear_Arithmetic.pdf`
+  (untracked). **Read 2026-08-29**, see
+  [](bromberger-linear-arithmetic-thesis.md)
 
 Open author copies located during the DOI audit (access checked 2026-08-13,
 not yet read for this survey):
@@ -531,6 +540,14 @@ constraints. Could feed Primo's equality-propagation path (cf. `--euf-prop`
 Open version:
 <https://pure.mpg.de/rest/items/item_2496284_6/component/file_2496283/content>.
 
+**Now read, in its thesis form** (Chapter 5 of
+[](bromberger-linear-arithmetic-thesis.md), 2026-08-29). The "could feed
+Primo's equality-propagation path" guess turned out to understate it: the
+method is a complete replacement for the per-pair exact fallback in
+[](../qf-lra-equality-sharing.md), and it is also the applicability test the
+Chapter 6 bounding transformations depend on. Registered as
+[lead 17](lead-equality-basis).
+
 ## Out of scope for QF_LRA (LIA/mixed/quantified — for later, if ever)
 
 - Bromberger & Weidenbach, "Fast Cube Tests for LIA Constraint Solving"
@@ -539,7 +556,11 @@ Open version:
   "New Techniques for Linear Arithmetic: Cubes and Equalities" (FMSD 2017,
   DOI [10.1007/s10703-017-0278-7](https://doi.org/10.1007/s10703-017-0278-7)) —
   the cube-test method itself is for integer points, not QF_LRA's
-  rational/real domain.
+  rational/real domain. **Correction, 2026-08-29**: "out of scope for QF_LRA"
+  was right about the cube *test* and wrong about the *transformation* behind
+  it. The same linear cube transformation is what yields the LRA implied-equality
+  detector (thesis Lemmas 5.2.1--5.2.3), which is squarely in QF_LRA scope. See
+  [](bromberger-linear-arithmetic-thesis.md).
 - Jovanović & de Moura, "Cutting to the Chase: Solving Linear Integer
   Arithmetic" (CADE 2011,
   DOI [10.1007/978-3-642-22438-6_26](https://doi.org/10.1007/978-3-642-22438-6_26)) —

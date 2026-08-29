@@ -68,6 +68,7 @@ parts:
           - file: papers/word-gcd-notes
       - file: papers/lra-atom-canonicalization
       - file: papers/griggio-mathsat-thesis
+      - file: papers/bromberger-linear-arithmetic-thesis
       - file: papers/monotone-variable-elimination
       - file: papers/difference-constraint-propagation
 
