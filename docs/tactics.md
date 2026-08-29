@@ -92,7 +92,10 @@ substitution, ground-unit substitution, and unit-equality propagation each have
 their own invocation/time counters. A round deliberately finishes all selected
 phases before exposing a terminal goal, preserving the established pass
 ordering and reconstruction/statistics behavior. Each output owns its own
-reconstruction records. The transformation implementations are unchanged.
+reconstruction records. Phase adapters read assertions directly from the
+immutable input and copy assertion or reconstruction containers only when that
+phase must extend them; counting and unchanged append-only phases return the
+shared input goal. The transformation implementations are unchanged.
 Existing command-line options construct this built-in composition; there is no
 user-facing tactic expression syntax and option defaults are unchanged.
 

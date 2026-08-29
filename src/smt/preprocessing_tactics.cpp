@@ -71,117 +71,147 @@ Goal run_phase(TacticContext& context, const Goal& goal, const PreprocessingRoun
                RoundPhase phase) {
   core::TermManager& terms = context.terms();
   util::Statistics& statistics = context.statistics();
-  std::vector<core::TermId> assertions = goal.assertions();
-  ModelReconstruction reconstruction = goal.reconstruction();
-  if (phase == RoundPhase::Count) {
-    statistics.increment(util::StatKey::PreprocessingPasses);
-    return goal;
-  }
+  switch (phase) {
+    case RoundPhase::Count:
+      statistics.increment(util::StatKey::PreprocessingPasses);
+      return goal;
 
-  if (phase == RoundPhase::EqualityBridge && options.use_eq_bridge) {
-    EqualityBridge bridge(terms);
-    EqualityBridgeResult result = bridge.bridge(assertions);
-    assertions.insert(assertions.end(), result.equalities.begin(), result.equalities.end());
-    statistics.increment(util::StatKey::EqBridgeEqualities, result.equalities.size());
-    statistics.increment(util::StatKey::EqBridgeSkippedOrNodes, result.skipped_or_nodes);
-  }
-  if (phase == RoundPhase::FiniteDomainEvaluation && options.use_finite_domain_evaluation) {
-    FiniteDomainEvaluator evaluator(terms);
-    FiniteDomainEvaluationResult result = evaluator.simplify(assertions);
-    assertions = std::move(result.assertions);
-    statistics.increment(util::StatKey::FiniteDomainEvaluatedEqualities,
-                         result.equalities_simplified);
-    statistics.increment(util::StatKey::FiniteDomainEvaluationCutoffs, result.enumeration_cutoffs);
-  }
-  if (phase == RoundPhase::CongruenceDefinitions && options.use_ground_congruence_definitions) {
-    CongruenceDefinitionGenerator generator(terms);
-    CongruenceDefinitionResult result = generator.generate(assertions);
-    assertions.insert(assertions.end(), result.clauses.begin(), result.clauses.end());
-    statistics.increment(util::StatKey::GroundCongruenceClauses, result.clauses.size());
-    statistics.increment(util::StatKey::GroundCongruenceSkippedGroups, result.skipped_groups);
-  }
+    case RoundPhase::EqualityBridge: {
+      EqualityBridge bridge(terms);
+      EqualityBridgeResult result = bridge.bridge(goal.assertions());
+      statistics.increment(util::StatKey::EqBridgeEqualities, result.equalities.size());
+      statistics.increment(util::StatKey::EqBridgeSkippedOrNodes, result.skipped_or_nodes);
+      if (result.equalities.empty()) {
+        return goal;
+      }
+      std::vector<core::TermId> assertions = goal.assertions();
+      assertions.insert(assertions.end(), result.equalities.begin(), result.equalities.end());
+      return goal.with_assertions(std::move(assertions));
+    }
 
-  if (phase == RoundPhase::BooleanUnits) {
-    BooleanUnitPropagationResult result = propagate_boolean_units(terms, assertions);
-    assertions = std::move(result.assertions);
-    if (options.produce_model) {
+    case RoundPhase::FiniteDomainEvaluation: {
+      FiniteDomainEvaluator evaluator(terms);
+      FiniteDomainEvaluationResult result = evaluator.simplify(goal.assertions());
+      statistics.increment(util::StatKey::FiniteDomainEvaluatedEqualities,
+                           result.equalities_simplified);
+      statistics.increment(util::StatKey::FiniteDomainEvaluationCutoffs,
+                           result.enumeration_cutoffs);
+      return goal.with_assertions(std::move(result.assertions));
+    }
+
+    case RoundPhase::CongruenceDefinitions: {
+      CongruenceDefinitionGenerator generator(terms);
+      CongruenceDefinitionResult result = generator.generate(goal.assertions());
+      statistics.increment(util::StatKey::GroundCongruenceClauses, result.clauses.size());
+      statistics.increment(util::StatKey::GroundCongruenceSkippedGroups, result.skipped_groups);
+      if (result.clauses.empty()) {
+        return goal;
+      }
+      std::vector<core::TermId> assertions = goal.assertions();
+      assertions.insert(assertions.end(), result.clauses.begin(), result.clauses.end());
+      return goal.with_assertions(std::move(assertions));
+    }
+
+    case RoundPhase::BooleanUnits: {
+      BooleanUnitPropagationResult result = propagate_boolean_units(terms, goal.assertions());
+      statistics.increment(util::StatKey::BooleanUnitFacts, result.units);
+      statistics.increment(util::StatKey::BooleanUnitRewrites, result.rewrites);
+      statistics.increment(util::StatKey::BooleanUnitMemoHits, result.memo_hits);
+      statistics.increment(util::StatKey::BooleanUnitMemoMisses, result.memo_misses);
+      Goal updated = goal.with_assertions(std::move(result.assertions));
+      if (!options.produce_model || result.assignments.empty()) {
+        return updated;
+      }
+      ModelReconstruction reconstruction = goal.reconstruction();
       append_boolean_model_assignments(reconstruction, result.assignments);
+      return updated.with_reconstruction(std::move(reconstruction));
     }
-    statistics.increment(util::StatKey::BooleanUnitFacts, result.units);
-    statistics.increment(util::StatKey::BooleanUnitRewrites, result.rewrites);
-    statistics.increment(util::StatKey::BooleanUnitMemoHits, result.memo_hits);
-    statistics.increment(util::StatKey::BooleanUnitMemoMisses, result.memo_misses);
-  }
 
-  if (phase == RoundPhase::ForcedAtoms) {
-    ForcedAtomPropagationResult result = propagate_forced_atoms(terms, assertions);
-    assertions = std::move(result.assertions);
-    if (options.produce_model) {
-      append_boolean_model_assignments(reconstruction, result.assignments);
-    }
-    statistics.increment(util::StatKey::ForcedAtomFacts, result.units);
-    statistics.increment(util::StatKey::ForcedAtomDisequalities, result.disequalities);
-    statistics.increment(util::StatKey::ForcedAtomRewrites, result.rewrites);
-    statistics.increment(util::StatKey::ForcedAtomMemoHits, result.memo_hits);
-    statistics.increment(util::StatKey::ForcedAtomMemoMisses, result.memo_misses);
-    statistics.increment(util::StatKey::EqualityQueryNodes, result.query_nodes);
-    statistics.increment(util::StatKey::EqualityQueryMemoHits, result.query_memo_hits);
-    statistics.increment(util::StatKey::EqualityQueryAddTermRequests, result.add_term_requests);
-    statistics.increment(util::StatKey::EqualityQueryAddTermSeenHits, result.add_term_seen_hits);
-    reconstruction.forced_equalities.insert(reconstruction.forced_equalities.end(),
-                                            result.equality_pairs.begin(),
-                                            result.equality_pairs.end());
-    reconstruction.forced_disequalities.insert(reconstruction.forced_disequalities.end(),
-                                               result.disequality_pairs.begin(),
-                                               result.disequality_pairs.end());
-  }
-
-  if (phase == RoundPhase::SolvedConstants && options.solved_constant_substitution) {
-    SolvedConstantSubstitutionResult solved =
-        substitute_solved_constants(terms, assertions, options.gaussian_elimination);
-    assertions = std::move(solved.assertions);
-    if (options.produce_model) {
-      append_equality_model_assignments(terms, reconstruction, solved.substitutions);
-    }
-    statistics.increment(util::StatKey::SolvedConstantCandidates, solved.candidates);
-    statistics.increment(util::StatKey::SolvedConstantAccepted, solved.accepted);
-    statistics.increment(util::StatKey::SolvedConstantRewrites, solved.rewrites);
-    statistics.increment(util::StatKey::SolvedConstantRejectedCycles, solved.rejected_cycles);
-    statistics.increment(util::StatKey::SolvedConstantRejectedBlowups, solved.rejected_blowups);
-    statistics.increment(util::StatKey::SolvedConstantGaussianCandidates,
-                         solved.gaussian_candidates);
-  }
-
-  if (phase == RoundPhase::GroundUnitSubstitution &&
-      (options.use_ground_unit_substitution || options.use_guarded_ground_unit_substitution)) {
-    GroundEqualitySubstitutionResult substitution =
-        substitute_ground_unit_equalities(terms, assertions);
-    const bool accept = options.use_ground_unit_substitution ||
-                        accept_guarded_ground_substitution(assertions, substitution.assertions,
-                                                           substitution, terms);
-    if (accept) {
-      assertions = std::move(substitution.assertions);
+    case RoundPhase::ForcedAtoms: {
+      ForcedAtomPropagationResult result = propagate_forced_atoms(terms, goal.assertions());
+      statistics.increment(util::StatKey::ForcedAtomFacts, result.units);
+      statistics.increment(util::StatKey::ForcedAtomDisequalities, result.disequalities);
+      statistics.increment(util::StatKey::ForcedAtomRewrites, result.rewrites);
+      statistics.increment(util::StatKey::ForcedAtomMemoHits, result.memo_hits);
+      statistics.increment(util::StatKey::ForcedAtomMemoMisses, result.memo_misses);
+      statistics.increment(util::StatKey::EqualityQueryNodes, result.query_nodes);
+      statistics.increment(util::StatKey::EqualityQueryMemoHits, result.query_memo_hits);
+      statistics.increment(util::StatKey::EqualityQueryAddTermRequests, result.add_term_requests);
+      statistics.increment(util::StatKey::EqualityQueryAddTermSeenHits, result.add_term_seen_hits);
+      Goal updated = goal.with_assertions(std::move(result.assertions));
+      if (result.equality_pairs.empty() && result.disequality_pairs.empty() &&
+          (!options.produce_model || result.assignments.empty())) {
+        return updated;
+      }
+      ModelReconstruction reconstruction = goal.reconstruction();
       if (options.produce_model) {
-        append_equality_model_assignments(terms, reconstruction, substitution.substitutions);
+        append_boolean_model_assignments(reconstruction, result.assignments);
+      }
+      reconstruction.forced_equalities.insert(reconstruction.forced_equalities.end(),
+                                              result.equality_pairs.begin(),
+                                              result.equality_pairs.end());
+      reconstruction.forced_disequalities.insert(reconstruction.forced_disequalities.end(),
+                                                 result.disequality_pairs.begin(),
+                                                 result.disequality_pairs.end());
+      return updated.with_reconstruction(std::move(reconstruction));
+    }
+
+    case RoundPhase::SolvedConstants: {
+      SolvedConstantSubstitutionResult solved =
+          substitute_solved_constants(terms, goal.assertions(), options.gaussian_elimination);
+      statistics.increment(util::StatKey::SolvedConstantCandidates, solved.candidates);
+      statistics.increment(util::StatKey::SolvedConstantAccepted, solved.accepted);
+      statistics.increment(util::StatKey::SolvedConstantRewrites, solved.rewrites);
+      statistics.increment(util::StatKey::SolvedConstantRejectedCycles, solved.rejected_cycles);
+      statistics.increment(util::StatKey::SolvedConstantRejectedBlowups, solved.rejected_blowups);
+      statistics.increment(util::StatKey::SolvedConstantGaussianCandidates,
+                           solved.gaussian_candidates);
+      Goal updated = goal.with_assertions(std::move(solved.assertions));
+      if (!options.produce_model || solved.substitutions.empty()) {
+        return updated;
+      }
+      ModelReconstruction reconstruction = goal.reconstruction();
+      append_equality_model_assignments(terms, reconstruction, solved.substitutions);
+      return updated.with_reconstruction(std::move(reconstruction));
+    }
+
+    case RoundPhase::GroundUnitSubstitution: {
+      GroundEqualitySubstitutionResult substitution =
+          substitute_ground_unit_equalities(terms, goal.assertions());
+      const bool accept = options.use_ground_unit_substitution ||
+                          accept_guarded_ground_substitution(
+                              goal.assertions(), substitution.assertions, substitution, terms);
+      if (!accept) {
+        if (substitution.rewrites > 0) {
+          statistics.increment(util::StatKey::UnitEqualitySubstitutionRejected);
+        }
+        return goal;
       }
       statistics.increment(util::StatKey::UnitEqualitySubstitutionUnits, substitution.units);
       statistics.increment(util::StatKey::UnitEqualitySubstitutions, substitution.rewrites);
       statistics.increment(util::StatKey::UnitEqualitySubstitutionAccepted);
-    } else if (substitution.rewrites > 0) {
-      statistics.increment(util::StatKey::UnitEqualitySubstitutionRejected);
+      Goal updated = goal.with_assertions(std::move(substitution.assertions));
+      if (!options.produce_model || substitution.substitutions.empty()) {
+        return updated;
+      }
+      ModelReconstruction reconstruction = goal.reconstruction();
+      append_equality_model_assignments(terms, reconstruction, substitution.substitutions);
+      return updated.with_reconstruction(std::move(reconstruction));
+    }
+
+    case RoundPhase::UnitEqualities: {
+      UnitEqualityPropagationStats result;
+      std::vector<core::TermId> assertions =
+          propagate_unit_equalities(terms, goal.assertions(), &result);
+      statistics.increment(util::StatKey::UnitEqualityConsequences, result.consequences_added);
+      statistics.increment(util::StatKey::EqualityQueryNodes, result.query_nodes);
+      statistics.increment(util::StatKey::EqualityQueryMemoHits, result.query_memo_hits);
+      statistics.increment(util::StatKey::EqualityQueryAddTermRequests, result.add_term_requests);
+      statistics.increment(util::StatKey::EqualityQueryAddTermSeenHits, result.add_term_seen_hits);
+      return goal.with_assertions(std::move(assertions));
     }
   }
-
-  if (phase == RoundPhase::UnitEqualities) {
-    UnitEqualityPropagationStats result;
-    assertions = propagate_unit_equalities(terms, assertions, &result);
-    statistics.increment(util::StatKey::UnitEqualityConsequences, result.consequences_added);
-    statistics.increment(util::StatKey::EqualityQueryNodes, result.query_nodes);
-    statistics.increment(util::StatKey::EqualityQueryMemoHits, result.query_memo_hits);
-    statistics.increment(util::StatKey::EqualityQueryAddTermRequests, result.add_term_requests);
-    statistics.increment(util::StatKey::EqualityQueryAddTermSeenHits, result.add_term_seen_hits);
-  }
-  return goal.with_assertions(std::move(assertions)).with_reconstruction(std::move(reconstruction));
+  throw TacticError("unknown preprocessing phase");
 }
 
 Tactic make_phase_tactic(std::string name, RoundPhase phase, PreprocessingRoundOptions options) {
