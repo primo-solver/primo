@@ -8,7 +8,6 @@
 #include <deque>
 #include <functional>
 #include <iterator>
-#include <memory>
 #include <optional>
 #include <ranges>
 #include <sstream>
@@ -43,7 +42,6 @@
 #include "smt/solver_tactic.hpp"
 #include "smt/tactic.hpp"
 #include "smt/theory_combination.hpp"
-#include "smtlib/ast.hpp"
 #include "smtlib/commands.hpp"
 #include "smtlib/parser.hpp"
 #include "theory/arithmetic/lia_branch_and_bound.hpp"
@@ -81,13 +79,9 @@ constexpr util::StatKey kStatEqBridgeEqualities = util::StatKey::EqBridgeEqualit
 constexpr util::StatKey kStatEqBridgeSkippedOrNodes = util::StatKey::EqBridgeSkippedOrNodes;
 constexpr util::StatKey kStatBooleanUnitFacts = util::StatKey::BooleanUnitFacts;
 constexpr util::StatKey kStatBooleanUnitRewrites = util::StatKey::BooleanUnitRewrites;
-constexpr util::StatKey kStatBooleanUnitMemoHits = util::StatKey::BooleanUnitMemoHits;
-constexpr util::StatKey kStatBooleanUnitMemoMisses = util::StatKey::BooleanUnitMemoMisses;
 constexpr util::StatKey kStatForcedAtomFacts = util::StatKey::ForcedAtomFacts;
 constexpr util::StatKey kStatForcedAtomDisequalities = util::StatKey::ForcedAtomDisequalities;
 constexpr util::StatKey kStatForcedAtomRewrites = util::StatKey::ForcedAtomRewrites;
-constexpr util::StatKey kStatForcedAtomMemoHits = util::StatKey::ForcedAtomMemoHits;
-constexpr util::StatKey kStatForcedAtomMemoMisses = util::StatKey::ForcedAtomMemoMisses;
 constexpr util::StatKey kStatUnitEqualityConsequences = util::StatKey::UnitEqualityConsequences;
 constexpr util::StatKey kStatUnitEqualitySubstitutionUnits =
     util::StatKey::UnitEqualitySubstitutionUnits;
@@ -175,9 +169,6 @@ constexpr util::StatKey kStatSatClauses = util::StatKey::SatClauses;
 constexpr util::StatKey kStatSatClauseLits = util::StatKey::SatClauseLits;
 constexpr util::StatKey kStatSatUnitClauses = util::StatKey::SatUnitClauses;
 constexpr util::StatKey kStatSatBinaryClauses = util::StatKey::SatBinaryClauses;
-constexpr util::StatKey kStatSatConflicts = util::StatKey::SatConflicts;
-constexpr util::StatKey kStatSatDecisions = util::StatKey::SatDecisions;
-constexpr util::StatKey kStatSatPropagations = util::StatKey::SatPropagations;
 constexpr util::StatKey kStatSolverBoolean = util::StatKey::SolverBoolean;
 constexpr util::StatKey kStatSolverQfUf = util::StatKey::SolverQfUf;
 constexpr util::StatKey kStatSolverQfLra = util::StatKey::SolverQfLra;

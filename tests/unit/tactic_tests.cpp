@@ -9,6 +9,7 @@
 #include "core/symbol_table.hpp"
 #include "core/term_manager.hpp"
 #include "smt/check_sat.hpp"
+#include "smt/model_reconstruction.hpp"
 #include "smt/preprocessing_tactics.hpp"
 #include "smt/solver_error.hpp"
 #include "smt/solver_tactic.hpp"
