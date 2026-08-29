@@ -41,8 +41,10 @@ non-empty invariant needs enforcement.
 `smt::TacticContext` borrows a `core::TermManager` and `util::Statistics`.
 Consequently all `TermId` values stored in goals are valid only for the lifetime
 of that term manager. Tactics may intern new terms but must never retain a
-`Term` reference across a term-manager constructor call. The context also owns
-the cancellation probe used by future schedulers.
+`Term` reference across a term-manager constructor call. The context owns a
+read-only cancellation probe. Every tactic checks it before invoking its
+implementation; solver leaves pass the same request to a backend-scoped SAT
+terminator.
 
 `smt::Tactic` is a named type-erased callable with the signature
 `AnyOf(TacticContext&, const AnyOf&)`. A tactic handle and its implementation
@@ -93,6 +95,12 @@ implementation runs alternatives sequentially and in declaration order. A
 future parallel scheduler can implement the same interface, but it must give
 each arm an isolated context, combine only terminal results, propagate
 cancellation, and define deterministic statistics before it is enabled.
+
+The current CLI turns `SIGTERM` into a cancellation request only. It performs
+no output, allocation, backend access, or statistics access in signal context.
+Each SAT solver owns its terminator connection with an RAII guard, which keeps
+backend state local to a solve and makes the lifetime boundary suitable for a
+future isolated scheduler.
 
 ## Deliberate deviations and limitations
 

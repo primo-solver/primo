@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <functional>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -439,24 +440,11 @@ struct CheckSatOptions {
   std::optional<std::size_t> max_theory_conflicts;
   std::size_t qf_uf_portfolio_conflicts = 2000;
   std::vector<std::pair<std::string, int>> cadical_options;
-  util::Statistics* live_statistics = nullptr;
+  std::function<bool()> cancelled;
   bool produce_model = false;
 };
 
 CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options = {});
 std::string_view to_string(CheckSatResult result);
-
-// Copies the currently in-flight solve's live sat.* counters (decisions,
-// conflicts, propagations, ...) into its Statistics object, if a solve is
-// in flight. CaDiCaL's own counters (see sat::IpasirUpBackend::statistics())
-// are safe to read at any time; what this exists to fix is that check_sat's
-// own copy into the caller-visible Statistics only happens synchronously
-// immediately before and after each blocking solve() call, so a timeout
-// signal handler firing mid-solve would otherwise report whatever was last
-// captured before that call started (often all zero, on the very first
-// solve() of a run) instead of the search's actual current progress.
-// Intended to be called from a SIGTERM/timeout handler right before
-// printing --stats output; a no-op if no solve is currently in flight.
-void refresh_active_solve_stats();
 
 }  // namespace primo::smt

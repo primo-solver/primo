@@ -325,18 +325,23 @@ equality sharing or arrangement/model reconstruction,
 consistency probes and returns `unknown` at the cap. Use it when
 `:no.interface.lra-extra-atom-probes` grows but `:theory.conflicts` does not.
 
-When the CLI is run with `--stats`, it keeps the current counters in a live
-statistics sink. On `SIGTERM` it prints `unknown` to stdout and flushes the
-partial counters to stderr before exiting. The benchmark harnesses send
-`SIGTERM` first and only use `SIGKILL` after a short grace period, so timeout
-rows can often contain diagnostic counters. This timeout flush is best-effort,
-not async-signal-safe: it calls statistics and process-exit code that may
-allocate while the signal interrupted an allocation. An oversized QF_UFLRA row
-at `4e19d1b` aborted in this handler under high memory pressure. Inspect
-`exit_code` and `stderr_head` even when the harness classifies a row as a
-timeout. Prefer `--max-theory-conflicts` for controlled profiling, but remember
-that it cannot cap frontend work or a search that has not yet reported its first
-theory conflict.
+On `SIGTERM`, the CLI's signal handler performs only an async-signal-safe write
+to a `sig_atomic_t` cancellation flag. Tactic boundaries and every owned SAT
+backend observe that flag through the solve context and CaDiCaL terminator. A
+cancelled solve returns `unknown`; stdout and `--stats` output are produced by
+the normal CLI path, after solver state has unwound. The terminator connection
+is scoped to the backend owner and is disconnected before either object is
+destroyed, so no process-global backend pointer or statistics sink is retained.
+
+The benchmark harnesses send `SIGTERM` first and only use `SIGKILL` after a
+short grace period. A SAT search should stop during that grace period, but a
+long parser, frontend, preprocessing leaf, or final model-building phase only
+stops at its next cancellation boundary. Such rows may be killed before final
+statistics are printed. Inspect `timed_out_with_stats`, `exit_code`, and
+`stderr_head` even when the harness classifies a row as a timeout. Prefer
+`--max-theory-conflicts` for repeatable profiling, but remember that it cannot
+cap frontend work or a search that has not yet reported its first theory
+conflict.
 
 The auto counters record which concrete path `--euf-prop=auto` selected for the
 current abstraction.

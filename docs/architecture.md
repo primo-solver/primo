@@ -26,6 +26,11 @@ Primo is organized as layered components with explicit data ownership. This page
   polarity.
 - Theory solvers reason over `core::TermId` values and never own SMT-LIB syntax.
 - All core terms are created through `core::TermManager`.
+- Cancellation is carried as a read-only callback in `CheckSatOptions` and
+  `TacticContext`. Each solver invocation owns an RAII-scoped SAT terminator;
+  neither the active backend nor live statistics are stored in process-global
+  state. The CLI's process-global signal state is limited to a
+  `sig_atomic_t` request flag.
 
 ## Term Representation
 

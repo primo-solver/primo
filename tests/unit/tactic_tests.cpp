@@ -141,6 +141,32 @@ void sequential_scheduler_tries_each_arm_from_the_original_goal() {
   check(primo::smt::truth(result, fixture.context) == primo::smt::GoalTruth::True);
 }
 
+void cancellation_stops_before_running_a_tactic() {
+  Fixture fixture;
+  std::size_t applications = 0;
+  primo::smt::TacticContext cancelled_context(fixture.terms, fixture.statistics,
+                                              [] { return true; });
+  const primo::smt::Tactic tactic = primo::smt::make_goal_tactic(
+      "must-not-run", [&applications](primo::smt::TacticContext&, const primo::smt::Goal& goal) {
+        ++applications;
+        return primo::smt::AnyOf::single(goal);
+      });
+
+  const primo::smt::AnyOf result =
+      tactic(cancelled_context, primo::smt::AnyOf::single(primo::smt::Goal{{fixture.p_term()}}));
+  check(applications == 0);
+  check(result.alternatives().front().reason() == primo::smt::InconclusiveReason::Cancelled);
+  check(result.alternatives().front().diagnostic() == "cancelled");
+}
+
+void check_sat_honors_an_existing_cancellation_request() {
+  primo::smt::CheckSatOptions options;
+  options.cancelled = [] { return true; };
+  const auto result = primo::smt::check_sat_smtlib("(check-sat)", options);
+  check(result.result == primo::smt::CheckSatResult::Unknown);
+  check(result.message == "cancelled");
+}
+
 void solver_dispatch_uses_formula_tactics() {
   primo::smt::CheckSatOptions options;
   options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
@@ -213,5 +239,7 @@ int main() {
   sequence_and_repeat_stop_at_a_fixed_point();
   conditional_uses_a_probe();
   sequential_scheduler_tries_each_arm_from_the_original_goal();
+  cancellation_stops_before_running_a_tactic();
+  check_sat_honors_an_existing_cancellation_request();
   solver_dispatch_uses_formula_tactics();
 }

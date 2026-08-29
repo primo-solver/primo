@@ -599,30 +599,48 @@ void publish_sat_stats(const sat::BackendStatistics& sat_stats, util::Statistics
   statistics.set(kStatSatPropagations, sat_stats.propagations);
 }
 
-// See check_sat.hpp's refresh_active_solve_stats() comment for why this
-// exists: CaDiCaL's own counters are live at any time, but check_sat only
-// copies them into the caller-visible Statistics synchronously around each
-// blocking solve() call, so a signal handler firing mid-solve otherwise
-// sees stale (often zero) values. `backend`/`statistics` here point at the
-// call's own locals for the duration of the enclosing solve function only;
-// the guard's destructor clears them on every exit path (normal return or
-// stack unwinding), so there is never a dangling pointer for the handler to
-// read from outside that scope.
-const sat::IpasirUpBackend* g_active_backend = nullptr;
-util::Statistics* g_active_backend_statistics = nullptr;
-
-class ActiveSolveStatsGuard {
+class SolveTerminator final : public sat::Terminator {
  public:
-  ActiveSolveStatsGuard(const sat::IpasirUpBackend& backend, util::Statistics& statistics) {
-    g_active_backend = &backend;
-    g_active_backend_statistics = &statistics;
+  SolveTerminator(const CheckSatOptions& options, util::Statistics& statistics,
+                  std::optional<std::size_t> conflict_limit = std::nullopt)
+      : cancelled_(options.cancelled), statistics_(statistics), conflict_limit_(conflict_limit) {}
+
+  bool terminate() override {
+    if (cancelled_ && cancelled_()) {
+      cancelled_reached_ = true;
+      return true;
+    }
+    if (conflict_limit_.has_value() &&
+        statistics_.get(kStatTheoryConflicts) >= conflict_limit_.value()) {
+      conflict_limit_reached_ = true;
+      return true;
+    }
+    return false;
   }
-  ~ActiveSolveStatsGuard() {
-    g_active_backend = nullptr;
-    g_active_backend_statistics = nullptr;
+
+  bool cancelled_reached() const { return cancelled_reached_; }
+  bool conflict_limit_reached() const { return conflict_limit_reached_; }
+
+ private:
+  std::function<bool()> cancelled_;
+  util::Statistics& statistics_;
+  std::optional<std::size_t> conflict_limit_;
+  bool cancelled_reached_ = false;
+  bool conflict_limit_reached_ = false;
+};
+
+class TerminatorConnection {
+ public:
+  TerminatorConnection(sat::IpasirUpBackend& backend, sat::Terminator& terminator)
+      : backend_(backend) {
+    backend_.connect_terminator(&terminator);
   }
-  ActiveSolveStatsGuard(const ActiveSolveStatsGuard&) = delete;
-  ActiveSolveStatsGuard& operator=(const ActiveSolveStatsGuard&) = delete;
+  ~TerminatorConnection() { backend_.disconnect_terminator(); }
+  TerminatorConnection(const TerminatorConnection&) = delete;
+  TerminatorConnection& operator=(const TerminatorConnection&) = delete;
+
+ private:
+  sat::IpasirUpBackend& backend_;
 };
 
 EufPropagationMode resolve_euf_propagation_mode(const CheckSatOptions& options,
@@ -2475,7 +2493,8 @@ CheckSatOutcome solve_boolean_conjunction(
     const std::vector<TheoryModelAssignment>& preprocessing_model_assignments) {
   statistics.increment(kStatSolverBoolean);
   sat::CadicalBackend backend(options.cadical_options);
-  const ActiveSolveStatsGuard active_solve_stats_guard(backend, statistics);
+  SolveTerminator terminator(options, statistics);
+  const TerminatorConnection terminator_connection(backend, terminator);
   BooleanClausifier clausifier(backend, terms, options.top_level_or_tseitin);
   for (const core::TermId assertion : assertions) {
     clausifier.assert_formula(assertion);
@@ -2487,6 +2506,9 @@ CheckSatOutcome solve_boolean_conjunction(
   statistics.increment(kStatSatSolveCalls);
   const CheckSatResult result = map_sat_result(backend.solve());
   publish_sat_stats(backend.statistics(), statistics);
+  if (terminator.cancelled_reached()) {
+    return CheckSatOutcome{CheckSatResult::Unknown, "cancelled", statistics, ""};
+  }
   if (result != CheckSatResult::Sat || !options.produce_model) {
     return CheckSatOutcome{result, "", statistics, ""};
   }
@@ -3638,27 +3660,6 @@ struct ModelPropagationResult {
 };
 
 #if PRIMO_HAVE_IPASIR
-class TheoryConflictTerminator final : public sat::Terminator {
- public:
-  TheoryConflictTerminator(util::Statistics& statistics, std::size_t conflict_limit)
-      : statistics_(statistics), conflict_limit_(conflict_limit) {}
-
-  bool terminate() override {
-    if (statistics_.get(kStatTheoryConflicts) < conflict_limit_) {
-      return false;
-    }
-    reached_ = true;
-    return true;
-  }
-
-  bool reached() const { return reached_; }
-
- private:
-  util::Statistics& statistics_;
-  std::size_t conflict_limit_ = 0;
-  bool reached_ = false;
-};
-
 class OnlineEufPropagator final : public sat::ExternalPropagator {
  public:
   OnlineEufPropagator(const core::TermManager& terms,
@@ -3701,7 +3702,7 @@ class OnlineEufPropagator final : public sat::ExternalPropagator {
       incremental_state_.emplace(terms_, theory_atoms_, true_term_, false_term_,
                                  options_.pure_theory_filter, options_.euf_explain_search,
                                  options_.euf_proof_forest_diagnostics, statistics_,
-                                 options_.live_statistics != nullptr);
+                                 /*flush_live_stats=*/false);
       build_candidate_index();
     }
   }
@@ -10509,7 +10510,8 @@ CheckSatOutcome solve_qf_lra_impl(
     const std::vector<MonotoneEliminatedVariable>* monotone_eliminated = nullptr) {
   statistics.increment(kStatSolverQfLra);
   sat::CadicalBackend backend(options.cadical_options);
-  const ActiveSolveStatsGuard active_solve_stats_guard(backend, statistics);
+  SolveTerminator terminator(options, statistics);
+  const TerminatorConnection terminator_connection(backend, terminator);
   BooleanClausifier clausifier(backend, terms, options.top_level_or_tseitin);
   for (const core::TermId assertion : assertions) {
     clausifier.assert_formula(assertion);
@@ -10548,6 +10550,9 @@ CheckSatOutcome solve_qf_lra_impl(
     statistics.increment(kStatSatSolveCalls);
     const sat::SatResult sat_result = backend.solve();
     publish_sat_stats(backend.statistics(), statistics);
+    if (terminator.cancelled_reached()) {
+      return CheckSatOutcome{CheckSatResult::Unknown, "cancelled", statistics, ""};
+    }
     if (sat_result != sat::SatResult::Sat) {
       return CheckSatOutcome{map_sat_result(sat_result), "", statistics, ""};
     }
@@ -10685,7 +10690,8 @@ CheckSatOutcome solve_qf_lia_impl(
   // data these counters could be confused with.
   statistics.increment(kStatSolverQfLra);
   sat::CadicalBackend backend(options.cadical_options);
-  const ActiveSolveStatsGuard active_solve_stats_guard(backend, statistics);
+  SolveTerminator terminator(options, statistics);
+  const TerminatorConnection terminator_connection(backend, terminator);
   BooleanClausifier clausifier(backend, terms, options.top_level_or_tseitin);
   for (const core::TermId assertion : assertions) {
     clausifier.assert_formula(assertion);
@@ -10729,6 +10735,9 @@ CheckSatOutcome solve_qf_lia_impl(
     statistics.increment(kStatSatSolveCalls);
     const sat::SatResult sat_result = backend.solve();
     publish_sat_stats(backend.statistics(), statistics);
+    if (terminator.cancelled_reached()) {
+      return CheckSatOutcome{CheckSatResult::Unknown, "cancelled", statistics, ""};
+    }
     if (sat_result != sat::SatResult::Sat) {
       return CheckSatOutcome{map_sat_result(sat_result), "", statistics, ""};
     }
@@ -11015,7 +11024,8 @@ CheckSatOutcome solve_qf_uf(
     const std::vector<TheoryModelAssignment>& preprocessing_model_assignments) {
   statistics.increment(kStatSolverQfUf);
   sat::CadicalBackend backend(options.cadical_options);
-  const ActiveSolveStatsGuard active_solve_stats_guard(backend, statistics);
+  SolveTerminator terminator(options, statistics, options.max_theory_conflicts);
+  const TerminatorConnection terminator_connection(backend, terminator);
   BooleanClausifier clausifier(backend, terms, options.top_level_or_tseitin);
   for (const core::TermId assertion : assertions) {
     clausifier.assert_formula(assertion);
@@ -11088,11 +11098,6 @@ CheckSatOutcome solve_qf_uf(
   }
 
 #if PRIMO_HAVE_IPASIR
-  std::optional<TheoryConflictTerminator> conflict_terminator;
-  if (options.max_theory_conflicts.has_value()) {
-    conflict_terminator.emplace(statistics, options.max_theory_conflicts.value());
-    backend.connect_terminator(&conflict_terminator.value());
-  }
   std::optional<OnlineEufPropagator> online_propagator;
   if (euf_propagation == EufPropagationMode::Online ||
       euf_propagation == EufPropagationMode::Conflict) {
@@ -11121,7 +11126,10 @@ CheckSatOutcome solve_qf_uf(
       online_propagator->flush_incremental_stats();
     }
     publish_sat_stats(backend.statistics(), statistics);
-    if ((conflict_terminator.has_value() && conflict_terminator->reached()) ||
+    if (terminator.cancelled_reached()) {
+      return CheckSatOutcome{CheckSatResult::Unknown, "cancelled", statistics, ""};
+    }
+    if (terminator.conflict_limit_reached() ||
         (options.max_theory_conflicts.has_value() &&
          statistics.get(kStatTheoryConflicts) >= options.max_theory_conflicts.value())) {
       return CheckSatOutcome{CheckSatResult::Unknown, "theory conflict limit reached", statistics,
@@ -11267,7 +11275,8 @@ CheckSatOutcome solve_qf_uf_lra(
       options.nelson_oppen_model_equality_mutation &&
       (options.nelson_oppen_model_equality_branching || options.qf_uflra_model_reconciliation);
   sat::CadicalBackend backend(options.cadical_options);
-  const ActiveSolveStatsGuard active_solve_stats_guard(backend, statistics);
+  SolveTerminator terminator(options, statistics);
+  const TerminatorConnection terminator_connection(backend, terminator);
   BooleanClausifier clausifier(backend, terms, options.top_level_or_tseitin);
   for (const core::TermId assertion : assertions) {
     clausifier.assert_formula(assertion);
@@ -11714,6 +11723,9 @@ CheckSatOutcome solve_qf_uf_lra(
         model_equality_arrangement.assume_active_branches(backend, statistics);
     const sat::SatResult sat_result = backend.solve();
     publish_sat_stats(backend.statistics(), statistics);
+    if (terminator.cancelled_reached()) {
+      return CheckSatOutcome{CheckSatResult::Unknown, "cancelled", statistics, ""};
+    }
     if (sat_result == sat::SatResult::Unsat && model_equality_arrangement.has_active_branch()) {
       model_equality_arrangement.learn_failed_assumption_clause(
           backend, active_model_equality_propagation_start, statistics);
@@ -12762,17 +12774,9 @@ Goal run_preprocessing_round(core::TermManager& terms, const Goal& goal,
 
 }  // namespace
 
-void refresh_active_solve_stats() {
-  if (g_active_backend != nullptr && g_active_backend_statistics != nullptr) {
-    publish_sat_stats(g_active_backend->statistics(), *g_active_backend_statistics);
-  }
-}
-
 CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions options) {
   const PhaseClock::time_point total_start = PhaseClock::now();
-  util::Statistics local_statistics;
-  util::Statistics& statistics =
-      options.live_statistics != nullptr ? *options.live_statistics : local_statistics;
+  util::Statistics statistics;
   statistics = util::Statistics{};
   statistics.set(kStatTimeTotalUs, 0);
   statistics.set(kStatTimeParseUs, 0);
@@ -12989,6 +12993,10 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     statistics.set(kStatTimeTotalUs, elapsed_microseconds(total_start, PhaseClock::now()));
     return CheckSatOutcome{result, std::move(message), statistics, ""};
   };
+
+  if (options.cancelled && options.cancelled()) {
+    return finish(CheckSatResult::Unknown, "cancelled");
+  }
 
   try {
     const PhaseClock::time_point parse_start = PhaseClock::now();
@@ -13364,7 +13372,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       };
       PreprocessingRoundState round_state{preprocessing_model_assignments, forced_equalities,
                                           forced_disequalities};
-      TacticContext tactic_context(frontend.terms(), statistics);
+      TacticContext tactic_context(frontend.terms(), statistics, options.cancelled);
       const Tactic round =
           Tactic("preprocessing-round", [&](TacticContext&, const AnyOf& input_goals) {
             if (input_goals.size() != 1) {
@@ -13650,7 +13658,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       return outcome;
     };
     std::optional<CheckSatOutcome> solver_outcome;
-    TacticContext tactic_context(frontend.terms(), statistics);
+    TacticContext tactic_context(frontend.terms(), statistics, options.cancelled);
     const auto make_solver_tactic =
         [&](std::string name,
             std::function<CheckSatOutcome(const std::vector<core::TermId>&)> solve) {

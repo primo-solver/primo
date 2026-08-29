@@ -96,13 +96,14 @@ The script defaults to that manifest unless `--discover` is passed. Each output
 row records the manifest row number, absolute and repository-relative file path,
 family, solver arguments, status, answer, elapsed seconds, exit code, per-file
 stdout/stderr logs, and any `--stats` counters emitted before completion. The
-runner sends `SIGTERM` at the timeout and waits briefly before `SIGKILL`, so
-Primo can often flush partial `--stats` counters for timeout rows. The current
-CLI flush is not async-signal-safe and may abort if the signal interrupts an
-allocation; timeout rows must therefore be checked for a nonzero exit code or
-allocator diagnostics rather than assumed clean from their status alone. The
-same parser preserves LLM2SMT `[stats]` lines as `llm2smt.*` columns for
-reference comparisons.
+runner sends `SIGTERM` at the timeout and waits briefly before `SIGKILL`.
+Primo's signal handler only records a cancellation request; the normal solver
+control flow observes it through the SAT terminator and returns `unknown`.
+Output and final statistics are therefore produced outside signal context. A
+timeout may still be killed before a long non-SAT phase reaches a cancellation
+boundary, so timeout rows must not be assumed to contain statistics. The same
+parser preserves LLM2SMT `[stats]` lines as `llm2smt.*` columns for reference
+comparisons.
 script uses SMT-LIB `:status sat|unsat` metadata as the expected answer by
 default; pass `--no-expected-from-status` to disable that and rely only on
 `--expected`. The summary reports total solved, status and answer counts, wrong
@@ -285,8 +286,8 @@ report based on this archive must include the SLURM job id, timeout, commit,
 merged CSV path, family summary, unsupported count, wrong-answer count, and
 comparison against the previous full-archive Primo run. Because timeout status
 takes precedence over child exit status, reports must also inspect
-`timed_out_with_stats`, `exit_code`, and `stderr_head` for timeout-handler
-failures.
+`timed_out_with_stats`, `exit_code`, and `stderr_head` to distinguish a graceful
+cancellation from the subsequent forced kill.
 
 Harness status is stricter than recognized stdout. An explicit `unsupported`
 answer has status `unsupported`, including Primo's normal exit code 2 for an

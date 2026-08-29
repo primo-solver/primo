@@ -1,5 +1,3 @@
-#include <unistd.h>
-
 #include <CLI/CLI.hpp>
 #include <csignal>
 #include <cstddef>
@@ -23,22 +21,9 @@
 
 namespace {
 
-primo::util::Statistics g_live_statistics;
-bool g_print_timeout_statistics = false;
+volatile std::sig_atomic_t g_cancel_requested = 0;
 
-void handle_sigterm(int) {
-  [[maybe_unused]] const ssize_t written = write(STDOUT_FILENO, "unknown\n", 8);
-  if (g_print_timeout_statistics) {
-    // Without this, sat.decisions/sat.conflicts/sat.propagations read
-    // whatever was captured before the in-flight solve() call started
-    // (often all zero) -- solve() is blocking, so check_sat's own copy
-    // into g_live_statistics only happens synchronously around each call,
-    // not while one is running. See check_sat.hpp's comment.
-    primo::smt::refresh_active_solve_stats();
-    primo::util::print_statistics(std::cerr, g_live_statistics);
-  }
-  std::exit(0);
-}
+void handle_sigterm(int) { g_cancel_requested = 1; }
 
 bool can_read_file(const std::string& path) {
   std::ifstream input(path);
@@ -1045,10 +1030,7 @@ int run_main(int argc, char** argv) {
   if (!quiet) {
     print_startup_banner();
   }
-  g_print_timeout_statistics = print_stats;
-  if (print_stats) {
-    solver_options.live_statistics = &g_live_statistics;
-  }
+  solver_options.cancelled = [] { return g_cancel_requested != 0; };
 
   if (files.empty()) {
     std::ostringstream contents;
