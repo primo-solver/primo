@@ -540,6 +540,17 @@ preprocessing activation, so it does not close the revalidation requirement.
 2. **Evaluate row-bound propagation in the mixed path.** Its relevant measure
    is newly exposed fixedness and fewer exact fallback probes, not pure-QF_LRA
    solved count alone.
+3. **Evaluate replacing the exact fallback with a complete equality basis.**
+   [](papers/bromberger-linear-arithmetic-thesis.md) Chapter 5 computes *all*
+   implied equalities with one feasibility check on the all-strict system plus
+   normal-form hashing, instead of two strict-orientation probes per unresolved
+   pair, and is incremental across fixpoint rounds by construction. Its
+   `Initialize()` step is the same fixed-variable-out-of-the-basis move this
+   note measured as `--lra-fixed-elimination`. Registered as
+   [lead 17](lead-equality-basis), with the probe-count census
+   that would kill it stated there. Note its limitation: it finds only
+   rationally implied equalities, which is sufficient for QF_UFLRA and not for
+   an integer extension.
 
 The convex shared-model reconciliation needed by QF_UFLRA is now implemented.
 The remaining model-state gap is the theory-independent transition system, not

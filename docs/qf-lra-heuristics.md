@@ -1251,6 +1251,15 @@ measured, since they may move these families on their own.
 - **A full implied-equality basis** (Bromberger/Weidenbach). Already
   considered and set aside during item 7 as paper-sized with no measured
   SMT speedup; nothing in this profile changes that.
+  **Still true for pure QF_LRA, 2026-08-29.** Having now read the source
+  ([](papers/bromberger-linear-arithmetic-thesis.md) Chapter 5), the "no
+  measured SMT speedup" judgement holds -- the thesis reports no QF_LRA
+  solved-count experiment for it either. What has changed is that it is no
+  longer a *pure-QF_LRA* question: it is the completeness mechanism for
+  theory combination ([](qf-lra-equality-sharing.md)) and the applicability
+  test for the Chapter 6 bounding transformations. See
+  [lead 17](lead-equality-basis); it should be judged on
+  probe counts in the mixed path, not on this profile.
 - **Anything gated on a per-family structural classifier.** Item 8's
   outcome is the argument: a heuristic that must be told which family it is
   running on is a portfolio entry, not a default.

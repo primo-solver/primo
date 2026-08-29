@@ -99,6 +99,26 @@ The paper calls this "an important factor in solving more **satisfiable**
 integer arithmetic instances" -- which is exactly where Primo's measured
 deficit is (see the gap analysis below).
 
+**Read against the primary source, 2026-08-29.** Bromberger's thesis
+([](bromberger-linear-arithmetic-thesis.md), Chapters 4--5) is the origin of
+this test, and it changes two things this section implied.
+
+- The precondition that blocks Primo (an asserted equality fixes a slack, so the
+  tightened system is contradictory) is a **named, cheap skip condition** in the
+  original, not a defect: skip when an integer variable has `U - L = 1` or a
+  slack has `U - L = 0`, and substitute out fixed integer variables first
+  (§7.2.4). z3's difference/octagon twist does not address it and is therefore
+  *not* the prerequisite [](../open-leads.md) lead 12c recorded.
+- The actual prerequisite for equality-heavy inputs is the **implied-equality
+  basis** of the thesis's Chapter 5, which exists precisely because equalities
+  break the cube tests; §5.7 lists equality elimination as "useful as a
+  preprocessing step for our cube tests".
+
+Size, from the thesis's own ablation on the full QF_LIA SMT-LIB division:
+6806 with the unit cube test vs. 6750 without (+56), over a population of
+**1483 absolutely unbounded instances**, with the test removing the need for
+branch-and-bound entirely on 1271 of them.
+
 ### 4.3 GCD consistency -- Primo has the basic test, not the extended one
 
 The basic test is the one Primo's stage 2 implements: fold fixed variables into

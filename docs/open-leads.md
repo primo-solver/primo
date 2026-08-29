@@ -49,6 +49,10 @@ notes it points to.
 | [13](#lead-qflira) | QF_LIRA -- frontend gap, not a solver gap | search core already runs mixed tableaus | medium (frontend) | **open; run the falsifier first** |
 | [14](#lead-monotone-int) | Monotone elimination for `Int`, not just `Real` | unmeasured -- the QF_LIA zero is definitional | small, gated on 9 | **open; measure candidate density first** |
 | [15](#lead-boolean-bridge-exclusion) | Delete the `bridge-atoms` Boolean-domain encoding | superseded by registration: 0 disagreements on both fragments, 3% faster on QF_UF | small (deletion) | **open; the A/B is done and came out flat** |
+| [16](#lead-ite-preprocessing) | If-then-else preprocessing: CITE simplification + ITE compression + ITE reconstruction | **+1693 QF_LIA in the source's own ablation**; 3449 files of Primo's corpus are in the affected families | medium-large | **open; largest measured number in any paper Primo has read** |
+| [17](#lead-equality-basis) | Complete implied-equality basis (Bromberger thesis Ch. 5) | replaces per-pair two-orientation probing with one strict-system check + normal-form hashing | medium-large | **open; also the gate for 12c and 19** |
+| [18](#lead-hard-backtrack) | `HardBacktrack`: revert bounds only, recompute the assignment | +123 QF_LIA, **+117 on `convert` alone** in the source's ablation | **small (a deletion)** | **open; cheapest entry on this list** |
+| [19](#lead-bounding-transformations) | Double-Bounded reduction + Mixed-Echelon-Hermite: make branch-and-bound terminate | +169 QF_LIA, 162 of them in `20180326-Bromberger` (806 files here) | large | open, gated on 17 |
 | -- | D2 floating-point-guided basis selection | ~14% in the literature | medium | open, see [](qf-lra-heuristics.md) |
 | -- | D4 revised simplex, LU-factored basis | unknown | largest | open, see [](qf-lra-heuristics.md) |
 | -- | H4 batched bound assertion; H6 DL fast path; H11 fill-in-aware preprocessing elimination | -- | -- | design only, see [](qf-lra-heuristics.md) |
@@ -1602,9 +1606,45 @@ very different cost, and re-ranked them:
   unstarted.** Measured 2026-08-21: 249 of 300 sampled instances contain
   equality atoms, and an asserted equality fixes a slack, which makes the
   tightened cube system contradictory. Cubes alone would therefore be
-  inconclusive on most rounds. It needs z3's difference/octagon twist
+  inconclusive on most rounds. ~~It needs z3's difference/octagon twist
   (same section) to be worth building, so treat the twist as part of the
-  work rather than a later refinement.
+  work rather than a later refinement.~~
+
+  **Corrected 2026-08-29 against the primary source.** The measurement stands;
+  the named prerequisite was wrong. Bromberger's thesis
+  ([](papers/bromberger-linear-arithmetic-thesis.md), Chapters 4--5) is where
+  the cube test comes from, and it says two things Bjørner & Nachmanson's
+  summary does not:
+
+  1. The fixed-slack case is a **known skip condition with a constant-time
+     test** -- skip when an integer variable has `U - L = 1` or a slack has
+     `U - L = 0`; substitute out fixed integer variables first (§7.2.4).
+     z3's difference/octagon twist is a refinement for difference and octagon
+     *rows* and does nothing about a fixed slack, so it is not this lead's
+     gate.
+  2. The real enabler for equality-carrying inputs is the **implied-equality
+     basis** (thesis Chapter 5, registered here as [lead
+     17](#lead-equality-basis)). Chapter 5 exists *because* equalities break
+     the cube tests, and §5.7 names equality elimination as the preprocessing
+     step that unblocks them.
+
+  So the dependency is cubes → equality basis, not cubes → octagon twist, and
+  the cheap first move is the guard rather than either.
+
+  **Size, measured on the full QF_LIA SMT-LIB division** (thesis Fig. 7.27):
+  6806 solved with the unit cube test vs. 6750 without (+56 at a 40-minute
+  limit), over a population of 1483 absolutely unbounded instances -- 229/233
+  `dillig`, 503/591 `CAV_2009_benchmarks`, 229/233 `slacks`, 503/806
+  `20180326-Bromberger`, 19/37 `prime-cone`, all families Primo runs. The
+  larger structural effect is that it removes the need for branch-and-bound
+  altogether on 1271 instances (641 need branch-and-bound with the test, 1912
+  without).
+
+  **Falsifier**: a census showing that, after applying the two skip conditions,
+  fewer than ~5% of QF_LIA final-check rounds on the sampled corpus reach a
+  cube-eligible state. That would say the equality-basis prerequisite is doing
+  all the work and cubes should be folded into lead 17 rather than pursued
+  separately.
 - **Extended GCD test (Sect. 4.3)** -- the smallest remaining item and
   the best-scoped: see 12e below.
 - **Diophantine (Omega/Pugh) and HNF cuts** -- still large, still
@@ -1943,6 +1983,215 @@ would have justified keeping `bridge-atoms` has already been taken and came
 out flat. If anything, delete it only after one more full QF_UFLRA run at the
 next opportunity, so the deletion rests on two independent readings rather
 than one.
+
+(lead-ite-preprocessing)=
+## 16. If-then-else preprocessing: CITE simplification, compression, reconstruction
+
+**Source.** [](papers/bromberger-linear-arithmetic-thesis.md) §8.2.3, read
+2026-08-29. Techniques credited there to Kim/Somenzi/Jin (constant ITE
+simplification), Burch (ITE compression) and CVC4 (ITE reconstruction, no
+publication).
+
+**Claim.** Primo's frontend eliminates non-Boolean ITEs with a fresh constant
+plus two guarded equalities ([](preprocessing.md), "ITE Lowering"), which is
+exactly the encoding the thesis identifies as structure-destroying -- to the
+point that it implements a pass to *undo* it on inputs where someone else
+applied it. Three techniques repair this, and the thesis measures that **two of
+them only work together**.
+
+**Size, measured.** All of SPASS-SATT's preprocessing on vs. off, full QF_LIA
+SMT-LIB division at 40 minutes: **6806 vs. 5113 (+1693)**, plus >2× faster on
+3146 further instances. This is the largest single number in any paper this
+project has read; for comparison the entire branch-and-bound extension suite in
+the same document is +272. On QF_LRA the same techniques are worth +2, so this
+is a QF_LIA lead only.
+
+Per family, and every one of these is in Primo's corpus:
+
+| family | files here | thesis with | thesis without |
+|---|---:|---:|---:|
+| `nec-smt` | 2780 | 2772 | 1422 |
+| `rings` | 294 | 294 | 136 |
+| `rings_preprocessed` | 294 | -- | -- |
+| `pb2010` | 81 | 66 | 44 |
+
+**Why the shape matches.** Local census 2026-08-29
+(`2026-08-29-qflia-ite-let-census` in [](run-log.md)): **2780 of 2780 `nec-smt`
+files contain both `(let` and `(ite`**; `large/checkpass_pwd/prp-24-38.smt2` is
+200 KB with 886 `let`s and 5240 `ite`s inside a *single* `assert`.
+`rings_preprocessed` has **0** files containing `(ite` against `rings`'s 245 of
+294, confirming the thesis's account that the two families are the same problems
+with the ITEs pre-eliminated. `pb2010` has neither construct, so its gain comes
+from the separate pseudo-boolean pass.
+
+**The three pieces.**
+
+1. **Constant if-then-else simplification (CITE).** Push constant monomials and
+   coefficients to the leaves of an all-constant-leaf ITE tree, then push a
+   comparator recursively down the branches, collapsing any branch whose leaves
+   all decide the comparison the same way. Needs two memo caches (leaf sets per
+   shared term, `csimp` results per `(op, lhs, rhs)`) or it is exponential.
+2. **ITE compression.** Chains `(ite c_i t_{i+1} false)` / `(ite c_i false
+   t_{i+1})` are conjunctions. Compress *selectively* -- extend the chain only
+   through subterms occurring once, then name the result with a fresh
+   propositional variable, so the multiply-occurring tail keeps its sharing.
+3. **ITE reconstruction.** Detect at least two of
+   `{(or c (= y t3)), (or (not c) (= y t2)), (or (= y t2) (= y t3))}`, delete
+   them and substitute `y := (ite c t2 t3)` back in, then apply 1 and 2.
+
+**Cost.** Medium-large. It is frontend/preprocessing work rather than theory
+work, and Primo's core term language does not store ITE nodes at all
+([](preprocessing.md)), so piece 1 has to run before lowering while piece 3 has
+to run *after* parsing an already-lowered input. That ordering constraint is the
+main design question.
+
+**Falsifier, stated in advance.** Implement CITE simplification and compression
+together (the thesis is explicit that either alone is worse than neither), then
+measure on the 2780 `nec-smt` files with the same-binary control the stage 4
+evaluation established. **If the pair does not gain at least 200 solves on
+`nec-smt` at 60s, close this lead** -- the thesis's own claim is that the
+technique turns those instances into ones the simplex layer alone decides, so a
+small gain means Primo's bottleneck on that family is somewhere else and the
+next step is a profile, not a bigger ITE pass.
+
+**Do not** measure piece 1 or piece 2 alone against the promotion bar and close
+the lead on the result. Figures 8.15 and 8.16 report that single-technique
+configurations are *worse* than no preprocessing at all on this family.
+
+(lead-equality-basis)=
+## 17. Complete implied-equality basis
+
+**Source.** [](papers/bromberger-linear-arithmetic-thesis.md) Chapter 5, read
+2026-08-29 (the thesis form of Bromberger & Weidenbach, SMT@IJCAR 2016, which
+[](papers/lra-related-work.md) had carried from the abstract only since
+2026-07-31).
+
+**Claim.** [](qf-lra-equality-sharing.md) reaches completeness at quiescence by
+testing each unresolved shared pair in **both strict orientations** against a
+reused `PreparedLraTheory`. The thesis reaches the same completeness with:
+
+- one feasibility check on the system with every bound made strict
+  (Lemma 5.2.2 -- **satisfiable means no equality is implied at all**, which is
+  a whole-system negative test, not a per-pair one);
+- the simplex conflict explanation read as an equality set (Lemma 5.2.3 -- one
+  infeasibility yields every tight variable in the row, not one candidate);
+- normalisation of every variable through the substitution the tableau already
+  encodes, after which **entailed equality is syntactic identity of normal
+  forms**, so hashing replaces probing (§5.4.1).
+
+Justification clauses are given explicitly and are minimal (§5.4.2), including
+the non-obvious filter that a tight bound `z_j` with `a_ij = a_kj` is redundant
+and must be dropped.
+
+**Why the transfer looks safe.** The `Initialize()` step "pivot as many `L = U`
+variables out of the basis as possible" is exactly the mechanism
+[](qf-lra-equality-sharing.md) measured its way to under the name
+`--lra-fixed-elimination`, pinned by
+`fixed_elimination_closes_the_eqrow_basis_gap`. Primo already found one named
+step of this algorithm empirically.
+
+**Incrementality is the load-bearing property**, and it is argued rather than
+assumed (§5.3.2): `Check()` never pivots a non-basic `z_j` with
+`L(z_j) = U(z_j)` back into the basis, so tight variables found in an earlier
+round stay non-basic and are never recomputed. Asserting bounds can only add
+tight variables.
+
+**Known limitation, from §5.6.** The method finds only equalities implied over
+the **rationals**. Integer- or mixed-entailed equalities that are not rationally
+implied are outside it. Fine for QF_UFLRA; a real constraint on any integer
+extension.
+
+**Cost.** Medium-large: a second bound-state layer over `LraTableau` plus the
+justification-clause machinery. It is *not* a new entailment rule alongside
+`FixedEq`/`EqRow`/`EqRows`; it replaces the exact fallback.
+
+**Falsifier.** Instrument the current QF_UFLRA path for the number of exact
+fallback probes per fixpoint round on the mixed corpus. **If the median round
+issues fewer than ~5 probes, close this lead** -- the opportunistic rules plus
+model reconciliation are already doing the work and a complete basis buys
+determinism nobody is paying for. The prize is the tail, so report the
+distribution, not the mean.
+
+**Also unblocks**: [12c](#lead-qflia-dio-hnf-cube) (cubes need the equalities
+eliminated first) and [19](#lead-bounding-transformations) (the bounded/unbounded
+classification *is* an equality basis of the homogeneous system, Lemma 5.5.1).
+
+(lead-hard-backtrack)=
+## 18. `HardBacktrack`: revert the bounds, recompute the assignment
+
+**Source.** [](papers/bromberger-linear-arithmetic-thesis.md) §7.1.3.
+
+**Claim.** Dutertre & de Moura's `Backtrack()` reverts bound values *and*
+restores a backed-up assignment. `HardBacktrack()` reverts only the bounds and
+lets `Check()` recompute. It is more expensive per call and lands in a better
+state, because
+
+> "a good continuation point for the simplex algorithm depends not only on the
+> current assignment, but also on the current tableau ... Reverting to the
+> backup solution ... sometimes disconnects the assignment and the tableau."
+
+CVC4 and veriT are reported to do the same.
+
+**Size, measured.** QF_LRA 1607 vs. 1602; QF_LIA **6806 vs. 6683 (+123)**; and
+on `convert` alone **319 vs. 202 (+117)**. `convert` is 319 files here and a
+family where patching already gained 57.
+
+**Cost.** Small, and it is a *deletion* -- stop restoring the backup assignment.
+The risk is the opposite of the usual one: the cost is per backtrack and
+therefore hits the instances that backtrack most, so the A/B must report gained
+and lost separately per [](#complementarity), not just the net.
+
+**Falsifier.** Run the A/B on the stratified sample plus the full `convert`
+family. **If `convert` does not gain and the sample is net-negative, close it.**
+The thesis's own QF_LRA number (+5) is within its stated cluster noise, so a
+QF_LRA-only result decides nothing either way.
+
+(lead-bounding-transformations)=
+## 19. Bounding transformations: make branch-and-bound terminate
+
+**Source.** [](papers/bromberger-linear-arithmetic-thesis.md) Chapter 6.
+
+**Claim.** Branch-and-bound diverges on *partially unbounded* problems -- some
+directions bounded, some not. `1 <= 3x1 - 3x2 <= 2` is the two-variable witness.
+Two transformations, applied only to that class, produce an equisatisfiable
+bounded problem on which branch-and-bound is complete:
+
+- **Double-Bounded reduction**: split into an absolutely unbounded part and a
+  double-bounded part, then *drop the unbounded part* -- it can shrink the
+  solution set but never empty it.
+- **Mixed-Echelon-Hermite transformation** (Christ & Hoenicke): shift variables
+  so the coefficient matrix is lower triangular with gaps, after which every
+  variable is bounded or absent.
+
+**Size, measured.** 6806 vs. 6637 (**+169**) on the full QF_LIA division, of
+which **162 are `20180326-Bromberger`** (806 files here, containing 303
+partially unbounded problems), plus 1 `arctic-matrix`, 3 `cut_lemmas`, 1
+`slacks`, 2 `tropical-matrix`. Overhead where not applicable is described as
+almost immeasurable because the applicability test is cheap.
+
+**Relation to existing pins.** This is the class
+`gcd_uncatchable_divergent_system_hits_the_node_limit` and the
+`--lia-branch-limit` divergences live in. [12e](#lead-qflia-extended-gcd) closes
+one such instance with a cheap test; this closes the class, at much higher cost.
+
+**Cost.** Large -- and it needs the multiple-tableau discipline of §7.2.4
+(a *static*, never-pivoted tableau alongside the dynamic one, because the
+transformation needs the original coefficient matrix that pivoting has
+destroyed; five instances in total for a partially unbounded problem).
+
+**Gated on [17](#lead-equality-basis)**, not optionally: deciding which
+inequalities are bounded is done by computing an equality basis of `Ax <= 0`
+(Lemma 5.5.1), which is one equality-basis computation instead of `m` linear
+programs, and it is what keeps the transformation off the bounded problems it
+would slow down.
+
+**Falsifier, cheap and to be run first.** Classify the `20180326-Bromberger`,
+`arctic-matrix`, `cut_lemmas`, `slacks` and `tropical-matrix` families into
+bounded / absolutely unbounded / partially unbounded, and cross it with which
+of them Primo currently fails. **If the partially unbounded instances Primo
+fails number fewer than ~50, close this lead** -- +169 at 40 minutes does not
+transfer to +169 at 60s, and the classification census is the honest way to size
+it before building anything.
 
 ## Complementarity: losing on average is not the same as useless
 

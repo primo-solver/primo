@@ -907,6 +907,19 @@ This is a targeted preprocessing rule, not a full strong ITE simplifier. Primo
 does not yet perform global ITE hoisting, condition-aware ITE-chain
 simplification, or domain-specific ITE table compression.
 
+**The fresh-constant fallback is the encoding a primary source calls harmful.**
+[](papers/bromberger-linear-arithmetic-thesis.md) §8.2.3 identifies exactly this
+lowering as structure-destroying and implements a pass to *reverse* it on inputs
+that arrive already lowered (`rings_preprocessed` versus `rings`). Its ablation
+on the full QF_LIA SMT-LIB division puts the combined if-then-else,
+defined-variable and pseudo-boolean preprocessing at **+1693 solved**,
+concentrated in `nec-smt`, `rings`, `rings_preprocessed` and `pb2010` -- 3449
+files of Primo's own QF_LIA corpus, of which every one of the 2780 `nec-smt`
+files contains both `let` and `ite`. Registered as
+[lead 16](lead-ite-preprocessing), with the caveat that the two
+if-then-else techniques are measured to be worse individually than not applied
+at all.
+
 ## Equality Bridge
 
 The equality bridge targets equality-diamond formulas from the SMT-LIB QF_UF

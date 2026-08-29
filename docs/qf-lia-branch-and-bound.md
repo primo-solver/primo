@@ -912,6 +912,15 @@ all.
   extended/bounded-subset generalization (Sect. 4.3) -- see
   [GCD-consistency](#gcd-consistency) for why the latter specifically was
   deferred (a likely erratum in the paper's own printed formula).
+  The cube test's own primary source has since been read
+  ([](papers/bromberger-linear-arithmetic-thesis.md), Chapters 4--5). It
+  changes where the test belongs: not interleaved with branching at all, but
+  **once, in preprocessing**, after the rational solve and simple rounding and
+  before branch-and-bound starts, guarded by a constant-time skip condition
+  (`U - L = 1` on an integer variable, `U - L = 0` on a slack). Measured size
+  on the full QF_LIA division is +56 solved, and the larger effect is that it
+  removes the need for branch-and-bound entirely on 1271 instances. See
+  [lead 12c](lead-qflia-dio-hnf-cube).
 - Interleaving Gomory cuts into `branch_and_bound`'s own per-node loop --
   cuts run once, as a pre-check, before branching starts, not per-branch.
 - The paper's nearest-integer-distance Gomory row-selection heuristic --
