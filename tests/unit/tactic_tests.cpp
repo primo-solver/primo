@@ -1,6 +1,7 @@
 #include <cstdlib>
 #include <memory>
 #include <stdexcept>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -129,6 +130,43 @@ void sequence_and_repeat_stop_at_a_fixed_point() {
   check(fixture.statistics.get(":tactic.remove-one.invocations") == 3);
 }
 
+void repeat_preserves_equivalent_output_and_observes_terminal_changes() {
+  Fixture fixture;
+  const primo::core::TermId p = fixture.p_term();
+  const primo::smt::Tactic diagnose = primo::smt::make_goal_tactic(
+      "diagnose", [](primo::smt::TacticContext&, const primo::smt::Goal& goal) {
+        return primo::smt::AnyOf::single(goal.with_diagnostic("no-progress"));
+      });
+  const primo::smt::Tactic assertion_fixed_point =
+      primo::smt::repeat("assertion-fixed-point", diagnose, 4, {},
+                         [](const primo::smt::TacticContext&, const primo::smt::AnyOf& before,
+                            const primo::smt::AnyOf& after) {
+                           return before.alternatives().front().assertions() ==
+                                  after.alternatives().front().assertions();
+                         });
+  const primo::smt::AnyOf diagnosed =
+      assertion_fixed_point(fixture.context, primo::smt::AnyOf::single(primo::smt::Goal{{p}}));
+  check(diagnosed.alternatives().front().diagnostic() == "no-progress");
+  check(fixture.statistics.get(":tactic.diagnose.invocations") == 1);
+
+  std::size_t observed_changes = 0;
+  const primo::smt::Tactic make_true = primo::smt::make_goal_tactic(
+      "terminal-change", [](primo::smt::TacticContext&, const primo::smt::Goal& goal) {
+        return primo::smt::AnyOf::single(goal.with_assertions({}));
+      });
+  const primo::smt::Tactic observe_terminal = primo::smt::repeat(
+      "observe-terminal", make_true, 4,
+      [&observed_changes](const primo::smt::TacticContext&, const primo::smt::AnyOf&,
+                          const primo::smt::AnyOf&, std::size_t) {
+        ++observed_changes;
+        return true;
+      });
+  const primo::smt::AnyOf terminal =
+      observe_terminal(fixture.context, primo::smt::AnyOf::single(primo::smt::Goal{{p}}));
+  check(primo::smt::truth(terminal, fixture.context) == primo::smt::GoalTruth::True);
+  check(observed_changes == 1);
+}
+
 void conditional_uses_a_probe() {
   Fixture fixture;
   const primo::smt::Tactic make_true = primo::smt::make_goal_tactic(
@@ -193,6 +231,18 @@ void check_sat_honors_an_existing_cancellation_request() {
   check(result.message == "cancelled");
 }
 
+void check_sat_preserves_cancellation_observed_by_preprocessing() {
+  for (const std::string_view input :
+       {std::string_view{"(check-sat)"}, std::string_view{"(assert false) (check-sat)"}}) {
+    std::size_t cancellation_probes = 0;
+    primo::smt::CheckSatOptions options;
+    options.cancelled = [&cancellation_probes] { return cancellation_probes++ > 0; };
+    const primo::smt::CheckSatOutcome result = primo::smt::check_sat_smtlib(input, options);
+    check(result.result == primo::smt::CheckSatResult::Unknown);
+    check(result.message == "cancelled");
+  }
+}
+
 void solver_adapter_types_expected_inconclusive_results() {
   Fixture fixture;
   const primo::smt::Tactic unsupported = primo::smt::make_solver_tactic(
@@ -204,9 +254,61 @@ void solver_adapter_types_expected_inconclusive_results() {
 
   check(result.alternatives().front().reason() == primo::smt::InconclusiveReason::Unsupported);
   const primo::smt::CheckSatOutcome outcome =
-      primo::smt::outcome_from_solver_result(result, fixture.context);
+      primo::smt::outcome_from_tactic_result(result, fixture.context);
   check(outcome.result == primo::smt::CheckSatResult::Unsupported);
   check(outcome.message == "outside fragment");
+}
+
+void typed_inconclusive_reason_overrides_terminal_formula_truth() {
+  Fixture fixture;
+  for (const primo::smt::Goal& terminal :
+       {primo::smt::Goal{}, primo::smt::Goal{{fixture.terms.mk_bool(false)}}}) {
+    const primo::smt::AnyOf cancelled = primo::smt::AnyOf::single(
+        terminal.with_diagnostic(primo::smt::InconclusiveReason::Cancelled, "cancelled"));
+    const primo::smt::CheckSatOutcome outcome =
+        primo::smt::outcome_from_tactic_result(cancelled, fixture.context);
+    check(outcome.result == primo::smt::CheckSatResult::Unknown);
+    check(outcome.message == "cancelled");
+  }
+}
+
+void preprocessing_fixed_point_and_terminal_change_statistics_are_exact() {
+  primo::smt::CheckSatOptions options;
+  options.preprocessing_passes = 4;
+
+  const primo::smt::CheckSatOutcome stable = primo::smt::check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (assert (not (= a b)))
+    (check-sat)
+  )",
+                                                                          options);
+  check(stable.result == primo::smt::CheckSatResult::Sat);
+  check(stable.statistics.get(primo::util::StatKey::PreprocessingPasses) == 1);
+  check(stable.statistics.get(primo::util::StatKey::PreprocessingChangedPasses) == 0);
+  check(stable.statistics.get(":tactic.preprocessing-round.invocations") == 1);
+  check(stable.statistics.get(":tactic.forced-atom-propagation.invocations") == 1);
+
+  const primo::smt::CheckSatOutcome contradiction = primo::smt::check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun f (A A) A)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun c () A)
+    (declare-fun d () A)
+    (assert (= a b))
+    (assert (= c d))
+    (assert (not (= (f a c) (f b d))))
+    (check-sat)
+  )",
+                                                                                 options);
+  check(contradiction.result == primo::smt::CheckSatResult::Unsat);
+  check(contradiction.statistics.get(primo::util::StatKey::PreprocessingPasses) == 1);
+  check(contradiction.statistics.get(primo::util::StatKey::PreprocessingChangedPasses) == 1);
+  check(contradiction.statistics.get(primo::util::StatKey::PreprocessingAdaptivePasses) == 0);
 }
 
 void solver_adapter_does_not_hide_serious_failures() {
@@ -324,11 +426,15 @@ int main() {
   empty_anyof_is_rejected();
   non_boolean_goal_assertion_is_a_contract_error();
   sequence_and_repeat_stop_at_a_fixed_point();
+  repeat_preserves_equivalent_output_and_observes_terminal_changes();
   conditional_uses_a_probe();
   sequential_scheduler_tries_each_arm_from_the_original_goal();
   cancellation_stops_before_running_a_tactic();
   check_sat_honors_an_existing_cancellation_request();
+  check_sat_preserves_cancellation_observed_by_preprocessing();
   solver_adapter_types_expected_inconclusive_results();
+  typed_inconclusive_reason_overrides_terminal_formula_truth();
+  preprocessing_fixed_point_and_terminal_change_statistics_are_exact();
   solver_adapter_does_not_hide_serious_failures();
   preprocessing_round_transforms_each_alternative_independently();
   solver_dispatch_uses_formula_tactics();

@@ -41,7 +41,7 @@ Tactic make_solver_tactic(std::string name, core::TermManager& terms, GoalSolver
   });
 }
 
-CheckSatOutcome outcome_from_solver_result(const AnyOf& solved, TacticContext& context) {
+CheckSatOutcome outcome_from_tactic_result(const AnyOf& solved, TacticContext& context) {
   if (solved.size() != 1) {
     throw TacticError("solver dispatch returned multiple alternatives");
   }
@@ -51,12 +51,14 @@ CheckSatOutcome outcome_from_solver_result(const AnyOf& solved, TacticContext& c
   CheckSatOutcome outcome;
   outcome.model = solved_goal.model().value_or("");
   outcome.message = solved_goal.diagnostic();
-  if (solved_truth == GoalTruth::True) {
+  if (solved_goal.reason() == InconclusiveReason::Unsupported) {
+    outcome.result = CheckSatResult::Unsupported;
+  } else if (solved_goal.reason() != InconclusiveReason::None) {
+    outcome.result = CheckSatResult::Unknown;
+  } else if (solved_truth == GoalTruth::True) {
     outcome.result = CheckSatResult::Sat;
   } else if (solved_truth == GoalTruth::False) {
     outcome.result = CheckSatResult::Unsat;
-  } else if (solved_goal.reason() == InconclusiveReason::Unsupported) {
-    outcome.result = CheckSatResult::Unsupported;
   } else {
     outcome.result = CheckSatResult::Unknown;
   }

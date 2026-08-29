@@ -21,6 +21,6 @@ Tactic make_solver_tactic(std::string name, core::TermManager& terms, GoalSolver
 
 // Converts a single solver goal back to the public result record. Timing and
 // statistics remain the solve-session owner's responsibility.
-CheckSatOutcome outcome_from_solver_result(const AnyOf& solved, TacticContext& context);
+CheckSatOutcome outcome_from_tactic_result(const AnyOf& solved, TacticContext& context);
 
 }  // namespace primo::smt

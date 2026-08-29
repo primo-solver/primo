@@ -258,23 +258,27 @@ Tactic conditional(std::string name, GoalPredicate predicate, Tactic if_true, Ta
 }
 
 Tactic repeat(std::string name, Tactic tactic, std::size_t max_iterations,
-              RepeatPredicate continue_after_change) {
+              RepeatPredicate continue_after_change, RepeatEquivalence equivalent) {
   return Tactic(std::move(name), [tactic = std::move(tactic), max_iterations,
-                                  continue_after_change = std::move(continue_after_change)](
-                                     TacticContext& context, const AnyOf& input) {
+                                  continue_after_change = std::move(continue_after_change),
+                                  equivalent = std::move(equivalent)](TacticContext& context,
+                                                                      const AnyOf& input) {
     AnyOf current = input;
     for (std::size_t iteration = 0; iteration < max_iterations; ++iteration) {
       AnyOf after = tactic(context, current);
-      if (after == current) {
-        break;
+      const bool reached_fixed_point =
+          equivalent ? equivalent(context, current, after) : after == current;
+      if (reached_fixed_point) {
+        return after;
       }
       const AnyOf before = current;
       current = std::move(after);
+      const bool continue_requested =
+          !continue_after_change || continue_after_change(context, before, current, iteration + 1);
       if (truth(current, context) != GoalTruth::Inconclusive) {
         break;
       }
-      if (continue_after_change &&
-          !continue_after_change(context, before, current, iteration + 1)) {
+      if (!continue_requested) {
         break;
       }
     }

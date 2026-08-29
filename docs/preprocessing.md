@@ -14,7 +14,7 @@ are rejected by the command-line parser.
 The repeated core round is assembled from named formula-valued tactics rather
 than a monolithic loop. Each phase accepts and returns the same goal type and
 preserves or extends its reconstruction value. The built-in strategy repeats
-the round to a structural fixed point and retains the existing adaptive
+the round to an ordered-assertion fixed point and retains the existing adaptive
 reachable-term shrink test; users select presets and options, not an exposed
 tactic language.
 
@@ -355,10 +355,16 @@ Control of this loop is implemented by the formula-level tactic API described in
 {doc}`tactics`: one `preprocessing-round` leaf owns the established pass order,
 and the `preprocessing-fixed-point` repeat tactical owns termination and adaptive
 continuation. Assertions move into and out of the tactic goal without changing
-their `TermManager` ownership. Model-reconstruction and forced-atom records still
-belong to the surrounding single-goal solve session, so this production tactic
-does not split into alternatives. The migration changes orchestration only; the
-individual algorithms, option meanings, and defaults are unchanged.
+their `TermManager` ownership. Model-reconstruction and forced-atom records are
+immutable goal attributes. The production strategy still returns one goal
+because no current preprocessing phase introduces a disjunction. The migration
+changes orchestration only; the individual algorithms, option meanings, and
+defaults are unchanged.
+
+`:preprocessing.changed-passes` counts rounds that change the ordered assertion
+vector, including a round that immediately produces true or false. Attribute-only
+updates do not keep the loop running. `:preprocessing.adaptive-passes` counts only
+extra rounds that are actually scheduled after an inconclusive shrinking result.
 
 The fixed pass count is a baseline cap, not always a hard stop. After the cap is
 reached, Primo may run up to four additional adaptive passes when the previous

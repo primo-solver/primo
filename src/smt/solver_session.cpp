@@ -11290,9 +11290,12 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
           preprocessing_passes + options.preprocessing_adaptive_extra_passes;
       const Tactic preprocessing = repeat(
           "preprocessing-fixed-point", round, max_preprocessing_passes,
-          [&](const TacticContext&, const AnyOf& before, const AnyOf& after,
+          [&](const TacticContext& context, const AnyOf& before, const AnyOf& after,
               std::size_t completed_passes) {
             statistics.increment(kStatPreprocessingChangedPasses);
+            if (truth(after, context) != GoalTruth::Inconclusive) {
+              return false;
+            }
             if (completed_passes < preprocessing_passes) {
               return true;
             }
@@ -11308,11 +11311,29 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
               return true;
             }
             return false;
+          },
+          [](const TacticContext&, const AnyOf& before, const AnyOf& after) {
+            if (before.size() != after.size()) {
+              return false;
+            }
+            for (std::size_t index = 0; index < before.size(); ++index) {
+              if (before.alternatives()[index].assertions() !=
+                  after.alternatives()[index].assertions()) {
+                return false;
+              }
+            }
+            return true;
           });
       AnyOf preprocessed = preprocessing(
           tactic_context,
           AnyOf::single(Goal(std::move(assertions)).with_reconstruction(reconstruction)));
       const Goal& preprocessed_goal = preprocessed.alternatives().front();
+      if (preprocessed_goal.reason() != InconclusiveReason::None) {
+        statistics.set(kStatTimePreprocessingUs,
+                       elapsed_microseconds(preprocessing_start, PhaseClock::now()));
+        CheckSatOutcome interrupted = outcome_from_tactic_result(preprocessed, tactic_context);
+        return finish(interrupted.result, std::move(interrupted.message));
+      }
       assertions = preprocessed_goal.assertions();
       reconstruction = preprocessed_goal.reconstruction();
     }
@@ -11626,7 +11647,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     const AnyOf solved = solver_dispatch(
         tactic_context,
         AnyOf::single(Goal(std::move(assertions)).with_reconstruction(std::move(reconstruction))));
-    CheckSatOutcome outcome = outcome_from_solver_result(solved, tactic_context);
+    CheckSatOutcome outcome = outcome_from_tactic_result(solved, tactic_context);
     return finish_solve(std::move(outcome), solve_start);
   } catch (const UnsupportedInput& error) {
     return finish(CheckSatResult::Unsupported, error.what());

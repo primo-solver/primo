@@ -68,8 +68,13 @@ require it and immutable handle copies do not duplicate assertion vectors.
 
 The first layer provides leaf-goal lifting, `skip`, sequential composition,
 conditional selection, bounded repetition to a structural fixed point, an
-optional before/after continuation predicate, and ordered first-terminal
-fallback. A sequential scheduler implements fallback. Its interface is the
+optional before/after continuation predicate, an optional equivalence relation,
+and ordered first-terminal fallback. The default equivalence remains complete
+structural goal equality. A repeat returns the latest equivalent output so
+attribute-only results such as cancellation are not discarded. Its continuation
+predicate observes every non-equivalent output, including terminal ones; its
+return value controls another iteration only for inconclusive output. A
+sequential scheduler implements fallback. Its interface is the
 boundary for a later isolated parallel scheduler; this version does not create
 threads.
 
@@ -84,7 +89,7 @@ The repeated preprocessing round is implemented in `preprocessing_tactics` as
 a composition of named phase tactics over each input alternative. Its immutable
 `PreprocessingRoundOptions` is constructed once from the selected strategy;
 the phases do not inspect command-line state. The generic `repeat` tactical
-applies it to a structural fixed point, respects the existing baseline pass
+applies it to an ordered-assertion fixed point, respects the existing baseline pass
 limit, and consults the read-only reachable-term-count probe for configured
 adaptive extra passes. Equality bridging, finite-domain evaluation, congruence
 definitions, Boolean-unit propagation, forced-atom propagation, solved-constant
@@ -107,7 +112,9 @@ the formula features and logic, then invokes the selected leaf. The pure
 Boolean path uses the generic first-terminal scheduler with QF_UF as a fallback.
 The public `CheckSatOutcome` is derived after dispatch solely from the returned
 goal's truth, typed reason, model, and diagnostic; there is no parallel mutable
-result channel. This adaptation is isolated in `solver_tactic`, while expected
+result channel. A typed inconclusive reason takes precedence over terminal
+formula truth at this operational conversion boundary, while `truth()` itself
+remains formula-only. This adaptation is isolated in `solver_tactic`, while expected
 unsupported-fragment exceptions are defined in `solver_error`; other exceptions
 remain serious failures and escape the tactic boundary.
 The existing QF_UF preprocessing portfolio remains outside this layer because
@@ -152,10 +159,13 @@ tactic language, and true parallel execution are not implemented.
 - A leaf tactic is not applied to an already true or false goal.
 - Sequential fallback gives every arm the same original `AnyOf`, not the
   previous arm's inconclusive output.
-- Fixed-point detection first compares shared storage and falls back to ordered
-  goal contents. Unchanged iterations are constant time when a leaf returns its
-  input; changed iterations may compare the produced assertions linearly. The
-  explicit iteration bound prevents nontermination.
+- Generic fixed-point detection first compares shared storage and falls back to
+  ordered goal contents. A composition may supply a narrower equivalence when
+  its progress measure is explicit; preprocessing compares ordered assertion
+  vectors and preserves the latest goal attributes. Unchanged iterations are
+  constant time when a leaf returns its input; changed iterations may compare
+  the produced assertions linearly. The explicit iteration bound prevents
+  nontermination.
 - The generic framework adds no whole-term-DAG scans. Such scans belong to
   explicit probes and remain visible in tactic statistics.
 
