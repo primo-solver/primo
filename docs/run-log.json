@@ -28227,6 +28227,39 @@
       "artifacts": "remote:primo-qflia-fuzz-gate/fuzz-results/qf-lia-model-gate-129508/ (2.2GB full campaign); remote:primo-qflia-fuzz-gate/fuzz-results/qf-lia-seed-check-8a4048b/summary.csv; lightweight local ignored copies: fuzz-results/qf-lia-model-gate-129508/, fuzz-results/qf-lia-seed-check-8a4048b/, slurm_logs/qf-lia-model-gate-129508/",
       "evidence_status": "slurm-complete-current; mutation campaign clean, strict seed complement non-passing only for 10 incomplete results",
       "outcome": "The current merged-main candidate passes the required 4,000-case answer/model campaign and the real-seed mutation campaign with zero wrong answers, crashes, invalid models, or mutation bug files. The additional direct seed replay honestly exposes ten timeout/unknown cases and therefore is not called a strict pass; none is a concrete disagreement or status mismatch."
+    },
+    {
+      "id": "2026-08-29-qflia-ite-let-census",
+      "started_at": "2026-08-29",
+      "recorded_at": "2026-08-29",
+      "kind": "profiling",
+      "scope": "Structural census of if-then-else and let usage across the QF_LIA families named by Bromberger's thesis (Chapter 8) as the ones its preprocessing gains concentrate in. Pure file counting; no solver was run.",
+      "commit": "faf6642",
+      "branch": "main",
+      "environment": {
+        "type": "local",
+        "host": "workstation",
+        "note": "grep/find only; no build, no solver invocation"
+      },
+      "commands": {
+        "count_files": "find sandbox/non-incremental/QF_LIA/<family> -name '*.smt2' | wc -l",
+        "count_ite": "grep -rlE '\\(ite ' sandbox/non-incremental/QF_LIA/<family> --include='*.smt2' | wc -l",
+        "count_let": "grep -rl '(let ' sandbox/non-incremental/QF_LIA/<family> --include='*.smt2' | wc -l",
+        "single_file_shape": "grep -o '(let' <file> | wc -l; grep -o '(ite' <file> | wc -l"
+      },
+      "results": {
+        "nec-smt": "2780 files; 2780 contain '(ite'; 2780 contain '(let'",
+        "rings": "294 files; 245 contain '(ite'; 294 contain '(let'",
+        "rings_preprocessed": "294 files; 0 contain '(ite'; 294 contain '(let'",
+        "pb2010": "81 files; 0 contain '(ite'; 0 contain '(let'",
+        "convert": "319 files; 17 contain '(ite'; 319 contain '(let'",
+        "calypto": "37 files; 37 contain '(ite'; 35 contain '(let'",
+        "sampled_instance": "sandbox/non-incremental/QF_LIA/nec-smt/large/checkpass_pwd/prp-24-38.smt2 is 201,943 bytes with 886 '(let' and 5240 '(ite' occurrences inside a single assert"
+      },
+      "interpretation": "Confirms locally the structural claim behind Bromberger's +1693 QF_LIA preprocessing ablation: nec-smt is uniformly deep nested let/ite, and rings_preprocessed is rings with the ITEs already eliminated by the fresh-variable encoding (0 vs 245 files containing '(ite'), which is the input shape the thesis's ITE-reconstruction pass exists to undo. pb2010 has neither construct, so its share of the gain comes from the separate pseudo-boolean pass, not from ITE work.",
+      "caveats": "A file-level 'contains (ite' count is an upper bound on relevance and says nothing about how many ITEs survive Primo's own lowering, nor about solve time. It sizes the candidate population only. No claim about Primo's solved counts on these families is made from this run.",
+      "evidence_status": "current",
+      "docs": "docs/papers/bromberger-linear-arithmetic-thesis.md; docs/open-leads.md lead 16; docs/preprocessing.md"
     }
   ]
 }
