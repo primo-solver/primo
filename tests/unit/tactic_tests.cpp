@@ -41,6 +41,8 @@ void goal_truth_is_derived_from_assertions() {
   check(primo::smt::truth(primo::smt::Goal{}, fixture.context) == primo::smt::GoalTruth::True);
   check(primo::smt::truth(primo::smt::Goal{{fixture.terms.mk_bool(false)}}, fixture.context) ==
         primo::smt::GoalTruth::False);
+  check(primo::smt::truth(primo::smt::Goal{{fixture.p_term(), fixture.terms.mk_bool(false)}},
+                          fixture.context) == primo::smt::GoalTruth::False);
   check(primo::smt::truth(primo::smt::Goal{{fixture.p_term()}}, fixture.context) ==
         primo::smt::GoalTruth::Inconclusive);
 

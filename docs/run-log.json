@@ -28283,6 +28283,69 @@
       "artifacts": "local ignored artifacts results/tactics-baseline-dacf6db-{1..5}.csv and results/tactics-current-56515aa-{1..5}.csv",
       "evidence_status": "local-complete-current",
       "outcome": "No answer change and no measurable orchestration regression on the checked-in smoke/seed corpus; the measured median totals differ by 0.002 ms."
+    },
+    {
+      "id": "2026-08-29-tactic-modularization-multi-logic-fuzz-gate",
+      "started_at": "2026-08-29",
+      "recorded_at": "2026-08-29",
+      "kind": "fuzz",
+      "scope": "Exact-commit local merge gate for immutable goal-local reconstruction, named preprocessing phase tactics, solver-family tactic dispatch, extracted frontend/clausifier/control modules, and context-owned cancellation. It covers QF_UF, QF_LRA, and mixed QF_UFLRA with 1,000 generated formulas per logic.",
+      "commit": "a101be416e810bda94abfe5074b1277e99a9c3f2",
+      "branch": "tactics",
+      "environment": {
+        "type": "local",
+        "host": "mikolas-ThinkPad-T14s-Gen-5",
+        "binary": "primo 0.1.0, git a101be4, Release, CaDiCaL cadical-3.0.0-7b99c07",
+        "reference": "Z3 5.0.0",
+        "timeout": "5 seconds per solver invocation"
+      },
+      "commands": {
+        "qf_uf": "PATH=/workspace/contrib/local/bin:$PATH python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build-release-tactics/primo --quiet' --refs z3 --logic QF_UF --count 1000 --timeout 5 --seed 2026082921 --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' --out fuzz-results/tactics-modular-qfuf-1000-a101be4",
+        "qf_lra": "PATH=/workspace/contrib/local/bin:$PATH python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build-release-tactics/primo --quiet' --refs z3 --logic QF_LRA --count 1000 --timeout 5 --seed 2026082922 --out fuzz-results/tactics-modular-qflra-1000-a101be4",
+        "qf_uflra": "PATH=/workspace/contrib/local/bin:$PATH python3 scripts/qf_uflra_smoke_fuzz.py --solver build-release-tactics/primo --solver-arg=--quiet --ref z3 --count 1000 --seed 2026082923 --timeout 5 --shape mixed --out fuzz-results/tactics-modular-qfuflra-1000-a101be4",
+        "asan": "make asan-test (ASAN_OPTIONS=detect_leaks=1:strict_init_order=1)",
+        "sigterm": "timeout --signal=TERM --kill-after=2s 0.01s ./build-release-tactics/primo --quiet --stats benchmarks/regression/qf_uf/online_reason_cache.smt2"
+      },
+      "results": {
+        "qf_uf": "1,000 PASS: 892 sat and 108 unsat in exact agreement. Zero timeout, wrong answer, reference disagreement, crash, parser/type error, unknown, or unsupported result.",
+        "qf_lra": "997 PASS: 861 sat and 136 unsat in exact agreement; three Primo timeouts whose Z3 answer was sat. Zero wrong answer, reference disagreement, crash, parser/type error, unknown, or unsupported result.",
+        "qf_uflra": "1,000 PASS: 574 sat and 426 unsat in exact agreement. Zero timeout, wrong answer, reference disagreement, crash, parser/type error, unknown, or unsupported result.",
+        "aggregate": "3,000 generated formulas: 2,997 exact agreements, three timeout-only incomplete cases, and zero correctness failures.",
+        "asan": "21/21 CTest targets passed with leak detection and strict initialization ordering.",
+        "sigterm": "The timeout wrapper returned 124 after sending SIGTERM; Primo printed unknown and the per-file diagnostic 'cancelled', with no crash or unsafe signal-context output."
+      },
+      "artifacts": "local ignored artifacts fuzz-results/tactics-modular-qfuf-1000-a101be4/, fuzz-results/tactics-modular-qflra-1000-a101be4/, and fuzz-results/tactics-modular-qfuflra-1000-a101be4/",
+      "evidence_status": "local-complete-current",
+      "outcome": "The modular tactic/control-flow implementation passes the ordinary multi-logic merge gate with no wrong answers or failures; the only incomplete results are three QF_LRA timeouts."
+    },
+    {
+      "id": "2026-08-29-tactic-modularization-local-performance-check",
+      "started_at": "2026-08-29",
+      "recorded_at": "2026-08-29",
+      "kind": "measurement",
+      "scope": "Release-build overhead and answer check for the final modular split and lazy immutable phase-copying against the earlier production tactic integration. The corpus contains all 34 checked-in QF_UF, QF_LRA, and QF_UFLRA smoke and seed files, run five times per arm in alternating order.",
+      "commit": "a101be4 (final modular split) vs 56515aa (production tactic integration before the split)",
+      "branch": "tactics",
+      "environment": {
+        "type": "local",
+        "host": "mikolas-ThinkPad-T14s-Gen-5",
+        "binary": "Release builds, GCC 13.3.0, CaDiCaL cadical-3.0.0-7b99c07",
+        "timeout": "5 seconds per file"
+      },
+      "commands": {
+        "build_current": "cmake -S . -B build-release-tactics -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=/workspace/contrib/local && cmake --build build-release-tactics --target primo -j2",
+        "build_baseline": "git worktree add --detach /tmp/primo-tactics-565 56515aa; configure /tmp/primo-tactics-565/build-release as Release with dependency paths under /workspace/contrib/local; cmake --build /tmp/primo-tactics-565/build-release --target primo -j2",
+        "measurement": "For runs 1 through 5, alternate arm order and invoke scripts/bench.py over benchmarks/smoke plus benchmarks/seeds/{qf_uf,qf_lra,qf_uflra}, --timeout 5, writing results/tactics-modular-final-ab-{revision}-{run}.csv."
+      },
+      "results": {
+        "correctness": "All 34 answers were identical in every run: 13 sat and 21 unsat; no timeout, unknown, nonzero exit, or answer change occurred.",
+        "baseline": "Per-run summed runtimes: 0.089255, 0.083915, 0.086607, 0.091777, 0.089337 seconds; median 0.089255 seconds.",
+        "modular": "Per-run summed runtimes: 0.084588, 0.085628, 0.085094, 0.094557, 0.087725 seconds; median 0.085628 seconds.",
+        "paired_reading": "The modular median is 4.1% lower, but each file completes in roughly 2-4 ms and subprocess startup/scheduler noise dominates. This is evidence of no visible regression, not a speedup claim. The code review separately removed eager whole-assertion and reconstruction copies from every preprocessing phase."
+      },
+      "artifacts": "local ignored artifacts results/tactics-modular-final-ab-{56515aa,a101be4}-{1..5}.csv",
+      "evidence_status": "local-complete-current",
+      "outcome": "No answer change and no measurable orchestration regression on the checked-in multi-logic corpus."
     }
   ]
 }

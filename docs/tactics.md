@@ -42,7 +42,7 @@ sharing mutable reconstruction vectors with another arm.
 semantics. It is true when any goal is true, false when every goal is false, and
 otherwise inconclusive. An empty `AnyOf` is rejected: truth is represented by
 one empty `Goal`, not by overloading the absence of alternatives. This avoids a
-separate sat/unsat/residual return variant while retaining the formula semantics.
+separate sat/unsat/transformed-goal return variant while retaining the formula semantics.
 The vector has no mutable accessor, so construction is the only place where the
 non-empty invariant needs enforcement.
 
