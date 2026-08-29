@@ -30,13 +30,21 @@ inconclusive. Transformations construct a new goal with `with_assertions`,
 equality is structural and includes the terminal model, typed inconclusive
 reason, diagnostic fields, and model-reconstruction records.
 
+The immutable data record gives the assertion vector, optional model string,
+and reconstruction value separate `shared_ptr<const ...>` ownership. Updating
+one field shallow-copies the small record and allocates only that field; the
+other potentially large payloads retain their identity. Empty payloads use
+shared singleton values. Reasons and their short diagnostics remain inline.
+There is no mutable copy-on-write path.
+
 `smt::ModelReconstruction` is the goal attribute used by equisatisfiable
 preprocessing. It contains removed Boolean/equality assignments, monotone Real
 variables and their discharged constraints, solved QF_LIA definitions, and
 forced equality/disequality facts used by later finite-domain passes. The value
-is copied into a new immutable goal with `with_reconstruction`; callers receive
-only a const reference to the goal-owned value. This prevents a tactic arm from
-sharing mutable reconstruction vectors with another arm.
+is moved into separate immutable storage with `with_reconstruction`; callers
+receive only a const reference to the goal-owned value. This prevents a tactic
+arm from sharing mutable reconstruction vectors with another arm while allowing
+assertion-only rewrites to share the untouched reconstruction payload.
 
 `smt::AnyOf` owns an immutable shared non-empty ordered vector of goals with disjunctive
 semantics. It is true when any goal is true, false when every goal is false, and
@@ -154,6 +162,8 @@ tactic language, and true parallel execution are not implemented.
 ## Invariants and complexity
 
 - `Goal`, its assertion vector, and `AnyOf` are immutable shared values.
+- Assertion, model, and reconstruction storage is shared independently; changing
+  one payload does not copy either of the other large payloads.
 - `AnyOf` always contains at least one goal.
 - Every assertion is a Bool-sorted `TermId` owned by the context term manager.
 - A leaf tactic is not applied to an already true or false goal.

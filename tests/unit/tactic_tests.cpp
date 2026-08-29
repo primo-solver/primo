@@ -1,6 +1,7 @@
 #include <cstdlib>
 #include <memory>
 #include <stdexcept>
+#include <string>
 #include <string_view>
 #include <type_traits>
 #include <utility>
@@ -73,6 +74,39 @@ void reconstruction_records_are_goal_local_immutable_values() {
   check(transformed.reconstruction().forced_equalities ==
         std::vector<std::pair<primo::core::TermId, primo::core::TermId>>{{p, p}});
   check(transformed.with_assertions({}).reconstruction() == transformed.reconstruction());
+}
+
+void goal_updates_share_untouched_large_payloads() {
+  Fixture fixture;
+  const primo::core::TermId p = fixture.p_term();
+  primo::smt::ModelReconstruction reconstruction;
+  constexpr std::size_t kLargePayloadSize = 4096;
+  reconstruction.model_assignments.reserve(kLargePayloadSize);
+  for (std::size_t index = 0; index < kLargePayloadSize; ++index) {
+    reconstruction.model_assignments.push_back(
+        primo::smt::TheoryModelAssignment{.term = p, .value = index % 2 == 0});
+  }
+  const std::string model(kLargePayloadSize, 'm');
+  const primo::smt::Goal original =
+      primo::smt::Goal{{p}}.with_reconstruction(reconstruction).with_model(model);
+
+  const primo::smt::Goal assertions_changed = original.with_assertions({p, p});
+  check(&assertions_changed.reconstruction() == &original.reconstruction());
+  check(&assertions_changed.model() == &original.model());
+
+  const primo::smt::Goal diagnostic_changed = original.with_diagnostic("diagnostic");
+  check(&diagnostic_changed.assertions() == &original.assertions());
+  check(&diagnostic_changed.reconstruction() == &original.reconstruction());
+  check(&diagnostic_changed.model() == &original.model());
+
+  reconstruction.model_assignments.push_back(
+      primo::smt::TheoryModelAssignment{.term = p, .value = true});
+  const primo::smt::Goal reconstruction_changed =
+      original.with_reconstruction(std::move(reconstruction));
+  check(&reconstruction_changed.assertions() == &original.assertions());
+  check(&reconstruction_changed.model() == &original.model());
+  check(reconstruction_changed.reconstruction().model_assignments.size() == kLargePayloadSize + 1);
+  check(original.reconstruction().model_assignments.size() == kLargePayloadSize);
 }
 
 void anyof_has_disjunctive_semantics() {
@@ -422,6 +456,7 @@ void solver_dispatch_uses_formula_tactics() {
 int main() {
   goal_truth_is_derived_from_assertions();
   reconstruction_records_are_goal_local_immutable_values();
+  goal_updates_share_untouched_large_payloads();
   anyof_has_disjunctive_semantics();
   empty_anyof_is_rejected();
   non_boolean_goal_assertion_is_a_contract_error();

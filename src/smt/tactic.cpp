@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -14,6 +15,7 @@
 #include "core/ids.hpp"
 #include "core/term.hpp"
 #include "core/term_manager.hpp"
+#include "smt/model_reconstruction.hpp"
 #include "util/statistics.hpp"
 
 namespace primo::smt {
@@ -34,63 +36,86 @@ std::string time_stat_name(std::string_view tactic) {
   return ":time.tactic." + std::string(tactic) + "-us";
 }
 
+std::shared_ptr<const std::vector<core::TermId>> empty_assertions() {
+  static const auto storage = std::make_shared<const std::vector<core::TermId>>();
+  return storage;
+}
+
+std::shared_ptr<const std::optional<std::string>> empty_model() {
+  static const auto storage = std::make_shared<const std::optional<std::string>>();
+  return storage;
+}
+
+std::shared_ptr<const ModelReconstruction> empty_reconstruction() {
+  static const auto storage = std::make_shared<const ModelReconstruction>();
+  return storage;
+}
+
 }  // namespace
 
 struct Goal::Data {
-  std::vector<core::TermId> assertions;
-  std::optional<std::string> model;
-  ModelReconstruction reconstruction;
+  std::shared_ptr<const std::vector<core::TermId>> assertions = empty_assertions();
+  std::shared_ptr<const std::optional<std::string>> model = empty_model();
+  std::shared_ptr<const ModelReconstruction> reconstruction = empty_reconstruction();
   InconclusiveReason reason = InconclusiveReason::None;
   std::string diagnostic;
-
-  bool operator==(const Data&) const = default;
 };
 
 Goal::Goal() : data_(std::make_shared<const Data>()) {}
 
 Goal::Goal(std::vector<core::TermId> assertions)
-    : data_(std::make_shared<const Data>(Data{.assertions = std::move(assertions),
-                                              .model = {},
-                                              .reconstruction = {},
-                                              .reason = InconclusiveReason::None,
-                                              .diagnostic = {}})) {}
+    : data_(std::make_shared<const Data>(
+          Data{.assertions = assertions.empty() ? empty_assertions()
+                                                : std::make_shared<const std::vector<core::TermId>>(
+                                                      std::move(assertions)),
+               .model = empty_model(),
+               .reconstruction = empty_reconstruction(),
+               .reason = InconclusiveReason::None,
+               .diagnostic = {}})) {}
 
 Goal::Goal(std::shared_ptr<const Data> data) : data_(std::move(data)) {}
 
-const std::vector<core::TermId>& Goal::assertions() const { return data_->assertions; }
+const std::vector<core::TermId>& Goal::assertions() const { return *data_->assertions; }
 
-const std::optional<std::string>& Goal::model() const { return data_->model; }
+const std::optional<std::string>& Goal::model() const { return *data_->model; }
 
-const ModelReconstruction& Goal::reconstruction() const { return data_->reconstruction; }
+const ModelReconstruction& Goal::reconstruction() const { return *data_->reconstruction; }
 
 InconclusiveReason Goal::reason() const { return data_->reason; }
 
 const std::string& Goal::diagnostic() const { return data_->diagnostic; }
 
 Goal Goal::with_assertions(std::vector<core::TermId> assertions) const {
-  if (assertions == data_->assertions) {
+  if (assertions == *data_->assertions) {
     return *this;
   }
   Data updated = *data_;
-  updated.assertions = std::move(assertions);
+  updated.assertions =
+      assertions.empty() ? empty_assertions()
+                         : std::make_shared<const std::vector<core::TermId>>(std::move(assertions));
   return Goal(std::make_shared<const Data>(std::move(updated)));
 }
 
 Goal Goal::with_model(std::optional<std::string> model) const {
-  if (model == data_->model) {
+  if (model == *data_->model) {
     return *this;
   }
   Data updated = *data_;
-  updated.model = std::move(model);
+  updated.model = model.has_value()
+                      ? std::make_shared<const std::optional<std::string>>(std::move(model))
+                      : empty_model();
   return Goal(std::make_shared<const Data>(std::move(updated)));
 }
 
 Goal Goal::with_reconstruction(ModelReconstruction reconstruction) const {
-  if (reconstruction == data_->reconstruction) {
+  if (reconstruction == *data_->reconstruction) {
     return *this;
   }
   Data updated = *data_;
-  updated.reconstruction = std::move(reconstruction);
+  updated.reconstruction =
+      reconstruction == *empty_reconstruction()
+          ? empty_reconstruction()
+          : std::make_shared<const ModelReconstruction>(std::move(reconstruction));
   return Goal(std::make_shared<const Data>(std::move(updated)));
 }
 
@@ -111,7 +136,13 @@ Goal Goal::with_diagnostic(std::string diagnostic) const {
 }
 
 bool Goal::operator==(const Goal& other) const {
-  return data_ == other.data_ || *data_ == *other.data_;
+  return data_ == other.data_ ||
+         (data_->reason == other.data_->reason && data_->diagnostic == other.data_->diagnostic &&
+          (data_->assertions == other.data_->assertions ||
+           *data_->assertions == *other.data_->assertions) &&
+          (data_->model == other.data_->model || *data_->model == *other.data_->model) &&
+          (data_->reconstruction == other.data_->reconstruction ||
+           *data_->reconstruction == *other.data_->reconstruction));
 }
 
 AnyOf::AnyOf(std::vector<Goal> alternatives)

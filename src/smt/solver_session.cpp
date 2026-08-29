@@ -11326,7 +11326,8 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
           });
       AnyOf preprocessed = preprocessing(
           tactic_context,
-          AnyOf::single(Goal(std::move(assertions)).with_reconstruction(reconstruction)));
+          AnyOf::single(
+              Goal(std::move(assertions)).with_reconstruction(std::move(reconstruction))));
       const Goal& preprocessed_goal = preprocessed.alternatives().front();
       if (preprocessed_goal.reason() != InconclusiveReason::None) {
         statistics.set(kStatTimePreprocessingUs,
