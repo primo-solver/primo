@@ -9,7 +9,7 @@ Primo is organized as layered components with explicit data ownership. This page
 - `sat/` owns propositional variables, literals, clauses, assumptions, the
   backend-neutral IPASIR-UP callback interfaces, and the concrete CaDiCaL
   adapter.
-- `smt/` owns SMT-LIB command processing, preprocessing, Boolean abstraction,
+- `smt/` owns conversion of SMT-LIB commands to core terms, preprocessing, Boolean abstraction,
   clausification, tactic composition, QF_UF/QF_LRA solver orchestration, and the
   current separable mixed QF_UFLRA coordinator. The tactic data structures,
   ownership rules, and current migration boundary are described in
@@ -17,9 +17,20 @@ Primo is organized as layered components with explicit data ownership. This page
 - `theory/` owns equality reasoning, congruence closure, and arithmetic
   tableau solving.
 
+The build enforces the same direction with static-library targets:
+`primo_util`; `primo_terms` over utility code; `primo_sat`; `primo_theory` over
+terms, SAT interfaces, and utilities; `primo_smtlib`; and `primo_smt` over the
+preceding solver layers. `primo_core` is a compatibility interface target for
+whole-solver executables and broad tests. New narrow tests should link the
+lowest target they exercise. Generated ANTLR code and its warning policy are
+confined to `primo_smtlib`, CaDiCaL configuration to `primo_sat`, and GMP to
+`primo_util`.
+
 ## Boundaries
 
-- SMT-LIB syntax objects are consumed by `smt::Frontend` and converted to `core::TermId` values before reaching SAT or theory code.
+- SMT-LIB syntax objects are consumed by the pimpl-isolated `smt::Frontend`
+  session and converted to `core::TermId` values before reaching SAT or theory
+  code. Its iterative `TermBuilder` is private to `frontend.cpp`.
 - SAT clauses contain `sat::Lit`, not terms.
 - The Boolean clausifier keeps the mapping from Boolean theory atoms to SAT
   literals and memoizes theory-atom polarity collection per hash-consed term and
@@ -35,6 +46,12 @@ Primo is organized as layered components with explicit data ownership. This page
   it. Solver leaves receive the complete goal rather than separate assertion
   and reconstruction side channels, and `CheckSatOutcome` is derived from the
   returned goal after dispatch.
+- Formula analysis/metrics, frontend translation, Boolean clausification,
+  preprocessing strategy leaves, Boolean solving, common solver statistics,
+  solver-family dispatch, result adaptation, runtime termination, and
+  unsupported-input exceptions have independent SMT modules. Public
+  `check_sat.cpp` is a small portfolio coordinator; `solver_session.cpp` owns
+  the remaining per-session preprocessing and theory-family orchestration.
 
 ## Term Representation
 

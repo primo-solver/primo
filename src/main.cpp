@@ -161,9 +161,7 @@ int run_main(int argc, char** argv) {
   bool no_auto_basic_multi = false;
   bool no_auto_basic_multi_polarity = false;
   std::string preprocessing_mode = "auto";
-  std::string deprecated_qf_uf_preprocessing_mode;
   std::string auto_preprocess_selector = "legacy";
-  std::string deprecated_qf_uf_auto_selector;
   std::string boolean_implies_rewrite = "off";
   std::string qf_uf_profile = "default";
   std::string qf_uf_portfolio = "off";
@@ -416,23 +414,13 @@ int run_main(int argc, char** argv) {
   add_flag_with_default(
       app, "--preprocess-only", solver_options.preprocess_only,
       "Run parsing and preprocessing, print unknown, and skip SAT/theory solving");
-  CLI::Option* preprocessing_mode_option =
-      app.add_option("--preprocessing-mode", preprocessing_mode,
-                     "Preprocessing preset for all supported logics: off, basic, strong, or auto")
-          ->check(CLI::IsMember({"off", "basic", "strong", "auto"}));
-  CLI::Option* deprecated_preprocessing_mode_option =
-      app.add_option("--qf-uf-preprocess", deprecated_qf_uf_preprocessing_mode,
-                     "Deprecated alias for --preprocessing-mode")
-          ->check(CLI::IsMember({"off", "basic", "strong", "auto"}));
-  CLI::Option* auto_preprocess_selector_option =
-      app.add_option("--auto-preprocess-selector", auto_preprocess_selector,
-                     "Auto preprocessing selector: legacy assertion-count heuristics or "
-                     "representation-stable structural analysis")
-          ->check(CLI::IsMember({"legacy", "structural"}));
-  CLI::Option* deprecated_auto_preprocess_selector_option =
-      app.add_option("--qf-uf-auto-selector", deprecated_qf_uf_auto_selector,
-                     "Deprecated alias for --auto-preprocess-selector")
-          ->check(CLI::IsMember({"legacy", "structural"}));
+  app.add_option("--preprocessing-mode", preprocessing_mode,
+                 "Preprocessing preset for all supported logics: off, basic, strong, or auto")
+      ->check(CLI::IsMember({"off", "basic", "strong", "auto"}));
+  app.add_option("--auto-preprocess-selector", auto_preprocess_selector,
+                 "Auto preprocessing selector: legacy assertion-count heuristics or "
+                 "representation-stable structural analysis")
+      ->check(CLI::IsMember({"legacy", "structural"}));
   app.add_option("--auto-preprocess-large-conjunct-limit",
                  solver_options.auto_preprocess_tuning.large_conjunct_limit,
                  "Maximum implicit top-level conjunct occurrences for repeated auto "
@@ -661,9 +649,8 @@ int run_main(int argc, char** argv) {
     if (starts_with(name, "--lia-") || starts_with(name, "--no-lia-")) {
       return kGroupLia;
     }
-    if (name == "--preprocessing-mode" || name == "--qf-uf-preprocess" ||
-        name == "--arithmetic-atom-canonicalization" || name == "--auto-preprocess-selector" ||
-        name == "--qf-uf-auto-selector" || name == "--boolean-flatten-threshold" ||
+    if (name == "--preprocessing-mode" || name == "--arithmetic-atom-canonicalization" ||
+        name == "--auto-preprocess-selector" || name == "--boolean-flatten-threshold" ||
         name == "--boolean-flatten-post-threshold" || name == "--boolean-implies-rewrite" ||
         starts_with(name, "--auto-preprocess-") || starts_with(name, "--preprocessing-") ||
         starts_with(name, "--preprocess-passes")) {
@@ -730,26 +717,6 @@ int run_main(int argc, char** argv) {
                  "backtracking and shared-equality-decision state)\n";
     return 2;
   }
-  if (deprecated_preprocessing_mode_option->count() > 0) {
-    if (preprocessing_mode_option->count() > 0) {
-      std::cerr << "error: --preprocessing-mode and deprecated --qf-uf-preprocess cannot be used "
-                   "together\n";
-      return 2;
-    }
-    preprocessing_mode = deprecated_qf_uf_preprocessing_mode;
-    std::cerr << "warning: --qf-uf-preprocess is deprecated; use --preprocessing-mode\n";
-  }
-  if (deprecated_auto_preprocess_selector_option->count() > 0) {
-    if (auto_preprocess_selector_option->count() > 0) {
-      std::cerr << "error: --auto-preprocess-selector and deprecated --qf-uf-auto-selector cannot "
-                   "be used together\n";
-      return 2;
-    }
-    auto_preprocess_selector = deprecated_qf_uf_auto_selector;
-    std::cerr << "warning: --qf-uf-auto-selector is deprecated; use "
-                 "--auto-preprocess-selector\n";
-  }
-
   if (preprocessing_mode == "off") {
     solver_options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
   } else if (preprocessing_mode == "strong") {

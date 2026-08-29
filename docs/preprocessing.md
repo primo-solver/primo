@@ -7,11 +7,16 @@ QF_UFLRA, and propositional inputs; individual transformations remain
 shape-dependent and are no-ops when their recognizers do not apply. The CLI
 and `CheckSatOptions::preprocessing_mode` default is `auto`.
 
-The former names `--qf-uf-preprocess` and `--qf-uf-auto-selector` remain only
-as deprecated compatibility aliases. Each prints a warning, and Primo rejects
-a command line that combines an alias with its canonical replacement. New
-scripts and documentation must use `--preprocessing-mode` and
-`--auto-preprocess-selector`.
+The former QF_UF-specific names have been removed. Use
+`--preprocessing-mode` and `--auto-preprocess-selector`; unknown legacy names
+are rejected by the command-line parser.
+
+The repeated core round is assembled from named formula-valued tactics rather
+than a monolithic loop. Each phase accepts and returns the same goal type and
+preserves or extends its reconstruction value. The built-in strategy repeats
+the round to a structural fixed point and retains the existing adaptive
+reachable-term shrink test; users select presets and options, not an exposed
+tactic language.
 
 ## Arithmetic atom canonicalization
 

@@ -80,13 +80,21 @@ migration rather than hidden inside the generic layer.
 
 ## Production composition
 
-The repeated preprocessing round is now a leaf tactic. The generic `repeat`
-tactical applies it to a structural fixed point, respects the existing baseline
-pass limit, and consults a reachable-term-count continuation predicate for the
-configured adaptive extra passes. The ordering and implementations of the
-individual preprocessing transformations are unchanged. Existing command-line
-options still construct this built-in composition; this change does not add a
-user-facing tactic expression syntax or alter option defaults.
+The repeated preprocessing round is implemented in `preprocessing_tactics` as
+a composition of named phase tactics over each input alternative. Its immutable
+`PreprocessingRoundOptions` is constructed once from the selected strategy;
+the phases do not inspect command-line state. The generic `repeat` tactical
+applies it to a structural fixed point, respects the existing baseline pass
+limit, and consults the read-only reachable-term-count probe for configured
+adaptive extra passes. Equality bridging, finite-domain evaluation, congruence
+definitions, Boolean-unit propagation, forced-atom propagation, solved-constant
+substitution, ground-unit substitution, and unit-equality propagation each have
+their own invocation/time counters. A round deliberately finishes all selected
+phases before exposing a terminal goal, preserving the established pass
+ordering and reconstruction/statistics behavior. Each output owns its own
+reconstruction records. The transformation implementations are unchanged.
+Existing command-line options construct this built-in composition; there is no
+user-facing tactic expression syntax and option defaults are unchanged.
 
 The Boolean, QF_UF, QF_LRA, QF_LIA, and combined QF_UFLRA solvers are adapted as
 formula-returning leaf tactics. A solving leaf represents `sat` by an empty
@@ -96,7 +104,9 @@ the formula features and logic, then invokes the selected leaf. The pure
 Boolean path uses the generic first-terminal scheduler with QF_UF as a fallback.
 The public `CheckSatOutcome` is derived after dispatch solely from the returned
 goal's truth, typed reason, model, and diagnostic; there is no parallel mutable
-result channel.
+result channel. This adaptation is isolated in `solver_tactic`, while expected
+unsupported-fragment exceptions are defined in `solver_error`; other exceptions
+remain serious failures and escape the tactic boundary.
 The existing QF_UF preprocessing portfolio remains outside this layer because
 each arm deliberately reparses the original SMT-LIB text into a fresh term
 manager; `TermId` values and goals must never cross that session boundary.

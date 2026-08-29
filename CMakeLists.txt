@@ -191,15 +191,13 @@ else()
   message(FATAL_ERROR "GMP (with C++ wrapper) not found. Run `make contrib-gmp` or install GMP so gmp.h/gmpxx.h are available.")
 endif()
 
-file(GLOB_RECURSE PRIMO_LIBRARY_SOURCES CONFIGURE_DEPENDS
-  src/cli/*.cpp
-  src/core/*.cpp
-  src/sat/*.cpp
-  src/smt/*.cpp
-  src/smtlib/*.cpp
-  src/theory/*.cpp
-  src/util/*.cpp
-)
+file(GLOB_RECURSE PRIMO_CLI_SOURCES CONFIGURE_DEPENDS src/cli/*.cpp)
+file(GLOB_RECURSE PRIMO_TERM_SOURCES CONFIGURE_DEPENDS src/core/*.cpp)
+file(GLOB_RECURSE PRIMO_SAT_SOURCES CONFIGURE_DEPENDS src/sat/*.cpp)
+file(GLOB_RECURSE PRIMO_SMT_SOURCES CONFIGURE_DEPENDS src/smt/*.cpp)
+file(GLOB_RECURSE PRIMO_SMTLIB_SOURCES CONFIGURE_DEPENDS src/smtlib/*.cpp)
+file(GLOB_RECURSE PRIMO_THEORY_SOURCES CONFIGURE_DEPENDS src/theory/*.cpp)
+file(GLOB_RECURSE PRIMO_UTIL_SOURCES CONFIGURE_DEPENDS src/util/*.cpp)
 file(GLOB_RECURSE PRIMO_GENERATED_SOURCES CONFIGURE_DEPENDS
   src/smtlib/antlr/*.cpp
 )
@@ -211,29 +209,61 @@ if(PRIMO_GENERATED_SOURCES)
   endif()
 endif()
 
-add_library(primo_core ${PRIMO_LIBRARY_SOURCES})
-primo_enable_warnings(primo_core)
-primo_enable_sanitizers(primo_core)
-target_include_directories(primo_core PUBLIC src)
-target_include_directories(primo_core SYSTEM PUBLIC "${ANTLR4_RUNTIME_INCLUDE_DIR}")
-target_compile_definitions(primo_core PUBLIC ANTLR4CPP_STATIC=1)
-target_link_libraries(primo_core PUBLIC "${ANTLR4_RUNTIME_LIBRARY}")
-target_include_directories(primo_core SYSTEM PUBLIC "${GMP_INCLUDE_DIR}" "${GMPXX_INCLUDE_DIR}")
-target_link_libraries(primo_core PUBLIC "${GMPXX_LIBRARY}" "${GMP_LIBRARY}")
+function(primo_configure_owned_library target)
+  primo_enable_warnings(${target})
+  primo_enable_sanitizers(${target})
+  target_include_directories(${target} PUBLIC src)
+endfunction()
+
+add_library(primo_util STATIC ${PRIMO_UTIL_SOURCES})
+primo_configure_owned_library(primo_util)
+target_include_directories(primo_util SYSTEM PUBLIC "${GMP_INCLUDE_DIR}" "${GMPXX_INCLUDE_DIR}")
+target_link_libraries(primo_util PUBLIC "${GMPXX_LIBRARY}" "${GMP_LIBRARY}")
+
+add_library(primo_terms STATIC ${PRIMO_TERM_SOURCES})
+primo_configure_owned_library(primo_terms)
+target_link_libraries(primo_terms PUBLIC primo_util)
+
+add_library(primo_sat STATIC ${PRIMO_SAT_SOURCES})
+primo_configure_owned_library(primo_sat)
 if(IPASIR_UP_INCLUDE_DIR AND CADICAL_LIBRARY)
-  target_compile_definitions(primo_core PUBLIC PRIMO_HAVE_IPASIR=1)
-  target_compile_definitions(primo_core PUBLIC
+  target_compile_definitions(primo_sat PUBLIC PRIMO_HAVE_IPASIR=1)
+  target_compile_definitions(primo_sat PUBLIC
     PRIMO_CADICAL_HAS_RESIZE=$<BOOL:${PRIMO_CADICAL_HAS_RESIZE}>
     PRIMO_CADICAL_HAS_RESERVE=$<BOOL:${PRIMO_CADICAL_HAS_RESERVE}>
     PRIMO_CADICAL_HAS_DECLARE_MORE_VARIABLES=$<BOOL:${PRIMO_CADICAL_HAS_DECLARE_MORE_VARIABLES}>
     PRIMO_CADICAL_EXTERNAL_NOTIFY_VECTOR=$<BOOL:${PRIMO_CADICAL_EXTERNAL_NOTIFY_VECTOR}>
     PRIMO_CADICAL_EXTERNAL_NOTIFY_SCALAR=$<BOOL:${PRIMO_CADICAL_EXTERNAL_NOTIFY_SCALAR}>
   )
-  target_include_directories(primo_core SYSTEM PUBLIC "${IPASIR_UP_INCLUDE_DIR}")
-  target_link_libraries(primo_core PUBLIC "${CADICAL_LIBRARY}")
+  target_include_directories(primo_sat SYSTEM PUBLIC "${IPASIR_UP_INCLUDE_DIR}")
+  target_link_libraries(primo_sat PUBLIC "${CADICAL_LIBRARY}")
 else()
-  target_compile_definitions(primo_core PUBLIC PRIMO_HAVE_IPASIR=0)
+  target_compile_definitions(primo_sat PUBLIC PRIMO_HAVE_IPASIR=0)
 endif()
+
+add_library(primo_theory STATIC ${PRIMO_THEORY_SOURCES})
+primo_configure_owned_library(primo_theory)
+target_link_libraries(primo_theory PUBLIC primo_terms primo_sat primo_util)
+
+add_library(primo_smtlib STATIC ${PRIMO_SMTLIB_SOURCES})
+primo_configure_owned_library(primo_smtlib)
+target_include_directories(primo_smtlib SYSTEM PUBLIC "${ANTLR4_RUNTIME_INCLUDE_DIR}")
+target_compile_definitions(primo_smtlib PUBLIC ANTLR4CPP_STATIC=1)
+target_link_libraries(primo_smtlib PUBLIC "${ANTLR4_RUNTIME_LIBRARY}")
+
+add_library(primo_smt STATIC ${PRIMO_SMT_SOURCES})
+primo_configure_owned_library(primo_smt)
+target_link_libraries(primo_smt PUBLIC primo_terms primo_sat primo_smtlib primo_theory primo_util)
+
+add_library(primo_cli_support STATIC ${PRIMO_CLI_SOURCES})
+primo_configure_owned_library(primo_cli_support)
+
+# Compatibility umbrella for executables and tests that exercise several
+# layers. New narrow targets should link the lowest layer they use.
+add_library(primo_core INTERFACE)
+target_link_libraries(primo_core INTERFACE
+  primo_smt primo_smtlib primo_theory primo_sat primo_terms primo_util primo_cli_support
+)
 
 add_executable(primo src/main.cpp)
 if(PRIMO_SANITIZERS)

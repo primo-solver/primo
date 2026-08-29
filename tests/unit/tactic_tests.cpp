@@ -9,6 +9,9 @@
 #include "core/symbol_table.hpp"
 #include "core/term_manager.hpp"
 #include "smt/check_sat.hpp"
+#include "smt/preprocessing_tactics.hpp"
+#include "smt/solver_error.hpp"
+#include "smt/solver_tactic.hpp"
 #include "smt/tactic.hpp"
 #include "util/statistics.hpp"
 
@@ -187,6 +190,66 @@ void check_sat_honors_an_existing_cancellation_request() {
   check(result.message == "cancelled");
 }
 
+void solver_adapter_types_expected_inconclusive_results() {
+  Fixture fixture;
+  const primo::smt::Tactic unsupported = primo::smt::make_solver_tactic(
+      "unsupported", fixture.terms, [](const primo::smt::Goal&) -> primo::smt::CheckSatOutcome {
+        throw primo::smt::UnsupportedInput("outside fragment");
+      });
+  const primo::smt::AnyOf result =
+      unsupported(fixture.context, primo::smt::AnyOf::single(primo::smt::Goal{{fixture.p_term()}}));
+
+  check(result.alternatives().front().reason() == primo::smt::InconclusiveReason::Unsupported);
+  const primo::smt::CheckSatOutcome outcome =
+      primo::smt::outcome_from_solver_result(result, fixture.context);
+  check(outcome.result == primo::smt::CheckSatResult::Unsupported);
+  check(outcome.message == "outside fragment");
+}
+
+void solver_adapter_does_not_hide_serious_failures() {
+  Fixture fixture;
+  const primo::smt::Tactic broken = primo::smt::make_solver_tactic(
+      "broken", fixture.terms, [](const primo::smt::Goal&) -> primo::smt::CheckSatOutcome {
+        throw std::runtime_error("backend invariant");
+      });
+  bool threw = false;
+  try {
+    static_cast<void>(
+        broken(fixture.context, primo::smt::AnyOf::single(primo::smt::Goal{{fixture.p_term()}})));
+  } catch (const std::runtime_error&) {
+    threw = true;
+  }
+  check(threw);
+}
+
+void preprocessing_round_transforms_each_alternative_independently() {
+  Fixture fixture;
+  const primo::core::TermId p = fixture.p_term();
+  const primo::core::TermId not_p = fixture.terms.mk_not(p);
+  primo::smt::ModelReconstruction true_reconstruction;
+  true_reconstruction.model_assignments.push_back(
+      primo::smt::TheoryModelAssignment{.term = p, .value = true});
+  primo::smt::ModelReconstruction false_reconstruction;
+  false_reconstruction.model_assignments.push_back(
+      primo::smt::TheoryModelAssignment{.term = p, .value = false});
+  const primo::smt::Tactic round =
+      primo::smt::make_preprocessing_round(primo::smt::PreprocessingRoundOptions{});
+
+  const primo::smt::AnyOf result = round(
+      fixture.context,
+      primo::smt::AnyOf({primo::smt::Goal{{p}}.with_reconstruction(true_reconstruction),
+                         primo::smt::Goal{{not_p}}.with_reconstruction(false_reconstruction)}));
+  check(result.size() == 2);
+  check(result.alternatives()[0].reconstruction().model_assignments.size() == 1);
+  check(result.alternatives()[1].reconstruction().model_assignments.size() == 1);
+  check(result.alternatives()[0].reconstruction().model_assignments.front().value);
+  check(!result.alternatives()[1].reconstruction().model_assignments.front().value);
+  check(fixture.statistics.get(":tactic.preprocessing-round.invocations") == 1);
+  check(fixture.statistics.get(":tactic.boolean-unit-propagation.invocations") == 1);
+  check(fixture.statistics.get(":tactic.forced-atom-propagation.invocations") == 1);
+  check(fixture.statistics.get(":tactic.unit-equality-propagation.invocations") == 1);
+}
+
 void solver_dispatch_uses_formula_tactics() {
   primo::smt::CheckSatOptions options;
   options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
@@ -262,5 +325,8 @@ int main() {
   sequential_scheduler_tries_each_arm_from_the_original_goal();
   cancellation_stops_before_running_a_tactic();
   check_sat_honors_an_existing_cancellation_request();
+  solver_adapter_types_expected_inconclusive_results();
+  solver_adapter_does_not_hide_serious_failures();
+  preprocessing_round_transforms_each_alternative_independently();
   solver_dispatch_uses_formula_tactics();
 }
