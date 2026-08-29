@@ -24,6 +24,10 @@ parse:
 
 sphinx:
   config:
+    # Generate implicit targets for headings down to level 3, so that an
+    # ordinary `[text](#some-heading)` link resolves as a MyST reference
+    # instead of warning and falling back to a bare HTML anchor.
+    myst_heading_anchors: 3
     html_show_copyright: false
     html_show_sourcelink: false
     html_theme_options:
