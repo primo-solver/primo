@@ -48,6 +48,26 @@ void goal_truth_is_derived_from_assertions() {
   check(diagnosed.assertions() == original.assertions());
 }
 
+void reconstruction_records_are_goal_local_immutable_values() {
+  Fixture fixture;
+  const primo::core::TermId p = fixture.p_term();
+  primo::smt::ModelReconstruction reconstruction;
+  reconstruction.model_assignments.push_back(
+      primo::smt::TheoryModelAssignment{.term = p, .value = true});
+  reconstruction.forced_equalities.emplace_back(p, p);
+
+  const primo::smt::Goal original{{p}};
+  const primo::smt::Goal transformed = original.with_reconstruction(reconstruction);
+  reconstruction.model_assignments.clear();
+
+  check(original.reconstruction().model_assignments.empty());
+  check(transformed.reconstruction().model_assignments.size() == 1);
+  check(transformed.reconstruction().model_assignments.front().term == p);
+  check(transformed.reconstruction().forced_equalities ==
+        std::vector<std::pair<primo::core::TermId, primo::core::TermId>>{{p, p}});
+  check(transformed.with_assertions({}).reconstruction() == transformed.reconstruction());
+}
+
 void anyof_has_disjunctive_semantics() {
   Fixture fixture;
   const primo::smt::Goal unresolved{{fixture.p_term()}};
@@ -233,6 +253,7 @@ void solver_dispatch_uses_formula_tactics() {
 
 int main() {
   goal_truth_is_derived_from_assertions();
+  reconstruction_records_are_goal_local_immutable_values();
   anyof_has_disjunctive_semantics();
   empty_anyof_is_rejected();
   non_boolean_goal_assertion_is_a_contract_error();

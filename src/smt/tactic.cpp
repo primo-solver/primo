@@ -39,6 +39,7 @@ std::string time_stat_name(std::string_view tactic) {
 struct Goal::Data {
   std::vector<core::TermId> assertions;
   std::optional<std::string> model;
+  ModelReconstruction reconstruction;
   InconclusiveReason reason = InconclusiveReason::None;
   std::string diagnostic;
 
@@ -50,6 +51,7 @@ Goal::Goal() : data_(std::make_shared<const Data>()) {}
 Goal::Goal(std::vector<core::TermId> assertions)
     : data_(std::make_shared<const Data>(Data{.assertions = std::move(assertions),
                                               .model = {},
+                                              .reconstruction = {},
                                               .reason = InconclusiveReason::None,
                                               .diagnostic = {}})) {}
 
@@ -58,6 +60,8 @@ Goal::Goal(std::shared_ptr<const Data> data) : data_(std::move(data)) {}
 const std::vector<core::TermId>& Goal::assertions() const { return data_->assertions; }
 
 const std::optional<std::string>& Goal::model() const { return data_->model; }
+
+const ModelReconstruction& Goal::reconstruction() const { return data_->reconstruction; }
 
 InconclusiveReason Goal::reason() const { return data_->reason; }
 
@@ -78,6 +82,15 @@ Goal Goal::with_model(std::optional<std::string> model) const {
   }
   Data updated = *data_;
   updated.model = std::move(model);
+  return Goal(std::make_shared<const Data>(std::move(updated)));
+}
+
+Goal Goal::with_reconstruction(ModelReconstruction reconstruction) const {
+  if (reconstruction == data_->reconstruction) {
+    return *this;
+  }
+  Data updated = *data_;
+  updated.reconstruction = std::move(reconstruction);
   return Goal(std::make_shared<const Data>(std::move(updated)));
 }
 

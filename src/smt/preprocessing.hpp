@@ -6,6 +6,7 @@
 
 #include "core/ids.hpp"
 #include "core/term_manager.hpp"
+#include "smt/model_reconstruction.hpp"
 
 namespace primo::smt {
 
@@ -171,20 +172,6 @@ struct SolvedConstantSubstitutionResult {
 SolvedConstantSubstitutionResult substitute_solved_constants(
     core::TermManager& terms, const std::vector<core::TermId>& assertions,
     bool enable_gaussian_elimination = false);
-
-// One real variable removed by monotone (one-sided) elimination, together
-// with everything needed to give it a value again when a model is printed.
-struct MonotoneEliminatedVariable {
-  core::TermId variable = core::kInvalidTermId;
-  // True when every discharged constraint bounds the variable from above,
-  // so an arbitrarily small value satisfies all of them; false for the
-  // mirror case.
-  bool bounded_above = false;
-  // The atoms discharged for this variable, each paired with the truth
-  // value that occurrence has to take. Model reconstruction re-derives a
-  // satisfying value from exactly these.
-  std::vector<std::pair<core::TermId, bool>> constraints;
-};
 
 struct MonotoneEliminationResult {
   std::vector<core::TermId> assertions;

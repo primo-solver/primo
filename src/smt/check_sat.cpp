@@ -12653,17 +12653,12 @@ struct PreprocessingRoundConfiguration {
   bool use_guarded_ground_unit_substitution = false;
 };
 
-struct PreprocessingRoundState {
-  std::vector<TheoryModelAssignment>& model_assignments;
-  std::vector<std::pair<core::TermId, core::TermId>>& forced_equalities;
-  std::vector<std::pair<core::TermId, core::TermId>>& forced_disequalities;
-};
-
 Goal run_preprocessing_round(core::TermManager& terms, const Goal& goal,
                              const PreprocessingRoundConfiguration& configuration,
-                             PreprocessingRoundState state, util::Statistics& statistics) {
+                             util::Statistics& statistics) {
   const CheckSatOptions& options = configuration.options;
   std::vector<core::TermId> assertions = goal.assertions();
+  ModelReconstruction reconstruction = goal.reconstruction();
   statistics.increment(kStatPreprocessingPasses);
 
   if (configuration.use_eq_bridge) {
@@ -12696,7 +12691,7 @@ Goal run_preprocessing_round(core::TermManager& terms, const Goal& goal,
   BooleanUnitPropagationResult boolean_units = propagate_boolean_units(terms, assertions);
   assertions = std::move(boolean_units.assertions);
   if (options.produce_model) {
-    append_boolean_model_assignments(state.model_assignments, boolean_units.assignments);
+    append_boolean_model_assignments(reconstruction.model_assignments, boolean_units.assignments);
   }
   statistics.increment(kStatBooleanUnitFacts, boolean_units.units);
   statistics.increment(kStatBooleanUnitRewrites, boolean_units.rewrites);
@@ -12706,7 +12701,7 @@ Goal run_preprocessing_round(core::TermManager& terms, const Goal& goal,
   ForcedAtomPropagationResult forced_atoms = propagate_forced_atoms(terms, assertions);
   assertions = std::move(forced_atoms.assertions);
   if (options.produce_model) {
-    append_boolean_model_assignments(state.model_assignments, forced_atoms.assignments);
+    append_boolean_model_assignments(reconstruction.model_assignments, forced_atoms.assignments);
   }
   statistics.increment(kStatForcedAtomFacts, forced_atoms.units);
   statistics.increment(kStatForcedAtomDisequalities, forced_atoms.disequalities);
@@ -12717,18 +12712,19 @@ Goal run_preprocessing_round(core::TermManager& terms, const Goal& goal,
   statistics.increment(kStatEqualityQueryMemoHits, forced_atoms.query_memo_hits);
   statistics.increment(kStatEqualityQueryAddTermRequests, forced_atoms.add_term_requests);
   statistics.increment(kStatEqualityQueryAddTermSeenHits, forced_atoms.add_term_seen_hits);
-  state.forced_equalities.insert(state.forced_equalities.end(), forced_atoms.equality_pairs.begin(),
-                                 forced_atoms.equality_pairs.end());
-  state.forced_disequalities.insert(state.forced_disequalities.end(),
-                                    forced_atoms.disequality_pairs.begin(),
-                                    forced_atoms.disequality_pairs.end());
+  reconstruction.forced_equalities.insert(reconstruction.forced_equalities.end(),
+                                          forced_atoms.equality_pairs.begin(),
+                                          forced_atoms.equality_pairs.end());
+  reconstruction.forced_disequalities.insert(reconstruction.forced_disequalities.end(),
+                                             forced_atoms.disequality_pairs.begin(),
+                                             forced_atoms.disequality_pairs.end());
 
   if (options.solved_constant_substitution) {
     SolvedConstantSubstitutionResult solved_constants =
         substitute_solved_constants(terms, assertions, options.gaussian_elimination);
     assertions = std::move(solved_constants.assertions);
     if (options.produce_model) {
-      append_equality_model_assignments(terms, state.model_assignments,
+      append_equality_model_assignments(terms, reconstruction.model_assignments,
                                         solved_constants.substitutions);
     }
     statistics.increment(kStatSolvedConstantCandidates, solved_constants.candidates);
@@ -12751,7 +12747,7 @@ Goal run_preprocessing_round(core::TermManager& terms, const Goal& goal,
     if (accept_substitution) {
       assertions = std::move(ground_substitution.assertions);
       if (options.produce_model) {
-        append_equality_model_assignments(terms, state.model_assignments,
+        append_equality_model_assignments(terms, reconstruction.model_assignments,
                                           ground_substitution.substitutions);
       }
       statistics.increment(kStatUnitEqualitySubstitutionUnits, ground_substitution.units);
@@ -12769,7 +12765,7 @@ Goal run_preprocessing_round(core::TermManager& terms, const Goal& goal,
   statistics.increment(kStatEqualityQueryMemoHits, unit_equality_stats.query_memo_hits);
   statistics.increment(kStatEqualityQueryAddTermRequests, unit_equality_stats.add_term_requests);
   statistics.increment(kStatEqualityQueryAddTermSeenHits, unit_equality_stats.add_term_seen_hits);
-  return goal.with_assertions(std::move(assertions));
+  return goal.with_assertions(std::move(assertions)).with_reconstruction(std::move(reconstruction));
 }
 
 }  // namespace
@@ -13283,19 +13279,11 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     statistics.set(kStatPreprocessingTermSizeInitial,
                    reachable_term_count(frontend.terms(), assertions));
     const std::vector<core::TermId> symmetry_source_assertions = assertions;
-    std::vector<TheoryModelAssignment> preprocessing_model_assignments;
-    std::vector<MonotoneEliminatedVariable> monotone_eliminated;
-    std::vector<std::pair<core::TermId, core::TermId>> forced_equalities;
-    std::vector<std::pair<core::TermId, core::TermId>> forced_disequalities;
-    // Populated only for QF_LIA below; build_qf_lia_model resolves an
-    // eliminated variable's value from these rather than defaulting it to
-    // 0. Plain (variable, definition) pairs rather than
-    // preprocessing_model_assignments's TheoryModelAssignment encoding
-    // because QF_LIA's model builder reads directly from the LRA tableau,
-    // not through the generic equality-assignment model path
-    // preprocessing_model_assignments feeds (solve_qf_lia has no
-    // parameter for it at all -- see build_qf_lia_model's own comment).
-    std::vector<std::pair<core::TermId, core::TermId>> qf_lia_solved_constant_substitutions;
+    ModelReconstruction reconstruction;
+    // The QF_LIA model builder consumes plain (variable, definition) pairs
+    // rather than generic theory assignments. They still travel with the
+    // transformed goal so a later scheduler cannot separate a formula from
+    // the records needed to reconstruct its model.
     if (use_finite_domain_amo) {
       statistics.increment(kStatFiniteDomainRawChoices, raw_finite_domain_result.choices);
       statistics.increment(kStatFiniteDomainRawAmoClauses, raw_finite_domain_result.clauses.size());
@@ -13339,9 +13327,9 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
         }
         assertions = std::move(solved_constants.assertions);
         if (options.produce_model) {
-          qf_lia_solved_constant_substitutions.insert(qf_lia_solved_constant_substitutions.end(),
-                                                      solved_constants.substitutions.begin(),
-                                                      solved_constants.substitutions.end());
+          reconstruction.lia_substitutions.insert(reconstruction.lia_substitutions.end(),
+                                                  solved_constants.substitutions.begin(),
+                                                  solved_constants.substitutions.end());
         }
       }
     }
@@ -13350,7 +13338,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
           substitute_solved_constants(frontend.terms(), assertions, options.gaussian_elimination);
       assertions = std::move(solved_constants.assertions);
       if (options.produce_model) {
-        append_equality_model_assignments(frontend.terms(), preprocessing_model_assignments,
+        append_equality_model_assignments(frontend.terms(), reconstruction.model_assignments,
                                           solved_constants.substitutions);
       }
       statistics.increment(kStatSolvedConstantCandidates, solved_constants.candidates);
@@ -13370,18 +13358,15 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
           .use_ground_unit_substitution = use_ground_unit_substitution,
           .use_guarded_ground_unit_substitution = use_guarded_ground_unit_substitution,
       };
-      PreprocessingRoundState round_state{preprocessing_model_assignments, forced_equalities,
-                                          forced_disequalities};
       TacticContext tactic_context(frontend.terms(), statistics, options.cancelled);
-      const Tactic round =
-          Tactic("preprocessing-round", [&](TacticContext&, const AnyOf& input_goals) {
-            if (input_goals.size() != 1) {
-              throw TacticError("preprocessing round expects one goal");
-            }
-            return AnyOf::single(
-                run_preprocessing_round(frontend.terms(), input_goals.alternatives().front(),
-                                        round_configuration, round_state, statistics));
-          });
+      const Tactic round = Tactic("preprocessing-round", [&](TacticContext&,
+                                                             const AnyOf& input_goals) {
+        if (input_goals.size() != 1) {
+          throw TacticError("preprocessing round expects one goal");
+        }
+        return AnyOf::single(run_preprocessing_round(
+            frontend.terms(), input_goals.alternatives().front(), round_configuration, statistics));
+      });
       const std::size_t max_preprocessing_passes =
           preprocessing_passes + options.preprocessing_adaptive_extra_passes;
       const Tactic preprocessing = repeat(
@@ -13405,9 +13390,12 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
             }
             return false;
           });
-      AnyOf preprocessed =
-          preprocessing(tactic_context, AnyOf::single(Goal(std::move(assertions))));
-      assertions = preprocessed.alternatives().front().assertions();
+      AnyOf preprocessed = preprocessing(
+          tactic_context,
+          AnyOf::single(Goal(std::move(assertions)).with_reconstruction(reconstruction)));
+      const Goal& preprocessed_goal = preprocessed.alternatives().front();
+      assertions = preprocessed_goal.assertions();
+      reconstruction = preprocessed_goal.reconstruction();
     }
     if (use_symmetry_breaking) {
       if (!symmetry_result.has_value()) {
@@ -13431,8 +13419,8 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       FiniteDomainAtMostOne finite_domain(frontend.terms());
       FiniteDomainAtMostOneResult finite_domain_result;
       if (options.finite_domain_post_amo) {
-        finite_domain_result =
-            finite_domain.generate(assertions, forced_equalities, forced_disequalities);
+        finite_domain_result = finite_domain.generate(assertions, reconstruction.forced_equalities,
+                                                      reconstruction.forced_disequalities);
       }
       statistics.increment(kStatFiniteDomainPostAmoClauses, finite_domain_result.clauses.size());
       std::unordered_set<core::TermId> emitted(assertions.begin(), assertions.end());
@@ -13517,7 +13505,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       statistics.increment(kStatMonotoneEliminationAtomsFolded, monotone.atoms_folded);
       statistics.increment(kStatMonotoneEliminationVariables, monotone.eliminated.size());
       assertions = std::move(monotone.assertions);
-      monotone_eliminated = std::move(monotone.eliminated);
+      reconstruction.monotone_eliminated = std::move(monotone.eliminated);
     }
     {
       MixedTheoryPurificationResult purification =
@@ -13622,9 +13610,10 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
         if (frontend.has_declared_real_constants()) {
           const std::vector<core::TermId> model_terms = frontend.declared_real_constant_terms();
           outcome.model = build_qf_lra_preprocessing_only_model(
-              frontend.terms(), model_terms, preprocessing_model_assignments, &monotone_eliminated);
+              frontend.terms(), model_terms, reconstruction.model_assignments,
+              &reconstruction.monotone_eliminated);
         } else {
-          outcome.model = build_qf_uf_model(frontend.terms(), preprocessing_model_assignments);
+          outcome.model = build_qf_uf_model(frontend.terms(), reconstruction.model_assignments);
         }
       }
       return outcome;
@@ -13657,82 +13646,75 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       outcome.statistics = statistics;
       return outcome;
     };
-    std::optional<CheckSatOutcome> solver_outcome;
     TacticContext tactic_context(frontend.terms(), statistics, options.cancelled);
-    const auto make_solver_tactic =
-        [&](std::string name,
-            std::function<CheckSatOutcome(const std::vector<core::TermId>&)> solve) {
-          return make_goal_tactic(std::move(name), [&, solve = std::move(solve)](TacticContext&,
-                                                                                 const Goal& goal) {
-            try {
-              solver_outcome = solve(goal.assertions());
-            } catch (const UnsupportedInput& error) {
-              solver_outcome =
-                  CheckSatOutcome{CheckSatResult::Unsupported, error.what(), statistics, ""};
-            }
-            const InconclusiveReason reason =
-                solver_outcome->result == CheckSatResult::Unsupported
-                    ? InconclusiveReason::Unsupported
-                : solver_outcome->result == CheckSatResult::Unknown
-                    ? (solver_outcome->message == "theory conflict limit reached"
-                           ? InconclusiveReason::ResourceLimit
-                           : InconclusiveReason::Unknown)
-                    : InconclusiveReason::None;
-            Goal result = goal.with_model(solver_outcome->model.empty()
-                                              ? std::optional<std::string>{}
-                                              : std::optional<std::string>{solver_outcome->model})
-                              .with_diagnostic(reason, solver_outcome->message);
-            if (solver_outcome->result == CheckSatResult::Sat) {
-              result = result.with_assertions({});
-            } else if (solver_outcome->result == CheckSatResult::Unsat) {
-              result = result.with_assertions({frontend.terms().mk_bool(false)});
-            }
-            return AnyOf::single(std::move(result));
-          });
-        };
+    const auto make_solver_tactic = [&](std::string name,
+                                        std::function<CheckSatOutcome(const Goal&)> solve) {
+      return make_goal_tactic(std::move(name), [&, solve = std::move(solve)](TacticContext&,
+                                                                             const Goal& goal) {
+        CheckSatOutcome outcome;
+        try {
+          outcome = solve(goal);
+        } catch (const UnsupportedInput& error) {
+          outcome = CheckSatOutcome{CheckSatResult::Unsupported, error.what(), statistics, ""};
+        }
+        const InconclusiveReason reason =
+            outcome.result == CheckSatResult::Unsupported ? InconclusiveReason::Unsupported
+            : outcome.result == CheckSatResult::Unknown
+                ? (outcome.message == "theory conflict limit reached"
+                       ? InconclusiveReason::ResourceLimit
+                   : outcome.message == "cancelled" ? InconclusiveReason::Cancelled
+                                                    : InconclusiveReason::Unknown)
+                : InconclusiveReason::None;
+        Goal result = goal.with_model(outcome.model.empty()
+                                          ? std::optional<std::string>{}
+                                          : std::optional<std::string>{std::move(outcome.model)})
+                          .with_diagnostic(reason, std::move(outcome.message));
+        if (outcome.result == CheckSatResult::Sat) {
+          result = result.with_assertions({});
+        } else if (outcome.result == CheckSatResult::Unsat) {
+          result = result.with_assertions({frontend.terms().mk_bool(false)});
+        }
+        return AnyOf::single(std::move(result));
+      });
+    };
 
-    const Tactic boolean_solver =
-        make_solver_tactic("solve-boolean", [&](const std::vector<core::TermId>& goal_assertions) {
-          return solve_boolean_conjunction(frontend.terms(), goal_assertions, solve_options,
-                                           statistics, preprocessing_model_assignments);
-        });
-    const Tactic euf_solver =
-        make_solver_tactic("solve-qf-uf", [&](const std::vector<core::TermId>& goal_assertions) {
-          return solve_qf_uf(frontend.terms(), goal_assertions, solve_options, statistics,
-                             preprocessing_model_assignments);
-        });
-    const Tactic lra_solver =
-        make_solver_tactic("solve-qf-lra", [&](const std::vector<core::TermId>& goal_assertions) {
-          const std::vector<core::TermId> model_terms =
-              solve_options.produce_model ? frontend.declared_real_constant_terms()
-                                          : std::vector<core::TermId>{};
-          return solve_qf_lra(frontend.terms(), goal_assertions, model_terms,
-                              preprocessing_model_assignments, solve_options, statistics,
-                              &monotone_eliminated);
-        });
-    const Tactic lra_model_only_solver = make_solver_tactic(
-        "solve-qf-lra-model-only", [&](const std::vector<core::TermId>& goal_assertions) {
+    const Tactic boolean_solver = make_solver_tactic("solve-boolean", [&](const Goal& goal) {
+      return solve_boolean_conjunction(frontend.terms(), goal.assertions(), solve_options,
+                                       statistics, goal.reconstruction().model_assignments);
+    });
+    const Tactic euf_solver = make_solver_tactic("solve-qf-uf", [&](const Goal& goal) {
+      return solve_qf_uf(frontend.terms(), goal.assertions(), solve_options, statistics,
+                         goal.reconstruction().model_assignments);
+    });
+    const Tactic lra_solver = make_solver_tactic("solve-qf-lra", [&](const Goal& goal) {
+      const std::vector<core::TermId> model_terms = solve_options.produce_model
+                                                        ? frontend.declared_real_constant_terms()
+                                                        : std::vector<core::TermId>{};
+      return solve_qf_lra(frontend.terms(), goal.assertions(), model_terms,
+                          goal.reconstruction().model_assignments, solve_options, statistics,
+                          &goal.reconstruction().monotone_eliminated);
+    });
+    const Tactic lra_model_only_solver =
+        make_solver_tactic("solve-qf-lra-model-only", [&](const Goal& goal) {
           const std::vector<core::TermId> model_terms = frontend.declared_real_constant_terms();
-          return solve_qf_lra(frontend.terms(), goal_assertions, model_terms,
-                              preprocessing_model_assignments, solve_options, statistics,
-                              &monotone_eliminated);
+          return solve_qf_lra(frontend.terms(), goal.assertions(), model_terms,
+                              goal.reconstruction().model_assignments, solve_options, statistics,
+                              &goal.reconstruction().monotone_eliminated);
         });
-    const Tactic mixed_solver =
-        make_solver_tactic("solve-qf-uflra", [&](const std::vector<core::TermId>& goal_assertions) {
-          const std::vector<core::TermId> model_terms =
-              solve_options.produce_model ? frontend.declared_real_constant_terms()
-                                          : std::vector<core::TermId>{};
-          return solve_qf_uf_lra(frontend.terms(), goal_assertions, model_terms,
-                                 preprocessing_model_assignments, solve_options, statistics);
-        });
-    const Tactic lia_solver =
-        make_solver_tactic("solve-qf-lia", [&](const std::vector<core::TermId>& goal_assertions) {
-          const std::vector<core::TermId> model_terms = solve_options.produce_model
-                                                            ? frontend.declared_int_constant_terms()
-                                                            : std::vector<core::TermId>{};
-          return solve_qf_lia(frontend.terms(), goal_assertions, model_terms, solve_options,
-                              statistics, qf_lia_solved_constant_substitutions);
-        });
+    const Tactic mixed_solver = make_solver_tactic("solve-qf-uflra", [&](const Goal& goal) {
+      const std::vector<core::TermId> model_terms = solve_options.produce_model
+                                                        ? frontend.declared_real_constant_terms()
+                                                        : std::vector<core::TermId>{};
+      return solve_qf_uf_lra(frontend.terms(), goal.assertions(), model_terms,
+                             goal.reconstruction().model_assignments, solve_options, statistics);
+    });
+    const Tactic lia_solver = make_solver_tactic("solve-qf-lia", [&](const Goal& goal) {
+      const std::vector<core::TermId> model_terms = solve_options.produce_model
+                                                        ? frontend.declared_int_constant_terms()
+                                                        : std::vector<core::TermId>{};
+      return solve_qf_lia(frontend.terms(), goal.assertions(), model_terms, solve_options,
+                          statistics, goal.reconstruction().lia_substitutions);
+    });
     const auto scheduler = std::make_shared<SequentialTacticScheduler>();
     const Tactic boolean_then_euf =
         first_terminal("boolean-then-euf", scheduler, {boolean_solver, euf_solver});
@@ -13783,17 +13765,27 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
         });
 
     const PhaseClock::time_point solve_start = PhaseClock::now();
-    const AnyOf solved =
-        solver_dispatch(tactic_context, AnyOf::single(Goal(std::move(assertions))));
-    if (!solver_outcome.has_value()) {
-      throw TacticError("solver dispatch returned without an outcome");
+    const AnyOf solved = solver_dispatch(
+        tactic_context,
+        AnyOf::single(Goal(std::move(assertions)).with_reconstruction(std::move(reconstruction))));
+    if (solved.size() != 1) {
+      throw TacticError("solver dispatch returned multiple alternatives");
     }
     const GoalTruth solved_truth = truth(solved, tactic_context);
-    if ((solver_outcome->result == CheckSatResult::Sat && solved_truth != GoalTruth::True) ||
-        (solver_outcome->result == CheckSatResult::Unsat && solved_truth != GoalTruth::False)) {
-      throw TacticError("solver outcome disagrees with its returned goal");
+    const Goal& solved_goal = solved.alternatives().front();
+    CheckSatOutcome outcome;
+    outcome.model = solved_goal.model().value_or("");
+    outcome.message = solved_goal.diagnostic();
+    if (solved_truth == GoalTruth::True) {
+      outcome.result = CheckSatResult::Sat;
+    } else if (solved_truth == GoalTruth::False) {
+      outcome.result = CheckSatResult::Unsat;
+    } else if (solved_goal.reason() == InconclusiveReason::Unsupported) {
+      outcome.result = CheckSatResult::Unsupported;
+    } else {
+      outcome.result = CheckSatResult::Unknown;
     }
-    return finish_solve(std::move(solver_outcome.value()), solve_start);
+    return finish_solve(std::move(outcome), solve_start);
   } catch (const UnsupportedInput& error) {
     return finish(CheckSatResult::Unsupported, error.what());
   } catch (const smtlib::ParseError& error) {

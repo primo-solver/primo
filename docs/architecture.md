@@ -31,6 +31,10 @@ Primo is organized as layered components with explicit data ownership. This page
   neither the active backend nor live statistics are stored in process-global
   state. The CLI's process-global signal state is limited to a
   `sig_atomic_t` request flag.
+- A tactic goal owns the model-reconstruction records created while rewriting
+  it. Solver leaves receive the complete goal rather than separate assertion
+  and reconstruction side channels, and `CheckSatOutcome` is derived from the
+  returned goal after dispatch.
 
 ## Term Representation
 

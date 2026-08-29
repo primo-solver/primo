@@ -6,16 +6,10 @@
 #include <vector>
 
 #include "core/term_manager.hpp"
+#include "smt/model_reconstruction.hpp"
 #include "util/rational.hpp"
 
 namespace primo::smt {
-
-struct TheoryModelAssignment {
-  core::TermId term = core::kInvalidTermId;
-  bool value = false;
-  bool filtered = false;
-  bool directed_substitution = false;
-};
 
 struct QfUfModelBuildOptions {
   bool include_model_wrapper = true;

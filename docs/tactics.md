@@ -28,7 +28,15 @@ containing the Boolean constant `false` denotes `false`; every other goal is
 inconclusive. Transformations construct a new goal with `with_assertions`,
 `with_model`, or `with_diagnostic`; unchanged goals reuse their storage. Goal
 equality is structural and includes the terminal model, typed inconclusive
-reason, and diagnostic fields.
+reason, diagnostic fields, and model-reconstruction records.
+
+`smt::ModelReconstruction` is the goal attribute used by equisatisfiable
+preprocessing. It contains removed Boolean/equality assignments, monotone Real
+variables and their discharged constraints, solved QF_LIA definitions, and
+forced equality/disequality facts used by later finite-domain passes. The value
+is copied into a new immutable goal with `with_reconstruction`; callers receive
+only a const reference to the goal-owned value. This prevents a tactic arm from
+sharing mutable reconstruction vectors with another arm.
 
 `smt::AnyOf` owns an immutable shared non-empty ordered vector of goals with disjunctive
 semantics. It is true when any goal is true, false when every goal is false, and
@@ -86,6 +94,9 @@ goal, `unsat` by a goal containing `false`, and `unknown` or unsupported input
 by the unchanged inconclusive goal plus a diagnostic. A dispatch tactic probes
 the formula features and logic, then invokes the selected leaf. The pure
 Boolean path uses the generic first-terminal scheduler with QF_UF as a fallback.
+The public `CheckSatOutcome` is derived after dispatch solely from the returned
+goal's truth, typed reason, model, and diagnostic; there is no parallel mutable
+result channel.
 The existing QF_UF preprocessing portfolio remains outside this layer because
 each arm deliberately reparses the original SMT-LIB text into a fresh term
 manager; `TermId` values and goals must never cross that session boundary.
@@ -112,14 +123,13 @@ unknown reasons without changing the logical value. Broken
 contracts and backend failures use exceptions (`TacticError` or the originating
 standard exception); they are not tactical alternatives.
 
-The current framework carries a final model string on a terminal goal, but the
-production preprocessing reconstruction records are still owned by the one
-active solve session rather than by `Goal`. The migrated preprocessing schedule
-therefore operates on exactly one goal. Until reconstruction ownership moves
-with each goal, a tactic must not split a model-changing preprocessing result
-into independent alternatives. Proof converters, unsat-core converters,
-incremental tactics, a user-facing tactic language, and true parallel execution
-are not implemented.
+The production schedule still operates on exactly one goal because none of the
+current transformations introduces a disjunction. Goal-local reconstruction is
+now sufficient for a future transformation to return alternatives without
+sharing its mutable bookkeeping, but the scheduler still needs isolated term
+managers and statistics before those alternatives can be executed in parallel.
+Proof converters, unsat-core converters, incremental tactics, a user-facing
+tactic language, and true parallel execution are not implemented.
 
 ## Invariants and complexity
 
@@ -139,11 +149,10 @@ are not implemented.
 The principal proof obligation for every transformation leaf is that the
 disjunction of its output goals is equisatisfiable with its input goal. A leaf
 that changes the model vocabulary additionally owes a reconstruction operation;
-the single-goal production pipeline continues to use the existing reconstruction
-records for that purpose. Solver leaves must agree with the truth represented by
-their returned goal, and the dispatch boundary checks this agreement for `sat`
-and `unsat`. Serious contract violations and unexpected backend failures escape
-as exceptions and are reported only at the command-line boundary.
+the operation's record travels with that output goal. Solver leaves communicate
+their logical result only through the truth represented by their returned goal.
+Serious contract violations and unexpected backend failures escape as exceptions
+and are reported only at the command-line boundary.
 
 `tests/unit/tactic_tests.cpp` covers terminal classification, disjunctive
 alternatives, the non-empty invariant, fixed-point repetition, conditional

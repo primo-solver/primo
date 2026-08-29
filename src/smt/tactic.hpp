@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "core/ids.hpp"
+#include "smt/model_reconstruction.hpp"
 
 namespace primo::core {
 class TermManager;
@@ -39,11 +40,13 @@ struct Goal {
 
   const std::vector<core::TermId>& assertions() const;
   const std::optional<std::string>& model() const;
+  const ModelReconstruction& reconstruction() const;
   InconclusiveReason reason() const;
   const std::string& diagnostic() const;
 
   Goal with_assertions(std::vector<core::TermId> assertions) const;
   Goal with_model(std::optional<std::string> model) const;
+  Goal with_reconstruction(ModelReconstruction reconstruction) const;
   Goal with_diagnostic(InconclusiveReason reason, std::string diagnostic) const;
   Goal with_diagnostic(std::string diagnostic) const;
 
