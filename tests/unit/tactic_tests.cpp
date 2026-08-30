@@ -1,5 +1,7 @@
+#include <chrono>
 #include <cstdlib>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -13,8 +15,10 @@
 #include "smt/check_sat.hpp"
 #include "smt/model_reconstruction.hpp"
 #include "smt/preprocessing_tactics.hpp"
+#include "smt/solver_answer.hpp"
 #include "smt/solver_error.hpp"
 #include "smt/solver_tactic.hpp"
+#include "smt/strategy.hpp"
 #include "smt/tactic.hpp"
 #include "util/statistics.hpp"
 
@@ -34,6 +38,15 @@ struct Fixture {
   primo::smt::TacticContext context{terms, statistics};
 
   primo::core::TermId p_term() { return terms.mk_constant(p); }
+};
+
+struct IdentityStrategyParameters {
+  std::string alpha;
+  std::string zeta;
+
+  std::vector<primo::smt::StrategyParameter> strategy_parameters() const {
+    return {{"zeta", zeta}, {"alpha", alpha}};
+  }
 };
 
 void goal_truth_is_derived_from_assertions() {
@@ -218,6 +231,116 @@ void conditional_uses_a_probe() {
   check(primo::smt::truth(result, fixture.context) == primo::smt::GoalTruth::True);
 }
 
+void strategy_is_immutable_canonical_and_fingerprinted() {
+  Fixture fixture;
+  const primo::smt::Tactic identity = primo::smt::make_goal_tactic(
+      "identity", [](primo::smt::TacticContext&, const primo::smt::Goal& goal) {
+        return primo::smt::AnyOf::single(goal);
+      });
+  IdentityStrategyParameters parameters{.alpha = "1", .zeta = "2"};
+  const primo::smt::Strategy leaf = primo::smt::Strategy::leaf("identity", parameters, identity);
+  parameters.zeta = "changed";
+  const primo::smt::Strategy strategy = primo::smt::Strategy::sequence(
+      {leaf,
+       primo::smt::Strategy::conditional(primo::smt::at_most(primo::smt::assertion_count(), 1.0),
+                                         primo::smt::Strategy::skip(), leaf)});
+
+  check(leaf.canonical() == "(leaf \"identity\" (\"alpha\" \"1\") (\"zeta\" \"2\"))");
+  check(strategy.canonical() ==
+        "(sequence (leaf \"identity\" (\"alpha\" \"1\") (\"zeta\" \"2\")) "
+        "(conditional \"(<= assertion-count 1)\" skip (leaf \"identity\" "
+        "(\"alpha\" \"1\") (\"zeta\" \"2\"))))");
+  check(strategy.fingerprint() ==
+        primo::smt::Strategy::sequence(
+            {leaf, primo::smt::Strategy::conditional(
+                       primo::smt::at_most(primo::smt::assertion_count(), 1.0),
+                       primo::smt::Strategy::skip(), leaf)})
+            .fingerprint());
+  check(primo::smt::compile(strategy)(
+            fixture.context, primo::smt::AnyOf::single(primo::smt::Goal{{fixture.p_term()}}))
+            .size() == 1);
+}
+
+void strategy_probe_observes_the_transformed_goal_and_repeat_is_bounded() {
+  Fixture fixture;
+  const primo::core::TermId p = fixture.p_term();
+  std::size_t repeats = 0;
+  const primo::smt::Tactic duplicate = primo::smt::make_goal_tactic(
+      "duplicate", [p](primo::smt::TacticContext&, const primo::smt::Goal& goal) {
+        return primo::smt::AnyOf::single(goal.with_assertions({p, p}));
+      });
+  const primo::smt::Tactic count = primo::smt::make_goal_tactic(
+      "count", [&repeats](primo::smt::TacticContext&, const primo::smt::Goal& goal) {
+        ++repeats;
+        return primo::smt::AnyOf::single(goal.with_diagnostic(std::to_string(repeats)));
+      });
+  const primo::smt::Strategy strategy = primo::smt::Strategy::sequence(
+      {primo::smt::Strategy::leaf("duplicate", primo::smt::NoStrategyParameters{}, duplicate),
+       primo::smt::Strategy::conditional(
+           primo::smt::at_most(primo::smt::assertion_count(), 1.0), primo::smt::Strategy::skip(),
+           primo::smt::Strategy::repeat(
+               primo::smt::Strategy::leaf("count", primo::smt::NoStrategyParameters{}, count),
+               3))});
+  const primo::smt::AnyOf result = primo::smt::compile(strategy)(
+      fixture.context, primo::smt::AnyOf::single(primo::smt::Goal{{p}}));
+  check(result.alternatives().front().assertions().size() == 2);
+  // Structural equality includes the diagnostic, so all three bounded
+  // iterations execute and the transformed assertion count drives the branch.
+  check(repeats == 3);
+}
+
+void try_for_uses_context_deadlines_without_mutating_the_strategy() {
+  Fixture fixture;
+  std::size_t applications = 0;
+  const primo::smt::Tactic must_not_run = primo::smt::make_goal_tactic(
+      "must-not-run", [&applications](primo::smt::TacticContext&, const primo::smt::Goal& goal) {
+        ++applications;
+        return primo::smt::AnyOf::single(goal);
+      });
+  const primo::smt::Strategy strategy = primo::smt::Strategy::try_for(
+      primo::smt::Strategy::leaf("must-not-run", primo::smt::NoStrategyParameters{}, must_not_run),
+      std::chrono::milliseconds(0));
+  const std::string fingerprint = strategy.fingerprint();
+  const primo::smt::AnyOf result = primo::smt::compile(strategy)(
+      fixture.context, primo::smt::AnyOf::single(primo::smt::Goal{{fixture.p_term()}}));
+  check(applications == 0);
+  check(result.alternatives().front().reason() == primo::smt::InconclusiveReason::ResourceLimit);
+  check(strategy.fingerprint() == fingerprint);
+  check(!fixture.context.deadline().has_value());
+}
+
+void solver_leaf_handles_disjunctive_goals_in_order() {
+  Fixture fixture;
+  const primo::core::TermId p = fixture.p_term();
+  const primo::core::TermId not_p = fixture.terms.mk_not(p);
+  std::size_t calls = 0;
+  const primo::smt::Tactic solver = primo::smt::make_solver_tactic(
+      "alternative-solver", fixture.terms,
+      [p, &calls](const primo::smt::Goal& goal) -> primo::smt::SolverAnswer {
+        ++calls;
+        if (goal.assertions().front() == p) {
+          return {.status = primo::smt::SolverStatus::Unsat,
+                  .reason = primo::smt::InconclusiveReason::None,
+                  .diagnostic = {},
+                  .model = {}};
+        }
+        return {.status = primo::smt::SolverStatus::Sat,
+                .reason = primo::smt::InconclusiveReason::None,
+                .diagnostic = {},
+                .model = "winning-model"};
+      });
+  const primo::smt::AnyOf sat = solver(
+      fixture.context, primo::smt::AnyOf({primo::smt::Goal{{p}}, primo::smt::Goal{{not_p}}}));
+  check(calls == 2);
+  check(primo::smt::truth(sat, fixture.context) == primo::smt::GoalTruth::True);
+  check(sat.alternatives().front().model() == std::optional<std::string>{"winning-model"});
+
+  const primo::smt::AnyOf unsat =
+      solver(fixture.context, primo::smt::AnyOf({primo::smt::Goal{{p}}, primo::smt::Goal{{p}}}));
+  check(unsat.size() == 1);
+  check(primo::smt::truth(unsat, fixture.context) == primo::smt::GoalTruth::False);
+}
+
 void sequential_scheduler_tries_each_arm_from_the_original_goal() {
   Fixture fixture;
   const primo::core::TermId p = fixture.p_term();
@@ -280,7 +403,7 @@ void check_sat_preserves_cancellation_observed_by_preprocessing() {
 void solver_adapter_types_expected_inconclusive_results() {
   Fixture fixture;
   const primo::smt::Tactic unsupported = primo::smt::make_solver_tactic(
-      "unsupported", fixture.terms, [](const primo::smt::Goal&) -> primo::smt::CheckSatOutcome {
+      "unsupported", fixture.terms, [](const primo::smt::Goal&) -> primo::smt::SolverAnswer {
         throw primo::smt::UnsupportedInput("outside fragment");
       });
   const primo::smt::AnyOf result =
@@ -348,7 +471,7 @@ void preprocessing_fixed_point_and_terminal_change_statistics_are_exact() {
 void solver_adapter_does_not_hide_serious_failures() {
   Fixture fixture;
   const primo::smt::Tactic broken = primo::smt::make_solver_tactic(
-      "broken", fixture.terms, [](const primo::smt::Goal&) -> primo::smt::CheckSatOutcome {
+      "broken", fixture.terms, [](const primo::smt::Goal&) -> primo::smt::SolverAnswer {
         throw std::runtime_error("backend invariant");
       });
   bool threw = false;
@@ -463,6 +586,10 @@ int main() {
   sequence_and_repeat_stop_at_a_fixed_point();
   repeat_preserves_equivalent_output_and_observes_terminal_changes();
   conditional_uses_a_probe();
+  strategy_is_immutable_canonical_and_fingerprinted();
+  strategy_probe_observes_the_transformed_goal_and_repeat_is_bounded();
+  try_for_uses_context_deadlines_without_mutating_the_strategy();
+  solver_leaf_handles_disjunctive_goals_in_order();
   sequential_scheduler_tries_each_arm_from_the_original_goal();
   cancellation_stops_before_running_a_tactic();
   check_sat_honors_an_existing_cancellation_request();

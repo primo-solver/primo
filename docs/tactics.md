@@ -70,9 +70,15 @@ non-empty invariant needs enforcement.
 Consequently all `TermId` values stored in goals are valid only for the lifetime
 of that term manager. Tactics may intern new terms but must never retain a
 `Term` reference across a term-manager constructor call. The context owns a
-read-only cancellation probe. Every tactic checks it before invoking its
-implementation; solver leaves pass the same request to a backend-scoped SAT
-terminator.
+read-only cancellation probe, the model-production capability for that
+execution, and an optional cooperative steady-clock deadline. `TryFor` installs
+the deadline with an RAII scope; nested scopes retain the earliest deadline and
+restore the outer value on exit. Deadlines and model requests are execution
+capabilities, not tactic parameters and therefore do not change strategy
+identity. Every tactic checks cancellation and deadlines before invoking its
+implementation; solver leaves pass cancellation to a backend-scoped SAT
+terminator. Long-running leaves must additionally poll `interrupted()` at their
+existing cooperative interruption points.
 
 `smt::Tactic` is a named type-erased callable with the signature
 `AnyOf(TacticContext&, const AnyOf&)`. A tactic handle and its implementation
@@ -83,6 +89,29 @@ counters are emitted under
 `:time.tactic.<name>-us`; both statistic names are computed once when the tactic
 is constructed. Change detection is confined to tacticals such as `repeat` that
 require it and immutable handle copies do not duplicate assertion vectors.
+
+## Immutable strategy and compilation
+
+`smt::Strategy` is an immutable shared AST compiled into the executable
+`smt::Tactic` type. Its node set is deliberately closed to `Leaf`, `Sequence`,
+`Conditional`, `Repeat`, `TryInOrder`, `TryFor`, and `Skip`; there is no `AllOf`
+node and no user-facing parser. A leaf combines a stable identifier, canonical
+key-sorted parameters supplied by its typed builder, and an immutable tactic
+handle. Structural nodes own their children by value through shared immutable
+records.
+
+`Strategy::canonical()` prints a deterministic parenthesized representation.
+Strings are quoted and escaped, leaf parameters are sorted and required to
+have unique non-empty keys, and durations are printed as integer milliseconds.
+`fingerprint()` is the `fnv1a64:` digest of that canonical text. The digest is a
+compact stable inspection key, not a cryptographic or collision-free identity;
+tools that require exact identity retain the canonical text. Neither surface
+has a CLI or configuration-file parser in this refactor.
+
+Compilation recursively lowers the AST to the existing tacticals. It does not
+mutate the strategy and execution state remains in `TacticContext`. The
+production pipeline is migrated to constructed strategies separately so this
+foundation does not itself alter the established tactic ordering.
 
 ## Implemented tacticals and probes
 
@@ -98,10 +127,13 @@ sequential scheduler implements fallback. Its interface is the
 boundary for a later isolated parallel scheduler; this version does not create
 threads.
 
-Numeric probes and Boolean predicates are ordinary read-only callables over a
-goal and its context. The initial built-in numeric probe reports assertion
-count. Preprocessing-specific structural probes are added with the preprocessing
-migration rather than hidden inside the generic layer.
+Numeric and Boolean probes are immutable named read-only callables over a goal
+and its context. Their stable names participate in canonical strategy printing.
+The built-in `assertion-count` numeric probe and the named `at_most` Boolean
+comparison demonstrate dynamic selection: a conditional evaluates its probe on
+the current transformed goal received at that node, never on a captured copy of
+the original input. Preprocessing-specific structural probes are added with the
+preprocessing migration rather than hidden inside the generic layer.
 
 ## Production composition
 
@@ -128,7 +160,12 @@ user-facing tactic expression syntax and option defaults are unchanged.
 The Boolean, QF_UF, QF_LRA, QF_LIA, and combined QF_UFLRA solvers are adapted as
 formula-returning leaf tactics. A solving leaf represents `sat` by an empty
 goal, `unsat` by a goal containing `false`, and `unknown` or unsupported input
-by the unchanged inconclusive goal plus a diagnostic. A dispatch tactic probes
+by the unchanged inconclusive goal plus a typed reason and diagnostic. The
+internal `SolverAnswer` carries the result and reason; diagnostic text is never
+examined to select fallback behavior. A solver leaf processes disjunctive goals
+in order, stops at the first satisfiable alternative and retains that model,
+collapses an all-unsatisfiable set to one false goal, and otherwise returns the
+remaining inconclusive alternatives. A dispatch tactic probes
 the formula features and logic, then invokes the selected leaf. The pure
 Boolean path uses the generic first-terminal scheduler with QF_UF as a fallback.
 The public `CheckSatOutcome` is derived after dispatch solely from the returned
@@ -144,6 +181,10 @@ manager; `TermId` values and goals must never cross that session boundary.
 
 The scheduler API is independent of its current execution policy. The supplied
 implementation runs alternatives sequentially and in declaration order. A
+terminal formula stops it, as does a typed `Cancelled` result. `Inapplicable`,
+`Unsupported`, `ResourceLimit`, and ordinary `Unknown` results continue to the
+next arm from the pristine original goal. Exceptions escape without attempting
+another arm. A
 future parallel scheduler can implement the same interface, but it must give
 each arm an isolated context, combine only terminal results, propagate
 cancellation, and define deterministic statistics before it is enabled.

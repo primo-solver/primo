@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <cstddef>
 #include <functional>
 #include <memory>
@@ -90,19 +91,43 @@ class TacticError : public std::runtime_error {
 
 class TacticContext {
  public:
+  using Clock = std::chrono::steady_clock;
+
   TacticContext(core::TermManager& terms, util::Statistics& statistics,
-                std::function<bool()> cancelled = {});
+                std::function<bool()> cancelled = {}, bool produce_model = false);
 
   core::TermManager& terms() { return terms_; }
   const core::TermManager& terms() const { return terms_; }
   util::Statistics& statistics() { return statistics_; }
   const util::Statistics& statistics() const { return statistics_; }
   bool cancelled() const;
+  bool deadline_reached() const;
+  bool interrupted() const;
+  bool produce_model() const { return produce_model_; }
+  std::optional<Clock::time_point> deadline() const { return deadline_; }
+
+  // A deadline scope is execution state owned by the context, never by a
+  // tactic or strategy node. Nested scopes retain the earliest deadline.
+  class DeadlineScope {
+   public:
+    DeadlineScope(TacticContext& context, Clock::duration budget);
+    DeadlineScope(const DeadlineScope&) = delete;
+    DeadlineScope& operator=(const DeadlineScope&) = delete;
+    DeadlineScope(DeadlineScope&&) = delete;
+    DeadlineScope& operator=(DeadlineScope&&) = delete;
+    ~DeadlineScope();
+
+   private:
+    TacticContext& context_;
+    std::optional<Clock::time_point> previous_;
+  };
 
  private:
   core::TermManager& terms_;
   util::Statistics& statistics_;
   std::function<bool()> cancelled_;
+  bool produce_model_ = false;
+  std::optional<Clock::time_point> deadline_;
 };
 
 GoalTruth truth(const Goal& goal, const TacticContext& context);
@@ -123,7 +148,6 @@ class Tactic {
 };
 
 using GoalTactic = std::function<AnyOf(TacticContext&, const Goal&)>;
-using NumericProbe = std::function<double(const TacticContext&, const Goal&)>;
 using GoalPredicate = std::function<bool(const TacticContext&, const Goal&)>;
 using RepeatPredicate =
     std::function<bool(const TacticContext&, const AnyOf&, const AnyOf&, std::size_t)>;
@@ -152,7 +176,5 @@ class SequentialTacticScheduler final : public TacticScheduler {
 
 Tactic first_terminal(std::string name, std::shared_ptr<const TacticScheduler> scheduler,
                       std::vector<Tactic> tactics);
-
-NumericProbe assertion_count_probe();
 
 }  // namespace primo::smt

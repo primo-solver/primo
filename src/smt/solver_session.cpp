@@ -28,11 +28,13 @@
 #include "sat/ipasir_up.hpp"
 #include "sat/lit.hpp"
 #include "smt/boolean_solver.hpp"
+#include "smt/check_sat.hpp"
 #include "smt/clausifier.hpp"
 #include "smt/formula_analysis.hpp"
 #include "smt/formula_metrics.hpp"
 #include "smt/frontend.hpp"
 #include "smt/model_builder.hpp"
+#include "smt/model_reconstruction.hpp"
 #include "smt/preprocessing.hpp"
 #include "smt/preprocessing_tactics.hpp"
 #include "smt/solver_error.hpp"
@@ -11284,7 +11286,8 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
           .use_ground_unit_substitution = use_ground_unit_substitution,
           .use_guarded_ground_unit_substitution = use_guarded_ground_unit_substitution,
       };
-      TacticContext tactic_context(frontend.terms(), statistics, options.cancelled);
+      TacticContext tactic_context(frontend.terms(), statistics, options.cancelled,
+                                   options.produce_model);
       const Tactic round = make_preprocessing_round(round_options);
       const std::size_t max_preprocessing_passes =
           preprocessing_passes + options.preprocessing_adaptive_extra_passes;
@@ -11587,49 +11590,61 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       outcome.statistics = statistics;
       return outcome;
     };
-    TacticContext tactic_context(frontend.terms(), statistics, options.cancelled);
+    TacticContext tactic_context(frontend.terms(), statistics, options.cancelled,
+                                 options.produce_model);
     const Tactic boolean_solver =
         make_solver_tactic("solve-boolean", frontend.terms(), [&](const Goal& goal) {
-          return solve_boolean_conjunction(frontend.terms(), goal.assertions(), solve_options,
-                                           statistics, goal.reconstruction().model_assignments);
+          return solver_answer_from_outcome(
+              solve_boolean_conjunction(frontend.terms(), goal.assertions(), solve_options,
+                                        statistics, goal.reconstruction().model_assignments),
+              tactic_context);
         });
     const Tactic euf_solver =
         make_solver_tactic("solve-qf-uf", frontend.terms(), [&](const Goal& goal) {
-          return solve_qf_uf(frontend.terms(), goal.assertions(), solve_options, statistics,
-                             goal.reconstruction().model_assignments);
+          return solver_answer_from_outcome(
+              solve_qf_uf(frontend.terms(), goal.assertions(), solve_options, statistics,
+                          goal.reconstruction().model_assignments),
+              tactic_context);
         });
     const Tactic lra_solver =
         make_solver_tactic("solve-qf-lra", frontend.terms(), [&](const Goal& goal) {
           const std::vector<core::TermId> model_terms =
               solve_options.produce_model ? frontend.declared_real_constant_terms()
                                           : std::vector<core::TermId>{};
-          return solve_qf_lra(frontend.terms(), goal.assertions(), model_terms,
-                              goal.reconstruction().model_assignments, solve_options, statistics,
-                              &goal.reconstruction().monotone_eliminated);
+          return solver_answer_from_outcome(
+              solve_qf_lra(frontend.terms(), goal.assertions(), model_terms,
+                           goal.reconstruction().model_assignments, solve_options, statistics,
+                           &goal.reconstruction().monotone_eliminated),
+              tactic_context);
         });
     const Tactic lra_model_only_solver =
         make_solver_tactic("solve-qf-lra-model-only", frontend.terms(), [&](const Goal& goal) {
           const std::vector<core::TermId> model_terms = frontend.declared_real_constant_terms();
-          return solve_qf_lra(frontend.terms(), goal.assertions(), model_terms,
-                              goal.reconstruction().model_assignments, solve_options, statistics,
-                              &goal.reconstruction().monotone_eliminated);
+          return solver_answer_from_outcome(
+              solve_qf_lra(frontend.terms(), goal.assertions(), model_terms,
+                           goal.reconstruction().model_assignments, solve_options, statistics,
+                           &goal.reconstruction().monotone_eliminated),
+              tactic_context);
         });
     const Tactic mixed_solver =
         make_solver_tactic("solve-qf-uflra", frontend.terms(), [&](const Goal& goal) {
           const std::vector<core::TermId> model_terms =
               solve_options.produce_model ? frontend.declared_real_constant_terms()
                                           : std::vector<core::TermId>{};
-          return solve_qf_uf_lra(frontend.terms(), goal.assertions(), model_terms,
-                                 goal.reconstruction().model_assignments, solve_options,
-                                 statistics);
+          return solver_answer_from_outcome(
+              solve_qf_uf_lra(frontend.terms(), goal.assertions(), model_terms,
+                              goal.reconstruction().model_assignments, solve_options, statistics),
+              tactic_context);
         });
     const Tactic lia_solver =
         make_solver_tactic("solve-qf-lia", frontend.terms(), [&](const Goal& goal) {
           const std::vector<core::TermId> model_terms = solve_options.produce_model
                                                             ? frontend.declared_int_constant_terms()
                                                             : std::vector<core::TermId>{};
-          return solve_qf_lia(frontend.terms(), goal.assertions(), model_terms, solve_options,
-                              statistics, goal.reconstruction().lia_substitutions);
+          return solver_answer_from_outcome(
+              solve_qf_lia(frontend.terms(), goal.assertions(), model_terms, solve_options,
+                           statistics, goal.reconstruction().lia_substitutions),
+              tactic_context);
         });
     const Tactic solver_dispatch =
         make_solver_dispatch(SolverStrategyOptions{.logic = frontend.logic(),

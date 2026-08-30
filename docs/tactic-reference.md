@@ -19,7 +19,8 @@ named tactic is invoked.
 
 ## Generic tacticals
 
-These builders are declared in `src/smt/tactic.hpp`.
+Executable builders are declared in `src/smt/tactic.hpp`; the immutable
+inspection/composition layer is declared in `src/smt/strategy.hpp`.
 
 | Builder or type | Operation | Termination and branching behavior |
 |---|---|---|
@@ -31,7 +32,13 @@ These builders are declared in `src/smt/tactic.hpp`.
 | `first_terminal(name, scheduler, tactics)` | Portfolio fallback | Gives every arm the same original input and returns the first terminal result, or the last inconclusive result |
 | `SequentialTacticScheduler` | Execution policy for `first_terminal` | Runs arms sequentially in declaration order; there is no parallel scheduler yet |
 
-`assertion_count_probe()` is the only exported generic numeric probe. The
+`Strategy` provides `Leaf`, `Sequence`, `Conditional`, `Repeat`, `TryInOrder`,
+`TryFor`, and `Skip` nodes, plus canonical printing and a stable `fnv1a64:`
+fingerprint. `compile(strategy)` lowers the immutable AST to the executable
+tacticals above. Strategy construction is C++-only.
+
+`assertion_count()` is the exported named numeric probe and `at_most(...)`
+constructs a named Boolean probe. The
 solver dispatcher additionally computes a `FormulaFeatureSummary`, and the
 preprocessing repeat uses reachable-term counts to decide whether adaptive
 passes are worthwhile. Those two analyses are currently embedded in their
@@ -93,10 +100,13 @@ leaves. The concrete leaf closures and their per-session dependencies are still
 created in `solver_session.cpp`; there are not yet independent public factories
 such as `make_qf_lra_tactic()`.
 
-Every solver leaf returns its answer through the formula-valued contract:
+Every solver leaf returns a typed internal `SolverAnswer` through the
+formula-valued contract:
 an empty goal for `sat`, a goal containing `false` for `unsat`, and an
 inconclusive goal with a typed reason for `unknown`, cancellation, resource
-limits, or unsupported input.
+limits, or unsupported input. Message text is presentation-only. For an
+`AnyOf`, leaves stop at the first satisfiable alternative, collapse all-unsat to
+one false goal, and otherwise preserve inconclusive alternatives.
 
 ## Transformations not yet represented as tactics
 
@@ -130,8 +140,9 @@ count would expose an unsafe and unhelpful portfolio action.
 - Only sequential first-terminal scheduling exists.
 - Strategy probes are partly embedded in `solver_session.cpp` and
   `solver_strategy.cpp` rather than collected behind a reusable probe API.
-- There is no tactic-expression language, tactic registry, stable serialized
-  pipeline identifier, or per-arm isolated statistics record.
+- There is no tactic-expression language, tactic registry, parser for the
+  canonical representation, or per-arm isolated statistics record. Canonical
+  strategy text and fingerprints are inspection identities only.
 - All alternatives in one `AnyOf` share a `TermManager`; session-level arms that
   reparse input require isolated contexts and cannot exchange `TermId` values.
 

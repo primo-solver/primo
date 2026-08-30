@@ -163,10 +163,29 @@ bool AnyOf::operator==(const AnyOf& other) const {
 }
 
 TacticContext::TacticContext(core::TermManager& terms, util::Statistics& statistics,
-                             std::function<bool()> cancelled)
-    : terms_(terms), statistics_(statistics), cancelled_(std::move(cancelled)) {}
+                             std::function<bool()> cancelled, bool produce_model)
+    : terms_(terms),
+      statistics_(statistics),
+      cancelled_(std::move(cancelled)),
+      produce_model_(produce_model) {}
 
 bool TacticContext::cancelled() const { return cancelled_ && cancelled_(); }
+
+bool TacticContext::deadline_reached() const {
+  return deadline_.has_value() && Clock::now() >= *deadline_;
+}
+
+bool TacticContext::interrupted() const { return cancelled() || deadline_reached(); }
+
+TacticContext::DeadlineScope::DeadlineScope(TacticContext& context, Clock::duration budget)
+    : context_(context), previous_(context.deadline_) {
+  const Clock::time_point candidate = Clock::now() + budget;
+  if (!context_.deadline_.has_value() || candidate < *context_.deadline_) {
+    context_.deadline_ = candidate;
+  }
+}
+
+TacticContext::DeadlineScope::~DeadlineScope() { context_.deadline_ = previous_; }
 
 GoalTruth truth(const Goal& goal, const TacticContext& context) {
   if (goal.assertions().empty()) {
@@ -223,13 +242,18 @@ Tactic::Tactic(std::string name, Function function)
 }
 
 AnyOf Tactic::operator()(TacticContext& context, const AnyOf& input) const {
-  if (context.cancelled()) {
-    std::vector<Goal> cancelled;
-    cancelled.reserve(input.size());
+  const bool cancelled = context.cancelled();
+  if (cancelled || context.deadline_reached()) {
+    const InconclusiveReason reason =
+        cancelled ? InconclusiveReason::Cancelled : InconclusiveReason::ResourceLimit;
+    const char* diagnostic =
+        reason == InconclusiveReason::Cancelled ? "cancelled" : "deadline reached";
+    std::vector<Goal> interrupted;
+    interrupted.reserve(input.size());
     for (const Goal& goal : input.alternatives()) {
-      cancelled.push_back(goal.with_diagnostic(InconclusiveReason::Cancelled, "cancelled"));
+      interrupted.push_back(goal.with_diagnostic(reason, diagnostic));
     }
-    return AnyOf(std::move(cancelled));
+    return AnyOf(std::move(interrupted));
   }
 
   const TacticClock::time_point start = TacticClock::now();
@@ -325,6 +349,11 @@ AnyOf SequentialTacticScheduler::first_terminal(TacticContext& context, const An
     if (truth(last, context) != GoalTruth::Inconclusive) {
       return last;
     }
+    for (const Goal& goal : last.alternatives()) {
+      if (goal.reason() == InconclusiveReason::Cancelled) {
+        return last;
+      }
+    }
   }
   return last;
 }
@@ -338,12 +367,6 @@ Tactic first_terminal(std::string name, std::shared_ptr<const TacticScheduler> s
                                      TacticContext& context, const AnyOf& input) {
     return scheduler->first_terminal(context, input, tactics);
   });
-}
-
-NumericProbe assertion_count_probe() {
-  return [](const TacticContext&, const Goal& goal) {
-    return static_cast<double>(goal.assertions().size());
-  };
 }
 
 }  // namespace primo::smt
