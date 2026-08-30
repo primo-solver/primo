@@ -25,6 +25,84 @@ Rules for entries here:
 - Reference PDFs stay untracked (`.gitignore` excludes `*.pdf`); only these
   summaries are committed.
 
+(lu-smt-select)=
+## Lu et al., "Learning SMT Algorithm Selection with High-Level Natural-Language Descriptions" (2026)
+
+> Zhengyang Lu, Paul Sarnighausen-Cahn, Jiahao Chen, Arie Gurfinkel,
+> Florin Manea, and Vijay Ganesh. FoIKS 2026, LNCS 16475, pp. 353--358.
+> DOI `10.1007/978-3-032-21540-6_23`. Local copy
+> `docs/papers/Learning_SMT_Algorithm_Selection_with_High-Level_Natural-Language_Descriptions.pdf`.
+> **Read 2026-08-30 in full.**
+
+The paper's portfolio members are complete SMT-COMP 2024 solver participants,
+separately for each logic. SMT-Select chooses exactly one member and runs it; it
+does not construct tactic pipelines, schedule several arms, or change strategy
+online. Its input representation combines logic-specific syntactic symbol
+counts with a 768-dimensional embedding of the benchmark's high-level
+natural-language description. The embedding comes from the fixed pretrained
+`all-mpnet-base-v2` sentence transformer, is truncated at 384 subword tokens,
+and is not fine-tuned. The descriptions are intended to carry origin, intended
+semantics, key constraints, and application context, while syntactic counts
+retain instance-specific information omitted by the coarse prose.
+
+Selection uses cost-sensitive pairwise classification: one binary SVM is
+trained for each solver pair, examples with larger solver-performance
+differences receive greater weight, and pairwise votes select the solver at
+inference time. This simpler PWC/SVM pipeline outperformed the reported
+MachSMT regression/AdaBoost pipeline with syntactic features alone in every
+logic reported. The evaluation uses random four-fold cross-validation over
+SMT-COMP 2024 non-incremental data and reports the fraction of the PAR-2 gap
+between the single best solver (SBS) and virtual best solver (VBS) that is
+closed.
+
+The authors screened for an action-selection problem worth learning: at least
+500 benchmarks in the logic, an SBS--VBS performance gap of at least 1% and 25
+instances, and natural-language description coverage of at least 75%. Adding
+description embeddings to syntactic counts improved the gap-closed score in
+seven of nine logics: BV 24.4% to 44.6%, QF_IDL 59.6% to 68.4%, QF_LIA 87.9%
+to 90.5%, QF_NRA 35.1% to 46.7%, QF_SLIA 91.1% to 93.9%, UFLIA 10.0% to
+18.2%, and UFNIA 26.4% to 32.7%. Description-only features exceeded
+syntactic-only features in BV and QF_NRA. In ABV and ALIA the combination
+regressed from 79.2% to 71.2% and from 60.3% to 50.0%; in both, more than 95%
+of instances came from one family and shared one identical description. The
+paper therefore supports descriptions as a complementary signal only when
+they actually vary at the selection granularity.
+
+### What transfers to Primo's tactic work
+
+- Establish a meaningful oracle gap before expanding the portfolio: compare
+  the best fixed tactic pipeline with a per-instance virtual best pipeline and
+  retain arms that contribute complementary wins.
+- Represent each selectable arm by a stable pipeline identity, not by an
+  incidental implementation phase. Collect exact per-instance cost and result
+  data for every retained arm.
+- Keep cheap formula probes and high-level provenance/family information as
+  separate feature groups and ablate them alone and together. Natural-language
+  metadata cannot replace instance-level structural probes.
+- Make training cost-sensitive so a near-tie does not count like a choice that
+  changes a solve into a timeout. PAR-2 or another declared timeout penalty
+  belongs in both arm evaluation and the selector objective.
+- Begin with a curated finite set of complete tactic pipelines. Pairwise
+  classification needs one model per pair, so treating every arbitrary tactic
+  permutation as an arm would cause a quadratic classifier count on top of a
+  combinatorial action space.
+
+### Limits and evaluation risk
+
+The six-page paper does not report the number or exact identities of portfolio
+members per logic, SVM hyperparameters, feature-normalization/fusion details,
+feature-extraction overhead, statistical significance tests, or an online or
+sequential schedule. Its evidence is for selecting complete solvers, not for
+the claim that any particular preprocessing split is a useful tactic boundary.
+
+The folds are random benchmark folds, not benchmark-family-disjoint folds.
+Because descriptions often identify origin and application family, a reasonable
+inference is that some of their benefit may be recognition of families seen in
+training. That is useful for future instances from known families but is not
+evidence of transfer to unseen families. A Primo selector should report both
+ordinary held-out-instance validation and family-grouped validation; pipeline
+design must not be justified only by the former.
+
 (andersen-presolving)=
 ## Andersen & Andersen, "Presolving in Linear Programming" (1995)
 
