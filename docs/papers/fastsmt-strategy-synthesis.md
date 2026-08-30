@@ -138,6 +138,10 @@ strategy.
 This paper motivates the following design requirements; it does not implement
 them for Primo.
 
+Later and earlier generated configurations are compared, with a stricter focus
+on which tactics and parameter values survived selection, in
+[](tactic-configuration-evidence.md).
+
 - Define a small per-logic registry of independently configurable,
   formula-valued tactic actions. Make the immutable parameter record part of
   the action identity.

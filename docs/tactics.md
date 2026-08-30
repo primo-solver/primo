@@ -24,7 +24,9 @@ equisatisfiable tactics and the corresponding model-conversion obligation.
 FastSMT's learned tactic sequences, probe-based branching, and experimental
 action sets are surveyed separately in [](papers/fastsmt-strategy-synthesis.md);
 that paper motivates later portfolio machinery but is not the semantic basis of
-the current API.
+the current API. Evidence from generated configurations in earlier and later
+strategy-synthesis work is compared in
+[](papers/tactic-configuration-evidence.md).
 
 This is an original Primo implementation of those interfaces. No source or API
 definition was copied from Z3 or another solver.
