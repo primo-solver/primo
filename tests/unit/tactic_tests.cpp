@@ -505,6 +505,7 @@ void preprocessing_fixed_point_and_terminal_change_statistics_are_exact() {
   check(stable.result == primo::smt::CheckSatResult::Sat);
   check(stable.statistics.get(primo::util::StatKey::PreprocessingPasses) == 1);
   check(stable.statistics.get(primo::util::StatKey::PreprocessingChangedPasses) == 0);
+  check(stable.statistics.get(":tactic.preprocessing-pass.invocations") == 1);
   check(stable.statistics.get(":tactic.preprocessing-round.invocations") == 1);
   check(stable.statistics.get(":tactic.forced-atom-propagation.invocations") == 1);
 
@@ -526,6 +527,26 @@ void preprocessing_fixed_point_and_terminal_change_statistics_are_exact() {
   check(contradiction.statistics.get(primo::util::StatKey::PreprocessingPasses) == 1);
   check(contradiction.statistics.get(primo::util::StatKey::PreprocessingChangedPasses) == 1);
   check(contradiction.statistics.get(primo::util::StatKey::PreprocessingAdaptivePasses) == 0);
+  check(contradiction.statistics.get(":tactic.preprocessing-pass.invocations") == 1);
+
+  const primo::smt::CheckSatOutcome early_contradiction = primo::smt::check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (declare-fun g (Bool Bool) Bool)
+    (declare-fun x () Real)
+    (assert (< 0 x))
+    (assert (=> (g q p) (not (g q p))))
+    (assert (= (<= (- x) (- x)) (or (g q p) (g q p))))
+    (check-sat)
+  )",
+                                                                                       options);
+  check(early_contradiction.result == primo::smt::CheckSatResult::Unsat);
+  check(early_contradiction.statistics.get(primo::util::StatKey::GuardedRealEqualityDistributed) ==
+        0);
+  check(early_contradiction.statistics.get(":no.purification.definitions") == 0);
+  check(early_contradiction.statistics.get(":no.purification.skipped-no-sites") == 1);
+  check(early_contradiction.statistics.get(":preprocessing.boolean-flatten-post.rewrites") == 0);
 }
 
 void solver_adapter_does_not_hide_serious_failures() {

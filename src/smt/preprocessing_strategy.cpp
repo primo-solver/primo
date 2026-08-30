@@ -41,6 +41,27 @@ bool should_use_auto_basic_finite_domain(std::size_t initial_reachable_terms,
 
 std::string bool_parameter(bool value) { return value ? "true" : "false"; }
 
+void initialize_skippable_legacy_statistics(util::Statistics& statistics) {
+  // The legacy pipeline ran these stages even after an earlier stage produced false. Strategy
+  // sequences stop at terminal goals, so establish the same observable zero/default values before
+  // execution; stages that run overwrite them with their actual results.
+  statistics.set(util::StatKey::GuardedRealEqualityDistributed, 0);
+  statistics.set(":no.purification.definitions", 0);
+  statistics.set(":no.purification.arithmetic-uf-definitions", 0);
+  statistics.set(":no.purification.euf-real-term-definitions", 0);
+  statistics.set(":no.purification.reused-applications", 0);
+  statistics.set(":no.purification.reused-real-terms", 0);
+  statistics.set(":no.purification.memoized-formula-rewrites", 0);
+  statistics.set(":no.purification.memoized-arithmetic-rewrites", 0);
+  statistics.set(":no.purification.memoized-euf-rewrites", 0);
+  statistics.set(":no.purification.skipped-no-sites", 1);
+  statistics.set(":preprocessing.boolean-flatten-post.attempts", 0);
+  statistics.set(":preprocessing.boolean-flatten-post.accepted", 0);
+  statistics.set(":preprocessing.boolean-flatten-post.threshold-stops", 0);
+  statistics.set(":preprocessing.boolean-flatten-post.rewrites", 0);
+  statistics.set(":preprocessing.boolean-flatten-post.max-arity", 0);
+}
+
 std::string profile_name(PreprocessingProfileKind kind) {
   switch (kind) {
     case PreprocessingProfileKind::Off:
@@ -429,6 +450,10 @@ Strategy make_preprocessing_strategy(Frontend& frontend, const CheckSatOptions& 
         },
         [&statistics](const TacticContext&, const AnyOf&, const AnyOf&, std::size_t) {
           statistics.increment(util::StatKey::PreprocessingPasses);
+          // Keep the historical public statistic even though preprocessing-pass is no longer an
+          // executable tactic. The repeat observer is the compatibility boundary for one
+          // completed preprocessing pass.
+          statistics.increment(":tactic.preprocessing-pass.invocations");
         },
         "preprocessing-fixed-point"));
   }
@@ -481,6 +506,7 @@ Strategy make_preprocessing_strategy(Frontend& frontend, const CheckSatOptions& 
 PreparedPreprocessingStrategy prepare_and_execute_preprocessing_strategy(
     Frontend& frontend, std::vector<core::TermId> assertions, CheckSatOptions& options,
     TacticContext& context) {
+  initialize_skippable_legacy_statistics(context.statistics());
   const bool is_qf_lia = frontend.logic() == "QF_LIA";
   if (is_qf_lia) {
     // docs/open-leads.md lead 12a audits only syntactic solved-constant
