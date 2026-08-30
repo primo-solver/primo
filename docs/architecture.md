@@ -49,11 +49,14 @@ confined to `primo_smtlib`, CaDiCaL configuration to `primo_sat`, and GMP to
 - Formula analysis/metrics, frontend translation, Boolean clausification,
   preprocessing strategy leaves, Boolean solving, common solver statistics,
   solver-family dispatch, result adaptation, runtime termination, and
-  unsupported-input exceptions have independent SMT modules. Public
+  unsupported-input exceptions have independent SMT modules. The complete
+  single-goal QF_UF, QF_LRA, QF_LIA, and QF_UFLRA implementations and their
+  shared theory/model support live in `solver_engines.cpp`; the small
+  formula-valued adapters live in `solver_leaves.cpp`. Public
   `check_sat.cpp` is a small boundary wrapper; `session_portfolio.cpp` owns the
-  reparsing QF_UF portfolio and its sequential executor policy;
-  `solver_session.cpp` owns the remaining per-session preprocessing and
-  theory-family orchestration.
+  reparsing QF_UF portfolio and its sequential executor policy; and
+  `solver_session.cpp` owns parsing/frontend lifetime, preprocessing-strategy
+  execution, final solver-strategy compilation, timing, and outcome conversion.
 
 ## Term Representation
 

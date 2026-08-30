@@ -82,8 +82,10 @@ These fine-grained phase factories remain private. They are reachable through
 the meaningful public composites above, whose typed option records are the
 supported composition API. Their separate runtime names provide observability,
 not permission to split operations that share an analysis or reconstruction
-contract. The legacy completed-pass statistic is emitted by the repeat
-observer; `preprocessing-pass` is no longer an executable tactic.
+contract. The legacy completed-pass statistic is emitted by the repeat observer;
+`preprocessing-pass` is no longer an executable tactic. Both
+`:preprocessing.passes` and the compatibility counter
+`:tactic.preprocessing-pass.invocations` count completed repeat iterations.
 
 Gaussian elimination is **not** a separate tactic. It is an optional candidate
 source inside `solved-constant-substitution`; syntactic candidates, Gaussian
@@ -108,7 +110,8 @@ therefore also prevents that Gaussian candidate path from running.
 `make_session_solver_strategy` in `solver_leaves` owns all six concrete leaf
 closures, their model-term selection, conversion-chain forwarding, and the
 typed `SolverAnswer` boundary. `solver_engines` exposes the complete
-single-goal QF_UF, QF_LRA, QF_LIA, and QF_UFLRA engine entry points. The
+single-goal QF_UF, QF_LRA, QF_LIA, and QF_UFLRA engine entry points and
+contains their implementations and shared theory/model support. The
 session supplies only its frontend, immutable solve options, statistics, and
 execution context, then compiles the returned `solver-dispatch` strategy leaf.
 The executable leaf borrows the frontend, statistics, and context through that
@@ -150,7 +153,7 @@ count would expose an unsafe and unhelpful portfolio action.
   evaluates the prepared full strategy as a prefix and suffix rather than with
   one call to `compile`.
 - Only sequential formula-tactic and session-portfolio executors exist.
-- Strategy probes are partly embedded in `solver_session.cpp` and
+- Strategy probes are partly embedded in `preprocessing_strategy.cpp` and
   `solver_strategy.cpp` rather than collected behind a reusable probe API.
 - There is no tactic-expression language, tactic registry, parser for the
   canonical representation, or per-arm isolated statistics record. Canonical

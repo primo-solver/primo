@@ -194,11 +194,13 @@ implementations are unchanged. Existing command-line options construct this
 built-in strategy; there is no user-facing tactic expression syntax and
 option defaults are unchanged.
 
-The `solver_engines` interface exposes the complete single-goal QF_UF, QF_LRA,
-QF_LIA, and combined QF_UFLRA engines. `solver_leaves` owns their per-session
+The `solver_engines` module contains and exposes the complete single-goal QF_UF,
+QF_LRA, and combined QF_UFLRA engines plus the QF_LIA wrapper over its arithmetic
+engine. `solver_leaves` owns their per-session
 formula-valued adapters, model-term selection, and construction of the typed
 `solver-dispatch` strategy. The session supplies frontend-owned resources and
-compiles that returned strategy; it no longer assembles the individual leaves.
+compiles that returned strategy; it no longer contains engine bodies or
+assembles the individual leaves.
 A solving leaf represents `sat` by an empty
 goal, `unsat` by a goal containing `false`, and `unknown` or unsupported input
 by the unchanged inconclusive goal plus a typed reason and diagnostic. The
