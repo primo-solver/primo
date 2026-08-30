@@ -277,6 +277,17 @@ The editable TikZ source is `docs/figures/lra-tableau-occurrence-index.tex`.
   `IpasirUpBackend::phase()` only when the preferred literal changed since
   the previous refresh. This is a search hint only; it does not add clauses,
   propagations, or theory decisions.
+  *Attribution:* designed independently here (2026-08-04). The published
+  description is SPASS-SATT's **decision recommendation** -- Bromberger, Fleury,
+  Schwarz and Weidenbach, *SPASS-SATT: A CDCL(LA) Solver*, CADE 2019, §3 and
+  footnote 3; DOI
+  [10.1007/978-3-030-29436-6_7](https://doi.org/10.1007/978-3-030-29436-6_7).
+  Their rule is a disjunction, and its second disjunct is unreachable whenever
+  unate propagation is on, so **this is their technique, not half of it**, and
+  their +129 on QF_LIA is a measurement of this mechanism. The flag is off by
+  default and has only been evaluated on QF_LRA; see
+  [lead 20](lead-decision-recommendation). Full attribution chain,
+  including what *not* to cite, in [](h5-attribution).
 - **QF_LRA fragment boundary** (`Frontend::declare_fun`): QF_LRA accepts free
   constants, but rejects non-nullary `declare-fun` declarations. Uninterpreted
   functions or predicates over arithmetic terms are QF_UFLRA/NO work, not pure
@@ -295,6 +306,23 @@ The editable TikZ source is `docs/figures/lra-tableau-occurrence-index.tex`.
   (no candidate/budget/backoff machinery like EUF's propagation needs).
   Gated behind `CheckSatOptions::lra_propagation` (default on),
   `--lra-propagation`/`--no-lra-propagation` CLI flags.
+  **Also known as *unate propagation***, which is the name Dutertre and de Moura
+  use for it in §3.2.5 of the CSL-06-01 technical report ("if bound `xi >= ci`
+  has been asserted then any unassigned atom of the form `xi >= c'` with
+  `c' < ci` is immediately implied. Similarly, the negation of any atom
+  `xi <= u` with `u < ci` is implied"), and the name it goes by in SPASS-SATT
+  and cvc5. The alias is recorded here because searching the tree for "unate"
+  otherwise returns nothing and invites the false conclusion that Primo lacks
+  the technique -- which it did once, on 2026-08-29; see
+  [](h5-attribution).
+  Calibration, for anyone tempted to tune it: SPASS-SATT measures unate
+  propagation at **exactly zero** on both divisions (1607 vs. 1608 QF_LRA, 6806
+  vs. 6806 QF_LIA) and keeps it on by default anyway, on a stated assumption
+  about theory combinations rather than a measurement
+  ([](papers/bromberger-linear-arithmetic-thesis.md) §8.1). Against that,
+  cvc5's own counters on a Primo dramatic-gap file show
+  `unatePropagateCalls = 15,595` against `pivots = 129` (below). Primo has never
+  A/B'd `--no-lra-propagation`; it is cheap to.
 - **Row-based/interval bound propagation** (competitiveness-roadmap item 2,
   2026-07-25, `check_sat.cpp`): generalizes same-slack propagation to a
   *derived* rather than only directly-asserted bound. For a row `basic_var
@@ -1227,7 +1255,7 @@ for the regression tests.
 ### Where QF_LRA work stands, and what is open (2026-08-07)
 
 **The complete non-incremental QF_LRA division, 1,753 files, 300s**
-(primo re-run 2026-08-26 at `3c2fbf1`, SLURM job 129088; references not
+(primo re-run 2026-08-26 at `16d0d96`, SLURM job 130137; references not
 re-run -- z3 and cvc5 from 118382, Yices from 118904, OpenSMT from 119045,
 and their PAR2 figures below are byte-identical to the 2026-08-07 reading,
 which is the check that the two primo runs are comparable):
@@ -1235,14 +1263,14 @@ which is the check that the two primo runs are comparable):
 | solver | solved | PAR2 | wrong |
 |---|---|---|---|
 | **OpenSMT 2.9.2** | **1670** (95.3%) | **68068** | **0** |
-| **primo `3c2fbf1`** | **1655** (94.4%) | **81218** | **0** |
+| **primo `16d0d96`** | **1656** (94.5%) | **80616** | **0** |
 | Yices 2.7.0 | 1645 (93.8%) | 80585 | 0 |
 | z3 5.0.0 | 1584 (90.4%) | 128079 | 0 |
 | cvc5 1.3.4 | 1511 (86.2%) | 181248 | 0 |
 
-**The 2026-08-26 re-run changes nothing here.** primo scores 1655 against
-job 120784's 1657 -- two files, both inside the timeout band -- and holds
-second place, 15 behind OpenSMT and 10 ahead of Yices. That is the expected
+**The 2026-08-26 re-runs change nothing here.** primo scores 1656 against
+job 120784's 1657 -- one file, inside the timeout band -- and holds second
+place, 14 behind OpenSMT and 11 ahead of Yices. That is the expected
 outcome rather than a disappointment: everything merged since 120784 is
 QF_LIA machinery that QF_LRA never enters, plus a word-GCD change measured
 flat on this fragment. The run exists to confirm that, and it does. PAR2
@@ -1268,7 +1296,7 @@ range stops being dominated by the shared easy majority. **The counts in the
 legend are therefore of 656, not of 1,753** -- the table above has the full
 numbers. Regenerate with `--drop-solved-by-all-under 10`; omit that flag for
 the unfiltered version. Legend entries carry each solver's sat/unsat split
-below the total. primo is job 129088 at `3c2fbf1` (2026-08-26); the
+below the total. primo is job 130137 at `16d0d96` (2026-08-26); the
 references are jobs 119045, 118904 and 118382, not re-run.
 ```
 
@@ -1281,7 +1309,7 @@ budgets and overtakes Yices only between 60s and 300s:
 |---|---|---|---|---|---|---|
 | OpenSMT | 868 | 1103 | **1370** | **1527** | **1595** | **1670** |
 | Yices | **1003** | **1173** | 1428 | 1525 | 1575 | 1645 |
-| primo `3c2fbf1` | 795 | 1068 | 1301 | 1460 | 1537 | 1655 |
+| primo `16d0d96` | 800 | 1066 | 1303 | 1463 | 1537 | 1656 |
 | z3 | 861 | 1028 | 1227 | 1346 | 1430 | 1584 |
 | cvc5 | 711 | 945 | 1118 | 1209 | 1296 | 1511 |
 
@@ -1302,7 +1330,7 @@ and per-dispatch overhead that dominates long searches; on instances that
 finish in under a tenth of a second there is nothing to recover and the
 cross-link change's larger `RowEntry` is the visible term.
 
-**OpenSMT still leads at 300s; primo is second, 15 behind it and 10 ahead of
+**OpenSMT still leads at 300s; primo is second, 14 behind it and 11 ahead of
 Yices** (13 and 12 at the 2026-08-07 reading). Two separate lessons sit in that sentence, and they are worth keeping
 apart.
 

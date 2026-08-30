@@ -1015,6 +1015,138 @@ on the 4 files item 8 regressed. If instead the win came from the stable
 *order*, this will show up as a much smaller 9-file effect -- a clean,
 informative negative result either way.
 
+**Prior art located 2026-08-29, after this design was written.** This is
+SPASS-SATT's *decision recommendation*
+([](papers/bromberger-linear-arithmetic-thesis.md) §8.1, credited there to
+Yices), and it is measured: QF_LRA +11, QF_LIA **+129, of which 116 are
+`convert`**. Their rule has two criteria and H5 implements only the second:
+prefer a bound that **cannot cause a conflict if asserted** — described as
+always possible — and, among those, one the current assignment satisfies. The
+missing criterion covers exactly the case H5 goes quiet on, where β satisfies
+neither polarity. Registered as
+[lead 20](lead-decision-recommendation).
+
+(h5-attribution)=
+#### What to cite for `--lra-model-phase`
+
+Traced 2026-08-29, because the obvious answer is wrong and the chain is worth
+recording once rather than re-deriving.
+
+**Cite, for the technique:** Martin Bromberger, Mathias Fleury, Simon Schwarz,
+Christoph Weidenbach. *SPASS-SATT: A CDCL(LA) Solver.* CADE 2019, LNCS 11716.
+DOI
+[10.1007/978-3-030-29436-6_7](https://doi.org/10.1007/978-3-030-29436-6_7);
+open deposit <https://inria.hal.science/hal-02405524>. For the fuller treatment,
+[](papers/bromberger-linear-arithmetic-thesis.md) §8.1 — the thesis is what was
+actually read here; see the caveat at the end.
+
+**Do not cite Dutertre, *Yices 2.2*, CAV 2014 for it.** Bromberger writes "(The
+SMT solver Yices also uses decision recommendations [56].)" with [56] = that
+paper. The paper was fetched and read
+(<https://yices.csl.sri.com/papers/cav2014.pdf>, 6 pages): it describes Yices'
+architecture and **contains no mention of decision recommendations, phase
+selection, or theory-supplied polarity**. The citation identifies the *solver*,
+not a description of the technique. Passing it on as the source would be citing
+a paper for something it does not say. The correct form is the one Bromberger's
+own wording supports: attribute the origin to Yices, cite Bromberger et al. for
+the description.
+
+**This is a documented gap, not an oversight.** The SPASS-SATT v1.1 SMT-COMP
+2019 system description
+(<https://smt-comp.github.io/2019/system-descriptions/SPASS-SATT.pdf>, read in
+full) lists decision recommendations among techniques that "are contained in
+existing SMT solvers" but where "not all have been described in the respective
+literature", and names the CADE-27 paper as the remedy. So Bromberger et al. is
+the first written description, by their own account.
+
+**Position it against:** Sebastiani, *Lazy Satisfiability Modulo Theories*,
+JSAT 3(3-4):141-224, 2007, **§7.2.5 "DPLL branching heuristics for SMT"** --
+a paper this project already cites for §6.10. §7.2.5 is the survey statement
+that this was open:
+
+> "So far there seem to be no really-satisfactory proposal in the direction of
+> building theory-aware heuristics, and most tools simply use standard DPLL
+> heuristics."
+
+It then points at *look-ahead* and *privileged branching variables* -- neither
+is phase selection, so §7.2.5 is prior context, not prior art. DOI
+[10.3233/SAT190034](https://doi.org/10.3233/SAT190034) (resolves 302 to the
+publisher, whose landing page returns 403 to an automated fetch); author copy
+<http://disi.unitn.it/rseba/papers/JSAT-2007.pdf>, which is the one read.
+
+**Checked and found *not* to contain it**, recorded so nobody re-checks:
+Dutertre and de Moura's SRI technical report CSL-06-01
+(`docs/papers/qflra-sri-csl-06-01.pdf`) and Griggio's thesis
+(`docs/papers/griggio.pdf`, [](papers/griggio-mathsat-thesis.md)). Neither
+mentions phase, polarity, or a theory-driven decision heuristic anywhere.
+
+**For the SAT-side mechanism** H5 rides on, if a paper needs it: phase saving,
+Pipatsrisawat and Darwiche, *A Lightweight Component Caching Scheme for
+Satisfiability Solvers*, SAT 2007, DOI
+[10.1007/978-3-540-72788-0_28](https://doi.org/10.1007/978-3-540-72788-0_28).
+H5 *overrides* that saved phase for arithmetic atoms; it does not implement it.
+
+**How to phrase Primo's own claim.** H5 was designed here on 2026-08-04 from the
+tableau argument -- "the polarity β satisfies needs no assignment move and no
+pivot" -- and this literature was read on 2026-08-29. So it is an independent
+rediscovery of *half* of a published technique. The honest form is to say that
+and cite Bromberger et al. as the closest prior description. Claiming novelty
+for the mechanism would be wrong; claiming to implement decision recommendation
+would also be wrong, because criterion 1 is absent (see
+[lead 20](lead-decision-recommendation)).
+
+**The CADE 2019 citation is now verified, and it changes the claim.** The paper
+was supplied by the user and read on 2026-08-29
+(`docs/papers/SPASS-SATT.pdf`, untracked -- copyrighted, and `.gitignore`
+excludes `*.pdf`). §3 does describe decision recommendations, so the citation
+above stands without a caveat. It is also the better citation than the thesis
+here, because its **footnote 3 gives the rule exactly**, where the thesis gives
+only prose:
+
+> "In our own theory solver, `GetPhase(L) = ⊤` if the current theory assignment
+> satisfies `L` or if `Assert(¬L)` would return `⊥`. Otherwise,
+> `GetPhase(L) = ⊥`. (If unate propagations are enabled, then the case that
+> `Assert(¬L)` would return `⊥` is impossible because `L` would have been unate
+> propagated.)"
+
+Two corrections to what this note said before reading it.
+
+**H5 is not "half" of the technique — under their default configuration it is
+effectively all of it.** The thesis prose reads as two criteria, conflict-freedom
+and model-satisfaction, and this note previously called the first "the stronger
+half" that Primo lacks. The footnote says the opposite: the conflict-freedom
+disjunct is *unreachable* when unate propagation is enabled, which it is by
+default in SPASS-SATT. **Their +129 was therefore measured with only the
+model-satisfaction disjunct doing work — which is exactly what H5 implements.**
+
+That makes +129 QF_LIA / +116 `convert` an estimate of what **H5 itself** is
+worth, not of what H5 is missing. H5 is off by default and has only ever been
+evaluated on QF_LRA, where the same source measures the technique at +11.
+`solve_qf_lia_impl` already constructs `OnlineLraPropagator` with
+`options.lra_model_phase`, so this is measurable today with no new code. See
+[lead 20](lead-decision-recommendation).
+
+**The conflict-freedom disjunct is dead for us too** -- corrected 2026-08-29,
+having first got this backwards. `grep -rn unate src/` is empty, and this note
+briefly concluded from that that Primo lacks unate propagation and so the
+disjunct could still fire here. **That was a naming false-negative.** Primo's
+*same-variable bound propagation* (`--lra-propagation`, **default on**;
+[](arithmetic.md)) is the same rule under Dutertre and de Moura's other name for
+it: after each bound assertion it scans the remaining unassigned atoms on that
+variable and propagates the ones the new bound now entails true or false, with
+the single asserting literal as the reason -- a 2-literal clause, exactly
+Bromberger's unate propagation clause. So footnote 3's argument transfers intact
+and there is no leftover: **H5 is the whole of decision recommendation for Primo
+as well.**
+
+**One design difference worth keeping in view.** Their `GetPhase(L)` is *pulled*
+by the SAT solver at the moment it decides `L`, so it is always current. H5
+*pushes* hints via `IpasirUpBackend::phase()` at quiescence points, so a hint can
+be stale between refreshes — which is what all the dirty-scoping machinery above
+exists to bound. If an H5 evaluation underperforms the published numbers,
+staleness is the first thing to suspect, and CaDiCaL's `cb_decide` would allow
+the pull form.
+
 **Risk: low.** Phase hints cannot affect soundness; the worst case is a
 worse search order. Keep `--lra-theory-decisions` as-is (it stays a useful
 lever for its file shape) and keep this as a separate opt-in flag unless the
@@ -1251,6 +1383,15 @@ measured, since they may move these families on their own.
 - **A full implied-equality basis** (Bromberger/Weidenbach). Already
   considered and set aside during item 7 as paper-sized with no measured
   SMT speedup; nothing in this profile changes that.
+  **Still true for pure QF_LRA, 2026-08-29.** Having now read the source
+  ([](papers/bromberger-linear-arithmetic-thesis.md) Chapter 5), the "no
+  measured SMT speedup" judgement holds -- the thesis reports no QF_LRA
+  solved-count experiment for it either. What has changed is that it is no
+  longer a *pure-QF_LRA* question: it is the completeness mechanism for
+  theory combination ([](qf-lra-equality-sharing.md)) and the applicability
+  test for the Chapter 6 bounding transformations. See
+  [lead 17](lead-equality-basis); it should be judged on
+  probe counts in the mixed path, not on this profile.
 - **Anything gated on a per-family structural classifier.** Item 8's
   outcome is the argument: a heuristic that must be told which family it is
   running on is a portfolio entry, not a default.

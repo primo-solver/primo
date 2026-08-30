@@ -28415,6 +28415,133 @@
       "artifacts": "Local ignored artifacts results/tactics-review-final-ab-{1404cca,7b01deb}-{1..5}.csv and results/tactics-review-large-model-{1404cca,7b01deb}-{1..5}.csv. The generated /tmp input and generator are local-only and reproducible from the recorded shape.",
       "evidence_status": "local-complete-current",
       "outcome": "No answer change or measurable overhead regression from the review fixes; the immutable shared-payload design is additionally enforced by a deterministic address-sharing unit test."
+    },
+    {
+      "id": "2026-08-29-qflia-ite-let-census",
+      "started_at": "2026-08-29",
+      "recorded_at": "2026-08-29",
+      "kind": "profiling",
+      "scope": "Structural census of if-then-else and let usage across the QF_LIA families named by Bromberger's thesis (Chapter 8) as the ones its preprocessing gains concentrate in. Pure file counting; no solver was run.",
+      "commit": "faf6642",
+      "branch": "main",
+      "environment": {
+        "type": "local",
+        "host": "workstation",
+        "note": "grep/find only; no build, no solver invocation"
+      },
+      "commands": {
+        "count_files": "find sandbox/non-incremental/QF_LIA/<family> -name '*.smt2' | wc -l",
+        "count_ite": "grep -rlE '\\(ite ' sandbox/non-incremental/QF_LIA/<family> --include='*.smt2' | wc -l",
+        "count_let": "grep -rl '(let ' sandbox/non-incremental/QF_LIA/<family> --include='*.smt2' | wc -l",
+        "single_file_shape": "grep -o '(let' <file> | wc -l; grep -o '(ite' <file> | wc -l"
+      },
+      "results": {
+        "nec-smt": "2780 files; 2780 contain '(ite'; 2780 contain '(let'",
+        "rings": "294 files; 245 contain '(ite'; 294 contain '(let'",
+        "rings_preprocessed": "294 files; 0 contain '(ite'; 294 contain '(let'",
+        "pb2010": "81 files; 0 contain '(ite'; 0 contain '(let'",
+        "convert": "319 files; 17 contain '(ite'; 319 contain '(let'",
+        "calypto": "37 files; 37 contain '(ite'; 35 contain '(let'",
+        "sampled_instance": "sandbox/non-incremental/QF_LIA/nec-smt/large/checkpass_pwd/prp-24-38.smt2 is 201,943 bytes with 886 '(let' and 5240 '(ite' occurrences inside a single assert"
+      },
+      "interpretation": "Confirms locally the structural claim behind Bromberger's +1693 QF_LIA preprocessing ablation: nec-smt is uniformly deep nested let/ite, and rings_preprocessed is rings with the ITEs already eliminated by the fresh-variable encoding (0 vs 245 files containing '(ite'), which is the input shape the thesis's ITE-reconstruction pass exists to undo. pb2010 has neither construct, so its share of the gain comes from the separate pseudo-boolean pass, not from ITE work.",
+      "caveats": "A file-level 'contains (ite' count is an upper bound on relevance and says nothing about how many ITEs survive Primo's own lowering, nor about solve time. It sizes the candidate population only. No claim about Primo's solved counts on these families is made from this run.",
+      "evidence_status": "current",
+      "docs": "docs/papers/bromberger-linear-arithmetic-thesis.md; docs/open-leads.md lead 16; docs/preprocessing.md"
+    },
+    {
+      "id": "2026-08-29-bromberger-publication-audit",
+      "started_at": "2026-08-29",
+      "recorded_at": "2026-08-29",
+      "kind": "literature",
+      "scope": "Completeness audit of Martin Bromberger's publication record, to establish whether reading the 2019 PhD thesis leaves any linear-arithmetic work unread. Bibliographic only; no solver, no benchmark.",
+      "commit": "c4bb76a",
+      "branch": "main",
+      "environment": {
+        "type": "local",
+        "host": "workstation"
+      },
+      "commands": {
+        "record": "curl https://dblp.org/pid/160/8783.xml, parsed with ElementTree (the rendered HTML page truncates; the XML does not)",
+        "link_check": "curl -sS -o /dev/null -w '%{http_code}' -L for every URL cited",
+        "abstract": "curl https://api.semanticscholar.org/graph/v1/paper/DOI:10.1007/978-3-031-10769-6_10?fields=abstract,openAccessPdf",
+        "hal_verification": "curl https://api.archives-ouvertes.fr/search/?q=halId_s:hal-03881893 to confirm the record matches the DOI"
+      },
+      "results": {
+        "total_entries": "30, spanning 2015-2026",
+        "subsumed_by_thesis": "7: CADE 2015, IJCAR 2016, SMT@IJCAR 2016, FMSD 2017, IJCAR 2018, CADE 2019 (SPASS-SATT), JSC 2020",
+        "post_thesis_line": "first-order from 2021 on (SCL(FOL), Isabelle/HOL formalisation, two-watched literals, constrained Horn clauses, Datalog hammer, eBPF verification); none applies to a ground QF solver",
+        "checked_not_assumed": "VMCAI 2021 BS(BD) via SCL(T) -- a first-order fragment, not a difference-logic decision procedure; IJCAR 2022 BS(LRA) subsumption -- abstract obtained, full text not",
+        "smt_comp_system_description": "SPASS-SATT v1.1 (SMT-COMP 2019) read in full; adds nothing over thesis chapters 7-8 and defers to the CADE-27 paper",
+        "second_pass_finding": "re-reading thesis section 8.1 rather than only its ablation legends corrected an error in the first pass: decision recommendation is +129 on QF_LIA (116 of them `convert`), not a null result. Registered as lead 20."
+      },
+      "interpretation": "Reading the thesis is sufficient for the arithmetic line; there is nothing further to obtain. The single adjacent post-thesis result is the BS(LRA) subsumption pipeline, whose sample-point heuristic pre-empts ~94% of expensive LRA implication checks -- structurally the same move as Primo's model-value filter, in a first-order setting.",
+      "caveats": "The IJCAR 2022 subsumption paper is marked CC-BY open access but both Springer and HAL serve a bot challenge instead of the PDF, so only its abstract was obtained and it is filed at the abstract-only tier. A guessed arXiv id for it (2205.06541) turned out to be an unrelated fracture-mechanics paper; every link recorded here was individually resolved.",
+      "evidence_status": "current",
+      "docs": "docs/papers/bromberger-linear-arithmetic-thesis.md; docs/papers/lra-related-work.md; docs/open-leads.md lead 20; docs/qf-lra-heuristics.md H5"
+    },
+    {
+      "id": "2026-08-29-lra-model-phase-attribution-trace",
+      "started_at": "2026-08-29",
+      "recorded_at": "2026-08-29",
+      "kind": "literature",
+      "scope": "Establish the correct citation for --lra-model-phase (heuristics item H5, model-based SAT phase hints), for both the documentation and any future publication. Bibliographic only.",
+      "commit": "8385b82",
+      "branch": "main",
+      "environment": {
+        "type": "local",
+        "host": "workstation"
+      },
+      "commands": {
+        "yices": "curl https://yices.csl.sri.com/papers/cav2014.pdf; pdftotext -layout; grep -i 'branch|decision|heuristic|phase|polarity'",
+        "sebastiani": "curl -k http://disi.unitn.it/rseba/papers/JSAT-2007.pdf; pdftotext -layout; read section 7.2.5",
+        "local_primaries": "pdftotext -layout docs/papers/qflra-sri-csl-06-01.pdf and docs/papers/griggio.pdf; grep -i 'phase|polarity|decision heuristic|branching heuristic'",
+        "phase_saving": "curl https://dblp.org/search/publ/api?q=Lightweight+Component+Caching+Scheme+Satisfiability+Solvers",
+        "link_checks": "curl -sSk -o /dev/null -w '%{http_code}' -L for every cited URL"
+      },
+      "results": {
+        "bromberger_citation_does_not_support_it": "Bromberger thesis section 8.1 credits decision recommendations to Yices citing [56] = Dutertre, Yices 2.2, CAV 2014. That paper was fetched and read in full (6 pages): zero occurrences of decision recommendation, phase selection, polarity, or any theory-supplied decision heuristic. The citation names the solver, not a description of the technique.",
+        "sebastiani_7_2_5": "Survey section 7.2.5 'DPLL branching heuristics for SMT' states 'there seem to be no really-satisfactory proposal in the direction of building theory-aware heuristics, and most tools simply use standard DPLL heuristics'. Its suggested directions are look-ahead and privileged branching variables -- neither is phase selection. Prior context, not prior art.",
+        "local_primaries_negative": "Dutertre & de Moura CSL-06-01 and Griggio's thesis: no match for phase, polarity, decision heuristic or branching heuristic anywhere in either.",
+        "authors_own_admission": "SPASS-SATT v1.1 SMT-COMP 2019 system description lists decision recommendations among techniques 'contained in existing SMT solvers' where 'not all have been described in the respective literature', naming the CADE-27 paper as the remedy.",
+        "conclusion": "Cite Bromberger, Fleury, Schwarz, Weidenbach, SPASS-SATT: A CDCL(LA) Solver, CADE 2019 (DOI 10.1007/978-3-030-29436-6_7), and/or thesis section 8.1, for the technique; attribute origin to Yices without citing the Yices 2.2 paper as its description; position against Sebastiani JSAT 2007 section 7.2.5; cite Pipatsrisawat & Darwiche SAT 2007 for the SAT-side phase-saving mechanism H5 overrides."
+      },
+      "caveats": "SUPERSEDED IN PART on the same day: the CADE 2019 paper was afterwards supplied by the user (docs/papers/SPASS-SATT.pdf, untracked) and read. It does describe decision recommendations in section 3, so the citation is confirmed rather than inferred, and its footnote 3 corrected the reading taken from the thesis prose -- see 2026-08-29-spass-satt-cade-paper-read. Sebastiani's JSAT DOI resolves 302 to the publisher, whose landing page returns 403 to an automated fetch; the author copy was the one read.",
+      "evidence_status": "current",
+      "docs": "docs/qf-lra-heuristics.md H5 'What to cite for --lra-model-phase'; docs/arithmetic.md; docs/papers/bromberger-linear-arithmetic-thesis.md section 8.1",
+      "superseded_by": "2026-08-29-spass-satt-cade-paper-read"
+    },
+    {
+      "id": "2026-08-29-spass-satt-cade-paper-read",
+      "started_at": "2026-08-29",
+      "recorded_at": "2026-08-29",
+      "kind": "literature",
+      "scope": "Read the CADE 2019 SPASS-SATT paper, supplied by the user after the attribution trace could not obtain it, to confirm the decision-recommendation citation and check what it adds over thesis chapters 7-8.",
+      "commit": "7bc9a4b",
+      "branch": "main",
+      "environment": {
+        "type": "local",
+        "host": "workstation"
+      },
+      "commands": {
+        "source": "docs/papers/SPASS-SATT.pdf, supplied by the user; untracked and covered by .gitignore's *.pdf (copyrighted)",
+        "verify": "pdfinfo confirms Subject 'Automated Deduction - CADE 27, doi:10.1007/978-3-030-29436-6_7', 12 pages",
+        "read": "pdftotext -layout, read in full",
+        "code_checks": "grep -rn unate src/ (empty); grep -n lra_model_phase src/smt/check_sat.cpp (solve_qf_lia_impl passes it into OnlineLraPropagator)"
+      },
+      "results": {
+        "citation_confirmed": "Section 3 describes decision recommendations. The CADE 2019 citation is verified, not inferred; the earlier caveat is removed.",
+        "footnote_3_corrects_the_thesis_reading": "GetPhase(L) = TRUE iff the current theory assignment satisfies L OR Assert(not L) would conflict; otherwise FALSE. The footnote adds that the second disjunct is impossible when unate propagation is enabled. The thesis prose reads as two criteria and had been recorded here as 'conflict-freedom plus model-satisfaction, Primo has only the second'. That was wrong: the disjuncts are alternatives, and SPASS-SATT's default has unate propagation on, so their measured +129 comes from the model-satisfaction disjunct alone -- exactly what --lra-model-phase already implements.",
+        "convert_family_is_one_target": "Paper: 'SPASS-SATT solves only two-thirds of the 319 instances if ONE of the following three techniques is missing: (i) recalculating simplex states during backtracking, (ii) decision recommendations, or (iii) the small CNF transformation. SPASS-SATT with all three techniques solves all instances in less than 2s.' The +117/+116/+101 figures therefore count roughly the same ~106 instances three times; each is necessary, none sufficient.",
+        "new_over_the_thesis": "Section 4 details shared monomial lifting (-PPIL) and CITE bounding (-PPIB, one fresh integer variable per topmost CITE, bounded by the leaf min/max and gcd-scaled), which carry `rings` where CITE simplification plus compression carry `nec-smt`. Footnote 4: all preprocessing techniques except small CNF are also in CVC4, and the implementation is fast because of a shared term representation plus caching of intermediate results.",
+        "additional_numbers": "4894 of 6947 QF_LIA instances are solved by the simplex implementation alone; unit cube test +56 and 705 instances more than 2x faster; bounding transformations +169 and 167 instances more than 2x faster; bound refinements +24; simple rounding 1 instance faster; bound propagation +10; unate propagation no consistent benefit or drawback; pb2010 +22, all solved without branch-and-bound; nec_smt 2782 of 2800 with preprocessing (the thesis figure legend says 2772).",
+        "design_note": "SPASS-SATT deliberately rejected splitting-on-demand, implementing branch-and-bound as a theory solver separate from the SAT solver to keep control of the branch-and-bound reasoning."
+      },
+      "interpretation": "Lead 20 changes from 'implement the criterion Primo lacks' to 'A/B an existing flag on QF_LIA'. --lra-model-phase is off by default and has only been evaluated on QF_LRA, the fragment where the same source measures the technique at +11; the +129 is for QF_LIA, where solve_qf_lia_impl already wires the flag through. No new code is needed for the evaluation.",
+      "caveats": "Primo has no unate propagation, so footnote 3's unreachability argument does not transfer and the conflict-freedom disjunct could fire here; it is a possible small addition, not the source of the measured win. Their GetPhase is pulled at decision time whereas H5 pushes hints at quiescence points, so H5's hints can be stale; suspect that before suspecting the technique if an evaluation underperforms.",
+      "evidence_status": "current",
+      "supersedes": "2026-08-29-lra-model-phase-attribution-trace (in part)",
+      "docs": "docs/papers/bromberger-linear-arithmetic-thesis.md; docs/qf-lra-heuristics.md H5; docs/open-leads.md lead 20 and the convert-cluster note; docs/arithmetic.md"
     }
   ]
 }

@@ -153,6 +153,15 @@ This uses `scripts/build_docs.sh`, which creates `.venv-docs` and installs
 `docs/requirements.txt` when needed. The generated HTML is written to
 `docs/_build/html`.
 
+The build always re-reads every page and **fails on any Sphinx warning**, so a
+broken cross-reference or an unknown code-fence language is an error rather
+than a line of scrollback. This matters because Sphinx only warns about the
+documents it re-reads: an incremental build reports a clean tree whenever
+nothing changed, and says nothing about a reference that an edit to some
+*other* file just broke. A full build takes about 11 seconds. Set
+`PRIMO_DOCS_STRICT=0` to downgrade the failure while iterating; do not commit
+against a build that needed it.
+
 Use notebooks only for executable experiments and benchmark reports.
 
 ## Source archive

@@ -91,7 +91,7 @@ Step 3 is then invalid: turning `p` from false to true is not free.
 The witness, where `p` occurs at a single polarity in `(or p q)` and is also an
 argument:
 
-```smt2
+```lisp
 (declare-fun tb (Bool) U)
 (assert (= (tb true) (tb false)))
 (assert (not (= (tb p) (tb true))))

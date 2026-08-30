@@ -10,7 +10,7 @@ Three tiers, and the difference matters when deciding what a claim can rest on:
 
 | tier | what it is | example |
 |---|---|---|
-| **Deep note** — `docs/papers/<paper>.md` | Section map plus the implementation checklist AGENTS.md requires before implementing from a paper | [](fast-linear-arithmetic-dpllt.md), [](griggio-mathsat-thesis.md) |
+| **Deep note** — `docs/papers/<paper>.md` | Section map plus the implementation checklist AGENTS.md requires before implementing from a paper | [](fast-linear-arithmetic-dpllt.md), [](griggio-mathsat-thesis.md), [](bromberger-linear-arithmetic-thesis.md) |
 | **This file** | A paragraph or two per paper, read start to finish or in the parts that matter, enough to know what it does and does not contain | below |
 | **[](lra-related-work.md)** | Papers scoped from **abstracts and search results only**, explicitly not read | that file's own header says so |
 

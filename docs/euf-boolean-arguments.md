@@ -108,7 +108,7 @@ what Primo does.
 
 The failure mode without it is concrete rather than theoretical. On
 
-```smt2
+```lisp
 (declare-fun tb (Bool) U)
 (assert (= (tb true) (tb false)))
 (assert (not (= (tb p) (tb q))))
@@ -303,7 +303,7 @@ because that bug needs four conditions simultaneously. Both kinds are kept.
 | QF_UFLRA, 1,284 files at 120s | 1,272 answered, identical sat/unsat split, 0 disagreements against the pre-fix run |
 | registration vs `bridge-atoms` | 0 answer disagreements on either fragment; registration 3% faster on the 881 QF_UF files both solve in >1s |
 | cvc5 1.3.4, Yices 2.7.0 | agree with z3 on every generated case |
-| OpenSMT 2.9.2 | clean on pure QF_UF; wrong on 58 of 600 *mixed* cases, reproducing [the OpenSMT bug report](../bugs/opensmt-qf-uflra-boolean-disagreement/README.md) |
+| OpenSMT 2.9.2 | clean on pure QF_UF; wrong on 58 of 600 *mixed* cases, reproducing the OpenSMT bug report in `bugs/opensmt-qf-uflra-boolean-disagreement/README.md` |
 
 Two of the five solvers compared here have had a wrong answer in this corner.
 

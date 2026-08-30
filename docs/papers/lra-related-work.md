@@ -34,6 +34,8 @@ Freely accessible (fetched and read the actual PDF):
 - King/Barrett/Tinelli, "Leveraging Linear and Mixed Integer Programming for SMT" (FMCAD 2014)
 - Nalbach et al., "FMplex" (arXiv 2310.00995)
 - Bromberger/Weidenbach, "Computing a Complete Basis for Equalities..." (SMT@IJCAR 2016, MPI repository)
+  -- superseded for reading purposes by Bromberger's thesis, **read 2026-08-29**;
+  see [](bromberger-linear-arithmetic-thesis.md)
 - Bixby, "Solving Real-World Linear Programs" (Operations Research 2002, gwern.net mirror)
 - Rueß & Shankar, "Solving Linear Arithmetic Constraints" (CSL-SRI-04-01,
   2004) -- the SRI technical-report URLs on Shankar's page are dead `ftp://`
@@ -41,6 +43,13 @@ Freely accessible (fetched and read the actual PDF):
   2026-08-01
 - "Local Search For SMT On Linear and Multilinear Real Arithmetic" (arXiv 2303.06676)
 - Fast Cube Tests for LIA / New Techniques for Linear Arithmetic (MPI-hosted, same publisher pattern as the equalities paper above — not individually re-verified)
+  -- also subsumed by the thesis; **read 2026-08-29** in that form, see
+  [](bromberger-linear-arithmetic-thesis.md)
+- Bromberger, *Decision Procedures for Linear Arithmetic* (PhD thesis, Saarland
+  University, 2019; HAL `tel-02427371`, link checked 2026-08-29). Local copy
+  `docs/papers/Bromberger_Decision_Procedures_for_Linear_Arithmetic.pdf`
+  (untracked). **Read 2026-08-29**, see
+  [](bromberger-linear-arithmetic-thesis.md)
 
 Open author copies located during the DOI audit (access checked 2026-08-13,
 not yet read for this survey):
@@ -53,6 +62,14 @@ not yet read for this survey):
 
 Paywalled, no open mirror found — need institutional access or the user to
 fetch a copy:
+- Bromberger, Leutgeb, Weidenbach, "An Efficient Subsumption Test Pipeline for
+  BS(LRA) Clauses" (IJCAR 2022, LNCS 13385, 147–168,
+  DOI [10.1007/978-3-031-10769-6_10](https://doi.org/10.1007/978-3-031-10769-6_10),
+  link checked 2026-08-29). Marked open-access CC-BY by Unpaywall, and a HAL
+  deposit exists (<https://inria.hal.science/hal-03881893>, record verified
+  through the HAL API against the same DOI), but **both Springer and HAL serve a
+  bot challenge rather than the PDF**, so only the abstract could be obtained.
+  See below for why it is listed at all.
 - Bland, "New Finite Pivoting Rules for the Simplex Method" (Math. of OR, 1977)
 - Harris, "Pivot Selection Methods of the Devex LP Code" (Math. Programming, 1973)
 - Forrest & Goldfarb, "Steepest-Edge Simplex Algorithms for Linear Programming" (Math. Programming, 1992)
@@ -531,6 +548,44 @@ constraints. Could feed Primo's equality-propagation path (cf. `--euf-prop`
 Open version:
 <https://pure.mpg.de/rest/items/item_2496284_6/component/file_2496283/content>.
 
+**Now read, in its thesis form** (Chapter 5 of
+[](bromberger-linear-arithmetic-thesis.md), 2026-08-29). The "could feed
+Primo's equality-propagation path" guess turned out to understate it: the
+method is a complete replacement for the per-pair exact fallback in
+[](../qf-lra-equality-sharing.md), and it is also the applicability test the
+Chapter 6 bounding transformations depend on. Registered as
+[lead 17](lead-equality-basis).
+
+**Martin Bromberger, Lorenz Leutgeb, Christoph Weidenbach. "An Efficient
+Subsumption Test Pipeline for BS(LRA) Clauses" (IJCAR 2022).**
+DOI: <https://doi.org/10.1007/978-3-031-10769-6_10>.
+**Abstract only** — see the access note above; the full text could not be
+retrieved, so nothing here may be relied on for implementation.
+
+Found during the 2026-08-29 audit of Bromberger's complete publication record
+(see [](bromberger-linear-arithmetic-thesis.md)), and the only post-thesis paper
+of his with a plausible connection to Primo. The setting is first-order clause
+subsumption, which Primo does not do. What makes it worth a line is the
+bottleneck the abstract names and how they attack it:
+
+> "The bottleneck in this setup is deciding implication between the LRA
+> constraints of two clauses. Our new sample point heuristic pre-empts expensive
+> implication decisions in about 94% of all cases in benchmarks."
+
+That is structurally the same move as Primo's model-value filter in
+[](../qf-lra-equality-sharing.md) — use a cheap point evaluation to refute an
+implication before paying for an exact LRA probe — reached independently in a
+different setting. Primo's filter uses *the current tableau assignment*; a
+deliberately *chosen* sample point is a different design with, at least there, a
+measured 94% pre-emption rate.
+
+**Do not treat that number as a target.** Their implications are between two
+clauses' constraint sets; Primo's probes are strict-orientation feasibility
+checks on shared pairs. Whether the ideas transfer at all is unknown and cannot
+be settled from an abstract. The concrete action, if
+[lead 17](lead-equality-basis) is ever taken up and the exact fallback turns out
+to be the cost: ask for a copy of this paper first.
+
 ## Out of scope for QF_LRA (LIA/mixed/quantified — for later, if ever)
 
 - Bromberger & Weidenbach, "Fast Cube Tests for LIA Constraint Solving"
@@ -539,7 +594,11 @@ Open version:
   "New Techniques for Linear Arithmetic: Cubes and Equalities" (FMSD 2017,
   DOI [10.1007/s10703-017-0278-7](https://doi.org/10.1007/s10703-017-0278-7)) —
   the cube-test method itself is for integer points, not QF_LRA's
-  rational/real domain.
+  rational/real domain. **Correction, 2026-08-29**: "out of scope for QF_LRA"
+  was right about the cube *test* and wrong about the *transformation* behind
+  it. The same linear cube transformation is what yields the LRA implied-equality
+  detector (thesis Lemmas 5.2.1--5.2.3), which is squarely in QF_LRA scope. See
+  [](bromberger-linear-arithmetic-thesis.md).
 - Jovanović & de Moura, "Cutting to the Chase: Solving Linear Integer
   Arithmetic" (CADE 2011,
   DOI [10.1007/978-3-642-22438-6_26](https://doi.org/10.1007/978-3-642-22438-6_26)) —

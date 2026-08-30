@@ -912,6 +912,15 @@ all.
   extended/bounded-subset generalization (Sect. 4.3) -- see
   [GCD-consistency](#gcd-consistency) for why the latter specifically was
   deferred (a likely erratum in the paper's own printed formula).
+  The cube test's own primary source has since been read
+  ([](papers/bromberger-linear-arithmetic-thesis.md), Chapters 4--5). It
+  changes where the test belongs: not interleaved with branching at all, but
+  **once, in preprocessing**, after the rational solve and simple rounding and
+  before branch-and-bound starts, guarded by a constant-time skip condition
+  (`U - L = 1` on an integer variable, `U - L = 0` on a slack). Measured size
+  on the full QF_LIA division is +56 solved, and the larger effect is that it
+  removes the need for branch-and-bound entirely on 1271 instances. See
+  [lead 12c](lead-qflia-dio-hnf-cube).
 - Interleaving Gomory cuts into `branch_and_bound`'s own per-node loop --
   cuts run once, as a pre-check, before branching starts, not per-branch.
 - The paper's nearest-integer-distance Gomory row-selection heuristic --
@@ -1177,14 +1186,19 @@ two hand-checked worked examples before that.
 ## Where QF_LIA stands (2026-08-26)
 
 The complete division, 13,306 files at 60s, one solver per core (SLURM job
-128768 at `3c2fbf1`; z3 and cvc5 reuse job 127709 on the same cluster,
+130136 at `16d0d96`; z3 and cvc5 reuse job 127709 on the same cluster,
 corpus and timeout):
 
 | solver | solved | sat | unsat | PAR2 |
 | --- | --- | --- | --- | --- |
 | z3 | 12,147 | 7,825 | 4,322 | 174,179 |
 | cvc5 | 9,239 | 6,527 | **2,712** | 507,295 |
-| **primo `3c2fbf1`** | **9,031** | 6,153 | **2,878** | 534,466 |
+| **primo `16d0d96`** | **9,046** | 6,158 | **2,888** | 533,219 |
+
+(The previous reading at `3c2fbf1` was 9,031. The difference is the cutoff, not
+a change: 24 files gained and 9 lost, every one of them finishing between 54.1s
+and 60.0s against a 60s limit, with zero answer contradictions. Nothing merged
+since touches QF_LIA.)
 
 ```{figure} _static/qf-lia-cactus.svg
 :alt: Instances solved against per-instance time budget for z3, cvc5 and primo over the 13,306-file QF_LIA division.
