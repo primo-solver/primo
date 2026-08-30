@@ -28542,6 +28542,95 @@
       "evidence_status": "current",
       "supersedes": "2026-08-29-lra-model-phase-attribution-trace (in part)",
       "docs": "docs/papers/bromberger-linear-arithmetic-thesis.md; docs/qf-lra-heuristics.md H5; docs/open-leads.md lead 20 and the convert-cluster note; docs/arithmetic.md"
+    },
+    {
+      "id": "2026-08-30-tactic-refactor-final-local-verification",
+      "started_at": "2026-08-30",
+      "recorded_at": "2026-08-30",
+      "kind": "verification",
+      "scope": "Final local verification of the complete immutable-strategy refactor, including ordered model conversion, typed preprocessing leaves and solver answers, preprocessing strategy construction, isolated sequential session portfolio, and physical extraction of solver engines from solver_session.cpp.",
+      "commit": "8dc9eb8a12b6a96a7ff5c496e88c56c24ad1dbdd",
+      "baseline_commit": "3120d54a6d7f4f570b9bdf149805efea9148a796",
+      "branch": "tactics",
+      "environment": {
+        "type": "local",
+        "host": "workstation",
+        "binary": "primo 0.1.0, git 8dc9eb8, Release and ASan Debug, CaDiCaL cadical-3.0.0-7b99c07"
+      },
+      "commands": {
+        "unit": "ctest --test-dir build-release-tactics --output-on-failure",
+        "python": "make python-test",
+        "asan": "make asan-test (ASAN_OPTIONS=detect_leaks=1:strict_init_order=1)",
+        "docs": "make docs",
+        "lint": "make lint",
+        "clang_tidy": "clang-tidy over all 92 tracked non-generated .cpp files before the final source-only extraction, followed by exact changed-translation-unit scans for src/smt/solver_engines.cpp and src/smt/solver_session.cpp",
+        "include_cleaner": "clang-tidy -checks=-*,misc-include-cleaner over the tracked non-generated translation units; final exact scan of solver_engines.cpp and solver_session.cpp",
+        "compatibility": "Run baseline 3120d54 and candidate 8dc9eb8 Release binaries over 48 tracked smoke/seed inputs; compare exit status, stdout/model text, stderr diagnostics, and every non-timing statistic"
+      },
+      "results": {
+        "unit": "21/21 CTest targets passed.",
+        "python": "69/69 Python tests passed.",
+        "asan": "21/21 CTest targets passed with leak detection and strict initialization ordering; no sanitizer diagnostic.",
+        "docs": "Jupyter Book documentation built successfully.",
+        "clang_tidy": "Whole-tree baseline passed on 92 tracked non-generated translation units. The final two changed translation units passed; each reported only one suppressed diagnostic from external code.",
+        "include_cleaner": "No actionable unused include was reported in the final changed translation units.",
+        "lint": "The command stops only on the accepted pre-existing four Ruff findings in scripts/qf_uf_boolean_fuzz.py: EXE001 at line 1, PLC0206 at line 316, and UP031 at lines 430 and 438. No refactor file introduces a lint finding.",
+        "compatibility": "48/48 inputs matched exactly for return code, stdout including models, diagnostics, and all non-timing statistics. Moving the complete engine bodies from solver_session.cpp to solver_engines.cpp introduced no observed behavior change."
+      },
+      "artifacts": "Local build trees and ignored compatibility outputs; source, tests, and documentation are committed.",
+      "evidence_status": "local-complete-current",
+      "outcome": "The final source organization passes all decomposed make-check components except the documented unchanged Ruff baseline and is byte-for-byte behavior-compatible on the tracked 48-input seed/smoke comparison."
+    },
+    {
+      "id": "2026-08-30-tactic-refactor-final-multi-logic-slurm-fuzz",
+      "started_at": "2026-08-30",
+      "recorded_at": "2026-08-30",
+      "kind": "fuzz",
+      "scope": "Fresh post-refactor SLURM merge/campaign gate for QF_UF, QF_LRA, QF_UFLRA, and QF_LIA. It combines generated answer comparison against Z3, model validation for satisfiable answers, deterministic real-seed replay, and available opfuzz/typefuzz mutation campaigns.",
+      "commit": "618720d8688f62ccad76220ca901b6936520839b",
+      "current_source_commit": "8dc9eb8a12b6a96a7ff5c496e88c56c24ad1dbdd (behavior-neutral engine relocation, covered by the exact local compatibility comparison)",
+      "branch": "tactics",
+      "environment": {
+        "type": "slurm",
+        "host": "established Primo SLURM environment",
+        "workdir": "<slurm-workdir>",
+        "binary": "primo 0.1.0, git 618720d, Release, CaDiCaL cadical-3.0.0-7b99c07",
+        "references": "Z3; Dolmen where supported for model validation, with Z3 fallback; cvc5 available in the prepared workspace"
+      },
+      "commands": {
+        "preflight": "python3 scripts/slurm_prepare_benchmark_workspace.py --check-only --no-sync ... immediately before every sbatch; every locally written batch file passed python3 scripts/slurm_validate_sbatch.py and bash -n",
+        "generated": "scripts/fuzz_external.py-compatible 1,000-case FuzzSMT runs for QF_UF, QF_LRA, and QF_LIA, plus scripts/qf_uflra_smoke_fuzz.py-compatible 1,000-case mixed and 1,000-case finite-domain QF_UFLRA runs; 5-second solver timeout",
+        "model_validation": "Validate all generated cases through the corresponding Primo model-validation workflow, using Dolmen where supported and Z3 fallback where necessary",
+        "seed_replay": "scripts/check_solver_seed_corpus.py-compatible replay of 42 tracked QF_UF/QF_LRA/QF_UFLRA seeds against Z3",
+        "mutation": "opfuzz and typefuzz over tracked real benchmark seeds, with 1,500-second task budgets for the large QF_LRA/QF_LIA divisions"
+      },
+      "inputs": {
+        "qf_uf": "1,000 FuzzSMT-style generated cases, seeds 830001 and 830002 (500 each); 200 opfuzz mutations; two 100-case typefuzz tasks",
+        "qf_lra": "1,000 generated cases; 34 valid opfuzz seeds; two time-boxed typefuzz tasks",
+        "qf_uflra": "1,000 mixed plus 1,000 finite-domain generated cases; 12 tracked mutation seeds with 200 iterations per seed (approximately 4,800 solver calls)",
+        "qf_lia": "1,000 generated cases; opfuzz and two typefuzz tasks time-boxed at 1,500 seconds",
+        "timeout_seconds": 5
+      },
+      "results": {
+        "qf_uf": "1,000/1,000 generated comparisons PASS. Model validation: 900 satisfiable models valid and 100 not-sat cases; zero invalid model, wrong answer, crash, parser/type error, timeout, unsupported, or reference disagreement. Mutation produced zero bug files.",
+        "qf_lra": "999/1,000 generated comparisons PASS and one timeout-only case. Model validation: 871 valid satisfiable models, 128 not-sat cases, and one solver timeout; 203 validations used Dolmen and 668 used the Z3 fallback. Mutation produced zero bug files; both typefuzz tasks exhausted their time budgets before covering every seed.",
+        "qf_uflra": "1,000/1,000 mixed and 1,000/1,000 finite-domain comparisons PASS. Model validation: 839 valid satisfiable models and 661 not-sat cases, with zero invalid model or incomplete result. The tracked seed mutation gate passed 12/12 and approximately 4,800 solver calls produced zero bug files.",
+        "qf_lia": "980/1,000 generated comparisons PASS and 20 timeout-only cases. Model validation: 863 valid satisfiable models, 123 not-sat cases, and 14 solver timeouts. Mutation produced zero bug files, but the time-boxed tasks did not exhaust every seed.",
+        "seed_replay": "42/42 tracked QF_UF/QF_LRA/QF_UFLRA seed cases passed against Z3.",
+        "aggregate_correctness": "Zero wrong answer, crash, invalid model, parser/type error, unsupported misclassification, or reference disagreement across the successful campaigns. Timeout-only generated cases are retained as incompleteness evidence.",
+        "rejected_infrastructure": "The first QF_UF launch referenced an absent default build-slurm-fuzz/primo binary, so its mutation tasks failed and its dependent model task was cancelled. A separate first focused benchmark launch later referenced a nonexistent exported harness path. Neither launch produced correctness or performance evidence; both were replaced by preflighted successful jobs."
+      },
+      "artifacts": {
+        "qf_uf": "<slurm-workdir>/fuzz-results/tactic-refactor-qfuf-618720d-rerun",
+        "qf_uf_models": "<slurm-workdir>/fuzz-results/tactic-refactor-qfuf-model-618720d-rerun",
+        "qf_lra": "<slurm-workdir>/fuzz-results/tactic-refactor-qflra-618720d",
+        "qf_uflra": "<slurm-workdir>/slurm-results/tactic-refactor-qfuflra-618720d",
+        "qf_uflra_mutation": "<slurm-workdir>/fuzz-results/tactic-refactor-qfuflra-mutation-618720d",
+        "qf_lia": "<slurm-workdir>/fuzz-results/tactic-refactor-qflia-618720d",
+        "seed_replay": "<slurm-workdir>/results/tactic-refactor-seed-gate.csv"
+      },
+      "evidence_status": "slurm-complete-current for behavior-changing commit 618720d; applicable to 8dc9eb8 through exact behavior-neutral relocation evidence",
+      "outcome": "The refactored solve path passes fresh four-logic generated, model, seed, and mutation gates with zero correctness failures. QF_LRA and QF_LIA retain one and twenty timeout-only generated cases respectively, and the large-division mutation campaigns are explicitly time-boxed rather than claimed as exhaustive."
     }
   ]
 }
