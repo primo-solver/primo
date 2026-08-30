@@ -59,6 +59,7 @@ parts:
           - file: papers/lra-related-work
       - file: papers/ipasir-up
       - file: papers/cvc4-architecture
+      - file: papers/fastsmt-strategy-synthesis
       - file: papers/fast-congruence-closure
       - file: papers/fast-congruence-closure-implementation
       - file: papers/smt-symmetry-breaking

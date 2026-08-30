@@ -21,6 +21,10 @@ goal conjunctively, introduces disjunctive subgoals, model conversion, tactics,
 tacticals, and formula measures. We also use Sections 8.2--8.6 of Bjørner et
 al., *Z3 Internals* for the current classification of equivalence-preserving and
 equisatisfiable tactics and the corresponding model-conversion obligation.
+FastSMT's learned tactic sequences, probe-based branching, and experimental
+action sets are surveyed separately in [](papers/fastsmt-strategy-synthesis.md);
+that paper motivates later portfolio machinery but is not the semantic basis of
+the current API.
 
 This is an original Primo implementation of those interfaces. No source or API
 definition was copied from Z3 or another solver.
