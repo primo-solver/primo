@@ -22,7 +22,6 @@ struct SolverTacticSet {
 struct SolverStrategyOptions {
   std::optional<std::string> logic;
   MixedDispatchMode mixed_dispatch = MixedDispatchMode::Narrow;
-  bool produce_model = false;
   bool has_declared_real_constants = false;
 
   std::vector<StrategyParameter> strategy_parameters() const;

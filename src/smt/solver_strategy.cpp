@@ -14,8 +14,7 @@ std::vector<StrategyParameter> SolverStrategyOptions::strategy_parameters() cons
   const std::string dispatch = mixed_dispatch == MixedDispatchMode::Narrow ? "narrow" : "wide";
   return {{"has-declared-real-constants", has_declared_real_constants ? "true" : "false"},
           {"logic", logic.value_or("")},
-          {"mixed-dispatch", dispatch},
-          {"produce-model", produce_model ? "true" : "false"}};
+          {"mixed-dispatch", dispatch}};
 }
 
 Tactic make_solver_dispatch(SolverStrategyOptions options, SolverTacticSet solvers) {
@@ -40,7 +39,7 @@ Tactic make_solver_dispatch(SolverStrategyOptions options, SolverTacticSet solve
       selected = &solvers.mixed_solver;
     } else if (features.has_arithmetic) {
       selected = &solvers.lra_solver;
-    } else if (options.produce_model && options.has_declared_real_constants &&
+    } else if (context.produce_model() && options.has_declared_real_constants &&
                !features.has_equality && !features.has_euf_predicate) {
       selected = &solvers.lra_model_only_solver;
     } else if (features.has_equality || features.has_application_term) {

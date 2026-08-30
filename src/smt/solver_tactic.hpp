@@ -20,9 +20,9 @@ using GoalSolver = std::function<SolverAnswer(const Goal&)>;
 // an inconclusive result; contract and backend failures continue to escape.
 Tactic make_solver_tactic(std::string name, core::TermManager& terms, GoalSolver solve);
 
-// Transitional boundary for solver implementations not yet extracted from
-// solver_session.cpp. It maps result enums and context state, never messages.
-SolverAnswer solver_answer_from_outcome(CheckSatOutcome outcome, const TacticContext& context);
+// Maps a typed engine result into the formula-leaf result. Diagnostic text is
+// presentation-only and never participates in classification.
+SolverAnswer solver_answer_from_outcome(CheckSatOutcome outcome);
 
 // Converts a single solver goal back to the public result record. Timing and
 // statistics remain the solve-session owner's responsibility.

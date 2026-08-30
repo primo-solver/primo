@@ -752,6 +752,20 @@ void solver_dispatch_uses_formula_tactics() {
                                                        options);
   check(lia_result.result == primo::smt::CheckSatResult::Sat);
   check(lia_result.statistics.get(":tactic.solve-qf-lia.invocations") == 1);
+
+  primo::smt::CheckSatOptions model_options = options;
+  model_options.produce_model = true;
+  const auto model_only_result = primo::smt::check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real)
+    (declare-fun p () Bool)
+    (assert p)
+    (check-sat)
+  )",
+                                                              model_options);
+  check(model_only_result.result == primo::smt::CheckSatResult::Sat);
+  check(model_only_result.statistics.get(":tactic.solve-qf-lra-model-only.invocations") == 1);
+  check(model_only_result.model.find("define-fun x") != std::string::npos);
 }
 
 void production_solver_strategy_has_stable_typed_identity() {
@@ -768,12 +782,19 @@ void production_solver_strategy_has_stable_typed_identity() {
   check(strategy.leaf_id() == "solver-dispatch");
   check(strategy.canonical() ==
         "(leaf \"solver-dispatch\" (\"has-declared-real-constants\" \"false\") "
-        "(\"logic\" \"\") (\"mixed-dispatch\" \"wide\") (\"produce-model\" \"true\"))");
+        "(\"logic\" \"\") (\"mixed-dispatch\" \"wide\"))");
   check(strategy ==
         primo::smt::make_session_solver_strategy(frontend, options, statistics, context));
   check(strategy.fingerprint() ==
         primo::smt::make_session_solver_strategy(frontend, options, statistics, context)
             .fingerprint());
+
+  primo::smt::TacticContext no_model_context(frontend.terms(), statistics, {}, false);
+  options.produce_model = false;
+  const primo::smt::Strategy no_model_strategy =
+      primo::smt::make_session_solver_strategy(frontend, options, statistics, no_model_context);
+  check(no_model_strategy == strategy);
+  check(no_model_strategy.fingerprint() == strategy.fingerprint());
 }
 
 void session_portfolio_uses_typed_reasons_and_isolated_sequential_arms() {

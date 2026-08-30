@@ -113,6 +113,9 @@ session supplies only its frontend, immutable solve options, statistics, and
 execution context, then compiles the returned `solver-dispatch` strategy leaf.
 The executable leaf borrows the frontend, statistics, and context through that
 single execution; immutable solve options are held in shared value storage.
+Model-term selection and the `solve-qf-lra-model-only` dispatch branch consult
+the context capability. Model production is intentionally absent from the
+canonical strategy parameters and fingerprint.
 
 Every solver leaf returns a typed internal `SolverAnswer` through the
 formula-valued contract:

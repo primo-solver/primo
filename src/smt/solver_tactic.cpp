@@ -50,7 +50,7 @@ Tactic make_solver_tactic(std::string name, core::TermManager& terms, GoalSolver
   });
 }
 
-SolverAnswer solver_answer_from_outcome(CheckSatOutcome outcome, const TacticContext& context) {
+SolverAnswer solver_answer_from_outcome(CheckSatOutcome outcome) {
   if (outcome.result == CheckSatResult::Sat) {
     return SolverAnswer{.status = SolverStatus::Sat,
                         .reason = InconclusiveReason::None,
@@ -67,10 +67,6 @@ SolverAnswer solver_answer_from_outcome(CheckSatOutcome outcome, const TacticCon
   if (reason == InconclusiveReason::None) {
     if (outcome.result == CheckSatResult::Unsupported) {
       reason = InconclusiveReason::Unsupported;
-    } else if (context.cancelled()) {
-      reason = InconclusiveReason::Cancelled;
-    } else if (context.deadline_reached()) {
-      reason = InconclusiveReason::ResourceLimit;
     } else {
       reason = InconclusiveReason::Unknown;
     }
