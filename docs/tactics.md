@@ -194,8 +194,12 @@ implementations are unchanged. Existing command-line options construct this
 built-in strategy; there is no user-facing tactic expression syntax and
 option defaults are unchanged.
 
-The Boolean, QF_UF, QF_LRA, QF_LIA, and combined QF_UFLRA solvers are adapted as
-formula-returning leaf tactics. A solving leaf represents `sat` by an empty
+The `solver_engines` interface exposes the complete single-goal QF_UF, QF_LRA,
+QF_LIA, and combined QF_UFLRA engines. `solver_leaves` owns their per-session
+formula-valued adapters, model-term selection, and construction of the typed
+`solver-dispatch` strategy. The session supplies frontend-owned resources and
+compiles that returned strategy; it no longer assembles the individual leaves.
+A solving leaf represents `sat` by an empty
 goal, `unsat` by a goal containing `false`, and `unknown` or unsupported input
 by the unchanged inconclusive goal plus a typed reason and diagnostic. The
 internal `SolverAnswer` carries the result and reason; diagnostic text is never

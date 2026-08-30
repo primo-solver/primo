@@ -21,6 +21,7 @@
 #include "smt/preprocessing_tactics.hpp"
 #include "smt/solver_answer.hpp"
 #include "smt/solver_error.hpp"
+#include "smt/solver_leaves.hpp"
 #include "smt/solver_tactic.hpp"
 #include "smt/strategy.hpp"
 #include "smt/tactic.hpp"
@@ -730,6 +731,28 @@ void solver_dispatch_uses_formula_tactics() {
   check(lia_result.statistics.get(":tactic.solve-qf-lia.invocations") == 1);
 }
 
+void production_solver_strategy_has_stable_typed_identity() {
+  primo::smt::Frontend frontend;
+  primo::util::Statistics statistics;
+  primo::smt::TacticContext context(frontend.terms(), statistics, {}, true);
+  primo::smt::CheckSatOptions options;
+  options.mixed_dispatch = primo::smt::MixedDispatchMode::Wide;
+  options.produce_model = true;
+
+  const primo::smt::Strategy strategy =
+      primo::smt::make_session_solver_strategy(frontend, options, statistics, context);
+  check(strategy.kind() == primo::smt::StrategyKind::Leaf);
+  check(strategy.leaf_id() == "solver-dispatch");
+  check(strategy.canonical() ==
+        "(leaf \"solver-dispatch\" (\"has-declared-real-constants\" \"false\") "
+        "(\"logic\" \"\") (\"mixed-dispatch\" \"wide\") (\"produce-model\" \"true\"))");
+  check(strategy ==
+        primo::smt::make_session_solver_strategy(frontend, options, statistics, context));
+  check(strategy.fingerprint() ==
+        primo::smt::make_session_solver_strategy(frontend, options, statistics, context)
+            .fingerprint());
+}
+
 }  // namespace
 
 int main() {
@@ -759,4 +782,5 @@ int main() {
   public_preprocessing_leaves_are_independently_constructible_and_typed();
   production_preprocessing_profile_and_strategy_are_explicit_and_stable();
   solver_dispatch_uses_formula_tactics();
+  production_solver_strategy_has_stable_typed_identity();
 }

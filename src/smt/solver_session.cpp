@@ -40,11 +40,13 @@
 #include "smt/preprocessing.hpp"
 #include "smt/preprocessing_strategy.hpp"
 #include "smt/preprocessing_tactics.hpp"
+#include "smt/solver_engines.hpp"
 #include "smt/solver_error.hpp"
+#include "smt/solver_leaves.hpp"
 #include "smt/solver_runtime.hpp"
-#include "smt/solver_strategy.hpp"
 #include "smt/solver_support.hpp"
 #include "smt/solver_tactic.hpp"
+#include "smt/strategy.hpp"
 #include "smt/tactic.hpp"
 #include "smt/theory_combination.hpp"
 #include "smtlib/commands.hpp"
@@ -8892,10 +8894,12 @@ CheckSatOutcome solve_qf_lia_impl(core::TermManager& terms,
   }
 }
 
-CheckSatOutcome solve_qf_lia(core::TermManager& terms, const std::vector<core::TermId>& assertions,
-                             const std::vector<core::TermId>& model_terms,
-                             const CheckSatOptions& options, util::Statistics& statistics,
-                             const ModelConversionChain& conversions) {
+CheckSatOutcome solve_qf_lia_engine_impl(core::TermManager& terms,
+                                         const std::vector<core::TermId>& assertions,
+                                         const std::vector<core::TermId>& model_terms,
+                                         const CheckSatOptions& options,
+                                         util::Statistics& statistics,
+                                         const ModelConversionChain& conversions) {
   const std::uint64_t promotions_before = util::Rational::promotion_count();
   const std::uint64_t big_operations_before = util::Rational::big_operation_count();
   CheckSatOutcome outcome =
@@ -9021,9 +9025,11 @@ void apply_boolean_domain_encoding(BooleanClausifier& clausifier, const CheckSat
   }
 }
 
-CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::TermId>& assertions,
-                            const CheckSatOptions& options, util::Statistics& statistics,
-                            const ModelConversionChain& conversions) {
+CheckSatOutcome solve_qf_uf_engine_impl(core::TermManager& terms,
+                                        const std::vector<core::TermId>& assertions,
+                                        const CheckSatOptions& options,
+                                        util::Statistics& statistics,
+                                        const ModelConversionChain& conversions) {
   statistics.increment(kStatSolverQfUf);
   sat::CadicalBackend backend(options.cadical_options);
   SolveTerminator terminator(options.cancelled, statistics, options.max_theory_conflicts);
@@ -9246,10 +9252,12 @@ CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::Te
 // Diagnostic only, but not optional: without them, "is the machine-word fast
 // path actually being taken on this benchmark, and would a different small-form
 // width take it more often" is a guess rather than a measurement.
-CheckSatOutcome solve_qf_lra(core::TermManager& terms, const std::vector<core::TermId>& assertions,
-                             const std::vector<core::TermId>& model_terms,
-                             const ModelConversionChain& conversions,
-                             const CheckSatOptions& options, util::Statistics& statistics) {
+CheckSatOutcome solve_qf_lra_engine_impl(core::TermManager& terms,
+                                         const std::vector<core::TermId>& assertions,
+                                         const std::vector<core::TermId>& model_terms,
+                                         const ModelConversionChain& conversions,
+                                         const CheckSatOptions& options,
+                                         util::Statistics& statistics) {
   const std::uint64_t promotions_before = util::Rational::promotion_count();
   const std::uint64_t big_operations_before = util::Rational::big_operation_count();
   CheckSatOutcome outcome =
@@ -9264,11 +9272,12 @@ CheckSatOutcome solve_qf_lra(core::TermManager& terms, const std::vector<core::T
   return outcome;
 }
 
-CheckSatOutcome solve_qf_uf_lra(core::TermManager& terms,
-                                const std::vector<core::TermId>& assertions,
-                                const std::vector<core::TermId>& model_terms,
-                                const ModelConversionChain& conversions,
-                                const CheckSatOptions& options, util::Statistics& statistics) {
+CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
+                                           const std::vector<core::TermId>& assertions,
+                                           const std::vector<core::TermId>& model_terms,
+                                           const ModelConversionChain& conversions,
+                                           const CheckSatOptions& options,
+                                           util::Statistics& statistics) {
   statistics.increment(":solver.qf-uflra");
   const bool mixed_fixed_elimination = lra_fixed_elimination_for_mixed(options);
   const bool candidate_final_scan_enabled = options.qf_uflra_candidate_final_scan;
@@ -10645,6 +10654,39 @@ CheckSatOutcome solve_qf_uf_lra(core::TermManager& terms,
 
 }  // namespace
 
+CheckSatOutcome solve_qf_uf_engine(core::TermManager& terms,
+                                   const std::vector<core::TermId>& assertions,
+                                   const CheckSatOptions& options, util::Statistics& statistics,
+                                   const ModelConversionChain& conversions) {
+  return solve_qf_uf_engine_impl(terms, assertions, options, statistics, conversions);
+}
+
+CheckSatOutcome solve_qf_lra_engine(core::TermManager& terms,
+                                    const std::vector<core::TermId>& assertions,
+                                    const std::vector<core::TermId>& model_terms,
+                                    const ModelConversionChain& conversions,
+                                    const CheckSatOptions& options, util::Statistics& statistics) {
+  return solve_qf_lra_engine_impl(terms, assertions, model_terms, conversions, options, statistics);
+}
+
+CheckSatOutcome solve_qf_lia_engine(core::TermManager& terms,
+                                    const std::vector<core::TermId>& assertions,
+                                    const std::vector<core::TermId>& model_terms,
+                                    const CheckSatOptions& options, util::Statistics& statistics,
+                                    const ModelConversionChain& conversions) {
+  return solve_qf_lia_engine_impl(terms, assertions, model_terms, options, statistics, conversions);
+}
+
+CheckSatOutcome solve_qf_uflra_engine(core::TermManager& terms,
+                                      const std::vector<core::TermId>& assertions,
+                                      const std::vector<core::TermId>& model_terms,
+                                      const ModelConversionChain& conversions,
+                                      const CheckSatOptions& options,
+                                      util::Statistics& statistics) {
+  return solve_qf_uflra_engine_impl(terms, assertions, model_terms, conversions, options,
+                                    statistics);
+}
+
 Tactic make_purify_mixed(Frontend& frontend, PurifyMixedOptions options) {
   return make_goal_tactic("purify-mixed", [&frontend, options](TacticContext& context,
                                                                const Goal& goal) {
@@ -11032,71 +11074,9 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     };
     TacticContext tactic_context(frontend.terms(), statistics, options.cancelled,
                                  options.produce_model);
-    const Tactic boolean_solver =
-        make_solver_tactic("solve-boolean", frontend.terms(), [&](const Goal& goal) {
-          return solver_answer_from_outcome(
-              solve_boolean_conjunction(
-                  frontend.terms(), goal.assertions(), solve_options, statistics,
-                  goal.reconstruction().conversions.theory_assignments(frontend.terms())),
-              tactic_context);
-        });
-    const Tactic euf_solver =
-        make_solver_tactic("solve-qf-uf", frontend.terms(), [&](const Goal& goal) {
-          return solver_answer_from_outcome(
-              solve_qf_uf(frontend.terms(), goal.assertions(), solve_options, statistics,
-                          goal.reconstruction().conversions),
-              tactic_context);
-        });
-    const Tactic lra_solver =
-        make_solver_tactic("solve-qf-lra", frontend.terms(), [&](const Goal& goal) {
-          const std::vector<core::TermId> model_terms =
-              solve_options.produce_model ? frontend.declared_real_constant_terms()
-                                          : std::vector<core::TermId>{};
-          return solver_answer_from_outcome(
-              solve_qf_lra(frontend.terms(), goal.assertions(), model_terms,
-                           goal.reconstruction().conversions, solve_options, statistics),
-              tactic_context);
-        });
-    const Tactic lra_model_only_solver =
-        make_solver_tactic("solve-qf-lra-model-only", frontend.terms(), [&](const Goal& goal) {
-          const std::vector<core::TermId> model_terms = frontend.declared_real_constant_terms();
-          return solver_answer_from_outcome(
-              solve_qf_lra(frontend.terms(), goal.assertions(), model_terms,
-                           goal.reconstruction().conversions, solve_options, statistics),
-              tactic_context);
-        });
-    const Tactic mixed_solver =
-        make_solver_tactic("solve-qf-uflra", frontend.terms(), [&](const Goal& goal) {
-          const std::vector<core::TermId> model_terms =
-              solve_options.produce_model ? frontend.declared_real_constant_terms()
-                                          : std::vector<core::TermId>{};
-          return solver_answer_from_outcome(
-              solve_qf_uf_lra(frontend.terms(), goal.assertions(), model_terms,
-                              goal.reconstruction().conversions, solve_options, statistics),
-              tactic_context);
-        });
-    const Tactic lia_solver =
-        make_solver_tactic("solve-qf-lia", frontend.terms(), [&](const Goal& goal) {
-          const std::vector<core::TermId> model_terms = solve_options.produce_model
-                                                            ? frontend.declared_int_constant_terms()
-                                                            : std::vector<core::TermId>{};
-          return solver_answer_from_outcome(
-              solve_qf_lia(frontend.terms(), goal.assertions(), model_terms, solve_options,
-                           statistics, goal.reconstruction().conversions),
-              tactic_context);
-        });
-    const Tactic solver_dispatch =
-        make_solver_dispatch(SolverStrategyOptions{.logic = frontend.logic(),
-                                                   .mixed_dispatch = options.mixed_dispatch,
-                                                   .produce_model = options.produce_model,
-                                                   .has_declared_real_constants =
-                                                       frontend.has_declared_real_constants()},
-                             SolverTacticSet{.boolean_solver = boolean_solver,
-                                             .euf_solver = euf_solver,
-                                             .lra_solver = lra_solver,
-                                             .lra_model_only_solver = lra_model_only_solver,
-                                             .mixed_solver = mixed_solver,
-                                             .lia_solver = lia_solver});
+    const Strategy solver_strategy =
+        make_session_solver_strategy(frontend, solve_options, statistics, tactic_context);
+    const Tactic solver_dispatch = compile(solver_strategy);
 
     const PhaseClock::time_point solve_start = PhaseClock::now();
     const AnyOf solved = solver_dispatch(

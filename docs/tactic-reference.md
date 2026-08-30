@@ -11,7 +11,7 @@ and invariants. The inventory distinguishes four levels of modularity:
 - **internal phase**: a named tactic with its own counters, but constructible
   only as part of a larger composite;
 - **session leaf**: adapted to the tactic contract for each `check-sat`, but its
-  concrete solver closure is still assembled in `solver_session.cpp`.
+  concrete solver closure is assembled by the solver-leaf module.
 
 The names below are also the names used in
 `:tactic.<name>.invocations` and `:time.tactic.<name>-us` statistics whenever a
@@ -97,17 +97,22 @@ therefore also prevents that Gaussian candidate path from running.
 |---|---|---|
 | `solver-dispatch` | Classifies each goal by declared logic and formula features | Public builder: `make_solver_dispatch(...)` |
 | `boolean-then-euf` | Used for formulas with no detected equality, application, or arithmetic; tries Boolean solving and then QF_UF on the same original goal | Production `first_terminal` composite internal to the dispatcher |
-| `solve-boolean` | Pure propositional conjunction | Session leaf |
-| `solve-qf-uf` | Equality, uninterpreted applications, or Boolean-UF predicates without arithmetic | Session leaf |
-| `solve-qf-lra` | Arithmetic without the mixed EUF features | Session leaf |
-| `solve-qf-lra-model-only` | No theory atoms, but declared Real constants require a model | Session leaf |
-| `solve-qf-uflra` | Both arithmetic and equality or uninterpreted-predicate features | Session leaf |
-| `solve-qf-lia` | Declared `QF_LIA` logic | Session leaf |
+| `solve-boolean` | Pure propositional conjunction | Solver-leaf module |
+| `solve-qf-uf` | Equality, uninterpreted applications, or Boolean-UF predicates without arithmetic | Solver-leaf module |
+| `solve-qf-lra` | Arithmetic without the mixed EUF features | Solver-leaf module |
+| `solve-qf-lra-model-only` | No theory atoms, but declared Real constants require a model | Solver-leaf module |
+| `solve-qf-uflra` | Both arithmetic and equality or uninterpreted-predicate features | Solver-leaf module |
+| `solve-qf-lia` | Declared `QF_LIA` logic | Solver-leaf module |
 
-`make_solver_tactic(name, terms, solve)` is the public adapter shared by these
-leaves. The concrete leaf closures and their per-session dependencies are still
-created in `solver_session.cpp`; there are not yet independent public factories
-such as `make_qf_lra_tactic()`.
+`make_solver_tactic(name, terms, solve)` is the common formula adapter.
+`make_session_solver_strategy` in `solver_leaves` owns all six concrete leaf
+closures, their model-term selection, conversion-chain forwarding, and the
+typed `SolverAnswer` boundary. `solver_engines` exposes the complete
+single-goal QF_UF, QF_LRA, QF_LIA, and QF_UFLRA engine entry points. The
+session supplies only its frontend, immutable solve options, statistics, and
+execution context, then compiles the returned `solver-dispatch` strategy leaf.
+The executable leaf borrows the frontend, statistics, and context through that
+single execution; immutable solve options are held in shared value storage.
 
 Every solver leaf returns a typed internal `SolverAnswer` through the
 formula-valued contract:

@@ -2,8 +2,10 @@
 
 #include <optional>
 #include <string>
+#include <vector>
 
 #include "smt/check_sat.hpp"
+#include "smt/strategy.hpp"
 #include "smt/tactic.hpp"
 
 namespace primo::smt {
@@ -22,6 +24,8 @@ struct SolverStrategyOptions {
   MixedDispatchMode mixed_dispatch = MixedDispatchMode::Narrow;
   bool produce_model = false;
   bool has_declared_real_constants = false;
+
+  std::vector<StrategyParameter> strategy_parameters() const;
 };
 
 // Builds the formula-feature probe and solver-family selection strategy. Each

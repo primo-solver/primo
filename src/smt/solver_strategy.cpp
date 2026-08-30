@@ -1,6 +1,7 @@
 #include "smt/solver_strategy.hpp"
 
 #include <memory>
+#include <string>
 #include <unordered_map>
 #include <utility>
 
@@ -8,6 +9,14 @@
 #include "smt/formula_analysis.hpp"
 
 namespace primo::smt {
+
+std::vector<StrategyParameter> SolverStrategyOptions::strategy_parameters() const {
+  const std::string dispatch = mixed_dispatch == MixedDispatchMode::Narrow ? "narrow" : "wide";
+  return {{"has-declared-real-constants", has_declared_real_constants ? "true" : "false"},
+          {"logic", logic.value_or("")},
+          {"mixed-dispatch", dispatch},
+          {"produce-model", produce_model ? "true" : "false"}};
+}
 
 Tactic make_solver_dispatch(SolverStrategyOptions options, SolverTacticSet solvers) {
   const auto scheduler = std::make_shared<SequentialTacticScheduler>();
