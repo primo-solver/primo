@@ -313,9 +313,12 @@ Implemented now:
   constants, with shared support from the QF_UF model builder for non-Real
   declarations that survive only as preprocessing reconstruction facts. The SMT
   layer records declared Real constants, the LRA path reads their values from
-  the final `LraTableau` assignment, and model reconstruction replays
-  preprocessing equalities through the appropriate Real-value or UF-closure
-  fragment so solved-away constants are printed for the original problem.
+  the final `LraTableau` assignment, and `smt::ModelConversionChain` replays
+  typed preprocessing conversions in reverse tactic order through the
+  appropriate Real-value or UF-closure fragment so solved-away constants are
+  printed for the original problem. The chain is goal-owned and immutable after
+  installation; solver builders borrow it only for the duration of model
+  construction.
 - Minimal QF_UFLRA model printing. For separable mixed formulas,
   `solve_qf_uf_lra` composes the QF_UF model body with the nullary-Real QF_LRA
   definitions. UF symbols may take Real arguments or return `Real` values:

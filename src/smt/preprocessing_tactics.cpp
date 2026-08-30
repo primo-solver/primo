@@ -15,25 +15,21 @@
 namespace primo::smt {
 namespace {
 
-void append_boolean_model_assignments(
-    ModelReconstruction& reconstruction,
+ModelConversionChain append_boolean_model_assignments(
+    const ModelConversionChain& conversions,
     const std::vector<std::pair<core::TermId, bool>>& assignments) {
-  reconstruction.model_assignments.reserve(reconstruction.model_assignments.size() +
-                                           assignments.size());
+  BooleanTheoryAssignmentConversion step;
+  step.assignments.reserve(assignments.size());
   for (const auto& [term, value] : assignments) {
-    reconstruction.model_assignments.push_back(TheoryModelAssignment{term, value, false});
+    step.assignments.push_back(TheoryModelAssignment{term, value, false});
   }
+  return conversions.appended(std::move(step));
 }
 
-void append_equality_model_assignments(
-    core::TermManager& terms, ModelReconstruction& reconstruction,
+ModelConversionChain append_equality_model_assignments(
+    const ModelConversionChain& conversions,
     const std::vector<std::pair<core::TermId, core::TermId>>& equalities) {
-  reconstruction.model_assignments.reserve(reconstruction.model_assignments.size() +
-                                           equalities.size());
-  for (const auto& [lhs, rhs] : equalities) {
-    reconstruction.model_assignments.push_back(
-        TheoryModelAssignment{terms.mk_eq(lhs, rhs), true, false, true});
-  }
+  return conversions.appended(DirectedEqualitySubstitutionConversion{equalities});
 }
 
 bool accept_guarded_ground_substitution(const std::vector<core::TermId>& before,
@@ -123,7 +119,8 @@ Goal run_phase(TacticContext& context, const Goal& goal, const PreprocessingRoun
         return updated;
       }
       ModelReconstruction reconstruction = goal.reconstruction();
-      append_boolean_model_assignments(reconstruction, result.assignments);
+      reconstruction.conversions =
+          append_boolean_model_assignments(reconstruction.conversions, result.assignments);
       return updated.with_reconstruction(std::move(reconstruction));
     }
 
@@ -145,7 +142,8 @@ Goal run_phase(TacticContext& context, const Goal& goal, const PreprocessingRoun
       }
       ModelReconstruction reconstruction = goal.reconstruction();
       if (options.produce_model) {
-        append_boolean_model_assignments(reconstruction, result.assignments);
+        reconstruction.conversions =
+            append_boolean_model_assignments(reconstruction.conversions, result.assignments);
       }
       reconstruction.forced_equalities.insert(reconstruction.forced_equalities.end(),
                                               result.equality_pairs.begin(),
@@ -171,7 +169,8 @@ Goal run_phase(TacticContext& context, const Goal& goal, const PreprocessingRoun
         return updated;
       }
       ModelReconstruction reconstruction = goal.reconstruction();
-      append_equality_model_assignments(terms, reconstruction, solved.substitutions);
+      reconstruction.conversions =
+          append_equality_model_assignments(reconstruction.conversions, solved.substitutions);
       return updated.with_reconstruction(std::move(reconstruction));
     }
 
@@ -195,7 +194,8 @@ Goal run_phase(TacticContext& context, const Goal& goal, const PreprocessingRoun
         return updated;
       }
       ModelReconstruction reconstruction = goal.reconstruction();
-      append_equality_model_assignments(terms, reconstruction, substitution.substitutions);
+      reconstruction.conversions =
+          append_equality_model_assignments(reconstruction.conversions, substitution.substitutions);
       return updated.with_reconstruction(std::move(reconstruction));
     }
 

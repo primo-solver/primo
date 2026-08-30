@@ -50,13 +50,24 @@ shared singleton values. Reasons and their short diagnostics remain inline.
 There is no mutable copy-on-write path.
 
 `smt::ModelReconstruction` is the goal attribute used by equisatisfiable
-preprocessing. It contains removed Boolean/equality assignments, monotone Real
-variables and their discharged constraints, solved QF_LIA definitions, and
-forced equality/disequality facts used by later finite-domain passes. The value
-is moved into separate immutable storage with `with_reconstruction`; callers
-receive only a const reference to the goal-owned value. This prevents a tactic
-arm from sharing mutable reconstruction vectors with another arm while allowing
-assertion-only rewrites to share the untouched reconstruction payload.
+preprocessing. Its `ModelConversionChain` is one execution-ordered sequence of
+typed steps: Boolean/theory assignments, directed equality substitutions,
+QF_LIA substitutions, and monotone-variable eliminations. A transformation
+persistently appends one step. Model builders replay the chain in reverse tactic
+order, and a multi-record step such as directed substitution also replays its
+own postsolve log in reverse. This is necessary for arbitrary sequential
+composition: a later elimination may remove a value needed by an earlier one.
+The current string model builders use a compatibility projection only when
+feeding unordered EUF closure facts; Real and QF_LIA postsolve paths consume the
+ordered chain directly.
+
+Forced equality/disequality facts used by later finite-domain analysis remain
+separate because they are not model conversions. The reconstruction value is
+moved into immutable goal storage with `with_reconstruction`; callers receive
+only a const reference. This prevents tactic arms from sharing mutable
+bookkeeping while allowing assertion-only rewrites to share the untouched
+payload. The chain reserves node kinds for model reconstruction only; proof and
+unsat-core converters remain future work.
 
 `smt::AnyOf` owns an immutable shared non-empty ordered vector of goals with disjunctive
 semantics. It is true when any goal is true, false when every goal is false, and

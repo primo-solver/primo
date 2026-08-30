@@ -14,9 +14,11 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include "core/ids.hpp"
@@ -596,15 +598,6 @@ EufPropagationMode resolve_euf_propagation_mode(const CheckSatOptions& options,
 void append_model_assignments(std::vector<TheoryModelAssignment>& target,
                               const std::vector<TheoryModelAssignment>& source) {
   target.insert(target.end(), source.begin(), source.end());
-}
-
-void append_equality_model_assignments(
-    core::TermManager& terms, std::vector<TheoryModelAssignment>& target,
-    const std::vector<std::pair<core::TermId, core::TermId>>& equalities) {
-  target.reserve(target.size() + equalities.size());
-  for (const auto& [lhs, rhs] : equalities) {
-    target.push_back(TheoryModelAssignment{terms.mk_eq(lhs, rhs), true, false, true});
-  }
 }
 
 struct AssignedTheoryAtom {
@@ -3891,23 +3884,13 @@ void apply_monotone_eliminations(const core::TermManager& terms, RealModelValues
   }
 }
 
-void apply_real_preprocessing_model_assignments(
+void apply_directed_equality_substitutions(
     const core::TermManager& terms, RealModelValues& values,
-    const std::vector<TheoryModelAssignment>& preprocessing_model_assignments) {
-  // These equalities are a directed postsolve log: lhs was eliminated in
-  // favor of rhs. Later eliminations can occur in rhs, so replay the log in
-  // reverse and restore only lhs.
-  for (auto assignment = preprocessing_model_assignments.rbegin();
-       assignment != preprocessing_model_assignments.rend(); ++assignment) {
-    if (assignment->filtered || !assignment->value || !assignment->directed_substitution) {
-      continue;
-    }
-    const core::Term& equality = terms.get(assignment->term);
-    if (equality.kind != core::TermKind::Equality || equality.children.size() != 2) {
-      continue;
-    }
-    const core::TermId lhs = equality.children.at(0);
-    const core::TermId rhs = equality.children.at(1);
+    const DirectedEqualitySubstitutionConversion& conversion) {
+  for (auto substitution = conversion.substitutions.rbegin();
+       substitution != conversion.substitutions.rend(); ++substitution) {
+    const core::TermId lhs = substitution->first;
+    const core::TermId rhs = substitution->second;
     if (terms.get(lhs).sort != terms.symbols().real_sort() ||
         terms.get(rhs).sort != terms.symbols().real_sort()) {
       continue;
@@ -3917,16 +3900,15 @@ void apply_real_preprocessing_model_assignments(
       assign_real_model_value(terms, values, lhs, rhs_value.value());
     }
   }
+}
 
-  // The same vector also carries ordinary preprocessing facts. Preserve their
-  // symmetric equality-closure behavior, but do not feed directed postsolve
-  // entries back into it: stale values on the eliminated side can otherwise
-  // overwrite each other forever.
+void apply_boolean_theory_assignments(const core::TermManager& terms, RealModelValues& values,
+                                      const BooleanTheoryAssignmentConversion& conversion) {
   bool changed = true;
   while (changed) {
     changed = false;
-    for (const TheoryModelAssignment& assignment : preprocessing_model_assignments) {
-      if (assignment.filtered || !assignment.value || assignment.directed_substitution) {
+    for (const TheoryModelAssignment& assignment : conversion.assignments) {
+      if (assignment.filtered || !assignment.value) {
         continue;
       }
       const core::Term& equality = terms.get(assignment.term);
@@ -3949,6 +3931,24 @@ void apply_real_preprocessing_model_assignments(
       }
     }
   }
+}
+
+void apply_real_model_conversions(const core::TermManager& terms, RealModelValues& values,
+                                  const ModelConversionChain& conversions) {
+  conversions.replay_reverse([&terms, &values](const ModelConversionStep& step) {
+    std::visit(
+        [&terms, &values](const auto& conversion) {
+          using Conversion = std::decay_t<decltype(conversion)>;
+          if constexpr (std::is_same_v<Conversion, BooleanTheoryAssignmentConversion>) {
+            apply_boolean_theory_assignments(terms, values, conversion);
+          } else if constexpr (std::is_same_v<Conversion, DirectedEqualitySubstitutionConversion>) {
+            apply_directed_equality_substitutions(terms, values, conversion);
+          } else if constexpr (std::is_same_v<Conversion, MonotoneEliminationConversion>) {
+            apply_monotone_eliminations(terms, values, conversion.eliminated);
+          }
+        },
+        step);
+  });
 }
 
 std::string smtlib_rational(const util::Rational& value) {
@@ -4007,12 +4007,12 @@ std::string build_composed_uf_lra_model(
   return model.str();
 }
 
-RealModelValues real_model_values_from_lra(
-    const core::TermManager& terms, const std::vector<core::TermId>& model_terms,
-    const std::vector<TheoryModelAssignment>& preprocessing_model_assignments,
-    const PreparedLraTheory& prepared, const theory::arithmetic::LraTableau& tableau,
-    const std::vector<AssignedTheoryAtom>& assigned_atoms,
-    const std::vector<MonotoneEliminatedVariable>* monotone_eliminated = nullptr) {
+RealModelValues real_model_values_from_lra(core::TermManager& terms,
+                                           const std::vector<core::TermId>& model_terms,
+                                           const ModelConversionChain& conversions,
+                                           const PreparedLraTheory& prepared,
+                                           const theory::arithmetic::LraTableau& tableau,
+                                           const std::vector<AssignedTheoryAtom>& assigned_atoms) {
   const util::Rational concrete_delta = choose_concrete_delta(prepared, tableau, assigned_atoms);
   RealModelValues values;
   values.reserve(prepared.variables_by_term.size() + model_terms.size());
@@ -4020,22 +4020,18 @@ RealModelValues real_model_values_from_lra(
     values.emplace(term_id,
                    concretize_delta_rational(tableau.assignment(variable), concrete_delta));
   }
-  apply_real_preprocessing_model_assignments(terms, values, preprocessing_model_assignments);
-  if (monotone_eliminated != nullptr) {
-    apply_monotone_eliminations(terms, values, *monotone_eliminated);
-  }
+  apply_real_model_conversions(terms, values, conversions);
   return values;
 }
 
-std::string build_qf_lra_model(
-    core::TermManager& terms, const std::vector<core::TermId>& model_terms,
-    const std::vector<TheoryModelAssignment>& preprocessing_model_assignments,
-    const PreparedLraTheory& prepared, const theory::arithmetic::LraTableau& tableau,
-    const std::vector<AssignedTheoryAtom>& assigned_atoms,
-    const std::vector<MonotoneEliminatedVariable>* monotone_eliminated = nullptr) {
-  const RealModelValues values =
-      real_model_values_from_lra(terms, model_terms, preprocessing_model_assignments, prepared,
-                                 tableau, assigned_atoms, monotone_eliminated);
+std::string build_qf_lra_model(core::TermManager& terms,
+                               const std::vector<core::TermId>& model_terms,
+                               const ModelConversionChain& conversions,
+                               const PreparedLraTheory& prepared,
+                               const theory::arithmetic::LraTableau& tableau,
+                               const std::vector<AssignedTheoryAtom>& assigned_atoms) {
+  const RealModelValues values = real_model_values_from_lra(terms, model_terms, conversions,
+                                                            prepared, tableau, assigned_atoms);
   // A non-arithmetic atom (a plain Boolean, unrelated to any real variable)
   // left for the main SAT search to decide -- rather than resolved during
   // preprocessing -- never touches the tableau, so build_composed_uf_lra_model
@@ -4044,11 +4040,12 @@ std::string build_qf_lra_model(
   if (assigned_atoms.size() != prepared.atoms.size()) {
     throw UnsupportedInput("internal theory atom mapping mismatch");
   }
-  std::vector<TheoryModelAssignment> boolean_model_assignments = preprocessing_model_assignments;
+  std::vector<TheoryModelAssignment> boolean_model_assignments =
+      conversions.theory_assignments(terms);
   boolean_model_assignments.reserve(boolean_model_assignments.size() + assigned_atoms.size());
   std::unordered_set<core::TermId> already_assigned;
-  already_assigned.reserve(preprocessing_model_assignments.size());
-  for (const TheoryModelAssignment& assignment : preprocessing_model_assignments) {
+  already_assigned.reserve(boolean_model_assignments.size());
+  for (const TheoryModelAssignment& assignment : boolean_model_assignments) {
     already_assigned.insert(assignment.term);
   }
   for (std::size_t i = 0; i < assigned_atoms.size(); ++i) {
@@ -4128,15 +4125,23 @@ std::optional<util::Rational> evaluate_qf_lia_model_term(
   }
 }
 
-std::string build_qf_lia_model(
-    const core::TermManager& terms, const std::vector<core::TermId>& model_terms,
-    const PreparedLraTheory& prepared, const theory::arithmetic::LraTableau& tableau,
-    const std::vector<std::pair<core::TermId, core::TermId>>& solved_constant_substitutions = {}) {
+std::string build_qf_lia_model(const core::TermManager& terms,
+                               const std::vector<core::TermId>& model_terms,
+                               const PreparedLraTheory& prepared,
+                               const theory::arithmetic::LraTableau& tableau,
+                               const ModelConversionChain& conversions) {
   std::unordered_map<core::TermId, core::TermId> substitution_definitions;
-  substitution_definitions.reserve(solved_constant_substitutions.size());
-  for (const auto& [variable, definition] : solved_constant_substitutions) {
-    substitution_definitions.emplace(variable, definition);
-  }
+  conversions.replay_reverse([&substitution_definitions](const ModelConversionStep& step) {
+    const auto* lia = std::get_if<LiaSubstitutionConversion>(&step);
+    if (lia == nullptr) {
+      return;
+    }
+    substitution_definitions.reserve(substitution_definitions.size() + lia->substitutions.size());
+    for (auto substitution = lia->substitutions.rbegin(); substitution != lia->substitutions.rend();
+         ++substitution) {
+      substitution_definitions.try_emplace(substitution->first, substitution->second);
+    }
+  });
   std::ostringstream model;
   model << "(model\n";
   for (const core::TermId term_id : model_terms) {
@@ -4173,17 +4178,14 @@ std::string build_qf_lia_model(
 // clausifying or running the SAT search, so no search-decided atom can
 // exist here. If a second call site is ever added, re-derive this
 // invariant before reusing the function as-is.
-std::string build_qf_lra_preprocessing_only_model(
-    core::TermManager& terms, const std::vector<core::TermId>& model_terms,
-    const std::vector<TheoryModelAssignment>& preprocessing_model_assignments,
-    const std::vector<MonotoneEliminatedVariable>* monotone_eliminated = nullptr) {
+std::string build_qf_lra_preprocessing_only_model(core::TermManager& terms,
+                                                  const std::vector<core::TermId>& model_terms,
+                                                  const ModelConversionChain& conversions) {
   RealModelValues values;
   values.reserve(model_terms.size());
-  apply_real_preprocessing_model_assignments(terms, values, preprocessing_model_assignments);
-  if (monotone_eliminated != nullptr) {
-    apply_monotone_eliminations(terms, values, *monotone_eliminated);
-  }
-  return build_composed_uf_lra_model(terms, model_terms, preprocessing_model_assignments, values);
+  apply_real_model_conversions(terms, values, conversions);
+  return build_composed_uf_lra_model(terms, model_terms, conversions.theory_assignments(terms),
+                                     values);
 }
 
 std::vector<AssignedTheoryAtom> assigned_atoms_from_backend(
@@ -8552,12 +8554,11 @@ class MixedTheoryPropagationDispatcher final : public sat::ExternalPropagator {
 };
 #endif  // PRIMO_HAVE_IPASIR
 
-CheckSatOutcome solve_qf_lra_impl(
-    core::TermManager& terms, const std::vector<core::TermId>& assertions,
-    const std::vector<core::TermId>& model_terms,
-    const std::vector<TheoryModelAssignment>& preprocessing_model_assignments,
-    const CheckSatOptions& options, util::Statistics& statistics,
-    const std::vector<MonotoneEliminatedVariable>* monotone_eliminated = nullptr) {
+CheckSatOutcome solve_qf_lra_impl(core::TermManager& terms,
+                                  const std::vector<core::TermId>& assertions,
+                                  const std::vector<core::TermId>& model_terms,
+                                  const ModelConversionChain& conversions,
+                                  const CheckSatOptions& options, util::Statistics& statistics) {
   statistics.increment(kStatSolverQfLra);
   sat::CadicalBackend backend(options.cadical_options);
   SolveTerminator terminator(options.cancelled, statistics);
@@ -8629,10 +8630,9 @@ CheckSatOutcome solve_qf_lra_impl(
       const std::vector<AssignedTheoryAtom> assigned_atoms =
           assigned_atoms_from_backend(backend, clausifier.theory_atoms());
 #if PRIMO_HAVE_IPASIR
-      return CheckSatOutcome{
-          CheckSatResult::Sat, "", statistics,
-          build_qf_lra_model(terms, model_terms, preprocessing_model_assignments, prepared_theory,
-                             online_propagator.tableau(), assigned_atoms, monotone_eliminated)};
+      return CheckSatOutcome{CheckSatResult::Sat, "", statistics,
+                             build_qf_lra_model(terms, model_terms, conversions, prepared_theory,
+                                                online_propagator.tableau(), assigned_atoms)};
 #else
       theory::arithmetic::LraTableau model_tableau = prepared_theory.base_tableau;
       for (std::size_t i = 0; i < assigned_atoms.size(); ++i) {
@@ -8654,8 +8654,8 @@ CheckSatOutcome solve_qf_lra_impl(
                                "LRA model reconstruction found a tableau conflict", statistics, ""};
       }
       return CheckSatOutcome{CheckSatResult::Sat, "", statistics,
-                             build_qf_lra_model(terms, model_terms, preprocessing_model_assignments,
-                                                prepared_theory, model_tableau, assigned_atoms)};
+                             build_qf_lra_model(terms, model_terms, conversions, prepared_theory,
+                                                model_tableau, assigned_atoms)};
 #endif
     }
     statistics.increment(kStatLraTheoryConflicts);
@@ -8729,11 +8729,11 @@ sat::Clause generalized_lia_lemma(const sat::Clause& coarse,
 // problem), or giving up at the node limit (Unknown; see
 // LiaBranchAndBoundResult's own comment on why plain branch-and-bound
 // cannot be complete on its own).
-CheckSatOutcome solve_qf_lia_impl(
-    core::TermManager& terms, const std::vector<core::TermId>& assertions,
-    const std::vector<core::TermId>& model_terms, const CheckSatOptions& options,
-    util::Statistics& statistics,
-    const std::vector<std::pair<core::TermId, core::TermId>>& solved_constant_substitutions = {}) {
+CheckSatOutcome solve_qf_lia_impl(core::TermManager& terms,
+                                  const std::vector<core::TermId>& assertions,
+                                  const std::vector<core::TermId>& model_terms,
+                                  const CheckSatOptions& options, util::Statistics& statistics,
+                                  const ModelConversionChain& conversions) {
   // Same tableau engine as QF_LRA; no separate QF_LIA statistic key yet --
   // every run that reaches here came from (set-logic QF_LIA), which was
   // rejected before this branch existed, so there is no historical QF_LRA
@@ -8886,11 +8886,11 @@ CheckSatOutcome solve_qf_lia_impl(
             theory::arithmetic::branch_and_bound(lia_tableau, integer_vars,
                                                  options.lia_branch_limit, &lia_explanation);
         if (bb_result.status == theory::arithmetic::LiaBranchAndBoundResult::Status::Sat) {
-          return CheckSatOutcome{
-              CheckSatResult::Sat, "", statistics,
-              options.produce_model ? build_qf_lia_model(terms, model_terms, prepared_theory,
-                                                         lia_tableau, solved_constant_substitutions)
-                                    : ""};
+          return CheckSatOutcome{CheckSatResult::Sat, "", statistics,
+                                 options.produce_model
+                                     ? build_qf_lia_model(terms, model_terms, prepared_theory,
+                                                          lia_tableau, conversions)
+                                     : ""};
         }
         if (bb_result.status == theory::arithmetic::LiaBranchAndBoundResult::Status::LimitReached) {
           return CheckSatOutcome{CheckSatResult::Unknown,
@@ -8938,15 +8938,14 @@ CheckSatOutcome solve_qf_lia_impl(
   }
 }
 
-CheckSatOutcome solve_qf_lia(
-    core::TermManager& terms, const std::vector<core::TermId>& assertions,
-    const std::vector<core::TermId>& model_terms, const CheckSatOptions& options,
-    util::Statistics& statistics,
-    const std::vector<std::pair<core::TermId, core::TermId>>& solved_constant_substitutions = {}) {
+CheckSatOutcome solve_qf_lia(core::TermManager& terms, const std::vector<core::TermId>& assertions,
+                             const std::vector<core::TermId>& model_terms,
+                             const CheckSatOptions& options, util::Statistics& statistics,
+                             const ModelConversionChain& conversions) {
   const std::uint64_t promotions_before = util::Rational::promotion_count();
   const std::uint64_t big_operations_before = util::Rational::big_operation_count();
-  CheckSatOutcome outcome = solve_qf_lia_impl(terms, assertions, model_terms, options, statistics,
-                                              solved_constant_substitutions);
+  CheckSatOutcome outcome =
+      solve_qf_lia_impl(terms, assertions, model_terms, options, statistics, conversions);
   const std::uint64_t promotions = util::Rational::promotion_count() - promotions_before;
   const std::uint64_t big_operations =
       util::Rational::big_operation_count() - big_operations_before;
@@ -9068,10 +9067,9 @@ void apply_boolean_domain_encoding(BooleanClausifier& clausifier, const CheckSat
   }
 }
 
-CheckSatOutcome solve_qf_uf(
-    core::TermManager& terms, const std::vector<core::TermId>& assertions,
-    const CheckSatOptions& options, util::Statistics& statistics,
-    const std::vector<TheoryModelAssignment>& preprocessing_model_assignments) {
+CheckSatOutcome solve_qf_uf(core::TermManager& terms, const std::vector<core::TermId>& assertions,
+                            const CheckSatOptions& options, util::Statistics& statistics,
+                            const ModelConversionChain& conversions) {
   statistics.increment(kStatSolverQfUf);
   sat::CadicalBackend backend(options.cadical_options);
   SolveTerminator terminator(options.cancelled, statistics, options.max_theory_conflicts);
@@ -9257,6 +9255,8 @@ CheckSatOutcome solve_qf_uf(
         return CheckSatOutcome{CheckSatResult::Sat, "", statistics, ""};
       }
       std::vector<TheoryModelAssignment> model_assignments;
+      const std::vector<TheoryModelAssignment> preprocessing_model_assignments =
+          conversions.theory_assignments(terms);
       model_assignments.reserve(preprocessing_model_assignments.size() + assigned_atoms.size());
       append_model_assignments(model_assignments, preprocessing_model_assignments);
       for (const AssignedTheoryAtom& atom : assigned_atoms) {
@@ -9292,17 +9292,14 @@ CheckSatOutcome solve_qf_uf(
 // Diagnostic only, but not optional: without them, "is the machine-word fast
 // path actually being taken on this benchmark, and would a different small-form
 // width take it more often" is a guess rather than a measurement.
-CheckSatOutcome solve_qf_lra(
-    core::TermManager& terms, const std::vector<core::TermId>& assertions,
-    const std::vector<core::TermId>& model_terms,
-    const std::vector<TheoryModelAssignment>& preprocessing_model_assignments,
-    const CheckSatOptions& options, util::Statistics& statistics,
-    const std::vector<MonotoneEliminatedVariable>* monotone_eliminated = nullptr) {
+CheckSatOutcome solve_qf_lra(core::TermManager& terms, const std::vector<core::TermId>& assertions,
+                             const std::vector<core::TermId>& model_terms,
+                             const ModelConversionChain& conversions,
+                             const CheckSatOptions& options, util::Statistics& statistics) {
   const std::uint64_t promotions_before = util::Rational::promotion_count();
   const std::uint64_t big_operations_before = util::Rational::big_operation_count();
   CheckSatOutcome outcome =
-      solve_qf_lra_impl(terms, assertions, model_terms, preprocessing_model_assignments, options,
-                        statistics, monotone_eliminated);
+      solve_qf_lra_impl(terms, assertions, model_terms, conversions, options, statistics);
   const std::uint64_t promotions = util::Rational::promotion_count() - promotions_before;
   const std::uint64_t big_operations =
       util::Rational::big_operation_count() - big_operations_before;
@@ -9313,11 +9310,11 @@ CheckSatOutcome solve_qf_lra(
   return outcome;
 }
 
-CheckSatOutcome solve_qf_uf_lra(
-    core::TermManager& terms, const std::vector<core::TermId>& assertions,
-    const std::vector<core::TermId>& model_terms,
-    const std::vector<TheoryModelAssignment>& preprocessing_model_assignments,
-    const CheckSatOptions& options, util::Statistics& statistics) {
+CheckSatOutcome solve_qf_uf_lra(core::TermManager& terms,
+                                const std::vector<core::TermId>& assertions,
+                                const std::vector<core::TermId>& model_terms,
+                                const ModelConversionChain& conversions,
+                                const CheckSatOptions& options, util::Statistics& statistics) {
   statistics.increment(":solver.qf-uflra");
   const bool mixed_fixed_elimination = lra_fixed_elimination_for_mixed(options);
   const bool candidate_final_scan_enabled = options.qf_uflra_candidate_final_scan;
@@ -10239,11 +10236,10 @@ CheckSatOutcome solve_qf_uf_lra(
                   "mixed QF_UFLRA model reconstruction could not assign EUF-side Real values",
                   statistics, ""};
             }
-            apply_real_preprocessing_model_assignments(terms, real_values,
-                                                       preprocessing_model_assignments);
+            apply_real_model_conversions(terms, real_values, conversions);
             std::vector<TheoryModelAssignment> uf_model_assignments;
             append_supported_uf_model_assignments(terms, uf_model_assignments,
-                                                  preprocessing_model_assignments);
+                                                  conversions.theory_assignments(terms));
             uf_model_assignments.reserve(uf_model_assignments.size() + euf_assignments.size() +
                                          no_manager.shared_model().internal_equalities.size());
             for (const AssignedTheoryAtom& atom : euf_assignments) {
@@ -10647,9 +10643,9 @@ CheckSatOutcome solve_qf_uf_lra(
                                "mixed QF_UFLRA model reconstruction found an LRA conflict",
                                statistics, ""};
       }
-      RealModelValues real_values = real_model_values_from_lra(
-          terms, model_terms, preprocessing_model_assignments, lra_model->prepared,
-          lra_model->tableau, lra_model->assignments);
+      RealModelValues real_values =
+          real_model_values_from_lra(terms, model_terms, conversions, lra_model->prepared,
+                                     lra_model->tableau, lra_model->assignments);
       if (euf_model.has_value() &&
           !complete_euf_real_model_values(euf_model.value(),
                                           euf_model_real_terms_before_interface_filter,
@@ -10662,15 +10658,14 @@ CheckSatOutcome solve_qf_uf_lra(
             "mixed QF_UFLRA model reconstruction could not assign EUF-side Real values", statistics,
             ""};
       }
-      apply_real_preprocessing_model_assignments(terms, real_values,
-                                                 preprocessing_model_assignments);
+      apply_real_model_conversions(terms, real_values, conversions);
       if (options.qf_uflra_model_reconciliation) {
         statistics.increment(":no.shared-model.reconstructed-models");
         statistics.increment(":no.shared-model.converged-rounds");
       }
       std::vector<TheoryModelAssignment> uf_model_assignments;
       append_supported_uf_model_assignments(terms, uf_model_assignments,
-                                            preprocessing_model_assignments);
+                                            conversions.theory_assignments(terms));
       uf_model_assignments.reserve(uf_model_assignments.size() + euf_assignments.size() +
                                    lra_implied_equalities_for_euf.size());
       for (const AssignedTheoryAtom& atom : euf_assignments) {
@@ -11253,9 +11248,8 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
         }
         assertions = std::move(solved_constants.assertions);
         if (options.produce_model) {
-          reconstruction.lia_substitutions.insert(reconstruction.lia_substitutions.end(),
-                                                  solved_constants.substitutions.begin(),
-                                                  solved_constants.substitutions.end());
+          reconstruction.conversions = reconstruction.conversions.appended(
+              LiaSubstitutionConversion{std::move(solved_constants.substitutions)});
         }
       }
     }
@@ -11264,8 +11258,8 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
           substitute_solved_constants(frontend.terms(), assertions, options.gaussian_elimination);
       assertions = std::move(solved_constants.assertions);
       if (options.produce_model) {
-        append_equality_model_assignments(frontend.terms(), reconstruction.model_assignments,
-                                          solved_constants.substitutions);
+        reconstruction.conversions = reconstruction.conversions.appended(
+            DirectedEqualitySubstitutionConversion{std::move(solved_constants.substitutions)});
       }
       statistics.increment(kStatSolvedConstantCandidates, solved_constants.candidates);
       statistics.increment(kStatSolvedConstantAccepted, solved_constants.accepted);
@@ -11449,7 +11443,10 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       statistics.increment(kStatMonotoneEliminationAtomsFolded, monotone.atoms_folded);
       statistics.increment(kStatMonotoneEliminationVariables, monotone.eliminated.size());
       assertions = std::move(monotone.assertions);
-      reconstruction.monotone_eliminated = std::move(monotone.eliminated);
+      if (options.produce_model && !monotone.eliminated.empty()) {
+        reconstruction.conversions = reconstruction.conversions.appended(
+            MonotoneEliminationConversion{std::move(monotone.eliminated)});
+      }
     }
     {
       MixedTheoryPurificationResult purification =
@@ -11553,11 +11550,11 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       if (options.produce_model) {
         if (frontend.has_declared_real_constants()) {
           const std::vector<core::TermId> model_terms = frontend.declared_real_constant_terms();
-          outcome.model = build_qf_lra_preprocessing_only_model(
-              frontend.terms(), model_terms, reconstruction.model_assignments,
-              &reconstruction.monotone_eliminated);
+          outcome.model = build_qf_lra_preprocessing_only_model(frontend.terms(), model_terms,
+                                                                reconstruction.conversions);
         } else {
-          outcome.model = build_qf_uf_model(frontend.terms(), reconstruction.model_assignments);
+          outcome.model = build_qf_uf_model(
+              frontend.terms(), reconstruction.conversions.theory_assignments(frontend.terms()));
         }
       }
       return outcome;
@@ -11595,15 +11592,16 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     const Tactic boolean_solver =
         make_solver_tactic("solve-boolean", frontend.terms(), [&](const Goal& goal) {
           return solver_answer_from_outcome(
-              solve_boolean_conjunction(frontend.terms(), goal.assertions(), solve_options,
-                                        statistics, goal.reconstruction().model_assignments),
+              solve_boolean_conjunction(
+                  frontend.terms(), goal.assertions(), solve_options, statistics,
+                  goal.reconstruction().conversions.theory_assignments(frontend.terms())),
               tactic_context);
         });
     const Tactic euf_solver =
         make_solver_tactic("solve-qf-uf", frontend.terms(), [&](const Goal& goal) {
           return solver_answer_from_outcome(
               solve_qf_uf(frontend.terms(), goal.assertions(), solve_options, statistics,
-                          goal.reconstruction().model_assignments),
+                          goal.reconstruction().conversions),
               tactic_context);
         });
     const Tactic lra_solver =
@@ -11613,8 +11611,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
                                           : std::vector<core::TermId>{};
           return solver_answer_from_outcome(
               solve_qf_lra(frontend.terms(), goal.assertions(), model_terms,
-                           goal.reconstruction().model_assignments, solve_options, statistics,
-                           &goal.reconstruction().monotone_eliminated),
+                           goal.reconstruction().conversions, solve_options, statistics),
               tactic_context);
         });
     const Tactic lra_model_only_solver =
@@ -11622,8 +11619,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
           const std::vector<core::TermId> model_terms = frontend.declared_real_constant_terms();
           return solver_answer_from_outcome(
               solve_qf_lra(frontend.terms(), goal.assertions(), model_terms,
-                           goal.reconstruction().model_assignments, solve_options, statistics,
-                           &goal.reconstruction().monotone_eliminated),
+                           goal.reconstruction().conversions, solve_options, statistics),
               tactic_context);
         });
     const Tactic mixed_solver =
@@ -11633,7 +11629,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
                                           : std::vector<core::TermId>{};
           return solver_answer_from_outcome(
               solve_qf_uf_lra(frontend.terms(), goal.assertions(), model_terms,
-                              goal.reconstruction().model_assignments, solve_options, statistics),
+                              goal.reconstruction().conversions, solve_options, statistics),
               tactic_context);
         });
     const Tactic lia_solver =
@@ -11643,7 +11639,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
                                                             : std::vector<core::TermId>{};
           return solver_answer_from_outcome(
               solve_qf_lia(frontend.terms(), goal.assertions(), model_terms, solve_options,
-                           statistics, goal.reconstruction().lia_substitutions),
+                           statistics, goal.reconstruction().conversions),
               tactic_context);
         });
     const Tactic solver_dispatch =

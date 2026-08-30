@@ -1,14 +1,19 @@
 #pragma once
 
+#include <cstddef>
+#include <memory>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include "core/ids.hpp"
 
+namespace primo::core {
+class TermManager;
+}
+
 namespace primo::smt {
 
-// A Boolean or equality assignment removed by preprocessing and required when
-// extending a model of the transformed goal to the original vocabulary.
 struct TheoryModelAssignment {
   core::TermId term = core::kInvalidTermId;
   bool value = false;
@@ -18,8 +23,6 @@ struct TheoryModelAssignment {
   bool operator==(const TheoryModelAssignment&) const = default;
 };
 
-// One real variable removed by monotone (one-sided) elimination, together
-// with the constraints used to choose a value when reconstructing a model.
 struct MonotoneEliminatedVariable {
   core::TermId variable = core::kInvalidTermId;
   bool bounded_above = false;
@@ -28,13 +31,70 @@ struct MonotoneEliminatedVariable {
   bool operator==(const MonotoneEliminatedVariable&) const = default;
 };
 
-// Goal-local records produced by equisatisfiable preprocessing. A tactic
-// constructs a new value and installs it with Goal::with_reconstruction; a
-// goal never exposes mutable access to the value it owns.
+struct BooleanTheoryAssignmentConversion {
+  std::vector<TheoryModelAssignment> assignments;
+
+  bool operator==(const BooleanTheoryAssignmentConversion&) const = default;
+};
+
+struct DirectedEqualitySubstitutionConversion {
+  std::vector<std::pair<core::TermId, core::TermId>> substitutions;
+
+  bool operator==(const DirectedEqualitySubstitutionConversion&) const = default;
+};
+
+struct LiaSubstitutionConversion {
+  std::vector<std::pair<core::TermId, core::TermId>> substitutions;
+
+  bool operator==(const LiaSubstitutionConversion&) const = default;
+};
+
+struct MonotoneEliminationConversion {
+  std::vector<MonotoneEliminatedVariable> eliminated;
+
+  bool operator==(const MonotoneEliminationConversion&) const = default;
+};
+
+using ModelConversionStep =
+    std::variant<BooleanTheoryAssignmentConversion, DirectedEqualitySubstitutionConversion,
+                 LiaSubstitutionConversion, MonotoneEliminationConversion>;
+
+// Persistent execution-ordered postsolve log. Transformations append one typed
+// step; model builders replay steps in reverse without regrouping them by kind.
+class ModelConversionChain {
+ public:
+  ModelConversionChain appended(ModelConversionStep step) const;
+
+  bool empty() const { return tail_ == nullptr; }
+  std::size_t size() const { return tail_ == nullptr ? 0 : tail_->size; }
+
+  template <typename Visitor>
+  void replay_reverse(Visitor&& visitor) const {
+    for (std::shared_ptr<const Node> node = tail_; node != nullptr; node = node->previous) {
+      std::forward<Visitor>(visitor)(node->step);
+    }
+  }
+
+  // Compatibility projection for the current string model builders. It keeps
+  // execution order and materializes directed equalities as assignment facts.
+  std::vector<TheoryModelAssignment> theory_assignments(core::TermManager& terms) const;
+
+  bool operator==(const ModelConversionChain& other) const;
+
+ private:
+  struct Node {
+    ModelConversionStep step;
+    std::shared_ptr<const Node> previous;
+    std::size_t size = 0;
+  };
+
+  std::shared_ptr<const Node> tail_;
+};
+
+// Forced facts are analysis input for the later finite-domain tactic, not model
+// conversions, so they remain outside the ordered postsolve chain.
 struct ModelReconstruction {
-  std::vector<TheoryModelAssignment> model_assignments;
-  std::vector<MonotoneEliminatedVariable> monotone_eliminated;
-  std::vector<std::pair<core::TermId, core::TermId>> lia_substitutions;
+  ModelConversionChain conversions;
   std::vector<std::pair<core::TermId, core::TermId>> forced_equalities;
   std::vector<std::pair<core::TermId, core::TermId>> forced_disequalities;
 
