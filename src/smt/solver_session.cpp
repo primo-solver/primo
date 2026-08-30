@@ -35,6 +35,7 @@
 #include "smt/formula_analysis.hpp"
 #include "smt/formula_metrics.hpp"
 #include "smt/frontend.hpp"
+#include "smt/inconclusive_reason.hpp"
 #include "smt/model_builder.hpp"
 #include "smt/model_reconstruction.hpp"
 #include "smt/preprocessing.hpp"
@@ -8558,7 +8559,8 @@ CheckSatOutcome solve_qf_lra_impl(core::TermManager& terms,
     const sat::SatResult sat_result = backend.solve();
     publish_sat_stats(backend.statistics(), statistics);
     if (terminator.cancelled_reached()) {
-      return CheckSatOutcome{CheckSatResult::Unknown, "cancelled", statistics, ""};
+      return CheckSatOutcome{CheckSatResult::Unknown, "cancelled", statistics, "",
+                             InconclusiveReason::Cancelled};
     }
     if (sat_result != sat::SatResult::Sat) {
       return CheckSatOutcome{map_sat_result(sat_result), "", statistics, ""};
@@ -8742,7 +8744,8 @@ CheckSatOutcome solve_qf_lia_impl(core::TermManager& terms,
     const sat::SatResult sat_result = backend.solve();
     publish_sat_stats(backend.statistics(), statistics);
     if (terminator.cancelled_reached()) {
-      return CheckSatOutcome{CheckSatResult::Unknown, "cancelled", statistics, ""};
+      return CheckSatOutcome{CheckSatResult::Unknown, "cancelled", statistics, "",
+                             InconclusiveReason::Cancelled};
     }
     if (sat_result != sat::SatResult::Sat) {
       return CheckSatOutcome{map_sat_result(sat_result), "", statistics, ""};
@@ -9135,13 +9138,14 @@ CheckSatOutcome solve_qf_uf_engine_impl(core::TermManager& terms,
     }
     publish_sat_stats(backend.statistics(), statistics);
     if (terminator.cancelled_reached()) {
-      return CheckSatOutcome{CheckSatResult::Unknown, "cancelled", statistics, ""};
+      return CheckSatOutcome{CheckSatResult::Unknown, "cancelled", statistics, "",
+                             InconclusiveReason::Cancelled};
     }
     if (terminator.conflict_limit_reached() ||
         (options.max_theory_conflicts.has_value() &&
          statistics.get(kStatTheoryConflicts) >= options.max_theory_conflicts.value())) {
       return CheckSatOutcome{CheckSatResult::Unknown, "theory conflict limit reached", statistics,
-                             ""};
+                             "", InconclusiveReason::ResourceLimit};
     }
     if (sat_result != sat::SatResult::Sat) {
       return CheckSatOutcome{map_sat_result(sat_result), "", statistics, ""};
@@ -9230,7 +9234,7 @@ CheckSatOutcome solve_qf_uf_engine_impl(core::TermManager& terms,
         statistics.get(kStatTheoryConflicts) >= options.max_theory_conflicts.value()) {
       publish_sat_stats(backend.statistics(), statistics);
       return CheckSatOutcome{CheckSatResult::Unknown, "theory conflict limit reached", statistics,
-                             ""};
+                             "", InconclusiveReason::ResourceLimit};
     }
     if (conflict_clause->empty()) {
       publish_sat_stats(backend.statistics(), statistics);
@@ -9734,7 +9738,8 @@ CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
     const sat::SatResult sat_result = backend.solve();
     publish_sat_stats(backend.statistics(), statistics);
     if (terminator.cancelled_reached()) {
-      return CheckSatOutcome{CheckSatResult::Unknown, "cancelled", statistics, ""};
+      return CheckSatOutcome{CheckSatResult::Unknown, "cancelled", statistics, "",
+                             InconclusiveReason::Cancelled};
     }
     if (sat_result == sat::SatResult::Unsat && model_equality_arrangement.has_active_branch()) {
       model_equality_arrangement.learn_failed_assumption_clause(
@@ -9868,7 +9873,7 @@ CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
           statistics.get(kStatTheoryConflicts) >= options.max_theory_conflicts.value()) {
         publish_sat_stats(backend.statistics(), statistics);
         return CheckSatOutcome{CheckSatResult::Unknown, "theory conflict limit reached", statistics,
-                               ""};
+                               "", InconclusiveReason::ResourceLimit};
       }
       if (euf_conflict->empty()) {
         publish_sat_stats(backend.statistics(), statistics);
@@ -10935,13 +10940,21 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
   statistics.set(kStatEufIncrementalAffectedUseListDedup, 0);
   statistics.set(kStatEufIncrementalMaxUseListSize, 0);
 
-  const auto finish = [&](CheckSatResult result, std::string message = "") {
+  const auto finish = [&](CheckSatResult result, std::string message = "",
+                          InconclusiveReason reason = InconclusiveReason::None) {
     statistics.set(kStatTimeTotalUs, elapsed_microseconds(total_start, PhaseClock::now()));
-    return CheckSatOutcome{result, std::move(message), statistics, ""};
+    if (reason == InconclusiveReason::None) {
+      if (result == CheckSatResult::Unknown) {
+        reason = InconclusiveReason::Unknown;
+      } else if (result == CheckSatResult::Unsupported) {
+        reason = InconclusiveReason::Unsupported;
+      }
+    }
+    return CheckSatOutcome{result, std::move(message), statistics, "", reason};
   };
 
   if (options.cancelled && options.cancelled()) {
-    return finish(CheckSatResult::Unknown, "cancelled");
+    return finish(CheckSatResult::Unknown, "cancelled", InconclusiveReason::Cancelled);
   }
 
   try {
@@ -10993,7 +11006,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
                      elapsed_microseconds(preprocessing_start, PhaseClock::now()));
       CheckSatOutcome interrupted =
           outcome_from_tactic_result(prepared.result, preprocessing_context);
-      return finish(interrupted.result, std::move(interrupted.message));
+      return finish(interrupted.result, std::move(interrupted.message), interrupted.reason);
     }
     assertions = prepared.result.alternatives().front().assertions();
     ModelReconstruction reconstruction = prepared.result.alternatives().front().reconstruction();

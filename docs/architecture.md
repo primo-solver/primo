@@ -50,8 +50,10 @@ confined to `primo_smtlib`, CaDiCaL configuration to `primo_sat`, and GMP to
   preprocessing strategy leaves, Boolean solving, common solver statistics,
   solver-family dispatch, result adaptation, runtime termination, and
   unsupported-input exceptions have independent SMT modules. Public
-  `check_sat.cpp` is a small portfolio coordinator; `solver_session.cpp` owns
-  the remaining per-session preprocessing and theory-family orchestration.
+  `check_sat.cpp` is a small boundary wrapper; `session_portfolio.cpp` owns the
+  reparsing QF_UF portfolio and its sequential executor policy;
+  `solver_session.cpp` owns the remaining per-session preprocessing and
+  theory-family orchestration.
 
 ## Term Representation
 

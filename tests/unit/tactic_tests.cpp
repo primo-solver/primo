@@ -15,10 +15,12 @@
 #include "core/term_manager.hpp"
 #include "smt/check_sat.hpp"
 #include "smt/frontend.hpp"
+#include "smt/inconclusive_reason.hpp"
 #include "smt/model_reconstruction.hpp"
 #include "smt/preprocessing.hpp"
 #include "smt/preprocessing_strategy.hpp"
 #include "smt/preprocessing_tactics.hpp"
+#include "smt/session_portfolio.hpp"
 #include "smt/solver_answer.hpp"
 #include "smt/solver_error.hpp"
 #include "smt/solver_leaves.hpp"
@@ -51,6 +53,23 @@ struct IdentityStrategyParameters {
 
   std::vector<primo::smt::StrategyParameter> strategy_parameters() const {
     return {{"zeta", zeta}, {"alpha", alpha}};
+  }
+};
+
+class RecordingSessionExecutor final : public primo::smt::SessionExecutor {
+ public:
+  std::vector<primo::smt::CheckSatOutcome> outcomes;
+  std::vector<primo::smt::CheckSatOptions> options;
+  bool throw_on_execute = false;
+
+  primo::smt::CheckSatOutcome execute(std::string_view,
+                                      primo::smt::CheckSatOptions next_options) override {
+    options.push_back(std::move(next_options));
+    if (throw_on_execute) {
+      throw std::runtime_error("executor failure");
+    }
+    check(options.size() <= outcomes.size());
+    return outcomes[options.size() - 1];
   }
 };
 
@@ -423,6 +442,7 @@ void check_sat_honors_an_existing_cancellation_request() {
   const auto result = primo::smt::check_sat_smtlib("(check-sat)", options);
   check(result.result == primo::smt::CheckSatResult::Unknown);
   check(result.message == "cancelled");
+  check(result.reason == primo::smt::InconclusiveReason::Cancelled);
 }
 
 void check_sat_preserves_cancellation_observed_by_preprocessing() {
@@ -434,6 +454,7 @@ void check_sat_preserves_cancellation_observed_by_preprocessing() {
     const primo::smt::CheckSatOutcome result = primo::smt::check_sat_smtlib(input, options);
     check(result.result == primo::smt::CheckSatResult::Unknown);
     check(result.message == "cancelled");
+    check(result.reason == primo::smt::InconclusiveReason::Cancelled);
   }
 }
 
@@ -451,6 +472,7 @@ void solver_adapter_types_expected_inconclusive_results() {
       primo::smt::outcome_from_tactic_result(result, fixture.context);
   check(outcome.result == primo::smt::CheckSatResult::Unsupported);
   check(outcome.message == "outside fragment");
+  check(outcome.reason == primo::smt::InconclusiveReason::Unsupported);
 }
 
 void typed_inconclusive_reason_overrides_terminal_formula_truth() {
@@ -463,6 +485,7 @@ void typed_inconclusive_reason_overrides_terminal_formula_truth() {
         primo::smt::outcome_from_tactic_result(cancelled, fixture.context);
     check(outcome.result == primo::smt::CheckSatResult::Unknown);
     check(outcome.message == "cancelled");
+    check(outcome.reason == primo::smt::InconclusiveReason::Cancelled);
   }
 }
 
@@ -753,6 +776,70 @@ void production_solver_strategy_has_stable_typed_identity() {
             .fingerprint());
 }
 
+void session_portfolio_uses_typed_reasons_and_isolated_sequential_arms() {
+  primo::util::Statistics first_statistics;
+  first_statistics.set(primo::util::StatKey::TheoryConflicts, 7);
+  RecordingSessionExecutor executor;
+  executor.outcomes = {
+      primo::smt::CheckSatOutcome{primo::smt::CheckSatResult::Unknown, "opaque diagnostic",
+                                  first_statistics, "",
+                                  primo::smt::InconclusiveReason::ResourceLimit},
+      primo::smt::CheckSatOutcome{primo::smt::CheckSatResult::Sat, "", {}, "model"}};
+  primo::smt::CheckSatOptions options;
+  options.qf_uf_portfolio = primo::smt::QfUfPortfolioMode::BasicPolarity;
+  options.qf_uf_portfolio_conflicts = 11;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Strong;
+  options.theory_phase = primo::smt::TheoryPhaseMode::Positive;
+
+  const primo::smt::CheckSatOutcome result =
+      primo::smt::execute_qf_uf_session_portfolio("(check-sat)", options, executor);
+  check(result.result == primo::smt::CheckSatResult::Sat);
+  check(result.model == "model");
+  check(executor.options.size() == 2);
+  check(executor.options[0].qf_uf_portfolio == primo::smt::QfUfPortfolioMode::Off);
+  check(executor.options[0].preprocessing_mode == primo::smt::PreprocessingMode::Basic);
+  check(executor.options[0].theory_phase == primo::smt::TheoryPhaseMode::Polarity);
+  check(executor.options[0].max_theory_conflicts == 11);
+  check(executor.options[1].qf_uf_portfolio == primo::smt::QfUfPortfolioMode::Off);
+  check(executor.options[1].preprocessing_mode == primo::smt::PreprocessingMode::Strong);
+  check(executor.options[1].theory_phase == primo::smt::TheoryPhaseMode::Positive);
+  check(result.statistics.get(":portfolio.qf-uf.attempts") == 2);
+  check(result.statistics.get(":portfolio.qf-uf.basic-polarity.first-conflicts") == 7);
+
+  RecordingSessionExecutor ordinary_unknown;
+  ordinary_unknown.outcomes = {
+      primo::smt::CheckSatOutcome{primo::smt::CheckSatResult::Unknown,
+                                  "theory conflict limit reached",
+                                  {},
+                                  "",
+                                  primo::smt::InconclusiveReason::Unknown}};
+  const primo::smt::CheckSatOutcome unknown =
+      primo::smt::execute_qf_uf_session_portfolio("", options, ordinary_unknown);
+  check(unknown.result == primo::smt::CheckSatResult::Unknown);
+  check(ordinary_unknown.options.size() == 1);
+
+  RecordingSessionExecutor cancelled;
+  cancelled.outcomes = {primo::smt::CheckSatOutcome{primo::smt::CheckSatResult::Unknown,
+                                                    "cancelled",
+                                                    {},
+                                                    "",
+                                                    primo::smt::InconclusiveReason::Cancelled}};
+  const primo::smt::CheckSatOutcome cancelled_result =
+      primo::smt::execute_qf_uf_session_portfolio("", options, cancelled);
+  check(cancelled_result.reason == primo::smt::InconclusiveReason::Cancelled);
+  check(cancelled.options.size() == 1);
+
+  RecordingSessionExecutor throwing;
+  throwing.throw_on_execute = true;
+  bool exception_escaped = false;
+  try {
+    static_cast<void>(primo::smt::execute_qf_uf_session_portfolio("", options, throwing));
+  } catch (const std::runtime_error&) {
+    exception_escaped = true;
+  }
+  check(exception_escaped);
+}
+
 }  // namespace
 
 int main() {
@@ -783,4 +870,5 @@ int main() {
   production_preprocessing_profile_and_strategy_are_explicit_and_stable();
   solver_dispatch_uses_formula_tactics();
   production_solver_strategy_has_stable_typed_identity();
+  session_portfolio_uses_typed_reasons_and_isolated_sequential_arms();
 }

@@ -8,6 +8,7 @@
 #include <string>
 
 #include "smt/check_sat.hpp"
+#include "smt/inconclusive_reason.hpp"
 #include "smt/preprocessing.hpp"
 
 using primo::smt::check_sat_smtlib;
@@ -2598,6 +2599,7 @@ void theory_conflict_limit_stops_lazy_search_with_unknown() {
       options);
   assert(result.result == CheckSatResult::Unknown);
   assert(result.message == "theory conflict limit reached");
+  assert(result.reason == primo::smt::InconclusiveReason::ResourceLimit);
   assert(result.statistics.get(":euf.theory-conflicts") == 1);
 }
 
@@ -2621,6 +2623,7 @@ void theory_conflict_limit_stops_external_search_with_unknown() {
       options);
   assert(result.result == CheckSatResult::Unknown);
   assert(result.message == "theory conflict limit reached");
+  assert(result.reason == primo::smt::InconclusiveReason::ResourceLimit);
   assert(result.statistics.get(":euf.theory-conflicts") == 1);
   assert(result.statistics.get(":euf.assignments") >= 3);
   assert(result.statistics.contains(":sat.conflicts"));

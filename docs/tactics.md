@@ -210,15 +210,23 @@ remaining inconclusive alternatives. A dispatch tactic probes
 the formula features and logic, then invokes the selected leaf. The pure
 Boolean path uses the generic first-terminal scheduler with QF_UF as a fallback.
 The public `CheckSatOutcome` is derived after dispatch solely from the returned
-goal's truth, typed reason, model, and diagnostic; there is no parallel mutable
-result channel. A typed inconclusive reason takes precedence over terminal
+goal's truth, typed reason, model, and diagnostic; its typed reason also crosses
+the session-portfolio boundary. There is no parallel mutable result channel. A
+typed inconclusive reason takes precedence over terminal
 formula truth at this operational conversion boundary, while `truth()` itself
 remains formula-only. This adaptation is isolated in `solver_tactic`, while expected
 unsupported-fragment exceptions are defined in `solver_error`; other exceptions
 remain serious failures and escape the tactic boundary.
-The existing QF_UF preprocessing portfolio remains outside this layer because
-each arm deliberately reparses the original SMT-LIB text into a fresh term
-manager; `TermId` values and goals must never cross that session boundary.
+The QF_UF preprocessing portfolio remains outside formula tactics because each
+arm deliberately reparses the original SMT-LIB text into a fresh term manager;
+`TermId` values and goals must never cross that session boundary.
+`SessionExecutor` is the isolated execution interface and
+`SequentialSessionExecutor` is its only implementation. The first
+basic-preprocessing/polarity arm falls back only on a typed `ResourceLimit`
+from its theory-conflict budget. Cancellation and ordinary unknown results stop
+the session portfolio, exceptions escape, and diagnostic messages are never
+examined for control flow. A future parallel executor must give every arm a
+separate frontend, SAT backend, statistics object, and cancellation scope.
 
 The scheduler API is independent of its current execution policy. The supplied
 implementation runs alternatives sequentially and in declaration order. A

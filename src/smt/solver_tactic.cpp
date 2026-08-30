@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "core/term_manager.hpp"
+#include "smt/inconclusive_reason.hpp"
 #include "smt/solver_error.hpp"
 
 namespace primo::smt {
@@ -62,11 +63,18 @@ SolverAnswer solver_answer_from_outcome(CheckSatOutcome outcome, const TacticCon
                         .diagnostic = std::move(outcome.message),
                         .model = {}};
   }
-  const InconclusiveReason reason = outcome.result == CheckSatResult::Unsupported
-                                        ? InconclusiveReason::Unsupported
-                                    : context.cancelled()        ? InconclusiveReason::Cancelled
-                                    : context.deadline_reached() ? InconclusiveReason::ResourceLimit
-                                                                 : InconclusiveReason::Unknown;
+  InconclusiveReason reason = outcome.reason;
+  if (reason == InconclusiveReason::None) {
+    if (outcome.result == CheckSatResult::Unsupported) {
+      reason = InconclusiveReason::Unsupported;
+    } else if (context.cancelled()) {
+      reason = InconclusiveReason::Cancelled;
+    } else if (context.deadline_reached()) {
+      reason = InconclusiveReason::ResourceLimit;
+    } else {
+      reason = InconclusiveReason::Unknown;
+    }
+  }
   return SolverAnswer{.status = SolverStatus::Inconclusive,
                       .reason = reason,
                       .diagnostic = std::move(outcome.message),
@@ -82,6 +90,7 @@ CheckSatOutcome outcome_from_tactic_result(const AnyOf& solved, TacticContext& c
                            ? CheckSatResult::Unsupported
                            : CheckSatResult::Unknown;
       outcome.message = goal.diagnostic();
+      outcome.reason = goal.reason();
       return outcome;
     }
   }
@@ -98,6 +107,7 @@ CheckSatOutcome outcome_from_tactic_result(const AnyOf& solved, TacticContext& c
     outcome.result = CheckSatResult::Unsat;
   } else {
     outcome.result = CheckSatResult::Unknown;
+    outcome.reason = InconclusiveReason::Unknown;
     const Goal* selected = &solved.alternatives().front();
     outcome.message = selected->diagnostic();
   }

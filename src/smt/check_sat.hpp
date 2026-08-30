@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 
+#include "smt/inconclusive_reason.hpp"
 #include "smt/preprocessing.hpp"
 #include "util/statistics.hpp"
 
@@ -228,6 +229,7 @@ struct CheckSatOutcome {
   std::string message;
   util::Statistics statistics;
   std::string model;
+  InconclusiveReason reason = InconclusiveReason::None;
 };
 
 struct CheckSatOptions {

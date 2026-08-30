@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "core/ids.hpp"
+#include "smt/inconclusive_reason.hpp"
 #include "smt/model_reconstruction.hpp"
 
 namespace primo::core {
@@ -23,15 +24,6 @@ class Statistics;
 }
 
 namespace primo::smt {
-
-enum class InconclusiveReason {
-  None,
-  Inapplicable,
-  ResourceLimit,
-  Unsupported,
-  Cancelled,
-  Unknown,
-};
 
 // A goal is the conjunction of its ordered assertions.  The order is retained
 // because preprocessing and search heuristics are allowed to observe it.

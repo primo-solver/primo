@@ -6,6 +6,7 @@
 #include "core/term_manager.hpp"
 #include "sat/cadical_backend.hpp"
 #include "smt/clausifier.hpp"
+#include "smt/inconclusive_reason.hpp"
 #include "smt/model_builder.hpp"
 #include "smt/solver_runtime.hpp"
 #include "smt/solver_support.hpp"
@@ -33,7 +34,8 @@ CheckSatOutcome solve_boolean_conjunction(
   const CheckSatResult result = map_sat_result(backend.solve());
   publish_sat_stats(backend.statistics(), statistics);
   if (terminator.cancelled_reached()) {
-    return CheckSatOutcome{CheckSatResult::Unknown, "cancelled", statistics, ""};
+    return CheckSatOutcome{CheckSatResult::Unknown, "cancelled", statistics, "",
+                           InconclusiveReason::Cancelled};
   }
   if (result != CheckSatResult::Sat || !options.produce_model) {
     return CheckSatOutcome{result, "", statistics, ""};

@@ -125,10 +125,13 @@ one false goal, and otherwise preserve inconclusive alternatives.
 ## Transformations not yet represented as tactics
 
 The following production control step remains outside formula-level strategy
-composition and must not be mistaken for an available portfolio arm:
+composition and must not be mistaken for an available formula tactic:
 
-- the experimental QF_UF portfolio, which reparses into fresh solver sessions
-  and therefore cannot pass a `Goal` across arms.
+- the experimental QF_UF session portfolio, implemented by
+  `execute_qf_uf_session_portfolio` over the `SessionExecutor` interface. Its
+  sequential implementation reparses into fresh solver sessions and therefore
+  cannot pass a `Goal` across arms. Only the first arm's typed
+  `ResourceLimit` triggers fallback; cancellation and ordinary unknown stop.
 
 These are migration candidates, not a commitment that each should become a
 separate tactic. A useful portfolio boundary must have an independently useful
@@ -143,7 +146,7 @@ count would expose an unsafe and unhelpful portfolio action.
 - Initial normalization executes before profile analysis, so production
   evaluates the prepared full strategy as a prefix and suffix rather than with
   one call to `compile`.
-- Only sequential first-terminal scheduling exists.
+- Only sequential formula-tactic and session-portfolio executors exist.
 - Strategy probes are partly embedded in `solver_session.cpp` and
   `solver_strategy.cpp` rather than collected behind a reusable probe API.
 - There is no tactic-expression language, tactic registry, parser for the
