@@ -12,7 +12,6 @@
 #include "smt/formula_metrics.hpp"
 #include "smt/model_reconstruction.hpp"
 #include "smt/preprocessing.hpp"
-#include "smt/solver_error.hpp"
 #include "smt/strategy.hpp"
 #include "smt/tactic.hpp"
 #include "util/statistics.hpp"
@@ -274,6 +273,17 @@ void record_arithmetic_canonicalization(const ArithmeticAtomCanonicalizationResu
 
 }  // namespace
 
+std::vector<StrategyParameter> PreprocessingRoundOptions::strategy_parameters() const {
+  return {
+      {"equality-bridge", bool_parameter(use_eq_bridge)},
+      {"finite-domain-evaluation", bool_parameter(use_finite_domain_evaluation)},
+      {"gaussian-elimination", bool_parameter(gaussian_elimination)},
+      {"ground-congruence", bool_parameter(use_ground_congruence_definitions)},
+      {"ground-unit-substitution", bool_parameter(use_ground_unit_substitution)},
+      {"guarded-ground-unit-substitution", bool_parameter(use_guarded_ground_unit_substitution)},
+      {"solved-constant-substitution", bool_parameter(solved_constant_substitution)}};
+}
+
 std::vector<StrategyParameter> SolveEqsOptions::strategy_parameters() const {
   return {
       {"gaussian-elimination", bool_parameter(gaussian_elimination)},
@@ -429,10 +439,10 @@ Tactic make_finite_domain_preprocess(FiniteDomainPreprocessOptions options,
                 }
               }
             };
-            emit(input.raw_at_most_one.clauses);
+            emit(input.raw_at_most_one->clauses);
             emit(post.clauses);
             statistics.increment(util::StatKey::FiniteDomainDomains,
-                                 std::max(input.raw_at_most_one.domains, post.domains));
+                                 std::max(input.raw_at_most_one->domains, post.domains));
             statistics.increment(util::StatKey::FiniteDomainAmoClauses, added);
             statistics.increment(util::StatKey::FiniteDomainDedupedAmoClauses, deduped);
           }

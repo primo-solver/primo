@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <iomanip>
+#include <ios>
 #include <memory>
 #include <sstream>
 #include <stdexcept>
@@ -12,6 +13,8 @@
 #include <string_view>
 #include <utility>
 #include <vector>
+
+#include "smt/tactic.hpp"
 
 namespace primo::smt {
 namespace {
@@ -116,6 +119,11 @@ struct Strategy::Data {
   std::shared_ptr<const Tactic> implementation;
   std::shared_ptr<const BooleanProbe> probe;
   std::size_t max_iterations = 0;
+  std::string repeat_policy_id = "structural";
+  std::string repeat_execution_name = "strategy-repeat";
+  RepeatPredicate repeat_predicate;
+  RepeatEquivalence repeat_equivalence;
+  RepeatObserver repeat_observer;
   std::chrono::milliseconds budget{0};
 };
 
@@ -169,6 +177,24 @@ Strategy Strategy::repeat(Strategy child, std::size_t max_iterations) {
   return Strategy(std::move(data));
 }
 
+Strategy Strategy::repeat(Strategy child, std::size_t max_iterations, std::string policy_id,
+                          RepeatPredicate continue_after_change, RepeatEquivalence equivalent,
+                          RepeatObserver observer, std::string execution_name) {
+  if (policy_id.empty() || execution_name.empty()) {
+    throw std::invalid_argument("a repeat policy and execution name must be non-empty");
+  }
+  auto data = std::make_shared<Data>();
+  data->kind = StrategyKind::Repeat;
+  data->children.push_back(std::move(child));
+  data->max_iterations = max_iterations;
+  data->repeat_policy_id = std::move(policy_id);
+  data->repeat_execution_name = std::move(execution_name);
+  data->repeat_predicate = std::move(continue_after_change);
+  data->repeat_equivalence = std::move(equivalent);
+  data->repeat_observer = std::move(observer);
+  return Strategy(std::move(data));
+}
+
 Strategy Strategy::try_in_order(std::vector<Strategy> children) {
   if (children.empty()) {
     throw std::invalid_argument("try-in-order requires at least one arm");
@@ -216,7 +242,7 @@ std::string Strategy::canonical() const {
              " " + data_->children[1].canonical() + ")";
     case StrategyKind::Repeat:
       return "(repeat " + std::to_string(data_->max_iterations) + " " +
-             data_->children.front().canonical() + ")";
+             quote(data_->repeat_policy_id) + " " + data_->children.front().canonical() + ")";
     case StrategyKind::TryInOrder:
       return join_children("try-in-order", data_->children);
     case StrategyKind::TryFor:
@@ -254,8 +280,10 @@ Tactic compile(const Strategy& strategy) {
           compile(strategy.data_->children[0]), compile(strategy.data_->children[1]));
     }
     case StrategyKind::Repeat:
-      return repeat("strategy-repeat", compile(strategy.data_->children.front()),
-                    strategy.data_->max_iterations);
+      return repeat(strategy.data_->repeat_execution_name,
+                    compile(strategy.data_->children.front()), strategy.data_->max_iterations,
+                    strategy.data_->repeat_predicate, strategy.data_->repeat_equivalence,
+                    strategy.data_->repeat_observer);
     case StrategyKind::TryInOrder: {
       std::vector<Tactic> children;
       children.reserve(strategy.data_->children.size());

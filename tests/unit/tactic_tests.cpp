@@ -17,6 +17,7 @@
 #include "smt/frontend.hpp"
 #include "smt/model_reconstruction.hpp"
 #include "smt/preprocessing.hpp"
+#include "smt/preprocessing_strategy.hpp"
 #include "smt/preprocessing_tactics.hpp"
 #include "smt/solver_answer.hpp"
 #include "smt/solver_error.hpp"
@@ -623,6 +624,50 @@ void public_preprocessing_leaves_are_independently_constructible_and_typed() {
   check(purification_statistics.get(":no.purification.skipped-no-sites") == 1);
 }
 
+void production_preprocessing_profile_and_strategy_are_explicit_and_stable() {
+  primo::smt::Frontend frontend;
+  primo::core::TermManager& terms = frontend.terms();
+  const primo::core::TermId bound = terms.mk_le(terms.mk_rational(0), terms.mk_rational(1));
+  primo::smt::CheckSatOptions options;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Strong;
+  options.preprocessing_passes = 1;
+  options.preprocessing_adaptive_extra_passes = 2;
+  options.monotone_elimination = true;
+  primo::util::Statistics statistics;
+  const primo::smt::PreprocessingProfile profile =
+      primo::smt::analyze_preprocessing_profile(terms, {bound}, options, false);
+  check(profile.kind == primo::smt::PreprocessingProfileKind::Strong);
+  check(profile.strong_preprocessing);
+  check(profile.preprocessing_passes == 3);
+  const primo::smt::Strategy strategy =
+      primo::smt::make_preprocessing_strategy(frontend, options, profile, {bound}, statistics);
+  const std::string canonical = strategy.canonical();
+  const std::size_t profile_position = canonical.find("preprocessing-profile");
+  const std::size_t repeat_position = canonical.find("adaptive-reachable-term-shrink");
+  const std::size_t finite_position = canonical.find("finite-domain-preprocess");
+  const std::size_t arithmetic_position = canonical.find("normalize-arithmetic");
+  const std::size_t monotone_position = canonical.find("eliminate-monotone");
+  const std::size_t purify_position = canonical.find("purify-mixed");
+  const std::size_t boolean_position = canonical.find("normalize-boolean");
+  check(profile_position < repeat_position);
+  check(repeat_position < finite_position);
+  check(finite_position < arithmetic_position);
+  check(arithmetic_position < monotone_position);
+  check(monotone_position < purify_position);
+  check(purify_position < boolean_position);
+  check(canonical.find("(repeat 5 \"adaptive-reachable-term-shrink\"") != std::string::npos);
+  check(canonical.find("\"equality-definitions\" \"true\"") != std::string::npos);
+  check(strategy.fingerprint() == strategy.fingerprint());
+
+  primo::smt::CheckSatOptions bypass_options;
+  bypass_options.preprocessing_mode = primo::smt::PreprocessingMode::Auto;
+  bypass_options.auto_preprocess_tuning.large_conjunct_limit = 1;
+  const primo::smt::PreprocessingProfile bypass =
+      primo::smt::analyze_preprocessing_profile(terms, {bound, bound}, bypass_options, false);
+  check(bypass.kind == primo::smt::PreprocessingProfileKind::LargeInputBypass);
+  check(!bypass.preprocessing_loop_enabled);
+}
+
 void solver_dispatch_uses_formula_tactics() {
   primo::smt::CheckSatOptions options;
   options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
@@ -712,5 +757,6 @@ int main() {
   solver_adapter_does_not_hide_serious_failures();
   preprocessing_round_transforms_each_alternative_independently();
   public_preprocessing_leaves_are_independently_constructible_and_typed();
+  production_preprocessing_profile_and_strategy_are_explicit_and_stable();
   solver_dispatch_uses_formula_tactics();
 }

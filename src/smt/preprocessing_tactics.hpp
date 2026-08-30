@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <memory>
 #include <optional>
 #include <vector>
 
@@ -23,6 +24,8 @@ struct PreprocessingRoundOptions {
   bool use_ground_congruence_definitions = false;
   bool use_ground_unit_substitution = false;
   bool use_guarded_ground_unit_substitution = false;
+
+  std::vector<StrategyParameter> strategy_parameters() const;
 };
 
 struct PropagateValuesOptions {
@@ -65,7 +68,8 @@ struct FiniteDomainPreprocessOptions {
 // a different formula state when the surrounding strategy is refactored.
 struct FiniteDomainPreprocessInput {
   std::vector<core::TermId> symmetry_source_assertions;
-  FiniteDomainAtMostOneResult raw_at_most_one;
+  std::shared_ptr<const FiniteDomainAtMostOneResult> raw_at_most_one =
+      std::make_shared<const FiniteDomainAtMostOneResult>();
   std::optional<UfSymmetryBreakingResult> analyzed_symmetry;
 };
 

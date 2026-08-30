@@ -82,6 +82,10 @@ class Strategy {
   static Strategy sequence(std::vector<Strategy> children);
   static Strategy conditional(BooleanProbe probe, Strategy if_true, Strategy if_false);
   static Strategy repeat(Strategy child, std::size_t max_iterations);
+  static Strategy repeat(Strategy child, std::size_t max_iterations, std::string policy_id,
+                         RepeatPredicate continue_after_change, RepeatEquivalence equivalent,
+                         RepeatObserver observer = {},
+                         std::string execution_name = "strategy-repeat");
   static Strategy try_in_order(std::vector<Strategy> children);
   static Strategy try_for(Strategy child, std::chrono::milliseconds budget);
   static Strategy skip();

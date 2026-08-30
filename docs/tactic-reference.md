@@ -59,7 +59,8 @@ respective strategies rather than exported as reusable probe objects.
 | `eliminate-monotone` | Public typed builder | Monotone-variable elimination with an ordered model-conversion record when model production is requested |
 | `purify-mixed` | Public typed builder | Mandatory mixed-theory purification and its dependent comparison-only arithmetic recanonicalization |
 | `preprocessing-round` | Public builder: `make_preprocessing_round(PreprocessingRoundOptions)` | Runs the selected phases below in a fixed order and deliberately completes the round even if an intermediate phase makes the formula terminal |
-| `preprocessing-fixed-point` | Production composite assembled in `solver_session.cpp` | Repeats `preprocessing-round` to ordered-assertion convergence, subject to baseline and adaptive pass limits |
+| `preprocessing-profile` | Production strategy leaf | Records the immutable selected `PreprocessingProfile`; it does not transform the goal |
+| `preprocessing-fixed-point` | Production `Repeat` strategy node | Repeats `preprocessing-round` to ordered-assertion convergence, subject to baseline and adaptive reachable-term shrink limits |
 
 `PreprocessingRoundOptions` is immutable after strategy construction. It
 selects phases without allowing them to read command-line state.
@@ -118,11 +119,9 @@ one false goal, and otherwise preserve inconclusive alternatives.
 
 ## Transformations not yet represented as tactics
 
-The following production control steps still run directly in
-`solver_session.cpp` and must not be mistaken for available portfolio arms:
+The following production control step remains outside formula-level strategy
+composition and must not be mistaken for an available portfolio arm:
 
-- preprocessing-profile analysis and `auto` profile selection;
-- the QF_LIA-specific and large-assertion-bypass solved-constant loops;
 - the experimental QF_UF portfolio, which reparses into fresh solver sessions
   and therefore cannot pass a `Goal` across arms.
 
@@ -136,9 +135,9 @@ count would expose an unsafe and unhelpful portfolio action.
 
 ## Current limitations for portfolio work
 
-- Public preprocessing leaves can be composed internally, but the production
-  profile and fixed-point strategy are not yet represented by one inspectable
-  `Strategy` value.
+- Initial normalization executes before profile analysis, so production
+  evaluates the prepared full strategy as a prefix and suffix rather than with
+  one call to `compile`.
 - Only sequential first-terminal scheduling exists.
 - Strategy probes are partly embedded in `solver_session.cpp` and
   `solver_strategy.cpp` rather than collected behind a reusable probe API.

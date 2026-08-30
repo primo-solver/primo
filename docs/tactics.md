@@ -160,6 +160,23 @@ definitions in one composite. Its immutable input snapshot records the
 pre-round assertion state needed by delayed symmetry and clause emission; this
 preserves the established earlier/later formula dependency.
 
+`PreprocessingProfile` is the immutable output of profile analysis over the
+initially normalized goal. It selects the off, basic, finite-domain-basic,
+compact-clause-basic, single-assertion, strong, large-input-bypass, or QF_LIA
+path and retains the finite-domain evidence needed by delayed emission. The
+analysis does not update statistics or change the goal; it may intern the same
+candidate clauses that a selected finite-domain tactic will later emit.
+Observability is recorded only after the profile value has been selected.
+
+`make_preprocessing_strategy` maps that profile and immutable option values to
+an inspectable `Strategy`. The prepared full structure includes initial
+normalization, the selected profile, QF_LIA or large-input equation handling
+when applicable, an adaptive `Repeat`, finite-domain processing, arithmetic
+normalization, optional monotone elimination, mandatory purification, and final
+Boolean normalization in the established order. Production executes the
+initial-normalization prefix before profile analysis and the remaining suffix
+afterward because profile selection must inspect the transformed goal.
+
 The repeated preprocessing round is implemented in `preprocessing_tactics` as
 an exact composition of those public builders over each input alternative. Its
 immutable `PreprocessingRoundOptions` is constructed once from the selected
@@ -174,7 +191,7 @@ goal, preserving the established pass ordering and reconstruction/statistics
 behavior. Each output carries its own immutable reconstruction value; outputs
 that do not change it may share the same backing storage. The transformation
 implementations are unchanged. Existing command-line options construct this
-built-in composition; there is no user-facing tactic expression syntax and
+built-in strategy; there is no user-facing tactic expression syntax and
 option defaults are unchanged.
 
 The Boolean, QF_UF, QF_LRA, QF_LIA, and combined QF_UFLRA solvers are adapted as
