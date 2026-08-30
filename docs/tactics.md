@@ -5,6 +5,12 @@ preprocessing transformations, and complete or incomplete solving engines. It
 is an internal C++ API in its first version; the existing command-line options
 still select the built-in strategy.
 
+The concrete inventory of generic tacticals, named preprocessing phases,
+solver leaves, and transformations that have not yet migrated is maintained in
+[](tactic-reference.md). The distinction between an independently constructible
+tactic and an internal named phase is intentional: a statistics name alone does
+not make a phase a portfolio arm.
+
 ## Algorithmic basis
 
 The design starts from Leonardo de Moura and Grant Passmore, *The Strategy

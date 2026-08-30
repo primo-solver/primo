@@ -8,6 +8,8 @@ parts:
     chapters:
       - file: architecture
       - file: tactics
+        sections:
+          - file: tactic-reference
       - file: boolean-dag-flattening
       - file: root-polarity-clausification
       - file: sat-ipasir-up
