@@ -1,7 +1,9 @@
 #include "smt/preprocessing_tactics.hpp"
 
+#include <algorithm>
 #include <cstddef>
 #include <string>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -10,6 +12,9 @@
 #include "smt/formula_metrics.hpp"
 #include "smt/model_reconstruction.hpp"
 #include "smt/preprocessing.hpp"
+#include "smt/solver_error.hpp"
+#include "smt/strategy.hpp"
+#include "smt/tactic.hpp"
 #include "util/statistics.hpp"
 
 namespace primo::smt {
@@ -52,7 +57,6 @@ bool accept_guarded_ground_substitution(const std::vector<core::TermId>& before,
 }
 
 enum class RoundPhase {
-  Count,
   EqualityBridge,
   FiniteDomainEvaluation,
   CongruenceDefinitions,
@@ -68,10 +72,6 @@ Goal run_phase(TacticContext& context, const Goal& goal, const PreprocessingRoun
   core::TermManager& terms = context.terms();
   util::Statistics& statistics = context.statistics();
   switch (phase) {
-    case RoundPhase::Count:
-      statistics.increment(util::StatKey::PreprocessingPasses);
-      return goal;
-
     case RoundPhase::EqualityBridge: {
       EqualityBridge bridge(terms);
       EqualityBridgeResult result = bridge.bridge(goal.assertions());
@@ -115,7 +115,7 @@ Goal run_phase(TacticContext& context, const Goal& goal, const PreprocessingRoun
       statistics.increment(util::StatKey::BooleanUnitMemoHits, result.memo_hits);
       statistics.increment(util::StatKey::BooleanUnitMemoMisses, result.memo_misses);
       Goal updated = goal.with_assertions(std::move(result.assertions));
-      if (!options.produce_model || result.assignments.empty()) {
+      if (!context.produce_model() || result.assignments.empty()) {
         return updated;
       }
       ModelReconstruction reconstruction = goal.reconstruction();
@@ -137,11 +137,11 @@ Goal run_phase(TacticContext& context, const Goal& goal, const PreprocessingRoun
       statistics.increment(util::StatKey::EqualityQueryAddTermSeenHits, result.add_term_seen_hits);
       Goal updated = goal.with_assertions(std::move(result.assertions));
       if (result.equality_pairs.empty() && result.disequality_pairs.empty() &&
-          (!options.produce_model || result.assignments.empty())) {
+          (!context.produce_model() || result.assignments.empty())) {
         return updated;
       }
       ModelReconstruction reconstruction = goal.reconstruction();
-      if (options.produce_model) {
+      if (context.produce_model()) {
         reconstruction.conversions =
             append_boolean_model_assignments(reconstruction.conversions, result.assignments);
       }
@@ -165,7 +165,7 @@ Goal run_phase(TacticContext& context, const Goal& goal, const PreprocessingRoun
       statistics.increment(util::StatKey::SolvedConstantGaussianCandidates,
                            solved.gaussian_candidates);
       Goal updated = goal.with_assertions(std::move(solved.assertions));
-      if (!options.produce_model || solved.substitutions.empty()) {
+      if (!context.produce_model() || solved.substitutions.empty()) {
         return updated;
       }
       ModelReconstruction reconstruction = goal.reconstruction();
@@ -190,7 +190,7 @@ Goal run_phase(TacticContext& context, const Goal& goal, const PreprocessingRoun
       statistics.increment(util::StatKey::UnitEqualitySubstitutions, substitution.rewrites);
       statistics.increment(util::StatKey::UnitEqualitySubstitutionAccepted);
       Goal updated = goal.with_assertions(std::move(substitution.assertions));
-      if (!options.produce_model || substitution.substitutions.empty()) {
+      if (!context.produce_model() || substitution.substitutions.empty()) {
         return updated;
       }
       ModelReconstruction reconstruction = goal.reconstruction();
@@ -225,43 +225,353 @@ Tactic make_phase_tactic(std::string name, RoundPhase phase, PreprocessingRoundO
   });
 }
 
-}  // namespace
-
-Tactic make_preprocessing_round(PreprocessingRoundOptions options) {
-  std::vector<Tactic> phases;
-  phases.push_back(make_phase_tactic("preprocessing-pass", RoundPhase::Count, options));
-  if (options.use_eq_bridge) {
-    phases.push_back(make_phase_tactic("equality-bridge", RoundPhase::EqualityBridge, options));
-  }
-  if (options.use_finite_domain_evaluation) {
-    phases.push_back(
-        make_phase_tactic("finite-domain-evaluation", RoundPhase::FiniteDomainEvaluation, options));
-  }
-  if (options.use_ground_congruence_definitions) {
-    phases.push_back(
-        make_phase_tactic("congruence-definitions", RoundPhase::CongruenceDefinitions, options));
-  }
-  phases.push_back(
-      make_phase_tactic("boolean-unit-propagation", RoundPhase::BooleanUnits, options));
-  phases.push_back(make_phase_tactic("forced-atom-propagation", RoundPhase::ForcedAtoms, options));
-  if (options.solved_constant_substitution) {
-    phases.push_back(
-        make_phase_tactic("solved-constant-substitution", RoundPhase::SolvedConstants, options));
-  }
-  if (options.use_ground_unit_substitution || options.use_guarded_ground_unit_substitution) {
-    phases.push_back(
-        make_phase_tactic("ground-unit-substitution", RoundPhase::GroundUnitSubstitution, options));
-  }
-  phases.push_back(
-      make_phase_tactic("unit-equality-propagation", RoundPhase::UnitEqualities, options));
-  return Tactic("preprocessing-round",
-                [phases = std::move(phases)](TacticContext& context, const AnyOf& input) {
+Tactic complete_sequence(std::string name, std::vector<Tactic> tactics) {
+  return Tactic(std::move(name),
+                [tactics = std::move(tactics)](TacticContext& context, const AnyOf& input) {
                   AnyOf current = input;
-                  for (const Tactic& phase : phases) {
-                    current = phase(context, current);
+                  for (const Tactic& tactic : tactics) {
+                    current = tactic(context, current);
                   }
                   return current;
                 });
+}
+
+std::string bool_parameter(bool value) { return value ? "true" : "false"; }
+
+std::string boolean_stage_parameter(BooleanNormalizationStage stage) {
+  return stage == BooleanNormalizationStage::Initial ? "initial" : "final";
+}
+
+std::string arithmetic_stage_parameter(ArithmeticNormalizationStage stage) {
+  switch (stage) {
+    case ArithmeticNormalizationStage::Initial:
+      return "initial";
+    case ArithmeticNormalizationStage::Catchup:
+      return "catchup";
+    case ArithmeticNormalizationStage::PostPurification:
+      return "post-purification";
+  }
+  throw TacticError("unknown arithmetic normalization stage");
+}
+
+void record_arithmetic_canonicalization(const ArithmeticAtomCanonicalizationResult& result,
+                                        util::Statistics& statistics) {
+  statistics.increment(util::StatKey::ArithmeticCanonicalizationAtomsVisited, result.atoms_visited);
+  statistics.increment(util::StatKey::ArithmeticCanonicalizationAtomsRewritten,
+                       result.atoms_rewritten);
+  statistics.increment(util::StatKey::ArithmeticCanonicalizationComparisons, result.comparisons);
+  statistics.increment(util::StatKey::ArithmeticCanonicalizationEqualities, result.equalities);
+  statistics.increment(util::StatKey::ArithmeticCanonicalizationConstantFolds,
+                       result.constant_folds);
+  statistics.increment(util::StatKey::ArithmeticCanonicalizationOrientationReversals,
+                       result.orientation_reversals);
+  statistics.increment(util::StatKey::ArithmeticCanonicalizationAliasesMerged,
+                       result.aliases_merged);
+  statistics.increment(util::StatKey::ArithmeticCanonicalizationDuplicateAssertionsRemoved,
+                       result.duplicate_assertions_removed);
+  statistics.increment(util::StatKey::ArithmeticCanonicalizationTermsCreated, result.terms_created);
+}
+
+}  // namespace
+
+std::vector<StrategyParameter> SolveEqsOptions::strategy_parameters() const {
+  return {
+      {"gaussian-elimination", bool_parameter(gaussian_elimination)},
+      {"ground-unit-substitution", bool_parameter(use_ground_unit_substitution)},
+      {"guarded-ground-unit-substitution", bool_parameter(use_guarded_ground_unit_substitution)},
+      {"solved-constant-substitution", bool_parameter(solved_constant_substitution)}};
+}
+
+std::vector<StrategyParameter> DeriveEqualitiesOptions::strategy_parameters() const {
+  return {{"equality-bridge", bool_parameter(equality_bridge)},
+          {"unit-consequences", bool_parameter(unit_consequences)}};
+}
+
+std::vector<StrategyParameter> FiniteDomainPreprocessOptions::strategy_parameters() const {
+  return {
+      {"evaluate-equalities", bool_parameter(evaluate_equalities)},
+      {"equality-definition-max-clauses", std::to_string(equality_definition_max_clauses)},
+      {"equality-definition-max-domain-size", std::to_string(equality_definition_max_domain_size)},
+      {"equality-definitions", bool_parameter(generate_equality_definitions)},
+      {"ground-congruence", bool_parameter(generate_ground_congruence)},
+      {"post-at-most-one", bool_parameter(generate_post_at_most_one)},
+      {"at-most-one", bool_parameter(generate_at_most_one)},
+      {"symmetry-breaking", bool_parameter(symmetry_breaking)},
+      {"value-precedence", bool_parameter(value_precedence)}};
+}
+
+std::vector<StrategyParameter> NormalizeBooleanOptions::strategy_parameters() const {
+  const char* implication = implication_mode == BooleanImpliesRewriteMode::Off      ? "off"
+                            : implication_mode == BooleanImpliesRewriteMode::Clause ? "clause"
+                                                                                    : "all";
+  return {{"flatten-threshold", std::to_string(flatten_threshold)},
+          {"implication-mode", implication},
+          {"stage", boolean_stage_parameter(stage)}};
+}
+
+std::vector<StrategyParameter> NormalizeArithmeticOptions::strategy_parameters() const {
+  return {{"canonicalize", bool_parameter(canonicalize)},
+          {"guarded-real-equality-lowering", bool_parameter(guarded_real_equality_lowering)},
+          {"lower-real-equalities", bool_parameter(lower_real_equalities)},
+          {"stage", arithmetic_stage_parameter(stage)}};
+}
+
+std::vector<StrategyParameter> PurifyMixedOptions::strategy_parameters() const {
+  return {{"canonicalize-arithmetic-after", bool_parameter(canonicalize_arithmetic_after)}};
+}
+
+Tactic make_propagate_values(PropagateValuesOptions) {
+  const PreprocessingRoundOptions options;
+  return complete_sequence(
+      "propagate-values",
+      {make_phase_tactic("boolean-unit-propagation", RoundPhase::BooleanUnits, options),
+       make_phase_tactic("forced-atom-propagation", RoundPhase::ForcedAtoms, options)});
+}
+
+Tactic make_solve_eqs(SolveEqsOptions options) {
+  const PreprocessingRoundOptions round_options{
+      .solved_constant_substitution = options.solved_constant_substitution,
+      .gaussian_elimination = options.gaussian_elimination,
+      .use_eq_bridge = false,
+      .use_finite_domain_evaluation = false,
+      .use_ground_congruence_definitions = false,
+      .use_ground_unit_substitution = options.use_ground_unit_substitution,
+      .use_guarded_ground_unit_substitution = options.use_guarded_ground_unit_substitution,
+  };
+  std::vector<Tactic> phases;
+  if (options.solved_constant_substitution) {
+    phases.push_back(make_phase_tactic("solved-constant-substitution", RoundPhase::SolvedConstants,
+                                       round_options));
+  }
+  if (options.use_ground_unit_substitution || options.use_guarded_ground_unit_substitution) {
+    phases.push_back(make_phase_tactic("ground-unit-substitution",
+                                       RoundPhase::GroundUnitSubstitution, round_options));
+  }
+  return complete_sequence("solve-eqs", std::move(phases));
+}
+
+Tactic make_derive_equalities(DeriveEqualitiesOptions options) {
+  const PreprocessingRoundOptions round_options;
+  std::vector<Tactic> phases;
+  if (options.equality_bridge) {
+    phases.push_back(
+        make_phase_tactic("equality-bridge", RoundPhase::EqualityBridge, round_options));
+  }
+  if (options.unit_consequences) {
+    phases.push_back(
+        make_phase_tactic("unit-equality-propagation", RoundPhase::UnitEqualities, round_options));
+  }
+  return complete_sequence("derive-equalities", std::move(phases));
+}
+
+Tactic make_finite_domain_preprocess(FiniteDomainPreprocessOptions options,
+                                     FiniteDomainPreprocessInput input) {
+  const PreprocessingRoundOptions round_options;
+  std::vector<Tactic> phases;
+  if (options.evaluate_equalities) {
+    phases.push_back(make_phase_tactic("finite-domain-evaluation",
+                                       RoundPhase::FiniteDomainEvaluation, round_options));
+  }
+  if (options.generate_ground_congruence) {
+    phases.push_back(make_phase_tactic("congruence-definitions", RoundPhase::CongruenceDefinitions,
+                                       round_options));
+  }
+  if (options.symmetry_breaking || options.generate_at_most_one ||
+      options.generate_equality_definitions) {
+    phases.push_back(make_goal_tactic(
+        "finite-domain-constraints",
+        [options, input = std::move(input)](TacticContext& context, const Goal& goal) {
+          std::vector<core::TermId> assertions = goal.assertions();
+          util::Statistics& statistics = context.statistics();
+          if (options.symmetry_breaking) {
+            UfSymmetryBreakingResult symmetry;
+            if (input.analyzed_symmetry.has_value()) {
+              symmetry = input.analyzed_symmetry.value();
+            } else {
+              UfSymmetryBreaker symmetry_breaker(context.terms());
+              const std::vector<core::TermId>& source = input.symmetry_source_assertions.empty()
+                                                            ? assertions
+                                                            : input.symmetry_source_assertions;
+              symmetry = symmetry_breaker.break_symmetries(
+                  source, UfSymmetryBreakingOptions{.value_precedence = options.value_precedence});
+            }
+            assertions.insert(assertions.end(), symmetry.constraints.begin(),
+                              symmetry.constraints.end());
+            statistics.increment(util::StatKey::UfSymmetryAcceptedSets, symmetry.accepted_sets);
+            statistics.increment(util::StatKey::UfSymmetryValues, symmetry.values);
+            statistics.increment(util::StatKey::UfSymmetryTerms, symmetry.terms);
+            statistics.increment(util::StatKey::UfSymmetryConstraints, symmetry.constraints.size());
+            statistics.increment(util::StatKey::UfSymmetryValuePrecedenceTerms,
+                                 symmetry.value_precedence_terms);
+            statistics.increment(util::StatKey::UfSymmetryValuePrecedenceConstraints,
+                                 symmetry.value_precedence_constraints);
+            statistics.increment(util::StatKey::UfSymmetryRejectedNoninvariant,
+                                 symmetry.rejected_noninvariant);
+          }
+          if (options.generate_at_most_one) {
+            FiniteDomainAtMostOneResult post;
+            if (options.generate_post_at_most_one) {
+              FiniteDomainAtMostOne generator(context.terms());
+              post = generator.generate(assertions, goal.reconstruction().forced_equalities,
+                                        goal.reconstruction().forced_disequalities);
+            }
+            statistics.increment(util::StatKey::FiniteDomainPostAmoClauses, post.clauses.size());
+            std::unordered_set<core::TermId> emitted(assertions.begin(), assertions.end());
+            std::size_t added = 0;
+            std::size_t deduped = 0;
+            const auto emit = [&](const std::vector<core::TermId>& clauses) {
+              for (const core::TermId clause : clauses) {
+                if (emitted.insert(clause).second) {
+                  assertions.push_back(clause);
+                  ++added;
+                } else {
+                  ++deduped;
+                }
+              }
+            };
+            emit(input.raw_at_most_one.clauses);
+            emit(post.clauses);
+            statistics.increment(util::StatKey::FiniteDomainDomains,
+                                 std::max(input.raw_at_most_one.domains, post.domains));
+            statistics.increment(util::StatKey::FiniteDomainAmoClauses, added);
+            statistics.increment(util::StatKey::FiniteDomainDedupedAmoClauses, deduped);
+          }
+          if (options.generate_equality_definitions) {
+            FiniteDomainEqualityDefinitions definitions(context.terms());
+            const FiniteDomainEqualityDefinitionsResult result = definitions.generate(
+                assertions, FiniteDomainEqualityDefinitionsOptions{
+                                .max_domain_size = options.equality_definition_max_domain_size,
+                                .max_clauses = options.equality_definition_max_clauses});
+            assertions.insert(assertions.end(), result.clauses.begin(), result.clauses.end());
+            statistics.increment(util::StatKey::EqualityDefinitions, result.clauses.size());
+            statistics.increment(util::StatKey::EqualityDefinitionCandidatePairs,
+                                 result.candidate_term_pairs);
+            statistics.increment(util::StatKey::EqualityDefinitionAcceptedPairs, result.term_pairs);
+            statistics.increment(util::StatKey::EqualityDefinitionPredictedClauses,
+                                 result.predicted_clauses);
+            statistics.increment(util::StatKey::EqualityDefinitionRejectedDomainSize,
+                                 result.rejected_domain_size);
+            statistics.increment(util::StatKey::EqualityDefinitionRejectedClauseLimit,
+                                 result.rejected_clause_limit);
+          }
+          return AnyOf::single(goal.with_assertions(std::move(assertions)));
+        }));
+  }
+  return complete_sequence("finite-domain-preprocess", std::move(phases));
+}
+
+Tactic make_normalize_boolean(NormalizeBooleanOptions options) {
+  return make_goal_tactic("normalize-boolean", [options](TacticContext& context, const Goal& goal) {
+    std::vector<core::TermId> assertions = goal.assertions();
+    util::Statistics& statistics = context.statistics();
+    if (options.stage == BooleanNormalizationStage::Final) {
+      const BooleanImpliesRewriteResult implication = rewrite_boolean_implications(
+          context.terms(), assertions, options.implication_mode, options.flatten_threshold);
+      assertions = implication.assertions;
+      statistics.set(":preprocessing.boolean-implies.visited", implication.visited);
+      statistics.set(":preprocessing.boolean-implies.clause-candidates",
+                     implication.clause_candidates);
+      statistics.set(":preprocessing.boolean-implies.rewritten", implication.rewritten);
+      statistics.set(":preprocessing.boolean-implies.all-mode-rewrites",
+                     implication.all_mode_rewrites);
+      statistics.set(":preprocessing.boolean-implies.widened-operands",
+                     implication.widened_operands);
+      statistics.set(":preprocessing.boolean-implies.threshold-stops", implication.threshold_stops);
+      statistics.set(":preprocessing.boolean-implies.terms-created", implication.terms_created);
+    }
+    const BooleanFlatteningResult flattened =
+        flatten_associative_booleans(context.terms(), assertions, options.flatten_threshold);
+    const std::string prefix = options.stage == BooleanNormalizationStage::Initial
+                                   ? ":preprocessing.boolean-flatten."
+                                   : ":preprocessing.boolean-flatten-post.";
+    statistics.set(prefix + "attempts", flattened.attempts);
+    statistics.set(prefix + "accepted", flattened.accepted);
+    statistics.set(prefix + "threshold-stops", flattened.threshold_stops);
+    if (options.stage == BooleanNormalizationStage::Initial) {
+      statistics.set(prefix + "operands-copied", flattened.operands_copied);
+    }
+    statistics.set(prefix + "rewrites", flattened.rewrites);
+    statistics.set(prefix + "max-arity", flattened.max_arity);
+    return AnyOf::single(goal.with_assertions(std::move(flattened.assertions)));
+  });
+}
+
+Tactic make_normalize_arithmetic(NormalizeArithmeticOptions options) {
+  return make_goal_tactic(
+      "normalize-arithmetic", [options](TacticContext& context, const Goal& goal) {
+        std::vector<core::TermId> assertions = goal.assertions();
+        util::Statistics& statistics = context.statistics();
+        if (options.canonicalize) {
+          const ArithmeticAtomCanonicalizationScope scope =
+              options.stage == ArithmeticNormalizationStage::PostPurification
+                  ? ArithmeticAtomCanonicalizationScope::ComparisonsOnly
+                  : ArithmeticAtomCanonicalizationScope::All;
+          ArithmeticAtomCanonicalizationResult canonicalized =
+              canonicalize_arithmetic_atoms(context.terms(), assertions, scope);
+          assertions = std::move(canonicalized.assertions);
+          record_arithmetic_canonicalization(canonicalized, statistics);
+          if (options.stage == ArithmeticNormalizationStage::Catchup) {
+            statistics.increment(util::StatKey::ArithmeticCanonicalizationCatchupRewrites,
+                                 canonicalized.atoms_rewritten);
+          } else if (options.stage == ArithmeticNormalizationStage::PostPurification) {
+            statistics.increment(util::StatKey::ArithmeticCanonicalizationPostPurificationRewrites,
+                                 canonicalized.atoms_rewritten);
+          }
+        }
+        if (options.lower_real_equalities) {
+          RealEqualityLoweringResult lowered = lower_real_equalities(
+              context.terms(), assertions, options.guarded_real_equality_lowering);
+          assertions = std::move(lowered.assertions);
+          statistics.increment(util::StatKey::RealEqualityLowered, lowered.lowered);
+          statistics.increment(util::StatKey::GuardedRealEqualityDistributed,
+                               lowered.guarded_distributed);
+        }
+        return AnyOf::single(goal.with_assertions(std::move(assertions)));
+      });
+}
+
+Tactic make_eliminate_monotone(EliminateMonotoneOptions) {
+  return make_goal_tactic("eliminate-monotone", [](TacticContext& context, const Goal& goal) {
+    MonotoneEliminationResult monotone =
+        eliminate_monotone_variables(context.terms(), goal.assertions());
+    context.statistics().increment(util::StatKey::MonotoneEliminationCandidates,
+                                   monotone.candidates);
+    context.statistics().increment(util::StatKey::MonotoneEliminationAtomsFolded,
+                                   monotone.atoms_folded);
+    context.statistics().increment(util::StatKey::MonotoneEliminationVariables,
+                                   monotone.eliminated.size());
+    Goal result = goal.with_assertions(std::move(monotone.assertions));
+    if (!context.produce_model() || monotone.eliminated.empty()) {
+      return AnyOf::single(std::move(result));
+    }
+    ModelReconstruction reconstruction = goal.reconstruction();
+    reconstruction.conversions = reconstruction.conversions.appended(
+        MonotoneEliminationConversion{std::move(monotone.eliminated)});
+    return AnyOf::single(result.with_reconstruction(std::move(reconstruction)));
+  });
+}
+
+Tactic make_preprocessing_round(PreprocessingRoundOptions options) {
+  std::vector<Tactic> phases;
+  if (options.use_eq_bridge) {
+    phases.push_back(make_derive_equalities(
+        DeriveEqualitiesOptions{.equality_bridge = true, .unit_consequences = false}));
+  }
+  if (options.use_finite_domain_evaluation || options.use_ground_congruence_definitions) {
+    phases.push_back(make_finite_domain_preprocess(FiniteDomainPreprocessOptions{
+        .evaluate_equalities = options.use_finite_domain_evaluation,
+        .generate_ground_congruence = options.use_ground_congruence_definitions}));
+  }
+  phases.push_back(make_propagate_values());
+  phases.push_back(make_solve_eqs(SolveEqsOptions{
+      .solved_constant_substitution = options.solved_constant_substitution,
+      .gaussian_elimination = options.gaussian_elimination,
+      .use_ground_unit_substitution = options.use_ground_unit_substitution,
+      .use_guarded_ground_unit_substitution = options.use_guarded_ground_unit_substitution,
+  }));
+  phases.push_back(make_derive_equalities(
+      DeriveEqualitiesOptions{.equality_bridge = false, .unit_consequences = true}));
+  return complete_sequence("preprocessing-round", std::move(phases));
 }
 
 }  // namespace primo::smt

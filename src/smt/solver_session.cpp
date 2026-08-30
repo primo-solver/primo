@@ -107,19 +107,7 @@ constexpr util::StatKey kStatSolvedConstantRejectedCycles =
     util::StatKey::SolvedConstantRejectedCycles;
 constexpr util::StatKey kStatSolvedConstantRejectedBlowups =
     util::StatKey::SolvedConstantRejectedBlowups;
-constexpr util::StatKey kStatArithmeticCanonicalizationCatchupRewrites =
-    util::StatKey::ArithmeticCanonicalizationCatchupRewrites;
-constexpr util::StatKey kStatArithmeticCanonicalizationPostPurificationRewrites =
-    util::StatKey::ArithmeticCanonicalizationPostPurificationRewrites;
 constexpr util::StatKey kStatRealEqualityLowered = util::StatKey::RealEqualityLowered;
-constexpr util::StatKey kStatMonotoneEliminationCandidates =
-    util::StatKey::MonotoneEliminationCandidates;
-constexpr util::StatKey kStatMonotoneEliminationVariables =
-    util::StatKey::MonotoneEliminationVariables;
-constexpr util::StatKey kStatMonotoneEliminationAtomsFolded =
-    util::StatKey::MonotoneEliminationAtomsFolded;
-constexpr util::StatKey kStatGuardedRealEqualityDistributed =
-    util::StatKey::GuardedRealEqualityDistributed;
 constexpr util::StatKey kStatSolvedConstantGaussianCandidates =
     util::StatKey::SolvedConstantGaussianCandidates;
 constexpr util::StatKey kStatFiniteDomainDomains = util::StatKey::FiniteDomainDomains;
@@ -472,24 +460,6 @@ util::Statistics::Value elapsed_microseconds(PhaseClock::time_point start,
                                              PhaseClock::time_point end) {
   return static_cast<util::Statistics::Value>(
       std::chrono::duration_cast<std::chrono::microseconds>(end - start).count());
-}
-
-void record_arithmetic_canonicalization(const ArithmeticAtomCanonicalizationResult& result,
-                                        util::Statistics& statistics) {
-  statistics.increment(util::StatKey::ArithmeticCanonicalizationAtomsVisited, result.atoms_visited);
-  statistics.increment(util::StatKey::ArithmeticCanonicalizationAtomsRewritten,
-                       result.atoms_rewritten);
-  statistics.increment(util::StatKey::ArithmeticCanonicalizationComparisons, result.comparisons);
-  statistics.increment(util::StatKey::ArithmeticCanonicalizationEqualities, result.equalities);
-  statistics.increment(util::StatKey::ArithmeticCanonicalizationConstantFolds,
-                       result.constant_folds);
-  statistics.increment(util::StatKey::ArithmeticCanonicalizationOrientationReversals,
-                       result.orientation_reversals);
-  statistics.increment(util::StatKey::ArithmeticCanonicalizationAliasesMerged,
-                       result.aliases_merged);
-  statistics.increment(util::StatKey::ArithmeticCanonicalizationDuplicateAssertionsRemoved,
-                       result.duplicate_assertions_removed);
-  statistics.increment(util::StatKey::ArithmeticCanonicalizationTermsCreated, result.terms_created);
 }
 
 void record_ackermann_cost_diagnostics(const core::TermManager& terms,
@@ -10691,6 +10661,39 @@ CheckSatOutcome solve_qf_uf_lra(core::TermManager& terms,
 
 }  // namespace
 
+Tactic make_purify_mixed(Frontend& frontend, PurifyMixedOptions options) {
+  return make_goal_tactic("purify-mixed", [&frontend, options](TacticContext& context,
+                                                               const Goal& goal) {
+    MixedTheoryPurificationResult purification =
+        purify_mixed_arithmetic_applications(frontend, goal.assertions());
+    util::Statistics& statistics = context.statistics();
+    statistics.set(":no.purification.definitions",
+                   purification.arithmetic_uf_definitions + purification.euf_real_term_definitions);
+    statistics.set(":no.purification.arithmetic-uf-definitions",
+                   purification.arithmetic_uf_definitions);
+    statistics.set(":no.purification.euf-real-term-definitions",
+                   purification.euf_real_term_definitions);
+    statistics.set(":no.purification.reused-applications", purification.reused_applications);
+    statistics.set(":no.purification.reused-real-terms", purification.reused_real_terms);
+    statistics.set(":no.purification.memoized-formula-rewrites",
+                   purification.memoized_formula_rewrites);
+    statistics.set(":no.purification.memoized-arithmetic-rewrites",
+                   purification.memoized_arithmetic_rewrites);
+    statistics.set(":no.purification.memoized-euf-rewrites", purification.memoized_euf_rewrites);
+    statistics.set(":no.purification.skipped-no-sites", purification.skipped_no_sites ? 1 : 0);
+    Goal result = goal.with_assertions(std::move(purification.assertions));
+    if (!options.canonicalize_arithmetic_after || purification.skipped_no_sites) {
+      return AnyOf::single(std::move(result));
+    }
+    const Tactic normalize = make_normalize_arithmetic(
+        NormalizeArithmeticOptions{.stage = ArithmeticNormalizationStage::PostPurification,
+                                   .canonicalize = true,
+                                   .lower_real_equalities = false,
+                                   .guarded_real_equality_lowering = false});
+    return normalize(context, AnyOf::single(std::move(result)));
+  });
+}
+
 CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions options) {
   const PhaseClock::time_point total_start = PhaseClock::now();
   util::Statistics statistics;
@@ -10990,23 +10993,28 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       // arithmetic at all) and stays enabled.
     }
     const PhaseClock::time_point preprocessing_start = PhaseClock::now();
+    TacticContext preprocessing_context(frontend.terms(), statistics, options.cancelled,
+                                        options.produce_model);
     if (options.arithmetic_atom_canonicalization) {
-      ArithmeticAtomCanonicalizationResult canonicalized =
-          canonicalize_arithmetic_atoms(frontend.terms(), assertions);
-      assertions = std::move(canonicalized.assertions);
-      record_arithmetic_canonicalization(canonicalized, statistics);
+      const Tactic normalize = make_normalize_arithmetic(
+          NormalizeArithmeticOptions{.stage = ArithmeticNormalizationStage::Initial,
+                                     .canonicalize = true,
+                                     .lower_real_equalities = false,
+                                     .guarded_real_equality_lowering = false});
+      assertions = normalize(preprocessing_context, AnyOf::single(Goal(std::move(assertions))))
+                       .alternatives()
+                       .front()
+                       .assertions();
     }
-    const BooleanFlatteningResult boolean_flattening = flatten_associative_booleans(
-        frontend.terms(), assertions, options.boolean_flatten_threshold);
-    assertions = boolean_flattening.assertions;
-    statistics.set(":preprocessing.boolean-flatten.attempts", boolean_flattening.attempts);
-    statistics.set(":preprocessing.boolean-flatten.accepted", boolean_flattening.accepted);
-    statistics.set(":preprocessing.boolean-flatten.threshold-stops",
-                   boolean_flattening.threshold_stops);
-    statistics.set(":preprocessing.boolean-flatten.operands-copied",
-                   boolean_flattening.operands_copied);
-    statistics.set(":preprocessing.boolean-flatten.rewrites", boolean_flattening.rewrites);
-    statistics.set(":preprocessing.boolean-flatten.max-arity", boolean_flattening.max_arity);
+    const Tactic initial_boolean_normalization = make_normalize_boolean(
+        NormalizeBooleanOptions{.stage = BooleanNormalizationStage::Initial,
+                                .flatten_threshold = options.boolean_flatten_threshold,
+                                .implication_mode = BooleanImpliesRewriteMode::Off});
+    assertions = initial_boolean_normalization(preprocessing_context,
+                                               AnyOf::single(Goal(std::move(assertions))))
+                     .alternatives()
+                     .front()
+                     .assertions();
     const std::size_t initial_reachable_terms =
         options.preprocessing_mode == PreprocessingMode::Auto
             ? reachable_term_count(frontend.terms(), assertions)
@@ -11271,7 +11279,6 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     }
     if (preprocessing_loop_enabled && preprocessing_passes > 0) {
       const PreprocessingRoundOptions round_options{
-          .produce_model = options.produce_model,
           .solved_constant_substitution = options.solved_constant_substitution,
           .gaussian_elimination = options.gaussian_elimination,
           .use_eq_bridge = use_eq_bridge,
@@ -11280,8 +11287,6 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
           .use_ground_unit_substitution = use_ground_unit_substitution,
           .use_guarded_ground_unit_substitution = use_guarded_ground_unit_substitution,
       };
-      TacticContext tactic_context(frontend.terms(), statistics, options.cancelled,
-                                   options.produce_model);
       const Tactic round = make_preprocessing_round(round_options);
       const std::size_t max_preprocessing_passes =
           preprocessing_passes + options.preprocessing_adaptive_extra_passes;
@@ -11320,200 +11325,85 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
               }
             }
             return true;
+          },
+          [&statistics](const TacticContext&, const AnyOf&, const AnyOf&, std::size_t) {
+            statistics.increment(kStatPreprocessingPasses);
           });
       AnyOf preprocessed = preprocessing(
-          tactic_context,
+          preprocessing_context,
           AnyOf::single(
               Goal(std::move(assertions)).with_reconstruction(std::move(reconstruction))));
       const Goal& preprocessed_goal = preprocessed.alternatives().front();
       if (preprocessed_goal.reason() != InconclusiveReason::None) {
         statistics.set(kStatTimePreprocessingUs,
                        elapsed_microseconds(preprocessing_start, PhaseClock::now()));
-        CheckSatOutcome interrupted = outcome_from_tactic_result(preprocessed, tactic_context);
+        CheckSatOutcome interrupted =
+            outcome_from_tactic_result(preprocessed, preprocessing_context);
         return finish(interrupted.result, std::move(interrupted.message));
       }
       assertions = preprocessed_goal.assertions();
       reconstruction = preprocessed_goal.reconstruction();
     }
-    if (use_symmetry_breaking) {
-      if (!symmetry_result.has_value()) {
-        UfSymmetryBreaker symmetry_breaker(frontend.terms());
-        symmetry_result = symmetry_breaker.break_symmetries(
-            symmetry_source_assertions,
-            UfSymmetryBreakingOptions{.value_precedence = options.finite_domain_value_precedence});
-      }
-      const UfSymmetryBreakingResult& symmetry = symmetry_result.value();
-      assertions.insert(assertions.end(), symmetry.constraints.begin(), symmetry.constraints.end());
-      statistics.increment(kStatUfSymmetryAcceptedSets, symmetry.accepted_sets);
-      statistics.increment(kStatUfSymmetryValues, symmetry.values);
-      statistics.increment(kStatUfSymmetryTerms, symmetry.terms);
-      statistics.increment(kStatUfSymmetryConstraints, symmetry.constraints.size());
-      statistics.increment(kStatUfSymmetryValuePrecedenceTerms, symmetry.value_precedence_terms);
-      statistics.increment(kStatUfSymmetryValuePrecedenceConstraints,
-                           symmetry.value_precedence_constraints);
-      statistics.increment(kStatUfSymmetryRejectedNoninvariant, symmetry.rejected_noninvariant);
-    }
-    if (use_finite_domain_amo) {
-      FiniteDomainAtMostOne finite_domain(frontend.terms());
-      FiniteDomainAtMostOneResult finite_domain_result;
-      if (options.finite_domain_post_amo) {
-        finite_domain_result = finite_domain.generate(assertions, reconstruction.forced_equalities,
-                                                      reconstruction.forced_disequalities);
-      }
-      statistics.increment(kStatFiniteDomainPostAmoClauses, finite_domain_result.clauses.size());
-      std::unordered_set<core::TermId> emitted(assertions.begin(), assertions.end());
-      std::size_t added = 0;
-      std::size_t deduped = 0;
-      for (const core::TermId clause : raw_finite_domain_result.clauses) {
-        if (emitted.insert(clause).second) {
-          assertions.push_back(clause);
-          ++added;
-        } else {
-          ++deduped;
-        }
-      }
-      for (const core::TermId clause : finite_domain_result.clauses) {
-        if (emitted.insert(clause).second) {
-          assertions.push_back(clause);
-          ++added;
-        } else {
-          ++deduped;
-        }
-      }
-      statistics.increment(kStatFiniteDomainDomains, std::max(raw_finite_domain_result.domains,
-                                                              finite_domain_result.domains));
-      statistics.increment(kStatFiniteDomainAmoClauses, added);
-      statistics.increment(kStatFiniteDomainDedupedAmoClauses, deduped);
-    }
-    if (use_finite_domain_equality_definitions) {
-      FiniteDomainEqualityDefinitions equality_definitions(frontend.terms());
-      FiniteDomainEqualityDefinitionsOptions definition_options;
-      if (use_bounded_auto_equality_definitions) {
-        definition_options.max_domain_size = options.finite_domain_eqdefs_auto_domain_limit;
-        definition_options.max_clauses = options.finite_domain_eqdefs_auto_clause_limit;
-      }
-      FiniteDomainEqualityDefinitionsResult equality_definition_result =
-          equality_definitions.generate(assertions, definition_options);
-      assertions.insert(assertions.end(), equality_definition_result.clauses.begin(),
-                        equality_definition_result.clauses.end());
-      statistics.increment(kStatEqualityDefinitions, equality_definition_result.clauses.size());
-      statistics.increment(kStatEqualityDefinitionCandidatePairs,
-                           equality_definition_result.candidate_term_pairs);
-      statistics.increment(kStatEqualityDefinitionAcceptedPairs,
-                           equality_definition_result.term_pairs);
-      statistics.increment(kStatEqualityDefinitionPredictedClauses,
-                           equality_definition_result.predicted_clauses);
-      statistics.increment(kStatEqualityDefinitionRejectedDomainSize,
-                           equality_definition_result.rejected_domain_size);
-      statistics.increment(kStatEqualityDefinitionRejectedClauseLimit,
-                           equality_definition_result.rejected_clause_limit);
-    }
-    if (options.arithmetic_atom_canonicalization) {
-      // Preprocessing can create or rewrite arithmetic atoms after the
-      // initial frontend pass. Catch them before Real equality is lowered.
-      ArithmeticAtomCanonicalizationResult canonicalized =
-          canonicalize_arithmetic_atoms(frontend.terms(), assertions);
-      assertions = std::move(canonicalized.assertions);
-      record_arithmetic_canonicalization(canonicalized, statistics);
-      statistics.increment(kStatArithmeticCanonicalizationCatchupRewrites,
-                           canonicalized.atoms_rewritten);
-    }
-    {
-      // This is the final equality-producing preprocessing boundary. Earlier
-      // passes reason about genuine Equality nodes, and symmetry/finite-domain
-      // passes above may add new ones. Lower the complete assertion set before
-      // any arithmetic-only pass or theory dispatch so native Real equality
-      // from the assertion pipeline never reaches the LRA atom layer. The
-      // mixed coordinator may separately layer known-true interface
-      // equalities onto a final LRA check.
-      RealEqualityLoweringResult lowered_equalities = lower_real_equalities(
-          frontend.terms(), assertions, options.guarded_real_equality_lowering);
-      assertions = std::move(lowered_equalities.assertions);
-      statistics.increment(kStatRealEqualityLowered, lowered_equalities.lowered);
-      statistics.increment(kStatGuardedRealEqualityDistributed,
-                           lowered_equalities.guarded_distributed);
-    }
+    const auto apply_preprocessing_tactic = [&](const Tactic& tactic) {
+      const AnyOf result =
+          tactic(preprocessing_context,
+                 AnyOf::single(
+                     Goal(std::move(assertions)).with_reconstruction(std::move(reconstruction))));
+      assertions = result.alternatives().front().assertions();
+      reconstruction = result.alternatives().front().reconstruction();
+    };
+    apply_preprocessing_tactic(make_finite_domain_preprocess(
+        FiniteDomainPreprocessOptions{
+            .evaluate_equalities = false,
+            .generate_ground_congruence = false,
+            .symmetry_breaking = use_symmetry_breaking,
+            .value_precedence = options.finite_domain_value_precedence,
+            .generate_at_most_one = use_finite_domain_amo,
+            .generate_post_at_most_one = options.finite_domain_post_amo,
+            .generate_equality_definitions = use_finite_domain_equality_definitions,
+            .equality_definition_max_domain_size =
+                use_bounded_auto_equality_definitions
+                    ? options.finite_domain_eqdefs_auto_domain_limit
+                    : 0,
+            .equality_definition_max_clauses = use_bounded_auto_equality_definitions
+                                                   ? options.finite_domain_eqdefs_auto_clause_limit
+                                                   : 0},
+        FiniteDomainPreprocessInput{.symmetry_source_assertions = symmetry_source_assertions,
+                                    .raw_at_most_one = raw_finite_domain_result,
+                                    .analyzed_symmetry = symmetry_result}));
+    // This is the final equality-producing preprocessing boundary. Earlier
+    // passes reason about genuine Equality nodes, and symmetry/finite-domain
+    // passes above may add new ones. Catch up canonicalization, then lower the
+    // complete assertion set before arithmetic-only passes and dispatch.
+    const Tactic catchup_arithmetic = make_normalize_arithmetic(NormalizeArithmeticOptions{
+        .stage = ArithmeticNormalizationStage::Catchup,
+        .canonicalize = options.arithmetic_atom_canonicalization,
+        .lower_real_equalities = true,
+        .guarded_real_equality_lowering = options.guarded_real_equality_lowering});
+    apply_preprocessing_tactic(catchup_arithmetic);
     if (options.monotone_elimination) {
       // Runs after Real-equality lowering so that equalities have already
       // become Le/Lt pairs -- a variable pinned by an equality is
       // two-sided either way, but the pass only understands Le/Lt.
-      MonotoneEliminationResult monotone =
-          eliminate_monotone_variables(frontend.terms(), assertions);
-      statistics.increment(kStatMonotoneEliminationCandidates, monotone.candidates);
-      statistics.increment(kStatMonotoneEliminationAtomsFolded, monotone.atoms_folded);
-      statistics.increment(kStatMonotoneEliminationVariables, monotone.eliminated.size());
-      assertions = std::move(monotone.assertions);
-      if (options.produce_model && !monotone.eliminated.empty()) {
-        reconstruction.conversions = reconstruction.conversions.appended(
-            MonotoneEliminationConversion{std::move(monotone.eliminated)});
-      }
+      apply_preprocessing_tactic(make_eliminate_monotone());
     }
-    {
-      MixedTheoryPurificationResult purification =
-          purify_mixed_arithmetic_applications(frontend, assertions);
-      assertions = std::move(purification.assertions);
-      statistics.set(":no.purification.definitions", purification.arithmetic_uf_definitions +
-                                                         purification.euf_real_term_definitions);
-      statistics.set(":no.purification.arithmetic-uf-definitions",
-                     purification.arithmetic_uf_definitions);
-      statistics.set(":no.purification.euf-real-term-definitions",
-                     purification.euf_real_term_definitions);
-      statistics.set(":no.purification.reused-applications", purification.reused_applications);
-      statistics.set(":no.purification.reused-real-terms", purification.reused_real_terms);
-      statistics.set(":no.purification.memoized-formula-rewrites",
-                     purification.memoized_formula_rewrites);
-      statistics.set(":no.purification.memoized-arithmetic-rewrites",
-                     purification.memoized_arithmetic_rewrites);
-      statistics.set(":no.purification.memoized-euf-rewrites", purification.memoized_euf_rewrites);
-      statistics.set(":no.purification.skipped-no-sites", purification.skipped_no_sites ? 1 : 0);
-      if (options.arithmetic_atom_canonicalization && !purification.skipped_no_sites) {
-        // Purification introduces fresh arithmetic comparisons but also
-        // EUF-owned Real equalities. Only the former belong to this pass.
-        ArithmeticAtomCanonicalizationResult canonicalized = canonicalize_arithmetic_atoms(
-            frontend.terms(), assertions, ArithmeticAtomCanonicalizationScope::ComparisonsOnly);
-        assertions = std::move(canonicalized.assertions);
-        record_arithmetic_canonicalization(canonicalized, statistics);
-        statistics.increment(kStatArithmeticCanonicalizationPostPurificationRewrites,
-                             canonicalized.atoms_rewritten);
-      }
-    }
+    // Mixed-theory preparation is mandatory. The tactic keeps its dependent
+    // post-purification arithmetic normalization in the same composite so no
+    // strategy can accidentally separate the two operations.
+    apply_preprocessing_tactic(make_purify_mixed(
+        frontend, PurifyMixedOptions{.canonicalize_arithmetic_after =
+                                         options.arithmetic_atom_canonicalization}));
     // Keep this normalization after theory preprocessing: it changes only
     // Boolean shape and should not alter which equality or arithmetic terms
     // those passes inspect. Clause mode uses the post-flattening bound because
     // its only purpose is exposing a bounded flat clause.
-    const BooleanImpliesRewriteResult implication_rewrite =
-        rewrite_boolean_implications(frontend.terms(), assertions, options.boolean_implies_rewrite,
-                                     options.boolean_flatten_post_threshold);
-    assertions = implication_rewrite.assertions;
-    statistics.set(":preprocessing.boolean-implies.visited", implication_rewrite.visited);
-    statistics.set(":preprocessing.boolean-implies.clause-candidates",
-                   implication_rewrite.clause_candidates);
-    statistics.set(":preprocessing.boolean-implies.rewritten", implication_rewrite.rewritten);
-    statistics.set(":preprocessing.boolean-implies.all-mode-rewrites",
-                   implication_rewrite.all_mode_rewrites);
-    statistics.set(":preprocessing.boolean-implies.widened-operands",
-                   implication_rewrite.widened_operands);
-    statistics.set(":preprocessing.boolean-implies.threshold-stops",
-                   implication_rewrite.threshold_stops);
-    statistics.set(":preprocessing.boolean-implies.terms-created",
-                   implication_rewrite.terms_created);
-
-    // Second, post-preprocessing application of the same bounded pass. The
-    // first one (above) runs before the rewriting passes so they see wider
-    // nodes; but those passes then build fresh And/Or nodes through
-    // TermManager, which -- since the DAG repair -- no longer flattens at
-    // construction. So nesting the input never had is introduced *after* the
-    // first pass, which is why it reports attempts=0 on inputs that
-    // nonetheless end up nested. See docs/boolean-dag-flattening.md.
-    const BooleanFlatteningResult post_flattening = flatten_associative_booleans(
-        frontend.terms(), assertions, options.boolean_flatten_post_threshold);
-    assertions = post_flattening.assertions;
-    statistics.set(":preprocessing.boolean-flatten-post.attempts", post_flattening.attempts);
-    statistics.set(":preprocessing.boolean-flatten-post.accepted", post_flattening.accepted);
-    statistics.set(":preprocessing.boolean-flatten-post.threshold-stops",
-                   post_flattening.threshold_stops);
-    statistics.set(":preprocessing.boolean-flatten-post.rewrites", post_flattening.rewrites);
-    statistics.set(":preprocessing.boolean-flatten-post.max-arity", post_flattening.max_arity);
+    // The final normalization changes only Boolean shape. Its bounded flatten
+    // runs after implication rewriting because preprocessing may have built new
+    // nested And/Or nodes after the initial normalization.
+    apply_preprocessing_tactic(make_normalize_boolean(
+        NormalizeBooleanOptions{.stage = BooleanNormalizationStage::Final,
+                                .flatten_threshold = options.boolean_flatten_post_threshold,
+                                .implication_mode = options.boolean_implies_rewrite}));
     statistics.set(kStatAssertionsFinal, assertions.size());
     statistics.set(kStatPreprocessingTermSizeFinal,
                    reachable_term_count(frontend.terms(), assertions));

@@ -313,14 +313,19 @@ Tactic conditional(std::string name, GoalPredicate predicate, Tactic if_true, Ta
 }
 
 Tactic repeat(std::string name, Tactic tactic, std::size_t max_iterations,
-              RepeatPredicate continue_after_change, RepeatEquivalence equivalent) {
+              RepeatPredicate continue_after_change, RepeatEquivalence equivalent,
+              RepeatObserver observer) {
   return Tactic(std::move(name), [tactic = std::move(tactic), max_iterations,
                                   continue_after_change = std::move(continue_after_change),
-                                  equivalent = std::move(equivalent)](TacticContext& context,
-                                                                      const AnyOf& input) {
+                                  equivalent = std::move(equivalent),
+                                  observer = std::move(observer)](TacticContext& context,
+                                                                  const AnyOf& input) {
     AnyOf current = input;
     for (std::size_t iteration = 0; iteration < max_iterations; ++iteration) {
       AnyOf after = tactic(context, current);
+      if (observer) {
+        observer(context, current, after, iteration + 1);
+      }
       const bool reached_fixed_point =
           equivalent ? equivalent(context, current, after) : after == current;
       if (reached_fixed_point) {

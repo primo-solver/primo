@@ -152,13 +152,16 @@ using GoalPredicate = std::function<bool(const TacticContext&, const Goal&)>;
 using RepeatPredicate =
     std::function<bool(const TacticContext&, const AnyOf&, const AnyOf&, std::size_t)>;
 using RepeatEquivalence = std::function<bool(const TacticContext&, const AnyOf&, const AnyOf&)>;
+using RepeatObserver =
+    std::function<void(const TacticContext&, const AnyOf&, const AnyOf&, std::size_t)>;
 
 Tactic make_goal_tactic(std::string name, GoalTactic tactic);
 Tactic skip();
 Tactic sequence(std::string name, std::vector<Tactic> tactics);
 Tactic conditional(std::string name, GoalPredicate predicate, Tactic if_true, Tactic if_false);
 Tactic repeat(std::string name, Tactic tactic, std::size_t max_iterations,
-              RepeatPredicate continue_after_change = {}, RepeatEquivalence equivalent = {});
+              RepeatPredicate continue_after_change = {}, RepeatEquivalence equivalent = {},
+              RepeatObserver observer = {});
 
 class TacticScheduler {
  public:

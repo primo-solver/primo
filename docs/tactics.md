@@ -148,25 +148,34 @@ preprocessing migration rather than hidden inside the generic layer.
 
 ## Production composition
 
+The preprocessing API exposes typed immutable builders for
+`normalize-boolean`, `propagate-values`, `solve-eqs`, `derive-equalities`,
+`finite-domain-preprocess`, `normalize-arithmetic`, `eliminate-monotone`, and
+`purify-mixed`. Each builder owns a meaningful transformation boundary rather
+than exposing small implementation helpers as portfolio actions. Gaussian
+candidate generation therefore remains a `solve-eqs` setting, and the
+finite-domain builder keeps equality evaluation, congruence generation,
+symmetry constraints, raw/post-round at-most-one clauses, and equality
+definitions in one composite. Its immutable input snapshot records the
+pre-round assertion state needed by delayed symmetry and clause emission; this
+preserves the established earlier/later formula dependency.
+
 The repeated preprocessing round is implemented in `preprocessing_tactics` as
-a composition of named phase tactics over each input alternative. Its immutable
-`PreprocessingRoundOptions` is constructed once from the selected strategy;
-the phases do not inspect command-line state. The generic `repeat` tactical
-applies it to an ordered-assertion fixed point, respects the existing baseline pass
-limit, and consults the read-only reachable-term-count probe for configured
-adaptive extra passes. Equality bridging, finite-domain evaluation, congruence
-definitions, Boolean-unit propagation, forced-atom propagation, solved-constant
-substitution, ground-unit substitution, and unit-equality propagation each have
-their own invocation/time counters. A round deliberately finishes all selected
-phases before exposing a terminal goal, preserving the established pass
-ordering and reconstruction/statistics behavior. Each output carries its own
-immutable reconstruction value; outputs that do not change it may share the
-same backing storage. Phase adapters read assertions directly from the
-immutable input and copy assertion or reconstruction containers only when that
-phase must extend them; counting and unchanged append-only phases return the
-shared input goal. The transformation implementations are unchanged.
-Existing command-line options construct this built-in composition; there is no
-user-facing tactic expression syntax and option defaults are unchanged.
+an exact composition of those public builders over each input alternative. Its
+immutable `PreprocessingRoundOptions` is constructed once from the selected
+strategy; the leaves do not inspect command-line state. The generic `repeat`
+tactical applies it to an ordered-assertion fixed point, respects the existing
+baseline pass limit, and consults the read-only reachable-term-count probe for
+configured adaptive extra passes. Its observer reports every completed
+iteration, including the fixed-point iteration, so the historical
+`:preprocessing.passes` counter no longer needs a formula-valued no-op tactic.
+The round deliberately finishes all selected leaves before exposing a terminal
+goal, preserving the established pass ordering and reconstruction/statistics
+behavior. Each output carries its own immutable reconstruction value; outputs
+that do not change it may share the same backing storage. The transformation
+implementations are unchanged. Existing command-line options construct this
+built-in composition; there is no user-facing tactic expression syntax and
+option defaults are unchanged.
 
 The Boolean, QF_UF, QF_LRA, QF_LIA, and combined QF_UFLRA solvers are adapted as
 formula-returning leaf tactics. A solving leaf represents `sat` by an empty

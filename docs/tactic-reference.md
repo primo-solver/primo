@@ -28,7 +28,7 @@ inspection/composition layer is declared in `src/smt/strategy.hpp`.
 | `skip()` | Identity tactic, named `skip` | Returns the same immutable `AnyOf` |
 | `sequence(name, tactics)` | Ordered composition | Passes each result to the next tactic and stops when the combined result is terminal |
 | `conditional(name, predicate, yes, no)` | Per-goal branch | Evaluates a read-only predicate and runs exactly one branch |
-| `repeat(name, tactic, limit, ...)` | Bounded fixed-point iteration | Stops on equivalence, a terminal result, a continuation decision, or the iteration bound |
+| `repeat(name, tactic, limit, ..., observer)` | Bounded fixed-point iteration | Stops on equivalence, a terminal result, a continuation decision, or the iteration bound; the optional observer sees every completed iteration |
 | `first_terminal(name, scheduler, tactics)` | Portfolio fallback | Gives every arm the same original input and returns the first terminal result, or the last inconclusive result |
 | `SequentialTacticScheduler` | Execution policy for `first_terminal` | Runs arms sequentially in declaration order; there is no parallel scheduler yet |
 
@@ -50,6 +50,14 @@ respective strategies rather than exported as reusable probe objects.
 
 | Runtime name | API status | Contents |
 |---|---|---|
+| `normalize-boolean` | Public typed builder | Initial or final associative flattening; the final stage first applies configured implication normalization |
+| `propagate-values` | Public typed builder | Boolean-unit propagation followed by forced-theory-atom propagation |
+| `solve-eqs` | Public typed builder | Solved constants, optional Real Gaussian candidates, and configured ground-unit substitution |
+| `derive-equalities` | Public typed builder | Equality bridging and/or positive unit-equality consequences |
+| `finite-domain-preprocess` | Public typed builder | Selected equality evaluation and congruence phases plus the inseparable symmetry, AMO, and equality-definition choreography |
+| `normalize-arithmetic` | Public typed builder | Arithmetic-atom canonicalization and/or Real-equality lowering at a typed pipeline stage |
+| `eliminate-monotone` | Public typed builder | Monotone-variable elimination with an ordered model-conversion record when model production is requested |
+| `purify-mixed` | Public typed builder | Mandatory mixed-theory purification and its dependent comparison-only arithmetic recanonicalization |
 | `preprocessing-round` | Public builder: `make_preprocessing_round(PreprocessingRoundOptions)` | Runs the selected phases below in a fixed order and deliberately completes the round even if an intermediate phase makes the formula terminal |
 | `preprocessing-fixed-point` | Production composite assembled in `solver_session.cpp` | Repeats `preprocessing-round` to ordered-assertion convergence, subject to baseline and adaptive pass limits |
 
@@ -60,7 +68,6 @@ selects phases without allowing them to read command-line state.
 
 | Runtime name | Enabled when | Formula effect | API status |
 |---|---|---|---|
-| `preprocessing-pass` | Always | Increments the completed-pass counter; no formula change | Internal phase |
 | `equality-bridge` | Equality bridging is selected | Adds equality consequences recognized under supported Boolean structure | Internal phase |
 | `finite-domain-evaluation` | `use_finite_domain_evaluation` is set | Simplifies enumerated finite-domain equalities | Internal phase; the current production strategy always leaves this setting off |
 | `congruence-definitions` | Ground congruence generation is selected | Adds bounded congruence clauses for existing ground applications | Internal phase |
@@ -70,11 +77,12 @@ selects phases without allowing them to read command-line state.
 | `ground-unit-substitution` | Unguarded or guarded ground substitution is selected | Substitutes positive ground unit equalities; the guarded mode accepts only its bounded shrink criteria | Internal phase |
 | `unit-equality-propagation` | Always | Adds equality consequences from positive unit equalities | Internal phase |
 
-None of these phase factories is public yet. `preprocessing_tactics.cpp` creates
-them through a private phase adapter, so callers can select them only through
-`PreprocessingRoundOptions` and cannot independently order or portfolio them.
-Their separate runtime names currently provide observability, not a complete
-composition API.
+These fine-grained phase factories remain private. They are reachable through
+the meaningful public composites above, whose typed option records are the
+supported composition API. Their separate runtime names provide observability,
+not permission to split operations that share an analysis or reconstruction
+contract. The legacy completed-pass statistic is emitted by the repeat
+observer; `preprocessing-pass` is no longer an executable tactic.
 
 Gaussian elimination is **not** a separate tactic. It is an optional candidate
 source inside `solved-constant-substitution`; syntactic candidates, Gaussian
@@ -110,18 +118,11 @@ one false goal, and otherwise preserve inconclusive alternatives.
 
 ## Transformations not yet represented as tactics
 
-The following production preprocessing or control steps still run directly in
+The following production control steps still run directly in
 `solver_session.cpp` and must not be mistaken for available portfolio arms:
 
 - preprocessing-profile analysis and `auto` profile selection;
-- the initial and catch-up arithmetic-atom canonicalization passes;
-- pre- and post-preprocessing associative Boolean flattening;
 - the QF_LIA-specific and large-assertion-bypass solved-constant loops;
-- finite-domain at-most-one generation, UF symmetry breaking, and finite-domain
-  equality-definition generation;
-- Real-equality lowering and monotone-variable elimination;
-- mixed-theory purification and its comparison-only recanonicalization;
-- Boolean implication rewriting; and
 - the experimental QF_UF portfolio, which reparses into fresh solver sessions
   and therefore cannot pass a `Goal` across arms.
 
@@ -135,8 +136,9 @@ count would expose an unsafe and unhelpful portfolio action.
 
 ## Current limitations for portfolio work
 
-- Individual preprocessing phases cannot yet be freely reordered or selected
-  through public builders.
+- Public preprocessing leaves can be composed internally, but the production
+  profile and fixed-point strategy are not yet represented by one inspectable
+  `Strategy` value.
 - Only sequential first-terminal scheduling exists.
 - Strategy probes are partly embedded in `solver_session.cpp` and
   `solver_strategy.cpp` rather than collected behind a reusable probe API.

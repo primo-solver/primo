@@ -1,14 +1,21 @@
 #pragma once
 
+#include <cstddef>
+#include <optional>
+#include <vector>
+
+#include "smt/preprocessing.hpp"
+#include "smt/strategy.hpp"
 #include "smt/tactic.hpp"
 
 namespace primo::smt {
+
+class Frontend;
 
 // Immutable settings for one equivalence/equisatisfiability-preserving
 // preprocessing round. Strategy construction maps command-line options into
 // this value once; the tactic itself does not inspect CLI state.
 struct PreprocessingRoundOptions {
-  bool produce_model = false;
   bool solved_constant_substitution = false;
   bool gaussian_elimination = false;
   bool use_eq_bridge = false;
@@ -17,6 +24,98 @@ struct PreprocessingRoundOptions {
   bool use_ground_unit_substitution = false;
   bool use_guarded_ground_unit_substitution = false;
 };
+
+struct PropagateValuesOptions {
+  std::vector<StrategyParameter> strategy_parameters() const { return {}; }
+};
+
+struct SolveEqsOptions {
+  bool solved_constant_substitution = true;
+  bool gaussian_elimination = false;
+  bool use_ground_unit_substitution = false;
+  bool use_guarded_ground_unit_substitution = false;
+
+  std::vector<StrategyParameter> strategy_parameters() const;
+};
+
+struct DeriveEqualitiesOptions {
+  bool equality_bridge = true;
+  bool unit_consequences = true;
+
+  std::vector<StrategyParameter> strategy_parameters() const;
+};
+
+struct FiniteDomainPreprocessOptions {
+  bool evaluate_equalities = false;
+  bool generate_ground_congruence = false;
+  bool symmetry_breaking = false;
+  bool value_precedence = true;
+  bool generate_at_most_one = false;
+  bool generate_post_at_most_one = false;
+  bool generate_equality_definitions = false;
+  std::size_t equality_definition_max_domain_size = 0;
+  std::size_t equality_definition_max_clauses = 0;
+
+  std::vector<StrategyParameter> strategy_parameters() const;
+};
+
+// Formula snapshots produced by profile analysis before the fixed-point round.
+// They are immutable inputs to the delayed finite-domain emission stage. Keeping
+// them in one value prevents symmetry and AMO generation from silently observing
+// a different formula state when the surrounding strategy is refactored.
+struct FiniteDomainPreprocessInput {
+  std::vector<core::TermId> symmetry_source_assertions;
+  FiniteDomainAtMostOneResult raw_at_most_one;
+  std::optional<UfSymmetryBreakingResult> analyzed_symmetry;
+};
+
+enum class BooleanNormalizationStage {
+  Initial,
+  Final,
+};
+
+struct NormalizeBooleanOptions {
+  BooleanNormalizationStage stage = BooleanNormalizationStage::Initial;
+  std::size_t flatten_threshold = 0;
+  BooleanImpliesRewriteMode implication_mode = BooleanImpliesRewriteMode::Off;
+
+  std::vector<StrategyParameter> strategy_parameters() const;
+};
+
+enum class ArithmeticNormalizationStage {
+  Initial,
+  Catchup,
+  PostPurification,
+};
+
+struct NormalizeArithmeticOptions {
+  ArithmeticNormalizationStage stage = ArithmeticNormalizationStage::Initial;
+  bool canonicalize = false;
+  bool lower_real_equalities = false;
+  bool guarded_real_equality_lowering = false;
+
+  std::vector<StrategyParameter> strategy_parameters() const;
+};
+
+struct EliminateMonotoneOptions {
+  std::vector<StrategyParameter> strategy_parameters() const { return {}; }
+};
+
+struct PurifyMixedOptions {
+  bool canonicalize_arithmetic_after = false;
+
+  std::vector<StrategyParameter> strategy_parameters() const;
+};
+
+Tactic make_propagate_values(PropagateValuesOptions options = {});
+Tactic make_solve_eqs(SolveEqsOptions options);
+Tactic make_derive_equalities(DeriveEqualitiesOptions options);
+Tactic make_finite_domain_preprocess(FiniteDomainPreprocessOptions options,
+                                     FiniteDomainPreprocessInput input = {});
+Tactic make_normalize_boolean(NormalizeBooleanOptions options);
+Tactic make_normalize_arithmetic(NormalizeArithmeticOptions options);
+Tactic make_eliminate_monotone(EliminateMonotoneOptions options = {});
+Tactic make_purify_mixed(Frontend& frontend, PurifyMixedOptions options = {});
 
 Tactic make_preprocessing_round(PreprocessingRoundOptions options);
 

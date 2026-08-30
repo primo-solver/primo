@@ -14,7 +14,9 @@
 #include "core/symbol_table.hpp"
 #include "core/term_manager.hpp"
 #include "smt/check_sat.hpp"
+#include "smt/frontend.hpp"
 #include "smt/model_reconstruction.hpp"
+#include "smt/preprocessing.hpp"
 #include "smt/preprocessing_tactics.hpp"
 #include "smt/solver_answer.hpp"
 #include "smt/solver_error.hpp"
@@ -551,6 +553,76 @@ void preprocessing_round_transforms_each_alternative_independently() {
   check(fixture.statistics.get(":tactic.unit-equality-propagation.invocations") == 1);
 }
 
+void public_preprocessing_leaves_are_independently_constructible_and_typed() {
+  Fixture fixture;
+  const primo::core::TermId p = fixture.p_term();
+  const primo::core::TermId nested = fixture.terms.mk_and({p, fixture.terms.mk_and({p, p})});
+
+  const primo::smt::NormalizeBooleanOptions boolean_options{
+      .stage = primo::smt::BooleanNormalizationStage::Initial,
+      .flatten_threshold = 8,
+      .implication_mode = primo::smt::BooleanImpliesRewriteMode::Off};
+  const primo::smt::Strategy boolean_strategy = primo::smt::Strategy::leaf(
+      "normalize-boolean", boolean_options, primo::smt::make_normalize_boolean(boolean_options));
+  const primo::smt::AnyOf normalized = primo::smt::compile(boolean_strategy)(
+      fixture.context, primo::smt::AnyOf::single(primo::smt::Goal{{nested}}));
+  check(normalized.alternatives().front().assertions().size() == 1);
+  check(boolean_strategy.canonical().find("flatten-threshold") != std::string::npos);
+
+  const primo::smt::AnyOf propagated = primo::smt::make_propagate_values()(
+      fixture.context, primo::smt::AnyOf::single(primo::smt::Goal{{p}}));
+  check(propagated.size() == 1);
+  check(fixture.statistics.get(":tactic.propagate-values.invocations") == 1);
+
+  const primo::smt::SolveEqsOptions solve_options{.solved_constant_substitution = true,
+                                                  .gaussian_elimination = false,
+                                                  .use_ground_unit_substitution = false,
+                                                  .use_guarded_ground_unit_substitution = false};
+  static_cast<void>(primo::smt::make_solve_eqs(solve_options)(
+      fixture.context, primo::smt::AnyOf::single(primo::smt::Goal{{p}})));
+  check(fixture.statistics.get(":tactic.solve-eqs.invocations") == 1);
+
+  static_cast<void>(
+      primo::smt::make_derive_equalities({.equality_bridge = true, .unit_consequences = true})(
+          fixture.context, primo::smt::AnyOf::single(primo::smt::Goal{{p}})));
+  check(fixture.statistics.get(":tactic.derive-equalities.invocations") == 1);
+
+  static_cast<void>(primo::smt::make_finite_domain_preprocess(
+      {.evaluate_equalities = true, .generate_ground_congruence = true})(
+      fixture.context, primo::smt::AnyOf::single(primo::smt::Goal{{p}})));
+  check(fixture.statistics.get(":tactic.finite-domain-preprocess.invocations") == 1);
+
+  const primo::core::SymbolId x_symbol =
+      fixture.symbols.declare_constant("x", fixture.symbols.real_sort());
+  const primo::core::TermId x = fixture.terms.mk_constant(x_symbol);
+  const primo::core::TermId bound = fixture.terms.mk_le(x, fixture.terms.mk_rational(0));
+  primo::smt::TacticContext model_context(fixture.terms, fixture.statistics, {}, true);
+  const primo::smt::AnyOf eliminated = primo::smt::make_eliminate_monotone()(
+      model_context, primo::smt::AnyOf::single(primo::smt::Goal{{bound}}));
+  check(eliminated.alternatives().front().reconstruction().conversions.size() <= 1);
+  check(fixture.statistics.get(":tactic.eliminate-monotone.invocations") == 1);
+
+  const primo::smt::NormalizeArithmeticOptions arithmetic_options{
+      .stage = primo::smt::ArithmeticNormalizationStage::Catchup,
+      .canonicalize = true,
+      .lower_real_equalities = true,
+      .guarded_real_equality_lowering = false};
+  static_cast<void>(primo::smt::make_normalize_arithmetic(arithmetic_options)(
+      model_context, primo::smt::AnyOf::single(primo::smt::Goal{{bound}})));
+  check(fixture.statistics.get(":tactic.normalize-arithmetic.invocations") == 1);
+
+  primo::smt::Frontend frontend;
+  primo::util::Statistics purification_statistics;
+  primo::smt::TacticContext purification_context(frontend.terms(), purification_statistics);
+  const primo::core::TermId trivial_bound =
+      frontend.terms().mk_le(frontend.terms().mk_rational(0), frontend.terms().mk_rational(1));
+  static_cast<void>(primo::smt::make_purify_mixed(
+      frontend, primo::smt::PurifyMixedOptions{.canonicalize_arithmetic_after = true})(
+      purification_context, primo::smt::AnyOf::single(primo::smt::Goal{{trivial_bound}})));
+  check(purification_statistics.get(":tactic.purify-mixed.invocations") == 1);
+  check(purification_statistics.get(":no.purification.skipped-no-sites") == 1);
+}
+
 void solver_dispatch_uses_formula_tactics() {
   primo::smt::CheckSatOptions options;
   options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
@@ -639,5 +711,6 @@ int main() {
   preprocessing_fixed_point_and_terminal_change_statistics_are_exact();
   solver_adapter_does_not_hide_serious_failures();
   preprocessing_round_transforms_each_alternative_independently();
+  public_preprocessing_leaves_are_independently_constructible_and_typed();
   solver_dispatch_uses_formula_tactics();
 }
