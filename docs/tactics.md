@@ -341,6 +341,46 @@ experimental and default-off. A `k=3` model replay validated all three
 satisfiable focused cases with Dolmen; the other five were unsatisfiable, and
 no answer disagreed with benchmark status.
 
+## Composition verification
+
+Primo tests tactic composition only through legal production profiles. There
+is no test-only strategy injector or user-facing tactic parser, and the matrix
+does not reorder leaves whose dependencies are encoded by the production
+preprocessing strategy. `benchmarks/tactic-composition-matrix.json` is the
+single manifest for the named profiles and their applicable logics: defaults,
+off/basic/strong/auto preprocessing, direct and guarded ground substitution,
+Gaussian elimination disabled, monotone elimination, and Boolean splitting at
+`k=1` or `k=2`.
+
+`primo_tactic_composition_tests` pins each profile's canonical structure and
+fingerprint, checks QF_LIA's substitution-only restriction, and executes real
+preprocessing and solver leaves over SAT and UNSAT goals. The public CLI layer
+is `scripts/tactic_composition_matrix.py`. It runs every applicable
+profile/case pair twice for the deterministic local corpus, compares answers
+with Z3 and cvc5, requires the profile's distinguishing tactic counters,
+compares all non-timing statistics between repetitions, and sends every SAT
+model through Dolmen with fallback disabled. Its summary and per-run stdout,
+stderr, statistics, model-checking output, solver version, and commit are
+durable artifacts. Run the complete local layer with:
+
+```bash
+make tactic-composition-test
+```
+
+`scripts/slurm_tactic_composition_matrix.sbatch` is the merge gate. Its sixteen
+array tasks generate four 250-case shards for each supported logic, then run
+every profile applicable to each of the resulting 1,000 unique formulas.
+Timeout and ordinary unknown results are counted as inconclusive; wrong
+answers, reference disagreements, crashes, malformed statistics, missing
+tactic counters, and any model that does not pass Dolmen directly fail the
+gate. Each QF_UF shard also runs the tracked residual-domain seed and requires
+`:preprocessing.adaptive-passes` to become nonzero, so constructing an adaptive
+strategy without exercising its continuation policy is not counted as
+coverage. The generated cases and row-level summaries are retained per task.
+This matrix is a correctness and composition-coverage gate, not a performance
+claim; timing statistics are recorded but deliberately excluded from the
+repeatability comparison.
+
 ## Deliberate deviations and limitations
 
 The paper's tactic return type separately represents `sat`, `unsat`, `unknown`,

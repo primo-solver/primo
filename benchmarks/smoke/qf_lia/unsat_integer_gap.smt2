@@ -1,0 +1,6 @@
+(set-logic QF_LIA)
+(set-info :status unsat)
+(declare-fun x () Int)
+(assert (> x 0))
+(assert (< x 1))
+(check-sat)

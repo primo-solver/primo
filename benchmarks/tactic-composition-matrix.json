@@ -1,0 +1,162 @@
+{
+  "profiles": [
+    {
+      "id": "default",
+      "args": [],
+      "logics": ["QF_UF", "QF_LRA", "QF_UFLRA", "QF_LIA"],
+      "required_stats": [":tactic.preprocessing-profile.invocations"]
+    },
+    {
+      "id": "off",
+      "args": ["--preprocessing-mode=off"],
+      "logics": ["QF_UF", "QF_LRA", "QF_UFLRA", "QF_LIA"],
+      "required_stats": [":tactic.preprocessing-profile.invocations"]
+    },
+    {
+      "id": "basic",
+      "args": [
+        "--preprocessing-mode=basic",
+        "--preprocessing-passes=1",
+        "--preprocessing-adaptive-extra-passes=0"
+      ],
+      "logics": ["QF_UF", "QF_LRA", "QF_UFLRA", "QF_LIA"],
+      "required_stats": [":tactic.preprocessing-profile.invocations"],
+      "required_stats_by_logic": {
+        "QF_UF": [":tactic.preprocessing-round.invocations"],
+        "QF_LRA": [":tactic.preprocessing-round.invocations"],
+        "QF_UFLRA": [":tactic.preprocessing-round.invocations"]
+      }
+    },
+    {
+      "id": "strong",
+      "args": [
+        "--preprocessing-mode=strong",
+        "--preprocessing-passes=4",
+        "--preprocessing-adaptive-extra-passes=0"
+      ],
+      "logics": ["QF_UF", "QF_LRA", "QF_UFLRA", "QF_LIA"],
+      "required_stats": [":tactic.preprocessing-profile.invocations"],
+      "required_stats_by_logic": {
+        "QF_UF": [":tactic.preprocessing-round.invocations"],
+        "QF_LRA": [":tactic.preprocessing-round.invocations"],
+        "QF_UFLRA": [":tactic.preprocessing-round.invocations"]
+      }
+    },
+    {
+      "id": "adaptive",
+      "args": [
+        "--preprocessing-mode=auto",
+        "--preprocessing-passes=1",
+        "--preprocessing-adaptive-extra-passes=2",
+        "--preprocessing-adaptive-shrink-percent=10"
+      ],
+      "logics": ["QF_UF", "QF_LRA", "QF_UFLRA", "QF_LIA"],
+      "required_stats": [":tactic.preprocessing-profile.invocations"],
+      "required_stats_by_logic": {
+        "QF_UF": [":tactic.preprocessing-round.invocations"],
+        "QF_LRA": [":tactic.preprocessing-round.invocations"],
+        "QF_UFLRA": [":tactic.preprocessing-round.invocations"]
+      },
+      "required_observed_stats_by_logic": {
+        "QF_UF": [":preprocessing.adaptive-passes"]
+      }
+    },
+    {
+      "id": "ground-substitution",
+      "args": [
+        "--preprocessing-mode=basic",
+        "--eq-bridge",
+        "--ground-unit-substitution"
+      ],
+      "logics": ["QF_UF", "QF_UFLRA"],
+      "required_stats": [":tactic.ground-unit-substitution.invocations"]
+    },
+    {
+      "id": "guarded-substitution",
+      "args": [
+        "--preprocessing-mode=basic",
+        "--eq-bridge",
+        "--guarded-ground-unit-substitution"
+      ],
+      "logics": ["QF_UF", "QF_UFLRA"],
+      "required_stats": [":tactic.ground-unit-substitution.invocations"]
+    },
+    {
+      "id": "no-gaussian",
+      "args": ["--preprocessing-mode=strong", "--no-gaussian-elimination"],
+      "logics": ["QF_LRA", "QF_UFLRA"],
+      "required_stats": [":tactic.solve-eqs.invocations"]
+    },
+    {
+      "id": "monotone",
+      "args": ["--preprocessing-mode=strong", "--monotone-elimination"],
+      "logics": ["QF_LRA", "QF_UFLRA"],
+      "required_stats": [":tactic.eliminate-monotone.invocations"]
+    },
+    {
+      "id": "split-1",
+      "args": ["--experimental-split-bools=1"],
+      "logics": ["QF_UF", "QF_UFLRA"],
+      "required_stats": [
+        ":tactic.experimental-split-bools.invocations",
+        ":experimental.split-bools.output-goals"
+      ]
+    },
+    {
+      "id": "strong-split-2",
+      "args": ["--preprocessing-mode=strong", "--experimental-split-bools=2"],
+      "logics": ["QF_UF", "QF_UFLRA"],
+      "required_stats": [
+        ":tactic.experimental-split-bools.invocations",
+        ":experimental.split-bools.output-goals"
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "path": "benchmarks/seeds/qf_uf/seed_bool_argument_predicate.smt2",
+      "logic": "QF_UF",
+      "expected": "sat"
+    },
+    {
+      "path": "benchmarks/seeds/qf_uf/seed_bool_argument_congruence_unsat.smt2",
+      "logic": "QF_UF",
+      "expected": "unsat"
+    },
+    {
+      "path": "benchmarks/seeds/qf_uf/qg_symmetry_residual_domain.smt2",
+      "logic": "QF_UF",
+      "expected": "sat"
+    },
+    {
+      "path": "benchmarks/seeds/qf_lra/seed_basic.smt2",
+      "logic": "QF_LRA",
+      "expected": "sat"
+    },
+    {
+      "path": "benchmarks/seeds/qf_lra/seed_unsat_pivot.smt2",
+      "logic": "QF_LRA",
+      "expected": "unsat"
+    },
+    {
+      "path": "benchmarks/seeds/qf_uflra/seed_bool_argument_predicate.smt2",
+      "logic": "QF_UFLRA",
+      "expected": "sat"
+    },
+    {
+      "path": "benchmarks/seeds/qf_uflra/seed_bool_argument_transitive_cnf_unsat.smt2",
+      "logic": "QF_UFLRA",
+      "expected": "unsat"
+    },
+    {
+      "path": "benchmarks/smoke/qf_lia/sat_boolean_integer.smt2",
+      "logic": "QF_LIA",
+      "expected": "sat"
+    },
+    {
+      "path": "benchmarks/smoke/qf_lia/unsat_integer_gap.smt2",
+      "logic": "QF_LIA",
+      "expected": "unsat"
+    }
+  ]
+}
