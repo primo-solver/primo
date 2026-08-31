@@ -119,6 +119,28 @@ void get_model_preserves_solved_constant_preprocessing() {
   assert(result.model.find("(define-fun g ((x0 A)) A ") != std::string::npos);
 }
 
+void get_model_completes_eliminated_boolean_arguments_before_uf_tables() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UF)
+    (declare-sort U 0)
+    (declare-fun p () Bool)
+    (declare-fun a () U)
+    (declare-fun tb (Bool) U)
+    (assert (= (tb p) a))
+    (assert (not (distinct (tb true) (tb false))))
+    (check-sat)
+    (get-model)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":preprocessing.solve-eqs.accepted") == 1);
+  assert(result.model.find("(define-fun p () Bool false)") != std::string::npos);
+  assert(result.model.find("(define-fun a () U (as @uc_3_0 U))") != std::string::npos);
+  assert(
+      result.model.find("(define-fun tb ((x0 Bool)) U (ite (= x0 false) (as @uc_3_0 U) (ite (= x0 "
+                        "true) (as @uc_3_0 U)") != std::string::npos);
+}
+
 void unsat_get_model_has_no_model() {
   const auto result = check_sat_smtlib(R"(
     (set-option :produce-models true)
@@ -3060,6 +3082,7 @@ int main() {
   get_model_requires_prior_check_sat();
   get_model_prints_qf_uf_model_for_declared_symbols();
   get_model_preserves_solved_constant_preprocessing();
+  get_model_completes_eliminated_boolean_arguments_before_uf_tables();
   unsat_get_model_has_no_model();
   phase_timing_stats_are_reported();
   top_level_conjunction_does_not_allocate_auxiliary();

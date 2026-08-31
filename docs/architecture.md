@@ -309,11 +309,15 @@ Implemented now:
   CaDiCaL/IPASIR-UP integration, same-variable bound propagation, and default
   sparse pivot heuristics.
 - Conservative QF_UF SMT-LIB model printing for `check-sat` followed by
-  `get-model` when `:produce-models true` is set. `smt::ModelBuilder` rebuilds
-  a ground EUF closure over `core::TermId` values, prints definitions for
+  `get-model` when `:produce-models true` is set. The private
+  `QfUfModelBuilder` in `src/smt/model_builder.cpp` rebuilds a ground EUF
+  closure over `core::TermId` values, prints definitions for
   user-declared constants, functions, and predicates, consumes preprocessing
-  reconstruction assignments for unit facts and substitutions, and omits
-  Primo-generated auxiliary symbols from the response.
+  reconstruction assignments for unit facts and substitutions, completes
+  otherwise-unassigned Bool constants and applications to `false` inside that
+  closure before constructing UF tables, and omits Primo-generated auxiliary
+  symbols from the response. The completion step keeps printed Boolean argument
+  tuples congruent even when preprocessing removed their last SAT occurrence.
 - Minimal QF_LRA SMT-LIB model printing for user-declared nullary `Real`
   constants, with shared support from the QF_UF model builder for non-Real
   declarations that survive only as preprocessing reconstruction facts. The SMT

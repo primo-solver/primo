@@ -550,6 +550,40 @@ checks only that candidate set. This keeps the first reported conflict
 deterministic while avoiding scans over disequalities whose endpoint classes did
 not change. This is the engine used by `--euf-engine=incremental`.
 
+## Model Construction And Boolean Completion
+
+`smt::build_qf_uf_model` creates one short-lived `QfUfModelBuilder` after a
+satisfiable assignment. The builder owns a fresh
+`theory::equality::IncrementalCongruenceClosure` and the maps from quotient
+representatives to printed abstract values; it borrows the session's term
+manager and the immutable reconstruction assignments only for that call. It
+registers every ground constant and application, applies the SAT/theory facts
+and preprocessing conversions, saturates congruence, and then prints constants
+and finite function tables from the resulting quotient classes.
+
+Boolean completion is part of that quotient construction. A Bool constant or
+Bool-valued application that disappeared from the final SAT problem may have no
+explicit model assignment. Primo prints such a term as `false`. Before function
+table keys or result values are computed, the builder makes the same choice
+inside its closure and saturates congruence again. This maintains the invariant:
+
+> Terms printed as the same Boolean value have the same model-closure
+> representative before any uninterpreted application table is constructed.
+
+Without that step, solved-constant preprocessing could eliminate `a = f(p)`,
+leave `p` unconstrained, and later print `p` as `false` while keeping `f(p)` and
+`f(false)` in different closure classes. The emitted table then contained two
+different results for one printed argument tuple. The regression test combines
+that eliminated definition with `not (distinct (f true) (f false))` and checks
+that the reconstructed table uses one result value for both Boolean arguments.
+
+This is ordinary finite ground-EUF quotient-model completion, not an
+implementation of an additional optimized paper algorithm. Its Boolean-domain
+basis and the requirement that every Bool term held by EUF denote exactly
+`true` or `false` are documented in [](euf-boolean-arguments.md). Completion is
+performed only when a model is requested; answer-only solving does not pay for
+the scan or the final closure saturation.
+
 ## EufSolver
 
 `src/theory/equality/euf_solver.*` is a batch checker:

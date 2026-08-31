@@ -14,6 +14,7 @@
 #include "core/symbol_table.hpp"
 #include "core/term.hpp"
 #include "core/term_manager.hpp"
+#include "smt/model_reconstruction.hpp"
 #include "theory/equality/incremental_congruence_closure.hpp"
 #include "util/rational.hpp"
 
@@ -82,6 +83,7 @@ class QfUfModelBuilder {
       add_assignment(assignment);
     }
     closure_.saturate();
+    complete_boolean_values();
     index_real_values();
   }
 
@@ -133,6 +135,23 @@ class QfUfModelBuilder {
         closure_.add_term(term.id);
       }
     }
+  }
+
+  void complete_boolean_values() {
+    // A Boolean constant or application absent from the final SAT problem is
+    // printed as false. Make that completion choice inside the congruence
+    // closure as well: otherwise two applications can print with identical
+    // Boolean arguments while retaining different result classes.
+    for (const core::Term& term : terms_.terms()) {
+      if (term.sort != terms_.symbols().bool_sort() ||
+          (term.kind != core::TermKind::Constant && term.kind != core::TermKind::Application)) {
+        continue;
+      }
+      if (!closure_.are_equal(term.id, true_term_) && !closure_.are_equal(term.id, false_term_)) {
+        closure_.assert_equal(term.id, false_term_);
+      }
+    }
+    closure_.saturate();
   }
 
   void add_assignment(const TheoryModelAssignment& assignment) {
