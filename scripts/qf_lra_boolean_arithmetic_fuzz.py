@@ -253,51 +253,8 @@ def run_solver(command: list[str], timeout: float, collect_stats: bool) -> Solve
     return SolverRun(answer, returncode, parse_stats(output) if collect_stats else {}, stdout)
 
 
-def extract_real_and_bool_assignments(model_text: str) -> list[tuple[str, str]]:
-    import re
-
-    assignments: list[tuple[str, str]] = []
-    for pattern, sort in (
-        (r"\(define-fun (\S+) \(\) Real (\([^()]*(?:\([^()]*\)[^()]*)*\)|[^()\s]+)\)", "Real"),
-        (r"\(define-fun (\S+) \(\) Bool (true|false)\)", "Bool"),
-    ):
-        assignments.extend(re.findall(pattern, model_text))
-    return assignments
-
-
-def without_model_commands(input_text: str) -> str:
-    lines: list[str] = []
-    for line in input_text.splitlines():
-        stripped = line.strip()
-        if stripped == "(get-model)" or stripped.startswith("(set-option :produce-models"):
-            continue
-        lines.append(line)
-    return "\n".join(lines) + "\n"
-
-
-def add_assignments_before_check_sat(input_text: str, assignments: list[tuple[str, str]]) -> str:
-    assignment_text = "".join(f"(assert (= {symbol} {value}))\n" for symbol, value in assignments)
-    marker = "(check-sat)"
-    index = input_text.rfind(marker)
-    if index == -1:
-        return input_text.rstrip() + "\n" + assignment_text + marker + "\n"
-    return input_text[:index] + assignment_text + input_text[index:]
-
-
-def validate_real_and_bool_assignments_with_z3(
-    z3_path: str | None, original_text: str, assignments: list[tuple[str, str]], timeout: float
-) -> tuple[str, int | None, str, str]:
-    if z3_path is None or not assignments:
-        return "unavailable", None, "", "Z3 fallback unavailable\n"
-    validation_input = add_assignments_before_check_sat(
-        without_model_commands(original_text), assignments
-    )
-    return run_command([z3_path, "-smt2", "-in"], timeout, validation_input)
-
-
 def validate_model_with_dolmen(
     dolmen_path: str | None,
-    z3_path: str | None,
     original_text: str,
     solver_response: str,
     out_dir: Path,
@@ -321,22 +278,6 @@ def validate_model_with_dolmen(
     if status == "missing":
         return "DOLMEN_MISSING"
     if returncode == 0:
-        return "PASS"
-    # Dolmen sometimes rejects syntax Z3 accepts (see
-    # validate_qfuf_models_with_dolmen.py's own fallback for the same
-    # reason); re-check the extracted assignments against the original
-    # formula with Z3 before giving up on the model.
-    assignments = extract_real_and_bool_assignments(solver_response)
-    z3_status, z3_returncode, z3_stdout, z3_stderr = validate_real_and_bool_assignments_with_z3(
-        z3_path, original_text, assignments, timeout
-    )
-    if (
-        z3_status == "done"
-        and z3_returncode == 0
-        and "(error" not in z3_stdout.lower()
-        and "(error" not in z3_stderr.lower()
-        and next((line.strip() for line in z3_stdout.splitlines() if line.strip() == "sat"), None)
-    ):
         return "PASS"
     if "(error" in stderr.lower():
         return "DOLMEN_ERROR"
@@ -462,7 +403,7 @@ def main() -> int:
             dolmen_outcome: str | None = None
             if ours.answer == "sat":
                 dolmen_outcome = validate_model_with_dolmen(
-                    dolmen_path, z3_path, case.text, ours.stdout, args.out, stem, args.dolmen_timeout
+                    dolmen_path, case.text, ours.stdout, args.out, stem, args.dolmen_timeout
                 )
 
             outcome = classify(case, ours, reference, dolmen_outcome, monotone_elimination)

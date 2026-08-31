@@ -52,15 +52,6 @@ class QfLraBooleanArithmeticFuzzTests(unittest.TestCase):
         z3.chmod(0o755)
         return z3
 
-    def make_fake_z3_unknown(self, directory: Path) -> Path:
-        # Reports "unknown" rather than "sat" -- unlike make_fake_z3, this
-        # one must NOT be able to rescue a broken-dolmen case through the
-        # Z3 fallback, so tests asserting a genuine MODEL_ERROR stay valid.
-        z3 = directory / "z3-unknown"
-        z3.write_text("#!/usr/bin/env python3\nprint('unknown')\n", encoding="utf-8")
-        z3.chmod(0o755)
-        return z3
-
     def make_fake_dolmen(self, directory: Path) -> Path:
         dolmen = directory / "dolmen"
         dolmen.write_text("#!/usr/bin/env python3\nimport sys\nsys.exit(0)\n", encoding="utf-8")
@@ -148,9 +139,7 @@ class QfLraBooleanArithmeticFuzzTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             solver = self.make_fake_solver(root)
-            # Must not rescue via the Z3 fallback, or this stops testing a
-            # genuine MODEL_ERROR.
-            z3 = self.make_fake_z3_unknown(root)
+            z3 = self.make_fake_z3(root)
             broken_dolmen = self.make_broken_dolmen(root)
             out = root / "out"
             result = subprocess.run(
@@ -183,11 +172,11 @@ class QfLraBooleanArithmeticFuzzTests(unittest.TestCase):
                 len(qf_lra_boolean_arithmetic_fuzz.SHAPES),
             )
 
-    def test_cli_z3_fallback_rescues_dolmen_hiccup(self) -> None:
+    def test_cli_does_not_accept_z3_fallback_for_dolmen_failure(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             solver = self.make_fake_solver(root)
-            z3 = self.make_fake_z3(root)  # always reports sat -- can rescue
+            z3 = self.make_fake_z3(root)
             broken_dolmen = self.make_broken_dolmen(root)
             out = root / "out"
             result = subprocess.run(
@@ -211,10 +200,10 @@ class QfLraBooleanArithmeticFuzzTests(unittest.TestCase):
                 capture_output=True,
                 text=True,
             )
-            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertEqual(result.returncode, 1)
             with (out / "summary.csv").open(newline="", encoding="utf-8") as handle:
                 rows = list(csv.DictReader(handle))
-            self.assertEqual({row["outcome"] for row in rows}, {"PASS"})
+            self.assertEqual({row["outcome"] for row in rows}, {"MODEL_ERROR"})
 
 
 if __name__ == "__main__":

@@ -1019,6 +1019,13 @@ its narrower strict-linear-syntax warning to a fatal report in strict mode.
 This changes Dolmen's input acceptance, not model checking. Override
 `PRIMO_MODEL_DOLMEN_ARGS` to change or clear that real-corpus setting.
 
+Merge-gate policy is stricter than the validator's diagnostic fallback. The
+QF_UF Boolean, QF_LRA Boolean/arithmetic, QF_UFLRA, and QF_LIA model fuzz gates
+require a direct Dolmen pass for every satisfiable model. The QF_LIA gate uses
+Dolmen's non-strict parser because FuzzSMT emits let-bound linear coefficients;
+the setting relaxes syntax checking only. A `z3-fallback` row can still be
+useful during diagnosis, but it is not accepted by these merge gates.
+
 Each completed validation row is appended, flushed, and synced immediately.
 `metadata.json` starts with `status: running` and changes to `complete` only
 after every selected input has a row. The `validator` column distinguishes a

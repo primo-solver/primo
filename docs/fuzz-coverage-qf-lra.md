@@ -421,8 +421,10 @@ part of the fix.
 **The durable fix is `scripts/qf_lra_boolean_arithmetic_fuzz.py`**, a small
 in-repo generator (not dependent on FuzzSMT's grammar) purpose-built to mix
 free Booleans with LRA chains/fans -- see its own module docstring for the
-shape catalogue. It validates models via dolmen exactly as
-`validate_qfuf_models_with_dolmen.py` does, and doubles as the
+shape catalogue. It requires every satisfiable model to pass Dolmen directly;
+a Z3 assignment fallback is not accepted as model-validation evidence. The
+four-shard `scripts/slurm_qf_lra_boolean_arithmetic_fuzz_gate.sbatch` wrapper
+runs 1,000 cases by default and doubles as the
 `--monotone-elimination` reconstruction stress test the session originally
 set out to build.
 

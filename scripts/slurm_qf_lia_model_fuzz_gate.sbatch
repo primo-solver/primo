@@ -189,6 +189,7 @@ if (( TASK_ID < opfuzz_start )); then
   python3 scripts/validate_model.py \
     --solver "${solver_words[0]}" \
     "${model_solver_args[@]}" \
+    --require-dolmen-pass \
     --timeout "$MODEL_TIMEOUT" \
     --dolmen-timeout "$MODEL_DOLMEN_TIMEOUT" \
     --dolmen-arg=--strict=false \
