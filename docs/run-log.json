@@ -28850,6 +28850,55 @@
       },
       "evidence_status": "local-current-correctness-gate; exact implementation commit; artifacts are local-only",
       "outcome": "The model defect is fixed in shared QF_UF model construction. Fresh split and no-split gates have identical classifications and validate every satisfiable model, while the original failure now passes independently."
+    },
+    {
+      "id": "2026-08-31-qfuf-boolean-fuzzer-model-hardening",
+      "started_at": "2026-08-31",
+      "recorded_at": "2026-08-31",
+      "kind": "fuzz-infrastructure",
+      "scope": "Harden the dedicated pure-QF_UF Boolean fuzzer so satisfiable answer agreement cannot conceal invalid Boolean-argument models.",
+      "commit": "8ffe21915d1830d2b2c063c3cc9d0acad39f0445",
+      "solver_commit": "0a9f57d0637629ed6e043b0653e80944b1617df4 (the later commits change only validation infrastructure and evidence)",
+      "failing_solver_commit": "df75db17ad1340d0ad488a389fef1021a865e8bf",
+      "branch": "tactics",
+      "environment": {
+        "type": "local",
+        "host": "mikolas-ThinkPad-T14s-Gen-5",
+        "kernel": "Linux 7.0.0-30-generic x86_64",
+        "compiler": "GCC 13.3.0",
+        "candidate_binary": "build-release-tactics/primo, Release, exact solver git 0a9f57d",
+        "historical_binary": "detached temporary-worktree Release build of df75db1",
+        "reference": "Z3 5.0.0",
+        "model_validator": "Dolmen 0.10",
+        "slurm_job_id": null
+      },
+      "coverage_gap": "The dedicated Boolean generator already emitted Bool arguments, but its normal contract compared only sat/unsat answers. The invalid model carried the correct sat answer, so differential fuzzing had no failing oracle. Random assertion selection also made the solved-constant plus collapsed-UF-table interaction uncommon rather than load-bearing.",
+      "changes": {
+        "integrated_model_oracle": "--validate-models retains every generated case, invokes the existing QF_UF Dolmen validator, forwards all solver arguments, and propagates model-validation failure through the fuzzer exit status.",
+        "targeted_shape": "model-reconstruction always emits a solved uninterpreted-sort constant containing a Bool argument and an equality that collapses tb(true) with tb(false). The two assertions are never sampled or augmented with a bare occurrence of the argument.",
+        "official_gate": "The SLURM array now has one shard for each of eleven shapes, requires Dolmen, enables integrated model validation on every shard, and reports answer and model outcome summaries separately."
+      },
+      "commands": {
+        "exact_candidate_gate": "python3 scripts/qf_uf_boolean_fuzz.py --solver ./build-release-tactics/primo --solver-arg=--quiet --ref contrib/local/bin/z3 --count 1000 --seed 831502 --timeout 5 --model-timeout 5 --shape model-reconstruction --out /tmp/primo-bool-model-gate/8ffe219-model-reconstruction --dolmen /home/user/.opam/default/bin/dolmen --validate-models",
+        "historical_discrimination": "The same integrated command with --count 20 and the detached df75db1 Release binary; artifacts under /tmp/primo-bool-model-gate/integrated-df75db1",
+        "batch_validation": "bash -n scripts/slurm_qf_uf_boolean_fuzz_gate.sbatch; python3 scripts/slurm_validate_sbatch.py scripts/slurm_qf_uf_boolean_fuzz_gate.sbatch",
+        "verification": "python3 -m unittest discover -s tests/python -p 'test_*.py'; python3 -m py_compile scripts/qf_uf_boolean_fuzz.py tests/python/test_qf_uf_boolean_fuzz.py; make docs; make lint; git diff --check"
+      },
+      "results": {
+        "exact_candidate_gate": "1,000/1,000 generated answers PASS against Z3 and Dolmen validates 1,000/1,000 satisfiable models; zero wrong answer, invalid model, crash, timeout, unsupported input, parser/type error, or reference disagreement.",
+        "historical_discrimination": "The integrated fuzzer exits 1 against df75db1 and reports model-error for 20/20 generated cases despite all answers being sat. This demonstrates that the new oracle and targeted shape reject the actual pre-fix defect.",
+        "verification": "Python tests 70/70, documentation build, Python compilation, sbatch shell syntax, repository SLURM validator, and whitespace checks passed. make lint reaches only the accepted pre-existing four Ruff findings in scripts/qf_uf_boolean_fuzz.py (EXE001, PLC0206, and two UP031 findings); the changed lines introduce no new finding. The required smt-code-review skill is unavailable in this installation, so the complete changed-file diff received a manual hygiene, failure-propagation, artifact-lifetime, and CLI review."
+      },
+      "artifacts": {
+        "candidate_answer_summary": "/tmp/primo-bool-model-gate/8ffe219-model-reconstruction/summary.csv",
+        "candidate_model_summary": "/tmp/primo-bool-model-gate/8ffe219-model-reconstruction/model-validation/summary.csv",
+        "candidate_log": "/tmp/primo-bool-model-gate/8ffe219-model-reconstruction.log",
+        "historical_answer_summary": "/tmp/primo-bool-model-gate/integrated-df75db1/summary.csv",
+        "historical_model_summary": "/tmp/primo-bool-model-gate/integrated-df75db1/model-validation/summary.csv",
+        "historical_log": "/tmp/primo-bool-model-gate/integrated-df75db1.log"
+      },
+      "evidence_status": "local-current-fuzz-infrastructure; exact candidate harness commit; artifacts are local-only; the SLURM script was validated but not submitted",
+      "outcome": "The dedicated Boolean fuzzer now treats model validity as a first-class oracle and deterministically rejects the regression that its former answer-only gate missed."
     }
   ]
 }
