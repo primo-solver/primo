@@ -28730,6 +28730,61 @@
       "artifacts": "/tmp/primo-profile.65gszN (local-only Callgrind data, annotations, gprof reports, and phase-statistic captures; ignored build-gprof-tactics contains the profiling binary)",
       "evidence_status": "local-current-diagnostic",
       "outcome": "No material tactic-strategy, formula-goal, parser, or term-interning infrastructure waste was found on the representative multi-second solve. The actionable runtime concentration is inside exact Rational arithmetic and LRA/LIA tableau pivot/update allocation behavior. On sub-10-ms cases, CLI/parser/process setup is visible, but optimizing the tactic abstraction would not materially change it."
+    },
+    {
+      "id": "2026-08-31-experimental-split-bools-validation",
+      "started_at": "2026-08-31",
+      "recorded_at": "2026-08-31",
+      "kind": "fuzz",
+      "scope": "Exact-commit local merge gate and default-disabled compatibility check for the experimental sequential Boolean-splitting tactic, with k=2 producing up to four disjunctive goals.",
+      "commit": "df75db17ad1340d0ad488a389fef1021a865e8bf",
+      "baseline_source_commit": "dad03162ea12c2ef434e014de844fa0620cf27a4 (source-equivalent to immediate parent 67372a3, whose only additional change is run-log evidence)",
+      "branch": "tactics",
+      "environment": {
+        "type": "local",
+        "host": "mikolas-ThinkPad-T14s-Gen-5",
+        "kernel": "Linux 7.0.0-30-generic x86_64",
+        "compiler": "GCC 13.3.0",
+        "primo_binary": "build-release-tactics/primo, Release, exact git df75db1",
+        "reference": "Z3 5.0.0",
+        "model_validators": "Dolmen 0.10 with Z3 5.0.0 fallback",
+        "slurm_job_id": null
+      },
+      "commands": {
+        "answer_fuzz": "python3 scripts/qf_uf_boolean_fuzz.py --count 1000 --shape all --seed 831001 --timeout 5 --solver ./build-release-tactics/primo --solver-arg=--quiet --solver-arg=--experimental-split-bools=2 --ref contrib/local/bin/z3 --out /tmp/primo-fuzz-experimental-split/df75db1-answer --keep-passing",
+        "split_model_validation": "python3 scripts/validate_qfuf_models_with_dolmen.py --solver ./build-release-tactics/primo --solver-arg=--quiet --solver-arg=--experimental-split-bools=2 --dolmen /home/user/.opam/default/bin/dolmen --z3 contrib/local/bin/z3 --timeout 5 --dolmen-timeout 5 --out /tmp/primo-fuzz-experimental-split/df75db1-model-split /tmp/primo-fuzz-experimental-split/df75db1-answer/cases/*.smt2",
+        "control_model_validation": "python3 scripts/validate_qfuf_models_with_dolmen.py --solver ./build-release-tactics/primo --solver-arg=--quiet --dolmen /home/user/.opam/default/bin/dolmen --z3 contrib/local/bin/z3 --timeout 5 --dolmen-timeout 5 --out /tmp/primo-fuzz-experimental-split/df75db1-model-control /tmp/primo-fuzz-experimental-split/df75db1-answer/cases/*.smt2",
+        "default_compatibility": "python3 scripts/compare_local_solver_stats.py --baseline /tmp/primo-split-parent/build/primo --candidate ./build-release-tactics/primo --root /workspace --manifest <sorted benchmarks/smoke and benchmarks/seeds SMT2 files> --output /tmp/primo-fuzz-experimental-split/df75db1-default-compatibility --repeats 1 --timeout 10",
+        "verification": "cmake --build build-release-tactics -j2; ctest --test-dir build-release-tactics --output-on-failure; python3 -m unittest discover -s tests/python -p 'test_*.py'; make asan-test; make docs; make lint; clang-tidy on all changed C++ translation units; misc-include-cleaner advisory scan on all changed C++ translation units"
+      },
+      "inputs": {
+        "generator": "scripts/qf_uf_boolean_fuzz.py",
+        "logic": "QF_UF",
+        "seed": 831001,
+        "count": 1000,
+        "timeout_seconds": 5,
+        "shape": "all",
+        "split_k": 2,
+        "answers": "595 sat and 405 unsat",
+        "default_compatibility_manifest": "48 tracked smoke and seed instances across QF_UF, QF_LRA, and QF_UFLRA"
+      },
+      "results": {
+        "answer_fuzz": "1,000/1,000 PASS against Z3; zero wrong answer, crash, timeout, unsupported result, parser/type error, or reference disagreement.",
+        "split_model_validation": "594 valid satisfiable models, 405 not-sat inputs, and one model error (case-0388); Dolmen validated 594 models and the Z3 fallback diagnosed the one error.",
+        "control_model_validation": "Exactly the same classifications as the split run: 594 valid satisfiable models, 405 not-sat inputs, and the same case-0388 model error. Therefore the tactic introduced zero additional invalid models.",
+        "case_0388_triage": "Pre-existing mixed-sort QF_UF model-builder defect. The input asserts equality of tb(true) and tb(false), while both split and no-split runs print different uninterpreted values for those applications. This is not a branch selection or reconstruction regression.",
+        "default_compatibility": "48/48 answers and every non-timing statistic match the source baseline exactly with the experimental option omitted.",
+        "verification": "Release CTest 22/22, Python tests 69/69, ASan CTest 22/22 with leak detection and strict initialization order, documentation build, changed-file clang-tidy, include-cleaner advisory scan, and git diff whitespace check passed. make lint reaches only the accepted pre-existing four Ruff findings in scripts/qf_uf_boolean_fuzz.py (EXE001, PLC0206, and two UP031 findings); no changed file adds a finding. The required smt-code-review skill is unavailable in this installation, so a manual whole-diff hygiene and API review plus the static-analysis scans were used."
+      },
+      "artifacts": {
+        "answer_summary": "/tmp/primo-fuzz-experimental-split/df75db1-answer/summary.csv",
+        "generated_cases": "/tmp/primo-fuzz-experimental-split/df75db1-answer/cases",
+        "split_model_summary": "/tmp/primo-fuzz-experimental-split/df75db1-model-split/summary.csv",
+        "control_model_summary": "/tmp/primo-fuzz-experimental-split/df75db1-model-control/summary.csv",
+        "default_compatibility": "/tmp/primo-fuzz-experimental-split/df75db1-default-compatibility/summary.json"
+      },
+      "evidence_status": "local-current-experimental; artifacts are local-only; no performance or default-promotion claim",
+      "outcome": "The opt-in sequential split tactic passes the QF_UF merge gate and preserves default-disabled behavior. The one invalid fuzz model is identically present in the no-split control and is recorded as a separate pre-existing model-builder defect rather than attributed to this feature."
     }
   ]
 }
