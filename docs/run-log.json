@@ -29005,6 +29005,46 @@
       },
       "evidence_status": "slurm-complete-current; exact candidate commit; direct-Dolmen model gate; QF_LIA timeout-only incompleteness retained",
       "outcome": "The final model-changing branch state passes the fresh four-logic generated merge gate with zero correctness failures. Every completed SAT model validation used Dolmen directly; the only incomplete outcomes are bounded QF_LIA solver timeouts."
+    },
+    {
+      "id": "2026-09-01-tactic-composition-local-matrix",
+      "started_at": "2026-09-01",
+      "recorded_at": "2026-09-01",
+      "kind": "tactic-composition-correctness",
+      "scope": "Deterministic local execution of every legal production tactic profile over SAT and UNSAT QF_UF, QF_LRA, QF_UFLRA, and QF_LIA cases, with repeatable non-timing statistics and direct Dolmen validation of every satisfiable profile/case pair.",
+      "commit": "b01778a38b378a7d7bd130ffdd3c32aee9d813a7",
+      "branch": "tactics",
+      "environment": {
+        "type": "local",
+        "host": "mikolas-ThinkPad-T14s-Gen-5",
+        "kernel": "Linux 7.0.0-30-generic x86_64",
+        "compiler": "GCC 13.3.0",
+        "binary": "build/primo, Release, exact git b01778a, CaDiCaL cadical-3.0.0-7b99c07",
+        "references": "Z3 5.0.0 and cvc5 1.3.4",
+        "model_validator": "Dolmen 0.10 with --strict=false; --require-dolmen-pass forbade fallback",
+        "slurm_job_id": null
+      },
+      "command": "make tactic-composition-test",
+      "inputs": {
+        "manifest": "benchmarks/tactic-composition-matrix.json",
+        "profiles": 11,
+        "cases": "Nine deterministic cases: three QF_UF and two each for QF_LRA, QF_UFLRA, and QF_LIA; every logic includes SAT and UNSAT coverage",
+        "repetitions": 2
+      },
+      "results": {
+        "cli_matrix": "146/146 profile/case/repetition rows passed; zero wrong answer, reference disagreement, crash, timeout, unknown, missing tactic counter, malformed statistic, or non-timing-statistic nondeterminism. Rows by logic: 54 QF_UF, 28 QF_LRA, 44 QF_UFLRA, and 20 QF_LIA.",
+        "model_validation": "Dolmen directly validated all 41 satisfiable profile/case pairs; 32 profile/case pairs were unsatisfiable and correctly required no model. Zero fallback, invalid model, validator timeout, or solver error.",
+        "adaptive_activity": "The adaptive QF_UF profile observed a nonzero :preprocessing.adaptive-passes counter on the tracked residual-domain seed.",
+        "bugs_exposed_before_acceptance": "The initial matrix rejected a QF_LIA model that omitted a declared Boolean constant and a monotone QF_UFLRA model that lost numeric Real reconstruction after dispatching the residual EUF goal to QF_UF. Those defects were fixed in e464869 and 0c1d006 before this exact-commit run."
+      },
+      "artifacts": {
+        "metadata": "results/tactic-composition-local/metadata.json",
+        "row_summary": "results/tactic-composition-local/summary.csv",
+        "profile_checks": "results/tactic-composition-local/<profile>/profile-check.json",
+        "model_summaries": "results/tactic-composition-local/<profile>/model-validation/summary.csv"
+      },
+      "evidence_status": "local-current-deterministic-composition-gate; exact harness commit; artifacts are reproducible local-only outputs; merge-grade generated SLURM matrix remains pending",
+      "outcome": "All legal production compositions pass the deterministic local gate with direct Dolmen model validation. This is composition correctness evidence, not a performance or default-promotion claim."
     }
   ]
 }
