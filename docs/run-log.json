@@ -28785,6 +28785,71 @@
       },
       "evidence_status": "local-current-experimental; artifacts are local-only; no performance or default-promotion claim",
       "outcome": "The opt-in sequential split tactic passes the QF_UF merge gate and preserves default-disabled behavior. The one invalid fuzz model is identically present in the no-split control and is recorded as a separate pre-existing model-builder defect rather than attributed to this feature."
+    },
+    {
+      "id": "2026-08-31-qfuf-boolean-model-completion-fix",
+      "started_at": "2026-08-31",
+      "recorded_at": "2026-08-31",
+      "kind": "correctness-fix",
+      "scope": "Diagnosis, repair, and exact-commit QF_UF model-validation gate for the invalid case-0388 model found while validating the experimental sequential Boolean-splitting tactic.",
+      "commit": "0a9f57d0637629ed6e043b0653e80944b1617df4",
+      "failing_commit": "df75db17ad1340d0ad488a389fef1021a865e8bf",
+      "branch": "tactics",
+      "environment": {
+        "type": "local",
+        "host": "mikolas-ThinkPad-T14s-Gen-5",
+        "kernel": "Linux 7.0.0-30-generic x86_64",
+        "compiler": "GCC 13.3.0",
+        "primo_binary": "build-release-tactics/primo, Release, exact git 0a9f57d",
+        "cadical": "cadical-3.0.0-7b99c07",
+        "reference": "Z3 5.0.0",
+        "model_validator": "Dolmen 0.10 with Z3 5.0.0 fallback",
+        "slurm_job_id": null
+      },
+      "diagnosis": {
+        "introduction": "The defect was introduced by bcb482dda5ef3fc7f919fa88c8aa9fc373ed5b54 (Add QF_UF model printing and Dolmen validation, 2026-07-29). The minimized witness already emits an invalid model at that exact commit. Its immediate parent c495ff122e5a86a0fff130e0850188e518f1417b reports get-model as unsupported, so bcb482d is the first possible and first observed bad revision. Later preprocessing reconstruction exposed more instances but did not originate the model-closure inconsistency.",
+        "trigger": "Solved-constant preprocessing eliminated a = tb(p), after which p no longer occurred in the final SAT problem and therefore had no explicit Boolean model assignment.",
+        "root_cause": "The printer defaulted the unconstrained p to false, but the model congruence closure did not equate p with false. It could consequently retain tb(p) and tb(false) in different result classes even though both UF table rows printed with the same false argument key; the first row then shadowed the second and violated the asserted equality.",
+        "reduction": "A minimal witness contains one uninterpreted sort U, p : Bool, a : U, tb : Bool -> U, (= (tb p) a), and (= (tb true) (tb false)). Disabling preprocessing or solved-constant substitution avoided the bad model, locating the interaction in reconstruction rather than the split tactic.",
+        "repair": "Before constructing UF tables, QfUfModelBuilder now completes every unconstrained Bool constant or Bool-valued application to false inside its congruence closure and saturates again. This makes the internal quotient agree with the value later printed for each Boolean argument."
+      },
+      "commands": {
+        "focused_reproduction": "./build-release-tactics/primo --quiet /tmp/primo-model-repro-1.smt2, repeated with --preprocessing-mode=off and --no-solved-constant-substitution to isolate the preprocessing interaction",
+        "history_trace": "Built and ran the minimized witness in a detached temporary worktree at bcb482d and its immediate parent c495ff1; bcb482d printed the invalid model while c495ff1 exited 2 with unsupported command: get-model.",
+        "answer_fuzz": "python3 scripts/qf_uf_boolean_fuzz.py --count 1000 --shape all --seed 831388 --timeout 5 --solver ./build-release-tactics/primo --solver-arg=--quiet --solver-arg=--experimental-split-bools=2 --ref contrib/local/bin/z3 --out /tmp/primo-model-fix/0a9f57d-answer --keep-passing",
+        "split_model_validation": "python3 scripts/validate_qfuf_models_with_dolmen.py --solver ./build-release-tactics/primo --solver-arg=--quiet --solver-arg=--experimental-split-bools=2 --dolmen /home/user/.opam/default/bin/dolmen --z3 contrib/local/bin/z3 --timeout 5 --dolmen-timeout 5 --out /tmp/primo-model-fix/0a9f57d-model-split /tmp/primo-model-fix/0a9f57d-answer/cases/*.smt2",
+        "control_model_validation": "python3 scripts/validate_qfuf_models_with_dolmen.py --solver ./build-release-tactics/primo --solver-arg=--quiet --dolmen /home/user/.opam/default/bin/dolmen --z3 contrib/local/bin/z3 --timeout 5 --dolmen-timeout 5 --out /tmp/primo-model-fix/0a9f57d-model-control /tmp/primo-model-fix/0a9f57d-answer/cases/*.smt2",
+        "original_case_replay": "python3 scripts/validate_qfuf_models_with_dolmen.py --solver ./build-release-tactics/primo --solver-arg=--quiet --solver-arg=--experimental-split-bools=2 --dolmen /home/user/.opam/default/bin/dolmen --z3 contrib/local/bin/z3 --timeout 5 --dolmen-timeout 5 --out /tmp/primo-model-fix/0a9f57d-case-0388 /tmp/primo-fuzz-experimental-split/df75db1-answer/cases/case-0388.smt2",
+        "verification": "cmake --build build-release-tactics -j2; ctest --test-dir build-release-tactics --output-on-failure; python3 -m unittest discover -s tests/python -p 'test_*.py'; make asan-test; make docs; make lint; BUILD_DIR=build-release-tactics make tidy; whole-tree misc-include-cleaner advisory scan followed by a clean focused scan of src/smt/model_builder.cpp and tests/unit/boolean_solver_tests.cpp; git diff --check"
+      },
+      "inputs": {
+        "generator": "scripts/qf_uf_boolean_fuzz.py",
+        "logic": "QF_UF",
+        "seed": 831388,
+        "count": 1000,
+        "timeout_seconds": 5,
+        "shape": "all",
+        "split_k": 2,
+        "answers": "579 sat and 421 unsat"
+      },
+      "results": {
+        "before": "At exact commit df75db1 and seed 831001, both the k=2 split run and no-split control had 594 valid models, 405 unsat cases, and the same one invalid model, case-0388.",
+        "answer_fuzz": "At exact commit 0a9f57d, 1,000/1,000 fresh generated answers PASS against Z3 with zero wrong answer, crash, timeout, unsupported result, parser/type error, or reference disagreement.",
+        "split_model_validation": "579/579 satisfiable models validated by Dolmen; the remaining 421 inputs were unsatisfiable. Zero invalid model or incomplete result.",
+        "control_model_validation": "Exactly the same 579 valid satisfiable models and 421 unsatisfiable inputs as the split run. Zero invalid model or incomplete result.",
+        "original_case_replay": "The formerly invalid case-0388 model validates with Dolmen on exact commit 0a9f57d.",
+        "verification": "Release CTest 22/22, Python tests 69/69, ASan CTest 22/22 with leak detection and strict initialization order, documentation build, whole-tree clang-tidy over 94 tracked non-generated C++ translation units, touched-file include-cleaner scan, and whitespace checks passed. The whole-tree include-cleaner advisory emitted 201 existing baseline findings; it found one missing direct include in the touched model builder, which was fixed before the focused scan passed. make lint reaches only the accepted pre-existing four Ruff findings in scripts/qf_uf_boolean_fuzz.py (EXE001, PLC0206, and two UP031 findings). The required smt-code-review skill is unavailable in this installation, so manual whole-diff hygiene/API review and whole-tree static analysis were used."
+      },
+      "artifacts": {
+        "answer_summary": "/tmp/primo-model-fix/0a9f57d-answer/summary.csv",
+        "generated_cases": "/tmp/primo-model-fix/0a9f57d-answer/cases",
+        "split_model_summary": "/tmp/primo-model-fix/0a9f57d-model-split/summary.csv",
+        "control_model_summary": "/tmp/primo-model-fix/0a9f57d-model-control/summary.csv",
+        "original_case_summary": "/tmp/primo-model-fix/0a9f57d-case-0388/summary.csv",
+        "original_failing_case": "/tmp/primo-fuzz-experimental-split/df75db1-answer/cases/case-0388.smt2"
+      },
+      "evidence_status": "local-current-correctness-gate; exact implementation commit; artifacts are local-only",
+      "outcome": "The model defect is fixed in shared QF_UF model construction. Fresh split and no-split gates have identical classifications and validate every satisfiable model, while the original failure now passes independently."
     }
   ]
 }
