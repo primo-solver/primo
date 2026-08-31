@@ -28631,6 +28631,60 @@
       },
       "evidence_status": "slurm-complete-current for behavior-changing commit 618720d; applicable to 8dc9eb8 through exact behavior-neutral relocation evidence",
       "outcome": "The refactored solve path passes fresh four-logic generated, model, seed, and mutation gates with zero correctness failures. QF_LRA and QF_LIA retain one and twenty timeout-only generated cases respectively, and the large-division mutation campaigns are explicitly time-boxed rather than claimed as exhaustive."
+    },
+    {
+      "id": "2026-08-30-tactic-refactor-full-slurm-comparison",
+      "started_at": "2026-08-30",
+      "recorded_at": "2026-08-31",
+      "kind": "benchmark",
+      "scope": "Full paired before/after SLURM comparison of baseline 3120d54 and the final behavior-changing tactic refactor 618720d over the established QF_UF, QF_LRA, QF_UFLRA, and QF_LIA divisions, plus completed focused reruns for initially noisy QF_UF, QF_UFLRA, and QF_LRA boundary results.",
+      "commit": "618720d8688f62ccad76220ca901b6936520839b",
+      "current_source_commit": "8dc9eb8a12b6a96a7ff5c496e88c56c24ad1dbdd (behavior-neutral engine relocation, covered by exact local compatibility evidence)",
+      "baseline_commit": "3120d54a6d7f4f570b9bdf149805efea9148a796",
+      "branch": "tactics",
+      "environment": {
+        "type": "slurm",
+        "host": "established Primo SLURM environment",
+        "workdir": "<slurm-workdir>",
+        "baseline_binary": "primo 0.1.0, git 3120d54, Release, CaDiCaL cadical-3.0.0-7b99c07",
+        "candidate_binary": "primo 0.1.0, git 618720d, Release, CaDiCaL cadical-3.0.0-7b99c07"
+      },
+      "commands": {
+        "preflight": "python3 scripts/slurm_prepare_benchmark_workspace.py --check-only --no-sync ... for both exact clean workspaces immediately before submission; generated batch files passed scripts/slurm_validate_sbatch.py and bash -n",
+        "paired_run": "Validated alternating-order array batch using scripts/bench_qf_uf_full.py-compatible sharding for baseline and candidate with identical corpus, timeout, solver arguments, and CaDiCaL version",
+        "summary": "python3 scripts/summarize_benchmark_shards.py --timeout <logic-timeout> --run baseline=<artifact>/baseline --run candidate=<artifact>/candidate --baseline baseline --candidate candidate",
+        "focused": "Alternating-order family/instance reruns through the same benchmark harness. The final closure uses scripts/slurm_tactic_refactor_closure.sbatch and benchmarks/tactic-refactor-qflia-timeout-boundary.txt; the workstation was preflighted again before each resumed submission."
+      },
+      "inputs": {
+        "qf_uf": "7,503 files, 60 seconds, 32 shards",
+        "qf_uflra": "1,284 files, 120 seconds, 16 shards",
+        "qf_lra": "1,753 files, 120 seconds, 16 shards",
+        "qf_lia": "13,306 files, 60 seconds, 64 shards"
+      },
+      "results": {
+        "qf_uf": "Both arms solved 7,496: 3,142 sat, 4,354 unsat, and 7 timeouts; zero wrong, error, unsupported, loss, recovery, or decisive disagreement. Baseline PAR2 4,734.355321; candidate 4,731.133139 (-0.068%). Family solved counts are identical.",
+        "qf_uf_focus": "Five alternating repeats made classifications identical. Rodin median PAR2 was 0.247353 baseline versus 0.202881 candidate; SEQ was 45.420806 versus 45.601747 (+0.398%). The initial greater-than-one-percent family deltas were startup/order noise rather than a persistent regression.",
+        "qf_uflra": "Both arms solved 1,272: 761 sat, 511 unsat, and 12 timeouts; zero wrong, error, unsupported, loss, recovery, or decisive disagreement. Baseline PAR2 3,664.178962; candidate 3,699.142144 (+0.954%). Family solved counts are identical.",
+        "qf_uflra_focus": "Six alternating cpachecker-induction repeats retained the same four timeout-classified files per arm after normalizing timeout output: baseline median PAR2 1,693.807744, candidate 1,706.225863 (+0.733%). First-arm and second-arm deltas were +0.133% and +0.219%, respectively.",
+        "qf_lra": "Both arms solved 1,600: 966 sat, 634 unsat, and 153 timeouts; zero wrong, error, unsupported, or decisive disagreement. Baseline PAR2 49,045.063277; candidate 49,226.018065 (+0.369%). The one raw loss and one recovery were both timeout-boundary cases.",
+        "qf_lra_boundary_focus": "Across six alternating repeats both arms solved both boundary cases 6/6. The labyrinth median was 114.069637 baseline versus 114.687311 candidate (+0.541%); tropical-matrix was 108.327724 versus 108.983610 (+0.605%). This removes the raw full-sweep family solved-count difference as cutoff noise.",
+        "qf_lra_family_focus": "Six alternating repeats cover all eight raw QF_LRA families initially above one percent. Median deltas are 2019-ezsmt +0.073%, check -0.329%, clock_synchro +0.279%, sal +0.498%, spider_benchmarks -0.356%, tta_startup +0.006%, and uart +0.311%. The one 2019-ezsmt cutoff case is perfectly arm-order balanced: each revision solves it in 3/6 repeats, always when run second. Keymaera was extended to 24 exact-classification repeats because its whole-family runtime is only about 0.13 seconds. Its raw blended median remains +1.866%, but candidate is 2.047% faster in first-arm medians and 0.909% slower in second-arm medians; the raw threshold failure is process-startup/order noise rather than a stable profileable solver regression.",
+        "qf_lia": "Baseline solved 9,790 with 3,516 timeouts; candidate solved 9,797 with 3,509 timeouts. Baseline PAR2 456,715.111424; candidate 456,191.431411 (-0.115%). Both arms have zero wrong, error, unsupported, or decisive answer disagreement.",
+        "qf_lia_family_focus": "Six alternating repeats make cut_lemmas classifications exact with baseline median PAR2 1,230.707850 and candidate 1,231.715488 (+0.082%); check is exact at -9.243%; tightrhombus is exact at +0.187%. Prime-cone was extended to 24 exact-classification repeats to suppress its first-arm cache penalty: baseline median 0.364452, candidate 0.366110 (+0.455%); first-arm candidate -2.962%, second-arm candidate +0.952%.",
+        "qf_lia_boundary_focus": "Six repeats cover all 15 raw timeout-boundary losses and recoveries. Twelve cases have identical per-revision counts, including cut_lemma_02_012 at unsat 6/6 in both. RC-11 remains cutoff noise (baseline 3 sat/3 timeout, candidate 4 sat/2 timeout); prp-18-36 is baseline 6 sat versus candidate 5 sat/1 timeout. RC-06 is a reproducible candidate gain: baseline timeout 6/6, candidate unsat 6/6. There is no decisive-answer disagreement or persistent candidate family solved-count regression, but the literal full-sweep timeout-classification-identity criterion is not satisfied because deliberately discarding the RC-06 gain would be required."
+      },
+      "artifacts": {
+        "qf_uf": "<slurm-workdir>/results/tactic-refactor-qfuf-full-618720d-vs-3120d54",
+        "qf_uflra": "<slurm-workdir>/results/tactic-refactor-qfuflra-full-618720d-vs-3120d54",
+        "qf_lra": "<slurm-workdir>/results/tactic-refactor-qflra-full-618720d-vs-3120d54",
+        "qf_lia": "<slurm-workdir>/results/tactic-refactor-qflia-full-618720d-vs-3120d54",
+        "focused": "<slurm-workdir>/results/tactic-refactor-focused-rerun2-618720d-vs-3120d54",
+        "qf_lra_boundary": "<slurm-workdir>/results/tactic-refactor-qflra-boundary-rerun-618720d-vs-3120d54",
+        "qf_lra_family": "<slurm-workdir>/results/tactic-refactor-qflra-family-rerun-618720d-vs-3120d54",
+        "final_closure": "<slurm-workdir>/results/tactic-refactor-closure-618720d-vs-3120d54"
+      },
+      "evidence_status": "slurm-complete-current with documented literal-threshold deviations for QF_LIA timeout identity and startup-dominated QF_LRA keymaera timing",
+      "outcome": "All aggregate and non-startup-dominated family PAR2 regressions are below one percent after balanced reruns, no persistent candidate family solved-count regression remains, and there is no wrong answer, crash, invalid model, error, unsupported misclassification, or decisive disagreement. Two literal criteria remain unmet: identical wall-clock timeout classification on every QF_LIA instance (a stable candidate RC-06 gain plus two cutoff-fluctuating cases), and raw blended keymaera family PAR2 below one percent (the 24-repeat arm-position medians have opposite signs over roughly 0.13 seconds). Neither observation identifies a correctness issue or stable solver slow path to fix."
     }
   ]
 }
