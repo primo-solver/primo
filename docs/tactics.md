@@ -357,11 +357,15 @@ fingerprint, checks QF_LIA's substitution-only restriction, and executes real
 preprocessing and solver leaves over SAT and UNSAT goals. The public CLI layer
 is `scripts/tactic_composition_matrix.py`. It runs every applicable
 profile/case pair twice for the deterministic local corpus, compares answers
-with Z3 and cvc5, requires the profile's distinguishing tactic counters,
-compares all non-timing statistics between repetitions, and sends every SAT
-model through Dolmen with fallback disabled. Its summary and per-run stdout,
-stderr, statistics, model-checking output, solver version, and commit are
-durable artifacts. Run the complete local layer with:
+with Z3 and cvc5, compares all non-timing statistics between repetitions, and
+sends every SAT model through Dolmen with fallback disabled. Counters for
+entry leaves that must run on every case are checked per execution. Counters
+for later leaves are required at least once per applicable logic across the
+corpus: a sequence correctly short-circuits when an earlier transformation
+proves the goal unsatisfiable, so absence on that individual case is not a
+composition failure. Its summary and per-run stdout, stderr, statistics,
+model-checking output, solver version, and commit are durable artifacts. Run
+the complete local layer with:
 
 ```bash
 make tactic-composition-test
@@ -372,8 +376,9 @@ array tasks generate four 250-case shards for each supported logic, then run
 every profile applicable to each of the resulting 1,000 unique formulas.
 Timeout and ordinary unknown results are counted as inconclusive; wrong
 answers, reference disagreements, crashes, malformed statistics, missing
-tactic counters, and any model that does not pass Dolmen directly fail the
-gate. Each QF_UF shard also runs the tracked residual-domain seed and requires
+per-case entry counters, missing corpus-level activity for later leaves, and
+any model that does not pass Dolmen directly fail the gate. Each QF_UF shard
+also runs the tracked residual-domain seed and requires
 `:preprocessing.adaptive-passes` to become nonzero, so constructing an adaptive
 strategy without exercising its continuation policy is not counted as
 coverage. The generated cases and row-level summaries are retained per task.

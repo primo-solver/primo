@@ -21,7 +21,7 @@
       ],
       "logics": ["QF_UF", "QF_LRA", "QF_UFLRA", "QF_LIA"],
       "required_stats": [":tactic.preprocessing-profile.invocations"],
-      "required_stats_by_logic": {
+      "required_observed_stats_by_logic": {
         "QF_UF": [":tactic.preprocessing-round.invocations"],
         "QF_LRA": [":tactic.preprocessing-round.invocations"],
         "QF_UFLRA": [":tactic.preprocessing-round.invocations"]
@@ -36,7 +36,7 @@
       ],
       "logics": ["QF_UF", "QF_LRA", "QF_UFLRA", "QF_LIA"],
       "required_stats": [":tactic.preprocessing-profile.invocations"],
-      "required_stats_by_logic": {
+      "required_observed_stats_by_logic": {
         "QF_UF": [":tactic.preprocessing-round.invocations"],
         "QF_LRA": [":tactic.preprocessing-round.invocations"],
         "QF_UFLRA": [":tactic.preprocessing-round.invocations"]
@@ -52,13 +52,13 @@
       ],
       "logics": ["QF_UF", "QF_LRA", "QF_UFLRA", "QF_LIA"],
       "required_stats": [":tactic.preprocessing-profile.invocations"],
-      "required_stats_by_logic": {
-        "QF_UF": [":tactic.preprocessing-round.invocations"],
+      "required_observed_stats_by_logic": {
+        "QF_UF": [
+          ":tactic.preprocessing-round.invocations",
+          ":preprocessing.adaptive-passes"
+        ],
         "QF_LRA": [":tactic.preprocessing-round.invocations"],
         "QF_UFLRA": [":tactic.preprocessing-round.invocations"]
-      },
-      "required_observed_stats_by_logic": {
-        "QF_UF": [":preprocessing.adaptive-passes"]
       }
     },
     {
@@ -69,7 +69,10 @@
         "--ground-unit-substitution"
       ],
       "logics": ["QF_UF", "QF_UFLRA"],
-      "required_stats": [":tactic.ground-unit-substitution.invocations"]
+      "required_observed_stats_by_logic": {
+        "QF_UF": [":tactic.ground-unit-substitution.invocations"],
+        "QF_UFLRA": [":tactic.ground-unit-substitution.invocations"]
+      }
     },
     {
       "id": "guarded-substitution",
@@ -79,37 +82,58 @@
         "--guarded-ground-unit-substitution"
       ],
       "logics": ["QF_UF", "QF_UFLRA"],
-      "required_stats": [":tactic.ground-unit-substitution.invocations"]
+      "required_observed_stats_by_logic": {
+        "QF_UF": [":tactic.ground-unit-substitution.invocations"],
+        "QF_UFLRA": [":tactic.ground-unit-substitution.invocations"]
+      }
     },
     {
       "id": "no-gaussian",
       "args": ["--preprocessing-mode=strong", "--no-gaussian-elimination"],
       "logics": ["QF_LRA", "QF_UFLRA"],
-      "required_stats": [":tactic.solve-eqs.invocations"]
+      "required_observed_stats_by_logic": {
+        "QF_LRA": [":tactic.solve-eqs.invocations"],
+        "QF_UFLRA": [":tactic.solve-eqs.invocations"]
+      }
     },
     {
       "id": "monotone",
       "args": ["--preprocessing-mode=strong", "--monotone-elimination"],
       "logics": ["QF_LRA", "QF_UFLRA"],
-      "required_stats": [":tactic.eliminate-monotone.invocations"]
+      "required_observed_stats_by_logic": {
+        "QF_LRA": [":tactic.eliminate-monotone.invocations"],
+        "QF_UFLRA": [":tactic.eliminate-monotone.invocations"]
+      }
     },
     {
       "id": "split-1",
       "args": ["--experimental-split-bools=1"],
       "logics": ["QF_UF", "QF_UFLRA"],
-      "required_stats": [
-        ":tactic.experimental-split-bools.invocations",
-        ":experimental.split-bools.output-goals"
-      ]
+      "required_observed_stats_by_logic": {
+        "QF_UF": [
+          ":tactic.experimental-split-bools.invocations",
+          ":experimental.split-bools.output-goals"
+        ],
+        "QF_UFLRA": [
+          ":tactic.experimental-split-bools.invocations",
+          ":experimental.split-bools.output-goals"
+        ]
+      }
     },
     {
       "id": "strong-split-2",
       "args": ["--preprocessing-mode=strong", "--experimental-split-bools=2"],
       "logics": ["QF_UF", "QF_UFLRA"],
-      "required_stats": [
-        ":tactic.experimental-split-bools.invocations",
-        ":experimental.split-bools.output-goals"
-      ]
+      "required_observed_stats_by_logic": {
+        "QF_UF": [
+          ":tactic.experimental-split-bools.invocations",
+          ":experimental.split-bools.output-goals"
+        ],
+        "QF_UFLRA": [
+          ":tactic.experimental-split-bools.invocations",
+          ":experimental.split-bools.output-goals"
+        ]
+      }
     }
   ],
   "cases": [

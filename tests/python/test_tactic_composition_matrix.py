@@ -139,6 +139,77 @@ class TacticCompositionMatrixTests(unittest.TestCase):
             self.assertEqual(metadata["status"], "passed")
             self.assertEqual(metadata["rows"], 2)
 
+    def test_later_leaf_counter_may_be_observed_on_only_one_case(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            early = root / "early.smt2"
+            later = root / "later.smt2"
+            manifest = root / "matrix.json"
+            solver = root / "solver.py"
+            reference = root / "reference.py"
+            output = root / "out"
+            self.write_case(early)
+            self.write_case(later)
+            manifest.write_text(
+                json.dumps(
+                    {
+                        "profiles": [
+                            {
+                                "id": "profile",
+                                "args": [],
+                                "logics": ["QF_UF"],
+                                "required_observed_stats_by_logic": {
+                                    "QF_UF": [":tactic.later.invocations"]
+                                },
+                            }
+                        ],
+                        "cases": [
+                            {"path": str(early), "logic": "QF_UF", "expected": "sat"},
+                            {"path": str(later), "logic": "QF_UF", "expected": "sat"},
+                        ],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            self.write_executable(
+                solver,
+                "import pathlib, sys\n"
+                "print('sat')\n"
+                "if pathlib.Path(sys.argv[-1]).name == 'later.smt2':\n"
+                "    print(':tactic.later.invocations 1', file=sys.stderr)\n",
+            )
+            self.write_executable(reference, "print('sat')\n")
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPT),
+                    "--manifest",
+                    str(manifest),
+                    "--solver",
+                    str(solver),
+                    "--refs",
+                    str(reference),
+                    "--repeat",
+                    "1",
+                    "--skip-model-validation",
+                    "--out",
+                    str(output),
+                ],
+                check=False,
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            with (output / "summary.csv").open(newline="", encoding="utf-8") as handle:
+                rows = list(csv.DictReader(handle))
+            self.assertEqual([row["outcome"] for row in rows], ["pass", "pass"])
+            profile_check = json.loads(
+                (output / "profile" / "profile-check.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(profile_check["missing_observations"], {})
+
     def test_public_runner_rejects_nondeterministic_statistics(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
