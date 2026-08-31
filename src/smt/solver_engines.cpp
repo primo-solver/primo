@@ -3982,11 +3982,12 @@ std::optional<util::Rational> evaluate_qf_lia_model_term(
   }
 }
 
-std::string build_qf_lia_model(const core::TermManager& terms,
+std::string build_qf_lia_model(core::TermManager& terms,
                                const std::vector<core::TermId>& model_terms,
                                const PreparedLraTheory& prepared,
                                const theory::arithmetic::LraTableau& tableau,
-                               const ModelConversionChain& conversions) {
+                               const ModelConversionChain& conversions,
+                               const std::vector<AssignedTheoryAtom>& assigned_atoms) {
   std::unordered_map<core::TermId, core::TermId> substitution_definitions;
   conversions.replay_reverse([&substitution_definitions](const ModelConversionStep& step) {
     const auto* lia = std::get_if<LiaSubstitutionConversion>(&step);
@@ -3999,8 +4000,38 @@ std::string build_qf_lia_model(const core::TermManager& terms,
       substitution_definitions.try_emplace(substitution->first, substitution->second);
     }
   });
+  std::unordered_map<core::SymbolId, bool> boolean_values;
+  const auto record_boolean_value = [&terms, &boolean_values](core::TermId term_id, bool value,
+                                                              bool filtered) {
+    if (filtered) {
+      return;
+    }
+    const core::Term& term = terms.get(term_id);
+    if (term.kind == core::TermKind::Constant && term.sort == terms.symbols().bool_sort()) {
+      boolean_values[term.symbol] = value;
+    }
+  };
+  for (const TheoryModelAssignment& assignment : conversions.theory_assignments(terms)) {
+    record_boolean_value(assignment.term, assignment.value, assignment.filtered);
+  }
+  for (const AssignedTheoryAtom& assignment : assigned_atoms) {
+    record_boolean_value(assignment.term, assignment.value, assignment.filtered);
+  }
+
   std::ostringstream model;
   model << "(model\n";
+  // QF_LIA permits propositional constants alongside Int arithmetic. They do not belong to the
+  // tableau, but SMT-LIB model validation still requires a value for every declaration. Constants
+  // eliminated as irrelevant during preprocessing can safely take the deterministic default false.
+  for (const core::Symbol& symbol : terms.symbols().symbols()) {
+    if (symbol.kind != core::SymbolKind::Constant ||
+        symbol.result_sort != terms.symbols().bool_sort() || symbol.name.starts_with("$primo_")) {
+      continue;
+    }
+    const auto found = boolean_values.find(symbol.id);
+    const bool value = found != boolean_values.end() && found->second;
+    model << "  (define-fun " << symbol.name << " () Bool " << (value ? "true" : "false") << ")\n";
+  }
   for (const core::TermId term_id : model_terms) {
     const core::Term& term = terms.get(term_id);
     if (term.kind != core::TermKind::Constant || term.sort != terms.symbols().int_sort()) {
@@ -8748,7 +8779,7 @@ CheckSatOutcome solve_qf_lia_impl(core::TermManager& terms,
           return CheckSatOutcome{CheckSatResult::Sat, "", statistics,
                                  options.produce_model
                                      ? build_qf_lia_model(terms, model_terms, prepared_theory,
-                                                          lia_tableau, conversions)
+                                                          lia_tableau, conversions, assigned_atoms)
                                      : ""};
         }
         if (bb_result.status == theory::arithmetic::LiaBranchAndBoundResult::Status::LimitReached) {

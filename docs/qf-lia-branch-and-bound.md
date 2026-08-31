@@ -87,6 +87,17 @@ branch-and-bound respects).
   derivation, see "Conflict generalization" below.**
 - Node limit hit: `Unknown`, `"QF_LIA branch-and-bound node limit reached"`.
 
+`build_qf_lia_model` owns both parts of the supported signature: exact values
+for every declared `Int` constant and truth values for every declared Boolean
+constant. Boolean values come from preprocessing conversions and the final SAT
+assignment; a declaration eliminated as irrelevant receives the deterministic
+default `false`. This completion is required even when the only occurrence was
+a tautology such as `(or p (not p))`: the formula no longer constrains `p`, but
+Dolmen still requires the returned model to interpret the declaration. The
+regression is `model_completes_preprocessed_boolean_constants` in the QF_LIA
+solver tests. QF_LIA still rejects uninterpreted functions and Real constants,
+so no function-table or mixed-sort model composition is implied here.
+
 ## The search: `theory::arithmetic::branch_and_bound`
 
 `src/theory/arithmetic/lia_branch_and_bound.{hpp,cpp}`. Given an

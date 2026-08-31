@@ -40,6 +40,25 @@ void trivially_sat_needs_no_branching() {
   assert(result.model.find("(define-fun x () Int 7)") != std::string::npos);
 }
 
+// A Boolean constant can disappear from the final SAT problem when preprocessing proves its only
+// occurrence tautological. It still has to be assigned in the SMT-LIB model: Dolmen rejects partial
+// models that omit declared constants.
+void model_completes_preprocessed_boolean_constants() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_LIA)
+    (declare-fun x () Int)
+    (declare-fun p () Bool)
+    (assert (= x 2))
+    (assert (or p (not p)))
+    (check-sat)
+    (get-model)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.model.find("(define-fun x () Int 2)") != std::string::npos);
+  assert(result.model.find("(define-fun p () Bool ") != std::string::npos);
+}
+
 // docs/open-leads.md lead 12a: bare-form solved-constant substitution
 // (x=t, x not occurring in t) is enabled by default for QF_LIA. y=5 and
 // x=y+3 chains across two of the substitution loop's passes -- the first
@@ -482,6 +501,7 @@ void int_constants_require_qf_lia_logic() {
 
 int main() {
   trivially_sat_needs_no_branching();
+  model_completes_preprocessed_boolean_constants();
   chained_solved_constant_substitution_reconstructs_the_model();
   two_x_equals_three_is_unsat();
   one_branch_finds_an_integer_solution();
