@@ -28685,6 +28685,51 @@
       },
       "evidence_status": "slurm-complete-current with documented literal-threshold deviations for QF_LIA timeout identity and startup-dominated QF_LRA keymaera timing",
       "outcome": "All aggregate and non-startup-dominated family PAR2 regressions are below one percent after balanced reruns, no persistent candidate family solved-count regression remains, and there is no wrong answer, crash, invalid model, error, unsupported misclassification, or decisive disagreement. Two literal criteria remain unmet: identical wall-clock timeout classification on every QF_LIA instance (a stable candidate RC-06 gain plus two cutoff-fluctuating cases), and raw blended keymaera family PAR2 below one percent (the 24-repeat arm-position medians have opposite signs over roughly 0.13 seconds). Neither observation identifies a correctness issue or stable solver slow path to fix."
+    },
+    {
+      "id": "2026-08-31-tactic-refactor-infrastructure-profile",
+      "started_at": "2026-08-31",
+      "recorded_at": "2026-08-31",
+      "kind": "profile",
+      "scope": "Local profiling of tactic/strategy dispatch, frontend, term interning, and solver support overhead after the tactic refactor. One startup-dominated QF_LIA instance and two multi-second QF_LRA instances were selected from the completed benchmark corpus.",
+      "commit": "dad03162ea12c2ef434e014de844fa0620cf27a4",
+      "source_commit": "8dc9eb8a12b6a96a7ff5c496e88c56c24ad1dbdd",
+      "branch": "tactics",
+      "environment": {
+        "type": "local",
+        "host": "mikolas-ThinkPad-T14s-Gen-5",
+        "kernel": "Linux 7.0.0-30-generic x86_64",
+        "compiler": "GCC 13.3.0",
+        "release_binary": "build-release-tactics/primo",
+        "instrumented_binary": "build-gprof-tactics/primo, RelWithDebInfo with -O2 -g -pg",
+        "profilers": "Valgrind Callgrind 3.22.0 and GNU gprof 2.42",
+        "perf_status": "Unavailable to the unprivileged process because kernel.perf_event_paranoid=4; no perf evidence is claimed."
+      },
+      "commands": {
+        "phase_timers": "./build-release-tactics/primo --stats --quiet <instance.smt2>",
+        "timing_repeats": "/usr/bin/time -f %e ./build-release-tactics/primo --quiet <instance.smt2>",
+        "gprof_build": "cmake -S . -B build-gprof-tactics -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_PREFIX_PATH=/workspace/contrib/local -DCMAKE_CXX_FLAGS_RELWITHDEBINFO='-O2 -g -DNDEBUG -pg' -DCMAKE_EXE_LINKER_FLAGS='-pg'; cmake --build build-gprof-tactics --target primo -j2",
+        "gprof": "GMON_OUT_PREFIX=<artifact>/gmon ./build-gprof-tactics/primo --quiet <instance.smt2>; gprof ./build-gprof-tactics/primo <gmon-file>",
+        "callgrind": "valgrind --tool=callgrind --callgrind-out-file=<artifact>/<case>.callgrind ./build-release-tactics/primo --quiet <instance.smt2>",
+        "annotation": "callgrind_annotate --inclusive=no --threshold=100 --auto=no --tree=none <artifact>/<case>.callgrind"
+      },
+      "inputs": {
+        "clock4": "QF_LRA clocksynchro_4clocks.main_invar.induct.smt2, 27,418 bytes",
+        "clock5": "QF_LRA clocksynchro_5clocks.main_invar.induct.smt2, 36,057 bytes",
+        "prime20": "QF_LIA prime_cone_unsat_20.smt2, 6,292 bytes"
+      },
+      "results": {
+        "release_wall_time": "clock4 1.26/1.19/1.18 seconds; clock5 3.80/3.55/3.57 seconds; prime20 below the 0.01-second display resolution.",
+        "clock4_phase_sample": "1,122,933 us total: 1,456 parse, 1,819 frontend, 4,589 preprocessing, and 1,115,011 solve. Solver dispatch was 1,115,005 us and the QF_LRA leaf was 1,114,735 us, so dispatch/adapter overhead was 270 us (0.024% of dispatch); all timed work outside solve was 7,922 us (0.706% of total).",
+        "clock5_phase_sample": "3,364,261 us total: 1,883 parse, 2,554 frontend, 5,781 preprocessing, and 3,353,984 solve. Solver dispatch was 3,353,977 us and the QF_LRA leaf was 3,353,689 us, so dispatch/adapter overhead was 288 us (0.009% of dispatch); all timed work outside solve was 10,277 us (0.306% of total).",
+        "prime20_phase_sample": "5,349 us total: 270 parse, 286 frontend, 69 preprocessing, and 4,682 solve. Solver dispatch was 4,680 us and the QF_LIA leaf was 4,650 us, so dispatch/adapter overhead was 30 us (0.641% of dispatch); all timed work outside solve was 667 us (12.470% of total). This confirms that very short family timings are process/setup dominated even though tactic dispatch itself remains small.",
+        "clock4_callgrind": "12,037,505,394 instructions. Direct costs were gcd_u64 29.44%, Rational addition 11.62%, reduced 128-bit Rational construction 11.51%, Rational multiplication 11.34%, LraTableau::pivot 10.52%, with allocator and tableau occurrence/update operations next. TermManager::KeyHash plus TermManager::intern were 1,996,921 instructions (0.0166%). The direct tactic/dispatch functions were below 0.001% in aggregate.",
+        "prime20_callgrind": "85,602,156 instructions. Rational gcd/construction/arithmetic and LRA/LIA tableau operations led the profile. CLI name matching/checking was 1.38%, parser plus lexer 0.96%, TermManager::intern plus KeyHash 0.36%, and the directly attributed tactic/dispatch functions were below 0.01% in aggregate.",
+        "gprof_cross_check": "The clock4 sampling profile independently placed Rational arithmetic, LraTableau::pivot, occurrence unlinking, and violation updates at the top. Its apparent std::_Hashtable rehash symbol was rejected as optimized-symbol misattribution: Callgrind measured the actual TermManager rehash path below 0.01%, and TermManager intern/hash together at only 0.0166%. The prime20 gprof sample was too short to accumulate timing samples."
+      },
+      "artifacts": "/tmp/primo-profile.65gszN (local-only Callgrind data, annotations, gprof reports, and phase-statistic captures; ignored build-gprof-tactics contains the profiling binary)",
+      "evidence_status": "local-current-diagnostic",
+      "outcome": "No material tactic-strategy, formula-goal, parser, or term-interning infrastructure waste was found on the representative multi-second solve. The actionable runtime concentration is inside exact Rational arithmetic and LRA/LIA tableau pivot/update allocation behavior. On sub-10-ms cases, CLI/parser/process setup is visible, but optimizing the tactic abstraction would not materially change it."
     }
   ]
 }
