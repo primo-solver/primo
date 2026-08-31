@@ -4,9 +4,14 @@
 #include <string>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 #include "core/ids.hpp"
+#include "smt/check_sat.hpp"
 #include "smt/formula_analysis.hpp"
+#include "smt/inconclusive_reason.hpp"
+#include "smt/strategy.hpp"
+#include "smt/tactic.hpp"
 
 namespace primo::smt {
 
@@ -22,32 +27,73 @@ Tactic make_solver_dispatch(SolverStrategyOptions options, SolverTacticSet solve
   const Tactic boolean_then_euf =
       first_terminal("boolean-then-euf", scheduler, {solvers.boolean_solver, solvers.euf_solver});
 
-  return make_goal_tactic("solver-dispatch", [options = std::move(options),
-                                              solvers = std::move(solvers), boolean_then_euf](
-                                                 TacticContext& context, const Goal& goal) {
-    FormulaFeatureSummary features;
-    std::unordered_map<core::TermId, FormulaFeatureSummary> memo;
-    for (const core::TermId assertion : goal.assertions()) {
-      features |=
-          summarize_formula_features(context.terms(), assertion, memo, options.mixed_dispatch);
+  return Tactic("solver-dispatch", [options = std::move(options), solvers = std::move(solvers),
+                                    boolean_then_euf](TacticContext& context, const AnyOf& input) {
+    std::vector<Goal> inconclusive;
+    inconclusive.reserve(input.size());
+    for (const Goal& goal : input.alternatives()) {
+      if (goal.reason() != InconclusiveReason::None) {
+        inconclusive.push_back(goal);
+        if (goal.reason() == InconclusiveReason::Cancelled) {
+          return AnyOf(std::move(inconclusive));
+        }
+        continue;
+      }
+      const GoalTruth goal_truth = truth(goal, context);
+      if (goal_truth == GoalTruth::True) {
+        return AnyOf::single(goal);
+      }
+      if (goal_truth == GoalTruth::False) {
+        continue;
+      }
+
+      FormulaFeatureSummary features;
+      std::unordered_map<core::TermId, FormulaFeatureSummary> memo;
+      for (const core::TermId assertion : goal.assertions()) {
+        features |=
+            summarize_formula_features(context.terms(), assertion, memo, options.mixed_dispatch);
+      }
+
+      const Tactic* selected = nullptr;
+      if (options.logic == "QF_LIA") {
+        selected = &solvers.lia_solver;
+      } else if ((features.has_equality || features.has_euf_predicate) && features.has_arithmetic) {
+        selected = &solvers.mixed_solver;
+      } else if (features.has_arithmetic) {
+        selected = &solvers.lra_solver;
+      } else if (context.produce_model() && options.has_declared_real_constants &&
+                 !features.has_equality && !features.has_euf_predicate) {
+        selected = &solvers.lra_model_only_solver;
+      } else if (features.has_equality || features.has_application_term) {
+        selected = &solvers.euf_solver;
+      } else {
+        selected = &boolean_then_euf;
+      }
+
+      AnyOf result = (*selected)(context, AnyOf::single(goal));
+      const GoalTruth result_truth = truth(result, context);
+      if (result_truth == GoalTruth::True) {
+        return result;
+      }
+      if (result_truth == GoalTruth::False) {
+        continue;
+      }
+      for (const Goal& alternative : result.alternatives()) {
+        if (alternative.reason() == InconclusiveReason::None &&
+            truth(alternative, context) == GoalTruth::False) {
+          continue;
+        }
+        inconclusive.push_back(alternative);
+        if (alternative.reason() == InconclusiveReason::Cancelled) {
+          return AnyOf(std::move(inconclusive));
+        }
+      }
     }
 
-    const Tactic* selected = nullptr;
-    if (options.logic == "QF_LIA") {
-      selected = &solvers.lia_solver;
-    } else if ((features.has_equality || features.has_euf_predicate) && features.has_arithmetic) {
-      selected = &solvers.mixed_solver;
-    } else if (features.has_arithmetic) {
-      selected = &solvers.lra_solver;
-    } else if (context.produce_model() && options.has_declared_real_constants &&
-               !features.has_equality && !features.has_euf_predicate) {
-      selected = &solvers.lra_model_only_solver;
-    } else if (features.has_equality || features.has_application_term) {
-      selected = &solvers.euf_solver;
-    } else {
-      selected = &boolean_then_euf;
+    if (inconclusive.empty()) {
+      return AnyOf::single(Goal({context.terms().mk_bool(false)}));
     }
-    return (*selected)(context, AnyOf::single(goal));
+    return AnyOf(std::move(inconclusive));
   });
 }
 

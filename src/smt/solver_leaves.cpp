@@ -7,6 +7,7 @@
 #include "core/ids.hpp"
 #include "smt/boolean_solver.hpp"
 #include "smt/check_sat.hpp"
+#include "smt/experimental_tactics.hpp"
 #include "smt/frontend.hpp"
 #include "smt/solver_engines.hpp"
 #include "smt/solver_strategy.hpp"
@@ -20,6 +21,7 @@ namespace primo::smt {
 Strategy make_session_solver_strategy(Frontend& frontend, CheckSatOptions options,
                                       util::Statistics& statistics, const TacticContext& context) {
   options.produce_model = context.produce_model();
+  const ExperimentalSplitBoolsOptions split_options{.max_bools = options.experimental_split_bools};
   const auto immutable_options = std::make_shared<const CheckSatOptions>(std::move(options));
   const Tactic boolean_solver = make_solver_tactic(
       "solve-boolean", frontend.terms(), [&, immutable_options](const Goal& goal) {
@@ -70,7 +72,7 @@ Strategy make_session_solver_strategy(Frontend& frontend, CheckSatOptions option
       .logic = frontend.logic(),
       .mixed_dispatch = immutable_options->mixed_dispatch,
       .has_declared_real_constants = frontend.has_declared_real_constants()};
-  return Strategy::leaf(
+  Strategy dispatch = Strategy::leaf(
       "solver-dispatch", strategy_options,
       make_solver_dispatch(strategy_options,
                            SolverTacticSet{.boolean_solver = boolean_solver,
@@ -79,6 +81,12 @@ Strategy make_session_solver_strategy(Frontend& frontend, CheckSatOptions option
                                            .lra_model_only_solver = lra_model_only_solver,
                                            .mixed_solver = mixed_solver,
                                            .lia_solver = lia_solver}));
+  if (split_options.max_bools == 0) {
+    return dispatch;
+  }
+  return Strategy::sequence({Strategy::leaf("experimental-split-bools", split_options,
+                                            make_experimental_split_bools(split_options)),
+                             std::move(dispatch)});
 }
 
 }  // namespace primo::smt

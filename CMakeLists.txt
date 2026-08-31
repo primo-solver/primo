@@ -301,6 +301,13 @@ add_test(
     -DPRIMO_TEST_INPUT=${CMAKE_SOURCE_DIR}/benchmarks/smoke/qf_uf/sat_uninterpreted_constants.smt2
     -P ${CMAKE_SOURCE_DIR}/tests/cmake/check_preprocessing_cli_options.cmake
 )
+add_test(
+  NAME primo_experimental_tactic_cli
+  COMMAND ${CMAKE_COMMAND}
+    -DPRIMO_EXECUTABLE=$<TARGET_FILE:primo>
+    -DPRIMO_TEST_INPUT=${CMAKE_SOURCE_DIR}/benchmarks/smoke/qf_uf/sat_uninterpreted_constants.smt2
+    -P ${CMAKE_SOURCE_DIR}/tests/cmake/check_experimental_tactic_cli.cmake
+)
 
 add_executable(primo_core_tests tests/unit/core_tests.cpp)
 primo_enable_warnings(primo_core_tests)

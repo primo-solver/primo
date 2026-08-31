@@ -246,6 +246,54 @@ Each SAT solver owns its terminator connection with an RAII guard, which keeps
 backend state local to a solve and makes the lifetime boundary suitable for a
 future isolated scheduler.
 
+## Experimental exhaustive Boolean splitting
+
+`make_experimental_split_bools` is the first production-reachable tactic that
+generates more than one formula goal. It is default-off and is enabled only by
+`--experimental-split-bools=k`. Its purpose is to exercise and measure the
+multi-goal boundary before adding a parallel executor; it is not presented as
+a solver optimization.
+
+For each current inconclusive goal, the tactic performs one iterative
+depth-first traversal of the reachable term DAG. It first selects Bool-sorted
+constants and uninterpreted applications in encounter order, then equality,
+`<=`, and `<` atoms in encounter order, stopping after `k` distinct terms.
+Logical connectives and Boolean values are not candidates. This priority makes
+the experiment split propositional symbols when they exist while still making
+pure arithmetic inputs eligible. Selection therefore observes all preceding
+transformations. A visited vector indexed by `TermId` makes discovery linear in
+the reachable DAG rather than exponential in shared syntax.
+
+If `b_0, ..., b_(m-1)` are selected, the tactic returns the false-first
+lexicographic sequence
+
+```text
+(G and not b_0 and ... and not b_(m-1)), ...,
+(G and b_0 and ... and b_(m-1)).
+```
+
+Equivalently, the disjunction of these `2^m` conjunctions is `G`, so the tactic
+needs no model-conversion step: a model of a selected branch is already a model
+of the input. This is the ordinary exhaustive case split instantiated in the
+disjunctive-goal semantics from de Moura and Passmore, Section 3, cited above;
+there is no paper-specific search heuristic in the implementation. Every
+branch retains the input goal's model-reconstruction chain and attributes.
+
+The initial executor is sequential. `solver-dispatch` walks alternatives in
+their stored order, invokes the appropriate solver leaf for one goal at a time,
+stops at the first satisfiable branch and keeps that branch's model, collapses
+an all-unsatisfiable product to one false goal, and otherwise retains the
+inconclusive branches. No threads or shared mutable result channel are added.
+All branches share the session's term manager and statistics object.
+
+The eager representation costs `O(2^m (n + m))` `TermId` storage for `n` input
+assertions. Both the typed builder and CLI reject `k > 16`; this is an
+engineering guard against accidental allocation, not a logical restriction.
+If only `m < k` candidates exist, the tactic emits `2^m` goals. A later parallel
+executor may consume the same immutable `AnyOf`, but must define cancellation,
+winner selection, and deterministic statistics before it replaces this
+sequential policy.
+
 ## Deliberate deviations and limitations
 
 The paper's tactic return type separately represents `sat`, `unsat`, `unknown`,
@@ -256,11 +304,12 @@ unknown reasons without changing the logical value. Broken
 contracts and backend failures use exceptions (`TacticError` or the originating
 standard exception); they are not tactical alternatives.
 
-The production schedule still operates on exactly one goal because none of the
-current transformations introduces a disjunction. Goal-local reconstruction is
-now sufficient for a future transformation to return alternatives without
-sharing its mutable bookkeeping, but the scheduler still needs isolated term
-managers and statistics before those alternatives can be executed in parallel.
+The default production schedule still operates on exactly one goal. The
+default-off experimental Boolean splitter can introduce bounded disjunctive
+alternatives, which are currently executed sequentially. Goal-local
+reconstruction prevents those alternatives from sharing mutable bookkeeping,
+but a parallel scheduler still needs a defined statistics and cancellation
+policy before it can be enabled.
 Proof converters, unsat-core converters, incremental tactics, a user-facing
 tactic language, and true parallel execution are not implemented.
 

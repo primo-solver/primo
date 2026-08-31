@@ -233,6 +233,9 @@ struct CheckSatOutcome {
 };
 
 struct CheckSatOptions {
+  // Default-off exhaustive Boolean case splitting used to exercise AnyOf
+  // execution. The tactic materializes at most 2^16 alternatives.
+  std::size_t experimental_split_bools = 0;
   PreprocessingMode preprocessing_mode = PreprocessingMode::Auto;
   EufEngine euf_engine = EufEngine::Incremental;
   EufBooleanDomain euf_boolean_domain = EufBooleanDomain::Registration;

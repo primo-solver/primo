@@ -14,6 +14,7 @@
 #include "core/symbol_table.hpp"
 #include "core/term_manager.hpp"
 #include "smt/check_sat.hpp"
+#include "smt/experimental_tactics.hpp"
 #include "smt/frontend.hpp"
 #include "smt/inconclusive_reason.hpp"
 #include "smt/model_reconstruction.hpp"
@@ -395,6 +396,99 @@ void solver_leaf_handles_disjunctive_goals_in_order() {
       solver(fixture.context, primo::smt::AnyOf({primo::smt::Goal{{p}}, primo::smt::Goal{{p}}}));
   check(unsat.size() == 1);
   check(primo::smt::truth(unsat, fixture.context) == primo::smt::GoalTruth::False);
+}
+
+void experimental_split_bools_materializes_deterministic_goal_product() {
+  Fixture fixture;
+  const primo::core::SymbolId q_symbol =
+      fixture.symbols.declare_constant("q", fixture.symbols.bool_sort());
+  const primo::core::TermId p = fixture.p_term();
+  const primo::core::TermId q = fixture.terms.mk_constant(q_symbol);
+  const primo::core::TermId disjunction = fixture.terms.mk_or({p, q});
+  primo::smt::ModelReconstruction reconstruction;
+  reconstruction.conversions =
+      reconstruction.conversions.appended(primo::smt::BooleanTheoryAssignmentConversion{
+          {{.term = p, .value = true, .filtered = false, .directed_substitution = false}}});
+  const primo::smt::Goal input =
+      primo::smt::Goal{{disjunction}}.with_reconstruction(reconstruction);
+  const primo::smt::ExperimentalSplitBoolsOptions options{.max_bools = 2};
+  const primo::smt::Strategy strategy = primo::smt::Strategy::leaf(
+      "experimental-split-bools", options, primo::smt::make_experimental_split_bools(options));
+
+  const primo::smt::AnyOf result =
+      primo::smt::compile(strategy)(fixture.context, primo::smt::AnyOf::single(input));
+  check(result.size() == 4);
+  const primo::core::TermId not_p = fixture.terms.mk_not(p);
+  const primo::core::TermId not_q = fixture.terms.mk_not(q);
+  check(result.alternatives()[0].assertions() ==
+        std::vector<primo::core::TermId>({disjunction, not_p, not_q}));
+  check(result.alternatives()[1].assertions() ==
+        std::vector<primo::core::TermId>({disjunction, not_p, q}));
+  check(result.alternatives()[2].assertions() ==
+        std::vector<primo::core::TermId>({disjunction, p, not_q}));
+  check(result.alternatives()[3].assertions() ==
+        std::vector<primo::core::TermId>({disjunction, p, q}));
+  for (const primo::smt::Goal& alternative : result.alternatives()) {
+    check(alternative.reconstruction() == reconstruction);
+  }
+  check(strategy.canonical() == "(leaf \"experimental-split-bools\" (\"k\" \"2\"))");
+  check(fixture.statistics.get(":experimental.split-bools.input-goals") == 1);
+  check(fixture.statistics.get(":experimental.split-bools.selected") == 2);
+  check(fixture.statistics.get(":experimental.split-bools.output-goals") == 4);
+}
+
+void experimental_split_bools_prioritizes_symbols_and_bounds_materialization() {
+  Fixture fixture;
+  const primo::core::SymbolId x_symbol =
+      fixture.symbols.declare_constant("x", fixture.symbols.real_sort());
+  const primo::core::TermId p = fixture.p_term();
+  const primo::core::TermId x = fixture.terms.mk_constant(x_symbol);
+  const primo::core::TermId bound = fixture.terms.mk_lt(x, fixture.terms.mk_rational(0));
+  const primo::core::TermId conjunction = fixture.terms.mk_and({bound, p});
+  const primo::smt::Tactic split = primo::smt::make_experimental_split_bools({.max_bools = 1});
+
+  const primo::smt::AnyOf result =
+      split(fixture.context, primo::smt::AnyOf::single(primo::smt::Goal{{conjunction}}));
+  check(result.size() == 2);
+  check(result.alternatives()[0].assertions().back() == fixture.terms.mk_not(p));
+  check(result.alternatives()[1].assertions().back() == p);
+
+  const primo::smt::AnyOf all_available =
+      primo::smt::make_experimental_split_bools({.max_bools = 3})(
+          fixture.context, primo::smt::AnyOf::single(primo::smt::Goal{{conjunction}}));
+  check(all_available.size() == 4);
+
+  bool rejected = false;
+  try {
+    static_cast<void>(primo::smt::make_experimental_split_bools(
+        {.max_bools = primo::smt::kMaxExperimentalSplitBools + 1}));
+  } catch (const std::invalid_argument&) {
+    rejected = true;
+  }
+  check(rejected);
+}
+
+void experimental_split_bools_uses_sequential_first_sat_execution_and_keeps_model() {
+  primo::smt::CheckSatOptions options;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
+  options.solved_constant_substitution = false;
+  options.experimental_split_bools = 2;
+  options.produce_model = true;
+  const primo::smt::CheckSatOutcome result = primo::smt::check_sat_smtlib(R"(
+    (set-logic QF_UF)
+    (set-option :produce-models true)
+    (declare-fun p () Bool)
+    (declare-fun q () Bool)
+    (assert (or p q))
+    (check-sat)
+  )",
+                                                                          options);
+  check(result.result == primo::smt::CheckSatResult::Sat);
+  check(result.statistics.get(":experimental.split-bools.selected") == 2);
+  check(result.statistics.get(":experimental.split-bools.output-goals") == 4);
+  check(result.statistics.get(":tactic.solve-boolean.invocations") == 2);
+  check(result.model.find("(define-fun p () Bool false)") != std::string::npos);
+  check(result.model.find("(define-fun q () Bool true)") != std::string::npos);
 }
 
 void sequential_scheduler_tries_each_arm_from_the_original_goal() {
@@ -816,6 +910,18 @@ void production_solver_strategy_has_stable_typed_identity() {
       primo::smt::make_session_solver_strategy(frontend, options, statistics, no_model_context);
   check(no_model_strategy == strategy);
   check(no_model_strategy.fingerprint() == strategy.fingerprint());
+
+  options.experimental_split_bools = 3;
+  const primo::smt::Strategy split_strategy =
+      primo::smt::make_session_solver_strategy(frontend, options, statistics, no_model_context);
+  check(split_strategy.kind() == primo::smt::StrategyKind::Sequence);
+  check(split_strategy.children().size() == 2);
+  check(split_strategy.children()[0].leaf_id() == "experimental-split-bools");
+  check(split_strategy.children()[0].parameters() ==
+        std::vector<primo::smt::StrategyParameter>{{"k", "3"}});
+  check(split_strategy.children()[1].leaf_id() == "solver-dispatch");
+  check(split_strategy.canonical().find("(leaf \"experimental-split-bools\" (\"k\" \"3\"))") !=
+        std::string::npos);
 }
 
 void session_portfolio_uses_typed_reasons_and_isolated_sequential_arms() {
@@ -899,6 +1005,9 @@ int main() {
   strategy_probe_observes_the_transformed_goal_and_repeat_is_bounded();
   try_for_uses_context_deadlines_without_mutating_the_strategy();
   solver_leaf_handles_disjunctive_goals_in_order();
+  experimental_split_bools_materializes_deterministic_goal_product();
+  experimental_split_bools_prioritizes_symbols_and_bounds_materialization();
+  experimental_split_bools_uses_sequential_first_sat_execution_and_keeps_model();
   sequential_scheduler_tries_each_arm_from_the_original_goal();
   cancellation_stops_before_running_a_tactic();
   check_sat_honors_an_existing_cancellation_request();

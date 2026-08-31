@@ -106,6 +106,22 @@ therefore also prevents that Gaussian candidate path from running.
 | `solve-qf-uflra` | Both arithmetic and equality or uninterpreted-predicate features | Solver-leaf module |
 | `solve-qf-lia` | Declared `QF_LIA` logic | Solver-leaf module |
 
+## Experimental goal-generation tactics
+
+| Runtime name | Typed configuration | Formula effect | Status |
+|---|---|---|---|
+| `experimental-split-bools` | `ExperimentalSplitBoolsOptions{max_bools}` | Selects up to `max_bools` Boolean atoms and returns the false-first exhaustive assignment product as disjunctive goals | Public typed builder, default off; enabled by `--experimental-split-bools=k` |
+
+`experimental-split-bools` is intentionally an experiment for exercising
+multi-goal execution rather than a performance claim. `k` is restricted to
+0--16 because the tactic eagerly materializes the goal vector. It selects from
+the current transformed goal, not the original input: Boolean constants and
+Bool-valued uninterpreted applications come first in deterministic depth-first
+encounter order, followed by equality and arithmetic comparison atoms in the
+same encounter order. With only `m < k` candidates, it returns `2^m` goals.
+The statistics `:experimental.split-bools.input-goals`, `.selected`, and
+`.output-goals` expose the expansion.
+
 `make_solver_tactic(name, terms, solve)` is the common formula adapter.
 `make_session_solver_strategy` in `solver_leaves` owns all six concrete leaf
 closures, their model-term selection, conversion-chain forwarding, and the
@@ -113,7 +129,9 @@ typed `SolverAnswer` boundary. `solver_engines` exposes the complete
 single-goal QF_UF, QF_LRA, QF_LIA, and QF_UFLRA engine entry points and
 contains their implementations and shared theory/model support. The
 session supplies only its frontend, immutable solve options, statistics, and
-execution context, then compiles the returned `solver-dispatch` strategy leaf.
+execution context. With the experimental splitter disabled it compiles the
+returned `solver-dispatch` strategy leaf; with splitting enabled it compiles a
+two-child sequence containing the split leaf and dispatch.
 The executable leaf borrows the frontend, statistics, and context through that
 single execution; immutable solve options are held in shared value storage.
 Model-term selection and the `solve-qf-lra-model-only` dispatch branch consult

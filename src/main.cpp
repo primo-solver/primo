@@ -16,6 +16,7 @@
 #include "generated/primo_git_revision.hpp"
 #include "sat/cadical_backend.hpp"
 #include "smt/check_sat.hpp"
+#include "smt/experimental_tactics.hpp"
 #include "smt/preprocessing.hpp"
 #include "util/statistics.hpp"
 
@@ -126,6 +127,7 @@ constexpr const char* kGroupUf = "QF_UF / EUF theory options";
 constexpr const char* kGroupPreprocessing = "Preprocessing options";
 constexpr const char* kGroupSat = "SAT and DPLL(T) options";
 constexpr const char* kGroupProcedural = "Procedural options";
+constexpr const char* kGroupExperimentalTactics = "Experimental tactic options";
 
 }  // namespace
 
@@ -199,6 +201,10 @@ int run_main(int argc, char** argv) {
   app.option_defaults()->always_capture_default();
   add_flag_with_default(app, "-q,--quiet", quiet, "Suppress startup version banner");
   add_flag_with_default(app, "--stats", print_stats, "Print solver statistics to stderr");
+  app.add_option("--experimental-split-bools", solver_options.experimental_split_bools,
+                 "EXPERIMENTAL: split on up to k Boolean atoms, materialize 2^k disjunctive "
+                 "goals, and solve them sequentially in false-first order; 0 disables")
+      ->check(CLI::Range(0, static_cast<int>(primo::smt::kMaxExperimentalSplitBools)));
   add_flag_with_default(app, "--uf-symmetry-breaking", solver_options.uf_symmetry_breaking,
                         "Enable QF_UF symmetry breaking over invariant finite-domain values");
   add_flag_with_default(app, "--no-uf-symmetry-breaking", no_uf_symmetry_breaking,
@@ -672,6 +678,9 @@ int run_main(int argc, char** argv) {
     if (name == "-q" || name == "--quiet" || name == "--stats" || name == "--version" ||
         name == "--help" || name == "--preprocess-only" || name == "files") {
       return kGroupProcedural;
+    }
+    if (starts_with(name, "--experimental-")) {
+      return kGroupExperimentalTactics;
     }
     // Everything else is QF_UF/EUF: the euf-*, finite-domain-*, ground-*,
     // qf-uf-* and auto-basic-* families, plus eq-bridge, symmetry breaking,
