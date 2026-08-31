@@ -238,12 +238,13 @@ say nothing about the rest of the surface.
 ## The harness that answers it
 
 `scripts/qf_uf_boolean_fuzz.py` generates pure-QF_UF cases -- no arithmetic
-anywhere, so only the pure path can be exercised -- across seven capacities:
-`argument`, `result`, `compound`, `nested`, `mixed-sort`, `two-valued`, and
-`converse`. It compares against z3 and exits nonzero on any disagreement,
-crash, or unsupported input, the same contract the other fuzz scripts use.
-`scripts/slurm_qf_uf_boolean_fuzz_gate.sbatch` runs one shard per shape, so a
-failure names the capacity rather than a case number.
+anywhere, so only the pure path can be exercised -- across the capacities
+listed in [](euf-boolean-arguments.md). It compares answers against z3 and,
+with `--validate-models`, retains every case and requires Dolmen to accept each
+satisfiable model. It exits nonzero on any disagreement, crash, unsupported
+input, or model failure. `scripts/slurm_qf_uf_boolean_fuzz_gate.sbatch` enables
+model validation and runs one shard per shape, so a failure names the capacity
+rather than only a case number.
 
 First run, 600 cases, 2026-08-26: **91 disagreements**, concentrated in
 `converse` (65), `mixed-sort` (13), `argument` (12) and `two-valued` (1), with

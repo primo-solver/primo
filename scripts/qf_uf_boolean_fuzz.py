@@ -73,11 +73,17 @@ Shapes, and the capacity each covers:
                   generator reporting PASS on the build that got it wrong --
                   every Bool constant here reached an assertion wrapped in a
                   function, so none was ever propositionally pure
+  model-reconstruction
+                  a Bool argument that disappears through solved-constant
+                  preprocessing while a finite UF table still depends on its
+                  printed value. This is satisfiable answer coverage whose
+                  useful oracle is model validation, not differential answers.
   all             uniform mix of the above (default)
 
 Exit code is nonzero if any case disagrees with the reference, crashes, or is
-rejected as unsupported -- the same contract the other fuzz scripts use, so a
-SLURM gate can consume it unchanged.
+rejected as unsupported. With `--validate-models`, it is also nonzero if
+Dolmen rejects any satisfiable model. This is the contract consumed by the
+official SLURM gate.
 
     python3 scripts/qf_uf_boolean_fuzz.py --count 400 --shape all \
         --solver ./build/primo --ref contrib/local/bin/z3
@@ -91,6 +97,7 @@ import os
 import random
 import re
 import subprocess
+import sys
 from pathlib import Path
 
 RESULTS = {"sat", "unsat", "unknown"}
@@ -104,6 +111,7 @@ SHAPES = (
     "two-valued",
     "converse",
     "pure-polarity",
+    "model-reconstruction",
     "random",
     "all",
 )
@@ -512,6 +520,28 @@ def converse_case(rng: random.Random) -> list[str]:
     return witness
 
 
+def model_reconstruction_case(rng: random.Random) -> list[str]:
+    """Exercise Boolean completion after solved-constant preprocessing.
+
+    The first equality lets preprocessing eliminate the uninterpreted-sort
+    constant. The Bool argument then has no remaining SAT occurrence, but its
+    printed default still has to agree with the argument used to build `tb`'s
+    model table. The second equality makes that disagreement observable to a
+    model validator while leaving the solver answer satisfiable either way.
+
+    Both assertions are load-bearing and are emitted verbatim. Differential
+    answer checking cannot detect this class; the official SLURM gate reruns
+    every generated case through Dolmen.
+    """
+    argument = rng.choice(["p", "q", "r"])
+    value = rng.choice(["a", "b"])
+    solved = rng.choice([f"(= (tb {argument}) {value})", f"(= {value} (tb {argument}))"])
+    collapsed_table = rng.choice(
+        ["(= (tb true) (tb false))", "(not (distinct (tb true) (tb false)))"]
+    )
+    return [solved, collapsed_table]
+
+
 ATOM_BUILDERS = {
     "argument": argument_atoms,
     "result": result_atoms,
@@ -539,6 +569,8 @@ def generate_case(rng: random.Random, index: int, shape: str) -> str:
         # negating one turns the intended unsat into a satisfiable formula
         # that proves nothing.
         assertions = converse_case(rng)
+    elif shape == "model-reconstruction":
+        assertions = model_reconstruction_case(rng)
     else:
         atoms = ATOM_BUILDERS[shape](rng)
         keep = rng.randint(2, len(atoms))
@@ -608,6 +640,18 @@ def main() -> int:
     parser.add_argument("--shape", choices=SHAPES, default="all")
     parser.add_argument("--solver-arg", action="append", default=[])
     parser.add_argument(
+        "--validate-models",
+        action="store_true",
+        help="retain generated cases and require Dolmen to validate every satisfiable model",
+    )
+    parser.add_argument("--dolmen", default="dolmen", help="Dolmen executable for model validation")
+    parser.add_argument(
+        "--model-timeout",
+        type=float,
+        default=20.0,
+        help="per-case Dolmen timeout in seconds",
+    )
+    parser.add_argument(
         "--keep-passing",
         action="store_true",
         help="keep every generated case; by default only disagreements are kept",
@@ -652,9 +696,9 @@ def main() -> int:
             )
             summary.flush()
             os.fsync(summary.fileno())
-            if outcome == "PASS" and not args.keep_passing:
+            if outcome == "PASS" and not (args.keep_passing or args.validate_models):
                 case_path.unlink()
-            else:
+            elif outcome != "PASS" or args.keep_passing:
                 print(f"{case_path}: {outcome} ours={ours} ref={reference}", flush=True)
 
     print(f"summary: {summary_path}", flush=True)
@@ -669,7 +713,38 @@ def main() -> int:
         "UNKNOWN_OUTPUT",
         "REFERENCE_UNUSABLE",
     }
-    return 1 if any(counts.get(outcome, 0) for outcome in bad) else 0
+    answer_status = 1 if any(counts.get(outcome, 0) for outcome in bad) else 0
+    if not args.validate_models:
+        return answer_status
+
+    manifest_path = out_dir / "model-cases.txt"
+    manifest_path.write_text(
+        "".join(f"{path}\n" for path in sorted(cases_dir.glob("*.smt2"))), encoding="utf-8"
+    )
+    validator = Path(__file__).with_name("validate_qfuf_models_with_dolmen.py")
+    model_command = [
+        sys.executable,
+        str(validator),
+        "--solver",
+        args.solver,
+        "--dolmen",
+        args.dolmen,
+        "--z3",
+        args.ref,
+        "--require-dolmen-pass",
+        "--timeout",
+        str(args.timeout),
+        "--dolmen-timeout",
+        str(args.model_timeout),
+        "--out",
+        str(out_dir / "model-validation"),
+        "--manifest",
+        str(manifest_path),
+    ]
+    for solver_arg in args.solver_arg:
+        model_command.append(f"--solver-arg={solver_arg}")
+    model_status = subprocess.run(model_command, check=False).returncode
+    return answer_status or model_status
 
 
 if __name__ == "__main__":

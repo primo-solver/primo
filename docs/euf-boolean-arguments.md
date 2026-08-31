@@ -278,10 +278,22 @@ deliberately so a change is measured against what must not regress.
 **Harness.** `scripts/qf_uf_boolean_fuzz.py` generates pure QF_UF cases -- a
 python test asserts no arithmetic can leak in, since arithmetic is precisely
 what kept the older QF_UFLRA generator off this solver path -- and compares
-against z3. Ten shapes: `argument`, `result`, `compound`, `nested`,
-`mixed-sort`, `two-valued`, `converse`, `pure-polarity`, `random`, `all`.
-`scripts/slurm_qf_uf_boolean_fuzz_gate.sbatch` runs one shard per shape, so a
-failure names the capacity rather than a case number.
+against z3. Eleven shapes: `argument`, `result`, `compound`, `nested`,
+`mixed-sort`, `two-valued`, `converse`, `pure-polarity`,
+`model-reconstruction`, `random`, `all`.
+`scripts/slurm_qf_uf_boolean_fuzz_gate.sbatch` runs one shard per shape, keeps
+every generated input, reruns it with model production, and requires Dolmen to
+accept every satisfiable model. A failure therefore names the capacity rather
+than only a case number. Model validation is intentionally part of this gate:
+answer differential fuzzing cannot detect an invalid model attached to a
+correct `sat` result.
+
+The `model-reconstruction` shape always includes a solved constant of
+uninterpreted sort whose definition contains a Bool argument, plus an equality
+collapsing `tb(true)` and `tb(false)`. Both assertions are load-bearing. This
+pins the Boolean-completion failure introduced with the original QF_UF model
+printer and prevents random assertion sampling from silently deleting the
+preprocessing/table interaction.
 
 The `random` shape is grammar-based: random signatures over `Bool` and two
 uninterpreted sorts, terms built bottom-up by level, compound terms

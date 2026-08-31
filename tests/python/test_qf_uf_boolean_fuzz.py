@@ -42,6 +42,21 @@ class GeneratedCaseTests(unittest.TestCase):
             self.assertIn("(= (f ", case)
             self.assertGreaterEqual(case.count("(assert "), 3)
 
+    def test_model_reconstruction_cases_keep_the_completion_witness(self) -> None:
+        # Answer comparison alone cannot reject a bad model. Keep the exact
+        # preprocessing/table interaction in every draw so the Dolmen phase of
+        # the official gate deterministically exercises it.
+        rng = random.Random(31)
+        for index in range(100):
+            case = MODULE.generate_case(rng, index, "model-reconstruction")
+            self.assertEqual(case.count("(assert "), 2)
+            self.assertRegex(case, r"\(= (?:\(tb [pqr]\) [ab]|[ab] \(tb [pqr]\))\)")
+            self.assertTrue(
+                "(= (tb true) (tb false))" in case
+                or "(not (distinct (tb true) (tb false)))" in case
+            )
+            self.assertNotRegex(case, r"\(assert \(?not ?[pqr]\)?\)")
+
     def test_every_shape_generates(self) -> None:
         rng = random.Random(5)
         for shape in MODULE.SHAPES:
