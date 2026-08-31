@@ -294,6 +294,47 @@ executor may consume the same immutable `AnyOf`, but must define cancellation,
 winner selection, and deterministic statistics before it replaces this
 sequential policy.
 
+### Sequential evaluation
+
+The initial local evaluation used existing SMT-LIB division benchmarks that
+declare Boolean-valued symbols. The available corpora contain 910 such QF_UF
+files and 900 such QF_UFLRA files. A stratified 17-case QF_UF and 10-case
+QF_UFLRA screen selected the focused manifests
+`benchmarks/experimental-split-bools-qfuf.txt` and
+`benchmarks/experimental-split-bools-qfuflra.txt`. Each focused case was then
+run five times on one pinned CPU, alternating the order of `k = 0, 1, 2, 3`,
+with a 10-second per-run limit. Times below are medians; decisions and conflicts
+are deterministic totals from the corresponding run.
+
+| benchmark | answer | `k=0` | `k=1` | `k=2` | `k=3` | search observation |
+| --- | --- | ---: | ---: | ---: | ---: | --- |
+| Goel firewire-tree.3 | sat | 0.274 s | 0.270 s | 0.309 s | 0.344 s | first satisfiable branch stops after 1, 1, 2, and 3 solver calls; decisions stay 13,774 |
+| Goel hanoi.2 | unsat | 0.285 s | 0.339 s | 0.453 s | 0.671 s | at `k>=2`, all branches need zero SAT decisions/conflicts, versus 11,148/28 at `k=0` |
+| Goel sokoban.3 | unsat | 1.503 s | 1.595 s | 1.818 s | 2.207 s | at `k>=2`, all branches need zero SAT decisions/conflicts, versus 19,819/2 at `k=0` |
+| NEQ016 size 7 | unsat | 2.996 s | 2.976 s | 3.005 s | 2.983 s | one hard branch dominates; total decisions/conflicts stay 72,900/10,312 while calls grow 1, 2, 4, 8 |
+| SEQ020 size 4 | sat | 0.081 s | 0.084 s | 0.094 s | 0.139 s | `k=3` increases decisions/conflicts from 9,448/256 to 14,060/581 |
+| MathSAT coupled 20/500 | unsat | 0.022 s | 0.027 s | 0.041 s | 0.065 s | conflicts fall from 168 to 39 at `k=3`, but eight sequential calls dominate |
+| MathSAT coupled 40/1200 | unsat | 0.077 s | 0.098 s | 0.127 s | 0.156 s | conflicts fall from 1,198 to 162 at `k=3`, but wall time doubles |
+| MathSAT decoupled 40/80 | sat | 0.031 s | 0.037 s | 0.043 s | 0.045 s | the first satisfiable branch occurs after 1, 1, 2, and 3 calls; `k=1` initially worsens search |
+
+Across the five QF_UF focus cases, the sum of per-case medians changes by
+`+2.4%`, `+10.5%`, and `+23.4%` for `k=1`, `k=2`, and `k=3`. Across the three
+QF_UFLRA cases it changes by `+24.0%`, `+61.7%`, and `+105.0%`. The split leaf
+itself takes at most about 2.1 ms on these cases; the regressions come from
+repeated sequential solver setup and branch execution, not from strategy or
+goal-materialization overhead.
+
+The search behavior is nevertheless useful for the experiment. Two hardware
+instances cross a sharp threshold where two Boolean assignments eliminate all
+SAT search, and mixed arithmetic instances discard most conflicts. Sequential
+execution cannot exploit that reduction because unsatisfiable inputs must run
+all `2^k` branches. This is evidence that branch-level instrumentation and a
+truly isolated parallel executor are worth testing, but it is not evidence for
+enabling splitting as an optimization. The option therefore remains
+experimental and default-off. A `k=3` model replay validated all three
+satisfiable focused cases with Dolmen; the other five were unsatisfiable, and
+no answer disagreed with benchmark status.
+
 ## Deliberate deviations and limitations
 
 The paper's tactic return type separately represents `sat`, `unsat`, `unknown`,

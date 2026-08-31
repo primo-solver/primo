@@ -28899,6 +28899,60 @@
       },
       "evidence_status": "local-current-fuzz-infrastructure; exact candidate harness commit; artifacts are local-only; the SLURM script was validated but not submitted",
       "outcome": "The dedicated Boolean fuzzer now treats model validity as a first-class oracle and deterministically rejects the regression that its former answer-only gate missed."
+    },
+    {
+      "id": "2026-08-31-experimental-split-bools-existing-benchmarks",
+      "started_at": "2026-08-31",
+      "recorded_at": "2026-08-31",
+      "kind": "benchmark",
+      "scope": "Local sequential evaluation of the default-off experimental Boolean-splitting tactic on existing QF_UF and QF_UFLRA division benchmarks containing Boolean-valued symbols.",
+      "source_commit": "d49cbbf59bbc366aba63be5eaf0c7a58a247a215",
+      "solver_binary_commit": "0a9f57d0637629ed6e043b0653e80944b1617df4; commits through d49cbbf change only documentation, fuzz infrastructure, and evidence after this exact solver build",
+      "branch": "tactics",
+      "environment": {
+        "type": "local",
+        "host": "mikolas-ThinkPad-T14s-Gen-5",
+        "kernel": "Linux 7.0.0-30-generic x86_64",
+        "compiler": "GCC 13.3.0",
+        "binary": "build-release-tactics/primo, Release, CaDiCaL cadical-3.0.0-7b99c07",
+        "cpu_affinity": "CPU 2 for the five-repeat focus comparison",
+        "slurm_job_id": null
+      },
+      "corpus_selection": {
+        "census": "910/7,503 QF_UF files and 900/1,284 QF_UFLRA files declare at least one Boolean-valued symbol. QF_UF coverage is concentrated in 2018-Goel-hwbench, NEQ, CLEARSY, Rodin, and SEQ; QF_UFLRA coverage is the 900 MathSAT pseudo-Boolean files.",
+        "screen": "A stratified screen used 17 QF_UF files across five families and 10 QF_UFLRA MathSAT files across coupled/decoupled sizes, comparing k=0 and k=1 at a three-second limit. It selected eight cases showing search elimination, first-sat stopping, hard-branch domination, conflict reduction, or search regression.",
+        "focus_manifests": [
+          "benchmarks/experimental-split-bools-qfuf.txt (five cases, root tmp/QF_UF)",
+          "benchmarks/experimental-split-bools-qfuflra.txt (three cases, root tmp/QF_UFLRA)"
+        ]
+      },
+      "commands": {
+        "census": "rg -l --glob '*.smt2' '^\\s*\\(declare-fun\\s+\\S+\\s+\\([^)]*\\)\\s+Bool\\)' tmp/QF_UF and tmp/QF_UFLRA, counted and grouped by first path component",
+        "screen": "scripts/bench_qf_uf_full.py with the two temporary stratified manifests, build-release-tactics/primo --quiet --stats, k=0 or --experimental-split-bools=1, and --timeout 3",
+        "focus": "For repeats 0..4, alternate variant order 0,1,2,3 and 3,2,1,0; taskset -c 2 python3 scripts/bench_qf_uf_full.py --root <tmp/QF_UF|tmp/QF_UFLRA> --manifest <focused manifest> --solver ./build-release-tactics/primo --solver-arg=--quiet --solver-arg=--stats [--solver-arg=--experimental-split-bools=k] --timeout 10 --out /tmp/primo-split-eval/paired/<logic>-r<repeat>-k<k>.csv",
+        "model_replay": "python3 scripts/validate_qfuf_models_with_dolmen.py --solver ./build-release-tactics/primo --solver-arg=--quiet --solver-arg=--experimental-split-bools=3 --dolmen /home/user/.opam/default/bin/dolmen --z3 contrib/local/bin/z3 --require-dolmen-pass --timeout 10 --dolmen-timeout 10 --out /tmp/primo-split-eval/model-k3 <all eight focused files>",
+        "verification": "python3 -m json.tool docs/run-log.json; make docs; git diff --check"
+      },
+      "results": {
+        "qf_uf_aggregate": "Sum of five per-case median wall times: k=0 5.139356s; k=1 5.263116s (+2.4%); k=2 5.678482s (+10.5%); k=3 6.344210s (+23.4%).",
+        "qf_uflra_aggregate": "Sum of three per-case median wall times: k=0 0.129617s; k=1 0.160675s (+24.0%); k=2 0.209617s (+61.7%); k=3 0.265704s (+105.0%).",
+        "search_elimination": "Goel hanoi.2 and sokoban.3 fall from 11,148 decisions/28 conflicts and 19,819 decisions/2 conflicts at k=0 to zero decisions and conflicts at k>=2. Sequential median time still rises from 0.285s to 0.453s/0.671s and from 1.503s to 1.818s/2.207s at k=2/k=3 because all unsatisfiable branches run.",
+        "conflict_reduction": "On MathSAT coupled 40/1200, conflicts fall 1,198 -> 495 -> 174 -> 162 for k=0..3, while median time rises 0.077s -> 0.098s -> 0.127s -> 0.156s. Coupled 20/500 similarly falls 168 -> 48 -> 65 -> 39 conflicts while time rises 0.022s -> 0.027s -> 0.041s -> 0.065s.",
+        "hard_branch": "NEQ016 size 7 keeps exactly 72,900 decisions and 10,312 conflicts for every k while solve calls grow 1,2,4,8; medians remain approximately 3.0s because one hard branch dominates and the other branches terminate cheaply.",
+        "first_sat": "The satisfiable firewire case stops after 1,1,2,3 solver calls rather than exhausting 1,2,4,8 branches; its 13,774 decisions and 4 conflicts remain unchanged and k=3 is 25% slower. The decoupled MathSAT case stops after 1,1,2,3 calls and is 46% slower at k=3.",
+        "search_regression": "SEQ020 size 4 increases from 9,448 decisions/256 conflicts at k=0 to 14,060/581 at k=3; median time rises 71%.",
+        "infrastructure_cost": "The split leaf itself costs at most approximately 2.1ms on the focused cases. Phase timers attribute the regressions to repeated solver setup and branch execution, not strategy dispatch or eager goal materialization.",
+        "correctness": "All 32 focused variant/file combinations have the expected answer, with deterministic solve-call/decision/conflict totals across five repeats. At k=3, Dolmen validates all three satisfiable models and the remaining five cases are unsatisfiable; zero wrong answer, invalid model, crash, timeout, unsupported input, or disagreement occurred."
+      },
+      "artifacts": {
+        "screen": "/tmp/primo-split-eval/{qfuf,qfuflra}-k{0,1}.csv",
+        "paired": "/tmp/primo-split-eval/paired/{qfuf,qfuflra}-r{0..4}-k{0..3}.csv",
+        "paired_log": "/tmp/primo-split-eval/paired/run.log",
+        "model_summary": "/tmp/primo-split-eval/model-k3/summary.csv"
+      },
+      "efficiency_review": "The focused class probe shows major search reductions but no sequential wall-time win. No repeated scan or goal-materialization bottleneck is visible; solver-leaf repetition is the intended current execution policy. The experiment remains default-off. Parallel evaluation needs per-branch timing/cost counters and isolated solver resources before these search reductions can be interpreted as speedup potential.",
+      "evidence_status": "local-current-experimental; artifacts are local-only; no default-promotion or parallel-speedup claim",
+      "outcome": "Sequential exhaustive splitting is rejected as an optimization on this focused set, but retained as a useful multi-goal experiment: k=2 can erase SAT search on hardware cases and larger k can cut arithmetic conflicts sharply, providing concrete workloads for future branch-level instrumentation and isolated parallel execution."
     }
   ]
 }

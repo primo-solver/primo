@@ -1,0 +1,7 @@
+# Focused existing QF_UFLRA benchmarks for evaluating the experimental
+# sequential Boolean splitter. Paths are relative to tmp/QF_UFLRA. These
+# MathSAT pseudo-Boolean instances show both conflict reduction and first-sat
+# early stopping when Boolean choices are coupled to arithmetic.
+mathsat/RandomCoupled/pb_real_20_0500_10_23.smt2
+mathsat/RandomCoupled/pb_real_40_1200_10_18.smt2
+mathsat/RandomDecoupled/pb_real_40_80_60_86.smt2

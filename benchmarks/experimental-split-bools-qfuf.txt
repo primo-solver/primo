@@ -1,0 +1,10 @@
+# Focused existing QF_UF benchmarks for evaluating the experimental sequential
+# Boolean splitter. Paths are relative to tmp/QF_UF. The set was selected from
+# a 17-case stratified screen of Bool-valued-symbol families and retains the
+# clearest search-elimination, hard-branch, first-sat, and search-regression
+# behaviors.
+2018-Goel-hwbench/QF_UF_firewire_tree.3.prop2_ab_reg_max.smt2
+2018-Goel-hwbench/QF_UF_hanoi.2.prop1_ab_br_max.smt2
+2018-Goel-hwbench/QF_UF_sokoban.3.prop1_ab_br_max.smt2
+NEQ/NEQ016_size7.smt2
+SEQ/SEQ020_size4.smt2
