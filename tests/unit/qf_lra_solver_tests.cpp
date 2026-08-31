@@ -225,6 +225,25 @@ void monotone_elimination_handles_bounds_under_ite() {
   assert(result.model.find("(define-fun x () Real ") != std::string::npos);
 }
 
+void monotone_elimination_keeps_mixed_model_composition_after_removing_arithmetic() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UFLRA)
+    (declare-fun p () Bool)
+    (declare-fun f (Bool) Bool)
+    (declare-fun x () Real)
+    (assert (f p))
+    (assert (<= x 1))
+    (check-sat)
+    (get-model)
+  )",
+                                       monotone_elimination_options());
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":tactic.solve-qf-uflra.invocations") == 1);
+  assert(result.model.find("(define-fun x () Real ") != std::string::npos);
+  assert(result.model.find("(define-fun x () Real (as @uc_") == std::string::npos);
+}
+
 // One atom reached at both polarities forces its variables two-sided, even
 // though each occurrence on its own would look one-sided.
 //
@@ -4747,6 +4766,7 @@ int main() {
   qf_uf_lra_mix_learns_lra_conflicts();
   qf_uf_lra_prints_separable_mixed_model();
   monotone_elimination_reconstructs_a_satisfying_model();
+  monotone_elimination_keeps_mixed_model_composition_after_removing_arithmetic();
   monotone_elimination_values_variables_that_lost_all_constraints();
   monotone_elimination_keeps_two_sided_variables();
   monotone_elimination_preserves_unsat();

@@ -211,6 +211,12 @@ collapses an all-unsatisfiable set to one false goal, and otherwise returns the
 remaining inconclusive alternatives. A dispatch tactic probes
 the formula features and logic, then invokes the selected leaf. The pure
 Boolean path uses the generic first-terminal scheduler with QF_UF as a fallback.
+When model production is requested for QF_UFLRA, a goal that still contains EUF
+structure and has declared Real constants stays on the mixed leaf even if an
+earlier transformation removed its last arithmetic atom. This preserves the
+mixed model-conversion chain: routing that residual goal to the QF_UF leaf would
+print an uninterpreted placeholder for a Real constant eliminated by monotone
+preprocessing instead of reconstructing its numeric witness.
 The public `CheckSatOutcome` is derived after dispatch solely from the returned
 goal's truth, typed reason, model, and diagnostic; its typed reason also crosses
 the session-portfolio boundary. There is no parallel mutable result channel. A

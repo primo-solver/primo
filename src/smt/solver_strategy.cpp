@@ -57,7 +57,14 @@ Tactic make_solver_dispatch(SolverStrategyOptions options, SolverTacticSet solve
       const Tactic* selected = nullptr;
       if (options.logic == "QF_LIA") {
         selected = &solvers.lia_solver;
-      } else if ((features.has_equality || features.has_euf_predicate) && features.has_arithmetic) {
+      } else if (((features.has_equality || features.has_euf_predicate) &&
+                  features.has_arithmetic) ||
+                 (context.produce_model() && options.logic == "QF_UFLRA" &&
+                  options.has_declared_real_constants &&
+                  (features.has_equality || features.has_application_term))) {
+        // A transformation such as monotone elimination can remove the final arithmetic atom
+        // while leaving EUF structure. The mixed model builder is still required to combine that
+        // EUF interpretation with values reconstructed for declared Real constants.
         selected = &solvers.mixed_solver;
       } else if (features.has_arithmetic) {
         selected = &solvers.lra_solver;
