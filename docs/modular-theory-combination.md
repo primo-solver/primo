@@ -183,21 +183,29 @@ Protocol tests use scripted convex and non-convex components. They cover stale
 and incomplete snapshots, valid and rejected mutation, care-pair ordering,
 candidate equality decisions, explained propagation, non-convex decisions and
 clauses, batched model choices, cancellation, and escaping component exceptions.
-These scripts do not
-replace a SAT solver or validate CDCL behavior; production migration tests use
-CaDiCaL. QF_UFLIA solver tests
-cover purification, complete arrangements, the non-convex disjunction case,
-combined models, empty formulas, and frontend sort rejection. Smoke models are
-validated directly by Dolmen. On implementation commit `4b0ad55`, a local
+These scripts do not replace a SAT solver or validate CDCL behavior; production
+migration tests use CaDiCaL. QF_UFLIA solver tests cover purification, complete
+arrangements, reversible model choices, bounded complete fallback, agreeing
+projections, the non-convex disjunction case, combined models, empty formulas,
+and frontend sort rejection. Smoke models are validated directly by Dolmen. On
+implementation commit `4b0ad55`, a local
 3,000-case generated QF_UFLIA campaign agreed with both Z3 and cvc5, with no
 timeouts, unsupported results, crashes, or frontend errors; Dolmen directly
 accepted all 1,686 satisfiable models. The tactic-composition matrix passed all
 174 runs across its five logics and eleven applicable profiles, including 28
 QF_UFLIA runs and the sequential Boolean-splitting profiles, without
 non-timing-statistic drift. A separate 1,000-case QF_UFLRA preservation run
-agreed with Z3 and Dolmen accepted all 597 satisfiable models. These are local
-correctness campaigns, not performance or SLURM evidence; their exact commands
-and temporary artifact paths are recorded in [](run-log.md).
+agreed with Z3 and Dolmen accepted all 597 satisfiable models.
+
+On exact binary commit `3bb19c7`, the experimental QF_UFLIA route passed a
+four-shard SLURM campaign of 3,000/3,000 Z3 comparisons; Dolmen directly
+accepted all 1,778 SAT models and the other 1,222 cases were unsat. The generic
+QF_UFLRA route separately passed 1,000/1,000 comparisons with 595 directly
+validated SAT models, plus 100 finite-domain QF_UFLRA and 100 QF_UF controls.
+All eight tasks exited successfully with empty stderr logs. The exact commands,
+seeds, counts, and artifact paths are recorded in [](run-log.md). This is
+correctness evidence for default-off routes, not a performance or default
+promotion claim.
 
 ## Statistics
 

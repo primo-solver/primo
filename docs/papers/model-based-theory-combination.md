@@ -315,7 +315,7 @@ The relevant implemented pieces are documented and tested here:
 - `src/smt/solver_engines.cpp`: the QF_UFLRA scratch candidate construction,
   targeted mandatory separation, EUF compatibility checking, lazy generated
   equality assumptions, exact fallback, candidate-model output, and the
-  distinct complete-arrangement QF_UFLIA coordinator.
+  distinct model-guided QF_UFLIA route with its complete-arrangement restart.
 - `tests/unit/lra_tableau_tests.cpp`: all four Section 5.1 equality rules,
   explanations, soundness oracle, and fixed-basis preparation.
 - `tests/unit/qf_lra_solver_tests.cpp`: QF_UFLRA convex fixpoint,
@@ -323,7 +323,8 @@ The relevant implemented pieces are documented and tested here:
   and model-equality-branching regressions.
 - `tests/unit/theory_combination_tests.cpp` and
   `tests/unit/qf_uflia_solver_tests.cpp`: component-protocol properties and the
-  non-convex complete-arrangement invariant.
+  non-convex complete-arrangement invariant, reversible integer model choices,
+  bounded fallback, agreeing projections, and mixed-model reconstruction.
 
 ## 2026-09-01 Modular Integration Record
 
@@ -338,8 +339,8 @@ of the paper's model-guided transition system. The mapping is:
 | Care restriction | `TheorySolver::care_pairs`, prioritized without constructing all shared pairs | Invalidation rules for long-lived component models |
 | Backtracking | Owned by SAT and the SMT coordinator; assignment epochs reject stale projections | Trail-synchronized reuse rather than round-local reconstruction |
 
-Any future generic model-guided coordinator must preserve three separate kinds
-of information:
+The generic model-guided coordinator preserves three separate kinds of
+information:
 
 1. An **entailed clause** is justified by a component explanation and may be
    learned permanently under its guards.
@@ -488,7 +489,9 @@ Deviations and limitations:
 
 - The generic state carries opaque per-theory snapshot identities and projected
   equality classes, not the private theory model objects themselves.
-- `M-Propagate` exists only for the convex EUF+rational-LRA shared-Real subset.
+- Explained `M-Propagate` remains limited to the convex EUF+rational-LRA
+  shared-Real subset. QF_UFLIA exposes model equalities only as reversible SAT
+  choices, never as entailed propagation.
 - The experimental QF_UFLRA adapter exposes its checked projections through the
   generic transition contract. Its EUF mutation callback reuses the established
   checkpointed compatibility merge rather than implementing a new EUF model
