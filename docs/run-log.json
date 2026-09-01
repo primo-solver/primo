@@ -29599,6 +29599,56 @@
       },
       "evidence_status": "local-current exact implementation commit preservation gate; temporary artifacts; generator committed",
       "outcome": "All 1,000 generated QF_UFLRA cases agreed with Z3, and Dolmen directly accepted every one of the 597 satisfiable models."
+    },
+    {
+      "id": "2026-09-02-generic-model-combination-qf-uflia-slurm-gate",
+      "started_at": "2026-09-01",
+      "recorded_at": "2026-09-02",
+      "kind": "implementation-fuzz-and-corpus-evaluation",
+      "scope": "Experimental generic model-based theory combination for non-convex QF_UFLIA, preservation of the generic QF_UFLRA route, direct Dolmen validation, and the fixed 20-file QF_UFLIA archive sample.",
+      "commit": "3bb19c7680b5c270e35837263d1765e22ecf0a5a",
+      "implementation_commit": "abbda316ede9f4dc2b73d5dd1d6d8d10a0b716c7",
+      "branch": "modular-theory-combination",
+      "environment": {
+        "local": "Linux 7.0.0-30-generic x86_64; Release Primo embedded git abbda31; CaDiCaL cadical-3.0.0-7b99c07; Z3 5.0.0; Dolmen 0.10",
+        "slurm": "established Primo SLURM environment; clean archive-mode workspace; Release Primo embedded git 3bb19c7; CaDiCaL cadical-3.0.0-7b99c07; Z3 5.1.0; cvc5 1.3.4; workspace-pinned Dolmen 0.10",
+        "scheduler_jobs": "two four-task arrays; identifiers intentionally omitted from the committed record under the cluster privacy policy and retained in the session handoff"
+      },
+      "commands": {
+        "local_answer_fuzz": "python3 scripts/qf_uflia_fuzz.py --solver ./build/primo --solver-arg=--quiet --solver-arg=--experimental-qf-uflia-model-combination --ref ./contrib/local/bin/z3 --count 1000 --seed 2026090101 --timeout 5 --shape random --out /tmp/primo-uflia-model-fuzz-1000-abbda31",
+        "local_model_validation": "python3 scripts/validate_model.py --solver ./build/primo --solver-arg=--quiet --solver-arg=--experimental-qf-uflia-model-combination --dolmen /home/user/.opam/default/bin/dolmen --require-dolmen-pass --timeout 5 --dolmen-timeout 5 --out /tmp/primo-uflia-model-fuzz-1000-dolmen-abbda31 /tmp/primo-uflia-model-fuzz-1000-abbda31/cases/*.smt2",
+        "archive_sample": "scripts/bench_qf_uf_full.py over benchmarks/qf_uflia-smtlib-representative-20.txt rooted at the ignored tmp/QF_UFLIA extraction, with five-second default, --experimental-qf-uflia-model-combination, and Z3 arms; scripts/validate_model.py required Dolmen for the guided arm",
+        "workspace": "python3 scripts/slurm_prepare_benchmark_workspace.py --sync-mode archive --reuse-dependencies --with-z3 --contrib-target contrib-required --contrib-target contrib-cvc5 --contrib-target contrib-dolmen ...; immediate --check-only --no-sync verified embedded git 3bb19c7, CaDiCaL, Z3, cvc5, and Dolmen",
+        "qf_uflia_slurm": "scripts/slurm_qf_uflia_model_fuzz_gate.sbatch; four shards x 750 random cases; seed base 202609020; five-second solve and Dolmen limits; PRIMO_FUZZ_SOLVER_ARGS=--experimental-qf-uflia-model-combination",
+        "qf_uflra_slurm": "scripts/slurm_qf_uflra_fuzz_gate.sbatch; four shards x 250 general mixed cases plus x 25 finite-domain QF_UFLRA and QF_UF controls; seed base 202609030; PRIMO_FUZZ_SOLVER_ARGS=--experimental-generic-model-combination",
+        "batch_validation": "python3 scripts/slurm_validate_sbatch.py and bash -n passed for both submitted scripts before the immediate preflight and submission"
+      },
+      "local_results": {
+        "qf_uflia_fuzz": "1,000/1,000 PASS against Z3: 597 sat and 403 unsat; Dolmen directly validated 597/597 SAT models; zero wrong answer, reference disagreement, crash, parser/type error, unsupported result, timeout, or invalid model",
+        "archive_default": "8/20 solved: 3 sat, 5 unsat, 11 timeout-unknown, 1 timeout-error; zero wrong answers; 67.894549 aggregate wall seconds",
+        "archive_guided": "9/20 solved: 3 sat, 6 unsat, 10 timeout-unknown, 1 timeout-error; zero wrong answers; 60.988728 aggregate wall seconds; the sole classification gain was mathsat/Hash/hash_uns_03_18.smt2 from timeout to unsat",
+        "archive_reference": "Z3 solved 19/20: 9 sat, 10 unsat, and one timeout-error; 5.423276 aggregate wall seconds",
+        "archive_models": "Dolmen directly accepted all three guided SAT models; six rows were unsat and eleven timed out; the two TwoSquares regression models both passed"
+      },
+      "slurm_results": {
+        "qf_uflia": "3,000/3,000 answer comparisons PASS against Z3: 1,778 sat and 1,222 unsat; Dolmen directly validated all 1,778 SAT models",
+        "qf_uflra_general": "1,000/1,000 answer comparisons PASS against Z3: 595 sat and 405 unsat; Dolmen directly validated all 595 SAT models",
+        "finite_controls": "100/100 finite-domain QF_UFLRA and 100/100 finite-domain QF_UF answer comparisons PASS against Z3 and cvc5; Dolmen directly validated all 52 finite-domain QF_UFLRA SAT models and the other 48 were unsat",
+        "scheduler": "all eight array tasks completed with exit 0; all stderr logs were empty; maximum elapsed time was 43 seconds",
+        "correctness": "zero wrong answer, reference disagreement, crash, parser/type error, unsupported result, timeout, invalid model, fallback model validator, or nonzero Dolmen exit"
+      },
+      "verification": {
+        "local_gates": "make check; make docs; make lint; make asan-test; focused post-review ASan; whole-tree make tidy; whole-tree advisory make include-cleaner; touched-file clang-tidy and misc-include-cleaner; solver_efficiency_snapshot.py; git diff --check",
+        "review": "The requested smt-code-review skill was unavailable in the installed skill catalog. A manual whole-tree hygiene review plus clang-tidy/include-cleaner found no changed-file issue. The efficiency review moved all new projection, coordinator, assumption, and pair-ledger work behind the default-off QF_UFLIA option; the default complete-arrangement path retains its former component checks and arrangement template."
+      },
+      "artifacts": {
+        "local_fuzz": "/tmp/primo-uflia-model-fuzz-1000-abbda31 and /tmp/primo-uflia-model-fuzz-1000-dolmen-abbda31",
+        "local_archive": "/tmp/primo-uflia-rep-{default,guided,z3}-abbda31.csv and /tmp/primo-uflia-rep-dolmen-abbda31",
+        "remote": "<slurm-workdir>/fuzz-results/{qf-uflia-model-guided-3bb19c7,qf-uflra-generic-3bb19c7}",
+        "collected_summaries_and_logs": "/tmp/primo-model-combination-slurm-3bb19c7"
+      },
+      "evidence_status": "slurm-complete-current; exact tested binary commit; experimental default-off feature; direct-Dolmen model gate",
+      "outcome": "The generic coordinator now has clean exact-commit evidence for both convex QF_UFLRA and non-convex QF_UFLIA. QF_UFLIA remains experimental: its complete delayed-combination restart is the correctness backstop, and the small archive gain is evaluation evidence rather than a default-promotion claim."
     }
   ]
 }
