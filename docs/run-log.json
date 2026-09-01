@@ -29209,6 +29209,165 @@
       },
       "evidence_status": "local-smoke; uncommitted lint-only harness cleanup over solver commit 4387cef; temporary artifacts",
       "outcome": "All 100 cases agreed with Z3, and Dolmen accepted every one of the 66 satisfiable models."
+    },
+    {
+      "id": "2026-09-01-review-fixes-asan",
+      "started_at": "2026-09-01",
+      "recorded_at": "2026-09-01",
+      "kind": "sanitizer",
+      "scope": "AddressSanitizer verification after restoring frontend type-error classification and cancellation precedence in sequential multi-goal dispatch.",
+      "commit": "9841e5183a6b152c7901b49d3238c448db30e2a9",
+      "branch": "tactics",
+      "environment": {
+        "type": "local",
+        "host": "mikolas-ThinkPad-T14s-Gen-5",
+        "kernel": "Linux 7.0.0-30-generic x86_64",
+        "build": "Debug with address sanitizer; CaDiCaL cadical-3.0.0-7b99c07",
+        "slurm_job_id": null
+      },
+      "command": "make asan-test",
+      "verification": {
+        "standard": "make check: 24/24 CTest and 77/77 Python tests passed; make lint passed",
+        "documentation": "make docs passed",
+        "clang_tidy": "make tidy completed over all 95 tracked non-generated C++ translation units; 17 diagnostics from non-user code were suppressed and no project diagnostic was emitted",
+        "include_cleaner": "make include-cleaner completed with the existing 200-warning advisory whole-tree baseline; after adding the owning core/ids.hpp include, the focused scan of frontend.cpp, solver_strategy.cpp, and tactic_tests.cpp passed without findings",
+        "final_focused": "The rebuilt primo and primo_tactic_tests targets, primo_frontend_type_error_cli and primo_tactic_tests CTest cases, make lint, JSON validation, and git diff --check passed after the include cleanup"
+      },
+      "results": {
+        "ctest": "24/24 passed",
+        "asan_failures": 0,
+        "leak_failures": 0,
+        "total_test_time_seconds": 43.79
+      },
+      "artifacts": {
+        "build_directory": "build-asan",
+        "storage": "local generated build; not committed"
+      },
+      "evidence_status": "local-current; uncommitted review-fix working tree over commit 9841e51",
+      "outcome": "The full CTest suite passed under AddressSanitizer with leak detection and strict initialization-order checking enabled."
+    },
+    {
+      "id": "2026-09-01-review-fixes-qfuf-boolean-merge-fuzz",
+      "started_at": "2026-09-01",
+      "recorded_at": "2026-09-01",
+      "kind": "fuzz-merge-gate",
+      "scope": "Dedicated QF_UF Boolean-capacity differential fuzzing through the experimental two-Boolean splitting tactic, with direct validation of every satisfiable model.",
+      "commit": "9841e5183a6b152c7901b49d3238c448db30e2a9",
+      "branch": "tactics",
+      "environment": {
+        "type": "local",
+        "host": "mikolas-ThinkPad-T14s-Gen-5",
+        "kernel": "Linux 7.0.0-30-generic x86_64",
+        "binary": "build/primo, embedded git 9841e51-dirty, Release, CaDiCaL cadical-3.0.0-7b99c07",
+        "reference": "Z3 5.0.0",
+        "model_validator": "Dolmen 0.10",
+        "slurm_job_id": null
+      },
+      "command": "python3 scripts/qf_uf_boolean_fuzz.py --solver ./build/primo --solver-arg=--quiet --solver-arg=--experimental-split-bools=2 --ref contrib/local/bin/z3 --count 1000 --seed 20260902 --timeout 5 --shape all --validate-models --dolmen /home/user/.opam/default/bin/dolmen --model-timeout 5 --out /tmp/primo-review-fixes-fuzz-20260902",
+      "inputs": {
+        "generator": "scripts/qf_uf_boolean_fuzz.py",
+        "logic": "QF_UF",
+        "shape": "all",
+        "experimental_split_bools": 2,
+        "seed": 20260902,
+        "count": 1000,
+        "timeout_seconds": 5
+      },
+      "results": {
+        "pass": 1000,
+        "wrong_answer": 0,
+        "crash": 0,
+        "parser_or_type_error": 0,
+        "timeout": 0,
+        "unsupported": 0,
+        "reference_disagreement": 0,
+        "sat_models_validated_by_dolmen": 651,
+        "unsat_cases": 349,
+        "invalid_model": 0
+      },
+      "artifacts": {
+        "directory": "/tmp/primo-review-fixes-fuzz-20260902",
+        "answer_summary": "/tmp/primo-review-fixes-fuzz-20260902/summary.csv",
+        "model_summary": "/tmp/primo-review-fixes-fuzz-20260902/model-validation/summary.csv"
+      },
+      "evidence_status": "local-current merge gate; uncommitted review-fix working tree over commit 9841e51; temporary artifacts",
+      "outcome": "All 1,000 generated cases agreed with Z3, and Dolmen accepted every one of the 651 satisfiable models."
+    },
+    {
+      "id": "2026-09-01-review-fixes-exact-asan",
+      "started_at": "2026-09-01",
+      "recorded_at": "2026-09-01",
+      "kind": "sanitizer",
+      "scope": "Exact-commit AddressSanitizer rerun for the frontend type-error and multi-goal cancellation-precedence fixes.",
+      "commit": "99c526ed5100c6c4827df580619194419c9150f5",
+      "branch": "tactics",
+      "environment": {
+        "type": "local",
+        "host": "mikolas-ThinkPad-T14s-Gen-5",
+        "kernel": "Linux 7.0.0-30-generic x86_64",
+        "build": "build-asan, Debug with address sanitizer, embedded git 99c526e, CaDiCaL cadical-3.0.0-7b99c07",
+        "slurm_job_id": null
+      },
+      "command": "make asan-test",
+      "results": {
+        "ctest": "24/24 passed",
+        "asan_failures": 0,
+        "leak_failures": 0,
+        "total_test_time_seconds": 40.62
+      },
+      "artifacts": {
+        "build_directory": "build-asan",
+        "storage": "local generated build; not committed"
+      },
+      "evidence_status": "local-current exact implementation commit; run-log entry committed adjacently",
+      "outcome": "The exact implementation commit passed the full CTest suite under AddressSanitizer with leak detection and strict initialization-order checking enabled."
+    },
+    {
+      "id": "2026-09-01-review-fixes-exact-qfuf-boolean-merge-fuzz",
+      "started_at": "2026-09-01",
+      "recorded_at": "2026-09-01",
+      "kind": "fuzz-merge-gate",
+      "scope": "Exact-commit dedicated QF_UF Boolean-capacity differential fuzzing through the experimental two-Boolean splitting tactic, with direct validation of every satisfiable model.",
+      "commit": "99c526ed5100c6c4827df580619194419c9150f5",
+      "branch": "tactics",
+      "environment": {
+        "type": "local",
+        "host": "mikolas-ThinkPad-T14s-Gen-5",
+        "kernel": "Linux 7.0.0-30-generic x86_64",
+        "binary": "build/primo, embedded git 99c526e, Release, CaDiCaL cadical-3.0.0-7b99c07",
+        "reference": "Z3 5.0.0",
+        "model_validator": "Dolmen 0.10",
+        "slurm_job_id": null
+      },
+      "command": "python3 scripts/qf_uf_boolean_fuzz.py --solver ./build/primo --solver-arg=--quiet --solver-arg=--experimental-split-bools=2 --ref contrib/local/bin/z3 --count 1000 --seed 20260902 --timeout 5 --shape all --validate-models --dolmen /home/user/.opam/default/bin/dolmen --model-timeout 5 --out /tmp/primo-review-fixes-fuzz-99c526e",
+      "inputs": {
+        "generator": "scripts/qf_uf_boolean_fuzz.py",
+        "logic": "QF_UF",
+        "shape": "all",
+        "experimental_split_bools": 2,
+        "seed": 20260902,
+        "count": 1000,
+        "timeout_seconds": 5
+      },
+      "results": {
+        "pass": 1000,
+        "wrong_answer": 0,
+        "crash": 0,
+        "parser_or_type_error": 0,
+        "timeout": 0,
+        "unsupported": 0,
+        "reference_disagreement": 0,
+        "sat_models_validated_by_dolmen": 651,
+        "unsat_cases": 349,
+        "invalid_model": 0
+      },
+      "artifacts": {
+        "directory": "/tmp/primo-review-fixes-fuzz-99c526e",
+        "answer_summary": "/tmp/primo-review-fixes-fuzz-99c526e/summary.csv",
+        "model_summary": "/tmp/primo-review-fixes-fuzz-99c526e/model-validation/summary.csv"
+      },
+      "evidence_status": "local-current exact implementation commit merge gate; temporary artifacts; run-log entry committed adjacently",
+      "outcome": "All 1,000 generated cases agreed with Z3, and Dolmen accepted every one of the 651 satisfiable models on exact implementation commit 99c526e."
     }
   ]
 }
