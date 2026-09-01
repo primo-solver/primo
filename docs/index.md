@@ -26,6 +26,8 @@ Five parts, in the order they are normally needed:
   congruence closure and Boolean arguments. [](arithmetic.md) is the QF_LRA
   reference, with its heuristics, tuning, open investigations, and fuzz evidence
   nested below it. [](nelson-oppen.md) is the QF_UFLRA combination reference;
+  [](modular-theory-combination.md) defines the generic component boundary and
+  the non-convex QF_UFLIA direction;
   its nested notes contain performance history, the convex merge plan, pure-LRA
   isolation regression, and arithmetic equality-sharing details.
 - **Evidence and practice** explains experiments, the canonical run log, debugging,

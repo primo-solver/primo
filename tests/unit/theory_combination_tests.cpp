@@ -13,6 +13,7 @@
 #include "core/term_manager.hpp"
 #include "sat/lit.hpp"
 #include "smt/theory_combination.hpp"
+#include "theory/theory_solver.hpp"
 #include "util/rational.hpp"
 
 using primo::core::SymbolTable;
@@ -26,6 +27,14 @@ using primo::smt::PurificationSiteKind;
 using primo::smt::SharedEqualitySource;
 using primo::smt::SharedModelEquality;
 using primo::smt::TheoryCombinationManager;
+using primo::theory::AssignedTheoryLiteral;
+using primo::theory::Convexity;
+using primo::theory::InterfaceRelation;
+using primo::theory::StableInfiniteness;
+using primo::theory::TheoryCheckResult;
+using primo::theory::TheoryCheckStatus;
+using primo::theory::TheoryProperties;
+using primo::theory::TheorySolver;
 
 namespace {
 
@@ -47,6 +56,59 @@ struct MockTheoryDispatch {
     }
   }
 };
+
+class MockTheorySolver final : public TheorySolver {
+ public:
+  explicit MockTheorySolver(TheoryProperties properties) : properties_(std::move(properties)) {}
+
+  const TheoryProperties& properties() const override { return properties_; }
+
+  TheoryCheckResult check(std::span<const AssignedTheoryLiteral> assignment,
+                          std::span<const InterfaceRelation> arrangement) override {
+    assigned_count = assignment.size();
+    arrangement_count = arrangement.size();
+    return next_result;
+  }
+
+  TheoryProperties properties_;
+  TheoryCheckResult next_result{
+      .status = TheoryCheckStatus::Consistent, .clause = {}, .model = {}, .diagnostic = {}};
+  std::size_t assigned_count = 0;
+  std::size_t arrangement_count = 0;
+};
+
+void component_protocol_declares_non_convexity_and_returns_general_clauses() {
+  SymbolTable symbols;
+  TermManager terms(symbols);
+  const auto int_sort = symbols.int_sort();
+  const auto x_symbol = symbols.declare_constant("x", int_sort);
+  const auto y_symbol = symbols.declare_constant("y", int_sort);
+  const auto x = terms.mk_constant(x_symbol);
+  const auto y = terms.mk_constant(y_symbol);
+
+  MockTheorySolver lia(TheoryProperties{.id = "lia",
+                                        .shared_sorts = {int_sort},
+                                        .stably_infinite = StableInfiniteness::Yes,
+                                        .convexity = Convexity::NonConvex,
+                                        .produces_model_projection = true});
+  lia.next_result = TheoryCheckResult{.status = TheoryCheckStatus::LearnedClause,
+                                      .clause = {primo::sat::Lit{3}, primo::sat::Lit{5}},
+                                      .model = {},
+                                      .diagnostic = {}};
+  const std::vector assignment{
+      AssignedTheoryLiteral{.atom = terms.mk_le(x, y), .lit = primo::sat::Lit{7}, .value = true}};
+  const std::vector arrangement{
+      InterfaceRelation{.lhs = x, .rhs = y, .sort = int_sort, .equality_lit = primo::sat::Lit{3}}};
+
+  const TheoryCheckResult result = lia.check(assignment, arrangement);
+  assert(lia.properties().id == "lia");
+  assert(lia.properties().stably_infinite == StableInfiniteness::Yes);
+  assert(lia.properties().convexity == Convexity::NonConvex);
+  assert(lia.assigned_count == 1);
+  assert(lia.arrangement_count == 1);
+  assert(result.status == TheoryCheckStatus::LearnedClause);
+  assert(result.clause.size() == 2);
+}
 
 void finds_visible_interface_constants_and_equalities_by_sort() {
   SymbolTable symbols;
@@ -601,6 +663,7 @@ void reports_uninterpreted_applications_inside_arithmetic_atoms() {
 }  // namespace
 
 int main() {
+  component_protocol_declares_non_convexity_and_returns_general_clauses();
   finds_visible_interface_constants_and_equalities_by_sort();
   ignores_boolean_and_internal_constants();
   deduplicates_reversed_visible_equality_atoms();
