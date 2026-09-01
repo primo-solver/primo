@@ -219,6 +219,40 @@ python3 scripts/slurm_stage_manifest_files.py \
   --manifest benchmarks/qf_uflra-smtlib-sample-5-per-family.txt
 ```
 
+### QF_UFLIA representative sample
+
+`benchmarks/qf_uflia-smtlib-representative-20.txt` is the fixed development
+sample from `sandbox/QF_UFLIA.tar.zst`. It covers all four top-level corpus
+families, the Hash, Wisa, and EufLaArithmetic MathSAT subfamilies, known
+satisfiable and unsatisfiable cases where the corpus metadata provides that
+classification, two size points, and two Certora inputs whose filename does not
+state an expected answer. The Certora contribution is distributed under CC BY
+4.0; the remaining files retain the archive's accompanying metadata and
+licenses. The manifest records paths only: external benchmark inputs are not
+copied into the repository.
+
+Extract the archive into the ignored benchmark workspace and run the sample
+with the generic benchmark driver:
+
+```bash
+mkdir -p tmp/QF_UFLIA
+tar --zstd -xf sandbox/QF_UFLIA.tar.zst \
+  -C tmp/QF_UFLIA --strip-components=2
+python3 scripts/bench_qf_uf_full.py \
+  --root tmp/QF_UFLIA \
+  --manifest benchmarks/qf_uflia-smtlib-representative-20.txt \
+  --solver build/primo --timeout 10 \
+  --out results/qf_uflia-representative-20.csv
+```
+
+These corpus cases are an evaluation gate, not part of `make check`: several
+are intentionally beyond Primo's current short-timeout performance. For cases
+without a declared status, an evaluation must establish the expected answer by
+agreement between independent reference solvers. Every satisfiable Primo result
+must also be validated directly with Dolmen. For remote work, stage the same
+manifest with `scripts/slurm_stage_manifest_files.py`, using
+`--root tmp/QF_UFLIA`.
+
 To stage a complete extracted corpus without first creating a temporary
 manifest, replace `--manifest ...` with `--all-smt2`. Paths are discovered below
 `--root` and sorted before archiving.

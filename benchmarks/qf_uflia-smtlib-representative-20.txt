@@ -1,0 +1,24 @@
+# Fixed development sample from sandbox/QF_UFLIA.tar.zst.
+# Paths are relative to tmp/QF_UFLIA after the documented extraction command.
+# The sample covers every top-level family, every MathSAT subfamily, known
+# sat/unsat cases where metadata is available, and two Certora stress cases.
+TwoSquares/smtlib.598294.smt2
+TwoSquares/smtlib.688318.smt2
+TwoSquares/smtlib.606727.smt2
+TwoSquares/smtlib.769286.smt2
+wisas/xs_7_7.smt2
+wisas/xs_27_37.smt2
+wisas/xs_5_5.smt2
+wisas/xs_11_21.smt2
+mathsat/Hash/hash_sat_03_03.smt2
+mathsat/Hash/hash_sat_09_05.smt2
+mathsat/Hash/hash_uns_03_03.smt2
+mathsat/Hash/hash_uns_03_18.smt2
+mathsat/Wisa/xs-06-07-4-5-4-2.smt2
+mathsat/Wisa/xs-15-09-3-5-5-3.smt2
+mathsat/Wisa/xs-05-06-2-2-5-1.smt2
+mathsat/Wisa/xs-07-11-1-1-1-1.smt2
+mathsat/EufLaArithmetic/hard/hard4.smt2
+mathsat/EufLaArithmetic/medium/medium12.smt2
+20230314-Jaroslav-Bendik-Certora/65782_cd31513fdcd15701933b_6_QF_UFLIA.smt2
+20230314-Jaroslav-Bendik-Certora/940_590f27b1c3c800d3243e_30_QF_UFLIA.smt2

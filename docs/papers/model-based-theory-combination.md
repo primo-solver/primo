@@ -353,6 +353,53 @@ belong on theory components, while model-choice scheduling, SAT assumptions,
 failed-assumption clauses, and lifecycle invalidation belong to the SMT
 coordinator. Theory components still receive no SAT-backend handle.
 
+## Full Appendix A integration checklist
+
+The production coordinator will implement the paper's Appendix A transition
+system at the SMT/SAT boundary. CaDiCaL continues to realize ordinary
+propositional unit propagation, decisions, failure, backjumping, learning,
+forgetting, and restarts; Primo does not duplicate those CDCL operations.
+
+The coordinator state consists of an assignment epoch, a monotonically changing
+model revision for each component, the current per-sort shared-term partition,
+the dynamically introduced interface literals $L$, and a reversible trail of
+candidate-model choices. A theory model stays private to its component. The
+generic interface exposes only an opaque snapshot token and the projected
+shared equality classes. The SMT layer alone owns SAT literals and dynamic
+literal creation.
+
+The transition contracts are:
+
+- **Theory propagation** returns an entailed literal or clause together with
+  its theory explanation. Such facts may become SAT lemmas under their stated
+  guards.
+- **Model propagation** chooses one canonical equality on which current
+  component projections disagree, creates its SAT literal lazily, and appends
+  a positive decision to $L$. A candidate-model equality is never learned as a
+  theorem merely because it appears in one model.
+- **Model mutation** receives required interface relations and a snapshot
+  token. It returns either a strictly finer compatible projection or a typed
+  fixed point. A result with the wrong assignment epoch is stale; a mutation
+  that merges a required disequality is invalid.
+- **Non-convex splitting** lets a component request a fresh SAT-visible theory
+  decision. LIA therefore cannot be treated as convex and must retain a
+  complete arrangement fallback while model guidance is experimental.
+- **Failed choices** produce an explained blocking clause when one exists and
+  invalidate snapshots affected by SAT backtracking. Cancellation and resource
+  limits remain typed stop reasons rather than learned facts.
+
+A satisfiable result is permitted only when every component is consistent and
+their projected partitions agree on every shared sort. Termination is measured
+by bounded model revisions within an assignment epoch, the finite number of
+shared equality pairs, and ordinary SAT progress. The implementation must not
+materialize the complete cross-product of partitions on the model-guided path.
+
+The typed API must keep entailed facts, candidate choices, and fresh non-convex
+decisions distinct. Its tests must cover stale tokens, mutation monotonicity,
+rejected incompatible mutations, failed model choices, SAT backtracking,
+dynamic equality creation, incomplete projections, cancellation, and an LIA
+case whose complete explanation is a disjunction rather than one equality.
+
 ## 2026-08-09 LRA Model-Mutation Integration Checklist
 
 Bibliographic basis:
