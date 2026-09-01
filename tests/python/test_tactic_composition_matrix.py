@@ -88,6 +88,14 @@ class TacticCompositionMatrixTests(unittest.TestCase):
         self.assertEqual(results[case.path], ("crash",))
         self.assertEqual(len(failures), 1)
 
+    def test_solver_revision_comes_from_binary_version(self) -> None:
+        version = """primo 0.1.0
+git: 4391dfc
+build: Release, sanitizers: none
+"""
+        self.assertEqual(MODULE.solver_revision(version), "4391dfc")
+        self.assertEqual(MODULE.solver_revision("primo 0.1.0\n"), "unknown")
+
     def test_public_runner_repeats_and_records_deterministic_statistics(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -138,6 +146,8 @@ class TacticCompositionMatrixTests(unittest.TestCase):
             )
             self.assertEqual(metadata["status"], "passed")
             self.assertEqual(metadata["rows"], 2)
+            self.assertEqual(metadata["commit"], "unknown")
+            self.assertNotEqual(metadata["workspace_commit"], "")
 
     def test_later_leaf_counter_may_be_observed_on_only_one_case(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

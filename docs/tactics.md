@@ -364,8 +364,12 @@ for later leaves are required at least once per applicable logic across the
 corpus: a sequence correctly short-circuits when an earlier transformation
 proves the goal unsatisfiable, so absence on that individual case is not a
 composition failure. Its summary and per-run stdout, stderr, statistics,
-model-checking output, solver version, and commit are durable artifacts. Run
-the complete local layer with:
+model-checking output, solver version, tested binary commit, and workspace
+commit are durable artifacts. The binary version is authoritative because an
+archive-mode SLURM workspace intentionally preserves its dependency checkout
+and may therefore have a stale `.git/HEAD`; the preflight independently
+requires the binary's embedded revision to match the submitted local commit.
+Run the complete local layer with:
 
 ```bash
 make tactic-composition-test

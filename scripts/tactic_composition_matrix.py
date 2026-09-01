@@ -343,6 +343,14 @@ def git_revision(root: Path) -> str:
     return result.stdout.strip() if result.returncode == 0 else "unknown"
 
 
+def solver_revision(version_output: str) -> str:
+    for line in version_output.splitlines():
+        key, separator, value = line.partition(":")
+        if separator and key.strip() == "git" and value.strip():
+            return value.strip()
+    return "unknown"
+
+
 def run_model_validation(
     profile: Profile,
     cases: list[Case],
@@ -600,7 +608,8 @@ def main() -> int:
         {
             "status": status,
             "manifest": str(args.manifest),
-            "commit": git_revision(args.root),
+            "commit": solver_revision(solver_version.stdout),
+            "workspace_commit": git_revision(args.root),
             "solver": solver_path,
             "solver_version": solver_version.stdout.strip(),
             "references": args.refs,
