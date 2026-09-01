@@ -19,6 +19,11 @@ struct ModelBasedComponentRound {
   std::span<const theory::AssignedTheoryLiteral> assignment;
 };
 
+struct SharedInterfaceTerms {
+  core::SortId sort = core::kInvalidSortId;
+  std::vector<core::TermId> terms;
+};
+
 enum class ModelBasedCombinationStatus {
   Accept,
   LearnClause,
@@ -34,6 +39,7 @@ struct ModelBasedCombinationResult {
   ModelBasedCombinationStatus status = ModelBasedCombinationStatus::Unknown;
   sat::Clause clause;
   sat::Lit decision_lit;
+  std::vector<sat::Lit> decision_lits;
   theory::TheoryDecisionRequest decision;
   std::string diagnostic;
 };
@@ -63,7 +69,7 @@ class ModelBasedCombinationCoordinator {
   [[nodiscard]] ModelBasedCombinationResult reconcile(
       std::uint64_t assignment_epoch, std::span<const ModelBasedComponentRound> components,
       std::span<const theory::InterfaceRelation> arrangement,
-      std::span<const theory::InterfacePair> shared_pairs,
+      std::span<const SharedInterfaceTerms> shared_terms,
       const EqualityLiteralResolver& equality_literal);
 
   [[nodiscard]] const ModelBasedCombinationStatistics& statistics() const { return statistics_; }

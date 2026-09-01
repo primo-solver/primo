@@ -393,6 +393,9 @@ struct CheckSatOptions {
   // path remains available explicitly and as the conservative fallback for
   // failed candidate invariants.
   bool qf_uflra_model_reconciliation = true;
+  // Transitional A/B path for the backend-neutral model-combination
+  // coordinator. It remains default-off until QF_UFLRA parity is established.
+  bool experimental_generic_model_combination = false;
   bool qf_uflra_online_euf = false;
   bool top_level_or_tseitin = false;
   bool auto_top_level_or_tseitin = true;

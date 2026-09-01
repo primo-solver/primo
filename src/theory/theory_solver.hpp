@@ -138,6 +138,7 @@ enum class TheoryMutationStatus {
 struct TheoryMutationResult {
   TheoryMutationStatus status = TheoryMutationStatus::FixedPoint;
   TheoryModelProjection model;
+  std::vector<TheoryDecisionRequest> candidate_decisions;
   std::string diagnostic;
 };
 

@@ -3,7 +3,9 @@
 Primo's modular combination layer is based on Nelson and Oppen's arrangement
 method and on SAT-mediated delayed theory combination. Its first non-convex
 target is `QF_UFLIA`; the established `QF_UFLRA` solver retains its specialized
-convex model-reconciliation policy.
+convex model-reconciliation policy by default and can route its model decisions
+through the generic coordinator with
+`--experimental-generic-model-combination`.
 
 The primary algorithmic sources are Nelson and Oppen, *Simplification by
 Cooperating Decision Procedures* (TOPLAS 1979); Oppen, *Complexity, Convexity
@@ -99,10 +101,12 @@ consequence may be learned as an entailed clause.
 `smt::ModelBasedCombinationCoordinator` implements the backend-neutral
 transition after one satisfying SAT assignment. It checks each component,
 validates snapshot identity, epoch, completeness, and compatibility with the
-current arrangement, asks an over-merged component to split its projection,
-and compares the resulting partitions. Care pairs are considered first. If a
-disagreement remains, the coordinator returns one positive equality decision;
-the caller creates or resolves its SAT literal and re-enters CaDiCaL. Entailed
+current arrangement, asks a component for a compatible model variant, and
+compares the resulting partitions. It derives a linear spanning set from each
+model class rather than materializing the quadratic cross-product. Care pairs
+are considered first. If a disagreement remains, the coordinator returns one
+or a component-provided batch of equality decisions; the caller creates or
+resolves their SAT literals and re-enters CaDiCaL. Entailed
 literals are converted to explained clauses, while general non-convex clauses,
 fresh decisions, cancellation, resource limits, unsupported cases, and unknown
 results remain distinct typed actions. Exceptions are not converted into
@@ -140,20 +144,24 @@ the ordered preprocessing reconstruction chain.
 The existing production coordinator is sequential and currently instantiates
 EUF plus LIA only.
 `QF_UFLRA` retains its established specialized convex coordinator, options,
-counters, and model behavior. Its EUF and arithmetic implementations supply the
-same operations represented by the component protocol, but the specialized
-scheduler is deliberately not routed through the new adapter in this baseline;
-doing so later requires a separate equivalence evaluation. The generic
-transition class is not yet selected by a production solver leaf. It currently
-assumes that every supplied shared pair belongs to every participating
-component; multi-way combinations with partially overlapping sort interfaces
-remain future work. Arrays, bit-vectors, nonlinear arithmetic, finite shared
-sorts, and quantifiers remain unsupported.
+counters, and model behavior by default. With
+`--experimental-generic-model-combination`, checked LRA and EUF projections are
+adapted to `TheorySolver`, and the generic coordinator owns snapshot validation,
+partition comparison, mutation dispatch, and model-choice batching. The EUF
+adapter deliberately reuses the established checkpointed compatibility merge;
+the experiment changes the scheduler boundary, not that component operation.
+The complete specialized path remains available while equivalence evaluation is
+in progress. The generic coordinator currently assumes that every supplied
+shared sort belongs to every participating component; multi-way combinations
+with partially overlapping sort interfaces remain future work. Arrays,
+bit-vectors, nonlinear arithmetic, finite shared sorts, and quantifiers remain
+unsupported.
 
 Protocol tests use scripted convex and non-convex components. They cover stale
 and incomplete snapshots, valid and rejected mutation, care-pair ordering,
 candidate equality decisions, explained propagation, non-convex decisions and
-clauses, cancellation, and escaping component exceptions. These scripts do not
+clauses, batched model choices, cancellation, and escaping component exceptions.
+These scripts do not
 replace a SAT solver or validate CDCL behavior; production migration tests use
 CaDiCaL. QF_UFLIA solver tests
 cover purification, complete arrangements, the non-convex disjunction case,
@@ -177,3 +185,7 @@ and temporary artifact paths are recorded in [](run-log.md).
 `:combination.rounds`, `:combination.component-checks`,
 `:combination.learned-clauses`, and `:combination.resource-limits` describe the
 sequential search. Existing QF_UFLRA statistic names and meanings are unchanged.
+The experimental generic QF_UFLRA path additionally publishes cumulative
+`:combination.model.*` counters for component checks, snapshots, mutations,
+fixed points, care pairs, disagreements, learned clauses, model decisions,
+fresh decisions, stale snapshots, and rejected mutations.

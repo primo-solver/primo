@@ -33,6 +33,7 @@ using primo::smt::ModelBasedCombinationStatus;
 using primo::smt::ModelBasedComponentRound;
 using primo::smt::PurificationSiteKind;
 using primo::smt::SharedEqualitySource;
+using primo::smt::SharedInterfaceTerms;
 using primo::smt::SharedModelEquality;
 using primo::smt::TheoryCombinationManager;
 using primo::theory::AssignedTheoryLiteral;
@@ -750,11 +751,12 @@ void model_coordinator_accepts_agreeing_current_snapshots() {
   right.next_result = consistent_with(projection("right", 4, 7, sort, {{b, a}}));
   const std::vector<ModelBasedComponentRound> rounds{{.solver = &left, .assignment = {}},
                                                      {.solver = &right, .assignment = {}}};
-  const std::vector pairs{InterfacePair{.lhs = a, .rhs = b, .sort = sort}};
+  const std::vector interfaces{SharedInterfaceTerms{.sort = sort, .terms = {a, b}}};
   ModelBasedCombinationCoordinator coordinator;
 
-  const auto result = coordinator.reconcile(
-      4, rounds, {}, pairs, [](const InterfacePair&) { return std::optional{primo::sat::Lit{9}}; });
+  const auto result = coordinator.reconcile(4, rounds, {}, interfaces, [](const InterfacePair&) {
+    return std::optional{primo::sat::Lit{9}};
+  });
 
   assert(result.status == ModelBasedCombinationStatus::Accept);
   assert(coordinator.statistics().component_checks == 2);
@@ -776,10 +778,10 @@ void model_coordinator_rejects_stale_snapshots() {
                                            .produces_model_projection = true});
   solver.next_result = consistent_with(projection("component", 2, 1, sort, {{a}, {b}}));
   const std::vector<ModelBasedComponentRound> rounds{{.solver = &solver, .assignment = {}}};
-  const std::vector pairs{InterfacePair{.lhs = a, .rhs = b, .sort = sort}};
+  const std::vector interfaces{SharedInterfaceTerms{.sort = sort, .terms = {a, b}}};
   ModelBasedCombinationCoordinator coordinator;
 
-  const auto result = coordinator.reconcile(3, rounds, {}, pairs, {});
+  const auto result = coordinator.reconcile(3, rounds, {}, interfaces, {});
 
   assert(result.status == ModelBasedCombinationStatus::Unknown);
   assert(result.diagnostic == "stale theory model snapshot");
@@ -801,17 +803,17 @@ void model_coordinator_rejects_incomplete_projections_and_preserves_exceptions()
                                            .produces_model_projection = true});
   solver.next_result = consistent_with(projection("component", 3, 1, sort, {{a}}));
   const std::vector<ModelBasedComponentRound> rounds{{.solver = &solver, .assignment = {}}};
-  const std::vector pairs{InterfacePair{.lhs = a, .rhs = b, .sort = sort}};
+  const std::vector interfaces{SharedInterfaceTerms{.sort = sort, .terms = {a, b}}};
   ModelBasedCombinationCoordinator coordinator;
 
-  auto result = coordinator.reconcile(3, rounds, {}, pairs, {});
+  auto result = coordinator.reconcile(3, rounds, {}, interfaces, {});
   assert(result.status == ModelBasedCombinationStatus::Unknown);
   assert(result.diagnostic == "incomplete or malformed theory model projection");
 
   solver.throw_on_check = true;
   bool escaped = false;
   try {
-    static_cast<void>(coordinator.reconcile(4, rounds, {}, pairs, {}));
+    static_cast<void>(coordinator.reconcile(4, rounds, {}, interfaces, {}));
   } catch (const std::runtime_error& error) {
     escaped = std::string(error.what()) == "scripted component failure";
   }
@@ -840,18 +842,55 @@ void model_coordinator_mutates_a_projection_to_agreement() {
   merged.next_result = consistent_with(projection("merged", 8, 3, sort, {{a, b}}));
   merged.next_mutation = TheoryMutationResult{.status = TheoryMutationStatus::Mutated,
                                               .model = projection("merged", 8, 4, sort, {{a}, {b}}),
+                                              .candidate_decisions = {},
                                               .diagnostic = {}};
   const std::vector<ModelBasedComponentRound> rounds{{.solver = &separated, .assignment = {}},
                                                      {.solver = &merged, .assignment = {}}};
-  const std::vector pairs{InterfacePair{.lhs = a, .rhs = b, .sort = sort}};
+  const std::vector interfaces{SharedInterfaceTerms{.sort = sort, .terms = {a, b}}};
   ModelBasedCombinationCoordinator coordinator;
 
-  const auto result = coordinator.reconcile(8, rounds, {}, pairs, {});
+  const auto result = coordinator.reconcile(8, rounds, {}, interfaces, {});
 
   assert(result.status == ModelBasedCombinationStatus::Accept);
   assert(merged.mutation_count == 1);
   assert(merged.last_mutation_source.revision == 3);
   assert(coordinator.statistics().mutations == 1);
+}
+
+void model_coordinator_accepts_a_compatible_model_variant() {
+  SymbolTable symbols;
+  const auto sort = symbols.declare_sort("S");
+  const auto a_symbol = symbols.declare_constant("a", sort);
+  const auto b_symbol = symbols.declare_constant("b", sort);
+  TermManager terms(symbols);
+  const auto a = terms.mk_constant(a_symbol);
+  const auto b = terms.mk_constant(b_symbol);
+  MockTheorySolver merged(TheoryProperties{.id = "merged",
+                                           .shared_sorts = {sort},
+                                           .stably_infinite = StableInfiniteness::Yes,
+                                           .convexity = Convexity::Convex,
+                                           .produces_model_projection = true});
+  MockTheorySolver separated(TheoryProperties{.id = "separated",
+                                              .shared_sorts = {sort},
+                                              .stably_infinite = StableInfiniteness::Yes,
+                                              .convexity = Convexity::Convex,
+                                              .produces_model_projection = true});
+  merged.next_result = consistent_with(projection("merged", 10, 1, sort, {{a, b}}));
+  separated.next_result = consistent_with(projection("separated", 10, 1, sort, {{a}, {b}}));
+  separated.next_mutation =
+      TheoryMutationResult{.status = TheoryMutationStatus::Mutated,
+                           .model = projection("separated", 10, 2, sort, {{a, b}}),
+                           .candidate_decisions = {},
+                           .diagnostic = {}};
+  const std::vector<ModelBasedComponentRound> rounds{{.solver = &merged, .assignment = {}},
+                                                     {.solver = &separated, .assignment = {}}};
+  const std::vector interfaces{SharedInterfaceTerms{.sort = sort, .terms = {a, b}}};
+  ModelBasedCombinationCoordinator coordinator;
+
+  const auto result = coordinator.reconcile(10, rounds, {}, interfaces, {});
+
+  assert(result.status == ModelBasedCombinationStatus::Accept);
+  assert(separated.mutation_count == 1);
 }
 
 void model_coordinator_turns_fixed_point_disagreement_into_a_choice() {
@@ -876,10 +915,10 @@ void model_coordinator_turns_fixed_point_disagreement_into_a_choice() {
   merged.next_result = consistent_with(projection("merged", 5, 1, sort, {{a, b}}));
   const std::vector<ModelBasedComponentRound> rounds{{.solver = &separated, .assignment = {}},
                                                      {.solver = &merged, .assignment = {}}};
-  const std::vector pairs{InterfacePair{.lhs = a, .rhs = b, .sort = sort}};
+  const std::vector interfaces{SharedInterfaceTerms{.sort = sort, .terms = {a, b}}};
   ModelBasedCombinationCoordinator coordinator;
 
-  const auto result = coordinator.reconcile(5, rounds, {}, pairs, [](const InterfacePair&) {
+  const auto result = coordinator.reconcile(5, rounds, {}, interfaces, [](const InterfacePair&) {
     return std::optional{primo::sat::Lit{31}};
   });
 
@@ -889,7 +928,7 @@ void model_coordinator_turns_fixed_point_disagreement_into_a_choice() {
   assert(coordinator.statistics().disagreements == 1);
 }
 
-void model_coordinator_rejects_non_refining_mutations() {
+void model_coordinator_rejects_unchanged_mutations() {
   SymbolTable symbols;
   const auto sort = symbols.declare_sort("S");
   const auto a_symbol = symbols.declare_constant("a", sort);
@@ -911,13 +950,14 @@ void model_coordinator_rejects_non_refining_mutations() {
   separated.next_result = consistent_with(projection("separated", 6, 1, sort, {{a}, {b}}));
   merged.next_mutation = TheoryMutationResult{.status = TheoryMutationStatus::Mutated,
                                               .model = projection("merged", 6, 2, sort, {{a, b}}),
+                                              .candidate_decisions = {},
                                               .diagnostic = {}};
   const std::vector<ModelBasedComponentRound> rounds{{.solver = &separated, .assignment = {}},
                                                      {.solver = &merged, .assignment = {}}};
-  const std::vector pairs{InterfacePair{.lhs = a, .rhs = b, .sort = sort}};
+  const std::vector interfaces{SharedInterfaceTerms{.sort = sort, .terms = {a, b}}};
   ModelBasedCombinationCoordinator coordinator;
 
-  const auto result = coordinator.reconcile(6, rounds, {}, pairs, {});
+  const auto result = coordinator.reconcile(6, rounds, {}, interfaces, {});
 
   assert(result.status == ModelBasedCombinationStatus::Unknown);
   assert(result.diagnostic == "invalid theory model mutation");
@@ -950,13 +990,12 @@ void model_coordinator_prioritizes_care_pair_disagreements() {
   merged.next_care_pairs = {InterfacePair{.lhs = b, .rhs = c, .sort = sort}};
   const std::vector<ModelBasedComponentRound> rounds{{.solver = &separated, .assignment = {}},
                                                      {.solver = &merged, .assignment = {}}};
-  const std::vector pairs{InterfacePair{.lhs = a, .rhs = b, .sort = sort},
-                          InterfacePair{.lhs = b, .rhs = c, .sort = sort}};
+  const std::vector interfaces{SharedInterfaceTerms{.sort = sort, .terms = {a, b, c}}};
   ModelBasedCombinationCoordinator coordinator;
   InterfacePair selected;
 
   const auto result =
-      coordinator.reconcile(9, rounds, {}, pairs, [&selected](const InterfacePair& pair) {
+      coordinator.reconcile(9, rounds, {}, interfaces, [&selected](const InterfacePair& pair) {
         selected = pair;
         return std::optional{primo::sat::Lit{37}};
       });
@@ -965,6 +1004,51 @@ void model_coordinator_prioritizes_care_pair_disagreements() {
   assert(selected.lhs == b);
   assert(selected.rhs == c);
   assert(coordinator.statistics().care_pairs == 1);
+}
+
+void model_coordinator_batches_component_model_choices() {
+  SymbolTable symbols;
+  const auto sort = symbols.declare_sort("S");
+  const auto a_symbol = symbols.declare_constant("a", sort);
+  const auto b_symbol = symbols.declare_constant("b", sort);
+  const auto c_symbol = symbols.declare_constant("c", sort);
+  TermManager terms(symbols);
+  const auto a = terms.mk_constant(a_symbol);
+  const auto b = terms.mk_constant(b_symbol);
+  const auto c = terms.mk_constant(c_symbol);
+  MockTheorySolver merged(TheoryProperties{.id = "merged",
+                                           .shared_sorts = {sort},
+                                           .stably_infinite = StableInfiniteness::Yes,
+                                           .convexity = Convexity::Convex,
+                                           .produces_model_projection = true});
+  MockTheorySolver separated(TheoryProperties{.id = "separated",
+                                              .shared_sorts = {sort},
+                                              .stably_infinite = StableInfiniteness::Yes,
+                                              .convexity = Convexity::Convex,
+                                              .produces_model_projection = true});
+  merged.next_result = consistent_with(projection("merged", 11, 1, sort, {{a, b, c}}));
+  separated.next_result = consistent_with(projection("separated", 11, 1, sort, {{a}, {b}, {c}}));
+  separated.next_mutation.candidate_decisions = {{.pair = {.lhs = a, .rhs = b, .sort = sort},
+                                                  .preferred_value = InterfaceRelationValue::Equal,
+                                                  .reasons = {}},
+                                                 {.pair = {.lhs = a, .rhs = c, .sort = sort},
+                                                  .preferred_value = InterfaceRelationValue::Equal,
+                                                  .reasons = {}}};
+  const std::vector<ModelBasedComponentRound> rounds{{.solver = &merged, .assignment = {}},
+                                                     {.solver = &separated, .assignment = {}}};
+  const std::vector interfaces{SharedInterfaceTerms{.sort = sort, .terms = {a, b, c}}};
+  ModelBasedCombinationCoordinator coordinator;
+
+  const auto result =
+      coordinator.reconcile(11, rounds, {}, interfaces, [a](const InterfacePair& pair) {
+        return std::optional{primo::sat::Lit{pair.lhs == a && pair.rhs == a + 1 ? 41 : 43}};
+      });
+
+  assert(result.status == ModelBasedCombinationStatus::DecideEquality);
+  assert(result.decision_lits.size() == 2);
+  assert(result.decision_lits[0].value == 41);
+  assert(result.decision_lits[1].value == 43);
+  assert(coordinator.statistics().model_decisions == 2);
 }
 
 void model_coordinator_keeps_propagation_splitting_and_cancellation_typed() {
@@ -1053,9 +1137,11 @@ int main() {
   model_coordinator_rejects_stale_snapshots();
   model_coordinator_rejects_incomplete_projections_and_preserves_exceptions();
   model_coordinator_mutates_a_projection_to_agreement();
+  model_coordinator_accepts_a_compatible_model_variant();
   model_coordinator_turns_fixed_point_disagreement_into_a_choice();
-  model_coordinator_rejects_non_refining_mutations();
+  model_coordinator_rejects_unchanged_mutations();
   model_coordinator_prioritizes_care_pair_disagreements();
+  model_coordinator_batches_component_model_choices();
   model_coordinator_keeps_propagation_splitting_and_cancellation_typed();
   return 0;
 }

@@ -286,11 +286,11 @@ default.
 | 5.1 Opportunistic Equality Propagation | The paper describes `FixedEq`, `EqRow`, `EqOffsetRows`, and `EqRows`, plus fixed-variable removal and supporting bound propagation. | **Partial implementation.** `LraTableau::entailed_equalities()` implements all four rules with exact explanations and spanning output; mixed QF_UFLRA removes fixed basic variables by default. Primo polls the rules after a feasible check rather than maintaining the first three eagerly during pivots. Row-bound propagation is wired into mixed solving but remains opt-in after a mixed full-corpus A/B exchanged one solve for one loss. The exact unresolved-pair fallback preserves convex completeness despite those deviations. |
 | 5.2 Model Mutation | The paper describes mutating arithmetic model values, using freedom intervals, to avoid unnecessary equalities before propagating them to other theories. | **Implemented LRA subset.** `LraTableau::diversify_shared_model()` performs the greedy nonbasic-variable sweep on a scratch assignment and returns the complete candidate assignment plus post-mutation classes. It accepts forbidden shared-variable pairs and never reintroduces one already separated. The coordinator applies targeted strict orientations to unresolved mandatory disequalities and rebuilds the scratch model; the live tableau remains unchanged. |
 | 6 Experimental Evaluation | The paper compares model-based theory combination against DTC, Ackermannization, Yices, and MathSAT on several UF+arithmetic benchmark families. | **Not reproduced.** Primo has local and SLURM benchmark evidence in `docs/run-log.json`, including QF_UFLRA CPAchecker and sample Z3 comparisons, but it has not reproduced the paper's experiment suite. |
-| 7 Conclusions | The paper emphasizes that the approach requires theories to efficiently answer whether two shared terms have equal values in the current model. | **Partial.** Primo can answer this for some LRA Real terms and the opt-in mixed EUF path exposes a narrow `FlatEufModelView` over its current closure. The generic result type can carry equality classes, but there is still no uniform model-query or mutation interface. |
+| 7 Conclusions | The paper emphasizes that the approach requires theories to efficiently answer whether two shared terms have equal values in the current model. | **Implemented protocol subset.** `TheoryModelProjection` uniformly exposes per-sort equality classes, and `TheorySolver::mutate` requests a compatible variant by opaque epoch/revision token. The experimental QF_UFLRA adapter supplies both operations; other production components are not migrated yet. |
 | 7.1 On the Significance of Ackermann's Reduction | The paper argues that model-based combination can avoid some Ackermannization costs, while dynamic Ackermannization remains useful in UF-heavy cases. | **Separate.** Primo's Ackermann-related work should stay documented as EUF-specific unless it is explicitly wired into mixed-theory model combination. |
 | 7.2 Are Theories Amenable to Model-Based Combinations? | The paper asks which theories can cheaply expose useful candidate models; Simplex is the main positive example. | **Protocol scaffold, not generalized execution.** Components can declare model-projection capability and return equality classes, but only the specialized EUF plus Real LRA coordinator performs model-guided reconciliation. |
 | Acknowledgment | No algorithmic content. | **No implementation relevance.** |
-| Appendix A: Presentation of `DPLL(T^M)` | Gives the abstract transition system where the SAT/theory search state includes model information and model-based propagation/mutation rules. | **Not implemented.** Primo's current mixed coordinator is a specialized QF_UFLRA path inside `solve_qf_uflra_engine_impl`, not a generic `DPLL(T^M)` engine. |
+| Appendix A: Presentation of `DPLL(T^M)` | Gives the abstract transition system where the SAT/theory search state includes model information and model-based propagation/mutation rules. | **Implemented transition subset.** `ModelBasedCombinationCoordinator` represents typed component checks, entailed facts, model choices, compatible variants, fixed points, and stops after a satisfying SAT assignment. CaDiCaL still owns ordinary DPLL/CDCL transitions, and only experimental QF_UFLRA currently uses the generic scheduler in production. Persistent multi-theory state and the non-convex QF_UFLIA migration remain incomplete. |
 
 ## Current Primo Anchors
 
@@ -319,16 +319,16 @@ The relevant implemented pieces are documented and tested here:
 
 ## 2026-09-01 Modular Integration Record
 
-The new component boundary records the paper's model-guided direction without
-pretending that the generic transition system has landed. The mapping is:
+The component boundary and backend-neutral coordinator implement a typed subset
+of the paper's model-guided transition system. The mapping is:
 
 | Paper operation | Current generic representation | Missing generic operation |
 | --- | --- | --- |
-| Component candidate model | `TheoryCheckResult::model`, containing shared equality classes, guarded by `TheoryProperties::produces_model_projection` | A model generation/version tied to one SAT assignment, plus theory-private model ownership |
-| `M-Propagate` | General learned SAT clauses and the `propagates_equalities` capability | A typed distinction between entailed propagation and a model choice, with a theory-independent scheduler |
-| `M-Mutate` | Specialized `LraTableau::diversify_shared_model()` used by QF_UFLRA | A component operation that accepts required interface relations, returns a new compatible projection or a typed failure, and preserves explanations |
-| Care restriction | `supplies_care_pairs` capability | A typed care-pair query and invalidation rules |
-| Backtracking | Owned by SAT and the SMT coordinator | Trail-synchronized invalidation or reconstruction of generic component models |
+| Component candidate model | `TheoryCheckResult::model`, with an opaque component/assignment/revision token and per-sort shared equality classes | Persistent theory-private model ownership across SAT transitions |
+| `M-Propagate` | `EntailedLiteral` for justified propagation and `TheoryDecisionRequest` for a model choice; the generic scheduler preserves the distinction | Additional production component adapters |
+| `M-Mutate` | `TheorySolver::mutate`, accepting required relations and returning a changed compatible projection, fixed point, or typed stop | Persistent component implementations beyond the experimental QF_UFLRA adapter |
+| Care restriction | `TheorySolver::care_pairs`, prioritized without constructing all shared pairs | Invalidation rules for long-lived component models |
+| Backtracking | Owned by SAT and the SMT coordinator; assignment epochs reject stale projections | Trail-synchronized reuse rather than round-local reconstruction |
 
 Any future generic model-guided coordinator must preserve three separate kinds
 of information:
@@ -378,9 +378,13 @@ The transition contracts are:
   a positive decision to $L$. A candidate-model equality is never learned as a
   theorem merely because it appears in one model.
 - **Model mutation** receives required interface relations and a snapshot
-  token. It returns either a strictly finer compatible projection or a typed
-  fixed point. A result with the wrong assignment epoch is stale; a mutation
-  that merges a required disequality is invalid.
+  token. Figure 1 permits any compatible model variant; Section 4 recommends a
+  model with no fewer equivalence classes as a diversity optimization, not as a
+  correctness premise. The generic validator therefore requires a newer,
+  changed projection compatible with the arrangement and requested relations,
+  or a typed fixed point. A result with the wrong assignment epoch is stale;
+  a mutation that merges a required disequality is invalid. One mutation call
+  per component per reconciliation bounds round-local cycling.
 - **Non-convex splitting** lets a component request a fresh SAT-visible theory
   decision. LIA therefore cannot be treated as convex and must retain a
   complete arrangement fallback while model guidance is experimental.
@@ -473,11 +477,14 @@ Counters and tests:
 
 Deviations and limitations:
 
-- No generic `DPLL(T^M)` state carries per-theory model objects yet.
+- The generic state carries opaque per-theory snapshot identities and projected
+  equality classes, not the private theory model objects themselves.
 - `M-Propagate` exists only for the convex EUF+rational-LRA shared-Real subset.
-- The LRA mutation is not a generic `M-Mutate` transition; it does, however,
-  supply the accepted arithmetic model for this QF_UFLRA profile.
-- No EUF or non-LRA theory model implements a mutator yet.
+- The experimental QF_UFLRA adapter exposes its checked projections through the
+  generic transition contract. Its EUF mutation callback reuses the established
+  checkpointed compatibility merge rather than implementing a new EUF model
+  generator.
+- No non-LRA arithmetic theory model implements a production mutator yet.
 - No completeness claim changes. The supported behavior remains the documented
   convex QF_UFLRA path plus opt-in model-guided profiles.
 

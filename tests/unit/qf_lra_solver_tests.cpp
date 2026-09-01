@@ -2265,6 +2265,33 @@ void qf_uf_lra_shared_model_absorbs_mergeable_lra_equality_without_sat_atom() {
   assert(result.statistics.get(":no.interface.lra-model-filter-physical-pairs") == 0);
 }
 
+void qf_uf_lra_generic_model_coordinator_preserves_convex_merge() {
+  CheckSatOptions options = no_preprocessing_or_substitution();
+  options.qf_uflra_model_reconciliation = true;
+  options.experimental_generic_model_combination = true;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLRA)
+    (declare-fun x () Real)
+    (declare-fun y () Real)
+    (declare-fun p (Real) Bool)
+    (declare-fun q (Real) Bool)
+    (assert (<= x y))
+    (assert (<= y x))
+    (assert (p x))
+    (assert (q y))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":combination.model.enabled") == 1);
+  assert(result.statistics.get(":combination.model.component-checks") == 2);
+  assert(result.statistics.get(":combination.model.snapshots") == 2);
+  assert(result.statistics.get(":combination.model.mutations") == 0);
+  assert(result.statistics.get(":combination.model.decisions") == 0);
+  assert(result.statistics.get(":no.shared-model.internal-euf-merges") >= 1);
+  assert(result.statistics.get(":no.interface.sat-equality-atoms") == 0);
+}
+
 void qf_uf_lra_shared_model_mutation_removes_accidental_value_equality() {
   CheckSatOptions options = no_preprocessing_or_substitution();
   options.qf_uflra_model_reconciliation = true;
@@ -4837,6 +4864,7 @@ int main() {
   qf_uf_lra_uses_full_shared_pairs_for_lra_to_euf_propagation();
   qf_uf_lra_model_reconstruction_handles_forced_mergeable_lra_equalities();
   qf_uf_lra_shared_model_absorbs_mergeable_lra_equality_without_sat_atom();
+  qf_uf_lra_generic_model_coordinator_preserves_convex_merge();
   qf_uf_lra_shared_model_mutation_removes_accidental_value_equality();
   qf_uf_lra_shared_model_mutation_can_use_strict_care_scope();
   qf_uf_lra_shared_model_mutation_skips_empty_care_scope();

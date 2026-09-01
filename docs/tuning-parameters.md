@@ -68,6 +68,7 @@ precondition without which the option does nothing.
 | `--no-qf-uflra-fixed-elimination` | mixed elimination on | mixed QF_UFLRA | ablation of the mixed-only default that exposes `EqRow`; pure QF_LRA remains off |
 | `--qf-uflra-lra-equality-producer` | `legacy` | mixed QF_UFLRA | `model-unit` selects the CAV 2024 current-model-filtered unit-row producer; `adaptive` runs legacy until a producer round causes no SAT recheck, then model-unit rounds, and returns permanently to legacy when reconciliation still needs a SAT split after model-unit was attempted; both are evaluated, default-off experimental profiles because adaptive preserves the solved set but saves little producer time |
 | `--no-qf-uflra-model-reconciliation` | reconciliation on | mixed QF_UFLRA | ablation of the default convex shared-model path; restores explained exact equality sharing |
+| `--experimental-generic-model-combination` | off | mixed QF_UFLRA model reconciliation | routes checked EUF/LRA projections and model-choice batches through the backend-neutral sequential coordinator; keeps the established specialized scheduler as the default during parity evaluation |
 | `--lra-propagation` | on | — | the root of the propagation chain |
 | `--lra-row-propagation` | off | **`--lra-propagation`** | |
 | `--lra-bidirectional-row-propagation` | off | **`--lra-row-propagation`** (hence `--lra-propagation` too) | |

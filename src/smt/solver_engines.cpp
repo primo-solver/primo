@@ -36,6 +36,7 @@
 #include "smt/formula_analysis.hpp"
 #include "smt/frontend.hpp"
 #include "smt/inconclusive_reason.hpp"
+#include "smt/model_based_combination.hpp"
 #include "smt/model_builder.hpp"
 #include "smt/model_reconstruction.hpp"
 #include "smt/preprocessing_tactics.hpp"
@@ -5656,6 +5657,132 @@ SharedModelReconciliationResult reconcile_lra_candidate_with_euf(const FlatEufMo
       .compatible = true, .requires_exact_fallback = false, .split_pairs = {}};
 }
 
+class CheckedProjectionComponent final : public theory::TheorySolver {
+ public:
+  using MutationFunction =
+      std::function<theory::TheoryMutationResult(const theory::TheoryMutationRequest&)>;
+
+  CheckedProjectionComponent(std::string_view id, core::SortId shared_sort,
+                             theory::Convexity convexity, theory::TheoryModelProjection projection,
+                             std::vector<theory::InterfacePair> care_pairs = {},
+                             MutationFunction mutation = {})
+      : properties_{.id = id,
+                    .shared_sorts = {shared_sort},
+                    .stably_infinite = theory::StableInfiniteness::Yes,
+                    .convexity = convexity,
+                    .produces_model_projection = true,
+                    .propagates_equalities = false,
+                    .supplies_care_pairs = !care_pairs.empty()},
+        projection_(std::move(projection)),
+        care_pairs_(std::move(care_pairs)),
+        mutation_(std::move(mutation)) {}
+
+  const theory::TheoryProperties& properties() const override { return properties_; }
+
+  theory::TheoryCheckResult check(std::span<const theory::AssignedTheoryLiteral>,
+                                  std::span<const theory::InterfaceRelation>) override {
+    theory::TheoryCheckResult result;
+    result.status = theory::TheoryCheckStatus::Consistent;
+    result.model = projection_;
+    return result;
+  }
+
+  std::vector<theory::InterfacePair> care_pairs(
+      const theory::TheoryModelToken& token) const override {
+    if (token != projection_.token) {
+      return {};
+    }
+    return care_pairs_;
+  }
+
+  theory::TheoryMutationResult mutate(const theory::TheoryMutationRequest& request) override {
+    if (!mutation_) {
+      return theory::TheoryMutationResult{};
+    }
+    return mutation_(request);
+  }
+
+ private:
+  theory::TheoryProperties properties_;
+  theory::TheoryModelProjection projection_;
+  std::vector<theory::InterfacePair> care_pairs_;
+  MutationFunction mutation_;
+};
+
+std::optional<theory::TheoryModelProjection> project_euf_shared_model(
+    const FlatEufModelView& euf, const std::vector<core::TermId>& shared_terms,
+    core::SortId shared_sort, std::uint64_t assignment_epoch, std::uint64_t revision = 1) {
+  std::unordered_map<theory::equality::FlatTermId, std::vector<core::TermId>> terms_by_flat;
+  std::vector<theory::equality::FlatTermId> flat_terms;
+  terms_by_flat.reserve(shared_terms.size());
+  flat_terms.reserve(shared_terms.size());
+  for (const core::TermId term : shared_terms) {
+    const std::optional<theory::equality::FlatTermId> flat = euf.flat.existing_flat_term(term);
+    if (!flat.has_value()) {
+      return std::nullopt;
+    }
+    auto [entry, inserted] = terms_by_flat.try_emplace(flat.value());
+    entry->second.push_back(term);
+    if (inserted) {
+      flat_terms.push_back(flat.value());
+    }
+  }
+  std::sort(flat_terms.begin(), flat_terms.end());
+  std::vector<theory::SharedModelClass> classes;
+  for (const std::vector<theory::equality::FlatTermId>& flat_class :
+       euf.closure.equivalence_classes(flat_terms)) {
+    theory::SharedModelClass model_class;
+    for (const theory::equality::FlatTermId flat : flat_class) {
+      const std::vector<core::TermId>& terms = terms_by_flat.at(flat);
+      model_class.terms.insert(model_class.terms.end(), terms.begin(), terms.end());
+    }
+    std::sort(model_class.terms.begin(), model_class.terms.end());
+    classes.push_back(std::move(model_class));
+  }
+  std::sort(classes.begin(), classes.end(),
+            [](const auto& lhs, const auto& rhs) { return lhs.terms < rhs.terms; });
+  return theory::TheoryModelProjection{
+      .token = {.component = "euf", .assignment_epoch = assignment_epoch, .revision = revision},
+      .partitions = {{.sort = shared_sort, .equality_classes = std::move(classes)}}};
+}
+
+theory::TheoryModelProjection project_lra_shared_model(const LraModelEqualPartition& partition,
+                                                       core::SortId shared_sort,
+                                                       std::uint64_t assignment_epoch) {
+  std::vector<theory::SharedModelClass> classes;
+  std::unordered_set<core::TermId> classified;
+  classes.reserve(partition.classes.size() + partition.shared_terms.size());
+  for (const std::vector<core::TermId>& equal_class : partition.classes) {
+    classes.push_back(theory::SharedModelClass{.terms = equal_class});
+    classified.insert(equal_class.begin(), equal_class.end());
+  }
+  for (const core::TermId term : partition.shared_terms) {
+    if (!classified.contains(term)) {
+      classes.push_back(theory::SharedModelClass{.terms = {term}});
+    }
+  }
+  std::sort(classes.begin(), classes.end(),
+            [](const auto& lhs, const auto& rhs) { return lhs.terms < rhs.terms; });
+  return theory::TheoryModelProjection{
+      .token = {.component = "lra", .assignment_epoch = assignment_epoch, .revision = 1},
+      .partitions = {{.sort = shared_sort, .equality_classes = std::move(classes)}}};
+}
+
+void publish_model_based_combination_statistics(const ModelBasedCombinationStatistics& source,
+                                                util::Statistics& statistics) {
+  statistics.set(":combination.model.component-checks", source.component_checks);
+  statistics.set(":combination.model.snapshots", source.snapshots);
+  statistics.set(":combination.model.mutations", source.mutations);
+  statistics.set(":combination.model.fixed-points", source.fixed_points);
+  statistics.set(":combination.model.care-pairs", source.care_pairs);
+  statistics.set(":combination.model.disagreements", source.disagreements);
+  statistics.set(":combination.model.learned-clauses", source.learned_clauses);
+  statistics.set(":combination.model.decisions", source.model_decisions);
+  statistics.set(":combination.model.fresh-decisions", source.fresh_decisions);
+  statistics.set(":combination.model.stale-snapshots", source.stale_snapshots);
+  statistics.set(":combination.model.rejected-mutations", source.rejected_mutations);
+}
+
 bool equality_list_contains_pair(const core::TermManager& terms,
                                  const std::vector<core::TermId>& equalities, core::TermId lhs,
                                  core::TermId rhs) {
@@ -9928,6 +10055,8 @@ CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
   statistics.set(":no.interface.lra-to-euf-internal-model-equalities", 0);
   statistics.set(":no.interface.lra-to-euf-skip-model-reconstruction-fallbacks", 0);
   statistics.set(":no.shared-model.enabled", options.qf_uflra_model_reconciliation ? 1 : 0);
+  statistics.set(":combination.model.enabled",
+                 options.experimental_generic_model_combination ? 1 : 0);
   statistics.set(":no.shared-model.rounds", 0);
   statistics.set(":no.shared-model.iterations", 0);
   statistics.set(":no.shared-model.lra-value-classes", 0);
@@ -10201,6 +10330,8 @@ CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
 
   MixedLraModelEpoch lra_model_epoch;
   MixedEufCareEpoch euf_care_epoch;
+  ModelBasedCombinationCoordinator generic_model_coordinator;
+  std::uint64_t generic_assignment_epoch = 0;
   while (true) {
     statistics.increment(kStatSatSolveCalls);
 #if PRIMO_HAVE_IPASIR
@@ -10227,6 +10358,7 @@ CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
     if (sat_result != sat::SatResult::Sat) {
       return CheckSatOutcome{map_sat_result(sat_result), "", statistics, ""};
     }
+    ++generic_assignment_epoch;
     no_manager.invalidate_shared_model();
     if (options.qf_uflra_model_reconciliation) {
       no_manager.begin_shared_model_round();
@@ -10637,8 +10769,128 @@ CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
           shared_model_exact_fallback = true;
           statistics.increment(":no.shared-model.exact-fallbacks");
         } else {
-          const SharedModelReconciliationResult reconciliation =
-              reconcile_lra_candidate_with_euf(euf_model.value(), no_manager, statistics);
+          SharedModelReconciliationResult reconciliation;
+          if (options.experimental_generic_model_combination) {
+            const core::SortId real_sort = terms.symbols().real_sort();
+            const std::optional<theory::TheoryModelProjection> euf_projection =
+                project_euf_shared_model(euf_model.value(), shared_real_terms, real_sort,
+                                         generic_assignment_epoch);
+            if (!euf_projection.has_value()) {
+              reconciliation.requires_exact_fallback = true;
+            } else {
+              CheckedProjectionComponent lra_component(
+                  "lra", real_sort, theory::Convexity::Convex,
+                  project_lra_shared_model(lra_model_partition.value(), real_sort,
+                                           generic_assignment_epoch));
+              CheckedProjectionComponent euf_component(
+                  "euf", real_sort, theory::Convexity::Convex, euf_projection.value(), {},
+                  [&](const theory::TheoryMutationRequest& request) {
+                    const SharedModelReconciliationResult mutation =
+                        reconcile_lra_candidate_with_euf(euf_model.value(), no_manager, statistics);
+                    if (!mutation.compatible) {
+                      theory::TheoryMutationResult result;
+                      result.candidate_decisions.reserve(mutation.split_pairs.size());
+                      for (const TermPairKey& pair : mutation.split_pairs) {
+                        result.candidate_decisions.push_back(theory::TheoryDecisionRequest{
+                            .pair = {.lhs = pair.lhs, .rhs = pair.rhs, .sort = real_sort},
+                            .preferred_value = theory::InterfaceRelationValue::Equal,
+                            .reasons = {}});
+                      }
+                      return result;
+                    }
+                    const std::optional<theory::TheoryModelProjection> projection =
+                        project_euf_shared_model(euf_model.value(), shared_real_terms, real_sort,
+                                                 generic_assignment_epoch,
+                                                 request.source.revision + 1);
+                    if (!projection.has_value()) {
+                      return theory::TheoryMutationResult{
+                          .status = theory::TheoryMutationStatus::Unknown,
+                          .model = {},
+                          .candidate_decisions = {},
+                          .diagnostic = "EUF mutation lost a shared model term"};
+                    }
+                    return theory::TheoryMutationResult{
+                        .status = theory::TheoryMutationStatus::Mutated,
+                        .model = projection.value(),
+                        .candidate_decisions = {},
+                        .diagnostic = {}};
+                  });
+              const std::vector<ModelBasedComponentRound> components{
+                  {.solver = &lra_component, .assignment = {}},
+                  {.solver = &euf_component, .assignment = {}}};
+              std::vector<theory::InterfaceRelation> arrangement;
+              arrangement.reserve(true_interface_equalities.size() +
+                                  false_interface_equalities.size());
+              const auto append_relation = [&arrangement, real_sort](
+                                               const InterfaceEqualityRegistryEntry& equality,
+                                               theory::InterfaceRelationValue value) {
+                arrangement.push_back(theory::InterfaceRelation{.lhs = equality.lhs,
+                                                                .rhs = equality.rhs,
+                                                                .sort = real_sort,
+                                                                .equality_lit = equality.lit,
+                                                                .value = value});
+              };
+              for (const InterfaceEqualityRegistryEntry& equality : true_interface_equalities) {
+                append_relation(equality, theory::InterfaceRelationValue::Equal);
+              }
+              for (const InterfaceEqualityRegistryEntry& equality : false_interface_equalities) {
+                append_relation(equality, theory::InterfaceRelationValue::Disequal);
+              }
+              const std::vector shared_terms{
+                  SharedInterfaceTerms{.sort = real_sort, .terms = shared_real_terms}};
+              const ModelBasedCombinationResult generic_result =
+                  generic_model_coordinator.reconcile(
+                      generic_assignment_epoch, components, arrangement, shared_terms,
+                      [&](const theory::InterfacePair& pair) {
+                        return materialize_shared_model_split(
+                            terms, clausifier, backend, no_manager,
+                            canonical_term_pair(pair.lhs, pair.rhs), statistics);
+                      });
+              publish_model_based_combination_statistics(generic_model_coordinator.statistics(),
+                                                         statistics);
+              switch (generic_result.status) {
+                case ModelBasedCombinationStatus::Accept:
+                  reconciliation.compatible = true;
+                  break;
+                case ModelBasedCombinationStatus::DecideEquality:
+                  for (const sat::Lit decision : generic_result.decision_lits) {
+                    model_equality_arrangement.enqueue_pending_branch(decision, statistics);
+                  }
+                  if (options.qf_uflra_lra_equality_producer ==
+                          QfUflraLraEqualityProducer::Adaptive &&
+                      adaptive_model_unit_attempted && !adaptive_legacy_equality_producer) {
+                    adaptive_legacy_equality_producer = true;
+                    statistics.increment(":no.interface.lra-adaptive-fallback-activations");
+                  }
+                  publish_sat_stats(backend.statistics(), statistics);
+                  continue;
+                case ModelBasedCombinationStatus::LearnClause:
+                  if (generic_result.clause.empty()) {
+                    return CheckSatOutcome{CheckSatResult::Unsat, "", statistics, ""};
+                  }
+                  backend.add_clause(generic_result.clause);
+                  publish_sat_stats(backend.statistics(), statistics);
+                  continue;
+                case ModelBasedCombinationStatus::Cancelled:
+                  return CheckSatOutcome{CheckSatResult::Unknown, "cancelled", statistics, "",
+                                         InconclusiveReason::Cancelled};
+                case ModelBasedCombinationStatus::ResourceLimit:
+                  return CheckSatOutcome{CheckSatResult::Unknown, generic_result.diagnostic,
+                                         statistics, "", InconclusiveReason::ResourceLimit};
+                case ModelBasedCombinationStatus::Unsupported:
+                  return CheckSatOutcome{CheckSatResult::Unsupported, generic_result.diagnostic,
+                                         statistics, "", InconclusiveReason::Unsupported};
+                case ModelBasedCombinationStatus::Unknown:
+                  return CheckSatOutcome{CheckSatResult::Unknown, generic_result.diagnostic,
+                                         statistics, "", InconclusiveReason::Unknown};
+                case ModelBasedCombinationStatus::FreshDecision:
+                  throw std::logic_error("convex QF_UFLRA component requested a fresh split");
+              }
+            }
+          } else {
+            reconciliation =
+                reconcile_lra_candidate_with_euf(euf_model.value(), no_manager, statistics);
+          }
           shared_model_exact_fallback = reconciliation.requires_exact_fallback;
           if (shared_model_exact_fallback) {
             statistics.increment(":no.shared-model.exact-fallbacks");
