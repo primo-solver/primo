@@ -250,6 +250,13 @@ For a paired model-guidance experiment, repeat the command with
 as the completeness/control arm and compare both against Z3 or cvc5; satisfiable
 Primo rows must be replayed with `scripts/validate_model.py` and Dolmen.
 
+The merge-grade generated gate is
+`scripts/slurm_qf_uflia_model_fuzz_gate.sbatch`. Its four default shards produce
+3,000 QF_UFLIA cases, compare answers with Z3, and require direct Dolmen
+validation for every satisfiable Primo result. Set
+`PRIMO_FUZZ_SOLVER_ARGS=--experimental-qf-uflia-model-combination` to exercise
+the model-guided route.
+
 These corpus cases are an evaluation gate, not part of `make check`: several
 are intentionally beyond Primo's current short-timeout performance. For cases
 without a declared status, an evaluation must establish the expected answer by
