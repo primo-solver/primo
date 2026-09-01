@@ -9069,11 +9069,17 @@ class EufComponentAdapter final : public theory::TheorySolver {
       return theory::TheoryCheckResult{.status = theory::TheoryCheckStatus::LearnedClause,
                                        .clause = conflict.value(),
                                        .model = {},
+                                       .entailed_lit = {},
+                                       .reasons = {},
+                                       .decision = {},
                                        .diagnostic = {}};
     }
     return theory::TheoryCheckResult{.status = theory::TheoryCheckStatus::Consistent,
                                      .clause = {},
                                      .model = {},
+                                     .entailed_lit = {},
+                                     .reasons = {},
+                                     .decision = {},
                                      .diagnostic = {}};
   }
 
@@ -9134,16 +9140,25 @@ class LiaComponentAdapter final : public theory::TheorySolver {
         return theory::TheoryCheckResult{.status = theory::TheoryCheckStatus::Consistent,
                                          .clause = {},
                                          .model = {},
+                                         .entailed_lit = {},
+                                         .reasons = {},
+                                         .decision = {},
                                          .diagnostic = {}};
       case LiaComponentCheck::Status::Unsat:
         return theory::TheoryCheckResult{.status = theory::TheoryCheckStatus::LearnedClause,
                                          .clause = std::move(result.conflict),
                                          .model = {},
+                                         .entailed_lit = {},
+                                         .reasons = {},
+                                         .decision = {},
                                          .diagnostic = {}};
       case LiaComponentCheck::Status::ResourceLimit:
         return theory::TheoryCheckResult{.status = theory::TheoryCheckStatus::ResourceLimit,
                                          .clause = {},
                                          .model = {},
+                                         .entailed_lit = {},
+                                         .reasons = {},
+                                         .decision = {},
                                          .diagnostic = "integer branch-and-bound node limit"};
     }
     throw std::logic_error("unreachable LIA component status");

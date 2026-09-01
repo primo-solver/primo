@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <span>
 #include <string>
 #include <string_view>
@@ -62,13 +63,45 @@ struct SharedModelClass {
   std::vector<core::TermId> terms;
 };
 
-struct TheoryModelProjection {
+// Opaque freshness stamp for a theory-private model.  The SMT coordinator may
+// compare and validate this stamp but never dereferences the component model.
+struct TheoryModelToken {
+  std::string component;
+  std::uint64_t assignment_epoch = 0;
+  std::uint64_t revision = 0;
+
+  bool operator==(const TheoryModelToken&) const = default;
+};
+
+struct SharedModelPartition {
+  core::SortId sort = core::kInvalidSortId;
   std::vector<SharedModelClass> equality_classes;
+};
+
+struct TheoryModelProjection {
+  TheoryModelToken token;
+  std::vector<SharedModelPartition> partitions;
+};
+
+struct InterfacePair {
+  core::TermId lhs = core::kInvalidTermId;
+  core::TermId rhs = core::kInvalidTermId;
+  core::SortId sort = core::kInvalidSortId;
+
+  bool operator==(const InterfacePair&) const = default;
+};
+
+struct TheoryDecisionRequest {
+  InterfacePair pair;
+  InterfaceRelationValue preferred_value = InterfaceRelationValue::Equal;
+  std::vector<sat::Lit> reasons;
 };
 
 enum class TheoryCheckStatus {
   Consistent,
   LearnedClause,
+  EntailedLiteral,
+  FreshDecision,
   ResourceLimit,
   Unsupported,
   Cancelled,
@@ -81,6 +114,29 @@ enum class TheoryCheckStatus {
 struct TheoryCheckResult {
   TheoryCheckStatus status = TheoryCheckStatus::Unknown;
   sat::Clause clause;
+  TheoryModelProjection model;
+  sat::Lit entailed_lit;
+  std::vector<sat::Lit> reasons;
+  TheoryDecisionRequest decision;
+  std::string diagnostic;
+};
+
+struct TheoryMutationRequest {
+  TheoryModelToken source;
+  std::vector<InterfaceRelation> required_relations;
+};
+
+enum class TheoryMutationStatus {
+  Mutated,
+  FixedPoint,
+  ResourceLimit,
+  Unsupported,
+  Cancelled,
+  Unknown,
+};
+
+struct TheoryMutationResult {
+  TheoryMutationStatus status = TheoryMutationStatus::FixedPoint;
   TheoryModelProjection model;
   std::string diagnostic;
 };
@@ -95,6 +151,12 @@ class TheorySolver {
   [[nodiscard]] virtual const TheoryProperties& properties() const = 0;
   [[nodiscard]] virtual TheoryCheckResult check(std::span<const AssignedTheoryLiteral> assignment,
                                                 std::span<const InterfaceRelation> arrangement) = 0;
+  [[nodiscard]] virtual TheoryMutationResult mutate(const TheoryMutationRequest&) {
+    return TheoryMutationResult{};
+  }
+  [[nodiscard]] virtual std::vector<InterfacePair> care_pairs(const TheoryModelToken&) const {
+    return {};
+  }
 };
 
 }  // namespace primo::theory

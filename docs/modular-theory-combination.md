@@ -32,9 +32,18 @@ system.
 `TheoryProperties` declares the component identifier, shared sorts, stable
 infiniteness, convexity, and optional model/equality/care capabilities. A check
 receives only literals owned by that component and an SMT-owned interface
-arrangement. It returns consistency, an explained SAT clause, or a typed stop.
-The component has no SAT-backend handle and cannot inspect another component's
-private closure, tableau, or model.
+arrangement. It returns consistency, an explained SAT clause or literal, a
+fresh non-convex decision request, or a typed stop. A successful check may
+include a `TheoryModelProjection`: an opaque `TheoryModelToken`, containing the
+component identity, SAT-assignment epoch, and model revision, plus equality
+partitions grouped by shared sort. The component has no SAT-backend handle and
+cannot inspect another component's private closure, tableau, or model.
+
+`TheorySolver::mutate` accepts a source token and required interface relations.
+It returns a newer compatible projection, a typed fixed point, or a typed stop.
+`TheorySolver::care_pairs` optionally identifies the pairs most relevant to the
+component. Default implementations report a mutation fixed point and no care
+pairs, so components opt into these operations explicitly.
 
 The SMT coordinator owns purification, atom ownership, interface discovery,
 equality materialization, SAT scheduling, and combined-model construction.
@@ -77,7 +86,7 @@ component before sparse care-set or model-guided optimizations are attempted.
 exchange, exact fallback, model mutation, reconciliation, and model builder
 remain in its specialized coordinator.
 
-## Recorded model-guided direction
+## Model-guided transition layer
 
 The intended optimization path is de Moura and Bjorner's model-based theory
 combination, not convex propagation applied to integers. A component may expose
@@ -87,11 +96,24 @@ or ask a component to mutate its model before committing to a split. A
 candidate-model equality remains a search choice; only an explained theory
 consequence may be learned as an entailed clause.
 
-The generic protocol already records whether a component produces a model
-projection, and `TheoryCheckResult` has an equality-class projection. It does
-not yet define generic `M-Propagate`, `M-Mutate`, model generations, or
-trail-synchronized model invalidation. Those operations and their ownership
-checklist are recorded in [](papers/model-based-theory-combination.md).
+`smt::ModelBasedCombinationCoordinator` implements the backend-neutral
+transition after one satisfying SAT assignment. It checks each component,
+validates snapshot identity, epoch, completeness, and compatibility with the
+current arrangement, asks an over-merged component to split its projection,
+and compares the resulting partitions. Care pairs are considered first. If a
+disagreement remains, the coordinator returns one positive equality decision;
+the caller creates or resolves its SAT literal and re-enters CaDiCaL. Entailed
+literals are converted to explained clauses, while general non-convex clauses,
+fresh decisions, cancellation, resource limits, unsupported cases, and unknown
+results remain distinct typed actions. Exceptions are not converted into
+solver answers.
+
+The coordinator owns no SAT backend and no theory-private model. Its caller
+owns assignment-epoch advancement, dynamic equality registration, assumptions,
+failed-assumption clauses, and re-entry into CaDiCaL. Thus ordinary Appendix A
+DPLL operations remain delegated to the production CDCL backend. The detailed
+ownership and transition checklist is recorded in
+[](papers/model-based-theory-combination.md).
 
 For QF_UFLIA, model guidance may eventually order or reduce the practical cost
 of arrangement search, but it cannot rely on the convex rule that an implied
@@ -115,16 +137,25 @@ uses memoized Int proxies in both directions. Models combine the final integer
 tableau values with the ground EUF function and predicate tables, then replay
 the ordered preprocessing reconstruction chain.
 
-The coordinator is sequential and currently instantiates EUF plus LIA only.
+The existing production coordinator is sequential and currently instantiates
+EUF plus LIA only.
 `QF_UFLRA` retains its established specialized convex coordinator, options,
 counters, and model behavior. Its EUF and arithmetic implementations supply the
 same operations represented by the component protocol, but the specialized
 scheduler is deliberately not routed through the new adapter in this baseline;
-doing so later requires a separate equivalence evaluation. Arrays, bit-vectors,
-nonlinear arithmetic, finite shared sorts, quantifiers, and the full
-`DPLL(T^M)` transition system remain unsupported.
+doing so later requires a separate equivalence evaluation. The generic
+transition class is not yet selected by a production solver leaf. It currently
+assumes that every supplied shared pair belongs to every participating
+component; multi-way combinations with partially overlapping sort interfaces
+remain future work. Arrays, bit-vectors, nonlinear arithmetic, finite shared
+sorts, and quantifiers remain unsupported.
 
-Protocol tests use mock convex and non-convex components. QF_UFLIA solver tests
+Protocol tests use scripted convex and non-convex components. They cover stale
+and incomplete snapshots, valid and rejected mutation, care-pair ordering,
+candidate equality decisions, explained propagation, non-convex decisions and
+clauses, cancellation, and escaping component exceptions. These scripts do not
+replace a SAT solver or validate CDCL behavior; production migration tests use
+CaDiCaL. QF_UFLIA solver tests
 cover purification, complete arrangements, the non-convex disjunction case,
 combined models, empty formulas, and frontend sort rejection. Smoke models are
 validated directly by Dolmen. On implementation commit `4b0ad55`, a local
