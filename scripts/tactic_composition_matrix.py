@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any
 
 ANSWERS = {"sat", "unsat", "unknown"}
-LOGICS = {"QF_UF", "QF_LRA", "QF_UFLRA", "QF_LIA"}
+LOGICS = {"QF_UF", "QF_LRA", "QF_UFLRA", "QF_LIA", "QF_UFLIA"}
 FAILURE_OUTCOMES = {
     "answer-mismatch",
     "crash",

@@ -3,13 +3,13 @@
     {
       "id": "default",
       "args": [],
-      "logics": ["QF_UF", "QF_LRA", "QF_UFLRA", "QF_LIA"],
+      "logics": ["QF_UF", "QF_LRA", "QF_UFLRA", "QF_LIA", "QF_UFLIA"],
       "required_stats": [":tactic.preprocessing-profile.invocations"]
     },
     {
       "id": "off",
       "args": ["--preprocessing-mode=off"],
-      "logics": ["QF_UF", "QF_LRA", "QF_UFLRA", "QF_LIA"],
+      "logics": ["QF_UF", "QF_LRA", "QF_UFLRA", "QF_LIA", "QF_UFLIA"],
       "required_stats": [":tactic.preprocessing-profile.invocations"]
     },
     {
@@ -19,7 +19,7 @@
         "--preprocessing-passes=1",
         "--preprocessing-adaptive-extra-passes=0"
       ],
-      "logics": ["QF_UF", "QF_LRA", "QF_UFLRA", "QF_LIA"],
+      "logics": ["QF_UF", "QF_LRA", "QF_UFLRA", "QF_LIA", "QF_UFLIA"],
       "required_stats": [":tactic.preprocessing-profile.invocations"],
       "required_observed_stats_by_logic": {
         "QF_UF": [":tactic.preprocessing-round.invocations"],
@@ -34,7 +34,7 @@
         "--preprocessing-passes=4",
         "--preprocessing-adaptive-extra-passes=0"
       ],
-      "logics": ["QF_UF", "QF_LRA", "QF_UFLRA", "QF_LIA"],
+      "logics": ["QF_UF", "QF_LRA", "QF_UFLRA", "QF_LIA", "QF_UFLIA"],
       "required_stats": [":tactic.preprocessing-profile.invocations"],
       "required_observed_stats_by_logic": {
         "QF_UF": [":tactic.preprocessing-round.invocations"],
@@ -50,7 +50,7 @@
         "--preprocessing-adaptive-extra-passes=2",
         "--preprocessing-adaptive-shrink-percent=10"
       ],
-      "logics": ["QF_UF", "QF_LRA", "QF_UFLRA", "QF_LIA"],
+      "logics": ["QF_UF", "QF_LRA", "QF_UFLRA", "QF_LIA", "QF_UFLIA"],
       "required_stats": [":tactic.preprocessing-profile.invocations"],
       "required_observed_stats_by_logic": {
         "QF_UF": [
@@ -108,13 +108,17 @@
     {
       "id": "split-1",
       "args": ["--experimental-split-bools=1"],
-      "logics": ["QF_UF", "QF_UFLRA"],
+      "logics": ["QF_UF", "QF_UFLRA", "QF_UFLIA"],
       "required_observed_stats_by_logic": {
         "QF_UF": [
           ":tactic.experimental-split-bools.invocations",
           ":experimental.split-bools.output-goals"
         ],
         "QF_UFLRA": [
+          ":tactic.experimental-split-bools.invocations",
+          ":experimental.split-bools.output-goals"
+        ],
+        "QF_UFLIA": [
           ":tactic.experimental-split-bools.invocations",
           ":experimental.split-bools.output-goals"
         ]
@@ -123,13 +127,17 @@
     {
       "id": "strong-split-2",
       "args": ["--preprocessing-mode=strong", "--experimental-split-bools=2"],
-      "logics": ["QF_UF", "QF_UFLRA"],
+      "logics": ["QF_UF", "QF_UFLRA", "QF_UFLIA"],
       "required_observed_stats_by_logic": {
         "QF_UF": [
           ":tactic.experimental-split-bools.invocations",
           ":experimental.split-bools.output-goals"
         ],
         "QF_UFLRA": [
+          ":tactic.experimental-split-bools.invocations",
+          ":experimental.split-bools.output-goals"
+        ],
+        "QF_UFLIA": [
           ":tactic.experimental-split-bools.invocations",
           ":experimental.split-bools.output-goals"
         ]
@@ -180,6 +188,16 @@
     {
       "path": "benchmarks/smoke/qf_lia/unsat_integer_gap.smt2",
       "logic": "QF_LIA",
+      "expected": "unsat"
+    },
+    {
+      "path": "benchmarks/smoke/qf_uflia/sat_integer_uf_model.smt2",
+      "logic": "QF_UFLIA",
+      "expected": "sat"
+    },
+    {
+      "path": "benchmarks/smoke/qf_uflia/unsat_nonconvex_arrangement.smt2",
+      "logic": "QF_UFLIA",
       "expected": "unsat"
     }
   ]

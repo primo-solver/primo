@@ -3,7 +3,7 @@
 # logic generate 250 unique cases each, then run every profile applicable to
 # that logic. Every satisfiable profile/case pair is checked directly by Dolmen.
 #SBATCH --job-name=primo-tactic-matrix
-#SBATCH --array=0-15
+#SBATCH --array=0-19
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=3G
 #SBATCH --time=04:00:00
@@ -81,6 +81,14 @@ case "$logic_index" in
       --fuzzer-args '-ms 1 -Ms 4 -mv 1 -Mv 6 -mf 1 -mp 1 -ma 1 -Ma 4' \
       --out "$generator_out"
     find "$generator_out/generated" -type f -name '*.smt2' | sort > "$case_list"
+    ;;
+  4)
+    logic=QF_UFLIA
+    python3 scripts/qf_uflia_fuzz.py \
+      --solver "$SOLVER" --solver-arg=--quiet --ref "$Z3" --ref "$CVC5" \
+      --count "$COUNT" --seed "$seed" --timeout "$TIMEOUT" \
+      --shape mixed --out "$generator_out"
+    find "$generator_out/cases" -type f -name '*.smt2' | sort > "$case_list"
     ;;
   *)
     echo "task $TASK_ID has no logic mapping" >&2

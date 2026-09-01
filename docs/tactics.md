@@ -378,8 +378,8 @@ Run the complete local layer with:
 make tactic-composition-test
 ```
 
-`scripts/slurm_tactic_composition_matrix.sbatch` is the merge gate. Its sixteen
-array tasks generate four 250-case shards for each supported logic, then run
+`scripts/slurm_tactic_composition_matrix.sbatch` is the merge gate. Its twenty
+array tasks generate four 250-case shards for each of the five supported logics, then run
 every profile applicable to each of the resulting 1,000 unique formulas.
 Timeout and ordinary unknown results are counted as inconclusive; wrong
 answers, reference disagreements, crashes, malformed statistics, missing

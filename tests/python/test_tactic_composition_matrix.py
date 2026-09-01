@@ -19,6 +19,9 @@ SPEC.loader.exec_module(MODULE)
 
 
 class TacticCompositionMatrixTests(unittest.TestCase):
+    def test_qf_uflia_is_a_supported_matrix_logic(self) -> None:
+        self.assertIn("QF_UFLIA", MODULE.LOGICS)
+
     def write_executable(self, path: Path, body: str) -> None:
         path.write_text("#!/usr/bin/env python3\n" + body, encoding="utf-8")
         path.chmod(0o755)
