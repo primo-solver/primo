@@ -106,7 +106,16 @@ nonlinear arithmetic, finite shared sorts, quantifiers, and the full
 Protocol tests use mock convex and non-convex components. QF_UFLIA solver tests
 cover purification, complete arrangements, the non-convex disjunction case,
 combined models, empty formulas, and frontend sort rejection. Smoke models are
-validated directly by Dolmen.
+validated directly by Dolmen. On implementation commit `4b0ad55`, a local
+3,000-case generated QF_UFLIA campaign agreed with both Z3 and cvc5, with no
+timeouts, unsupported results, crashes, or frontend errors; Dolmen directly
+accepted all 1,686 satisfiable models. The tactic-composition matrix passed all
+174 runs across its five logics and eleven applicable profiles, including 28
+QF_UFLIA runs and the sequential Boolean-splitting profiles, without
+non-timing-statistic drift. A separate 1,000-case QF_UFLRA preservation run
+agreed with Z3 and Dolmen accepted all 597 satisfiable models. These are local
+correctness campaigns, not performance or SLURM evidence; their exact commands
+and temporary artifact paths are recorded in [](run-log.md).
 
 ## Statistics
 
