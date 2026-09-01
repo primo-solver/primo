@@ -29163,6 +29163,52 @@
       },
       "evidence_status": "local-current-exact-commit-provenance-check; supplements accepted SLURM job 130838",
       "outcome": "The metadata provenance fix is verified without changing solver or composition behavior."
+    },
+    {
+      "id": "2026-09-01-qfuf-boolean-fuzz-lint-smoke",
+      "started_at": "2026-09-01",
+      "recorded_at": "2026-09-01",
+      "kind": "fuzz-smoke",
+      "scope": "Post-lint-cleanup smoke check of the dedicated QF_UF Boolean-capacity generator, differential answers, and satisfiable-model validation.",
+      "commit": "4387cef7d0f4307d4b5c68e936592b257950f6b8",
+      "branch": "tactics",
+      "environment": {
+        "type": "local",
+        "host": "mikolas-ThinkPad-T14s-Gen-5",
+        "kernel": "Linux 7.0.0-30-generic x86_64",
+        "binary": "build/primo, embedded git 4387cef-dirty, Release, CaDiCaL cadical-3.0.0-7b99c07",
+        "reference": "Z3 5.0.0",
+        "model_validator": "Dolmen 0.10",
+        "slurm_job_id": null
+      },
+      "command": "python3 scripts/qf_uf_boolean_fuzz.py --solver ./build/primo --solver-arg=--quiet --ref contrib/local/bin/z3 --count 100 --seed 20260901 --timeout 5 --shape all --validate-models --dolmen /home/user/.opam/default/bin/dolmen --model-timeout 5 --out /tmp/primo-qfuf-lint-smoke-20260901",
+      "inputs": {
+        "generator": "scripts/qf_uf_boolean_fuzz.py",
+        "logic": "QF_UF",
+        "shape": "all",
+        "seed": 20260901,
+        "count": 100,
+        "timeout_seconds": 5
+      },
+      "results": {
+        "pass": 100,
+        "wrong_answer": 0,
+        "crash": 0,
+        "parser_or_type_error": 0,
+        "timeout": 0,
+        "unsupported": 0,
+        "reference_disagreement": 0,
+        "sat_models_validated_by_dolmen": 66,
+        "unsat_cases": 34,
+        "invalid_model": 0
+      },
+      "artifacts": {
+        "directory": "/tmp/primo-qfuf-lint-smoke-20260901",
+        "answer_summary": "/tmp/primo-qfuf-lint-smoke-20260901/summary.csv",
+        "model_summary": "/tmp/primo-qfuf-lint-smoke-20260901/model-validation/summary.csv"
+      },
+      "evidence_status": "local-smoke; uncommitted lint-only harness cleanup over solver commit 4387cef; temporary artifacts",
+      "outcome": "All 100 cases agreed with Z3, and Dolmen accepted every one of the 66 satisfiable models."
     }
   ]
 }

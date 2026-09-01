@@ -321,11 +321,11 @@ def build_term_pool(rng: random.Random, signatures, constants, depth: int):
         additions.extend(compound_terms(rng, pool))
         for result, term in additions:
             pool.setdefault(result, []).append(term)
-        for sort in pool:
+        for sort, terms in pool.items():
             # Keep the pool from exploding; retain a random slice so later
             # levels do not always build on the same few terms.
-            if len(pool[sort]) > 24:
-                pool[sort] = rng.sample(pool[sort], 24)
+            if len(terms) > 24:
+                pool[sort] = rng.sample(terms, 24)
     return pool
 
 
@@ -435,7 +435,11 @@ def random_case(rng: random.Random) -> tuple[str, list[str]]:
     # incoherent random case is a case about nothing.
     body_so_far = " ".join(assertions)
     bool_unary = [n for n, a, r in signatures if a == ["Bool"]]
-    connected = [n for n in bool_unary if re.search(r"\(%s b\d+" % n, body_so_far)]
+    connected = [
+        name
+        for name in bool_unary
+        if re.search(rf"\({re.escape(name)} b\d+", body_so_far)
+    ]
     candidates = connected or bool_unary
     if candidates and rng.randrange(2):
         f = rng.choice(candidates)
@@ -443,7 +447,7 @@ def random_case(rng: random.Random) -> tuple[str, list[str]]:
                                       f"(= ({f} true) ({f} false))"]))
         # And give the axiom something to bite on: compare that function at a
         # Bool constant against its value at a constant.
-        applied = re.findall(r"\(%s (b\d+)\)" % f, body_so_far)
+        applied = re.findall(rf"\({re.escape(f)} (b\d+)\)", body_so_far)
         if applied and rng.randrange(2):
             arg = rng.choice(applied)
             other = rng.choice(["true", "false"])
