@@ -29045,6 +29045,124 @@
       },
       "evidence_status": "local-current-deterministic-composition-gate; exact harness commit; artifacts are reproducible local-only outputs; merge-grade generated SLURM matrix remains pending",
       "outcome": "All legal production compositions pass the deterministic local gate with direct Dolmen model validation. This is composition correctness evidence, not a performance or default-promotion claim."
+    },
+    {
+      "id": "2026-09-01-tactic-composition-slurm-short-circuit-audit",
+      "started_at": "2026-09-01",
+      "recorded_at": "2026-09-01",
+      "kind": "tactic-composition-correctness-rejected-harness",
+      "scope": "First 16-shard generated composition campaign. The solver and model results were valid, but the campaign was rejected because the initial manifest incorrectly required later-leaf counters on every case, including goals proved unsatisfiable by an earlier tactic.",
+      "commit": "7af9a02a055529c1cf524c9a982ea46082c4cd84",
+      "branch": "tactics",
+      "environment": {
+        "type": "slurm",
+        "host": "established Primo SLURM environment",
+        "slurm_job_id": "130822",
+        "binary": "primo 0.1.0, embedded git 7af9a02, Release, CaDiCaL cadical-3.0.0-7b99c07",
+        "references": "Z3 5.1.0 and cvc5 1.3.4",
+        "model_validator": "Dolmen 0.10; --require-dolmen-pass and --strict=false"
+      },
+      "commands": {
+        "workspace": "python3 scripts/slurm_prepare_benchmark_workspace.py --sync-mode archive --reuse-dependencies --with-z3 --require-tool contrib/local/bin/cvc5 --require-tool contrib/local/bin/fuzzsmt --require-tool contrib/local/bin/dolmen; immediate --check-only --no-sync preflight verified embedded git 7af9a02 and all tools",
+        "validation": "python3 scripts/slurm_validate_sbatch.py scripts/slurm_tactic_composition_matrix.sbatch; bash -n scripts/slurm_tactic_composition_matrix.sbatch",
+        "submission": "sbatch scripts/slurm_tactic_composition_matrix.sbatch; array 0-15, job 130822"
+      },
+      "inputs": {
+        "generated": "Four 250-case shards each for QF_UF, QF_LRA, QF_UFLRA, and QF_LIA; seeds 202609010 through 202609025",
+        "coverage_seed": "Each QF_UF shard additionally used benchmarks/seeds/qf_uf/qg_symmetry_residual_domain.smt2 to force adaptive-continuation activity",
+        "profiles": "All applicable profiles from benchmarks/tactic-composition-matrix.json",
+        "profile_case_rows": 32036
+      },
+      "results": {
+        "answers": "31,654 rows passed, 95 QF_LIA rows were timeout-only, and 287 rows were rejected solely as missing-statistic false positives. There were zero answer mismatches, reference disagreements, crashes, malformed statistics, or unsupported results.",
+        "false_positive_breakdown": "92 QF_UF and 195 QF_UFLRA rows omitted counters for a later leaf because an earlier transformation had already returned UNSAT. The corrected policy in 4391dfc checks those counters for corpus-level activity per logic while retaining per-case checks for entry leaves.",
+        "model_validation": "22,985 SAT profile/case runs passed Dolmen directly, 8,956 were UNSAT, and 95 QF_LIA model reruns timed out. Zero fallback validator, invalid model, or model-checking error occurred.",
+        "qf_lia": "The 95 profile/case timeout rows are the same 19 generated inputs under five preprocessing profiles; the model replay recorded the same 95 timeout-only outcomes.",
+        "scheduler": "Eight tasks completed and eight QF_UF/QF_UFLRA tasks exited 1 because of the harness false positives; all 16 stderr logs were empty."
+      },
+      "artifacts": {
+        "remote": "<slurm-workdir>/fuzz-results/tactic-composition-130822",
+        "remote_logs": "<slurm-workdir>/logs/primo-tactic-matrix-130822-*.{out,err}",
+        "collected_summaries_and_logs": "/tmp/primo-tactic-composition-130822"
+      },
+      "evidence_status": "rejected-harness-policy; solver answers and direct-Dolmen results retained as diagnostic evidence, not accepted as the composition gate",
+      "outcome": "The run exposed an invalid test assumption about sequence short-circuiting. No solver correctness defect was found. The harness policy was fixed, documented, regression-tested, and rerun in job 130838."
+    },
+    {
+      "id": "2026-09-01-tactic-composition-slurm-merge-gate",
+      "started_at": "2026-09-01",
+      "recorded_at": "2026-09-01",
+      "kind": "tactic-composition-correctness",
+      "scope": "Accepted merge-grade generated composition campaign over every supported logic and every applicable legal production profile, with direct Dolmen validation of every completed SAT model.",
+      "commit": "4391dfc2bcade0041330f6e5c38d2af06fc969e0",
+      "branch": "tactics",
+      "environment": {
+        "type": "slurm",
+        "host": "established Primo SLURM environment",
+        "slurm_job_id": "130838",
+        "binary": "primo 0.1.0, embedded git 4391dfc, Release, CaDiCaL cadical-3.0.0-7b99c07",
+        "references": "Z3 5.1.0 and cvc5 1.3.4",
+        "model_validator": "Dolmen 0.10; --require-dolmen-pass and --strict=false"
+      },
+      "commands": {
+        "workspace": "python3 scripts/slurm_prepare_benchmark_workspace.py --sync-mode archive --reuse-dependencies --with-z3 --require-tool contrib/local/bin/cvc5 --require-tool contrib/local/bin/fuzzsmt --require-tool contrib/local/bin/dolmen; immediate --check-only --no-sync preflight verified embedded git 4391dfc and all tools",
+        "validation": "python3 scripts/slurm_validate_sbatch.py scripts/slurm_tactic_composition_matrix.sbatch; bash -n scripts/slurm_tactic_composition_matrix.sbatch",
+        "submission": "sbatch scripts/slurm_tactic_composition_matrix.sbatch; array 0-15, job 130838"
+      },
+      "inputs": {
+        "qf_uf": "1,000 generated cases in four shards plus the tracked adaptive-continuation seed in each shard; nine applicable profiles",
+        "qf_lra": "1,000 generated cases in four shards; seven applicable profiles",
+        "qf_uflra": "1,000 generated cases in four shards; eleven applicable profiles",
+        "qf_lia": "1,000 FuzzSMT-generated cases in four shards; five applicable profiles",
+        "profile_case_rows": 32036
+      },
+      "results": {
+        "aggregate": "All 16 task metadata files report passed with zero failures and all scheduler tasks completed with exit 0. Of 32,036 profile/case rows, 31,941 were conclusive passes and 95 were QF_LIA timeout-only rows.",
+        "by_logic": "QF_UF 9,036/9,036 pass; QF_LRA 7,000/7,000 pass; QF_UFLRA 11,000/11,000 pass; QF_LIA 4,905 pass and 95 timeout-only.",
+        "models": "Dolmen directly validated all 22,985 completed SAT profile/case models; 8,956 profile/case runs were UNSAT and 95 QF_LIA model reruns timed out. Zero fallback validator, invalid model, or model error occurred.",
+        "activity": "Every per-case entry counter and every required corpus-level later-leaf activity check passed; no profile-check.json reported a missing observation.",
+        "correctness": "Zero wrong answer, reference disagreement, crash, parser/type error, unsupported result, malformed statistic, nondeterministic non-timing statistic, invalid model, or nonempty stderr log.",
+        "qf_lia": "The 95 timeout rows are 19 generated inputs repeated under five preprocessing profiles; model replay retained the same 95 timeout-only outcomes."
+      },
+      "artifacts": {
+        "remote": "<slurm-workdir>/fuzz-results/tactic-composition-130838",
+        "remote_logs": "<slurm-workdir>/logs/primo-tactic-matrix-130838-*.{out,err}",
+        "task_metadata": "<remote>/task-{0..15}/matrix/metadata.json",
+        "row_summaries": "<remote>/task-{0..15}/matrix/summary.csv",
+        "model_summaries": "<remote>/task-{0..15}/matrix/<profile>/model-validation/summary.csv"
+      },
+      "metadata_note": "Archive-mode preparation preserves the remote dependency checkout's stale .git/HEAD, so these task metadata files contain that workspace revision in their legacy commit field. The immediate preflight, every task's solver_version field, and the embedded binary version all identify 4391dfc. Commit 8f8fe9d makes the tested binary revision authoritative and records workspace_commit separately.",
+      "evidence_status": "slurm-complete-current; exact tested binary commit; merge-grade generated composition and direct-Dolmen model gate",
+      "outcome": "The legal production tactic compositions pass the merge gate across all four supported logics. The only incomplete results are bounded QF_LIA timeouts; there are no correctness or model failures."
+    },
+    {
+      "id": "2026-09-01-tactic-composition-final-local-provenance",
+      "started_at": "2026-09-01",
+      "recorded_at": "2026-09-01",
+      "kind": "tactic-composition-correctness",
+      "scope": "Exact-commit deterministic local rerun after making the tested binary revision authoritative in matrix metadata.",
+      "commit": "8f8fe9dd713d49e1fc43911e5215ab60524afe0c",
+      "branch": "tactics",
+      "environment": {
+        "type": "local",
+        "host": "mikolas-ThinkPad-T14s-Gen-5",
+        "binary": "build/primo, embedded git 8f8fe9d, Release, CaDiCaL cadical-3.0.0-7b99c07",
+        "references": "Z3 5.0.0 and cvc5 1.3.4",
+        "model_validator": "Dolmen 0.10; direct pass required"
+      },
+      "command": "make tactic-composition-test",
+      "results": {
+        "matrix": "146/146 profile/case/repetition rows passed with zero failure or inconclusive result.",
+        "models": "All 41 SAT profile/case models passed Dolmen directly; 32 profile/case combinations were UNSAT.",
+        "provenance": "metadata.json records commit 8f8fe9d from the tested binary and workspace_commit 8f8fe9dd713d49e1fc43911e5215ab60524afe0c from the local source tree."
+      },
+      "artifacts": {
+        "metadata": "results/tactic-composition-local/metadata.json",
+        "summary": "results/tactic-composition-local/summary.csv",
+        "log": "/tmp/primo-local-matrix-8f8fe9d.log"
+      },
+      "evidence_status": "local-current-exact-commit-provenance-check; supplements accepted SLURM job 130838",
+      "outcome": "The metadata provenance fix is verified without changing solver or composition behavior."
     }
   ]
 }
