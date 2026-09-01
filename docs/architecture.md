@@ -142,6 +142,12 @@ Symbol:
 
 All constructors validate sorts before interning. Invalid input throws `std::invalid_argument`; an unknown term id throws `std::out_of_range`.
 
+`smt::Frontend::process_command` is the user-input type-checking boundary. It
+converts constructor `std::invalid_argument` failures caused while translating
+SMT-LIB commands into the typed `UnsupportedInput` result used by the public
+session. This conversion is deliberately local to frontend translation:
+preprocessing and solver exceptions are not reclassified as unsupported input.
+
 Implemented constructors:
 
 - `mk_bool(value)`: creates or reuses the Boolean constant.

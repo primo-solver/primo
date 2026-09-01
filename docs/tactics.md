@@ -288,9 +288,12 @@ branch retains the input goal's model-reconstruction chain and attributes.
 The initial executor is sequential. `solver-dispatch` walks alternatives in
 their stored order, invokes the appropriate solver leaf for one goal at a time,
 stops at the first satisfiable branch and keeps that branch's model, collapses
-an all-unsatisfiable product to one false goal, and otherwise retains the
-inconclusive branches. No threads or shared mutable result channel are added.
-All branches share the session's term manager and statistics object.
+all-unsatisfiable branches to one false goal, and retains inconclusive branches
+only while execution remains active. A typed cancellation immediately replaces
+previously accumulated unsupported, resource-limited, or unknown branches, so
+it cannot be hidden by their earlier ordering or trigger session fallback.
+No threads or shared mutable result channel are added. All branches share the
+session's term manager and statistics object.
 
 The eager representation costs `O(2^m (n + m))` `TermId` storage for `n` input
 assertions. Both the typed builder and CLI reject `k > 16`; this is an

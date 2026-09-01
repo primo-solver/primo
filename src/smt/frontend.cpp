@@ -5,6 +5,7 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -12,6 +13,7 @@
 #include <utility>
 #include <vector>
 
+#include "core/ids.hpp"
 #include "core/symbol_table.hpp"
 #include "core/term.hpp"
 #include "core/term_manager.hpp"
@@ -1038,7 +1040,15 @@ Frontend::~Frontend() = default;
 
 void Frontend::process_command(const smtlib::Command& command,
                                std::vector<core::TermId>& assertions) {
-  implementation_->process_command(command, assertions);
+  try {
+    implementation_->process_command(command, assertions);
+  } catch (const std::invalid_argument& error) {
+    // Core constructors deliberately use invalid_argument for violated sort,
+    // arity, and declaration preconditions. At the SMT-LIB translation
+    // boundary those violations describe unsupported user input; exceptions
+    // raised later by preprocessing and solver internals remain uncaught.
+    throw UnsupportedInput(error.what());
+  }
 }
 
 const std::optional<std::string>& Frontend::logic() const { return implementation_->logic(); }

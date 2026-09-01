@@ -25,6 +25,7 @@
 #include "smt/solver_answer.hpp"
 #include "smt/solver_error.hpp"
 #include "smt/solver_leaves.hpp"
+#include "smt/solver_strategy.hpp"
 #include "smt/solver_tactic.hpp"
 #include "smt/strategy.hpp"
 #include "smt/tactic.hpp"
@@ -552,6 +553,53 @@ void check_sat_preserves_cancellation_observed_by_preprocessing() {
   }
 }
 
+void frontend_type_errors_are_reported_as_unsupported() {
+  const primo::smt::CheckSatOutcome result = primo::smt::check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (assert (+ true true))
+    (check-sat)
+  )");
+  check(result.result == primo::smt::CheckSatResult::Unsupported);
+  check(result.reason == primo::smt::InconclusiveReason::Unsupported);
+  check(result.message == "expected Real or Int term");
+}
+
+void solver_dispatch_gives_cancellation_precedence_across_goals() {
+  Fixture fixture;
+  std::size_t calls = 0;
+  const primo::smt::Tactic scripted = primo::smt::make_goal_tactic(
+      "scripted", [&calls](primo::smt::TacticContext&, const primo::smt::Goal& goal) {
+        ++calls;
+        if (calls == 1) {
+          return primo::smt::AnyOf::single(goal.with_diagnostic(
+              primo::smt::InconclusiveReason::ResourceLimit, "budget exhausted"));
+        }
+        return primo::smt::AnyOf::single(
+            goal.with_diagnostic(primo::smt::InconclusiveReason::Cancelled, "cancelled"));
+      });
+  const primo::smt::SolverTacticSet solvers{scripted, scripted, scripted,
+                                            scripted, scripted, scripted};
+  primo::smt::SolverStrategyOptions options;
+  options.logic = "QF_LIA";
+  const primo::smt::Tactic dispatch = primo::smt::make_solver_dispatch(options, solvers);
+  const primo::smt::Goal goal{{fixture.p_term()}};
+
+  const primo::smt::AnyOf produced = dispatch(fixture.context, primo::smt::AnyOf({goal, goal}));
+  check(calls == 2);
+  check(produced.size() == 1);
+  check(produced.alternatives().front().reason() == primo::smt::InconclusiveReason::Cancelled);
+  check(primo::smt::outcome_from_tactic_result(produced, fixture.context).reason ==
+        primo::smt::InconclusiveReason::Cancelled);
+
+  const primo::smt::AnyOf diagnosed = dispatch(
+      fixture.context,
+      primo::smt::AnyOf(
+          {goal.with_diagnostic(primo::smt::InconclusiveReason::Unsupported, "unsupported"),
+           goal.with_diagnostic(primo::smt::InconclusiveReason::Cancelled, "cancelled")}));
+  check(diagnosed.size() == 1);
+  check(diagnosed.alternatives().front().reason() == primo::smt::InconclusiveReason::Cancelled);
+}
+
 void solver_adapter_types_expected_inconclusive_results() {
   Fixture fixture;
   const primo::smt::Tactic unsupported = primo::smt::make_solver_tactic(
@@ -1012,6 +1060,8 @@ int main() {
   cancellation_stops_before_running_a_tactic();
   check_sat_honors_an_existing_cancellation_request();
   check_sat_preserves_cancellation_observed_by_preprocessing();
+  frontend_type_errors_are_reported_as_unsupported();
+  solver_dispatch_gives_cancellation_precedence_across_goals();
   solver_adapter_types_expected_inconclusive_results();
   typed_inconclusive_reason_overrides_terminal_formula_truth();
   preprocessing_fixed_point_and_terminal_change_statistics_are_exact();

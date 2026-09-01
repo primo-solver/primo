@@ -33,10 +33,10 @@ Tactic make_solver_dispatch(SolverStrategyOptions options, SolverTacticSet solve
     inconclusive.reserve(input.size());
     for (const Goal& goal : input.alternatives()) {
       if (goal.reason() != InconclusiveReason::None) {
-        inconclusive.push_back(goal);
         if (goal.reason() == InconclusiveReason::Cancelled) {
-          return AnyOf(std::move(inconclusive));
+          return AnyOf::single(goal);
         }
+        inconclusive.push_back(goal);
         continue;
       }
       const GoalTruth goal_truth = truth(goal, context);
@@ -90,10 +90,10 @@ Tactic make_solver_dispatch(SolverStrategyOptions options, SolverTacticSet solve
             truth(alternative, context) == GoalTruth::False) {
           continue;
         }
-        inconclusive.push_back(alternative);
         if (alternative.reason() == InconclusiveReason::Cancelled) {
-          return AnyOf(std::move(inconclusive));
+          return AnyOf::single(alternative);
         }
+        inconclusive.push_back(alternative);
       }
     }
 
