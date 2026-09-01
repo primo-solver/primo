@@ -152,6 +152,8 @@ int run_main(int argc, char** argv) {
   bool qf_uflra_model_reconciliation = solver_options.qf_uflra_model_reconciliation;
   bool no_qf_uflra_model_reconciliation = false;
   bool experimental_generic_model_combination = false;
+  bool experimental_qf_uflia_model_combination = false;
+  std::size_t qf_uflia_model_decision_budget = solver_options.qf_uflia_model_decision_budget;
   bool qf_uflra_online_euf = solver_options.qf_uflra_online_euf;
   bool guarded_real_equality_lowering = solver_options.guarded_real_equality_lowering;
   bool monotone_elimination = solver_options.monotone_elimination;
@@ -371,6 +373,12 @@ int run_main(int argc, char** argv) {
   add_flag_with_default(
       app, "--experimental-generic-model-combination", experimental_generic_model_combination,
       "Route QF_UFLRA shared-model decisions through the generic sequential coordinator");
+  add_flag_with_default(
+      app, "--experimental-qf-uflia-model-combination", experimental_qf_uflia_model_combination,
+      "Guide non-convex QF_UFLIA arrangement search with component models before complete "
+      "fallback");
+  app.add_option("--qf-uflia-model-decision-budget", qf_uflia_model_decision_budget,
+                 "Maximum QF_UFLIA model-choice batches before complete arrangement fallback");
   add_flag_with_default(
       app, "--qf-uflra-online-euf", qf_uflra_online_euf,
       "Enable experimental incremental EUF callbacks and live final-model closure reuse "
@@ -656,7 +664,8 @@ int run_main(int argc, char** argv) {
         name == "--mixed-dispatch") {
       return kGroupLra;
     }
-    if (starts_with(name, "--lia-") || starts_with(name, "--no-lia-")) {
+    if (starts_with(name, "--lia-") || starts_with(name, "--no-lia-") ||
+        starts_with(name, "--qf-uflia-")) {
       return kGroupLia;
     }
     if (name == "--preprocessing-mode" || name == "--arithmetic-atom-canonicalization" ||
@@ -823,6 +832,8 @@ int run_main(int argc, char** argv) {
     solver_options.qf_uflra_model_reconciliation = false;
   }
   solver_options.experimental_generic_model_combination = experimental_generic_model_combination;
+  solver_options.experimental_qf_uflia_model_combination = experimental_qf_uflia_model_combination;
+  solver_options.qf_uflia_model_decision_budget = qf_uflia_model_decision_budget;
   solver_options.qf_uflra_online_euf = qf_uflra_online_euf;
   if (monotone_elimination) {
     solver_options.monotone_elimination = true;

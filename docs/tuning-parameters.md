@@ -69,6 +69,8 @@ precondition without which the option does nothing.
 | `--qf-uflra-lra-equality-producer` | `legacy` | mixed QF_UFLRA | `model-unit` selects the CAV 2024 current-model-filtered unit-row producer; `adaptive` runs legacy until a producer round causes no SAT recheck, then model-unit rounds, and returns permanently to legacy when reconciliation still needs a SAT split after model-unit was attempted; both are evaluated, default-off experimental profiles because adaptive preserves the solved set but saves little producer time |
 | `--no-qf-uflra-model-reconciliation` | reconciliation on | mixed QF_UFLRA | ablation of the default convex shared-model path; restores explained exact equality sharing |
 | `--experimental-generic-model-combination` | off | mixed QF_UFLRA model reconciliation | routes checked EUF/LRA projections and model-choice batches through the backend-neutral sequential coordinator; keeps the established specialized scheduler as the default during parity evaluation |
+| `--experimental-qf-uflia-model-combination` | off | QF_UFLIA | starts with input-visible shared equalities, uses EUF/LIA model partitions for reversible equality choices, and retains the complete arrangement as a restart fallback |
+| `--qf-uflia-model-decision-budget` | 16 | `--experimental-qf-uflia-model-combination` | maximum model-choice batches before the complete QF_UFLIA arrangement restart; `0` selects the complete path immediately |
 | `--lra-propagation` | on | — | the root of the propagation chain |
 | `--lra-row-propagation` | off | **`--lra-propagation`** | |
 | `--lra-bidirectional-row-propagation` | off | **`--lra-row-propagation`** (hence `--lra-propagation` too) | |

@@ -245,6 +245,11 @@ python3 scripts/bench_qf_uf_full.py \
   --out results/qf_uflia-representative-20.csv
 ```
 
+For a paired model-guidance experiment, repeat the command with
+`--solver-arg=--experimental-qf-uflia-model-combination`. Keep the default run
+as the completeness/control arm and compare both against Z3 or cvc5; satisfiable
+Primo rows must be replayed with `scripts/validate_model.py` and Dolmen.
+
 These corpus cases are an evaluation gate, not part of `make check`: several
 are intentionally beyond Primo's current short-timeout performance. For cases
 without a declared status, an evaluation must establish the expected answer by

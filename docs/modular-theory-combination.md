@@ -76,13 +76,16 @@ member is individually entailed.
 
 ## Initial operations and complexity
 
-The first `QF_UFLIA` policy uses delayed combination. For `n` shared Int terms
+The default `QF_UFLIA` policy uses delayed combination. For `n` shared Int terms
 it materializes all `n(n-1)/2` equality choices. Each equality is connected to
 the arithmetic component by two non-strict inequalities and Boolean clauses
 expressing equality iff both inequalities hold. A false equality therefore
 lets SAT select one strict integer orientation. This quadratic baseline is
 intentional: it supplies a simple completeness argument for a non-convex
-component before sparse care-set or model-guided optimizations are attempted.
+component. The experimental model-guided policy starts with only input-visible
+interface equalities, lazily adds model disagreements, and restarts this exact
+complete baseline if its decision budget is exhausted or a component check is
+inconclusive.
 
 `QF_UFLRA` does not use this eager policy. Its existing lazy convex equality
 exchange, exact fallback, model mutation, reconciliation, and model builder
@@ -119,10 +122,18 @@ DPLL operations remain delegated to the production CDCL backend. The detailed
 ownership and transition checklist is recorded in
 [](papers/model-based-theory-combination.md).
 
-For QF_UFLIA, model guidance may eventually order or reduce the practical cost
-of arrangement search, but it cannot rely on the convex rule that an implied
-disjunction contains an individually implied equality. The complete
-SAT-visible arrangement therefore remains the current correctness backstop.
+For QF_UFLIA, `--experimental-qf-uflia-model-combination` projects the checked
+integer tableau and EUF closure onto all shared Int terms. A partition
+disagreement creates a positive, reversible CaDiCaL assumption. If the
+assumption fails, the coordinator learns the negation of CaDiCaL's failed
+assumption subset; it never learns a candidate equality merely because one
+model selected it. Agreeing complete projections witness a combinable model.
+Because LIA is non-convex, the policy does not use convex equality propagation:
+`--qf-uflia-model-decision-budget` bounds model-choice batches (default 16),
+and zero selects the complete arrangement immediately. Budget exhaustion,
+unsupported projections, ordinary unknown results, and guided LIA resource
+limits restart the unchanged complete-arrangement solver with no candidate
+assumptions. Cancellation still stops immediately.
 
 ## Implemented subset and limitations
 
@@ -134,12 +145,23 @@ owned SAT atoms. The LIA adapter reuses Primo's exact-rational tableau, integer
 patching, GCD check, Gomory cuts, and bounded branch-and-bound. Reaching the
 existing integer node limit returns a typed resource-limit `unknown`.
 
+The experimental model-guided route rebuilds a component adapter only when a
+new equality and its two arithmetic bounds are registered. Snapshot epochs are
+advanced for every satisfying SAT assignment, so projections from older
+assignments are rejected. The default complete route is unchanged and remains
+the fallback; the feature is not a default or performance claim.
+
 The frontend accepts Int-valued uninterpreted functions and predicates, rejects
 Real-valued symbols and Real arguments, and retains the existing QF_LIA
 operator subset: integer `div` and `mod` remain unsupported. Mixed purification
 uses memoized Int proxies in both directions. Models combine the final integer
 tableau values with the ground EUF function and predicate tables, then replay
-the ordered preprocessing reconstruction chain.
+the ordered preprocessing reconstruction chain. Model construction also
+evaluates original arithmetic argument terms left in the hash-consed arena by
+purification and prefers the constrained purified application when two ground
+applications print with the same argument tuple. Without both rules, a stale
+unconstrained application could shadow the EUF-constrained table entry; the two
+fixed TwoSquares regressions are validated directly by Dolmen.
 
 The existing production coordinator is sequential and currently instantiates
 EUF plus LIA only.
@@ -189,3 +211,7 @@ The experimental generic QF_UFLRA path additionally publishes cumulative
 `:combination.model.*` counters for component checks, snapshots, mutations,
 fixed points, care pairs, disagreements, learned clauses, model decisions,
 fresh decisions, stale snapshots, and rejected mutations.
+For QF_UFLIA, `:combination.model.total-pairs`, `.materialized-pairs`, and
+`.complete-fallbacks` distinguish the sparse phase from the complete backstop;
+the shared assumption-lifecycle counters use the existing
+`:no.interface.model-equality-*` namespace.

@@ -396,6 +396,11 @@ struct CheckSatOptions {
   // Transitional A/B path for the backend-neutral model-combination
   // coordinator. It remains default-off until QF_UFLRA parity is established.
   bool experimental_generic_model_combination = false;
+  // Non-convex QF_UFLIA model guidance. Candidate equalities are reversible
+  // SAT assumptions; exhaustion or the decision budget activates the complete
+  // arrangement baseline.
+  bool experimental_qf_uflia_model_combination = false;
+  std::size_t qf_uflia_model_decision_budget = 16;
   bool qf_uflra_online_euf = false;
   bool top_level_or_tseitin = false;
   bool auto_top_level_or_tseitin = true;

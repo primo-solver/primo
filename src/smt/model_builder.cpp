@@ -43,7 +43,8 @@ struct VectorKeyHash {
 struct TableEntry {
   std::vector<std::string> args;
   std::string result;
-  bool has_exact_real_value = false;
+  bool has_exact_numeric_value = false;
+  bool constrained = false;
 };
 
 bool is_internal_symbol(const core::Symbol& symbol) { return symbol.name.starts_with("$primo_"); }
@@ -160,12 +161,15 @@ class QfUfModelBuilder {
     const core::Term& term = terms_.get(assignment.term);
     if (term.kind == core::TermKind::Equality) {
       if (assignment.value) {
+        constrained_terms_.insert(term.children.at(0));
+        constrained_terms_.insert(term.children.at(1));
         closure_.assert_equal(term.children.at(0), term.children.at(1));
       }
       return;
     }
     if (term.sort == terms_.symbols().bool_sort() &&
         (term.kind == core::TermKind::Constant || term.kind == core::TermKind::Application)) {
+      constrained_terms_.insert(assignment.term);
       closure_.assert_equal(assignment.term, assignment.value ? true_term_ : false_term_);
     }
   }
@@ -343,18 +347,26 @@ class QfUfModelBuilder {
         key.values.push_back(term_value(child));
       }
       const std::string result = term_value(term.id);
-      const bool has_exact_real_value =
+      const bool has_exact_numeric_value =
           (symbol.result_sort == terms_.symbols().real_sort() && options_.real_values != nullptr &&
            options_.real_values->contains(term.id)) ||
           (symbol.result_sort == terms_.symbols().int_sort() && options_.int_values != nullptr &&
            int_values_by_representative_.contains(closure_.class_representative(term.id)));
+      const bool constrained = constrained_terms_.contains(term.id);
       const auto found = seen.find(key);
       if (found == seen.end()) {
         seen.emplace(key, entries.size());
-        entries.push_back(TableEntry{std::move(key.values), result, has_exact_real_value});
-      } else if (has_exact_real_value && !entries.at(found->second).has_exact_real_value) {
-        entries.at(found->second).result = result;
-        entries.at(found->second).has_exact_real_value = true;
+        entries.push_back(
+            TableEntry{std::move(key.values), result, has_exact_numeric_value, constrained});
+      } else {
+        TableEntry& current = entries.at(found->second);
+        if ((has_exact_numeric_value && !current.has_exact_numeric_value) ||
+            (has_exact_numeric_value == current.has_exact_numeric_value && constrained &&
+             !current.constrained)) {
+          current.result = result;
+          current.has_exact_numeric_value = has_exact_numeric_value;
+          current.constrained = constrained;
+        }
       }
     }
     std::sort(entries.begin(), entries.end(),
@@ -411,6 +423,7 @@ class QfUfModelBuilder {
   std::unordered_map<core::SortId, std::unordered_map<core::TermId, std::string>> values_by_sort_;
   std::unordered_map<core::SortId, std::string> default_value_by_sort_;
   std::unordered_map<core::SortId, std::size_t> next_value_index_by_sort_;
+  std::unordered_set<core::TermId> constrained_terms_;
   std::unordered_map<core::TermId, util::Rational> real_values_by_representative_;
   std::unordered_map<core::TermId, util::Rational> int_values_by_representative_;
   std::unordered_map<core::TermId, util::Rational> generated_int_values_;
