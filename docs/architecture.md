@@ -10,8 +10,9 @@ Primo is organized as layered components with explicit data ownership. This page
   backend-neutral IPASIR-UP callback interfaces, and the concrete CaDiCaL
   adapter.
 - `smt/` owns conversion of SMT-LIB commands to core terms, preprocessing, Boolean abstraction,
-  clausification, tactic composition, QF_UF/QF_LRA solver orchestration, and the
-  current separable mixed QF_UFLRA coordinator. The tactic data structures,
+  clausification, tactic composition, QF_UF/QF_LRA solver orchestration, the
+  specialized mixed QF_UFLRA coordinator, and the modular sequential QF_UFLIA
+  coordinator. The tactic data structures,
   ownership rules, and current migration boundary are described in
   [](tactics.md).
 - `theory/` owns equality reasoning, congruence closure, and arithmetic
@@ -36,6 +37,9 @@ confined to `primo_smtlib`, CaDiCaL configuration to `primo_sat`, and GMP to
   literals and memoizes theory-atom polarity collection per hash-consed term and
   polarity.
 - Theory solvers reason over `core::TermId` values and never own SMT-LIB syntax.
+  Mixed components implement the solve-scoped `theory::TheorySolver` protocol;
+  they receive owned literals and an SMT-owned interface arrangement but no SAT
+  backend or access to another component's private state.
 - All core terms are created through `core::TermManager`.
 - Cancellation is carried as a read-only callback in `CheckSatOptions` and
   `TacticContext`. Each solver invocation owns an RAII-scoped SAT terminator;
@@ -50,8 +54,8 @@ confined to `primo_smtlib`, CaDiCaL configuration to `primo_sat`, and GMP to
   preprocessing strategy leaves, Boolean solving, common solver statistics,
   solver-family dispatch, result adaptation, runtime termination, and
   unsupported-input exceptions have independent SMT modules. The complete
-  single-goal QF_UF, QF_LRA, QF_LIA, and QF_UFLRA implementations and their
-  shared theory/model support live in `solver_engines.cpp`; the small
+  single-goal QF_UF, QF_LRA, QF_LIA, QF_UFLRA, and QF_UFLIA implementations
+  and their shared theory/model support live in `solver_engines.cpp`; the small
   formula-valued adapters live in `solver_leaves.cpp`. Public
   `check_sat.cpp` is a small boundary wrapper; `session_portfolio.cpp` owns the
   reparsing QF_UF portfolio and its sequential executor policy; and

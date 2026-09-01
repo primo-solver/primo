@@ -68,6 +68,15 @@ Strategy make_session_solver_strategy(Frontend& frontend, CheckSatOptions option
             solve_qf_lia_engine(frontend.terms(), goal.assertions(), model_terms,
                                 *immutable_options, statistics, goal.reconstruction().conversions));
       });
+  const Tactic uflia_solver = make_solver_tactic(
+      "solve-qf-uflia", frontend.terms(), [&, immutable_options](const Goal& goal) {
+        const std::vector<core::TermId> model_terms = context.produce_model()
+                                                          ? frontend.declared_int_constant_terms()
+                                                          : std::vector<core::TermId>{};
+        return solver_answer_from_outcome(solve_qf_uflia_engine(
+            frontend.terms(), goal.assertions(), model_terms, goal.reconstruction().conversions,
+            *immutable_options, statistics));
+      });
   const SolverStrategyOptions strategy_options{
       .logic = frontend.logic(),
       .mixed_dispatch = immutable_options->mixed_dispatch,
@@ -80,7 +89,8 @@ Strategy make_session_solver_strategy(Frontend& frontend, CheckSatOptions option
                                            .lra_solver = lra_solver,
                                            .lra_model_only_solver = lra_model_only_solver,
                                            .mixed_solver = mixed_solver,
-                                           .lia_solver = lia_solver}));
+                                           .lia_solver = lia_solver,
+                                           .uflia_solver = uflia_solver}));
   if (split_options.max_bools == 0) {
     return dispatch;
   }

@@ -1,5 +1,6 @@
 #include "smt/model_reconstruction.hpp"
 
+#include <memory>
 #include <type_traits>
 #include <utility>
 #include <variant>
@@ -46,7 +47,8 @@ std::vector<TheoryModelAssignment> ModelConversionChain::theory_assignments(
           if constexpr (std::is_same_v<Conversion, BooleanTheoryAssignmentConversion>) {
             result.insert(result.end(), conversion.assignments.begin(),
                           conversion.assignments.end());
-          } else if constexpr (std::is_same_v<Conversion, DirectedEqualitySubstitutionConversion>) {
+          } else if constexpr (std::is_same_v<Conversion, DirectedEqualitySubstitutionConversion> ||
+                               std::is_same_v<Conversion, LiaSubstitutionConversion>) {
             result.reserve(result.size() + conversion.substitutions.size());
             for (const auto& [lhs, rhs] : conversion.substitutions) {
               result.push_back(TheoryModelAssignment{.term = terms.mk_eq(lhs, rhs),

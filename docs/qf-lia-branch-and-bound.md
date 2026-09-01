@@ -890,11 +890,11 @@ flags. It costs cut strength, never soundness.
 
 | blocker | where |
 | --- | --- |
-| Logic whitelist accepts only `QF_UF`, `QF_LRA`, `QF_UFLRA`, `QF_LIA` | `check_sat.cpp`, `SetLogic` |
-| **Numeral sort is a global function of the logic**: `Int` iff the logic is `QF_LIA`, `Real` otherwise | `check_sat.cpp`, the `Rational::parse` branch in the atom handler |
+| Logic whitelist accepts only `QF_UF`, `QF_LRA`, `QF_UFLRA`, `QF_LIA`, `QF_UFLIA` | `frontend.cpp`, `SetLogic` |
+| **Numeral sort is a global function of the logic**: `Int` in `QF_LIA`/`QF_UFLIA`, `Real` otherwise | `frontend.cpp`, the `Rational::parse` branch in the atom handler |
 | `mk_plus`/`mk_times` reject operands of differing sorts ("arithmetic terms must share one sort") | `core/term_manager.cpp` |
 | No `to_real`, `to_int`, or `divisible` anywhere in the frontend | -- |
-| `declare_fun` rejects a `Real` constant under `QF_LIA` with a message that already names the missing logic | `check_sat.cpp` |
+| `declare_fun` rejects a `Real` symbol under either supported integer logic | `frontend.cpp` |
 | Model output selects `declared_int_constant_terms()` *or* the Real path, not both | `check_sat.cpp`, the solve dispatch |
 
 **The numeral rule is the work.** Today a literal's sort is decided once,

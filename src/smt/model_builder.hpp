@@ -16,6 +16,7 @@ struct QfUfModelBuildOptions {
   bool skip_real_symbols = false;
   bool skip_real_constants = false;
   const std::unordered_map<core::TermId, util::Rational>* real_values = nullptr;
+  const std::unordered_map<core::TermId, util::Rational>* int_values = nullptr;
 };
 
 std::string build_qf_uf_model(core::TermManager& terms,

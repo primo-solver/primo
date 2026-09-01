@@ -577,8 +577,13 @@ void solver_dispatch_gives_cancellation_precedence_across_goals() {
         return primo::smt::AnyOf::single(
             goal.with_diagnostic(primo::smt::InconclusiveReason::Cancelled, "cancelled"));
       });
-  const primo::smt::SolverTacticSet solvers{scripted, scripted, scripted,
-                                            scripted, scripted, scripted};
+  const primo::smt::SolverTacticSet solvers{.boolean_solver = scripted,
+                                            .euf_solver = scripted,
+                                            .lra_solver = scripted,
+                                            .lra_model_only_solver = scripted,
+                                            .mixed_solver = scripted,
+                                            .lia_solver = scripted,
+                                            .uflia_solver = scripted};
   primo::smt::SolverStrategyOptions options;
   options.logic = "QF_LIA";
   const primo::smt::Tactic dispatch = primo::smt::make_solver_dispatch(options, solvers);

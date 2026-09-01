@@ -39,6 +39,11 @@ CheckSatOutcome solve_qf_uflra_engine(core::TermManager& terms,
                                       const std::vector<core::TermId>& model_terms,
                                       const ModelConversionChain& conversions,
                                       const CheckSatOptions& options, util::Statistics& statistics);
+CheckSatOutcome solve_qf_uflia_engine(core::TermManager& terms,
+                                      const std::vector<core::TermId>& assertions,
+                                      const std::vector<core::TermId>& model_terms,
+                                      const ModelConversionChain& conversions,
+                                      const CheckSatOptions& options, util::Statistics& statistics);
 
 // Session-boundary support whose implementation shares the solver engines'
 // model and EUF traversal machinery. These functions do not own session state.

@@ -29368,6 +29368,86 @@
       },
       "evidence_status": "local-current exact implementation commit merge gate; temporary artifacts; run-log entry committed adjacently",
       "outcome": "All 1,000 generated cases agreed with Z3, and Dolmen accepted every one of the 651 satisfiable models on exact implementation commit 99c526e."
+    },
+    {
+      "id": "2026-09-01-qf-uflia-local-model-smoke",
+      "started_at": "2026-09-01",
+      "recorded_at": "2026-09-01",
+      "kind": "fuzz-smoke-and-model-regression",
+      "scope": "Pre-commit local differential smoke for the new modular QF_UFLIA path, followed by direct Dolmen validation and an exact rerun after fixing Int substitution reconstruction.",
+      "commit": "019d645-dirty",
+      "branch": "modular-theory-combination",
+      "environment": {
+        "type": "local",
+        "host": "mikolas-ThinkPad-T14s-Gen-5",
+        "kernel": "Linux 7.0.0-30-generic x86_64",
+        "binary": "build/primo, Release, based on 019d645, CaDiCaL cadical-3.0.0-7b99c07",
+        "references": "Z3 5.0.0 and cvc5 1.3.4",
+        "model_validator": "Dolmen 0.10",
+        "slurm_job_id": null
+      },
+      "commands": [
+        "PATH=/workspace/contrib/local/bin:$PATH python3 scripts/qf_uflia_fuzz.py --solver ./build/primo --ref z3 --ref cvc5 --count 100 --seed 20260901 --timeout 5 --out /tmp/primo-qf-uflia-fuzz-100",
+        "PATH=/workspace/contrib/local/bin:/home/user/.opam/default/bin:$PATH python3 scripts/validate_model.py --solver ./build/primo --solver-arg=--quiet --dolmen /home/user/.opam/default/bin/dolmen --require-dolmen-pass --timeout 5 --dolmen-timeout 5 --out /tmp/primo-qf-uflia-fuzz-100-models /tmp/primo-qf-uflia-fuzz-100/cases/*.smt2",
+        "PATH=/workspace/contrib/local/bin:/home/user/.opam/default/bin:$PATH python3 scripts/validate_model.py --solver ./build/primo --solver-arg=--quiet --dolmen /home/user/.opam/default/bin/dolmen --require-dolmen-pass --timeout 5 --dolmen-timeout 5 --out /tmp/primo-qf-uflia-fuzz-100-models-fixed /tmp/primo-qf-uflia-fuzz-100/cases/*.smt2"
+      ],
+      "inputs": {
+        "generator": "scripts/qf_uflia_fuzz.py",
+        "logic": "QF_UFLIA",
+        "shape": "mixed",
+        "seed": 20260901,
+        "count": 100,
+        "timeout_seconds": 5
+      },
+      "results": {
+        "answer_pass": 100,
+        "wrong_answer": 0,
+        "crash": 0,
+        "parser_or_type_error": 0,
+        "timeout": 0,
+        "unsupported": 0,
+        "reference_disagreement": 0,
+        "initial_invalid_models": 9,
+        "fixed_sat_models_validated_by_dolmen": 57,
+        "unsat_cases": 43,
+        "fixed_invalid_models": 0
+      },
+      "artifacts": {
+        "answer_summary": "/tmp/primo-qf-uflia-fuzz-100/summary.csv",
+        "initial_model_summary": "/tmp/primo-qf-uflia-fuzz-100-models/summary.csv",
+        "fixed_model_summary": "/tmp/primo-qf-uflia-fuzz-100-models-fixed/summary.csv"
+      },
+      "evidence_status": "local pre-commit smoke; temporary artifacts; superseded by the required exact-commit merge/campaign gate",
+      "outcome": "Answers agreed in all 100 cases. Dolmen exposed nine invalid models caused by omitting LIA substitutions from the mixed EUF reconstruction facts; after the fix, Dolmen accepted all 57 satisfiable models."
+    },
+    {
+      "id": "2026-09-01-qf-uflia-precommit-asan",
+      "started_at": "2026-09-01",
+      "recorded_at": "2026-09-01",
+      "kind": "sanitizer",
+      "scope": "Pre-commit AddressSanitizer gate for the solve-scoped modular QF_UFLIA adapters, eager arrangement construction, and combined Int/EUF model reconstruction.",
+      "commit": "019d645-dirty",
+      "branch": "modular-theory-combination",
+      "environment": {
+        "type": "local",
+        "host": "mikolas-ThinkPad-T14s-Gen-5",
+        "kernel": "Linux 7.0.0-30-generic x86_64",
+        "build": "build-asan, Debug with address sanitizer, based on 019d645, CaDiCaL cadical-3.0.0-7b99c07",
+        "slurm_job_id": null
+      },
+      "command": "make asan-test",
+      "results": {
+        "ctest": "25/25 passed",
+        "asan_failures": 0,
+        "leak_failures": 0,
+        "total_test_time_seconds": 37.98
+      },
+      "artifacts": {
+        "build_directory": "build-asan",
+        "storage": "local generated build; not committed"
+      },
+      "evidence_status": "local pre-commit sanitizer gate; superseded by any exact-commit rerun",
+      "outcome": "All tests passed with leak detection and strict initialization-order checking enabled."
     }
   ]
 }

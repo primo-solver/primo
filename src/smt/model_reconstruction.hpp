@@ -76,7 +76,9 @@ class ModelConversionChain {
   }
 
   // Compatibility projection for the current string model builders. It keeps
-  // execution order and materializes directed equalities as assignment facts.
+  // execution order and materializes directed and LIA substitutions as
+  // equality facts. Mixed models need both: a substituted Int constant can be
+  // defined by an application whose numeric value is anchored through EUF.
   std::vector<TheoryModelAssignment> theory_assignments(core::TermManager& terms) const;
 
   bool operator==(const ModelConversionChain& other) const;

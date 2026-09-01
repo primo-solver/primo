@@ -105,6 +105,7 @@ therefore also prevents that Gaussian candidate path from running.
 | `solve-qf-lra-model-only` | No theory atoms, but declared Real constants require a model | Solver-leaf module |
 | `solve-qf-uflra` | Both arithmetic and equality or uninterpreted-predicate features | Solver-leaf module |
 | `solve-qf-lia` | Declared `QF_LIA` logic | Solver-leaf module |
+| `solve-qf-uflia` | Declared `QF_UFLIA` logic | Solver-leaf module; complete non-convex Int arrangement |
 
 ## Experimental goal-generation tactics
 
@@ -123,10 +124,10 @@ The statistics `:experimental.split-bools.input-goals`, `.selected`, and
 `.output-goals` expose the expansion.
 
 `make_solver_tactic(name, terms, solve)` is the common formula adapter.
-`make_session_solver_strategy` in `solver_leaves` owns all six concrete leaf
+`make_session_solver_strategy` in `solver_leaves` owns all seven concrete leaf
 closures, their model-term selection, conversion-chain forwarding, and the
 typed `SolverAnswer` boundary. `solver_engines` exposes the complete
-single-goal QF_UF, QF_LRA, QF_LIA, and QF_UFLRA engine entry points and
+single-goal QF_UF, QF_LRA, QF_LIA, QF_UFLRA, and QF_UFLIA engine entry points and
 contains their implementations and shared theory/model support. The
 session supplies only its frontend, immutable solve options, statistics, and
 execution context. With the experimental splitter disabled it compiles the

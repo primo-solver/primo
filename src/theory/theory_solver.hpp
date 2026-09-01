@@ -1,6 +1,7 @@
 #pragma once
 
 #include <span>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -81,7 +82,7 @@ struct TheoryCheckResult {
   TheoryCheckStatus status = TheoryCheckStatus::Unknown;
   sat::Clause clause;
   TheoryModelProjection model;
-  std::string_view diagnostic;
+  std::string diagnostic;
 };
 
 // Solve-scoped component interface.  The SMT layer owns purification, SAT,

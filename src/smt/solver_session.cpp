@@ -645,7 +645,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
         return finish(CheckSatResult::Unsat);
       }
     }
-    if (assertions.empty() && !options.preprocess_only) {
+    if (assertions.empty() && !options.preprocess_only && frontend.logic() != "QF_UFLIA") {
       statistics.set(kStatTimePreprocessingUs,
                      elapsed_microseconds(preprocessing_start, PhaseClock::now()));
       CheckSatOutcome outcome = finish(CheckSatResult::Sat);

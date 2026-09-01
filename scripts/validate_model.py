@@ -3,7 +3,7 @@
 
 This compatibility entry point delegates to the Dolmen-backed model validator.
 The implementation file still carries its original QF_UF name, but the Dolmen
-check also covers the currently printed QF_LRA Real-constant and mixed QF_UFLRA
+check also covers the currently printed QF_LRA, QF_LIA, QF_UFLRA, and QF_UFLIA
 model subsets.
 """
 

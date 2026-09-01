@@ -75,17 +75,44 @@ component before sparse care-set or model-guided optimizations are attempted.
 
 `QF_UFLRA` does not use this eager policy. Its existing lazy convex equality
 exchange, exact fallback, model mutation, reconciliation, and model builder
-remain the active policy behind the same component boundary.
+remain in its specialized coordinator.
 
 ## Implemented subset and limitations
 
-The protocol and capability declarations are the first scaffold. Until the
-coordinator and adapters are connected, runnable behavior remains the existing
-specialized `QF_UFLRA` path and the direct single-theory solvers. Arrays,
-bit-vectors, nonlinear arithmetic, finite shared sorts, quantifiers, and the
-full `DPLL(T^M)` transition system are not implemented by this interface.
+`QF_UFLIA` is runnable through a sequential two-component coordinator. Its EUF
+adapter declares a convex, stably-infinite Int interface; its LIA adapter
+declares the same interface stably infinite and non-convex. Both receive the
+same complete `InterfaceRelation` vector, but enforce it only through their
+owned SAT atoms. The LIA adapter reuses Primo's exact-rational tableau, integer
+patching, GCD check, Gomory cuts, and bounded branch-and-bound. Reaching the
+existing integer node limit returns a typed resource-limit `unknown`.
 
-Protocol tests use mock convex and non-convex components to check ownership,
-capability declaration, assignment delivery, and general learned clauses.
-Solver-level arrangement, explanation, model, and fuzz tests are required as
-the adapters become runnable.
+The frontend accepts Int-valued uninterpreted functions and predicates, rejects
+Real-valued symbols and Real arguments, and retains the existing QF_LIA
+operator subset: integer `div` and `mod` remain unsupported. Mixed purification
+uses memoized Int proxies in both directions. Models combine the final integer
+tableau values with the ground EUF function and predicate tables, then replay
+the ordered preprocessing reconstruction chain.
+
+The coordinator is sequential and currently instantiates EUF plus LIA only.
+`QF_UFLRA` retains its established specialized convex coordinator, options,
+counters, and model behavior. Its EUF and arithmetic implementations supply the
+same operations represented by the component protocol, but the specialized
+scheduler is deliberately not routed through the new adapter in this baseline;
+doing so later requires a separate equivalence evaluation. Arrays, bit-vectors,
+nonlinear arithmetic, finite shared sorts, quantifiers, and the full
+`DPLL(T^M)` transition system remain unsupported.
+
+Protocol tests use mock convex and non-convex components. QF_UFLIA solver tests
+cover purification, complete arrangements, the non-convex disjunction case,
+combined models, empty formulas, and frontend sort rejection. Smoke models are
+validated directly by Dolmen.
+
+## Statistics
+
+`:solver.qf-uflia` selects the new leaf. `:combination.components`,
+`:combination.shared-terms`, `:combination.arrangement-pairs`, and
+`:combination.arrangement-bridge-clauses` describe the static combination.
+`:combination.rounds`, `:combination.component-checks`,
+`:combination.learned-clauses`, and `:combination.resource-limits` describe the
+sequential search. Existing QF_UFLRA statistic names and meanings are unchanged.

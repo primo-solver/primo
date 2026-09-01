@@ -17,6 +17,7 @@ struct SolverTacticSet {
   Tactic lra_model_only_solver;
   Tactic mixed_solver;
   Tactic lia_solver;
+  Tactic uflia_solver;
 };
 
 struct SolverStrategyOptions {

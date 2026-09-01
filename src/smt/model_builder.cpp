@@ -4,8 +4,10 @@
 #include <cstddef>
 #include <functional>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -84,7 +86,7 @@ class QfUfModelBuilder {
     }
     closure_.saturate();
     complete_boolean_values();
-    index_real_values();
+    index_numeric_values();
   }
 
   std::string build() {
@@ -250,16 +252,44 @@ class QfUfModelBuilder {
     return false;
   }
 
-  void index_real_values() {
-    if (options_.real_values == nullptr) {
-      return;
-    }
-    for (const auto& [term, value] : *options_.real_values) {
-      if (terms_.get(term).sort != terms_.symbols().real_sort()) {
-        continue;
+  void index_numeric_values() {
+    const auto index = [this](const std::unordered_map<core::TermId, util::Rational>* source,
+                              core::SortId sort,
+                              std::unordered_map<core::TermId, util::Rational>& by_representative) {
+      if (source == nullptr) {
+        return;
       }
-      real_values_by_representative_.emplace(closure_.class_representative(term), value);
+      for (const auto& [term, value] : *source) {
+        if (terms_.get(term).sort != sort) {
+          continue;
+        }
+        const core::TermId representative = closure_.class_representative(term);
+        const auto [existing, inserted] = by_representative.emplace(representative, value);
+        if (!inserted && existing->second != value) {
+          throw std::logic_error("component model values disagree inside one EUF class");
+        }
+      }
+    };
+    index(options_.real_values, terms_.symbols().real_sort(), real_values_by_representative_);
+    index(options_.int_values, terms_.symbols().int_sort(), int_values_by_representative_);
+    for (const auto& [term, value] : int_values_by_representative_) {
+      static_cast<void>(term);
+      used_int_values_.insert(value);
     }
+  }
+
+  util::Rational fresh_int_value(core::TermId representative) {
+    const auto found = generated_int_values_.find(representative);
+    if (found != generated_int_values_.end()) {
+      return found->second;
+    }
+    util::Rational candidate(0);
+    while (used_int_values_.contains(candidate)) {
+      candidate = candidate + util::Rational(1);
+    }
+    used_int_values_.insert(candidate);
+    generated_int_values_.emplace(representative, candidate);
+    return candidate;
   }
 
   std::string term_value(core::TermId term) {
@@ -276,6 +306,17 @@ class QfUfModelBuilder {
           real_values_by_representative_.find(closure_.class_representative(term));
       return smtlib_rational(representative_found == real_values_by_representative_.end()
                                  ? util::Rational(0)
+                                 : representative_found->second);
+    }
+    if (node.sort == terms_.symbols().int_sort() && options_.int_values != nullptr) {
+      const auto found = options_.int_values->find(term);
+      if (found != options_.int_values->end()) {
+        return smtlib_rational(found->second);
+      }
+      const core::TermId representative = closure_.class_representative(term);
+      const auto representative_found = int_values_by_representative_.find(representative);
+      return smtlib_rational(representative_found == int_values_by_representative_.end()
+                                 ? fresh_int_value(representative)
                                  : representative_found->second);
     }
     return value_name(closure_.class_representative(term));
@@ -302,9 +343,11 @@ class QfUfModelBuilder {
         key.values.push_back(term_value(child));
       }
       const std::string result = term_value(term.id);
-      const bool has_exact_real_value = symbol.result_sort == terms_.symbols().real_sort() &&
-                                        options_.real_values != nullptr &&
-                                        options_.real_values->contains(term.id);
+      const bool has_exact_real_value =
+          (symbol.result_sort == terms_.symbols().real_sort() && options_.real_values != nullptr &&
+           options_.real_values->contains(term.id)) ||
+          (symbol.result_sort == terms_.symbols().int_sort() && options_.int_values != nullptr &&
+           int_values_by_representative_.contains(closure_.class_representative(term.id)));
       const auto found = seen.find(key);
       if (found == seen.end()) {
         seen.emplace(key, entries.size());
@@ -342,6 +385,9 @@ class QfUfModelBuilder {
     if (symbol.result_sort == terms_.symbols().real_sort()) {
       return "0";
     }
+    if (symbol.result_sort == terms_.symbols().int_sort() && options_.int_values != nullptr) {
+      return "0";
+    }
     return default_value(symbol.result_sort);
   }
 
@@ -366,6 +412,9 @@ class QfUfModelBuilder {
   std::unordered_map<core::SortId, std::string> default_value_by_sort_;
   std::unordered_map<core::SortId, std::size_t> next_value_index_by_sort_;
   std::unordered_map<core::TermId, util::Rational> real_values_by_representative_;
+  std::unordered_map<core::TermId, util::Rational> int_values_by_representative_;
+  std::unordered_map<core::TermId, util::Rational> generated_int_values_;
+  std::unordered_set<util::Rational, util::RationalHash> used_int_values_;
 };
 
 }  // namespace

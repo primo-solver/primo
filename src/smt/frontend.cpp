@@ -1,5 +1,6 @@
 #include "smt/frontend.hpp"
 
+#include <algorithm>
 #include <cassert>
 #include <cstddef>
 #include <functional>
@@ -136,7 +137,7 @@ struct Frontend::Implementation {
         return;
       case smtlib::CommandKind::SetLogic:
         if (command.logic != "QF_UF" && command.logic != "QF_LRA" && command.logic != "QF_UFLRA" &&
-            command.logic != "QF_LIA") {
+            command.logic != "QF_LIA" && command.logic != "QF_UFLIA") {
           throw UnsupportedInput("unsupported logic: " + command.logic);
         }
         logic_ = command.logic;
@@ -322,16 +323,22 @@ struct Frontend::Implementation {
     if (logic_ == "QF_LRA" && !arg_sorts.empty()) {
       throw UnsupportedInput("QF_LRA supports free constants but not uninterpreted functions");
     }
+    const bool integer_logic = logic_ == "QF_LIA" || logic_ == "QF_UFLIA";
     if (logic_ == "QF_LIA") {
       if (!arg_sorts.empty()) {
         throw UnsupportedInput("QF_LIA supports free constants but not uninterpreted functions");
       }
+    }
+    if (integer_logic) {
+      if (std::find(arg_sorts.begin(), arg_sorts.end(), symbols_.real_sort()) != arg_sorts.end()) {
+        throw UnsupportedInput("integer arithmetic logics do not support Real arguments");
+      }
       if (result_sort == symbols_.real_sort()) {
-        throw UnsupportedInput("QF_LIA does not support Real constants (that's QF_LIRA)");
+        throw UnsupportedInput("integer arithmetic logics do not support Real-valued symbols");
       }
     }
-    if (arg_sorts.empty() && result_sort == symbols_.int_sort() && logic_ != "QF_LIA") {
-      throw UnsupportedInput("Int constants require (set-logic QF_LIA)");
+    if (arg_sorts.empty() && result_sort == symbols_.int_sort() && !integer_logic) {
+      throw UnsupportedInput("Int constants require an integer arithmetic logic");
     }
     if (arg_sorts.empty()) {
       const core::SymbolId symbol = symbols_.declare_constant(command.name, result_sort);
@@ -491,9 +498,9 @@ void TermBuilder::dispatch(const smtlib::SExpr& expr, Continuation k) {
       return;
     }
     if (const auto literal = util::Rational::parse(expr.atom); literal.has_value()) {
-      const core::SortId numeral_sort = frontend_.logic_ == "QF_LIA"
-                                            ? frontend_.symbols_.int_sort()
-                                            : frontend_.symbols_.real_sort();
+      const bool integer_logic = frontend_.logic_ == "QF_LIA" || frontend_.logic_ == "QF_UFLIA";
+      const core::SortId numeral_sort =
+          integer_logic ? frontend_.symbols_.int_sort() : frontend_.symbols_.real_sort();
       resume(std::move(k), frontend_.terms_.mk_rational(literal.value(), numeral_sort));
       return;
     }
@@ -943,7 +950,9 @@ void TermBuilder::dispatch_divide(const smtlib::SExpr& expr, Continuation k) {
     const core::TermId rhs = operands[1];
     if (frontend_.terms_.get(lhs).sort == frontend_.symbols_.int_sort() ||
         frontend_.terms_.get(rhs).sort == frontend_.symbols_.int_sort()) {
-      throw UnsupportedInput("/ is a Real operator; QF_LIA has no division (div/mod unsupported)");
+      throw UnsupportedInput(
+          "/ is a Real operator; integer arithmetic has no supported division (div/mod "
+          "unsupported)");
     }
     // Only the divisor has to be a literal. Dividing a linear term by a
     // nonzero rational is linear -- (/ t c) is (* (1/c) t) -- so it belongs in

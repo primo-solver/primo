@@ -1,0 +1,8 @@
+(set-option :produce-models true)
+(set-logic QF_UFLIA)
+(declare-fun x () Int)
+(declare-fun f (Int) Int)
+(assert (= x 2))
+(assert (= (f x) 3))
+(check-sat)
+(get-model)

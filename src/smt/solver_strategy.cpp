@@ -40,7 +40,8 @@ Tactic make_solver_dispatch(SolverStrategyOptions options, SolverTacticSet solve
         continue;
       }
       const GoalTruth goal_truth = truth(goal, context);
-      if (goal_truth == GoalTruth::True) {
+      if (goal_truth == GoalTruth::True &&
+          !(options.logic == "QF_UFLIA" && context.produce_model())) {
         return AnyOf::single(goal);
       }
       if (goal_truth == GoalTruth::False) {
@@ -57,6 +58,8 @@ Tactic make_solver_dispatch(SolverStrategyOptions options, SolverTacticSet solve
       const Tactic* selected = nullptr;
       if (options.logic == "QF_LIA") {
         selected = &solvers.lia_solver;
+      } else if (options.logic == "QF_UFLIA") {
+        selected = &solvers.uflia_solver;
       } else if (((features.has_equality || features.has_euf_predicate) &&
                   features.has_arithmetic) ||
                  (context.produce_model() && options.logic == "QF_UFLRA" &&
@@ -77,7 +80,12 @@ Tactic make_solver_dispatch(SolverStrategyOptions options, SolverTacticSet solve
         selected = &boolean_then_euf;
       }
 
-      AnyOf result = (*selected)(context, AnyOf::single(goal));
+      Goal solver_goal = goal;
+      if (selected == &solvers.uflia_solver && goal.assertions().empty() &&
+          context.produce_model()) {
+        solver_goal = goal.with_assertions({context.terms().mk_bool(true)});
+      }
+      AnyOf result = (*selected)(context, AnyOf::single(std::move(solver_goal)));
       const GoalTruth result_truth = truth(result, context);
       if (result_truth == GoalTruth::True) {
         return result;

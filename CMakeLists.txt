@@ -412,6 +412,12 @@ primo_enable_sanitizers(primo_qf_lia_solver_tests)
 target_link_libraries(primo_qf_lia_solver_tests PRIVATE primo_core)
 add_test(NAME primo_qf_lia_solver_tests COMMAND primo_qf_lia_solver_tests)
 
+add_executable(primo_qf_uflia_solver_tests tests/unit/qf_uflia_solver_tests.cpp)
+primo_enable_warnings(primo_qf_uflia_solver_tests)
+primo_enable_sanitizers(primo_qf_uflia_solver_tests)
+target_link_libraries(primo_qf_uflia_solver_tests PRIVATE primo_core)
+add_test(NAME primo_qf_uflia_solver_tests COMMAND primo_qf_uflia_solver_tests)
+
 add_executable(primo_lia_gcd_consistency_tests tests/unit/lia_gcd_consistency_tests.cpp)
 primo_enable_warnings(primo_lia_gcd_consistency_tests)
 primo_enable_sanitizers(primo_lia_gcd_consistency_tests)

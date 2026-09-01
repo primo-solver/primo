@@ -507,7 +507,7 @@ PreparedPreprocessingStrategy prepare_and_execute_preprocessing_strategy(
     Frontend& frontend, std::vector<core::TermId> assertions, CheckSatOptions& options,
     TacticContext& context) {
   initialize_skippable_legacy_statistics(context.statistics());
-  const bool is_qf_lia = frontend.logic() == "QF_LIA";
+  const bool is_qf_lia = frontend.logic() == "QF_LIA" || frontend.logic() == "QF_UFLIA";
   if (is_qf_lia) {
     // docs/open-leads.md lead 12a audits only syntactic solved-constant
     // substitution over Int. Real Gaussian candidates, monotone elimination,

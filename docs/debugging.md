@@ -1020,7 +1020,7 @@ This changes Dolmen's input acceptance, not model checking. Override
 `PRIMO_MODEL_DOLMEN_ARGS` to change or clear that real-corpus setting.
 
 Merge-gate policy is stricter than the validator's diagnostic fallback. The
-QF_UF Boolean, QF_LRA Boolean/arithmetic, QF_UFLRA, and QF_LIA model fuzz gates
+QF_UF Boolean, QF_LRA Boolean/arithmetic, QF_UFLRA, QF_LIA, and QF_UFLIA model fuzz gates
 require a direct Dolmen pass for every satisfiable model. The QF_LIA gate uses
 Dolmen's non-strict parser because FuzzSMT emits let-bound linear coefficients;
 the setting relaxes syntax checking only. A `z3-fallback` row can still be

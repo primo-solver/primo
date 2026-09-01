@@ -10,6 +10,7 @@
 #include <iterator>
 #include <optional>
 #include <ranges>
+#include <span>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -56,6 +57,7 @@
 #include "theory/equality/explained_congruence_closure.hpp"
 #include "theory/equality/flat_congruence_closure.hpp"
 #include "theory/equality/flat_terms.hpp"
+#include "theory/theory_solver.hpp"
 #include "util/rational.hpp"
 #include "util/statistics.hpp"
 
@@ -3103,7 +3105,7 @@ void publish_euf_care_pair_diagnostics(const EufCarePairDiagnostics& diagnostics
       diagnostics.definition_pairs_within_classes - diagnostics.argument_pairs_checked);
 }
 
-// Real for QF_LRA/QF_UFLRA, Int for QF_LIA -- both are LraTableau atoms;
+// Real for QF_LRA/QF_UFLRA, Int for QF_LIA/QF_UFLIA -- both are LraTableau atoms;
 // only the sort differs. mk_eq is sort-agnostic (any Bool/Uninterpreted
 // equality reaches this too), so the sort check is what actually
 // distinguishes an arithmetic equality from an EUF one.
@@ -3858,7 +3860,8 @@ std::string build_composed_uf_lra_model(
                              QfUfModelBuildOptions{.include_model_wrapper = false,
                                                    .skip_real_symbols = false,
                                                    .skip_real_constants = true,
-                                                   .real_values = &values});
+                                                   .real_values = &values,
+                                                   .int_values = nullptr});
   append_real_constant_model_definitions(model, terms, model_terms, values);
   model << ")";
   return model.str();
@@ -4223,6 +4226,47 @@ std::vector<core::TermId> shared_real_constants(
   shared.reserve(std::min(euf_terms.size(), lra_terms.size()));
   for (const core::TermId term : euf_terms) {
     if (lra_terms.contains(term)) {
+      shared.push_back(term);
+    }
+  }
+  std::sort(shared.begin(), shared.end());
+  return shared;
+}
+
+void collect_constants_of_sort_in_term(const core::TermManager& terms, core::TermId term_id,
+                                       core::SortId sort, std::unordered_set<core::TermId>& out) {
+  const core::Term& term = terms.get(term_id);
+  if (term.kind == core::TermKind::Constant && term.sort == sort) {
+    out.insert(term_id);
+  }
+  for (const core::TermId child : term.children) {
+    collect_constants_of_sort_in_term(terms, child, sort, out);
+  }
+}
+
+std::vector<core::TermId> shared_arithmetic_constants(
+    const core::TermManager& terms, core::SortId sort,
+    const std::vector<BooleanClausifier::TheoryAtom>& euf_atoms,
+    const std::vector<BooleanClausifier::TheoryAtom>& arithmetic_atoms) {
+  std::unordered_set<core::TermId> euf_terms;
+  std::unordered_set<core::TermId> arithmetic_terms;
+  for (const BooleanClausifier::TheoryAtom& atom : euf_atoms) {
+    collect_constants_of_sort_in_term(terms, atom.term, sort, euf_terms);
+  }
+  for (const BooleanClausifier::TheoryAtom& atom : arithmetic_atoms) {
+    const theory::arithmetic::LraAtom normalized =
+        theory::arithmetic::normalize_atom(terms, atom.term);
+    for (const auto& [variable, coefficient] : normalized.polynomial.terms()) {
+      if (!coefficient.is_zero() && terms.get(variable).sort == sort) {
+        arithmetic_terms.insert(variable);
+      }
+    }
+  }
+
+  std::vector<core::TermId> shared;
+  shared.reserve(std::min(euf_terms.size(), arithmetic_terms.size()));
+  for (const core::TermId term : euf_terms) {
+    if (arithmetic_terms.contains(term)) {
       shared.push_back(term);
     }
   }
@@ -6626,8 +6670,9 @@ bool arithmetic_term_needs_mixed_purification(
     return found->second;
   }
   const core::Term& term = terms.get(term_id);
-  bool result =
-      term.kind == core::TermKind::Application && term.sort == terms.symbols().real_sort();
+  const bool arithmetic_sort =
+      term.sort == terms.symbols().real_sort() || term.sort == terms.symbols().int_sort();
+  bool result = term.kind == core::TermKind::Application && arithmetic_sort;
   if (!result && (term.kind == core::TermKind::Plus || term.kind == core::TermKind::Times)) {
     for (const core::TermId child : term.children) {
       if (arithmetic_term_needs_mixed_purification(terms, child, arithmetic_memo)) {
@@ -6649,7 +6694,7 @@ bool euf_term_needs_mixed_purification(const core::TermManager& terms, core::Ter
   }
   const core::Term& term = terms.get(term_id);
   bool result = false;
-  if (term.sort == terms.symbols().real_sort()) {
+  if (term.sort == terms.symbols().real_sort() || term.sort == terms.symbols().int_sort()) {
     result = term.kind != core::TermKind::Constant ||
              arithmetic_term_needs_mixed_purification(terms, term_id, arithmetic_memo);
   } else if (term.kind == core::TermKind::Application) {
@@ -6681,8 +6726,10 @@ bool formula_needs_mixed_purification(const core::TermManager& terms, core::Term
       result = arithmetic_term_needs_mixed_purification(terms, children.at(0), arithmetic_memo) ||
                arithmetic_term_needs_mixed_purification(terms, children.at(1), arithmetic_memo);
       break;
-    case core::TermKind::Equality:
-      if (terms.get(children.at(0)).sort == terms.symbols().real_sort()) {
+    case core::TermKind::Equality: {
+      const core::SortId equality_sort = terms.get(children.at(0)).sort;
+      if (equality_sort == terms.symbols().real_sort() ||
+          equality_sort == terms.symbols().int_sort()) {
         result = arithmetic_term_needs_mixed_purification(terms, children.at(0), arithmetic_memo) ||
                  arithmetic_term_needs_mixed_purification(terms, children.at(1), arithmetic_memo);
       } else {
@@ -6691,6 +6738,7 @@ bool formula_needs_mixed_purification(const core::TermManager& terms, core::Term
             euf_term_needs_mixed_purification(terms, children.at(1), arithmetic_memo, euf_memo);
       }
       break;
+    }
     case core::TermKind::Application:
       if (term.sort == terms.symbols().bool_sort()) {
         result = euf_term_needs_mixed_purification(terms, term_id, arithmetic_memo, euf_memo);
@@ -6768,7 +6816,8 @@ core::TermId purify_arithmetic_term(Frontend& frontend, core::TermId term_id,
   const core::SymbolId symbol = term.symbol;
   const util::Rational rational_value = term.rational_value;
   core::TermId result = term_id;
-  if (kind == core::TermKind::Application && sort == terms.symbols().real_sort()) {
+  if (kind == core::TermKind::Application &&
+      (sort == terms.symbols().real_sort() || sort == terms.symbols().int_sort())) {
     const auto found = state.proxy_by_app.find(term_id);
     if (found != state.proxy_by_app.end()) {
       ++state.reused_applications;
@@ -6822,11 +6871,11 @@ core::TermId purify_arithmetic_term(Frontend& frontend, core::TermId term_id,
   return result;
 }
 
-core::TermId purify_euf_real_argument(Frontend& frontend, core::TermId term_id,
-                                      MixedPurificationRewriteState& state) {
+core::TermId purify_euf_arithmetic_argument(Frontend& frontend, core::TermId term_id,
+                                            MixedPurificationRewriteState& state) {
   core::TermManager& terms = frontend.terms();
   const core::Term& term = terms.get(term_id);
-  if (term.sort != terms.symbols().real_sort()) {
+  if (term.sort != terms.symbols().real_sort() && term.sort != terms.symbols().int_sort()) {
     return term_id;
   }
 
@@ -6861,8 +6910,8 @@ core::TermId purify_euf_term(Frontend& frontend, core::TermId term_id,
   const core::SortId sort = term.sort;
   const core::SymbolId symbol = term.symbol;
   core::TermId result = term_id;
-  if (sort == terms.symbols().real_sort()) {
-    result = purify_euf_real_argument(frontend, term_id, state);
+  if (sort == terms.symbols().real_sort() || sort == terms.symbols().int_sort()) {
+    result = purify_euf_arithmetic_argument(frontend, term_id, state);
     state.euf_rewrite_memo.emplace(term_id, result);
     return result;
   }
@@ -6935,14 +6984,17 @@ core::TermId purify_mixed_formula(Frontend& frontend, core::TermId term_id,
                                                                           : terms.mk_lt(lhs, rhs);
         break;
       }
-      case core::TermKind::Equality:
-        if (terms.get(term_children.at(0)).sort == terms.symbols().real_sort()) {
+      case core::TermKind::Equality: {
+        const core::SortId equality_sort = terms.get(term_children.at(0)).sort;
+        if (equality_sort == terms.symbols().real_sort() ||
+            equality_sort == terms.symbols().int_sort()) {
           const core::TermId lhs = purify_arithmetic_term(frontend, term_children.at(0), state);
           const core::TermId rhs = purify_arithmetic_term(frontend, term_children.at(1), state);
           result = lhs == term_children.at(0) && rhs == term_children.at(1) ? visit.term
                                                                             : terms.mk_eq(lhs, rhs);
           break;
         }
+      }
         {
           const core::TermId lhs = purify_euf_term(frontend, term_children.at(0), state);
           const core::TermId rhs = purify_euf_term(frontend, term_children.at(1), state);
@@ -8848,6 +8900,485 @@ CheckSatOutcome solve_qf_lia_engine_impl(core::TermManager& terms,
   return outcome;
 }
 
+void apply_boolean_domain_encoding(BooleanClausifier& clausifier, const CheckSatOptions& options,
+                                   util::Statistics& statistics);
+
+bool is_uflia_euf_atom(const core::TermManager& terms, core::TermId term_id) {
+  const core::Term& term = terms.get(term_id);
+  if (term.kind == core::TermKind::Equality) {
+    return true;
+  }
+  return (term.kind == core::TermKind::Application || term.kind == core::TermKind::Constant) &&
+         term.sort == terms.symbols().bool_sort();
+}
+
+struct LiaComponentCheck {
+  enum class Status {
+    Sat,
+    Unsat,
+    ResourceLimit,
+  };
+
+  Status status = Status::ResourceLimit;
+  sat::Clause conflict;
+  std::optional<theory::arithmetic::LraTableau> model;
+};
+
+LiaComponentCheck check_lia_component_assignment(
+    const PreparedLraTheory& prepared, const std::vector<AssignedTheoryAtom>& assigned_atoms,
+    const std::vector<theory::arithmetic::LraVarId>& integer_vars, const CheckSatOptions& options,
+    util::Statistics& statistics) {
+  theory::arithmetic::LraTableau tableau = prepared.base_tableau;
+  for (std::size_t i = 0; i < assigned_atoms.size(); ++i) {
+    const AssignedTheoryAtom& atom = assigned_atoms[i];
+    const PreparedLraTheory::PreparedAtom& prepared_atom = prepared.atoms[i];
+    if (!prepared_atom.is_arithmetic || atom.filtered) {
+      continue;
+    }
+    const auto conflict = assert_lra_atom_bound(
+        tableau, prepared_atom.bound_var, prepared_atom.relation, prepared_atom.rhs, atom.value,
+        prepared_atom.asserts_lower_when_true, blocking_lit(atom), prepared_atom.is_integer);
+    if (conflict.has_value()) {
+      return LiaComponentCheck{.status = LiaComponentCheck::Status::Unsat,
+                               .conflict = conflict.value(),
+                               .model = std::nullopt};
+    }
+  }
+  if (const std::optional<sat::Clause> conflict = tableau.check(); conflict.has_value()) {
+    return LiaComponentCheck{.status = LiaComponentCheck::Status::Unsat,
+                             .conflict = conflict.value(),
+                             .model = std::nullopt};
+  }
+
+  const std::size_t patched =
+      theory::arithmetic::patch_integer_variables(tableau, integer_vars, options.lia_patch_limit);
+  if (options.lia_patch_limit > 0) {
+    statistics.increment(util::StatKey::LiaPatchSweeps);
+    statistics.increment(util::StatKey::LiaPatchedVariables, patched);
+  }
+
+  theory::arithmetic::LiaExplanation explanation;
+  bool integer_unsat =
+      theory::arithmetic::gcd_inconsistent_row(tableau, integer_vars, &explanation).has_value();
+  if (!integer_unsat) {
+    integer_unsat = theory::arithmetic::apply_gomory_cuts(
+        tableau, integer_vars, options.lia_gomory_cut_limit, &explanation);
+  }
+  if (!integer_unsat) {
+    const theory::arithmetic::LiaBranchAndBoundResult result = theory::arithmetic::branch_and_bound(
+        tableau, integer_vars, options.lia_branch_limit, &explanation);
+    if (result.status == theory::arithmetic::LiaBranchAndBoundResult::Status::Sat) {
+      return LiaComponentCheck{
+          .status = LiaComponentCheck::Status::Sat, .conflict = {}, .model = std::move(tableau)};
+    }
+    if (result.status == theory::arithmetic::LiaBranchAndBoundResult::Status::LimitReached) {
+      return LiaComponentCheck{.status = LiaComponentCheck::Status::ResourceLimit,
+                               .conflict = {},
+                               .model = std::nullopt};
+    }
+  }
+
+  sat::Clause coarse;
+  for (std::size_t i = 0; i < assigned_atoms.size(); ++i) {
+    if (prepared.atoms[i].is_arithmetic && !assigned_atoms[i].filtered) {
+      coarse.push_back(blocking_lit(assigned_atoms[i]));
+    }
+  }
+  sat::Clause conflict = options.lia_conflict_generalization
+                             ? generalized_lia_lemma(coarse, explanation, statistics)
+                             : std::move(coarse);
+  return LiaComponentCheck{.status = LiaComponentCheck::Status::Unsat,
+                           .conflict = std::move(conflict),
+                           .model = std::nullopt};
+}
+
+std::unordered_map<core::TermId, util::Rational> qf_uflia_int_values(
+    const core::TermManager& terms, const std::vector<core::TermId>& model_terms,
+    const ModelConversionChain& conversions, const PreparedLraTheory& prepared,
+    const theory::arithmetic::LraTableau& tableau) {
+  std::unordered_map<core::TermId, util::Rational> values;
+  values.reserve(prepared.variables_by_term.size() + model_terms.size());
+  for (const auto& [term, variable] : prepared.variables_by_term) {
+    values.emplace(term, tableau.assignment(variable).rational);
+  }
+
+  std::unordered_map<core::TermId, core::TermId> substitutions;
+  conversions.replay_reverse([&substitutions](const ModelConversionStep& step) {
+    const auto* lia = std::get_if<LiaSubstitutionConversion>(&step);
+    if (lia == nullptr) {
+      return;
+    }
+    for (auto substitution = lia->substitutions.rbegin(); substitution != lia->substitutions.rend();
+         ++substitution) {
+      substitutions.try_emplace(substitution->first, substitution->second);
+    }
+  });
+  for (const core::TermId term : model_terms) {
+    if (values.contains(term)) {
+      continue;
+    }
+    const auto substitution = substitutions.find(term);
+    if (substitution == substitutions.end()) {
+      continue;
+    }
+    const std::optional<util::Rational> value =
+        evaluate_qf_lia_model_term(terms, substitution->second, prepared, tableau);
+    if (value.has_value()) {
+      values.emplace(term, value.value());
+    }
+  }
+  return values;
+}
+
+class EufComponentAdapter final : public theory::TheorySolver {
+ public:
+  EufComponentAdapter(const core::TermManager& terms,
+                      std::vector<BooleanClausifier::TheoryAtom> atoms, core::TermId true_term,
+                      core::TermId false_term, core::SortId shared_sort,
+                      EufExplainSearchMode explain_search_mode, bool proof_forest_diagnostics,
+                      util::Statistics& statistics)
+      : properties_{.id = "euf",
+                    .shared_sorts = {shared_sort},
+                    .stably_infinite = theory::StableInfiniteness::Yes,
+                    .convexity = theory::Convexity::Convex,
+                    .produces_model_projection = true,
+                    .propagates_equalities = true,
+                    .supplies_care_pairs = true},
+        atoms_(std::move(atoms)),
+        prepared_(terms, atoms_, true_term, false_term, explain_search_mode,
+                  proof_forest_diagnostics),
+        statistics_(statistics) {}
+
+  const theory::TheoryProperties& properties() const override { return properties_; }
+
+  theory::TheoryCheckResult check(std::span<const theory::AssignedTheoryLiteral> assignment,
+                                  std::span<const theory::InterfaceRelation> arrangement) override {
+    static_cast<void>(arrangement);
+    if (assignment.size() != atoms_.size()) {
+      throw std::logic_error("EUF component assignment size mismatch");
+    }
+    std::vector<AssignedTheoryAtom> assigned;
+    assigned.reserve(assignment.size());
+    for (std::size_t index = 0; index < assignment.size(); ++index) {
+      assigned.push_back(
+          assigned_theory_atom(PureTheoryFilterMode::Off, atoms_[index], assignment[index].value));
+    }
+    const std::optional<sat::Clause> conflict =
+        find_incremental_theory_conflict(prepared_, assigned, statistics_);
+    if (conflict.has_value()) {
+      return theory::TheoryCheckResult{.status = theory::TheoryCheckStatus::LearnedClause,
+                                       .clause = conflict.value(),
+                                       .model = {},
+                                       .diagnostic = {}};
+    }
+    return theory::TheoryCheckResult{.status = theory::TheoryCheckStatus::Consistent,
+                                     .clause = {},
+                                     .model = {},
+                                     .diagnostic = {}};
+  }
+
+ private:
+  theory::TheoryProperties properties_;
+  std::vector<BooleanClausifier::TheoryAtom> atoms_;
+  PreparedFlatTheory prepared_;
+  util::Statistics& statistics_;
+};
+
+class LiaComponentAdapter final : public theory::TheorySolver {
+ public:
+  LiaComponentAdapter(const core::TermManager& terms,
+                      std::vector<BooleanClausifier::TheoryAtom> atoms, core::SortId shared_sort,
+                      const CheckSatOptions& options, util::Statistics& statistics)
+      : properties_{.id = "lia",
+                    .shared_sorts = {shared_sort},
+                    .stably_infinite = theory::StableInfiniteness::Yes,
+                    .convexity = theory::Convexity::NonConvex,
+                    .produces_model_projection = true,
+                    .propagates_equalities = false,
+                    .supplies_care_pairs = false},
+        terms_(terms),
+        atoms_(std::move(atoms)),
+        prepared_(terms_, atoms_, lra_pivoting_rule_from_options(options.lra_pivoting_rule),
+                  options.lra_sparse_leaving, options.lra_fixed_elimination,
+                  /*collect_model_variables=*/true, options.lra_least_violated_leaving,
+                  lra_tuning_from_options(options.lra_tuning)),
+        options_(options),
+        statistics_(statistics) {
+    integer_vars_.reserve(prepared_.variables_by_term.size());
+    for (const auto& [term, variable] : prepared_.variables_by_term) {
+      if (terms_.get(term).sort == terms_.symbols().int_sort()) {
+        integer_vars_.push_back(variable);
+      }
+    }
+  }
+
+  const theory::TheoryProperties& properties() const override { return properties_; }
+
+  theory::TheoryCheckResult check(std::span<const theory::AssignedTheoryLiteral> assignment,
+                                  std::span<const theory::InterfaceRelation> arrangement) override {
+    static_cast<void>(arrangement);
+    if (assignment.size() != atoms_.size()) {
+      throw std::logic_error("LIA component assignment size mismatch");
+    }
+    std::vector<AssignedTheoryAtom> assigned;
+    assigned.reserve(assignment.size());
+    for (std::size_t index = 0; index < assignment.size(); ++index) {
+      assigned.push_back(
+          assigned_theory_atom(PureTheoryFilterMode::Off, atoms_[index], assignment[index].value));
+    }
+    LiaComponentCheck result =
+        check_lia_component_assignment(prepared_, assigned, integer_vars_, options_, statistics_);
+    last_model_ = std::move(result.model);
+    switch (result.status) {
+      case LiaComponentCheck::Status::Sat:
+        return theory::TheoryCheckResult{.status = theory::TheoryCheckStatus::Consistent,
+                                         .clause = {},
+                                         .model = {},
+                                         .diagnostic = {}};
+      case LiaComponentCheck::Status::Unsat:
+        return theory::TheoryCheckResult{.status = theory::TheoryCheckStatus::LearnedClause,
+                                         .clause = std::move(result.conflict),
+                                         .model = {},
+                                         .diagnostic = {}};
+      case LiaComponentCheck::Status::ResourceLimit:
+        return theory::TheoryCheckResult{.status = theory::TheoryCheckStatus::ResourceLimit,
+                                         .clause = {},
+                                         .model = {},
+                                         .diagnostic = "integer branch-and-bound node limit"};
+    }
+    throw std::logic_error("unreachable LIA component status");
+  }
+
+  const PreparedLraTheory& prepared() const { return prepared_; }
+  const theory::arithmetic::LraTableau& model() const { return last_model_.value(); }
+
+ private:
+  theory::TheoryProperties properties_;
+  const core::TermManager& terms_;
+  std::vector<BooleanClausifier::TheoryAtom> atoms_;
+  PreparedLraTheory prepared_;
+  std::vector<theory::arithmetic::LraVarId> integer_vars_;
+  CheckSatOptions options_;
+  util::Statistics& statistics_;
+  std::optional<theory::arithmetic::LraTableau> last_model_;
+};
+
+std::vector<theory::AssignedTheoryLiteral> component_assignment_from_backend(
+    const sat::IpasirUpBackend& backend, const std::vector<BooleanClausifier::TheoryAtom>& atoms) {
+  std::vector<theory::AssignedTheoryLiteral> assignment;
+  assignment.reserve(atoms.size());
+  for (const BooleanClausifier::TheoryAtom& atom : atoms) {
+    const int variable = sat_var(atom.lit);
+    const std::optional<bool> sat_value = backend.value(variable);
+    if (!sat_value.has_value()) {
+      throw UnsupportedInput("SAT backend did not assign component theory atom");
+    }
+    const bool value = atom.lit.value > 0 ? sat_value.value() : !sat_value.value();
+    assignment.push_back(
+        theory::AssignedTheoryLiteral{.atom = atom.term, .lit = atom.lit, .value = value});
+  }
+  return assignment;
+}
+
+CheckSatOutcome solve_qf_uflia_engine_impl(core::TermManager& terms,
+                                           const std::vector<core::TermId>& assertions,
+                                           const std::vector<core::TermId>& model_terms,
+                                           const ModelConversionChain& conversions,
+                                           const CheckSatOptions& options,
+                                           util::Statistics& statistics) {
+  statistics.increment(":solver.qf-uflia");
+  sat::CadicalBackend backend(options.cadical_options);
+  SolveTerminator terminator(options.cancelled, statistics, options.max_theory_conflicts);
+  const ScopedTerminatorConnection terminator_connection(backend, terminator);
+  BooleanClausifier clausifier(backend, terms, options.top_level_or_tseitin);
+  for (const core::TermId assertion : assertions) {
+    clausifier.assert_formula(assertion);
+  }
+  apply_boolean_domain_encoding(clausifier, options, statistics);
+
+  std::vector<BooleanClausifier::TheoryAtom> initial_euf_atoms;
+  std::vector<BooleanClausifier::TheoryAtom> initial_lia_atoms;
+  for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
+    if (atom.term == core::kInvalidTermId) {
+      continue;
+    }
+    const core::Term& term = terms.get(atom.term);
+    if (term.kind == core::TermKind::Le || term.kind == core::TermKind::Lt) {
+      if (contains_application_term(terms, atom.term)) {
+        throw UnsupportedInput("QF_UFLIA arithmetic atom escaped purification");
+      }
+      initial_lia_atoms.push_back(atom);
+    } else if (is_uflia_euf_atom(terms, atom.term)) {
+      initial_euf_atoms.push_back(atom);
+    } else {
+      throw UnsupportedInput("unsupported QF_UFLIA theory atom");
+    }
+  }
+
+  const std::vector<core::TermId> shared_int_terms = shared_arithmetic_constants(
+      terms, terms.symbols().int_sort(), initial_euf_atoms, initial_lia_atoms);
+  std::size_t bridge_clauses = 0;
+  for (std::size_t lhs_index = 0; lhs_index < shared_int_terms.size(); ++lhs_index) {
+    for (std::size_t rhs_index = lhs_index + 1; rhs_index < shared_int_terms.size(); ++rhs_index) {
+      const core::TermId lhs = shared_int_terms[lhs_index];
+      const core::TermId rhs = shared_int_terms[rhs_index];
+      const core::TermId equality = terms.mk_eq(lhs, rhs);
+      const core::TermId lhs_le_rhs = terms.mk_le(lhs, rhs);
+      const core::TermId rhs_le_lhs = terms.mk_le(rhs, lhs);
+      clausifier.assert_formula(terms.mk_implies(equality, lhs_le_rhs));
+      clausifier.assert_formula(terms.mk_implies(equality, rhs_le_lhs));
+      clausifier.assert_formula(terms.mk_implies(terms.mk_and({lhs_le_rhs, rhs_le_lhs}), equality));
+      bridge_clauses += 3;
+    }
+  }
+
+  std::vector<BooleanClausifier::TheoryAtom> euf_atoms;
+  std::vector<BooleanClausifier::TheoryAtom> lia_atoms;
+  for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
+    const core::Term& term = terms.get(atom.term);
+    if (term.kind == core::TermKind::Le || term.kind == core::TermKind::Lt) {
+      lia_atoms.push_back(atom);
+    } else if (is_uflia_euf_atom(terms, atom.term)) {
+      euf_atoms.push_back(atom);
+    } else {
+      throw UnsupportedInput("unsupported QF_UFLIA theory atom after arrangement materialization");
+    }
+  }
+
+  statistics.set(":combination.components", 2);
+  statistics.set(":combination.shared-terms", shared_int_terms.size());
+  statistics.set(":combination.arrangement-pairs", unordered_pair_count(shared_int_terms.size()));
+  statistics.set(":combination.arrangement-bridge-clauses", bridge_clauses);
+  statistics.set(":no.mixed.euf-atoms", euf_atoms.size());
+  statistics.set(":no.mixed.lia-atoms", lia_atoms.size());
+  statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
+
+  const core::TermId true_term = terms.mk_bool(true);
+  const core::TermId false_term = terms.mk_bool(false);
+  const std::unordered_set<core::TermId> shared_int_set(shared_int_terms.begin(),
+                                                        shared_int_terms.end());
+  std::vector<theory::InterfaceRelation> arrangement_template;
+  arrangement_template.reserve(unordered_pair_count(shared_int_terms.size()));
+  for (const BooleanClausifier::TheoryAtom& atom : euf_atoms) {
+    const core::Term& term = terms.get(atom.term);
+    if (term.kind != core::TermKind::Equality || term.children.size() != 2 ||
+        !shared_int_set.contains(term.children[0]) || !shared_int_set.contains(term.children[1])) {
+      continue;
+    }
+    arrangement_template.push_back(
+        theory::InterfaceRelation{.lhs = term.children[0],
+                                  .rhs = term.children[1],
+                                  .sort = terms.symbols().int_sort(),
+                                  .equality_lit = atom.lit,
+                                  .value = theory::InterfaceRelationValue::Equal});
+  }
+  if (arrangement_template.size() != unordered_pair_count(shared_int_terms.size())) {
+    throw std::logic_error("QF_UFLIA complete arrangement is missing an interface equality");
+  }
+  EufComponentAdapter euf_component(terms, euf_atoms, true_term, false_term,
+                                    terms.symbols().int_sort(), options.euf_explain_search,
+                                    options.euf_proof_forest_diagnostics, statistics);
+  LiaComponentAdapter lia_component(terms, lia_atoms, terms.symbols().int_sort(), options,
+                                    statistics);
+  const std::vector<theory::TheorySolver*> components{&euf_component, &lia_component};
+
+  while (true) {
+    statistics.increment(kStatSatSolveCalls);
+    const sat::SatResult sat_result = backend.solve();
+    publish_sat_stats(backend.statistics(), statistics);
+    if (terminator.cancelled_reached()) {
+      return CheckSatOutcome{CheckSatResult::Unknown, "cancelled", statistics, "",
+                             InconclusiveReason::Cancelled};
+    }
+    if (terminator.conflict_limit_reached()) {
+      return CheckSatOutcome{CheckSatResult::Unknown, "theory conflict limit reached", statistics,
+                             "", InconclusiveReason::ResourceLimit};
+    }
+    if (sat_result != sat::SatResult::Sat) {
+      return CheckSatOutcome{map_sat_result(sat_result), "", statistics, ""};
+    }
+
+    statistics.increment(":combination.rounds");
+    std::vector<theory::InterfaceRelation> arrangement = arrangement_template;
+    for (theory::InterfaceRelation& relation : arrangement) {
+      const std::optional<bool> sat_value = backend.value(sat_var(relation.equality_lit));
+      if (!sat_value.has_value()) {
+        throw UnsupportedInput("SAT backend did not assign interface equality");
+      }
+      const bool equality_value =
+          relation.equality_lit.value > 0 ? sat_value.value() : !sat_value.value();
+      relation.value = equality_value ? theory::InterfaceRelationValue::Equal
+                                      : theory::InterfaceRelationValue::Disequal;
+    }
+
+    const std::vector<theory::AssignedTheoryLiteral> euf_assignment =
+        component_assignment_from_backend(backend, euf_atoms);
+    const std::vector<theory::AssignedTheoryLiteral> lia_assignment =
+        component_assignment_from_backend(backend, lia_atoms);
+    const std::vector<std::span<const theory::AssignedTheoryLiteral>> component_assignments{
+        euf_assignment, lia_assignment};
+    bool learned = false;
+    for (std::size_t component_index = 0; component_index < components.size(); ++component_index) {
+      statistics.increment(":combination.component-checks");
+      theory::TheoryCheckResult check =
+          components[component_index]->check(component_assignments[component_index], arrangement);
+      if (check.status == theory::TheoryCheckStatus::Consistent) {
+        continue;
+      }
+      if (check.status == theory::TheoryCheckStatus::ResourceLimit) {
+        statistics.increment(":combination.resource-limits");
+        return CheckSatOutcome{CheckSatResult::Unknown,
+                               "QF_UFLIA integer branch-and-bound node limit reached", statistics,
+                               "", InconclusiveReason::ResourceLimit};
+      }
+      if (check.status == theory::TheoryCheckStatus::Cancelled) {
+        return CheckSatOutcome{CheckSatResult::Unknown, "cancelled", statistics, "",
+                               InconclusiveReason::Cancelled};
+      }
+      if (check.status == theory::TheoryCheckStatus::Unsupported) {
+        return CheckSatOutcome{CheckSatResult::Unsupported, check.diagnostic, statistics, "",
+                               InconclusiveReason::Unsupported};
+      }
+      if (check.status == theory::TheoryCheckStatus::Unknown) {
+        return CheckSatOutcome{CheckSatResult::Unknown, check.diagnostic, statistics, "",
+                               InconclusiveReason::Unknown};
+      }
+      if (check.status != theory::TheoryCheckStatus::LearnedClause) {
+        throw std::logic_error("unexpected modular theory component result");
+      }
+      statistics.increment(kStatTheoryConflicts);
+      statistics.increment(":combination.learned-clauses");
+      if (check.clause.empty()) {
+        return CheckSatOutcome{CheckSatResult::Unsat, "", statistics, ""};
+      }
+      backend.add_clause(check.clause);
+      learned = true;
+      break;
+    }
+    if (learned) {
+      continue;
+    }
+
+    if (!options.produce_model) {
+      return CheckSatOutcome{CheckSatResult::Sat, "", statistics, ""};
+    }
+    const auto int_values = qf_uflia_int_values(terms, model_terms, conversions,
+                                                lia_component.prepared(), lia_component.model());
+    std::vector<TheoryModelAssignment> model_assignments = conversions.theory_assignments(terms);
+    model_assignments.reserve(model_assignments.size() + euf_assignment.size());
+    for (const theory::AssignedTheoryLiteral& atom : euf_assignment) {
+      model_assignments.push_back(TheoryModelAssignment{atom.atom, atom.value, false});
+    }
+    return CheckSatOutcome{CheckSatResult::Sat, "", statistics,
+                           build_qf_uf_model(terms, model_assignments,
+                                             QfUfModelBuildOptions{.include_model_wrapper = true,
+                                                                   .skip_real_symbols = true,
+                                                                   .skip_real_constants = true,
+                                                                   .real_values = nullptr,
+                                                                   .int_values = &int_values})};
+  }
+}
+
 void record_disequality_propagation_opportunities(const core::TermManager& terms,
                                                   const PreparedFlatTheory& prepared,
                                                   const std::vector<AssignedTheoryAtom>& atoms,
@@ -10155,7 +10686,8 @@ CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
                                        QfUfModelBuildOptions{.include_model_wrapper = false,
                                                              .skip_real_symbols = false,
                                                              .skip_real_constants = true,
-                                                             .real_values = &real_values});
+                                                             .real_values = &real_values,
+                                                             .int_values = nullptr});
             append_real_constant_model_definitions(model, terms, model_terms, real_values);
             model << ")";
             statistics.increment(":no.shared-model.reconstructed-models");
@@ -10579,7 +11111,8 @@ CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
                                  QfUfModelBuildOptions{.include_model_wrapper = false,
                                                        .skip_real_symbols = false,
                                                        .skip_real_constants = true,
-                                                       .real_values = &real_values});
+                                                       .real_values = &real_values,
+                                                       .int_values = nullptr});
       append_real_constant_model_definitions(model, terms, model_terms, real_values);
       model << ")";
       return CheckSatOutcome{CheckSatResult::Sat, "", statistics, model.str()};
@@ -10620,6 +11153,16 @@ CheckSatOutcome solve_qf_uflra_engine(core::TermManager& terms,
                                       const CheckSatOptions& options,
                                       util::Statistics& statistics) {
   return solve_qf_uflra_engine_impl(terms, assertions, model_terms, conversions, options,
+                                    statistics);
+}
+
+CheckSatOutcome solve_qf_uflia_engine(core::TermManager& terms,
+                                      const std::vector<core::TermId>& assertions,
+                                      const std::vector<core::TermId>& model_terms,
+                                      const ModelConversionChain& conversions,
+                                      const CheckSatOptions& options,
+                                      util::Statistics& statistics) {
+  return solve_qf_uflia_engine_impl(terms, assertions, model_terms, conversions, options,
                                     statistics);
 }
 

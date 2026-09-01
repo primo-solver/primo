@@ -2369,7 +2369,7 @@ core::TermId rewrite_with_solved_constants(
   return memo.at(term_id);
 }
 
-// Real for QF_LRA/QF_UFLRA, Int for QF_LIA -- both are total orders, so
+// Real for QF_LRA/QF_UFLRA, Int for QF_LIA/QF_UFLIA -- both are total orders, so
 // `a = b` lowers to `a <= b AND b <= a` either way (see the Equality case
 // in lower_real_equalities_rewrite below).
 bool is_real_equality(const core::TermManager& terms, core::TermId term_id) {
