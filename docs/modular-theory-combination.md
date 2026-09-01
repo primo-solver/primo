@@ -77,6 +77,27 @@ component before sparse care-set or model-guided optimizations are attempted.
 exchange, exact fallback, model mutation, reconciliation, and model builder
 remain in its specialized coordinator.
 
+## Recorded model-guided direction
+
+The intended optimization path is de Moura and Bjorner's model-based theory
+combination, not convex propagation applied to integers. A component may expose
+a candidate partition of its shared terms. The coordinator may use that
+partition to choose equalities, test compatibility with other component models,
+or ask a component to mutate its model before committing to a split. A
+candidate-model equality remains a search choice; only an explained theory
+consequence may be learned as an entailed clause.
+
+The generic protocol already records whether a component produces a model
+projection, and `TheoryCheckResult` has an equality-class projection. It does
+not yet define generic `M-Propagate`, `M-Mutate`, model generations, or
+trail-synchronized model invalidation. Those operations and their ownership
+checklist are recorded in [](papers/model-based-theory-combination.md).
+
+For QF_UFLIA, model guidance may eventually order or reduce the practical cost
+of arrangement search, but it cannot rely on the convex rule that an implied
+disjunction contains an individually implied equality. The complete
+SAT-visible arrangement therefore remains the current correctness backstop.
+
 ## Implemented subset and limitations
 
 `QF_UFLIA` is runnable through a sequential two-component coordinator. Its EUF
