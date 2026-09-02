@@ -29818,6 +29818,52 @@
       },
       "evidence_status": "local diagnostic profile and parameter classification only; exact source relation recorded; no algorithm or default changed; SLURM evaluation and fuzzing required before accepting any tuning",
       "outcome": "The principal observed cost is repeated full-model orchestration: quadratic interface clauses burden CaDiCaL, every round scans all component atoms, and EUF/LIA state is rebuilt. Full incremental DPLL(T^M), persistent component contexts, EUF care pairs, and partial theory checks rank ahead of additional integer cuts for this watchlist. Raising the experimental model-decision budget avoids fallback and recovers three rows locally, but it is only a lead for a controlled SLURM/fuzz experiment."
+    },
+    {
+      "id": "2026-09-03-qf-uflia-online-complete-local-gate",
+      "started_at": "2026-09-03",
+      "recorded_at": "2026-09-03",
+      "kind": "local-exact-commit-ab-fuzz-model-validation",
+      "scope": "Exact-commit local correctness and performance gate for the experimental trail-synchronized EUF and rational-arithmetic path over the unchanged complete QF_UFLIA arrangement.",
+      "commits": {
+        "source_and_binary": "31ecd565c0a5408b4961664661752130f694f34d",
+        "baseline_parent": "87c2010"
+      },
+      "branch": "modular-theory-combination",
+      "environment": {
+        "host": "mikolas-ThinkPad-T14s-Gen-5; Linux 7.0.0-30-generic x86_64; local workstation",
+        "solver": "Primo 0.1.0; CaDiCaL cadical-3.0.0-7b99c07",
+        "references": "workspace Z3 and cvc5; Dolmen 0.10 at /home/user/.opam/default/bin/dolmen",
+        "sample": "benchmarks/qf_uflia-smtlib-representative-20.txt rooted at the existing extraction below /tmp/primo-uflia-plan.BtEpmD/non-incremental/QF_UFLIA"
+      },
+      "commands": {
+        "sample_pattern": "python3 scripts/bench_qf_uf_full.py --root /tmp/primo-uflia-plan.BtEpmD/non-incremental/QF_UFLIA --manifest /workspace/benchmarks/qf_uflia-smtlib-representative-20.txt --repo / --solver /workspace/build/primo --solver-arg=--quiet [--solver-arg=--experimental-qf-uflia-online-components] --timeout 5 --out <artifact>.csv --summary <artifact>-summary.csv",
+        "sample_models": "PATH=/workspace/contrib/local/bin:$PATH python3 scripts/validate_model.py --manifest benchmarks/qf_uflia-smtlib-representative-20.txt --root /tmp/primo-uflia-plan.BtEpmD/non-incremental/QF_UFLIA --solver ./build/primo --solver-arg=--quiet --solver-arg=--experimental-qf-uflia-online-components --dolmen /home/user/.opam/default/bin/dolmen --dolmen-arg=--strict=false --require-dolmen-pass --timeout 5 --dolmen-timeout 5 --out /tmp/qf-uflia-online-sample-models-31ecd56",
+        "fuzz_answers": "PATH=/workspace/contrib/local/bin:$PATH python3 scripts/qf_uflia_fuzz.py --solver ./build/primo --solver-arg=--quiet --solver-arg=--experimental-qf-uflia-online-components --ref z3 --ref cvc5 --count 1000 --seed 202609030 --timeout 5 --shape random --out /tmp/qf-uflia-online-fuzz-31ecd56",
+        "fuzz_models": "PATH=/workspace/contrib/local/bin:$PATH python3 scripts/validate_model.py --solver ./build/primo --solver-arg=--quiet --solver-arg=--experimental-qf-uflia-online-components --dolmen /home/user/.opam/default/bin/dolmen --dolmen-arg=--strict=false --require-dolmen-pass --timeout 5 --dolmen-timeout 5 --out /tmp/qf-uflia-online-fuzz-models-31ecd56 /tmp/qf-uflia-online-fuzz-31ecd56/cases/*.smt2",
+        "bounded_timeout_probe": "timeout -s TERM 10 ./build/primo --quiet --stats --experimental-qf-uflia-online-components --max-theory-conflicts=200 <remaining-sample-timeout>"
+      },
+      "results": {
+        "sample_baseline": "8/20 solved at five seconds: 3 sat, 5 unsat, 12 timeout, 0 wrong, 0 unsupported; PAR2 126.299595 seconds.",
+        "sample_online": "16/20 solved at five seconds: 7 sat, 9 unsat, 4 timeout, 0 wrong, 0 unsupported; PAR2 43.814808 seconds. Family coverage was Certora 0/2, TwoSquares 4/4, MathSAT 9/10, and wisas 3/4.",
+        "sample_models": "Dolmen directly accepted all 7 satisfiable online-arm models; 9 rows were unsat and 4 timed out.",
+        "fuzz": "1,000/1,000 PASS against both Z3 and cvc5: 594 sat and 406 unsat; zero wrong answer, disagreement, crash, parser/type error, timeout, unsupported result, or unknown output. Dolmen directly accepted all 594 satisfiable models.",
+        "remaining_shape": "At a 200-theory-conflict diagnostic bound, the remaining xs_27_37, medium12, and smaller Certora rows had respectively 7,750, 23,220, and 12,090 arrangement pairs; the online path removed post-model rebuilds but retained the quadratic SAT vocabulary."
+      },
+      "verification": {
+        "commands": "make check; make lint; make docs; make asan-test; make tidy; make include-cleaner; git diff --check",
+        "results": "All 25 CTests and 78 Python tests passed; ASan passed 25/25 after catching and fixing a setup-scope option-reference lifetime defect; lint and docs passed; whole-tree clang-tidy reported only 18 suppressed non-user warnings; include-cleaner retained its known 214-warning advisory baseline and added no warning in the changed solver or tests.",
+        "review": "The required smt-code-review skill was unavailable in the installed skill catalog. Manual diff review and the solver-efficiency-review skill found no new callback full scan; the only per-accepted-model allocation feeds the mandatory integer completion and its sound conflict clause."
+      },
+      "artifacts": {
+        "baseline_sample": "/tmp/qf-uflia-default-31ecd56.csv",
+        "online_sample": "/tmp/qf-uflia-online-31ecd56.csv",
+        "sample_models": "/tmp/qf-uflia-online-sample-models-31ecd56",
+        "fuzz_answers": "/tmp/qf-uflia-online-fuzz-31ecd56",
+        "fuzz_models": "/tmp/qf-uflia-online-fuzz-models-31ecd56"
+      },
+      "evidence_status": "exact-commit local development evidence; online path remains default-off pending SLURM campaign and QF_UFLRA regression gate",
+      "outcome": "Trail-synchronized complete-arrangement solving removes the dominant repeated component reconstruction and doubles five-second sample coverage. The remaining gaps still pay the quadratic arrangement cost, motivating a separate sparse-plus-online experiment before any default decision."
     }
   ]
 }
