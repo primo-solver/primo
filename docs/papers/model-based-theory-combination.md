@@ -1,8 +1,8 @@
 # de Moura-Bjorner Model-Based Theory Combination
 
-Status stamp: 2026-09-01, branch `modular-theory-combination`, after the convex
-shared-model reconciliation implementation, the typed component-protocol and
-QF_UFLIA delayed-combination milestones, exact-commit fuzz and model gates, and
+Status stamp: 2026-09-03, branch `modular-theory-combination`, after the convex
+shared-model reconciliation implementation, the typed component protocol,
+QF_UFLIA sparse-online default promotion, exact-commit fuzz and model gates, and
 the earlier full QF_UFLRA SLURM performance comparison.
 
 Reference:
@@ -14,8 +14,8 @@ Reference:
 This note records what the paper says, section by section, and whether Primo
 currently implements it. The checklist below is deliberately conservative:
 Primo implements a complete convex equality-sharing path for its documented
-QF_UFLRA subset and an experimental non-convex QF_UFLIA model-guided path with
-a complete fallback, but not the paper's full model-based theory-combination
+QF_UFLRA subset and a default non-convex QF_UFLIA model-guided path with a
+complete fallback, but not the paper's full model-based theory-combination
 procedure.
 
 ## Overall Status
@@ -65,14 +65,12 @@ generic state machine. `TheoryCombinationManager` owns the shared projection
 and equality-decision lifecycle, while EUF and arithmetic retain their
 theory-local closure/tableau objects.
 
-The default modular QF_UFLIA coordinator remains a deliberately different
-delayed-combination baseline: because integer linear arithmetic is non-convex,
-it gives SAT the complete shared-Int equality arrangement. The experimental
-route instead projects the checked EUF closure and final integer tableau,
-using coincident integer values only as reversible SAT choices. Such a choice
-is not an entailed equality. Bounded exhaustion or an inconclusive component
-restarts the complete baseline, so the convex QF_UFLRA argument is never
-applied to integers.
+The default modular QF_UFLIA coordinator projects the checked EUF closure and
+final integer tableau, using coincident integer values only as reversible SAT
+choices. Such a choice is not an entailed equality. Because integer linear
+arithmetic is non-convex, bounded exhaustion or an inconclusive component
+restarts the complete shared-Int delayed-combination arrangement. The convex
+QF_UFLRA argument is therefore never applied to integers.
 
 At `bbd43b9`, this exact profile passed 4,000 generated/finite differential
 cases, all 11 deterministic QF_UFLRA seeds, a complete 100-mutation-per-seed
@@ -286,7 +284,7 @@ default.
 | 2.1 Nelson-Oppen Combination Method | Reviews purification, shared variables, arrangements, and equality propagation between disjoint theories. For convex theories, propagating implied equalities can avoid arrangement enumeration. | **Implemented subset.** The documented purified QF_UFLRA path performs explained bidirectional equality sharing to a fixpoint. EUF emits a spanning set; LRA emits all four Section 5.1 equality shapes and uses an exact fallback over unresolved pairs equal in the checked LRA model. This is complete for that convex interface, not generic multi-theory Nelson-Oppen. |
 | 3 Related Work | Places the approach against Shostak-style combination, delayed theory combination, Ackermannization, and dynamic Ackermannization. The paper's point is that existing alternatives can add too many literals or too many lemmas. | **Mostly not implemented as paper mechanisms.** Primo has separate EUF/Ackermann diagnostics and separate QF_UF disequality-propagation work, but these are not the model-based combination algorithm. |
 | 3.1 Convex Theories | Describes equality propagation for convex theories and notes that complete enumeration of all theory-implied equalities can be expensive. | **Implemented subset, different schedule.** Primo's final-check coordinator reaches a complete convex fixpoint for the supported shared Real interface. Cheap producers run first; exact strict-separation probes cover what they miss. It is not the paper's model-guided schedule. |
-| 3.2 Delayed Theory Combination | DTC creates Boolean equality literals for shared variables and lets SAT search over arrangements. This avoids special theory-combination rules but may create a quadratic number of literals. | **Implemented QF_UFLIA baseline and fallback; not used by default QF_UFLRA.** The default modular EUF+LIA path materializes every same-sort shared-Int equality because LIA is non-convex. The experimental model-guided route starts sparse but restarts this complete baseline on exhaustion or an inconclusive component. The established QF_UFLRA path instead creates shared Real equalities lazily. |
+| 3.2 Delayed Theory Combination | DTC creates Boolean equality literals for shared variables and lets SAT search over arrangements. This avoids special theory-combination rules but may create a quadratic number of literals. | **Implemented QF_UFLIA fallback; not used by default QF_UFLRA.** The default EUF+LIA route starts sparse but restarts a complete same-sort shared-Int arrangement on exhaustion or an inconclusive component because LIA is non-convex. The established QF_UFLRA path instead creates shared Real equalities lazily. |
 | 3.3 Ackermannization | Ackermann reduction replaces UF reasoning with constraints over applications and congruence axioms. The paper treats it as useful in some cases but potentially expensive. | **Separate from this work.** Primo's Ackermann and disequality-propagation options are EUF-side mechanisms. They are not integrated as the paper's model-combination method. |
 | 3.3.1 Dynamic Ackermannization | Dynamic Ackermannization adds Ackermann constraints during search, especially when disequalities between applications make argument disequalities relevant. | **Separate/partial.** This belongs to the QF_UF disequality propagation line, not to current mixed QF_UFLRA model-based combination. |
 | 4 Model-Based Theory Combination | This is the core contribution. A theory solver maintains or exposes a candidate model. If two shared terms are equal in that model, the combination layer may propagate that equality. If the equality is bad for another theory, search backtracks or the model is mutated. | **Implemented convex QF_UFLRA subset.** The default reconciliation path postpones model choices until both theories are feasible, mutates the scratch LRA model, tests LRA class spanning edges in a checkpointed EUF closure, and sends the canonical rejected-edge frontier through one positive-first IPASIR assumption solve. The default-off live-EUF profile can borrow the trail-synchronized EUF closure under a rollback scope instead of rebuilding it. Failed assumptions produce blocking clauses. Frontier batching and callback deferral are Primo scheduling mechanisms, not separate paper transitions, and this is not generic `DPLL(T^M)`. |
@@ -294,11 +292,11 @@ default.
 | 5.1 Opportunistic Equality Propagation | The paper describes `FixedEq`, `EqRow`, `EqOffsetRows`, and `EqRows`, plus fixed-variable removal and supporting bound propagation. | **Partial implementation.** `LraTableau::entailed_equalities()` implements all four rules with exact explanations and spanning output; mixed QF_UFLRA removes fixed basic variables by default. Primo polls the rules after a feasible check rather than maintaining the first three eagerly during pivots. Row-bound propagation is wired into mixed solving but remains opt-in after a mixed full-corpus A/B exchanged one solve for one loss. The exact unresolved-pair fallback preserves convex completeness despite those deviations. |
 | 5.2 Model Mutation | The paper describes mutating arithmetic model values, using freedom intervals, to avoid unnecessary equalities before propagating them to other theories. | **Implemented LRA subset.** `LraTableau::diversify_shared_model()` performs the greedy nonbasic-variable sweep on a scratch assignment and returns the complete candidate assignment plus post-mutation classes. It accepts forbidden shared-variable pairs and never reintroduces one already separated. The coordinator applies targeted strict orientations to unresolved mandatory disequalities and rebuilds the scratch model; the live tableau remains unchanged. |
 | 6 Experimental Evaluation | The paper compares model-based theory combination against DTC, Ackermannization, Yices, and MathSAT on several UF+arithmetic benchmark families. | **Not reproduced.** Primo has local and SLURM benchmark evidence in `docs/run-log.json`, including QF_UFLRA CPAchecker and sample Z3 comparisons, but it has not reproduced the paper's experiment suite. |
-| 7 Conclusions | The paper emphasizes that the approach requires theories to efficiently answer whether two shared terms have equal values in the current model. | **Implemented protocol subset.** `TheoryModelProjection` uniformly exposes per-sort equality classes, and `TheorySolver::mutate` requests a compatible variant by opaque epoch/revision token. The experimental QF_UFLRA adapter supplies both operations; other production components are not migrated yet. |
+| 7 Conclusions | The paper emphasizes that the approach requires theories to efficiently answer whether two shared terms have equal values in the current model. | **Implemented protocol subset.** `TheoryModelProjection` uniformly exposes per-sort equality classes, and `TheorySolver::mutate` requests a compatible variant by opaque epoch/revision token. QF_UFLIA uses the projection protocol by default; the generic QF_UFLRA scheduler remains experimental, and no third theory is adapted. |
 | 7.1 On the Significance of Ackermann's Reduction | The paper argues that model-based combination can avoid some Ackermannization costs, while dynamic Ackermannization remains useful in UF-heavy cases. | **Separate.** Primo's Ackermann-related work should stay documented as EUF-specific unless it is explicitly wired into mixed-theory model combination. |
-| 7.2 Are Theories Amenable to Model-Based Combinations? | The paper asks which theories can cheaply expose useful candidate models; Simplex is the main positive example. | **Implemented two-arithmetic-sort subset.** Experimental QF_UFLRA projects exact `DeltaRational` classes and experimental QF_UFLIA projects the integer completion returned by patching/cuts/branch-and-bound. Both pair those classes with an EUF closure projection through the generic scheduler; no third production theory is adapted yet. |
+| 7.2 Are Theories Amenable to Model-Based Combinations? | The paper asks which theories can cheaply expose useful candidate models; Simplex is the main positive example. | **Implemented two-arithmetic-sort subset.** Experimental generic QF_UFLRA projects exact `DeltaRational` classes, while default QF_UFLIA projects the integer completion returned by patching/cuts/branch-and-bound. Both pair those classes with an EUF closure projection through the generic scheduler; no third production theory is adapted yet. |
 | Acknowledgment | No algorithmic content. | **No implementation relevance.** |
-| Appendix A: Presentation of `DPLL(T^M)` | Gives the abstract transition system where the SAT/theory search state includes model information and model-based propagation/mutation rules. | **Implemented transition subset.** `ModelBasedCombinationCoordinator` represents typed component checks, entailed facts, model choices, compatible variants, fixed points, and stops after a satisfying SAT assignment. CaDiCaL still owns ordinary DPLL/CDCL transitions. Experimental QF_UFLRA and QF_UFLIA use the scheduler, but persistent multi-theory state, live model mutation, and theory registration remain incomplete. |
+| Appendix A: Presentation of `DPLL(T^M)` | Gives the abstract transition system where the SAT/theory search state includes model information and model-based propagation/mutation rules. | **Implemented transition subset.** `ModelBasedCombinationCoordinator` represents typed component checks, entailed facts, model choices, compatible variants, fixed points, and stops after a satisfying SAT assignment. CaDiCaL still owns ordinary DPLL/CDCL transitions. Experimental generic QF_UFLRA and default QF_UFLIA use the scheduler, but persistent multi-theory state, live model mutation, and theory registration remain incomplete. |
 
 ## Current Primo Anchors
 
@@ -315,7 +313,7 @@ The relevant implemented pieces are documented and tested here:
 - `src/smt/solver_engines.cpp`: the QF_UFLRA scratch candidate construction,
   targeted mandatory separation, EUF compatibility checking, lazy generated
   equality assumptions, exact fallback, candidate-model output, and the
-  distinct model-guided QF_UFLIA route with its complete-arrangement restart.
+  default model-guided QF_UFLIA route with its complete-arrangement restart.
 - `tests/unit/lra_tableau_tests.cpp`: all four Section 5.1 equality rules,
   explanations, soundness oracle, and fixed-basis preparation.
 - `tests/unit/qf_lra_solver_tests.cpp`: QF_UFLRA convex fixpoint,
@@ -335,9 +333,9 @@ of the paper's model-guided transition system. The mapping is:
 | --- | --- | --- |
 | Component candidate model | `TheoryCheckResult::model`, with an opaque component/assignment/revision token and per-sort shared equality classes | Persistent theory-private model ownership across SAT transitions |
 | `M-Propagate` | `EntailedLiteral` for justified propagation and `TheoryDecisionRequest` for a model choice; the generic scheduler preserves the distinction | Additional production component adapters |
-| `M-Mutate` | `TheorySolver::mutate`, accepting required relations and returning a changed compatible projection, fixed point, or typed stop | Persistent component implementations beyond the experimental QF_UFLRA adapter |
+| `M-Mutate` | `TheorySolver::mutate`, accepting required relations and returning a changed compatible projection, fixed point, or typed stop | Persistent component implementations beyond the experimental generic QF_UFLRA adapter; QF_UFLIA currently relies on decisions and restart rather than live integer-model mutation |
 | Care restriction | `TheorySolver::care_pairs`, prioritized without constructing all shared pairs | Invalidation rules for long-lived component models |
-| Backtracking | Owned by SAT and the SMT coordinator; assignment epochs reject stale projections | Trail-synchronized reuse rather than round-local reconstruction |
+| Backtracking | Owned by SAT and the SMT coordinator; assignment epochs reject stale projections; QF_UFLIA EUF and rational-LIA components consume the SAT trail | Dynamic arithmetic-row registration without rebuilding the online QF_UFLIA components |
 
 The generic model-guided coordinator preserves three separate kinds of
 information:

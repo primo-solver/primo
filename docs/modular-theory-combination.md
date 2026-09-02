@@ -264,6 +264,17 @@ seeds, counts, and artifact paths are recorded in [](run-log.md). This is
 correctness evidence for default-off routes, not a performance or default
 promotion claim.
 
+The later sparse-online implementation was promoted at `f38446a`. A fresh
+four-shard SLURM gate exercised the public default with no enabling options:
+3,000/3,000 QF_UFLIA answers agreed with Z3, and Dolmen directly accepted all
+1,773 satisfiable models. An isolated 30-second sample run solved 19/20 (9 sat,
+10 unsat, one timeout), with no wrong or unsupported result; the previous
+complete and model-only controls solved 11/20. On the same exact commit, a
+1,000-case general QF_UFLRA preservation gate and two 100-case finite-domain
+controls passed, with all 628 satisfiable QF_UFLRA models accepted directly by
+Dolmen. The full commands, seeds, family counts, job identifiers, and artifacts
+are recorded in [](run-log.md).
+
 A crossed-order, full-corpus SLURM comparison evaluated the specialized and
 generic QF_UFLRA coordinators twice on all 1,284 archive files with a
 120-second per-file cutoff. Each shard ran both arms on the same node, and the
