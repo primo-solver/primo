@@ -29649,6 +29649,51 @@
       },
       "evidence_status": "slurm-complete-current; exact tested binary commit; experimental default-off feature; direct-Dolmen model gate",
       "outcome": "The generic coordinator now has clean exact-commit evidence for both convex QF_UFLRA and non-convex QF_UFLIA. QF_UFLIA remains experimental: its complete delayed-combination restart is the correctness backstop, and the small archive gain is evaluation evidence rather than a default-promotion claim."
+    },
+    {
+      "id": "2026-09-02-qf-uflra-generic-full-crossed-comparison",
+      "started_at": "2026-09-02",
+      "recorded_at": "2026-09-02",
+      "kind": "paired-full-corpus-benchmark-and-profile",
+      "scope": "Crossed-order full 1,284-file QF_UFLRA comparison of the specialized default coordinator and --experimental-generic-model-combination, followed by focused local profiling of repeatable active-row deltas.",
+      "commits": {
+        "first_campaign": "0d387a3",
+        "crossed_campaign": "fdd724e",
+        "solver_source_relation": "The only tracked delta between the two tested commits is the batch harness order-offset option; solver sources and behavior are identical."
+      },
+      "environment": {
+        "slurm": "Established Primo SLURM environment; clean archive-mode workspace; Release Primo; CaDiCaL cadical-3.0.0-7b99c07; 16 paired shards throttled to eight concurrent tasks.",
+        "corpus": "tmp/QF_UFLRA; 1,284 files; 1,645,365,818 bytes; C-locale relative-path/size SHA-256 25235b3f41bf4ee9c667d694ed72a3f02b6acdf5c9f8cecba1df16b0aee1dd48.",
+        "scheduler_jobs": "Two 16-task arrays completed with exit 0 and empty stderr; identifiers are retained in the private session handoff rather than this committed record.",
+        "local_profile": "Linux workstation; GCC 13.3.0 RelWithDebInfo -pg build reporting fdd724e; CaDiCaL cadical-3.0.0-7b99c07; CPU affinity pinned to CPU 2. perf was unavailable because perf_event_paranoid=4, so gprof was used."
+      },
+      "commands": {
+        "harness_validation": "python3 scripts/slurm_validate_sbatch.py scripts/slurm_qf_uflra_generic_compare.sbatch; bash -n scripts/slurm_qf_uflra_generic_compare.sbatch",
+        "workspace": "python3 scripts/slurm_prepare_benchmark_workspace.py --sync-mode archive --reuse-dependencies ...; immediate --check-only --no-sync verified each exact embedded revision and CaDiCaL version; the staged corpus count and fingerprint were checked before each submission.",
+        "campaigns": "scripts/slurm_qf_uflra_generic_compare.sbatch with PRIMO_COMPARE_TIMEOUT=120, PRIMO_COMPARE_SHARDS=16, and PRIMO_COMPARE_ORDER_OFFSET=0 then 1. Each task ran both arms on one node; arm order alternated by shard and was reversed in the second campaign.",
+        "summary": "python3 scripts/summarize_benchmark_shards.py --timeout 120 --run specialized=<artifact>/specialized --run generic=<artifact>/generic --baseline specialized --candidate generic; a standard-library Python read-only analysis averaged each per-file arm across the two orders and ranked active generic-combination rows.",
+        "profile_build": "cmake -S . -B build-gprof-generic -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_FLAGS=-pg -DCMAKE_EXE_LINKER_FLAGS=-pg -DPRIMO_GIT_REVISION_OVERRIDE=fdd724e -DPRIMO_WARNINGS_AS_ERRORS=OFF; cmake --build build-gprof-generic --target primo -j4",
+        "profile": "taskset -c 2 build-gprof-generic/primo --quiet --stats --max-theory-conflicts=1000000 [--experimental-generic-model-combination] <Problem07_00 or cs_stack_false>; gprof build-gprof-generic/primo gmon.out"
+      },
+      "results": {
+        "correctness": "In both campaigns, each arm covered all 1,284 files and solved the identical 1,272-file set: 761 sat, 511 unsat, and 12 timeout. There were zero wrong, unsupported, error, recovery, loss, or decisive-answer-disagreement rows.",
+        "first_order": "Specialized solved-row time/PAR2 806.958954/3686.958954 seconds; generic 823.731840/3703.731840. The apparent generic solved-time increase was 2.08%.",
+        "crossed_order": "Specialized solved-row time/PAR2 794.175062/3674.175062 seconds; generic 781.692102/3661.692102. Reversing arm order made generic appear 1.57% faster on solved time.",
+        "order_effect": "On the first campaign's specialized-first shards, generic was 5.23% faster; on generic-first shards it was 7.07% slower. This identifies a material cold-first-arm effect and invalidates either single campaign as a standalone timing comparison.",
+        "crossed_average": "Per-arm averages across both orders were 800.567008 specialized versus 802.711971 generic common-solved seconds (+0.27%), and 3680.567008 versus 3682.711971 PAR2 (+0.06%). Median per-file ratio was 1.00395 and geometric-mean ratio 1.00931. Coverage and family solved counts were identical.",
+        "families": "Averaged specialized/generic solved seconds were FFT 0.167168/0.166547, BMC 6.609708/6.584899, induction 718.873731/720.615783, and MathSAT 74.916402/75.344743. Family PAR2 differs by the same solved-time deltas because timeout sets are identical.",
+        "generic_activity": "The generic coordinator was enabled on 1,231 solved rows and performed component checks on 755: 1,794 checks, 2,313 snapshots, 661 mutations, 142 fixed points, and 1,510 model decisions. It reported no stale/rejected snapshot, disagreement, learned clause, or fresh decision in this corpus.",
+        "diagnostic_difference": "Search classifications and ordinary counters matched, except that 236 rows omitted specialized compatibility-projection/success counters and 225 omitted specialized compatibility-edge/already-equal counters on the generic scheduler boundary; these are expected diagnostic-path differences, not search-result changes.",
+        "watchlist": "benchmarks/qf_uflra-generic-combination-watchlist.txt retains cs_stack_false, rtl28xxu, Problem06_60, parport, and one RandomCoupled MathSAT row. These were active generic rows with small same-direction deltas in both campaigns.",
+        "profile": "On Problem07_00, pinned gprof wall time was 16.18 seconds generic versus 16.16 specialized and solve time 5.337/5.323 seconds; the generic path only set its enabled counter. On active cs_stack_false, generic was 17.07 seconds versus 17.27 specialized and solve time 13.005/13.166 seconds; it performed two component checks, three snapshots, and one mutation. Dominant functions were LraTableau::check, exact Rational arithmetic, LRA pivots, term hash lookup, and CaDiCaL propagation; generic coordinator functions were below gprof's 10 ms sampling resolution."
+      },
+      "artifacts": {
+        "remote": "<slurm-workdir>/results/{qf-uflra-generic-ab-0d387a3-20260902,qf-uflra-generic-ab-cross-fdd724e-20260902}",
+        "local_benchmark": "/tmp/primo-qf-uflra-generic-ab-{0d387a3,cross-fdd724e}-20260902",
+        "local_profile": "/tmp/primo-gprof-{generic,specialized,cs-stack-generic,cs-stack-specialized}-fdd724e"
+      },
+      "evidence_status": "slurm-complete-current-crossed-order; exact tested binaries; local profile complete; experimental option remains default-off",
+      "outcome": "The generic QF_UFLRA scheduler preserves full-corpus coverage and is performance-neutral at the requested one-percent scale. The residual +0.27% solved time and +0.06% PAR2 are smaller than the demonstrated order effect and did not reproduce as generic infrastructure cost under gprof. Retain the active-row watchlist, but do not claim or optimize a generic-specific bottleneck from this evidence."
     }
   ]
 }

@@ -207,6 +207,29 @@ seeds, counts, and artifact paths are recorded in [](run-log.md). This is
 correctness evidence for default-off routes, not a performance or default
 promotion claim.
 
+A crossed-order, full-corpus SLURM comparison evaluated the specialized and
+generic QF_UFLRA coordinators twice on all 1,284 archive files with a
+120-second per-file cutoff. Each shard ran both arms on the same node, and the
+second campaign reversed every shard's arm order. Both arms solved the same
+1,272 files (761 sat and 511 unsat), timed out on the same 12 files, and had no
+wrong, unsupported, error, recovery, loss, or decisive-disagreement row. After
+averaging each arm across both orders, common-solved time was 800.57 seconds
+for specialized and 802.71 seconds for generic (+0.27%); PAR2 was 3,680.57 and
+3,682.71 (+0.06%). The first campaign alone misleadingly showed +2.08% solved
+time because the cold first-arm penalty fell on the heavier generic-first
+shards; reversing the order changed the apparent result to -1.57%.
+
+The generic coordinator was active on 755 solved rows. A pinned local gprof
+comparison of the largest repeatable active-row delta did not reproduce an
+infrastructure slowdown: generic took 17.07 seconds and specialized 17.27
+seconds. Both profiles were dominated by LRA tableau checks, exact-rational
+operations, pivots, and CaDiCaL propagation; two generic component checks were
+below gprof's sampling resolution. The retained active-row watchlist is
+`benchmarks/qf_uflra-generic-combination-watchlist.txt`. It is a sensitivity
+set for future changes, not evidence of a current generic bottleneck. The
+specialized path remains the default pending a separate default-selection
+decision.
+
 ## Statistics
 
 `:solver.qf-uflia` selects the new leaf. `:combination.components`,
