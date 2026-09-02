@@ -29694,6 +29694,71 @@
       },
       "evidence_status": "slurm-complete-current-crossed-order; exact tested binaries; local profile complete; experimental option remains default-off",
       "outcome": "The generic QF_UFLRA scheduler preserves full-corpus coverage and is performance-neutral at the requested one-percent scale. The residual +0.27% solved time and +0.06% PAR2 are smaller than the demonstrated order effect and did not reproduce as generic infrastructure cost under gprof. Retain the active-row watchlist, but do not claim or optimize a generic-specific bottleneck from this evidence."
+    },
+    {
+      "id": "2026-09-02-qf-uflia-reference-sample-comparison",
+      "started_at": "2026-09-02",
+      "recorded_at": "2026-09-02",
+      "kind": "slurm-reference-benchmark-model-regression-and-fuzz",
+      "scope": "Fixed 20-file QF_UFLIA representative sample comparing default and model-guided Primo with Z3, cvc5, and OpenSMT; direct Dolmen model replay; compound-definition model reconstruction fix; and exact-fix-commit generated answer and model gates.",
+      "commits": {
+        "benchmark": "f1f2525ff39b0653eb1113befd5d76e74a8c3f81",
+        "model_fix_and_fuzz": "71e5e11b00ca4d804dd1bb1796c7dcbb46f69d32",
+        "source_relation": "The benchmark and search timings were measured at f1f2525. The subsequent fix is confined to model reconstruction after the final accepted assignment and does not run in the benchmark, which does not request models."
+      },
+      "branch": "modular-theory-combination",
+      "environment": {
+        "slurm": "Established Primo SLURM environment; clean archive-mode workspace; Release Primo embedded git f1f2525; CaDiCaL cadical-3.0.0-7b99c07; Z3 5.1.0; cvc5 1.3.4; OpenSMT 2.9.2.",
+        "scheduler_job_id": "131045",
+        "local_fuzz": "Linux workstation; Release Primo embedded git 71e5e11; CaDiCaL cadical-3.0.0-7b99c07; Z3 5.0.0; cvc5 1.3.4; Dolmen 0.10.",
+        "corpus": "sandbox/QF_UFLIA.tar.zst extracted below tmp/QF_UFLIA; 659 files and 118,566,018 bytes in the archive; fixed 20-file selection totaling 571,902 bytes; C-locale relative-path/size SHA-256 1c03ca162ca81e1dbba767f69cfd22f7539f2a012f6a9aef584d9ec7ebaf66fa."
+      },
+      "commands": {
+        "harness_validation": "python3 scripts/slurm_validate_sbatch.py scripts/slurm_qf_uflia_sample_compare.sbatch; bash -n scripts/slurm_qf_uflia_sample_compare.sbatch",
+        "workspace": "python3 scripts/slurm_prepare_benchmark_workspace.py --sync-mode archive --reuse-dependencies --with-z3 --contrib-target contrib-required --contrib-target contrib-cvc5 ...; immediate --check-only --no-sync verified embedded git f1f2525 and CaDiCaL; scripts/slurm_stage_manifest_files.py staged and fingerprinted the exact 20-file manifest.",
+        "benchmark": "sbatch --array=0-4 scripts/slurm_qf_uflia_sample_compare.sbatch with PRIMO_COMPARE_TIMEOUT=30 and PRIMO_COMPARE_OUT_ROOT=<slurm-workdir>/results/qf-uflia-reference-sample-f1f2525-20260902; arms were primo --quiet --stats, primo --quiet --stats --experimental-qf-uflia-model-combination, z3 -st, cvc5 --lang smt2 --stats, and opensmt.",
+        "summary": "python3 scripts/compare_solver_answers.py /tmp/primo-qf-uflia-reference-sample-f1f2525-20260902 --timeout 30; an additional standard-library Python read-only analysis computed family summaries and selected rows where all references agreed and finished within five seconds.",
+        "model_replay": "python3 scripts/validate_model.py --solver ./build/primo --solver-arg=--quiet [--solver-arg=--experimental-qf-uflia-model-combination] --dolmen /home/user/.opam/default/bin/dolmen --dolmen-arg=--strict=false --require-dolmen-pass --timeout 30 --dolmen-timeout 30 --out /tmp/primo-qf-uflia-reference-sample-{default,guided}-models-fixed2 <four satisfiable sample inputs>",
+        "default_fuzz": "python3 scripts/qf_uflia_fuzz.py --solver ./build/primo --solver-arg=--quiet --ref ./contrib/local/bin/z3 --ref ./contrib/local/bin/cvc5 --count 1000 --seed 2026090201 --timeout 5 --shape random --out /tmp/primo-qf-uflia-model-fix-default-1000-71e5e11",
+        "guided_fuzz": "python3 scripts/qf_uflia_fuzz.py --solver ./build/primo --solver-arg=--quiet --solver-arg=--experimental-qf-uflia-model-combination --ref ./contrib/local/bin/z3 --ref ./contrib/local/bin/cvc5 --count 1000 --seed 2026090202 --timeout 5 --shape random --out /tmp/primo-qf-uflia-model-fix-guided-1000-71e5e11",
+        "fuzz_model_replay": "scripts/validate_model.py on each generated corpus with the matching Primo arguments, workspace Dolmen 0.10, --dolmen-arg=--strict=false, --require-dolmen-pass, and five-second solver and Dolmen limits."
+      },
+      "benchmark_results": {
+        "primo_default": "11/20 solved: 4 sat, 7 unsat, 9 timeout, 0 error, 0 unsupported, 0 wrong answer; 65.585836 solved-row seconds; 605.585836 PAR2.",
+        "primo_guided": "11/20 solved: 4 sat, 7 unsat, 9 timeout, 0 error, 0 unsupported, 0 wrong answer; 46.284009 solved-row seconds; 586.284009 PAR2.",
+        "z3": "19/20 solved: 9 sat, 10 unsat, 1 timeout, 0 error; 0.605794 solved-row seconds; 60.605794 PAR2.",
+        "cvc5": "19/20 solved: 9 sat, 10 unsat, 1 timeout, 0 error; 5.593126 solved-row seconds; 65.593126 PAR2.",
+        "opensmt": "19/20 solved: 9 sat, 10 unsat, 1 timeout, 0 error; 4.607037 solved-row seconds; 64.607037 PAR2.",
+        "correctness": "Zero decisive-answer disagreement, wrong answer, error, unsupported result, or non-standard unsolved reason. All five arms timed out on the same larger Certora case.",
+        "families": "Default Primo solved Certora 0/2, TwoSquares 4/4, MathSAT 6/10, and wisas 1/4; guided Primo had identical coverage. Each reference solved Certora 1/2, TwoSquares 4/4, MathSAT 10/10, and wisas 4/4.",
+        "guided_effect": "The model-guided option changed no result classification. Its largest solved-case gains were mathsat/Hash/hash_uns_03_18.smt2 from 16.049 to 0.160 seconds and mathsat/Wisa/xs-05-06-2-2-5-1.smt2 from 4.726 to 0.014 seconds.",
+        "reference_gap_watchlist": "Eight rows timed out in both Primo arms while all three references agreed and finished within five seconds; they are recorded in benchmarks/qf_uflia-reference-gap-watchlist.txt."
+      },
+      "model_regression": {
+        "discovery": "Direct Dolmen replay rejected the model for mathsat/Wisa/xs-06-07-4-5-4-2.smt2 in both Primo arms. A new reduced regression with a solved constant whose definition contains a UF application reproduced x=0 instead of the required x=1.",
+        "cause": "The solved-constant conversion retained an original compound definition while mixed-theory purification gave the LIA tableau only proxies. Reconstruction could not evaluate the original application and supplied a fresh default for the eliminated constant.",
+        "fix": "The QF_UFLIA model-only reconstruction now relates final EUF congruence classes to exact LIA values and evaluates original applications by symbol and valued argument tuple before applying the ordered conversion chain.",
+        "sample_validation": "After 71e5e11, Dolmen directly accepted all four satisfiable models from each Primo arm with --strict=false; the other sample rows were not asserted as model successes."
+      },
+      "fuzz_results": {
+        "default": "1,000/1,000 PASS against Z3 and cvc5: 592 sat and 408 unsat; zero wrong answer, disagreement, crash, parser/type error, timeout, or unsupported result; Dolmen directly accepted all 592 sat models.",
+        "guided": "1,000/1,000 PASS against Z3 and cvc5: 596 sat and 404 unsat; zero wrong answer, disagreement, crash, parser/type error, timeout, or unsupported result; Dolmen directly accepted all 596 sat models."
+      },
+      "verification": {
+        "commands": "make check; make lint; make docs; make asan-test; make tidy; make include-cleaner; git diff --check",
+        "results": "All 25 CTests and 78 Python tests passed; ASan passed 25/25; lint and docs passed; whole-tree clang-tidy found no owned-code issue; the advisory include-cleaner baseline did not increase on the changed files.",
+        "review": "The required smt-code-review skill was unavailable in the installed skill catalog. Manual whole-tree hygiene review plus clang-tidy, include-cleaner, and a solver-efficiency review found no changed-file issue. New model reconstruction work is executed once, only when model output is requested, and lies outside the solver loop."
+      },
+      "artifacts": {
+        "remote_benchmark": "<slurm-workdir>/results/qf-uflia-reference-sample-f1f2525-20260902",
+        "local_benchmark": "/tmp/primo-qf-uflia-reference-sample-f1f2525-20260902",
+        "local_slurm_logs": "/tmp/primo-qf-uflia-slurm-logs-f1f2525-20260902",
+        "sample_models": "/tmp/primo-qf-uflia-reference-sample-{default,guided}-models-fixed2",
+        "fuzz_answers": "/tmp/primo-qf-uflia-model-fix-{default,guided}-1000-71e5e11",
+        "fuzz_models": "/tmp/primo-qf-uflia-model-fix-{default,guided}-dolmen-71e5e11"
+      },
+      "evidence_status": "slurm-current exact benchmark commit; exact model-fix-commit local fuzz and direct-Dolmen gates; experimental option remains default-off",
+      "outcome": "The fixed sample exposes a substantial QF_UFLIA coverage gap: all references solve 19/20 while both Primo routes solve 11/20. Model guidance reduces time on existing successes but adds no coverage. The comparison also caught and fixed a compound-definition model reconstruction bug before the result was accepted; the eight reference-fast timeout rows are the next profiling targets."
     }
   ]
 }

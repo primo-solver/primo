@@ -250,6 +250,33 @@ For a paired model-guidance experiment, repeat the command with
 as the completeness/control arm and compare both against Z3 or cvc5; satisfiable
 Primo rows must be replayed with `scripts/validate_model.py` and Dolmen.
 
+For the five-way reference comparison, use
+`scripts/slurm_qf_uflia_sample_compare.sbatch`. It runs the default and
+model-guided Primo routes, Z3, cvc5, and OpenSMT with a 30-second per-file
+cutoff. On exact benchmark commit `f1f2525`, Z3, cvc5, and OpenSMT each solved
+19/20 files (9 sat and 10 unsat); each timed out only on the larger Certora
+case. Default and model-guided Primo each solved 11/20 (4 sat and 7 unsat) and
+timed out on the same nine files. There were no decisive-answer disagreements,
+errors, or unsupported results. Default/model-guided solved-row time was
+65.586/46.284 seconds and PAR2 was 605.586/586.284 seconds. Most of the guided
+time gain came from two already-solved MathSAT cases, so this sample shows no
+coverage gain and is not evidence for enabling the experimental route by
+default.
+
+Direct Dolmen replay of the four satisfiable Primo results exposed a compound
+definition reconstruction defect in one MathSAT Wisa case. Commit `71e5e11`
+fixes that model-only path; Dolmen then accepted all four satisfiable models
+from each Primo arm. Two independent 1,000-case generated gates on that exact
+fix commit agreed with Z3 and cvc5, and Dolmen directly accepted every one of
+the 592 default and 596 model-guided satisfiable models. The benchmark timing
+remains evidence for `f1f2525`: the fix runs only when a model is requested,
+after the final accepted assignment, and does not change the search path.
+
+`benchmarks/qf_uflia-reference-gap-watchlist.txt` retains the eight sample
+cases that both Primo routes timed out on while all three references agreed and
+finished within five seconds. It is a focused profiling queue, not a
+correctness corpus or a claim that the eight cases share one root cause.
+
 The merge-grade generated gate is
 `scripts/slurm_qf_uflia_model_fuzz_gate.sbatch`. Its four default shards produce
 3,000 QF_UFLIA cases, compare answers with Z3, and require direct Dolmen

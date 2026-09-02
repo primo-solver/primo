@@ -1,0 +1,11 @@
+# QF_UFLIA cases from the representative sample that timed out in both Primo
+# routes at 30 seconds while Z3, cvc5, and OpenSMT all returned the same
+# decisive answer within five seconds. Paths are relative to tmp/QF_UFLIA.
+wisas/xs_7_7.smt2
+wisas/xs_27_37.smt2
+wisas/xs_11_21.smt2
+mathsat/Hash/hash_sat_09_05.smt2
+mathsat/Wisa/xs-15-09-3-5-5-3.smt2
+mathsat/Wisa/xs-07-11-1-1-1-1.smt2
+mathsat/EufLaArithmetic/medium/medium12.smt2
+20230314-Jaroslav-Bendik-Certora/65782_cd31513fdcd15701933b_6_QF_UFLIA.smt2
