@@ -9749,7 +9749,7 @@ CheckSatOutcome solve_qf_uflia_engine_impl(core::TermManager& terms,
 
   const std::vector<core::TermId> shared_int_terms = shared_arithmetic_constants(
       terms, terms.symbols().int_sort(), initial_euf_atoms, initial_lia_atoms);
-  const bool model_guided = options.experimental_qf_uflia_model_combination;
+  const bool model_guided = options.qf_uflia_model_combination;
   const core::SortId int_sort = terms.symbols().int_sort();
   const std::size_t total_pair_count = unordered_pair_count(shared_int_terms.size());
   std::size_t bridge_clauses = 0;
@@ -9883,7 +9883,7 @@ CheckSatOutcome solve_qf_uflia_engine_impl(core::TermManager& terms,
   };
   const auto run_complete_fallback = [&](QfUfliaCompleteFallbackReason reason) {
     CheckSatOptions fallback_options = options;
-    fallback_options.experimental_qf_uflia_model_combination = false;
+    fallback_options.qf_uflia_model_combination = false;
     CheckSatOutcome outcome;
     {
       ScopedStatisticsTimer timer(statistics, ":time.qf-uflia.complete-fallback-us");
@@ -9907,8 +9907,8 @@ CheckSatOutcome solve_qf_uflia_engine_impl(core::TermManager& terms,
   std::optional<TheoryCombinationManager> online_combination_manager;
   std::optional<MixedTheoryPropagationDispatcher> online_dispatcher;
   CheckSatOptions online_euf_options = options;
-  const bool use_online_components = options.experimental_qf_uflia_online_components &&
-                                     options.euf_engine == EufEngine::Incremental;
+  const bool use_online_components =
+      options.qf_uflia_online_components && options.euf_engine == EufEngine::Incremental;
   const auto rebuild_online_components = [&]() {
     if (!use_online_components) {
       return;

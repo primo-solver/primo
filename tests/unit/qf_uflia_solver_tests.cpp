@@ -53,12 +53,15 @@ void non_convex_integer_arrangement_is_complete() {
   )");
   assert(result.result == CheckSatResult::Unsat);
   assert(result.statistics.get(":combination.arrangement-pairs") >= 3);
-  assert(result.statistics.get(":combination.learned-clauses") >= 1);
+  assert(result.statistics.get(":combination.model.enabled") == 1);
+  assert(result.statistics.get(":combination.online-components.enabled") == 1);
+  assert(result.statistics.get(":combination.model.decisions") >= 1);
 }
 
 void online_components_preserve_non_convex_completeness() {
   CheckSatOptions options;
-  options.experimental_qf_uflia_online_components = true;
+  options.qf_uflia_model_combination = false;
+  options.qf_uflia_online_components = true;
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLIA)
     (declare-fun x () Int)
@@ -82,7 +85,8 @@ void online_components_preserve_non_convex_completeness() {
 
 void online_components_build_a_combined_integer_uf_model() {
   CheckSatOptions options;
-  options.experimental_qf_uflia_online_components = true;
+  options.qf_uflia_model_combination = false;
+  options.qf_uflia_online_components = true;
   const auto result = check_sat_smtlib(R"(
     (set-option :produce-models true)
     (set-logic QF_UFLIA)
@@ -104,7 +108,8 @@ void online_components_build_a_combined_integer_uf_model() {
 
 void model_guidance_handles_a_non_convex_disjunction_with_reversible_choices() {
   CheckSatOptions options;
-  options.experimental_qf_uflia_model_combination = true;
+  options.qf_uflia_model_combination = true;
+  options.qf_uflia_online_components = false;
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLIA)
     (declare-fun x () Int)
@@ -130,7 +135,8 @@ void model_guidance_handles_a_non_convex_disjunction_with_reversible_choices() {
 
 void model_guidance_has_a_complete_arrangement_fallback() {
   CheckSatOptions options;
-  options.experimental_qf_uflia_model_combination = true;
+  options.qf_uflia_model_combination = true;
+  options.qf_uflia_online_components = false;
   options.qf_uflia_model_decision_budget = 0;
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLIA)
@@ -155,7 +161,8 @@ void model_guidance_has_a_complete_arrangement_fallback() {
 
 void agreeing_component_models_avoid_the_complete_arrangement() {
   CheckSatOptions options;
-  options.experimental_qf_uflia_model_combination = true;
+  options.qf_uflia_model_combination = true;
+  options.qf_uflia_online_components = false;
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLIA)
     (declare-fun x () Int)
@@ -172,8 +179,8 @@ void agreeing_component_models_avoid_the_complete_arrangement() {
 
 void sparse_online_guidance_uses_euf_care_pairs_and_rebuilds_on_growth() {
   CheckSatOptions options;
-  options.experimental_qf_uflia_model_combination = true;
-  options.experimental_qf_uflia_online_components = true;
+  options.qf_uflia_model_combination = true;
+  options.qf_uflia_online_components = true;
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLIA)
     (declare-fun x () Int)
@@ -199,7 +206,7 @@ void sparse_online_guidance_uses_euf_care_pairs_and_rebuilds_on_growth() {
 
 void model_uses_the_arithmetic_value_of_a_purified_uf_argument() {
   CheckSatOptions options;
-  options.experimental_qf_uflia_model_combination = true;
+  options.qf_uflia_model_combination = true;
   const auto result = check_sat_smtlib(R"(
     (set-option :produce-models true)
     (set-logic QF_UFLIA)

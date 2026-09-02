@@ -245,32 +245,32 @@ python3 scripts/bench_qf_uf_full.py \
   --out results/qf_uflia-representative-20.csv
 ```
 
-For a paired model-guidance experiment, repeat the command with
-`--solver-arg=--experimental-qf-uflia-model-combination`. Keep the default run
-as the completeness/control arm and compare both against Z3 or cvc5; satisfiable
-Primo rows must be replayed with `scripts/validate_model.py` and Dolmen.
+The default now combines sparse model guidance, trail-synchronized EUF and
+rational arithmetic, and a 512-choice bound. Pair materialization remains
+cumulative, care pairs only prioritize decisions, and every typed component
+limit restarts the online complete-arrangement backstop. Use
+`--no-qf-uflia-model-combination --no-qf-uflia-online-components` for the
+complete control, disable only online components for sparse model guidance, or
+disable only model combination for online complete arrangement. Satisfiable
+Primo rows must always be replayed with `scripts/validate_model.py` and Dolmen;
+the archive requires `--dolmen-arg=--strict=false` because several inputs use a
+linear coefficient directly on a UF application.
 
-For the incremental complete-arrangement experiment, repeat with
-`--solver-arg=--experimental-qf-uflia-online-components`. This arm preserves
-the default arrangement but reuses EUF and rational-LIA state across the SAT
-trail; it must therefore be compared against the default complete arm, not
-described as a sparse-arrangement experiment. Model replay with Dolmen remains
-mandatory.
+For the eight-way reference comparison, use
+`scripts/slurm_qf_uflia_sample_compare.sbatch`. It runs the current default,
+complete control, model-only, online-complete, and explicit sparse-online Primo
+routes, plus Z3, cvc5, and OpenSMT, with a 30-second per-file cutoff. On the
+pre-promotion exact benchmark commit `c9dedcf`, the equivalent sparse-online
+arm solved 18/20 on the contended SLURM node (8 sat and 10 unsat, PAR2 131.626
+seconds); an exact-revision local replay solved 19/20 and Dolmen directly
+accepted all 9 models. The complete and model-only controls each solved 11/20,
+while online-complete solved 16/20. Z3, cvc5, and OpenSMT each solved 19/20.
+All arms had zero wrong answers or unsupported results. A 3,000-case SLURM
+differential campaign passed every case and Dolmen directly accepted all 1,765
+satisfiable models before promotion.
 
-To evaluate sparse online combination, pass both experimental options and an
-explicit model-decision budget, for example
-`--experimental-qf-uflia-model-combination
---experimental-qf-uflia-online-components
---qf-uflia-model-decision-budget=512`. Pair materialization remains cumulative,
-care pairs only prioritize decisions, and any typed component limit still
-restarts the online complete-arrangement backstop.
-
-For the seven-way reference comparison, use
-`scripts/slurm_qf_uflia_sample_compare.sbatch`. It runs the default,
-model-guided, online-complete, and sparse-online Primo routes, plus Z3, cvc5,
-and OpenSMT, with a 30-second per-file
-cutoff. On exact benchmark commit `f1f2525`, Z3, cvc5, and OpenSMT each solved
-19/20 files (9 sat and 10 unsat); each timed out only on the larger Certora
+Historically, on exact benchmark commit `f1f2525`, Z3, cvc5, and OpenSMT each
+solved 19/20 files (9 sat and 10 unsat); each timed out only on the larger Certora
 case. Default and model-guided Primo each solved 11/20 (4 sat and 7 unsat) and
 timed out on the same nine files. There were no decisive-answer disagreements,
 errors, or unsupported results. Default/model-guided solved-row time was
@@ -296,9 +296,8 @@ correctness corpus or a claim that the eight cases share one root cause.
 The merge-grade generated gate is
 `scripts/slurm_qf_uflia_model_fuzz_gate.sbatch`. Its four default shards produce
 3,000 QF_UFLIA cases, compare answers with Z3, and require direct Dolmen
-validation for every satisfiable Primo result. Set
-`PRIMO_FUZZ_SOLVER_ARGS=--experimental-qf-uflia-model-combination` to exercise
-the model-guided route.
+validation for every satisfiable Primo result. `PRIMO_FUZZ_SOLVER_ARGS` may be
+used to exercise either ablation profile.
 
 These corpus cases are an evaluation gate, not part of `make check`: several
 are intentionally beyond Primo's current short-timeout performance. For cases

@@ -85,27 +85,28 @@ member is individually entailed.
 
 ## Initial operations and complexity
 
-The default `QF_UFLIA` policy uses delayed combination. For `n` shared Int terms
-it materializes all `n(n-1)/2` equality choices. Each equality is connected to
-the arithmetic component by two non-strict inequalities and Boolean clauses
-expressing equality iff both inequalities hold. A false equality therefore
-lets SAT select one strict integer orientation. This quadratic baseline is
-intentional: it supplies a simple completeness argument for a non-convex
-component. The experimental model-guided policy starts with only input-visible
-interface equalities, lazily adds model disagreements, and restarts this exact
-complete baseline if its decision budget is exhausted or a component check is
-inconclusive.
+The default `QF_UFLIA` policy starts with input-visible interface equalities,
+uses component-model disagreements to add equality choices lazily, and keeps
+EUF and rational arithmetic synchronized with the CaDiCaL trail. After 512
+model-choice batches, or whenever a component returns a typed unsupported,
+unknown, or resource-limit result, it restarts with complete delayed
+combination. For `n` shared Int terms this backstop materializes all
+`n(n-1)/2` equality choices. Each equality is connected to arithmetic by two
+non-strict inequalities and Boolean clauses expressing equality iff both
+inequalities hold. A false equality therefore lets SAT select one strict
+integer orientation. The backstop is deliberately retained because it supplies
+the completeness argument for a non-convex component.
 
-`--experimental-qf-uflia-online-components` keeps that same complete
-arrangement and its quadratic Boolean encoding, but connects the existing
-trail-synchronized EUF closure and rational arithmetic tableau to CaDiCaL.
-They consume assignment deltas and roll back at SAT decision levels, so EUF and
-rational conflicts are learned during search instead of rebuilding both
+The online components consume assignment deltas and roll back at SAT decision
+levels, so EUF and rational conflicts are learned during search instead of rebuilding both
 components after every complete Boolean model. Integer feasibility is still a
 mandatory final check: patching, cuts, and branch-and-bound run on a private
 copy of the accepted rational tableau because LIA is non-convex and those
 operations are not backtrackable component state. The option is ignored when
-the non-incremental EUF engine is selected.
+the non-incremental EUF engine is selected. The two mechanisms can be disabled
+independently with `--no-qf-uflia-model-combination` and
+`--no-qf-uflia-online-components`; the historical `--experimental-*` enabling
+spellings remain accepted aliases for reproducible old commands.
 
 `QF_UFLRA` does not use this eager policy. Its existing lazy convex equality
 exchange, exact fallback, model mutation, reconciliation, and model builder
@@ -142,21 +143,21 @@ DPLL operations remain delegated to the production CDCL backend. The detailed
 ownership and transition checklist is recorded in
 [](papers/model-based-theory-combination.md).
 
-For QF_UFLIA, `--experimental-qf-uflia-model-combination` projects the checked
-integer tableau and EUF closure onto all shared Int terms. A partition
+For QF_UFLIA, the default model-combination path projects the checked integer
+tableau and EUF closure onto all shared Int terms. A partition
 disagreement creates a positive, reversible CaDiCaL assumption. If the
 assumption fails, the coordinator learns the negation of CaDiCaL's failed
 assumption subset; it never learns a candidate equality merely because one
 model selected it. Agreeing complete projections witness a combinable model.
 Because LIA is non-convex, the policy does not use convex equality propagation:
-`--qf-uflia-model-decision-budget` bounds model-choice batches (default 16),
+`--qf-uflia-model-decision-budget` bounds model-choice batches (default 512),
 and zero selects the complete arrangement immediately. Budget exhaustion,
 unsupported projections, ordinary unknown results, and guided LIA resource
 limits restart the unchanged complete-arrangement solver with no candidate
 assumptions. Cancellation still stops immediately.
 
-The model-guided and online-component options may be combined. The online
-components then reject inconsistent partial SAT trails before a full model is
+The model-guided and online components are combined by default. The online
+components reject inconsistent partial SAT trails before a full model is
 handed to the model-based coordinator. When reconciliation materializes a new
 interface pair, the SMT layer disconnects the callback adapter and reconstructs
 both prepared components over the enlarged, cumulative atom set before the next
