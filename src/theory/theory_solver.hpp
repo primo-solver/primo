@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <span>
 #include <string>
@@ -158,6 +159,34 @@ class TheorySolver {
   [[nodiscard]] virtual std::vector<InterfacePair> care_pairs(const TheoryModelToken&) const {
     return {};
   }
+};
+
+// Backend-neutral incremental component lifecycle. The SMT scheduler owns SAT
+// variable routing and decision levels; a component owns only its prepared
+// theory state and a trail of AssignedTheoryLiteral values. Partial checks may
+// return conflicts or consequences, while FullModel additionally requires a
+// model projection when the component advertises that capability.
+// `push_level` opens the next non-root level; `pop_to_level(0)` removes every
+// non-root assignment while preserving root assignments.
+//
+// This interface deliberately contains no SAT backend handle, so the SMT
+// scheduler can change its execution policy without changing theory-local
+// ownership.
+enum class TheoryCheckEffort {
+  Partial,
+  FullModel,
+};
+
+class IncrementalTheorySolver {
+ public:
+  virtual ~IncrementalTheorySolver() = default;
+
+  [[nodiscard]] virtual const TheoryProperties& properties() const = 0;
+  virtual void reset() = 0;
+  virtual void push_level() = 0;
+  virtual void pop_to_level(std::size_t level) = 0;
+  virtual void assign(std::span<const AssignedTheoryLiteral> assignment_delta) = 0;
+  [[nodiscard]] virtual TheoryCheckResult check(TheoryCheckEffort effort) = 0;
 };
 
 }  // namespace primo::theory

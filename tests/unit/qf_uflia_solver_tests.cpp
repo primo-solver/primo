@@ -56,6 +56,52 @@ void non_convex_integer_arrangement_is_complete() {
   assert(result.statistics.get(":combination.learned-clauses") >= 1);
 }
 
+void online_components_preserve_non_convex_completeness() {
+  CheckSatOptions options;
+  options.experimental_qf_uflia_online_components = true;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLIA)
+    (declare-fun x () Int)
+    (declare-fun y () Int)
+    (declare-fun z () Int)
+    (declare-fun f (Int) Int)
+    (assert (>= x 0))
+    (assert (<= x 1))
+    (assert (= y 0))
+    (assert (= z 1))
+    (assert (not (= (f x) (f y))))
+    (assert (not (= (f x) (f z))))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":combination.online-components.enabled") == 1);
+  assert(result.statistics.get(":euf.theory-conflicts") >= 1);
+  assert(result.statistics.get(":combination.component-checks") == 0);
+}
+
+void online_components_build_a_combined_integer_uf_model() {
+  CheckSatOptions options;
+  options.experimental_qf_uflia_online_components = true;
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UFLIA)
+    (declare-fun x () Int)
+    (declare-fun f (Int) Int)
+    (assert (= x 2))
+    (assert (= (f x) 3))
+    (check-sat)
+    (get-model)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":combination.online-components.enabled") == 1);
+  assert(result.statistics.get(":combination.online-components.integer-completions") == 1);
+  assert(result.statistics.get(":combination.component-checks") == 1);
+  assert(result.model.find("(define-fun x () Int 2)") != std::string::npos);
+  assert(result.model.find("(= x0 2) 3") != std::string::npos);
+}
+
 void model_guidance_handles_a_non_convex_disjunction_with_reversible_choices() {
   CheckSatOptions options;
   options.experimental_qf_uflia_model_combination = true;
@@ -242,6 +288,8 @@ void rejects_real_symbols() {
 int main() {
   accepts_integer_uninterpreted_functions();
   non_convex_integer_arrangement_is_complete();
+  online_components_preserve_non_convex_completeness();
+  online_components_build_a_combined_integer_uf_model();
   model_guidance_handles_a_non_convex_disjunction_with_reversible_choices();
   model_guidance_has_a_complete_arrangement_fallback();
   agreeing_component_models_avoid_the_complete_arrangement();

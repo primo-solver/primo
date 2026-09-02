@@ -9072,36 +9072,11 @@ struct LiaComponentCheck {
   std::optional<theory::arithmetic::LraTableau> model;
 };
 
-LiaComponentCheck check_lia_component_assignment(
-    const PreparedLraTheory& prepared, const std::vector<AssignedTheoryAtom>& assigned_atoms,
+LiaComponentCheck complete_lia_integer_model(
+    theory::arithmetic::LraTableau tableau, const PreparedLraTheory& prepared,
+    const std::vector<AssignedTheoryAtom>& assigned_atoms,
     const std::vector<theory::arithmetic::LraVarId>& integer_vars, const CheckSatOptions& options,
     util::Statistics& statistics) {
-  ScopedStatisticsTimer total_timer(statistics, ":time.qf-uflia.lia-check-us");
-  theory::arithmetic::LraTableau tableau = prepared.base_tableau;
-  {
-    ScopedStatisticsTimer rational_timer(statistics, ":time.qf-uflia.lia-rational-us");
-    for (std::size_t i = 0; i < assigned_atoms.size(); ++i) {
-      const AssignedTheoryAtom& atom = assigned_atoms[i];
-      const PreparedLraTheory::PreparedAtom& prepared_atom = prepared.atoms[i];
-      if (!prepared_atom.is_arithmetic || atom.filtered) {
-        continue;
-      }
-      const auto conflict = assert_lra_atom_bound(
-          tableau, prepared_atom.bound_var, prepared_atom.relation, prepared_atom.rhs, atom.value,
-          prepared_atom.asserts_lower_when_true, blocking_lit(atom), prepared_atom.is_integer);
-      if (conflict.has_value()) {
-        return LiaComponentCheck{.status = LiaComponentCheck::Status::Unsat,
-                                 .conflict = conflict.value(),
-                                 .model = std::nullopt};
-      }
-    }
-    if (const std::optional<sat::Clause> conflict = tableau.check(); conflict.has_value()) {
-      return LiaComponentCheck{.status = LiaComponentCheck::Status::Unsat,
-                               .conflict = conflict.value(),
-                               .model = std::nullopt};
-    }
-  }
-
   ScopedStatisticsTimer integer_timer(statistics, ":time.qf-uflia.lia-integer-us");
   const std::size_t patched =
       theory::arithmetic::patch_integer_variables(tableau, integer_vars, options.lia_patch_limit);
@@ -9143,6 +9118,39 @@ LiaComponentCheck check_lia_component_assignment(
   return LiaComponentCheck{.status = LiaComponentCheck::Status::Unsat,
                            .conflict = std::move(conflict),
                            .model = std::nullopt};
+}
+
+LiaComponentCheck check_lia_component_assignment(
+    const PreparedLraTheory& prepared, const std::vector<AssignedTheoryAtom>& assigned_atoms,
+    const std::vector<theory::arithmetic::LraVarId>& integer_vars, const CheckSatOptions& options,
+    util::Statistics& statistics) {
+  ScopedStatisticsTimer total_timer(statistics, ":time.qf-uflia.lia-check-us");
+  theory::arithmetic::LraTableau tableau = prepared.base_tableau;
+  {
+    ScopedStatisticsTimer rational_timer(statistics, ":time.qf-uflia.lia-rational-us");
+    for (std::size_t i = 0; i < assigned_atoms.size(); ++i) {
+      const AssignedTheoryAtom& atom = assigned_atoms[i];
+      const PreparedLraTheory::PreparedAtom& prepared_atom = prepared.atoms[i];
+      if (!prepared_atom.is_arithmetic || atom.filtered) {
+        continue;
+      }
+      const auto conflict = assert_lra_atom_bound(
+          tableau, prepared_atom.bound_var, prepared_atom.relation, prepared_atom.rhs, atom.value,
+          prepared_atom.asserts_lower_when_true, blocking_lit(atom), prepared_atom.is_integer);
+      if (conflict.has_value()) {
+        return LiaComponentCheck{.status = LiaComponentCheck::Status::Unsat,
+                                 .conflict = conflict.value(),
+                                 .model = std::nullopt};
+      }
+    }
+    if (const std::optional<sat::Clause> conflict = tableau.check(); conflict.has_value()) {
+      return LiaComponentCheck{.status = LiaComponentCheck::Status::Unsat,
+                               .conflict = conflict.value(),
+                               .model = std::nullopt};
+    }
+  }
+  return complete_lia_integer_model(std::move(tableau), prepared, assigned_atoms, integer_vars,
+                                    options, statistics);
 }
 
 std::unordered_map<core::TermId, util::Rational> qf_uflia_int_values(
@@ -9585,6 +9593,45 @@ class LiaComponentAdapter final : public theory::TheorySolver {
   const PreparedLraTheory& prepared() const { return prepared_; }
   const theory::arithmetic::LraTableau& model() const { return last_model_.value(); }
 
+  theory::TheoryCheckResult complete_integer_model(
+      std::span<const theory::AssignedTheoryLiteral> assignment,
+      const theory::arithmetic::LraTableau& rational_model) {
+    ScopedStatisticsTimer timer(statistics_, ":time.qf-uflia.lia-check-us");
+    if (assignment.size() != atoms_.size()) {
+      throw std::logic_error("LIA component assignment size mismatch");
+    }
+    std::vector<AssignedTheoryAtom> assigned;
+    assigned.reserve(assignment.size());
+    for (std::size_t index = 0; index < assignment.size(); ++index) {
+      assigned.push_back(
+          assigned_theory_atom(PureTheoryFilterMode::Off, atoms_[index], assignment[index].value));
+    }
+    LiaComponentCheck result = complete_lia_integer_model(rational_model, prepared_, assigned,
+                                                          integer_vars_, options_, statistics_);
+    last_model_ = std::move(result.model);
+    if (result.status == LiaComponentCheck::Status::Sat) {
+      theory::TheoryCheckResult check;
+      check.status = theory::TheoryCheckStatus::Consistent;
+      return check;
+    }
+    if (result.status == LiaComponentCheck::Status::Unsat) {
+      return theory::TheoryCheckResult{.status = theory::TheoryCheckStatus::LearnedClause,
+                                       .clause = std::move(result.conflict),
+                                       .model = {},
+                                       .entailed_lit = {},
+                                       .reasons = {},
+                                       .decision = {},
+                                       .diagnostic = {}};
+    }
+    return theory::TheoryCheckResult{.status = theory::TheoryCheckStatus::ResourceLimit,
+                                     .clause = {},
+                                     .model = {},
+                                     .entailed_lit = {},
+                                     .reasons = {},
+                                     .decision = {},
+                                     .diagnostic = "integer branch-and-bound node limit"};
+  }
+
  private:
   theory::TheoryProperties properties_;
   const core::TermManager& terms_;
@@ -9761,6 +9808,7 @@ CheckSatOutcome solve_qf_uflia_engine_impl(core::TermManager& terms,
   statistics.set(":combination.model.fallback-unsupported", 0);
   statistics.set(":combination.model.fallback-unknown", 0);
   statistics.set(":combination.model.fallback-resource-limit", 0);
+  statistics.set(":combination.online-components.integer-completions", 0);
   statistics.set(":no.mixed.euf-atoms", euf_atoms.size());
   statistics.set(":no.mixed.lia-atoms", lia_atoms.size());
   statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
@@ -9783,6 +9831,33 @@ CheckSatOutcome solve_qf_uflia_engine_impl(core::TermManager& terms,
   std::size_t component_pair_generation = std::numeric_limits<std::size_t>::max();
   std::unique_ptr<EufComponentAdapter> euf_component;
   std::unique_ptr<LiaComponentAdapter> lia_component;
+  const auto rebuild_components = [&]() {
+    euf_atoms.clear();
+    lia_atoms.clear();
+    for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
+      const core::Term& term = terms.get(atom.term);
+      if (term.kind == core::TermKind::Le || term.kind == core::TermKind::Lt) {
+        lia_atoms.push_back(atom);
+      } else if (is_uflia_euf_atom(terms, atom.term)) {
+        euf_atoms.push_back(atom);
+      } else {
+        throw UnsupportedInput(
+            "unsupported QF_UFLIA theory atom after arrangement materialization");
+      }
+    }
+    euf_component = std::make_unique<EufComponentAdapter>(
+        terms, euf_atoms, true_term, false_term, int_sort, shared_int_terms, assignment_epoch,
+        model_guided, options.euf_explain_search, options.euf_proof_forest_diagnostics, statistics);
+    lia_component =
+        std::make_unique<LiaComponentAdapter>(terms, lia_atoms, int_sort, shared_int_terms,
+                                              assignment_epoch, model_guided, options, statistics);
+    component_pair_generation = materialized_pair_count();
+    statistics.set(":combination.arrangement-bridge-clauses", bridge_clauses);
+    statistics.set(":combination.model.materialized-pairs", materialized_pair_count());
+    statistics.set(":no.mixed.euf-atoms", euf_atoms.size());
+    statistics.set(":no.mixed.lia-atoms", lia_atoms.size());
+    statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
+  };
   const auto run_complete_fallback = [&](QfUfliaCompleteFallbackReason reason) {
     CheckSatOptions fallback_options = options;
     fallback_options.experimental_qf_uflia_model_combination = false;
@@ -9801,37 +9876,52 @@ CheckSatOutcome solve_qf_uflia_engine_impl(core::TermManager& terms,
     return outcome;
   };
 
+  rebuild_components();
+
+#if PRIMO_HAVE_IPASIR
+  std::optional<OnlineEufPropagator> online_euf_component;
+  std::optional<OnlineLraPropagator> online_lra_component;
+  std::optional<TheoryCombinationManager> online_combination_manager;
+  std::optional<MixedTheoryPropagationDispatcher> online_dispatcher;
+  CheckSatOptions online_euf_options = options;
+  const bool use_online_components = !model_guided &&
+                                     options.experimental_qf_uflia_online_components &&
+                                     options.euf_engine == EufEngine::Incremental;
+  if (use_online_components) {
+    online_euf_options.euf_propagation =
+        resolve_euf_propagation_mode(options, euf_atoms.size(), statistics);
+    online_euf_component.emplace(terms, euf_atoms, true_term, false_term, online_euf_options,
+                                 options.euf_propagation == EufPropagationMode::Auto, statistics);
+    online_lra_component.emplace(
+        lia_component->prepared(), lia_atoms, options.lra_propagation, options.lra_row_propagation,
+        options.lra_bidirectional_row_propagation, options.lra_theory_decisions,
+        options.lra_model_phase,
+        options.lra_pivoting_rule == LraPivotingRule::Soi || options.lra_fixed_elimination,
+        options.lra_row_propagation_limits, backend, statistics);
+    online_combination_manager.emplace(terms);
+    online_dispatcher.emplace(terms, clausifier, backend, online_combination_manager.value(),
+                              &online_euf_component.value(), &online_lra_component.value(),
+                              lia_atoms, /*publish_lra_interface_equalities=*/false, statistics);
+    backend.connect_external_propagator(&online_dispatcher.value());
+    for (const BooleanClausifier::TheoryAtom& atom : euf_atoms) {
+      backend.add_observed_var(sat_var(atom.lit));
+    }
+    for (const BooleanClausifier::TheoryAtom& atom : lia_atoms) {
+      backend.add_observed_var(sat_var(atom.lit));
+    }
+  }
+  statistics.set(":combination.online-components.enabled", use_online_components ? 1 : 0);
+#else
+  constexpr bool use_online_components = false;
+  statistics.set(":combination.online-components.enabled", 0);
+#endif
+
   while (true) {
     if (model_guided && model_choice_batches >= options.qf_uflia_model_decision_budget) {
       return run_complete_fallback(QfUfliaCompleteFallbackReason::Budget);
     }
     if (component_pair_generation != materialized_pair_count()) {
-      euf_atoms.clear();
-      lia_atoms.clear();
-      for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
-        const core::Term& term = terms.get(atom.term);
-        if (term.kind == core::TermKind::Le || term.kind == core::TermKind::Lt) {
-          lia_atoms.push_back(atom);
-        } else if (is_uflia_euf_atom(terms, atom.term)) {
-          euf_atoms.push_back(atom);
-        } else {
-          throw UnsupportedInput(
-              "unsupported QF_UFLIA theory atom after arrangement materialization");
-        }
-      }
-      euf_component = std::make_unique<EufComponentAdapter>(
-          terms, euf_atoms, true_term, false_term, int_sort, shared_int_terms, assignment_epoch,
-          model_guided, options.euf_explain_search, options.euf_proof_forest_diagnostics,
-          statistics);
-      lia_component = std::make_unique<LiaComponentAdapter>(terms, lia_atoms, int_sort,
-                                                            shared_int_terms, assignment_epoch,
-                                                            model_guided, options, statistics);
-      component_pair_generation = materialized_pair_count();
-      statistics.set(":combination.arrangement-bridge-clauses", bridge_clauses);
-      statistics.set(":combination.model.materialized-pairs", materialized_pair_count());
-      statistics.set(":no.mixed.euf-atoms", euf_atoms.size());
-      statistics.set(":no.mixed.lia-atoms", lia_atoms.size());
-      statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
+      rebuild_components();
     }
     std::optional<std::uint64_t> model_propagation_start;
     if (model_guided) {
@@ -9844,6 +9934,11 @@ CheckSatOutcome solve_qf_uflia_engine_impl(core::TermManager& terms,
       ScopedStatisticsTimer timer(statistics, ":time.qf-uflia.sat-us");
       sat_result = backend.solve();
     }
+#if PRIMO_HAVE_IPASIR
+    if (use_online_components) {
+      online_euf_component->flush_incremental_stats();
+    }
+#endif
     publish_sat_stats(backend.statistics(), statistics);
     if (terminator.cancelled_reached()) {
       return CheckSatOutcome{CheckSatResult::Unknown, "cancelled", statistics, "",
@@ -9972,15 +10067,52 @@ CheckSatOutcome solve_qf_uflia_engine_impl(core::TermManager& terms,
           return run_complete_fallback(QfUfliaCompleteFallbackReason::ComponentResourceLimit);
       }
     } else {
+      std::vector<theory::TheoryCheckResult> online_checks;
+#if PRIMO_HAVE_IPASIR
+      if (use_online_components) {
+        // Both rational components have already consumed this SAT trail. The
+        // only remaining completeness obligation is integer feasibility,
+        // which intentionally runs on a copy: its patch/cut/branch mutations
+        // are not backtrackable theory state.
+        if (const auto conflict = online_euf_component->incremental_conflict();
+            conflict.has_value()) {
+          online_checks.push_back(
+              theory::TheoryCheckResult{.status = theory::TheoryCheckStatus::LearnedClause,
+                                        .clause = conflict.value(),
+                                        .model = {},
+                                        .entailed_lit = {},
+                                        .reasons = {},
+                                        .decision = {},
+                                        .diagnostic = {}});
+        } else if (const auto lra_conflict = online_lra_component->conflict();
+                   lra_conflict.has_value()) {
+          online_checks.push_back(
+              theory::TheoryCheckResult{.status = theory::TheoryCheckStatus::LearnedClause,
+                                        .clause = lra_conflict.value(),
+                                        .model = {},
+                                        .entailed_lit = {},
+                                        .reasons = {},
+                                        .decision = {},
+                                        .diagnostic = {}});
+        } else {
+          statistics.increment(":combination.online-components.integer-completions");
+          online_checks.push_back(lia_component->complete_integer_model(
+              lia_assignment, online_lra_component->tableau()));
+        }
+      }
+#endif
       const std::vector<theory::TheorySolver*> components{euf_component.get(), lia_component.get()};
       const std::vector<std::span<const theory::AssignedTheoryLiteral>> component_assignments{
           euf_assignment, lia_assignment};
       bool learned = false;
-      for (std::size_t component_index = 0; component_index < components.size();
-           ++component_index) {
+      const std::size_t check_count =
+          use_online_components ? online_checks.size() : components.size();
+      for (std::size_t component_index = 0; component_index < check_count; ++component_index) {
         statistics.increment(":combination.component-checks");
         theory::TheoryCheckResult check =
-            components[component_index]->check(component_assignments[component_index], arrangement);
+            use_online_components ? std::move(online_checks[component_index])
+                                  : components[component_index]->check(
+                                        component_assignments[component_index], arrangement);
         if (check.status == theory::TheoryCheckStatus::Consistent) {
           continue;
         }

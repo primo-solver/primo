@@ -38,12 +38,14 @@ using primo::smt::SharedModelEquality;
 using primo::smt::TheoryCombinationManager;
 using primo::theory::AssignedTheoryLiteral;
 using primo::theory::Convexity;
+using primo::theory::IncrementalTheorySolver;
 using primo::theory::InterfacePair;
 using primo::theory::InterfaceRelation;
 using primo::theory::InterfaceRelationValue;
 using primo::theory::SharedModelClass;
 using primo::theory::SharedModelPartition;
 using primo::theory::StableInfiniteness;
+using primo::theory::TheoryCheckEffort;
 using primo::theory::TheoryCheckResult;
 using primo::theory::TheoryCheckStatus;
 using primo::theory::TheoryModelProjection;
@@ -118,6 +120,51 @@ class MockTheorySolver final : public TheorySolver {
   bool throw_on_check = false;
 };
 
+class MockIncrementalTheorySolver final : public IncrementalTheorySolver {
+ public:
+  explicit MockIncrementalTheorySolver(TheoryProperties properties)
+      : properties_(std::move(properties)) {}
+
+  const TheoryProperties& properties() const override { return properties_; }
+
+  void reset() override {
+    trail_.clear();
+    level_starts_.clear();
+  }
+
+  void push_level() override { level_starts_.push_back(trail_.size()); }
+
+  void pop_to_level(std::size_t level) override {
+    assert(level <= level_starts_.size());
+    const std::size_t keep = level < level_starts_.size() ? level_starts_[level] : trail_.size();
+    trail_.resize(keep);
+    level_starts_.resize(level);
+  }
+
+  void assign(std::span<const AssignedTheoryLiteral> assignment_delta) override {
+    trail_.insert(trail_.end(), assignment_delta.begin(), assignment_delta.end());
+  }
+
+  TheoryCheckResult check(TheoryCheckEffort effort) override {
+    last_effort = effort;
+    checked_sizes.push_back(trail_.size());
+    return next_result;
+  }
+
+  TheoryProperties properties_;
+  std::vector<AssignedTheoryLiteral> trail_;
+  std::vector<std::size_t> level_starts_;
+  std::vector<std::size_t> checked_sizes;
+  TheoryCheckEffort last_effort = TheoryCheckEffort::Partial;
+  TheoryCheckResult next_result{.status = TheoryCheckStatus::Consistent,
+                                .clause = {},
+                                .model = {},
+                                .entailed_lit = {},
+                                .reasons = {},
+                                .decision = {},
+                                .diagnostic = {}};
+};
+
 TheoryModelProjection projection(std::string component, std::uint64_t epoch, std::uint64_t revision,
                                  primo::core::SortId sort,
                                  std::vector<std::vector<primo::core::TermId>> classes) {
@@ -176,6 +223,31 @@ void component_protocol_declares_non_convexity_and_returns_general_clauses() {
   assert(lia.arrangement_count == 1);
   assert(result.status == TheoryCheckStatus::LearnedClause);
   assert(result.clause.size() == 2);
+}
+
+void incremental_component_protocol_is_backend_neutral_and_backtrackable() {
+  const TheoryProperties properties{.id = "mock-incremental",
+                                    .shared_sorts = {},
+                                    .stably_infinite = StableInfiniteness::Yes,
+                                    .convexity = Convexity::NonConvex,
+                                    .produces_model_projection = true};
+  MockIncrementalTheorySolver solver(properties);
+  const std::vector level_zero{AssignedTheoryLiteral{
+      .atom = primo::core::TermId{3}, .lit = primo::sat::Lit{5}, .value = true}};
+  const std::vector level_one{AssignedTheoryLiteral{
+      .atom = primo::core::TermId{7}, .lit = primo::sat::Lit{11}, .value = false}};
+
+  solver.assign(level_zero);
+  solver.push_level();
+  solver.assign(level_one);
+  assert(solver.check(TheoryCheckEffort::Partial).status == TheoryCheckStatus::Consistent);
+  assert(solver.checked_sizes.back() == 2);
+  solver.pop_to_level(0);
+  assert(solver.check(TheoryCheckEffort::FullModel).status == TheoryCheckStatus::Consistent);
+  assert(solver.checked_sizes.back() == 1);
+  assert(solver.last_effort == TheoryCheckEffort::FullModel);
+  solver.reset();
+  assert(solver.trail_.empty());
 }
 
 void finds_visible_interface_constants_and_equalities_by_sort() {
@@ -1116,6 +1188,7 @@ void model_coordinator_keeps_propagation_splitting_and_cancellation_typed() {
 
 int main() {
   component_protocol_declares_non_convexity_and_returns_general_clauses();
+  incremental_component_protocol_is_backend_neutral_and_backtrackable();
   finds_visible_interface_constants_and_equalities_by_sort();
   ignores_boolean_and_internal_constants();
   deduplicates_reversed_visible_equality_atoms();

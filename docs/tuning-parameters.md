@@ -70,6 +70,7 @@ precondition without which the option does nothing.
 | `--no-qf-uflra-model-reconciliation` | reconciliation on | mixed QF_UFLRA | ablation of the default convex shared-model path; restores explained exact equality sharing |
 | `--experimental-generic-model-combination` | off | mixed QF_UFLRA model reconciliation | routes checked EUF/LRA projections and model-choice batches through the backend-neutral sequential coordinator; keeps the established specialized scheduler as the default during parity evaluation |
 | `--experimental-qf-uflia-model-combination` | off | QF_UFLIA | starts with input-visible shared equalities, uses EUF/LIA model partitions for reversible equality choices, and retains the complete arrangement as a restart fallback |
+| `--experimental-qf-uflia-online-components` | off | complete-arrangement QF_UFLIA with the incremental EUF engine | reuses trail-synchronized EUF and rational-LIA state during SAT search; integer completion still runs after an accepted rational model |
 | `--qf-uflia-model-decision-budget` | 16 | `--experimental-qf-uflia-model-combination` | maximum model-choice batches before the complete QF_UFLIA arrangement restart; `0` selects the complete path immediately |
 | `--lra-propagation` | on | — | the root of the propagation chain |
 | `--lra-row-propagation` | off | **`--lra-propagation`** | |

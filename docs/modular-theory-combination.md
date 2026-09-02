@@ -52,6 +52,15 @@ equality materialization, SAT scheduling, and combined-model construction.
 `sat/` continues to see clauses and literals only. `core/` continues to own all
 terms and sorts.
 
+`theory::IncrementalTheorySolver` is the backend-neutral lifecycle for the
+next migration step. It adds `reset`, decision-level `push_level` and
+`pop_to_level`, assignment-delta ingestion, and explicit `Partial` versus
+`FullModel` checks. It deliberately has no SAT-backend handle. The interface
+and its checkpoint/effort tests are implemented; the current production EUF
+and arithmetic callback classes still use the older SMT-owned CaDiCaL adapter,
+so this is an API boundary plus migration target rather than a claim that those
+component implementations have already moved into `theory/`.
+
 A clause is deliberately the general inference type. For a convex theory it
 can encode an explained equality propagation. For a non-convex theory it can
 encode a disjunction of interface equalities without falsely claiming that one
@@ -86,6 +95,17 @@ component. The experimental model-guided policy starts with only input-visible
 interface equalities, lazily adds model disagreements, and restarts this exact
 complete baseline if its decision budget is exhausted or a component check is
 inconclusive.
+
+`--experimental-qf-uflia-online-components` keeps that same complete
+arrangement and its quadratic Boolean encoding, but connects the existing
+trail-synchronized EUF closure and rational arithmetic tableau to CaDiCaL.
+They consume assignment deltas and roll back at SAT decision levels, so EUF and
+rational conflicts are learned during search instead of rebuilding both
+components after every complete Boolean model. Integer feasibility is still a
+mandatory final check: patching, cuts, and branch-and-bound run on a private
+copy of the accepted rational tableau because LIA is non-convex and those
+operations are not backtrackable component state. The option is ignored when
+the non-incremental EUF engine is selected.
 
 `QF_UFLRA` does not use this eager policy. Its existing lazy convex equality
 exchange, exact fallback, model mutation, reconciliation, and model builder
@@ -150,6 +170,13 @@ new equality and its two arithmetic bounds are registered. Snapshot epochs are
 advanced for every satisfying SAT assignment, so projections from older
 assignments are rejected. The default complete route is unchanged and remains
 the fallback; the feature is not a default or performance claim.
+
+The online-complete route records
+`:combination.online-components.enabled` and
+`:combination.online-components.integer-completions`. Existing EUF and LRA
+online counters show the partial-assignment activity. The accepted integer
+model remains in the ordinary LIA adapter so the existing combined-model and
+ordered reconstruction code is unchanged.
 
 The frontend accepts Int-valued uninterpreted functions and predicates, rejects
 Real-valued symbols and Real arguments, and retains the existing QF_LIA

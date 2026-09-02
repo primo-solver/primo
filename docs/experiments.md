@@ -250,6 +250,13 @@ For a paired model-guidance experiment, repeat the command with
 as the completeness/control arm and compare both against Z3 or cvc5; satisfiable
 Primo rows must be replayed with `scripts/validate_model.py` and Dolmen.
 
+For the incremental complete-arrangement experiment, repeat with
+`--solver-arg=--experimental-qf-uflia-online-components`. This arm preserves
+the default arrangement but reuses EUF and rational-LIA state across the SAT
+trail; it must therefore be compared against the default complete arm, not
+described as a sparse-arrangement experiment. Model replay with Dolmen remains
+mandatory.
+
 For the five-way reference comparison, use
 `scripts/slurm_qf_uflia_sample_compare.sbatch`. It runs the default and
 model-guided Primo routes, Z3, cvc5, and OpenSMT with a 30-second per-file

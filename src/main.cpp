@@ -153,6 +153,7 @@ int run_main(int argc, char** argv) {
   bool no_qf_uflra_model_reconciliation = false;
   bool experimental_generic_model_combination = false;
   bool experimental_qf_uflia_model_combination = false;
+  bool experimental_qf_uflia_online_components = false;
   std::size_t qf_uflia_model_decision_budget = solver_options.qf_uflia_model_decision_budget;
   bool qf_uflra_online_euf = solver_options.qf_uflra_online_euf;
   bool guarded_real_equality_lowering = solver_options.guarded_real_equality_lowering;
@@ -377,6 +378,10 @@ int run_main(int argc, char** argv) {
       app, "--experimental-qf-uflia-model-combination", experimental_qf_uflia_model_combination,
       "Guide non-convex QF_UFLIA arrangement search with component models before complete "
       "fallback");
+  add_flag_with_default(
+      app, "--experimental-qf-uflia-online-components", experimental_qf_uflia_online_components,
+      "Reuse trail-synchronized EUF and rational-arithmetic state on the complete-arrangement "
+      "QF_UFLIA path");
   app.add_option("--qf-uflia-model-decision-budget", qf_uflia_model_decision_budget,
                  "Maximum QF_UFLIA model-choice batches before complete arrangement fallback");
   add_flag_with_default(
@@ -833,6 +838,7 @@ int run_main(int argc, char** argv) {
   }
   solver_options.experimental_generic_model_combination = experimental_generic_model_combination;
   solver_options.experimental_qf_uflia_model_combination = experimental_qf_uflia_model_combination;
+  solver_options.experimental_qf_uflia_online_components = experimental_qf_uflia_online_components;
   solver_options.qf_uflia_model_decision_budget = qf_uflia_model_decision_budget;
   solver_options.qf_uflra_online_euf = qf_uflra_online_euf;
   if (monotone_elimination) {

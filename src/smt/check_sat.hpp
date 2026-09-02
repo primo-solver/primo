@@ -400,6 +400,10 @@ struct CheckSatOptions {
   // SAT assumptions; exhaustion or the decision budget activates the complete
   // arrangement baseline.
   bool experimental_qf_uflia_model_combination = false;
+  // Reuse trail-synchronized EUF and rational-arithmetic component state on
+  // the complete-arrangement QF_UFLIA path. Integer completion remains a
+  // final, non-convex check on a private tableau copy.
+  bool experimental_qf_uflia_online_components = false;
   std::size_t qf_uflia_model_decision_budget = 16;
   bool qf_uflra_online_euf = false;
   bool top_level_or_tseitin = false;
