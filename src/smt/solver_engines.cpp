@@ -60,6 +60,7 @@
 #include "theory/equality/explained_congruence_closure.hpp"
 #include "theory/equality/flat_congruence_closure.hpp"
 #include "theory/equality/flat_terms.hpp"
+#include "theory/equality/incremental_congruence_closure.hpp"
 #include "theory/theory_solver.hpp"
 #include "util/rational.hpp"
 #include "util/statistics.hpp"
@@ -9124,12 +9125,181 @@ LiaComponentCheck check_lia_component_assignment(
 std::unordered_map<core::TermId, util::Rational> qf_uflia_int_values(
     const core::TermManager& terms, const std::vector<core::TermId>& model_terms,
     const ModelConversionChain& conversions, const PreparedLraTheory& prepared,
-    const theory::arithmetic::LraTableau& tableau) {
+    const theory::arithmetic::LraTableau& tableau,
+    std::span<const theory::AssignedTheoryLiteral> euf_assignment) {
   std::unordered_map<core::TermId, util::Rational> values;
   values.reserve(prepared.variables_by_term.size() + model_terms.size());
   for (const auto& [term, variable] : prepared.variables_by_term) {
     values.emplace(term, tableau.assignment(variable).rational);
   }
+
+  // A solved-constant definition is recorded before mixed purification. Its
+  // right-hand side can therefore contain the original UF application, while
+  // the LIA tableau contains only the later purified proxy. Rebuild the final
+  // EUF classes and index the known tableau values by class so reconstruction
+  // can evaluate compound definitions such as x = c + k*f(y). This is a
+  // postsolve bridge only: every merge comes from either the accepted EUF
+  // assignment or equality of exact values in the accepted LIA model.
+  theory::equality::IncrementalCongruenceClosure euf_classes(terms);
+  for (const core::Term& term : terms.terms()) {
+    if (term.kind == core::TermKind::Rational || term.kind == core::TermKind::Constant ||
+        term.kind == core::TermKind::Application) {
+      euf_classes.add_term(term.id);
+    }
+  }
+  for (const theory::AssignedTheoryLiteral& assignment : euf_assignment) {
+    const core::Term& atom = terms.get(assignment.atom);
+    if (atom.kind != core::TermKind::Equality || atom.children.size() != 2) {
+      continue;
+    }
+    if (assignment.value) {
+      euf_classes.assert_equal(atom.children.at(0), atom.children.at(1));
+    } else {
+      euf_classes.assert_distinct(atom.children.at(0), atom.children.at(1));
+    }
+  }
+
+  // Equality in the standard Int domain is equality of exact values. Merge
+  // every tableau term with the first term carrying the same value before
+  // congruence saturation. This connects a purified argument proxy to the
+  // original arithmetic term even when their equality belongs only to LIA;
+  // congruence can then connect f(proxy) to f(original).
+  std::unordered_map<util::Rational, core::TermId, util::RationalHash> term_by_value;
+  term_by_value.reserve(values.size() + 8);
+  for (const core::Term& term : terms.terms()) {
+    if (term.kind == core::TermKind::Rational && term.sort == terms.symbols().int_sort()) {
+      term_by_value.try_emplace(term.rational_value, term.id);
+    }
+  }
+  for (const auto& [term, value] : values) {
+    const auto [same_value, inserted] = term_by_value.emplace(value, term);
+    if (!inserted) {
+      euf_classes.assert_equal(same_value->second, term);
+    }
+  }
+  euf_classes.saturate();
+  if (euf_classes.conflict().has_value()) {
+    throw std::logic_error("final EUF assignment disagrees with the LIA model values");
+  }
+
+  std::unordered_map<core::TermId, util::Rational> values_by_euf_class;
+  values_by_euf_class.reserve(values.size());
+  for (const auto& [term, value] : values) {
+    const core::TermId representative = euf_classes.class_representative(term);
+    const auto [found, inserted] = values_by_euf_class.emplace(representative, value);
+    if (!inserted && found->second != value) {
+      throw std::logic_error("LIA model values disagree inside one final EUF class");
+    }
+  }
+
+  std::unordered_map<core::SymbolId, std::vector<core::TermId>> valued_applications_by_symbol;
+  for (const core::Term& term : terms.terms()) {
+    if (term.kind != core::TermKind::Application || term.sort != terms.symbols().int_sort()) {
+      continue;
+    }
+    const core::TermId representative = euf_classes.class_representative(term.id);
+    if (values_by_euf_class.contains(representative)) {
+      valued_applications_by_symbol[term.symbol].push_back(term.id);
+    }
+  }
+
+  std::unordered_map<core::TermId, util::Rational> evaluated_terms;
+  std::function<std::optional<util::Rational>(core::TermId)> evaluate;
+  evaluate = [&](core::TermId term_id) -> std::optional<util::Rational> {
+    const core::Term& term = terms.get(term_id);
+    if (term.sort != terms.symbols().int_sort()) {
+      return std::nullopt;
+    }
+    if (const auto known = values.find(term_id); known != values.end()) {
+      return known->second;
+    }
+    if (const auto known = evaluated_terms.find(term_id); known != evaluated_terms.end()) {
+      return known->second;
+    }
+    std::optional<util::Rational> result;
+    switch (term.kind) {
+      case core::TermKind::Rational:
+        result = term.rational_value;
+        break;
+      case core::TermKind::Constant: {
+        const core::TermId representative = euf_classes.class_representative(term_id);
+        const auto known_class = values_by_euf_class.find(representative);
+        if (known_class != values_by_euf_class.end()) {
+          result = known_class->second;
+        }
+        break;
+      }
+      case core::TermKind::Application: {
+        const core::TermId representative = euf_classes.class_representative(term_id);
+        const auto known_class = values_by_euf_class.find(representative);
+        if (known_class != values_by_euf_class.end()) {
+          result = known_class->second;
+          break;
+        }
+
+        std::vector<util::Rational> argument_values;
+        argument_values.reserve(term.children.size());
+        for (const core::TermId child : term.children) {
+          const std::optional<util::Rational> child_value = evaluate(child);
+          if (!child_value.has_value()) {
+            return std::nullopt;
+          }
+          argument_values.push_back(child_value.value());
+        }
+        const auto candidates = valued_applications_by_symbol.find(term.symbol);
+        if (candidates == valued_applications_by_symbol.end()) {
+          return std::nullopt;
+        }
+        for (const core::TermId candidate_id : candidates->second) {
+          const core::Term& candidate = terms.get(candidate_id);
+          bool same_arguments = candidate.children.size() == argument_values.size();
+          for (std::size_t index = 0; same_arguments && index < candidate.children.size();
+               ++index) {
+            const std::optional<util::Rational> candidate_value =
+                evaluate(candidate.children[index]);
+            same_arguments =
+                candidate_value.has_value() && candidate_value.value() == argument_values[index];
+          }
+          if (!same_arguments) {
+            continue;
+          }
+          const util::Rational candidate_result =
+              values_by_euf_class.at(euf_classes.class_representative(candidate_id));
+          if (result.has_value() && result.value() != candidate_result) {
+            throw std::logic_error(
+                "final EUF model assigns two values to one Int application tuple");
+          }
+          result = candidate_result;
+        }
+        break;
+      }
+      case core::TermKind::Plus: {
+        util::Rational sum(0);
+        for (const core::TermId child : term.children) {
+          const std::optional<util::Rational> child_value = evaluate(child);
+          if (!child_value.has_value()) {
+            return std::nullopt;
+          }
+          sum = sum + child_value.value();
+        }
+        result = sum;
+        break;
+      }
+      case core::TermKind::Times: {
+        const std::optional<util::Rational> child_value = evaluate(term.children.at(0));
+        if (child_value.has_value()) {
+          result = term.rational_value * child_value.value();
+        }
+        break;
+      }
+      default:
+        break;
+    }
+    if (result.has_value()) {
+      evaluated_terms.emplace(term_id, result.value());
+    }
+    return result;
+  };
 
   std::unordered_map<core::TermId, core::TermId> substitutions;
   conversions.replay_reverse([&substitutions](const ModelConversionStep& step) {
@@ -9150,8 +9320,7 @@ std::unordered_map<core::TermId, util::Rational> qf_uflia_int_values(
     if (substitution == substitutions.end()) {
       continue;
     }
-    const std::optional<util::Rational> value =
-        evaluate_qf_lia_model_term(terms, substitution->second, prepared, tableau);
+    const std::optional<util::Rational> value = evaluate(substitution->second);
     if (value.has_value()) {
       values.emplace(term, value.value());
     }
@@ -9165,8 +9334,7 @@ std::unordered_map<core::TermId, util::Rational> qf_uflia_int_values(
     if (term.sort != terms.symbols().int_sort() || values.contains(term.id)) {
       continue;
     }
-    const std::optional<util::Rational> value =
-        evaluate_qf_lia_model_term(terms, term.id, prepared, tableau);
+    const std::optional<util::Rational> value = evaluate(term.id);
     if (value.has_value()) {
       values.emplace(term.id, value.value());
     }
@@ -9784,8 +9952,9 @@ CheckSatOutcome solve_qf_uflia_engine_impl(core::TermManager& terms,
     if (!options.produce_model) {
       return CheckSatOutcome{CheckSatResult::Sat, "", statistics, ""};
     }
-    const auto int_values = qf_uflia_int_values(terms, model_terms, conversions,
-                                                lia_component->prepared(), lia_component->model());
+    const auto int_values =
+        qf_uflia_int_values(terms, model_terms, conversions, lia_component->prepared(),
+                            lia_component->model(), euf_assignment);
     std::vector<TheoryModelAssignment> model_assignments = conversions.theory_assignments(terms);
     model_assignments.reserve(model_assignments.size() + euf_assignment.size());
     for (const theory::AssignedTheoryLiteral& atom : euf_assignment) {

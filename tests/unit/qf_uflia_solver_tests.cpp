@@ -175,6 +175,29 @@ void model_reconstructs_an_integer_substituted_by_a_uf_application() {
          result.model.find("(define-fun x () Int (-") != std::string::npos);
 }
 
+// Solved-constant elimination runs before mixed purification. The recorded
+// definition therefore contains f(a), while the LIA tableau contains only the
+// later proxy equated to f(a). Reconstruction must carry that proxy value
+// through the final EUF class before evaluating the compound definition.
+void model_reconstructs_a_compound_definition_with_a_uf_application() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UFLIA)
+    (declare-fun a () Int)
+    (declare-fun x () Int)
+    (declare-fun f (Int) Int)
+    (assert (= a 2))
+    (assert (= (f a) 2))
+    (assert (= x (+ (- 7) (* 4 (f a)))))
+    (assert (< x 2))
+    (check-sat)
+    (get-model)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.model.find("(define-fun x () Int 1)") != std::string::npos);
+  assert(result.model.find("(= x0 2) 2") != std::string::npos);
+}
+
 void unused_integer_uf_gets_a_well_sorted_default() {
   const auto result = check_sat_smtlib(R"(
     (set-option :produce-models true)
@@ -214,6 +237,7 @@ int main() {
   model_uses_the_arithmetic_value_of_a_purified_uf_argument();
   model_combines_integer_values_and_uf_table();
   model_reconstructs_an_integer_substituted_by_a_uf_application();
+  model_reconstructs_a_compound_definition_with_a_uf_application();
   unused_integer_uf_gets_a_well_sorted_default();
   rejects_real_symbols();
   return 0;

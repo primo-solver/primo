@@ -162,6 +162,16 @@ purification and prefers the constrained purified application when two ground
 applications print with the same argument tuple. Without both rules, a stale
 unconstrained application could shadow the EUF-constrained table entry; the two
 fixed TwoSquares regressions are validated directly by Dolmen.
+Solved-constant definitions are captured before purification, so a definition
+may still contain an original UF application while the integer tableau owns
+only its later proxy. Postsolve reconstruction rebuilds the accepted final EUF
+classes, indexes exact tableau values by class, and uses those values when it
+evaluates compound Int definitions. This is model-only completion, not theory
+propagation: it combines true equalities from the final EUF assignment with
+terms that have the same exact value in the accepted LIA model, and it rejects
+an EUF disequality that conflicts with those values. The reduced regression
+uses `x = -7 + 4*f(a)`; the representative MathSAT/Wisa corpus case that exposed
+it is checked directly by Dolmen in the evaluation record.
 
 The existing production coordinator is sequential and currently instantiates
 EUF plus LIA only.
