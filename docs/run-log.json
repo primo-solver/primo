@@ -29759,6 +29759,65 @@
       },
       "evidence_status": "slurm-current exact benchmark commit; exact model-fix-commit local fuzz and direct-Dolmen gates; experimental option remains default-off",
       "outcome": "The fixed sample exposes a substantial QF_UFLIA coverage gap: all references solve 19/20 while both Primo routes solve 11/20. Model guidance reduces time on existing successes but adds no coverage. The comparison also caught and fixed a compound-definition model reconstruction bug before the result was accepted; the eight reference-fast timeout rows are the next profiling targets."
+    },
+    {
+      "id": "2026-09-02-qf-uflia-reference-gap-profile",
+      "started_at": "2026-09-02",
+      "recorded_at": "2026-09-02",
+      "kind": "local-counter-profile-literature-review-and-parameter-probe",
+      "scope": "Counter aggregation over the eight QF_UFLIA reference-fast/Primo-timeout rows, six conflict-bounded gprof profiles, a local experimental model-decision-budget classification probe, direct Dolmen validation of the two newly exposed satisfiable models, and a primary-literature gap review.",
+      "commits": {
+        "source": "bc4667d003e12286411a71337012f3c3c5e9ff57",
+        "release_binary_for_budget_probe_and_model_validation": "71e5e11b00ca4d804dd1bb1796c7dcbb46f69d32",
+        "source_relation": "bc4667d adds only the preceding benchmark record after the 71e5e11 model fix, so both binaries contain identical solver source. The gprof build embeds bc4667d explicitly; the existing Release binary reports 71e5e11."
+      },
+      "branch": "modular-theory-combination",
+      "environment": {
+        "host": "mikolas-ThinkPad-T14s-Gen-5; Linux 7.0.0-30-generic x86_64; local workstation",
+        "profiler": "GNU gprof with -pg RelWithDebInfo instrumentation; perf unavailable in this environment because kernel.perf_event_paranoid=4; runs CPU-pinned with taskset",
+        "solver": "Primo 0.1.0; CaDiCaL cadical-3.0.0-7b99c07",
+        "corpus": "The eight relative paths in benchmarks/qf_uflia-reference-gap-watchlist.txt, extracted from sandbox/QF_UFLIA.tar.zst below /tmp/primo-uflia-plan.BtEpmD/non-incremental/QF_UFLIA. The fixed selection and reference answers originate in SLURM job 131045."
+      },
+      "commands": {
+        "profile_build": "cmake -S . -B build-gprof-uflia -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_FLAGS=-pg -DCMAKE_EXE_LINKER_FLAGS=-pg -DPRIMO_GIT_REVISION_OVERRIDE=bc4667d -DPRIMO_WARNINGS_AS_ERRORS=OFF; cmake --build build-gprof-uflia --target primo -j4",
+        "profile_pattern": "In a fresh artifact directory, run /usr/bin/time -f 'wall=%e user=%U sys=%S rss_kb=%M' taskset -c <available-cpu> /workspace/build-gprof-uflia/primo --quiet --stats --max-theory-conflicts=<bound> [--experimental-qf-uflia-model-combination] <absolute-input>, then gprof /workspace/build-gprof-uflia/primo gmon.out > gprof.txt. Bounds were xs_7_7=5000, xs_27_37=1000, hash_sat_09_05 default=3000, medium12=200, Certora 65782=1500, and hash_sat_09_05 guided=1000.",
+        "exact_profile_recheck": "mkdir <fresh-directory> and cd to it; /usr/bin/time -f 'wall=%e user=%U sys=%S rss_kb=%M exit=%x' -o time.txt taskset -c 0 /workspace/build-gprof-uflia/primo --quiet --stats --max-theory-conflicts=200 /tmp/primo-uflia-plan.BtEpmD/non-incremental/QF_UFLIA/mathsat/EufLaArithmetic/medium/medium12.smt2 > stdout.txt 2> stderr.txt; gprof /workspace/build-gprof-uflia/primo gmon.out > gprof.txt",
+        "counter_aggregation": "Read the eight default and guided stderr logs from /tmp/primo-qf-uflia-reference-sample-f1f2525-20260902 and sum the :combination.*, :no.mixed.*, EUF, LIA, SAT, preprocessing, and timing counters with a standard-library Python diagnostic.",
+        "budget_probe_pattern": "timeout 10 or 15 taskset -c <available-cpu> ./build/primo --quiet --stats --experimental-qf-uflia-model-combination --qf-uflia-model-decision-budget=<16|64|256> <absolute-watchlist-input>; 10 seconds was used for xs_7_7 and medium12, and 15 seconds for the remaining selected rows.",
+        "model_validation": "python3 scripts/validate_model.py --solver ./build/primo --solver-arg=--quiet --solver-arg=--experimental-qf-uflia-model-combination --solver-arg=--qf-uflia-model-decision-budget=256 --dolmen /home/user/.opam/default/bin/dolmen --dolmen-arg=--strict=false --require-dolmen-pass --timeout 15 --dolmen-timeout 15 --out /tmp/primo-qf-uflia-budget256-models-bc4667d /tmp/primo-uflia-plan.BtEpmD/non-incremental/QF_UFLIA/wisas/xs_7_7.smt2 /tmp/primo-uflia-plan.BtEpmD/non-incremental/QF_UFLIA/mathsat/Wisa/xs-15-09-3-5-5-3.smt2"
+      },
+      "counter_results": {
+        "complete_eight_row_total": "Over the 240 seconds of the preceding 30-second default runs: 91,070 combination rounds, 112,955 component checks, and 91,070 learned clauses. Rows had 45 to 216 shared terms and 990 to 23,220 all-pair arrangements. EUF diagnostics reached tens of millions of disequality checks or pending-merge pops on several rows; solve time dominated millisecond-scale preprocessing.",
+        "guided_eight_row_total": "Seven rows made exactly 16 model decisions and then entered complete fallback; their guided phase performed 10,989 component checks before fallback. hash_sat_09_05 made no model decision or snapshot because LIA rejected all 4,330 complete Boolean models first. Care-pair counters were zero on every row."
+      },
+      "profile_results": {
+        "xs_7_7_default": "5000 rounds, 7064 component checks, 990 pairs and 2970 bridge clauses; 4.38 seconds, 15,356 KiB peak RSS. CaDiCaL propagation led at 24.84%, followed by SAT search and exact-rational tableau pivots/updates.",
+        "xs_27_37_default": "1000 rounds, 1350 checks, 7750 pairs and 23,250 bridges; 5.30 seconds, 48,428 KiB. CaDiCaL search/propagation led; component extraction issued 31.8 million backend value queries and EUF rebuilt closure state.",
+        "hash_sat_09_05_default": "3000 rounds/checks, each rejected by the first EUF component; 1653 pairs and 4959 bridges; 2.16 seconds, 18,668 KiB. CaDiCaL propagation was 49.23% of samples and component extraction issued 20.1 million value queries.",
+        "medium12_default": "200 rounds and 400 checks, 23,220 pairs and 69,660 bridges, 93,640 SAT variables. The original run took 8.68 seconds and 124,692 KiB; the exact-command recheck took 4.23 seconds and 124,660 KiB. CaDiCaL propagation was respectively 35.38% and 20.54%; tableau update, violation maintenance, destruction, exact rational arithmetic, and copying dominated the rest. The wall-time variance prevents a local comparative-speed claim but leaves the structure, call counts, memory, and dominant mechanisms unchanged.",
+        "certora_65782_default": "1500 rounds and 1571 checks, 12,090 pairs and 36,270 bridges, 50,193 SAT variables; 11.99 seconds, 70,696 KiB. CaDiCaL propagation was 82.91% and extraction issued 74.6 million backend value queries.",
+        "hash_sat_09_05_guided": "1000 rounds/checks with zero pair materialization; 4.56 seconds, 13,340 KiB. Every assignment failed LIA before a model projection. Rational addition and LraTableau::check each took 16.84% of samples and pivots 10.53%, showing repeated full-tableau feasibility rather than combination scheduling.",
+        "one_round_shape": "At --max-theory-conflicts=1, medium12 complete versus guided created 93,640 versus 762 SAT variables, used 123,704 versus 9,704 KiB, and spent 209 versus 2.06 milliseconds in solve. Certora complete versus guided created 50,193 versus 1,904 variables, used 66,700 versus 11,216 KiB, and spent 164 versus 5.27 milliseconds. These are setup/shape diagnostics, not steady-state timing claims."
+      },
+      "budget_probe_results": {
+        "recoveries": "At budget 256, xs_7_7 returned sat in 0.03 seconds with 32/990 pairs after 176 rounds; xs-15-09-3-5-5-3 returned sat in 1.84 seconds with 216/2926 pairs after 4630 rounds; xs-07-11-1-1-1-1 returned unsat in 0.14 seconds with 64/990 pairs after 792 rounds. None used complete fallback.",
+        "remaining": "xs_27_37 remained unknown at 15 seconds without fallback after 126 decisions; xs_11_21 entered fallback after 86 decisions and remained unknown; hash_sat_09_05 still made no decisions; medium12 entered fallback at every tested budget through 256; Certora 65782 entered fallback at budget 64. Five of eight gaps therefore remain under these local bounds.",
+        "model_validation": "Dolmen 0.10 directly accepted both satisfiable high-budget models: 2/2 pass, zero invalid model, timeout, read error, or solver error.",
+        "interpretation": "The fixed default budget 16 prematurely triggers the quadratic fallback on three observed rows, but a higher fixed budget is not a general cure and has not been evaluated on SLURM or fuzzed. This result must not be used as a default-promotion or headline benchmark claim."
+      },
+      "literature_review": {
+        "primary_sources": "de Moura and Bjorner, Model-based Theory Combination, Sections 4-5 and Appendix A; Bruttomesso et al., Delayed Theory Combination vs. Nelson-Oppen, Section 3; Jovanovic and Barrett, Sharing is Caring: Combination of Theories, care functions and EUF care graph; Bjorner and Nachmanson, Arithmetic Solving in Z3, Sections 4-5.",
+        "highest_priority_gaps": "Trail-synchronized DPLL(T^M) component state and partial-assignment theory layering; persistent/delta EUF and LIA contexts; a real QF_UFLIA EUF care-pair implementation; adaptive model-choice scheduling and live arithmetic model mutation; Int finite-domain/channeling preprocessing; and stronger explained partial-assignment propagation.",
+        "secondary_gaps": "Extended bounded GCD, stronger cube/bound reasoning, CDCL-integrated integer branches, broader Gomory cuts, cut selection, and HNF remain arithmetic gaps, but the watched profiles are dominated before these integer stages. The model-combination paper reports dynamic Ackermannization did not help its Wisa family, so it is not the first general remedy."
+      },
+      "artifacts": {
+        "profile_directories": "/tmp/primo-uflia-{xs7-default-ZFhXsP,xs27-default-36s6oo,hash09-default-LlSWVI,medium12-default-XxAka5,certora65782-default-Du25yL,hash09-guided-hsLFez}; exact-command recheck /tmp/primo-uflia-profile-recheck-bc4667d-medium12-bwWbTt",
+        "budget_directories": "/tmp/primo-uflia-budget-{xs7,medium12}-* and /tmp/primo-uflia-budget{64,256}-*",
+        "validated_models": "/tmp/primo-qf-uflia-budget256-models-bc4667d",
+        "reference_benchmark": "/tmp/primo-qf-uflia-reference-sample-f1f2525-20260902"
+      },
+      "evidence_status": "local diagnostic profile and parameter classification only; exact source relation recorded; no algorithm or default changed; SLURM evaluation and fuzzing required before accepting any tuning",
+      "outcome": "The principal observed cost is repeated full-model orchestration: quadratic interface clauses burden CaDiCaL, every round scans all component atoms, and EUF/LIA state is rebuilt. Full incremental DPLL(T^M), persistent component contexts, EUF care pairs, and partial theory checks rank ahead of additional integer cuts for this watchlist. Raising the experimental model-decision budget avoids fallback and recovers three rows locally, but it is only a lead for a controlled SLURM/fuzz experiment."
     }
   ]
 }

@@ -240,6 +240,113 @@ set for future changes, not evidence of a current generic bottleneck. The
 specialized path remains the default pending a separate default-selection
 decision.
 
+## QF_UFLIA performance diagnosis (2026-09-02)
+
+The fixed 20-file reference sample exposed eight rows that Z3, cvc5, and
+OpenSMT all solve in under five seconds while both Primo policies reach the
+30-second limit. The watchlist is
+`benchmarks/qf_uflia-reference-gap-watchlist.txt`. Counters over those eight
+default-policy runs total 91,070 complete SAT assignments, 112,955 component
+checks, and 91,070 learned component-conflict clauses. The inputs have from 45
+to 216 shared Int terms. The complete policy consequently creates from 990 to
+23,220 interface equalities, plus three arithmetic bridge clauses per pair.
+This is repeated full-assignment rejection, not one expensive final integer
+branch-and-bound search.
+
+Pinned, conflict-bounded gprof runs on exact source commit `bc4667d` separate
+the costs:
+
+| Instance and policy | Shared pairs | Bounded rounds | Wall / peak RSS | Dominant measured work |
+| --- | ---: | ---: | ---: | --- |
+| `wisas/xs_7_7`, complete | 990 | 5,000 | 4.38 s / 15 MiB | CaDiCaL propagation, then exact-rational pivots and updates |
+| `wisas/xs_27_37`, complete | 7,750 | 1,000 | 5.30 s / 47 MiB | CaDiCaL model search/propagation, 31.8 million full-model value queries, and rebuilt EUF closure work |
+| `Hash/hash_sat_09_05`, complete | 1,653 | 3,000 | 2.16 s / 18 MiB | CaDiCaL propagation; every round is rejected by the first EUF check |
+| `EufLaArithmetic/medium/medium12`, complete | 23,220 | 200 | 4.23--8.68 s / 122 MiB | CaDiCaL propagation and copying/updating/destructing a fresh arithmetic tableau |
+| Certora `65782...`, complete | 12,090 | 1,500 | 11.99 s / 69 MiB | CaDiCaL propagation (82.9% of samples) and 74.6 million model-value queries |
+| `Hash/hash_sat_09_05`, model-guided | 0 materialized | 1,000 | 4.56 s / 13 MiB | A freshly copied rational tableau and exact arithmetic; LIA rejects every Boolean model before a combination choice exists |
+
+The `medium12` row includes the original profile and a fresh exact-command
+recheck; the roughly twofold wall-time variation reinforces that these local
+runs identify mechanisms rather than establish comparative timing. The exact
+percentages are sampling data, not portable predictions. The common
+mechanism is nevertheless clear from both counters and profiles. The complete
+route pays quadratic SAT structure and then asks for every component atom's
+value after each complete Boolean model. EUF reconstructs a congruence closure
+for the assignment, while LIA copies the prepared tableau and reasserts all
+bounds. The guided route avoids the eager pair set initially, but its default
+budget of 16 model-choice batches sends seven of these eight rows back to the
+same complete route. On the remaining Hash row, rational feasibility fails
+before EUF projection or an integer model choice, so sparse combination alone
+cannot help.
+
+A local classification probe raised the experimental budget without changing
+the algorithm. Budget 256 solved three previously timed-out watchlist rows
+without complete fallback: `xs_7_7` was sat in 0.03 seconds after materializing
+32/990 pairs, MathSAT Wisa `xs-15-09-3-5-5-3` was sat in 1.84 seconds after
+216/2,926 pairs, and Wisa `xs-07-11-1-1-1-1` was unsat in 0.14 seconds after
+64/990 pairs. Dolmen directly accepted both satisfiable models. Five rows still
+reached their 10- or 15-second local limits. These are diagnostic, single-run
+local results: they motivate an adaptive budget experiment but do not justify
+changing the default or claiming sample-level performance.
+
+### Missing techniques, in measured priority order
+
+1. **Incremental `DPLL(T^M)` integration and theory layering.** The current
+   coordinator runs after a complete SAT model. The transition system in de
+   Moura and Bjorner, and the partial-assignment schedule in delayed theory
+   combination, instead retain component state during Boolean search, run cheap
+   checks early, and make model equalities first-class reversible decisions.
+   Primo still needs trail-synchronized component state, partial-assignment
+   checks, and staged EUF/rational/integer checks.
+2. **Persistent EUF and LIA contexts.** Component assignments should be
+   applied as deltas under push/pop or a trail. Re-querying every atom and
+   copying the whole closure/tableau on each round directly accounts for the
+   observed tens of millions of operations. This is an infrastructure
+   prerequisite for the first item, not a new solving heuristic.
+3. **Real EUF care pairs.** *Sharing is Caring* restricts arrangements to
+   theory-specific care graphs; for EUF, relevant pairs arise from arguments of
+   applications that can still become congruent. `EufComponentAdapter`
+   currently declares `supplies_care_pairs = true` but inherits the base method
+   that returns an empty vector. The generic coordinator can prioritize care
+   pairs, but QF_UFLIA supplies none. Implementing the EUF care graph and its
+   invalidation rules should precede any attempt to use care pairs as a
+   completeness argument; the complete non-convex fallback must remain until
+   then.
+4. **Adaptive model-choice scheduling and arithmetic model mutation.** The
+   fixed budget 16 is prematurely destructive on three observed rows. A
+   progress- or interface-size-dependent budget can be evaluated immediately,
+   but the paper-backed endpoint is to mutate component models to reduce
+   accidental equalities and postpone model-equality decisions until ordinary
+   Boolean/theory propagation is exhausted. Current QF_UFLIA adapters expose
+   projections but no live `M-Mutate` implementation.
+5. **Integer finite-domain preprocessing and channeling.** The Hash, Wisa, and
+   `medium12` inputs encode small numeral domains, permutations, or explicit
+   function tables. Primo's finite-domain preprocessing is aimed at QF_UF
+   candidate values and does not use the inherent distinctness of integer
+   numerals; its counters are zero on this sample. Recognizing numeral domains,
+   emitting compact equality definitions/at-most-one constraints, and exposing
+   all-different structure could remove much of the Boolean search before
+   combination.
+6. **Stronger explained propagation and smaller conflicts.** Tens of thousands
+   of complete assignments currently produce one clause each. Opportunistic
+   fixed arithmetic equalities, EUF equalities, bounds, and conflicts at partial
+   assignments should prevent the same bad region from being rediscovered.
+
+The remaining arithmetic waterfall gaps documented in
+[](papers/arithmetic-solving-in-z3.md)—extended bounded GCD, stronger cube and
+bound reasoning, CDCL-visible integer branches, broader Gomory eligibility,
+cut selection, and HNF cuts—remain important for QF_LIA completeness and hard
+integer models. They are a second line for this particular watchlist: the
+profiles are dominated before those stages, usually by SAT/interface work,
+EUF rejection, or rational-tableau feasibility. Dynamic Ackermannization is
+also not the first general remedy here: the model-combination paper reports
+that it did not help its Wisa family and could add overhead, although a
+separate Hash-specific experiment may still be worthwhile.
+
+The reproducible commands, exact bounds, artifacts, and model-validation
+result are recorded in [](run-log.md). No optimization or default change is
+claimed by this diagnosis.
+
 ## Statistics
 
 `:solver.qf-uflia` selects the new leaf. `:combination.components`,
