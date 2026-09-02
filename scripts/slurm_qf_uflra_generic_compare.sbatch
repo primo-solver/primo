@@ -17,6 +17,7 @@ WORKDIR=${PRIMO_WORKDIR:-$PWD}
 ROOT=${PRIMO_COMPARE_ROOT:-tmp/QF_UFLRA}
 TIMEOUT=${PRIMO_COMPARE_TIMEOUT:-120}
 SHARDS=${PRIMO_COMPARE_SHARDS:-16}
+ORDER_OFFSET=${PRIMO_COMPARE_ORDER_OFFSET:-0}
 OUT_ROOT=${PRIMO_COMPARE_OUT_ROOT:-"$WORKDIR/results/qf-uflra-generic-ab-${SLURM_ARRAY_JOB_ID:-manual}"}
 TASK_ID=${SLURM_ARRAY_TASK_ID:-0}
 SOLVER=${PRIMO_COMPARE_SOLVER:-build-slurm-rel/primo}
@@ -50,7 +51,15 @@ run_arm() {
     --log-dir "$OUT_ROOT/$name/shard-${TASK_ID}-logs"
 }
 
-if ((TASK_ID % 2 == 0)); then
+case "$ORDER_OFFSET" in
+  0 | 1) ;;
+  *)
+    echo "PRIMO_COMPARE_ORDER_OFFSET must be 0 or 1" >&2
+    exit 2
+    ;;
+esac
+
+if (((TASK_ID + ORDER_OFFSET) % 2 == 0)); then
   run_arm specialized
   run_arm generic --solver-arg=--experimental-generic-model-combination
 else
