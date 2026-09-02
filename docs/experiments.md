@@ -257,6 +257,14 @@ trail; it must therefore be compared against the default complete arm, not
 described as a sparse-arrangement experiment. Model replay with Dolmen remains
 mandatory.
 
+To evaluate sparse online combination, pass both experimental options and an
+explicit model-decision budget, for example
+`--experimental-qf-uflia-model-combination
+--experimental-qf-uflia-online-components
+--qf-uflia-model-decision-budget=512`. Pair materialization remains cumulative,
+care pairs only prioritize decisions, and any typed component limit still
+restarts the online complete-arrangement backstop.
+
 For the five-way reference comparison, use
 `scripts/slurm_qf_uflia_sample_compare.sbatch`. It runs the default and
 model-guided Primo routes, Z3, cvc5, and OpenSMT with a 30-second per-file

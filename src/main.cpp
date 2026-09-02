@@ -380,8 +380,7 @@ int run_main(int argc, char** argv) {
       "fallback");
   add_flag_with_default(
       app, "--experimental-qf-uflia-online-components", experimental_qf_uflia_online_components,
-      "Reuse trail-synchronized EUF and rational-arithmetic state on the complete-arrangement "
-      "QF_UFLIA path");
+      "Reuse trail-synchronized EUF and rational-arithmetic state during QF_UFLIA SAT search");
   app.add_option("--qf-uflia-model-decision-budget", qf_uflia_model_decision_budget,
                  "Maximum QF_UFLIA model-choice batches before complete arrangement fallback");
   add_flag_with_default(

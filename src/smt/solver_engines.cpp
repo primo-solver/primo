@@ -3007,14 +3007,18 @@ struct EufCarePairDiagnostics {
   std::vector<core::TermId> argument_terms;
 };
 
-EufCarePairDiagnostics euf_care_pair_diagnostics(
-    const FlatEufModelView& euf, const std::vector<core::TermId>& shared_real_terms) {
+// Jovanovic and Barrett, "Sharing is Caring", Sections 3-4: the EUF care
+// graph needs argument equalities only between applications whose function
+// terms are equal in the current closure. This is a candidate filter for model
+// decisions, never a theory entailment or a completeness reduction.
+EufCarePairDiagnostics euf_care_pair_diagnostics(const FlatEufModelView& euf,
+                                                 const std::vector<core::TermId>& shared_terms) {
   EufCarePairDiagnostics diagnostics;
-  diagnostics.full_pairs = unordered_pair_count(shared_real_terms.size());
+  diagnostics.full_pairs = unordered_pair_count(shared_terms.size());
 
   std::unordered_map<theory::equality::FlatTermId, core::TermId> shared_term_by_flat;
-  shared_term_by_flat.reserve(shared_real_terms.size());
-  for (const core::TermId term : shared_real_terms) {
+  shared_term_by_flat.reserve(shared_terms.size());
+  for (const core::TermId term : shared_terms) {
     if (const std::optional<theory::equality::FlatTermId> flat = euf.flat.existing_flat_term(term);
         flat.has_value()) {
       shared_term_by_flat.emplace(flat.value(), term);
@@ -9481,7 +9485,23 @@ class EufComponentAdapter final : public theory::TheorySolver {
     theory::TheoryCheckResult result;
     result.status = theory::TheoryCheckStatus::Consistent;
     result.model = std::move(projection.value());
+    const EufCarePairDiagnostics care = euf_care_pair_diagnostics(model_view, shared_terms_);
+    publish_euf_care_pair_diagnostics(care, /*computed=*/true, statistics_);
+    last_care_pairs_.clear();
+    last_care_pairs_.reserve(care.term_pairs.size());
+    for (const TermPairKey& pair : care.term_pairs) {
+      last_care_pairs_.push_back(
+          theory::InterfacePair{.lhs = pair.lhs, .rhs = pair.rhs, .sort = shared_sort_});
+    }
+    last_care_token_ = result.model.token;
     return result;
+  }
+
+  std::vector<theory::InterfacePair> care_pairs(
+      const theory::TheoryModelToken& token) const override {
+    return last_care_token_.has_value() && last_care_token_.value() == token
+               ? last_care_pairs_
+               : std::vector<theory::InterfacePair>{};
   }
 
  private:
@@ -9493,6 +9513,8 @@ class EufComponentAdapter final : public theory::TheorySolver {
   std::uint64_t assignment_epoch_ = 0;
   bool produce_model_projection_ = false;
   util::Statistics& statistics_;
+  std::optional<theory::TheoryModelToken> last_care_token_;
+  std::vector<theory::InterfacePair> last_care_pairs_;
 };
 
 class LiaComponentAdapter final : public theory::TheorySolver {
@@ -9809,6 +9831,7 @@ CheckSatOutcome solve_qf_uflia_engine_impl(core::TermManager& terms,
   statistics.set(":combination.model.fallback-unknown", 0);
   statistics.set(":combination.model.fallback-resource-limit", 0);
   statistics.set(":combination.online-components.integer-completions", 0);
+  statistics.set(":combination.online-components.rebuilds", 0);
   statistics.set(":no.mixed.euf-atoms", euf_atoms.size());
   statistics.set(":no.mixed.lia-atoms", lia_atoms.size());
   statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
@@ -9884,10 +9907,19 @@ CheckSatOutcome solve_qf_uflia_engine_impl(core::TermManager& terms,
   std::optional<TheoryCombinationManager> online_combination_manager;
   std::optional<MixedTheoryPropagationDispatcher> online_dispatcher;
   CheckSatOptions online_euf_options = options;
-  const bool use_online_components = !model_guided &&
-                                     options.experimental_qf_uflia_online_components &&
+  const bool use_online_components = options.experimental_qf_uflia_online_components &&
                                      options.euf_engine == EufEngine::Incremental;
-  if (use_online_components) {
+  const auto rebuild_online_components = [&]() {
+    if (!use_online_components) {
+      return;
+    }
+    if (online_dispatcher.has_value()) {
+      backend.disconnect_external_propagator();
+      online_dispatcher.reset();
+      online_combination_manager.reset();
+      online_lra_component.reset();
+      online_euf_component.reset();
+    }
     online_euf_options.euf_propagation =
         resolve_euf_propagation_mode(options, euf_atoms.size(), statistics);
     online_euf_component.emplace(terms, euf_atoms, true_term, false_term, online_euf_options,
@@ -9909,7 +9941,9 @@ CheckSatOutcome solve_qf_uflia_engine_impl(core::TermManager& terms,
     for (const BooleanClausifier::TheoryAtom& atom : lia_atoms) {
       backend.add_observed_var(sat_var(atom.lit));
     }
-  }
+    statistics.increment(":combination.online-components.rebuilds");
+  };
+  rebuild_online_components();
   statistics.set(":combination.online-components.enabled", use_online_components ? 1 : 0);
 #else
   constexpr bool use_online_components = false;
@@ -9922,6 +9956,9 @@ CheckSatOutcome solve_qf_uflia_engine_impl(core::TermManager& terms,
     }
     if (component_pair_generation != materialized_pair_count()) {
       rebuild_components();
+#if PRIMO_HAVE_IPASIR
+      rebuild_online_components();
+#endif
     }
     std::optional<std::uint64_t> model_propagation_start;
     if (model_guided) {

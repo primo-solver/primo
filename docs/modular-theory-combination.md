@@ -155,6 +155,25 @@ unsupported projections, ordinary unknown results, and guided LIA resource
 limits restart the unchanged complete-arrangement solver with no candidate
 assumptions. Cancellation still stops immediately.
 
+The model-guided and online-component options may be combined. The online
+components then reject inconsistent partial SAT trails before a full model is
+handed to the model-based coordinator. When reconciliation materializes a new
+interface pair, the SMT layer disconnects the callback adapter and reconstructs
+both prepared components over the enlarged, cumulative atom set before the next
+solve. This rebuild is required by the current arithmetic tableau invariant
+that every row is installed before the first decision-level push; it is counted
+by `:combination.online-components.rebuilds` and is the main remaining obstacle
+to fully incremental sparse growth.
+
+The QF_UFLIA EUF adapter now implements its declared care-pair capability using
+the same care graph as QF_UFLRA. Following Jovanovic and Barrett, *Sharing is
+Caring*, Sections 3–4, it groups flattened application definitions by the
+current equivalence class of their function term and proposes pairs of shared
+arguments only within a group. The resulting pairs prioritize model
+disagreements; they do not remove the complete fallback or turn a model choice
+into an entailed equality. The `:no.interface.euf-care-*` counters expose the
+full pair count, selected pairs, function classes, and pruning.
+
 ## Implemented subset and limitations
 
 `QF_UFLIA` is runnable through a sequential two-component coordinator. Its EUF

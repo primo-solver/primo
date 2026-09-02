@@ -170,6 +170,33 @@ void agreeing_component_models_avoid_the_complete_arrangement() {
   assert(result.statistics.get(":combination.model.snapshots") == 2);
 }
 
+void sparse_online_guidance_uses_euf_care_pairs_and_rebuilds_on_growth() {
+  CheckSatOptions options;
+  options.experimental_qf_uflia_model_combination = true;
+  options.experimental_qf_uflia_online_components = true;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLIA)
+    (declare-fun x () Int)
+    (declare-fun y () Int)
+    (declare-fun z () Int)
+    (declare-fun f (Int) Int)
+    (assert (>= x 0))
+    (assert (<= x 1))
+    (assert (= y 0))
+    (assert (= z 1))
+    (assert (not (= (f x) (f y))))
+    (assert (not (= (f x) (f z))))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Unsat);
+  assert(result.statistics.get(":combination.online-components.enabled") == 1);
+  assert(result.statistics.get(":combination.online-components.rebuilds") >= 2);
+  assert(result.statistics.get(":combination.model.decisions") >= 1);
+  assert(result.statistics.get(":no.interface.euf-care-pairs") >= 1);
+  assert(result.statistics.get(":combination.model.care-pairs") >= 1);
+}
+
 void model_uses_the_arithmetic_value_of_a_purified_uf_argument() {
   CheckSatOptions options;
   options.experimental_qf_uflia_model_combination = true;
@@ -293,6 +320,7 @@ int main() {
   model_guidance_handles_a_non_convex_disjunction_with_reversible_choices();
   model_guidance_has_a_complete_arrangement_fallback();
   agreeing_component_models_avoid_the_complete_arrangement();
+  sparse_online_guidance_uses_euf_care_pairs_and_rebuilds_on_growth();
   model_uses_the_arithmetic_value_of_a_purified_uf_argument();
   model_combines_integer_values_and_uf_table();
   model_reconstructs_an_integer_substituted_by_a_uf_application();
