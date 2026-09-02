@@ -240,6 +240,53 @@ set for future changes, not evidence of a current generic bottleneck. The
 specialized path remains the default pending a separate default-selection
 decision.
 
+## Incremental QF_UFLIA implementation checklist
+
+The next QF_UFLIA milestone combines four primary-source obligations rather
+than treating online checking as an implementation-only optimization:
+
+- de Moura and Bjorner, *Model-based Theory Combination*, Sections 4--5 and
+  Appendix A, supplies the separation between explained `T-Propagate`,
+  reversible `M-Propagate`, model mutation, and backtracking. Primo will keep a
+  component model private and expose only a revision-tagged equality
+  projection. A model equality remains a decision, never an entailed clause.
+- Bruttomesso et al., *Delayed Theory Combination vs. Nelson-Oppen*, Section 3
+  and Theorem 2, supplies the complete non-convex backstop. Until the sparse
+  online path has a separate completeness proof, every inconclusive sparse run
+  restarts a total SAT-visible arrangement.
+- Jovanovic and Barrett, *Sharing is Caring: Combination of Theories*, Sections
+  3--4, supplies theory care functions and the EUF application-argument care
+  graph. The first implementation uses the graph only to order model choices;
+  it does not prune the non-convex fallback.
+- Dutertre and de Moura, *A Fast Linear-Arithmetic Solver for DPLL(T)*,
+  Sections 3.2--3.3, supplies incremental bound assertion, cheap backtracking,
+  feasibility checks, and conflict explanations. Integer patching and cuts are
+  run only at full-model effort on a copy because those operations are not part
+  of the trailed rational tableau invariant.
+
+The planned data ownership is an SMT-owned external-propagator dispatcher, one
+theory-owned incremental state per component, and SAT-owned levels and
+assignments. Assignment callbacks apply only newly assigned theory literals;
+level callbacks push or pop component checkpoints. Partial checks may return
+only explained propagation/conflict or a typed stop. A full-model check may
+additionally return a model projection or request a reversible equality
+decision. Components never receive a SAT backend, and the dispatcher never
+inspects closure or tableau internals.
+
+The expected costs are one-time preparation plus work proportional to newly
+assigned or backtracked literals. EUF care generation may inspect application
+definitions within compatible function classes; it must not enumerate every
+shared-term pair merely to discard most of them. The retained complete fallback
+is still quadratic in the number of shared Int terms.
+
+The proof obligations are: every permanent clause has a component explanation;
+candidate equalities remain reversible; component state after pop represents
+exactly the retained SAT prefix; integer completion satisfies every asserted
+arithmetic literal; accepted EUF and LIA projections agree; cancellation and
+resource limits remain typed; and the total arrangement still decides the
+supported non-convex fragment. Unit tests must exercise each obligation before
+the online route is benchmarked.
+
 ## QF_UFLIA performance diagnosis (2026-09-02)
 
 The fixed 20-file reference sample exposed eight rows that Z3, cvc5, and
@@ -361,5 +408,13 @@ fixed points, care pairs, disagreements, learned clauses, model decisions,
 fresh decisions, stale snapshots, and rejected mutations.
 For QF_UFLIA, `:combination.model.total-pairs`, `.materialized-pairs`, and
 `.complete-fallbacks` distinguish the sparse phase from the complete backstop;
-the shared assumption-lifecycle counters use the existing
+`.fallback-budget`, `.fallback-unsupported`, `.fallback-unknown`, and
+`.fallback-resource-limit` classify why that backstop was entered. The shared
+assumption-lifecycle counters use the existing
 `:no.interface.model-equality-*` namespace.
+
+`:time.qf-uflia.sat-us`, `.assignment-extraction-us`, `.euf-check-us`,
+`.lia-check-us`, `.lia-rational-us`, `.lia-integer-us`,
+`.model-reconciliation-us`, and `.complete-fallback-us` are cumulative local
+phase timers. They are diagnostic and excluded from non-timing-statistic
+compatibility comparisons.

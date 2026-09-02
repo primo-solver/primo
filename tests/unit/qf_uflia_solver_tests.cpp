@@ -24,6 +24,12 @@ void accepts_integer_uninterpreted_functions() {
   assert(result.result == CheckSatResult::Sat);
   assert(result.statistics.get(":solver.qf-uflia") == 1);
   assert(result.statistics.get(":combination.components") == 2);
+  assert(result.statistics.contains(":time.qf-uflia.sat-us"));
+  assert(result.statistics.contains(":time.qf-uflia.assignment-extraction-us"));
+  assert(result.statistics.contains(":time.qf-uflia.euf-check-us"));
+  assert(result.statistics.contains(":time.qf-uflia.lia-check-us"));
+  assert(result.statistics.contains(":time.qf-uflia.lia-rational-us"));
+  assert(result.statistics.contains(":time.qf-uflia.lia-integer-us"));
 }
 
 // LIA is non-convex: 0 <= x <= 1 entails x=0 or x=1, but neither equality
@@ -92,6 +98,11 @@ void model_guidance_has_a_complete_arrangement_fallback() {
                                        options);
   assert(result.result == CheckSatResult::Sat);
   assert(result.statistics.get(":combination.model.complete-fallbacks") == 1);
+  assert(result.statistics.get(":combination.model.fallback-budget") == 1);
+  assert(result.statistics.get(":combination.model.fallback-unsupported") == 0);
+  assert(result.statistics.get(":combination.model.fallback-unknown") == 0);
+  assert(result.statistics.get(":combination.model.fallback-resource-limit") == 0);
+  assert(result.statistics.contains(":time.qf-uflia.complete-fallback-us"));
   assert(result.statistics.get(":combination.model.materialized-pairs") ==
          result.statistics.get(":combination.model.total-pairs"));
 }
