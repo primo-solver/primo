@@ -265,9 +265,10 @@ explicit model-decision budget, for example
 care pairs only prioritize decisions, and any typed component limit still
 restarts the online complete-arrangement backstop.
 
-For the five-way reference comparison, use
-`scripts/slurm_qf_uflia_sample_compare.sbatch`. It runs the default and
-model-guided Primo routes, Z3, cvc5, and OpenSMT with a 30-second per-file
+For the seven-way reference comparison, use
+`scripts/slurm_qf_uflia_sample_compare.sbatch`. It runs the default,
+model-guided, online-complete, and sparse-online Primo routes, plus Z3, cvc5,
+and OpenSMT, with a 30-second per-file
 cutoff. On exact benchmark commit `f1f2525`, Z3, cvc5, and OpenSMT each solved
 19/20 files (9 sat and 10 unsat); each timed out only on the larger Certora
 case. Default and model-guided Primo each solved 11/20 (4 sat and 7 unsat) and

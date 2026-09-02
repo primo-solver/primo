@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Compare Primo's two QF_UFLIA routes with the standard reference solvers on
-# the fixed representative archive sample. One array task owns one solver arm;
+# Compare Primo's QF_UFLIA routes with the standard reference solvers on the
+# fixed representative archive sample. One array task owns one solver arm;
 # bench_qf_uf_full.py journals every completed row before proceeding.
 #SBATCH --job-name=primo-qfuflia-sample
-#SBATCH --array=0-4
+#SBATCH --array=0-6
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=8G
 #SBATCH --time=00:20:00
@@ -17,7 +17,7 @@ ROOT=${PRIMO_COMPARE_ROOT:-tmp/QF_UFLIA}
 MANIFEST=${PRIMO_COMPARE_MANIFEST:-benchmarks/qf_uflia-smtlib-representative-20.txt}
 TIMEOUT=${PRIMO_COMPARE_TIMEOUT:-30}
 OUT_ROOT=${PRIMO_COMPARE_OUT_ROOT:-"$WORKDIR/results/qf-uflia-sample-${SLURM_ARRAY_JOB_ID:-manual}"}
-SOLVERS=${PRIMO_COMPARE_SOLVERS:-"primo-default=build-slurm-rel/primo --quiet --stats;primo-guided=build-slurm-rel/primo --quiet --stats --experimental-qf-uflia-model-combination;z3=contrib/local/bin/z3 -st;cvc5=contrib/local/bin/cvc5 --lang smt2 --stats;opensmt=contrib/local/bin/opensmt"}
+SOLVERS=${PRIMO_COMPARE_SOLVERS:-"primo-default=build-slurm-rel/primo --quiet --stats;primo-guided=build-slurm-rel/primo --quiet --stats --experimental-qf-uflia-model-combination;primo-online=build-slurm-rel/primo --quiet --stats --experimental-qf-uflia-online-components;primo-sparse-online=build-slurm-rel/primo --quiet --stats --experimental-qf-uflia-model-combination --experimental-qf-uflia-online-components --qf-uflia-model-decision-budget=512;z3=contrib/local/bin/z3 -st;cvc5=contrib/local/bin/cvc5 --lang smt2 --stats;opensmt=contrib/local/bin/opensmt"}
 TASK_ID=${SLURM_ARRAY_TASK_ID:-0}
 
 cd "$WORKDIR"

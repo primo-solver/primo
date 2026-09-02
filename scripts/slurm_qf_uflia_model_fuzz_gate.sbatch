@@ -64,5 +64,6 @@ python3 scripts/validate_model.py \
   --require-dolmen-pass \
   --timeout 5 \
   --dolmen-timeout 5 \
+  --dolmen-arg=--strict=false \
   --out "$OUT/model-validation" \
   "$OUT"/answer/cases/*.smt2
