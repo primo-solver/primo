@@ -29864,6 +29864,66 @@
       },
       "evidence_status": "exact-commit local development evidence; online path remains default-off pending SLURM campaign and QF_UFLRA regression gate",
       "outcome": "Trail-synchronized complete-arrangement solving removes the dominant repeated component reconstruction and doubles five-second sample coverage. The remaining gaps still pay the quadratic arrangement cost, motivating a separate sparse-plus-online experiment before any default decision."
+    },
+    {
+      "id": "2026-09-03-qf-uflia-sparse-online-default-promotion",
+      "started_at": "2026-09-03",
+      "recorded_at": "2026-09-03",
+      "kind": "local-and-slurm-profile-promotion-benchmark-fuzz-model-validation",
+      "scope": "Implementation and promotion gate for sparse model-guided, trail-synchronized QF_UFLIA combination with EUF care pairs, a 512-decision bound, and the complete non-convex arrangement restart; includes QF_UFLRA preservation checks.",
+      "commits": {
+        "sparse_online_implementation": "29312db74b16eab6d69ab8ea47d0503e5004a914",
+        "pre_promotion_evaluation": "c9dedcfdc3caba2bd048bcfdf5b25b0fe43e6f89",
+        "promoted_default": "f38446a67365330c6f0d17655479bb5d199ef21d",
+        "source_relation": "c9dedcf adds only evaluation scripts and documentation after 29312db. f38446a changes the public defaults, option names, ablation controls, and documentation; the underlying sparse-online engine is identical to c9dedcf."
+      },
+      "branch": "modular-theory-combination",
+      "environment": {
+        "local": "Linux workstation; Release and ASan Primo; CaDiCaL cadical-3.0.0-7b99c07; workspace Z3 and cvc5; Dolmen 0.10",
+        "slurm": "Established remote SLURM environment; clean archive-mode workspace; Release Primo; CaDiCaL cadical-3.0.0-7b99c07",
+        "corpus": "benchmarks/qf_uflia-smtlib-representative-20.txt rooted at sandbox/QF_UFLIA.tar.zst extraction; generated random QF_UFLIA and QF_UFLRA cases; generated finite-domain QF_UFLRA and QF_UF controls",
+        "reference_versions": "Z3 5.1.0, cvc5 1.3.4, OpenSMT 2.9.2, Dolmen 0.10"
+      },
+      "commands": {
+        "local_qf_uflia_answers": "PATH=contrib/local/bin:$PATH python3 scripts/qf_uflia_fuzz.py --solver ./build/primo --solver-arg=--quiet --solver-arg=--experimental-qf-uflia-model-combination --solver-arg=--experimental-qf-uflia-online-components --solver-arg=--qf-uflia-model-decision-budget=512 --ref z3 --ref cvc5 --count 1000 --seed 202609031 --timeout 5 --shape random --out /tmp/qf-uflia-sparse-online-fuzz-29312db",
+        "local_qf_uflia_models": "python3 scripts/validate_model.py with the same solver arguments, --require-dolmen-pass --timeout 5 --dolmen-timeout 5, over all 1,000 generated cases",
+        "local_sample": "python3 scripts/bench_qf_uf_full.py over benchmarks/qf_uflia-smtlib-representative-20.txt with default and sparse-online arms at five seconds; exact c9dedcf model replay repeated at 30 seconds with --dolmen-arg=--strict=false",
+        "slurm_prepare": "python3 scripts/slurm_prepare_benchmark_workspace.py --sync-mode archive --reuse-dependencies --target primo; immediate --check-only --no-sync verified the embedded revision, CaDiCaL, and required reference tools before every submission",
+        "slurm_pre_promotion": "scripts/slurm_qf_uflia_model_fuzz_gate.sbatch with four shards x 750, seed base 202609040, five-second solver/Dolmen limits, and both experimental options plus budget 512; scripts/slurm_qf_uflia_sample_compare.sbatch at 30 seconds; scripts/slurm_qf_uflra_fuzz_gate.sbatch with four shards x 250 general and x25 finite controls",
+        "slurm_promoted_default": "scripts/slurm_qf_uflia_model_fuzz_gate.sbatch with four shards x 750, seed base 202609060, no solver options; scripts/slurm_qf_uflra_fuzz_gate.sbatch with four shards x 250 general and x25 finite controls, seed base 202609070; isolated array task 0 of scripts/slurm_qf_uflia_sample_compare.sbatch at 30 seconds",
+        "verification": "make check; make lint; make docs; make asan-test; make tidy; make include-cleaner; solver_efficiency_snapshot.py; git diff --check; slurm_validate_sbatch.py and bash -n on both changed sbatch files"
+      },
+      "scheduler_jobs": {
+        "pre_promotion_qf_uflia_campaign": "131185",
+        "pre_promotion_seven_arm_sample": "131189",
+        "pre_promotion_qf_uflra_regression": "131196",
+        "promoted_default_qf_uflia_campaign": "131200",
+        "promoted_default_qf_uflra_regression": "131204",
+        "promoted_default_isolated_sample": "131208"
+      },
+      "results": {
+        "local_merge_gate": "1,000/1,000 QF_UFLIA answers PASS against both Z3 and cvc5: 594 sat and 406 unsat; Dolmen directly accepted all 594 satisfiable models.",
+        "pre_promotion_sample": "At 30 seconds on SLURM, complete and model-only Primo each solved 11/20, online-complete solved 16/20, and sparse-online solved 18/20 under simultaneous-arm contention. Sparse-online had 8 sat, 10 unsat, 2 timeout, zero wrong or unsupported, and PAR2 131.626060 seconds. Z3, cvc5, and OpenSMT each solved 19/20 with PAR2 60.600257, 65.758424, and 65.520791 seconds.",
+        "pre_promotion_campaign": "3,000/3,000 QF_UFLIA answer comparisons PASS: 1,765 sat and 1,235 unsat; Dolmen directly accepted all 1,765 satisfiable models.",
+        "promoted_default_campaign": "3,000/3,000 QF_UFLIA answer comparisons PASS: 1,773 sat and 1,227 unsat; zero disagreement, wrong answer, crash, parser/type error, timeout, unsupported result, or unknown output. Dolmen directly accepted all 1,773 satisfiable models.",
+        "promoted_default_sample": "The isolated exact-f38446a default arm solved 19/20 at 30 seconds: 9 sat, 10 unsat, one large-Certora timeout, zero wrong or unsupported, PAR2 99.632776 seconds. Exact-revision local model replay produced the same 19 decisive answers and Dolmen directly accepted all 9 satisfiable models.",
+        "qf_uflra_preservation": "On exact f38446a, 1,000/1,000 general QF_UFLRA, 100/100 finite QF_UFLRA, and 100/100 finite QF_UF comparisons PASS. Dolmen directly accepted all 576 general and 52 finite-QF_UFLRA satisfiable models. The pre-promotion independent seeds also passed 1,000 general plus both 100-case controls.",
+        "model_validator_diagnosis": "Four archive models initially appeared as model-error because strict Dolmen rejects coefficient-times-UF-application syntax in the original inputs. Replaying with Dolmen --strict=false directly validated every produced model; no fallback validator was used. The QF_UFLIA SLURM gate now encodes this required parser mode.",
+        "profiling_and_budget": "The prior bounded profiles showed quadratic complete arrangements of 7,750 to 23,220 pairs and repeated EUF/LIA rebuilding. Combined online state and sparse choices remove those dominant costs. Budget 512 is the smallest evaluated round value that retained the medium12 and smaller-Certora sparse recoveries; xs_27_37 still enters the complete restart but solves within 30 seconds in isolated runs. Additional integer cuts were not justified by the observed pre-integer bottleneck."
+      },
+      "verification": {
+        "results": "All 25 CTests and 78 Python tests passed; full ASan passed 25/25 before and after default promotion; lint and docs passed. The solver-efficiency snapshot found no added hot-path pattern in the promotion diff. Whole-tree clang-tidy and include-cleaner results are recorded after the final documentation commit.",
+        "review": "The required smt-code-review skill was unavailable in the installed skill catalog. Manual whole-tree hygiene review and the solver-efficiency-review workflow found no soundness issue: candidate equalities remain reversible assumptions, cancellation and typed limits retain their precedence, all materialization is cumulative, and every sparse exit retains complete non-convex fallback."
+      },
+      "artifacts": {
+        "local_pre_promotion": "/tmp/qf-uflia-sparse-online-fuzz-29312db and /tmp/qf-uflia-sample-29312db",
+        "local_exact_sample_models": "/tmp/qf-uflia-sample-c9dedcf-models and /tmp/qf-uflia-default-f38446a-models",
+        "collected_pre_promotion_slurm": "/tmp/primo-qf-uflia-slurm-c9dedcf",
+        "collected_promoted_default_slurm": "/tmp/primo-qf-uflia-final-f38446a",
+        "remote": "<slurm-workdir>/{fuzz-results/qf-uflia-sparse-online-c9dedcf,fuzz-results/qf-uflra-regression-c9dedcf,results/qf-uflia-sample-c9dedcf,fuzz-results/qf-uflia-default-f38446a,fuzz-results/qf-uflra-regression-f38446a,results/qf-uflia-default-f38446a}"
+      },
+      "evidence_status": "slurm-complete exact promoted-default commit; direct-Dolmen model gates; default accepted with complete non-convex fallback retained",
+      "outcome": "Promoted sparse online QF_UFLIA combination with budget 512. It matches the three reference solvers' 19/20 sample coverage, improves from the prior 11/20 default, and passes exact-commit campaign/model gates. It remains slower than references on the sample, and fully incremental sparse row growth is the next performance target."
     }
   ]
 }
