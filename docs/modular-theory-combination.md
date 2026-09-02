@@ -185,11 +185,12 @@ owned SAT atoms. The LIA adapter reuses Primo's exact-rational tableau, integer
 patching, GCD check, Gomory cuts, and bounded branch-and-bound. Reaching the
 existing integer node limit returns a typed resource-limit `unknown`.
 
-The experimental model-guided route rebuilds a component adapter only when a
+The default model-guided route rebuilds a component adapter only when a
 new equality and its two arithmetic bounds are registered. Snapshot epochs are
 advanced for every satisfying SAT assignment, so projections from older
-assignments are rejected. The default complete route is unchanged and remains
-the fallback; the feature is not a default or performance claim.
+assignments are rejected. The complete route is unchanged and remains the
+fallback when sparse reconciliation reaches a typed stop or its decision
+budget.
 
 The online-complete route records
 `:combination.online-components.enabled` and
@@ -273,7 +274,11 @@ complete and model-only controls solved 11/20. On the same exact commit, a
 1,000-case general QF_UFLRA preservation gate and two 100-case finite-domain
 controls passed, with all 628 satisfiable QF_UFLRA models accepted directly by
 Dolmen. The full commands, seeds, family counts, job identifiers, and artifacts
-are recorded in [](run-log.md).
+are recorded in [](run-log.md). A subsequent YinYang/typefuzz campaign on
+revision `66250a4` (documentation-only changes after the same solver source)
+processed all 10 selected real MathSAT QF_UFLIA seeds, generated 20 successful
+mutations per seed, made 388 Primo/Z3 solver calls, and found no bug trigger or
+bug file.
 
 A crossed-order, full-corpus SLURM comparison evaluated the specialized and
 generic QF_UFLRA coordinators twice on all 1,284 archive files with a
@@ -298,15 +303,15 @@ set for future changes, not evidence of a current generic bottleneck. The
 specialized path remains the default pending a separate default-selection
 decision.
 
-## Incremental QF_UFLIA implementation checklist
+## Incremental QF_UFLIA implementation checklist and status
 
-The next QF_UFLIA milestone combines four primary-source obligations rather
-than treating online checking as an implementation-only optimization:
+The implemented QF_UFLIA milestone combines four primary-source obligations
+rather than treating online checking as an implementation-only optimization:
 
 - de Moura and Bjorner, *Model-based Theory Combination*, Sections 4--5 and
   Appendix A, supplies the separation between explained `T-Propagate`,
-  reversible `M-Propagate`, model mutation, and backtracking. Primo will keep a
-  component model private and expose only a revision-tagged equality
+  reversible `M-Propagate`, model mutation, and backtracking. Primo keeps a
+  component model private and exposes only a revision-tagged equality
   projection. A model equality remains a decision, never an entailed clause.
 - Bruttomesso et al., *Delayed Theory Combination vs. Nelson-Oppen*, Section 3
   and Theorem 2, supplies the complete non-convex backstop. Until the sparse
@@ -322,8 +327,8 @@ than treating online checking as an implementation-only optimization:
   run only at full-model effort on a copy because those operations are not part
   of the trailed rational tableau invariant.
 
-The planned data ownership is an SMT-owned external-propagator dispatcher, one
-theory-owned incremental state per component, and SAT-owned levels and
+The implemented data ownership is an SMT-owned external-propagator dispatcher,
+one theory-owned incremental state per component, and SAT-owned levels and
 assignments. Assignment callbacks apply only newly assigned theory literals;
 level callbacks push or pop component checkpoints. Partial checks may return
 only explained propagation/conflict or a typed stop. A full-model check may
@@ -342,10 +347,17 @@ candidate equalities remain reversible; component state after pop represents
 exactly the retained SAT prefix; integer completion satisfies every asserted
 arithmetic literal; accepted EUF and LIA projections agree; cancellation and
 resource limits remain typed; and the total arrangement still decides the
-supported non-convex fragment. Unit tests must exercise each obligation before
-the online route is benchmarked.
+supported non-convex fragment. Unit and production-migration tests exercise
+these obligations; the complete fallback remains part of the soundness and
+completeness boundary.
 
-## QF_UFLIA performance diagnosis (2026-09-02)
+## Historical QF_UFLIA performance diagnosis (2026-09-02)
+
+This section records the measured preimplementation baseline at exact source
+commit `bc4667d`. The sparse-online work described above subsequently addressed
+the repeated component reconstruction, care-pair, and fixed-budget items. The
+remaining gaps are called out explicitly below; historical counts and option
+defaults are not descriptions of the current `f38446a` solver.
 
 The fixed 20-file reference sample exposed eight rows that Z3, cvc5, and
 OpenSMT all solve in under five seconds while both Primo policies reach the
@@ -378,9 +390,9 @@ mechanism is nevertheless clear from both counters and profiles. The complete
 route pays quadratic SAT structure and then asks for every component atom's
 value after each complete Boolean model. EUF reconstructs a congruence closure
 for the assignment, while LIA copies the prepared tableau and reasserts all
-bounds. The guided route avoids the eager pair set initially, but its default
-budget of 16 model-choice batches sends seven of these eight rows back to the
-same complete route. On the remaining Hash row, rational feasibility fails
+bounds. The then-guided route avoided the eager pair set initially, but its
+default budget of 16 model-choice batches sent seven of these eight rows back
+to the same complete route. On the remaining Hash row, rational feasibility fails
 before EUF projection or an integer model choice, so sparse combination alone
 cannot help.
 
@@ -394,36 +406,32 @@ reached their 10- or 15-second local limits. These are diagnostic, single-run
 local results: they motivate an adaptive budget experiment but do not justify
 changing the default or claiming sample-level performance.
 
-### Missing techniques, in measured priority order
+### Technique queue and current status
 
-1. **Incremental `DPLL(T^M)` integration and theory layering.** The current
-   coordinator runs after a complete SAT model. The transition system in de
-   Moura and Bjorner, and the partial-assignment schedule in delayed theory
-   combination, instead retain component state during Boolean search, run cheap
-   checks early, and make model equalities first-class reversible decisions.
-   Primo still needs trail-synchronized component state, partial-assignment
-   checks, and staged EUF/rational/integer checks.
-2. **Persistent EUF and LIA contexts.** Component assignments should be
-   applied as deltas under push/pop or a trail. Re-querying every atom and
-   copying the whole closure/tableau on each round directly accounts for the
-   observed tens of millions of operations. This is an infrastructure
-   prerequisite for the first item, not a new solving heuristic.
-3. **Real EUF care pairs.** *Sharing is Caring* restricts arrangements to
-   theory-specific care graphs; for EUF, relevant pairs arise from arguments of
-   applications that can still become congruent. `EufComponentAdapter`
-   currently declares `supplies_care_pairs = true` but inherits the base method
-   that returns an empty vector. The generic coordinator can prioritize care
-   pairs, but QF_UFLIA supplies none. Implementing the EUF care graph and its
-   invalidation rules should precede any attempt to use care pairs as a
-   completeness argument; the complete non-convex fallback must remain until
-   then.
-4. **Adaptive model-choice scheduling and arithmetic model mutation.** The
-   fixed budget 16 is prematurely destructive on three observed rows. A
-   progress- or interface-size-dependent budget can be evaluated immediately,
-   but the paper-backed endpoint is to mutate component models to reduce
-   accidental equalities and postpone model-equality decisions until ordinary
-   Boolean/theory propagation is exhausted. Current QF_UFLIA adapters expose
-   projections but no live `M-Mutate` implementation.
+1. **Deeper `DPLL(T^M)` integration and theory layering (partially
+   implemented).** The promoted path now retains EUF and rational LIA state
+   during Boolean search and performs explained partial-assignment checks. The
+   model-based coordinator still runs after a complete SAT model. The
+   transition system in de Moura and Bjorner, and the partial-assignment
+   schedule in delayed theory combination, still motivate moving model
+   reconciliation itself into the search and separating cheap rational checks
+   from full integer completion.
+2. **Persistent growth of EUF and LIA contexts (partially implemented).**
+   Assignment deltas and push/pop are incremental while the interface is
+   fixed. Materializing a new sparse equality still rebuilds both prepared
+   components because the tableau cannot yet grow rows after its first SAT
+   level. Supporting delta row and atom registration is the next infrastructure
+   target.
+3. **Real EUF care pairs (implemented as an ordering heuristic).** Following
+   *Sharing is Caring*, the EUF adapter now groups compatible applications and
+   proposes shared argument pairs. Care pairs prioritize sparse model choices;
+   they are deliberately not a pruning or completeness argument, so the
+   complete non-convex fallback remains.
+4. **Adaptive model-choice scheduling and arithmetic model mutation
+   (partially implemented).** The promoted 512-choice budget fixes the measured
+   premature fallback without claiming a universally adaptive policy. Current
+   QF_UFLIA adapters expose projections but no live arithmetic `M-Mutate`
+   implementation; progress-sensitive scheduling remains open.
 5. **Integer finite-domain preprocessing and channeling.** The Hash, Wisa, and
    `medium12` inputs encode small numeral domains, permutations, or explicit
    function tables. Primo's finite-domain preprocessing is aimed at QF_UF
@@ -449,8 +457,9 @@ that it did not help its Wisa family and could add overhead, although a
 separate Hash-specific experiment may still be worthwhile.
 
 The reproducible commands, exact bounds, artifacts, and model-validation
-result are recorded in [](run-log.md). No optimization or default change is
-claimed by this diagnosis.
+result are recorded in [](run-log.md). This diagnosis did not itself justify a
+default change; the later promotion used the independent correctness,
+model-validation, preservation, mutation, and sample gates summarized above.
 
 ## Statistics
 

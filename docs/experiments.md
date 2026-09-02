@@ -269,6 +269,15 @@ All arms had zero wrong answers or unsupported results. A 3,000-case SLURM
 differential campaign passed every case and Dolmen directly accepted all 1,765
 satisfiable models before promotion.
 
+The exact promoted default at `f38446a` independently passed 3,000/3,000
+generated QF_UFLIA comparisons, with all 1,773 satisfiable models accepted
+directly by Dolmen, and solved 19/20 sample rows in an isolated 30-second run.
+A real-seed YinYang/typefuzz complement on `66250a4` processed all 10 selected
+MathSAT QF_UFLIA seeds with 20 successful mutations per seed, made 388
+Primo/Z3 calls, and produced zero bug triggers or bug files. This mutation run
+complements rather than replaces the generated campaign; its 20,000-byte seed
+limit intentionally selected the MathSAT portion of the representative corpus.
+
 Historically, on exact benchmark commit `f1f2525`, Z3, cvc5, and OpenSMT each
 solved 19/20 files (9 sat and 10 unsat); each timed out only on the larger Certora
 case. Default and model-guided Primo each solved 11/20 (4 sat and 7 unsat) and
