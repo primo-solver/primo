@@ -871,7 +871,18 @@ interface, and
 `:no.interface.model-real-terms-filtered` reports how many of those EUF-side
 Real terms were excluded because they are not common EUF/LRA interface
 constants. Exclusion applies to arrangement search and LRA probes, not to
-printed model completion. For `get-model`, the shared class keeps its concrete
+printed model completion.
+
+Integer model completion in `qf_uflia_int_values` fills in every evaluable Int
+term with an explicit worklist. Its dependency graph is deliberately not the
+term DAG: an unvalued application takes its value from a valued application of
+the same symbol whose arguments evaluate equal, so completing `(f x)` inspects
+the candidate `(f (f x))`, whose own argument is `(f x)` again. A term whose
+value is still being computed contributes no value, so that candidate does not
+match; that makes completion terminate, at the cost of making the outcome
+depend on the arena iteration order for terms inside such a cycle. A term left
+without a value is skipped, exactly as any other unevaluable term is, and the
+model printer supplies a default. For `get-model`, the shared class keeps its concrete
 LRA value and every unanchored EUF-only Real equivalence class receives a
 distinct fresh rational. Completion writes that class value for every Real
 constant and Real-valued application in the class. Exact application values
@@ -1283,6 +1294,19 @@ file should end in one of these states:
 - `TIMEOUT`
 - `MEMORY_LIMIT`
 - `NONTERMINATION`
+
+### Known recursion depth limit
+
+Mixed-theory purification (`purify_euf_term` and `purify_arithmetic_term` in
+`solver_engines`) still walks the term DAG by mutual recursion, so an input
+whose term nesting is deep enough overflows the stack. Measured on this
+workstation with `(f (f (f ... x)))` over `QF_UFLIA`: depth 10000 completes,
+depth 50000 segfaults inside `SymbolTable::declare_constant` called from
+`purify_arithmetic_term`. Real benchmarks are nowhere near that, but a
+generated or reduced input can be. A crash whose backtrace repeats those two
+frames is this, not a solver bug; converting the family to an explicit stack,
+as `qf_uflia_int_values` and the boolean NNF rewriter already are, is
+outstanding work.
 
 ## Model failures
 

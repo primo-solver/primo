@@ -361,6 +361,47 @@ void unused_integer_uf_gets_a_well_sorted_default() {
   assert(result.model.find("(define-fun f ((x0 Int)) Int 0)") != std::string::npos);
 }
 
+// Completing the integer model scans, for each unvalued application, every
+// valued application of the same symbol and evaluates that candidate's
+// arguments. The dependency graph that produces is not the term DAG: filling
+// in (f x) inspects the candidate (f (f x)), whose own argument is (f x)
+// again. Two nested applications are enough to close the loop.
+void model_completion_terminates_on_nested_uf_applications() {
+  CheckSatOptions options;
+  options.produce_model = true;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLIA)
+    (declare-fun f (Int) Int)
+    (declare-fun x () Int)
+    (assert (= x 1))
+    (assert (>= (f (f x)) 0))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.model.find("(define-fun x () Int 1)") != std::string::npos);
+}
+
+void model_completion_terminates_on_deeply_nested_uf_applications() {
+  std::string nested = "x";
+  for (int depth = 0; depth < 200; ++depth) {
+    nested = "(f " + nested + ")";
+  }
+  CheckSatOptions options;
+  options.produce_model = true;
+  const auto result = check_sat_smtlib(
+      "(set-logic QF_UFLIA)\n"
+      "(declare-fun f (Int) Int)\n"
+      "(declare-fun x () Int)\n"
+      "(assert (= x 1))\n"
+      "(assert (>= " +
+          nested +
+          " 0))\n"
+          "(check-sat)\n",
+      options);
+  assert(result.result == CheckSatResult::Sat);
+}
+
 void model_parameters_do_not_shadow_user_symbols() {
   const auto result = check_sat_smtlib(R"(
     (set-option :produce-models true)
@@ -410,6 +451,8 @@ int main() {
   model_reconstructs_an_integer_substituted_by_a_uf_application();
   model_reconstructs_a_compound_definition_with_a_uf_application();
   unused_integer_uf_gets_a_well_sorted_default();
+  model_completion_terminates_on_nested_uf_applications();
+  model_completion_terminates_on_deeply_nested_uf_applications();
   model_parameters_do_not_shadow_user_symbols();
   rejects_real_symbols();
   return 0;

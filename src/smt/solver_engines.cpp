@@ -9301,44 +9301,75 @@ std::unordered_map<core::TermId, util::Rational> qf_uflia_int_values(
     }
   }
 
-  std::unordered_map<core::TermId, util::Rational> evaluated_terms;
-  std::function<std::optional<util::Rational>(core::TermId)> evaluate;
-  evaluate = [&](core::TermId term_id) -> std::optional<util::Rational> {
-    const core::Term& term = terms.get(term_id);
-    if (term.sort != terms.symbols().int_sort()) {
-      return std::nullopt;
-    }
-    if (const auto known = values.find(term_id); known != values.end()) {
-      return known->second;
-    }
-    if (const auto known = evaluated_terms.find(term_id); known != evaluated_terms.end()) {
-      return known->second;
-    }
-    std::optional<util::Rational> result;
+  // Completion is driven by an explicit worklist rather than recursion. The
+  // dependency graph here is not the term DAG: the candidate scan below
+  // evaluates the arguments of *other* applications of the same symbol, so
+  // completing (f x) inspects the candidate (f (f x)), whose argument is
+  // (f x) again. That cycle made a recursive walk non-terminating on two
+  // nested applications. A dependency that is still being computed yields no
+  // value, which makes that candidate simply not match; results, including
+  // definitive failures, are memoized so no subgraph is walked twice.
+  std::unordered_map<core::TermId, std::optional<util::Rational>> evaluated_terms;
+  std::unordered_set<core::TermId> in_progress;
+
+  // Every term whose value the given term needs before it can be decided.
+  const auto dependencies_of = [&](const core::Term& term) {
+    std::vector<core::TermId> needed;
     switch (term.kind) {
-      case core::TermKind::Rational:
-        result = term.rational_value;
-        break;
-      case core::TermKind::Constant: {
-        const core::TermId representative = euf_classes.class_representative(term_id);
-        const auto known_class = values_by_euf_class.find(representative);
-        if (known_class != values_by_euf_class.end()) {
-          result = known_class->second;
+      case core::TermKind::Application: {
+        needed.insert(needed.end(), term.children.begin(), term.children.end());
+        const auto candidates = valued_applications_by_symbol.find(term.symbol);
+        if (candidates != valued_applications_by_symbol.end()) {
+          for (const core::TermId candidate_id : candidates->second) {
+            const core::Term& candidate = terms.get(candidate_id);
+            needed.insert(needed.end(), candidate.children.begin(), candidate.children.end());
+          }
         }
         break;
       }
-      case core::TermKind::Application: {
+      case core::TermKind::Plus:
+        needed.insert(needed.end(), term.children.begin(), term.children.end());
+        break;
+      case core::TermKind::Times:
+        needed.push_back(term.children.at(0));
+        break;
+      default:
+        break;
+    }
+    return needed;
+  };
+
+  // Reads a dependency that the worklist has already settled. An unsettled
+  // dependency is one that is still on the stack, i.e. part of a cycle.
+  const auto settled_value = [&](core::TermId term_id) -> std::optional<util::Rational> {
+    if (const auto known = values.find(term_id); known != values.end()) {
+      return known->second;
+    }
+    const auto known = evaluated_terms.find(term_id);
+    return known == evaluated_terms.end() ? std::nullopt : known->second;
+  };
+
+  const auto combine = [&](core::TermId term_id) -> std::optional<util::Rational> {
+    const core::Term& term = terms.get(term_id);
+    switch (term.kind) {
+      case core::TermKind::Rational:
+        return term.rational_value;
+      case core::TermKind::Constant: {
         const core::TermId representative = euf_classes.class_representative(term_id);
         const auto known_class = values_by_euf_class.find(representative);
-        if (known_class != values_by_euf_class.end()) {
-          result = known_class->second;
-          break;
+        return known_class == values_by_euf_class.end() ? std::nullopt
+                                                        : std::optional{known_class->second};
+      }
+      case core::TermKind::Application: {
+        const core::TermId representative = euf_classes.class_representative(term_id);
+        if (const auto known_class = values_by_euf_class.find(representative);
+            known_class != values_by_euf_class.end()) {
+          return known_class->second;
         }
-
         std::vector<util::Rational> argument_values;
         argument_values.reserve(term.children.size());
         for (const core::TermId child : term.children) {
-          const std::optional<util::Rational> child_value = evaluate(child);
+          const std::optional<util::Rational> child_value = settled_value(child);
           if (!child_value.has_value()) {
             return std::nullopt;
           }
@@ -9348,13 +9379,14 @@ std::unordered_map<core::TermId, util::Rational> qf_uflia_int_values(
         if (candidates == valued_applications_by_symbol.end()) {
           return std::nullopt;
         }
+        std::optional<util::Rational> result;
         for (const core::TermId candidate_id : candidates->second) {
           const core::Term& candidate = terms.get(candidate_id);
           bool same_arguments = candidate.children.size() == argument_values.size();
           for (std::size_t index = 0; same_arguments && index < candidate.children.size();
                ++index) {
             const std::optional<util::Rational> candidate_value =
-                evaluate(candidate.children[index]);
+                settled_value(candidate.children[index]);
             same_arguments =
                 candidate_value.has_value() && candidate_value.value() == argument_values[index];
           }
@@ -9369,34 +9401,79 @@ std::unordered_map<core::TermId, util::Rational> qf_uflia_int_values(
           }
           result = candidate_result;
         }
-        break;
+        return result;
       }
       case core::TermKind::Plus: {
         util::Rational sum(0);
         for (const core::TermId child : term.children) {
-          const std::optional<util::Rational> child_value = evaluate(child);
+          const std::optional<util::Rational> child_value = settled_value(child);
           if (!child_value.has_value()) {
             return std::nullopt;
           }
           sum = sum + child_value.value();
         }
-        result = sum;
-        break;
+        return sum;
       }
       case core::TermKind::Times: {
-        const std::optional<util::Rational> child_value = evaluate(term.children.at(0));
-        if (child_value.has_value()) {
-          result = term.rational_value * child_value.value();
+        const std::optional<util::Rational> child_value = settled_value(term.children.at(0));
+        if (!child_value.has_value()) {
+          return std::nullopt;
         }
-        break;
+        return term.rational_value * child_value.value();
       }
       default:
-        break;
+        return std::nullopt;
     }
-    if (result.has_value()) {
-      evaluated_terms.emplace(term_id, result.value());
+  };
+
+  struct EvaluationFrame {
+    core::TermId term;
+    bool expanded;
+  };
+  std::vector<EvaluationFrame> stack;
+
+  const auto evaluate = [&](core::TermId root) -> std::optional<util::Rational> {
+    if (const auto known = values.find(root); known != values.end()) {
+      return known->second;
     }
-    return result;
+    if (const auto known = evaluated_terms.find(root); known != evaluated_terms.end()) {
+      return known->second;
+    }
+    stack.clear();
+    stack.push_back(EvaluationFrame{.term = root, .expanded = false});
+    while (!stack.empty()) {
+      const core::TermId term_id = stack.back().term;
+      const bool expanded = stack.back().expanded;
+      if (expanded) {
+        stack.pop_back();
+        in_progress.erase(term_id);
+        evaluated_terms.insert_or_assign(term_id, combine(term_id));
+        continue;
+      }
+      // The same term can be queued twice by two siblings before either is
+      // expanded; the second visit is already answered.
+      if (evaluated_terms.contains(term_id) || in_progress.contains(term_id)) {
+        stack.pop_back();
+        continue;
+      }
+      const core::Term& term = terms.get(term_id);
+      if (term.sort != terms.symbols().int_sort()) {
+        stack.pop_back();
+        evaluated_terms.insert_or_assign(term_id, std::nullopt);
+        continue;
+      }
+      stack.back().expanded = true;
+      in_progress.insert(term_id);
+      const std::vector<core::TermId> needed_terms = dependencies_of(term);
+      for (const core::TermId needed : needed_terms) {
+        if (values.contains(needed) || evaluated_terms.contains(needed) ||
+            in_progress.contains(needed)) {
+          continue;
+        }
+        stack.push_back(EvaluationFrame{.term = needed, .expanded = false});
+      }
+    }
+    return evaluated_terms.at(root);
   };
 
   std::unordered_map<core::TermId, core::TermId> substitutions;
