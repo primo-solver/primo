@@ -540,16 +540,19 @@ void cancellation_stops_before_running_a_tactic() {
 // the session triages the whole disjunction rather than reading .front().
 // canonical() backs operator== and fingerprint(), and compile() lowers the
 // same tree. Strategies are built programmatically, so nothing bounds their
-// depth; both walks must be iterative. A recursive canonical() overflowed the
-// stack somewhere between depth 5000 and 20000 on this workstation.
+// depth and neither walk may recurse: a recursive canonical() overflowed the
+// stack between depth 5000 and 20000 on this workstation.
 //
-// Running such a nest is a separate matter: the compiled tacticals are nested
-// closures, so an execution recurses at its composition depth. That is a
-// property of the tacticals rather than of the lowering, so this test compiles
-// the deep nest without running it and checks execution at a depth the
-// closures can actually handle.
-void deeply_nested_strategies_canonicalize_and_compile_without_recursion() {
-  constexpr std::size_t kDeep = 100000;
+// The two are checked at different depths on purpose. Compiling produces
+// nested closures, and destroying, and running, that chain recurses once per
+// level regardless of how it was built, which caps the compiled depth well
+// below the rendered one. Making execution and teardown iterative would be a
+// different change -- a tactic interpreter rather than composed closures --
+// and is recorded in docs/debugging.md instead. 12000 is chosen because the
+// recursive canonical() overflowed there in both the Release and the
+// sanitizer build, while the iterative one clears both.
+void deeply_nested_strategies_canonicalize_without_recursion() {
+  constexpr std::size_t kDeep = 12000;
   primo::smt::Strategy nest = primo::smt::Strategy::skip();
   for (std::size_t depth = 0; depth < kDeep; ++depth) {
     nest = primo::smt::Strategy::sequence({nest});
@@ -563,16 +566,17 @@ void deeply_nested_strategies_canonicalize_and_compile_without_recursion() {
   check(canonical.compare(kDeep * 10, 4, "skip") == 0);
   check(nest.fingerprint() == nest.fingerprint());
   check(nest == nest);
-  const primo::smt::Tactic lowered = compile(nest);
-  static_cast<void>(lowered);
+}
 
-  constexpr std::size_t kRunnable = 100;
-  primo::smt::Strategy runnable = primo::smt::Strategy::skip();
-  for (std::size_t depth = 0; depth < kRunnable; ++depth) {
-    runnable = primo::smt::Strategy::sequence({runnable});
+void nested_strategies_compile_to_a_working_pipeline() {
+  constexpr std::size_t kDepth = 2000;
+  primo::smt::Strategy nest = primo::smt::Strategy::skip();
+  for (std::size_t depth = 0; depth < kDepth; ++depth) {
+    nest = primo::smt::Strategy::sequence({nest});
   }
+
   Fixture fixture;
-  const primo::smt::Tactic pipeline = compile(runnable);
+  const primo::smt::Tactic pipeline = compile(nest);
   const primo::smt::AnyOf result =
       pipeline(fixture.context, primo::smt::AnyOf::single(primo::smt::Goal{{fixture.p_term()}}));
   check(result.alternatives().front().assertions() == std::vector{fixture.p_term()});
@@ -1234,7 +1238,8 @@ int main() {
   experimental_split_bools_uses_sequential_first_sat_execution_and_keeps_model();
   sequential_scheduler_tries_each_arm_from_the_original_goal();
   cancellation_stops_before_running_a_tactic();
-  deeply_nested_strategies_canonicalize_and_compile_without_recursion();
+  deeply_nested_strategies_canonicalize_without_recursion();
+  nested_strategies_compile_to_a_working_pipeline();
   triage_keeps_a_satisfiable_alternative_when_the_first_is_false();
   triage_reports_unsat_only_when_every_alternative_is_false();
   triage_flags_any_inconclusive_alternative();
