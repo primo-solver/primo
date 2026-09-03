@@ -335,6 +335,7 @@ ModelBasedCombinationResult ModelBasedCombinationCoordinator::reconcile(
                    });
 
   std::vector<theory::TheoryDecisionRequest> candidate_decisions;
+  bool mutated_any_projection = false;
   for (std::size_t component_index = 1; component_index < components.size(); ++component_index) {
     std::vector<InterfaceRelation> required_relations(arrangement.begin(), arrangement.end());
     bool disagrees = false;
@@ -379,6 +380,7 @@ ModelBasedCombinationResult ModelBasedCombinationCoordinator::reconcile(
       projections[component_index] = std::move(mutation.model);
       projection_indexes[component_index] = index_projection(projections[component_index]);
       ++statistics_.snapshots;
+      mutated_any_projection = true;
       continue;
     }
     if (mutation.status == theory::TheoryMutationStatus::FixedPoint) {
@@ -411,6 +413,20 @@ ModelBasedCombinationResult ModelBasedCombinationCoordinator::reconcile(
       result.decision_lit = result.decision_lits.front();
       statistics_.model_decisions += result.decision_lits.size();
       return result;
+    }
+  }
+
+  if (mutated_any_projection) {
+    // A mutation is validated only against the requested relations, so it may
+    // merge or split shared pairs that no pre-mutation projection made
+    // visible. comparison_pairs is a spanning set for the partitions it was
+    // built from, and those partitions have changed, so it is recomputed here
+    // before the accept decision below relies on it. New pairs are appended so
+    // the care-pair priority established above is preserved.
+    for (const InterfacePair& pair : comparison_pairs(projections)) {
+      if (ordered_pair_keys.insert(pair_key(pair.lhs, pair.rhs)).second) {
+        ordered_pairs.push_back(pair);
+      }
     }
   }
 

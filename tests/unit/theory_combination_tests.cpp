@@ -965,6 +965,102 @@ void model_coordinator_accepts_a_compatible_model_variant() {
   assert(separated.mutation_count == 1);
 }
 
+// A mutation is validated only against the relations the coordinator asked for,
+// so it may freely merge or split shared pairs that no projection made visible
+// before the mutation. The post-mutation agreement check must therefore be
+// derived from the mutated projections, not from the pre-mutation comparison
+// set.
+void model_coordinator_rejects_a_mutation_that_splits_an_unlisted_pair() {
+  SymbolTable symbols;
+  const auto sort = symbols.declare_sort("S");
+  const auto x_symbol = symbols.declare_constant("x", sort);
+  const auto y_symbol = symbols.declare_constant("y", sort);
+  const auto z_symbol = symbols.declare_constant("z", sort);
+  const auto w_symbol = symbols.declare_constant("w", sort);
+  TermManager terms(symbols);
+  const auto x = terms.mk_constant(x_symbol);
+  const auto y = terms.mk_constant(y_symbol);
+  const auto z = terms.mk_constant(z_symbol);
+  const auto w = terms.mk_constant(w_symbol);
+  MockTheorySolver reference(TheoryProperties{.id = "reference",
+                                              .shared_sorts = {sort},
+                                              .stably_infinite = StableInfiniteness::Yes,
+                                              .convexity = Convexity::Convex,
+                                              .produces_model_projection = true});
+  MockTheorySolver variant(TheoryProperties{.id = "variant",
+                                            .shared_sorts = {sort},
+                                            .stably_infinite = StableInfiniteness::Yes,
+                                            .convexity = Convexity::Convex,
+                                            .produces_model_projection = true});
+  // Only (x, y) is a comparison pair before the mutation: it is the single
+  // non-singleton class across both projections.
+  reference.next_result = consistent_with(projection("reference", 12, 1, sort, {{x, y}, {z}, {w}}));
+  variant.next_result = consistent_with(projection("variant", 12, 1, sort, {{x}, {y}, {z}, {w}}));
+  // The mutation reaches the requested (x, y) merge but also merges (z, w),
+  // which the reference keeps apart.
+  variant.next_mutation =
+      TheoryMutationResult{.status = TheoryMutationStatus::Mutated,
+                           .model = projection("variant", 12, 2, sort, {{x, y}, {z, w}}),
+                           .candidate_decisions = {},
+                           .diagnostic = {}};
+  const std::vector<ModelBasedComponentRound> rounds{{.solver = &reference, .assignment = {}},
+                                                     {.solver = &variant, .assignment = {}}};
+  const std::vector interfaces{SharedInterfaceTerms{.sort = sort, .terms = {x, y, z, w}}};
+  ModelBasedCombinationCoordinator coordinator;
+
+  const auto result =
+      coordinator.reconcile(12, rounds, {}, interfaces, [z, w](const InterfacePair& pair) {
+        const bool is_zw = (pair.lhs == z && pair.rhs == w) || (pair.lhs == w && pair.rhs == z);
+        return std::optional{primo::sat::Lit{is_zw ? 47 : 11}};
+      });
+
+  assert(variant.mutation_count == 1);
+  assert(result.status == ModelBasedCombinationStatus::DecideEquality);
+  assert(result.decision_lit.value == 47);
+  assert(coordinator.statistics().disagreements == 1);
+}
+
+void model_coordinator_accepts_a_mutation_that_reaches_full_agreement() {
+  SymbolTable symbols;
+  const auto sort = symbols.declare_sort("S");
+  const auto x_symbol = symbols.declare_constant("x", sort);
+  const auto y_symbol = symbols.declare_constant("y", sort);
+  const auto z_symbol = symbols.declare_constant("z", sort);
+  const auto w_symbol = symbols.declare_constant("w", sort);
+  TermManager terms(symbols);
+  const auto x = terms.mk_constant(x_symbol);
+  const auto y = terms.mk_constant(y_symbol);
+  const auto z = terms.mk_constant(z_symbol);
+  const auto w = terms.mk_constant(w_symbol);
+  MockTheorySolver reference(TheoryProperties{.id = "reference",
+                                              .shared_sorts = {sort},
+                                              .stably_infinite = StableInfiniteness::Yes,
+                                              .convexity = Convexity::Convex,
+                                              .produces_model_projection = true});
+  MockTheorySolver variant(TheoryProperties{.id = "variant",
+                                            .shared_sorts = {sort},
+                                            .stably_infinite = StableInfiniteness::Yes,
+                                            .convexity = Convexity::Convex,
+                                            .produces_model_projection = true});
+  reference.next_result = consistent_with(projection("reference", 13, 1, sort, {{x, y}, {z}, {w}}));
+  variant.next_result = consistent_with(projection("variant", 13, 1, sort, {{x}, {y}, {z}, {w}}));
+  variant.next_mutation =
+      TheoryMutationResult{.status = TheoryMutationStatus::Mutated,
+                           .model = projection("variant", 13, 2, sort, {{x, y}, {z}, {w}}),
+                           .candidate_decisions = {},
+                           .diagnostic = {}};
+  const std::vector<ModelBasedComponentRound> rounds{{.solver = &reference, .assignment = {}},
+                                                     {.solver = &variant, .assignment = {}}};
+  const std::vector interfaces{SharedInterfaceTerms{.sort = sort, .terms = {x, y, z, w}}};
+  ModelBasedCombinationCoordinator coordinator;
+
+  const auto result = coordinator.reconcile(13, rounds, {}, interfaces, {});
+
+  assert(variant.mutation_count == 1);
+  assert(result.status == ModelBasedCombinationStatus::Accept);
+  assert(coordinator.statistics().disagreements == 0);
+}
+
 void model_coordinator_turns_fixed_point_disagreement_into_a_choice() {
   SymbolTable symbols;
   const auto sort = symbols.declare_sort("S");
@@ -1211,6 +1307,8 @@ int main() {
   model_coordinator_rejects_incomplete_projections_and_preserves_exceptions();
   model_coordinator_mutates_a_projection_to_agreement();
   model_coordinator_accepts_a_compatible_model_variant();
+  model_coordinator_rejects_a_mutation_that_splits_an_unlisted_pair();
+  model_coordinator_accepts_a_mutation_that_reaches_full_agreement();
   model_coordinator_turns_fixed_point_disagreement_into_a_choice();
   model_coordinator_rejects_unchanged_mutations();
   model_coordinator_prioritizes_care_pair_disagreements();

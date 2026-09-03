@@ -127,7 +127,11 @@ transition after one satisfying SAT assignment. It checks each component,
 validates snapshot identity, epoch, completeness, and compatibility with the
 current arrangement, asks a component for a compatible model variant, and
 compares the resulting partitions. It derives a linear spanning set from each
-model class rather than materializing the quadratic cross-product. Care pairs
+model class rather than materializing the quadratic cross-product. That
+spanning set is only spanning for the partitions it was built from, so it is
+recomputed from the mutated projections before the coordinator accepts: a
+mutation is validated against the requested interface relations alone and may
+merge or split pairs that no pre-mutation partition made visible. Care pairs
 are considered first. If a disagreement remains, the coordinator returns one
 or a component-provided batch of equality decisions; the caller creates or
 resolves their SAT literals and re-enters CaDiCaL. Entailed
@@ -135,6 +139,13 @@ literals are converted to explained clauses, while general non-convex clauses,
 fresh decisions, cancellation, resource limits, unsupported cases, and unknown
 results remain distinct typed actions. Exceptions are not converted into
 solver answers.
+
+One reconciliation round asks each non-reference component for at most one
+mutation, against the first component's partition. It does not iterate the
+components to a mutual fixed point, and a component is not re-asked after a
+later component mutates. Soundness does not depend on that: any residual
+disagreement on the recomputed spanning set becomes an equality decision rather
+than an accept. Iterating to a fixed point is future work.
 
 The coordinator owns no SAT backend and no theory-private model. Its caller
 owns assignment-epoch advancement, dynamic equality registration, assumptions,
@@ -148,7 +159,8 @@ tableau and EUF closure onto all shared Int terms. A partition
 disagreement creates a positive, reversible CaDiCaL assumption. If the
 assumption fails, the coordinator learns the negation of CaDiCaL's failed
 assumption subset; it never learns a candidate equality merely because one
-model selected it. Agreeing complete projections witness a combinable model.
+model selected it. Complete projections that agree on the spanning set
+recomputed from those same projections witness a combinable model.
 Because LIA is non-convex, the policy does not use convex equality propagation:
 `--qf-uflia-model-decision-budget` bounds model-choice batches (default 512),
 and zero selects the complete arrangement immediately. Budget exhaustion,
