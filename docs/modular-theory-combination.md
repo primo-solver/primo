@@ -509,6 +509,31 @@ constructing complete arrangements; and avoid rebuilding and rescanning the
 integer tableau for every sparse equality. These are profiling leads, not
 implemented improvements or performance claims.
 
+### Amortized changed-term notification draining
+
+`FlatCongruenceClosure` now separates rollback of undelivered notifications
+from the fact that a notification batch has already been consumed. Each
+checkpoint records the changed-term vector size and a monotonic drain
+generation. A pop restores the saved vector prefix only when its generation is
+still current; a drain advances the generation in constant time instead of
+rewriting every active checkpoint. If a descendant drained the batch, popping
+cannot resurrect either ancestor or descendant notifications. The generation
+counter has an explicit overflow rebase, whose checkpoint scan is reachable
+only after `2^64` drains.
+
+The vector remains owned by the theory closure, while the online EUF
+propagator remains the sole consumer. No SAT literals or SMT terms enter the
+closure. Unit tests cover undrained parent prefixes, nested drains, and pop
+after a descendant drain. `:euf.incremental.changed-term-drains`,
+`:euf.incremental.changed-terms-delivered`,
+`:euf.incremental.changed-term-generation-rebases`, and
+`:euf.incremental.max-checkpoint-depth` expose the mechanism. The diagnostic
+timers `:time.qf-uflia.component-rebuild-us` and
+`:time.qf-uflia.online-component-rebuild-us` support the later decision about
+incremental component growth. This is an infrastructure correction to the
+existing Nieuwenhuis--Oliveras-based closure, not a new congruence-closure
+algorithm or a performance claim by itself.
+
 ## Statistics
 
 `:solver.qf-uflia` selects the new leaf. `:combination.components`,

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <unordered_map>
 #include <vector>
@@ -152,6 +153,7 @@ class FlatCongruenceClosure {
     std::size_t disequalities_size = 0;
     std::size_t edges_size = 0;
     std::size_t changed_terms_size = 0;
+    std::uint64_t changed_terms_generation = 0;
     std::size_t trail_size = 0;
     std::size_t flat_vector_trail_size = 0;
     std::size_t size_vector_trail_size = 0;
@@ -221,6 +223,11 @@ class FlatCongruenceClosure {
   ProofForest reoriented_proof_forest_;
   ProofForest structural_proof_forest_;
   std::vector<FlatTermId> changed_terms_;
+  // A drain consumes notifications from every open checkpoint. Recording that
+  // fact as one generation change keeps draining independent of SAT depth;
+  // pop uses the saved generation to decide whether an old vector prefix is
+  // still live.
+  std::uint64_t changed_terms_generation_ = 0;
   std::vector<std::vector<std::size_t>> edge_adjacency_;
   std::vector<Checkpoint> checkpoints_;
   std::optional<std::size_t> protected_checkpoint_;

@@ -498,6 +498,44 @@ void flat_congruence_closure_pop_does_not_restore_drained_changed_terms() {
   check(changed.empty());
 }
 
+void flat_congruence_closure_preserves_undrained_parent_changes() {
+  FlatCongruenceClosure closure(8);
+  closure.assert_equal(0, 1);
+  const std::size_t outer = closure.push();
+  closure.assert_equal(2, 3);
+  const std::size_t inner = closure.push();
+  closure.assert_equal(4, 5);
+
+  closure.pop(inner);
+  closure.pop(outer);
+  std::vector<FlatTermId> changed;
+  closure.drain_changed_terms(changed);
+  check(changed.size() == 1);
+  check(changed.front() == 0 || changed.front() == 1);
+}
+
+void flat_congruence_closure_drain_consumes_all_checkpoint_prefixes() {
+  FlatCongruenceClosure closure(16);
+  closure.assert_equal(0, 1);
+  const std::size_t outer = closure.push();
+  closure.assert_equal(2, 3);
+  const std::size_t inner = closure.push();
+  closure.assert_equal(4, 5);
+
+  std::vector<FlatTermId> changed;
+  closure.drain_changed_terms(changed);
+  check(changed.size() == 3);
+  check(closure.stats().changed_term_drains == 1);
+  check(closure.stats().changed_terms_delivered == 3);
+
+  changed.clear();
+  closure.assert_equal(6, 7);
+  closure.pop(inner);
+  closure.pop(outer);
+  closure.drain_changed_terms(changed);
+  check(changed.empty());
+}
+
 void flat_congruence_closure_adds_self_application_to_one_use_list() {
   FlatCongruenceClosure closure(6);
   closure.add_definition(primo::theory::equality::FlatDefinition{0, 0, 5});
@@ -1348,6 +1386,8 @@ int main() {
   flat_congruence_closure_counts_selected_classes_across_backtracking();
   flat_congruence_closure_projects_selected_classes_deterministically();
   flat_congruence_closure_pop_does_not_restore_drained_changed_terms();
+  flat_congruence_closure_preserves_undrained_parent_changes();
+  flat_congruence_closure_drain_consumes_all_checkpoint_prefixes();
   flat_congruence_closure_adds_self_application_to_one_use_list();
   flat_congruence_closure_skips_unrelated_disequality_scans();
   flat_congruence_closure_scans_only_crossing_disequalities();

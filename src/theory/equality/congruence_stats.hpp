@@ -53,6 +53,10 @@ struct IncrementalCongruenceClosureStats {
   std::size_t use_list_duplicate_skips = 0;
   std::size_t affected_use_list_dedup = 0;
   std::size_t max_use_list_size = 0;
+  std::size_t changed_term_drains = 0;
+  std::size_t changed_terms_delivered = 0;
+  std::size_t changed_term_generation_rebases = 0;
+  std::size_t max_checkpoint_depth = 0;
 };
 
 }  // namespace primo::theory::equality

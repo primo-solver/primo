@@ -314,6 +314,14 @@ constexpr util::StatKey kStatEufIncrementalAffectedUseListDedup =
     util::StatKey::EufIncrementalAffectedUseListDedup;
 constexpr util::StatKey kStatEufIncrementalMaxUseListSize =
     util::StatKey::EufIncrementalMaxUseListSize;
+constexpr util::StatKey kStatEufIncrementalChangedTermDrains =
+    util::StatKey::EufIncrementalChangedTermDrains;
+constexpr util::StatKey kStatEufIncrementalChangedTermsDelivered =
+    util::StatKey::EufIncrementalChangedTermsDelivered;
+constexpr util::StatKey kStatEufIncrementalChangedTermGenerationRebases =
+    util::StatKey::EufIncrementalChangedTermGenerationRebases;
+constexpr util::StatKey kStatEufIncrementalMaxCheckpointDepth =
+    util::StatKey::EufIncrementalMaxCheckpointDepth;
 constexpr std::string_view kStatTimeTotalUs = ":time.total-us";
 constexpr std::string_view kStatTimeParseUs = ":time.parse-us";
 constexpr std::string_view kStatTimeFrontendUs = ":time.frontend-us";
@@ -543,6 +551,10 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
   statistics.set(kStatEufIncrementalUseListDuplicateSkips, 0);
   statistics.set(kStatEufIncrementalAffectedUseListDedup, 0);
   statistics.set(kStatEufIncrementalMaxUseListSize, 0);
+  statistics.set(kStatEufIncrementalChangedTermDrains, 0);
+  statistics.set(kStatEufIncrementalChangedTermsDelivered, 0);
+  statistics.set(kStatEufIncrementalChangedTermGenerationRebases, 0);
+  statistics.set(kStatEufIncrementalMaxCheckpointDepth, 0);
 
   const auto finish = [&](CheckSatResult result, std::string message = "",
                           InconclusiveReason reason = InconclusiveReason::None) {

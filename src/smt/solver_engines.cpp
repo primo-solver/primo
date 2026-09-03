@@ -292,6 +292,14 @@ constexpr util::StatKey kStatEufIncrementalAffectedUseListDedup =
     util::StatKey::EufIncrementalAffectedUseListDedup;
 constexpr util::StatKey kStatEufIncrementalMaxUseListSize =
     util::StatKey::EufIncrementalMaxUseListSize;
+constexpr util::StatKey kStatEufIncrementalChangedTermDrains =
+    util::StatKey::EufIncrementalChangedTermDrains;
+constexpr util::StatKey kStatEufIncrementalChangedTermsDelivered =
+    util::StatKey::EufIncrementalChangedTermsDelivered;
+constexpr util::StatKey kStatEufIncrementalChangedTermGenerationRebases =
+    util::StatKey::EufIncrementalChangedTermGenerationRebases;
+constexpr util::StatKey kStatEufIncrementalMaxCheckpointDepth =
+    util::StatKey::EufIncrementalMaxCheckpointDepth;
 
 theory::equality::FlatExplanationSearchMode flat_explanation_search_mode(
     EufExplainSearchMode mode) {
@@ -700,6 +708,15 @@ void add_incremental_stats(util::Statistics& statistics,
   if (stats.max_use_list_size > statistics.get(kStatEufIncrementalMaxUseListSize)) {
     statistics.set(kStatEufIncrementalMaxUseListSize, stats.max_use_list_size);
   }
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalChangedTermDrains,
+                            stats.changed_term_drains);
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalChangedTermsDelivered,
+                            stats.changed_terms_delivered);
+  increment_stat_if_nonzero(statistics, kStatEufIncrementalChangedTermGenerationRebases,
+                            stats.changed_term_generation_rebases);
+  if (stats.max_checkpoint_depth > statistics.get(kStatEufIncrementalMaxCheckpointDepth)) {
+    statistics.set(kStatEufIncrementalMaxCheckpointDepth, stats.max_checkpoint_depth);
+  }
 }
 
 std::size_t positive_delta(std::size_t current, std::size_t previous) {
@@ -760,6 +777,10 @@ theory::equality::IncrementalCongruenceClosureStats stats_delta(
       positive_delta(lhs.use_list_duplicate_skips, rhs.use_list_duplicate_skips),
       positive_delta(lhs.affected_use_list_dedup, rhs.affected_use_list_dedup),
       lhs.max_use_list_size,
+      positive_delta(lhs.changed_term_drains, rhs.changed_term_drains),
+      positive_delta(lhs.changed_terms_delivered, rhs.changed_terms_delivered),
+      positive_delta(lhs.changed_term_generation_rebases, rhs.changed_term_generation_rebases),
+      lhs.max_checkpoint_depth,
   };
 }
 
@@ -1537,6 +1558,11 @@ class IncrementalFlatAssignmentState {
     accumulated_stats_.affected_use_list_dedup += stats.affected_use_list_dedup;
     accumulated_stats_.max_use_list_size =
         std::max(accumulated_stats_.max_use_list_size, stats.max_use_list_size);
+    accumulated_stats_.changed_term_drains += stats.changed_term_drains;
+    accumulated_stats_.changed_terms_delivered += stats.changed_terms_delivered;
+    accumulated_stats_.changed_term_generation_rebases += stats.changed_term_generation_rebases;
+    accumulated_stats_.max_checkpoint_depth =
+        std::max(accumulated_stats_.max_checkpoint_depth, stats.max_checkpoint_depth);
   }
 
   void ensure_current_level_checkpoint() {
@@ -9855,6 +9881,7 @@ CheckSatOutcome solve_qf_uflia_engine_impl(core::TermManager& terms,
   std::unique_ptr<EufComponentAdapter> euf_component;
   std::unique_ptr<LiaComponentAdapter> lia_component;
   const auto rebuild_components = [&]() {
+    ScopedStatisticsTimer timer(statistics, ":time.qf-uflia.component-rebuild-us");
     euf_atoms.clear();
     lia_atoms.clear();
     for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
@@ -9913,6 +9940,7 @@ CheckSatOutcome solve_qf_uflia_engine_impl(core::TermManager& terms,
     if (!use_online_components) {
       return;
     }
+    ScopedStatisticsTimer timer(statistics, ":time.qf-uflia.online-component-rebuild-us");
     if (online_dispatcher.has_value()) {
       backend.disconnect_external_propagator();
       online_dispatcher.reset();

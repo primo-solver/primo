@@ -3,7 +3,9 @@
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
+#include <cstdint>
 #include <iterator>
+#include <limits>
 #include <optional>
 #include <stdexcept>
 #include <unordered_map>
@@ -49,10 +51,11 @@ FlatCongruenceClosure::FlatCongruenceClosure(std::size_t node_count,
 }
 
 std::size_t FlatCongruenceClosure::push() {
-  checkpoints_.push_back(Checkpoint{parent_.size(), definitions_.size(), pending_.size(),
-                                    disequalities_.size(), edges_.size(), changed_terms_.size(),
-                                    trail_.size(), flat_vector_trail_.size(),
-                                    size_vector_trail_.size(), conflict_, stats_});
+  checkpoints_.push_back(
+      Checkpoint{parent_.size(), definitions_.size(), pending_.size(), disequalities_.size(),
+                 edges_.size(), changed_terms_.size(), changed_terms_generation_, trail_.size(),
+                 flat_vector_trail_.size(), size_vector_trail_.size(), conflict_, stats_});
+  stats_.max_checkpoint_depth = std::max(stats_.max_checkpoint_depth, checkpoints_.size());
   // Kept in lockstep with checkpoints_ so the same index is valid for both;
   // cheap no-op when reoriented_proof_forest_ is empty (mode not selected).
   reoriented_proof_forest_.push();
@@ -79,7 +82,11 @@ void FlatCongruenceClosure::pop(std::size_t checkpoint) {
   pending_.resize(state.pending_size);
   disequalities_.resize(state.disequalities_size);
   edges_.resize(state.edges_size);
-  changed_terms_.resize(state.changed_terms_size);
+  if (state.changed_terms_generation == changed_terms_generation_) {
+    changed_terms_.resize(state.changed_terms_size);
+  } else {
+    changed_terms_.clear();
+  }
   parent_.resize(state.node_count);
   class_size_.resize(state.node_count);
   class_members_.resize(state.node_count);
@@ -269,10 +276,22 @@ std::vector<std::vector<FlatTermId>> FlatCongruenceClosure::equivalence_classes(
 }
 
 void FlatCongruenceClosure::drain_changed_terms(std::vector<FlatTermId>& out) {
+  ++stats_.changed_term_drains;
+  stats_.changed_terms_delivered += changed_terms_.size();
   out.insert(out.end(), changed_terms_.begin(), changed_terms_.end());
   changed_terms_.clear();
-  for (Checkpoint& checkpoint : checkpoints_) {
-    checkpoint.changed_terms_size = 0;
+  if (changed_terms_generation_ == std::numeric_limits<std::uint64_t>::max()) {
+    // A drain consumes every saved notification prefix. Give all open
+    // checkpoints a generation different from the rebased live generation so
+    // a later pop cannot resurrect one. This depth-linear path is reachable
+    // only after 2^64 drains.
+    changed_terms_generation_ = 0;
+    for (Checkpoint& checkpoint : checkpoints_) {
+      checkpoint.changed_terms_generation = 1;
+    }
+    ++stats_.changed_term_generation_rebases;
+  } else {
+    ++changed_terms_generation_;
   }
 }
 
