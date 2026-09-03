@@ -461,6 +461,54 @@ result are recorded in [](run-log.md). This diagnosis did not itself justify a
 default change; the later promotion used the independent correctness,
 model-validation, preservation, mutation, and sample gates summarized above.
 
+## Full-corpus consensus-gap profiles (2026-09-03)
+
+The first full-corpus run identified 54 inputs that Primo timed out on while
+Z3, cvc5, and OpenSMT all returned the same decisive answer. The fixed
+`benchmarks/qf_uflia-full-consensus-gap-profile-4.txt` sample represents four
+different observed paths. Reference times below come from the 60-second SLURM
+comparison at exact solver commit `61cd9ee`; Primo phase counts are from that
+same run. The bounded local gprof profiles use solver-equivalent commit
+`03ed5cb`, whose intervening changes affect only result-reporting scripts,
+tests, and documentation.
+
+| Input | Reference times: Z3 / cvc5 / OpenSMT | Primo's measured path |
+| --- | ---: | --- |
+| `medium11` (unsat) | 0.025 / 0.034 / 0.037 s | The 512 sparse decisions do not settle the formula. Complete fallback materializes all 17,578 shared pairs into 70,980 SAT variables and 106,155 clauses; 57.1 of 60.1 seconds are in that fallback, with 36.0 million SAT decisions. |
+| `xs_33_33` (sat) | 0.039 / 0.076 / 1.700 s | The sparse phase learns two component clauses without proposing a model equality, then complete fallback creates 11,026 pairs. SAT/online callbacks consume 59.4 seconds and perform 11.0 million decisions, 18,774 EUF theory conflicts, and 6.28 million online LRA checks. |
+| `xs_40_40` (sat) | 0.043 / 0.075 / 5.154 s | Sparse search remains active but materializing 289 pairs causes 290 component rebuilds, 54,582 SAT conflicts, 343,819 pivots, and 203.0 million pivot-term operations. SAT and its online callbacks account for 58.2 seconds. |
+| Certora `3106...40` (sat) | 0.197 / 0.286 / 1.067 s | Only 141 of 1,619,100 possible pairs are materialized, but they cause 142 rebuilds. Integer completion consumes 30.3 seconds and the complete LIA check 33.9 seconds; the ten-second profile attributes 27.1% inclusive time to integer completion and 24.6% to patch-candidate collection. |
+
+The gprof runs add two actionable infrastructure observations. On `xs_33_33`,
+`FlatCongruenceClosure::drain_changed_terms` accounts for 59.6% of samples and
+is called 1.56 million times in ten seconds. Each call currently resets the
+changed-term watermark in every active checkpoint, so the operation is linear
+in SAT checkpoint depth even when few terms changed. On `xs_40_40`, CaDiCaL
+propagation and subsumption account for 34.7% of samples, followed by tableau
+pivots and exact-rational bound maintenance. On the complete-fallback
+`medium11` profile, CaDiCaL propagation leads the flat profile while online EUF
+and LRA callbacks execute millions of times.
+
+Preprocessing is cheap here, but it is also intentionally narrow. QF_LIA and
+QF_UFLIA force the integer-safe preprocessing profile regardless of the
+`off`/`basic`/`strong`/`auto` selection; controlled preprocess-only runs
+therefore produced identical structural counters for all four settings. The
+mandatory equation pass accepted 1/2 candidates on `medium11`, zero on both
+wisas inputs, and 13/95 on the Certora input. Arithmetic normalization and
+purification increased reachable terms from 645 to 1,088, 1,503 to 2,331,
+1,803 to 2,799, and 50,054 to 63,356 respectively. Optional arithmetic-atom
+canonicalization did not reduce the resulting SAT instance or improve
+five-second search progress; it slightly enlarged both wisas DAGs and added
+about 36 ms of preprocessing on Certora.
+
+The measured priority order is therefore: make changed-term draining
+amortized rather than checkpoint-depth-linear; expose integer-safe Boolean and
+local-context preprocessing for the nested wisas implications and guarded
+counter recurrences; recognize explicit numeral domains/function tables before
+constructing complete arrangements; and avoid rebuilding and rescanning the
+integer tableau for every sparse equality. These are profiling leads, not
+implemented improvements or performance claims.
+
 ## Statistics
 
 `:solver.qf-uflia` selects the new leaf. `:combination.components`,

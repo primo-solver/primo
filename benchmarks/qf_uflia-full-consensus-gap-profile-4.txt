@@ -1,0 +1,8 @@
+# Four QF_UFLIA cases from the full 659-file comparison where Primo timed out
+# at 60 seconds and Z3, cvc5, and OpenSMT returned the same decisive answer.
+# They cover complete-arrangement SAT search, repeated sparse rebuilding, and
+# integer-completion cost. Paths are relative to tmp/QF_UFLIA.
+mathsat/EufLaArithmetic/medium/medium11.smt2
+wisas/xs_33_33.smt2
+wisas/xs_40_40.smt2
+20230314-Jaroslav-Bendik-Certora/3106_1c933134166dbad31f79_40_QF_UFLIA.smt2

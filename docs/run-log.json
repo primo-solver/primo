@@ -29975,6 +29975,50 @@
       },
       "evidence_status": "slurm-complete exact solver commit; full corpus; direct-Dolmen model complete; first full-QF_UFLIA baseline",
       "outcome": "Accepted as the first full QF_UFLIA baseline. Correctness and model gates are clean, but Primo trails every reference in solved count and PAR2. The 54 unanimous-reference/Primo-timeout rows are the next focused optimization corpus, led by wisas and mathsat rather than by integer-completeness failures inferred without profiling."
+    },
+    {
+      "id": "2026-09-03-qf-uflia-full-consensus-gap-profiling-03ed5cb",
+      "started_at": "2026-09-03",
+      "recorded_at": "2026-09-03",
+      "kind": "local-profile-and-preprocessing-comparison",
+      "scope": "Four representative inputs among the 54 full-corpus QF_UFLIA rows where Primo timed out and Z3, cvc5, and OpenSMT all returned the same decisive answer; comparison of full-run statistics, bounded gprof samples, integer-safe preprocessing modes, and arithmetic canonicalization.",
+      "commit": "03ed5cb4510af26a5f80a30e8ae4d950f2ae7e19",
+      "baseline_commit": "61cd9eef20e6349ffe01dfe83bafdcb5991d62b3",
+      "branch": "modular-theory-combination",
+      "environment": {
+        "host": "Local development workstation for profiling; full-run reference times and 60-second Primo counters are SLURM job 131212",
+        "solver": "Primo 0.1.0, CaDiCaL cadical-3.0.0-7b99c07; Release build for five-second option comparisons and RelWithDebInfo -pg build for gprof",
+        "corpus": "benchmarks/qf_uflia-full-consensus-gap-profile-4.txt, SHA-256 67fbf552073f5be7940c2ff5b6e14e77e8459088056f909c21d5118bb5f125a0; paths rooted at the extraction of sandbox/QF_UFLIA.tar.zst"
+      },
+      "commands": {
+        "selection": "Status-ok-only merge of /tmp/primo-qf-uflia-full-61cd9ee-131212/results/{primo,z3,cvc5,opensmt}/shard-*.csv; retain Primo timeout rows for which all three references are status ok and agree decisively; 54 rows qualify",
+        "gprof_build": "cmake -S . -B build-gprof-qf-uflia-full -DCMAKE_PREFIX_PATH=/workspace/contrib/local -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_FLAGS=-pg -DCMAKE_EXE_LINKER_FLAGS=-pg; cmake --build build-gprof-qf-uflia-full -j2",
+        "gprof": "Per input in a separate artifact directory: /usr/bin/time timeout --kill-after=5s 10s build-gprof-qf-uflia-full/primo --quiet --stats <input>; gprof build-gprof-qf-uflia-full/primo gmon.out. A separate medium11 diagnostic used --max-theory-conflicts=200 and exited normally in 2.87 seconds.",
+        "preprocessing": "For every input: /usr/bin/time build/primo --quiet --stats --preprocess-only --preprocessing-mode {auto,off,basic,strong} <input>; repeat with --arithmetic-atom-canonicalization",
+        "search_variant": "For every input and {default, --arithmetic-atom-canonicalization}: /usr/bin/time timeout --kill-after=3s 5s build/primo --quiet --stats [option] <input>"
+      },
+      "targets": {
+        "mathsat_medium11": "unsat; reference times Z3/cvc5/OpenSMT 0.024603/0.034179/0.036823 seconds; Primo 60.151479-second timeout",
+        "wisas_xs_33_33": "sat; reference times 0.039171/0.076391/1.699604 seconds; Primo 60.116056-second timeout",
+        "wisas_xs_40_40": "sat; reference times 0.042836/0.075268/5.154121 seconds; Primo 60.071952-second timeout",
+        "certora_3106_40": "sat; reference times 0.197049/0.286087/1.067020 seconds; Primo 60.424781-second timeout"
+      },
+      "results": {
+        "medium11": "Preprocessing 645 to 1,088 terms and 1/2 solve-eqs candidates accepted. After 512 sparse choices, complete fallback materialized all 17,578 pairs: 70,980 SAT variables, 106,155 clauses, 36,033,971 decisions, 59,450,551 propagations, and 57.064302 seconds in complete fallback. The ten-second gprof profile was led by CaDiCaL propagation and phase copying, with 98,982,538 violation-status updates and 107,993,423 arithmetic-atom normalizations called from online search.",
+        "xs_33_33": "Preprocessing 1,503 to 2,331 terms with zero solve-eqs candidates accepted. Complete fallback materialized all 11,026 pairs: 45,820 variables, 69,023 clauses, 11,029,521 decisions, 18,774 EUF theory conflicts, and 6,282,444 online LRA checks. FlatCongruenceClosure::drain_changed_terms was 59.59% of ten-second gprof samples with 1,558,285 calls; the function also resets every active checkpoint watermark on each call.",
+        "xs_40_40": "Preprocessing 1,803 to 2,799 terms with zero solve-eqs candidates accepted. Sparse search materialized 289/15,576 pairs but rebuilt components 290 times: 54,582 SAT conflicts, 343,819 pivots, and 202,997,370 pivot-term operations. CaDiCaL propagation and subsumption were 34.65% of ten-second gprof samples; tableau pivots and exact-rational bound maintenance followed.",
+        "certora_3106_40": "Preprocessing 50,054 to 63,356 terms and 13/95 solve-eqs candidates accepted. Sparse search materialized 141/1,619,100 pairs and rebuilt 142 times. Integer completion took 30.264 seconds and LIA checks 33.910 seconds. In the ten-second gprof call graph, complete_lia_integer_model was 27.1% inclusive and patch collect_candidates was 24.6% inclusive; 8,294 variables were patched in the full run.",
+        "preprocessing_modes": "The auto/off/basic/strong preprocess-only runs had identical structural counters because QF_LIA and QF_UFLIA intentionally force the restricted integer-safe profile. Preprocessing took about 0.002 seconds on each small input and 0.097-0.103 seconds on Certora. The mandatory pass grows these DAGs by 27-69% while producing no solved-equation reduction on either wisas input.",
+        "canonicalization": "Arithmetic-atom canonicalization did not change SAT variables or clauses on medium11 or xs_33_33, did not materially improve five-second search progress on any target, enlarged the wisas final DAGs from 2,331 to 2,387 and 2,799 to 2,869 terms, and raised Certora preprocessing from about 0.10 to 0.14 seconds while accepting only one additional solved equation. Rejected as a remedy for this cluster."
+      },
+      "verification": "make check (25/25 CTests and 79/79 Python tests); make lint; make docs; python3 -m json.tool docs/run-log.json; git diff --check; manifest existence check against tmp/QF_UFLIA",
+      "artifacts": {
+        "local": "/tmp/primo-qf-uflia-profiles-03ed5cb",
+        "contents": "Four gmon.out files and gprof reports from bounded ten-second profiles; one conflict-bounded medium11 profile; preprocess-only stdout/stderr for five configurations per input; paired five-second default/canonicalization search outputs; 76 files, approximately 18 MiB",
+        "full_comparison": "/tmp/primo-qf-uflia-full-61cd9ee-131212"
+      },
+      "evidence_status": "local diagnostic profiles tied to SLURM-complete full-corpus rows; no solver behavior change",
+      "outcome": "The next targets are not one uniform LIA bottleneck. Prioritize amortized changed-term draining for deep SAT trails, integer-safe local-context/implication preprocessing and numeral-domain recognition for wisas and explicit function tables, then incremental tableau growth and cheaper integer candidate scoring for sparse Certora checks. Optional arithmetic canonicalization is not a useful shortcut on this sample."
     }
   ]
 }
