@@ -141,11 +141,14 @@ class Tactic {
 
 using GoalTactic = std::function<AnyOf(TacticContext&, const Goal&)>;
 using GoalPredicate = std::function<bool(const TacticContext&, const Goal&)>;
+// The continuation predicate and the observer may record work, so they receive
+// the executing context by mutable reference: a strategy node must take its
+// term manager and statistics from the context it runs under rather than
+// capturing the session that built it. Equivalence only inspects goals.
 using RepeatPredicate =
-    std::function<bool(const TacticContext&, const AnyOf&, const AnyOf&, std::size_t)>;
+    std::function<bool(TacticContext&, const AnyOf&, const AnyOf&, std::size_t)>;
 using RepeatEquivalence = std::function<bool(const TacticContext&, const AnyOf&, const AnyOf&)>;
-using RepeatObserver =
-    std::function<void(const TacticContext&, const AnyOf&, const AnyOf&, std::size_t)>;
+using RepeatObserver = std::function<void(TacticContext&, const AnyOf&, const AnyOf&, std::size_t)>;
 
 Tactic make_goal_tactic(std::string name, GoalTactic tactic);
 Tactic skip();

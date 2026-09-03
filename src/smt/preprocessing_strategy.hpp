@@ -72,10 +72,14 @@ PreprocessingProfile analyze_preprocessing_profile(core::TermManager& terms,
                                                    const std::vector<core::TermId>& assertions,
                                                    const CheckSatOptions& options, bool is_qf_lia);
 
+// Strategy construction is deliberately free of live session state: the
+// returned value reads its term manager and statistics from the TacticContext
+// it is executed under, so it stays valid after the session that built it is
+// gone. The frontend is still borrowed for the leaves that create fresh
+// symbols.
 Strategy make_preprocessing_strategy(Frontend& frontend, const CheckSatOptions& options,
                                      const PreprocessingProfile& profile,
-                                     const std::vector<core::TermId>& symmetry_source_assertions,
-                                     util::Statistics& statistics);
+                                     const std::vector<core::TermId>& symmetry_source_assertions);
 
 // Executes initial normalization, analyzes the transformed goal, builds the
 // immutable production strategy, and executes its remaining nodes. QF_LIA's

@@ -898,7 +898,7 @@ void production_preprocessing_profile_and_strategy_are_explicit_and_stable() {
   check(profile.strong_preprocessing);
   check(profile.preprocessing_passes == 3);
   const primo::smt::Strategy strategy =
-      primo::smt::make_preprocessing_strategy(frontend, options, profile, {bound}, statistics);
+      primo::smt::make_preprocessing_strategy(frontend, options, profile, {bound});
   const std::string canonical = strategy.canonical();
   const std::size_t profile_position = canonical.find("preprocessing-profile");
   const std::size_t repeat_position = canonical.find("adaptive-reachable-term-shrink");

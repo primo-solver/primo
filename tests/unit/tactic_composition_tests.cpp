@@ -277,8 +277,8 @@ void production_profiles_have_stable_legal_structure() {
     primo::util::Statistics statistics;
     const primo::smt::PreprocessingProfile profile = primo::smt::analyze_preprocessing_profile(
         frontend.terms(), assertions, spec.options, false);
-    const primo::smt::Strategy strategy = primo::smt::make_preprocessing_strategy(
-        frontend, spec.options, profile, assertions, statistics);
+    const primo::smt::Strategy strategy =
+        primo::smt::make_preprocessing_strategy(frontend, spec.options, profile, assertions);
     const std::string canonical = strategy.canonical();
     check(strategy.fingerprint() == spec.preprocessing_fingerprint);
     for (const std::string_view fragment : spec.required_canonical_fragments) {
@@ -288,8 +288,8 @@ void production_profiles_have_stable_legal_structure() {
       check(canonical.find(fragment) == std::string::npos);
     }
 
-    const primo::smt::Strategy rebuilt = primo::smt::make_preprocessing_strategy(
-        frontend, spec.options, profile, assertions, statistics);
+    const primo::smt::Strategy rebuilt =
+        primo::smt::make_preprocessing_strategy(frontend, spec.options, profile, assertions);
     check(strategy == rebuilt);
     check(strategy.fingerprint() == rebuilt.fingerprint());
 
@@ -321,8 +321,7 @@ void qf_lia_profile_keeps_its_audited_leaf() {
         primo::smt::analyze_preprocessing_profile(frontend.terms(), assertions, options, true);
     check(profile.kind == primo::smt::PreprocessingProfileKind::QfLia);
     const std::string canonical =
-        primo::smt::make_preprocessing_strategy(frontend, options, profile, assertions, statistics)
-            .canonical();
+        primo::smt::make_preprocessing_strategy(frontend, options, profile, assertions).canonical();
     check(canonical.find("qf-lia-solve-eqs") != std::string::npos);
     const bool explicit_preprocessing =
         options.preprocessing_mode != primo::smt::PreprocessingMode::Off;

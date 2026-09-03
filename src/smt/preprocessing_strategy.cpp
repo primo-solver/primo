@@ -418,8 +418,7 @@ PreprocessingProfile analyze_preprocessing_profile(core::TermManager& terms,
 
 Strategy make_preprocessing_strategy(Frontend& frontend, const CheckSatOptions& options,
                                      const PreprocessingProfile& profile,
-                                     const std::vector<core::TermId>& symmetry_source_assertions,
-                                     util::Statistics& statistics) {
+                                     const std::vector<core::TermId>& symmetry_source_assertions) {
   std::vector<Strategy> children;
   children.push_back(Strategy::leaf(
       "preprocessing-profile", profile,
@@ -461,11 +460,11 @@ Strategy make_preprocessing_strategy(Frontend& frontend, const CheckSatOptions& 
                                     make_preprocessing_round(round_options));
     children.push_back(Strategy::repeat(
         std::move(round), max_passes, "adaptive-reachable-term-shrink",
-        [&terms = frontend.terms(), &statistics, baseline_passes = profile.preprocessing_passes,
+        [baseline_passes = profile.preprocessing_passes,
          adaptive_shrink_percent = profile.adaptive_shrink_percent,
-         max_passes](const TacticContext& context, const AnyOf& before, const AnyOf& after,
+         max_passes](TacticContext& context, const AnyOf& before, const AnyOf& after,
                      std::size_t completed_passes) {
-          statistics.increment(util::StatKey::PreprocessingChangedPasses);
+          context.statistics().increment(util::StatKey::PreprocessingChangedPasses);
           if (truth(after, context) != GoalTruth::Inconclusive) {
             return false;
           }
@@ -473,14 +472,14 @@ Strategy make_preprocessing_strategy(Frontend& frontend, const CheckSatOptions& 
             return true;
           }
           const std::size_t before_size =
-              reachable_term_count(terms, before.alternatives().front().assertions());
+              reachable_term_count(context.terms(), before.alternatives().front().assertions());
           const std::size_t after_size =
-              reachable_term_count(terms, after.alternatives().front().assertions());
+              reachable_term_count(context.terms(), after.alternatives().front().assertions());
           const bool shrank_enough =
               after_size < before_size &&
               after_size * 100 <= before_size * (100 - adaptive_shrink_percent);
           if (shrank_enough && completed_passes < max_passes) {
-            statistics.increment(util::StatKey::PreprocessingAdaptivePasses);
+            context.statistics().increment(util::StatKey::PreprocessingAdaptivePasses);
             return true;
           }
           return false;
@@ -497,12 +496,12 @@ Strategy make_preprocessing_strategy(Frontend& frontend, const CheckSatOptions& 
           }
           return true;
         },
-        [&statistics](const TacticContext&, const AnyOf&, const AnyOf&, std::size_t) {
-          statistics.increment(util::StatKey::PreprocessingPasses);
+        [](TacticContext& context, const AnyOf&, const AnyOf&, std::size_t) {
+          context.statistics().increment(util::StatKey::PreprocessingPasses);
           // Keep the historical public statistic even though preprocessing-pass is no longer an
           // executable tactic. The repeat observer is the compatibility boundary for one
           // completed preprocessing pass.
-          statistics.increment(":tactic.preprocessing-pass.invocations");
+          context.statistics().increment(":tactic.preprocessing-pass.invocations");
         },
         "preprocessing-fixed-point"));
   }
@@ -607,8 +606,8 @@ PreparedPreprocessingStrategy prepare_and_execute_preprocessing_strategy(
     context.statistics().increment(util::StatKey::FiniteDomainRawAmoClauses,
                                    profile.finite_domain_analysis.predicted_amo_clauses);
   }
-  const Strategy remaining = make_preprocessing_strategy(
-      frontend, options, profile, normalized_assertions, context.statistics());
+  const Strategy remaining =
+      make_preprocessing_strategy(frontend, options, profile, normalized_assertions);
   AnyOf result = compile(remaining)(context, normalized);
   const Strategy full = Strategy::sequence({initial, remaining});
   return PreparedPreprocessingStrategy{
