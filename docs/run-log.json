@@ -30264,6 +30264,50 @@
       "verification": "make check passed 25/25 CTests and 84/84 Python tests; make docs and make lint passed; 37 focused pre-commit tests and the five-test direct post-answer-crash regression passed; git diff --check passed. The required smt-code-review skill was unavailable, so a manual whole-diff and cross-harness audit was performed.",
       "evidence_status": "SLURM-complete exact-commit correctness evidence with exit-aware candidate and reference accounting; supersedes the generated-fuzz portions of the 6bb70aa promotion record",
       "outcome": "Accepted. A decisive SMT answer is now valid only after a successful process exit throughout the audited fuzz and comparison helpers; candidate and reference post-answer crashes block campaigns and retain reproducers."
+    },
+    {
+      "id": "2026-09-04-modular-layer-review-fixes-bb24344",
+      "date": "2026-09-04",
+      "commit": "bb24344",
+      "branch": "modular-theory-combination",
+      "kind": "slurm-correctness-gates-after-modular-layer-review-fixes",
+      "scope": "Correctness gates for the seven code-review findings fixed on this branch: the post-mutation agreement recomputation in ModelBasedCombinationCoordinator, the SIGTERM cancellation watchdog, routing preprocessing repeat state and purification proxies through TacticContext, disjunctive handling of preprocessed alternatives, the explicit-worklist integer model completion, iterative strategy canonicalization and compilation, the projection revision parameter, and the changed-term generation rebase.",
+      "environment": {
+        "host": "CIIRC SLURM cluster, node-head submit host reached via data.ciirc.cvut.cz; local workstation for unit, sanitizer and smoke checks",
+        "solver": "Primo 0.1.0 at bb24344; Release; CaDiCaL cadical-3.0.0-7b99c07",
+        "tools": "Z3 and Dolmen 0.10 from contrib/local/bin; Dolmen newly installable without root after the --no-depexts change"
+      },
+      "jobs": {
+        "qf_uflia_model": "131430",
+        "qf_uflra": "131431",
+        "qf_uf_boolean": "131432",
+        "finite_domain": "131433"
+      },
+      "commands": {
+        "prepare": "python3 scripts/slurm_prepare_benchmark_workspace.py --sync-mode archive --reuse-dependencies --with-z3 --jobs 16; remote git banner checked as bb24344 before submission",
+        "qf_uflia_model": "scripts/slurm_qf_uflia_model_fuzz_gate.sbatch; 4 shards x 750 random cases; seed base 202609040; 5s solver/reference/model timeouts; Dolmen model validation with --require-dolmen-pass",
+        "qf_uflra": "scripts/slurm_qf_uflra_fuzz_gate.sbatch; 4 shards; mixed QF_UFLRA plus finite QF_UFLRA and QF_UF controls; Dolmen model validation",
+        "qf_uf_boolean": "scripts/slurm_qf_uf_boolean_fuzz_gate.sbatch; 11 shards; Dolmen model validation",
+        "finite_domain": "scripts/slurm_finite_domain_fuzz_gate.sbatch; 5 shards",
+        "local_qf_uflia": "python3 scripts/qf_uflia_fuzz.py --ref z3 --count 1200 --seed 20260904 --shape random --out results/uflia-answer-gate, then scripts/validate_model.py --require-dolmen-pass over its cases",
+        "local_qf_uf": "python3 scripts/fuzz_external.py --fuzzer fuzzsmt --refs z3 --logic QF_UF --count 1200 --seed 20260904",
+        "local_qf_uflra": "python3 scripts/qf_uflra_smoke_fuzz.py --ref z3 --count 800 --shape mixed, run twice: default and --experimental-generic-model-combination",
+        "local_checks": "make check; make asan-test; make smoke; scripts/tactic_composition_matrix.py --refs z3 cvc5 --repeat 2"
+      },
+      "results": {
+        "slurm_answer_comparisons": "19000 pass, 0 wrong answers, 0 crashes, 0 reference disagreements (qf_uflia 3000, qf_uflra 4000, qf_uf_boolean 11000, finite_domain 1000)",
+        "slurm_model_validation": "10615 sat models accepted by Dolmen, 0 model errors (qf_uflia 1765, qf_uflra 1991, qf_uf_boolean 6859)",
+        "local_answer_comparisons": "4000 pass (1200 qf_uflia, 1200 qf_uf fuzzsmt, 800 + 800 qf_uflra on both combination paths)",
+        "local_model_validation": "698 sat models accepted by Dolmen, 0 model errors",
+        "unit_and_sanitizer": "27 ctest targets pass in Release and under -fsanitize=address; make check and make smoke clean",
+        "tactic_composition": "174 rows, 0 failures, 0 inconclusive, exercising --experimental-split-bools",
+        "sacct": "all four arrays COMPLETED, no non-zero exit codes"
+      },
+      "artifacts": {
+        "slurm": "primo-cadical-profile/fuzz-results/qf-uflia-model-gate-131430, .../qf-uf-boolean-131432, primo-cadical-profile/slurm-results/qf_uflra-fuzz-gate, .../finite-domain-fuzz-gate",
+        "local": "results/uflia-answer-gate, results/uflia-model-validation, results/qf-uf-fuzzsmt-gate, results/uflra-gate, results/uflra-generic-gate, results/tactic-composition-local"
+      },
+      "notes": "Separately found and recorded a pre-existing QF_UFLIA invalid-model bug in bugs/qf-uflia-nested-application-model: a UF table that does not satisfy the input when an Int application is nested three deep and its result is pinned. The binary before the qf_uflia_int_values rewrite prints the identical model, so it is not a regression from this branch; scripts/qf_uflia_fuzz.py --shape random does not generate the shape, which is why these gates are clean. Not fixed here."
     }
   ]
 }

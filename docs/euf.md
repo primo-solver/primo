@@ -529,6 +529,12 @@ merge record containing the kept representative, restored representative, and
 moved-member count; rollback moves the appended tail back after later merges
 have already been undone. This preserves the same backtracking state while
 avoiding a full loser-list copy on merge-heavy finite-domain problems.
+`pop` moves the checkpoint record out of `checkpoints_` before it restores the
+rest of the state, so an exception thrown during the restore -- realistically
+only from an allocation inside `restore_trail_entry` -- would leave a truncated
+checkpoint stack and a half-restored closure. No caller currently recovers from
+that, but it is not exception safe.
+
 Changed-term notifications are a consumed queue for online propagation
 candidate discovery: `drain_changed_terms` clears the queue and lowers active
 checkpoint baselines so a later pop can discard post-checkpoint notifications

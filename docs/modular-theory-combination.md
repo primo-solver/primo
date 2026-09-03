@@ -608,3 +608,23 @@ assumption-lifecycle counters use the existing
 `.model-reconciliation-us`, and `.complete-fallback-us` are cumulative local
 phase timers. They are diagnostic and excluded from non-timing-statistic
 compatibility comparisons.
+
+## Known rough edges in the coordinator
+
+Recorded so the next theory to plug into this layer is not surprised by them.
+None affects a reported answer today.
+
+- `pair_key` packs two `TermId`s into 64 bits with a 32-bit shift. Nothing
+  currently checks that `TermId` stays below 2^32, and if it ever exceeds that
+  the pair set silently starts aliasing distinct pairs.
+- `statistics_.mutations` is incremented before `mutate` is called, so it
+  counts mutation *requests*. A component that answers `FixedPoint` is counted
+  as both a mutation and a fixed point.
+- One reconciliation round asks each non-reference component for at most one
+  mutation and never re-asks a component after a later one mutates. That is
+  sound -- any residual disagreement becomes an equality decision -- but it is
+  not a mutual fixed point.
+- `EufComponentAdapter` and `LiaComponentAdapter` do not override `mutate`, so
+  on the default QF_UFLIA path the whole mutation block is inert and
+  combination proceeds by the split loop alone. The mutation path is live only
+  under `--experimental-generic-model-combination`.
