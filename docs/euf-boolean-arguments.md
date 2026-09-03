@@ -286,7 +286,9 @@ every generated input, reruns it with model production, and requires Dolmen to
 accept every satisfiable model. A failure therefore names the capacity rather
 than only a case number. Model validation is intentionally part of this gate:
 answer differential fuzzing cannot detect an invalid model attached to a
-correct `sat` result.
+correct `sat` result. Prepared workspaces use the pinned
+`contrib/local/bin/dolmen` by default; `PRIMO_FUZZ_DOLMEN` remains available
+for an explicitly verified alternative binary.
 
 The `model-reconstruction` shape always includes a solved constant of
 uninterpreted sort whose definition contains a Bool argument, plus an equality

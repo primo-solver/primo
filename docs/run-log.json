@@ -30118,8 +30118,110 @@
         "watchlist": "results/qf-uflia-component-growth-exact-986d89f.{csv,csv.jsonl,summary.json}",
         "models": "results/qf-uflia-component-growth-models-exact-986d89f"
       },
-      "evidence_status": "local exact-commit mechanism and mixed-watchlist evidence; direct-Dolmen models complete; full SLURM and fresh fuzz gates pending",
-      "outcome": "Accept append-only prepared-component growth: it removes the measured full-rebuild bottleneck without changing answers or model validity on the watchlist. Keep conservative online callback reconstruction and default preprocessing unchanged until the planned full SLURM comparison. The new dominant bucket is model reconciliation/LIA checking, not component preparation."
+      "evidence_status": "local exact-commit mechanism and mixed-watchlist evidence; direct-Dolmen models complete; superseded by the full SLURM comparison recorded in 2026-09-03-qf-uflia-growth-and-preprocessing-full-fcf5018",
+      "outcome": "Accept append-only prepared-component growth: it removes the measured full-rebuild bottleneck without changing answers or model validity on the watchlist. The subsequent full comparison confirmed six additional solves over 61cd9ee before preprocessing promotion. The new dominant bucket is model reconciliation/LIA checking, not component preparation."
+    },
+    {
+      "id": "2026-09-03-qf-uflia-growth-and-preprocessing-full-fcf5018",
+      "date": "2026-09-03",
+      "commit": "fcf50181c8ecd2ed0570f64dbfd653fbe85c5b5d",
+      "baseline_commit": "61cd9eef20e6349ffe01dfe83bafdcb5991d62b3",
+      "branch": "modular-theory-combination",
+      "kind": "slurm-full-corpus-comparison-preprocessing-ablation-and-correctness-gates",
+      "scope": "Full 659-file QF_UFLIA comparison of incremental component growth with substitution-only versus basic integer-safe preprocessing, retained Z3/cvc5/OpenSMT references, generated answer/model gates, a time-boxed real-seed mutation campaign, paired regression replay, and full satisfiable-model diagnosis.",
+      "environment": {
+        "host": "remote SLURM cluster",
+        "solver": "Primo 0.1.0 at fcf5018; Release; CaDiCaL cadical-3.0.0-7b99c07",
+        "references": "Z3 5.1.0, pinned cvc5 and OpenSMT executables from contrib/local/bin; Dolmen v2.9.2 with --strict=false",
+        "corpus": "659 files extracted from sandbox/QF_UFLIA.tar.zst; path/size fingerprint SHA-256 1d752c3ef2f50bc6b8b8ebec443c754fd984d186baf7fca4d890599cbf1a5062; 60-second per-instance timeout"
+      },
+      "jobs": {
+        "full_growth_and_references": "131275; four solvers by eight shards",
+        "full_basic": "131315; eight corrected Primo-basic shards",
+        "generated_default": "131266; four by 750 QF_UFLIA cases",
+        "generated_basic": "131324; four by 750 QF_UFLIA cases with --preprocessing-mode=basic",
+        "qf_uflra_preservation": "131267; 3,000 general QF_UFLRA, 500 finite QF_UFLRA, and 500 finite QF_UF cases",
+        "mutation": "131323; 600-second YinYang/typefuzz campaign",
+        "models": "131340 for 403 basic SAT rows and 131350 for 385 substitution-only SAT rows",
+        "paired_wisas_rerun": "131341; two one-file tasks at a 120-second cutoff"
+      },
+      "commands": {
+        "full": "scripts/slurm_qf_uflia_full_solver_compare.sbatch with eight shards per solver, 60-second cutoff, and either default arguments or --preprocessing-mode=basic; exact workspace preflight immediately before sbatch",
+        "summary": "python3 scripts/summarize_benchmark_shards.py --timeout 60 with 61cd9ee baseline, fcf5018 growth/basic arms, and retained reference CSVs",
+        "generated": "scripts/slurm_qf_uflia_model_fuzz_gate.sbatch and scripts/slurm_qf_uflra_fuzz_gate.sbatch; every satisfiable case required direct Dolmen acceptance",
+        "mutation": "scripts/slurm_qf_uflia_mutation_fuzz_gate.sbatch equivalent parameters: 600-second wall, 20 mutations per seed, two-second solver cutoff, 20,000-byte limit, keep logic and hoist declarations",
+        "models": "scripts/slurm_qf_uflra_model_validation.sbatch over manifests derived from status-ok satisfiable rows"
+      },
+      "results": {
+        "baseline_61cd9ee": "543/659 solved (379 sat, 164 unsat), 116 timeouts, PAR2 15,758.313734, zero error/unsupported/wrong rows",
+        "component_growth": "549/659 solved (385 sat, 164 unsat), 110 timeouts, PAR2 15,146.008873, zero error/unsupported/wrong rows; no loss and six recoveries versus 61cd9ee",
+        "basic": "571/659 solved (403 sat, 168 unsat), 88 timeouts, PAR2 11,735.744137, zero error/unsupported/wrong rows; 22 additional solves and 22.5% lower PAR2 than component growth alone",
+        "families_basic": "Certora 4/76, TwoSquares 21/21, mathsat 441/454, wisas 105/108",
+        "references": "Z3 618 solved/PAR2 5,486.276612; cvc5 605/7,380.086739; OpenSMT 601/8,174.089479; all zero error/unsupported/wrong rows",
+        "paired_loss": "Basic lost wisas/xs_22_42.smt2 at 60 seconds while recovering 23 other rows; at 120 seconds substitution-only solved unsat in 42.366693 seconds and basic solved unsat in 68.987138 seconds, confirming a real slowdown but not a capability or correctness loss.",
+        "generated": "Default and explicit-basic QF_UFLIA each passed 3,000/3,000 answer comparisons; the basic campaign had 1,765 sat and 1,235 unsat and Dolmen accepted all 1,765 models. QF_UFLRA preservation passed 3,000 general, 500 finite-QF_UFLRA, and 500 finite-QF-UF cases; Dolmen accepted all 1,720 general and 252 finite satisfiable QF_UFLRA models.",
+        "mutation": "The time box completed ten seeds with 20 successful generations each and made 392 solver calls before entering an eleventh seed; zero bug files. This is not all-seed coverage.",
+        "model_diagnosis": "Both full model runs rejected exactly the same Certora model: 402/403 basic and 384/385 growth models passed. The emitted function binder x1 shadowed a user symbol x1. git blame identifies bcb482dda5ef3fc7f919fa88c8aa9fc373ed5b54 (2026-07-29, Add QF_UF model printing and Dolmen validation) as the introduction point. The performance classifications remain valid, but model correctness required the 6bb70aa fix and exact rerun."
+      },
+      "rejected_runs": "Job 131276 encoded quotes in a solver name and all rows errored; 131329 accidentally targeted the full root and was cancelled; 131328 and 131338 used login-node /tmp paths unavailable on compute nodes. They are operational failures and provide no solver evidence.",
+      "artifacts": {
+        "remote": "<prepared-workspace>/results/{qf-uflia-full-growth-fcf5018,qf-uflia-full-basic-fcf5018-retry,qf-uflia-eval-fcf5018,qf-uflia-basic-loss-rerun-fcf5018-retry,qf-uflia-full-basic-models-fcf5018,qf-uflia-full-current-models-fcf5018} and matching fuzz-results/slurm logs",
+        "local": "/tmp/primo-qf-uflia-final-6bb70aa/fcf-{growth,basic}; the run-log entry is canonical for larger remote-only artifacts"
+      },
+      "evidence_status": "SLURM-complete exact solver commit; performance accepted; full model gate exposed one shared printer defect subsequently fixed and revalidated at 6bb70aa",
+      "outcome": "Accept incremental component growth and promote basic integer-safe preprocessing for QF_UFLIA auto only. Keep numeral-domain AMO explicit and pure QF_LIA auto substitution-only. The solver still trails all three references, especially on Certora; remaining measured costs are model reconciliation/LIA and conservative online callback reconstruction."
+    },
+    {
+      "id": "2026-09-03-qf-uflia-final-promotion-6bb70aa",
+      "date": "2026-09-03",
+      "commit": "6bb70aa07fb5663b867cb2b215253982119d5f3f",
+      "baseline_commit": "fcf50181c8ecd2ed0570f64dbfd653fbe85c5b5d",
+      "branch": "modular-theory-combination",
+      "kind": "slurm-exact-promotion-correctness-full-corpus-and-model-gate",
+      "scope": "Exact promoted QF_UFLIA default after deterministic collision-free model binders: full 659-file classifications, all 403 satisfiable archive models, generated QF_UFLIA/QF_UFLRA/finite controls, the dedicated eleven-shape Boolean gate, and real-seed mutation fuzzing.",
+      "environment": {
+        "host": "remote SLURM cluster",
+        "solver": "Primo 0.1.0 at 6bb70aa; Release; CaDiCaL cadical-3.0.0-7b99c07",
+        "tools": "Z3 5.1.0 plus pinned cvc5, OpenSMT, and Dolmen v2.9.2 from contrib/local/bin",
+        "corpus": "same 659-file QF_UFLIA extraction and fingerprint as the fcf5018 comparison"
+      },
+      "jobs": {
+        "qf_uflia_generated": "131360",
+        "qf_uf_boolean_rejected": "131364; dependency check failed before generation because Dolmen was not on PATH",
+        "qf_uf_boolean": "131396; resubmitted with the verified contrib/local/bin/dolmen path",
+        "qf_uflra_preservation": "131375",
+        "mutation": "131379",
+        "full_qf_uflia": "131380",
+        "full_models": "131388"
+      },
+      "commands": {
+        "prepare": "python3 scripts/slurm_prepare_benchmark_workspace.py --sync-mode archive --reuse-dependencies --with-z3 with required Z3/cvc5/OpenSMT/Dolmen tools; exact git and CaDiCaL banner checked immediately before every sbatch",
+        "qf_uflia": "scripts/slurm_qf_uflia_model_fuzz_gate.sbatch, four shards by 750 cases, seed base 202609040",
+        "qf_uf_boolean": "scripts/slurm_qf_uf_boolean_fuzz_gate.sbatch, eleven shapes by 1,000 cases, seed base 202609050, model validation enabled",
+        "qf_uflra": "scripts/slurm_qf_uflra_fuzz_gate.sbatch, four shards by 250 general cases plus 125 finite QF_UFLRA and 125 finite QF_UF controls per shard, seed base 202609060",
+        "mutation": "scripts/slurm_qf_uflia_mutation_fuzz_gate.sbatch, 600-second wall and random seed 202609070",
+        "full": "scripts/slurm_qf_uflia_full_solver_compare.sbatch, Primo-only eight-shard override, 60-second per-instance timeout",
+        "models": "scripts/slurm_qf_uflra_model_validation.sbatch, eight shards over the 403-file satisfiable manifest, 90-second solver and 30-second Dolmen cutoffs"
+      },
+      "results": {
+        "qf_uflia_generated": "3,000/3,000 answers passed against Z3: 1,765 sat and 1,235 unsat; Dolmen directly accepted all 1,765 satisfiable models.",
+        "qf_uf_boolean": "11,000/11,000 answers passed across argument, result, compound, nested, mixed-sort, two-valued, converse, pure-polarity, model-reconstruction, random, and all shapes: 6,840 sat and 4,160 unsat; Dolmen directly accepted all 6,840 satisfiable models.",
+        "qf_uflra": "1,000/1,000 general QF_UFLRA answers passed with 599 sat/401 unsat and all 599 models accepted by Dolmen. Both 500-case finite QF_UFLRA and 500-case finite QF_UF controls passed; finite QF_UFLRA had 252 sat/248 unsat and all 252 models passed Dolmen.",
+        "mutation": "The 600-second bound reached 12 seeds, skipped three oversized seeds, completed eight seeds with 20 successful and zero unsuccessful generations, and reported at least 280 solver calls; zero bug files. Coverage of all 454 seeds is not claimed.",
+        "full": "571/659 solved (403 sat, 168 unsat), 88 timeouts, no error/unsupported/wrong row, PAR2 11,717.756171. Family solves: Certora 4/76, TwoSquares 21/21, mathsat 441/454, wisas 105/108.",
+        "paired_classifications": "All 659 classifications exactly match the fcf5018 explicit-basic arm: 571 common solves, no loss, recovery, or decisive-answer disagreement. Solved-row time was 1,157.756171 versus 1,175.744137 seconds; this small timing difference is run variance, not a source-level speed claim.",
+        "baseline_change": "Relative to fcf5018 component growth without basic preprocessing: +22 solves and 22.6% lower PAR2. Relative to the first 61cd9ee full baseline: +28 solves and 25.6% lower PAR2.",
+        "references": "Retained identical-corpus results: Z3 618 solved/PAR2 5,486.276612; cvc5 605/7,380.086739; OpenSMT 601/8,174.089479. Primo remains behind all three.",
+        "models": "Dolmen directly accepted all 403 satisfiable full-corpus models, including 20230314-Jaroslav-Bendik-Certora/39657_2866defdd1f2434b69ab_48_QF_UFLIA.smt2, proving the binder-collision fix closes the defect exposed by jobs 131340 and 131350."
+      },
+      "verification": "Before commit 6bb70aa: make check passed 25/25 CTests and 79/79 Python tests; make docs, make lint, and make asan-test passed; whole-tree clang-tidy reported only 18 suppressed non-user warnings; advisory include-cleaner retained 214 baseline warnings and none in changed C++ files. The required smt-code-review skill was unavailable, so manual hygiene review and the solver-efficiency-review workflow were used.",
+      "artifacts": {
+        "local": "/tmp/primo-qf-uflia-final-6bb70aa",
+        "remote": "<prepared-workspace>/{results/qf-uflia-full-6bb70aa,results/qf-uflia-full-models-6bb70aa,fuzz-results/qf-uflia-model-gate-6bb70aa,fuzz-results/qf-uf-boolean-6bb70aa-retry,fuzz-results/qf-uflra-preservation-6bb70aa,fuzz-results/qf-uflia-mutation-6bb70aa} and matching logs",
+        "contents": "benchmark CSV/JSONL files, generated and model-validation summaries, mutation log, SLURM stdout/stderr, and prior-arm/reference CSVs used for paired summaries"
+      },
+      "evidence_status": "SLURM-complete exact solver commit; full corpus and all satisfiable models complete; generated and mutation gates clean",
+      "outcome": "Accepted. QF_UFLIA auto now uses the measured integer-safe basic preprocessing profile; the model printer avoids user-symbol collisions; QF_UFLRA and dedicated Boolean behavior are preserved. Remaining performance work should target model reconciliation/LIA and the conservative online callback rebuild rather than component construction."
     }
   ]
 }

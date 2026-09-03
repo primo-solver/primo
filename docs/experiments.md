@@ -326,6 +326,28 @@ had zero terminal decisive-answer disagreement; all three references agreed on
 54 files that Primo timed out on. This is the first Primo full-QF_UFLIA
 baseline, so it has no earlier full-corpus Primo result to compare against.
 
+The later `fcf5018` comparison separated incremental component growth from
+integer-safe preprocessing. With preprocessing still off, Primo solved 549
+files and reduced PAR2 from 15,758.31 to 15,146.01. Enabling the basic
+integer-safe profile solved 571 files (403 sat, 168 unsat) with 88 timeouts and
+PAR2 11,735.74: 22 additional solves and 22.5% lower PAR2 than the same binary
+without the profile. The gains were concentrated in MathSAT (441/454) and
+wisas (105/108); the stronger numeral-domain AMO profile remains explicit
+because the focused ablation contained a marked regression. One wisas row
+crossed the 60-second cutoff in the opposite direction, but both configurations
+solved it in a paired 120-second rerun. These results promoted the basic profile
+only for QF_UFLIA `auto`; pure QF_LIA keeps its restricted substitution-only
+profile.
+
+The exact promoted commit `6bb70aa` reproduced all 659 classifications: 571
+solved, 88 timeouts, no wrong/error/unsupported row, and PAR2 11,717.76. Its
+403 satisfiable archive models all passed Dolmen. The retained reference runs
+remain ahead—Z3 solved 618, cvc5 605, and OpenSMT 601—but the promotion closes
+22 of the 110 timeouts left by incremental component growth alone. A separate
+11-shape Boolean campaign passed 11,000/11,000 answer comparisons and all 6,840
+satisfiable models, covering the model-printer boundary that the
+mixed-arithmetic generator does not stress.
+
 These corpus cases are an evaluation gate, not part of `make check`: several
 are intentionally beyond Primo's current short-timeout performance. For cases
 without a declared status, an evaluation must establish the expected answer by
