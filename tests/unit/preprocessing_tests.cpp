@@ -348,6 +348,51 @@ void implication_rewrite_enters_boolean_equality_but_not_uf_application_argument
   check(result.assertions.at(1) == application);
 }
 
+void boolean_nnf_pushes_negations_without_distribution() {
+  Fixture fixture;
+  const primo::core::TermId pa = fixture.pred(fixture.p, fixture.constant(fixture.a));
+  const primo::core::TermId pb = fixture.pred(fixture.p, fixture.constant(fixture.b));
+  const primo::core::TermId pc = fixture.pred(fixture.p, fixture.constant(fixture.c));
+  const primo::core::TermId lhs = fixture.terms.mk_and({pa, pb});
+  const primo::core::TermId rhs = fixture.terms.mk_or({pb, pc});
+  const primo::core::TermId assertion = fixture.terms.mk_not(fixture.terms.mk_implies(lhs, rhs));
+
+  const primo::smt::BooleanNegationRewriteResult result =
+      primo::smt::rewrite_boolean_negations_to_nnf(
+          fixture.terms, {assertion}, primo::smt::BooleanNegationRewriteMode::NegationNormalForm);
+  const primo::core::TermId expected_rhs =
+      fixture.terms.mk_and({fixture.terms.mk_not(pb), fixture.terms.mk_not(pc)});
+  check(result.assertions ==
+        std::vector<primo::core::TermId>({fixture.terms.mk_and({lhs, expected_rhs})}));
+  check(result.rewritten >= 3);
+}
+
+void boolean_nnf_memoizes_both_polarities_and_keeps_uf_atoms_opaque() {
+  primo::core::SymbolTable symbols;
+  const primo::core::SortId bool_sort = symbols.bool_sort();
+  const primo::core::SymbolId p = symbols.declare_constant("p", bool_sort);
+  const primo::core::SymbolId q = symbols.declare_constant("q", bool_sort);
+  const primo::core::SymbolId f = symbols.declare_function("f", {bool_sort}, bool_sort);
+  primo::core::TermManager terms(symbols);
+  const primo::core::TermId pt = terms.mk_constant(p);
+  const primo::core::TermId qt = terms.mk_constant(q);
+  const primo::core::TermId implication = terms.mk_implies(pt, qt);
+  const primo::core::TermId application = terms.mk_app(f, {implication});
+  const primo::core::TermId negated_implication = terms.mk_not(implication);
+  const primo::core::TermId negated_application = terms.mk_not(application);
+  const std::size_t source_term_count = terms.size();
+
+  const primo::smt::BooleanNegationRewriteResult result =
+      primo::smt::rewrite_boolean_negations_to_nnf(
+          terms, {implication, negated_implication, negated_application},
+          primo::smt::BooleanNegationRewriteMode::NegationNormalForm);
+  check(result.visited <= source_term_count * 2);
+  check(result.assertions.at(2) == terms.mk_not(application));
+  check(terms.get(application).children.at(0) == implication);
+  check(terms.get(result.assertions.at(0)).kind == primo::core::TermKind::Or);
+  check(terms.get(result.assertions.at(1)).kind == primo::core::TermKind::And);
+}
+
 void finite_domain_analysis_is_non_materializing() {
   Fixture fixture;
   const primo::core::TermId a = fixture.constant(fixture.a);
@@ -381,6 +426,61 @@ void finite_domain_analysis_is_non_materializing() {
   check(observed_analysis.choices == 0);
   check(observed_analysis.predicted_amo_clauses == 3);
   check(observed_fixture.terms.size() == observed_term_count);
+}
+
+void integer_numeral_domains_enable_amo_and_equality_channeling_without_symmetry() {
+  primo::core::SymbolTable symbols;
+  const primo::core::SortId int_sort = symbols.int_sort();
+  const primo::core::SymbolId x_symbol = symbols.declare_constant("x", int_sort);
+  const primo::core::SymbolId y_symbol = symbols.declare_constant("y", int_sort);
+  primo::core::TermManager terms(symbols);
+  const primo::core::TermId x = terms.mk_constant(x_symbol);
+  const primo::core::TermId y = terms.mk_constant(y_symbol);
+  const primo::core::TermId one = terms.mk_rational(1, int_sort);
+  const primo::core::TermId two = terms.mk_rational(2, int_sort);
+  const primo::core::TermId x_choice = terms.mk_or({terms.mk_eq(x, one), terms.mk_eq(x, two)});
+  const primo::core::TermId y_choice = terms.mk_or({terms.mk_eq(y, one), terms.mk_eq(y, two)});
+  const std::vector<primo::core::TermId> assertions{x_choice, y_choice, terms.mk_eq(x, y)};
+
+  primo::smt::FiniteDomainAtMostOne amo(terms);
+  const primo::smt::FiniteDomainAnalysis analysis = amo.analyze(assertions);
+  check(analysis.choices == 2);
+  check(analysis.integer_numeral_choices == 2);
+  check(analysis.explicit_disequality_choices == 0);
+  check(analysis.predicted_amo_clauses == 2);
+  const primo::smt::FiniteDomainAtMostOneResult generated = amo.generate(assertions);
+  check(generated.domains == 2);
+  check(generated.clauses.size() == 2);
+
+  primo::smt::FiniteDomainEqualityDefinitions definitions(terms);
+  const primo::smt::FiniteDomainEqualityDefinitionsResult channeling =
+      definitions.generate(assertions);
+  check(channeling.candidate_term_pairs == 1);
+  check(channeling.term_pairs == 1);
+  check(channeling.clauses.size() == 6);
+
+  primo::smt::UfSymmetryBreaker symmetry(terms);
+  const primo::smt::UfSymmetryBreakingResult symmetry_result =
+      symmetry.break_symmetries(assertions);
+  check(symmetry_result.accepted_sets == 0);
+  check(symmetry_result.constraints.empty());
+}
+
+void real_or_mixed_value_lists_do_not_gain_semantic_distinctness() {
+  primo::core::SymbolTable symbols;
+  const primo::core::SortId real_sort = symbols.real_sort();
+  const primo::core::SymbolId x_symbol = symbols.declare_constant("x", real_sort);
+  primo::core::TermManager terms(symbols);
+  const primo::core::TermId x = terms.mk_constant(x_symbol);
+  const primo::core::TermId one = terms.mk_rational(1, real_sort);
+  const primo::core::TermId two = terms.mk_rational(2, real_sort);
+  const primo::core::TermId choice = terms.mk_or({terms.mk_eq(x, one), terms.mk_eq(x, two)});
+
+  primo::smt::FiniteDomainAtMostOne amo(terms);
+  const primo::smt::FiniteDomainAnalysis analysis = amo.analyze({choice});
+  check(analysis.choices == 0);
+  check(analysis.integer_numeral_choices == 0);
+  check(analysis.rejected_missing_distinctness == 1);
 }
 
 // --- monotone (one-sided) variable elimination -------------------------
@@ -1615,7 +1715,11 @@ int main() {
   implication_clause_rewrite_flattens_bounded_literal_consequents();
   implication_rewrite_preserves_compound_clause_mode_and_shared_dags();
   implication_rewrite_enters_boolean_equality_but_not_uf_application_arguments();
+  boolean_nnf_pushes_negations_without_distribution();
+  boolean_nnf_memoizes_both_polarities_and_keeps_uf_atoms_opaque();
   finite_domain_analysis_is_non_materializing();
+  integer_numeral_domains_enable_amo_and_equality_channeling_without_symmetry();
+  real_or_mixed_value_lists_do_not_gain_semantic_distinctness();
   symmetric_fixed_terms_get_value_precedence();
   asymmetric_value_use_is_rejected();
   moving_only_symmetry_terms_are_rejected();

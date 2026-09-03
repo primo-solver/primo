@@ -1500,6 +1500,17 @@ the next pass collects fresh candidates, so a chain like `x=y, y=5`
 resolves the same way the Real-side loop's repeated calls do, without
 needing any cross-pass dependency tracking.
 
+**Experimental follow-up (2026-09-03).** Default `auto` still maps the integer
+logics to this substitution-only path. Explicit `basic` and `strong` now run an
+audited Boolean/value-propagation subset: non-distributing NNF, Boolean units,
+forced atoms, solved constants without Gaussian candidates, and unit-equality
+consequences. Explicit `strong` additionally recognizes disjunctive domains of
+distinct Int numerals for AMO and equality-definition channeling, using the
+SMT-LIB Ints semantics rather than invented disequality assumptions. Numeral
+domains are excluded from UF symmetry. These controls are not default or
+headline improvements until the recorded QF_UFLIA evaluation and merge fuzz
+gate decide them.
+
 **The bug that shipping this caught.** `build_qf_lia_model`
 (`check_sat.cpp:5929`) reads a variable's value straight from
 `PreparedLraTheory::variables_by_term`/the tableau; a variable eliminated

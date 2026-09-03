@@ -43,6 +43,27 @@ enum class BooleanImpliesRewriteMode {
   All,
 };
 
+enum class BooleanNegationRewriteMode {
+  Off,
+  NegationNormalForm,
+};
+
+struct BooleanNegationRewriteResult {
+  std::vector<core::TermId> assertions;
+  std::size_t visited = 0;
+  std::size_t rewritten = 0;
+  std::size_t terms_created = 0;
+};
+
+// Rewrites the Boolean skeleton to negation normal form without entering
+// equality atoms or uninterpreted applications. The implementation memoizes
+// both polarities of every source DAG node and does not distribute And over Or.
+// docs/preprocessing.md specifies the data structure, complexity, boundaries,
+// and tests; this is the documented textbook subset, not a paper optimization.
+BooleanNegationRewriteResult rewrite_boolean_negations_to_nnf(
+    core::TermManager& terms, const std::vector<core::TermId>& assertions,
+    BooleanNegationRewriteMode mode);
+
 struct ImplicitConjunctionAnalysis {
   std::size_t conjunct_occurrences = 0;
   std::size_t unique_conjuncts = 0;
@@ -240,12 +261,18 @@ struct FiniteDomainAtMostOneResult {
   std::vector<core::TermId> clauses;
   std::size_t domains = 0;
   std::size_t choices = 0;
+  std::size_t explicit_disequality_choices = 0;
+  std::size_t integer_numeral_choices = 0;
+  std::size_t rejected_missing_distinctness = 0;
 };
 
 struct FiniteDomainAnalysis {
   std::size_t domains = 0;
   std::size_t choices = 0;
   std::size_t predicted_amo_clauses = 0;
+  std::size_t explicit_disequality_choices = 0;
+  std::size_t integer_numeral_choices = 0;
+  std::size_t rejected_missing_distinctness = 0;
 };
 
 class FiniteDomainAtMostOne {

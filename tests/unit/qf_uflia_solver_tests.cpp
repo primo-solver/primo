@@ -32,6 +32,30 @@ void accepts_integer_uninterpreted_functions() {
   assert(result.statistics.contains(":time.qf-uflia.lia-integer-us"));
 }
 
+void strong_preprocessing_recognizes_integer_numeral_domains() {
+  CheckSatOptions options;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Strong;
+  options.produce_model = true;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLIA)
+    (declare-fun x () Int)
+    (declare-fun y () Int)
+    (declare-fun f (Int) Int)
+    (assert (or (= x 1) (= x 2)))
+    (assert (or (= y 1) (= y 2)))
+    (assert (or (= x y) (= (f x) (f y))))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":preprocessing.finite-domain.integer-numeral-choices") == 2);
+  assert(result.statistics.get(":preprocessing.finite-domain.explicit-disequality-choices") == 0);
+  assert(result.statistics.get(":preprocessing.boolean-nnf.visited") >= 1);
+  assert(result.statistics.get(":preprocessing.equality-definitions") >= 1);
+  assert(result.model.find("(define-fun x () Int") != std::string::npos);
+  assert(result.model.find("(define-fun y () Int") != std::string::npos);
+}
+
 // LIA is non-convex: 0 <= x <= 1 entails x=0 or x=1, but neither equality
 // alone.  EUF derives both disequalities by congruence from the two function
 // result disequalities.  Complete SAT-visible arrangement search must therefore
@@ -321,6 +345,7 @@ void rejects_real_symbols() {
 
 int main() {
   accepts_integer_uninterpreted_functions();
+  strong_preprocessing_recognizes_integer_numeral_domains();
   non_convex_integer_arrangement_is_complete();
   online_components_preserve_non_convex_completeness();
   online_components_build_a_combined_integer_uf_model();

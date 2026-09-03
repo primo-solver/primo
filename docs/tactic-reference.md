@@ -50,7 +50,7 @@ respective strategies rather than exported as reusable probe objects.
 
 | Runtime name | API status | Contents |
 |---|---|---|
-| `normalize-boolean` | Public typed builder | Initial or final associative flattening; the final stage first applies configured implication normalization |
+| `normalize-boolean` | Public typed builder | Typed NNF, implication, and associative-flattening settings; the integer-safe profile uses NNF without distribution |
 | `propagate-values` | Public typed builder | Boolean-unit propagation followed by forced-theory-atom propagation |
 | `solve-eqs` | Public typed builder | Solved constants, optional Real Gaussian candidates, and configured ground-unit substitution |
 | `derive-equalities` | Public typed builder | Equality bridging and/or positive unit-equality consequences |

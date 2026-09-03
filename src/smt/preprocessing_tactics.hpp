@@ -81,6 +81,7 @@ enum class BooleanNormalizationStage {
 struct NormalizeBooleanOptions {
   BooleanNormalizationStage stage = BooleanNormalizationStage::Initial;
   std::size_t flatten_threshold = 0;
+  BooleanNegationRewriteMode negation_mode = BooleanNegationRewriteMode::Off;
   BooleanImpliesRewriteMode implication_mode = BooleanImpliesRewriteMode::Off;
 
   std::vector<StrategyParameter> strategy_parameters() const;

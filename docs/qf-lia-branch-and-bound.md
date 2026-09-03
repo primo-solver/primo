@@ -147,19 +147,16 @@ check.
 - `check_sat.cpp`'s `SetLogic` whitelist accepts `QF_LIA`; `declare-fun`
   rejects uninterpreted functions and `Real` constants under it (and
   rejects `Int` constants under any other logic).
-- Every *optional* preprocessing pass under `options.preprocessing_mode`
-  (Gaussian elimination, monotone elimination, finite-domain
-  at-most-one, UF symmetry breaking, ...) is turned off for QF_LIA
-  (`PreprocessingMode::Off`, forced once `frontend.logic() == "QF_LIA"`
-  is known). Most of that pipeline has nothing to fire on anyway --
-  QF_LIA's scope excludes uninterpreted functions -- but Gaussian
-  elimination and monotone elimination specifically are not yet known
-  sound over Int (Gaussian elimination divides by a pivot coefficient;
-  monotone elimination's model reconstruction can produce a fractional
-  witness for an Int variable), so turning the whole pipeline off
-  sidesteps auditing each pass individually rather than risking a silent
-  wrong answer. `lower_real_equalities` and Boolean flattening are
-  unaffected -- they are not gated by `preprocessing_mode`.
+- Default `auto` preprocessing maps QF_LIA to `PreprocessingMode::Off`,
+  preserving the audited substitution-only production path. Explicit
+  `basic` and `strong` are experimental controls for an integer-safe subset:
+  Boolean NNF without distribution, Boolean-unit and forced-atom propagation,
+  solved constants without Gaussian candidates, and unit-equality
+  consequences. Gaussian elimination and monotone elimination specifically
+  remain disabled because division and fractional reconstruction are not sound
+  over Int as written. Equality bridging, ground substitution/congruence, and
+  UF symmetry are also excluded from the integer round. `lower_real_equalities`
+  and the configured Boolean flattening stages remain outside this restriction.
   `docs/open-leads.md` lead 12 tracks the QF_LIA preprocessing/search-gap
   investigation this note is a summary of.
 - Bare-form solved-constant substitution (`x = t`, `x` a nullary

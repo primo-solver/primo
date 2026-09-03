@@ -754,6 +754,7 @@ void public_preprocessing_leaves_are_independently_constructible_and_typed() {
   const primo::smt::NormalizeBooleanOptions boolean_options{
       .stage = primo::smt::BooleanNormalizationStage::Initial,
       .flatten_threshold = 8,
+      .negation_mode = primo::smt::BooleanNegationRewriteMode::NegationNormalForm,
       .implication_mode = primo::smt::BooleanImpliesRewriteMode::Off};
   const primo::smt::Strategy boolean_strategy = primo::smt::Strategy::leaf(
       "normalize-boolean", boolean_options, primo::smt::make_normalize_boolean(boolean_options));
@@ -761,6 +762,7 @@ void public_preprocessing_leaves_are_independently_constructible_and_typed() {
       fixture.context, primo::smt::AnyOf::single(primo::smt::Goal{{nested}}));
   check(normalized.alternatives().front().assertions().size() == 1);
   check(boolean_strategy.canonical().find("flatten-threshold") != std::string::npos);
+  check(boolean_strategy.canonical().find("\"negation-mode\" \"nnf\"") != std::string::npos);
 
   const primo::smt::AnyOf propagated = primo::smt::make_propagate_values()(
       fixture.context, primo::smt::AnyOf::single(primo::smt::Goal{{p}}));

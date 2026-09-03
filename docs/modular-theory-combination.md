@@ -432,14 +432,14 @@ changing the default or claiming sample-level performance.
    premature fallback without claiming a universally adaptive policy. Current
    QF_UFLIA adapters expose projections but no live arithmetic `M-Mutate`
    implementation; progress-sensitive scheduling remains open.
-5. **Integer finite-domain preprocessing and channeling.** The Hash, Wisa, and
-   `medium12` inputs encode small numeral domains, permutations, or explicit
-   function tables. Primo's finite-domain preprocessing is aimed at QF_UF
-   candidate values and does not use the inherent distinctness of integer
-   numerals; its counters are zero on this sample. Recognizing numeral domains,
-   emitting compact equality definitions/at-most-one constraints, and exposing
-   all-different structure could remove much of the Boolean search before
-   combination.
+5. **Integer finite-domain preprocessing and channeling (experimental subset
+   implemented).** The Hash, Wisa, and `medium12` inputs encode small numeral
+   domains, permutations, or explicit function tables. Explicit `strong` now
+   recognizes disjunctive domains of distinct Int numerals and emits the
+   existing equality definitions and pairwise at-most-one clauses. It excludes
+   numeral meanings from UF symmetry and exposes separate activation counters.
+   Compact cardinality encodings, all-different recognition, and default/auto
+   promotion remain open and depend on the evaluation below.
 6. **Stronger explained propagation and smaller conflicts.** Tens of thousands
    of complete assignments currently produce one clause each. Opportunistic
    fixed arithmetic equalities, EUF equalities, bounds, and conflicts at partial
@@ -489,10 +489,10 @@ pivots and exact-rational bound maintenance. On the complete-fallback
 `medium11` profile, CaDiCaL propagation leads the flat profile while online EUF
 and LRA callbacks execute millions of times.
 
-Preprocessing is cheap here, but it is also intentionally narrow. QF_LIA and
-QF_UFLIA force the integer-safe preprocessing profile regardless of the
-`off`/`basic`/`strong`/`auto` selection; controlled preprocess-only runs
-therefore produced identical structural counters for all four settings. The
+Preprocessing was cheap in the recorded baseline, but it was also intentionally
+narrow. At commit `61cd9ee`, QF_LIA and QF_UFLIA forced the same
+substitution-only profile regardless of `off`/`basic`/`strong`/`auto`, so the
+controlled preprocess-only runs produced identical structural counters. The
 mandatory equation pass accepted 1/2 candidates on `medium11`, zero on both
 wisas inputs, and 13/95 on the Certora input. Arithmetic normalization and
 purification increased reachable terms from 645 to 1,088, 1,503 to 2,331,
@@ -508,6 +508,14 @@ counter recurrences; recognize explicit numeral domains/function tables before
 constructing complete arrangements; and avoid rebuilding and rescanning the
 integer tableau for every sparse equality. These are profiling leads, not
 implemented improvements or performance claims.
+
+The first preprocessing part of that lead is now available as an explicit
+experiment. Default `auto` still maps to the exact substitution-only integer
+path. Explicit `basic` and `strong` add a non-distributing, two-polarity NNF
+pass and the integer-safe Boolean/value-propagation round; the generic Real and
+UF flags remain disabled. This changes neither the default strategy nor the
+recorded baseline above. Numeral-domain recognition and its evaluation remain
+the next separately guarded milestone.
 
 ### Amortized changed-term notification draining
 

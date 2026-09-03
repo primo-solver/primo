@@ -3,9 +3,13 @@
 Primo exposes its shared preprocessing pipeline through
 `--preprocessing-mode=off|basic|strong|auto`. Preprocessing runs before final
 formula classification, so the mode applies to pure QF_UF, pure QF_LRA,
-QF_UFLRA, and propositional inputs; individual transformations remain
-shape-dependent and are no-ops when their recognizers do not apply. The CLI
-and `CheckSatOptions::preprocessing_mode` default is `auto`.
+QF_UFLRA, QF_LIA, QF_UFLIA, and propositional inputs; individual
+transformations remain shape-dependent and are no-ops when their recognizers
+do not apply. The CLI and `CheckSatOptions::preprocessing_mode` default is
+`auto`. For the integer logics, `auto` deliberately maps to the audited
+substitution-only path, preserving the default behavior, while explicit
+`basic` and `strong` opt into the integer-safe Boolean/value-propagation
+profile described below.
 
 The former QF_UF-specific names have been removed. Use
 `--preprocessing-mode` and `--auto-preprocess-selector`; unknown legacy names
@@ -91,6 +95,30 @@ preprocessing and purification but before post-preprocessing Boolean
 flattening. They traverse Boolean structure and Boolean equality, while treating
 Boolean-valued UF applications as atomic so their arguments remain owned by the
 EUF normalization path.
+
+Explicit `basic` and `strong` preprocessing on QF_LIA and QF_UFLIA first
+normalizes the Boolean skeleton to negation normal form. It pushes `not`
+through `not`, `and`, `or`, and `=>` using De Morgan's laws and the two
+implication polarities, but it performs no distributive expansion. Equality,
+arithmetic predicates, constants, and Boolean-valued uninterpreted
+applications are atomic boundaries. In particular, a Boolean term used as an
+argument to a UF application is not silently rewritten underneath that
+application. The iterative implementation stores positive and negative
+results for each source `TermId`, so its work and memo table are linear in the
+reachable Boolean DAG (at most two states per source node); newly constructed
+terms remain owned and hash-consed by `TermManager`.
+
+The NNF step is the first leaf of the optional integer preprocessing suffix,
+after the capped solved-constant pass. The repeated round then uses Boolean
+units, forced theory-atom values, solved-constant substitution, and unit
+equality consequences. Gaussian candidate generation, equality bridging,
+ground substitution/congruence, monotone elimination, and UF symmetry remain
+disabled in this integer profile. `:preprocessing.boolean-nnf.visited`,
+`.rewritten`, and `.terms-created` expose whether the pass did work. This is an
+ordinary textbook equivalence rewrite rather than an implementation of an
+optimized paper algorithm; its local implementation contract is the bounded
+two-polarity DAG algorithm above, with unit tests for negative implications,
+sharing, and UF opacity.
 
 The default command now enables the safe part of the predecessor performance
 profile:
@@ -1013,6 +1041,29 @@ counted by `:preprocessing.finite-domain.post-amo-clauses`; duplicates removed
 between raw, post, and already-present assertions are counted by
 `:preprocessing.finite-domain.deduped-amo-clauses`.
 
+For QF_LIA and QF_UFLIA only, explicit `strong` also recognizes the same
+choice shape when every candidate value is a distinct, integer-valued
+`Rational` term of sort `Int`. No explicit pairwise disequalities are required
+in that case: the [SMT-LIB Ints theory](https://smt-lib.org/theories-Ints.shtml)
+interprets each numeral as its corresponding integer. The implementation
+checks the term kind, `Int` sort, integral rational value, and distinct
+hash-consed `TermId`s; mixed value lists, arbitrary Int terms, and Real-sorted
+numerals remain outside this deliberately narrow subset and still require the
+older explicit-disequality proof. The same recognized numeral domains can feed
+equality-definition channeling between already-observed term equalities.
+
+Numeral domains never feed `UfSymmetryBreaker`: arithmetic numeral meanings
+are fixed by the theory and cannot be permuted as uninterpreted constants.
+Recognition reports
+`:preprocessing.finite-domain.integer-numeral-choices`,
+`.explicit-disequality-choices`, and `.rejected-missing-distinctness`. The
+recognizer and clauses remain owned by `smt/preprocessing`; terms are only
+created through `TermManager`, and the SAT/theory boundary continues to see
+ordinary equality atoms. This is a semantic specialization of the existing
+finite-domain encoding, not a new integer solving algorithm. Its tests cover
+AMO generation, equality channeling, symmetry exclusion, and rejection of an
+otherwise identical Real domain.
+
 The second source repeats explicit-choice recognition after the ordinary
 preprocessing loop. This keeps AMO generation useful on formulas whose choices
 are exposed by earlier passes.
@@ -1354,6 +1405,8 @@ Implemented:
 - targeted equality-ITE lowering for `(= x (ite c a b))` without a fresh
   non-Boolean auxiliary;
 - finite-domain choice recognition from explicit disjunctions;
+- opt-in `strong` recognition of distinct Int numeral domains for QF_LIA and
+  QF_UFLIA, excluded from UF symmetry breaking;
 - finite-domain at-most-one clauses in the strong preset and auto path, from
   explicit choices and from observed equality atoms to explicitly disequal
   constants;

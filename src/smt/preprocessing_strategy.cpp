@@ -200,6 +200,12 @@ void record_profile_statistics(const PreprocessingProfile& profile, const CheckS
                  profile.finite_domain_analysis.choices);
   statistics.set(":preprocessing.auto.analysis.predicted-amo-clauses",
                  profile.finite_domain_analysis.predicted_amo_clauses);
+  statistics.set(":preprocessing.finite-domain.explicit-disequality-choices",
+                 profile.finite_domain_analysis.explicit_disequality_choices);
+  statistics.set(":preprocessing.finite-domain.integer-numeral-choices",
+                 profile.finite_domain_analysis.integer_numeral_choices);
+  statistics.set(":preprocessing.finite-domain.rejected-missing-distinctness",
+                 profile.finite_domain_analysis.rejected_missing_distinctness);
 }
 
 }  // namespace
@@ -221,6 +227,39 @@ PreprocessingProfile analyze_preprocessing_profile(core::TermManager& terms,
   profile.initial_reachable_terms = options.preprocessing_mode == PreprocessingMode::Auto
                                         ? reachable_term_count(terms, assertions)
                                         : 0;
+  if (is_qf_lia) {
+    // Integer preprocessing is deliberately selected independently from the
+    // Real/UF profiles below. Basic and strong currently share the audited
+    // Boolean/value-propagation round; strong gains integer finite-domain
+    // processing only when that separate contract is enabled.
+    profile.kind = PreprocessingProfileKind::QfLia;
+    profile.preprocessing_loop_enabled = options.preprocessing_mode == PreprocessingMode::Basic ||
+                                         options.preprocessing_mode == PreprocessingMode::Strong;
+    profile.strong_preprocessing = options.preprocessing_mode == PreprocessingMode::Strong;
+    profile.preprocessing_passes = profile.strong_preprocessing
+                                       ? std::max<std::size_t>(options.preprocessing_passes, 3)
+                                       : options.preprocessing_passes;
+    profile.adaptive_shrink_percent =
+        std::min<std::size_t>(options.preprocessing_adaptive_shrink_percent, 100);
+    if (profile.strong_preprocessing) {
+      FiniteDomainAtMostOne finite_domain(terms);
+      profile.raw_finite_domain =
+          std::make_shared<const FiniteDomainAtMostOneResult>(finite_domain.generate(assertions));
+      profile.finite_domain_analysis.domains = profile.raw_finite_domain->domains;
+      profile.finite_domain_analysis.choices = profile.raw_finite_domain->choices;
+      profile.finite_domain_analysis.predicted_amo_clauses =
+          profile.raw_finite_domain->clauses.size();
+      profile.finite_domain_analysis.explicit_disequality_choices =
+          profile.raw_finite_domain->explicit_disequality_choices;
+      profile.finite_domain_analysis.integer_numeral_choices =
+          profile.raw_finite_domain->integer_numeral_choices;
+      profile.finite_domain_analysis.rejected_missing_distinctness =
+          profile.raw_finite_domain->rejected_missing_distinctness;
+      profile.use_finite_domain_amo = true;
+      profile.use_finite_domain_equality_definitions = options.finite_domain_equality_definitions;
+    }
+    return profile;
+  }
   const bool auto_mode = options.preprocessing_mode == PreprocessingMode::Auto;
   profile.structural_selector =
       auto_mode && options.auto_preprocess_selector == AutoPreprocessSelectorMode::Structural;
@@ -359,9 +398,7 @@ PreprocessingProfile analyze_preprocessing_profile(core::TermManager& terms,
   profile.adaptive_shrink_percent =
       std::min<std::size_t>(options.preprocessing_adaptive_shrink_percent, 100);
 
-  if (is_qf_lia) {
-    profile.kind = PreprocessingProfileKind::QfLia;
-  } else if (profile.auto_large_assertion_skip) {
+  if (profile.auto_large_assertion_skip) {
     profile.kind = PreprocessingProfileKind::LargeInputBypass;
   } else if (profile.auto_basic_single) {
     profile.kind = PreprocessingProfileKind::FiniteDomainBasic;
@@ -398,14 +435,26 @@ Strategy make_preprocessing_strategy(Frontend& frontend, const CheckSatOptions& 
                        make_large_input_solve_eqs(solve_options.gaussian_elimination)));
   }
   if (profile.preprocessing_loop_enabled && profile.preprocessing_passes > 0) {
+    if (profile.kind == PreprocessingProfileKind::QfLia) {
+      const NormalizeBooleanOptions integer_boolean_options{
+          .stage = BooleanNormalizationStage::Final,
+          .flatten_threshold = options.boolean_flatten_post_threshold,
+          .negation_mode = BooleanNegationRewriteMode::NegationNormalForm,
+          .implication_mode = BooleanImpliesRewriteMode::Off};
+      children.push_back(Strategy::leaf("normalize-boolean", integer_boolean_options,
+                                        make_normalize_boolean(integer_boolean_options)));
+    }
+    const bool integer_profile = profile.kind == PreprocessingProfileKind::QfLia;
     const PreprocessingRoundOptions round_options{
         .solved_constant_substitution = options.solved_constant_substitution,
-        .gaussian_elimination = options.gaussian_elimination,
-        .use_eq_bridge = profile.use_eq_bridge,
+        .gaussian_elimination = !integer_profile && options.gaussian_elimination,
+        .use_eq_bridge = !integer_profile && profile.use_eq_bridge,
         .use_finite_domain_evaluation = false,
-        .use_ground_congruence_definitions = profile.use_ground_congruence_definitions,
-        .use_ground_unit_substitution = profile.use_ground_unit_substitution,
-        .use_guarded_ground_unit_substitution = profile.use_guarded_ground_unit_substitution};
+        .use_ground_congruence_definitions =
+            !integer_profile && profile.use_ground_congruence_definitions,
+        .use_ground_unit_substitution = !integer_profile && profile.use_ground_unit_substitution,
+        .use_guarded_ground_unit_substitution =
+            !integer_profile && profile.use_guarded_ground_unit_substitution};
     const std::size_t max_passes =
         profile.preprocessing_passes + options.preprocessing_adaptive_extra_passes;
     Strategy round = Strategy::leaf("preprocessing-round", round_options,
@@ -508,11 +557,13 @@ PreparedPreprocessingStrategy prepare_and_execute_preprocessing_strategy(
     TacticContext& context) {
   initialize_skippable_legacy_statistics(context.statistics());
   const bool is_qf_lia = frontend.logic() == "QF_LIA" || frontend.logic() == "QF_UFLIA";
-  if (is_qf_lia) {
+  if (is_qf_lia && options.preprocessing_mode == PreprocessingMode::Auto) {
     // docs/open-leads.md lead 12a audits only syntactic solved-constant
     // substitution over Int. Real Gaussian candidates, monotone elimination,
     // and the general fixed-point profile remain disabled until their integer
     // proof obligations are discharged.
+    // Keep the default profile frozen at the audited substitution-only path.
+    // Explicit basic/strong requests opt into the integer-safe profile.
     options.preprocessing_mode = PreprocessingMode::Off;
   }
   std::vector<Strategy> initial_children;

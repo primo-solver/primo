@@ -97,8 +97,20 @@ struct PairHash {
   }
 };
 
+enum class FiniteDomainChoiceKind {
+  ExplicitDisequalities,
+  DistinctIntegerNumerals,
+};
+
 struct FiniteDomainChoice {
   std::vector<core::TermId> values;
+  FiniteDomainChoiceKind kind = FiniteDomainChoiceKind::ExplicitDisequalities;
+};
+
+struct FiniteDomainRecognitionStats {
+  std::size_t explicit_disequality_choices = 0;
+  std::size_t integer_numeral_choices = 0;
+  std::size_t rejected_missing_distinctness = 0;
 };
 
 struct SymmetryTerm {
@@ -1617,7 +1629,30 @@ bool all_pairwise_disequal(
   return true;
 }
 
-bool try_choice_term(
+enum class FiniteDomainChoiceAttempt {
+  Accepted,
+  NotChoice,
+  MissingDistinctness,
+};
+
+bool all_distinct_integer_numerals(const core::TermManager& terms,
+                                   const std::vector<core::TermId>& values) {
+  // SMT-LIB Ints interprets each numeral as its corresponding mathematical
+  // integer (https://smt-lib.org/theories-Ints.shtml). docs/preprocessing.md
+  // records the exact semantic subset and why it is excluded from UF symmetry.
+  for (const core::TermId value : values) {
+    const core::Term& term = terms.get(value);
+    if (term.kind != core::TermKind::Rational || term.sort != terms.symbols().int_sort() ||
+        !term.rational_value.is_integer()) {
+      return false;
+    }
+  }
+  // Rational terms are hash-consed with their sort, and the caller has
+  // removed duplicate TermIds, so distinct IDs here denote distinct integers.
+  return true;
+}
+
+FiniteDomainChoiceAttempt try_choice_term(
     const core::TermManager& terms, core::TermId or_term, core::TermId candidate,
     const std::unordered_set<std::pair<core::TermId, core::TermId>, PairHash>& disequalities,
     FiniteDomainChoice& choice) {
@@ -1629,7 +1664,7 @@ bool try_choice_term(
   for (const core::TermId child_id : literals) {
     const core::Term& child = terms.get(child_id);
     if (child.kind != core::TermKind::Equality) {
-      return false;
+      return FiniteDomainChoiceAttempt::NotChoice;
     }
     const core::TermId lhs = child.children.at(0);
     const core::TermId rhs = child.children.at(1);
@@ -1638,21 +1673,28 @@ bool try_choice_term(
     } else if (rhs == candidate && lhs != candidate) {
       values.push_back(lhs);
     } else {
-      return false;
+      return FiniteDomainChoiceAttempt::NotChoice;
     }
   }
 
   if (values.size() < 2) {
-    return false;
+    return FiniteDomainChoiceAttempt::NotChoice;
   }
   std::sort(values.begin(), values.end());
   values.erase(std::unique(values.begin(), values.end()), values.end());
-  if (values.size() < 2 || !all_pairwise_disequal(values, disequalities)) {
-    return false;
+  if (values.size() < 2) {
+    return FiniteDomainChoiceAttempt::NotChoice;
+  }
+  if (all_distinct_integer_numerals(terms, values)) {
+    choice.kind = FiniteDomainChoiceKind::DistinctIntegerNumerals;
+  } else if (all_pairwise_disequal(values, disequalities)) {
+    choice.kind = FiniteDomainChoiceKind::ExplicitDisequalities;
+  } else {
+    return FiniteDomainChoiceAttempt::MissingDistinctness;
   }
 
   choice.values = std::move(values);
-  return true;
+  return FiniteDomainChoiceAttempt::Accepted;
 }
 
 bool all_values_are_constants(const core::TermManager& terms,
@@ -1660,7 +1702,8 @@ bool all_values_are_constants(const core::TermManager& terms,
 
 std::unordered_map<core::TermId, FiniteDomainChoice> collect_finite_domain_choices(
     const core::TermManager& terms, const std::vector<core::TermId>& assertions,
-    const std::unordered_set<std::pair<core::TermId, core::TermId>, PairHash>& disequalities) {
+    const std::unordered_set<std::pair<core::TermId, core::TermId>, PairHash>& disequalities,
+    FiniteDomainRecognitionStats* recognition_stats = nullptr) {
   std::vector<core::TermId> work = assertions;
   std::unordered_map<core::TermId, FiniteDomainChoice> choices;
 
@@ -1686,9 +1729,18 @@ std::unordered_map<core::TermId, FiniteDomainChoice> collect_finite_domain_choic
     const core::TermId lhs = first.children.at(0);
     const core::TermId rhs = first.children.at(1);
     core::TermId candidate = lhs;
-    if (!try_choice_term(terms, term_id, candidate, disequalities, choice)) {
+    const FiniteDomainChoiceAttempt lhs_attempt =
+        try_choice_term(terms, term_id, candidate, disequalities, choice);
+    FiniteDomainChoiceAttempt rhs_attempt = FiniteDomainChoiceAttempt::NotChoice;
+    if (lhs_attempt != FiniteDomainChoiceAttempt::Accepted) {
       candidate = rhs;
-      if (!try_choice_term(terms, term_id, candidate, disequalities, choice)) {
+      rhs_attempt = try_choice_term(terms, term_id, candidate, disequalities, choice);
+      if (rhs_attempt != FiniteDomainChoiceAttempt::Accepted) {
+        if (recognition_stats != nullptr &&
+            (lhs_attempt == FiniteDomainChoiceAttempt::MissingDistinctness ||
+             rhs_attempt == FiniteDomainChoiceAttempt::MissingDistinctness)) {
+          ++recognition_stats->rejected_missing_distinctness;
+        }
         continue;
       }
     }
@@ -1696,6 +1748,17 @@ std::unordered_map<core::TermId, FiniteDomainChoice> collect_finite_domain_choic
     const auto existing = choices.find(candidate);
     if (existing == choices.end() || existing->second.values.size() < choice.values.size()) {
       choices[candidate] = std::move(choice);
+    }
+  }
+
+  if (recognition_stats != nullptr) {
+    for (const auto& [term, choice] : choices) {
+      (void)term;
+      if (choice.kind == FiniteDomainChoiceKind::DistinctIntegerNumerals) {
+        ++recognition_stats->integer_numeral_choices;
+      } else {
+        ++recognition_stats->explicit_disequality_choices;
+      }
     }
   }
 
@@ -1992,7 +2055,14 @@ std::vector<SymmetryGroup> build_groups(
     const core::TermManager& terms,
     const std::unordered_map<core::TermId, FiniteDomainChoice>& choices) {
   std::vector<SymmetryGroup> groups;
-  for (const FiniteDomainGroup& finite_group : finite_domain_groups(terms, choices, true)) {
+  std::unordered_map<core::TermId, FiniteDomainChoice> explicit_choices;
+  for (const auto& [term, choice] : choices) {
+    if (choice.kind == FiniteDomainChoiceKind::ExplicitDisequalities) {
+      explicit_choices.emplace(term, choice);
+    }
+  }
+  for (const FiniteDomainGroup& finite_group :
+       finite_domain_groups(terms, explicit_choices, true)) {
     auto group = std::find_if(groups.begin(), groups.end(), [&](const SymmetryGroup& candidate) {
       return candidate.values == finite_group.values;
     });
@@ -3112,6 +3182,136 @@ BooleanImpliesRewriteResult rewrite_boolean_implications(
   return result;
 }
 
+BooleanNegationRewriteResult rewrite_boolean_negations_to_nnf(
+    core::TermManager& terms, const std::vector<core::TermId>& assertions,
+    BooleanNegationRewriteMode mode) {
+  BooleanNegationRewriteResult result;
+  if (mode == BooleanNegationRewriteMode::Off) {
+    result.assertions = assertions;
+    return result;
+  }
+
+  struct Visit {
+    core::TermId term = core::kInvalidTermId;
+    bool negative = false;
+    bool expanded = false;
+  };
+
+  const std::size_t source_term_count = terms.size();
+  std::vector<core::TermId> positive(source_term_count, core::kInvalidTermId);
+  std::vector<core::TermId> negative(source_term_count, core::kInvalidTermId);
+  std::vector<Visit> pending;
+
+  const auto slot = [&positive, &negative](core::TermId term, bool is_negative) -> core::TermId& {
+    return is_negative ? negative.at(term) : positive.at(term);
+  };
+  const auto schedule_child = [&pending, &slot](core::TermId child, bool is_negative) {
+    if (slot(child, is_negative) == core::kInvalidTermId) {
+      pending.push_back(Visit{child, is_negative, false});
+    }
+  };
+
+  for (const core::TermId assertion : assertions) {
+    pending.push_back(Visit{assertion, false, false});
+    while (!pending.empty()) {
+      const Visit visit = pending.back();
+      pending.pop_back();
+      core::TermId& destination = slot(visit.term, visit.negative);
+      if (destination != core::kInvalidTermId) {
+        continue;
+      }
+
+      const core::Term& source = terms.get(visit.term);
+      const bool connective =
+          source.kind == core::TermKind::Not || source.kind == core::TermKind::And ||
+          source.kind == core::TermKind::Or || source.kind == core::TermKind::Implies;
+      if (!connective) {
+        destination = visit.negative ? terms.mk_not(visit.term) : visit.term;
+        ++result.visited;
+        if (destination != visit.term) {
+          ++result.rewritten;
+        }
+        continue;
+      }
+
+      if (!visit.expanded) {
+        pending.push_back(Visit{visit.term, visit.negative, true});
+        switch (source.kind) {
+          case core::TermKind::Not:
+            schedule_child(source.children.at(0), !visit.negative);
+            break;
+          case core::TermKind::And:
+          case core::TermKind::Or:
+            for (auto child = source.children.rbegin(); child != source.children.rend(); ++child) {
+              schedule_child(*child, visit.negative);
+            }
+            break;
+          case core::TermKind::Implies:
+            schedule_child(source.children.at(1), visit.negative);
+            schedule_child(source.children.at(0), !visit.negative);
+            break;
+          case core::TermKind::BoolValue:
+          case core::TermKind::Constant:
+          case core::TermKind::Application:
+          case core::TermKind::Equality:
+          case core::TermKind::Rational:
+          case core::TermKind::Plus:
+          case core::TermKind::Times:
+          case core::TermKind::Le:
+          case core::TermKind::Lt:
+            break;
+        }
+        continue;
+      }
+
+      core::TermId replacement = core::kInvalidTermId;
+      switch (source.kind) {
+        case core::TermKind::Not:
+          replacement = slot(source.children.at(0), !visit.negative);
+          break;
+        case core::TermKind::And:
+        case core::TermKind::Or: {
+          std::vector<core::TermId> children;
+          children.reserve(source.children.size());
+          for (const core::TermId child : source.children) {
+            children.push_back(slot(child, visit.negative));
+          }
+          const bool make_and = (source.kind == core::TermKind::And) != visit.negative;
+          replacement =
+              make_and ? terms.mk_and(std::move(children)) : terms.mk_or(std::move(children));
+          break;
+        }
+        case core::TermKind::Implies: {
+          const core::TermId lhs = slot(source.children.at(0), !visit.negative);
+          const core::TermId rhs = slot(source.children.at(1), visit.negative);
+          replacement = visit.negative ? terms.mk_and({lhs, rhs}) : terms.mk_or({lhs, rhs});
+          break;
+        }
+        case core::TermKind::BoolValue:
+        case core::TermKind::Constant:
+        case core::TermKind::Application:
+        case core::TermKind::Equality:
+        case core::TermKind::Rational:
+        case core::TermKind::Plus:
+        case core::TermKind::Times:
+        case core::TermKind::Le:
+        case core::TermKind::Lt:
+          assert(false && "non-connective reached NNF reconstruction");
+          break;
+      }
+      assert(replacement != core::kInvalidTermId);
+      destination = replacement;
+      ++result.visited;
+      if (replacement != visit.term) {
+        ++result.rewritten;
+      }
+    }
+    result.assertions.push_back(positive.at(assertion));
+  }
+  result.terms_created = terms.size() - source_term_count;
+  return result;
+}
+
 BooleanFlatteningResult flatten_associative_booleans(core::TermManager& terms,
                                                      const std::vector<core::TermId>& assertions,
                                                      std::size_t max_arity) {
@@ -3607,8 +3807,13 @@ FiniteDomainAnalysis FiniteDomainAtMostOne::analyze(
     const std::vector<core::TermId>& assertions) const {
   FiniteDomainAnalysis result;
   const auto disequalities = collect_disequalities(terms_, assertions);
-  const auto choices = collect_finite_domain_choices(terms_, assertions, disequalities);
+  FiniteDomainRecognitionStats recognition;
+  const auto choices =
+      collect_finite_domain_choices(terms_, assertions, disequalities, &recognition);
   result.choices = choices.size();
+  result.explicit_disequality_choices = recognition.explicit_disequality_choices;
+  result.integer_numeral_choices = recognition.integer_numeral_choices;
+  result.rejected_missing_distinctness = recognition.rejected_missing_distinctness;
   std::unordered_set<core::TermId> domain_terms;
   for (const auto& entry : choices) {
     domain_terms.insert(entry.first);
@@ -3679,8 +3884,13 @@ FiniteDomainAtMostOneResult FiniteDomainAtMostOne::generate(
   }
   AdditionalFiniteDomainFacts additional_facts =
       build_additional_finite_domain_facts(terms_, additional_equalities, additional_disequalities);
-  const auto choices = collect_finite_domain_choices(terms_, assertions, disequalities);
+  FiniteDomainRecognitionStats recognition;
+  const auto choices =
+      collect_finite_domain_choices(terms_, assertions, disequalities, &recognition);
   result.choices = choices.size();
+  result.explicit_disequality_choices = recognition.explicit_disequality_choices;
+  result.integer_numeral_choices = recognition.integer_numeral_choices;
+  result.rejected_missing_distinctness = recognition.rejected_missing_distinctness;
   std::unordered_set<core::TermId> emitted(assertions.begin(), assertions.end());
   for (const auto& [term, choice] : choices) {
     const std::vector<core::TermId> clauses =

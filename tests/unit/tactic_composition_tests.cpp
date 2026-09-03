@@ -102,77 +102,77 @@ std::vector<CompositionProfile> profiles() {
       {"default",
        {},
        kAllLogics,
-       "fnv1a64:5365421f1852e0ee",
+       "fnv1a64:76beb1c5a9bc1669",
        {"preprocessing-profile", "normalize-boolean"},
        {},
        {}},
       {"off",
        off_options(),
        kAllLogics,
-       "fnv1a64:745f6444af699f9b",
+       "fnv1a64:888d54e6a5855cc8",
        {"preprocessing-profile", "finite-domain-preprocess", "purify-mixed"},
        {"adaptive-reachable-term-shrink"},
        {}},
       {"basic",
        basic_options(),
        kAllLogics,
-       "fnv1a64:be8a002fc3105afe",
+       "fnv1a64:0647c0d62293d019",
        {"(repeat 1 \"adaptive-reachable-term-shrink\"", "preprocessing-round"},
        {},
        {":tactic.preprocessing-round.invocations"}},
       {"strong",
        strong_options(),
        kAllLogics,
-       "fnv1a64:f802bb8772291761",
+       "fnv1a64:e63763fe380476ee",
        {"(repeat 4 \"adaptive-reachable-term-shrink\"", "finite-domain-preprocess"},
        {},
        {":tactic.preprocessing-round.invocations"}},
       {"adaptive",
        adaptive_options(),
        kAllLogics,
-       "fnv1a64:eb35833317423f34",
+       "fnv1a64:2d0816ed8ccbd227",
        {"(repeat 3 \"adaptive-reachable-term-shrink\"", "preprocessing-round"},
        {},
        {":tactic.preprocessing-round.invocations"}},
       {"ground-substitution",
        ground_substitution_options(false),
        kQfUf | kQfUflra,
-       "fnv1a64:e11b92b436c6027f",
+       "fnv1a64:bf05cf4ab203a78c",
        {"\"ground-unit-substitution\" \"true\"", "\"guarded-ground-unit-substitution\" \"false\""},
        {},
        {":tactic.ground-unit-substitution.invocations"}},
       {"guarded-substitution",
        ground_substitution_options(true),
        kQfUf | kQfUflra,
-       "fnv1a64:0215a65923026037",
+       "fnv1a64:6d378fe36c15ddc4",
        {"\"ground-unit-substitution\" \"false\"", "\"guarded-ground-unit-substitution\" \"true\""},
        {},
        {":tactic.ground-unit-substitution.invocations"}},
       {"no-gaussian",
        no_gaussian_options(),
        kQfLra | kQfUflra,
-       "fnv1a64:850f99d1e5a1cab8",
+       "fnv1a64:eedc00a1afe6ec2b",
        {"\"gaussian-elimination\" \"false\""},
        {},
        {":tactic.solve-eqs.invocations"}},
       {"monotone",
        monotone_options(),
        kQfLra | kQfUflra,
-       "fnv1a64:c39d4b427b395f8e",
+       "fnv1a64:810ed57b0e9bf989",
        {"eliminate-monotone"},
        {},
        {":tactic.eliminate-monotone.invocations"}},
       {"split-1",
        split_options(1, false),
        kQfUf | kQfUflra,
-       "fnv1a64:5365421f1852e0ee",
+       "fnv1a64:76beb1c5a9bc1669",
        {},
        {},
        {}},
       {"strong-split-2",
        split_options(2, true),
        kQfUf | kQfUflra,
-       "fnv1a64:f802bb8772291761",
+       "fnv1a64:e63763fe380476ee",
        {},
        {},
        {}},
@@ -314,17 +314,28 @@ void production_profiles_have_stable_legal_structure() {
 void qf_lia_profile_keeps_its_audited_leaf() {
   primo::smt::Frontend frontend;
   const std::vector<primo::core::TermId> assertions = representative_assertions(frontend);
-  // prepare_and_execute_preprocessing_strategy forces this production boundary before analysis.
-  primo::smt::CheckSatOptions options = off_options();
   primo::util::Statistics statistics;
-  const primo::smt::PreprocessingProfile profile =
-      primo::smt::analyze_preprocessing_profile(frontend.terms(), assertions, options, true);
-  check(profile.kind == primo::smt::PreprocessingProfileKind::QfLia);
-  const std::string canonical =
-      primo::smt::make_preprocessing_strategy(frontend, options, profile, assertions, statistics)
-          .canonical();
-  check(canonical.find("qf-lia-solve-eqs") != std::string::npos);
-  check(canonical.find("preprocessing-round") == std::string::npos);
+  for (const primo::smt::CheckSatOptions& options :
+       {off_options(), basic_options(), strong_options()}) {
+    const primo::smt::PreprocessingProfile profile =
+        primo::smt::analyze_preprocessing_profile(frontend.terms(), assertions, options, true);
+    check(profile.kind == primo::smt::PreprocessingProfileKind::QfLia);
+    const std::string canonical =
+        primo::smt::make_preprocessing_strategy(frontend, options, profile, assertions, statistics)
+            .canonical();
+    check(canonical.find("qf-lia-solve-eqs") != std::string::npos);
+    const bool explicit_preprocessing =
+        options.preprocessing_mode != primo::smt::PreprocessingMode::Off;
+    check((canonical.find("preprocessing-round") != std::string::npos) == explicit_preprocessing);
+    check((canonical.find("\"negation-mode\" \"nnf\"") != std::string::npos) ==
+          explicit_preprocessing);
+    if (explicit_preprocessing) {
+      check(canonical.find("\"gaussian-elimination\" \"false\"") != std::string::npos);
+      check(canonical.find("\"ground-congruence\" \"true\"") == std::string::npos);
+      check(canonical.find("\"ground-unit-substitution\" \"true\"") == std::string::npos);
+      check(canonical.find("\"guarded-ground-unit-substitution\" \"true\"") == std::string::npos);
+    }
+  }
 }
 
 void real_profile_compositions_preserve_answers_models_and_counters() {

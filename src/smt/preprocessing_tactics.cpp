@@ -314,8 +314,10 @@ std::vector<StrategyParameter> NormalizeBooleanOptions::strategy_parameters() co
   const char* implication = implication_mode == BooleanImpliesRewriteMode::Off      ? "off"
                             : implication_mode == BooleanImpliesRewriteMode::Clause ? "clause"
                                                                                     : "all";
+  const char* negation = negation_mode == BooleanNegationRewriteMode::Off ? "off" : "nnf";
   return {{"flatten-threshold", std::to_string(flatten_threshold)},
           {"implication-mode", implication},
+          {"negation-mode", negation},
           {"stage", boolean_stage_parameter(stage)}};
 }
 
@@ -443,6 +445,15 @@ Tactic make_finite_domain_preprocess(FiniteDomainPreprocessOptions options,
             emit(post.clauses);
             statistics.increment(util::StatKey::FiniteDomainDomains,
                                  std::max(input.raw_at_most_one->domains, post.domains));
+            statistics.set(":preprocessing.finite-domain.explicit-disequality-choices",
+                           std::max(input.raw_at_most_one->explicit_disequality_choices,
+                                    post.explicit_disequality_choices));
+            statistics.set(":preprocessing.finite-domain.integer-numeral-choices",
+                           std::max(input.raw_at_most_one->integer_numeral_choices,
+                                    post.integer_numeral_choices));
+            statistics.set(":preprocessing.finite-domain.rejected-missing-distinctness",
+                           std::max(input.raw_at_most_one->rejected_missing_distinctness,
+                                    post.rejected_missing_distinctness));
             statistics.increment(util::StatKey::FiniteDomainAmoClauses, added);
             statistics.increment(util::StatKey::FiniteDomainDedupedAmoClauses, deduped);
           }
@@ -474,6 +485,14 @@ Tactic make_normalize_boolean(NormalizeBooleanOptions options) {
   return make_goal_tactic("normalize-boolean", [options](TacticContext& context, const Goal& goal) {
     std::vector<core::TermId> assertions = goal.assertions();
     util::Statistics& statistics = context.statistics();
+    if (options.negation_mode != BooleanNegationRewriteMode::Off) {
+      const BooleanNegationRewriteResult negations =
+          rewrite_boolean_negations_to_nnf(context.terms(), assertions, options.negation_mode);
+      assertions = negations.assertions;
+      statistics.set(":preprocessing.boolean-nnf.visited", negations.visited);
+      statistics.set(":preprocessing.boolean-nnf.rewritten", negations.rewritten);
+      statistics.set(":preprocessing.boolean-nnf.terms-created", negations.terms_created);
+    }
     if (options.stage == BooleanNormalizationStage::Final) {
       const BooleanImpliesRewriteResult implication = rewrite_boolean_implications(
           context.terms(), assertions, options.implication_mode, options.flatten_threshold);

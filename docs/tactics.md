@@ -177,6 +177,16 @@ Boolean normalization in the established order. Production executes the
 initial-normalization prefix before profile analysis and the remaining suffix
 afterward because profile selection must inspect the transformed goal.
 
+For QF_LIA and QF_UFLIA, default `auto` still selects the frozen
+substitution-only path. Explicit `basic` and `strong` select an integer-safe
+suffix: a two-polarity, memoized NNF normalization followed by repeated Boolean
+unit, forced-atom, solved-constant, and unit-equality phases. The typed strategy
+records `negation-mode=nnf`; Gaussian elimination and the generic UF/Real
+preprocessing switches remain false in that round. Integer `strong` additionally
+enables the finite-domain composite for disjunctive domains of distinct Int
+numerals. Those domains may produce AMO and observed-equality channeling clauses
+but are explicitly filtered out of the symmetry subphase.
+
 The repeated preprocessing round is implemented in `preprocessing_tactics` as
 an exact composition of those public builders over each input alternative. Its
 immutable `PreprocessingRoundOptions` is constructed once from the selected
