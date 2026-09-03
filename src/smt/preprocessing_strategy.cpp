@@ -416,7 +416,7 @@ PreprocessingProfile analyze_preprocessing_profile(core::TermManager& terms,
   return profile;
 }
 
-Strategy make_preprocessing_strategy(Frontend& frontend, const CheckSatOptions& options,
+Strategy make_preprocessing_strategy(const CheckSatOptions& options,
                                      const PreprocessingProfile& profile,
                                      const std::vector<core::TermId>& symmetry_source_assertions) {
   std::vector<Strategy> children;
@@ -541,7 +541,7 @@ Strategy make_preprocessing_strategy(Frontend& frontend, const CheckSatOptions& 
   const PurifyMixedOptions purify_options{.canonicalize_arithmetic_after =
                                               options.arithmetic_atom_canonicalization};
   children.push_back(
-      Strategy::leaf("purify-mixed", purify_options, make_purify_mixed(frontend, purify_options)));
+      Strategy::leaf("purify-mixed", purify_options, make_purify_mixed(purify_options)));
   const NormalizeBooleanOptions boolean_options{
       .stage = BooleanNormalizationStage::Final,
       .flatten_threshold = options.boolean_flatten_post_threshold,
@@ -606,8 +606,7 @@ PreparedPreprocessingStrategy prepare_and_execute_preprocessing_strategy(
     context.statistics().increment(util::StatKey::FiniteDomainRawAmoClauses,
                                    profile.finite_domain_analysis.predicted_amo_clauses);
   }
-  const Strategy remaining =
-      make_preprocessing_strategy(frontend, options, profile, normalized_assertions);
+  const Strategy remaining = make_preprocessing_strategy(options, profile, normalized_assertions);
   AnyOf result = compile(remaining)(context, normalized);
   const Strategy full = Strategy::sequence({initial, remaining});
   return PreparedPreprocessingStrategy{

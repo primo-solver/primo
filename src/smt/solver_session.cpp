@@ -613,8 +613,14 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       options.produce_model = true;
     }
     const PhaseClock::time_point preprocessing_start = PhaseClock::now();
+    // The session is what owns symbol creation, so it is the session that hands
+    // that capability to the strategy it executes.
+    const TacticContext::FreshConstantFactory fresh_constant =
+        [&frontend](core::SortId sort, std::string_view prefix) {
+          return frontend.fresh_internal_constant(sort, prefix);
+        };
     TacticContext preprocessing_context(frontend.terms(), statistics, options.cancelled,
-                                        options.produce_model);
+                                        options.produce_model, fresh_constant);
     PreparedPreprocessingStrategy prepared = prepare_and_execute_preprocessing_strategy(
         frontend, std::move(assertions), options, preprocessing_context);
     if (prepared.result.alternatives().front().reason() != InconclusiveReason::None) {
@@ -702,7 +708,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       return outcome;
     };
     TacticContext tactic_context(frontend.terms(), statistics, options.cancelled,
-                                 options.produce_model);
+                                 options.produce_model, fresh_constant);
     const Strategy solver_strategy =
         make_session_solver_strategy(frontend, solve_options, statistics, tactic_context);
     const Tactic solver_dispatch = compile(solver_strategy);

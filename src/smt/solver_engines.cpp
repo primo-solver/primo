@@ -6998,20 +6998,29 @@ struct MixedPurificationRewriteState {
   std::size_t memoized_euf_rewrites = 0;
 };
 
-core::TermId purify_mixed_formula(Frontend& frontend, core::TermId term_id,
+// Mixed-theory purification needs two things from a session: the term arena
+// and the ability to introduce a fresh proxy constant. Passing that pair
+// rather than the Frontend keeps the tactic built on top of it independent of
+// the session, so it can be carried inside an immutable Strategy.
+struct PurificationScope {
+  core::TermManager& terms;
+  const TacticContext::FreshConstantFactory& fresh_constant;
+};
+
+core::TermId purify_mixed_formula(const PurificationScope& scope, core::TermId term_id,
                                   MixedPurificationRewriteState& state);
 
-core::TermId purify_euf_term(Frontend& frontend, core::TermId term_id,
+core::TermId purify_euf_term(const PurificationScope& scope, core::TermId term_id,
                              MixedPurificationRewriteState& state);
 
-core::TermId purify_arithmetic_term(Frontend& frontend, core::TermId term_id,
+core::TermId purify_arithmetic_term(const PurificationScope& scope, core::TermId term_id,
                                     MixedPurificationRewriteState& state) {
   const auto memoized = state.arithmetic_rewrite_memo.find(term_id);
   if (memoized != state.arithmetic_rewrite_memo.end()) {
     ++state.memoized_arithmetic_rewrites;
     return memoized->second;
   }
-  core::TermManager& terms = frontend.terms();
+  core::TermManager& terms = scope.terms;
   const core::Term& term = terms.get(term_id);
   const core::TermKind kind = term.kind;
   const core::SortId sort = term.sort;
@@ -7028,13 +7037,13 @@ core::TermId purify_arithmetic_term(Frontend& frontend, core::TermId term_id,
       return result;
     }
     const std::vector<core::TermId> children = term.children;
-    const core::TermId proxy = frontend.fresh_internal_constant(sort, "no_proxy");
+    const core::TermId proxy = scope.fresh_constant(sort, "no_proxy");
     state.proxy_by_app.emplace(term_id, proxy);
     std::vector<core::TermId> purified_children;
     purified_children.reserve(children.size());
     bool changed = false;
     for (const core::TermId child : children) {
-      const core::TermId purified = purify_euf_term(frontend, child, state);
+      const core::TermId purified = purify_euf_term(scope, child, state);
       changed = changed || purified != child;
       purified_children.push_back(purified);
     }
@@ -7053,7 +7062,7 @@ core::TermId purify_arithmetic_term(Frontend& frontend, core::TermId term_id,
       rewritten_children.reserve(children.size());
       bool changed = false;
       for (const core::TermId child : children) {
-        const core::TermId rewritten = purify_arithmetic_term(frontend, child, state);
+        const core::TermId rewritten = purify_arithmetic_term(scope, child, state);
         changed = changed || rewritten != child;
         rewritten_children.push_back(rewritten);
       }
@@ -7062,7 +7071,7 @@ core::TermId purify_arithmetic_term(Frontend& frontend, core::TermId term_id,
     }
     case core::TermKind::Times: {
       const core::TermId original_child = term.children.at(0);
-      const core::TermId child = purify_arithmetic_term(frontend, original_child, state);
+      const core::TermId child = purify_arithmetic_term(scope, original_child, state);
       result = child == original_child ? term_id : terms.mk_times(rational_value, child);
       break;
     }
@@ -7073,15 +7082,15 @@ core::TermId purify_arithmetic_term(Frontend& frontend, core::TermId term_id,
   return result;
 }
 
-core::TermId purify_euf_arithmetic_argument(Frontend& frontend, core::TermId term_id,
+core::TermId purify_euf_arithmetic_argument(const PurificationScope& scope, core::TermId term_id,
                                             MixedPurificationRewriteState& state) {
-  core::TermManager& terms = frontend.terms();
+  core::TermManager& terms = scope.terms;
   const core::Term& term = terms.get(term_id);
   if (term.sort != terms.symbols().real_sort() && term.sort != terms.symbols().int_sort()) {
     return term_id;
   }
 
-  const core::TermId arithmetic_term = purify_arithmetic_term(frontend, term_id, state);
+  const core::TermId arithmetic_term = purify_arithmetic_term(scope, term_id, state);
   const core::Term& rewritten = terms.get(arithmetic_term);
   if (rewritten.kind == core::TermKind::Constant) {
     return arithmetic_term;
@@ -7092,28 +7101,28 @@ core::TermId purify_euf_arithmetic_argument(Frontend& frontend, core::TermId ter
     ++state.reused_real_terms;
     return found->second;
   }
-  const core::TermId proxy = frontend.fresh_internal_constant(rewritten.sort, "no_real_arg");
+  const core::TermId proxy = scope.fresh_constant(rewritten.sort, "no_real_arg");
   state.proxy_by_real_term.emplace(arithmetic_term, proxy);
   state.lra_definition_atoms.push_back(terms.mk_le(proxy, arithmetic_term));
   state.lra_definition_atoms.push_back(terms.mk_le(arithmetic_term, proxy));
   return proxy;
 }
 
-core::TermId purify_euf_term(Frontend& frontend, core::TermId term_id,
+core::TermId purify_euf_term(const PurificationScope& scope, core::TermId term_id,
                              MixedPurificationRewriteState& state) {
   const auto memoized = state.euf_rewrite_memo.find(term_id);
   if (memoized != state.euf_rewrite_memo.end()) {
     ++state.memoized_euf_rewrites;
     return memoized->second;
   }
-  core::TermManager& terms = frontend.terms();
+  core::TermManager& terms = scope.terms;
   const core::Term& term = terms.get(term_id);
   const core::TermKind kind = term.kind;
   const core::SortId sort = term.sort;
   const core::SymbolId symbol = term.symbol;
   core::TermId result = term_id;
   if (sort == terms.symbols().real_sort() || sort == terms.symbols().int_sort()) {
-    result = purify_euf_arithmetic_argument(frontend, term_id, state);
+    result = purify_euf_arithmetic_argument(scope, term_id, state);
     state.euf_rewrite_memo.emplace(term_id, result);
     return result;
   }
@@ -7128,7 +7137,7 @@ core::TermId purify_euf_term(Frontend& frontend, core::TermId term_id,
   children.reserve(term_children.size());
   bool changed = false;
   for (const core::TermId child : term_children) {
-    const core::TermId rewritten = purify_euf_term(frontend, child, state);
+    const core::TermId rewritten = purify_euf_term(scope, child, state);
     changed = changed || rewritten != child;
     children.push_back(rewritten);
   }
@@ -7137,14 +7146,14 @@ core::TermId purify_euf_term(Frontend& frontend, core::TermId term_id,
   return result;
 }
 
-core::TermId purify_mixed_formula(Frontend& frontend, core::TermId term_id,
+core::TermId purify_mixed_formula(const PurificationScope& scope, core::TermId term_id,
                                   MixedPurificationRewriteState& state) {
   struct Visit {
     core::TermId term;
     bool expanded;
   };
 
-  core::TermManager& terms = frontend.terms();
+  core::TermManager& terms = scope.terms;
   std::vector<Visit> pending{{term_id, false}};
   while (!pending.empty()) {
     const Visit visit = pending.back();
@@ -7173,15 +7182,15 @@ core::TermId purify_mixed_formula(Frontend& frontend, core::TermId term_id,
     core::TermId result = visit.term;
     switch (kind) {
       case core::TermKind::Le: {
-        const core::TermId lhs = purify_arithmetic_term(frontend, term_children.at(0), state);
-        const core::TermId rhs = purify_arithmetic_term(frontend, term_children.at(1), state);
+        const core::TermId lhs = purify_arithmetic_term(scope, term_children.at(0), state);
+        const core::TermId rhs = purify_arithmetic_term(scope, term_children.at(1), state);
         result = lhs == term_children.at(0) && rhs == term_children.at(1) ? visit.term
                                                                           : terms.mk_le(lhs, rhs);
         break;
       }
       case core::TermKind::Lt: {
-        const core::TermId lhs = purify_arithmetic_term(frontend, term_children.at(0), state);
-        const core::TermId rhs = purify_arithmetic_term(frontend, term_children.at(1), state);
+        const core::TermId lhs = purify_arithmetic_term(scope, term_children.at(0), state);
+        const core::TermId rhs = purify_arithmetic_term(scope, term_children.at(1), state);
         result = lhs == term_children.at(0) && rhs == term_children.at(1) ? visit.term
                                                                           : terms.mk_lt(lhs, rhs);
         break;
@@ -7190,16 +7199,16 @@ core::TermId purify_mixed_formula(Frontend& frontend, core::TermId term_id,
         const core::SortId equality_sort = terms.get(term_children.at(0)).sort;
         if (equality_sort == terms.symbols().real_sort() ||
             equality_sort == terms.symbols().int_sort()) {
-          const core::TermId lhs = purify_arithmetic_term(frontend, term_children.at(0), state);
-          const core::TermId rhs = purify_arithmetic_term(frontend, term_children.at(1), state);
+          const core::TermId lhs = purify_arithmetic_term(scope, term_children.at(0), state);
+          const core::TermId rhs = purify_arithmetic_term(scope, term_children.at(1), state);
           result = lhs == term_children.at(0) && rhs == term_children.at(1) ? visit.term
                                                                             : terms.mk_eq(lhs, rhs);
           break;
         }
       }
         {
-          const core::TermId lhs = purify_euf_term(frontend, term_children.at(0), state);
-          const core::TermId rhs = purify_euf_term(frontend, term_children.at(1), state);
+          const core::TermId lhs = purify_euf_term(scope, term_children.at(0), state);
+          const core::TermId rhs = purify_euf_term(scope, term_children.at(1), state);
           result = lhs == term_children.at(0) && rhs == term_children.at(1) ? visit.term
                                                                             : terms.mk_eq(lhs, rhs);
           break;
@@ -7234,7 +7243,7 @@ core::TermId purify_mixed_formula(Frontend& frontend, core::TermId term_id,
       }
       case core::TermKind::Application:
         if (sort == terms.symbols().bool_sort()) {
-          result = purify_euf_term(frontend, visit.term, state);
+          result = purify_euf_term(scope, visit.term, state);
         }
         break;
       case core::TermKind::BoolValue:
@@ -7250,8 +7259,8 @@ core::TermId purify_mixed_formula(Frontend& frontend, core::TermId term_id,
 }
 
 MixedTheoryPurificationResult purify_mixed_arithmetic_applications(
-    Frontend& frontend, const std::vector<core::TermId>& assertions) {
-  if (!assertions_need_mixed_purification(frontend.terms(), assertions)) {
+    const PurificationScope& scope, const std::vector<core::TermId>& assertions) {
+  if (!assertions_need_mixed_purification(scope.terms, assertions)) {
     return MixedTheoryPurificationResult{.assertions = assertions, .skipped_no_sites = true};
   }
   MixedPurificationRewriteState state;
@@ -7260,7 +7269,7 @@ MixedTheoryPurificationResult purify_mixed_arithmetic_applications(
   state.app_definitions.reserve(assertions.size());
   state.lra_definition_atoms.reserve(assertions.size() * 2);
   for (const core::TermId assertion : assertions) {
-    rewritten_assertions.push_back(purify_mixed_formula(frontend, assertion, state));
+    rewritten_assertions.push_back(purify_mixed_formula(scope, assertion, state));
   }
   rewritten_assertions.insert(rewritten_assertions.end(), state.app_definitions.begin(),
                               state.app_definitions.end());
@@ -12252,11 +12261,15 @@ std::string build_qf_lra_preprocessing_only_model_for_session(
   return build_qf_lra_preprocessing_only_model(terms, model_terms, conversions);
 }
 
-Tactic make_purify_mixed(Frontend& frontend, PurifyMixedOptions options) {
-  return make_goal_tactic("purify-mixed", [&frontend, options](TacticContext& context,
-                                                               const Goal& goal) {
+Tactic make_purify_mixed(PurifyMixedOptions options) {
+  return make_goal_tactic("purify-mixed", [options](TacticContext& context, const Goal& goal) {
+    const TacticContext::FreshConstantFactory fresh_constant = [&context](core::SortId sort,
+                                                                          std::string_view prefix) {
+      return context.fresh_constant(sort, prefix);
+    };
+    const PurificationScope scope{.terms = context.terms(), .fresh_constant = fresh_constant};
     MixedTheoryPurificationResult purification =
-        purify_mixed_arithmetic_applications(frontend, goal.assertions());
+        purify_mixed_arithmetic_applications(scope, goal.assertions());
     util::Statistics& statistics = context.statistics();
     statistics.set(":no.purification.definitions",
                    purification.arithmetic_uf_definitions + purification.euf_real_term_definitions);

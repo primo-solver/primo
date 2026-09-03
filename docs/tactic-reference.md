@@ -62,6 +62,11 @@ respective strategies rather than exported as reusable probe objects.
 | `preprocessing-profile` | Production strategy leaf | Records the immutable selected `PreprocessingProfile`; it does not transform the goal |
 | `preprocessing-fixed-point` | Production `Repeat` strategy node | Repeats `preprocessing-round` to ordered-assertion convergence, subject to baseline and adaptive reachable-term shrink limits |
 
+`purify-mixed` needs fresh proxy constants. It obtains them from
+`TacticContext::fresh_constant`, a `FreshConstantFactory` the session installs
+when it builds the context; the tactic holds no `Frontend` reference and throws
+`TacticError` if a context without a factory executes it.
+
 `PreprocessingRoundOptions` is immutable after strategy construction. It
 selects phases without allowing them to read command-line state.
 
@@ -134,7 +139,10 @@ execution context. With the experimental splitter disabled it compiles the
 returned `solver-dispatch` strategy leaf; with splitting enabled it compiles a
 two-child sequence containing the split leaf and dispatch.
 The executable leaf borrows the frontend, statistics, and context through that
-single execution; immutable solve options are held in shared value storage.
+single execution; immutable solve options are held in shared value storage. A
+solver strategy is therefore session-scoped, unlike a preprocessing strategy,
+which reads everything it needs -- terms, statistics, and fresh constants --
+from the executing `TacticContext` and stays valid after its session is gone.
 Model-term selection and the `solve-qf-lra-model-only` dispatch branch consult
 the context capability. Model production is intentionally absent from the
 canonical strategy parameters and fingerprint.

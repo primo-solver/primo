@@ -872,11 +872,15 @@ void public_preprocessing_leaves_are_independently_constructible_and_typed() {
 
   primo::smt::Frontend frontend;
   primo::util::Statistics purification_statistics;
-  primo::smt::TacticContext purification_context(frontend.terms(), purification_statistics);
+  primo::smt::TacticContext purification_context(
+      frontend.terms(), purification_statistics, {}, false,
+      [&frontend](primo::core::SortId sort, std::string_view prefix) {
+        return frontend.fresh_internal_constant(sort, prefix);
+      });
   const primo::core::TermId trivial_bound =
       frontend.terms().mk_le(frontend.terms().mk_rational(0), frontend.terms().mk_rational(1));
   static_cast<void>(primo::smt::make_purify_mixed(
-      frontend, primo::smt::PurifyMixedOptions{.canonicalize_arithmetic_after = true})(
+      primo::smt::PurifyMixedOptions{.canonicalize_arithmetic_after = true})(
       purification_context, primo::smt::AnyOf::single(primo::smt::Goal{{trivial_bound}})));
   check(purification_statistics.get(":tactic.purify-mixed.invocations") == 1);
   check(purification_statistics.get(":no.purification.skipped-no-sites") == 1);
@@ -898,7 +902,7 @@ void production_preprocessing_profile_and_strategy_are_explicit_and_stable() {
   check(profile.strong_preprocessing);
   check(profile.preprocessing_passes == 3);
   const primo::smt::Strategy strategy =
-      primo::smt::make_preprocessing_strategy(frontend, options, profile, {bound});
+      primo::smt::make_preprocessing_strategy(options, profile, {bound});
   const std::string canonical = strategy.canonical();
   const std::size_t profile_position = canonical.find("preprocessing-profile");
   const std::size_t repeat_position = canonical.find("adaptive-reachable-term-shrink");

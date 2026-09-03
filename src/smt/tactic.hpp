@@ -84,9 +84,15 @@ class TacticError : public std::runtime_error {
 class TacticContext {
  public:
   using Clock = std::chrono::steady_clock;
+  // Some transformations must introduce fresh symbols. They receive that one
+  // capability from the executing context instead of borrowing the session's
+  // Frontend, which is what keeps a strategy node free of session state and
+  // keeps Frontend out of this header.
+  using FreshConstantFactory = std::function<core::TermId(core::SortId, std::string_view)>;
 
   TacticContext(core::TermManager& terms, util::Statistics& statistics,
-                std::function<bool()> cancelled = {}, bool produce_model = false);
+                std::function<bool()> cancelled = {}, bool produce_model = false,
+                FreshConstantFactory fresh_constant = {});
 
   core::TermManager& terms() { return terms_; }
   const core::TermManager& terms() const { return terms_; }
@@ -97,6 +103,10 @@ class TacticContext {
   bool interrupted() const;
   bool produce_model() const { return produce_model_; }
   std::optional<Clock::time_point> deadline() const { return deadline_; }
+  bool can_create_fresh_constants() const { return static_cast<bool>(fresh_constant_); }
+  // Throws TacticError when the executing session did not supply a factory,
+  // rather than silently producing a term the caller cannot own.
+  core::TermId fresh_constant(core::SortId sort, std::string_view prefix) const;
 
   // A deadline scope is execution state owned by the context, never by a
   // tactic or strategy node. Nested scopes retain the earliest deadline.
@@ -120,6 +130,7 @@ class TacticContext {
   std::function<bool()> cancelled_;
   bool produce_model_ = false;
   std::optional<Clock::time_point> deadline_;
+  FreshConstantFactory fresh_constant_;
 };
 
 GoalTruth truth(const Goal& goal, const TacticContext& context);

@@ -55,7 +55,7 @@ primo::smt::Strategy build_preprocessing_strategy(primo::smt::Frontend& frontend
       primo::smt::analyze_preprocessing_profile(frontend.terms(), assertions, options, false);
   // Retained as the "wrong" sink the counters must not reach.
   static_cast<void>(build_statistics);
-  return primo::smt::make_preprocessing_strategy(frontend, options, profile, assertions);
+  return primo::smt::make_preprocessing_strategy(options, profile, assertions);
 }
 
 // The counters must follow the execution, not the construction. A cached
@@ -78,9 +78,36 @@ void preprocessing_strategy_records_passes_into_the_executing_context() {
   check(build_statistics.get(":tactic.preprocessing-pass.invocations") == 0);
 }
 
+// The same property stated as a lifetime: the value must remain executable
+// after everything that was in scope when it was built is gone. Under
+// `make asan-test` a retained reference shows up here as a use-after-free.
+void preprocessing_strategy_outlives_the_session_that_built_it() {
+  const primo::smt::CheckSatOptions options = looping_options();
+  primo::smt::Strategy strategy = primo::smt::Strategy::skip();
+  std::string canonical_at_build;
+  {
+    primo::smt::Frontend build_frontend;
+    primo::util::Statistics build_statistics;
+    strategy = build_preprocessing_strategy(build_frontend, options, build_statistics);
+    canonical_at_build = strategy.canonical();
+  }
+
+  primo::smt::Frontend execution_frontend;
+  primo::util::Statistics execution_statistics;
+  primo::smt::TacticContext context(execution_frontend.terms(), execution_statistics);
+  const primo::smt::Tactic pipeline = compile(strategy);
+  const std::vector<primo::core::TermId> assertions =
+      looping_assertions(execution_frontend.terms());
+  static_cast<void>(pipeline(context, primo::smt::AnyOf::single(primo::smt::Goal{assertions})));
+
+  check(strategy.canonical() == canonical_at_build);
+  check(execution_statistics.get(":tactic.preprocessing-pass.invocations") > 0);
+}
+
 }  // namespace
 
 int main() {
   preprocessing_strategy_records_passes_into_the_executing_context();
+  preprocessing_strategy_outlives_the_session_that_built_it();
   return 0;
 }

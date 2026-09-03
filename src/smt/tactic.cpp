@@ -163,11 +163,20 @@ bool AnyOf::operator==(const AnyOf& other) const {
 }
 
 TacticContext::TacticContext(core::TermManager& terms, util::Statistics& statistics,
-                             std::function<bool()> cancelled, bool produce_model)
+                             std::function<bool()> cancelled, bool produce_model,
+                             FreshConstantFactory fresh_constant)
     : terms_(terms),
       statistics_(statistics),
       cancelled_(std::move(cancelled)),
-      produce_model_(produce_model) {}
+      produce_model_(produce_model),
+      fresh_constant_(std::move(fresh_constant)) {}
+
+core::TermId TacticContext::fresh_constant(core::SortId sort, std::string_view prefix) const {
+  if (!fresh_constant_) {
+    throw TacticError("this tactic needs fresh constants, which the context does not supply");
+  }
+  return fresh_constant_(sort, prefix);
+}
 
 bool TacticContext::cancelled() const { return cancelled_ && cancelled_(); }
 

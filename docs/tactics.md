@@ -119,10 +119,34 @@ compact stable inspection key, not a cryptographic or collision-free identity;
 tools that require exact identity retain the canonical text. Neither surface
 has a CLI or configuration-file parser in this refactor.
 
-Compilation recursively lowers the AST to the existing tacticals. It does not
-mutate the strategy and execution state remains in `TacticContext`. The
-production pipeline is migrated to constructed strategies separately so this
-foundation does not itself alter the established tactic ordering.
+Compilation lowers the AST to the existing tacticals. It does not mutate the
+strategy and execution state remains in `TacticContext`. The production
+pipeline is migrated to constructed strategies separately so this foundation
+does not itself alter the established tactic ordering.
+
+Session independence is what makes that immutability worth anything. A strategy
+node must take its term manager, statistics, and fresh-symbol factory from the
+`TacticContext` it is executed under, never from whatever was in scope when it
+was built. `make_preprocessing_strategy` therefore takes neither a `Frontend`
+nor a `Statistics`: its repeat predicate and observer read `context.terms()`
+and `context.statistics()`, and `purify-mixed` creates its proxy constants
+through `TacticContext::fresh_constant`, which the session supplies and which
+throws `TacticError` when it is absent. A preprocessing strategy consequently
+outlives the session that built it, and re-executing one records into the
+executing session rather than into the original.
+
+`make_session_solver_strategy` is the deliberate exception. Its engine leaves
+borrow the frontend for a single execution, so a solver strategy is valid only
+for the session that built it. That asymmetry is intentional: the preprocessing
+pipeline is a reusable value, the solver dispatch is not.
+
+Two limits of the identity surface follow from the same design. `canonical()`
+prints leaf identifiers, parameters, probe names, and the repeat policy
+identifier, but not the executable closures, repeat predicate, equivalence, or
+observer behind them. Two strategies that differ only in those closures are
+therefore `==` and share a fingerprint. The digest is an inspection key for
+strategies built by the production builders, not a behavioural identity for
+arbitrary hand-assembled ones.
 
 ## Implemented tacticals and probes
 

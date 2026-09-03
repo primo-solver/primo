@@ -120,7 +120,10 @@ Tactic make_finite_domain_preprocess(FiniteDomainPreprocessOptions options,
 Tactic make_normalize_boolean(NormalizeBooleanOptions options);
 Tactic make_normalize_arithmetic(NormalizeArithmeticOptions options);
 Tactic make_eliminate_monotone(EliminateMonotoneOptions options = {});
-Tactic make_purify_mixed(Frontend& frontend, PurifyMixedOptions options = {});
+// The fresh proxy constants this needs come from the executing TacticContext,
+// so the tactic holds no session reference and stays valid inside a cached
+// Strategy. It throws TacticError if the context supplies no factory.
+Tactic make_purify_mixed(PurifyMixedOptions options = {});
 
 Tactic make_preprocessing_round(PreprocessingRoundOptions options);
 
