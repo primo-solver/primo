@@ -30052,6 +30052,38 @@
       "artifacts": "local-only:/tmp/certora-indexed.{time,out,stats}",
       "evidence_status": "local mechanism evidence; not a headline performance comparison",
       "outcome": "The occurrence index reduced candidate score inspections from a computed 1.334 billion full-scan variable visits to 5.020 million affected-row visits. The instance still timed out and direct timers attribute 13.9 seconds to 459 component rebuilds, satisfying the planned gate for investigating incremental sparse component growth after preprocessing experiments."
+    },
+    {
+      "id": "2026-09-03-qf-uflia-integer-preprocessing-local-3cabcdf",
+      "date": "2026-09-03",
+      "commit": "3cabcdfe812b8949b7130bd2d7dc5044306878e0",
+      "baseline_commit": "3cabcdfe812b8949b7130bd2d7dc5044306878e0",
+      "branch": "modular-theory-combination",
+      "kind": "local-preprocessing-ablation",
+      "scope": "Off/basic/strong integer preprocessing comparison on the eight recorded QF_UFLIA reference-gap watchlist instances after the amortized EUF notification and indexed LIA patching changes",
+      "environment": {
+        "host": "local development workstation",
+        "solver": "Release Primo with CaDiCaL cadical-3.0.0-7b99c07",
+        "corpus": "benchmarks/qf_uflia-reference-gap-watchlist.txt rooted at tmp/QF_UFLIA; eight files; 10-second per-instance timeout"
+      },
+      "commands": {
+        "template": "python3 scripts/bench_qf_uf_full.py --root tmp/QF_UFLIA --manifest benchmarks/qf_uflia-reference-gap-watchlist.txt --solver ./build/primo --solver-arg=--quiet --solver-arg=--stats --solver-arg=--preprocessing-mode=MODE --timeout 10 --out results/qf-uflia-preprocessing-MODE-3cabcdf.csv --summary results/qf-uflia-preprocessing-MODE-3cabcdf.summary.json",
+        "modes": "off, basic, strong; three processes ran concurrently on the same workstation"
+      },
+      "results": {
+        "overall": "All three modes solved 8/8 with 5 sat, 3 unsat, zero timeout, unsupported, error, or wrong-declared-status rows. PAR2/summed wall time was 12.101086 seconds off, 4.531209 seconds basic, and 7.579694 seconds strong. Concurrent execution makes these mechanism-scale local timings, not headline speed claims.",
+        "wisas_xs_7_7": "off/basic/strong 0.387090/0.066928/0.073562 seconds; SAT decisions 116,572/7,313/5,929; basic NNF rewrote 118 polarity states; strong recognized 9 numeral choices and emitted 223 AMO clauses.",
+        "wisas_xs_27_37": "off/basic/strong 8.083204/0.235008/0.295402 seconds; SAT decisions 6,107,552/23,268/20,941; materialized model pairs 7,750/94/94; basic NNF rewrote 418 polarity states; strong recognized 29 numeral choices and emitted 1,383 AMO clauses.",
+        "wisas_xs_11_21": "off/basic/strong 0.879508/0.211492/4.282020 seconds; SAT decisions 379,507/17,494/424,188; strong recognized 13 numeral choices and emitted 391 AMO clauses but changed search back to complete 1,830-pair materialization. Numeral AMO is therefore not a uniformly winning default.",
+        "other_families": "Basic was slower on the Hash, MathSAT Wisa, medium12, and Certora rows; strong was close to off on those five rows. Equality-definition activation was zero on all three profiled wisas rows."
+      },
+      "verification": "Before commit 3cabcdf: make check passed 25/25 CTests and 79/79 Python tests; make docs passed; make asan-test passed 25/25; whole-tree clang-tidy reported only 18 suppressed non-user warnings; advisory whole-tree include-cleaner retained 214 warnings and no warning in the changed strategy/tactic/tests, with preprocessing.cpp retaining its pre-existing MonotoneEliminatedVariable direct-include advisory.",
+      "artifacts": {
+        "local": "results/qf-uflia-preprocessing-{off,basic,strong}-3cabcdf.{csv,csv.jsonl,summary.json}",
+        "persistence": "large per-instance artifacts are local-only; this run-log entry is the canonical summary"
+      },
+      "evidence_status": "local exact-commit ablation; correctness-clean; not SLURM headline evidence",
+      "outcome": "Keep default auto unchanged pending full SLURM evaluation. Basic NNF/value preprocessing is the clear candidate for QF_UFLIA, while numeral-domain AMO remains explicit strong because it has a marked xs_11_21 regression. The prior Certora rebuild profile still justifies incremental component-growth work."
     }
   ]
 }
