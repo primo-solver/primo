@@ -598,6 +598,14 @@ void increment_stat_if_nonzero(util::Statistics& statistics, util::StatKey key, 
   }
 }
 
+void add_lia_patching_stats(util::Statistics& statistics,
+                            const theory::arithmetic::LiaPatchingStats& stats) {
+  statistics.increment(util::StatKey::LiaPatchOccurrenceEntries, stats.occurrence_entries);
+  statistics.increment(util::StatKey::LiaPatchCandidatesScored, stats.candidates_scored);
+  statistics.increment(util::StatKey::LiaPatchAffectedRowsInspected, stats.affected_rows_inspected);
+  statistics.increment(util::StatKey::LiaPatchFullScanEquivalent, stats.full_scan_equivalent);
+}
+
 bool add_explained_theory_equality(theory::equality::ExplainedCongruenceClosure& closure,
                                    const core::TermManager& terms, const AssignedTheoryAtom& atom,
                                    core::TermId true_term, core::TermId false_term) {
@@ -8960,11 +8968,13 @@ CheckSatOutcome solve_qf_lia_impl(core::TermManager& terms,
       // construction. When it integralizes everything, branch_and_bound's
       // find_fractional_variable simply finds nothing to branch on and returns
       // Sat at zero nodes, through the code below rather than a new path.
+      theory::arithmetic::LiaPatchingStats patch_stats;
       const std::size_t patched = theory::arithmetic::patch_integer_variables(
-          lia_tableau, integer_vars, options.lia_patch_limit);
+          lia_tableau, integer_vars, options.lia_patch_limit, &patch_stats);
       if (options.lia_patch_limit > 0) {
         statistics.increment(util::StatKey::LiaPatchSweeps);
         statistics.increment(util::StatKey::LiaPatchedVariables, patched);
+        add_lia_patching_stats(statistics, patch_stats);
         const bool fully_integral =
             std::all_of(integer_vars.begin(), integer_vars.end(),
                         [&lia_tableau](theory::arithmetic::LraVarId var) {
@@ -9108,11 +9118,13 @@ LiaComponentCheck complete_lia_integer_model(
     const std::vector<theory::arithmetic::LraVarId>& integer_vars, const CheckSatOptions& options,
     util::Statistics& statistics) {
   ScopedStatisticsTimer integer_timer(statistics, ":time.qf-uflia.lia-integer-us");
-  const std::size_t patched =
-      theory::arithmetic::patch_integer_variables(tableau, integer_vars, options.lia_patch_limit);
+  theory::arithmetic::LiaPatchingStats patch_stats;
+  const std::size_t patched = theory::arithmetic::patch_integer_variables(
+      tableau, integer_vars, options.lia_patch_limit, &patch_stats);
   if (options.lia_patch_limit > 0) {
     statistics.increment(util::StatKey::LiaPatchSweeps);
     statistics.increment(util::StatKey::LiaPatchedVariables, patched);
+    add_lia_patching_stats(statistics, patch_stats);
   }
 
   theory::arithmetic::LiaExplanation explanation;

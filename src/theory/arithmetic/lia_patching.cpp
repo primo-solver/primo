@@ -1,6 +1,7 @@
 #include "theory/arithmetic/lia_patching.hpp"
 
 #include <algorithm>
+#include <cassert>
 #include <optional>
 #include <utility>
 #include <vector>
@@ -22,9 +23,9 @@ util::Rational magnitude(const util::Rational& value) { return value.sign() < 0 
 // the window is what lets one move satisfy several rows at once, which is the
 // whole point of scoring globally.
 //
-// Kept small deliberately: each extra target costs a full
-// non_integer_count_if_moved scan, and the far ones are the least likely to
-// stay inside a freedom interval. Not yet tuned against benchmarks.
+// Kept small deliberately: each extra target costs an affected-column score,
+// and the far ones are the least likely to stay inside a freedom interval. Not
+// yet tuned against benchmarks.
 constexpr int kTargetWindow = 4;
 
 // Integers near `value`, nearest first. Ordered by distance so the caller's
@@ -45,54 +46,91 @@ std::vector<util::Rational> integer_targets(const DeltaRational& value) {
   return targets;
 }
 
-// `nonbasic`'s coefficient in `basic_var`'s row, or nullopt if it does not
-// occur there.
-std::optional<util::Rational> row_coefficient(const LraTableau& tableau, LraVarId basic_var,
-                                              LraVarId nonbasic) {
-  for (const auto& entry : tableau.row(basic_var)) {
-    if (entry.var == nonbasic) {
-      return entry.coeff;
+struct AffectedIntegerRow {
+  LraVarId basic = 0;
+  util::Rational coefficient;
+};
+
+// Patching never pivots, so row incidence is immutable for a complete sweep.
+// Indexing only declared-Int basic rows turns candidate scoring from a scan of
+// every integer variable (and a row search for each basic one) into a column
+// walk over precisely the assignments the move can change.
+class PatchingScoringIndex {
+ public:
+  PatchingScoringIndex(const LraTableau& tableau, const std::vector<LraVarId>& integer_vars,
+                       LiaPatchingStats& stats)
+      : integer_var_(tableau.variable_count(), false),
+        non_integer_(tableau.variable_count(), false),
+        affected_by_nonbasic_(tableau.variable_count()),
+        integer_var_count_(integer_vars.size()),
+        stats_(stats) {
+    for (const LraVarId var : integer_vars) {
+      assert(!integer_var_.at(var) && "integer variable list must be unique");
+      integer_var_.at(var) = true;
+      non_integer_.at(var) = !is_integer_valued(tableau.assignment(var));
+      remaining_ += non_integer_[var] ? 1U : 0U;
+      if (!tableau.is_basic(var)) {
+        continue;
+      }
+      for (const auto& entry : tableau.row(var)) {
+        if (tableau.is_basic(entry.var) || entry.coeff.is_zero()) {
+          continue;
+        }
+        affected_by_nonbasic_.at(entry.var).push_back(AffectedIntegerRow{var, entry.coeff});
+        ++stats_.occurrence_entries;
+      }
     }
   }
-  return std::nullopt;
-}
 
-// How many declared Int variables would still be non-integral after moving
-// nonbasic `moved` to `value`. This is the score every candidate move is
-// judged by, and scoring globally rather than per-variable is what keeps the
-// sweep from oscillating: the locally smallest |delta| that integralizes one
-// basic variable routinely pulls a different one off an integer, and two such
-// moves can undo each other forever. Bjorner & Nachmanson's Example 3 is
-// exactly that shape -- with rows y = x/2 and z = x/3, the nearest fix for y
-// alone moves x to 4 and breaks z, while the answer that fixes both is x = 6.
-std::size_t non_integer_count_if_moved(const LraTableau& tableau,
-                                       const std::vector<LraVarId>& integer_vars, LraVarId moved,
-                                       const DeltaRational& value) {
-  const DeltaRational delta = value - tableau.assignment(moved);
-  std::size_t count = 0;
-  for (const LraVarId var : integer_vars) {
-    if (var == moved) {
-      if (!is_integer_valued(value)) {
-        ++count;
-      }
-      continue;
+  std::size_t remaining() const { return remaining_; }
+
+  std::size_t score(const LraTableau& tableau, LraVarId moved, const DeltaRational& value) {
+    ++stats_.candidates_scored;
+    stats_.full_scan_equivalent += integer_var_count_;
+    std::size_t result = remaining_;
+    if (integer_var_.at(moved)) {
+      adjust_count(result, non_integer_[moved], !is_integer_valued(value));
     }
-    if (!tableau.is_basic(var)) {
-      if (!is_integer_valued(tableau.assignment(var))) {
-        ++count;
-      }
-      continue;
+    const DeltaRational delta = value - tableau.assignment(moved);
+    for (const AffectedIntegerRow& affected : affected_by_nonbasic_.at(moved)) {
+      ++stats_.affected_rows_inspected;
+      const DeltaRational projected =
+          tableau.assignment(affected.basic) + delta.scaled(affected.coefficient);
+      adjust_count(result, non_integer_[affected.basic], !is_integer_valued(projected));
     }
-    const std::optional<util::Rational> coefficient = row_coefficient(tableau, var, moved);
-    const DeltaRational projected = coefficient.has_value()
-                                        ? tableau.assignment(var) + delta.scaled(*coefficient)
-                                        : tableau.assignment(var);
-    if (!is_integer_valued(projected)) {
+    return result;
+  }
+
+  void accepted_move(const LraTableau& tableau, LraVarId moved) {
+    if (integer_var_.at(moved)) {
+      update_status(moved, !is_integer_valued(tableau.assignment(moved)));
+    }
+    for (const AffectedIntegerRow& affected : affected_by_nonbasic_.at(moved)) {
+      update_status(affected.basic, !is_integer_valued(tableau.assignment(affected.basic)));
+    }
+  }
+
+ private:
+  static void adjust_count(std::size_t& count, bool old_non_integer, bool new_non_integer) {
+    if (old_non_integer && !new_non_integer) {
+      --count;
+    } else if (!old_non_integer && new_non_integer) {
       ++count;
     }
   }
-  return count;
-}
+
+  void update_status(LraVarId var, bool now_non_integer) {
+    adjust_count(remaining_, non_integer_[var], now_non_integer);
+    non_integer_[var] = now_non_integer;
+  }
+
+  std::vector<bool> integer_var_;
+  std::vector<bool> non_integer_;
+  std::vector<std::vector<AffectedIntegerRow>> affected_by_nonbasic_;
+  std::size_t integer_var_count_ = 0;
+  std::size_t remaining_ = 0;
+  LiaPatchingStats& stats_;
+};
 
 struct Candidate {
   LraVarId var = 0;
@@ -107,16 +145,15 @@ struct Candidate {
 // is by construction the range over which it may move with every basic
 // variable staying inside its bounds -- that is what makes feasibility
 // preservation structural here rather than something to re-check.
-void collect_candidates(const LraTableau& tableau, const std::vector<LraVarId>& integer_vars,
-                        LraVarId target, std::vector<Candidate>& candidates) {
+void collect_candidates(const LraTableau& tableau, PatchingScoringIndex& scoring, LraVarId target,
+                        std::vector<Candidate>& candidates) {
   const auto consider = [&](LraVarId moved, const DeltaRational& value) {
     if (!tableau.freedom_interval(moved).contains(value)) {
       return;
     }
     const DeltaRational delta = value - tableau.assignment(moved);
-    candidates.push_back(Candidate{moved, value,
-                                   non_integer_count_if_moved(tableau, integer_vars, moved, value),
-                                   magnitude(delta.rational)});
+    candidates.push_back(
+        Candidate{moved, value, scoring.score(tableau, moved, value), magnitude(delta.rational)});
   };
 
   const DeltaRational& current = tableau.assignment(target);
@@ -146,25 +183,18 @@ void collect_candidates(const LraTableau& tableau, const std::vector<LraVarId>& 
   }
 }
 
-std::size_t count_non_integer(const LraTableau& tableau,
-                              const std::vector<LraVarId>& integer_vars) {
-  std::size_t count = 0;
-  for (const LraVarId var : integer_vars) {
-    if (!is_integer_valued(tableau.assignment(var))) {
-      ++count;
-    }
-  }
-  return count;
-}
-
 }  // namespace
 
 std::size_t patch_integer_variables(LraTableau& tableau, const std::vector<LraVarId>& integer_vars,
-                                    std::size_t patch_limit) {
+                                    std::size_t patch_limit, LiaPatchingStats* stats) {
+  LiaPatchingStats ignored_stats;
+  LiaPatchingStats& work = stats == nullptr ? ignored_stats : *stats;
+  work = {};
   if (patch_limit == 0 || integer_vars.empty()) {
     return 0;
   }
-  std::size_t remaining = count_non_integer(tableau, integer_vars);
+  PatchingScoringIndex scoring(tableau, integer_vars, work);
+  std::size_t remaining = scoring.remaining();
   if (remaining == 0) {
     return 0;
   }
@@ -185,7 +215,7 @@ std::size_t patch_integer_variables(LraTableau& tableau, const std::vector<LraVa
         continue;
       }
       candidates.clear();
-      collect_candidates(tableau, integer_vars, var, candidates);
+      collect_candidates(tableau, scoring, var, candidates);
       for (const Candidate& candidate : candidates) {
         if (candidate.resulting_count >= remaining) {
           continue;
@@ -207,7 +237,9 @@ std::size_t patch_integer_variables(LraTableau& tableau, const std::vector<LraVa
       break;
     }
     tableau.set_nonbasic_value(best->var, best->value);
-    remaining = best->resulting_count;
+    scoring.accepted_move(tableau, best->var);
+    remaining = scoring.remaining();
+    assert(remaining == best->resulting_count);
   }
 
   return initial - remaining;

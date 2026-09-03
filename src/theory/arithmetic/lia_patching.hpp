@@ -7,6 +7,16 @@
 
 namespace primo::theory::arithmetic {
 
+// Diagnostic work counters for one patching call. They stay theory-local and
+// contain no util::Statistics dependency; solver adapters decide how to expose
+// them publicly.
+struct LiaPatchingStats {
+  std::size_t occurrence_entries = 0;
+  std::size_t candidates_scored = 0;
+  std::size_t affected_rows_inspected = 0;
+  std::size_t full_scan_equivalent = 0;
+};
+
 // QF_LIA patching (stage 5, docs/qf-lia-branch-and-bound.md): Bjorner &
 // Nachmanson, "Arithmetic Solving in Z3", CAV 2024, Sect. 4.1 -- the FIRST
 // layer of that paper's integer waterfall, and the one Primo's stages 1-4
@@ -53,6 +63,6 @@ namespace primo::theory::arithmetic {
 // patching entirely, which is the A/B control). Returns the number of Int
 // variables that went from non-integer to integer.
 std::size_t patch_integer_variables(LraTableau& tableau, const std::vector<LraVarId>& integer_vars,
-                                    std::size_t patch_limit);
+                                    std::size_t patch_limit, LiaPatchingStats* stats = nullptr);
 
 }  // namespace primo::theory::arithmetic

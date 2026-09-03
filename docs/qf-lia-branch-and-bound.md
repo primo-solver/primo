@@ -583,6 +583,22 @@ derivation:
    (`kTargetWindow`) is searched instead, which is what lets one move satisfy
    several rows at once.
 
+Candidate scoring now uses a sweep-local transpose restricted to declared-Int
+basic rows. A candidate move can change only the moved nonbasic variable and
+the basic rows in that variable's column, so the scorer adjusts a cached global
+non-integrality count by visiting those rows rather than scanning every Int
+variable and searching every basic row. Patching performs no pivots, making the
+incidence index immutable for the sweep; integrality flags are refreshed only
+after an accepted move. This is a data-structure optimization of the existing
+Bjørner--Nachmanson Section 4.1 subset: candidate generation, exact arithmetic,
+strict improvement, and deterministic tie-breaking are unchanged. A
+deterministic randomized differential test compares complete move sequences
+against the former full-scan definition.
+
+`:lia.patch-occurrence-entries`, `:lia.patch-candidates-scored`,
+`:lia.patch-affected-rows-inspected`, and
+`:lia.patch-full-scan-equivalent` expose the actual and avoided scoring work.
+
 ### The one `LraTableau` change
 
 Stages 1-4 needed no tableau change at all. This stage adds exactly one thing:

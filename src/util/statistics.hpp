@@ -212,6 +212,10 @@ enum class StatKey : std::size_t {
   LiaPatchSweeps,
   LiaPatchedVariables,
   LiaPatchRoundsFullyIntegral,
+  LiaPatchOccurrenceEntries,
+  LiaPatchCandidatesScored,
+  LiaPatchAffectedRowsInspected,
+  LiaPatchFullScanEquivalent,
   BooleanDomainRegisteredTerms,
   Count,
 };
