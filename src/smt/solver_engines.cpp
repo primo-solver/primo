@@ -3404,6 +3404,12 @@ struct PreparedLraTheory {
                     bool least_violated_leaving = false,
                     theory::arithmetic::LraTableau::Tuning tuning = {});
 
+  // Extend the immutable structural base between SAT calls. Generated
+  // Nelson--Oppen bridge atoms arrive one pair at a time; retaining the
+  // term-variable and polynomial-slack indices makes their installation
+  // proportional to the new atoms instead of rebuilding every old row.
+  std::vector<theory::arithmetic::LraVarId> append_atom(const BooleanClausifier::TheoryAtom& atom);
+
   struct PreparedAtom {
     bool is_arithmetic = false;
     // The tableau variable this atom bounds: a slack for a compound
@@ -3431,6 +3437,8 @@ struct PreparedLraTheory {
     bool is_integer = false;
   };
 
+  const core::TermManager& terms_;
+  bool collect_model_variables_ = false;
   theory::arithmetic::LraTableau base_tableau;
   std::vector<PreparedAtom> atoms;  // parallel to theory_atoms
   // Indices (into `atoms`) of every arithmetic atom bounding a given tableau
@@ -3440,6 +3448,9 @@ struct PreparedLraTheory {
   // bound_var (0) is a sentinel and must not be mixed in.
   std::unordered_map<theory::arithmetic::LraVarId, std::vector<std::size_t>> atoms_by_bound_var;
   std::unordered_map<core::TermId, theory::arithmetic::LraVarId> variables_by_term;
+  std::unordered_map<core::TermId, theory::arithmetic::LraVarId> var_ids_;
+  std::unordered_map<PolynomialKey, theory::arithmetic::LraVarId, PolynomialKeyHash>
+      slack_by_polynomial_;
 };
 
 PreparedLraTheory::PreparedLraTheory(const core::TermManager& terms,
@@ -3448,117 +3459,122 @@ PreparedLraTheory::PreparedLraTheory(const core::TermManager& terms,
                                      bool sparse_leaving, bool fixed_elimination,
                                      bool collect_model_variables, bool least_violated_leaving,
                                      theory::arithmetic::LraTableau::Tuning tuning)
-    : base_tableau(pivoting_rule) {
+    : terms_(terms),
+      collect_model_variables_(collect_model_variables),
+      base_tableau(pivoting_rule) {
   base_tableau.set_sparse_leaving(sparse_leaving);
   base_tableau.set_least_violated_leaving(least_violated_leaving);
   base_tableau.set_tuning(tuning);
-  std::unordered_map<core::TermId, theory::arithmetic::LraVarId> var_ids;
+  atoms.reserve(theory_atoms.size());
+  for (const BooleanClausifier::TheoryAtom& atom : theory_atoms) {
+    static_cast<void>(append_atom(atom));
+  }
+  base_tableau.set_fixed_elimination(fixed_elimination);
+}
+
+std::vector<theory::arithmetic::LraVarId> PreparedLraTheory::append_atom(
+    const BooleanClausifier::TheoryAtom& atom) {
+  std::vector<theory::arithmetic::LraVarId> new_model_variables;
   auto get_var = [&](core::TermId term_id) {
-    const auto found = var_ids.find(term_id);
-    if (found != var_ids.end()) {
+    const auto found = var_ids_.find(term_id);
+    if (found != var_ids_.end()) {
       return found->second;
     }
     const theory::arithmetic::LraVarId id = base_tableau.add_variable();
-    var_ids.emplace(term_id, id);
-    if (collect_model_variables) {
+    var_ids_.emplace(term_id, id);
+    if (collect_model_variables_) {
       variables_by_term.emplace(term_id, id);
+      new_model_variables.push_back(id);
     }
     return id;
   };
 
-  std::unordered_map<PolynomialKey, theory::arithmetic::LraVarId, PolynomialKeyHash>
-      slack_by_polynomial;
+  const core::Term& term = terms_.get(atom.term);
+  const bool is_comparison = term.kind == core::TermKind::Le || term.kind == core::TermKind::Lt;
+  if (!is_comparison && !is_arithmetic_equality_term(terms_, term)) {
+    atoms.push_back(PreparedAtom{});
+    return new_model_variables;
+  }
 
-  atoms.reserve(theory_atoms.size());
-  for (const BooleanClausifier::TheoryAtom& atom : theory_atoms) {
-    const core::Term& term = terms.get(atom.term);
-    const bool is_comparison = term.kind == core::TermKind::Le || term.kind == core::TermKind::Lt;
-    if (!is_comparison && !is_arithmetic_equality_term(terms, term)) {
-      atoms.push_back(PreparedAtom{});
-      continue;
-    }
+  const theory::arithmetic::LraAtom normalized =
+      theory::arithmetic::normalize_atom(terms_, atom.term);
+  const bool is_integer_atom = terms_.get(term.children.at(0)).sort == terms_.symbols().int_sort();
+  // Scale-canonicalize first (item H1b), then divide the atom's right-hand
+  // side by the same factor. A negative factor reverses the relation, which
+  // is what asserts_lower_when_true records -- interpreted in exactly one
+  // place, bound_assertion().
+  const CanonicalPolynomial canonical = canonical_polynomial(normalized.polynomial);
+  const util::Rational rhs =
+      canonical.scale == util::Rational(1) ? normalized.rhs : normalized.rhs / canonical.scale;
+  const bool flipped = canonical.scale.sign() < 0;
 
-    const theory::arithmetic::LraAtom normalized =
-        theory::arithmetic::normalize_atom(terms, atom.term);
-    const bool is_integer_atom = terms.get(term.children.at(0)).sort == terms.symbols().int_sort();
-    // Scale-canonicalize first (item H1b), then divide the atom's right-hand
-    // side by the same factor. A negative factor reverses the relation, which
-    // is what asserts_lower_when_true records -- interpreted in exactly one
-    // place, bound_assertion().
-    const CanonicalPolynomial canonical = canonical_polynomial(normalized.polynomial);
-    const util::Rational rhs =
-        canonical.scale == util::Rational(1) ? normalized.rhs : normalized.rhs / canonical.scale;
-    const bool flipped = canonical.scale.sign() < 0;
-
-    // A single-variable atom is a bound on that variable itself: no slack and
-    // no row at all (item H1a). Monniaux (CAV 2009, Section 2.1) states this
-    // as ordinary practice -- "for each left hand side that is not a variable,
-    // a new variable is introduced" -- and Dutertre & de Moura's Section 2
-    // does the same; Primo previously introduced a slack for *every* distinct
-    // polynomial, which on the lagging families meant 36-95% of all tableau
-    // rows were trivial `s = c*x` rows (measurements in
-    // docs/qf-lra-heuristics.md, item H1). After canonicalization the single
-    // remaining coefficient is exactly 1, so the variable is the polynomial.
-    //
-    // Together with canonicalization this puts one variable's lower and upper
-    // bound on the same tableau variable: `(<= 0 x)` normalizes to a
-    // coefficient of -1 and `(<= x 10)` to +1, so under the old exact-content
-    // key they landed on two *different* slacks and the tableau could not see
-    // that `x` was bounded on both sides without pivoting.
-    if (canonical.key.sorted_terms.size() == 1) {
-      const theory::arithmetic::LraVarId bound_var = get_var(canonical.key.sorted_terms[0].first);
-      const std::size_t atom_index = atoms.size();
-      const TermPairKey non_strict_le_pair =
-          term.kind == core::TermKind::Le ? TermPairKey{term.children.at(0), term.children.at(1)}
-                                          : TermPairKey{};
-      atoms.push_back(PreparedAtom{true, bound_var, normalized.relation, rhs, flipped,
-                                   non_strict_le_pair, is_integer_atom});
-      atoms_by_bound_var[bound_var].push_back(atom_index);
-      continue;
-    }
-
-    const auto existing_slack = slack_by_polynomial.find(canonical.key);
-    theory::arithmetic::LraVarId slack;
-    if (existing_slack != slack_by_polynomial.end()) {
-      slack = existing_slack->second;
-    } else {
-      std::vector<std::pair<theory::arithmetic::LraVarId, util::Rational>> row;
-      row.reserve(canonical.key.sorted_terms.size());
-      for (const auto& [var_term, coefficient] : canonical.key.sorted_terms) {
-        row.emplace_back(get_var(var_term), coefficient);
-      }
-      slack = base_tableau.add_variable();
-      base_tableau.add_row(slack, row);
-      slack_by_polynomial.emplace(canonical.key, slack);
-    }
+  // A single-variable atom is a bound on that variable itself: no slack and
+  // no row at all (item H1a). Monniaux (CAV 2009, Section 2.1) states this
+  // as ordinary practice -- "for each left hand side that is not a variable,
+  // a new variable is introduced" -- and Dutertre & de Moura's Section 2
+  // does the same; Primo previously introduced a slack for *every* distinct
+  // polynomial, which on the lagging families meant 36-95% of all tableau
+  // rows were trivial `s = c*x` rows (measurements in
+  // docs/qf-lra-heuristics.md, item H1). After canonicalization the single
+  // remaining coefficient is exactly 1, so the variable is the polynomial.
+  //
+  // Together with canonicalization this puts one variable's lower and upper
+  // bound on the same tableau variable: `(<= 0 x)` normalizes to a
+  // coefficient of -1 and `(<= x 10)` to +1, so under the old exact-content
+  // key they landed on two *different* slacks and the tableau could not see
+  // that `x` was bounded on both sides without pivoting.
+  if (canonical.key.sorted_terms.size() == 1) {
+    const theory::arithmetic::LraVarId bound_var = get_var(canonical.key.sorted_terms[0].first);
     const std::size_t atom_index = atoms.size();
     const TermPairKey non_strict_le_pair =
         term.kind == core::TermKind::Le ? TermPairKey{term.children.at(0), term.children.at(1)}
                                         : TermPairKey{};
-    // Unlike the single-variable case above, `slack` is a fresh tableau
-    // variable satisfying `slack = canonical.polynomial`, i.e. the original
-    // integer-coefficient polynomial divided by `canonical.scale` -- so
-    // `slack` itself is only guaranteed integer-valued when that division
-    // was by +-1. For any other scale (routine here: scale-canonicalizing a
-    // polynomial whose lowest-indexed variable has a large coefficient, e.g.
-    // a bit-position term scaled by 2^32, produces exactly this) `slack`
-    // takes on fractional values even though the underlying polynomial is
-    // integer, and bound_assertion()'s strict-bound floor/ceil tightening
-    // -- sound only for a value that is itself forced to be integer, per its
-    // own comment -- would tighten the *slack's* fractional value directly,
-    // which is unsound: it can fabricate a bound (e.g. rounding a value like
-    // -5/2^32 down to -1) that excludes integer polynomial values the
-    // original atom never ruled out. See lia_gomory_cuts.cpp's
-    // find_eligible_row for the same slack-vs-declared-variable distinction
-    // already made there for exactly this reason.
-    const bool slack_is_integer = is_integer_atom && (canonical.scale == util::Rational(1) ||
-                                                      canonical.scale == util::Rational(-1));
-    atoms.push_back(PreparedAtom{true, slack, normalized.relation, rhs, flipped, non_strict_le_pair,
-                                 slack_is_integer});
-    atoms_by_bound_var[slack].push_back(atom_index);
+    atoms.push_back(PreparedAtom{true, bound_var, normalized.relation, rhs, flipped,
+                                 non_strict_le_pair, is_integer_atom});
+    atoms_by_bound_var[bound_var].push_back(atom_index);
+    return new_model_variables;
   }
 
-  base_tableau.set_fixed_elimination(fixed_elimination);
+  const auto existing_slack = slack_by_polynomial_.find(canonical.key);
+  theory::arithmetic::LraVarId slack;
+  if (existing_slack != slack_by_polynomial_.end()) {
+    slack = existing_slack->second;
+  } else {
+    std::vector<std::pair<theory::arithmetic::LraVarId, util::Rational>> row;
+    row.reserve(canonical.key.sorted_terms.size());
+    for (const auto& [var_term, coefficient] : canonical.key.sorted_terms) {
+      row.emplace_back(get_var(var_term), coefficient);
+    }
+    slack = base_tableau.add_variable();
+    base_tableau.add_row(slack, row);
+    slack_by_polynomial_.emplace(canonical.key, slack);
+  }
+  const std::size_t atom_index = atoms.size();
+  const TermPairKey non_strict_le_pair = term.kind == core::TermKind::Le
+                                             ? TermPairKey{term.children.at(0), term.children.at(1)}
+                                             : TermPairKey{};
+  // Unlike the single-variable case above, `slack` is a fresh tableau
+  // variable satisfying `slack = canonical.polynomial`, i.e. the original
+  // integer-coefficient polynomial divided by `canonical.scale` -- so
+  // `slack` itself is only guaranteed integer-valued when that division
+  // was by +-1. For any other scale (routine here: scale-canonicalizing a
+  // polynomial whose lowest-indexed variable has a large coefficient, e.g.
+  // a bit-position term scaled by 2^32, produces exactly this) `slack`
+  // takes on fractional values even though the underlying polynomial is
+  // integer, and bound_assertion()'s strict-bound floor/ceil tightening
+  // -- sound only for a value that is itself forced to be integer, per its
+  // own comment -- would tighten the *slack's* fractional value directly,
+  // which is unsound: it can fabricate a bound (e.g. rounding a value like
+  // -5/2^32 down to -1) that excludes integer polynomial values the
+  // original atom never ruled out. See lia_gomory_cuts.cpp's
+  // find_eligible_row for the same slack-vs-declared-variable distinction
+  // already made there for exactly this reason.
+  const bool slack_is_integer = is_integer_atom && (canonical.scale == util::Rational(1) ||
+                                                    canonical.scale == util::Rational(-1));
+  atoms.push_back(PreparedAtom{true, slack, normalized.relation, rhs, flipped, non_strict_le_pair,
+                               slack_is_integer});
+  atoms_by_bound_var[slack].push_back(atom_index);
+  return new_model_variables;
 }
 
 std::optional<util::Rational> positive_delta_upper_bound(theory::arithmetic::DeltaRational lhs,
@@ -9459,6 +9475,7 @@ class EufComponentAdapter final : public theory::TheorySolver {
                     .produces_model_projection = produce_model_projection,
                     .propagates_equalities = true,
                     .supplies_care_pairs = true},
+        terms_(terms),
         atoms_(std::move(atoms)),
         prepared_(terms, atoms_, true_term, false_term, explain_search_mode,
                   proof_forest_diagnostics),
@@ -9471,6 +9488,16 @@ class EufComponentAdapter final : public theory::TheorySolver {
   const theory::TheoryProperties& properties() const override { return properties_; }
 
   void set_assignment_epoch(std::uint64_t epoch) { assignment_epoch_ = epoch; }
+
+  void append_atom(const BooleanClausifier::TheoryAtom& atom) {
+    const std::vector<BooleanClausifier::TheoryAtom> appended{atom};
+    if (prepared_.ensure_theory_atoms(terms_, appended) != 1) {
+      throw std::logic_error("duplicate EUF component atom during incremental growth");
+    }
+    atoms_.push_back(atom);
+    last_care_token_.reset();
+    last_care_pairs_.clear();
+  }
 
   theory::TheoryCheckResult check(std::span<const theory::AssignedTheoryLiteral> assignment,
                                   std::span<const theory::InterfaceRelation> arrangement) override {
@@ -9544,6 +9571,7 @@ class EufComponentAdapter final : public theory::TheorySolver {
 
  private:
   theory::TheoryProperties properties_;
+  const core::TermManager& terms_;
   std::vector<BooleanClausifier::TheoryAtom> atoms_;
   PreparedFlatTheory prepared_;
   core::SortId shared_sort_ = core::kInvalidSortId;
@@ -9592,6 +9620,15 @@ class LiaComponentAdapter final : public theory::TheorySolver {
   const theory::TheoryProperties& properties() const override { return properties_; }
 
   void set_assignment_epoch(std::uint64_t epoch) { assignment_epoch_ = epoch; }
+
+  void append_atom(const BooleanClausifier::TheoryAtom& atom) {
+    atoms_.push_back(atom);
+    const std::vector<theory::arithmetic::LraVarId> new_model_variables =
+        prepared_.append_atom(atom);
+    integer_vars_.insert(integer_vars_.end(), new_model_variables.begin(),
+                         new_model_variables.end());
+    last_model_.reset();
+  }
 
   theory::TheoryCheckResult check(std::span<const theory::AssignedTheoryLiteral> assignment,
                                   std::span<const theory::InterfaceRelation> arrangement) override {
@@ -9870,6 +9907,10 @@ CheckSatOutcome solve_qf_uflia_engine_impl(core::TermManager& terms,
   statistics.set(":combination.model.fallback-resource-limit", 0);
   statistics.set(":combination.online-components.integer-completions", 0);
   statistics.set(":combination.online-components.rebuilds", 0);
+  statistics.set(":combination.components.full-builds", 0);
+  statistics.set(":combination.components.incremental-growths", 0);
+  statistics.set(":combination.components.incremental-euf-atoms", 0);
+  statistics.set(":combination.components.incremental-lia-atoms", 0);
   statistics.set(":no.mixed.euf-atoms", euf_atoms.size());
   statistics.set(":no.mixed.lia-atoms", lia_atoms.size());
   statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
@@ -9890,6 +9931,7 @@ CheckSatOutcome solve_qf_uflia_engine_impl(core::TermManager& terms,
   std::uint64_t assignment_epoch = 0;
   std::size_t model_choice_batches = 0;
   std::size_t component_pair_generation = std::numeric_limits<std::size_t>::max();
+  std::size_t component_theory_atom_count = 0;
   std::unique_ptr<EufComponentAdapter> euf_component;
   std::unique_ptr<LiaComponentAdapter> lia_component;
   const auto rebuild_components = [&]() {
@@ -9913,12 +9955,49 @@ CheckSatOutcome solve_qf_uflia_engine_impl(core::TermManager& terms,
     lia_component =
         std::make_unique<LiaComponentAdapter>(terms, lia_atoms, int_sort, shared_int_terms,
                                               assignment_epoch, model_guided, options, statistics);
+    component_theory_atom_count = clausifier.theory_atoms().size();
     component_pair_generation = materialized_pair_count();
+    statistics.increment(":combination.components.full-builds");
     statistics.set(":combination.arrangement-bridge-clauses", bridge_clauses);
     statistics.set(":combination.model.materialized-pairs", materialized_pair_count());
     statistics.set(":no.mixed.euf-atoms", euf_atoms.size());
     statistics.set(":no.mixed.lia-atoms", lia_atoms.size());
     statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
+  };
+  const auto grow_components = [&]() {
+    ScopedStatisticsTimer timer(statistics, ":time.qf-uflia.component-growth-us");
+    std::size_t appended_euf_atoms = 0;
+    std::size_t appended_lia_atoms = 0;
+    const std::span<const BooleanClausifier::TheoryAtom> all_atoms = clausifier.theory_atoms();
+    if (component_theory_atom_count > all_atoms.size()) {
+      throw std::logic_error("QF_UFLIA theory atom list shrank during incremental growth");
+    }
+    for (std::size_t index = component_theory_atom_count; index < all_atoms.size(); ++index) {
+      const BooleanClausifier::TheoryAtom& atom = all_atoms[index];
+      const core::Term& term = terms.get(atom.term);
+      if (term.kind == core::TermKind::Le || term.kind == core::TermKind::Lt) {
+        lia_atoms.push_back(atom);
+        lia_component->append_atom(atom);
+        ++appended_lia_atoms;
+      } else if (is_uflia_euf_atom(terms, atom.term)) {
+        euf_atoms.push_back(atom);
+        euf_component->append_atom(atom);
+        ++appended_euf_atoms;
+      } else {
+        throw UnsupportedInput(
+            "unsupported QF_UFLIA theory atom after arrangement materialization");
+      }
+    }
+    component_theory_atom_count = all_atoms.size();
+    component_pair_generation = materialized_pair_count();
+    statistics.increment(":combination.components.incremental-growths");
+    statistics.increment(":combination.components.incremental-euf-atoms", appended_euf_atoms);
+    statistics.increment(":combination.components.incremental-lia-atoms", appended_lia_atoms);
+    statistics.set(":combination.arrangement-bridge-clauses", bridge_clauses);
+    statistics.set(":combination.model.materialized-pairs", materialized_pair_count());
+    statistics.set(":no.mixed.euf-atoms", euf_atoms.size());
+    statistics.set(":no.mixed.lia-atoms", lia_atoms.size());
+    statistics.set(kStatTheoryAtoms, all_atoms.size());
   };
   const auto run_complete_fallback = [&](QfUfliaCompleteFallbackReason reason) {
     CheckSatOptions fallback_options = options;
@@ -9995,7 +10074,7 @@ CheckSatOutcome solve_qf_uflia_engine_impl(core::TermManager& terms,
       return run_complete_fallback(QfUfliaCompleteFallbackReason::Budget);
     }
     if (component_pair_generation != materialized_pair_count()) {
-      rebuild_components();
+      grow_components();
 #if PRIMO_HAVE_IPASIR
       rebuild_online_components();
 #endif

@@ -159,12 +159,27 @@ assumptions. Cancellation still stops immediately.
 The model-guided and online components are combined by default. The online
 components reject inconsistent partial SAT trails before a full model is
 handed to the model-based coordinator. When reconciliation materializes a new
-interface pair, the SMT layer disconnects the callback adapter and reconstructs
-both prepared components over the enlarged, cumulative atom set before the next
-solve. This rebuild is required by the current arithmetic tableau invariant
-that every row is installed before the first decision-level push; it is counted
-by `:combination.online-components.rebuilds` and is the main remaining obstacle
-to fully incremental sparse growth.
+interface pair, the solve-scoped EUF and LIA component adapters extend their
+prepared structures with only the newly registered atoms. `PreparedFlatTheory`
+adds the equality to its flat index and base closure. `PreparedLraTheory` retains
+the term-to-variable and canonical-polynomial-to-slack maps used during initial
+construction, so each new arithmetic bound reuses existing variables and rows
+or installs its one missing row. The adapters remain cumulative and immutable
+with respect to SAT assignments; round-local closure and tableau copies still
+start from their prepared bases. This append-only growth is a local engineering
+optimization of the already documented Nelson--Oppen encoding, not an
+additional paper algorithm.
+
+The live callback adapter is still disconnected and reconstructed over the
+enlarged prepared theory before the next SAT solve. That conservative boundary
+preserves the arithmetic tableau invariant that every row is installed before
+the first decision-level push. `:combination.components.full-builds`,
+`:combination.components.incremental-growths`, and the two
+`:combination.components.incremental-*-atoms` counters distinguish base
+construction from append-only growth;
+`:combination.online-components.rebuilds` records the remaining callback
+reconstruction. Moving row installation into a trail-safe incremental callback
+lifecycle remains future work.
 
 The QF_UFLIA EUF adapter now implements its declared care-pair capability using
 the same care graph as QF_UFLRA. Following Jovanovic and Barrett, *Sharing is
@@ -185,12 +200,13 @@ owned SAT atoms. The LIA adapter reuses Primo's exact-rational tableau, integer
 patching, GCD check, Gomory cuts, and bounded branch-and-bound. Reaching the
 existing integer node limit returns a typed resource-limit `unknown`.
 
-The default model-guided route rebuilds a component adapter only when a
-new equality and its two arithmetic bounds are registered. Snapshot epochs are
-advanced for every satisfying SAT assignment, so projections from older
-assignments are rejected. The complete route is unchanged and remains the
-fallback when sparse reconciliation reaches a typed stop or its decision
-budget.
+The default model-guided route grows its component adapters only when a new
+equality or arithmetic bridge atom is registered. Repeated atoms are omitted by
+the clausifier, so a pair may append fewer than two arithmetic atoms. Snapshot
+epochs are advanced for every satisfying SAT assignment, so projections from
+older assignments are rejected. The complete route constructs its complete
+arrangement once and remains the fallback when sparse reconciliation reaches a
+typed stop or its decision budget.
 
 The online-complete route records
 `:combination.online-components.enabled` and
@@ -254,6 +270,12 @@ accepted all 1,686 satisfiable models. The tactic-composition matrix passed all
 QF_UFLIA runs and the sequential Boolean-splitting profiles, without
 non-timing-statistic drift. A separate 1,000-case QF_UFLRA preservation run
 agreed with Z3 and Dolmen accepted all 597 satisfiable models.
+
+The production QF_UFLIA tests also force several sparse interface-pair
+materializations and check that the solve-scoped component preparation performs
+one full build followed by incremental EUF/LIA atom growth. The online callback
+rebuild count remains independently visible, preventing the test from
+mistaking prepared-component reuse for a fully incremental SAT callback.
 
 On exact binary commit `3bb19c7`, the experimental QF_UFLIA route passed a
 four-shard SLURM campaign of 3,000/3,000 Z3 comparisons; Dolmen directly

@@ -201,7 +201,7 @@ void agreeing_component_models_avoid_the_complete_arrangement() {
   assert(result.statistics.get(":combination.model.snapshots") == 2);
 }
 
-void sparse_online_guidance_uses_euf_care_pairs_and_rebuilds_on_growth() {
+void sparse_online_guidance_grows_components_and_rebuilds_online_state() {
   CheckSatOptions options;
   options.qf_uflia_model_combination = true;
   options.qf_uflia_online_components = true;
@@ -223,6 +223,13 @@ void sparse_online_guidance_uses_euf_care_pairs_and_rebuilds_on_growth() {
   assert(result.result == CheckSatResult::Unsat);
   assert(result.statistics.get(":combination.online-components.enabled") == 1);
   assert(result.statistics.get(":combination.online-components.rebuilds") >= 2);
+  assert(result.statistics.get(":combination.components.full-builds") == 1);
+  assert(result.statistics.get(":combination.components.incremental-growths") >= 1);
+  assert(result.statistics.get(":combination.components.incremental-euf-atoms") ==
+         result.statistics.get(":combination.components.incremental-growths"));
+  assert(result.statistics.get(":combination.components.incremental-lia-atoms") >= 1);
+  assert(result.statistics.get(":combination.components.incremental-lia-atoms") <=
+         2 * result.statistics.get(":combination.components.incremental-growths"));
   assert(result.statistics.get(":combination.model.decisions") >= 1);
   assert(result.statistics.get(":no.interface.euf-care-pairs") >= 1);
   assert(result.statistics.get(":combination.model.care-pairs") >= 1);
@@ -352,7 +359,7 @@ int main() {
   model_guidance_handles_a_non_convex_disjunction_with_reversible_choices();
   model_guidance_has_a_complete_arrangement_fallback();
   agreeing_component_models_avoid_the_complete_arrangement();
-  sparse_online_guidance_uses_euf_care_pairs_and_rebuilds_on_growth();
+  sparse_online_guidance_grows_components_and_rebuilds_online_state();
   model_uses_the_arithmetic_value_of_a_purified_uf_argument();
   model_combines_integer_values_and_uf_table();
   model_reconstructs_an_integer_substituted_by_a_uf_application();
