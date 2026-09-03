@@ -30019,6 +30019,39 @@
       },
       "evidence_status": "local diagnostic profiles tied to SLURM-complete full-corpus rows; no solver behavior change",
       "outcome": "The next targets are not one uniform LIA bottleneck. Prioritize amortized changed-term draining for deep SAT trails, integer-safe local-context/implication preprocessing and numeral-domain recognition for wisas and explicit function tables, then incremental tableau growth and cheaper integer candidate scoring for sparse Certora checks. Optional arithmetic canonicalization is not a useful shortcut on this sample."
+    },
+    {
+      "id": "2026-09-03-qf-uflia-indexed-patching-local",
+      "date": "2026-09-03",
+      "commit": "93362aec8ba01478cd5e78871db61a7afc54676a",
+      "baseline_commit": "61cd9eef20e6349ffe01dfe83bafdcb5991d62b3",
+      "branch": "modular-theory-combination",
+      "scope": "Local mechanism check for the indexed Bjørner-Nachmanson Section 4.1 patch-candidate scorer on the profiled Certora QF_UFLIA gap",
+      "environment": {
+        "host": "local development workstation",
+        "solver": "Release Primo with CaDiCaL cadical-3.0.0-7b99c07",
+        "input": "tmp/QF_UFLIA/20230314-Jaroslav-Bendik-Certora/3106_1c933134166dbad31f79_40_QF_UFLIA.smt2"
+      },
+      "command": "/usr/bin/time -f 'wall=%e user=%U rss=%M exit=%x' timeout --kill-after=5s 70s ./build/primo --quiet --stats INPUT",
+      "result": {
+        "answer": "unknown from outer timeout",
+        "wall_seconds": 70.09,
+        "patch_sweeps": 460,
+        "occurrence_entries": 645489,
+        "candidates_scored": 133616,
+        "affected_rows_inspected": 5019816,
+        "old_full_scan_equivalent": 1333888528,
+        "materialized_pairs": 458,
+        "component_rebuilds": 459,
+        "component_rebuild_seconds": 13.908073,
+        "lia_integer_seconds": 35.086901,
+        "lia_check_seconds": 40.29024,
+        "model_reconciliation_seconds": 44.192072
+      },
+      "verification": "The optimized scorer matched a newly written full-scan oracle on 40 deterministic randomized exact-rational tableaux; make check passed 25/25 CTests and 79/79 Python tests; make docs passed.",
+      "artifacts": "local-only:/tmp/certora-indexed.{time,out,stats}",
+      "evidence_status": "local mechanism evidence; not a headline performance comparison",
+      "outcome": "The occurrence index reduced candidate score inspections from a computed 1.334 billion full-scan variable visits to 5.020 million affected-row visits. The instance still timed out and direct timers attribute 13.9 seconds to 459 component rebuilds, satisfying the planned gate for investigating incremental sparse component growth after preprocessing experiments."
     }
   ]
 }
