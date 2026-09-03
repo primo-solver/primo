@@ -72,6 +72,17 @@ legitimate).
 of scope -- an unimplemented theory, say -- record that in writing rather than
 letting it sit in an aggregate.
 
+### Solver-process results are answer plus exit status
+
+Differential and mutation harnesses must classify the process outcome before
+accepting a parsed `sat` or `unsat` line. A solver that prints an answer and
+then exits nonzero has crashed or otherwise failed; the answer is not a pass.
+This applies equally to Primo and reference solvers. Fuzz gates preserve the
+input and fail the campaign for such candidate failures or unusable reference
+results. `tests/python/test_fuzz_solver_exit_classification.py` locks this
+ordering with fake candidate and reference processes that print `sat` before
+exiting with status 9.
+
 
 ## Interesting QF_UF Exact Set
 

@@ -13,6 +13,7 @@ from pathlib import Path
 CHECKABLE = {"sat", "unsat", "unknown"}
 BAD_OUTCOMES = {
     "CRASH",
+    "MISSING",
     "OUR_SAT_REF_UNSAT",
     "OUR_UNSAT_REF_SAT",
     "REFERENCE_UNUSABLE",
@@ -40,17 +41,23 @@ def run_solver(command: list[str], timeout: float) -> tuple[str, int]:
     text = (proc.stdout + "\n" + proc.stderr).lower()
     if "unsupported" in text:
         return "UNSUPPORTED_INPUT", proc.returncode
-    if first in CHECKABLE:
-        return first, proc.returncode
     if proc.returncode != 0:
         return "CRASH", proc.returncode
+    if first in CHECKABLE:
+        return first, proc.returncode
     return "UNKNOWN_OUTPUT", proc.returncode
 
 
 def classify(ours: str, reference: str) -> str:
-    if ours in {"CRASH", "TIMEOUT", "UNKNOWN_OUTPUT", "UNSUPPORTED_INPUT"}:
+    if ours in {"CRASH", "MISSING", "TIMEOUT", "UNKNOWN_OUTPUT", "UNSUPPORTED_INPUT"}:
         return ours
-    if reference in {"CRASH", "MISSING", "TIMEOUT", "UNKNOWN_OUTPUT", "UNSUPPORTED_INPUT"}:
+    if reference in {
+        "CRASH",
+        "MISSING",
+        "TIMEOUT",
+        "UNKNOWN_OUTPUT",
+        "UNSUPPORTED_INPUT",
+    }:
         return "REFERENCE_UNUSABLE"
     if ours == "unknown" or reference == "unknown":
         return "UNKNOWN_INVOLVED"

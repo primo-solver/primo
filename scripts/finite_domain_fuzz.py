@@ -212,8 +212,10 @@ def run_solver(command: list[str], timeout: float, collect_stats: bool) -> Solve
     )
     if "unsupported" in lowered:
         answer = "UNSUPPORTED_INPUT"
+    elif proc.returncode != 0:
+        answer = "CRASH"
     elif not answer:
-        answer = "CRASH" if proc.returncode != 0 else "UNKNOWN_OUTPUT"
+        answer = "UNKNOWN_OUTPUT"
     return SolverRun(
         answer, proc.returncode, parse_stats(output) if collect_stats else {}
     )

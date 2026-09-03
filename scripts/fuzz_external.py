@@ -33,17 +33,20 @@ def run_solver(command: list[str], path: Path, timeout: float) -> tuple[str, int
     text = (proc.stdout + "\n" + proc.stderr).lower()
     if "unsupported" in text:
         return "UNSUPPORTED_INPUT", proc.returncode
-    if first in RESULTS:
-        return first, proc.returncode
     if proc.returncode != 0:
         return "CRASH", proc.returncode
+    if first in RESULTS:
+        return first, proc.returncode
     return "UNKNOWN_OUTPUT", proc.returncode
 
 
 def classify(ours: str, refs: list[str]) -> str:
+    unusable = {"MISSING", "TIMEOUT", "CRASH", "UNKNOWN_OUTPUT", "UNSUPPORTED_INPUT"}
     concrete_refs = [result for result in refs if result in {"sat", "unsat"}]
-    if ours in {"CRASH", "TIMEOUT", "UNSUPPORTED_INPUT", "UNKNOWN_OUTPUT"}:
+    if ours in unusable:
         return ours
+    if any(result in unusable for result in refs):
+        return "REFERENCE_UNUSABLE"
     if len(set(concrete_refs)) > 1:
         return "REF_DISAGREEMENT"
     # Deliberately *not* "or 'unknown' in refs": with two references, one
@@ -203,7 +206,17 @@ def main() -> int:
         writer.writeheader()
         writer.writerows(rows)
     print(f"summary: {summary}")
-    return 0
+    blocking = {
+        "CRASH",
+        "MISSING",
+        "REFERENCE_UNUSABLE",
+        "REF_DISAGREEMENT",
+        "UNKNOWN_OUTPUT",
+        "UNSUPPORTED_INPUT",
+        "OUR_SAT_REF_UNSAT",
+        "OUR_UNSAT_REF_SAT",
+    }
+    return 1 if any(row["outcome"] in blocking for row in rows) else 0
 
 
 if __name__ == "__main__":

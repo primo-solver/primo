@@ -610,15 +610,21 @@ def run_solver(command: list[str], timeout: float) -> tuple[str, int]:
     text = (proc.stdout + "\n" + proc.stderr).lower()
     if "unsupported" in text:
         return "UNSUPPORTED_INPUT", proc.returncode
-    if first in RESULTS:
-        return first, proc.returncode
     if proc.returncode != 0:
         return "CRASH", proc.returncode
+    if first in RESULTS:
+        return first, proc.returncode
     return "UNKNOWN_OUTPUT", proc.returncode
 
 
 def classify(ours: str, ref: str) -> str:
-    if ours in {"UNSUPPORTED_INPUT", "CRASH", "TIMEOUT"}:
+    if ours in {
+        "UNSUPPORTED_INPUT",
+        "CRASH",
+        "MISSING",
+        "TIMEOUT",
+        "UNKNOWN_OUTPUT",
+    }:
         return ours
     if ref in {"MISSING", "TIMEOUT", "CRASH", "UNKNOWN_OUTPUT", "UNSUPPORTED_INPUT"}:
         return "REFERENCE_UNUSABLE"
@@ -712,6 +718,7 @@ def main() -> int:
     bad = {
         "UNSUPPORTED_INPUT",
         "CRASH",
+        "MISSING",
         "OUR_SAT_REF_UNSAT",
         "OUR_UNSAT_REF_SAT",
         "UNKNOWN_OUTPUT",

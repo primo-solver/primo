@@ -30,22 +30,21 @@ def run_solver(command: list[str], timeout: float) -> tuple[str, int, str, str]:
     text = (proc.stdout + "\n" + proc.stderr).lower()
     if "unsupported" in text:
         return "UNSUPPORTED_INPUT", proc.returncode, proc.stdout, proc.stderr
-    if first in RESULTS:
-        return first, proc.returncode, proc.stdout, proc.stderr
     if proc.returncode != 0:
         return "CRASH", proc.returncode, proc.stdout, proc.stderr
+    if first in RESULTS:
+        return first, proc.returncode, proc.stdout, proc.stderr
     return "UNKNOWN_OUTPUT", proc.returncode, proc.stdout, proc.stderr
 
 
 def classify(ours: str, refs: list[str]) -> str:
-    usable_refs = [r for r in refs if r not in {"MISSING", "TIMEOUT", "CRASH"}]
+    unusable = {"MISSING", "TIMEOUT", "CRASH", "UNKNOWN_OUTPUT", "UNSUPPORTED_INPUT"}
+    usable_refs = [r for r in refs if r not in unusable]
     concrete_refs = [r for r in usable_refs if r in {"sat", "unsat"}]
-    if ours == "UNSUPPORTED_INPUT":
-        return "UNSUPPORTED_INPUT"
-    if ours == "CRASH":
-        return "CRASH"
-    if ours == "TIMEOUT":
-        return "TIMEOUT"
+    if ours in unusable:
+        return ours
+    if any(result in unusable for result in refs):
+        return "REFERENCE_UNUSABLE"
     if len(set(concrete_refs)) > 1:
         return "REF_DISAGREEMENT"
     if not concrete_refs or ours == "unknown" or "unknown" in usable_refs:

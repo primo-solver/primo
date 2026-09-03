@@ -240,16 +240,15 @@ def run_solver(command: list[str], timeout: float, collect_stats: bool) -> Solve
     output = f"{stdout}\n{stderr}"
     lowered = output.lower()
     answer = next((line.strip() for line in stdout.splitlines() if line.strip() in RESULTS), "")
-    # Only classify from stray "unsupported"/"(error" substrings when no
-    # clean result line was already found -- a real answer should never be
-    # overridden by incidental text elsewhere in stdout/stderr.
-    if not answer:
+    if returncode != 0:
+        answer = "UNSUPPORTED_INPUT" if "unsupported" in lowered else "CRASH"
+    elif not answer:
         if "unsupported" in lowered:
             answer = "UNSUPPORTED_INPUT"
         elif "(error" in lowered:
             answer = "SOLVER_ERROR"
         else:
-            answer = "CRASH" if returncode != 0 else "UNKNOWN_OUTPUT"
+            answer = "UNKNOWN_OUTPUT"
     return SolverRun(answer, returncode, parse_stats(output) if collect_stats else {}, stdout)
 
 
@@ -300,7 +299,14 @@ def classify(
 ) -> str:
     if ours.answer in {"CRASH", "TIMEOUT", "MISSING", "UNKNOWN_OUTPUT", "UNSUPPORTED_INPUT", "SOLVER_ERROR"}:
         return ours.answer
-    if reference.answer in {"TIMEOUT", "MISSING", "CRASH", "UNKNOWN_OUTPUT"}:
+    if reference.answer in {
+        "TIMEOUT",
+        "MISSING",
+        "CRASH",
+        "UNKNOWN_OUTPUT",
+        "UNSUPPORTED_INPUT",
+        "SOLVER_ERROR",
+    }:
         return "REFERENCE_UNUSABLE"
     if ours.answer in ("sat", "unsat") and reference.answer in ("sat", "unsat") and ours.answer != reference.answer:
         return "REFERENCE_DISAGREEMENT"

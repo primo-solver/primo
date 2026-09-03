@@ -35,12 +35,12 @@ def run(command: list[str], path: Path, timeout: float) -> tuple[str, int]:
         return "missing", 127
 
     first_line = proc.stdout.strip().splitlines()[0] if proc.stdout.strip() else ""
-    if first_line in CONCRETE_ANSWERS:
-        return first_line, proc.returncode
     if "unsupported" in f"{proc.stdout}\n{proc.stderr}".lower():
         return "unsupported", proc.returncode
     if proc.returncode != 0:
         return "crash", proc.returncode
+    if first_line in CONCRETE_ANSWERS:
+        return first_line, proc.returncode
     return first_line or "unknown-output", proc.returncode
 
 
