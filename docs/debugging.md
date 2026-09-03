@@ -1318,6 +1318,16 @@ roughly an order of magnitude. No production strategy is remotely that deep; a
 generated one could be. Making this iterative means replacing composed closures
 with a tactic interpreter, which is outstanding work.
 
+### Known invalid-model shape
+
+QF_UFLIA can print a UF table that does not satisfy the input when an Int
+application is nested three deep and the result is pinned by another
+constraint. The sat/unsat answer is correct; only the printed model is wrong.
+The witness and what is known are in
+`bugs/qf-uflia-nested-application-model/`. It predates the `qf_uflia_int_values`
+worklist rewrite -- the binary before it prints the identical model -- and is
+unfixed.
+
 ## Model failures
 
 - `INVALID_MODEL`

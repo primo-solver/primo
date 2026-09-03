@@ -1,0 +1,6 @@
+(set-logic QF_UFLIA)
+(declare-fun f (Int) Int)
+(declare-fun v1 () Int)
+(assert (<= v1 6))
+(assert (= v1 (f (f (+ (f 3) (- 1))))))
+(check-sat)
