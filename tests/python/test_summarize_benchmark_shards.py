@@ -37,7 +37,7 @@ class SummarizeBenchmarkShardsTests(unittest.TestCase):
                     "file": "b.smt2",
                     "family": "B",
                     "status": "timeout",
-                    "answer": "unknown",
+                    "answer": "sat",
                     "wrong": "false",
                     "seconds": "5.0",
                 },
@@ -65,8 +65,10 @@ class SummarizeBenchmarkShardsTests(unittest.TestCase):
 
             self.assertEqual(baseline_summary["files"], 2)
             self.assertEqual(baseline_summary["solved"], 1)
+            self.assertEqual(baseline_summary["sat"], 1)
             self.assertEqual(baseline_summary["timeout"], 1)
             self.assertEqual(baseline_summary["par2"], 11.5)
+            self.assertEqual(baseline_summary["families"]["B"]["sat"], 0)
             self.assertEqual(baseline_summary["families"]["B"]["timeout"], 1)
             self.assertEqual(comparison["recoveries"], ["b.smt2"])
             self.assertEqual(comparison["losses"], [])

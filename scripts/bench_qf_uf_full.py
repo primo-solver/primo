@@ -173,7 +173,9 @@ def write_summary(rows: list[dict[str, object]], summary: Path, timeout: float) 
         for row in rows
     )
     by_status = Counter(str(row["status"]) for row in rows)
-    by_answer = Counter(str(row["answer"]) for row in rows)
+    by_answer = Counter(
+        str(row["answer"]) for row in rows if row["status"] == "ok"
+    )
     by_family_total = Counter(str(row["family"]) for row in rows)
     by_family_solved = Counter(
         str(row["family"])

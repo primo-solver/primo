@@ -57,7 +57,9 @@ def main() -> int:
           f"{'timeout':>8} {'error':>6} {'PAR2':>10}")
     for name in names:
         rows = solvers[name]
-        answers = collections.Counter(r["answer"] for r in rows.values())
+        answers = collections.Counter(
+            row["answer"] for row in rows.values() if row["status"] == "ok"
+        )
         solved = sum(1 for r in rows.values() if r["status"] == "ok")
         # Count timeouts by status, not by answer: a solver killed at the
         # limit reports answer="unknown" (Primo, which prints it and exits)
@@ -82,7 +84,9 @@ def main() -> int:
         verdicts = {
             name: solvers[name][path]["answer"]
             for name in names
-            if path in solvers[name] and solvers[name][path]["answer"] in DECISIVE
+            if path in solvers[name]
+            and solvers[name][path]["status"] == "ok"
+            and solvers[name][path]["answer"] in DECISIVE
         }
         if len(set(verdicts.values())) > 1:
             disagreements += 1

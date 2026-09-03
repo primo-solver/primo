@@ -29931,6 +29931,50 @@
       },
       "evidence_status": "slurm-complete exact promoted-default solver source; direct-Dolmen model gates; real-seed mutation complement; default accepted with complete non-convex fallback retained",
       "outcome": "Promoted sparse online QF_UFLIA combination with budget 512. It matches the three reference solvers' 19/20 sample coverage, improves from the prior 11/20 default, and passes exact-commit generated, model, preservation, and real-seed mutation gates. It remains slower than references on the sample, and fully incremental sparse row growth is the next performance target."
+    },
+    {
+      "id": "2026-09-03-qf-uflia-full-smtlib-61cd9ee",
+      "started_at": "2026-09-03",
+      "recorded_at": "2026-09-03",
+      "kind": "slurm-full-corpus-reference-comparison-and-model-validation",
+      "scope": "First full Primo evaluation over every QF_UFLIA file in sandbox/QF_UFLIA.tar.zst, compared with Z3, cvc5, and OpenSMT, followed by direct Dolmen validation of every satisfiable Primo row.",
+      "commit": "61cd9eef20e6349ffe01dfe83bafdcb5991d62b3",
+      "branch": "modular-theory-combination",
+      "environment": {
+        "scheduler": "Established remote SLURM environment; 32 comparison tasks and eight model-validation tasks; Release build",
+        "solver_versions": "Primo 0.1.0 with CaDiCaL cadical-3.0.0-7b99c07; Z3 5.1.0; cvc5 1.3.4; OpenSMT 2.9.2; Dolmen 0.10",
+        "corpus": "659 files, 118,566,018 bytes, path/size SHA-256 29d7b1b245daf52ed8df7cc05f160a4209c7b062a83687e91dd4e75ee36406c6; families: 76 Certora, 21 TwoSquares, 454 mathsat, and 108 wisas; declared metadata: 400 sat, 183 unsat, and 76 unknown",
+        "timeout": "60 seconds per comparison row; satisfiable-model replay used 90 seconds for Primo and 30 seconds for Dolmen"
+      },
+      "commands": {
+        "prepare": "python3 scripts/slurm_prepare_benchmark_workspace.py --sync-mode archive --reuse-dependencies --target primo with Z3, cvc5, and OpenSMT preflight; python3 scripts/slurm_stage_manifest_files.py --root tmp/QF_UFLIA --all-smt2; immediate --check-only --no-sync before submission",
+        "comparison": "sbatch scripts/slurm_qf_uflia_full_solver_compare.sbatch; 4 solvers x 8 deterministic shards, 60-second cutoff, 4 GiB requested memory, append-only JSONL journals and final CSVs",
+        "analysis": "python3 scripts/summarize_benchmark_shards.py --timeout 60 with the four collected solver directories; scripts/compare_solver_answers.py over a temporary flat view named <solver>.shard-<n>.csv; an independent status-ok-only cross-check counted reference-consensus gaps and common coverage",
+        "model_validation": "A locally written, slurm_validate_sbatch.py-checked and bash -n-checked eight-shard batch script selected the 379 status-ok Primo sat rows and ran scripts/validate_model.py --require-dolmen-pass --dolmen-arg=--strict=false --timeout 90 --dolmen-timeout 30",
+        "verification": "make check (25/25 CTests and 79/79 Python tests); make lint; make docs; python3 -m json.tool docs/run-log.json; git diff --check. The requested smt-code-review skill was unavailable in the installed skill catalog; a manual changed-file hygiene and documentation-evidence review found no remaining issue. ASan, clang-tidy, and include-cleaner were not rerun because the post-benchmark fix changes only Python result aggregation, its tests, and documentation."
+      },
+      "scheduler_jobs": {
+        "full_comparison": "131212",
+        "rejected_model_setup_wrong_path": "131244 (all eight tasks failed before solver execution because the temporary wrapper named a non-shared Dolmen path; empty result logs; not evidence)",
+        "model_path_diagnostic": "131252 (single task confirmed the same missing path before solver execution; not evidence)",
+        "full_model_validation": "131253"
+      },
+      "results": {
+        "overall": "Primo solved 543/659 (379 sat, 164 unsat), timed out on 116, and had zero unsupported, error, or wrong-declared-status rows; solved-row time 1,838.313734 seconds and PAR2 15,758.313734 seconds. Z3 solved 618 (429 sat, 189 unsat), timed out on 41, and had PAR2 5,490.081127. cvc5 solved 605 (421 sat, 184 unsat), timed out on 54, and had PAR2 7,378.882308. OpenSMT solved 601 (415 sat, 186 unsat), timed out on 58, and had PAR2 8,048.659598. All reference rows had zero unsupported, error, or wrong-declared-status result.",
+        "primo_families": "Certora 3/76 solved (2 sat, 1 unsat, 73 timeout), PAR2 8,799.921643; TwoSquares 21/21 (5 sat, 16 unsat), PAR2 0.427908; mathsat 437/454 (313 sat, 124 unsat, 17 timeout), PAR2 2,925.968884; wisas 82/108 (59 sat, 23 unsat, 26 timeout), PAR2 4,031.995299.",
+        "reference_families": "Z3 solved Certora/TwoSquares/mathsat/wisas 35/21/454/108; cvc5 25/21/454/105; OpenSMT 18/21/454/108.",
+        "cross_solver": "Zero terminal decisive-answer disagreements. All three references agreed decisively on 54 Primo timeout rows: 13 Certora, 17 mathsat, and 24 wisas. At least one reference solved 79 Primo timeout rows. Thirty-seven Certora rows were solved by nobody. Unique solves were Primo 0, Z3 12, cvc5 2, and OpenSMT 2. All four solvers agreed and terminated decisively on 542 rows.",
+        "models": "Job 131253 completed all eight tasks with exit status zero. Every one of the 379 satisfiable Primo rows passed direct Dolmen validation; there were no fallback passes, solver or Dolmen timeouts, or invalid models.",
+        "scheduler": "All 32 comparison tasks exited zero; the longest task took 20:24. All eight accepted model tasks exited zero; the longest took 4:05. The largest reported comparison-task MaxRSS was 6,397,572 KiB on a Primo shard, above the nominal 4 GiB request but without an OOM or task failure.",
+        "reporting_fix": "One OpenSMT Certora process printed sat before the harness timeout terminated it. Status, solved count, and PAR2 were already correct, but aggregate answer counters and disagreement scans initially retained that nonterminal line. The analysis scripts now count answers and disagreements only from status-ok rows; regression tests cover a timed-out process that printed sat. Raw benchmark results are unchanged."
+      },
+      "artifacts": {
+        "local": "/tmp/primo-qf-uflia-full-61cd9ee-131212",
+        "remote": "<prepared-workspace>/results/{qf-uflia-full-131212,qf-uflia-full-models-131253} and matching logs/primo-qfuflia-{full-131212,models-131253}-*",
+        "contents": "32 comparison shard CSVs plus JSONL journals and summaries; 379-file satisfiable manifest; eight direct-Dolmen model-validation directories; exact temporary model sbatch; SLURM stdout/stderr and accounting snapshots"
+      },
+      "evidence_status": "slurm-complete exact solver commit; full corpus; direct-Dolmen model complete; first full-QF_UFLIA baseline",
+      "outcome": "Accepted as the first full QF_UFLIA baseline. Correctness and model gates are clean, but Primo trails every reference in solved count and PAR2. The 54 unanimous-reference/Primo-timeout rows are the next focused optimization corpus, led by wisas and mathsat rather than by integer-completeness failures inferred without profiling."
     }
   ]
 }

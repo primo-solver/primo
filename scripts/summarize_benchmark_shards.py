@@ -45,7 +45,11 @@ def load_rows(directory: Path) -> dict[str, dict[str, str]]:
 
 def summarize(rows: dict[str, dict[str, str]], timeout: float) -> dict[str, object]:
     statuses = collections.Counter(row.get("status", "") for row in rows.values())
-    answers = collections.Counter(row.get("answer", "") for row in rows.values())
+    answers = collections.Counter(
+        row.get("answer", "")
+        for row in rows.values()
+        if row.get("status") == "ok"
+    )
     wrong = sum(row.get("wrong", "").lower() == "true" for row in rows.values())
     solved_seconds = sum(
         float(row.get("seconds", 0.0))
@@ -66,7 +70,9 @@ def summarize(rows: dict[str, dict[str, str]], timeout: float) -> dict[str, obje
             row.get("status", "") for row in family_rows.values()
         )
         family_answers = collections.Counter(
-            row.get("answer", "") for row in family_rows.values()
+            row.get("answer", "")
+            for row in family_rows.values()
+            if row.get("status") == "ok"
         )
         family_par2 = sum(
             float(row.get("seconds", 0.0))
@@ -135,7 +141,9 @@ def compare(
     disagreements = [
         file
         for file in common
-        if baseline[file].get("answer") in DECISIVE
+        if baseline[file].get("status") == "ok"
+        and candidate[file].get("status") == "ok"
+        and baseline[file].get("answer") in DECISIVE
         and candidate[file].get("answer") in DECISIVE
         and baseline[file].get("answer") != candidate[file].get("answer")
     ]

@@ -316,6 +316,16 @@ an append-only JSONL journal as well as its final CSV, so completed rows survive
 a task-level interruption. Keep the array size synchronized with the number of
 solvers times `PRIMO_COMPARE_SHARDS` when overriding either setting.
 
+The first full run, on exact solver commit `61cd9ee` with a 60-second cutoff,
+covered all 659 archive files. Primo solved 543 (379 sat, 164 unsat), versus 618
+for Z3, 605 for cvc5, and 601 for OpenSMT. Primo had 116 timeouts, zero wrong
+declared-status answers, and no unsupported or error row; all 379 satisfiable
+models passed direct Dolmen validation. All four solvers completed TwoSquares.
+Primo solved 3/76 Certora, 437/454 MathSAT, and 82/108 wisas files. The solvers
+had zero terminal decisive-answer disagreement; all three references agreed on
+54 files that Primo timed out on. This is the first Primo full-QF_UFLIA
+baseline, so it has no earlier full-corpus Primo result to compare against.
+
 These corpus cases are an evaluation gate, not part of `make check`: several
 are intentionally beyond Primo's current short-timeout performance. For cases
 without a declared status, an evaluation must establish the expected answer by
