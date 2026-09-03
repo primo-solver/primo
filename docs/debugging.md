@@ -325,22 +325,32 @@ equality sharing or arrangement/model reconstruction,
 consistency probes and returns `unknown` at the cap. Use it when
 `:no.interface.lra-extra-atom-probes` grows but `:theory.conflicts` does not.
 
-On `SIGTERM`, the CLI's signal handler performs only an async-signal-safe write
-to a `sig_atomic_t` cancellation flag. Tactic boundaries and every owned SAT
-backend observe that flag through the solve context and CaDiCaL terminator. A
-cancelled solve returns `unknown`; stdout and `--stats` output are produced by
-the normal CLI path, after solver state has unwound. The terminator connection
-is scoped to the backend owner and is disconnected before either object is
-destroyed, so no process-global backend pointer or statistics sink is retained.
+`SIGTERM` and `SIGINT` are answered on two paths. The handler performs only
+async-signal-safe work: it writes a `sig_atomic_t` cancellation flag and arms
+an alarm. Tactic boundaries and every owned SAT backend observe that flag
+through the solve context and CaDiCaL terminator, so a SAT search unwinds
+cooperatively and `unknown` plus the `--stats` block are printed by the normal
+CLI path. The terminator connection is scoped to the backend owner and is
+disconnected before either object is destroyed, so no process-global backend
+pointer or statistics sink is retained.
+
+Cooperative cancellation alone cannot bound the response, because a signal
+arriving inside a long parser, frontend, preprocessing leaf, or model-building
+phase is not observed until that phase ends. The armed alarm is the second
+path: after `--cancel-grace-seconds` (default 1) its handler writes `unknown`
+and exits. That handler is restricted to async-signal-safe calls, so a run
+that reaches it reports no statistics -- the grace period exists to give the
+cooperative path, which does report them, the first chance to answer. Raise it
+when a harness allows a longer wait and partial statistics matter more than a
+prompt exit.
 
 The benchmark harnesses send `SIGTERM` first and only use `SIGKILL` after a
-short grace period. A SAT search should stop during that grace period, but a
-long parser, frontend, preprocessing leaf, or final model-building phase only
-stops at its next cancellation boundary. Such rows may be killed before final
-statistics are printed. Inspect `timed_out_with_stats`, `exit_code`, and
-`stderr_head` even when the harness classifies a row as a timeout. Prefer
-`--max-theory-conflicts` for repeatable profiling, but remember that it cannot
-cap frontend work or a search that has not yet reported its first theory
+short grace period of their own, which must exceed `--cancel-grace-seconds` for
+the answer to be seen at all. A row answered by the watchdog carries `unknown`
+with no statistics; a row answered cooperatively carries both. Inspect
+`timed_out_with_stats`, `exit_code`, and `stderr_head` to tell them apart.
+Prefer `--max-theory-conflicts` for repeatable profiling, but remember that it
+cannot cap frontend work or a search that has not yet reported its first theory
 conflict.
 
 The auto counters record which concrete path `--euf-prop=auto` selected for the

@@ -316,6 +316,23 @@ add_test(
     -P ${CMAKE_SOURCE_DIR}/tests/cmake/check_frontend_type_error_cli.cmake
 )
 
+# The cancellation watchdog is process behaviour, so it is checked by driving
+# the binary with a real signal. bash and python3 are only needed here.
+find_program(PRIMO_BASH_EXECUTABLE bash)
+find_program(PRIMO_PYTHON_EXECUTABLE python3)
+if(PRIMO_BASH_EXECUTABLE AND PRIMO_PYTHON_EXECUTABLE)
+  add_test(
+    NAME primo_sigterm_reports_unknown
+    COMMAND ${CMAKE_COMMAND}
+      -DPRIMO_EXECUTABLE=$<TARGET_FILE:primo>
+      -DPRIMO_PYTHON=${PRIMO_PYTHON_EXECUTABLE}
+      -DPRIMO_GENERATOR=${CMAKE_SOURCE_DIR}/scripts/make_interruptible_input.py
+      -DPRIMO_TEST_INPUT=${CMAKE_SOURCE_DIR}/tests/smtlib/smoke/interruptible_pigeonhole.smt2
+      -DPRIMO_SMOKE_INPUT=${CMAKE_SOURCE_DIR}/benchmarks/smoke/qf_uf/sat_uninterpreted_constants.smt2
+      -P ${CMAKE_SOURCE_DIR}/tests/cmake/check_sigterm_reports_unknown.cmake
+  )
+endif()
+
 add_executable(primo_core_tests tests/unit/core_tests.cpp)
 primo_enable_warnings(primo_core_tests)
 primo_enable_sanitizers(primo_core_tests)

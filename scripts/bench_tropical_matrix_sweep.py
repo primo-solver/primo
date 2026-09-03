@@ -7,9 +7,12 @@ record solved/unsolved plus the arithmetic counters that say *why*.
 Two implementation details matter and were both learned the hard way:
 
   * Timeouts use the shell `timeout` command, which sends SIGTERM. Primo
-    flushes partial `--stats` counters on SIGTERM, so timeout rows still carry
-    pivot and propagation counts. `subprocess.run(timeout=...)` SIGKILLs and
-    loses them, which is exactly the data a negative result needs.
+    flushes partial `--stats` counters when SIGTERM is observed cooperatively,
+    so timeout rows still carry pivot and propagation counts.
+    `subprocess.run(timeout=...)` SIGKILLs and loses them, which is exactly the
+    data a negative result needs. A row interrupted inside a long parser,
+    frontend, or preprocessing phase is answered by the `--cancel-grace-seconds`
+    watchdog instead and carries `unknown` with no counters.
   * The propagation counters are `:lra.row-propagations` and
     `:lra.bidirectional-row-propagations` -- not `...-propagation.derived`.
 

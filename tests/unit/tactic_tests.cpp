@@ -531,6 +531,70 @@ void cancellation_stops_before_running_a_tactic() {
   check(result.alternatives().front().diagnostic() == "cancelled");
 }
 
+// Cancellation that arrives while a repeat is already running is observed by
+// the child tactic, not by the loop. The loop must still converge promptly
+// instead of spinning to its iteration bound.
+void cancellation_during_a_repeat_terminates_it_promptly() {
+  Fixture fixture;
+  bool cancelled = false;
+  primo::smt::TacticContext context(fixture.terms, fixture.statistics,
+                                    [&cancelled] { return cancelled; });
+  std::size_t body_applications = 0;
+  std::size_t observations = 0;
+  const primo::smt::Tactic body = primo::smt::make_goal_tactic(
+      "repeat-body",
+      [&body_applications, &cancelled](primo::smt::TacticContext&, const primo::smt::Goal& goal) {
+        ++body_applications;
+        // The third pass is interrupted from outside, mid-run.
+        if (body_applications == 3) {
+          cancelled = true;
+        }
+        return primo::smt::AnyOf::single(goal.with_diagnostic(primo::smt::InconclusiveReason::None,
+                                                              std::to_string(body_applications)));
+      });
+  const primo::smt::Tactic repeated = primo::smt::repeat(
+      "cancellable-repeat", body, 4096, {}, {},
+      [&observations](const primo::smt::TacticContext&, const primo::smt::AnyOf&,
+                      const primo::smt::AnyOf&, std::size_t) { ++observations; });
+
+  const primo::smt::AnyOf result =
+      repeated(context, primo::smt::AnyOf::single(primo::smt::Goal{{fixture.p_term()}}));
+
+  // Three productive passes, then two interrupted ones: the first records the
+  // cancellation, the second reproduces it and is recognised as the fixed
+  // point. Nowhere near the 4096 bound.
+  check(body_applications == 3);
+  check(observations == 5);
+  check(result.alternatives().front().reason() == primo::smt::InconclusiveReason::Cancelled);
+}
+
+// A context that is already cancelled short-circuits at the outer tactic, so
+// neither the loop body nor its observer runs at all.
+void cancellation_before_a_repeat_runs_nothing_inside_it() {
+  Fixture fixture;
+  primo::smt::TacticContext cancelled_context(fixture.terms, fixture.statistics,
+                                              [] { return true; });
+  std::size_t observations = 0;
+  std::size_t body_applications = 0;
+  const primo::smt::Tactic body = primo::smt::make_goal_tactic(
+      "repeat-body",
+      [&body_applications](primo::smt::TacticContext&, const primo::smt::Goal& goal) {
+        ++body_applications;
+        return primo::smt::AnyOf::single(goal);
+      });
+  const primo::smt::Tactic repeated = primo::smt::repeat(
+      "cancellable-repeat", body, 64, {}, {},
+      [&observations](const primo::smt::TacticContext&, const primo::smt::AnyOf&,
+                      const primo::smt::AnyOf&, std::size_t) { ++observations; });
+
+  const primo::smt::AnyOf result =
+      repeated(cancelled_context, primo::smt::AnyOf::single(primo::smt::Goal{{fixture.p_term()}}));
+
+  check(body_applications == 0);
+  check(observations == 0);
+  check(result.alternatives().front().reason() == primo::smt::InconclusiveReason::Cancelled);
+}
+
 void check_sat_honors_an_existing_cancellation_request() {
   primo::smt::CheckSatOptions options;
   options.cancelled = [] { return true; };
@@ -1065,6 +1129,8 @@ int main() {
   experimental_split_bools_uses_sequential_first_sat_execution_and_keeps_model();
   sequential_scheduler_tries_each_arm_from_the_original_goal();
   cancellation_stops_before_running_a_tactic();
+  cancellation_during_a_repeat_terminates_it_promptly();
+  cancellation_before_a_repeat_runs_nothing_inside_it();
   check_sat_honors_an_existing_cancellation_request();
   check_sat_preserves_cancellation_observed_by_preprocessing();
   frontend_type_errors_are_reported_as_unsupported();

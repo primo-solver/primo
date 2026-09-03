@@ -1,3 +1,5 @@
+#include <unistd.h>
+
 #include <CLI/CLI.hpp>
 #include <csignal>
 #include <cstddef>
@@ -23,8 +25,42 @@
 namespace {
 
 volatile std::sig_atomic_t g_cancel_requested = 0;
+volatile std::sig_atomic_t g_cancel_grace_seconds = 1;
 
-void handle_sigterm(int) { g_cancel_requested = 1; }
+// Cooperative cancellation is the path that can still flush statistics, but it
+// is only observed at tactic boundaries and inside the SAT backend. A signal
+// arriving during parsing, frontend construction, or one preprocessing pass is
+// therefore not acted on until that phase ends, and a harness that escalates to
+// SIGKILL records the run as a crash rather than as unknown. Arming an alarm
+// bounds that wait. alarm() is async-signal-safe, which is what keeps this
+// handler legal; the price is that the deadline handler below can only write,
+// so a run that reaches it reports no statistics.
+void handle_cancel_signal(int) {
+  g_cancel_requested = 1;
+  alarm(static_cast<unsigned int>(g_cancel_grace_seconds));
+}
+
+void handle_cancel_deadline(int) {
+  static const char kUnknownAnswer[] = "unknown\n";
+  const ssize_t written = write(STDOUT_FILENO, kUnknownAnswer, sizeof(kUnknownAnswer) - 1);
+  static_cast<void>(written);
+  _exit(0);
+}
+
+void install_cancellation_handlers() {
+  struct sigaction cancel;
+  cancel.sa_handler = handle_cancel_signal;
+  sigemptyset(&cancel.sa_mask);
+  cancel.sa_flags = 0;
+  sigaction(SIGTERM, &cancel, nullptr);
+  sigaction(SIGINT, &cancel, nullptr);
+
+  struct sigaction deadline;
+  deadline.sa_handler = handle_cancel_deadline;
+  sigemptyset(&deadline.sa_mask);
+  deadline.sa_flags = 0;
+  sigaction(SIGALRM, &deadline, nullptr);
+}
 
 bool can_read_file(const std::string& path) {
   std::ifstream input(path);
@@ -132,11 +168,15 @@ constexpr const char* kGroupExperimentalTactics = "Experimental tactic options";
 }  // namespace
 
 int run_main(int argc, char** argv) {
-  std::signal(SIGTERM, handle_sigterm);
+  install_cancellation_handlers();
+  // Wired before the command line is parsed so a signal arriving during
+  // parsing is not dropped on the floor.
   primo::smt::CheckSatOptions solver_options;
+  solver_options.cancelled = [] { return g_cancel_requested != 0; };
   std::vector<std::string> files;
   bool quiet = false;
   bool print_stats = false;
+  unsigned int cancel_grace_seconds = 1;
   bool no_uf_symmetry_breaking = false;
   bool no_finite_domain_value_precedence = false;
   bool finite_domain_equality_definitions = solver_options.auto_finite_domain_equality_definitions;
@@ -444,6 +484,11 @@ int run_main(int argc, char** argv) {
   add_flag_with_default(
       app, "--preprocess-only", solver_options.preprocess_only,
       "Run parsing and preprocessing, print unknown, and skip SAT/theory solving");
+  app.add_option("--cancel-grace-seconds", cancel_grace_seconds,
+                 "Seconds SIGTERM or SIGINT waits for the cooperative cancellation path, "
+                 "which reports statistics, before answering unknown and exiting")
+      ->check(CLI::Range(1U, 3600U))
+      ->capture_default_str();
   app.add_option("--preprocessing-mode", preprocessing_mode,
                  "Preprocessing preset for all supported logics: off, basic, strong, or auto")
       ->check(CLI::IsMember({"off", "basic", "strong", "auto"}));
@@ -701,7 +746,8 @@ int run_main(int argc, char** argv) {
     // CLI11's own built-in flag and would otherwise be the one option left
     // unclassified.
     if (name == "-q" || name == "--quiet" || name == "--stats" || name == "--version" ||
-        name == "--help" || name == "--preprocess-only" || name == "files") {
+        name == "--help" || name == "--preprocess-only" || name == "--cancel-grace-seconds" ||
+        name == "files") {
       return kGroupProcedural;
     }
     if (starts_with(name, "--experimental-")) {
@@ -1037,7 +1083,7 @@ int run_main(int argc, char** argv) {
   if (!quiet) {
     print_startup_banner();
   }
-  solver_options.cancelled = [] { return g_cancel_requested != 0; };
+  g_cancel_grace_seconds = static_cast<std::sig_atomic_t>(cancel_grace_seconds);
 
   if (files.empty()) {
     std::ostringstream contents;
@@ -1065,6 +1111,11 @@ int run_main(int argc, char** argv) {
     }
     if (outcome.result == primo::smt::CheckSatResult::Unsupported) {
       exit_code = 2;
+    }
+    if (g_cancel_requested != 0) {
+      // The answer for this file is out; abandon the rest of the batch rather
+      // than letting the armed watchdog fire partway through the next one.
+      break;
     }
   }
   return exit_code;
