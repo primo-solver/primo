@@ -30220,8 +30220,50 @@
         "remote": "<prepared-workspace>/{results/qf-uflia-full-6bb70aa,results/qf-uflia-full-models-6bb70aa,fuzz-results/qf-uflia-model-gate-6bb70aa,fuzz-results/qf-uf-boolean-6bb70aa-retry,fuzz-results/qf-uflra-preservation-6bb70aa,fuzz-results/qf-uflia-mutation-6bb70aa} and matching logs",
         "contents": "benchmark CSV/JSONL files, generated and model-validation summaries, mutation log, SLURM stdout/stderr, and prior-arm/reference CSVs used for paired summaries"
       },
-      "evidence_status": "SLURM-complete exact solver commit; full corpus and all satisfiable models complete; generated and mutation gates clean",
+      "post_review_qualification": "The full-corpus runner and model validator already rejected nonzero subprocess exits, so their classifications and model results remain valid. The generated fuzz runners accepted a decisive answer before inspecting the exit status, however, and did not preserve reference exit codes on passing rows. Their generated-gate evidence is superseded by the exit-aware exact-commit reruns recorded in 2026-09-03-exit-aware-fuzz-gates-4a064cb.",
+      "evidence_status": "SLURM-complete exact solver commit; full corpus and all satisfiable models complete; generated fuzz evidence superseded by corrected exit-aware gates at 4a064cb",
       "outcome": "Accepted. QF_UFLIA auto now uses the measured integer-safe basic preprocessing profile; the model printer avoids user-symbol collisions; QF_UFLRA and dedicated Boolean behavior are preserved. Remaining performance work should target model reconciliation/LIA and the conservative online callback rebuild rather than component construction."
+    },
+    {
+      "id": "2026-09-03-exit-aware-fuzz-gates-4a064cb",
+      "date": "2026-09-03",
+      "commit": "4a064cb0eb99bed924b2ddabaf644abc0918392e",
+      "branch": "modular-theory-combination",
+      "kind": "slurm-correctness-gates-and-harness-regression",
+      "scope": "Exact-commit rerun of QF_UFLIA, QF_UFLRA, finite-domain, and dedicated Boolean differential/model gates after making solver exit status part of every fuzz-runner result.",
+      "environment": {
+        "host": "remote SLURM cluster for generated gates; local development workstation for synthetic regressions and repository checks",
+        "solver": "Primo 0.1.0 at 4a064cb; Release on SLURM; CaDiCaL cadical-3.0.0-7b99c07",
+        "tools": "Z3 5.1.0 plus pinned cvc5 and Dolmen v2.9.2 from contrib/local/bin"
+      },
+      "jobs": {
+        "qf_uflia": "131411",
+        "qf_uflra_and_finite_domain": "131415",
+        "qf_uf_boolean": "131419"
+      },
+      "commands": {
+        "prepare": "python3 scripts/slurm_prepare_benchmark_workspace.py --sync-mode archive --reuse-dependencies --with-z3 with required Z3/cvc5/OpenSMT/Dolmen tools; exact git and CaDiCaL banner checked immediately before every sbatch",
+        "qf_uflia": "scripts/slurm_qf_uflia_model_fuzz_gate.sbatch; four shards by 750 random cases; seed base 202609030; five-second candidate/reference and model timeouts",
+        "qf_uflra": "scripts/slurm_qf_uflra_fuzz_gate.sbatch; four shards by 250 mixed cases plus 125 finite QF_UFLRA and 125 finite QF_UF controls; seed base 202609040; model validation enabled",
+        "qf_uf_boolean": "scripts/slurm_qf_uf_boolean_fuzz_gate.sbatch; eleven shapes by 100 cases; seed base 202609050; model validation enabled",
+        "synthetic_regression": ".venv/bin/python -m unittest tests.python.test_fuzz_solver_exit_classification",
+        "repository": "make check && make docs; make lint; explicit Ruff check and format check for the new Python test"
+      },
+      "results": {
+        "qf_uflia": "3,000/3,000 PASS against Z3: 1,777 sat and 1,223 unsat; all candidate exit codes zero; Dolmen accepted all 1,777 satisfiable models; zero bug files.",
+        "qf_uflra": "1,000/1,000 general mixed cases PASS against Z3: 572 sat and 428 unsat. The 500 finite QF_UFLRA and 500 finite QF_UF controls also all passed against Z3/cvc5, each with 252 sat and 248 unsat. All candidate exit codes were zero; Dolmen accepted all 572 general and 252 finite-QF_UFLRA satisfiable models; zero bug files.",
+        "qf_uf_boolean": "1,100/1,100 PASS against Z3 across all eleven dedicated shapes: 690 sat and 410 unsat; all candidate exit codes zero; Dolmen accepted all 690 satisfiable models; zero bug files.",
+        "failure_accounting": "The synthetic test runs fake candidate and reference executables that print sat and then exit 9. All nine audited runners classify the process as CRASH, the QF_UFLIA end-to-end campaign returns nonzero for candidate or reference failure, and the triggering input is retained under bugs/.",
+        "aggregate": "6,100 answer comparisons passed, 3,291 satisfiable models were accepted directly by Dolmen, and there were zero wrong answers, crashes, timeouts, unsupported results, unknown outputs, reference disagreements, invalid models, or saved bug files. All 19 SLURM array tasks completed with exit code 0."
+      },
+      "artifacts": {
+        "remote": "<prepared-workspace>/fuzz-results/{qf-uflia-exit-aware-4a064cb,qf-uflra-exit-aware-4a064cb,qf-uf-boolean-exit-aware-4a064cb} and matching SLURM logs",
+        "local_summary_copy": "/tmp/primo-exit-summaries.fP03gr",
+        "contents": "Per-case answer CSVs, model-validation CSVs, generated inputs, bug directories, and array-task stdout/stderr; only summary CSVs were copied locally."
+      },
+      "verification": "make check passed 25/25 CTests and 84/84 Python tests; make docs and make lint passed; 37 focused pre-commit tests and the five-test direct post-answer-crash regression passed; git diff --check passed. The required smt-code-review skill was unavailable, so a manual whole-diff and cross-harness audit was performed.",
+      "evidence_status": "SLURM-complete exact-commit correctness evidence with exit-aware candidate and reference accounting; supersedes the generated-fuzz portions of the 6bb70aa promotion record",
+      "outcome": "Accepted. A decisive SMT answer is now valid only after a successful process exit throughout the audited fuzz and comparison helpers; candidate and reference post-answer crashes block campaigns and retain reproducers."
     }
   ]
 }
