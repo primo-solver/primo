@@ -362,19 +362,28 @@ ModelBasedCombinationResult ModelBasedCombinationCoordinator::reconcile(
     ++statistics_.mutations;
     theory::TheoryMutationResult mutation = components[component_index].solver->mutate(request);
     if (mutation.status == theory::TheoryMutationStatus::Mutated) {
-      if (!token_is_current(mutation.model, components[component_index].solver->properties().id,
-                            assignment_epoch) ||
-          mutation.model.token.revision <= projections[component_index].token.revision ||
-          !projection_is_complete(mutation.model, shared_terms,
-                                  components[component_index].solver->properties().shared_sorts) ||
-          !is_changed_variant(projection_indexes[component_index], index_projection(mutation.model),
-                              ordered_pairs) ||
-          !respects_relations(mutation.model, request.required_relations,
-                              components[component_index].solver->properties().shared_sorts)) {
+      // A stale revision is reported separately from a structurally invalid
+      // model: it is the mistake a component makes when its projection helper
+      // stamps a fixed revision, and "invalid theory model mutation" gives no
+      // hint of that.
+      const bool advanced_revision =
+          mutation.model.token.revision > projections[component_index].token.revision;
+      const bool valid_model =
+          token_is_current(mutation.model, components[component_index].solver->properties().id,
+                           assignment_epoch) &&
+          projection_is_complete(mutation.model, shared_terms,
+                                 components[component_index].solver->properties().shared_sorts) &&
+          is_changed_variant(projection_indexes[component_index], index_projection(mutation.model),
+                             ordered_pairs) &&
+          respects_relations(mutation.model, request.required_relations,
+                             components[component_index].solver->properties().shared_sorts);
+      if (!advanced_revision || !valid_model) {
         ++statistics_.rejected_mutations;
         ModelBasedCombinationResult result =
             result_with_status(ModelBasedCombinationStatus::Unknown);
-        result.diagnostic = "invalid theory model mutation";
+        result.diagnostic = advanced_revision
+                                ? "invalid theory model mutation"
+                                : "theory model mutation did not advance its revision";
         return result;
       }
       projections[component_index] = std::move(mutation.model);

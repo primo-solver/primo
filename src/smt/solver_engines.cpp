@@ -5821,9 +5821,14 @@ std::optional<theory::TheoryModelProjection> project_euf_shared_model(
       .partitions = {{.sort = shared_sort, .equality_classes = std::move(classes)}}};
 }
 
+// The revision is a parameter, not a constant, because reconcile() rejects a
+// mutation whose token does not strictly advance it. A component that mutates
+// through this helper must pass its own monotone counter; 1 is only the right
+// value for the first projection of an assignment.
 theory::TheoryModelProjection project_lra_shared_model(const LraModelEqualPartition& partition,
                                                        core::SortId shared_sort,
-                                                       std::uint64_t assignment_epoch) {
+                                                       std::uint64_t assignment_epoch,
+                                                       std::uint64_t revision = 1) {
   std::vector<theory::SharedModelClass> classes;
   std::unordered_set<core::TermId> classified;
   classes.reserve(partition.classes.size() + partition.shared_terms.size());
@@ -5839,7 +5844,7 @@ theory::TheoryModelProjection project_lra_shared_model(const LraModelEqualPartit
   std::sort(classes.begin(), classes.end(),
             [](const auto& lhs, const auto& rhs) { return lhs.terms < rhs.terms; });
   return theory::TheoryModelProjection{
-      .token = {.component = "lra", .assignment_epoch = assignment_epoch, .revision = 1},
+      .token = {.component = "lra", .assignment_epoch = assignment_epoch, .revision = revision},
       .partitions = {{.sort = shared_sort, .equality_classes = std::move(classes)}}};
 }
 
@@ -9517,10 +9522,12 @@ std::unordered_map<core::TermId, util::Rational> qf_uflia_int_values(
   return values;
 }
 
+// See project_lra_shared_model: the revision must advance across a mutation,
+// so it is supplied by the component rather than fixed here.
 std::optional<theory::TheoryModelProjection> project_lia_integer_model(
     const PreparedLraTheory& prepared, const theory::arithmetic::LraTableau& tableau,
     const std::vector<core::TermId>& shared_terms, core::SortId shared_sort,
-    std::uint64_t assignment_epoch) {
+    std::uint64_t assignment_epoch, std::uint64_t revision = 1) {
   std::vector<theory::SharedModelClass> classes;
   classes.reserve(shared_terms.size());
   for (const core::TermId term : shared_terms) {
@@ -9542,7 +9549,7 @@ std::optional<theory::TheoryModelProjection> project_lia_integer_model(
     }
   }
   return theory::TheoryModelProjection{
-      .token = {.component = "lia", .assignment_epoch = assignment_epoch, .revision = 1},
+      .token = {.component = "lia", .assignment_epoch = assignment_epoch, .revision = revision},
       .partitions = {{.sort = shared_sort, .equality_classes = std::move(classes)}}};
 }
 

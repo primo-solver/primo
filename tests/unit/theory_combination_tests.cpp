@@ -1132,6 +1132,49 @@ void model_coordinator_rejects_unchanged_mutations() {
   assert(coordinator.statistics().rejected_mutations == 1);
 }
 
+// A component that mutates must advance its model revision. That is easy to
+// get wrong -- the LIA and LRA projection helpers both stamp a fixed revision
+// -- and the failure looks like a generic invalid model, so the diagnostic
+// names the actual cause.
+void model_coordinator_names_a_mutation_that_does_not_advance_the_revision() {
+  SymbolTable symbols;
+  const auto sort = symbols.declare_sort("S");
+  const auto a_symbol = symbols.declare_constant("a", sort);
+  const auto b_symbol = symbols.declare_constant("b", sort);
+  TermManager terms(symbols);
+  const auto a = terms.mk_constant(a_symbol);
+  const auto b = terms.mk_constant(b_symbol);
+  MockTheorySolver merged(TheoryProperties{.id = "merged",
+                                           .shared_sorts = {sort},
+                                           .stably_infinite = StableInfiniteness::Yes,
+                                           .convexity = Convexity::Convex,
+                                           .produces_model_projection = true});
+  MockTheorySolver separated(TheoryProperties{.id = "separated",
+                                              .shared_sorts = {sort},
+                                              .stably_infinite = StableInfiniteness::Yes,
+                                              .convexity = Convexity::Convex,
+                                              .produces_model_projection = true});
+  merged.next_result = consistent_with(projection("merged", 21, 1, sort, {{a, b}}));
+  separated.next_result = consistent_with(projection("separated", 21, 1, sort, {{a}, {b}}));
+  // A correct partition, but stamped with the revision it started from -- the
+  // shape a hard-coded revision in a projection helper produces.
+  separated.next_mutation =
+      TheoryMutationResult{.status = TheoryMutationStatus::Mutated,
+                           .model = projection("separated", 21, 1, sort, {{a, b}}),
+                           .candidate_decisions = {},
+                           .diagnostic = {}};
+  const std::vector<ModelBasedComponentRound> rounds{{.solver = &merged, .assignment = {}},
+                                                     {.solver = &separated, .assignment = {}}};
+  const std::vector interfaces{SharedInterfaceTerms{.sort = sort, .terms = {a, b}}};
+  ModelBasedCombinationCoordinator coordinator;
+
+  const auto result = coordinator.reconcile(21, rounds, {}, interfaces, {});
+
+  assert(result.status == ModelBasedCombinationStatus::Unknown);
+  assert(result.diagnostic == "theory model mutation did not advance its revision");
+  assert(coordinator.statistics().rejected_mutations == 1);
+}
+
 void model_coordinator_prioritizes_care_pair_disagreements() {
   SymbolTable symbols;
   const auto sort = symbols.declare_sort("S");
@@ -1311,6 +1354,7 @@ int main() {
   model_coordinator_accepts_a_mutation_that_reaches_full_agreement();
   model_coordinator_turns_fixed_point_disagreement_into_a_choice();
   model_coordinator_rejects_unchanged_mutations();
+  model_coordinator_names_a_mutation_that_does_not_advance_the_revision();
   model_coordinator_prioritizes_care_pair_disagreements();
   model_coordinator_batches_component_model_choices();
   model_coordinator_keeps_propagation_splitting_and_cancellation_typed();

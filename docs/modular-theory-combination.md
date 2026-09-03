@@ -43,6 +43,13 @@ cannot inspect another component's private closure, tableau, or model.
 
 `TheorySolver::mutate` accepts a source token and required interface relations.
 It returns a newer compatible projection, a typed fixed point, or a typed stop.
+"Newer" is part of the contract, not a formality: the coordinator rejects a
+mutation whose token revision does not strictly exceed the source revision, and
+reports that as `theory model mutation did not advance its revision` rather
+than as a malformed model. A component that builds its mutated projection with
+one of the shared projection helpers must therefore pass its own monotone
+counter; the helpers take the revision as a parameter and default it to 1,
+which is correct only for the first projection of an assignment.
 `TheorySolver::care_pairs` optionally identifies the pairs most relevant to the
 component. Default implementations report a mutation fixed point and no care
 pairs, so components opt into these operations explicitly.
