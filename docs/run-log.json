@@ -30084,6 +30084,42 @@
       },
       "evidence_status": "local exact-commit ablation; correctness-clean; not SLURM headline evidence",
       "outcome": "Keep default auto unchanged pending full SLURM evaluation. Basic NNF/value preprocessing is the clear candidate for QF_UFLIA, while numeral-domain AMO remains explicit strong because it has a marked xs_11_21 regression. The prior Certora rebuild profile still justifies incremental component-growth work."
+    },
+    {
+      "id": "2026-09-03-qf-uflia-incremental-component-growth-986d89f",
+      "date": "2026-09-03",
+      "commit": "986d89f",
+      "baseline_commit": "3cabcdfe812b8949b7130bd2d7dc5044306878e0",
+      "branch": "modular-theory-combination",
+      "kind": "local-performance-profile-and-watchlist-comparison",
+      "scope": "Exact-commit mechanism profile for append-only QF_UFLIA EUF/LIA component preparation, plus the eight-case reference-gap watchlist and direct Dolmen validation of every satisfiable result",
+      "environment": {
+        "host": "local development workstation",
+        "solver": "Primo 0.1.0 at 986d89f with CaDiCaL cadical-3.0.0-7b99c07; Release for timing and RelWithDebInfo -pg for gprof",
+        "corpus": "benchmarks/qf_uflia-reference-gap-watchlist.txt rooted at tmp/QF_UFLIA; eight files; focused profile uses 20230314-Jaroslav-Bendik-Certora/3106_1c933134166dbad31f79_40_QF_UFLIA.smt2"
+      },
+      "commands": {
+        "profile_build": "cmake -S . -B build-gprof-qf-uflia-growth -DCMAKE_PREFIX_PATH=/workspace/contrib/local -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_FLAGS=-pg -DCMAKE_EXE_LINKER_FLAGS=-pg -DPRIMO_GIT_REVISION_OVERRIDE=986d89f -DPRIMO_WARNINGS_AS_ERRORS=OFF; cmake --build build-gprof-qf-uflia-growth --target primo -j2",
+        "gprof": "In a fresh artifact directory: /usr/bin/time timeout --kill-after=60s 10s /workspace/build-gprof-qf-uflia-growth/primo --quiet --stats INPUT; gprof /workspace/build-gprof-qf-uflia-growth/primo gmon.out",
+        "release_profile": "/usr/bin/time timeout --kill-after=60s 20s ./build/primo --quiet --stats INPUT",
+        "watchlist": "python3 scripts/bench_qf_uf_full.py --root tmp/QF_UFLIA --manifest benchmarks/qf_uflia-reference-gap-watchlist.txt --solver ./build/primo --solver-arg=--quiet --solver-arg=--stats --timeout 10 --out results/qf-uflia-component-growth-exact-986d89f.csv --summary results/qf-uflia-component-growth-exact-986d89f.summary.json",
+        "models": "python3 scripts/validate_model.py --root tmp/QF_UFLIA --manifest benchmarks/qf_uflia-reference-gap-watchlist.txt --solver ./build/primo --dolmen /home/user/.opam/default/bin/dolmen --dolmen-arg=--strict=false --require-dolmen-pass --timeout 15 --dolmen-timeout 15 --out results/qf-uflia-component-growth-models-exact-986d89f"
+      },
+      "results": {
+        "watchlist": "Solved 8/8: 5 sat and 3 unsat, with zero timeout, unsupported, error, or wrong-declared-status rows. Summed wall time/PAR2 was 10.342226 seconds versus 12.101086 seconds for the preceding exact-source default-equivalent off-profile at 3cabcdf; all eight individual rows were faster. This isolated local comparison is a gate, not a headline result.",
+        "models": "Dolmen directly accepted all five satisfiable watchlist models; the other three rows were unsat. No fallback validator was used.",
+        "release_profile": "The 20-second bounded Certora run returned typed cancellation/unknown after materializing 185 pairs. One initial component build took 0.023441 seconds and 185 incremental growths took 0.171691 seconds total; online callback reconstruction still took 1.661772 seconds, SAT 2.188451 seconds, and model reconciliation/LIA checking 15.695105 seconds.",
+        "baseline_comparison": "The prior 93362ae 70-second profile spent 13.908073 seconds rebuilding components over 459 generations, or about 30.3 ms per generation. The exact 986d89f run spent about 0.93 ms per incremental growth, plus one 23.4 ms initial build. Different outer budgets prevent an end-to-end time ratio claim, but the targeted preparation cost is no longer dominant.",
+        "gprof": "The ten-second exact-revision profile confirmed no dominant append routine. Exact Rational/GMP operations, online tableau assignment and violation maintenance, SAT work, integer patching, and care-pair processing were distributed across the profile; direct timers put 7.077779 seconds in model reconciliation, 1.801368 seconds in SAT, 0.807485 seconds in online callback reconstruction, 0.046677 seconds in growth, and 0.046350 seconds in the initial component build."
+      },
+      "verification": "Before 986d89f: make check passed 25/25 CTests and 79/79 Python tests; make docs passed; make asan-test passed 25/25; make lint passed; whole-tree clang-tidy reported 18 suppressed non-user warnings and no owned-code warning; advisory whole-tree misc-include-cleaner retained its 214-warning baseline and added no warning in solver_engines.cpp or qf_uflia_solver_tests.cpp. The required smt-code-review skill was unavailable; manual whole-tree and changed-file hygiene review plus the solver-efficiency-review workflow found no remaining correctness or hot-path issue.",
+      "artifacts": {
+        "profile": "/tmp/primo-qf-uflia-growth-986d89f",
+        "watchlist": "results/qf-uflia-component-growth-exact-986d89f.{csv,csv.jsonl,summary.json}",
+        "models": "results/qf-uflia-component-growth-models-exact-986d89f"
+      },
+      "evidence_status": "local exact-commit mechanism and mixed-watchlist evidence; direct-Dolmen models complete; full SLURM and fresh fuzz gates pending",
+      "outcome": "Accept append-only prepared-component growth: it removes the measured full-rebuild bottleneck without changing answers or model validity on the watchlist. Keep conservative online callback reconstruction and default preprocessing unchanged until the planned full SLURM comparison. The new dominant bucket is model reconciliation/LIA checking, not component preparation."
     }
   ]
 }
