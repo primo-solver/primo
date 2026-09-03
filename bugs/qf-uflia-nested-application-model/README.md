@@ -62,11 +62,25 @@ keyed by a different value than the one used to compute its result.
   all. Every witness so far is genuinely satisfiable; only the printed model
   is wrong.
 
-## Detection gap
+## Confirmation with the project validator
 
-`make tactic-composition-test` and the QF_UFLIA fuzz gates validate models with
-Dolmen. Dolmen could not be installed on this workstation -- `opam` needs the
-system packages `libgmp-dev` and `pkg-config`, and the sandbox has no `sudo` --
-so local model validation had been skipped. These witnesses came from a direct
-Z3 re-check instead. The SLURM gates do run Dolmen and should be expected to
-find this shape once the generator reaches it.
+```
+$ python3 scripts/validate_model.py --solver ./build/primo --require-dolmen-pass \
+    bugs/qf-uflia-nested-application-model/witness.smt2
+witness.smt2: model-error answer=sat validator=z3-fallback
+```
+
+## Why the fuzz gates did not find it
+
+`scripts/qf_uflia_fuzz.py --shape random` does not generate this shape. A
+1200-case gate at `f9be4d7` produced 698 sat models, all of which Dolmen
+accepted. The witnesses here came from a separate generator that nests
+applications three deep and pins the result with a second constraint. Extending
+the QF_UFLIA generator to cover that shape is the first thing to do when this
+is picked up.
+
+Dolmen itself was initially unavailable on this workstation: `opam` refused
+because its depext probe wanted the system packages `libgmp-dev` and
+`pkg-config` and the sandbox has no `sudo`. `pkg-config` is in fact installed
+and GMP comes from `contrib/local`, so `contrib/install_dolmen.py` now passes
+`--no-depexts` and the install succeeds without root.

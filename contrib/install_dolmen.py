@@ -135,6 +135,12 @@ def main() -> int:
             ],
             env,
         )
+    # --no-depexts: opam's depext probe asks the system package manager for
+    # libgmp-dev and pkg-config, which needs root. pkg-config is already on the
+    # system, and GMP comes from Primo's own contrib/local prefix, which
+    # add_local_dependency_paths puts on the compiler and pkg-config search
+    # paths above. Letting opam try to install system packages would fail on
+    # any machine where the developer is not root.
     run(
         [
             opam_command,
@@ -142,6 +148,7 @@ def main() -> int:
             "--switch",
             str(switch),
             "--yes",
+            "--no-depexts",
             f"dolmen_bin.{DOLMEN_VERSION}",
         ],
         env,
