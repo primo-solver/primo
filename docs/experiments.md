@@ -308,6 +308,14 @@ The merge-grade generated gate is
 validation for every satisfiable Primo result. `PRIMO_FUZZ_SOLVER_ARGS` may be
 used to exercise either ablation profile.
 
+Use `scripts/slurm_qf_uflia_full_solver_compare.sbatch` for the complete
+SMT-LIB archive. Its 32 tasks run Primo, Z3, cvc5, and OpenSMT over the same
+eight deterministic shards with a 60-second per-instance cutoff. Stage every
+file from `sandbox/QF_UFLIA.tar.zst` under `tmp/QF_UFLIA` first. Each task writes
+an append-only JSONL journal as well as its final CSV, so completed rows survive
+a task-level interruption. Keep the array size synchronized with the number of
+solvers times `PRIMO_COMPARE_SHARDS` when overriding either setting.
+
 These corpus cases are an evaluation gate, not part of `make check`: several
 are intentionally beyond Primo's current short-timeout performance. For cases
 without a declared status, an evaluation must establish the expected answer by
