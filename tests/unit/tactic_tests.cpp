@@ -26,6 +26,7 @@
 #include "smt/solver_error.hpp"
 #include "smt/solver_leaves.hpp"
 #include "smt/solver_strategy.hpp"
+#include "smt/solver_support.hpp"
 #include "smt/solver_tactic.hpp"
 #include "smt/strategy.hpp"
 #include "smt/tactic.hpp"
@@ -534,6 +535,66 @@ void cancellation_stops_before_running_a_tactic() {
 // Cancellation that arrives while a repeat is already running is observed by
 // the child tactic, not by the loop. The loop must still converge promptly
 // instead of spinning to its iteration bound.
+// An AnyOf is disjunctive. A preprocessed result reduced to its first
+// alternative loses satisfiability that only a later alternative carries, so
+// the session triages the whole disjunction rather than reading .front().
+void triage_keeps_a_satisfiable_alternative_when_the_first_is_false() {
+  Fixture fixture;
+  const primo::core::TermId contradiction = fixture.terms.mk_bool(false);
+  const primo::smt::AnyOf preprocessed(std::vector<primo::smt::Goal>{
+      primo::smt::Goal{{contradiction}}, primo::smt::Goal{{fixture.p_term()}}});
+
+  const primo::smt::PreprocessedAlternatives triaged =
+      primo::smt::triage_preprocessed_alternatives(fixture.terms, preprocessed);
+
+  check(!triaged.any_inconclusive);
+  check(triaged.surviving.size() == 1);
+  check(triaged.surviving.front().assertions() == std::vector{fixture.p_term()});
+}
+
+void triage_reports_unsat_only_when_every_alternative_is_false() {
+  Fixture fixture;
+  const primo::core::TermId contradiction = fixture.terms.mk_bool(false);
+  const primo::smt::AnyOf all_false(std::vector<primo::smt::Goal>{
+      primo::smt::Goal{{contradiction}}, primo::smt::Goal{{fixture.p_term(), contradiction}}});
+
+  const primo::smt::PreprocessedAlternatives triaged =
+      primo::smt::triage_preprocessed_alternatives(fixture.terms, all_false);
+
+  check(!triaged.any_inconclusive);
+  check(triaged.surviving.empty());
+}
+
+// An interrupted alternative cannot simply be dropped: it might have been the
+// only satisfiable disjunct, so the whole result is inconclusive.
+void triage_flags_any_inconclusive_alternative() {
+  Fixture fixture;
+  const primo::smt::AnyOf partly_interrupted(std::vector<primo::smt::Goal>{
+      primo::smt::Goal{{fixture.p_term()}},
+      primo::smt::Goal{{fixture.p_term()}}.with_diagnostic(
+          primo::smt::InconclusiveReason::ResourceLimit, "deadline reached")});
+
+  const primo::smt::PreprocessedAlternatives triaged =
+      primo::smt::triage_preprocessed_alternatives(fixture.terms, partly_interrupted);
+
+  check(triaged.any_inconclusive);
+  check(triaged.surviving.size() == 1);
+}
+
+// A single conclusive alternative, the shape every production preprocessing
+// strategy produces today, passes through untouched.
+void triage_passes_a_single_alternative_through() {
+  Fixture fixture;
+  const primo::smt::AnyOf single = primo::smt::AnyOf::single(primo::smt::Goal{{fixture.p_term()}});
+
+  const primo::smt::PreprocessedAlternatives triaged =
+      primo::smt::triage_preprocessed_alternatives(fixture.terms, single);
+
+  check(!triaged.any_inconclusive);
+  check(triaged.surviving.size() == 1);
+  check(triaged.surviving.front().assertions() == std::vector{fixture.p_term()});
+}
+
 void cancellation_during_a_repeat_terminates_it_promptly() {
   Fixture fixture;
   bool cancelled = false;
@@ -1133,6 +1194,10 @@ int main() {
   experimental_split_bools_uses_sequential_first_sat_execution_and_keeps_model();
   sequential_scheduler_tries_each_arm_from_the_original_goal();
   cancellation_stops_before_running_a_tactic();
+  triage_keeps_a_satisfiable_alternative_when_the_first_is_false();
+  triage_reports_unsat_only_when_every_alternative_is_false();
+  triage_flags_any_inconclusive_alternative();
+  triage_passes_a_single_alternative_through();
   cancellation_during_a_repeat_terminates_it_promptly();
   cancellation_before_a_repeat_runs_nothing_inside_it();
   check_sat_honors_an_existing_cancellation_request();

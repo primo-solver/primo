@@ -1,5 +1,6 @@
 #include "smt/solver_support.hpp"
 
+#include <algorithm>
 #include <cstddef>
 #include <vector>
 
@@ -8,6 +9,27 @@
 #include "util/statistics.hpp"
 
 namespace primo::smt {
+
+PreprocessedAlternatives triage_preprocessed_alternatives(const core::TermManager& terms,
+                                                          const AnyOf& result) {
+  PreprocessedAlternatives triaged;
+  triaged.surviving.reserve(result.size());
+  for (const Goal& alternative : result.alternatives()) {
+    if (alternative.reason() != InconclusiveReason::None) {
+      triaged.any_inconclusive = true;
+      continue;
+    }
+    const bool is_false =
+        std::ranges::any_of(alternative.assertions(), [&terms](core::TermId assertion) {
+          const core::Term& node = terms.get(assertion);
+          return node.kind == core::TermKind::BoolValue && !node.bool_value;
+        });
+    if (!is_false) {
+      triaged.surviving.push_back(alternative);
+    }
+  }
+  return triaged;
+}
 
 CheckSatResult map_sat_result(sat::SatResult result) {
   switch (result) {

@@ -69,6 +69,20 @@ bookkeeping while allowing assertion-only rewrites to share the untouched
 payload. The chain reserves node kinds for model reconstruction only; proof and
 unsat-core converters remain future work.
 
+The session consumes that disjunction as a disjunction.
+`triage_preprocessed_alternatives` in `solver_support` splits a preprocessed
+`AnyOf` into the alternatives that did not reduce to `false` plus a flag for
+any alternative that came back inconclusive. All survivors are handed to the
+solver dispatch together; `unsat` is reported only when every alternative
+reduced to `false`, and an inconclusive alternative makes the whole result
+inconclusive rather than being dropped, because it may have been the only
+satisfiable disjunct. Statistics, Nelson-Oppen and Ackermann diagnostics, and
+the Boolean-shape heuristics read the union of the survivors. Every production
+preprocessing strategy currently returns exactly one alternative, for which all
+of this is identical to reading that alternative directly; the disjunctive
+handling is what lets a future splitting preprocessing tactic be added without
+silently losing models.
+
 `smt::AnyOf` owns an immutable shared non-empty ordered vector of goals with disjunctive
 semantics. It is true when any goal is true, false when every goal is false, and
 otherwise inconclusive. An empty `AnyOf` is rejected: truth is represented by

@@ -1,5 +1,6 @@
 #include "smt/solver_session.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <string>
 #include <string_view>
@@ -21,6 +22,7 @@
 #include "smt/solver_engines.hpp"
 #include "smt/solver_error.hpp"
 #include "smt/solver_leaves.hpp"
+#include "smt/solver_support.hpp"
 #include "smt/solver_tactic.hpp"
 #include "smt/strategy.hpp"
 #include "smt/tactic.hpp"
@@ -623,15 +625,33 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
                                         options.produce_model, fresh_constant);
     PreparedPreprocessingStrategy prepared = prepare_and_execute_preprocessing_strategy(
         frontend, std::move(assertions), options, preprocessing_context);
-    if (prepared.result.alternatives().front().reason() != InconclusiveReason::None) {
+    // Preprocessing returns a disjunction. Reading only its first alternative
+    // would report unsat for a formula satisfiable through a later one, so
+    // every alternative is carried through to the solver.
+    PreprocessedAlternatives triaged =
+        triage_preprocessed_alternatives(frontend.terms(), prepared.result);
+    if (triaged.any_inconclusive) {
       statistics.set(kStatTimePreprocessingUs,
                      elapsed_microseconds(preprocessing_start, PhaseClock::now()));
       CheckSatOutcome interrupted =
           outcome_from_tactic_result(prepared.result, preprocessing_context);
       return finish(interrupted.result, std::move(interrupted.message), interrupted.reason);
     }
-    assertions = prepared.result.alternatives().front().assertions();
-    ModelReconstruction reconstruction = prepared.result.alternatives().front().reconstruction();
+    if (triaged.surviving.empty()) {
+      // Every alternative reduced to false.
+      statistics.set(kStatTimePreprocessingUs,
+                     elapsed_microseconds(preprocessing_start, PhaseClock::now()));
+      return finish(CheckSatResult::Unsat);
+    }
+    // Statistics, diagnostics, and the Boolean-shape heuristics describe the
+    // whole preprocessed goal, so they read the union of the alternatives.
+    // With the single alternative every production strategy produces today
+    // this is exactly the previous assertion vector.
+    assertions.clear();
+    for (const Goal& alternative : triaged.surviving) {
+      assertions.insert(assertions.end(), alternative.assertions().begin(),
+                        alternative.assertions().end());
+    }
     const FiniteDomainAtMostOneResult& raw_finite_domain_result =
         *prepared.profile.raw_finite_domain;
     statistics.set(kStatAssertionsFinal, assertions.size());
@@ -655,15 +675,15 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     if (options.euf_ackermann_diagnostics) {
       record_ackermann_cost_diagnostics_for_session(frontend.terms(), assertions, statistics);
     }
-    for (const core::TermId assertion : assertions) {
-      const core::Term& node = frontend.terms().get(assertion);
-      if (node.kind == core::TermKind::BoolValue && !node.bool_value) {
-        statistics.set(kStatTimePreprocessingUs,
-                       elapsed_microseconds(preprocessing_start, PhaseClock::now()));
-        return finish(CheckSatResult::Unsat);
-      }
-    }
-    if (assertions.empty() && !options.preprocess_only && frontend.logic() != "QF_UFLIA") {
+    // A single alternative with no assertions is already true, so the
+    // disjunction is satisfiable regardless of the others. Trivially false
+    // alternatives were dropped by the triage above.
+    const auto trivially_true = std::ranges::find_if(
+        triaged.surviving,
+        [](const Goal& alternative) { return alternative.assertions().empty(); });
+    if (trivially_true != triaged.surviving.end() && !options.preprocess_only &&
+        frontend.logic() != "QF_UFLIA") {
+      const ModelReconstruction reconstruction = trivially_true->reconstruction();
       statistics.set(kStatTimePreprocessingUs,
                      elapsed_microseconds(preprocessing_start, PhaseClock::now()));
       CheckSatOutcome outcome = finish(CheckSatResult::Sat);
@@ -714,9 +734,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     const Tactic solver_dispatch = compile(solver_strategy);
 
     const PhaseClock::time_point solve_start = PhaseClock::now();
-    const AnyOf solved = solver_dispatch(
-        tactic_context,
-        AnyOf::single(Goal(std::move(assertions)).with_reconstruction(std::move(reconstruction))));
+    const AnyOf solved = solver_dispatch(tactic_context, AnyOf(std::move(triaged.surviving)));
     CheckSatOutcome outcome = outcome_from_tactic_result(solved, tactic_context);
     return finish_solve(std::move(outcome), solve_start);
   } catch (const UnsupportedInput& error) {
