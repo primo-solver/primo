@@ -109,14 +109,16 @@ class QfUfModelBuilder {
       if (skip_symbol(symbol) || symbol.kind == core::SymbolKind::Constant) {
         continue;
       }
+      const std::vector<std::string> parameters = model_parameter_names(symbol.arg_sorts.size());
       out << "  (define-fun " << symbol.name << " (";
       for (std::size_t i = 0; i < symbol.arg_sorts.size(); ++i) {
         if (i != 0) {
           out << " ";
         }
-        out << "(x" << i << " " << sort_name(symbol.arg_sorts[i]) << ")";
+        out << "(" << parameters[i] << " " << sort_name(symbol.arg_sorts[i]) << ")";
       }
-      out << ") " << sort_name(symbol.result_sort) << " " << function_body(symbol) << ")\n";
+      out << ") " << sort_name(symbol.result_sort) << " " << function_body(symbol, parameters)
+          << ")\n";
     }
     if (options_.include_model_wrapper) {
       out << ")";
@@ -206,6 +208,24 @@ class QfUfModelBuilder {
   }
 
   std::string sort_name(core::SortId sort) const { return terms_.symbols().get_sort(sort).name; }
+
+  std::vector<std::string> model_parameter_names(std::size_t arity) const {
+    std::vector<std::string> parameters;
+    parameters.reserve(arity);
+    for (std::size_t index = 0; index < arity; ++index) {
+      std::string candidate = "x" + std::to_string(index);
+      if (terms_.symbols().lookup_symbol(candidate).has_value()) {
+        candidate = "@primo_model_arg_" + std::to_string(index);
+        std::size_t suffix = 0;
+        while (terms_.symbols().lookup_symbol(candidate).has_value() ||
+               std::ranges::find(parameters, candidate) != parameters.end()) {
+          candidate = "@primo_model_arg_" + std::to_string(index) + "_" + std::to_string(suffix++);
+        }
+      }
+      parameters.push_back(std::move(candidate));
+    }
+    return parameters;
+  }
 
   std::string value_name(core::TermId representative) {
     const core::SortId sort = terms_.get(representative).sort;
@@ -374,17 +394,18 @@ class QfUfModelBuilder {
     return entries;
   }
 
-  std::string condition_for_entry(const TableEntry& entry) const {
+  std::string condition_for_entry(const TableEntry& entry,
+                                  const std::vector<std::string>& parameters) const {
     if (entry.args.empty()) {
       return "true";
     }
     if (entry.args.size() == 1) {
-      return "(= x0 " + entry.args.front() + ")";
+      return "(= " + parameters.front() + " " + entry.args.front() + ")";
     }
     std::ostringstream out;
     out << "(and";
     for (std::size_t i = 0; i < entry.args.size(); ++i) {
-      out << " (= x" << i << " " << entry.args[i] << ")";
+      out << " (= " << parameters[i] << " " << entry.args[i] << ")";
     }
     out << ")";
     return out.str();
@@ -403,14 +424,15 @@ class QfUfModelBuilder {
     return default_value(symbol.result_sort);
   }
 
-  std::string function_body(const core::Symbol& symbol) {
+  std::string function_body(const core::Symbol& symbol,
+                            const std::vector<std::string>& parameters) {
     std::string body = default_result(symbol);
     std::vector<TableEntry> entries = table_entries(symbol);
     for (auto it = entries.rbegin(); it != entries.rend(); ++it) {
       if (it->result == body) {
         continue;
       }
-      body = "(ite " + condition_for_entry(*it) + " " + it->result + " " + body + ")";
+      body = "(ite " + condition_for_entry(*it, parameters) + " " + it->result + " " + body + ")";
     }
     return body;
   }

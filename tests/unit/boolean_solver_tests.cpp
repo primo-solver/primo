@@ -97,6 +97,24 @@ void get_model_prints_qf_uf_model_for_declared_symbols() {
   assert(result.model.find("$primo_") == std::string::npos);
 }
 
+void get_model_parameters_do_not_shadow_user_symbols() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun a () A)
+    (declare-fun @primo_model_arg_1 () A)
+    (declare-fun x1 (A A) A)
+    (assert (= (x1 a a) a))
+    (check-sat)
+    (get-model)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.model.find("(define-fun x1 ((x0 A) (@primo_model_arg_1_0 A)) A") !=
+         std::string::npos);
+  assert(result.model.find("(= @primo_model_arg_1_0 (as @uc_") != std::string::npos);
+}
+
 void get_model_preserves_solved_constant_preprocessing() {
   const auto result = check_sat_smtlib(R"(
     (set-option :produce-models true)
@@ -3081,6 +3099,7 @@ int main() {
   get_model_requires_produce_models();
   get_model_requires_prior_check_sat();
   get_model_prints_qf_uf_model_for_declared_symbols();
+  get_model_parameters_do_not_shadow_user_symbols();
   get_model_preserves_solved_constant_preprocessing();
   get_model_completes_eliminated_boolean_arguments_before_uf_tables();
   unsat_get_model_has_no_model();

@@ -56,6 +56,35 @@ void strong_preprocessing_recognizes_integer_numeral_domains() {
   assert(result.model.find("(define-fun y () Int") != std::string::npos);
 }
 
+void auto_preprocessing_uses_the_evaluated_integer_safe_profile() {
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLIA)
+    (declare-fun x () Int)
+    (declare-fun p () Bool)
+    (declare-fun f (Int) Int)
+    (assert (not (=> p (= (f x) 0))))
+    (check-sat)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":preprocessing.boolean-nnf.visited") >= 1);
+  assert(result.statistics.get(":tactic.preprocessing-round.invocations") >= 1);
+
+  CheckSatOptions off_options;
+  off_options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
+  const auto off_result = check_sat_smtlib(R"(
+    (set-logic QF_UFLIA)
+    (declare-fun x () Int)
+    (declare-fun p () Bool)
+    (declare-fun f (Int) Int)
+    (assert (not (=> p (= (f x) 0))))
+    (check-sat)
+  )",
+                                           off_options);
+  assert(off_result.result == CheckSatResult::Sat);
+  assert(off_result.statistics.get(":preprocessing.boolean-nnf.visited") == 0);
+  assert(off_result.statistics.get(":tactic.preprocessing-round.invocations") == 0);
+}
+
 // LIA is non-convex: 0 <= x <= 1 entails x=0 or x=1, but neither equality
 // alone.  EUF derives both disequalities by congruence from the two function
 // result disequalities.  Complete SAT-visible arrangement search must therefore
@@ -332,6 +361,21 @@ void unused_integer_uf_gets_a_well_sorted_default() {
   assert(result.model.find("(define-fun f ((x0 Int)) Int 0)") != std::string::npos);
 }
 
+void model_parameters_do_not_shadow_user_symbols() {
+  const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
+    (set-logic QF_UFLIA)
+    (declare-fun x1 (Int Int) Int)
+    (assert (= (x1 0 1) 2))
+    (check-sat)
+    (get-model)
+  )");
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.model.find("(define-fun x1 ((x0 Int) (@primo_model_arg_1 Int)) Int") !=
+         std::string::npos);
+  assert(result.model.find("(= @primo_model_arg_1 1)") != std::string::npos);
+}
+
 void rejects_real_symbols() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UFLIA)
@@ -353,6 +397,7 @@ void rejects_real_symbols() {
 int main() {
   accepts_integer_uninterpreted_functions();
   strong_preprocessing_recognizes_integer_numeral_domains();
+  auto_preprocessing_uses_the_evaluated_integer_safe_profile();
   non_convex_integer_arrangement_is_complete();
   online_components_preserve_non_convex_completeness();
   online_components_build_a_combined_integer_uf_model();
@@ -365,6 +410,7 @@ int main() {
   model_reconstructs_an_integer_substituted_by_a_uf_application();
   model_reconstructs_a_compound_definition_with_a_uf_application();
   unused_integer_uf_gets_a_well_sorted_default();
+  model_parameters_do_not_shadow_user_symbols();
   rejects_real_symbols();
   return 0;
 }

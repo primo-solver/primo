@@ -177,10 +177,11 @@ Boolean normalization in the established order. Production executes the
 initial-normalization prefix before profile analysis and the remaining suffix
 afterward because profile selection must inspect the transformed goal.
 
-For QF_LIA and QF_UFLIA, default `auto` still selects the frozen
-substitution-only path. Explicit `basic` and `strong` select an integer-safe
-suffix: a two-polarity, memoized NNF normalization followed by repeated Boolean
-unit, forced-atom, solved-constant, and unit-equality phases. The typed strategy
+For pure QF_LIA, default `auto` still selects the frozen substitution-only
+path. QF_UFLIA `auto`, and explicit `basic` for either integer logic, select an
+integer-safe suffix: a two-polarity, memoized NNF normalization followed by
+repeated Boolean unit, forced-atom, solved-constant, and unit-equality phases.
+The typed strategy
 records `negation-mode=nnf`; Gaussian elimination and the generic UF/Real
 preprocessing switches remain false in that round. Integer `strong` additionally
 enables the finite-domain composite for disjunctive domains of distinct Int

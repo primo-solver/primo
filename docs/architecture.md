@@ -328,6 +328,9 @@ Implemented now:
   closure before constructing UF tables, and omits Primo-generated auxiliary
   symbols from the response. The completion step keeps printed Boolean argument
   tuples congruent even when preprocessing removed their last SAT occurrence.
+  Model-table binders are selected against all user symbol names and reused in
+  the generated table guards, preventing a parameter such as `x1` from
+  shadowing a user function named `x1` in the emitted `define-fun`.
 - Minimal QF_LRA SMT-LIB model printing for user-declared nullary `Real`
   constants, with shared support from the QF_UF model builder for non-Real
   declarations that survive only as preprocessing reconstruction facts. The SMT

@@ -570,6 +570,14 @@ inside its closure and saturates congruence again. This maintains the invariant:
 > Terms printed as the same Boolean value have the same model-closure
 > representative before any uninterpreted application table is constructed.
 
+Function-table parameters are also chosen against the complete user symbol
+table. The compact names `x0`, `x1`, and so on are retained when unbound; a
+collision uses a deterministic `@primo_model_arg_N` name (with a numeric suffix
+if needed), and the same vector drives both the binder list and table guards.
+This is model-printer hygiene, not theory reasoning: an SMT-LIB model binder may
+not shadow the very global symbol whose value the surrounding `define-fun`
+defines. `QfUfModelBuilder` owns these temporary strings for one `build()` call.
+
 Without that step, solved-constant preprocessing could eliminate `a = f(p)`,
 leave `p` unconstrained, and later print `p` as `false` while keeping `f(p)` and
 `f(false)` in different closure classes. The emitted table then contained two

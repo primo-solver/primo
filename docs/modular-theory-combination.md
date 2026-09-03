@@ -531,13 +531,14 @@ constructing complete arrangements; and avoid rebuilding and rescanning the
 integer tableau for every sparse equality. These are profiling leads, not
 implemented improvements or performance claims.
 
-The first preprocessing part of that lead is now available as an explicit
-experiment. Default `auto` still maps to the exact substitution-only integer
-path. Explicit `basic` and `strong` add a non-distributing, two-polarity NNF
+The first preprocessing part of that lead is now the evaluated QF_UFLIA
+default. QF_UFLIA `auto`, plus explicit `basic` for either integer logic, adds a
+non-distributing, two-polarity NNF
 pass and the integer-safe Boolean/value-propagation round; the generic Real and
-UF flags remain disabled. This changes neither the default strategy nor the
-recorded baseline above. Numeral-domain recognition and its evaluation remain
-the next separately guarded milestone.
+UF flags remain disabled. The complete 659-file comparison improved from 549
+solves and 15,146.0 PAR2 on the same revision's substitution-only path to 571
+solves and 11,735.7 PAR2. Pure QF_LIA `auto` remains substitution-only, and
+integer numeral-domain recognition remains an explicit `strong` experiment.
 
 ### Amortized changed-term notification draining
 

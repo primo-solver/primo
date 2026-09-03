@@ -6,10 +6,11 @@ formula classification, so the mode applies to pure QF_UF, pure QF_LRA,
 QF_UFLRA, QF_LIA, QF_UFLIA, and propositional inputs; individual
 transformations remain shape-dependent and are no-ops when their recognizers
 do not apply. The CLI and `CheckSatOptions::preprocessing_mode` default is
-`auto`. For the integer logics, `auto` deliberately maps to the audited
-substitution-only path, preserving the default behavior, while explicit
-`basic` and `strong` opt into the integer-safe Boolean/value-propagation
-profile described below.
+`auto`. For pure QF_LIA, `auto` deliberately maps to the audited
+substitution-only path. For QF_UFLIA, `auto` maps to the evaluated
+integer-safe Boolean/value-propagation profile described below. Explicit
+`off` preserves the substitution-only comparison path, while `strong` also
+enables the guarded integer numeral-domain machinery.
 
 The former QF_UF-specific names have been removed. Use
 `--preprocessing-mode` and `--auto-preprocess-selector`; unknown legacy names
@@ -96,7 +97,7 @@ flattening. They traverse Boolean structure and Boolean equality, while treating
 Boolean-valued UF applications as atomic so their arguments remain owned by the
 EUF normalization path.
 
-Explicit `basic` and `strong` preprocessing on QF_LIA and QF_UFLIA first
+`basic` and `strong` preprocessing on QF_LIA and QF_UFLIA first
 normalizes the Boolean skeleton to negation normal form. It pushes `not`
 through `not`, `and`, `or`, and `=>` using De Morgan's laws and the two
 implication polarities, but it performs no distributive expansion. Equality,
@@ -107,6 +108,14 @@ application. The iterative implementation stores positive and negative
 results for each source `TermId`, so its work and memo table are linear in the
 reachable Boolean DAG (at most two states per source node); newly constructed
 terms remain owned and hash-consed by `TermManager`.
+
+QF_UFLIA selects this `basic` subset in `auto` mode. The September 2026
+659-file SLURM evaluation solved 571 instances with it, compared with 549 for
+the substitution-only build at the same solver revision, and reduced PAR2 by
+22.5%. All 3,000 generated answers agreed with Z3 and Dolmen directly accepted
+all 1,765 generated SAT models; the complete real-corpus model gate is recorded
+in `docs/run-log.json`. QF_LIA remains substitution-only in `auto` mode because
+this QF_UFLIA result does not establish a pure-LIA performance win.
 
 The NNF step is the first leaf of the optional integer preprocessing suffix,
 after the capped solved-constant pass. The repeated round then uses Boolean

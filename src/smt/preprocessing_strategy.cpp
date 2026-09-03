@@ -557,14 +557,19 @@ PreparedPreprocessingStrategy prepare_and_execute_preprocessing_strategy(
     TacticContext& context) {
   initialize_skippable_legacy_statistics(context.statistics());
   const bool is_qf_lia = frontend.logic() == "QF_LIA" || frontend.logic() == "QF_UFLIA";
-  if (is_qf_lia && options.preprocessing_mode == PreprocessingMode::Auto) {
+  if (frontend.logic() == "QF_LIA" && options.preprocessing_mode == PreprocessingMode::Auto) {
     // docs/open-leads.md lead 12a audits only syntactic solved-constant
     // substitution over Int. Real Gaussian candidates, monotone elimination,
     // and the general fixed-point profile remain disabled until their integer
     // proof obligations are discharged.
-    // Keep the default profile frozen at the audited substitution-only path.
-    // Explicit basic/strong requests opt into the integer-safe profile.
+    // Keep pure QF_LIA's default profile frozen at the audited substitution-only path.
     options.preprocessing_mode = PreprocessingMode::Off;
+  } else if (frontend.logic() == "QF_UFLIA" &&
+             options.preprocessing_mode == PreprocessingMode::Auto) {
+    // The integer-safe Boolean/value-propagation profile is the evaluated QF_UFLIA default.
+    // It deliberately excludes Gaussian elimination and the Real/UF-only transformations
+    // documented above. Explicit off remains available for controlled comparisons.
+    options.preprocessing_mode = PreprocessingMode::Basic;
   }
   std::vector<Strategy> initial_children;
   if (options.arithmetic_atom_canonicalization) {
