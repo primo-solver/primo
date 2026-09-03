@@ -7,6 +7,7 @@
 #include <iomanip>
 #include <ios>
 #include <memory>
+#include <span>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -33,10 +34,10 @@ std::string quote(std::string_view text) {
   return result;
 }
 
-std::string join_children(std::string_view head, const std::vector<Strategy>& children) {
+std::string join_rendered(std::string_view head, std::span<const std::string> children) {
   std::string result = "(" + std::string(head);
-  for (const Strategy& child : children) {
-    result += " " + child.canonical();
+  for (const std::string& child : children) {
+    result += " " + child;
   }
   result += ")";
   return result;
@@ -227,31 +228,64 @@ const std::vector<StrategyParameter>& Strategy::parameters() const { return data
 const std::vector<Strategy>& Strategy::children() const { return data_->children; }
 
 std::string Strategy::canonical() const {
-  switch (data_->kind) {
-    case StrategyKind::Leaf: {
-      std::string result = "(leaf " + quote(data_->leaf_id);
-      for (const StrategyParameter& parameter : data_->parameters) {
-        result += " (" + quote(parameter.key) + " " + quote(parameter.value) + ")";
+  // Rendered with an explicit post-order walk rather than recursion. Strategy
+  // trees are built programmatically, so nothing bounds their depth, and
+  // canonical() also backs operator== and fingerprint().
+  struct Frame {
+    const Strategy* node;
+    std::size_t next_child;
+  };
+  const auto render = [](const Data& node, std::span<const std::string> children) {
+    switch (node.kind) {
+      case StrategyKind::Leaf: {
+        std::string result = "(leaf " + quote(node.leaf_id);
+        for (const StrategyParameter& parameter : node.parameters) {
+          result += " (" + quote(parameter.key) + " " + quote(parameter.value) + ")";
+        }
+        return result + ")";
       }
-      return result + ")";
+      case StrategyKind::Sequence:
+        return join_rendered("sequence", children);
+      case StrategyKind::Conditional:
+        return "(conditional " + quote(node.probe->name()) + " " + children[0] + " " + children[1] +
+               ")";
+      case StrategyKind::Repeat:
+        return "(repeat " + std::to_string(node.max_iterations) + " " +
+               quote(node.repeat_policy_id) + " " + children.front() + ")";
+      case StrategyKind::TryInOrder:
+        return join_rendered("try-in-order", children);
+      case StrategyKind::TryFor:
+        return "(try-for " + std::to_string(node.budget.count()) + "ms " + children.front() + ")";
+      case StrategyKind::Skip:
+        return std::string("skip");
     }
-    case StrategyKind::Sequence:
-      return join_children("sequence", data_->children);
-    case StrategyKind::Conditional:
-      return "(conditional " + quote(data_->probe->name()) + " " + data_->children[0].canonical() +
-             " " + data_->children[1].canonical() + ")";
-    case StrategyKind::Repeat:
-      return "(repeat " + std::to_string(data_->max_iterations) + " " +
-             quote(data_->repeat_policy_id) + " " + data_->children.front().canonical() + ")";
-    case StrategyKind::TryInOrder:
-      return join_children("try-in-order", data_->children);
-    case StrategyKind::TryFor:
-      return "(try-for " + std::to_string(data_->budget.count()) + "ms " +
-             data_->children.front().canonical() + ")";
-    case StrategyKind::Skip:
-      return "skip";
+    throw TacticError("unknown strategy kind");
+  };
+
+  std::vector<Frame> stack;
+  std::vector<std::string> rendered;
+  stack.push_back(Frame{.node = this, .next_child = 0});
+  while (!stack.empty()) {
+    const Strategy& node = *stack.back().node;
+    const std::vector<Strategy>& children = node.data_->children;
+    if (stack.back().next_child < children.size()) {
+      const std::size_t index = stack.back().next_child++;
+      stack.push_back(Frame{.node = &children[index], .next_child = 0});
+      continue;
+    }
+    // Every child of this node has been rendered and sits at the end of the
+    // output stack, in order.
+    const std::size_t first = rendered.size() - children.size();
+    std::string text = render(*node.data_, std::span(rendered).subspan(first));
+    rendered.resize(first);
+    rendered.push_back(std::move(text));
+    stack.pop_back();
   }
-  throw TacticError("unknown strategy kind");
+  // The walk consumes each node's children and leaves exactly one result.
+  if (rendered.size() != 1) {
+    throw TacticError("canonical rendering did not reduce to a single strategy");
+  }
+  return std::move(rendered.front());
 }
 
 std::string Strategy::fingerprint() const { return "fnv1a64:" + hash_string(canonical()); }
@@ -261,62 +295,84 @@ bool Strategy::operator==(const Strategy& other) const {
 }
 
 Tactic compile(const Strategy& strategy) {
-  switch (strategy.data_->kind) {
-    case StrategyKind::Leaf:
-      return *strategy.data_->implementation;
-    case StrategyKind::Sequence: {
-      std::vector<Tactic> children;
-      children.reserve(strategy.data_->children.size());
-      for (const Strategy& child : strategy.data_->children) {
-        children.push_back(compile(child));
+  // Lowered with an explicit post-order walk, for the same reason canonical()
+  // is: a programmatically built strategy has no bounded depth.
+  struct Frame {
+    const Strategy* node;
+    std::size_t next_child;
+  };
+  const auto lower = [](const Strategy::Data& node, std::span<Tactic> children) {
+    switch (node.kind) {
+      case StrategyKind::Leaf:
+        return *node.implementation;
+      case StrategyKind::Sequence:
+        return sequence("strategy-sequence",
+                        std::vector<Tactic>(std::make_move_iterator(children.begin()),
+                                            std::make_move_iterator(children.end())));
+      case StrategyKind::Conditional: {
+        const BooleanProbe probe = *node.probe;
+        return conditional(
+            "strategy-conditional",
+            [probe](const TacticContext& context, const Goal& goal) {
+              return probe(context, goal);
+            },
+            std::move(children[0]), std::move(children[1]));
       }
-      return sequence("strategy-sequence", std::move(children));
-    }
-    case StrategyKind::Conditional: {
-      const BooleanProbe probe = *strategy.data_->probe;
-      return conditional(
-          "strategy-conditional",
-          [probe](const TacticContext& context, const Goal& goal) { return probe(context, goal); },
-          compile(strategy.data_->children[0]), compile(strategy.data_->children[1]));
-    }
-    case StrategyKind::Repeat:
-      return repeat(strategy.data_->repeat_execution_name,
-                    compile(strategy.data_->children.front()), strategy.data_->max_iterations,
-                    strategy.data_->repeat_predicate, strategy.data_->repeat_equivalence,
-                    strategy.data_->repeat_observer);
-    case StrategyKind::TryInOrder: {
-      std::vector<Tactic> children;
-      children.reserve(strategy.data_->children.size());
-      for (const Strategy& child : strategy.data_->children) {
-        children.push_back(compile(child));
+      case StrategyKind::Repeat:
+        return repeat(node.repeat_execution_name, std::move(children.front()), node.max_iterations,
+                      node.repeat_predicate, node.repeat_equivalence, node.repeat_observer);
+      case StrategyKind::TryInOrder:
+        return first_terminal("strategy-try-in-order",
+                              std::make_shared<const SequentialTacticScheduler>(),
+                              std::vector<Tactic>(std::make_move_iterator(children.begin()),
+                                                  std::make_move_iterator(children.end())));
+      case StrategyKind::TryFor: {
+        Tactic child = std::move(children.front());
+        const std::chrono::milliseconds budget = node.budget;
+        return Tactic("strategy-try-for", [child = std::move(child), budget](TacticContext& context,
+                                                                             const AnyOf& input) {
+          TacticContext::DeadlineScope deadline(context, budget);
+          AnyOf result = child(context, input);
+          if (!context.deadline_reached() || truth(result, context) != GoalTruth::Inconclusive) {
+            return result;
+          }
+          std::vector<Goal> limited;
+          limited.reserve(result.size());
+          for (const Goal& goal : result.alternatives()) {
+            limited.push_back(
+                goal.with_diagnostic(InconclusiveReason::ResourceLimit, "deadline reached"));
+          }
+          return AnyOf(std::move(limited));
+        });
       }
-      return first_terminal("strategy-try-in-order",
-                            std::make_shared<const SequentialTacticScheduler>(),
-                            std::move(children));
+      case StrategyKind::Skip:
+        return skip();
     }
-    case StrategyKind::TryFor: {
-      Tactic child = compile(strategy.data_->children.front());
-      const std::chrono::milliseconds budget = strategy.data_->budget;
-      return Tactic("strategy-try-for", [child = std::move(child), budget](TacticContext& context,
-                                                                           const AnyOf& input) {
-        TacticContext::DeadlineScope deadline(context, budget);
-        AnyOf result = child(context, input);
-        if (!context.deadline_reached() || truth(result, context) != GoalTruth::Inconclusive) {
-          return result;
-        }
-        std::vector<Goal> limited;
-        limited.reserve(result.size());
-        for (const Goal& goal : result.alternatives()) {
-          limited.push_back(
-              goal.with_diagnostic(InconclusiveReason::ResourceLimit, "deadline reached"));
-        }
-        return AnyOf(std::move(limited));
-      });
+    throw TacticError("unknown strategy kind");
+  };
+
+  std::vector<Frame> stack;
+  std::vector<Tactic> compiled;
+  stack.push_back(Frame{.node = &strategy, .next_child = 0});
+  while (!stack.empty()) {
+    const Strategy& node = *stack.back().node;
+    const std::vector<Strategy>& children = node.data_->children;
+    if (stack.back().next_child < children.size()) {
+      const std::size_t index = stack.back().next_child++;
+      stack.push_back(Frame{.node = &children[index], .next_child = 0});
+      continue;
     }
-    case StrategyKind::Skip:
-      return skip();
+    const std::size_t first = compiled.size() - children.size();
+    Tactic lowered = lower(*node.data_, std::span(compiled).subspan(first));
+    // erase rather than resize: Tactic is deliberately not default-constructible.
+    compiled.erase(compiled.begin() + static_cast<std::ptrdiff_t>(first), compiled.end());
+    compiled.push_back(std::move(lowered));
+    stack.pop_back();
   }
-  throw TacticError("unknown strategy kind");
+  if (compiled.size() != 1) {
+    throw TacticError("compilation did not reduce to a single tactic");
+  }
+  return std::move(compiled.front());
 }
 
 }  // namespace primo::smt

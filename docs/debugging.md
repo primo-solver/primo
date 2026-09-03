@@ -1308,6 +1308,13 @@ frames is this, not a solver bug; converting the family to an explicit stack,
 as `qf_uflia_int_values` and the boolean NNF rewriter already are, is
 outstanding work.
 
+Executing a very deeply composed strategy has its own limit: `compile` lowers
+the AST iteratively, but the tacticals it produces are nested closures, so a
+run recurses once per composition level. Measured in the Release unit-test
+build, a 30000-deep `sequence` nest overflows while running, though it
+canonicalizes and compiles at depth 100000. No production strategy is remotely
+that deep; a generated one could be.
+
 ## Model failures
 
 - `INVALID_MODEL`

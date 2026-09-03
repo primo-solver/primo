@@ -538,6 +538,46 @@ void cancellation_stops_before_running_a_tactic() {
 // An AnyOf is disjunctive. A preprocessed result reduced to its first
 // alternative loses satisfiability that only a later alternative carries, so
 // the session triages the whole disjunction rather than reading .front().
+// canonical() backs operator== and fingerprint(), and compile() lowers the
+// same tree. Strategies are built programmatically, so nothing bounds their
+// depth; both walks must be iterative. A recursive canonical() overflowed the
+// stack somewhere between depth 5000 and 20000 on this workstation.
+//
+// Running such a nest is a separate matter: the compiled tacticals are nested
+// closures, so an execution recurses at its composition depth. That is a
+// property of the tacticals rather than of the lowering, so this test compiles
+// the deep nest without running it and checks execution at a depth the
+// closures can actually handle.
+void deeply_nested_strategies_canonicalize_and_compile_without_recursion() {
+  constexpr std::size_t kDeep = 100000;
+  primo::smt::Strategy nest = primo::smt::Strategy::skip();
+  for (std::size_t depth = 0; depth < kDeep; ++depth) {
+    nest = primo::smt::Strategy::sequence({nest});
+  }
+
+  const std::string canonical = nest.canonical();
+  // Each level wraps the innermost "skip" in "(sequence " and ")".
+  check(canonical.size() == kDeep * 11 + 4);
+  check(canonical.starts_with("(sequence (sequence "));
+  // The innermost leaf sits after one "(sequence " opener per level.
+  check(canonical.compare(kDeep * 10, 4, "skip") == 0);
+  check(nest.fingerprint() == nest.fingerprint());
+  check(nest == nest);
+  const primo::smt::Tactic lowered = compile(nest);
+  static_cast<void>(lowered);
+
+  constexpr std::size_t kRunnable = 100;
+  primo::smt::Strategy runnable = primo::smt::Strategy::skip();
+  for (std::size_t depth = 0; depth < kRunnable; ++depth) {
+    runnable = primo::smt::Strategy::sequence({runnable});
+  }
+  Fixture fixture;
+  const primo::smt::Tactic pipeline = compile(runnable);
+  const primo::smt::AnyOf result =
+      pipeline(fixture.context, primo::smt::AnyOf::single(primo::smt::Goal{{fixture.p_term()}}));
+  check(result.alternatives().front().assertions() == std::vector{fixture.p_term()});
+}
+
 void triage_keeps_a_satisfiable_alternative_when_the_first_is_false() {
   Fixture fixture;
   const primo::core::TermId contradiction = fixture.terms.mk_bool(false);
@@ -1194,6 +1234,7 @@ int main() {
   experimental_split_bools_uses_sequential_first_sat_execution_and_keeps_model();
   sequential_scheduler_tries_each_arm_from_the_original_goal();
   cancellation_stops_before_running_a_tactic();
+  deeply_nested_strategies_canonicalize_and_compile_without_recursion();
   triage_keeps_a_satisfiable_alternative_when_the_first_is_false();
   triage_reports_unsat_only_when_every_alternative_is_false();
   triage_flags_any_inconclusive_alternative();

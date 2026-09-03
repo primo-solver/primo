@@ -133,8 +133,14 @@ compact stable inspection key, not a cryptographic or collision-free identity;
 tools that require exact identity retain the canonical text. Neither surface
 has a CLI or configuration-file parser in this refactor.
 
-Compilation lowers the AST to the existing tacticals. It does not mutate the
-strategy and execution state remains in `TacticContext`. The production
+Compilation lowers the AST to the existing tacticals with an explicit
+post-order walk, as `canonical()` renders it. Neither recurses: strategies are
+built programmatically, so nothing bounds their depth, and `canonical()` also
+backs `operator==` and `fingerprint()`. Executing a deeply composed strategy is
+a separate limit -- the lowered tacticals are nested closures, so a run
+recurses at the composition depth -- and it is not addressed by the iterative
+lowering. Compilation does not mutate the strategy and execution state remains
+in `TacticContext`. The production
 pipeline is migrated to constructed strategies separately so this foundation
 does not itself alter the established tactic ordering.
 
