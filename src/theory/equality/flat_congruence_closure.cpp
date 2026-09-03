@@ -281,13 +281,17 @@ void FlatCongruenceClosure::drain_changed_terms(std::vector<FlatTermId>& out) {
   out.insert(out.end(), changed_terms_.begin(), changed_terms_.end());
   changed_terms_.clear();
   if (changed_terms_generation_ == std::numeric_limits<std::uint64_t>::max()) {
-    // A drain consumes every saved notification prefix. Give all open
-    // checkpoints a generation different from the rebased live generation so
-    // a later pop cannot resurrect one. This depth-linear path is reachable
-    // only after 2^64 drains.
+    // A drain consumes every saved notification prefix, so no open checkpoint
+    // has a live prefix left. Record that directly, as an empty prefix at the
+    // rebased live generation, rather than by stamping a sentinel generation:
+    // any fixed sentinel is a value the counter reaches again, and a pop that
+    // then took the resize branch would grow changed_terms_ with default
+    // entries and deliver them as changed terms. This depth-linear path is
+    // reachable only after 2^64 drains.
     changed_terms_generation_ = 0;
     for (Checkpoint& checkpoint : checkpoints_) {
-      checkpoint.changed_terms_generation = 1;
+      checkpoint.changed_terms_size = 0;
+      checkpoint.changed_terms_generation = changed_terms_generation_;
     }
     ++stats_.changed_term_generation_rebases;
   } else {

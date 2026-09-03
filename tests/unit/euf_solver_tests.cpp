@@ -1,6 +1,8 @@
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
+#include <limits>
 #include <optional>
 #include <stdexcept>
 #include <utility>
@@ -39,6 +41,16 @@ class FlatCongruenceClosureTestAccess {
 
   static void begin_reason(FlatCongruenceClosure& closure, std::vector<primo::sat::Lit>& reason) {
     closure.begin_reason_collection(reason);
+  }
+
+  // The generation rebase is only reachable after 2^64 drains, so a test has
+  // to put the counter there directly.
+  static void set_changed_terms_generation(FlatCongruenceClosure& closure, std::uint64_t value) {
+    closure.changed_terms_generation_ = value;
+  }
+
+  static std::uint64_t changed_terms_generation(const FlatCongruenceClosure& closure) {
+    return closure.changed_terms_generation_;
   }
 };
 }  // namespace primo::theory::equality
@@ -493,6 +505,40 @@ void flat_congruence_closure_pop_does_not_restore_drained_changed_terms() {
 
   changed.clear();
   closure.assert_equal(1, 2);
+  closure.pop(checkpoint);
+  closure.drain_changed_terms(changed);
+  check(changed.empty());
+}
+
+// When the generation counter saturates, drain_changed_terms rebases it and
+// re-stamps every open checkpoint so a later pop cannot resurrect a consumed
+// prefix. The stamp must be a value the live counter can never take again; a
+// stamp the very next drain reaches would let pop resize changed_terms_ to a
+// stale, larger size and deliver default-constructed entries as changed terms.
+void flat_congruence_closure_rebases_the_changed_term_generation_safely() {
+  FlatCongruenceClosure closure(16);
+  closure.assert_equal(0, 1);
+  const std::size_t checkpoint = closure.push();
+  closure.assert_equal(2, 3);
+
+  primo::theory::equality::FlatCongruenceClosureTestAccess::set_changed_terms_generation(
+      closure, std::numeric_limits<std::uint64_t>::max());
+
+  std::vector<FlatTermId> changed;
+  closure.drain_changed_terms(changed);
+  // One notification per merge, as flat_congruence_closure_drain_consumes_
+  // all_checkpoint_prefixes shows.
+  check(changed.size() == 2);
+  check(closure.stats().changed_term_generation_rebases == 1);
+
+  // The drain that rebases is followed by an ordinary drain, which advances
+  // the live counter onto whatever the checkpoints were stamped with.
+  changed.clear();
+  closure.assert_equal(4, 5);
+  closure.drain_changed_terms(changed);
+  check(changed.size() == 1);
+
+  changed.clear();
   closure.pop(checkpoint);
   closure.drain_changed_terms(changed);
   check(changed.empty());
@@ -1386,6 +1432,7 @@ int main() {
   flat_congruence_closure_counts_selected_classes_across_backtracking();
   flat_congruence_closure_projects_selected_classes_deterministically();
   flat_congruence_closure_pop_does_not_restore_drained_changed_terms();
+  flat_congruence_closure_rebases_the_changed_term_generation_safely();
   flat_congruence_closure_preserves_undrained_parent_changes();
   flat_congruence_closure_drain_consumes_all_checkpoint_prefixes();
   flat_congruence_closure_adds_self_application_to_one_use_list();

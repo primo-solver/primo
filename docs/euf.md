@@ -532,7 +532,14 @@ avoiding a full loser-list copy on merge-heavy finite-domain problems.
 Changed-term notifications are a consumed queue for online propagation
 candidate discovery: `drain_changed_terms` clears the queue and lowers active
 checkpoint baselines so a later pop can discard post-checkpoint notifications
-without resurrecting notifications already delivered to the SAT callback.
+without resurrecting notifications already delivered to the SAT callback. The
+baseline is a generation counter compared for equality at pop, so on
+saturation the counter rebases to zero and every open checkpoint is rewritten
+to an empty prefix at that same generation. Stamping the checkpoints with a
+distinguished generation instead would not be safe: the live counter reaches
+any fixed value again, after which a pop would take the resize branch with a
+stale prefix length and deliver default-constructed entries as changed
+terms.
 Self-applications whose function and argument are already in the same class are
 registered once in the affected use list; duplicate use-list entries remain
 tolerated and are deduplicated when an affected representative is processed.

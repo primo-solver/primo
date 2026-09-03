@@ -226,7 +226,9 @@ class FlatCongruenceClosure {
   // A drain consumes notifications from every open checkpoint. Recording that
   // fact as one generation change keeps draining independent of SAT depth;
   // pop uses the saved generation to decide whether an old vector prefix is
-  // still live.
+  // still live. On saturation the counter rebases and every open checkpoint is
+  // rewritten to an empty prefix at the new live generation, because no
+  // sentinel generation would stay distinct from the counter forever.
   std::uint64_t changed_terms_generation_ = 0;
   std::vector<std::vector<std::size_t>> edge_adjacency_;
   std::vector<Checkpoint> checkpoints_;
