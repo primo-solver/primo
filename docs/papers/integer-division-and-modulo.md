@@ -223,16 +223,24 @@ So this will not win a single benchmark. Two other things make it worth doing:
    Dolmen enforces the rule and will refuse to model-check a QF_UFLIA file
    using them, which is why the fuzz generator keeps such cases in a separate
    shape validated through Z3.
-2. **It unblocks the mutation gate.** YinYang's `ignore_list` contains the
-   string `"unsupported"`, and `Fuzzer.py` counts such a case as
-   `invalid_mutants` and skips it. Because Primo says `unsupported` on these
-   three operators, roughly three quarters of every real-seed mutation run is
-   discarded — the gate logs report `eff: ~25%`. Supporting the operators would
-   raise the gate's effective yield roughly fourfold, which improves coverage
-   of *everything else* the mutation gate tests.
+2. **It does not unblock the mutation gate, though I expected it to.**
+   YinYang's `ignore_list` contains the string `"unsupported"`, and
+   `Fuzzer.py` counts such a case as `invalid_mutants` and skips it, so the
+   real-seed gate was discarding roughly three quarters of every run and its
+   logs reported `eff: ~25%`. Supporting the operators barely moved that: job
+   131564 reports 157 unsupported mutants of 200 and `eff: 22.8%`. typefuzz
+   substitutes operators without regard to linearity, so 68 `mod` and 43 `div`
+   mutants have a **non-constant divisor** and 46 are nonlinear `*` -- all
+   correctly rejected, with the failure merely relocated from "unknown
+   function symbol" to "nonlinear divisor". About 8 of 165 became answerable.
+   Recorded because the prediction was wrong and the measurement is the useful
+   part.
 
-The second reason is the strong one, and it is why this is worth doing before
-rather than after the next round of correctness work.
+So the honest summary is that only the first reason survived measurement. This
+is a usability feature: it costs little, the operators are ones people write,
+and the term kinds it introduced are what unblocked
+[lead 16](../open-leads.md). It is not a performance or coverage win, and no
+claim to that effect should be made on its behalf.
 
 ## Tests this implies
 

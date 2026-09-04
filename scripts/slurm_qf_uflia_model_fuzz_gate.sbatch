@@ -21,6 +21,13 @@ SOLVER_ARGS_TEXT=${PRIMO_FUZZ_SOLVER_ARGS:-}
 # "mixed" spends a third of its cases on composed terms, which is what
 # reaches nested applications; "random" is the older fixed-vocabulary shape
 # whose UF nesting never exceeds one.
+#
+# "extended" additionally emits div, mod and abs. Those are outside QF_UFLIA --
+# the logic excludes them by name and its :extensions clause readmits only *
+# with concrete coefficients -- so Dolmen refuses to model-check such a file
+# and every sat case is reported as a model error. Job 131585 produced 1000 of
+# them for that reason alone. Model validation is therefore skipped for that
+# shape; its answers are still compared against the reference.
 SHAPE=${PRIMO_FUZZ_SHAPE:-mixed}
 DEPTH=${PRIMO_FUZZ_DEPTH:-3}
 OUT_ROOT=${PRIMO_FUZZ_OUT_DIR:-"$WORKDIR/fuzz-results/qf-uflia-model-gate-${SLURM_ARRAY_JOB_ID:-manual}"}
@@ -63,6 +70,11 @@ python3 scripts/qf_uflia_fuzz.py \
   --shape "$SHAPE" \
   --depth "$DEPTH" \
   --out "$OUT/answer"
+
+if [[ $SHAPE == "extended" ]]; then
+  echo "shape=extended: skipping Dolmen model validation, which rejects div/mod/abs in QF_UFLIA"
+  exit 0
+fi
 
 python3 scripts/validate_model.py \
   --solver ./build-slurm-rel/primo \

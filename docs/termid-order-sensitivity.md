@@ -105,6 +105,46 @@ It belongs here because the same class of reasoning applies.
 *must* use a fixed arbitrary order -- that is what makes it terminating. This
 entry exists to be recognised, not repaired.
 
+(termid-4)=
+### 4. ite auxiliaries moved from the frontend to the lowering leaf
+
+`ite` became a `TermKind` (2026-09-04), so its auxiliary constants are no
+longer allocated while parsing but by the `lower-extended-terms` preprocessing
+leaf. The constants are the same ones, defined by the same two guarded
+equalities, but they are created later, so their `TermId`s -- and the SAT
+variable numbering derived from them -- differ.
+
+Visible in the statistics as `:input.assertions`: an assertion containing an
+ite used to be counted as one assertion plus the frontend's side assertions,
+and is now counted as one, with the expansion happening downstream.
+
+**Decides:** SAT variable order, and everything that reads it.
+
+**Measured, and it cost one solve.** A/B over 1300 QF_LRA and QF_LIA
+benchmarks weighted to ite-bearing files, 824 of which completed inside 10s on
+both binaries: 823 identical answers, and
+`QF_LIA/rings/ring_2exp16_3vars_1ite_unsat.smt2` went from `unsat` to
+`unknown` on the branch-and-bound node limit. On that instance the encoding is
+demonstrably unchanged -- 4 ite auxiliaries both ways, `term-size.initial` 182
+and `final` 157 both ways, every preprocessing and profile-selection counter
+identical -- and only the search differs: 40 conflicts, 1180 decisions and 497
+pivots before, against 3, 166 and 84 after. Raising `--lia-branch-limit` twenty
+fold does not recover it, but `--preprocessing-mode=basic` or `strong` solves
+it, which is what identifies this as search-path luck rather than a worse
+encoding. The same binary at `--preprocessing-mode=basic` answers `unsat`; the
+pre-change binary answers `unsat` under all five settings tried.
+
+Against that single loss, the same run shows ite auxiliaries falling from
+132601 to 128049, with 169 files needing fewer and none needing more.
+
+**Status:** accepted, not repaired. Preserving the old id order would mean
+allocating the auxiliaries in the frontend again, which is the design this
+change deliberately removed. The instance is recorded so that a future
+benchmark table showing a lost `rings` solve is recognised rather than
+re-diagnosed. What is *not* established is the net effect on solved counts:
+824 files with an answer-equality check is enough to detect a regression, and
+not enough to measure the balance. That needs a full-division run.
+
 ## Resolved
 
 (termid-resolved-1)=

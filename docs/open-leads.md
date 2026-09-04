@@ -2371,8 +2371,11 @@ almost entirely through generated input, and they are not even in the logics
 Primo supports: QF_LIA excludes "the function symbols `**`, `/`, `div`, `mod`,
 and `abs`" by name and its `:extensions` clause readmits only `*` with concrete
 coefficients, with QF_UFLIA saying "As in the logic QF_LIA". Primo accepts them
-as a documented extension. So the payoff here is robustness and usability, not
-conformance and not solved files. It is recorded because the structure is
+as a documented extension. So the payoff here is usability, not conformance and
+not solved files -- and measurement removed the one operational argument too:
+supporting the operators moved the real-seed mutation gate's effective yield
+from about 25% to 22.8% (job 131564), because typefuzz's mutants overwhelmingly
+have non-constant divisors that are nonlinear whatever the frontend accepts. It is recorded because the structure is
 destroyed at a point where recovering it later is impossible, which is the same
 mistake [](#lead-ite-preprocessing) documents for ITE.
 

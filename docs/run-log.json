@@ -30342,6 +30342,46 @@
         "slurm": "primo-cadical-profile/fuzz-results/qf-uflia-model-gate-131459, .../qf-uflia-model-gate-131454, .../qf-uflia-mutation-131463"
       },
       "notes": "Job 131458 is recorded only to be discarded: the workspace was re-synced while it ran, so typefuzz reported the solver as missing. The 18 and 8 model errors are the pre-existing bug in bugs/qf-uflia-nested-application-model, not a regression; the point of this run is that the gates now find it. The div/mod/abs gap is newly surfaced and unfixed."
+    },
+    {
+      "id": "2026-09-04-first-class-ite-div-mod-abs-da3cc0b",
+      "date": "2026-09-04",
+      "commit": "da3cc0b",
+      "branch": "modular-theory-combination",
+      "kind": "slurm-correctness-gates-and-corpus-ab-for-new-term-kinds",
+      "scope": "Gates for the sequence that made ite, div, mod and abs first-class term kinds: new kinds and constructors, the unconditional lower-extended-terms leaf, frontend acceptance of div/mod/abs, ite built as a term instead of expanded at parse time, and the simplify-extended-terms leaf that replaced both the constructor-level folds and the frontend's syntactic equality-over-ite rule.",
+      "environment": {
+        "host": "CIIRC SLURM cluster via data.ciirc.cvut.cz for the generated gates; local workstation for the corpus A/B, since sandbox/non-incremental is 12 GB and is not staged on the cluster",
+        "solver": "Primo 0.1.0 at da3cc0b; Release; CaDiCaL cadical-3.0.0-7b99c07",
+        "tools": "Z3 5.1.0, Dolmen 0.10, typefuzz 0.3.0"
+      },
+      "jobs": {
+        "qf_uflia_model_mixed": "131560",
+        "qf_uflra": "131561",
+        "qf_uf_boolean": "131562",
+        "finite_domain": "131563",
+        "qf_uflia_mutation": "131564",
+        "qf_uflia_extended_shape": "131585"
+      },
+      "commands": {
+        "prepare": "python3 scripts/slurm_prepare_benchmark_workspace.py --sync-mode archive --reuse-dependencies --with-z3 --jobs 16",
+        "gates": "PRIMO_FUZZ_SEED_BASE=202609070 sbatch over slurm_qf_uflia_model_fuzz_gate, slurm_qf_uflra_fuzz_gate, slurm_qf_uf_boolean_fuzz_gate, slurm_finite_domain_fuzz_gate; PRIMO_FUZZ_YINYANG_WALL_SECONDS=900 for the mutation gate",
+        "extended_shape": "PRIMO_FUZZ_SHAPE=extended PRIMO_FUZZ_COUNT=750 sbatch scripts/slurm_qf_uflia_model_fuzz_gate.sbatch",
+        "corpus_ab": "local A/B of da3cc0b against 7ea99a7 over 1300 QF_LRA and QF_LIA files weighted to ite-bearing ones, 10s timeout, comparing answers and ite auxiliary counts"
+      },
+      "results": {
+        "slurm_answers": "19000 comparisons, 0 disagreements: qf_uflia 3000, qf_uflra 4000, qf_uf_boolean 11000, finite_domain 1000, plus 2993 on the extended shape with 1 timeout and 6 unknown-involved",
+        "slurm_models": "qf_uflra 1992 and qf_uf_boolean 6841 Dolmen-validated with zero errors; qf_uflia mixed 1518 validated with 12 errors, all on cases whose UF application nesting is 2 or 3",
+        "model_errors_explained": "The 12 are the pre-existing invalid-model bug in bugs/qf-uflia-nested-application-model. The 1000 on the extended shape and the 4 in the mutation gate are Dolmen refusing to check a QF_UFLIA file that uses div, mod or abs, which the logic excludes; one mutation case was verified by hand and re-checked with Z3, which answers sat. The gate now skips Dolmen validation for the extended shape.",
+        "mutation_gate": "157 of 200 mutants still unsupported and effective yield 22.8%, against roughly 25% before the operators were accepted. Breakdown: 68 mod and 43 div with a non-constant divisor, 46 nonlinear *. All correctly rejected; only about 8 of the original 165 became answerable.",
+        "corpus_ab": "824 files completed on both binaries: 823 identical answers, 1 changed. ite auxiliaries 132601 -> 128049, per file 169 fewer and none more.",
+        "corpus_ab_regression": "QF_LIA/rings/ring_2exp16_3vars_1ite_unsat.smt2 went unsat -> unknown on the branch-and-bound node limit. Encoding is unchanged on that instance (4 auxiliaries, term-size 182/157, identical preprocessing and profile counters); only the search differs (40 conflicts/1180 decisions/497 pivots -> 3/166/84). A twentyfold --lia-branch-limit does not recover it; --preprocessing-mode=basic or strong does. Recorded as entry 4 in docs/termid-order-sensitivity.md.",
+        "local_unit": "27 ctest targets pass in Release and under -fsanitize=address; make check and make smoke clean"
+      },
+      "artifacts": {
+        "slurm": "primo-cadical-profile/fuzz-results/qf-uflia-model-gate-131560, .../qf-uflia-extended-shape, .../qf-uf-boolean-131562, .../qf-uflia-mutation-131564, primo-cadical-profile/slurm-results/qf_uflra-fuzz-gate, .../finite-domain-fuzz-gate"
+      },
+      "notes": "Two predictions this run refuted, both recorded in the docs rather than quietly dropped. First, div/mod/abs were said to be rejected conforming input; QF_LIA and QF_UFLIA exclude those operators by name and readmit only * with concrete coefficients, so the original rejection was correct and Primo now accepts them as a documented extension. Second, supporting them was said to unblock the real-seed mutation gate; it moved the yield from about 25% to 22.8%, because typefuzz's mutants overwhelmingly carry non-constant divisors that are nonlinear whatever the frontend accepts. What the work does buy is usability plus the term kinds themselves, which removed the blocker that lead 16 named as its main design question. The net effect of the ite change on solved counts is NOT established: 824 files with answer equality detects a regression but does not measure the balance, and a full-division run is needed for that."
     }
   ]
 }

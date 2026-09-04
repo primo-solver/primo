@@ -61,12 +61,22 @@ model-check such a file.
 
 `frontend.cpp` builds `IntDiv`, `IntMod` and `Abs` terms, which the
 `lower-extended-terms` leaf encodes; a non-constant divisor is reported as
-nonlinear and a literal zero divisor is rejected outright. The QF_UFLIA real-seed mutation gate is where these
-turned up: of 165 unsupported mutants in job 131463, 44 were `div`, 40 `abs`
-and 29 `mod`. Those mutants are themselves outside their declared logic --
-typefuzz mutates operators under `--keep-logic` and does not respect the
-`:extensions` clause -- so rejecting them was defensible, and supporting them
-is a usability choice rather than a bug fix. The remaining unsupported mutants
+nonlinear and a literal zero divisor is rejected outright. The QF_UFLIA real-seed mutation gate is where these turned up: of 165
+unsupported mutants in job 131463, 44 were `div`, 40 `abs` and 29 `mod`. Those
+mutants are themselves outside their declared logic -- typefuzz mutates
+operators under `--keep-logic` and does not respect the `:extensions` clause --
+so rejecting them was defensible.
+
+Supporting the operators did **not** unblock that gate, which was the other
+argument for the work. Job 131564, the same gate after the change, still
+reports 157 unsupported mutants of 200 and an effective yield of 22.8% against
+the roughly 25% before. The reason is that typefuzz substitutes operators
+without regard to linearity: of the 157, 68 are `mod` and 43 are `div` with a
+**non-constant divisor**, and 46 are nonlinear `*`. All are genuinely outside
+the linear fragment and correctly rejected, so the failure simply moved from
+"unknown function symbol" to "nonlinear divisor". Only about 8 of the original
+165 became answerable. The remaining justification for `div`/`mod`/`abs` is
+usability, and that is all. The remaining unsupported mutants
 are correct rejections: nonlinear multiplication, and files Z3 rejects too
 because a mutation left a `let` variable unbound.
 [](papers/integer-division-and-modulo.md) surveys what the standard requires
