@@ -46,7 +46,18 @@ scales every linear direction to primitive integer coefficients and a
 deterministic sign. Thus proportional source predicates are hash-consed before
 clausification; the option can be combined with `--preprocessing-mode=off` but
 defaults off pending stronger performance evidence. Nonlinear multiplication
-and division by a nonliteral term are outside the accepted fragment. In
+and division by a nonliteral term are outside the accepted fragment.
+
+The integer operators `div`, `mod`, and `abs` are also outside it, and that is
+a frontend gap rather than a deliberate restriction: they are part of the
+SMT-LIB `Ints` theory, so a conforming `QF_LIA` or `QF_UFLIA` input using them
+is rejected with `unknown function symbol`. `frontend.cpp` dispatches only
+`=`, `+`, `-`, `*`, `/`, and the four comparisons. The QF_UFLIA real-seed
+mutation gate surfaces these constantly once it validates models: of 165
+unsupported mutants in job 131463, 44 were `div`, 40 `abs`, and 29 `mod`. The
+remaining unsupported mutants are correct rejections -- nonlinear
+multiplication, and files that Z3 rejects too because a mutation left a `let`
+variable unbound. In
 QF_UFLRA, mixed purification first replaces each
 Real-valued UF application occurring in arithmetic with a fresh Real proxy, so
 the prepared LRA atom contains no UF application node.

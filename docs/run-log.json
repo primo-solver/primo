@@ -30308,6 +30308,40 @@
         "local": "results/uflia-answer-gate, results/uflia-model-validation, results/qf-uf-fuzzsmt-gate, results/uflra-gate, results/uflra-generic-gate, results/tactic-composition-local"
       },
       "notes": "Separately found and recorded a pre-existing QF_UFLIA invalid-model bug in bugs/qf-uflia-nested-application-model: a UF table that does not satisfy the input when an Int application is nested three deep and its result is pinned. The binary before the qf_uflia_int_values rewrite prints the identical model, so it is not a regression from this branch; scripts/qf_uflia_fuzz.py --shape random does not generate the shape, which is why these gates are clean. Not fixed here."
+    },
+    {
+      "id": "2026-09-04-qf-uflia-gate-coverage-056612a",
+      "date": "2026-09-04",
+      "commit": "056612a",
+      "branch": "modular-theory-combination",
+      "kind": "slurm-gate-coverage-repair-and-rerun",
+      "scope": "Re-run of the QF_UFLIA gates after closing the coverage gap that let a crash in integer model completion survive both of them: the generated gate could not nest applications, and the real-seed mutation gate never requested a model.",
+      "environment": {
+        "host": "CIIRC SLURM cluster, node-head submit host reached via data.ciirc.cvut.cz",
+        "solver": "Primo 0.1.0 at 056612a; Release; CaDiCaL cadical-3.0.0-7b99c07",
+        "tools": "Z3 5.1.0, Dolmen 0.10 and typefuzz 0.3.0 from the prepared workspace"
+      },
+      "jobs": {
+        "qf_uflia_model_random_shape": "131454",
+        "qf_uflia_model_mixed_shape": "131459",
+        "qf_uflia_mutation": "131463",
+        "qf_uflia_mutation_invalid_run": "131458"
+      },
+      "commands": {
+        "qf_uflia_model_mixed": "PRIMO_FUZZ_SEED_BASE=202609060 sbatch scripts/slurm_qf_uflia_model_fuzz_gate.sbatch; 4 shards x 750; shape now defaults to mixed with --depth 3",
+        "qf_uflia_mutation": "PRIMO_FUZZ_YINYANG_WALL_SECONDS=600 PRIMO_FUZZ_RANDOM_SEED=202609060 sbatch scripts/slurm_qf_uflia_mutation_fuzz_gate.sbatch; seeds tmp/QF_UFLIA/mathsat staged from the sibling workspace"
+      },
+      "results": {
+        "qf_uflia_model_random_shape": "131454: 3000 answer PASS, 1809 sat models Dolmen-validated, 0 model errors. Baseline: this is the old fixed-vocabulary shape, whose UF nesting is 1 in every case.",
+        "qf_uflia_model_mixed_shape": "131459: 2999 answer PASS and 1 timeout; 1509 sat models validated with 18 model errors, all on cases whose UF nesting is 2 or 3. The gate now reproduces the invalid-model bug it previously could not reach.",
+        "qf_uflia_mutation": "131463: 200 retained mutants validated; 26 pass, 9 unsat, 165 unsupported. The unsupported set is a frontend gap plus correct rejections, not solver failures.",
+        "frontend_gap": "Of the 165: div 44, abs 40, mod 29 are SMT-LIB Ints operators Primo's frontend does not dispatch, confirmed directly ((abs x)/(div x 2)/(mod x 2) are unsupported while Z3 answers sat). 32 are nonlinear multiplication, correctly rejected. 12 reference a let variable a mutation left unbound, which Z3 rejects too.",
+        "local_composed_shape": "300 cases at --shape composed: 299 answer PASS and 1 timeout; 204 of 300 contain a directly self-nested (f (f ...)); 8 model errors among 141 sat cases"
+      },
+      "artifacts": {
+        "slurm": "primo-cadical-profile/fuzz-results/qf-uflia-model-gate-131459, .../qf-uflia-model-gate-131454, .../qf-uflia-mutation-131463"
+      },
+      "notes": "Job 131458 is recorded only to be discarded: the workspace was re-synced while it ran, so typefuzz reported the solver as missing. The 18 and 8 model errors are the pre-existing bug in bugs/qf-uflia-nested-application-model, not a regression; the point of this run is that the gates now find it. The div/mod/abs gap is newly surfaced and unfixed."
     }
   ]
 }

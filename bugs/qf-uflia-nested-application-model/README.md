@@ -99,6 +99,12 @@ mutants and runs them through `scripts/validate_model.py`. On a 300-case
 **8 model errors among 141 sat cases** -- this bug, at roughly 6%, where the old
 generator found none in 1200.
 
+The full gate confirms it. SLURM job 131459 (4 shards, 750 cases each, the new
+default `mixed` shape) reports **18 model errors among 1509 validated sat
+models**, every one on a case whose UF application nesting is 2 or 3. The same
+gate at the same commit with the old `--shape random` (job 131454) reports zero
+across 1809 validated models.
+
 Dolmen itself was initially unavailable on this workstation: `opam` refused
 because its depext probe wanted the system packages `libgmp-dev` and
 `pkg-config` and the sandbox has no `sudo`. `pkg-config` is in fact installed
