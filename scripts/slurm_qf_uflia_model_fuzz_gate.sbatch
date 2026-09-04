@@ -18,6 +18,11 @@ WORKDIR=${PRIMO_WORKDIR:?PRIMO_WORKDIR must name the prepared remote workspace}
 COUNT=${PRIMO_FUZZ_COUNT:-750}
 SEED_BASE=${PRIMO_FUZZ_SEED_BASE:-202609010}
 SOLVER_ARGS_TEXT=${PRIMO_FUZZ_SOLVER_ARGS:-}
+# "mixed" spends a third of its cases on composed terms, which is what
+# reaches nested applications; "random" is the older fixed-vocabulary shape
+# whose UF nesting never exceeds one.
+SHAPE=${PRIMO_FUZZ_SHAPE:-mixed}
+DEPTH=${PRIMO_FUZZ_DEPTH:-3}
 OUT_ROOT=${PRIMO_FUZZ_OUT_DIR:-"$WORKDIR/fuzz-results/qf-uflia-model-gate-${SLURM_ARRAY_JOB_ID:-manual}"}
 TASK_ID=${SLURM_ARRAY_TASK_ID:-0}
 SEED=$((SEED_BASE + TASK_ID))
@@ -55,7 +60,8 @@ python3 scripts/qf_uflia_fuzz.py \
   --count "$COUNT" \
   --seed "$SEED" \
   --timeout 5 \
-  --shape random \
+  --shape "$SHAPE" \
+  --depth "$DEPTH" \
   --out "$OUT/answer"
 
 python3 scripts/validate_model.py \
