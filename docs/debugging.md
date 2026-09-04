@@ -1324,9 +1324,11 @@ QF_UFLIA can print a UF table that does not satisfy the input when an Int
 application is nested three deep and the result is pinned by another
 constraint. The sat/unsat answer is correct; only the printed model is wrong.
 The witness and what is known are in
-`bugs/qf-uflia-nested-application-model/`; `scripts/validate_model.py` reports
-it as `model-error`, and `scripts/qf_uflia_fuzz.py --shape random` does not
-generate the shape. It predates the `qf_uflia_int_values`
+`bugs/qf-uflia-nested-application-model/`. `scripts/validate_model.py` reports
+it as `model-error`. It escaped the gates because the generated QF_UFLIA gate
+could not nest applications while the real-seed mutation gate never requested a
+model; both are fixed, and `scripts/qf_uflia_fuzz.py --shape composed` now
+reproduces it at roughly 6% of sat cases. It predates the `qf_uflia_int_values`
 worklist rewrite -- the binary before it prints the identical model -- and is
 unfixed.
 

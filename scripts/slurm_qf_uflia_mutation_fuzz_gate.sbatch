@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Time-boxed QF_UFLIA real-seed mutation gate using YinYang/typefuzz.
 #
-# Prepare the remote workspace on the login node with contrib-yinyang and
-# contrib-z3.  Cluster-specific paths and run identifiers are supplied through
+# Prepare the remote workspace on the login node with contrib-yinyang,
+# contrib-z3 and contrib-dolmen.  Cluster-specific paths and run identifiers are supplied through
 # the environment at submission time.
 #SBATCH --job-name=primo-qfuflia-mut
 #SBATCH --cpus-per-task=2
@@ -28,9 +28,9 @@ mkdir -p slurm_logs "$OUT_ROOT"
 PATH="$WORKDIR/contrib/local/bin:$WORKDIR/.venv-yinyang/bin:$PATH"
 export PATH
 
-for required in typefuzz z3; do
+for required in typefuzz z3 dolmen; do
   if ! command -v "$required" >/dev/null 2>&1; then
-    echo "required tool '$required' not found; prepare contrib-yinyang and contrib-z3 first" >&2
+    echo "required tool '$required' not found; prepare contrib-yinyang, contrib-z3 and contrib-dolmen first" >&2
     exit 2
   fi
 done
@@ -60,4 +60,27 @@ scripts/yinyang_fuzz.sh \
   --file-size-limit "$FILE_SIZE_LIMIT" \
   --random-seed "$RANDOM_SEED" \
   --keep-logic \
-  --hoist-declarations
+  --hoist-declarations \
+  --keep-mutants
+
+# The differential run above compares answers only: it never asks Primo for a
+# model, so it does not reach model construction at all. That left model
+# construction covered only by the generated gate, whose cases have a bounded
+# term shape, and a crash in integer model completion on nested applications
+# survived both. Re-running the retained mutants -- which carry real benchmark
+# structure -- through the model validator closes that gap.
+mutants=("$OUT_ROOT"/scratch/*.smt2)
+if [[ -e ${mutants[0]} ]]; then
+  echo "validating models for ${#mutants[@]} retained mutants"
+  python3 scripts/validate_model.py \
+    --solver "$WORKDIR/build-slurm-rel/primo" \
+    --solver-arg=--quiet \
+    --require-dolmen-pass \
+    --timeout "$SOLVER_TIMEOUT" \
+    --dolmen-timeout 5 \
+    --dolmen-arg=--strict=false \
+    --out "$OUT_ROOT/model-validation" \
+    "${mutants[@]}"
+else
+  echo "no retained mutants to validate under $OUT_ROOT/scratch" >&2
+fi

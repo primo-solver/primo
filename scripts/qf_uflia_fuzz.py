@@ -102,16 +102,97 @@ def generate_random_case(rng: random.Random, index: int) -> str:
     return render(assertions)
 
 
-def generate_case(rng: random.Random, index: int, shape: str) -> str:
+# The curated atom lists above are a fixed vocabulary: every case they build
+# applies an uninterpreted function to a variable or to an arithmetic term, so
+# no Int application is ever nested inside another. That shape is common in
+# real inputs -- 18% of a 300-file sample of the QF_UFLRA benchmarks nest one UF
+# application directly inside another -- and it is the shape that exercises
+# model completion, which resolves an unvalued application by evaluating the
+# arguments of other applications of the same symbol. Terms are composed
+# bottom-up, one depth level at a time, so the builder needs no recursion and
+# the depth is exact rather than expected.
+INT_VARIABLES = ["x", "y", "z", "w"]
+
+
+def numeral(value: int) -> str:
+    """SMT-LIB has no negative numeral literal; -2 must be written (- 2)."""
+    return str(value) if value >= 0 else f"(- {-value})"
+
+
+def compose_int_terms(rng: random.Random, depth: int, width: int) -> list[str]:
+    """Return Int terms whose UF application nesting reaches `depth`."""
+    level = INT_VARIABLES + [numeral(value) for value in range(-2, 3)]
+    deepest = list(level)
+    for _ in range(depth):
+        shallower = level
+        # Always apply a unary function to something from the previous level,
+        # so at least one term in the new level is genuinely one deeper.
+        level = [f"(f {rng.choice(deepest)})"]
+        for _ in range(width - 1):
+            choice = rng.randrange(4)
+            left = rng.choice(shallower)
+            right = rng.choice(shallower)
+            if choice == 0:
+                level.append(f"(f {left})")
+            elif choice == 1:
+                level.append(f"(g {left} {right})")
+            elif choice == 2:
+                level.append(f"(+ {left} {right})")
+            else:
+                level.append(f"(* 2 {left})")
+        deepest = level
+    return deepest
+
+
+def generate_composed_case(rng: random.Random, index: int, depth: int) -> str:
+    """A case built from composed terms rather than the fixed atom vocabulary."""
+    terms = compose_int_terms(rng, depth, width=4)
+    assertions: list[str] = []
+    for _ in range(2 + rng.randrange(3)):
+        relation = rng.choice(["<=", "<", "="])
+        assertions.append(
+            with_polarity(
+                rng, f"({relation} {rng.choice(terms)} {rng.choice(terms)})"
+            )
+        )
+    # Model completion only has to resolve a nested application when something
+    # forces its result. Equating a variable to a deep term and then bounding
+    # that variable is what makes the completion do real work: it has to find
+    # argument values for the inner applications that reach the bound, rather
+    # than defaulting them.
+    anchor = rng.choice(INT_VARIABLES)
+    assertions.append(f"(= {anchor} {rng.choice(terms)})")
+    assertions.append(f"(<= {anchor} {numeral(rng.randrange(-2, 7))})")
+    pinned = rng.choice([v for v in INT_VARIABLES if v != anchor])
+    assertions.append(f"(= {pinned} {numeral(rng.randrange(-2, 3))})")
+    assertions.append(
+        with_polarity(rng, f"(<= {rng.choice(terms)} {numeral(rng.randrange(-2, 5))})")
+    )
+    if index % 3 == 0:
+        assertions.append(with_polarity(rng, f"(p {rng.choice(terms)})"))
+    if index % 4 == 0:
+        assertions.append(
+            with_polarity(rng, f"(q {rng.choice(terms)} {rng.choice(terms)})")
+        )
+    if index % 5 == 0:
+        assertions.append(f"(= (h b) {rng.choice(terms)})")
+    return render(assertions)
+
+
+def generate_case(rng: random.Random, index: int, shape: str, depth: int) -> str:
     if shape == "nonconvex":
         return generate_nonconvex_case(rng, index)
     if shape == "random":
         return generate_random_case(rng, index)
-    return (
-        generate_nonconvex_case(rng, index)
-        if index % 3 == 0
-        else generate_random_case(rng, index)
-    )
+    if shape == "composed":
+        return generate_composed_case(rng, index, depth)
+    if index % 3 == 0:
+        return generate_nonconvex_case(rng, index)
+    # Half of the remaining cases use composed terms so the mixed shape, which
+    # is what the gates run, covers nesting as well as the curated vocabulary.
+    if index % 2 == 0:
+        return generate_composed_case(rng, index, depth)
+    return generate_random_case(rng, index)
 
 
 def run_solver(command: list[str], timeout: float) -> tuple[str, int]:
@@ -166,7 +247,15 @@ def main() -> int:
     parser.add_argument("--timeout", type=float, default=5.0)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument(
-        "--shape", choices=["mixed", "nonconvex", "random"], default="mixed"
+        "--shape",
+        choices=["mixed", "nonconvex", "random", "composed"],
+        default="mixed",
+    )
+    parser.add_argument(
+        "--depth",
+        type=int,
+        default=3,
+        help="UF application nesting depth for composed cases",
     )
     args = parser.parse_args()
 
@@ -195,7 +284,7 @@ def main() -> int:
         for index in range(args.count):
             case_path = cases_dir / f"case-{index:05d}.smt2"
             case_path.write_text(
-                generate_case(rng, index, args.shape), encoding="utf-8"
+                generate_case(rng, index, args.shape, args.depth), encoding="utf-8"
             )
             ours, ours_code = run_solver(
                 [args.solver, *args.solver_arg, str(case_path)], args.timeout

@@ -72,12 +72,32 @@ witness.smt2: model-error answer=sat validator=z3-fallback
 
 ## Why the fuzz gates did not find it
 
-`scripts/qf_uflia_fuzz.py --shape random` does not generate this shape. A
-1200-case gate at `f9be4d7` produced 698 sat models, all of which Dolmen
-accepted. The witnesses here came from a separate generator that nests
-applications three deep and pins the result with a second constraint. Extending
-the QF_UFLIA generator to cover that shape is the first thing to do when this
-is picked up.
+Two gates covered QF_UFLIA and the bug sat in the seam between them.
+
+`scripts/qf_uflia_fuzz.py` drew every atom from a fixed vocabulary of 24
+hand-written strings and never composed terms, so no Int application was ever
+nested inside another: measured over a 1200-case corpus, the maximum UF
+application nesting was exactly 1 in all 1200 cases. That gate is the one that
+runs model validation.
+
+`scripts/slurm_qf_uflia_mutation_fuzz_gate.sbatch` mutates real MathSAT seeds
+and therefore has realistic term structure, but it never asked Primo for a
+model -- `produce-model` appeared nowhere in it or in `scripts/yinyang_fuzz.sh`,
+which run the solver as `primo --quiet`. The `model_validate=true` in that gate
+is a Z3 option that makes Z3 check its own model.
+
+So: structural coverage without models, model coverage without structure. The
+generator and `qf_uflia_int_values` were also added in the same commit
+(`e82bae6`), so the generator encodes the same picture of the input space as
+the code it exercises.
+
+Both halves are now fixed. `qf_uflia_fuzz.py` gained a `composed` shape that
+builds terms bottom-up to a `--depth`, and the mutation gate retains its
+mutants and runs them through `scripts/validate_model.py`. On a 300-case
+`--shape composed` run the new generator reaches nesting depth 3 in most cases,
+204 of 300 contain a directly self-nested `(f (f ...))`, and Dolmen reports
+**8 model errors among 141 sat cases** -- this bug, at roughly 6%, where the old
+generator found none in 1200.
 
 Dolmen itself was initially unavailable on this workstation: `opam` refused
 because its depext probe wanted the system packages `libgmp-dev` and
