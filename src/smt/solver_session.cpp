@@ -35,8 +35,6 @@ namespace primo::smt {
 namespace {
 
 constexpr util::StatKey kStatAssertionsInitial = util::StatKey::AssertionsInitial;
-constexpr util::StatKey kStatFrontendBooleanItes = util::StatKey::FrontendBooleanItes;
-constexpr util::StatKey kStatFrontendAuxiliaryItes = util::StatKey::FrontendAuxiliaryItes;
 constexpr util::StatKey kStatAssertionsFinal = util::StatKey::AssertionsFinal;
 constexpr util::StatKey kStatPreprocessingPasses = util::StatKey::PreprocessingPasses;
 constexpr util::StatKey kStatPreprocessingChangedPasses = util::StatKey::PreprocessingChangedPasses;
@@ -349,8 +347,6 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
   statistics.set(kStatTimePreprocessingUs, 0);
   statistics.set(kStatTimeSolveUs, 0);
   statistics.set(kStatAssertionsInitial, 0);
-  statistics.set(kStatFrontendBooleanItes, 0);
-  statistics.set(kStatFrontendAuxiliaryItes, 0);
   statistics.set(kStatAssertionsFinal, 0);
   statistics.set(kStatPreprocessingPasses, 0);
   statistics.set(kStatPreprocessingChangedPasses, 0);
@@ -589,8 +585,6 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     }
     statistics.set(kStatTimeFrontendUs, elapsed_microseconds(frontend_start, PhaseClock::now()));
     statistics.set(kStatAssertionsInitial, assertions.size());
-    statistics.set(kStatFrontendBooleanItes, frontend.boolean_ites());
-    statistics.set(kStatFrontendAuxiliaryItes, frontend.auxiliary_ites());
     statistics.set(":frontend.define-fun.nullary-direct-uses",
                    frontend.nullary_definition_direct_uses());
     statistics.set(":frontend.define-fun.nullary-eager-compiles",

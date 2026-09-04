@@ -15,8 +15,10 @@ namespace primo::util {
 
 enum class StatKey : std::size_t {
   AssertionsInitial,
-  FrontendBooleanItes,
-  FrontendAuxiliaryItes,
+  // ite is a term kind now, so its elimination is counted by the lowering
+  // leaf rather than by the frontend. The keys keep their slots.
+  LoweredBooleanItes,
+  LoweredAuxiliaryItes,
   AssertionsFinal,
   PreprocessingPasses,
   PreprocessingChangedPasses,
@@ -217,10 +219,6 @@ enum class StatKey : std::size_t {
   LiaPatchAffectedRowsInspected,
   LiaPatchFullScanEquivalent,
   BooleanDomainRegisteredTerms,
-  // Written by the lowering leaf. The frontend counters above stay as the
-  // public ite numbers so benchmark tables remain comparable.
-  LoweredBooleanItes,
-  LoweredAuxiliaryItes,
   LoweredDivisionQuotients,
   LoweredAbsRewrites,
   Count,

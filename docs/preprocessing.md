@@ -945,10 +945,21 @@ because the first tropical-matrix measurement was mixed.
 
 ## ITE Lowering
 
-The SMT-LIB frontend eliminates ITEs before Boolean clausification because the
-core term language does not store ITE nodes. Boolean ITEs are lowered to Boolean
-connectives. Non-Boolean ITEs in general term position still use a fresh
-constant plus two guarded equalities.
+`core::TermKind::Ite` is a term kind, so an ITE survives parsing and reaches
+preprocessing. Lowering happens in the `lower-extended-terms` leaf, which is
+the first entry of the unconditional initial sequence in
+`prepare_and_execute_preprocessing_strategy` -- it runs before the preprocessing
+mode is consulted, so `--preprocessing-mode=off` cannot skip it and no term of
+this kind can reach clausification or a theory solver. Boolean ITEs are lowered
+to Boolean connectives; non-Boolean ITEs use a fresh constant plus two guarded
+equalities, counted by `:preprocessing.ite.boolean` and
+`:preprocessing.ite.auxiliaries`.
+
+Two consequences of the ITE being a hash-consed term rather than a parse-time
+expansion. Identical ITEs share one auxiliary instead of allocating one per
+occurrence, since the lowering walk is memoized on the term. And `(ite c a a)`
+and a constant condition fold in `TermManager::mk_ite`, which a parse-time
+expansion could not do.
 
 For the common assignment shape:
 
@@ -956,19 +967,23 @@ For the common assignment shape:
 (= x (ite c a b))
 ```
 
-the frontend avoids the fresh non-Boolean auxiliary and emits the guarded
-equalities directly:
+the frontend still distributes the equality over the branches while building
+the term, avoiding the auxiliary entirely:
 
 ```text
 (and (=> c (= x a))
      (=> (not c) (= x b)))
 ```
 
-This is a targeted preprocessing rule, not a full strong ITE simplifier. Primo
-does not yet perform global ITE hoisting, condition-aware ITE-chain
-simplification, or domain-specific ITE table compression.
+This is a targeted rule, not a full strong ITE simplifier. Primo does not yet
+perform global ITE hoisting, condition-aware ITE-chain simplification, or
+domain-specific ITE table compression. What changed is that those are now
+ordinary term rewrites rather than being blocked on representation: see the
+2026-09-04 update to [lead 16](lead-ite-preprocessing).
 
-**The fresh-constant fallback is the encoding a primary source calls harmful.**
+**The fresh-constant fallback is still the encoding a primary source calls
+harmful,** and making ITE a term does not by itself fix that -- it removes the
+obstacle to fixing it.
 [](papers/bromberger-linear-arithmetic-thesis.md) §8.2.3 identifies exactly this
 lowering as structure-destroying and implements a pass to *reverse* it on inputs
 that arrive already lowered (`rings_preprocessed` versus `rings`). Its ablation

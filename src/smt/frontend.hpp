@@ -43,8 +43,6 @@ class Frontend {
   std::vector<core::TermId> declared_int_constant_terms();
   const core::TermManager& terms() const;
   core::TermManager& terms();
-  std::size_t boolean_ites() const;
-  std::size_t auxiliary_ites() const;
   std::size_t nullary_definition_direct_uses() const;
   std::size_t nullary_definition_eager_compiles() const;
   std::size_t nullary_definition_side_assertions() const;

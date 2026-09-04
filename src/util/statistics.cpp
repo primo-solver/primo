@@ -17,8 +17,8 @@ using namespace std::string_view_literals;
 
 constexpr std::array<std::string_view, static_cast<std::size_t>(StatKey::Count)> kStatNames = {
     ":input.assertions"sv,
-    ":frontend.ite.boolean"sv,
-    ":frontend.ite.auxiliaries"sv,
+    ":preprocessing.ite.boolean"sv,
+    ":preprocessing.ite.auxiliaries"sv,
     ":preprocessing.assertions"sv,
     ":preprocessing.passes"sv,
     ":preprocessing.changed-passes"sv,
@@ -219,8 +219,6 @@ constexpr std::array<std::string_view, static_cast<std::size_t>(StatKey::Count)>
     ":lia.patch-affected-rows-inspected"sv,
     ":lia.patch-full-scan-equivalent"sv,
     ":no.boolean-domain.registered-terms"sv,
-    ":preprocessing.lower.ite-boolean"sv,
-    ":preprocessing.lower.ite-auxiliaries"sv,
     ":preprocessing.lower.div-quotients"sv,
     ":preprocessing.lower.abs-rewrites"sv,
 };

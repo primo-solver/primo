@@ -687,7 +687,11 @@ void nullary_define_fun_replays_boolean_argument_constraints() {
   assert(result.statistics.get(":frontend.define-fun.nullary-side-assertions") == 1);
 }
 
-void nullary_define_fun_replays_term_ite_constraints() {
+// An ite in a nullary define-fun body used to compile into two side assertions
+// that had to be replayed at each use. It is a term now, so the body compiles
+// to a term and the preprocessing leaf lowers it once, which is why the side
+// assertion count is zero while the answer is unchanged.
+void nullary_define_fun_term_ite_is_lowered_once() {
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UF)
     (declare-sort A 0)
@@ -700,7 +704,8 @@ void nullary_define_fun_replays_term_ite_constraints() {
     (check-sat)
   )");
   assert(result.result == CheckSatResult::Unsat);
-  assert(result.statistics.get(":frontend.define-fun.nullary-side-assertions") == 2);
+  assert(result.statistics.get(":frontend.define-fun.nullary-side-assertions") == 0);
+  assert(result.statistics.get(":preprocessing.ite.auxiliaries") == 1);
 }
 
 void long_nullary_define_fun_chain_is_compiled_linearly() {
@@ -858,7 +863,8 @@ void term_ite_is_eliminated() {
     (check-sat)
   )");
   assert(result.result == CheckSatResult::Unsat);
-  assert(result.statistics.get(":frontend.ite.auxiliaries") == 0);
+  // Distributing the equality over the branches avoids the auxiliary entirely.
+  assert(result.statistics.get(":preprocessing.ite.auxiliaries") == 0);
 }
 
 void true_boolean_constant_used_as_uf_argument_is_euf_term() {
@@ -3132,7 +3138,7 @@ int main() {
   nullary_define_fun_is_eagerly_compiled();
   nullary_define_fun_uses_definition_site_bindings();
   nullary_define_fun_replays_boolean_argument_constraints();
-  nullary_define_fun_replays_term_ite_constraints();
+  nullary_define_fun_term_ite_is_lowered_once();
   long_nullary_define_fun_chain_is_compiled_linearly();
   long_nullary_and_chain_preserves_dag_and_supports_optional_flattening();
   reconvergent_nullary_and_dag_is_clausified_once();

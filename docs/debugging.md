@@ -38,8 +38,13 @@ scripts and result artifacts. Current counters include:
 - `:time.total-us`: total `check_sat_smtlib` time in microseconds, excluding
   CLI file I/O and benchmark-harness process overhead;
 - `:input.assertions`;
-- `:frontend.ite.boolean`;
-- `:frontend.ite.auxiliaries`;
+- `:preprocessing.ite.boolean`;
+- `:preprocessing.ite.auxiliaries` (both renamed from `:frontend.ite.*` when
+  `ite` became a term kind and lowering moved out of the frontend into the
+  `lower-extended-terms` leaf; the meaning is unchanged, so older run-log
+  entries remain comparable under the new names);
+- `:preprocessing.lower.div-quotients`;
+- `:preprocessing.lower.abs-rewrites`;
 - `:frontend.define-fun.nullary-direct-uses`: direct references, including
   references from later definitions;
 - `:frontend.define-fun.nullary-eager-compiles`: declaration-time compiles;

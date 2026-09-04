@@ -195,9 +195,10 @@ definitions from retaining every flattened conjunction prefix. The data
 structures, complexity bound, and 154 GB regression are documented in
 [](boolean-dag-flattening.md).
 
-The compiled representation also owns `compiled_side_assertions`. These are
-the Boolean equivalences for compound `Bool` UF arguments and guarded
-equalities for non-Boolean `ite` auxiliaries created while compiling the body.
+The compiled representation also owns `compiled_side_assertions`. These are the
+Boolean equivalences for compound `Bool` UF arguments. Non-Boolean `ite` bodies
+used to contribute guarded equalities here too; since `ite` became a term kind
+they compile to a term instead and contribute none.
 Every use replays that package into the current assertion build. A per-build set
 deduplicates transitive packages, and a session set emits each resulting
 `TermId` assertion only once into the permanent assertion list. An unused
@@ -210,7 +211,8 @@ allocation order and can therefore change downstream SAT search. The intended
 invariants are semantic: one stable term per nullary definition, lexical name
 resolution, result-sort preservation, and replay of every auxiliary constraint.
 Unit tests cover long transitive chains, parameter shadowing, compound Boolean
-UF arguments, and non-Boolean `ite` bodies.
+UF arguments, and non-Boolean `ite` bodies, the last of which now compile to a
+term that the preprocessing leaf lowers once.
 
 Eager compilation can expose a definition chain as a very deep, shared core
 term DAG even though every SMT-LIB declaration body is shallow. Core `TermId`

@@ -90,8 +90,6 @@ class TermBuilder {
   void dispatch(const smtlib::SExpr& expr, Continuation k);
   void dispatch_let(const smtlib::SExpr& expr, Continuation k);
   void dispatch_ite(const smtlib::SExpr& expr, Continuation k);
-  void finish_ite(core::TermId condition, core::TermId then_term, core::TermId else_term,
-                  Continuation k);
   void dispatch_implies(const smtlib::SExpr& expr, Continuation k);
   void dispatch_xor(const smtlib::SExpr& expr, Continuation k);
   void dispatch_equality(const smtlib::SExpr& expr, Continuation k);
@@ -210,8 +208,6 @@ struct Frontend::Implementation {
   const core::SymbolTable& symbols() const { return symbols_; }
   const core::TermManager& terms() const { return terms_; }
   core::TermManager& terms() { return terms_; }
-  std::size_t boolean_ites() const { return boolean_ites_; }
-  std::size_t auxiliary_ites() const { return auxiliary_ites_; }
   std::size_t nullary_definition_direct_uses() const { return nullary_definition_direct_uses_; }
   std::size_t nullary_definition_eager_compiles() const {
     return nullary_definition_eager_compiles_;
@@ -432,8 +428,6 @@ struct Frontend::Implementation {
   std::vector<core::SymbolId> declared_int_constant_symbols_;
   std::optional<std::string> logic_;
   std::size_t auxiliary_counter_ = 0;
-  std::size_t boolean_ites_ = 0;
-  std::size_t auxiliary_ites_ = 0;
   std::size_t nullary_definition_direct_uses_ = 0;
   std::size_t nullary_definition_eager_compiles_ = 0;
   std::size_t nullary_definition_side_assertions_ = 0;
@@ -686,32 +680,12 @@ void TermBuilder::dispatch_ite(const smtlib::SExpr& expr, Continuation k) {
         std::vector<const smtlib::SExpr*>{&expr.list[2], &expr.list[3]});
     schedule_all(branches, [this, condition,
                             k = std::move(k)](std::vector<core::TermId> branch_terms) mutable {
-      finish_ite(condition, branch_terms[0], branch_terms[1], std::move(k));
+      // An ite is a term now. Lowering happens in the unconditional
+      // lower-extended-terms leaf, which is what lets preprocessing simplify
+      // it first; mk_ite reports a bad condition sort or mismatched branches.
+      resume(std::move(k), frontend_.terms_.mk_ite(condition, branch_terms[0], branch_terms[1]));
     });
   });
-}
-
-void TermBuilder::finish_ite(core::TermId condition, core::TermId then_term, core::TermId else_term,
-                             Continuation k) {
-  const core::SortId result_sort = frontend_.terms_.get(then_term).sort;
-  if (result_sort != frontend_.terms_.get(else_term).sort) {
-    throw UnsupportedInput("ite branch sort mismatch");
-  }
-  if (result_sort == frontend_.symbols_.bool_sort()) {
-    ++frontend_.boolean_ites_;
-    resume(std::move(k),
-           frontend_.terms_.mk_or(
-               {frontend_.terms_.mk_and({condition, then_term}),
-                frontend_.terms_.mk_and({frontend_.terms_.mk_not(condition), else_term})}));
-    return;
-  }
-  const core::TermId auxiliary = frontend_.fresh_auxiliary_constant(result_sort, "ite");
-  ++frontend_.auxiliary_ites_;
-  frontend_.record_side_assertion(
-      frontend_.terms_.mk_implies(condition, frontend_.terms_.mk_eq(auxiliary, then_term)));
-  frontend_.record_side_assertion(frontend_.terms_.mk_implies(
-      frontend_.terms_.mk_not(condition), frontend_.terms_.mk_eq(auxiliary, else_term)));
-  resume(std::move(k), auxiliary);
 }
 
 void TermBuilder::dispatch_implies(const smtlib::SExpr& expr, Continuation k) {
@@ -1131,8 +1105,6 @@ std::vector<core::TermId> Frontend::declared_int_constant_terms() {
 }
 const core::TermManager& Frontend::terms() const { return implementation_->terms(); }
 core::TermManager& Frontend::terms() { return implementation_->terms(); }
-std::size_t Frontend::boolean_ites() const { return implementation_->boolean_ites(); }
-std::size_t Frontend::auxiliary_ites() const { return implementation_->auxiliary_ites(); }
 std::size_t Frontend::nullary_definition_direct_uses() const {
   return implementation_->nullary_definition_direct_uses();
 }
