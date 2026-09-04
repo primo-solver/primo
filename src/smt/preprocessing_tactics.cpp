@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <string>
+#include <string_view>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -522,6 +523,21 @@ Tactic make_normalize_boolean(NormalizeBooleanOptions options) {
     statistics.set(prefix + "rewrites", flattened.rewrites);
     statistics.set(prefix + "max-arity", flattened.max_arity);
     return AnyOf::single(goal.with_assertions(std::move(flattened.assertions)));
+  });
+}
+
+Tactic make_lower_extended_terms() {
+  return make_goal_tactic("lower-extended-terms", [](TacticContext& context, const Goal& goal) {
+    LowerExtendedTermsResult lowered = lower_extended_terms(
+        context.terms(), goal.assertions(), [&context](core::SortId sort, std::string_view prefix) {
+          return context.fresh_constant(sort, prefix);
+        });
+    util::Statistics& statistics = context.statistics();
+    statistics.increment(util::StatKey::LoweredBooleanItes, lowered.boolean_ites);
+    statistics.increment(util::StatKey::LoweredAuxiliaryItes, lowered.auxiliary_ites);
+    statistics.increment(util::StatKey::LoweredDivisionQuotients, lowered.quotients);
+    statistics.increment(util::StatKey::LoweredAbsRewrites, lowered.abs_rewrites);
+    return AnyOf::single(goal.with_assertions(std::move(lowered.assertions)));
   });
 }
 

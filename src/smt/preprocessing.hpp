@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cstddef>
+#include <functional>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -151,6 +153,33 @@ struct GroundEqualitySubstitutionResult {
 
 GroundEqualitySubstitutionResult substitute_ground_unit_equalities(
     core::TermManager& terms, const std::vector<core::TermId>& assertions);
+
+// Creates a fresh internal constant of the given sort. The session owns
+// symbol creation, so the lowering pass is handed the capability rather than
+// the Frontend, which keeps it usable from a tactic.
+using FreshConstantFactory = std::function<core::TermId(core::SortId, std::string_view)>;
+
+struct LowerExtendedTermsResult {
+  std::vector<core::TermId> assertions;
+  std::size_t boolean_ites = 0;
+  std::size_t auxiliary_ites = 0;
+  std::size_t quotients = 0;
+  std::size_t abs_rewrites = 0;
+};
+
+// Lowers Ite, Abs, IntDiv and IntMod into the Boolean and linear fragment the
+// clausifier and the theory solvers accept. Every encoding is a definitional
+// extension: the introduced constants are pinned by the assertions introduced
+// alongside them, so no model is gained or lost.
+//
+// This must run on every path, including --preprocessing-mode=off, which is
+// why its tactic sits in the unconditional initial sequence rather than in a
+// profile-gated round. Reaching a theory solver with one of these kinds still
+// present is a pipeline bug, and LinearPolynomial::from_term throws rather
+// than silently treating it as a free variable.
+LowerExtendedTermsResult lower_extended_terms(core::TermManager& terms,
+                                              const std::vector<core::TermId>& assertions,
+                                              const FreshConstantFactory& fresh_constant);
 
 struct RealEqualityLoweringResult {
   std::vector<core::TermId> assertions;

@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <iterator>
 #include <limits>
+#include <map>
 #include <optional>
 #include <sstream>
 #include <stdexcept>
@@ -3603,6 +3604,196 @@ std::vector<core::TermId> propagate_unit_equalities(core::TermManager& terms,
     stats->add_term_seen_hits = closure_stats.add_term_seen_hits;
   }
   return simplified;
+}
+
+namespace {
+
+// Rebuilds one node from already-rewritten children. Only the kinds that can
+// still be present after lowering are reachable.
+core::TermId rebuild_lowered_node(core::TermManager& terms, core::TermId original,
+                                  core::TermKind kind, core::SymbolId symbol,
+                                  const util::Rational& rational,
+                                  std::vector<core::TermId> children) {
+  switch (kind) {
+    case core::TermKind::Application:
+      return terms.mk_app(symbol, std::move(children));
+    case core::TermKind::Equality:
+      return terms.mk_eq(children.at(0), children.at(1));
+    case core::TermKind::Not:
+      return terms.mk_not(children.at(0));
+    case core::TermKind::And:
+      return terms.mk_and(std::move(children));
+    case core::TermKind::Or:
+      return terms.mk_or(std::move(children));
+    case core::TermKind::Implies:
+      return terms.mk_implies(children.at(0), children.at(1));
+    case core::TermKind::Plus:
+      return terms.mk_plus(std::move(children));
+    case core::TermKind::Times:
+      return terms.mk_times(rational, children.at(0));
+    case core::TermKind::Le:
+      return terms.mk_le(children.at(0), children.at(1));
+    case core::TermKind::Lt:
+      return terms.mk_lt(children.at(0), children.at(1));
+    case core::TermKind::BoolValue:
+    case core::TermKind::Constant:
+    case core::TermKind::Rational:
+      assert(false && "leaf reached extended-term reconstruction");
+      return original;
+    case core::TermKind::Ite:
+    case core::TermKind::IntDiv:
+    case core::TermKind::IntMod:
+    case core::TermKind::Abs:
+      assert(false && "extended term reached its own reconstruction");
+      return original;
+  }
+  return original;
+}
+
+}  // namespace
+
+LowerExtendedTermsResult lower_extended_terms(core::TermManager& terms,
+                                              const std::vector<core::TermId>& assertions,
+                                              const FreshConstantFactory& fresh_constant) {
+  LowerExtendedTermsResult result;
+  if (terms.extended_term_count() == 0) {
+    // Nothing of the kind was ever built, so there is nothing to walk. This is
+    // the common case: roughly seven in ten benchmarks contain no ite at all.
+    result.assertions = assertions;
+    return result;
+  }
+
+  const std::size_t source_term_count = terms.size();
+  std::vector<core::TermId> rewritten(source_term_count, core::kInvalidTermId);
+  std::vector<core::TermId> definitions;
+  std::unordered_set<core::TermId> emitted_definitions;
+  // Keyed on the rewritten numerator and the divisor, so that (div t k) and
+  // (mod t k) share one quotient. Euclid's theorem makes the quotient unique,
+  // so sharing is an efficiency choice rather than a correctness requirement.
+  std::map<std::pair<core::TermId, util::Rational>, core::TermId> quotients;
+  const core::SortId int_sort = terms.symbols().int_sort();
+  const core::TermId zero = terms.mk_rational(util::Rational(0), int_sort);
+
+  const auto define_ite = [&](core::TermId condition, core::TermId then_term,
+                              core::TermId else_term, core::SortId sort) {
+    if (sort == terms.symbols().bool_sort()) {
+      ++result.boolean_ites;
+      return terms.mk_or({terms.mk_and({condition, then_term}),
+                          terms.mk_and({terms.mk_not(condition), else_term})});
+    }
+    const core::TermId auxiliary = fresh_constant(sort, "ite");
+    ++result.auxiliary_ites;
+    definitions.push_back(terms.mk_implies(condition, terms.mk_eq(auxiliary, then_term)));
+    definitions.push_back(
+        terms.mk_implies(terms.mk_not(condition), terms.mk_eq(auxiliary, else_term)));
+    return auxiliary;
+  };
+
+  // numerator - divisor * quotient, which is what mod denotes and what the two
+  // bounds below constrain to [0, divisor - 1].
+  const auto residual = [&terms](core::TermId numerator, const util::Rational& divisor,
+                                 core::TermId quotient) {
+    return terms.mk_plus({numerator, terms.mk_times(-divisor, quotient)});
+  };
+
+  const auto quotient_for = [&](core::TermId numerator, const util::Rational& divisor) {
+    const auto key = std::make_pair(numerator, divisor);
+    const auto found = quotients.find(key);
+    if (found != quotients.end()) {
+      return found->second;
+    }
+    const core::TermId quotient = fresh_constant(int_sort, "div");
+    ++result.quotients;
+    const core::TermId remainder = residual(numerator, divisor, quotient);
+    definitions.push_back(terms.mk_le(zero, remainder));
+    definitions.push_back(
+        terms.mk_le(remainder, terms.mk_rational(divisor - util::Rational(1), int_sort)));
+    quotients.emplace(key, quotient);
+    return quotient;
+  };
+
+  struct Visit {
+    core::TermId term = core::kInvalidTermId;
+    bool expanded = false;
+  };
+  std::vector<Visit> pending;
+
+  for (const core::TermId assertion : assertions) {
+    pending.push_back(Visit{assertion, false});
+    while (!pending.empty()) {
+      const Visit visit = pending.back();
+      pending.pop_back();
+      if (rewritten.at(visit.term) != core::kInvalidTermId) {
+        continue;
+      }
+      const core::Term& source = terms.get(visit.term);
+      if (source.children.empty()) {
+        rewritten[visit.term] = visit.term;
+        continue;
+      }
+      if (!visit.expanded) {
+        pending.push_back(Visit{visit.term, true});
+        for (auto child = source.children.rbegin(); child != source.children.rend(); ++child) {
+          if (rewritten.at(*child) == core::kInvalidTermId) {
+            pending.push_back(Visit{*child, false});
+          }
+        }
+        continue;
+      }
+
+      // Copy before any TermManager constructor can grow term storage.
+      const core::TermKind kind = source.kind;
+      const core::SortId sort = source.sort;
+      const core::SymbolId symbol = source.symbol;
+      const util::Rational rational = source.rational_value;
+      const std::vector<core::TermId> source_children = source.children;
+      std::vector<core::TermId> children;
+      children.reserve(source_children.size());
+      bool changed = false;
+      for (const core::TermId child : source_children) {
+        const core::TermId replacement = rewritten.at(child);
+        changed = changed || replacement != child;
+        children.push_back(replacement);
+      }
+
+      switch (kind) {
+        case core::TermKind::Ite:
+          rewritten[visit.term] = define_ite(children.at(0), children.at(1), children.at(2), sort);
+          continue;
+        case core::TermKind::Abs: {
+          // |t| is (ite (<= 0 t) t (- t)), so abs and ite share one encoding.
+          ++result.abs_rewrites;
+          const core::TermId operand = children.at(0);
+          rewritten[visit.term] = define_ite(terms.mk_le(zero, operand), operand,
+                                             terms.mk_times(util::Rational(-1), operand), sort);
+          continue;
+        }
+        case core::TermKind::IntDiv:
+          rewritten[visit.term] = quotient_for(children.at(0), rational);
+          continue;
+        case core::TermKind::IntMod:
+          rewritten[visit.term] =
+              residual(children.at(0), rational, quotient_for(children.at(0), rational));
+          continue;
+        default:
+          break;
+      }
+      rewritten[visit.term] = changed ? rebuild_lowered_node(terms, visit.term, kind, symbol,
+                                                             rational, std::move(children))
+                                      : visit.term;
+    }
+
+    // Definitions introduced while rewriting this assertion are emitted before
+    // it, in creation order, which is the order the frontend used for ite.
+    for (const core::TermId definition : definitions) {
+      if (emitted_definitions.insert(definition).second) {
+        result.assertions.push_back(definition);
+      }
+    }
+    definitions.clear();
+    result.assertions.push_back(rewritten.at(assertion));
+  }
+  return result;
 }
 
 RealEqualityLoweringResult lower_real_equalities(core::TermManager& terms,

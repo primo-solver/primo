@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -1702,6 +1703,157 @@ void finite_domain_evaluator_simplifies_table_tautology() {
   check(!last.bool_value);
 }
 
+// A counter-backed fresh-constant factory, standing in for what the session
+// installs on the TacticContext.
+struct AuxiliaryFactory {
+  primo::core::SymbolTable& symbols;
+  primo::core::TermManager& terms;
+  std::size_t next = 0;
+
+  primo::smt::FreshConstantFactory factory() {
+    return [this](primo::core::SortId sort, std::string_view prefix) {
+      const std::string name = "$primo_" + std::string{prefix} + "_" + std::to_string(next++);
+      return terms.mk_constant(symbols.declare_constant(name, sort));
+    };
+  }
+};
+
+void lowering_is_a_no_op_when_nothing_extended_was_built() {
+  Fixture fixture;
+  AuxiliaryFactory auxiliaries{fixture.symbols, fixture.terms};
+  const std::vector<primo::core::TermId> assertions{
+      fixture.terms.mk_eq(fixture.constant(fixture.a), fixture.constant(fixture.b))};
+
+  const primo::smt::LowerExtendedTermsResult lowered =
+      primo::smt::lower_extended_terms(fixture.terms, assertions, auxiliaries.factory());
+
+  check(lowered.assertions == assertions);
+  check(lowered.auxiliary_ites == 0);
+  check(auxiliaries.next == 0);
+}
+
+void lowering_defines_a_term_ite_with_two_guarded_equalities() {
+  primo::core::SymbolTable symbols;
+  const auto int_sort = symbols.int_sort();
+  const auto p = symbols.declare_constant("p", symbols.bool_sort());
+  const auto x = symbols.declare_constant("x", int_sort);
+  const auto y = symbols.declare_constant("y", int_sort);
+  primo::core::TermManager terms(symbols);
+  AuxiliaryFactory auxiliaries{symbols, terms};
+  const primo::core::TermId condition = terms.mk_constant(p);
+  const primo::core::TermId conditional =
+      terms.mk_ite(condition, terms.mk_constant(x), terms.mk_constant(y));
+  const std::vector<primo::core::TermId> assertions{
+      terms.mk_le(conditional, terms.mk_rational(primo::util::Rational(3), int_sort))};
+
+  const primo::smt::LowerExtendedTermsResult lowered =
+      primo::smt::lower_extended_terms(terms, assertions, auxiliaries.factory());
+
+  // Two definitions, then the rewritten assertion.
+  check(lowered.auxiliary_ites == 1);
+  check(lowered.boolean_ites == 0);
+  check(lowered.assertions.size() == 3);
+  check(terms.get(lowered.assertions.at(0)).kind == primo::core::TermKind::Implies);
+  check(terms.get(lowered.assertions.at(1)).kind == primo::core::TermKind::Implies);
+  // No extended kind survives.
+  for (const primo::core::TermId assertion : lowered.assertions) {
+    std::vector<primo::core::TermId> stack{assertion};
+    while (!stack.empty()) {
+      const primo::core::TermId id = stack.back();
+      stack.pop_back();
+      const primo::core::Term& node = terms.get(id);
+      check(node.kind != primo::core::TermKind::Ite);
+      for (const primo::core::TermId child : node.children) {
+        stack.push_back(child);
+      }
+    }
+  }
+}
+
+void lowering_expands_a_boolean_ite_without_an_auxiliary() {
+  primo::core::SymbolTable symbols;
+  const auto p = symbols.declare_constant("p", symbols.bool_sort());
+  const auto q = symbols.declare_constant("q", symbols.bool_sort());
+  const auto r = symbols.declare_constant("r", symbols.bool_sort());
+  primo::core::TermManager terms(symbols);
+  AuxiliaryFactory auxiliaries{symbols, terms};
+  const std::vector<primo::core::TermId> assertions{
+      terms.mk_ite(terms.mk_constant(p), terms.mk_constant(q), terms.mk_constant(r))};
+
+  const primo::smt::LowerExtendedTermsResult lowered =
+      primo::smt::lower_extended_terms(terms, assertions, auxiliaries.factory());
+
+  check(lowered.boolean_ites == 1);
+  check(lowered.auxiliary_ites == 0);
+  check(auxiliaries.next == 0);
+  check(lowered.assertions.size() == 1);
+  check(terms.get(lowered.assertions.at(0)).kind == primo::core::TermKind::Or);
+}
+
+void lowering_shares_one_quotient_between_div_and_mod() {
+  primo::core::SymbolTable symbols;
+  const auto int_sort = symbols.int_sort();
+  const auto x = symbols.declare_constant("x", int_sort);
+  primo::core::TermManager terms(symbols);
+  AuxiliaryFactory auxiliaries{symbols, terms};
+  const primo::core::TermId numerator = terms.mk_constant(x);
+  const std::vector<primo::core::TermId> assertions{
+      terms.mk_le(terms.mk_int_div(primo::util::Rational(3), numerator),
+                  terms.mk_rational(primo::util::Rational(5), int_sort)),
+      terms.mk_le(terms.mk_int_mod(primo::util::Rational(3), numerator),
+                  terms.mk_rational(primo::util::Rational(2), int_sort))};
+
+  const primo::smt::LowerExtendedTermsResult lowered =
+      primo::smt::lower_extended_terms(terms, assertions, auxiliaries.factory());
+
+  // One quotient, one pair of bounds, shared by both assertions.
+  check(lowered.quotients == 1);
+  check(auxiliaries.next == 1);
+  // Two bound definitions, then the two rewritten assertions.
+  check(lowered.assertions.size() == 4);
+}
+
+void lowering_rewrites_abs_through_the_ite_encoding() {
+  primo::core::SymbolTable symbols;
+  const auto int_sort = symbols.int_sort();
+  const auto x = symbols.declare_constant("x", int_sort);
+  primo::core::TermManager terms(symbols);
+  AuxiliaryFactory auxiliaries{symbols, terms};
+  const std::vector<primo::core::TermId> assertions{terms.mk_le(
+      terms.mk_abs(terms.mk_constant(x)), terms.mk_rational(primo::util::Rational(4), int_sort))};
+
+  const primo::smt::LowerExtendedTermsResult lowered =
+      primo::smt::lower_extended_terms(terms, assertions, auxiliaries.factory());
+
+  check(lowered.abs_rewrites == 1);
+  check(lowered.auxiliary_ites == 1);
+  check(lowered.assertions.size() == 3);
+}
+
+// The walk is an explicit stack, so nesting depth is bounded by memory rather
+// than by the C++ stack.
+void lowering_handles_deeply_nested_terms() {
+  primo::core::SymbolTable symbols;
+  const auto int_sort = symbols.int_sort();
+  const auto x = symbols.declare_constant("x", int_sort);
+  primo::core::TermManager terms(symbols);
+  AuxiliaryFactory auxiliaries{symbols, terms};
+  primo::core::TermId nested = terms.mk_constant(x);
+  constexpr std::size_t kDepth = 20000;
+  for (std::size_t depth = 0; depth < kDepth; ++depth) {
+    nested = terms.mk_abs(
+        terms.mk_plus({nested, terms.mk_rational(primo::util::Rational(1), int_sort)}));
+  }
+  const std::vector<primo::core::TermId> assertions{
+      terms.mk_le(nested, terms.mk_rational(primo::util::Rational(0), int_sort))};
+
+  const primo::smt::LowerExtendedTermsResult lowered =
+      primo::smt::lower_extended_terms(terms, assertions, auxiliaries.factory());
+
+  check(lowered.abs_rewrites == kDepth);
+  check(lowered.auxiliary_ites == kDepth);
+}
+
 }  // namespace
 
 int main() {
@@ -1769,6 +1921,12 @@ int main() {
   monotone_elimination_discharges_one_sided_variable();
   monotone_elimination_respects_polarity();
   monotone_elimination_folds_negative_polarity_atom_to_false();
+  lowering_is_a_no_op_when_nothing_extended_was_built();
+  lowering_defines_a_term_ite_with_two_guarded_equalities();
+  lowering_expands_a_boolean_ite_without_an_auxiliary();
+  lowering_shares_one_quotient_between_div_and_mod();
+  lowering_rewrites_abs_through_the_ite_encoding();
+  lowering_handles_deeply_nested_terms();
   monotone_elimination_keeps_variable_pinned_by_equality();
   monotone_elimination_keeps_variable_under_uninterpreted_application();
   monotone_elimination_orders_dependent_variables();

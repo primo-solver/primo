@@ -217,6 +217,12 @@ enum class StatKey : std::size_t {
   LiaPatchAffectedRowsInspected,
   LiaPatchFullScanEquivalent,
   BooleanDomainRegisteredTerms,
+  // Written by the lowering leaf. The frontend counters above stay as the
+  // public ite numbers so benchmark tables remain comparable.
+  LoweredBooleanItes,
+  LoweredAuxiliaryItes,
+  LoweredDivisionQuotients,
+  LoweredAbsRewrites,
   Count,
 };
 

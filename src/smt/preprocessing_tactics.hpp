@@ -118,6 +118,12 @@ Tactic make_derive_equalities(DeriveEqualitiesOptions options);
 Tactic make_finite_domain_preprocess(FiniteDomainPreprocessOptions options,
                                      FiniteDomainPreprocessInput input = {});
 Tactic make_normalize_boolean(NormalizeBooleanOptions options);
+// Lowers Ite, Abs, IntDiv and IntMod into the Boolean and linear fragment.
+// This leaf is unconditional: it sits in the initial sequence that runs before
+// the preprocessing profile is even chosen, so --preprocessing-mode=off cannot
+// skip it. Fresh constants come from the executing TacticContext.
+Tactic make_lower_extended_terms();
+
 Tactic make_normalize_arithmetic(NormalizeArithmeticOptions options);
 Tactic make_eliminate_monotone(EliminateMonotoneOptions options = {});
 // The fresh proxy constants this needs come from the executing TacticContext,

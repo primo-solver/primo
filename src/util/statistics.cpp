@@ -219,6 +219,10 @@ constexpr std::array<std::string_view, static_cast<std::size_t>(StatKey::Count)>
     ":lia.patch-affected-rows-inspected"sv,
     ":lia.patch-full-scan-equivalent"sv,
     ":no.boolean-domain.registered-terms"sv,
+    ":preprocessing.lower.ite-boolean"sv,
+    ":preprocessing.lower.ite-auxiliaries"sv,
+    ":preprocessing.lower.div-quotients"sv,
+    ":preprocessing.lower.abs-rewrites"sv,
 };
 
 const std::unordered_map<std::string_view, StatKey>& stat_keys_by_name() {

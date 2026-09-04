@@ -571,6 +571,12 @@ PreparedPreprocessingStrategy prepare_and_execute_preprocessing_strategy(
     options.preprocessing_mode = PreprocessingMode::Basic;
   }
   std::vector<Strategy> initial_children;
+  // Unconditional, and first: the arithmetic and Boolean normalizers below,
+  // the profile analysis that follows, and every solver path all assume the
+  // linear and Boolean fragment. This sequence runs before the preprocessing
+  // mode is consulted, so there is no setting that can skip lowering.
+  initial_children.push_back(
+      Strategy::leaf("lower-extended-terms", NoStrategyParameters{}, make_lower_extended_terms()));
   if (options.arithmetic_atom_canonicalization) {
     const NormalizeArithmeticOptions arithmetic_options{
         .stage = ArithmeticNormalizationStage::Initial,
