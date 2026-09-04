@@ -159,6 +159,29 @@ GroundEqualitySubstitutionResult substitute_ground_unit_equalities(
 // the Frontend, which keeps it usable from a tactic.
 using FreshConstantFactory = std::function<core::TermId(core::SortId, std::string_view)>;
 
+struct SimplifyExtendedTermsResult {
+  std::vector<core::TermId> assertions;
+  std::size_t ite_rewrites = 0;
+  std::size_t equalities_distributed = 0;
+  std::size_t arithmetic_rewrites = 0;
+};
+
+// Rewrites Ite, IntDiv, IntMod and Abs terms before they are lowered.
+//
+// These rules live here rather than in the TermManager constructors on
+// purpose. A constructor fold is permanently on and cannot be measured or
+// switched off, and these are the trivial end of the if-then-else rewrite
+// system that lead 16 in open-leads.md is about -- a lead whose own falsifier
+// requires the techniques to be evaluated together rather than shipped
+// individually. The constructors keep only what defines the representation:
+// sort checks, constant folding, and the divisor sign normalization that makes
+// (div x 3) and (- (div x (- 3))) one node.
+//
+// Nothing but the frontend builds these four kinds, so a single pass before
+// lowering sees all of them.
+SimplifyExtendedTermsResult simplify_extended_terms(core::TermManager& terms,
+                                                    const std::vector<core::TermId>& assertions);
+
 struct LowerExtendedTermsResult {
   std::vector<core::TermId> assertions;
   std::size_t boolean_ites = 0;

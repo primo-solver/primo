@@ -386,11 +386,12 @@ void ite_folds_only_what_is_unconditional() {
   const primo::core::TermId x = terms.mk_constant(x_symbol);
   const primo::core::TermId y = terms.mk_constant(y_symbol);
 
-  // A constant condition and two equal branches are the two cases that would
-  // otherwise cost an auxiliary constant for nothing.
+  // Constant folding is all the constructor does: a literal condition selects
+  // a branch. Every other ite rewrite, including collapsing equal branches,
+  // belongs to simplify-extended-terms so that it can be measured.
   assert(terms.mk_ite(terms.mk_bool(true), x, y) == x);
   assert(terms.mk_ite(terms.mk_bool(false), x, y) == y);
-  assert(terms.mk_ite(p, x, x) == x);
+  assert(terms.get(terms.mk_ite(p, x, x)).kind == TermKind::Ite);
 
   // Everything else stays a term, so preprocessing can see it.
   const primo::core::TermId conditional = terms.mk_ite(p, x, y);

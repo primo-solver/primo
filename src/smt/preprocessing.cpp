@@ -3608,8 +3608,135 @@ std::vector<core::TermId> propagate_unit_equalities(core::TermManager& terms,
 
 namespace {
 
-// Rebuilds one node from already-rewritten children. Only the kinds that can
-// still be present after lowering are reachable.
+// One rewrite step on a node whose children are already simplified. Returns
+// kInvalidTermId when no rule applies. Every rule here is an equivalence, so
+// applying or skipping any of them changes nothing but the term's shape.
+core::TermId simplify_extended_node(core::TermManager& terms, core::TermKind kind,
+                                    const util::Rational& divisor,
+                                    const std::vector<core::TermId>& children,
+                                    SimplifyExtendedTermsResult& result) {
+  switch (kind) {
+    case core::TermKind::Ite: {
+      const core::TermId condition = children.at(0);
+      const core::TermId then_term = children.at(1);
+      const core::TermId else_term = children.at(2);
+      // Both branches agree, so the condition is irrelevant.
+      if (then_term == else_term) {
+        ++result.ite_rewrites;
+        return then_term;
+      }
+      const core::Term& condition_term = terms.get(condition);
+      // (ite (not c) a b) is (ite c b a). mk_not collapses double negation, so
+      // the swapped form cannot re-trigger this rule.
+      if (condition_term.kind == core::TermKind::Not) {
+        ++result.ite_rewrites;
+        return terms.mk_ite(condition_term.children.at(0), else_term, then_term);
+      }
+      // Under the condition it is true, under its negation false, so a nested
+      // ite on the same condition has already decided that branch.
+      const core::Term& then_branch = terms.get(then_term);
+      if (then_branch.kind == core::TermKind::Ite && then_branch.children.at(0) == condition) {
+        ++result.ite_rewrites;
+        return terms.mk_ite(condition, then_branch.children.at(1), else_term);
+      }
+      const core::Term& else_branch = terms.get(else_term);
+      if (else_branch.kind == core::TermKind::Ite && else_branch.children.at(0) == condition) {
+        ++result.ite_rewrites;
+        return terms.mk_ite(condition, then_term, else_branch.children.at(2));
+      }
+      if (then_branch.sort != terms.symbols().bool_sort()) {
+        return core::kInvalidTermId;
+      }
+      // A Boolean ite is a connective, and a branch equal to the condition is
+      // constant on the side that guards it.
+      const core::TermId t = terms.mk_bool(true);
+      const core::TermId f = terms.mk_bool(false);
+      if (then_term == t || then_term == condition) {
+        ++result.ite_rewrites;
+        return terms.mk_or({condition, else_term});
+      }
+      if (else_term == f || else_term == condition) {
+        ++result.ite_rewrites;
+        return terms.mk_and({condition, then_term});
+      }
+      if (then_term == f) {
+        ++result.ite_rewrites;
+        return terms.mk_and({terms.mk_not(condition), else_term});
+      }
+      if (else_term == t) {
+        ++result.ite_rewrites;
+        return terms.mk_or({terms.mk_not(condition), then_term});
+      }
+      return core::kInvalidTermId;
+    }
+    case core::TermKind::IntDiv: {
+      const core::TermId numerator = children.at(0);
+      // D = 1*D + 0, and 0 lies in [0,1). The negative unit reaches this after
+      // the constructor's sign normalization, as -D.
+      if (divisor == util::Rational(1)) {
+        ++result.arithmetic_rewrites;
+        return numerator;
+      }
+      // A remainder already lies in [0,k), so its quotient by k is zero.
+      const core::Term& numerator_term = terms.get(numerator);
+      if (numerator_term.kind == core::TermKind::IntMod &&
+          numerator_term.rational_value == divisor) {
+        ++result.arithmetic_rewrites;
+        return terms.mk_rational(util::Rational(0), terms.symbols().int_sort());
+      }
+      return core::kInvalidTermId;
+    }
+    case core::TermKind::IntMod: {
+      const core::TermId numerator = children.at(0);
+      if (divisor == util::Rational(1)) {
+        ++result.arithmetic_rewrites;
+        return terms.mk_rational(util::Rational(0), terms.symbols().int_sort());
+      }
+      // mod is idempotent: its result is already in [0,k).
+      const core::Term& numerator_term = terms.get(numerator);
+      if (numerator_term.kind == core::TermKind::IntMod &&
+          numerator_term.rational_value == divisor) {
+        ++result.arithmetic_rewrites;
+        return numerator;
+      }
+      return core::kInvalidTermId;
+    }
+    case core::TermKind::Abs: {
+      // |x| and a Euclidean remainder are both already non-negative.
+      const core::Term& operand = terms.get(children.at(0));
+      if (operand.kind == core::TermKind::Abs || operand.kind == core::TermKind::IntMod) {
+        ++result.arithmetic_rewrites;
+        return children.at(0);
+      }
+      return core::kInvalidTermId;
+    }
+    case core::TermKind::Equality: {
+      // (= u (ite c a b)) distributes over the branches, which avoids the
+      // auxiliary constant lowering would otherwise introduce. Only one
+      // operand is distributed, so the assertion at most doubles.
+      for (std::size_t index = 0; index < 2; ++index) {
+        const core::Term& operand = terms.get(children.at(index));
+        if (operand.kind != core::TermKind::Ite) {
+          continue;
+        }
+        const core::TermId other = children.at(1 - index);
+        const core::TermId condition = operand.children.at(0);
+        const core::TermId then_term = operand.children.at(1);
+        const core::TermId else_term = operand.children.at(2);
+        ++result.equalities_distributed;
+        return terms.mk_and(
+            {terms.mk_implies(condition, terms.mk_eq(other, then_term)),
+             terms.mk_implies(terms.mk_not(condition), terms.mk_eq(other, else_term))});
+      }
+      return core::kInvalidTermId;
+    }
+    default:
+      return core::kInvalidTermId;
+  }
+}
+
+// Rebuilds one node from already-rewritten children. Shared by the
+// simplification and lowering passes.
 core::TermId rebuild_lowered_node(core::TermManager& terms, core::TermId original,
                                   core::TermKind kind, core::SymbolId symbol,
                                   const util::Rational& rational,
@@ -3640,17 +3767,91 @@ core::TermId rebuild_lowered_node(core::TermManager& terms, core::TermId origina
     case core::TermKind::Rational:
       assert(false && "leaf reached extended-term reconstruction");
       return original;
+    // The simplification pass rebuilds these when a child changed and no rule
+    // fired. The lowering pass never reaches here for them, because it
+    // replaces them outright.
     case core::TermKind::Ite:
+      return terms.mk_ite(children.at(0), children.at(1), children.at(2));
     case core::TermKind::IntDiv:
+      return terms.mk_int_div(rational, children.at(0));
     case core::TermKind::IntMod:
+      return terms.mk_int_mod(rational, children.at(0));
     case core::TermKind::Abs:
-      assert(false && "extended term reached its own reconstruction");
-      return original;
+      return terms.mk_abs(children.at(0));
   }
   return original;
 }
 
 }  // namespace
+
+SimplifyExtendedTermsResult simplify_extended_terms(core::TermManager& terms,
+                                                    const std::vector<core::TermId>& assertions) {
+  SimplifyExtendedTermsResult result;
+  if (terms.extended_term_count() == 0) {
+    result.assertions = assertions;
+    return result;
+  }
+
+  const std::size_t source_term_count = terms.size();
+  std::vector<core::TermId> rewritten(source_term_count, core::kInvalidTermId);
+  struct Visit {
+    core::TermId term = core::kInvalidTermId;
+    bool expanded = false;
+  };
+  std::vector<Visit> pending;
+  result.assertions.reserve(assertions.size());
+
+  for (const core::TermId assertion : assertions) {
+    pending.push_back(Visit{assertion, false});
+    while (!pending.empty()) {
+      const Visit visit = pending.back();
+      pending.pop_back();
+      if (rewritten.at(visit.term) != core::kInvalidTermId) {
+        continue;
+      }
+      const core::Term& source = terms.get(visit.term);
+      if (source.children.empty()) {
+        rewritten[visit.term] = visit.term;
+        continue;
+      }
+      if (!visit.expanded) {
+        pending.push_back(Visit{visit.term, true});
+        for (auto child = source.children.rbegin(); child != source.children.rend(); ++child) {
+          if (rewritten.at(*child) == core::kInvalidTermId) {
+            pending.push_back(Visit{*child, false});
+          }
+        }
+        continue;
+      }
+
+      // Copy before any TermManager constructor can grow term storage.
+      const core::TermKind kind = source.kind;
+      const core::SymbolId symbol = source.symbol;
+      const util::Rational rational = source.rational_value;
+      const std::vector<core::TermId> source_children = source.children;
+      std::vector<core::TermId> children;
+      children.reserve(source_children.size());
+      bool changed = false;
+      for (const core::TermId child : source_children) {
+        const core::TermId replacement = rewritten.at(child);
+        changed = changed || replacement != child;
+        children.push_back(replacement);
+      }
+
+      const core::TermId simplified =
+          simplify_extended_node(terms, kind, rational, children, result);
+      if (simplified != core::kInvalidTermId) {
+        rewritten[visit.term] = simplified;
+        continue;
+      }
+      rewritten[visit.term] = changed ? rebuild_lowered_node(terms, visit.term, kind, symbol,
+                                                             rational, std::move(children))
+                                      : visit.term;
+    }
+    result.assertions.push_back(rewritten.at(assertion));
+  }
+  return result;
+}
 
 LowerExtendedTermsResult lower_extended_terms(core::TermManager& terms,
                                               const std::vector<core::TermId>& assertions,

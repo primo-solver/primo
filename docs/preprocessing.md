@@ -946,8 +946,9 @@ because the first tropical-matrix measurement was mixed.
 ## ITE Lowering
 
 `core::TermKind::Ite` is a term kind, so an ITE survives parsing and reaches
-preprocessing. Lowering happens in the `lower-extended-terms` leaf, which is
-the first entry of the unconditional initial sequence in
+preprocessing. Two leaves handle it, in order: `simplify-extended-terms`
+rewrites, then `lower-extended-terms` encodes what is left. Lowering is
+the second entry of the unconditional initial sequence in
 `prepare_and_execute_preprocessing_strategy` -- it runs before the preprocessing
 mode is consulted, so `--preprocessing-mode=off` cannot skip it and no term of
 this kind can reach clausification or a theory solver. Boolean ITEs are lowered
@@ -967,15 +968,47 @@ For the common assignment shape:
 (= x (ite c a b))
 ```
 
-the frontend still distributes the equality over the branches while building
-the term, avoiding the auxiliary entirely:
+`simplify-extended-terms` distributes the equality over the branches, avoiding
+the auxiliary entirely:
 
 ```text
 (and (=> c (= x a))
      (=> (not c) (= x b)))
 ```
 
-This is a targeted rule, not a full strong ITE simplifier. Primo does not yet
+This used to be a rule in the frontend that matched an operand which was
+*syntactically* an `(ite ...)`, carried by a symbolic step planner in
+`dispatch_equality`. As a term rewrite it also fires on an ITE reached through
+a `let` binding, or produced by an earlier rewrite, or hidden behind a nullary
+`define-fun` -- none of which a rule matching S-expression shape could see --
+and `dispatch_equality` is now a plain chainable fold, 100 lines shorter. The
+rule distributes one operand per equality and does not iterate, so a nested
+`(= u (ite c (ite d x y) z))` still leaves the inner ITE to be lowered.
+
+### What belongs in a constructor and what does not
+
+`TermManager`'s constructors do only what defines the representation: sort
+checks, constant folding, and the divisor sign normalization that makes
+`(div x 3)` and `(- (div x (- 3)))` the same node. Everything that *rewrites* an
+ITE -- collapsing equal branches, normalizing a negated condition, merging a
+nested ITE on the same condition, turning Boolean branches into connectives --
+lives in `simplify-extended-terms`, along with the `div`/`mod`/`abs` identities
+(`div`/`mod` by one, `(mod (mod x k) k)`, `(div (mod x k) k)`, `(abs (abs x))`,
+`(abs (mod x k))`).
+
+That split is not only tidiness. A constructor fold is permanently on and
+cannot be measured or disabled, and these rules are the trivial end of the
+if-then-else rewrite system in [lead 16](lead-ite-preprocessing), whose own
+falsifier requires the techniques to be evaluated *together* because
+single-technique configurations measured worse than none at all. Rules that
+cannot be switched off cannot take part in that evaluation. Counters:
+`:preprocessing.ite.rewrites`, `:preprocessing.ite.equality-distributed`,
+`:preprocessing.extended.arithmetic-rewrites`.
+
+Nothing but the frontend builds these four kinds, so one pass before lowering
+sees all of them; there is no layering argument for putting the rules earlier.
+
+This is still a targeted rule set, not a full strong ITE simplifier. Primo does not yet
 perform global ITE hoisting, condition-aware ITE-chain simplification, or
 domain-specific ITE table compression. What changed is that those are now
 ordinary term rewrites rather than being blocked on representation: see the

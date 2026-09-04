@@ -526,6 +526,20 @@ Tactic make_normalize_boolean(NormalizeBooleanOptions options) {
   });
 }
 
+Tactic make_simplify_extended_terms() {
+  return make_goal_tactic("simplify-extended-terms", [](TacticContext& context, const Goal& goal) {
+    SimplifyExtendedTermsResult simplified =
+        simplify_extended_terms(context.terms(), goal.assertions());
+    util::Statistics& statistics = context.statistics();
+    statistics.increment(util::StatKey::SimplifiedIteRewrites, simplified.ite_rewrites);
+    statistics.increment(util::StatKey::SimplifiedEqualityDistributions,
+                         simplified.equalities_distributed);
+    statistics.increment(util::StatKey::SimplifiedExtendedArithmetic,
+                         simplified.arithmetic_rewrites);
+    return AnyOf::single(goal.with_assertions(std::move(simplified.assertions)));
+  });
+}
+
 Tactic make_lower_extended_terms() {
   return make_goal_tactic("lower-extended-terms", [](TacticContext& context, const Goal& goal) {
     LowerExtendedTermsResult lowered = lower_extended_terms(

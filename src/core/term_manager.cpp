@@ -307,21 +307,23 @@ TermId TermManager::intern_extended(Key key) {
 TermId TermManager::mk_ite(TermId condition, TermId then_term, TermId else_term) {
   const Term& condition_term = require_term(condition);
   const Term& then_branch = require_term(then_term);
-  const Term& else_branch = require_term(else_term);
   if (condition_term.sort != symbols_.bool_sort()) {
     throw std::invalid_argument("ite condition is not Boolean");
   }
-  if (then_branch.sort != else_branch.sort) {
+  if (then_branch.sort != require_term(else_term).sort) {
     throw std::invalid_argument("ite branch sort mismatch");
   }
-  // A constant condition and two equal branches are the two cases where an
-  // ite node would cost an auxiliary constant for nothing. Every other
-  // rewrite belongs to the preprocessing leaf, where it can be measured.
+  // Constant folding only. Rewriting an ite -- collapsing equal branches,
+  // normalizing a negated condition, merging a nested ite on the same
+  // condition, turning Boolean branches into connectives -- is reasoning
+  // about the term rather than defining it, and it belongs to
+  // simplify-extended-terms where it can be measured and switched off. That
+  // matters here specifically: those rules are the trivial end of the
+  // if-then-else rewrite system in lead 16, whose own falsifier requires the
+  // techniques to be evaluated together rather than shipped piecemeal, and a
+  // constructor rewrite cannot be A/B'd.
   if (condition_term.kind == TermKind::BoolValue) {
     return condition_term.bool_value ? then_term : else_term;
-  }
-  if (then_term == else_term) {
-    return then_term;
   }
   return intern_extended(Key{TermKind::Ite,
                              then_branch.sort,

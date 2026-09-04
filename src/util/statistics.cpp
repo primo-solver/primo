@@ -219,6 +219,9 @@ constexpr std::array<std::string_view, static_cast<std::size_t>(StatKey::Count)>
     ":lia.patch-affected-rows-inspected"sv,
     ":lia.patch-full-scan-equivalent"sv,
     ":no.boolean-domain.registered-terms"sv,
+    ":preprocessing.ite.rewrites"sv,
+    ":preprocessing.ite.equality-distributed"sv,
+    ":preprocessing.extended.arithmetic-rewrites"sv,
     ":preprocessing.lower.div-quotients"sv,
     ":preprocessing.lower.abs-rewrites"sv,
 };

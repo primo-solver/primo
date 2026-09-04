@@ -1718,6 +1718,106 @@ struct AuxiliaryFactory {
   }
 };
 
+// The ite rewrites live in this pass rather than in TermManager, so that they
+// can be measured and switched off. Lead 16's own falsifier requires the
+// if-then-else techniques to be evaluated together, which a constructor fold
+// makes impossible.
+void simplification_rewrites_ite_structurally() {
+  primo::core::SymbolTable symbols;
+  const auto int_sort = symbols.int_sort();
+  const auto p_symbol = symbols.declare_constant("p", symbols.bool_sort());
+  const auto q_symbol = symbols.declare_constant("q", symbols.bool_sort());
+  const auto x_symbol = symbols.declare_constant("x", int_sort);
+  const auto y_symbol = symbols.declare_constant("y", int_sort);
+  const auto z_symbol = symbols.declare_constant("z", int_sort);
+  primo::core::TermManager terms(symbols);
+  const primo::core::TermId p = terms.mk_constant(p_symbol);
+  const primo::core::TermId q = terms.mk_constant(q_symbol);
+  const primo::core::TermId x = terms.mk_constant(x_symbol);
+  const primo::core::TermId y = terms.mk_constant(y_symbol);
+  const primo::core::TermId z = terms.mk_constant(z_symbol);
+  const primo::core::TermId zero = terms.mk_rational(primo::util::Rational(0), int_sort);
+
+  const auto simplify = [&terms](primo::core::TermId assertion) {
+    return primo::smt::simplify_extended_terms(terms, {assertion}).assertions.at(0);
+  };
+
+  // Equal branches make the condition irrelevant.
+  check(simplify(terms.mk_le(terms.mk_ite(p, x, x), zero)) == terms.mk_le(x, zero));
+  // A negated condition is normalized away, merging the two spellings.
+  check(simplify(terms.mk_le(terms.mk_ite(terms.mk_not(p), x, y), zero)) ==
+        simplify(terms.mk_le(terms.mk_ite(p, y, x), zero)));
+  // A nested ite on the same condition has already decided that branch.
+  check(simplify(terms.mk_le(terms.mk_ite(p, terms.mk_ite(p, x, y), z), zero)) ==
+        simplify(terms.mk_le(terms.mk_ite(p, x, z), zero)));
+  // A Boolean ite is a connective.
+  check(simplify(terms.mk_ite(p, terms.mk_bool(true), q)) == terms.mk_or({p, q}));
+  check(simplify(terms.mk_ite(p, q, terms.mk_bool(false))) == terms.mk_and({p, q}));
+  check(simplify(terms.mk_ite(p, p, q)) == terms.mk_or({p, q}));
+}
+
+// (= u (ite c a b)) distributes over the branches, which is what stops the
+// lowering pass introducing an auxiliary for that shape.
+void simplification_distributes_equality_over_an_ite() {
+  primo::core::SymbolTable symbols;
+  const auto int_sort = symbols.int_sort();
+  const auto p_symbol = symbols.declare_constant("p", symbols.bool_sort());
+  const auto u_symbol = symbols.declare_constant("u", int_sort);
+  const auto x_symbol = symbols.declare_constant("x", int_sort);
+  const auto y_symbol = symbols.declare_constant("y", int_sort);
+  primo::core::TermManager terms(symbols);
+  const primo::core::TermId p = terms.mk_constant(p_symbol);
+  const primo::core::TermId u = terms.mk_constant(u_symbol);
+  const primo::core::TermId x = terms.mk_constant(x_symbol);
+  const primo::core::TermId y = terms.mk_constant(y_symbol);
+
+  const std::vector<primo::core::TermId> assertions{terms.mk_eq(u, terms.mk_ite(p, x, y))};
+  const primo::smt::SimplifyExtendedTermsResult simplified =
+      primo::smt::simplify_extended_terms(terms, assertions);
+
+  check(simplified.equalities_distributed == 1);
+  check(simplified.assertions.at(0) ==
+        terms.mk_and({terms.mk_implies(p, terms.mk_eq(u, x)),
+                      terms.mk_implies(terms.mk_not(p), terms.mk_eq(u, y))}));
+
+  // No ite survives, so lowering introduces no auxiliary at all.
+  AuxiliaryFactory auxiliaries{symbols, terms};
+  const primo::smt::LowerExtendedTermsResult lowered =
+      primo::smt::lower_extended_terms(terms, simplified.assertions, auxiliaries.factory());
+  check(lowered.auxiliary_ites == 0);
+  check(auxiliaries.next == 0);
+}
+
+void simplification_rewrites_div_mod_and_abs() {
+  primo::core::SymbolTable symbols;
+  const auto int_sort = symbols.int_sort();
+  const auto x_symbol = symbols.declare_constant("x", int_sort);
+  primo::core::TermManager terms(symbols);
+  const primo::core::TermId x = terms.mk_constant(x_symbol);
+  const primo::core::TermId zero = terms.mk_rational(primo::util::Rational(0), int_sort);
+  const auto simplify = [&terms](primo::core::TermId assertion) {
+    return primo::smt::simplify_extended_terms(terms, {assertion}).assertions.at(0);
+  };
+
+  // D = 1*D + 0, with the remainder in [0,1).
+  check(simplify(terms.mk_le(terms.mk_int_div(primo::util::Rational(1), x), zero)) ==
+        terms.mk_le(x, zero));
+  check(simplify(terms.mk_le(terms.mk_int_mod(primo::util::Rational(1), x), zero)) ==
+        terms.mk_le(zero, zero));
+
+  // A remainder is already in [0,k): mod is idempotent, div gives zero, and
+  // abs is the identity on it.
+  const primo::core::TermId remainder = terms.mk_int_mod(primo::util::Rational(3), x);
+  check(simplify(terms.mk_le(terms.mk_int_mod(primo::util::Rational(3), remainder), zero)) ==
+        simplify(terms.mk_le(remainder, zero)));
+  check(simplify(terms.mk_le(terms.mk_int_div(primo::util::Rational(3), remainder), zero)) ==
+        terms.mk_le(zero, zero));
+  check(simplify(terms.mk_le(terms.mk_abs(remainder), zero)) ==
+        simplify(terms.mk_le(remainder, zero)));
+  check(simplify(terms.mk_le(terms.mk_abs(terms.mk_abs(x)), zero)) ==
+        simplify(terms.mk_le(terms.mk_abs(x), zero)));
+}
+
 void lowering_is_a_no_op_when_nothing_extended_was_built() {
   Fixture fixture;
   AuxiliaryFactory auxiliaries{fixture.symbols, fixture.terms};
@@ -1921,6 +2021,9 @@ int main() {
   monotone_elimination_discharges_one_sided_variable();
   monotone_elimination_respects_polarity();
   monotone_elimination_folds_negative_polarity_atom_to_false();
+  simplification_rewrites_ite_structurally();
+  simplification_distributes_equality_over_an_ite();
+  simplification_rewrites_div_mod_and_abs();
   lowering_is_a_no_op_when_nothing_extended_was_built();
   lowering_defines_a_term_ite_with_two_guarded_equalities();
   lowering_expands_a_boolean_ite_without_an_auxiliary();

@@ -575,6 +575,10 @@ PreparedPreprocessingStrategy prepare_and_execute_preprocessing_strategy(
   // the profile analysis that follows, and every solver path all assume the
   // linear and Boolean fragment. This sequence runs before the preprocessing
   // mode is consulted, so there is no setting that can skip lowering.
+  // Simplify before lowering: once an ite becomes an auxiliary constant plus
+  // two guarded equalities, none of these rules can fire.
+  initial_children.push_back(Strategy::leaf("simplify-extended-terms", NoStrategyParameters{},
+                                            make_simplify_extended_terms()));
   initial_children.push_back(
       Strategy::leaf("lower-extended-terms", NoStrategyParameters{}, make_lower_extended_terms()));
   if (options.arithmetic_atom_canonicalization) {

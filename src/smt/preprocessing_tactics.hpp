@@ -122,6 +122,10 @@ Tactic make_normalize_boolean(NormalizeBooleanOptions options);
 // This leaf is unconditional: it sits in the initial sequence that runs before
 // the preprocessing profile is even chosen, so --preprocessing-mode=off cannot
 // skip it. Fresh constants come from the executing TacticContext.
+// Rewrites Ite, IntDiv, IntMod and Abs before they are lowered. Runs in the
+// initial sequence immediately ahead of the lowering leaf.
+Tactic make_simplify_extended_terms();
+
 Tactic make_lower_extended_terms();
 
 Tactic make_normalize_arithmetic(NormalizeArithmeticOptions options);

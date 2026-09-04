@@ -144,6 +144,17 @@ in `TacticContext`. The production
 pipeline is migrated to constructed strategies separately so this foundation
 does not itself alter the established tactic ordering.
 
+Two leaves head the unconditional `initial` sequence that
+`prepare_and_execute_preprocessing_strategy` runs before the preprocessing mode
+is consulted. `simplify-extended-terms` rewrites `Ite`, `IntDiv`, `IntMod` and
+`Abs`; `lower-extended-terms` then encodes whatever survives into the Boolean
+and linear fragment. Neither can be switched off by any option, because
+everything downstream -- the profile analysis, clausification and every theory
+solver -- assumes that fragment. The simplification rules live in that leaf
+rather than in the `TermManager` constructors so that they can be measured and
+disabled; see `docs/preprocessing.md` for why that matters for
+[lead 16](open-leads.md).
+
 Session independence is what makes that immutability worth anything. A strategy
 node must take its term manager, statistics, and fresh-symbol factory from the
 `TacticContext` it is executed under, never from whatever was in scope when it

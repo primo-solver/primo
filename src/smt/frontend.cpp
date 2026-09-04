@@ -93,8 +93,6 @@ class TermBuilder {
   void dispatch_implies(const smtlib::SExpr& expr, Continuation k);
   void dispatch_xor(const smtlib::SExpr& expr, Continuation k);
   void dispatch_equality(const smtlib::SExpr& expr, Continuation k);
-  core::TermId finish_pairwise_equality_to_ite(core::TermId term, core::TermId condition,
-                                               core::TermId then_term, core::TermId else_term);
   void dispatch_distinct(const smtlib::SExpr& expr, Continuation k);
   void dispatch_plus(const smtlib::SExpr& expr, Continuation k);
   void dispatch_minus(const smtlib::SExpr& expr, Continuation k);
@@ -731,122 +729,23 @@ void TermBuilder::dispatch_equality(const smtlib::SExpr& expr, Continuation k) {
   if (expr.list.size() < 3) {
     throw UnsupportedInput("= has wrong arity");
   }
-
-  // Mirrors build_equality's original sequential loop exactly, but
-  // instead of calling build_term/build_pairwise_equality_to_ite directly
-  // (which would recurse), it walks the SAME control flow purely
-  // symbolically -- the branching depends only on has_head() checks on
-  // the already-fully-parsed SExpr shape, never on any evaluated term, so
-  // it's safe to precompute the whole plan upfront -- recording which
-  // atomic sub-expressions need evaluating (as indices into one flat job
-  // list) and a parallel step plan to replay, non-recursively, once every
-  // job's TermId is available.
-  struct Step {
-    bool current_is_ite = false;
-    bool reuse_previous = false;
-    std::size_t lhs_index = 0;
-    std::size_t ite_cond_index = 0, ite_then_index = 0, ite_else_index = 0;
-    std::size_t current_index = 0;
-    bool previous_is_ite = false;
-    std::size_t prev_ite_cond_index = 0, prev_ite_then_index = 0, prev_ite_else_index = 0;
-  };
-
-  auto flat_exprs = std::make_shared<std::vector<const smtlib::SExpr*>>();
-  auto push_expr = [&flat_exprs](const smtlib::SExpr& e) {
-    flat_exprs->push_back(&e);
-    return flat_exprs->size() - 1;
-  };
-  auto steps = std::make_shared<std::vector<Step>>();
-
-  const smtlib::SExpr* previous_expr = &expr.list[1];
-  bool previous_term_valid = false;
-
-  for (std::size_t i = 2; i < expr.list.size(); ++i) {
-    const smtlib::SExpr& current_expr = expr.list[i];
-    Step step;
-    if (Frontend::Implementation::has_head(current_expr, "ite")) {
-      Frontend::Implementation::require_arity(current_expr, 4, "ite");
-      step.current_is_ite = true;
-      step.reuse_previous = previous_term_valid;
-      if (!previous_term_valid) {
-        step.lhs_index = push_expr(*previous_expr);
-      }
-      step.ite_cond_index = push_expr(current_expr.list[1]);
-      step.ite_then_index = push_expr(current_expr.list[2]);
-      step.ite_else_index = push_expr(current_expr.list[3]);
-      steps->push_back(step);
-      previous_expr = &current_expr;
-      previous_term_valid = false;
-      continue;
+  // Chainable: (= a b c) is (and (= a b) (= b c)).
+  //
+  // This used to carry a symbolic step planner whose only purpose was to spot
+  // an operand that was syntactically an (ite ...) and distribute the equality
+  // over its branches, avoiding an auxiliary constant. That rule is now a term
+  // rewrite in simplify-extended-terms, where it also fires on an ite reached
+  // through a let binding or produced by an earlier rewrite -- neither of which
+  // a rule matching on S-expression shape could see.
+  schedule_all(collect(expr, 1), [this,
+                                  k = std::move(k)](std::vector<core::TermId> operands) mutable {
+    std::vector<core::TermId> equalities;
+    equalities.reserve(operands.size() - 1);
+    for (std::size_t index = 1; index < operands.size(); ++index) {
+      equalities.push_back(frontend_.build_pairwise_equality(operands[index - 1], operands[index]));
     }
-    step.current_is_ite = false;
-    step.current_index = push_expr(current_expr);
-    if (Frontend::Implementation::has_head(*previous_expr, "ite")) {
-      step.previous_is_ite = true;
-      Frontend::Implementation::require_arity(*previous_expr, 4, "ite");
-      step.prev_ite_cond_index = push_expr(previous_expr->list[1]);
-      step.prev_ite_then_index = push_expr(previous_expr->list[2]);
-      step.prev_ite_else_index = push_expr(previous_expr->list[3]);
-    } else {
-      step.previous_is_ite = false;
-      step.reuse_previous = previous_term_valid;
-      if (!previous_term_valid) {
-        step.lhs_index = push_expr(*previous_expr);
-      }
-    }
-    steps->push_back(step);
-    previous_expr = &current_expr;
-    previous_term_valid = true;
-  }
-
-  schedule_all(
-      flat_exprs, [this, k = std::move(k), steps](std::vector<core::TermId> results) mutable {
-        std::vector<core::TermId> equalities;
-        equalities.reserve(steps->size());
-        std::optional<core::TermId> previous_term;
-        for (const Step& step : *steps) {
-          if (step.current_is_ite) {
-            const core::TermId lhs =
-                step.reuse_previous ? previous_term.value() : results[step.lhs_index];
-            equalities.push_back(finish_pairwise_equality_to_ite(lhs, results[step.ite_cond_index],
-                                                                 results[step.ite_then_index],
-                                                                 results[step.ite_else_index]));
-            previous_term.reset();
-            continue;
-          }
-          const core::TermId current = results[step.current_index];
-          if (step.previous_is_ite) {
-            equalities.push_back(finish_pairwise_equality_to_ite(
-                current, results[step.prev_ite_cond_index], results[step.prev_ite_then_index],
-                results[step.prev_ite_else_index]));
-          } else {
-            const core::TermId lhs =
-                step.reuse_previous ? previous_term.value() : results[step.lhs_index];
-            equalities.push_back(frontend_.build_pairwise_equality(lhs, current));
-          }
-          previous_term = current;
-        }
-        resume(std::move(k), frontend_.terms_.mk_and(std::move(equalities)));
-      });
-}
-
-core::TermId TermBuilder::finish_pairwise_equality_to_ite(core::TermId term, core::TermId condition,
-                                                          core::TermId then_term,
-                                                          core::TermId else_term) {
-  if (frontend_.terms_.get(condition).sort != frontend_.symbols_.bool_sort()) {
-    throw UnsupportedInput("ite condition is not Boolean");
-  }
-  const core::SortId result_sort = frontend_.terms_.get(then_term).sort;
-  if (result_sort != frontend_.terms_.get(else_term).sort) {
-    throw UnsupportedInput("ite branch sort mismatch");
-  }
-  if (frontend_.terms_.get(term).sort != result_sort) {
-    throw UnsupportedInput("equality sort mismatch");
-  }
-  return frontend_.terms_.mk_and(
-      {frontend_.terms_.mk_implies(condition, frontend_.build_pairwise_equality(term, then_term)),
-       frontend_.terms_.mk_implies(frontend_.terms_.mk_not(condition),
-                                   frontend_.build_pairwise_equality(term, else_term))});
+    resume(std::move(k), frontend_.terms_.mk_and(std::move(equalities)));
+  });
 }
 
 void TermBuilder::dispatch_distinct(const smtlib::SExpr& expr, Continuation k) {
