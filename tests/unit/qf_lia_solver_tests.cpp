@@ -497,9 +497,162 @@ void int_constants_require_qf_lia_logic() {
   assert(result.result == CheckSatResult::Unsupported);
 }
 
+// SMT-LIB fixes div and mod by Boute's Euclidean definition, so the remainder
+// is non-negative whatever the signs are. The two negative-divisor rows are
+// where that parts company with the floored definition, so they are pinned
+// through the solver rather than only through the term constructors.
+void qf_lia_follows_the_euclidean_division_convention() {
+  struct Row {
+    const char* numerator;
+    const char* divisor;
+    const char* quotient;
+    const char* remainder;
+  };
+  const Row rows[] = {
+      {"7", "3", "2", "1"},
+      {"(- 7)", "3", "(- 3)", "2"},
+      {"7", "(- 3)", "(- 2)", "1"},
+      {"(- 7)", "(- 3)", "3", "2"},
+  };
+  for (const Row& row : rows) {
+    const std::string program = std::string("(set-logic QF_LIA)\n(assert (= (div ") +
+                                row.numerator + " " + row.divisor + ") " + row.quotient +
+                                "))\n(assert (= (mod " + row.numerator + " " + row.divisor + ") " +
+                                row.remainder + "))\n(check-sat)\n";
+    assert(check_sat_smtlib(program).result == CheckSatResult::Sat);
+  }
+}
+
+// The same convention through the encoding rather than through constant
+// folding: the numerator is a variable, so a quotient constant is introduced.
+void qf_lia_encodes_div_and_mod_over_a_variable() {
+  const auto consistent = check_sat_smtlib(R"(
+    (set-logic QF_LIA)
+    (declare-fun x () Int)
+    (assert (= x 10))
+    (assert (= (div x 3) 3))
+    (assert (= (mod x 3) 1))
+    (check-sat)
+  )");
+  assert(consistent.result == CheckSatResult::Sat);
+
+  // div and mod over the same numerator and divisor share one quotient, so an
+  // inconsistent pair is unsat rather than satisfiable through two witnesses.
+  const auto inconsistent = check_sat_smtlib(R"(
+    (set-logic QF_LIA)
+    (declare-fun x () Int)
+    (assert (= x 10))
+    (assert (= (mod x 3) 2))
+    (check-sat)
+  )");
+  assert(inconsistent.result == CheckSatResult::Unsat);
+
+  // The remainder is confined to [0, |d|) whatever the numerator is.
+  const auto out_of_range = check_sat_smtlib(R"(
+    (set-logic QF_LIA)
+    (declare-fun x () Int)
+    (assert (= (mod x 3) 3))
+    (check-sat)
+  )");
+  assert(out_of_range.result == CheckSatResult::Unsat);
+
+  const auto negative_remainder = check_sat_smtlib(R"(
+    (set-logic QF_LIA)
+    (declare-fun x () Int)
+    (assert (< (mod x 5) 0))
+    (check-sat)
+  )");
+  assert(negative_remainder.result == CheckSatResult::Unsat);
+}
+
+void qf_lia_supports_abs_and_unit_divisors() {
+  const auto absolute = check_sat_smtlib(R"(
+    (set-logic QF_LIA)
+    (declare-fun x () Int)
+    (assert (= x (- 4)))
+    (assert (= (abs x) 4))
+    (check-sat)
+  )");
+  assert(absolute.result == CheckSatResult::Sat);
+
+  const auto never_negative = check_sat_smtlib(R"(
+    (set-logic QF_LIA)
+    (declare-fun x () Int)
+    (assert (< (abs x) 0))
+    (check-sat)
+  )");
+  assert(never_negative.result == CheckSatResult::Unsat);
+
+  const auto unit = check_sat_smtlib(R"(
+    (set-logic QF_LIA)
+    (declare-fun x () Int)
+    (assert (= x 6))
+    (assert (= (div x 1) 6))
+    (assert (= (mod x 1) 0))
+    (assert (= (div x (- 1)) (- 6)))
+    (check-sat)
+  )");
+  assert(unit.result == CheckSatResult::Sat);
+}
+
+// A non-constant divisor is nonlinear, not unknown, and the message has to say
+// so: reporting "unknown function symbol" is what made this look like a
+// missing feature rather than a fragment boundary.
+void qf_lia_rejects_nonlinear_and_zero_division() {
+  const auto nonlinear = check_sat_smtlib(R"(
+    (set-logic QF_LIA)
+    (declare-fun x () Int)
+    (declare-fun y () Int)
+    (assert (= (div x y) 1))
+    (check-sat)
+  )");
+  assert(nonlinear.result == CheckSatResult::Unsupported);
+  assert(nonlinear.message.find("nonlinear") != std::string::npos);
+
+  const auto by_zero = check_sat_smtlib(R"(
+    (set-logic QF_LIA)
+    (declare-fun x () Int)
+    (assert (= (div x 0) 1))
+    (check-sat)
+  )");
+  assert(by_zero.result == CheckSatResult::Unsupported);
+  assert(by_zero.message.find("division by zero") != std::string::npos);
+
+  // abs belongs to the Ints theory only.
+  const auto real_abs = check_sat_smtlib(R"(
+    (set-logic QF_LRA)
+    (declare-fun r () Real)
+    (assert (>= (abs r) 0))
+    (check-sat)
+  )");
+  assert(real_abs.result == CheckSatResult::Unsupported);
+}
+
+// Lowering runs in the initial sequence, before the preprocessing mode is
+// consulted, so no setting can leave an extended term for the solver.
+void qf_lia_lowers_extended_terms_with_preprocessing_off() {
+  CheckSatOptions options;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_LIA)
+    (declare-fun x () Int)
+    (assert (= x 10))
+    (assert (= (+ (div x 3) (mod x 3)) 4))
+    (assert (= (abs (- x)) 10))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+}
+
 }  // namespace
 
 int main() {
+  qf_lia_follows_the_euclidean_division_convention();
+  qf_lia_encodes_div_and_mod_over_a_variable();
+  qf_lia_supports_abs_and_unit_divisors();
+  qf_lia_rejects_nonlinear_and_zero_division();
+  qf_lia_lowers_extended_terms_with_preprocessing_off();
   trivially_sat_needs_no_branching();
   model_completes_preprocessed_boolean_constants();
   chained_solved_constant_substitution_reconstructs_the_model();

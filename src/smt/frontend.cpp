@@ -102,6 +102,8 @@ class TermBuilder {
   void dispatch_minus(const smtlib::SExpr& expr, Continuation k);
   void dispatch_times(const smtlib::SExpr& expr, Continuation k);
   void dispatch_divide(const smtlib::SExpr& expr, Continuation k);
+  void dispatch_int_division(const smtlib::SExpr& expr, const std::string& head, Continuation k);
+  void dispatch_abs(const smtlib::SExpr& expr, Continuation k);
   void dispatch_comparison(const smtlib::SExpr& expr, const std::string& head, Continuation k);
   void dispatch_instantiate_definition(const std::string& name, std::vector<core::TermId> args,
                                        Continuation k);
@@ -597,6 +599,18 @@ void TermBuilder::dispatch(const smtlib::SExpr& expr, Continuation k) {
     dispatch_divide(expr, std::move(k));
     return;
   }
+  // SMT-LIB's Ints theory. Matched ahead of definitions_ and the symbol table,
+  // like every other builtin above, so a declaration of one of these names is
+  // shadowed -- redeclaring a symbol in the logic's signature is not
+  // conforming input in the first place.
+  if (head == "div" || head == "mod") {
+    dispatch_int_division(expr, head, std::move(k));
+    return;
+  }
+  if (head == "abs") {
+    dispatch_abs(expr, std::move(k));
+    return;
+  }
   if (head == "<=" || head == "<" || head == ">=" || head == ">") {
     dispatch_comparison(expr, head, std::move(k));
     return;
@@ -971,6 +985,45 @@ void TermBuilder::dispatch_divide(const smtlib::SExpr& expr, Continuation k) {
       return;
     }
     resume(std::move(k), frontend_.terms_.mk_times(util::Rational(1) / denominator, lhs));
+  });
+}
+
+// `div` is :left-assoc in the Ints theory, so (div a b c) is (div (div a b) c);
+// `mod` is binary. Both require a literal integer divisor: a non-constant
+// divisor makes the quotient nonlinear, which is outside the fragment, exactly
+// as a non-literal coefficient is for `*`.
+void TermBuilder::dispatch_int_division(const smtlib::SExpr& expr, const std::string& head,
+                                        Continuation k) {
+  const bool is_div = head == "div";
+  if (is_div ? expr.list.size() < 3 : expr.list.size() != 3) {
+    throw UnsupportedInput(head + " has wrong arity");
+  }
+  schedule_all(collect(expr, 1), [this, k = std::move(k), head,
+                                  is_div](std::vector<core::TermId> operands) mutable {
+    core::TermId result = operands.front();
+    for (std::size_t index = 1; index < operands.size(); ++index) {
+      const core::Term& divisor = frontend_.terms_.get(operands[index]);
+      // Tested on the built term rather than the S-expression, so a divisor
+      // reached through a `let` binding still counts as literal.
+      if (divisor.kind != core::TermKind::Rational) {
+        throw UnsupportedInput(head +
+                               " requires a literal integer divisor; a non-constant divisor is "
+                               "nonlinear and outside the supported fragment");
+      }
+      if (divisor.rational_value.is_zero()) {
+        throw UnsupportedInput("division by zero is not supported");
+      }
+      result = is_div ? frontend_.terms_.mk_int_div(divisor.rational_value, result)
+                      : frontend_.terms_.mk_int_mod(divisor.rational_value, result);
+    }
+    resume(std::move(k), result);
+  });
+}
+
+void TermBuilder::dispatch_abs(const smtlib::SExpr& expr, Continuation k) {
+  Frontend::Implementation::require_arity(expr, 2, "abs");
+  schedule(expr.list[1], [this, k = std::move(k)](core::TermId operand) mutable {
+    resume(std::move(k), frontend_.terms_.mk_abs(operand));
   });
 }
 
