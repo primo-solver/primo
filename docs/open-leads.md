@@ -49,11 +49,12 @@ notes it points to.
 | [13](#lead-qflira) | QF_LIRA -- frontend gap, not a solver gap | search core already runs mixed tableaus | medium (frontend) | **open; run the falsifier first** |
 | [14](#lead-monotone-int) | Monotone elimination for `Int`, not just `Real` | unmeasured -- the QF_LIA zero is definitional | small, gated on 9 | **open; measure candidate density first** |
 | [15](#lead-boolean-bridge-exclusion) | Delete the `bridge-atoms` Boolean-domain encoding | superseded by registration: 0 disagreements on both fragments, 3% faster on QF_UF | small (deletion) | **open; the A/B is done and came out flat** |
-| [16](#lead-ite-preprocessing) | If-then-else preprocessing: CITE simplification + ITE compression + ITE reconstruction | **+1693 QF_LIA in the source's own ablation**; 3449 files of Primo's corpus are in the affected families | medium-large | **open; largest measured number in any paper Primo has read** |
+| [16](#lead-ite-preprocessing) | If-then-else preprocessing: CITE simplification + ITE compression + ITE reconstruction | **+1693 QF_LIA in the source's own ablation**; 3449 files of Primo's corpus are in the affected families | medium-large | **open; largest measured number in any paper Primo has read. Unblocked 2026-09-04: ITE is a term kind now, so the ordering constraint this lead called its main design question is gone** |
 | [17](#lead-equality-basis) | Complete implied-equality basis (Bromberger thesis Ch. 5) | replaces per-pair two-orientation probing with one strict-system check + normal-form hashing | medium-large | **open; also the gate for 12c and 19** |
 | [18](#lead-hard-backtrack) | `HardBacktrack`: revert bounds only, recompute the assignment | +123 QF_LIA, **+117 on `convert` alone** in the source's ablation | **small (a deletion)** | **open; cheapest entry on this list** |
 | [19](#lead-bounding-transformations) | Double-Bounded reduction + Mixed-Echelon-Hermite: make branch-and-bound terminate | +169 QF_LIA, 162 of them in `20180326-Bromberger` (806 files here) | large | open, gated on 17 |
 | [20](#lead-decision-recommendation) | Evaluate `--lra-model-phase` on QF_LIA and consider promoting it | +129 QF_LIA, **116 of them `convert`**; the source's number is for the mechanism Primo already has | **none -- an A/B of an existing flag** | **open; cheapest lead in this register** |
+| [21](#lead-divisibility) | Divisibility-aware `div`/`mod`: modular normalization, then a first-class `k \| t` atom | **not a corpus lead** -- 0 of 600 QF_LIA benchmarks use these operators; 2 of 400 generated cases hit the branch-and-bound node limit where Z3 decides | small (piece 1); medium-large (piece 2) | **open; read the falsifier before sizing it** |
 | -- | D2 floating-point-guided basis selection | ~14% in the literature | medium | open, see [](qf-lra-heuristics.md) |
 | -- | D4 revised simplex, LU-factored basis | unknown | largest | open, see [](qf-lra-heuristics.md) |
 | -- | H4 batched bound assertion; H6 DL fast path; H11 fill-in-aware preprocessing elimination | -- | -- | design only, see [](qf-lra-heuristics.md) |
@@ -2052,10 +2053,24 @@ from the separate pseudo-boolean pass.
    them and substitute `y := (ite c t2 t3)` back in, then apply 1 and 2.
 
 **Cost.** Medium-large. It is frontend/preprocessing work rather than theory
-work, and Primo's core term language does not store ITE nodes at all
-([](preprocessing.md)), so piece 1 has to run before lowering while piece 3 has
-to run *after* parsing an already-lowered input. That ordering constraint is the
-main design question.
+work.
+
+**Update 2026-09-04: the ordering constraint that was this lead's main design
+question is gone.** It read: "Primo's core term language does not store ITE
+nodes at all, so piece 1 has to run before lowering while piece 3 has to run
+*after* parsing an already-lowered input." `core::TermKind::Ite` now exists and
+the frontend builds it, with lowering moved into an unconditional
+`lower-extended-terms` leaf at the head of the initial sequence. So pieces 1 and
+2 are ordinary term rewrites that run before that leaf, on the same
+representation, and only piece 3 -- reconstruction, which recognises an
+*already lowered* encoding in the input and rebuilds the ITE -- still has to run
+on lowered shape. Sequencing is no longer the obstacle; the obstacle is now just
+the size of the three techniques.
+
+Two further things the same change makes available, neither of which existed
+when this lead was written: the ITE node is hash-consed, so identical ITEs
+share one auxiliary instead of one per occurrence; and `(ite c a a)` and a
+constant condition fold in the constructor, which they previously could not.
 
 **Falsifier, stated in advance.** Implement CITE simplification and compression
 together (the thesis is explicit that either alone is worse than neither), then
@@ -2344,6 +2359,72 @@ informative. Each names the evidence that closed it.
 | **D3 offset-equality detection** | Closed by D1's sweep -- they are the same mechanism. |
 | **Periodic refactorization** | Rejected 2026-07-30 on a literature check. |
 | **H7 fixed-variable elimination** | Implemented, did not clear its bar; kept opt-in. |
+
+(lead-divisibility)=
+## 21. Divisibility-aware reasoning for `div` and `mod`
+
+**Read the size claim first.** This is *not* a performance lead on the current
+corpus, and it must not be sized against the promotion bar. Census 2026-09-04:
+`div`, `mod` and `abs` occur in **0 of 600** randomly sampled SMT-LIB QF_LIA
+benchmarks and **0 of the 20** QF_UFLIA mutation seeds. They reach the solver
+almost entirely through generated input, so the payoff here is robustness and
+conformance, not solved files. It is recorded because the structure is
+destroyed at a point where recovering it later is impossible, which is the same
+mistake [](#lead-ite-preprocessing) documents for ITE.
+
+**Claim.** `(= (mod t k) 0)` is the divisibility constraint `k | t`, which is a
+*primitive* in the decision-procedure literature -- Cooper's quantifier
+elimination introduces exactly this constraint form, and Bromberger's CutSat
+family reasons over `d | aᵀx - b` directly (§2.2, §2.3.1 of
+[](papers/bromberger-linear-arithmetic-thesis.md)). Primo has no divisibility
+representation at all. `lower-extended-terms` encodes every `div`/`mod` as a
+fresh unbounded Int quotient `q` with `0 <= t - k*q <= k-1`, which is correct
+and functional but hands branch-and-bound a variable it has no reason to bound.
+
+**Evidence, measured 2026-09-04.** Of 400 generated QF_LIA cases mixing
+`div`, `mod`, `abs` and nested arithmetic with both divisor signs, Primo agreed
+with Z3 on 398 and answered `unknown` on 2, both with "QF_LIA branch-and-bound
+node limit reached" where Z3 answers `unsat`. The reduced witness is
+
+```smt2
+(assert (<= 3 (mod (+ (+ v1 4) (div v1 3)) 4)))
+```
+
+`(mod _ 4)` ranges over `[0,3]`, so `3 <= (mod _ 4)` pins the remainder to
+exactly 3 -- decidable by inspection of the constraint's own range. The
+encoding instead asks branch-and-bound to find an unbounded quotient. Sound but
+incomplete, and the incompleteness is structural rather than a tuning failure.
+
+**Two pieces, separable.**
+
+1. **Modular coefficient normalization**, a term rewrite:
+   `(mod (+ x (* k y)) k) -> (mod x k)`, and reduce literal coefficients inside
+   a `mod` to their residues. Sound because `k*y ≡ 0 (mod k)`. Small, local to
+   the simplification leaf, and impossible after lowering.
+2. **A first-class divisibility atom** `k | t`, recognised from
+   `(= (mod t k) 0)` and from the bounds the lowering leaf emits, carried into
+   the theory layer so the GCD test and cut generation can use it. Medium-large:
+   it reaches past preprocessing into `theory/arithmetic`.
+
+**Cost.** Piece 1 small; piece 2 medium-large.
+
+**Falsifier, stated in advance.** Piece 1 is justified by the fuzz gate alone:
+if extending `scripts/qf_uflia_fuzz.py` to emit `div`/`mod` produces no case
+where normalization changes the answer *or* the node count, it buys nothing and
+should be dropped. Piece 2 needs a real trigger: **if a corpus census still
+finds no benchmark family using `div`/`mod` after the operators have been
+supported for a release, and the generated-input incompleteness rate stays
+around the 0.5% measured above, close piece 2** and keep the quotient encoding.
+Do not implement piece 2 on the strength of the literature alone -- Cooper and
+CutSat introduce divisibility constraints *internally*, from quantifier
+elimination and cuts, which is a different need from reading them out of input.
+
+**Sequencing.** Piece 2 overlaps [](#lead-qflia-extended-gcd) (extended GCD for
+bounded-but-not-fixed rows) and would share its machinery; do that census first.
+
+**Related, unfixed.** `LinearPolynomial::from_term`
+(`theory/arithmetic/linear_polynomial.cpp`) recurses over the term DAG, so it
+belongs to [](#lead-recursion-audit).
 
 ## Adding a lead
 
