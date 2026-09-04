@@ -1,5 +1,6 @@
 #include "theory/arithmetic/linear_polynomial.hpp"
 
+#include <stdexcept>
 #include <utility>
 
 #include "core/term.hpp"
@@ -25,6 +26,18 @@ LinearPolynomial LinearPolynomial::from_term(const core::TermManager& terms, cor
       result.scale(term.rational_value);
       return result;
     }
+    case core::TermKind::Ite:
+    case core::TermKind::IntDiv:
+    case core::TermKind::IntMod:
+    case core::TermKind::Abs:
+      // The default arm below turns anything it does not recognise into an
+      // opaque variable with coefficient 1. That is right for a constant or
+      // an uninterpreted application, and badly wrong for these four: an
+      // unlowered (div x 3) would enter the tableau as an unconstrained
+      // variable and the solver could answer sat for an unsatisfiable goal.
+      // Lowering is unconditional, so reaching here is a bug in the pipeline,
+      // and it must fail loudly rather than silently.
+      throw std::invalid_argument("ite/div/mod/abs reached the linear arithmetic core unlowered");
     default: {
       LinearPolynomial result;
       result.add_term(term_id, util::Rational(1));

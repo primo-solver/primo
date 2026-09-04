@@ -293,6 +293,115 @@ TermId TermManager::mk_lt(TermId lhs, TermId rhs) {
       TermKind::Lt, symbols_.bool_sort(), kInvalidSymbolId, {lhs, rhs}, false, util::Rational(0)});
 }
 
+// Interning is idempotent, so the extended-term counter must follow the arena
+// rather than the call: a hash-cons hit creates no node and must not count.
+TermId TermManager::intern_extended(Key key) {
+  const std::size_t before = terms_.size();
+  const TermId id = intern(std::move(key));
+  if (terms_.size() != before) {
+    ++extended_term_count_;
+  }
+  return id;
+}
+
+TermId TermManager::mk_ite(TermId condition, TermId then_term, TermId else_term) {
+  const Term& condition_term = require_term(condition);
+  const Term& then_branch = require_term(then_term);
+  const Term& else_branch = require_term(else_term);
+  if (condition_term.sort != symbols_.bool_sort()) {
+    throw std::invalid_argument("ite condition is not Boolean");
+  }
+  if (then_branch.sort != else_branch.sort) {
+    throw std::invalid_argument("ite branch sort mismatch");
+  }
+  // A constant condition and two equal branches are the two cases where an
+  // ite node would cost an auxiliary constant for nothing. Every other
+  // rewrite belongs to the preprocessing leaf, where it can be measured.
+  if (condition_term.kind == TermKind::BoolValue) {
+    return condition_term.bool_value ? then_term : else_term;
+  }
+  if (then_term == else_term) {
+    return then_term;
+  }
+  return intern_extended(Key{TermKind::Ite,
+                             then_branch.sort,
+                             kInvalidSymbolId,
+                             {condition, then_term, else_term},
+                             false,
+                             util::Rational(0)});
+}
+
+namespace {
+
+// Euclidean quotient and remainder for a positive divisor, where Boute's
+// definition coincides with floored division.
+std::pair<util::Rational, util::Rational> euclidean_divide(const util::Rational& numerator,
+                                                           const util::Rational& divisor) {
+  const util::Rational quotient = (numerator / divisor).floor();
+  return {quotient, numerator - divisor * quotient};
+}
+
+}  // namespace
+
+// Shared checking and sign normalization for div and mod. Returns the
+// positive divisor to store; the caller applies the sign identity.
+util::Rational TermManager::normalized_int_divisor(const util::Rational& divisor,
+                                                   TermId numerator) const {
+  if (require_term(numerator).sort != symbols_.int_sort()) {
+    throw std::invalid_argument("div and mod expect an Int numerator");
+  }
+  if (!divisor.is_integer()) {
+    throw std::invalid_argument("div and mod require an integer literal divisor");
+  }
+  if (divisor.is_zero()) {
+    throw std::invalid_argument("division by zero is not supported");
+  }
+  return divisor < util::Rational(0) ? -divisor : divisor;
+}
+
+TermId TermManager::mk_int_div(util::Rational divisor, TermId numerator) {
+  const util::Rational positive = normalized_int_divisor(divisor, numerator);
+  // divE(D, -d) = -divE(D, d): recover the sign the caller asked for.
+  if (divisor < util::Rational(0)) {
+    return mk_times(util::Rational(-1), mk_int_div(positive, numerator));
+  }
+  const Term& numerator_term = require_term(numerator);
+  if (numerator_term.kind == TermKind::Rational) {
+    return mk_rational(euclidean_divide(numerator_term.rational_value, positive).first,
+                       symbols_.int_sort());
+  }
+  return intern_extended(
+      Key{TermKind::IntDiv, symbols_.int_sort(), kInvalidSymbolId, {numerator}, false, positive});
+}
+
+TermId TermManager::mk_int_mod(util::Rational divisor, TermId numerator) {
+  const util::Rational positive = normalized_int_divisor(divisor, numerator);
+  // modE(D, -d) = modE(D, d): the sign of the divisor does not reach the
+  // remainder at all, which is the point of the Euclidean definition.
+  const Term& numerator_term = require_term(numerator);
+  if (numerator_term.kind == TermKind::Rational) {
+    return mk_rational(euclidean_divide(numerator_term.rational_value, positive).second,
+                       symbols_.int_sort());
+  }
+  return intern_extended(
+      Key{TermKind::IntMod, symbols_.int_sort(), kInvalidSymbolId, {numerator}, false, positive});
+}
+
+TermId TermManager::mk_abs(TermId operand) {
+  const Term& operand_term = require_term(operand);
+  if (operand_term.sort != symbols_.int_sort()) {
+    throw std::invalid_argument("abs expects an Int term");
+  }
+  if (operand_term.kind == TermKind::Rational) {
+    const util::Rational& value = operand_term.rational_value;
+    return mk_rational(value < util::Rational(0) ? -value : value, symbols_.int_sort());
+  }
+  return intern_extended(Key{
+      TermKind::Abs, symbols_.int_sort(), kInvalidSymbolId, {operand}, false, util::Rational(0)});
+}
+
+std::size_t TermManager::extended_term_count() const { return extended_term_count_; }
+
 const Term& TermManager::get(TermId id) const { return require_term(id); }
 
 const SymbolTable& TermManager::symbols() const { return symbols_; }

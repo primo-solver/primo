@@ -56,6 +56,11 @@ bool is_boolean_literal(const core::TermManager& terms, core::TermId term_id) {
     case core::TermKind::Application:
     case core::TermKind::Equality:
     case core::TermKind::Le:
+    // Lowered by the preprocessing leaf before this runs.
+    case core::TermKind::Ite:
+    case core::TermKind::IntDiv:
+    case core::TermKind::IntMod:
+    case core::TermKind::Abs:
     case core::TermKind::Lt:
       return term.sort == terms.symbols().bool_sort();
     case core::TermKind::Not:
@@ -674,6 +679,11 @@ ArithmeticAtomCanonicalizationResult canonicalize_arithmetic_atoms_impl(
           break;
         }
         case core::TermKind::Le:
+        // Lowered by the preprocessing leaf before this runs.
+        case core::TermKind::Ite:
+        case core::TermKind::IntDiv:
+        case core::TermKind::IntMod:
+        case core::TermKind::Abs:
         case core::TermKind::Lt: {
           const core::TermId candidate =
               kind == core::TermKind::Le
@@ -844,6 +854,11 @@ bool is_boolean_unit_atom(const core::TermManager& terms, core::TermId term_id) 
     case core::TermKind::Application:
     case core::TermKind::Equality:
     case core::TermKind::Le:
+    // Lowered by the preprocessing leaf before this runs.
+    case core::TermKind::Ite:
+    case core::TermKind::IntDiv:
+    case core::TermKind::IntMod:
+    case core::TermKind::Abs:
     case core::TermKind::Lt:
     case core::TermKind::BoolValue:
     case core::TermKind::Not:
@@ -873,6 +888,11 @@ bool is_forced_atom(const core::TermManager& terms, core::TermId term_id) {
     case core::TermKind::Application:
     case core::TermKind::Equality:
     case core::TermKind::Le:
+    // Lowered by the preprocessing leaf before this runs.
+    case core::TermKind::Ite:
+    case core::TermKind::IntDiv:
+    case core::TermKind::IntMod:
+    case core::TermKind::Abs:
     case core::TermKind::Lt:
       return true;
     case core::TermKind::BoolValue:
@@ -1076,6 +1096,11 @@ core::TermId simplify_with_boolean_units(core::TermManager& terms, core::TermId 
       case core::TermKind::Plus:
       case core::TermKind::Times:
       case core::TermKind::Le:
+      // Lowered by the preprocessing leaf before this runs.
+      case core::TermKind::Ite:
+      case core::TermKind::IntDiv:
+      case core::TermKind::IntMod:
+      case core::TermKind::Abs:
       case core::TermKind::Lt:
         assert(false && "leaf term reached Boolean-unit post-order reconstruction");
         break;
@@ -1191,6 +1216,11 @@ core::TermId simplify_with_forced_atoms(core::TermManager& terms, core::TermId t
       case core::TermKind::Plus:
       case core::TermKind::Times:
       case core::TermKind::Le:
+      // Lowered by the preprocessing leaf before this runs.
+      case core::TermKind::Ite:
+      case core::TermKind::IntDiv:
+      case core::TermKind::IntMod:
+      case core::TermKind::Abs:
       case core::TermKind::Lt:
         assert(false && "leaf term reached forced-atom post-order reconstruction");
         break;
@@ -1553,6 +1583,11 @@ core::TermId simplify_with_congruence(core::TermManager& terms, core::TermId ter
         case core::TermKind::Plus:
         case core::TermKind::Times:
         case core::TermKind::Le:
+        // Lowered by the preprocessing leaf before this runs.
+        case core::TermKind::Ite:
+        case core::TermKind::IntDiv:
+        case core::TermKind::IntMod:
+        case core::TermKind::Abs:
         case core::TermKind::Lt:
           assert(false && "leaf term reached congruence post-order reconstruction");
           break;
@@ -2238,6 +2273,12 @@ core::TermId rewrite_with_ground_unit_equalities(
   const util::Rational node_rational = node.rational_value;
   core::TermId rewritten = term;
   switch (node.kind) {
+    // Lowered by the preprocessing leaf before this runs; treated as an
+    // opaque leaf if one ever reaches here, never silently descended into.
+    case core::TermKind::Ite:
+    case core::TermKind::IntDiv:
+    case core::TermKind::IntMod:
+    case core::TermKind::Abs:
     case core::TermKind::BoolValue:
     case core::TermKind::Constant:
     case core::TermKind::Rational:
@@ -2389,6 +2430,12 @@ core::TermId rewrite_with_solved_constants(
       }
 
       switch (kind) {
+        // Lowered by the preprocessing leaf before this runs; treated as an
+        // opaque leaf if one ever reaches here, never silently descended into.
+        case core::TermKind::Ite:
+        case core::TermKind::IntDiv:
+        case core::TermKind::IntMod:
+        case core::TermKind::Abs:
         case core::TermKind::BoolValue:
         case core::TermKind::Constant:
         case core::TermKind::Rational:
@@ -2536,6 +2583,11 @@ core::TermId lower_real_equalities_rewrite(core::TermManager& terms, core::TermI
       case core::TermKind::Plus:
       case core::TermKind::Times:
       case core::TermKind::Le:
+      // Lowered by the preprocessing leaf before this runs.
+      case core::TermKind::Ite:
+      case core::TermKind::IntDiv:
+      case core::TermKind::IntMod:
+      case core::TermKind::Abs:
       case core::TermKind::Lt:
         assert(false && "leaf term reached real-equality post-order reconstruction");
         break;
@@ -2833,6 +2885,11 @@ core::TermId simplify_with_finite_domain_evaluation(core::TermManager& terms, co
     case core::TermKind::Plus:
     case core::TermKind::Times:
     case core::TermKind::Le:
+    // Lowered by the preprocessing leaf before this runs.
+    case core::TermKind::Ite:
+    case core::TermKind::IntDiv:
+    case core::TermKind::IntMod:
+    case core::TermKind::Abs:
     case core::TermKind::Lt:
       return term;
     case core::TermKind::Equality: {
@@ -3169,6 +3226,11 @@ BooleanImpliesRewriteResult rewrite_boolean_implications(
         case core::TermKind::Plus:
         case core::TermKind::Times:
         case core::TermKind::Le:
+        // Lowered by the preprocessing leaf before this runs.
+        case core::TermKind::Ite:
+        case core::TermKind::IntDiv:
+        case core::TermKind::IntMod:
+        case core::TermKind::Abs:
         case core::TermKind::Lt:
           assert(false && "leaf reached implication rewrite reconstruction");
           break;
@@ -3258,6 +3320,11 @@ BooleanNegationRewriteResult rewrite_boolean_negations_to_nnf(
           case core::TermKind::Plus:
           case core::TermKind::Times:
           case core::TermKind::Le:
+          // Lowered by the preprocessing leaf before this runs.
+          case core::TermKind::Ite:
+          case core::TermKind::IntDiv:
+          case core::TermKind::IntMod:
+          case core::TermKind::Abs:
           case core::TermKind::Lt:
             break;
         }
@@ -3295,6 +3362,11 @@ BooleanNegationRewriteResult rewrite_boolean_negations_to_nnf(
         case core::TermKind::Plus:
         case core::TermKind::Times:
         case core::TermKind::Le:
+        // Lowered by the preprocessing leaf before this runs.
+        case core::TermKind::Ite:
+        case core::TermKind::IntDiv:
+        case core::TermKind::IntMod:
+        case core::TermKind::Abs:
         case core::TermKind::Lt:
           assert(false && "non-connective reached NNF reconstruction");
           break;
@@ -3432,6 +3504,11 @@ BooleanFlatteningResult flatten_associative_booleans(core::TermManager& terms,
         case core::TermKind::Plus:
         case core::TermKind::Times:
         case core::TermKind::Le:
+        // Lowered by the preprocessing leaf before this runs.
+        case core::TermKind::Ite:
+        case core::TermKind::IntDiv:
+        case core::TermKind::IntMod:
+        case core::TermKind::Abs:
         case core::TermKind::Lt:
           throw std::logic_error("leaf reached Boolean flattening reconstruction");
       }

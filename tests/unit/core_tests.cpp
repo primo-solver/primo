@@ -287,6 +287,170 @@ void statistics_preserve_fixed_and_dynamic_counters() {
   assert(statistics.keys() == std::vector<std::string>({":input.assertions", ":test.dynamic"}));
 }
 
+// SMT-LIB fixes div and mod by Boute's Euclidean definition: for a nonzero
+// divisor there are unique q, r with D = d*q + r and 0 <= r < |d|. The
+// remainder is non-negative whatever the signs are, which is where Euclidean
+// parts company with the floored definition Knuth promotes and with the
+// truncated one C uses. The two negative-divisor rows below are the ones that
+// differ, so they are pinned rather than described.
+void euclidean_division_follows_the_smtlib_sign_convention() {
+  SymbolTable symbols;
+  TermManager terms(symbols);
+  const auto int_sort = symbols.int_sort();
+
+  struct Row {
+    long long numerator;
+    long long divisor;
+    long long quotient;
+    long long remainder;
+  };
+  // D = d*q + r with 0 <= r < |d| in every row.
+  const std::array<Row, 8> rows{{
+      {7, 3, 2, 1},
+      {-7, 3, -3, 2},
+      {7, -3, -2, 1},
+      {-7, -3, 3, 2},
+      {6, 3, 2, 0},
+      {-6, 3, -2, 0},
+      {0, 5, 0, 0},
+      {-1, 5, -1, 4},
+  }};
+  for (const Row& row : rows) {
+    const primo::core::TermId numerator =
+        terms.mk_rational(primo::util::Rational(row.numerator), int_sort);
+    const primo::core::TermId quotient =
+        terms.mk_int_div(primo::util::Rational(row.divisor), numerator);
+    const primo::core::TermId remainder =
+        terms.mk_int_mod(primo::util::Rational(row.divisor), numerator);
+    assert(terms.get(quotient).kind == TermKind::Rational);
+    assert(terms.get(remainder).kind == TermKind::Rational);
+    assert(terms.get(quotient).rational_value == primo::util::Rational(row.quotient));
+    assert(terms.get(remainder).rational_value == primo::util::Rational(row.remainder));
+    // The defining identity, restated over the folded values.
+    assert(primo::util::Rational(row.numerator) ==
+           primo::util::Rational(row.divisor) * primo::util::Rational(row.quotient) +
+               primo::util::Rational(row.remainder));
+    assert(!(primo::util::Rational(row.remainder) < primo::util::Rational(0)));
+  }
+}
+
+void int_div_and_mod_normalize_the_divisor_sign() {
+  SymbolTable symbols;
+  const auto x_symbol = symbols.declare_constant("x", symbols.int_sort());
+  TermManager terms(symbols);
+  const primo::core::TermId x = terms.mk_constant(x_symbol);
+
+  // modE(D, -d) = modE(D, d): the divisor sign never reaches the remainder,
+  // so both spellings hash-cons to one node.
+  assert(terms.mk_int_mod(primo::util::Rational(-3), x) ==
+         terms.mk_int_mod(primo::util::Rational(3), x));
+  const primo::core::TermId positive_mod = terms.mk_int_mod(primo::util::Rational(3), x);
+  assert(terms.get(positive_mod).kind == TermKind::IntMod);
+  assert(terms.get(positive_mod).rational_value == primo::util::Rational(3));
+  assert(terms.get(positive_mod).children == std::vector<primo::core::TermId>{x});
+
+  // divE(D, -d) = -divE(D, d): the sign is carried by a Times wrapper, so the
+  // stored IntDiv node always has a positive divisor.
+  const primo::core::TermId negative_div = terms.mk_int_div(primo::util::Rational(-3), x);
+  assert(terms.get(negative_div).kind == TermKind::Times);
+  assert(terms.get(negative_div).rational_value == primo::util::Rational(-1));
+  const primo::core::TermId inner = terms.get(negative_div).children.at(0);
+  assert(terms.get(inner).kind == TermKind::IntDiv);
+  assert(terms.get(inner).rational_value == primo::util::Rational(3));
+  assert(inner == terms.mk_int_div(primo::util::Rational(3), x));
+
+  bool rejected_zero = false;
+  try {
+    static_cast<void>(terms.mk_int_div(primo::util::Rational(0), x));
+  } catch (const std::invalid_argument&) {
+    rejected_zero = true;
+  }
+  assert(rejected_zero);
+
+  bool rejected_fraction = false;
+  try {
+    static_cast<void>(terms.mk_int_mod(primo::util::Rational(1, 2), x));
+  } catch (const std::invalid_argument&) {
+    rejected_fraction = true;
+  }
+  assert(rejected_fraction);
+}
+
+void ite_folds_only_what_is_unconditional() {
+  SymbolTable symbols;
+  const auto p_symbol = symbols.declare_constant("p", symbols.bool_sort());
+  const auto x_symbol = symbols.declare_constant("x", symbols.int_sort());
+  const auto y_symbol = symbols.declare_constant("y", symbols.int_sort());
+  TermManager terms(symbols);
+  const primo::core::TermId p = terms.mk_constant(p_symbol);
+  const primo::core::TermId x = terms.mk_constant(x_symbol);
+  const primo::core::TermId y = terms.mk_constant(y_symbol);
+
+  // A constant condition and two equal branches are the two cases that would
+  // otherwise cost an auxiliary constant for nothing.
+  assert(terms.mk_ite(terms.mk_bool(true), x, y) == x);
+  assert(terms.mk_ite(terms.mk_bool(false), x, y) == y);
+  assert(terms.mk_ite(p, x, x) == x);
+
+  // Everything else stays a term, so preprocessing can see it.
+  const primo::core::TermId conditional = terms.mk_ite(p, x, y);
+  assert(terms.get(conditional).kind == TermKind::Ite);
+  assert(terms.get(conditional).sort == symbols.int_sort());
+  assert(terms.get(conditional).children == std::vector<primo::core::TermId>({p, x, y}));
+  assert(conditional == terms.mk_ite(p, x, y));
+
+  // The branch sort is the term's sort, and Bool branches are allowed.
+  const primo::core::TermId boolean_ite = terms.mk_ite(p, terms.mk_bool(true), p);
+  assert(terms.get(boolean_ite).sort == symbols.bool_sort());
+
+  bool rejected_condition = false;
+  try {
+    static_cast<void>(terms.mk_ite(x, x, y));
+  } catch (const std::invalid_argument&) {
+    rejected_condition = true;
+  }
+  assert(rejected_condition);
+
+  bool rejected_branches = false;
+  try {
+    static_cast<void>(terms.mk_ite(p, x, terms.mk_bool(true)));
+  } catch (const std::invalid_argument&) {
+    rejected_branches = true;
+  }
+  assert(rejected_branches);
+}
+
+void abs_folds_literals_and_counts_as_an_extended_term() {
+  SymbolTable symbols;
+  const auto x_symbol = symbols.declare_constant("x", symbols.int_sort());
+  const auto r_symbol = symbols.declare_constant("r", symbols.real_sort());
+  TermManager terms(symbols);
+  const primo::core::TermId x = terms.mk_constant(x_symbol);
+  const auto int_sort = symbols.int_sort();
+
+  assert(terms.mk_abs(terms.mk_rational(primo::util::Rational(-4), int_sort)) ==
+         terms.mk_rational(primo::util::Rational(4), int_sort));
+  assert(terms.mk_abs(terms.mk_rational(primo::util::Rational(4), int_sort)) ==
+         terms.mk_rational(primo::util::Rational(4), int_sort));
+
+  const std::size_t before = terms.extended_term_count();
+  const primo::core::TermId magnitude = terms.mk_abs(x);
+  assert(terms.get(magnitude).kind == TermKind::Abs);
+  assert(terms.extended_term_count() == before + 1);
+  // Hash-consing means a repeat costs nothing and counts once.
+  assert(terms.mk_abs(x) == magnitude);
+  assert(terms.extended_term_count() == before + 1);
+
+  // abs belongs to the Ints theory only.
+  bool rejected_real = false;
+  try {
+    static_cast<void>(terms.mk_abs(terms.mk_constant(r_symbol)));
+  } catch (const std::invalid_argument&) {
+    rejected_real = true;
+  }
+  assert(rejected_real);
+}
+
 }  // namespace
 
 int main() {
@@ -298,6 +462,10 @@ int main() {
   arithmetic_terms_are_hash_consed_and_checked();
   arithmetic_terms_are_simplified();
   rational_primitive_integer_scale_clears_denominators_and_content();
+  euclidean_division_follows_the_smtlib_sign_convention();
+  int_div_and_mod_normalize_the_divisor_sign();
+  ite_folds_only_what_is_unconditional();
+  abs_folds_literals_and_counts_as_an_extended_term();
   statistics_preserve_fixed_and_dynamic_counters();
   return 0;
 }

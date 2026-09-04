@@ -6929,6 +6929,11 @@ bool formula_needs_mixed_purification(const core::TermManager& terms, core::Term
   bool result = false;
   switch (term.kind) {
     case core::TermKind::Le:
+    // Lowered by the preprocessing leaf before this runs.
+    case core::TermKind::Ite:
+    case core::TermKind::IntDiv:
+    case core::TermKind::IntMod:
+    case core::TermKind::Abs:
     case core::TermKind::Lt:
       result = arithmetic_term_needs_mixed_purification(terms, children.at(0), arithmetic_memo) ||
                arithmetic_term_needs_mixed_purification(terms, children.at(1), arithmetic_memo);
@@ -7251,6 +7256,12 @@ core::TermId purify_mixed_formula(const PurificationScope& scope, core::TermId t
           result = purify_euf_term(scope, visit.term, state);
         }
         break;
+      // Lowered by the preprocessing leaf before this runs; treated as an
+      // opaque leaf if one ever reaches here, never silently descended into.
+      case core::TermKind::Ite:
+      case core::TermKind::IntDiv:
+      case core::TermKind::IntMod:
+      case core::TermKind::Abs:
       case core::TermKind::BoolValue:
       case core::TermKind::Constant:
       case core::TermKind::Rational:

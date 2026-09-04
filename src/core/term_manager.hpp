@@ -41,6 +41,22 @@ class TermManager {
   TermId mk_le(TermId lhs, TermId rhs);
   TermId mk_lt(TermId lhs, TermId rhs);
 
+  // Structure preprocessing is allowed to see. These constructors fold only
+  // what is unconditional -- literal arguments, and the two ite identities
+  // that would otherwise force a pointless auxiliary. Everything else is left
+  // for the preprocessing leaf so that it is measurable. mk_int_div and
+  // mk_int_mod additionally normalize a negative divisor away, which is a
+  // representation invariant; see the TermKind comment.
+  TermId mk_ite(TermId condition, TermId then_term, TermId else_term);
+  TermId mk_int_div(util::Rational divisor, TermId numerator);
+  TermId mk_int_mod(util::Rational divisor, TermId numerator);
+  TermId mk_abs(TermId operand);
+
+  // Number of Ite/IntDiv/IntMod/Abs nodes ever interned. Zero lets the
+  // lowering leaf skip its traversal outright, which is the common case:
+  // roughly seven in ten benchmarks contain no ite at all.
+  std::size_t extended_term_count() const;
+
   const Term& get(TermId id) const;
   const SymbolTable& symbols() const;
   std::size_t size() const;
@@ -63,12 +79,15 @@ class TermManager {
   };
 
   TermId intern(Key key);
+  TermId intern_extended(Key key);
+  util::Rational normalized_int_divisor(const util::Rational& divisor, TermId numerator) const;
   const Term& require_term(TermId id) const;
   void require_bool(TermId id) const;
   bool is_arithmetic_sort(SortId sort) const;
 
   const SymbolTable& symbols_;
   std::vector<Term> terms_;
+  std::size_t extended_term_count_ = 0;
   std::unordered_map<Key, TermId, KeyHash> term_by_key_;
 };
 

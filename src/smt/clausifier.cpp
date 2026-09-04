@@ -260,6 +260,11 @@ struct BooleanClausifier::Implementation {
           break;
         case core::TermKind::Equality:
         case core::TermKind::Le:
+        // Lowered by the preprocessing leaf before this runs.
+        case core::TermKind::Ite:
+        case core::TermKind::IntDiv:
+        case core::TermKind::IntMod:
+        case core::TermKind::Abs:
         case core::TermKind::Lt:
           record_theory_atom_polarity(current.term, current.positive);
           break;
@@ -346,6 +351,11 @@ struct BooleanClausifier::Implementation {
         case core::TermKind::Application:
         case core::TermKind::Equality:
         case core::TermKind::Le:
+        // Lowered by the preprocessing leaf before this runs.
+        case core::TermKind::Ite:
+        case core::TermKind::IntDiv:
+        case core::TermKind::IntMod:
+        case core::TermKind::Abs:
         case core::TermKind::Lt:
           backend_.add_clause(sat::Clause{encode(current)});
           break;
@@ -394,6 +404,11 @@ struct BooleanClausifier::Implementation {
           case core::TermKind::Plus:
           case core::TermKind::Times:
           case core::TermKind::Le:
+          // Lowered by the preprocessing leaf before this runs.
+          case core::TermKind::Ite:
+          case core::TermKind::IntDiv:
+          case core::TermKind::IntMod:
+          case core::TermKind::Abs:
           case core::TermKind::Lt:
             assert(false && "atom reached Boolean clausifier post-order encoding");
             break;
@@ -436,6 +451,11 @@ struct BooleanClausifier::Implementation {
           break;
         case core::TermKind::Equality:
         case core::TermKind::Le:
+        // Lowered by the preprocessing leaf before this runs.
+        case core::TermKind::Ite:
+        case core::TermKind::IntDiv:
+        case core::TermKind::IntMod:
+        case core::TermKind::Abs:
         case core::TermKind::Lt:
           (void)theory_atom_for_term(visit.term);
           break;

@@ -60,6 +60,14 @@ FlatTermId FlatTermIndex::flatten(core::TermId term) {
     case core::TermKind::Le:
     case core::TermKind::Lt:
       throw std::invalid_argument("QF_LRA arithmetic nodes are not EUF flat terms");
+    case core::TermKind::Ite:
+    case core::TermKind::IntDiv:
+    case core::TermKind::IntMod:
+    case core::TermKind::Abs:
+      // The preprocessing leaf lowers these unconditionally, so reaching EUF
+      // means lowering was skipped or leaked. Fail loudly rather than treat
+      // the node as an opaque constant, which would be a silent wrong answer.
+      throw std::invalid_argument("ite/div/mod/abs must be lowered before EUF flattening");
   }
   flattened_terms_.emplace(term, flat);
   return flat;
