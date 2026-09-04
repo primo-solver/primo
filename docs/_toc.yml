@@ -72,6 +72,7 @@ parts:
       - file: papers/arithmetic-solving-in-z3
         sections:
           - file: papers/word-gcd-notes
+      - file: papers/integer-division-and-modulo
       - file: papers/lra-atom-canonicalization
       - file: papers/griggio-mathsat-thesis
       - file: papers/bromberger-linear-arithmetic-thesis

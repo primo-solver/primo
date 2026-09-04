@@ -57,7 +57,9 @@ mutation gate surfaces these constantly once it validates models: of 165
 unsupported mutants in job 131463, 44 were `div`, 40 `abs`, and 29 `mod`. The
 remaining unsupported mutants are correct rejections -- nonlinear
 multiplication, and files that Z3 rejects too because a mutation left a `let`
-variable unbound. In
+variable unbound. [](papers/integer-division-and-modulo.md) surveys what the
+standard requires, what the literature does and does not say, and what closing
+the gap would cost. In
 QF_UFLRA, mixed purification first replaces each
 Real-valued UF application occurring in arithmetic with a fresh Real proxy, so
 the prepared LRA atom contains no UF application node.
