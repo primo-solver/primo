@@ -44,6 +44,40 @@ theory leaves free; a solver may pick any, but must stay consistent with
 congruence, so `(div 1 0)` and `(div 1 0)` are equal while `(div 1 0)` and
 `(div 2 0)` need not be.
 
+## The three conventions, and why the choice is already made for us
+
+The division/remainder conventions and their trade-offs are settled textbook
+material, not solver folklore. Leijen's note is the compact survey; Boute's
+paper is the argument.
+
+- **Knuth**, *The Art of Computer Programming*, Vol. 1, §1.2.4 "Integer
+  Functions and Elementary Number Theory" (Addison-Wesley, 1972), defines and
+  promotes **floored** division: `q = floor(D/d)`, so the remainder takes the
+  sign of the divisor.
+- **Boute**, "The Euclidean definition of the functions div and mod", *ACM
+  TOPLAS* 14(2):127-144, April 1992, DOI `10.1145/128861.128862`, introduces
+  the **Euclidean** definition, whose remainder is non-negative irrespective of
+  either sign, and argues it is the better default. SMT-LIB adopts it, naming
+  Boute directly.
+- **Leijen**, "Division and Modulus for Computer Scientists", Utrecht, 3
+  December 2001, compares truncated (T), floored (F, "described by Knuth") and
+  Euclidean (E, "Boute") side by side, and states the property that answers the
+  design question here outright:
+
+  > The Euclidean or E-definition defines a mod-dominant division in terms of
+  > Euclid's theorem -- for any real numbers D and d with d ≠ 0, there exists a
+  > **unique** pair of numbers q and r that satisfy the following conditions:
+  > (a) q ∈ Z, (b) D = d·q + r, (c) 0 ≤ r < |d|. [...] The Euclidean conditions
+  > guarantee a unique pair of numbers and don't leave any choice in the
+  > definition of the div and mod functions.
+
+  Leijen also records two identities that are directly useful as normalization
+  rules and as test oracles: `D divE (−d) = −(D divE d)` and
+  `D modE (−d) = D modE d`.
+
+Wikipedia's "Modulo" article is a reasonable entry point and cites exactly
+these two sources for the floored/Euclidean split.
+
 ## What the decision-procedure literature says
 
 Essentially nothing, and that is itself the finding: these operators are
@@ -83,21 +117,20 @@ enforces integrality on those — but it does mean the *rational relaxation* of
 a goal changes when we introduce quotients, so anything reasoning about the
 relaxation must be given the transformed problem, not the original.
 
-## What solvers do
+## Where the elimination belongs
 
-Both mainstream solvers put this in the frontend, not the arithmetic core.
+Published solver descriptions put this in the front end rather than the
+arithmetic core. Bjørner and Nachmanson, *Arithmetic Solving in Z3*: "The
+front-end to the core arithmetic solver axiomatizes integer and real division
+operations using multiplication and addition, so that the solver does not have
+to reason about division."
 
-- **Z3.** Bjørner and Nachmanson, *Arithmetic Solving in Z3*: "The front-end to
-  the core arithmetic solver axiomatizes integer and real division operations
-  using multiplication and addition, so that the solver does not have to reason
-  about division."
-- **cvc5**, in `src/theory/arith/operator_elim.cpp`, introduces a single Skolem
-  `v` for the quotient and constrains it with `den * v <= num` and
-  `num < den * (v + 1)` when the divisor is a positive constant, and
-  `num < den * (v - 1)` when it is negative. Modulus is derived, not given its
-  own variable. `abs` becomes `(ite (< x 0) (- x) x)`. The partial `div`/`mod`
-  reduce to total versions wrapped in `(ite (= den 0) <uninterpreted skolem>
-  <total>)`, which is how the underspecified-but-total zero case is realised.
+Primo departs from that in one respect, deliberately: `div`/`mod`/`abs` become
+first-class term kinds and are lowered by a preprocessing tactic rather than at
+parse time, so that simplification can see them. The reason is recorded in the
+"What this is and is not worth" section below and, at greater length, in the
+implementation plan: eliminating at parse time is what left `ite` with no
+preprocessing at all.
 
 ## Proposed encoding for Primo
 
@@ -111,12 +144,15 @@ introduce one fresh Int constant `q` per distinct pair `(t, k)` and assert
 then rewrite `(div t k)` to `q` and `(mod t k)` to the linear term `t - k*q`.
 
 Because `k` is a literal, `k*q` is a linear monomial and `|k| - 1` is a
-constant, so both assertions are ordinary Primo atoms. **This is a frontend
-change only**: no new atom shape, no tableau change, no theory-solver change.
+constant, so both assertions are ordinary Primo atoms: **no new atom shape, no
+tableau change, no theory-solver change**.
 
-Uniform in the sign of `k`, this is exactly cvc5's pair of cases:
-for `k > 0` it is `0 <= t - kq <= k - 1`, and for `k < 0` it is
-`0 <= t - kq <= -k - 1`.
+The single bound `0 <= t - kq <= |k| - 1` covers both signs of `k`, which is
+just condition (c) of the Euclidean definition rearranged: for `k > 0` it reads
+`0 <= t - kq <= k - 1`, and for `k < 0`, `0 <= t - kq <= -k - 1`. Normalizing a
+negative divisor away first with Leijen's identities -- `div` by `-k` negates
+the quotient, `mod` by `-k` is unchanged -- leaves only the positive case to
+lower.
 
 ### On uniqueness
 
@@ -144,15 +180,17 @@ adds a variable and a row per occurrence.
   nonlinear and is outside the linear fragment, exactly as `(* x y)` already
   is. It must keep reporting unsupported, with a message that says *nonlinear*
   rather than *unknown symbol*.
-- **Zero divisor.** With literal divisors, `(div t 0)` can only arise if
-  written literally. The cheap conforming option is cvc5's: one uninterpreted
-  Int constant per numerator-free equivalence class, i.e. an uninterpreted
-  function `div0`/`mod0` applied to `t`, which gets congruence for free from
-  the EUF solver. Deferring this and reporting unsupported for a literal zero
-  divisor is also defensible; what is not defensible is silently returning a
-  value, since that would be a wrong answer rather than a limitation.
-- **`abs`.** Rewrite `(abs t)` to `(ite (>= t 0) t (- t))`. Primo already
-  handles `ite` over Int, so this needs no new machinery at all.
+- **Zero divisor: rejected, as a documented limitation.** With literal
+  divisors, `(div t 0)` can only arise if written literally. Conforming support
+  means an uninterpreted function applied to the numerator, so that equal
+  numerators get equal results as totality requires; that needs EUF, which
+  would route a QF_LIA goal through the UFLIA path. Deferred. What is *not*
+  acceptable is a fresh unconstrained constant per syntactic term: `(div x 0)`
+  and `(div y 0)` are different terms, so nothing would force them equal when
+  `x = y`, and that is a wrong answer rather than a limitation.
+- **`abs`.** Lowered to the same shape as `(ite (>= t 0) t (- t))`. Since
+  `ite` becomes a term kind in the same change, `abs` and `ite` share one
+  lowering path.
 
 ## What this is and is not worth
 
