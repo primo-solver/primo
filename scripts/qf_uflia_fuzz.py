@@ -119,8 +119,36 @@ def numeral(value: int) -> str:
     return str(value) if value >= 0 else f"(- {-value})"
 
 
-def compose_int_terms(rng: random.Random, depth: int, width: int) -> list[str]:
-    """Return Int terms whose UF application nesting reaches `depth`."""
+# Divisors are drawn from both signs and include the units, so the Euclidean
+# sign identities and the div/mod-by-one folds are all exercised. Zero is
+# excluded: a literal zero divisor is a documented rejection, not an answer,
+# and it is checked separately rather than mixed into differential runs.
+DIVISORS = [-4, -3, -2, -1, 1, 2, 3, 4]
+
+# Boolean conditions for generated ites, kept cheap so the condition is not
+# where the difficulty lives.
+def boolean_atom(rng: random.Random, terms: list[str]) -> str:
+    relation = rng.choice(["<=", "<", "=", ">="])
+    return f"({relation} {rng.choice(terms)} {rng.choice(terms)})"
+
+
+def compose_int_terms(rng: random.Random, depth: int, width: int,
+                      extended: bool = False) -> list[str]:
+    """Return Int terms whose UF application nesting reaches `depth`.
+
+    `ite` is always available: it belongs to the Core theory and is legal in
+    every logic, so cases containing it stay conforming QF_UFLIA and Dolmen
+    will model-check them.
+
+    `extended` additionally emits div, mod and abs. Those are *not* in
+    QF_UFLIA -- the logic definition excludes "the function symbols *, **, /,
+    div, mod, and abs" and its :extensions clause readmits only `*` with
+    concrete coefficients -- so Primo accepts them as a documented extension
+    and Dolmen rightly refuses to check such a file. Cases in that shape are
+    therefore validated through Z3 rather than Dolmen, which is why the two
+    shapes are kept apart. FuzzSMT emits none of these operators for any Int
+    logic, so this generator is their only source of coverage.
+    """
     level = INT_VARIABLES + [numeral(value) for value in range(-2, 3)]
     deepest = list(level)
     for _ in range(depth):
@@ -129,7 +157,7 @@ def compose_int_terms(rng: random.Random, depth: int, width: int) -> list[str]:
         # so at least one term in the new level is genuinely one deeper.
         level = [f"(f {rng.choice(deepest)})"]
         for _ in range(width - 1):
-            choice = rng.randrange(4)
+            choice = rng.randrange(8 if extended else 5)
             left = rng.choice(shallower)
             right = rng.choice(shallower)
             if choice == 0:
@@ -138,15 +166,24 @@ def compose_int_terms(rng: random.Random, depth: int, width: int) -> list[str]:
                 level.append(f"(g {left} {right})")
             elif choice == 2:
                 level.append(f"(+ {left} {right})")
-            else:
+            elif choice == 3:
                 level.append(f"(* 2 {left})")
+            elif choice == 4:
+                level.append(f"(ite {boolean_atom(rng, shallower)} {left} {right})")
+            elif choice == 5:
+                level.append(f"(div {left} {numeral(rng.choice(DIVISORS))})")
+            elif choice == 6:
+                level.append(f"(mod {left} {numeral(rng.choice(DIVISORS))})")
+            else:
+                level.append(f"(abs {left})")
         deepest = level
     return deepest
 
 
-def generate_composed_case(rng: random.Random, index: int, depth: int) -> str:
+def generate_composed_case(rng: random.Random, index: int, depth: int,
+                           extended: bool = False) -> str:
     """A case built from composed terms rather than the fixed atom vocabulary."""
-    terms = compose_int_terms(rng, depth, width=4)
+    terms = compose_int_terms(rng, depth, width=4, extended=extended)
     assertions: list[str] = []
     for _ in range(2 + rng.randrange(3)):
         relation = rng.choice(["<=", "<", "="])
@@ -186,11 +223,15 @@ def generate_case(rng: random.Random, index: int, shape: str, depth: int) -> str
         return generate_random_case(rng, index)
     if shape == "composed":
         return generate_composed_case(rng, index, depth)
+    if shape == "extended":
+        return generate_composed_case(rng, index, depth, extended=True)
     if index % 3 == 0:
         return generate_nonconvex_case(rng, index)
     # Half of the remaining cases use composed terms so the mixed shape, which
     # is what the gates run, covers nesting as well as the curated vocabulary.
     if index % 2 == 0:
+        # Conforming on purpose: the gates run this shape through Dolmen model
+        # validation, which refuses a file using div, mod or abs.
         return generate_composed_case(rng, index, depth)
     return generate_random_case(rng, index)
 
@@ -248,7 +289,7 @@ def main() -> int:
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument(
         "--shape",
-        choices=["mixed", "nonconvex", "random", "composed"],
+        choices=["mixed", "nonconvex", "random", "composed", "extended"],
         default="mixed",
     )
     parser.add_argument(

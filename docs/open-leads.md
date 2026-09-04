@@ -2367,8 +2367,12 @@ informative. Each names the evidence that closed it.
 corpus, and it must not be sized against the promotion bar. Census 2026-09-04:
 `div`, `mod` and `abs` occur in **0 of 600** randomly sampled SMT-LIB QF_LIA
 benchmarks and **0 of the 20** QF_UFLIA mutation seeds. They reach the solver
-almost entirely through generated input, so the payoff here is robustness and
-conformance, not solved files. It is recorded because the structure is
+almost entirely through generated input, and they are not even in the logics
+Primo supports: QF_LIA excludes "the function symbols `**`, `/`, `div`, `mod`,
+and `abs`" by name and its `:extensions` clause readmits only `*` with concrete
+coefficients, with QF_UFLIA saying "As in the logic QF_LIA". Primo accepts them
+as a documented extension. So the payoff here is robustness and usability, not
+conformance and not solved files. It is recorded because the structure is
 destroyed at a point where recovering it later is impossible, which is the same
 mistake [](#lead-ite-preprocessing) documents for ITE.
 

@@ -105,6 +105,12 @@ models**, every one on a case whose UF application nesting is 2 or 3. The same
 gate at the same commit with the old `--shape random` (job 131454) reports zero
 across 1809 validated models.
 
+Reproduced again after `ite` became a term kind: 5 model errors among 110 sat
+cases on a 250-case `--shape composed` run, about 4.5%. One of the five,
+`case-00149`, contains no `ite`, `div`, `mod` or `abs` at all -- only nested
+`(f (f (g ...)))` with a pinned result -- which is how that run was confirmed
+to be reproducing this bug rather than a regression from the new term kinds.
+
 Dolmen itself was initially unavailable on this workstation: `opam` refused
 because its depext probe wanted the system packages `libgmp-dev` and
 `pkg-config` and the sandbox has no `sudo`. `pkg-config` is in fact installed

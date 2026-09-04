@@ -48,18 +48,29 @@ clausification; the option can be combined with `--preprocessing-mode=off` but
 defaults off pending stronger performance evidence. Nonlinear multiplication
 and division by a nonliteral term are outside the accepted fragment.
 
-The integer operators `div`, `mod`, and `abs` are also outside it, and that is
-a frontend gap rather than a deliberate restriction: they are part of the
-SMT-LIB `Ints` theory, so a conforming `QF_LIA` or `QF_UFLIA` input using them
-is rejected with `unknown function symbol`. `frontend.cpp` dispatches only
-`=`, `+`, `-`, `*`, `/`, and the four comparisons. The QF_UFLIA real-seed
-mutation gate surfaces these constantly once it validates models: of 165
-unsupported mutants in job 131463, 44 were `div`, 40 `abs`, and 29 `mod`. The
-remaining unsupported mutants are correct rejections -- nonlinear
-multiplication, and files that Z3 rejects too because a mutation left a `let`
-variable unbound. [](papers/integer-division-and-modulo.md) surveys what the
-standard requires, what the literature does and does not say, and what closing
-the gap would cost. In
+The integer operators `div`, `mod`, and `abs` are accepted as a **deliberate
+extension**, not as conformance. They belong to the SMT-LIB `Ints` theory, but
+both QF_LIA and QF_UFLIA exclude them by name -- QF_LIA requires Int terms to
+have "no occurrences of the function symbols `**`, `/`, `div`, `mod`, and
+`abs`", and its `:extensions` clause readmits only `*` with concrete
+coefficients. So no logic Primo supports permits them, and rejecting them was
+correct on the standard's terms; Primo accepts them because the solvers it is
+compared against do, and because rejecting them leaves the operators
+unreachable everywhere. Dolmen enforces the logic and will refuse to
+model-check such a file.
+
+`frontend.cpp` builds `IntDiv`, `IntMod` and `Abs` terms, which the
+`lower-extended-terms` leaf encodes; a non-constant divisor is reported as
+nonlinear and a literal zero divisor is rejected outright. The QF_UFLIA real-seed mutation gate is where these
+turned up: of 165 unsupported mutants in job 131463, 44 were `div`, 40 `abs`
+and 29 `mod`. Those mutants are themselves outside their declared logic --
+typefuzz mutates operators under `--keep-logic` and does not respect the
+`:extensions` clause -- so rejecting them was defensible, and supporting them
+is a usability choice rather than a bug fix. The remaining unsupported mutants
+are correct rejections: nonlinear multiplication, and files Z3 rejects too
+because a mutation left a `let` variable unbound.
+[](papers/integer-division-and-modulo.md) surveys what the standard requires
+and what the literature does and does not say. In
 QF_UFLRA, mixed purification first replaces each
 Real-valued UF application occurring in arithmetic with a fresh Real proxy, so
 the prepared LRA atom contains no UF application node.

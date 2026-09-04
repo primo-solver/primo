@@ -206,8 +206,23 @@ Measured, not assumed:
 
 So this will not win a single benchmark. Two other things make it worth doing:
 
-1. **Conformance.** Primo currently rejects conforming QF_LIA/QF_UFLIA input
-   that every other solver answers.
+1. **Usability, and explicitly *not* conformance.** An earlier draft of this
+   note claimed Primo was rejecting conforming QF_LIA/QF_UFLIA input. That was
+   wrong, and the logic definitions say so plainly. QF_LIA requires terms of
+   sort Int to be "linear, that is, have no occurrences of the function symbols
+   `**`, `/`, `div`, `mod`, and `abs`, and no occurrences of the function symbol
+   `*`, except as specified in the `:extensions` attribute", and that
+   `:extensions` clause readmits only `*` with concrete coefficients. QF_UFLIA
+   says "As in the logic QF_LIA". So these operators are **outside every logic
+   Primo supports**, and the original `unknown function symbol` rejection was
+   correct on the standard's terms.
+
+   Primo accepts them anyway, as a **deliberate documented extension**, because
+   that is what solvers people compare against do in practice and because
+   rejecting them makes the operators unreachable in every supported logic.
+   Dolmen enforces the rule and will refuse to model-check a QF_UFLIA file
+   using them, which is why the fuzz generator keeps such cases in a separate
+   shape validated through Z3.
 2. **It unblocks the mutation gate.** YinYang's `ignore_list` contains the
    string `"unsupported"`, and `Fuzzer.py` counts such a case as
    `invalid_mutants` and skips it. Because Primo says `unsupported` on these
