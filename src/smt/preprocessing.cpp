@@ -56,13 +56,16 @@ bool is_boolean_literal(const core::TermManager& terms, core::TermId term_id) {
     case core::TermKind::Application:
     case core::TermKind::Equality:
     case core::TermKind::Le:
-    // Lowered by the preprocessing leaf before this runs.
+    case core::TermKind::Lt:
+      return term.sort == terms.symbols().bool_sort();
+    // Lowered by the preprocessing leaf before this runs. Kept out of the arm
+    // above because a Bool-sorted Ite would answer true there, and an ite is a
+    // connective rather than a literal.
     case core::TermKind::Ite:
     case core::TermKind::IntDiv:
     case core::TermKind::IntMod:
     case core::TermKind::Abs:
-    case core::TermKind::Lt:
-      return term.sort == terms.symbols().bool_sort();
+      return false;
     case core::TermKind::Not:
       return is_boolean_literal(terms, term.children.at(0)) &&
              terms.get(term.children.at(0)).kind != core::TermKind::Not;
@@ -678,12 +681,16 @@ ArithmeticAtomCanonicalizationResult canonicalize_arithmetic_atoms_impl(
                             : candidate;
           break;
         }
-        case core::TermKind::Le:
-        // Lowered by the preprocessing leaf before this runs.
+        // Lowered by the preprocessing leaf before this runs. Kept out of the
+        // Le/Lt arm below, whose body reconstructs one or the other by kind.
         case core::TermKind::Ite:
         case core::TermKind::IntDiv:
         case core::TermKind::IntMod:
         case core::TermKind::Abs:
+          assert(false && "extended term reached arithmetic canonicalization");
+          replacement = visit.term;
+          break;
+        case core::TermKind::Le:
         case core::TermKind::Lt: {
           const core::TermId candidate =
               kind == core::TermKind::Le
