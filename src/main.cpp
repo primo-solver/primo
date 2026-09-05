@@ -182,6 +182,7 @@ int run_main(int argc, char** argv) {
   bool finite_domain_equality_definitions = solver_options.auto_finite_domain_equality_definitions;
   bool no_finite_domain_equality_definitions = false;
   bool no_finite_domain_post_amo = false;
+  bool no_extended_simplification = false;
   bool no_eq_bridge = false;
   bool no_lra_propagation = false;
   bool no_solved_constant_substitution = false;
@@ -269,6 +270,9 @@ int run_main(int argc, char** argv) {
                         "Disable finite-domain SAT-visible equality definition clauses");
   add_flag_with_default(app, "--no-finite-domain-post-amo", no_finite_domain_post_amo,
                         "Disable the post-simplification finite-domain AMO scan");
+  add_flag_with_default(app, "--no-extended-simplification", no_extended_simplification,
+                        "Disable the ite/div/mod/abs rewrites that run before lowering "
+                        "(lowering itself always runs)");
   add_flag_with_default(app, "--eq-bridge", solver_options.eq_bridge,
                         "Add equalities implied by every branch of selected QF_UF disjunctions");
   add_flag_with_default(app, "--no-eq-bridge", no_eq_bridge,
@@ -854,6 +858,9 @@ int run_main(int argc, char** argv) {
   }
   if (no_finite_domain_post_amo) {
     solver_options.finite_domain_post_amo = false;
+  }
+  if (no_extended_simplification) {
+    solver_options.extended_simplification = false;
   }
   if (no_eq_bridge) {
     solver_options.eq_bridge = false;

@@ -1005,6 +1005,15 @@ cannot be switched off cannot take part in that evaluation. Counters:
 `:preprocessing.ite.rewrites`, `:preprocessing.ite.equality-distributed`,
 `:preprocessing.extended.arithmetic-rewrites`.
 
+`--no-extended-simplification` is that switch. It drops the
+`simplify-extended-terms` leaf and leaves `lower-extended-terms` in place, so
+the same input still solves, with the auxiliaries the rewrites would have
+avoided. Lowering has no switch and is not going to get one: the linear core
+has no case for these kinds, and a flag that could make one reach it would be a
+soundness hazard rather than an ablation. Use the flag for same-binary A/B in
+the style the rest of this document uses (`--no-finite-domain-post-amo`,
+`--no-auto-basic-single`).
+
 Nothing but the frontend builds these four kinds, so one pass before lowering
 sees all of them; there is no layering argument for putting the rules earlier.
 

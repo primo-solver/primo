@@ -338,6 +338,12 @@ struct CheckSatOptions {
   // one primitive-integer core term before clausification. Opt-in because the
   // first broad A/B changed QF_LRA search trajectories and lost one net solve.
   bool arithmetic_atom_canonicalization = false;
+  // The simplify-extended-terms leaf (ite/div/mod/abs rewrites that run before
+  // lowering). Lowering itself is unconditional -- the linear core cannot see
+  // these kinds -- but the rewrites are a technique like any other and have to
+  // be switchable to be measurable. docs/open-leads.md lead 16 measures against
+  // this switch.
+  bool extended_simplification = true;
   // QF_LIA branch-and-bound's node cap (docs/qf-lia-branch-and-bound.md).
   // Plain branch-and-bound has no completeness argument of its own -- an
   // unbounded integer-infeasible polytope can branch forever -- so this is

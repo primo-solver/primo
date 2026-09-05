@@ -711,6 +711,38 @@ void nullary_define_fun_term_ite_needs_no_auxiliary() {
   assert(result.statistics.get(":preprocessing.ite.equality-distributed") == 1);
 }
 
+// The rewrites in simplify-extended-terms have to be switchable, or they
+// cannot be A/B'd against the lowering they replace. Lowering itself is not
+// switchable: the linear core has no case for these kinds, so the same input
+// must still solve with the leaf off, only with the auxiliary the rewrite
+// would have avoided.
+void extended_simplification_can_be_switched_off() {
+  constexpr const char* kInput = R"(
+    (set-logic QF_UF)
+    (declare-sort A 0)
+    (declare-fun p () Bool)
+    (declare-fun a () A)
+    (declare-fun b () A)
+    (declare-fun u () A)
+    (assert (= u (ite p a b)))
+    (assert (distinct u a))
+    (assert (distinct u b))
+    (check-sat)
+  )";
+
+  const auto simplified = check_sat_smtlib(kInput);
+  assert(simplified.result == CheckSatResult::Unsat);
+  assert(simplified.statistics.get(":preprocessing.ite.equality-distributed") == 1);
+  assert(simplified.statistics.get(":preprocessing.ite.auxiliaries") == 0);
+
+  primo::smt::CheckSatOptions options;
+  options.extended_simplification = false;
+  const auto lowered = check_sat_smtlib(kInput, options);
+  assert(lowered.result == CheckSatResult::Unsat);
+  assert(lowered.statistics.get(":preprocessing.ite.equality-distributed") == 0);
+  assert(lowered.statistics.get(":preprocessing.ite.auxiliaries") == 1);
+}
+
 void long_nullary_define_fun_chain_is_compiled_linearly() {
   constexpr int kDefinitions = 20000;
   std::ostringstream input;
@@ -3142,6 +3174,7 @@ int main() {
   nullary_define_fun_uses_definition_site_bindings();
   nullary_define_fun_replays_boolean_argument_constraints();
   nullary_define_fun_term_ite_needs_no_auxiliary();
+  extended_simplification_can_be_switched_off();
   long_nullary_define_fun_chain_is_compiled_linearly();
   long_nullary_and_chain_preserves_dag_and_supports_optional_flattening();
   reconvergent_nullary_and_dag_is_clausified_once();
