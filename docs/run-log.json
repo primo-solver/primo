@@ -30456,6 +30456,38 @@
         "slurm": "primo-cadical-profile/results/preproc-size-131983"
       },
       "notes": "The noise-floor control this investigation was going to run (base against base under permuted declare-fun order, to size the churn band) was not needed: the deterministic size measurement settles the question without it, and 10172 byte-identical files show the change is inert wherever there is no ite. Two limits. The size metric is reachable-DAG node count after preprocessing, which is a proxy for what the SAT solver sees rather than a clause count, because --preprocess-only stops before clausification. And 79 files are excluded because preprocessing alone did not finish in 60s on either arm."
+    },
+    {
+      "id": "2026-09-06-ite-distribution-gate-132306",
+      "date": "2026-09-06",
+      "commit": "e29f156",
+      "baseline_commit": "7ea99a7",
+      "branch": "modular-theory-combination",
+      "kind": "full-division-solve-gate-for-the-ite-distribution-default",
+      "scope": "Whether switching the ite equality distribution off recovers the 44 QF_LIA solves lost at da3cc0b. It recovers nec-smt and loses elsewhere, which is why the rule ended up guarded on shape rather than switched off.",
+      "environment": {
+        "host": "CIIRC SLURM cluster",
+        "solver": "fix Primo 0.1.0 at e29f156 built on the cluster; base from the git archive of 7ea99a7, the same binary 131646 and 131983 used",
+        "corpus": "the same 13306-file QF_LIA staging; 60-second per-instance timeout"
+      },
+      "jobs": {
+        "qf_lia_full": "132306; 2 solvers by 80 shards",
+        "rejected_submission": "132146; failed in 4 minutes because the tree it ran from reached the corpus through a symlink and bench_qf_uf_full.py computes path.relative_to(repo)"
+      },
+      "commands": {
+        "gate": "PRIMO_COMPARE_SHARDS=80 PRIMO_COMPARE_TIMEOUT=60 PRIMO_COMPARE_SOLVERS='fix=<e29f156>/primo --quiet;base=<7ea99a7>/primo --quiet' sbatch --array=0-159 scripts/slurm_qf_lia_full_solver_compare.sbatch, submitted from the tree where sandbox/ is a real directory"
+      },
+      "results": {
+        "headline": "13306 files. base 9040, fix 9016, delta -24 (55 gained, 79 lost). 0 wrong answers, 0 answer disagreements among files both solved. The measurement it replaces, da3cc0b, was -44 with 35 gained and 79 lost.",
+        "nec_smt": "net +8 (42 gained, 34 lost) against -50 at da3cc0b. Paired runtime geometric mean 0.9481 and summed -6.47%, against 1.1023 and +10.88% at da3cc0b. The regression this change targeted is gone and reversed.",
+        "regression_elsewhere": "20210219-Dartagnan went from +6 at da3cc0b to -29 (0 gained, 29 lost) over 153 files; rings -5, 20220307-SMPT -2, 2019-cmodelsdiff -1, cut_lemmas -1, fft -1. Paired runtime outside nec-smt went from 0.9878 to 1.0794, summed +8.78%.",
+        "interpretation": "Switching the rule off globally was an over-correction. The 131983 size data had already shown that outside nec-smt the rule buys 30% fewer auxiliaries for -0.03% size; that was discounted because 4368 auxiliaries looked negligible beside 25 million. It is not: the auxiliary count is the wrong objective on nec-smt and the right one elsewhere.",
+        "noise_floor_incidental": "base solved 9040 here against 9038 recounted from 131646 -- same binary, same corpus, different run. Same-binary churn is about +/-3 solves, not 79, which independently confirms the original losses were never churn. This is the noise floor the investigation had planned a three-seed base-against-base campaign to measure."
+      },
+      "artifacts": {
+        "slurm": "primo-cadical-profile/results/qf-lia-ite-fix-132xxx"
+      },
+      "notes": "Superseded as a default by e7e7284, which distributes only when neither ite branch is itself an ite -- the conclusion the confirmed mechanism supported and that this run's split between nec-smt and Dartagnan forced. Job 132466 gates that. Kept as a record because the two-sided result is the evidence that the rule needs a shape test rather than an on/off switch."
     }
   ]
 }
