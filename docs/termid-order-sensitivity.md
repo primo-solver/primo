@@ -137,13 +137,41 @@ pre-change binary answers `unsat` under all five settings tried.
 Against that single loss, the same run shows ite auxiliaries falling from
 132601 to 128049, with 169 files needing fewer and none needing more.
 
+**Full-division measurement, 2026-09-05.** The balance is now established, and
+it is a timeout-boundary effect rather than a capability change.
+
+At a 60s budget the change costs solves: QF_LIA **9041 -> 8997 (-44)** over all
+13,306 files, QF_LRA **1539 -> 1534 (-5)** over 1,753, QF_UFLRA
+**1271 -> 1270 (-1)** over 1,284. No wrong answers on either side in any
+division, and no file solved by both binaries got a different answer. The
+QF_LIA losses concentrate in `nec-smt`, 68 of 79, which is the ITE-heavy family
+(2,780 files, every one containing both `let` and `ite`).
+
+Those losses are not new incompleteness. 73 of the 79 are timeouts, and the
+median time the *baseline* needed to solve them was 46.8s of the 60s budget.
+Re-running all 115 files whose solved-status changed, both binaries, at 300s:
+**72 of the 79 lost files are solved by head**, only 7 are genuinely out of
+reach, and 11 of the 35 files head gained remain unsolvable by base even at
+300s. Over that boundary set at 300s the score is base 103, head **107**, so
+the sign flips. Total runtime across the full QF_LIA division differs by 0.5%,
+which bounds any systematic slowdown.
+
+Read together: the encoding is not worse, and at a longer budget the change is
+marginally better. At a 60s budget it costs about 50 solves across the three
+divisions, because a large population of `nec-smt` instances sits within a few
+seconds of the limit and id order decides which side they land on.
+
+**Caveat on that reading.** The 300s comparison covers only the 115 files that
+changed at 60s. A file solved by both binaries at 60s could still have become
+slower without crossing the threshold, and this measurement would not see it.
+The 0.5% total-runtime difference is the bound on how much of that there can
+be.
+
 **Status:** accepted, not repaired. Preserving the old id order would mean
 allocating the auxiliaries in the frontend again, which is the design this
 change deliberately removed. The instance is recorded so that a future
 benchmark table showing a lost `rings` solve is recognised rather than
-re-diagnosed. What is *not* established is the net effect on solved counts:
-824 files with an answer-equality check is enough to detect a regression, and
-not enough to measure the balance. That needs a full-division run.
+re-diagnosed.
 
 ## Resolved
 

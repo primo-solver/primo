@@ -30382,6 +30382,44 @@
         "slurm": "primo-cadical-profile/fuzz-results/qf-uflia-model-gate-131560, .../qf-uflia-extended-shape, .../qf-uf-boolean-131562, .../qf-uflia-mutation-131564, primo-cadical-profile/slurm-results/qf_uflra-fuzz-gate, .../finite-domain-fuzz-gate"
       },
       "notes": "Two predictions this run refuted, both recorded in the docs rather than quietly dropped. First, div/mod/abs were said to be rejected conforming input; QF_LIA and QF_UFLIA exclude those operators by name and readmit only * with concrete coefficients, so the original rejection was correct and Primo now accepts them as a documented extension. Second, supporting them was said to unblock the real-seed mutation gate; it moved the yield from about 25% to 22.8%, because typefuzz's mutants overwhelmingly carry non-constant divisors that are nonlinear whatever the frontend accepts. What the work does buy is usability plus the term kinds themselves, which removed the blocker that lead 16 named as its main design question. The net effect of the ite change on solved counts is NOT established: 824 files with answer equality detects a regression but does not measure the balance, and a full-division run is needed for that."
+    },
+    {
+      "id": "2026-09-05-ite-term-full-division-131646",
+      "date": "2026-09-05",
+      "commit": "da3cc0b",
+      "branch": "modular-theory-combination",
+      "kind": "full-division-head-vs-baseline-for-ite-as-a-term",
+      "scope": "Whole-division head-vs-baseline comparison to settle the net effect on solved counts of making ite a term kind, which the earlier 824-file sample could detect a regression from but could not measure the balance of. head is da3cc0b, base is 7ea99a7, the commit before any term-kind work.",
+      "environment": {
+        "host": "CIIRC SLURM cluster; QF_LIA, QF_LRA and QF_UFLRA corpora staged for this run because slurm_prepare_benchmark_workspace.py does not sync them and none was present",
+        "solver": "head Primo 0.1.0 at da3cc0b; base built from a git archive of 7ea99a7 and verified behaviourally (rejects mod as unknown, reports :frontend.ite.auxiliaries) since git archive strips the revision stamp",
+        "tools": "no reference solver used; this is a Primo-vs-Primo comparison on identical shards"
+      },
+      "jobs": {
+        "qf_lia_full": "131646",
+        "qf_lia_boundary_300s": "131847",
+        "qf_lra": "131855",
+        "qf_uflra": "131856"
+      },
+      "commands": {
+        "staging": "tar + zstd of sandbox/non-incremental/{QF_LIA,QF_LRA,QF_UFLRA} shipped over the jump host: 7.64 GiB -> 656 MiB and 4.1 GB -> 329 MB, extracted to 13306 + 1753 + 1284 files",
+        "qf_lia": "PRIMO_COMPARE_SHARDS=80 PRIMO_COMPARE_TIMEOUT=60 PRIMO_COMPARE_SOLVERS='head=build-slurm-rel/primo --quiet;base=.../primo-baseline-7ea99a7/build-slurm-rel/primo --quiet' sbatch --array=0-159 scripts/slurm_qf_lia_full_solver_compare.sbatch",
+        "lra": "ad hoc per-division A/B sbatch, 20 shards per binary, 60s timeout",
+        "boundary": "the 115 files whose solved-status changed, both binaries, 300s timeout"
+      },
+      "results": {
+        "qf_lia_60s": "13306 files, solved base 9041 head 8997 (-44); 35 gained, 79 lost; 0 wrong answers either side; 0 answer disagreements among files both solved; total runtime 247951s vs 249111s (+0.5%)",
+        "qf_lia_losses_by_family": "nec-smt 68, rings 5, bofill-scheduling 2, convert 1, RWS 1, arctic-matrix 1, tropical-matrix 1; gains nec-smt 18, convert 7, 20210219-Dartagnan 6, bofill-scheduling 2, RWS 2",
+        "qf_lra_60s": "1753 files, solved base 1539 head 1534 (-5); 3 gained, 8 lost; 0 disagreements",
+        "qf_uflra_60s": "1284 files, solved base 1271 head 1270 (-1); 0 gained, 1 lost; 0 disagreements",
+        "boundary_300s": "of the 79 QF_LIA files lost at 60s, 72 are solved by head at 300s and 7 are not; of the 35 gained, 11 remain unsolvable by base at 300s; over the 115-file boundary set at 300s base solves 103 and head 107, so the sign flips",
+        "diagnosis": "73 of 79 losses are timeouts rather than new incompleteness, and the median baseline solve time on them was 46.8s of the 60s budget with 42 of 79 above 45s. The cost is timeout-boundary churn from TermId order, concentrated in nec-smt where a large population sits within seconds of the limit.",
+        "combination_layer": "A QF_UFLRA probe with an ite spanning a UF application and an arithmetic atom gives identical :no.interface.terms, :no.interface.candidate-pairs and :no.purification.definitions on both binaries; head allocates 1 ite auxiliary where base allocates 2, because the repeated ite is hash-consed."
+      },
+      "artifacts": {
+        "slurm": "primo-cadical-profile/results/qf-lia-full-compare-131646, .../ite-boundary, .../ite-ab-qflra, .../ite-ab-qfuflra"
+      },
+      "notes": "Conclusion: no capability regression and no soundness issue, but about 50 solves lost across the three divisions at a 60s budget. The earlier 824-file A/B reported 823 identical answers and was simply too small to see this; its own caveat said it could not measure the balance, and that was the load-bearing part. Two limits on the 300s reading: it covers only the 115 files that changed at 60s, so a file that got slower without crossing the threshold would not appear, bounded by the 0.5% total-runtime difference; and the per-file timing column in the QF_LRA and QF_UFLRA runs is unusable because bc is absent on the compute nodes, so only solved counts are reported for those."
     }
   ]
 }
