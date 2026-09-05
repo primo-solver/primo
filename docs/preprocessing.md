@@ -981,9 +981,32 @@ This used to be a rule in the frontend that matched an operand which was
 `dispatch_equality`. As a term rewrite it also fires on an ITE reached through
 a `let` binding, or produced by an earlier rewrite, or hidden behind a nullary
 `define-fun` -- none of which a rule matching S-expression shape could see --
-and `dispatch_equality` is now a plain chainable fold, 100 lines shorter. The
-rule distributes one operand per equality and does not iterate, so a nested
-`(= u (ite c (ite d x y) z))` still leaves the inner ITE to be lowered.
+and `dispatch_equality` is now a plain chainable fold, 100 lines shorter.
+
+**The rule fires only on an ITE with one parent.** It is sound for any ITE but
+profitable only for an unshared one, and the arithmetic is one-sided. Lowering
+pays once per hash-consed ITE -- one auxiliary and two guarded equalities,
+shared by every parent because the walk is memoized on the term -- and then one
+equality per parent. Distribution pays the guard structure *per parent*, every
+time. So on an ITE with `n` parents it trades one auxiliary for roughly `n`
+extra nodes. `count_parent_edges` counts parent edges over the assertion DAG
+and the rule declines anything above one, counted by
+`:preprocessing.ite.equality-distribution-blocked`. This is the same hazard
+[lead 16](lead-ite-preprocessing)'s compression piece names for chains: extend
+only through subterms occurring once, so a multiply-occurring tail keeps its
+sharing.
+
+**The pass is bounded, not run to a fixed point.**
+`--extended-simplification-rounds` (default 1) sets how many bottom-up
+traversals run. One traversal cannot see the nodes its own rules create, so
+`(= u (ite c a (ite d e f)))` distributes once and leaves the inner ITE to
+lowering; more rounds reach further down. That looked like a defect and is not:
+each distribution doubles its assertion, so iterating to a fixed point is
+exponential. Measured on
+`nec-smt/large/getoption_directories/prp-4-113.smt2` (1.6MB), an unbounded run
+reached **116s and 23GB** where the same file with the leaf off preprocesses in
+**3.0s and 254MB**, converging only after 32 rounds. The bound is what makes
+the rule safe; it is not a thoroughness knob.
 
 ### What belongs in a constructor and what does not
 

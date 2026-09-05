@@ -3652,6 +3652,7 @@ core::TermId simplify_extended_node(core::TermManager& terms, core::TermKind kin
                                     const util::Rational& divisor,
                                     const std::vector<core::TermId>& children,
                                     const std::vector<std::size_t>& parent_edges,
+                                    const SimplifyExtendedTermsOptions& options,
                                     SimplifyExtendedTermsResult& result) {
   switch (kind) {
     case core::TermKind::Ite: {
@@ -3764,6 +3765,9 @@ core::TermId simplify_extended_node(core::TermManager& terms, core::TermKind kin
       // This is the same hazard lead 16's ITE-compression piece names for
       // chains: extend only through subterms occurring once, so that a
       // multiply-occurring tail keeps its sharing.
+      if (!options.distribute_equalities) {
+        return core::kInvalidTermId;
+      }
       for (std::size_t index = 0; index < 2; ++index) {
         const core::TermId candidate = children.at(index);
         const core::Term& operand = terms.get(candidate);
@@ -3843,7 +3847,8 @@ core::TermId rebuild_lowered_node(core::TermManager& terms, core::TermId origina
 // subterms this traversal has already passed, so anything the new node exposes
 // is left for the next round rather than handled here.
 SimplifyExtendedTermsResult simplify_extended_terms_round(
-    core::TermManager& terms, const std::vector<core::TermId>& assertions) {
+    core::TermManager& terms, const std::vector<core::TermId>& assertions,
+    const SimplifyExtendedTermsOptions& options) {
   SimplifyExtendedTermsResult result;
   const std::vector<std::size_t> parent_edges = count_parent_edges(terms, assertions);
 
@@ -3894,7 +3899,7 @@ SimplifyExtendedTermsResult simplify_extended_terms_round(
       }
 
       const core::TermId simplified =
-          simplify_extended_node(terms, kind, rational, children, parent_edges, result);
+          simplify_extended_node(terms, kind, rational, children, parent_edges, options, result);
       if (simplified != core::kInvalidTermId) {
         rewritten[visit.term] = simplified;
         continue;
@@ -3910,9 +3915,9 @@ SimplifyExtendedTermsResult simplify_extended_terms_round(
 
 SimplifyExtendedTermsResult simplify_extended_terms(core::TermManager& terms,
                                                     const std::vector<core::TermId>& assertions,
-                                                    std::size_t rounds) {
+                                                    const SimplifyExtendedTermsOptions& options) {
   SimplifyExtendedTermsResult result;
-  if (terms.extended_term_count() == 0 || rounds == 0) {
+  if (terms.extended_term_count() == 0 || options.rounds == 0) {
     result.assertions = assertions;
     return result;
   }
@@ -3930,8 +3935,8 @@ SimplifyExtendedTermsResult simplify_extended_terms(core::TermManager& terms,
   // The bound is what makes this rule safe, not a tuning knob for how thorough
   // it is.
   std::vector<core::TermId> current = assertions;
-  for (std::size_t round = 0; round < rounds; ++round) {
-    SimplifyExtendedTermsResult pass = simplify_extended_terms_round(terms, current);
+  for (std::size_t round = 0; round < options.rounds; ++round) {
+    SimplifyExtendedTermsResult pass = simplify_extended_terms_round(terms, current, options);
     ++result.rounds;
     result.ite_rewrites += pass.ite_rewrites;
     result.equalities_distributed += pass.equalities_distributed;

@@ -186,15 +186,27 @@ struct SimplifyExtendedTermsResult {
 //
 // Nothing but the frontend builds these four kinds, so a single pass before
 // lowering sees all of them.
-// `rounds` bounds the traversals. One is a single bottom-up pass, which cannot
-// reach the nodes a rule creates; more rounds let a nested ITE under an
-// equality distribute all the way down. That is *not* free: the distribution
-// doubles the assertion each time it fires, so iterating it to a fixed point
-// is exponential -- on the largest nec-smt file an unbounded run reached 23GB
-// and 116s against 3s with the leaf off. The bound is the safety valve.
+struct SimplifyExtendedTermsOptions {
+  // Bottom-up traversals to run. One pass cannot reach the nodes its own rules
+  // create, so a nested ITE under an equality only distributes one level per
+  // round. More rounds are *not* free: each distribution doubles its
+  // assertion, so iterating to a fixed point is exponential -- on
+  // nec-smt/large/getoption_directories/prp-4-113.smt2 an unbounded run
+  // reached 116s and 23GB against 3.0s with the leaf off. The bound is the
+  // safety valve, not a thoroughness knob. Zero disables the leaf.
+  std::size_t rounds = 1;
+  // (= u (ite c a b)) -> (and (=> c (= u a)) (=> (not c) (= u b))).
+  // Separately switchable from the rest of the leaf because it is the only
+  // rule here that *grows* the formula, and it is the one that has to be
+  // measured on its own: the collapses, the negated-condition normalization,
+  // the Boolean-ITE-to-connective rules and the div/mod/abs identities all
+  // shrink what they touch.
+  bool distribute_equalities = true;
+};
+
 SimplifyExtendedTermsResult simplify_extended_terms(core::TermManager& terms,
                                                     const std::vector<core::TermId>& assertions,
-                                                    std::size_t rounds);
+                                                    const SimplifyExtendedTermsOptions& options);
 
 struct LowerExtendedTermsResult {
   std::vector<core::TermId> assertions;

@@ -350,6 +350,10 @@ struct CheckSatOptions {
   // distribution doubles its assertion each time it fires: unbounded, the
   // largest nec-smt file took 116s and 23GB against 3.0s with the leaf off.
   std::size_t extended_simplification_rounds = 1;
+  // The (= u (ite c a b)) distribution specifically. Separate from the leaf's
+  // on/off switch because it is the only rule there that grows the formula,
+  // and the one whose value has to be established on its own.
+  bool ite_equality_distribution = true;
   // QF_LIA branch-and-bound's node cap (docs/qf-lia-branch-and-bound.md).
   // Plain branch-and-bound has no completeness argument of its own -- an
   // unbounded integer-infeasible polytope can branch forever -- so this is

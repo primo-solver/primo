@@ -137,6 +137,31 @@ pre-change binary answers `unsat` under all five settings tried.
 Against that single loss, the same run shows ite auxiliaries falling from
 132601 to 128049, with 169 files needing fewer and none needing more.
 
+**Correction, 2026-09-05: the auxiliary count was the wrong metric, and most of
+what followed from this entry was not order sensitivity at all.** The full
+QF_LIA division at 60s lost 79 files and gained 35, and the loss was recorded
+as timeout-boundary churn from the id shift described above. It is not. Two
+measurements say so:
+
+- **Paired runtimes** on files both binaries solve: geometric mean `head/base`
+  is **1.1023 on `nec-smt`** and **0.9878 on every other family**. Order churn
+  does not concentrate on one family.
+- **Preprocessed formula size** (`--preprocess-only`, so entirely
+  deterministic -- no scheduler, no timeout, no search), whole division, job
+  131983: `nec-smt` **+10.11%**, every other family 0.00% except `RWS` at
+  -19.46%. 2789 files bigger, 53 smaller, 10172 byte-identical.
+
++10.11% size against a +10.23% runtime mean is the same number twice. The cause
+is the equality distribution in `simplify-extended-terms`, which bought a 2.7%
+reduction in auxiliaries for a 10% larger formula. The auxiliary count went
+down while the thing it was standing in for went up.
+
+This entry stays open, because the id shift it describes is real and does
+produce two-way churn -- the paired ratios have p10 0.60 and p90 1.85, and
+there were 35 genuine gains. It is simply not what the net number measured.
+Recorded here because "it is probably order churn" is exactly the kind of
+diagnosis this docket exists to stop people accepting without a control.
+
 **Full-division measurement, 2026-09-05.** The balance is now established, and
 it is a timeout-boundary effect rather than a capability change.
 

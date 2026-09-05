@@ -124,7 +124,7 @@ Tactic make_normalize_boolean(NormalizeBooleanOptions options);
 // skip it. Fresh constants come from the executing TacticContext.
 // Rewrites Ite, IntDiv, IntMod and Abs before they are lowered. Runs in the
 // initial sequence immediately ahead of the lowering leaf.
-Tactic make_simplify_extended_terms(std::size_t rounds);
+Tactic make_simplify_extended_terms(const SimplifyExtendedTermsOptions& options);
 
 Tactic make_lower_extended_terms();
 
