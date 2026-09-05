@@ -1037,6 +1037,19 @@ auxiliaries over 10,447 files -- so this default is not a statement that the
 rewrite is bad everywhere. It is 4,368 auxiliaries there against 25 million on
 `nec-smt`, and the family carrying the weight decides.
 
+**Why it loses on `nec-smt` specifically: the ITEs there are nested chains, and
+the rule collects almost nothing on one.** On
+`nec-smt/large/getoption_directories/prp-4-113.smt2` the distribution fires
+**18,867 times and removes 20 auxiliaries** (40,284 to 40,264), for +58,023
+reachable nodes -- **3.08 nodes per firing**, which is just the guard structure
+and nothing anomalous. Distributing `(= u (ite c a (ite d e f)))` removes the
+outer ITE's auxiliary and hands back `(= u (ite d e f))`, which needs one
+regardless. The benefit only arrives once the whole chain is distributed, which
+is what the round count buys and why it buys it at an exponential price. On a
+family whose ITEs are single rather than nested -- everything outside
+`nec-smt` -- the first firing is also the last, the auxiliary really does go
+away, and the rule is a small win.
+
 ### What belongs in a constructor and what does not
 
 `TermManager`'s constructors do only what defines the representation: sort
