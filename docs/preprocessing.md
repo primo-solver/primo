@@ -1008,6 +1008,27 @@ reached **116s and 23GB** where the same file with the leaf off preprocesses in
 **3.0s and 254MB**, converging only after 32 rounds. The bound is what makes
 the rule safe; it is not a thoroughness knob.
 
+**It is separately switchable, because it is the only rule here that grows the
+formula.** `--no-ite-equality-distribution` keeps the rest of the leaf and
+drops just this rule. Everything else in `simplify-extended-terms` -- the
+equal-branch collapse, the negated-condition normalization, the nested
+same-condition merge, the Boolean-ITE-to-connective rules, the `div`/`mod`/
+`abs` identities -- shrinks what it touches, so the leaf as a whole and this
+one rule need separate verdicts. Preprocessed size and auxiliary count on two
+`nec-smt` files, one binary:
+
+| configuration | 16KB file | 1.6MB file |
+|---|---|---|
+| leaf off (`--extended-simplification-rounds 0`) | 3505 / 314 | 453897 / 41415 |
+| `--no-ite-equality-distribution` | **3375 / 300** | **443718 / 40284** |
+| default (one round) | 3747 / 295 | 489021 / 40264 |
+| `--extended-simplification-rounds 2` | 3677 / 248 | 561272 / 36344 |
+
+Distribution off is smaller *and* uses fewer auxiliaries than switching the
+whole leaf off, so the rest of the leaf pays for itself and this rule does not.
+More rounds buy fewer auxiliaries at a steeply rising size, which is the same
+trade the rule makes at one round, only more of it.
+
 ### What belongs in a constructor and what does not
 
 `TermManager`'s constructors do only what defines the representation: sort

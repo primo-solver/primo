@@ -2072,6 +2072,32 @@ when this lead was written: the ITE node is hash-consed, so identical ITEs
 share one auxiliary instead of one per occurrence; and `(ite c a a)` and a
 constant condition fold in the constructor, which they previously could not.
 
+**Update 2026-09-05: the first rule of this kind Primo shipped lost solves, and
+the reason is one this lead already names.** Making ITE a term came with an
+equality distribution, `(= u (ite c a b))` to
+`(and (=> c (= u a)) (=> (not c) (= u b)))`, which avoids the auxiliary. Over
+the full QF_LIA division it made the preprocessed formula **10.11% larger on
+`nec-smt`** and 0.00% different on almost every other family, for a 2.7%
+reduction in auxiliary constants, and cost about 44 solves at 60s
+(`2026-09-05-ite-loss-attribution-131983` in [](run-log.md)). Three things
+carry over to the work below, and none of them are hypothetical any more:
+
+1. **Sharing is the whole game.** Lowering pays once per hash-consed ITE and
+   then one equality per parent; distribution pays the guard structure per
+   parent. The rule now declines any ITE with more than one parent edge. That
+   is piece 2's "extend the chain only through subterms occurring once" arriving
+   early, and it is not a refinement -- it is the difference between the rule
+   helping and hurting.
+2. **Do not iterate to a fixed point.** Running the distribution to closure is
+   exponential: 116s and 23GB on
+   `nec-smt/large/getoption_directories/prp-4-113.smt2` against 3.0s with the
+   rule off, converging only after 32 rounds. CITE's memo caches are described
+   in this lead as an optimization; on this family they are a termination
+   requirement.
+3. **Auxiliary count is not the objective.** The 824-file A/B that promoted the
+   ITE term change measured auxiliaries, saw them fall, and shipped. They fell
+   while the formula grew. Measure size and solves.
+
 **Falsifier, stated in advance.** Implement CITE simplification and compression
 together (the thesis is explicit that either alone is worse than neither), then
 measure on the 2780 `nec-smt` files with the same-binary control the stage 4
