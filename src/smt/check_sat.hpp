@@ -350,10 +350,18 @@ struct CheckSatOptions {
   // distribution doubles its assertion each time it fires: unbounded, the
   // largest nec-smt file took 116s and 23GB against 3.0s with the leaf off.
   std::size_t extended_simplification_rounds = 1;
-  // The (= u (ite c a b)) distribution specifically. Separate from the leaf's
-  // on/off switch because it is the only rule there that grows the formula,
-  // and the one whose value has to be established on its own.
-  bool ite_equality_distribution = true;
+  // The (= u (ite c a b)) distribution specifically, separate from the leaf's
+  // own switch because it is the only rule there that grows the formula.
+  //
+  // Off by default on measurement. Over the full QF_LIA division it is the
+  // only arm that loses to simply not running the leaf: preprocessed size
+  // +5.75% overall and +9.91% on nec-smt, for 0.36 percentage points more
+  // auxiliary reduction than the rest of the leaf achieves on its own. Leaving
+  // it on cost about 44 solves at 60s. Outside nec-smt it is very nearly free
+  // -- size -0.03% and 30% fewer auxiliaries -- but that is 4368 auxiliaries
+  // over 10447 files against 25 million on nec-smt, so the families that carry
+  // the weight decide it.
+  bool ite_equality_distribution = false;
   // QF_LIA branch-and-bound's node cap (docs/qf-lia-branch-and-bound.md).
   // Plain branch-and-bound has no completeness argument of its own -- an
   // unbounded integer-infeasible polytope can branch forever -- so this is

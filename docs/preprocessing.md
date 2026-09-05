@@ -1008,26 +1008,34 @@ reached **116s and 23GB** where the same file with the leaf off preprocesses in
 **3.0s and 254MB**, converging only after 32 rounds. The bound is what makes
 the rule safe; it is not a thoroughness knob.
 
-**It is separately switchable, because it is the only rule here that grows the
-formula.** `--no-ite-equality-distribution` keeps the rest of the leaf and
-drops just this rule. Everything else in `simplify-extended-terms` -- the
+**It is off by default, because it is the only rule here that grows the
+formula.** `--ite-equality-distribution` turns it on; the rest of the leaf runs
+either way. Everything else in `simplify-extended-terms` -- the
 equal-branch collapse, the negated-condition normalization, the nested
 same-condition merge, the Boolean-ITE-to-connective rules, the `div`/`mod`/
 `abs` identities -- shrinks what it touches, so the leaf as a whole and this
-one rule need separate verdicts. Preprocessed size and auxiliary count on two
-`nec-smt` files, one binary:
+one rule need separate verdicts. Preprocessed size and auxiliary count over the
+whole 13,306-file QF_LIA division, one binary, relative to running no leaf at
+all (jobs 132066 and 132106):
 
-| configuration | 16KB file | 1.6MB file |
-|---|---|---|
-| leaf off (`--extended-simplification-rounds 0`) | 3505 / 314 | 453897 / 41415 |
-| `--no-ite-equality-distribution` | **3375 / 300** | **443718 / 40284** |
-| default (one round) | 3747 / 295 | 489021 / 40264 |
-| `--extended-simplification-rounds 2` | 3677 / 248 | 561272 / 36344 |
+| configuration | size | ite auxiliaries | size on `nec-smt` |
+|---|---:|---:|---:|
+| leaf off (`--extended-simplification-rounds 0`) | — | — | — |
+| **default** (distribution off) | **-1.27%** | -2.67% | **-2.16%** |
+| `--ite-equality-distribution` | +5.75% | -3.03% | +9.91% |
+| ... with `--extended-simplification-rounds 2` | +8.78% | -14.84% | +15.14% |
+| ... with `--extended-simplification-rounds 4` | +16.78% | -15.51% | +28.90% |
 
-Distribution off is smaller *and* uses fewer auxiliaries than switching the
-whole leaf off, so the rest of the leaf pays for itself and this rule does not.
-More rounds buy fewer auxiliaries at a steeply rising size, which is the same
-trade the rule makes at one round, only more of it.
+The default is the only arm that beats not running the leaf on *both* metrics:
+the rest of the leaf pays for itself and this rule does not. Distribution buys
+0.36 percentage points more auxiliary reduction than the other rules manage
+alone, and pays 7 percentage points of formula size for it. More rounds are the
+same trade, only more of it.
+
+Outside `nec-smt` the rule is very nearly free -- size -0.03% and 30% fewer
+auxiliaries over 10,447 files -- so this default is not a statement that the
+rewrite is bad everywhere. It is 4,368 auxiliaries there against 25 million on
+`nec-smt`, and the family carrying the weight decides.
 
 ### What belongs in a constructor and what does not
 

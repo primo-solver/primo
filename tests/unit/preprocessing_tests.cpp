@@ -1739,8 +1739,9 @@ void simplification_rewrites_ite_structurally() {
   const primo::core::TermId zero = terms.mk_rational(primo::util::Rational(0), int_sort);
 
   const auto simplify = [&terms](primo::core::TermId assertion) {
-    return primo::smt::simplify_extended_terms(terms, {assertion},
-                                               primo::smt::SimplifyExtendedTermsOptions{})
+    return primo::smt::simplify_extended_terms(
+               terms, {assertion},
+               primo::smt::SimplifyExtendedTermsOptions{.distribute_equalities = true})
         .assertions.at(0);
   };
 
@@ -1775,7 +1776,7 @@ void simplification_distributes_equality_over_an_ite() {
 
   const std::vector<primo::core::TermId> assertions{terms.mk_eq(u, terms.mk_ite(p, x, y))};
   const primo::smt::SimplifyExtendedTermsResult simplified = primo::smt::simplify_extended_terms(
-      terms, assertions, primo::smt::SimplifyExtendedTermsOptions{});
+      terms, assertions, primo::smt::SimplifyExtendedTermsOptions{.distribute_equalities = true});
 
   check(simplified.equalities_distributed == 1);
   check(simplified.assertions.at(0) ==
@@ -1813,7 +1814,7 @@ void simplification_does_not_distribute_a_shared_ite() {
   // The same hash-consed ite under two equalities.
   const std::vector<primo::core::TermId> assertions{terms.mk_eq(u, shared), terms.mk_eq(v, shared)};
   const primo::smt::SimplifyExtendedTermsResult simplified = primo::smt::simplify_extended_terms(
-      terms, assertions, primo::smt::SimplifyExtendedTermsOptions{});
+      terms, assertions, primo::smt::SimplifyExtendedTermsOptions{.distribute_equalities = true});
   check(simplified.equalities_distributed == 0);
   check(simplified.equality_distributions_blocked == 2);
   check(simplified.assertions == assertions);
@@ -1853,7 +1854,7 @@ void simplification_rounds_reach_a_nested_ite() {
   // One round distributes the outer equality only, and the inner ite is left
   // for lowering to give an auxiliary.
   const primo::smt::SimplifyExtendedTermsResult once = primo::smt::simplify_extended_terms(
-      terms, assertions, primo::smt::SimplifyExtendedTermsOptions{});
+      terms, assertions, primo::smt::SimplifyExtendedTermsOptions{.distribute_equalities = true});
   check(once.rounds == 1);
   check(once.equalities_distributed == 1);
   AuxiliaryFactory one_round_auxiliaries{symbols, terms};
@@ -1863,7 +1864,8 @@ void simplification_rounds_reach_a_nested_ite() {
   // Three rounds reach the inner one: the second distributes it, the third
   // finds nothing and stops the loop.
   const primo::smt::SimplifyExtendedTermsResult thrice = primo::smt::simplify_extended_terms(
-      terms, assertions, primo::smt::SimplifyExtendedTermsOptions{.rounds = 3});
+      terms, assertions,
+      primo::smt::SimplifyExtendedTermsOptions{.rounds = 3, .distribute_equalities = true});
   check(thrice.rounds == 3);
   check(thrice.equalities_distributed == 2);
   AuxiliaryFactory three_round_auxiliaries{symbols, terms};
@@ -1873,7 +1875,8 @@ void simplification_rounds_reach_a_nested_ite() {
 
   // Zero rounds is the leaf switched off: the assertions come back untouched.
   const primo::smt::SimplifyExtendedTermsResult none = primo::smt::simplify_extended_terms(
-      terms, assertions, primo::smt::SimplifyExtendedTermsOptions{.rounds = 0});
+      terms, assertions,
+      primo::smt::SimplifyExtendedTermsOptions{.rounds = 0, .distribute_equalities = true});
   check(none.rounds == 0);
   check(none.assertions == assertions);
 }
@@ -1886,8 +1889,9 @@ void simplification_rewrites_div_mod_and_abs() {
   const primo::core::TermId x = terms.mk_constant(x_symbol);
   const primo::core::TermId zero = terms.mk_rational(primo::util::Rational(0), int_sort);
   const auto simplify = [&terms](primo::core::TermId assertion) {
-    return primo::smt::simplify_extended_terms(terms, {assertion},
-                                               primo::smt::SimplifyExtendedTermsOptions{})
+    return primo::smt::simplify_extended_terms(
+               terms, {assertion},
+               primo::smt::SimplifyExtendedTermsOptions{.distribute_equalities = true})
         .assertions.at(0);
   };
 

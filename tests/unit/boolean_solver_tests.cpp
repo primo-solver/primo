@@ -694,6 +694,12 @@ void nullary_define_fun_replays_boolean_argument_constraints() {
 // and this needs no auxiliary at all -- which the S-expression rule it
 // replaced could not do.
 void nullary_define_fun_term_ite_needs_no_auxiliary() {
+  // Distribution is off by default (it grows the formula more than the
+  // auxiliary is worth), so this opts in: the property under test is that the
+  // rule is a *term* rewrite and so reaches through the definition, which the
+  // S-expression rule it replaced could not do.
+  primo::smt::CheckSatOptions options;
+  options.ite_equality_distribution = true;
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UF)
     (declare-sort A 0)
@@ -704,7 +710,8 @@ void nullary_define_fun_term_ite_needs_no_auxiliary() {
     (assert p)
     (assert (distinct d a))
     (check-sat)
-  )");
+  )",
+                                       options);
   assert(result.result == CheckSatResult::Unsat);
   assert(result.statistics.get(":frontend.define-fun.nullary-side-assertions") == 0);
   assert(result.statistics.get(":preprocessing.ite.auxiliaries") == 0);
@@ -730,7 +737,9 @@ void extended_simplification_can_be_switched_off() {
     (check-sat)
   )";
 
-  const auto simplified = check_sat_smtlib(kInput);
+  primo::smt::CheckSatOptions distributing;
+  distributing.ite_equality_distribution = true;
+  const auto simplified = check_sat_smtlib(kInput, distributing);
   assert(simplified.result == CheckSatResult::Unsat);
   assert(simplified.statistics.get(":preprocessing.ite.equality-distributed") == 1);
   assert(simplified.statistics.get(":preprocessing.ite.auxiliaries") == 0);
@@ -885,6 +894,8 @@ void boolean_ite_is_eliminated() {
 }
 
 void term_ite_is_eliminated() {
+  primo::smt::CheckSatOptions options;
+  options.ite_equality_distribution = true;
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_UF)
     (declare-sort U 0)
@@ -896,9 +907,11 @@ void term_ite_is_eliminated() {
     (assert (= x (ite c a b)))
     (assert (not (= x a)))
     (check-sat)
-  )");
+  )",
+                                       options);
   assert(result.result == CheckSatResult::Unsat);
   // Distributing the equality over the branches avoids the auxiliary entirely.
+  // Off by default, so this opts in; the default path lowers to one auxiliary.
   assert(result.statistics.get(":preprocessing.ite.auxiliaries") == 0);
 }
 

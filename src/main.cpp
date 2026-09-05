@@ -279,9 +279,12 @@ int run_main(int argc, char** argv) {
                  "nested ite, at a cost that is exponential in the limit")
       ->capture_default_str()
       ->check(CLI::Range(std::size_t{0}, std::size_t{64}));
+  add_flag_with_default(app, "--ite-equality-distribution",
+                        solver_options.ite_equality_distribution,
+                        "Distribute (= u (ite c a b)) over the branches; off by default because "
+                        "it grows the formula more than the auxiliary it avoids is worth");
   add_flag_with_default(app, "--no-ite-equality-distribution", no_ite_equality_distribution,
-                        "Disable (= u (ite c a b)) distribution, the one rewrite in the "
-                        "extended-term leaf that grows the formula");
+                        "Disable (= u (ite c a b)) distribution");
   add_flag_with_default(app, "--eq-bridge", solver_options.eq_bridge,
                         "Add equalities implied by every branch of selected QF_UF disjunctions");
   add_flag_with_default(app, "--no-eq-bridge", no_eq_bridge,
@@ -745,7 +748,7 @@ int run_main(int argc, char** argv) {
         starts_with(name, "--preprocess-passes") ||
         starts_with(name, "--extended-simplification") ||
         starts_with(name, "--no-extended-simplification") ||
-        name == "--no-ite-equality-distribution") {
+        name == "--ite-equality-distribution" || name == "--no-ite-equality-distribution") {
       return kGroupPreprocessing;
     }
     // The SAT layer proper, plus the knobs that sit on the DPLL(T)
