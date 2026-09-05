@@ -30413,13 +30413,48 @@
         "qf_lra_60s": "1753 files, solved base 1539 head 1534 (-5); 3 gained, 8 lost; 0 disagreements",
         "qf_uflra_60s": "1284 files, solved base 1271 head 1270 (-1); 0 gained, 1 lost; 0 disagreements",
         "boundary_300s": "of the 79 QF_LIA files lost at 60s, 72 are solved by head at 300s and 7 are not; of the 35 gained, 11 remain unsolvable by base at 300s; over the 115-file boundary set at 300s base solves 103 and head 107, so the sign flips",
-        "diagnosis": "73 of 79 losses are timeouts rather than new incompleteness, and the median baseline solve time on them was 46.8s of the 60s budget with 42 of 79 above 45s. The cost is timeout-boundary churn from TermId order, concentrated in nec-smt where a large population sits within seconds of the limit.",
+        "diagnosis": "SUPERSEDED, see 2026-09-05-ite-loss-attribution-131983. This field read: '73 of 79 losses are timeouts rather than new incompleteness, and the median baseline solve time on them was 46.8s of the 60s budget with 42 of 79 above 45s. The cost is timeout-boundary churn from TermId order, concentrated in nec-smt where a large population sits within seconds of the limit.' The timeout facts are right and the attribution is wrong. It was never controlled: no noise floor was measured, and the 2.3:1 loss-to-gain ratio concentrated in the one ite-heavy family should have been the tell. A deterministic --preprocess-only comparison puts the preprocessed formula 10.11% larger on nec-smt and 0.00% different on almost every other family, matching a 10.23% paired runtime geometric mean on nec-smt against 0.99 elsewhere. Churn is real and large but it is not what the net number measured.",
         "combination_layer": "A QF_UFLRA probe with an ite spanning a UF application and an arithmetic atom gives identical :no.interface.terms, :no.interface.candidate-pairs and :no.purification.definitions on both binaries; head allocates 1 ite auxiliary where base allocates 2, because the repeated ite is hash-consed."
       },
       "artifacts": {
         "slurm": "primo-cadical-profile/results/qf-lia-full-compare-131646, .../ite-boundary, .../ite-ab-qflra, .../ite-ab-qfuflra"
       },
       "notes": "Conclusion: no capability regression and no soundness issue, but about 50 solves lost across the three divisions at a 60s budget. The earlier 824-file A/B reported 823 identical answers and was simply too small to see this; its own caveat said it could not measure the balance, and that was the load-bearing part. Two limits on the 300s reading: it covers only the 115 files that changed at 60s, so a file that got slower without crossing the threshold would not appear, bounded by the 0.5% total-runtime difference; and the per-file timing column in the QF_LRA and QF_UFLRA runs is unusable because bc is absent on the compute nodes, so only solved counts are reported for those."
+    },
+    {
+      "id": "2026-09-05-ite-loss-attribution-131983",
+      "date": "2026-09-05",
+      "commit": "5b93dc5",
+      "baseline_commit": "7ea99a7",
+      "branch": "modular-theory-combination",
+      "kind": "deterministic-encoding-size-attribution",
+      "scope": "Why the ite-as-a-term change lost 79 QF_LIA files. The 131646 entry recorded the loss as timeout-boundary churn from TermId order. This tests that against two things it never had: a re-reading of the timing data it already collected, and a deterministic measurement of the preprocessed formula size that no scheduler or timeout can affect.",
+      "environment": {
+        "host": "CIIRC SLURM cluster for the size comparison; local workstation for the re-analysis of the 131646 CSVs and the per-file probes",
+        "solver": "head Primo 0.1.0 at da3cc0b, base built from a git archive of 7ea99a7 and behaviourally verified (rejects mod as an unknown symbol, reports :frontend.ite.auxiliaries); the same two binaries the 131646 comparison used",
+        "corpus": "the same 13306-file QF_LIA staging as 131646"
+      },
+      "jobs": {
+        "qf_lia_preprocessing_size": "131983; 40 shards, both arms per shard"
+      },
+      "commands": {
+        "size": "PRIMO_SIZE_SOLVERS='base=.../primo-baseline-7ea99a7/build-slurm-rel/primo;head=.../primo-cadical-profile/build-slurm-rel/primo' sbatch scripts/slurm_preprocessing_size_compare.sbatch",
+        "method": "scripts/compare_preprocessing_size.py runs each binary with --quiet --stats --preprocess-only, so parsing and preprocessing run and search does not. Every counter is a function of the input and the binary alone.",
+        "reanalysis": "the 131646 per-file CSVs, recomputing solved counts at virtual budgets from the recorded per-file times and taking paired head/base ratios on files both binaries solved"
+      },
+      "results": {
+        "virtual_budget_sweep": "solved-count delta head-base at 1/2/5/10/20/30/45/60s: -7 -5 -14 -18 +2 -18 -27 -42. It changes sign at 20s and there are 21-60 gains at every budget, so two-way churn is real and large; but the deficit also grows with the budget, which churn alone does not predict.",
+        "paired_runtime_ratio": "files both binaries solve with base >= 1s. nec-smt: n=483, geometric mean head/base 1.1023, median 1.1441, 291 slower vs 149 faster, summed time +10.88%. Every other family: n=872, geometric mean 0.9878, median 1.0040, 664 of 872 within 5%, summed time -0.34%. Order churn does not concentrate on one family.",
+        "preprocessed_size": "13227 files usable (79 excluded, both arms timed out preprocessing). Whole division +5.86%: 2789 files bigger, 53 smaller, 10172 byte-identical. By family: nec-smt +10.11% over 2780 files; RWS -19.46% over 20; fft +4.61% over 9; 2019-ezsmt -0.01%; every other family exactly 0.00%.",
+        "auxiliaries": "ite auxiliaries over the same files fell 2.75% (24969223 -> 24283101), and on nec-smt 2.74%. That was the metric the earlier 824-file A/B optimized and reported as the win.",
+        "conclusion": "+10.11% formula size against a +10.23% runtime geometric mean on the same family is the same number twice. The losses are a deterministic encoding regression, not timeout churn: the equality distribution in simplify-extended-terms bought a 2.7% reduction in auxiliary constants for a 10% larger formula on the family that has the ites.",
+        "mechanism_probes": "Same binary, one 16KB and one 1.6MB nec-smt file, (term-size.final / ite auxiliaries). Leaf off: 3505/314 and 453897/41415. Equality distribution off, rest of the leaf on: 3375/300 and 443718/40284. Default: 3747/295 and 489021/40264. Two rounds: 3677/248 and 561272/36344. Distribution off is best on both metrics at once, so the regression is that one rule and not the leaf.",
+        "fixed_point_is_exponential": "Iterating the leaf to a fixed point rather than one pass reached 116s and 23GB on nec-smt/large/getoption_directories/prp-4-113.smt2, against 3.0s and 254MB with the leaf off, converging after 32 rounds. The single pass that looked like a missing fixed point was an accidental safety valve."
+      },
+      "artifacts": {
+        "slurm": "primo-cadical-profile/results/preproc-size-131983"
+      },
+      "notes": "The noise-floor control this investigation was going to run (base against base under permuted declare-fun order, to size the churn band) was not needed: the deterministic size measurement settles the question without it, and 10172 byte-identical files show the change is inert wherever there is no ite. Two limits. The size metric is reachable-DAG node count after preprocessing, which is a proxy for what the SAT solver sees rather than a clause count, because --preprocess-only stops before clausification. And 79 files are excluded because preprocessing alone did not finish in 60s on either arm."
     }
   ]
 }
