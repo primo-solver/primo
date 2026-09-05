@@ -273,6 +273,11 @@ int run_main(int argc, char** argv) {
   add_flag_with_default(app, "--no-extended-simplification", no_extended_simplification,
                         "Disable the ite/div/mod/abs rewrites that run before lowering "
                         "(lowering itself always runs)");
+  app.add_option("--extended-simplification-rounds", solver_options.extended_simplification_rounds,
+                 "Traversals the extended-term simplification runs; more rounds reach deeper "
+                 "nested ite, at a cost that is exponential in the limit")
+      ->capture_default_str()
+      ->check(CLI::Range(std::size_t{0}, std::size_t{64}));
   add_flag_with_default(app, "--eq-bridge", solver_options.eq_bridge,
                         "Add equalities implied by every branch of selected QF_UF disjunctions");
   add_flag_with_default(app, "--no-eq-bridge", no_eq_bridge,
@@ -733,7 +738,9 @@ int run_main(int argc, char** argv) {
         name == "--auto-preprocess-selector" || name == "--boolean-flatten-threshold" ||
         name == "--boolean-flatten-post-threshold" || name == "--boolean-implies-rewrite" ||
         starts_with(name, "--auto-preprocess-") || starts_with(name, "--preprocessing-") ||
-        starts_with(name, "--preprocess-passes")) {
+        starts_with(name, "--preprocess-passes") ||
+        starts_with(name, "--extended-simplification") ||
+        starts_with(name, "--no-extended-simplification")) {
       return kGroupPreprocessing;
     }
     // The SAT layer proper, plus the knobs that sit on the DPLL(T)

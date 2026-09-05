@@ -1739,7 +1739,7 @@ void simplification_rewrites_ite_structurally() {
   const primo::core::TermId zero = terms.mk_rational(primo::util::Rational(0), int_sort);
 
   const auto simplify = [&terms](primo::core::TermId assertion) {
-    return primo::smt::simplify_extended_terms(terms, {assertion}).assertions.at(0);
+    return primo::smt::simplify_extended_terms(terms, {assertion}, 1).assertions.at(0);
   };
 
   // Equal branches make the condition irrelevant.
@@ -1773,7 +1773,7 @@ void simplification_distributes_equality_over_an_ite() {
 
   const std::vector<primo::core::TermId> assertions{terms.mk_eq(u, terms.mk_ite(p, x, y))};
   const primo::smt::SimplifyExtendedTermsResult simplified =
-      primo::smt::simplify_extended_terms(terms, assertions);
+      primo::smt::simplify_extended_terms(terms, assertions, 1);
 
   check(simplified.equalities_distributed == 1);
   check(simplified.assertions.at(0) ==
@@ -1788,6 +1788,94 @@ void simplification_distributes_equality_over_an_ite() {
   check(auxiliaries.next == 0);
 }
 
+// Distribution is sound for any ITE but profitable only for an unshared one.
+// Lowering pays once per hash-consed ITE and then one equality per parent;
+// distribution pays the whole guard structure per parent. So a shared ITE is
+// left alone and the auxiliary is allowed to happen.
+void simplification_does_not_distribute_a_shared_ite() {
+  primo::core::SymbolTable symbols;
+  const auto int_sort = symbols.int_sort();
+  const auto p_symbol = symbols.declare_constant("p", symbols.bool_sort());
+  const auto u_symbol = symbols.declare_constant("u", int_sort);
+  const auto v_symbol = symbols.declare_constant("v", int_sort);
+  const auto x_symbol = symbols.declare_constant("x", int_sort);
+  const auto y_symbol = symbols.declare_constant("y", int_sort);
+  primo::core::TermManager terms(symbols);
+  const primo::core::TermId p = terms.mk_constant(p_symbol);
+  const primo::core::TermId u = terms.mk_constant(u_symbol);
+  const primo::core::TermId v = terms.mk_constant(v_symbol);
+  const primo::core::TermId x = terms.mk_constant(x_symbol);
+  const primo::core::TermId y = terms.mk_constant(y_symbol);
+  const primo::core::TermId shared = terms.mk_ite(p, x, y);
+
+  // The same hash-consed ite under two equalities.
+  const std::vector<primo::core::TermId> assertions{terms.mk_eq(u, shared), terms.mk_eq(v, shared)};
+  const primo::smt::SimplifyExtendedTermsResult simplified =
+      primo::smt::simplify_extended_terms(terms, assertions, 1);
+  check(simplified.equalities_distributed == 0);
+  check(simplified.equality_distributions_blocked == 2);
+  check(simplified.assertions == assertions);
+
+  // One auxiliary covers both parents, which is the trade being protected.
+  AuxiliaryFactory auxiliaries{symbols, terms};
+  const primo::smt::LowerExtendedTermsResult lowered =
+      primo::smt::lower_extended_terms(terms, simplified.assertions, auxiliaries.factory());
+  check(lowered.auxiliary_ites == 1);
+}
+
+// A single traversal cannot see the nodes its own rules create, so a nested
+// ITE under an equality needs a second round. The round count is bounded
+// rather than run to a fixed point: each distribution doubles its assertion,
+// and on the largest nec-smt file an unbounded run took 116s and 23GB against
+// 3.0s with the leaf switched off.
+void simplification_rounds_reach_a_nested_ite() {
+  primo::core::SymbolTable symbols;
+  const auto int_sort = symbols.int_sort();
+  const auto p_symbol = symbols.declare_constant("p", symbols.bool_sort());
+  const auto q_symbol = symbols.declare_constant("q", symbols.bool_sort());
+  const auto u_symbol = symbols.declare_constant("u", int_sort);
+  const auto x_symbol = symbols.declare_constant("x", int_sort);
+  const auto y_symbol = symbols.declare_constant("y", int_sort);
+  const auto z_symbol = symbols.declare_constant("z", int_sort);
+  primo::core::TermManager terms(symbols);
+  const primo::core::TermId p = terms.mk_constant(p_symbol);
+  const primo::core::TermId q = terms.mk_constant(q_symbol);
+  const primo::core::TermId u = terms.mk_constant(u_symbol);
+  const primo::core::TermId x = terms.mk_constant(x_symbol);
+  const primo::core::TermId y = terms.mk_constant(y_symbol);
+  const primo::core::TermId z = terms.mk_constant(z_symbol);
+
+  const std::vector<primo::core::TermId> assertions{
+      terms.mk_eq(u, terms.mk_ite(p, x, terms.mk_ite(q, y, z)))};
+
+  // One round distributes the outer equality only, and the inner ite is left
+  // for lowering to give an auxiliary.
+  const primo::smt::SimplifyExtendedTermsResult once =
+      primo::smt::simplify_extended_terms(terms, assertions, 1);
+  check(once.rounds == 1);
+  check(once.equalities_distributed == 1);
+  AuxiliaryFactory one_round_auxiliaries{symbols, terms};
+  check(primo::smt::lower_extended_terms(terms, once.assertions, one_round_auxiliaries.factory())
+            .auxiliary_ites == 1);
+
+  // Three rounds reach the inner one: the second distributes it, the third
+  // finds nothing and stops the loop.
+  const primo::smt::SimplifyExtendedTermsResult thrice =
+      primo::smt::simplify_extended_terms(terms, assertions, 3);
+  check(thrice.rounds == 3);
+  check(thrice.equalities_distributed == 2);
+  AuxiliaryFactory three_round_auxiliaries{symbols, terms};
+  check(
+      primo::smt::lower_extended_terms(terms, thrice.assertions, three_round_auxiliaries.factory())
+          .auxiliary_ites == 0);
+
+  // Zero rounds is the leaf switched off: the assertions come back untouched.
+  const primo::smt::SimplifyExtendedTermsResult none =
+      primo::smt::simplify_extended_terms(terms, assertions, 0);
+  check(none.rounds == 0);
+  check(none.assertions == assertions);
+}
+
 void simplification_rewrites_div_mod_and_abs() {
   primo::core::SymbolTable symbols;
   const auto int_sort = symbols.int_sort();
@@ -1796,7 +1884,7 @@ void simplification_rewrites_div_mod_and_abs() {
   const primo::core::TermId x = terms.mk_constant(x_symbol);
   const primo::core::TermId zero = terms.mk_rational(primo::util::Rational(0), int_sort);
   const auto simplify = [&terms](primo::core::TermId assertion) {
-    return primo::smt::simplify_extended_terms(terms, {assertion}).assertions.at(0);
+    return primo::smt::simplify_extended_terms(terms, {assertion}, 1).assertions.at(0);
   };
 
   // D = 1*D + 0, with the remainder in [0,1).
@@ -2023,6 +2111,8 @@ int main() {
   monotone_elimination_folds_negative_polarity_atom_to_false();
   simplification_rewrites_ite_structurally();
   simplification_distributes_equality_over_an_ite();
+  simplification_does_not_distribute_a_shared_ite();
+  simplification_rounds_reach_a_nested_ite();
   simplification_rewrites_div_mod_and_abs();
   lowering_is_a_no_op_when_nothing_extended_was_built();
   lowering_defines_a_term_ite_with_two_guarded_equalities();

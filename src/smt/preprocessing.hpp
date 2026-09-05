@@ -164,6 +164,13 @@ struct SimplifyExtendedTermsResult {
   std::size_t ite_rewrites = 0;
   std::size_t equalities_distributed = 0;
   std::size_t arithmetic_rewrites = 0;
+  // Distributions declined because the ITE has more than one parent. See
+  // simplify_extended_terms for why distributing a shared ITE costs more than
+  // the auxiliary it avoids.
+  std::size_t equality_distributions_blocked = 0;
+  // Traversals actually run. One means nothing fired; the last round of a
+  // productive run is the one that changes nothing.
+  std::size_t rounds = 0;
 };
 
 // Rewrites Ite, IntDiv, IntMod and Abs terms before they are lowered.
@@ -179,8 +186,15 @@ struct SimplifyExtendedTermsResult {
 //
 // Nothing but the frontend builds these four kinds, so a single pass before
 // lowering sees all of them.
+// `rounds` bounds the traversals. One is a single bottom-up pass, which cannot
+// reach the nodes a rule creates; more rounds let a nested ITE under an
+// equality distribute all the way down. That is *not* free: the distribution
+// doubles the assertion each time it fires, so iterating it to a fixed point
+// is exponential -- on the largest nec-smt file an unbounded run reached 23GB
+// and 116s against 3s with the leaf off. The bound is the safety valve.
 SimplifyExtendedTermsResult simplify_extended_terms(core::TermManager& terms,
-                                                    const std::vector<core::TermId>& assertions);
+                                                    const std::vector<core::TermId>& assertions,
+                                                    std::size_t rounds);
 
 struct LowerExtendedTermsResult {
   std::vector<core::TermId> assertions;

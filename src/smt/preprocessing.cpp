@@ -3611,9 +3611,47 @@ namespace {
 // One rewrite step on a node whose children are already simplified. Returns
 // kInvalidTermId when no rule applies. Every rule here is an equivalence, so
 // applying or skipping any of them changes nothing but the term's shape.
+// Counts, for every term reachable from the assertions, how many parent edges
+// point at it. Each reachable node is expanded once, so a hash-consed term
+// shared by n parents is counted n times, and a term used twice by one parent
+// ((= x x)) is counted twice -- which is what the duplication cost of a rewrite
+// actually depends on. An assertion root counts as one parent edge.
+//
+// Explicit stack: nec-smt has a 200KB file with 5240 ites in a single assert.
+std::vector<std::size_t> count_parent_edges(const core::TermManager& terms,
+                                            const std::vector<core::TermId>& assertions) {
+  std::vector<std::size_t> parents(terms.size(), 0);
+  std::vector<bool> expanded(terms.size(), false);
+  std::vector<core::TermId> pending;
+  for (const core::TermId assertion : assertions) {
+    if (assertion < parents.size()) {
+      ++parents[assertion];
+    }
+    pending.push_back(assertion);
+  }
+  while (!pending.empty()) {
+    const core::TermId term = pending.back();
+    pending.pop_back();
+    if (term >= expanded.size() || expanded[term]) {
+      continue;
+    }
+    expanded[term] = true;
+    for (const core::TermId child : terms.get(term).children) {
+      if (child < parents.size()) {
+        ++parents[child];
+      }
+      if (child < expanded.size() && !expanded[child]) {
+        pending.push_back(child);
+      }
+    }
+  }
+  return parents;
+}
+
 core::TermId simplify_extended_node(core::TermManager& terms, core::TermKind kind,
                                     const util::Rational& divisor,
                                     const std::vector<core::TermId>& children,
+                                    const std::vector<std::size_t>& parent_edges,
                                     SimplifyExtendedTermsResult& result) {
   switch (kind) {
     case core::TermKind::Ite: {
@@ -3714,9 +3752,26 @@ core::TermId simplify_extended_node(core::TermManager& terms, core::TermKind kin
       // (= u (ite c a b)) distributes over the branches, which avoids the
       // auxiliary constant lowering would otherwise introduce. Only one
       // operand is distributed, so the assertion at most doubles.
+      //
+      // Sound for any ITE, but only *profitable* for an unshared one. Lowering
+      // pays once per ITE -- one auxiliary and two guarded equalities, shared
+      // by every parent because the walk is memoized on the hash-consed term --
+      // and then one equality per parent. Distribution pays per parent: two
+      // equalities plus the guard structure, every time. So on an ITE with n
+      // parents it trades one auxiliary for roughly n extra nodes, and the
+      // trade turns negative as soon as n > 1.
+      //
+      // This is the same hazard lead 16's ITE-compression piece names for
+      // chains: extend only through subterms occurring once, so that a
+      // multiply-occurring tail keeps its sharing.
       for (std::size_t index = 0; index < 2; ++index) {
-        const core::Term& operand = terms.get(children.at(index));
+        const core::TermId candidate = children.at(index);
+        const core::Term& operand = terms.get(candidate);
         if (operand.kind != core::TermKind::Ite) {
+          continue;
+        }
+        if (candidate < parent_edges.size() && parent_edges[candidate] > 1) {
+          ++result.equality_distributions_blocked;
           continue;
         }
         const core::TermId other = children.at(1 - index);
@@ -3784,13 +3839,13 @@ core::TermId rebuild_lowered_node(core::TermManager& terms, core::TermId origina
 
 }  // namespace
 
-SimplifyExtendedTermsResult simplify_extended_terms(core::TermManager& terms,
-                                                    const std::vector<core::TermId>& assertions) {
+// One bottom-up traversal. A rule that fires builds a *new* node, whose own
+// subterms this traversal has already passed, so anything the new node exposes
+// is left for the next round rather than handled here.
+SimplifyExtendedTermsResult simplify_extended_terms_round(
+    core::TermManager& terms, const std::vector<core::TermId>& assertions) {
   SimplifyExtendedTermsResult result;
-  if (terms.extended_term_count() == 0) {
-    result.assertions = assertions;
-    return result;
-  }
+  const std::vector<std::size_t> parent_edges = count_parent_edges(terms, assertions);
 
   const std::size_t source_term_count = terms.size();
   std::vector<core::TermId> rewritten(source_term_count, core::kInvalidTermId);
@@ -3839,7 +3894,7 @@ SimplifyExtendedTermsResult simplify_extended_terms(core::TermManager& terms,
       }
 
       const core::TermId simplified =
-          simplify_extended_node(terms, kind, rational, children, result);
+          simplify_extended_node(terms, kind, rational, children, parent_edges, result);
       if (simplified != core::kInvalidTermId) {
         rewritten[visit.term] = simplified;
         continue;
@@ -3850,6 +3905,48 @@ SimplifyExtendedTermsResult simplify_extended_terms(core::TermManager& terms,
     }
     result.assertions.push_back(rewritten.at(assertion));
   }
+  return result;
+}
+
+SimplifyExtendedTermsResult simplify_extended_terms(core::TermManager& terms,
+                                                    const std::vector<core::TermId>& assertions,
+                                                    std::size_t rounds) {
+  SimplifyExtendedTermsResult result;
+  if (terms.extended_term_count() == 0 || rounds == 0) {
+    result.assertions = assertions;
+    return result;
+  }
+
+  // A single traversal cannot reach what it creates. The equality distribution
+  // turns (= u (ite c a (ite d e f))) into a conjunction whose second equality
+  // has an ITE operand of its own, built after the traversal has passed the
+  // position it occupies. Nested chains of exactly that shape are what nec-smt
+  // is made of, so more rounds find strictly more to do.
+  //
+  // They also cost strictly more, and not linearly: each distribution doubles
+  // its assertion, so running to a fixed point is exponential. Measured on
+  // nec-smt/large/getoption_directories/prp-4-113.smt2 (1.6MB), an unbounded
+  // run took 116s and 23GB where the leaf switched off takes 3.0s and 254MB.
+  // The bound is what makes this rule safe, not a tuning knob for how thorough
+  // it is.
+  std::vector<core::TermId> current = assertions;
+  for (std::size_t round = 0; round < rounds; ++round) {
+    SimplifyExtendedTermsResult pass = simplify_extended_terms_round(terms, current);
+    ++result.rounds;
+    result.ite_rewrites += pass.ite_rewrites;
+    result.equalities_distributed += pass.equalities_distributed;
+    result.arithmetic_rewrites += pass.arithmetic_rewrites;
+    // Assigned, not accumulated: a blocked ITE is still there on the next
+    // round and would be counted again. The last round's figure is the stable
+    // one -- how many shared ITEs the fixed point left for lowering.
+    result.equality_distributions_blocked = pass.equality_distributions_blocked;
+    const bool changed = pass.assertions != current;
+    current = std::move(pass.assertions);
+    if (!changed) {
+      break;
+    }
+  }
+  result.assertions = std::move(current);
   return result;
 }
 

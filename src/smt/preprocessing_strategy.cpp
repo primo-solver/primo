@@ -580,8 +580,9 @@ PreparedPreprocessingStrategy prepare_and_execute_preprocessing_strategy(
   // is a technique and is switchable so it can be measured; the lowering below
   // it is not, because the linear core cannot see these kinds at all.
   if (options.extended_simplification) {
-    initial_children.push_back(Strategy::leaf("simplify-extended-terms", NoStrategyParameters{},
-                                              make_simplify_extended_terms()));
+    initial_children.push_back(
+        Strategy::leaf("simplify-extended-terms", NoStrategyParameters{},
+                       make_simplify_extended_terms(options.extended_simplification_rounds)));
   }
   initial_children.push_back(
       Strategy::leaf("lower-extended-terms", NoStrategyParameters{}, make_lower_extended_terms()));

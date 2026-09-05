@@ -344,6 +344,12 @@ struct CheckSatOptions {
   // be switchable to be measurable. docs/open-leads.md lead 16 measures against
   // this switch.
   bool extended_simplification = true;
+  // Traversals the leaf runs. One is a single bottom-up pass, which cannot see
+  // the nodes its own rules create; more rounds distribute nested ITEs further
+  // down. Bounded rather than run to a fixed point because the equality
+  // distribution doubles its assertion each time it fires: unbounded, the
+  // largest nec-smt file took 116s and 23GB against 3.0s with the leaf off.
+  std::size_t extended_simplification_rounds = 1;
   // QF_LIA branch-and-bound's node cap (docs/qf-lia-branch-and-bound.md).
   // Plain branch-and-bound has no completeness argument of its own -- an
   // unbounded integer-infeasible polytope can branch forever -- so this is
