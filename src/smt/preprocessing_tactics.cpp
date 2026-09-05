@@ -540,6 +540,8 @@ Tactic make_simplify_extended_terms(const SimplifyExtendedTermsOptions& options)
         statistics.increment(util::StatKey::SimplifiedEqualityDistributionsBlocked,
                              simplified.equality_distributions_blocked);
         statistics.increment(util::StatKey::SimplifiedExtendedRounds, simplified.rounds);
+        statistics.increment(util::StatKey::SimplifiedEqualityDistributionsNested,
+                             simplified.equality_distributions_nested);
         return AnyOf::single(goal.with_assertions(std::move(simplified.assertions)));
       });
 }

@@ -1008,15 +1008,15 @@ reached **116s and 23GB** where the same file with the leaf off preprocesses in
 **3.0s and 254MB**, converging only after 32 rounds. The bound is what makes
 the rule safe; it is not a thoroughness knob.
 
-**It is off by default, because it is the only rule here that grows the
-formula.** `--ite-equality-distribution` turns it on; the rest of the leaf runs
-either way. Everything else in `simplify-extended-terms` -- the
+**It fires only when it actually retires the ITE**, which means only when
+neither branch is itself an ITE. `--no-ite-equality-distribution` drops it
+entirely; the rest of the leaf runs either way. Everything else in `simplify-extended-terms` -- the
 equal-branch collapse, the negated-condition normalization, the nested
 same-condition merge, the Boolean-ITE-to-connective rules, the `div`/`mod`/
 `abs` identities -- shrinks what it touches, so the leaf as a whole and this
-one rule need separate verdicts. Preprocessed size and auxiliary count over the
-whole 13,306-file QF_LIA division, one binary, relative to running no leaf at
-all (jobs 132066 and 132106):
+one rule need separate verdicts. Without that test the rule is a net loss. Preprocessed size and auxiliary count
+over the whole 13,306-file QF_LIA division, one binary, relative to running no
+leaf at all (jobs 132066 and 132106), with the unguarded rule:
 
 | configuration | size | ite auxiliaries | size on `nec-smt` |
 |---|---:|---:|---:|

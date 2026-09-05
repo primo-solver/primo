@@ -361,7 +361,7 @@ struct CheckSatOptions {
   // -- size -0.03% and 30% fewer auxiliaries -- but that is 4368 auxiliaries
   // over 10447 files against 25 million on nec-smt, so the families that carry
   // the weight decide it.
-  bool ite_equality_distribution = false;
+  bool ite_equality_distribution = true;
   // QF_LIA branch-and-bound's node cap (docs/qf-lia-branch-and-bound.md).
   // Plain branch-and-bound has no completeness argument of its own -- an
   // unbounded integer-infeasible polytope can branch forever -- so this is

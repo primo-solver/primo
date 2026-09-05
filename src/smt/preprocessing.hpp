@@ -168,6 +168,9 @@ struct SimplifyExtendedTermsResult {
   // simplify_extended_terms for why distributing a shared ITE costs more than
   // the auxiliary it avoids.
   std::size_t equality_distributions_blocked = 0;
+  // Distributions declined because a branch is itself an ITE, so the rewrite
+  // would pay the guard structure without retiring the auxiliary.
+  std::size_t equality_distributions_nested = 0;
   // Traversals actually run. One means nothing fired; the last round of a
   // productive run is the one that changes nothing.
   std::size_t rounds = 0;

@@ -226,6 +226,7 @@ constexpr std::array<std::string_view, static_cast<std::size_t>(StatKey::Count)>
     ":preprocessing.lower.abs-rewrites"sv,
     ":preprocessing.ite.equality-distribution-blocked"sv,
     ":preprocessing.extended.simplify-rounds"sv,
+    ":preprocessing.ite.equality-distribution-nested"sv,
 };
 
 const std::unordered_map<std::string_view, StatKey>& stat_keys_by_name() {

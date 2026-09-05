@@ -3778,6 +3778,21 @@ core::TermId simplify_extended_node(core::TermManager& terms, core::TermKind kin
           ++result.equality_distributions_blocked;
           continue;
         }
+        // Distribute only when it actually retires the ITE. If a branch is
+        // itself an ITE, (= u (ite c a (ite d e f))) hands back
+        // (= u (ite d e f)), which needs the auxiliary anyway -- the guard
+        // structure is paid and nothing is collected. Measured on
+        // nec-smt/large/getoption_directories/prp-4-113.smt2 without this
+        // test: 18,867 firings, 20 auxiliaries removed, 58,023 nodes added.
+        // The payoff only arrives once a whole chain is distributed, which
+        // costs exponentially in the round count.
+        const core::TermId then_branch = operand.children.at(1);
+        const core::TermId else_branch = operand.children.at(2);
+        if (terms.get(then_branch).kind == core::TermKind::Ite ||
+            terms.get(else_branch).kind == core::TermKind::Ite) {
+          ++result.equality_distributions_nested;
+          continue;
+        }
         const core::TermId other = children.at(1 - index);
         const core::TermId condition = operand.children.at(0);
         const core::TermId then_term = operand.children.at(1);
@@ -3945,6 +3960,7 @@ SimplifyExtendedTermsResult simplify_extended_terms(core::TermManager& terms,
     // round and would be counted again. The last round's figure is the stable
     // one -- how many shared ITEs the fixed point left for lowering.
     result.equality_distributions_blocked = pass.equality_distributions_blocked;
+    result.equality_distributions_nested = pass.equality_distributions_nested;
     const bool changed = pass.assertions != current;
     current = std::move(pass.assertions);
     if (!changed) {

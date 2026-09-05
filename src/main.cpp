@@ -281,8 +281,8 @@ int run_main(int argc, char** argv) {
       ->check(CLI::Range(std::size_t{0}, std::size_t{64}));
   add_flag_with_default(app, "--ite-equality-distribution",
                         solver_options.ite_equality_distribution,
-                        "Distribute (= u (ite c a b)) over the branches; off by default because "
-                        "it grows the formula more than the auxiliary it avoids is worth");
+                        "Distribute (= u (ite c a b)) over the branches when neither branch is "
+                        "itself an ite");
   add_flag_with_default(app, "--no-ite-equality-distribution", no_ite_equality_distribution,
                         "Disable (= u (ite c a b)) distribution");
   add_flag_with_default(app, "--eq-bridge", solver_options.eq_bridge,

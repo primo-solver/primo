@@ -226,6 +226,7 @@ enum class StatKey : std::size_t {
   LoweredAbsRewrites,
   SimplifiedEqualityDistributionsBlocked,
   SimplifiedExtendedRounds,
+  SimplifiedEqualityDistributionsNested,
   Count,
 };
 

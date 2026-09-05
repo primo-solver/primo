@@ -1826,12 +1826,12 @@ void simplification_does_not_distribute_a_shared_ite() {
   check(lowered.auxiliary_ites == 1);
 }
 
-// A single traversal cannot see the nodes its own rules create, so a nested
-// ITE under an equality needs a second round. The round count is bounded
-// rather than run to a fixed point: each distribution doubles its assertion,
-// and on the largest nec-smt file an unbounded run took 116s and 23GB against
-// 3.0s with the leaf switched off.
-void simplification_rounds_reach_a_nested_ite() {
+// Distribution only fires when it actually retires the ITE. If a branch is
+// itself an ITE, (= u (ite c a (ite d e f))) hands back (= u (ite d e f)),
+// which needs the auxiliary anyway: the guard structure is paid and nothing is
+// collected. On nec-smt, whose ITEs are nested chains, dropping this test made
+// the rule fire 18,867 times to remove 20 auxiliaries.
+void simplification_does_not_distribute_a_nested_ite() {
   primo::core::SymbolTable symbols;
   const auto int_sort = symbols.int_sort();
   const auto p_symbol = symbols.declare_constant("p", symbols.bool_sort());
@@ -1848,37 +1848,37 @@ void simplification_rounds_reach_a_nested_ite() {
   const primo::core::TermId y = terms.mk_constant(y_symbol);
   const primo::core::TermId z = terms.mk_constant(z_symbol);
 
-  const std::vector<primo::core::TermId> assertions{
+  const std::vector<primo::core::TermId> nested{
       terms.mk_eq(u, terms.mk_ite(p, x, terms.mk_ite(q, y, z)))};
+  const primo::smt::SimplifyExtendedTermsResult held = primo::smt::simplify_extended_terms(
+      terms, nested, primo::smt::SimplifyExtendedTermsOptions{});
+  check(held.equalities_distributed == 0);
+  check(held.equality_distributions_nested == 1);
+  check(held.assertions == nested);
 
-  // One round distributes the outer equality only, and the inner ite is left
-  // for lowering to give an auxiliary.
-  const primo::smt::SimplifyExtendedTermsResult once = primo::smt::simplify_extended_terms(
-      terms, assertions, primo::smt::SimplifyExtendedTermsOptions{.distribute_equalities = true});
-  check(once.rounds == 1);
-  check(once.equalities_distributed == 1);
-  AuxiliaryFactory one_round_auxiliaries{symbols, terms};
-  check(primo::smt::lower_extended_terms(terms, once.assertions, one_round_auxiliaries.factory())
-            .auxiliary_ites == 1);
+  // More rounds do not route around it: the guard is on the shape, not on how
+  // far the traversal has got. Running this rule to closure is exponential.
+  const primo::smt::SimplifyExtendedTermsResult repeated = primo::smt::simplify_extended_terms(
+      terms, nested, primo::smt::SimplifyExtendedTermsOptions{.rounds = 4});
+  check(repeated.equalities_distributed == 0);
+  check(repeated.assertions == nested);
 
-  // Three rounds reach the inner one: the second distributes it, the third
-  // finds nothing and stops the loop.
-  const primo::smt::SimplifyExtendedTermsResult thrice = primo::smt::simplify_extended_terms(
-      terms, assertions,
-      primo::smt::SimplifyExtendedTermsOptions{.rounds = 3, .distribute_equalities = true});
-  check(thrice.rounds == 3);
-  check(thrice.equalities_distributed == 2);
-  AuxiliaryFactory three_round_auxiliaries{symbols, terms};
-  check(
-      primo::smt::lower_extended_terms(terms, thrice.assertions, three_round_auxiliaries.factory())
-          .auxiliary_ites == 0);
+  // The flat shape is the one the rule is for, and it still fires: no
+  // auxiliary is needed at all.
+  const std::vector<primo::core::TermId> flat{terms.mk_eq(u, terms.mk_ite(p, x, y))};
+  const primo::smt::SimplifyExtendedTermsResult distributed =
+      primo::smt::simplify_extended_terms(terms, flat, primo::smt::SimplifyExtendedTermsOptions{});
+  check(distributed.equalities_distributed == 1);
+  check(distributed.equality_distributions_nested == 0);
+  AuxiliaryFactory auxiliaries{symbols, terms};
+  check(primo::smt::lower_extended_terms(terms, distributed.assertions, auxiliaries.factory())
+            .auxiliary_ites == 0);
 
-  // Zero rounds is the leaf switched off: the assertions come back untouched.
+  // Zero rounds is the leaf switched off.
   const primo::smt::SimplifyExtendedTermsResult none = primo::smt::simplify_extended_terms(
-      terms, assertions,
-      primo::smt::SimplifyExtendedTermsOptions{.rounds = 0, .distribute_equalities = true});
+      terms, flat, primo::smt::SimplifyExtendedTermsOptions{.rounds = 0});
   check(none.rounds == 0);
-  check(none.assertions == assertions);
+  check(none.assertions == flat);
 }
 
 void simplification_rewrites_div_mod_and_abs() {
@@ -2120,7 +2120,7 @@ int main() {
   simplification_rewrites_ite_structurally();
   simplification_distributes_equality_over_an_ite();
   simplification_does_not_distribute_a_shared_ite();
-  simplification_rounds_reach_a_nested_ite();
+  simplification_does_not_distribute_a_nested_ite();
   simplification_rewrites_div_mod_and_abs();
   lowering_is_a_no_op_when_nothing_extended_was_built();
   lowering_defines_a_term_ite_with_two_guarded_equalities();
