@@ -366,3 +366,45 @@ Recorded so the source is not re-opened expecting these:
 - The AEP idea (§2.3.1) is stated as unpublished elsewhere as of 2009. If it is
   worth implementing, this section *is* the primary source and there is nothing
   more detailed to find.
+
+## Section 1.5.1, purification -- read 2026-09-06, and it answers an open bug
+
+This note was written for the arithmetic chapters and skipped the combination
+background. That background is the primary source for a defect this project had
+been treating as its own puzzle: `bugs/qf-uflia-nested-application-model`,
+where Primo prints a QF_UFLIA model whose UF table does not satisfy the input.
+
+**What §1.5.1 (p. 30) says.** A mixed formula is made pure by labelling every
+alien subterm with a fresh variable and asserting the label:
+
+```
+f(x + 3y) = g(2x - y)
+  ==>  f(v1) = g(v2)  /\  v1 = x + 3y  /\  v2 = 2x - y
+```
+
+Purification is linear, and the labels are the **interface variables** -- those
+occurring in both pure parts. Nelson-Oppen (§1.5.1, citing [NO79]) then reduces
+satisfiability to finding an *arrangement*: an equivalence relation over the
+shared variables consistent with both pure parts.
+
+**The consequence for model construction**, which the thesis does not spell out
+because it is immediate: in the purified formula every UF application has the
+form `f(v_1, ..., v_n)` and is itself labelled by some `v_f`. All of those are
+interface variables, so the arithmetic model assigns every one of them. The UF
+table row is therefore `(val(v_1), ..., val(v_n)) -> val(v_f)`, read off rather
+than searched for, and **no value can be missing**. A model-construction
+procedure that has to *look for* the value of a UF application has already lost
+the purification map.
+
+**Where Primo is.** It purifies -- `:no.purification.arithmetic-uf-definitions`
+reports exactly one definition per Int-sorted UF application -- but
+`MixedTheoryPurificationResult` returns only counts and the rewritten
+assertions, with no label-to-application map. `qf_uflia_int_values` then
+rediscovers the correspondence from asserted equality literals and from merging
+tableau terms that share a value, and on three levels of nesting that
+reconstruction fails: on `witness.smt2`, six Int application terms exist in the
+arena (originals plus purified copies) and only three carry a value.
+
+**Follow-up.** Retaining the map is the fix indicated by the source, and it is
+cheaper than what replaced it. See the bug file for the measurement that
+refuted trying to repair the model printer instead.

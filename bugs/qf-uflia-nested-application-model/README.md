@@ -174,6 +174,62 @@ because it is constraint solving rather than evaluation, which is the other
 half of why the completion fix above is not enough. The value has to come from
 `qf_uflia_int_values`.
 
+## What the literature says, and where Primo departs from it
+
+This is a solved problem in the standard presentation, and the answer was in
+the repository's own paper collection the whole time.
+
+[](../../docs/papers/griggio-mathsat-thesis.md) sect. 1.5.1 (`docs/papers/griggio.pdf`,
+p. 30) gives the construction. Purification rewrites a mixed formula by
+labelling every alien subterm with a fresh variable and asserting the label:
+
+```
+f(x + 3y) = g(2x - y)
+  ==>  f(v1) = g(v2)  /\  v1 = x + 3y  /\  v2 = 2x - y
+```
+
+The labels are **interface variables**: they occur in both pure parts, so the
+arithmetic solver assigns each of them a value, and Nelson-Oppen's requirement
+is precisely that the two models agree on the arrangement -- the equivalence
+relation over those shared variables. The combined model is then read off
+rather than searched for. Every UF application in the *purified* formula has
+the form `f(v_1, ..., v_n)` with a label of its own, so its row is
+`(val(v_1), ..., val(v_n)) -> val(v_f)`, and **no value can be missing**. That
+is the property Primo does not have.
+
+**Primo purifies and then discards the map.** The counters confirm the
+purification happens and is exactly the right size: `witness.smt2` reports
+`:no.purification.arithmetic-uf-definitions 3`, one per `f` application, and
+`witness-backward-constraint.smt2` reports 4. But
+`MixedTheoryPurificationResult` (`src/smt/solver_engines.cpp`) returns only the
+rewritten assertions and a set of *counts* -- there is no map from a label back
+to the application it labelled.
+
+So `qf_uflia_int_values` has to rediscover the correspondence, which it attempts
+in two ways, both indirect: rebuilding congruence classes from the asserted
+equality literals, and merging any two tableau terms that happen to share a
+value. Instrumented on `witness.smt2`:
+
+```
+tableau_terms=4  int_apps=6  apps_with_class_value=3  asserted_eqs=4
+```
+
+Six Int applications for a formula with three `f` applications -- the arena
+holds both the originals and the purified copies -- and only three carry a
+value. `ModelBuilder::table_entries` then iterates over *all* application terms
+in the arena, so one printed table mixes rows from both representations, keyed
+by values that only half of them have. The other half is invented, which is
+where this bug starts.
+
+**What this implies for a fix.** Not a better search. The label-to-application
+map already exists at purification time and is thrown away; retaining it makes
+the completion a lookup, and makes the backward-constraint witness a non-issue,
+because the inner application's value is its label's tableau value rather than
+something to be inferred from an arithmetic bound. It also explains why the
+consistent-completion attempt above could not work: it reconciled the printed
+table with itself while still drawing on the same half-populated value map, and
+it had no way to tell an original application from its purified copy.
+
 ## Still not established
 
 - Whether the same shape can produce a wrong `sat` where no model exists at
