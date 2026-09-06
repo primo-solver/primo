@@ -319,6 +319,104 @@ class QfUfModelBuilder {
     return candidate;
   }
 
+  // An Int term's value, invented only where nothing determines it.
+  //
+  // A model is a homomorphism: once the children of a sum, a scale or an
+  // if-then-else have values, the parent's value is *forced*. Inventing one
+  // independently is not a completion, it is a contradiction, and it was the
+  // remaining cause of bugs/qf-uflia-nested-application-model. On that bug's
+  // last witness the argument (+ (f z) (g y w)) was unvalued because one child
+  // was, so it received a fresh number unrelated to its children, the UF row
+  // for f was keyed on that number, and evaluating the assertion looked up a
+  // row that did not exist.
+  //
+  // So invention is confined to what is genuinely free: a constant, or an
+  // uninterpreted application at an argument tuple the solver never pinned.
+  // Everything built out of those is computed.
+  //
+  // Explicit stack with a memo, per the repository's no-recursion rule.
+  util::Rational int_value(core::TermId root) {
+    struct Frame {
+      core::TermId term;
+      bool expanded;
+    };
+    std::vector<Frame> stack;
+    stack.push_back(Frame{root, false});
+    while (!stack.empty()) {
+      const Frame frame = stack.back();
+      if (int_value_memo_.contains(frame.term)) {
+        stack.pop_back();
+        continue;
+      }
+      // A value the solver actually produced always wins.
+      if (options_.int_values != nullptr) {
+        const auto found = options_.int_values->find(frame.term);
+        if (found != options_.int_values->end()) {
+          int_value_memo_.emplace(frame.term, found->second);
+          stack.pop_back();
+          continue;
+        }
+      }
+      const core::TermId representative = closure_.class_representative(frame.term);
+      const auto by_class = int_values_by_representative_.find(representative);
+      if (by_class != int_values_by_representative_.end()) {
+        int_value_memo_.emplace(frame.term, by_class->second);
+        stack.pop_back();
+        continue;
+      }
+      const core::Term& node = terms_.get(frame.term);
+      const bool computed = node.kind == core::TermKind::Rational ||
+                            node.kind == core::TermKind::Plus ||
+                            node.kind == core::TermKind::Times || node.kind == core::TermKind::Ite;
+      if (!computed) {
+        // A constant or an application with nothing to determine it. This is
+        // the only place a value is invented.
+        int_value_memo_.emplace(frame.term, fresh_int_value(representative));
+        stack.pop_back();
+        continue;
+      }
+      if (node.kind == core::TermKind::Rational) {
+        int_value_memo_.emplace(frame.term, node.rational_value);
+        stack.pop_back();
+        continue;
+      }
+      if (!frame.expanded) {
+        stack.back().expanded = true;
+        // An ite's condition is Boolean and is read from the closure, not here.
+        const std::size_t first = node.kind == core::TermKind::Ite ? 1U : 0U;
+        for (std::size_t index = node.children.size(); index > first; --index) {
+          const core::TermId child = node.children.at(index - 1);
+          if (!int_value_memo_.contains(child)) {
+            stack.push_back(Frame{child, false});
+          }
+        }
+        continue;
+      }
+      stack.pop_back();
+      switch (node.kind) {
+        case core::TermKind::Plus: {
+          util::Rational sum(0);
+          for (const core::TermId child : node.children) {
+            sum = sum + int_value_memo_.at(child);
+          }
+          int_value_memo_.emplace(frame.term, sum);
+          break;
+        }
+        case core::TermKind::Times:
+          int_value_memo_.emplace(frame.term,
+                                  node.rational_value * int_value_memo_.at(node.children.at(0)));
+          break;
+        default: {
+          const bool condition = bool_value(node.children.at(0));
+          int_value_memo_.emplace(frame.term,
+                                  int_value_memo_.at(node.children.at(condition ? 1 : 2)));
+          break;
+        }
+      }
+    }
+    return int_value_memo_.at(root);
+  }
+
   std::string term_value(core::TermId term) {
     const core::Term& node = terms_.get(term);
     if (node.sort == terms_.symbols().bool_sort()) {
@@ -336,15 +434,7 @@ class QfUfModelBuilder {
                                  : representative_found->second);
     }
     if (node.sort == terms_.symbols().int_sort() && options_.int_values != nullptr) {
-      const auto found = options_.int_values->find(term);
-      if (found != options_.int_values->end()) {
-        return smtlib_rational(found->second);
-      }
-      const core::TermId representative = closure_.class_representative(term);
-      const auto representative_found = int_values_by_representative_.find(representative);
-      return smtlib_rational(representative_found == int_values_by_representative_.end()
-                                 ? fresh_int_value(representative)
-                                 : representative_found->second);
+      return smtlib_rational(int_value(term));
     }
     return value_name(closure_.class_representative(term));
   }
@@ -452,6 +542,7 @@ class QfUfModelBuilder {
   std::unordered_map<core::TermId, util::Rational> real_values_by_representative_;
   std::unordered_map<core::TermId, util::Rational> int_values_by_representative_;
   std::unordered_map<core::TermId, util::Rational> generated_int_values_;
+  std::unordered_map<core::TermId, util::Rational> int_value_memo_;
   std::unordered_set<util::Rational, util::RationalHash> used_int_values_;
 };
 
