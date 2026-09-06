@@ -116,3 +116,51 @@ because its depext probe wanted the system packages `libgmp-dev` and
 `pkg-config` and the sandbox has no `sudo`. `pkg-config` is in fact installed
 and GMP comes from `contrib/local`, so `contrib/install_dolmen.py` now passes
 `--no-depexts` and the install succeeds without root.
+
+## Second witness, 2026-09-06: `witness-simplification-sensitive.smt2`
+
+Found by the QF_UFLIA model fuzz gate (job 132640) on the branch that made
+`ite` a term kind. 21 of 3000 cases produced an invalid model; **20 of the 21
+are invalid on the pre-change binary `7ea99a7` too**, and this is the one that
+is not.
+
+It is the same defect, not a new one. The failing assertion is
+
+```smt2
+(assert (= z (g (g (f 2) (f y)) (+ (f 2) (f y)))))
+```
+
+with the printed model `f = 0`, `z = 5` and
+
+```smt2
+(define-fun g ((x0 Int) (x1 Int)) Int
+  (ite (and (= x0 0) (= x1 0)) 8
+  (ite (and (= x0 7) (= x1 0)) 5
+  (ite (and (= x0 8) (= x1 0)) (- 1) 0))))
+```
+
+`f 2` and `f y` are both `0`, so the inner `g` is `g(0,0) = 8` and the outer is
+`g(8,0) = -1`, against `z = 5`. The table also carries `g(7,0) = 5`, so the
+solver was working with `7` for an inner application its own table evaluates to
+`8` -- the self-inconsistent table on nested applications this bug is about.
+
+**What it adds: a reproduction lever.** The result depends on the
+extended-term simplification, and not on the preprocessing mode:
+
+| configuration | model |
+|---|---|
+| default | invalid |
+| `--preprocessing-mode=basic` / `strong` / `off` | invalid |
+| `--no-ite-equality-distribution` | invalid |
+| `--no-extended-simplification` | **valid** |
+
+The leaf collapses `(ite (< (f 2) (f y)) (f 2) (f 2))` to `(f 2)` -- both
+branches are the same term -- which is correct, and changes which model the
+builder produces. That is the same "makes the shape reachable more often"
+effect this file already records for the `2706164` worklist rewrite, arriving
+from a different direction. Base is afflicted independently: it reproduces the
+original `witness.smt2` above.
+
+So a fix should be checked against both witnesses, and the
+`--no-extended-simplification` split is a cheap way to get the same input to
+take two different model-building paths.
