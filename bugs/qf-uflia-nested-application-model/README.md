@@ -101,22 +101,55 @@ Inventing is *necessary but not sufficient*: with nothing pinning the term, an
 arbitrary value is a perfectly good one, which is why the unpinned case invents
 four values and still validates.
 
-**Step 2 is fixed, 2026-09-06.** `reconcile_invented_applications` in
-`src/smt/model_builder.cpp` walks the term DAG bottom-up on an explicit stack
-and keys the completion by the *argument value tuple* rather than by
-congruence class -- which is what the printed table is keyed by, and what the
-invention was not. Applications carrying a solver value are settled in a first
-sweep so their rows exist before any invention can occupy the same key. The
-term DAG is acyclic, so no fixpoint or seeding is involved; the candidate
-matching in `qf_uflia_int_values`, whose comment describes a cycle, creates that
-cycle by searching sibling applications rather than descending.
+**A consistent-completion fix was tried on 2026-09-06 and refuted.** Recording
+it because it looks obviously right, fixes two of the three witnesses, and
+still makes the corpus worse.
 
-`witness.smt2` and `witness-generated.smt2` now validate. The completion is
-self-consistent by construction: every application's printed value is the row
-its own arguments select.
+The idea: the printed table is keyed by the *argument value tuple* while
+`fresh_int_value` memoizes by *congruence class*, so key the completion by the
+argument tuple instead. Walk the term DAG bottom-up -- it is acyclic, so every
+application is settled after its arguments -- and let each application take, or
+establish, the row its own arguments select. No fixpoint and no seeding is
+needed; the cycle that `qf_uflia_int_values`' comment describes comes from its
+own strategy of searching sibling applications rather than descending.
 
-**A second, independent defect remains, and it is the one that is not easy.**
-`witness-backward-constraint.smt2` is the seven-line reduction:
+It does what it says. `witness.smt2` and `witness-generated.smt2` both
+validate: witness 1 goes from a self-contradictory `f(3)=1, f(0)=5, f(4)=2`
+with `v1=2` to `f(3)=1, f(0)=2, f(2)=4` with `v1=4`, which evaluates correctly
+and satisfies `(<= v1 6)`.
+
+**On the corpus it is a regression.** Same 750 generated cases, same seed,
+one binary differing only in this pass:
+
+| model builder | model errors |
+|---|---:|
+| unchanged | **8** |
+| bottom-up completion, single pass | 14 |
+| bottom-up completion, solver-valued applications in a first sweep | (worse still; 43 against 21 over 3000 on the gate) |
+
+The two-sweep variant is separately wrong -- in the first sweep an argument
+with no solver value is not yet settled, so `term_value` invents for it and the
+rows that sweep publishes are keyed on values the second sweep then changes --
+but fixing that ordering still leaves 14 against 8.
+
+**Why it backfires.** Forcing an application onto an existing row equates two
+applications whenever their *printed* argument values coincide. Those values
+are partly invented, so a collision between an invented argument value and a
+real one merges two applications the solver deliberately kept apart, and the
+merge propagates upwards. The old per-class invention avoided this by accident:
+distinct classes got distinct invented values, so collisions were rarer. Keying
+by argument tuple is right for *consistency* and wrong for *containment*, and
+the completion is not correct until invented argument values are guaranteed not
+to collide with values that carry meaning.
+
+So the printer can be made self-consistent, and self-consistency is not
+sufficient. A real fix has to stop the values going missing in the first place
+-- see the backward-constraint witness below, where the missing value is not
+even free.
+
+## Third witness: `witness-backward-constraint.smt2`
+
+Seven lines, and the smallest case where the missing value is not free:
 
 ```smt2
 (set-logic QF_UFLIA)
@@ -130,22 +163,16 @@ its own arguments select.
 ```
 
 Primo prints `z = 4` against `(<= z (- 1))`. The printed `g` table carries
-`g(6,0) = -1` -- the solver's own row, with the value `z` should have -- but the
-chain evaluates the inner `g` to `3`, so the outer application lands on a
+`g(6,0) = -1` -- the solver's own row, with the value `z` should have -- but
+the chain evaluates the inner `g` to `3`, so the outer application lands on a
 different row. The solver's value for the *inner* application never reached the
-builder, so it was invented, and the invention cannot know that `z`'s bound
-pins it to `6`.
+builder.
 
-That direction is backward: `z`'s bound constrains the outer row, which
-constrains the inner argument. Bottom-up evaluation cannot recover it, because
-it is constraint solving rather than evaluation. The fix belongs in step 1 --
-`qf_uflia_int_values` has to return the value the solver actually assigned that
-application -- and not in the printer, which can only be consistent with the
-values it is given.
-
-`:model.invented-int-values` now reports the count, so the situation is visible
-from `--stats` alone. `invented_int_model_values_are_counted` in
-`tests/unit/qf_uflia_solver_tests.cpp` pins the two-versus-three-level boundary.
+The constraint that decides it runs backward: `z`'s bound pins the outer row,
+which pins the inner argument to `6`. Bottom-up evaluation cannot recover that,
+because it is constraint solving rather than evaluation, which is the other
+half of why the completion fix above is not enough. The value has to come from
+`qf_uflia_int_values`.
 
 ## Still not established
 
