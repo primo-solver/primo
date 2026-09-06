@@ -2148,11 +2148,38 @@ growth, with preprocessing alone going from 2.8s to 27s. The growth is
 inherent rather than an ordering artefact: an atom that only partly decides
 becomes a Boolean tree mirroring the CITE.
 
-**Falsifier, stated in advance.** Implement CITE simplification and compression
-together (the thesis is explicit that either alone is worse than neither), then
-measure on the 2780 `nec-smt` files with the same-binary control the stage 4
-evaluation established. **If the pair does not gain at least 200 solves on
-`nec-smt` at 60s, close this lead** -- the thesis's own claim is that the
+**Outcome 2026-09-06: the falsifier ran and the lead clears its bar by a factor
+of three.** Job 133177, same binary, `--cite-simplification` on versus off, all
+2780 `nec-smt` files at 60s:
+
+| | |
+|---|---:|
+| base solved | 644 |
+| CITE on | **1269** |
+| delta | **+625** |
+| gained / lost | 625 / **0** |
+| bar | +200 |
+
+Zero lost, zero wrong answers, zero disagreements -- and the correctness claim
+is the checkable kind, because every one of the 2780 files carries a declared
+`:status` (1524 unsat, 1256 sat) and all 1269 answers were compared against it.
+On the 577 files both arms solve with base above a second, the paired runtime
+geometric mean is 0.589 and total time falls 38.5%, so the 190% formula growth
+and the tenfold preprocessing cost are bought back several times over.
+
+For scale: the thesis reports 1422 without against 2772 with for *all* of
+SPASS-SATT's preprocessing on this family. Piece 1 alone takes Primo from 644
+to 1269.
+
+Promoted to default in `d8462db`; `--no-cite-simplification` keeps the other
+arm reachable. Piece 3, reconstruction, is not implemented and is now the
+remaining part of this lead.
+
+**Falsifier, as stated in advance.** Implement CITE simplification and
+compression together (the thesis is explicit that either alone is worse than
+neither), then measure on the 2780 `nec-smt` files with the same-binary control
+the stage 4 evaluation established. **If the pair does not gain at least 200
+solves on `nec-smt` at 60s, close this lead** -- the thesis's own claim is that the
 technique turns those instances into ones the simplex layer alone decides, so a
 small gain means Primo's bottleneck on that family is somewhere else and the
 next step is a profile, not a bigger ITE pass.
