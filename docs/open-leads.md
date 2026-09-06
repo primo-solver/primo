@@ -2118,6 +2118,36 @@ The lesson for the three pieces below is that a rewrite of this family has a
 neither a size proxy nor an auxiliary count locates them. Only solve counts on
 both an ITE-nested and an ITE-flat family do.
 
+**Update 2026-09-06: piece 2 is mostly already implemented, and piece 1 now
+exists behind a flag.**
+
+Piece 2's *semantic* content is in Primo already. A three-deep
+`(ite c t false)` chain compresses fully today -- three rewrites, no
+auxiliaries, four clauses -- through the Boolean-ite rules in
+`simplify-extended-terms` plus hash-consing. What the thesis adds on top is
+selectivity (extend a chain only through subterms occurring once) and naming
+the result with a fresh propositional variable; hash-consing already supplies
+what the naming is for, since the compressed conjunction is one node however
+many parents it has. So "implement 1 and 2 together" turned out to mean
+"implement 1, and make sure it runs before the rules that already do 2".
+
+Piece 1 is `--cite-simplification` (default off), `simplify_constant_ites` in
+`preprocessing.cpp`. Two departures from the thesis, both because the integers
+make its presentation unsound: it normalises a CITE by pushing constants to the
+leaves, whereas this pushes the *comparison* down and hoists an ite above a
+scale or sum only where that is an identity, so no coefficient is divided out.
+The caches are not optional -- keying the csimp cache per atom instead of on
+`(op, term, constant, side)` across the pass cost 183 seconds against 2.8 on
+`nec-smt`'s largest file.
+
+**What it does to the formula is genuinely two-sided**, which is why the
+falsifier below is a solve measurement and not a size one. On
+`nec-smt/large/getoption_directories/prp-4-113.smt2`: ite auxiliaries
+40284 -> 10026, a 75% cut, and preprocessed size 443762 -> 1280886, a 190%
+growth, with preprocessing alone going from 2.8s to 27s. The growth is
+inherent rather than an ordering artefact: an atom that only partly decides
+becomes a Boolean tree mirroring the CITE.
+
 **Falsifier, stated in advance.** Implement CITE simplification and compression
 together (the thesis is explicit that either alone is worse than neither), then
 measure on the 2780 `nec-smt` files with the same-binary control the stage 4
