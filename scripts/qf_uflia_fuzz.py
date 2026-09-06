@@ -138,7 +138,9 @@ def compose_int_terms(rng: random.Random, depth: int, width: int,
 
     `ite` is always available: it belongs to the Core theory and is legal in
     every logic, so cases containing it stay conforming QF_UFLIA and Dolmen
-    will model-check them.
+    will model-check them. `*` is the operator that needs care -- see the
+    comment on the scaling case below, which is where this generator was
+    emitting non-conforming input.
 
     `extended` additionally emits div, mod and abs. Those are *not* in
     QF_UFLIA -- the logic definition excludes "the function symbols *, **, /,
@@ -167,7 +169,17 @@ def compose_int_terms(rng: random.Random, depth: int, width: int,
             elif choice == 2:
                 level.append(f"(+ {left} {right})")
             elif choice == 3:
-                level.append(f"(* 2 {left})")
+                # QF_UFLIA's :extensions readmits * only as (* c x) / (* x c)
+                # with c an integer numeral and x a *free constant*. Scaling a
+                # composite term is semantically linear but not conforming, and
+                # Dolmen enforces the letter of it: (* 2 (* 2 (+ x (- 1))))
+                # made it reject the file, which the model gate then reported
+                # as a model error against a solver that had answered
+                # correctly. Keep the operand a declared symbol.
+                scaled = rng.choice(INT_VARIABLES)
+                coefficient = numeral(rng.choice([-3, -2, 2, 3, 5]))
+                level.append(f"(* {coefficient} {scaled})" if rng.random() < 0.5
+                             else f"(* {scaled} {coefficient})")
             elif choice == 4:
                 level.append(f"(ite {boolean_atom(rng, shallower)} {left} {right})")
             elif choice == 5:

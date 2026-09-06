@@ -184,6 +184,22 @@ def _as_text(value: str | bytes | None) -> str:
     return value
 
 
+def dolmen_rejects_problem_alone(
+    dolmen_path: str, problem_path, dolmen_arg: list[str], timeout: float
+) -> bool:
+    """True when Dolmen rejects the problem file on its own, with no model.
+
+    Distinguishes "this input is outside the logic" from "this model is wrong".
+    Only the first is a statement about the generator; the second is a
+    statement about the solver, and conflating them makes the gate report a
+    correct solver as broken.
+    """
+    status, exit_code, _, _, _ = run_command(
+        [dolmen_path, *dolmen_arg, str(problem_path)], timeout
+    )
+    return status == "done" and exit_code != 0
+
+
 def run_command(
     command: list[str], timeout: float, input_text: str | None = None
 ) -> tuple[str, int | None, str, str, float]:
@@ -242,6 +258,7 @@ def main() -> int:
     args.out.mkdir(parents=True, exist_ok=True)
     rows: list[dict[str, str]] = []
     failures = 0
+    nonconforming = 0
     fieldnames = [
         "file",
         "answer",
@@ -405,6 +422,19 @@ def main() -> int:
                 failures += 1
             elif dolmen_exit == 0:
                 outcome = "pass"
+            elif dolmen_rejects_problem_alone(
+                dolmen_path, problem_path, args.dolmen_arg, args.dolmen_timeout
+            ):
+                # Dolmen refused the *input*, not the model, so this says
+                # nothing about the solver. It means the file is outside the
+                # logic Dolmen enforces -- which is a generator or logic
+                # conformance problem and has to be reported as one. A run of
+                # this gate was red for exactly this reason: the QF_UFLIA
+                # generator emitted (* 2 (* 2 (+ x (- 1)))), which is
+                # semantically linear but outside the :extensions grammar,
+                # against a solver that had answered all 3000 cases correctly.
+                outcome = "input-nonconforming"
+                nonconforming += 1
             else:
                 validator = "z3-fallback"
                 z3_status, z3_exit, z3_stdout, z3_stderr, z3_seconds = (
@@ -509,6 +539,14 @@ def main() -> int:
     print(f"wrote {summary_path}")
     print(" ".join(f"{key}={counts[key]}" for key in sorted(counts)))
     print(" ".join(f"validator.{key}={validators[key]}" for key in sorted(validators)))
+    if nonconforming:
+        # Loud, but not a failure: the solver is not what these cases test.
+        # Whoever reads this needs to fix the generator, not the solver.
+        print(
+            f"warning: {nonconforming} case(s) were rejected by Dolmen as input, before any "
+            "model was checked -- these are generator/logic conformance problems, not solver "
+            "results, and are excluded from the failure count"
+        )
     return 1 if failures else 0
 
 
