@@ -6852,6 +6852,10 @@ ModelEqualityBranchChoice choose_lra_model_equality_branch(
 
 struct MixedTheoryPurificationResult {
   std::vector<core::TermId> assertions;
+  // (application, proxy) for every arithmetic-sorted UF application that was
+  // labelled, for both the original term and its purified rewriting. This is
+  // the map model construction needs; see PurificationProxyConversion.
+  std::vector<std::pair<core::TermId, core::TermId>> application_proxies;
   std::size_t arithmetic_uf_definitions = 0;
   std::size_t euf_real_term_definitions = 0;
   std::size_t reused_applications = 0;
@@ -7000,6 +7004,7 @@ struct MixedPurificationRewriteState {
   std::unordered_map<core::TermId, core::TermId> arithmetic_rewrite_memo;
   std::unordered_map<core::TermId, core::TermId> euf_rewrite_memo;
   std::vector<core::TermId> app_definitions;
+  std::vector<std::pair<core::TermId, core::TermId>> application_proxies;
   std::vector<core::TermId> lra_definition_atoms;
   std::size_t reused_applications = 0;
   std::size_t reused_real_terms = 0;
@@ -7060,6 +7065,10 @@ core::TermId purify_arithmetic_term(const PurificationScope& scope, core::TermId
     const core::TermId purified_application =
         changed ? terms.mk_app(symbol, std::move(purified_children)) : term_id;
     state.app_definitions.push_back(terms.mk_eq(proxy, purified_application));
+    state.application_proxies.emplace_back(term_id, proxy);
+    if (purified_application != term_id) {
+      state.application_proxies.emplace_back(purified_application, proxy);
+    }
     result = proxy;
     state.arithmetic_rewrite_memo.emplace(term_id, result);
     return result;
@@ -7277,7 +7286,8 @@ core::TermId purify_mixed_formula(const PurificationScope& scope, core::TermId t
 MixedTheoryPurificationResult purify_mixed_arithmetic_applications(
     const PurificationScope& scope, const std::vector<core::TermId>& assertions) {
   if (!assertions_need_mixed_purification(scope.terms, assertions)) {
-    return MixedTheoryPurificationResult{.assertions = assertions, .skipped_no_sites = true};
+    return MixedTheoryPurificationResult{
+        .assertions = assertions, .application_proxies = {}, .skipped_no_sites = true};
   }
   MixedPurificationRewriteState state;
   std::vector<core::TermId> rewritten_assertions;
@@ -7293,6 +7303,7 @@ MixedTheoryPurificationResult purify_mixed_arithmetic_applications(
                               state.lra_definition_atoms.end());
   return MixedTheoryPurificationResult{
       .assertions = std::move(rewritten_assertions),
+      .application_proxies = std::move(state.application_proxies),
       .arithmetic_uf_definitions = state.app_definitions.size(),
       .euf_real_term_definitions = state.proxy_by_real_term.size(),
       .reused_applications = state.reused_applications,
@@ -9246,6 +9257,29 @@ std::unordered_map<core::TermId, util::Rational> qf_uflia_int_values(
   for (const auto& [term, variable] : prepared.variables_by_term) {
     values.emplace(term, tableau.assignment(variable).rational);
   }
+
+  // Read each labelled UF application's value off its purification label.
+  //
+  // This is the construction Griggio's thesis sect. 1.5.1 describes: the labels
+  // are interface variables, so the arithmetic solver assigns every one of
+  // them, and a labelled application's value is its label's value by
+  // definition. Everything below this point -- rebuilding congruence classes
+  // from the asserted literals, merging tableau terms that share a value --
+  // exists to rediscover exactly this correspondence, and fails to on nested
+  // applications. It stays, because it also connects terms that were never
+  // labelled, but it is no longer the only route.
+  conversions.replay_reverse([&values](const ModelConversionStep& step) {
+    if (!std::holds_alternative<PurificationProxyConversion>(step)) {
+      return;
+    }
+    const auto& proxies = std::get<PurificationProxyConversion>(step);
+    for (const auto& [application, proxy] : proxies.application_proxies) {
+      const auto proxy_value = values.find(proxy);
+      if (proxy_value != values.end()) {
+        values.emplace(application, proxy_value->second);
+      }
+    }
+  });
 
   // A solved-constant definition is recorded before mixed purification. Its
   // right-hand side can therefore contain the original UF application, while
@@ -12391,6 +12425,16 @@ Tactic make_purify_mixed(PurifyMixedOptions options) {
     statistics.set(":no.purification.memoized-euf-rewrites", purification.memoized_euf_rewrites);
     statistics.set(":no.purification.skipped-no-sites", purification.skipped_no_sites ? 1 : 0);
     Goal result = goal.with_assertions(std::move(purification.assertions));
+    // Keep the purification map for model construction. Without it a UF
+    // application's value has to be rediscovered from asserted equalities and
+    // value coincidence, which is what bugs/qf-uflia-nested-application-model
+    // is; with it the value is a lookup on the label.
+    if (context.produce_model() && !purification.application_proxies.empty()) {
+      ModelReconstruction reconstruction = result.reconstruction();
+      reconstruction.conversions = reconstruction.conversions.appended(
+          PurificationProxyConversion{std::move(purification.application_proxies)});
+      result = result.with_reconstruction(std::move(reconstruction));
+    }
     if (!options.canonicalize_arithmetic_after || purification.skipped_no_sites) {
       return AnyOf::single(std::move(result));
     }

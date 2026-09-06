@@ -49,6 +49,25 @@ struct LiaSubstitutionConversion {
   bool operator==(const LiaSubstitutionConversion&) const = default;
 };
 
+// The purification map, kept so that model construction can read a UF
+// application's value off its label instead of searching for it.
+//
+// Griggio's thesis sect. 1.5.1: purification labels every alien subterm with a
+// fresh variable and asserts the label, so in the purified formula every
+// arithmetic-sorted UF application f(v_1..v_n) has a label v_f of its own, and
+// all of those are interface variables the arithmetic solver assigns. The row
+// is then (val(v_1)..val(v_n)) -> val(v_f). Discarding this map is what forced
+// qf_uflia_int_values to rediscover the correspondence, and what
+// bugs/qf-uflia-nested-application-model is caused by.
+//
+// Both the original application and its purified rewriting are recorded, since
+// the arena holds both and the model builder walks all of them.
+struct PurificationProxyConversion {
+  std::vector<std::pair<core::TermId, core::TermId>> application_proxies;
+
+  bool operator==(const PurificationProxyConversion&) const = default;
+};
+
 struct MonotoneEliminationConversion {
   std::vector<MonotoneEliminatedVariable> eliminated;
 
@@ -57,7 +76,8 @@ struct MonotoneEliminationConversion {
 
 using ModelConversionStep =
     std::variant<BooleanTheoryAssignmentConversion, DirectedEqualitySubstitutionConversion,
-                 LiaSubstitutionConversion, MonotoneEliminationConversion>;
+                 LiaSubstitutionConversion, MonotoneEliminationConversion,
+                 PurificationProxyConversion>;
 
 // Persistent execution-ordered postsolve log. Transformations append one typed
 // step; model builders replay steps in reverse without regrouping them by kind.
