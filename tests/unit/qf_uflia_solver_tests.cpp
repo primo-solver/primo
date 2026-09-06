@@ -413,6 +413,34 @@ void model_completion_terminates_on_deeply_nested_uf_applications() {
 // The bug is open. This pins the *counter*, which is what makes the situation
 // visible without an external model validator, and pins the boundary the bug
 // record documents: two levels of nesting need no invention, three do.
+// The chain that made bugs/qf-uflia-nested-application-model survive the
+// purification map: a constant substituted to a term over another substituted
+// constant. Model construction has to read both substitution kinds, apply them
+// beyond the printed terms, and retry after a value arrives -- evaluate()
+// memoizes failures, and arena order can reach the outer substitution first.
+void substituted_constant_over_substituted_auxiliary_is_valued() {
+  CheckSatOptions options;
+  options.produce_model = true;
+  const auto result = check_sat_smtlib(R"(
+    (set-logic QF_UFLIA)
+    (declare-fun x () Int)
+    (declare-fun y () Int)
+    (declare-fun z () Int)
+    (declare-fun f (Int) Int)
+    (assert (= z (- 2)))
+    (assert (= x (f (+ (ite (>= z 0) y (- 2)) (f y)))))
+    (assert (<= x 2))
+    (check-sat)
+  )",
+                                       options);
+  assert(result.result == CheckSatResult::Sat);
+  // x is neither an LIA variable nor a member of any EUF atom here, so its
+  // value exists only if the substitution chain is followed all the way down.
+  // Printing an invented value for it is what produced an invalid model.
+  assert(result.model.find("(define-fun x () Int") != std::string::npos);
+  assert(result.statistics.get(":model.invented-int-values") <= 6);
+}
+
 void invented_int_model_values_are_counted() {
   CheckSatOptions options;
   options.produce_model = true;
@@ -497,6 +525,7 @@ int main() {
   model_completion_terminates_on_nested_uf_applications();
   model_completion_terminates_on_deeply_nested_uf_applications();
   invented_int_model_values_are_counted();
+  substituted_constant_over_substituted_auxiliary_is_valued();
   model_parameters_do_not_shadow_user_symbols();
   rejects_real_symbols();
   return 0;

@@ -7122,6 +7122,18 @@ core::TermId purify_euf_arithmetic_argument(const PurificationScope& scope, core
   }
   const core::TermId proxy = scope.fresh_constant(rewritten.sort, "no_real_arg");
   state.proxy_by_real_term.emplace(arithmetic_term, proxy);
+  // The definition goes to LIA as two bounds, which means EUF never learns it.
+  // That is fine for solving and not for model construction: without it the
+  // congruence closure cannot see that f(t) and f(proxy) are the same
+  // application, so whichever of the two carries the solver's value, the other
+  // is left unvalued. Record the pair so model construction can restore the
+  // equality the bounds took ownership of.
+  state.application_proxies.emplace_back(arithmetic_term, proxy);
+  if (term_id != arithmetic_term) {
+    // Both spellings, as for applications: the arena keeps the pre-purification
+    // term too, and it is the one an earlier substitution may have captured.
+    state.application_proxies.emplace_back(term_id, proxy);
+  }
   state.lra_definition_atoms.push_back(terms.mk_le(proxy, arithmetic_term));
   state.lra_definition_atoms.push_back(terms.mk_le(arithmetic_term, proxy));
   return proxy;
@@ -9268,15 +9280,17 @@ std::unordered_map<core::TermId, util::Rational> qf_uflia_int_values(
   // exists to rediscover exactly this correspondence, and fails to on nested
   // applications. It stays, because it also connects terms that were never
   // labelled, but it is no longer the only route.
-  conversions.replay_reverse([&values](const ModelConversionStep& step) {
+  std::vector<std::pair<core::TermId, core::TermId>> purification_pairs;
+  conversions.replay_reverse([&values, &purification_pairs](const ModelConversionStep& step) {
     if (!std::holds_alternative<PurificationProxyConversion>(step)) {
       return;
     }
     const auto& proxies = std::get<PurificationProxyConversion>(step);
-    for (const auto& [application, proxy] : proxies.application_proxies) {
+    for (const auto& [purified_term, proxy] : proxies.application_proxies) {
+      purification_pairs.emplace_back(purified_term, proxy);
       const auto proxy_value = values.find(proxy);
       if (proxy_value != values.end()) {
-        values.emplace(application, proxy_value->second);
+        values.emplace(purified_term, proxy_value->second);
       }
     }
   });
@@ -9324,6 +9338,15 @@ std::unordered_map<core::TermId, util::Rational> qf_uflia_int_values(
     if (!inserted) {
       euf_classes.assert_equal(same_value->second, term);
     }
+  }
+  // Restore every purification definition. An application's definition reaches
+  // EUF as an equality atom and is already covered by the loop above, but an
+  // argument's definition is emitted as two LIA bounds and never becomes an
+  // EUF atom at all, so congruence cannot tell f(t) from f(proxy) without
+  // this. Asserting it is not a guess: purification created the proxy to *be*
+  // that term.
+  for (const auto& [purified_term, proxy] : purification_pairs) {
+    euf_classes.assert_equal(purified_term, proxy);
   }
   euf_classes.saturate();
   if (euf_classes.conflict().has_value()) {
@@ -9528,28 +9551,86 @@ std::unordered_map<core::TermId, util::Rational> qf_uflia_int_values(
 
   std::unordered_map<core::TermId, core::TermId> substitutions;
   conversions.replay_reverse([&substitutions](const ModelConversionStep& step) {
-    const auto* lia = std::get_if<LiaSubstitutionConversion>(&step);
-    if (lia == nullptr) {
+    // Both substitution kinds. A directed equality substitution eliminates a
+    // constant just as thoroughly as an LIA one -- an ite auxiliary replaced by
+    // a literal arrives this way -- and reading only the LIA kind left those
+    // constants with no value and no way to get one.
+    if (const auto* lia = std::get_if<LiaSubstitutionConversion>(&step); lia != nullptr) {
+      for (auto substitution = lia->substitutions.rbegin();
+           substitution != lia->substitutions.rend(); ++substitution) {
+        substitutions.try_emplace(substitution->first, substitution->second);
+      }
       return;
     }
-    for (auto substitution = lia->substitutions.rbegin(); substitution != lia->substitutions.rend();
-         ++substitution) {
-      substitutions.try_emplace(substitution->first, substitution->second);
+    if (const auto* directed = std::get_if<DirectedEqualitySubstitutionConversion>(&step);
+        directed != nullptr) {
+      for (auto substitution = directed->substitutions.rbegin();
+           substitution != directed->substitutions.rend(); ++substitution) {
+        substitutions.try_emplace(substitution->first, substitution->second);
+      }
     }
   });
-  for (const core::TermId term : model_terms) {
-    if (values.contains(term)) {
-      continue;
-    }
-    const auto substitution = substitutions.find(term);
-    if (substitution == substitutions.end()) {
-      continue;
-    }
-    const std::optional<util::Rational> value = evaluate(substitution->second);
-    if (value.has_value()) {
-      values.emplace(term, value.value());
+  // Every substituted Int term, not only the ones being printed. A constant
+  // eliminated by substitution -- an ite auxiliary, say -- is not an LIA
+  // variable and has no EUF class value, so without this it has no value at
+  // all, and neither does any sum built over it. That is enough to leave a UF
+  // application whose argument is such a sum unvalued, which is how
+  // bugs/qf-uflia-nested-application-model survived the purification map: `x`
+  // was substituted to `f($primo_ite_0 + f(y))`, and $primo_ite_0 had been
+  // substituted to a literal that only model_terms consulted.
+  //
+  // Arena order, so a substitution's right-hand side is usually already
+  // settled when it is read; evaluate() memoizes, including failures, so a
+  // term reached too early stays unvalued rather than being wrong.
+  std::vector<core::TermId> substituted_int_terms;
+  substituted_int_terms.reserve(substitutions.size());
+  for (const core::Term& term : terms.terms()) {
+    if (term.sort == terms.symbols().int_sort() && substitutions.contains(term.id)) {
+      substituted_int_terms.push_back(term.id);
     }
   }
+  for (const core::TermId term : model_terms) {
+    if (terms.get(term).sort != terms.symbols().int_sort() && substitutions.contains(term)) {
+      substituted_int_terms.push_back(term);
+    }
+  }
+  // Rounds, because a settled value can unblock a term that was tried too
+  // early. evaluate() memoizes failures as well as successes, which is what
+  // keeps it linear, but it also means a term reached before one of its
+  // dependencies stays unvalued for good. Arena order does not save us: on
+  // bugs/qf-uflia-nested-application-model's case-00130, `x` is term 22 and is
+  // substituted to f($primo_ite_0 + f(y)) whose $primo_ite_0 is term 33, so
+  // the substitution is evaluated before the constant it needs.
+  //
+  // Dropping only the failures between rounds keeps every success, so the walk
+  // is not repeated; the loop stops as soon as a round settles nothing new.
+  const auto discard_failed_evaluations = [&evaluated_terms]() {
+    for (auto entry = evaluated_terms.begin(); entry != evaluated_terms.end();) {
+      entry = entry->second.has_value() ? std::next(entry) : evaluated_terms.erase(entry);
+    }
+  };
+  constexpr int kSubstitutionRounds = 8;
+  for (int round = 0; round < kSubstitutionRounds; ++round) {
+    const std::size_t before = values.size();
+    for (const core::TermId term : substituted_int_terms) {
+      if (values.contains(term)) {
+        continue;
+      }
+      const auto substitution = substitutions.find(term);
+      if (substitution == substitutions.end()) {
+        continue;
+      }
+      const std::optional<util::Rational> value = evaluate(substitution->second);
+      if (value.has_value()) {
+        values.emplace(term, value.value());
+      }
+    }
+    if (values.size() == before) {
+      break;
+    }
+    discard_failed_evaluations();
+  }
+  discard_failed_evaluations();
   // Mixed purification leaves the original arithmetic argument term in the
   // hash-consed arena while the EUF component sees an equal fresh proxy. The
   // model printer visits both application forms, so give every evaluable Int

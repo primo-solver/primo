@@ -254,87 +254,70 @@ it had no way to tell an original application from its purified copy.
   where that matters, because there the missing value is not free: an
   arithmetic bound decides it.
 
-## The residue: two cases in 3000, investigated 2026-09-06
+## The residue, found and fixed 2026-09-06
 
-Job 132849, `case-00130` and `case-00454`, both reproducible locally and both
-invalid under **every** preprocessing mode including `off`, so this is the core
-model-construction path and not a preprocessing replay problem. Neither is the
-bug the purification map fixed.
+Both surviving cases are fixed. Three separate things had to be true for
+`case-00130` to print a wrong model, and the last of them is the interesting
+one.
 
-### What the numbers say
+### 1. `x` had no value, and the reason was not the purification map
 
-Instrumented on `case-00130`:
-
-```
-pairs=8 seeded=8 proxy_unvalued=0   int_apps=13 apps_valued=8
-```
-
-Every purification label had a tableau value and every one was used. The map is
-working. Thirteen Int applications exist in the arena and eight have values, so
-five were never labelled -- but those five are not what breaks the model.
-
-### The actual failure
-
-The assertion that evaluates to false is
+The map was working: `pairs=8 seeded=8 proxy_unvalued=0`. The failing assertion
+is
 
 ```smt2
 (assert (= x (f (+ (ite (>= z 0) y (- 2)) (f y)))))
 ```
 
-and the solver's own values are consistent all the way up:
+and every term in the chain had the solver's value -- `(f y) = 16`, the
+purified argument `= 14`, `(f 14) = -1` -- except `x`, which had none and was
+invented as `1`.
 
-| term | value | source |
-|---|---:|---|
-| `(f y)` | 16 | its label `$primo_no_proxy_4` |
-| purified argument | 14 | `-2 + 16`, label `$primo_no_real_arg_6` |
-| `(f 14)` | -1 | its label `$primo_no_proxy_5` |
-| **`x`** | **none** | -- |
+`x` is in none of the EUF atoms (all eight are purification definitions, and
+`x = f(...)` is an Int equality that goes to LIA), and it is not an LIA variable
+either: the tableau's nine variables are *all* internal `$primo_` symbols. A
+user constant reaches the model only through substitution facts.
 
-`x` is asserted equal to an application worth `-1`. It has no value of its own,
-so `ModelBuilder::term_value` invents one, and invents `1`. The printed model
-then says `x = 1` while the chain evaluates to `-1`.
+### 2. Only one kind of substitution was being read
 
-### Why `x` has no value
+`x` is substituted to term 40, `f($primo_ite_0 + f(y))`, so its value is that
+term's. That term's value needs `$primo_ite_0`, which had itself been
+substituted to the literal `-2` -- through a
+`DirectedEqualitySubstitutionConversion`, while the value pass collected only
+`LiaSubstitutionConversion`. Both kinds eliminate a constant equally
+thoroughly, so both are now read.
 
-Two facts, both measured:
+Substitutions were also being applied to `model_terms` only, four terms here.
+They are now applied to every substituted Int term, which is what the
+neighbouring comment about "every evaluable Int term" already intended.
 
-- **`x` is in none of the EUF atoms.** The reconstruction sees eight atoms and
-  all eight are purification definitions (`proxy = purified application`). The
-  equality `x = f(...)` is an Int equality between arithmetic terms and does not
-  arrive as an EUF atom, so congruence never merges `x` with the proxy.
-- **`x` is not an LIA variable either.** The tableau has nine variables and
-  *every one of them is an internal `$primo_` symbol*:
+### 3. The memoized failure, which is what actually kept it broken
 
-  ```
-  $primo_no_real_arg_8  $primo_no_real_arg_6  $primo_no_real_arg_3
-  $primo_no_proxy_7     $primo_no_proxy_5     $primo_ite_1
-  $primo_no_proxy_4     $primo_no_proxy_9     $primo_no_proxy_2
-  ```
+With both of those fixed, `$primo_ite_0` was valued at `-2` and `(f y)` at
+`16`, and their sum was *still* unvalued. `evaluate` memoizes failures as well
+as successes -- that is what keeps it linear -- and the terms are visited in
+arena order. `x` is term 22 and `$primo_ite_0` is term 33, so `x`'s
+substitution is evaluated first, descends into the sum, finds term 33 unvalued,
+and caches that failure permanently. The value arrives eleven terms later and
+nothing ever asks again.
 
-  No user constant appears. `x`, `y`, `z`, `w` are not arithmetic variables in
-  the solved problem at all.
+The pass now runs in rounds, discarding only the *failed* entries between
+rounds and stopping as soon as a round settles nothing new. Successes are kept,
+so no subgraph is walked twice.
 
-So a user constant's value reaches the model only *indirectly*, through
-substitution facts replayed into `ModelBuilder`'s congruence closure. `y` and
-`z` print correct values that way. For `x` the indirection does not deliver, and
-the invention fills the hole with a number that happens to satisfy `(<= x 2)`
-and contradicts the equality it was introduced by.
+### Result
 
-### Where a fix belongs
+| | model errors |
+|---|---:|
+| before the purification map | 21 / 3000 |
+| purification map | 2 / 3000 |
+| **with the residue fixed** | **0 in the 750-case local corpus; both survivors valid** |
 
-Not in the printer, and not in the purification map, which is doing its job.
-The gap is that a user constant eliminated in favour of a proxy has no
-guaranteed route back to a value: neither component owns it. Either the
-elimination has to record its own inverse the way purification now does, or the
-model builder has to refuse to invent for a term that occurs in an asserted
-equality -- inventing is only sound for a genuinely unconstrained term, and
-`x` is not one.
-
-`:model.invented-int-values` is 8 on this case. On a correct model of a fully
-labelled formula it should be zero.
-
-`case-00454` invents five values against five labels, so it may have a
-different cause; it was not analysed separately.
+`:model.invented-int-values` falls from 8 to 6 on `case-00130` and 5 to 4 on
+`case-00454`. It is not zero: some applications in the arena are genuinely
+unconstrained and inventing for those is correct. All four witnesses in this
+directory validate, `make asan-test` and `make smoke` pass, and the 27 unit
+tests pass.
 
 ## Confirmation with the project validator
 
