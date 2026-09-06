@@ -2,12 +2,19 @@
 
 ## Status
 
-**FIXED 2026-09-06.** The QF_UFLIA model fuzz gate reports **0 model errors in
-3000 cases** (job 132988, 1535 satisfiable models all validated by Dolmen
-directly, no Z3 fallback), against 21 before. All four witnesses in this
-directory validate. Answers are unchanged: 2999 PASS and the same single
-pre-existing `unknown` case that every earlier run of this gate also reported.
-QF_UFLRA (132989) clean.
+**LARGELY FIXED 2026-09-06, and not closed.** The QF_UFLIA model fuzz gate went
+from **21 model errors in 3000 cases to 0** on seed base 202609100 (job
+132988), and all four witnesses in this directory validate. But a run on a
+*different* seed base the next day (202609200, job 133726) produced **1 model
+error in 3000**, so the class is reduced by roughly 95% rather than eliminated,
+and "0 in 3000" was a statement about one seed rather than about the bug.
+
+The survivor, `witness-residual-2026-09-07.smt2`, is the same shape as
+everything else here -- nested applications `(f (f (ite ...)))` and
+`(f (+ (f z) (g y w)))` -- and it fails identically with and without
+`--cite-simplification`, so it is not caused by the CITE work that found it. It
+reports 12 invented Int values against 5 purification labels, so the unvalued
+terms are again ones no label covers.
 
 Two commits, and the second is the one that finishes it:
 

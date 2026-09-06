@@ -30579,6 +30579,36 @@
         "slurm": "primo-cadical-profile/results/nec-smt-cite; primo-cadical-profile/results/qf-lia-cite-full"
       },
       "notes": "Two implementation notes worth keeping. The csimp cache must be keyed on (op, term, constant, side) across the pass, not per atom: getting that wrong cost 183 seconds against 2.8 on one file. And passing the compared constant as a reference into a core::Term is a use-after-free, because every mk_* call can grow the arena; ASan caught it on the first nec-smt file. Piece 3, ITE reconstruction, remains unimplemented and is what is left of lead 16."
+    },
+    {
+      "id": "2026-09-07-cite-cross-theory-133626",
+      "date": "2026-09-07",
+      "commit": "d8462db",
+      "branch": "modular-theory-combination",
+      "kind": "cross-logic-check-of-a-promoted-default",
+      "scope": "Constant if-then-else simplification was promoted on QF_LIA evidence alone, but simplify-constant-ites sits in the unconditional initial sequence and runs for every logic. This measures the other three.",
+      "environment": {
+        "host": "CIIRC SLURM cluster",
+        "solver": "Primo 0.1.0 at d8462db; one binary, the arms differing only by --no-cite-simplification",
+        "corpus": "sandbox/non-incremental/QF_LRA 1753, QF_UFLRA 1284, tmp/QF_UFLIA 659; 60-second timeout"
+      },
+      "jobs": {
+        "qf_lra": "133626",
+        "qf_uflra": "133627",
+        "qf_uflia": "133706",
+        "fuzz_qf_uflia_model": "133726",
+        "fuzz_qf_uflra": "133727",
+        "fuzz_qf_uf_boolean": "133728",
+        "fuzz_finite_domain": "133729"
+      },
+      "results": {
+        "solve_counts": "QF_LIA 9061 -> 9660 (+599). QF_LRA 1533 -> 1531 (-2, none gained). QF_UFLRA 1270 -> 1270. QF_UFLIA 571 -> 571. No wrong answers and no disagreements anywhere.",
+        "runtime": "Paired geometric mean on files both arms solve: QF_LRA 1.0136 with total time +1.87% over 476 files, QF_UFLRA 1.0150 with +1.60% over 60. So outside QF_LIA the pass costs a small, systematic amount and returns nothing, which matches the thesis reporting these techniques worth +2 on QF_LRA.",
+        "verdict": "Kept on by default. The -2 on QF_LRA is inside the same-binary churn floor measured earlier on this branch (base scored 9038 and 9040 on identical binary and corpus), so it is not distinguishable from noise; the ~1.7% runtime cost on the Real logics is real but did not cost solves on QF_UFLRA and is bounded by the extended_term_count early-out, which skips the pass entirely on formulas containing no ite. Scoping the default to Int logics remains available if the QF_LRA cost is ever shown to be more than churn.",
+        "correctness_gates": "QF_UFLRA, QF_UF Boolean and finite-domain gates all clean. The QF_UFLIA gate reported 2999 answer PASS with 1 timeout, and 1 model error in 3000 -- reproducible with and without --cite-simplification, so not caused by this change.",
+        "bug_status_correction": "That single model error is the same nested-application shape as bugs/qf-uflia-nested-application-model, which was recorded as FIXED the previous day on the strength of 0 errors in 3000 at seed base 202609100. A different seed base finds one. The bug file now reads LARGELY FIXED, about a 95% reduction from 21, with witness-residual-2026-09-07.smt2 kept: 12 invented Int values against 5 purification labels, so the unvalued terms are again ones no label covers."
+      },
+      "notes": "The lesson worth keeping is the one that prompted this run: a default was promoted on a single logic's evidence when the pass runs for all of them, and the check took one submission. The same reasoning applies to the fuzz gate: 0 errors in 3000 is a statement about a seed, and a second seed is what turns it into a statement about the code."
     }
   ]
 }
