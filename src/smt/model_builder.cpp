@@ -334,6 +334,12 @@ class QfUfModelBuilder {
   // uninterpreted application at an argument tuple the solver never pinned.
   // Everything built out of those is computed.
   //
+  // A value the solver produced always takes priority over a computed one, so
+  // this only ever replaces an invention. Verified rather than assumed: an
+  // instrumented run over the 750-case QF_UFLIA corpus and every witness in
+  // bugs/qf-uflia-nested-application-model found zero terms where a stored
+  // value and the value computed from the children disagree.
+  //
   // Explicit stack with a memo, per the repository's no-recursion rule.
   util::Rational int_value(core::TermId root) {
     struct Frame {
