@@ -526,6 +526,18 @@ Tactic make_normalize_boolean(NormalizeBooleanOptions options) {
   });
 }
 
+Tactic make_simplify_constant_ites() {
+  return make_goal_tactic("simplify-constant-ites", [](TacticContext& context, const Goal& goal) {
+    SimplifyConstantItesResult simplified =
+        simplify_constant_ites(context.terms(), goal.assertions());
+    util::Statistics& statistics = context.statistics();
+    statistics.increment(util::StatKey::CiteAtomsVisited, simplified.atoms_visited);
+    statistics.increment(util::StatKey::CiteAtomsSimplified, simplified.atoms_simplified);
+    statistics.increment(util::StatKey::CiteBranchesCollapsed, simplified.branches_collapsed);
+    return AnyOf::single(goal.with_assertions(std::move(simplified.assertions)));
+  });
+}
+
 Tactic make_simplify_extended_terms(const SimplifyExtendedTermsOptions& options) {
   return make_goal_tactic(
       "simplify-extended-terms", [options](TacticContext& context, const Goal& goal) {

@@ -585,6 +585,10 @@ PreparedPreprocessingStrategy prepare_and_execute_preprocessing_strategy(
         .distribute_equalities = options.ite_equality_distribution};
     initial_children.push_back(Strategy::leaf("simplify-extended-terms", NoStrategyParameters{},
                                               make_simplify_extended_terms(extended_options)));
+    if (options.cite_simplification) {
+      initial_children.push_back(Strategy::leaf("simplify-constant-ites", NoStrategyParameters{},
+                                                make_simplify_constant_ites()));
+    }
   }
   initial_children.push_back(
       Strategy::leaf("lower-extended-terms", NoStrategyParameters{}, make_lower_extended_terms()));

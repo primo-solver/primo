@@ -285,6 +285,9 @@ int run_main(int argc, char** argv) {
                         "itself an ite");
   add_flag_with_default(app, "--no-ite-equality-distribution", no_ite_equality_distribution,
                         "Disable (= u (ite c a b)) distribution");
+  add_flag_with_default(app, "--cite-simplification", solver_options.cite_simplification,
+                        "Decide atoms over constant if-then-else terms branch by branch "
+                        "(open-leads lead 16, piece 1)");
   add_flag_with_default(app, "--eq-bridge", solver_options.eq_bridge,
                         "Add equalities implied by every branch of selected QF_UF disjunctions");
   add_flag_with_default(app, "--no-eq-bridge", no_eq_bridge,
@@ -747,7 +750,7 @@ int run_main(int argc, char** argv) {
         starts_with(name, "--auto-preprocess-") || starts_with(name, "--preprocessing-") ||
         starts_with(name, "--preprocess-passes") ||
         starts_with(name, "--extended-simplification") ||
-        starts_with(name, "--no-extended-simplification") ||
+        starts_with(name, "--no-extended-simplification") || name == "--cite-simplification" ||
         name == "--ite-equality-distribution" || name == "--no-ite-equality-distribution") {
       return kGroupPreprocessing;
     }

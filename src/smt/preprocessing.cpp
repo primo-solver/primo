@@ -3648,6 +3648,332 @@ std::vector<std::size_t> count_parent_edges(const core::TermManager& terms,
   return parents;
 }
 
+// ---- Constant if-then-else (CITE) simplification -------------------------
+//
+// [](papers/bromberger-linear-arithmetic-thesis.md) sect. 8.2.3, crediting
+// Kim/Somenzi/Jin. A CITE is a term built only from numbers and ite:
+//
+//   <cite> ::= (+ <number>)
+//            | (+ <number> (* <number> (ite <formula> <cite> <cite>)))
+//
+// An atom comparing two such terms, or one against a constant, can often be
+// decided branch by branch: if every leaf of the ite tree compares the same
+// way against the other side, the whole atom collapses to true or false, and
+// otherwise the comparison can be pushed inside the ite.
+//
+// Two departures from the thesis's presentation, both to avoid a rewrite that
+// integers make unsound. It normalises a CITE first, pushing constants to the
+// leaves; this pushes the *comparison* down instead and hoists an ite above
+// its scale or sum only where that is an identity
+// ((* k (ite c x y)) = (ite c (* k x) (* k y))), so no coefficient is ever
+// divided out. And the collapse test is done on the leaf set of the original
+// term, which already accounts for the scale and offset exactly.
+//
+// Both walks are memoised. The thesis says this is needed for efficiency; on
+// this corpus it is needed for termination, since one nec-smt file holds 5240
+// ites inside a single assert. Neither walk recurses.
+
+// The values a CITE can take. Empty optional means "not a CITE".
+using CiteLeaves = std::optional<std::vector<util::Rational>>;
+
+// csimp results, cached across the whole pass rather than per atom. The thesis
+// is explicit that the intermediate results have to be computed once; caching
+// per atom recomputes every shared CITE subterm for every atom that mentions
+// it, which on nec-smt's largest file meant 183 seconds against 2.8.
+struct CsimpKey {
+  core::TermKind op;
+  core::TermId term;
+  util::Rational constant;
+  bool constant_on_left;
+
+  bool operator==(const CsimpKey& other) const {
+    return op == other.op && term == other.term && constant_on_left == other.constant_on_left &&
+           constant == other.constant;
+  }
+};
+
+struct CsimpKeyHash {
+  std::size_t operator()(const CsimpKey& key) const {
+    std::size_t seed = std::hash<int>{}(static_cast<int>(key.op));
+    seed ^=
+        std::hash<core::TermId>{}(key.term) + 0x9e3779b97f4a7c15ULL + (seed << 6U) + (seed >> 2U);
+    seed ^=
+        util::RationalHash{}(key.constant) + 0x9e3779b97f4a7c15ULL + (seed << 6U) + (seed >> 2U);
+    seed ^= std::hash<bool>{}(key.constant_on_left) + 0x9e3779b97f4a7c15ULL + (seed << 6U) +
+            (seed >> 2U);
+    return seed;
+  }
+};
+
+using CsimpCache = std::unordered_map<CsimpKey, core::TermId, CsimpKeyHash>;
+
+void merge_leaves(std::vector<util::Rational>& into, const std::vector<util::Rational>& from) {
+  into.insert(into.end(), from.begin(), from.end());
+  std::sort(into.begin(), into.end());
+  into.erase(std::unique(into.begin(), into.end()), into.end());
+}
+
+// Leaf sets for every subterm reachable from `root`, computed bottom-up.
+// Non-CITE subterms are recorded as such so the walk is not repeated.
+void compute_cite_leaves(const core::TermManager& terms, core::TermId root,
+                         std::unordered_map<core::TermId, CiteLeaves>& memo) {
+  struct Frame {
+    core::TermId term;
+    bool expanded;
+  };
+  std::vector<Frame> stack;
+  stack.push_back(Frame{root, false});
+  while (!stack.empty()) {
+    const Frame frame = stack.back();
+    if (memo.contains(frame.term)) {
+      stack.pop_back();
+      continue;
+    }
+    const core::Term& node = terms.get(frame.term);
+    if (!frame.expanded) {
+      stack.back().expanded = true;
+      const bool descends = node.kind == core::TermKind::Ite ||
+                            node.kind == core::TermKind::Times || node.kind == core::TermKind::Plus;
+      if (!descends) {
+        memo.emplace(frame.term, node.kind == core::TermKind::Rational
+                                     ? CiteLeaves{{node.rational_value}}
+                                     : CiteLeaves{std::nullopt});
+        stack.pop_back();
+        continue;
+      }
+      // An ite's condition is a formula, not part of the arithmetic tree.
+      const std::size_t first = node.kind == core::TermKind::Ite ? 1 : 0;
+      for (std::size_t index = node.children.size(); index > first; --index) {
+        stack.push_back(Frame{node.children.at(index - 1), false});
+      }
+      continue;
+    }
+    stack.pop_back();
+    switch (node.kind) {
+      case core::TermKind::Ite: {
+        const CiteLeaves& then_leaves = memo.at(node.children.at(1));
+        const CiteLeaves& else_leaves = memo.at(node.children.at(2));
+        if (!then_leaves.has_value() || !else_leaves.has_value()) {
+          memo.emplace(frame.term, std::nullopt);
+          break;
+        }
+        std::vector<util::Rational> leaves = then_leaves.value();
+        merge_leaves(leaves, else_leaves.value());
+        memo.emplace(frame.term, std::move(leaves));
+        break;
+      }
+      case core::TermKind::Times: {
+        const CiteLeaves& child = memo.at(node.children.at(0));
+        if (!child.has_value()) {
+          memo.emplace(frame.term, std::nullopt);
+          break;
+        }
+        std::vector<util::Rational> leaves;
+        leaves.reserve(child.value().size());
+        for (const util::Rational& value : child.value()) {
+          leaves.push_back(node.rational_value * value);
+        }
+        merge_leaves(leaves, {});
+        memo.emplace(frame.term, std::move(leaves));
+        break;
+      }
+      case core::TermKind::Plus: {
+        // The grammar allows one complex monomial; everything else must be
+        // constant, or the sum is not a CITE.
+        util::Rational constant(0);
+        const CiteLeaves* complex = nullptr;
+        bool is_cite = true;
+        for (const core::TermId child : node.children) {
+          const CiteLeaves& leaves = memo.at(child);
+          if (!leaves.has_value()) {
+            is_cite = false;
+            break;
+          }
+          if (leaves.value().size() == 1 && terms.get(child).kind == core::TermKind::Rational) {
+            constant = constant + leaves.value().front();
+            continue;
+          }
+          if (complex != nullptr) {
+            is_cite = false;
+            break;
+          }
+          complex = &leaves;
+        }
+        if (!is_cite) {
+          memo.emplace(frame.term, std::nullopt);
+          break;
+        }
+        std::vector<util::Rational> leaves;
+        if (complex == nullptr) {
+          leaves.push_back(constant);
+        } else {
+          leaves.reserve(complex->value().size());
+          for (const util::Rational& value : complex->value()) {
+            leaves.push_back(constant + value);
+          }
+          merge_leaves(leaves, {});
+        }
+        memo.emplace(frame.term, std::move(leaves));
+        break;
+      }
+      default:
+        memo.emplace(frame.term, std::nullopt);
+        break;
+    }
+  }
+}
+
+bool compare_values(core::TermKind op, const util::Rational& lhs, const util::Rational& rhs) {
+  switch (op) {
+    case core::TermKind::Le:
+      return lhs <= rhs;
+    case core::TermKind::Lt:
+      return lhs < rhs;
+    default:
+      return lhs == rhs;
+  }
+}
+
+// Hoists an ite above a scale or a sum, which is an identity in both cases.
+// Returns kInvalidTermId when the term's head is not one of those shapes.
+core::TermId hoist_ite_to_top(core::TermManager& terms, core::TermId term) {
+  const core::Term& node = terms.get(term);
+  if (node.kind == core::TermKind::Times) {
+    const core::TermId child = node.children.at(0);
+    const core::Term& inner = terms.get(child);
+    if (inner.kind != core::TermKind::Ite) {
+      return core::kInvalidTermId;
+    }
+    const util::Rational coefficient = node.rational_value;
+    return terms.mk_ite(inner.children.at(0), terms.mk_times(coefficient, inner.children.at(1)),
+                        terms.mk_times(coefficient, inner.children.at(2)));
+  }
+  if (node.kind != core::TermKind::Plus) {
+    return core::kInvalidTermId;
+  }
+  const std::vector<core::TermId> children = node.children;
+  for (std::size_t index = 0; index < children.size(); ++index) {
+    if (terms.get(children.at(index)).kind != core::TermKind::Ite) {
+      continue;
+    }
+    const core::Term& inner = terms.get(children.at(index));
+    const core::TermId condition = inner.children.at(0);
+    const core::TermId then_branch = inner.children.at(1);
+    const core::TermId else_branch = inner.children.at(2);
+    std::vector<core::TermId> then_children = children;
+    std::vector<core::TermId> else_children = children;
+    then_children[index] = then_branch;
+    else_children[index] = else_branch;
+    return terms.mk_ite(condition, terms.mk_plus(std::move(then_children)),
+                        terms.mk_plus(std::move(else_children)));
+  }
+  return core::kInvalidTermId;
+}
+
+// Pushes a comparison against a constant down a CITE, collapsing any branch
+// whose leaves all decide it the same way. This is the thesis's csimp, minus
+// the two-branch equality case, which is recorded as not implemented in
+// docs/preprocessing.md.
+//
+// `constant_on_left` keeps the operand order, which matters for Le and Lt.
+// `constant` is taken by value on purpose: it is read from a core::Term in the
+// arena, and every mk_* call below can grow that arena and invalidate the
+// reference. This crashed on the first nec-smt file it saw.
+core::TermId csimp_against_constant(core::TermManager& terms, core::TermKind op,
+                                    util::Rational constant, core::TermId cite,
+                                    bool constant_on_left,
+                                    std::unordered_map<core::TermId, CiteLeaves>& leaves,
+                                    CsimpCache& results, std::size_t& collapses) {
+  const auto decide = [&](const util::Rational& leaf) {
+    return constant_on_left ? compare_values(op, constant, leaf)
+                            : compare_values(op, leaf, constant);
+  };
+  const auto rebuild_atom = [&](core::TermId side) {
+    const core::TermId constant_term = terms.mk_rational(constant, terms.get(side).sort);
+    const core::TermId lhs = constant_on_left ? constant_term : side;
+    const core::TermId rhs = constant_on_left ? side : constant_term;
+    switch (op) {
+      case core::TermKind::Le:
+        return terms.mk_le(lhs, rhs);
+      case core::TermKind::Lt:
+        return terms.mk_lt(lhs, rhs);
+      default:
+        return terms.mk_eq(lhs, rhs);
+    }
+  };
+
+  struct Frame {
+    core::TermId term;
+    bool expanded;
+  };
+  std::vector<Frame> stack;
+  stack.push_back(Frame{cite, false});
+  while (!stack.empty()) {
+    const Frame frame = stack.back();
+    const CsimpKey key{op, frame.term, constant, constant_on_left};
+    if (results.contains(key)) {
+      stack.pop_back();
+      continue;
+    }
+    compute_cite_leaves(terms, frame.term, leaves);
+    const CiteLeaves& leaf_set = leaves.at(frame.term);
+    if (!leaf_set.has_value()) {
+      results.emplace(key, rebuild_atom(frame.term));
+      stack.pop_back();
+      continue;
+    }
+    std::size_t true_leaves = 0;
+    for (const util::Rational& leaf : leaf_set.value()) {
+      true_leaves += decide(leaf) ? std::size_t{1} : std::size_t{0};
+    }
+    if (true_leaves == leaf_set.value().size()) {
+      ++collapses;
+      results.emplace(key, terms.mk_bool(true));
+      stack.pop_back();
+      continue;
+    }
+    if (true_leaves == 0) {
+      ++collapses;
+      results.emplace(key, terms.mk_bool(false));
+      stack.pop_back();
+      continue;
+    }
+    // Mixed leaves: push the comparison inside, hoisting the ite above a
+    // scale or a sum first if it is not already on top. Each hoist is an
+    // identity, so no coefficient is divided.
+    core::TermId branch = frame.term;
+    while (terms.get(branch).kind != core::TermKind::Ite) {
+      const core::TermId hoisted = hoist_ite_to_top(terms, branch);
+      if (hoisted == core::kInvalidTermId) {
+        break;
+      }
+      branch = hoisted;
+    }
+    const core::Term& node = terms.get(branch);
+    if (node.kind != core::TermKind::Ite) {
+      results.emplace(key, rebuild_atom(frame.term));
+      stack.pop_back();
+      continue;
+    }
+    const core::TermId then_branch = node.children.at(1);
+    const core::TermId else_branch = node.children.at(2);
+    if (!frame.expanded) {
+      stack.back().expanded = true;
+      stack.push_back(Frame{else_branch, false});
+      stack.push_back(Frame{then_branch, false});
+      continue;
+    }
+    stack.pop_back();
+    const core::TermId condition = node.children.at(0);
+    const core::TermId then_result =
+        results.at(CsimpKey{op, then_branch, constant, constant_on_left});
+    const core::TermId else_result =
+        results.at(CsimpKey{op, else_branch, constant, constant_on_left});
+    results.emplace(key, terms.mk_ite(condition, then_result, else_result));
+  }
+  return results.at(CsimpKey{op, cite, constant, constant_on_left});
+}
+
 core::TermId simplify_extended_node(core::TermManager& terms, core::TermKind kind,
                                     const util::Rational& divisor,
                                     const std::vector<core::TermId>& children,
@@ -3922,6 +4248,103 @@ SimplifyExtendedTermsResult simplify_extended_terms_round(
       rewritten[visit.term] = changed ? rebuild_lowered_node(terms, visit.term, kind, symbol,
                                                              rational, std::move(children))
                                       : visit.term;
+    }
+    result.assertions.push_back(rewritten.at(assertion));
+  }
+  return result;
+}
+
+SimplifyConstantItesResult simplify_constant_ites(core::TermManager& terms,
+                                                  const std::vector<core::TermId>& assertions) {
+  SimplifyConstantItesResult result;
+  if (terms.extended_term_count() == 0) {
+    result.assertions = assertions;
+    return result;
+  }
+
+  std::unordered_map<core::TermId, CiteLeaves> leaves;
+  CsimpCache csimp_results;
+  std::unordered_map<core::TermId, core::TermId> rewritten;
+  struct Visit {
+    core::TermId term = core::kInvalidTermId;
+    bool expanded = false;
+  };
+  std::vector<Visit> pending;
+  result.assertions.reserve(assertions.size());
+
+  for (const core::TermId assertion : assertions) {
+    pending.push_back(Visit{assertion, false});
+    while (!pending.empty()) {
+      const Visit visit = pending.back();
+      pending.pop_back();
+      if (rewritten.contains(visit.term)) {
+        continue;
+      }
+      const core::Term& source = terms.get(visit.term);
+      if (source.children.empty()) {
+        rewritten.emplace(visit.term, visit.term);
+        continue;
+      }
+      if (!visit.expanded) {
+        pending.push_back(Visit{visit.term, true});
+        for (auto child = source.children.rbegin(); child != source.children.rend(); ++child) {
+          if (!rewritten.contains(*child)) {
+            pending.push_back(Visit{*child, false});
+          }
+        }
+        continue;
+      }
+
+      const core::TermKind kind = source.kind;
+      const core::SymbolId symbol = source.symbol;
+      const util::Rational rational = source.rational_value;
+      const std::vector<core::TermId> source_children = source.children;
+      std::vector<core::TermId> children;
+      children.reserve(source_children.size());
+      bool changed = false;
+      for (const core::TermId child : source_children) {
+        const core::TermId replacement = rewritten.at(child);
+        changed = changed || replacement != child;
+        children.push_back(replacement);
+      }
+
+      const bool comparison = kind == core::TermKind::Le || kind == core::TermKind::Lt ||
+                              kind == core::TermKind::Equality;
+      if (comparison && children.size() == 2) {
+        ++result.atoms_visited;
+        for (std::size_t index = 0; index < 2; ++index) {
+          const core::TermId constant_side = children.at(index);
+          const core::TermId other_side = children.at(1 - index);
+          const core::Term& constant_term = terms.get(constant_side);
+          if (constant_term.kind != core::TermKind::Rational) {
+            continue;
+          }
+          compute_cite_leaves(terms, other_side, leaves);
+          const CiteLeaves& other_leaves = leaves.at(other_side);
+          // One leaf means there is no branch to decide; the ordinary
+          // constant folding already handles that.
+          if (!other_leaves.has_value() || other_leaves.value().size() < 2) {
+            continue;
+          }
+          // Copy before entering csimp, which builds terms.
+          const util::Rational constant_value = constant_term.rational_value;
+          const core::TermId simplified = csimp_against_constant(
+              terms, kind, constant_value, other_side,
+              /*constant_on_left=*/index == 0, leaves, csimp_results, result.branches_collapsed);
+          if (simplified != visit.term) {
+            ++result.atoms_simplified;
+            rewritten.emplace(visit.term, simplified);
+          }
+          break;
+        }
+        if (rewritten.contains(visit.term)) {
+          continue;
+        }
+      }
+
+      rewritten.emplace(visit.term, changed ? rebuild_lowered_node(terms, visit.term, kind, symbol,
+                                                                   rational, std::move(children))
+                                            : visit.term);
     }
     result.assertions.push_back(rewritten.at(assertion));
   }

@@ -189,6 +189,22 @@ struct SimplifyExtendedTermsResult {
 //
 // Nothing but the frontend builds these four kinds, so a single pass before
 // lowering sees all of them.
+struct SimplifyConstantItesResult {
+  std::vector<core::TermId> assertions;
+  std::size_t atoms_visited = 0;
+  std::size_t atoms_simplified = 0;
+  std::size_t branches_collapsed = 0;
+};
+
+// Constant if-then-else simplification, piece 1 of open-leads lead 16.
+// Bromberger sect. 8.2.3, crediting Kim/Somenzi/Jin: an atom comparing a
+// constant against a term built only from numbers and ite can be decided
+// branch by branch, collapsing wherever every leaf agrees.
+//
+// Must run before lower-extended-terms, which replaces the ite it reads.
+SimplifyConstantItesResult simplify_constant_ites(core::TermManager& terms,
+                                                  const std::vector<core::TermId>& assertions);
+
 struct SimplifyExtendedTermsOptions {
   // Bottom-up traversals to run. One pass cannot reach the nodes its own rules
   // create, so a nested ITE under an equality only distributes one level per

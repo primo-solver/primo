@@ -1831,6 +1831,82 @@ void simplification_does_not_distribute_a_shared_ite() {
 // which needs the auxiliary anyway: the guard structure is paid and nothing is
 // collected. On nec-smt, whose ITEs are nested chains, dropping this test made
 // the rule fire 18,867 times to remove 20 auxiliaries.
+// Constant if-then-else simplification, open-leads lead 16 piece 1.
+// Bromberger sect. 8.2.3 / Kim-Somenzi-Jin: an atom comparing a constant with a
+// term built only from numbers and ite is decided branch by branch.
+void constant_ite_atoms_collapse() {
+  primo::core::SymbolTable symbols;
+  const auto int_sort = symbols.int_sort();
+  const auto p_symbol = symbols.declare_constant("p", symbols.bool_sort());
+  const auto q_symbol = symbols.declare_constant("q", symbols.bool_sort());
+  primo::core::TermManager terms(symbols);
+  const primo::core::TermId p = terms.mk_constant(p_symbol);
+  const primo::core::TermId q = terms.mk_constant(q_symbol);
+  const auto number = [&](int value) {
+    return terms.mk_rational(primo::util::Rational(value), int_sort);
+  };
+
+  // (ite p 3 (ite q 5 7)) has leaves {3,5,7}.
+  const primo::core::TermId inner = terms.mk_ite(q, number(5), number(7));
+  const primo::core::TermId cite = terms.mk_ite(p, number(3), inner);
+
+  // Every leaf is <= 10, so the atom is true outright.
+  {
+    const primo::smt::SimplifyConstantItesResult simplified =
+        primo::smt::simplify_constant_ites(terms, {terms.mk_le(cite, number(10))});
+    check(simplified.assertions.at(0) == terms.mk_bool(true));
+    check(simplified.atoms_simplified == 1);
+  }
+  // No leaf is <= 1, so it is false outright.
+  {
+    const primo::smt::SimplifyConstantItesResult simplified =
+        primo::smt::simplify_constant_ites(terms, {terms.mk_le(cite, number(1))});
+    check(simplified.assertions.at(0) == terms.mk_bool(false));
+  }
+  // Mixed: 3 <= 4 holds and 5, 7 do not, so the comparison is pushed inside and
+  // each branch decided. The whole atom becomes exactly the condition.
+  {
+    const primo::smt::SimplifyConstantItesResult simplified =
+        primo::smt::simplify_constant_ites(terms, {terms.mk_le(cite, number(4))});
+    check(simplified.assertions.at(0) ==
+          terms.mk_ite(p, terms.mk_bool(true), terms.mk_bool(false)));
+  }
+  // A scale is hoisted rather than divided out, which keeps it sound over the
+  // integers: (* 2 cite) has leaves {6,10,14} and none is <= 5.
+  {
+    const primo::core::TermId scaled = terms.mk_times(primo::util::Rational(2), cite);
+    const primo::smt::SimplifyConstantItesResult simplified =
+        primo::smt::simplify_constant_ites(terms, {terms.mk_le(scaled, number(5))});
+    check(simplified.assertions.at(0) == terms.mk_bool(false));
+  }
+  // An offset likewise: (+ 100 cite) has leaves {103,105,107}, all > 10.
+  {
+    const primo::core::TermId shifted = terms.mk_plus({number(100), cite});
+    const primo::smt::SimplifyConstantItesResult simplified =
+        primo::smt::simplify_constant_ites(terms, {terms.mk_le(number(10), shifted)});
+    check(simplified.assertions.at(0) == terms.mk_bool(true));
+  }
+}
+
+// A term that is not a CITE must be left exactly alone.
+void non_constant_ite_atoms_are_untouched() {
+  primo::core::SymbolTable symbols;
+  const auto int_sort = symbols.int_sort();
+  const auto p_symbol = symbols.declare_constant("p", symbols.bool_sort());
+  const auto x_symbol = symbols.declare_constant("x", int_sort);
+  primo::core::TermManager terms(symbols);
+  const primo::core::TermId p = terms.mk_constant(p_symbol);
+  const primo::core::TermId x = terms.mk_constant(x_symbol);
+  const primo::core::TermId five = terms.mk_rational(primo::util::Rational(5), int_sort);
+  // A variable leaf makes this not a CITE.
+  const primo::core::TermId assertion =
+      terms.mk_le(terms.mk_ite(p, x, terms.mk_rational(primo::util::Rational(3), int_sort)), five);
+  const primo::smt::SimplifyConstantItesResult simplified =
+      primo::smt::simplify_constant_ites(terms, {assertion});
+  check(simplified.assertions.at(0) == assertion);
+  check(simplified.atoms_simplified == 0);
+}
+
 void simplification_does_not_distribute_a_nested_ite() {
   primo::core::SymbolTable symbols;
   const auto int_sort = symbols.int_sort();
@@ -2120,6 +2196,8 @@ int main() {
   simplification_rewrites_ite_structurally();
   simplification_distributes_equality_over_an_ite();
   simplification_does_not_distribute_a_shared_ite();
+  constant_ite_atoms_collapse();
+  non_constant_ite_atoms_are_untouched();
   simplification_does_not_distribute_a_nested_ite();
   simplification_rewrites_div_mod_and_abs();
   lowering_is_a_no_op_when_nothing_extended_was_built();

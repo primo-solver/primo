@@ -228,6 +228,9 @@ enum class StatKey : std::size_t {
   SimplifiedExtendedRounds,
   SimplifiedEqualityDistributionsNested,
   ModelInventedIntValues,
+  CiteAtomsVisited,
+  CiteAtomsSimplified,
+  CiteBranchesCollapsed,
   Count,
 };
 
