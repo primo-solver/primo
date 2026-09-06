@@ -30521,6 +30521,36 @@
         "slurm": "primo-cadical-profile/results/qf-lia-ite-guard; primo-ite-guard/fuzz-results"
       },
       "notes": "The three defaults measured end to end on one corpus: distribution unguarded -44, off -24, guarded +20. The rule is sound in all three; what changes is whether it fires where it collects anything. Also worth keeping: base solved 9038 here and 9040 in 132306 on the same binary and corpus, so same-binary churn is about 3 solves, which is the noise floor a three-seed base-against-base campaign was planned to measure and is two orders below the 79 that were attributed to it."
+    },
+    {
+      "id": "2026-09-06-qf-uflia-invalid-model-fixed-132988",
+      "date": "2026-09-06",
+      "commit": "76e5e37",
+      "baseline_commit": "e7e7284",
+      "branch": "modular-theory-combination",
+      "kind": "model-construction-correctness-fix-and-gate",
+      "scope": "Closes bugs/qf-uflia-nested-application-model, open since 2026-09-04: Primo answered sat and printed a UF table that did not satisfy the input. Root cause established, two candidate fixes measured and one refuted, then fixed.",
+      "environment": {
+        "host": "CIIRC SLURM cluster for the gates; local workstation for the 750-case A/B and the witness work",
+        "solver": "Primo 0.1.0 at 76e5e37; Release; CaDiCaL cadical-3.0.0-7b99c07",
+        "tools": "Dolmen and Z3 from contrib/local/bin"
+      },
+      "jobs": {
+        "qf_uflia_model_final": "132988",
+        "qf_uflra_final": "132989",
+        "qf_uflia_model_after_purification_map": "132849 (2 errors)",
+        "qf_uflia_model_before": "132640 and 132626 (21 errors)"
+      },
+      "results": {
+        "headline": "QF_UFLIA model fuzz gate, 3000 cases, seed base 202609100: 0 model errors, against 21 on the same seeds before the fix. 1535 satisfiable models all validated by Dolmen directly with no Z3 fallback. Answers unchanged at 2999 PASS plus the same single pre-existing unknown case earlier runs also reported. QF_UFLRA (132989) COMPLETED clean.",
+        "root_cause": "The model printer invents an Int value when neither the component model nor the term's congruence class supplies one, via fresh_int_value handing out 0,1,2..., and that number becomes both a table key and, one level up, a result. Inventing is sound for an unconstrained term and unsound for a constrained one, and the builder cannot tell -- it never sees the assertions. Instrumented on witness.smt2: three values invented, all three for f applications, and they are exactly what makes the printed table self-inconsistent.",
+        "literature": "The construction was in the repository's own paper collection. Griggio's thesis sect. 1.5.1 (docs/papers/griggio.pdf p. 30): purification labels every alien subterm with a fresh variable and asserts the label, so in the purified formula every arithmetic-sorted UF application f(v_1..v_n) has a label of its own and all of them are interface variables the arithmetic solver assigns. The row is (val(v_1)..val(v_n)) -> val(v_f), read off rather than searched for, and no value can be missing. docs/papers/griggio-mathsat-thesis.md had skipped the combination background entirely; it now carries it.",
+        "fix_1": "e2058f1: MixedPurificationRewriteState::proxy_by_app already existed and was discarded at the return, since MixedTheoryPurificationResult carried only counts. It is now returned and appended to the model conversion chain as PurificationProxyConversion, so qf_uflia_int_values seeds each application's value from its label. 21 errors to 2.",
+        "fix_2": "76e5e37: the two survivors were a different mechanism. A user constant is neither an EUF atom member (x = f(...) is an Int equality that goes to LIA) nor an LIA variable (the tableau's nine variables were all internal $primo_ symbols), so it reaches the model only through substitution facts. The value pass read only LiaSubstitutionConversion while the chain ran through a DirectedEqualitySubstitutionConversion, and applied substitutions to model_terms only. With both fixed the sum was still unvalued: evaluate memoizes failures as well as successes and terms are visited in arena order, so x (term 22) was evaluated before $primo_ite_0 (term 33) and the failure was cached permanently. The pass now runs in rounds discarding only failed entries. 2 to 0.",
+        "refuted_attempt": "A bottom-up 'consistent completion' keyed by argument tuple rather than congruence class fixes two of the witnesses and regresses the corpus: same 750 cases, same seed, 8 model errors unchanged against 14 with the pass, and 43 against 21 over 3000 in a two-sweep variant. Forcing an application onto an existing row equates two applications whenever their printed argument values coincide, and those values are partly invented, so a collision merges applications the solver kept apart. Reverted; recorded in the bug file because it looks obviously right.",
+        "diagnostics_added": ":model.invented-int-values. On a correct model of a fully labelled formula it should be zero; it was 8 on case-00130 and is 6 now, the remainder being genuinely unconstrained applications."
+      },
+      "notes": "Three attempts, and the pattern is worth keeping: the first two tried to repair the consumer -- making the printer self-consistent, then reasoning about backward-propagating constraints -- when the producer was discarding information it already had. The literature pointed straight at it. Also fixed on the way: the QF_UFLIA generator emitted (* 2 (* 2 ...)), which QF_UFLIA's :extensions does not admit, and the model validator reported a Dolmen input rejection as a solver model error because its fallback only extracts Real assignments and never runs on an Int logic."
     }
   ]
 }

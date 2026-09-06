@@ -2,26 +2,29 @@
 
 ## Status
 
-**MOSTLY FIXED 2026-09-06, a residue remains.** Reading each UF application's
-value off its purification label -- the construction the literature describes,
-see the section below -- takes the QF_UFLIA model fuzz gate from **21 model
-errors in 3000 cases to 2**, with every remaining satisfiable model validated by
-Dolmen directly and no Z3 fallback. All four witnesses in this directory now
-produce valid models, `witness-backward-constraint.smt2` included. Commit
-`e2058f1`.
+**FIXED 2026-09-06.** The QF_UFLIA model fuzz gate reports **0 model errors in
+3000 cases** (job 132988, 1535 satisfiable models all validated by Dolmen
+directly, no Z3 fallback), against 21 before. All four witnesses in this
+directory validate. Answers are unchanged: 2999 PASS and the same single
+pre-existing `unknown` case that every earlier run of this gate also reported.
+QF_UFLRA (132989) clean.
 
-The residue is a *different* mechanism and is recorded at the end of this file:
-the two surviving cases invent more values than there are labels, so something
-other than a labelled application is still going unvalued.
+Two commits, and the second is the one that finishes it:
 
-Originally found 2026-09-04 while validating models after the
-`qf_uflia_int_values` worklist rewrite (`2706164`). It is **not** caused by
-that rewrite: the binary at `2706164^` produces the byte-identical invalid
-model. The rewrite only made the shape reachable more often, because the
-recursive evaluator used to crash on nested applications instead of answering.
+- `e2058f1` reads a UF application's value off its **purification label**
+  instead of searching for it, which is the construction the literature
+  describes (see the section below). 21 errors to 2.
+- `76e5e37` fixes what was left: reading *both* substitution kinds, applying
+  substitutions beyond the printed terms, recording the argument-proxy
+  definitions that reach LIA as bounds and never become EUF atoms, and -- the
+  actual remaining bug -- retrying evaluation after a value arrives, because
+  `evaluate` memoizes failures and arena order can reach a substitution before
+  the constant it needs. 2 to 0.
 
-This is an invalid model, not a wrong sat/unsat answer: the reported status is
-correct, but the printed UF table does not satisfy the input.
+The history below is kept because two plausible fixes were tried and measured
+first, and one of them made things 75% worse.
+
+Originally found 2026-09-04
 
 ## Reproduction
 
