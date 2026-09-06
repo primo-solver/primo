@@ -313,6 +313,9 @@ class QfUfModelBuilder {
     }
     used_int_values_.insert(candidate);
     generated_int_values_.emplace(representative, candidate);
+    if (options_.invented_int_values != nullptr) {
+      ++*options_.invented_int_values;
+    }
     return candidate;
   }
 

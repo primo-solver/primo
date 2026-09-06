@@ -10422,13 +10422,23 @@ CheckSatOutcome solve_qf_uflia_engine_impl(core::TermManager& terms,
     for (const theory::AssignedTheoryLiteral& atom : euf_assignment) {
       model_assignments.push_back(TheoryModelAssignment{atom.atom, atom.value, false});
     }
-    return CheckSatOutcome{CheckSatResult::Sat, "", statistics,
-                           build_qf_uf_model(terms, model_assignments,
-                                             QfUfModelBuildOptions{.include_model_wrapper = true,
-                                                                   .skip_real_symbols = true,
-                                                                   .skip_real_constants = true,
-                                                                   .real_values = nullptr,
-                                                                   .int_values = &int_values})};
+    // Recorded rather than merely returned: an invented Int value is sound only
+    // if the term is genuinely unconstrained, and the builder cannot tell.
+    // See bugs/qf-uflia-nested-application-model -- every known witness of that
+    // bug has a nonzero count here, and every valid model of the same shape
+    // has zero. This is the counter that makes it visible without an external
+    // validator.
+    std::size_t invented_int_values = 0;
+    std::string model =
+        build_qf_uf_model(terms, model_assignments,
+                          QfUfModelBuildOptions{.include_model_wrapper = true,
+                                                .skip_real_symbols = true,
+                                                .skip_real_constants = true,
+                                                .real_values = nullptr,
+                                                .int_values = &int_values,
+                                                .invented_int_values = &invented_int_values});
+    statistics.set(util::StatKey::ModelInventedIntValues, invented_int_values);
+    return CheckSatOutcome{CheckSatResult::Sat, "", statistics, std::move(model)};
   }
 }
 

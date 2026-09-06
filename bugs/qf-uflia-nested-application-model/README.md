@@ -53,14 +53,76 @@ keyed by a different value than the one used to compute its result.
 - `witness-generated.smt2` is the unreduced generated case (`case43`).
 - The two sibling generated failures reduce to the same shape.
 
-## Not yet established
+## Root cause, established 2026-09-06
 
-- Whether the fault is in `qf_uflia_int_values` argument keying, in the EUF
-  class value assignment it reads, or in the model printer that turns those
-  into `ite` chains.
+**The model printer invents Int values for terms it has no value for, and
+cannot tell a constrained term from an unconstrained one.**
+
+The chain, in three steps:
+
+1. `qf_uflia_int_values` (`src/smt/solver_engines.cpp`) returns no value for
+   the nested applications. Its `combine` case for `Application` reads the
+   term's EUF class value, and failing that matches the term against
+   `valued_applications_by_symbol` -- applications whose class *already*
+   carries a tableau value. With three levels of nesting there is no seeded
+   application to match against, so every level returns `nullopt`.
+2. `ModelBuilder::term_value` (`src/smt/model_builder.cpp`) treats a missing
+   value as ordinary. Its third fallback calls `fresh_int_value`, which hands
+   out `0, 1, 2, ...` skipping values already in use.
+3. That invented number is used both as the **table key** for the application's
+   arguments and, one level up, as an argument **result**. The row it produces
+   contradicts the constraint that pinned the term.
+
+Instrumented on `witness.smt2`, three values are invented -- and all three are
+`f` applications:
+
+```
+[INVENTED] rep=9  kind=Application value=2
+[INVENTED] rep=8  kind=Application value=4
+[INVENTED] rep=25 kind=Application value=5
+```
+
+which is exactly the printed table's `(ite (= x0 0) 5 (ite (= x0 3) 1 (ite (= x0 4) 2 0)))`.
+
+This explains both conditions the section above records as necessary, and they
+turn out to be the two halves of the same requirement -- something must be
+invented, and something must contradict it:
+
+| case | invented | model |
+|---|---:|---|
+| one level of nesting | 0 | valid |
+| two levels | 0 | valid |
+| **three levels** (`witness.smt2`) | **3** | **invalid** |
+| three levels without `(<= v1 6)` | 4 | valid |
+| **`witness-simplification-sensitive.smt2`** | **5** | **invalid** |
+| the same with `--no-extended-simplification` | 2 | valid |
+
+Inventing is *necessary but not sufficient*: with nothing pinning the term, an
+arbitrary value is a perfectly good one, which is why the unpinned case invents
+four values and still validates.
+
+**Where a fix belongs.** Step 2 is the defect. Inventing a value for a term
+whose value is forced by the assertions is unsound, and the builder has no way
+to know that it is -- it never sees the assertions. Either the completion has
+to be computed consistently (evaluate the table bottom-up so a row's key uses
+the same value its result was derived from), or the missing value has to
+propagate as a failure so the solver declines to print a model rather than
+printing a wrong one. Step 1 is worth improving regardless, but making it
+succeed more often only shrinks the window; it does not close it.
+
+`:model.invented-int-values` now reports the count, so the situation is visible
+from `--stats` alone. `invented_int_model_values_are_counted` in
+`tests/unit/qf_uflia_solver_tests.cpp` pins the two-versus-three-level boundary.
+
+## Still not established
+
 - Whether the same shape can produce a wrong `sat` where no model exists at
   all. Every witness so far is genuinely satisfiable; only the printed model
   is wrong.
+- Why `qf_uflia_int_values` cannot seed the chain at three levels when it can
+  at two. Step 1 above says what it does, not why the purified proxy for the
+  innermost application carries no tableau value that congruence could
+  propagate outwards.
 
 ## Confirmation with the project validator
 

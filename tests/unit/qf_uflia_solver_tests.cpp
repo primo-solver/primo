@@ -402,6 +402,49 @@ void model_completion_terminates_on_deeply_nested_uf_applications() {
   assert(result.result == CheckSatResult::Sat);
 }
 
+// The model builder invents an Int value when neither the component model nor
+// the term's congruence class supplies one. That is correct for a genuinely
+// unconstrained term and unsound for a constrained one, and the builder cannot
+// tell the two apart -- it never sees the assertions. It is the mechanism
+// behind bugs/qf-uflia-nested-application-model, where an invented number
+// becomes both a table key and a result and the printed table then contradicts
+// the constraint that pinned the term.
+//
+// The bug is open. This pins the *counter*, which is what makes the situation
+// visible without an external model validator, and pins the boundary the bug
+// record documents: two levels of nesting need no invention, three do.
+void invented_int_model_values_are_counted() {
+  CheckSatOptions options;
+  options.produce_model = true;
+
+  const auto two_levels = check_sat_smtlib(R"(
+    (set-logic QF_UFLIA)
+    (declare-fun f (Int) Int)
+    (declare-fun v1 () Int)
+    (assert (<= v1 6))
+    (assert (= v1 (f (+ (f 3) (- 1)))))
+    (check-sat)
+  )",
+                                           options);
+  assert(two_levels.result == CheckSatResult::Sat);
+  assert(two_levels.statistics.get(":model.invented-int-values") == 0);
+
+  // bugs/qf-uflia-nested-application-model/witness.smt2. Still Sat and still
+  // the right answer; it is the printed table that is wrong, and the count is
+  // what says so.
+  const auto three_levels = check_sat_smtlib(R"(
+    (set-logic QF_UFLIA)
+    (declare-fun f (Int) Int)
+    (declare-fun v1 () Int)
+    (assert (<= v1 6))
+    (assert (= v1 (f (f (+ (f 3) (- 1))))))
+    (check-sat)
+  )",
+                                             options);
+  assert(three_levels.result == CheckSatResult::Sat);
+  assert(three_levels.statistics.get(":model.invented-int-values") > 0);
+}
+
 void model_parameters_do_not_shadow_user_symbols() {
   const auto result = check_sat_smtlib(R"(
     (set-option :produce-models true)
@@ -453,6 +496,7 @@ int main() {
   unused_integer_uf_gets_a_well_sorted_default();
   model_completion_terminates_on_nested_uf_applications();
   model_completion_terminates_on_deeply_nested_uf_applications();
+  invented_int_model_values_are_counted();
   model_parameters_do_not_shadow_user_symbols();
   rejects_real_symbols();
   return 0;
