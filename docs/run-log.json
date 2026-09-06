@@ -30551,6 +30551,34 @@
         "diagnostics_added": ":model.invented-int-values. On a correct model of a fully labelled formula it should be zero; it was 8 on case-00130 and is 6 now, the remainder being genuinely unconstrained applications."
       },
       "notes": "Three attempts, and the pattern is worth keeping: the first two tried to repair the consumer -- making the printer self-consistent, then reasoning about backward-propagating constraints -- when the producer was discarding information it already had. The literature pointed straight at it. Also fixed on the way: the QF_UFLIA generator emitted (* 2 (* 2 ...)), which QF_UFLIA's :extensions does not admit, and the model validator reported a Dolmen input rejection as a solver model error because its fallback only extracts Real assignments and never runs on an Int logic."
+    },
+    {
+      "id": "2026-09-06-lead16-cite-simplification-133177-133466",
+      "date": "2026-09-06",
+      "commit": "d8462db",
+      "branch": "modular-theory-combination",
+      "kind": "lead-promotion-falsifier-and-full-division-check",
+      "scope": "open-leads lead 16 piece 1, constant if-then-else simplification. The lead's falsifier on nec-smt, then the full QF_LIA division to check the technique does not help one family at another's expense.",
+      "environment": {
+        "host": "CIIRC SLURM cluster",
+        "solver": "Primo 0.1.0 at 008e115 for the falsifier and d8462db for the division check; one binary per run, the two arms differing only by --cite-simplification",
+        "corpus": "sandbox/non-incremental/QF_LIA; 2780 nec-smt files, then all 13306; 60-second timeout"
+      },
+      "jobs": {
+        "nec_smt_falsifier": "133177; 40 shards by 2 arms",
+        "full_division": "133466; 80 shards by 2 arms"
+      },
+      "results": {
+        "falsifier": "nec-smt, 2780 files: off 644, on 1269, +625 with 625 gained and 0 lost, against a promotion bar of +200 stated in the lead before the work. Paired runtime over the 577 files both arms solve with base above a second: geometric mean 0.589, summed -38.5%.",
+        "full_division": "13306 files: off 9061, on 9660, +599 with 601 gained and 2 lost (one in 2019-cmodelsdiff, one in nec-smt). Zero wrong answers and zero disagreements. By family, only nec-smt moves: +599. Paired runtime geometric mean 0.830 overall, 0.612 on nec-smt with total time -36.1%, and 1.0045 on every other family with total time +0.9% -- so the technique is neutral where it does not apply rather than harmful.",
+        "correctness_basis": "All 2780 nec-smt files carry a declared :status (1524 unsat, 1256 sat) and all 1269 answers the CITE arm produced were checked against it, none contradicting. This is worth stating because the wrong-answer column is inert on corpora without :status, as slurm_qf_lra_scrambled_compare.sbatch documents.",
+        "cost": "The formula grows and preprocessing slows: on nec-smt/large/getoption_directories/prp-4-113.smt2, ite auxiliaries 40284 to 10026, preprocessed size 443762 to 1280886, preprocessing 2.8s to 27s. Solve counts pay for it several times over.",
+        "piece_2": "ITE compression's semantic content was already present through the Boolean-ite rules plus hash-consing: a three-deep (ite c t false) chain compresses fully today. What the thesis adds is selectivity and naming with a fresh propositional variable, and hash-consing already supplies what the naming is for. So the lead's requirement to evaluate pieces 1 and 2 together was met by implementing 1 and ordering it before the rules that already do 2."
+      },
+      "artifacts": {
+        "slurm": "primo-cadical-profile/results/nec-smt-cite; primo-cadical-profile/results/qf-lia-cite-full"
+      },
+      "notes": "Two implementation notes worth keeping. The csimp cache must be keyed on (op, term, constant, side) across the pass, not per atom: getting that wrong cost 183 seconds against 2.8 on one file. And passing the compared constant as a reference into a core::Term is a use-after-free, because every mk_* call can grow the arena; ASan caught it on the first nec-smt file. Piece 3, ITE reconstruction, remains unimplemented and is what is left of lead 16."
     }
   ]
 }

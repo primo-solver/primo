@@ -2171,9 +2171,18 @@ For scale: the thesis reports 1422 without against 2772 with for *all* of
 SPASS-SATT's preprocessing on this family. Piece 1 alone takes Primo from 644
 to 1269.
 
+**The full division confirms it and shows no cost elsewhere** (job 133466,
+13,306 files, one binary): off 9061, on **9660**, **+599**, with 601 gained
+against 2 lost and no wrong answers. Only `nec-smt` moves. Paired runtime is
+0.612 there with total time down 36%, and **1.0045 on every other family** with
+total time up 0.9% -- neutral where it does not apply rather than harmful,
+which is the check the ite equality distribution earlier on this branch failed.
+
 Promoted to default in `d8462db`; `--no-cite-simplification` keeps the other
-arm reachable. Piece 3, reconstruction, is not implemented and is now the
-remaining part of this lead.
+arm reachable. Piece 3, reconstruction, is not implemented and is what is left
+of this lead. Its natural target is `rings_preprocessed` -- 294 files, none
+containing `(ite` -- against `rings`, the same problems with the ITEs already
+eliminated by whoever produced them.
 
 **Falsifier, as stated in advance.** Implement CITE simplification and
 compression together (the thesis is explicit that either alone is worse than

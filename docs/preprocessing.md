@@ -1050,6 +1050,58 @@ family whose ITEs are single rather than nested -- everything outside
 `nec-smt` -- the first firing is also the last, the auxiliary really does go
 away, and the rule is a small win.
 
+### Constant if-then-else simplification
+
+`simplify-constant-ites`, on by default, `--no-cite-simplification` to drop it.
+[](papers/bromberger-linear-arithmetic-thesis.md) sect. 8.2.3, crediting
+Kim/Somenzi/Jin; piece 1 of [lead 16](lead-ite-preprocessing).
+
+A *constant* if-then-else is a term built only from numbers and `ite`. An atom
+comparing one against a constant can be decided branch by branch: if every leaf
+of the tree compares the same way the atom collapses to `true` or `false`, and
+otherwise the comparison is pushed inside the `ite` and each branch decided
+separately. Counters: `:preprocessing.cite.atoms-visited`,
+`.atoms-simplified`, `.branches-collapsed`.
+
+Two deliberate departures from the source, both because the integers make its
+presentation unsound here. The thesis first normalises a CITE by pushing
+constant monomials and coefficients to the leaves; this pushes the *comparison*
+down instead, and hoists an `ite` above a scale or a sum only where that is an
+identity (`(* k (ite c x y))` = `(ite c (* k x) (* k y))`), so no coefficient is
+ever divided out. And the collapse test reads the leaf set of the original
+term, which already accounts for the scale and the offset exactly.
+
+**The caches are not an optimisation.** The csimp cache is keyed on
+`(op, term, constant, side)` and shared across the whole pass, as the thesis
+requires. Keying it per atom instead -- which recomputes every shared CITE
+subterm for every atom mentioning it -- cost 183 seconds against 2.8 on
+`nec-smt`'s largest file.
+
+It runs *before* `simplify-extended-terms`, because csimp produces Boolean
+`ite`s and the Boolean-`ite` rules in that leaf are what turn them into
+connectives. That is the thesis's ITE compression step, which Primo already had:
+a three-deep `(ite c t false)` chain compresses fully through those rules plus
+hash-consing.
+
+**What it costs and what it buys.** The formula grows and the auxiliaries fall
+sharply -- on `nec-smt/large/getoption_directories/prp-4-113.smt2`, ITE
+auxiliaries 40284 to 10026 and preprocessed size 443762 to 1280886, with
+preprocessing alone going from 2.8s to 27s. The growth is inherent: an atom
+that only partly decides becomes a Boolean tree mirroring the CITE. Solve
+counts settle it decisively, on the full 13,306-file QF_LIA division at 60s
+(job 133466, one binary):
+
+| | solved | paired runtime |
+|---|---:|---|
+| off | 9061 | -- |
+| **on** | **9660** (+599) | geomean 0.830, total -20.5% |
+| `nec-smt` (2780 files) | +599 | geomean 0.612, total -36.1% |
+| every other family | net 0 | geomean 1.0045, total +0.9% |
+
+601 gained against 2 lost, no wrong answers and no disagreements, and every one
+of the 2780 `nec-smt` files carries a declared `:status` that all answers were
+checked against.
+
 ### What belongs in a constructor and what does not
 
 `TermManager`'s constructors do only what defines the representation: sort
