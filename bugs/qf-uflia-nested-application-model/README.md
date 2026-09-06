@@ -101,14 +101,47 @@ Inventing is *necessary but not sufficient*: with nothing pinning the term, an
 arbitrary value is a perfectly good one, which is why the unpinned case invents
 four values and still validates.
 
-**Where a fix belongs.** Step 2 is the defect. Inventing a value for a term
-whose value is forced by the assertions is unsound, and the builder has no way
-to know that it is -- it never sees the assertions. Either the completion has
-to be computed consistently (evaluate the table bottom-up so a row's key uses
-the same value its result was derived from), or the missing value has to
-propagate as a failure so the solver declines to print a model rather than
-printing a wrong one. Step 1 is worth improving regardless, but making it
-succeed more often only shrinks the window; it does not close it.
+**Step 2 is fixed, 2026-09-06.** `reconcile_invented_applications` in
+`src/smt/model_builder.cpp` walks the term DAG bottom-up on an explicit stack
+and keys the completion by the *argument value tuple* rather than by
+congruence class -- which is what the printed table is keyed by, and what the
+invention was not. Applications carrying a solver value are settled in a first
+sweep so their rows exist before any invention can occupy the same key. The
+term DAG is acyclic, so no fixpoint or seeding is involved; the candidate
+matching in `qf_uflia_int_values`, whose comment describes a cycle, creates that
+cycle by searching sibling applications rather than descending.
+
+`witness.smt2` and `witness-generated.smt2` now validate. The completion is
+self-consistent by construction: every application's printed value is the row
+its own arguments select.
+
+**A second, independent defect remains, and it is the one that is not easy.**
+`witness-backward-constraint.smt2` is the seven-line reduction:
+
+```smt2
+(set-logic QF_UFLIA)
+(declare-fun z () Int)
+(declare-fun y () Int)
+(declare-fun f (Int) Int)
+(declare-fun g (Int Int) Int)
+(assert (= z (g (g (f 2) (f y)) (+ (f 2) (f y)))))
+(assert (<= z (- 1)))
+(check-sat)
+```
+
+Primo prints `z = 4` against `(<= z (- 1))`. The printed `g` table carries
+`g(6,0) = -1` -- the solver's own row, with the value `z` should have -- but the
+chain evaluates the inner `g` to `3`, so the outer application lands on a
+different row. The solver's value for the *inner* application never reached the
+builder, so it was invented, and the invention cannot know that `z`'s bound
+pins it to `6`.
+
+That direction is backward: `z`'s bound constrains the outer row, which
+constrains the inner argument. Bottom-up evaluation cannot recover it, because
+it is constraint solving rather than evaluation. The fix belongs in step 1 --
+`qf_uflia_int_values` has to return the value the solver actually assigned that
+application -- and not in the printer, which can only be consistent with the
+values it is given.
 
 `:model.invented-int-values` now reports the count, so the situation is visible
 from `--stats` alone. `invented_int_model_values_are_counted` in
@@ -122,7 +155,9 @@ from `--stats` alone. `invented_int_model_values_are_counted` in
 - Why `qf_uflia_int_values` cannot seed the chain at three levels when it can
   at two. Step 1 above says what it does, not why the purified proxy for the
   innermost application carries no tableau value that congruence could
-  propagate outwards.
+  propagate outwards. `witness-backward-constraint.smt2` is the smallest case
+  where that matters, because there the missing value is not free: an
+  arithmetic bound decides it.
 
 ## Confirmation with the project validator
 

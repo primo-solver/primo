@@ -1,0 +1,8 @@
+(set-logic QF_UFLIA)
+(declare-fun z () Int)
+(declare-fun y () Int)
+(declare-fun f (Int) Int)
+(declare-fun g (Int Int) Int)
+(assert (= z (g (g (f 2) (f y)) (+ (f 2) (f y)))))
+(assert (<= z (- 1)))
+(check-sat)

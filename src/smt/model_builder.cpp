@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <sstream>
 #include <stdexcept>
@@ -88,6 +89,7 @@ class QfUfModelBuilder {
     closure_.saturate();
     complete_boolean_values();
     index_numeric_values();
+    reconcile_invented_applications();
   }
 
   std::string build() {
@@ -319,6 +321,99 @@ class QfUfModelBuilder {
     return candidate;
   }
 
+  // Makes the printed Int completion self-consistent.
+  //
+  // The table is keyed by *argument values*; the invention in fresh_int_value
+  // is memoized by *congruence class*. Those are different partitions, and the
+  // gap between them is bugs/qf-uflia-nested-application-model: two
+  // applications whose arguments evaluate the same but whose classes differ get
+  // two different invented results, and an application whose argument key
+  // already has a real row gets an invented value instead of that row's. The
+  // printed table then contradicts the value printed for the term itself.
+  //
+  // Fixing it needs nothing clever, only the right order. The term DAG is
+  // acyclic, so evaluate it bottom-up: by the time an application is reached
+  // its arguments already have final values, so it can be keyed by them and
+  // take -- or establish -- the row for that key. An application that already
+  // has a value from the component model or its class keeps it and publishes
+  // it as the row, so solver-derived values always win over invented ones.
+  //
+  // Explicit stack, per the repository's no-recursion rule; the DAG can be
+  // input-sized.
+  void reconcile_invented_applications() {
+    if (options_.int_values == nullptr) {
+      return;
+    }
+    const core::SortId int_sort = terms_.symbols().int_sort();
+    enum class Stage : std::uint8_t { Enter, Exit };
+    struct Frame {
+      core::TermId term;
+      Stage stage;
+    };
+    std::vector<Frame> stack;
+    std::unordered_set<core::TermId> seen;
+
+    // Two sweeps in one walk: settle every application that already carries a
+    // solver value first, so its row is present before any invention consults
+    // it. Otherwise an invented row could occupy a key a real value needs.
+    for (int sweep = 0; sweep < 2; ++sweep) {
+      const bool solver_valued_only = sweep == 0;
+      seen.clear();
+      for (const core::Term& root : terms_.terms()) {
+        if (root.sort != int_sort || root.kind != core::TermKind::Application) {
+          continue;
+        }
+        stack.push_back(Frame{.term = root.id, .stage = Stage::Enter});
+        while (!stack.empty()) {
+          const Frame frame = stack.back();
+          const core::Term& node = terms_.get(frame.term);
+          if (frame.stage == Stage::Enter) {
+            stack.back().stage = Stage::Exit;
+            if (!seen.insert(frame.term).second) {
+              stack.pop_back();
+              continue;
+            }
+            for (const core::TermId child : node.children) {
+              stack.push_back(Frame{.term = child, .stage = Stage::Enter});
+            }
+            continue;
+          }
+          stack.pop_back();
+          if (node.sort != int_sort || node.kind != core::TermKind::Application) {
+            continue;
+          }
+          if (options_.int_values->contains(frame.term) ||
+              reconciled_int_values_.contains(frame.term)) {
+            continue;
+          }
+          VectorKey key;
+          key.values.reserve(node.children.size());
+          for (const core::TermId child : node.children) {
+            key.values.push_back(term_value(child));
+          }
+          const auto known_class =
+              int_values_by_representative_.find(closure_.class_representative(frame.term));
+          const bool solver_valued = known_class != int_values_by_representative_.end();
+          if (solver_valued != solver_valued_only) {
+            continue;
+          }
+          if (solver_valued) {
+            int_row_results_.insert_or_assign(std::move(key), known_class->second);
+            continue;
+          }
+          if (const auto row = int_row_results_.find(key); row != int_row_results_.end()) {
+            reconciled_int_values_.emplace(frame.term, row->second);
+            continue;
+          }
+          const util::Rational invented =
+              fresh_int_value(closure_.class_representative(frame.term));
+          reconciled_int_values_.emplace(frame.term, invented);
+          int_row_results_.emplace(std::move(key), invented);
+        }
+      }
+    }
+  }
+
   std::string term_value(core::TermId term) {
     const core::Term& node = terms_.get(term);
     if (node.sort == terms_.symbols().bool_sort()) {
@@ -339,6 +434,13 @@ class QfUfModelBuilder {
       const auto found = options_.int_values->find(term);
       if (found != options_.int_values->end()) {
         return smtlib_rational(found->second);
+      }
+      // A value settled by the bottom-up reconciliation below wins over both
+      // the class lookup and a fresh invention: it is the one that agrees with
+      // the row this term's arguments select.
+      if (const auto reconciled = reconciled_int_values_.find(term);
+          reconciled != reconciled_int_values_.end()) {
+        return smtlib_rational(reconciled->second);
       }
       const core::TermId representative = closure_.class_representative(term);
       const auto representative_found = int_values_by_representative_.find(representative);
@@ -453,6 +555,10 @@ class QfUfModelBuilder {
   std::unordered_map<core::TermId, util::Rational> int_values_by_representative_;
   std::unordered_map<core::TermId, util::Rational> generated_int_values_;
   std::unordered_set<util::Rational, util::RationalHash> used_int_values_;
+  // An Int application's completed value, keyed by (symbol, argument values)
+  // rather than by congruence class. See reconcile_invented_applications.
+  std::unordered_map<VectorKey, util::Rational, VectorKeyHash> int_row_results_;
+  std::unordered_map<core::TermId, util::Rational> reconciled_int_values_;
 };
 
 }  // namespace
