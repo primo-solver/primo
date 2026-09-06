@@ -30488,6 +30488,39 @@
         "slurm": "primo-cadical-profile/results/qf-lia-ite-fix-132xxx"
       },
       "notes": "Superseded as a default by e7e7284, which distributes only when neither ite branch is itself an ite -- the conclusion the confirmed mechanism supported and that this run's split between nec-smt and Dartagnan forced. Job 132466 gates that. Kept as a record because the two-sided result is the evidence that the rule needs a shape test rather than an on/off switch."
+    },
+    {
+      "id": "2026-09-06-ite-shape-guard-gate-132466",
+      "date": "2026-09-06",
+      "commit": "e7e7284",
+      "baseline_commit": "7ea99a7",
+      "branch": "modular-theory-combination",
+      "kind": "full-division-solve-gate-and-fuzz-gates-for-the-ite-shape-guard",
+      "scope": "Gate for distributing (= u (ite c a b)) only when neither branch is itself an ite, which is the fix the mechanism supported after switching the rule off globally proved to be an over-correction. Closes the investigation into the 79 QF_LIA files lost at da3cc0b.",
+      "environment": {
+        "host": "CIIRC SLURM cluster",
+        "solver": "fix Primo 0.1.0 at e7e7284; base from the git archive of 7ea99a7, the same binary used by 131646, 131983 and 132306",
+        "corpus": "the same 13306-file QF_LIA staging; 60-second per-instance timeout"
+      },
+      "jobs": {
+        "qf_lia_full": "132466; 2 solvers by 80 shards",
+        "qf_uflia_model_fuzz": "132626 then 132640 after the generator fix",
+        "qf_uflra_fuzz": "132627",
+        "qf_uf_boolean_fuzz": "132628"
+      },
+      "results": {
+        "headline": "13306 files. base 9038, fix 9058, delta +20 (62 gained, 42 lost). 0 wrong answers, 0 answer disagreements. da3cc0b was -44; switching the rule off entirely was -24; the shape guard is +20, a swing of 64 solves from the measurement that opened this investigation.",
+        "by_family": "nec-smt +15 (44 gained, 29 lost) against -50 at da3cc0b and +8 with the rule off. 20210219-Dartagnan +6, exactly its da3cc0b value, against -29 with the rule off. convert +6, RWS +1, bofill-scheduling and tropical-matrix level. Remaining losses: rings -5, 2019-cmodelsdiff -1, arctic-matrix -1, fft -1.",
+        "runtime": "Paired geometric mean head/base on files both solve with base >= 1s: 0.9874 overall, 0.9847 on nec-smt, 0.9890 elsewhere. No family is above 1. At da3cc0b nec-smt was 1.1023 and at the rule-off default the rest of the corpus was 1.0794; both regressions are gone.",
+        "prediction": "Stated before the run: overall at parity or better, nec-smt keeping its +8, Dartagnan returning to +6. Actual: +20, +15, +6.",
+        "fuzz_qf_uflra_and_boolean": "132627 and 132628 COMPLETED clean, every sat model Dolmen-validated.",
+        "fuzz_qf_uflia": "3000 answer cases: 2999 PASS and 1 UNKNOWN_INVOLVED, 0 wrong. 21 invalid models. 20 of the 21 are equally invalid on the 7ea99a7 binary, and that binary also reproduces the recorded witness of bugs/qf-uflia-nested-application-model, so these are the known OPEN bug rather than a regression. The 21st is recorded as a second witness there: it is invalid under every preprocessing mode and under --no-ite-equality-distribution, and valid under --no-extended-simplification, because the leaf's collapse of (ite c t t) changes which model gets built.",
+        "generator_and_harness_defects": "The first QF_UFLIA gate run (132626) was red for two reasons that were not the solver. compose_int_terms emitted (* 2 (* 2 (+ x (- 1)))), scaling a composite term, which QF_UFLIA's :extensions does not admit; checked against Dolmen directly, (* 2 x), (* x 2), (* (- 2) x) and (* x (- 2)) are all accepted and only compound operands are not, and 400 regenerated cases now pass. And the validator reported a Dolmen input rejection as model-error, because its fallback only extracts Real assignments and never runs on an Int logic; it now re-runs Dolmen on the problem alone and reports input-nonconforming outside the failure count."
+      },
+      "artifacts": {
+        "slurm": "primo-cadical-profile/results/qf-lia-ite-guard; primo-ite-guard/fuzz-results"
+      },
+      "notes": "The three defaults measured end to end on one corpus: distribution unguarded -44, off -24, guarded +20. The rule is sound in all three; what changes is whether it fires where it collects anything. Also worth keeping: base solved 9038 here and 9040 in 132306 on the same binary and corpus, so same-binary churn is about 3 solves, which is the noise floor a three-seed base-against-base campaign was planned to measure and is two orders below the 79 that were attributed to it."
     }
   ]
 }

@@ -2098,6 +2098,26 @@ carry over to the work below, and none of them are hypothetical any more:
    ITE term change measured auxiliaries, saw them fall, and shipped. They fell
    while the formula grew. Measure size and solves.
 
+**And a fourth, learned the expensive way: the size proxy is not sufficient
+either.** Switching the rule off globally was measured on preprocessed size,
+looked strictly better, and lost 29 solves on `20210219-Dartagnan` -- a family
+where the rule is nearly free on size and removes 30% of the auxiliaries. The
+rule ended up guarded on *shape* rather than switched off: it fires only when
+neither branch is itself an ITE, which is exactly when the ITE actually goes
+away. Whole-division solve counts against the pre-change binary, one corpus,
+three defaults:
+
+| default | overall | `nec-smt` | `20210219-Dartagnan` |
+|---|---:|---:|---:|
+| distribute always | -44 | -50 | +6 |
+| never distribute | -24 | +8 | -29 |
+| **distribute only a flat ITE** | **+20** | **+15** | **+6** |
+
+The lesson for the three pieces below is that a rewrite of this family has a
+*range* where it pays, its edges are structural rather than numeric, and
+neither a size proxy nor an auxiliary count locates them. Only solve counts on
+both an ITE-nested and an ITE-flat family do.
+
 **Falsifier, stated in advance.** Implement CITE simplification and compression
 together (the thesis is explicit that either alone is worse than neither), then
 measure on the 2780 `nec-smt` files with the same-binary control the stage 4
