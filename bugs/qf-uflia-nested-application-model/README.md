@@ -2,7 +2,19 @@
 
 ## Status
 
-**OPEN.** Found 2026-09-04 while validating models after the
+**MOSTLY FIXED 2026-09-06, a residue remains.** Reading each UF application's
+value off its purification label -- the construction the literature describes,
+see the section below -- takes the QF_UFLIA model fuzz gate from **21 model
+errors in 3000 cases to 2**, with every remaining satisfiable model validated by
+Dolmen directly and no Z3 fallback. All four witnesses in this directory now
+produce valid models, `witness-backward-constraint.smt2` included. Commit
+`e2058f1`.
+
+The residue is a *different* mechanism and is recorded at the end of this file:
+the two surviving cases invent more values than there are labels, so something
+other than a labelled application is still going unvalued.
+
+Originally found 2026-09-04 while validating models after the
 `qf_uflia_int_values` worklist rewrite (`2706164`). It is **not** caused by
 that rewrite: the binary at `2706164^` produces the byte-identical invalid
 model. The rewrite only made the shape reachable more often, because the
@@ -241,6 +253,39 @@ it had no way to tell an original application from its purified copy.
   propagate outwards. `witness-backward-constraint.smt2` is the smallest case
   where that matters, because there the missing value is not free: an
   arithmetic bound decides it.
+
+## The residue: two cases in 3000, and it is not the labelling
+
+Job 132849, `case-00130` and `case-00454`. Both still print an invalid model
+after the purification map is used.
+
+`case-00130` is the informative one. It has five arithmetic-sorted UF
+applications and reports `:no.purification.arithmetic-uf-definitions 5`, so
+every one of them *is* labelled -- and yet
+`:model.invented-int-values` is **8**. More values are being invented than
+there are unlabelled applications, so the source is not the gap this bug was
+about.
+
+The failure: `(= x (f (+ (ite (>= z 0) y (- 2)) (f y))))` with `x = 1`,
+`y = 6`, `z = -2`. Under the printed table `(f 6) = 16`, so the argument is
+`-2 + 16 = 14` and `(f 14) = -1`, against `x = 1`. The table also carries a row
+`12 -> 1`, which is what the assertion needs, so the solver had `(f y) = 14`
+and the printer wrote `16`.
+
+`case-00454` invents exactly as many values as it has labels (5 and 5), so the
+two cases may not share a cause.
+
+Two candidates, neither checked:
+
+- `ModelBuilder::add_all_relevant_terms` adds *every* Constant and Application
+  in the arena to the closure, and `table_entries` iterates all of them. Terms
+  left over from rewriting -- unreachable from the final assertions -- get
+  invented values and contribute rows. `case-00130`'s printed `f` table has
+  seven rows for a formula with five applications.
+- Applications created after `purify-mixed` runs would never be labelled.
+
+`:model.invented-int-values` is the counter to start from: on a correct model
+of a fully labelled formula it should be zero, and it is 8 here.
 
 ## Confirmation with the project validator
 
