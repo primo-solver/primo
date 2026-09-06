@@ -583,12 +583,18 @@ PreparedPreprocessingStrategy prepare_and_execute_preprocessing_strategy(
     const SimplifyExtendedTermsOptions extended_options{
         .rounds = options.extended_simplification_rounds,
         .distribute_equalities = options.ite_equality_distribution};
-    initial_children.push_back(Strategy::leaf("simplify-extended-terms", NoStrategyParameters{},
-                                              make_simplify_extended_terms(extended_options)));
+    // CITE first, then the general rewrites. csimp *produces* Boolean ites of
+    // the shape (ite c true false), and the Boolean-ite rules in
+    // simplify-extended-terms are what turn those into connectives -- which is
+    // the thesis's compression step. Running CITE afterwards leaves its own
+    // output uncompressed, and on nec-smt's largest file that was the whole of
+    // a 190% formula growth.
     if (options.cite_simplification) {
       initial_children.push_back(Strategy::leaf("simplify-constant-ites", NoStrategyParameters{},
                                                 make_simplify_constant_ites()));
     }
+    initial_children.push_back(Strategy::leaf("simplify-extended-terms", NoStrategyParameters{},
+                                              make_simplify_extended_terms(extended_options)));
   }
   initial_children.push_back(
       Strategy::leaf("lower-extended-terms", NoStrategyParameters{}, make_lower_extended_terms()));
