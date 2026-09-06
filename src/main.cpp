@@ -184,6 +184,7 @@ int run_main(int argc, char** argv) {
   bool no_finite_domain_post_amo = false;
   bool no_extended_simplification = false;
   bool no_ite_equality_distribution = false;
+  bool no_cite_simplification = false;
   bool no_eq_bridge = false;
   bool no_lra_propagation = false;
   bool no_solved_constant_substitution = false;
@@ -288,6 +289,8 @@ int run_main(int argc, char** argv) {
   add_flag_with_default(app, "--cite-simplification", solver_options.cite_simplification,
                         "Decide atoms over constant if-then-else terms branch by branch "
                         "(open-leads lead 16, piece 1)");
+  add_flag_with_default(app, "--no-cite-simplification", no_cite_simplification,
+                        "Disable constant if-then-else simplification");
   add_flag_with_default(app, "--eq-bridge", solver_options.eq_bridge,
                         "Add equalities implied by every branch of selected QF_UF disjunctions");
   add_flag_with_default(app, "--no-eq-bridge", no_eq_bridge,
@@ -750,7 +753,9 @@ int run_main(int argc, char** argv) {
         starts_with(name, "--auto-preprocess-") || starts_with(name, "--preprocessing-") ||
         starts_with(name, "--preprocess-passes") ||
         starts_with(name, "--extended-simplification") ||
-        starts_with(name, "--no-extended-simplification") || name == "--cite-simplification" ||
+        starts_with(name, "--no-extended-simplification") ||
+        starts_with(name, "--cite-simplification") ||
+        starts_with(name, "--no-cite-simplification") || name == "--cite-simplification" ||
         name == "--ite-equality-distribution" || name == "--no-ite-equality-distribution") {
       return kGroupPreprocessing;
     }
@@ -882,6 +887,9 @@ int run_main(int argc, char** argv) {
   }
   if (no_ite_equality_distribution) {
     solver_options.ite_equality_distribution = false;
+  }
+  if (no_cite_simplification) {
+    solver_options.cite_simplification = false;
   }
   if (no_eq_bridge) {
     solver_options.eq_bridge = false;

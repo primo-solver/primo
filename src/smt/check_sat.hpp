@@ -362,11 +362,11 @@ struct CheckSatOptions {
   // over 10447 files against 25 million on nec-smt, so the families that carry
   // the weight decide it.
   bool ite_equality_distribution = true;
-  // Constant if-then-else simplification, open-leads lead 16 piece 1. Off
-  // until measured: the lead's own falsifier requires pieces 1 and 2 to be
-  // evaluated together, because the thesis reports single-technique
-  // configurations as worse than none on the family they target.
-  bool cite_simplification = false;
+  // Constant if-then-else simplification, open-leads lead 16 piece 1. On:
+  // measured +625 solves on the 2780 nec-smt files at 60s with zero lost and
+  // zero wrong answers, against a promotion bar of +200, and 38% less time on
+  // the files both configurations solve.
+  bool cite_simplification = true;
   // QF_LIA branch-and-bound's node cap (docs/qf-lia-branch-and-bound.md).
   // Plain branch-and-bound has no completeness argument of its own -- an
   // unbounded integer-infeasible polytope can branch forever -- so this is
