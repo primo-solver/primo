@@ -3,6 +3,86 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-07-full-revalidation-287b743",
+      "date": "2026-09-07",
+      "kind": "full-supported-logic-revalidation-with-independent-sat-replay",
+      "commit": "287b743",
+      "report_driver_commit": "47678d7",
+      "evidence_status": "pending",
+      "scope": "User-requested complete revalidation after the model migration: local checks, generated/profile/mutation correctness gates, whole-tree static review, every available real SMT-LIB input in five supported logics against Primo/Z3/cvc5, then independent Dolmen replay of every successful Primo SAT row. No performance promotion is claimed while correctness coverage is pending or incomplete.",
+      "environment": {
+        "host": "CIIRC SLURM via ssh -J janotmik@data.ciirc.cvut.cz janotmik@10.35.125.63",
+        "workspace": "/home/janotmik/primo-model-fix",
+        "build": "Release; Python 3.9.18; CaDiCaL cadical-3.0.0-7b99c07",
+        "binary": "results/full-revalidation-287b743/bin/primo",
+        "binary_sha256": "5a671d47882f555f3522c92b7b6c05a76c3bbdfde6ec2cb714b69e76c519b3f7",
+        "source_note": "src, CMakeLists.txt and tests/unit are identical to 315b792; subsequent changes concern skills, documentation and Python validation/reporting workflows. The campaign binary is preserved separately from the mutable build output.",
+        "preparation": "slurm_prepare_benchmark_workspace.py --local-dir /workspace/tmp/full-revalidation-287b743 --remote-dir /home/janotmik/primo-model-fix --reuse-dependencies --jobs 4; --check-only --no-sync against that clean snapshot immediately before every sbatch. Batch scripts validated locally with slurm_validate_sbatch.py. Existing full corpora reused read-only; complete 659-file QF_UFLIA staged with slurm_stage_manifest_files.py --root tmp/QF_UFLIA --all-smt2."
+      },
+      "local_verification": {
+        "make_check": "PASS: 28 CTest plus 106 Python tests after the report joiner was added; lint passes",
+        "make_asan_test": "PASS: 28 CTest, leak detection and strict initialization order enabled; no subsequent C++ changes",
+        "make_docs": "PASS",
+        "skill_validator": "PASS using .venv-docs/bin/python and skill-creator quick_validate.py",
+        "logs": ["tmp/full-revalidation-local-asan.log", "tmp/full-revalidation-summary-check.log", "tmp/full-revalidation-summary-docs.log"]
+      },
+      "jobs": {
+        "cluster_replay_smoke": "134845",
+        "cross_logic": "134866",
+        "lra_reconstruction": "134871",
+        "uflia_profiles": "134876",
+        "uflra_and_finite_domain": "134881",
+        "uflra_no_reconciliation": "134885",
+        "cite_hoisting": "134890",
+        "whole_tree_static": "134894",
+        "mutation_mathsat": "134895",
+        "mutation_uf": "134899",
+        "mutation_uflra_regression": "134905",
+        "mutation_uflra_real": "134910",
+        "mutation_lra": "134918",
+        "mutation_mathsat_no_combination": "134922",
+        "lra_semantic_followup": "134930",
+        "deterministic_compositions_and_saved_bugs": "134953",
+        "saved_bug_model_followup": "134971",
+        "model_replay": {"QF_UF": "134963", "QF_LIA": "134964", "QF_LRA": "134965", "QF_UFLRA": "134966", "QF_UFLIA": "134968"},
+        "timing": {
+          "QF_UF": {"primo": "134933", "z3": "134934", "cvc5": "134935"},
+          "QF_LIA": {"primo": "134937", "z3": "134938", "cvc5": "134939"},
+          "QF_LRA": {"primo": "134940", "z3": "134941", "cvc5": "134943"},
+          "QF_UFLRA": {"primo": "134944", "z3": "134945", "cvc5": "134946"},
+          "QF_UFLIA": {"primo": "134948", "z3": "134949", "cvc5": "134950"}
+        }
+      },
+      "gate_configuration": {
+        "common": "PRIMO_WORKDIR=/home/janotmik/primo-model-fix, PRIMO_EXPECTED_GIT=287b743, fresh PRIMO_FUZZ_OUT_DIR=results/full-revalidation-287b743/GROUP. Repository batch scripts provide exact commands; options reach both differential checking and Dolmen model validation. Answer reference Z3, with cvc5 additionally in UFLRA/finite-domain and composition gates; independent models require direct Dolmen 0.10 acceptance.",
+        "cross": "slurm_typed_cross_logic_model_gate.sbatch, 24 tasks x 750, seeds 202609400..423, four preprocessing modes off/basic/strong/auto, six generator families, 5s solver/reference/Dolmen budgets, --check-model",
+        "lra-reconstruction": "slurm_typed_lra_reconstruction_gate.sbatch, 7 x 1000, seeds 202609700..706, four modes plus explicit monotone variants",
+        "uflia": "slurm_typed_uflia_model_gate.sbatch, 8 x 375, seeds 202609300..307, four modes with combination on/off, plus 72 witness/profile checks",
+        "uflra": "slurm_qf_uflra_fuzz_gate.sbatch, 4 x (750 general + 125 finite UF + 125 finite UFLRA), PRIMO_FUZZ_SEED_BASE=202609800, PRIMO_FUZZ_SOLVER_ARGS=--check-model",
+        "uflra-no-reconciliation": "cross-logic script tasks 16..19, PRIMO_FUZZ_SOLVER_ARGS=--no-qf-uflra-model-reconciliation, 3000 cases",
+        "cite": "slurm_cite_hoisting_fuzz_gate.sbatch, 1000 generated cases and reduced allocation-boundary ITE witness",
+        "mutations": "slurm_typed_model_mutation_gate.sbatch, four modes per group, PRIMO_MUTATION_TOOL=opfuzz, deterministic seeds 202609500..503, 20 iterations, 120s generation budget, 5s process budget except LRA 20s; recheck all retained mutants against Z3 and validate printed SAT models with Dolmen. Seed groups: tmp/typed-model-mathsat-seeds, benchmarks/seeds/qf_uf, benchmarks/seeds/qf_uflra, tmp/typed-model-uflra-seeds, tmp/selected/tmp/typed-model-lra-seeds, then MathSAT again with PRIMO_EXTRA_SOLVER_ARGS=--no-qf-uflia-model-combination.",
+        "lra-semantic": "slurm_typed_lra_semantic_model_gate.sbatch, array 8..11 after cross gate, PRIMO_REVALIDATE_CASE_ROOT=results/full-revalidation-287b743/cross. Explicitly separate semantic replay with Dolmen forced QF_NRA for FuzzSMT linear-grammar exceptions; not strict QF_LRA input-conformance evidence.",
+        "static": "slurm_typed_model_static_review.sbatch, all 99 non-generated C++ translation units, default clang-tidy and advisory misc-include-cleaner; staged build-compiler headers, clang-tidy 18.1.8",
+        "compositions": "tactic_composition_matrix.py --solver ./build-slurm-rel/primo --refs z3 cvc5 --repeat 2; then check_solver_seed_corpus.py --seeds bugs and validate_model.py on every tracked bugs/**/*.smt2 with --quiet --check-model, 10s budgets and required direct Dolmen. Locally written/validated tmp/full-revalidation-compositions.sbatch."
+      },
+      "corpora": {
+        "QF_UF": {"count": 7503, "root": "/home/janotmik/primo-cadical-profile/tmp/QF_UF", "primo_shards": 64, "primo_concurrency": 16, "reference_shards": 32, "reference_concurrency": 8},
+        "QF_LIA": {"count": 13306, "root": "/home/janotmik/primo-cadical-profile/sandbox/non-incremental/QF_LIA", "primo_shards": 80, "primo_concurrency": 32, "reference_shards": 32, "reference_concurrency": 16},
+        "QF_LRA": {"count": 1753, "root": "/home/janotmik/primo-cadical-profile/sandbox/non-incremental/QF_LRA", "primo_shards": 16, "primo_concurrency": 8, "reference_shards": 8, "reference_concurrency": 4},
+        "QF_UFLRA": {"count": 1284, "root": "/home/janotmik/primo-cadical-profile/sandbox/non-incremental/QF_UFLRA", "primo_shards": 16, "primo_concurrency": 8, "reference_shards": 8, "reference_concurrency": 4},
+        "QF_UFLIA": {"count": 659, "root": "/home/janotmik/primo-model-fix/tmp/QF_UFLIA", "primo_shards": 16, "primo_concurrency": 8, "reference_shards": 8, "reference_concurrency": 4}
+      },
+      "real_corpus_configuration": "slurm_real_corpus_validation.sbatch, PRIMO_PHASE=benchmark, PRIMO_TIMEOUT=60, PRIMO_CAMPAIGN_OUT=results/full-revalidation-287b743/real/LOGIC/SOLVER, PRIMO_CORPUS_ROOT as listed, PRIMO_SHARDS as listed, PRIMO_CAMPAIGN_ID=full-revalidation-287b743-LOGIC-SOLVER. Primo uses preserved binary plus --quiet and expected git 287b743; reference solvers use contrib/local/bin/{z3,cvc5} without additional arguments. 1 CPU/4G per task, 4h wall limit. Timing arrays depend afterany on every correctness/static/composition job. All timing jobs finish before any post-benchmark model replay starts. Each shard records exact input hashes, binary hash/version, arguments and commands in provenance.json.",
+      "model_replay_configuration": "Same slurm_real_corpus_validation.sbatch and Primo shard counts/concurrency, PRIMO_PHASE=replay, PRIMO_CAMPAIGN_OUT=results/full-revalidation-287b743/real/LOGIC/primo, PRIMO_MODEL_TIMEOUT=90, PRIMO_DOLMEN_TIMEOUT=30, Dolmen --strict=false with direct acceptance required. Each array depends afterany on all 15 timing arrays, not just its own logic. Solver profile and binary are read from the timing provenance, with model production and --check-model added; SAT-to-UNSAT is an answer-changed failure. Resources/unknown/unsupported or missing rows leave coverage incomplete. Default attempt directory model-validation, immutable original timing/PAR2.",
+      "artifacts": {"remote": "/home/janotmik/primo-model-fix/results/full-revalidation-287b743", "local": "results/full-revalidation-287b743", "submission_logs": "tmp/full-revalidation-{jobs,timing-jobs,replay-jobs}.tsv and matching *-preflight.log", "retention": "Large inputs, solver logs and model output retained remotely; summaries and provenance collected locally. Run-log and committed drivers reproduce the workflow."},
+      "results": {
+        "status": "pending; jobs submitted, no full-corpus correctness or performance claim yet",
+        "cluster_replay_smoke": "134845 COMPLETED 0:0: 17 workflow Python tests, two timed UFLIA smoke inputs (one SAT, one UNSAT), selected SAT replay directly accepted by Dolmen",
+        "saved_bug_triage": "134953 completed the deterministic composition matrix, then its raw saved-bug comparator reported nine PASS and one INCOMPLETE: witness-unvalued-constant.smt2 requests get-model without :produce-models true, so Primo exits 2 with 'get-model requires :produce-models true' while permissive Z3 answers SAT. This is a historical command-sequence defect, not an invalid model. The failed raw attempt is retained. Followup 134971 uses the shared command adapter on all ten witnesses: seven SAT models directly pass Dolmen, three UNSAT, COMPLETED 0:0. Historical inputs remain unchanged. Timing dependencies include both jobs."
+      }
+    },
+    {
       "id": "2026-09-07-model-replay-workflow-smoke",
       "date": "2026-09-07",
       "kind": "local-validation-workflow-smoke",
