@@ -39,6 +39,7 @@ jobs. Campaign scheduling and reference-answer joins remain explicit operations.
 decisive answers, and reports family-level timing and independent model coverage.
 It can read durable journals for progress, but a partial journal cannot complete
 a shard. Unknown answers and failed processes are not solved or credited in PAR2.
+Model-coverage errors are reported separately and do not rewrite timing completeness.
 
 The model command adapter scans top-level boundaries without building or
 expanding term trees. It preserves assertion text and comments, understands

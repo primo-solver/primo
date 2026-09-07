@@ -49,6 +49,12 @@ class ModelCampaignSummaryTests(unittest.TestCase):
                 f"file,answer,outcome,validator\n{root}/x.smt2,sat,pass,dolmen\n")
             summary, _ = MODULE.load_run(root, 1, 60)
             self.assertTrue(summary["models"]["fully_validated"])
+            with (models / "summary.csv").open("a") as stream:
+                stream.write(f"{root}/unexpected.smt2,sat,pass,dolmen\n")
+            summary, _ = MODULE.load_run(root, 1, 60)
+            self.assertTrue(summary["timing_complete"])
+            self.assertFalse(summary["models"]["fully_validated"])
+            self.assertEqual(summary["models"]["coverage_issues"], ["unexpected model rows"])
 
     def test_journal_progress_does_not_complete_a_shard(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

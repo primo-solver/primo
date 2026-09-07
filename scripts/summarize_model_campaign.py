@@ -43,6 +43,7 @@ def summarize(rows: list[dict], timeout: float) -> dict:
 def load_run(root: Path, expected: int, timeout: float) -> tuple[dict, dict]:
     rows = {}
     issues = []
+    model_issues = []
     complete = 0
     shard_indices = set()
     shard_counts = set()
@@ -98,7 +99,7 @@ def load_run(root: Path, expected: int, timeout: float) -> tuple[dict, dict]:
                 for row in csv.DictReader(stream):
                     name = str(Path(row["file"]).relative_to(provenance["root"]))
                     if name in model_rows:
-                        issues.append(f"{shard.name}: duplicate model row: {name}")
+                        model_issues.append(f"{shard.name}: duplicate model row: {name}")
                     model_rows[name] = row
     if len(shard_counts) != 1 or shard_indices != set(range(next(iter(shard_counts), 0))):
         issues.append("missing or inconsistent shard set")
@@ -106,15 +107,17 @@ def load_run(root: Path, expected: int, timeout: float) -> tuple[dict, dict]:
         issues.append("missing or unexpected input coverage")
     selected = {name for name, row in rows.items() if decisive(row) and row["answer"] == "sat"}
     if set(model_rows) - selected:
-        issues.append("unexpected model rows")
+        model_issues.append("unexpected model rows")
     model_summary = {
         "expected_sat": len(selected),
         "completed": len(model_rows),
         "missing": len(selected - set(model_rows)),
         "outcomes": dict(Counter(row["outcome"] for row in model_rows.values())),
         "shard_states": dict(model_counts),
+        "coverage_issues": model_issues,
         "fully_validated": (
             not issues
+            and not model_issues
             and complete > 0
             and model_counts == {"complete": complete}
             and set(model_rows) == selected
