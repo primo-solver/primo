@@ -3,6 +3,34 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-07-cite-hoisting-lifetime-slurm-134014",
+      "date": "2026-09-07",
+      "kind": "targeted-preprocessing-lifetime-merge-gate",
+      "commit": "6fe3f07d42726ef294de729d5e2787af00e32817",
+      "baseline_commit": "eb2412e",
+      "environment": {"host": "CIIRC SLURM cluster", "partition": "compute", "job_id": "134014", "requested_cpus": 1, "memory": "2G", "wall_limit": "00:10:00", "state": "COMPLETED", "exit_code": "0:0", "elapsed_seconds": 25, "max_rss": "24360K", "reference": "Z3 5.1.0"},
+      "binary": {"git": "6fe3f07", "build": "Release", "sanitizers": "none", "cadical": "cadical-3.0.0-7b99c07", "sha256": "c57653c93a0936bcb1dcfdfe6a102d9f70a2fb2ff1d0cf9f8b950b78225e9934"},
+      "inputs": {"generator": "quoted Python generator in scripts/slurm_cite_hoisting_fuzz_gate.sbatch", "seed": 202609070, "count": 1000, "families": ["QF_LIA", "QF_LRA"], "shape": "constant-leaf ITEs, literal scales and sums, depth 1-3, comparisons on either side, optional Boolean guard assignments", "solver_and_reference_timeout_seconds": 5, "regression": "benchmarks/regressions/qf_lia_scaled_ite_arena_growth.smt2"},
+      "commands": {
+        "prepare": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config SSH_CONFIG --remote REMOTE --remote-dir WORKDIR --cmake PREPARED_CMAKE --reuse-dependencies --jobs 4 --require-tool contrib/local/bin/z3",
+        "preflight": "python3 scripts/slurm_prepare_benchmark_workspace.py --check-only --no-sync --ssh-config SSH_CONFIG --remote REMOTE --remote-dir WORKDIR --require-tool contrib/local/bin/z3",
+        "submit": "sbatch --export=ALL,PRIMO_WORKDIR=WORKDIR,PRIMO_EXPECTED_GIT=6fe3f07,PRIMO_FUZZ_OUT_DIR=WORKDIR/results/cite-hoisting-6fe3f07-slurm scripts/slurm_cite_hoisting_fuzz_gate.sbatch",
+        "compare": "python3 scripts/compare_with_z3.py OUT/*.smt2 --solver ./build-slurm-rel/primo --refs z3 --timeout 5 --out OUT/summary.csv",
+        "asan_before": "ASAN_OPTIONS=detect_leaks=1:strict_init_order=1 ctest --test-dir build-asan -R '^primo_preprocessing_tests$' --output-on-failure --timeout 120",
+        "asan_after": "make asan-test",
+        "check": "make check",
+        "docs": "make docs",
+        "static_review": "timeout 120s make tidy; timeout 120s clang-tidy -p build src/smt/preprocessing.cpp tests/unit/preprocessing_tests.cpp; timeout 120s clang-tidy -p build -checks='-*,clang-diagnostic-*,misc-include-cleaner' src/smt/preprocessing.cpp tests/unit/preprocessing_tests.cpp"
+      },
+      "summary": {"total": 1000, "pass": 1000, "sat": 472, "unsat": 528, "wrong_answer": 0, "crash": 0, "parser_or_type_error": 0, "timeout": 0, "unknown": 0, "unsupported": 0, "reference_disagreement": 0, "regression_pass": 1, "preflight_regression_pass": 1},
+      "by_family": {"QF_LIA": {"total": 500, "pass": 500, "sat": 241, "unsat": 259}, "QF_LRA": {"total": 500, "pass": 500, "sat": 231, "unsat": 269}},
+      "comparison": "With the new allocation-boundary unit test and otherwise pre-fix eb2412e source, ASan reports heap-use-after-free in hoist_ite_to_top at the scaled-branch construction. After the fix, all 27 ASan tests pass, including eight forced-growth combinations (Int/Real, scale/sum, flat/nested). The minimal default-profile input also passes the ASan CLI smoke check. No baseline throughput or PAR2 comparison was performed.",
+      "verification": {"make_check": "PASS: lint, 27 CTest tests, 87 Python tests", "make_asan_test": "PASS: 27 tests, detect_leaks=1 and strict_init_order=1", "make_docs": "PASS", "batch_validation": "PASS: slurm_validate_sbatch.py, bash -n, embedded Python compile", "focused_clang_tidy": "PASS: both touched C++ files, no diagnostics", "include_cleaner": "No unused includes in touched files; pre-existing MonotoneEliminatedVariable direct-header-provider advisory remains", "whole_tree_clang_tidy": "INCOMPLETE: bounded 120-second sweep reached file 34 of 98 and was terminated; no owned diagnostic emitted before termination. clang-tidy is unavailable on the SLURM host. No surviving local review/test process."},
+      "artifacts": {"root": "results/cite-hoisting-6fe3f07-slurm", "cases": "case-0000.smt2 through case-0999.smt2", "summaries": ["summary.csv", "regression.csv"], "logs": ["primo-cite-hoisting-134014.out", "primo-cite-hoisting-134014.err", "local-verification/ite-asan-before.log", "local-verification/ite-asan-after.log", "local-verification/ite-check.log", "local-verification/ite-focused-tidy.log", "local-verification/ite-tidy.log", "local-verification/ite-include-cleaner.log"]},
+      "evidence_status": "current",
+      "notes": "A targeted answer/crash merge gate, not a model-validation or performance campaign. The source commit was frozen before remote preparation and version preflight immediately preceded sbatch. Local tests used the same implementation before its commit. All generated inputs and raw logs were collected, exact row count and PASS categories independently checked, and the job is terminal with empty stderr. The separate QF_UFLIA model-completion defect is not repaired or covered by this gate. No claim that all lifetime bugs in the project have been audited. SSH route details remain in ignored local configuration. New source/test code follows Primo's original term-ownership design; the mathematical ITE transformation is unchanged. The remaining whole-tree static-review gap is reported rather than counted as a pass."
+    },
+    {
       "id": "2026-09-07-integer-model-reconstruction-slurm-133742",
       "date": "2026-09-07",
       "kind": "slurm-committed-binary-model-correctness-gate",
