@@ -68,6 +68,33 @@ algorithm is introduced by this workflow.
 The workflow uses streaming SHA-256 from the standard library and supports the
 cluster's Python 3.9; it does not require Python 3.11's `hashlib.file_digest`.
 
+### Validator memory-limit investigation
+
+The `2026-09-07-dolmen-memory-and-internal-checker-investigation` run-log entry
+resolves 14 apparent failures from the full real-corpus replay. The installed
+Dolmen 0.10 defaults to an internal `--size=1G` limit; allocating more memory in
+SLURM does not change that limit. All 14 **unchanged saved models** pass with
+`--strict=false --size=8G --check-model=true --response MODEL PROBLEM`.
+Representative checks at 1G reproduce resource failures under the same timeout;
+a deliberately false control model instead produces model-verification exit 6.
+This joins the original 11,662 passes to cover all 11,676 selected SAT rows.
+Original timing and failed-attempt artifacts remain immutable. The aggregate
+helper does not yet automatically join this separately recorded diagnostic.
+
+Two reporting defects remain unfixed: the input-only check treats every nonzero
+exit as input nonconformance, including memory exhaustion; other checker failures
+can become `model-error` when the limited Real-assignment fallback is unavailable.
+Neither label alone proves a false model. Preserve diagnostics and distinguish
+resource exits from parsing, typing and semantic model-verification failures.
+
+Primo's internal checker had approved all 14 models against the original typed
+assertions before serialization. Its evaluator tests and an additional diagnostic
+with deliberately false interpretations pass, including rejection of the earlier
+inconsistent UF witness. However, internal checking does not reparse the printed
+model, and no end-to-end session test injecting a corrupted typed model was found.
+Independent printed-model validation remains necessary; these testing gaps are
+not closed by a successful resource-limit retry.
+
 (formula-analyzer)=
 ## Analyzing benchmark shape: use the analyzer, not grep
 
