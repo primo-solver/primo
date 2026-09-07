@@ -32,7 +32,7 @@ def summarize(rows: list[dict], timeout: float) -> dict:
         "sat": sum(row["answer"] == "sat" for row in solved),
         "unsat": sum(row["answer"] == "unsat" for row in solved),
         "statuses": dict(Counter(row["status"] for row in rows)),
-        "unknown": sum(row["answer"] == "unknown" for row in rows),
+        "unknown": sum(row["status"] == "ok" and row["answer"] == "unknown" for row in rows),
         "wrong": sum(str(row.get("wrong")).lower() == "true" for row in rows),
         "par2": sum(
             float(row["seconds"]) if decisive(row) else 2 * timeout for row in rows
@@ -66,7 +66,9 @@ def load_run(root: Path, expected: int, timeout: float) -> tuple[dict, dict]:
             issues.append(f"{shard.name}: overlapping manifests")
         manifests.update(inputs)
         source = shard / "answers.csv"
-        if source.exists():
+        # The producer writes the CSV before atomically marking provenance
+        # complete. Until then use the durable journal, not an in-flight CSV.
+        if provenance["status"] == "complete" and source.exists():
             with source.open() as stream:
                 part = list(csv.DictReader(stream))
         else:
@@ -74,9 +76,14 @@ def load_run(root: Path, expected: int, timeout: float) -> tuple[dict, dict]:
             part = []
             if journal.exists():
                 lines = journal.read_text().splitlines(keepends=True)
-                for line in lines:
+                for line_number, line in enumerate(lines, start=1):
                     if line.endswith("\n"):
-                        part.append(json.loads(line))
+                        try:
+                            part.append(json.loads(line))
+                        except json.JSONDecodeError:
+                            issues.append(
+                                f"{shard.name}: unreadable journal line {line_number}"
+                            )
         names = [row["file"] for row in part]
         if len(names) != len(set(names)) or set(names) & set(rows):
             issues.append(f"{shard.name}: duplicate rows")

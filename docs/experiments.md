@@ -40,6 +40,11 @@ decisive answers, and reports family-level timing and independent model coverage
 It can read durable journals for progress, but a partial journal cannot complete
 a shard. Unknown answers and failed processes are not solved or credited in PAR2.
 Model-coverage errors are reported separately and do not rewrite timing completeness.
+Live reports use journals until provenance marks a shard complete; an in-flight
+CSV is not authoritative. Unreadable journal records are explicit coverage issues,
+not silent passes or grounds for discarding every other shard's progress.
+An `unknown` response emitted during timeout termination remains a timeout,
+not a second independent unknown result.
 
 The model command adapter scans top-level boundaries without building or
 expanding term trees. It preserves assertion text and comments, understands
