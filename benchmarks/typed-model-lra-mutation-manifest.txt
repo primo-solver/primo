@@ -1,0 +1,20 @@
+# Paths relative to the smallest-one-per-family corpus produced by
+# scripts/build_fuzz_seed_corpus.py from sandbox/non-incremental/QF_LRA.
+# All 17 families were checked first at 20s on 8ff9991 (job 134526).
+# Four resource-limited seeds remain in the original-corpus evidence:
+# LassoRanker and latendresse: reference timeout; miplib and tropical-matrix:
+# both solvers timed out. This manifest selects the 13 comparable originals
+# for the bounded mutation gate, not a family-complete performance claim.
+2017-Heizmann-UltimateInvariantSynthesis__overflow1.i_3_8_2.bpl_7.smt2
+2019-ezsmt_1_3.smt2
+DTP-Scheduling_constraints-tempo-width-1.smt2
+TM_p-0-bucket_s7.smt2
+check_bignum_lra1.smt2
+clock_synchro_clocksynchro_2clocks.worst_case_skew.base.smt2
+keymaera_division_dijkstra-node701.smt2
+meti-tarski_polypaver-bench-exp-3d-chunk-0018.smt2
+sal_gasburner-prop3-1.smt2
+sc_sc-5.induction.cvc.smt2
+spider_benchmarks_pd_finish.induction.smt2
+tta_startup_simple_startup_3nodes.abstract.base.smt2
+uart_uart-5.induction.cvc.smt2

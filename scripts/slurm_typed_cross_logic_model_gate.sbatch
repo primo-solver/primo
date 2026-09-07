@@ -26,12 +26,17 @@ mkdir -p "$OUT"
 grep -Fx "git: $EXPECTED_GIT" "$OUT/version.txt"
 z3 --version > "$OUT/reference-version.txt"
 solver_args=(--solver-arg=--quiet --solver-arg=--check-model --solver-arg=--preprocessing-mode="$MODE")
+extra_options=()
+if [[ -n ${PRIMO_FUZZ_SOLVER_ARGS:-} ]]; then
+  read -r -a extra_options <<< "$PRIMO_FUZZ_SOLVER_ARGS"
+  for arg in "${extra_options[@]}"; do solver_args+=(--solver-arg="$arg"); done
+fi
 printf '%s\n' "$FAMILY" "$MODE" "$SEED" "${solver_args[@]}" > "$OUT/profile.txt"
 
 case "$FAMILY" in
   QF_UF|QF_LIA|QF_LRA)
     python3 scripts/fuzz_external.py --fuzzer fuzzsmt \
-      --solver "./build-slurm-rel/primo --quiet --check-model --preprocessing-mode=$MODE" \
+      --solver "./build-slurm-rel/primo --quiet --check-model --preprocessing-mode=$MODE ${extra_options[*]}" \
       --refs z3 --logic "$FAMILY" --count "$COUNT" --timeout 5 --seed "$SEED" \
       --fuzzer-args '-ms 1 -Ms 4 -mv 1 -Mv 6 -mf 1 -mp 1 -ma 1 -Ma 4' \
       --out "$OUT/answer"

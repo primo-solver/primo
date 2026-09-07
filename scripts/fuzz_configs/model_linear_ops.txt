@@ -1,0 +1,10 @@
+; Original Primo gate profile: change truth conditions and affine arithmetic
+; while preserving binders, sorts, and literal-only multiplication/division.
+; Used by YinYang opfuzz; no fresh terms or symbols are introduced.
+=,distinct
+and,or
+<,<=,>,>=
++,- :arity 2+
+* -> +,-
+/ -> +,-
+div,mod

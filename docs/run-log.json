@@ -3,6 +3,19 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-07-typed-model-review-environment-and-mutation-triage",
+      "date": "2026-09-07",
+      "kind": "verification-workflow-diagnostics",
+      "commit": "8ff9991",
+      "evidence_status": "diagnostic",
+      "environment": {"host": "CIIRC SLURM cluster", "static_job": "134489", "typefuzz_jobs": ["134511", "134512", "134513", "134526", "134527"]},
+      "commands": {"static": "sbatch scripts/slurm_typed_model_static_review.sbatch with PRIMO_EXPECTED_GIT=8ff9991", "mutation": "sbatch scripts/slurm_typed_model_mutation_gate.sbatch with PRIMO_EXPECTED_GIT=8ff9991, PRIMO_MUTATION_ITERATIONS=20, PRIMO_MUTATION_SECONDS=120; task modes off/basic/strong/auto; --check-model forwarded to every phase", "seeds": "scripts/build_fuzz_seed_corpus.py --root CORPUS --out SEEDS --per-family 1 --max-bytes 200000 (QF_LRA and QF_UFLRA); QF_UFLIA/mathsat uses --per-family 2; tracked QF_UF and QF_UFLRA seed directories also checked"},
+      "inputs": {"generator": "YinYang/typefuzz", "seeds": [202609500, 202609501, 202609502, 202609503], "iterations_per_seed": 20, "timeout_seconds": 5, "lra_seed_timeout_seconds": 20, "references": "Z3 model_validate=true for differential mutation; Z3 for original seed answers; Dolmen for printed SAT models"},
+      "results": {"static": "FAILED in 4 seconds before analysis: the compute-node compiler cannot locate standard C++ headers (string/vector/memory). No static-review pass is claimed. The follow-up installer stages the build compiler's C++ header roots; review uses the existing compile database without rebuilding on a different host compiler.", "mutation": "Unrestricted typefuzz introduced ill-scoped let variables, variable divisors/nonlinear products, and unsupported mixed Int/Real operators. Those rows are not model-validation passes; full collected-row classification and the restricted OpFuzz follow-up remain pending.", "lra_originals": "All four profiles: 13 PASS and 4 INCOMPLETE of 17 family representatives. LassoRanker: Primo unsat, Z3 timeout; latendresse: Primo sat, Z3 timeout; miplib and tropical-matrix: both timeout. The strict original-seed gate stopped before mutation. The 13 comparable seeds are listed in benchmarks/typed-model-lra-mutation-manifest.txt; this is not full-family performance evidence."},
+      "artifacts": ["results/typed-static-8ff9991", "results/typed-mutation-mathsat-8ff9991", "results/typed-mutation-uf-8ff9991", "results/typed-mutation-uflra-regressions-8ff9991", "results/typed-mutation-lra-real-8ff9991", "results/typed-mutation-uflra-real-8ff9991"],
+      "notes": "Diagnostic/rejected gate attempts, not completion evidence. Original inputs, solver stderr, model-validator summaries and retained mutations are preserved. Local cross-logic implementation checks passed 28 CTest, 87 Python, 28 ASan, lint and docs before 8ff9991. No performance claim. Follow-up tooling adds two header-search tests and two mutation-profile/seed-failure tests."
+    },
+    {
       "id": "2026-09-07-typed-uflia-2521110-slurm",
       "date": "2026-09-07",
       "kind": "slurm-typed-model-migration-gate",

@@ -878,25 +878,24 @@ Real terms were excluded because they are not common EUF/LRA interface
 constants. Exclusion applies to arrangement search and LRA probes, not to
 printed model completion.
 
-Integer model completion in `qf_uflia_int_values` fills in every evaluable Int
-term with an explicit worklist. Its dependency graph is deliberately not the
-term DAG: an unvalued application takes its value from a valued application of
-the same symbol whose arguments evaluate equal, so completing `(f x)` inspects
-the candidate `(f (f x))`, whose own argument is `(f x)` again. A term whose
-value is still being computed contributes no value, so that candidate does not
-match; that makes completion terminate, at the cost of making the outcome
-depend on the arena iteration order for terms inside such a cycle. A term left
-without a value is skipped, exactly as any other unevaluable term is, and the
-model printer supplies a default. For `get-model`, the shared class keeps its concrete
-LRA value and every unanchored EUF-only Real equivalence class receives a
-distinct fresh rational. Completion writes that class value for every Real
-constant and Real-valued application in the class. Exact application values
-take precedence over stale pre-rewrite application rows with the same concrete
-arguments when the UF table is printed. `:no.interface.model-euf-real-classes`,
+Model construction now uses the shared typed adapter described in
+[](model-interpretation.md). The historical `qf_uflia_int_values` candidate
+search, cycle skipping, arena-order completion and printer-side row priorities
+have been removed. Live component values determine one immutable interpretation;
+eliminated definitions are replayed against its fixed evaluated-tuple tables.
+The printer only serializes it. Conflicting authoritative values are errors,
+not a reason to replace a row or skip a required definition.
+
+For QF_UFLRA `get-model`, the shared class keeps its concrete LRA value and
+every unanchored EUF-only Real equivalence class receives a distinct fresh
+rational. Component preparation writes that class value for the live Real
+constants and applications in the class before typed reconstruction.
+`:no.interface.model-euf-real-classes`,
 `:no.interface.model-euf-real-anchored-classes`, and
 `:no.interface.model-euf-real-fresh-classes` report that reconstruction;
 `model-euf-real-unmapped-terms` or `model-euf-real-value-conflicts` makes model
-construction return `unknown` rather than print an invalid model. The final
+construction fail with an internal error rather than print an invalid model.
+Resource limits during separation search can still return `unknown`. The final
 arrangement path then probes the current EUF closure with a
 temporary equality for each remaining shared-Real pair. A pair counted by
 `:no.interface.model-separation-euf-mergeable-pairs` is in different EUF

@@ -16,13 +16,14 @@ SEEDS=${PRIMO_MODEL_SEEDS:?set PRIMO_MODEL_SEEDS}
 TASK=${SLURM_ARRAY_TASK_ID:-0}
 OUT="${PRIMO_FUZZ_OUT_DIR:?set PRIMO_FUZZ_OUT_DIR}/task-$TASK"
 TIMEOUT=${PRIMO_MUTATION_TIMEOUT:-5}
+MUTATOR=${PRIMO_MUTATION_TOOL:-typefuzz}
 modes=(off basic strong auto)
 (( TASK >= 0 && TASK < 4 ))
 MODE=${modes[TASK]}
 mkdir -p "$OUT"
 ./build-slurm-rel/primo --version | tee "$OUT/version.txt"
 grep -Fx "git: ${PRIMO_EXPECTED_GIT:?set PRIMO_EXPECTED_GIT}" "$OUT/version.txt"
-for required in typefuzz z3 dolmen; do command -v "$required"; done
+for required in "$MUTATOR" z3 dolmen; do command -v "$required"; done
 options=(--quiet --check-model --preprocessing-mode="$MODE")
 if [[ -n ${PRIMO_EXTRA_SOLVER_ARGS:-} ]]; then
   read -r -a extra <<< "$PRIMO_EXTRA_SOLVER_ARGS"
@@ -40,7 +41,12 @@ python3 scripts/validate_model.py --solver ./build-slurm-rel/primo "${solver_arg
   --require-dolmen-pass --dolmen-arg=--strict=false --timeout "$TIMEOUT" \
   --dolmen-timeout 5 --out "$OUT/seed-models" "${originals[@]}"
 
-scripts/yinyang_fuzz.sh --seeds "$SEEDS" \
+mutation_args=(--typefuzz "$MUTATOR")
+if [[ $MUTATOR == opfuzz ]]; then
+  mutation_args+=(--config scripts/fuzz_configs/model_linear_ops.txt)
+fi
+printf '%s\n' "$MUTATOR" "${mutation_args[@]}" > "$OUT/mutator.txt"
+scripts/yinyang_fuzz.sh --seeds "$SEEDS" "${mutation_args[@]}" \
   --solver "$PWD/build-slurm-rel/primo ${options[*]}" --ref 'z3 model_validate=true' \
   --seconds "${PRIMO_MUTATION_SECONDS:-120}" --iterations "${PRIMO_MUTATION_ITERATIONS:-20}" \
   --solver-timeout "$TIMEOUT" --file-size-limit "${PRIMO_MUTATION_SIZE_LIMIT:-2000000}" \

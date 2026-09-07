@@ -158,3 +158,18 @@ preparation helper can provision this optional target with
 `--contrib-target contrib-clang-tools --reuse-dependencies`. The static-review
 batch script checks every non-generated C++ source in the prepared tracked
 snapshot and records its manifest, rather than relying on remote Git metadata.
+The optional installer also snapshots the build compiler's C++ header search
+roots for compute nodes without matching development headers. Review adds those
+roots in compiler order to the existing compile database; it does not rebuild
+the solver with the compute node's potentially different compiler. The first
+static-review attempt exposed that environmental mismatch before any analysis
+ran. Local CTest/ASan and independent SLURM solver gates remain separate checks.
+
+The mutation gate accepts `PRIMO_MUTATION_TOOL=opfuzz` with Primo's
+`scripts/fuzz_configs/model_linear_ops.txt`. This profile changes Boolean and
+order operators and affine arithmetic without introducing new terms, binders,
+variable divisors, or nonlinear products. Unrestricted typefuzz remains useful
+for boundary testing, but its out-of-fragment and ill-scoped mutants must be
+classified separately; they are not model-validation passes. Both profiles
+check every original seed first and send identical solver options to answer
+comparison and independent printed-model validation.
