@@ -34,6 +34,11 @@ into `answer-changed`, not `not-sat`. Coverage is joined into a separate
 `model-validation/coverage.json`; timing rows are not modified. The SLURM wrapper
 `scripts/slurm_real_corpus_validation.sbatch` exposes both phases for dependent
 jobs. Campaign scheduling and reference-answer joins remain explicit operations.
+`scripts/summarize_model_campaign.py ROOT --expected QF_UF=7503 ...` joins
+`LOGIC/{primo,z3,cvc5}/shard-N` outputs, checks shard/manifest coverage, compares
+decisive answers, and reports family-level timing and independent model coverage.
+It can read durable journals for progress, but a partial journal cannot complete
+a shard. Unknown answers and failed processes are not solved or credited in PAR2.
 
 The model command adapter scans top-level boundaries without building or
 expanding term trees. It preserves assertion text and comments, understands
