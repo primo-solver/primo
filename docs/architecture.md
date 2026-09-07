@@ -90,6 +90,18 @@ Terms are not individually heap-allocated. `TermManager` owns all term nodes in 
 
 Important lifetime rule: `TermId` values are stable for the lifetime of the `TermManager`; `const Term&` references are not guaranteed to remain stable across later term insertions because `terms_` is a vector and may reallocate. Code that calls a `mk_*` method while holding a `const Term&` must reacquire the reference afterwards.
 
+Before any direct or indirect term-creating call, copy the child IDs and scalar
+payloads needed by the operation. This also applies within a single expression:
+do not mix reads through a borrowed term with allocating calls in sibling
+function arguments, whose evaluation order is not guaranteed to be left-to-right.
+Construct intermediate terms from the copied values, then reacquire any needed
+references by ID. `const` does not prevent mutation through the manager, and
+spare vector capacity or hash-cons reuse must not be assumed for correctness.
+The code-review skill checks borrow/mutation/use paths; the testing skill calls
+for allocation-boundary regressions under ASan. These are review and testing
+requirements, not an API-level enforcement mechanism or a claim that all
+existing call sites have been audited.
+
 `TermManager` stores a reference to a `SymbolTable`:
 
 ```text

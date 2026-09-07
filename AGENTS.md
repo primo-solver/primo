@@ -161,6 +161,13 @@ In particular:
   If a roadblock occurs, state the concrete blocker, the evidence for it, the
   last completed verification, and the exact unfinished work.
 - Use C++20.
+- Do not use borrowed references, pointers, iterators, or views after an operation
+  that may invalidate their backing storage, including indirect helper calls.
+  In particular, snapshot needed IDs/payloads before any term-creating call and
+  reacquire `TermManager::get` references afterwards; do not depend on sibling
+  argument evaluation order. Apply the borrow/mutation/use check in
+  `skills/code-review/SKILL.md` and allocation-boundary regression guidance in
+  `skills/testing/SKILL.md` when fixing invalidation bugs.
 - Keep C++ source formatted with `clang-format` using the repository `.clang-format`.
 - Keep Python scripts runnable with the standard library unless a dependency is documented.
 - C++ formatting is `clang-format` with the repository `.clang-format`, currently based on Google style with C++20 and a 100-column limit. Do not hand-format around it.

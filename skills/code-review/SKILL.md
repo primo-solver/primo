@@ -80,6 +80,34 @@ Check:
 - rewrite rules preserve sorts
 - pretty-printing round-trips through the parser where expected
 
+### Borrowed storage across mutation
+
+For each reference, pointer, iterator, span, or view into mutable storage, trace
+the owner, intervening mutations, and subsequent uses. Reject a use after a
+potentially invalidating operation unless the actual container/API contract
+guarantees stability. Include indirect mutation through helpers, recursion,
+callbacks, and aliases; `const` on a borrow does not freeze its owner.
+
+For Primo, treat every `TermManager::mk_*` call (and any helper that can create
+terms) as a potential invalidation boundary for references returned by `get`.
+Copy the needed `TermId`s and scalar payloads before that boundary, then
+reacquire any needed term reference by ID afterwards. Do not carry borrowed
+child ranges or payload references across it. The owning manager must still
+outlive all IDs. See `docs/architecture.md`, "Ownership and Lifetime".
+
+Review expressions as well as statements: sibling function arguments need not
+be evaluated left-to-right. An expression such as
+`mk_ite(node.children[0], mk_times(k, node.children[1]), mk_times(k, node.children[2]))`
+is unsafe when branch construction can invalidate `node`. Snapshot all needed
+inputs first and construct branches in separate statements.
+
+Apply the same reasoning to growing traversal stacks, symbol storage, and
+other mutable containers, using their specific invalidation rules. Do not
+assume every container mutation invalidates every kind of borrow. Extra
+`reserve`, successful hash-cons hits, or a passing ASan suite are not a lifetime
+proof. For a discovered invalidation bug, inspect analogous paths and require
+an allocation-boundary regression under the testing skill's guidance.
+
 ### SAT layer
 
 Check:

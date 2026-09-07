@@ -34,6 +34,22 @@ Use for:
 - wrong sat/unsat answers
 - invalid models
 
+### Allocation-boundary regressions
+
+For dangling-reference or iterator-invalidation fixes, preserve the reduced
+failure and add coverage that makes the backing storage cross a capacity
+boundary during the operation under test. Prefer deterministic capacity-aware
+setup through existing APIs; otherwise exercise varied arena occupancies and
+record that this is weaker coverage. Insert distinct terms so hash-consing
+cannot silently turn intended allocations into reuse. Do not rely on a fixed
+vector growth factor or expose mutable storage solely for a test.
+
+Run the relevant regression under ASan as well as checking its semantic result.
+When feasible, confirm that it fails on the pre-fix code and passes on the fix.
+Cover analogous construction branches and nested helper calls that can allocate.
+A green sanitizer suite without exercising the invalidation boundary does not
+establish lifetime safety; retain the static borrow/mutation/use review.
+
 ### Differential tests
 
 Compare result with trusted solvers:
