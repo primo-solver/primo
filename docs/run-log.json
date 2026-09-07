@@ -3,6 +3,71 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-07-typed-model-whole-tree-static-134747",
+      "date": "2026-09-07",
+      "kind": "whole-tree-static-review",
+      "commit": "3a2dd40",
+      "driver_commit": "60f7bbe",
+      "evidence_status": "current",
+      "environment": {"host": "CIIRC SLURM cluster", "job": "134747", "state": "COMPLETED", "exit_code": "0:0", "elapsed": "00:19:47", "max_rss_kib": 513704, "cpus": 2, "memory": "4G", "wall_limit": "00:30:00", "tool": "clang-tidy 18.1.8", "build": "Release compile database and staged build-compiler C/C++ search roots"},
+      "commands": {"submit": "Repository helper --check-only --no-sync against clean 3a2dd40 immediately before sbatch; locally validated scripts/slurm_typed_model_static_review.sbatch from 60f7bbe copied separately as tmp/typed-static-final.sbatch; PRIMO_EXPECTED_GIT=3a2dd40", "analysis": "clang-tidy -p build-slurm-rel HEADER_ARGS src/main.cpp compiler probe; clang-tidy -p build-slurm-rel HEADER_ARGS ALL_99_SOURCES; then clang-tidy -p build-slurm-rel -checks='-*,clang-diagnostic-*,misc-include-cleaner' HEADER_ARGS ALL_99_SOURCES", "scope": "All 99 tracked non-generated .cpp files; exact sources.txt collected. Manual review scope also includes tracked headers, scripts, tests, docs, skills and build metadata; no generated parser or dependency source review claimed."},
+      "results": {
+        "compiler_probe": "PASS, one suppressed non-user warning",
+        "tidy": "All 99 files analyzed; no compiler errors. One owned NewDeleteLeaks diagnostic in Goal::Goal(vector<TermId>), src/smt/tactic.cpp:69; 20 non-user warnings suppressed by clang-tidy.",
+        "ownership_adjudication": "The flagged make_shared allocation is moved into Data::assertions, and that Data is owned by Goal::data_. Both are shared_ptr, with no ownership release or reference cycle; default destruction releases the retained allocation. The analyzer stops at constructor exit and misidentifies retained ownership as a leak. No suppression or ownership rewrite added. Existing lifetime tests and leak-enabled ASan pass.",
+        "include_cleaner": "208 advisory diagnostics: 27 unused-header and 181 missing-direct-header. Of the unused headers, 23 are paired .cpp/.hpp self-includes retained deliberately. Four genuinely unused includes are removed in the closing hygiene patch: sstream, variant and incremental_congruence_closure.hpp from solver_engines.cpp; core/sort.hpp from smtlib/printer.cpp. The same patch adds core/model.hpp directly for ModelError.",
+        "remaining_advisories": "180 missing-direct-include suggestions remain outside the changed model code, largely types already provided by each implementation's paired public header, plus standard/POSIX header spelling and transitive-include style suggestions. These are explicitly retained as non-blocking baseline include-style debt, not reported as a warning-free whole-tree baseline. No remaining non-paired unused include was found."
+      },
+      "artifacts": ["results/typed-static-final-3a2dd40/compiler-probe.log", "results/typed-static-final-3a2dd40/tidy.log", "results/typed-static-final-3a2dd40/include-cleaner.log", "results/typed-static-final-3a2dd40/sources.txt", "results/typed-static-final-3a2dd40/compiler-search.txt"],
+      "prior_diagnostic": "Job 134697 never analyzed sources: -checks='-*,clang-diagnostic-*' enables no actual clang-tidy check and the probe exited with 'no checks enabled'. Driver 60f7bbe uses default checks for the probe; local src/main.cpp probe also passes. An attempted time-limit extension of 134747 was denied; the original 30-minute allocation nevertheless completed successfully.",
+      "local_cleanup_verification": {"make_check": "PASS: 28 CTest (6.69s), 94 Python tests, lint", "make_asan_test": "PASS: 28 CTest (48.06s), detect_leaks=1:strict_init_order=1", "make_docs": "PASS", "logs": ["tmp/typed-include-cleanup-check.log", "tmp/typed-include-cleanup-asan.log", "tmp/typed-include-cleanup-docs.log"]},
+      "notes": "Code review: no blocking soundness/ownership finding. This is review evidence, not fuzz evidence or a performance measurement. The include-only cleanup receives a focused include-check and committed-binary gate follow-up; no algorithmic source change is involved."
+    },
+    {
+      "id": "2026-09-07-typed-model-final-mutation-3a2dd40",
+      "date": "2026-09-07",
+      "kind": "slurm-model-generated-and-real-seed-mutation-acceptance",
+      "commit": "3a2dd40",
+      "solver_implementation_commit": "8ff9991",
+      "evidence_status": "current",
+      "environment": {"host": "CIIRC SLURM cluster", "build": "Release", "cadical": "cadical-3.0.0-7b99c07", "mutation_cpus_per_task": 1, "mutation_memory": "2G", "mutation_array": "0-3%4"},
+      "source_equivalence": "git diff --exit-code 8ff9991..60f7bbe -- src CMakeLists.txt tests/unit is empty; subsequent changes are verification tooling and documentation",
+      "references": {"answers": "Z3 5.1.0; the required mixed-Real gate also compares cvc5", "models": "Dolmen with --require-dolmen-pass and --strict=false; no fallback passes", "mutator": "YinYang fork 04c8618a134e7a6c8b6d54fcd5ee9fd2ec64a2bb, package 0.3.0, OpFuzz via scripts/seeded_opfuzz.py"},
+      "commands": {
+        "prepare": "scripts/slurm_prepare_benchmark_workspace.py with exact clean 3a2dd40, --reuse-dependencies --jobs 4; --check-only --no-sync immediately before sbatch, checking binary git and CaDiCaL",
+        "mutation": "sbatch --export=ALL,PRIMO_EXPECTED_GIT=3a2dd40,PRIMO_MUTATION_TOOL=opfuzz,PRIMO_MUTATION_ITERATIONS=20,PRIMO_MUTATION_SECONDS=120,PRIMO_MODEL_SEEDS=SEEDS,PRIMO_FUZZ_OUT_DIR=OUT scripts/slurm_typed_model_mutation_gate.sbatch; seeds 202609500..503; modes off/basic/strong/auto; --quiet --check-model plus optional --no-qf-uflia-model-combination; solver/reference timeout 5s, comparable LRA corpus timeout 20s, Dolmen timeout 5s",
+        "mutation_acceptance": "Original seeds first: check_solver_seed_corpus.py --ref z3 and validate_model.py --require-dolmen-pass. scripts/yinyang_fuzz.sh --ref 'z3 model_validate=true' --config scripts/fuzz_configs/model_linear_ops.txt --keep-logic --hoist-declarations --keep-mutants, followed by independent answer and model reruns of EVERY retained mutant. Identical solver options in all phases; process status checked before accepting answers.",
+        "uflia": "sbatch scripts/slurm_typed_uflia_model_gate.sbatch; 375/task, seeds 202609300..307, depth 3, all four preprocessing modes and both combination profiles, --check-model, timeout 5s, nine witnesses/profile",
+        "uflra": "sbatch scripts/slurm_qf_uflra_fuzz_gate.sbatch; PRIMO_FUZZ_COUNT=750, PRIMO_FINITE_DOMAIN_FUZZ_COUNT=125, PRIMO_FUZZ_SEED_BASE=202609800, PRIMO_FUZZ_SOLVER_ARGS=--check-model; four tasks; default answer/model timeouts from the committed script",
+        "smoke_repeat": "Same mutation script/corpus/profile as Mathsat task 0, --array=0 and PRIMO_MUTATION_ITERATIONS=2; compare retained filename-to-SHA256 maps between two runs"
+      },
+      "corpora": {
+        "mathsat": "Six QF_UFLIA/mathsat real seeds, three families, selected with build_fuzz_seed_corpus.py --per-family 2 --max-bytes 200000; tmp/typed-model-mathsat-seeds",
+        "uf": "All 13 tracked benchmarks/seeds/qf_uf inputs",
+        "uflra_regressions": "All 12 tracked benchmarks/seeds/qf_uflra inputs",
+        "uflra_real": "Four real QF_UFLRA family representatives, smallest per family with max 200000 bytes; tmp/typed-model-uflra-seeds",
+        "lra_real": "13 independently comparable real QF_LRA family representatives in benchmarks/typed-model-lra-mutation-manifest.txt; original 17-family triage excluded four resource-limited representatives, documented in the earlier diagnostic entry"
+      },
+      "mutation_results": {
+        "mathsat": {"job": "134715", "total": 480, "answer_pass": 478, "dolmen_pass": 355, "not_sat": 123, "solver_timeout": 2},
+        "uf": {"job": "134716", "total": 1025, "answer_pass": 1025, "dolmen_pass": 571, "not_sat": 454, "solver_timeout": 0},
+        "uflra_regressions": {"job": "134717", "total": 960, "answer_pass": 960, "dolmen_pass": 519, "not_sat": 441, "solver_timeout": 0},
+        "uflra_real": {"job": "134718", "total": 160, "answer_pass": 160, "dolmen_pass": 132, "not_sat": 28, "solver_timeout": 0},
+        "lra_real": {"job": "134719", "total": 1035, "answer_pass": 1035, "dolmen_pass": 570, "not_sat": 465, "solver_timeout": 0},
+        "mathsat_combination_off": {"job": "134720", "total": 480, "answer_pass": 477, "dolmen_pass": 355, "not_sat": 122, "solver_timeout": 3},
+        "aggregate": {"retained_mutants": 4140, "answer_pass": 4135, "dolmen_pass": 2502, "not_sat": 1633, "solver_timeout": 5, "wrong_answer": 0, "invalid_model": 0, "crash": 0, "parser_or_type_error": 0, "unsupported": 0, "reference_disagreement": 0},
+        "original_seed_checks": {"case_profile_runs": 216, "answer_pass": 216, "dolmen_pass": 76, "not_sat": 140, "errors": 0},
+        "timeout_classification": "Five rows over three distinct mutants: Wisa_xs-05-07-4-5-1-2-USwQ8-P0c6y.smt2 and Wisa_xs-05-07-4-5-1-2-USwQ8-tH58K.smt2 in strong mode with combination on/off; Wisa_xs-05-06-2-2-5-1-lOvNI-kgA6R.smt2 in preprocessing-off/combination-off. Primo times out, Z3 returns unsat. Model reruns likewise time out. Raw tasks 134715_2, 134720_0 and 134720_2 are FAILED solely for these resource limits; they are not promoted to passes. All other campaign tasks COMPLETED.",
+        "seeded_smoke": {"jobs": ["134696", "134721"], "mutants_per_run": 12, "answer_pass_per_run": 12, "dolmen_pass_per_run": 6, "not_sat_per_run": 6, "identical_filename_sha256_maps": true, "included_in_campaign_totals": false}
+      },
+      "generated_results": {
+        "uflia": {"job": "134698", "answer_pass": 3000, "dolmen_pass": 1488, "not_sat": 1512, "witness_pass": 72, "errors": 0, "timeouts": 0},
+        "uflra": {"job": "134699", "general_answer_pass": 3000, "finite_uf_answer_pass": 500, "finite_uflra_answer_pass": 500, "general_dolmen_pass": 1747, "finite_uflra_dolmen_pass": 252, "errors": 0, "timeouts": 0}
+      },
+      "artifacts": ["results/typed-opfuzz-mathsat-3a2dd40", "results/typed-opfuzz-uf-3a2dd40", "results/typed-opfuzz-uflra-regressions-3a2dd40", "results/typed-opfuzz-uflra-real-3a2dd40", "results/typed-opfuzz-lra-real-3a2dd40", "results/typed-opfuzz-mathsat-fallback-3a2dd40", "results/typed-opfuzz-smoke-3a2dd40", "results/typed-opfuzz-smoke-repeat-3a2dd40", "results/typed-uflia-3a2dd40", "results/typed-uflra-3a2dd40", "tmp/typed-3a-evidence-summaries"],
+      "notes": "Complete per-task artifacts collected locally, including retained mutants and failures. Counts are case/profile runs, not distinct inputs. This closes the restricted mutation and latest-binary generated correctness requirements alongside the 6f89774 cross-logic entry. It does not claim complete real-corpus coverage or a performance/PAR2 improvement. Static-review evidence is recorded separately."
+    },
+    {
       "id": "2026-09-07-typed-model-cross-logic-6f89774",
       "date": "2026-09-07",
       "kind": "slurm-cross-logic-model-acceptance",

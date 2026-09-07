@@ -12,7 +12,6 @@
 #include <vector>
 
 #include "core/model.hpp"
-#include "core/sort.hpp"
 #include "core/symbol_table.hpp"
 #include "util/rational.hpp"
 

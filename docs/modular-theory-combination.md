@@ -116,8 +116,9 @@ independently with `--no-qf-uflia-model-combination` and
 spellings remain accepted aliases for reproducible old commands.
 
 `QF_UFLRA` does not use this eager policy. Its existing lazy convex equality
-exchange, exact fallback, model mutation, reconciliation, and model builder
-remain in its specialized coordinator.
+exchange, exact fallback, model mutation and reconciliation remain in its
+specialized coordinator; final interpretation construction uses the shared
+typed builder below.
 
 ## Integer model reconstruction
 
@@ -146,7 +147,9 @@ theory-combination algorithm. Focused tests cover the evaluated-tuple witness,
 definition chains, cyclic UF equations, input order, all four preprocessing
 modes, and both QF_UFLIA combination settings. Boolean/QF_UF, QF_LIA, QF_LRA,
 QF_UFLRA and preprocessing-only paths now share the same typed builder and
-evaluator; their final cross-logic campaign gates remain pending.
+evaluator. Their generated and seed-mutation correctness gates are collected;
+see [](model-interpretation.md) for the accepted matrix and separately reported
+resource limits. This is correctness evidence, not a performance promotion.
 
 The legacy string builders and whole-arena completion have been removed.
 Invention counts are

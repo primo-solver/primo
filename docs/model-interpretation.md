@@ -2,25 +2,36 @@
 
 ## Status and acceptance contract
 
-This is Primo's original design for the staged general model redesign. It is
-an implementation checklist, not a claim that migration is complete. The
+This is Primo's original design and implementation contract for the general
+model redesign, implemented through `8ff9991`. The
 legacy QF_UFLIA builder completed by EUF representative, while its printer
 deduplicated rows by evaluated arguments and could replace their results after
 constants had been printed. The fixture
 `benchmarks/regressions/qf_uflia_model_evaluated_tuple.smt2` exposes the mismatch.
 
-Delivery order: baseline evidence; typed core model/evaluator and SMT-LIB
+Delivery followed: baseline evidence; typed core model/evaluator and SMT-LIB
 printer; QF_UFLIA; Boolean/QF_UF; Int/Real and mixed-Real paths; removal of legacy
-builders; complete external validation. The overall work remains open until
-all stages and the cross-logic gates pass.
+builders; cross-logic external validation.
 
 The typed foundation (`core::Model`, `core::ModelEvaluator`, and
 `smtlib::print_model`) is implemented and independently unit-tested. QF_UFLIA
 uses `smt::ComponentModelBuilder` through `build_typed_model`, as do Boolean,
 QF_UF, QF_LIA, QF_LRA, QF_UFLRA and preprocessing-only model paths. Legacy
 string builders and their separate arithmetic evaluators have been removed.
-The first QF_UFLIA stage passed its 3000-case SLURM gate; the subsequent shared
-cross-logic migration still needs its final campaign and mutation validation.
+The shared implementation has completed its cross-logic correctness gates:
+31,000 generated case/profile runs at `6f89774`, followed by 7,000 mixed-logic
+generated runs and 4,140 retained seed mutations at `3a2dd40`. These verification
+commits have identical solver sources to `8ff9991`. All produced SAT models
+submitted for acceptance passed independent Dolmen validation; no wrong answer,
+invalid model or crash was found in the accepted gates. Resource limits are
+reported separately, not counted as passes: 80 timeouts and two unknowns in the
+main matrix, 108 timeouts in saved-Real semantic validation, and five mutation
+timeouts. The Real replay gate additionally covers explicit monotone elimination.
+The mutation campaign checks all four preprocessing modes and the QF_UFLIA
+combination-off path; the generated matrix also checks mixed-Real reconciliation
+off. Strict input-grammar diagnostics and rejected unrestricted mutations are
+not accepted evidence. See the cross-logic and final-mutation entries in
+`docs/run-log.json` for commands, seeds, per-family counts and artifacts.
 The baseline eight-file external check reports seven historical witnesses
 passing and the evaluated-tuple fixture failing; see the model-redesign entry
 in `docs/run-log.json`.
@@ -164,6 +175,14 @@ roots in compiler order to the existing compile database; it does not rebuild
 the solver with the compute node's potentially different compiler. The first
 static-review attempt exposed that environmental mismatch before any analysis
 ran. Local CTest/ASan and independent SLURM solver gates remain separate checks.
+
+The final whole-tree scan (99 non-generated C++ files, SLURM `134747`) completed.
+Review removed four unused non-paired headers and added the direct model-error
+header. One analyzer leak warning was adjudicated as retained `shared_ptr`
+ownership in `Goal`, not a discarded allocation. Paired-header checks and
+180 unrelated missing-direct-include suggestions remain advisory baseline debt;
+the scan is not described as warning-free. Details and raw logs are indexed in
+`docs/run-log.json`.
 
 The mutation gate accepts `PRIMO_MUTATION_TOOL=opfuzz` with Primo's
 `scripts/fuzz_configs/model_linear_ops.txt`. This profile changes Boolean and

@@ -3,10 +3,20 @@
 ## Status
 
 The historical repairs below have been superseded by the shared typed model
-redesign in `docs/model-interpretation.md`. Its QF_UFLIA stage (`2521110`)
-passed 3,000 generated cases and 72 witness/profile checks on SLURM job
-`134384`, with 1,488 generated SAT models accepted by Dolmen. This does not
-validate the subsequent cross-logic migration, whose final gates remain open.
+redesign in `docs/model-interpretation.md`, implemented through `8ff9991`.
+One typed interpretation now owns both reconstructed constants and function
+tables; evaluated argument tuples cannot select contradictory results, and
+the printer cannot complete or revise the interpretation. All model routes
+use this builder and reverse typed conversion replay.
+
+The final `3a2dd40` binary (identical solver sources) passes 3,000 QF_UFLIA
+generated checks and all 72 witness/profile checks, with 1,488 SAT models
+accepted by Dolmen (SLURM `134698`). Broader cross-logic generated and real-seed
+mutation campaigns report no invalid models or answer disagreements; resource
+limits are recorded separately. Exact evidence, including rejected diagnostic
+runs and remaining coverage limits, is in `docs/run-log.json` and the shared
+model design page. These tests close the reported reconstruction defect, not
+a claim that future model bugs are impossible.
 
 **Fixed for the recorded witnesses, 2026-09-07, commit `5a43084`.** SLURM job
 `133742` ran both seed ranges: 6,000 cases, 3,019 satisfiable models all accepted
