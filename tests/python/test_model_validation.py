@@ -14,7 +14,9 @@ from unittest import mock
 
 
 SCRIPT = Path(__file__).parents[2] / "scripts" / "validate_qfuf_models_with_dolmen.py"
-SPEC = importlib.util.spec_from_file_location("validate_qfuf_models_with_dolmen", SCRIPT)
+SPEC = importlib.util.spec_from_file_location(
+    "validate_qfuf_models_with_dolmen", SCRIPT
+)
 assert SPEC is not None and SPEC.loader is not None
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
@@ -25,6 +27,83 @@ def solver_model() -> tuple[str, int, str, str, float]:
 
 
 class ModelValidationTests(unittest.TestCase):
+    def test_command_adapter_preserves_assertions_and_places_model_before_exit(
+        self,
+    ) -> None:
+        assertion = '(assert (= |x;()| "a;()""b"))'
+        source = (
+            "; (get-model) is only a comment\n"
+            "(set-option :produce-models false)\n"
+            "(set-option :print-success true)\n"
+            '(set-info :source "text; (exit)")\n'
+            + assertion
+            + "\n(check-sat)\n(get-model)\n(exit)\n"
+        )
+        adapted = MODULE.solver_problem_text(source)
+        heads = [head for _, _, head in MODULE.command_spans(adapted)]
+        self.assertEqual(heads[-3:], [("check-sat",), ("get-model",), ("exit",)])
+        self.assertEqual(sum(head[0] == "get-model" for head in heads), 1)
+        self.assertIn(assertion, adapted)
+        self.assertNotIn(":produce-models false", adapted)
+        self.assertNotIn(":print-success true", adapted)
+        problem_heads = [
+            head[0]
+            for _, _, head in MODULE.command_spans(MODULE.model_problem_text(source))
+        ]
+        self.assertNotIn("get-model", problem_heads)
+
+    def test_adapter_rejects_ambiguous_queries_and_malformed_syntax(self) -> None:
+        for source in [
+            "(check-sat)(check-sat)",
+            "(push 1)(check-sat)",
+            "(check-sat-assuming ())",
+            "(exit)(check-sat)",
+            "(check-sat)(assert false)",
+            '(set-info :source "bad)',
+            "(check-sat",
+            "(check-sat))",
+        ]:
+            with self.subTest(source=source), self.assertRaises(ValueError):
+                MODULE.solver_problem_text(source)
+
+    def test_adapter_is_iterative_for_deep_assertions(self) -> None:
+        assertion = "(assert " + "(not " * 10000 + "true" + ")" * 10000 + ")"
+        self.assertIn(assertion, MODULE.solver_problem_text(assertion + "(check-sat)"))
+
+    def test_expected_sat_rejects_unsat_and_post_answer_errors(self) -> None:
+        cases = [
+            (0, "unsat\n", "answer-changed"),
+            (9, "sat\n", "solver-error"),
+            (0, 'sat\n(error "failure")\n', "solver-error"),
+        ]
+        for code, stdout, expected in cases:
+            with (
+                self.subTest(expected=expected),
+                tempfile.TemporaryDirectory() as temporary,
+            ):
+                root = Path(temporary)
+                case = root / "case.smt2"
+                self.write_case(case)
+                result, out = self.run_main(
+                    ["--expect-sat", "--out", str(root / "out"), str(case)],
+                    [("done", code, stdout, "", 0.01)],
+                )
+                self.assertEqual(result, 1)
+                with (out / "summary.csv").open() as stream:
+                    self.assertEqual(next(csv.DictReader(stream))["outcome"], expected)
+
+    def test_unsupported_query_is_recorded_without_launching_solver(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            case = root / "case.smt2"
+            case.write_text("(check-sat)(check-sat)")
+            result, out = self.run_main(["--out", str(root / "out"), str(case)], [])
+            self.assertEqual(result, 1)
+            with (out / "summary.csv").open() as stream:
+                self.assertEqual(
+                    next(csv.DictReader(stream))["outcome"], "input-unsupported"
+                )
+
     def write_case(self, path: Path) -> None:
         path.write_text(
             """(set-logic QF_UFLRA)
@@ -43,7 +122,9 @@ class ModelValidationTests(unittest.TestCase):
         argv = [str(SCRIPT), *arguments]
         with (
             mock.patch.object(sys, "argv", argv),
-            mock.patch.object(MODULE.shutil, "which", side_effect=lambda name: f"/tools/{name}"),
+            mock.patch.object(
+                MODULE.shutil, "which", side_effect=lambda name: f"/tools/{name}"
+            ),
             mock.patch.object(MODULE, "run_command", side_effect=side_effect),
         ):
             result = MODULE.main()
@@ -66,7 +147,11 @@ class ModelValidationTests(unittest.TestCase):
                 mock.patch.object(
                     MODULE,
                     "run_command",
-                    side_effect=[solver_model(), ("done", 0, "", "", 0.01), RuntimeError("stop")],
+                    side_effect=[
+                        solver_model(),
+                        ("done", 0, "", "", 0.01),
+                        RuntimeError("stop"),
+                    ],
                 ),
                 self.assertRaisesRegex(RuntimeError, "stop"),
             ):
@@ -114,7 +199,9 @@ class ModelValidationTests(unittest.TestCase):
                 mock.patch.object(
                     MODULE.shutil,
                     "which",
-                    side_effect=lambda name: None if "dolmen" in name else f"/tools/{name}",
+                    side_effect=lambda name: (
+                        None if "dolmen" in name else f"/tools/{name}"
+                    ),
                 ),
                 mock.patch.object(
                     MODULE,
@@ -216,7 +303,11 @@ class ModelValidationTests(unittest.TestCase):
             result = subprocess.run(
                 [
                     sys.executable,
-                    str(Path(__file__).parents[2] / "scripts" / "summarize_fuzz_results.py"),
+                    str(
+                        Path(__file__).parents[2]
+                        / "scripts"
+                        / "summarize_fuzz_results.py"
+                    ),
                     str(root),
                 ],
                 check=False,
@@ -251,7 +342,11 @@ class ModelValidationTests(unittest.TestCase):
             result = subprocess.run(
                 [
                     sys.executable,
-                    str(Path(__file__).parents[2] / "scripts" / "summarize_fuzz_results.py"),
+                    str(
+                        Path(__file__).parents[2]
+                        / "scripts"
+                        / "summarize_fuzz_results.py"
+                    ),
                     str(root),
                 ],
                 check=False,

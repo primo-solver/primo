@@ -26,12 +26,29 @@ remain visible as incomplete coverage; an invalid model or changed answer fails
 the correctness stage. Model-production and validation costs are not part of the
 original runtime/PAR2. A standalone family sample cannot qualify a full evaluation.
 
-The manifest-driven validator and SLURM wrapper already exist. Automatic
-post-benchmark scheduling and report joining are not yet implemented. Until
-then, the skill requires an explicit selected-row manifest and coverage/answer
-join, including rejection of `not-sat` for an expected-SAT row. The current
-command adapter also needs explicit care for existing model options, `exit`,
-and incremental/multi-query inputs; do not silently omit such files.
+`scripts/benchmark_model_replay.py` implements two separate phases: `benchmark`
+records binary/input hashes and exact arguments before calling the existing
+timing harness; `replay` verifies that provenance, selects every successful SAT
+row and calls the validator with `--expect-sat`. The latter turns an UNSAT replay
+into `answer-changed`, not `not-sat`. Coverage is joined into a separate
+`model-validation/coverage.json`; timing rows are not modified. The SLURM wrapper
+`scripts/slurm_real_corpus_validation.sbatch` exposes both phases for dependent
+jobs. Campaign scheduling and reference-answer joins remain explicit operations.
+
+The model command adapter scans top-level boundaries without building or
+expanding term trees. It preserves assertion text and comments, understands
+quoted symbols and doubled-quote strings, replaces existing model/print-success
+options, and inserts `get-model` after the query but before `exit`. Multi-query,
+assumption and incremental scripts are rejected as `input-unsupported`, not
+silently flattened. Supported scope is one non-incremental query.
+
+The replay driver verifies binary and selected input identities before and after
+validation. It preserves partial attempts; `--attempt NAME` creates a separate
+retry directory. It reuses only matching complete shards, not arbitrary old
+passes or individual rows. Invalid/changed/malformed results fail; resource limits,
+unsupported inputs and missing rows leave coverage incomplete. The independent
+validator records solver and validator durations separately. No new solver
+algorithm is introduced by this workflow.
 
 (formula-analyzer)=
 ## Analyzing benchmark shape: use the analyzer, not grep

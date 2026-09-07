@@ -3,6 +3,18 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-07-model-replay-workflow-smoke",
+      "date": "2026-09-07",
+      "kind": "local-validation-workflow-smoke",
+      "commit": "candidate workflow based on e65910b; no solver C++ changes",
+      "evidence_status": "diagnostic",
+      "environment": {"host": "local development workspace", "validator": "Dolmen 0.10", "timeout_seconds": 5},
+      "commands": ["PATH=contrib/local/bin:$PATH python3 scripts/benchmark_model_replay.py benchmark --root benchmarks/smoke/qf_uflia --solver ./build/primo --solver-arg=--quiet --solver-arg=--max-theory-conflicts=1000 --run-id=local-workflow-smoke --timeout 5 --out results/model-replay-workflow-smoke", "PATH=contrib/local/bin:$PATH python3 scripts/benchmark_model_replay.py replay --out results/model-replay-workflow-smoke --model-timeout 5 --dolmen-timeout 5 --dolmen-arg=--strict=false"],
+      "results": {"inputs": 2, "sat": 1, "unsat": 1, "selected_sat": 1, "dolmen_pass": 1, "invalid_model": 0, "changed_answer": 0, "timeout": 0, "error": 0},
+      "artifacts": "results/model-replay-workflow-smoke; provenance.json records exact binary hash/version and both input hashes, model-validation records the parent hash, selected manifest, validator hash and coverage",
+      "notes": "Tests phase separation and real Dolmen integration on two tracked smoke files, not real-corpus or performance evidence. Subsequent workflow-only changes add end-of-replay identity verification and complete-shard artifact verification. Fresh full-corpus and generated gates are required for the user's broader revalidation request."
+    },
+    {
       "id": "2026-09-07-typed-model-closing-gates-315b792",
       "date": "2026-09-07",
       "kind": "committed-binary-closing-correctness-gates",

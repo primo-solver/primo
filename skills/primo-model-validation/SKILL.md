@@ -60,16 +60,21 @@ corpus root, sharding, exact solver options and independent solver/Dolmen budget
 despite its name it has also been used for QF_UFLIA. It calls the shared validator.
 Use its explicit environment overrides, not its QF_UFLRA defaults accidentally.
 
-Automatic timing-results-to-manifest submission and report joining are not yet
-implemented. Until they are, preserve the selected-row manifest and perform an
-explicit coverage/answer join after collection. The validator currently accepts
-UNSAT as `not-sat`; this is NOT acceptable for an expected-SAT manifest.
+`scripts/benchmark_model_replay.py benchmark` records input/binary identities
+and invokes the timing harness. Its `replay` phase selects successful SAT rows,
+checks those identities, writes the manifest, runs the shared validator with
+`--expect-sat`, and joins coverage into `model-validation/coverage.json`.
+`scripts/slurm_real_corpus_validation.sbatch` exposes the two phases; submit
+replay with a dependency after timing jobs finish. Scheduling the dependent jobs
+and joining reference-answer comparisons remain the campaign driver's responsibility.
+Matching complete shards can be reused; partial attempts must be preserved and
+retried under a new `--attempt` directory name. No per-row resume is claimed.
 
-Inspect input command adaptation before using the current string-based adapter.
-Existing `:produce-models false`, `exit` before an appended `get-model`, multiple
-queries, assumptions and push/pop require a query-aware adapter or explicit
-triage. Do not flatten sessions or omit affected files and call the gate complete.
-Initially use supported single-query, non-incremental inputs. A requested wider
+The shared adapter scans top-level command boundaries, preserving assertion text,
+overriding existing model/print-success options and placing `get-model` immediately
+after the single query, before `exit`. Multiple queries, assumptions, push/pop
+and post-query assertion changes are explicitly `input-unsupported`; do not
+flatten those sessions or omit them and call the gate complete. A wider requested
 scope remains incomplete until its command handling is supported and tested.
 
 ## Acceptance and reporting

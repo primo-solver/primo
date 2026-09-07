@@ -7,6 +7,7 @@ import argparse
 import csv
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -23,16 +24,27 @@ def parse_args() -> argparse.Namespace:
         )
     )
     parser.add_argument("files", nargs="*", type=Path, help="SMT-LIB files to validate")
-    parser.add_argument("--manifest", type=Path, help="Newline-separated SMT-LIB file list")
+    parser.add_argument(
+        "--manifest", type=Path, help="Newline-separated SMT-LIB file list"
+    )
     parser.add_argument(
         "--root",
         type=Path,
         default=Path("."),
         help="Root for relative paths read from --manifest",
     )
-    parser.add_argument("--shards", type=int, default=1, help="Number of deterministic shards")
-    parser.add_argument("--shard-index", type=int, default=0, help="Zero-based shard to process")
+    parser.add_argument(
+        "--shards", type=int, default=1, help="Number of deterministic shards"
+    )
+    parser.add_argument(
+        "--shard-index", type=int, default=0, help="Zero-based shard to process"
+    )
     parser.add_argument("--solver", default="./build/primo", help="Primo executable")
+    parser.add_argument(
+        "--expect-sat",
+        action="store_true",
+        help="Treat an UNSAT replay as an answer-change failure, not not-sat",
+    )
     parser.add_argument(
         "--solver-arg",
         action="append",
@@ -63,7 +75,9 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Fail rows that need the limited Z3 fallback instead of passing Dolmen directly",
     )
-    parser.add_argument("--timeout", type=float, default=10.0, help="Per-solver timeout in seconds")
+    parser.add_argument(
+        "--timeout", type=float, default=10.0, help="Per-solver timeout in seconds"
+    )
     parser.add_argument(
         "--dolmen-timeout",
         type=float,
@@ -98,17 +112,87 @@ def write_json(path: Path, value: object) -> None:
     temporary.replace(path)
 
 
+COMMAND_TOKEN = re.compile(
+    r'\s+|;[^\n]*(?:\n|$)|[()]|"(?:[^"]|"")*"|\|[^|]*\||[^\s();"|]+'
+)
+
+
+def command_spans(text: str) -> list[tuple[int, int, tuple[str, ...]]]:
+    """Read only top-level command boundaries, without expanding the term DAG."""
+    commands = []
+    position = depth = start = 0
+    head: list[str] = []
+    while position < len(text):
+        match = COMMAND_TOKEN.match(text, position)
+        if match is None:
+            raise ValueError(f"unterminated string/symbol at offset {position}")
+        token = match.group()
+        begin, position = position, match.end()
+        if token.isspace() or token.startswith(";"):
+            continue
+        if token == "(":
+            if depth == 0:
+                start, head = begin, []
+            depth += 1
+        elif token == ")":
+            depth -= 1
+            if depth < 0:
+                raise ValueError("unbalanced closing parenthesis")
+            if depth == 0:
+                if not head:
+                    raise ValueError("empty command")
+                commands.append((start, position, tuple(head)))
+        elif depth == 0:
+            raise ValueError("expected a top-level command")
+        elif depth == 1 and len(head) < 3:
+            head.append(token)
+    if depth:
+        raise ValueError("unterminated command")
+    return commands
+
+
+def adapt_model_commands(text: str, *, request_model: bool) -> str:
+    """Preserve assertions verbatim; support exactly one non-incremental query."""
+    commands = command_spans(text)
+    queries = [item for item in commands if item[2][0] == "check-sat"]
+    if len(queries) != 1 or queries[0][2] != ("check-sat",):
+        raise ValueError("model validation requires exactly one check-sat query")
+    if any(
+        item[2][0] in {"push", "pop", "reset", "reset-assertions", "check-sat-assuming"}
+        for item in commands
+    ):
+        raise ValueError("incremental/assumption queries need query-aware validation")
+    query_start = queries[0][0]
+    pieces = ["(set-option :produce-models true)\n(set-option :print-success false)\n"]
+    cursor = 0
+    for start, end, head in commands:
+        kind = head[0]
+        if start > query_start and kind not in {"get-model", "exit"}:
+            raise ValueError("unsupported commands after the validated query")
+        if kind == "exit" and start < query_start:
+            raise ValueError("exit precedes the validated query")
+        pieces.append(text[cursor:start])
+        if kind == "get-model" or (
+            kind == "set-option"
+            and len(head) > 1
+            and head[1] in {":produce-models", ":print-success"}
+        ):
+            pass
+        else:
+            pieces.append(text[start:end])
+            if kind == "check-sat" and request_model:
+                pieces.append("\n(get-model)")
+        cursor = end
+    pieces.append(text[cursor:])
+    return "".join(pieces)
+
+
 def model_problem_text(text: str) -> str:
-    if ":produce-models" not in text:
-        text = "(set-option :produce-models true)\n" + text
-    return text
+    return adapt_model_commands(text, request_model=False)
 
 
 def solver_problem_text(text: str) -> str:
-    text = model_problem_text(text)
-    if "(get-model" not in text and "( get-model" not in text:
-        text = text.rstrip() + "\n(get-model)\n"
-    return text
+    return adapt_model_commands(text, request_model=True)
 
 
 def first_answer(stdout: str) -> str:
@@ -134,7 +218,11 @@ def extract_real_assignments(model_text: str) -> list[tuple[str, str]]:
         stripped = line.strip()
         prefix = "(define-fun "
         signature = " () Real "
-        if not stripped.startswith(prefix) or signature not in stripped or not stripped.endswith(")"):
+        if (
+            not stripped.startswith(prefix)
+            or signature not in stripped
+            or not stripped.endswith(")")
+        ):
             continue
         symbol_and_value = stripped[len(prefix) : -1]
         symbol, value = symbol_and_value.split(signature, 1)
@@ -146,14 +234,20 @@ def without_model_commands(input_text: str) -> str:
     lines: list[str] = []
     for line in input_text.splitlines():
         stripped = line.strip()
-        if stripped == "(get-model)" or stripped.startswith("(set-option :produce-models"):
+        if stripped == "(get-model)" or stripped.startswith(
+            "(set-option :produce-models"
+        ):
             continue
         lines.append(line)
     return "\n".join(lines) + "\n"
 
 
-def add_assignments_before_check_sat(input_text: str, assignments: list[tuple[str, str]]) -> str:
-    assignment_text = "".join(f"(assert (= {symbol} {value}))\n" for symbol, value in assignments)
+def add_assignments_before_check_sat(
+    input_text: str, assignments: list[tuple[str, str]]
+) -> str:
+    assignment_text = "".join(
+        f"(assert (= {symbol} {value}))\n" for symbol, value in assignments
+    )
     marker = "(check-sat)"
     index = input_text.rfind(marker)
     if index == -1:
@@ -250,7 +344,11 @@ def main() -> int:
     files = manifest_files(args.manifest, args.root) + args.files
     if args.limit is not None:
         files = files[: args.limit]
-    files = [path for index, path in enumerate(files) if index % args.shards == args.shard_index]
+    files = [
+        path
+        for index, path in enumerate(files)
+        if index % args.shards == args.shard_index
+    ]
     if not files:
         print("no input files provided", file=sys.stderr)
         return 2
@@ -268,6 +366,8 @@ def main() -> int:
         "dolmen_exit",
         "z3_exit",
         "seconds",
+        "solver_seconds",
+        "validation_seconds",
         "message",
     ]
     summary_path = args.out / "summary.csv"
@@ -286,12 +386,16 @@ def main() -> int:
             "solver": args.solver,
             "solver_args": args.solver_arg,
             "require_dolmen_pass": args.require_dolmen_pass,
+            "expect_sat": args.expect_sat,
             "dolmen": dolmen_path,
             "z3": z3_path,
         },
     )
 
     def record(row: dict[str, str]) -> None:
+        if not row.get("validator"):
+            row.setdefault("solver_seconds", row.get("seconds", "0.000"))
+            row.setdefault("validation_seconds", "0.000")
         normalized = {field: row.get(field, "") for field in fieldnames}
         rows.append(normalized)
         with summary_path.open("a", encoding="utf-8", newline="") as handle:
@@ -330,12 +434,28 @@ def main() -> int:
             )
             continue
 
-        problem_path.write_text(model_problem_text(original), encoding="utf-8")
         solver_input_path = args.out / f"{artifact_stem}.primo-input.smt2"
-        solver_input_path.write_text(solver_problem_text(original), encoding="utf-8")
+        try:
+            problem_text = model_problem_text(original)
+            solver_text = solver_problem_text(original)
+        except ValueError as exc:
+            failures += 1
+            record(
+                {
+                    "file": str(input_path),
+                    "outcome": "input-unsupported",
+                    "message": str(exc),
+                    "seconds": "0.000",
+                }
+            )
+            continue
+        problem_path.write_text(problem_text, encoding="utf-8")
+        solver_input_path.write_text(solver_text, encoding="utf-8")
 
-        solver_status, solver_exit, solver_stdout, solver_stderr, solver_seconds = run_command(
-            [args.solver, *args.solver_arg, str(solver_input_path)], args.timeout
+        solver_status, solver_exit, solver_stdout, solver_stderr, solver_seconds = (
+            run_command(
+                [args.solver, *args.solver_arg, str(solver_input_path)], args.timeout
+            )
         )
         solver_stdout_path.write_text(solver_stdout, encoding="utf-8")
         solver_stderr_path.write_text(solver_stderr, encoding="utf-8")
@@ -355,7 +475,7 @@ def main() -> int:
             )
             failures += 1
             continue
-        if solver_exit != 0:
+        if solver_exit != 0 or has_solver_error(solver_stdout, solver_stderr):
             record(
                 {
                     "file": str(input_path),
@@ -370,15 +490,19 @@ def main() -> int:
             failures += 1
             continue
         if answer == "unsat":
+            if args.expect_sat:
+                failures += 1
             record(
                 {
                     "file": str(input_path),
                     "answer": answer,
-                    "outcome": "not-sat",
+                    "outcome": "answer-changed" if args.expect_sat else "not-sat",
                     "solver_exit": str(solver_exit),
                     "dolmen_exit": "",
                     "seconds": f"{solver_seconds:.3f}",
-                    "message": "no model expected",
+                    "message": "expected SAT replay"
+                    if args.expect_sat
+                    else "no model expected",
                 }
             )
             continue
@@ -387,7 +511,9 @@ def main() -> int:
                 {
                     "file": str(input_path),
                     "answer": answer,
-                    "outcome": "solver-unknown" if answer == "unknown" else "solver-output-error",
+                    "outcome": "solver-unknown"
+                    if answer == "unknown"
+                    else "solver-output-error",
                     "solver_exit": str(solver_exit),
                     "seconds": f"{solver_seconds:.3f}",
                     "message": "model production did not return sat or unsat",
@@ -412,9 +538,13 @@ def main() -> int:
             ]
             if args.check_model_mode is not None:
                 dolmen_command.insert(2, f"--check-model-mode={args.check_model_mode}")
-            dolmen_status, dolmen_exit, dolmen_stdout, dolmen_stderr, validation_seconds = (
-                run_command(dolmen_command, args.dolmen_timeout)
-            )
+            (
+                dolmen_status,
+                dolmen_exit,
+                dolmen_stdout,
+                dolmen_stderr,
+                validation_seconds,
+            ) = run_command(dolmen_command, args.dolmen_timeout)
             dolmen_stdout_path.write_text(dolmen_stdout, encoding="utf-8")
             dolmen_stderr_path.write_text(dolmen_stderr, encoding="utf-8")
             if dolmen_status == "timeout":
@@ -450,15 +580,11 @@ def main() -> int:
                     and first_answer(z3_stdout) == "sat"
                 ):
                     dolmen_stdout_path.write_text(
-                        dolmen_stdout
-                        + "\n--- Z3 fallback stdout ---\n"
-                        + z3_stdout,
+                        dolmen_stdout + "\n--- Z3 fallback stdout ---\n" + z3_stdout,
                         encoding="utf-8",
                     )
                     dolmen_stderr_path.write_text(
-                        dolmen_stderr
-                        + "\n--- Z3 fallback stderr ---\n"
-                        + z3_stderr,
+                        dolmen_stderr + "\n--- Z3 fallback stderr ---\n" + z3_stderr,
                         encoding="utf-8",
                     )
                     if args.require_dolmen_pass:
@@ -473,7 +599,9 @@ def main() -> int:
             validator = "z3-only"
             assignments = extract_real_assignments(solver_stdout)
             dolmen_stdout_path.write_text("", encoding="utf-8")
-            dolmen_stderr_path.write_text("Dolmen unavailable; used Z3 fallback\n", encoding="utf-8")
+            dolmen_stderr_path.write_text(
+                "Dolmen unavailable; used Z3 fallback\n", encoding="utf-8"
+            )
             z3_status, z3_exit, dolmen_stdout, dolmen_stderr, validation_seconds = (
                 validate_real_assignments_with_z3(
                     z3_path, original, assignments, args.dolmen_timeout
@@ -509,6 +637,8 @@ def main() -> int:
                 "dolmen_exit": "" if dolmen_exit is None else str(dolmen_exit),
                 "z3_exit": "" if z3_exit is None else str(z3_exit),
                 "seconds": f"{solver_seconds + validation_seconds:.3f}",
+                "solver_seconds": f"{solver_seconds:.3f}",
+                "validation_seconds": f"{validation_seconds:.3f}",
                 "message": "",
             }
         )
@@ -530,6 +660,7 @@ def main() -> int:
             "solver": args.solver,
             "solver_args": args.solver_arg,
             "require_dolmen_pass": args.require_dolmen_pass,
+            "expect_sat": args.expect_sat,
             "dolmen": dolmen_path,
             "z3": z3_path,
             "outcomes": counts,
