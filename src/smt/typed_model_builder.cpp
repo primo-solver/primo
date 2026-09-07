@@ -1,8 +1,11 @@
 #include "smt/typed_model_builder.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <cstddef>
+#include <cstdint>
 #include <memory>
+#include <optional>
 #include <span>
 #include <string>
 #include <type_traits>
@@ -19,8 +22,10 @@
 #include "core/term.hpp"
 #include "core/term_manager.hpp"
 #include "smt/model_reconstruction.hpp"
+#include "theory/arithmetic/lra_atom.hpp"
 #include "theory/equality/incremental_congruence_closure.hpp"
 #include "util/rational.hpp"
+#include "util/statistics.hpp"
 
 namespace primo::smt {
 namespace {
@@ -253,12 +258,47 @@ class ComponentModelBuilder {
           } else if constexpr (std::is_same_v<Conversion, BooleanTheoryAssignmentConversion>) {
             check_assignments(conversion.assignments);
           } else if constexpr (std::is_same_v<Conversion, MonotoneEliminationConversion>) {
-            if (!conversion.eliminated.empty()) {
-              throw core::ModelError("monotone elimination adapter is not migrated");
-            }
+            replay_monotone(conversion);
           }
         },
         step);
+  }
+
+  void replay_monotone(const MonotoneEliminationConversion& conversion) {
+    // Existing one-sided reconstruction rule, not a new elimination algorithm:
+    // docs/preprocessing.md, Model reconstruction. The last variable valued
+    // in each discharged atom repairs it; shared atoms are not dependency cycles.
+    std::vector<TheoryModelAssignment> restored_facts;
+    for (const auto& entry : conversion.eliminated) {
+      const auto& target = terms_.get(entry.variable);
+      if (target.kind != core::TermKind::Constant || target.sort != terms_.symbols().real_sort()) {
+        throw core::ModelError("monotone elimination target is not a Real constant");
+      }
+      auto evaluation = evaluator();
+      std::optional<util::Rational> tightest;
+      for (const auto& [term, truth] : entry.constraints) {
+        const auto atom = theory::arithmetic::normalize_atom(terms_, term);
+        const auto coefficient = atom.polynomial.terms().find(entry.variable);
+        if (coefficient == atom.polynomial.terms().end() || coefficient->second.is_zero()) {
+          throw core::ModelError("monotone constraint does not contain its eliminated variable");
+        }
+        util::Rational rest(0);
+        for (const auto& [leaf, weight] : atom.polynomial.terms()) {
+          if (leaf != entry.variable) {
+            rest += weight * std::get<util::Rational>(evaluation.evaluate(leaf).payload);
+          }
+        }
+        const auto bound = (atom.rhs - rest) / coefficient->second;
+        if (!tightest || (entry.bounded_above ? bound < *tightest : *tightest < bound)) {
+          tightest = bound;
+        }
+        restored_facts.push_back({term, truth, false});
+      }
+      const auto value =
+          tightest ? *tightest + util::Rational(entry.bounded_above ? -1 : 1) : util::Rational(0);
+      interpretations_.at(target.symbol).default_value = {target.sort, value};
+    }
+    check_assignments(restored_facts);
   }
 
   core::TermManager& terms_;
@@ -284,9 +324,19 @@ std::shared_ptr<const core::Model> build_typed_model(
     core::TermManager& terms, std::span<const core::TermId> assertions,
     std::span<const TheoryModelAssignment> assignments,
     const std::unordered_map<core::TermId, util::Rational>& numeric_values,
-    const ModelConversionChain& conversions, std::size_t* completed_integers) {
-  return ComponentModelBuilder(terms).build(assertions, assignments, numeric_values, conversions,
-                                            completed_integers);
+    const ModelConversionChain& conversions, std::size_t* completed_integers,
+    util::Statistics* statistics) {
+  const auto start = std::chrono::steady_clock::now();
+  auto model = ComponentModelBuilder(terms).build(assertions, assignments, numeric_values,
+                                                  conversions, completed_integers);
+  if (statistics != nullptr) {
+    statistics->increment(
+        ":time.model.reconstruction-us",
+        static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(
+                                       std::chrono::steady_clock::now() - start)
+                                       .count()));
+  }
+  return model;
 }
 
 }  // namespace primo::smt

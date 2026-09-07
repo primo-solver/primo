@@ -2,6 +2,12 @@
 
 ## Status
 
+The historical repairs below have been superseded by the shared typed model
+redesign in `docs/model-interpretation.md`. Its QF_UFLIA stage (`2521110`)
+passed 3,000 generated cases and 72 witness/profile checks on SLURM job
+`134384`, with 1,488 generated SAT models accepted by Dolmen. This does not
+validate the subsequent cross-logic migration, whose final gates remain open.
+
 **Fixed for the recorded witnesses, 2026-09-07, commit `5a43084`.** SLURM job
 `133742` ran both seed ranges: 6,000 cases, 3,019 satisfiable models all accepted
 by Dolmen, zero wrong answers or invalid models, one branch-and-bound limit,

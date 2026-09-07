@@ -14,7 +14,6 @@
 #include "smt/formula_metrics.hpp"
 #include "smt/frontend.hpp"
 #include "smt/inconclusive_reason.hpp"
-#include "smt/model_builder.hpp"
 #include "smt/model_reconstruction.hpp"
 #include "smt/preprocessing.hpp"
 #include "smt/preprocessing_strategy.hpp"
@@ -26,6 +25,7 @@
 #include "smt/strategy.hpp"
 #include "smt/tactic.hpp"
 #include "smt/theory_combination.hpp"
+#include "smt/typed_model_builder.hpp"
 #include "smtlib/parser.hpp"
 #include "smtlib/printer.hpp"
 #include "util/statistics.hpp"
@@ -611,7 +611,8 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     const std::vector<core::TermId> original_assertions =
         options.produce_model ? assertions : std::vector<core::TermId>{};
     const auto finalize_model = [&](CheckSatOutcome& outcome) {
-      if (!outcome.typed_model) return;
+      if (outcome.result != CheckSatResult::Sat || !options.produce_model) return;
+      if (!outcome.typed_model) throw core::ModelError("SAT result has no typed interpretation");
       bool check = options.check_model;
 #ifndef NDEBUG
       check = true;
@@ -628,7 +629,10 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
         }
         statistics.set(":time.model.check-us", elapsed_microseconds(start, PhaseClock::now()));
       }
+      const auto start = PhaseClock::now();
       outcome.model = smtlib::print_model(*outcome.typed_model);
+      statistics.set(":time.model.serialization-us",
+                     elapsed_microseconds(start, PhaseClock::now()));
     };
     const PhaseClock::time_point preprocessing_start = PhaseClock::now();
     // The session is what owns symbol creation, so it is the session that hands
@@ -697,22 +701,18 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
     const auto trivially_true = std::ranges::find_if(
         triaged.surviving,
         [](const Goal& alternative) { return alternative.assertions().empty(); });
-    if (trivially_true != triaged.surviving.end() && !options.preprocess_only &&
-        frontend.logic() != "QF_UFLIA") {
+    if (trivially_true != triaged.surviving.end() && !options.preprocess_only) {
       const ModelReconstruction reconstruction = trivially_true->reconstruction();
       statistics.set(kStatTimePreprocessingUs,
                      elapsed_microseconds(preprocessing_start, PhaseClock::now()));
       CheckSatOutcome outcome = finish(CheckSatResult::Sat);
       if (options.produce_model) {
-        if (frontend.has_declared_real_constants()) {
-          const std::vector<core::TermId> model_terms = frontend.declared_real_constant_terms();
-          outcome.model = build_qf_lra_preprocessing_only_model_for_session(
-              frontend.terms(), model_terms, reconstruction.conversions);
-        } else {
-          outcome.model = build_qf_uf_model(
-              frontend.terms(), reconstruction.conversions.theory_assignments(frontend.terms()));
-        }
+        outcome.typed_model = build_typed_model(frontend.terms(), {}, {}, {},
+                                                reconstruction.conversions, nullptr, &statistics);
       }
+      finalize_model(outcome);
+      statistics.set(kStatTimeTotalUs, elapsed_microseconds(total_start, PhaseClock::now()));
+      outcome.statistics = statistics;
       return outcome;
     }
     if (options.preprocess_only) {

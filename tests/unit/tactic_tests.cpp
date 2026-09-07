@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "core/ids.hpp"
+#include "core/model.hpp"
 #include "core/symbol_table.hpp"
 #include "core/term_manager.hpp"
 #include "smt/check_sat.hpp"
@@ -49,6 +50,16 @@ struct Fixture {
 
   primo::core::TermId p_term() { return terms.mk_constant(p); }
 };
+
+std::vector<primo::smt::TheoryModelAssignment> only_boolean_assignments(
+    const primo::smt::ModelConversionChain& conversions) {
+  check(conversions.size() == 1);
+  std::vector<primo::smt::TheoryModelAssignment> assignments;
+  conversions.replay_reverse([&](const primo::smt::ModelConversionStep& step) {
+    assignments = std::get<primo::smt::BooleanTheoryAssignmentConversion>(step).assignments;
+  });
+  return assignments;
+}
 
 struct IdentityStrategyParameters {
   std::string alpha;
@@ -102,7 +113,7 @@ void reconstruction_records_are_goal_local_immutable_values() {
   primo::smt::ModelReconstruction reconstruction;
   reconstruction.conversions =
       reconstruction.conversions.appended(primo::smt::BooleanTheoryAssignmentConversion{
-          {{.term = p, .value = true, .filtered = false, .directed_substitution = false}}});
+          {{.term = p, .value = true, .filtered = false}}});
   reconstruction.forced_equalities.emplace_back(p, p);
 
   const primo::smt::Goal original{{p}};
@@ -110,8 +121,7 @@ void reconstruction_records_are_goal_local_immutable_values() {
   reconstruction.conversions = {};
 
   check(original.reconstruction().conversions.empty());
-  const auto assignments =
-      transformed.reconstruction().conversions.theory_assignments(fixture.terms);
+  const auto assignments = only_boolean_assignments(transformed.reconstruction().conversions);
   check(assignments.size() == 1);
   check(assignments.front().term == p);
   check(transformed.reconstruction().forced_equalities ==
@@ -127,30 +137,38 @@ void goal_updates_share_untouched_large_payloads() {
   primo::smt::BooleanTheoryAssignmentConversion assignments;
   assignments.assignments.reserve(kLargePayloadSize);
   for (std::size_t index = 0; index < kLargePayloadSize; ++index) {
-    assignments.assignments.push_back(primo::smt::TheoryModelAssignment{
-        .term = p, .value = index % 2 == 0, .filtered = false, .directed_substitution = false});
+    assignments.assignments.push_back(
+        primo::smt::TheoryModelAssignment{.term = p, .value = index % 2 == 0, .filtered = false});
   }
   reconstruction.conversions = reconstruction.conversions.appended(std::move(assignments));
-  const std::string model(kLargePayloadSize, 'm');
+  auto model_symbols = primo::core::SymbolTable{};
+  std::vector<primo::core::ModelInterpretation> interpretations;
+  for (std::size_t index = 0; index < kLargePayloadSize; ++index) {
+    const auto symbol =
+        model_symbols.declare_constant("m" + std::to_string(index), model_symbols.bool_sort());
+    interpretations.push_back({symbol, {model_symbols.bool_sort(), false}, {}});
+  }
+  const auto model =
+      std::make_shared<const primo::core::Model>(model_symbols, std::move(interpretations));
   const primo::smt::Goal original =
-      primo::smt::Goal{{p}}.with_reconstruction(reconstruction).with_model(model);
+      primo::smt::Goal{{p}}.with_reconstruction(reconstruction).with_typed_model(model);
 
   const primo::smt::Goal assertions_changed = original.with_assertions({p, p});
   check(&assertions_changed.reconstruction() == &original.reconstruction());
-  check(&assertions_changed.model() == &original.model());
+  check(assertions_changed.typed_model() == original.typed_model());
 
   const primo::smt::Goal diagnostic_changed = original.with_diagnostic("diagnostic");
   check(&diagnostic_changed.assertions() == &original.assertions());
   check(&diagnostic_changed.reconstruction() == &original.reconstruction());
-  check(&diagnostic_changed.model() == &original.model());
+  check(diagnostic_changed.typed_model() == original.typed_model());
 
   reconstruction.conversions =
       reconstruction.conversions.appended(primo::smt::BooleanTheoryAssignmentConversion{
-          {{.term = p, .value = true, .filtered = false, .directed_substitution = false}}});
+          {{.term = p, .value = true, .filtered = false}}});
   const primo::smt::Goal reconstruction_changed =
       original.with_reconstruction(std::move(reconstruction));
   check(&reconstruction_changed.assertions() == &original.assertions());
-  check(&reconstruction_changed.model() == &original.model());
+  check(reconstruction_changed.typed_model() == original.typed_model());
   check(reconstruction_changed.reconstruction().conversions.size() == 2);
   check(original.reconstruction().conversions.size() == 1);
 }
@@ -370,29 +388,32 @@ void try_for_uses_context_deadlines_without_mutating_the_strategy() {
 
 void solver_leaf_handles_disjunctive_goals_in_order() {
   Fixture fixture;
+  const auto model = std::make_shared<const primo::core::Model>(
+      fixture.symbols, std::vector<primo::core::ModelInterpretation>{
+                           {fixture.p, {fixture.symbols.bool_sort(), false}, {}}});
   const primo::core::TermId p = fixture.p_term();
   const primo::core::TermId not_p = fixture.terms.mk_not(p);
   std::size_t calls = 0;
   const primo::smt::Tactic solver = primo::smt::make_solver_tactic(
       "alternative-solver", fixture.terms,
-      [p, &calls](const primo::smt::Goal& goal) -> primo::smt::SolverAnswer {
+      [p, &calls, model](const primo::smt::Goal& goal) -> primo::smt::SolverAnswer {
         ++calls;
         if (goal.assertions().front() == p) {
           return {.status = primo::smt::SolverStatus::Unsat,
                   .reason = primo::smt::InconclusiveReason::None,
                   .diagnostic = {},
-                  .model = {}};
+                  .typed_model = {}};
         }
         return {.status = primo::smt::SolverStatus::Sat,
                 .reason = primo::smt::InconclusiveReason::None,
                 .diagnostic = {},
-                .model = "winning-model"};
+                .typed_model = model};
       });
   const primo::smt::AnyOf sat = solver(
       fixture.context, primo::smt::AnyOf({primo::smt::Goal{{p}}, primo::smt::Goal{{not_p}}}));
   check(calls == 2);
   check(primo::smt::truth(sat, fixture.context) == primo::smt::GoalTruth::True);
-  check(sat.alternatives().front().model() == std::optional<std::string>{"winning-model"});
+  check(sat.alternatives().front().typed_model() == model);
 
   const primo::smt::AnyOf unsat =
       solver(fixture.context, primo::smt::AnyOf({primo::smt::Goal{{p}}, primo::smt::Goal{{p}}}));
@@ -410,7 +431,7 @@ void experimental_split_bools_materializes_deterministic_goal_product() {
   primo::smt::ModelReconstruction reconstruction;
   reconstruction.conversions =
       reconstruction.conversions.appended(primo::smt::BooleanTheoryAssignmentConversion{
-          {{.term = p, .value = true, .filtered = false, .directed_substitution = false}}});
+          {{.term = p, .value = true, .filtered = false}}});
   const primo::smt::Goal input =
       primo::smt::Goal{{disjunction}}.with_reconstruction(reconstruction);
   const primo::smt::ExperimentalSplitBoolsOptions options{.max_bools = 2};
@@ -888,11 +909,11 @@ void preprocessing_round_transforms_each_alternative_independently() {
   primo::smt::ModelReconstruction true_reconstruction;
   true_reconstruction.conversions =
       true_reconstruction.conversions.appended(primo::smt::BooleanTheoryAssignmentConversion{
-          {{.term = p, .value = true, .filtered = false, .directed_substitution = false}}});
+          {{.term = p, .value = true, .filtered = false}}});
   primo::smt::ModelReconstruction false_reconstruction;
   false_reconstruction.conversions =
       false_reconstruction.conversions.appended(primo::smt::BooleanTheoryAssignmentConversion{
-          {{.term = p, .value = false, .filtered = false, .directed_substitution = false}}});
+          {{.term = p, .value = false, .filtered = false}}});
   const primo::smt::Tactic round =
       primo::smt::make_preprocessing_round(primo::smt::PreprocessingRoundOptions{});
 
@@ -902,9 +923,9 @@ void preprocessing_round_transforms_each_alternative_independently() {
                          primo::smt::Goal{{not_p}}.with_reconstruction(false_reconstruction)}));
   check(result.size() == 2);
   const auto true_assignments =
-      result.alternatives()[0].reconstruction().conversions.theory_assignments(fixture.terms);
+      only_boolean_assignments(result.alternatives()[0].reconstruction().conversions);
   const auto false_assignments =
-      result.alternatives()[1].reconstruction().conversions.theory_assignments(fixture.terms);
+      only_boolean_assignments(result.alternatives()[1].reconstruction().conversions);
   check(true_assignments.size() == 1);
   check(false_assignments.size() == 1);
   check(true_assignments.front().value);

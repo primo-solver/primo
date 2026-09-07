@@ -25,9 +25,9 @@ Strategy make_session_solver_strategy(Frontend& frontend, CheckSatOptions option
   const auto immutable_options = std::make_shared<const CheckSatOptions>(std::move(options));
   const Tactic boolean_solver = make_solver_tactic(
       "solve-boolean", frontend.terms(), [&, immutable_options](const Goal& goal) {
-        return solver_answer_from_outcome(solve_boolean_conjunction(
-            frontend.terms(), goal.assertions(), *immutable_options, statistics,
-            goal.reconstruction().conversions.theory_assignments(frontend.terms())));
+        return solver_answer_from_outcome(
+            solve_boolean_conjunction(frontend.terms(), goal.assertions(), *immutable_options,
+                                      statistics, goal.reconstruction().conversions));
       });
   const Tactic euf_solver =
       make_solver_tactic("solve-qf-uf", frontend.terms(), [&, immutable_options](const Goal& goal) {

@@ -332,44 +332,27 @@ Implemented now:
 - QF_LRA solving for linear Real arithmetic through a Simplex tableau with
   CaDiCaL/IPASIR-UP integration, same-variable bound propagation, and default
   sparse pivot heuristics.
-- Conservative QF_UF SMT-LIB model printing for `check-sat` followed by
-  `get-model` when `:produce-models true` is set. The private
-  `QfUfModelBuilder` in `src/smt/model_builder.cpp` rebuilds a ground EUF
-  closure over `core::TermId` values, prints definitions for
-  user-declared constants, functions, and predicates, consumes preprocessing
-  reconstruction assignments for unit facts and substitutions, completes
-  otherwise-unassigned Bool constants and applications to `false` inside that
-  closure before constructing UF tables, and omits Primo-generated auxiliary
-  symbols from the response. The completion step keeps printed Boolean argument
-  tuples congruent even when preprocessing removed their last SAT occurrence.
-  Model-table binders are selected against all user symbol names and reused in
-  the generated table guards, preventing a parameter such as `x1` from
-  shadowing a user function named `x1` in the emitted `define-fun`.
-- Minimal QF_LRA SMT-LIB model printing for user-declared nullary `Real`
-  constants, with shared support from the QF_UF model builder for non-Real
-  declarations that survive only as preprocessing reconstruction facts. The SMT
-  layer records declared Real constants, the LRA path reads their values from
-  the final `LraTableau` assignment, and `smt::ModelConversionChain` replays
-  typed preprocessing conversions in reverse tactic order through the
-  appropriate Real-value or UF-closure fragment so solved-away constants are
-  printed for the original problem. The chain is goal-owned and immutable after
-  installation; solver builders borrow it only for the duration of model
-  construction.
-- Minimal QF_UFLRA model printing. For separable mixed formulas,
-  `solve_qf_uf_lra` composes the QF_UF model body with the nullary-Real QF_LRA
-  definitions. UF symbols may take Real arguments or return `Real` values:
-  model reconstruction augments the LRA side with EUF-implied Real-constant
-  equalities and strict separations for EUF-distinct Real constants before
-  printing concrete Real argument values and Real-valued UF application results
-  in the UF function tables. `complete_euf_real_model_values` assigns the same
-  concrete rational to every Real constant and Real-valued application in one
-  purified EUF class. `smt::ModelBuilder` then prefers those exact application
-  assignments when a stale pre-rewrite term and an active purified term have
-  the same printed arguments; this prevents the stale default row from
-  shadowing the constrained function row. If QF_UFLRA preprocessing removes all remaining
-  EUF atoms and dispatches the simplified problem to the QF_LRA solver, the same
-  composed model builder is used so original UF constants and solved UF
-  equalities remain defined in `get-model` output.
+- Typed owning models for Boolean, QF_UF, QF_LIA, QF_LRA and mixed arithmetic
+  logics. `smt::ComponentModelBuilder` adapts final component facts and exact
+  numeric assignments into one `core::Model`, keyed by function symbol and
+  evaluated typed argument tuple. It considers live roots and purification
+  aliases, not every historical application in the term arena. Conflicting
+  component values or function rows are internal errors.
+- Goal-owned `ModelConversionChain` records are replayed backwards. Eliminated
+  constants are restored as simultaneous updates in each stage; retained unit
+  facts are checked, and one-sided Real eliminations recover bounds using the
+  shared evaluator. Intermediate definition versions remain distinct.
+- `core::ModelEvaluator` is the single interpreted-term evaluator used by
+  reconstruction and original-assertion checking. Original assertions are
+  checked in debug builds or with `--check-model`. Frozen interpretations own
+  their signature and values; the session alone calls `smtlib::print_model`.
+  Serialization quotes names, avoids binder capture, and hides internal
+  symbols. It never completes values or arbitrates competing table rows.
+- Mixed-Real component preparation still supplies exact rational values and,
+  when necessary, compatible equalities/separations. These become inputs to
+  the same typed model adapter, including preprocessing-only and simplified
+  pure-theory paths. See [](model-interpretation.md) for migration verification
+  status, invariants and limitations.
 - Read-only Nelson-Oppen interface diagnostics in
   `smt::analyze_nelson_oppen_interface`: the SMT layer counts user-visible,
   non-Boolean constants by sort and already-visible equality atoms over those

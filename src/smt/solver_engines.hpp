@@ -50,8 +50,5 @@ CheckSatOutcome solve_qf_uflia_engine(core::TermManager& terms,
 void record_ackermann_cost_diagnostics_for_session(const core::TermManager& terms,
                                                    const std::vector<core::TermId>& roots,
                                                    util::Statistics& statistics);
-std::string build_qf_lra_preprocessing_only_model_for_session(
-    core::TermManager& terms, const std::vector<core::TermId>& model_terms,
-    const ModelConversionChain& conversions);
 
 }  // namespace primo::smt

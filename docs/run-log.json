@@ -3,6 +3,22 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-07-typed-uflia-2521110-slurm",
+      "date": "2026-09-07",
+      "kind": "slurm-typed-model-migration-gate",
+      "commit": "2521110",
+      "baseline_commit": "df04e80",
+      "evidence_status": "current",
+      "environment": {"host": "CIIRC SLURM cluster", "job_id": "134384", "array": "0-7%4", "cpus_per_task": 1, "memory": "2G", "wall_limit": "00:15:00", "states": "all COMPLETED, exit 0:0", "elapsed_per_task_seconds": [29, 28, 27, 27, 24, 24, 23, 24]},
+      "binary": {"git": "2521110", "build": "Release", "sanitizers": "none", "cadical": "cadical-3.0.0-7b99c07"},
+      "inputs": {"generator": "scripts/qf_uflia_fuzz.py", "shape": "mixed", "depth": 3, "seeds": [202609300, 202609301, 202609302, 202609303, 202609304, 202609305, 202609306, 202609307], "count_per_task": 375, "count": 3000, "timeout_seconds": 5, "profiles": "off/basic/strong/auto preprocessing, each with model combination on and off; all model runs use --check-model"},
+      "commands": {"prepare": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config SSH_CONFIG --remote REMOTE --remote-dir WORKDIR --local-dir CLEAN_2521110_WORKTREE --cmake PREPARED_CMAKE --reuse-dependencies --jobs 4 --require-tool contrib/local/bin/z3 --require-tool contrib/local/bin/dolmen", "preflight": "same helper with --check-only --no-sync immediately before sbatch; binary confirmed git 2521110 and intended CaDiCaL", "submit": "sbatch --parsable --export=ALL,PRIMO_WORKDIR=WORKDIR,PRIMO_EXPECTED_GIT=2521110,PRIMO_FUZZ_COUNT=375,PRIMO_FUZZ_OUT_DIR=WORKDIR/results/typed-uflia-2521110 scripts/slurm_typed_uflia_model_gate.sbatch", "answer": "python3 scripts/qf_uflia_fuzz.py --solver ./build-slurm-rel/primo PROFILE_ARGS --ref z3 --count 375 --seed SEED --shape mixed --depth 3 --timeout 5 --out OUT/answer", "models": "python3 scripts/validate_model.py --solver ./build-slurm-rel/primo PROFILE_ARGS --require-dolmen-pass --dolmen-arg=--strict=false --timeout 5 --dolmen-timeout 5 --out OUT/models OUT/answer/cases/*.smt2"},
+      "reference": "Z3 for answers; Dolmen for all produced SAT models",
+      "summary": {"total": 3000, "pass": 3000, "sat": 1488, "unsat": 1512, "dolmen_pass": 1488, "witness_checks": 72, "witness_pass": 72, "wrong_answer": 0, "invalid_model": 0, "crash": 0, "parser_or_type_error": 0, "unsupported": 0, "unknown": 0, "timeout": 0, "reference_disagreement": 0},
+      "artifacts": "results/typed-uflia-2521110 (collected locally; per-task options, versions, generated cases, answer/model/witness CSVs and gate-summary.json)",
+      "notes": "The initial clean remote build at 9f154d9 failed because primo_smtlib did not declare its new primo_terms/GMP dependency; fixed in 2521110 before any job was submitted. All nine deterministic witnesses pass in every profile. This validates the first QF_UFLIA migration, not subsequent uncommitted cross-logic migrations or final real-seed mutation gates. No performance claim or PAR2 comparison."
+    },
+    {
       "id": "2026-09-07-typed-model-uflia-local-migration",
       "date": "2026-09-07",
       "kind": "local-model-regression-check",

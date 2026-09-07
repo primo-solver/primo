@@ -11,7 +11,6 @@
 #include "smt/check_sat.hpp"
 #include "util/statistics.hpp"
 
-using primo::smt::check_sat_smtlib;
 using primo::smt::CheckSatOptions;
 using primo::smt::CheckSatResult;
 using primo::smt::EufEngine;
@@ -22,6 +21,11 @@ using primo::smt::QfUflraLraEqualityProducer;
 using primo::util::StatKey;
 
 namespace {
+
+const auto check_sat_smtlib = [](std::string_view input, CheckSatOptions options = {}) {
+  options.check_model = true;
+  return primo::smt::check_sat_smtlib(input, std::move(options));
+};
 
 CheckSatOptions no_preprocessing() {
   CheckSatOptions options;

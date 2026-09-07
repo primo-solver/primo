@@ -18,7 +18,6 @@ struct TheoryModelAssignment {
   core::TermId term = core::kInvalidTermId;
   bool value = false;
   bool filtered = false;
-  bool directed_substitution = false;
 
   bool operator==(const TheoryModelAssignment&) const = default;
 };
@@ -62,8 +61,9 @@ struct LiaSubstitutionConversion {
 // qf_uflia_int_values to rediscover the correspondence, and what
 // bugs/qf-uflia-nested-application-model is caused by.
 //
-// Both the original application and its purified rewriting are recorded, since
-// the arena holds both and the model builder walks all of them.
+// Both the original application and its purified rewriting are recorded. The
+// typed component adapter restores these aliases within its live root closure;
+// unrelated historical arena applications are not part of the base model.
 struct PurificationProxyConversion {
   std::vector<std::pair<core::TermId, core::TermId>> application_proxies;
 
@@ -96,12 +96,6 @@ class ModelConversionChain {
       std::forward<Visitor>(visitor)(node->step);
     }
   }
-
-  // Compatibility projection for the current string model builders. It keeps
-  // execution order and materializes directed and LIA substitutions as
-  // equality facts. Mixed models need both: a substituted Int constant can be
-  // defined by an application whose numeric value is anchored through EUF.
-  std::vector<TheoryModelAssignment> theory_assignments(core::TermManager& terms) const;
 
   bool operator==(const ModelConversionChain& other) const;
 

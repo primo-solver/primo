@@ -565,14 +565,16 @@ not change. This is the engine used by `--euf-engine=incremental`.
 
 ## Model Construction And Boolean Completion
 
-`smt::build_qf_uf_model` creates one short-lived `QfUfModelBuilder` after a
+`smt::build_typed_model` creates one short-lived `ComponentModelBuilder` after a
 satisfiable assignment. The builder owns a fresh
-`theory::equality::IncrementalCongruenceClosure` and the maps from quotient
-representatives to printed abstract values; it borrows the session's term
-manager and the immutable reconstruction assignments only for that call. It
-registers every ground constant and application, applies the SAT/theory facts
-and preprocessing conversions, saturates congruence, and then prints constants
-and finite function tables from the resulting quotient classes.
+`theory::equality::IncrementalCongruenceClosure`, typed class values and function
+tables keyed by evaluated argument tuples. It borrows the session's term
+manager and immutable component inputs only for that call. It registers the
+live assertion/component DAG and purification aliases, not historical arena
+applications. After congruence completion it replays eliminated definitions
+backwards against fixed function tables and freezes an owning `core::Model`.
+The session checks and serializes that model; the printer cannot complete or
+replace a row. See [](model-interpretation.md) for the shared cross-logic design.
 
 Boolean completion is part of that quotient construction. A Bool constant or
 Bool-valued application that disappeared from the final SAT problem may have no
@@ -589,7 +591,8 @@ collision uses a deterministic `@primo_model_arg_N` name (with a numeric suffix
 if needed), and the same vector drives both the binder list and table guards.
 This is model-printer hygiene, not theory reasoning: an SMT-LIB model binder may
 not shadow the very global symbol whose value the surrounding `define-fun`
-defines. `QfUfModelBuilder` owns these temporary strings for one `build()` call.
+defines. `smtlib::print_model` owns these temporary strings for one call; its
+collision suffix is a repeated underscore, independent of table semantics.
 
 Without that step, solved-constant preprocessing could eliminate `a = f(p)`,
 leave `p` unconstrained, and later print `p` as `false` while keeping `f(p)` and

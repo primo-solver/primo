@@ -1,6 +1,5 @@
 #include "smt/solver_tactic.hpp"
 
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -15,43 +14,40 @@
 namespace primo::smt {
 
 Tactic make_solver_tactic(std::string name, core::TermManager& terms, GoalSolver solve) {
-  return Tactic(std::move(name), [&terms, solve = std::move(solve)](TacticContext&,
-                                                                    const AnyOf& input) mutable {
-    std::vector<Goal> inconclusive;
-    for (const Goal& goal : input.alternatives()) {
-      if (goal.assertions().empty()) {
-        return AnyOf::single(goal);
-      }
-      SolverAnswer answer;
-      try {
-        answer = solve(goal);
-      } catch (const UnsupportedInput& error) {
-        answer = SolverAnswer{.status = SolverStatus::Inconclusive,
-                              .reason = InconclusiveReason::Unsupported,
-                              .diagnostic = error.what(),
-                              .model = {}};
-      }
+  return Tactic(std::move(name),
+                [&terms, solve = std::move(solve)](TacticContext&, const AnyOf& input) mutable {
+                  std::vector<Goal> inconclusive;
+                  for (const Goal& goal : input.alternatives()) {
+                    if (goal.assertions().empty()) {
+                      return AnyOf::single(goal);
+                    }
+                    SolverAnswer answer;
+                    try {
+                      answer = solve(goal);
+                    } catch (const UnsupportedInput& error) {
+                      answer = SolverAnswer{.status = SolverStatus::Inconclusive,
+                                            .reason = InconclusiveReason::Unsupported,
+                                            .diagnostic = error.what(),
+                                            .typed_model = {}};
+                    }
 
-      Goal result = goal.with_model(answer.model.empty()
-                                        ? std::optional<std::string>{}
-                                        : std::optional<std::string>{std::move(answer.model)})
-                        .with_typed_model(std::move(answer.typed_model))
-                        .with_diagnostic(answer.status == SolverStatus::Inconclusive
-                                             ? answer.reason
-                                             : InconclusiveReason::None,
-                                         std::move(answer.diagnostic));
-      if (answer.status == SolverStatus::Sat) {
-        return AnyOf::single(result.with_assertions({}));
-      }
-      if (answer.status == SolverStatus::Inconclusive) {
-        inconclusive.push_back(std::move(result));
-      }
-    }
-    if (inconclusive.empty()) {
-      return AnyOf::single(Goal({terms.mk_bool(false)}));
-    }
-    return AnyOf(std::move(inconclusive));
-  });
+                    Goal result = goal.with_typed_model(std::move(answer.typed_model))
+                                      .with_diagnostic(answer.status == SolverStatus::Inconclusive
+                                                           ? answer.reason
+                                                           : InconclusiveReason::None,
+                                                       std::move(answer.diagnostic));
+                    if (answer.status == SolverStatus::Sat) {
+                      return AnyOf::single(result.with_assertions({}));
+                    }
+                    if (answer.status == SolverStatus::Inconclusive) {
+                      inconclusive.push_back(std::move(result));
+                    }
+                  }
+                  if (inconclusive.empty()) {
+                    return AnyOf::single(Goal({terms.mk_bool(false)}));
+                  }
+                  return AnyOf(std::move(inconclusive));
+                });
 }
 
 SolverAnswer solver_answer_from_outcome(CheckSatOutcome outcome) {
@@ -59,14 +55,13 @@ SolverAnswer solver_answer_from_outcome(CheckSatOutcome outcome) {
     return SolverAnswer{.status = SolverStatus::Sat,
                         .reason = InconclusiveReason::None,
                         .diagnostic = std::move(outcome.message),
-                        .model = std::move(outcome.model),
                         .typed_model = std::move(outcome.typed_model)};
   }
   if (outcome.result == CheckSatResult::Unsat) {
     return SolverAnswer{.status = SolverStatus::Unsat,
                         .reason = InconclusiveReason::None,
                         .diagnostic = std::move(outcome.message),
-                        .model = {}};
+                        .typed_model = {}};
   }
   InconclusiveReason reason = outcome.reason;
   if (reason == InconclusiveReason::None) {
@@ -79,7 +74,7 @@ SolverAnswer solver_answer_from_outcome(CheckSatOutcome outcome) {
   return SolverAnswer{.status = SolverStatus::Inconclusive,
                       .reason = reason,
                       .diagnostic = std::move(outcome.message),
-                      .model = {}};
+                      .typed_model = {}};
 }
 
 CheckSatOutcome outcome_from_tactic_result(const AnyOf& solved, TacticContext& context) {
@@ -99,7 +94,6 @@ CheckSatOutcome outcome_from_tactic_result(const AnyOf& solved, TacticContext& c
     outcome.result = CheckSatResult::Sat;
     for (const Goal& goal : solved.alternatives()) {
       if (truth(goal, context) == GoalTruth::True) {
-        outcome.model = goal.model().value_or("");
         outcome.typed_model = goal.typed_model();
         outcome.message = goal.diagnostic();
         break;

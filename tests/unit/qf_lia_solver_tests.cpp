@@ -3,16 +3,23 @@
 #endif
 
 #include <cassert>
+#include <cstddef>
 #include <string>
+#include <string_view>
+#include <utility>
 
 #include "smt/check_sat.hpp"
 #include "util/statistics.hpp"
 
-using primo::smt::check_sat_smtlib;
 using primo::smt::CheckSatOptions;
 using primo::smt::CheckSatResult;
 
 namespace {
+
+const auto check_sat_smtlib = [](std::string_view input, CheckSatOptions options = {}) {
+  options.check_model = true;
+  return primo::smt::check_sat_smtlib(input, std::move(options));
+};
 
 CheckSatOptions small_branch_limit(std::size_t limit) {
   CheckSatOptions options;

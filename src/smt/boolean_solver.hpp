@@ -16,9 +16,10 @@ class Statistics;
 
 namespace primo::smt {
 
-CheckSatOutcome solve_boolean_conjunction(
-    core::TermManager& terms, const std::vector<core::TermId>& assertions,
-    const CheckSatOptions& options, util::Statistics& statistics,
-    const std::vector<TheoryModelAssignment>& preprocessing_model_assignments);
+CheckSatOutcome solve_boolean_conjunction(core::TermManager& terms,
+                                          const std::vector<core::TermId>& assertions,
+                                          const CheckSatOptions& options,
+                                          util::Statistics& statistics,
+                                          const ModelConversionChain& conversions);
 
 }  // namespace primo::smt

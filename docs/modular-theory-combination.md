@@ -144,12 +144,12 @@ Model-free solving skips this work. `:time.model.reconstruction-us` and
 This is an original component-adapter and postsolve design, not a new
 theory-combination algorithm. Focused tests cover the evaluated-tuple witness,
 definition chains, cyclic UF equations, input order, all four preprocessing
-modes, and both QF_UFLIA combination settings. The other logic routes and
-cross-logic campaign gates remain part of the ongoing migration.
+modes, and both QF_UFLIA combination settings. Boolean/QF_UF, QF_LIA, QF_LRA,
+QF_UFLRA and preprocessing-only paths now share the same typed builder and
+evaluator; their final cross-logic campaign gates remain pending.
 
-The scope is QF_UFLIA integer postsolve. The builder still emits string tables
-and completes arena terms outside the final formula; it is not yet a single
-general model evaluator or an assertion self-check. Invention counts are
+The legacy string builders and whole-arena completion have been removed.
+Invention counts are
 diagnostics, not proof of either validity or invalidity. External model
 validation remains the acceptance gate. Evidence and exact commands are in
 `docs/run-log.json`, under the 2026-09-07 reconstruction entries.

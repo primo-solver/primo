@@ -38,11 +38,11 @@ definition was copied from Z3 or another solver.
 assertions are a conjunction. A goal with no assertions denotes `true`; a goal
 containing the Boolean constant `false` denotes `false`; every other goal is
 inconclusive. Transformations construct a new goal with `with_assertions`,
-`with_model`, or `with_diagnostic`; unchanged goals reuse their storage. Goal
-equality is structural and includes the terminal model, typed inconclusive
+`with_typed_model`, or `with_diagnostic`; unchanged goals reuse their storage. Goal
+equality includes the identity of the immutable terminal model, typed inconclusive
 reason, diagnostic fields, and model-reconstruction records.
 
-The immutable data record gives the assertion vector, optional model string,
+The immutable data record gives the assertion vector, optional typed `core::Model`,
 and reconstruction value separate `shared_ptr<const ...>` ownership. Updating
 one field shallow-copies the small record and allocates only that field; the
 other potentially large payloads retain their identity. Empty payloads use
@@ -52,14 +52,15 @@ There is no mutable copy-on-write path.
 `smt::ModelReconstruction` is the goal attribute used by equisatisfiable
 preprocessing. Its `ModelConversionChain` is one execution-ordered sequence of
 typed steps: Boolean/theory assignments, directed equality substitutions,
-QF_LIA substitutions, and monotone-variable eliminations. A transformation
+QF_LIA substitutions, monotone-variable eliminations and purification aliases. A transformation
 persistently appends one step. Model builders replay the chain in reverse tactic
-order, and a multi-record step such as directed substitution also replays its
-own postsolve log in reverse. This is necessary for arbitrary sequential
-composition: a later elimination may remove a value needed by an earlier one.
-The current string model builders use a compatibility projection only when
-feeding unordered EUF closure facts; Real and QF_LIA postsolve paths consume the
-ordered chain directly.
+order. Each solved-constant batch is a simultaneous update: all right-hand sides
+are evaluated in the following stage's interpretation before any left-hand side
+changes. A later elimination may remove a value needed by an earlier one.
+Ground-unit rewriting is marked as retaining its equality facts rather than
+eliminating constants. The typed builder checks those facts at the corresponding
+reverse-replay stage. No flattened compatibility projection remains; see
+[](model-interpretation.md) for ownership, component adaptation and checking.
 
 Forced equality/disequality facts used by later finite-domain analysis remain
 separate because they are not model conversions. The reconstruction value is

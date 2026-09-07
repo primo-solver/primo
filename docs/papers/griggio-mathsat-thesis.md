@@ -396,7 +396,7 @@ than searched for, and **no value can be missing**. A model-construction
 procedure that has to *look for* the value of a UF application has already lost
 the purification map.
 
-**Where Primo is.** It purifies -- `:no.purification.arithmetic-uf-definitions`
+**Historical diagnosis (superseded by typed model reconstruction).** It purifies -- `:no.purification.arithmetic-uf-definitions`
 reports exactly one definition per Int-sorted UF application -- but
 `MixedTheoryPurificationResult` returns only counts and the rewritten
 assertions, with no label-to-application map. `qf_uflia_int_values` then
@@ -405,6 +405,8 @@ tableau terms that share a value, and on three levels of nesting that
 reconstruction fails: on `witness.smt2`, six Int application terms exist in the
 arena (originals plus purified copies) and only three carry a value.
 
-**Follow-up.** Retaining the map is the fix indicated by the source, and it is
-cheaper than what replaced it. See the bug file for the measurement that
-refuted trying to repair the model printer instead.
+**Implemented follow-up.** `PurificationProxyConversion` now retains the map,
+and the shared typed model adapter uses it as a base-model equality constraint.
+`qf_uflia_int_values` and printer-side row arbitration have been removed. See
+[](../model-interpretation.md) for the current implementation and acceptance
+status, and the bug file for the historical measurements.

@@ -2,20 +2,28 @@
 #undef NDEBUG
 #endif
 
+#include <array>
 #include <cassert>
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <string_view>
+#include <utility>
 
+#include "core/model.hpp"
 #include "smt/check_sat.hpp"
 #include "smt/inconclusive_reason.hpp"
 #include "smt/preprocessing.hpp"
 
-using primo::smt::check_sat_smtlib;
 using primo::smt::CheckSatOptions;
 using primo::smt::CheckSatResult;
 
 namespace {
+
+const auto check_sat_smtlib = [](std::string_view input, CheckSatOptions options = {}) {
+  options.check_model = true;
+  return primo::smt::check_sat_smtlib(input, std::move(options));
+};
 
 std::string read_text_file(const char* path) {
   std::ifstream input(path);
@@ -110,9 +118,9 @@ void get_model_parameters_do_not_shadow_user_symbols() {
     (get-model)
   )");
   assert(result.result == CheckSatResult::Sat);
-  assert(result.model.find("(define-fun x1 ((x0 A) (@primo_model_arg_1_0 A)) A") !=
+  assert(result.model.find("(define-fun x1 ((x0 A) (@primo_model_arg_1_ A)) A") !=
          std::string::npos);
-  assert(result.model.find("(= @primo_model_arg_1_0 (as @uc_") != std::string::npos);
+  assert(result.model.find("(= @primo_model_arg_1_ (as @uc_") != std::string::npos);
 }
 
 void get_model_preserves_solved_constant_preprocessing() {
@@ -152,11 +160,14 @@ void get_model_completes_eliminated_boolean_arguments_before_uf_tables() {
   )");
   assert(result.result == CheckSatResult::Sat);
   assert(result.statistics.get(":preprocessing.solve-eqs.accepted") == 1);
-  assert(result.model.find("(define-fun p () Bool false)") != std::string::npos);
-  assert(result.model.find("(define-fun a () U (as @uc_3_0 U))") != std::string::npos);
-  assert(
-      result.model.find("(define-fun tb ((x0 Bool)) U (ite (= x0 false) (as @uc_3_0 U) (ite (= x0 "
-                        "true) (as @uc_3_0 U)") != std::string::npos);
+  assert(result.typed_model);
+  const auto& model = *result.typed_model;
+  const auto p = model.apply(0);
+  const std::array argument{p};
+  assert(model.apply(2, argument) == model.apply(1));
+  const std::array yes{primo::core::ModelValue{p.sort, true}};
+  const std::array no{primo::core::ModelValue{p.sort, false}};
+  assert(model.apply(2, yes) == model.apply(2, no));
 }
 
 void unsat_get_model_has_no_model() {

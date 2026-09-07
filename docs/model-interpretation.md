@@ -16,9 +16,11 @@ all stages and the cross-logic gates pass.
 
 The typed foundation (`core::Model`, `core::ModelEvaluator`, and
 `smtlib::print_model`) is implemented and independently unit-tested. QF_UFLIA
-now uses `smt::ComponentModelBuilder` through `build_typed_model`; the other
-engines still use legacy builders. The latest witness passes a focused external
-check, but the staged migration and its cross-logic gates are not complete.
+uses `smt::ComponentModelBuilder` through `build_typed_model`, as do Boolean,
+QF_UF, QF_LIA, QF_LRA, QF_UFLRA and preprocessing-only model paths. Legacy
+string builders and their separate arithmetic evaluators have been removed.
+The first QF_UFLIA stage passed its 3000-case SLURM gate; the subsequent shared
+cross-logic migration still needs its final campaign and mutation validation.
 The baseline eight-file external check reports seven historical witnesses
 passing and the evaluated-tuple fixture failing; see the model-redesign entry
 in `docs/run-log.json`.
@@ -46,7 +48,7 @@ headers and libraries even on hosts without system-wide GMP development files.
 `smt/` alone owns postsolve reconstruction and component adapters. `smtlib/`
 serializes the frozen interpretation, quotes identifiers, and chooses parameter
 names without capture. Public `CheckSatOutcome::model` remains serialized text;
-internal solver results will carry the typed model to the session boundary.
+internal solver results carry the typed model to the session boundary.
 
 ## Evaluation and proof obligations
 
@@ -102,6 +104,13 @@ facts in the reduced assertions; their logs are consistency checks at the
 corresponding replay stage, not constant assignments. Purification aliases are
 base-model constraints and require no change to public interpretations.
 
+Monotone Real elimination reuses the one-sided reconstruction rule described in
+[](papers/monotone-variable-elimination.md): evaluate the remaining affine terms
+and choose a value one unit beyond the tightest bound. Each restored variable
+starts a fresh evaluation epoch. Shared discharged constraints are checked after
+the batch, since a later variable can repair a constraint shared with an earlier
+one. This is the existing baseline rule, not a new elimination algorithm.
+
 The shared explicit-stack evaluator accepts a symbol resolver for construction;
 its interpreted operators and lazy ITE scheduling are identical to frozen-model
 evaluation. A resolver must remain stable during one evaluation epoch. Base
@@ -114,9 +123,11 @@ baseline, not an incremental dependency-invalidation optimization.
 The session retains original typed assertion roots before preprocessing.
 Debug builds and explicit production `--check-model` check those assertions
 against the frozen interpretation. Structural consistency is always checked.
-During migration the flag checks only engines producing typed models; legacy
-engines still need external printed-model validation. The flag does not request
-a model by itself: use SMT-LIB `:produce-models true` and `get-model` as usual.
+The flag does not request a model by itself: use SMT-LIB
+`:produce-models true` and `get-model` as usual. All solver model routes use the
+same evaluator. Resource limits in solving or model-separation searches can
+still return unknown; contradictory component values, malformed interpretations
+and failed reconstruction checks are internal errors.
 Failures are internal errors with no model and nonzero CLI exit, not unsupported
 input or unknown. Model-free solving avoids this work.
 
@@ -136,4 +147,14 @@ the requested SLURM route. Exact commands, commits, profiles, job IDs and
 artifacts belong in `docs/run-log.json`. Local checks include `make check`,
 `make asan-test`, `make lint`, `make docs`, and static review. Reconstruction and
 validation timing must be distinguished from solve timing. No performance
-promotion is implied by this redesign.
+promotion is implied by this redesign. `:time.model.reconstruction-us` measures
+the shared adapter/replay builder; `:time.model.check-us` and
+`:time.model.serialization-us` measure checking and printing separately. Mixed
+component preparation retains its existing theory/model-separation counters.
+
+For a host without LLVM review tools, `make contrib-clang-tools` installs pinned
+clang-tidy/clang-format 18.1.8 in `contrib/local/clang-tools-env`. The remote
+preparation helper can provision this optional target with
+`--contrib-target contrib-clang-tools --reuse-dependencies`. The static-review
+batch script checks every non-generated C++ source in the prepared tracked
+snapshot and records its manifest, rather than relying on remote Git metadata.

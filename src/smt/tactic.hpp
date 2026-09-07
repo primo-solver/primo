@@ -33,14 +33,12 @@ struct Goal {
   explicit Goal(std::vector<core::TermId> assertions);
 
   const std::vector<core::TermId>& assertions() const;
-  const std::optional<std::string>& model() const;
   const std::shared_ptr<const core::Model>& typed_model() const;
   const ModelReconstruction& reconstruction() const;
   InconclusiveReason reason() const;
   const std::string& diagnostic() const;
 
   Goal with_assertions(std::vector<core::TermId> assertions) const;
-  Goal with_model(std::optional<std::string> model) const;
   Goal with_typed_model(std::shared_ptr<const core::Model> model) const;
   Goal with_reconstruction(ModelReconstruction reconstruction) const;
   Goal with_diagnostic(InconclusiveReason reason, std::string diagnostic) const;

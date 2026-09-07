@@ -3,21 +3,25 @@
 #include <optional>
 #include <vector>
 
+#include "core/ids.hpp"
 #include "core/term_manager.hpp"
 #include "sat/cadical_backend.hpp"
+#include "smt/check_sat.hpp"
 #include "smt/clausifier.hpp"
 #include "smt/inconclusive_reason.hpp"
-#include "smt/model_builder.hpp"
+#include "smt/model_reconstruction.hpp"
 #include "smt/solver_runtime.hpp"
 #include "smt/solver_support.hpp"
+#include "smt/typed_model_builder.hpp"
 #include "util/statistics.hpp"
 
 namespace primo::smt {
 
-CheckSatOutcome solve_boolean_conjunction(
-    core::TermManager& terms, const std::vector<core::TermId>& assertions,
-    const CheckSatOptions& options, util::Statistics& statistics,
-    const std::vector<TheoryModelAssignment>& preprocessing_model_assignments) {
+CheckSatOutcome solve_boolean_conjunction(core::TermManager& terms,
+                                          const std::vector<core::TermId>& assertions,
+                                          const CheckSatOptions& options,
+                                          util::Statistics& statistics,
+                                          const ModelConversionChain& conversions) {
   statistics.increment(util::StatKey::SolverBoolean);
   sat::CadicalBackend backend(options.cadical_options);
   SolveTerminator terminator(options.cancelled, statistics);
@@ -41,7 +45,7 @@ CheckSatOutcome solve_boolean_conjunction(
     return CheckSatOutcome{result, "", statistics, ""};
   }
 
-  std::vector<TheoryModelAssignment> model_assignments = preprocessing_model_assignments;
+  std::vector<TheoryModelAssignment> model_assignments;
   model_assignments.reserve(model_assignments.size() + clausifier.theory_atoms().size());
   for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
     const int variable = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
@@ -53,7 +57,10 @@ CheckSatOutcome solve_boolean_conjunction(
     const bool value = atom.lit.value > 0 ? assignment.value() : !assignment.value();
     model_assignments.push_back(TheoryModelAssignment{atom.term, value, false});
   }
-  return CheckSatOutcome{result, "", statistics, build_qf_uf_model(terms, model_assignments)};
+  CheckSatOutcome outcome{result, "", statistics, ""};
+  outcome.typed_model = build_typed_model(terms, assertions, model_assignments, {}, conversions,
+                                          nullptr, &statistics);
+  return outcome;
 }
 
 }  // namespace primo::smt

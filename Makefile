@@ -168,6 +168,13 @@ contrib-opensmt:
 contrib-yinyang:
 	$(PYTHON) contrib/install_yinyang.py
 
+# Optional review tools, preserved by the remote preparation helper.
+.PHONY: contrib-clang-tools
+contrib-clang-tools:
+	$(PYTHON) -m venv "$(CONTRIB_PREFIX)/clang-tools-env"
+	"$(CONTRIB_PREFIX)/clang-tools-env/bin/python" -m pip install clang-tidy==18.1.8 clang-format==18.1.8
+	"$(CONTRIB_PREFIX)/clang-tools-env/bin/clang-tidy" --version
+
 # Model validator only. The installer uses a repository-local opam root and
 # switch because the official Dolmen 0.10 Linux binary requires newer glibc
 # than the SLURM environment.

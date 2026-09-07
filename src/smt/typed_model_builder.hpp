@@ -10,6 +10,10 @@
 #include "smt/model_reconstruction.hpp"
 #include "util/rational.hpp"
 
+namespace primo::util {
+class Statistics;
+}
+
 namespace primo::smt {
 
 // Inputs describe the final component problem, not a flattened reconstruction
@@ -18,6 +22,7 @@ std::shared_ptr<const core::Model> build_typed_model(
     core::TermManager& terms, std::span<const core::TermId> assertions,
     std::span<const TheoryModelAssignment> assignments,
     const std::unordered_map<core::TermId, util::Rational>& numeric_values,
-    const ModelConversionChain& conversions, std::size_t* completed_integers = nullptr);
+    const ModelConversionChain& conversions, std::size_t* completed_integers = nullptr,
+    util::Statistics* statistics = nullptr);
 
 }  // namespace primo::smt
