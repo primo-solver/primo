@@ -52,6 +52,10 @@ establish lifetime safety; retain the static borrow/mutation/use review.
 
 ### Differential tests
 
+For independent printed-model checks on real SMT-LIB corpora or SAT rows from
+an evaluation, use [primo-model-validation](../primo-model-validation/SKILL.md).
+It owns that workflow; generated fuzzing and unit regressions remain separate gates.
+
 Compare result with trusted solvers:
 
 - Z3

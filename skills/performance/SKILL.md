@@ -15,6 +15,9 @@ Do not optimize without a baseline measurement.
 Do not change algorithmic behavior without tests.
 Do not report speedups without benchmark evidence.
 
+Use [the benchmarking skill](../benchmarking/SKILL.md) for experiment execution
+and acceptance, including its separate real-corpus model-validation stage.
+
 ## Workflow
 
 1. Select benchmark set.

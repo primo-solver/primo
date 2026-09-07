@@ -9,6 +9,15 @@ description: Run reproducible solver benchmarks, compare solver versions, collec
 
 Measure solver performance reproducibly.
 
+For benchmark/evaluation work, read [the execution procedure](references/execution.md)
+before running commands. It owns the profiling, SLURM, evidence and acceptance
+requirements formerly in `AGENTS.md`.
+
+For real-corpus evaluations and default promotions, use
+[`primo-model-validation`](../primo-model-validation/SKILL.md) for the separate
+post-run SAT-model stage. Keep speed results unchanged and report validation
+coverage alongside them; a sample does not qualify a full-corpus result.
+
 ## Rules
 
 Never report performance without:

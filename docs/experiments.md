@@ -7,6 +7,32 @@ Record every nontrivial benchmark, fuzzing, profiling, tuning, dependency-profil
 or reference-comparison run in `docs/run-log.json`; see [](run-log.md) for the
 schema and evidence policy.
 
+## Separate model validation from speed measurements
+
+The repository's `primo-model-validation` skill owns the operational procedure
+for real-corpus correctness checks and post-benchmark SAT replay. Its canonical
+source is `skills/primo-model-validation/SKILL.md`, exposed for repository skill
+discovery through `.agents/skills/primo-model-validation`. Benchmarking and
+testing skills route to it; `AGENTS.md` contains only the obligation and routing.
+Detailed benchmark execution rules now live in
+`skills/benchmarking/references/execution.md` rather than the global guide.
+
+Preserve timing rows unchanged. A separate correctness run replays successful
+SAT rows with the same binary/profile and validates printed models independently
+with Dolmen. Record the parent run, binary/input/manifest identities, arguments,
+seeds, validator configuration and coverage in `docs/run-log.json`. A model pass
+is not an UNSAT certificate. Timeouts, unsupported validation and missing rows
+remain visible as incomplete coverage; an invalid model or changed answer fails
+the correctness stage. Model-production and validation costs are not part of the
+original runtime/PAR2. A standalone family sample cannot qualify a full evaluation.
+
+The manifest-driven validator and SLURM wrapper already exist. Automatic
+post-benchmark scheduling and report joining are not yet implemented. Until
+then, the skill requires an explicit selected-row manifest and coverage/answer
+join, including rejection of `not-sat` for an expected-SAT row. The current
+command adapter also needs explicit care for existing model options, `exit`,
+and incremental/multi-query inputs; do not silently omit such files.
+
 (formula-analyzer)=
 ## Analyzing benchmark shape: use the analyzer, not grep
 
