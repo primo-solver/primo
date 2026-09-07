@@ -21,11 +21,11 @@
         "preparation": "slurm_prepare_benchmark_workspace.py --local-dir /workspace/tmp/full-revalidation-287b743 --remote-dir /home/janotmik/primo-model-fix --reuse-dependencies --jobs 4; --check-only --no-sync against that clean snapshot immediately before every sbatch. Batch scripts validated locally with slurm_validate_sbatch.py. Existing full corpora reused read-only; complete 659-file QF_UFLIA staged with slurm_stage_manifest_files.py --root tmp/QF_UFLIA --all-smt2."
       },
       "local_verification": {
-        "make_check": "PASS: 28 CTest plus 106 Python tests after the report joiner was added; lint passes",
+        "make_check": "PASS: 28 CTest plus 107 Python tests after both reporting helpers were checked; lint passes",
         "make_asan_test": "PASS: 28 CTest, leak detection and strict initialization order enabled; no subsequent C++ changes",
         "make_docs": "PASS",
         "skill_validator": "PASS using .venv-docs/bin/python and skill-creator quick_validate.py",
-        "logs": ["tmp/full-revalidation-local-asan.log", "tmp/full-revalidation-summary-check.log", "tmp/full-revalidation-summary-docs.log"]
+        "logs": ["tmp/full-revalidation-local-asan.log", "tmp/full-revalidation-legacy-summary-check.log", "tmp/full-revalidation-legacy-summary-docs.log"]
       },
       "jobs": {
         "cluster_replay_smoke": "134845",
@@ -80,6 +80,7 @@
       "results": {
         "status": "pending; jobs submitted, no full-corpus correctness or performance claim yet",
         "reporting_followup": "56716f3 fixes live reporting only: read journals until atomic complete provenance makes the CSV authoritative; classify unreadable journal lines as explicit incomplete coverage instead of aborting all progress; count timeout-terminated unknown output only as timeout. One transient JSON read failure was observed during concurrent writes; an immediate full journal rescan found no persistent malformed complete line. Solver runs and immutable timing artifacts were not changed. Fresh make check (28 CTest, 106 Python tests, lint) and make docs pass; logs tmp/full-revalidation-live-summary-{check,docs}.log.",
+        "legacy_summary_followup": "a786151 corrects summarize_benchmark_shards.py: status=ok/answer=unknown is unsolved for totals, family counts, PAR2, paired runtime sets and gains/losses; unknown has its own count. A deterministic pre-fix probe credited one 0.1s unknown as one solve/PAR2 0.1; the corrected helper reports zero solves/PAR2 10 at a 5s budget. Regression covers families and both comparison directions. Fresh make check (28 CTest, 107 Python tests, lint) and make docs pass. This campaign already uses the strict model-campaign joiner, so its raw runs and totals are unaffected. Benchmarking skill now carries the counting rule; AGENTS.md is not expanded.",
         "historical_lia_context": {"evidence_status": "historical", "commit": "d8462db", "job": "133466", "artifact": "/home/janotmik/primo-cadical-profile/results/qf-lia-cite-full/cite", "rows": 13306, "timeout_seconds": 60, "solved": 9660, "sat": 6428, "unsat": 3232, "unknown": 751, "timeout": 2895, "wrong": 0, "par2": 474909.730737, "qualification": "Recomputed from all 80 existing CSV shards using strict decisive-answer accounting, not status=ok alone. Historical input content hashes are unavailable; this is previous-result context, not a freshly paired causal performance comparison. Derived per-family summaries and CSV checksums are retained in results/full-revalidation-287b743/historical-qf-lia-cite.json. The old off arm has 9061 solves, 751 unknowns, 3494 timeouts and PAR2 531258.719174."},
         "generated_gates": {
           "case_profile_runs": 36000,
