@@ -247,6 +247,8 @@ int run_main(int argc, char** argv) {
   std::size_t qf_uf_portfolio_conflicts = 2000;
   std::vector<std::string> cadical_options;
   CLI::App app{"Primo SMT solver scaffold"};
+  app.add_flag("--check-model", solver_options.check_model,
+               "Check original assertions against produced typed models");
   app.option_defaults()->always_capture_default();
   add_flag_with_default(app, "-q,--quiet", quiet, "Suppress startup version banner");
   add_flag_with_default(app, "--stats", print_stats, "Print solver statistics to stderr");
@@ -774,7 +776,7 @@ int run_main(int argc, char** argv) {
     // unclassified.
     if (name == "-q" || name == "--quiet" || name == "--stats" || name == "--version" ||
         name == "--help" || name == "--preprocess-only" || name == "--cancel-grace-seconds" ||
-        name == "files") {
+        name == "--check-model" || name == "files") {
       return kGroupProcedural;
     }
     if (starts_with(name, "--experimental-")) {

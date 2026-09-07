@@ -107,9 +107,89 @@ ModelValue Model::apply(SymbolId symbol_id, std::span<const ModelValue> argument
   return row == table.end() ? interpretations_[found->second].default_value : row->second;
 }
 
+namespace {
+
+ModelValue evaluate_model_operator(const Term& node, std::span<const ModelValue> children) {
+  if (children.size() != node.children.size()) throw ModelError("operator arity mismatch");
+  const auto boolean = [&](std::size_t index) { return std::get<bool>(children[index].payload); };
+  const auto number = [&](std::size_t index) {
+    return std::get<util::Rational>(children[index].payload);
+  };
+  ModelValue value{node.sort, false};
+  switch (node.kind) {
+    case TermKind::BoolValue:
+      value.payload = node.bool_value;
+      break;
+    case TermKind::Rational:
+      value.payload = node.rational_value;
+      break;
+    case TermKind::Equality:
+      value.payload = children[0] == children[1];
+      break;
+    case TermKind::Not:
+      value.payload = !boolean(0);
+      break;
+    case TermKind::And:
+    case TermKind::Or: {
+      bool result = node.kind == TermKind::And;
+      for (std::size_t index = 0; index < children.size(); ++index) {
+        result = node.kind == TermKind::And ? result && boolean(index) : result || boolean(index);
+      }
+      value.payload = result;
+      break;
+    }
+    case TermKind::Implies:
+      value.payload = !boolean(0) || boolean(1);
+      break;
+    case TermKind::Plus: {
+      util::Rational result(0);
+      for (std::size_t index = 0; index < children.size(); ++index) result += number(index);
+      value.payload = std::move(result);
+      break;
+    }
+    case TermKind::Times:
+      value.payload = node.rational_value * number(0);
+      break;
+    case TermKind::Le:
+      value.payload = number(0) <= number(1);
+      break;
+    case TermKind::Lt:
+      value.payload = number(0) < number(1);
+      break;
+    case TermKind::Abs:
+      value.payload = number(0).sign() < 0 ? -number(0) : number(0);
+      break;
+    case TermKind::IntDiv:
+    case TermKind::IntMod: {
+      if (node.rational_value.sign() <= 0) throw ModelError("nonpositive normalized divisor");
+      const auto operand = number(0);
+      const auto quotient = (operand / node.rational_value).floor();
+      value.payload =
+          node.kind == TermKind::IntDiv ? quotient : operand - node.rational_value * quotient;
+      break;
+    }
+    case TermKind::Ite:
+    case TermKind::Constant:
+    case TermKind::Application:
+      throw ModelError("non-interpreted node passed to operator evaluator");
+  }
+  return value;
+}
+
+}  // namespace
+
+ModelEvaluator::ModelEvaluator(const TermManager& terms, const Model& model)
+    : ModelEvaluator(terms, [&model](const Term& node, std::span<const ModelValue> arguments) {
+        return model.apply(node.symbol, arguments);
+      }) {}
+
+ModelEvaluator::ModelEvaluator(const TermManager& terms, Resolver resolver)
+    : terms_(terms), resolve_(std::move(resolver)) {}
+
 ModelValue ModelEvaluator::evaluate(TermId root) {
-  // Original explicit DAG evaluator; no reconstruction maps or mutable model
-  // state are consulted. See docs/model-interpretation.md for the invariant.
+  // Original explicit DAG evaluator. Only symbol resolution is supplied by
+  // the caller; interpreted syntax cannot be overridden by a component cache.
+  // See docs/model-interpretation.md for the stable-epoch invariant.
   struct Frame {
     TermId term;
     bool expanded;
@@ -123,9 +203,6 @@ ModelValue ModelEvaluator::evaluate(TermId root) {
     }
     const Term& node = terms_.get(frame.term);
     const auto boolean = [this](TermId term) { return std::get<bool>(memo_.at(term).payload); };
-    const auto number = [this](TermId term) {
-      return std::get<util::Rational>(memo_.at(term).payload);
-    };
     if (node.kind == TermKind::Ite) {
       const TermId condition = node.children.at(0);
       if (!memo_.contains(condition)) {
@@ -148,72 +225,12 @@ ModelValue ModelEvaluator::evaluate(TermId root) {
       }
       continue;
     }
-    ModelValue value{node.sort, false};
-    switch (node.kind) {
-      case TermKind::BoolValue:
-        value.payload = node.bool_value;
-        break;
-      case TermKind::Rational:
-        value.payload = node.rational_value;
-        break;
-      case TermKind::Constant:
-      case TermKind::Application: {
-        std::vector<ModelValue> arguments;
-        arguments.reserve(node.children.size());
-        for (const TermId child : node.children) arguments.push_back(memo_.at(child));
-        value = model_.apply(node.symbol, arguments);
-        break;
-      }
-      case TermKind::Equality:
-        value.payload = memo_.at(node.children.at(0)) == memo_.at(node.children.at(1));
-        break;
-      case TermKind::Not:
-        value.payload = !boolean(node.children.at(0));
-        break;
-      case TermKind::And:
-      case TermKind::Or: {
-        bool result = node.kind == TermKind::And;
-        for (const TermId child : node.children) {
-          result = node.kind == TermKind::And ? result && boolean(child) : result || boolean(child);
-        }
-        value.payload = result;
-        break;
-      }
-      case TermKind::Implies:
-        value.payload = !boolean(node.children.at(0)) || boolean(node.children.at(1));
-        break;
-      case TermKind::Plus: {
-        util::Rational result(0);
-        for (const TermId child : node.children) result += number(child);
-        value.payload = std::move(result);
-        break;
-      }
-      case TermKind::Times:
-        value.payload = node.rational_value * number(node.children.at(0));
-        break;
-      case TermKind::Le:
-        value.payload = number(node.children.at(0)) <= number(node.children.at(1));
-        break;
-      case TermKind::Lt:
-        value.payload = number(node.children.at(0)) < number(node.children.at(1));
-        break;
-      case TermKind::Abs: {
-        const auto operand = number(node.children.at(0));
-        value.payload = operand.sign() < 0 ? -operand : operand;
-        break;
-      }
-      case TermKind::IntDiv:
-      case TermKind::IntMod: {
-        if (node.rational_value.sign() <= 0) throw ModelError("nonpositive normalized divisor");
-        const auto operand = number(node.children.at(0));
-        const auto quotient = (operand / node.rational_value).floor();
-        value.payload =
-            node.kind == TermKind::IntDiv ? quotient : operand - node.rational_value * quotient;
-        break;
-      }
-      case TermKind::Ite:
-        throw ModelError("unexpected ITE evaluation frame");
-    }
+    std::vector<ModelValue> arguments;
+    arguments.reserve(node.children.size());
+    for (const TermId child : node.children) arguments.push_back(memo_.at(child));
+    ModelValue value = node.kind == TermKind::Constant || node.kind == TermKind::Application
+                           ? resolve_(node, arguments)
+                           : evaluate_model_operator(node, arguments);
     memo_.emplace(frame.term, std::move(value));
     pending.pop_back();
   }

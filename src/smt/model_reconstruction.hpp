@@ -39,6 +39,8 @@ struct BooleanTheoryAssignmentConversion {
 
 struct DirectedEqualitySubstitutionConversion {
   std::vector<std::pair<core::TermId, core::TermId>> substitutions;
+  // Ground-unit rewriting retains defining facts; solve-eqs eliminates constants.
+  bool retained_facts = false;
 
   bool operator==(const DirectedEqualitySubstitutionConversion&) const = default;
 };

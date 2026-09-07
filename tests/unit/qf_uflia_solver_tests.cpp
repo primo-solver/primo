@@ -2,10 +2,12 @@
 #undef NDEBUG
 #endif
 
+#include <array>
 #include <cassert>
 #include <string>
 #include <vector>
 
+#include "core/model.hpp"
 #include "smt/check_sat.hpp"
 
 using primo::smt::check_sat_smtlib;
@@ -20,7 +22,7 @@ namespace {
 // validation in the reconstruction regression gate.
 void check_printed_model(const std::string& declarations,
                          const std::vector<std::string>& constraints,
-                         primo::smt::PreprocessingMode mode) {
+                         primo::smt::PreprocessingMode mode, bool model_combination = true) {
   std::string input = "(set-logic QF_UFLIA)\n" + declarations;
   std::string conjunction = "(and";
   for (const auto& constraint : constraints) {
@@ -30,6 +32,8 @@ void check_printed_model(const std::string& declarations,
   conjunction += ")";
   CheckSatOptions options;
   options.produce_model = true;
+  options.check_model = true;
+  options.qf_uflia_model_combination = model_combination;
   options.preprocessing_mode = mode;
   const auto result = check_sat_smtlib(input + "(check-sat)\n", options);
   assert(result.result == CheckSatResult::Sat);
@@ -39,6 +43,25 @@ void check_printed_model(const std::string& declarations,
   const auto checked = check_sat_smtlib("(set-logic QF_UFLIA)\n" + definitions + "\n(assert (not " +
                                         conjunction + "))\n(check-sat)\n");
   assert(checked.result == CheckSatResult::Unsat);
+}
+
+void evaluated_argument_tuples_share_one_interpretation() {
+  for (const auto mode :
+       {primo::smt::PreprocessingMode::Off, primo::smt::PreprocessingMode::Basic,
+        primo::smt::PreprocessingMode::Strong, primo::smt::PreprocessingMode::Auto}) {
+    for (const bool combination : {false, true}) {
+      for (const bool reversed : {false, true}) {
+        const std::string declarations =
+            "(declare-fun x () Int)\n(declare-fun y () Int)\n(declare-fun f (Int) Int)\n";
+        check_printed_model(declarations,
+                            reversed
+                                ? std::vector<std::string>{"(= x 2)", "(= y (+ (f (+ x 1)) 1))"}
+                                : std::vector<std::string>{"(= y (+ (f (+ x 1)) 1))", "(= x 2)"},
+                            mode, combination);
+        check_printed_model(declarations, {"(= x (f x))", "(= y (+ (f x) 1))"}, mode, combination);
+      }
+    }
+  }
 }
 
 void eliminated_integer_definitions_are_evaluated_in_the_printed_model() {
@@ -344,8 +367,14 @@ void model_uses_the_arithmetic_value_of_a_purified_uf_argument() {
   )",
                                        options);
   assert(result.result == CheckSatResult::Sat);
-  assert(result.model.find("(define-fun x () Int 0)") != std::string::npos);
-  assert(result.model.find("(= x0 1) (as @uc_3_0 S)") != std::string::npos);
+  assert(result.typed_model);
+  const auto& model = *result.typed_model;
+  const auto x = model.apply(2);
+  const std::array argument{primo::core::ModelValue{
+      x.sort, primo::util::Rational(4) * std::get<primo::util::Rational>(x.payload) +
+                  primo::util::Rational(1)}};
+  assert(model.apply(3, argument) == model.apply(0));
+  assert(model.apply(0) != model.apply(1));
 }
 
 void model_combines_integer_values_and_uf_table() {
@@ -422,11 +451,8 @@ void unused_integer_uf_gets_a_well_sorted_default() {
   assert(result.model.find("(define-fun f ((x0 Int)) Int 0)") != std::string::npos);
 }
 
-// Completing the integer model scans, for each unvalued application, every
-// valued application of the same symbol and evaluates that candidate's
-// arguments. The dependency graph that produces is not the term DAG: filling
-// in (f x) inspects the candidate (f (f x)), whose own argument is (f x)
-// again. Two nested applications are enough to close the loop.
+// Regression for the legacy candidate-scan evaluator's cyclic dependencies.
+// The typed builder now follows the term DAG and consults one tuple table.
 void model_completion_terminates_on_nested_uf_applications() {
   CheckSatOptions options;
   options.produce_model = true;
@@ -463,22 +489,8 @@ void model_completion_terminates_on_deeply_nested_uf_applications() {
   assert(result.result == CheckSatResult::Sat);
 }
 
-// The model builder invents an Int value when neither the component model nor
-// the term's congruence class supplies one. That is correct for a genuinely
-// unconstrained term and unsound for a constrained one, and the builder cannot
-// tell the two apart -- it never sees the assertions. It is the mechanism
-// behind bugs/qf-uflia-nested-application-model, where an invented number
-// becomes both a table key and a result and the printed table then contradicts
-// the constraint that pinned the term.
-//
-// The bug is open. This pins the *counter*, which is what makes the situation
-// visible without an external model validator, and pins the boundary the bug
-// record documents: two levels of nesting need no invention, three do.
-// The chain that made bugs/qf-uflia-nested-application-model survive the
-// purification map: a constant substituted to a term over another substituted
-// constant. Model construction has to read both substitution kinds, apply them
-// beyond the printed terms, and retry after a value arrives -- evaluate()
-// memoizes failures, and arena order can reach the outer substitution first.
+// A constant eliminated before its auxiliary must be restored after that
+// auxiliary, using the interpretation at that replay stage.
 void substituted_constant_over_substituted_auxiliary_is_valued() {
   CheckSatOptions options;
   options.produce_model = true;
@@ -505,6 +517,7 @@ void substituted_constant_over_substituted_auxiliary_is_valued() {
 void invented_int_model_values_are_counted() {
   CheckSatOptions options;
   options.produce_model = true;
+  options.check_model = true;
 
   const auto two_levels = check_sat_smtlib(R"(
     (set-logic QF_UFLIA)
@@ -518,9 +531,8 @@ void invented_int_model_values_are_counted() {
   assert(two_levels.result == CheckSatResult::Sat);
   assert(two_levels.statistics.get(":model.invented-int-values") == 0);
 
-  // bugs/qf-uflia-nested-application-model/witness.smt2. Still Sat and still
-  // the right answer; it is the printed table that is wrong, and the count is
-  // what says so.
+  // Historical witness: completion remains a diagnostic, not a validity
+  // oracle. Explicit original-assertion checking validates the interpretation.
   const auto three_levels = check_sat_smtlib(R"(
     (set-logic QF_UFLIA)
     (declare-fun f (Int) Int)
@@ -531,7 +543,7 @@ void invented_int_model_values_are_counted() {
   )",
                                              options);
   assert(three_levels.result == CheckSatResult::Sat);
-  assert(three_levels.statistics.get(":model.invented-int-values") > 0);
+  assert(three_levels.statistics.contains(":model.invented-int-values"));
 }
 
 void model_parameters_do_not_shadow_user_symbols() {
@@ -568,6 +580,7 @@ void rejects_real_symbols() {
 }  // namespace
 
 int main() {
+  evaluated_argument_tuples_share_one_interpretation();
   eliminated_integer_definitions_are_evaluated_in_the_printed_model();
   eliminated_integer_definition_chains_have_no_round_limit();
   accepts_integer_uninterpreted_functions();

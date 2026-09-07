@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <functional>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -16,6 +17,7 @@
 namespace primo::core {
 
 class TermManager;
+struct Term;
 
 class ModelError : public std::logic_error {
  public:
@@ -71,13 +73,17 @@ class Model {
 // A memo is valid only for this frozen model and this live term manager.
 class ModelEvaluator {
  public:
-  ModelEvaluator(const TermManager& terms, const Model& model) : terms_(terms), model_(model) {}
+  using Resolver = std::function<ModelValue(const Term&, std::span<const ModelValue>)>;
+  ModelEvaluator(const TermManager& terms, const Model& model);
+  // Construction adapter: the resolver may only resolve constants/applications.
+  // Its previously returned values must remain stable for this evaluator's life.
+  ModelEvaluator(const TermManager& terms, Resolver resolver);
   ModelValue evaluate(TermId root);
   std::size_t evaluated_terms() const { return memo_.size(); }
 
  private:
   const TermManager& terms_;
-  const Model& model_;
+  Resolver resolve_;
   std::unordered_map<TermId, ModelValue> memo_;
 };
 

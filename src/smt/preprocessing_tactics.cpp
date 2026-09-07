@@ -194,8 +194,8 @@ Goal run_phase(TacticContext& context, const Goal& goal, const PreprocessingRoun
         return updated;
       }
       ModelReconstruction reconstruction = goal.reconstruction();
-      reconstruction.conversions =
-          append_equality_model_assignments(reconstruction.conversions, substitution.substitutions);
+      reconstruction.conversions = reconstruction.conversions.appended(
+          DirectedEqualitySubstitutionConversion{std::move(substitution.substitutions), true});
       return updated.with_reconstruction(std::move(reconstruction));
     }
 

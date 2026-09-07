@@ -3,6 +3,21 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-07-typed-model-uflia-local-migration",
+      "date": "2026-09-07",
+      "kind": "local-model-regression-check",
+      "commit": "candidate based on 1cd633a; typed QF_UFLIA migration before source freeze",
+      "evidence_status": "diagnostic",
+      "environment": {"host": "local development workspace", "build": "development and ASan"},
+      "inputs": {"count": 8, "files": "benchmarks/regressions/qf_uflia_model_evaluated_tuple.smt2 and bugs/qf-uflia-nested-application-model/*.smt2", "timeout_seconds": 5},
+      "command": "PATH=contrib/local/bin:$PATH python3 scripts/validate_model.py --solver ./build/primo --solver-arg=--quiet --solver-arg=--check-model --solver-arg=--max-theory-conflicts=1000 --require-dolmen-pass --dolmen-arg=--strict=false --timeout 5 --dolmen-timeout 5 --out results/typed-model-migration-local benchmarks/regressions/qf_uflia_model_evaluated_tuple.smt2 bugs/qf-uflia-nested-application-model/*.smt2",
+      "reference": "Dolmen independent printed-model validation; no answer-performance comparison",
+      "summary": {"sat": 8, "dolmen_pass": 8, "invalid_model": 0, "crash": 0, "timeout": 0, "unsupported": 0},
+      "verification": {"make_check": "PASS: 28 CTest and 87 Python tests, lint", "make_asan_test": "PASS: 28 tests", "make_docs": "PASS", "focused_clang_tidy": "PASS: no owned diagnostics in six focused files", "include_cleaner": "Missing direct headers fixed; no unused headers reported in seven focused files", "whole_tree_static_review": "Pending suitably provisioned SLURM sweep; local work is limited to bounded focused checks"},
+      "artifacts": "results/typed-model-migration-local",
+      "notes": "Latest witness failed in baseline df04e80 and now passes. Unit coverage adds all four preprocessing modes, both combination settings, assertion-order reversal, fixed-table reverse replay, intermediate versions, unrelated arena terms and x=f(x). This is a staged local milestone, not completion of the general redesign or a substitute for the committed-binary SLURM gate."
+    },
+    {
       "id": "2026-09-07-model-redesign-baseline-df04e80",
       "date": "2026-09-07",
       "kind": "local-model-regression-baseline",

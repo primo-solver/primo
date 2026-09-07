@@ -12,6 +12,8 @@
 #include "core/symbol_table.hpp"
 #include "core/term_manager.hpp"
 #include "smt/check_sat.hpp"
+#include "smt/model_reconstruction.hpp"
+#include "smt/typed_model_builder.hpp"
 #include "smtlib/printer.hpp"
 #include "util/rational.hpp"
 
@@ -166,6 +168,58 @@ void printer_owns_signature_and_preserves_meaning() {
                             "\n(assert (not (= |a b| (+ (f (+ x0 1)) 1))))\n(check-sat)\n");
   assert(checked.result == smt::CheckSatResult::Unsat);
 }
+void reconstruction_uses_staged_constants_and_fixed_tables() {
+  core::SymbolTable symbols;
+  const auto i = symbols.int_sort();
+  const auto x = symbols.declare_constant("x", i);
+  const auto y = symbols.declare_constant("y", i);
+  const auto f = symbols.declare_function("f", {i}, i);
+  core::TermManager terms(symbols);
+  const auto xt = terms.mk_constant(x);
+  const auto yt = terms.mk_constant(y);
+  const auto two = terms.mk_rational(util::Rational(2), i);
+  const auto three = terms.mk_rational(util::Rational(3), i);
+  const auto original =
+      terms.mk_app(f, {terms.mk_plus({yt, terms.mk_rational(util::Rational(1), i)})});
+  const auto live = terms.mk_app(f, {three});
+  smt::ModelConversionChain conversions;
+  conversions = conversions.appended(smt::DirectedEqualitySubstitutionConversion{{{xt, original}}});
+  conversions = conversions.appended(smt::DirectedEqualitySubstitutionConversion{{{yt, two}}});
+  const auto model =
+      smt::build_typed_model(terms, {}, {}, {{live, util::Rational(7)}}, conversions);
+  assert(model->apply(x) == core::ModelValue(i, util::Rational(7)));
+  assert(model->apply(y) == core::ModelValue(i, util::Rational(2)));
+  assert(model->interpretations().at(f).rows.size() == 1);
+  core::ModelEvaluator evaluator(terms, *model);
+  assert(evaluator.evaluate(original) == evaluator.evaluate(xt));
+
+  // Intermediate versions must not collapse into a last-definition-wins map.
+  auto versions = smt::ModelConversionChain{}.appended(
+      smt::DirectedEqualitySubstitutionConversion{{{xt, two}}});
+  versions = versions.appended(smt::DirectedEqualitySubstitutionConversion{{{xt, three}}});
+  const auto restored = smt::build_typed_model(terms, {}, {}, {}, versions);
+  assert(restored->apply(x) == core::ModelValue(i, util::Rational(2)));
+  // The unrelated applications retained in the arena did not acquire rows.
+  assert(restored->interpretations().at(f).rows.empty());
+
+  const auto self = terms.mk_app(f, {xt});
+  const auto equality = terms.mk_eq(xt, self);
+  const std::vector facts{smt::TheoryModelAssignment{equality, true, false}};
+  const auto cyclic = smt::build_typed_model(terms, {}, facts, {}, {});
+  core::ModelEvaluator cyclic_evaluator(terms, *cyclic);
+  assert(cyclic_evaluator.evaluate(equality) == core::ModelValue(symbols.bool_sort(), true));
+
+  const auto fx = terms.mk_app(f, {xt});
+  const auto fy = terms.mk_app(f, {yt});
+  rejects([&] {
+    smt::build_typed_model(terms, {}, {},
+                           {{xt, util::Rational(2)},
+                            {yt, util::Rational(2)},
+                            {fx, util::Rational(3)},
+                            {fy, util::Rational(4)}},
+                           {});
+  });
+}
 }  // namespace
 
 int main() {
@@ -175,4 +229,5 @@ int main() {
   boolean_connectives();
   deep_applications_are_iterative();
   printer_owns_signature_and_preserves_meaning();
+  reconstruction_uses_staged_constants_and_fixed_tables();
 }

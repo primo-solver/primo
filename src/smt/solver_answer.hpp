@@ -19,6 +19,7 @@ struct SolverAnswer {
   InconclusiveReason reason = InconclusiveReason::Unknown;
   std::string diagnostic;
   std::string model;
+  std::shared_ptr<const core::Model> typed_model = {};
 };
 
 }  // namespace primo::smt

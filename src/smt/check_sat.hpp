@@ -2,12 +2,14 @@
 
 #include <cstddef>
 #include <functional>
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
 
+#include "core/model.hpp"
 #include "smt/inconclusive_reason.hpp"
 #include "smt/preprocessing.hpp"
 #include "util/statistics.hpp"
@@ -230,6 +232,7 @@ struct CheckSatOutcome {
   util::Statistics statistics;
   std::string model;
   InconclusiveReason reason = InconclusiveReason::None;
+  std::shared_ptr<const core::Model> typed_model = {};
 };
 
 struct CheckSatOptions {
@@ -488,6 +491,7 @@ struct CheckSatOptions {
   std::vector<std::pair<std::string, int>> cadical_options;
   std::function<bool()> cancelled;
   bool produce_model = false;
+  bool check_model = false;
 };
 
 CheckSatOutcome check_sat_smtlib(std::string_view input, CheckSatOptions options = {});

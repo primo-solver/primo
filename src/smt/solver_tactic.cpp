@@ -6,8 +6,11 @@
 #include <vector>
 
 #include "core/term_manager.hpp"
+#include "smt/check_sat.hpp"
 #include "smt/inconclusive_reason.hpp"
+#include "smt/solver_answer.hpp"
 #include "smt/solver_error.hpp"
+#include "smt/tactic.hpp"
 
 namespace primo::smt {
 
@@ -32,6 +35,7 @@ Tactic make_solver_tactic(std::string name, core::TermManager& terms, GoalSolver
       Goal result = goal.with_model(answer.model.empty()
                                         ? std::optional<std::string>{}
                                         : std::optional<std::string>{std::move(answer.model)})
+                        .with_typed_model(std::move(answer.typed_model))
                         .with_diagnostic(answer.status == SolverStatus::Inconclusive
                                              ? answer.reason
                                              : InconclusiveReason::None,
@@ -55,7 +59,8 @@ SolverAnswer solver_answer_from_outcome(CheckSatOutcome outcome) {
     return SolverAnswer{.status = SolverStatus::Sat,
                         .reason = InconclusiveReason::None,
                         .diagnostic = std::move(outcome.message),
-                        .model = std::move(outcome.model)};
+                        .model = std::move(outcome.model),
+                        .typed_model = std::move(outcome.typed_model)};
   }
   if (outcome.result == CheckSatResult::Unsat) {
     return SolverAnswer{.status = SolverStatus::Unsat,
@@ -95,6 +100,7 @@ CheckSatOutcome outcome_from_tactic_result(const AnyOf& solved, TacticContext& c
     for (const Goal& goal : solved.alternatives()) {
       if (truth(goal, context) == GoalTruth::True) {
         outcome.model = goal.model().value_or("");
+        outcome.typed_model = goal.typed_model();
         outcome.message = goal.diagnostic();
         break;
       }

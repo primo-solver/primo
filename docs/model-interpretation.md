@@ -4,9 +4,9 @@
 
 This is Primo's original design for the staged general model redesign. It is
 an implementation checklist, not a claim that migration is complete. The
-existing QF_UFLIA builder completes by EUF representative, while its printer
-deduplicates rows by evaluated arguments and can replace their results after
-constants have been printed. The fixture
+legacy QF_UFLIA builder completed by EUF representative, while its printer
+deduplicated rows by evaluated arguments and could replace their results after
+constants had been printed. The fixture
 `benchmarks/regressions/qf_uflia_model_evaluated_tuple.smt2` exposes the mismatch.
 
 Delivery order: baseline evidence; typed core model/evaluator and SMT-LIB
@@ -15,8 +15,10 @@ builders; complete external validation. The overall work remains open until
 all stages and the cross-logic gates pass.
 
 The typed foundation (`core::Model`, `core::ModelEvaluator`, and
-`smtlib::print_model`) is implemented and independently unit-tested. No solver
-engine has migrated yet; therefore it does not yet repair the latest witness.
+`smtlib::print_model`) is implemented and independently unit-tested. QF_UFLIA
+now uses `smt::ComponentModelBuilder` through `build_typed_model`; the other
+engines still use legacy builders. The latest witness passes a focused external
+check, but the staged migration and its cross-logic gates are not complete.
 The baseline eight-file external check reports seven historical witnesses
 passing and the evaluated-tuple fixture failing; see the model-redesign entry
 in `docs/run-log.json`.
@@ -78,9 +80,39 @@ unrelated arena terms cannot dictate the interpretation.
 
 ## Checking, errors and verification
 
+### Component adapter and replay checklist
+
+The staged adapter builds its base interpretation only from the final active
+assertions, accepted component facts, numeric component values and purification
+aliases. It saturates their EUF classes, attaches exact numeric/Boolean anchors,
+and uses distinct values for otherwise unanchored classes. Function rows are
+inserted by the shared evaluator's evaluated argument tuple; conflicting rows
+are errors, not printer preferences. Historical applications appearing only in
+an eliminated definition are evaluated against that table, never added to it.
+
+Solved-constant steps are simultaneous updates evaluated in the interpretation
+of the following stage. Replay runs backwards, with a fresh evaluator memo at
+each changed stage. This retains intermediate versions without flattening a
+definition map. Ground-unit rewriting and Boolean-unit propagation retain their
+facts in the reduced assertions; their logs are consistency checks at the
+corresponding replay stage, not constant assignments. Purification aliases are
+base-model constraints and require no change to public interpretations.
+
+The shared explicit-stack evaluator accepts a symbol resolver for construction;
+its interpreted operators and lazy ITE scheduling are identical to frozen-model
+evaluation. A resolver must remain stable during one evaluation epoch. Base
+construction may insert a previously absent row but must never revise a returned
+value. Replay changes only eliminated constants, between epochs. Cost is linear
+in the evaluated DAG per epoch, plus congruence closure and exact arithmetic;
+overlapping definitions in separate epochs can be revisited. This is an original
+baseline, not an incremental dependency-invalidation optimization.
+
 The session retains original typed assertion roots before preprocessing.
 Debug builds and explicit production `--check-model` check those assertions
 against the frozen interpretation. Structural consistency is always checked.
+During migration the flag checks only engines producing typed models; legacy
+engines still need external printed-model validation. The flag does not request
+a model by itself: use SMT-LIB `:produce-models true` and `get-model` as usual.
 Failures are internal errors with no model and nonzero CLI exit, not unsupported
 input or unknown. Model-free solving avoids this work.
 

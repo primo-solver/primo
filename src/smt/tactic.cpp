@@ -15,6 +15,7 @@
 #include "core/ids.hpp"
 #include "core/term.hpp"
 #include "core/term_manager.hpp"
+#include "smt/inconclusive_reason.hpp"
 #include "smt/model_reconstruction.hpp"
 #include "util/statistics.hpp"
 
@@ -59,6 +60,7 @@ struct Goal::Data {
   std::shared_ptr<const ModelReconstruction> reconstruction = empty_reconstruction();
   InconclusiveReason reason = InconclusiveReason::None;
   std::string diagnostic;
+  std::shared_ptr<const core::Model> typed_model = {};
 };
 
 Goal::Goal() : data_(std::make_shared<const Data>()) {}
@@ -78,6 +80,15 @@ Goal::Goal(std::shared_ptr<const Data> data) : data_(std::move(data)) {}
 const std::vector<core::TermId>& Goal::assertions() const { return *data_->assertions; }
 
 const std::optional<std::string>& Goal::model() const { return *data_->model; }
+
+const std::shared_ptr<const core::Model>& Goal::typed_model() const { return data_->typed_model; }
+
+Goal Goal::with_typed_model(std::shared_ptr<const core::Model> model) const {
+  if (model == data_->typed_model) return *this;
+  Data updated = *data_;
+  updated.typed_model = std::move(model);
+  return Goal(std::make_shared<const Data>(std::move(updated)));
+}
 
 const ModelReconstruction& Goal::reconstruction() const { return *data_->reconstruction; }
 
@@ -137,7 +148,8 @@ Goal Goal::with_diagnostic(std::string diagnostic) const {
 
 bool Goal::operator==(const Goal& other) const {
   return data_ == other.data_ ||
-         (data_->reason == other.data_->reason && data_->diagnostic == other.data_->diagnostic &&
+         (data_->typed_model == other.data_->typed_model && data_->reason == other.data_->reason &&
+          data_->diagnostic == other.data_->diagnostic &&
           (data_->assertions == other.data_->assertions ||
            *data_->assertions == *other.data_->assertions) &&
           (data_->model == other.data_->model || *data_->model == *other.data_->model) &&

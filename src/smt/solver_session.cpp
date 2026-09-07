@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "core/ids.hpp"
+#include "core/model.hpp"
 #include "smt/check_sat.hpp"
 #include "smt/formula_analysis.hpp"
 #include "smt/formula_metrics.hpp"
@@ -26,6 +27,7 @@
 #include "smt/tactic.hpp"
 #include "smt/theory_combination.hpp"
 #include "smtlib/parser.hpp"
+#include "smtlib/printer.hpp"
 #include "util/statistics.hpp"
 
 namespace primo::smt {
@@ -606,6 +608,28 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
       }
       options.produce_model = true;
     }
+    const std::vector<core::TermId> original_assertions =
+        options.produce_model ? assertions : std::vector<core::TermId>{};
+    const auto finalize_model = [&](CheckSatOutcome& outcome) {
+      if (!outcome.typed_model) return;
+      bool check = options.check_model;
+#ifndef NDEBUG
+      check = true;
+#endif
+      if (check) {
+        const auto start = PhaseClock::now();
+        core::ModelEvaluator evaluator(frontend.terms(), *outcome.typed_model);
+        for (const core::TermId assertion : original_assertions) {
+          if (evaluator.evaluate(assertion) !=
+              core::ModelValue{frontend.terms().symbols().bool_sort(), true}) {
+            throw core::ModelError("original assertion is false at term " +
+                                   std::to_string(assertion));
+          }
+        }
+        statistics.set(":time.model.check-us", elapsed_microseconds(start, PhaseClock::now()));
+      }
+      outcome.model = smtlib::print_model(*outcome.typed_model);
+    };
     const PhaseClock::time_point preprocessing_start = PhaseClock::now();
     // The session is what owns symbol creation, so it is the session that hands
     // that capability to the strategy it executes.
@@ -714,6 +738,7 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
                    elapsed_microseconds(preprocessing_start, PhaseClock::now()));
 
     const auto finish_solve = [&](CheckSatOutcome outcome, PhaseClock::time_point solve_start) {
+      finalize_model(outcome);
       statistics.set(kStatTimeSolveUs, elapsed_microseconds(solve_start, PhaseClock::now()));
       statistics.set(kStatTimeTotalUs, elapsed_microseconds(total_start, PhaseClock::now()));
       outcome.statistics = statistics;
