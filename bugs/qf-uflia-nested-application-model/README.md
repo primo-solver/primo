@@ -2,12 +2,15 @@
 
 ## Status
 
-**2026-09-07 follow-up:** the residual witness and a smaller reduction now
-validate locally after restoring saved preprocessing facts during integer-value
-recovery and evaluating directed definitions during completion. See
-"Fresh reduction and dependency repair" below; final committed gate evidence is
-recorded in `docs/run-log.json`. The older status and investigations below are
-historical observations, not descriptions of the repaired code.
+**Fixed for the recorded witnesses, 2026-09-07, commit `5a43084`.** SLURM job
+`133742` ran both seed ranges: 6,000 cases, 3,019 satisfiable models all accepted
+by Dolmen, zero wrong answers or invalid models, one branch-and-bound limit,
+and one timeout. All eight witness files pass on the cluster as well. The
+repair restores saved preprocessing facts during integer-value recovery and
+evaluates directed definitions during completion. See "Fresh reduction and
+dependency repair" below and `docs/run-log.json` for the committed evidence.
+The older status and investigations below are historical observations, not
+descriptions of the repaired code.
 
 **LARGELY FIXED 2026-09-06, and not closed.** The QF_UFLIA model fuzz gate went
 from **21 model errors in 3000 cases to 0** on seed base 202609100 (job

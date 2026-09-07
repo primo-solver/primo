@@ -3,6 +3,66 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-07-integer-model-reconstruction-slurm-133742",
+      "date": "2026-09-07",
+      "kind": "slurm-committed-binary-model-correctness-gate",
+      "commit": "5a43084320b81b415ee45b575f733bc516a5adac",
+      "baseline_commit": "b529a8ba7e785c5fe6c10cf20f4cf9e3ea0f84a0",
+      "environment": {"host": "CIIRC SLURM cluster", "partition": "compute", "job_id": "133742", "array": "0-7%4", "requested_cpus_per_task": 1, "memory": "2G", "wall_limit": "00:15:00", "build": "Release, CaDiCaL cadical-3.0.0-7b99c07", "reference": "Z3 5.1.0", "validator": "Dolmen 0.10"},
+      "binary": {"version_git": "5a43084", "dirty": false, "sha256": "c8f5e572f33b6a94d3df4826d343ef4d15baddec46e14d01c1343e5661f3f58a"},
+      "inputs": {"generator": "scripts/qf_uflia_fuzz.py", "seeds": [202609100, 202609101, 202609102, 202609103, 202609200, 202609201, 202609202, 202609203], "count_per_seed": 750, "count": 6000, "shape": "mixed", "depth": 3, "solver_timeout_seconds": 5, "dolmen_timeout_seconds": 5},
+      "commands": {
+        "prepare": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config SSH_CONFIG --remote REMOTE --remote-dir WORKDIR --local-dir CLEAN_5a43084_WORKTREE --cmake PREPARED_CMAKE --reuse-dependencies --jobs 4 --require-tool contrib/local/bin/z3 --require-tool contrib/local/bin/dolmen",
+        "validate_batch": "python3 scripts/slurm_validate_sbatch.py scripts/slurm_integer_model_reconstruction_gate.sbatch; bash -n scripts/slurm_integer_model_reconstruction_gate.sbatch",
+        "preflight": "python3 scripts/slurm_prepare_benchmark_workspace.py --check-only --no-sync --ssh-config SSH_CONFIG --remote REMOTE --remote-dir WORKDIR --local-dir CLEAN_5a43084_WORKTREE --require-tool contrib/local/bin/z3 --require-tool contrib/local/bin/dolmen; immediately followed by sbatch",
+        "submit": "From WORKDIR: sbatch --parsable --export=ALL,PRIMO_WORKDIR=WORKDIR,PRIMO_EXPECTED_GIT=5a43084,PRIMO_FUZZ_COUNT=750,PRIMO_FUZZ_OUT_DIR=WORKDIR/results/integer-model-reconstruction-5a43084-slurm tmp/integer-model-reconstruction-gate.sbatch; the submitted file is scripts/slurm_integer_model_reconstruction_gate.sbatch copied after validation",
+        "answer": "python3 scripts/qf_uflia_fuzz.py --solver ./build-slurm-rel/primo --solver-arg=--quiet --ref z3 --count 750 --seed SEED --shape mixed --depth 3 --timeout 5 --out OUT/answer",
+        "models": "python3 scripts/validate_model.py --solver ./build-slurm-rel/primo --solver-arg=--quiet --require-dolmen-pass --dolmen-arg=--strict=false --timeout 5 --dolmen-timeout 5 --out OUT/models OUT/answer/cases/*.smt2",
+        "accounting": "sacct -j 133742 --format=JobID,State,ExitCode,Elapsed,MaxRSS -n",
+        "collection": "rsync -az -e 'ssh -F SSH_CONFIG' REMOTE:WORKDIR/results/integer-model-reconstruction-5a43084-slurm/ results/integer-model-reconstruction-5a43084-slurm/; collected matching slurm_logs/primo-int-model-133742_*.{out,err} alongside the results"
+      },
+      "summary": {"total": 6000, "pass": 5998, "unknown_involved": 1, "timeout": 1, "wrong": 0, "crash": 0, "unsupported": 0, "parser_or_type_error": 0, "reference_disagreement": 0, "reference_unusable": 0, "sat_models": 3019, "dolmen_pass": 3019, "invalid_model": 0, "model_unknown": 1, "model_solver_timeout": 1, "dolmen_timeout": 0, "input_nonconforming": 0, "unsat": 2979, "witness_files": 8, "witness_checks_in_array": 64, "witness_pass_in_array": 64, "preflight_witness_pass": 8},
+      "by_seed_range": {"202609100_to_202609103": {"total": 3000, "answer_pass": 2999, "unknown": 1, "dolmen_pass": 1535, "invalid_model": 0}, "202609200_to_202609203": {"total": 3000, "answer_pass": 2999, "timeout": 1, "dolmen_pass": 1484, "invalid_model": 0}},
+      "jobs": {"133742_0": "COMPLETED 0:0, 48s", "133742_1": "COMPLETED 0:0, 47s", "133742_2": "COMPLETED 0:0, 47s", "133742_3": "COMPLETED 0:0, 47s", "133742_4": "COMPLETED 0:0, 45s", "133742_5": "COMPLETED 0:0, 44s", "133742_6": "COMPLETED 0:0, 45s", "133742_7": "COMPLETED 0:0, 54s"},
+      "comparison": "The seed range from earlier SLURM job 133726 had one invalid model; this run has zero on that range and zero on the earlier clean range. Clean b529a8b was additionally revalidated locally on the same 6000 inputs: 3018 Dolmen passes and one invalid model, versus 3019 passes here. That direct baseline rerun is local preliminary evidence, not a SLURM timing comparison. The minimized z=f(0)+f(0) regression also fails b529a8b and passes the fixed binary.",
+      "verification": "make check (27 CTest, 84 Python tests), make asan-test (27 tests), make lint, make docs, and whole-tree make tidy passed for the implementation. The subsequent SLURM script passed shell/heredoc validation, eight mocked acceptance scenarios, and the now-85-test Python suite. Existing post-answer-crash regressions cover both candidate and reference paths in qf_uflia_fuzz. Code and documentation reviews found no blocking issues; advisory include-dependency suggestions remain separate from correctness.",
+      "artifacts": {"remote_relative_root": "primo-model-fix/results/integer-model-reconstruction-5a43084-slurm", "collected_root": "results/integer-model-reconstruction-5a43084-slurm", "summaries": "task-0 through task-7/gate-summary.json; task-N/answer/summary.csv; task-N/models/summary.csv", "failures": "task-N/answer/bugs; model input, response and validator output retained under task-N/models", "logs": "slurm_logs/primo-int-model-133742_N.{out,err}"},
+      "evidence_status": "current",
+      "notes": "Requested SLURM gate, not a performance/default promotion. Both unresolved cases are the same pre-existing branch-and-bound cases found locally: seed 202609100/case-00356 reaches its node limit; seed 202609203/case-00140 hits the five-second wall limit here. Z3 answers sat on both, and neither is counted as a pass. The gate checks exact row counts and allows only explicit unknown/timeout categories; it does not mask model errors behind validator exit 1. The timeout input is retained in bugs/ and classified, not treated as an untriaged wrong answer. No PAR2 or family timing is claimed, and no new mutation campaign was run. User-requested route is held in an ignored SSH config; source synchronization and revision preflight used the repository helper. All array tasks are terminal."
+    },
+    {
+      "id": "2026-09-07-integer-model-reconstruction-5a43084",
+      "date": "2026-09-07",
+      "kind": "committed-binary-model-correctness-gate",
+      "commit": "5a43084320b81b415ee45b575f733bc516a5adac",
+      "baseline_commit": "b529a8ba7e785c5fe6c10cf20f4cf9e3ea0f84a0",
+      "environment": {"host": "mikolas-ThinkPad-T14s-Gen-5", "type": "local workstation", "slurm_job_id": null, "build": "Release, CaDiCaL cadical-3.0.0-7b99c07"},
+      "binary": {"path": "results/integer-model-reconstruction-5a43084/primo", "sha256": "2f5349ffd2a043fa0c7e8ded973cf5dbb1fe99dc8158cf522e68bb1c0e8fb148", "version_git": "5a43084", "dirty": false},
+      "inputs": {"generator": "scripts/qf_uflia_fuzz.py", "seeds": [202609100, 202609101, 202609102, 202609103, 202609200, 202609201, 202609202, 202609203], "count_per_seed": 750, "count": 6000, "shape": "mixed", "depth": 3, "timeout_seconds": 5, "reference": "contrib/local/bin/z3", "model_validator": "dolmen --check-model=true --strict=false", "dolmen_timeout_seconds": 5},
+      "commands": {
+        "build": "cmake --build build --target primo -j 6; mkdir -p results/integer-model-reconstruction-5a43084; cp build/primo results/integer-model-reconstruction-5a43084/primo; sha256sum results/integer-model-reconstruction-5a43084/primo",
+        "answer_per_seed": "python3 scripts/qf_uflia_fuzz.py --solver ./results/integer-model-reconstruction-5a43084/primo --solver-arg=--quiet --ref contrib/local/bin/z3 --count 750 --seed SEED --shape mixed --depth 3 --timeout 5 --out results/integer-model-reconstruction-5a43084/seed-SEED",
+        "model_per_seed": "python3 scripts/validate_model.py --solver ./results/integer-model-reconstruction-5a43084/primo --require-dolmen-pass --dolmen-arg=--strict=false --timeout 5 --dolmen-timeout 5 --out results/integer-model-reconstruction-5a43084/seed-SEED/models results/integer-model-reconstruction-5a43084/seed-SEED/cases/*.smt2",
+        "witness_per_mode": "python3 scripts/validate_model.py --solver ./results/integer-model-reconstruction-5a43084/primo --solver-arg=--preprocessing-mode=MODE --require-dolmen-pass --dolmen-arg=--strict=false --out results/integer-model-reconstruction-5a43084/witness-MODE bugs/qf-uflia-nested-application-model/witness*.smt2 benchmarks/regressions/qf_uflia_model_eliminated_definition.smt2; MODE is off, basic, strong or auto",
+        "witness_no_cite": "python3 scripts/validate_model.py --solver ./results/integer-model-reconstruction-5a43084/primo --solver-arg=--no-cite-simplification --require-dolmen-pass --dolmen-arg=--strict=false --out results/integer-model-reconstruction-5a43084/witness-no-cite bugs/qf-uflia-nested-application-model/witness*.smt2 benchmarks/regressions/qf_uflia_model_eliminated_definition.smt2",
+        "baseline_models": "For each seed, python3 scripts/validate_model.py --solver ./tmp/primo-model-baseline-b529a8b --require-dolmen-pass --dolmen-arg=--strict=false --timeout 5 --dolmen-timeout 5 --out results/model-reconstruction-baseline-SEED INPUT/cases/*.smt2; INPUT is fuzz-results/model-reconstruction-guarded-SEED except seeds 202609102 and 202609103 use model-reconstruction-retry-SEED. Those corpora were regenerated with the identical committed generator and seeds in the final gate."
+      },
+      "summary": {"total": 6000, "pass": 5998, "unknown_involved": 1, "timeout": 1, "wrong": 0, "crash": 0, "unsupported": 0, "parser_or_type_error": 0, "reference_disagreement": 0, "sat_models": 3019, "dolmen_pass": 3019, "invalid_model": 0, "input_nonconforming": 0, "unsat": 2979, "model_unknown": 1, "model_solver_timeout": 1, "witness_files": 8, "witness_modes": 5, "witness_dolmen_pass": 40},
+      "baseline_summary": {"total": 6000, "dolmen_pass": 3018, "invalid_model": 1, "unsat": 2979, "solver_unknown": 1, "solver_timeout": 1, "crash": 0, "parser_or_type_error": 0, "input_nonconforming": 0},
+      "verification": {
+        "make_check": "PASS: lint, 27 CTest tests and 84 Python tests",
+        "make_asan_test": "PASS: 27 CTest tests, leak detection and strict initialization checks",
+        "make_docs": "PASS: warnings-as-errors build",
+        "make_tidy": "PASS over all 98 tracked non-generated .cpp files; 19 non-user-code warnings suppressed, no owned-code diagnostic",
+        "include_cleaner": "Advisory whole-tree scan inspected; removed seven actual unused includes, kept paired .cpp/.hpp self-includes. Remaining direct-header-dependency suggestions are pre-existing and deferred. Follow-up scan of affected files has no unused-include diagnostic.",
+        "self_review": "smt-code-review whole-tree gate and focused soundness/lifetime/dependency review: no blocking issues. Efficiency review restricted the definition map to Int model reconstruction. Documentation critic corrected the old cause hypothesis and distinguishes provisional from committed evidence.",
+        "gate_repairs": "Existing Python percent-format lint, script executable bit, two unknown documentation lexer tags, and two validator mocks missing the problem-only Dolmen call were repaired alongside the fix."
+      },
+      "artifacts": {"root": "results/integer-model-reconstruction-5a43084", "answers": "seed-SEED/summary.csv", "models": "seed-SEED/models/summary.csv", "failures": "seed-SEED/bugs", "baseline": "results/model-reconstruction-baseline-SEED", "verification": "tmp/model-{check,asan,docs,lint,tidy,include-cleaner,final-tidy,final-include-cleaner}.log"},
+      "evidence_status": "historical",
+      "notes": "Uses one frozen clean committed executable throughout. Completed as the user steered heavy computation to SLURM; retained as local preliminary evidence and superseded by the requested SLURM gate. No performance promotion, family timing, PAR2 claim or new mutation campaign. Known unresolved cases are seed 202609100/case-00356 (integer branch-and-bound node limit) and seed 202609203/case-00140 (wall timeout in this run; branch-and-bound limit in the provisional run), with Z3=sat. Baseline invalid model is seed 202609201/case-00184, the recorded residual witness. Raw artifacts are local-only and reproducible from the committed generator and commands."
+    },
+    {
       "id": "2026-09-07-integer-model-reconstruction-precommit-gate",
       "date": "2026-09-07",
       "kind": "local-model-fuzz-and-whole-tree-verification",
