@@ -249,7 +249,7 @@ add_library(primo_smtlib STATIC ${PRIMO_SMTLIB_SOURCES})
 primo_configure_owned_library(primo_smtlib)
 target_include_directories(primo_smtlib SYSTEM PUBLIC "${ANTLR4_RUNTIME_INCLUDE_DIR}")
 target_compile_definitions(primo_smtlib PUBLIC ANTLR4CPP_STATIC=1)
-target_link_libraries(primo_smtlib PUBLIC "${ANTLR4_RUNTIME_LIBRARY}")
+target_link_libraries(primo_smtlib PUBLIC primo_terms "${ANTLR4_RUNTIME_LIBRARY}")
 
 add_library(primo_smt STATIC ${PRIMO_SMT_SOURCES})
 primo_configure_owned_library(primo_smt)

@@ -39,6 +39,10 @@ An evaluator borrows a live const term manager while evaluating its IDs; IDs
 are meaningful only in that manager. An evaluator's memo belongs to one frozen
 model and cannot survive replacing it with a different interpretation.
 
+The `primo_smtlib` library links `primo_terms` explicitly: its model printer
+reads core interpretations and therefore needs the core exact-arithmetic
+headers and libraries even on hosts without system-wide GMP development files.
+
 `smt/` alone owns postsolve reconstruction and component adapters. `smtlib/`
 serializes the frozen interpretation, quotes identifiers, and chooses parameter
 names without capture. Public `CheckSatOutcome::model` remains serialized text;
