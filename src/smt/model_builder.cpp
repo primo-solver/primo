@@ -163,6 +163,12 @@ class QfUfModelBuilder {
     const core::Term& term = terms_.get(assignment.term);
     if (term.kind == core::TermKind::Equality) {
       if (assignment.value) {
+        if (assignment.directed_substitution && options_.int_values != nullptr &&
+            terms_.get(term.children.at(0)).sort == terms_.symbols().int_sort()) {
+          // A definition remains a dependency when its leaves need completion.
+          // See integer model reconstruction in docs/modular-theory-combination.md.
+          definitions_.insert_or_assign(term.children.at(0), term.children.at(1));
+        }
         constrained_terms_.insert(term.children.at(0));
         constrained_terms_.insert(term.children.at(1));
         closure_.assert_equal(term.children.at(0), term.children.at(1));
@@ -323,22 +329,16 @@ class QfUfModelBuilder {
   //
   // A model is a homomorphism: once the children of a sum, a scale or an
   // if-then-else have values, the parent's value is *forced*. Inventing one
-  // independently is not a completion, it is a contradiction, and it was the
-  // remaining cause of bugs/qf-uflia-nested-application-model. On that bug's
+  // independently is not a completion, it is a contradiction, and it was
+  // one cause of bugs/qf-uflia-nested-application-model. On that bug's
   // last witness the argument (+ (f z) (g y w)) was unvalued because one child
   // was, so it received a fresh number unrelated to its children, the UF row
   // for f was keyed on that number, and evaluating the assertion looked up a
   // row that did not exist.
   //
-  // So invention is confined to what is genuinely free: a constant, or an
-  // uninterpreted application at an argument tuple the solver never pinned.
-  // Everything built out of those is computed.
-  //
-  // A value the solver produced always takes priority over a computed one, so
-  // this only ever replaces an invention. Verified rather than assumed: an
-  // instrumented run over the 750-case QF_UFLIA corpus and every witness in
-  // bugs/qf-uflia-nested-application-model found zero terms where a stored
-  // value and the value computed from the children disagree.
+  // An eliminated constant is also computed: its saved definition is a
+  // dependency, even when none of the component models assigns its leaves.
+  // Only an uninterpreted term without a definition can reach completion.
   //
   // Explicit stack with a memo, per the repository's no-recursion rule.
   util::Rational int_value(core::TermId root) {
@@ -347,6 +347,7 @@ class QfUfModelBuilder {
       bool expanded;
     };
     std::vector<Frame> stack;
+    std::unordered_set<core::TermId> active_definitions;
     stack.push_back(Frame{root, false});
     while (!stack.empty()) {
       const Frame frame = stack.back();
@@ -360,10 +361,28 @@ class QfUfModelBuilder {
       // agrees adds nothing. Making that structural rather than a fallback is
       // what stops a compound contradicting its children, which is the defect
       // behind the last witness of bugs/qf-uflia-nested-application-model.
-      // Measured before relying on it: zero disagreements between stored and
-      // computed values over the 750-case QF_UFLIA corpus and every witness.
       const core::TermId representative = closure_.class_representative(frame.term);
       const core::Term& node = terms_.get(frame.term);
+      const auto definition = definitions_.find(frame.term);
+      if (definition != definitions_.end()) {
+        if (frame.expanded) {
+          const util::Rational value = int_value_memo_.at(definition->second);
+          const auto known = int_values_by_representative_.find(representative);
+          if (known != int_values_by_representative_.end() && known->second != value) {
+            throw std::logic_error("integer model definition disagrees with component value");
+          }
+          int_value_memo_.emplace(frame.term, value);
+          active_definitions.erase(frame.term);
+          stack.pop_back();
+        } else {
+          if (!active_definitions.insert(frame.term).second) {
+            throw std::logic_error("cyclic integer model definition");
+          }
+          stack.back().expanded = true;
+          stack.push_back(Frame{definition->second, false});
+        }
+        continue;
+      }
       const bool computed = node.kind == core::TermKind::Rational ||
                             node.kind == core::TermKind::Plus ||
                             node.kind == core::TermKind::Times || node.kind == core::TermKind::Ite;
@@ -556,6 +575,7 @@ class QfUfModelBuilder {
   std::unordered_map<core::TermId, util::Rational> real_values_by_representative_;
   std::unordered_map<core::TermId, util::Rational> int_values_by_representative_;
   std::unordered_map<core::TermId, util::Rational> generated_int_values_;
+  std::unordered_map<core::TermId, core::TermId> definitions_;
   std::unordered_map<core::TermId, util::Rational> int_value_memo_;
   std::unordered_set<util::Rational, util::RationalHash> used_int_values_;
 };

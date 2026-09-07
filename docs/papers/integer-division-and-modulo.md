@@ -10,7 +10,7 @@ requires.
 
 The SMT-LIB `Ints` theory fixes `div` and `mod` by this constraint:
 
-```smt2
+```lisp
 (forall ((m Int) (n Int))
   (=> (distinct n 0)
       (let ((q (div m n)) (r (mod m n)))

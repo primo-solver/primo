@@ -8,8 +8,6 @@
 #include <vector>
 
 #include "core/ids.hpp"
-#include "core/term.hpp"
-#include "core/term_manager.hpp"
 #include "smt/check_sat.hpp"
 #include "smt/formula_analysis.hpp"
 #include "smt/formula_metrics.hpp"

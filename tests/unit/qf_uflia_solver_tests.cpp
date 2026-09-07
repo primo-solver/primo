@@ -4,6 +4,7 @@
 
 #include <cassert>
 #include <string>
+#include <vector>
 
 #include "smt/check_sat.hpp"
 
@@ -12,6 +13,66 @@ using primo::smt::CheckSatOptions;
 using primo::smt::CheckSatResult;
 
 namespace {
+
+// Expand the printed definitions in a fresh frontend, then check the ground
+// negation. This checks the model's meaning without pinning arbitrary values
+// or reusing the model builder. The same inputs also receive external Dolmen
+// validation in the reconstruction regression gate.
+void check_printed_model(const std::string& declarations,
+                         const std::vector<std::string>& constraints,
+                         primo::smt::PreprocessingMode mode) {
+  std::string input = "(set-logic QF_UFLIA)\n" + declarations;
+  std::string conjunction = "(and";
+  for (const auto& constraint : constraints) {
+    input += "(assert " + constraint + ")\n";
+    conjunction += " " + constraint;
+  }
+  conjunction += ")";
+  CheckSatOptions options;
+  options.produce_model = true;
+  options.preprocessing_mode = mode;
+  const auto result = check_sat_smtlib(input + "(check-sat)\n", options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.model.starts_with("(model"));
+  assert(result.model.back() == ')');
+  const std::string definitions = result.model.substr(6, result.model.size() - 7);
+  const auto checked = check_sat_smtlib("(set-logic QF_UFLIA)\n" + definitions + "\n(assert (not " +
+                                        conjunction + "))\n(check-sat)\n");
+  assert(checked.result == CheckSatResult::Unsat);
+}
+
+void eliminated_integer_definitions_are_evaluated_in_the_printed_model() {
+  for (const auto mode :
+       {primo::smt::PreprocessingMode::Off, primo::smt::PreprocessingMode::Basic,
+        primo::smt::PreprocessingMode::Strong, primo::smt::PreprocessingMode::Auto}) {
+    check_printed_model("(declare-fun z () Int)\n(declare-fun f (Int) Int)\n",
+                        {"(= z (+ (f 0) (f 0)))"}, mode);
+    check_printed_model(
+        "(declare-fun x () Int)\n(declare-fun y () Int)\n(declare-fun z () Int)\n"
+        "(declare-fun f (Int) Int)\n",
+        {"(= x (+ (f 0) (f 0)))", "(= y (+ x 1))", "(= z (+ y (f x)))"}, mode);
+    // Lowering the ite and then substituting z eliminates its auxiliary to x.
+    // Recovery must see that saved equality before it looks up f(auxiliary).
+    check_printed_model(
+        "(declare-fun x () Int)\n(declare-fun w () Int)\n(declare-fun z () Int)\n"
+        "(declare-fun f (Int) Int)\n",
+        {"(= w (+ (f (ite (< z 1) x (- 1))) (f (ite (< z 1) x (- 1)))))", "(<= w 3)",
+         "(= z (- 2))"},
+        mode);
+  }
+}
+
+void eliminated_integer_definition_chains_have_no_round_limit() {
+  std::string declarations = "(declare-fun f (Int) Int)\n";
+  std::vector<std::string> constraints;
+  for (int index = 0; index < 32; ++index) {
+    const std::string name = "v" + std::to_string(index);
+    declarations += "(declare-fun " + name + " () Int)\n";
+    constraints.push_back("(= " + name + " (+ " +
+                          (index == 31 ? "(f 0)" : "v" + std::to_string(index + 1)) + " 1))");
+  }
+  check_printed_model(declarations, constraints, primo::smt::PreprocessingMode::Auto);
+}
 
 void accepts_integer_uninterpreted_functions() {
   const auto result = check_sat_smtlib(R"(
@@ -507,6 +568,8 @@ void rejects_real_symbols() {
 }  // namespace
 
 int main() {
+  eliminated_integer_definitions_are_evaluated_in_the_printed_model();
+  eliminated_integer_definition_chains_have_no_round_limit();
   accepts_integer_uninterpreted_functions();
   strong_preprocessing_recognizes_integer_numeral_domains();
   auto_preprocessing_uses_the_evaluated_integer_safe_profile();

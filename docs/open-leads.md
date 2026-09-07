@@ -2505,7 +2505,7 @@ and functional but hands branch-and-bound a variable it has no reason to bound.
 with Z3 on 398 and answered `unknown` on 2, both with "QF_LIA branch-and-bound
 node limit reached" where Z3 answers `unsat`. The reduced witness is
 
-```smt2
+```lisp
 (assert (<= 3 (mod (+ (+ v1 4) (div v1 3)) 4)))
 ```
 

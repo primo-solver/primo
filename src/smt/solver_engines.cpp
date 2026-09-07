@@ -9263,7 +9263,7 @@ std::unordered_map<core::TermId, util::Rational> qf_uflia_int_values(
     const core::TermManager& terms, const std::vector<core::TermId>& model_terms,
     const ModelConversionChain& conversions, const PreparedLraTheory& prepared,
     const theory::arithmetic::LraTableau& tableau,
-    std::span<const theory::AssignedTheoryLiteral> euf_assignment) {
+    std::span<const TheoryModelAssignment> model_assignments) {
   std::unordered_map<core::TermId, util::Rational> values;
   values.reserve(prepared.variables_by_term.size() + model_terms.size());
   for (const auto& [term, variable] : prepared.variables_by_term) {
@@ -9300,8 +9300,12 @@ std::unordered_map<core::TermId, util::Rational> qf_uflia_int_values(
   // the LIA tableau contains only the later purified proxy. Rebuild the final
   // EUF classes and index the known tableau values by class so reconstruction
   // can evaluate compound definitions such as x = c + k*f(y). This is a
-  // postsolve bridge only: every merge comes from either the accepted EUF
-  // assignment or equality of exact values in the accepted LIA model.
+  // postsolve bridge only: merges come from accepted assignments, recorded
+  // reconstruction definitions, or equality of exact LIA model values.
+  // Consume the same reconstruction facts as the final builder. Otherwise
+  // f(auxiliary) can miss f(x)'s value after an earlier pass eliminated the
+  // auxiliary to x. See integer model reconstruction in
+  // docs/modular-theory-combination.md: this dependency belongs to postsolve.
   theory::equality::IncrementalCongruenceClosure euf_classes(terms);
   for (const core::Term& term : terms.terms()) {
     if (term.kind == core::TermKind::Rational || term.kind == core::TermKind::Constant ||
@@ -9309,8 +9313,11 @@ std::unordered_map<core::TermId, util::Rational> qf_uflia_int_values(
       euf_classes.add_term(term.id);
     }
   }
-  for (const theory::AssignedTheoryLiteral& assignment : euf_assignment) {
-    const core::Term& atom = terms.get(assignment.atom);
+  for (const TheoryModelAssignment& assignment : model_assignments) {
+    if (assignment.filtered) {
+      continue;
+    }
+    const core::Term& atom = terms.get(assignment.term);
     if (atom.kind != core::TermKind::Equality || atom.children.size() != 2) {
       continue;
     }
@@ -10529,20 +10536,19 @@ CheckSatOutcome solve_qf_uflia_engine_impl(core::TermManager& terms,
     if (!options.produce_model) {
       return CheckSatOutcome{CheckSatResult::Sat, "", statistics, ""};
     }
-    const auto int_values =
-        qf_uflia_int_values(terms, model_terms, conversions, lia_component->prepared(),
-                            lia_component->model(), euf_assignment);
     std::vector<TheoryModelAssignment> model_assignments = conversions.theory_assignments(terms);
     model_assignments.reserve(model_assignments.size() + euf_assignment.size());
     for (const theory::AssignedTheoryLiteral& atom : euf_assignment) {
       model_assignments.push_back(TheoryModelAssignment{atom.atom, atom.value, false});
     }
+    const auto int_values =
+        qf_uflia_int_values(terms, model_terms, conversions, lia_component->prepared(),
+                            lia_component->model(), model_assignments);
     // Recorded rather than merely returned: an invented Int value is sound only
     // if the term is genuinely unconstrained, and the builder cannot tell.
-    // See bugs/qf-uflia-nested-application-model -- every known witness of that
-    // bug has a nonzero count here, and every valid model of the same shape
-    // has zero. This is the counter that makes it visible without an external
-    // validator.
+    // This is a diagnostic count, not a validity test: both valid and invalid
+    // models can contain completed leaves. Validate the printed model's
+    // assertions independently; see bugs/qf-uflia-nested-application-model.
     std::size_t invented_int_values = 0;
     std::string model =
         build_qf_uf_model(terms, model_assignments,

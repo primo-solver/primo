@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cassert>
 #include <optional>
-#include <utility>
 #include <vector>
 
 #include "theory/arithmetic/lia_integer_values.hpp"

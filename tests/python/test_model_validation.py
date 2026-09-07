@@ -91,6 +91,7 @@ class ModelValidationTests(unittest.TestCase):
                 [
                     solver_model(),
                     ("done", 1, "", "dolmen rejected response", 0.01),
+                    ("done", 0, "", "", 0.01),  # Problem alone is well-formed.
                     ("done", 0, "sat\n", "", 0.01),
                 ],
             )
@@ -139,6 +140,7 @@ class ModelValidationTests(unittest.TestCase):
                 [
                     solver_model(),
                     ("done", 1, "", "dolmen rejected response", 0.01),
+                    ("done", 0, "", "", 0.01),  # Problem alone is well-formed.
                     ("done", 0, "sat\n", "", 0.01),
                 ],
             )

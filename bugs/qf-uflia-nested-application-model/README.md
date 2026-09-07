@@ -2,6 +2,13 @@
 
 ## Status
 
+**2026-09-07 follow-up:** the residual witness and a smaller reduction now
+validate locally after restoring saved preprocessing facts during integer-value
+recovery and evaluating directed definitions during completion. See
+"Fresh reduction and dependency repair" below; final committed gate evidence is
+recorded in `docs/run-log.json`. The older status and investigations below are
+historical observations, not descriptions of the repaired code.
+
 **LARGELY FIXED 2026-09-06, and not closed.** The QF_UFLIA model fuzz gate went
 from **21 model errors in 3000 cases to 0** on seed base 202609100 (job
 132988), and all four witnesses in this directory validate. But a run on a
@@ -295,7 +302,58 @@ the table and answers queries, so that printing and checking cannot disagree
 by construction. That is the shape of the systematic fix, and it is bigger
 than any of the five patches.
 
-## Still not established
+## Fresh reduction and dependency repair, 2026-09-07
+
+Rebuilding clean `b529a8b` reproduces the residual witness. Its printed `w = 6`
+already violates `(<= w 3)`, independently of the function equality Dolmen
+reports first. Reducing with the predicate "sat, then Dolmen says an assertion
+evaluates to false" leaves just:
+
+```smtlib
+(set-logic QF_UFLIA)
+(declare-fun z () Int)
+(declare-fun f (Int) Int)
+(assert (= z (+ (f 0) (f 0))))
+(check-sat)
+```
+
+The old model assigns `z = 1` and `f(0) = 2`. There is no nesting, bound, or
+missing asserted LIA equality in this reduction. The missing invariant is that
+an eliminated symbol must evaluate to its saved definition, including when the
+definition contains free leaves. This is now a regression at
+`benchmarks/regressions/qf_uflia_model_eliminated_definition.smt2`.
+
+The original witness exposes an earlier loss of the same dependencies. Its
+conversion facts include `$primo_ite_0 = x`, but `qf_uflia_int_values` builds
+its closure from final EUF assignments alone. Consequently `f(x)` has value zero
+while `f($primo_ite_0)`, its doubled sum, and `w` have no recovered value. The
+printer receives that equality later, after numeric recovery has missed it.
+
+The repair has two required parts:
+
+- Assemble the saved conversion facts and final EUF facts once and supply the
+  same vector to numeric recovery and the builder. This fixes the original
+  residual witness, but by itself leaves the reduced case invalid.
+- Preserve directed definitions as evaluation dependencies in the builder.
+  Evaluate their right-hand sides through the existing memoized stack, including
+  completion of free leaves. This fixes the reduction without choosing a
+  particular value for `f(0)`. Cyclic definitions and disagreement with a known
+  component value fail explicitly.
+
+The new tests evaluate the printed definitions against the original constraints
+under all four preprocessing modes and check a chain of 32 eliminated symbols.
+They assert model meaning, not an invention count or a particular arbitrary
+number. The local design contract, ownership, complexity limits, and remaining
+scope are in [](../../docs/modular-theory-combination.md).
+
+This corrects the earlier diagnosis: an omitted LIA-owned equality was not the
+demonstrated cause of the survivor. A general shared evaluator remains useful
+future work, but restoring the documented conversion dependencies fixes these
+failures without that broader refactor. The builder still has no assertion
+self-check, and finite fuzz evidence does not establish that every invalid-model
+shape has been eliminated.
+
+## Still not established (historical investigation)
 
 - Whether the same shape can produce a wrong `sat` where no model exists at
   all. Every witness so far is genuinely satisfiable; only the printed model

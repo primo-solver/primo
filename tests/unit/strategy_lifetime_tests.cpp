@@ -6,10 +6,8 @@
 // its term manager and statistics from the TacticContext it is executed
 // under, not from whatever was in scope at construction time.
 
-#include <cstddef>
 #include <cstdlib>
 #include <string>
-#include <utility>
 #include <vector>
 
 #include "core/ids.hpp"

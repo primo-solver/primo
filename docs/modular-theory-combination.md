@@ -119,6 +119,57 @@ spellings remain accepted aliases for reproducible old commands.
 exchange, exact fallback, model mutation, reconciliation, and model builder
 remain in its specialized coordinator.
 
+## Integer model reconstruction
+
+`qf_uflia_int_values` and `QfUfModelBuilder` consume the same
+`TheoryModelAssignment` vector, assembled once from `ModelConversionChain` and
+the final EUF assignment. The vector is owned by the QF_UFLIA engine for the
+duration of model construction; its terms belong to the session's term manager.
+Filtered facts are ignored. Saved substitution equalities must participate in
+numeric recovery's congruence closure as well as the printer's closure: an
+eliminated auxiliary equal to `x` must connect `f(auxiliary)` to `f(x)` before
+looking up the arithmetic value. This restores preprocessing information; it
+does not assert new facts into either solving component or learn SAT clauses.
+
+The builder additionally retains directed substitutions as a `TermId` dependency
+map. Evaluating an eliminated Int constant schedules its saved right-hand side
+on the same explicit stack that evaluates sums and scales. The memoized result
+is shared by constant printing and function table arguments. Free leaves can be
+completed once, after which definitions are computed from those choices. In
+particular, `(= z (+ (f 0) (f 0)))` requires `z = 2*f(0)` even when preprocessing
+eliminates the entire constraint and there is no arithmetic assignment to read.
+Grouping `z` and the sum into an EUF class does not establish that equation's
+arithmetic meaning. A completed definition is checked against any component
+value on its class; disagreement or a cyclic definition raises an internal
+error instead of silently selecting a value.
+
+This is an original repair of the existing postsolve design, based on the
+conversion-chain contract in [](tactics.md) and the explicit DAG evaluation
+discipline in [](architecture.md), not a new theory-combination algorithm.
+Implementation checklist and proof obligations:
+
+- Both consumers receive every unfiltered saved equality before recovering
+  numeric values; neither depends on which theory owned the eliminated fact.
+- Directed definitions remain acyclic dependencies, including definitions whose
+  leaves are absent from the tableau. Completion cannot assign their left-hand
+  sides independently. The explicit stack has no substitution-round limit.
+- Successful evaluations are memoized by `TermId`; following definitions adds
+  linear work in the visited dependency graph and space in its nodes and depth.
+  The older numeric-recovery candidate scans and eight-round heuristic remain;
+  this change makes no whole-reconstruction linear-time claim.
+- `eliminated_integer_definitions_are_evaluated_in_the_printed_model` checks
+  ground evaluations of printed models across off/basic/strong/auto modes.
+  The chain test exceeds eight substitutions. The SMT-LIB reduction at
+  `benchmarks/regressions/qf_uflia_model_eliminated_definition.smt2` and the
+  residual witness are also validated externally with Dolmen.
+
+The scope is QF_UFLIA integer postsolve. The builder still emits string tables
+and completes arena terms outside the final formula; it is not yet a single
+general model evaluator or an assertion self-check. Invention counts are
+diagnostics, not proof of either validity or invalidity. External model
+validation remains the acceptance gate. Evidence and exact commands are in
+`docs/run-log.json`, under the 2026-09-07 reconstruction entries.
+
 ## Model-guided transition layer
 
 The intended optimization path is de Moura and Bjorner's model-based theory

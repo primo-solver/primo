@@ -16,13 +16,12 @@ import sys
 def generate(assertions: int, constants: int, seed: int) -> str:
     random.seed(seed)
     lines = ["(set-logic QF_UF)", "(declare-sort U 0)", "(declare-fun f (U) U)"]
-    lines.extend("(declare-fun c%d () U)" % index for index in range(constants))
+    lines.extend(f"(declare-fun c{index} () U)" for index in range(constants))
     for _ in range(assertions):
         left = random.randrange(constants)
         right = random.randrange(constants)
         lines.append(
-            "(assert (or (= (f c%d) c%d) (not (= c%d c%d))))"
-            % (left, right, left, right)
+            f"(assert (or (= (f c{left}) c{right}) (not (= c{left} c{right}))))"
         )
     lines.append("(check-sat)")
     lines.append("(exit)")

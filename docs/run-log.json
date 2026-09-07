@@ -3,6 +3,71 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-07-integer-model-reconstruction-precommit-gate",
+      "date": "2026-09-07",
+      "kind": "local-model-fuzz-and-whole-tree-verification",
+      "commit": "b529a8b-dirty: shared reconstruction facts, directed-definition evaluation and explicit cycle/component-value guards",
+      "environment": {"host": "mikolas-ThinkPad-T14s-Gen-5", "type": "local workstation", "slurm_job_id": null},
+      "inputs": {"generator": "scripts/qf_uflia_fuzz.py", "seeds": [202609100, 202609101, 202609102, 202609103, 202609200, 202609201, 202609202, 202609203], "count_per_seed": 750, "count": 6000, "shape": "mixed", "depth": 3, "timeout_seconds": 5, "reference": "contrib/local/bin/z3"},
+      "commands": {
+        "answer_per_seed": "python3 scripts/qf_uflia_fuzz.py --solver ./build/primo --solver-arg=--quiet --ref contrib/local/bin/z3 --count 750 --seed SEED --shape mixed --depth 3 --timeout 5 --out fuzz-results/model-reconstruction-guarded-SEED",
+        "model_per_seed": "python3 scripts/validate_model.py --require-dolmen-pass --dolmen-arg=--strict=false --timeout 5 --dolmen-timeout 5 --out fuzz-results/model-reconstruction-guarded-SEED/models fuzz-results/model-reconstruction-guarded-SEED/cases/*.smt2",
+        "retry": "For seeds 202609102 and 202609103, use --solver ./tmp/primo-model-reconstruction-guarded in both commands and replace guarded-SEED output paths with retry-SEED. Snapshot SHA256 b43d8d982639441b81e584116bd47e7ad453fdd8f7538bedf31fa9fafaeb4798.",
+        "witnesses": "python3 scripts/validate_model.py --require-dolmen-pass --dolmen-arg=--strict=false --out results/model-reconstruction-guarded-witnesses bugs/qf-uflia-nested-application-model/witness*.smt2 benchmarks/regressions/qf_uflia_model_eliminated_definition.smt2",
+        "verification": "make check; make asan-test; make docs; make tidy; clang-tidy -p build -checks='-*,clang-diagnostic-*,misc-include-cleaner' $(git ls-files 'src/*.cpp' 'tests/*.cpp' | rg -v '^src/smtlib/antlr/')"
+      },
+      "summary": {"total": 6000, "pass": 5998, "unknown_involved": 2, "wrong": 0, "crash": 0, "unsupported": 0, "parser_or_type_error": 0, "reference_disagreement": 0, "sat_models": 3019, "dolmen_pass": 3019, "invalid_model": 0, "input_nonconforming": 0, "unsat": 2979, "witness_dolmen_pass": 8},
+      "artifacts": {
+        "gate": "fuzz-results/model-reconstruction-guarded-{202609100,202609101,202609200,202609201,202609202,202609203}",
+        "retry": "fuzz-results/model-reconstruction-retry-{202609102,202609103}",
+        "failures": "Each gate directory has bugs/; no wrong-answer or invalid-model failures in the completed gate.",
+        "witnesses": "results/model-reconstruction-guarded-witnesses",
+        "verification": "tmp/model-{check,asan,docs,tidy,include-cleaner}.log"
+      },
+      "evidence_status": "historical",
+      "notes": "Provisional local-only dirty-tree gate, superseded by a committed-binary gate. Two original shards (202609102 and 202609103) were invalidated by rebuilding build/primo during execution: PermissionError while the linker replaced the executable. Their partial artifacts are excluded completely and both shards were regenerated and revalidated against the fixed snapshot. Unknown cases are seed 202609100/case-00356 and 202609203/case-00140, both with Z3=sat, not counted as passes or invalid models. The model validator exits 1 for unknown as well as errors, so totals were inspected rather than treating its exit code as proof of a wrong model. No timing or PAR2 claim."
+    },
+    {
+      "id": "2026-09-07-integer-model-reconstruction-diagnosis",
+      "date": "2026-09-07",
+      "kind": "invalid-model-reproduction-reduction-and-local-fix-probes",
+      "commit": "b529a8ba7e785c5fe6c10cf20f4cf9e3ea0f84a0",
+      "environment": {
+        "host": "mikolas-ThinkPad-T14s-Gen-5",
+        "type": "local workstation",
+        "build": "Release, CaDiCaL cadical-3.0.0-7b99c07",
+        "slurm_job_id": null
+      },
+      "commands": {
+        "baseline": "make build; python3 scripts/validate_model.py --require-dolmen-pass --dolmen-arg=--strict=false --out results/model-residual-baseline-b529a8b bugs/qf-uflia-nested-application-model/witness*.smt2 tmp/model-residual-reduced.smt2",
+        "reduction": "contrib/local/bin/ddsmt --ignore-output --timeout 5 -j 4 bugs/qf-uflia-nested-application-model/witness-residual-2026-09-07.smt2 tmp/model-residual-ddsmt.smt2 /workspace/tmp/model-invalid-predicate.py",
+        "minimized_baseline": "python3 scripts/validate_model.py --solver tmp/primo-model-baseline-b529a8b --require-dolmen-pass --out results/model-residual-minimized-baseline tmp/model-residual-ddsmt.smt2",
+        "shared_facts_probe": "python3 scripts/validate_model.py --require-dolmen-pass --dolmen-arg=--strict=false --out results/model-residual-shared-facts-probe bugs/qf-uflia-nested-application-model/witness*.smt2 tmp/model-residual-ddsmt.smt2",
+        "definitions_probe": "python3 scripts/validate_model.py --require-dolmen-pass --dolmen-arg=--strict=false --out results/model-residual-definitions-probe bugs/qf-uflia-nested-application-model/witness*.smt2 tmp/model-residual-ddsmt.smt2",
+        "answer_probe": "python3 scripts/qf_uflia_fuzz.py --solver ./build/primo --solver-arg=--quiet --ref contrib/local/bin/z3 --count 1000 --seed 202609200 --shape mixed --depth 3 --timeout 5 --out fuzz-results/model-reconstruction-probe-202609200",
+        "model_probe": "python3 scripts/validate_model.py --require-dolmen-pass --dolmen-arg=--strict=false --timeout 5 --dolmen-timeout 5 --out fuzz-results/model-reconstruction-probe-202609200/models fuzz-results/model-reconstruction-probe-202609200/cases/*.smt2"
+      },
+      "results": {
+        "baseline": "Clean rebuilt b529a8b reproduces the residual invalid model; six other saved witness files pass. A manually simplified eighth case passes and is not a reduction of the failure.",
+        "reduction": "ddSMT reduces 9 assertions to (= z (+ (f 0) (f 0))). Baseline prints z=1 and f(0)=2. Predicate requires sat and Dolmen's assertion-evaluates-to-false diagnostic, not merely a nonzero validator exit. The resulting file is committed at benchmarks/regressions/qf_uflia_model_eliminated_definition.smt2.",
+        "diagnosis": "The trace records saved $primo_ite_0=x as FACT 41, while f($primo_ite_0), its doubled sum and w have no recovered value. Recovery's closure did not receive preprocessing facts; the printer's did. The separate minimal failure has no tableau seed: completion invents z instead of evaluating its directed definition. A missing asserted LIA equality is not needed to explain either failure.",
+        "shared_facts_only": "Original residual passes, minimized case still fails. This is an incomplete fix, not accepted alone.",
+        "shared_facts_and_definition_dependencies": "All eight witness/reduction files pass Dolmen directly.",
+        "answer_probe": {"total": 1000, "pass": 1000, "wrong": 0, "crash": 0, "timeout": 0, "unsupported": 0, "parser_or_type_error": 0, "reference_disagreement": 0},
+        "model_probe": {"sat": 496, "dolmen_pass": 496, "unsat": 504, "invalid_model": 0, "solver_error": 0, "timeout": 0, "input_nonconforming": 0}
+      },
+      "inputs": {"generator": "scripts/qf_uflia_fuzz.py", "seed": 202609200, "count": 1000, "shape": "mixed", "depth": 3, "timeout_seconds": 5, "reference": "contrib/local/bin/z3"},
+      "artifacts": {
+        "baseline": "results/model-residual-baseline-b529a8b",
+        "reduction": "results/model-residual-minimized-baseline",
+        "trace": "tmp/model-trace.stderr",
+        "probe": "fuzz-results/model-reconstruction-probe-202609200",
+        "failures": "fuzz-results/model-reconstruction-probe-202609200/bugs"
+      },
+      "evidence_status": "historical",
+      "notes": "Local-only diagnosis and provisional dirty-tree probes based on b529a8b, before cyclic-definition and component-disagreement guards. They are not the final-commit gate. The pre-existing executable initially reported 0fa076c-dirty and was not used as baseline evidence. No reference-solver source was read or copied. Reference comparison is correctness-only; PAR2 and benchmark family timing are not measured. Final acceptance is recorded separately."
+    },
+    {
       "id": "2026-07-10-qfuf-fuzzsmt-incremental-3200",
       "started_at": "2026-07-10",
       "recorded_at": "2026-07-18",

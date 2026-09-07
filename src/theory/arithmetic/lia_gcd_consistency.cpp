@@ -1,6 +1,5 @@
 #include "theory/arithmetic/lia_gcd_consistency.hpp"
 
-#include <algorithm>
 #include <vector>
 
 #include "util/rational.hpp"

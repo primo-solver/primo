@@ -1,7 +1,6 @@
 #include "smt/model_based_combination.hpp"
 
 #include <algorithm>
-#include <ranges>
 #include <stdexcept>
 #include <string_view>
 #include <unordered_map>
