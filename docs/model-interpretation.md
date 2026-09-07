@@ -32,6 +32,11 @@ combination-off path; the generated matrix also checks mixed-Real reconciliation
 off. Strict input-grammar diagnostics and rejected unrestricted mutations are
 not accepted evidence. See the cross-logic and final-mutation entries in
 `docs/run-log.json` for commands, seeds, per-family counts and artifacts.
+The closing include-only revision `315b792` also passes a fresh 7,000-case
+mixed-logic SLURM rerun, 3,487 independent SAT-model checks and all 72
+witness/profile checks, with no errors or resource limits in that rerun.
+Implementation, external correctness validation and review are complete;
+the separately documented baseline advisories are not part of this bug fix.
 The baseline eight-file external check reports seven historical witnesses
 passing and the evaluated-tuple fixture failing; see the model-redesign entry
 in `docs/run-log.json`.

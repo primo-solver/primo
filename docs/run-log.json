@@ -3,6 +3,30 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-07-typed-model-closing-gates-315b792",
+      "date": "2026-09-07",
+      "kind": "committed-binary-closing-correctness-gates",
+      "commit": "315b792",
+      "evidence_status": "current",
+      "environment": {"host": "CIIRC SLURM cluster", "build": "Release", "cadical": "cadical-3.0.0-7b99c07", "jobs": {"uflia": "134792", "uflra": "134797", "include_recheck": "134802"}, "states": "All tasks COMPLETED, exit 0:0", "elapsed": "QF_UFLIA tasks 24-26 seconds; QF_UFLRA tasks 59 seconds; include recheck 11 seconds"},
+      "source_scope": "Since the full model migration 8ff9991, solver changes are only four removed unused includes and one direct core/model.hpp include in 315b792. No algorithm, declaration, test or CMake behavior changed. Broad cross-logic and mutation evidence remains applicable; these gates verify the exact closing binary.",
+      "commands": {
+        "prepare": "scripts/slurm_prepare_benchmark_workspace.py --local-dir . --reuse-dependencies --jobs 4 with clean 315b792; --check-only --no-sync immediately before each sbatch; exact binary git and CaDiCaL confirmed",
+        "uflia": "sbatch scripts/slurm_typed_uflia_model_gate.sbatch with PRIMO_EXPECTED_GIT=315b792 and PRIMO_FUZZ_OUT_DIR=results/typed-uflia-315b792; defaults: 375/task, seeds 202609300..307, mixed/depth 3, preprocessing off/basic/strong/auto with combination on/off, --check-model, 5s solver/reference/Dolmen timeouts",
+        "uflra": "sbatch --array=0-3%4 --time=00:10:00 scripts/slurm_qf_uflra_fuzz_gate.sbatch with PRIMO_FUZZ_SEED_BASE=202609800, PRIMO_FUZZ_SOLVER_ARGS=--check-model, PRIMO_FUZZ_OUT_DIR=results/typed-uflra-315b792; 750 general, 125 finite UF and 125 finite UFLRA per task, 5s answer timeout, 10s model/Dolmen timeouts",
+        "include_recheck": "Locally written and slurm_validate_sbatch.py-validated tmp/typed-model-include-followup.sbatch: clang-tidy -p build-slurm-rel -checks='-*,clang-diagnostic-*,misc-include-cleaner' HEADER_ARGS src/smt/solver_engines.cpp src/smtlib/printer.cpp; same staged header roots as full scan, fail if any warning/error diagnostic remains"
+      },
+      "references": {"answers": "Z3 5.1.0; required QF_UFLRA gate also cvc5", "models": "Dolmen --require-dolmen-pass --strict=false; no fallback passes", "include_check": "clang-tidy 18.1.8"},
+      "results": {
+        "uflia": {"generated": 3000, "answer_pass": 3000, "dolmen_pass": 1488, "not_sat": 1512, "witness_pass": 72},
+        "uflra": {"general_answer_pass": 3000, "finite_uf_answer_pass": 500, "finite_uflra_answer_pass": 500, "general_dolmen_pass": 1747, "finite_uflra_dolmen_pass": 252},
+        "aggregate": {"generated_case_profile_runs": 7000, "answer_pass": 7000, "dolmen_pass": 3487, "witness_pass": 72, "wrong_answer": 0, "invalid_model": 0, "crash": 0, "parser_or_type_error": 0, "unsupported": 0, "unknown": 0, "timeout": 0, "reference_disagreement": 0},
+        "include_recheck": "Both changed translation units pass with zero warnings/errors; the previously documented unrelated whole-tree advisories are not claimed fixed"
+      },
+      "artifacts": ["results/typed-uflia-315b792", "results/typed-uflra-315b792", "results/typed-includes-315b792", "tmp/typed-315b792-prepare.log", "tmp/typed-315b792-preflight.log", "tmp/typed-315b792-uflra-preflight.log", "tmp/typed-315b792-includes-preflight.log"],
+      "notes": "Complete artifacts collected before acceptance. Local make check, make asan-test, make lint and make docs for this include-only patch are recorded with the static-review entry. The end-to-end model redesign acceptance criteria are met; no performance/PAR2 claim. Resource-only exceptions in broader generated/mutation gates remain separately recorded, not erased by these clean reruns."
+    },
+    {
       "id": "2026-09-07-typed-model-whole-tree-static-134747",
       "date": "2026-09-07",
       "kind": "whole-tree-static-review",
