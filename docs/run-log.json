@@ -7,7 +7,7 @@
       "date": "2026-09-07",
       "kind": "full-supported-logic-revalidation-with-independent-sat-replay",
       "commit": "287b743",
-      "report_driver_commit": "0196087",
+      "report_driver_commit": "56716f3",
       "evidence_status": "pending",
       "scope": "User-requested complete revalidation after the model migration: local checks, generated/profile/mutation correctness gates, whole-tree static review, every available real SMT-LIB input in five supported logics against Primo/Z3/cvc5, then independent Dolmen replay of every successful Primo SAT row. No performance promotion is claimed while correctness coverage is pending or incomplete.",
       "environment": {
@@ -16,6 +16,7 @@
         "build": "Release; Python 3.9.18; CaDiCaL cadical-3.0.0-7b99c07",
         "binary": "results/full-revalidation-287b743/bin/primo",
         "binary_sha256": "5a671d47882f555f3522c92b7b6c05a76c3bbdfde6ec2cb714b69e76c519b3f7",
+        "references": {"z3": "5.1.0, SHA256 54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0", "cvc5": "1.3.4 git f3b21c4, SHA256 4a93548398445cf1a774655583f5465b156c26f63f2cdfb94f4728fdf7adde46", "dolmen": "0.10, SHA256 08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"},
         "source_note": "src, CMakeLists.txt and tests/unit are identical to 315b792; subsequent changes concern skills, documentation and Python validation/reporting workflows. The campaign binary is preserved separately from the mutable build output.",
         "preparation": "slurm_prepare_benchmark_workspace.py --local-dir /workspace/tmp/full-revalidation-287b743 --remote-dir /home/janotmik/primo-model-fix --reuse-dependencies --jobs 4; --check-only --no-sync against that clean snapshot immediately before every sbatch. Batch scripts validated locally with slurm_validate_sbatch.py. Existing full corpora reused read-only; complete 659-file QF_UFLIA staged with slurm_stage_manifest_files.py --root tmp/QF_UFLIA --all-smt2."
       },
@@ -69,7 +70,7 @@
       "corpora": {
         "QF_UF": {"count": 7503, "root": "/home/janotmik/primo-cadical-profile/tmp/QF_UF", "primo_shards": 64, "primo_concurrency": 16, "reference_shards": 32, "reference_concurrency": 8},
         "QF_LIA": {"count": 13306, "root": "/home/janotmik/primo-cadical-profile/sandbox/non-incremental/QF_LIA", "primo_shards": 80, "primo_concurrency": 80, "reference_shards": 32, "reference_concurrency": 32},
-        "QF_LRA": {"count": 1753, "root": "/home/janotmik/primo-cadical-profile/sandbox/non-incremental/QF_LRA", "primo_shards": 16, "primo_concurrency": 8, "reference_shards": 8, "reference_concurrency": 4},
+        "QF_LRA": {"count": 1753, "root": "/home/janotmik/primo-cadical-profile/sandbox/non-incremental/QF_LRA", "primo_shards": 16, "primo_concurrency": 16, "reference_shards": 8, "reference_concurrency": 8},
         "QF_UFLRA": {"count": 1284, "root": "/home/janotmik/primo-cadical-profile/sandbox/non-incremental/QF_UFLRA", "primo_shards": 16, "primo_concurrency": 8, "reference_shards": 8, "reference_concurrency": 4},
         "QF_UFLIA": {"count": 659, "root": "/home/janotmik/primo-model-fix/tmp/QF_UFLIA", "primo_shards": 16, "primo_concurrency": 8, "reference_shards": 8, "reference_concurrency": 4}
       },
@@ -78,6 +79,8 @@
       "artifacts": {"remote": "/home/janotmik/primo-model-fix/results/full-revalidation-287b743", "local": "results/full-revalidation-287b743", "submission_logs": "tmp/full-revalidation-{jobs,timing-jobs,replay-jobs}.tsv and matching *-preflight.log", "retention": "Large inputs, solver logs and model output retained remotely; summaries and provenance collected locally. Run-log and committed drivers reproduce the workflow."},
       "results": {
         "status": "pending; jobs submitted, no full-corpus correctness or performance claim yet",
+        "reporting_followup": "56716f3 fixes live reporting only: read journals until atomic complete provenance makes the CSV authoritative; classify unreadable journal lines as explicit incomplete coverage instead of aborting all progress; count timeout-terminated unknown output only as timeout. One transient JSON read failure was observed during concurrent writes; an immediate full journal rescan found no persistent malformed complete line. Solver runs and immutable timing artifacts were not changed. Fresh make check (28 CTest, 106 Python tests, lint) and make docs pass; logs tmp/full-revalidation-live-summary-{check,docs}.log.",
+        "historical_lia_context": {"evidence_status": "historical", "commit": "d8462db", "job": "133466", "artifact": "/home/janotmik/primo-cadical-profile/results/qf-lia-cite-full/cite", "rows": 13306, "timeout_seconds": 60, "solved": 9660, "sat": 6428, "unsat": 3232, "unknown": 751, "timeout": 2895, "wrong": 0, "par2": 474909.730737, "qualification": "Recomputed from all 80 existing CSV shards using strict decisive-answer accounting, not status=ok alone. Historical input content hashes are unavailable; this is previous-result context, not a freshly paired causal performance comparison. Derived per-family summaries and CSV checksums are retained in results/full-revalidation-287b743/historical-qf-lia-cite.json. The old off arm has 9061 solves, 751 unknowns, 3494 timeouts and PAR2 531258.719174."},
         "generated_gates": {
           "case_profile_runs": 36000,
           "answer_pass": 35807,
