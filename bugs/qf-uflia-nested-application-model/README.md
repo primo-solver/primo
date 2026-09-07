@@ -252,6 +252,49 @@ consistent-completion attempt above could not work: it reconciled the printed
 table with itself while still drawing on the same half-populated value map, and
 it had no way to tell an original application from its purified copy.
 
+## The systematic angle, 2026-09-07
+
+Five instances now, each a different channel that model construction failed to
+consult: the purification map, one of the two substitution kinds, a memoised
+failure never retried, a compound value invented independently of its children,
+and -- still open -- an Int equality owned by LIA that never reaches the model
+builder's congruence closure.
+
+**The pattern is the diagnosis.** There is no single source of truth. Values
+are scavenged from the LIA tableau, EUF classes, purification labels, two
+substitution kinds and value-coincidence merging, with silent invention as the
+fallback. Every elimination pass adds a new way for a value to go missing, and
+nothing enforces an invariant, so each fix consults one more channel and the
+next instance arrives from a channel nobody thought of.
+
+**One piece is now structural rather than scavenged.** Interpreted arithmetic
+-- `Plus`, `Times`, `Ite` -- is always computed from its children and never
+looked up, so a compound can no longer contradict them. Invention is confined
+to uninterpreted leaves, which is where it is legitimate: a constant or an
+application at an argument tuple the solver never pinned.
+
+**A model self-check was tried and is not landed.** The idea is to evaluate the
+assertions under the model before printing it, turning a wrong model into an
+immediate local failure instead of something an external validator finds later.
+It works in the sense that matters -- it flags the open witness -- but it
+reported **48 of 211 models broken on a corpus Dolmen passes**, and a
+diagnostic with a 23% false-alarm rate is worse than none.
+
+Three rounds of narrowing got it from 63 to 48 false alarms and the remaining
+ones share a cause worth recording, because it is the same cause as the bug:
+**there is no single evaluation function.** The builder computes values one way
+(`int_value` plus the congruence closure), printing goes through the table's
+deduplicated rows, and a checker is a third path. Any disagreement among the
+three shows up as a false alarm, and every operator has to be made to agree
+separately -- arithmetic, ite, three-valued propagation for terms the checker
+cannot decide, applications through rows rather than through internal values.
+
+So the self-check is not a small addition on top of the current design; it is
+the same refactor the bug needs. The real fix is one evaluator that both fills
+the table and answers queries, so that printing and checking cannot disagree
+by construction. That is the shape of the systematic fix, and it is bigger
+than any of the five patches.
+
 ## Still not established
 
 - Whether the same shape can produce a wrong `sat` where no model exists at
