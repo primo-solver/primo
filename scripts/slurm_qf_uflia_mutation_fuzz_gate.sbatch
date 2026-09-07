@@ -4,6 +4,8 @@
 # Prepare the remote workspace on the login node with contrib-yinyang,
 # contrib-z3 and contrib-dolmen.  Cluster-specific paths and run identifiers are supplied through
 # the environment at submission time.
+# PRIMO_FUZZ_SOLVER_ARGS is a single line of whitespace-separated option tokens;
+# embedded whitespace and shell quoting in individual tokens are not supported.
 #SBATCH --job-name=primo-qfuflia-mut
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=4G
@@ -43,8 +45,13 @@ fi
 z3 --version
 
 solver_command="$WORKDIR/build-slurm-rel/primo --quiet"
+model_solver_args=(--solver-arg=--quiet)
 if [[ -n $SOLVER_ARGS ]]; then
   solver_command+=" $SOLVER_ARGS"
+  read -r -a solver_arg_words <<< "$SOLVER_ARGS"
+  for arg in "${solver_arg_words[@]}"; do
+    model_solver_args+=(--solver-arg="$arg")
+  done
 fi
 
 scripts/yinyang_fuzz.sh \
@@ -74,7 +81,7 @@ if [[ -e ${mutants[0]} ]]; then
   echo "validating models for ${#mutants[@]} retained mutants"
   python3 scripts/validate_model.py \
     --solver "$WORKDIR/build-slurm-rel/primo" \
-    --solver-arg=--quiet \
+    "${model_solver_args[@]}" \
     --require-dolmen-pass \
     --timeout "$SOLVER_TIMEOUT" \
     --dolmen-timeout 5 \

@@ -1101,6 +1101,21 @@ Current entry points:
 - `scripts/minimize_smt2.py` delegates to ddSMT when `ddsmt` is installed and
   otherwise copies the input unchanged with a clear message.
 
+The QF_UFLIA real-seed gate,
+`scripts/slurm_qf_uflia_mutation_fuzz_gate.sbatch`, forwards
+`PRIMO_FUZZ_SOLVER_ARGS` to both the differential solver command and the retained
+mutants' model-validation run. Supply a single line of whitespace-separated
+tokens, for example `--no-qf-uflia-model-combination --preprocessing-mode=strong`;
+embedded whitespace and shell quoting within tokens are not supported. The
+batch shell owns a model-option array for the job lifetime and passes each
+token as a separate `--solver-arg=...`, after `--quiet`, preserving option order
+and values. Both phases must exercise the same selected profile. The focused
+Python batch-script regression checks default and custom profiles and preserves
+model-validator failure exits. Earlier mutation runs with custom options did
+not forward those options to model validation and cannot establish model
+correctness for that profile; they need revalidation. This harness repair does
+not itself establish solver correctness or resolve known invalid models.
+
 Use YinYang for mutation of real SMT-LIB seeds and FuzzSMT for grammar-based
 black-box generation. Both are useful: YinYang stays close to benchmark shapes,
 while FuzzSMT stresses frontend and Core/QF_UF coverage with independently
