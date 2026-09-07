@@ -3845,8 +3845,14 @@ core::TermId hoist_ite_to_top(core::TermManager& terms, core::TermId term) {
       return core::kInvalidTermId;
     }
     const util::Rational coefficient = node.rational_value;
-    return terms.mk_ite(inner.children.at(0), terms.mk_times(coefficient, inner.children.at(1)),
-                        terms.mk_times(coefficient, inner.children.at(2)));
+    // Snapshot before either product can grow the arena and invalidate inner
+    // (docs/architecture.md, Ownership and Lifetime).
+    const core::TermId condition = inner.children.at(0);
+    const core::TermId then_branch = inner.children.at(1);
+    const core::TermId else_branch = inner.children.at(2);
+    const core::TermId scaled_then = terms.mk_times(coefficient, then_branch);
+    const core::TermId scaled_else = terms.mk_times(coefficient, else_branch);
+    return terms.mk_ite(condition, scaled_then, scaled_else);
   }
   if (node.kind != core::TermKind::Plus) {
     return core::kInvalidTermId;

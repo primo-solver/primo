@@ -1888,6 +1888,49 @@ void constant_ite_atoms_collapse() {
   }
 }
 
+// Original ownership regression: mixed leaves force hoisting, unlike the
+// all-true/all-false scale checks above, which collapse before constructing terms.
+void constant_ite_hoisting_survives_arena_growth() {
+  for (const bool real : {false, true}) {
+    for (const bool sum : {false, true}) {
+      for (const bool nested : {false, true}) {
+        primo::core::SymbolTable symbols;
+        const auto sort = real ? symbols.real_sort() : symbols.int_sort();
+        const auto p_symbol = symbols.declare_constant("p", symbols.bool_sort());
+        const auto q_symbol = symbols.declare_constant("q", symbols.bool_sort());
+        primo::core::TermManager terms(symbols);
+        const auto number = [&](int value) {
+          return terms.mk_rational(primo::util::Rational(value), sort);
+        };
+        const auto p = terms.mk_constant(p_symbol);
+        const auto q = terms.mk_constant(q_symbol);
+        const auto two = number(2);
+        const auto five = number(5);
+        const auto inner = nested ? terms.mk_ite(q, five, two) : five;
+        const auto cite = terms.mk_ite(p, two, inner);
+        const auto expression =
+            sum ? terms.mk_plus({number(3), cite}) : terms.mk_times(primo::util::Rational(3), cite);
+        const auto assertion = terms.mk_le(expression, number(sum ? 6 : 9));
+        const auto yes = terms.mk_bool(true);
+        const auto no = terms.mk_bool(false);
+        const auto expected = terms.mk_ite(p, yes, nested ? terms.mk_ite(q, no, yes) : no);
+
+        // Fill the current allocation with distinct, unreachable numerals.
+        // The first fresh hoisted branch must grow it, independent of the
+        // vector's growth factor. No borrowed reference crosses the call.
+        const std::size_t capacity = terms.terms().capacity();
+        for (int filler = 1000; terms.size() < capacity; ++filler) {
+          number(filler);
+        }
+        const auto simplified = primo::smt::simplify_constant_ites(terms, {assertion});
+        check(terms.terms().capacity() > capacity);
+        check(simplified.atoms_simplified == 1);
+        check(simplified.assertions.at(0) == expected);
+      }
+    }
+  }
+}
+
 // A term that is not a CITE must be left exactly alone.
 void non_constant_ite_atoms_are_untouched() {
   primo::core::SymbolTable symbols;
@@ -2197,6 +2240,7 @@ int main() {
   simplification_distributes_equality_over_an_ite();
   simplification_does_not_distribute_a_shared_ite();
   constant_ite_atoms_collapse();
+  constant_ite_hoisting_survives_arena_growth();
   non_constant_ite_atoms_are_untouched();
   simplification_does_not_distribute_a_nested_ite();
   simplification_rewrites_div_mod_and_abs();

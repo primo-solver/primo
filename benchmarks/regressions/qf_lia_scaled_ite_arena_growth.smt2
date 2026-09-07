@@ -1,0 +1,5 @@
+(set-logic QF_LIA)
+(set-info :status sat)
+(declare-fun b () Bool)
+(assert (<= (* 3 (ite b 2 5)) 9))
+(check-sat)

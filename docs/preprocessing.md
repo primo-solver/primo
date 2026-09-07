@@ -1071,6 +1071,26 @@ identity (`(* k (ite c x y))` = `(ite c (* k x) (* k y))`), so no coefficient is
 ever divided out. And the collapse test reads the leaf set of the original
 term, which already accounts for the scale and the offset exactly.
 
+`hoist_ite_to_top` borrows nodes from `core::TermManager` only while reading
+their inputs. It copies the coefficient and all three ITE child IDs before
+constructing either scaled branch, then builds the branches in separate
+statements. Term storage belongs to the manager; insertion may relocate its
+vector, invalidating a borrowed `Term&` but not a `TermId`. Reading another
+child through that reference after `mk_times` was a heap-use-after-free, even
+when both calls appeared as arguments of one `mk_ite` expression. The repair
+follows the original ownership rule in [](architecture.md), not a new
+simplification algorithm; it adds only fixed-size ID copies and leaves the
+identity and asymptotic cost unchanged.
+
+`constant_ite_hoisting_survives_arena_growth` fills the current arena allocation
+with distinct terms before simplifying a mixed-outcome comparison. It verifies
+that capacity grows and that the resulting Boolean term is correct for scales,
+sums, nested ITEs, and Int/Real sorts. The earlier scaled tests decided every
+leaf the same way and bypassed hoisting. The minimal default-profile input is
+`benchmarks/regressions/qf_lia_scaled_ite_arena_growth.smt2`; the targeted SLURM
+gate is `scripts/slurm_cite_hoisting_fuzz_gate.sbatch`. This lifetime repair does
+not address the separate QF_UFLIA model-completion bug.
+
 **The caches are not an optimisation.** The csimp cache is keyed on
 `(op, term, constant, side)` and shared across the whole pass, as the thesis
 requires. Keying it per atom instead -- which recomputes every shared CITE
