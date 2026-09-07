@@ -173,3 +173,11 @@ for boundary testing, but its out-of-fragment and ill-scoped mutants must be
 classified separately; they are not model-validation passes. Both profiles
 check every original seed first and send identical solver options to answer
 comparison and independent printed-model validation.
+
+FuzzSMT's Real generator can emit products of constant expressions that Dolmen
+rejects under its strict linear grammar. The semantic revalidation gate retains
+the exact assertions and models but uses Dolmen's
+`--force-smtlib2-logic=QF_NRA`, a semantic superset, to check their truth. This
+does not establish strict QF_LRA syntax conformance. The separate
+`slurm_typed_lra_reconstruction_gate.sbatch` uses the conforming Boolean/affine
+generator across all preprocessing modes and explicitly tests monotone replay.
