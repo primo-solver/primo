@@ -3,6 +3,19 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-07-model-redesign-baseline-df04e80",
+      "date": "2026-09-07",
+      "kind": "local-model-regression-baseline",
+      "commit": "df04e80",
+      "evidence_status": "historical",
+      "environment": {"host": "local development workspace", "build": "existing development build, rebuilt before model implementation edits"},
+      "inputs": {"count": 8, "files": "benchmarks/regressions/qf_uflia_model_evaluated_tuple.smt2 and all seven bugs/qf-uflia-nested-application-model/*.smt2"},
+      "command": "PATH=contrib/local/bin:$PATH python3 scripts/validate_model.py --solver ./build/primo --solver-arg=--quiet --require-dolmen-pass --dolmen-arg=--strict=false --timeout 5 --dolmen-timeout 5 --out results/model-redesign-baseline-df04e80 benchmarks/regressions/qf_uflia_model_evaluated_tuple.smt2 bugs/qf-uflia-nested-application-model/*.smt2",
+      "summary": {"sat": 8, "dolmen_pass": 7, "model_error": 1, "solver_crash": 0, "timeout": 0},
+      "artifacts": "results/model-redesign-baseline-df04e80",
+      "notes": "Latest evaluated-tuple witness fails Dolmen (exit 6); all seven historical witnesses pass. Validator reports z3-fallback for the failing row after the Dolmen failure; it remains model-error, not accepted evidence. Baseline source had only the new fixture/design documentation added when rebuilt; model implementation was unchanged. This is focused diagnostic evidence, not the required final SLURM gate."
+    },
+    {
       "id": "2026-09-07-cite-hoisting-lifetime-slurm-134014",
       "date": "2026-09-07",
       "kind": "targeted-preprocessing-lifetime-merge-gate",

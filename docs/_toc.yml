@@ -7,6 +7,7 @@ parts:
   - caption: Core architecture
     chapters:
       - file: architecture
+      - file: model-interpretation
       - file: tactics
         sections:
           - file: tactic-reference

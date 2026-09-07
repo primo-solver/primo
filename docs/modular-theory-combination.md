@@ -121,6 +121,10 @@ remain in its specialized coordinator.
 
 ## Integer model reconstruction
 
+The general replacement is specified in [](model-interpretation.md). It is a
+staged migration; the description below documents the legacy implementation
+until its callers have all moved to finalized typed interpretations.
+
 `qf_uflia_int_values` and `QfUfModelBuilder` consume the same
 `TheoryModelAssignment` vector, assembled once from `ModelConversionChain` and
 the final EUF assignment. The vector is owned by the QF_UFLIA engine for the
