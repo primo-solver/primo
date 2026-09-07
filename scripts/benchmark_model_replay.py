@@ -26,8 +26,11 @@ INCOMPLETE = {
 
 
 def digest(path: Path) -> str:
+    checksum = hashlib.sha256()
     with path.open("rb") as stream:
-        return hashlib.file_digest(stream, "sha256").hexdigest()
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            checksum.update(block)
+    return checksum.hexdigest()
 
 
 def write_json(path: Path, value: object) -> None:

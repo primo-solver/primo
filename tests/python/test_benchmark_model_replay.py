@@ -16,6 +16,15 @@ SPEC.loader.exec_module(MODULE)
 
 
 class BenchmarkModelReplayTests(unittest.TestCase):
+    def test_streaming_digest_supports_cluster_python(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "bytes"
+            path.write_bytes(b"abc")
+            self.assertEqual(
+                MODULE.digest(path),
+                "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+            )
+
     def test_selection_requires_successful_process_not_known_status(self) -> None:
         good = {
             "file": "x",

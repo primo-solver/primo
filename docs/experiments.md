@@ -49,6 +49,8 @@ passes or individual rows. Invalid/changed/malformed results fail; resource limi
 unsupported inputs and missing rows leave coverage incomplete. The independent
 validator records solver and validator durations separately. No new solver
 algorithm is introduced by this workflow.
+The workflow uses streaming SHA-256 from the standard library and supports the
+cluster's Python 3.9; it does not require Python 3.11's `hashlib.file_digest`.
 
 (formula-analyzer)=
 ## Analyzing benchmark shape: use the analyzer, not grep
