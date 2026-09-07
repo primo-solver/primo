@@ -7,7 +7,7 @@
       "date": "2026-09-07",
       "kind": "full-supported-logic-revalidation-with-independent-sat-replay",
       "commit": "287b743",
-      "report_driver_commit": "47678d7",
+      "report_driver_commit": "0196087",
       "evidence_status": "pending",
       "scope": "User-requested complete revalidation after the model migration: local checks, generated/profile/mutation correctness gates, whole-tree static review, every available real SMT-LIB input in five supported logics against Primo/Z3/cvc5, then independent Dolmen replay of every successful Primo SAT row. No performance promotion is claimed while correctness coverage is pending or incomplete.",
       "environment": {
@@ -68,7 +68,7 @@
       },
       "corpora": {
         "QF_UF": {"count": 7503, "root": "/home/janotmik/primo-cadical-profile/tmp/QF_UF", "primo_shards": 64, "primo_concurrency": 16, "reference_shards": 32, "reference_concurrency": 8},
-        "QF_LIA": {"count": 13306, "root": "/home/janotmik/primo-cadical-profile/sandbox/non-incremental/QF_LIA", "primo_shards": 80, "primo_concurrency": 32, "reference_shards": 32, "reference_concurrency": 16},
+        "QF_LIA": {"count": 13306, "root": "/home/janotmik/primo-cadical-profile/sandbox/non-incremental/QF_LIA", "primo_shards": 80, "primo_concurrency": 80, "reference_shards": 32, "reference_concurrency": 32},
         "QF_LRA": {"count": 1753, "root": "/home/janotmik/primo-cadical-profile/sandbox/non-incremental/QF_LRA", "primo_shards": 16, "primo_concurrency": 8, "reference_shards": 8, "reference_concurrency": 4},
         "QF_UFLRA": {"count": 1284, "root": "/home/janotmik/primo-cadical-profile/sandbox/non-incremental/QF_UFLRA", "primo_shards": 16, "primo_concurrency": 8, "reference_shards": 8, "reference_concurrency": 4},
         "QF_UFLIA": {"count": 659, "root": "/home/janotmik/primo-model-fix/tmp/QF_UFLIA", "primo_shards": 16, "primo_concurrency": 8, "reference_shards": 8, "reference_concurrency": 4}
@@ -78,6 +78,23 @@
       "artifacts": {"remote": "/home/janotmik/primo-model-fix/results/full-revalidation-287b743", "local": "results/full-revalidation-287b743", "submission_logs": "tmp/full-revalidation-{jobs,timing-jobs,replay-jobs}.tsv and matching *-preflight.log", "retention": "Large inputs, solver logs and model output retained remotely; summaries and provenance collected locally. Run-log and committed drivers reproduce the workflow."},
       "results": {
         "status": "pending; jobs submitted, no full-corpus correctness or performance claim yet",
+        "generated_gates": {
+          "case_profile_runs": 36000,
+          "answer_pass": 35807,
+          "answer_timeout": 191,
+          "answer_unknown_involved": 2,
+          "cross_logic_models": {"pass": 11252, "not_sat": 4795, "input_nonconforming": 1761, "solver_timeout": 190, "solver_unknown": 2},
+          "lra_reconstruction": {"answer_pass": 7000, "dolmen_sat_pass": 7000},
+          "uflia": {"answer_pass": 3000, "dolmen_sat_pass": 1488, "witness_pass": 72},
+          "uflra": {"general_answer_pass": 3000, "finite_uf_answer_pass": 500, "finite_uflra_answer_pass": 500, "general_dolmen_sat_pass": 1747, "finite_uflra_dolmen_sat_pass": 252},
+          "uflra_no_reconciliation": {"answer_pass": 3000, "dolmen_sat_pass": 1713},
+          "cite": {"answer_pass": 1000, "regression_pass": 1},
+          "qualification": "No wrong answer, crash, parser/type rejection by Primo, model error or decisive reference disagreement. Four strict cross-logic LRA tasks fail for generator/input grammar exceptions; semantic follow-up below is explicitly separate. Resource rows are not counted as passes. Counts are case/profile executions, not a claim that all generated terms are unique across option variants."
+        },
+        "lra_semantic_followup": {"inputs": 3000, "dolmen_sat_pass": 2561, "not_sat": 330, "solver_timeout": 109, "invalid_model": 0, "qualification": "All four tasks completed 0:0. Dolmen forced QF_NRA validates identical assertions; this is semantic model evidence, not strict QF_LRA grammar conformance. These replay rows overlap the cross-logic corpus and are not added as new generated cases."},
+        "mutations": {"retained": 4140, "answer_pass": 4135, "solver_timeout": 5, "dolmen_sat_pass": 2502, "saved_unclassified_bug_files": 0, "qualification": "Three MathSAT tasks have exit 1 solely for five timeout rows (two with default combination, three with combination disabled); all references on these rows return UNSAT. Other tasks complete with no disagreement, crash or invalid model. Original seed models add 76 SAT Dolmen passes, separately from mutant counts."},
+        "compositions": {"profiles": 11, "cases": 11, "answer_rows": 174, "repeats": 2, "failures": 0, "inconclusive": 0, "dolmen_sat_pass": 48},
+        "static": {"state": "COMPLETED 0:0", "elapsed": "00:19:50", "files": 99, "blocking_findings": 0, "analyzer": "Same one NewDeleteLeaks warning at tactic.cpp:69 as prior scan. Reinspection confirms make_shared ownership retained by Goal::data_ -> Data::assertions, with no release or ownership cycle; leak-enabled ASan passes. No suppression or source rewrite added.", "include_advisories": "23 unused-header suggestions are all paired implementation/public-header self-includes, deliberately retained. 180 missing-direct-header style advisories match the documented baseline. No remaining non-paired unused header or new compiler error."},
         "cluster_replay_smoke": "134845 COMPLETED 0:0: 17 workflow Python tests, two timed UFLIA smoke inputs (one SAT, one UNSAT), selected SAT replay directly accepted by Dolmen",
         "saved_bug_triage": "134953 completed the deterministic composition matrix, then its raw saved-bug comparator reported nine PASS and one INCOMPLETE: witness-unvalued-constant.smt2 requests get-model without :produce-models true, so Primo exits 2 with 'get-model requires :produce-models true' while permissive Z3 answers SAT. This is a historical command-sequence defect, not an invalid model. The failed raw attempt is retained. Followup 134971 uses the shared command adapter on all ten witnesses: seven SAT models directly pass Dolmen, three UNSAT, COMPLETED 0:0. Historical inputs remain unchanged. Timing dependencies include both jobs."
       }
