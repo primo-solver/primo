@@ -14,6 +14,11 @@ parser grammars, tests, comments, documentation text, or build logic from them.
 
 For solver benchmark work:
 
+- count only successful `sat`/`unsat` answers as solved; process status `ok`
+  alone is insufficient. Keep `unknown` separate, and let timeout/error status
+  override any answer printed during termination. Apply the same definition to
+  PAR2, family summaries, paired runtime sets, gains and losses;
+
 - record the exact benchmark set, timeout, command line, commit, host or SLURM
   job id, and result artifact path;
 - add or update an entry in `docs/run-log.json` for every nontrivial benchmark,

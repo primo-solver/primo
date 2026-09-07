@@ -45,6 +45,11 @@ CSV is not authoritative. Unreadable journal records are explicit coverage issue
 not silent passes or grounds for discarding every other shard's progress.
 An `unknown` response emitted during timeout termination remains a timeout,
 not a second independent unknown result.
+The flat-CSV `summarize_benchmark_shards.py` helper uses the same decisive-answer
+rule for solve counts, family summaries, PAR2 and paired recoveries/losses.
+Its older `status == ok` accounting incorrectly credited `unknown`; recompute
+affected historical summaries from their raw rows instead of assuming those
+aggregates are comparable.
 
 The model command adapter scans top-level boundaries without building or
 expanding term trees. It preserves assertion text and comments, understands

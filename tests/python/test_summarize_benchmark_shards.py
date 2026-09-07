@@ -17,6 +17,26 @@ def write_rows(path: Path, rows: list[dict[str, str]]) -> None:
 
 
 class SummarizeBenchmarkShardsTests(unittest.TestCase):
+    def test_unknown_is_unsolved_for_totals_families_par2_and_comparison(self) -> None:
+        unknown = {"file": "a", "family": "A", "status": "ok", "answer": "unknown",
+                   "wrong": "false", "seconds": "0.1"}
+        baseline = {"a": unknown}
+        candidate = {"a": {**unknown, "answer": "sat", "seconds": "2.0"}}
+        summary = summarize(baseline, 5)
+        self.assertEqual(summary["solved"], 0)
+        self.assertEqual(summary["unknown"], 1)
+        self.assertEqual(summary["solved_seconds"], 0)
+        self.assertEqual(summary["par2"], 10)
+        self.assertEqual(summary["families"]["A"]["solved"], 0)
+        self.assertEqual(summary["families"]["A"]["unknown"], 1)
+        self.assertEqual(summary["families"]["A"]["par2"], 10)
+        self.assertEqual(compare(baseline, candidate)["recoveries"], ["a"])
+        self.assertEqual(compare(candidate, baseline)["losses"], ["a"])
+        self.assertEqual(compare(baseline, candidate)["common_solved"], 0)
+        timed_out = summarize({"a": {**unknown, "status": "timeout"}}, 5)
+        self.assertEqual(timed_out["unknown"], 0)
+        self.assertEqual(timed_out["timeout"], 1)
+
     def test_aggregate_and_compare(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

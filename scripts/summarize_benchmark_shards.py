@@ -25,6 +25,10 @@ from pathlib import Path
 DECISIVE = {"sat", "unsat"}
 
 
+def is_solved(row: dict[str, str]) -> bool:
+    return row.get("status") == "ok" and row.get("answer") in DECISIVE
+
+
 def load_rows(directory: Path) -> dict[str, dict[str, str]]:
     rows: dict[str, dict[str, str]] = {}
     for path in sorted(directory.glob("*.csv")):
@@ -48,17 +52,17 @@ def summarize(rows: dict[str, dict[str, str]], timeout: float) -> dict[str, obje
     answers = collections.Counter(
         row.get("answer", "")
         for row in rows.values()
-        if row.get("status") == "ok"
+        if is_solved(row)
     )
     wrong = sum(row.get("wrong", "").lower() == "true" for row in rows.values())
     solved_seconds = sum(
         float(row.get("seconds", 0.0))
         for row in rows.values()
-        if row.get("status") == "ok"
+        if is_solved(row)
     )
     par2 = sum(
         float(row.get("seconds", 0.0))
-        if row.get("status") == "ok"
+        if is_solved(row)
         else 2.0 * timeout
         for row in rows.values()
     )
@@ -72,17 +76,19 @@ def summarize(rows: dict[str, dict[str, str]], timeout: float) -> dict[str, obje
         family_answers = collections.Counter(
             row.get("answer", "")
             for row in family_rows.values()
-            if row.get("status") == "ok"
+            if is_solved(row)
         )
         family_par2 = sum(
             float(row.get("seconds", 0.0))
-            if row.get("status") == "ok"
+            if is_solved(row)
             else 2.0 * timeout
             for row in family_rows.values()
         )
         families[family] = {
             "files": len(family_rows),
-            "solved": family_statuses["ok"],
+            "solved": family_answers["sat"] + family_answers["unsat"],
+            "unknown": sum(row.get("status") == "ok" and row.get("answer") == "unknown"
+                           for row in family_rows.values()),
             "sat": family_answers["sat"],
             "unsat": family_answers["unsat"],
             "timeout": family_statuses["timeout"],
@@ -97,7 +103,9 @@ def summarize(rows: dict[str, dict[str, str]], timeout: float) -> dict[str, obje
 
     return {
         "files": len(rows),
-        "solved": statuses["ok"],
+        "solved": answers["sat"] + answers["unsat"],
+        "unknown": sum(row.get("status") == "ok" and row.get("answer") == "unknown"
+                       for row in rows.values()),
         "sat": answers["sat"],
         "unsat": answers["unsat"],
         "timeout": statuses["timeout"],
@@ -136,26 +144,24 @@ def compare(
     common_solved = [
         file
         for file in common
-        if baseline[file].get("status") == "ok" and candidate[file].get("status") == "ok"
+        if is_solved(baseline[file]) and is_solved(candidate[file])
     ]
     disagreements = [
         file
         for file in common
-        if baseline[file].get("status") == "ok"
-        and candidate[file].get("status") == "ok"
-        and baseline[file].get("answer") in DECISIVE
-        and candidate[file].get("answer") in DECISIVE
+        if is_solved(baseline[file])
+        and is_solved(candidate[file])
         and baseline[file].get("answer") != candidate[file].get("answer")
     ]
     recoveries = [
         file
         for file in common
-        if baseline[file].get("status") != "ok" and candidate[file].get("status") == "ok"
+        if not is_solved(baseline[file]) and is_solved(candidate[file])
     ]
     losses = [
         file
         for file in common
-        if baseline[file].get("status") == "ok" and candidate[file].get("status") != "ok"
+        if is_solved(baseline[file]) and not is_solved(candidate[file])
     ]
     return {
         "common_files": len(common),
