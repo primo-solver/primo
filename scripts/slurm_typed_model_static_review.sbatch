@@ -31,6 +31,9 @@ else
 fi
 mapfile -t sources < "$OUT/sources.txt"
 (( ${#sources[@]} > 0 ))
+# Fail fast on a missing compiler environment before scheduling the whole tree.
+clang-tidy -p build-slurm-rel -checks='-*,clang-diagnostic-*' \
+  "${header_args[@]}" src/main.cpp > "$OUT/compiler-probe.log" 2>&1
 clang-tidy -p build-slurm-rel "${header_args[@]}" "${sources[@]}" > "$OUT/tidy.log" 2>&1
 clang-tidy -p build-slurm-rel -checks='-*,clang-diagnostic-*,misc-include-cleaner' \
   "${header_args[@]}" "${sources[@]}" > "$OUT/include-cleaner.log" 2>&1

@@ -43,7 +43,8 @@ python3 scripts/validate_model.py --solver ./build-slurm-rel/primo "${solver_arg
 
 mutation_args=(--typefuzz "$MUTATOR")
 if [[ $MUTATOR == opfuzz ]]; then
-  mutation_args+=(--config scripts/fuzz_configs/model_linear_ops.txt)
+  mutation_args=(--typefuzz "$PWD/scripts/seeded_opfuzz.py"
+                 --config scripts/fuzz_configs/model_linear_ops.txt)
 fi
 printf '%s\n' "$MUTATOR" "${mutation_args[@]}" > "$OUT/mutator.txt"
 scripts/yinyang_fuzz.sh --seeds "$SEEDS" "${mutation_args[@]}" \
@@ -54,9 +55,17 @@ scripts/yinyang_fuzz.sh --seeds "$SEEDS" "${mutation_args[@]}" \
   --random-seed "$((202609500 + TASK))" --keep-logic --hoist-declarations --keep-mutants
 mutants=("$OUT"/scratch/*.smt2)
 [[ -e ${mutants[0]} ]]
+# YinYang's own comparison can accept an answer followed by an unrecognised
+# nonzero exit. Recheck every retained input using the status-aware comparator.
+answer_status=0
+python3 scripts/check_solver_seed_corpus.py --seeds "$OUT/scratch" \
+  --solver ./build-slurm-rel/primo "${solver_args[@]}" --ref z3 \
+  --timeout "$TIMEOUT" --out "$OUT/mutant-answers.csv" || answer_status=$?
+model_status=0
 python3 scripts/validate_model.py --solver ./build-slurm-rel/primo "${solver_args[@]}" \
   --require-dolmen-pass --dolmen-arg=--strict=false --timeout "$TIMEOUT" \
-  --dolmen-timeout 5 --out "$OUT/mutant-models" "${mutants[@]}"
+  --dolmen-timeout 5 --out "$OUT/mutant-models" "${mutants[@]}" || model_status=$?
+if (( answer_status != 0 || model_status != 0 )); then exit 1; fi
 # A wall-terminated differential runner may return success with saved bugs.
 # Never accept those until they have been independently classified.
 if [[ -d $OUT/bugs ]] && [[ -n $(find "$OUT/bugs" -type f -print -quit) ]]; then

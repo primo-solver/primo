@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Stage the build compiler's C++ headers for header-poor SLURM compute nodes.
+"""Stage the build compiler's headers for header-poor SLURM compute nodes.
 
 This is optional clang-tidy tooling, not a compiler or solver dependency. The
-compiler's own search order is preserved; system C headers and Clang's builtin
-headers still come from the review host/tool installation.
+compiler's own search order is preserved, including its C system headers.
 """
 
 from __future__ import annotations
@@ -24,9 +23,9 @@ def cxx_search_paths(output: str) -> list[Path]:
             active = False
         elif active:
             path = Path(line.strip())
-            if "c++" in path.parts:
+            if path.is_absolute():
                 paths.append(path)
-    if not paths:
+    if not any("c++" in path.parts for path in paths):
         raise ValueError("compiler did not report C++ standard-library header paths")
     return paths
 
@@ -49,7 +48,7 @@ def main() -> int:
         staged.append(str(destination))
     (args.out / "include-paths.txt").write_text("\n".join(staged) + "\n")
     (args.out / "compiler-search.txt").write_text(probe.stderr)
-    print(f"staged {len(staged)} C++ include search roots under {args.out}")
+    print(f"staged {len(staged)} compiler include search roots under {args.out}")
     return 0
 
 

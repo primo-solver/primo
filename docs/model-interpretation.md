@@ -158,8 +158,8 @@ preparation helper can provision this optional target with
 `--contrib-target contrib-clang-tools --reuse-dependencies`. The static-review
 batch script checks every non-generated C++ source in the prepared tracked
 snapshot and records its manifest, rather than relying on remote Git metadata.
-The optional installer also snapshots the build compiler's C++ header search
-roots for compute nodes without matching development headers. Review adds those
+The optional installer also snapshots the build compiler's C and C++ header
+search roots for compute nodes without development headers. Review adds those
 roots in compiler order to the existing compile database; it does not rebuild
 the solver with the compute node's potentially different compiler. The first
 static-review attempt exposed that environmental mismatch before any analysis
@@ -173,6 +173,11 @@ for boundary testing, but its out-of-fragment and ill-scoped mutants must be
 classified separately; they are not model-validation passes. Both profiles
 check every original seed first and send identical solver options to answer
 comparison and independent printed-model validation.
+For the supported fork, `scripts/seeded_opfuzz.py` seeds Python's random generator
+before executing the installed OpFuzz launcher, since only TypeFuzz exposes a
+native `--seed` flag. Every retained mutant also receives a fresh answer check
+through `check_solver_seed_corpus.py`: YinYang's handling of generic nonzero
+solver exits is not sufficient as the gate's acceptance oracle.
 
 FuzzSMT's Real generator can emit products of constant expressions that Dolmen
 rejects under its strict linear grammar. The semantic revalidation gate retains

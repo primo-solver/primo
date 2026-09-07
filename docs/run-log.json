@@ -3,6 +3,19 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-07-typed-model-gate-tool-contract-followup",
+      "date": "2026-09-07",
+      "kind": "verification-tool-contract-diagnostics",
+      "commit": "6f89774",
+      "evidence_status": "diagnostic",
+      "environment": {"host": "CIIRC SLURM cluster", "static_job": "134605", "opfuzz_jobs": ["134635", "134636", "134637", "134638", "134639", "134640"]},
+      "commands": {"static": "sbatch scripts/slurm_typed_model_static_review.sbatch; PRIMO_EXPECTED_GIT=6f89774", "opfuzz": "sbatch scripts/slurm_typed_model_mutation_gate.sbatch; PRIMO_MUTATION_TOOL=opfuzz, PRIMO_EXPECTED_GIT=6f89774; original corpus/profile matrix retained from the typefuzz diagnostic runs", "scope_check": "For each retained 8ff9991 mutation with an unknown ?v_ symbol diagnostic, run contrib/local/bin/z3 -T:1 on its saved primo-input.smt2, with subprocess timeout 2 seconds; check nonzero status and independent unknown-constant diagnostic"},
+      "reference": {"fuzzer": "YinYang fork 04c8618a134e7a6c8b6d54fcd5ee9fd2ec64a2bb, package version 0.3.0", "answer": "Z3", "model": "Dolmen"},
+      "results": {"static": "FAILED before useful analysis: compute nodes also lack system C headers (bits/wordsize.h and unistd.h). Follow-up stages all compiler include roots, not just C++ roots, and adds a single-file compiler-environment probe before the whole-tree scan.", "opfuzz": "Original seed checks ran; mutation did not start because the installed OpFuzz CLI rejects --seed. Only TypeFuzz exposes that argument. The follow-up seeded_opfuzz.py seeds Python's RNG and executes the actual installed script via runpy; it does not rely on nonexistent package console-entry-point metadata.", "fuzzer_status_audit": "The installed Fuzzer.py checks some nonzero exits but can still accept a generic nonzero exit with sat/unsat output. The gate now independently reruns every retained mutant with check_solver_seed_corpus.py, whose post-answer-crash handling is regression-tested, before accepting its answers. Model validation checks process status independently too.", "unrestricted_typefuzz": {"retained_mutants": 2799, "dolmen_pass": 1093, "not_sat": 654, "solver_error": 1040, "dolmen_input_nonconforming": 12, "independently_confirmed_ill_scoped_inputs": 59, "remaining_error_diagnostics": "981 explicit unsupported arithmetic/operator/sort cases; no model-error diagnostic"}},
+      "artifacts": ["results/typed-static-6f89774", "results/typed-opfuzz-mathsat-6f89774", "results/typed-opfuzz-uf-6f89774", "results/typed-opfuzz-uflra-regressions-6f89774", "results/typed-opfuzz-uflra-real-6f89774", "results/typed-opfuzz-lra-real-6f89774", "results/typed-opfuzz-mathsat-fallback-6f89774", "results/typed-mutation-*-8ff9991"],
+      "notes": "These are tooling failures/diagnostics, not accepted mutation or static gates. No performance claim. Fresh restricted mutation must pass an actual-tool smoke check before its campaign. Local 6f89774 implementation verification: make check (28 CTest, 91 Python), make asan-test (28 PASS, 50.72 seconds), make docs. Follow-up tooling unit suite: 94 tests PASS."
+    },
+    {
       "id": "2026-09-07-typed-model-review-environment-and-mutation-triage",
       "date": "2026-09-07",
       "kind": "verification-workflow-diagnostics",

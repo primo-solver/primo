@@ -12,7 +12,7 @@ spec.loader.exec_module(module)
 
 
 class HeaderSearchTests(unittest.TestCase):
-    def test_preserves_compiler_order_and_excludes_c_headers(self):
+    def test_preserves_compiler_order_including_c_headers(self):
         output = """ignored /usr/include/c++/99
 #include <...> search starts here:
  /usr/include/c++/11
@@ -23,6 +23,7 @@ End of search list.
 """
         self.assertEqual(module.cxx_search_paths(output), [
             Path("/usr/include/c++/11"), Path("/usr/include/c++/11/target"),
+            Path("/usr/include"),
         ])
 
     def test_missing_cpp_headers_is_an_error(self):
