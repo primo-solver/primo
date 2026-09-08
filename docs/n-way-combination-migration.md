@@ -255,8 +255,20 @@ watchlist before sharding. It launches no reference solver. Each candidate
 round's SAT rows are subsequently replayed by a separate validation job.
 Both scripts explicitly require one node and one task: they launch one serial
 Python harness, not a distributed program. Select eligible timing nodes through
-exclusions or constraints, not a multi-node `--nodelist` (which requests every
-listed node). Inspect the allocated node/task counts immediately after submission.
+exclusions or constraints; without the explicit node-count limit, a multi-node
+`--nodelist` can reserve every listed node. Inspect the allocated node/task
+counts immediately after submission. The cluster's allocation-only check with
+`--nodes=1 --ntasks=1` and a two-node list selects just one node; it does not
+reject that combination of arguments.
+
+`slurm_component_loss_rerun.sbatch` performs exactly three baseline/candidate
+pairs on an explicit lost-solve manifest, alternating order within one
+allocation. Use one input per shard with its default ten-minute allocation and
+60-second solver budget. It forwards the same profile options and records the
+same hashed provenance as the full comparison; no reference solver is launched.
+A candidate loss in at least two of the three pairs blocks acceptance. These
+focused repetitions do not replace the full-corpus aggregate timing thresholds.
+Any SAT answers produced by the reruns still require separate model validation.
 
 `slurm_component_migration_fuzz.sbatch` covers the full 16-profile cross-product
 of preprocessing auto/off/basic/strong, model guidance on/off and online mode

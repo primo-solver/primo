@@ -4,6 +4,8 @@
   "entries": [
     {
       "id": "2026-09-08-n-component-preservation-four-logics",
+      "loss_rerun_harness": "scripts/slurm_component_loss_rerun.sbatch requires an explicit manifest and performs exactly three alternating baseline/candidate pairs with unchanged budgets/options. Python regression executes the shell against a recording harness and checks all6 invocations, arm order, revisions, budgets, profile forwarding and output paths. All125 Python tests, lint, docs, sbatch validator/bash -n and diff checks pass; logs tmp/n-way-loss-rerun-{tests,lint,docs}.log. C++ and active job scripts are untouched. Prepared manifest benchmarks/component-migration-qf-uf-lost-1.txt contains PEQ/PEQ002_size8.smt2: baseline round0 timed out, round1 UNSAT55.858201s; candidate timed out in round1. This triggers the prescribed3-pair check, not a wrong-answer finding.",
+      "single_node_allocation_probe": "After fresh preflight, sbatch --test-only --array=0 --nodes=1 --ntasks=1 --nodelist=node-03,node-04 scripts/slurm_component_migration_compare.sbatch returned a hypothetical allocation using2 logical processors on node-04 only. The explicit bound selects one listed node rather than rejecting the argument combination; documentation corrected accordingly. This was --test-only, no solver job or benchmark run was submitted (printed hypothetical139049).",
       "uflra_completed": {
         "timing_job": "138217", "model_jobs": ["138309", "138336"], "state": "all192 array tasks completed",
         "artifact": "results/n-way-2413397/preservation-v2/QF_UFLRA",

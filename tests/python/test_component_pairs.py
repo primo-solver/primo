@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -18,11 +20,56 @@ class ComponentPairsTests(unittest.TestCase):
         for name in (
             "slurm_component_migration_compare.sbatch",
             "slurm_real_corpus_validation.sbatch",
+            "slurm_component_loss_rerun.sbatch",
         ):
             with self.subTest(script=name):
                 directives = (SCRIPT.parent / name).read_text().splitlines()
                 self.assertIn("#SBATCH --nodes=1", directives)
                 self.assertIn("#SBATCH --ntasks=1", directives)
+
+    def test_lost_solve_job_runs_exactly_three_alternating_pairs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "scripts").mkdir()
+            (root / "scripts/benchmark_model_replay.py").write_text(
+                "import json, sys\n"
+                "with open('calls.jsonl', 'a') as stream:\n"
+                "    stream.write(json.dumps(sys.argv[1:]) + '\\n')\n"
+            )
+            environment = {
+                **os.environ,
+                "PRIMO_WORKDIR": str(root),
+                "PRIMO_COMPARE_OUT_ROOT": str(root / "out"),
+                "PRIMO_COMPARE_ROOT": str(root / "corpus"),
+                "PRIMO_COMPARE_MANIFEST": str(root / "manifest.txt"),
+                "PRIMO_COMPARE_SHARDS": "1",
+                "SLURM_ARRAY_TASK_ID": "0",
+                "PRIMO_BASELINE_SOLVER": "baseline-primo",
+                "PRIMO_CANDIDATE_SOLVER": "candidate-primo",
+                "PRIMO_BASELINE_GIT": "baseline-git",
+                "PRIMO_EXPECTED_GIT": "candidate-git",
+                "PRIMO_COMPARE_TIMEOUT": "60",
+                "PRIMO_SOLVER_ARGS": "--no-qf-uflia-model-combination",
+            }
+            subprocess.run(
+                ["bash", str(SCRIPT.parent / "slurm_component_loss_rerun.sbatch")],
+                env=environment, check=True, timeout=10,
+            )
+            calls = [json.loads(line) for line in (root / "calls.jsonl").read_text().splitlines()]
+            self.assertEqual(len(calls), 6)
+            for index, arm in enumerate(("baseline", "candidate", "candidate",
+                                         "baseline", "baseline", "candidate")):
+                call = calls[index]
+                self.assertEqual(call[0], "benchmark")
+                self.assertEqual(call[call.index("--solver") + 1], f"{arm}-primo")
+                self.assertEqual(call[call.index("--expected-git") + 1], f"{arm}-git")
+                self.assertEqual(call[call.index("--timeout") + 1], "60")
+                self.assertEqual(call[call.index("--manifest") + 1], str(root / "manifest.txt"))
+                self.assertIn("--solver-arg=--quiet", call)
+                self.assertIn("--solver-arg=--stats", call)
+                self.assertIn("--solver-arg=--no-qf-uflia-model-combination", call)
+                self.assertEqual(call[call.index("--out") + 1],
+                                 str(root / f"out/round-{index // 2}/{arm}/shard-0"))
 
     def test_complete_pair_provenance_and_mismatch_rejection(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
