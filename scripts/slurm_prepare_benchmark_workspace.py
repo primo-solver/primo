@@ -214,6 +214,7 @@ if [ ! -x {shlex.quote(cmake)} ]; then
   python -m pip install --upgrade pip cmake
 fi
 case "$cmake_path" in
+  /*) cmake_dir=$(dirname "$cmake_path"); export PATH="$cmake_dir:$PATH" ;;
   */*) cmake_dir=$(dirname "$cmake_path"); export PATH="$PWD/$cmake_dir:$PATH" ;;
 esac
 {dependency_setup}
@@ -243,6 +244,26 @@ printf '%s\\n' "$version" | grep -F 'cadical:'
 ldd build-slurm-rel/{shlex.quote(target)} >/dev/null
 {tool_checks}
 """.strip()
+
+
+def with_cxx_headers(command: str, manifest: str) -> str:
+    """Use a pre-provisioned matching compiler header snapshot on compute nodes."""
+    setup = f"""
+set -eu
+cxx_header_flags=
+while IFS= read -r header_root; do
+  case "$header_root" in
+    ''|*[!a-zA-Z0-9_./-]*) echo 'invalid C++ header path in manifest' >&2; exit 2 ;;
+  esac
+  test -d "$header_root"
+  cxx_header_flags="$cxx_header_flags -isystem $header_root"
+done < {shlex.quote(manifest)}
+test -n "$cxx_header_flags"
+export CXXFLAGS="${{CXXFLAGS:-}}$cxx_header_flags"
+printf '%s\\n' {shlex.quote('C++ header manifest: ' + manifest)}
+sha256sum {shlex.quote(manifest)}
+""".strip()
+    return setup + "\n" + command
 
 
 def active_primo_jobs_command(workdir: str) -> str:
@@ -298,6 +319,10 @@ def main() -> int:
         "--build-via-slurm",
         action="store_true",
         help="Run the clean build in a synchronous SLURM allocation, not on the SSH login host",
+    )
+    parser.add_argument(
+        "--cxx-header-manifest",
+        help="Remote absolute manifest of pre-provisioned include directories matching the compiler",
     )
     parser.add_argument(
         "--contrib-target",
@@ -385,6 +410,8 @@ def main() -> int:
             contrib_targets,
             args.reuse_dependencies,
         )
+        if args.cxx_header_manifest:
+            command = with_cxx_headers(command, args.cxx_header_manifest)
         if args.build_via_slurm:
             command = (
                 f"srun --job-name=primo-build --cpus-per-task={args.jobs} --mem=8G "

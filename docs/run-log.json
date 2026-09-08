@@ -3,6 +3,20 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-08-n-component-migration",
+      "date": "2026-09-08",
+      "kind": "architecture-migration-qualification",
+      "commit": "e042e92 (solver source candidate; build-helper follow-up pending)",
+      "evidence_status": "in-progress-not-qualified",
+      "scope": "N-component production QF_UFLIA driver, incremental dispatcher and checked fragment assembly; dedicated and experimental-generic QF_UFLRA sources frozen. Exact-candidate generated/profile/mutation correctness gates precede paired sample20, watchlist4, full659 and five-logic preservation measurements. Reuse existing reference-corpus records; independent Dolmen replay remains separate from speed.",
+      "baseline": {"commit": "287b743", "binary": "/home/janotmik/primo-model-fix/results/full-revalidation-287b743/bin/primo", "sha256": "5a671d47882f555f3522c92b7b6c05a76c3bbdfde6ec2cb714b69e76c519b3f7", "parent_run": "2026-09-07-full-revalidation-287b743"},
+      "environment": {"host": "CIIRC SLURM via ssh -J janotmik@data.ciirc.cvut.cz janotmik@10.35.125.63", "workspace": "/home/janotmik/primo-model-fix", "compiler": "GCC 11.4.1; compute nodes lack standard C++ development headers; matching pre-provisioned compiler header snapshot available"},
+      "verification": {"local": "make check: 29/29 CTests and 111/111 Python tests before candidate commit; make lint and make docs pass. make asan-test final rerun: 29/29 in 51.85s. Focused clang-tidy: no owned-code warnings; advisory include scan has direct-header suggestions through paired public headers, no unused include finding. Whole-tree static review pending on SLURM.", "lifetime_regression": "Initial connected-candidate ASan run found stack-use-after-return: OnlineEufPropagator borrowed reset-local options. Adapter-owned configuration now outlives the callback; callback is destroyed before preparation/configuration mutation. Existing evaluated-argument test reproduces the issue under ASan and passes after the fix.", "n_component_tests": "432 independently enumerated three/four-component cycle/order/policy cases through CaDiCaL/coordinator, plus 432 cases through production driver under guided/complete and online/offline modes with model export. Negative fragment tests cover stale tokens, missing/shared inconsistent bindings, native-value conflicts, fractional Int and duplicate evaluated function tuples.", "frozen_boundary": "Byte comparison of the legacy callback region and QF_UFLRA engine tail against 75d5177 passed; only the obsolete QF_UFLIA shared-variable helper was removed."},
+      "build_attempts": [{"job": "137366", "commit": "e042e92", "state": "FAILED", "elapsed": "00:00:11", "node": "node-02", "resources": "srun: 4 CPU, 8G, 30min", "diagnostic": "GCC could not locate string/vector/memory headers. No solver binary or benchmark result produced. Retry will use the matching pre-provisioned GCC 11 header snapshot through the tested workspace helper.", "command": "slurm_prepare_benchmark_workspace.py --ssh-config /workspace/tmp/primo-model-slurm-ssh-config --remote primo-model-slurm --remote-dir /home/janotmik/primo-model-fix --cmake /home/janotmik/primo-cadical-profile/.venv-build/bin/cmake --reuse-dependencies --build-via-slurm --jobs 4"}],
+      "artifacts": {"local_build_log": "tmp/n-way-prepare-e042e92.log", "candidate_design": "docs/n-way-combination-migration.md", "paired_script": "scripts/slurm_component_migration_compare.sbatch"},
+      "remaining": "Successful clean SLURM build, whole-tree static review, deterministic regression seeds, generated and real-seed mutation profiles, all staged paired measurements, independent SAT replay, analysis and final evidence commits. No acceptance or performance claim."
+    },
+    {
       "id": "2026-09-07-dolmen-memory-and-internal-checker-investigation",
       "date": "2026-09-07",
       "kind": "saved-model-correctness-diagnostic",

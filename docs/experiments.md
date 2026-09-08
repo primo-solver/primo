@@ -254,6 +254,12 @@ commands through a synchronous `srun` allocation (requested build CPU count,
 8G, 30 minutes). It still performs the binary/version preflight after the build;
 benchmark submission requires a fresh `--check-only` as usual. The login host
 does not perform compilation in this mode.
+If compute nodes lack development headers, `--cxx-header-manifest ABSOLUTE_PATH`
+can reuse a pre-provisioned include-directory snapshot **matching the selected
+compiler**. The helper validates every directory, records the manifest hash,
+and supplies system-include flags before CMake configuration, so the resulting
+compile commands retain the header provenance. It does not download or mix
+headers from a different compiler version.
 
 When a workspace already has a verified cluster-local dependency installation,
 pass `--reuse-dependencies`. The helper preserves `contrib/local`, installs the

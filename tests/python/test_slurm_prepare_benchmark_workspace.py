@@ -23,6 +23,17 @@ SPEC.loader.exec_module(MODULE)
 
 
 class SshDiagnosticsTest(unittest.TestCase):
+    def test_portable_headers_are_validated_and_exported_before_configuration(
+        self,
+    ) -> None:
+        command = MODULE.with_cxx_headers("cmake -B build", "/cluster/header roots.txt")
+        MODULE.shell_syntax_check(command)
+        self.assertIn("done < '/cluster/header roots.txt'", command)
+        self.assertIn('test -d "$header_root"', command)
+        self.assertLess(
+            command.index("export CXXFLAGS="), command.index("cmake -B build")
+        )
+
     def test_build_via_slurm_keeps_compilation_inside_allocation(self) -> None:
         with (
             mock.patch.object(
