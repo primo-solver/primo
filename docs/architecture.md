@@ -333,8 +333,11 @@ Implemented now:
   CaDiCaL/IPASIR-UP integration, same-variable bound propagation, and default
   sparse pivot heuristics.
 - Typed owning models for Boolean, QF_UF, QF_LIA, QF_LRA and mixed arithmetic
-  logics. `smt::ComponentModelBuilder` adapts final component facts and exact
-  numeric assignments into one `core::Model`, keyed by function symbol and
+  logics. The QF_UFLIA collection route validates owned component fragments and
+  uses `smt::assemble_component_model`; other routes retain
+  `smt::ComponentModelBuilder` through `build_typed_model`. Both adapt final
+  component facts and exact numeric assignments into one `core::Model`, keyed
+  by function symbol and
   evaluated typed argument tuple. It considers live roots and purification
   aliases, not every historical application in the term arena. Conflicting
   component values or function rows are internal errors.

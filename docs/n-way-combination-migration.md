@@ -153,7 +153,7 @@ existing evaluated-argument regression reproduced this under ASan; after the
 fix `make asan-test` passes all 29 targets. Focused static review of the new
 driver, assembler, dispatcher, coordinator and their tests reports no owned
 code warning. Subsequent whole-tree review and generated-campaign results are
-recorded below and in the run log; performance remains pending. A passing
+recorded below and in the run log; performance was still pending at that stage. A passing
 ordinary build was not used as lifetime evidence.
 
 For each sort, build the component graph whose edges mean occurrence of the

@@ -3,8 +3,9 @@
 The N-component migration is implemented, with cross-logic qualification in progress; see
 [](n-way-combination-migration.md) for its frozen boundary, implementation status
 and acceptance gates. QF_UFLIA's sample, watchlist and full-corpus paired timing
-and model-validation gates pass; the remaining four-logic preservation suite
-is still required. Historical evidence below describes the frozen baseline,
+and model-validation gates pass; QF_UF and QF_UFLRA preservation also pass.
+QF_LRA and QF_LIA qualification remain open. Historical evidence below describes
+the frozen baseline,
 not measurements of the migration.
 
 Primo's modular combination layer is based on Nelson and Oppen's arrangement
@@ -74,14 +75,16 @@ equality materialization, SAT scheduling, and combined-model construction.
 `sat/` continues to see clauses and literals only. `core/` continues to own all
 terms and sorts.
 
-`theory::IncrementalTheorySolver` is the backend-neutral lifecycle for the
-next migration step. It adds `reset`, decision-level `push_level` and
+`theory::IncrementalTheorySolver` is the earlier backend-neutral lifecycle
+prototype. It adds `reset`, decision-level `push_level` and
 `pop_to_level`, assignment-delta ingestion, and explicit `Partial` versus
 `FullModel` checks. It deliberately has no SAT-backend handle. The interface
-and its checkpoint/effort tests are implemented; the current production EUF
-and arithmetic callback classes still use the older SMT-owned CaDiCaL adapter,
-so this is an API boundary plus migration target rather than a claim that those
-component implementations have already moved into `theory/`.
+and its checkpoint/effort tests remain implemented. The production QF_UFLIA
+adapters now implement these operations directly through `TheoryComponent` and
+`ComponentAssignment`, with `ComponentDispatcher` routing assignment deltas.
+The old prototype is not the new driver's boundary. Preparation adapters still
+live beside SMT composition helpers; this does not claim that every legacy
+callback or preparation implementation has moved into `theory/`.
 
 A clause is deliberately the general inference type. For a convex theory it
 can encode an explained equality propagation. For a non-convex theory it can
@@ -185,8 +188,9 @@ or ask a component to mutate its model before committing to a split. A
 candidate-model equality remains a search choice; only an explained theory
 consequence may be learned as an entailed clause.
 
-`smt::ModelBasedCombinationCoordinator` implements the backend-neutral
-transition after one satisfying SAT assignment. It checks each component,
+The frozen `smt::ModelBasedCombinationCoordinator` implements the legacy
+backend-neutral transition, retained by experimental generic QF_UFLRA,
+after one satisfying SAT assignment. It checks each component,
 validates snapshot identity, epoch, completeness, and compatibility with the
 current arrangement, asks a component for a compatible model variant, and
 compares the resulting partitions. It derives a linear spanning set from each
@@ -203,7 +207,7 @@ fresh decisions, cancellation, resource limits, unsupported cases, and unknown
 results remain distinct typed actions. Exceptions are not converted into
 solver answers.
 
-One reconciliation round asks each non-reference component for at most one
+One legacy reconciliation round asks each non-reference component for at most one
 mutation, against the first component's partition. It does not iterate the
 components to a mutual fixed point, and a component is not re-asked after a
 later component mutates. Soundness does not depend on that: any residual
@@ -216,6 +220,15 @@ failed-assumption clauses, and re-entry into CaDiCaL. Thus ordinary Appendix A
 DPLL operations remain delegated to the production CDCL backend. The detailed
 ownership and transition checklist is recorded in
 [](papers/model-based-theory-combination.md).
+
+QF_UFLIA instead uses `smt::ComponentModelCoordinator` and
+`TheoryCombinationPlan`. They apply the model-comparison obligations separately
+to each connected per-sort sharing scope, with its first recipe-ordered
+participant as reference. Nonparticipants are never compared or mutated for
+that scope. Normal disagreement still produces one reversible equality choice
+per round; explicit mutation candidate lists may batch choices. Accepted tokens
+and projections are retained for fragment validation. The scoped ownership,
+mutation and complete-fallback checklist is in [](n-way-combination-migration.md).
 
 For QF_UFLIA, the default model-combination path projects the checked integer
 tableau and EUF closure onto all shared Int terms. A partition
@@ -267,7 +280,8 @@ full pair count, selected pairs, function classes, and pruning.
 
 ## Implemented subset and limitations
 
-`QF_UFLIA` is runnable through a sequential two-component coordinator. Its EUF
+The production `QF_UFLIA` recipe instantiates two components in the N-component
+collection driver. Its EUF
 adapter declares a convex, stably-infinite Int interface; its LIA adapter
 declares the same interface stably infinite and non-convex. Both receive the
 same complete `InterfaceRelation` vector, but enforce it only through their
@@ -312,8 +326,10 @@ an EUF disequality that conflicts with those values. The reduced regression
 uses `x = -7 + 4*f(a)`; the representative MathSAT/Wisa corpus case that exposed
 it is checked directly by Dolmen in the evaluation record.
 
-The existing production coordinator is sequential and currently instantiates
-EUF plus LIA only.
+The current production recipe remains EUF plus LIA; no additional user-visible
+theory is introduced by the collection migration. Independent partition-oracle
+components in three/four-component recipes exercise the real SAT driver and
+model exports.
 `QF_UFLRA` retains its established specialized convex coordinator, options,
 counters, and model behavior by default. With
 `--experimental-generic-model-combination`, checked LRA and EUF projections are
@@ -322,9 +338,11 @@ partition comparison, mutation dispatch, and model-choice batching. The EUF
 adapter deliberately reuses the established checkpointed compatibility merge;
 the experiment changes the scheduler boundary, not that component operation.
 The complete specialized path remains available while equivalence evaluation is
-in progress. The generic coordinator currently assumes that every supplied
-shared sort belongs to every participating component; multi-way combinations
-with partially overlapping sort interfaces remain future work. Arrays,
+in progress. That frozen generic QF_UFLRA coordinator assumes that every supplied
+shared sort belongs to every participating component. The new collection driver
+instead supports partially overlapping and disconnected sharing scopes, tested
+with three/four components. This adds an extension protocol, not automatic
+support for new term kinds, model values or theory kernels. Arrays,
 bit-vectors, nonlinear arithmetic, finite shared sorts, and quantifiers remain
 unsupported.
 

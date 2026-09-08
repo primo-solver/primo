@@ -14,11 +14,19 @@ printer; QF_UFLIA; Boolean/QF_UF; Int/Real and mixed-Real paths; removal of lega
 builders; cross-logic external validation.
 
 The typed foundation (`core::Model`, `core::ModelEvaluator`, and
-`smtlib::print_model`) is implemented and independently unit-tested. QF_UFLIA
-uses `smt::ComponentModelBuilder` through `build_typed_model`, as do Boolean,
-QF_UF, QF_LIA, QF_LRA, QF_UFLRA and preprocessing-only model paths. Legacy
-string builders and their separate arithmetic evaluators have been removed.
-The shared implementation has completed its cross-logic correctness gates:
+`smtlib::print_model`) is implemented and independently unit-tested. The current
+QF_UFLIA collection driver validates owned `ComponentModelFragment` exports and
+calls `assemble_component_model` in `smt/component_model_assembler.cpp`; its
+private `FragmentModelBuilder` preserves the conversion-replay semantics below.
+Boolean, QF_UF, QF_LIA, QF_LRA, QF_UFLRA and preprocessing-only paths retain
+`smt::ComponentModelBuilder` through `build_typed_model`. Both adapters produce
+the same immutable core representation and share its evaluator and printer.
+Legacy string builders and their separate arithmetic evaluators remain removed.
+See [](n-way-combination-migration.md) for the new fragment contract and its
+qualification; the following evidence closes the earlier general-model redesign,
+not the subsequent N-component migration.
+
+That earlier shared implementation completed its cross-logic correctness gates:
 31,000 generated case/profile runs at `6f89774`, followed by 7,000 mixed-logic
 generated runs and 4,140 retained seed mutations at `3a2dd40`. These verification
 commits have identical solver sources to `8ff9991`. All produced SAT models
@@ -103,6 +111,14 @@ unrelated arena terms cannot dictate the interpretation.
 ## Checking, errors and verification
 
 ### Component adapter and replay checklist
+
+The collection adapter first validates the exact accepted model token, shared
+scope coverage and partition agreement, authoritative values and symbol
+ownership. It identifies component-local domain labels through shared bindings
+before constructing evaluated function tuples. These additional obligations
+belong to `validate_component_fragment` and `assemble_component_model`, not to
+the frozen legacy builder. The base-construction and replay principles below
+are shared by both adapters.
 
 The staged adapter builds its base interpretation only from the final active
 assertions, accepted component facts, numeric component values and purification
