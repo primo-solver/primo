@@ -2,8 +2,9 @@
 
 The N-component migration is in progress; see
 [](n-way-combination-migration.md) for its frozen boundary, implementation status
-and acceptance gates. The production routes described below remain the baseline
-until that migration is qualified.
+and acceptance gates. QF_UFLIA is connected to the new candidate driver; it is
+not yet performance-qualified. Historical evidence below describes the frozen
+baseline, not measurements of the migration.
 
 Primo's modular combination layer is based on Nelson and Oppen's arrangement
 method and on SAT-mediated delayed theory combination. Its first non-convex
@@ -34,6 +35,14 @@ model mutation. It does not claim the paper's complete Appendix A transition
 system.
 
 ## Component contract
+
+The current QF_UFLIA candidate uses `theory::TheoryComponent`, validated
+`ComponentDescriptor` capabilities and per-sort connected sharing scopes,
+`ComponentDispatcher`, and `ComponentModelCoordinator`. The detailed ownership,
+lifetime, scope normalization and model-fragment contract are documented in
+[](n-way-combination-migration.md). The following `TheorySolver` protocol remains
+the frozen QF_UFLRA interface and a private helper inside QF_UFLIA adapters; it
+is no longer the production QF_UFLIA scheduler's boundary.
 
 `theory::TheorySolver` is a solve-scoped protocol. Its immutable
 `TheoryProperties` declares the component identifier, shared sorts, stable
@@ -128,9 +137,12 @@ typed builder below.
 ## Integer model reconstruction
 
 QF_UFLIA now uses the owning typed interpretation described in
-[](model-interpretation.md). The engine passes final component assignments and
-exact tableau values to `build_typed_model`; purification aliases bridge the
-component terms. The old `qf_uflia_int_values` candidate scans and eight-round
+[](model-interpretation.md). The candidate engine passes owned component fragments
+to `assemble_component_model`, never reads the arithmetic tableau itself, and
+checks exports against accepted shared partitions. The frozen baseline passed
+final assignments and exact values to `build_typed_model`; the new builder keeps
+its conversion replay semantics. Purification aliases bridge the component
+terms. The old `qf_uflia_int_values` candidate scans and eight-round
 substitution heuristic have been removed.
 
 The base interpretation is built from live roots, not all historical arena

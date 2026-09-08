@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <span>
 #include <unordered_map>
@@ -24,7 +25,8 @@ struct ComponentDispatchStatistics {
 // See docs/n-way-combination-migration.md. Registration requires disconnection.
 class ComponentDispatcher final : public sat::ExternalPropagator {
  public:
-  explicit ComponentDispatcher(std::span<theory::TheoryComponent* const> components);
+  explicit ComponentDispatcher(std::span<theory::TheoryComponent* const> components,
+                               std::function<void(sat::Lit)> publish_phase = {});
   void register_atoms(std::size_t component, std::span<const theory::ComponentAtom> atoms);
   void notify_assignment(const std::vector<int>& lits) override;
   void notify_new_decision_level() override;
@@ -66,6 +68,7 @@ class ComponentDispatcher final : public sat::ExternalPropagator {
   std::uint64_t epoch_ = 0;
   std::optional<theory::TheoryCheckResult> failure_;
   ComponentDispatchStatistics statistics_;
+  std::function<void(sat::Lit)> publish_phase_;
 };
 
 }  // namespace primo::smt

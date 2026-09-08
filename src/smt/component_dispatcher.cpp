@@ -25,10 +25,12 @@ sat::Clause implication_clause(const theory::TheoryCheckResult& result) {
 
 }  // namespace
 
-ComponentDispatcher::ComponentDispatcher(std::span<theory::TheoryComponent* const> components)
+ComponentDispatcher::ComponentDispatcher(std::span<theory::TheoryComponent* const> components,
+                                         std::function<void(sat::Lit)> publish_phase)
     : components_(components.begin(), components.end()),
       deltas_(components.size()),
-      dirty_(components.size(), false) {
+      dirty_(components.size(), false),
+      publish_phase_(std::move(publish_phase)) {
   touched_.reserve(components.size());
   for (auto* component : components_) {
     if (component == nullptr || !component->descriptor().capabilities.incremental) {
@@ -122,9 +124,11 @@ void ComponentDispatcher::notify_backtrack(std::size_t level) {
 
 void ComponentDispatcher::accept_result(std::size_t component, theory::TheoryCheckResult result) {
   if (result.status == theory::TheoryCheckStatus::LearnedClause) {
+    dirty_[component] = true;
     external_clause_ = Explanation{component, std::move(result.clause)};
     clause_cursor_ = 0;
   } else if (result.status == theory::TheoryCheckStatus::EntailedLiteral) {
+    dirty_[component] = true;
     external_clause_ = Explanation{component, implication_clause(result)};
     clause_cursor_ = 0;
   } else if (result.status != theory::TheoryCheckStatus::Consistent) {
@@ -145,6 +149,11 @@ bool ComponentDispatcher::partial_check() {
     dirty_[index] = false;
     ++statistics_.partial_checks;
     accept_result(index, components_[index]->check(theory::TheoryCheckEffort::Partial, epoch_, {}));
+    if (publish_phase_) {
+      for (const auto phase : components_[index]->phase_literals()) {
+        publish_phase_(phase);
+      }
+    }
     if (external_clause_.has_value() || failure_.has_value()) {
       return !external_clause_.has_value();
     }

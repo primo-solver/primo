@@ -97,7 +97,24 @@ def coverage(expected: list[str], rows: list[dict[str, str]]) -> dict[str, objec
 
 def benchmark(args: argparse.Namespace) -> int:
     root = args.root.resolve()
-    paths = sorted(path for path in root.rglob("*.smt2") if path.is_file())
+    if args.manifest is None:
+        paths = sorted(path for path in root.rglob("*.smt2") if path.is_file())
+    else:
+        paths = []
+        for raw in args.manifest.read_text().splitlines():
+            name = raw.split("#", 1)[0].strip()
+            if not name:
+                continue
+            path = Path(name)
+            if path.suffix != ".smt2":
+                path = Path(str(path) + ".smt2")
+            path = (root / path).resolve()
+            path.relative_to(root)
+            if not path.is_file():
+                raise ValueError(f"missing manifest input: {path}")
+            paths.append(path)
+        if len(paths) != len(set(paths)):
+            raise ValueError("duplicate benchmark manifest input")
     paths = paths[args.shard_index :: args.shards]
     identity = executable_identity(args.solver)
     if (
@@ -123,6 +140,8 @@ def benchmark(args: argparse.Namespace) -> int:
         "inputs": inputs,
     }
     write_json(provenance, metadata)
+    selected_manifest = args.out / "inputs.txt"
+    selected_manifest.write_text("".join(str(path) + "\n" for path in paths))
     command = [
         sys.executable,
         str(SCRIPTS / "bench_qf_uf_full.py"),
@@ -134,9 +153,11 @@ def benchmark(args: argparse.Namespace) -> int:
         identity["path"],
         *[f"--solver-arg={arg}" for arg in args.solver_arg],
         "--shards",
-        str(args.shards),
+        "1",
         "--shard-index",
-        str(args.shard_index),
+        "0",
+        "--manifest",
+        str(selected_manifest),
         "--timeout",
         str(args.timeout),
         "--out",
@@ -279,6 +300,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("phase", choices=("benchmark", "replay"))
     parser.add_argument("--root", type=Path, default=Path("."))
+    parser.add_argument(
+        "--manifest", type=Path, help="Optional ordered subset for the timing phase"
+    )
     parser.add_argument("--solver", default="./build-slurm-rel/primo")
     parser.add_argument("--solver-arg", action="append", default=[])
     parser.add_argument("--expected-git")

@@ -20,6 +20,7 @@
 #include "sat/cadical_backend.hpp"
 #include "smt/component_dispatcher.hpp"
 #include "smt/component_model_coordinator.hpp"
+#include "smt/component_solver.hpp"
 #include "smt/theory_combination_plan.hpp"
 #include "theory/theory_component.hpp"
 
@@ -91,7 +92,10 @@ class PartitionComponent final : public theory::TheoryComponent {
     }
   }
   const theory::ComponentDescriptor& descriptor() const override { return properties; }
-  bool owns_atom(core::TermId atom) const override { return atom == marker_; }
+  bool owns_atom(core::TermId atom) const override {
+    return atom == marker_ ||
+           (owns_equalities && terms_.get(atom).kind == core::TermKind::Equality);
+  }
   std::vector<core::TermId> interface_variables(core::TermId atom) const override {
     assert(atom == marker_);
     std::vector<core::TermId> result;
@@ -195,10 +199,20 @@ class PartitionComponent final : public theory::TheoryComponent {
   theory::ComponentModelFragment export_model(
       const theory::TheoryModelToken& token) const override {
     assert(token == last_model_.token);
-    return {token, {}, {}, {}};
+    theory::ComponentModelFragment fragment{token, {}, {}, {}};
+    for (const auto& assigned : trail_) fragment.facts.push_back({assigned.atom, assigned.value});
+    for (const auto& partition : last_model_.partitions) {
+      for (std::size_t index = 0; index < partition.equality_classes.size(); ++index) {
+        for (const auto term : partition.equality_classes[index].terms) {
+          fragment.bindings.push_back({term, {partition.sort, core::DomainValue{index}}});
+        }
+      }
+    }
+    return fragment;
   }
 
   theory::ComponentDescriptor properties;
+  bool owns_equalities = false;
   std::function<void(theory::TheoryCheckResult&)> corrupt;
   std::function<theory::TheoryMutationResult(const theory::TheoryMutationRequest&)> mutation;
   std::size_t checks = 0;
@@ -401,9 +415,10 @@ void exhaustive_three_and_four_component_sat() {
       }
       for (std::size_t encoded = 0; encoded < cases; ++encoded) {
         Fixture f;
+        const auto boundary_sort = f.symbols.declare_sort("Boundary");
         std::vector<core::TermId> variables;
         for (std::size_t index = 0; index < count; ++index) {
-          variables.push_back(f.variable("x" + std::to_string(index), f.symbols.int_sort()));
+          variables.push_back(f.variable("x" + std::to_string(index), boundary_sort));
         }
         std::vector<Restriction> restrictions;
         auto cursor = encoded;
@@ -433,6 +448,37 @@ void exhaustive_three_and_four_component_sat() {
         assert(solve_with_sat(f, guided) == expected);
         std::reverse(f.components.begin(), f.components.end());
         assert(solve_with_sat(f, guided) == expected);
+
+        // Exercise the actual collection driver, clausification, sparse growth,
+        // assumption blocking and callback dispatcher, not just its coordinator.
+        for (const bool online : {false, true}) {
+          smt::CombinationRecipe recipe;
+          recipe.online = online;
+          recipe.model_guided = guided;
+          recipe.decision_budget = 100;
+          recipe.timing_prefix = ":time.partition-test.";
+          std::vector<core::TermId> assertions;
+          for (std::size_t index = 0; index < count; ++index) {
+            assertions.push_back(f.atoms[index].term);
+            recipe.factories.push_back([&, index](bool) {
+              auto component = std::make_unique<PartitionComponent>(
+                  f.terms, "component" + std::to_string(index), f.atoms[index].term,
+                  std::vector{restrictions[index]});
+              component->owns_equalities = index == 0;
+              return component;
+            });
+            recipe.online_order.push_back(count - index - 1);
+          }
+          smt::CheckSatOptions options;
+          options.produce_model = true;
+          util::Statistics statistics;
+          const auto outcome =
+              smt::solve_component_recipe(f.terms, assertions, {}, options, statistics, recipe);
+          assert(outcome.result ==
+                 (expected ? smt::CheckSatResult::Sat : smt::CheckSatResult::Unsat));
+          assert(statistics.get(":combination.components") == count);
+          assert(!expected || outcome.typed_model != nullptr);
+        }
       }
     }
   }
@@ -551,7 +597,7 @@ void nonconvex_disjunction_and_mutation_side_effects() {
   const auto x = f.variable("x", sort);
   const auto y = f.variable("y", sort);
   const auto z = f.variable("z", sort);
-  f.add({{{x, y, z}, {{0, 0, 1}}}});
+  f.add({{{x, y, z}, {{0, 1, 2}}}});
   auto& changing = f.add({{{x, y, z}, partitions(3)}});
   changing.properties.capabilities.model_mutation = true;
   changing.mutation = [&](const auto& request) {
@@ -559,8 +605,8 @@ void nonconvex_disjunction_and_mutation_side_effects() {
     result.status = theory::TheoryMutationStatus::Mutated;
     result.model.token = request.source;
     ++result.model.token.revision;
-    // Introduce y=z even though the reference requested x=y. A heuristic is
-    // allowed to fail its preference, but all its side effects must be checked.
+    // Satisfy x!=y and x!=z but introduce y=z, absent from the old spanning
+    // edges. Acceptance must compare the newly produced partitions too.
     result.model.partitions = {{sort, {{{x}}, {{y, z}}}}};
     return result;
   };
@@ -573,11 +619,11 @@ void nonconvex_disjunction_and_mutation_side_effects() {
     return sat::Lit{static_cast<int>(decisions.size() + 10)};
   });
   assert(result.status == smt::ModelBasedCombinationStatus::DecideEquality);
-  assert(decisions.size() == 2);
+  assert(decisions.size() == 1);
   assert(std::find(decisions.begin(), decisions.end(), theory::InterfacePair{y, z, sort}) !=
          decisions.end());
-  const std::vector arrangement{
-      theory::InterfaceRelation{x, y, sort, sat::Lit{42}, theory::InterfaceRelationValue::Equal}};
+  const std::vector arrangement{theory::InterfaceRelation{
+      y, z, sort, sat::Lit{42}, theory::InterfaceRelationValue::Disequal}};
   result = coordinator.reconcile(plan, 2, f.components, arrangement,
                                  [](const auto&) { return sat::Lit{42}; });
   assert(result.status == smt::ModelBasedCombinationStatus::Unknown);

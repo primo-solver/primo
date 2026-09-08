@@ -238,7 +238,9 @@ void online_components_build_a_combined_integer_uf_model() {
   assert(result.result == CheckSatResult::Sat);
   assert(result.statistics.get(":combination.online-components.enabled") == 1);
   assert(result.statistics.get(":combination.online-components.integer-completions") == 1);
-  assert(result.statistics.get(":combination.component-checks") == 1);
+  // The generic final-check lifecycle asks both components. EUF confirms its
+  // already-checked online state; only arithmetic performs integer completion.
+  assert(result.statistics.get(":combination.component-checks") == 2);
   assert(result.model.find("(define-fun x () Int 2)") != std::string::npos);
   assert(result.model.find("(= x0 2) 3") != std::string::npos);
 }

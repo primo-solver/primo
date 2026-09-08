@@ -19,9 +19,17 @@ class ComponentModelCoordinator {
       std::span<const theory::InterfaceRelation> arrangement,
       const EqualityLiteralResolver& equality_literal);
   [[nodiscard]] const ModelBasedCombinationStatistics& statistics() const { return statistics_; }
+  [[nodiscard]] const std::vector<theory::TheoryModelToken>& model_tokens() const {
+    return tokens_;
+  }
+  [[nodiscard]] const std::vector<theory::TheoryModelProjection>& model_projections() const {
+    return projections_;
+  }
 
  private:
   ModelBasedCombinationStatistics statistics_;
+  std::vector<theory::TheoryModelToken> tokens_;
+  std::vector<theory::TheoryModelProjection> projections_;
 };
 
 }  // namespace primo::smt

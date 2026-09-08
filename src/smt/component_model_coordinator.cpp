@@ -138,6 +138,8 @@ ModelBasedCombinationResult ComponentModelCoordinator::reconcile(
     std::span<theory::TheoryComponent* const> components,
     std::span<const theory::InterfaceRelation> arrangement,
     const EqualityLiteralResolver& equality_literal) {
+  tokens_.assign(components.size(), {});
+  projections_.assign(components.size(), {});
   if (components.size() != plan.descriptors().size()) {
     return unknown("component collection differs from validated plan");
   }
@@ -170,7 +172,7 @@ ModelBasedCombinationResult ComponentModelCoordinator::reconcile(
     }
   }
 
-  std::vector<theory::TheoryModelProjection> projections(components.size());
+  auto& projections = projections_;
   std::vector<PartitionIndex> indices(components.size());
   for (std::size_t index = 0; index < components.size(); ++index) {
     if (components[index] == nullptr ||
@@ -196,6 +198,12 @@ ModelBasedCombinationResult ComponentModelCoordinator::reconcile(
       return result;
     }
     if (plan.policy() == CombinationPolicy::CompleteArrangement) {
+      if (checked.model.token.component != plan.descriptors()[index].id ||
+          checked.model.token.assignment_epoch != assignment_epoch) {
+        ++statistics_.stale_snapshots;
+        return unknown("stale complete-arrangement model token");
+      }
+      tokens_[index] = checked.model.token;
       continue;
     }
     auto indexed = index_projection(checked.model, plan.component_scopes(index));
@@ -211,6 +219,7 @@ ModelBasedCombinationResult ComponentModelCoordinator::reconcile(
     }
     indices[index] = std::move(*indexed);
     projections[index] = std::move(checked.model);
+    tokens_[index] = projections[index].token;
     ++statistics_.snapshots;
   }
   if (plan.policy() == CombinationPolicy::CompleteArrangement) {
@@ -220,8 +229,9 @@ ModelBasedCombinationResult ComponentModelCoordinator::reconcile(
   }
 
   // Section 4 model mutation is optional. Each scope's earliest recipe member
-  // supplies its preferred spanning equalities; foreign scopes never enter a
+  // supplies its preferred relations; foreign scopes never enter a
   // request. A fixed point is not an entailment and may still require a split.
+  std::vector<theory::TheoryDecisionRequest> candidates;
   for (std::size_t index = 0; index < components.size(); ++index) {
     if (!plan.descriptors()[index].capabilities.model_mutation) {
       continue;
@@ -229,29 +239,48 @@ ModelBasedCombinationResult ComponentModelCoordinator::reconcile(
     theory::TheoryMutationRequest request;
     request.source = projections[index].token;
     request.required_relations = local_arrangements[index];
+    bool disagrees = false;
     for (const auto& scope : plan.scopes()) {
       if (!participates(scope, index) || scope.participants.front() == index) {
         continue;
       }
-      std::map<std::size_t, core::TermId> firsts;
-      for (const auto term : scope.terms) {
-        const auto [first, inserted] =
-            firsts.emplace(indices[scope.participants.front()].at(term), term);
-        if (!inserted) {
-          const theory::InterfacePair pair{first->second, term, scope.sort};
-          if (!fixed.contains(pair_key(pair))) {
-            request.required_relations.push_back(
-                {pair.lhs, pair.rhs, pair.sort, {}, theory::InterfaceRelationValue::Equal});
-          }
+      std::set<PairKey> edges;
+      const auto reference = scope.participants.front();
+      add_spanning_pairs(projections[reference], edges);
+      add_spanning_pairs(projections[index], edges);
+      for (const auto& [sort, lhs, rhs] : edges) {
+        const theory::InterfacePair pair{lhs, rhs, sort};
+        const auto owner = plan.scope_for(pair);
+        if (!owner.has_value() || &plan.scopes()[*owner] != &scope) {
+          continue;
+        }
+        const bool equal = indices[reference].at(lhs) == indices[reference].at(rhs);
+        if (equal != (indices[index].at(lhs) == indices[index].at(rhs)) &&
+            !fixed.contains(pair_key(pair))) {
+          request.required_relations.push_back({lhs,
+                                                rhs,
+                                                sort,
+                                                {},
+                                                equal ? theory::InterfaceRelationValue::Equal
+                                                      : theory::InterfaceRelationValue::Disequal});
+          disagrees = true;
         }
       }
     }
-    if (request.required_relations.empty()) {
+    if (!disagrees) {
       continue;
     }
     auto mutation = components[index]->mutate(request);
     if (mutation.status == theory::TheoryMutationStatus::FixedPoint) {
       ++statistics_.fixed_points;
+      for (const auto& candidate : mutation.candidate_decisions) {
+        const auto scope = plan.scope_for(candidate.pair);
+        if (!scope.has_value() || !participates(plan.scopes()[*scope], index) ||
+            fixed.contains(pair_key(candidate.pair))) {
+          return unknown("mutation requested an out-of-scope or already fixed decision");
+        }
+        candidates.push_back(candidate);
+      }
       continue;
     }
     if (mutation.status != theory::TheoryMutationStatus::Mutated) {
@@ -276,14 +305,37 @@ ModelBasedCombinationResult ComponentModelCoordinator::reconcile(
     if (!indexed.has_value() || mutation.model.token.component != request.source.component ||
         mutation.model.token.assignment_epoch != assignment_epoch ||
         mutation.model.token.revision <= request.source.revision ||
-        !std::all_of(local_arrangements[index].begin(), local_arrangements[index].end(),
+        !std::all_of(request.required_relations.begin(), request.required_relations.end(),
                      [&](const auto& relation) { return agrees(*indexed, relation); })) {
       ++statistics_.rejected_mutations;
       return unknown("mutation returned a stale, malformed or arrangement-violating model");
     }
     projections[index] = std::move(mutation.model);
+    tokens_[index] = projections[index].token;
     indices[index] = std::move(*indexed);
     ++statistics_.mutations;
+  }
+
+  if (!candidates.empty()) {
+    ModelBasedCombinationResult result;
+    std::set<PairKey> seen;
+    for (const auto& candidate : candidates) {
+      if (!seen.insert(pair_key(candidate.pair)).second) {
+        continue;
+      }
+      const auto literal = equality_literal(candidate.pair);
+      if (!literal.has_value() || literal->value == 0) {
+        return unknown("mutation decision equality could not be materialized");
+      }
+      result.decision_lits.push_back(candidate.preferred_value ==
+                                             theory::InterfaceRelationValue::Equal
+                                         ? *literal
+                                         : sat::Lit{-literal->value});
+    }
+    result.status = ModelBasedCombinationStatus::DecideEquality;
+    result.decision_lit = result.decision_lits.front();
+    statistics_.model_decisions += result.decision_lits.size();
+    return result;
   }
 
   // Recompute the union after every mutator ran. Equal-class spanning edges
@@ -303,6 +355,7 @@ ModelBasedCombinationResult ComponentModelCoordinator::reconcile(
         return unknown("component care pair lies outside its normalized scope");
       }
       care.insert(pair_key(pair));
+      pairs.insert(pair_key(pair));
       ++statistics_.care_pairs;
     }
   }
@@ -340,6 +393,9 @@ ModelBasedCombinationResult ComponentModelCoordinator::reconcile(
       return unknown("interface equality could not be materialized");
     }
     result.decision_lits.push_back(*literal);
+    // Preserve the production recipe's one ordinary split per SAT round.
+    // Only explicit component mutation candidates are batched above.
+    break;
   }
   if (result.decision_lits.empty()) {
     result.status = ModelBasedCombinationStatus::Accept;

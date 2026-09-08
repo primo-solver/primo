@@ -12,6 +12,7 @@
 #include "core/symbol_table.hpp"
 #include "core/term_manager.hpp"
 #include "smt/check_sat.hpp"
+#include "smt/component_model_assembler.hpp"
 #include "smt/model_reconstruction.hpp"
 #include "smt/typed_model_builder.hpp"
 #include "smtlib/printer.hpp"
@@ -29,6 +30,95 @@ void rejects(Fn fn) {
     rejected = true;
   }
   assert(rejected);
+}
+
+void component_fragments_are_owned_typed_and_checked() {
+  core::SymbolTable symbols;
+  core::TermManager terms(symbols);
+  const auto sort = symbols.declare_sort("FragmentDomain");
+  const auto x = symbols.declare_constant("fragment_x", sort);
+  const auto y = symbols.declare_constant("fragment_y", sort);
+  const auto z = symbols.declare_constant("fragment_z", sort);
+  const auto xt = terms.mk_constant(x), yt = terms.mk_constant(y), zt = terms.mk_constant(z);
+  const auto domain = [&](std::size_t index) {
+    return core::ModelValue{sort, core::DomainValue{index}};
+  };
+  std::vector<theory::ComponentModelFragment> fragments{
+      {{"A", 7, 1}, {{xt, domain(0)}, {yt, domain(1)}}, {}, {}},
+      {{"B", 7, 3}, {{xt, domain(42)}, {zt, domain(0)}}, {}, {}}};
+  const std::vector assertions{terms.mk_not(terms.mk_eq(xt, yt)),
+                               terms.mk_not(terms.mk_eq(xt, zt))};
+  theory::ComponentDescriptor descriptor;
+  descriptor.id = "A";
+  descriptor.shared_sorts = {{sort, theory::StableInfiniteness::Yes, false}};
+  const std::vector<theory::ComponentInterfaceScope> scopes{{sort, {xt, yt}}};
+  theory::TheoryModelProjection projection{fragments[0].token, {{sort, {{{xt}}, {{yt}}}}}};
+  smt::validate_component_fragment(terms, descriptor, scopes, fragments[0].token, &projection, {},
+                                   fragments[0]);
+  auto corrupted = fragments[0];
+  corrupted.bindings.pop_back();
+  rejects([&] {
+    smt::validate_component_fragment(terms, descriptor, scopes, fragments[0].token, &projection, {},
+                                     corrupted);
+  });
+  corrupted = fragments[0];
+  corrupted.bindings[1].value = corrupted.bindings[0].value;
+  rejects([&] {
+    smt::validate_component_fragment(terms, descriptor, scopes, fragments[0].token, &projection, {},
+                                     corrupted);
+  });
+  corrupted = fragments[0];
+  ++corrupted.token.revision;
+  rejects([&] {
+    smt::validate_component_fragment(terms, descriptor, scopes, fragments[0].token, &projection, {},
+                                     corrupted);
+  });
+  const auto model =
+      smt::assemble_component_model(terms, assertions, fragments, {}, nullptr, nullptr);
+  assert(model->apply(x) != model->apply(y));
+  assert(model->apply(x) != model->apply(z));
+  assert(model->apply(y) != model->apply(z));  // Local index 0 is not globally shared.
+  fragments[1].bindings.push_back({yt, domain(42)});
+  rejects(
+      [&] { smt::assemble_component_model(terms, assertions, fragments, {}, nullptr, nullptr); });
+  fragments[1].bindings.pop_back();
+  fragments[1].token.assignment_epoch = 8;
+  rejects(
+      [&] { smt::assemble_component_model(terms, assertions, fragments, {}, nullptr, nullptr); });
+
+  const auto i = symbols.int_sort();
+  const auto n = symbols.declare_constant("fragment_n", i);
+  const auto nt = terms.mk_constant(n);
+  const core::ModelValue one{i, util::Rational(1)}, two{i, util::Rational(2)};
+  std::vector<theory::ComponentModelFragment> numeric{{{"N", 1, 1}, {{nt, one}}, {}, {}},
+                                                      {{"M", 1, 2}, {{nt, two}}, {}, {}}};
+  rejects([&] { smt::assemble_component_model(terms, {}, numeric, {}, nullptr, nullptr); });
+  numeric.resize(1);
+  const std::vector false_assertions{terms.mk_eq(nt, terms.mk_rational(util::Rational(2), i))};
+  rejects([&] {
+    smt::assemble_component_model(terms, false_assertions, numeric, {}, nullptr, nullptr);
+  });
+  numeric[0].bindings[0].value.payload = util::Rational(1, 2);
+  rejects([&] { smt::assemble_component_model(terms, {}, numeric, {}, nullptr, nullptr); });
+
+  // Equal evaluated arguments must select a single exported function row.
+  const auto f = symbols.declare_function("fragment_f", {i}, i);
+  const auto app = terms.mk_app(f, {nt});
+  const auto equivalent =
+      terms.mk_app(f, {terms.mk_plus({nt, terms.mk_rational(util::Rational(0), i)})});
+  numeric[0].bindings[0].value = one;
+  numeric[0].interpretations = {{f, one, {{{one}, two}}}};
+  const std::vector function_assertions{terms.mk_eq(app, equivalent),
+                                        terms.mk_eq(app, terms.mk_rational(util::Rational(2), i))};
+  const auto function_model =
+      smt::assemble_component_model(terms, function_assertions, numeric, {}, nullptr, nullptr);
+  assert(function_model->apply(f, std::vector{one}) == two);
+  numeric[0].interpretations[0].rows.push_back({{one}, one});
+  rejects([&] {
+    smt::assemble_component_model(terms, function_assertions, numeric, {}, nullptr, nullptr);
+  });
+  // The completed immutable snapshot does not retain the mutable export rows.
+  assert(function_model->apply(f, std::vector{one}) == two);
 }
 
 void typed_tables_and_validation() {
@@ -223,6 +313,7 @@ void reconstruction_uses_staged_constants_and_fixed_tables() {
 }  // namespace
 
 int main() {
+  component_fragments_are_owned_typed_and_checked();
   typed_tables_and_validation();
   interpreted_terms_use_the_frozen_table();
   exact_integer_and_real_semantics();

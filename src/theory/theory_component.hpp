@@ -54,6 +54,9 @@ struct ComponentInterfaceScope {
 struct ComponentAtom {
   core::TermId term = core::kInvalidTermId;
   sat::Lit lit;
+  bool occurs_positive = false;
+  bool occurs_negative = false;
+  bool relevant_at_both_polarities = false;
 };
 
 struct ComponentModelBinding {
@@ -103,6 +106,7 @@ class TheoryComponent {
   // Reasons contain true antecedents, not their clause negations.
   [[nodiscard]] virtual std::optional<TheoryCheckResult> propagate() { return std::nullopt; }
   [[nodiscard]] virtual sat::Lit suggest_literal() { return {}; }
+  [[nodiscard]] virtual std::vector<sat::Lit> phase_literals() { return {}; }
   [[nodiscard]] virtual TheoryMutationResult mutate(const TheoryMutationRequest&) { return {}; }
   [[nodiscard]] virtual std::vector<InterfacePair> care_pairs(const TheoryModelToken&) const {
     return {};
