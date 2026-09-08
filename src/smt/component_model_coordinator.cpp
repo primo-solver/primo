@@ -1,0 +1,354 @@
+#include "smt/component_model_coordinator.hpp"
+
+#include <algorithm>
+#include <cstddef>
+#include <map>
+#include <optional>
+#include <set>
+#include <tuple>
+#include <unordered_map>
+#include <utility>
+#include <vector>
+
+namespace primo::smt {
+namespace {
+
+using PairKey = std::tuple<core::SortId, core::TermId, core::TermId>;
+using PartitionIndex = std::unordered_map<core::TermId, std::size_t>;
+
+PairKey pair_key(const theory::InterfacePair& pair) {
+  return {pair.sort, std::min(pair.lhs, pair.rhs), std::max(pair.lhs, pair.rhs)};
+}
+
+theory::InterfacePair as_pair(const theory::InterfaceRelation& relation) {
+  return {relation.lhs, relation.rhs, relation.sort};
+}
+
+ModelBasedCombinationResult unknown(const char* diagnostic) {
+  ModelBasedCombinationResult result;
+  result.diagnostic = diagnostic;
+  return result;
+}
+
+bool participates(const CombinationScope& scope, std::size_t component) {
+  return std::binary_search(scope.participants.begin(), scope.participants.end(), component);
+}
+
+std::optional<PartitionIndex> index_projection(
+    const theory::TheoryModelProjection& projection,
+    std::span<const theory::ComponentInterfaceScope> scopes) {
+  if (projection.partitions.size() != scopes.size()) {
+    return std::nullopt;
+  }
+  std::map<core::SortId, const theory::ComponentInterfaceScope*> expected;
+  for (const auto& scope : scopes) {
+    expected.emplace(scope.sort, &scope);
+  }
+  PartitionIndex index;
+  std::size_t class_id = 0;
+  for (const auto& partition : projection.partitions) {
+    const auto found = expected.find(partition.sort);
+    if (found == expected.end()) {
+      return std::nullopt;
+    }
+    const auto& terms = found->second->terms;
+    std::size_t count = 0;
+    for (const auto& equality_class : partition.equality_classes) {
+      if (equality_class.terms.empty()) {
+        return std::nullopt;
+      }
+      for (const auto term : equality_class.terms) {
+        if (!std::binary_search(terms.begin(), terms.end(), term) ||
+            !index.emplace(term, class_id).second) {
+          return std::nullopt;
+        }
+        ++count;
+      }
+      ++class_id;
+    }
+    if (count != terms.size()) {
+      return std::nullopt;
+    }
+    expected.erase(found);
+  }
+  return index;
+}
+
+bool agrees(const PartitionIndex& index, const theory::InterfaceRelation& relation) {
+  // Only called after complete-scope validation and participant filtering.
+  return (index.at(relation.lhs) == index.at(relation.rhs)) ==
+         (relation.value == theory::InterfaceRelationValue::Equal);
+}
+
+void add_spanning_pairs(const theory::TheoryModelProjection& projection, std::set<PairKey>& pairs) {
+  for (const auto& partition : projection.partitions) {
+    for (const auto& equality_class : partition.equality_classes) {
+      const auto first =
+          *std::min_element(equality_class.terms.begin(), equality_class.terms.end());
+      for (const auto term : equality_class.terms) {
+        if (term != first) {
+          pairs.emplace(partition.sort, first, term);
+        }
+      }
+    }
+  }
+}
+
+ModelBasedCombinationResult check_result(theory::TheoryCheckResult checked) {
+  ModelBasedCombinationResult result;
+  result.diagnostic = std::move(checked.diagnostic);
+  switch (checked.status) {
+    case theory::TheoryCheckStatus::Consistent:
+      result.status = ModelBasedCombinationStatus::Accept;
+      break;
+    case theory::TheoryCheckStatus::LearnedClause:
+      result.status = ModelBasedCombinationStatus::LearnClause;
+      result.clause = std::move(checked.clause);
+      break;
+    case theory::TheoryCheckStatus::EntailedLiteral:
+      result.status = ModelBasedCombinationStatus::LearnClause;
+      for (const auto reason : checked.reasons) {
+        result.clause.push_back(sat::Lit{-reason.value});
+      }
+      result.clause.push_back(checked.entailed_lit);
+      break;
+    case theory::TheoryCheckStatus::FreshDecision:
+      result.status = ModelBasedCombinationStatus::FreshDecision;
+      result.decision = std::move(checked.decision);
+      break;
+    case theory::TheoryCheckStatus::ResourceLimit:
+      result.status = ModelBasedCombinationStatus::ResourceLimit;
+      break;
+    case theory::TheoryCheckStatus::Unsupported:
+      result.status = ModelBasedCombinationStatus::Unsupported;
+      break;
+    case theory::TheoryCheckStatus::Cancelled:
+      result.status = ModelBasedCombinationStatus::Cancelled;
+      break;
+    case theory::TheoryCheckStatus::Unknown:
+      break;
+  }
+  return result;
+}
+
+}  // namespace
+
+ModelBasedCombinationResult ComponentModelCoordinator::reconcile(
+    const TheoryCombinationPlan& plan, std::uint64_t assignment_epoch,
+    std::span<theory::TheoryComponent* const> components,
+    std::span<const theory::InterfaceRelation> arrangement,
+    const EqualityLiteralResolver& equality_literal) {
+  if (components.size() != plan.descriptors().size()) {
+    return unknown("component collection differs from validated plan");
+  }
+  std::map<PairKey, theory::InterfaceRelationValue> fixed;
+  std::vector<std::vector<theory::InterfaceRelation>> local_arrangements(components.size());
+  std::vector<std::size_t> scope_pair_counts(plan.scopes().size(), 0);
+  for (const auto& relation : arrangement) {
+    const auto scope_index = plan.scope_for(as_pair(relation));
+    if (!scope_index.has_value() || relation.equality_lit.value == 0) {
+      return unknown("invalid interface arrangement relation");
+    }
+    const auto [entry, inserted] = fixed.emplace(pair_key(as_pair(relation)), relation.value);
+    if (!inserted) {
+      if (entry->second != relation.value) {
+        return unknown("contradictory interface arrangement entries");
+      }
+      continue;
+    }
+    ++scope_pair_counts[*scope_index];
+    for (const auto participant : plan.scopes()[*scope_index].participants) {
+      local_arrangements[participant].push_back(relation);
+    }
+  }
+  if (plan.policy() == CombinationPolicy::CompleteArrangement) {
+    for (std::size_t index = 0; index < plan.scopes().size(); ++index) {
+      const auto size = plan.scopes()[index].terms.size();
+      if (scope_pair_counts[index] != size * (size - 1) / 2) {
+        return unknown("complete arrangement policy requires every normalized pair");
+      }
+    }
+  }
+
+  std::vector<theory::TheoryModelProjection> projections(components.size());
+  std::vector<PartitionIndex> indices(components.size());
+  for (std::size_t index = 0; index < components.size(); ++index) {
+    if (components[index] == nullptr ||
+        components[index]->descriptor() != plan.descriptors()[index]) {
+      return unknown("component identity/order differs from validated plan");
+    }
+    ++statistics_.component_checks;
+    auto checked = components[index]->check(theory::TheoryCheckEffort::FullModel, assignment_epoch,
+                                            local_arrangements[index]);
+    if (checked.status != theory::TheoryCheckStatus::Consistent) {
+      auto result = check_result(std::move(checked));
+      if (result.status == ModelBasedCombinationStatus::LearnClause) {
+        ++statistics_.learned_clauses;
+      }
+      if (result.status == ModelBasedCombinationStatus::FreshDecision) {
+        const auto scope = plan.scope_for(result.decision.pair);
+        if (!scope.has_value() || !participates(plan.scopes()[*scope], index) ||
+            fixed.contains(pair_key(result.decision.pair))) {
+          return unknown("component requested an out-of-scope or already fixed decision");
+        }
+        ++statistics_.fresh_decisions;
+      }
+      return result;
+    }
+    if (plan.policy() == CombinationPolicy::CompleteArrangement) {
+      continue;
+    }
+    auto indexed = index_projection(checked.model, plan.component_scopes(index));
+    if (checked.model.token.component != plan.descriptors()[index].id ||
+        checked.model.token.assignment_epoch != assignment_epoch || !indexed.has_value()) {
+      ++statistics_.stale_snapshots;
+      return unknown("stale, incomplete or malformed component model projection");
+    }
+    for (const auto& relation : local_arrangements[index]) {
+      if (!agrees(*indexed, relation)) {
+        return unknown("component model violates its assigned interface arrangement");
+      }
+    }
+    indices[index] = std::move(*indexed);
+    projections[index] = std::move(checked.model);
+    ++statistics_.snapshots;
+  }
+  if (plan.policy() == CombinationPolicy::CompleteArrangement) {
+    ModelBasedCombinationResult result;
+    result.status = ModelBasedCombinationStatus::Accept;
+    return result;
+  }
+
+  // Section 4 model mutation is optional. Each scope's earliest recipe member
+  // supplies its preferred spanning equalities; foreign scopes never enter a
+  // request. A fixed point is not an entailment and may still require a split.
+  for (std::size_t index = 0; index < components.size(); ++index) {
+    if (!plan.descriptors()[index].capabilities.model_mutation) {
+      continue;
+    }
+    theory::TheoryMutationRequest request;
+    request.source = projections[index].token;
+    request.required_relations = local_arrangements[index];
+    for (const auto& scope : plan.scopes()) {
+      if (!participates(scope, index) || scope.participants.front() == index) {
+        continue;
+      }
+      std::map<std::size_t, core::TermId> firsts;
+      for (const auto term : scope.terms) {
+        const auto [first, inserted] =
+            firsts.emplace(indices[scope.participants.front()].at(term), term);
+        if (!inserted) {
+          const theory::InterfacePair pair{first->second, term, scope.sort};
+          if (!fixed.contains(pair_key(pair))) {
+            request.required_relations.push_back(
+                {pair.lhs, pair.rhs, pair.sort, {}, theory::InterfaceRelationValue::Equal});
+          }
+        }
+      }
+    }
+    if (request.required_relations.empty()) {
+      continue;
+    }
+    auto mutation = components[index]->mutate(request);
+    if (mutation.status == theory::TheoryMutationStatus::FixedPoint) {
+      ++statistics_.fixed_points;
+      continue;
+    }
+    if (mutation.status != theory::TheoryMutationStatus::Mutated) {
+      ModelBasedCombinationResult result;
+      result.diagnostic = std::move(mutation.diagnostic);
+      switch (mutation.status) {
+        case theory::TheoryMutationStatus::ResourceLimit:
+          result.status = ModelBasedCombinationStatus::ResourceLimit;
+          break;
+        case theory::TheoryMutationStatus::Unsupported:
+          result.status = ModelBasedCombinationStatus::Unsupported;
+          break;
+        case theory::TheoryMutationStatus::Cancelled:
+          result.status = ModelBasedCombinationStatus::Cancelled;
+          break;
+        default:
+          break;
+      }
+      return result;
+    }
+    auto indexed = index_projection(mutation.model, plan.component_scopes(index));
+    if (!indexed.has_value() || mutation.model.token.component != request.source.component ||
+        mutation.model.token.assignment_epoch != assignment_epoch ||
+        mutation.model.token.revision <= request.source.revision ||
+        !std::all_of(local_arrangements[index].begin(), local_arrangements[index].end(),
+                     [&](const auto& relation) { return agrees(*indexed, relation); })) {
+      ++statistics_.rejected_mutations;
+      return unknown("mutation returned a stale, malformed or arrangement-violating model");
+    }
+    projections[index] = std::move(mutation.model);
+    indices[index] = std::move(*indexed);
+    ++statistics_.mutations;
+  }
+
+  // Recompute the union after every mutator ran. Equal-class spanning edges
+  // suffice: agreement on each edge in both partitions implies equal relations.
+  std::set<PairKey> pairs;
+  for (const auto& projection : projections) {
+    add_spanning_pairs(projection, pairs);
+  }
+  std::set<PairKey> care;
+  for (std::size_t index = 0; index < components.size(); ++index) {
+    if (!plan.descriptors()[index].capabilities.care_pairs) {
+      continue;
+    }
+    for (const auto& pair : components[index]->care_pairs(projections[index].token)) {
+      const auto scope = plan.scope_for(pair);
+      if (!scope.has_value() || !participates(plan.scopes()[*scope], index)) {
+        return unknown("component care pair lies outside its normalized scope");
+      }
+      care.insert(pair_key(pair));
+      ++statistics_.care_pairs;
+    }
+  }
+  std::vector<PairKey> ordered_pairs(pairs.begin(), pairs.end());
+  std::stable_partition(ordered_pairs.begin(), ordered_pairs.end(),
+                        [&](const auto& key) { return care.contains(key); });
+  ModelBasedCombinationResult result;
+  for (const auto& key : ordered_pairs) {
+    const auto [sort, lhs, rhs] = key;
+    const theory::InterfacePair pair{lhs, rhs, sort};
+    const auto scope_index = plan.scope_for(pair);
+    if (!scope_index.has_value()) {
+      return unknown("projection edge is outside normalized interface scopes");
+    }
+    const auto& scope = plan.scopes().at(*scope_index);
+    const auto& reference = indices[scope.participants.front()];
+    const bool equal = reference.at(lhs) == reference.at(rhs);
+    bool disagreement = false;
+    for (const auto participant : scope.participants) {
+      const auto& candidate = indices[participant];
+      if ((candidate.at(lhs) == candidate.at(rhs)) != equal) {
+        disagreement = true;
+        break;
+      }
+    }
+    if (!disagreement) {
+      continue;
+    }
+    if (fixed.contains(key)) {
+      return unknown("model disagreement on an already assigned interface pair");
+    }
+    ++statistics_.disagreements;
+    const auto literal = equality_literal(pair);
+    if (!literal.has_value() || literal->value == 0) {
+      return unknown("interface equality could not be materialized");
+    }
+    result.decision_lits.push_back(*literal);
+  }
+  if (result.decision_lits.empty()) {
+    result.status = ModelBasedCombinationStatus::Accept;
+  } else {
+    result.status = ModelBasedCombinationStatus::DecideEquality;
+    result.decision_lit = result.decision_lits.front();
+    statistics_.model_decisions += result.decision_lits.size();
+  }
+  return result;
+}
+
+}  // namespace primo::smt

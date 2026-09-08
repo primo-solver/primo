@@ -1,5 +1,10 @@
 # Modular theory combination
 
+The N-component migration is in progress; see
+[](n-way-combination-migration.md) for its frozen boundary, implementation status
+and acceptance gates. The production routes described below remain the baseline
+until that migration is qualified.
+
 Primo's modular combination layer is based on Nelson and Oppen's arrangement
 method and on SAT-mediated delayed theory combination. Its first non-convex
 target is `QF_UFLIA`; the established `QF_UFLRA` solver retains its specialized

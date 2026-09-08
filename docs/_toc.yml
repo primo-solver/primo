@@ -37,6 +37,7 @@ parts:
       - file: nelson-oppen
         sections:
           - file: modular-theory-combination
+          - file: n-way-combination-migration
           - file: qf-uflra-model-guided-performance
           - file: qf-uflra-convex-no-merge-plan
           - file: nelson-oppen-qf-lra-regression
