@@ -1,7 +1,7 @@
 # N-component combination migration
 
 Status: implementation and QF_UFLIA qualification are complete; QF_UF and
-QF_UFLRA also pass timing/model preservation, while QF_LRA and QF_LIA are running.
+QF_UFLRA and QF_LRA also pass timing/model preservation; QF_LIA remains running.
 The production QF_UFLIA route uses
 the collection driver, dispatcher and fragment assembler. Generated and
 real-seed campaigns found no correctness failures, with explicitly inconclusive
@@ -418,3 +418,23 @@ Ten other UNSAT inputs have only known reference timeouts, agree with the
 frozen Primo baseline and declared status, and remain explicitly without
 decisive reference corroboration. Exact files and both rounds' family results
 are retained in the run log and artifacts.
+
+QF_LRA preservation meets the same gates. Across both rounds the baseline
+solves 3,076/3,506 executions and the candidate 3,075; combined PAR2 increases
+0.112% and common-solved runtime 0.089%. All 1,864 candidate SAT rows pass
+Dolmen, with 128 complete coverage records and unchanged hashes. Four original
+lost solves and three gains remain in the raw comparison. Exactly three paired
+follow-ups per lost input find one loss each for Labyrinth and Canberra, none
+for Gulwani, and both binaries timing out in all three Collatz pairs. Thus no
+input reaches the two-of-three differential-loss threshold; the Collatz
+follow-up is resource-inconclusive, not a reproduced solve. Both SAT follow-up
+models pass Dolmen. DTP-Scheduling and sc common runtime increase 1.87% and
+1.30%, respectively, despite the small aggregate change.
+
+The QF_LRA rounds have 1,412 and 1,415 decisive recorded-reference agreements.
+Both references previously timed out on another 121 and 127 candidate solves:
+74/75 SAT models are independently validated, while 47/52 UNSAT answers agree
+with declared status but lack decisive reference corroboration. Two round-zero
+UNSAT gains also lack a decisive frozen-baseline answer. These limitations
+remain explicit; fetching existing cvc5 artifacts to complete the join did not
+rerun either reference solver.
