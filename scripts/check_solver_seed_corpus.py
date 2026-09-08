@@ -52,6 +52,8 @@ def main() -> int:
     parser.add_argument("--ref", required=True)
     parser.add_argument("--ref-arg", action="append", default=[])
     parser.add_argument("--timeout", type=float, default=10.0)
+    parser.add_argument("--ignore-declared-status", action="store_true",
+                        help="For mutated formulas only: compare solvers, not the seed's status")
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()
 
@@ -64,7 +66,7 @@ def main() -> int:
     rows: list[dict[str, object]] = []
     counts: Counter[str] = Counter()
     for path in files:
-        expected = declared_status(path)
+        expected = "" if args.ignore_declared_status else declared_status(path)
         ours, ours_exit = run(solver_command, path, args.timeout)
         reference, reference_exit = run(reference_command, path, args.timeout)
         if ours not in CONCRETE_ANSWERS or reference not in CONCRETE_ANSWERS:

@@ -33,14 +33,24 @@ fi
 solver_args=()
 for arg in "${options[@]}"; do solver_args+=(--solver-arg="$arg"); done
 printf '%s\n' "${options[@]}" > "$OUT/options.txt"
+seed_status=0
 python3 scripts/check_solver_seed_corpus.py --seeds "$SEEDS" \
   --solver ./build-slurm-rel/primo "${solver_args[@]}" --ref z3 \
-  --timeout "$SEED_TIMEOUT" --out "$OUT/seed-answers.csv"
+  --timeout "$SEED_TIMEOUT" --out "$OUT/seed-answers.csv" || seed_status=$?
+if (( seed_status != 0 )); then
+  [[ ${PRIMO_MUTATION_COLLECT_RESOURCES:-0} == 1 ]] || exit "$seed_status"
+  python3 scripts/classify_mutation_resources.py answers "$OUT/seed-answers.csv"
+fi
 mapfile -d '' -t originals < <(find "$SEEDS" -type f -name '*.smt2' -print0 | sort -z)
 (( ${#originals[@]} > 0 ))
+seed_model_status=0
 python3 scripts/validate_model.py --solver ./build-slurm-rel/primo "${solver_args[@]}" \
   --require-dolmen-pass --dolmen-arg=--strict=false --timeout "$SEED_TIMEOUT" \
-  --dolmen-timeout 5 --out "$OUT/seed-models" "${originals[@]}"
+  --dolmen-timeout 5 --out "$OUT/seed-models" "${originals[@]}" || seed_model_status=$?
+if (( seed_model_status != 0 )); then
+  [[ ${PRIMO_MUTATION_COLLECT_RESOURCES:-0} == 1 ]] || exit "$seed_model_status"
+  python3 scripts/classify_mutation_resources.py models "$OUT/seed-models/summary.csv"
+fi
 
 mutation_args=(--typefuzz "$MUTATOR")
 if [[ $MUTATOR == opfuzz ]]; then
@@ -60,13 +70,14 @@ mutants=("$OUT"/scratch/*.smt2)
 # nonzero exit. Recheck every retained input using the status-aware comparator.
 answer_status=0
 python3 scripts/check_solver_seed_corpus.py --seeds "$OUT/scratch" \
+  --ignore-declared-status \
   --solver ./build-slurm-rel/primo "${solver_args[@]}" --ref z3 \
   --timeout "$TIMEOUT" --out "$OUT/mutant-answers.csv" || answer_status=$?
 model_status=0
 python3 scripts/validate_model.py --solver ./build-slurm-rel/primo "${solver_args[@]}" \
   --require-dolmen-pass --dolmen-arg=--strict=false --timeout "$TIMEOUT" \
   --dolmen-timeout 5 --out "$OUT/mutant-models" "${mutants[@]}" || model_status=$?
-if (( answer_status != 0 || model_status != 0 )); then exit 1; fi
+if (( seed_status != 0 || seed_model_status != 0 || answer_status != 0 || model_status != 0 )); then exit 1; fi
 # A wall-terminated differential runner may return success with saved bugs.
 # Never accept those until they have been independently classified.
 if [[ -d $OUT/bugs ]] && [[ -n $(find "$OUT/bugs" -type f -print -quit) ]]; then

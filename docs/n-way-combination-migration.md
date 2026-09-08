@@ -2,8 +2,9 @@
 
 Status: implementation in progress. The production QF_UFLIA route is connected
 to the collection driver, dispatcher and fragment assembler in the working
-candidate. It is **not yet qualified** by fresh fuzzing or SLURM performance
-gates. The frozen external binary remains the baseline. This page is the
+candidate. Generated fuzzing has no correctness failures; real-seed qualification
+and SLURM performance gates are still pending. It is **not yet qualified** for
+promotion. The frozen external binary remains the baseline. This page is the
 implementation checklist, not a completion or performance claim.
 
 ## Scope and frozen boundary
@@ -148,8 +149,9 @@ and the callback is destroyed before configuration/preparation changes. The
 existing evaluated-argument regression reproduced this under ASan; after the
 fix `make asan-test` passes all 29 targets. Focused static review of the new
 driver, assembler, dispatcher, coordinator and their tests reports no owned
-code warning. Whole-tree static review, fresh fuzzing and performance remain
-pending; a passing ordinary build was not used as lifetime evidence.
+code warning. Subsequent whole-tree review and generated-campaign results are
+recorded below and in the run log; performance remains pending. A passing
+ordinary build was not used as lifetime evidence.
 
 For each sort, build the component graph whose edges mean occurrence of the
 same interface variable. In each connected group, form the union of variables
@@ -171,14 +173,14 @@ interface growth uses the established callback rebuild boundary.
 
 ## Acceptance checklist
 
-- [ ] Validated contracts, ownership and capability planning.
-- [ ] Participation normalization and three/four-component SAT integration tests.
-- [ ] Freshness, mutation, fixed-decision and typed failure regression tests.
-- [ ] Collection dispatcher and production incremental EUF/LIA adapters.
-- [ ] Generic model export/composition, including corrupted-model rejection.
-- [ ] Full production QF_UFLIA migration; frozen QF_UFLRA source preserved.
-- [ ] Validator resource classification and explicit Dolmen memory budgets.
-- [ ] Check, ASan, lint, docs, whole-tree static/code and efficiency review.
+- [x] Validated contracts, ownership and capability planning.
+- [x] Participation normalization and three/four-component SAT integration tests.
+- [x] Freshness, mutation, fixed-decision and typed failure regression tests.
+- [x] Collection dispatcher and production incremental EUF/LIA adapters.
+- [x] Generic model export/composition, including corrupted-model rejection.
+- [x] Full production QF_UFLIA migration; frozen QF_UFLRA source preserved.
+- [x] Validator resource classification and explicit Dolmen memory budgets.
+- [x] Check, ASan, lint, docs, whole-tree static/code and efficiency review.
 - [ ] Exact-candidate generated and real-seed mutation gates for all selected
   profiles; at least 3,000 default generated cases.
 - [ ] Independent Dolmen replay of every candidate real-corpus SAT row, separate
@@ -225,8 +227,16 @@ and independent model validation. Default mutation iterations are 100 per family
 seed, bounded by the campaign wall time. No candidate rejection is ignored to
 make a gate pass; out-of-fragment attempts remain in the run log.
 The original-seed precheck has a separate 60-second budget; short mutated-input
-checks retain a five-second budget. A seed timeout is incomplete evidence and
-still fails the gate, rather than silently removing the seed from coverage.
+checks retain a five-second budget. In this qualification matrix,
+`classify_mutation_resources.py` permits collection to continue after explicitly
+classified timeout/unknown/resource rows. It rejects crashes, disagreements,
+bad inputs, invalid models, changed answers and missing evidence. The original
+nonzero stage status still fails the final gate; continued collection is not a
+pass. All seeds remain included. Ordinary typed-model gate callers retain
+fail-fast behavior unless they explicitly request resource-only collection.
+Mutant answer comparison ignores inherited seed status metadata, which need not
+survive an operator mutation, but still compares the two solver answers and
+process statuses. Original-seed status checks remain enabled.
 
 Whole-source clang-tidy and the advisory include scan completed on SLURM (105
 non-generated C++ files each). The include review removed three unused headers

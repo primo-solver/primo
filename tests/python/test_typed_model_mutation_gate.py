@@ -23,6 +23,11 @@ elif name in ('python3', 'yinyang_fuzz.sh'):
         scratch = Path(args[args.index('--scratch') + 1])
         scratch.mkdir(parents=True)
         (scratch / 'case.smt2').write_text('(check-sat)\n')
+    elif os.environ.get('TEST_SEED_FAILURE') == 'resource':
+        if args[0] == 'scripts/classify_mutation_resources.py':
+            sys.exit(0)
+        if args[args.index('--out') + 1].endswith('seed-answers.csv'):
+            sys.exit(1)
     elif os.environ.get('TEST_SEED_FAILURE') == '1' or (
         os.environ.get('TEST_SEED_FAILURE') == 'post'
         and args[args.index('--out') + 1].endswith('mutant-answers.csv')
@@ -32,7 +37,7 @@ elif name in ('python3', 'yinyang_fuzz.sh'):
 
 
 class TypedMutationGateTests(unittest.TestCase):
-    def run_gate(self, mutator, fail_seed=False, fail_post=False):
+    def run_gate(self, mutator, fail_seed=False, fail_post=False, resource_seed=False):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             for path in ('build-slurm-rel/primo', 'scripts/yinyang_fuzz.sh',
@@ -50,11 +55,14 @@ class TypedMutationGateTests(unittest.TestCase):
                        PRIMO_MODEL_SEEDS='seeds', PRIMO_FUZZ_OUT_DIR='out',
                        PRIMO_MUTATION_TOOL=mutator, SLURM_ARRAY_TASK_ID='2',
                        PRIMO_MUTATION_SEED_TIMEOUT='60',
+                       PRIMO_MUTATION_COLLECT_RESOURCES=str(int(resource_seed)),
                        PRIMO_EXTRA_SOLVER_ARGS='--no-qf-uflia-model-combination',
-                       TEST_SEED_FAILURE='post' if fail_post else str(int(fail_seed)))
+                       TEST_SEED_FAILURE='resource' if resource_seed else
+                       ('post' if fail_post else str(int(fail_seed))))
             result = subprocess.run(['bash', str(SCRIPT)], env=env,
                                     capture_output=True, text=True, timeout=10)
-            self.assertEqual(result.returncode, int(fail_seed or fail_post), result.stdout + result.stderr)
+            self.assertEqual(result.returncode, int(fail_seed or fail_post or resource_seed),
+                             result.stdout + result.stderr)
             return [json.loads(line) for line in (root / 'calls.jsonl').read_text().splitlines()]
 
     def test_options_reach_originals_mutation_and_models(self):
@@ -64,6 +72,8 @@ class TypedMutationGateTests(unittest.TestCase):
             with self.subTest(mutator=mutator):
                 calls = self.run_gate(mutator)
                 self.assertEqual(len(calls), 5)
+                self.assertNotIn('--ignore-declared-status', calls[0][1])
+                self.assertIn('--ignore-declared-status', calls[3][1])
                 for index in (0, 1):
                     self.assertEqual(calls[index][1][calls[index][1].index('--timeout') + 1], '60')
                 for index in (3, 4):
@@ -87,6 +97,12 @@ class TypedMutationGateTests(unittest.TestCase):
     def test_post_comparison_failure_is_not_masked_by_passing_models(self):
         calls = self.run_gate('opfuzz', fail_post=True)
         self.assertEqual(len(calls), 5)
+        self.assertEqual(calls[-1][1][0], 'scripts/validate_model.py')
+
+    def test_classified_resource_continues_but_never_passes_gate(self):
+        calls = self.run_gate('opfuzz', resource_seed=True)
+        self.assertEqual(len(calls), 6)
+        self.assertEqual(calls[1][1][0], 'scripts/classify_mutation_resources.py')
         self.assertEqual(calls[-1][1][0], 'scripts/validate_model.py')
 
 
