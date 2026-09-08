@@ -202,3 +202,14 @@ their order for a second paired round, and records hashed provenance through
 `benchmark_model_replay.py`. An optional ordered manifest selects the sample or
 watchlist before sharding. It launches no reference solver. Each candidate
 round's SAT rows are subsequently replayed by a separate validation job.
+
+`slurm_component_migration_fuzz.sbatch` covers the full 16-profile cross-product
+of preprocessing auto/off/basic/strong, model guidance on/off and online mode
+on/off. Four shards give the default profile 3,000 generated mixed inputs and
+each other profile 1,000 (18,000 total). One shard per profile first checks all
+tracked regression and QF_UFLIA smoke seeds against the reference, including
+exit-status and declared-answer checks. SAT outputs require direct Dolmen
+validation. `slurm_component_migration_mutation.sbatch` uses the same profiles
+and deterministic smallest-per-family real seeds; oversized seeds are errors,
+not silently omitted families. Its retained mutants undergo separate model
+validation with the exact same solver options.
