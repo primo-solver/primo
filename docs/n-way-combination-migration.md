@@ -1,11 +1,13 @@
 # N-component combination migration
 
-Status: implementation in progress. The production QF_UFLIA route is connected
-to the collection driver, dispatcher and fragment assembler in the working
-candidate. Generated fuzzing has no correctness failures; real-seed qualification
-and SLURM performance gates are still pending. It is **not yet qualified** for
-promotion. The frozen external binary remains the baseline. This page is the
-implementation checklist, not a completion or performance claim.
+Status: implementation and QF_UFLIA qualification are complete; the remaining
+four-logic preservation sweep is running. The production QF_UFLIA route uses
+the collection driver, dispatcher and fragment assembler. Generated and
+real-seed campaigns found no correctness failures, with explicitly inconclusive
+resource rows retained below. The sample, watchlist and full 659-input paired
+QF_UFLIA gates pass, including independent replay of every candidate SAT model.
+The migration is **not yet fully qualified**: cross-logic preservation remains
+an acceptance requirement. The frozen external binary remains the baseline.
 
 ## Scope and frozen boundary
 
@@ -181,8 +183,9 @@ interface growth uses the established callback rebuild boundary.
 - [x] Full production QF_UFLIA migration; frozen QF_UFLRA source preserved.
 - [x] Validator resource classification and explicit Dolmen memory budgets.
 - [x] Check, ASan, lint, docs, whole-tree static/code and efficiency review.
-- [ ] Exact-candidate generated and real-seed mutation gates for all selected
-  profiles; at least 3,000 default generated cases.
+- [x] Exact-candidate generated and real-seed mutation coverage for all selected
+  profiles; at least 3,000 default generated cases. Resource-only outcomes are
+  triaged below, not counted as passes or an unconditional green campaign.
 - [ ] Independent Dolmen replay of every candidate real-corpus SAT row, separate
   from speed measurement; resource failures are unvalidated, not invalid models.
 - [ ] Paired baseline/candidate SLURM sample, watchlist, full 659 QF_UFLIA and
@@ -264,3 +267,46 @@ which was outside the old growth timer. `slurm_component_profile.sbatch` builds
 a separate `-pg` binary and collects repeated gprof samples without changing
 either retained timing binary. Instrumented times are diagnostic, not headline
 performance evidence. No new algorithm is inferred from the timers alone.
+
+## Qualification evidence through the full QF_UFLIA stage
+
+The retained `2413397` candidate passed 17,996 of 18,000 generated answer checks;
+three node-limit unknowns and one timeout remain inconclusive. The default
+profile passed all 3,000 cases. All 9,134 generated SAT models passed Dolmen,
+and all 96 tracked regression/profile checks passed. Real-seed operator
+mutation covers all four families under all 16 option profiles: 2,817 retained
+mutants yielded 2,453 decisive answer agreements and 364 resource outcomes.
+Separate model checks yielded 1,514 direct Dolmen passes, 941 UNSAT rows and
+362 timeouts. Answer and replay counts differ because two initially incomplete
+answers became decisive on replay. None of these resource rows is a pass;
+the collection harness retains a nonzero final status. There were no wrong
+answers, invalid models, crashes, parser/type errors or reference disagreements.
+
+The full 659-input QF_UFLIA comparison used two same-node, reversed-order
+baseline/candidate rounds with a 60-second cap. The baseline solved 571 inputs
+in each round; the candidate solved 574 and 575. There were no lost solves,
+errors, unsupported results or answer disagreements. Combined PAR2 decreased
+from 23,309.092340 to 22,808.494721 seconds (2.15%); common-solved runtime
+decreased from 2,189.092340 to 2,139.664572 seconds (2.26%). All 810 candidate
+SAT replay rows passed Dolmen directly with an 8G checker budget; all 64 replay
+shards have complete coverage and unchanged binary/input hashes. Every decisive
+candidate answer agrees with a hash-matched recorded reference answer. No
+reference solver was rerun for these comparisons.
+
+This is not a uniform family speedup. Certora gained two solves in both rounds,
+but its common-solved runtime increased 22.59% (72.301020 to 88.635538 seconds
+across both rounds). TwoSquares and mathsat common runtime decreased 0.66% and
+2.11%; wisas decreased 8.16% over the full family despite the small-probe
+regression. The extra fourth gain in the second round is near-cutoff variation,
+not evidence of four robust additional solves. Candidate-only gprof identified
+routing and pair ordering as future optimization targets; no speculative
+optimization was added after the aggregate gate passed.
+
+The remaining preservation suite runs QF_UF (7,503), QF_LIA (13,306), QF_LRA
+(1,753) and QF_UFLRA (1,284) with the same frozen binaries and two paired rounds.
+The completed 659-input run is reused as the QF_UFLIA leg. Model replay runs on
+a separate node only after its corresponding timing shard completes. Recorded
+reference results are reused by content hash. Full acceptance still requires
+each logic's 1% PAR2/common-runtime limits, any required three-pair lost-solve
+reruns, and validation of every candidate SAT row. Exact submissions, artifacts
+and resource classifications are in `run-log.json`.

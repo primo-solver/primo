@@ -3,7 +3,106 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-08-n-component-preservation-four-logics",
+      "date": "2026-09-08",
+      "commit": "2413397",
+      "baseline_commit": "287b743",
+      "kind": "paired-cross-logic-preservation",
+      "evidence_status": "running",
+      "artifact": "results/n-way-2413397/preservation-v2",
+      "environment": {
+        "host": "CIIRC SLURM via requested SSH jump route",
+        "timing_nodes": "node-03 through node-09; explicitly one node and one task per allocation, no SMT sibling sharing",
+        "validation_node": "node-02",
+        "timeout_seconds": 60,
+        "rounds": 2,
+        "solver_options": [
+          "--quiet",
+          "--stats"
+        ],
+        "baseline_sha256": "5a671d47882f555f3522c92b7b6c05a76c3bbdfde6ec2cb714b69e76c519b3f7",
+        "candidate_sha256": "962fd9a208a3b3537b8100df34286b930f038192dfa9fb4be7b00ada98ef72c7"
+      },
+      "jobs": [
+        {
+          "logic": "QF_LIA",
+          "shards": 512,
+          "conc": 64,
+          "root": "/home/janotmik/primo-cadical-profile/sandbox/non-incremental/QF_LIA",
+          "timing": "138134",
+          "command": "ssh -F tmp/primo-model-slurm-ssh-config primo-model-slurm 'cd /home/janotmik/primo-model-fix && sbatch --parsable --job-name=primo-pres-QF_LIA --array=0-511%64 --time=02:15:00 --nodes=1 --ntasks=1 --hint=nomultithread --exclude=node-01,node-02,amd-1,amd-2,dgx-2,dgx-3,dgx-4,dgx-5,gpu-1,gpu-2,gpu-3,gpu-4 --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-model-fix,PRIMO_COMPARE_SHARDS=512,PRIMO_COMPARE_OUT_ROOT=/home/janotmik/primo-model-fix/results/n-way-2413397/preservation-v2/QF_LIA,PRIMO_COMPARE_ROOT=/home/janotmik/primo-cadical-profile/sandbox/non-incremental/QF_LIA,PRIMO_BASELINE_SOLVER=/home/janotmik/primo-model-fix/results/full-revalidation-287b743/bin/primo,PRIMO_CANDIDATE_SOLVER=/home/janotmik/primo-model-fix/results/n-way-2413397/bin/primo,PRIMO_BASELINE_GIT=287b743,PRIMO_EXPECTED_GIT=2413397,PRIMO_COMPARE_TIMEOUT=60 scripts/slurm_component_migration_compare.sbatch'",
+          "model_0": "138232",
+          "model_command_0": "ssh -F tmp/primo-model-slurm-ssh-config primo-model-slurm 'cd /home/janotmik/primo-model-fix && sbatch --parsable --job-name=primo-model-QF_LIA-0 --array=0-511%8 --nodes=1 --ntasks=1 --nodelist=node-02 --dependency=aftercorr:138134 --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-model-fix,PRIMO_PHASE=replay,PRIMO_CAMPAIGN_OUT=/home/janotmik/primo-model-fix/results/n-way-2413397/preservation-v2/QF_LIA/round-0/candidate,PRIMO_MODEL_TIMEOUT=90,PRIMO_DOLMEN_TIMEOUT=30,PRIMO_DOLMEN_SIZE=8G scripts/slurm_real_corpus_validation.sbatch'",
+          "model_1": "138245",
+          "model_command_1": "ssh -F tmp/primo-model-slurm-ssh-config primo-model-slurm 'cd /home/janotmik/primo-model-fix && sbatch --parsable --job-name=primo-model-QF_LIA-1 --array=0-511%8 --nodes=1 --ntasks=1 --nodelist=node-02 --dependency=aftercorr:138134 --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-model-fix,PRIMO_PHASE=replay,PRIMO_CAMPAIGN_OUT=/home/janotmik/primo-model-fix/results/n-way-2413397/preservation-v2/QF_LIA/round-1/candidate,PRIMO_MODEL_TIMEOUT=90,PRIMO_DOLMEN_TIMEOUT=30,PRIMO_DOLMEN_SIZE=8G scripts/slurm_real_corpus_validation.sbatch'"
+        },
+        {
+          "logic": "QF_UF",
+          "shards": 128,
+          "conc": 8,
+          "root": "/home/janotmik/primo-cadical-profile/tmp/QF_UF",
+          "timing": "138199",
+          "command": "ssh -F tmp/primo-model-slurm-ssh-config primo-model-slurm 'cd /home/janotmik/primo-model-fix && sbatch --parsable --job-name=primo-pres-QF_UF --array=0-127%8 --time=02:15:00 --nodes=1 --ntasks=1 --hint=nomultithread --exclude=node-01,node-02,amd-1,amd-2,dgx-2,dgx-3,dgx-4,dgx-5,gpu-1,gpu-2,gpu-3,gpu-4 --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-model-fix,PRIMO_COMPARE_SHARDS=128,PRIMO_COMPARE_OUT_ROOT=/home/janotmik/primo-model-fix/results/n-way-2413397/preservation-v2/QF_UF,PRIMO_COMPARE_ROOT=/home/janotmik/primo-cadical-profile/tmp/QF_UF,PRIMO_BASELINE_SOLVER=/home/janotmik/primo-model-fix/results/full-revalidation-287b743/bin/primo,PRIMO_CANDIDATE_SOLVER=/home/janotmik/primo-model-fix/results/n-way-2413397/bin/primo,PRIMO_BASELINE_GIT=287b743,PRIMO_EXPECTED_GIT=2413397,PRIMO_COMPARE_TIMEOUT=60 scripts/slurm_component_migration_compare.sbatch'",
+          "model_0": "138257",
+          "model_command_0": "ssh -F tmp/primo-model-slurm-ssh-config primo-model-slurm 'cd /home/janotmik/primo-model-fix && sbatch --parsable --job-name=primo-model-QF_UF-0 --array=0-127%8 --nodes=1 --ntasks=1 --nodelist=node-02 --dependency=aftercorr:138199 --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-model-fix,PRIMO_PHASE=replay,PRIMO_CAMPAIGN_OUT=/home/janotmik/primo-model-fix/results/n-way-2413397/preservation-v2/QF_UF/round-0/candidate,PRIMO_MODEL_TIMEOUT=90,PRIMO_DOLMEN_TIMEOUT=30,PRIMO_DOLMEN_SIZE=8G scripts/slurm_real_corpus_validation.sbatch'",
+          "model_1": "138268",
+          "model_command_1": "ssh -F tmp/primo-model-slurm-ssh-config primo-model-slurm 'cd /home/janotmik/primo-model-fix && sbatch --parsable --job-name=primo-model-QF_UF-1 --array=0-127%8 --nodes=1 --ntasks=1 --nodelist=node-02 --dependency=aftercorr:138199 --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-model-fix,PRIMO_PHASE=replay,PRIMO_CAMPAIGN_OUT=/home/janotmik/primo-model-fix/results/n-way-2413397/preservation-v2/QF_UF/round-1/candidate,PRIMO_MODEL_TIMEOUT=90,PRIMO_DOLMEN_TIMEOUT=30,PRIMO_DOLMEN_SIZE=8G scripts/slurm_real_corpus_validation.sbatch'"
+        },
+        {
+          "logic": "QF_LRA",
+          "shards": 64,
+          "conc": 8,
+          "root": "/home/janotmik/primo-cadical-profile/sandbox/non-incremental/QF_LRA",
+          "timing": "138208",
+          "command": "ssh -F tmp/primo-model-slurm-ssh-config primo-model-slurm 'cd /home/janotmik/primo-model-fix && sbatch --parsable --job-name=primo-pres-QF_LRA --array=0-63%8 --time=02:15:00 --nodes=1 --ntasks=1 --hint=nomultithread --exclude=node-01,node-02,amd-1,amd-2,dgx-2,dgx-3,dgx-4,dgx-5,gpu-1,gpu-2,gpu-3,gpu-4 --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-model-fix,PRIMO_COMPARE_SHARDS=64,PRIMO_COMPARE_OUT_ROOT=/home/janotmik/primo-model-fix/results/n-way-2413397/preservation-v2/QF_LRA,PRIMO_COMPARE_ROOT=/home/janotmik/primo-cadical-profile/sandbox/non-incremental/QF_LRA,PRIMO_BASELINE_SOLVER=/home/janotmik/primo-model-fix/results/full-revalidation-287b743/bin/primo,PRIMO_CANDIDATE_SOLVER=/home/janotmik/primo-model-fix/results/n-way-2413397/bin/primo,PRIMO_BASELINE_GIT=287b743,PRIMO_EXPECTED_GIT=2413397,PRIMO_COMPARE_TIMEOUT=60 scripts/slurm_component_migration_compare.sbatch'",
+          "model_0": "138279",
+          "model_command_0": "ssh -F tmp/primo-model-slurm-ssh-config primo-model-slurm 'cd /home/janotmik/primo-model-fix && sbatch --parsable --job-name=primo-model-QF_LRA-0 --array=0-63%8 --nodes=1 --ntasks=1 --nodelist=node-02 --dependency=aftercorr:138208 --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-model-fix,PRIMO_PHASE=replay,PRIMO_CAMPAIGN_OUT=/home/janotmik/primo-model-fix/results/n-way-2413397/preservation-v2/QF_LRA/round-0/candidate,PRIMO_MODEL_TIMEOUT=90,PRIMO_DOLMEN_TIMEOUT=30,PRIMO_DOLMEN_SIZE=8G scripts/slurm_real_corpus_validation.sbatch'",
+          "model_1": "138290",
+          "model_command_1": "ssh -F tmp/primo-model-slurm-ssh-config primo-model-slurm 'cd /home/janotmik/primo-model-fix && sbatch --parsable --job-name=primo-model-QF_LRA-1 --array=0-63%8 --nodes=1 --ntasks=1 --nodelist=node-02 --dependency=aftercorr:138208 --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-model-fix,PRIMO_PHASE=replay,PRIMO_CAMPAIGN_OUT=/home/janotmik/primo-model-fix/results/n-way-2413397/preservation-v2/QF_LRA/round-1/candidate,PRIMO_MODEL_TIMEOUT=90,PRIMO_DOLMEN_TIMEOUT=30,PRIMO_DOLMEN_SIZE=8G scripts/slurm_real_corpus_validation.sbatch'"
+        },
+        {
+          "logic": "QF_UFLRA",
+          "shards": 64,
+          "conc": 8,
+          "root": "/home/janotmik/primo-cadical-profile/sandbox/non-incremental/QF_UFLRA",
+          "timing": "138217",
+          "command": "ssh -F tmp/primo-model-slurm-ssh-config primo-model-slurm 'cd /home/janotmik/primo-model-fix && sbatch --parsable --job-name=primo-pres-QF_UFLRA --array=0-63%8 --time=02:15:00 --nodes=1 --ntasks=1 --hint=nomultithread --exclude=node-01,node-02,amd-1,amd-2,dgx-2,dgx-3,dgx-4,dgx-5,gpu-1,gpu-2,gpu-3,gpu-4 --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-model-fix,PRIMO_COMPARE_SHARDS=64,PRIMO_COMPARE_OUT_ROOT=/home/janotmik/primo-model-fix/results/n-way-2413397/preservation-v2/QF_UFLRA,PRIMO_COMPARE_ROOT=/home/janotmik/primo-cadical-profile/sandbox/non-incremental/QF_UFLRA,PRIMO_BASELINE_SOLVER=/home/janotmik/primo-model-fix/results/full-revalidation-287b743/bin/primo,PRIMO_CANDIDATE_SOLVER=/home/janotmik/primo-model-fix/results/n-way-2413397/bin/primo,PRIMO_BASELINE_GIT=287b743,PRIMO_EXPECTED_GIT=2413397,PRIMO_COMPARE_TIMEOUT=60 scripts/slurm_component_migration_compare.sbatch'",
+          "model_0": "138309",
+          "model_command_0": "ssh -F tmp/primo-model-slurm-ssh-config primo-model-slurm 'cd /home/janotmik/primo-model-fix && sbatch --parsable --job-name=primo-model-QF_UFLRA-0 --array=0-63%8 --nodes=1 --ntasks=1 --nodelist=node-02 --dependency=aftercorr:138217 --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-model-fix,PRIMO_PHASE=replay,PRIMO_CAMPAIGN_OUT=/home/janotmik/primo-model-fix/results/n-way-2413397/preservation-v2/QF_UFLRA/round-0/candidate,PRIMO_MODEL_TIMEOUT=90,PRIMO_DOLMEN_TIMEOUT=30,PRIMO_DOLMEN_SIZE=8G scripts/slurm_real_corpus_validation.sbatch'",
+          "model_1": "138336",
+          "model_command_1": "ssh -F tmp/primo-model-slurm-ssh-config primo-model-slurm 'cd /home/janotmik/primo-model-fix && sbatch --parsable --job-name=primo-model-QF_UFLRA-1 --array=0-63%8 --nodes=1 --ntasks=1 --nodelist=node-02 --dependency=aftercorr:138217 --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-model-fix,PRIMO_PHASE=replay,PRIMO_CAMPAIGN_OUT=/home/janotmik/primo-model-fix/results/n-way-2413397/preservation-v2/QF_UFLRA/round-1/candidate,PRIMO_MODEL_TIMEOUT=90,PRIMO_DOLMEN_TIMEOUT=30,PRIMO_DOLMEN_SIZE=8G scripts/slurm_real_corpus_validation.sbatch'"
+        }
+      ],
+      "allocation_rationale": "Idle homogeneous CPU nodes checked immediately before submission. QF_LIA has 13306 inputs and dominates cost: 512 small shards with at most 64 concurrent one-core tasks; the other three logic arrays each cap at 8. Each timing task has 8G and 2h15m; maximum LIA shard 26 inputs permits four 60s arms within this bound. Replay arrays cap at 8 each, share node-02 with 12G per task, and start only after the corresponding timing shard completes both rounds. No reference solver is launched. Existing full659 is the QF_UFLIA preservation leg and is not rerun.",
+      "rejected_submission": {
+        "job": "138105",
+        "artifact": "results/n-way-2413397/preservation/QF_LIA",
+        "state": "cancelled immediately after allocation audit",
+        "reason": "An eligibility list was incorrectly expressed with --nodelist, reserving all seven nodes per task. scontrol showed NumNodes=7/NumTasks=7. Cancelled all array tasks within the first minute; retained partial artifacts are rejected evidence. Replacement uses --nodes=1 --ntasks=1 and exclusion of non-timing nodes, with a fresh artifact directory and fresh preflight."
+      },
+      "acceptance": "Pending complete paired timing, lost-solve reruns if needed, hash-matched recorded-reference joins, and direct Dolmen replay of every candidate SAT row. No completed five-logic claim."
+    },
+    {
       "id": "2026-09-08-n-component-final-hygiene-candidate",
+      "full659_completed": {
+        "state": "paired timing and independent model/reference gates pass",
+        "timing_job": "137972", "model_jobs": ["138009", "138010"],
+        "artifact": "results/n-way-2413397/full659",
+        "baseline_solved_per_round": [571, 571], "candidate_solved_per_round": [574, 575],
+        "aggregate_baseline": {"rows": 1318, "solved": 1142, "sat": 806, "unsat": 336, "timeout": 176, "par2": 23309.092340},
+        "aggregate_candidate": {"rows": 1318, "solved": 1149, "sat": 810, "unsat": 339, "timeout": 169, "par2": 22808.494721},
+        "par2_ratio": 0.9785235044034323,
+        "common_seconds": [2189.092340, 2139.664572], "common_runtime_ratio": 0.9774208848586077,
+        "lost_wrong_error_unsupported_disagreement": 0,
+        "model_coverage": "810/810 candidate SAT rows direct Dolmen PASS; 64/64 coverage files complete, unchanged binary/input hashes. Replay separate from timing, solver90s/Dolmen30s/8G.",
+        "reference_join": "574 and 575 decisive answers agree with hash-matched recorded z3/cvc5. No reference solver launched.",
+        "families": {"Certora": "common runtime +22.5924% (72.301020 -> 88.635538s), 8 -> 12 solved executions, PAR2 ratio0.98640988", "TwoSquares": "42 -> 42 solved executions, common runtime ratio0.99337614", "mathsat": "882 -> 882 solved executions, common runtime ratio0.97887804, PAR2 ratio0.99236109", "wisas": "210 -> 213 solved executions, common runtime ratio0.91838721, PAR2 ratio0.78709111"},
+        "gains": "Both rounds: wisas/xs_22_42, Certora65782_cd31513fdcd15701933b_8 and39657_2866defdd1f2434b69ab_48; round1 additionally wisas/xs_23_43. Last gain is near-cutoff variation, not four robust gains.",
+        "audits": "tmp/n-way-full659-summary.json; tmp/n-way-full659-reference-{0,1}.json; per-shard model-validation/coverage.json",
+        "qualification": "Full QF_UFLIA acceptance passes aggregate1% limits with no lost-solve reruns needed. Certora common-solved regression disclosed, not a uniform speedup. Remaining four logic preservation gates are separate and pending; do not repeat659 as another suite leg. This final record supersedes preliminary and submitted statuses below."
+      },
+      "full659_round0_preliminary": {"timing_job": "137972", "state": "round0 complete; round1 and model replay pending", "baseline": "571/659 solved:403 SAT,168 UNSAT,88 timeout", "candidate": "574/659 solved:405 SAT,169 UNSAT,85 timeout", "errors_unsupported_wrong_disagreements_lost": 0, "par2": "11657.390364 -> 11444.011729 (ratio0.98169585)", "common_solved_seconds": "1097.390364 -> 1078.503509 (ratio0.98278930)", "gained": ["wisas/xs_22_42.smt2", "20230314-Jaroslav-Bendik-Certora/65782_cd31513fdcd15701933b_8_QF_UFLIA.smt2", "20230314-Jaroslav-Bendik-Certora/39657_2866defdd1f2434b69ab_48_QF_UFLIA.smt2"], "reference_join": "574 agree with hash-matched recorded z3/cvc5;85 candidate unsolved. tmp/n-way-full659-reference-0.json. No reference executable launched.", "limitation": "Not the final paired verdict. Both orderings and all selected SAT replays still required."},
+      "full659_replay_dependency_update": {"jobs": ["138009", "138010"], "command": "scontrol update JobId=138009 Dependency=aftercorr:137972; same for 138010", "reason": "Replay each corresponding shard only after its own two baseline/candidate timing rounds complete, without waiting for the slowest other shard. Node-02 remains separate from timing nodes; matching 0-31 indices preserve provenance and coverage. scontrol confirmed aftercorr dependencies."},
       "mutation_supplement_completed": {"job": "138012_1", "artifact": "results/n-way-2413397/mutation-supplement/profile-14/task-1", "state": "finished-resource-incomplete", "mutants": 10, "answer_pass_unsat": 5, "answer_timeout": 5, "model_unsat": 5, "model_solver_timeout": 5, "original_seed_timeouts": 2, "wrong_answer": 0, "invalid_models": 0, "saved_bug_files": 0, "verdict": "Closes absent Certora mutation-family coverage for profile14, without counting timeout-only checks as passes. Across the main matrix and this supplement: 2817 retained mutants, 2453 decisive answer agreements,364 answer-resource rows; 1514 direct Dolmen SAT models,941 UNSAT model replays,362 solver-timeout model replays. No saved bug files in either main or supplement artifact tree."},
       "full659_jobs": {"timing": "137972", "candidate_model_round0": "138009", "candidate_model_round1": "138010", "state": "submitted", "artifact": "results/n-way-2413397/full659", "command": "slurm_component_migration_compare.sbatch array 0-31%32, 32 shards over all 659 QF_UFLIA files, --hint=nomultithread, eligible homogeneous CPU nodes excluding validation node-02/profiling node-04 and GPU/AMD nodes; retained 287b743/2413397 binaries, --quiet --stats, 60s cap, two reversed-order rounds. Separate replay arrays 0-31%16 on node-02, afterany:137972, 90s model/30s Dolmen/8G. Fresh preflight before each sbatch.", "acceptance": "No timing/model/reference verdict until all shards and joins complete. No reference solver launched by timing/replay jobs."},
       "option_mutation_completed": {"job": "137549", "state": "finished-resource-incomplete", "profiles_including_default": 16, "mutants": 2807, "answer_pass": 2448, "answer_resource_incomplete": 359, "direct_dolmen_sat_pass": 1514, "model_unsat": 936, "model_solver_timeout": 357, "wrong_answer": 0, "invalid_models": 0, "crash_parser_type_error": 0, "reference_disagreement": 0, "original_seed_rows": 128, "original_answers": "94 PASS,34 timeout", "original_models": "24 Dolmen PASS,70 UNSAT,34 timeout", "triage": "All 64 original/mutant answer/model summaries contain only decisive checks and explicit resources. Two answer-incomplete inputs in profile14 produced decisive validated models on replay; separate counts intentionally retained. Wall budgets caused partial iteration coverage in several nondefault profiles. Mutation filenames truncate TwoSquares input stems at the second dot, so do not infer its absence from full seed-stem matching.", "coverage_gap": "Profile14 (basic, model guidance off, online off) retained no Certora mutant before wall cap; supplement submitted. Other profiles retain mutants from every family. Bounded campaign/timeout rows are not unconditional passes."},
