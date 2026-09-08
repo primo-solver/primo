@@ -14,7 +14,7 @@ SCRIPT = Path(__file__).parents[2] / "scripts/slurm_qf_uflia_mutation_fuzz_gate.
 
 # Execute the actual batch script without a scheduler or solver dependencies.
 # The mutation stub retains one input so the model-validation phase must run.
-STUB = r'''
+STUB = r"""
 import json
 import os
 from pathlib import Path
@@ -32,11 +32,13 @@ elif name == "python3":
     assert args[0] == "scripts/validate_model.py", args
     (root / "model-args.json").write_text(json.dumps(args[1:]))
     sys.exit(int(os.environ.get("TEST_MODEL_EXIT", "0")))
-'''
+"""
 
 
 class MutationGateOptionsTests(unittest.TestCase):
-    def run_gate(self, options: str | None, model_exit: int = 0) -> tuple[list[str], list[str]]:
+    def run_gate(
+        self, options: str | None, model_exit: int = 0
+    ) -> tuple[list[str], list[str]]:
         with tempfile.TemporaryDirectory(prefix="primo-mutation-gate-") as directory:
             root = Path(directory)
             for relative in (
@@ -53,7 +55,11 @@ class MutationGateOptionsTests(unittest.TestCase):
                 executable.chmod(0o755)
             seeds = root / "seeds"
             seeds.mkdir()
-            env = {key: value for key, value in os.environ.items() if not key.startswith("PRIMO_")}
+            env = {
+                key: value
+                for key, value in os.environ.items()
+                if not key.startswith("PRIMO_")
+            }
             env.update(
                 PRIMO_WORKDIR=str(root),
                 PRIMO_FUZZ_YINYANG_SEEDS=str(seeds),
@@ -63,10 +69,21 @@ class MutationGateOptionsTests(unittest.TestCase):
             if options is not None:
                 env["PRIMO_FUZZ_SOLVER_ARGS"] = options
             result = subprocess.run(
-                ["bash", str(SCRIPT)], env=env, capture_output=True, text=True, timeout=10
+                ["bash", str(SCRIPT)],
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=10,
             )
-            self.assertEqual(result.returncode, model_exit, result.stdout + result.stderr)
+            self.assertEqual(
+                result.returncode, model_exit, result.stdout + result.stderr
+            )
             answer = json.loads((root / "answer-args.json").read_text())
+            self.assertTrue(
+                answer[answer.index("--config") + 1].endswith(
+                    "benchmarks/fuzz-configs/qf_lia_typefuzz.txt"
+                )
+            )
             model = json.loads((root / "model-args.json").read_text())
             command = shlex.split(answer[answer.index("--solver") + 1])
             self.assertEqual(command[0], model[model.index("--solver") + 1])
@@ -74,7 +91,8 @@ class MutationGateOptionsTests(unittest.TestCase):
             self.assertTrue(model[-1].endswith("/scratch/mutant.smt2"))
             model_options = [
                 arg.removeprefix("--solver-arg=")
-                for arg in model if arg.startswith("--solver-arg=")
+                for arg in model
+                if arg.startswith("--solver-arg=")
             ]
             return command[1:], model_options
 

@@ -20,6 +20,7 @@ export PRIMO_FUZZ_OUT_ROOT="${PRIMO_CAMPAIGN_OUT:?}/profile-$PROFILE"
 export PRIMO_FUZZ_YINYANG_SEEDS="$PRIMO_FUZZ_OUT_ROOT/seeds"
 export PRIMO_FUZZ_FILE_SIZE_LIMIT=2000000
 export PRIMO_FUZZ_YINYANG_WALL_SECONDS=${PRIMO_MUTATION_SECONDS:-600}
+export PRIMO_FUZZ_YINYANG_ITERATIONS=${PRIMO_MUTATION_ITERATIONS:-100}
 export PRIMO_FUZZ_RANDOM_SEED=$(( ${PRIMO_CAMPAIGN_SEED:-202609180} + PROFILE ))
 mkdir -p "$PRIMO_FUZZ_OUT_ROOT"
 ./build-slurm-rel/primo --version | tee "$PRIMO_FUZZ_OUT_ROOT/version.txt"
@@ -36,4 +37,4 @@ files = sorted(root.glob("*.smt2"))
 assert files, "no real mutation seeds"
 assert all(path.stat().st_size <= 2000000 for path in files), "seed exceeds mutator budget"
 PY
-bash scripts/slurm_qf_uflia_mutation_fuzz_gate.sbatch
+bash "${PRIMO_MUTATION_GATE_SCRIPT:-scripts/slurm_qf_uflia_mutation_fuzz_gate.sbatch}"

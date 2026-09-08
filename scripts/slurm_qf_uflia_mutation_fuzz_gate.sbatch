@@ -24,6 +24,7 @@ SOLVER_TIMEOUT=${PRIMO_FUZZ_SOLVER_TIMEOUT:-2}
 FILE_SIZE_LIMIT=${PRIMO_FUZZ_FILE_SIZE_LIMIT:-20000}
 RANDOM_SEED=${PRIMO_FUZZ_RANDOM_SEED:-202609030}
 SOLVER_ARGS=${PRIMO_FUZZ_SOLVER_ARGS:-}
+CONFIG=${PRIMO_FUZZ_YINYANG_CONFIG:-"$WORKDIR/benchmarks/fuzz-configs/qf_lia_typefuzz.txt"}
 
 cd "$WORKDIR"
 mkdir -p slurm_logs "$OUT_ROOT"
@@ -65,6 +66,7 @@ scripts/yinyang_fuzz.sh \
   --scratch "$OUT_ROOT/scratch" \
   --logs "$OUT_ROOT/logs" \
   --file-size-limit "$FILE_SIZE_LIMIT" \
+  --config "$CONFIG" \
   --random-seed "$RANDOM_SEED" \
   --keep-logic \
   --hoist-declarations \

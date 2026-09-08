@@ -213,3 +213,15 @@ validation. `slurm_component_migration_mutation.sbatch` uses the same profiles
 and deterministic smallest-per-family real seeds; oversized seeds are errors,
 not silently omitted families. Its retained mutants undergo separate model
 validation with the exact same solver options.
+The mutation gate explicitly selects the existing linear-integer TypeFuzz
+configuration: retaining the seed's logic label alone does not prevent stock
+TypeFuzz from introducing nonlinear multiplication or nonconstant div/mod.
+The initial unrestricted attempt is retained as rejected harness evidence, not
+counted as solver failures or valid-input campaign coverage. Default mutation
+iterations are 100 per family seed, bounded by the campaign wall time.
+
+`summarize_component_pairs.py` checks completed shard provenance, matching
+input hashes/options/timeouts, stable binary identities, both paired rounds and
+node records before reporting timing ratios. It reports family summaries and
+lost solves separately. Its timing result does not certify models or replace
+the recorded-reference answer join.

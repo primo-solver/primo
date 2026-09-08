@@ -7,10 +7,10 @@
 ; the same way qf_lra_typefuzz.txt drops the corresponding Real ones:
 ;
 ;   (* Int Int Int)   product of two Ints is nonlinear
-;   (div Int Int Int) and (mod Int Int Int) -- not recognized by Primo's
-;                      grammar at all (see qf_lia_operator_mutations.txt's
-;                      own comment)
-;   (abs ...)         not a symbol Primo's grammar recognizes
+;   (div Int Int Int) and (mod Int Int Int) -- unrestricted divisors leave
+;                      the supported linear fragment; literal-divisor
+;                      extensions are tested separately, not generated here
+;   (abs ...)         excluded by the SMT-LIB linear-integer logic signature
 ;
 ; Every Real signature is dropped too: QF_LIA has no Real sort in Primo
 ; (SetLogic rejects Real constants under it), so those signatures can only
