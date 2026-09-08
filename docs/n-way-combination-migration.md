@@ -1,7 +1,7 @@
 # N-component combination migration
 
-Status: implementation and QF_UFLIA qualification are complete; QF_UFLRA also
-passes timing/model preservation, while QF_UF, QF_LRA and QF_LIA are running.
+Status: implementation and QF_UFLIA qualification are complete; QF_UF and
+QF_UFLRA also pass timing/model preservation, while QF_LRA and QF_LIA are running.
 The production QF_UFLIA route uses
 the collection driver, dispatcher and fragment assembler. Generated and
 real-seed campaigns found no correctness failures, with explicitly inconclusive
@@ -269,6 +269,10 @@ same hashed provenance as the full comparison; no reference solver is launched.
 A candidate loss in at least two of the three pairs blocks acceptance. These
 focused repetitions do not replace the full-corpus aggregate timing thresholds.
 Any SAT answers produced by the reruns still require separate model validation.
+`summarize_component_pairs.py --loss-reruns --expected-count N ROOT` validates
+all three pairs' provenance and reports per-input loss counts and the two-loss
+threshold separately from the original timing verdict. Process errors, wrong
+answers or unsupported output cannot be accepted as ordinary cutoff variation.
 
 `slurm_component_migration_fuzz.sbatch` covers the full 16-profile cross-product
 of preprocessing auto/off/basic/strong, model guidance on/off and online mode
@@ -388,3 +392,19 @@ answers additionally have validated models. The three UNSAT answers remain
 without decisive reference corroboration. The join reports these as
 inconclusive reference evidence, not disagreements or missing artifacts;
 no redundant reference sweep is launched to replace known timeout records.
+
+QF_UF preservation also passes after the prescribed lost-solve follow-up. The
+candidate solves 7,495/7,503 inputs in each round; the baseline solves 7,494 and
+7,496. Combined PAR2 increases 0.42% and common-solved runtime 0.48%, within the
+1% limits. All 6,284 candidate SAT replays pass Dolmen, with 256 complete
+coverage records and unchanged hashes. PEQ and SEQ common runtimes increase
+about 4.5%; this is not a uniform family speedup. One gained QG solve in round
+zero and one lost PEQ solve in round one remain recorded, not erased as noise.
+The lost PEQ case solves UNSAT on both binaries in all three focused pairs,
+matching recorded Z3, so the two-of-three repeated-loss threshold is not met.
+Its focused runtime ratio is 1.0109; the preservation limit applies to the
+full-corpus aggregate, while the follow-up tests repeated loss of a solve.
+Ten other UNSAT inputs have only known reference timeouts, agree with the
+frozen Primo baseline and declared status, and remain explicitly without
+decisive reference corroboration. Exact files and both rounds' family results
+are retained in the run log and artifacts.

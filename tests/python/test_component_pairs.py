@@ -16,6 +16,56 @@ SPEC.loader.exec_module(MODULE)
 
 
 class ComponentPairsTests(unittest.TestCase):
+    def test_three_pair_loss_threshold_and_missing_round(self) -> None:
+        for lost_rounds in ((), (0,), (0, 2)):
+            with self.subTest(lost_rounds=lost_rounds), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                (root / "node-0.txt").write_text("allocated-node\n")
+                for rnd in range(3):
+                    for arm in ("baseline", "candidate"):
+                        shard = root / f"round-{rnd}" / arm / "shard-0"
+                        shard.mkdir(parents=True)
+                        (shard / "provenance.json").write_text(json.dumps({
+                            "status": "complete", "inputs_unchanged": True,
+                            "inputs": {"case.smt2": "hash"}, "solver_args": ["--quiet"],
+                            "timeout": 60, "shards": 1, "shard_index": 0,
+                            "solver": {"sha256": arm},
+                        }))
+                        outcome = ("timeout,unknown,-15,true,60" if arm == "candidate"
+                                   and rnd in lost_rounds else "ok,unsat,0,false,1")
+                        (shard / "answers.csv").write_text(
+                            "file,family,status,answer,exit_code,timeout,seconds,wrong\n"
+                            f"case.smt2,family,{outcome},false\n"
+                        )
+                    if rnd == 1:
+                        with self.assertRaises(ValueError):
+                            MODULE.summarize_loss_reruns(root, 1)
+                report = MODULE.summarize_loss_reruns(root, 1)
+                self.assertEqual(report["loss_counts"].get("case.smt2", 0), len(lost_rounds))
+                self.assertEqual(report["loss_rerun_status"],
+                                 "repeated-loss" if len(lost_rounds) >= 2 else "no-repeated-loss")
+                for field, changed, diagnostic in (
+                    ("inputs", {"case.smt2": "changed-hash"}, "input content"),
+                    ("solver_args", ["--different-profile"], "solver options"),
+                ):
+                    originals = {}
+                    for arm in ("baseline", "candidate"):
+                        path = root / f"round-2/{arm}/shard-0/provenance.json"
+                        originals[path] = path.read_text()
+                        metadata = json.loads(originals[path])
+                        metadata[field] = changed
+                        path.write_text(json.dumps(metadata))
+                    with self.assertRaisesRegex(ValueError, diagnostic):
+                        MODULE.summarize_loss_reruns(root, 1)
+                    for path, original in originals.items():
+                        path.write_text(original)
+                # A process error cannot be accepted as ordinary timing noise.
+                target = root / "round-2/candidate/shard-0/answers.csv"
+                target.write_text(target.read_text().replace("ok,unsat,0,false,1", "error,sat,3,false,1")
+                                  .replace("timeout,unknown,-15,true,60", "error,sat,3,false,1"))
+                self.assertEqual(MODULE.summarize_loss_reruns(root, 1)["loss_rerun_status"],
+                                 "failed-correctness")
+
     def test_serial_batch_harnesses_request_one_node_and_task(self) -> None:
         for name in (
             "slurm_component_migration_compare.sbatch",
