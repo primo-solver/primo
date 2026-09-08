@@ -255,3 +255,12 @@ solver. It requires complete recorded shards and matching input hashes, checks
 all decisive recorded answers for disagreement, and reports absent reference
 answers separately. Incomplete historical shards are not reused as complete
 evidence. Candidate unsolved rows remain unsolved, not verified answers.
+
+The paired sample and watchlist pass their aggregate timing gates, but wisas
+is slower in both. Its SAT decisions/propagations and combination rounds match
+the baseline; reconciliation overhead is a profiling target. The larger growth
+timer alone is not comparable: the new timer also encloses callback rebuilding,
+which was outside the old growth timer. `slurm_component_profile.sbatch` builds
+a separate `-pg` binary and collects repeated gprof samples without changing
+either retained timing binary. Instrumented times are diagnostic, not headline
+performance evidence. No new algorithm is inferred from the timers alone.
