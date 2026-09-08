@@ -207,6 +207,10 @@ their order for a second paired round, and records hashed provenance through
 `benchmark_model_replay.py`. An optional ordered manifest selects the sample or
 watchlist before sharding. It launches no reference solver. Each candidate
 round's SAT rows are subsequently replayed by a separate validation job.
+Both scripts explicitly require one node and one task: they launch one serial
+Python harness, not a distributed program. Select eligible timing nodes through
+exclusions or constraints, not a multi-node `--nodelist` (which requests every
+listed node). Inspect the allocated node/task counts immediately after submission.
 
 `slurm_component_migration_fuzz.sbatch` covers the full 16-profile cross-product
 of preprocessing auto/off/basic/strong, model guidance on/off and online mode

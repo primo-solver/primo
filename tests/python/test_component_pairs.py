@@ -14,6 +14,16 @@ SPEC.loader.exec_module(MODULE)
 
 
 class ComponentPairsTests(unittest.TestCase):
+    def test_serial_batch_harnesses_request_one_node_and_task(self) -> None:
+        for name in (
+            "slurm_component_migration_compare.sbatch",
+            "slurm_real_corpus_validation.sbatch",
+        ):
+            with self.subTest(script=name):
+                directives = (SCRIPT.parent / name).read_text().splitlines()
+                self.assertIn("#SBATCH --nodes=1", directives)
+                self.assertIn("#SBATCH --ntasks=1", directives)
+
     def test_complete_pair_provenance_and_mismatch_rejection(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

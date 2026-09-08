@@ -4,6 +4,8 @@
 # Model replay is a separate job and must not be included in these timings.
 #SBATCH --job-name=primo-component-ab
 #SBATCH --array=0-7%8
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=8G
 #SBATCH --time=04:00:00

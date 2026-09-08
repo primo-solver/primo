@@ -4,6 +4,8 @@
 #SBATCH --job-name=primo-real-corpus
 #SBATCH --output=slurm_logs/primo-real-corpus-%A_%a.out
 #SBATCH --error=slurm_logs/primo-real-corpus-%A_%a.err
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=12G
 #SBATCH --time=04:00:00

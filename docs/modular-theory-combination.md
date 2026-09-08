@@ -1,10 +1,11 @@
 # Modular theory combination
 
-The N-component migration is in progress; see
+The N-component migration is implemented, with cross-logic qualification in progress; see
 [](n-way-combination-migration.md) for its frozen boundary, implementation status
-and acceptance gates. QF_UFLIA is connected to the new candidate driver; it is
-not yet performance-qualified. Historical evidence below describes the frozen
-baseline, not measurements of the migration.
+and acceptance gates. QF_UFLIA's sample, watchlist and full-corpus paired timing
+and model-validation gates pass; the remaining four-logic preservation suite
+is still required. Historical evidence below describes the frozen baseline,
+not measurements of the migration.
 
 Primo's modular combination layer is based on Nelson and Oppen's arrangement
 method and on SAT-mediated delayed theory combination. Its first non-convex

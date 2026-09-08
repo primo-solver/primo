@@ -4,6 +4,7 @@
   "entries": [
     {
       "id": "2026-09-08-n-component-preservation-four-logics",
+      "allocation_followup": "Both checked-in serial batch harnesses now declare --nodes=1 and --ntasks=1. A Python regression locks these directives. All124 Python tests, make lint, make docs, sbatch validator, bash -n and git diff --check pass; logs tmp/n-way-single-task-{tests,lint,docs}.log. Existing submitted jobs already carry equivalent CLI limits; solver binaries and running jobs are unchanged. Pre-commit code review: no blocking issue in the allocation-only change; whole-source static/ASan evidence remains valid for unchanged C++.",
       "date": "2026-09-08",
       "commit": "2413397",
       "baseline_commit": "287b743",
