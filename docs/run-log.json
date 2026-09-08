@@ -4,6 +4,8 @@
   "entries": [
     {
       "id": "2026-09-08-n-component-final-hygiene-candidate",
+      "generated_completed_results": {"job": "137478", "answer_shards": 64, "model_shards": 64, "inputs": 18000, "pass": 17996, "unknown": 3, "timeout": 1, "wrong_answers": 0, "crashes": 0, "parser_type_errors": 0, "reference_disagreements": 0, "dolmen_sat_pass": 9134, "unsat": 8862, "invalid_models": 0, "regression_checks": "96/96 PASS", "default_profile": "3000/3000 answer PASS, 1474 direct Dolmen SAT passes, 1526 UNSAT", "triage": "Same four resource outcomes as 4c8341c campaign, same files/profiles and unchanged solver operations. Not counted as passes. Strict aggregate incomplete; no correctness failures."},
+      "resource_collection_job": {"id": "137543_0", "state": "submitted", "driver_commit": "70c79d9", "candidate_commit": "2413397", "artifact": "results/n-way-2413397/mutation-resource/profile-0", "command": "Same seeded OpFuzz gate as 137487, but PRIMO_MUTATION_SEED_TIMEOUT=5 and explicit PRIMO_MUTATION_COLLECT_RESOURCES=1. Exact 70c79d9 harness files copied to remote scripts after prior jobs ended; no solver binary changed. Seed 202609503, 100 iterations/seed, 600s mutation wall cap, 5s solver/Dolmen. Original and mutant comparisons plus direct Dolmen models; failed resource statuses retained. Preflight before sbatch confirmed frozen candidate and reference tools."},
       "date": "2026-09-08",
       "kind": "architecture-migration-qualification",
       "commit": "2413397",

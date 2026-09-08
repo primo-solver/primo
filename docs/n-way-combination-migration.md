@@ -250,3 +250,8 @@ input hashes/options/timeouts, stable binary identities, both paired rounds and
 node records before reporting timing ratios. It reports family summaries and
 lost solves separately. Its timing result does not certify models or replace
 the recorded-reference answer join.
+`join_recorded_reference_answers.py` performs that join without running any
+solver. It requires complete recorded shards and matching input hashes, checks
+all decisive recorded answers for disagreement, and reports absent reference
+answers separately. Incomplete historical shards are not reused as complete
+evidence. Candidate unsolved rows remain unsolved, not verified answers.
