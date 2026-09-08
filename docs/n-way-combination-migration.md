@@ -274,6 +274,16 @@ all three pairs' provenance and reports per-input loss counts and the two-loss
 threshold separately from the original timing verdict. Process errors, wrong
 answers or unsupported output cannot be accepted as ordinary cutoff variation.
 
+On this cluster, some `aftercorr` replay tasks remain dependency-pending even
+after their matching timing task reports `COMPLETED 0:0`.
+`slurm_release_completed_replays.py` is an explicit, dry-run-first workaround:
+it selects only pending replay indices with successful source accounting and
+validates all four timing artifacts, source run IDs, binary/input hashes,
+options, budgets and row coverage before permitting `--release`. It clears
+only those verified tasks' dependencies; it submits no job, repeats no timing,
+and leaves still-running source indices untouched. Replay itself still performs
+its independent input/binary checks. Record each release in the campaign log.
+
 `slurm_component_migration_fuzz.sbatch` covers the full 16-profile cross-product
 of preprocessing auto/off/basic/strong, model guidance on/off and online mode
 on/off. Four shards give the default profile 3,000 generated mixed inputs and
