@@ -5,7 +5,7 @@
 #SBATCH --output=slurm_logs/primo-real-corpus-%A_%a.out
 #SBATCH --error=slurm_logs/primo-real-corpus-%A_%a.err
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=4G
+#SBATCH --mem=12G
 #SBATCH --time=04:00:00
 set -euo pipefail
 cd "${PRIMO_WORKDIR:?}"
@@ -26,6 +26,7 @@ case "$PHASE" in
     ;;
   replay)
     args+=(--model-timeout "${PRIMO_MODEL_TIMEOUT:-90}" --dolmen-timeout "${PRIMO_DOLMEN_TIMEOUT:-30}"
+           --dolmen-size "${PRIMO_DOLMEN_SIZE:-8G}"
            --dolmen-arg=--strict=false --attempt "${PRIMO_REPLAY_ATTEMPT:-model-validation}")
     ;;
   *) echo 'invalid PRIMO_PHASE' >&2; exit 2 ;;

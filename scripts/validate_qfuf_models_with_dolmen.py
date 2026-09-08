@@ -53,6 +53,11 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--dolmen", default="dolmen", help="Dolmen executable")
     parser.add_argument(
+        "--dolmen-size",
+        default="1G",
+        help="Explicit Dolmen memory budget (separate from the SLURM allocation)",
+    )
+    parser.add_argument(
         "--z3",
         default=str(Path("contrib/local/bin/z3"))
         if Path("contrib/local/bin/z3").exists()
@@ -278,20 +283,23 @@ def _as_text(value: str | bytes | None) -> str:
     return value
 
 
-def dolmen_rejects_problem_alone(
-    dolmen_path: str, problem_path, dolmen_arg: list[str], timeout: float
-) -> bool:
-    """True when Dolmen rejects the problem file on its own, with no model.
+def dolmen_failure_kind(status: str, exit_code: int | None, stderr: str) -> str:
+    """Dolmen 0.10 --help EXIT STATUS, plus its observed OCaml alarm escape.
 
-    Distinguishes "this input is outside the logic" from "this model is wrong".
-    Only the first is a statement about the generator; the second is a
-    statement about the solver, and conflating them makes the gate report a
-    correct solver as broken.
+    Only exit 6 establishes a model-verification failure. Exhaustion and bugs
+    leave the model unvalidated; they are not input-conformance evidence.
     """
-    status, exit_code, _, _, _ = run_command(
-        [dolmen_path, *dolmen_arg, str(problem_path)], timeout
-    )
-    return status == "done" and exit_code != 0
+    if status == "timeout":
+        return "dolmen-timeout"
+    if exit_code == 2 or "Dolmen_loop.Alarm.Out_of_space" in stderr:
+        return "dolmen-resource-limit"
+    if exit_code == 0:
+        return "pass"
+    if exit_code == 6:
+        return "model-error"
+    if exit_code in (3, 4, 5, 7):
+        return "syntax-error"
+    return "validator-error"
 
 
 def run_command(
@@ -388,6 +396,8 @@ def main() -> int:
             "require_dolmen_pass": args.require_dolmen_pass,
             "expect_sat": args.expect_sat,
             "dolmen": dolmen_path,
+            "dolmen_size": args.dolmen_size,
+            "dolmen_args": args.dolmen_arg,
             "z3": z3_path,
         },
     )
@@ -534,6 +544,7 @@ def main() -> int:
                 "-r",
                 str(response_path),
                 *args.dolmen_arg,
+                f"--size={args.dolmen_size}",
                 str(problem_path),
             ]
             if args.check_model_mode is not None:
@@ -547,54 +558,72 @@ def main() -> int:
             ) = run_command(dolmen_command, args.dolmen_timeout)
             dolmen_stdout_path.write_text(dolmen_stdout, encoding="utf-8")
             dolmen_stderr_path.write_text(dolmen_stderr, encoding="utf-8")
-            if dolmen_status == "timeout":
-                outcome = "dolmen-timeout"
+            kind = dolmen_failure_kind(dolmen_status, dolmen_exit, dolmen_stderr)
+            if kind not in ("pass", "syntax-error"):
+                outcome = kind
                 failures += 1
-            elif dolmen_exit == 0:
+            elif kind == "pass":
                 outcome = "pass"
-            elif dolmen_rejects_problem_alone(
-                dolmen_path, problem_path, args.dolmen_arg, args.dolmen_timeout
-            ):
-                # Dolmen refused the *input*, not the model, so this says
-                # nothing about the solver. It means the file is outside the
-                # logic Dolmen enforces -- which is a generator or logic
-                # conformance problem and has to be reported as one. A run of
-                # this gate was red for exactly this reason: the QF_UFLIA
-                # generator emitted (* 2 (* 2 (+ x (- 1)))), which is
-                # semantically linear but outside the :extensions grammar,
-                # against a solver that had answered all 3000 cases correctly.
-                outcome = "input-nonconforming"
-                nonconforming += 1
             else:
-                validator = "z3-fallback"
-                z3_status, z3_exit, z3_stdout, z3_stderr, z3_seconds = (
-                    validate_real_assignments_with_z3(
-                        z3_path, original, assignments, args.dolmen_timeout
+                probe_status, probe_exit, probe_stdout, probe_stderr, probe_seconds = (
+                    run_command(
+                        [
+                            dolmen_path,
+                            *args.dolmen_arg,
+                            f"--size={args.dolmen_size}",
+                            str(problem_path),
+                        ],
+                        args.dolmen_timeout,
                     )
                 )
-                validation_seconds += z3_seconds
-                if (
-                    z3_status == "done"
-                    and z3_exit == 0
-                    and not has_solver_error(z3_stdout, z3_stderr)
-                    and first_answer(z3_stdout) == "sat"
-                ):
-                    dolmen_stdout_path.write_text(
-                        dolmen_stdout + "\n--- Z3 fallback stdout ---\n" + z3_stdout,
-                        encoding="utf-8",
-                    )
-                    dolmen_stderr_path.write_text(
-                        dolmen_stderr + "\n--- Z3 fallback stderr ---\n" + z3_stderr,
-                        encoding="utf-8",
-                    )
+                validation_seconds += probe_seconds
+                dolmen_stdout += (
+                    f"\n--- Input probe (exit {probe_exit}, {probe_status}) ---\n"
+                    + probe_stdout
+                )
+                dolmen_stderr += "\n--- Input probe ---\n" + probe_stderr
+                probe_kind = dolmen_failure_kind(probe_status, probe_exit, probe_stderr)
+                if probe_kind == "syntax-error":
+                    outcome = "input-nonconforming"
+                    nonconforming += 1
                     if args.require_dolmen_pass:
-                        outcome = "fallback-pass"
+                        failures += 1
+                elif probe_kind != "pass":
+                    outcome = (
+                        probe_kind
+                        if probe_kind in ("dolmen-timeout", "dolmen-resource-limit")
+                        else "validator-error"
+                    )
+                    failures += 1
+                else:
+                    validator = "z3-fallback"
+                    z3_status, z3_exit, z3_stdout, z3_stderr, z3_seconds = (
+                        validate_real_assignments_with_z3(
+                            z3_path, original, assignments, args.dolmen_timeout
+                        )
+                    )
+                    validation_seconds += z3_seconds
+                    dolmen_stdout += "\n--- Z3 fallback stdout ---\n" + z3_stdout
+                    dolmen_stderr += "\n--- Z3 fallback stderr ---\n" + z3_stderr
+                    z3_answer = first_answer(z3_stdout)
+                    if (
+                        z3_status == "done"
+                        and z3_exit == 0
+                        and not has_solver_error(z3_stdout, z3_stderr)
+                        and z3_answer == "sat"
+                    ):
+                        outcome = (
+                            "fallback-pass" if args.require_dolmen_pass else "pass"
+                        )
+                        failures += int(args.require_dolmen_pass)
+                    elif z3_status == "done" and z3_exit == 0 and z3_answer == "unsat":
+                        outcome = "model-error"
                         failures += 1
                     else:
-                        outcome = "pass"
-                else:
-                    outcome = "model-error"
-                    failures += 1
+                        outcome = "validation-unavailable"
+                        failures += 1
+                dolmen_stdout_path.write_text(dolmen_stdout, encoding="utf-8")
+                dolmen_stderr_path.write_text(dolmen_stderr, encoding="utf-8")
         else:
             validator = "z3-only"
             assignments = extract_real_assignments(solver_stdout)
@@ -662,6 +691,8 @@ def main() -> int:
             "require_dolmen_pass": args.require_dolmen_pass,
             "expect_sat": args.expect_sat,
             "dolmen": dolmen_path,
+            "dolmen_size": args.dolmen_size,
+            "dolmen_args": args.dolmen_arg,
             "z3": z3_path,
             "outcomes": counts,
             "validators": validators,
@@ -676,7 +707,7 @@ def main() -> int:
         print(
             f"warning: {nonconforming} case(s) were rejected by Dolmen as input, before any "
             "model was checked -- these are generator/logic conformance problems, not solver "
-            "results, and are excluded from the failure count"
+            "results. Strict direct-Dolmen gates remain incomplete for these rows."
         )
     return 1 if failures else 0
 

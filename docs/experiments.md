@@ -81,11 +81,23 @@ This joins the original 11,662 passes to cover all 11,676 selected SAT rows.
 Original timing and failed-attempt artifacts remain immutable. The aggregate
 helper does not yet automatically join this separately recorded diagnostic.
 
-Two reporting defects remain unfixed: the input-only check treats every nonzero
-exit as input nonconformance, including memory exhaustion; other checker failures
-can become `model-error` when the limited Real-assignment fallback is unavailable.
-Neither label alone proves a false model. Preserve diagnostics and distinguish
-resource exits from parsing, typing and semantic model-verification failures.
+The validation harness now classifies the installed Dolmen 0.10 exit contract
+explicitly: exit 2 and the observed `Dolmen_loop.Alarm.Out_of_space` escape are
+`dolmen-resource-limit`; unrecognized exits and internal bugs are
+`validator-error`; exit 6 is `model-error`. Only parse/type/header/flow rejection
+of the input-only probe is `input-nonconforming`. That probe uses the same memory
+budget and retains both streams alongside the response-check diagnostics.
+Unavailable or failed fallback validation is not itself a model refutation.
+Strict `--require-dolmen-pass` gates cannot pass input-nonconforming rows.
+
+`validate_model.py --dolmen-size SIZE` records and forwards an explicit budget
+(standalone default 1G). `benchmark_model_replay.py replay` defaults to 8G;
+the real-corpus SLURM wrapper uses `PRIMO_DOLMEN_SIZE` (default 8G) with a 12G
+allocation, leaving headroom beyond Dolmen's internal budget. Override the job
+allocation consistently when changing this value. Resource/validator errors
+leave replay coverage incomplete, separate from confirmed model failures.
+Python regressions cover the documented exit classes, the escaped memory alarm,
+input-probe exhaustion, same-budget forwarding and retained diagnostics.
 
 Primo's internal checker had approved all 14 models against the original typed
 assertions before serialization. Its evaluator tests and an additional diagnostic
@@ -235,6 +247,13 @@ receives the commit through `PRIMO_GIT_REVISION_OVERRIDE`, so stale generated
 outputs in a reused workspace cannot make benchmark binaries report a spurious
 `-dirty` suffix. Use `--sync-mode rsync` only for a deliberate legacy full-tree
 sync.
+
+When heavy compilation must run under SLURM, add `--build-via-slurm`. The helper
+performs its usual clean-source synchronization, then executes dependency/build
+commands through a synchronous `srun` allocation (requested build CPU count,
+8G, 30 minutes). It still performs the binary/version preflight after the build;
+benchmark submission requires a fresh `--check-only` as usual. The login host
+does not perform compilation in this mode.
 
 When a workspace already has a verified cluster-local dependency installation,
 pass `--reuse-dependencies`. The helper preserves `contrib/local`, installs the

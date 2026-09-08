@@ -27,6 +27,72 @@ def solver_model() -> tuple[str, int, str, str, float]:
 
 
 class ModelValidationTests(unittest.TestCase):
+    def test_resource_and_validator_failures_never_become_model_errors(self) -> None:
+        cases = [
+            ("done", 2, "space limit", "dolmen-resource-limit"),
+            ("done", 125, "Dolmen_loop.Alarm.Out_of_space", "dolmen-resource-limit"),
+            ("done", 125, "internal bug", "validator-error"),
+            ("done", 1, "generic error", "validator-error"),
+            ("done", -9, "", "validator-error"),
+            ("timeout", None, "", "dolmen-timeout"),
+            ("done", 6, "assertion falsified", "model-error"),
+        ]
+        for status, code, message, expected in cases:
+            with (
+                self.subTest(expected=expected, code=code),
+                tempfile.TemporaryDirectory() as temporary,
+            ):
+                root = Path(temporary)
+                case = root / "case.smt2"
+                self.write_case(case)
+                result, out = self.run_main(
+                    ["--dolmen-size=8G", "--out", str(root / "out"), str(case)],
+                    [solver_model(), (status, code, "", message, 0.01)],
+                )
+                self.assertEqual(result, 1)
+                with (out / "summary.csv").open() as stream:
+                    row = next(csv.DictReader(stream))
+                self.assertEqual(row["outcome"], expected)
+                self.assertEqual(row["validator"], "dolmen")
+                self.assertEqual(
+                    json.loads((out / "metadata.json").read_text())["dolmen_size"], "8G"
+                )
+
+    def test_input_probe_uses_same_budget_and_retains_diagnostics(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            case = root / "case.smt2"
+            self.write_case(case)
+            out = root / "out"
+            with (
+                mock.patch.object(
+                    sys,
+                    "argv",
+                    [str(SCRIPT), "--dolmen-size=8G", "--out", str(out), str(case)],
+                ),
+                mock.patch.object(
+                    MODULE.shutil, "which", side_effect=lambda name: f"/tools/{name}"
+                ),
+                mock.patch.object(
+                    MODULE,
+                    "run_command",
+                    side_effect=[
+                        solver_model(),
+                        ("done", 4, "response diagnostic", "response typing", 0.01),
+                        ("done", 2, "probe diagnostic", "probe memory limit", 0.01),
+                    ],
+                ) as run,
+            ):
+                self.assertEqual(MODULE.main(), 1)
+                for call in run.call_args_list[1:]:
+                    self.assertIn("--size=8G", call.args[0])
+            with (out / "summary.csv").open() as stream:
+                self.assertEqual(
+                    next(csv.DictReader(stream))["outcome"], "dolmen-resource-limit"
+                )
+            logs = "\n".join(path.read_text() for path in out.rglob("*.stderr"))
+            self.assertIn("probe memory limit", logs)
+
     def test_command_adapter_preserves_assertions_and_places_model_before_exit(
         self,
     ) -> None:
@@ -175,7 +241,7 @@ class ModelValidationTests(unittest.TestCase):
                 ["--out", str(root / "out"), str(case)],
                 [
                     solver_model(),
-                    ("done", 1, "", "dolmen rejected response", 0.01),
+                    ("done", 4, "", "dolmen rejected response", 0.01),
                     ("done", 0, "", "", 0.01),  # Problem alone is well-formed.
                     ("done", 0, "sat\n", "", 0.01),
                 ],
@@ -184,7 +250,7 @@ class ModelValidationTests(unittest.TestCase):
             with (out / "summary.csv").open(newline="", encoding="utf-8") as handle:
                 row = next(csv.DictReader(handle))
             self.assertEqual(row["validator"], "z3-fallback")
-            self.assertEqual(row["dolmen_exit"], "1")
+            self.assertEqual(row["dolmen_exit"], "4")
             self.assertEqual(row["z3_exit"], "0")
 
     def test_z3_only_path_records_empty_dolmen_exit(self) -> None:
@@ -226,7 +292,7 @@ class ModelValidationTests(unittest.TestCase):
                 ["--require-dolmen-pass", "--out", str(root / "out"), str(case)],
                 [
                     solver_model(),
-                    ("done", 1, "", "dolmen rejected response", 0.01),
+                    ("done", 4, "", "dolmen rejected response", 0.01),
                     ("done", 0, "", "", 0.01),  # Problem alone is well-formed.
                     ("done", 0, "sat\n", "", 0.01),
                 ],

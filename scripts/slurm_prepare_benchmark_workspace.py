@@ -295,6 +295,11 @@ def main() -> int:
     parser.add_argument("--target", default="primo")
     parser.add_argument("--jobs", type=int, default=4)
     parser.add_argument(
+        "--build-via-slurm",
+        action="store_true",
+        help="Run the clean build in a synchronous SLURM allocation, not on the SSH login host",
+    )
+    parser.add_argument(
         "--contrib-target",
         action="append",
         help=(
@@ -371,19 +376,21 @@ def main() -> int:
             rsync_repo(args.ssh_config, args.local_dir, args.remote, args.remote_dir)
 
     if not args.check_only:
-        ssh(
-            args.ssh_config,
-            args.remote,
-            build_command(
-                args.remote_dir,
-                args.cmake,
-                args.target,
-                args.jobs,
-                git,
-                contrib_targets,
-                args.reuse_dependencies,
-            ),
+        command = build_command(
+            args.remote_dir,
+            args.cmake,
+            args.target,
+            args.jobs,
+            git,
+            contrib_targets,
+            args.reuse_dependencies,
         )
+        if args.build_via_slurm:
+            command = (
+                f"srun --job-name=primo-build --cpus-per-task={args.jobs} --mem=8G "
+                f"--time=00:30:00 bash -c {shlex.quote(command)}"
+            )
+        ssh(args.ssh_config, args.remote, command)
     ssh(
         args.ssh_config,
         args.remote,

@@ -18,6 +18,8 @@ INCOMPLETE = {
     "solver-timeout",
     "solver-unknown",
     "dolmen-timeout",
+    "dolmen-resource-limit",
+    "validator-error",
     "input-unsupported",
     "input-nonconforming",
     "validation-unavailable",
@@ -189,6 +191,7 @@ def replay(args: argparse.Namespace) -> int:
         ),
         "dolmen": executable_identity(args.dolmen),
         "dolmen_args": args.dolmen_arg,
+        "dolmen_size": args.dolmen_size,
         "solver_timeout": args.model_timeout,
         "dolmen_timeout": args.dolmen_timeout,
     }
@@ -234,6 +237,8 @@ def replay(args: argparse.Namespace) -> int:
         "--require-dolmen-pass",
         "--dolmen",
         args.dolmen,
+        "--dolmen-size",
+        args.dolmen_size,
         *[f"--dolmen-arg={arg}" for arg in args.dolmen_arg],
         "--timeout",
         str(args.model_timeout),
@@ -284,6 +289,7 @@ def main() -> int:
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--model-timeout", type=float, default=90)
     parser.add_argument("--dolmen-timeout", type=float, default=30)
+    parser.add_argument("--dolmen-size", default="8G")
     parser.add_argument("--dolmen", default="dolmen")
     parser.add_argument("--dolmen-arg", action="append", default=[])
     parser.add_argument(

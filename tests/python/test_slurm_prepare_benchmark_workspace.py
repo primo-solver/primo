@@ -5,20 +5,67 @@ from __future__ import annotations
 import contextlib
 import importlib.util
 import io
+import shlex
 import subprocess
+import sys
 import unittest
 from pathlib import Path
 from unittest import mock
 
 
 SCRIPT = Path(__file__).parents[2] / "scripts" / "slurm_prepare_benchmark_workspace.py"
-SPEC = importlib.util.spec_from_file_location("slurm_prepare_benchmark_workspace", SCRIPT)
+SPEC = importlib.util.spec_from_file_location(
+    "slurm_prepare_benchmark_workspace", SCRIPT
+)
 assert SPEC is not None and SPEC.loader is not None
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
 
 
 class SshDiagnosticsTest(unittest.TestCase):
+    def test_build_via_slurm_keeps_compilation_inside_allocation(self) -> None:
+        with (
+            mock.patch.object(
+                sys,
+                "argv",
+                [
+                    str(SCRIPT),
+                    "--ssh-config",
+                    str(SCRIPT),
+                    "--remote-dir",
+                    "/cluster/work space",
+                    "--build-via-slurm",
+                    "--jobs",
+                    "2",
+                    "--reuse-dependencies",
+                ],
+            ),
+            mock.patch.object(
+                MODULE,
+                "run",
+                side_effect=[
+                    subprocess.CompletedProcess([], 0, "abc123\n", ""),
+                    subprocess.CompletedProcess([], 0, "", ""),
+                ],
+            ),
+            mock.patch.object(MODULE, "ensure_no_active_primo_jobs"),
+            mock.patch.object(MODULE, "archive_repo"),
+            mock.patch.object(MODULE, "ssh") as ssh,
+        ):
+            self.assertEqual(MODULE.main(), 0)
+        command = next(
+            call.args[2]
+            for call in ssh.call_args_list
+            if call.args[2].startswith("srun ")
+        )
+        MODULE.shell_syntax_check(command)
+        words = shlex.split(command)
+        self.assertIn("--cpus-per-task=2", words)
+        self.assertEqual(words[-3:-1], ["bash", "-c"])
+        self.assertIn("cd '/cluster/work space'", words[-1])
+        self.assertIn("--target primo -j2", words[-1])
+        self.assertIn("PRIMO_GIT_REVISION_OVERRIDE=abc123", words[-1])
+
     def test_failure_is_printed_before_it_is_raised(self) -> None:
         failed = subprocess.CompletedProcess(
             ["ssh"], returncode=2, stdout="remote stdout\n", stderr="remote stderr\n"
