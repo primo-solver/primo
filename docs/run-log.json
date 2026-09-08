@@ -3,6 +3,24 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-08-n-component-mutation-harness-triage",
+      "date": "2026-09-08",
+      "kind": "qualification-harness-triage",
+      "commit": "4c8341c; solver sources e042e92",
+      "driver_commit": "4f4784d plus recorded OpFuzz wrapper revision",
+      "environment": "CIIRC SLURM via ssh -J janotmik@data.ciirc.cvut.cz janotmik@10.35.125.63; /home/janotmik/primo-model-fix",
+      "evidence_status": "in-progress-not-qualified",
+      "jobs": {
+        "137473_0": {"state": "FAILED", "artifact": "results/n-way-4c8341c/mutation-linear/profile-0", "command": "slurm_component_migration_mutation.sbatch, profile 0, typefuzz with benchmarks/fuzz-configs/qf_lia_typefuzz.txt, seed 202609180, 100 iterations on each of 8 seeds from all four UFLIA families; Primo --quiet --preprocessing-mode=auto; reference z3 model_validate=true; solver and Dolmen timeout 5s, Dolmen size 1G", "results": {"mutants": 800, "models_pass": 190, "unsat": 341, "solver_error": 252, "solver_timeout": 14, "input_nonconforming": 3, "invalid_models": 0}, "verdict": "Rejected harness configuration: generative replacements still make literal coefficients nonlinear and introduce unbound variables/type errors. Not valid-input qualification coverage."},
+        "137475": {"state": "COMPLETED", "script": "scripts/slurm_component_mutant_triage.sbatch", "artifact": "results/n-way-4c8341c/mutation-linear/input-triage", "command": "Dolmen input-only --strict=true --size=1G INPUT, timeout 10s, on all 252 solver-error and 3 input-nonconforming rows", "results": "255/255 independently rejected with Dolmen exit 4. No accepted input, timeout or resource failure in this triage. Per-input hashes, commands and full output retained."},
+        "137476_0": {"state": "FAILED", "artifact": "results/n-way-4c8341c/mutation-opfuzz/profile-0", "command": "slurm_component_migration_mutation.sbatch with seeded OpFuzz and model_linear_ops.txt; default profile; intended seed 202609503, 100 iterations/seed, solver timeout 5s", "results": "Original-seed precheck: 7 PASS, 1 candidate timeout versus reference SAT; stopped before generating any mutant. No correctness disagreement. Qualification remains incomplete.", "next_step": "Separate original-seed budget (60s) from short mutant budget (5s), retaining strict fail-closed checks. Do not silently omit the slow seed or count it as a pass."},
+        "137381": {"state": "CANCELLED after full clang-tidy completed", "artifact": "results/n-way-4c8341c/static", "results": "All 105 tracked non-generated C++ files scanned with clang-tidy. One owned warning in unchanged src/smt/tactic.cpp:69: analyzer claims shared_ptr allocation leak. Manual ownership inspection finds Data/data_ retain and release it, no cycle; ASan leak checks pass. Treat as analyzer false positive, no suppression added. Serial include scan was cancelled after requested time extension was denied; completed separately in 137474."},
+        "137474": {"state": "COMPLETED", "script": "scripts/slurm_component_include_review.sbatch", "artifact": "results/n-way-4c8341c/includes-parallel", "results": "All 105 C++ files completed advisory misc-include-cleaner. Paired self-includes preserved; direct-header suggestions through public headers reviewed. Three actual unused includes in migrated solver_engines.cpp (limits, component_dispatcher.hpp, component_model_coordinator.hpp) removed in subsequent hygiene milestone. No include-scan errors."}
+      },
+      "submission_preflight": "Each submission followed clean 4c8341c worktree slurm_prepare_benchmark_workspace.py --check-only --no-sync, binary/CaDiCaL identity checks, local sbatch validation and bash -n. Harness scripts copied to remote tmp before submission.",
+      "limitations": "No performance run or new full reference sweep launched. Generated 18000-case results remain in the main migration entry; all real-corpus paired timing and separate candidate SAT replay gates remain pending. This entry does not promote the migration."
+    },
+    {
       "id": "2026-09-08-n-component-migration",
       "date": "2026-09-08",
       "kind": "architecture-migration-qualification",

@@ -49,6 +49,7 @@ class TypedMutationGateTests(unittest.TestCase):
             env.update(PRIMO_WORKDIR=str(root), PRIMO_EXPECTED_GIT='test-revision',
                        PRIMO_MODEL_SEEDS='seeds', PRIMO_FUZZ_OUT_DIR='out',
                        PRIMO_MUTATION_TOOL=mutator, SLURM_ARRAY_TASK_ID='2',
+                       PRIMO_MUTATION_SEED_TIMEOUT='60',
                        PRIMO_EXTRA_SOLVER_ARGS='--no-qf-uflia-model-combination',
                        TEST_SEED_FAILURE='post' if fail_post else str(int(fail_seed)))
             result = subprocess.run(['bash', str(SCRIPT)], env=env,
@@ -63,6 +64,10 @@ class TypedMutationGateTests(unittest.TestCase):
             with self.subTest(mutator=mutator):
                 calls = self.run_gate(mutator)
                 self.assertEqual(len(calls), 5)
+                for index in (0, 1):
+                    self.assertEqual(calls[index][1][calls[index][1].index('--timeout') + 1], '60')
+                for index in (3, 4):
+                    self.assertEqual(calls[index][1][calls[index][1].index('--timeout') + 1], '5')
                 for name, args in calls:
                     if name == 'python3':
                         self.assertEqual([arg.split('=', 1)[1] for arg in args

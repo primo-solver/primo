@@ -8,7 +8,6 @@
 #include <deque>
 #include <functional>
 #include <iterator>
-#include <limits>
 #include <memory>
 #include <optional>
 #include <ranges>
@@ -34,8 +33,6 @@
 #include "smt/boolean_solver.hpp"
 #include "smt/check_sat.hpp"
 #include "smt/clausifier.hpp"
-#include "smt/component_dispatcher.hpp"
-#include "smt/component_model_coordinator.hpp"
 #include "smt/component_solver.hpp"
 #include "smt/formula_analysis.hpp"
 #include "smt/frontend.hpp"
@@ -48,6 +45,7 @@
 #include "smt/solver_support.hpp"
 #include "smt/tactic.hpp"
 #include "smt/theory_combination.hpp"
+#include "smt/theory_combination_plan.hpp"
 #include "smt/typed_model_builder.hpp"
 #include "theory/arithmetic/lia_branch_and_bound.hpp"
 #include "theory/arithmetic/lia_explanation.hpp"

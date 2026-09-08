@@ -16,6 +16,7 @@ SEEDS=${PRIMO_MODEL_SEEDS:?set PRIMO_MODEL_SEEDS}
 TASK=${SLURM_ARRAY_TASK_ID:-0}
 OUT="${PRIMO_FUZZ_OUT_DIR:?set PRIMO_FUZZ_OUT_DIR}/task-$TASK"
 TIMEOUT=${PRIMO_MUTATION_TIMEOUT:-5}
+SEED_TIMEOUT=${PRIMO_MUTATION_SEED_TIMEOUT:-$TIMEOUT}
 MUTATOR=${PRIMO_MUTATION_TOOL:-typefuzz}
 modes=(off basic strong auto)
 (( TASK >= 0 && TASK < 4 ))
@@ -34,11 +35,11 @@ for arg in "${options[@]}"; do solver_args+=(--solver-arg="$arg"); done
 printf '%s\n' "${options[@]}" > "$OUT/options.txt"
 python3 scripts/check_solver_seed_corpus.py --seeds "$SEEDS" \
   --solver ./build-slurm-rel/primo "${solver_args[@]}" --ref z3 \
-  --timeout "$TIMEOUT" --out "$OUT/seed-answers.csv"
+  --timeout "$SEED_TIMEOUT" --out "$OUT/seed-answers.csv"
 mapfile -d '' -t originals < <(find "$SEEDS" -type f -name '*.smt2' -print0 | sort -z)
 (( ${#originals[@]} > 0 ))
 python3 scripts/validate_model.py --solver ./build-slurm-rel/primo "${solver_args[@]}" \
-  --require-dolmen-pass --dolmen-arg=--strict=false --timeout "$TIMEOUT" \
+  --require-dolmen-pass --dolmen-arg=--strict=false --timeout "$SEED_TIMEOUT" \
   --dolmen-timeout 5 --out "$OUT/seed-models" "${originals[@]}"
 
 mutation_args=(--typefuzz "$MUTATOR")

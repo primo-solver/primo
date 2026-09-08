@@ -213,12 +213,27 @@ validation. `slurm_component_migration_mutation.sbatch` uses the same profiles
 and deterministic smallest-per-family real seeds; oversized seeds are errors,
 not silently omitted families. Its retained mutants undergo separate model
 validation with the exact same solver options.
-The mutation gate explicitly selects the existing linear-integer TypeFuzz
-configuration: retaining the seed's logic label alone does not prevent stock
-TypeFuzz from introducing nonlinear multiplication or nonconstant div/mod.
-The initial unrestricted attempt is retained as rejected harness evidence, not
-counted as solver failures or valid-input campaign coverage. Default mutation
-iterations are 100 per family seed, bounded by the campaign wall time.
+The standalone TypeFuzz gate explicitly selects the existing linear-integer
+configuration, but operator selection alone is insufficient: generative TypeFuzz
+can replace a literal coefficient inside an existing multiplication with a
+nonconstant expression. Both attempts are retained as rejected harness evidence,
+not valid-input campaign coverage. The qualification matrix therefore uses the
+existing seeded OpFuzz profile (`model_linear_ops.txt`), which changes operators
+without generating new operands. The existing typed-model mutation gate checks
+original seeds and every retained mutant with status-aware reference comparison
+and independent model validation. Default mutation iterations are 100 per family
+seed, bounded by the campaign wall time. No candidate rejection is ignored to
+make a gate pass; out-of-fragment attempts remain in the run log.
+The original-seed precheck has a separate 60-second budget; short mutated-input
+checks retain a five-second budget. A seed timeout is incomplete evidence and
+still fails the gate, rather than silently removing the seed from coverage.
+
+Whole-source clang-tidy and the advisory include scan completed on SLURM (105
+non-generated C++ files each). The include review removed three unused headers
+from the migrated engine and replaced the indirect exception-type dependency
+with its owning plan header. The unchanged `Goal` shared-pointer constructor has
+one analyzer leak warning: manual ownership review and the ASan leak checks do
+not support the warning; no suppression or unrelated source change was added.
 
 `summarize_component_pairs.py` checks completed shard provenance, matching
 input hashes/options/timeouts, stable binary identities, both paired rounds and
