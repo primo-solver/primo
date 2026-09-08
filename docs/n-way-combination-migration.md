@@ -1,7 +1,8 @@
 # N-component combination migration
 
-Status: implementation and QF_UFLIA qualification are complete; the remaining
-four-logic preservation sweep is running. The production QF_UFLIA route uses
+Status: implementation and QF_UFLIA qualification are complete; QF_UFLRA also
+passes timing/model preservation, while QF_UF, QF_LRA and QF_LIA are running.
+The production QF_UFLIA route uses
 the collection driver, dispatcher and fragment assembler. Generated and
 real-seed campaigns found no correctness failures, with explicitly inconclusive
 resource rows retained below. The sample, watchlist and full 659-input paired
@@ -175,6 +176,51 @@ interface growth uses the established callback rebuild boundary.
 
 ## Acceptance checklist
 
+### Adding another component
+
+This is the implemented extension path, not a claim that arbitrary SMT theories
+already satisfy the combination preconditions. A new kernel still needs its
+own paper-grounded design, soundness argument and fragment tests.
+
+1. Implement `theory::TheoryComponent` with a solve-owned lifetime. Keep kernel
+   state private. Publish an immutable `ComponentDescriptor` with a unique ID,
+   supported fragment, disjoint interpreted families and owned function symbols.
+   Declare convexity and joint stable infiniteness accurately; complete equality
+   propagation is a separate capability, not a consequence of writing "convex".
+2. Define exact `owns_atom` and `interface_variables` behavior on purified terms.
+   Every original or generated atom must have exactly one owner. Shared variables
+   must be free constants. Support registration of unconstrained scope extensions
+   when the sharing graph requires them; do not infer the scope from only the
+   component's original atoms. Finite shared domains and overlapping interpreted
+   signatures remain outside this protocol.
+3. Implement registration, reset, level changes and assignment deltas. With an
+   online recipe, declare and implement incremental support. Explanations must
+   remain valid after unrelated backtracking; resources and unsupported cases
+   return typed stops. `encode_equality` returns an equivalent Boolean formula;
+   the SMT driver, not the kernel, creates SAT clauses and owns the backend.
+4. Provide complete, fresh model projections when claiming that capability.
+   Missing projection support selects complete arrangements. Mutations must
+   preserve assigned relations and advance model revision. To produce a final
+   model, declare export support and return an owned fragment for the exact
+   accepted token. Cover shared bindings, namespace domain identities locally,
+   and export only owned symbol interpretations. A shared sort may have at most
+   one authoritative value owner in each connected group.
+5. Add a factory to `smt::CombinationRecipe`. Its Boolean argument selects
+   model-guided versus complete mode, including fallback reconstruction. Factory
+   order sets reconciliation priority; `online_order` must be a permutation of
+   every component index when online execution is enabled. Set the bounded
+   decision budget deliberately. No component-count or theory-name branch is
+   needed in the collection driver, and no QF_UFLRA route change is required.
+6. Extend the independent partition-oracle tests in
+   `tests/unit/component_combination_tests.cpp`, including reordered three/four
+   participant recipes, disconnected sorts, sparse growth and complete fallback.
+   Exercise `solve_component_recipe` with model production, not just the
+   coordinator. Add negative fragment/lifetime/explanation tests, exact-profile
+   fuzzing, independent model replay and paired performance preservation before
+   admitting the new production recipe.
+
+### Migration gates
+
 - [x] Validated contracts, ownership and capability planning.
 - [x] Participation normalization and three/four-component SAT integration tests.
 - [x] Freshness, mutation, fixed-decision and typed failure regression tests.
@@ -314,3 +360,19 @@ reference results are reused by content hash. Full acceptance still requires
 each logic's 1% PAR2/common-runtime limits, any required three-pair lost-solve
 reruns, and validation of every candidate SAT row. Exact submissions, artifacts
 and resource classifications are in `run-log.json`.
+
+QF_UFLRA preservation is now complete for timing and models: both binaries solve
+the same 1,270/1,284 inputs in each round (759 SAT, 511 UNSAT, 14 timeouts),
+with no lost or gained solves. Combined PAR2 increases 0.22% and common-solved
+runtime 0.73%, within the 1% limits. All 1,518 candidate SAT replay rows pass
+Dolmen; all 128 coverage files are complete with unchanged hashes. Family
+common-runtime changes are FFT +0.46%, cpachecker-bmc -0.03%,
+cpachecker-induction +0.78% and mathsat +0.28%.
+
+Each QF_UFLRA round has 1,265 decisive recorded-reference agreements and five
+cases where both references previously timed out at 60 seconds. Those five
+match the frozen Primo baseline and the input's declared status; two SAT
+answers additionally have validated models. The three UNSAT answers remain
+without decisive reference corroboration. The join reports these as
+inconclusive reference evidence, not disagreements or missing artifacts;
+no redundant reference sweep is launched to replace known timeout records.

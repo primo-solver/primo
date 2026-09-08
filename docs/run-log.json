@@ -4,6 +4,21 @@
   "entries": [
     {
       "id": "2026-09-08-n-component-preservation-four-logics",
+      "uflra_completed": {
+        "timing_job": "138217", "model_jobs": ["138309", "138336"], "state": "all192 array tasks completed",
+        "artifact": "results/n-way-2413397/preservation-v2/QF_UFLRA",
+        "rows_per_round": 1284, "baseline_and_candidate_per_round": {"solved": 1270, "sat": 759, "unsat": 511, "timeout": 14},
+        "lost_gained_wrong_error_unsupported_disagreement": 0,
+        "combined_par2": [4840.601122, 4851.360375], "par2_ratio": 1.0022227100991858,
+        "combined_common_seconds": [1480.601122, 1491.360375], "common_runtime_ratio": 1.0072668140258236,
+        "family_common_runtime_ratios": {"FFT": 1.0046424522075623, "cpachecker-bmc-svcomp14": 0.9996983817318369, "cpachecker-induction-svcomp14": 1.0078159357517937, "mathsat": 1.00284945714775},
+        "models": "1518/1518 candidate SAT rows direct Dolmen PASS;128 complete coverage files, all input/binary hashes unchanged. Both rounds759 models. No resource replay failures.",
+        "reference_join": "Both rounds1265 decisive recorded-reference agreements,14 candidate unsolved,5 recorded-reference timeouts. Five answers agree with declared status and frozen Primo baseline; two SAT answers independently model-validated. Three UNSAT answers have no decisive reference, explicitly inconclusive rather than relabeled as reference agreements. See named rows below.",
+        "verdict": "Performance-preservation1% thresholds pass with no lost solve; all SAT models validated. Recorded-reference comparison retains5 known timeout limitations per round. No source edit to either frozen QF_UFLRA route and no reference rerun.",
+        "audits": "tmp/n-way-preservation-QF_UFLRA-summary.json; tmp/n-way-preservation-QF_UFLRA-reference-{0,1}.json; scripts/summarize_model_campaign.py load_run fully_validated asserted for both rounds."
+      },
+      "uflra_reference_inconclusives": "Round0 has1265 hash-matched decisive reference agreements,14 candidate unsolved and5 no-decisive-reference rows. Both recorded Z3/cvc5 runs timed out at60s on all five; records and hashes are present, not lost artifacts. cpachecker-induction-svcomp14 Problem07_{00,10,50}_true are UNSAT; Problem07_60_false and Problem08_60_false are SAT. Candidate and frozen Primo baseline agree with each input's declared status. SAT rows remain subject to mandatory independent Dolmen replay; the three UNSAT rows are declared-status/baseline-supported, not independently reference-confirmed. No redundant rerun of known reference timeouts; retain the join's incomplete classification rather than claiming universal reference agreement.",
+      "throttle_update": "After early rows showed no paired disagreements/invalid models, another sinfo/squeue inspection showed spare homogeneous CPU capacity. scontrol update JobId=138134 ArrayTaskThrottle=128 and JobId=138208 ArrayTaskThrottle=24. Same jobs, inputs, frozen binaries, per-task single-node/core allocations and timeout budgets; no additional runs or reference work. Maximum timing concurrency168 physical cores leaves capacity within node-03..09 (196 physical cores); node-02 stays reserved for validation. Initial commands below retain original64/8 throttles as submitted provenance.",
       "allocation_followup": "Both checked-in serial batch harnesses now declare --nodes=1 and --ntasks=1. A Python regression locks these directives. All124 Python tests, make lint, make docs, sbatch validator, bash -n and git diff --check pass; logs tmp/n-way-single-task-{tests,lint,docs}.log. Existing submitted jobs already carry equivalent CLI limits; solver binaries and running jobs are unchanged. Pre-commit code review: no blocking issue in the allocation-only change; whole-source static/ASan evidence remains valid for unchanged C++.",
       "date": "2026-09-08",
       "commit": "2413397",
