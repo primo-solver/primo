@@ -1,14 +1,16 @@
 # N-component combination migration
 
-Status: implementation and QF_UFLIA qualification are complete; QF_UF and
-QF_UFLRA and QF_LRA also pass timing/model preservation; QF_LIA remains running.
-The production QF_UFLIA route uses
+Status: implementation and the five-logic qualification are complete. All
+per-logic performance limits pass, every successful candidate SAT row has an
+independently validated model, and all prescribed lost-solve follow-ups are
+finished. The production QF_UFLIA route uses
 the collection driver, dispatcher and fragment assembler. Generated and
 real-seed campaigns found no correctness failures, with explicitly inconclusive
 resource rows retained below. The sample, watchlist and full 659-input paired
 QF_UFLIA gates pass, including independent replay of every candidate SAT model.
-The migration is **not yet fully qualified**: cross-logic preservation remains
-an acceptance requirement. The frozen external binary remains the baseline.
+Known reference timeouts, baseline-only UNSAT evidence and resource-inconclusive
+fuzz/follow-up rows remain explicit below. The frozen external binary remains
+the baseline; qualification is not a claim of a uniform family speedup.
 
 ## Scope and frozen boundary
 
@@ -232,16 +234,18 @@ own paper-grounded design, soundness argument and fragment tests.
 - [x] Exact-candidate generated and real-seed mutation coverage for all selected
   profiles; at least 3,000 default generated cases. Resource-only outcomes are
   triaged below, not counted as passes or an unconditional green campaign.
-- [ ] Independent Dolmen replay of every candidate real-corpus SAT row, separate
+- [x] Independent Dolmen replay of every candidate real-corpus SAT row, separate
   from speed measurement; resource failures are unvalidated, not invalid models.
-- [ ] Paired baseline/candidate SLURM sample, watchlist, full 659 QF_UFLIA and
+- [x] Paired baseline/candidate SLURM sample, watchlist, full 659 QF_UFLIA and
   five-logic preservation suite, 60-second full-corpus cap. Alternate run order
   on the same node, then repeat with reversed order. Each logic must stay within
   1% for PAR2 and common-solved runtime; any lost solve gets three paired reruns
   and a loss in at least two blocks acceptance. Report families and all outcomes.
-- [ ] Reuse recorded reference answers/timings; rerun only missing evidence or
-  genuine disagreement. Preserve binary/corpus/build/option provenance.
-- [ ] Coherent verified commits and canonical run-log entries for every gate.
+- [x] Reuse recorded reference answers/timings and preserve
+  binary/corpus/build/option provenance. Known reference timeouts remain
+  inconclusive; no reference sweep was rerun. Two QF_LIA UNSAT inputs have only
+  frozen/historical baseline support, not declared or independently checked status.
+- [x] Coherent verified commits and canonical run-log entries for every gate.
 
 No new permanent CLI profile is planned. Default promotion requires all gates;
 the frozen external baseline is the A/B control. Operational details belong in
@@ -378,13 +382,14 @@ not evidence of four robust additional solves. Candidate-only gprof identified
 routing and pair ordering as future optimization targets; no speculative
 optimization was added after the aggregate gate passed.
 
-The remaining preservation suite runs QF_UF (7,503), QF_LIA (13,306), QF_LRA
+The preservation suite covers QF_UF (7,503), QF_LIA (13,306), QF_LRA
 (1,753) and QF_UFLRA (1,284) with the same frozen binaries and two paired rounds.
 The completed 659-input run is reused as the QF_UFLIA leg. Model replay runs on
 a separate node only after its corresponding timing shard completes. Recorded
-reference results are reused by content hash. Full acceptance still requires
+reference results are reused by content hash. Full acceptance requires
 each logic's 1% PAR2/common-runtime limits, any required three-pair lost-solve
-reruns, and validation of every candidate SAT row. Exact submissions, artifacts
+reruns, and validation of every candidate SAT row; all are now completed with
+the evidence limitations described below. Exact submissions, artifacts
 and resource classifications are in `run-log.json`.
 
 QF_UFLRA preservation is now complete for timing and models: both binaries solve
@@ -438,3 +443,52 @@ with declared status but lack decisive reference corroboration. Two round-zero
 UNSAT gains also lack a decisive frozen-baseline answer. These limitations
 remain explicit; fetching existing cvc5 artifacts to complete the join did not
 rerun either reference solver.
+
+QF_LIA completes the preservation gate. The baseline solves 9,694 and 9,710
+inputs; the candidate solves 9,702 and 9,715. Combined PAR2 decreases from
+941,603.044333 to 940,437.614321 seconds (0.124%); common-solved runtime
+decreases from 75,944.682412 to 75,574.525688 seconds (0.487%). The raw
+comparison retains 25 gained and 12 lost executions. Every lost input has
+exactly three paired follow-ups: two inputs lose once each, none twice.
+Many follow-up pairs time out on both binaries and remain resource-inconclusive,
+not evidence of recovered solves. All 12,929 successful candidate SAT rows
+pass Dolmen, with 1,024 complete coverage records and unchanged hashes; all
+11 successful SAT follow-up rows also pass. The baseline/candidate totals
+retain 1,503/1,501 unknowns and 5,705/5,694 timeouts as unsolved outcomes.
+
+QF_LIA family common runtimes increase 1.22% for 2019-ezsmt, 1.43% for
+arctic-matrix and 1.76% for miplib2003; nec-smt decreases 0.80% and gains
+11 solved executions. The per-logic aggregate limit is not a per-family guarantee.
+Recorded Z3 agrees with 9,507/9,516 decisive answers; another 195/199 have
+known reference timeouts. Cancelled, incomplete cvc5 shards are excluded.
+The 69/70 SAT gaps have independently validated models. Of the 126/129 UNSAT
+gaps, 124/127 match declared status. The remaining two inputs,
+`20220307-SMPT/RwMutex-PT-r0010w2000/RC-04.smt2` and
+`2019-cmodelsdiff/wireRouting/wire.12.x.12.b.5.a.20_unsat.data.smt2`, have no
+declared status and agree with historical and both frozen-baseline runs only.
+That agreement is explicitly not independent UNSAT validation.
+
+### Final preservation summary
+
+Changes below compare the frozen candidate with the frozen baseline across
+both same-node, reversed-order rounds. A positive timing change is slower.
+All per-logic timing changes are below the agreed 1% regression limit.
+
+| Logic | Solved executions, baseline → candidate | PAR2 change | Common-runtime change | Candidate SAT models validated |
+| --- | ---: | ---: | ---: | ---: |
+| QF_UF | 14,990 → 14,990 | +0.42% | +0.48% | 6,284 |
+| QF_LIA | 19,404 → 19,417 | -0.12% | -0.49% | 12,929 |
+| QF_LRA | 3,076 → 3,075 | +0.11% | +0.09% | 1,864 |
+| QF_UFLRA | 2,540 → 2,540 | +0.22% | +0.73% | 1,518 |
+| QF_UFLIA | 1,142 → 1,149 | -2.15% | -2.26% | 810 |
+
+All 23,405 successful candidate SAT rows passed direct Dolmen validation,
+separate from timing, with 1,600 complete coverage records. No wrong answer,
+error, unsupported result or decisive paired disagreement was found in this
+suite. Timeout/unknown results, recorded-reference limitations and family
+regressions remain part of the result. All jobs are finished; exact submissions,
+binary hashes, family metrics and follow-up classifications are in the
+`2026-09-08-n-component-preservation-four-logics` run-log entry, alongside the
+full-659 qualification entry. Artifacts are under
+`results/n-way-2413397/preservation-v2`, `full659` and `loss-reruns` on the
+recorded SLURM workspace, with collected summaries locally.
