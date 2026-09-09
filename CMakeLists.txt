@@ -257,6 +257,7 @@ target_link_libraries(primo_smt PUBLIC primo_terms primo_sat primo_smtlib primo_
 
 add_library(primo_cli_support STATIC ${PRIMO_CLI_SOURCES})
 primo_configure_owned_library(primo_cli_support)
+target_link_libraries(primo_cli_support PUBLIC primo_smt)
 
 # Compatibility umbrella for executables and tests that exercise several
 # layers. New narrow targets should link the lowest layer they use.
@@ -320,6 +321,11 @@ add_test(
 # the binary with a real signal. bash and python3 are only needed here.
 find_program(PRIMO_BASH_EXECUTABLE bash)
 find_program(PRIMO_PYTHON_EXECUTABLE python3)
+if(PRIMO_PYTHON_EXECUTABLE)
+  add_test(NAME primo_interactive_session
+    COMMAND ${PRIMO_PYTHON_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/interactive_session.py $<TARGET_FILE:primo>)
+  set_tests_properties(primo_interactive_session PROPERTIES TIMEOUT 30)
+endif()
 if(PRIMO_BASH_EXECUTABLE AND PRIMO_PYTHON_EXECUTABLE)
   add_test(
     NAME primo_sigterm_reports_unknown
@@ -350,6 +356,12 @@ primo_enable_warnings(primo_smtlib_parser_tests)
 primo_enable_sanitizers(primo_smtlib_parser_tests)
 target_link_libraries(primo_smtlib_parser_tests PRIVATE primo_core)
 add_test(NAME primo_smtlib_parser_tests COMMAND primo_smtlib_parser_tests)
+
+add_executable(primo_smt_session_tests tests/unit/smt_session_tests.cpp)
+primo_enable_warnings(primo_smt_session_tests)
+primo_enable_sanitizers(primo_smt_session_tests)
+target_link_libraries(primo_smt_session_tests PRIVATE primo_core)
+add_test(NAME primo_smt_session_tests COMMAND primo_smt_session_tests)
 
 add_executable(primo_sat_backend_tests tests/unit/sat_backend_tests.cpp)
 primo_enable_warnings(primo_sat_backend_tests)

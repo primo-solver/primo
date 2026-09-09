@@ -9,6 +9,8 @@ is written under `docs/_build/html`.
 Start with [](current-status.md) for supported logics, current solver routes,
 model ownership, qualification evidence and remaining limitations. It separates
 the implemented component architecture from older experiments and future work.
+See [](incremental-smt.md) for the new rebuild-based interactive session layer
+and its qualification boundary.
 
 ## Documentation policy
 

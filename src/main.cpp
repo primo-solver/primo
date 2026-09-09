@@ -1,3 +1,4 @@
+#include <signal.h>
 #include <unistd.h>
 
 #include <CLI/CLI.hpp>
@@ -15,11 +16,14 @@
 #include <utility>
 #include <vector>
 
+#include "cli/response_printer.hpp"
 #include "generated/primo_git_revision.hpp"
 #include "sat/cadical_backend.hpp"
 #include "smt/check_sat.hpp"
 #include "smt/experimental_tactics.hpp"
 #include "smt/preprocessing.hpp"
+#include "smt/smt_session.hpp"
+#include "smtlib/command_reader.hpp"
 #include "util/statistics.hpp"
 
 namespace {
@@ -62,18 +66,6 @@ void install_cancellation_handlers() {
   sigaction(SIGALRM, &deadline, nullptr);
 }
 
-bool can_read_file(const std::string& path) {
-  std::ifstream input(path);
-  return input.good();
-}
-
-std::string read_file(const std::string& path) {
-  std::ifstream input(path);
-  std::ostringstream contents;
-  contents << input.rdbuf();
-  return contents.str();
-}
-
 std::string version_text() {
   std::ostringstream version;
   version << "primo 0.1.0\n";
@@ -89,14 +81,41 @@ void print_startup_banner() {
   std::cerr << "cadical " << primo::sat::cadical_signature() << "\n";
 }
 
-void print_outcome(const primo::smt::CheckSatOutcome& outcome, bool print_stats) {
-  std::cout << primo::smt::to_string(outcome.result) << "\n";
-  if (!outcome.model.empty()) {
-    std::cout << outcome.model << "\n";
+int execute_stream(std::istream& input, const primo::smt::CheckSatOptions& options,
+                   bool print_stats) {
+  primo::smt::SmtSession session(options);
+  primo::smtlib::CommandReader reader(input);
+  int exit_code = 0;
+  bool answered = false;
+  while (!session.terminated() && g_cancel_requested == 0) {
+    primo::smt::CommandResponse response;
+    try {
+      auto command = reader.next();
+      if (!command) break;
+      response = session.execute(*command);
+    } catch (const std::exception& error) {
+      response.kind = primo::smt::ResponseKind::Error;
+      response.message = error.what();
+    }
+    primo::cli::print_response(std::cout, response);
+    std::cout.flush();
+    answered = response.kind == primo::smt::ResponseKind::CheckSat ||
+               response.kind == primo::smt::ResponseKind::Model;
+    if (response.kind == primo::smt::ResponseKind::CheckSat && print_stats) {
+      primo::util::print_statistics(std::cerr, response.outcome->statistics);
+    }
+    if (!response.message.empty()) std::cerr << response.message << '\n';
+    if (response.kind == primo::smt::ResponseKind::Error) return 2;
+    if (response.kind == primo::smt::ResponseKind::Unsupported ||
+        (response.outcome && response.outcome->result == primo::smt::CheckSatResult::Unsupported)) {
+      exit_code = 2;
+    }
   }
-  if (print_stats) {
-    primo::util::print_statistics(std::cerr, outcome.statistics);
+  if (g_cancel_requested != 0) {
+    if (!answered) std::cout << "unknown\n" << std::flush;
+    alarm(0);
   }
+  return exit_code;
 }
 
 std::optional<primo::smt::AutoBudget> parse_auto_budget(const std::string& text) {
@@ -1124,32 +1143,18 @@ int run_main(int argc, char** argv) {
   g_cancel_grace_seconds = static_cast<std::sig_atomic_t>(cancel_grace_seconds);
 
   if (files.empty()) {
-    std::ostringstream contents;
-    contents << std::cin.rdbuf();
-    const primo::smt::CheckSatOutcome outcome =
-        primo::smt::check_sat_smtlib(contents.str(), solver_options);
-    print_outcome(outcome, print_stats);
-    if (!outcome.message.empty()) {
-      std::cerr << outcome.message << "\n";
-    }
-    return outcome.result == primo::smt::CheckSatResult::Unsupported ? 2 : 0;
+    return execute_stream(std::cin, solver_options, print_stats);
   }
 
   int exit_code = 0;
   for (const auto& file : files) {
-    if (!can_read_file(file)) {
+    std::ifstream input(file);
+    if (!input) {
       std::cerr << "error: cannot read input file: " << file << "\n";
       return 1;
     }
-    const primo::smt::CheckSatOutcome outcome =
-        primo::smt::check_sat_smtlib(read_file(file), solver_options);
-    print_outcome(outcome, print_stats);
-    if (!outcome.message.empty()) {
-      std::cerr << file << ": " << outcome.message << "\n";
-    }
-    if (outcome.result == primo::smt::CheckSatResult::Unsupported) {
-      exit_code = 2;
-    }
+    const int stream_exit_code = execute_stream(input, solver_options, print_stats);
+    if (stream_exit_code != 0) exit_code = stream_exit_code;
     if (g_cancel_requested != 0) {
       // The answer for this file is out; abandon the rest of the batch rather
       // than letting the armed watchdog fire partway through the next one.

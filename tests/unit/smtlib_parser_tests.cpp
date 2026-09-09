@@ -100,7 +100,7 @@ void parses_benchmark_metadata_and_quoted_symbols() {
   assert(commands[6].name == "|+i|");
   assert(commands[8].kind == CommandKind::Assert);
   assert(commands[8].assertion.list[0].is_atom("let"));
-  assert(commands[10].kind == CommandKind::Ignored);
+  assert(commands[10].kind == CommandKind::Exit);
 }
 
 void parses_define_fun_macros() {
@@ -205,7 +205,7 @@ void rejects_malformed_or_unsupported_input() {
   expect_parse_error([] { Parser("(get-model extra)").parse_commands(); });
   expect_parse_error([] { Parser("(declare-sort A 1)").parse_commands(); });
   expect_parse_error([] { Parser("(define-fun f (x A) Bool true)").parse_commands(); });
-  expect_parse_error([] { Parser("(push 1)").parse_commands(); });
+  expect_parse_error([] { Parser("(push -1)").parse_commands(); });
   expect_parse_error([] { Parser("(assert (= a b)").parse_commands(); });
   expect_parse_error([] { Parser("(set-info :source |unterminated)").parse_commands(); });
   expect_parse_error([] { Parser("(set-info :source \"unterminated)").parse_commands(); });

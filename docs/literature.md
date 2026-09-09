@@ -1,5 +1,17 @@
 # Literature
 
+## Scoped command sessions and incremental tactics
+
+[](incremental-smt.md) maps SMT-LIB 2.7 Sections 4.1–4.2 to the new
+`SmtSession` journal, scopes, protocol modes and query-local ownership. Its
+replay-based architecture is an original baseline. The Strategy Challenge,
+Section 3, remains the basis of existing ordered goals and model converters;
+Z3 Internals Sections 8.3 and 8.6 motivate, but do not qualify as implemented,
+future incoming-formula translation and restoration of eliminated constraints.
+Persistent incremental solving is deferred, not inferred from incremental
+theory callbacks. Tests specifically strengthen formulas after one-sided
+elimination and substitution, and discard previous disjunctive winners.
+
 This file collects implementation-oriented literature summaries.
 
 Do not claim to have read a paper unless the paper text or notes are available. When uncertain, mark the claim as uncertain.

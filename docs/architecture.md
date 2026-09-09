@@ -730,9 +730,19 @@ Implemented now:
 - Default-on finite-domain UF symmetry breaking, with
   `--no-uf-symmetry-breaking` as an explicit disable switch.
 
+### Scoped SMT-LIB command execution
+
+`smt::SmtSession` owns an ordered journal and a compressed scope depth. Commands
+are validated immediately by a translation-only frontend; each check transfers
+that frontend to `check_sat_frontend_once`. Further work replays surviving
+commands into a fresh generation. The CLI reads complete commands without EOF
+and prints typed responses through `cli::print_response`, keeping dependencies
+directed from CLI to SMT and from SMT to SMT-LIB/core. See [](incremental-smt.md)
+for costs, protocol restrictions, ownership, and pending qualification.
+
 Not implemented yet:
 
-- push/pop assertion stacks.
+- persistent solver-state reuse across SMT-LIB queries.
 - proof production.
 - theory kernels and model values for arrays, bit-vectors, nonlinear arithmetic,
   quantifiers or other fragments outside the admitted five logics.

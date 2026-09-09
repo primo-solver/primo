@@ -479,6 +479,15 @@ policy before it can be enabled.
 Proof converters, unsat-core converters, incremental tactics, a user-facing
 tactic language, and true parallel execution are not implemented.
 
+The scoped session layer in [](incremental-smt.md) does not change this tactic
+contract. Every check starts from all active original assertions in a fresh
+frontend generation. In particular, monotone elimination and solve-eqs remain
+valid within a query, but their transformed goals cannot be strengthened with
+new user assertions. `ModelConversionChain` reconstructs models backwards; it
+does not translate incoming assertions or restore removed constraints. No
+previous winning `AnyOf` alternative is retained across queries. Incremental
+tactic reuse requires a separate restoration/substitution audit.
+
 ## Invariants and complexity
 
 - `Goal`, its assertion vector, and `AnyOf` are immutable shared values.

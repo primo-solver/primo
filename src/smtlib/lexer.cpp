@@ -41,6 +41,10 @@ Token Lexer::next() {
       const char next_char = advance();
       text.push_back(next_char);
       if (next_char == '"') {
+        if (!at_end() && peek() == '"') {
+          text.push_back(advance());
+          continue;
+        }
         return Token{TokenKind::Symbol, std::move(text), token_offset};
       }
     }

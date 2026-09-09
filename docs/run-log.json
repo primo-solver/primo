@@ -3,6 +3,50 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-09-incremental-smt-sessions",
+      "date": "2026-09-09",
+      "baseline_commit": "9803d1a",
+      "kind": "incremental-session-implementation-and-qualification",
+      "evidence_status": "pending-slurm-qualification",
+      "source_state": "feature/incremental-smt-sessions implementation worktree; exact committed source recorded after the implementation milestone",
+      "design": "docs/incremental-smt.md",
+      "scope": "Interactive and file-based scoped commands, declarations/definitions, fresh solver per query, lexical macro binding, per-query independent model validation. Dedicated QF_UFLRA algorithm unchanged.",
+      "local_verification": {
+        "check": "make check: 31 CTest and 132 Python tests; tmp/incremental-check.log",
+        "asan": "make asan-test: 31 CTest passed; tmp/incremental-asan.log",
+        "lint": "make lint; tmp/incremental-lint.log",
+        "docs": "make docs; tmp/incremental-docs.log",
+        "focused_tidy": "Seven implementation translation units; no owned-code diagnostics, four suppressed external diagnostics; tmp/incremental-tidy.log",
+        "include_review": "Eight translation units, direct-provider advisories addressed; tmp/incremental-includes.log",
+        "review": "Local code/efficiency/documentation review; journal is authoritative, all query generations isolated, no callback or theory algorithm change. Parameterized definition validation deliberately replays declaration prefixes; performance qualification still required. Whole-tree static scan pending."
+      },
+      "development_runs": [
+        {
+          "command": "python3 scripts/validate_incremental.py --solver build/primo --solver-arg=--quiet --solver-arg=--max-theory-conflicts=1000 --count 5 --out tmp/incremental-model-smoke-1",
+          "status": "rejected-harness-attempt",
+          "triage": "Dolmen exit 125: response filename extension .response unsupported; fixed to .rsmt2. Not an invalid model or solver disagreement."
+        },
+        {
+          "command": "python3 scripts/validate_incremental.py --solver build/primo --solver-arg=--quiet --solver-arg=--max-theory-conflicts=1000 --count 5 --out tmp/incremental-model-smoke-2",
+          "status": "preliminary-local-only",
+          "summary": "5 sessions, 75 reference-matched queries, 50 direct Dolmen SAT models; precedes lexical-binding fix."
+        },
+        {
+          "command": "python3 scripts/validate_incremental.py --solver build/primo --solver-arg=--quiet --solver-arg=--max-theory-conflicts=1000 --count 5 --out tmp/incremental-model-smoke-final benchmarks/smoke/incremental/lexical_definitions.smt2 benchmarks/smoke/incremental/monotone_scopes.smt2",
+          "status": "preliminary-local-only",
+          "summary": "Five generated sessions (seeds 0-4, all five logics) plus two scoped regressions; binary hash, commands, per-query contexts and results retained under artifact directory.",
+          "solver_timeout_seconds": 10,
+          "dolmen_timeout_seconds": 20,
+          "reference": "contrib/local/bin/z3",
+          "host": "local development workspace",
+          "artifact": "tmp/incremental-model-smoke-final"
+        }
+      ],
+      "correctness_finding": "Pre-fix default CLI returned SAT for global a, f(v)=a, not a, and let a=true in f(false). Lexical definition-scope base fixes this to UNSAT; nested caller/parameter restoration regression retained in benchmarks/smoke/incremental/lexical_definitions.smt2.",
+      "remote_access": "Default SSH used a different local account home and failed host verification. Resolved by explicitly selecting existing trusted known_hosts and identity for both requested hops; strict host verification retained.",
+      "pending": ["1000-session SLURM differential/model gate", "whole-tree static and include review", "five-logic single-query performance preservation and separate SAT-model replay"]
+    },
+    {
       "id": "2026-09-09-linear-component-selection",
       "final_verification": "Fresh handoff make check passes29CTest+128Python;make lint and make docs pass;ASan29/29 passed on same changedC++source. Logs tmp/n-way-linear-handoff-{check,lint,docs}.log and tmp/n-way-linear-asan.log. All source hashes in210staticreviewrows match localtrackedfiles. Fresh paired/reference/model audits pass forquick25/full659. Final squeue empty;frozenbaseline/candidate andquickmanifest hashes unchanged. No further solver source changes afterb883d6f.",
       "date": "2026-09-09",

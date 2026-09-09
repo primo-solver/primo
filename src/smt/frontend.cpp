@@ -121,7 +121,15 @@ struct Frontend::Implementation {
   void process_command(const smtlib::Command& command, std::vector<core::TermId>& assertions) {
     switch (command.kind) {
       case smtlib::CommandKind::Ignored:
+      case smtlib::CommandKind::Exit:
         return;
+      case smtlib::CommandKind::Unsupported:
+        throw UnsupportedInput("unsupported command: " + command.name);
+      case smtlib::CommandKind::Push:
+      case smtlib::CommandKind::Pop:
+      case smtlib::CommandKind::Reset:
+      case smtlib::CommandKind::ResetAssertions:
+        throw UnsupportedInput("scoped commands require SmtSession");
       case smtlib::CommandKind::SetOption:
         if (command.option == ":produce-models") {
           if (command.value == "true") {
@@ -153,6 +161,9 @@ struct Frontend::Implementation {
         clear_side_assertion_capture();
         {
           const core::TermId assertion = build_term(command.assertion);
+          if (terms_.get(assertion).sort != symbols_.bool_sort()) {
+            throw UnsupportedInput("assert expects a Bool term");
+          }
           for (const core::TermId side_assertion : side_assertions_) {
             if (emitted_side_assertions_.insert(side_assertion).second) {
               assertions.push_back(side_assertion);
@@ -245,9 +256,11 @@ struct Frontend::Implementation {
   }
 
   std::optional<core::TermId> lookup_bound_term(const std::string& name) const {
-    for (auto scope = let_scopes_.rbegin(); scope != let_scopes_.rend(); ++scope) {
-      const auto found = scope->find(name);
-      if (found != scope->end()) {
+    const std::size_t base = definition_scope_bases_.empty() ? 0 : definition_scope_bases_.back();
+    for (std::size_t index = let_scopes_.size(); index > base; --index) {
+      const auto& scope = let_scopes_[index - 1];
+      const auto found = scope.find(name);
+      if (found != scope.end()) {
         return found->second;
       }
     }
@@ -311,6 +324,9 @@ struct Frontend::Implementation {
   }
 
   void declare_fun(const smtlib::Command& command) {
+    if (definitions_.contains(command.name)) {
+      throw UnsupportedInput("duplicate function declaration: " + command.name);
+    }
     std::vector<core::SortId> arg_sorts;
     for (const std::string& name : command.arg_sorts) {
       arg_sorts.push_back(lookup_sort_name(name));
@@ -368,6 +384,10 @@ struct Frontend::Implementation {
     definition.parameters.reserve(command.parameters.size());
     definition.parameter_sorts.reserve(command.parameters.size());
     for (const smtlib::SortedVar& parameter : command.parameters) {
+      if (std::find(definition.parameters.begin(), definition.parameters.end(), parameter.name) !=
+          definition.parameters.end()) {
+        throw UnsupportedInput("duplicate define-fun parameter: " + parameter.name);
+      }
       definition.parameters.push_back(parameter.name);
       definition.parameter_sorts.push_back(lookup_sort_name(parameter.sort));
     }
@@ -407,7 +427,7 @@ struct Frontend::Implementation {
     while (true) {
       const std::string name =
           std::string{"$primo_"} + std::string{prefix} + "_" + std::to_string(auxiliary_counter_++);
-      if (symbols_.lookup_symbol(name).has_value()) {
+      if (symbols_.lookup_symbol(name).has_value() || definitions_.contains(name)) {
         continue;
       }
       return terms_.mk_constant(symbols_.declare_constant(name, sort));
@@ -417,6 +437,7 @@ struct Frontend::Implementation {
   core::SymbolTable symbols_;
   core::TermManager terms_{symbols_};
   std::vector<std::unordered_map<std::string, core::TermId>> let_scopes_;
+  std::vector<std::size_t> definition_scope_bases_;
   std::unordered_map<std::string, Definition> definitions_;
   std::unordered_set<std::string> expanding_definitions_;
   std::vector<core::TermId> side_assertions_;
@@ -956,12 +977,17 @@ void TermBuilder::dispatch_instantiate_definition(const std::string& name,
   }
 
   frontend_.expanding_definitions_.insert(name);
+  // SMT-LIB 2.7 Section 4.2.3: free names belong to the definition's
+  // declaration environment, not to the caller's lets or macro parameters.
+  // Arguments above have already been evaluated in the caller's environment.
+  frontend_.definition_scope_bases_.push_back(frontend_.let_scopes_.size());
   frontend_.let_scopes_.push_back(std::move(scope));
   const core::SortId result_sort = definition.result_sort;
   assert(definition.body != nullptr);
   schedule(*definition.body,
            [this, k = std::move(k), name, result_sort](core::TermId body) mutable {
              frontend_.let_scopes_.pop_back();
+             frontend_.definition_scope_bases_.pop_back();
              frontend_.expanding_definitions_.erase(name);
              if (frontend_.terms_.get(body).sort != result_sort) {
                throw UnsupportedInput("define-fun result sort mismatch: " + name);

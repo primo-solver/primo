@@ -1,10 +1,12 @@
 #include "smtlib/parser.hpp"
 
+#include <charconv>
 #include <cstddef>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <system_error>
 #include <utility>
 #include <vector>
 
@@ -108,7 +110,29 @@ Command Parser::parse_command(const SExpr& expr) const {
   }
   const std::string head = require_atom(expr.list[0], "command head");
 
-  if (head == "set-info" || head == "exit") {
+  if (head == "push" || head == "pop") {
+    if (expr.list.size() != 2) throw ParseError(head + " expects one numeral", 0);
+    const std::string numeral = require_atom(expr.list[1], "scope count");
+    Command command;
+    command.kind = head == "push" ? CommandKind::Push : CommandKind::Pop;
+    if (numeral.empty() || (numeral.size() > 1 && numeral.front() == '0') ||
+        numeral.find_first_not_of("0123456789") != std::string::npos) {
+      throw ParseError(head + " expects a nonnegative numeral", 0);
+    }
+    const auto result =
+        std::from_chars(numeral.data(), numeral.data() + numeral.size(), command.count);
+    if (result.ec != std::errc{}) throw ParseError("scope count overflow", 0);
+    return command;
+  }
+  if (head == "reset" || head == "reset-assertions" || head == "exit") {
+    if (expr.list.size() != 1) throw ParseError(head + " expects no arguments", 0);
+    Command command;
+    command.kind = head == "reset"  ? CommandKind::Reset
+                   : head == "exit" ? CommandKind::Exit
+                                    : CommandKind::ResetAssertions;
+    return command;
+  }
+  if (head == "set-info") {
     Command command;
     command.kind = CommandKind::Ignored;
     return command;
@@ -122,9 +146,8 @@ Command Parser::parse_command(const SExpr& expr) const {
     // and an *atom* rejected conforming scripts such as
     // (set-option :verbosity (- 1)), which z3 accepts.
     //
-    // Only :produce-models is acted on (see Frontend::process_command); every
-    // other option is ignored, so a non-atom value is recorded as empty rather
-    // than refused. An option we do act on still validates its own value.
+    // Interpretation belongs to the session. A non-atom value is recorded as
+    // empty: currently supported options all require Boolean atom values.
     if (expr.list.size() < 2 || expr.list.size() > 3) {
       throw ParseError("set-option expects a single option", 0);
     }
@@ -229,7 +252,10 @@ Command Parser::parse_command(const SExpr& expr) const {
     return command;
   }
 
-  throw ParseError("unsupported command: " + head, 0);
+  Command command;
+  command.kind = CommandKind::Unsupported;
+  command.name = head;
+  return command;
 }
 
 std::string Parser::require_atom(const SExpr& expr, std::string_view context) const {

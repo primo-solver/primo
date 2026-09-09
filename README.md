@@ -29,7 +29,10 @@ keep direct paths without combination overhead.
 
 Start with [current status and qualification](docs/current-status.md),
 [architecture](docs/architecture.md), and [model interpretations](docs/model-interpretation.md).
-Incremental theory state does **not** imply SMT-LIB `push`/`pop` support.
+The feature branch adds [scoped incremental sessions](docs/incremental-smt.md):
+interactive and file-based `push`/`pop`, repeated checks, and scoped declarations.
+Each query gets a fresh solver; persistent incremental solving remains deferred.
+SLURM qualification of this session layer is pending.
 Quantifiers, arrays, bit-vectors, nonlinear arithmetic, proof production, and
 dedicated difference-logic frontends are not implemented. Integer resource
 limits can return `unknown`; support is not a promise to solve every input.

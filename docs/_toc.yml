@@ -8,6 +8,7 @@ parts:
     chapters:
       - file: current-status
       - file: architecture
+      - file: incremental-smt
       - file: model-interpretation
       - file: tactics
         sections:

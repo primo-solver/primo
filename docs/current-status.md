@@ -36,10 +36,14 @@ division requires a nonzero literal divisor. They are not a claim of strict
 QF_LIA/QF_UFLIA grammar conformance, and a Dolmen logic rejection is not a model
 pass. See [](arithmetic.md) and [](preprocessing.md).
 
+The session feature branch adds interactive SMT-LIB `push`/`pop` with scoped
+declarations/definitions and repeated checks. It rebuilds solving state per
+query; its SLURM qualification remains pending. See [](incremental-smt.md).
+
 Not implemented: quantifiers, arrays, bit-vectors, nonlinear arithmetic,
-SMT-LIB `push`/`pop`, proof production, or dedicated QF_IDL/QF_RDL admission.
-Incremental SAT/theory callbacks describe state *within* a solve, not a general
-incremental SMT-LIB command API. Integer search and explicit resource budgets
+proof production, or dedicated QF_IDL/QF_RDL admission.
+Incremental SAT/theory callbacks still describe state *within* a solve, not
+solver-state reuse between SMT-LIB queries. Integer search and explicit resource budgets
 can return `unknown`. Unsupported input, cancellation, resource exhaustion and
 internal model errors are distinct outcomes, not UNSAT.
 
