@@ -6,6 +6,10 @@ This documentation is authored in MyST Markdown and built with Jupyter Book.
 Build it from the repository root with `scripts/build_docs.sh`; generated HTML
 is written under `docs/_build/html`.
 
+Start with [](current-status.md) for supported logics, current solver routes,
+model ownership, qualification evidence and remaining limitations. It separates
+the implemented component architecture from older experiments and future work.
+
 ## Documentation policy
 
 - Use MyST Markdown for architecture, design, algorithm, paper, and developer notes.
@@ -21,13 +25,15 @@ is written under `docs/_build/html`.
 
 Five parts, in the order they are normally needed:
 
-- **Core architecture** covers invariants, IPASIR-UP, lazy DPLL(T), and preprocessing.
+- **Core architecture** covers current status, ownership invariants, typed models,
+  tactics, IPASIR-UP, DPLL(T), and preprocessing.
 - **Theories** gives each implemented theory an entry point. [](euf.md) covers
   congruence closure and Boolean arguments. [](arithmetic.md) is the QF_LRA
-  reference, with its heuristics, tuning, open investigations, and fuzz evidence
+  reference and entry point to LIA, with heuristics, tuning, investigations, and fuzz evidence
   nested below it. [](nelson-oppen.md) is the QF_UFLRA combination reference;
   [](modular-theory-combination.md) defines the generic component boundary and
-  the non-convex QF_UFLIA direction;
+  the implemented non-convex QF_UFLIA route; [](n-way-combination-migration.md)
+  specifies the production collection driver and its completed qualification;
   its nested notes contain performance history, the convex merge plan, pure-LRA
   isolation regression, and arithmetic equality-sharing details.
 - **Evidence and practice** explains experiments, the canonical run log, debugging,
@@ -36,6 +42,6 @@ Five parts, in the order they are normally needed:
   confidence policy, followed by the deeply read algorithm papers.
 - **Reference** contains retrospectives that do not describe Primo itself.
 
-For current behavior and flags, start with the relevant theory chapter. For
+For current behavior and flags, use the status guide and relevant theory chapter. For
 design rationale and rejected experiments, read its nested notes. For measured
 results tied to exact commits and commands, use [](run-log.md).

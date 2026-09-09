@@ -1,5 +1,15 @@
 # QF_LIA: Branch-and-Bound, GCD-Consistency, and Gomory Cuts on the Existing Simplex
 
+This page records the staged integer-kernel design and its development history.
+Later stages below add cube reasoning and patching. The current pure-LIA entry
+is `solve_qf_lia_engine_impl` in `src/smt/solver_engines.cpp`; older
+`solve_qf_lia_impl` / `check_sat.cpp` references identify historical locations.
+Frontend admission now lives in `frontend.cpp`, and typed model adaptation in
+`typed_model_builder.cpp`. QF_UFLIA invokes integer completion through its
+component adapter, not by replacing the pure-LIA route. See
+[](current-status.md) for latest qualification and
+[](n-way-combination-migration.md) for the mixed component boundary.
+
 Stage 1 implemented 2026-08-19, stages 2 and 3 implemented 2026-08-20.
 QF_LIA is accepted (`(set-logic QF_LIA)`) via a plain branch-and-bound
 decision procedure layered entirely on top of the existing `LraTableau`,
@@ -47,9 +57,11 @@ which this doc accepts and reports rather than hiding.
 ## Scope
 
 QF_LIA per SMT-LIB: `Int`-sorted variables only, linear terms
-(`+ - *`(literal coefficient)), atoms `< <= > >= = distinct`. No `div`/`mod`
-(not yet implemented), no mixing `Int` with `Real` in one problem (that is
-QF_LIRA, out of scope), no uninterpreted functions.
+(`+ - *`(literal coefficient)), atoms `< <= > >= = distinct`. Primo additionally
+accepts `div`, `mod` and `abs` as deliberate extensions, with nonzero literal
+divisors and mandatory lowering; these are not standard QF_LIA grammar
+conformance. See [](arithmetic.md). Mixing `Int` with `Real` in one problem
+(QF_LIRA) remains out of scope, as do uninterpreted functions in pure QF_LIA.
 
 ## Where branching lives
 

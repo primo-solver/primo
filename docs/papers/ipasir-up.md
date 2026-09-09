@@ -9,7 +9,10 @@ IPASIR-UP: User Propagators for CDCL. SAT 2023.
 
 This paper is the basis for Primo's SAT backend interface.
 
-Primo uses IPASIR-UP to avoid implementing a custom SAT solver while preserving a clean integration point for lazy DPLL(T), and later tighter CDCL(T)-style interaction.
+Primo uses IPASIR-UP for both final-assignment DPLL(T) checks and implemented
+callback-time theory interaction. The backend owns Boolean search; theory
+adapters supply explained consequences. See [](../dpllt.md) for current control
+flow and [](../n-way-combination-migration.md) for the collection dispatcher.
 
 ## What we use
 
@@ -20,7 +23,8 @@ Primo uses IPASIR-UP to avoid implementing a custom SAT solver while preserving 
 - assignment/model-value queries
 - failed-assumption information where available
 - CaDiCaL as the initial backend implementation
-- user propagator callbacks for EUF, LRA, and mixed QF_UFLRA modes
+- user propagator callbacks for EUF, arithmetic, dedicated QF_UFLRA modes,
+  and the QF_UFLIA component collection
 - observed-variable assignment, decision-level, backtrack, and model callbacks
 - theory propagations with streamed reason clauses
 - external conflict/lemma clauses during search

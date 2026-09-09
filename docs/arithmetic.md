@@ -1,5 +1,11 @@
 # Arithmetic
 
+This is the Real-arithmetic reference and historical development record.
+Integer completion is implemented in [](qf-lia-branch-and-bound.md), and mixed
+integer combination in [](n-way-combination-migration.md). For the current
+five-logic qualification and limitations, use [](current-status.md); the dated
+samples below are not measurements of the current branch.
+
 QF_LRA (quantifier-free linear real arithmetic) is implemented through
 Milestone 4 of the plan described below: a full SMT-LIB QF_LRA frontend
 plus a bounded-variable Simplex theory solver integrated into DPLL(T) via a
@@ -10,7 +16,7 @@ experimental, as of the 2026-07-24 campaign-tier fuzz gate (3000 fuzzsmt
 cases plus opfuzz/yinyang mutation seeded from real benchmarks, all clean
 -- see `docs/run-log.json`'s Milestone 4b entries and Milestone 4b below).
 
-**Current state (2026-07-29).** On the 237-file stratified sample
+**Historical sample (2026-07-29).** On the 237-file stratified sample
 (`benchmarks/qf-lra-stratified-sample.txt`, 10s timeout) Primo solves
 **168/237 with PAR2 1538.9s**, against z3's 167/1531.6s and cvc5's
 150/1887.1s -- up from 108 at the start of the 2026-07-27 heuristics round.
@@ -226,7 +232,7 @@ The editable TikZ source is `docs/figures/lra-tableau-occurrence-index.tex`.
 
 ## Implemented (Milestones 1-4, supported)
 
-- **Grammar/frontend** (`src/smt/check_sat.cpp`): `(set-logic QF_LRA)`,
+- **Grammar/frontend** (`src/smt/frontend.cpp`): `(set-logic QF_LRA)`,
   `Real`-sorted declarations, `+ - * <= < >= > =` per the SMT-LIB QF_LRA
   grammar (verified against the spec, not assumed) -- n-ary `+`/chainable
   comparisons, arity-disambiguated `-`, `*`/`/` requiring a literal
@@ -254,13 +260,14 @@ The editable TikZ source is `docs/figures/lra-tableau-occurrence-index.tex`.
   termination), and Farkas-certificate conflict explanation (Section 3,
   3.2). Strict inequalities via `DeltaRational` (q + k*delta, exact, no
   floating point). Incremental: `push()`/`pop(checkpoint)` are genuinely
-  trail-based (Section 4), mirroring `FlatCongruenceClosure`'s discipline
-  -- every bound change, assignment change, and pivot's row rewrite pushes
-  a `TrailEntry`, and `pop` replays them backwards. Pivots ARE undone on
-  pop (a row's equation and the assignment it was computed under are
-  coupled; see the class comment for why the paper's "pivots don't track
-  search depth" framing doesn't mean "don't undo them").
-- **DPLL(T) wiring** (`check_sat.cpp`): `PreparedLraTheory` precomputes the
+  trail-based. The default non-SOI path trails bounds only: `pop` relaxes
+  bounds while retaining the feasible assignment and current basis, following
+  the technical report's Section 3.2.4 and the implemented H9 design below.
+  SOI is the exception: its basis-dependent objective retains full
+  bound/assignment/pivot rollback. Do not mix assignment rollback with a
+  retained basis. The original full-trail prototype is historical, not the
+  current default.
+- **DPLL(T) wiring** (`solver_engines.cpp`): `PreparedLraTheory` precomputes the
   tableau's structural part exactly once per prepared `check-sat` problem,
   before any theory call and independently of any SAT assignment. It sees the
   complete theory-atom list and allocates one stable slack variable and row per
@@ -279,29 +286,33 @@ The editable TikZ source is `docs/figures/lra-tableau-occurrence-index.tex`.
   `sat::ExternalPropagator`, owning one `LraTableau` (copied once from
   the prepared base) kept in sync via `notify_new_decision_level`/
   `notify_backtrack` calling `LraTableau::push()`/`pop()` -- this is what
-  actually exercises push/pop for cross-round reuse. `solve_qf_lra` always
+  actually exercises push/pop for cross-round reuse. `solve_qf_lra_engine_impl` always
   prefers this when the backend reports external-propagator support
   (`#if PRIMO_HAVE_IPASIR`); `find_incremental_lra_theory_conflict` (copy
   the base tableau and reassert every round, no push/pop reuse) survives
   only as the fallback when it isn't.
-- **QF_LRA model printing** (`check_sat.cpp`): when `:produce-models true`
-  and `get-model` are present, the QF_LRA path prints definitions for
-  user-declared nullary `Real` constants. Values are read from the final
+- **Typed arithmetic models** (`solver_engines.cpp`, `typed_model_builder.cpp`,
+  and `smtlib/printer.cpp`): when a model is requested, exact values are
+  read from the final
   `LraTableau` assignment and strict `DeltaRational` values are concretized
   by choosing a positive rational delta small enough to preserve the asserted
   strict bounds. The model builder also replays preprocessing reconstruction
   equalities from solve-eqs/Gaussian elimination, so a constant eliminated
   before theory solving is assigned from the final values of the terms it was
-  rewritten to. The mixed QF_UFLRA path composes this nullary-Real model body
-  with a QF_UF model for separable formulas, UF symbols with Real arguments, and
-  Real-valued UF applications after purification. Its coordinator additionally
+  rewritten to. The mixed QF_UFLRA path supplies compatible numeric assignments
+  and EUF facts to the same typed adapter, not concatenated model strings.
+  It supports UF symbols with Real arguments and Real-valued applications after
+  purification. Its coordinator additionally
   preserves the ordering of all distinct shared `DeltaRational` values while
   choosing the concrete delta, using the adjacent-value form of Dutertre and de
   Moura Section 3.3 in `O(S log S)` time. This prevents a concrete model from
-  collapsing Real arguments that the accepted EUF model distinguishes. Arrays,
-  nonlinear arithmetic, and full Nelson-Oppen model-guided combination remain
-  unsupported.
-- **Model-based SAT phase hints** (heuristics item H5, `check_sat.cpp`,
+  collapsing Real arguments that the accepted EUF model distinguishes.
+  One frozen `core::Model` owns constants and evaluated-argument function tables;
+  the session checks original assertions and prints it separately. See
+  [](model-interpretation.md). Arrays, nonlinear arithmetic and the complete
+  paper `DPLL(T^M)` transition system remain unsupported; model-guided
+  combination itself is implemented for the documented mixed fragments.
+- **Model-based SAT phase hints** (heuristics item H5, `solver_engines.cpp`,
   **opt-in** via `CheckSatOptions::lra_model_phase` / `--lra-model-phase`):
   `OnlineLraPropagator` keeps the SAT backend's variable choice but refreshes
   arithmetic atom polarities from the current tableau assignment β at
@@ -326,7 +337,7 @@ The editable TikZ source is `docs/figures/lra-tableau-occurrence-index.tex`.
   constants, but rejects non-nullary `declare-fun` declarations. Uninterpreted
   functions or predicates over arithmetic terms are QF_UFLRA/NO work, not pure
   QF_LRA.
-- **Same-variable bound propagation** (Milestone 3b, `check_sat.cpp`; called
+- **Same-variable bound propagation** (Milestone 3b, `solver_engines.cpp`; called
   same-*slack* propagation before item H1a, when a slack was the only thing a
   bound could live on): after each successful bound assertion,
   `OnlineLraPropagator` scans the other atoms bounding that same tableau

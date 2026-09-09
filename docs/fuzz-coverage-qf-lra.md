@@ -1,5 +1,11 @@
 # QF_LRA fuzz coverage
 
+This page preserves the dated coverage investigations and their failure cases.
+It is not fresh qualification of later solver changes. Current accepted gates
+are indexed in [](current-status.md); [](experiments.md) describes the separate
+all-SAT-row model replay, and repository testing/fuzzing/model-validation skills
+own execution procedures. Old source line references remain historical.
+
 Two fuzzers guard QF_LRA, and they fail in opposite directions. FuzzSMT
 generates formulas from a grammar, so it covers whatever its *parameters* say
 and nothing else. YinYang's `opfuzz` and `typefuzz` mutate a seed directory, so

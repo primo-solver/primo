@@ -1,5 +1,11 @@
 # Failure taxonomy
 
+For the current solver/model routes and qualification boundary, see
+[](current-status.md). A timeout or validator memory limit is inconclusive;
+it is not evidence that a model is valid or invalid. Internal checking and
+independent validation answer different questions, as detailed in
+[](model-interpretation.md) and [](experiments.md).
+
 ## Solver statistics
 
 Use `--stats` to print numeric counters to stderr while leaving stdout as the
@@ -27,14 +33,34 @@ sat
 Statistics are intentionally stable, colon-prefixed keys so benchmark scripts can
 compare runs mechanically. Hot solver paths use an internal `StatKey` enum for
 registered counters; the printed names below are the compatibility boundary for
-scripts and result artifacts. Current counters include:
+scripts and result artifacts.
+
+For the collection driver, also inspect `:combination.model.snapshots`,
+`:combination.model.care-pairs`, `:combination.model.care-pair-agreements`,
+`:combination.model.spanning-pair-checks`, `:combination.model.disagreements`,
+`:combination.model.decisions`, and `:combination.model.complete-fallbacks`.
+Agreeing care pairs still incur validation work; the linear selector scans
+spanning edges only if no care disagreement wins. Compare these with
+the production recipe's `:time.qf-uflia.model-reconciliation-us`,
+`:time.qf-uflia.component-rebuild-us` and
+`:time.qf-uflia.complete-fallback-us` timers, not just total time.
+The dedicated QF_UFLRA `:no.*` counters belong to a different route.
+
+Model costs are separate counters: `:time.model.reconstruction-us`,
+`:time.model.check-us`, and `:time.model.serialization-us`. Original-assertion
+checking requires a requested model and either debug mode or `--check-model`;
+the flag alone does not request a model. Dolmen replay is a separate process
+and is not included in these internal counters.
+
+General counters include:
 
 - `:time.parse-us`: SMT-LIB parser elapsed time in microseconds;
 - `:time.frontend-us`: command validation, declarations, macro expansion, and
   core term construction time in microseconds;
 - `:time.preprocessing-us`: shared preprocessing and pre-solve preparation time
   in microseconds;
-- `:time.solve-us`: SAT/EUF solving time in microseconds;
+- `:time.solve-us`: solver-strategy execution time in microseconds, including
+  the selected SAT/theory leaf (not just EUF);
 - `:time.total-us`: total `check_sat_smtlib` time in microseconds, excluding
   CLI file I/O and benchmark-harness process overhead;
 - `:input.assertions`;

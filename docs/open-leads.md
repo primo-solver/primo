@@ -11,6 +11,14 @@ notes, which made it easy to re-propose something already rejected and easy to
 lose something cheap. This register is the index; the detail stays in the
 notes it points to.
 
+The dated profiles and rankings are hypotheses for their recorded revisions,
+not a fresh profile of the current branch. Consult [](current-status.md) before
+reopening a lead: QF_UFLIA now has the N-component driver and an accepted linear
+ordinary-decision selector, while QF_UFLRA remains dedicated. Old
+`check_sat.cpp` engine references now map to `solver_engines.cpp`; frontend and
+dispatch have separate modules. Reprofile a still-relevant bottleneck before
+implementing from these historical measurements.
+
 ## How to use it
 
 - **Before proposing work**, check the [rejected](#rejected) section. Several
@@ -34,7 +42,7 @@ notes it points to.
 |---|---|---|---|---|
 | [1](#lead-pure-filter-lra) | Extend `--pure-theory-filter` to LRA atoms | zero as a wiring fix; the filter reaches only the once-called final check | large if done properly | **downgraded**; merge into lead 5 |
 | [2](#lead-flag-first) | Flag-first decision ordering | unknown | blocked | **attempted; belongs to the theory-combination layer** |
-| [2b](#lead-two-lra-paths) | Dispatch trigger: propositional variables route pure QF_LRA to the NO path | neutral at 15s, but **costs solved files at 300s**; bisected to `ffaf9eb` on main | -- | **reopened 2026-08-07: a main-branch regression** |
+| [2b](#lead-two-lra-paths) | Dispatch trigger: propositional variables route pure QF_LRA to the NO path | historical 300s regression; narrow dispatch now keeps the pure path | done | **fixed**; see [](nelson-oppen-qf-lra-regression.md) |
 | [3](#lead-leaving-rule) | MathSAT's real leaving rule: least-violated, short-row tie-break | 167 vs 174 on the bar; beats the *other* existing policy by 5 | done | **implemented, opt-in; did not clear its bar** |
 | [3b](#lead-occurs-in) | `occurs_in_` maintenance: the representation is half a sparse matrix | tropical 1/10 -> **2/10** at 1200s, gained 1 / lost 0; bar-neutral on the stratified sample | **large** (representation change) | **implemented, default**; 2 earlier prototypes rejected |
 | [4](#lead-aep) | Adaptive Early Pruning | ~20% total time in its source | small-medium | open |
@@ -187,6 +195,11 @@ picked up there rather than re-attempted here.
 
 (lead-two-lra-paths)=
 ## 2b. Dispatch is a nondeterminism trigger (not a performance bug)
+
+Current disposition: the later full-division investigation established a real
+regression and fixed it at `d52799c`; [](nelson-oppen-qf-lra-regression.md)
+records the outcome. The earlier downgrade and measurements below explain the
+investigation's progression, not the current open status.
 
 **Status: measured and downgraded. The design is deliberate -- a dedicated
 LRA-only solver without Nelson-Oppen is kept -- but the *trigger* for choosing

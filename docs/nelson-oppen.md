@@ -1,13 +1,17 @@
 # Nelson-Oppen theory combination
 
-Status stamp: 2026-08-18, `main`.
+Scope: the retained dedicated QF_UFLRA route, reviewed 2026-09-09.
+The N-component QF_UFLIA route is documented separately in
+[](n-way-combination-migration.md); [](current-status.md) maps both routes and
+their revision-scoped qualification.
 
 Primo implements a specialized convex Nelson-Oppen combination for EUF and
 rational linear arithmetic in `QF_UFLRA`. It includes purification, a sparse
 shared-equality registry, explained equality exchange, a default model-guided
 compatibility check, lazy SAT-visible equality decisions, exact LRA fallback,
-and mixed model reconstruction. It does **not** implement a generic combination
-framework or the complete `DPLL(T^M)` transition system.
+and typed mixed model reconstruction. This dedicated engine does **not** use
+the new component collection driver. Neither engine claims the complete
+`DPLL(T^M)` transition system.
 
 The classical basis is Nelson and Oppen's cooperation by equality sharing. The
 model-guided parts use de Moura and Bjorner, *Model-based Theory Combination*,
@@ -20,7 +24,7 @@ their explanations use the existing incremental LRA tableau described in
 
 ## Supported combination
 
-The runnable combination path has two component theories:
+This QF_UFLRA path has two component theories:
 
 - EUF owns uninterpreted applications, predicates, congruence, and their
   explanations;
@@ -45,8 +49,8 @@ not through a Nelson-Oppen arrangement; see [](euf-boolean-arguments.md).
 The mixed solver is selected after preprocessing when a formula has arithmetic
 and either an equality or an EUF predicate. With the default
 `--mixed-dispatch=narrow`, a propositional Boolean constant alone does not route
-an otherwise pure LRA formula through the mixed solver. Pure `QF_UF` and
-`QF_LRA` retain their direct theory paths.
+an otherwise pure LRA formula through the mixed solver. Pure UF, LRA and LIA
+retain their direct theory paths.
 
 ## Purification
 
@@ -86,12 +90,12 @@ the no-site fast path.
 
 | Owner | State | Lifetime and responsibility |
 | --- | --- | --- |
-| `core::TermManager` | Terms, sorts, symbols, and fresh purification/equality terms | Solver context; all layers refer to terms by `TermId`. |
+| `core::SymbolTable` / `core::TermManager` | The table owns sorts/symbols; the manager owns terms, including fresh purification/equality terms | Solver context; the table outlives the manager. Stable `TermId`s, not borrowed nodes, cross allocating calls. |
 | `BooleanClausifier` | SAT literals for Boolean structure and theory atoms | One mixed solve; maps formula atoms initially and lazily materializes a missing interface equality when the coordinator requests one. |
 | `TheoryCombinationManager` | Interface terms, canonical equality entries, assignment snapshots, arrangement values, classifications, shared-model projection, and lazy equality-decision state | One mixed solve. Equality values and assignment state are trailed; shared-model data is round-scoped. |
 | `PreparedFlatTheory` and `IncrementalFlatAssignmentState` | Flattened EUF definitions and congruence closure | EUF-owned structural preparation and assignment/model scopes. The manager stores no congruence closure. |
 | `PreparedLraTheory`, `MixedLraModelEpoch`, and `LraTableau` | LRA atom mapping, retained prepared/check state, exact rational assignment, and explanations | LRA-owned component state. The manager stores only its projection on shared terms. |
-| `solve_qf_uf_lra()` | The mixed fixed-point and model-reconciliation control flow | One `check-sat`; it invokes the components and decides when SAT must be re-entered. |
+| `solve_qf_uflra_engine_impl()` | The mixed fixed-point and model-reconciliation control flow | One `check-sat`; it invokes the components and decides when SAT must be re-entered. |
 | `sat::IpasirUpBackend` | Clauses, assumptions, observed variables, assignments, and failed assumptions | SAT-owned. It never contains theory terms. |
 
 `TheoryCombinationManager::SharedModelState` is valid only for its current
@@ -246,8 +250,14 @@ With `:produce-models true`, Primo composes:
 
 An EUF-only Real equivalence class receives a deterministic fresh rational
 representative. A class containing a genuine shared term is anchored to its LRA
-value. This is a specialized mixed model builder; `core::Model` is not yet a
-generic component-model object.
+value. These compatible component inputs feed `build_typed_model` in
+`typed_model_builder.cpp`. Its private builder freezes the same owning
+`core::Model` used by all other routes, with function tables keyed by evaluated
+typed argument tuples. Goal-owned conversions replay backwards, and original
+assertions are checked in debug builds or with `--check-model`. The session's
+printer only serializes this interpretation; it cannot choose another row.
+The dedicated engine does not yet export through QF_UFLIA's new
+`ComponentModelFragment` protocol. See [](model-interpretation.md).
 
 ## Propagation modes
 
@@ -294,6 +304,7 @@ reconciliation; it disables the opportunistic LRA producer layer.
 | `--model-equality-branch-budget=N` | `16` | Caps assumptions made by the experimental branch heuristic. It does not cap default reconciliation. |
 | `--qf-uflra-candidate-final-scan` | off | Enables an experimental candidate-first exact final scan. |
 | `--qf-uflra-online-euf` | off | Enables experimental live EUF callback reuse. |
+| `--experimental-generic-model-combination` | off | Routes checked projections through the older `ModelBasedCombinationCoordinator`; does not select the N-component driver or replace the dedicated engine. |
 | `--nelson-oppen-arrangement-probe-limit=N` | unset | Returns `unknown` after `N` temporary LRA consistency probes. |
 | `--nelson-oppen-diagnostics` | off | Adds the read-only interface and purification diagnostic scan. |
 
@@ -361,9 +372,13 @@ and model validation.
 - `src/smt/theory_combination.hpp` and `.cpp` define the interface summary,
   equality registry, trailed arrangement state, shared-model projection, and
   lazy equality-decision lifecycle.
-- `src/smt/check_sat.cpp` owns purification, mixed dispatch,
-  `solve_qf_uf_lra()`, component-model reconciliation, exact fallback, online
-  dispatcher plumbing, final arrangement validation, and model composition.
+- `src/smt/preprocessing.cpp` owns mixed purification; `solver_strategy.cpp`
+  owns post-preprocessing dispatch.
+- `src/smt/solver_engines.cpp` owns `solve_qf_uflra_engine_impl()`, component
+  preparation, reconciliation, exact fallback, online dispatcher plumbing and
+  final arrangement validation. `typed_model_builder.cpp` owns the retained
+  typed model adapter; `solver_session.cpp` checks and serializes its result.
+  `check_sat.cpp` is a thin public wrapper, not the algorithm implementation.
 - `src/theory/equality/` owns flattened congruence closure and EUF
   explanations. [](euf.md) is its theory reference.
 - `src/theory/arithmetic/` owns the LRA tableau, model diversification,
@@ -391,8 +406,9 @@ and model validation.
 - Exact fallback can still inspect many model-equal shared pairs. The current
   model partition, opportunistic producers, and reconciliation frontier reduce
   that work but do not remove the worst-case quadratic pair space.
-- The mixed model builder is specialized and ground. It is not a general
-  `core::Model` implementation.
+- Component preparation remains specialized and ground. Its output uses the
+  general immutable `core::Model`, but the dedicated engine has not migrated
+  to the collection driver's model-fragment export protocol.
 
 Performance history, rejected experiments, and the current gap to reference
 solvers belong in [](qf-uflra-model-guided-performance.md). The merge history

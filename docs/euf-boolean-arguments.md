@@ -123,7 +123,7 @@ with **three** `ite` branches.
 
 ## The cardinality axiom: argument registration
 
-`BooleanClausifier::register_boolean_argument_terms()` (`src/smt/check_sat.cpp`)
+`BooleanClausifier::register_boolean_argument_terms()` (`src/smt/clausifier.cpp`)
 registers, as theory atoms, every `Bool`-sorted term that occurs as an
 **argument** of an uninterpreted application. Registration is the whole
 mechanism; nothing else is added.

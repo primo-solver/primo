@@ -1,6 +1,6 @@
 # EUF And Congruence Closure
 
-Primo's first theory target is QF_UF. The default implementation is the
+Primo's QF_UF route uses the
 incremental Nieuwenhuis-Oliveras-style congruence-closure engine over flat
 terms. The older lazy EUF solver over `core::TermId` values is still available
 with `--euf-engine=lazy` for diagnostics.
@@ -11,19 +11,29 @@ SMT-LIB assertions are parsed into hash-consed terms. Boolean structure is
 clausified into SAT clauses. Equality atoms and Boolean predicate applications
 are tracked as theory atoms.
 
-The QF_UF loop in `src/smt/check_sat.cpp` is:
+The QF_UF engine is `solve_qf_uf_engine_impl` in
+`src/smt/solver_engines.cpp`. Its control flow is:
 
 ```text
 clausify assertions
-set the default SAT phase of tracked theory atoms to false
+register the Boolean/EUF domain bridge before preparing the theory atoms
+resolve propagation and phase policies from options and formula features
+prepare flat EUF structure and connect callbacks when the selected mode uses them
 loop:
-  call CaDiCaL
+  call CaDiCaL (callbacks may check conflicts and propagate explained literals)
+  preserve cancellation/resource stops as unknown, not a conflict
   if SAT says UNSAT, return UNSAT
   read assigned theory atoms
-  rebuild congruence closure for the assignment
-  if all assigned disequalities are consistent, return SAT
+  perform the final explained EUF check with the selected engine
+  if consistent, build the requested typed model and return SAT
   add a blocking theory-conflict clause and repeat
 ```
+
+The default engine is incremental, but `--euf-prop=auto` can select
+different schedules. It does not mean every input uses online propagation or
+that every round rebuilds the entire structural preparation. Pure UF stays on
+its direct path; the collection driver is used for mixed QF_UFLIA, not imposed
+on all logics. See [](dpllt.md) and [](current-status.md).
 
 The current conflict clause is justified by the explained congruence closure.
 Reasons are sound but not guaranteed minimum. Primo has default-off

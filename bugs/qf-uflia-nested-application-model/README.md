@@ -7,7 +7,12 @@ redesign in `docs/model-interpretation.md`, implemented through `8ff9991`.
 One typed interpretation now owns both reconstructed constants and function
 tables; evaluated argument tuples cannot select contradictory results, and
 the printer cannot complete or revise the interpretation. All model routes
-use this builder and reverse typed conversion replay.
+use this core representation and reverse typed conversion replay. The later
+N-component migration adds a fragment-validation/assembly adapter for QF_UFLIA;
+other routes retain `build_typed_model`. That migration and its separate corpus
+qualification are documented in `docs/n-way-combination-migration.md`. The
+evidence below closes the original defect at its recorded revisions, not every
+subsequent change to model construction.
 
 The final `3a2dd40` binary (identical solver sources) passes 3,000 QF_UFLIA
 generated checks and all 72 witness/profile checks, with 1,488 SAT models

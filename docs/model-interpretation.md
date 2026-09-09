@@ -19,7 +19,8 @@ QF_UFLIA collection driver validates owned `ComponentModelFragment` exports and
 calls `assemble_component_model` in `smt/component_model_assembler.cpp`; its
 private `FragmentModelBuilder` preserves the conversion-replay semantics below.
 Boolean, QF_UF, QF_LIA, QF_LRA, QF_UFLRA and preprocessing-only paths retain
-`smt::ComponentModelBuilder` through `build_typed_model`. Both adapters produce
+the private `ComponentModelBuilder` in `typed_model_builder.cpp`, entered through
+`smt::build_typed_model`. Both adapters produce
 the same immutable core representation and share its evaluator and printer.
 Legacy string builders and their separate arithmetic evaluators remain removed.
 See [](n-way-combination-migration.md) for the new fragment contract and its

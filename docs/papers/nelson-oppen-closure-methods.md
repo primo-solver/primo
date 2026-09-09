@@ -2,6 +2,15 @@
 
 ## Status
 
+This long intake/development ledger retains historical snapshots and source
+line references. Current production contracts are in [](../nelson-oppen.md)
+for dedicated QF_UFLRA and [](../n-way-combination-migration.md) for the
+N-component driver used by QF_UFLIA. The collection driver, non-convex
+arrangements and typed model exports are now implemented and qualified; older
+"future" milestones below must be read in their dated context. The full
+`DPLL(T^M)` transition system remains unimplemented. See
+[](../current-status.md) for the current evidence boundary.
+
 This began as a literature and design-intake note. It now records Primo's
 implemented convex EUF+LRA combination subset: an SMT-owned
 `TheoryCombinationManager` for interface equality bookkeeping, a compatibility
@@ -15,14 +24,14 @@ complete convex Nelson-Oppen equality fixpoint for the documented purified
 QF_UFLRA subset, not a generic implementation for arbitrary theories and not
 the full model-based transition system.
 
-The intended project is to add theory-combination closure mechanisms based on
+The original intake objective was to add theory-combination closure mechanisms based on
 Nelson-Oppen-style equality sharing, with de Moura and Bjorner's
 model-based theory-combination paper as the first implementation target. Before
 any source change claims to implement one of these algorithms, this note must be
 expanded into an implementation checklist mapping the paper operations to Primo
 C++ types, invariants, tests, and counters.
 
-## Current Primo Baseline
+## Historical Primo intake state
 
 Primo has QF_UF and QF_LRA DPLL(T) paths, EUF congruence closure, an LRA Simplex
 tableau, and a QF_UFLRA-specific convex coordinator. There is no generic

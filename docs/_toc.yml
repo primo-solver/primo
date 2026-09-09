@@ -6,6 +6,7 @@ root: index
 parts:
   - caption: Core architecture
     chapters:
+      - file: current-status
       - file: architecture
       - file: model-interpretation
       - file: tactics

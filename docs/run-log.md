@@ -10,6 +10,13 @@ change that relies on the run. Large raw artifacts may stay under `results/`,
 `fuzz-results/`, or on the SLURM workspace, but the tracked JSON entry must make
 the run discoverable and reproducible.
 
+For the latest accepted branch results, use [](current-status.md) and
+[](n-way-combination-migration.md). A run's `current` status is relative to its
+recorded revision and scope, not an evergreen certification of HEAD. Older
+pending/intermediate records remain part of the chronology; the later closing
+record supplies the outcome. Do not erase failed jobs, rejected experiments or
+resource-inconclusive rows when an investigation closes.
+
 ## Required Fields
 
 Each entry should record:

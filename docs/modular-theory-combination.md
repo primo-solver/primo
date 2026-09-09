@@ -1,18 +1,17 @@
 # Modular theory combination
 
-The N-component migration is implemented, with cross-logic qualification in progress; see
-[](n-way-combination-migration.md) for its frozen boundary, implementation status
-and acceptance gates. QF_UFLIA's sample, watchlist and full-corpus paired timing
-and model-validation gates pass; QF_UF and QF_UFLRA preservation also pass.
-QF_LRA and QF_LIA qualification remain open. Historical evidence below describes
-the frozen baseline,
-not measurements of the migration.
+The N-component migration and all five-logic qualification gates are complete
+at `2413397`. The subsequent `b883d6f` linear-selection optimization has separate
+QF_UFLIA qualification. See [](n-way-combination-migration.md) for the frozen
+boundary, accepted results, resource rows and reference-coverage limits, and
+[](current-status.md) for a compact current-state map. Historical experiments
+below qualify their named older revisions, not the collection migration.
 
 Primo's modular combination layer is based on Nelson and Oppen's arrangement
 method and on SAT-mediated delayed theory combination. Its first non-convex
 target is `QF_UFLIA`; the established `QF_UFLRA` solver retains its specialized
 convex model-reconciliation policy by default and can route its model decisions
-through the generic coordinator with
+through the older projection coordinator with
 `--experimental-generic-model-combination`.
 
 The primary algorithmic sources are Nelson and Oppen, *Simplification by
@@ -38,7 +37,7 @@ system.
 
 ## Component contract
 
-The current QF_UFLIA candidate uses `theory::TheoryComponent`, validated
+The production QF_UFLIA route uses `theory::TheoryComponent`, validated
 `ComponentDescriptor` capabilities and per-sort connected sharing scopes,
 `ComponentDispatcher`, and `ComponentModelCoordinator`. The detailed ownership,
 lifetime, scope normalization and model-fragment contract are documented in
@@ -337,8 +336,9 @@ adapted to `TheorySolver`, and the generic coordinator owns snapshot validation,
 partition comparison, mutation dispatch, and model-choice batching. The EUF
 adapter deliberately reuses the established checkpointed compatibility merge;
 the experiment changes the scheduler boundary, not that component operation.
-The complete specialized path remains available while equivalence evaluation is
-in progress. That frozen generic QF_UFLRA coordinator assumes that every supplied
+The recorded older equivalence experiment below is complete, but it did not
+retire or replace the specialized engine: the wrapper remains default-off.
+That frozen generic QF_UFLRA coordinator assumes that every supplied
 shared sort belongs to every participating component. The new collection driver
 instead supports partially overlapping and disconnected sharing scopes, tested
 with three/four components. This adds an extension protocol, not automatic

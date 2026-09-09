@@ -61,7 +61,7 @@ Disjoint interpreted signatures and explicit atom ownership are preconditions.
 
 ## Representation and operations
 
-Implemented candidate:
+Implemented production architecture:
 
 - `theory::TheoryComponent`: solve-scoped component lifecycle and immutable
   descriptor; no SAT backend or SMT-LIB AST. It owns preparation, incremental
@@ -465,8 +465,10 @@ across both rounds). TwoSquares and mathsat common runtime decreased 0.66% and
 2.11%; wisas decreased 8.16% over the full family despite the small-probe
 regression. The extra fourth gain in the second round is near-cutoff variation,
 not evidence of four robust additional solves. Candidate-only gprof identified
-routing and pair ordering as future optimization targets; no speculative
-optimization was added after the aggregate gate passed.
+routing and pair ordering as follow-up targets at `2413397`; no speculative
+optimization was folded into that migration result. The separately qualified
+`b883d6f` linear-selection change above subsequently removes the measured
+ordered-set overhead without changing the post-migration choice order.
 
 The preservation suite covers QF_UF (7,503), QF_LIA (13,306), QF_LRA
 (1,753) and QF_UFLRA (1,284) with the same frozen binaries and two paired rounds.

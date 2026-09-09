@@ -7,6 +7,12 @@ Record every nontrivial benchmark, fuzzing, profiling, tuning, dependency-profil
 or reference-comparison run in `docs/run-log.json`; see [](run-log.md) for the
 schema and evidence policy.
 
+For the latest accepted comparisons, start with [](current-status.md). The
+family studies and older command examples below retain their own revisions and
+timeouts; do not combine their solve counts into a new headline comparison.
+The N-component migration's five-logic result and the later QF_UFLIA-only
+overhead fix have distinct evidence scopes.
+
 ## Separate model validation from speed measurements
 
 The repository's `primo-model-validation` skill owns the operational procedure
@@ -40,6 +46,21 @@ decisive answers, and reports family-level timing and independent model coverage
 It can read durable journals for progress, but a partial journal cannot complete
 a shard. Unknown answers and failed processes are not solved or credited in PAR2.
 Model-coverage errors are reported separately and do not rewrite timing completeness.
+
+Do not automatically schedule new reference jobs for a Primo-only paired run.
+Join recorded Z3/cvc5 answers by input content hash and preserve their binary,
+options and timeout provenance. Missing or nondecisive reference rows remain
+explicit gaps; declared SMT-LIB status and agreement with an older Primo are
+weaker evidence, especially for UNSAT. Timing comparisons require compatible
+execution conditions, not merely matching answers. A fresh reference run needs
+a concrete coverage or comparison purpose.
+
+Nondefault correctness profiles must reach **both** answer comparison and model
+validation. In particular, the QF_UFLIA mutation wrapper forwards
+`PRIMO_FUZZ_SOLVER_ARGS` to `validate_model.py` as repeated `--solver-arg`
+arguments. Validating the default profile after timing/fuzzing a different one
+does not qualify the requested configuration.
+
 Live reports use journals until provenance marks a shard complete; an in-flight
 CSV is not authoritative. Unreadable journal records are explicit coverage issues,
 not silent passes or grounds for discarding every other shard's progress.

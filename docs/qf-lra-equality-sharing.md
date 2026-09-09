@@ -52,7 +52,8 @@ model-equality experiment still has its own query and mutation path. Keeping
 the API separate from `entailed_equalities()` is load-bearing because model
 coincidence is a conjecture, not a theory consequence.
 
-After a feasible mixed-theory LRA check, `smt::solve_qf_uf_lra` maps shared Real
+After a feasible mixed-theory LRA check, `solve_qf_uflra_engine_impl` in
+`solver_engines.cpp` maps shared Real
 terms to their tableau variables, requests these cheap entailments, and routes
 them through `TheoryCombinationManager` and guarded SAT clauses. No equality
 atom is preallocated: `force_implied_interface_equalities()` creates and

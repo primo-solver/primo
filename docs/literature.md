@@ -225,8 +225,12 @@ can preserve atom-to-flat-index mappings while skipping irrelevant assignments.
 
 ### Implementation notes
 
-Implemented in `src/smt/check_sat.cpp` for equality atoms, Boolean predicate
-applications, and Boolean constants that are handled as EUF terms. Filtered
+Polarity collection is implemented in `src/smt/clausifier.cpp`; filtering and
+EUF integration are in `src/smt/solver_engines.cpp`. Equality atoms and Boolean
+predicate applications can be filtered only when their theory meaning is
+exhausted by propositional occurrences. Boolean terms used as UF arguments
+are protected as relevant at both polarities; filtering those assignments
+would admit a third Boolean value. See [](euf-boolean-arguments.md). Filtered
 literals are not used as model-propagation premises or propagated candidates.
 
 ### Risks

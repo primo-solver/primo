@@ -1,5 +1,12 @@
 # QF_LRA Speedup Heuristics: Design Note
 
+Historical design/evidence ledger: timings, rankings and source line references
+below belong to their recorded revisions. For current routes and qualification,
+use [](current-status.md); [](arithmetic.md) describes retained mechanisms.
+SMT engine helpers formerly in `check_sat.cpp` now live in `solver_engines.cpp`.
+The default-off pure-LRA fixed-elimination policy is distinct from the default-on
+dedicated QF_UFLRA setting.
+
 Written 2026-07-27 as a design note and extended through 2026-07-31. It picks
 up where the competitiveness roadmap's items 0-8 (see [](arithmetic.md)'s
 Milestone roadmap) left off, and is grounded in a fresh local

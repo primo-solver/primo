@@ -1,5 +1,12 @@
 # Numerical parameters: what exists, what is hardcoded, what to add
 
+This is a dated tuning/design inventory, not the current CLI reference or a
+fresh ranking of HEAD. Engine-local `check_sat.cpp` references below predate the
+split into `frontend.cpp`, `solver_engines.cpp` and strategy modules. Confirm
+option defaults and reachability in `src/smt/check_sat.hpp`, `src/main.cpp`
+and the selected strategy before reusing a search space. Current routes and
+accepted evidence are summarized in [](current-status.md).
+
 Written 2026-08-06, ahead of a dedicated QF_LRA parameter-tuning effort, and
 in the framing of [](open-leads.md)'s complementarity criterion: a
 configuration earns a portfolio slot by solving something the others do not,

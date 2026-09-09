@@ -536,12 +536,13 @@ bounded:
 The pass also records each accepted `x -> t` replacement as the directed model
 reconstruction equality `x = t`; the left child remains the eliminated constant
 and the right child remains its surviving definition. When `get-model` is
-requested, `check_sat` passes those entries to the active model builder together
-with the SAT or theory assignment, so the printed model is checked against the
-original SMT-LIB assertions rather than only the rewritten assertion set. EUF
-can add the equalities to its model closure. QF_LRA and QF_UFLRA instead replay
-Real substitutions once in reverse preprocessing order, assigning only `x`
-from the already reconstructed value of `t`. Later passes may eliminate symbols
+requested, tactic goals carry those entries in a typed `ModelConversionChain`.
+Both model adapters replay substitutions in reverse preprocessing order,
+assigning only eliminated constants from their definitions. Each batch is a
+simultaneous update evaluated against the following stage's interpretation.
+This applies to UF and both arithmetic sorts, not only Real postsolve.
+The session checks original assertions in debug builds or with `--check-model`.
+Later passes may eliminate symbols
 used by earlier definitions, which is why forward replay is insufficient.
 Treating the log as undirected equalities is also incorrect: stale values for
 both constants can alternately overwrite each other and prevent model
@@ -550,24 +551,25 @@ construction from terminating.
 The directed/symmetric distinction was exercised by the early arithmetic-atom
 canonicalization gate. Its first exact SLURM run found a finite-domain model
 whose canonical equality orientation made the old undirected postsolve loop
-oscillate. `TheoryModelAssignment::directed_substitution` now marks only actual
-substitution entries; ordinary forced equality facts retain symmetric model
-closure. The minimized QF_LRA regression and the corrected 3,500-row Dolmen gate
-cover both termination and model validity.
+oscillate. That historical repair distinguished directed substitutions from
+retained theory facts. The shared model redesign now preserves this distinction
+in typed conversion steps rather than replaying an undirected postsolve map.
+The minimized QF_LRA regression and the historical corrected 3,500-row Dolmen
+gate cover that defect; later qualification is in [](model-interpretation.md).
 
 The reconstruction trail is owned by the preprocessing result objects in
 `src/smt/preprocessing.hpp`: `BooleanUnitPropagationResult::assignments`,
 `ForcedAtomPropagationResult::assignments`,
 `SolvedConstantSubstitutionResult::substitutions`, and
 `GroundEqualitySubstitutionResult::substitutions`. These vectors contain only
-hash-consed `core::TermId` handles and are consumed by `check_sat` before the
-shared `core::TermManager` is destroyed. `check_sat` converts substitutions to
-true `TheoryModelAssignment` equality entries marked `directed_substitution`;
-Boolean/forced units use unmarked entries. `smt::ModelBuilder` can add both to
-the same EUF closure as the final SAT assignment, while Real postsolve replays
-only marked entries directionally. Future preprocessing rewrites that remove
-user-visible facts must add equivalent reconstruction assignments before they
-can be enabled under `get-model`.
+hash-consed `core::TermId` handles. Preprocessing tactics append the appropriate
+typed steps to goal-owned immutable reconstruction state before the shared
+`core::TermManager` is destroyed. `build_typed_model` and
+`assemble_component_model` share the conversion semantics: eliminated constants
+are restored, while retained Boolean/ground-unit facts are checked at their
+replay stage. Neither printer nor term arena history completes definitions.
+Future rewrites that remove user-visible facts must supply an appropriate
+conversion before they can be enabled under `get-model`.
 
 The pass is reported by:
 
@@ -674,6 +676,16 @@ Specifically:
 
 ### Model reconstruction
 
+The current implementation is `ComponentModelBuilder::replay_monotone` in
+`typed_model_builder.cpp`, with the corresponding fragment-adapter operation
+in `component_model_assembler.cpp`. Each restored variable gets a fresh shared
+evaluator epoch, and discharged constraints are checked after the batch.
+Unconstrained constants already have total values in the base interpretation;
+replay does not silently invent a missing application result or change a fixed
+function table. The worked examples and old `check_sat.cpp` line references
+below describe the earlier implementation of the same one-sided rule, not
+current source locations or guaranteed printed numeral choices.
+
 Eliminated variables are absent from the tableau, so they are valued after the
 solve, from the constraints that were discharged. Each constraint is re-derived
 against the model and yields a bound; the variable takes one unit past the
@@ -694,7 +706,7 @@ it still derives a bound from it, but against whatever placeholder value the
 other leaf currently has (see below), which the later variable's own turn
 then supersedes with its real value.
 
-Verified rather than argued: temporarily reversing the valuation order and
+Historical validation of this rule: temporarily reversing the valuation order and
 re-running model validation over 120 benchmark files gave **108 valid models
 and 0 invalid**, with some models differing in their values from the forward
 order. `x > y ∧ x > 10 ∧ y < 3`, for instance, yields `x = 11, y = 2` forward
@@ -706,11 +718,12 @@ the order moved, not necessarily that soundness broke.
 One subtlety is load-bearing and has a regression test. Folding an atom
 discharges it for *every* variable in it, so a variable that was itself
 disqualified can lose its last constraint and vanish from the tableau. Such a
-variable is pinned to zero during reconstruction rather than left unvalued --
-skipping its bound instead produced models that violated the very constraint
-the pass had discharged.
+variable must have a total value rather than be skipped as unvalued. The old
+implementation pinned it to zero; the current builder supplies a base-model
+value before replay. Skipping its bound produced models that violated the
+constraint the pass had discharged.
 
-### Worked example
+### Historical worked examples
 
 `apply_monotone_eliminations` (`check_sat.cpp:5551`) processes the eliminated
 variables in a fixed order. For each one, it walks its discharged atoms and,
@@ -1476,14 +1489,15 @@ assertion vector unchanged and reports zero rewrites. This avoids constructing
 temporary equality/query structures for formulas whose Boolean simplification
 cannot use the pass.
 
-After preprocessing, `check_sat.cpp` classifies the final assertion DAG with a
+After preprocessing, `solver_strategy.cpp` uses the formula-analysis module to
+classify the final assertion DAG with a
 memoized per-term feature summary. The summary preserves the existing dispatch
 rules: plain Real equalities are arithmetic atoms, Real equalities containing UF
 applications are mixed EUF/LRA atoms, and Bool-sorted UF constants or
 applications are EUF predicate atoms. Model-producing formulas with declared
-Real constants still route through the QF_LRA model builder when preprocessing
-has eliminated all arithmetic atoms, so solved Real constants are reconstructed
-as concrete SMT-LIB model values rather than abstract UF values.
+Real or Int constants retain typed model reconstruction even when preprocessing
+has eliminated all arithmetic atoms. Their values come from the shared model
+adapter and reverse conversion replay, not an abstract UF-only string builder.
 
 For QF_UFLRA, the SMT layer also runs a memoized pre-scan before mixed
 purification. If there are no Real-valued UF applications in arithmetic atoms and
@@ -1598,6 +1612,11 @@ Implemented:
 
 - preset CLI option `--preprocessing-mode=off|basic|strong|auto`;
 - CLI-default `auto` preprocessing dispatcher;
+- goal-owned typed model-conversion records, with reverse simultaneous replay;
+- first-class ITE/div/mod/abs terms and mandatory extended-term lowering even
+  when optional preprocessing is off;
+- default-on bounded constant-ITE simplification and equality-ITE distribution;
+- default-off arithmetic-atom canonicalization and monotone Real elimination;
 - equality bridging under disjunctions;
 - unit equality propagation from top-level equalities;
 - opt-in ground unit-equality substitution over non-Bool terms;
@@ -1635,8 +1654,9 @@ Deferred:
 
 - proof support for generated preprocessing lemmas;
 - unconstrained-value simplification as a global formula transformation;
-- strong term-ITE conversion beyond frontend lowering of the targeted
-  assignment shape;
+- unrestricted term-ITE distribution or the full CITE algorithm beyond the
+  bounded rules described above; lowering itself is implemented in preprocessing,
+  not the frontend;
 - minimum-transitivity-constraint generation and selective Ackermannization for
   equality logic;
 - SyGuS-derived rewrite-rule enumeration for preprocessing;

@@ -124,7 +124,7 @@ The relevant implementation pieces are:
 - `src/theory/equality/flat_congruence_closure.*`: owns representatives,
   definitions, use lists, disequality lists, explanations, changed-term drains,
   and rollback.
-- `src/smt/check_sat.cpp`: owns `OnlineEufPropagator`, assignment
+- `src/smt/solver_engines.cpp`: owns `OnlineEufPropagator`, assignment
   notifications, candidate queues, theory propagation delivery, and reason
   validation.
 - `docs/euf.md`: describes the public `--euf-prop` modes, existing online

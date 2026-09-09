@@ -2,17 +2,22 @@
 
 Primo is organized as layered components with explicit data ownership. This page describes the implementation that exists now, not the intended final solver.
 
+For the supported-route matrix and revision-scoped qualification, start with
+[](current-status.md). The long mixed-Real inventory below describes the
+retained dedicated QF_UFLRA route, not the new N-component driver.
+
 ## Layers
 
 - `smtlib/` parses SMT-LIB commands into lightweight syntax objects.
-- `core/` owns sorts, symbols, and hash-consed terms.
+- `core/` owns sorts, symbols, hash-consed terms, and immutable typed models
+  with a shared evaluator.
 - `sat/` owns propositional variables, literals, clauses, assumptions, the
   backend-neutral IPASIR-UP callback interfaces, and the concrete CaDiCaL
   adapter.
 - `smt/` owns conversion of SMT-LIB commands to core terms, preprocessing, Boolean abstraction,
-  clausification, tactic composition, QF_UF/QF_LRA solver orchestration, the
-  specialized mixed QF_UFLRA coordinator, and the modular sequential QF_UFLIA
-  coordinator. The tactic data structures,
+  clausification, tactic composition, pure UF/LIA/LRA solver orchestration, the
+  specialized mixed QF_UFLRA coordinator, and the N-component driver used by
+  QF_UFLIA, including model-fragment assembly. The tactic data structures,
   ownership rules, and current migration boundary are described in
   [](tactics.md).
 - `theory/` owns equality reasoning, congruence closure, and arithmetic
@@ -37,9 +42,13 @@ confined to `primo_smtlib`, CaDiCaL configuration to `primo_sat`, and GMP to
   literals and memoizes theory-atom polarity collection per hash-consed term and
   polarity.
 - Theory solvers reason over `core::TermId` values and never own SMT-LIB syntax.
-  Mixed components implement the solve-scoped `theory::TheorySolver` protocol;
-  they receive owned literals and an SMT-owned interface arrangement but no SAT
-  backend or access to another component's private state.
+  The production QF_UFLIA boundary is the solve-scoped
+  `theory::TheoryComponent` protocol; `TheorySolver` remains a private adapter
+  helper and the older experimental QF_UFLRA projection interface. Components
+  receive typed literals and an SMT-owned interface arrangement but no SAT
+  backend or access to another component's private state. Descriptors declare
+  ownership, convexity, stable infiniteness and capabilities; the plan validates
+  them before solving. See [](n-way-combination-migration.md).
 - All core terms are created through `core::TermManager`.
 - Cancellation is carried as a read-only callback in `CheckSatOptions` and
   `TacticContext`. Each solver invocation owns an RAII-scoped SAT terminator;
@@ -76,10 +85,12 @@ The primary term types are:
 Term:
   id:        TermId
   kind:      BoolValue | Constant | Application | Equality | Not | And | Or | Implies
+             | Rational | Plus | Times | Le | Lt | Ite | IntDiv | IntMod | Abs
   sort:      SortId
   symbol:    SymbolId, only meaningful for Constant and Application
   children:  vector<TermId>
   bool_value: meaningful only for BoolValue
+  rational_value: literal value, scale coefficient, or normalized integer divisor
 ```
 
 Terms are not individually heap-allocated. `TermManager` owns all term nodes in a `std::vector<Term> terms_`. The public API returns `TermId`, not pointers or owning handles. A term id is the vector index assigned at insertion time.
@@ -125,6 +136,7 @@ The hash-consing key contains:
 - `SymbolId symbol`
 - `std::vector<TermId> children`
 - `bool bool_value`
+- `util::Rational rational_value`
 
 `TermManager::intern` first looks up this key. If an identical key already exists, it returns the existing `TermId`; otherwise it appends a new `Term` to `terms_` and records the key-to-id mapping.
 
@@ -139,7 +151,8 @@ Sorts and symbols are owned by `core::SymbolTable`:
 - `SymbolTable` stores symbols in `std::vector<Symbol> symbols_`.
 - names are mapped with `std::unordered_map<std::string, SortId>` and `std::unordered_map<std::string, SymbolId>`.
 
-`SymbolTable` creates the built-in Bool sort in its constructor. `bool_sort()` currently returns `0`.
+`SymbolTable` creates the built-in Bool, Real and Int sorts in its constructor,
+with IDs 0, 1 and 2 respectively. Uninterpreted sorts receive further IDs.
 
 Function and predicate declarations are represented as `Symbol` records:
 
@@ -167,13 +180,22 @@ preprocessing and solver exceptions are not reclassified as unsupported input.
 Implemented constructors:
 
 - `mk_bool(value)`: creates or reuses the Boolean constant.
-- `mk_constant(symbol)`: creates or reuses an uninterpreted or Boolean constant.
+- `mk_constant(symbol)`: creates or reuses a constant of its declared sort,
+  including Bool, Int, Real and uninterpreted sorts.
 - `mk_app(symbol, args)`: creates or reuses a function or predicate application.
 - `mk_eq(lhs, rhs)`: requires matching sorts and returns `true` immediately when `lhs == rhs`.
 - `mk_not(child)`: requires Bool, folds Boolean constants, and removes double negation.
 - `mk_and(children)`: requires Bool children, preserves nested `And` children, drops `true`, removes duplicate direct children, returns `false` if any child is `false`, and returns the single child for singleton conjunctions.
 - `mk_or(children)`: requires Bool children, preserves nested `Or` children, drops `false`, removes duplicate direct children, returns `true` if any child is `true`, and returns the single child for singleton disjunctions.
 - `mk_implies(lhs, rhs)`: requires Bool operands and folds trivial cases such as `p => p`, `false => p`, `true => p`, `p => true`, and `p => false`.
+- `mk_rational(value, sort)`, `mk_plus`, `mk_times`, `mk_le`, and `mk_lt`:
+  build exact linear arithmetic. `Times` is one child with a rational scalar,
+  not general multiplication; Int literals and coefficients must be integral.
+- `mk_ite(condition, then_term, else_term)`: requires a Bool condition and
+  matching branch sorts. It remains a term until mandatory extended lowering.
+- `mk_int_div`, `mk_int_mod`, and `mk_abs`: preserve typed Int operators for
+  lowering. Division/modulo normalize a nonzero literal divisor; their unary
+  core nodes store the positive divisor in `rational_value`.
 
 The constructors do not currently canonicalize commutative operands. For example, `(= a b)` and `(= b a)` are different syntactic terms unless another layer rewrites them before calling `mk_eq`.
 
@@ -181,8 +203,8 @@ The constructors do not currently canonicalize commutative operands. For example
 
 SMT-LIB `let` does not create a term node. `smt::Frontend` keeps a stack of local maps from variable names to `TermId`. Binding right-hand sides are built in the outer scope, then the body is built in an extended scope. Because bound names resolve to existing `TermId` values, `let` expansion does not duplicate subtrees beyond the normal constructor calls and hash-consing behavior.
 
-SMT-LIB `define-fun` is supported for the QF_UF macro subset used by benchmark
-preludes. `smt::Frontend::Definition` has two representations. A nullary
+SMT-LIB `define-fun` supports nonrecursive macros over the admitted term
+language, not only UF terms. `smt::Frontend::Definition` has two representations. A nullary
 definition is compiled at its declaration into one hash-consed `TermId`; a
 parameterized definition retains its `SExpr` body and is expanded at each use by
 binding formal parameters to already-built argument terms. Both paths check the
@@ -322,20 +344,27 @@ Implemented now:
   ANTLR parse tree. Command-level validation still rejects unsupported commands
   and malformed supported commands before the frontend builds `core::TermId`
   values.
-- QF_UF `define-fun` macro expansion for non-recursive definitions.
-- Sort and symbol tables for Bool and uninterpreted sorts.
-- Hash-consed term construction with local Boolean simplification.
+- `define-fun` macro expansion for non-recursive definitions.
+- Sort and symbol tables for Bool, Int, Real and uninterpreted sorts.
+- Hash-consed typed terms with local Boolean and arithmetic simplification.
 - CaDiCaL-backed SAT solving through the IPASIR-compatible backend.
 - Boolean clausification for assertions.
-- Lazy QF_UF checking over equality atoms and Boolean predicate applications.
-- Non-incremental congruence closure for the current SAT assignment.
+- Incremental flat QF_UF congruence closure and explained conflict checking,
+  with configurable callback propagation and a retained lazy diagnostic engine.
 - QF_LRA solving for linear Real arithmetic through a Simplex tableau with
   CaDiCaL/IPASIR-UP integration, same-variable bound propagation, and default
   sparse pivot heuristics.
+- QF_LIA integer completion over the arithmetic relaxation; finite budgets
+  can return unknown. See [](qf-lia-branch-and-bound.md).
+- QF_UFLIA through `solve_component_recipe`, `ComponentDispatcher` and
+  `ComponentModelCoordinator`. Sparse model choices retain a complete-arrangement
+  fallback. Three/four-component protocol tests do not introduce new supported
+  logics; see [](n-way-combination-migration.md).
 - Typed owning models for Boolean, QF_UF, QF_LIA, QF_LRA and mixed arithmetic
   logics. The QF_UFLIA collection route validates owned component fragments and
   uses `smt::assemble_component_model`; other routes retain
-  `smt::ComponentModelBuilder` through `build_typed_model`. Both adapt final
+  the private `ComponentModelBuilder` in `typed_model_builder.cpp` through
+  `smt::build_typed_model`. Both adapt final
   component facts and exact numeric assignments into one `core::Model`, keyed
   by function symbol and
   evaluated typed argument tuple. It considers live roots and purification
@@ -367,7 +396,7 @@ Implemented now:
   bookkeeping only; it does not create proxy terms or equality atoms, propagate
   interface equalities, combine theories, or inspect theory-local models.
 - Partial Nelson-Oppen-style mixed QF_UFLRA final checks in
-  `smt::solve_qf_uf_lra`. The SMT layer accepts one SAT assignment, partitions
+  `solve_qf_uflra_engine_impl` in `solver_engines.cpp`. The SMT layer accepts one SAT assignment, partitions
   visible theory atoms into EUF and LRA atoms, checks both theories, and learns
   the first ordinary per-theory conflict clause it finds. Arithmetic atoms may
   contain Real-valued UF applications, including applications whose `Real`
@@ -466,7 +495,7 @@ Implemented now:
   scratch-only and pure QF_UF/QF_LRA do not enter this path.
 
   `MixedLraModelEpoch` retains one augmented LRA component preparation and its
-  checked tableau inside `solve_qf_uf_lra`. The exact ordered set of true
+  checked tableau inside `solve_qf_uflra_engine_impl`. The exact ordered set of true
   interface equality atoms is the structural epoch key. An unchanged key reuses
   the preparation and tableau; a changed key rebuilds both. Before checking a
   different LRA assignment in the same epoch, `LraTableau::pop(0)` removes all
@@ -705,30 +734,34 @@ Not implemented yet:
 
 - push/pop assertion stacks.
 - proof production.
-- full model construction for mixed-theory fragments beyond the documented
-  QF_UFLRA subset, arithmetic functions beyond nullary `Real` constants and
-  Real-valued UF tables, and reconstruction through future
-  satisfiability-preserving rewrites outside the current preprocessing trail.
-- Generic model-based theory combination with a mutable shared model,
-  non-convex arrangement enumeration, generic model-equality propagation,
-  care-set-driven default search, live-model mutation, theory-independent model
-  transitions, and minimal cross-theory explanations. The supported
-  EUF+LRA subset now has a complete convex shared-Real equality fixpoint, while
-  the default-off model-equality branch remains an experiment rather than part
-  of that completeness argument.
-- explanation-producing congruence closure with proof forests.
+- theory kernels and model values for arrays, bit-vectors, nonlinear arithmetic,
+  quantifiers or other fragments outside the admitted five logics.
+- reconstruction for a future satisfiability-preserving rewrite without a
+  corresponding typed conversion; every such rewrite needs its own obligation.
+- the full `DPLL(T^M)` transition system with theory-independent persistent
+  mutable models throughout SAT search. Non-convex arrangements, generic
+  collection coordination and care-prioritized decisions **are** implemented;
+  production LIA live-model mutation is not. Minimal cross-theory explanations
+  and live tableau row insertion across interface growth remain future work.
+- default promotion of proof-forest EUF explanations. Explained BFS is the
+  default; proof-forest modes are implemented experiments, not missing code.
 
 ## Paper Traceability
 
 - IPASIR-UP motivates the SAT-backend interface. `src/sat/` owns the
   backend-neutral propagator/terminator contracts and adapts them to CaDiCaL's
   concrete C++ API.
-- Congruence-closure papers motivate the EUF direction. The current implementation has congruence closure and disequality checking, but it does not yet implement explanation-producing union-find or the full fast algorithms described in the literature notes.
+- Congruence-closure papers ground the incremental flat closure, indexed use
+  lists and explanations in `theory/equality/`. The default explanation search
+  is BFS; optional proof-forest modes are not a claim that every optimized
+  mechanism of the cited papers is implemented. See [](euf.md) and
+  [](papers/fast-congruence-closure-implementation.md).
 - DPLL(T) papers motivate the SAT/theory loop. Primo has IPASIR-UP callback
   propagation for its pure EUF and LRA paths and for the documented mixed
   online subset. Mixed final checks reuse prepared EUF/LRA structure but still
-  rebuild round-local closure state when generated interface equalities change;
-  this is not a generic persistent multi-theory transition system.
+  rebuild round-local state when generated interface equalities change.
+  QF_UFLIA now has a collection-based lifecycle/dispatcher and typed model
+  exports; neither route implements the full persistent `DPLL(T^M)` system.
 - SMT symmetry-breaking papers motivate the default-on QF_UF preprocessing pass.
   Primo implements the conservative constant-permutation subset described in
   `docs/preprocessing.md`; finite-model value precedence remains background
@@ -747,7 +780,8 @@ make contrib-cadical
 Dolmen is an external validator for SMT-LIB model response files. It is not
 linked into Primo; install the pinned host-compatible build with
 `make contrib-dolmen` and run `scripts/validate_model.py`. The dependency is optional for ordinary builds,
-but required by the standard QF_UFLRA merge gate. The validator owns only
+but required for independent printed-model qualification across supported logics,
+including full-corpus SAT replay separate from timing. The validator owns only
 generated problem/response artifacts and durable CSV/JSON metadata; it does not
 enter solver control flow or share model objects with Primo.
 
