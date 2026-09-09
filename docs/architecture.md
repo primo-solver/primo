@@ -738,7 +738,7 @@ that frontend to `check_sat_frontend_once`. Further work replays surviving
 commands into a fresh generation. The CLI reads complete commands without EOF
 and prints typed responses through `cli::print_response`, keeping dependencies
 directed from CLI to SMT and from SMT to SMT-LIB/core. See [](incremental-smt.md)
-for costs, protocol restrictions, ownership, and pending qualification.
+for costs, protocol restrictions, ownership, and revision-scoped qualification.
 
 Not implemented yet:
 

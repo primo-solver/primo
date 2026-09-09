@@ -1,9 +1,10 @@
 # Current implementation and qualification
 
-This is the current-state map for the `modular-theory-combination` branch,
-reviewed on 2026-09-09. Solver sources are at `b883d6f`; `d4e604e` records its
-qualification. These are branch results, not a claim that the branch has been
-merged into `main`. Dated experiments elsewhere retain their original revisions
+This is the current-state map for `feature/incremental-smt-sessions`, based on
+`main` at `9803d1a`. Session sources are at `5bc811b`; the theory-combination
+implementation and its earlier qualification remain at `b883d6f`/`d4e604e`.
+The session feature has not been merged into `main`.
+Dated experiments elsewhere retain their original revisions
 and limitations. Exact commands, manifests, hashes and jobs belong in
 [](run-log.md), not in a moving headline benchmark.
 
@@ -38,7 +39,13 @@ pass. See [](arithmetic.md) and [](preprocessing.md).
 
 The session feature branch adds interactive SMT-LIB `push`/`pop` with scoped
 declarations/definitions and repeated checks. It rebuilds solving state per
-query; its SLURM qualification remains pending. See [](incremental-smt.md).
+query. SLURM qualification matched 15,000 answers across 1,000 generated
+sessions and independently validated 10,000 session models. A separate
+100-input, five-logic sample retained every solve and shared non-timing counter;
+two paired rounds cost 0.75% more overall, with local family regressions.
+All 122 SAT results from those rounds passed separate Dolmen replay.
+This is bounded baseline qualification, not a full-corpus or zero-overhead claim.
+See [](incremental-smt.md).
 
 Not implemented: quantifiers, arrays, bit-vectors, nonlinear arithmetic,
 proof production, or dedicated QF_IDL/QF_RDL admission.
@@ -108,8 +115,8 @@ For example, save this as an SMT-LIB input and run
 `./build/primo --check-model input.smt2`:
 
 ```lisp
-(set-logic QF_UFLIA)
 (set-option :produce-models true)
+(set-logic QF_UFLIA)
 (declare-fun f (Int) Int)
 (declare-fun x () Int)
 (declare-fun y () Int)

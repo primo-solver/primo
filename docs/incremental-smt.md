@@ -3,8 +3,9 @@
 ## Design and implementation checklist
 
 This branch implements an original rebuild-based session baseline, not persistent
-incremental SAT, theory solving, or incremental tactics. During development the
-items below distinguish the implemented interface from pending SLURM qualification.
+incremental SAT, theory solving, or incremental tactics. The checklist describes
+the implemented interface; bounded SLURM qualification and its measured costs
+are recorded below, separately from future incremental-state reuse.
 
 ### Sources and implementation status
 
@@ -14,7 +15,7 @@ items below distinguish the implemented interface from pending SLURM qualificati
 - de Moura and Passmore, [The Strategy Challenge in SMT Solving](https://www.cl.cam.ac.uk/~gp351/moura-passmore-smt-strategy.pdf),
   Section 3: ordered goals, disjunctive subgoals and backward model converters
   underpin existing Primo tactics. This is not an incremental-context algorithm.
-- Bjørner and de Moura, [Z3 Internals (draft)](https://z3prover.github.io/papers/z3internals.html),
+- Bjørner et al., [Z3 Internals (draft)](https://z3prover.github.io/papers/z3internals.html),
   Sections 8.2–8.3 and 8.6: incremental reuse may require translating incoming
   formulas or restoring eliminated constraints. Such reuse is **deferred** here;
   the draft is not evidence of current Z3 default behavior.
@@ -61,8 +62,8 @@ SMT-LIB library back into SMT. The CLI flushes responses before reading another 
   This catches forward references and type errors immediately without changing
   search TermId ordering. For many definitions this can incur quadratic prefix
   declaration-prefix replay costs (prior assertions are skipped); a non-mutating
-  type-checking interface is future work, and this
-  cost must be measured before performance acceptance.
+  type-checking interface is future work. The preservation sample below does
+  not establish a bound for definition-heavy workloads.
 - Reset-assertions clears user declarations, definitions and formulas, retaining
   logic/options. Reset also restores initial protocol options and start mode.
 - Each check computes a model when enabled; only get-model prints it. Models
@@ -160,3 +161,69 @@ The base stack adds constant work per call; lookup scans only visible local
 scopes. A regression fixes a formerly SAT answer for a definition referring to
 global `a` while the caller locally binds `a` to true and globally asserts
 `not a`. That formula is UNSAT, independently of the caller binding.
+
+## Qualification of the rebuild baseline
+
+Source revision `5bc811b` passed `make check` (31 CTest and 132 Python tests),
+`make asan-test` (31 CTest), `make lint`, and strict `make docs`. Whole-tree
+SLURM static review covered all 109 tracked non-generated C++ files in both
+configured clang-tidy and advisory include-cleaner modes. No changed file had
+a diagnostic. The existing `tactic.cpp` shared-pointer analyzer warning and
+transitive-header advisories remain explicit; this is not a warning-free claim.
+
+The fresh scoped-session gate (`141595_0–3`) passed 1,000 generated sessions,
+200 per supported logic: 15,000 Z3-matched answers, including 10,000 SAT models
+independently accepted by Dolmen. Each model came from the live session and
+was checked against its active query context. There were no wrong answers,
+invalid models, crashes, parser/type errors, timeouts or unsupported rows.
+This merge gate exercises generated scope/definition patterns, not arbitrary
+incremental SMT-LIB corpora or a broad default-promotion campaign.
+
+Single-query preservation used 20 fixed real inputs per logic, selected before
+measurement from recorded successful runs. Two alternating baseline/candidate
+rounds ran on SLURM node-03 (`141604_0–4`), with 10 seconds per input and
+`--quiet --stats`. The archived `b883d6f` baseline has identical solver/build
+sources to branch point `9803d1a`; no reference-solver timings were rerun.
+
+| Logic | Solved executions, baseline → session | Baseline seconds | Session seconds | Ratio |
+| --- | ---: | ---: | ---: | ---: |
+| QF_UF | 40 → 40 | 27.371903 | 27.727465 | 1.0130 |
+| QF_LIA | 40 → 40 | 24.285512 | 24.408226 | 1.0051 |
+| QF_LRA | 40 → 40 | 25.686654 | 25.882490 | 1.0076 |
+| QF_UFLRA | 40 → 40 | 19.316283 | 19.578114 | 1.0136 |
+| QF_UFLIA | 40 → 40 | 20.035703 | 19.969439 | 0.9967 |
+| Total | 200 → 200 | 116.696055 | 117.565734 | 1.0075 |
+
+All executions solved, so the displayed totals also equal summed PAR2. Both
+arms had zero timeout/error/unsupported/wrong-answer rows, and every shared
+non-timing statistic matched. The separate post-timing model stage
+(`141617_0–4`) covered all 122 candidate SAT rows, with direct Dolmen acceptance
+and unchanged input/binary hashes. Model checking time is excluded above.
+
+This establishes a usable rebuild baseline with a measured protocol cost, not
+strict performance preservation. The existing comparator's 1.01 threshold
+flags UF and UFLRA; its raw `needs-triage` verdicts are retained. Family-level
+results are in `benchmarks/incremental-preservation-summary.json`. For example,
+Goel rises 5.7%, cpachecker-induction 1.5%, and the selected Certora rows fall
+1.0%; there are no lost solves. Small family samples are not corpus-wide claims.
+
+Callgrind job `141635` profiled the selected Goel frogs input with both archived
+binaries. Instructions rose from 3.473 to 3.782 billion; the new command framer
+accounts for 180.7 million inclusive instructions (4.8% of the candidate total).
+The EUF solve path is essentially unchanged (1.272 versus 1.270 billion).
+This supports protocol framing/lifecycle cost rather than changed search as the
+main explanation on that input; instruction counts are not wall-time fractions.
+The framer scans command boundaries before the ordinary parser scans syntax.
+Combining those scans safely, including live-pipe behavior, is future parser
+work, not justification for reusing preprocessed state. A definition-heavy
+stress campaign and full-corpus performance qualification are also outside this
+bounded first implementation.
+
+Exact manifests, hashes, commands, family metrics and run limitations are
+recorded in [](run-log.md), entry `2026-09-09-incremental-smt-sessions`.
+Artifacts live under `results/incremental-5bc811b` locally and on the recorded
+SLURM workspace; full generated-query artifacts remain on SLURM. Reproduction
+uses `scripts/slurm_incremental_preservation.sbatch` for separate benchmark
+and replay phases, and `scripts/slurm_incremental_profile.sbatch` for diagnostic
+instruction profiling. Both require explicit prepared-workspace and artifact
+paths; neither submits jobs implicitly.
