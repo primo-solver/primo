@@ -1,6 +1,8 @@
 # N-component combination migration
 
-Status: implementation and the five-logic qualification are complete. All
+Status: migration implementation at `2413397` and its five-logic qualification
+are complete. The subsequent order-preserving coordinator optimization at
+`b883d6f` has separate QF_UFLIA qualification below. All original migration
 per-logic performance limits pass, every successful candidate SAT row has an
 independently validated model, and all prescribed lost-solve follow-ups are
 finished. The production QF_UFLIA route uses
@@ -218,8 +220,49 @@ Implementation passes 29 CTest tests, 128 Python tests, all 29 ASan tests,
 lint and documentation build. The added order oracle checks 2,325 configurations
 across two, three and four components; the large agreeing-care test visits
 50,000 entries without constructing an ordered candidate set.
-Fresh cluster correctness/performance qualification is still in progress;
-the historical migration results below remain evidence for `2413397` only.
+The implementation at `b883d6f` is accepted against the frozen post-migration
+`2413397` baseline, not against the older equality-choice heuristic. Fresh SLURM
+evidence is recorded in `2026-09-09-linear-component-selection` in `run-log.json`:
+
+- The 25-input quick gate (previous sample and watchlist plus Certora 47)
+  preserves 24/25 solves in both rounds and reduces common-solved time by 19.91%.
+  Its 26 candidate SAT models all pass direct Dolmen validation. The committed
+  manifest is `benchmarks/component-linear-quick-25.txt`.
+- The full 659-input, 60-second gate preserves 575 solves and 84 timeouts in
+  each round for both binaries: no gains, losses, wrong answers, disagreements,
+  errors or unsupported rows. Across both rounds, common-solved time falls from
+  2,566.665184 to 2,495.783937 seconds (2.76%); PAR2 falls from 22,726.665184 to
+  22,655.783937 seconds (0.31%). Common-time family reductions are Certora 10.17%,
+  TwoSquares 0.93%, mathsat 1.36% and wisas 2.94%. Individual runs can still vary;
+  the run log retains the two round-one mathsat regressions above 10%.
+- All 425,500 existing non-timing counter comparisons match across the 1,150
+  common-solved executions. This corroborates the selection-order proof and unit
+  oracle; aggregate counters alone are not a complete equality-by-equality trace.
+  Both full rounds' 810 SAT models pass separate direct Dolmen replay, with
+  complete coverage and unchanged hashes. Every decisive answer agrees with
+  hash-matched recorded reference results; no corpus reference solver was rerun.
+- Certora 47 falls from 35.433517/36.050354 to 26.638193/26.514294 seconds in the
+  full paired run, with unchanged search counters. Five separate instrumented
+  runs retain those counters and no longer show the former ordered tuple-set
+  insertion/lookup hotspot. EUF care-pair generation/sorting and arithmetic
+  checking remain costs; this does not claim that all combination work is free.
+- A fresh generated gate passes 4,000 comparisons (3,000 default, 1,000 online
+  disabled) and all 2,032 SAT-model checks. Supplemental real-seed mutations
+  retain 1,435 inputs: 1,398 answer passes, 951 Dolmen passes, 447 UNSAT model
+  rows and 37 solver timeouts. Original seeds add 14 answer passes and two
+  timeouts. These mutation jobs retain their failed/resource-incomplete status,
+  not an all-pass label; classification finds no crash, invalid model, bad input
+  or answer disagreement. The generated gate is fully green.
+- Whole-tree clang-tidy and advisory include scans cover all 105 non-generated
+  C++ files. No new blocking findings: the existing `tactic.cpp` shared-pointer
+  analyzer warning and transitive-provider/self-include advisories remain explicit
+  in the run log. No QF_UFLRA source path changed, and this follow-up does not
+  claim a fresh rerun of the earlier five-logic qualification.
+
+Timing jobs are 140614 (quick) and 140620 (full); independent full-model replay
+jobs are 140696/140697. Raw evidence and retained binaries are under
+`results/n-way-linear-b883d6f`. The historical migration results below remain
+evidence for `2413397` only.
 
 ### Adding another component
 

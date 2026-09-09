@@ -2,6 +2,911 @@
   "schema_version": 1,
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
+    {
+      "id": "2026-09-09-linear-component-selection",
+      "final_verification": "Fresh handoff make check passes29CTest+128Python;make lint and make docs pass;ASan29/29 passed on same changedC++source. Logs tmp/n-way-linear-handoff-{check,lint,docs}.log and tmp/n-way-linear-asan.log. All source hashes in210staticreviewrows match localtrackedfiles. Fresh paired/reference/model audits pass forquick25/full659. Final squeue empty;frozenbaseline/candidate andquickmanifest hashes unchanged. No further solver source changes afterb883d6f.",
+      "date": "2026-09-09",
+      "commit": "b883d6f",
+      "baseline_commit": "2413397",
+      "kind": "overhead-removal-qualification",
+      "evidence_status": "accepted-slurm-backed",
+      "scope": "Remove ordinary coordinator ordered candidate sets while preserving current care-first lexicographic minimum disagreement. No legacy-order restoration, new theory algorithm or option change. QF_UFLRA paths and model_based_combination.* unchanged.",
+      "design": "docs/n-way-combination-migration.md: Linear ordinary-decision selection",
+      "local_verification": {
+        "check": "29 CTest +128 Python passed; tmp/n-way-linear-final-check.log",
+        "asan": "29/29 passed; tmp/n-way-linear-asan.log",
+        "lint": "passed; tmp/n-way-linear-lint.log",
+        "docs": "passed; tmp/n-way-linear-docs.log",
+        "focused_tidy": "three changed C++ files passed; only two suppressed non-user warnings; tmp/n-way-linear-focused-tidy.log",
+        "tests": "2325 exact old-policy comparisons over all three-term partitions across2/3/4 components and3 care patterns;50,000 agreeing/reversed care visits;care precedence;duplicate normalization;late invalid entry;spanning fallback;existing432 coordinator+432real-SAT oracles retained.",
+        "review": "Focused manual soundness/lifetime/order/hygiene review; no new clauses, no borrow across mutation, no inter-epoch caches, component participant filtering preserved. Whole-tree automated static baseline scan pending. Fresh whole-tree static/includes scan completed;no blocking change-specific findings. Existing shared_ptr analyzer warning and transitive-provider advisories retained explicitly."
+      },
+      "build": {
+        "job": "140602",
+        "command": "python3 scripts/slurm_prepare_benchmark_workspace.py --local-dir /workspace --ssh-config tmp/primo-model-slurm-ssh-config --remote primo-model-slurm --remote-dir /home/janotmik/primo-model-fix --reuse-dependencies --build-via-slurm --jobs 4 --cmake /home/janotmik/primo-cadical-profile/.venv-build/bin/cmake --cxx-header-manifest /home/janotmik/primo-cadical-profile/contrib/local/clang-tools-env/cxx-headers/include-paths.txt --require-tool contrib/local/bin/dolmen --require-tool contrib/local/bin/z3",
+        "log": "tmp/n-way-linear-prepare.log",
+        "dependencies": "Reuse installed dependencies; no reference rebuild or broad reference-solver rerun."
+      },
+      "preflight": "python3 scripts/slurm_prepare_benchmark_workspace.py --local-dir /workspace --ssh-config tmp/primo-model-slurm-ssh-config --remote primo-model-slurm --remote-dir /home/janotmik/primo-model-fix --cmake /home/janotmik/primo-cadical-profile/.venv-build/bin/cmake --check-only --no-sync --require-tool contrib/local/bin/dolmen --require-tool contrib/local/bin/z3",
+      "artifact_root": "results/n-way-linear-b883d6f",
+      "reference_policy": "Reference executions limited to fresh correctness gates and their seed prechecks; corpus timing reuses recorded hash-matched Z3/cvc5 results without launching either.",
+      "profile_basis": "2026-09-09-certora-migration-diagnosis;job140601;existing241 profile found30.6m ordered insert-position searches and15.3m tree lookups. New run qualification must not substitute historical241 models.",
+      "static_batch_script": "#!/usr/bin/env bash\n# Bounded whole-tree tidy and advisory include review on the prepared snapshot.\n#SBATCH --job-name=primo-linear-static\n#SBATCH --nodes=1\n#SBATCH --ntasks=1\n#SBATCH --cpus-per-task=4\n#SBATCH --mem=12G\n#SBATCH --time=00:25:00\n#SBATCH --output=slurm_logs/%x-%j.out\n#SBATCH --error=slurm_logs/%x-%j.err\nset -euo pipefail\ncd \"${PRIMO_WORKDIR:?}\"\nexport PATH=\"$PWD/contrib/local/clang-tools-env/bin:$PATH\"\n./build-slurm-rel/primo --version | grep -Fx \"git: ${PRIMO_EXPECTED_GIT:?}\"\npython3 - <<'PY'\nimport concurrent.futures\nimport hashlib\nimport json\nimport os\nimport subprocess\nimport time\nfrom pathlib import Path\n\nout = Path(os.environ[\"PRIMO_REVIEW_OUT_DIR\"])\nout.mkdir(parents=True, exist_ok=False)\nsources = sorted(path for folder in (Path(\"src\"), Path(\"tests\"))\n                 for path in folder.rglob(\"*.cpp\") if \"antlr\" not in path.parts)\nheaders = Path(\"contrib/local/clang-tools-env/cxx-headers/include-paths.txt\").read_text().splitlines()\nassert sources and headers and all(Path(path).is_dir() for path in headers)\narguments = [argument for path in headers for argument in (\"--extra-arg=-isystem\", \"--extra-arg=\" + path)]\ndef scan(item):\n    index, source, mode = item\n    command = [\"clang-tidy\", \"-p\", \"build-slurm-rel\", *arguments]\n    if mode == \"includes\":\n        command += [\"-checks=-*,clang-diagnostic-*,misc-include-cleaner\"]\n    command.append(str(source))\n    start = time.monotonic()\n    log = f\"{mode}-{index:03d}.log\"\n    with (out / log).open(\"w\") as stream:\n        result = subprocess.run(command, stdout=stream, stderr=subprocess.STDOUT, timeout=600)\n    return {\"file\": str(source), \"mode\": mode,\n            \"source_sha256\": hashlib.sha256(source.read_bytes()).hexdigest(),\n            \"exit\": result.returncode, \"seconds\": time.monotonic()-start, \"log\": log}\nrows = []\nwith concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:\n    futures = [pool.submit(scan, (index, source, mode)) for mode in (\"tidy\", \"includes\")\n               for index, source in enumerate(sources)]\n    for future in concurrent.futures.as_completed(futures):\n        row = future.result()\n        rows.append(row)\n        with (out / \"progress.jsonl\").open(\"a\") as stream:\n            stream.write(json.dumps(row) + \"\\n\")\n        print(row[\"mode\"], row[\"file\"], row[\"exit\"], flush=True)\n(out / \"summary.json\").write_text(json.dumps(rows, indent=2))\nassert len(rows) == 2 * len(sources) and all(row[\"exit\"] == 0 for row in rows)\nPY\n",
+      "binary_sha256": "8458276454c6e59bbf0d90bb43d06d3f2d7a48a099efc7549e5a5645222c3de6",
+      "baseline_sha256": "962fd9a208a3b3537b8100df34286b930f038192dfa9fb4be7b00ada98ef72c7",
+      "fuzz": {
+        "job": "140603",
+        "command": "python3 scripts/slurm_prepare_benchmark_workspace.py --local-dir /workspace --ssh-config tmp/primo-model-slurm-ssh-config --remote primo-model-slurm --remote-dir /home/janotmik/primo-model-fix --cmake /home/janotmik/primo-cadical-profile/.venv-build/bin/cmake --check-only --no-sync --require-tool contrib/local/bin/dolmen --require-tool contrib/local/bin/z3 > tmp/n-way-linear-fuzz-preflight.log 2>&1 && ssh -F tmp/primo-model-slurm-ssh-config primo-model-slurm 'cd /home/janotmik/primo-model-fix && sbatch --parsable --array=0-3,32-35%8 --nodes=1 --ntasks=1 --nodelist=node-02 --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-model-fix,PRIMO_EXPECTED_GIT=b883d6f,PRIMO_CAMPAIGN_SEED=202609090,PRIMO_CAMPAIGN_OUT=/home/janotmik/primo-model-fix/results/n-way-linear-b883d6f/fuzz scripts/slurm_component_migration_fuzz.sbatch'",
+        "count": 4000,
+        "shape": "mixed",
+        "depth": 3,
+        "seed_base": 202609090,
+        "profiles": "profile0/default auto:3000;profile8/auto online disabled:1000",
+        "solver_timeout_seconds": 5,
+        "validator_timeout_seconds": 5,
+        "reference": "contrib/local/bin/z3",
+        "models": "Dolmen direct --strict=false; same profile forwarded.",
+        "artifact": "results/n-way-linear-b883d6f/fuzz",
+        "summary": {
+          "answer_pass": 4000,
+          "dolmen_pass": 2032,
+          "not_sat": 1968,
+          "wrong_answer": 0,
+          "crash": 0,
+          "parser_type_error": 0,
+          "timeout": 0,
+          "unsupported": 0,
+          "reference_disagreement": 0,
+          "profiles": {
+            "default": {
+              "answer_pass": 3000,
+              "dolmen_pass": 1529,
+              "not_sat": 1471
+            },
+            "online_off": {
+              "answer_pass": 1000,
+              "dolmen_pass": 503,
+              "not_sat": 497
+            }
+          }
+        },
+        "state": "COMPLETED0:0 all8tasks"
+      },
+      "mutation": {
+        "job": "140612",
+        "command": "python3 scripts/slurm_prepare_benchmark_workspace.py --local-dir /workspace --ssh-config tmp/primo-model-slurm-ssh-config --remote primo-model-slurm --remote-dir /home/janotmik/primo-model-fix --cmake /home/janotmik/primo-cadical-profile/.venv-build/bin/cmake --check-only --no-sync --require-tool contrib/local/bin/dolmen --require-tool contrib/local/bin/z3 > tmp/n-way-linear-mutation-preflight.log 2>&1 && ssh -F tmp/primo-model-slurm-ssh-config primo-model-slurm 'cd /home/janotmik/primo-model-fix && sbatch --parsable --array=0,8%2 --nodes=1 --ntasks=1 --nodelist=node-02 --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-model-fix,PRIMO_EXPECTED_GIT=b883d6f,PRIMO_CAMPAIGN_OUT=/home/janotmik/primo-model-fix/results/n-way-linear-b883d6f/mutation,PRIMO_CORPUS_ROOT=/home/janotmik/primo-model-fix/tmp/QF_UFLIA,PRIMO_MUTATION_SECONDS=300 scripts/slurm_component_migration_mutation.sbatch'",
+        "profiles": [
+          0,
+          8
+        ],
+        "mutator": "seeded_opfuzz.py,model_linear_ops.txt",
+        "seed": 202609503,
+        "seconds_per_profile": 300,
+        "iterations": 100,
+        "timeout": 5,
+        "seed_timeout": 60,
+        "seed_selection": "build_fuzz_seed_corpus.py QF_UFLIA --per-family2 --max-bytes200000;actualmaxlimit2MB withoversizefamilytriage",
+        "reference": "z3 model_validate=true plus status-aware check_solver_seed_corpus.py",
+        "models": "Original seeds and all retained mutants, independent direct Dolmen, internal --check-model; profile forwarded.",
+        "artifact": "results/n-way-linear-b883d6f/mutation",
+        "state": "FAILED1:0 bothtasks due resource rows; default12:16,online-off12:21",
+        "summary": {
+          "retained_mutants": 1435,
+          "answer_pass": 1398,
+          "answer_resource_incomplete": 37,
+          "dolmen_pass": 951,
+          "not_sat": 447,
+          "model_solver_timeout": 37,
+          "wrong_answer": 0,
+          "crash": 0,
+          "parser_type_error": 0,
+          "invalid_model": 0,
+          "reference_disagreement": 0,
+          "saved_bug_files": 0,
+          "profiles": {
+            "default": {
+              "retained": 717,
+              "answer_pass": 700,
+              "timeout": 17,
+              "dolmen_pass": 476,
+              "not_sat": 224
+            },
+            "online_off": {
+              "retained": 718,
+              "answer_pass": 698,
+              "timeout": 20,
+              "dolmen_pass": 475,
+              "not_sat": 223
+            }
+          },
+          "original_seeds": {
+            "executions": 16,
+            "answer_pass": 14,
+            "timeout": 2,
+            "dolmen_pass": 4,
+            "not_sat": 10,
+            "model_timeout": 2
+          }
+        },
+        "resource_triage": "classify_mutation_resources.py accepts only resource-incomplete outcomes for all8answer/model CSVs; neitherbugdirectorycontainsfiles. Defaultmutant resource17:ours124timeout everycase,16ref124timeout+1refSAT0. Onlineoff20:ours124timeout everycase,17ref124timeout+2refSAT0+1refUNSAT0. Bothoriginalseedtimeouts are Certora72658_63104dadde9c6026353f_70, referenceSAT;60s originalanswer/model budgets. Keeprawfailedgate statuses, do notcallallmutantspassed. Fresh4000generatedmerge/campaign gate clean;these supplementalresource-only rows arenotcorrectnesscounterexamples."
+      },
+      "static": {
+        "job": "140611",
+        "command": "python3 scripts/slurm_prepare_benchmark_workspace.py --local-dir /workspace --ssh-config tmp/primo-model-slurm-ssh-config --remote primo-model-slurm --remote-dir /home/janotmik/primo-model-fix --cmake /home/janotmik/primo-cadical-profile/.venv-build/bin/cmake --check-only --no-sync --require-tool contrib/local/bin/dolmen --require-tool contrib/local/bin/z3 > tmp/n-way-linear-static-preflight.log 2>&1 && ssh -F tmp/primo-model-slurm-ssh-config primo-model-slurm 'cd /home/janotmik/primo-model-fix && sbatch --parsable --nodelist=node-02 --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-model-fix,PRIMO_EXPECTED_GIT=b883d6f,PRIMO_REVIEW_OUT_DIR=/home/janotmik/primo-model-fix/results/n-way-linear-b883d6f/static tmp/n-way-linear-static.sbatch'",
+        "artifact": "results/n-way-linear-b883d6f/static",
+        "scope": "all tracked non-generated C++ src/tests; four workers; both fullconfiguredtidy and advisoryinclude-cleaner",
+        "state": "COMPLETED0:0",
+        "summary": "105/105trackednon-generatedC++files ineachof2modes,210zeroexits;allsourcehashesmatchlocalb883d6f. Fulltidy onlyexistingtactic.cpp:69 shared_ptr control-block leak warning (unchangedsource;RAIIownershipreview). Includeadvisory:23unused-headerreportsallpairedself-includes retained, existingmissingdirect-providerreports;noactualnewunusedinclude. Not claimed warning-free."
+      },
+      "quick": {
+        "job": "140614",
+        "command": "python3 scripts/slurm_prepare_benchmark_workspace.py --local-dir /workspace --ssh-config tmp/primo-model-slurm-ssh-config --remote primo-model-slurm --remote-dir /home/janotmik/primo-model-fix --cmake /home/janotmik/primo-cadical-profile/.venv-build/bin/cmake --check-only --no-sync --require-tool contrib/local/bin/dolmen --require-tool contrib/local/bin/z3 > tmp/n-way-linear-quick-preflight.log 2>&1 && ssh -F tmp/primo-model-slurm-ssh-config primo-model-slurm 'cd /home/janotmik/primo-model-fix && sbatch --parsable --array=0-4%5 --nodes=1 --ntasks=1 --hint=nomultithread --nodelist=node-04 --time=00:15:00 --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-model-fix,PRIMO_EXPECTED_GIT=b883d6f,PRIMO_BASELINE_GIT=2413397,PRIMO_BASELINE_SOLVER=/home/janotmik/primo-model-fix/results/n-way-2413397/bin/primo,PRIMO_CANDIDATE_SOLVER=/home/janotmik/primo-model-fix/results/n-way-linear-b883d6f/bin/primo,PRIMO_COMPARE_SHARDS=5,PRIMO_COMPARE_TIMEOUT=60,PRIMO_COMPARE_ROOT=/home/janotmik/primo-model-fix/tmp/QF_UFLIA,PRIMO_COMPARE_MANIFEST=/home/janotmik/primo-model-fix/tmp/n-way-linear-quick25.txt,PRIMO_COMPARE_OUT_ROOT=/home/janotmik/primo-model-fix/results/n-way-linear-b883d6f/quick25 scripts/slurm_component_migration_compare.sbatch'",
+        "artifact": "results/n-way-linear-b883d6f/quick25",
+        "manifest": "tmp/n-way-linear-quick25.txt",
+        "scope": "Previous20 family-balanced cases+4watchlist+Certora47;25unique,5shards,2roundsreversedpairedordering,node04,60s.",
+        "model_jobs": [
+          {
+            "round": 0,
+            "job": "140685",
+            "command": "python3 scripts/slurm_prepare_benchmark_workspace.py --local-dir /workspace --ssh-config tmp/primo-model-slurm-ssh-config --remote primo-model-slurm --remote-dir /home/janotmik/primo-model-fix --cmake /home/janotmik/primo-cadical-profile/.venv-build/bin/cmake --check-only --no-sync --require-tool contrib/local/bin/dolmen --require-tool contrib/local/bin/z3 > tmp/n-way-linear-quick-model-0-preflight.log 2>&1 && ssh -F tmp/primo-model-slurm-ssh-config primo-model-slurm 'cd /home/janotmik/primo-model-fix && sbatch --parsable --job-name=primo-linear-quick-model-0 --array=0-4%5 --nodes=1 --ntasks=1 --nodelist=node-02 --time=00:10:00 --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-model-fix,PRIMO_PHASE=replay,PRIMO_CAMPAIGN_OUT=/home/janotmik/primo-model-fix/results/n-way-linear-b883d6f/quick25/round-0/candidate,PRIMO_MODEL_TIMEOUT=90,PRIMO_DOLMEN_TIMEOUT=30,PRIMO_DOLMEN_SIZE=8G scripts/slurm_real_corpus_validation.sbatch'"
+          },
+          {
+            "round": 1,
+            "job": "140684",
+            "command": "python3 scripts/slurm_prepare_benchmark_workspace.py --local-dir /workspace --ssh-config tmp/primo-model-slurm-ssh-config --remote primo-model-slurm --remote-dir /home/janotmik/primo-model-fix --cmake /home/janotmik/primo-cadical-profile/.venv-build/bin/cmake --check-only --no-sync --require-tool contrib/local/bin/dolmen --require-tool contrib/local/bin/z3 > tmp/n-way-linear-quick-model-1-preflight.log 2>&1 && ssh -F tmp/primo-model-slurm-ssh-config primo-model-slurm 'cd /home/janotmik/primo-model-fix && sbatch --parsable --job-name=primo-linear-quick-model-1 --array=0-4%5 --nodes=1 --ntasks=1 --nodelist=node-02 --time=00:10:00 --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-model-fix,PRIMO_PHASE=replay,PRIMO_CAMPAIGN_OUT=/home/janotmik/primo-model-fix/results/n-way-linear-b883d6f/quick25/round-1/candidate,PRIMO_MODEL_TIMEOUT=90,PRIMO_DOLMEN_TIMEOUT=30,PRIMO_DOLMEN_SIZE=8G scripts/slurm_real_corpus_validation.sbatch'"
+          }
+        ],
+        "summary": {
+          "aggregate": {
+            "baseline": {
+              "error": 0,
+              "par2": 337.967028,
+              "rows": 50,
+              "sat": 26,
+              "solved": 48,
+              "timeout": 2,
+              "unknown": 0,
+              "unsat": 22,
+              "unsupported": 0,
+              "wrong_answer": 0
+            },
+            "baseline_common_seconds": 97.967028,
+            "candidate": {
+              "error": 0,
+              "par2": 318.458894,
+              "rows": 50,
+              "sat": 26,
+              "solved": 48,
+              "timeout": 2,
+              "unknown": 0,
+              "unsat": 22,
+              "unsupported": 0,
+              "wrong_answer": 0
+            },
+            "candidate_common_seconds": 78.458894,
+            "common_runtime_ratio": 0.8008704112163125,
+            "common_solved": 48,
+            "disagreements": [],
+            "gained": [],
+            "lost": [],
+            "par2_ratio": 0.9422779964204081
+          },
+          "expected_unique_inputs": 25,
+          "families": {
+            "20230314-Jaroslav-Bendik-Certora": {
+              "baseline": {
+                "error": 0,
+                "par2": 319.667718,
+                "rows": 8,
+                "sat": 6,
+                "solved": 6,
+                "timeout": 2,
+                "unknown": 0,
+                "unsat": 0,
+                "unsupported": 0,
+                "wrong_answer": 0
+              },
+              "baseline_common_seconds": 79.66771800000001,
+              "candidate": {
+                "error": 0,
+                "par2": 300.819957,
+                "rows": 8,
+                "sat": 6,
+                "solved": 6,
+                "timeout": 2,
+                "unknown": 0,
+                "unsat": 0,
+                "unsupported": 0,
+                "wrong_answer": 0
+              },
+              "candidate_common_seconds": 60.819957,
+              "common_runtime_ratio": 0.7634203480009305,
+              "common_solved": 6,
+              "disagreements": [],
+              "gained": [],
+              "lost": [],
+              "par2_ratio": 0.94103952342163
+            },
+            "TwoSquares": {
+              "baseline": {
+                "error": 0,
+                "par2": 0.061684,
+                "rows": 8,
+                "sat": 4,
+                "solved": 8,
+                "timeout": 0,
+                "unknown": 0,
+                "unsat": 4,
+                "unsupported": 0,
+                "wrong_answer": 0
+              },
+              "baseline_common_seconds": 0.061684,
+              "candidate": {
+                "error": 0,
+                "par2": 0.060842,
+                "rows": 8,
+                "sat": 4,
+                "solved": 8,
+                "timeout": 0,
+                "unknown": 0,
+                "unsat": 4,
+                "unsupported": 0,
+                "wrong_answer": 0
+              },
+              "candidate_common_seconds": 0.060842,
+              "common_runtime_ratio": 0.9863497827637636,
+              "common_solved": 8,
+              "disagreements": [],
+              "gained": [],
+              "lost": [],
+              "par2_ratio": 0.9863497827637636
+            },
+            "mathsat": {
+              "baseline": {
+                "error": 0,
+                "par2": 12.865699,
+                "rows": 22,
+                "sat": 8,
+                "solved": 22,
+                "timeout": 0,
+                "unknown": 0,
+                "unsat": 14,
+                "unsupported": 0,
+                "wrong_answer": 0
+              },
+              "baseline_common_seconds": 12.865699,
+              "candidate": {
+                "error": 0,
+                "par2": 12.569699,
+                "rows": 22,
+                "sat": 8,
+                "solved": 22,
+                "timeout": 0,
+                "unknown": 0,
+                "unsat": 14,
+                "unsupported": 0,
+                "wrong_answer": 0
+              },
+              "candidate_common_seconds": 12.569699,
+              "common_runtime_ratio": 0.9769930883662055,
+              "common_solved": 22,
+              "disagreements": [],
+              "gained": [],
+              "lost": [],
+              "par2_ratio": 0.9769930883662055
+            },
+            "wisas": {
+              "baseline": {
+                "error": 0,
+                "par2": 5.371927,
+                "rows": 12,
+                "sat": 8,
+                "solved": 12,
+                "timeout": 0,
+                "unknown": 0,
+                "unsat": 4,
+                "unsupported": 0,
+                "wrong_answer": 0
+              },
+              "baseline_common_seconds": 5.371927,
+              "candidate": {
+                "error": 0,
+                "par2": 5.008396,
+                "rows": 12,
+                "sat": 8,
+                "solved": 12,
+                "timeout": 0,
+                "unknown": 0,
+                "unsat": 4,
+                "unsupported": 0,
+                "wrong_answer": 0
+              },
+              "candidate_common_seconds": 5.008396,
+              "common_runtime_ratio": 0.9323276358744265,
+              "common_solved": 12,
+              "disagreements": [],
+              "gained": [],
+              "lost": [],
+              "par2_ratio": 0.9323276358744265
+            }
+          },
+          "identities": {
+            "baseline": [
+              "962fd9a208a3b3537b8100df34286b930f038192dfa9fb4be7b00ada98ef72c7"
+            ],
+            "candidate": [
+              "8458276454c6e59bbf0d90bb43d06d3f2d7a48a099efc7549e5a5645222c3de6"
+            ]
+          },
+          "note": "Timing only; independent SAT-model coverage and recorded-reference joins are separate acceptance gates. Any lost solve requires three paired reruns; loss in at least two blocks acceptance.",
+          "ratio_limit": 1.01,
+          "rounds": [
+            {
+              "baseline": {
+                "error": 0,
+                "par2": 169.04116,
+                "rows": 25,
+                "sat": 13,
+                "solved": 24,
+                "timeout": 1,
+                "unknown": 0,
+                "unsat": 11,
+                "unsupported": 0,
+                "wrong_answer": 0
+              },
+              "baseline_common_seconds": 49.04116,
+              "candidate": {
+                "error": 0,
+                "par2": 159.219294,
+                "rows": 25,
+                "sat": 13,
+                "solved": 24,
+                "timeout": 1,
+                "unknown": 0,
+                "unsat": 11,
+                "unsupported": 0,
+                "wrong_answer": 0
+              },
+              "candidate_common_seconds": 39.219294,
+              "common_runtime_ratio": 0.7997219886315903,
+              "common_solved": 24,
+              "disagreements": [],
+              "gained": [],
+              "lost": [],
+              "par2_ratio": 0.9418966008042065
+            },
+            {
+              "baseline": {
+                "error": 0,
+                "par2": 168.925868,
+                "rows": 25,
+                "sat": 13,
+                "solved": 24,
+                "timeout": 1,
+                "unknown": 0,
+                "unsat": 11,
+                "unsupported": 0,
+                "wrong_answer": 0
+              },
+              "baseline_common_seconds": 48.925868,
+              "candidate": {
+                "error": 0,
+                "par2": 159.2396,
+                "rows": 25,
+                "sat": 13,
+                "solved": 24,
+                "timeout": 1,
+                "unknown": 0,
+                "unsat": 11,
+                "unsupported": 0,
+                "wrong_answer": 0
+              },
+              "candidate_common_seconds": 39.2396,
+              "common_runtime_ratio": 0.8020215400164183,
+              "common_solved": 24,
+              "disagreements": [],
+              "gained": [],
+              "lost": [],
+              "par2_ratio": 0.9426596523393326
+            }
+          ],
+          "timeout": 60,
+          "timing_status": "pass"
+        },
+        "search": {
+          "paired_solved_executions": 48,
+          "counter_comparisons": 17760,
+          "families": {
+            "20230314-Jaroslav-Bendik-Certora": 6,
+            "TwoSquares": 8,
+            "mathsat": 22,
+            "wisas": 12
+          },
+          "differences": [],
+          "note": "Exact aggregate-counter comparison, not an equality-by-equality trace proof; new visit counters and all timings excluded."
+        },
+        "models": {
+          "expected_sat": 26,
+          "dolmen_pass": 26,
+          "missing": 0,
+          "errors": 0,
+          "invalid": 0,
+          "changed_answers": 0,
+          "solver_resource": 0,
+          "validator_resource": 0,
+          "unsupported": 0,
+          "coverage": "10/10 complete, unchanged inputs/binaries, fully_validated bothrounds"
+        },
+        "references": "24 decisive recorded reference agreements +1candidate timeout perround; no gaps/wrong/disagreement; no referenceexecuted",
+        "certora47": {
+          "old_seconds": [
+            33.765391,
+            33.575001
+          ],
+          "new_seconds": [
+            24.434378,
+            24.511896
+          ],
+          "old_reconciliation_us": [
+            22627744,
+            22825579
+          ],
+          "new_reconciliation_us": [
+            14047747,
+            14160493
+          ],
+          "unchanged_search": "429interface decisions,105SAT conflicts,788729SAT decisions,114456pivots,15157074care visits",
+          "new_counters": {
+            "care_pair_agreements": 15151107,
+            "spanning_pair_checks": 240294
+          }
+        },
+        "committed_manifest": "benchmarks/component-linear-quick-25.txt (same bytes as submitted tmp/n-way-linear-quick25.txt)",
+        "manifest_content": "20230314-Jaroslav-Bendik-Certora/65782_cd31513fdcd15701933b_6_QF_UFLIA.smt2\n20230314-Jaroslav-Bendik-Certora/940_590f27b1c3c800d3243e_30_QF_UFLIA.smt2\nTwoSquares/smtlib.598294.smt2\nTwoSquares/smtlib.606727.smt2\nTwoSquares/smtlib.688318.smt2\nTwoSquares/smtlib.769286.smt2\nmathsat/EufLaArithmetic/hard/hard4.smt2\nmathsat/EufLaArithmetic/medium/medium12.smt2\nmathsat/Hash/hash_sat_03_03.smt2\nmathsat/Hash/hash_sat_09_05.smt2\nmathsat/Hash/hash_uns_03_03.smt2\nmathsat/Hash/hash_uns_03_18.smt2\nmathsat/Wisa/xs-05-06-2-2-5-1.smt2\nmathsat/Wisa/xs-06-07-4-5-4-2.smt2\nmathsat/Wisa/xs-07-11-1-1-1-1.smt2\nmathsat/Wisa/xs-15-09-3-5-5-3.smt2\nwisas/xs_11_21.smt2\nwisas/xs_27_37.smt2\nwisas/xs_5_5.smt2\nwisas/xs_7_7.smt2\nmathsat/EufLaArithmetic/medium/medium11.smt2\nwisas/xs_33_33.smt2\nwisas/xs_40_40.smt2\n20230314-Jaroslav-Bendik-Certora/3106_1c933134166dbad31f79_40_QF_UFLIA.smt2\n20230314-Jaroslav-Bendik-Certora/39657_2866defdd1f2434b69ab_47_QF_UFLIA.smt2\n"
+      },
+      "profile": {
+        "job": "140619",
+        "command": "python3 scripts/slurm_prepare_benchmark_workspace.py --local-dir /workspace --ssh-config tmp/primo-model-slurm-ssh-config --remote primo-model-slurm --remote-dir /home/janotmik/primo-model-fix --cmake /home/janotmik/primo-cadical-profile/.venv-build/bin/cmake --check-only --no-sync --require-tool contrib/local/bin/dolmen --require-tool contrib/local/bin/z3 > tmp/n-way-linear-profile-preflight.log 2>&1 && ssh -F tmp/primo-model-slurm-ssh-config primo-model-slurm 'cd /home/janotmik/primo-model-fix && sbatch --parsable --nodes=1 --ntasks=1 --nodelist=node-03 --hint=nomultithread --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-model-fix,PRIMO_EXPECTED_GIT=b883d6f,PRIMO_PROFILE_OUT=/home/janotmik/primo-model-fix/results/n-way-linear-b883d6f/profile-certora47,PRIMO_PROFILE_CMAKE=/home/janotmik/primo-cadical-profile/.venv-build/bin/cmake,PRIMO_CXX_HEADER_MANIFEST=/home/janotmik/primo-cadical-profile/contrib/local/clang-tools-env/cxx-headers/include-paths.txt,PRIMO_PROFILE_INPUT=/home/janotmik/primo-model-fix/tmp/QF_UFLIA/20230314-Jaroslav-Bendik-Certora/39657_2866defdd1f2434b69ab_47_QF_UFLIA.smt2 scripts/slurm_component_profile.sbatch'",
+        "artifact": "results/n-way-linear-b883d6f/profile-certora47",
+        "scope": "Separate gprof build and5 diagnostic runs ofCertora47;not headline timing;scriptbudget60s/run",
+        "state": "COMPLETED0:0,05:30",
+        "binary_sha256": "59485e55ad77011f58706667f4c23cc5889874485f6dbdffdfa514f2db68804a",
+        "input_sha256": "c68e77db3bc6cd15daebe8fcffb9d445bca654c6b2fcc47a8b65d27c3074e182",
+        "findings": "All five instrumented runs exactly match every candidate non-timing counter on Certora47. Ordered tuple-set insert-position/find functions absent from flatprofile (previous30.6m/15.3m calls perrun). Remaining hotspots:EUFcare diagnostics12.44%,LIAcheck10.55%,careintrosort5.42%,linearconsider5.32%,Rationalmultiply5.13%. Scope_for15,490,654calls/run vsold26,675,507. Sampled self77.83s over5runs, not comparable to uninstrumentedwall."
+      },
+      "full": {
+        "job": "140620",
+        "command": "python3 scripts/slurm_prepare_benchmark_workspace.py --local-dir /workspace --ssh-config tmp/primo-model-slurm-ssh-config --remote primo-model-slurm --remote-dir /home/janotmik/primo-model-fix --cmake /home/janotmik/primo-cadical-profile/.venv-build/bin/cmake --check-only --no-sync --require-tool contrib/local/bin/dolmen --require-tool contrib/local/bin/z3 > tmp/n-way-linear-full-preflight.log 2>&1 && ssh -F tmp/primo-model-slurm-ssh-config primo-model-slurm 'cd /home/janotmik/primo-model-fix && sbatch --parsable --array=0-63%64 --nodes=1 --ntasks=1 --hint=nomultithread --exclude=node-01,node-02,node-03,amd-1,amd-2,dgx-2,dgx-3,dgx-4,dgx-5,gpu-1,gpu-2,gpu-3,gpu-4 --time=00:30:00 --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-model-fix,PRIMO_EXPECTED_GIT=b883d6f,PRIMO_BASELINE_GIT=2413397,PRIMO_BASELINE_SOLVER=/home/janotmik/primo-model-fix/results/n-way-2413397/bin/primo,PRIMO_CANDIDATE_SOLVER=/home/janotmik/primo-model-fix/results/n-way-linear-b883d6f/bin/primo,PRIMO_COMPARE_SHARDS=64,PRIMO_COMPARE_TIMEOUT=60,PRIMO_COMPARE_ROOT=/home/janotmik/primo-model-fix/tmp/QF_UFLIA,PRIMO_COMPARE_OUT_ROOT=/home/janotmik/primo-model-fix/results/n-way-linear-b883d6f/full659 scripts/slurm_component_migration_compare.sbatch'",
+        "artifact": "results/n-way-linear-b883d6f/full659",
+        "scope": "Entire659-input QF_UFLIA,64shards,2reversed-orderpairedrounds,60s/input,physicalCPUhint;timingnodes04..09 isolatedfrommodel/static/fuzz02 andprofile03.",
+        "model_jobs": [
+          {
+            "round": 0,
+            "job": "140696",
+            "command": "python3 scripts/slurm_prepare_benchmark_workspace.py --local-dir /workspace --ssh-config tmp/primo-model-slurm-ssh-config --remote primo-model-slurm --remote-dir /home/janotmik/primo-model-fix --cmake /home/janotmik/primo-cadical-profile/.venv-build/bin/cmake --check-only --no-sync --require-tool contrib/local/bin/dolmen --require-tool contrib/local/bin/z3 > tmp/n-way-linear-full-model-0-preflight.log 2>&1 && ssh -F tmp/primo-model-slurm-ssh-config primo-model-slurm 'cd /home/janotmik/primo-model-fix && sbatch --parsable --job-name=primo-linear-full-model-0 --array=0-63%8 --nodes=1 --ntasks=1 --nodelist=node-02 --dependency=afterok:140620 --time=00:15:00 --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-model-fix,PRIMO_PHASE=replay,PRIMO_CAMPAIGN_OUT=/home/janotmik/primo-model-fix/results/n-way-linear-b883d6f/full659/round-0/candidate,PRIMO_MODEL_TIMEOUT=90,PRIMO_DOLMEN_TIMEOUT=30,PRIMO_DOLMEN_SIZE=8G scripts/slurm_real_corpus_validation.sbatch'"
+          },
+          {
+            "round": 1,
+            "job": "140697",
+            "command": "python3 scripts/slurm_prepare_benchmark_workspace.py --local-dir /workspace --ssh-config tmp/primo-model-slurm-ssh-config --remote primo-model-slurm --remote-dir /home/janotmik/primo-model-fix --cmake /home/janotmik/primo-cadical-profile/.venv-build/bin/cmake --check-only --no-sync --require-tool contrib/local/bin/dolmen --require-tool contrib/local/bin/z3 > tmp/n-way-linear-full-model-1-preflight.log 2>&1 && ssh -F tmp/primo-model-slurm-ssh-config primo-model-slurm 'cd /home/janotmik/primo-model-fix && sbatch --parsable --job-name=primo-linear-full-model-1 --array=0-63%8 --nodes=1 --ntasks=1 --nodelist=node-02 --dependency=afterok:140620 --time=00:15:00 --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-model-fix,PRIMO_PHASE=replay,PRIMO_CAMPAIGN_OUT=/home/janotmik/primo-model-fix/results/n-way-linear-b883d6f/full659/round-1/candidate,PRIMO_MODEL_TIMEOUT=90,PRIMO_DOLMEN_TIMEOUT=30,PRIMO_DOLMEN_SIZE=8G scripts/slurm_real_corpus_validation.sbatch'"
+          }
+        ],
+        "summary": {
+          "aggregate": {
+            "baseline": {
+              "error": 0,
+              "par2": 22726.665184,
+              "rows": 1318,
+              "sat": 810,
+              "solved": 1150,
+              "timeout": 168,
+              "unknown": 0,
+              "unsat": 340,
+              "unsupported": 0,
+              "wrong_answer": 0
+            },
+            "baseline_common_seconds": 2566.665184,
+            "candidate": {
+              "error": 0,
+              "par2": 22655.783937,
+              "rows": 1318,
+              "sat": 810,
+              "solved": 1150,
+              "timeout": 168,
+              "unknown": 0,
+              "unsat": 340,
+              "unsupported": 0,
+              "wrong_answer": 0
+            },
+            "candidate_common_seconds": 2495.783937,
+            "common_runtime_ratio": 0.9723839137874869,
+            "common_solved": 1150,
+            "disagreements": [],
+            "gained": [],
+            "lost": [],
+            "par2_ratio": 0.9968811417589809
+          },
+          "expected_unique_inputs": 659,
+          "families": {
+            "20230314-Jaroslav-Bendik-Certora": {
+              "baseline": {
+                "error": 0,
+                "par2": 17113.285966,
+                "rows": 152,
+                "sat": 10,
+                "solved": 12,
+                "timeout": 140,
+                "unknown": 0,
+                "unsat": 2,
+                "unsupported": 0,
+                "wrong_answer": 0
+              },
+              "baseline_common_seconds": 313.285966,
+              "candidate": {
+                "error": 0,
+                "par2": 17081.426709,
+                "rows": 152,
+                "sat": 10,
+                "solved": 12,
+                "timeout": 140,
+                "unknown": 0,
+                "unsat": 2,
+                "unsupported": 0,
+                "wrong_answer": 0
+              },
+              "candidate_common_seconds": 281.426709,
+              "common_runtime_ratio": 0.8983061469149883,
+              "common_solved": 12,
+              "disagreements": [],
+              "gained": [],
+              "lost": [],
+              "par2_ratio": 0.9981383319916878
+            },
+            "TwoSquares": {
+              "baseline": {
+                "error": 0,
+                "par2": 0.901495,
+                "rows": 42,
+                "sat": 10,
+                "solved": 42,
+                "timeout": 0,
+                "unknown": 0,
+                "unsat": 32,
+                "unsupported": 0,
+                "wrong_answer": 0
+              },
+              "baseline_common_seconds": 0.901495,
+              "candidate": {
+                "error": 0,
+                "par2": 0.8931290000000001,
+                "rows": 42,
+                "sat": 10,
+                "solved": 42,
+                "timeout": 0,
+                "unknown": 0,
+                "unsat": 32,
+                "unsupported": 0,
+                "wrong_answer": 0
+              },
+              "candidate_common_seconds": 0.8931290000000001,
+              "common_runtime_ratio": 0.9907198597884626,
+              "common_solved": 42,
+              "disagreements": [],
+              "gained": [],
+              "lost": [],
+              "par2_ratio": 0.9907198597884626
+            },
+            "mathsat": {
+              "baseline": {
+                "error": 0,
+                "par2": 4841.170104,
+                "rows": 908,
+                "sat": 626,
+                "solved": 882,
+                "timeout": 26,
+                "unknown": 0,
+                "unsat": 256,
+                "unsupported": 0,
+                "wrong_answer": 0
+              },
+              "baseline_common_seconds": 1721.170104,
+              "candidate": {
+                "error": 0,
+                "par2": 4817.790844,
+                "rows": 908,
+                "sat": 626,
+                "solved": 882,
+                "timeout": 26,
+                "unknown": 0,
+                "unsat": 256,
+                "unsupported": 0,
+                "wrong_answer": 0
+              },
+              "candidate_common_seconds": 1697.7908439999999,
+              "common_runtime_ratio": 0.9864166476365893,
+              "common_solved": 882,
+              "disagreements": [],
+              "gained": [],
+              "lost": [],
+              "par2_ratio": 0.9951707418872386
+            },
+            "wisas": {
+              "baseline": {
+                "error": 0,
+                "par2": 771.307619,
+                "rows": 216,
+                "sat": 164,
+                "solved": 214,
+                "timeout": 2,
+                "unknown": 0,
+                "unsat": 50,
+                "unsupported": 0,
+                "wrong_answer": 0
+              },
+              "baseline_common_seconds": 531.307619,
+              "candidate": {
+                "error": 0,
+                "par2": 755.673255,
+                "rows": 216,
+                "sat": 164,
+                "solved": 214,
+                "timeout": 2,
+                "unknown": 0,
+                "unsat": 50,
+                "unsupported": 0,
+                "wrong_answer": 0
+              },
+              "candidate_common_seconds": 515.673255,
+              "common_runtime_ratio": 0.9705738004860043,
+              "common_solved": 214,
+              "disagreements": [],
+              "gained": [],
+              "lost": [],
+              "par2_ratio": 0.9797300537232214
+            }
+          },
+          "identities": {
+            "baseline": [
+              "962fd9a208a3b3537b8100df34286b930f038192dfa9fb4be7b00ada98ef72c7"
+            ],
+            "candidate": [
+              "8458276454c6e59bbf0d90bb43d06d3f2d7a48a099efc7549e5a5645222c3de6"
+            ]
+          },
+          "note": "Timing only; independent SAT-model coverage and recorded-reference joins are separate acceptance gates. Any lost solve requires three paired reruns; loss in at least two blocks acceptance.",
+          "ratio_limit": 1.01,
+          "rounds": [
+            {
+              "baseline": {
+                "error": 0,
+                "par2": 11365.674374,
+                "rows": 659,
+                "sat": 405,
+                "solved": 575,
+                "timeout": 84,
+                "unknown": 0,
+                "unsat": 170,
+                "unsupported": 0,
+                "wrong_answer": 0
+              },
+              "baseline_common_seconds": 1285.674374,
+              "candidate": {
+                "error": 0,
+                "par2": 11337.404847,
+                "rows": 659,
+                "sat": 405,
+                "solved": 575,
+                "timeout": 84,
+                "unknown": 0,
+                "unsat": 170,
+                "unsupported": 0,
+                "wrong_answer": 0
+              },
+              "candidate_common_seconds": 1257.404847,
+              "common_runtime_ratio": 0.9780119075469728,
+              "common_solved": 575,
+              "disagreements": [],
+              "gained": [],
+              "lost": [],
+              "par2_ratio": 0.9975127277036311
+            },
+            {
+              "baseline": {
+                "error": 0,
+                "par2": 11360.99081,
+                "rows": 659,
+                "sat": 405,
+                "solved": 575,
+                "timeout": 84,
+                "unknown": 0,
+                "unsat": 170,
+                "unsupported": 0,
+                "wrong_answer": 0
+              },
+              "baseline_common_seconds": 1280.99081,
+              "candidate": {
+                "error": 0,
+                "par2": 11318.37909,
+                "rows": 659,
+                "sat": 405,
+                "solved": 575,
+                "timeout": 84,
+                "unknown": 0,
+                "unsat": 170,
+                "unsupported": 0,
+                "wrong_answer": 0
+              },
+              "candidate_common_seconds": 1238.37909,
+              "common_runtime_ratio": 0.9667353429334906,
+              "common_solved": 575,
+              "disagreements": [],
+              "gained": [],
+              "lost": [],
+              "par2_ratio": 0.9962492954432731
+            }
+          ],
+          "timeout": 60,
+          "timing_status": "pass"
+        },
+        "search": {
+          "paired_solved_executions": 1150,
+          "counter_comparisons": 425500,
+          "families": {
+            "20230314-Jaroslav-Bendik-Certora": 12,
+            "TwoSquares": 42,
+            "mathsat": 882,
+            "wisas": 214
+          },
+          "differences": [],
+          "note": "Exact aggregate-counter comparison, not an equality-by-equality trace proof; new visit counters and all timings excluded."
+        },
+        "state": "COMPLETED0:0 all64tasks",
+        "distribution": {
+          "executions": 1150,
+          "baseline": {
+            "median_seconds": 0.2270025,
+            "p95_nearest_rank_seconds": 13.761416,
+            "max_seconds": 58.283423
+          },
+          "candidate": {
+            "median_seconds": 0.218176,
+            "p95_nearest_rank_seconds": 13.305529,
+            "max_seconds": 57.219299
+          },
+          "paired_ratio_median": 0.9706655358918883,
+          "paired_ratio_geomean": 0.968163808236873,
+          "both_at_least_100ms": {
+            "count": 860,
+            "paired_ratio_geomean": 0.9627505842634726
+          },
+          "regressions_over_10pct_baseline_at_least_1s": [
+            [
+              1,
+              "mathsat/EufLaArithmetic/hard/hard13.smt2",
+              2.386767,
+              2.674958,
+              1.120745342968124
+            ],
+            [
+              1,
+              "mathsat/EufLaArithmetic/hard/hard15.smt2",
+              3.240187,
+              3.814442,
+              1.177228968574962
+            ]
+          ],
+          "improvements_over_10pct_baseline_at_least_1s": [
+            [
+              0,
+              "20230314-Jaroslav-Bendik-Certora/39657_2866defdd1f2434b69ab_47_QF_UFLIA.smt2",
+              35.433517,
+              26.638193,
+              0.7517795368718267
+            ],
+            [
+              1,
+              "mathsat/EufLaArithmetic/medium/medium9.smt2",
+              1.249523,
+              1.118036,
+              0.8947702443252346
+            ],
+            [
+              1,
+              "wisas/xs_18_38.smt2",
+              29.500644,
+              25.405076,
+              0.8611702171654286
+            ],
+            [
+              1,
+              "wisas/xs_40_40.smt2",
+              1.126202,
+              0.95817,
+              0.8507976366584326
+            ],
+            [
+              1,
+              "20230314-Jaroslav-Bendik-Certora/39657_2866defdd1f2434b69ab_47_QF_UFLIA.smt2",
+              36.050354,
+              26.514294,
+              0.7354794352366137
+            ],
+            [
+              1,
+              "mathsat/EufLaArithmetic/hard/hard12.smt2",
+              2.238246,
+              1.95981,
+              0.875600805273415
+            ],
+            [
+              1,
+              "mathsat/EufLaArithmetic/hard/hard14.smt2",
+              3.559372,
+              2.895483,
+              0.8134814231274505
+            ],
+            [
+              1,
+              "mathsat/EufLaArithmetic/medium/medium11.smt2",
+              2.065059,
+              1.814053,
+              0.8784509304576769
+            ],
+            [
+              1,
+              "wisas/xs_35_45.smt2",
+              1.009749,
+              0.810954,
+              0.8031243408015258
+            ],
+            [
+              1,
+              "wisas/xs_17_37.smt2",
+              13.761416,
+              12.350924,
+              0.8975038615212271
+            ]
+          ]
+        },
+        "references": "Bothrounds575decisive recordedreferenceagreements+84candidateunsolved;zero wronganswer/reference-disagreement/no-decisive-reference;no references executed. Commands:join_recorded_reference_answers.py candidate --reference results/full-revalidation-287b743/real/QF_UFLIA/z3 --reference results/full-revalidation-287b743/real/QF_UFLIA/cvc5; audits tmp/n-way-linear-full-reference-{0,1}.json.",
+        "certora47": {
+          "old_seconds": [
+            35.433517,
+            36.050354
+          ],
+          "new_seconds": [
+            26.638193,
+            26.514294
+          ],
+          "old_reconciliation_us": [
+            23188092,
+            23583456
+          ],
+          "new_reconciliation_us": [
+            14546561,
+            14521873
+          ],
+          "same_search_as_quick": true
+        },
+        "models": {
+          "expected_sat": 810,
+          "dolmen_pass": 810,
+          "missing": 0,
+          "invalid": 0,
+          "changed_answers": 0,
+          "solver_errors": 0,
+          "solver_timeouts_unknowns": 0,
+          "validator_timeouts": 0,
+          "unsupported": 0,
+          "coverage": "128/128 complete;fully_validated405/405 eachround;parentartifact/input/binaryhashes verified."
+        }
+      },
+      "artifact_storage": "SLURM-backed raw corpus/fuzz/mutation/model artifacts and frozen binaries retained under results/n-way-linear-b883d6f. Local timing,model,static and profile artifacts collected; local fuzz/mutation copies contain summaries, raw generated inputs remain onSLURM.",
+      "search_audit_script": "#!/usr/bin/env python3\n\"\"\"Read-only comparison of existing non-timing solver counters on paired solves.\"\"\"\nimport json\nimport sys\nfrom collections import Counter\nfrom pathlib import Path\n\nsys.path.insert(0, str(Path(__file__).resolve().parents[1] / \"scripts\"))\nfrom summarize_component_pairs import load_arm, solved\n\nroot = Path(sys.argv[1])\nexcluded = {\":combination.model.care-pair-agreements\", \":combination.model.spanning-pair-checks\"}\nchecked = 0\ncomparisons = 0\ndifferences = []\nfamilies = Counter()\nfor round_number in range(2):\n    old, _ = load_arm(root / f\"round-{round_number}\" / \"baseline\")\n    new, _ = load_arm(root / f\"round-{round_number}\" / \"candidate\")\n    assert old.keys() == new.keys()\n    for name in sorted(old):\n        if not (solved(old[name]) and solved(new[name])):\n            continue\n        checked += 1\n        families[old[name][\"family\"]] += 1\n        keys = {key for row in (old[name], new[name]) for key in row\n                if key.startswith(\":\") and not key.startswith(\":time.\")} - excluded\n        changed = {}\n        for key in sorted(keys):\n            before = old[name].get(key) or \"0\"\n            after = new[name].get(key) or \"0\"\n            comparisons += 1\n            if before != after:\n                changed[key] = [before, after]\n        if changed:\n            differences.append({\"round\": round_number, \"file\": name, \"counters\": changed})\nprint(json.dumps({\"paired_solved_executions\": checked, \"counter_comparisons\": comparisons,\n                  \"families\": families, \"differences\": differences,\n                  \"note\": \"Exact aggregate-counter comparison, not an equality-by-equality trace proof; new visit counters and all timings excluded.\"}, indent=2))\nraise SystemExit(bool(differences))\n",
+      "reproduction": "Build/freeze b883d6f using recorded preparation command. Copy committed benchmarks/component-linear-quick-25.txt to recorded tmp manifest path (or override PRIMO_COMPARE_MANIFEST to committed path). Validate static batch embedded here with slurm_validate_sbatch.py before copying/submitting; other jobs use committed scripts. Run embedded read-only search audit as tmp/n-way-linear-search-audit.py ROOT after summarize_component_pairs.py ROOT --expected-count25/659. Keep independentSATreplay separate; joinrecordedreferenceswithrecordedcommand.",
+      "verdict": "Accepted order-equivalent overhead removal. Same575/659solves bothversions/bothrounds,84timeoutseachround,noanswerdisagreements/errors/unsupported/wronganswers/lostsolves;commonruntime-2.7616%,PAR2-0.3119%;everyfamilyaggregatefaster,not everyindividualexecution.425500existingnon-timingcountersmatch over1150common-solvedpairs;not an equality-by-equalitytraceproof.836/836quick+fullSATmodels independently accepted.4000generatedinputs pass;1435supplementalrealmutants have1398pass/37resource-incomplete,rawfailedmutationgate retained. QF_UFLRA sourcepathsunchanged;no freshfive-logicreevaluationclaimed.",
+      "documentation_review": "No blocking findings after distinguishing original2413397five-logic qualification from b883d6fQFUFLIA-onlyoverhead qualification. Localdesignstatesexactkeyorder,proof,invariants,ownership,linearcomplexity,newcollection-ownedstats,andretainedlimitations. Earlierprofilinguseddiagnostically,notasfreshmodelvalidation."
+    },
     {"id":"2026-09-09-certora-migration-diagnosis","date":"2026-09-09","commit":"2413397","baseline_commit":"287b743","kind":"read-only-regression-diagnosis","evidence_status":"current-diagnostic","job":"140601","artifact":"results/n-way-2413397/profile-certora47-140601","command":"ssh -F tmp/primo-model-slurm-ssh-config primo-model-slurm 'cd /home/janotmik/primo-model-fix && sbatch --parsable --nodelist=node-04 --hint=nomultithread --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-model-fix tmp/n-way-certora47-profile.sbatch'","batch_script":"#!/usr/bin/env bash\n# Diagnostic only: reuse the frozen instrumented candidate, not a timing result.\n#SBATCH --job-name=primo-certora47-profile\n#SBATCH --nodes=1\n#SBATCH --ntasks=1\n#SBATCH --cpus-per-task=1\n#SBATCH --mem=8G\n#SBATCH --time=00:04:00\n#SBATCH --output=slurm_logs/%x-%j.out\n#SBATCH --error=slurm_logs/%x-%j.err\nset -euo pipefail\ncd \"${PRIMO_WORKDIR:?}\"\nBIN=\"$PRIMO_WORKDIR/results/n-way-2413397/profile-wisas40/build/primo\"\nINPUT=\"$PRIMO_WORKDIR/tmp/QF_UFLIA/20230314-Jaroslav-Bendik-Certora/39657_2866defdd1f2434b69ab_47_QF_UFLIA.smt2\"\nOUT=\"$PRIMO_WORKDIR/results/n-way-2413397/profile-certora47-$SLURM_JOB_ID\"\nmkdir \"$OUT\"\ncp \"$0\" \"$OUT/job.sbatch\"\ncd \"$OUT\"\nhostname > node.txt\n\"$BIN\" --version > version.txt\ngrep -Fx 'git: 2413397-profile' version.txt\nsha256sum \"$BIN\" \"$INPUT\" > inputs-binary.sha256\nTIMEFORMAT='wall=%R user=%U sys=%S'\n{ time timeout 150 \"$BIN\" --quiet --stats \"$INPUT\" > solver.stdout 2> solver.stderr; } \\\n  2> resources.txt\ntest -s gmon.out\ngrep -Fx sat solver.stdout\ngprof -b -p \"$BIN\" gmon.out > flat-profile.txt\ngprof -b -q \"$BIN\" gmon.out > call-graph.txt\n","scope":"One bounded gprof run on the existing2413397-profile instrumented binary, no rebuild, no source/option modification, no reference run; diagnose the one Certora common-solved regression dominating family overhead.","recorded_timing":"Job137972 Certora common totals72.301020 ->88.635538s (+22.5924%). Input39657_2866defdd1f2434b69ab_47 contributes16.200835s of16.334518s additional time (99.1816%):round0 28.207481 ->35.746284,round1 30.061273 ->38.723305.","recorded_search":"Same deterministic counters in both rounds per binary:interface decisions423 ->429,SAT conflicts87 ->105,SAT decisions778104 ->788729,pivots110595 ->114456,care-pair visits14945709 ->15157074. Model reconciliation15.797149 ->23.414635s and16.387214 ->25.004475s; SAT time decreases8.371444 ->7.855089s and9.140567 ->8.618148s.","code_findings":"Old coordinator filters non-disagreeing care pairs before adding them to ordered candidates and uses unordered membership tables; new ComponentModelCoordinator inserts all care pairs into two ordered std::sets, validates scopes and stable-partitions sorted candidates. Old spanning-care edges precede appended nonspanning care disagreements; new globally sorted care edges can change first ordinary split. Thus search order is not preserved. First actual divergent choice has not been traced; phase totals do not isolate one helper's cost. Old EUF mutate calls returned default FixedPoint; new capability=false skips this no-op, so mutation counter423 ->0 does not mean an effective repair algorithm was removed.","failed_setup_attempts":[{"job":"140599","exit":"1:0","elapsed_seconds":5,"reason":"Wrong corpus root, stopped at sha256sum before solver workload; corrected against full659 provenance."},{"job":"140600","exit":"127:0","elapsed_seconds":1,"reason":"/usr/bin/time absent on node04, stopped before solver workload; replaced with Bash built-in time."}],"state":"COMPLETED0:0","profile":{"job":"140601","host":"node-04","elapsed_allocation_seconds":50,"solver_wall_seconds":45.894,"solver_user_seconds":45.621,"answer":"sat","exit_code":0,"timeout":0,"error":0,"binary_sha256":"37dee46aefceb0184d386f9b0bcb013f2a1f102206444b8310c01a88659ca867","input_sha256":"c68e77db3bc6cd15daebe8fcffb9d445bca654c6b2fcc47a8b65d27c3074e182","sampled_self_seconds":20.79,"top_functions":{"ordered tuple-set insertion position":"30,627,441 calls;13.76% sampled self","EUF care-pair diagnostics":"430 calls;9.43%","LiaComponentAdapter::check":"430 calls;7.70%","ordered tuple-set find":"15,338,103 calls;5.19%","care-pair introsort":"860 calls;4.95%","partition-map at":"68,550,882 calls;4.91%","TheoryCombinationPlan::scope_for":"26,675,507 calls;4.23%"},"search_matches_uninstrumented_candidate":"429 interface decisions,105 SAT conflicts,788729 SAT decisions,114456 LRA pivots,15157074 care-pair visits; exact same counts as both uninstrumented rounds.","limitations":"One candidate-only diagnostic profile, not a timing comparison or new model qualification. Instrumentation perturbs time; sampled self totals do not equal wall time. Input's uninstrumented candidate SAT models already passed Dolmen in both recorded full659 rounds."},"conclusion":"Recorded phases plus profile identify avoidable ordered-container/scope-processing overhead in model reconciliation, not a uniform Certora slowdown or merely model-printing cost. Search counters independently prove execution diverged. Coordinator source changes candidate tie/order by globally sorting care pairs instead of keeping spanning candidates first; this is a plausible cause of divergence but first actual differing equality has not been traced or isolated by an A/B intervention. No solver source change made. Follow-up should isolate overhead removal from restoring legacy split priority; modularity does not require either overhead or heuristic drift."},
     {
       "id": "2026-09-08-n-component-preservation-four-logics",
