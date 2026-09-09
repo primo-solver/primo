@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <span>
 
@@ -8,6 +9,11 @@
 #include "theory/theory_component.hpp"
 
 namespace primo::smt {
+
+struct ComponentModelStatistics : ModelBasedCombinationStatistics {
+  std::size_t care_pair_agreements = 0;
+  std::size_t spanning_pair_checks = 0;
+};
 
 // Collection order is a recipe priority, not a theory-name dispatch. The plan
 // and component order must match. See docs/n-way-combination-migration.md.
@@ -18,7 +24,7 @@ class ComponentModelCoordinator {
       std::span<theory::TheoryComponent* const> components,
       std::span<const theory::InterfaceRelation> arrangement,
       const EqualityLiteralResolver& equality_literal);
-  [[nodiscard]] const ModelBasedCombinationStatistics& statistics() const { return statistics_; }
+  [[nodiscard]] const ComponentModelStatistics& statistics() const { return statistics_; }
   [[nodiscard]] const std::vector<theory::TheoryModelToken>& model_tokens() const {
     return tokens_;
   }
@@ -27,7 +33,7 @@ class ComponentModelCoordinator {
   }
 
  private:
-  ModelBasedCombinationStatistics statistics_;
+  ComponentModelStatistics statistics_;
   std::vector<theory::TheoryModelToken> tokens_;
   std::vector<theory::TheoryModelProjection> projections_;
 };

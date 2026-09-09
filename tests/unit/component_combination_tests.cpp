@@ -194,7 +194,7 @@ class PartitionComponent final : public theory::TheoryComponent {
   }
   std::vector<theory::InterfacePair> care_pairs(const theory::TheoryModelToken&) const override {
     ++care_calls;
-    return {};
+    return suggested_pairs;
   }
   theory::ComponentModelFragment export_model(
       const theory::TheoryModelToken& token) const override {
@@ -219,6 +219,7 @@ class PartitionComponent final : public theory::TheoryComponent {
   std::size_t assignment_batches = 0;
   std::size_t mutations = 0;
   mutable std::size_t care_calls = 0;
+  std::vector<theory::InterfacePair> suggested_pairs;
   std::optional<theory::TheoryCheckResult> pending_propagation;
 
  private:
@@ -638,6 +639,121 @@ void nonconvex_disjunction_and_mutation_side_effects() {
              .status == smt::ModelBasedCombinationStatus::Cancelled);
 }
 
+void care_selection_is_linear_and_validates_late_entries() {
+  Fixture f;
+  const auto sort = f.symbols.int_sort();
+  const auto x = f.variable("x", sort);
+  const auto y = f.variable("y", sort);
+  const auto z = f.variable("z", sort);
+  const auto foreign = f.variable("foreign", sort);
+  auto& first = f.add({{{x, y, z}, {{0, 0, 0}}}});
+  f.add({{{x, y, z}, {{0, 0, 1}}}});
+  f.add({{{x, y, z}, {{0, 0, 0}}}});
+  first.properties.capabilities.care_pairs = true;
+  first.suggested_pairs.assign(50000, {y, x, sort});
+  first.suggested_pairs.push_back({z, y, sort});
+  first.suggested_pairs.push_back({y, z, sort});
+  smt::TheoryCombinationPlan plan(f.terms, f.components, f.atoms, true);
+  plan.register_interfaces(f.components);
+  smt::ComponentModelCoordinator coordinator;
+  std::vector<theory::InterfacePair> choices;
+  const auto resolve = [&](const auto& pair) {
+    choices.push_back(pair);
+    return sat::Lit{42};
+  };
+  auto result = coordinator.reconcile(plan, 1, f.components, {}, resolve);
+  assert(result.status == smt::ModelBasedCombinationStatus::DecideEquality);
+  assert(choices == std::vector<theory::InterfacePair>({{y, z, sort}}));
+  assert(coordinator.statistics().care_pairs == 50002);
+  assert(coordinator.statistics().care_pair_agreements == 50000);
+  // Care priority skips even the lexicographically smaller x=z spanning edge.
+  assert(coordinator.statistics().spanning_pair_checks == 0);
+
+  first.suggested_pairs.push_back({z, x, sort});
+  choices.clear();
+  result = coordinator.reconcile(plan, 2, f.components, {}, resolve);
+  assert(result.status == smt::ModelBasedCombinationStatus::DecideEquality);
+  assert(choices == std::vector<theory::InterfacePair>({{x, z, sort}}));
+
+  first.suggested_pairs = {{y, x, sort}};
+  choices.clear();
+  result = coordinator.reconcile(plan, 3, f.components, {}, resolve);
+  assert(result.status == smt::ModelBasedCombinationStatus::DecideEquality);
+  assert(choices == std::vector<theory::InterfacePair>({{x, z, sort}}));
+  assert(coordinator.statistics().spanning_pair_checks > 0);
+
+  // Finding a good candidate must not hide an invalid later care entry.
+  first.suggested_pairs = {{x, z, sort}, {x, foreign, sort}};
+  choices.clear();
+  result = coordinator.reconcile(plan, 4, f.components, {}, resolve);
+  assert(result.status == smt::ModelBasedCombinationStatus::Unknown);
+  assert(choices.empty());
+}
+
+void exhaustive_ordinary_choice_order() {
+  const auto patterns = partitions(3);
+  using Edge = std::pair<std::size_t, std::size_t>;
+  const std::vector<std::vector<Edge>> suggestions{{}, {{1, 2}}, {{1, 2}, {0, 2}, {0, 1}}};
+  for (const std::size_t count : {2U, 3U, 4U}) {
+    std::size_t combinations = 1;
+    for (std::size_t index = 0; index < count; ++index) combinations *= patterns.size();
+    for (std::size_t code = 0; code < combinations; ++code) {
+      for (const auto& care : suggestions) {
+        Fixture f;
+        const auto sort = f.symbols.int_sort();
+        const std::vector terms{f.variable("x", sort), f.variable("y", sort),
+                                f.variable("z", sort)};
+        std::vector<Partition> models;
+        std::vector<Edge> ordered = care;
+        auto remaining = code;
+        for (std::size_t index = 0; index < count; ++index) {
+          models.push_back(patterns[remaining % patterns.size()]);
+          remaining /= patterns.size();
+          f.add({{terms, {models.back()}}});
+          // Test-only materialization of the previous sorted-union policy.
+          std::map<std::size_t, std::size_t> representatives;
+          for (std::size_t term = 0; term < terms.size(); ++term) {
+            const auto [entry, inserted] = representatives.emplace(models.back()[term], term);
+            if (!inserted) ordered.emplace_back(entry->second, term);
+          }
+        }
+        f.owned.back()->properties.capabilities.care_pairs = true;
+        for (const auto& [lhs, rhs] : care) {
+          f.owned.back()->suggested_pairs.push_back({terms[rhs], terms[lhs], sort});
+          f.owned.back()->suggested_pairs.push_back({terms[lhs], terms[rhs], sort});
+        }
+        std::sort(ordered.begin(), ordered.end());
+        ordered.erase(std::unique(ordered.begin(), ordered.end()), ordered.end());
+        std::stable_partition(ordered.begin(), ordered.end(), [&](const auto& pair) {
+          return std::find(care.begin(), care.end(), pair) != care.end();
+        });
+        std::optional<theory::InterfacePair> expected;
+        for (const auto& [lhs, rhs] : ordered) {
+          const bool equal = models.front()[lhs] == models.front()[rhs];
+          if (std::any_of(models.begin(), models.end(),
+                          [&](const auto& model) { return (model[lhs] == model[rhs]) != equal; })) {
+            expected = {terms[lhs], terms[rhs], sort};
+            break;
+          }
+        }
+        smt::TheoryCombinationPlan plan(f.terms, f.components, f.atoms, true);
+        plan.register_interfaces(f.components);
+        smt::ComponentModelCoordinator coordinator;
+        std::optional<theory::InterfacePair> actual;
+        const auto result = coordinator.reconcile(plan, 1, f.components, {}, [&](const auto& pair) {
+          assert(!actual.has_value());
+          actual = pair;
+          return sat::Lit{42};
+        });
+        assert(actual == expected);
+        assert(result.status == (expected.has_value()
+                                     ? smt::ModelBasedCombinationStatus::DecideEquality
+                                     : smt::ModelBasedCombinationStatus::Accept));
+      }
+    }
+  }
+}
+
 }  // namespace
 
 int main() {
@@ -647,4 +763,6 @@ int main() {
   malformed_models_are_not_accepted_or_redecided();
   incremental_routing_backtracking_and_explanation_lifetime();
   nonconvex_disjunction_and_mutation_side_effects();
+  care_selection_is_linear_and_validates_late_entries();
+  exhaustive_ordinary_choice_order();
 }

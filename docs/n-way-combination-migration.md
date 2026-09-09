@@ -178,6 +178,49 @@ interface growth uses the established callback rebuild boundary.
 
 ## Acceptance checklist
 
+### Linear ordinary-decision selection (2026-09-09)
+
+The Certora profile recorded in `2026-09-09-certora-migration-diagnosis`
+found 30.6 million ordered-set insertion-position searches and 15.3 million
+tree lookups in one check. The following local design removes that overhead;
+it does not restore the pre-migration heuristic or change the theory algorithm.
+
+- **Existing order:** after mutation, sort normalized `(sort, lhs, rhs)` keys,
+  place care pairs first, then choose the first disagreeing pair. One ordinary
+  equality is requested per SAT round. Explicit mutation candidates are separate.
+- **Selection invariant:** retain only the minimum disagreeing care key while
+  validating every supplied care pair. If one exists, no non-care edge can win.
+  Otherwise scan the post-mutation equal-class spanning edges and retain the
+  minimum disagreeing key. Duplicate/reversed care pairs do not affect the minimum.
+- **Proof obligation:** dropping agreeing pairs and duplicate keys cannot change
+  the first disagreement in the old care-first lexicographic order. If no care
+  pair disagrees, care membership cannot affect the remaining choice. Spanning
+  edges still establish partition agreement; never compare nonparticipants.
+- **Ownership:** selection keeps one value-owned key, not borrowed term storage.
+  Projection indices are solve-round local; no cached conclusion survives a
+  mutation, assignment epoch or backtrack. Validate all care-pair scopes even
+  after finding a candidate, so malformed later entries cannot be hidden.
+- **Cost:** ordinary selection uses linear scans in supplied care pairs and,
+  only when needed, spanning edges, with participant comparisons per pair and
+  constant additional candidate storage. It allocates no ordered candidate sets.
+  Existing projection indices, care-vector ownership, mutation machinery and
+  complete-arrangement fallback are unchanged.
+- **Tests/evidence:** lock care priority, lexicographic tie-breaking, duplicate
+  and reversed keys, late invalid care entries, no-care fallback and agreement;
+  keep the three/four-component oracle. Collection-owned `ComponentModelStatistics`
+  extends the legacy statistics without changing the frozen coordinator. The
+  counters `:combination.model.care-pair-agreements` and
+  `:combination.model.spanning-pair-checks` count visits, including duplicates.
+  Compare real search counters as well as timings,
+  and independently replay every successful candidate SAT benchmark row.
+
+Implementation passes 29 CTest tests, 128 Python tests, all 29 ASan tests,
+lint and documentation build. The added order oracle checks 2,325 configurations
+across two, three and four components; the large agreeing-care test visits
+50,000 entries without constructing an ordered candidate set.
+Fresh cluster correctness/performance qualification is still in progress;
+the historical migration results below remain evidence for `2413397` only.
+
 ### Adding another component
 
 This is the implemented extension path, not a claim that arbitrary SMT theories

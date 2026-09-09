@@ -338,13 +338,25 @@ ModelBasedCombinationResult ComponentModelCoordinator::reconcile(
     return result;
   }
 
-  // Recompute the union after every mutator ran. Equal-class spanning edges
-  // suffice: agreement on each edge in both partitions implies equal relations.
-  std::set<PairKey> pairs;
-  for (const auto& projection : projections) {
-    add_spanning_pairs(projection, pairs);
-  }
-  std::set<PairKey> care;
+  // Preserve care-first lexicographic selection without materializing its sorted
+  // union. Dropping agreeing pairs/duplicates cannot change the first conflict.
+  // See "Linear ordinary-decision selection" in n-way-combination-migration.md.
+  std::optional<PairKey> choice;
+  const auto consider = [&](const theory::InterfacePair& pair, const CombinationScope& scope) {
+    const auto& reference = indices[scope.participants.front()];
+    const bool equal = reference.at(pair.lhs) == reference.at(pair.rhs);
+    for (std::size_t index = 1; index < scope.participants.size(); ++index) {
+      const auto& candidate = indices[scope.participants[index]];
+      if ((candidate.at(pair.lhs) == candidate.at(pair.rhs)) != equal) {
+        const auto key = pair_key(pair);
+        if (!choice.has_value() || key < *choice) {
+          choice = key;
+        }
+        return true;
+      }
+    }
+    return false;
+  };
   for (std::size_t index = 0; index < components.size(); ++index) {
     if (!plan.descriptors()[index].capabilities.care_pairs) {
       continue;
@@ -354,48 +366,48 @@ ModelBasedCombinationResult ComponentModelCoordinator::reconcile(
       if (!scope.has_value() || !participates(plan.scopes()[*scope], index)) {
         return unknown("component care pair lies outside its normalized scope");
       }
-      care.insert(pair_key(pair));
-      pairs.insert(pair_key(pair));
       ++statistics_.care_pairs;
-    }
-  }
-  std::vector<PairKey> ordered_pairs(pairs.begin(), pairs.end());
-  std::stable_partition(ordered_pairs.begin(), ordered_pairs.end(),
-                        [&](const auto& key) { return care.contains(key); });
-  ModelBasedCombinationResult result;
-  for (const auto& key : ordered_pairs) {
-    const auto [sort, lhs, rhs] = key;
-    const theory::InterfacePair pair{lhs, rhs, sort};
-    const auto scope_index = plan.scope_for(pair);
-    if (!scope_index.has_value()) {
-      return unknown("projection edge is outside normalized interface scopes");
-    }
-    const auto& scope = plan.scopes().at(*scope_index);
-    const auto& reference = indices[scope.participants.front()];
-    const bool equal = reference.at(lhs) == reference.at(rhs);
-    bool disagreement = false;
-    for (const auto participant : scope.participants) {
-      const auto& candidate = indices[participant];
-      if ((candidate.at(lhs) == candidate.at(rhs)) != equal) {
-        disagreement = true;
-        break;
+      if (!consider(pair, plan.scopes()[*scope])) {
+        ++statistics_.care_pair_agreements;
       }
     }
-    if (!disagreement) {
-      continue;
+  }
+  if (!choice.has_value()) {
+    // Regenerate post-mutation spanning edges only when no care disagreement
+    // wins. Agreement on these edges still proves agreement of the partitions.
+    for (const auto& projection : projections) {
+      for (const auto& partition : projection.partitions) {
+        for (const auto& equality_class : partition.equality_classes) {
+          const auto first =
+              *std::min_element(equality_class.terms.begin(), equality_class.terms.end());
+          for (const auto term : equality_class.terms) {
+            if (term == first) {
+              continue;
+            }
+            const theory::InterfacePair pair{first, term, partition.sort};
+            const auto scope = plan.scope_for(pair);
+            if (!scope.has_value()) {
+              return unknown("projection edge is outside normalized interface scopes");
+            }
+            ++statistics_.spanning_pair_checks;
+            static_cast<void>(consider(pair, plan.scopes()[*scope]));
+          }
+        }
+      }
     }
-    if (fixed.contains(key)) {
+  }
+  ModelBasedCombinationResult result;
+  if (choice.has_value()) {
+    if (fixed.contains(*choice)) {
       return unknown("model disagreement on an already assigned interface pair");
     }
     ++statistics_.disagreements;
-    const auto literal = equality_literal(pair);
+    const auto [sort, lhs, rhs] = *choice;
+    const auto literal = equality_literal({lhs, rhs, sort});
     if (!literal.has_value() || literal->value == 0) {
       return unknown("interface equality could not be materialized");
     }
     result.decision_lits.push_back(*literal);
-    // Preserve the production recipe's one ordinary split per SAT round.
-    // Only explicit component mutation candidates are batched above.
-    break;
   }
   if (result.decision_lits.empty()) {
     result.status = ModelBasedCombinationStatus::Accept;

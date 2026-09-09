@@ -53,7 +53,7 @@ theory::ComponentAtom component_atom(const BooleanClausifier::TheoryAtom& atom) 
           atom.theory_relevant_at_both_polarities};
 }
 
-void publish(const ModelBasedCombinationStatistics& source, util::Statistics& statistics) {
+void publish(const ComponentModelStatistics& source, util::Statistics& statistics) {
   statistics.set(":combination.component-checks", source.component_checks);
   statistics.set(":combination.learned-clauses", source.learned_clauses);
   statistics.set(":combination.model.component-checks", source.component_checks);
@@ -61,6 +61,8 @@ void publish(const ModelBasedCombinationStatistics& source, util::Statistics& st
   statistics.set(":combination.model.mutations", source.mutations);
   statistics.set(":combination.model.fixed-points", source.fixed_points);
   statistics.set(":combination.model.care-pairs", source.care_pairs);
+  statistics.set(":combination.model.care-pair-agreements", source.care_pair_agreements);
+  statistics.set(":combination.model.spanning-pair-checks", source.spanning_pair_checks);
   statistics.set(":combination.model.disagreements", source.disagreements);
   statistics.set(":combination.model.learned-clauses", source.learned_clauses);
   statistics.set(":combination.model.decisions", source.model_decisions);
