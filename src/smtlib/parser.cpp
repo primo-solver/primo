@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "smtlib/ast.hpp"
+#include "smtlib/attributes.hpp"
 #include "smtlib/commands.hpp"
 #include "smtlib/lexer.hpp"
 
@@ -132,7 +133,8 @@ Command Parser::parse_command(const SExpr& expr) const {
   }
   if (head == "set-info") {
     if (expr.list.size() < 2 || expr.list.size() > 3 || expr.list[1].kind != SExpr::Kind::Atom ||
-        expr.list[1].atom_kind != TokenKind::Keyword)
+        expr.list[1].atom_kind != TokenKind::Keyword ||
+        (expr.list.size() == 3 && !is_attribute_value(expr.list[2])))
       throw ParseError("set-info expects an attribute keyword and optional value", 0);
     Command command;
     command.kind = CommandKind::Ignored;
@@ -157,6 +159,8 @@ Command Parser::parse_command(const SExpr& expr) const {
     command.option = require_atom(expr.list[1], "option keyword");
     if (expr.list[1].atom_kind != TokenKind::Keyword)
       throw ParseError("set-option expects an option keyword", 0);
+    if (expr.list.size() == 3 && !is_attribute_value(expr.list[2]))
+      throw ParseError("set-option expects an attribute value", 0);
     if (expr.list.size() == 3 && expr.list[2].kind == SExpr::Kind::Atom) {
       // Strings/numerals must not masquerade as a Boolean option value.
       if (expr.list[2].is_symbol() || expr.list[2].atom_kind == TokenKind::Numeral ||

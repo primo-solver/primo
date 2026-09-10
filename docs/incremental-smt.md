@@ -42,9 +42,10 @@ against hash-matched recorded Z3/cvc5 answers, 100 live-pipe chunking seeds
 (400 query answers plus 300 malformed-EOF rejection checks), and one direct
 Dolmen model regression. Array `141962` completes both static scans on all
 108 tracked C++ files; only existing advisories remain. No reference solver
-or speed benchmark is rerun. The two pre-existing attribute-validation gaps in
-[](lexical-conformance.md) remain open; these results qualify the stdin
-integration, not full syntax conformance. Raw artifacts and exact provenance
+or speed benchmark is rerun. These results qualify the stdin integration, not
+full syntax conformance. The two attribute-validation gaps discovered then are
+fixed by the subsequent repair in [](lexical-conformance.md), with separate
+qualification. Raw artifacts and exact provenance for the streaming revision
 are recorded in `docs/run-log.json` under `2026-09-10-online-parser`.
 
 This branch implements an original rebuild-based session baseline, not persistent

@@ -3,6 +3,37 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-10-attribute-validation-repair",
+      "date": "2026-09-10",
+      "baseline_commit": "ab01f2f",
+      "commit": "source commit immediately following this preliminary ledger entry",
+      "kind": "parser-attribute-correctness-repair",
+      "evidence_status": "locally-verified-remote-qualification-pending",
+      "scope": "Fix both P2 findings from 2026-09-10-online-parser: validate single metadata/option attribute values and nonempty annotation attribute sequences. Generic SMT-LIB 2.7 Sections 3.4/3.6 syntax only; predefined attribute semantics unchanged. No SAT/theory/preprocessing changes or performance claim.",
+      "design": "docs/lexical-conformance.md: Attribute-validation repair checklist; allocation-free linear top-level attribute scan, no retained AST borrow, opaque list values.",
+      "local_verification": "make check: 31 CTest and 140 Python tests pass; after generator tests added, make python-test: 143 pass. make asan-test: 31/31 pass. Logs tmp/attribute-fix-check.log, tmp/attribute-python-test.log, tmp/attribute-fix-asan.log. Initial new-test range-loop warning and generator executable-bit lint failure fixed before successful reruns.",
+      "local_gate": {
+        "commit": "ab01f2f plus the source diff committed with this entry",
+        "host": "local development workspace",
+        "generator": "scripts/generate_attribute_cases.py",
+        "seed": 20260911,
+        "count": 200,
+        "timeout_seconds": 5,
+        "commands": [
+          "python3 scripts/generate_attribute_cases.py --count 200 --seed 20260911 > tmp/attribute-cases.json",
+          "python3 scripts/check_smtlib_lexical_conformance.py --cases tmp/attribute-cases.json --only primo dolmen --out results/attribute-grammar-local",
+          "python3 scripts/check_smtlib_lexical_conformance.py --cases benchmarks/lexical-conformance/online-review-cases.json --only primo --out results/attribute-regression-local"
+        ],
+        "reference_command": "dolmen --input=smt2.6 --strict=true INPUT; independent syntax validation, not an answer oracle",
+        "result": {"primo_valid_answer_pass": 100, "primo_invalid_rejected": 100, "dolmen_valid_accepted": 100, "dolmen_invalid_rejected": 100, "original_regressions_rejected": 2, "wrong_answer": 0, "crash": 0, "unexpected_parser_type_error": 0, "timeout": 0, "unsupported": 0, "reference_disagreement": 0},
+        "artifacts": ["results/attribute-grammar-local", "results/attribute-regression-local"],
+        "artifact_status": "ignored raw logs with per-input outputs, result rows and binary identity; preliminary dirty-worktree evidence, not current-commit qualification"
+      },
+      "review": "Code review and solver-efficiency review: no new blocking issue. Validation is allocation-free and linear only in the top-level attribute sequence, with constant-time value-category queries and no scan of nested metadata. Focused configured clang-tidy and misc-include-cleaner pass on all five changed C++ translation units; one suppressed external warning, no owned diagnostics (tmp/attribute-tidy.log, tmp/attribute-include.log). make lint and make docs pass. Batch scripts validate. Whole-tree review uses the tracked-file baseline plus fresh full static scans; no warning-free baseline claim.",
+      "remote_plan": "scripts/slurm_online_parser_gate.sbatch: fresh 200 attribute cases against Dolmen plus both fixed regressions; 1000 generated sessions checked against hash-matched saved Z3/cvc5 records (no reference reruns); 100 live-pipe chunking seeds with 400 query answers and 600 rejection checks; existing direct Dolmen model smoke. Whole-source tidy/include-cleaner via scripts/slurm_lexical_static_resume.sbatch.",
+      "limitations": "No complete SMT-LIB conformance or performance claim. Historical review findings in earlier entries describe their revisions, not the repaired candidate. Final committed-revision gate and whole-source scan remain pending."
+    },
+    {
       "id": "2026-09-10-online-parser",
       "date": "2026-09-10",
       "baseline_commit": "f464fa1",

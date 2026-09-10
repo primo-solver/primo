@@ -3,9 +3,11 @@
 **Direct stdin parser (2026-09-10):** `e24dfcd` uses a persistent stream lexer
 and one-command parser, with no separate text framer or lookahead after a
 completed command. The fresh 1,000-session recorded-reference replay and 100
-live-pipe chunking seeds pass. The [parser review](lexical-conformance.md)
-separately records two open, pre-existing attribute-validation gaps; this is
-not a claim of complete syntax conformance. Qualification is in the run log.
+live-pipe chunking seeds pass. The subsequent [attribute repair](lexical-conformance.md)
+rejects malformed metadata values and annotation sequences, including the same
+value-category error in `set-option`. Generic attribute syntax is validated;
+attribute-specific semantics and complete syntax conformance are not claimed.
+Qualification of each revision is recorded separately in the run log.
 
 **Lexical repair (2026-09-10):** [](lexical-conformance.md) records the original
 quoted-name wrong answers, their canonical-identity/category repair, and the

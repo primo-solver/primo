@@ -2,16 +2,37 @@
 
 ## Direct-stream review findings (2026-09-10)
 
+### Attribute-validation repair checklist
+
+The repair implements the generic attribute grammar from SMT-LIB 2.7
+Sections 3.4 and 3.6, not new semantics for named terms, patterns or proof options.
+`smtlib::is_attribute_value` accepts special constants, symbols and arbitrary
+S-expression lists, but not bare keywords or reserved tokens.
+`smtlib::valid_attributes` checks a nonempty span of keyword/optional-value
+pairs in one forward pass, without allocation, recursion or stored borrows.
+Successive keywords are successive valueless attributes. List values are opaque
+S-expressions, not nested terms requiring annotation validation.
+
+The command parser enforces exactly one attribute in `set-info` and `set-option`;
+the frontend checks an annotation's nonempty attribute sequence before building
+its body. AST storage remains owned by the command/session; the validation
+helpers are pure queries and cannot invalidate it. Existing unsupported
+attribute semantics remain unsupported/ignored as before; this change validates
+generic syntax only. Tests cover both reported failures, valueless and multiple
+attributes, all value categories, quoted names, nested list metadata, deep input,
+definition bodies, and live stdin.
+
 The stdin refinement in [](incremental-smt.md) removes the separate framing
 pass and eager parser lookahead. Guarded-buffer and live-pipe tests establish
 that a completed command returns without asking for another input byte. The
 shared lexer retains the selected symbol/numeric policy; it is not a claim of
 complete command/term grammar validation.
 
-Two additional **open** P2 validation gaps were reproduced on the prior
-`8e9dc59` binary and the streaming candidate. They are not approved extensions:
+Two additional P2 validation gaps were reproduced on the prior `8e9dc59`
+binary and the streaming candidate `e24dfcd`. The attribute repair above fixes
+both; they are not approved extensions:
 
-| Gap | Reproducer | Owner / required follow-up |
+| Fixed gap | Reproducer | Validation owner |
 | --- | --- | --- |
 | Invalid metadata attribute value accepted | `(set-info :source :bad)` | `Parser::parse_command`: validate the attribute-value category, not just argument count and leading keyword. |
 | Malformed term annotations ignored | `(assert (! true bogus))` | Frontend annotation dispatch: validate the required nonempty sequence of attributes before translating the body. |
@@ -19,10 +40,14 @@ Two additional **open** P2 validation gaps were reproduced on the prior
 SMT-LIB 2.7 Sections 3.4 and 3.6 specify attribute values and annotated terms.
 These are invalid-input acceptance issues, not a demonstrated wrong answer on
 valid input. Review fixtures are original and retained separately in
-`benchmarks/lexical-conformance/online-review-cases.json`; the diagnostic audit
-must exit nonzero while they remain open. They are not added to policy exceptions
-or silently included in a passing conformance claim. Fixing the wider attribute
-grammar is separate from the requested stdin integration.
+`benchmarks/lexical-conformance/online-review-cases.json`; the audit now requires
+both to be rejected. They are not added to policy exceptions. The original
+streaming qualification remains historical evidence for that earlier revision.
+`scripts/generate_attribute_cases.py` supplies a separate deterministic gate of
+200 original attribute cases (100 valid and 100 invalid, balanced between
+metadata and annotations), independently syntax-checked by Dolmen. It does not
+use Dolmen as a SAT/UNSAT oracle. Fresh qualification is recorded under
+`2026-09-10-attribute-validation-repair` in `docs/run-log.json`.
 
 Other limitations remain explicit: lexical errors have absolute byte offsets,
 many command-shape errors still use offset zero, UTF-8 validity is not checked,

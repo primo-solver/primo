@@ -6,6 +6,7 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -20,6 +21,7 @@
 #include "core/term_manager.hpp"
 #include "smt/solver_error.hpp"
 #include "smtlib/ast.hpp"
+#include "smtlib/attributes.hpp"
 #include "smtlib/commands.hpp"
 #include "smtlib/lexer.hpp"
 #include "util/rational.hpp"
@@ -553,7 +555,9 @@ void TermBuilder::dispatch(const smtlib::SExpr& expr, Continuation k) {
       return;
     }
     if (head == "!") {
-      if (expr.list.size() < 2) throw UnsupportedInput("annotated term has no body");
+      if (expr.list.size() < 3 ||
+          !smtlib::valid_attributes(std::span<const smtlib::SExpr>(expr.list).subspan(2)))
+        throw UnsupportedInput("annotated term expects a body and nonempty attribute sequence");
       schedule(expr.list[1], std::move(k));
       return;
     }

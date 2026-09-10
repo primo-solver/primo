@@ -51,6 +51,8 @@ def main():
         assert os.read(process.stdout.fileno(), 4096) == b"success\n"
         exchange("(assert ; discarded ) (\r|gate (;)|)", "success\n")
         exchange("(assert (let ((|x| 0)) (= x 0)))", "success\n")
+        exchange("(set-info :custom (:tag let (assert (! true bogus))))", "success\n")
+        exchange("(assert (! true :first :second 0 :third |let|))", "success\n")
         exchange("(check-sat)", "sat\n")
         exchange("(exit)", "success\n")
         assert process.wait(timeout=5) == 0
@@ -59,7 +61,12 @@ def main():
             process.kill()
         process.communicate(timeout=5)
 
-    for text in [b"(set-info :source \"unfinished", b"(assert |unfinished", b"(assert true"]:
+    for text in [
+        b"(set-info :source \"unfinished", b"(assert |unfinished", b"(assert true",
+        b"(set-info :source :bad)",
+        b"(set-logic QF_UF)(assert (! true bogus))",
+        b"(set-option :custom :bad)",
+    ]:
         result = subprocess.run(
             [sys.argv[1], "--quiet", "--max-theory-conflicts=1000"],
             input=text, capture_output=True, timeout=5, check=False,

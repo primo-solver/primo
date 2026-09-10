@@ -11,6 +11,7 @@
 #include <utility>
 
 #include "smtlib/ast.hpp"
+#include "smtlib/attributes.hpp"
 #include "smtlib/commands.hpp"
 #include "smtlib/lexer.hpp"
 #include "smtlib/parser.hpp"
@@ -112,6 +113,33 @@ void memory_and_stream_tokens_agree() {
   GuardedBuffer buffer(deep);
   std::istream input(&buffer);
   assert(Parser(input).next_command()->kind == CommandKind::Assert);
+}
+
+void validates_single_command_attributes() {
+  for (const std::string command : {"set-info", "set-option"}) {
+    for (const std::string value :
+         {"", " symbol", " |let|", " |:keyword|", " 0", " 0.25", " #b01", " #x0f", " \"text\"",
+          " ()", " (:key let (assert (! true bogus)))"}) {
+      const std::string text = "(" + command + " :custom" + value + ")";
+      assert(Parser(text).parse_commands().size() == 1);
+      GuardedBuffer buffer(text);
+      std::istream input(&buffer);
+      assert(Parser(input).next_command());
+    }
+    for (const std::string tail :
+         {":custom :other", ":custom let", ":custom _", ":custom 0 1", "|:custom| 0"}) {
+      const std::string text = "(" + command + " " + tail + ")";
+      expect_parse_error([&] { Parser(text).parse_commands(); });
+      std::istringstream input(text);
+      expect_parse_error([&] { Parser(input).next_command(); });
+    }
+  }
+  assert(!primo::smtlib::valid_attributes({}));
+  // List values are generic S-expressions: no recursion/term validation here.
+  const auto deep = Parser("(set-info :custom " + std::string(20000, '(') + ":tag let" +
+                           std::string(20000, ')') + ")")
+                        .parse_commands();
+  assert(deep.size() == 1);
 }
 
 void parses_qf_uf_smoke_shape() {
@@ -358,6 +386,7 @@ void lexical_categories_and_policy() {
 }  // namespace
 
 int main() {
+  validates_single_command_attributes();
   streams_without_command_lookahead();
   memory_and_stream_tokens_agree();
   lexical_categories_and_policy();

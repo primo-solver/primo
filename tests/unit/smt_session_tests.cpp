@@ -142,6 +142,31 @@ void quoting_and_responses() {
   assert(!response.print_success);
 }
 
+void annotation_attribute_grammar() {
+  for (const std::string attributes :
+       {":flag", ":first :second", ":first 0 :second :third |let|", ":custom ()",
+        ":custom (:key let (assert (! true bogus)))", ":custom #b01 :hex #x0f",
+        ":custom \"a\"\"b\" :decimal 0.01 :quoted |:keyword|"}) {
+    SmtSession session;
+    accept(session, "(set-logic QF_UF)");
+    accept(session, "(assert (! true " + attributes + "))");
+    expect(session, CheckSatResult::Sat);
+    accept(session, "(assert (! (! false :inner) " + attributes + "))");
+    expect(session, CheckSatResult::Unsat);
+  }
+  for (const std::string term :
+       {"(!)", "(! true)", "(! true bogus)", "(! true |:flag|)", "(! true (:flag))",
+        "(! true :a 0 1)", "(! true :a let)", "(! true :a 0 bogus)", "(! (! true bogus) :outer)"}) {
+    for (const std::string& command :
+         {"(assert " + term + ")", "(define-fun f ((x Bool)) Bool " + term + ")"}) {
+      SmtSession session;
+      accept(session, "(set-logic QF_UF)");
+      assert(session.execute(command).kind == ResponseKind::Error);
+      assert(session.terminated());
+    }
+  }
+}
+
 void one_shot_rejects_multi_query() {
   const auto outcome =
       primo::smt::check_sat_smtlib("(set-logic QF_UF)(check-sat)(assert false)(check-sat)");
@@ -246,6 +271,7 @@ void canonical_names_and_categories() {
 }  // namespace
 
 int main() {
+  annotation_attribute_grammar();
   canonical_names_and_categories();
   scopes_and_unsafe_simplification();
   declarations_definitions_and_side_constraints();

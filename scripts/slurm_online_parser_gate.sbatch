@@ -41,6 +41,13 @@ for row in generated:
         assert ref["answers"] == row["answers"]
 print(json.dumps({"matched_sessions": 1000, "matched_reference_results": 2000, "failures": 0}))
 PY
+python3 scripts/generate_attribute_cases.py --count 200 --seed 20260911 > "$OUT/attributes.json"
+python3 scripts/check_smtlib_lexical_conformance.py --primo build-slurm-rel/primo \
+  --cases "$OUT/attributes.json" --only primo dolmen \
+  --source-commit "$PRIMO_EXPECTED_REVISION" --out "$OUT/attributes"
+python3 scripts/check_smtlib_lexical_conformance.py --primo build-slurm-rel/primo \
+  --cases benchmarks/lexical-conformance/online-review-cases.json --only primo \
+  --source-commit "$PRIMO_EXPECTED_REVISION" --out "$OUT/attribute-regressions"
 for seed in {0..99}; do
   python3 tests/interactive_session.py build-slurm-rel/primo "$seed"
   printf '%s\n' "$seed" >> "$OUT/live-completed.txt"

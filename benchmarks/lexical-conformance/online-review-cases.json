@@ -1,6 +1,6 @@
 {
   "specification": "SMT-LIB 2.7, release 2026-03-27",
-  "provenance": "Original diagnostic cases from the direct-stream parser review. Known attribute-validation gaps, not accepted compatibility extensions.",
+  "provenance": "Original cases from the direct-stream parser review, retained as regressions for repaired attribute-validation gaps; not accepted compatibility extensions.",
   "cases": [
     {
       "id": "metadata_keyword_value",
