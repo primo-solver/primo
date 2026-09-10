@@ -103,11 +103,17 @@ def main():
     parser.add_argument("--timeout", type=float, default=30)
     parser.add_argument("--dolmen-timeout", type=float, default=30)
     parser.add_argument("--chunk-bytes", type=int, default=127)
+    parser.add_argument("--max-theory-conflicts", type=int, default=1000)
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()
-    if args.chunk_bytes < 1 or args.timeout <= 0 or args.dolmen_timeout <= 0:
+    if (
+        args.chunk_bytes < 1
+        or args.max_theory_conflicts < 1
+        or args.timeout <= 0
+        or args.dolmen_timeout <= 0
+    ):
         parser.error("budgets and chunk size must be positive")
-    args.solver_arg = ["--quiet", "--max-theory-conflicts=1000"]
+    args.solver_arg = ["--quiet", f"--max-theory-conflicts={args.max_theory_conflicts}"]
     args.ref, args.ref_arg = "unused-recorded-oracle", []
     version = subprocess.run(
         [args.solver, "--version"], capture_output=True, text=True, check=True

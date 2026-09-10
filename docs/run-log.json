@@ -6,8 +6,9 @@
       "id": "2026-09-10-incremental-parser-real-corpus",
       "date": "2026-09-10",
       "kind": "standalone-real-corpus-streaming-and-scoped-session-correctness",
-      "evidence_status": "local-smoke-passed-slurm-pending",
+      "evidence_status": "four-logics-qualified-uf-resource-retry-pending",
       "baseline_commit": "938ad80",
+      "commit": "e5a634d0c539b3ef7025e39dfa2dae64294fbafb",
       "solver_source_commit": "15f4929; unchanged src/CMake/contrib in the test-driver commit",
       "manifest": "benchmarks/incremental-parser-real-25.json",
       "selection": "25 files, five per logic, from the prior 20/logic preservation manifest. Require known SMT-LIB status agreeing with a successful recorded Primo result; include SAT/UNSAT and prioritize distinct families. Input and historical result hashes are pinned. Not native incremental files or full-corpus qualification.",
@@ -22,7 +23,24 @@
         "provenance": "Solver 15f4929; current uncommitted test-driver diff. Preliminary local smoke only. Exact binary identity and commands retained in run.json."
       },
       "verification": "make check passes 31 CTest and 147 Python tests (tmp/incremental-real-check.log), including recorded answer/count mismatches and post-answer crashes. make lint and make docs pass; batch script validates. Code-review pass: no blocking issue in the test-driver changes. No C++ changes: previous 109-file tidy/include-cleaner and 31-test ASan evidence remains applicable to identical solver sources; no redundant C++ scan launched. Committed-revision SLURM gate pending.",
-      "command": "sbatch scripts/slurm_incremental_corpus.sbatch with prepared PRIMO_WORKDIR, PRIMO_EXPECTED_REVISION, PRIMO_CORPUS_OUT and the five PRIMO_*_ROOT corpus paths; five tasks, concurrency two, 30-second solver/query and Dolmen budgets, 1000 theory-conflict limit, 127-byte writes"
+      "command": "sbatch scripts/slurm_incremental_corpus.sbatch with prepared PRIMO_WORKDIR, PRIMO_EXPECTED_REVISION=e5a634d, PRIMO_CORPUS_OUT=WORKDIR/results/incremental-real-e5a634d and the five PRIMO_*_ROOT corpus paths; five tasks, concurrency two, 30-second solver/query and Dolmen budgets, 1000 theory-conflict limit, 127-byte writes",
+      "slurm": {
+        "build_job": "142040",
+        "array_job": "142042",
+        "artifact": "results/incremental-real-e5a634d",
+        "prepare_log": "tmp/incremental-real-remote-prepare.log",
+        "preflight_log": "tmp/incremental-real-preflight.log",
+        "revision": "e5a634d",
+        "cadical": "cadical-3.0.0-7b99c07",
+        "manifest_sha256": "18aa6e5a8a413e77474dcf1ef340e79d7f25f915873caeb73860c985f4e9e249",
+        "driver_sha256": "95e9936afdddf427ce6888ef10240817f4af1f01779ebcb49c9702fb299553b1",
+        "validator_sha256": "a3c0449a163b65cf680fef4274f2012fe69d88e4df0de4a66da58f138e638d01",
+        "input_preflight": "25/25 existing remote files hash-match the manifest and have supported command shapes; total 6447240 bytes, maximum 2035752 bytes. No corpus transfer or reference setup required.",
+        "first_attempt_result": {"files_completed": 21, "files_resource_unknown": 1, "files_not_reached": 3, "streamed_queries_passed": 168, "direct_dolmen_models_passed": 117, "wrong_answer": 0, "crash": 0, "timeout": 0, "unexpected_parser_type_error": 0, "invalid_models": 0},
+        "triage": "Four logic shards complete (20 files). QF_UF passes its first file then stops at the ordinary file baseline for NEQ/NEQ033_size4.smt2: stdout unknown, exit 0, stderr theory conflict limit reached. The recorded prior run used 1143 theory conflicts, exceeding this gate's 1000 limit. This is a test resource limit before stdin testing, not a parser/model failure. Add an explicit budget override and retry only QF_UF; retain all first-attempt artifacts.",
+        "local_budget_probe": "timeout 20s build/primo --quiet --stats --max-theory-conflicts=10000 results/incremental-real-e5a634d/QF_UF/case-001/original.smt2; local source-identical solver, stdout unsat, exit 0. Logs tmp/incremental-real-uf-budget-probe.stdout and .stderr. Diagnostic only, not replacement SLURM qualification.",
+        "state": "all first-attempt jobs terminal; UF-only larger-budget retry pending"
+      }
     },
     {
       "id": "2026-09-10-attribute-validation-repair",

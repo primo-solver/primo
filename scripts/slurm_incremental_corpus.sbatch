@@ -19,4 +19,5 @@ python3 scripts/check_incremental_corpus.py \
   --root "${roots[$task]}" --logic "${logics[$task]}" \
   --solver build-slurm-rel/primo --expected-git "${PRIMO_EXPECTED_REVISION:?}" \
   --chunk-bytes 127 --timeout 30 --dolmen-timeout 30 \
+  --max-theory-conflicts "${PRIMO_THEORY_CONFLICT_LIMIT:-1000}" \
   --out "${PRIMO_CORPUS_OUT:?}/${logics[$task]}"

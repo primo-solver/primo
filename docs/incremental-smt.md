@@ -232,6 +232,13 @@ validator output and provenance are retained separately. Missing hashes,
 unsupported command shapes and inconclusive queries fail the gate explicitly.
 The batch wrapper is `scripts/slurm_incremental_corpus.sbatch`; source preparation
 and preflight still use the standard repository helper.
+The theory-conflict budget is explicit (`--max-theory-conflicts`, batch override
+`PRIMO_THEORY_CONFLICT_LIMIT`). Check historical conflict counts before selecting
+it: the first real-file gate's 1,000-conflict budget was below the recorded 1,143
+conflicts of `NEQ/NEQ033_size4.smt2`. Its ordinary file invocation returned
+`unknown` before streaming was exercised; that is incomplete resource-limited
+coverage, not evidence of a parser regression. Preserve the original attempt
+and retry only the affected shard under a separately recorded larger budget.
 
 ### Definition binding invariant
 
