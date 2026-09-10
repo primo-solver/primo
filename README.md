@@ -31,7 +31,9 @@ Start with [current status and qualification](docs/current-status.md),
 [architecture](docs/architecture.md), and [model interpretations](docs/model-interpretation.md).
 The feature branch adds [scoped incremental sessions](docs/incremental-smt.md):
 interactive and file-based `push`/`pop`, repeated checks, and scoped declarations.
-Each query gets a fresh solver; persistent incremental solving remains deferred.
+The default rebuild mode gives each query a fresh solver. The opt-in
+`--incremental-mode=assumptions` retains frontend/SAT/arithmetic preparation for
+QF_LRA, with fresh working theory state per check; qualification is pending.
 Scoped-session correctness and a bounded five-logic preservation sample have
 been checked on SLURM; the session layer has a small measured single-query cost.
 See the linked design page for counts, limitations and qualification evidence.

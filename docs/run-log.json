@@ -3,6 +3,161 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-11-assumptions-lra-development",
+      "date": "2026-09-11",
+      "kind": "incremental-engine-development-and-local-correctness",
+      "evidence_status": "local-preliminary-remote-qualification-pending",
+      "base_commit": "cef6b4d",
+      "candidate": "uncommitted implementation; local binary banner cef6b4d-dirty",
+      "scope": "Opt-in assumption-based QF_LRA with persistent frontend/SAT/preparation, scoped bindings and fresh working theory state; rebuild remains default.",
+      "literature": "MathSAT5 TACAS 2013 sections 4.2-4.3; Bjorner-Fazekas CADE 2023 sections 3.2 and 5; docs/papers/ipasir-up.md. Read before implementing; docs/assumption-incremental-lra.md records structures, invariants, operations, complexity, deviations and proof obligations.",
+      "local_environment": "Development workstation, C++20 Release and ASan Debug, CaDiCaL 3.0.0-7b99c07; unit executables run by ctest with --timeout 120.",
+      "commands": [
+        "make check",
+        "make asan-test",
+        "make lint",
+        "make docs",
+        "make tidy",
+        "make include-cleaner",
+        "per-translation-unit clang-tidy -p build -checks=clang-analyzer-*,misc-include-cleaner on all tracked non-generated .cpp files"
+      ],
+      "local_smoke": [
+        {
+          "kind": "generated",
+          "count": 5,
+          "seed": 202609110,
+          "preprocessing_mode": "auto",
+          "artifact": "tmp/assumptions-generated-smoke",
+          "command": {
+            "kind": "generated",
+            "seed": 202609110,
+            "count": 5,
+            "solver": "build/primo",
+            "solver_arg": [
+              "--quiet",
+              "--incremental-mode=assumptions",
+              "--max-theory-conflicts=10000"
+            ],
+            "ref": "contrib/local/bin/z3",
+            "ref_arg": [],
+            "dolmen": "/home/user/.opam/default/bin/dolmen",
+            "timeout": 15,
+            "dolmen_timeout": 20,
+            "expected_git": "cef6b4d-dirty",
+            "out": "tmp/assumptions-generated-smoke"
+          },
+          "solver_sha256": "57f8636eb143588ff70b4d0ed09ee081e126e72a39b67c1fa9d3af38346b5250",
+          "summary": {
+            "sessions": 5,
+            "pass": 5,
+            "sat_models": 40,
+            "queries": 55,
+            "failures": []
+          },
+          "wrong_answer": 0,
+          "crash": 0,
+          "parser_type_error": 0,
+          "timeout": 0,
+          "unsupported": 0,
+          "reference_disagreement": 0,
+          "independent_validator": "Dolmen direct actual-session SAT models; all reported sat_models passed",
+          "limitations": "Dirty local development snapshot; not exact-commit merge evidence or speed measurements."
+        },
+        {
+          "kind": "native",
+          "count": 2,
+          "seed": 202609110,
+          "preprocessing_mode": "auto",
+          "artifact": "tmp/assumptions-native-smoke",
+          "command": {
+            "kind": "native",
+            "seed": 202609110,
+            "count": 2,
+            "solver": "build/primo",
+            "solver_arg": [
+              "--quiet",
+              "--incremental-mode=assumptions",
+              "--max-theory-conflicts=10000"
+            ],
+            "ref": "contrib/local/bin/z3",
+            "ref_arg": [],
+            "dolmen": "/home/user/.opam/default/bin/dolmen",
+            "timeout": 15,
+            "dolmen_timeout": 20,
+            "expected_git": "cef6b4d-dirty",
+            "out": "tmp/assumptions-native-smoke"
+          },
+          "solver_sha256": "57f8636eb143588ff70b4d0ed09ee081e126e72a39b67c1fa9d3af38346b5250",
+          "summary": {
+            "sessions": 2,
+            "pass": 2,
+            "sat_models": 3,
+            "queries": 10,
+            "failures": []
+          },
+          "wrong_answer": 0,
+          "crash": 0,
+          "parser_type_error": 0,
+          "timeout": 0,
+          "unsupported": 0,
+          "reference_disagreement": 0,
+          "independent_validator": "Dolmen direct actual-session SAT models; all reported sat_models passed",
+          "limitations": "Dirty local development snapshot; not exact-commit merge evidence or speed measurements."
+        },
+        {
+          "kind": "generated",
+          "count": 3,
+          "seed": 202609210,
+          "preprocessing_mode": "off",
+          "artifact": "tmp/assumptions-off-smoke",
+          "command": {
+            "kind": "generated",
+            "seed": 202609210,
+            "count": 3,
+            "solver": "build/primo",
+            "solver_arg": [
+              "--quiet",
+              "--incremental-mode=assumptions",
+              "--preprocessing-mode=off",
+              "--max-theory-conflicts=10000"
+            ],
+            "ref": "contrib/local/bin/z3",
+            "ref_arg": [],
+            "dolmen": "/home/user/.opam/default/bin/dolmen",
+            "timeout": 15,
+            "dolmen_timeout": 20,
+            "expected_git": "cef6b4d-dirty",
+            "out": "tmp/assumptions-off-smoke"
+          },
+          "solver_sha256": "9c2ffc8548891fb3148cd313c295a162bfd96b4004f9e74e65945d891a410be8",
+          "summary": {
+            "sessions": 3,
+            "pass": 3,
+            "sat_models": 24,
+            "queries": 33,
+            "failures": []
+          },
+          "wrong_answer": 0,
+          "crash": 0,
+          "parser_type_error": 0,
+          "timeout": 0,
+          "unsupported": 0,
+          "reference_disagreement": 0,
+          "independent_validator": "Dolmen direct actual-session SAT models; all reported sat_models passed",
+          "limitations": "Dirty local development snapshot; not exact-commit merge evidence or speed measurements."
+        }
+      ],
+      "static_analysis": "Initial multi-file scans overlapped edits and are discarded due to cached inconsistent header sizes. Stable independent per-TU scan completed over all 110 tracked non-generated .cpp files: zero compiler/analyzer errors. Advisory include-cleaner review found only paired self-includes and transitive-provider notices, no non-paired unused includes. Logs: tmp/assumptions-static/summary.json and per-TU logs.",
+      "remaining": "Commit candidate, run 1000 generated plus 1000 native mutations on SLURM with reference/Dolmen checks, replay all ten bounded native prefixes, preserve 25-file default sample, compare two native sessions at 600 seconds, collect/summarize artifacts and audit jobs/processes.",
+      "verification": {
+        "make_check": "pass: 33 C++/CLI tests and 155 Python tests; tmp/assumptions-check-ready.log",
+        "make_asan_test": "pass: all 33 tests, leak detection and strict initialization order; tmp/assumptions-asan-verified.log",
+        "make_lint": "pass: tmp/assumptions-precommit-lint.log",
+        "make_docs": "pass: tmp/assumptions-docs-verified.log",
+        "review": "Whole-tree static/lint/build review plus manual changed ownership, borrow/mutation/use, selector proofs, option boundaries, model projection and harness exit/provenance review: no blocking local code issues. Engine still awaits exact-commit SLURM gates and measurements."
+      }
+    },
+    {
       "id": "2026-09-10-native-incremental-qf-lra-reference-diagnostic",
       "date": "2026-09-10",
       "kind": "small-native-incremental-reference-timing-diagnostic",

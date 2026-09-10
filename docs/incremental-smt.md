@@ -1,5 +1,9 @@
 # Incremental SMT sessions
 
+`--incremental-mode=rebuild` is the default described by the historical baseline
+sections below. The new opt-in QF_LRA `assumptions` mode is described in
+[](assumption-incremental-lra); its fresh qualification is pending.
+
 The subsequent [](lexical-conformance.md) audit found quoted-name identity bugs
 that can change answers. Its repair preserves token categories and canonical
 names in the owned command journal. The qualification below describes the
@@ -161,7 +165,7 @@ are recorded below, separately from future incremental-state reuse.
   formulas or restoring eliminated constraints. Such reuse is **deferred** here;
   the draft is not evidence of current Z3 default behavior.
 
-### Representation and ownership
+### Rebuild baseline: representation and ownership
 
 `smt::SmtSession` owns an ordered journal of parsed context commands and stack
 depths, protocol options, and the latest query outcome. Empty scopes are
@@ -187,7 +191,7 @@ remaining commands. Command responses are typed and printed by the SMT-LIB
 CLI output adapter (`cli::print_response`), avoiding a dependency from the
 SMT-LIB library back into SMT. The CLI flushes responses before reading another command.
 
-### Operations, costs and obligations
+### Rebuild baseline: operations, costs and obligations
 
 - Append: validate immediately against the active signature, then retain the
   command. Never allow a declaration to replace a visible definition.
@@ -228,7 +232,7 @@ induction). Rebuilding on each pop therefore retains no solved context for the
 next query in this pair. It can help workloads with several checks separated
 only by new assertions/declarations; `push` itself merely records a scope.
 
-The current lower layers provide useful pieces, not a persistent query engine:
+In the rebuild baseline, the lower layers provided these pieces:
 `sat::IpasirUpBackend` has `add_clause`, `assume` and repeated `solve`, and
 `BooleanClausifier::assert_formula` can append encodings. However,
 `solve_qf_lra_impl` currently owns its backend, clausifier, prepared arithmetic
@@ -236,7 +240,9 @@ and online propagator as query-local objects. `SmtSession::Implementation::execu
 consumes its frontend into `check_sat_frontend_once`. Reusing any of this state
 requires changing that ownership contract, not merely handling the push command.
 
-An original implementation checklist for a future opt-in append path is:
+The historical checklist for an append-only path was the following; the new
+assumptions engine instead implements logical pop as described in
+[](assumption-incremental-lra):
 
 - Own an engine and stable term/symbol/atom identities for an append-only epoch;
   extend clauses and arithmetic atom registration between completed solves,
@@ -478,3 +484,38 @@ uses `scripts/slurm_incremental_preservation.sbatch` for separate benchmark
 and replay phases, and `scripts/slurm_incremental_profile.sbatch` for diagnostic
 instruction profiling. Both require explicit prepared-workspace and artifact
 paths; neither submits jobs implicitly.
+
+## Opt-in assumptions engine (qualification pending)
+
+`--incremental-mode=assumptions` selects a persistent QF_LRA engine; `rebuild`
+remains the default. `SmtSession` keeps its frontend and an SMT-owned
+`IncrementalEngine` across checks and pops, destroying the engine first at reset.
+Name bindings, definition bindings, declared numeric symbols and side-constraint
+emission trails follow user scopes; historical IDs and term storage survive pop.
+The original command journal and active original assertions remain authoritative.
+
+Auto uses context-independent extended-term/Boolean rewriting, mandatory
+extended-term lowering, and arithmetic equality lowering. Off retains mandatory
+lowering. Basic/Strong, portfolios, splitting, fixed-variable elimination,
+preprocess-only, assertion-dependent preprocessing and custom CaDiCaL options
+are rejected. Unsupported logics are rejected explicitly. The dedicated QF_UFLRA
+engine and the default rebuild pipeline are unchanged.
+
+Nonempty pushed scopes acquire selectors lazily. Roots and lowering side
+constraints are guarded; full Boolean definitions are permanent. Pop asserts
+negated selectors. SAT clauses/learning and prepared arithmetic are retained,
+while each check creates fresh working theory state and reconnects observations.
+There is no compaction until reset. Query counters under `:session.*` expose
+engine/frontend builds, translated assertions, queries, selectors, retained
+terms/atoms/clauses and theory-state resets. Phase times are reported separately.
+The safe rewrite pipeline counter is one for Auto and zero for Off; both use
+mandatory lowering. See [](assumption-incremental-lra) for proof obligations,
+source literature and qualification requirements. No performance claim is made
+until the recorded gates and comparisons complete.
+
+In assumptions mode, parameterized definitions are validated in the persistent
+frontend with internal parameter terms; this avoids replaying the declaration
+prefix into a second frontend. Expansion on application retains the existing
+macro semantics. `:session.clauses-added` counts submitted clauses; the separate
+`:session.retained-active-clauses` and `:session.retained-redundant-clauses` report
+CaDiCaL's active clause counts, excluding clauses satisfied at root.

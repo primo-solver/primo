@@ -2,8 +2,10 @@
 
 #include <cstddef>
 #include <memory>
+#include <optional>
 #include <span>
 #include <unordered_map>
+#include <vector>
 
 #include "core/ids.hpp"
 #include "core/model.hpp"
@@ -23,6 +25,7 @@ std::shared_ptr<const core::Model> build_typed_model(
     std::span<const TheoryModelAssignment> assignments,
     const std::unordered_map<core::TermId, util::Rational>& numeric_values,
     const ModelConversionChain& conversions, std::size_t* completed_integers = nullptr,
-    util::Statistics* statistics = nullptr);
+    util::Statistics* statistics = nullptr,
+    std::optional<std::vector<core::SymbolId>> visible_symbols = std::nullopt);
 
 }  // namespace primo::smt

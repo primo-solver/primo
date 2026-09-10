@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <functional>
+#include <optional>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -55,7 +56,9 @@ struct ModelInterpretation {
 // Construction checks typing and tuple uniqueness; reads never complete values.
 class Model {
  public:
-  Model(const SymbolTable& symbols, std::vector<ModelInterpretation> interpretations);
+  Model(const SymbolTable& symbols, std::vector<ModelInterpretation> interpretations,
+        std::optional<std::vector<SymbolId>> visible_symbols = std::nullopt);
+  const std::vector<SymbolId>& visible_symbols() const { return visible_symbols_; }
   const std::vector<Sort>& sorts() const { return sorts_; }
   const std::vector<Symbol>& symbols() const { return symbols_; }
   const std::vector<ModelInterpretation>& interpretations() const { return interpretations_; }
@@ -65,6 +68,7 @@ class Model {
   void require_value(const ModelValue& value, SortId expected) const;
   std::vector<Sort> sorts_;
   std::vector<Symbol> symbols_;
+  std::vector<SymbolId> visible_symbols_;
   std::vector<ModelInterpretation> interpretations_;
   std::unordered_map<SymbolId, std::size_t> by_symbol_;
   std::vector<std::unordered_map<std::vector<ModelValue>, ModelValue, ModelTupleHash>> tables_;

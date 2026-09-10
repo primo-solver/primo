@@ -26,7 +26,7 @@ class TermBuilder;
 // boundary: clients receive only TermIds owned by terms().
 class Frontend {
  public:
-  Frontend();
+  explicit Frontend(bool validate_parameterized_definitions = false);
   ~Frontend();
 
   Frontend(const Frontend&) = delete;
@@ -47,6 +47,8 @@ class Frontend {
   std::size_t nullary_definition_eager_compiles() const;
   std::size_t nullary_definition_side_assertions() const;
   core::TermId fresh_internal_constant(core::SortId sort, std::string_view prefix);
+  void push_scope();
+  void pop_scope();
 
  private:
   friend class TermBuilder;

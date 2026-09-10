@@ -24,6 +24,8 @@ struct BackendStatistics {
   std::size_t conflicts = 0;
   std::size_t decisions = 0;
   std::size_t propagations = 0;
+  std::size_t active_irredundant_clauses = 0;
+  std::size_t active_redundant_clauses = 0;
 };
 
 struct IpasirUpCapabilities {
@@ -79,6 +81,12 @@ class IpasirUpBackend {
   virtual void connect_external_propagator(ExternalPropagator* propagator) = 0;
   virtual void disconnect_external_propagator() = 0;
   virtual void add_observed_var(int var) = 0;
+  // Between completed queries only. The previous propagator must remain alive
+  // through this call so disconnection can finish its reason lifecycle.
+  // Re-observation includes permanent root assignments; see the backend tests
+  // and docs/assumption-incremental-lra.md.
+  void reconnect_external_propagator(ExternalPropagator& propagator,
+                                     const std::vector<int>& observed_variables);
   virtual void connect_terminator(Terminator* terminator) = 0;
   virtual void disconnect_terminator() = 0;
 };

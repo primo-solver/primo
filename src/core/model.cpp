@@ -2,8 +2,10 @@
 
 #include <cstddef>
 #include <functional>
+#include <optional>
 #include <span>
 #include <string>
+#include <unordered_set>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -52,7 +54,8 @@ void Model::require_value(const ModelValue& value, SortId expected) const {
   }
 }
 
-Model::Model(const SymbolTable& symbols, std::vector<ModelInterpretation> interpretations)
+Model::Model(const SymbolTable& symbols, std::vector<ModelInterpretation> interpretations,
+             std::optional<std::vector<SymbolId>> visible_symbols)
     : sorts_(symbols.sorts()),
       symbols_(symbols.symbols()),
       interpretations_(std::move(interpretations)),
@@ -82,8 +85,20 @@ Model::Model(const SymbolTable& symbols, std::vector<ModelInterpretation> interp
       }
     }
   }
-  for (const auto& symbol : symbols_) {
-    if (!symbol.internal && !by_symbol_.contains(symbol.id)) {
+  if (visible_symbols) {
+    visible_symbols_ = std::move(*visible_symbols);
+  } else {
+    for (const auto& symbol : symbols_) {
+      if (!symbol.internal) visible_symbols_.push_back(symbol.id);
+    }
+  }
+  std::unordered_set<SymbolId> seen_visible;
+  for (const SymbolId id : visible_symbols_) {
+    if (id >= symbols_.size() || !seen_visible.insert(id).second)
+      throw ModelError("invalid or duplicate visible symbol");
+    const auto& symbol = symbols_[id];
+    if (symbol.internal) throw ModelError("internal symbol cannot be visible");
+    if (!by_symbol_.contains(symbol.id)) {
       throw ModelError("missing interpretation for " + symbol.name);
     }
   }

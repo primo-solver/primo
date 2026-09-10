@@ -523,3 +523,15 @@ payload sharing, cancellation precedence, conditional selection, statistics,
 pristine-input fallback, and production dispatch to each supported solver
 family. Existing preprocessing and solver suites cover the migrated control
 flow with their prior correctness and adaptive-pass assertions.
+
+## Incremental execution contract
+
+`Tactic` has an `IncrementalSafety` classification, defaulting to `Unclassified`.
+A `TacticContext` requiring incremental safety rejects unclassified execution.
+Audited Boolean normalization, extended-term simplification and arithmetic
+normalization are context independent; extended-term lowering is a conservative
+extension whose returned side constraints must share the assertion's guard.
+The assumptions session executes these leaves individually. General composition
+and whole-goal tactics remain unclassified; existing rebuild execution is
+unrestricted. Equation elimination and substitution replay/restoration are
+explicitly deferred, as described in [](assumption-incremental-lra).

@@ -51,6 +51,21 @@ struct Fixture {
   primo::core::TermId p_term() { return terms.mk_constant(p); }
 };
 
+void incremental_context_rejects_unclassified_tactics() {
+  Fixture fixture;
+  fixture.context.require_incremental_safety();
+  const auto input = primo::smt::AnyOf::single(primo::smt::Goal({fixture.p_term()}));
+  bool rejected = false;
+  try {
+    static_cast<void>(primo::smt::make_propagate_values()(fixture.context, input));
+  } catch (const primo::smt::TacticError&) {
+    rejected = true;
+  }
+  check(rejected);
+  const auto output = primo::smt::make_normalize_boolean({})(fixture.context, input);
+  check(output == input);
+}
+
 std::vector<primo::smt::TheoryModelAssignment> only_boolean_assignments(
     const primo::smt::ModelConversionChain& conversions) {
   check(conversions.size() == 1);
@@ -1240,6 +1255,7 @@ void session_portfolio_uses_typed_reasons_and_isolated_sequential_arms() {
 }  // namespace
 
 int main() {
+  incremental_context_rejects_unclassified_tactics();
   goal_truth_is_derived_from_assertions();
   reconstruction_records_are_goal_local_immutable_values();
   goal_updates_share_untouched_large_payloads();

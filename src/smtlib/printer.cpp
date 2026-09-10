@@ -51,10 +51,12 @@ std::string print_model(const core::Model& model) {
   std::ostringstream out;
   out << "(model\n";
   std::unordered_set<std::string> names;
-  for (const auto& symbol : model.symbols()) names.insert(symbol.name);
+  std::unordered_set<core::SymbolId> visible(model.visible_symbols().begin(),
+                                             model.visible_symbols().end());
+  for (const auto id : model.visible_symbols()) names.insert(model.symbols().at(id).name);
   std::vector<const core::ModelInterpretation*> interpretations;
   for (const auto& interpretation : model.interpretations())
-    interpretations.push_back(&interpretation);
+    if (visible.contains(interpretation.symbol)) interpretations.push_back(&interpretation);
   std::ranges::sort(interpretations, {},
                     [](const auto* interpretation) { return interpretation->symbol; });
   for (const auto* interpretation : interpretations) {

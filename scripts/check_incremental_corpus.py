@@ -163,9 +163,10 @@ def main():
             (directory / "original.smt2").write_bytes(data)
             adapted, answers = scoped_session(text, entry["expected"], args.logic)
             # File-path solve is a separate baseline, with exit checked before answer.
-            status, code, stdout, stderr, _ = run_command(
+            status, code, stdout, stderr, seconds = run_command(
                 [args.solver, *args.solver_arg, str(path)], args.timeout
             )
+            row["file_seconds"] = seconds
             (directory / "file.stdout").write_text(stdout)
             (directory / "file.stderr").write_text(stderr)
             if status != "done" or code != 0 or stdout.strip() != entry["expected"]:

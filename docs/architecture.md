@@ -742,13 +742,21 @@ Implemented now:
 
 ### Scoped SMT-LIB command execution
 
-`smt::SmtSession` owns an ordered journal and a compressed scope depth. Commands
+In default rebuild mode, `smt::SmtSession` owns an ordered journal and a compressed
+scope depth. Commands
 are validated immediately by a translation-only frontend; each check transfers
 that frontend to `check_sat_frontend_once`. Further work replays surviving
 commands into a fresh generation. The CLI reads complete commands without EOF
 and prints typed responses through `cli::print_response`, keeping dependencies
 directed from CLI to SMT and from SMT to SMT-LIB/core. See [](incremental-smt.md)
 for costs, protocol restrictions, ownership, and revision-scoped qualification.
+
+The opt-in assumptions mode instead retains a `Frontend` and an SMT-owned
+`IncrementalEngine` borrowing its term manager. The engine is destroyed first.
+Scope frames retain assertion boundaries and selector identities; symbol and
+definition bindings are trailed while storage remains append-only. SAT state
+and prepared arithmetic persist, with a fresh query-local working tableau.
+See [](assumption-incremental-lra) for the invariants and qualification status.
 
 Not implemented yet:
 

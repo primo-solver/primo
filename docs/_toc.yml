@@ -11,6 +11,7 @@ parts:
       - file: incremental-smt
         sections:
           - file: lexical-conformance
+          - file: assumption-incremental-lra
       - file: model-interpretation
       - file: tactics
         sections:

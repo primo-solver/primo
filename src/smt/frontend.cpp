@@ -115,6 +115,8 @@ class TermBuilder {
 struct Frontend::Implementation {
  public:
   friend class TermBuilder;
+  explicit Implementation(bool validate_parameterized_definitions)
+      : validate_parameterized_definitions_(validate_parameterized_definitions) {}
 
   core::TermId build_term(const smtlib::SExpr& expr) {
     TermBuilder builder(*this);
@@ -169,6 +171,7 @@ struct Frontend::Implementation {
           }
           for (const core::TermId side_assertion : side_assertions_) {
             if (emitted_side_assertions_.insert(side_assertion).second) {
+              emitted_side_assertion_trail_.push_back(side_assertion);
               assertions.push_back(side_assertion);
             }
           }
@@ -229,6 +232,30 @@ struct Frontend::Implementation {
   }
   core::TermId fresh_internal_constant(core::SortId sort, std::string_view prefix) {
     return fresh_auxiliary_constant(sort, prefix);
+  }
+
+  void push_scope() {
+    scopes_.push_back({definition_trail_.size(), emitted_side_assertion_trail_.size(),
+                       declared_real_constant_symbols_.size(),
+                       declared_int_constant_symbols_.size()});
+    symbols_.push_scope();
+  }
+
+  void pop_scope() {
+    if (scopes_.empty()) throw std::invalid_argument("frontend scope underflow");
+    const Scope scope = scopes_.back();
+    scopes_.pop_back();
+    while (definition_trail_.size() > scope.definitions) {
+      definitions_.erase(definition_trail_.back());
+      definition_trail_.pop_back();
+    }
+    while (emitted_side_assertion_trail_.size() > scope.side_assertions) {
+      emitted_side_assertions_.erase(emitted_side_assertion_trail_.back());
+      emitted_side_assertion_trail_.pop_back();
+    }
+    declared_real_constant_symbols_.resize(scope.real_symbols);
+    declared_int_constant_symbols_.resize(scope.int_symbols);
+    symbols_.pop_scope();
   }
 
  private:
@@ -410,8 +437,31 @@ struct Frontend::Implementation {
       nullary_definition_side_assertions_ += definition.compiled_side_assertions.size();
     } else {
       definition.body = std::make_unique<smtlib::SExpr>(command.body);
+      if (validate_parameterized_definitions_) {
+        // Validate in the current declaration environment using fresh internal
+        // parameters. No second frontend or declaration-prefix replay is needed.
+        std::unordered_map<std::string, core::TermId> parameters;
+        for (std::size_t i = 0; i < definition.parameters.size(); ++i)
+          parameters.emplace(definition.parameters[i],
+                             fresh_auxiliary_constant(definition.parameter_sorts[i], "parameter"));
+        let_scopes_.push_back(std::move(parameters));
+        clear_side_assertion_capture();
+        core::TermId body;
+        try {
+          body = build_term(command.body);
+        } catch (...) {
+          let_scopes_.pop_back();
+          clear_side_assertion_capture();
+          throw;
+        }
+        let_scopes_.pop_back();
+        clear_side_assertion_capture();
+        if (terms_.get(body).sort != definition.result_sort)
+          throw UnsupportedInput("define-fun result sort mismatch: " + command.name);
+      }
     }
     definitions_.emplace(command.name, std::move(definition));
+    definition_trail_.push_back(command.name);
   }
 
   // Definition instantiation's actual body-building (which used to be
@@ -441,6 +491,15 @@ struct Frontend::Implementation {
   std::vector<core::TermId> side_assertions_;
   std::unordered_set<core::TermId> side_assertion_ids_;
   std::unordered_set<core::TermId> emitted_side_assertions_;
+  std::vector<core::TermId> emitted_side_assertion_trail_;
+  std::vector<std::string> definition_trail_;
+  struct Scope {
+    std::size_t definitions;
+    std::size_t side_assertions;
+    std::size_t real_symbols;
+    std::size_t int_symbols;
+  };
+  std::vector<Scope> scopes_;
   std::vector<core::SymbolId> declared_real_constant_symbols_;
   std::vector<core::SymbolId> declared_int_constant_symbols_;
   std::optional<std::string> logic_;
@@ -451,6 +510,7 @@ struct Frontend::Implementation {
   bool saw_check_sat_ = false;
   bool requested_model_ = false;
   bool produce_models_ = false;
+  bool validate_parameterized_definitions_ = false;
 };
 
 core::TermId TermBuilder::run(const smtlib::SExpr& root) {
@@ -1006,7 +1066,8 @@ void TermBuilder::dispatch_instantiate_definition(const std::string& name,
            });
 }
 
-Frontend::Frontend() : implementation_(std::make_unique<Implementation>()) {}
+Frontend::Frontend(bool validate_parameterized_definitions)
+    : implementation_(std::make_unique<Implementation>(validate_parameterized_definitions)) {}
 Frontend::~Frontend() = default;
 
 void Frontend::process_command(const smtlib::Command& command,
@@ -1052,5 +1113,8 @@ std::size_t Frontend::nullary_definition_side_assertions() const {
 core::TermId Frontend::fresh_internal_constant(core::SortId sort, std::string_view prefix) {
   return implementation_->fresh_internal_constant(sort, prefix);
 }
+
+void Frontend::push_scope() { implementation_->push_scope(); }
+void Frontend::pop_scope() { implementation_->pop_scope(); }
 
 }  // namespace primo::smt

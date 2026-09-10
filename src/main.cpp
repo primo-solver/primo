@@ -237,6 +237,7 @@ int run_main(int argc, char** argv) {
   bool no_auto_basic_multi = false;
   bool no_auto_basic_multi_polarity = false;
   std::string preprocessing_mode = "auto";
+  std::string incremental_mode = "rebuild";
   std::string auto_preprocess_selector = "legacy";
   std::string boolean_implies_rewrite = "off";
   std::string qf_uf_profile = "default";
@@ -541,6 +542,9 @@ int run_main(int argc, char** argv) {
   app.add_option("--preprocessing-mode", preprocessing_mode,
                  "Preprocessing preset for all supported logics: off, basic, strong, or auto")
       ->check(CLI::IsMember({"off", "basic", "strong", "auto"}));
+  app.add_option("--incremental-mode", incremental_mode,
+                 "Session engine: rebuild (default), or opt-in QF_LRA assumptions")
+      ->check(CLI::IsMember({"rebuild", "assumptions"}));
   app.add_option("--auto-preprocess-selector", auto_preprocess_selector,
                  "Auto preprocessing selector: legacy assertion-count heuristics or "
                  "representation-stable structural analysis")
@@ -774,11 +778,11 @@ int run_main(int argc, char** argv) {
         starts_with(name, "--qf-uflia-") || starts_with(name, "--no-qf-uflia-")) {
       return kGroupLia;
     }
-    if (name == "--preprocessing-mode" || name == "--arithmetic-atom-canonicalization" ||
-        name == "--auto-preprocess-selector" || name == "--boolean-flatten-threshold" ||
-        name == "--boolean-flatten-post-threshold" || name == "--boolean-implies-rewrite" ||
-        starts_with(name, "--auto-preprocess-") || starts_with(name, "--preprocessing-") ||
-        starts_with(name, "--preprocess-passes") ||
+    if (name == "--incremental-mode" || name == "--preprocessing-mode" ||
+        name == "--arithmetic-atom-canonicalization" || name == "--auto-preprocess-selector" ||
+        name == "--boolean-flatten-threshold" || name == "--boolean-flatten-post-threshold" ||
+        name == "--boolean-implies-rewrite" || starts_with(name, "--auto-preprocess-") ||
+        starts_with(name, "--preprocessing-") || starts_with(name, "--preprocess-passes") ||
         starts_with(name, "--extended-simplification") ||
         starts_with(name, "--no-extended-simplification") ||
         starts_with(name, "--cite-simplification") ||
@@ -860,6 +864,9 @@ int run_main(int argc, char** argv) {
   } else {
     solver_options.preprocessing_mode = primo::smt::PreprocessingMode::Basic;
   }
+  solver_options.incremental_mode = incremental_mode == "assumptions"
+                                        ? primo::smt::IncrementalMode::Assumptions
+                                        : primo::smt::IncrementalMode::Rebuild;
   solver_options.auto_preprocess_selector = auto_preprocess_selector == "structural"
                                                 ? primo::smt::AutoPreprocessSelectorMode::Structural
                                                 : primo::smt::AutoPreprocessSelectorMode::Legacy;

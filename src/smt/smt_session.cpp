@@ -17,11 +17,15 @@
 #include "core/term_manager.hpp"
 #include "smt/check_sat.hpp"
 #include "smt/frontend.hpp"
+#include "smt/incremental_engine.hpp"
+#include "smt/preprocessing_tactics.hpp"
 #include "smt/session_portfolio.hpp"
 #include "smt/solver_session.hpp"
+#include "smt/tactic.hpp"
 #include "smtlib/ast.hpp"
 #include "smtlib/commands.hpp"
 #include "smtlib/parser.hpp"
+#include "smtlib/printer.hpp"
 #include "util/statistics.hpp"
 
 namespace primo::smt {
@@ -54,6 +58,12 @@ struct SmtSession::Implementation final : SessionExecutor {
   bool print_success = false;
   bool stopped = false;
   std::unique_ptr<Frontend> frontend;
+  std::unique_ptr<IncrementalEngine> engine;
+  std::vector<std::size_t> assertion_scopes;
+  std::size_t engine_builds = 0;
+  std::size_t translated_assertions = 0;
+  util::Statistics preprocessing_statistics;
+  util::Statistics::Value preprocessing_us = 0;
   std::vector<core::TermId> assertions;
   std::shared_ptr<const CheckSatOutcome> last;
   util::Statistics::Value parse_us = 0;
@@ -64,6 +74,8 @@ struct SmtSession::Implementation final : SessionExecutor {
   }
 
   void discard_translation() {
+    engine.reset();
+    assertion_scopes.clear();
     assertions.clear();
     frontend.reset();
   }
@@ -71,14 +83,94 @@ struct SmtSession::Implementation final : SessionExecutor {
   void ensure_frontend() {
     if (frontend) return;
     const auto start = Clock::now();
-    frontend = std::make_unique<Frontend>();
+    frontend = std::make_unique<Frontend>(assumptions());
     if (logic) frontend->process_command(*logic, assertions);
     for (const auto& entry : journal) frontend->process_command(entry.command, assertions);
+    if (assumptions()) {
+      engine = make_incremental_lra_engine(frontend->terms(), options);
+      ++engine_builds;
+    }
     ++rebuilds;
     frontend_us += micros(start);
   }
 
+  bool assumptions() const { return options.incremental_mode == IncrementalMode::Assumptions; }
+
+  void validate_incremental_options() const {
+    if (options.preprocessing_mode != PreprocessingMode::Auto &&
+        options.preprocessing_mode != PreprocessingMode::Off)
+      throw std::invalid_argument("assumptions mode requires preprocessing-mode=auto or off");
+    if (options.qf_uf_portfolio != QfUfPortfolioMode::Off ||
+        options.experimental_split_bools != 0 || options.lra_fixed_elimination ||
+        options.preprocess_only || !options.cadical_options.empty())
+      throw std::invalid_argument(
+          "assumptions mode rejects portfolios, splitting, fixed-variable "
+          "elimination, preprocess-only and custom CaDiCaL options");
+    if (options.monotone_elimination || options.ground_unit_substitution ||
+        options.guarded_ground_unit_substitution || options.ground_congruence)
+      throw std::invalid_argument("assumptions mode rejects assertion-dependent preprocessing");
+  }
+
+  void append_incremental(std::size_t first) {
+    if (first == assertions.size()) return;
+    const auto start = Clock::now();
+    TacticContext context(frontend->terms(), preprocessing_statistics, {}, false,
+                          [this](core::SortId sort, std::string_view prefix) {
+                            return frontend->fresh_internal_constant(sort, prefix);
+                          });
+    context.require_incremental_safety();
+    auto goal = AnyOf::single(Goal(std::vector<core::TermId>(
+        assertions.begin() + static_cast<std::ptrdiff_t>(first), assertions.end())));
+    if (options.preprocessing_mode == PreprocessingMode::Auto) {
+      if (options.extended_simplification)
+        goal = make_simplify_extended_terms({options.extended_simplification_rounds,
+                                             options.ite_equality_distribution})(context, goal);
+      goal = make_normalize_boolean({})(context, goal);
+    }
+    goal = make_lower_extended_terms()(context, goal);
+    goal = make_normalize_arithmetic({.canonicalize = options.arithmetic_atom_canonicalization,
+                                      .lower_real_equalities = true})(context, goal);
+    if (goal.size() != 1) throw TacticError("incremental pipeline must preserve one conjunction");
+    preprocessing_us += micros(start);
+    engine->append(goal.alternatives().front().assertions());
+  }
+
+  CheckSatOutcome check_incremental(CheckSatOptions selected) {
+    ensure_frontend();
+    const auto check_start = Clock::now();
+    selected.produce_model = selected.produce_model || selected.check_model;
+    auto outcome = engine->check(frontend->declared_real_constant_terms(), selected);
+    if (outcome.typed_model) {
+      const auto start = Clock::now();
+      if (selected.check_model) {
+        core::ModelEvaluator evaluator(frontend->terms(), *outcome.typed_model);
+        for (const auto root : assertions) {
+          if (evaluator.evaluate(root) !=
+              core::ModelValue{frontend->terms().symbols().bool_sort(), true})
+            throw core::ModelError("active incremental assertion is false");
+        }
+      }
+      outcome.model = smtlib::print_model(*outcome.typed_model);
+      outcome.statistics.set(":time.model.check-and-print-us", micros(start));
+    }
+    outcome.statistics.set(":session.engine-builds", engine_builds);
+    outcome.statistics.set(":session.translated-assertions", translated_assertions);
+    outcome.statistics.set(":session.incremental-assumptions", 1);
+    outcome.statistics.set(":session.safe-rewrite-pipeline",
+                           options.preprocessing_mode == PreprocessingMode::Auto ? 1 : 0);
+    outcome.statistics.set(":session.pipeline.lower-extended-terms", 1);
+    outcome.statistics.set(":session.pipeline.lower-real-equalities", 1);
+    for (const auto& key : preprocessing_statistics.keys())
+      outcome.statistics.set(key, preprocessing_statistics.get(key));
+    preprocessing_statistics = {};
+    outcome.statistics.set(":time.preprocessing-us", preprocessing_us);
+    preprocessing_us = 0;
+    outcome.statistics.set(":time.total-us", micros(check_start));
+    return outcome;
+  }
+
   void validate_parameterized_definition(const Command& command) const {
+    if (assumptions()) return;  // Validated directly by the persistent frontend.
     if (command.kind != Kind::DefineFun || command.parameters.empty()) return;
     // Existing macros expand on use. Validate in an isolated generation so
     // unused/forward-referencing bodies fail now without perturbing query IDs.
@@ -157,6 +249,11 @@ struct SmtSession::Implementation final : SessionExecutor {
           command.logic != "QF_LIA" && command.logic != "QF_UFLIA") {
         return response(ResponseKind::Unsupported, "unsupported logic: " + command.logic);
       }
+      if (assumptions()) {
+        validate_incremental_options();
+        if (command.logic != "QF_LRA")
+          return response(ResponseKind::Unsupported, "assumptions mode supports only QF_LRA");
+      }
       discard_translation();
       logic = std::move(command);
       return response(ResponseKind::Success);
@@ -174,13 +271,29 @@ struct SmtSession::Implementation final : SessionExecutor {
         if (command.count > std::numeric_limits<std::size_t>::max() - depth) {
           throw std::invalid_argument("scope depth overflow");
         }
+        if (assumptions()) {
+          ensure_frontend();
+          for (std::size_t i = 0; i < command.count; ++i) {
+            assertion_scopes.push_back(assertions.size());
+            frontend->push_scope();
+            engine->push();
+          }
+        }
         depth += command.count;
       } else {
         if (command.count > depth)
           throw std::invalid_argument("cannot pop the base assertion level");
+        if (assumptions()) {
+          for (std::size_t i = 0; i < command.count; ++i) {
+            engine->pop();
+            frontend->pop_scope();
+            assertions.resize(assertion_scopes.back());
+            assertion_scopes.pop_back();
+          }
+        }
         depth -= command.count;
         while (!journal.empty() && journal.back().depth > depth) journal.pop_back();
-        if (command.count != 0) discard_translation();
+        if (command.count != 0 && !assumptions()) discard_translation();
       }
       last.reset();
       return response(ResponseKind::Success);
@@ -196,7 +309,8 @@ struct SmtSession::Implementation final : SessionExecutor {
       last.reset();
       CheckSatOptions selected = options;
       selected.produce_model = produce_models || selected.produce_model;
-      auto outcome = selected.qf_uf_portfolio == QfUfPortfolioMode::Off
+      auto outcome = assumptions() ? check_incremental(selected)
+                     : selected.qf_uf_portfolio == QfUfPortfolioMode::Off
                          ? execute({}, selected)
                          : execute_qf_uf_session_portfolio({}, selected, *this);
       ++queries;
@@ -214,7 +328,14 @@ struct SmtSession::Implementation final : SessionExecutor {
     ensure_frontend();
     const auto start = Clock::now();
     validate_parameterized_definition(command);
+    if (assumptions() && command.kind == Kind::DeclareSort)
+      throw std::invalid_argument("assumptions mode rejects uninterpreted sorts");
+    const auto first = assertions.size();
     frontend->process_command(command, assertions);
+    if (assumptions()) {
+      if (command.kind == Kind::Assert) ++translated_assertions;
+      append_incremental(first);
+    }
     frontend_us += micros(start);
     journal.push_back({depth, std::move(command)});
     last.reset();

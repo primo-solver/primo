@@ -103,6 +103,8 @@ class TacticContext {
   bool deadline_reached() const;
   bool interrupted() const;
   bool produce_model() const { return produce_model_; }
+  void require_incremental_safety() { incremental_ = true; }
+  bool incremental() const { return incremental_; }
   std::optional<Clock::time_point> deadline() const { return deadline_; }
   bool can_create_fresh_constants() const { return static_cast<bool>(fresh_constant_); }
   // Throws TacticError when the executing session did not supply a factory,
@@ -130,6 +132,7 @@ class TacticContext {
   util::Statistics& statistics_;
   std::function<bool()> cancelled_;
   bool produce_model_ = false;
+  bool incremental_ = false;
   std::optional<Clock::time_point> deadline_;
   FreshConstantFactory fresh_constant_;
 };
@@ -137,11 +140,14 @@ class TacticContext {
 GoalTruth truth(const Goal& goal, const TacticContext& context);
 GoalTruth truth(const AnyOf& goals, const TacticContext& context);
 
+enum class IncrementalSafety { Unclassified, ContextIndependent, ConservativeExtension };
+
 class Tactic {
  public:
   using Function = std::function<AnyOf(TacticContext&, const AnyOf&)>;
 
-  Tactic(std::string name, Function function);
+  Tactic(std::string name, Function function,
+         IncrementalSafety safety = IncrementalSafety::Unclassified);
 
   AnyOf operator()(TacticContext& context, const AnyOf& input) const;
   const std::string& name() const;
@@ -162,7 +168,8 @@ using RepeatPredicate =
 using RepeatEquivalence = std::function<bool(const TacticContext&, const AnyOf&, const AnyOf&)>;
 using RepeatObserver = std::function<void(TacticContext&, const AnyOf&, const AnyOf&, std::size_t)>;
 
-Tactic make_goal_tactic(std::string name, GoalTactic tactic);
+Tactic make_goal_tactic(std::string name, GoalTactic tactic,
+                        IncrementalSafety safety = IncrementalSafety::Unclassified);
 Tactic skip();
 Tactic sequence(std::string name, std::vector<Tactic> tactics);
 Tactic conditional(std::string name, GoalPredicate predicate, Tactic if_true, Tactic if_false);

@@ -290,6 +290,12 @@ add_test(
     -P ${CMAKE_SOURCE_DIR}/tests/cmake/check_frontend_type_error_cli.cmake
 )
 
+add_test(NAME primo_assumptions_cli
+  COMMAND ${CMAKE_COMMAND}
+    -DPRIMO=$<TARGET_FILE:primo>
+    -DINPUT=${CMAKE_SOURCE_DIR}/tests/smtlib/assumption_scopes.smt2
+    -P ${CMAKE_SOURCE_DIR}/tests/cmake/check_assumptions_cli.cmake)
+
 # The cancellation watchdog is process behaviour, so it is checked by driving
 # the binary with a real signal. bash and python3 are only needed here.
 find_program(PRIMO_BASH_EXECUTABLE bash)

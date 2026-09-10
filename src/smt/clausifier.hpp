@@ -38,6 +38,8 @@ class BooleanClausifier {
   BooleanClausifier& operator=(const BooleanClausifier&) = delete;
 
   void assert_formula(core::TermId term);
+  // Full unconditional definitions, with only the root guarded by selector.
+  void assert_guarded_formula(core::TermId term, sat::Lit selector);
   const TheoryAtom& ensure_theory_atom(core::TermId term);
   const TheoryAtom& ensure_generated_theory_atom_with_lit(core::TermId term, sat::Lit lit);
   const std::vector<TheoryAtom>& theory_atoms() const;

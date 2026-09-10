@@ -28,6 +28,133 @@ void expect(SmtSession& session, CheckSatResult result) {
   assert(response.outcome->result == result);
 }
 
+void assumption_mode_scopes_and_reuse() {
+  for (const auto mode :
+       {primo::smt::PreprocessingMode::Off, primo::smt::PreprocessingMode::Auto}) {
+    primo::smt::CheckSatOptions options;
+    options.incremental_mode = primo::smt::IncrementalMode::Assumptions;
+    options.preprocessing_mode = mode;
+    options.check_model = true;
+    SmtSession session(options);
+    accept(session, "(set-option :produce-models true)");
+    accept(session, "(set-logic QF_LRA)");
+    accept(session, "(declare-const x Real)");
+    accept(session, "(declare-const b Bool)");
+    accept(session, "(define-fun f ((v Real)) Real (+ x v))");
+    accept(session, "(define-fun d () Real (ite b (f 1) (f 2)))");
+    accept(session, "(assert (>= x 0))");
+    expect(session, CheckSatResult::Sat);
+    const auto saved = session.execute("(get-model)").outcome;
+    accept(session, "(push 2)");
+    accept(session, "(assert (< x 0))");
+    expect(session, CheckSatResult::Unsat);
+    accept(session, "(pop 1)");
+    expect(session, CheckSatResult::Sat);
+    accept(session, "(declare-const y Real)");
+    accept(session, "(assert (= y d))");
+    accept(session, "(assert b)");
+    expect(session, CheckSatResult::Sat);
+    const auto scoped = session.execute("(get-model)").outcome;
+    accept(session, "(assert (<= y x))");
+    expect(session, CheckSatResult::Unsat);
+    accept(session, "(pop 1)");
+    accept(session, "(declare-const y Bool)");
+    accept(session, "(assert y)");
+    accept(session, "(push 1)");
+    accept(session, "(assert (> d x))");
+    expect(session, CheckSatResult::Sat);
+    accept(session, "(pop 1)");
+    accept(session, "(assert (<= d x))");
+    expect(session, CheckSatResult::Unsat);
+    const auto last = session.execute("(check-sat)").outcome;
+    assert(last->statistics.get(":session.frontend-builds") == 1);
+    assert(last->statistics.get(":session.engine-builds") == 1);
+    assert(last->statistics.get(":session.retired-selectors") == 3);
+    assert(last->statistics.get(":session.active-selectors") == 0);
+    assert(last->statistics.get(":session.translated-assertions") == 8);
+    accept(session, "(reset)");
+    assert(saved->model.find("y") == std::string::npos);
+    assert(scoped->model.find("y () Real") != std::string::npos);
+  }
+}
+
+void assumption_mode_cancellation_and_options() {
+  bool cancelled = true;
+  primo::smt::CheckSatOptions options;
+  options.incremental_mode = primo::smt::IncrementalMode::Assumptions;
+  options.cancelled = [&cancelled] { return cancelled; };
+  SmtSession session(options);
+  accept(session, "(set-logic QF_LRA)");
+  accept(session, "(declare-const x Real)");
+  accept(session, "(assert (> x 1))");
+  expect(session, CheckSatResult::Unknown);
+  cancelled = false;
+  expect(session, CheckSatResult::Sat);
+  accept(session, "(push 1)");
+  accept(session, "(assert (< x 1))");
+  expect(session, CheckSatResult::Unsat);
+  accept(session, "(pop 1)");
+  expect(session, CheckSatResult::Sat);
+  accept(session, "(reset-assertions)");
+  accept(session, "(declare-const x Bool)");
+  accept(session, "(assert x)");
+  expect(session, CheckSatResult::Sat);
+  assert(session.execute("(pop 1)").kind == ResponseKind::Error);
+  for (const auto mode :
+       {primo::smt::PreprocessingMode::Basic, primo::smt::PreprocessingMode::Strong}) {
+    options.preprocessing_mode = mode;
+    SmtSession rejected(options);
+    assert(rejected.execute("(set-logic QF_LRA)").kind == ResponseKind::Error);
+  }
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Auto;
+  for (const std::string invalid :
+       {"(define-fun f ((v Real)) Bool (+ v 1))", "(define-fun f ((v Real)) Real (+ v future))"}) {
+    SmtSession definitions(options);
+    accept(definitions, "(set-logic QF_LRA)");
+    assert(definitions.execute(invalid).kind == ResponseKind::Error);
+  }
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Auto;
+  SmtSession rejected(options);
+  assert(rejected.execute("(set-logic QF_UFLRA)").kind == ResponseKind::Unsupported);
+}
+
+void assumption_scope_storage_growth_and_budget() {
+  primo::smt::CheckSatOptions options;
+  options.incremental_mode = primo::smt::IncrementalMode::Assumptions;
+  options.produce_model = true;
+  options.check_model = true;
+  SmtSession session(options);
+  accept(session, "(set-logic QF_LRA)");
+  accept(session, "(declare-const base Real)");
+  accept(session, "(assert (>= base 0))");
+  for (int i = 0; i < 64; ++i) {
+    accept(session, "(push 1)");
+    accept(session, "(declare-const reused Real)");
+    accept(session, "(define-fun delta () Real (+ base " + std::to_string(i + 1) + "))");
+    accept(session, "(assert (= reused delta))");
+    expect(session, CheckSatResult::Sat);
+    accept(session, "(pop 1)");
+  }
+  const auto final = session.execute("(check-sat)").outcome;
+  assert(final->typed_model->visible_symbols().size() == 1);
+  assert(final->statistics.get(":session.engine-builds") == 1);
+  assert(final->statistics.get(":session.retired-selectors") == 64);
+  assert(final->model.find("reused") == std::string::npos);
+  assert(session.execute("(assert (= reused base))").kind == ResponseKind::Error);
+
+  options.max_theory_conflicts = 1;
+  options.lra_propagation = false;
+  SmtSession bounded(options);
+  accept(bounded, "(set-logic QF_LRA)");
+  accept(bounded, "(declare-const x Real)");
+  accept(bounded, "(assert (>= x 0))");
+  accept(bounded, "(push 1)");
+  accept(bounded, "(assert (< x 0))");
+  expect(bounded, CheckSatResult::Unknown);
+  accept(bounded, "(pop 1)");
+  expect(bounded, CheckSatResult::Sat);
+}
+
 void scopes_and_unsafe_simplification() {
   for (const std::string logic : {"QF_LIA", "QF_LRA", "QF_UFLIA", "QF_UFLRA"}) {
     primo::smt::CheckSatOptions options;
@@ -271,6 +398,9 @@ void canonical_names_and_categories() {
 }  // namespace
 
 int main() {
+  assumption_mode_scopes_and_reuse();
+  assumption_scope_storage_growth_and_budget();
+  assumption_mode_cancellation_and_options();
   annotation_attribute_grammar();
   canonical_names_and_categories();
   scopes_and_unsafe_simplification();

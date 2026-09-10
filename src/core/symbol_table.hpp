@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -45,6 +46,10 @@ class SymbolTable {
   const Symbol& get_symbol(SymbolId id) const;
   const std::vector<Sort>& sorts() const;
   const std::vector<Symbol>& symbols() const;
+  // Scope only name lookup; storage and IDs remain append-only until destruction.
+  void push_scope();
+  void pop_scope();
+  std::vector<SymbolId> visible_symbols() const;
 
  private:
   SortId add_sort(std::string name, SortKind kind);
@@ -56,6 +61,13 @@ class SymbolTable {
   std::vector<Symbol> symbols_;
   std::unordered_map<std::string, SortId> sort_by_name_;
   std::unordered_map<std::string, SymbolId> symbol_by_name_;
+  struct Scope {
+    std::size_t sorts;
+    std::size_t symbols;
+  };
+  std::vector<Scope> scopes_;
+  std::vector<SortId> sort_bindings_;
+  std::vector<SymbolId> symbol_bindings_;
 };
 
 }  // namespace primo::core
