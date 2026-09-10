@@ -1,0 +1,256 @@
+{
+  "description": "25 real non-incremental SMT-LIB files for streamed and scope-wrapped sessions; not native incremental benchmarks. Select from the prior 20/logic preservation sample: known declared status agrees with successful recorded Primo exit; first SAT and first UNSAT from distinct families, then distinct families in manifest order, then fill in manifest order. No fresh reference solving.",
+  "source_run": "2026-09-09-incremental-smt-sessions",
+  "entries": [
+    {
+      "logic": "QF_LIA",
+      "file": "20180326-Bromberger/more_slacked/CAV_2009_benchmarks/smt/45-vars/v45_problem__020.smt2.slack.smt2",
+      "family": "20180326-Bromberger",
+      "expected": "sat",
+      "sha256": "b6e9bf51e8a4427fdc44ca8088eb7a7b477ac357d298e4db13d1c8bdccc33781",
+      "recorded_result": "results/incremental-5bc811b/preservation/QF_LIA/round-0/candidate/shard-0/answers.csv",
+      "recorded_result_sha256": "946bcd73bbb44176ebf2ab2c072fdf72d95e06dfbdf9b10fbccadfde5c1c68d0",
+      "recorded_seconds": 2.192115
+    },
+    {
+      "logic": "QF_LIA",
+      "file": "Averest/parallel_prefix_sum/ParallelPrefixSum_safe_blmc002.smt2",
+      "family": "Averest",
+      "expected": "unsat",
+      "sha256": "2371225bc622aa414b21a0a3982aae520185f7f7902359d7710c765c1f4c73f8",
+      "recorded_result": "results/incremental-5bc811b/preservation/QF_LIA/round-0/candidate/shard-0/answers.csv",
+      "recorded_result_sha256": "946bcd73bbb44176ebf2ab2c072fdf72d95e06dfbdf9b10fbccadfde5c1c68d0",
+      "recorded_seconds": 0.498447
+    },
+    {
+      "logic": "QF_LIA",
+      "file": "20220307-SMPT/Diffusion2D-PT-D50N100/RF-03.smt2",
+      "family": "20220307-SMPT",
+      "expected": "sat",
+      "sha256": "97798ef07bcd0aa027f552a82cbabb26b9fe790557aff2799f0598fcd1e674e0",
+      "recorded_result": "results/incremental-5bc811b/preservation/QF_LIA/round-0/candidate/shard-0/answers.csv",
+      "recorded_result_sha256": "946bcd73bbb44176ebf2ab2c072fdf72d95e06dfbdf9b10fbccadfde5c1c68d0",
+      "recorded_seconds": 0.314975
+    },
+    {
+      "logic": "QF_LIA",
+      "file": "20231117-c_inference/50_50_81_19_sat.smt2",
+      "family": "20231117-c_inference",
+      "expected": "sat",
+      "sha256": "91073d33b333afe621d86ff1c3836d480e3a16c2971a6d4ac39855fd68db32c0",
+      "recorded_result": "results/incremental-5bc811b/preservation/QF_LIA/round-0/candidate/shard-0/answers.csv",
+      "recorded_result_sha256": "946bcd73bbb44176ebf2ab2c072fdf72d95e06dfbdf9b10fbccadfde5c1c68d0",
+      "recorded_seconds": 0.116845
+    },
+    {
+      "logic": "QF_LIA",
+      "file": "CAV_2009_benchmarks/smt/20-vars/problem__030.smt2",
+      "family": "CAV_2009_benchmarks",
+      "expected": "sat",
+      "sha256": "7468ccbfdb410c6562e52a725468d91545e191b8e63cc2e46644964cfee82908",
+      "recorded_result": "results/incremental-5bc811b/preservation/QF_LIA/round-0/candidate/shard-0/answers.csv",
+      "recorded_result_sha256": "946bcd73bbb44176ebf2ab2c072fdf72d95e06dfbdf9b10fbccadfde5c1c68d0",
+      "recorded_seconds": 0.236686
+    },
+    {
+      "logic": "QF_LRA",
+      "file": "DTP-Scheduling/constraints-tempo-matrix6x6.pddl.smt2",
+      "family": "DTP-Scheduling",
+      "expected": "sat",
+      "sha256": "d2578d1a61ab295023d00a304de6de30535371525d4125e2fc285c37e7ca62e7",
+      "recorded_result": "results/incremental-5bc811b/preservation/QF_LRA/round-0/candidate/shard-0/answers.csv",
+      "recorded_result_sha256": "9348d51cea90bafed8e13dfe225417c6b3fbccb04206df1b7f779bbe88a4597b",
+      "recorded_seconds": 0.284459
+    },
+    {
+      "logic": "QF_LRA",
+      "file": "2017-Heizmann-UltimateInvariantSynthesis/_standard_two_index_05.i_3_2_2.bpl_7.smt2",
+      "family": "2017-Heizmann-UltimateInvariantSynthesis",
+      "expected": "unsat",
+      "sha256": "4ca3c0e431448d0af8fd948d05dcf81c56e3d036e5bc3d9699bf5568544763ab",
+      "recorded_result": "results/incremental-5bc811b/preservation/QF_LRA/round-0/candidate/shard-0/answers.csv",
+      "recorded_result_sha256": "9348d51cea90bafed8e13dfe225417c6b3fbccb04206df1b7f779bbe88a4597b",
+      "recorded_seconds": 1.004729
+    },
+    {
+      "logic": "QF_LRA",
+      "file": "LassoRanker/CooperatingT2/ludcmp.t2.c_Iteration8_Loop_6-phaseTemplate.smt2",
+      "family": "LassoRanker",
+      "expected": "sat",
+      "sha256": "ddc46c562c3efdc85dd5d2dd2d4dc4c7244ab9b7fb54ca572078e1c5ecadfe79",
+      "recorded_result": "results/incremental-5bc811b/preservation/QF_LRA/round-0/candidate/shard-0/answers.csv",
+      "recorded_result_sha256": "9348d51cea90bafed8e13dfe225417c6b3fbccb04206df1b7f779bbe88a4597b",
+      "recorded_seconds": 1.574551
+    },
+    {
+      "logic": "QF_LRA",
+      "file": "TM/p6-driverlogNumeric_s5.smt2",
+      "family": "TM",
+      "expected": "sat",
+      "sha256": "41924d87c457468140759a08a0e1dbb4f3ee97f842fa45cec60e1366b90f3ea8",
+      "recorded_result": "results/incremental-5bc811b/preservation/QF_LRA/round-0/candidate/shard-0/answers.csv",
+      "recorded_result_sha256": "9348d51cea90bafed8e13dfe225417c6b3fbccb04206df1b7f779bbe88a4597b",
+      "recorded_seconds": 0.120509
+    },
+    {
+      "logic": "QF_LRA",
+      "file": "clock_synchro/clocksynchro_6clocks.worst_case_skew.induct.smt2",
+      "family": "clock_synchro",
+      "expected": "unsat",
+      "sha256": "5618dc4f9edd091b435c9c3dd268670d6482b9d957480052454641eae7097e59",
+      "recorded_result": "results/incremental-5bc811b/preservation/QF_LRA/round-0/candidate/shard-0/answers.csv",
+      "recorded_result_sha256": "9348d51cea90bafed8e13dfe225417c6b3fbccb04206df1b7f779bbe88a4597b",
+      "recorded_seconds": 0.588899
+    },
+    {
+      "logic": "QF_UF",
+      "file": "2018-Goel-hwbench/QF_UF_pgm_protocol.6.prop5_ab_cti_max.smt2",
+      "family": "Goel",
+      "expected": "sat",
+      "sha256": "c187c60df09ccc23cd14c364f817408ec123ef9b08fc56732d03bf4b3d5594e6",
+      "recorded_result": "results/incremental-5bc811b/preservation/QF_UF/round-0/candidate/shard-0/answers.csv",
+      "recorded_result_sha256": "daeb825c745517e8c7daa75521ed1d1c4cdefd1fd0130802a314cb53e28eaa75",
+      "recorded_seconds": 0.462167
+    },
+    {
+      "logic": "QF_UF",
+      "file": "NEQ/NEQ033_size4.smt2",
+      "family": "NEQ",
+      "expected": "unsat",
+      "sha256": "69531ba737b2b2960ced97c1da673755f011ea2f720ccdfc684e82b3530fb881",
+      "recorded_result": "results/incremental-5bc811b/preservation/QF_UF/round-0/candidate/shard-0/answers.csv",
+      "recorded_result_sha256": "daeb825c745517e8c7daa75521ed1d1c4cdefd1fd0130802a314cb53e28eaa75",
+      "recorded_seconds": 0.592809
+    },
+    {
+      "logic": "QF_UF",
+      "file": "PEQ/PEQ012_size5.smt2",
+      "family": "PEQ",
+      "expected": "unsat",
+      "sha256": "87678f1c29cd49c0f8d5bc358227a0d138b1d4a719ba186bb7b7d6cf121379be",
+      "recorded_result": "results/incremental-5bc811b/preservation/QF_UF/round-0/candidate/shard-0/answers.csv",
+      "recorded_result_sha256": "daeb825c745517e8c7daa75521ed1d1c4cdefd1fd0130802a314cb53e28eaa75",
+      "recorded_seconds": 0.55252
+    },
+    {
+      "logic": "QF_UF",
+      "file": "QG-classification/qg7/iso_brn_sk028.smt2",
+      "family": "QG",
+      "expected": "unsat",
+      "sha256": "275ab1b3e4125c814e2e2a8a9c46db11ba62a828b0230516a00201061a352e65",
+      "recorded_result": "results/incremental-5bc811b/preservation/QF_UF/round-0/candidate/shard-0/answers.csv",
+      "recorded_result_sha256": "daeb825c745517e8c7daa75521ed1d1c4cdefd1fd0130802a314cb53e28eaa75",
+      "recorded_seconds": 0.146852
+    },
+    {
+      "logic": "QF_UF",
+      "file": "SEQ/SEQ026_size4.smt2",
+      "family": "SEQ",
+      "expected": "unsat",
+      "sha256": "9c389209b6070d117026fa2cf8e6337b995a5d9c40bef211f9771c9151b938ab",
+      "recorded_result": "results/incremental-5bc811b/preservation/QF_UF/round-0/candidate/shard-0/answers.csv",
+      "recorded_result_sha256": "daeb825c745517e8c7daa75521ed1d1c4cdefd1fd0130802a314cb53e28eaa75",
+      "recorded_seconds": 0.413287
+    },
+    {
+      "logic": "QF_UFLIA",
+      "file": "mathsat/Wisa/xs-13-05-5-4-1-5.smt2",
+      "family": "mathsat",
+      "expected": "sat",
+      "sha256": "313fc311bcdebfd9bc9d954c547af5b2527dc371e7691a4eb08267b7d85dfe11",
+      "recorded_result": "results/incremental-5bc811b/preservation/QF_UFLIA/round-0/candidate/shard-0/answers.csv",
+      "recorded_result_sha256": "ed45860a6b4698b8e62381bb2ece6f5e91c553c39427225b10a998f11e88e310",
+      "recorded_seconds": 0.125783
+    },
+    {
+      "logic": "QF_UFLIA",
+      "file": "TwoSquares/smtlib.675513.smt2",
+      "family": "TwoSquares",
+      "expected": "unsat",
+      "sha256": "e6cec62c938d8c9e59c281aaa609e64ed669db0761e73c147006dce16d0f66e8",
+      "recorded_result": "results/incremental-5bc811b/preservation/QF_UFLIA/round-0/candidate/shard-0/answers.csv",
+      "recorded_result_sha256": "ed45860a6b4698b8e62381bb2ece6f5e91c553c39427225b10a998f11e88e310",
+      "recorded_seconds": 0.249711
+    },
+    {
+      "logic": "QF_UFLIA",
+      "file": "wisas/xs_14_19.smt2",
+      "family": "wisas",
+      "expected": "sat",
+      "sha256": "be3571282fd94e83d9c7775e17a0e0df4bf2fc28e2674f4bf88c46f7d919a2c4",
+      "recorded_result": "results/incremental-5bc811b/preservation/QF_UFLIA/round-0/candidate/shard-0/answers.csv",
+      "recorded_result_sha256": "ed45860a6b4698b8e62381bb2ece6f5e91c553c39427225b10a998f11e88e310",
+      "recorded_seconds": 0.613633
+    },
+    {
+      "logic": "QF_UFLIA",
+      "file": "mathsat/Hash/hash_sat_07_10.smt2",
+      "family": "mathsat",
+      "expected": "sat",
+      "sha256": "1c9812d9bf14fe2d110d577e4bd99e3752028e1bacb5f66c00359042c3f91944",
+      "recorded_result": "results/incremental-5bc811b/preservation/QF_UFLIA/round-0/candidate/shard-0/answers.csv",
+      "recorded_result_sha256": "ed45860a6b4698b8e62381bb2ece6f5e91c553c39427225b10a998f11e88e310",
+      "recorded_seconds": 2.049253
+    },
+    {
+      "logic": "QF_UFLIA",
+      "file": "wisas/xs_30_30.smt2",
+      "family": "wisas",
+      "expected": "sat",
+      "sha256": "a7b9792da3516f223e65feb159af2503f20e0a314261109d03b293be07cd7b21",
+      "recorded_result": "results/incremental-5bc811b/preservation/QF_UFLIA/round-0/candidate/shard-0/answers.csv",
+      "recorded_result_sha256": "ed45860a6b4698b8e62381bb2ece6f5e91c553c39427225b10a998f11e88e310",
+      "recorded_seconds": 0.495405
+    },
+    {
+      "logic": "QF_UFLRA",
+      "file": "cpachecker-bmc-svcomp14/cpachecker-bmc.floppy_false-unreach-call.i.cil.c.smt2",
+      "family": "cpachecker-bmc-svcomp14",
+      "expected": "sat",
+      "sha256": "43265e802f3342f0ccf1b61616538dba2c9e4048ce9e889a5415b0ece73050f2",
+      "recorded_result": "results/incremental-5bc811b/preservation/QF_UFLRA/round-0/candidate/shard-0/answers.csv",
+      "recorded_result_sha256": "222927df4f6a9183386b8fbac42b1cacdcac551e43612aa138703ef511c14124",
+      "recorded_seconds": 0.711131
+    },
+    {
+      "logic": "QF_UFLRA",
+      "file": "cpachecker-induction-svcomp14/cpachecker-induction.Problem03_30_true-unreach-call.c.smt2",
+      "family": "cpachecker-induction-svcomp14",
+      "expected": "unsat",
+      "sha256": "c3a3340f2b66d22fd51fdb26631440dc2b8ac419c2f3e10039a853b5566ed727",
+      "recorded_result": "results/incremental-5bc811b/preservation/QF_UFLRA/round-0/candidate/shard-0/answers.csv",
+      "recorded_result_sha256": "222927df4f6a9183386b8fbac42b1cacdcac551e43612aa138703ef511c14124",
+      "recorded_seconds": 0.372717
+    },
+    {
+      "logic": "QF_UFLRA",
+      "file": "mathsat/RandomDecoupled/pb_real_50_100_30_02.smt2",
+      "family": "mathsat",
+      "expected": "sat",
+      "sha256": "4232075f1b2fd9cb7b500d154859c72e22bfe9a186a193ea834109fa21ceb3c9",
+      "recorded_result": "results/incremental-5bc811b/preservation/QF_UFLRA/round-0/candidate/shard-0/answers.csv",
+      "recorded_result_sha256": "222927df4f6a9183386b8fbac42b1cacdcac551e43612aa138703ef511c14124",
+      "recorded_seconds": 0.173918
+    },
+    {
+      "logic": "QF_UFLRA",
+      "file": "cpachecker-induction-svcomp14/cpachecker-induction.32_1_cilled_true-unreach-call_ok_nondet_linux-3.4-32_1-drivers--media--dvb--dvb-usb--dvb-usb-az6027.ko-ldv_main0_sequence_infinite_withcheck_stateful.cil.out.c.smt2",
+      "family": "cpachecker-induction-svcomp14",
+      "expected": "sat",
+      "sha256": "9ea696d16b1147a4965dfca8d47ebdfda4d2089606bec81eed8d15e08b0666ad",
+      "recorded_result": "results/incremental-5bc811b/preservation/QF_UFLRA/round-0/candidate/shard-0/answers.csv",
+      "recorded_result_sha256": "222927df4f6a9183386b8fbac42b1cacdcac551e43612aa138703ef511c14124",
+      "recorded_seconds": 2.145479
+    },
+    {
+      "logic": "QF_UFLRA",
+      "file": "cpachecker-bmc-svcomp14/cpachecker-bmc.diskperf_false-unreach-call.i.cil.c.smt2",
+      "family": "cpachecker-bmc-svcomp14",
+      "expected": "sat",
+      "sha256": "fd5ea8bee5cffaa9f25cc7f38ee88c50d6f8149e6c294a5f009825c39ec16ee2",
+      "recorded_result": "results/incremental-5bc811b/preservation/QF_UFLRA/round-0/candidate/shard-0/answers.csv",
+      "recorded_result_sha256": "222927df4f6a9183386b8fbac42b1cacdcac551e43612aa138703ef511c14124",
+      "recorded_seconds": 0.184752
+    }
+  ]
+}

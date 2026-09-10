@@ -83,6 +83,61 @@ class IncrementalValidationTests(unittest.TestCase):
                 )
             self.assertEqual(result["outcome"], "failure")
 
+    def test_recorded_oracle_checks_count_and_answers_without_reference(self):
+        args = argparse.Namespace(
+            solver="fake",
+            solver_arg=[],
+            ref="unused",
+            ref_arg=[],
+            dolmen="unused",
+            timeout=1,
+            dolmen_timeout=1,
+        )
+        for expected, outcome in [
+            (["unsat"], "pass"),
+            (["sat"], "failure"),
+            (["unsat", "unsat"], "failure"),
+        ]:
+            with (
+                tempfile.TemporaryDirectory() as temporary,
+                patch.object(gate, "Client") as client,
+                patch.object(gate, "run_command") as external,
+            ):
+                client.return_value.response.return_value = "unsat"
+                result = gate.validate(
+                    "(set-logic QF_UF)(assert false)(check-sat)",
+                    Path(temporary) / "run",
+                    args,
+                    expected,
+                )
+                self.assertEqual(result["outcome"], outcome)
+                external.assert_not_called()
+
+    def test_recorded_answers_do_not_hide_post_answer_crash(self):
+        args = argparse.Namespace(
+            solver="fake",
+            solver_arg=[],
+            ref="unused",
+            ref_arg=[],
+            dolmen="unused",
+            timeout=1,
+            dolmen_timeout=1,
+        )
+        with (
+            tempfile.TemporaryDirectory() as temporary,
+            patch.object(gate, "Client") as client,
+        ):
+            client.return_value.response.return_value = "unsat"
+            client.return_value.finish.side_effect = ValueError("late crash")
+            result = gate.validate(
+                "(set-logic QF_UF)(assert false)(check-sat)",
+                Path(temporary) / "run",
+                args,
+                ["unsat"],
+            )
+            self.assertEqual(result["outcome"], "failure")
+            self.assertNotEqual(result["queries"][0]["outcome"], "pass")
+
 
 if __name__ == "__main__":
     unittest.main()

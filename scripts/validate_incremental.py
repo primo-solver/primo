@@ -65,7 +65,7 @@ class QueryJournal:
 
 
 class Client:
-    def __init__(self, command, out: Path, timeout: float):
+    def __init__(self, command, out: Path, timeout: float, chunk_bytes: int = 0):
         self.stderr = (out / "solver.stderr").open("wb")
         self.transcript = (out / "solver.stdout").open("wb")
         self.sent = (out / "solver.smt2").open("w")
@@ -74,12 +74,16 @@ class Client:
         )
         self.pending = b""
         self.timeout = timeout
+        self.chunk_bytes = chunk_bytes
 
     def send(self, command):
         self.sent.write(command + "\n")
         self.sent.flush()
-        self.process.stdin.write((command + "\n").encode())
-        self.process.stdin.flush()
+        data = (command + "\n").encode()
+        size = self.chunk_bytes or len(data)
+        for offset in range(0, len(data), size):
+            self.process.stdin.write(data[offset : offset + size])
+            self.process.stdin.flush()
 
     def response(self):
         deadline = time.monotonic() + self.timeout
@@ -153,7 +157,12 @@ def response_end(text):
     return None
 
 
-def validate(text, directory, args):
+def validate(text, directory, args, expected_answers=None):
+    """Optional recorded/metamorphic oracle; None retains live reference checks."""
+    if expected_answers is not None and (
+        not expected_answers or any(a not in {"sat", "unsat"} for a in expected_answers)
+    ):
+        raise ValueError("expected answers must be a nonempty SAT/UNSAT sequence")
     directory.mkdir(parents=True, exist_ok=False)
     (directory / "original.smt2").write_text(text)
     command = [args.solver, *args.solver_arg, "--check-model"]
@@ -161,7 +170,11 @@ def validate(text, directory, args):
         directory / "invocation.json",
         {
             "solver": command,
-            "reference": [args.ref, *args.ref_arg],
+            "reference": [args.ref, *args.ref_arg]
+            if expected_answers is None
+            else None,
+            "expected_answers": expected_answers,
+            "chunk_bytes": getattr(args, "chunk_bytes", 0),
             "dolmen": args.dolmen,
             "timeout": args.timeout,
             "dolmen_timeout": args.dolmen_timeout,
@@ -169,7 +182,7 @@ def validate(text, directory, args):
         },
     )
     journal = QueryJournal()
-    client = Client(command, directory, args.timeout)
+    client = Client(command, directory, args.timeout, getattr(args, "chunk_bytes", 0))
     rows = []
     try:
         client.send("(set-option :produce-models true)")
@@ -206,16 +219,23 @@ def validate(text, directory, args):
             }
             rows.append(row)
             write_json(query / "result.json", row)
-            status, code, stdout, stderr, _ = run_command(
-                [args.ref, *args.ref_arg, str(snapshot)], args.timeout
-            )
-            (query / "reference.stdout").write_text(stdout)
-            (query / "reference.stderr").write_text(stderr)
-            if status != "done" or code != 0:
-                raise ValueError(f"reference failure: {status}, exit={code}")
-            if answer not in {"sat", "unsat"} or stdout.strip() != answer:
+            if expected_answers is None:
+                status, code, stdout, stderr, _ = run_command(
+                    [args.ref, *args.ref_arg, str(snapshot)], args.timeout
+                )
+                (query / "reference.stdout").write_text(stdout)
+                (query / "reference.stderr").write_text(stderr)
+                if status != "done" or code != 0:
+                    raise ValueError(f"reference failure: {status}, exit={code}")
+                expected = stdout.strip()
+            else:
+                if row["query"] >= len(expected_answers):
+                    raise ValueError("more queries than recorded expected answers")
+                expected = expected_answers[row["query"]]
+            row["expected"] = expected
+            if answer not in {"sat", "unsat"} or expected != answer:
                 raise ValueError(
-                    f"answer disagreement or inconclusive: {answer!r}, {stdout!r}"
+                    f"answer disagreement or inconclusive: {answer!r}, {expected!r}"
                 )
             if answer == "sat":
                 client.send("(get-model)")
@@ -243,6 +263,8 @@ def validate(text, directory, args):
                     raise ValueError(f"Dolmen did not pass: {status}, exit={code}")
             row["outcome"] = "provisional-pass"
             write_json(query / "result.json", row)
+        if expected_answers is not None and len(rows) != len(expected_answers):
+            raise ValueError("fewer queries than recorded expected answers")
         client.finish()  # A post-answer crash invalidates all provisional results.
         for row in rows:
             row["outcome"] = "pass"

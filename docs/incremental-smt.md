@@ -202,6 +202,37 @@ single-query validator continues to reject incremental scripts; use this
 query-aware driver explicitly. Assumptions and global declarations remain
 outside this driver's supported input surface.
 
+### Real-file streaming and scoping check
+
+`scripts/check_incremental_corpus.py` tests the hash-pinned sample in
+`benchmarks/incremental-parser-real-25.json`: five real SMT-LIB files per
+supported logic, selected across families from the previous preservation sample.
+These are non-incremental benchmark formulas adapted into sessions, not native
+incremental benchmarks and not a speed evaluation.
+
+The test preserves source declaration, definition and assertion command text.
+It compares the ordinary file invocation with an actual stdin session, sending
+commands in at most 127-byte flushed chunks. A second session checks seven
+contexts: the original formula, an independent scoped Boolean constraint, a
+nested contradiction, restoration after pop, redeclaration of the popped probe,
+the empty context after removing all original declarations/assertions, and
+replay of the entire original declaration/assertion scope. The expected answers
+are derived from the file's declared SMT-LIB status and these elementary
+satisfiability-preserving/contradictory transformations. The manifest pins input
+hashes and agreeing historical Primo results; no fresh reference calls occur.
+This oracle is not a new independent UNSAT proof or a recorded Z3 comparison.
+
+The shared `validate_incremental.validate` accepts an optional expected-answer
+sequence; without it the existing live-reference workflow is unchanged.
+Answer counts, order and final process exit must all match. Every actual SAT
+model is checked by Dolmen against the independently journaled active context,
+including declarations and definitions. Per-query results remain provisional
+until clean process exit. Original files, sent streams, query contexts, models,
+validator output and provenance are retained separately. Missing hashes,
+unsupported command shapes and inconclusive queries fail the gate explicitly.
+The batch wrapper is `scripts/slurm_incremental_corpus.sbatch`; source preparation
+and preflight still use the standard repository helper.
+
 ### Definition binding invariant
 
 A parameterized definition's free symbols refer to the declaration environment,

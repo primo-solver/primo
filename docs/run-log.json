@@ -3,6 +3,28 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-10-incremental-parser-real-corpus",
+      "date": "2026-09-10",
+      "kind": "standalone-real-corpus-streaming-and-scoped-session-correctness",
+      "evidence_status": "local-smoke-passed-slurm-pending",
+      "baseline_commit": "938ad80",
+      "solver_source_commit": "15f4929; unchanged src/CMake/contrib in the test-driver commit",
+      "manifest": "benchmarks/incremental-parser-real-25.json",
+      "selection": "25 files, five per logic, from the prior 20/logic preservation manifest. Require known SMT-LIB status agreeing with a successful recorded Primo result; include SAT/UNSAT and prioritize distinct families. Input and historical result hashes are pinned. Not native incremental files or full-corpus qualification.",
+      "oracle": "SMT-LIB declared statuses plus elementary scoped transformations. Hash-matched historical Primo answers corroborate the base status; no fresh reference calls and no new independent UNSAT proof. Actual SAT session models require direct Dolmen acceptance against each active declaration/assertion context.",
+      "scope": "Each source is tested as an ordinary file, a 127-byte-chunked stdin session, and a seven-query nested-scope/redeclaration session. Eight streamed queries per file. Query answers remain provisional until clean exit. No solver/parser implementation change or speed claim.",
+      "local_smoke": {
+        "host": "local development workspace",
+        "command": "python3 scripts/check_incremental_corpus.py --manifest tmp/incremental-real-smoke-manifest.json --root sandbox/non-incremental/QF_LRA --logic QF_LRA --solver build/primo --expected-git 15f4929 --timeout 20 --dolmen-timeout 20 --out results/incremental-real-local-smoke",
+        "selection": "first QF_LRA entry from the committed manifest: DTP-Scheduling/constraints-tempo-matrix6x6.pddl.smt2",
+        "artifact": "results/incremental-real-local-smoke",
+        "result": {"files_passed": 1, "stdin_sessions_passed": 2, "query_answers_checked": 8, "direct_dolmen_models_passed": 7, "wrong_answer": 0, "crash": 0, "timeout": 0, "unsupported": 0},
+        "provenance": "Solver 15f4929; current uncommitted test-driver diff. Preliminary local smoke only. Exact binary identity and commands retained in run.json."
+      },
+      "verification": "make check passes 31 CTest and 147 Python tests (tmp/incremental-real-check.log), including recorded answer/count mismatches and post-answer crashes. make lint and make docs pass; batch script validates. Code-review pass: no blocking issue in the test-driver changes. No C++ changes: previous 109-file tidy/include-cleaner and 31-test ASan evidence remains applicable to identical solver sources; no redundant C++ scan launched. Committed-revision SLURM gate pending.",
+      "command": "sbatch scripts/slurm_incremental_corpus.sbatch with prepared PRIMO_WORKDIR, PRIMO_EXPECTED_REVISION, PRIMO_CORPUS_OUT and the five PRIMO_*_ROOT corpus paths; five tasks, concurrency two, 30-second solver/query and Dolmen budgets, 1000 theory-conflict limit, 127-byte writes"
+    },
+    {
       "id": "2026-09-10-attribute-validation-repair",
       "date": "2026-09-10",
       "baseline_commit": "ab01f2f",
