@@ -7,6 +7,57 @@ original bounded corpus only; the repair has separate regression/fuzz evidence.
 
 ## Design and implementation checklist
 
+### Native QF_LRA archive checks
+
+`benchmarks/native-incremental-qf-lra.json` pins the user-provided
+`sandbox/QF_LRA.tar.zst` (SHA256
+`41865c487e20fedaeb1945b2175df657aff6797dcda95eaf6df7403449c2b323`).
+Unlike the earlier wrapped-formula sample, these ten `hybrid_networks` inputs
+are genuine incremental BMC/k-induction sessions. Their source headers attribute
+the NuSMV hybrid-automata benchmarks to Alberto Griggio. The extracted files total
+1,594,684,331 bytes and contain 1,515 queries; original bytes/scopes are retained.
+
+The test workflow deliberately separates three verdicts:
+
+1. `primo_parser_corpus` (`tests/parser_corpus.cpp`) traverses every command with
+   the production stream-backed `smtlib::Parser::next_command`. It owns one binary
+   `ifstream`, which outlives the borrowing parser, and only counters/query-end
+   offsets besides the current command AST. It checks scope-count underflow and
+   overflow, counts unsupported commands, and walks through EOF. It does not
+   translate or type-check terms and does not solve. This is a test driver of the
+   existing parser, not another SMT-LIB grammar implementation.
+2. `scripts/check_native_incremental.py` runs each untouched file through Primo
+   stdin, with a 120-second whole-session budget and 10,000-theory-conflict limit.
+   A timeout or nonzero exit cannot become a pass because answers were printed.
+   Partial answer observations remain separate from complete session acceptance.
+3. An exact prefix through the first four original queries is replayed through
+   a real pipe in 4,093-byte chunks with `--check-model`; Dolmen independently
+   validates every actual SAT model in that prefix against its active context.
+   This bounded model sample does not qualify later SAT queries in the full file.
+
+The parser's no-lookahead invariant makes `ifstream::tellg` immediately after a
+query its exact byte end. The Python driver seeks to those offsets and requires
+an adjacent `(set-info :status sat/unsat/unknown)` before each query. This is an
+explicit archive-specific restriction; missing statuses fail rather than being
+guessed. The archive has 476 SAT, 955 UNSAT and 84 unknown status labels. Unknown
+labels provide no answer oracle; completed runs involving them are marked
+`complete-with-unverified-answers`, not answer-validated passes. All selected
+four-query model prefixes have known statuses. Prefix extraction preserves all
+preceding source bytes and introduces
+no assertion or scope changes. The existing validator controls model/response
+options and terminates the prefix session cleanly. No reference solvers rerun.
+The command/offset smoke test covers quoted fake query text, comments, malformed
+EOF, scope underflow and unsupported commands; the Python tests check status
+adjacency and process-status precedence.
+
+`scripts/slurm_native_lra_parser.sbatch` runs the three stages with four concurrent
+tasks, each with an 8 GiB allocation and ten-minute outer budget. Source preparation
+uses `slurm_prepare_benchmark_workspace.py --extra-target primo_parser_corpus`:
+additional CMake targets share the clean build, while revision/CaDiCaL preflight
+still checks the primary `primo` executable. This is correctness testing only,
+not an incremental speed claim or a parser/solver algorithm change. Results are
+tracked separately under `2026-09-10-native-incremental-qf-lra` in the run log.
+
 ### Direct stream parsing checklist (2026-09-10)
 
 The stdin refinement uses the lexical/S-expression rules in SMT-LIB 2.7

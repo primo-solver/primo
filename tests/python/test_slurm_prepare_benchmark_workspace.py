@@ -23,6 +23,22 @@ SPEC.loader.exec_module(MODULE)
 
 
 class SshDiagnosticsTest(unittest.TestCase):
+    def test_extra_build_target_preserves_primary_version_check(self) -> None:
+        command = MODULE.build_command(
+            "/cluster/work",
+            "cmake",
+            "primo",
+            2,
+            "abc123",
+            ["contrib-required"],
+            True,
+            ["primo_parser_corpus"],
+        )
+        MODULE.shell_syntax_check(command)
+        self.assertIn("--target primo primo_parser_corpus -j2", command)
+        self.assertIn("build-slurm-rel/primo --version", command)
+        self.assertNotIn("build-slurm-rel/primo_parser_corpus --version", command)
+
     def test_reusable_dependencies_do_not_require_antlr(self) -> None:
         command = MODULE.build_command(
             "/cluster/work", "cmake", "primo", 2, "abc123", ["contrib-required"], True

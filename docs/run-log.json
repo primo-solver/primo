@@ -3,6 +3,24 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-10-native-incremental-qf-lra",
+      "date": "2026-09-10",
+      "kind": "native-incremental-parser-and-bounded-session-validation",
+      "evidence_status": "prepared-local-tests-remote-run-pending",
+      "baseline_commit": "e079525",
+      "source": "User-provided sandbox/QF_LRA.tar.zst, containing incremental/QF_LRA/hybrid_networks: genuine NuSMV BMC/k-induction command sequences, not wrapped non-incremental formulas. Source header attribution: Alberto Griggio.",
+      "archive_sha256": "41865c487e20fedaeb1945b2175df657aff6797dcda95eaf6df7403449c2b323",
+      "manifest": "benchmarks/native-incremental-qf-lra.json",
+      "inventory": {"files": 10, "bytes": 1594684331, "queries": 1515},
+      "scope": "Complete production streaming-parser traversal of all files, separately bounded untouched stdin execution (120s/file, 10000 theory conflicts), and independent Dolmen model checks on the exact first four native queries per file (30s/query and 30s/Dolmen). No term translation/type-checking claim from parser-only results; no full-model qualification from prefix samples.",
+      "oracle": "Adjacent original set-info statuses at byte offsets reported by the production parser: 476 SAT, 955 UNSAT, 84 unknown labels. Unknown labels provide no answer oracle; complete runs involving them remain explicitly unverified for those answers. All first-four-query model prefixes have known statuses. No fresh reference calls. Exit status and timeouts override apparent successful answers.",
+      "staging": "Safe relative regular-file inventory inspected before extraction into fresh tmp/native-qf-lra.ipGdkx. Existing remote workspaces checked; no native copy found. scripts/slurm_stage_manifest_files.py --root tmp/native-qf-lra.ipGdkx --all-smt2 stages all ten files with compressed transport. Details in ignored tmp/native-qf-lra-stage.log; archive member inventory tmp/qf-lra-native-archive-inventory.txt. Per-file hashes pinned in manifest and checked again by each batch task.",
+      "design": "docs/incremental-smt.md: Native QF_LRA archive checks",
+      "verification": "Initial new CTest command used the wrong Python CMake variable; fixed to existing PRIMO_PYTHON_EXECUTABLE before successful make check (32 CTest/148 Python) and make asan-test (32/32). Final 151 Python tests, make lint, make docs and batch syntax validation pass. New C++ probe passes configured clang-tidy and include-cleaner without diagnostics. Existing solver/parser C++ sources are unchanged; previous full 109-file static baseline remains recorded separately. Code-review pass: no blocking test-tool issue. Logs tmp/native-lra-check.log, tmp/native-lra-asan.log, tmp/native-lra-tidy.log, tmp/native-lra-includes.log and tmp/native-lra-final-*.log.",
+      "command": "sbatch scripts/slurm_native_lra_parser.sbatch with prepared PRIMO_WORKDIR, PRIMO_EXPECTED_REVISION, PRIMO_NATIVE_ROOT=WORKDIR/tmp/native-qf-lra.ipGdkx and fresh PRIMO_NATIVE_OUT; ten tasks, concurrency four, 8 GiB/task, 10-minute outer limit",
+      "limitations": "Complete command parsing is distinct from term/type validation and complete solving. Native full-session timeouts are possible and must be reported separately. Model stage covers only the first four original queries per file. No performance promotion or full-corpus model-validation claim."
+    },
+    {
       "id": "2026-09-10-incremental-parser-real-corpus",
       "date": "2026-09-10",
       "kind": "standalone-real-corpus-streaming-and-scoped-session-correctness",

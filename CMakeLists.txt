@@ -330,6 +330,17 @@ primo_enable_sanitizers(primo_smtlib_parser_tests)
 target_link_libraries(primo_smtlib_parser_tests PRIVATE primo_core)
 add_test(NAME primo_smtlib_parser_tests COMMAND primo_smtlib_parser_tests)
 
+add_executable(primo_parser_corpus tests/parser_corpus.cpp)
+primo_enable_warnings(primo_parser_corpus)
+primo_enable_sanitizers(primo_parser_corpus)
+target_link_libraries(primo_parser_corpus PRIVATE primo_smtlib)
+if(PRIMO_PYTHON_EXECUTABLE)
+  add_test(NAME primo_parser_corpus_smoke
+    COMMAND ${PRIMO_PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/parser_corpus_smoke.py
+            $<TARGET_FILE:primo_parser_corpus>)
+  set_tests_properties(primo_parser_corpus_smoke PROPERTIES TIMEOUT 20)
+endif()
+
 add_executable(primo_smt_session_tests tests/unit/smt_session_tests.cpp)
 primo_enable_warnings(primo_smt_session_tests)
 primo_enable_sanitizers(primo_smt_session_tests)
