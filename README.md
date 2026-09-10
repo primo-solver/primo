@@ -33,7 +33,10 @@ The feature branch adds [scoped incremental sessions](docs/incremental-smt.md):
 interactive and file-based `push`/`pop`, repeated checks, and scoped declarations.
 The default rebuild mode gives each query a fresh solver. The opt-in
 `--incremental-mode=assumptions` retains frontend/SAT/arithmetic preparation for
-QF_LRA, with fresh working theory state per check; qualification is pending.
+QF_LRA, with fresh working theory state per check. Its bounded correctness gates
+passed; the native BMC session completes in 127 seconds, while induction remains
+incomplete at 600 seconds. See `docs/assumption-incremental-lra.md` for evidence
+and limitations.
 Scoped-session correctness and a bounded five-logic preservation sample have
 been checked on SLURM; the session layer has a small measured single-query cost.
 See the linked design page for counts, limitations and qualification evidence.

@@ -2,7 +2,7 @@
 
 `--incremental-mode=rebuild` is the default described by the historical baseline
 sections below. The new opt-in QF_LRA `assumptions` mode is described in
-[](assumption-incremental-lra); its fresh qualification is pending.
+[](assumption-incremental-lra), including its bounded correctness evidence.
 
 The subsequent [](lexical-conformance.md) audit found quoted-name identity bugs
 that can change answers. Its repair preserves token categories and canonical
@@ -485,7 +485,7 @@ and replay phases, and `scripts/slurm_incremental_profile.sbatch` for diagnostic
 instruction profiling. Both require explicit prepared-workspace and artifact
 paths; neither submits jobs implicitly.
 
-## Opt-in assumptions engine (qualification pending)
+## Opt-in assumptions engine
 
 `--incremental-mode=assumptions` selects a persistent QF_LRA engine; `rebuild`
 remains the default. `SmtSession` keeps its frontend and an SMT-owned
@@ -510,8 +510,7 @@ engine/frontend builds, translated assertions, queries, selectors, retained
 terms/atoms/clauses and theory-state resets. Phase times are reported separately.
 The safe rewrite pipeline counter is one for Auto and zero for Off; both use
 mandatory lowering. See [](assumption-incremental-lra) for proof obligations,
-source literature and qualification requirements. No performance claim is made
-until the recorded gates and comparisons complete.
+source literature, qualification requirements and collected evidence.
 
 In assumptions mode, parameterized definitions are validated in the persistent
 frontend with internal parameter terms; this avoids replaying the declaration

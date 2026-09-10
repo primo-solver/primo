@@ -3,6 +3,297 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-11-assumptions-lra-qualification",
+      "date": "2026-09-11",
+      "kind": "scoped-lra-correctness-default-preservation-and-native-comparison",
+      "evidence_status": "accepted-opt-in-bounded-qualification; native BMC complete, induction incomplete",
+      "candidate_commit": "04d2e23",
+      "candidate_version": "primo 0.1.0\ngit: 04d2e23\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+      "candidate_sha256": "f823de911dbdb008ab89acebebf2fa5e467d24eb45f88fa1fe94f05c600249e8",
+      "implementation": "Persistent QF_LRA frontend, SAT backend/clausifier/prepared arithmetic; selector scopes; fresh query working theory; no default or QF_UFLRA path change. docs/assumption-incremental-lra.md maps literature, structures, invariants, proof obligations and limitations.",
+      "commands": {
+        "gate": "scripts/slurm_incremental_lra_gate.sbatch; python3 scripts/incremental_lra_gate.py --kind KIND --seed SEED --count 250 --solver build-slurm-rel/primo --solver-arg=--quiet --solver-arg=--incremental-mode=assumptions --solver-arg=--max-theory-conflicts=10000 --ref contrib/local/bin/z3 --dolmen contrib/local/bin/dolmen --expected-git 04d2e23 --timeout 15 --dolmen-timeout 20 --out OUTPUT; native kind also supplies task-0 and task-1 model-prefix/original.smt2 from results/native-lra-c3ca55f",
+        "prefix": "scripts/slurm_assumptions_native_prefix.sbatch; scripts/check_assumptions_native_prefix.py on manifest indices 0..9, --queries 4, --solver-arg=--quiet --solver-arg=--incremental-mode=assumptions --solver-arg=--max-theory-conflicts=10000, --expected-git 04d2e23; actual streamed models checked separately from timing",
+        "default": "scripts/slurm_incremental_corpus.sbatch on benchmarks/incremental-parser-real-25.json; QF_UF selected from retry with PRIMO_THEORY_CONFLICT_LIMIT=10000; other logics retain first successful run",
+        "timing": "sbatch --ntasks=1 scripts/slurm_assumptions_native_compare.sbatch; each mode uses --quiet --stats --incremental-mode=MODE --max-theory-conflicts=10000; unchanged native stdin, indices 0 and 1, timeout 600"
+      },
+      "resources_and_jobs": {
+        "host": "SLURM compute node (raw host/task provenance in each run)",
+        "build_job": "142199",
+        "backend_session_regression_job": "142200",
+        "gate_array_job": "142201",
+        "prefix_array_job": "142202",
+        "default_array_job": "142203",
+        "default_uf_retry_job": "142221",
+        "timing_array_job": "142225",
+        "gate": "250 sessions/shard, 4 concurrent tasks, 4 GiB/task, 30 min/task; 1 CPU per task requested, scheduler allocated 2 CPUs per array element, one serial driver",
+        "prefix": "4 queries/session, 4 GiB/task, 5 min/task, 30 s/query and Dolmen check",
+        "default": "8 GiB/task, 15 min/task, 30 s/query and Dolmen check; UF retry 10000 theory conflicts, other selected logics 1000",
+        "timing": "--ntasks=1, --cpus-per-task=1, 8 GiB/task, 12 min allocation, 600 s whole-session solver timeout; scheduler reserved two logical CPUs per element; one serial single-threaded solver process"
+      },
+      "reference_and_validator": {
+        "z3": {
+          "version": "Z3 version 5.1.0 - 64 bit",
+          "sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0"
+        },
+        "dolmen": {
+          "version": "0.10",
+          "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+        }
+      },
+      "gate": {
+        "generated_sessions": 1000,
+        "native_mutated_sessions": 1000,
+        "pass_sessions": 2000,
+        "queries": 16000,
+        "sat_models_accepted_by_dolmen": 10802,
+        "wrong_answer": 0,
+        "crash": 0,
+        "parser_type_error": 0,
+        "timeout": 0,
+        "unsupported": 0,
+        "reference_disagreement": 0,
+        "untriaged_failure": 0,
+        "native_seed_precheck": "Both pristine first-query native seeds also passed before each of the four native shards; eight additional UNSAT queries, excluded from generated/mutation counts.",
+        "limits": "Native mutation changes numerals and strictness in first-query seeds plus scopes. It does not cover complete native sessions. Auto pipeline is the exact campaign profile; Off has unit and preliminary local smoke coverage."
+      },
+      "gate_shards": [
+        {
+          "index": 0,
+          "kind": "generated",
+          "seed": 202609110,
+          "count": 250,
+          "job": "142204",
+          "generator_sha256": "76337b1b8390bd52396a0cd431efea76eecfa355b845757f4324bd97014cff16",
+          "artifact": "results/assumptions-gate-04d2e23/shard-0"
+        },
+        {
+          "index": 1,
+          "kind": "generated",
+          "seed": 202609360,
+          "count": 250,
+          "job": "142205",
+          "generator_sha256": "76337b1b8390bd52396a0cd431efea76eecfa355b845757f4324bd97014cff16",
+          "artifact": "results/assumptions-gate-04d2e23/shard-1"
+        },
+        {
+          "index": 2,
+          "kind": "generated",
+          "seed": 202609610,
+          "count": 250,
+          "job": "142206",
+          "generator_sha256": "76337b1b8390bd52396a0cd431efea76eecfa355b845757f4324bd97014cff16",
+          "artifact": "results/assumptions-gate-04d2e23/shard-2"
+        },
+        {
+          "index": 3,
+          "kind": "generated",
+          "seed": 202609860,
+          "count": 250,
+          "job": "142207",
+          "generator_sha256": "76337b1b8390bd52396a0cd431efea76eecfa355b845757f4324bd97014cff16",
+          "artifact": "results/assumptions-gate-04d2e23/shard-3"
+        },
+        {
+          "index": 4,
+          "kind": "native",
+          "seed": 202610110,
+          "count": 250,
+          "job": "142222",
+          "generator_sha256": "76337b1b8390bd52396a0cd431efea76eecfa355b845757f4324bd97014cff16",
+          "artifact": "results/assumptions-gate-04d2e23/shard-4"
+        },
+        {
+          "index": 5,
+          "kind": "native",
+          "seed": 202610360,
+          "count": 250,
+          "job": "142223",
+          "generator_sha256": "76337b1b8390bd52396a0cd431efea76eecfa355b845757f4324bd97014cff16",
+          "artifact": "results/assumptions-gate-04d2e23/shard-5"
+        },
+        {
+          "index": 6,
+          "kind": "native",
+          "seed": 202610610,
+          "count": 250,
+          "job": "142224",
+          "generator_sha256": "76337b1b8390bd52396a0cd431efea76eecfa355b845757f4324bd97014cff16",
+          "artifact": "results/assumptions-gate-04d2e23/shard-6"
+        },
+        {
+          "index": 7,
+          "kind": "native",
+          "seed": 202610860,
+          "count": 250,
+          "job": "142201",
+          "generator_sha256": "76337b1b8390bd52396a0cd431efea76eecfa355b845757f4324bd97014cff16",
+          "artifact": "results/assumptions-gate-04d2e23/shard-7"
+        }
+      ],
+      "prefix_validation": {
+        "manifest": "benchmarks/native-incremental-qf-lra.json",
+        "sessions": 10,
+        "queries": 40,
+        "sat_models_accepted_by_dolmen": 10,
+        "qualification": "Only these first-four-query prefixes; answers matched hash-checked native status oracles; no reference reruns."
+      },
+      "default_preservation": {
+        "manifest": "benchmarks/incremental-parser-real-25.json",
+        "files": 25,
+        "sessions": 50,
+        "queries": 200,
+        "sat_models_accepted_by_dolmen": 121,
+        "lost_solved_cases": 0,
+        "current_file_seconds": 16.6212056055665,
+        "recorded_file_seconds": 16.221632,
+        "current_over_recorded_total_ratio": 1.0246321458634065,
+        "largest_per_file_ratio": 1.0893123500179227,
+        "interpretation": "Single current measurements against historical timings: total +2.5%, maximum per-file +8.9%; no large regression or solved loss. Not a paired speedup experiment.",
+        "initial_uf_resource_limit": "First QF_UF attempt stopped at NEQ/NEQ033_size4.smt2 under the already-known inadequate 1000-conflict cap. Retained as incomplete; retry used established 10000-conflict baseline budget and passed all five files."
+      },
+      "native_comparison": {
+        "selection": [
+          0,
+          1
+        ],
+        "family": "hybrid_networks/bmwlin",
+        "timeout_seconds": 600,
+        "aggregate": {
+          "rebuild": {
+            "completed_sessions": 0,
+            "mean_par2_seconds": 1200,
+            "observed_answers": [
+              38,
+              53
+            ]
+          },
+          "assumptions": {
+            "completed_sessions": 1,
+            "mean_par2_seconds": 663.4856494050473,
+            "observed_answers": [
+              101,
+              95
+            ]
+          }
+        },
+        "interpretation": "Assumptions completes BMC with all 101 source-status-checked UNSAT answers in 126.97 s; rebuild times out at 600 s. Induction remains incomplete in both modes; its partial answers are diagnostic and its SAT models beyond the separately validated prefix are unqualified. No full-induction or full-corpus qualification. The two-session PAR2 includes the prescribed timeout penalty; progress counts are not speedup ratios.",
+        "memory_interpretation": "SLURM sampled batch-step MaxRSS, not isolated solver allocations; tasks finish at different query counts. Retained storage has no compaction until reset.",
+        "timing_interpretation": "Wall-clock session timing excludes model validation. Per-phase counters sum completed queries only; timed-out query work is missing. Frontend time contains preprocessing and append subphases, which must not be added again."
+      },
+      "native_rows": [
+        {
+          "index": 0,
+          "mode": "rebuild",
+          "outcome": "timeout",
+          "seconds": 600.017509996891,
+          "observed_answers": 38,
+          "observed_sat": 0,
+          "observed_unsat": 38,
+          "observed_unknown": 0,
+          "observed_status_mismatches": 0,
+          "par2_seconds": 1200,
+          "slurm_batch_maxrss_kib": 602996,
+          "artifact": "results/assumptions-native-04d2e23/case-0-rebuild"
+        },
+        {
+          "index": 0,
+          "mode": "assumptions",
+          "outcome": "pass",
+          "seconds": 126.9712988100946,
+          "observed_answers": 101,
+          "observed_sat": 0,
+          "observed_unsat": 101,
+          "observed_unknown": 0,
+          "observed_status_mismatches": 0,
+          "par2_seconds": 126.9712988100946,
+          "slurm_batch_maxrss_kib": 1081836,
+          "artifact": "results/assumptions-native-04d2e23/case-0-assumptions"
+        },
+        {
+          "index": 1,
+          "mode": "rebuild",
+          "outcome": "timeout",
+          "seconds": 600.0154819916934,
+          "observed_answers": 53,
+          "observed_sat": 26,
+          "observed_unsat": 27,
+          "observed_unknown": 0,
+          "observed_status_mismatches": 0,
+          "par2_seconds": 1200,
+          "slurm_batch_maxrss_kib": 458492,
+          "artifact": "results/assumptions-native-04d2e23/case-1-rebuild"
+        },
+        {
+          "index": 1,
+          "mode": "assumptions",
+          "outcome": "timeout",
+          "seconds": 600.0415656846017,
+          "observed_answers": 95,
+          "observed_sat": 47,
+          "observed_unsat": 48,
+          "observed_unknown": 0,
+          "observed_status_mismatches": 0,
+          "par2_seconds": 1200,
+          "slurm_batch_maxrss_kib": 951960,
+          "artifact": "results/assumptions-native-04d2e23/case-1-assumptions"
+        }
+      ],
+      "reused_reference_timings": {
+        "source": "benchmarks/native-incremental-qf-lra-comparison-summary.json",
+        "rerun": false,
+        "z3": {
+          "observed_queries": [
+            58,
+            73
+          ],
+          "completed_sessions": 0,
+          "mean_par2_seconds": 1200
+        },
+        "cvc5": {
+          "observed_queries": [
+            69,
+            77
+          ],
+          "completed_sessions": 0,
+          "mean_par2_seconds": 1200
+        }
+      },
+      "verification": {
+        "check": "make check: 33 C++/CLI tests and 156 Python tests passed, including the harness failure regression",
+        "asan": "33 tests passed with ASan/UBSan and leak detection",
+        "lint": "make lint passed",
+        "docs": "make docs passed",
+        "static": "All 110 tracked non-generated .cpp files passed stable per-translation-unit clang-tidy with clang-analyzer-* and advisory misc-include-cleaner. No analyzer/compiler errors or actionable unused includes. Earlier overlapping scans invalidated by source edits were discarded.",
+        "review": "Whole-tree non-generated code review, ownership/borrow review, solver-efficiency review and documentation review completed; explicit retention and fresh-theory costs remain documented."
+      },
+      "local_verification_logs": [
+        "tmp/assumptions-final-check.log",
+        "tmp/assumptions-asan-verified.log",
+        "tmp/assumptions-final-lint.log",
+        "tmp/assumptions-final-docs.log",
+        "tmp/assumptions-static/summary.json",
+        "tmp/assumptions-remote-regression.log"
+      ],
+      "complete_summary": "benchmarks/assumptions-lra-summary.json",
+      "artifacts": {
+        "gate": "results/assumptions-gate-04d2e23",
+        "prefix": "results/assumptions-prefix-04d2e23",
+        "default": "results/assumptions-default-04d2e23",
+        "default_retry": "results/assumptions-default-04d2e23-retry",
+        "timing": "results/assumptions-native-04d2e23",
+        "audit": "tmp/assumptions-correctness-audit.log"
+      },
+      "collection": "All 2000 session result files and all 16000 query outcomes reconciled with shard summaries; each of 10802 SAT records has a Dolmen command and retained validator output. Ten native prefixes, all selected default shards, both default attempts and all four native timing rows collected. Exact candidate executable preserved locally and remotely under results/assumptions-native-04d2e23/primo.",
+      "harness_followup": "Initialize untriaged_failure before incrementing it. A regression injects a post-answer process failure and verifies durable failure metadata and stop-on-first-failure. No changes to generated inputs, solver/reference commands, validation decisions or passing campaign evidence.",
+      "final_audit": "tmp/assumptions-final-slurm-audit.log: all jobs terminal, including the initial UF cap failure and passing retry. tmp/assumptions-final-process-audit.log records final local process and remote queue checks.",
+      "decision": {
+        "decision": "Accept as opt-in; rebuild remains default; no automatic compaction or UFLRA assumption support.",
+        "source_relation": "Solver src, CMakeLists.txt and contrib unchanged after candidate 04d2e23. Follow-up contains collected evidence/docs and failure-counter initialization/regression only.",
+        "process_audit": "All submitted jobs terminal; full audit in tmp/assumptions-final-slurm-audit.log. Initial UF resource-cap failure retained and superseded by matching-budget retry."
+      }
+    },
+    {
       "id": "2026-09-11-assumptions-lra-development",
       "date": "2026-09-11",
       "kind": "incremental-engine-development-and-local-correctness",

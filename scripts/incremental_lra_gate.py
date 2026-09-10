@@ -170,7 +170,14 @@ def main():
             write_json(args.out / "seed-gate-failure.json", row)
             print(json.dumps(row))
             return 1
-    summary = {"sessions": 0, "pass": 0, "sat_models": 0, "queries": 0, "failures": []}
+    summary = {
+        "sessions": 0,
+        "pass": 0,
+        "sat_models": 0,
+        "queries": 0,
+        "failures": [],
+        "untriaged_failure": 0,
+    }
     for index in range(args.count):
         seed = args.seed + index
         text = (

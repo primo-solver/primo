@@ -58,7 +58,9 @@ pass. See [](arithmetic.md) and [](preprocessing.md).
 The session feature branch adds interactive SMT-LIB `push`/`pop` with scoped
 declarations/definitions and repeated checks. It rebuilds solving state per
 query by default. An opt-in `--incremental-mode=assumptions` now retains frontend,
-SAT and prepared QF_LRA state; its qualification is separate and pending.
+SAT and prepared QF_LRA state. Its separate bounded gate passed 2,000 scoped
+sessions, 16,000 answers and 10,802 independently checked SAT models; see
+[](assumption-incremental-lra) for coverage and measured limitations.
 For the rebuild baseline, SLURM qualification matched 15,000 answers across 1,000 generated
 sessions and independently validated 10,000 session models. A separate
 100-input, five-logic sample retained every solve and shared non-timing counter;
