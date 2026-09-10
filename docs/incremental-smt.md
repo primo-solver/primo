@@ -61,6 +61,24 @@ or silently inferred from the earlier four-query prefix sample. No matching
 reference timings for this native archive were present in the recorded ledger.
 This two-file development diagnostic is not a full evaluation or promotion.
 
+At `24c3684`, all six sessions timed out at 600 seconds (array `142089`):
+
+| Native session | Total queries | Primo responses | Z3 5.1.0 responses | cvc5 1.3.4 responses |
+| --- | ---: | ---: | ---: | ---: |
+| `bmwlin` BMC | 101 | 38 | 58 | 69 |
+| `bmwlin` induction | 202 | 53 | 73 | 77 |
+
+These are emitted decisive responses before timeout, not solved-session counts.
+All match known source statuses and agree across the overlapping query prefixes;
+there were no unknown responses or error output. Every solver completed zero of
+two sessions, so mean whole-session PAR2 is 1200 seconds for each and no paired
+end-to-end speed ratio is available. The earlier 120-second Primo runs reached
+18 and 26 queries, respectively. Production sources/build/dependencies are
+unchanged; the extra progress is from a larger budget, not an optimization.
+See `benchmarks/native-incremental-qf-lra-comparison-summary.json` for identities,
+commands, per-row timing, provenance and limitations. The timing diagnostic did
+not validate full-session models; the previous prefix checks are separate.
+
 The parser's no-lookahead invariant makes `ifstream::tellg` immediately after a
 query its exact byte end. The Python driver seeks to those offsets and requires
 an adjacent `(set-info :status sat/unsat/unknown)` before each query. This is an
@@ -200,6 +218,55 @@ For example, checking `x >= 0`, adding `x <= -1`, and checking again must give
 SAT then UNSAT even if the first query eliminated the one-sided variable.
 Popping the second assertion must restore SAT. Backward model reconstruction
 does not translate a new assertion about an eliminated variable.
+
+### Incremental append with rebuild-on-pop: feasibility, not implemented
+
+This is a useful staged interface, but its benefit depends on command shape.
+In both native `bmwlin` files selected for the longer reference diagnostic, every
+transition between checks contains a positive pop (100/100 BMC and 201/201
+induction). Rebuilding on each pop therefore retains no solved context for the
+next query in this pair. It can help workloads with several checks separated
+only by new assertions/declarations; `push` itself merely records a scope.
+
+The current lower layers provide useful pieces, not a persistent query engine:
+`sat::IpasirUpBackend` has `add_clause`, `assume` and repeated `solve`, and
+`BooleanClausifier::assert_formula` can append encodings. However,
+`solve_qf_lra_impl` currently owns its backend, clausifier, prepared arithmetic
+and online propagator as query-local objects. `SmtSession::Implementation::execute`
+consumes its frontend into `check_sat_frontend_once`. Reusing any of this state
+requires changing that ownership contract, not merely handling the push command.
+
+An original implementation checklist for a future opt-in append path is:
+
+- Own an engine and stable term/symbol/atom identities for an append-only epoch;
+  extend clauses and arithmetic atom registration between completed solves,
+  with explicit callback/trail/cache lifecycle rules. Do not equate SAT decision
+  backtracking inside one solve with user-scope support across queries.
+- Retain original assertions and scoped declarations/definitions as authority.
+  A positive pop discards the engine and replays the surviving journal; popped
+  names must be redeclarable without old identities leaking into the new epoch.
+  Retained API models must remain independent snapshots.
+- Give tactics an explicit append-safety contract. Start with audited
+  equivalence-preserving transformations. Equation elimination needs forward
+  substitution of future assertions; under-constrained/one-sided-variable
+  elimination needs restoration or must be disabled. The existing backward
+  `ModelConversionChain` is insufficient. The distinctions follow the cited
+  *Z3 Internals* draft, Sections 8.2, 8.3 and 8.6, not a claim about present Z3
+  default configuration.
+- Keep unsupported theory/tactic combinations on the existing fresh-query
+  path. Verify append-after-SAT/UNSAT/unknown, nested pop, scoped declarations,
+  redeclaration, model snapshots and eliminated-variable counterexamples before
+  enabling reuse. Leave the dedicated QF_UFLRA path unchanged.
+- Measure both append-heavy and pop-heavy native sessions. The four-query BMC
+  Callgrind diagnostic recorded in the run ledger attributes 45.97% of inclusive
+  instructions to frontend command translation and 16.91% to the QF_LRA engine;
+  this motivates investigating translation replay as well as persistent search,
+  but does not establish the bottleneck for later hard queries.
+
+To help these particular pop-heavy sessions, reuse eventually has to survive pop
+(for example via a separately designed guarded-assertion/assumption approach or
+proper scoped rollback), or the fresh-query translation/preprocessing costs have
+to fall. Neither mechanism is implemented by this diagnostic.
 
 ### Supported boundary and acceptance tests
 
