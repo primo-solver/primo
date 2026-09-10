@@ -240,6 +240,21 @@ conflicts of `NEQ/NEQ033_size4.smt2`. Its ordinary file invocation returned
 coverage, not evidence of a parser regression. Preserve the original attempt
 and retry only the affected shard under a separately recorded larger budget.
 
+The completed SLURM sample passes all 25 file invocations, 50 streamed sessions
+and 200 streamed queries, with 121/121 actual SAT models accepted directly by
+Dolmen. Coverage includes all five supported logics; each has five files and
+40 streamed queries. Model counts are 11 for QF_UF, 29 for QF_LIA, 23 for QF_LRA,
+29 for QF_UFLIA and 29 for QF_UFLRA. There are no final wrong answers, crashes,
+timeouts, unknowns, parser/type errors, invalid models or missing selected rows.
+The initial UF resource-limited attempt remains recorded rather than counted
+as a pass. The UF-only retry uses 10,000 conflicts; other logics retain the
+successful 1,000-conflict runs. Solver sources are identical across the two
+test-driver revisions (`e5a634d` and `25eb7df`). Exact input/binary identities,
+per-family totals and selected artifact paths are in
+`benchmarks/incremental-parser-real-summary.json` and run-log entry
+`2026-09-10-incremental-parser-real-corpus`. This is bounded correctness evidence,
+not a general merge-readiness or full native-incremental-corpus claim.
+
 ### Definition binding invariant
 
 A parameterized definition's free symbols refer to the declaration environment,

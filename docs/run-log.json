@@ -6,7 +6,7 @@
       "id": "2026-09-10-incremental-parser-real-corpus",
       "date": "2026-09-10",
       "kind": "standalone-real-corpus-streaming-and-scoped-session-correctness",
-      "evidence_status": "four-logics-qualified-uf-resource-retry-pending",
+      "evidence_status": "slurm-qualified-real-formula-streaming-and-scoping-sample",
       "baseline_commit": "938ad80",
       "commit": "e5a634d0c539b3ef7025e39dfa2dae64294fbafb",
       "solver_source_commit": "15f4929; unchanged src/CMake/contrib in the test-driver commit",
@@ -22,7 +22,7 @@
         "result": {"files_passed": 1, "stdin_sessions_passed": 2, "query_answers_checked": 8, "direct_dolmen_models_passed": 7, "wrong_answer": 0, "crash": 0, "timeout": 0, "unsupported": 0},
         "provenance": "Solver 15f4929; current uncommitted test-driver diff. Preliminary local smoke only. Exact binary identity and commands retained in run.json."
       },
-      "verification": "make check passes 31 CTest and 147 Python tests (tmp/incremental-real-check.log), including recorded answer/count mismatches and post-answer crashes. make lint and make docs pass; batch script validates. Code-review pass: no blocking issue in the test-driver changes. No C++ changes: previous 109-file tidy/include-cleaner and 31-test ASan evidence remains applicable to identical solver sources; no redundant C++ scan launched. Committed-revision SLURM gate pending.",
+      "verification": "make check passes 31 CTest and 147 Python tests (tmp/incremental-real-check.log), including recorded answer/count mismatches and post-answer crashes. Budget override follow-up: make lint, 147 Python tests, make docs and batch validation pass. Code-review pass: no blocking issue in the test-driver changes. No C++ changes: previous 109-file tidy/include-cleaner and 31-test ASan evidence remains applicable to identical solver sources; no redundant C++ scan launched. Committed-revision SLURM gate complete under the explicitly recorded per-logic budgets.",
       "command": "sbatch scripts/slurm_incremental_corpus.sbatch with prepared PRIMO_WORKDIR, PRIMO_EXPECTED_REVISION=e5a634d, PRIMO_CORPUS_OUT=WORKDIR/results/incremental-real-e5a634d and the five PRIMO_*_ROOT corpus paths; five tasks, concurrency two, 30-second solver/query and Dolmen budgets, 1000 theory-conflict limit, 127-byte writes",
       "slurm": {
         "build_job": "142040",
@@ -32,14 +32,32 @@
         "preflight_log": "tmp/incremental-real-preflight.log",
         "revision": "e5a634d",
         "cadical": "cadical-3.0.0-7b99c07",
+        "binary_sha256": "54939a5d7d827f0eb6489533c5ee4ff0ca70bb7ad0a4f107c72b7b3e979238e8",
+        "dolmen": "0.10; SHA256 08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e; --check-model=true --strict=false --size=1G",
         "manifest_sha256": "18aa6e5a8a413e77474dcf1ef340e79d7f25f915873caeb73860c985f4e9e249",
         "driver_sha256": "95e9936afdddf427ce6888ef10240817f4af1f01779ebcb49c9702fb299553b1",
         "validator_sha256": "a3c0449a163b65cf680fef4274f2012fe69d88e4df0de4a66da58f138e638d01",
         "input_preflight": "25/25 existing remote files hash-match the manifest and have supported command shapes; total 6447240 bytes, maximum 2035752 bytes. No corpus transfer or reference setup required.",
         "first_attempt_result": {"files_completed": 21, "files_resource_unknown": 1, "files_not_reached": 3, "streamed_queries_passed": 168, "direct_dolmen_models_passed": 117, "wrong_answer": 0, "crash": 0, "timeout": 0, "unexpected_parser_type_error": 0, "invalid_models": 0},
         "triage": "Four logic shards complete (20 files). QF_UF passes its first file then stops at the ordinary file baseline for NEQ/NEQ033_size4.smt2: stdout unknown, exit 0, stderr theory conflict limit reached. The recorded prior run used 1143 theory conflicts, exceeding this gate's 1000 limit. This is a test resource limit before stdin testing, not a parser/model failure. Add an explicit budget override and retry only QF_UF; retain all first-attempt artifacts.",
-        "local_budget_probe": "timeout 20s build/primo --quiet --stats --max-theory-conflicts=10000 results/incremental-real-e5a634d/QF_UF/case-001/original.smt2; local source-identical solver, stdout unsat, exit 0. Logs tmp/incremental-real-uf-budget-probe.stdout and .stderr. Diagnostic only, not replacement SLURM qualification.",
-        "state": "all first-attempt jobs terminal; UF-only larger-budget retry pending"
+        "local_budget_probe": "timeout 20s build/primo --quiet --stats --max-theory-conflicts=10000 results/incremental-real-e5a634d/QF_UF/case-001/original.smt2; local 938ad80-dirty version stamp, solver sources identical to 15f4929; stdout unsat, exit 0, 1143 theory conflicts. Logs tmp/incremental-real-uf-budget-probe.stdout and .stderr. Diagnostic only, not replacement SLURM qualification.",
+        "retry": {
+          "commit": "25eb7df",
+          "build_job": "142048",
+          "job": "142051_0",
+          "artifact": "results/incremental-real-25eb7df-retry/QF_UF",
+          "binary_sha256": "905107b523400385f17dd80cf7b924be0b3b7c11e4683ee9d01062f1fd519e77",
+          "prepare_log": "tmp/incremental-real-retry-prepare.log",
+          "preflight_log": "tmp/incremental-real-retry-preflight.log",
+          "command": "same batch wrapper with --array=0, PRIMO_EXPECTED_REVISION=25eb7df, PRIMO_THEORY_CONFLICT_LIMIT=10000 and a fresh PRIMO_CORPUS_OUT; all other solver/validator options unchanged",
+          "result": {"files_passed": 5, "sessions_passed": 10, "streamed_queries_passed": 40, "direct_dolmen_models_passed": 11, "wrong_answer": 0, "crash": 0, "unknown": 0, "timeout": 0, "unexpected_parser_type_error": 0, "invalid_models": 0},
+          "source_relation": "src, CMakeLists.txt and contrib identical between e5a634d and 25eb7df; only test budget configuration and documentation changed. Four successful original logic shards retained without rerunning. No performance claim across resource profiles."
+        },
+        "final_summary": "benchmarks/incremental-parser-real-summary.json; selected final rows consist of QF_UF retry only plus the four original successful logic shards, without double-counting the initial UF SAT row",
+        "final_counts": {"files": 25, "base_sat": 16, "base_unsat": 9, "streamed_sessions": 50, "streamed_queries": 200, "sat_queries_and_direct_dolmen_models": 121, "unsat_queries": 79, "wrong_answer": 0, "crash": 0, "timeout": 0, "unknown": 0, "unsupported": 0, "unexpected_parser_type_error": 0, "invalid_models": 0, "missing": 0},
+        "retention": "Full query-level artifacts collected locally. Each selected input hash and query count/order/expected answer checked when producing the committed per-logic/per-family summary. Exact candidate executables preserved remotely at results/incremental-real-e5a634d/primo and results/incremental-real-25eb7df-retry/primo before later workspace rebuilds.",
+        "final_audit": "tmp/incremental-real-final-slurm-audit.log: all submitted jobs terminal; initial UF task fails on the explicitly triaged resource cap, all other tasks and retry complete with exit 0. Queue empty. No local solver/validator job remains.",
+        "state": "all first-attempt and UF-retry jobs terminal; selected final coverage passes"
       }
     },
     {

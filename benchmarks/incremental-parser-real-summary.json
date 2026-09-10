@@ -1,0 +1,337 @@
+{
+  "run_id": "2026-09-10-incremental-parser-real-corpus",
+  "manifest": "benchmarks/incremental-parser-real-25.json",
+  "manifest_sha256": "18aa6e5a8a413e77474dcf1ef340e79d7f25f915873caeb73860c985f4e9e249",
+  "status": "all-selected-final-rows-pass",
+  "scope": "Real non-incremental formulas, tested unchanged through file/stdin and wrapped into scoped sessions; not native incremental corpus or speed qualification. No reference solver reruns. Known SMT-LIB statuses plus metamorphic expectations; every actual SAT model independently checked with Dolmen.",
+  "initial_attempt": "Preserved separately: QF_UF file baseline hit the 1000-conflict cap. Final QF_UF selection uses only the 10000-conflict retry; other logic rows are retained from the first attempt. No solver source changes.",
+  "totals": {
+    "files": 25,
+    "file_sat": 16,
+    "file_unsat": 9,
+    "stdin_sessions": 50,
+    "queries": 200,
+    "query_sat": 121,
+    "query_unsat": 79,
+    "dolmen_models": 121
+  },
+  "final_failures": {
+    "wrong_answer": 0,
+    "crash": 0,
+    "timeout": 0,
+    "unknown": 0,
+    "unsupported": 0,
+    "parser_type_error": 0,
+    "invalid_model": 0,
+    "missing": 0
+  },
+  "logics": {
+    "QF_UF": {
+      "artifact": "results/incremental-real-25eb7df-retry/QF_UF",
+      "solver_version": "primo 0.1.0\ngit: 25eb7df\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+      "solver_sha256": "905107b523400385f17dd80cf7b924be0b3b7c11e4683ee9d01062f1fd519e77",
+      "solver_args": [
+        "--quiet",
+        "--max-theory-conflicts=10000"
+      ],
+      "counts": {
+        "files": 5,
+        "file_sat": 1,
+        "file_unsat": 4,
+        "stdin_sessions": 10,
+        "queries": 40,
+        "query_sat": 11,
+        "query_unsat": 29,
+        "dolmen_models": 11
+      }
+    },
+    "QF_LIA": {
+      "artifact": "results/incremental-real-e5a634d/QF_LIA",
+      "solver_version": "primo 0.1.0\ngit: e5a634d\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+      "solver_sha256": "54939a5d7d827f0eb6489533c5ee4ff0ca70bb7ad0a4f107c72b7b3e979238e8",
+      "solver_args": [
+        "--quiet",
+        "--max-theory-conflicts=1000"
+      ],
+      "counts": {
+        "files": 5,
+        "file_sat": 4,
+        "file_unsat": 1,
+        "stdin_sessions": 10,
+        "queries": 40,
+        "query_sat": 29,
+        "query_unsat": 11,
+        "dolmen_models": 29
+      }
+    },
+    "QF_LRA": {
+      "artifact": "results/incremental-real-e5a634d/QF_LRA",
+      "solver_version": "primo 0.1.0\ngit: e5a634d\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+      "solver_sha256": "54939a5d7d827f0eb6489533c5ee4ff0ca70bb7ad0a4f107c72b7b3e979238e8",
+      "solver_args": [
+        "--quiet",
+        "--max-theory-conflicts=1000"
+      ],
+      "counts": {
+        "files": 5,
+        "file_sat": 3,
+        "file_unsat": 2,
+        "stdin_sessions": 10,
+        "queries": 40,
+        "query_sat": 23,
+        "query_unsat": 17,
+        "dolmen_models": 23
+      }
+    },
+    "QF_UFLIA": {
+      "artifact": "results/incremental-real-e5a634d/QF_UFLIA",
+      "solver_version": "primo 0.1.0\ngit: e5a634d\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+      "solver_sha256": "54939a5d7d827f0eb6489533c5ee4ff0ca70bb7ad0a4f107c72b7b3e979238e8",
+      "solver_args": [
+        "--quiet",
+        "--max-theory-conflicts=1000"
+      ],
+      "counts": {
+        "files": 5,
+        "file_sat": 4,
+        "file_unsat": 1,
+        "stdin_sessions": 10,
+        "queries": 40,
+        "query_sat": 29,
+        "query_unsat": 11,
+        "dolmen_models": 29
+      }
+    },
+    "QF_UFLRA": {
+      "artifact": "results/incremental-real-e5a634d/QF_UFLRA",
+      "solver_version": "primo 0.1.0\ngit: e5a634d\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+      "solver_sha256": "54939a5d7d827f0eb6489533c5ee4ff0ca70bb7ad0a4f107c72b7b3e979238e8",
+      "solver_args": [
+        "--quiet",
+        "--max-theory-conflicts=1000"
+      ],
+      "counts": {
+        "files": 5,
+        "file_sat": 4,
+        "file_unsat": 1,
+        "stdin_sessions": 10,
+        "queries": 40,
+        "query_sat": 29,
+        "query_unsat": 11,
+        "dolmen_models": 29
+      }
+    }
+  },
+  "families": {
+    "QF_UF/Goel": {
+      "files": 1,
+      "file_sat": 1,
+      "file_unsat": 0,
+      "stdin_sessions": 2,
+      "queries": 8,
+      "query_sat": 7,
+      "query_unsat": 1,
+      "dolmen_models": 7
+    },
+    "QF_UF/NEQ": {
+      "files": 1,
+      "file_sat": 0,
+      "file_unsat": 1,
+      "stdin_sessions": 2,
+      "queries": 8,
+      "query_sat": 1,
+      "query_unsat": 7,
+      "dolmen_models": 1
+    },
+    "QF_UF/PEQ": {
+      "files": 1,
+      "file_sat": 0,
+      "file_unsat": 1,
+      "stdin_sessions": 2,
+      "queries": 8,
+      "query_sat": 1,
+      "query_unsat": 7,
+      "dolmen_models": 1
+    },
+    "QF_UF/QG": {
+      "files": 1,
+      "file_sat": 0,
+      "file_unsat": 1,
+      "stdin_sessions": 2,
+      "queries": 8,
+      "query_sat": 1,
+      "query_unsat": 7,
+      "dolmen_models": 1
+    },
+    "QF_UF/SEQ": {
+      "files": 1,
+      "file_sat": 0,
+      "file_unsat": 1,
+      "stdin_sessions": 2,
+      "queries": 8,
+      "query_sat": 1,
+      "query_unsat": 7,
+      "dolmen_models": 1
+    },
+    "QF_LIA/20180326-Bromberger": {
+      "files": 1,
+      "file_sat": 1,
+      "file_unsat": 0,
+      "stdin_sessions": 2,
+      "queries": 8,
+      "query_sat": 7,
+      "query_unsat": 1,
+      "dolmen_models": 7
+    },
+    "QF_LIA/Averest": {
+      "files": 1,
+      "file_sat": 0,
+      "file_unsat": 1,
+      "stdin_sessions": 2,
+      "queries": 8,
+      "query_sat": 1,
+      "query_unsat": 7,
+      "dolmen_models": 1
+    },
+    "QF_LIA/20220307-SMPT": {
+      "files": 1,
+      "file_sat": 1,
+      "file_unsat": 0,
+      "stdin_sessions": 2,
+      "queries": 8,
+      "query_sat": 7,
+      "query_unsat": 1,
+      "dolmen_models": 7
+    },
+    "QF_LIA/20231117-c_inference": {
+      "files": 1,
+      "file_sat": 1,
+      "file_unsat": 0,
+      "stdin_sessions": 2,
+      "queries": 8,
+      "query_sat": 7,
+      "query_unsat": 1,
+      "dolmen_models": 7
+    },
+    "QF_LIA/CAV_2009_benchmarks": {
+      "files": 1,
+      "file_sat": 1,
+      "file_unsat": 0,
+      "stdin_sessions": 2,
+      "queries": 8,
+      "query_sat": 7,
+      "query_unsat": 1,
+      "dolmen_models": 7
+    },
+    "QF_LRA/DTP-Scheduling": {
+      "files": 1,
+      "file_sat": 1,
+      "file_unsat": 0,
+      "stdin_sessions": 2,
+      "queries": 8,
+      "query_sat": 7,
+      "query_unsat": 1,
+      "dolmen_models": 7
+    },
+    "QF_LRA/2017-Heizmann-UltimateInvariantSynthesis": {
+      "files": 1,
+      "file_sat": 0,
+      "file_unsat": 1,
+      "stdin_sessions": 2,
+      "queries": 8,
+      "query_sat": 1,
+      "query_unsat": 7,
+      "dolmen_models": 1
+    },
+    "QF_LRA/LassoRanker": {
+      "files": 1,
+      "file_sat": 1,
+      "file_unsat": 0,
+      "stdin_sessions": 2,
+      "queries": 8,
+      "query_sat": 7,
+      "query_unsat": 1,
+      "dolmen_models": 7
+    },
+    "QF_LRA/TM": {
+      "files": 1,
+      "file_sat": 1,
+      "file_unsat": 0,
+      "stdin_sessions": 2,
+      "queries": 8,
+      "query_sat": 7,
+      "query_unsat": 1,
+      "dolmen_models": 7
+    },
+    "QF_LRA/clock_synchro": {
+      "files": 1,
+      "file_sat": 0,
+      "file_unsat": 1,
+      "stdin_sessions": 2,
+      "queries": 8,
+      "query_sat": 1,
+      "query_unsat": 7,
+      "dolmen_models": 1
+    },
+    "QF_UFLIA/mathsat": {
+      "files": 2,
+      "file_sat": 2,
+      "file_unsat": 0,
+      "stdin_sessions": 4,
+      "queries": 16,
+      "query_sat": 14,
+      "query_unsat": 2,
+      "dolmen_models": 14
+    },
+    "QF_UFLIA/TwoSquares": {
+      "files": 1,
+      "file_sat": 0,
+      "file_unsat": 1,
+      "stdin_sessions": 2,
+      "queries": 8,
+      "query_sat": 1,
+      "query_unsat": 7,
+      "dolmen_models": 1
+    },
+    "QF_UFLIA/wisas": {
+      "files": 2,
+      "file_sat": 2,
+      "file_unsat": 0,
+      "stdin_sessions": 4,
+      "queries": 16,
+      "query_sat": 14,
+      "query_unsat": 2,
+      "dolmen_models": 14
+    },
+    "QF_UFLRA/cpachecker-bmc-svcomp14": {
+      "files": 2,
+      "file_sat": 2,
+      "file_unsat": 0,
+      "stdin_sessions": 4,
+      "queries": 16,
+      "query_sat": 14,
+      "query_unsat": 2,
+      "dolmen_models": 14
+    },
+    "QF_UFLRA/cpachecker-induction-svcomp14": {
+      "files": 2,
+      "file_sat": 1,
+      "file_unsat": 1,
+      "stdin_sessions": 4,
+      "queries": 16,
+      "query_sat": 8,
+      "query_unsat": 8,
+      "dolmen_models": 8
+    },
+    "QF_UFLRA/mathsat": {
+      "files": 1,
+      "file_sat": 1,
+      "file_unsat": 0,
+      "stdin_sessions": 2,
+      "queries": 8,
+      "query_sat": 7,
+      "query_unsat": 1,
+      "dolmen_models": 7
+    }
+  }
+}
