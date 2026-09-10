@@ -2,8 +2,10 @@
 #include <unistd.h>
 
 #include <CLI/CLI.hpp>
+#include <chrono>
 #include <csignal>
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
 #include <exception>
 #include <fstream>
@@ -23,7 +25,7 @@
 #include "smt/experimental_tactics.hpp"
 #include "smt/preprocessing.hpp"
 #include "smt/smt_session.hpp"
-#include "smtlib/command_reader.hpp"
+#include "smtlib/parser.hpp"
 #include "util/statistics.hpp"
 
 namespace {
@@ -84,15 +86,19 @@ void print_startup_banner() {
 int execute_stream(std::istream& input, const primo::smt::CheckSatOptions& options,
                    bool print_stats) {
   primo::smt::SmtSession session(options);
-  primo::smtlib::CommandReader reader(input);
+  primo::smtlib::Parser parser(input);
   int exit_code = 0;
   bool answered = false;
   while (!session.terminated() && g_cancel_requested == 0) {
     primo::smt::CommandResponse response;
     try {
-      auto command = reader.next();
+      const auto start = std::chrono::steady_clock::now();
+      auto command = parser.next_command();
       if (!command) break;
-      response = session.execute(*command);
+      const auto parse_us = std::chrono::duration_cast<std::chrono::microseconds>(
+                                std::chrono::steady_clock::now() - start)
+                                .count();
+      response = session.execute(std::move(*command), static_cast<std::uint64_t>(parse_us));
     } catch (const std::exception& error) {
       response.kind = primo::smt::ResponseKind::Error;
       response.message = error.what();

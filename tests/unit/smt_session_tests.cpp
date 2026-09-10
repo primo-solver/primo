@@ -5,11 +5,12 @@
 #include <cassert>
 #include <sstream>
 #include <string>
+#include <utility>
 
 #include "cli/response_printer.hpp"
 #include "smt/check_sat.hpp"
 #include "smt/smt_session.hpp"
-#include "smtlib/command_reader.hpp"
+#include "smtlib/parser.hpp"
 
 using primo::smt::CheckSatResult;
 using primo::smt::ResponseKind;
@@ -123,13 +124,13 @@ void quoting_and_responses() {
     (set-logic QF_UF)(declare-const |p(;)| Bool)
     (assert |p(;)|)(check-sat)(exit) garbage ignored
   )");
-  primo::smtlib::CommandReader reader(input);
+  primo::smtlib::Parser parser(input);
   SmtSession session;
   std::ostringstream output;
   while (!session.terminated()) {
-    auto text = reader.next();
-    assert(text);
-    auto response = session.execute(*text);
+    auto command = parser.next_command();
+    assert(command);
+    auto response = session.execute(std::move(*command));
     assert(response.kind != ResponseKind::Error);
     primo::cli::print_response(output, response);
   }

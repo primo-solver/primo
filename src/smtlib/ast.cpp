@@ -13,7 +13,7 @@ namespace {
 // Iterative (explicit-stack) deep copy of an SExpr tree, used by SExpr's
 // copy constructor/assignment instead of the compiler-generated recursive
 // version. One Frame per list node currently being rebuilt, mirroring
-// smtlib::parser.cpp's iterative parse_all().
+// smtlib::parser.cpp's iterative parse_one().
 SExpr deep_copy(const SExpr& root) {
   if (root.kind == SExpr::Kind::Atom) {
     return SExpr::make_atom(root.atom, root.atom_kind);

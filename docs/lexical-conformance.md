@@ -1,5 +1,35 @@
 # SMT-LIB lexical conformance audit
 
+## Direct-stream review findings (2026-09-10)
+
+The stdin refinement in [](incremental-smt.md) removes the separate framing
+pass and eager parser lookahead. Guarded-buffer and live-pipe tests establish
+that a completed command returns without asking for another input byte. The
+shared lexer retains the selected symbol/numeric policy; it is not a claim of
+complete command/term grammar validation.
+
+Two additional **open** P2 validation gaps were reproduced on the prior
+`8e9dc59` binary and the streaming candidate. They are not approved extensions:
+
+| Gap | Reproducer | Owner / required follow-up |
+| --- | --- | --- |
+| Invalid metadata attribute value accepted | `(set-info :source :bad)` | `Parser::parse_command`: validate the attribute-value category, not just argument count and leading keyword. |
+| Malformed term annotations ignored | `(assert (! true bogus))` | Frontend annotation dispatch: validate the required nonempty sequence of attributes before translating the body. |
+
+SMT-LIB 2.7 Sections 3.4 and 3.6 specify attribute values and annotated terms.
+These are invalid-input acceptance issues, not a demonstrated wrong answer on
+valid input. Review fixtures are original and retained separately in
+`benchmarks/lexical-conformance/online-review-cases.json`; the diagnostic audit
+must exit nonzero while they remain open. They are not added to policy exceptions
+or silently included in a passing conformance claim. Fixing the wider attribute
+grammar is separate from the requested stdin integration.
+
+Other limitations remain explicit: lexical errors have absolute byte offsets,
+many command-shape errors still use offset zero, UTF-8 validity is not checked,
+stream-buffer EOF does not distinguish every device-level I/O failure, and
+there is no recovery after a malformed command. The solver rebuild baseline,
+declaration scopes and dedicated QF_UFLRA implementation are unchanged.
+
 ## Status and authoritative specification
 
 ### Implemented repair and selected compatibility policy
@@ -73,12 +103,14 @@ The repaired lexer deliberately accepts the selected character extensions, not
 arbitrary simple-name characters or extra whitespace classes. Both lexer and
 command framer recognize CR and LF comment endings. Numeric-looking quoted names
 never reach the rational parser. Reserved-word recognition uses binary search
-over a fixed sorted vocabulary; the framer shares the explicit whitespace rule.
+over a fixed sorted vocabulary; memory and stream input share one lexer.
 
 ### Representation and lifetime
 
-`Token` owns its text; `Lexer` borrows input only for its lifetime. `Parser` owns
-that input while `TokenSExprParser` is running. `SExpr::atom_kind` retains lexical
+`Token` owns its text; `Lexer` borrows memory or a stream buffer for its lifetime.
+`Parser` owns memory input or borrows an `istream`; it is noncopyable/nonmovable.
+`TokenSExprParser` borrows the persistent lexer and constructs one command at a
+time without lookahead after its final `)`. `SExpr::atom_kind` retains lexical
 category and `SExpr::atom` owns canonical symbol text or literal spelling; the
 iterative copy/destruction algorithms retain deep-input stack safety. Commands
 and session journal entries own their ASTs. Symbol, definition and binder maps

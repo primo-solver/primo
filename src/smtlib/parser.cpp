@@ -2,6 +2,8 @@
 
 #include <charconv>
 #include <cstddef>
+#include <istream>
+#include <optional>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -20,23 +22,22 @@ namespace {
 
 class TokenSExprParser {
  public:
-  explicit TokenSExprParser(std::string_view input) : lexer_(input) { advance(); }
+  explicit TokenSExprParser(Lexer& lexer) : lexer_(lexer) {}
 
   // Iterative, explicit-stack-based (deliberately not recursive descent):
   // one Frame per currently-open '(' rather than one call stack frame,
   // so deeply-nested input (fuzzer-generated QF_LRA in particular tends
   // to nest deeply, e.g. long chains of `let`) can't stack-overflow this.
-  std::vector<SExpr> parse_all() {
-    std::vector<SExpr> top_level;
+  std::optional<SExpr> parse_one() {
     std::vector<Frame> stack;
 
-    while (!stack.empty() || !at_end()) {
-      if (at_end()) {
+    for (;;) {
+      Token token = lexer_.next();
+      if (token.kind == TokenKind::End) {
+        if (stack.empty()) return std::nullopt;
         throw ParseError("unexpected end of input in list", stack.back().open_offset);
       }
-      const Token token = current_;
       if (token.kind == TokenKind::LParen) {
-        advance();
         stack.push_back(Frame{{}, token.offset});
         continue;
       }
@@ -44,16 +45,18 @@ class TokenSExprParser {
         if (stack.empty()) {
           throw ParseError("unexpected closing parenthesis", token.offset);
         }
-        advance();
         Frame frame = std::move(stack.back());
         stack.pop_back();
-        push_result(stack, top_level, SExpr::make_list(std::move(frame.elements)));
+        auto result = SExpr::make_list(std::move(frame.elements));
+        // Never fetch a token here: an interactive client may be waiting for
+        // this command's response before supplying any more bytes.
+        if (stack.empty()) return result;
+        stack.back().elements.push_back(std::move(result));
         continue;
       }
-      advance();
-      push_result(stack, top_level, SExpr::make_atom(token.text, token.kind));
+      if (stack.empty()) throw ParseError("command must start with '('", token.offset);
+      stack.back().elements.push_back(SExpr::make_atom(std::move(token.text), token.kind));
     }
-    return top_level;
   }
 
  private:
@@ -62,20 +65,7 @@ class TokenSExprParser {
     std::size_t open_offset;
   };
 
-  static void push_result(std::vector<Frame>& stack, std::vector<SExpr>& top_level, SExpr value) {
-    if (stack.empty()) {
-      top_level.push_back(std::move(value));
-    } else {
-      stack.back().elements.push_back(std::move(value));
-    }
-  }
-
-  bool at_end() const { return current_.kind == TokenKind::End; }
-
-  void advance() { current_ = lexer_.next(); }
-
-  Lexer lexer_;
-  Token current_;
+  Lexer& lexer_;
 };
 
 }  // namespace
@@ -85,19 +75,19 @@ ParseError::ParseError(std::string message, std::size_t offset)
 
 std::size_t ParseError::offset() const { return offset_; }
 
-Parser::Parser(std::string_view input) : input_(input) {}
+Parser::Parser(std::string_view input) : input_(input), lexer_(std::string_view(input_)) {}
+Parser::Parser(std::istream& input) : lexer_(input) {}
+
+std::optional<Command> Parser::next_command() {
+  auto expr = TokenSExprParser(lexer_).parse_one();
+  if (!expr) return std::nullopt;
+  return parse_command(*expr);
+}
 
 std::vector<Command> Parser::parse_commands() {
   std::vector<Command> commands;
-  for (const SExpr& expr : parse_sexprs()) {
-    commands.push_back(parse_command(expr));
-  }
+  while (auto command = next_command()) commands.push_back(std::move(*command));
   return commands;
-}
-
-std::vector<SExpr> Parser::parse_sexprs() const {
-  TokenSExprParser sexprs(input_);
-  return sexprs.parse_all();
 }
 
 Command Parser::parse_command(const SExpr& expr) const {

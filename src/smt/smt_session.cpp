@@ -2,12 +2,14 @@
 
 #include <chrono>
 #include <cstddef>
+#include <cstdint>
 #include <exception>
 #include <limits>
 #include <memory>
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -231,9 +233,23 @@ CommandResponse SmtSession::execute(std::string_view text) {
   try {
     const auto start = Clock::now();
     auto commands = smtlib::Parser(text).parse_commands();
-    state.parse_us += micros(start);
+    const auto parse_us = micros(start);
     if (commands.size() != 1) throw std::invalid_argument("execute expects exactly one command");
-    return state.apply(std::move(commands.front()));
+    return execute(std::move(commands.front()), parse_us);
+  } catch (const std::exception& error) {
+    state.stopped = true;
+    state.last.reset();
+    state.discard_translation();
+    return state.response(ResponseKind::Error, error.what());
+  }
+}
+
+CommandResponse SmtSession::execute(smtlib::Command command, std::uint64_t parse_microseconds) {
+  auto& state = *implementation_;
+  if (state.stopped) return state.response(ResponseKind::Error, "session has terminated");
+  try {
+    state.parse_us += parse_microseconds;
+    return state.apply(std::move(command));
   } catch (const std::exception& error) {
     state.stopped = true;
     state.last.reset();

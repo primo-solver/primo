@@ -1,10 +1,12 @@
 #pragma once
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <string_view>
 
 #include "smt/check_sat.hpp"
+#include "smtlib/commands.hpp"
 
 namespace primo::smt {
 
@@ -27,6 +29,9 @@ class SmtSession {
   SmtSession& operator=(const SmtSession&) = delete;
 
   CommandResponse execute(std::string_view command);
+  // Consume parsed syntax without serializing/reparsing it. Parsing duration
+  // is supplied by the caller; a live stream's wall time includes input waits.
+  CommandResponse execute(smtlib::Command command, std::uint64_t parse_microseconds = 0);
   bool terminated() const;
 
  private:

@@ -346,7 +346,10 @@ The equality theory receives `TermId` values. Congruence closure uses those ids 
 Implemented now:
 
 - SMT-LIB command parsing through `smtlib::Lexer` and a local S-expression
-  parser for the supported command subset. Quoted symbols, string metadata,
+  parser for the supported command subset. `Parser(std::istream&)` consumes stdin
+  or files directly, returning one owned command without next-command lookahead;
+  the session receives parsed commands without text framing/reparsing.
+  Quoted symbols, string metadata,
   comments, and multiline `|...|` metadata are tokenized into the owned local
   AST. Command-level validation still rejects unsupported commands
   and malformed supported commands before the frontend builds `core::TermId`

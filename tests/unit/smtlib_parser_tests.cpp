@@ -3,7 +3,12 @@
 #endif
 
 #include <cassert>
+#include <istream>
+#include <sstream>
+#include <stdexcept>
+#include <streambuf>
 #include <string>
+#include <utility>
 
 #include "smtlib/ast.hpp"
 #include "smtlib/commands.hpp"
@@ -25,6 +30,88 @@ void expect_parse_error(Fn fn) {
     return;
   }
   assert(false && "expected ParseError");
+}
+
+// EOF is not available: asking for a byte past this command is a test failure,
+// just as it would block a live client waiting for the command's response.
+class GuardedBuffer final : public std::streambuf {
+ public:
+  explicit GuardedBuffer(std::string text) : text_(std::move(text)) {
+    setg(text_.data(), text_.data(), text_.data() + text_.size());
+  }
+
+ protected:
+  int_type underflow() override { throw std::runtime_error("read past command boundary"); }
+
+ private:
+  std::string text_;
+};
+
+void streams_without_command_lookahead() {
+  GuardedBuffer not_ready("");
+  std::istream unavailable(&not_ready);
+  Parser constructed_without_reading(unavailable);
+  for (const std::string text :
+       {"(check-sat)", "(assert (not false))", "(declare-const |p(;)| Bool)",
+        "(set-info :source \"a \"\"quoted\"\" (;|\")", "(set-info :source \"\")",
+        "; preface )\r(assert ; comment (\ntrue)"}) {
+    GuardedBuffer buffer(text);
+    std::istream input(&buffer);
+    Parser parser(input);
+    const auto command = parser.next_command();
+    assert(command);
+    const auto expected = Parser(text).parse_commands();
+    assert(expected.size() == 1 && expected[0].kind == command->kind);
+    assert(expected[0].name == command->name);
+  }
+  std::istringstream input("(check-sat)(exit) garbage");
+  Parser parser(input);
+  assert(parser.next_command()->kind == CommandKind::CheckSat);
+  assert(parser.next_command()->kind == CommandKind::Exit);
+  assert(input.peek() == ' ');
+
+  std::istringstream empty(" ; final comment");
+  Parser eof(empty);
+  assert(!eof.next_command());
+  assert(!eof.next_command());
+  for (const std::string text : {"(", "(assert |x", "(set-info :source \"x", ")"}) {
+    std::istringstream broken(text);
+    expect_parse_error([&] { Parser(broken).next_command(); });
+  }
+  std::istringstream offset_input("(check-sat)\n(assert 01)");
+  Parser offsets(offset_input);
+  assert(offsets.next_command());
+  try {
+    offsets.next_command();
+    assert(false);
+  } catch (const ParseError& error) {
+    assert(error.offset() == 20);
+  }
+  std::istream invalid(nullptr);
+  expect_parse_error([&] { Parser bad(invalid); });
+}
+
+void memory_and_stream_tokens_agree() {
+  using primo::smtlib::TokenKind;
+  for (int i = 0; i < 100; ++i) {
+    const std::string text = "(assert ; ignored (\r(let ((|x" + std::to_string(i) +
+                             "| 0.001)) (= x" + std::to_string(i) +
+                             " 17))) :key #b001 #x00a \"a\"\"b\" || |a\\b|";
+    std::istringstream input(text);
+    primo::smtlib::Lexer memory(text);
+    primo::smtlib::Lexer stream(input);
+    for (;;) {
+      const auto lhs = memory.next();
+      const auto rhs = stream.next();
+      assert(lhs.kind == rhs.kind && lhs.text == rhs.text && lhs.offset == rhs.offset);
+      if (lhs.kind == TokenKind::End) break;
+    }
+  }
+  const std::string deep =
+      "(assert " + std::string(20000, '(') + "true" + std::string(20000, ')') + ")";
+  GuardedBuffer buffer(deep);
+  std::istream input(&buffer);
+  assert(Parser(input).next_command()->kind == CommandKind::Assert);
 }
 
 void parses_qf_uf_smoke_shape() {
@@ -271,6 +358,8 @@ void lexical_categories_and_policy() {
 }  // namespace
 
 int main() {
+  streams_without_command_lookahead();
+  memory_and_stream_tokens_agree();
   lexical_categories_and_policy();
   parses_qf_uf_smoke_shape();
   parses_nested_boolean_assertion();

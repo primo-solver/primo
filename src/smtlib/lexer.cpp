@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <istream>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -78,6 +79,9 @@ bool is_simple_symbol(std::string_view text) {
 }
 
 Lexer::Lexer(std::string_view input) : input_(input) {}
+Lexer::Lexer(std::istream& input) : buffer_(input.rdbuf()) {
+  if (buffer_ == nullptr || !input.good()) throw ParseError("unreadable input stream", 0);
+}
 
 Token Lexer::next() {
   skip_space_and_comments();
@@ -86,28 +90,28 @@ Token Lexer::next() {
   const char current = advance();
   if (current == '(') return {TokenKind::LParen, "(", start};
   if (current == ')') return {TokenKind::RParen, ")", start};
+  std::string text(1, current);
   if (current == '|' || current == '"') {
     while (!at_end()) {
-      if (advance() != current) continue;
+      const char ch = advance();
+      text.push_back(ch);
+      if (ch != current) continue;
       if (current == '"' && !at_end() && peek() == '"') {
-        advance();
+        text.push_back(advance());
         continue;
       }
       // Selected compatibility policy: backslash/control bytes in quoted names
       // are literal; a backslash never escapes a closing pipe.
-      if (current == '|')
-        return {TokenKind::Symbol, std::string(input_.substr(start + 1, offset_ - start - 2)),
-                start};
-      return {TokenKind::String, std::string(input_.substr(start, offset_ - start)), start};
+      if (current == '|') return {TokenKind::Symbol, text.substr(1, text.size() - 2), start};
+      return {TokenKind::String, std::move(text), start};
     }
     throw ParseError("unterminated quoted token", start);
   }
   while (!at_end()) {
     const char ch = peek();
     if (is_smt_space(ch) || ch == '(' || ch == ')' || ch == ';' || ch == '|' || ch == '"') break;
-    advance();
+    text.push_back(advance());
   }
-  std::string text(input_.substr(start, offset_ - start));
   const std::string_view view(text);
   TokenKind kind = TokenKind::Symbol;
   if (digit(current)) {
@@ -154,7 +158,19 @@ void Lexer::skip_space_and_comments() {
   }
 }
 
-bool Lexer::at_end() const { return offset_ >= input_.size(); }
-char Lexer::peek() const { return input_[offset_]; }
-char Lexer::advance() { return input_[offset_++]; }
+bool Lexer::at_end() {
+  return buffer_ != nullptr
+             ? std::char_traits<char>::eq_int_type(buffer_->sgetc(), std::char_traits<char>::eof())
+             : offset_ >= input_.size();
+}
+char Lexer::peek() {
+  return buffer_ != nullptr ? std::char_traits<char>::to_char_type(buffer_->sgetc())
+                            : input_[offset_];
+}
+char Lexer::advance() {
+  if (buffer_ == nullptr) return input_[offset_++];
+  const char ch = std::char_traits<char>::to_char_type(buffer_->sbumpc());
+  ++offset_;
+  return ch;
+}
 }  // namespace primo::smtlib

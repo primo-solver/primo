@@ -7,6 +7,34 @@ original bounded corpus only; the repair has separate regression/fuzz evidence.
 
 ## Design and implementation checklist
 
+### Direct stream parsing checklist (2026-09-10)
+
+The stdin refinement uses the lexical/S-expression rules in SMT-LIB 2.7
+Sections 3.1–3.2, with the selected extensions in [](lexical-conformance.md).
+This is an original explicit-stack parser, not a parser-generator integration.
+
+- A persistent `Lexer` borrows either a memory view or a stream buffer. Tokens
+  own their spelling/category; byte offsets are relative to the entire input.
+- `Parser` owns memory input or borrows a stream and exposes `next_command()`.
+  It builds one AST with an explicit stack, returning immediately when the
+  outer closing parenthesis is consumed. It must not request the next token
+  before returning: that would deadlock a request/response client.
+- The CLI passes the owned `Command` directly to `SmtSession`; no command-text
+  framing/copy/reparse remains. The session's string convenience API stays.
+- Work is linear in bytes plus AST size; live storage is the current token,
+  open-list stack and current command AST, in addition to the existing journal.
+  Stream refills may buffer available bytes, but must not require future input
+  after a complete command. Input and parser lifetimes are explicit; parsers
+  cannot be copied/moved while borrowing their own memory input.
+- EOF between commands is normal; EOF inside a token/list and unmatched closing
+  parentheses are errors. Errors terminate the CLI; resynchronization is not
+  implemented. Exit does not inspect subsequent input.
+- Qualification covers guarded stream buffers (any read after the closing
+  parenthesis fails), fragmented real pipes, memory/stream equivalence,
+  deep nesting, lexical policy, scoped sessions, ASan and fresh generated input.
+- Streaming parse wall time includes waiting for client input. Interactive
+  parse/total statistics must not be compared to offline CPU timings.
+
 This branch implements an original rebuild-based session baseline, not persistent
 incremental SAT, theory solving, or incremental tactics. The checklist describes
 the implemented interface; bounded SLURM qualification and its measured costs
@@ -43,9 +71,11 @@ chains, callbacks and engines die before their frontend. Returned typed models
 own their signature and interpretation; a context mutation invalidates the
 session's cached outcome, but cannot corrupt a model retained by an API caller.
 
-`smtlib::CommandReader` frames one complete command from an input stream and
-passes it to `Parser`. It understands lexical quoting/comments only, not a
-second term grammar. Command responses are typed and printed by the SMT-LIB
+`smtlib::Parser(std::istream&)` now retains a stream-backed `Lexer` and returns
+one owned command from `next_command()` directly. The separate `CommandReader`
+framing pass is removed. The memory constructor owns its input and uses the
+same single-pass lexer/parser operations; `parse_commands()` consumes the
+remaining commands. Command responses are typed and printed by the SMT-LIB
 CLI output adapter (`cli::print_response`), avoiding a dependency from the
 SMT-LIB library back into SMT. The CLI flushes responses before reading another command.
 
@@ -90,7 +120,8 @@ redirection and persistent solving are not implemented. Enabling
 `:global-declarations true` returns unsupported; false remains the default.
 Produce-models is a start-mode option; print-success can change immediately.
 
-`SmtSession::execute` accepts exactly one command and returns `CommandResponse`;
+`SmtSession::execute` accepts exactly one owned parsed command (or a string
+convenience input) and returns `CommandResponse`;
 the response may share an immutable `CheckSatOutcome` across model queries.
 Unsupported commands/options return `unsupported` and leave the context intact;
 syntax/type/protocol errors print `(error "...")` and terminate with exit 2.

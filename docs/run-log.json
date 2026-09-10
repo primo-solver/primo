@@ -3,6 +3,30 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-10-online-parser",
+      "date": "2026-09-10",
+      "baseline_commit": "f464fa1",
+      "commit": "implementation commit recorded by adjacent qualification entry",
+      "kind": "parser-review-and-direct-stdin-integration",
+      "evidence_status": "locally-tested-remote-qualification-pending",
+      "design": "docs/incremental-smt.md and docs/lexical-conformance.md",
+      "scope": "Persistent stream-backed lexer, one-command explicit-stack parser with no eager lookahead, owned parsed-command session overload, CLI stdin/file wiring, removal of the redundant CommandReader. No SAT/theory/preprocessing algorithm change. Streaming parse wall time includes input waits; no speed claim.",
+      "review_findings": "Removed eager lookahead past closing parenthesis and raw command framing/copy/reparse. Prevented self-borrow invalidation by deleting copy/move of the new persistent parser. Two separately OPEN pre-existing attribute-validation gaps reproduced on 8e9dc59 and current candidate: bare keyword metadata values and malformed annotation attributes accepted. Original fixtures benchmarks/lexical-conformance/online-review-cases.json; not approved policy extensions and not described as passing conformance.",
+      "diagnostic_command": "python3 scripts/check_smtlib_lexical_conformance.py --cases benchmarks/lexical-conformance/online-review-cases.json --only primo --out results/online-parser-review-diagnostics",
+      "diagnostic_summary": "2 invalid-accepted, exit 1 as required; no wrong answer claim for valid input. Previous binary version plus both SAT responses saved in tmp/online-parser-baseline-diagnostics.log; bounded tiny baseline probes only, no reference reruns.",
+      "smoke_command": "python3 scripts/check_smtlib_lexical_conformance.py --policy --mutations 100 --seed 20260910 --only primo --out results/online-parser-local-smoke",
+      "smoke_summary": {"generated_sessions": 100, "generated_answers": 200, "fixed_valid_pass": 34, "fixed_invalid_rejected": 15, "extension_pass": 4, "diagnostic_cases": 2, "wrong_answer": 0, "crash": 0, "timeout": 0, "unknown": 0, "unexpected_parser_type_error": 0, "exit_code": 0},
+      "smoke_provenance": "Preliminary dirty-tree development binary; exact command/version/binary hash in results/online-parser-local-smoke/run.json. Five-second per invocation timeout; original alias/binder/scope generator, seed 20260910. Clean-commit 1000-session remote gate will reuse hash-matched recorded Z3/cvc5 answers, not rerun references.",
+      "verification": {
+        "check": "make check: 31 CTest plus 140 Python pass; tmp/online-parser-check-v2.log",
+        "asan": "make asan-test: 31/31 pass; tmp/online-parser-asan-v2.log",
+        "development_test_correction": "First check/ASan attempt failed only the new absolute-offset assertion: expected 19 instead of correct 20. Corrected test and reran both gates; no sanitizer report.",
+        "review": "Repository code-review and efficiency-review passes inspect ownership, stream liveness, category preservation, session overload error behavior and statistics. Local configured tidy on seven changed implementation/test translation units has no source diagnostic. Include-cleaner has only the existing ranges::binary_search/<algorithm> false positive. Whole-source scan planned on clean remote snapshot. Logs tmp/online-parser-{tidy,includes,efficiency}.log (efficiency index uses .txt)."
+      },
+      "remote_gate_script": "scripts/slurm_online_parser_gate.sbatch: 1000 generated sessions, hash-matched saved references, 100 live-pipe chunking seeds, malformed EOF cases and a direct Dolmen model check. Whole-source scans use scripts/slurm_lexical_static_resume.sbatch separately.",
+      "limitations": "No full-corpus performance claim or assertion of complete parser conformance. Open metadata/annotation validation findings are explicitly triaged separately from this stream integration. Raw artifacts are ignored local/remote results; this ledger and diagnostic fixtures retain reproducibility."
+    },
+    {
       "id": "2026-09-10-remove-unused-antlr",
       "date": "2026-09-10",
       "kind": "unused-build-dependency-removal",

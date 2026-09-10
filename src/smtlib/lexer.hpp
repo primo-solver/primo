@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cstddef>
+#include <istream>
+#include <streambuf>
 #include <string>
 #include <string_view>
 
@@ -34,16 +36,19 @@ struct Token {
 class Lexer {
  public:
   explicit Lexer(std::string_view input);
+  // The stream and its buffer must outlive the lexer. Construction performs no I/O.
+  explicit Lexer(std::istream& input);
 
   Token next();
 
  private:
   void skip_space_and_comments();
-  bool at_end() const;
-  char peek() const;
+  bool at_end();
+  char peek();
   char advance();
 
   std::string_view input_;
+  std::streambuf* buffer_ = nullptr;
   std::size_t offset_ = 0;
 };
 

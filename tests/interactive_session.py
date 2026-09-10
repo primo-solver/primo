@@ -1,20 +1,26 @@
 """Bounded real-pipe regression: never send the next query before its response."""
 
 import os
+import random
 import select
 import subprocess
 import sys
 
 
 def main():
+    rng = random.Random(int(sys.argv[2]) if len(sys.argv) > 2 else 0)
     process = subprocess.Popen(
         [sys.argv[1], "--quiet", "--check-model", "--max-theory-conflicts=1000"],
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
     )
     try:
         def exchange(command, expected):
-            process.stdin.write(command.encode())
-            process.stdin.flush()
+            data = command.encode()
+            while data:
+                size = rng.randint(1, min(9, len(data)))
+                process.stdin.write(data[:size])
+                process.stdin.flush()
+                data = data[size:]
             ready, _, _ = select.select([process.stdout], [], [], 5)
             assert ready, f"no response before EOF to {command!r}"
             output = os.read(process.stdout.fileno(), 4096).decode()
@@ -33,9 +39,13 @@ def main():
         exchange("(check-sat)", "sat\n")
         exchange("(declare-const |gate (;)| Bool)", "success\n")
         # Split within quoting/comment syntax, then require a response without EOF.
-        for fragment in ['(set-info :source "a "', '"quoted"', '" (; | text"', ')']:
+        for fragment in ['(set-info :source "a "', '"quoted"', '" (; | text"']:
             process.stdin.write(fragment.encode())
             process.stdin.flush()
+            assert not select.select([process.stdout], [], [], 0.01)[0], \
+                "response to an incomplete command"
+        process.stdin.write(b")")
+        process.stdin.flush()
         ready, _, _ = select.select([process.stdout], [], [], 5)
         assert ready, "fragmented string command did not complete"
         assert os.read(process.stdout.fileno(), 4096) == b"success\n"
@@ -48,6 +58,14 @@ def main():
         if process.poll() is None:
             process.kill()
         process.communicate(timeout=5)
+
+    for text in [b"(set-info :source \"unfinished", b"(assert |unfinished", b"(assert true"]:
+        result = subprocess.run(
+            [sys.argv[1], "--quiet", "--max-theory-conflicts=1000"],
+            input=text, capture_output=True, timeout=5, check=False,
+        )
+        assert result.returncode == 2, result
+        assert result.stdout.startswith(b'(error "'), result.stdout
 
 
 if __name__ == "__main__":
