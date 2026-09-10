@@ -20,6 +20,7 @@
 #include "core/symbol_table.hpp"
 #include "core/term.hpp"
 #include "core/term_manager.hpp"
+#include "smt/model_reconstruction.hpp"
 #include "theory/arithmetic/linear_polynomial.hpp"
 #include "theory/arithmetic/lra_atom.hpp"
 #include "theory/equality/congruence_stats.hpp"
@@ -857,7 +858,7 @@ bool is_boolean_unit_atom(const core::TermManager& terms, core::TermId term_id) 
   switch (term.kind) {
     case core::TermKind::Constant: {
       const core::Symbol& symbol = terms.symbols().get_symbol(term.symbol);
-      return !symbol.name.starts_with("$primo_bool_arg_");
+      return !(symbol.internal && symbol.name.starts_with("$primo_bool_arg_"));
     }
     case core::TermKind::Application:
     case core::TermKind::Equality:
@@ -891,7 +892,7 @@ bool is_forced_atom(const core::TermManager& terms, core::TermId term_id) {
   switch (term.kind) {
     case core::TermKind::Constant: {
       const core::Symbol& symbol = terms.symbols().get_symbol(term.symbol);
-      return !symbol.name.starts_with("$primo_bool_arg_");
+      return !(symbol.internal && symbol.name.starts_with("$primo_bool_arg_"));
     }
     case core::TermKind::Application:
     case core::TermKind::Equality:

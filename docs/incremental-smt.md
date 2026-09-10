@@ -1,8 +1,9 @@
 # Incremental SMT sessions
 
 The subsequent [](lexical-conformance.md) audit found quoted-name identity bugs
-that can change answers. The qualification below describes the original bounded
-corpus only; it does not clear these newly found correctness blockers.
+that can change answers. Its repair preserves token categories and canonical
+names in the owned command journal. The qualification below describes the
+original bounded corpus only; the repair has separate regression/fuzz evidence.
 
 ## Design and implementation checklist
 

@@ -22,6 +22,8 @@ struct Symbol {
   std::vector<SortId> arg_sorts;
   SortId result_sort = kInvalidSortId;
   SymbolKind kind = SymbolKind::Constant;
+  // Ownership is metadata, never inferred from a user-visible name prefix.
+  bool internal = false;
 };
 
 class SymbolTable {
@@ -36,6 +38,7 @@ class SymbolTable {
   const Sort& get_sort(SortId id) const;
 
   SymbolId declare_constant(std::string name, SortId sort);
+  SymbolId declare_internal_constant(std::string name, SortId sort);
   SymbolId declare_function(std::string name, std::vector<SortId> arg_sorts, SortId result_sort);
   SymbolId declare_predicate(std::string name, std::vector<SortId> arg_sorts);
   std::optional<SymbolId> lookup_symbol(const std::string& name) const;

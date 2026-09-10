@@ -83,7 +83,7 @@ Model::Model(const SymbolTable& symbols, std::vector<ModelInterpretation> interp
     }
   }
   for (const auto& symbol : symbols_) {
-    if (!symbol.name.starts_with("$primo_") && !by_symbol_.contains(symbol.id)) {
+    if (!symbol.internal && !by_symbol_.contains(symbol.id)) {
       throw ModelError("missing interpretation for " + symbol.name);
     }
   }

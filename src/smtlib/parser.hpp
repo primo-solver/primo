@@ -29,6 +29,7 @@ class Parser {
   std::vector<SExpr> parse_sexprs() const;
   Command parse_command(const SExpr& expr) const;
   std::string require_atom(const SExpr& expr, std::string_view context) const;
+  std::string require_symbol(const SExpr& expr, std::string_view context) const;
 
   std::string input_;
 };

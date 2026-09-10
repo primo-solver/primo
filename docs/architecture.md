@@ -151,6 +151,12 @@ Sorts and symbols are owned by `core::SymbolTable`:
 - `SymbolTable` stores symbols in `std::vector<Symbol> symbols_`.
 - names are mapped with `std::unordered_map<std::string, SortId>` and `std::unordered_map<std::string, SymbolId>`.
 
+SMT-LIB names arrive as canonical symbol text, not quoted spellings; the empty
+name is supported. `Symbol::internal` is explicit auxiliary ownership, set only
+by `declare_internal_constant`, not inferred from `$primo_` prefixes. The flag is
+copied into immutable model signatures. User declarations that resemble internal
+names still require interpretations and must be printed. See [](lexical-conformance.md).
+
 `SymbolTable` creates the built-in Bool, Real and Int sorts in its constructor,
 with IDs 0, 1 and 2 respectively. Uninterpreted sorts receive further IDs.
 

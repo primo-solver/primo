@@ -7,6 +7,7 @@
 
 #include "smtlib/ast.hpp"
 #include "smtlib/commands.hpp"
+#include "smtlib/lexer.hpp"
 #include "smtlib/parser.hpp"
 
 using primo::smtlib::CommandKind;
@@ -97,7 +98,7 @@ void parses_benchmark_metadata_and_quoted_symbols() {
   assert(commands[3].option == ":print-success");
   assert(commands[3].value == "false");
   assert(commands[6].kind == CommandKind::DeclareFun);
-  assert(commands[6].name == "|+i|");
+  assert(commands[6].name == "+i");
   assert(commands[8].kind == CommandKind::Assert);
   assert(commands[8].assertion.list[0].is_atom("let"));
   assert(commands[10].kind == CommandKind::Exit);
@@ -211,9 +212,66 @@ void rejects_malformed_or_unsupported_input() {
   expect_parse_error([] { Parser("(set-info :source \"unterminated)").parse_commands(); });
 }
 
+void lexical_categories_and_policy() {
+  using primo::smtlib::TokenKind;
+  const auto commands = Parser(R"((declare-const || |Bool|)
+    (assert (let ((|x| |17|)) (= x 17)))
+    (assert (|let| |:x|)) (assert (= 0.001 17.00)))")
+                            .parse_commands();
+  assert(commands[0].name.empty());
+  assert(commands[0].result_sort == "Bool");
+  const SExpr copy = commands[1].assertion;
+  assert(copy.list[0].atom_kind == TokenKind::Reserved);
+  assert(copy.list[1].list[0].list[1].is_symbol());
+  assert(copy.list[1].list[0].list[1].atom == "17");
+  assert(copy.list[2].list[2].atom_kind == TokenKind::Numeral);
+  assert(commands[2].assertion.list[0].is_symbol());
+  assert(commands[3].assertion.list[1].atom_kind == TokenKind::Decimal);
+  for (const std::string input : {"(declare-const 17 Bool)",
+                                  "(declare-const \"x\" Bool)",
+                                  "(declare-const :x Bool)",
+                                  "(declare-const let Bool)",
+                                  "(declare-sort X |0|)",
+                                  "(push |1|)",
+                                  "(|check-sat|)",
+                                  "(set-option produce-models true)",
+                                  "(set-info source x)",
+                                  "(assert (= 017 17))",
+                                  "(assert (= 00 0))",
+                                  "(assert (= 00.1 0.1))",
+                                  "(assert (= 0. 0))",
+                                  "(assert (= 1e2 100))",
+                                  "(assert #b012)",
+                                  "(assert #x0g)",
+                                  "(declare-const x' Bool)",
+                                  "(declare-const žlutý Bool)",
+                                  "(assert\ffalse)",
+                                  "(assert\vfalse)",
+                                  "(assert |)",
+                                  "(assert \" )"}) {
+    expect_parse_error([&] { Parser(input).parse_commands(); });
+  }
+  const auto cr = Parser("(assert ; discarded ) (\rfalse)").parse_commands();
+  assert(cr[0].assertion.is_atom("false"));
+  const auto extensions = Parser(
+                              "(declare-const gate,part Bool)"
+                              "(declare-const |gate\\part| Bool)"
+                              "(declare-const |gate\001part| Bool)")
+                              .parse_commands();
+  assert(extensions[0].name == "gate,part");
+  assert(extensions[1].name == "gate\\part");
+  assert(extensions[2].name == "gate\001part");
+  primo::smtlib::Lexer literals("0 17 0.017 17.00 #b001 #x0017 \"a\"\"b\"");
+  for (const auto kind :
+       {TokenKind::Numeral, TokenKind::Numeral, TokenKind::Decimal, TokenKind::Decimal,
+        TokenKind::Binary, TokenKind::Hexadecimal, TokenKind::String, TokenKind::End})
+    assert(literals.next().kind == kind);
+}
+
 }  // namespace
 
 int main() {
+  lexical_categories_and_policy();
   parses_qf_uf_smoke_shape();
   parses_nested_boolean_assertion();
   parses_benchmark_metadata_and_quoted_symbols();

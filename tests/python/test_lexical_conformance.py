@@ -11,6 +11,19 @@ SPEC.loader.exec_module(AUDIT)
 
 
 class ClassificationTests(unittest.TestCase):
+    def test_mutations_are_reproducible(self):
+        cases = list(AUDIT.generated_alias_cases(100, 17))
+        self.assertEqual(cases, list(AUDIT.generated_alias_cases(100, 17)))
+        self.assertEqual(len({case["id"] for case in cases}), 100)
+        self.assertEqual(
+            {case["group"] for case in cases},
+            {"QF_UF", "QF_LIA", "QF_LRA", "QF_UFLIA", "QF_UFLRA"},
+        )
+
+    def test_policy_does_not_allow_leading_zeroes(self):
+        self.assertNotIn("leading_zero_numeral_invalid", AUDIT.POLICY_EXTENSIONS)
+        self.assertNotIn("reserved_name_invalid", AUDIT.POLICY_EXTENSIONS)
+
     def test_answer_does_not_hide_error(self):
         case = {"valid": True, "answers": ["sat"]}
         self.assertEqual(

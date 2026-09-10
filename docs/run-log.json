@@ -3,6 +3,50 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-10-lexical-policy-repair",
+      "date": "2026-09-10",
+      "kind": "parser-symbol-identity-and-compatibility-repair",
+      "baseline_commit": "b65ff98",
+      "evidence_status": "local-qualified-implementation-clean-commit-gate-pending",
+      "scope": "Typed lexical categories and canonical names across parser, binders, definitions, scopes and model serialization. User-selected comma/backslash/control-character and last-duplicate-let compatibility; reserved words and leading-zero numerals remain rejected. Explicit internal-symbol ownership prevents canonicalized user names being hidden from models or mistaken for internal interface/proxy symbols. No theory-combination algorithm or dedicated QF_UFLRA strategy change.",
+      "design": "docs/lexical-conformance.md",
+      "local_runs": [
+        {
+          "command": "python3 scripts/check_smtlib_lexical_conformance.py --only primo --out results/lexical-fix-initial",
+          "artifact": "results/lexical-fix-initial",
+          "status": "preliminary-dirty-tree-before-internal-ownership-metadata",
+          "summary": "34 valid passes; 15 invalid rejected; four intentionally accepted extensions; two diagnostic cases. No crash/timeout/wrong answer. Normative audit exits 1 by design, before policy-aware classification was added."
+        },
+        {
+          "command": "python3 scripts/check_smtlib_lexical_conformance.py --policy --mutations 100 --only primo z3 cvc5 dolmen --out results/lexical-fix-smoke",
+          "artifact": "results/lexical-fix-smoke",
+          "status": "preliminary-local-dirty-tree-after-internal-ownership-metadata",
+          "generator": "Original deterministic alias/binder/scope mutation templates in the audit driver",
+          "seed": 0,
+          "count": 100,
+          "timeout_seconds": 5,
+          "summary": "All 100 generated sessions pass Primo, Z3 and cvc5 (200 answers per solver); Dolmen accepts all generated inputs. Fixed Primo corpus: 34 valid passes, 15 rejections, four extension passes and two diagnostic outcomes. Zero crashes/timeouts/wrong answers on generated cases; fixed reference nonconformance remains classified separately. Exact profile versions/commands/hashes in run.json.",
+          "host": "local development workspace"
+        },
+        {
+          "command": "python3 scripts/validate_model.py --solver build/primo --solver-arg=--quiet --solver-arg=--check-model --solver-arg=--max-theory-conflicts=1000 --require-dolmen-pass --expect-sat --out results/lexical-fix-model --timeout 10 --dolmen-timeout 15 benchmarks/smoke/quoted_names_model.smt2",
+          "artifact": "results/lexical-fix-model",
+          "status": "preliminary-local-dirty-tree",
+          "summary": "One SAT model passes Dolmen directly, no fallback. Covers empty/numeric/reserved/internal-looking names and parameter-name collision with x0. No invalid model/timeout/error."
+        }
+      ],
+      "verification": {
+        "check": "make check: 31 CTest and 139 Python tests pass; tmp/lexical-fix-check-v3.log. Earlier check/final logs preceded internal-symbol metadata or the last generator-only changes.",
+        "asan": "CMAKE_BUILD_PARALLEL_LEVEL=2 make asan-test: 31/31 pass; tmp/lexical-fix-asan-final.log. Earlier tmp/lexical-fix-asan.log also passes but precedes internal metadata. Subsequent C++ edits add/remove direct includes only.",
+        "lint": "make lint; tmp/lexical-fix-lint.log",
+        "docs": "make docs; tmp/lexical-fix-docs.log",
+        "review": "All-project change-impact/efficiency index and focused C++ self-review: token/category ownership and iterative copies, journal replay, name identity, internal-symbol classification, model parameter freshness, extension versus normative oracle and binary provenance. No solver algorithm change or performance claim. Static scan and include-cleaner cover changed implementation/test translation units; whole-tree scan scheduled on the prepared SLURM snapshot.",
+        "hygiene": "Removed dead Frontend::has_head helper and unused theory-combination string include; added direct provider includes. Reserved vocabulary uses allocation-free binary search. Local include-cleaner misidentifies ranges::binary_search despite the correct <algorithm> include; do not add implementation-specific libstdc++ headers."
+      },
+      "remote_gate": "scripts/slurm_lexical_policy_gate.sbatch: 1000 generated sessions across five logics against Z3/cvc5, fixed policy corpus, direct Dolmen model regression, then established whole-source static review. Requires clean archived revision and repository preparation/check-only preflight. Final clean-commit results remain to be recorded.",
+      "limitations": "Compatibility policy is not full Z3 emulation or strict SMT-LIB conformance. Duplicate definition parameters remain rejected; UTF-8 validity is not separately checked. Printed extension-bearing names need a compatible external parser. Original audit matrix remains historical, not overwritten."
+    },
+    {
       "id": "2026-09-10-lexical-conformance-audit",
       "date": "2026-09-10",
       "kind": "standard-derived-parser-corner-case-reference-comparison",

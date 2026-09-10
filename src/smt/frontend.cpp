@@ -21,6 +21,7 @@
 #include "smt/solver_error.hpp"
 #include "smtlib/ast.hpp"
 #include "smtlib/commands.hpp"
+#include "smtlib/lexer.hpp"
 #include "util/rational.hpp"
 
 namespace primo::smt {
@@ -273,11 +274,6 @@ struct Frontend::Implementation {
     }
   }
 
-  static bool has_head(const smtlib::SExpr& expr, std::string_view head) {
-    return expr.kind == smtlib::SExpr::Kind::List && !expr.list.empty() &&
-           expr.list[0].kind == smtlib::SExpr::Kind::Atom && expr.list[0].atom == head;
-  }
-
   core::TermId build_pairwise_equality(core::TermId lhs, core::TermId rhs) {
     const core::SortId lhs_sort = terms_.get(lhs).sort;
     if (lhs_sort != terms_.get(rhs).sort) {
@@ -430,7 +426,7 @@ struct Frontend::Implementation {
       if (symbols_.lookup_symbol(name).has_value() || definitions_.contains(name)) {
         continue;
       }
-      return terms_.mk_constant(symbols_.declare_constant(name, sort));
+      return terms_.mk_constant(symbols_.declare_internal_constant(name, sort));
     }
   }
 
@@ -504,24 +500,31 @@ std::shared_ptr<std::vector<const smtlib::SExpr*>> TermBuilder::collect(const sm
 
 void TermBuilder::dispatch(const smtlib::SExpr& expr, Continuation k) {
   if (expr.kind == smtlib::SExpr::Kind::Atom) {
+    if (expr.atom_kind == smtlib::TokenKind::Numeral ||
+        expr.atom_kind == smtlib::TokenKind::Decimal) {
+      const auto literal = util::Rational::parse(expr.atom);
+      if (!literal) throw UnsupportedInput("invalid arithmetic literal: " + expr.atom);
+      const bool integer_logic = frontend_.logic_ == "QF_LIA" || frontend_.logic_ == "QF_UFLIA";
+      if (integer_logic && expr.atom_kind == smtlib::TokenKind::Decimal)
+        throw UnsupportedInput("decimal literal requires real arithmetic");
+      const core::SortId numeral_sort =
+          integer_logic ? frontend_.symbols_.int_sort() : frontend_.symbols_.real_sort();
+      resume(std::move(k), frontend_.terms_.mk_rational(*literal, numeral_sort));
+      return;
+    }
+    if (!expr.is_symbol())
+      throw UnsupportedInput("unsupported literal or reserved term: " + expr.atom);
+    const auto bound = frontend_.lookup_bound_term(expr.atom);
+    if (bound.has_value()) {
+      resume(std::move(k), bound.value());
+      return;
+    }
     if (expr.atom == "true") {
       resume(std::move(k), frontend_.terms_.mk_bool(true));
       return;
     }
     if (expr.atom == "false") {
       resume(std::move(k), frontend_.terms_.mk_bool(false));
-      return;
-    }
-    if (const auto literal = util::Rational::parse(expr.atom); literal.has_value()) {
-      const bool integer_logic = frontend_.logic_ == "QF_LIA" || frontend_.logic_ == "QF_UFLIA";
-      const core::SortId numeral_sort =
-          integer_logic ? frontend_.symbols_.int_sort() : frontend_.symbols_.real_sort();
-      resume(std::move(k), frontend_.terms_.mk_rational(literal.value(), numeral_sort));
-      return;
-    }
-    const auto bound = frontend_.lookup_bound_term(expr.atom);
-    if (bound.has_value()) {
-      resume(std::move(k), bound.value());
       return;
     }
     if (!frontend_.definitions_.empty()) {
@@ -544,6 +547,19 @@ void TermBuilder::dispatch(const smtlib::SExpr& expr, Continuation k) {
   }
 
   const std::string& head = expr.list[0].atom;
+  if (expr.list[0].atom_kind == smtlib::TokenKind::Reserved) {
+    if (head == "let") {
+      dispatch_let(expr, std::move(k));
+      return;
+    }
+    if (head == "!") {
+      if (expr.list.size() < 2) throw UnsupportedInput("annotated term has no body");
+      schedule(expr.list[1], std::move(k));
+      return;
+    }
+    throw UnsupportedInput("unsupported reserved expression: " + head);
+  }
+  if (!expr.list[0].is_symbol()) throw UnsupportedInput("application head must be a symbol");
   if (head == "not") {
     Frontend::Implementation::require_arity(expr, 2, "not");
     schedule(expr.list[1], [this, k = std::move(k)](core::TermId x) mutable {
@@ -573,19 +589,8 @@ void TermBuilder::dispatch(const smtlib::SExpr& expr, Continuation k) {
     dispatch_xor(expr, std::move(k));
     return;
   }
-  if (head == "!") {
-    if (expr.list.size() < 2) {
-      throw UnsupportedInput("annotated term has no body");
-    }
-    schedule(expr.list[1], std::move(k));
-    return;
-  }
   if (head == "ite") {
     dispatch_ite(expr, std::move(k));
-    return;
-  }
-  if (head == "let") {
-    dispatch_let(expr, std::move(k));
     return;
   }
   if (head == "=") {
@@ -661,9 +666,10 @@ void TermBuilder::dispatch_let(const smtlib::SExpr& expr, Continuation k) {
     throw UnsupportedInput("let bindings must be a list");
   }
   const smtlib::SExpr& bindings_expr = expr.list[1];
+  if (bindings_expr.list.empty()) throw UnsupportedInput("let requires at least one binding");
   for (const smtlib::SExpr& binding : bindings_expr.list) {
     if (binding.kind != smtlib::SExpr::Kind::List || binding.list.size() != 2 ||
-        binding.list[0].kind != smtlib::SExpr::Kind::Atom) {
+        !binding.list[0].is_symbol()) {
       throw UnsupportedInput("malformed let binding");
     }
   }
@@ -677,9 +683,9 @@ void TermBuilder::dispatch_let(const smtlib::SExpr& expr, Continuation k) {
     std::unordered_map<std::string, core::TermId> scope;
     for (std::size_t i = 0; i < bindings_expr.list.size(); ++i) {
       const std::string& name = bindings_expr.list[i].list[0].atom;
-      if (!scope.emplace(name, values[i]).second) {
-        throw UnsupportedInput("duplicate let binding: " + name);
-      }
+      // Selected Z3 compatibility extension: last duplicate wins, but every
+      // right-hand side was evaluated outside this new parallel scope.
+      scope.insert_or_assign(name, values[i]);
     }
     frontend_.let_scopes_.push_back(std::move(scope));
     schedule(expr.list[2], [this, k = std::move(k)](core::TermId body) mutable {

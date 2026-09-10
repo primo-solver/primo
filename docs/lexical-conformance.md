@@ -2,9 +2,50 @@
 
 ## Status and authoritative specification
 
-The audit of `9f20f58` exposes **two wrong-answer cases**, eleven rejected valid
-cases, and multiple accepted invalid inputs. These are unresolved correctness
-and conformance findings, not performance work. Prior scoped fuzzing did not
+### Implemented repair and selected compatibility policy
+
+The selected policy follows the tested Z3 character extensions (comma in simple
+names, backslash/control characters within quoted names), but rejects unquoted
+reserved words and leading-zero numerals, including decimal integer parts.
+Standard whitespace is TAB/LF/CR/space, and comments terminate on LF or CR.
+Parallel duplicate `let` names use the tested Z3 last-binding-wins extension;
+all right-hand sides still evaluate outside the new scope. Duplicate definition
+parameters remain rejected; this is a documented limitation, not an inferred
+standard requirement.
+
+Specification-derived operations and invariants implemented:
+
+- `Lexer` classifies symbols, reserved syntax, numerals, decimals, binary/hex
+  literals, strings and keywords in linear time. Quoted symbol payloads lose
+  only their delimiters. Strings retain their spelling. Unterminated tokens fail.
+- `SExpr` owns token category and text; iterative deep copy preserves both.
+  Categories distinguish reserved syntax from quoted names and literals from
+  numeric-looking identifiers. No AST borrow survives mutation of its owner.
+- `Parser` validates command argument categories; `TermBuilder` dispatches
+  syntax and literals by category, and uses canonical names for all lookups.
+  Existing hash maps retain expected linear total name-processing cost; no
+  extra term arena or theory combination mechanism is introduced.
+- `core::SymbolTable` receives uninterpreted canonical name strings, including
+  the empty name. It does not parse quoting. IDs and duplicate checks are unchanged.
+  `Symbol::internal` records auxiliary ownership explicitly; only
+  `declare_internal_constant` sets it. Model completeness, printing and interface
+  classification no longer mistake user `$primo_...` names for auxiliaries.
+  Boolean-argument preprocessing recognizes that internal flag before its subtype
+  prefix, preserving the prior treatment of genuine generated proxies.
+- Model serialization quotes canonical names when necessary under this policy;
+  model parameter freshness compares canonical identities, not printed spellings.
+- Positive/negative category tests, both wrong-answer regressions, scope replay,
+  typed AST copy, model round trips, fragmented live input, ASan and generated
+  alias-mutation comparisons qualify the change. Compatibility acceptance is
+  reported separately from normative conformance.
+
+This is an original implementation based on SMT-LIB Sections 3.1–3.3,
+3.6 and 4.2; the listed extensions are explicit user-selected deviations.
+
+The historical audit of `9f20f58` exposed **two wrong-answer cases**, eleven rejected valid
+cases, and multiple accepted invalid inputs. The repair above addresses these
+under the selected policy; qualification is recorded separately below and in
+the run log. Prior scoped fuzzing did not
 exercise the quoted/unquoted name equivalence behind the wrong answers.
 
 The source of truth is Barrett, Fontaine and Tinelli,
@@ -16,27 +57,39 @@ of these rules. This corpus uses constructs common to 2.6 and 2.7.
 
 ### Representation and missing invariants
 
-`smtlib::Lexer` returns parentheses and generic symbol tokens whose text still
-contains quoting. `TokenSExprParser` turns other tokens into `SExpr::Atom`,
-and `Parser::require_atom` returns raw text. `core::SymbolTable` and frontend
-binding/definition maps compare those raw strings. Thus `gate` and `|gate|`
-currently differ even though the standard says they identify one symbol.
-Recognition of punctuation inside pipes is not sufficient for correctness.
+Previously, `smtlib::Lexer` returned generic symbol tokens retaining pipe
+delimiters. Frontend and core maps compared those raw strings, making `gate`
+and `|gate|` different. Recognizing punctuation inside pipes was insufficient.
 
-The future fix must separate token category, original spelling and canonical
-symbol identity. It must preserve the distinction between a numeral and a
+The repair separates token category from canonical symbol identity. It preserves
+the distinction between a numeral and a
 quoted numeric-looking symbol, and between syntax keywords and quoted names.
-Canonical identity must apply to term/sort lookup, binders, definitions,
-duplicate checks and scope replay. Printing must encode that identity into a
-legal spelling. Merely stripping pipes from every atom would conflate categories.
-This is a specification-derived checklist, **not an implemented fix**.
+Canonical identity applies to term/sort lookup, binders, definitions,
+duplicate checks and scope replay. Printing encodes that identity into a spelling
+legal under the selected policy. Merely stripping pipes from every atom would
+conflate categories.
 
-The current lexer also accepts characters outside the simple-symbol alphabet,
-backslashes/control characters in quoted symbols, and extra whitespace classes.
-Its comment loop ends on LF only, although the standard also permits CR.
-The command framer and lexer consequently disagree on a CR-only comment inside
-a command. These paths require positive and negative tests independently of
-symbol canonicalization.
+The repaired lexer deliberately accepts the selected character extensions, not
+arbitrary simple-name characters or extra whitespace classes. Both lexer and
+command framer recognize CR and LF comment endings. Numeric-looking quoted names
+never reach the rational parser. Reserved-word recognition uses binary search
+over a fixed sorted vocabulary; the framer shares the explicit whitespace rule.
+
+### Representation and lifetime
+
+`Token` owns its text; `Lexer` borrows input only for its lifetime. `Parser` owns
+that input while `TokenSExprParser` is running. `SExpr::atom_kind` retains lexical
+category and `SExpr::atom` owns canonical symbol text or literal spelling; the
+iterative copy/destruction algorithms retain deep-input stack safety. Commands
+and session journal entries own their ASTs. Symbol, definition and binder maps
+receive canonical strings; numeric IDs retain their existing lifetime rules.
+The core does not depend on SMT-LIB token classes. Model signatures copy the
+internal-ownership flag with the rest of each `Symbol`.
+
+This is not a full SMT-LIB parser replacement or ANTLR migration. Unsupported
+theories/commands remain unsupported. UTF-8 well-formedness is not separately
+validated. Extension-bearing names may produce models rejected by a strictly
+conforming external parser; standard-name models retain standard spellings.
 
 ## Online coverage inspected
 
@@ -103,15 +156,30 @@ The download hash and inspection scope are recorded in the run log.
 ```bash
 python3 scripts/check_smtlib_lexical_conformance.py \
   --out results/lexical-conformance-new
+
+# Enforce the selected Primo policy and compare generated standard inputs:
+python3 scripts/check_smtlib_lexical_conformance.py --policy \
+  --mutations 1000 --seed 0 --only primo z3 cvc5 \
+  --out results/lexical-policy-new
 ```
 
 The driver runs Primo, Z3, cvc5 in ordinary and strict modes, Yices, OpenSMT,
 and Dolmen as a strict parser/type checker. It requires all selected binaries,
 never installs tools implicitly, and supports `--only` for focused reruns.
-Each input is executed as a file with a five-second timeout. The output folder
+Each input is executed as a file with a five-second timeout; Primo also receives
+`--max-theory-conflicts=1000`. The output folder
 must be new. Raw byte-preserving inputs/stdout/stderr, executable versions and
 hashes, exact commands, all query answers and a matrix are retained. This is
-not an interactive liveness, model validation, fuzz or speed-measurement gate.
+not an interactive liveness, model validation or speed-measurement gate. The
+optional mutation mode is a focused parser/binding fuzz gate, not a broad theory
+campaign. It generates standard inputs across five logics, varying quoted names,
+internal-looking user names, macro capture, parallel binding and scope replay.
+
+`--policy` preserves each normative outcome but additionally recognizes the four
+selected extensions for Primo. Fixed reference nonconformance remains visible
+without failing the Primo policy gate. Every generated case must pass all selected
+profiles; no reference majority voting is used. Original fixtures and the old
+matrix/summary remain unchanged as historical evidence.
 
 The classifier checks errors even after an answer, distinguishes crashes and
 unexplained nonzero exits from syntax rejection, and requires every expected
@@ -121,7 +189,7 @@ general SMT-LIB response parser. A nonzero audit exit is expected while the
 documented conformance findings remain; no failures are hidden with xfail.
 Normal unit tests exercise the classifier without requiring external solvers.
 
-The final local run has 34 valid cases, 19 invalid cases and two explicitly
+The historical local run has 34 valid cases, 19 invalid cases and two explicitly
 diagnostic cases (solver-reserved `.17` and duplicate definition parameters;
 the latter is not assigned the separate `let` distinctness rule without a
 stronger specification justification). There are 385 executions, no crashes
@@ -142,14 +210,22 @@ UNSAT, so it is a response mismatch, not a wrong Boolean answer. Dolmen 0.10
 accepts all 34 valid cases and rejects 17/19 invalid cases; it does not solve
 the formulas. The committed matrix retains all exceptions and diagnostic rows.
 
-Both quoted/unquoted shadowing cases return SAT in Primo versus UNSAT in every
-reference solver. All references resolve the valid alias lookup cases. However,
+The historical Primo binary returned SAT in both quoted/unquoted shadowing cases
+versus UNSAT in every reference solver. All references resolved the valid alias lookup cases. However,
 even cvc5 strict accepts backslashes inside quoted symbols, whereas Yices and
 Dolmen reject them. All tested solvers reject the valid CR-only comment case;
 Dolmen accepts it. Every profile accepts the invalid duplicate-`let` case.
 Thus a unanimous vote does not establish language conformance.
 
-Primo fixes, model/print round trips, interactive fragmented-input tests, ASan
-and fresh behavior-focused fuzzing remain required before merge or renewed
-performance qualification. The artifacts and committed matrix record the
-problem; they do not fix it.
+### Repair qualification
+
+The first repair probe (`results/lexical-fix-initial`) passes all 34 valid cases,
+rejects 15 forbidden cases and accepts the four selected extensions. This probe
+precedes the explicit internal-symbol metadata repair and is not its qualification.
+The committed C++ tests cover both wrong answers, AST category copies, rejected
+leading zeroes (including decimal integer parts), reserved-word declarations,
+literal/name distinctions, empty symbols, parallel duplicate binding and replay.
+Model tests reparse printed definitions and refute violations, including names
+that resemble internal proxies; the live-pipe test fragments doubled quotes and
+uses CR-only comments. Fresh clean-commit fuzz and external model evidence must
+be recorded before treating the implementation milestone as fully qualified.

@@ -1,11 +1,9 @@
 #include "smtlib/printer.hpp"
 
 #include <algorithm>
-#include <cctype>
 #include <cstddef>
 #include <sstream>
 #include <string>
-#include <string_view>
 #include <unordered_set>
 #include <utility>
 #include <variant>
@@ -13,23 +11,15 @@
 
 #include "core/model.hpp"
 #include "core/symbol_table.hpp"
+#include "smtlib/lexer.hpp"
 #include "util/rational.hpp"
 
 namespace primo::smtlib {
 namespace {
 
 std::string identifier(const std::string& name) {
-  if (name.size() >= 2 && name.front() == '|' && name.back() == '|') return name;
-  const std::string_view punctuation = "~!@$%^&*_-+=<>.?/";
-  const bool simple = !name.empty() && !std::isdigit(static_cast<unsigned char>(name.front())) &&
-                      std::ranges::all_of(name, [&](unsigned char ch) {
-                        return std::isalnum(ch) ||
-                               punctuation.find(static_cast<char>(ch)) != std::string_view::npos;
-                      });
-  static const std::unordered_set<std::string> reserved{"true",  "false", "let", "forall", "exists",
-                                                        "match", "par",   "as",  "_",      "!"};
-  if (simple && !reserved.contains(name)) return name;
-  if (name.find_first_of("|\\") != std::string::npos) {
+  if (is_simple_symbol(name) && name != "true" && name != "false") return name;
+  if (name.find('|') != std::string::npos) {
     throw core::ModelError("identifier cannot be represented in SMT-LIB");
   }
   return "|" + name + "|";
@@ -61,7 +51,7 @@ std::string print_model(const core::Model& model) {
   std::ostringstream out;
   out << "(model\n";
   std::unordered_set<std::string> names;
-  for (const auto& symbol : model.symbols()) names.insert(identifier(symbol.name));
+  for (const auto& symbol : model.symbols()) names.insert(symbol.name);
   std::vector<const core::ModelInterpretation*> interpretations;
   for (const auto& interpretation : model.interpretations())
     interpretations.push_back(&interpretation);
@@ -69,7 +59,7 @@ std::string print_model(const core::Model& model) {
                     [](const auto* interpretation) { return interpretation->symbol; });
   for (const auto* interpretation : interpretations) {
     const auto& symbol = model.symbols().at(interpretation->symbol);
-    if (symbol.name.starts_with("$primo_")) continue;
+    if (symbol.internal) continue;
     std::vector<std::string> parameters;
     out << "  (define-fun " << identifier(symbol.name) << " (";
     for (std::size_t index = 0; index < symbol.arg_sorts.size(); ++index) {

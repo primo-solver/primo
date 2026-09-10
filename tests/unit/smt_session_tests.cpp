@@ -189,9 +189,63 @@ void definitions_are_lexical_not_dynamic() {
   accept(session, "(assert (h true))");
   expect(session, CheckSatResult::Sat);
 }
+void canonical_names_and_categories() {
+  for (const bool reversed : {false, true}) {
+    SmtSession session;
+    accept(session, "(set-logic QF_UF)");
+    const std::string global = reversed ? "|gate|" : "gate";
+    const std::string local = reversed ? "gate" : "|gate|";
+    accept(session, "(declare-const " + global + " Bool)");
+    accept(session, "(assert " + global + ")");
+    accept(session, "(assert (let ((" + local + " false)) " + global + "))");
+    expect(session, CheckSatResult::Unsat);
+  }
+  SmtSession session;
+  accept(session, "(set-logic QF_UF)");
+  accept(session, "(declare-sort |U| 0)");
+  accept(session, "(declare-const || U)");
+  accept(session, "(declare-fun |let| (U) Bool)");
+  accept(session, "(define-fun |same| ((|17| U)) Bool (|let| |17|))");
+  accept(session, "(assert (same ||))");
+  accept(session, "(push 1)");
+  accept(session, "(declare-const |x| Bool)");
+  accept(session, "(assert x)");
+  expect(session, CheckSatResult::Sat);
+  accept(session, "(pop 1)");
+  accept(session, "(declare-const x Bool)");
+  accept(session, "(assert (not |x|))");
+  expect(session, CheckSatResult::Sat);
+  accept(session, "(assert (not (|let| ||)))");
+  expect(session, CheckSatResult::Unsat);
+
+  SmtSession parallel;
+  accept(parallel, "(set-logic QF_UF)");
+  accept(parallel, "(declare-const x Bool)");
+  accept(parallel, "(assert x)");
+  accept(parallel, "(assert (let ((|x| false) (x x)) |x|))");
+  expect(parallel, CheckSatResult::Sat);
+  accept(parallel, "(assert (let ((x true) (|x| false)) x))");
+  expect(parallel, CheckSatResult::Unsat);
+
+  for (const std::string input : {"(declare-const |x| Bool)", "(define-fun |x| () Bool false)"}) {
+    SmtSession duplicates;
+    accept(duplicates, "(set-logic QF_UF)");
+    accept(duplicates, "(declare-const x Bool)");
+    assert(duplicates.execute(input).kind == ResponseKind::Error);
+  }
+  for (const std::string input :
+       {"(assert \"false\")", "(assert let)", "(assert (let ((17 true)) true))",
+        "(assert (\"and\" true false))"}) {
+    SmtSession invalid;
+    accept(invalid, "(set-logic QF_UF)");
+    assert(invalid.execute(input).kind == ResponseKind::Error);
+  }
+}
+
 }  // namespace
 
 int main() {
+  canonical_names_and_categories();
   scopes_and_unsafe_simplification();
   declarations_definitions_and_side_constraints();
   protocol_errors();

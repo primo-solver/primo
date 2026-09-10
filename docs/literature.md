@@ -5,9 +5,11 @@
 [](lexical-conformance.md) records the SMT-LIB 2.7 Sections 3.1–3.3 and binder
 rules used for original conformance tests, public cvc5/Dolmen test categories,
 and inspection of Griggio's older Flex/Bison parser. Symbol canonicalization
-and stricter token-category validation are required but not yet implemented.
+and category-aware lexical/command validation are now implemented with explicit
+user-selected compatibility exceptions; leading-zero numerals remain forbidden.
 External code is an inspection source, not copied implementation or a substitute
-for the current standard. The multi-solver matrix exposes unresolved wrong answers.
+for the current standard. The historical matrix records the original wrong answers;
+repair qualification is tracked separately.
 
 ## Scoped command sessions and incremental tactics
 

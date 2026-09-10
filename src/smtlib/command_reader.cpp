@@ -1,11 +1,11 @@
 #include "smtlib/command_reader.hpp"
 
-#include <cctype>
 #include <cstddef>
 #include <optional>
 #include <streambuf>
 #include <string>
 
+#include "smtlib/lexer.hpp"
 #include "smtlib/parser.hpp"
 
 namespace primo::smtlib {
@@ -37,7 +37,7 @@ std::optional<std::string> CommandReader::next() {
       continue;
     }
     if (depth == 0) {
-      if (std::isspace(static_cast<unsigned char>(c))) continue;
+      if (is_smt_space(c)) continue;
       if (c != '(') throw ParseError("command must start with '('", 0);
       text.push_back(c);
     }

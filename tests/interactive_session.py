@@ -31,6 +31,17 @@ def main():
         exchange("(check-sat)", "unsat\n")
         exchange("(pop 1)", "success\n")
         exchange("(check-sat)", "sat\n")
+        exchange("(declare-const |gate (;)| Bool)", "success\n")
+        # Split within quoting/comment syntax, then require a response without EOF.
+        for fragment in ['(set-info :source "a "', '"quoted"', '" (; | text"', ')']:
+            process.stdin.write(fragment.encode())
+            process.stdin.flush()
+        ready, _, _ = select.select([process.stdout], [], [], 5)
+        assert ready, "fragmented string command did not complete"
+        assert os.read(process.stdout.fileno(), 4096) == b"success\n"
+        exchange("(assert ; discarded ) (\r|gate (;)|)", "success\n")
+        exchange("(assert (let ((|x| 0)) (= x 0)))", "success\n")
+        exchange("(check-sat)", "sat\n")
         exchange("(exit)", "success\n")
         assert process.wait(timeout=5) == 0
     finally:

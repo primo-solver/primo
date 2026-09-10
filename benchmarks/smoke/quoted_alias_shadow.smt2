@@ -1,0 +1,6 @@
+(set-info :status unsat)
+(set-logic QF_UF)
+(declare-const gate Bool)
+(assert gate)
+(assert (let ((|gate| false)) gate))
+(check-sat)

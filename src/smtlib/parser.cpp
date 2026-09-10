@@ -50,12 +50,8 @@ class TokenSExprParser {
         push_result(stack, top_level, SExpr::make_list(std::move(frame.elements)));
         continue;
       }
-      if ((token.text.starts_with('|') && !token.text.ends_with('|')) ||
-          (token.text.starts_with('"') && !token.text.ends_with('"'))) {
-        throw ParseError("unterminated quoted token", token.offset);
-      }
       advance();
-      push_result(stack, top_level, SExpr::make_atom(token.text));
+      push_result(stack, top_level, SExpr::make_atom(token.text, token.kind));
     }
     return top_level;
   }
@@ -109,10 +105,22 @@ Command Parser::parse_command(const SExpr& expr) const {
     throw ParseError("command must be a non-empty list", 0);
   }
   const std::string head = require_atom(expr.list[0], "command head");
+  if (expr.list[0].atom_kind != TokenKind::Reserved) {
+    // Unknown ordinary command names still receive the unsupported response;
+    // quoted spellings of known command words are not command syntax.
+    if (!expr.list[0].is_symbol() || is_reserved_word(head))
+      throw ParseError("expected unquoted command name", 0);
+    Command command;
+    command.kind = CommandKind::Unsupported;
+    command.name = head;
+    return command;
+  }
 
   if (head == "push" || head == "pop") {
     if (expr.list.size() != 2) throw ParseError(head + " expects one numeral", 0);
     const std::string numeral = require_atom(expr.list[1], "scope count");
+    if (expr.list[1].atom_kind != TokenKind::Numeral)
+      throw ParseError(head + " expects a numeral", 0);
     Command command;
     command.kind = head == "push" ? CommandKind::Push : CommandKind::Pop;
     if (numeral.empty() || (numeral.size() > 1 && numeral.front() == '0') ||
@@ -133,6 +141,9 @@ Command Parser::parse_command(const SExpr& expr) const {
     return command;
   }
   if (head == "set-info") {
+    if (expr.list.size() < 2 || expr.list.size() > 3 || expr.list[1].kind != SExpr::Kind::Atom ||
+        expr.list[1].atom_kind != TokenKind::Keyword)
+      throw ParseError("set-info expects an attribute keyword and optional value", 0);
     Command command;
     command.kind = CommandKind::Ignored;
     return command;
@@ -154,8 +165,13 @@ Command Parser::parse_command(const SExpr& expr) const {
     Command command;
     command.kind = CommandKind::SetOption;
     command.option = require_atom(expr.list[1], "option keyword");
+    if (expr.list[1].atom_kind != TokenKind::Keyword)
+      throw ParseError("set-option expects an option keyword", 0);
     if (expr.list.size() == 3 && expr.list[2].kind == SExpr::Kind::Atom) {
-      command.value = expr.list[2].atom;
+      // Strings/numerals must not masquerade as a Boolean option value.
+      if (expr.list[2].is_symbol() || expr.list[2].atom_kind == TokenKind::Numeral ||
+          expr.list[2].atom_kind == TokenKind::Decimal)
+        command.value = expr.list[2].atom;
     }
     return command;
   }
@@ -166,17 +182,18 @@ Command Parser::parse_command(const SExpr& expr) const {
     }
     Command command;
     command.kind = CommandKind::SetLogic;
-    command.logic = require_atom(expr.list[1], "logic");
+    command.logic = require_symbol(expr.list[1], "logic");
     return command;
   }
 
   if (head == "declare-sort") {
-    if (expr.list.size() != 3 || !expr.list[2].is_atom("0")) {
+    if (expr.list.size() != 3 || !expr.list[2].is_atom("0") ||
+        expr.list[2].atom_kind != TokenKind::Numeral) {
       throw ParseError("declare-sort expects a name and arity 0", 0);
     }
     Command command;
     command.kind = CommandKind::DeclareSort;
-    command.name = require_atom(expr.list[1], "sort name");
+    command.name = require_symbol(expr.list[1], "sort name");
     return command;
   }
 
@@ -186,8 +203,8 @@ Command Parser::parse_command(const SExpr& expr) const {
     }
     Command command;
     command.kind = CommandKind::DeclareFun;
-    command.name = require_atom(expr.list[1], "constant name");
-    command.result_sort = require_atom(expr.list[2], "result sort");
+    command.name = require_symbol(expr.list[1], "constant name");
+    command.result_sort = require_symbol(expr.list[2], "result sort");
     return command;
   }
 
@@ -197,11 +214,11 @@ Command Parser::parse_command(const SExpr& expr) const {
     }
     Command command;
     command.kind = CommandKind::DeclareFun;
-    command.name = require_atom(expr.list[1], "function name");
+    command.name = require_symbol(expr.list[1], "function name");
     for (const SExpr& arg_sort : expr.list[2].list) {
-      command.arg_sorts.push_back(require_atom(arg_sort, "argument sort"));
+      command.arg_sorts.push_back(require_symbol(arg_sort, "argument sort"));
     }
-    command.result_sort = require_atom(expr.list[3], "result sort");
+    command.result_sort = require_symbol(expr.list[3], "result sort");
     return command;
   }
 
@@ -211,15 +228,15 @@ Command Parser::parse_command(const SExpr& expr) const {
     }
     Command command;
     command.kind = CommandKind::DefineFun;
-    command.name = require_atom(expr.list[1], "function name");
+    command.name = require_symbol(expr.list[1], "function name");
     for (const SExpr& parameter : expr.list[2].list) {
       if (parameter.kind != SExpr::Kind::List || parameter.list.size() != 2) {
         throw ParseError("define-fun parameter must be a sorted variable", 0);
       }
-      command.parameters.push_back(SortedVar{require_atom(parameter.list[0], "parameter name"),
-                                             require_atom(parameter.list[1], "parameter sort")});
+      command.parameters.push_back(SortedVar{require_symbol(parameter.list[0], "parameter name"),
+                                             require_symbol(parameter.list[1], "parameter sort")});
     }
-    command.result_sort = require_atom(expr.list[3], "result sort");
+    command.result_sort = require_symbol(expr.list[3], "result sort");
     command.body = expr.list[4];
     return command;
   }
@@ -264,6 +281,11 @@ std::string Parser::require_atom(const SExpr& expr, std::string_view context) co
     out << context << " must be an atom";
     throw ParseError(out.str(), 0);
   }
+  return expr.atom;
+}
+
+std::string Parser::require_symbol(const SExpr& expr, std::string_view context) const {
+  if (!expr.is_symbol()) throw ParseError(std::string(context) + " must be a symbol", 0);
   return expr.atom;
 }
 

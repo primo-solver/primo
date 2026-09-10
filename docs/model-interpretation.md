@@ -2,6 +2,14 @@
 
 ## Status and acceptance contract
 
+The lexical repair in [](lexical-conformance.md) changes name representation,
+not interpretation completion: the printer encodes canonical names using the
+shared lexical policy and checks parameter freshness by canonical identity.
+`Symbol::internal` explicitly marks generated auxiliaries; model completeness
+and output filtering must never use a user's name prefix as ownership evidence.
+Names containing the selected backslash/control-character extensions round-trip
+in Primo but are not promised portable to strict external parsers.
+
 This is Primo's original design and implementation contract for the general
 model redesign, implemented through `8ff9991`. The
 legacy QF_UFLIA builder completed by EUF representative, while its printer

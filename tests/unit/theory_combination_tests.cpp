@@ -294,7 +294,7 @@ void ignores_boolean_and_internal_constants() {
   SymbolTable symbols;
   const auto sort_a = symbols.declare_sort("A");
   const auto a_symbol = symbols.declare_constant("a", sort_a);
-  const auto aux_symbol = symbols.declare_constant("$primo_aux_0", sort_a);
+  const auto aux_symbol = symbols.declare_internal_constant("$primo_aux_0", sort_a);
   const auto flag_symbol = symbols.declare_constant("flag", symbols.bool_sort());
 
   TermManager terms(symbols);

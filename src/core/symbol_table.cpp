@@ -1,7 +1,12 @@
 #include "core/symbol_table.hpp"
 
+#include <optional>
 #include <stdexcept>
 #include <utility>
+#include <vector>
+
+#include "core/ids.hpp"
+#include "core/sort.hpp"
 
 namespace primo::core {
 
@@ -38,6 +43,12 @@ SymbolId SymbolTable::declare_constant(std::string name, SortId sort) {
   return add_symbol(std::move(name), {}, sort, SymbolKind::Constant);
 }
 
+SymbolId SymbolTable::declare_internal_constant(std::string name, SortId sort) {
+  const SymbolId id = declare_constant(std::move(name), sort);
+  symbols_[id].internal = true;
+  return id;
+}
+
 SymbolId SymbolTable::declare_function(std::string name, std::vector<SortId> arg_sorts,
                                        SortId result_sort) {
   return add_symbol(std::move(name), std::move(arg_sorts), result_sort, SymbolKind::Function);
@@ -67,9 +78,6 @@ const std::vector<Sort>& SymbolTable::sorts() const { return sorts_; }
 const std::vector<Symbol>& SymbolTable::symbols() const { return symbols_; }
 
 SortId SymbolTable::add_sort(std::string name, SortKind kind) {
-  if (name.empty()) {
-    throw std::invalid_argument("sort name must not be empty");
-  }
   if (sort_by_name_.contains(name)) {
     throw std::invalid_argument("duplicate sort declaration: " + name);
   }
@@ -81,9 +89,6 @@ SortId SymbolTable::add_sort(std::string name, SortKind kind) {
 
 SymbolId SymbolTable::add_symbol(std::string name, std::vector<SortId> arg_sorts,
                                  SortId result_sort, SymbolKind kind) {
-  if (name.empty()) {
-    throw std::invalid_argument("symbol name must not be empty");
-  }
   if (symbol_by_name_.contains(name)) {
     throw std::invalid_argument("duplicate symbol declaration: " + name);
   }
