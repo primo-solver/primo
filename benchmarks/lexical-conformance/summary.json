@@ -1,0 +1,131 @@
+{
+  "candidate_commit": "9f20f58073270ea02bd90475127e053d1723c3a5",
+  "artifact": "results/lexical-conformance-9f20f58-final",
+  "timeout_seconds": 5,
+  "cases": 55,
+  "valid": 34,
+  "invalid": 19,
+  "diagnostic_only": 2,
+  "executions": 385,
+  "command": "python3 scripts/check_smtlib_lexical_conformance.py --out results/lexical-conformance-9f20f58-final",
+  "cases_sha256": "9cb1209a885409fc357893bf7e5dab81d01ffec0e617beb36a6fb9a45da371cb",
+  "script_sha256": "ace9131b325ac4fd5f91e7a0f55ba81a698fb81e3034147344200a69922dba84",
+  "profiles": {
+    "primo": {
+      "command": [
+        "/workspace/build/primo",
+        "--quiet"
+      ],
+      "sha256": "ad9c3d4bf3eb26c6367cec1aacbcebab2173f6cd46ebeac2f23ceec8d4a27a5f",
+      "version": "primo 0.1.0"
+    },
+    "z3": {
+      "command": [
+        "/workspace/contrib/local/bin/z3",
+        "-smt2"
+      ],
+      "sha256": "450bffa1b87541409c37cd678b2e7261c5d20912144e5c052fd264b1f3a2077f",
+      "version": "Z3 version 5.0.0 - 64 bit"
+    },
+    "cvc5": {
+      "command": [
+        "/workspace/contrib/local/bin/cvc5",
+        "--lang=smt2.6",
+        "--incremental"
+      ],
+      "sha256": "4a93548398445cf1a774655583f5465b156c26f63f2cdfb94f4728fdf7adde46",
+      "version": "cvc5 1.3.4 [git f3b21c4 on branch HEAD]"
+    },
+    "cvc5-strict": {
+      "command": [
+        "/workspace/contrib/local/bin/cvc5",
+        "--lang=smt2.6",
+        "--incremental",
+        "--strict-parsing"
+      ],
+      "sha256": "4a93548398445cf1a774655583f5465b156c26f63f2cdfb94f4728fdf7adde46",
+      "version": "cvc5 1.3.4 [git f3b21c4 on branch HEAD]"
+    },
+    "yices": {
+      "command": [
+        "/workspace/contrib/local/bin/yices-smt2",
+        "--incremental"
+      ],
+      "sha256": "eab7efbff2a6f0cce2fcd2c25cb4a94e0e048c902d8ef9e6fd7d7989aa54c501",
+      "version": "Yices 2.7.0"
+    },
+    "opensmt": {
+      "command": [
+        "/workspace/contrib/local/bin/opensmt"
+      ],
+      "sha256": "b7899e9aff299026d3251df7a28f51f56d8bd1e5b0fd7be11bcc72c4f2803a98",
+      "version": "v2.9.2"
+    },
+    "dolmen": {
+      "command": [
+        "/home/user/.opam/default/bin/dolmen",
+        "--input=smt2.6",
+        "--strict=true"
+      ],
+      "sha256": "6990f8c23486eeb5930785e83453b690b09e6c35e5ea4a16f20423de4bd9d621",
+      "version": "0.10"
+    }
+  },
+  "results": {
+    "primo": {
+      "answer-pass": 21,
+      "valid-rejected": 11,
+      "wrong-answer": 2,
+      "invalid-accepted": 15,
+      "diagnostic-accepted": 2,
+      "invalid-rejected": 3,
+      "inconclusive": 1
+    },
+    "z3": {
+      "answer-pass": 32,
+      "invalid-rejected": 13,
+      "invalid-accepted": 6,
+      "diagnostic-accepted": 2,
+      "valid-rejected": 2
+    },
+    "cvc5": {
+      "answer-pass": 32,
+      "invalid-rejected": 16,
+      "invalid-accepted": 3,
+      "diagnostic-rejected": 2,
+      "valid-rejected": 2
+    },
+    "cvc5-strict": {
+      "answer-pass": 33,
+      "invalid-rejected": 16,
+      "invalid-accepted": 3,
+      "diagnostic-rejected": 2,
+      "valid-rejected": 1
+    },
+    "yices": {
+      "answer-pass": 32,
+      "invalid-rejected": 16,
+      "invalid-accepted": 3,
+      "diagnostic-rejected": 1,
+      "diagnostic-accepted": 1,
+      "valid-rejected": 2
+    },
+    "opensmt": {
+      "answer-pass": 31,
+      "invalid-accepted": 8,
+      "invalid-rejected": 11,
+      "diagnostic-accepted": 2,
+      "valid-rejected": 2,
+      "response-mismatch": 1
+    },
+    "dolmen": {
+      "valid-accepted": 34,
+      "invalid-rejected": 17,
+      "invalid-accepted": 2,
+      "diagnostic-accepted": 1,
+      "diagnostic-rejected": 1
+    },
+    "binaries_unchanged": true
+  },
+  "status": "Known Primo wrong answers and lexical nonconformance; this records failures, not a passing solver gate."
+}

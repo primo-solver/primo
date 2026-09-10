@@ -3,6 +3,58 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-10-lexical-conformance-audit",
+      "date": "2026-09-10",
+      "kind": "standard-derived-parser-corner-case-reference-comparison",
+      "evidence_status": "local-only-known-correctness-failures",
+      "commit": "9f20f58073270ea02bd90475127e053d1723c3a5",
+      "source_state": "Release binary rebuilt from unchanged solver sources at 9f20f58 before the audit. Only new diagnostic fixtures/harness/tests were present during the final run. Subsequent changes are documentation and evidence, not a parser fix.",
+      "host": "local development workspace",
+      "job": null,
+      "command": "python3 scripts/check_smtlib_lexical_conformance.py --out results/lexical-conformance-9f20f58-final",
+      "artifact": "results/lexical-conformance-9f20f58-final",
+      "artifact_status": "Raw inputs, stdout/stderr and run/results/summary JSON are local-only; original fixtures, matrix and condensed provenance/summary are committed under benchmarks/lexical-conformance/.",
+      "design": "docs/lexical-conformance.md",
+      "provenance": "benchmarks/lexical-conformance/summary.json records exact profile commands, versions and executable hashes, plus fixture and harness hashes. Raw run.json retains full version output and worktree status. All executable hashes remained unchanged during the final audit.",
+      "primo_binary_sha256": "ad9c3d4bf3eb26c6367cec1aacbcebab2173f6cd46ebeac2f23ceec8d4a27a5f",
+      "cases_sha256": "9cb1209a885409fc357893bf7e5dab81d01ffec0e617beb36a6fb9a45da371cb",
+      "script_sha256": "ace9131b325ac4fd5f91e7a0f55ba81a698fb81e3034147344200a69922dba84",
+      "scope": "55 original deterministic fixtures: 34 valid, 19 invalid, 2 diagnostic-only; seven profiles and 385 file-input executions. Five-second timeout per invocation. No random generator or seed, performance measurement, model validation, interactive liveness test or SLURM workload.",
+      "profiles": ["Primo 9f20f58", "Z3 5.0.0", "cvc5 1.3.4 f3b21c4", "cvc5 1.3.4 strict", "Yices 2.7.0", "OpenSMT 2.9.2", "Dolmen 0.10 strict parser/type checker only"],
+      "summary": {
+        "primo": {"answer_pass": 21, "valid_rejected": 11, "wrong_answer": 2, "invalid_rejected": 3, "invalid_accepted": 15, "inconclusive": 1, "diagnostic_accepted": 2},
+        "reference_valid_answer_passes_out_of_34": {"z3": 32, "cvc5": 32, "cvc5-strict": 33, "yices": 32, "opensmt": 31},
+        "dolmen": {"valid_accepted": 34, "invalid_rejected": 17, "invalid_accepted": 2, "diagnostic_accepted": 1, "diagnostic_rejected": 1},
+        "crashes_all_profiles": 0,
+        "timeouts_all_profiles": 0,
+        "audit_exit_code": 1
+      },
+      "triage": "alias_let_shadow and alias_let_shadow_reverse return SAT in Primo and UNSAT in every reference solver. Raw quoted names break required identity equivalence. Other lexical failures include invalid simple/quoted characters and CR-only comments. All reference solvers reject the valid CR comment while Dolmen accepts it; all profiles accept the invalid duplicate-let case. Thus reference voting is not a conformance oracle. OpenSMT has one malformed response prefix, not a wrong Boolean answer. Primo's bare option keyword case is unsupported/inconclusive, not a proven syntax rejection. See committed matrix for every profile/outcome.",
+      "oracle": "SMT-LIB 2.7 release 2026-03-27, Sections 3.1-3.3, 3.6.1-3.6.2 and scoped-command rules. Constructs tested are common to 2.6/2.7. Duplicate define-fun parameters and solver-reserved .17 are diagnostic-only; the let distinctness rule is not transferred to definition parameters without justification.",
+      "preliminary_runs": [
+        {"artifact": "results/lexical-conformance-9f20f58", "command": "python3 scripts/check_smtlib_lexical_conformance.py --out results/lexical-conformance-9f20f58", "status": "superseded-diagnostic", "reason": "Initial duplicate-parameter oracle was unjustified; moved to diagnostic-only. Unsupported nonzero responses needed inconclusive classification rather than process-error."},
+        {"artifact": "results/lexical-conformance-9f20f58-v2", "command": "python3 scripts/check_smtlib_lexical_conformance.py --out results/lexical-conformance-9f20f58-v2", "status": "superseded-diagnostic", "reason": "Corrected classifications, then repeated after explicit subprocess check=False hygiene. Final run is the cited evidence."}
+      ],
+      "online_coverage": "Pinned cvc5 f9e5d3c312d9476763dc0afa85ac637da5907d99 and Dolmen 5c9161a691872cee9ed0c58fe820a8b0b9e485ab parser cases inspected for categories; jSMTLIB SMTTests documentation/inventory at 90ce411e7521b9f1f1338a3e2081ca3061547969 inspected, not executed. URLs and scope in docs/lexical-conformance.md. No external tests or grammars copied.",
+      "fbk_parser_inspection": {
+        "page": "https://es-static.fbk.eu/people/griggio/misc/smtlib2parser.html",
+        "archive": "https://es-static.fbk.eu/people/griggio/misc/downloads/smtlib2parser-1.4.tar.gz",
+        "sha256": "bade58ffe2d4c04e2e4a59f1aaa2ddcaf7353559e74f5b4d920a75bc5aaaca6e",
+        "local_directory": "/tmp/primo-parser-reference.YJHisL",
+        "scope": "Read README, Flex lexer, Bison single-command entry, scanner/FILE stream wrapper, parser callback interface and abstract-parser outer loop. No Yices backend code inspected or executed; archive not built; no live-pipe test; no implementation copied.",
+        "findings": "Useful canonical quoted-symbol identity and retained-scanner single-command interface. Stale string escapes and permissive quoted characters/numerals/comments prevent using this 2010-2013 code as a current conformance oracle. Inspection only."
+      },
+      "verification": {
+        "build": "make build; tmp/lexical-audit-build.log",
+        "check": "make check: 31 CTest and 137 Python tests pass, including five new classifier tests; tmp/lexical-audit-check.log",
+        "lint": "make lint and git diff --check; tmp/lexical-audit-lint.log",
+        "docs": "make docs; tmp/lexical-audit-docs-final.log",
+        "review": "Diagnostic harness, fixtures and documentation self-review: explicit oracle, original inputs, byte-preserving evidence, all query answers required, errors checked before answers, crashes/nonzero failures not silently accepted as syntax rejection. Solver correctness blockers intentionally recorded, not fixed or waived.",
+        "not_rerun": "No C++ or solver behavior changes: ASan, clang-tidy/include-cleaner and solver fuzz gates not rerun for this diagnostic-only addition. Earlier baseline gates do not clear the newly exposed bugs. Fresh ASan and focused fuzzing remain required for the future parser fix."
+      },
+      "conclusion": "Audit complete; parser correctness remains blocked. Fix category-preserving symbol canonicalization across lookup, binders, definitions, scopes and printing, plus lexical strictness; then add round-trip/live-input regressions and fresh behavior-focused qualification before merge or performance promotion."
+    },
+    {
       "id": "2026-09-09-incremental-smt-sessions",
       "date": "2026-09-09",
       "baseline_commit": "9803d1a",

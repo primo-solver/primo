@@ -1,5 +1,9 @@
 # Incremental SMT sessions
 
+The subsequent [](lexical-conformance.md) audit found quoted-name identity bugs
+that can change answers. The qualification below describes the original bounded
+corpus only; it does not clear these newly found correctness blockers.
+
 ## Design and implementation checklist
 
 This branch implements an original rebuild-based session baseline, not persistent

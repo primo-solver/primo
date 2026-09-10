@@ -9,6 +9,8 @@ parts:
       - file: current-status
       - file: architecture
       - file: incremental-smt
+        sections:
+          - file: lexical-conformance
       - file: model-interpretation
       - file: tactics
         sections:

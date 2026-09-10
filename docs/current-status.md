@@ -1,5 +1,12 @@
 # Current implementation and qualification
 
+**Correctness blocker (2026-09-10):** the lexical audit in
+[](lexical-conformance.md) reproduces wrong SAT answers from treating quoted
+and unquoted spellings as different identifiers. Further parser conformance
+failures are recorded there. Earlier bounded gates remain historical evidence
+for their inputs, not proof of lexical correctness; merge/performance promotion
+is blocked until these findings are fixed and revalidated.
+
 This is the current-state map for `feature/incremental-smt-sessions`, based on
 `main` at `9803d1a`. Session sources are at `5bc811b`; the theory-combination
 implementation and its earlier qualification remain at `b883d6f`/`d4e604e`.

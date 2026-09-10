@@ -1,0 +1,515 @@
+{
+  "specification": "SMT-LIB 2.7, release 2026-03-27",
+  "provenance": "Original Primo cases derived from the standard. Online test collections used only to identify coverage categories; no solver tests or grammars copied.",
+  "cases": [
+    {
+      "id": "simple_control",
+      "group": "control",
+      "valid": true,
+      "answers": [
+        "sat"
+      ],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(declare-const gate Bool)\n(assert gate)\n(check-sat)\n(exit)\n"
+    },
+    {
+      "id": "alias_use_quoted",
+      "group": "identity",
+      "valid": true,
+      "answers": [
+        "sat"
+      ],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(declare-const gate Bool)\n(assert |gate|)\n(check-sat)\n(exit)\n"
+    },
+    {
+      "id": "alias_use_simple",
+      "group": "identity",
+      "valid": true,
+      "answers": [
+        "sat"
+      ],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(declare-const |gate| Bool)\n(assert gate)\n(check-sat)\n(exit)\n"
+    },
+    {
+      "id": "alias_function",
+      "group": "identity",
+      "valid": true,
+      "answers": [
+        "sat"
+      ],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(declare-sort Item 0)\n(declare-const point Item)\n(declare-fun visit (Item) Bool)\n(assert (|visit| point))\n(check-sat)\n(exit)\n"
+    },
+    {
+      "id": "alias_sort",
+      "group": "identity",
+      "valid": true,
+      "answers": [
+        "sat"
+      ],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(declare-sort Item 0)\n(declare-const point |Item|)\n(assert (= point point))\n(check-sat)\n(exit)\n"
+    },
+    {
+      "id": "alias_builtin_sort",
+      "group": "identity",
+      "valid": true,
+      "answers": [
+        "sat"
+      ],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(declare-const gate |Bool|)\n(assert gate)\n(check-sat)\n(exit)\n"
+    },
+    {
+      "id": "alias_builtin_constant",
+      "group": "identity",
+      "valid": true,
+      "answers": [
+        "unsat"
+      ],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(assert |false|)\n(check-sat)\n(exit)\n"
+    },
+    {
+      "id": "alias_builtin_operator",
+      "group": "identity",
+      "valid": true,
+      "answers": [
+        "unsat"
+      ],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(assert (|and| true false))\n(check-sat)\n(exit)\n"
+    },
+    {
+      "id": "alias_let_shadow",
+      "group": "binding",
+      "valid": true,
+      "answers": [
+        "unsat"
+      ],
+      "rule": "3.1, 3.6.2",
+      "input": "(set-logic QF_UF)\n(declare-const gate Bool)\n(assert gate)\n(assert (let ((|gate| false)) gate))\n(check-sat)\n(exit)\n"
+    },
+    {
+      "id": "alias_let_shadow_reverse",
+      "group": "binding",
+      "valid": true,
+      "answers": [
+        "unsat"
+      ],
+      "rule": "3.1, 3.6.2",
+      "input": "(set-logic QF_UF)\n(declare-const |gate| Bool)\n(assert |gate|)\n(assert (let ((gate false)) |gate|))\n(check-sat)\n(exit)\n"
+    },
+    {
+      "id": "alias_parameter",
+      "group": "binding",
+      "valid": true,
+      "answers": [
+        "unsat"
+      ],
+      "rule": "3.1, 3.6.2",
+      "input": "(set-logic QF_UF)\n(define-fun invert ((|arg| Bool)) Bool (not arg))\n(assert (invert true))\n(check-sat)\n(exit)\n"
+    },
+    {
+      "id": "alias_definition",
+      "group": "binding",
+      "valid": true,
+      "answers": [
+        "unsat"
+      ],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(define-fun |blocked| () Bool false)\n(assert blocked)\n(check-sat)\n(exit)\n"
+    },
+    {
+      "id": "alias_parallel_let",
+      "group": "binding",
+      "valid": true,
+      "answers": [
+        "sat"
+      ],
+      "rule": "3.1, 3.6.2",
+      "input": "(set-logic QF_UF)\n(declare-const gate Bool)\n(assert gate)\n(assert (let ((|gate| false) (other gate)) other))\n(check-sat)\n(exit)\n"
+    },
+    {
+      "id": "alias_duplicate_const",
+      "group": "rejection",
+      "valid": false,
+      "answers": [],
+      "rule": "3.1, 4.1.5",
+      "input": "(set-logic QF_UF)\n(declare-const gate Bool)\n(declare-const |gate| Bool)\n(check-sat)\n"
+    },
+    {
+      "id": "alias_duplicate_sort",
+      "group": "rejection",
+      "valid": false,
+      "answers": [],
+      "rule": "3.1, 4.1.5",
+      "input": "(set-logic QF_UF)\n(declare-sort Item 0)\n(declare-sort |Item| 0)\n(check-sat)\n"
+    },
+    {
+      "id": "alias_duplicate_let",
+      "group": "rejection",
+      "valid": false,
+      "answers": [],
+      "rule": "3.1, 3.6.1",
+      "input": "(set-logic QF_UF)\n(assert (let ((gate true) (|gate| false)) gate))\n(check-sat)\n"
+    },
+    {
+      "id": "alias_duplicate_parameters",
+      "group": "diagnostic",
+      "valid": null,
+      "answers": [],
+      "rule": "4.2.3: duplicate parameter policy unresolved; do not infer the let distinctness requirement",
+      "input": "(set-logic QF_UF)\n(define-fun both ((gate Bool) (|gate| Bool)) Bool gate)\n(check-sat)\n"
+    },
+    {
+      "id": "scoped_alias_reuse",
+      "group": "scope",
+      "valid": true,
+      "answers": [
+        "sat",
+        "sat"
+      ],
+      "rule": "3.1, 4.1.4",
+      "input": "(set-logic QF_UF)\n(push 1)\n(declare-const |gate| Bool)\n(assert |gate|)\n(check-sat)\n(pop 1)\n(declare-const gate Bool)\n(assert |gate|)\n(check-sat)\n(exit)\n"
+    },
+    {
+      "id": "popped_alias_unbound",
+      "group": "scope",
+      "valid": false,
+      "answers": [],
+      "rule": "3.1, 4.1.4",
+      "input": "(set-logic QF_UF)\n(push 1)\n(declare-const |gate| Bool)\n(pop 1)\n(assert gate)\n(check-sat)\n"
+    },
+    {
+      "id": "quoted_definition_spaces",
+      "group": "quoted",
+      "valid": true,
+      "answers": [
+        "unsat"
+      ],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(define-fun |blocked route| ((v Bool)) Bool (not v))\n(assert (|blocked route| true))\n(check-sat)\n(exit)\n"
+    },
+    {
+      "id": "quoted_empty",
+      "group": "quoted",
+      "valid": true,
+      "answers": [
+        "sat"
+      ],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(declare-const || Bool)\n(assert ||)\n(check-sat)\n(exit)\n"
+    },
+    {
+      "id": "quoted_spaces",
+      "group": "quoted",
+      "valid": true,
+      "answers": [
+        "sat"
+      ],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(declare-const | gate two | Bool)\n(assert | gate two |)\n(check-sat)\n(exit)\n"
+    },
+    {
+      "id": "quoted_punctuation",
+      "group": "quoted",
+      "valid": true,
+      "answers": [
+        "sat"
+      ],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(declare-const |gate (;[)]| Bool)\n(assert |gate (;[)]|)\n(check-sat)\n(exit)\n"
+    },
+    {
+      "id": "quoted_double_quote",
+      "group": "quoted",
+      "valid": true,
+      "answers": [
+        "sat"
+      ],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(declare-const |gate\"two| Bool)\n(assert |gate\"two|)\n(check-sat)\n(exit)\n"
+    },
+    {
+      "id": "quoted_newline",
+      "group": "quoted",
+      "valid": true,
+      "answers": [
+        "sat"
+      ],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(declare-const |gate\ntwo| Bool)\n(assert |gate\ntwo|)\n(check-sat)\n(exit)\n"
+    },
+    {
+      "id": "quoted_tab",
+      "group": "quoted",
+      "valid": true,
+      "answers": [
+        "sat"
+      ],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(declare-const |gate\ttwo| Bool)\n(assert |gate\ttwo|)\n(check-sat)\n(exit)\n"
+    },
+    {
+      "id": "quoted_unicode",
+      "group": "quoted",
+      "valid": true,
+      "answers": [
+        "sat"
+      ],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(declare-const |žluťoučký gate| Bool)\n(assert |žluťoučký gate|)\n(check-sat)\n(exit)\n"
+    },
+    {
+      "id": "quoted_reserved",
+      "group": "quoted",
+      "valid": true,
+      "answers": [
+        "sat"
+      ],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(declare-const |let| Bool)\n(assert |let|)\n(check-sat)\n(exit)\n"
+    },
+    {
+      "id": "quoted_numeral",
+      "group": "quoted",
+      "valid": true,
+      "answers": [
+        "sat"
+      ],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(declare-const |17| Bool)\n(assert |17|)\n(check-sat)\n(exit)\n"
+    },
+    {
+      "id": "quoted_keyword",
+      "group": "quoted",
+      "valid": true,
+      "answers": [
+        "sat"
+      ],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(declare-const |:ready| Bool)\n(assert |:ready|)\n(check-sat)\n(exit)\n"
+    },
+    {
+      "id": "quoted_binary",
+      "group": "quoted",
+      "valid": true,
+      "answers": [
+        "sat"
+      ],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(declare-const |#b01| Bool)\n(assert |#b01|)\n(check-sat)\n(exit)\n"
+    },
+    {
+      "id": "case_sensitive",
+      "group": "quoted",
+      "valid": true,
+      "answers": [
+        "sat"
+      ],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(declare-const Gate Bool)\n(declare-const gate Bool)\n(assert Gate)\n(assert (not gate))\n(check-sat)\n(exit)\n"
+    },
+    {
+      "id": "signed_symbol",
+      "group": "token-category",
+      "valid": true,
+      "answers": [
+        "sat"
+      ],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(declare-const -17 Bool)\n(assert -17)\n(check-sat)\n(exit)\n"
+    },
+    {
+      "id": "decimal_like_symbol",
+      "group": "token-category",
+      "valid": null,
+      "answers": [],
+      "rule": "3.1: reserved solver names; diagnostic only",
+      "input": "(set-logic QF_UF)\n(declare-const .17 Bool)\n(assert .17)\n(check-sat)\n(exit)\n"
+    },
+    {
+      "id": "simple_unicode_invalid",
+      "group": "rejection",
+      "valid": false,
+      "answers": [],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(declare-const žlutý Bool)\n(check-sat)\n"
+    },
+    {
+      "id": "simple_apostrophe_invalid",
+      "group": "rejection",
+      "valid": false,
+      "answers": [],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(declare-const gate'part Bool)\n(check-sat)\n"
+    },
+    {
+      "id": "simple_comma_invalid",
+      "group": "rejection",
+      "valid": false,
+      "answers": [],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(declare-const gate,part Bool)\n(check-sat)\n"
+    },
+    {
+      "id": "numeral_name_invalid",
+      "group": "rejection",
+      "valid": false,
+      "answers": [],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(declare-const 17 Bool)\n(check-sat)\n"
+    },
+    {
+      "id": "string_name_invalid",
+      "group": "rejection",
+      "valid": false,
+      "answers": [],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(declare-const \"gate\" Bool)\n(check-sat)\n"
+    },
+    {
+      "id": "keyword_name_invalid",
+      "group": "rejection",
+      "valid": false,
+      "answers": [],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(declare-const :gate Bool)\n(check-sat)\n"
+    },
+    {
+      "id": "reserved_name_invalid",
+      "group": "rejection",
+      "valid": false,
+      "answers": [],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(declare-const let Bool)\n(check-sat)\n"
+    },
+    {
+      "id": "quoted_backslash_invalid",
+      "group": "rejection",
+      "valid": false,
+      "answers": [],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(declare-const |gate\\part| Bool)\n(check-sat)\n"
+    },
+    {
+      "id": "quoted_control_invalid",
+      "group": "rejection",
+      "valid": false,
+      "answers": [],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(declare-const |gate\u0001part| Bool)\n(check-sat)\n"
+    },
+    {
+      "id": "quoted_unterminated",
+      "group": "rejection",
+      "valid": false,
+      "answers": [],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(declare-const |gate Bool)\n(check-sat)\n"
+    },
+    {
+      "id": "string_unterminated",
+      "group": "rejection",
+      "valid": false,
+      "answers": [],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(set-info :source \"unfinished)\n(check-sat)\n"
+    },
+    {
+      "id": "string_doubled_quotes",
+      "group": "strings",
+      "valid": true,
+      "answers": [
+        "unsat"
+      ],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(set-info :source \"note \"\"quoted\"\" (; | still text\")\n(assert false)\n(check-sat)\n(exit)\n"
+    },
+    {
+      "id": "string_literal_backslash",
+      "group": "strings",
+      "valid": true,
+      "answers": [
+        "unsat"
+      ],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(set-info :source \"note \\n \\t remain literal\")\n(assert false)\n(check-sat)\n(exit)\n"
+    },
+    {
+      "id": "comment_lf",
+      "group": "comments",
+      "valid": true,
+      "answers": [
+        "unsat"
+      ],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(assert ; discarded ) (\nfalse)\n(check-sat)\n(exit)\n"
+    },
+    {
+      "id": "comment_cr",
+      "group": "comments",
+      "valid": true,
+      "answers": [
+        "unsat"
+      ],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(assert ; discarded ) (\rfalse)\n(check-sat)\n(exit)\n"
+    },
+    {
+      "id": "comment_crlf",
+      "group": "comments",
+      "valid": true,
+      "answers": [
+        "unsat"
+      ],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(assert ; discarded ) (\r\nfalse)\n(check-sat)\n(exit)\n"
+    },
+    {
+      "id": "tab_whitespace",
+      "group": "comments",
+      "valid": true,
+      "answers": [
+        "unsat"
+      ],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(assert\tfalse)\n(check-sat)\n(exit)\n"
+    },
+    {
+      "id": "formfeed_whitespace_invalid",
+      "group": "rejection",
+      "valid": false,
+      "answers": [],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(assert\ffalse)\n(check-sat)\n"
+    },
+    {
+      "id": "vertical_tab_whitespace_invalid",
+      "group": "rejection",
+      "valid": false,
+      "answers": [],
+      "rule": "3.1–3.3",
+      "input": "(set-logic QF_UF)\n(assert\u000bfalse)\n(check-sat)\n"
+    },
+    {
+      "id": "leading_zero_numeral_invalid",
+      "group": "rejection",
+      "valid": false,
+      "answers": [],
+      "rule": "3.1",
+      "input": "(set-logic QF_LIA)\n(assert (= 017 17))\n(check-sat)\n"
+    },
+    {
+      "id": "bare_keyword_option_invalid",
+      "group": "rejection",
+      "valid": false,
+      "answers": [],
+      "rule": "3.1, 3.11",
+      "input": "(set-logic QF_UF)\n(set-option produce-models true)\n(check-sat)\n"
+    }
+  ]
+}
