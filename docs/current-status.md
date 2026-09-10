@@ -1,5 +1,12 @@
 # Current implementation and qualification
 
+**Direct stdin parser (2026-09-10):** `e24dfcd` uses a persistent stream lexer
+and one-command parser, with no separate text framer or lookahead after a
+completed command. The fresh 1,000-session recorded-reference replay and 100
+live-pipe chunking seeds pass. The [parser review](lexical-conformance.md)
+separately records two open, pre-existing attribute-validation gaps; this is
+not a claim of complete syntax conformance. Qualification is in the run log.
+
 **Lexical repair (2026-09-10):** [](lexical-conformance.md) records the original
 quoted-name wrong answers, their canonical-identity/category repair, and the
 selected compatibility policy. Leading-zero numerals and unquoted reserved-word

@@ -28,12 +28,24 @@ This is an original explicit-stack parser, not a parser-generator integration.
   cannot be copied/moved while borrowing their own memory input.
 - EOF between commands is normal; EOF inside a token/list and unmatched closing
   parentheses are errors. Errors terminate the CLI; resynchronization is not
-  implemented. Exit does not inspect subsequent input.
+  implemented. Exit does not inspect subsequent input. This is a blocking
+  command-at-a-time interface, not a nonblocking `feed()`/`poll()` API.
 - Qualification covers guarded stream buffers (any read after the closing
   parenthesis fails), fragmented real pipes, memory/stream equivalence,
   deep nesting, lexical policy, scoped sessions, ASan and fresh generated input.
 - Streaming parse wall time includes waiting for client input. Interactive
   parse/total statistics must not be compared to offline CPU timings.
+
+Qualification of `e24dfcd`: `make check` passes 31 CTest/140 Python tests and
+`make asan-test` passes 31/31. SLURM job `141961` passes 1,000 generated sessions
+against hash-matched recorded Z3/cvc5 answers, 100 live-pipe chunking seeds
+(400 query answers plus 300 malformed-EOF rejection checks), and one direct
+Dolmen model regression. Array `141962` completes both static scans on all
+108 tracked C++ files; only existing advisories remain. No reference solver
+or speed benchmark is rerun. The two pre-existing attribute-validation gaps in
+[](lexical-conformance.md) remain open; these results qualify the stdin
+integration, not full syntax conformance. Raw artifacts and exact provenance
+are recorded in `docs/run-log.json` under `2026-09-10-online-parser`.
 
 This branch implements an original rebuild-based session baseline, not persistent
 incremental SAT, theory solving, or incremental tactics. The checklist describes
@@ -139,6 +151,11 @@ SLURM scoped-session differential fuzzing with per-query model checks, and a
 separate five-logic single-query preservation comparison recorded in run-log.
 
 ## Running and independently validating sessions
+
+Start `./build/primo --quiet` with no filename to read commands directly from
+stdin. Submit each command below when ready; no EOF is needed between commands.
+In a terminal, press Enter to deliver the typed command. Programmatic clients
+must flush their writes. Use `(exit)` to finish the session.
 
 ```lisp
 (set-option :produce-models true)

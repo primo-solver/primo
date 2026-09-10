@@ -78,6 +78,10 @@ make contrib         # all of the above
 ./build/primo benchmarks/smoke/qf_uf/direct_equality_contradiction.smt2
 ```
 
+With no filename, `./build/primo --quiet` reads SMT-LIB commands directly from
+stdin and flushes each response without waiting for EOF. See the
+[interactive session example](docs/incremental-smt.md#running-and-independently-validating-sessions).
+
 QF_UF finite-domain symmetry breaking is enabled by default where applicable.
 For an ablation, disable it with:
 
