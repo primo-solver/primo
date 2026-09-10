@@ -47,6 +47,20 @@ in `benchmarks/native-incremental-qf-lra-summary.json`; the run ledger records
 the build job, commands, verification and retained raw artifacts. No reference
 solvers were rerun, and this correctness run is not a speed comparison.
 
+The follow-up `scripts/slurm_native_lra_comparison.sbatch` is a separate timing
+diagnostic: the smallest BMC/k-induction pair (manifest indices 0 and 1), with
+600 seconds per untouched native session for Primo, Z3 and cvc5. The driver
+`scripts/compare_native_incremental.py` reuses the recorded parser query offsets,
+checks source hashes and rechecks the adjacent original status labels. It runs
+all solvers on original stdin, explicitly enables incremental mode for cvc5,
+retains process output and exact binary identities, and rejects post-answer
+process failures. Timed-out partial responses are not solved sessions. Unknown
+source labels are not answer oracles, although completed reference runs can
+provide an independent query-by-query comparison. Model checking is not timed
+or silently inferred from the earlier four-query prefix sample. No matching
+reference timings for this native archive were present in the recorded ledger.
+This two-file development diagnostic is not a full evaluation or promotion.
+
 The parser's no-lookahead invariant makes `ifstream::tellg` immediately after a
 query its exact byte end. The Python driver seeks to those offsets and requires
 an adjacent `(set-info :status sat/unsat/unknown)` before each query. This is an

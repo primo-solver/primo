@@ -3,6 +3,20 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-10-native-incremental-qf-lra-reference-diagnostic",
+      "date": "2026-09-10",
+      "kind": "small-native-incremental-reference-timing-diagnostic",
+      "evidence_status": "prepared",
+      "baseline_commit": "c3ca55f",
+      "scope": "User-requested longer-timeout comparison: smallest native BMC/k-induction pair, indices 0 and 1 of benchmarks/native-incremental-qf-lra.json. Untouched input bytes and stdin for all solvers, 600 seconds per full session, one CPU and 8 GiB per task. No production C++ changes.",
+      "reference_reuse": "No native hybrid_networks reference result found in the ledger or known result-directory inventory. Run Z3 and cvc5 only on these two files; retain results for later reuse.",
+      "command": "scripts/slurm_native_lra_comparison.sbatch: Primo --quiet --max-theory-conflicts=10000; Z3 -in -smt2; cvc5 --incremental --lang=smt2. Six tasks, concurrency four, 12-minute outer task limit. Environment identifies prepared workspace, candidate revision, native root, prior parser artifact and fresh output directory.",
+      "oracle": "Reuse prior production parser offsets after input-hash checks and recheck adjacent source status labels. Unknown labels provide no oracle. Independently completed reference sessions will be compared by query index. Nonzero exits and timeout override apparent answers; partial response counts are diagnostic only.",
+      "model_validation": "Speed-only development diagnostic, not a full evaluation or default promotion. Prior first-four-query sample is separate evidence; no full-session model qualification claimed.",
+      "verification": "New process-runner tests exercise an actual child printing sat then exiting 3, and a child printing sat then timing out. Python suite, lint, batch syntax, documentation and code-review checks required before submission.",
+      "limitations": "Two related sessions from one family cannot establish a corpus-wide speed ratio; source labels include unknowns. No solver-state-reuse implementation is part of this task."
+    },
+    {
       "id": "2026-09-10-native-incremental-qf-lra",
       "date": "2026-09-10",
       "kind": "native-incremental-parser-and-bounded-session-validation",
