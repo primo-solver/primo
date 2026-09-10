@@ -35,6 +35,18 @@ The test workflow deliberately separates three verdicts:
    validates every actual SAT model in that prefix against its active context.
    This bounded model sample does not qualify later SAT queries in the full file.
 
+At commit `c3ca55f`, SLURM array `142075` fully parsed all ten files: 325,456
+commands and 1,515 queries, with no parser errors or unsupported commands.
+All 40 prefix queries passed, including direct Dolmen acceptance of their ten
+SAT models. All ten full solving sessions hit the 120-second cap, so none is
+qualified as a completed execution. Their 165 decisive answers had no observed
+known-status disagreement, but are only partial observations. The strict batch
+gate therefore exits nonzero for every task. Full-session solving and model
+validation remain incomplete. Per-file results and exact binary identities are
+in `benchmarks/native-incremental-qf-lra-summary.json`; the run ledger records
+the build job, commands, verification and retained raw artifacts. No reference
+solvers were rerun, and this correctness run is not a speed comparison.
+
 The parser's no-lookahead invariant makes `ifstream::tellg` immediately after a
 query its exact byte end. The Python driver seeks to those offsets and requires
 an adjacent `(set-info :status sat/unsat/unknown)` before each query. This is an

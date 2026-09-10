@@ -6,8 +6,9 @@
       "id": "2026-09-10-native-incremental-qf-lra",
       "date": "2026-09-10",
       "kind": "native-incremental-parser-and-bounded-session-validation",
-      "evidence_status": "prepared-local-tests-remote-run-pending",
+      "evidence_status": "slurm-full-command-parsing-qualified-prefix-model-sample-passed-full-execution-resource-incomplete",
       "baseline_commit": "e079525",
+      "commit": "c3ca55f36c8f10b9aa70bda3b3a64fe767c6b2ad",
       "source": "User-provided sandbox/QF_LRA.tar.zst, containing incremental/QF_LRA/hybrid_networks: genuine NuSMV BMC/k-induction command sequences, not wrapped non-incremental formulas. Source header attribution: Alberto Griggio.",
       "archive_sha256": "41865c487e20fedaeb1945b2175df657aff6797dcda95eaf6df7403449c2b323",
       "manifest": "benchmarks/native-incremental-qf-lra.json",
@@ -18,7 +19,26 @@
       "design": "docs/incremental-smt.md: Native QF_LRA archive checks",
       "verification": "Initial new CTest command used the wrong Python CMake variable; fixed to existing PRIMO_PYTHON_EXECUTABLE before successful make check (32 CTest/148 Python) and make asan-test (32/32). Final 151 Python tests, make lint, make docs and batch syntax validation pass. New C++ probe passes configured clang-tidy and include-cleaner without diagnostics. Existing solver/parser C++ sources are unchanged; previous full 109-file static baseline remains recorded separately. Code-review pass: no blocking test-tool issue. Logs tmp/native-lra-check.log, tmp/native-lra-asan.log, tmp/native-lra-tidy.log, tmp/native-lra-includes.log and tmp/native-lra-final-*.log.",
       "command": "sbatch scripts/slurm_native_lra_parser.sbatch with prepared PRIMO_WORKDIR, PRIMO_EXPECTED_REVISION, PRIMO_NATIVE_ROOT=WORKDIR/tmp/native-qf-lra.ipGdkx and fresh PRIMO_NATIVE_OUT; ten tasks, concurrency four, 8 GiB/task, 10-minute outer limit",
-      "limitations": "Complete command parsing is distinct from term/type validation and complete solving. Native full-session timeouts are possible and must be reported separately. Model stage covers only the first four original queries per file. No performance promotion or full-corpus model-validation claim."
+      "slurm": {
+        "build_job": "142073",
+        "array_job": "142075",
+        "artifact": "results/native-lra-c3ca55f",
+        "prepare_log": "tmp/native-lra-prepare.log",
+        "preflight_log": "tmp/native-lra-preflight.log",
+        "revision": "c3ca55f",
+        "cadical": "cadical-3.0.0-7b99c07",
+        "manifest_sha256": "5b7c7bdff861c2d5e496d3ac33ef489651984e19ff317e4de0e4e1316b4be1c0",
+        "driver_sha256": "987157025c03cea7fc60d99220af15ac40d8e36d788caa7a6367ca29a250021d",
+        "parser_probe_source_sha256": "ae9073c04b97d6991abe77a9c2a7ced244f73981537355e2ab580f1506a2e60f",
+        "state": "all tasks terminal; each array task exits 1 because full execution timed out, not because parsing or prefix validation failed",
+        "binary_sha256": {"solver": "18eaba4e301866061fdc6fd0424f335b0d169ea93240887dcd5a49cdb777fdae", "parser": "30001c4081a6c968d9b6a3d338e9001bdc188e14993b1924dff0e04aec9adc7b", "dolmen": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"},
+        "dolmen": "0.10; independent prefix model validation only",
+        "final_summary": "benchmarks/native-incremental-qf-lra-summary.json",
+        "final_counts": {"files": 10, "bytes": 1594684331, "commands_parsed": 325456, "queries_parsed": 1515, "parser_errors": 0, "unsupported_commands": 0, "full_sessions_completed": 0, "full_session_timeouts": 10, "observed_decisive_answers_before_timeout": 165, "observed_known_status_disagreements": 0, "prefix_queries_passed": 40, "prefix_direct_dolmen_models_passed": 10},
+        "retention": "Complete task-level parser/session/prefix artifacts collected locally under results/native-lra-c3ca55f. Summary generation checks input identities, declared-status counts, prefix query/model results, and unchanged source/binary hashes across all ten tasks. Exact solver and parser executables retained remotely in the result directory; raw artifacts remain ignored, manifest and condensed summary are committed.",
+        "final_audit": "tmp/native-lra-final-slurm-audit.log: all ten array tasks terminal FAILED 1:0 due to the strict full-session timeout gate; queue empty. Build job 142073 completed successfully. No reference solver runs or performance claim."
+      },
+      "limitations": "Complete command parsing is distinct from term/type validation and complete solving. All ten native full sessions exceeded the 120-second budget; their 165 decisive answers are partial observations, not accepted completed executions. Model validation covers only the first four original queries per file. No performance promotion or full-corpus model-validation claim."
     },
     {
       "id": "2026-09-10-incremental-parser-real-corpus",
