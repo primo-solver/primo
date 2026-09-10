@@ -49,6 +49,16 @@ metadata and annotations), independently syntax-checked by Dolmen. It does not
 use Dolmen as a SAT/UNSAT oracle. Fresh qualification is recorded under
 `2026-09-10-attribute-validation-repair` in `docs/run-log.json`.
 
+The repaired source revision `15f4929` passes 31 CTest and 143 Python tests,
+31 ASan tests, lint and the documentation build. Its SLURM correctness gate
+rejects both original regressions, passes all 200 attribute cases with Dolmen,
+matches the recorded Z3/cvc5 answers for 1,000 generated sessions, and passes
+100 live-pipe chunking seeds (400 answers, 300 malformed-EOF rejections and
+300 malformed-attribute rejections). The direct Dolmen quoted-name model smoke
+also passes. No reference solvers or speed benchmarks are rerun. Configured
+clang-tidy and include-cleaner complete on all 109 tracked C++ files, with no
+new advisories; existing baseline warnings remain recorded in the same entry.
+
 Other limitations remain explicit: lexical errors have absolute byte offsets,
 many command-shape errors still use offset zero, UTF-8 validity is not checked,
 stream-buffer EOF does not distinguish every device-level I/O failure, and
