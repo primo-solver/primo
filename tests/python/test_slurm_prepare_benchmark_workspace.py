@@ -23,6 +23,16 @@ SPEC.loader.exec_module(MODULE)
 
 
 class SshDiagnosticsTest(unittest.TestCase):
+    def test_reusable_dependencies_do_not_require_antlr(self) -> None:
+        command = MODULE.build_command(
+            "/cluster/work", "cmake", "primo", 2, "abc123", ["contrib-required"], True
+        )
+        MODULE.shell_syntax_check(command)
+        self.assertNotIn("antlr", command.lower())
+        self.assertIn("CLI/CLI.hpp", command)
+        self.assertIn("libcadical.a", command)
+        self.assertIn("libgmp.a", command)
+
     def test_portable_headers_are_validated_and_exported_before_configuration(
         self,
     ) -> None:

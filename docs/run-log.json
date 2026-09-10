@@ -3,6 +3,16 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-10-remove-unused-antlr",
+      "date": "2026-09-10",
+      "kind": "unused-build-dependency-removal",
+      "baseline_commit": "8e9dc59",
+      "evidence_status": "local-build-qualified-final-reference-replay-pending",
+      "scope": "Remove unused ANTLR runtime discovery/linkage/public definition, generated parser/visitor sources, dormant grammar and installer. Update required dependencies, source-archive instructions, remote dependency checks and static-review source discovery. Cached third-party installations are retained; tracked removed files remain recoverable from Git. Owned parser/solver C++ sources are byte-identical to 8e9dc59.",
+      "verification": "CMAKE_BUILD_PARALLEL_LEVEL=2 make check: 31 CTest and 140 Python tests pass (tmp/lexical-no-antlr-check.log). CMAKE_BUILD_PARALLEL_LEVEL=2 make asan-test: 31/31 pass (tmp/lexical-no-antlr-asan.log). make docs passes (tmp/lexical-no-antlr-docs.log). Batch-script validation passes. No ANTLR references in build/compile_commands.json or Primo/SMT-LIB link commands; libprimo_smtlib.a contains only ast, command_reader, commands, lexer, parser and printer objects.",
+      "qualification_plan": "Replay the fixed corpus and identical seed-20260910 generated cases on the final dependency-free binary. Reuse the already recorded SLURM Z3/cvc5 answers only after verifying exact per-input hashes and successful reference outcomes; avoid redundant reference runs. The 8e9dc59 SLURM whole-source scan covers identical owned C++ sources, excluding only the subsequently removed unused generated files."
+    },
+    {
       "id": "2026-09-10-lexical-policy-repair",
       "date": "2026-09-10",
       "kind": "parser-symbol-identity-and-compatibility-repair",

@@ -28,9 +28,9 @@ The build enforces the same direction with static-library targets:
 terms, SAT interfaces, and utilities; `primo_smtlib`; and `primo_smt` over the
 preceding solver layers. `primo_core` is a compatibility interface target for
 whole-solver executables and broad tests. New narrow tests should link the
-lowest target they exercise. Generated ANTLR code and its warning policy are
-confined to `primo_smtlib`, CaDiCaL configuration to `primo_sat`, and GMP to
-`primo_util`.
+lowest target they exercise. `primo_smtlib` contains only the owned handwritten
+lexer/parser/printer; ANTLR and its generated sources are removed. CaDiCaL
+configuration is confined to `primo_sat`, and GMP to `primo_util`.
 
 ## Boundaries
 
@@ -169,6 +169,7 @@ Symbol:
   arg_sorts
   result_sort
   kind: Constant | Function | Predicate
+  internal: bool (false for user declarations)
 ```
 
 `TermManager::mk_constant` accepts only constant symbols. `TermManager::mk_app` accepts function and predicate symbols and checks arity and argument sorts against the symbol declaration.

@@ -171,7 +171,7 @@ In particular:
 - Keep C++ source formatted with `clang-format` using the repository `.clang-format`.
 - Keep Python scripts runnable with the standard library unless a dependency is documented.
 - C++ formatting is `clang-format` with the repository `.clang-format`, currently based on Google style with C++20 and a 100-column limit. Do not hand-format around it.
-- C++ warnings are intentionally strict for owned code. The default CMake build treats warnings as errors; generated ANTLR sources and external headers are isolated from that policy.
+- C++ warnings are intentionally strict for owned code. The default CMake build treats warnings as errors; external headers are isolated from that policy.
 - Use `make asan-test` when touching ownership, parser, term storage, SAT backend, or other memory-sensitive C++ paths.
 - Run `make lint` before committing implementation changes.
 - Run `make check` before committing behavior changes when feasible.

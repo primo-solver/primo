@@ -86,8 +86,11 @@ receive canonical strings; numeric IDs retain their existing lifetime rules.
 The core does not depend on SMT-LIB token classes. Model signatures copy the
 internal-ownership flag with the rest of each `Symbol`.
 
-This is not a full SMT-LIB parser replacement or ANTLR migration. Unsupported
-theories/commands remain unsupported. UTF-8 well-formedness is not separately
+This is not a full SMT-LIB implementation. ANTLR discovery/linkage, the unused
+generated parser and grammar, and its installer have been removed: the active
+handwritten parser is now the only parser in the build. CLI11, CaDiCaL/IPASIR
+and GMP remain required; Java is not needed for parsing or building Primo.
+Unsupported theories/commands remain unsupported. UTF-8 well-formedness is not separately
 validated. Extension-bearing names may produce models rejected by a strictly
 conforming external parser; standard-name models retain standard spellings.
 

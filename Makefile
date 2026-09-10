@@ -1,4 +1,4 @@
-.PHONY: build test python-test asan-build asan-test smoke compare fuzz fuzz-finite-domain fuzzsmt tactic-composition-test bench bench-interesting-qf-uf docs docs-venv docs-serve archive lint tidy include-cleaner format check contrib contrib-required contrib-antlr4 contrib-cli11 contrib-z3 contrib-cvc5 contrib-yices contrib-opensmt contrib-yinyang contrib-dolmen contrib-cadical contrib-gmp contrib-fuzzsmt contrib-ddsmt clean
+.PHONY: build test python-test asan-build asan-test smoke compare fuzz fuzz-finite-domain fuzzsmt tactic-composition-test bench bench-interesting-qf-uf docs docs-venv docs-serve archive lint tidy include-cleaner format check contrib contrib-required contrib-cli11 contrib-z3 contrib-cvc5 contrib-yices contrib-opensmt contrib-yinyang contrib-dolmen contrib-cadical contrib-gmp contrib-fuzzsmt contrib-ddsmt clean
 
 BUILD_DIR ?= build
 ASAN_BUILD_DIR ?= build-asan
@@ -8,10 +8,9 @@ CADICAL_TAG ?= rel-3.0.0
 PYTHON ?= python3
 RUFF ?= .venv/bin/python -m ruff
 PATH_WITH_CONTRIB := $(CURDIR)/$(CONTRIB_PREFIX)/bin:$(PATH)
-CPP_FORMAT_FILES := $$(find src tests \( -name '*.cpp' -o -name '*.hpp' -o -name '*.h' \) | grep -v '^src/smtlib/antlr/')
-CPP_TIDY_FILES := $$(git ls-files | rg '^(src|tests)/.*\.cpp$$' | rg -v '^src/smtlib/antlr/')
+CPP_FORMAT_FILES := $(rg --files src tests -g '*.cpp' -g '*.hpp' -g '*.h')
+CPP_TIDY_FILES := $$(git ls-files | rg '^(src|tests)/.*\.cpp$$')
 CLI11_STAMP := $(CONTRIB_PREFIX)/.cli11.stamp
-ANTLR4_STAMP := $(CONTRIB_PREFIX)/.antlr4.stamp
 CADICAL_STAMP := $(CONTRIB_PREFIX)/.cadical.stamp
 GMP_STAMP := $(CONTRIB_PREFIX)/.gmp.stamp
 
@@ -132,13 +131,7 @@ tactic-composition-test: build
 
 contrib: contrib-required contrib-z3 contrib-cvc5 contrib-yices contrib-opensmt contrib-fuzzsmt contrib-ddsmt
 
-contrib-required: contrib-antlr4 contrib-cli11 contrib-cadical contrib-gmp
-
-contrib-antlr4: $(ANTLR4_STAMP)
-
-$(ANTLR4_STAMP): contrib/install_antlr4.py
-	$(PYTHON) contrib/install_antlr4.py --prefix $(CONTRIB_PREFIX)
-	touch $(ANTLR4_STAMP)
+contrib-required: contrib-cli11 contrib-cadical contrib-gmp
 
 contrib-cli11: $(CLI11_STAMP)
 

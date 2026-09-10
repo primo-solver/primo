@@ -3,7 +3,7 @@
 #SBATCH --job-name=primo-lexical-policy
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=4G
-#SBATCH --time=00:15:00
+#SBATCH --time=00:30:00
 #SBATCH --output=slurm_logs/%x-%j.out
 #SBATCH --error=slurm_logs/%x-%j.err
 

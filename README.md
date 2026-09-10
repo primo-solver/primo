@@ -59,7 +59,7 @@ editor language servers.
 Required build dependencies are installed automatically by `make build`:
 
 ```bash
-make contrib-required # ANTLR4 runtime, CLI11, CaDiCaL/IPASIR
+make contrib-required # CLI11, CaDiCaL/IPASIR and GMP; no parser generator required
 ```
 
 Optional reference solver dependencies also install under `contrib/local`:

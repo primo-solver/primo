@@ -87,20 +87,6 @@ else()
   message(FATAL_ERROR "CLI11 not found. Run `make contrib-required` or install CLI11 so CLI/CLI.hpp is available.")
 endif()
 
-find_path(ANTLR4_RUNTIME_INCLUDE_DIR
-  NAMES antlr4-runtime.h
-  HINTS "${CMAKE_SOURCE_DIR}/contrib/local/include/antlr4-runtime"
-)
-find_library(ANTLR4_RUNTIME_LIBRARY
-  NAMES antlr4-runtime
-  HINTS "${CMAKE_SOURCE_DIR}/contrib/local/lib"
-)
-if(ANTLR4_RUNTIME_INCLUDE_DIR AND ANTLR4_RUNTIME_LIBRARY)
-  message(STATUS "Found ANTLR4 runtime: ${ANTLR4_RUNTIME_LIBRARY}")
-else()
-  message(FATAL_ERROR "ANTLR4 C++ runtime not found. Run `make contrib-required`.")
-endif()
-
 set(PRIMO_CADICAL_INCLUDE_HINTS "${CMAKE_SOURCE_DIR}/contrib/local/include")
 set(PRIMO_CADICAL_LIBRARY_HINTS "${CMAKE_SOURCE_DIR}/contrib/local/lib")
 if(PRIMO_CADICAL_ROOT)
@@ -198,17 +184,6 @@ file(GLOB_RECURSE PRIMO_SMT_SOURCES CONFIGURE_DEPENDS src/smt/*.cpp)
 file(GLOB_RECURSE PRIMO_SMTLIB_SOURCES CONFIGURE_DEPENDS src/smtlib/*.cpp)
 file(GLOB_RECURSE PRIMO_THEORY_SOURCES CONFIGURE_DEPENDS src/theory/*.cpp)
 file(GLOB_RECURSE PRIMO_UTIL_SOURCES CONFIGURE_DEPENDS src/util/*.cpp)
-file(GLOB_RECURSE PRIMO_GENERATED_SOURCES CONFIGURE_DEPENDS
-  src/smtlib/antlr/*.cpp
-)
-if(PRIMO_GENERATED_SOURCES)
-  if(MSVC)
-    set_source_files_properties(${PRIMO_GENERATED_SOURCES} PROPERTIES COMPILE_OPTIONS /w)
-  else()
-    set_source_files_properties(${PRIMO_GENERATED_SOURCES} PROPERTIES COMPILE_OPTIONS -w)
-  endif()
-endif()
-
 function(primo_configure_owned_library target)
   primo_enable_warnings(${target})
   primo_enable_sanitizers(${target})
@@ -247,9 +222,7 @@ target_link_libraries(primo_theory PUBLIC primo_terms primo_sat primo_util)
 
 add_library(primo_smtlib STATIC ${PRIMO_SMTLIB_SOURCES})
 primo_configure_owned_library(primo_smtlib)
-target_include_directories(primo_smtlib SYSTEM PUBLIC "${ANTLR4_RUNTIME_INCLUDE_DIR}")
-target_compile_definitions(primo_smtlib PUBLIC ANTLR4CPP_STATIC=1)
-target_link_libraries(primo_smtlib PUBLIC primo_terms "${ANTLR4_RUNTIME_LIBRARY}")
+target_link_libraries(primo_smtlib PUBLIC primo_terms)
 
 add_library(primo_smt STATIC ${PRIMO_SMT_SOURCES})
 primo_configure_owned_library(primo_smt)

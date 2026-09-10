@@ -53,7 +53,7 @@ def rsync_repo(config: Path, local: Path, remote: str, remote_dir: str) -> None:
         "vendor",
         "yinyang_bugs",
         "yinyang_scratch",
-        # Vendored native deps (GMP/CaDiCaL/ANTLR4/fuzzsmt/z3/...) built by
+        # Vendored native deps (GMP/CaDiCaL/fuzzsmt/z3/...) built by
         # `make contrib-*` -- excluded for the same reason build/build-* are:
         # they contain host-specific absolute paths (e.g. fuzzsmt's wrapper
         # script embeds contrib/local/share/fuzzsmt/fuzzsmt.jar's *local*
@@ -175,8 +175,6 @@ def build_command(
 missing_dependency=0
 for required in \
   contrib/local/include/CLI/CLI.hpp \
-  contrib/local/include/antlr4-runtime/antlr4-runtime.h \
-  contrib/local/lib/libantlr4-runtime.a \
   contrib/local/lib/libcadical.a \
   contrib/local/lib/libgmp.a \
   contrib/local/lib/libgmpxx.a; do
