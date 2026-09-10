@@ -3,8 +3,11 @@
 **Lexical repair (2026-09-10):** [](lexical-conformance.md) records the original
 quoted-name wrong answers, their canonical-identity/category repair, and the
 selected compatibility policy. Leading-zero numerals and unquoted reserved-word
-names are rejected. Fresh qualification is tracked in the run log; historical
-bounded gates alone are not proof of lexical correctness or merge readiness.
+names are rejected. All 34 valid audit cases pass; 1,000 generated sessions match
+recorded Z3/cvc5 results. ANTLR is removed from the build at `6e4ff80`, which has
+identical owned parser/solver sources and a fresh hash-checked replay. Detailed
+qualification and limitations remain in the run log; this is not a full-corpus
+evaluation or a blanket branch merge-readiness claim.
 
 This is the current-state map for `feature/incremental-smt-sessions`, based on
 `main` at `9803d1a`. Session sources are at `5bc811b`; the theory-combination

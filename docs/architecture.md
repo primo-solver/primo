@@ -347,8 +347,8 @@ Implemented now:
 
 - SMT-LIB command parsing through `smtlib::Lexer` and a local S-expression
   parser for the supported command subset. Quoted symbols, string metadata,
-  comments, and multiline `|...|` metadata are tokenized without constructing an
-  ANTLR parse tree. Command-level validation still rejects unsupported commands
+  comments, and multiline `|...|` metadata are tokenized into the owned local
+  AST. Command-level validation still rejects unsupported commands
   and malformed supported commands before the frontend builds `core::TermId`
   values.
 - `define-fun` macro expansion for non-recursive definitions.

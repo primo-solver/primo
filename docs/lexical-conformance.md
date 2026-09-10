@@ -230,5 +230,28 @@ leading zeroes (including decimal integer parts), reserved-word declarations,
 literal/name distinctions, empty symbols, parallel duplicate binding and replay.
 Model tests reparse printed definitions and refute violations, including names
 that resemble internal proxies; the live-pipe test fragments doubled quotes and
-uses CR-only comments. Fresh clean-commit fuzz and external model evidence must
-be recorded before treating the implementation milestone as fully qualified.
+uses CR-only comments.
+
+Clean-commit qualification at `8e9dc59` runs 1,000 generated sessions on SLURM
+against Z3 5.1.0 and cvc5 1.3.4: all 2,000 answers per solver match, with zero
+generated-case wrong answers, crashes, rejections, unknowns or timeouts. The
+fixed Primo corpus has 34 valid passes, 15 policy-required rejections, four
+extension passes and two explicitly diagnostic outcomes. The tricky-name model
+fixture passes Dolmen directly.
+
+ANTLR removal at `6e4ff80` changes no owned parser/solver C++ sources. The final
+binary replays all 1,000 identical generated sessions and the 55 fixed cases;
+the 2,000 saved reference results are reused only after verifying input hashes,
+successful exits and identical answer sequences. No reference rerun is needed.
+The final binary's model also passes Dolmen directly. Its `make check` passes
+31 CTest and 140 Python tests; `make asan-test` passes 31/31. Compile/link commands
+contain no ANTLR dependency. The committed `repair-summary.json` and run-log entries
+distinguish this final local replay from the SLURM comparison and static review;
+none of these runs is a performance measurement or a full-corpus evaluation.
+
+Whole-source clang-tidy and include-cleaner finish on all 109 tracked C++ files
+in SLURM array `141931`. There is no new blocking finding, but this is not a
+warning-free baseline: the existing tactic `shared_ptr` advisory and include
+backlog remain, with a known `<algorithm>` provider false positive in the lexer.
+The original combined job `141930` timed out during static analysis, after its
+solver/model phases passed; the continuation repeats only static checks.

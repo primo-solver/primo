@@ -1,0 +1,96 @@
+{
+  "candidate_commit": "6e4ff80380d44d47f8407d2fc744d82895534286",
+  "comparison_commit": "8e9dc59",
+  "slurm_job": "141930",
+  "slurm_job_status": "TIMEOUT during static phase; answer comparison and direct model check completed successfully",
+  "candidate_artifact": "results/lexical-policy-6e4ff80",
+  "comparison_artifact": "results/lexical-policy-8e9dc59",
+  "timeout_seconds": 5,
+  "seed": 20260910,
+  "generated_sessions": 1000,
+  "generated_answers_per_solver": 2000,
+  "fixed_cases": 55,
+  "cases_sha256": "9cb1209a885409fc357893bf7e5dab81d01ffec0e617beb36a6fb9a45da371cb",
+  "script_sha256": "4a48ed4af097c14cd22c6c9cefeeffc96ba13bcf00023b25e110c18b2298df8c",
+  "candidate_binary_sha256": "6472fb7592624c8246c2c57a96caf86efe46bdbdceff360972fc7d3abe0078d0",
+  "comparison_profiles": {
+    "primo": {
+      "sha256": "aee676db426873882ac49a30fcf212e2659ce71368b22fdb86f12f6b7f107391",
+      "version": "primo 0.1.0"
+    },
+    "z3": {
+      "sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+      "version": "Z3 version 5.1.0 - 64 bit"
+    },
+    "cvc5": {
+      "sha256": "4a93548398445cf1a774655583f5465b156c26f63f2cdfb94f4728fdf7adde46",
+      "version": "cvc5 1.3.4 [git f3b21c4 on branch HEAD]"
+    }
+  },
+  "candidate_results": {
+    "primo": {
+      "answer-pass": 1034,
+      "invalid-rejected": 15,
+      "extension-pass": 4,
+      "diagnostic-rejected": 1,
+      "diagnostic-accepted": 1
+    },
+    "binaries_unchanged": true
+  },
+  "comparison_results": {
+    "primo": {
+      "answer-pass": 1034,
+      "invalid-rejected": 15,
+      "extension-pass": 4,
+      "diagnostic-rejected": 1,
+      "diagnostic-accepted": 1
+    },
+    "z3": {
+      "answer-pass": 1032,
+      "invalid-rejected": 13,
+      "invalid-accepted": 6,
+      "diagnostic-accepted": 2,
+      "valid-rejected": 2
+    },
+    "cvc5": {
+      "answer-pass": 1032,
+      "invalid-rejected": 16,
+      "invalid-accepted": 3,
+      "diagnostic-rejected": 2,
+      "valid-rejected": 2
+    },
+    "binaries_unchanged": true
+  },
+  "reference_reuse": {
+    "matched_sessions": 1000,
+    "matched_reference_results": 2000,
+    "input_hashes_and_answers_identical": true,
+    "failures": 0
+  },
+  "generated_logic_counts": {
+    "QF_UF": 202,
+    "QF_LIA": 199,
+    "QF_LRA": 173,
+    "QF_UFLIA": 234,
+    "QF_UFLRA": 192
+  },
+  "models": {
+    "comparison_direct_dolmen": 1,
+    "candidate_direct_dolmen": 1
+  },
+  "static_review": {
+    "job": "141931_0-3",
+    "state": "all COMPLETED 0:0",
+    "configured_tidy_files": 109,
+    "include_cleaner_files": 109,
+    "errors": 0,
+    "configured_tidy_existing_advisories": 1,
+    "configured_tidy_suppressed_external_warnings": 25,
+    "include_advisories": 307,
+    "paired_self_includes_retained": 23,
+    "include_direct_provider_reports_in_unchanged_files": 283,
+    "include_known_ranges_false_positive": 1,
+    "new_blocking_findings": 0
+  },
+  "note": "Correctness qualification only. Fixed reference conformance failures remain recorded, not treated as Primo regressions. Generated inputs pass all comparison profiles; the final dependency-free binary reuses hash-matched saved reference answers. Static review status is recorded in docs/run-log.json."
+}
