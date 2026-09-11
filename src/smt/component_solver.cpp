@@ -302,6 +302,33 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
     if (terminator.conflict_limit_reached())
       return {CheckSatResult::Unknown, "theory conflict limit reached", statistics, "",
               InconclusiveReason::ResourceLimit};
+    // Lemma queue: an online component that must add consequences over new
+    // atoms stops the search; its queue is drained here, at the established
+    // growth boundary, and the problem is solved again. An UNSAT result with a
+    // stop pending is still UNSAT, since lemmas only strengthen the formula.
+    if (dispatcher && dispatcher->lemmas_pending().has_value() &&
+        sat_result == sat::SatResult::Sat) {
+      if (!recipe.prepare_lemmas) {
+        return {CheckSatResult::Unsupported,
+                "a component queued lemmas but the recipe cannot prepare them", statistics, "",
+                InconclusiveReason::Unsupported};
+      }
+      const std::size_t owner = online_order.at(*dispatcher->lemmas_pending());
+      std::vector<core::TermId> lemmas = components[owner]->take_lemmas(recipe.lemma_batch);
+      if (lemmas.empty()) {
+        throw std::logic_error("a component reported queued lemmas but supplied none");
+      }
+      statistics.increment(":combination.lemmas.batches");
+      statistics.increment(":combination.lemmas.formulas", lemmas.size());
+      {
+        CombinationTimer timer(statistics, recipe.timing_prefix + "lemma-us");
+        for (const auto formula : recipe.prepare_lemmas(std::move(lemmas))) {
+          clausifier.assert_formula(formula);
+        }
+      }
+      install_atoms();
+      continue;
+    }
     if (dispatcher && dispatcher->failure().has_value()) {
       const auto& failure = *dispatcher->failure();
       const bool unsupported = failure.status == theory::TheoryCheckStatus::Unsupported;

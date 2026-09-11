@@ -307,6 +307,49 @@ own paper-grounded design, soundness argument and fragment tests.
    fuzzing, independent model replay and paired performance preservation before
    admitting the new production recipe.
 
+### Queued lemmas
+
+Added for quantifier instantiation (M3 in [](quantifiers.md)). No theory kernel
+changed; only the component protocol and the online driver grew.
+
+- **`theory::TheoryCheckStatus::LemmasPending`.** A component has queued closed
+  Boolean formulas, possibly over atoms that do not exist yet, each a valid
+  consequence of the assertions.
+- **`TheoryComponent::take_lemmas(limit)`.** Hands over up to `limit` of them.
+  The default returns none.
+- **`ComponentCapabilities::check_on_full_model`.** The dispatcher marks such a
+  component dirty at every `cb_check_found_model`, so a complete assignment is
+  never accepted without consulting it, even when none of its atoms changed.
+- **`ComponentDispatcher::lemmas_pending()`.** The dispatcher records the stop
+  there, not as a failure. It then makes no further checks, decisions or
+  propagations for that solve.
+- **Draining in `solve_component_recipe`.** When SAT returns a model with a stop
+  pending, the driver:
+  1. drains up to `CombinationRecipe::lemma_batch` lemmas from the owning
+     component;
+  2. passes them through `CombinationRecipe::prepare_lemmas` and clausifies the
+     result;
+  3. calls the existing `install_atoms()` growth boundary, which registers new
+     atoms with their owners and rebuilds the dispatcher;
+  4. solves again.
+
+  An UNSAT result with a stop pending is still UNSAT, since lemmas only
+  strengthen the formula. Without `prepare_lemmas` the stop is `Unsupported`.
+- **Counters.** `:combination.lemmas.batches` and `:combination.lemmas.formulas`
+  appear only when lemmas are drained, so existing recipes' statistics are
+  unchanged.
+- **Outside the online dispatcher.** A `LemmasPending` result from a full-model
+  check is `Unsupported`: the model-based coordinators cannot drain queues.
+
+`tests/unit/component_combination_tests.cpp` covers:
+
+- a lemma over a new equality atom that is later refuted;
+- a new atom that must reach its owner at the growth boundary;
+- a component consulted only through `check_on_full_model`, and the same
+  component without the capability (`Unsupported` at reconciliation);
+- a missing preparation hook;
+- a queue drained one lemma per boundary.
+
 ### Migration gates
 
 - [x] Validated contracts, ownership and capability planning.

@@ -754,6 +754,178 @@ void exhaustive_ordinary_choice_order() {
   }
 }
 
+// A scripted source of lemma batches standing in for an instantiation module:
+// it owns at most one marker atom and does no theory reasoning of its own.
+class LemmaComponent final : public theory::TheoryComponent {
+ public:
+  LemmaComponent(core::TermId marker, std::vector<std::vector<core::TermId>> batches,
+                 bool check_on_full_model, std::size_t& checks)
+      : marker_(marker), batches_(std::move(batches)), checks_(checks) {
+    properties_.id = "lemmas";
+    properties_.fragment = "scripted lemma source";
+    properties_.capabilities.incremental = true;
+    properties_.capabilities.check_on_full_model = check_on_full_model;
+  }
+  const theory::ComponentDescriptor& descriptor() const override { return properties_; }
+  bool owns_atom(core::TermId atom) const override { return atom == marker_; }
+  std::vector<core::TermId> interface_variables(core::TermId) const override { return {}; }
+  void register_interface(std::span<const theory::ComponentInterfaceScope>) override {}
+  void register_atoms(std::span<const theory::ComponentAtom>) override {}
+  core::TermId encode_equality(const theory::InterfacePair&) override {
+    return core::kInvalidTermId;
+  }
+  void reset() override {}
+  void push_level() override {}
+  void pop_to_level(std::size_t) override {}
+  void assign(std::span<const theory::AssignedTheoryLiteral>) override {}
+  theory::TheoryCheckResult check(theory::TheoryCheckEffort, std::uint64_t epoch,
+                                  std::span<const theory::InterfaceRelation>) override {
+    ++checks_;
+    theory::TheoryCheckResult result;
+    result.model.token = {properties_.id, epoch, ++revision_};
+    if (queue_.empty() && next_ < batches_.size()) {
+      queue_ = batches_[next_++];
+    }
+    result.status = queue_.empty() ? theory::TheoryCheckStatus::Consistent
+                                   : theory::TheoryCheckStatus::LemmasPending;
+    return result;
+  }
+  std::vector<core::TermId> take_lemmas(std::size_t limit) override {
+    const auto count = static_cast<std::ptrdiff_t>(std::min(limit, queue_.size()));
+    std::vector<core::TermId> taken(queue_.begin(), queue_.begin() + count);
+    queue_.erase(queue_.begin(), queue_.begin() + count);
+    return taken;
+  }
+  theory::ComponentModelFragment export_model(
+      const theory::TheoryModelToken& token) const override {
+    return {token, {}, {}, {}};
+  }
+
+ private:
+  theory::ComponentDescriptor properties_;
+  core::TermId marker_;
+  std::vector<std::vector<core::TermId>> batches_;
+  std::vector<core::TermId> queue_;
+  std::size_t next_ = 0;
+  std::uint64_t revision_ = 0;
+  std::size_t& checks_;
+};
+
+void queued_lemmas_are_drained_at_the_growth_boundary() {
+  enum class Scenario {
+    RefuteNewAtom,
+    KeepNewAtom,
+    NeverConsulted,
+    ConsultedOnFullModel,
+    NoHook,
+    BatchedDrain,
+  };
+  for (const Scenario scenario :
+       {Scenario::RefuteNewAtom, Scenario::KeepNewAtom, Scenario::NeverConsulted,
+        Scenario::ConsultedOnFullModel, Scenario::NoHook, Scenario::BatchedDrain}) {
+    Fixture f;
+    const auto sort = f.symbols.declare_sort("S");
+    const core::TermId a = f.variable("a", sort);
+    const core::TermId c = f.variable("c", sort);
+    const core::TermId ground_marker = f.variable("ground", f.symbols.bool_sort());
+    const core::TermId lemma_marker = f.variable("lemma", f.symbols.bool_sort());
+    // Not in any assertion: only a lemma introduces this atom.
+    const core::TermId equal = f.terms.mk_eq(a, c);
+
+    std::vector<std::vector<core::TermId>> batches{{equal}};
+    std::vector<core::TermId> assertions{ground_marker, lemma_marker};
+    bool full_model_checks = true;
+    smt::CheckSatResult expected = smt::CheckSatResult::Sat;
+    switch (scenario) {
+      case Scenario::RefuteNewAtom:
+        batches.push_back({f.terms.mk_not(equal)});
+        expected = smt::CheckSatResult::Unsat;
+        break;
+      case Scenario::KeepNewAtom:
+        break;
+      case Scenario::NeverConsulted:
+        // Owning no assigned atom, the component is never dirty. Without the
+        // capability only the final reconciliation sees its queue, and that
+        // is Unsupported rather than silently accepted.
+        batches = {{f.terms.mk_bool(false)}};
+        assertions = {ground_marker};
+        full_model_checks = false;
+        expected = smt::CheckSatResult::Unsupported;
+        break;
+      case Scenario::ConsultedOnFullModel:
+        batches = {{f.terms.mk_bool(false)}};
+        assertions = {ground_marker};
+        expected = smt::CheckSatResult::Unsat;
+        break;
+      case Scenario::NoHook:
+        expected = smt::CheckSatResult::Unsupported;
+        break;
+      case Scenario::BatchedDrain:
+        batches = {{equal, f.terms.mk_not(equal)}};
+        expected = smt::CheckSatResult::Unsat;
+        break;
+    }
+
+    bool owner_saw_new_atom = false;
+    std::size_t lemma_checks = 0;
+    smt::CombinationRecipe recipe;
+    recipe.online = true;
+    recipe.model_guided = false;
+    recipe.online_order = {0, 1};
+    recipe.timing_prefix = ":time.lemma-test.";
+    if (scenario != Scenario::NoHook) {
+      recipe.prepare_lemmas = [](std::vector<core::TermId> formulas) { return formulas; };
+    }
+    if (scenario == Scenario::BatchedDrain) {
+      recipe.lemma_batch = 1;
+    }
+    recipe.factories.push_back([&](bool) {
+      auto component = std::make_unique<PartitionComponent>(f.terms, "ground", ground_marker,
+                                                            std::vector<Restriction>{});
+      component->owns_equalities = true;
+      component->corrupt = [&owner_saw_new_atom, owner = component.get(),
+                            equal](theory::TheoryCheckResult&) {
+        for (const auto& assigned : owner->assignments()) {
+          owner_saw_new_atom = owner_saw_new_atom || (assigned.atom == equal && assigned.value);
+        }
+      };
+      return component;
+    });
+    recipe.factories.push_back([&](bool) {
+      return std::make_unique<LemmaComponent>(lemma_marker, batches, full_model_checks,
+                                              lemma_checks);
+    });
+    smt::CheckSatOptions options;
+    util::Statistics statistics;
+    const auto outcome =
+        smt::solve_component_recipe(f.terms, assertions, {}, options, statistics, recipe);
+    assert(outcome.result == expected);
+    const auto drained = statistics.get(":combination.lemmas.batches");
+    switch (scenario) {
+      case Scenario::RefuteNewAtom:
+        assert(drained == 2);
+        assert(statistics.get(":combination.components.incremental-growths") == 2);
+        break;
+      case Scenario::KeepNewAtom:
+        assert(drained == 1);
+        // The lemma's new equality atom reached its owner at the growth boundary.
+        assert(owner_saw_new_atom);
+        break;
+      case Scenario::NeverConsulted:
+      case Scenario::NoHook:
+        assert(drained == 0);
+        break;
+      case Scenario::ConsultedOnFullModel:
+        assert(drained == 1 && lemma_checks >= 1);
+        break;
+      case Scenario::BatchedDrain:
+        assert(drained == 2);
+        assert(statistics.get(":combination.lemmas.formulas") == 2);
+        break;
+    }
+  }
+}
+
 }  // namespace
 
 int main() {
@@ -765,4 +937,5 @@ int main() {
   nonconvex_disjunction_and_mutation_side_effects();
   care_selection_is_linear_and_validates_late_entries();
   exhaustive_ordinary_choice_order();
+  queued_lemmas_are_drained_at_the_growth_boundary();
 }

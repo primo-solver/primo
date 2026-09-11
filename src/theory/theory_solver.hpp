@@ -107,6 +107,10 @@ enum class TheoryCheckStatus {
   Unsupported,
   Cancelled,
   Unknown,
+  // The component queued lemmas (closed formulas, possibly over new atoms)
+  // that the online SMT driver must clausify at its atom-growth boundary
+  // before a search result can be trusted; see TheoryComponent::take_lemmas.
+  LemmasPending,
 };
 
 // A learned clause includes both conflicts and propagations.  Keeping a

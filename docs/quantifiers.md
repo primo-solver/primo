@@ -20,7 +20,7 @@ source or documentation informs this note (clean-room policy, `AGENTS.md`).
 | M0: paper note for enumerative instantiation | done: [](papers/enumerative-instantiation.md) |
 | M1: core representation and index operations | done, see below |
 | M2: frontend parsing and the routing gate | implemented; UF parse pass and fuzz gate pending |
-| M3: component protocol and driver extension for queued lemmas | planned |
+| M3: component protocol and driver extension for queued lemmas | implemented; QF_UFLIA cluster preservation run pending |
 | M4: quantifier component, enumerative instantiation, UF route | planned |
 
 **M1**, the representation from the proposal below:
@@ -81,6 +81,24 @@ corpus files), answers and non-timing statistics match the pre-change binary.
 On the same 40 quantifier-free inputs, answers and non-timing statistics match
 the M1 binary. Still pending before M2 is complete: the parse pass over the UF
 corpus, and the quantifier-free fuzz merge gate.
+
+**M3**, the queued-lemma protocol (details in
+[](n-way-combination-migration.md)):
+
+- `TheoryCheckStatus::LemmasPending`, `TheoryComponent::take_lemmas`, and the
+  `check_on_full_model` capability;
+- `ComponentDispatcher::lemmas_pending()`;
+- `solve_component_recipe` drains queues at its atom-growth boundary, through
+  `CombinationRecipe::prepare_lemmas` and `lemma_batch`.
+
+No theory kernel changed. On the same 40 quantifier-free inputs, including the
+two QF_UFLIA smoke inputs that use this driver, answers and non-timing
+statistics match the M1 binary.
+
+Deviation: making `lower_extended_terms` treat quantifier nodes as opaque moves
+to M4, where the quantified route first calls it.
+
+Pending: a QF_UFLIA preservation run on the SLURM cluster.
 
 ## Scope of step 1
 

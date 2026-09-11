@@ -131,6 +131,10 @@ void ComponentDispatcher::accept_result(std::size_t component, theory::TheoryChe
     dirty_[component] = true;
     external_clause_ = Explanation{component, implication_clause(result)};
     clause_cursor_ = 0;
+  } else if (result.status == theory::TheoryCheckStatus::LemmasPending) {
+    // Not a failure: the owning solve loop drains the component's queue at its
+    // growth boundary. No later check in this solve can be trusted before that.
+    lemmas_pending_ = component;
   } else if (result.status != theory::TheoryCheckStatus::Consistent) {
     // The owning solve loop must inspect this before accepting the SAT result.
     // Resource/cancellation/unsupported is never encoded as an empty clause.
@@ -139,7 +143,7 @@ void ComponentDispatcher::accept_result(std::size_t component, theory::TheoryChe
 }
 
 bool ComponentDispatcher::partial_check() {
-  if (failure_.has_value() || external_clause_.has_value()) {
+  if (failure_.has_value() || lemmas_pending_.has_value() || external_clause_.has_value()) {
     return !external_clause_.has_value();
   }
   for (std::size_t index = 0; index < components_.size(); ++index) {
@@ -154,7 +158,7 @@ bool ComponentDispatcher::partial_check() {
         publish_phase_(phase);
       }
     }
-    if (external_clause_.has_value() || failure_.has_value()) {
+    if (external_clause_.has_value() || failure_.has_value() || lemmas_pending_.has_value()) {
       return !external_clause_.has_value();
     }
   }
@@ -163,11 +167,16 @@ bool ComponentDispatcher::partial_check() {
 
 bool ComponentDispatcher::cb_check_found_model(const std::vector<int>& model) {
   notify_assignment(model);
+  for (std::size_t index = 0; index < components_.size(); ++index) {
+    if (components_[index]->descriptor().capabilities.check_on_full_model) {
+      dirty_[index] = true;
+    }
+  }
   return partial_check();
 }
 
 int ComponentDispatcher::cb_decide() {
-  if (!failure_.has_value() && !external_clause_.has_value()) {
+  if (!failure_.has_value() && !lemmas_pending_.has_value() && !external_clause_.has_value()) {
     for (auto* component : components_) {
       const auto literal = component->suggest_literal();
       if (literal.value != 0) {
@@ -182,7 +191,7 @@ int ComponentDispatcher::cb_decide() {
 }
 
 int ComponentDispatcher::cb_propagate() {
-  if (failure_.has_value() || external_clause_.has_value()) {
+  if (failure_.has_value() || lemmas_pending_.has_value() || external_clause_.has_value()) {
     return 0;
   }
   for (std::size_t index = 0; index < components_.size(); ++index) {
