@@ -13,6 +13,41 @@ SMT-LIB `UF` benchmarks.
 Sources are the SMT-LIB standard, papers, and PhD theses. No other solver's
 source or documentation informs this note (clean-room policy, `AGENTS.md`).
 
+## Implementation status
+
+| Milestone | Status |
+| --- | --- |
+| M0: paper note for enumerative instantiation | done: [](papers/enumerative-instantiation.md) |
+| M1: core representation and index operations | done, see below |
+| M2: frontend parsing and the routing gate | planned |
+| M3: component protocol and driver extension for queued lemmas | planned |
+| M4: quantifier component, enumerative instantiation, UF route | planned |
+
+**M1**, the representation from the proposal below:
+
+- `BoundVariable`, `Forall`, `Exists` and `Pattern` kinds, with their
+  `TermManager` constructors;
+- lazily allocated `loose_index` and `contains_quantifier` caches;
+- `core::shift`, `core::instantiate` and `core::check_bound_variables` in
+  `src/core/binders.*`;
+- `tests/unit/binder_tests.cpp`.
+
+Deviations from the proposal:
+
+- **Index storage.** The index, and a quantifier's arity, live in the `symbol`
+  field rather than `rational_value`, because `Rational` has no integer
+  accessor. A quantifier's variable sorts are its declaration children.
+- **Pattern check.** `mk_pattern` rejects quantified terms, but does not bound a
+  pattern's loose index by the arity: a pattern of a nested quantifier may name
+  outer variables.
+- **Clausifier.** It already treats `Forall`/`Exists` as opaque theory atoms,
+  which was planned for M3. Until the M2 gate exists, no quantified term reaches
+  it.
+
+Quantifier-free behaviour is preserved. On 40 local inputs (the smoke QF_UF,
+QF_UFLIA and QF_LIA sets, plus the ten smallest QF_LRA, QF_UFLRA and QF_LIA
+corpus files), answers and non-timing statistics match the pre-change binary.
+
 ## Scope of step 1
 
 In scope:
@@ -309,7 +344,7 @@ isolation.
    `define-fun` bodies (`5bc811b`) and quoted-symbol normalization (`8e9dc59`).
 2. **Bound variables.** A new `BoundVariable` kind carries an index and a sort,
    both part of the hash key. It is a distinct kind, so no `Constant` case
-   matches it.
+   matches it. (Implemented with the index in the `symbol` field.)
 3. **Quantifiers.** `Forall` and `Exists` kinds carry the sorts of their
    variables, their body, and their patterns. A binder with a variable list is
    one node, read with SMT-LIB's nested semantics: in `Q(x1…xn). b`, `xn` has
@@ -591,12 +626,8 @@ the gate.
 
 ### Open questions
 
-1. **Where the index and the binder sorts live.** `Term` has no free field, and
-   `Key` has no sort list.
-   - The index could go in `rational_value`, as `Times`, `IntDiv` and `IntMod`
-     already store their literal there, or in a new field.
-   - A quantifier's variable sorts could be child terms, a new field, or a side
-     table.
+1. **Where the index and the binder sorts live.** Resolved in M1: the index and
+   the arity are in `symbol`, and the variable sorts are declaration children.
 2. **Patterns.** Children inside the hash key (two formulas that differ only in
    patterns become different terms), or a side table keyed by the quantifier.
 3. **Names for merged formulas.** Alpha-equivalent formulas merge, so the side

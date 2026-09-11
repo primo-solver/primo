@@ -68,6 +68,12 @@ FlatTermId FlatTermIndex::flatten(core::TermId term) {
       // means lowering was skipped or leaked. Fail loudly rather than treat
       // the node as an opaque constant, which would be a silent wrong answer.
       throw std::invalid_argument("ite/div/mod/abs must be lowered before EUF flattening");
+    case core::TermKind::BoundVariable:
+    case core::TermKind::Forall:
+    case core::TermKind::Exists:
+    case core::TermKind::Pattern:
+      // Quantified formulas belong to the quantifier component, never to EUF.
+      throw std::invalid_argument("quantified terms are not EUF flat terms");
   }
   flattened_terms_.emplace(term, flat);
   return flat;

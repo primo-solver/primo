@@ -67,6 +67,10 @@ bool is_boolean_literal(const core::TermManager& terms, core::TermId term_id) {
     case core::TermKind::IntDiv:
     case core::TermKind::IntMod:
     case core::TermKind::Abs:
+    case core::TermKind::BoundVariable:
+    case core::TermKind::Forall:
+    case core::TermKind::Exists:
+    case core::TermKind::Pattern:
       return false;
     case core::TermKind::Not:
       return is_boolean_literal(terms, term.children.at(0)) &&
@@ -649,6 +653,10 @@ ArithmeticAtomCanonicalizationResult canonicalize_arithmetic_atoms_impl(
         case core::TermKind::BoolValue:
         case core::TermKind::Constant:
         case core::TermKind::Rational:
+        case core::TermKind::BoundVariable:
+        case core::TermKind::Forall:
+        case core::TermKind::Exists:
+        case core::TermKind::Pattern:
           assert(false && "leaf reached arithmetic canonicalization reconstruction");
           replacement = visit.term;
           break;
@@ -874,6 +882,10 @@ bool is_boolean_unit_atom(const core::TermManager& terms, core::TermId term_id) 
     case core::TermKind::And:
     case core::TermKind::Or:
     case core::TermKind::Implies:
+    case core::TermKind::BoundVariable:
+    case core::TermKind::Forall:
+    case core::TermKind::Exists:
+    case core::TermKind::Pattern:
       return false;
     case core::TermKind::Rational:
     case core::TermKind::Plus:
@@ -909,6 +921,10 @@ bool is_forced_atom(const core::TermManager& terms, core::TermId term_id) {
     case core::TermKind::And:
     case core::TermKind::Or:
     case core::TermKind::Implies:
+    case core::TermKind::BoundVariable:
+    case core::TermKind::Forall:
+    case core::TermKind::Exists:
+    case core::TermKind::Pattern:
       return false;
     case core::TermKind::Rational:
     case core::TermKind::Plus:
@@ -1111,6 +1127,10 @@ core::TermId simplify_with_boolean_units(core::TermManager& terms, core::TermId 
       case core::TermKind::IntMod:
       case core::TermKind::Abs:
       case core::TermKind::Lt:
+      case core::TermKind::BoundVariable:
+      case core::TermKind::Forall:
+      case core::TermKind::Exists:
+      case core::TermKind::Pattern:
         assert(false && "leaf term reached Boolean-unit post-order reconstruction");
         break;
       case core::TermKind::Equality:
@@ -1231,6 +1251,10 @@ core::TermId simplify_with_forced_atoms(core::TermManager& terms, core::TermId t
       case core::TermKind::IntMod:
       case core::TermKind::Abs:
       case core::TermKind::Lt:
+      case core::TermKind::BoundVariable:
+      case core::TermKind::Forall:
+      case core::TermKind::Exists:
+      case core::TermKind::Pattern:
         assert(false && "leaf term reached forced-atom post-order reconstruction");
         break;
       case core::TermKind::Equality: {
@@ -1598,6 +1622,10 @@ core::TermId simplify_with_congruence(core::TermManager& terms, core::TermId ter
         case core::TermKind::IntMod:
         case core::TermKind::Abs:
         case core::TermKind::Lt:
+        case core::TermKind::BoundVariable:
+        case core::TermKind::Forall:
+        case core::TermKind::Exists:
+        case core::TermKind::Pattern:
           assert(false && "leaf term reached congruence post-order reconstruction");
           break;
       }
@@ -2291,6 +2319,10 @@ core::TermId rewrite_with_ground_unit_equalities(
     case core::TermKind::BoolValue:
     case core::TermKind::Constant:
     case core::TermKind::Rational:
+    case core::TermKind::BoundVariable:
+    case core::TermKind::Forall:
+    case core::TermKind::Exists:
+    case core::TermKind::Pattern:
       break;
     case core::TermKind::Plus: {
       std::vector<core::TermId> children;
@@ -2448,6 +2480,10 @@ core::TermId rewrite_with_solved_constants(
         case core::TermKind::BoolValue:
         case core::TermKind::Constant:
         case core::TermKind::Rational:
+        case core::TermKind::BoundVariable:
+        case core::TermKind::Forall:
+        case core::TermKind::Exists:
+        case core::TermKind::Pattern:
           break;
         case core::TermKind::Plus:
           if (changed) {
@@ -2598,6 +2634,10 @@ core::TermId lower_real_equalities_rewrite(core::TermManager& terms, core::TermI
       case core::TermKind::IntMod:
       case core::TermKind::Abs:
       case core::TermKind::Lt:
+      case core::TermKind::BoundVariable:
+      case core::TermKind::Forall:
+      case core::TermKind::Exists:
+      case core::TermKind::Pattern:
         assert(false && "leaf term reached real-equality post-order reconstruction");
         break;
       case core::TermKind::Application: {
@@ -2900,6 +2940,10 @@ core::TermId simplify_with_finite_domain_evaluation(core::TermManager& terms, co
     case core::TermKind::IntMod:
     case core::TermKind::Abs:
     case core::TermKind::Lt:
+    case core::TermKind::BoundVariable:
+    case core::TermKind::Forall:
+    case core::TermKind::Exists:
+    case core::TermKind::Pattern:
       return term;
     case core::TermKind::Equality: {
       bool cutoff = false;
@@ -3241,6 +3285,10 @@ BooleanImpliesRewriteResult rewrite_boolean_implications(
         case core::TermKind::IntMod:
         case core::TermKind::Abs:
         case core::TermKind::Lt:
+        case core::TermKind::BoundVariable:
+        case core::TermKind::Forall:
+        case core::TermKind::Exists:
+        case core::TermKind::Pattern:
           assert(false && "leaf reached implication rewrite reconstruction");
           break;
       }
@@ -3335,6 +3383,10 @@ BooleanNegationRewriteResult rewrite_boolean_negations_to_nnf(
           case core::TermKind::IntMod:
           case core::TermKind::Abs:
           case core::TermKind::Lt:
+          case core::TermKind::BoundVariable:
+          case core::TermKind::Forall:
+          case core::TermKind::Exists:
+          case core::TermKind::Pattern:
             break;
         }
         continue;
@@ -3377,6 +3429,10 @@ BooleanNegationRewriteResult rewrite_boolean_negations_to_nnf(
         case core::TermKind::IntMod:
         case core::TermKind::Abs:
         case core::TermKind::Lt:
+        case core::TermKind::BoundVariable:
+        case core::TermKind::Forall:
+        case core::TermKind::Exists:
+        case core::TermKind::Pattern:
           assert(false && "non-connective reached NNF reconstruction");
           break;
       }
@@ -3519,6 +3575,10 @@ BooleanFlatteningResult flatten_associative_booleans(core::TermManager& terms,
         case core::TermKind::IntMod:
         case core::TermKind::Abs:
         case core::TermKind::Lt:
+        case core::TermKind::BoundVariable:
+        case core::TermKind::Forall:
+        case core::TermKind::Exists:
+        case core::TermKind::Pattern:
           throw std::logic_error("leaf reached Boolean flattening reconstruction");
       }
       if (replacement == core::kInvalidTermId) {
@@ -4172,6 +4232,10 @@ core::TermId rebuild_lowered_node(core::TermManager& terms, core::TermId origina
     case core::TermKind::BoolValue:
     case core::TermKind::Constant:
     case core::TermKind::Rational:
+    case core::TermKind::BoundVariable:
+    case core::TermKind::Forall:
+    case core::TermKind::Exists:
+    case core::TermKind::Pattern:
       assert(false && "leaf reached extended-term reconstruction");
       return original;
     // The simplification pass rebuilds these when a child changed and no rule

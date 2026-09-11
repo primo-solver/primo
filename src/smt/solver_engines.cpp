@@ -6531,6 +6531,11 @@ bool formula_needs_mixed_purification(const core::TermManager& terms, core::Term
     case core::TermKind::Rational:
     case core::TermKind::Plus:
     case core::TermKind::Times:
+    // Quantified input never takes a mixed route; opaque if it ever did.
+    case core::TermKind::BoundVariable:
+    case core::TermKind::Forall:
+    case core::TermKind::Exists:
+    case core::TermKind::Pattern:
       break;
   }
   formula_memo.emplace(term_id, result);
@@ -6842,6 +6847,10 @@ core::TermId purify_mixed_formula(const PurificationScope& scope, core::TermId t
       case core::TermKind::Rational:
       case core::TermKind::Plus:
       case core::TermKind::Times:
+      case core::TermKind::BoundVariable:
+      case core::TermKind::Forall:
+      case core::TermKind::Exists:
+      case core::TermKind::Pattern:
         break;
     }
     state.formula_rewrite_memo.emplace(visit.term, result);

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <unordered_map>
 #include <vector>
 
@@ -57,6 +58,27 @@ class TermManager {
   // roughly seven in ten benchmarks contain no ite at all.
   std::size_t extended_term_count() const;
 
+  // Quantifiers with de Bruijn bound variables; see the TermKind comment and
+  // docs/quantifiers.md. mk_forall and mk_exists take the variable sorts in
+  // SMT-LIB declaration order, so the last variable has index 0 in the body.
+  // Patterns must be Pattern nodes, whose terms must not contain quantifiers.
+  // These constructors never rename or shift; core/binders.hpp does.
+  TermId mk_bound_variable(std::uint32_t index, SortId sort);
+  TermId mk_forall(const std::vector<SortId>& sorts, TermId body,
+                   std::vector<TermId> patterns = {});
+  TermId mk_exists(const std::vector<SortId>& sorts, TermId body,
+                   std::vector<TermId> patterns = {});
+  TermId mk_pattern(std::vector<TermId> terms);
+
+  // One past the largest bound-variable index that is not bound inside the
+  // term, so 0 exactly for closed terms. Cached per node at intern time. The
+  // storage is created by the first binder node, which is why quantifier-free
+  // sessions pay nothing and every earlier term correctly reads as closed.
+  std::uint32_t loose_index(TermId id) const;
+  bool contains_quantifier(TermId id) const;
+  // Number of Forall/Exists nodes ever interned.
+  std::size_t quantifier_count() const;
+
   const Term& get(TermId id) const;
   const SymbolTable& symbols() const;
   std::size_t size() const;
@@ -80,6 +102,9 @@ class TermManager {
 
   TermId intern(Key key);
   TermId intern_extended(Key key);
+  TermId mk_quantifier(TermKind kind, const std::vector<SortId>& sorts, TermId body,
+                       std::vector<TermId> patterns);
+  void record_binder_facts(TermId id);
   util::Rational normalized_int_divisor(const util::Rational& divisor, TermId numerator) const;
   const Term& require_term(TermId id) const;
   void require_bool(TermId id) const;
@@ -88,6 +113,10 @@ class TermManager {
   const SymbolTable& symbols_;
   std::vector<Term> terms_;
   std::size_t extended_term_count_ = 0;
+  std::size_t quantifier_count_ = 0;
+  bool binder_facts_active_ = false;
+  std::vector<std::uint32_t> loose_index_;
+  std::vector<bool> contains_quantifier_;
   std::unordered_map<Key, TermId, KeyHash> term_by_key_;
 };
 

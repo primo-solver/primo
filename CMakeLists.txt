@@ -330,6 +330,12 @@ primo_enable_sanitizers(primo_core_tests)
 target_link_libraries(primo_core_tests PRIVATE primo_core)
 add_test(NAME primo_core_tests COMMAND primo_core_tests)
 
+add_executable(primo_binder_tests tests/unit/binder_tests.cpp)
+primo_enable_warnings(primo_binder_tests)
+primo_enable_sanitizers(primo_binder_tests)
+target_link_libraries(primo_binder_tests PRIVATE primo_core)
+add_test(NAME primo_binder_tests COMMAND primo_binder_tests)
+
 add_executable(primo_model_tests tests/unit/model_tests.cpp)
 primo_enable_warnings(primo_model_tests)
 primo_enable_sanitizers(primo_model_tests)

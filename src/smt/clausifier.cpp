@@ -275,12 +275,19 @@ struct BooleanClausifier::Implementation {
         case core::TermKind::IntMod:
         case core::TermKind::Abs:
         case core::TermKind::Lt:
+        // A quantified formula is an opaque atom owned by the quantifier
+        // component; its body is never part of the Boolean structure.
+        case core::TermKind::Forall:
+        case core::TermKind::Exists:
           record_theory_atom_polarity(current.term, current.positive);
           break;
         case core::TermKind::Rational:
         case core::TermKind::Plus:
         case core::TermKind::Times:
           throw UnsupportedInput("Real-sorted term used in a Boolean context");
+        case core::TermKind::BoundVariable:
+        case core::TermKind::Pattern:
+          throw UnsupportedInput("bound variable or pattern used in a Boolean context");
       }
     }
   }
@@ -366,11 +373,15 @@ struct BooleanClausifier::Implementation {
         case core::TermKind::IntMod:
         case core::TermKind::Abs:
         case core::TermKind::Lt:
+        case core::TermKind::Forall:
+        case core::TermKind::Exists:
           backend_.add_clause(sat::Clause{encode(current)});
           break;
         case core::TermKind::Rational:
         case core::TermKind::Plus:
         case core::TermKind::Times:
+        case core::TermKind::BoundVariable:
+        case core::TermKind::Pattern:
           throw UnsupportedInput("unsupported Boolean assertion");
       }
     }
@@ -419,6 +430,10 @@ struct BooleanClausifier::Implementation {
           case core::TermKind::IntMod:
           case core::TermKind::Abs:
           case core::TermKind::Lt:
+          case core::TermKind::BoundVariable:
+          case core::TermKind::Forall:
+          case core::TermKind::Exists:
+          case core::TermKind::Pattern:
             assert(false && "atom reached Boolean clausifier post-order encoding");
             break;
         }
@@ -466,6 +481,8 @@ struct BooleanClausifier::Implementation {
         case core::TermKind::IntMod:
         case core::TermKind::Abs:
         case core::TermKind::Lt:
+        case core::TermKind::Forall:
+        case core::TermKind::Exists:
           (void)theory_atom_for_term(visit.term);
           break;
         case core::TermKind::BoolValue:
@@ -474,6 +491,8 @@ struct BooleanClausifier::Implementation {
         case core::TermKind::Rational:
         case core::TermKind::Plus:
         case core::TermKind::Times:
+        case core::TermKind::BoundVariable:
+        case core::TermKind::Pattern:
           throw UnsupportedInput("unsupported Boolean term");
       }
     }
