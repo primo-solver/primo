@@ -2570,7 +2570,8 @@ belongs to [](#lead-recursion-audit).
 change on `perf/incremental-uf-atom-scans`, its fresh 2,000-session scoped gate,
 25,027 independently validated native models and unchanged completed-session
 set. Full-archive PAR2 falls 2.25%; fresh paired timing improves the 413-query
-CLEARSY runtime by 21%. This remains opt-in and is not yet merged into `main`.
+CLEARSY runtime by 21%. Merge `40adb28` integrates this work into `main`;
+assumptions mode remains opt-in.
 Traversal scratch remains unimplemented. First in the profiling study's suggested
 order; split atom cursors and traversal scratch into
 separate measured changes. Evidence for leads 22–25 is [](uf-z3-profiling.md),

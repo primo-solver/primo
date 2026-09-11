@@ -2,9 +2,9 @@
 
 Commit `7ac555c` implements and qualifies the atom-cursor part of
 [lead 22](#lead-incremental-uf-scans), based on merged `605062f`. The fresh scoped,
-default and full native model gates pass. The change is accepted on
-`perf/incremental-uf-atom-scans`; it has not
-been merged into `main`. Rebuild remains the default.
+default and full native model gates pass. The change was merged into
+`main` by `40adb28`, preserving the exact tree of
+`perf/incremental-uf-atom-scans` at `3a96e86`. Rebuild remains the default.
 
 ## Representation and invariant
 

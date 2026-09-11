@@ -3,6 +3,35 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-11-incremental-uf-merge-40adb28",
+      "build_stamp_note": "The verified executable reports 40adb28-dirty because merge-status documentation edits were pending during make check. src, scripts and tests have no worktree diff; the source tree equals the qualified 7ac555c tree.",
+      "date": "2026-09-11",
+      "kind": "merge-integration-verification",
+      "status": "merged locally into main; verification passed",
+      "merge_commit": "40adb289b3c39a571a03ff026404a643dc5ef1f8",
+      "parents": [
+        "605062f4170d5014f7479dded6d2191899d4a5dc",
+        "3a96e86831ce0195c6f47e1e9d32860a3ded236a"
+      ],
+      "branch": "perf/incremental-uf-atom-scans",
+      "branch_tip": "3a96e86831ce0195c6f47e1e9d32860a3ded236a",
+      "merge_tree": "ce1efa40e6a8cbbd182afad92288c5d4847e0bf0",
+      "exact_branch_tree_preserved": true,
+      "qualified_source_commit": "7ac555c",
+      "qualified_and_merged_source_tree": "2f6441cf276fe6d2d44defaa524db92fc05a6b49",
+      "changes": "No conflict resolution or source edits; update current-status, atom-scan report and open-lead merge status in adjacent documentation commit. Rebuild stays default.",
+      "verification": {
+        "make_check": "pass: lint, 34 C++/CLI tests, 174 Python tests",
+        "make_docs": "pass",
+        "git_diff_check": "pass",
+        "version": "primo 0.1.0\ngit: 40adb28-dirty\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+        "local_solver_processes": []
+      },
+      "qualification": "Identical source tree to 7ac555c: ASAN, focused static scans, 2000 scoped sessions, 25027 native SAT models, default 25-file preservation. No new solver behavior, benchmark rerun or SLURM job.",
+      "artifacts": "results/merge-incremental-uf-40adb28",
+      "remote_changes": "No push or remote branch mutation in this integration."
+    },
+    {
       "id": "2026-09-11-opensmt-native-incremental-comparison",
       "date": "2026-09-11",
       "kind": "complete-external-reference-comparison",
