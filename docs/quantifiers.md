@@ -69,9 +69,12 @@ Local M4 checks, 2026-09-11:
 
 - Quantifier-free preservation: 40 files, identical answers and non-timing
   statistics against the M1 binary.
-- UF smoke: the 30 smallest files of the corpus, 6 s each. Primo answered 8
-  `unsat` and 22 `unknown`, with none wrong against `:status` (13 declared
-  `unsat`, 17 `sat`).
+- UF smoke: the 30 smallest files of the corpus, through
+  `scripts/bench_qf_uf_full.py` at 5 s each. Primo gave 8 `unsat`, 4 `unknown`
+  and 18 timeouts, none wrong against `:status` (13 declared `unsat`, 17
+  `sat`). The local Z3 solved 24 of them and cvc5 13. A first count read the
+  `unknown` that Primo prints when cancelled as an answer and reported 22
+  `unknown`; the harness classifies those runs as timeouts.
 
 This is not the corpus evaluation, which still needs the cluster.
 
