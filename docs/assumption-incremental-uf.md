@@ -104,6 +104,13 @@ Before full timing, run at least 1,000 fresh generated scoped UF sessions and
 Include the tracked Boolean-argument regression seeds in deterministic checks.
 Use SLURM for substantial runs and preserve all candidates, inputs and results.
 
+`scripts/slurm_incremental_uf_gate.sbatch` defaults to the measured Auto pipeline;
+`PRIMO_UF_GATE_PROFILE=matrix` separately covers Auto/Off preprocessing and
+Online/Conflict propagation. Each invocation runs 1,000 generated and 1,000
+native mutations. `slurm_incremental_uf_regressions.sbatch` requires an explicit
+`PRIMO_CTEST` path, since compute nodes need not expose CTest on PATH. The archive
+driver uses streaming SHA-256 compatible with the cluster's Python version.
+
 Evaluate the complete 1,778-file archive with original stdin, initially at
 30 seconds per session, comparing rebuild, assumptions, Z3 and cvc5. Record
 complete sessions separately from partial query progress and compute whole-session

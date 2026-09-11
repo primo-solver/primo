@@ -18,11 +18,19 @@ if (( slot >= 4 )); then
   done < "${PRIMO_UF_SEEDS:?}"
 fi
 preprocessing=auto
-propagation=online
-if (( slot % 2 )); then preprocessing=off; fi
-if (( slot % 4 >= 2 )); then propagation=conflict; fi
+propagation=auto
+profile=${PRIMO_UF_GATE_PROFILE:-auto}
+if [[ $profile == matrix ]]; then
+  propagation=online
+  if (( slot % 2 )); then preprocessing=off; fi
+  if (( slot % 4 >= 2 )); then propagation=conflict; fi
+elif [[ $profile != auto ]]; then
+  echo "unsupported gate profile: $profile" >&2
+  exit 2
+fi
+seed_base=${PRIMO_UF_GATE_SEED:-202609120}
 python3 scripts/incremental_uf_gate.py --kind "$kind" "${seed_args[@]}" \
-  --seed "$((202609120 + slot * 250))" --count 250 \
+  --seed "$((seed_base + slot * 250))" --count 250 \
   --solver build-slurm-rel/primo --solver-arg=--quiet \
   --solver-arg=--incremental-mode=assumptions --solver-arg=--max-theory-conflicts=10000 \
   --solver-arg="--preprocessing-mode=$preprocessing" \

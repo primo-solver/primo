@@ -3,6 +3,38 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-11-assumptions-uf-harness-portability",
+      "date": "2026-09-11",
+      "kind": "slurm-preflight-and-harness-repair",
+      "evidence_status": "infrastructure failures before solving; no solver qualification",
+      "candidate_commit": "df47b12",
+      "jobs": {
+        "build": 142317,
+        "regressions_failed": 142318,
+        "inventory_failed": 142319,
+        "dependent_gate_cancelled": 142320
+      },
+      "commands": [
+        "scripts/slurm_prepare_benchmark_workspace.py --reuse-dependencies --build-via-slurm --jobs 4 --extra-target primo_smt_session_tests --extra-target primo_sat_backend_tests --extra-target primo_parser_corpus",
+        "sbatch --ntasks=1 tmp/uf-candidate-tests.sbatch",
+        "sbatch --ntasks=1 scripts/slurm_native_uf_inventory.sbatch"
+      ],
+      "failures": [
+        "ctest not found on compute-node PATH",
+        "cluster Python lacks hashlib.file_digest"
+      ],
+      "fix": "Explicit PRIMO_CTEST in committed regression batch; portable streaming digest; Auto and nondefault option-matrix gates separately reproducible. Solver sources unchanged.",
+      "artifacts": [
+        "tmp/assumptions-uf-slurm-prepare.log",
+        "tmp/uf-regression-submit.log",
+        "tmp/uf-inventory-submit.log",
+        "SLURM /home/janotmik/primo-model-fix/slurm_logs/primo-uf-session-tests-142318.err",
+        "SLURM /home/janotmik/primo-model-fix/slurm_logs/primo-native-uf-inventory-142319.err"
+      ],
+      "build_result": "142317 COMPLETED, 2m18s, 4 CPUs, max RSS 818036 KiB, df47b12/CaDiCaL 3.0.0 verified. Fresh build reported filesystem clock-skew warnings; all targets compiled/linked from removed build directory.",
+      "verification": "4 focused UF harness tests, batch validation, make lint and make docs; no C++ changes since full tests/ASan/static pass."
+    },
+    {
       "id": "2026-09-11-assumptions-uf-local-development",
       "date": "2026-09-11",
       "kind": "native-uf-baseline-inventory-and-development-smoke",
