@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -13,6 +14,10 @@ class TermManager;
 
 namespace primo::util {
 class Statistics;
+}
+
+namespace primo::theory {
+class TheoryComponent;
 }
 
 namespace primo::smt {
@@ -50,5 +55,17 @@ CheckSatOutcome solve_qf_uflia_engine(core::TermManager& terms,
 void record_ackermann_cost_diagnostics_for_session(const core::TermManager& terms,
                                                    const std::vector<core::TermId>& roots,
                                                    util::Statistics& statistics);
+
+class BooleanClausifier;
+
+// The QF_UFLIA recipe's EUF component and its Boolean-domain preparation, for
+// recipes outside this file (the quantified UF route). Returns null without an
+// IPASIR backend.
+std::unique_ptr<theory::TheoryComponent> make_uf_euf_component(core::TermManager& terms,
+                                                               const CheckSatOptions& options,
+                                                               util::Statistics& statistics,
+                                                               bool online);
+void apply_euf_boolean_domain(BooleanClausifier& clausifier, const CheckSatOptions& options,
+                              util::Statistics& statistics);
 
 }  // namespace primo::smt

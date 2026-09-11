@@ -342,6 +342,12 @@ primo_enable_sanitizers(primo_quantifier_frontend_tests)
 target_link_libraries(primo_quantifier_frontend_tests PRIVATE primo_core)
 add_test(NAME primo_quantifier_frontend_tests COMMAND primo_quantifier_frontend_tests)
 
+add_executable(primo_quantifier_solver_tests tests/unit/quantifier_solver_tests.cpp)
+primo_enable_warnings(primo_quantifier_solver_tests)
+primo_enable_sanitizers(primo_quantifier_solver_tests)
+target_link_libraries(primo_quantifier_solver_tests PRIVATE primo_core)
+add_test(NAME primo_quantifier_solver_tests COMMAND primo_quantifier_solver_tests)
+
 add_executable(primo_model_tests tests/unit/model_tests.cpp)
 primo_enable_warnings(primo_model_tests)
 primo_enable_sanitizers(primo_model_tests)

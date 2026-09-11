@@ -177,6 +177,17 @@ std::vector<TermId> quantifier_patterns(const TermManager& terms, TermId quantif
   return {node.children.begin() + node.symbol + 1, node.children.end()};
 }
 
+TermId rebuild_operator(TermManager& terms, TermId original, std::vector<TermId> children) {
+  const Term& node = terms.get(original);
+  const TermKind kind = node.kind;
+  const SymbolId symbol = node.symbol;
+  const util::Rational rational = node.rational_value;
+  if (node.children.empty() || kind == TermKind::Forall || kind == TermKind::Exists) {
+    throw std::invalid_argument("rebuild_operator expects an operator node");
+  }
+  return rebuild(terms, kind, symbol, rational, std::move(children));
+}
+
 TermId shift(TermManager& terms, TermId term, std::uint32_t amount) {
   if (amount == 0 || terms.loose_index(term) == 0) {
     return term;

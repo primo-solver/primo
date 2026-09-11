@@ -744,6 +744,12 @@ int run_main(int argc, char** argv) {
       app.add_option("--prop-assign-threshold", solver_options.euf_propagation_assign_threshold,
                      "Skip online EUF propagation discovery above this assigned-atom fraction")
           ->check(CLI::Range(0.0, 1.0));
+  app.add_option("--quantifier-instances-per-round", solver_options.quantifier_instances_per_round,
+                 "Quantified UF: enumerative instances queued per complete assignment")
+      ->check(CLI::Range(1, 1000000000));
+  app.add_option("--quantifier-max-instances", solver_options.quantifier_max_instances,
+                 "Quantified UF: instances tried before answering unknown")
+      ->check(CLI::Range(1, 1000000000));
   app.add_option("files", files, "SMT-LIB input files. Reads stdin when omitted")
       ->type_name("FILE")
       ->default_str("");
@@ -813,14 +819,16 @@ int run_main(int argc, char** argv) {
     }
     // Everything else is QF_UF/EUF: the euf-*, finite-domain-*, ground-*,
     // qf-uf-* and auto-basic-* families, plus eq-bridge, symmetry breaking,
-    // solved-constant substitution, and the online-propagation knobs.
-    if (starts_with(name, "--euf-") || starts_with(name, "--no-euf-") ||
-        starts_with(name, "--finite-domain-") || starts_with(name, "--no-finite-domain-") ||
-        starts_with(name, "--ground-") || starts_with(name, "--guarded-ground-") ||
-        starts_with(name, "--model-equality-") || starts_with(name, "--no-model-equality-") ||
-        starts_with(name, "--nelson-oppen-") || starts_with(name, "--qf-uf-") ||
-        starts_with(name, "--auto-basic-") || starts_with(name, "--no-auto-basic-") ||
-        name == "--eq-bridge" || name == "--no-eq-bridge" || name == "--uf-symmetry-breaking" ||
+    // solved-constant substitution, the online-propagation knobs, and
+    // quantified UF instantiation.
+    if (starts_with(name, "--euf-") || starts_with(name, "--quantifier-") ||
+        starts_with(name, "--no-euf-") || starts_with(name, "--finite-domain-") ||
+        starts_with(name, "--no-finite-domain-") || starts_with(name, "--ground-") ||
+        starts_with(name, "--guarded-ground-") || starts_with(name, "--model-equality-") ||
+        starts_with(name, "--no-model-equality-") || starts_with(name, "--nelson-oppen-") ||
+        starts_with(name, "--qf-uf-") || starts_with(name, "--auto-basic-") ||
+        starts_with(name, "--no-auto-basic-") || name == "--eq-bridge" ||
+        name == "--no-eq-bridge" || name == "--uf-symmetry-breaking" ||
         name == "--no-uf-symmetry-breaking" || name == "--no-solved-constant-substitution" ||
         name == "--prop-interval" || name == "--prop-assign-threshold" ||
         name == "--prop-delivery-budget") {

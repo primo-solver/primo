@@ -10,9 +10,9 @@ Reference:
 Read for Primo's quantifier component: Sections 2, 3, 4 and 4.1, including
 Figure 2. Section 5 (experiments) was not used.
 
-**Status: planned, not implemented.** This note is the paper checklist required
-before the instantiation code in [](../quantifiers.md) is written. It records
-what the paper says and which subset Primo intends to implement.
+**Status: implemented (M4 of [](../quantifiers.md)); corpus evaluation
+pending.** This note is the paper checklist written before the instantiation
+code. It records what the paper says and which subset Primo implements.
 
 ## Section 2: the instantiation loop
 
@@ -85,7 +85,7 @@ satisfiable problems better (Example 3).
   paper reports `c;e;u` and `c;e+u` as most effective for unsatisfiable
   problems.
 
-## Primo mapping (planned)
+## Primo mapping
 
 | Paper element | Primo owner |
 | --- | --- |
@@ -96,7 +96,7 @@ satisfiable problems better (Example 3).
 | `T(E)` | per-sort term pool |
 | ordering `≺` | max-then-lexicographic tuple order over the pool's append-only list |
 
-## Implemented subset and deviations (planned)
+## Implemented subset and deviations
 
 - **Strategy.** Strategy u alone. No c or e, and so no compound strategy.
 - **Skolemization.** No prenex or Skolem-normal-form preprocessing. A quantifier
@@ -115,6 +115,14 @@ satisfiable problems better (Example 3).
   quantifier atom is covered by a Skolem lemma, so that no universal remains.
   Otherwise `unknown`: without the entailment check, Corollary 1 is not
   available.
+- **Empty sorts and Bool.** Theorem 1 assumes a term of every sort. A sort with
+  no ground term gets one fresh constant. Bool-sorted variables range over
+  `true` and `false` only.
+- **Rounds.** At each complete assignment, at most
+  `--quantifier-instances-per-round` new instances are queued, shared evenly
+  across the universally behaving atoms, starting from a rotating one. One solve
+  tries at most `--quantifier-max-instances` instances, then answers `unknown`
+  with reason `resource-limit`.
 - **Not implemented.** Relevant domains, sort inference, and model export.
 
 ## Tests derived from the paper

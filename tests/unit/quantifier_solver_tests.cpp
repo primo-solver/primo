@@ -1,0 +1,146 @@
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
+
+#include <cassert>
+#include <string>
+
+#include "smt/check_sat.hpp"
+#include "smt/inconclusive_reason.hpp"
+
+using primo::smt::check_sat_smtlib;
+using primo::smt::CheckSatOptions;
+using primo::smt::CheckSatOutcome;
+using primo::smt::CheckSatResult;
+using primo::smt::InconclusiveReason;
+
+namespace {
+
+const std::string kPrelude = R"(
+  (set-logic UF)
+  (declare-sort U 0)
+  (declare-fun a () U)
+  (declare-fun b () U)
+  (declare-fun f (U) U)
+  (declare-fun p (U) Bool)
+  (declare-fun q (U) Bool)
+  (declare-fun r (U U) Bool)
+)";
+
+CheckSatOutcome solve(const std::string& commands, CheckSatOptions options = {}) {
+  return check_sat_smtlib(kPrelude + commands + "(check-sat)", std::move(options));
+}
+
+void single_instances_refute() {
+  assert(solve("(assert (forall ((x U)) (p x))) (assert (not (p a)))").result ==
+         CheckSatResult::Unsat);
+  // Two variables at once.
+  assert(solve("(assert (forall ((x U) (y U)) (r x y))) (assert (not (r a b)))").result ==
+         CheckSatResult::Unsat);
+}
+
+void skolemization_covers_both_polarities() {
+  // A true exists is Skolemized; the universal is then instantiated with the constant.
+  assert(solve("(assert (exists ((x U)) (p x))) (assert (forall ((y U)) (not (p y))))").result ==
+         CheckSatResult::Unsat);
+  // A false forall behaves existentially.
+  assert(solve("(assert (not (forall ((x U)) (p x)))) (assert (forall ((y U)) (p y)))").result ==
+         CheckSatResult::Unsat);
+  // A false exists behaves universally.
+  assert(solve("(assert (not (exists ((x U)) (p x)))) (assert (p a))").result ==
+         CheckSatResult::Unsat);
+}
+
+void nested_quantifiers_become_atoms_of_instances() {
+  // x := a yields the closed atom (exists y. r(a, y)), Skolemized to r(a, c);
+  // the constant c then enters the pool for z.
+  assert(solve("(assert (forall ((x U)) (exists ((y U)) (r x y)))) "
+               "(assert (forall ((z U)) (not (r a z))))")
+             .result == CheckSatResult::Unsat);
+}
+
+void terms_from_instances_are_used_later() {
+  // Theorem 1: f(a) exists only once the instance x := a has been added.
+  assert(
+      solve("(assert (forall ((x U)) (p (f x)))) (assert (forall ((y U)) (not (p y))))").result ==
+      CheckSatResult::Unsat);
+}
+
+void paper_example_two_refutes_on_the_minimal_term() {
+  // Reynolds, Barbosa, Fontaine 2018, Example 2: E = {not P(a), R(b), S(c)}.
+  const std::string commands = R"(
+    (declare-fun c () U)
+    (declare-fun s (U) Bool)
+    (assert (not (p a)))
+    (assert (q b))
+    (assert (s c))
+    (assert (forall ((x U)) (or (q x) (s x))))
+    (assert (forall ((x U)) (or (not (q x)) (p x))))
+    (assert (forall ((x U)) (or (not (s x)) (p x))))
+  )";
+  assert(solve(commands).result == CheckSatResult::Unsat);
+}
+
+void boolean_structure_in_bodies_is_prepared() {
+  // Boolean-sorted variables range over true and false.
+  assert(solve("(declare-fun g (Bool) Bool) (assert (forall ((v Bool)) (g v))) "
+               "(assert (not (g false)))")
+             .result == CheckSatResult::Unsat);
+  // An ite in the body is lowered when the instance becomes a lemma.
+  assert(solve("(assert (forall ((x U)) (= (ite (p x) (f x) x) a))) (assert (p a)) "
+               "(assert (not (= (f a) a)))")
+             .result == CheckSatResult::Unsat);
+  // A compound Boolean argument in the body is named when instantiated, so EUF
+  // relates h(p(a)) to h(true) once p(a) holds.
+  assert(solve("(declare-fun h (Bool) U) (assert (forall ((x U)) (= (h (p x)) a))) "
+               "(assert (p a)) (assert (not (= (h true) a)))")
+             .result == CheckSatResult::Unsat);
+}
+
+void answers_short_of_refutation() {
+  // Covered by Skolemization alone: a sound sat.
+  assert(solve("(assert (exists ((x U)) (p x)))").result == CheckSatResult::Sat);
+  // A universal with nothing to refute: no entailment check, so unknown.
+  const CheckSatOutcome universal = solve("(assert (forall ((x U)) (p x)))");
+  assert(universal.result == CheckSatResult::Unknown);
+  assert(universal.statistics.get(":quant.exhausted") >= 1);
+  // Paper Example 3 shape: satisfiable, so enumeration ends in unknown.
+  assert(solve("(declare-fun c () U) (assert (distinct a b c)) (assert (forall ((x U)) (p x)))")
+             .result == CheckSatResult::Unknown);
+}
+
+void budgets_models_and_logics() {
+  CheckSatOptions tight;
+  tight.quantifier_max_instances = 1;
+  const CheckSatOutcome limited =
+      solve("(assert (forall ((x U)) (p (f x)))) (assert (forall ((y U)) (not (p y))))", tight);
+  assert(limited.result == CheckSatResult::Unknown);
+  assert(limited.reason == InconclusiveReason::ResourceLimit);
+
+  CheckSatOptions cancelled;
+  cancelled.cancelled = [] { return true; };
+  assert(solve("(assert (forall ((x U)) (p x)))", cancelled).result == CheckSatResult::Unknown);
+
+  const CheckSatOutcome models =
+      check_sat_smtlib("(set-option :produce-models true)" + kPrelude +
+                       "(assert (forall ((x U)) (p x))) (check-sat) (get-model)");
+  assert(models.result == CheckSatResult::Unsupported);
+
+  assert(check_sat_smtlib("(set-logic QF_UF) (declare-sort U 0) (declare-fun p (U) Bool) "
+                          "(assert (forall ((x U)) (p x))) (check-sat)")
+             .result == CheckSatResult::Unsupported);
+}
+
+}  // namespace
+
+int main() {
+  single_instances_refute();
+  skolemization_covers_both_polarities();
+  nested_quantifiers_become_atoms_of_instances();
+  terms_from_instances_are_used_later();
+  paper_example_two_refutes_on_the_minimal_term();
+  boolean_structure_in_bodies_is_prepared();
+  answers_short_of_refutation();
+  budgets_models_and_logics();
+  return 0;
+}

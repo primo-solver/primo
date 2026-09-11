@@ -171,8 +171,14 @@ void malformed_quantifiers_are_rejected() {
 }
 
 void quantified_assertions_are_gated_before_solving() {
-  const auto quantified =
-      primo::smt::check_sat_smtlib(kPrelude + "(assert (forall ((x U)) (p x x))) (check-sat)");
+  // Logic UF routes quantified assertions to the quantified solver.
+  assert(primo::smt::check_sat_smtlib(
+             kPrelude + "(assert (forall ((x U)) (p x x))) (assert (not (p a a))) (check-sat)")
+             .result == CheckSatResult::Unsat);
+  // Any other logic keeps them away from the ground route.
+  const auto quantified = primo::smt::check_sat_smtlib(
+      "(set-logic QF_UF) (declare-sort U 0) (declare-fun p (U) Bool) "
+      "(assert (forall ((x U)) (p x))) (check-sat)");
   assert(quantified.result == CheckSatResult::Unsupported);
   assert(quantified.message.find("quantified") != std::string::npos);
 

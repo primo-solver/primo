@@ -4540,7 +4540,11 @@ LowerExtendedTermsResult lower_extended_terms(core::TermManager& terms,
         continue;
       }
       const core::Term& source = terms.get(visit.term);
-      if (source.children.empty()) {
+      // A quantified formula is an opaque atom here: lowering an open subterm
+      // of its body would define a constant by a term with free variables.
+      // Its instances are lowered when they become lemmas (docs/quantifiers.md).
+      if (source.children.empty() || source.kind == core::TermKind::Forall ||
+          source.kind == core::TermKind::Exists) {
         rewritten[visit.term] = visit.term;
         continue;
       }

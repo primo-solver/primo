@@ -12636,6 +12636,26 @@ void record_ackermann_cost_diagnostics_for_session(const core::TermManager& term
   record_ackermann_cost_diagnostics(terms, roots, statistics);
 }
 
+std::unique_ptr<theory::TheoryComponent> make_uf_euf_component(core::TermManager& terms,
+                                                               const CheckSatOptions& options,
+                                                               util::Statistics& statistics,
+                                                               bool online) {
+#if PRIMO_HAVE_IPASIR
+  return std::make_unique<UfliaEufComponent>(terms, options, statistics, online);
+#else
+  static_cast<void>(terms);
+  static_cast<void>(options);
+  static_cast<void>(statistics);
+  static_cast<void>(online);
+  return nullptr;
+#endif
+}
+
+void apply_euf_boolean_domain(BooleanClausifier& clausifier, const CheckSatOptions& options,
+                              util::Statistics& statistics) {
+  apply_boolean_domain_encoding(clausifier, options, statistics);
+}
+
 Tactic make_purify_mixed(PurifyMixedOptions options) {
   return make_goal_tactic("purify-mixed", [options](TacticContext& context, const Goal& goal) {
     const TacticContext::FreshConstantFactory fresh_constant = [&context](core::SortId sort,

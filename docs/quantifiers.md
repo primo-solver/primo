@@ -21,7 +21,7 @@ source or documentation informs this note (clean-room policy, `AGENTS.md`).
 | M1: core representation and index operations | done, see below |
 | M2: frontend parsing and the routing gate | implemented; UF parse pass and fuzz gate pending |
 | M3: component protocol and driver extension for queued lemmas | implemented; QF_UFLIA cluster preservation run pending |
-| M4: quantifier component, enumerative instantiation, UF route | planned |
+| M4: quantifier component, enumerative instantiation, UF route | implemented; UF corpus evaluation and fuzzing pending |
 
 **M1**, the representation from the proposal below:
 
@@ -43,6 +43,37 @@ Deviations from the proposal:
 - **Clausifier.** It already treats `Forall`/`Exists` as opaque theory atoms,
   which was planned for M3. Until the M2 gate exists, no quantified term reaches
   it.
+
+**M4**, the quantified UF route:
+
+- `QuantifierComponent` (`src/theory/quantifiers/`) owns every `Forall`/`Exists`
+  atom. At a complete assignment it queues one Skolem lemma per atom that behaves
+  existentially, and enumerative instances for atoms that behave universally.
+  The subset and its deviations are in [](papers/enumerative-instantiation.md).
+- `solve_quantified_uf` (`src/smt/quantifiers/`) pairs it with the QF_UFLIA EUF
+  component, exported from `solver_engines` together with its Boolean-domain
+  preparation. It lowers the ground parts, then prepares each drained lemma: it
+  names compound Boolean arguments of applications, which the frontend leaves
+  open inside bodies, and lowers extended terms.
+- `lower_extended_terms` treats quantified formulas as opaque. This change was
+  planned for M3.
+- `run_query` routes quantified assertions in logic `UF` there, after the model
+  request is known. Models, other logics and assumptions mode are `unsupported`.
+- The answer is `unsat` from the ground solver. It is `sat` only when every
+  assigned quantifier atom is covered by a Skolem lemma. Otherwise it is
+  `unknown`: reason `unknown` when no new instance exists, `resource-limit` at
+  the instance budget.
+- `tests/unit/quantifier_solver_tests.cpp`.
+
+Local M4 checks, 2026-09-11:
+
+- Quantifier-free preservation: 40 files, identical answers and non-timing
+  statistics against the M1 binary.
+- UF smoke: the 30 smallest files of the corpus, 6 s each. Primo answered 8
+  `unsat` and 22 `unknown`, with none wrong against `:status` (13 declared
+  `unsat`, 17 `sat`).
+
+This is not the corpus evaluation, which still needs the cluster.
 
 Quantifier-free behaviour is preserved. On 40 local inputs (the smoke QF_UF,
 QF_UFLIA and QF_LIA sets, plus the ten smallest QF_LRA, QF_UFLRA and QF_LIA

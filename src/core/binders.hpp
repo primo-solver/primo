@@ -37,6 +37,11 @@ TermId shift(TermManager& terms, TermId term, std::uint32_t amount);
 // Patterns are dropped. Sorts must match the declarations.
 TermId instantiate(TermManager& terms, TermId quantifier, std::span<const TermId> replacements);
 
+// Rebuilds an operator node (anything but a leaf, Forall or Exists) over new
+// children through the ordinary constructors, which may simplify. Throws
+// std::invalid_argument for leaves and quantifiers.
+TermId rebuild_operator(TermManager& terms, TermId original, std::vector<TermId> children);
+
 // Debug check: throws std::logic_error unless every bound variable under
 // `root` refers to an enclosing binder of its recorded sort and every
 // quantifier's declarations are well formed. `enclosing` lists the sorts of
