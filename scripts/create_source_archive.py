@@ -81,7 +81,7 @@ Build and test
     make test
     make smoke
 
-The first command downloads and builds pinned ANTLR4, CLI11, CaDiCaL, and GMP
+The first command downloads and builds pinned CLI11, CaDiCaL, and GMP
 dependencies under contrib/local. The resulting solver is build/primo.
 
 Small examples

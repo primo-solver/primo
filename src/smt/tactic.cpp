@@ -220,19 +220,21 @@ GoalTruth truth(const AnyOf& goals, const TacticContext& context) {
 struct Tactic::Implementation {
   const std::string name;
   const Function function;
+  const IncrementalSafety safety;
   const std::string invocation_stat;
   const std::string time_stat;
 
-  Implementation(std::string tactic_name, Function tactic_function)
+  Implementation(std::string tactic_name, Function tactic_function, IncrementalSafety tactic_safety)
       : name(std::move(tactic_name)),
         function(std::move(tactic_function)),
+        safety(tactic_safety),
         invocation_stat(stat_name(name, "invocations")),
         time_stat(time_stat_name(name)) {}
 };
 
-Tactic::Tactic(std::string name, Function function)
+Tactic::Tactic(std::string name, Function function, IncrementalSafety safety)
     : implementation_(
-          std::make_shared<const Implementation>(std::move(name), std::move(function))) {
+          std::make_shared<const Implementation>(std::move(name), std::move(function), safety)) {
   if (implementation_->name.empty()) {
     throw std::invalid_argument("a tactic requires a non-empty name");
   }
@@ -242,6 +244,8 @@ Tactic::Tactic(std::string name, Function function)
 }
 
 AnyOf Tactic::operator()(TacticContext& context, const AnyOf& input) const {
+  if (context.incremental() && implementation_->safety == IncrementalSafety::Unclassified)
+    throw TacticError("tactic is not classified for incremental execution: " + name());
   const bool cancelled = context.cancelled();
   if (cancelled || context.deadline_reached()) {
     const InconclusiveReason reason =
@@ -266,22 +270,24 @@ AnyOf Tactic::operator()(TacticContext& context, const AnyOf& input) const {
 
 const std::string& Tactic::name() const { return implementation_->name; }
 
-Tactic make_goal_tactic(std::string name, GoalTactic tactic) {
-  return Tactic(std::move(name),
-                [tactic = std::move(tactic)](TacticContext& context, const AnyOf& input) {
-                  std::vector<Goal> output;
-                  for (const Goal& goal : input.alternatives()) {
-                    if (truth(goal, context) != GoalTruth::Inconclusive) {
-                      output.push_back(goal);
-                      continue;
-                    }
-                    AnyOf alternatives = tactic(context, goal);
-                    for (const Goal& alternative : alternatives.alternatives()) {
-                      output.push_back(alternative);
-                    }
-                  }
-                  return AnyOf(std::move(output));
-                });
+Tactic make_goal_tactic(std::string name, GoalTactic tactic, IncrementalSafety safety) {
+  return Tactic(
+      std::move(name),
+      [tactic = std::move(tactic)](TacticContext& context, const AnyOf& input) {
+        std::vector<Goal> output;
+        for (const Goal& goal : input.alternatives()) {
+          if (truth(goal, context) != GoalTruth::Inconclusive) {
+            output.push_back(goal);
+            continue;
+          }
+          AnyOf alternatives = tactic(context, goal);
+          for (const Goal& alternative : alternatives.alternatives()) {
+            output.push_back(alternative);
+          }
+        }
+        return AnyOf(std::move(output));
+      },
+      safety);
 }
 
 Tactic skip() {

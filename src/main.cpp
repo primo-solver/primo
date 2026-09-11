@@ -1,8 +1,11 @@
+#include <signal.h>
 #include <unistd.h>
 
 #include <CLI/CLI.hpp>
+#include <chrono>
 #include <csignal>
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
 #include <exception>
 #include <fstream>
@@ -15,11 +18,14 @@
 #include <utility>
 #include <vector>
 
+#include "cli/response_printer.hpp"
 #include "generated/primo_git_revision.hpp"
 #include "sat/cadical_backend.hpp"
 #include "smt/check_sat.hpp"
 #include "smt/experimental_tactics.hpp"
 #include "smt/preprocessing.hpp"
+#include "smt/smt_session.hpp"
+#include "smtlib/parser.hpp"
 #include "util/statistics.hpp"
 
 namespace {
@@ -62,18 +68,6 @@ void install_cancellation_handlers() {
   sigaction(SIGALRM, &deadline, nullptr);
 }
 
-bool can_read_file(const std::string& path) {
-  std::ifstream input(path);
-  return input.good();
-}
-
-std::string read_file(const std::string& path) {
-  std::ifstream input(path);
-  std::ostringstream contents;
-  contents << input.rdbuf();
-  return contents.str();
-}
-
 std::string version_text() {
   std::ostringstream version;
   version << "primo 0.1.0\n";
@@ -89,14 +83,45 @@ void print_startup_banner() {
   std::cerr << "cadical " << primo::sat::cadical_signature() << "\n";
 }
 
-void print_outcome(const primo::smt::CheckSatOutcome& outcome, bool print_stats) {
-  std::cout << primo::smt::to_string(outcome.result) << "\n";
-  if (!outcome.model.empty()) {
-    std::cout << outcome.model << "\n";
+int execute_stream(std::istream& input, const primo::smt::CheckSatOptions& options,
+                   bool print_stats) {
+  primo::smt::SmtSession session(options);
+  primo::smtlib::Parser parser(input);
+  int exit_code = 0;
+  bool answered = false;
+  while (!session.terminated() && g_cancel_requested == 0) {
+    primo::smt::CommandResponse response;
+    try {
+      const auto start = std::chrono::steady_clock::now();
+      auto command = parser.next_command();
+      if (!command) break;
+      const auto parse_us = std::chrono::duration_cast<std::chrono::microseconds>(
+                                std::chrono::steady_clock::now() - start)
+                                .count();
+      response = session.execute(std::move(*command), static_cast<std::uint64_t>(parse_us));
+    } catch (const std::exception& error) {
+      response.kind = primo::smt::ResponseKind::Error;
+      response.message = error.what();
+    }
+    primo::cli::print_response(std::cout, response);
+    std::cout.flush();
+    answered = response.kind == primo::smt::ResponseKind::CheckSat ||
+               response.kind == primo::smt::ResponseKind::Model;
+    if (response.kind == primo::smt::ResponseKind::CheckSat && print_stats) {
+      primo::util::print_statistics(std::cerr, response.outcome->statistics);
+    }
+    if (!response.message.empty()) std::cerr << response.message << '\n';
+    if (response.kind == primo::smt::ResponseKind::Error) return 2;
+    if (response.kind == primo::smt::ResponseKind::Unsupported ||
+        (response.outcome && response.outcome->result == primo::smt::CheckSatResult::Unsupported)) {
+      exit_code = 2;
+    }
   }
-  if (print_stats) {
-    primo::util::print_statistics(std::cerr, outcome.statistics);
+  if (g_cancel_requested != 0) {
+    if (!answered) std::cout << "unknown\n" << std::flush;
+    alarm(0);
   }
+  return exit_code;
 }
 
 std::optional<primo::smt::AutoBudget> parse_auto_budget(const std::string& text) {
@@ -212,6 +237,7 @@ int run_main(int argc, char** argv) {
   bool no_auto_basic_multi = false;
   bool no_auto_basic_multi_polarity = false;
   std::string preprocessing_mode = "auto";
+  std::string incremental_mode = "rebuild";
   std::string auto_preprocess_selector = "legacy";
   std::string boolean_implies_rewrite = "off";
   std::string qf_uf_profile = "default";
@@ -516,6 +542,9 @@ int run_main(int argc, char** argv) {
   app.add_option("--preprocessing-mode", preprocessing_mode,
                  "Preprocessing preset for all supported logics: off, basic, strong, or auto")
       ->check(CLI::IsMember({"off", "basic", "strong", "auto"}));
+  app.add_option("--incremental-mode", incremental_mode,
+                 "Session engine: rebuild (default), or opt-in QF_LRA assumptions")
+      ->check(CLI::IsMember({"rebuild", "assumptions"}));
   app.add_option("--auto-preprocess-selector", auto_preprocess_selector,
                  "Auto preprocessing selector: legacy assertion-count heuristics or "
                  "representation-stable structural analysis")
@@ -749,11 +778,11 @@ int run_main(int argc, char** argv) {
         starts_with(name, "--qf-uflia-") || starts_with(name, "--no-qf-uflia-")) {
       return kGroupLia;
     }
-    if (name == "--preprocessing-mode" || name == "--arithmetic-atom-canonicalization" ||
-        name == "--auto-preprocess-selector" || name == "--boolean-flatten-threshold" ||
-        name == "--boolean-flatten-post-threshold" || name == "--boolean-implies-rewrite" ||
-        starts_with(name, "--auto-preprocess-") || starts_with(name, "--preprocessing-") ||
-        starts_with(name, "--preprocess-passes") ||
+    if (name == "--incremental-mode" || name == "--preprocessing-mode" ||
+        name == "--arithmetic-atom-canonicalization" || name == "--auto-preprocess-selector" ||
+        name == "--boolean-flatten-threshold" || name == "--boolean-flatten-post-threshold" ||
+        name == "--boolean-implies-rewrite" || starts_with(name, "--auto-preprocess-") ||
+        starts_with(name, "--preprocessing-") || starts_with(name, "--preprocess-passes") ||
         starts_with(name, "--extended-simplification") ||
         starts_with(name, "--no-extended-simplification") ||
         starts_with(name, "--cite-simplification") ||
@@ -835,6 +864,9 @@ int run_main(int argc, char** argv) {
   } else {
     solver_options.preprocessing_mode = primo::smt::PreprocessingMode::Basic;
   }
+  solver_options.incremental_mode = incremental_mode == "assumptions"
+                                        ? primo::smt::IncrementalMode::Assumptions
+                                        : primo::smt::IncrementalMode::Rebuild;
   solver_options.auto_preprocess_selector = auto_preprocess_selector == "structural"
                                                 ? primo::smt::AutoPreprocessSelectorMode::Structural
                                                 : primo::smt::AutoPreprocessSelectorMode::Legacy;
@@ -1124,32 +1156,18 @@ int run_main(int argc, char** argv) {
   g_cancel_grace_seconds = static_cast<std::sig_atomic_t>(cancel_grace_seconds);
 
   if (files.empty()) {
-    std::ostringstream contents;
-    contents << std::cin.rdbuf();
-    const primo::smt::CheckSatOutcome outcome =
-        primo::smt::check_sat_smtlib(contents.str(), solver_options);
-    print_outcome(outcome, print_stats);
-    if (!outcome.message.empty()) {
-      std::cerr << outcome.message << "\n";
-    }
-    return outcome.result == primo::smt::CheckSatResult::Unsupported ? 2 : 0;
+    return execute_stream(std::cin, solver_options, print_stats);
   }
 
   int exit_code = 0;
   for (const auto& file : files) {
-    if (!can_read_file(file)) {
+    std::ifstream input(file);
+    if (!input) {
       std::cerr << "error: cannot read input file: " << file << "\n";
       return 1;
     }
-    const primo::smt::CheckSatOutcome outcome =
-        primo::smt::check_sat_smtlib(read_file(file), solver_options);
-    print_outcome(outcome, print_stats);
-    if (!outcome.message.empty()) {
-      std::cerr << file << ": " << outcome.message << "\n";
-    }
-    if (outcome.result == primo::smt::CheckSatResult::Unsupported) {
-      exit_code = 2;
-    }
+    const int stream_exit_code = execute_stream(input, solver_options, print_stats);
+    if (stream_exit_code != 0) exit_code = stream_exit_code;
     if (g_cancel_requested != 0) {
       // The answer for this file is out; abandon the rest of the batch rather
       // than letting the armed watchdog fire partway through the next one.

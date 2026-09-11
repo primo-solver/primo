@@ -483,47 +483,51 @@ Tactic make_finite_domain_preprocess(FiniteDomainPreprocessOptions options,
 }
 
 Tactic make_normalize_boolean(NormalizeBooleanOptions options) {
-  return make_goal_tactic("normalize-boolean", [options](TacticContext& context, const Goal& goal) {
-    std::vector<core::TermId> assertions = goal.assertions();
-    util::Statistics& statistics = context.statistics();
-    if (options.negation_mode != BooleanNegationRewriteMode::Off) {
-      const BooleanNegationRewriteResult negations =
-          rewrite_boolean_negations_to_nnf(context.terms(), assertions, options.negation_mode);
-      assertions = negations.assertions;
-      statistics.set(":preprocessing.boolean-nnf.visited", negations.visited);
-      statistics.set(":preprocessing.boolean-nnf.rewritten", negations.rewritten);
-      statistics.set(":preprocessing.boolean-nnf.terms-created", negations.terms_created);
-    }
-    if (options.stage == BooleanNormalizationStage::Final) {
-      const BooleanImpliesRewriteResult implication = rewrite_boolean_implications(
-          context.terms(), assertions, options.implication_mode, options.flatten_threshold);
-      assertions = implication.assertions;
-      statistics.set(":preprocessing.boolean-implies.visited", implication.visited);
-      statistics.set(":preprocessing.boolean-implies.clause-candidates",
-                     implication.clause_candidates);
-      statistics.set(":preprocessing.boolean-implies.rewritten", implication.rewritten);
-      statistics.set(":preprocessing.boolean-implies.all-mode-rewrites",
-                     implication.all_mode_rewrites);
-      statistics.set(":preprocessing.boolean-implies.widened-operands",
-                     implication.widened_operands);
-      statistics.set(":preprocessing.boolean-implies.threshold-stops", implication.threshold_stops);
-      statistics.set(":preprocessing.boolean-implies.terms-created", implication.terms_created);
-    }
-    const BooleanFlatteningResult flattened =
-        flatten_associative_booleans(context.terms(), assertions, options.flatten_threshold);
-    const std::string prefix = options.stage == BooleanNormalizationStage::Initial
-                                   ? ":preprocessing.boolean-flatten."
-                                   : ":preprocessing.boolean-flatten-post.";
-    statistics.set(prefix + "attempts", flattened.attempts);
-    statistics.set(prefix + "accepted", flattened.accepted);
-    statistics.set(prefix + "threshold-stops", flattened.threshold_stops);
-    if (options.stage == BooleanNormalizationStage::Initial) {
-      statistics.set(prefix + "operands-copied", flattened.operands_copied);
-    }
-    statistics.set(prefix + "rewrites", flattened.rewrites);
-    statistics.set(prefix + "max-arity", flattened.max_arity);
-    return AnyOf::single(goal.with_assertions(std::move(flattened.assertions)));
-  });
+  return make_goal_tactic(
+      "normalize-boolean",
+      [options](TacticContext& context, const Goal& goal) {
+        std::vector<core::TermId> assertions = goal.assertions();
+        util::Statistics& statistics = context.statistics();
+        if (options.negation_mode != BooleanNegationRewriteMode::Off) {
+          const BooleanNegationRewriteResult negations =
+              rewrite_boolean_negations_to_nnf(context.terms(), assertions, options.negation_mode);
+          assertions = negations.assertions;
+          statistics.set(":preprocessing.boolean-nnf.visited", negations.visited);
+          statistics.set(":preprocessing.boolean-nnf.rewritten", negations.rewritten);
+          statistics.set(":preprocessing.boolean-nnf.terms-created", negations.terms_created);
+        }
+        if (options.stage == BooleanNormalizationStage::Final) {
+          const BooleanImpliesRewriteResult implication = rewrite_boolean_implications(
+              context.terms(), assertions, options.implication_mode, options.flatten_threshold);
+          assertions = implication.assertions;
+          statistics.set(":preprocessing.boolean-implies.visited", implication.visited);
+          statistics.set(":preprocessing.boolean-implies.clause-candidates",
+                         implication.clause_candidates);
+          statistics.set(":preprocessing.boolean-implies.rewritten", implication.rewritten);
+          statistics.set(":preprocessing.boolean-implies.all-mode-rewrites",
+                         implication.all_mode_rewrites);
+          statistics.set(":preprocessing.boolean-implies.widened-operands",
+                         implication.widened_operands);
+          statistics.set(":preprocessing.boolean-implies.threshold-stops",
+                         implication.threshold_stops);
+          statistics.set(":preprocessing.boolean-implies.terms-created", implication.terms_created);
+        }
+        const BooleanFlatteningResult flattened =
+            flatten_associative_booleans(context.terms(), assertions, options.flatten_threshold);
+        const std::string prefix = options.stage == BooleanNormalizationStage::Initial
+                                       ? ":preprocessing.boolean-flatten."
+                                       : ":preprocessing.boolean-flatten-post.";
+        statistics.set(prefix + "attempts", flattened.attempts);
+        statistics.set(prefix + "accepted", flattened.accepted);
+        statistics.set(prefix + "threshold-stops", flattened.threshold_stops);
+        if (options.stage == BooleanNormalizationStage::Initial) {
+          statistics.set(prefix + "operands-copied", flattened.operands_copied);
+        }
+        statistics.set(prefix + "rewrites", flattened.rewrites);
+        statistics.set(prefix + "max-arity", flattened.max_arity);
+        return AnyOf::single(goal.with_assertions(std::move(flattened.assertions)));
+      },
+      IncrementalSafety::ContextIndependent);
 }
 
 Tactic make_simplify_constant_ites() {
@@ -540,7 +544,8 @@ Tactic make_simplify_constant_ites() {
 
 Tactic make_simplify_extended_terms(const SimplifyExtendedTermsOptions& options) {
   return make_goal_tactic(
-      "simplify-extended-terms", [options](TacticContext& context, const Goal& goal) {
+      "simplify-extended-terms",
+      [options](TacticContext& context, const Goal& goal) {
         SimplifyExtendedTermsResult simplified =
             simplify_extended_terms(context.terms(), goal.assertions(), options);
         util::Statistics& statistics = context.statistics();
@@ -555,27 +560,33 @@ Tactic make_simplify_extended_terms(const SimplifyExtendedTermsOptions& options)
         statistics.increment(util::StatKey::SimplifiedEqualityDistributionsNested,
                              simplified.equality_distributions_nested);
         return AnyOf::single(goal.with_assertions(std::move(simplified.assertions)));
-      });
+      },
+      IncrementalSafety::ContextIndependent);
 }
 
 Tactic make_lower_extended_terms() {
-  return make_goal_tactic("lower-extended-terms", [](TacticContext& context, const Goal& goal) {
-    LowerExtendedTermsResult lowered = lower_extended_terms(
-        context.terms(), goal.assertions(), [&context](core::SortId sort, std::string_view prefix) {
-          return context.fresh_constant(sort, prefix);
-        });
-    util::Statistics& statistics = context.statistics();
-    statistics.increment(util::StatKey::LoweredBooleanItes, lowered.boolean_ites);
-    statistics.increment(util::StatKey::LoweredAuxiliaryItes, lowered.auxiliary_ites);
-    statistics.increment(util::StatKey::LoweredDivisionQuotients, lowered.quotients);
-    statistics.increment(util::StatKey::LoweredAbsRewrites, lowered.abs_rewrites);
-    return AnyOf::single(goal.with_assertions(std::move(lowered.assertions)));
-  });
+  return make_goal_tactic(
+      "lower-extended-terms",
+      [](TacticContext& context, const Goal& goal) {
+        LowerExtendedTermsResult lowered =
+            lower_extended_terms(context.terms(), goal.assertions(),
+                                 [&context](core::SortId sort, std::string_view prefix) {
+                                   return context.fresh_constant(sort, prefix);
+                                 });
+        util::Statistics& statistics = context.statistics();
+        statistics.increment(util::StatKey::LoweredBooleanItes, lowered.boolean_ites);
+        statistics.increment(util::StatKey::LoweredAuxiliaryItes, lowered.auxiliary_ites);
+        statistics.increment(util::StatKey::LoweredDivisionQuotients, lowered.quotients);
+        statistics.increment(util::StatKey::LoweredAbsRewrites, lowered.abs_rewrites);
+        return AnyOf::single(goal.with_assertions(std::move(lowered.assertions)));
+      },
+      IncrementalSafety::ConservativeExtension);
 }
 
 Tactic make_normalize_arithmetic(NormalizeArithmeticOptions options) {
   return make_goal_tactic(
-      "normalize-arithmetic", [options](TacticContext& context, const Goal& goal) {
+      "normalize-arithmetic",
+      [options](TacticContext& context, const Goal& goal) {
         std::vector<core::TermId> assertions = goal.assertions();
         util::Statistics& statistics = context.statistics();
         if (options.canonicalize) {
@@ -604,7 +615,8 @@ Tactic make_normalize_arithmetic(NormalizeArithmeticOptions options) {
                                lowered.guarded_distributed);
         }
         return AnyOf::single(goal.with_assertions(std::move(assertions)));
-      });
+      },
+      IncrementalSafety::ContextIndependent);
 }
 
 Tactic make_eliminate_monotone(EliminateMonotoneOptions) {

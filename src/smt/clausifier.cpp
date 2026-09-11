@@ -41,6 +41,15 @@ struct BooleanClausifier::Implementation {
     return theory_atom_for_term(term);
   }
 
+  void assert_guarded_formula(core::TermId term, sat::Lit selector) {
+    if (selector.value == 0 || terms_.get(term).sort != terms_.symbols().bool_sort())
+      throw UnsupportedInput("invalid guarded assertion");
+    // Conservative Tseitin extensions survive pop; the scope constrains only
+    // their root. See docs/assumption-incremental-lra.md.
+    collect_theory_atom_polarities(term, true);
+    backend_.add_clause({negate(selector), encode(term)});
+  }
+
   const TheoryAtom& ensure_generated_theory_atom_with_lit(core::TermId term, sat::Lit lit) {
     if (terms_.get(term).sort != terms_.symbols().bool_sort()) {
       throw UnsupportedInput("generated theory atom is not Boolean");
@@ -570,6 +579,10 @@ BooleanClausifier::BooleanClausifier(sat::IpasirUpBackend& backend, core::TermMa
     : implementation_(std::make_unique<Implementation>(backend, terms, top_level_or_tseitin)) {}
 
 BooleanClausifier::~BooleanClausifier() = default;
+
+void BooleanClausifier::assert_guarded_formula(core::TermId term, sat::Lit selector) {
+  implementation_->assert_guarded_formula(term, selector);
+}
 
 void BooleanClausifier::assert_formula(core::TermId term) { implementation_->assert_formula(term); }
 

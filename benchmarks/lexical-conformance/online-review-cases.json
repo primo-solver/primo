@@ -1,0 +1,22 @@
+{
+  "specification": "SMT-LIB 2.7, release 2026-03-27",
+  "provenance": "Original cases from the direct-stream parser review, retained as regressions for repaired attribute-validation gaps; not accepted compatibility extensions.",
+  "cases": [
+    {
+      "id": "metadata_keyword_value",
+      "group": "attribute-validation",
+      "valid": false,
+      "answers": ["sat"],
+      "rule": "3.4: a bare keyword is not an attribute value",
+      "input": "(set-info :source :bad)(set-logic QF_UF)(check-sat)"
+    },
+    {
+      "id": "annotation_nonkeyword",
+      "group": "attribute-validation",
+      "valid": false,
+      "answers": ["sat"],
+      "rule": "3.4, 3.6: an attribute must start with a keyword",
+      "input": "(set-logic QF_UF)(assert (! true bogus))(check-sat)"
+    }
+  ]
+}

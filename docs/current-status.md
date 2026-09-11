@@ -1,9 +1,28 @@
 # Current implementation and qualification
 
-This is the current-state map for the `modular-theory-combination` branch,
-reviewed on 2026-09-09. Solver sources are at `b883d6f`; `d4e604e` records its
-qualification. These are branch results, not a claim that the branch has been
-merged into `main`. Dated experiments elsewhere retain their original revisions
+**Direct stdin parser (2026-09-10):** `e24dfcd` uses a persistent stream lexer
+and one-command parser, with no separate text framer or lookahead after a
+completed command. The fresh 1,000-session recorded-reference replay and 100
+live-pipe chunking seeds pass. The subsequent [attribute repair](lexical-conformance.md)
+rejects malformed metadata values and annotation sequences, including the same
+value-category error in `set-option`. Generic attribute syntax is validated;
+attribute-specific semantics and complete syntax conformance are not claimed.
+Qualification of each revision is recorded separately in the run log.
+
+**Lexical repair (2026-09-10):** [](lexical-conformance.md) records the original
+quoted-name wrong answers, their canonical-identity/category repair, and the
+selected compatibility policy. Leading-zero numerals and unquoted reserved-word
+names are rejected. All 34 valid audit cases pass; 1,000 generated sessions match
+recorded Z3/cvc5 results. ANTLR is removed from the build at `6e4ff80`, which has
+identical owned parser/solver sources and a fresh hash-checked replay. Detailed
+qualification and limitations remain in the run log; this is not a full-corpus
+evaluation or a blanket branch merge-readiness claim.
+
+This is the current-state map for `feature/incremental-smt-sessions`, based on
+`main` at `9803d1a`. Session sources are at `5bc811b`; the theory-combination
+implementation and its earlier qualification remain at `b883d6f`/`d4e604e`.
+The session feature has not been merged into `main`.
+Dated experiments elsewhere retain their original revisions
 and limitations. Exact commands, manifests, hashes and jobs belong in
 [](run-log.md), not in a moving headline benchmark.
 
@@ -36,10 +55,24 @@ division requires a nonzero literal divisor. They are not a claim of strict
 QF_LIA/QF_UFLIA grammar conformance, and a Dolmen logic rejection is not a model
 pass. See [](arithmetic.md) and [](preprocessing.md).
 
+The session feature branch adds interactive SMT-LIB `push`/`pop` with scoped
+declarations/definitions and repeated checks. It rebuilds solving state per
+query by default. An opt-in `--incremental-mode=assumptions` now retains frontend,
+SAT and prepared QF_LRA state. Its separate bounded gate passed 2,000 scoped
+sessions, 16,000 answers and 10,802 independently checked SAT models; see
+[](assumption-incremental-lra) for coverage and measured limitations.
+For the rebuild baseline, SLURM qualification matched 15,000 answers across 1,000 generated
+sessions and independently validated 10,000 session models. A separate
+100-input, five-logic sample retained every solve and shared non-timing counter;
+two paired rounds cost 0.75% more overall, with local family regressions.
+All 122 SAT results from those rounds passed separate Dolmen replay.
+This is bounded baseline qualification, not a full-corpus or zero-overhead claim.
+See [](incremental-smt.md).
+
 Not implemented: quantifiers, arrays, bit-vectors, nonlinear arithmetic,
-SMT-LIB `push`/`pop`, proof production, or dedicated QF_IDL/QF_RDL admission.
-Incremental SAT/theory callbacks describe state *within* a solve, not a general
-incremental SMT-LIB command API. Integer search and explicit resource budgets
+proof production, or dedicated QF_IDL/QF_RDL admission.
+Incremental SAT/theory callbacks still describe state *within* a solve, not
+solver-state reuse between SMT-LIB queries. Integer search and explicit resource budgets
 can return `unknown`. Unsupported input, cancellation, resource exhaustion and
 internal model errors are distinct outcomes, not UNSAT.
 
@@ -104,8 +137,8 @@ For example, save this as an SMT-LIB input and run
 `./build/primo --check-model input.smt2`:
 
 ```lisp
-(set-logic QF_UFLIA)
 (set-option :produce-models true)
+(set-logic QF_UFLIA)
 (declare-fun f (Int) Int)
 (declare-fun x () Int)
 (declare-fun y () Int)

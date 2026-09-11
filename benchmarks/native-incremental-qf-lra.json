@@ -1,0 +1,117 @@
+{
+  "archive": "sandbox/QF_LRA.tar.zst",
+  "archive_sha256": "41865c487e20fedaeb1945b2175df657aff6797dcda95eaf6df7403449c2b323",
+  "provenance": "User-provided native incremental archive. Source headers identify NuSMV-generated hybrid automata BMC/k-induction benchmarks, attributed to Alberto Griggio. Original command sequences retained; not the previous synthetic scope wrapping.",
+  "entries": [
+    {
+      "file": "incremental/QF_LRA/hybrid_networks/bmwlin_20_5_1.inter.bmc_k100.smt2",
+      "bytes": 45487971,
+      "sha256": "5af910b06320a21413677b0eb429486c949d91ceceebadcac77ceeafa45e1fbf",
+      "queries": 101,
+      "declared_statuses": {
+        "sat": 0,
+        "unsat": 101,
+        "unknown": 0
+      }
+    },
+    {
+      "file": "incremental/QF_LRA/hybrid_networks/bmwlin_20_5_1.inter.ind_k100.smt2",
+      "bytes": 94219913,
+      "sha256": "5e80a003cd084f7de02cbd11314ce9cd4a9c1845d9a43080dbaa427f64eb435d",
+      "queries": 202,
+      "declared_statuses": {
+        "sat": 101,
+        "unsat": 101,
+        "unknown": 0
+      }
+    },
+    {
+      "file": "incremental/QF_LRA/hybrid_networks/dist_controller_15_3.inter.bmc_k100.smt2",
+      "bytes": 88801759,
+      "sha256": "da25b2358c5d95bd134f639b756a675efe9a8c1030b04aece6cb8760c7a6b845",
+      "queries": 101,
+      "declared_statuses": {
+        "sat": 0,
+        "unsat": 101,
+        "unknown": 0
+      }
+    },
+    {
+      "file": "incremental/QF_LRA/hybrid_networks/dist_controller_15_3.inter.ind_k100.smt2",
+      "bytes": 259830794,
+      "sha256": "af8df86f2c82f484d4eed9aaae02007374836384e64e5ea27d0a8a49ef68aaed",
+      "queries": 202,
+      "declared_statuses": {
+        "sat": 101,
+        "unsat": 101,
+        "unknown": 0
+      }
+    },
+    {
+      "file": "incremental/QF_LRA/hybrid_networks/fisher_ring_20_3.inter.bmc_k100.smt2",
+      "bytes": 104096383,
+      "sha256": "17cb8f4a8142ffffa4ce158ec7fa5a3f8690879cdf0f97e6f8fcaa363cd88a02",
+      "queries": 101,
+      "declared_statuses": {
+        "sat": 0,
+        "unsat": 74,
+        "unknown": 27
+      }
+    },
+    {
+      "file": "incremental/QF_LRA/hybrid_networks/fisher_ring_20_3.inter.ind_k100.smt2",
+      "bytes": 456430472,
+      "sha256": "22bc5176ef2de042c285c7faeff4ce3cde64dfb3a1e711edacea9c775a8e7ba1",
+      "queries": 202,
+      "declared_statuses": {
+        "sat": 72,
+        "unsat": 73,
+        "unknown": 57
+      }
+    },
+    {
+      "file": "incremental/QF_LRA/hybrid_networks/fisher_star_20_3.inter.bmc_k100.smt2",
+      "bytes": 52770717,
+      "sha256": "17682e3c43ccec75a1dc95cf80b78c8b392f5ed7019c5b807618d986b985ed23",
+      "queries": 101,
+      "declared_statuses": {
+        "sat": 0,
+        "unsat": 101,
+        "unknown": 0
+      }
+    },
+    {
+      "file": "incremental/QF_LRA/hybrid_networks/fisher_star_20_3.inter.ind_k100.smt2",
+      "bytes": 198148682,
+      "sha256": "4dab52fa8461e8cb08abf84fd5bab4f2f495369882d34812dc3b09ba8a2d2557",
+      "queries": 202,
+      "declared_statuses": {
+        "sat": 101,
+        "unsat": 101,
+        "unknown": 0
+      }
+    },
+    {
+      "file": "incremental/QF_LRA/hybrid_networks/rod_30_3.inter.bmc_k100.smt2",
+      "bytes": 51577454,
+      "sha256": "c9d05bf18f96d884f15852dd6e010ee7ef066e5bb31268290b82a985e6ed07a4",
+      "queries": 101,
+      "declared_statuses": {
+        "sat": 0,
+        "unsat": 101,
+        "unknown": 0
+      }
+    },
+    {
+      "file": "incremental/QF_LRA/hybrid_networks/rod_30_3.inter.ind_k100.smt2",
+      "bytes": 243320186,
+      "sha256": "a5cc322322d6de0da0373f1e7b695c523a33498d2b96af9c01ff1dd8ff8e328b",
+      "queries": 202,
+      "declared_statuses": {
+        "sat": 101,
+        "unsat": 101,
+        "unknown": 0
+      }
+    }
+  ]
+}

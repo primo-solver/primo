@@ -285,9 +285,9 @@ headers from a different compiler version.
 When a workspace already has a verified cluster-local dependency installation,
 pass `--reuse-dependencies`. The helper preserves `contrib/local`, installs the
 clean tracked source snapshot, removes `build-slurm-rel`, and rebuilds Primo from
-scratch. This avoids repeated CaDiCaL, GMP, ANTLR, and CLI11 provisioning without
+scratch. This avoids repeated CaDiCaL, GMP, and CLI11 provisioning without
 risking stale project objects from preserved source timestamps. Before reusing the
-installation, the helper checks the concrete CLI11, ANTLR4, IPASIR, CaDiCaL, and
+installation, the helper checks the concrete CLI11, IPASIR, CaDiCaL, and
 GMP headers/libraries required by CMake. If any are absent, it automatically runs
 `contrib-required` instead of starting a doomed build. Explicit
 `--contrib-target` requests can be combined with reuse mode for independent,

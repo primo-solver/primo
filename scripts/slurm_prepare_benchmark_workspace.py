@@ -53,7 +53,7 @@ def rsync_repo(config: Path, local: Path, remote: str, remote_dir: str) -> None:
         "vendor",
         "yinyang_bugs",
         "yinyang_scratch",
-        # Vendored native deps (GMP/CaDiCaL/ANTLR4/fuzzsmt/z3/...) built by
+        # Vendored native deps (GMP/CaDiCaL/fuzzsmt/z3/...) built by
         # `make contrib-*` -- excluded for the same reason build/build-* are:
         # they contain host-specific absolute paths (e.g. fuzzsmt's wrapper
         # script embeds contrib/local/share/fuzzsmt/fuzzsmt.jar's *local*
@@ -157,7 +157,11 @@ def build_command(
     git: str,
     contrib_targets: list[str],
     reuse_dependencies: bool,
+    extra_build_targets: list[str] | None = None,
 ) -> str:
+    build_targets = " ".join(
+        shlex.quote(name) for name in [target, *(extra_build_targets or [])]
+    )
     make_targets = " ".join(
         shlex.quote(contrib_target) for contrib_target in contrib_targets
     )
@@ -175,8 +179,6 @@ def build_command(
 missing_dependency=0
 for required in \
   contrib/local/include/CLI/CLI.hpp \
-  contrib/local/include/antlr4-runtime/antlr4-runtime.h \
-  contrib/local/lib/libantlr4-runtime.a \
   contrib/local/lib/libcadical.a \
   contrib/local/lib/libgmp.a \
   contrib/local/lib/libgmpxx.a; do
@@ -220,7 +222,7 @@ esac
 {dependency_setup}
 "$cmake_path" -B build-slurm-rel -DCMAKE_BUILD_TYPE=Release \
   -DPRIMO_GIT_REVISION_OVERRIDE={shlex.quote(git)}
-"$cmake_path" --build build-slurm-rel --target {shlex.quote(target)} -j{jobs}
+"$cmake_path" --build build-slurm-rel --target {build_targets} -j{jobs}
 build-slurm-rel/{shlex.quote(target)} --version
 """.strip()
 
@@ -260,7 +262,7 @@ while IFS= read -r header_root; do
 done < {shlex.quote(manifest)}
 test -n "$cxx_header_flags"
 export CXXFLAGS="${{CXXFLAGS:-}}$cxx_header_flags"
-printf '%s\\n' {shlex.quote('C++ header manifest: ' + manifest)}
+printf '%s\\n' {shlex.quote("C++ header manifest: " + manifest)}
 sha256sum {shlex.quote(manifest)}
 """.strip()
     return setup + "\n" + command
@@ -314,6 +316,12 @@ def main() -> int:
     parser.add_argument("--local-dir", type=Path, default=Path("."))
     parser.add_argument("--cmake", default=".venv-build/bin/cmake")
     parser.add_argument("--target", default="primo")
+    parser.add_argument(
+        "--extra-target",
+        action="append",
+        default=[],
+        help="Also build a helper target; version preflight still checks --target",
+    )
     parser.add_argument("--jobs", type=int, default=4)
     parser.add_argument(
         "--build-via-slurm",
@@ -409,6 +417,7 @@ def main() -> int:
             git,
             contrib_targets,
             args.reuse_dependencies,
+            args.extra_target,
         )
         if args.cxx_header_manifest:
             command = with_cxx_headers(command, args.cxx_header_manifest)

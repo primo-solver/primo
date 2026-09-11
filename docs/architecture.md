@@ -28,9 +28,9 @@ The build enforces the same direction with static-library targets:
 terms, SAT interfaces, and utilities; `primo_smtlib`; and `primo_smt` over the
 preceding solver layers. `primo_core` is a compatibility interface target for
 whole-solver executables and broad tests. New narrow tests should link the
-lowest target they exercise. Generated ANTLR code and its warning policy are
-confined to `primo_smtlib`, CaDiCaL configuration to `primo_sat`, and GMP to
-`primo_util`.
+lowest target they exercise. `primo_smtlib` contains only the owned handwritten
+lexer/parser/printer; ANTLR and its generated sources are removed. CaDiCaL
+configuration is confined to `primo_sat`, and GMP to `primo_util`.
 
 ## Boundaries
 
@@ -151,6 +151,12 @@ Sorts and symbols are owned by `core::SymbolTable`:
 - `SymbolTable` stores symbols in `std::vector<Symbol> symbols_`.
 - names are mapped with `std::unordered_map<std::string, SortId>` and `std::unordered_map<std::string, SymbolId>`.
 
+SMT-LIB names arrive as canonical symbol text, not quoted spellings; the empty
+name is supported. `Symbol::internal` is explicit auxiliary ownership, set only
+by `declare_internal_constant`, not inferred from `$primo_` prefixes. The flag is
+copied into immutable model signatures. User declarations that resemble internal
+names still require interpretations and must be printed. See [](lexical-conformance.md).
+
 `SymbolTable` creates the built-in Bool, Real and Int sorts in its constructor,
 with IDs 0, 1 and 2 respectively. Uninterpreted sorts receive further IDs.
 
@@ -163,6 +169,7 @@ Symbol:
   arg_sorts
   result_sort
   kind: Constant | Function | Predicate
+  internal: bool (false for user declarations)
 ```
 
 `TermManager::mk_constant` accepts only constant symbols. `TermManager::mk_app` accepts function and predicate symbols and checks arity and argument sorts against the symbol declaration.
@@ -339,9 +346,12 @@ The equality theory receives `TermId` values. Congruence closure uses those ids 
 Implemented now:
 
 - SMT-LIB command parsing through `smtlib::Lexer` and a local S-expression
-  parser for the supported command subset. Quoted symbols, string metadata,
-  comments, and multiline `|...|` metadata are tokenized without constructing an
-  ANTLR parse tree. Command-level validation still rejects unsupported commands
+  parser for the supported command subset. `Parser(std::istream&)` consumes stdin
+  or files directly, returning one owned command without next-command lookahead;
+  the session receives parsed commands without text framing/reparsing.
+  Quoted symbols, string metadata,
+  comments, and multiline `|...|` metadata are tokenized into the owned local
+  AST. Command-level validation still rejects unsupported commands
   and malformed supported commands before the frontend builds `core::TermId`
   values.
 - `define-fun` macro expansion for non-recursive definitions.
@@ -730,9 +740,27 @@ Implemented now:
 - Default-on finite-domain UF symmetry breaking, with
   `--no-uf-symmetry-breaking` as an explicit disable switch.
 
+### Scoped SMT-LIB command execution
+
+In default rebuild mode, `smt::SmtSession` owns an ordered journal and a compressed
+scope depth. Commands
+are validated immediately by a translation-only frontend; each check transfers
+that frontend to `check_sat_frontend_once`. Further work replays surviving
+commands into a fresh generation. The CLI reads complete commands without EOF
+and prints typed responses through `cli::print_response`, keeping dependencies
+directed from CLI to SMT and from SMT to SMT-LIB/core. See [](incremental-smt.md)
+for costs, protocol restrictions, ownership, and revision-scoped qualification.
+
+The opt-in assumptions mode instead retains a `Frontend` and an SMT-owned
+`IncrementalEngine` borrowing its term manager. The engine is destroyed first.
+Scope frames retain assertion boundaries and selector identities; symbol and
+definition bindings are trailed while storage remains append-only. SAT state
+and prepared arithmetic persist, with a fresh query-local working tableau.
+See [](assumption-incremental-lra) for the invariants and qualification status.
+
 Not implemented yet:
 
-- push/pop assertion stacks.
+- persistent solver-state reuse across SMT-LIB queries.
 - proof production.
 - theory kernels and model values for arrays, bit-vectors, nonlinear arithmetic,
   quantifiers or other fragments outside the admitted five logics.

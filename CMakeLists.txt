@@ -87,20 +87,6 @@ else()
   message(FATAL_ERROR "CLI11 not found. Run `make contrib-required` or install CLI11 so CLI/CLI.hpp is available.")
 endif()
 
-find_path(ANTLR4_RUNTIME_INCLUDE_DIR
-  NAMES antlr4-runtime.h
-  HINTS "${CMAKE_SOURCE_DIR}/contrib/local/include/antlr4-runtime"
-)
-find_library(ANTLR4_RUNTIME_LIBRARY
-  NAMES antlr4-runtime
-  HINTS "${CMAKE_SOURCE_DIR}/contrib/local/lib"
-)
-if(ANTLR4_RUNTIME_INCLUDE_DIR AND ANTLR4_RUNTIME_LIBRARY)
-  message(STATUS "Found ANTLR4 runtime: ${ANTLR4_RUNTIME_LIBRARY}")
-else()
-  message(FATAL_ERROR "ANTLR4 C++ runtime not found. Run `make contrib-required`.")
-endif()
-
 set(PRIMO_CADICAL_INCLUDE_HINTS "${CMAKE_SOURCE_DIR}/contrib/local/include")
 set(PRIMO_CADICAL_LIBRARY_HINTS "${CMAKE_SOURCE_DIR}/contrib/local/lib")
 if(PRIMO_CADICAL_ROOT)
@@ -198,17 +184,6 @@ file(GLOB_RECURSE PRIMO_SMT_SOURCES CONFIGURE_DEPENDS src/smt/*.cpp)
 file(GLOB_RECURSE PRIMO_SMTLIB_SOURCES CONFIGURE_DEPENDS src/smtlib/*.cpp)
 file(GLOB_RECURSE PRIMO_THEORY_SOURCES CONFIGURE_DEPENDS src/theory/*.cpp)
 file(GLOB_RECURSE PRIMO_UTIL_SOURCES CONFIGURE_DEPENDS src/util/*.cpp)
-file(GLOB_RECURSE PRIMO_GENERATED_SOURCES CONFIGURE_DEPENDS
-  src/smtlib/antlr/*.cpp
-)
-if(PRIMO_GENERATED_SOURCES)
-  if(MSVC)
-    set_source_files_properties(${PRIMO_GENERATED_SOURCES} PROPERTIES COMPILE_OPTIONS /w)
-  else()
-    set_source_files_properties(${PRIMO_GENERATED_SOURCES} PROPERTIES COMPILE_OPTIONS -w)
-  endif()
-endif()
-
 function(primo_configure_owned_library target)
   primo_enable_warnings(${target})
   primo_enable_sanitizers(${target})
@@ -247,9 +222,7 @@ target_link_libraries(primo_theory PUBLIC primo_terms primo_sat primo_util)
 
 add_library(primo_smtlib STATIC ${PRIMO_SMTLIB_SOURCES})
 primo_configure_owned_library(primo_smtlib)
-target_include_directories(primo_smtlib SYSTEM PUBLIC "${ANTLR4_RUNTIME_INCLUDE_DIR}")
-target_compile_definitions(primo_smtlib PUBLIC ANTLR4CPP_STATIC=1)
-target_link_libraries(primo_smtlib PUBLIC primo_terms "${ANTLR4_RUNTIME_LIBRARY}")
+target_link_libraries(primo_smtlib PUBLIC primo_terms)
 
 add_library(primo_smt STATIC ${PRIMO_SMT_SOURCES})
 primo_configure_owned_library(primo_smt)
@@ -257,6 +230,7 @@ target_link_libraries(primo_smt PUBLIC primo_terms primo_sat primo_smtlib primo_
 
 add_library(primo_cli_support STATIC ${PRIMO_CLI_SOURCES})
 primo_configure_owned_library(primo_cli_support)
+target_link_libraries(primo_cli_support PUBLIC primo_smt)
 
 # Compatibility umbrella for executables and tests that exercise several
 # layers. New narrow targets should link the lowest layer they use.
@@ -316,10 +290,21 @@ add_test(
     -P ${CMAKE_SOURCE_DIR}/tests/cmake/check_frontend_type_error_cli.cmake
 )
 
+add_test(NAME primo_assumptions_cli
+  COMMAND ${CMAKE_COMMAND}
+    -DPRIMO=$<TARGET_FILE:primo>
+    -DINPUT=${CMAKE_SOURCE_DIR}/tests/smtlib/assumption_scopes.smt2
+    -P ${CMAKE_SOURCE_DIR}/tests/cmake/check_assumptions_cli.cmake)
+
 # The cancellation watchdog is process behaviour, so it is checked by driving
 # the binary with a real signal. bash and python3 are only needed here.
 find_program(PRIMO_BASH_EXECUTABLE bash)
 find_program(PRIMO_PYTHON_EXECUTABLE python3)
+if(PRIMO_PYTHON_EXECUTABLE)
+  add_test(NAME primo_interactive_session
+    COMMAND ${PRIMO_PYTHON_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/interactive_session.py $<TARGET_FILE:primo>)
+  set_tests_properties(primo_interactive_session PROPERTIES TIMEOUT 30)
+endif()
 if(PRIMO_BASH_EXECUTABLE AND PRIMO_PYTHON_EXECUTABLE)
   add_test(
     NAME primo_sigterm_reports_unknown
@@ -350,6 +335,23 @@ primo_enable_warnings(primo_smtlib_parser_tests)
 primo_enable_sanitizers(primo_smtlib_parser_tests)
 target_link_libraries(primo_smtlib_parser_tests PRIVATE primo_core)
 add_test(NAME primo_smtlib_parser_tests COMMAND primo_smtlib_parser_tests)
+
+add_executable(primo_parser_corpus tests/parser_corpus.cpp)
+primo_enable_warnings(primo_parser_corpus)
+primo_enable_sanitizers(primo_parser_corpus)
+target_link_libraries(primo_parser_corpus PRIVATE primo_smtlib)
+if(PRIMO_PYTHON_EXECUTABLE)
+  add_test(NAME primo_parser_corpus_smoke
+    COMMAND ${PRIMO_PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/parser_corpus_smoke.py
+            $<TARGET_FILE:primo_parser_corpus>)
+  set_tests_properties(primo_parser_corpus_smoke PROPERTIES TIMEOUT 20)
+endif()
+
+add_executable(primo_smt_session_tests tests/unit/smt_session_tests.cpp)
+primo_enable_warnings(primo_smt_session_tests)
+primo_enable_sanitizers(primo_smt_session_tests)
+target_link_libraries(primo_smt_session_tests PRIVATE primo_core)
+add_test(NAME primo_smt_session_tests COMMAND primo_smt_session_tests)
 
 add_executable(primo_sat_backend_tests tests/unit/sat_backend_tests.cpp)
 primo_enable_warnings(primo_sat_backend_tests)

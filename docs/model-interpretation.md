@@ -2,6 +2,14 @@
 
 ## Status and acceptance contract
 
+The lexical repair in [](lexical-conformance.md) changes name representation,
+not interpretation completion: the printer encodes canonical names using the
+shared lexical policy and checks parameter freshness by canonical identity.
+`Symbol::internal` explicitly marks generated auxiliaries; model completeness
+and output filtering must never use a user's name prefix as ownership evidence.
+Names containing the selected backslash/control-character extensions round-trip
+in Primo but are not promised portable to strict external parsers.
+
 This is Primo's original design and implementation contract for the general
 model redesign, implemented through `8ff9991`. The
 legacy QF_UFLIA builder completed by EUF representative, while its printer
@@ -227,3 +235,19 @@ the exact assertions and models but uses Dolmen's
 does not establish strict QF_LRA syntax conformance. The separate
 `slurm_typed_lra_reconstruction_gate.sbatch` uses the conforming Boolean/affine
 generator across all preprocessing modes and explicitly tests monotone replay.
+
+## Visible signatures in retained sessions
+
+`core::Model` optionally accepts explicit visible `SymbolId`s and owns that list
+alongside its signature metadata. The original constructor behavior is preserved
+when the list is omitted. Explicit lists reject duplicate, invalid or internal
+IDs and require every listed symbol to have an interpretation. The printer emits
+only listed symbols. Historical signature entries remain addressable by ID, so
+retained snapshots survive pop, redeclaration and reset. The assumptions engine
+projects completed interpretations onto active symbols and internal auxiliaries;
+auxiliaries support original-assertion checking and are never printed.
+
+For an explicit visible signature, `ComponentModelBuilder` completes visible
+symbols and symbols required by retained atom interpretations. It omits unused
+popped declarations. Dense construction slots preserve SymbolId indexing, and
+unpopulated slots are removed before constructing the immutable model.

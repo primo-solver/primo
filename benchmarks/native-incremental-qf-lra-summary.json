@@ -1,0 +1,347 @@
+{
+  "run_id": "2026-09-10-native-incremental-qf-lra",
+  "commit": "c3ca55f36c8f10b9aa70bda3b3a64fe767c6b2ad",
+  "archive": "sandbox/QF_LRA.tar.zst",
+  "archive_sha256": "41865c487e20fedaeb1945b2175df657aff6797dcda95eaf6df7403449c2b323",
+  "status": "full-command-parsing-passed-prefix-model-sample-passed-full-execution-resource-incomplete",
+  "family": "hybrid_networks",
+  "binary_sha256": {
+    "solver": "18eaba4e301866061fdc6fd0424f335b0d169ea93240887dcd5a49cdb777fdae",
+    "parser": "30001c4081a6c968d9b6a3d338e9001bdc188e14993b1924dff0e04aec9adc7b",
+    "dolmen": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+  },
+  "totals": {
+    "files": 10,
+    "bytes": 1594684331,
+    "commands": 325456,
+    "parsed_queries": 1515,
+    "parser_errors": 0,
+    "unsupported_commands": 0,
+    "full_session_timeouts": 10,
+    "observed_decisive_answers": 165,
+    "prefix_queries_passed": 40,
+    "prefix_dolmen_models_passed": 10
+  },
+  "limits": {
+    "parser_seconds": 120,
+    "full_session_seconds": 120,
+    "theory_conflicts": 10000,
+    "model_prefix_queries_per_file": 4,
+    "prefix_query_seconds": 30,
+    "dolmen_seconds": 30,
+    "dolmen_size": "1G"
+  },
+  "limitations": "Parser-only success covers lexing/S-expressions/command forms and scope counts, not complete term typing or solving. All full-session runs timed out, so partial answers are observations, not accepted completed executions. Unknown source statuses provide no answer oracle. Only exact first-four-query native prefixes have complete answer/model validation. No reference reruns or performance claim; parse timings are diagnostic under concurrent correctness jobs.",
+  "rows": [
+    {
+      "file": "incremental/QF_LRA/hybrid_networks/bmwlin_20_5_1.inter.bmc_k100.smt2",
+      "bytes": 45487971,
+      "sha256": "5af910b06320a21413677b0eb429486c949d91ceceebadcac77ceeafa45e1fbf",
+      "artifact": "results/native-lra-c3ca55f/task-0",
+      "parser": {
+        "commands": 7795,
+        "assertions": 202,
+        "declarations": 7184,
+        "pushes": 101,
+        "pops": 101,
+        "max_depth": 1,
+        "final_depth": 0,
+        "unsupported": 0
+      },
+      "parsed_queries": 101,
+      "parser_seconds_diagnostic_only": 3.034074978902936,
+      "session": {
+        "outcome": "timeout",
+        "observed_decisive_answers_before_timeout": 18,
+        "unknown_responses": 1,
+        "mismatches": 0,
+        "exit_code": 0,
+        "seconds": 120.27221777103841
+      },
+      "model_prefix": {
+        "queries_passed": 4,
+        "sat_models_dolmen_passed": 0,
+        "unsat_answers_matched": 4
+      }
+    },
+    {
+      "file": "incremental/QF_LRA/hybrid_networks/bmwlin_20_5_1.inter.ind_k100.smt2",
+      "bytes": 94219913,
+      "sha256": "5e80a003cd084f7de02cbd11314ce9cd4a9c1845d9a43080dbaa427f64eb435d",
+      "artifact": "results/native-lra-c3ca55f/task-1",
+      "parser": {
+        "commands": 8401,
+        "assertions": 404,
+        "declarations": 7184,
+        "pushes": 202,
+        "pops": 202,
+        "max_depth": 2,
+        "final_depth": 0,
+        "unsupported": 0
+      },
+      "parsed_queries": 202,
+      "parser_seconds_diagnostic_only": 6.157368129119277,
+      "session": {
+        "outcome": "timeout",
+        "observed_decisive_answers_before_timeout": 26,
+        "unknown_responses": 1,
+        "mismatches": 0,
+        "exit_code": 0,
+        "seconds": 121.02219631709158
+      },
+      "model_prefix": {
+        "queries_passed": 4,
+        "sat_models_dolmen_passed": 2,
+        "unsat_answers_matched": 2
+      }
+    },
+    {
+      "file": "incremental/QF_LRA/hybrid_networks/dist_controller_15_3.inter.bmc_k100.smt2",
+      "bytes": 88801759,
+      "sha256": "da25b2358c5d95bd134f639b756a675efe9a8c1030b04aece6cb8760c7a6b845",
+      "artifact": "results/native-lra-c3ca55f/task-2",
+      "parser": {
+        "commands": 26871,
+        "assertions": 202,
+        "declarations": 26260,
+        "pushes": 101,
+        "pops": 101,
+        "max_depth": 1,
+        "final_depth": 0,
+        "unsupported": 0
+      },
+      "parsed_queries": 101,
+      "parser_seconds_diagnostic_only": 5.6058249566704035,
+      "session": {
+        "outcome": "timeout",
+        "observed_decisive_answers_before_timeout": 10,
+        "unknown_responses": 1,
+        "mismatches": 0,
+        "exit_code": 0,
+        "seconds": 121.02268143184483
+      },
+      "model_prefix": {
+        "queries_passed": 4,
+        "sat_models_dolmen_passed": 0,
+        "unsat_answers_matched": 4
+      }
+    },
+    {
+      "file": "incremental/QF_LRA/hybrid_networks/dist_controller_15_3.inter.ind_k100.smt2",
+      "bytes": 259830794,
+      "sha256": "af8df86f2c82f484d4eed9aaae02007374836384e64e5ea27d0a8a49ef68aaed",
+      "artifact": "results/native-lra-c3ca55f/task-3",
+      "parser": {
+        "commands": 27477,
+        "assertions": 404,
+        "declarations": 26260,
+        "pushes": 202,
+        "pops": 202,
+        "max_depth": 2,
+        "final_depth": 0,
+        "unsupported": 0
+      },
+      "parsed_queries": 202,
+      "parser_seconds_diagnostic_only": 17.386047640815377,
+      "session": {
+        "outcome": "timeout",
+        "observed_decisive_answers_before_timeout": 14,
+        "unknown_responses": 1,
+        "mismatches": 0,
+        "exit_code": 0,
+        "seconds": 120.32216285541654
+      },
+      "model_prefix": {
+        "queries_passed": 4,
+        "sat_models_dolmen_passed": 2,
+        "unsat_answers_matched": 2
+      }
+    },
+    {
+      "file": "incremental/QF_LRA/hybrid_networks/fisher_ring_20_3.inter.bmc_k100.smt2",
+      "bytes": 104096383,
+      "sha256": "17cb8f4a8142ffffa4ce158ec7fa5a3f8690879cdf0f97e6f8fcaa363cd88a02",
+      "artifact": "results/native-lra-c3ca55f/task-4",
+      "parser": {
+        "commands": 63271,
+        "assertions": 202,
+        "declarations": 62660,
+        "pushes": 101,
+        "pops": 101,
+        "max_depth": 1,
+        "final_depth": 0,
+        "unsupported": 0
+      },
+      "parsed_queries": 101,
+      "parser_seconds_diagnostic_only": 6.4084746632725,
+      "session": {
+        "outcome": "timeout",
+        "observed_decisive_answers_before_timeout": 9,
+        "unknown_responses": 1,
+        "mismatches": 0,
+        "exit_code": 0,
+        "seconds": 121.02348566055298
+      },
+      "model_prefix": {
+        "queries_passed": 4,
+        "sat_models_dolmen_passed": 0,
+        "unsat_answers_matched": 4
+      }
+    },
+    {
+      "file": "incremental/QF_LRA/hybrid_networks/fisher_ring_20_3.inter.ind_k100.smt2",
+      "bytes": 456430472,
+      "sha256": "22bc5176ef2de042c285c7faeff4ce3cde64dfb3a1e711edacea9c775a8e7ba1",
+      "artifact": "results/native-lra-c3ca55f/task-5",
+      "parser": {
+        "commands": 63877,
+        "assertions": 404,
+        "declarations": 62660,
+        "pushes": 202,
+        "pops": 202,
+        "max_depth": 2,
+        "final_depth": 0,
+        "unsupported": 0
+      },
+      "parsed_queries": 202,
+      "parser_seconds_diagnostic_only": 33.83141336776316,
+      "session": {
+        "outcome": "timeout",
+        "observed_decisive_answers_before_timeout": 13,
+        "unknown_responses": 1,
+        "mismatches": 0,
+        "exit_code": 0,
+        "seconds": 121.02342846244574
+      },
+      "model_prefix": {
+        "queries_passed": 4,
+        "sat_models_dolmen_passed": 2,
+        "unsat_answers_matched": 2
+      }
+    },
+    {
+      "file": "incremental/QF_LRA/hybrid_networks/fisher_star_20_3.inter.bmc_k100.smt2",
+      "bytes": 52770717,
+      "sha256": "17682e3c43ccec75a1dc95cf80b78c8b392f5ed7019c5b807618d986b985ed23",
+      "artifact": "results/native-lra-c3ca55f/task-6",
+      "parser": {
+        "commands": 27113,
+        "assertions": 202,
+        "declarations": 26502,
+        "pushes": 101,
+        "pops": 101,
+        "max_depth": 1,
+        "final_depth": 0,
+        "unsupported": 0
+      },
+      "parsed_queries": 101,
+      "parser_seconds_diagnostic_only": 3.1659859158098698,
+      "session": {
+        "outcome": "timeout",
+        "observed_decisive_answers_before_timeout": 15,
+        "unknown_responses": 1,
+        "mismatches": 0,
+        "exit_code": 0,
+        "seconds": 120.32171080447733
+      },
+      "model_prefix": {
+        "queries_passed": 4,
+        "sat_models_dolmen_passed": 0,
+        "unsat_answers_matched": 4
+      }
+    },
+    {
+      "file": "incremental/QF_LRA/hybrid_networks/fisher_star_20_3.inter.ind_k100.smt2",
+      "bytes": 198148682,
+      "sha256": "4dab52fa8461e8cb08abf84fd5bab4f2f495369882d34812dc3b09ba8a2d2557",
+      "artifact": "results/native-lra-c3ca55f/task-7",
+      "parser": {
+        "commands": 27719,
+        "assertions": 404,
+        "declarations": 26502,
+        "pushes": 202,
+        "pops": 202,
+        "max_depth": 2,
+        "final_depth": 0,
+        "unsupported": 0
+      },
+      "parsed_queries": 202,
+      "parser_seconds_diagnostic_only": 13.658053891733289,
+      "session": {
+        "outcome": "timeout",
+        "observed_decisive_answers_before_timeout": 22,
+        "unknown_responses": 1,
+        "mismatches": 0,
+        "exit_code": 0,
+        "seconds": 121.02315201237798
+      },
+      "model_prefix": {
+        "queries_passed": 4,
+        "sat_models_dolmen_passed": 2,
+        "unsat_answers_matched": 2
+      }
+    },
+    {
+      "file": "incremental/QF_LRA/hybrid_networks/rod_30_3.inter.bmc_k100.smt2",
+      "bytes": 51577454,
+      "sha256": "c9d05bf18f96d884f15852dd6e010ee7ef066e5bb31268290b82a985e6ed07a4",
+      "artifact": "results/native-lra-c3ca55f/task-8",
+      "parser": {
+        "commands": 36163,
+        "assertions": 202,
+        "declarations": 35552,
+        "pushes": 101,
+        "pops": 101,
+        "max_depth": 1,
+        "final_depth": 0,
+        "unsupported": 0
+      },
+      "parsed_queries": 101,
+      "parser_seconds_diagnostic_only": 3.1050320509821177,
+      "session": {
+        "outcome": "timeout",
+        "observed_decisive_answers_before_timeout": 16,
+        "unknown_responses": 1,
+        "mismatches": 0,
+        "exit_code": 0,
+        "seconds": 121.02377479150891
+      },
+      "model_prefix": {
+        "queries_passed": 4,
+        "sat_models_dolmen_passed": 0,
+        "unsat_answers_matched": 4
+      }
+    },
+    {
+      "file": "incremental/QF_LRA/hybrid_networks/rod_30_3.inter.ind_k100.smt2",
+      "bytes": 243320186,
+      "sha256": "a5cc322322d6de0da0373f1e7b695c523a33498d2b96af9c01ff1dd8ff8e328b",
+      "artifact": "results/native-lra-c3ca55f/task-9",
+      "parser": {
+        "commands": 36769,
+        "assertions": 404,
+        "declarations": 35552,
+        "pushes": 202,
+        "pops": 202,
+        "max_depth": 2,
+        "final_depth": 0,
+        "unsupported": 0
+      },
+      "parsed_queries": 202,
+      "parser_seconds_diagnostic_only": 16.040178079158068,
+      "session": {
+        "outcome": "timeout",
+        "observed_decisive_answers_before_timeout": 22,
+        "unknown_responses": 1,
+        "mismatches": 0,
+        "exit_code": 0,
+        "seconds": 120.82195144891739
+      },
+      "model_prefix": {
+        "queries_passed": 4,
+        "sat_models_dolmen_passed": 2,
+        "unsat_answers_matched": 2
+      }
+    }
+  ]
+}

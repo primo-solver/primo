@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <string>
 #include <vector>
 
@@ -17,6 +18,12 @@ enum class CommandKind {
   CheckSat,
   GetModel,
   SetOption,
+  Push,
+  Pop,
+  Reset,
+  ResetAssertions,
+  Exit,
+  Unsupported,
 };
 
 struct SortedVar {
@@ -26,6 +33,7 @@ struct SortedVar {
 
 struct Command {
   CommandKind kind = CommandKind::CheckSat;
+  std::size_t count = 0;
   std::string name;
   std::string logic;
   std::string option;

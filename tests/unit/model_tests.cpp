@@ -3,6 +3,7 @@
 #endif
 
 #include <cassert>
+#include <cstddef>
 #include <string>
 #include <variant>
 #include <vector>
@@ -16,6 +17,8 @@
 #include "smt/model_reconstruction.hpp"
 #include "smt/typed_model_builder.hpp"
 #include "smtlib/printer.hpp"
+#include "theory/theory_component.hpp"
+#include "theory/theory_solver.hpp"
 #include "util/rational.hpp"
 
 using namespace primo;
@@ -150,7 +153,7 @@ void interpreted_terms_use_the_frozen_table() {
   const auto p = symbols.declare_constant("p", symbols.bool_sort());
   // Missing internal interpretation is intentional: the unselected branch
   // must not be evaluated or consult an unrelated term-value cache.
-  const auto absent = symbols.declare_constant("$primo_absent", i);
+  const auto absent = symbols.declare_internal_constant("$primo_absent", i);
   core::TermManager terms(symbols);
   const auto n = [&](int value) { return terms.mk_rational(util::Rational(value), i); };
   const core::Model model(
@@ -258,6 +261,31 @@ void printer_owns_signature_and_preserves_meaning() {
                             "\n(assert (not (= |a b| (+ (f (+ x0 1)) 1))))\n(check-sat)\n");
   assert(checked.result == smt::CheckSatResult::Unsat);
 }
+
+void canonical_identifier_model_roundtrip() {
+  for (const std::string name : {"", "17", "let", "check-sat", "x0", "a,b", "a\\b", "a\001b",
+                                 "$primo_user", "$primo_bool_arg_0"}) {
+    const std::string spelling = "|" + name + "|";
+    smt::CheckSatOptions options;
+    options.produce_model = true;
+    options.check_model = true;
+    const auto result = smt::check_sat_smtlib("(set-logic QF_UFLIA)(declare-const " + spelling +
+                                                  " Int)"
+                                                  "(declare-fun f (Int) Int)(assert (= " +
+                                                  spelling +
+                                                  " 2))"
+                                                  "(assert (= (f 3) (+ " +
+                                                  spelling + " 1)))(check-sat)",
+                                              options);
+    assert(result.result == smt::CheckSatResult::Sat);
+    assert(result.typed_model);
+    const auto& printed = result.model;
+    const auto replay = smt::check_sat_smtlib(
+        "(set-logic QF_UFLIA)" + printed.substr(6, printed.size() - 7) +
+        "(assert (or (not (= " + spelling + " 2)) (not (= (f 3) 3))))(check-sat)");
+    assert(replay.result == smt::CheckSatResult::Unsat);
+  }
+}
 void reconstruction_uses_staged_constants_and_fixed_tables() {
   core::SymbolTable symbols;
   const auto i = symbols.int_sort();
@@ -313,6 +341,7 @@ void reconstruction_uses_staged_constants_and_fixed_tables() {
 }  // namespace
 
 int main() {
+  canonical_identifier_model_roundtrip();
   component_fragments_are_owned_typed_and_checked();
   typed_tables_and_validation();
   interpreted_terms_use_the_frozen_table();

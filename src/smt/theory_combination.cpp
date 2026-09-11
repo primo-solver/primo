@@ -5,7 +5,6 @@
 #include <cstdint>
 #include <functional>
 #include <optional>
-#include <string>
 #include <tuple>
 #include <unordered_map>
 #include <unordered_set>
@@ -56,14 +55,12 @@ struct PurificationSiteKeyHash {
   }
 };
 
-bool is_internal_symbol_name(const std::string& name) { return name.starts_with("$primo_"); }
-
 bool is_interface_constant(const core::TermManager& terms, core::TermId term_id) {
   const core::Term& term = terms.get(term_id);
   if (term.kind != core::TermKind::Constant || term.sort == terms.symbols().bool_sort()) {
     return false;
   }
-  return !is_internal_symbol_name(terms.symbols().get_symbol(term.symbol).name);
+  return !terms.symbols().get_symbol(term.symbol).internal;
 }
 
 TermPair canonical_pair(core::TermId lhs, core::TermId rhs) {

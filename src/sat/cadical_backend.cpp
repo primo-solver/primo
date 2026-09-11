@@ -106,7 +106,11 @@ std::string_view cadical_signature() {
 
 CadicalBackend::CadicalBackend() : CadicalBackend(std::vector<std::pair<std::string, int>>{}) {}
 
-CadicalBackend::CadicalBackend(const std::vector<std::pair<std::string, int>>& options) {
+CadicalBackend::CadicalBackend(const std::vector<std::pair<std::string, int>>& options)
+    : CadicalBackend(options, false) {}
+
+CadicalBackend::CadicalBackend(const std::vector<std::pair<std::string, int>>& options,
+                               bool incremental_safe) {
 #if PRIMO_HAVE_IPASIR
   std::unique_ptr<CaDiCaL::Solver> solver(new CaDiCaL::Solver());
   if (solver == nullptr) {
@@ -117,9 +121,24 @@ CadicalBackend::CadicalBackend(const std::vector<std::pair<std::string, int>>& o
       throw std::invalid_argument("invalid CaDiCaL option: " + name);
     }
   }
+  if (incremental_safe) {
+    if (!options.empty())
+      throw std::invalid_argument("assumptions mode rejects custom CaDiCaL options");
+    if (!solver->configure("plain") || !solver->set("inprocessing", 0))
+      throw std::runtime_error("CaDiCaL lacks the incremental-safe configuration");
+  }
   solver_ = solver.release();
 #else
   (void)options;
+  (void)incremental_safe;
+#endif
+}
+
+void CadicalBackend::protect_variable(int variable) {
+#if PRIMO_HAVE_IPASIR
+  solver_->freeze(variable);
+#else
+  (void)variable;
 #endif
 }
 
@@ -262,6 +281,8 @@ BackendStatistics CadicalBackend::statistics() const {
   stats.conflicts = nonnegative_statistic(solver_, "conflicts");
   stats.decisions = nonnegative_statistic(solver_, "decisions");
   stats.propagations = nonnegative_statistic(solver_, "propagations");
+  stats.active_irredundant_clauses = static_cast<std::size_t>(solver_->irredundant());
+  stats.active_redundant_clauses = static_cast<std::size_t>(solver_->redundant());
 #endif
   return stats;
 }
@@ -305,6 +326,7 @@ void CadicalBackend::connect_external_propagator(ExternalPropagator* propagator)
 
 void CadicalBackend::disconnect_external_propagator() {
 #if PRIMO_HAVE_IPASIR
+  if (!external_adapter_) return;
   solver_->disconnect_external_propagator();
   external_adapter_.reset();
 #endif

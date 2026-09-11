@@ -1,5 +1,28 @@
 # Literature
 
+## Lexical specification and external parser audit
+
+[](lexical-conformance.md) records the SMT-LIB 2.7 Sections 3.1–3.3 and binder
+rules used for original conformance tests, public cvc5/Dolmen test categories,
+and inspection of Griggio's older Flex/Bison parser. Symbol canonicalization
+and category-aware lexical/command validation are now implemented with explicit
+user-selected compatibility exceptions; leading-zero numerals remain forbidden.
+External code is an inspection source, not copied implementation or a substitute
+for the current standard. The historical matrix records the original wrong answers;
+repair qualification is tracked separately.
+
+## Scoped command sessions and incremental tactics
+
+[](incremental-smt.md) maps SMT-LIB 2.7 Sections 4.1–4.2 to the new
+`SmtSession` journal, scopes, protocol modes and query-local ownership. Its
+replay-based architecture is an original baseline. The Strategy Challenge,
+Section 3, remains the basis of existing ordered goals and model converters;
+Z3 Internals Sections 8.3 and 8.6 motivate, but do not qualify as implemented,
+future incoming-formula translation and restoration of eliminated constraints.
+Persistent incremental solving is deferred, not inferred from incremental
+theory callbacks. Tests specifically strengthen formulas after one-sided
+elimination and substitution, and discard previous disjunctive winners.
+
 This file collects implementation-oriented literature summaries.
 
 Do not claim to have read a paper unless the paper text or notes are available. When uncertain, mark the claim as uncertain.

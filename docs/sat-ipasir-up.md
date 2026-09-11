@@ -302,3 +302,19 @@ build-slurm-rel/primo --version
 ```
 
 `make build` passes `contrib/local` through `CMAKE_PREFIX_PATH` and reports whether CaDiCaL/IPASIR headers and libraries were found.
+
+## Query reconnection for the opt-in assumptions engine
+
+`IpasirUpBackend::reconnect_external_propagator` disconnects the previous
+propagator before installing the next and reobserving its complete variable set.
+The previous callback owner must stay alive through disconnection so reasons
+can be settled. `CadicalBackend` makes disconnection idempotent and protects
+persistent proxies/selectors with explicit freezing. Its optional safe constructor
+uses CaDiCaL's `plain` configuration and disables inprocessing; custom options
+are rejected there, and the ordinary constructor retains its configuration.
+
+Backend tests exercise permanent assignment replay, assumptions disappearing,
+popped conflicts, new atoms, external unit reasons and cancellation recovery.
+The persistent QF_LRA engine disconnects before destroying each working
+propagator. Permanent clauses and valid learned clauses remain in the backend.
+See [](assumption-incremental-lra) for the scope proof and evaluation status.

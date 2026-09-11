@@ -19,7 +19,6 @@ make contrib-required
 
 This installs:
 
-- ANTLR4 C++ runtime and Java tool jar
 - CLI11 single header
 - CaDiCaL/IPASIR headers and static library
 
@@ -38,14 +37,12 @@ make contrib-yices
 make contrib-opensmt
 make contrib-cadical
 make contrib-cli11
-make contrib-antlr4
 make contrib-fuzzsmt
 make contrib-ddsmt
 ```
 
 ## Tool roles
 
-- ANTLR4 installs the Java tool jar and C++ runtime used by the SMT-LIB parser.
 - CLI11 is downloaded as the single header used by the solver executable.
 - Z3 is installed through `pip install z3-solver` into the active Python environment and a `contrib/local/bin/z3` wrapper is created when possible.
 - cvc5 is downloaded from GitHub releases into `contrib/local/bin/cvc5`.
@@ -61,4 +58,4 @@ make contrib-ddsmt
   `contrib/local/bin/ddsmt`.
 
 `make compare` and `make fuzz` prepend `contrib/local/bin` to `PATH`.
-`make build` passes `contrib/local` through `CMAKE_PREFIX_PATH` so CMake can find local ANTLR4, CLI11, and CaDiCaL/IPASIR headers and libraries.
+`make build` passes `contrib/local` through `CMAKE_PREFIX_PATH` so CMake can find local CLI11, GMP, and CaDiCaL/IPASIR headers and libraries. The active SMT-LIB parser is handwritten; ANTLR and Java are not build dependencies. Existing cached ANTLR installations can be left in place but are not used.

@@ -3,10 +3,17 @@
 #endif
 
 #include <cassert>
+#include <istream>
+#include <sstream>
+#include <stdexcept>
+#include <streambuf>
 #include <string>
+#include <utility>
 
 #include "smtlib/ast.hpp"
+#include "smtlib/attributes.hpp"
 #include "smtlib/commands.hpp"
+#include "smtlib/lexer.hpp"
 #include "smtlib/parser.hpp"
 
 using primo::smtlib::CommandKind;
@@ -24,6 +31,115 @@ void expect_parse_error(Fn fn) {
     return;
   }
   assert(false && "expected ParseError");
+}
+
+// EOF is not available: asking for a byte past this command is a test failure,
+// just as it would block a live client waiting for the command's response.
+class GuardedBuffer final : public std::streambuf {
+ public:
+  explicit GuardedBuffer(std::string text) : text_(std::move(text)) {
+    setg(text_.data(), text_.data(), text_.data() + text_.size());
+  }
+
+ protected:
+  int_type underflow() override { throw std::runtime_error("read past command boundary"); }
+
+ private:
+  std::string text_;
+};
+
+void streams_without_command_lookahead() {
+  GuardedBuffer not_ready("");
+  std::istream unavailable(&not_ready);
+  Parser constructed_without_reading(unavailable);
+  for (const std::string text :
+       {"(check-sat)", "(assert (not false))", "(declare-const |p(;)| Bool)",
+        "(set-info :source \"a \"\"quoted\"\" (;|\")", "(set-info :source \"\")",
+        "; preface )\r(assert ; comment (\ntrue)"}) {
+    GuardedBuffer buffer(text);
+    std::istream input(&buffer);
+    Parser parser(input);
+    const auto command = parser.next_command();
+    assert(command);
+    const auto expected = Parser(text).parse_commands();
+    assert(expected.size() == 1 && expected[0].kind == command->kind);
+    assert(expected[0].name == command->name);
+  }
+  std::istringstream input("(check-sat)(exit) garbage");
+  Parser parser(input);
+  assert(parser.next_command()->kind == CommandKind::CheckSat);
+  assert(parser.next_command()->kind == CommandKind::Exit);
+  assert(input.peek() == ' ');
+
+  std::istringstream empty(" ; final comment");
+  Parser eof(empty);
+  assert(!eof.next_command());
+  assert(!eof.next_command());
+  for (const std::string text : {"(", "(assert |x", "(set-info :source \"x", ")"}) {
+    std::istringstream broken(text);
+    expect_parse_error([&] { Parser(broken).next_command(); });
+  }
+  std::istringstream offset_input("(check-sat)\n(assert 01)");
+  Parser offsets(offset_input);
+  assert(offsets.next_command());
+  try {
+    offsets.next_command();
+    assert(false);
+  } catch (const ParseError& error) {
+    assert(error.offset() == 20);
+  }
+  std::istream invalid(nullptr);
+  expect_parse_error([&] { Parser bad(invalid); });
+}
+
+void memory_and_stream_tokens_agree() {
+  using primo::smtlib::TokenKind;
+  for (int i = 0; i < 100; ++i) {
+    const std::string text = "(assert ; ignored (\r(let ((|x" + std::to_string(i) +
+                             "| 0.001)) (= x" + std::to_string(i) +
+                             " 17))) :key #b001 #x00a \"a\"\"b\" || |a\\b|";
+    std::istringstream input(text);
+    primo::smtlib::Lexer memory(text);
+    primo::smtlib::Lexer stream(input);
+    for (;;) {
+      const auto lhs = memory.next();
+      const auto rhs = stream.next();
+      assert(lhs.kind == rhs.kind && lhs.text == rhs.text && lhs.offset == rhs.offset);
+      if (lhs.kind == TokenKind::End) break;
+    }
+  }
+  const std::string deep =
+      "(assert " + std::string(20000, '(') + "true" + std::string(20000, ')') + ")";
+  GuardedBuffer buffer(deep);
+  std::istream input(&buffer);
+  assert(Parser(input).next_command()->kind == CommandKind::Assert);
+}
+
+void validates_single_command_attributes() {
+  for (const std::string command : {"set-info", "set-option"}) {
+    for (const std::string value :
+         {"", " symbol", " |let|", " |:keyword|", " 0", " 0.25", " #b01", " #x0f", " \"text\"",
+          " ()", " (:key let (assert (! true bogus)))"}) {
+      const std::string text = "(" + command + " :custom" + value + ")";
+      assert(Parser(text).parse_commands().size() == 1);
+      GuardedBuffer buffer(text);
+      std::istream input(&buffer);
+      assert(Parser(input).next_command());
+    }
+    for (const std::string tail :
+         {":custom :other", ":custom let", ":custom _", ":custom 0 1", "|:custom| 0"}) {
+      const std::string text = "(" + command + " " + tail + ")";
+      expect_parse_error([&] { Parser(text).parse_commands(); });
+      std::istringstream input(text);
+      expect_parse_error([&] { Parser(input).next_command(); });
+    }
+  }
+  assert(!primo::smtlib::valid_attributes({}));
+  // List values are generic S-expressions: no recursion/term validation here.
+  const auto deep = Parser("(set-info :custom " + std::string(20000, '(') + ":tag let" +
+                           std::string(20000, ')') + ")")
+                        .parse_commands();
+  assert(deep.size() == 1);
 }
 
 void parses_qf_uf_smoke_shape() {
@@ -97,10 +213,10 @@ void parses_benchmark_metadata_and_quoted_symbols() {
   assert(commands[3].option == ":print-success");
   assert(commands[3].value == "false");
   assert(commands[6].kind == CommandKind::DeclareFun);
-  assert(commands[6].name == "|+i|");
+  assert(commands[6].name == "+i");
   assert(commands[8].kind == CommandKind::Assert);
   assert(commands[8].assertion.list[0].is_atom("let"));
-  assert(commands[10].kind == CommandKind::Ignored);
+  assert(commands[10].kind == CommandKind::Exit);
 }
 
 void parses_define_fun_macros() {
@@ -205,15 +321,75 @@ void rejects_malformed_or_unsupported_input() {
   expect_parse_error([] { Parser("(get-model extra)").parse_commands(); });
   expect_parse_error([] { Parser("(declare-sort A 1)").parse_commands(); });
   expect_parse_error([] { Parser("(define-fun f (x A) Bool true)").parse_commands(); });
-  expect_parse_error([] { Parser("(push 1)").parse_commands(); });
+  expect_parse_error([] { Parser("(push -1)").parse_commands(); });
   expect_parse_error([] { Parser("(assert (= a b)").parse_commands(); });
   expect_parse_error([] { Parser("(set-info :source |unterminated)").parse_commands(); });
   expect_parse_error([] { Parser("(set-info :source \"unterminated)").parse_commands(); });
 }
 
+void lexical_categories_and_policy() {
+  using primo::smtlib::TokenKind;
+  const auto commands = Parser(R"((declare-const || |Bool|)
+    (assert (let ((|x| |17|)) (= x 17)))
+    (assert (|let| |:x|)) (assert (= 0.001 17.00)))")
+                            .parse_commands();
+  assert(commands[0].name.empty());
+  assert(commands[0].result_sort == "Bool");
+  const SExpr copy = commands[1].assertion;
+  assert(copy.list[0].atom_kind == TokenKind::Reserved);
+  assert(copy.list[1].list[0].list[1].is_symbol());
+  assert(copy.list[1].list[0].list[1].atom == "17");
+  assert(copy.list[2].list[2].atom_kind == TokenKind::Numeral);
+  assert(commands[2].assertion.list[0].is_symbol());
+  assert(commands[3].assertion.list[1].atom_kind == TokenKind::Decimal);
+  for (const std::string input : {"(declare-const 17 Bool)",
+                                  "(declare-const \"x\" Bool)",
+                                  "(declare-const :x Bool)",
+                                  "(declare-const let Bool)",
+                                  "(declare-sort X |0|)",
+                                  "(push |1|)",
+                                  "(|check-sat|)",
+                                  "(set-option produce-models true)",
+                                  "(set-info source x)",
+                                  "(assert (= 017 17))",
+                                  "(assert (= 00 0))",
+                                  "(assert (= 00.1 0.1))",
+                                  "(assert (= 0. 0))",
+                                  "(assert (= 1e2 100))",
+                                  "(assert #b012)",
+                                  "(assert #x0g)",
+                                  "(declare-const x' Bool)",
+                                  "(declare-const žlutý Bool)",
+                                  "(assert\ffalse)",
+                                  "(assert\vfalse)",
+                                  "(assert |)",
+                                  "(assert \" )"}) {
+    expect_parse_error([&] { Parser(input).parse_commands(); });
+  }
+  const auto cr = Parser("(assert ; discarded ) (\rfalse)").parse_commands();
+  assert(cr[0].assertion.is_atom("false"));
+  const auto extensions = Parser(
+                              "(declare-const gate,part Bool)"
+                              "(declare-const |gate\\part| Bool)"
+                              "(declare-const |gate\001part| Bool)")
+                              .parse_commands();
+  assert(extensions[0].name == "gate,part");
+  assert(extensions[1].name == "gate\\part");
+  assert(extensions[2].name == "gate\001part");
+  primo::smtlib::Lexer literals("0 17 0.017 17.00 #b001 #x0017 \"a\"\"b\"");
+  for (const auto kind :
+       {TokenKind::Numeral, TokenKind::Numeral, TokenKind::Decimal, TokenKind::Decimal,
+        TokenKind::Binary, TokenKind::Hexadecimal, TokenKind::String, TokenKind::End})
+    assert(literals.next().kind == kind);
+}
+
 }  // namespace
 
 int main() {
+  validates_single_command_attributes();
+  streams_without_command_lookahead();
+  memory_and_stream_tokens_agree();
+  lexical_categories_and_policy();
   parses_qf_uf_smoke_shape();
   parses_nested_boolean_assertion();
   parses_benchmark_metadata_and_quoted_symbols();

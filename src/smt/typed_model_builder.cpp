@@ -37,7 +37,8 @@ class ComponentModelBuilder {
   std::shared_ptr<const core::Model> build(
       std::span<const core::TermId> assertions, std::span<const TheoryModelAssignment> assignments,
       const std::unordered_map<core::TermId, util::Rational>& numeric_values,
-      const ModelConversionChain& conversions, std::size_t* completed_integers) {
+      const ModelConversionChain& conversions, std::size_t* completed_integers,
+      std::optional<std::vector<core::SymbolId>> visible_symbols) {
     // Original adapter design: docs/model-interpretation.md. The base model
     // contains only the final problem; eliminated definitions are replayed later.
     true_ = terms_.mk_bool(true);
@@ -111,8 +112,21 @@ class ComponentModelBuilder {
         throw core::ModelError("conflicting authoritative values in one component class");
       }
     }
+    std::unordered_set<core::SymbolId> needed;
+    if (visible_symbols) {
+      needed.insert(visible_symbols->begin(), visible_symbols->end());
+      for (const core::TermId term : relevant_) {
+        const auto& node = terms_.get(term);
+        if (node.kind == core::TermKind::Constant || node.kind == core::TermKind::Application)
+          needed.insert(node.symbol);
+      }
+    }
+    // Keep dense slots for construction, but complete only visible or relevant
+    // symbols. Popped unused declarations receive no arbitrary interpretation.
+    interpretations_.resize(terms_.symbols().symbols().size());
     for (const auto& symbol : terms_.symbols().symbols()) {
-      interpretations_.push_back({symbol.id, default_value(symbol.result_sort), {}});
+      if (!visible_symbols || needed.contains(symbol.id))
+        interpretations_[symbol.id] = {symbol.id, default_value(symbol.result_sort), {}};
     }
     tables_.resize(interpretations_.size());
     core::ModelEvaluator base(
@@ -148,7 +162,11 @@ class ComponentModelBuilder {
     check_assignments(assignments);
     conversions.replay_reverse([&](const ModelConversionStep& step) { replay(step); });
     if (completed_integers != nullptr) *completed_integers = completed_integers_;
-    return std::make_shared<const core::Model>(terms_.symbols(), std::move(interpretations_));
+    std::erase_if(interpretations_, [](const auto& interpretation) {
+      return interpretation.symbol == core::kInvalidSymbolId;
+    });
+    return std::make_shared<const core::Model>(terms_.symbols(), std::move(interpretations_),
+                                               std::move(visible_symbols));
   }
 
  private:
@@ -325,10 +343,11 @@ std::shared_ptr<const core::Model> build_typed_model(
     std::span<const TheoryModelAssignment> assignments,
     const std::unordered_map<core::TermId, util::Rational>& numeric_values,
     const ModelConversionChain& conversions, std::size_t* completed_integers,
-    util::Statistics* statistics) {
+    util::Statistics* statistics, std::optional<std::vector<core::SymbolId>> visible_symbols) {
   const auto start = std::chrono::steady_clock::now();
-  auto model = ComponentModelBuilder(terms).build(assertions, assignments, numeric_values,
-                                                  conversions, completed_integers);
+  auto model =
+      ComponentModelBuilder(terms).build(assertions, assignments, numeric_values, conversions,
+                                         completed_integers, std::move(visible_symbols));
   if (statistics != nullptr) {
     statistics->increment(
         ":time.model.reconstruction-us",

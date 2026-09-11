@@ -3,6 +3,8 @@
 #include <string>
 #include <vector>
 
+#include "smtlib/lexer.hpp"
+
 namespace primo::smtlib {
 
 // A generic S-expression tree (atom or list of S-expressions). Deeply
@@ -21,6 +23,8 @@ struct SExpr {
   };
 
   Kind kind = Kind::Atom;
+  TokenKind atom_kind = TokenKind::Symbol;
+  // Canonical interior for symbols; original spelling for other token kinds.
   std::string atom;
   std::vector<SExpr> list;
 
@@ -31,7 +35,8 @@ struct SExpr {
   SExpr& operator=(SExpr&&) noexcept = default;
   ~SExpr();
 
-  static SExpr make_atom(std::string value);
+  static SExpr make_atom(std::string value, TokenKind category = TokenKind::Symbol);
+  bool is_symbol() const;
   static SExpr make_list(std::vector<SExpr> elements);
   bool is_atom(const std::string& value) const;
 };

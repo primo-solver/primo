@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <chrono>
+#include <memory>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -26,6 +28,7 @@
 #include "smt/tactic.hpp"
 #include "smt/theory_combination.hpp"
 #include "smt/typed_model_builder.hpp"
+#include "smtlib/commands.hpp"
 #include "smtlib/parser.hpp"
 #include "smtlib/printer.hpp"
 #include "util/statistics.hpp"
@@ -337,7 +340,11 @@ util::Statistics::Value elapsed_microseconds(PhaseClock::time_point start,
 
 }  // namespace
 
-CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions options) {
+namespace {
+
+CheckSatOutcome run_query(std::string_view input, CheckSatOptions options,
+                          std::unique_ptr<Frontend> owned_frontend,
+                          std::vector<core::TermId> assertions) {
   const PhaseClock::time_point total_start = PhaseClock::now();
   util::Statistics statistics;
   statistics = util::Statistics{};
@@ -572,18 +579,29 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
   }
 
   try {
-    const PhaseClock::time_point parse_start = PhaseClock::now();
-    smtlib::Parser parser(input);
-    const std::vector<smtlib::Command> commands = parser.parse_commands();
-    statistics.set(kStatTimeParseUs, elapsed_microseconds(parse_start, PhaseClock::now()));
-
-    const PhaseClock::time_point frontend_start = PhaseClock::now();
-    Frontend frontend;
-    std::vector<core::TermId> assertions;
-    for (const smtlib::Command& command : commands) {
-      frontend.process_command(command, assertions);
+    if (!owned_frontend) {
+      const PhaseClock::time_point parse_start = PhaseClock::now();
+      smtlib::Parser parser(input);
+      const std::vector<smtlib::Command> commands = parser.parse_commands();
+      statistics.set(kStatTimeParseUs, elapsed_microseconds(parse_start, PhaseClock::now()));
+      const PhaseClock::time_point frontend_start = PhaseClock::now();
+      owned_frontend = std::make_unique<Frontend>();
+      bool checked = false;
+      for (const smtlib::Command& command : commands) {
+        if (command.kind == smtlib::CommandKind::Exit) break;
+        if (checked && command.kind != smtlib::CommandKind::GetModel &&
+            command.kind != smtlib::CommandKind::Ignored) {
+          throw UnsupportedInput("single-query API requires SmtSession for subsequent commands");
+        }
+        if (command.kind == smtlib::CommandKind::CheckSat) checked = true;
+        owned_frontend->process_command(command, assertions);
+      }
+      statistics.set(kStatTimeFrontendUs, elapsed_microseconds(frontend_start, PhaseClock::now()));
+      if (!owned_frontend->saw_check_sat()) {
+        return finish(CheckSatResult::Unsupported, "missing check-sat command");
+      }
     }
-    statistics.set(kStatTimeFrontendUs, elapsed_microseconds(frontend_start, PhaseClock::now()));
+    Frontend& frontend = *owned_frontend;
     statistics.set(kStatAssertionsInitial, assertions.size());
     statistics.set(":frontend.define-fun.nullary-direct-uses",
                    frontend.nullary_definition_direct_uses());
@@ -599,9 +617,6 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
                    frontend.nullary_definition_eager_compiles());
     statistics.set(":frontend.define-fun.nullary-cache-entries",
                    frontend.nullary_definition_eager_compiles());
-    if (!frontend.saw_check_sat()) {
-      return finish(CheckSatResult::Unsupported, "missing check-sat command");
-    }
     if (frontend.requested_model()) {
       if (!frontend.produce_models()) {
         return finish(CheckSatResult::Unsupported, "get-model requires :produce-models true");
@@ -759,6 +774,19 @@ CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions op
   } catch (const smtlib::ParseError& error) {
     return finish(CheckSatResult::Unsupported, error.what());
   }
+}
+
+}  // namespace
+
+CheckSatOutcome check_sat_smtlib_once(std::string_view input, CheckSatOptions options) {
+  return run_query(input, std::move(options), nullptr, {});
+}
+
+CheckSatOutcome check_sat_frontend_once(std::unique_ptr<Frontend> frontend,
+                                        std::vector<core::TermId> assertions,
+                                        CheckSatOptions options) {
+  if (!frontend) throw std::invalid_argument("query frontend must not be null");
+  return run_query({}, std::move(options), std::move(frontend), std::move(assertions));
 }
 
 }  // namespace primo::smt

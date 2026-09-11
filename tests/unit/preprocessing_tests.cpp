@@ -1713,7 +1713,7 @@ struct AuxiliaryFactory {
   primo::smt::FreshConstantFactory factory() {
     return [this](primo::core::SortId sort, std::string_view prefix) {
       const std::string name = "$primo_" + std::string{prefix} + "_" + std::to_string(next++);
-      return terms.mk_constant(symbols.declare_constant(name, sort));
+      return terms.mk_constant(symbols.declare_internal_constant(name, sort));
     };
   }
 };

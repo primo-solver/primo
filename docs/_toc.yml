@@ -8,6 +8,10 @@ parts:
     chapters:
       - file: current-status
       - file: architecture
+      - file: incremental-smt
+        sections:
+          - file: lexical-conformance
+          - file: assumption-incremental-lra
       - file: model-interpretation
       - file: tactics
         sections:

@@ -1,14 +1,19 @@
 #include "smtlib/parser.hpp"
 
+#include <charconv>
 #include <cstddef>
+#include <istream>
+#include <optional>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <system_error>
 #include <utility>
 #include <vector>
 
 #include "smtlib/ast.hpp"
+#include "smtlib/attributes.hpp"
 #include "smtlib/commands.hpp"
 #include "smtlib/lexer.hpp"
 
@@ -18,23 +23,22 @@ namespace {
 
 class TokenSExprParser {
  public:
-  explicit TokenSExprParser(std::string_view input) : lexer_(input) { advance(); }
+  explicit TokenSExprParser(Lexer& lexer) : lexer_(lexer) {}
 
   // Iterative, explicit-stack-based (deliberately not recursive descent):
   // one Frame per currently-open '(' rather than one call stack frame,
   // so deeply-nested input (fuzzer-generated QF_LRA in particular tends
   // to nest deeply, e.g. long chains of `let`) can't stack-overflow this.
-  std::vector<SExpr> parse_all() {
-    std::vector<SExpr> top_level;
+  std::optional<SExpr> parse_one() {
     std::vector<Frame> stack;
 
-    while (!stack.empty() || !at_end()) {
-      if (at_end()) {
+    for (;;) {
+      Token token = lexer_.next();
+      if (token.kind == TokenKind::End) {
+        if (stack.empty()) return std::nullopt;
         throw ParseError("unexpected end of input in list", stack.back().open_offset);
       }
-      const Token token = current_;
       if (token.kind == TokenKind::LParen) {
-        advance();
         stack.push_back(Frame{{}, token.offset});
         continue;
       }
@@ -42,20 +46,18 @@ class TokenSExprParser {
         if (stack.empty()) {
           throw ParseError("unexpected closing parenthesis", token.offset);
         }
-        advance();
         Frame frame = std::move(stack.back());
         stack.pop_back();
-        push_result(stack, top_level, SExpr::make_list(std::move(frame.elements)));
+        auto result = SExpr::make_list(std::move(frame.elements));
+        // Never fetch a token here: an interactive client may be waiting for
+        // this command's response before supplying any more bytes.
+        if (stack.empty()) return result;
+        stack.back().elements.push_back(std::move(result));
         continue;
       }
-      if ((token.text.starts_with('|') && !token.text.ends_with('|')) ||
-          (token.text.starts_with('"') && !token.text.ends_with('"'))) {
-        throw ParseError("unterminated quoted token", token.offset);
-      }
-      advance();
-      push_result(stack, top_level, SExpr::make_atom(token.text));
+      if (stack.empty()) throw ParseError("command must start with '('", token.offset);
+      stack.back().elements.push_back(SExpr::make_atom(std::move(token.text), token.kind));
     }
-    return top_level;
   }
 
  private:
@@ -64,20 +66,7 @@ class TokenSExprParser {
     std::size_t open_offset;
   };
 
-  static void push_result(std::vector<Frame>& stack, std::vector<SExpr>& top_level, SExpr value) {
-    if (stack.empty()) {
-      top_level.push_back(std::move(value));
-    } else {
-      stack.back().elements.push_back(std::move(value));
-    }
-  }
-
-  bool at_end() const { return current_.kind == TokenKind::End; }
-
-  void advance() { current_ = lexer_.next(); }
-
-  Lexer lexer_;
-  Token current_;
+  Lexer& lexer_;
 };
 
 }  // namespace
@@ -87,19 +76,19 @@ ParseError::ParseError(std::string message, std::size_t offset)
 
 std::size_t ParseError::offset() const { return offset_; }
 
-Parser::Parser(std::string_view input) : input_(input) {}
+Parser::Parser(std::string_view input) : input_(input), lexer_(std::string_view(input_)) {}
+Parser::Parser(std::istream& input) : lexer_(input) {}
+
+std::optional<Command> Parser::next_command() {
+  auto expr = TokenSExprParser(lexer_).parse_one();
+  if (!expr) return std::nullopt;
+  return parse_command(*expr);
+}
 
 std::vector<Command> Parser::parse_commands() {
   std::vector<Command> commands;
-  for (const SExpr& expr : parse_sexprs()) {
-    commands.push_back(parse_command(expr));
-  }
+  while (auto command = next_command()) commands.push_back(std::move(*command));
   return commands;
-}
-
-std::vector<SExpr> Parser::parse_sexprs() const {
-  TokenSExprParser sexprs(input_);
-  return sexprs.parse_all();
 }
 
 Command Parser::parse_command(const SExpr& expr) const {
@@ -107,8 +96,46 @@ Command Parser::parse_command(const SExpr& expr) const {
     throw ParseError("command must be a non-empty list", 0);
   }
   const std::string head = require_atom(expr.list[0], "command head");
+  if (expr.list[0].atom_kind != TokenKind::Reserved) {
+    // Unknown ordinary command names still receive the unsupported response;
+    // quoted spellings of known command words are not command syntax.
+    if (!expr.list[0].is_symbol() || is_reserved_word(head))
+      throw ParseError("expected unquoted command name", 0);
+    Command command;
+    command.kind = CommandKind::Unsupported;
+    command.name = head;
+    return command;
+  }
 
-  if (head == "set-info" || head == "exit") {
+  if (head == "push" || head == "pop") {
+    if (expr.list.size() != 2) throw ParseError(head + " expects one numeral", 0);
+    const std::string numeral = require_atom(expr.list[1], "scope count");
+    if (expr.list[1].atom_kind != TokenKind::Numeral)
+      throw ParseError(head + " expects a numeral", 0);
+    Command command;
+    command.kind = head == "push" ? CommandKind::Push : CommandKind::Pop;
+    if (numeral.empty() || (numeral.size() > 1 && numeral.front() == '0') ||
+        numeral.find_first_not_of("0123456789") != std::string::npos) {
+      throw ParseError(head + " expects a nonnegative numeral", 0);
+    }
+    const auto result =
+        std::from_chars(numeral.data(), numeral.data() + numeral.size(), command.count);
+    if (result.ec != std::errc{}) throw ParseError("scope count overflow", 0);
+    return command;
+  }
+  if (head == "reset" || head == "reset-assertions" || head == "exit") {
+    if (expr.list.size() != 1) throw ParseError(head + " expects no arguments", 0);
+    Command command;
+    command.kind = head == "reset"  ? CommandKind::Reset
+                   : head == "exit" ? CommandKind::Exit
+                                    : CommandKind::ResetAssertions;
+    return command;
+  }
+  if (head == "set-info") {
+    if (expr.list.size() < 2 || expr.list.size() > 3 || expr.list[1].kind != SExpr::Kind::Atom ||
+        expr.list[1].atom_kind != TokenKind::Keyword ||
+        (expr.list.size() == 3 && !is_attribute_value(expr.list[2])))
+      throw ParseError("set-info expects an attribute keyword and optional value", 0);
     Command command;
     command.kind = CommandKind::Ignored;
     return command;
@@ -122,17 +149,23 @@ Command Parser::parse_command(const SExpr& expr) const {
     // and an *atom* rejected conforming scripts such as
     // (set-option :verbosity (- 1)), which z3 accepts.
     //
-    // Only :produce-models is acted on (see Frontend::process_command); every
-    // other option is ignored, so a non-atom value is recorded as empty rather
-    // than refused. An option we do act on still validates its own value.
+    // Interpretation belongs to the session. A non-atom value is recorded as
+    // empty: currently supported options all require Boolean atom values.
     if (expr.list.size() < 2 || expr.list.size() > 3) {
       throw ParseError("set-option expects a single option", 0);
     }
     Command command;
     command.kind = CommandKind::SetOption;
     command.option = require_atom(expr.list[1], "option keyword");
+    if (expr.list[1].atom_kind != TokenKind::Keyword)
+      throw ParseError("set-option expects an option keyword", 0);
+    if (expr.list.size() == 3 && !is_attribute_value(expr.list[2]))
+      throw ParseError("set-option expects an attribute value", 0);
     if (expr.list.size() == 3 && expr.list[2].kind == SExpr::Kind::Atom) {
-      command.value = expr.list[2].atom;
+      // Strings/numerals must not masquerade as a Boolean option value.
+      if (expr.list[2].is_symbol() || expr.list[2].atom_kind == TokenKind::Numeral ||
+          expr.list[2].atom_kind == TokenKind::Decimal)
+        command.value = expr.list[2].atom;
     }
     return command;
   }
@@ -143,17 +176,18 @@ Command Parser::parse_command(const SExpr& expr) const {
     }
     Command command;
     command.kind = CommandKind::SetLogic;
-    command.logic = require_atom(expr.list[1], "logic");
+    command.logic = require_symbol(expr.list[1], "logic");
     return command;
   }
 
   if (head == "declare-sort") {
-    if (expr.list.size() != 3 || !expr.list[2].is_atom("0")) {
+    if (expr.list.size() != 3 || !expr.list[2].is_atom("0") ||
+        expr.list[2].atom_kind != TokenKind::Numeral) {
       throw ParseError("declare-sort expects a name and arity 0", 0);
     }
     Command command;
     command.kind = CommandKind::DeclareSort;
-    command.name = require_atom(expr.list[1], "sort name");
+    command.name = require_symbol(expr.list[1], "sort name");
     return command;
   }
 
@@ -163,8 +197,8 @@ Command Parser::parse_command(const SExpr& expr) const {
     }
     Command command;
     command.kind = CommandKind::DeclareFun;
-    command.name = require_atom(expr.list[1], "constant name");
-    command.result_sort = require_atom(expr.list[2], "result sort");
+    command.name = require_symbol(expr.list[1], "constant name");
+    command.result_sort = require_symbol(expr.list[2], "result sort");
     return command;
   }
 
@@ -174,11 +208,11 @@ Command Parser::parse_command(const SExpr& expr) const {
     }
     Command command;
     command.kind = CommandKind::DeclareFun;
-    command.name = require_atom(expr.list[1], "function name");
+    command.name = require_symbol(expr.list[1], "function name");
     for (const SExpr& arg_sort : expr.list[2].list) {
-      command.arg_sorts.push_back(require_atom(arg_sort, "argument sort"));
+      command.arg_sorts.push_back(require_symbol(arg_sort, "argument sort"));
     }
-    command.result_sort = require_atom(expr.list[3], "result sort");
+    command.result_sort = require_symbol(expr.list[3], "result sort");
     return command;
   }
 
@@ -188,15 +222,15 @@ Command Parser::parse_command(const SExpr& expr) const {
     }
     Command command;
     command.kind = CommandKind::DefineFun;
-    command.name = require_atom(expr.list[1], "function name");
+    command.name = require_symbol(expr.list[1], "function name");
     for (const SExpr& parameter : expr.list[2].list) {
       if (parameter.kind != SExpr::Kind::List || parameter.list.size() != 2) {
         throw ParseError("define-fun parameter must be a sorted variable", 0);
       }
-      command.parameters.push_back(SortedVar{require_atom(parameter.list[0], "parameter name"),
-                                             require_atom(parameter.list[1], "parameter sort")});
+      command.parameters.push_back(SortedVar{require_symbol(parameter.list[0], "parameter name"),
+                                             require_symbol(parameter.list[1], "parameter sort")});
     }
-    command.result_sort = require_atom(expr.list[3], "result sort");
+    command.result_sort = require_symbol(expr.list[3], "result sort");
     command.body = expr.list[4];
     return command;
   }
@@ -229,7 +263,10 @@ Command Parser::parse_command(const SExpr& expr) const {
     return command;
   }
 
-  throw ParseError("unsupported command: " + head, 0);
+  Command command;
+  command.kind = CommandKind::Unsupported;
+  command.name = head;
+  return command;
 }
 
 std::string Parser::require_atom(const SExpr& expr, std::string_view context) const {
@@ -238,6 +275,11 @@ std::string Parser::require_atom(const SExpr& expr, std::string_view context) co
     out << context << " must be an atom";
     throw ParseError(out.str(), 0);
   }
+  return expr.atom;
+}
+
+std::string Parser::require_symbol(const SExpr& expr, std::string_view context) const {
+  if (!expr.is_symbol()) throw ParseError(std::string(context) + " must be a symbol", 0);
   return expr.atom;
 }
 

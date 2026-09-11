@@ -479,6 +479,15 @@ policy before it can be enabled.
 Proof converters, unsat-core converters, incremental tactics, a user-facing
 tactic language, and true parallel execution are not implemented.
 
+The scoped session layer in [](incremental-smt.md) does not change this tactic
+contract. Every check starts from all active original assertions in a fresh
+frontend generation. In particular, monotone elimination and solve-eqs remain
+valid within a query, but their transformed goals cannot be strengthened with
+new user assertions. `ModelConversionChain` reconstructs models backwards; it
+does not translate incoming assertions or restore removed constraints. No
+previous winning `AnyOf` alternative is retained across queries. Incremental
+tactic reuse requires a separate restoration/substitution audit.
+
 ## Invariants and complexity
 
 - `Goal`, its assertion vector, and `AnyOf` are immutable shared values.
@@ -514,3 +523,15 @@ payload sharing, cancellation precedence, conditional selection, statistics,
 pristine-input fallback, and production dispatch to each supported solver
 family. Existing preprocessing and solver suites cover the migrated control
 flow with their prior correctness and adaptive-pass assertions.
+
+## Incremental execution contract
+
+`Tactic` has an `IncrementalSafety` classification, defaulting to `Unclassified`.
+A `TacticContext` requiring incremental safety rejects unclassified execution.
+Audited Boolean normalization, extended-term simplification and arithmetic
+normalization are context independent; extended-term lowering is a conservative
+extension whose returned side constraints must share the assertion's guard.
+The assumptions session executes these leaves individually. General composition
+and whole-goal tactics remain unclassified; existing rebuild execution is
+unrestricted. Equation elimination and substitution replay/restoration are
+explicitly deferred, as described in [](assumption-incremental-lra).

@@ -1,7 +1,12 @@
 #include "core/symbol_table.hpp"
 
+#include <optional>
 #include <stdexcept>
 #include <utility>
+#include <vector>
+
+#include "core/ids.hpp"
+#include "core/sort.hpp"
 
 namespace primo::core {
 
@@ -38,6 +43,12 @@ SymbolId SymbolTable::declare_constant(std::string name, SortId sort) {
   return add_symbol(std::move(name), {}, sort, SymbolKind::Constant);
 }
 
+SymbolId SymbolTable::declare_internal_constant(std::string name, SortId sort) {
+  const SymbolId id = declare_constant(std::move(name), sort);
+  symbols_[id].internal = true;
+  return id;
+}
+
 SymbolId SymbolTable::declare_function(std::string name, std::vector<SortId> arg_sorts,
                                        SortId result_sort) {
   return add_symbol(std::move(name), std::move(arg_sorts), result_sort, SymbolKind::Function);
@@ -66,24 +77,47 @@ const std::vector<Sort>& SymbolTable::sorts() const { return sorts_; }
 
 const std::vector<Symbol>& SymbolTable::symbols() const { return symbols_; }
 
-SortId SymbolTable::add_sort(std::string name, SortKind kind) {
-  if (name.empty()) {
-    throw std::invalid_argument("sort name must not be empty");
+void SymbolTable::push_scope() {
+  scopes_.push_back({sort_bindings_.size(), symbol_bindings_.size()});
+}
+
+void SymbolTable::pop_scope() {
+  if (scopes_.empty()) throw std::invalid_argument("symbol scope underflow");
+  const Scope scope = scopes_.back();
+  scopes_.pop_back();
+  while (symbol_bindings_.size() > scope.symbols) {
+    symbol_by_name_.erase(symbols_[symbol_bindings_.back()].name);
+    symbol_bindings_.pop_back();
   }
+  while (sort_bindings_.size() > scope.sorts) {
+    sort_by_name_.erase(sorts_[sort_bindings_.back()].name);
+    sort_bindings_.pop_back();
+  }
+}
+
+std::vector<SymbolId> SymbolTable::visible_symbols() const {
+  std::vector<SymbolId> result;
+  for (const auto& symbol : symbols_) {
+    const auto found = symbol_by_name_.find(symbol.name);
+    if (!symbol.internal && found != symbol_by_name_.end() && found->second == symbol.id)
+      result.push_back(symbol.id);
+  }
+  return result;
+}
+
+SortId SymbolTable::add_sort(std::string name, SortKind kind) {
   if (sort_by_name_.contains(name)) {
     throw std::invalid_argument("duplicate sort declaration: " + name);
   }
   const SortId id = static_cast<SortId>(sorts_.size());
   sorts_.push_back(Sort{id, name, kind});
   sort_by_name_.emplace(std::move(name), id);
+  if (!scopes_.empty()) sort_bindings_.push_back(id);
   return id;
 }
 
 SymbolId SymbolTable::add_symbol(std::string name, std::vector<SortId> arg_sorts,
                                  SortId result_sort, SymbolKind kind) {
-  if (name.empty()) {
-    throw std::invalid_argument("symbol name must not be empty");
-  }
   if (symbol_by_name_.contains(name)) {
     throw std::invalid_argument("duplicate symbol declaration: " + name);
   }
@@ -95,6 +129,7 @@ SymbolId SymbolTable::add_symbol(std::string name, std::vector<SortId> arg_sorts
   const SymbolId id = static_cast<SymbolId>(symbols_.size());
   symbols_.push_back(Symbol{id, name, std::move(arg_sorts), result_sort, kind});
   symbol_by_name_.emplace(std::move(name), id);
+  if (!scopes_.empty()) symbol_bindings_.push_back(id);
   return id;
 }
 

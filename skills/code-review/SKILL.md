@@ -21,7 +21,6 @@ The current review scope is all tracked non-generated files:
 
 - include source, tests, scripts, docs, skills, build metadata, and benchmark
   smoke/seed files
-- exclude generated parser files under `src/smtlib/antlr/`
 - exclude build outputs, virtual environments, `docs/_build`, `contrib/local`,
   `contrib/downloads`, `contrib/src`, and untracked scratch data under `tmp/`
 - use the diff as a focus area, not as the boundary of review

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -22,6 +23,8 @@ struct Symbol {
   std::vector<SortId> arg_sorts;
   SortId result_sort = kInvalidSortId;
   SymbolKind kind = SymbolKind::Constant;
+  // Ownership is metadata, never inferred from a user-visible name prefix.
+  bool internal = false;
 };
 
 class SymbolTable {
@@ -36,12 +39,17 @@ class SymbolTable {
   const Sort& get_sort(SortId id) const;
 
   SymbolId declare_constant(std::string name, SortId sort);
+  SymbolId declare_internal_constant(std::string name, SortId sort);
   SymbolId declare_function(std::string name, std::vector<SortId> arg_sorts, SortId result_sort);
   SymbolId declare_predicate(std::string name, std::vector<SortId> arg_sorts);
   std::optional<SymbolId> lookup_symbol(const std::string& name) const;
   const Symbol& get_symbol(SymbolId id) const;
   const std::vector<Sort>& sorts() const;
   const std::vector<Symbol>& symbols() const;
+  // Scope only name lookup; storage and IDs remain append-only until destruction.
+  void push_scope();
+  void pop_scope();
+  std::vector<SymbolId> visible_symbols() const;
 
  private:
   SortId add_sort(std::string name, SortKind kind);
@@ -53,6 +61,13 @@ class SymbolTable {
   std::vector<Symbol> symbols_;
   std::unordered_map<std::string, SortId> sort_by_name_;
   std::unordered_map<std::string, SymbolId> symbol_by_name_;
+  struct Scope {
+    std::size_t sorts;
+    std::size_t symbols;
+  };
+  std::vector<Scope> scopes_;
+  std::vector<SortId> sort_bindings_;
+  std::vector<SymbolId> symbol_bindings_;
 };
 
 }  // namespace primo::core

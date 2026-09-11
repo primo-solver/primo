@@ -6,6 +6,7 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -20,7 +21,9 @@
 #include "core/term_manager.hpp"
 #include "smt/solver_error.hpp"
 #include "smtlib/ast.hpp"
+#include "smtlib/attributes.hpp"
 #include "smtlib/commands.hpp"
+#include "smtlib/lexer.hpp"
 #include "util/rational.hpp"
 
 namespace primo::smt {
@@ -112,6 +115,8 @@ class TermBuilder {
 struct Frontend::Implementation {
  public:
   friend class TermBuilder;
+  explicit Implementation(bool validate_parameterized_definitions)
+      : validate_parameterized_definitions_(validate_parameterized_definitions) {}
 
   core::TermId build_term(const smtlib::SExpr& expr) {
     TermBuilder builder(*this);
@@ -121,7 +126,15 @@ struct Frontend::Implementation {
   void process_command(const smtlib::Command& command, std::vector<core::TermId>& assertions) {
     switch (command.kind) {
       case smtlib::CommandKind::Ignored:
+      case smtlib::CommandKind::Exit:
         return;
+      case smtlib::CommandKind::Unsupported:
+        throw UnsupportedInput("unsupported command: " + command.name);
+      case smtlib::CommandKind::Push:
+      case smtlib::CommandKind::Pop:
+      case smtlib::CommandKind::Reset:
+      case smtlib::CommandKind::ResetAssertions:
+        throw UnsupportedInput("scoped commands require SmtSession");
       case smtlib::CommandKind::SetOption:
         if (command.option == ":produce-models") {
           if (command.value == "true") {
@@ -153,8 +166,12 @@ struct Frontend::Implementation {
         clear_side_assertion_capture();
         {
           const core::TermId assertion = build_term(command.assertion);
+          if (terms_.get(assertion).sort != symbols_.bool_sort()) {
+            throw UnsupportedInput("assert expects a Bool term");
+          }
           for (const core::TermId side_assertion : side_assertions_) {
             if (emitted_side_assertions_.insert(side_assertion).second) {
+              emitted_side_assertion_trail_.push_back(side_assertion);
               assertions.push_back(side_assertion);
             }
           }
@@ -217,6 +234,30 @@ struct Frontend::Implementation {
     return fresh_auxiliary_constant(sort, prefix);
   }
 
+  void push_scope() {
+    scopes_.push_back({definition_trail_.size(), emitted_side_assertion_trail_.size(),
+                       declared_real_constant_symbols_.size(),
+                       declared_int_constant_symbols_.size()});
+    symbols_.push_scope();
+  }
+
+  void pop_scope() {
+    if (scopes_.empty()) throw std::invalid_argument("frontend scope underflow");
+    const Scope scope = scopes_.back();
+    scopes_.pop_back();
+    while (definition_trail_.size() > scope.definitions) {
+      definitions_.erase(definition_trail_.back());
+      definition_trail_.pop_back();
+    }
+    while (emitted_side_assertion_trail_.size() > scope.side_assertions) {
+      emitted_side_assertions_.erase(emitted_side_assertion_trail_.back());
+      emitted_side_assertion_trail_.pop_back();
+    }
+    declared_real_constant_symbols_.resize(scope.real_symbols);
+    declared_int_constant_symbols_.resize(scope.int_symbols);
+    symbols_.pop_scope();
+  }
+
  private:
   struct Definition {
     std::vector<std::string> parameters;
@@ -245,9 +286,11 @@ struct Frontend::Implementation {
   }
 
   std::optional<core::TermId> lookup_bound_term(const std::string& name) const {
-    for (auto scope = let_scopes_.rbegin(); scope != let_scopes_.rend(); ++scope) {
-      const auto found = scope->find(name);
-      if (found != scope->end()) {
+    const std::size_t base = definition_scope_bases_.empty() ? 0 : definition_scope_bases_.back();
+    for (std::size_t index = let_scopes_.size(); index > base; --index) {
+      const auto& scope = let_scopes_[index - 1];
+      const auto found = scope.find(name);
+      if (found != scope.end()) {
         return found->second;
       }
     }
@@ -258,11 +301,6 @@ struct Frontend::Implementation {
     if (expr.list.size() != arity) {
       throw UnsupportedInput(std::string(op) + " has wrong arity");
     }
-  }
-
-  static bool has_head(const smtlib::SExpr& expr, std::string_view head) {
-    return expr.kind == smtlib::SExpr::Kind::List && !expr.list.empty() &&
-           expr.list[0].kind == smtlib::SExpr::Kind::Atom && expr.list[0].atom == head;
   }
 
   core::TermId build_pairwise_equality(core::TermId lhs, core::TermId rhs) {
@@ -311,6 +349,9 @@ struct Frontend::Implementation {
   }
 
   void declare_fun(const smtlib::Command& command) {
+    if (definitions_.contains(command.name)) {
+      throw UnsupportedInput("duplicate function declaration: " + command.name);
+    }
     std::vector<core::SortId> arg_sorts;
     for (const std::string& name : command.arg_sorts) {
       arg_sorts.push_back(lookup_sort_name(name));
@@ -368,6 +409,10 @@ struct Frontend::Implementation {
     definition.parameters.reserve(command.parameters.size());
     definition.parameter_sorts.reserve(command.parameters.size());
     for (const smtlib::SortedVar& parameter : command.parameters) {
+      if (std::find(definition.parameters.begin(), definition.parameters.end(), parameter.name) !=
+          definition.parameters.end()) {
+        throw UnsupportedInput("duplicate define-fun parameter: " + parameter.name);
+      }
       definition.parameters.push_back(parameter.name);
       definition.parameter_sorts.push_back(lookup_sort_name(parameter.sort));
     }
@@ -392,8 +437,31 @@ struct Frontend::Implementation {
       nullary_definition_side_assertions_ += definition.compiled_side_assertions.size();
     } else {
       definition.body = std::make_unique<smtlib::SExpr>(command.body);
+      if (validate_parameterized_definitions_) {
+        // Validate in the current declaration environment using fresh internal
+        // parameters. No second frontend or declaration-prefix replay is needed.
+        std::unordered_map<std::string, core::TermId> parameters;
+        for (std::size_t i = 0; i < definition.parameters.size(); ++i)
+          parameters.emplace(definition.parameters[i],
+                             fresh_auxiliary_constant(definition.parameter_sorts[i], "parameter"));
+        let_scopes_.push_back(std::move(parameters));
+        clear_side_assertion_capture();
+        core::TermId body;
+        try {
+          body = build_term(command.body);
+        } catch (...) {
+          let_scopes_.pop_back();
+          clear_side_assertion_capture();
+          throw;
+        }
+        let_scopes_.pop_back();
+        clear_side_assertion_capture();
+        if (terms_.get(body).sort != definition.result_sort)
+          throw UnsupportedInput("define-fun result sort mismatch: " + command.name);
+      }
     }
     definitions_.emplace(command.name, std::move(definition));
+    definition_trail_.push_back(command.name);
   }
 
   // Definition instantiation's actual body-building (which used to be
@@ -407,21 +475,31 @@ struct Frontend::Implementation {
     while (true) {
       const std::string name =
           std::string{"$primo_"} + std::string{prefix} + "_" + std::to_string(auxiliary_counter_++);
-      if (symbols_.lookup_symbol(name).has_value()) {
+      if (symbols_.lookup_symbol(name).has_value() || definitions_.contains(name)) {
         continue;
       }
-      return terms_.mk_constant(symbols_.declare_constant(name, sort));
+      return terms_.mk_constant(symbols_.declare_internal_constant(name, sort));
     }
   }
 
   core::SymbolTable symbols_;
   core::TermManager terms_{symbols_};
   std::vector<std::unordered_map<std::string, core::TermId>> let_scopes_;
+  std::vector<std::size_t> definition_scope_bases_;
   std::unordered_map<std::string, Definition> definitions_;
   std::unordered_set<std::string> expanding_definitions_;
   std::vector<core::TermId> side_assertions_;
   std::unordered_set<core::TermId> side_assertion_ids_;
   std::unordered_set<core::TermId> emitted_side_assertions_;
+  std::vector<core::TermId> emitted_side_assertion_trail_;
+  std::vector<std::string> definition_trail_;
+  struct Scope {
+    std::size_t definitions;
+    std::size_t side_assertions;
+    std::size_t real_symbols;
+    std::size_t int_symbols;
+  };
+  std::vector<Scope> scopes_;
   std::vector<core::SymbolId> declared_real_constant_symbols_;
   std::vector<core::SymbolId> declared_int_constant_symbols_;
   std::optional<std::string> logic_;
@@ -432,6 +510,7 @@ struct Frontend::Implementation {
   bool saw_check_sat_ = false;
   bool requested_model_ = false;
   bool produce_models_ = false;
+  bool validate_parameterized_definitions_ = false;
 };
 
 core::TermId TermBuilder::run(const smtlib::SExpr& root) {
@@ -483,24 +562,31 @@ std::shared_ptr<std::vector<const smtlib::SExpr*>> TermBuilder::collect(const sm
 
 void TermBuilder::dispatch(const smtlib::SExpr& expr, Continuation k) {
   if (expr.kind == smtlib::SExpr::Kind::Atom) {
+    if (expr.atom_kind == smtlib::TokenKind::Numeral ||
+        expr.atom_kind == smtlib::TokenKind::Decimal) {
+      const auto literal = util::Rational::parse(expr.atom);
+      if (!literal) throw UnsupportedInput("invalid arithmetic literal: " + expr.atom);
+      const bool integer_logic = frontend_.logic_ == "QF_LIA" || frontend_.logic_ == "QF_UFLIA";
+      if (integer_logic && expr.atom_kind == smtlib::TokenKind::Decimal)
+        throw UnsupportedInput("decimal literal requires real arithmetic");
+      const core::SortId numeral_sort =
+          integer_logic ? frontend_.symbols_.int_sort() : frontend_.symbols_.real_sort();
+      resume(std::move(k), frontend_.terms_.mk_rational(*literal, numeral_sort));
+      return;
+    }
+    if (!expr.is_symbol())
+      throw UnsupportedInput("unsupported literal or reserved term: " + expr.atom);
+    const auto bound = frontend_.lookup_bound_term(expr.atom);
+    if (bound.has_value()) {
+      resume(std::move(k), bound.value());
+      return;
+    }
     if (expr.atom == "true") {
       resume(std::move(k), frontend_.terms_.mk_bool(true));
       return;
     }
     if (expr.atom == "false") {
       resume(std::move(k), frontend_.terms_.mk_bool(false));
-      return;
-    }
-    if (const auto literal = util::Rational::parse(expr.atom); literal.has_value()) {
-      const bool integer_logic = frontend_.logic_ == "QF_LIA" || frontend_.logic_ == "QF_UFLIA";
-      const core::SortId numeral_sort =
-          integer_logic ? frontend_.symbols_.int_sort() : frontend_.symbols_.real_sort();
-      resume(std::move(k), frontend_.terms_.mk_rational(literal.value(), numeral_sort));
-      return;
-    }
-    const auto bound = frontend_.lookup_bound_term(expr.atom);
-    if (bound.has_value()) {
-      resume(std::move(k), bound.value());
       return;
     }
     if (!frontend_.definitions_.empty()) {
@@ -523,6 +609,21 @@ void TermBuilder::dispatch(const smtlib::SExpr& expr, Continuation k) {
   }
 
   const std::string& head = expr.list[0].atom;
+  if (expr.list[0].atom_kind == smtlib::TokenKind::Reserved) {
+    if (head == "let") {
+      dispatch_let(expr, std::move(k));
+      return;
+    }
+    if (head == "!") {
+      if (expr.list.size() < 3 ||
+          !smtlib::valid_attributes(std::span<const smtlib::SExpr>(expr.list).subspan(2)))
+        throw UnsupportedInput("annotated term expects a body and nonempty attribute sequence");
+      schedule(expr.list[1], std::move(k));
+      return;
+    }
+    throw UnsupportedInput("unsupported reserved expression: " + head);
+  }
+  if (!expr.list[0].is_symbol()) throw UnsupportedInput("application head must be a symbol");
   if (head == "not") {
     Frontend::Implementation::require_arity(expr, 2, "not");
     schedule(expr.list[1], [this, k = std::move(k)](core::TermId x) mutable {
@@ -552,19 +653,8 @@ void TermBuilder::dispatch(const smtlib::SExpr& expr, Continuation k) {
     dispatch_xor(expr, std::move(k));
     return;
   }
-  if (head == "!") {
-    if (expr.list.size() < 2) {
-      throw UnsupportedInput("annotated term has no body");
-    }
-    schedule(expr.list[1], std::move(k));
-    return;
-  }
   if (head == "ite") {
     dispatch_ite(expr, std::move(k));
-    return;
-  }
-  if (head == "let") {
-    dispatch_let(expr, std::move(k));
     return;
   }
   if (head == "=") {
@@ -640,9 +730,10 @@ void TermBuilder::dispatch_let(const smtlib::SExpr& expr, Continuation k) {
     throw UnsupportedInput("let bindings must be a list");
   }
   const smtlib::SExpr& bindings_expr = expr.list[1];
+  if (bindings_expr.list.empty()) throw UnsupportedInput("let requires at least one binding");
   for (const smtlib::SExpr& binding : bindings_expr.list) {
     if (binding.kind != smtlib::SExpr::Kind::List || binding.list.size() != 2 ||
-        binding.list[0].kind != smtlib::SExpr::Kind::Atom) {
+        !binding.list[0].is_symbol()) {
       throw UnsupportedInput("malformed let binding");
     }
   }
@@ -656,9 +747,9 @@ void TermBuilder::dispatch_let(const smtlib::SExpr& expr, Continuation k) {
     std::unordered_map<std::string, core::TermId> scope;
     for (std::size_t i = 0; i < bindings_expr.list.size(); ++i) {
       const std::string& name = bindings_expr.list[i].list[0].atom;
-      if (!scope.emplace(name, values[i]).second) {
-        throw UnsupportedInput("duplicate let binding: " + name);
-      }
+      // Selected Z3 compatibility extension: last duplicate wins, but every
+      // right-hand side was evaluated outside this new parallel scope.
+      scope.insert_or_assign(name, values[i]);
     }
     frontend_.let_scopes_.push_back(std::move(scope));
     schedule(expr.list[2], [this, k = std::move(k)](core::TermId body) mutable {
@@ -956,12 +1047,17 @@ void TermBuilder::dispatch_instantiate_definition(const std::string& name,
   }
 
   frontend_.expanding_definitions_.insert(name);
+  // SMT-LIB 2.7 Section 4.2.3: free names belong to the definition's
+  // declaration environment, not to the caller's lets or macro parameters.
+  // Arguments above have already been evaluated in the caller's environment.
+  frontend_.definition_scope_bases_.push_back(frontend_.let_scopes_.size());
   frontend_.let_scopes_.push_back(std::move(scope));
   const core::SortId result_sort = definition.result_sort;
   assert(definition.body != nullptr);
   schedule(*definition.body,
            [this, k = std::move(k), name, result_sort](core::TermId body) mutable {
              frontend_.let_scopes_.pop_back();
+             frontend_.definition_scope_bases_.pop_back();
              frontend_.expanding_definitions_.erase(name);
              if (frontend_.terms_.get(body).sort != result_sort) {
                throw UnsupportedInput("define-fun result sort mismatch: " + name);
@@ -970,7 +1066,8 @@ void TermBuilder::dispatch_instantiate_definition(const std::string& name,
            });
 }
 
-Frontend::Frontend() : implementation_(std::make_unique<Implementation>()) {}
+Frontend::Frontend(bool validate_parameterized_definitions)
+    : implementation_(std::make_unique<Implementation>(validate_parameterized_definitions)) {}
 Frontend::~Frontend() = default;
 
 void Frontend::process_command(const smtlib::Command& command,
@@ -1016,5 +1113,8 @@ std::size_t Frontend::nullary_definition_side_assertions() const {
 core::TermId Frontend::fresh_internal_constant(core::SortId sort, std::string_view prefix) {
   return implementation_->fresh_internal_constant(sort, prefix);
 }
+
+void Frontend::push_scope() { implementation_->push_scope(); }
+void Frontend::pop_scope() { implementation_->pop_scope(); }
 
 }  // namespace primo::smt

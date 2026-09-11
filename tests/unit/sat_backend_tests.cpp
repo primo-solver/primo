@@ -2,6 +2,7 @@
 #undef NDEBUG
 #endif
 
+#include <algorithm>
 #include <cassert>
 #include <deque>
 #include <optional>
@@ -17,6 +18,52 @@ using primo::sat::Lit;
 using primo::sat::SatResult;
 
 namespace {
+
+class AssignmentRecorder final : public ExternalPropagator {
+ public:
+  std::vector<int> assignments;
+  void notify_assignment(const std::vector<int>& lits) override {
+    assignments.insert(assignments.end(), lits.begin(), lits.end());
+  }
+  void notify_new_decision_level() override {}
+  void notify_backtrack(std::size_t) override {}
+  bool cb_check_found_model(const std::vector<int>&) override { return true; }
+  bool saw(int lit) const {
+    return std::find(assignments.begin(), assignments.end(), lit) != assignments.end();
+  }
+};
+
+void reconnect_replays_roots_and_drops_assumptions() {
+  CadicalBackend backend({{"inprocessing", 0}});
+  if (!backend.capabilities().external_propagation) return;
+  const int root = backend.new_var();
+  const int selector = backend.new_var();
+  const int atom = backend.new_var();
+  backend.add_clause({Lit{root}});
+  backend.add_clause({Lit{-selector}, Lit{atom}});
+  AssignmentRecorder first;
+  backend.reconnect_external_propagator(first, {root, atom});
+  backend.assume(Lit{selector});
+  assert(backend.solve() == SatResult::Sat);
+  assert(first.saw(root) && first.saw(atom));
+  AssignmentRecorder second;
+  backend.reconnect_external_propagator(second, {root, atom});
+  backend.assume(Lit{-root});
+  assert(backend.solve() == SatResult::Unsat);
+  AssignmentRecorder third;
+  backend.reconnect_external_propagator(third, {root, atom});
+  backend.add_clause({Lit{-selector}});
+  backend.assume(Lit{-atom});
+  assert(backend.solve() == SatResult::Sat);
+  assert(third.saw(root) && third.saw(-atom));
+  const int fresh = backend.new_var();
+  backend.add_clause({Lit{fresh}});
+  AssignmentRecorder fourth;
+  backend.reconnect_external_propagator(fourth, {root, atom, fresh});
+  assert(backend.solve() == SatResult::Sat);
+  assert(fourth.saw(root) && fourth.saw(fresh));
+  backend.disconnect_external_propagator();
+}
 
 class FreshObservedModelCheckPropagator final : public ExternalPropagator {
  public:
@@ -140,6 +187,52 @@ class FreshObservedPropagationCallbackPropagator final : public ExternalPropagat
   bool propagated_ = false;
   bool reason_started_ = false;
 };
+
+// A reason produced by the retired callback must be settled before its owner
+// dies, and its permanent unit consequence must be replayed to the next owner.
+void reconnect_after_external_reason() {
+  CadicalBackend backend({}, true);
+  if (!backend.capabilities().external_propagation) return;
+  const int x = backend.new_var();
+  backend.add_clause({Lit{x}});
+  int inferred = 0;
+  {
+    FreshObservedPropagationCallbackPropagator first(backend);
+    backend.reconnect_external_propagator(first, {x});
+    assert(backend.solve() == SatResult::Sat);
+    inferred = *first.fresh_var();
+    backend.disconnect_external_propagator();
+  }
+  AssignmentRecorder second;
+  backend.reconnect_external_propagator(second, {x, inferred});
+  assert(backend.solve() == SatResult::Sat);
+  assert(second.saw(x) && second.saw(inferred));
+  backend.assume(Lit{-inferred});
+  assert(backend.solve() == SatResult::Unsat);
+  backend.disconnect_external_propagator();
+}
+
+void reconnect_after_cancellation() {
+  class Stop final : public primo::sat::Terminator {
+   public:
+    bool terminate() override { return true; }
+  } stop;
+  CadicalBackend backend({}, true);
+  if (!backend.capabilities().external_propagation) return;
+  std::vector<int> variables;
+  for (int i = 0; i < 100; ++i) variables.push_back(backend.new_var());
+  backend.add_clause({Lit{variables.front()}});
+  AssignmentRecorder first;
+  backend.reconnect_external_propagator(first, variables);
+  backend.connect_terminator(&stop);
+  assert(backend.solve() == SatResult::Unknown);
+  backend.disconnect_terminator();
+  AssignmentRecorder second;
+  backend.reconnect_external_propagator(second, variables);
+  assert(backend.solve() == SatResult::Sat);
+  assert(second.saw(variables.front()));
+  backend.disconnect_external_propagator();
+}
 
 void backend_reports_sat_for_simple_clause() {
   CadicalBackend backend;
@@ -277,6 +370,9 @@ void backend_observes_fresh_variable_from_propagation_callback() {
 }  // namespace
 
 int main() {
+  reconnect_replays_roots_and_drops_assumptions();
+  reconnect_after_external_reason();
+  reconnect_after_cancellation();
   backend_reports_sat_for_simple_clause();
   backend_reports_unsat_for_contradiction();
   backend_supports_assumptions();

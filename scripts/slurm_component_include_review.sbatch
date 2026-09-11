@@ -22,7 +22,7 @@ from pathlib import Path
 out = Path(os.environ["PRIMO_REVIEW_OUT_DIR"])
 out.mkdir(parents=True, exist_ok=True)
 sources = sorted(path for folder in (Path("src"), Path("tests"))
-                 for path in folder.rglob("*.cpp") if "antlr" not in path.parts)
+                 for path in folder.rglob("*.cpp"))
 headers = Path("contrib/local/clang-tools-env/cxx-headers/include-paths.txt").read_text().splitlines()
 assert sources and all(Path(path).is_dir() for path in headers)
 arguments = [argument for path in headers for argument in ("--extra-arg=-isystem", "--extra-arg=" + path)]

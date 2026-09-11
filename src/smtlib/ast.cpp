@@ -1,7 +1,10 @@
 #include "smtlib/ast.hpp"
 
+#include <cstddef>
 #include <utility>
 #include <vector>
+
+#include "smtlib/lexer.hpp"
 
 namespace primo::smtlib {
 
@@ -10,10 +13,10 @@ namespace {
 // Iterative (explicit-stack) deep copy of an SExpr tree, used by SExpr's
 // copy constructor/assignment instead of the compiler-generated recursive
 // version. One Frame per list node currently being rebuilt, mirroring
-// smtlib::parser.cpp's iterative parse_all().
+// smtlib::parser.cpp's iterative parse_one().
 SExpr deep_copy(const SExpr& root) {
   if (root.kind == SExpr::Kind::Atom) {
-    return SExpr::make_atom(root.atom);
+    return SExpr::make_atom(root.atom, root.atom_kind);
   }
   struct Frame {
     const SExpr* source;
@@ -28,7 +31,7 @@ SExpr deep_copy(const SExpr& root) {
       const SExpr& child = frame.source->list[frame.next_child];
       ++frame.next_child;
       if (child.kind == SExpr::Kind::Atom) {
-        frame.built.push_back(SExpr::make_atom(child.atom));
+        frame.built.push_back(SExpr::make_atom(child.atom, child.atom_kind));
       } else {
         stack.push_back(Frame{&child, {}, 0});
       }
@@ -78,9 +81,10 @@ SExpr::~SExpr() {
   }
 }
 
-SExpr SExpr::make_atom(std::string value) {
+SExpr SExpr::make_atom(std::string value, TokenKind category) {
   SExpr expr;
   expr.kind = Kind::Atom;
+  expr.atom_kind = category;
   expr.atom = std::move(value);
   return expr;
 }
@@ -93,5 +97,7 @@ SExpr SExpr::make_list(std::vector<SExpr> elements) {
 }
 
 bool SExpr::is_atom(const std::string& value) const { return kind == Kind::Atom && atom == value; }
+
+bool SExpr::is_symbol() const { return kind == Kind::Atom && atom_kind == TokenKind::Symbol; }
 
 }  // namespace primo::smtlib

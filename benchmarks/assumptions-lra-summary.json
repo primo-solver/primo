@@ -1,0 +1,894 @@
+{
+  "run_id": "2026-09-11-assumptions-lra-qualification",
+  "candidate_commit": "04d2e23",
+  "candidate_version": "primo 0.1.0\ngit: 04d2e23\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+  "candidate_sha256": "f823de911dbdb008ab89acebebf2fa5e467d24eb45f88fa1fe94f05c600249e8",
+  "default_mode": "rebuild",
+  "status": "complete-opt-in-accepted-bounded-qualification",
+  "resources": {
+    "host": "SLURM compute node (raw host/task provenance in each run)",
+    "build_job": "142199",
+    "backend_session_regression_job": "142200",
+    "gate_array_job": "142201",
+    "prefix_array_job": "142202",
+    "default_array_job": "142203",
+    "default_uf_retry_job": "142221",
+    "timing_array_job": "142225",
+    "gate": "250 sessions/shard, 4 concurrent tasks, 4 GiB/task, 30 min/task; 1 CPU per task requested, scheduler allocated 2 CPUs per array element, one serial driver",
+    "prefix": "4 queries/session, 4 GiB/task, 5 min/task, 30 s/query and Dolmen check",
+    "default": "8 GiB/task, 15 min/task, 30 s/query and Dolmen check; UF retry 10000 theory conflicts, other selected logics 1000",
+    "timing": "--ntasks=1, --cpus-per-task=1, 8 GiB/task, 12 min allocation, 600 s whole-session solver timeout; scheduler reserved two logical CPUs per element; one serial single-threaded solver process"
+  },
+  "commands": {
+    "gate": "scripts/slurm_incremental_lra_gate.sbatch; python3 scripts/incremental_lra_gate.py --kind KIND --seed SEED --count 250 --solver build-slurm-rel/primo --solver-arg=--quiet --solver-arg=--incremental-mode=assumptions --solver-arg=--max-theory-conflicts=10000 --ref contrib/local/bin/z3 --dolmen contrib/local/bin/dolmen --expected-git 04d2e23 --timeout 15 --dolmen-timeout 20 --out OUTPUT; native kind also supplies task-0 and task-1 model-prefix/original.smt2 from results/native-lra-c3ca55f",
+    "prefix": "scripts/slurm_assumptions_native_prefix.sbatch; scripts/check_assumptions_native_prefix.py on manifest indices 0..9, --queries 4, --solver-arg=--quiet --solver-arg=--incremental-mode=assumptions --solver-arg=--max-theory-conflicts=10000, --expected-git 04d2e23; actual streamed models checked separately from timing",
+    "default": "scripts/slurm_incremental_corpus.sbatch on benchmarks/incremental-parser-real-25.json; QF_UF selected from retry with PRIMO_THEORY_CONFLICT_LIMIT=10000; other logics retain first successful run",
+    "timing": "sbatch --ntasks=1 scripts/slurm_assumptions_native_compare.sbatch; each mode uses --quiet --stats --incremental-mode=MODE --max-theory-conflicts=10000; unchanged native stdin, indices 0 and 1, timeout 600"
+  },
+  "tools": {
+    "z3": {
+      "version": "Z3 version 5.1.0 - 64 bit",
+      "sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0"
+    },
+    "dolmen": {
+      "version": "0.10",
+      "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+    }
+  },
+  "gates": {
+    "generated_sessions": 1000,
+    "native_mutated_sessions": 1000,
+    "pass_sessions": 2000,
+    "queries": 16000,
+    "sat_models_accepted_by_dolmen": 10802,
+    "wrong_answer": 0,
+    "crash": 0,
+    "parser_type_error": 0,
+    "timeout": 0,
+    "unsupported": 0,
+    "reference_disagreement": 0,
+    "untriaged_failure": 0,
+    "native_seed_precheck": "Both pristine first-query native seeds also passed before each of the four native shards; eight additional UNSAT queries, excluded from generated/mutation counts.",
+    "shards": [
+      {
+        "index": 0,
+        "kind": "generated",
+        "seed": 202609110,
+        "count": 250,
+        "generator_sha256": "76337b1b8390bd52396a0cd431efea76eecfa355b845757f4324bd97014cff16",
+        "native_seeds": {},
+        "summary": {
+          "sessions": 250,
+          "pass": 250,
+          "sat_models": 2000,
+          "queries": 2750,
+          "failures": []
+        },
+        "artifact": "results/assumptions-gate-04d2e23/shard-0",
+        "job": "142204"
+      },
+      {
+        "index": 1,
+        "kind": "generated",
+        "seed": 202609360,
+        "count": 250,
+        "generator_sha256": "76337b1b8390bd52396a0cd431efea76eecfa355b845757f4324bd97014cff16",
+        "native_seeds": {},
+        "summary": {
+          "sessions": 250,
+          "pass": 250,
+          "sat_models": 2000,
+          "queries": 2750,
+          "failures": []
+        },
+        "artifact": "results/assumptions-gate-04d2e23/shard-1",
+        "job": "142205"
+      },
+      {
+        "index": 2,
+        "kind": "generated",
+        "seed": 202609610,
+        "count": 250,
+        "generator_sha256": "76337b1b8390bd52396a0cd431efea76eecfa355b845757f4324bd97014cff16",
+        "native_seeds": {},
+        "summary": {
+          "sessions": 250,
+          "pass": 250,
+          "sat_models": 2000,
+          "queries": 2750,
+          "failures": []
+        },
+        "artifact": "results/assumptions-gate-04d2e23/shard-2",
+        "job": "142206"
+      },
+      {
+        "index": 3,
+        "kind": "generated",
+        "seed": 202609860,
+        "count": 250,
+        "generator_sha256": "76337b1b8390bd52396a0cd431efea76eecfa355b845757f4324bd97014cff16",
+        "native_seeds": {},
+        "summary": {
+          "sessions": 250,
+          "pass": 250,
+          "sat_models": 2000,
+          "queries": 2750,
+          "failures": []
+        },
+        "artifact": "results/assumptions-gate-04d2e23/shard-3",
+        "job": "142207"
+      },
+      {
+        "index": 4,
+        "kind": "native",
+        "seed": 202610110,
+        "count": 250,
+        "generator_sha256": "76337b1b8390bd52396a0cd431efea76eecfa355b845757f4324bd97014cff16",
+        "native_seeds": {
+          "original.smt2:task-0": "63f9914d766c3445c78fdb914ce1cd38b96af8b543ef450a52704ca42f02b2c1",
+          "original.smt2:task-1": "303c89508e15700844089aa462619446bb71acd9127135f189feaf459fd4d0a1"
+        },
+        "summary": {
+          "sessions": 250,
+          "pass": 250,
+          "sat_models": 693,
+          "queries": 1250,
+          "failures": []
+        },
+        "artifact": "results/assumptions-gate-04d2e23/shard-4",
+        "job": "142222"
+      },
+      {
+        "index": 5,
+        "kind": "native",
+        "seed": 202610360,
+        "count": 250,
+        "generator_sha256": "76337b1b8390bd52396a0cd431efea76eecfa355b845757f4324bd97014cff16",
+        "native_seeds": {
+          "original.smt2:task-0": "63f9914d766c3445c78fdb914ce1cd38b96af8b543ef450a52704ca42f02b2c1",
+          "original.smt2:task-1": "303c89508e15700844089aa462619446bb71acd9127135f189feaf459fd4d0a1"
+        },
+        "summary": {
+          "sessions": 250,
+          "pass": 250,
+          "sat_models": 708,
+          "queries": 1250,
+          "failures": []
+        },
+        "artifact": "results/assumptions-gate-04d2e23/shard-5",
+        "job": "142223"
+      },
+      {
+        "index": 6,
+        "kind": "native",
+        "seed": 202610610,
+        "count": 250,
+        "generator_sha256": "76337b1b8390bd52396a0cd431efea76eecfa355b845757f4324bd97014cff16",
+        "native_seeds": {
+          "original.smt2:task-0": "63f9914d766c3445c78fdb914ce1cd38b96af8b543ef450a52704ca42f02b2c1",
+          "original.smt2:task-1": "303c89508e15700844089aa462619446bb71acd9127135f189feaf459fd4d0a1"
+        },
+        "summary": {
+          "sessions": 250,
+          "pass": 250,
+          "sat_models": 702,
+          "queries": 1250,
+          "failures": []
+        },
+        "artifact": "results/assumptions-gate-04d2e23/shard-6",
+        "job": "142224"
+      },
+      {
+        "index": 7,
+        "kind": "native",
+        "seed": 202610860,
+        "count": 250,
+        "generator_sha256": "76337b1b8390bd52396a0cd431efea76eecfa355b845757f4324bd97014cff16",
+        "native_seeds": {
+          "original.smt2:task-0": "63f9914d766c3445c78fdb914ce1cd38b96af8b543ef450a52704ca42f02b2c1",
+          "original.smt2:task-1": "303c89508e15700844089aa462619446bb71acd9127135f189feaf459fd4d0a1"
+        },
+        "summary": {
+          "sessions": 250,
+          "pass": 250,
+          "sat_models": 699,
+          "queries": 1250,
+          "failures": []
+        },
+        "artifact": "results/assumptions-gate-04d2e23/shard-7",
+        "job": "142201"
+      }
+    ],
+    "limits": "Native mutation changes numerals and strictness in first-query seeds plus scopes. It does not cover complete native sessions. Auto pipeline is the exact campaign profile; Off has unit and preliminary local smoke coverage."
+  },
+  "prefix_validation": {
+    "manifest": "benchmarks/native-incremental-qf-lra.json",
+    "sessions": 10,
+    "queries": 40,
+    "sat_models_accepted_by_dolmen": 10,
+    "rows": [
+      {
+        "index": 0,
+        "file": "incremental/QF_LRA/hybrid_networks/bmwlin_20_5_1.inter.bmc_k100.smt2",
+        "sha256": "5af910b06320a21413677b0eb429486c949d91ceceebadcac77ceeafa45e1fbf",
+        "queries": 4,
+        "sat_models": 0,
+        "artifact": "results/assumptions-prefix-04d2e23/task-0"
+      },
+      {
+        "index": 1,
+        "file": "incremental/QF_LRA/hybrid_networks/bmwlin_20_5_1.inter.ind_k100.smt2",
+        "sha256": "5e80a003cd084f7de02cbd11314ce9cd4a9c1845d9a43080dbaa427f64eb435d",
+        "queries": 4,
+        "sat_models": 2,
+        "artifact": "results/assumptions-prefix-04d2e23/task-1"
+      },
+      {
+        "index": 2,
+        "file": "incremental/QF_LRA/hybrid_networks/dist_controller_15_3.inter.bmc_k100.smt2",
+        "sha256": "da25b2358c5d95bd134f639b756a675efe9a8c1030b04aece6cb8760c7a6b845",
+        "queries": 4,
+        "sat_models": 0,
+        "artifact": "results/assumptions-prefix-04d2e23/task-2"
+      },
+      {
+        "index": 3,
+        "file": "incremental/QF_LRA/hybrid_networks/dist_controller_15_3.inter.ind_k100.smt2",
+        "sha256": "af8df86f2c82f484d4eed9aaae02007374836384e64e5ea27d0a8a49ef68aaed",
+        "queries": 4,
+        "sat_models": 2,
+        "artifact": "results/assumptions-prefix-04d2e23/task-3"
+      },
+      {
+        "index": 4,
+        "file": "incremental/QF_LRA/hybrid_networks/fisher_ring_20_3.inter.bmc_k100.smt2",
+        "sha256": "17cb8f4a8142ffffa4ce158ec7fa5a3f8690879cdf0f97e6f8fcaa363cd88a02",
+        "queries": 4,
+        "sat_models": 0,
+        "artifact": "results/assumptions-prefix-04d2e23/task-4"
+      },
+      {
+        "index": 5,
+        "file": "incremental/QF_LRA/hybrid_networks/fisher_ring_20_3.inter.ind_k100.smt2",
+        "sha256": "22bc5176ef2de042c285c7faeff4ce3cde64dfb3a1e711edacea9c775a8e7ba1",
+        "queries": 4,
+        "sat_models": 2,
+        "artifact": "results/assumptions-prefix-04d2e23/task-5"
+      },
+      {
+        "index": 6,
+        "file": "incremental/QF_LRA/hybrid_networks/fisher_star_20_3.inter.bmc_k100.smt2",
+        "sha256": "17682e3c43ccec75a1dc95cf80b78c8b392f5ed7019c5b807618d986b985ed23",
+        "queries": 4,
+        "sat_models": 0,
+        "artifact": "results/assumptions-prefix-04d2e23/task-6"
+      },
+      {
+        "index": 7,
+        "file": "incremental/QF_LRA/hybrid_networks/fisher_star_20_3.inter.ind_k100.smt2",
+        "sha256": "4dab52fa8461e8cb08abf84fd5bab4f2f495369882d34812dc3b09ba8a2d2557",
+        "queries": 4,
+        "sat_models": 2,
+        "artifact": "results/assumptions-prefix-04d2e23/task-7"
+      },
+      {
+        "index": 8,
+        "file": "incremental/QF_LRA/hybrid_networks/rod_30_3.inter.bmc_k100.smt2",
+        "sha256": "c9d05bf18f96d884f15852dd6e010ee7ef066e5bb31268290b82a985e6ed07a4",
+        "queries": 4,
+        "sat_models": 0,
+        "artifact": "results/assumptions-prefix-04d2e23/task-8"
+      },
+      {
+        "index": 9,
+        "file": "incremental/QF_LRA/hybrid_networks/rod_30_3.inter.ind_k100.smt2",
+        "sha256": "a5cc322322d6de0da0373f1e7b695c523a33498d2b96af9c01ff1dd8ff8e328b",
+        "queries": 4,
+        "sat_models": 2,
+        "artifact": "results/assumptions-prefix-04d2e23/task-9"
+      }
+    ],
+    "qualification": "Only these first-four-query prefixes; answers matched hash-checked native status oracles; no reference reruns."
+  },
+  "default_preservation": {
+    "manifest": "benchmarks/incremental-parser-real-25.json",
+    "files": 25,
+    "sessions": 50,
+    "queries": 200,
+    "sat_models_accepted_by_dolmen": 121,
+    "lost_solved_cases": 0,
+    "current_file_seconds": 16.6212056055665,
+    "recorded_file_seconds": 16.221632,
+    "current_over_recorded_total_ratio": 1.0246321458634065,
+    "largest_per_file_ratio": 1.0893123500179227,
+    "interpretation": "Single current measurements against historical timings: total +2.5%, maximum per-file +8.9%; no large regression or solved loss. Not a paired speedup experiment.",
+    "initial_uf_resource_limit": "First QF_UF attempt stopped at NEQ/NEQ033_size4.smt2 under the already-known inadequate 1000-conflict cap. Retained as incomplete; retry used established 10000-conflict baseline budget and passed all five files.",
+    "rows": [
+      {
+        "logic": "QF_UFLRA",
+        "file": "cpachecker-bmc-svcomp14/cpachecker-bmc.floppy_false-unreach-call.i.cil.c.smt2",
+        "sha256": "43265e802f3342f0ccf1b61616538dba2c9e4048ce9e889a5415b0ece73050f2",
+        "expected": "sat",
+        "file_seconds": 0.7180106993764639,
+        "recorded_seconds": 0.711131,
+        "artifact": "results/assumptions-default-04d2e23/QF_UFLRA",
+        "sessions": 2,
+        "queries": 8,
+        "sat_models": 7
+      },
+      {
+        "logic": "QF_UFLRA",
+        "file": "cpachecker-induction-svcomp14/cpachecker-induction.Problem03_30_true-unreach-call.c.smt2",
+        "sha256": "c3a3340f2b66d22fd51fdb26631440dc2b8ac419c2f3e10039a853b5566ed727",
+        "expected": "unsat",
+        "file_seconds": 0.39645240642130375,
+        "recorded_seconds": 0.372717,
+        "artifact": "results/assumptions-default-04d2e23/QF_UFLRA",
+        "sessions": 2,
+        "queries": 8,
+        "sat_models": 1
+      },
+      {
+        "logic": "QF_UFLRA",
+        "file": "mathsat/RandomDecoupled/pb_real_50_100_30_02.smt2",
+        "sha256": "4232075f1b2fd9cb7b500d154859c72e22bfe9a186a193ea834109fa21ceb3c9",
+        "expected": "sat",
+        "file_seconds": 0.17304660752415657,
+        "recorded_seconds": 0.173918,
+        "artifact": "results/assumptions-default-04d2e23/QF_UFLRA",
+        "sessions": 2,
+        "queries": 8,
+        "sat_models": 7
+      },
+      {
+        "logic": "QF_UFLRA",
+        "file": "cpachecker-induction-svcomp14/cpachecker-induction.32_1_cilled_true-unreach-call_ok_nondet_linux-3.4-32_1-drivers--media--dvb--dvb-usb--dvb-usb-az6027.ko-ldv_main0_sequence_infinite_withcheck_stateful.cil.out.c.smt2",
+        "sha256": "9ea696d16b1147a4965dfca8d47ebdfda4d2089606bec81eed8d15e08b0666ad",
+        "expected": "sat",
+        "file_seconds": 2.1262640580534935,
+        "recorded_seconds": 2.145479,
+        "artifact": "results/assumptions-default-04d2e23/QF_UFLRA",
+        "sessions": 2,
+        "queries": 8,
+        "sat_models": 7
+      },
+      {
+        "logic": "QF_UFLRA",
+        "file": "cpachecker-bmc-svcomp14/cpachecker-bmc.diskperf_false-unreach-call.i.cil.c.smt2",
+        "sha256": "fd5ea8bee5cffaa9f25cc7f38ee88c50d6f8149e6c294a5f009825c39ec16ee2",
+        "expected": "sat",
+        "file_seconds": 0.18562999926507473,
+        "recorded_seconds": 0.184752,
+        "artifact": "results/assumptions-default-04d2e23/QF_UFLRA",
+        "sessions": 2,
+        "queries": 8,
+        "sat_models": 7
+      },
+      {
+        "logic": "QF_LRA",
+        "file": "DTP-Scheduling/constraints-tempo-matrix6x6.pddl.smt2",
+        "sha256": "d2578d1a61ab295023d00a304de6de30535371525d4125e2fc285c37e7ca62e7",
+        "expected": "sat",
+        "file_seconds": 0.2924401983618736,
+        "recorded_seconds": 0.284459,
+        "artifact": "results/assumptions-default-04d2e23/QF_LRA",
+        "sessions": 2,
+        "queries": 8,
+        "sat_models": 7
+      },
+      {
+        "logic": "QF_LRA",
+        "file": "2017-Heizmann-UltimateInvariantSynthesis/_standard_two_index_05.i_3_2_2.bpl_7.smt2",
+        "sha256": "4ca3c0e431448d0af8fd948d05dcf81c56e3d036e5bc3d9699bf5568544763ab",
+        "expected": "unsat",
+        "file_seconds": 1.0195973012596369,
+        "recorded_seconds": 1.004729,
+        "artifact": "results/assumptions-default-04d2e23/QF_LRA",
+        "sessions": 2,
+        "queries": 8,
+        "sat_models": 1
+      },
+      {
+        "logic": "QF_LRA",
+        "file": "LassoRanker/CooperatingT2/ludcmp.t2.c_Iteration8_Loop_6-phaseTemplate.smt2",
+        "sha256": "ddc46c562c3efdc85dd5d2dd2d4dc4c7244ab9b7fb54ca572078e1c5ecadfe79",
+        "expected": "sat",
+        "file_seconds": 1.6761807538568974,
+        "recorded_seconds": 1.574551,
+        "artifact": "results/assumptions-default-04d2e23/QF_LRA",
+        "sessions": 2,
+        "queries": 8,
+        "sat_models": 7
+      },
+      {
+        "logic": "QF_LRA",
+        "file": "TM/p6-driverlogNumeric_s5.smt2",
+        "sha256": "41924d87c457468140759a08a0e1dbb4f3ee97f842fa45cec60e1366b90f3ea8",
+        "expected": "sat",
+        "file_seconds": 0.1259031891822815,
+        "recorded_seconds": 0.120509,
+        "artifact": "results/assumptions-default-04d2e23/QF_LRA",
+        "sessions": 2,
+        "queries": 8,
+        "sat_models": 7
+      },
+      {
+        "logic": "QF_LRA",
+        "file": "clock_synchro/clocksynchro_6clocks.worst_case_skew.induct.smt2",
+        "sha256": "5618dc4f9edd091b435c9c3dd268670d6482b9d957480052454641eae7097e59",
+        "expected": "unsat",
+        "file_seconds": 0.5961934700608253,
+        "recorded_seconds": 0.588899,
+        "artifact": "results/assumptions-default-04d2e23/QF_LRA",
+        "sessions": 2,
+        "queries": 8,
+        "sat_models": 1
+      },
+      {
+        "logic": "QF_LIA",
+        "file": "20180326-Bromberger/more_slacked/CAV_2009_benchmarks/smt/45-vars/v45_problem__020.smt2.slack.smt2",
+        "sha256": "b6e9bf51e8a4427fdc44ca8088eb7a7b477ac357d298e4db13d1c8bdccc33781",
+        "expected": "sat",
+        "file_seconds": 2.234317619353533,
+        "recorded_seconds": 2.192115,
+        "artifact": "results/assumptions-default-04d2e23/QF_LIA",
+        "sessions": 2,
+        "queries": 8,
+        "sat_models": 7
+      },
+      {
+        "logic": "QF_LIA",
+        "file": "Averest/parallel_prefix_sum/ParallelPrefixSum_safe_blmc002.smt2",
+        "sha256": "2371225bc622aa414b21a0a3982aae520185f7f7902359d7710c765c1f4c73f8",
+        "expected": "unsat",
+        "file_seconds": 0.5346260219812393,
+        "recorded_seconds": 0.498447,
+        "artifact": "results/assumptions-default-04d2e23/QF_LIA",
+        "sessions": 2,
+        "queries": 8,
+        "sat_models": 1
+      },
+      {
+        "logic": "QF_LIA",
+        "file": "20220307-SMPT/Diffusion2D-PT-D50N100/RF-03.smt2",
+        "sha256": "97798ef07bcd0aa027f552a82cbabb26b9fe790557aff2799f0598fcd1e674e0",
+        "expected": "sat",
+        "file_seconds": 0.33489539101719856,
+        "recorded_seconds": 0.314975,
+        "artifact": "results/assumptions-default-04d2e23/QF_LIA",
+        "sessions": 2,
+        "queries": 8,
+        "sat_models": 7
+      },
+      {
+        "logic": "QF_LIA",
+        "file": "20231117-c_inference/50_50_81_19_sat.smt2",
+        "sha256": "91073d33b333afe621d86ff1c3836d480e3a16c2971a6d4ac39855fd68db32c0",
+        "expected": "sat",
+        "file_seconds": 0.12007813900709152,
+        "recorded_seconds": 0.116845,
+        "artifact": "results/assumptions-default-04d2e23/QF_LIA",
+        "sessions": 2,
+        "queries": 8,
+        "sat_models": 7
+      },
+      {
+        "logic": "QF_LIA",
+        "file": "CAV_2009_benchmarks/smt/20-vars/problem__030.smt2",
+        "sha256": "7468ccbfdb410c6562e52a725468d91545e191b8e63cc2e46644964cfee82908",
+        "expected": "sat",
+        "file_seconds": 0.23690881580114365,
+        "recorded_seconds": 0.236686,
+        "artifact": "results/assumptions-default-04d2e23/QF_LIA",
+        "sessions": 2,
+        "queries": 8,
+        "sat_models": 7
+      },
+      {
+        "logic": "QF_UFLIA",
+        "file": "mathsat/Wisa/xs-13-05-5-4-1-5.smt2",
+        "sha256": "313fc311bcdebfd9bc9d954c547af5b2527dc371e7691a4eb08267b7d85dfe11",
+        "expected": "sat",
+        "file_seconds": 0.12345076352357864,
+        "recorded_seconds": 0.125783,
+        "artifact": "results/assumptions-default-04d2e23/QF_UFLIA",
+        "sessions": 2,
+        "queries": 8,
+        "sat_models": 7
+      },
+      {
+        "logic": "QF_UFLIA",
+        "file": "TwoSquares/smtlib.675513.smt2",
+        "sha256": "e6cec62c938d8c9e59c281aaa609e64ed669db0761e73c147006dce16d0f66e8",
+        "expected": "unsat",
+        "file_seconds": 0.2560621276497841,
+        "recorded_seconds": 0.249711,
+        "artifact": "results/assumptions-default-04d2e23/QF_UFLIA",
+        "sessions": 2,
+        "queries": 8,
+        "sat_models": 1
+      },
+      {
+        "logic": "QF_UFLIA",
+        "file": "wisas/xs_14_19.smt2",
+        "sha256": "be3571282fd94e83d9c7775e17a0e0df4bf2fc28e2674f4bf88c46f7d919a2c4",
+        "expected": "sat",
+        "file_seconds": 0.6187430918216705,
+        "recorded_seconds": 0.613633,
+        "artifact": "results/assumptions-default-04d2e23/QF_UFLIA",
+        "sessions": 2,
+        "queries": 8,
+        "sat_models": 7
+      },
+      {
+        "logic": "QF_UFLIA",
+        "file": "mathsat/Hash/hash_sat_07_10.smt2",
+        "sha256": "1c9812d9bf14fe2d110d577e4bd99e3752028e1bacb5f66c00359042c3f91944",
+        "expected": "sat",
+        "file_seconds": 2.134193869307637,
+        "recorded_seconds": 2.049253,
+        "artifact": "results/assumptions-default-04d2e23/QF_UFLIA",
+        "sessions": 2,
+        "queries": 8,
+        "sat_models": 7
+      },
+      {
+        "logic": "QF_UFLIA",
+        "file": "wisas/xs_30_30.smt2",
+        "sha256": "a7b9792da3516f223e65feb159af2503f20e0a314261109d03b293be07cd7b21",
+        "expected": "sat",
+        "file_seconds": 0.4969087652862072,
+        "recorded_seconds": 0.495405,
+        "artifact": "results/assumptions-default-04d2e23/QF_UFLIA",
+        "sessions": 2,
+        "queries": 8,
+        "sat_models": 7
+      },
+      {
+        "logic": "QF_UF",
+        "file": "2018-Goel-hwbench/QF_UF_pgm_protocol.6.prop5_ab_cti_max.smt2",
+        "sha256": "c187c60df09ccc23cd14c364f817408ec123ef9b08fc56732d03bf4b3d5594e6",
+        "expected": "sat",
+        "file_seconds": 0.5034442208707333,
+        "recorded_seconds": 0.462167,
+        "artifact": "results/assumptions-default-04d2e23-retry/QF_UF",
+        "sessions": 2,
+        "queries": 8,
+        "sat_models": 7
+      },
+      {
+        "logic": "QF_UF",
+        "file": "NEQ/NEQ033_size4.smt2",
+        "sha256": "69531ba737b2b2960ced97c1da673755f011ea2f720ccdfc684e82b3530fb881",
+        "expected": "unsat",
+        "file_seconds": 0.6046265438199043,
+        "recorded_seconds": 0.592809,
+        "artifact": "results/assumptions-default-04d2e23-retry/QF_UF",
+        "sessions": 2,
+        "queries": 8,
+        "sat_models": 1
+      },
+      {
+        "logic": "QF_UF",
+        "file": "PEQ/PEQ012_size5.smt2",
+        "sha256": "87678f1c29cd49c0f8d5bc358227a0d138b1d4a719ba186bb7b7d6cf121379be",
+        "expected": "unsat",
+        "file_seconds": 0.5501893758773804,
+        "recorded_seconds": 0.55252,
+        "artifact": "results/assumptions-default-04d2e23-retry/QF_UF",
+        "sessions": 2,
+        "queries": 8,
+        "sat_models": 1
+      },
+      {
+        "logic": "QF_UF",
+        "file": "QG-classification/qg7/iso_brn_sk028.smt2",
+        "sha256": "275ab1b3e4125c814e2e2a8a9c46db11ba62a828b0230516a00201061a352e65",
+        "expected": "unsat",
+        "file_seconds": 0.1480925939977169,
+        "recorded_seconds": 0.146852,
+        "artifact": "results/assumptions-default-04d2e23-retry/QF_UF",
+        "sessions": 2,
+        "queries": 8,
+        "sat_models": 1
+      },
+      {
+        "logic": "QF_UF",
+        "file": "SEQ/SEQ026_size4.smt2",
+        "sha256": "9c389209b6070d117026fa2cf8e6337b995a5d9c40bef211f9771c9151b938ab",
+        "expected": "unsat",
+        "file_seconds": 0.4149495828896761,
+        "recorded_seconds": 0.413287,
+        "artifact": "results/assumptions-default-04d2e23-retry/QF_UF",
+        "sessions": 2,
+        "queries": 8,
+        "sat_models": 1
+      }
+    ]
+  },
+  "local_verification": {
+    "check": "make check: 33 C++/CLI tests and 156 Python tests passed, including the harness failure regression",
+    "asan": "33 tests passed with ASan/UBSan and leak detection",
+    "lint": "make lint passed",
+    "docs": "make docs passed",
+    "static": "All 110 tracked non-generated .cpp files passed stable per-translation-unit clang-tidy with clang-analyzer-* and advisory misc-include-cleaner. No analyzer/compiler errors or actionable unused includes. Earlier overlapping scans invalidated by source edits were discarded.",
+    "review": "Whole-tree non-generated code review, ownership/borrow review, solver-efficiency review and documentation review completed; explicit retention and fresh-theory costs remain documented."
+  },
+  "reference_timings": {
+    "source": "benchmarks/native-incremental-qf-lra-comparison-summary.json",
+    "rerun": false,
+    "z3": {
+      "observed_queries": [
+        58,
+        73
+      ],
+      "completed_sessions": 0,
+      "mean_par2_seconds": 1200
+    },
+    "cvc5": {
+      "observed_queries": [
+        69,
+        77
+      ],
+      "completed_sessions": 0,
+      "mean_par2_seconds": 1200
+    }
+  },
+  "artifacts": {
+    "gate": "results/assumptions-gate-04d2e23",
+    "prefix": "results/assumptions-prefix-04d2e23",
+    "default": "results/assumptions-default-04d2e23",
+    "default_retry": "results/assumptions-default-04d2e23-retry",
+    "timing": "results/assumptions-native-04d2e23",
+    "audit": "tmp/assumptions-correctness-audit.log"
+  },
+  "harness_followup": "Initialize untriaged_failure before incrementing it. A regression injects a post-answer process failure and verifies durable failure metadata and stop-on-first-failure. No changes to generated inputs, solver/reference commands, validation decisions or passing campaign evidence.",
+  "native_comparison": {
+    "selection": [
+      0,
+      1
+    ],
+    "family": "hybrid_networks/bmwlin",
+    "timeout_seconds": 600,
+    "rows": [
+      {
+        "index": 0,
+        "mode": "rebuild",
+        "file": "incremental/QF_LRA/hybrid_networks/bmwlin_20_5_1.inter.bmc_k100.smt2",
+        "sha256": "5af910b06320a21413677b0eb429486c949d91ceceebadcac77ceeafa45e1fbf",
+        "queries": 101,
+        "outcome": "timeout",
+        "completed_sessions": 0,
+        "seconds": 600.017509996891,
+        "observed_answers": 38,
+        "observed_sat": 0,
+        "observed_unsat": 38,
+        "observed_unknown": 0,
+        "observed_status_mismatches": 0,
+        "par2_seconds": 1200,
+        "slurm_batch_maxrss_kib": 602996,
+        "reuse_at_last_completed_query": {
+          ":session.queries": 38,
+          ":session.frontend-builds": 38
+        },
+        "phase_microseconds_for_completed_queries": {
+          ":time.total-us": 576726328,
+          ":time.parse-us": 1915727,
+          ":time.frontend-us": 338115054,
+          ":time.preprocessing-us": 92164247,
+          ":time.solve-us": 144528257,
+          ":time.tactic.simplify-constant-ites-us": 125,
+          ":time.tactic.simplify-extended-terms-us": 41,
+          ":time.tactic.lower-extended-terms-us": 38,
+          ":time.tactic.normalize-boolean-us": 11546969,
+          ":time.tactic.strategy-sequence-us": 87939836,
+          ":time.tactic.preprocessing-profile-us": 53,
+          ":time.tactic.equality-bridge-us": 3549651,
+          ":time.tactic.derive-equalities-us": 20959563,
+          ":time.tactic.boolean-unit-propagation-us": 15853074,
+          ":time.tactic.forced-atom-propagation-us": 19322411,
+          ":time.tactic.propagate-values-us": 35176146,
+          ":time.tactic.solved-constant-substitution-us": 11792547,
+          ":time.tactic.solve-eqs-us": 11792837,
+          ":time.tactic.unit-equality-propagation-us": 17401276,
+          ":time.tactic.preprocessing-round-us": 67929485,
+          ":time.tactic.preprocessing-fixed-point-us": 68969024,
+          ":time.tactic.finite-domain-constraints-us": 2005487,
+          ":time.tactic.finite-domain-preprocess-us": 2005582,
+          ":time.tactic.normalize-arithmetic-us": 4034429,
+          ":time.tactic.purify-mixed-us": 1382191,
+          ":time.tactic.solve-qf-lra-us": 143362823,
+          ":time.tactic.solver-dispatch-us": 144528094
+        },
+        "actual_sat_model_qualification": "Only the separately replayed first-four-query prefix is model-qualified; no full-session correctness or performance qualification.",
+        "artifact": "results/assumptions-native-04d2e23/case-0-rebuild"
+      },
+      {
+        "index": 0,
+        "mode": "assumptions",
+        "file": "incremental/QF_LRA/hybrid_networks/bmwlin_20_5_1.inter.bmc_k100.smt2",
+        "sha256": "5af910b06320a21413677b0eb429486c949d91ceceebadcac77ceeafa45e1fbf",
+        "queries": 101,
+        "outcome": "pass",
+        "completed_sessions": 1,
+        "seconds": 126.9712988100946,
+        "observed_answers": 101,
+        "observed_sat": 0,
+        "observed_unsat": 101,
+        "observed_unknown": 0,
+        "observed_status_mismatches": 0,
+        "par2_seconds": 126.9712988100946,
+        "slurm_batch_maxrss_kib": 1081836,
+        "reuse_at_last_completed_query": {
+          ":session.engine-queries": 101,
+          ":session.retired-selectors": 100,
+          ":session.active-selectors": 1,
+          ":session.retained-terms": 721255,
+          ":session.retained-atoms": 33591,
+          ":session.prepared-atoms": 33591,
+          ":session.sat-preprocessing": 0,
+          ":session.sat-inprocessing": 0,
+          ":session.theory-state-resets": 101,
+          ":session.clauses-added": 1227891,
+          ":session.retained-active-clauses": 1221030,
+          ":session.retained-redundant-clauses": 44773,
+          ":session.engine-builds": 1,
+          ":session.translated-assertions": 202,
+          ":session.incremental-assumptions": 1,
+          ":session.safe-rewrite-pipeline": 1,
+          ":session.pipeline.lower-extended-terms": 1,
+          ":session.pipeline.lower-real-equalities": 1,
+          ":session.queries": 101,
+          ":session.frontend-builds": 1
+        },
+        "phase_microseconds_for_completed_queries": {
+          ":time.session.append-us": 917635,
+          ":time.session.theory-reset-us": 402220,
+          ":time.solve-us": 71277111,
+          ":time.total-us": 124898905,
+          ":time.tactic.simplify-extended-terms-us": 554,
+          ":time.tactic.normalize-boolean-us": 1256,
+          ":time.tactic.lower-extended-terms-us": 108,
+          ":time.tactic.normalize-arithmetic-us": 991655,
+          ":time.preprocessing-us": 995973,
+          ":time.parse-us": 4775268,
+          ":time.frontend-us": 48216345
+        },
+        "actual_sat_model_qualification": "No SAT results in completed BMC session; no SAT models require validation.",
+        "artifact": "results/assumptions-native-04d2e23/case-0-assumptions"
+      },
+      {
+        "index": 1,
+        "mode": "rebuild",
+        "file": "incremental/QF_LRA/hybrid_networks/bmwlin_20_5_1.inter.ind_k100.smt2",
+        "sha256": "5e80a003cd084f7de02cbd11314ce9cd4a9c1845d9a43080dbaa427f64eb435d",
+        "queries": 202,
+        "outcome": "timeout",
+        "completed_sessions": 0,
+        "seconds": 600.0154819916934,
+        "observed_answers": 53,
+        "observed_sat": 26,
+        "observed_unsat": 27,
+        "observed_unknown": 0,
+        "observed_status_mismatches": 0,
+        "par2_seconds": 1200,
+        "slurm_batch_maxrss_kib": 458492,
+        "reuse_at_last_completed_query": {
+          ":session.queries": 53,
+          ":session.frontend-builds": 53
+        },
+        "phase_microseconds_for_completed_queries": {
+          ":time.total-us": 573023282,
+          ":time.parse-us": 1960328,
+          ":time.frontend-us": 367379785,
+          ":time.preprocessing-us": 61109964,
+          ":time.solve-us": 142519682,
+          ":time.tactic.simplify-constant-ites-us": 172,
+          ":time.tactic.simplify-extended-terms-us": 60,
+          ":time.tactic.lower-extended-terms-us": 58,
+          ":time.tactic.normalize-boolean-us": 11328798,
+          ":time.tactic.strategy-sequence-us": 57027361,
+          ":time.tactic.preprocessing-profile-us": 62,
+          ":time.tactic.equality-bridge-us": 3356740,
+          ":time.tactic.derive-equalities-us": 3526643,
+          ":time.tactic.boolean-unit-propagation-us": 15236622,
+          ":time.tactic.forced-atom-propagation-us": 15621661,
+          ":time.tactic.propagate-values-us": 30859114,
+          ":time.tactic.solved-constant-substitution-us": 3286964,
+          ":time.tactic.solve-eqs-us": 3291670,
+          ":time.tactic.unit-equality-propagation-us": 166183,
+          ":time.tactic.preprocessing-round-us": 37678511,
+          ":time.tactic.preprocessing-fixed-point-us": 38508391,
+          ":time.tactic.finite-domain-constraints-us": 1943178,
+          ":time.tactic.finite-domain-preprocess-us": 1943302,
+          ":time.tactic.normalize-arithmetic-us": 3920083,
+          ":time.tactic.purify-mixed-us": 1324804,
+          ":time.tactic.solve-qf-lra-us": 141374350,
+          ":time.tactic.solver-dispatch-us": 142519473
+        },
+        "actual_sat_model_qualification": "Only the separately replayed first-four-query prefix is model-qualified; no full-session correctness or performance qualification.",
+        "artifact": "results/assumptions-native-04d2e23/case-1-rebuild"
+      },
+      {
+        "index": 1,
+        "mode": "assumptions",
+        "file": "incremental/QF_LRA/hybrid_networks/bmwlin_20_5_1.inter.ind_k100.smt2",
+        "sha256": "5e80a003cd084f7de02cbd11314ce9cd4a9c1845d9a43080dbaa427f64eb435d",
+        "queries": 202,
+        "outcome": "timeout",
+        "completed_sessions": 0,
+        "seconds": 600.0415656846017,
+        "observed_answers": 95,
+        "observed_sat": 47,
+        "observed_unsat": 48,
+        "observed_unknown": 0,
+        "observed_status_mismatches": 0,
+        "par2_seconds": 1200,
+        "slurm_batch_maxrss_kib": 951960,
+        "reuse_at_last_completed_query": {
+          ":session.engine-queries": 95,
+          ":session.retired-selectors": 94,
+          ":session.active-selectors": 2,
+          ":session.retained-terms": 673647,
+          ":session.retained-atoms": 36589,
+          ":session.prepared-atoms": 36589,
+          ":session.sat-preprocessing": 0,
+          ":session.sat-inprocessing": 0,
+          ":session.theory-state-resets": 95,
+          ":session.clauses-added": 1224881,
+          ":session.retained-active-clauses": 1358295,
+          ":session.retained-redundant-clauses": 38374,
+          ":session.engine-builds": 1,
+          ":session.translated-assertions": 191,
+          ":session.incremental-assumptions": 1,
+          ":session.safe-rewrite-pipeline": 1,
+          ":session.pipeline.lower-extended-terms": 1,
+          ":session.pipeline.lower-real-equalities": 1,
+          ":session.queries": 95,
+          ":session.frontend-builds": 1
+        },
+        "phase_microseconds_for_completed_queries": {
+          ":time.session.append-us": 863603,
+          ":time.session.theory-reset-us": 286351,
+          ":time.solve-us": 554847565,
+          ":time.total-us": 597159029,
+          ":time.tactic.simplify-extended-terms-us": 464,
+          ":time.tactic.normalize-boolean-us": 1027,
+          ":time.tactic.lower-extended-terms-us": 96,
+          ":time.tactic.normalize-arithmetic-us": 827535,
+          ":time.preprocessing-us": 831183,
+          ":time.parse-us": 3529840,
+          ":time.frontend-us": 37755484
+        },
+        "actual_sat_model_qualification": "Only the separately replayed first-four-query prefix is model-qualified; no full-session correctness or performance qualification.",
+        "artifact": "results/assumptions-native-04d2e23/case-1-assumptions"
+      }
+    ],
+    "aggregate": {
+      "rebuild": {
+        "completed_sessions": 0,
+        "mean_par2_seconds": 1200,
+        "observed_answers": [
+          38,
+          53
+        ]
+      },
+      "assumptions": {
+        "completed_sessions": 1,
+        "mean_par2_seconds": 663.4856494050473,
+        "observed_answers": [
+          101,
+          95
+        ]
+      }
+    },
+    "interpretation": "Assumptions completes BMC with all 101 source-status-checked UNSAT answers in 126.97 s; rebuild times out at 600 s. Induction remains incomplete in both modes; its partial answers are diagnostic and its SAT models beyond the separately validated prefix are unqualified. No full-induction or full-corpus qualification. The two-session PAR2 includes the prescribed timeout penalty; progress counts are not speedup ratios.",
+    "memory_interpretation": "SLURM sampled batch-step MaxRSS, not isolated solver allocations; tasks finish at different query counts. Retained storage has no compaction until reset.",
+    "timing_interpretation": "Wall-clock session timing excludes model validation. Per-phase counters sum completed queries only; timed-out query work is missing. Frontend time contains preprocessing and append subphases, which must not be added again."
+  },
+  "delivery": {
+    "decision": "Accept as opt-in; rebuild remains default; no automatic compaction or UFLRA assumption support.",
+    "source_relation": "Solver src, CMakeLists.txt and contrib unchanged after candidate 04d2e23. Follow-up contains collected evidence/docs and failure-counter initialization/regression only.",
+    "process_audit": "All submitted jobs terminal; full audit in tmp/assumptions-final-slurm-audit.log. Initial UF resource-cap failure retained and superseded by matching-budget retry."
+  }
+}

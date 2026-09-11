@@ -25,9 +25,9 @@ for root in "${header_roots[@]}"; do
 done
 cp contrib/local/clang-tools-env/cxx-headers/compiler-search.txt "$OUT/compiler-search.txt"
 if command -v rg >/dev/null 2>&1; then
-  rg --files src tests -g '*.cpp' -g '!src/smtlib/antlr/**' | sort > "$OUT/sources.txt"
+  rg --files src tests -g '*.cpp' | sort > "$OUT/sources.txt"
 else
-  find src tests -name '*.cpp' -not -path 'src/smtlib/antlr/*' | sort > "$OUT/sources.txt"
+  find src tests -name '*.cpp' | sort > "$OUT/sources.txt"
 fi
 mapfile -t sources < "$OUT/sources.txt"
 (( ${#sources[@]} > 0 ))

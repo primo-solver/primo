@@ -20,6 +20,7 @@ class CadicalBackend final : public IpasirUpBackend {
  public:
   CadicalBackend();
   explicit CadicalBackend(const std::vector<std::pair<std::string, int>>& options);
+  CadicalBackend(const std::vector<std::pair<std::string, int>>& options, bool incremental_safe);
   ~CadicalBackend() override;
 
   CadicalBackend(const CadicalBackend&) = delete;
@@ -40,6 +41,7 @@ class CadicalBackend final : public IpasirUpBackend {
   void add_observed_var(int var) override;
   void connect_terminator(Terminator* terminator) override;
   void disconnect_terminator() override;
+  void protect_variable(int variable);
 
  private:
   class ExternalPropagatorAdapter;

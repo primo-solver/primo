@@ -29,7 +29,17 @@ keep direct paths without combination overhead.
 
 Start with [current status and qualification](docs/current-status.md),
 [architecture](docs/architecture.md), and [model interpretations](docs/model-interpretation.md).
-Incremental theory state does **not** imply SMT-LIB `push`/`pop` support.
+The feature branch adds [scoped incremental sessions](docs/incremental-smt.md):
+interactive and file-based `push`/`pop`, repeated checks, and scoped declarations.
+The default rebuild mode gives each query a fresh solver. The opt-in
+`--incremental-mode=assumptions` retains frontend/SAT/arithmetic preparation for
+QF_LRA, with fresh working theory state per check. Its bounded correctness gates
+passed; the native BMC session completes in 127 seconds, while induction remains
+incomplete at 600 seconds. See `docs/assumption-incremental-lra.md` for evidence
+and limitations.
+Scoped-session correctness and a bounded five-logic preservation sample have
+been checked on SLURM; the session layer has a small measured single-query cost.
+See the linked design page for counts, limitations and qualification evidence.
 Quantifiers, arrays, bit-vectors, nonlinear arithmetic, proof production, and
 dedicated difference-logic frontends are not implemented. Integer resource
 limits can return `unknown`; support is not a promise to solve every input.
@@ -54,7 +64,7 @@ editor language servers.
 Required build dependencies are installed automatically by `make build`:
 
 ```bash
-make contrib-required # ANTLR4 runtime, CLI11, CaDiCaL/IPASIR
+make contrib-required # CLI11, CaDiCaL/IPASIR and GMP; no parser generator required
 ```
 
 Optional reference solver dependencies also install under `contrib/local`:
@@ -72,6 +82,10 @@ make contrib         # all of the above
 ```bash
 ./build/primo benchmarks/smoke/qf_uf/direct_equality_contradiction.smt2
 ```
+
+With no filename, `./build/primo --quiet` reads SMT-LIB commands directly from
+stdin and flushes each response without waiting for EOF. See the
+[interactive session example](docs/incremental-smt.md#running-and-independently-validating-sessions).
 
 QF_UF finite-domain symmetry breaking is enabled by default where applicable.
 For an ablation, disable it with:

@@ -5,6 +5,7 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
 #include <deque>
 #include <functional>
 #include <iterator>
@@ -37,6 +38,7 @@
 #include "smt/formula_analysis.hpp"
 #include "smt/frontend.hpp"
 #include "smt/inconclusive_reason.hpp"
+#include "smt/incremental_engine.hpp"
 #include "smt/model_based_combination.hpp"
 #include "smt/model_reconstruction.hpp"
 #include "smt/preprocessing_tactics.hpp"
@@ -3696,7 +3698,8 @@ std::shared_ptr<const core::Model> build_qf_lra_model(
     core::TermManager& terms, const std::vector<core::TermId>& model_terms,
     const ModelConversionChain& conversions, const PreparedLraTheory& prepared,
     const theory::arithmetic::LraTableau& tableau,
-    const std::vector<AssignedTheoryAtom>& assigned_atoms, util::Statistics& statistics) {
+    const std::vector<AssignedTheoryAtom>& assigned_atoms, util::Statistics& statistics,
+    std::optional<std::vector<core::SymbolId>> visible_symbols = std::nullopt) {
   const RealModelValues values =
       real_model_values_from_lra(model_terms, prepared, tableau, assigned_atoms);
   std::vector<TheoryModelAssignment> assignments;
@@ -3704,7 +3707,8 @@ std::shared_ptr<const core::Model> build_qf_lra_model(
   for (const auto& atom : assigned_atoms) {
     assignments.push_back({atom.term, atom.value, atom.filtered});
   }
-  return build_typed_model(terms, {}, assignments, values, conversions, nullptr, &statistics);
+  return build_typed_model(terms, {}, assignments, values, conversions, nullptr, &statistics,
+                           std::move(visible_symbols));
 }
 
 std::shared_ptr<const core::Model> build_qf_lia_model(
@@ -7039,7 +7043,8 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
                       bool bidirectional_row_propagation_enabled, bool theory_decisions_enabled,
                       bool model_phase_enabled, bool model_phase_backtrack_may_change_beta,
                       const LraRowPropagationLimits& row_propagation_limits,
-                      sat::IpasirUpBackend& backend, util::Statistics& statistics)
+                      sat::IpasirUpBackend& backend, util::Statistics& statistics,
+                      bool count_query_conflicts = false)
       : theory_atoms_(theory_atoms),
         prepared_(prepared),
         tableau_(prepared.base_tableau),
@@ -7051,7 +7056,8 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
         model_phase_backtrack_may_change_beta_(model_phase_backtrack_may_change_beta),
         row_propagation_limits_(row_propagation_limits),
         backend_(backend),
-        statistics_(statistics) {
+        statistics_(statistics),
+        count_query_conflicts_(count_query_conflicts) {
     int max_theory_var = 0;
     for (const BooleanClausifier::TheoryAtom& atom : theory_atoms_) {
       max_theory_var =
@@ -7340,6 +7346,13 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
   }
 
  private:
+  void record_query_conflict() {
+    if (count_query_conflicts_) {
+      statistics_.increment(kStatTheoryConflicts);
+      statistics_.increment(kStatLraTheoryConflicts);
+    }
+  }
+
   bool is_observed_var(int var) const {
     return var >= 0 && static_cast<std::size_t>(var) < observed_vars_.size() &&
            observed_vars_[static_cast<std::size_t>(var)] != 0;
@@ -7395,6 +7408,7 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
     publish_elimination_stats();
     if (direct_conflict.has_value()) {
       conflict_ = direct_conflict;
+      record_query_conflict();
       // needs_check_ may already be true from an earlier, non-conflicting
       // literal in this same batch -- clear it, or run_deferred_check_if_
       // needed() would later overwrite this genuine direct conflict with
@@ -7470,6 +7484,7 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
     const std::size_t term_ops_before = tableau_.row_term_op_count();
     statistics_.increment(kStatLraOnlineCheckCalls);
     conflict_ = tableau_.check();
+    if (conflict_) record_query_conflict();
     const std::size_t pivot_delta = tableau_.pivot_count() - pivots_before;
     statistics_.increment(kStatLraBlandFallbacks,
                           tableau_.bland_fallback_count() - fallbacks_before);
@@ -7838,6 +7853,7 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
   LraRowPropagationLimits row_propagation_limits_;
   sat::IpasirUpBackend& backend_;
   util::Statistics& statistics_;
+  bool count_query_conflicts_ = false;
   std::vector<char> observed_vars_;
   std::vector<char> assigned_;
   std::vector<int> assigned_lit_by_var_;
@@ -12217,6 +12233,148 @@ CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
 }
 
 }  // namespace
+
+namespace {
+// Activation-root encoding and fresh working theory state are specified in
+// docs/assumption-incremental-lra.md. The structural base never receives bounds.
+class IncrementalLraEngine final : public IncrementalEngine {
+ public:
+  IncrementalLraEngine(core::TermManager& terms, const CheckSatOptions& options)
+      : terms_(terms),
+        backend_(options.cadical_options, true),
+        clausifier_(backend_, terms, false),
+        prepared_(terms, {}, lra_pivoting_rule_from_options(options.lra_pivoting_rule),
+                  options.lra_sparse_leaving, false, true, options.lra_least_violated_leaving,
+                  lra_tuning_from_options(options.lra_tuning)) {}
+
+  void push() override { selectors_.push_back({0}); }
+  void pop() override {
+    if (selectors_.empty()) throw std::invalid_argument("engine scope underflow");
+    const sat::Lit selector = selectors_.back();
+    selectors_.pop_back();
+    if (selector.value != 0) {
+      backend_.add_clause({sat::Lit{-selector.value}});
+      ++retired_;
+    }
+  }
+  void append(const std::vector<core::TermId>& assertions) override {
+    const auto start = std::chrono::steady_clock::now();
+    for (const core::TermId root : assertions) {
+      if (selectors_.empty()) {
+        clausifier_.assert_formula(root);
+      } else {
+        if (selectors_.back().value == 0) {
+          selectors_.back() = {backend_.new_var()};
+          backend_.protect_variable(selectors_.back().value);
+        }
+        clausifier_.assert_guarded_formula(root, selectors_.back());
+      }
+    }
+    while (prepared_.atoms.size() < clausifier_.theory_atoms().size()) {
+      const auto atom = clausifier_.theory_atoms()[prepared_.atoms.size()];
+      backend_.protect_variable(std::abs(atom.lit.value));
+      static_cast<void>(prepared_.append_atom(atom));
+    }
+    append_us_ += elapsed(start);
+  }
+  CheckSatOutcome check(const std::vector<core::TermId>& model_terms,
+                        const CheckSatOptions& options) override {
+    const auto start = std::chrono::steady_clock::now();
+    util::Statistics statistics;
+    ++queries_;
+    statistics.set(":session.engine-queries", queries_);
+    statistics.set(":session.retired-selectors", retired_);
+    statistics.set(":session.active-selectors", static_cast<std::size_t>(std::count_if(
+                                                    selectors_.begin(), selectors_.end(),
+                                                    [](sat::Lit lit) { return lit.value != 0; })));
+    statistics.set(":session.retained-terms", terms_.size());
+    statistics.set(":session.retained-atoms", prepared_.atoms.size());
+    statistics.set(":session.prepared-atoms", prepared_.atoms.size());
+    statistics.set(":time.session.append-us", append_us_);
+    append_us_ = 0;
+    statistics.set(":session.sat-preprocessing", 0);
+    statistics.set(":session.sat-inprocessing", 0);
+    statistics.increment(kStatSolverQfLra);
+    statistics.set(kStatTheoryAtoms, prepared_.atoms.size());
+    SolveTerminator terminator(options.cancelled, statistics, options.max_theory_conflicts);
+    const ScopedTerminatorConnection termination(backend_, terminator);
+    const auto reset_start = std::chrono::steady_clock::now();
+    OnlineLraPropagator propagator(
+        prepared_, clausifier_.theory_atoms(), options.lra_propagation, options.lra_row_propagation,
+        options.lra_bidirectional_row_propagation, options.lra_theory_decisions,
+        options.lra_model_phase, options.lra_pivoting_rule == LraPivotingRule::Soi,
+        options.lra_row_propagation_limits, backend_, statistics, true);
+    std::vector<int> observed;
+    for (const auto& atom : clausifier_.theory_atoms())
+      observed.push_back(std::abs(atom.lit.value));
+    backend_.reconnect_external_propagator(propagator, observed);
+    // Destruction order settles callback reasons before destroying propagator.
+    struct Disconnect {
+      sat::IpasirUpBackend& backend;
+      ~Disconnect() { backend.disconnect_external_propagator(); }
+    } disconnect{backend_};
+    statistics.set(":session.theory-state-resets", ++resets_);
+    statistics.set(":time.session.theory-reset-us", elapsed(reset_start));
+    CheckSatOutcome outcome;
+    if (terminator.terminate()) {
+      outcome.result = CheckSatResult::Unknown;
+    } else {
+      for (const auto selector : selectors_) {
+        if (selector.value != 0) backend_.assume(selector);
+      }
+      statistics.increment(kStatSatSolveCalls);
+      const auto solve_start = std::chrono::steady_clock::now();
+      outcome.result = map_sat_result(backend_.solve());
+      statistics.set(":time.solve-us", elapsed(solve_start));
+    }
+    static_cast<void>(terminator.terminate());
+    if (terminator.cancelled_reached() || terminator.conflict_limit_reached()) {
+      outcome.result = CheckSatResult::Unknown;
+      outcome.reason = terminator.cancelled_reached() ? InconclusiveReason::Cancelled
+                                                      : InconclusiveReason::ResourceLimit;
+      outcome.message = terminator.cancelled_reached() ? "cancelled" : "theory conflict limit";
+    }
+    if (outcome.result == CheckSatResult::Sat && options.produce_model) {
+      const auto model_start = std::chrono::steady_clock::now();
+      const auto assigned = assigned_atoms_from_backend(backend_, clausifier_.theory_atoms());
+      outcome.typed_model =
+          build_qf_lra_model(terms_, model_terms, {}, prepared_, propagator.tableau(), assigned,
+                             statistics, terms_.symbols().visible_symbols());
+      statistics.set(":time.model-us", elapsed(model_start));
+    }
+    publish_sat_stats(backend_.statistics(), statistics);
+    const auto sat_stats = backend_.statistics();
+    statistics.set(":session.clauses-added", sat_stats.clauses);
+    statistics.set(":session.retained-active-clauses",
+                   sat_stats.active_irredundant_clauses + sat_stats.active_redundant_clauses);
+    statistics.set(":session.retained-redundant-clauses", sat_stats.active_redundant_clauses);
+    statistics.set(":time.total-us", elapsed(start));
+    outcome.statistics = std::move(statistics);
+    return outcome;
+  }
+
+ private:
+  static std::uint64_t elapsed(std::chrono::steady_clock::time_point start) {
+    return static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(
+                                          std::chrono::steady_clock::now() - start)
+                                          .count());
+  }
+  core::TermManager& terms_;
+  sat::CadicalBackend backend_;
+  BooleanClausifier clausifier_;
+  PreparedLraTheory prepared_;
+  std::vector<sat::Lit> selectors_;
+  std::size_t retired_ = 0;
+  std::size_t queries_ = 0;
+  std::size_t resets_ = 0;
+  std::uint64_t append_us_ = 0;
+};
+}  // namespace
+
+std::unique_ptr<IncrementalEngine> make_incremental_lra_engine(core::TermManager& terms,
+                                                               const CheckSatOptions& options) {
+  return std::make_unique<IncrementalLraEngine>(terms, options);
+}
 
 CheckSatOutcome solve_qf_uf_engine(core::TermManager& terms,
                                    const std::vector<core::TermId>& assertions,

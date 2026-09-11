@@ -16,6 +16,8 @@
 
 namespace primo::smt {
 
+enum class IncrementalMode { Rebuild, Assumptions };
+
 enum class PreprocessingMode {
   Off,
   Basic,
@@ -236,6 +238,7 @@ struct CheckSatOutcome {
 };
 
 struct CheckSatOptions {
+  IncrementalMode incremental_mode = IncrementalMode::Rebuild;
   // Default-off exhaustive Boolean case splitting used to exercise AnyOf
   // execution. The tactic materializes at most 2^16 alternatives.
   std::size_t experimental_split_bools = 0;
