@@ -1,6 +1,6 @@
 # Open leads register
 
-A single place to find every live idea for improving Primo's arithmetic
+A single place to find every live idea for improving Primo's solver
 performance, what evidence supports it, what it would cost, and -- stated
 before the work starts -- what result would kill it.
 
@@ -63,6 +63,10 @@ implementing from these historical measurements.
 | [19](#lead-bounding-transformations) | Double-Bounded reduction + Mixed-Echelon-Hermite: make branch-and-bound terminate | +169 QF_LIA, 162 of them in `20180326-Bromberger` (806 files here) | large | open, gated on 17 |
 | [20](#lead-decision-recommendation) | Evaluate `--lra-model-phase` on QF_LIA and consider promoting it | +129 QF_LIA, **116 of them `convert`**; the source's number is for the mechanism Primo already has | **none -- an A/B of an existing flag** | **open; cheapest lead in this register** |
 | [21](#lead-divisibility) | Divisibility-aware `div`/`mod`: modular normalization, then a first-class `k \| t` atom | **not a corpus lead** -- 0 of 600 QF_LIA benchmarks use these operators; 2 of 400 generated cases hit the branch-and-bound node limit where Z3 decides | small (piece 1); medium-large (piece 2) | **open; read the falsifier before sizing it** |
+| [22](#lead-incremental-uf-scans) | Incremental UF: avoid rescanning old atoms and initializing full-manager scratch | preparation/reset is 41% of one long session; only part is addressable here | small-medium | **open; not implemented** |
+| [23](#lead-incremental-uf-distinct) | Compact large `distinct` handling | 554,403 pairwise constraints in the worst completed ratio | large | **open; design required** |
+| [24](#lead-incremental-uf-equations) | Incrementally sound equation elimination | search dominates `firewire`; Z3 eliminates 22,931 variables in its first query | large | **open; substitution/restoration deferred** |
+| [25](#lead-incremental-uf-structure) | Share immutable EUF structure across checks | 413 copies of each prepared structure in one session | medium-large | **open; not implemented** |
 | -- | D2 floating-point-guided basis selection | ~14% in the literature | medium | open, see [](qf-lra-heuristics.md) |
 | -- | D4 revised simplex, LU-factored basis | unknown | largest | open, see [](qf-lra-heuristics.md) |
 | -- | H4 batched bound assertion; H6 DL fast path; H11 fill-in-aware preprocessing elimination | -- | -- | design only, see [](qf-lra-heuristics.md) |
@@ -2557,6 +2561,118 @@ bounded-but-not-fixed rows) and would share its machinery; do that census first.
 **Related, unfixed.** `LinearPolynomial::from_term`
 (`theory/arithmetic/linear_polynomial.cpp`) recurses over the term DAG, so it
 belongs to [](#lead-recursion-audit).
+
+(lead-incremental-uf-scans)=
+## 22. Incremental UF: avoid repeated retained-data scans
+
+**Status: open, not implemented (2026-09-11). Cost: small-medium.** First in the
+profiling study's suggested order; split atom cursors and traversal scratch into
+separate measured changes. Evidence for leads 22–25 is [](uf-z3-profiling.md),
+recorded at `7a67935`: local profiling of `8573f60`, with solver sources unchanged
+from qualified `fa2fe5c`, and reused SLURM timings. These are hypotheses about
+that revision, not measured optimization gains or requirements for merging the
+opt-in implementation.
+
+**Claim and evidence.** Append-only registration/preparation cursors and touched
+scratch could avoid work proportional to all retained atoms/terms on every
+small append or check. `BooleanClausifier::register_boolean_argument_terms` and
+`PreparedFlatTheory::ensure_theory_atoms` scan old atoms each query;
+`simplify_extended_terms_round` initializes full-manager arrays per invocation.
+On CLEARSY `0002/00126`, preparation plus reset costs 1.854 of 4.533 seconds
+across 413 queries. On `adding.5`, extended-term simplification costs 1.396 seconds
+across 2,354 assertion invocations. Reset cost also includes lead 25 and required
+backend work; neither figure is a promised saving from scan removal alone.
+
+**Obligations.** Keep registration complete for Boolean arguments and newly
+appended atoms; retained IDs must survive pop/redeclaration. Do not turn scratch
+reuse into a cache of scoped semantic facts. Preserve backend reconnection,
+reobservation and root-assignment replay. Add counters showing old-atom visits
+and scratch initialization, plus allocation-boundary and scoped regressions.
+
+**Falsifier.** Close an individual change if counters show the targeted work is
+already negligible, or its reduction yields no repeatable whole-session benefit
+on the motivating sessions. Any unexplained lost solve blocks acceptance.
+
+(lead-incremental-uf-distinct)=
+## 23. Compact handling of large `distinct` assertions
+
+**Status: open; design required (2026-09-11). Cost: large.** Investigate after the
+cheaper scan changes in lead 22.
+
+**Claim and evidence.** Avoiding eager pairwise expansion could reduce frontend,
+atom and clause volume. `adding.5.prop1_ab_min_max` expands arities 1,051 and 73
+into 554,403 pairwise constraints. Its qualified SLURM runtime is 4.997 seconds
+versus Z3's 0.139, with 3.046 seconds in Primo's frontend. Local call counts
+confirm term interning and disequality insertion traffic. Z3's counters do not
+establish which internal representation it uses.
+
+**Obligations.** Write an original paper-grounded design before implementation,
+covering arbitrary Boolean polarity, scoped roots, congruence explanations and
+models. A positive top-level special case must state its admission conditions
+and preserve the general encoding elsewhere. Track avoided pairs, retained
+atoms/clauses and any added theory work; independently validate actual models.
+
+**Falsifier.** Reject a candidate if reduced encoding size merely shifts cost
+into theory checks without a repeatable runtime/memory benefit on `adding`, or
+if it loses previously completed native sessions without a resolved explanation.
+No compact-distinct algorithm is claimed as implemented by this lead.
+
+(lead-incremental-uf-equations)=
+## 24. Incrementally sound equation elimination
+
+**Status: open; substitution/restoration deferred (2026-09-11). Cost: large.**
+The existing whole-goal equation-elimination tactic remains incompatible with
+assumptions mode. This is a new design task, not an option change.
+
+**Claim and evidence.** Sound elimination may reduce the search gap on Goel
+`firewire` and `rushhour`. The qualified `firewire_tree.5.prop3_ab_core_max`
+solve phase costs 18.104 of 23.456 seconds. A separate Z3 per-query diagnostic
+reports 22,931 eliminated variables in the first query. Six native `rushhour`
+sessions hit Primo's theory-conflict budget and account for about 63% of the
+aggregate PAR2 gap. This correlation does not prove elimination will close it.
+
+**Obligations.** Start with the deferred substitution/restoration literature in
+[](assumption-incremental-lra.md), read the relevant sections, and write a UF
+scope/identity/model design checklist. Future assertions, pop, redeclarations,
+guarded consequences and saved model snapshots must remain sound. Instrument
+eliminated/restored variables and search work. Do not persist assertion-dependent
+substitutions as unconditional definitions.
+
+**Falsifier.** First measure admissible elimination opportunities under the new
+contract. Defer if they are too sparse on the motivating cases. Reject the
+implementation if restoration costs erase a repeatable search/PAR2 benefit or
+it introduces unresolved losses. Raising the conflict budget alone is not
+evidence for this mechanism.
+
+(lead-incremental-uf-structure)=
+## 25. Share immutable EUF structure across checks
+
+**Status: open, not implemented (2026-09-11). Cost: medium-large.** Reprofile after
+lead 22 so registration improvements are not counted twice.
+
+**Claim and evidence.** Separate immutable prepared structure from working facts
+to reduce copies and allocation. Local gprof records 413 copies each of
+`FlatTermIndex` and `FlatCongruenceClosure` on CLEARSY `0002/00126`; qualified
+working-state construction/reconnection costs 1.140 seconds. The 373-query
+`0023/00268` case spends 0.167 seconds in that phase, but its 16 gprof samples
+cannot reliably rank individual functions. `firewire` spends only 0.117 seconds
+there, so this lead cannot explain its search gap.
+
+**Obligations.** Document ownership and mutation boundaries before changing
+representations. Keep fresh per-query facts, valid retained SAT learning and the
+adapter's callback/reason lifetime contract. Reconnect/reobserve and replay all
+required assignments, including roots, after SAT, assumption-UNSAT, unknown and
+cancellation. Track copied bytes, allocations, reset time and peak memory.
+
+**Falsifier.** Close the lead if copies are a negligible residual after lead 22,
+or sharing fails to improve repeated whole-session measurements and memory on
+long CLEARSY sessions. Skipping required root replay is not an admissible shortcut.
+
+All four leads require the repository's fresh solver fuzz gate, separate native
+SAT-model validation, and default-preservation checks before accepting a behavior
+change or a performance claim. Retain per-family gains/losses and partial query
+progress alongside PAR2. The noisy statistics-on/off probe remains inconclusive;
+it does not support a separate printing-overhead optimization claim.
 
 ## Adding a lead
 

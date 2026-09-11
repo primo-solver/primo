@@ -1224,6 +1224,13 @@
     "adapter_replay": "Final adapter matches all five saved reference inputs/transcripts and 792 answers",
     "final_driver_smoke": "Final reviewed driver completes native index 0 and matches both reference answers"
   },
+  "recommendation_status": {
+    "status": "open_not_implemented",
+    "annotated_date": "2026-09-11",
+    "register": "docs/open-leads.md",
+    "lead_ids_in_recommendation_order": [22, 23, 24, 25],
+    "qualification_effect": "none; future optimization hypotheses, not measured speedups"
+  },
   "recommendations": [
     "Append-only atom registration/preparation cursors and per-traversal touched scratch storage, preserving root replay and Boolean registration.",
     "Original compact-distinct design with scoped congruence explanations and models.",

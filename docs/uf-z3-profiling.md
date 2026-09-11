@@ -145,25 +145,31 @@ case-852 times were 2.000/2.057 s, and case-1688 times were 0.388/0.407 s. They 
 no consistent benefit from suppressing output. Do not attribute the remaining
 gap to statistics printing on this evidence.
 
-## Recommended implementation order
+## Open leads and suggested investigation order
 
-1. Remove repeated work over old atoms and full-manager traversal scratch
+1. **[Open lead 22](#lead-incremental-uf-scans):**
+   Remove repeated work over old atoms and full-manager traversal scratch
    initialization. Use append-only preparation/registration cursors and bounded
    per-traversal scratch storage, with allocation/scope tests. Preserve complete
    Boolean argument registration and the backend reconnection/root-replay contract.
-2. Design compact handling for large `distinct` assertions. This targets the
+2. **[Open lead 23](#lead-incremental-uf-distinct):**
+   Design compact handling for large `distinct` assertions. This targets the
    four worst completed-session ratios and avoids creating hundreds of thousands
    of binary atoms. It needs an original design, congruence-conflict explanations,
    Boolean/scoped semantics and independent model tests before implementation.
-3. Add incrementally sound equation elimination with explicit substitution and
-   restoration support, grounded in the literature already listed in
+3. **[Open lead 24](#lead-incremental-uf-equations):**
+   Investigate incrementally sound equation elimination with explicit
+   substitution and restoration support, grounded in the literature already listed in
    [](assumption-incremental-lra). Re-enabling the existing whole-goal tactic is
    not a valid implementation. Then reevaluate `firewire` and `rushhour`.
-4. Investigate sharing immutable flat structure and reducing working-state
+4. **[Open lead 25](#lead-incremental-uf-structure):**
+   Investigate sharing immutable flat structure and reducing working-state
    allocation. Keep fresh query facts, valid SAT learning and callback lifetimes
    intact; no selective root-replay shortcut is justified by this profile.
 
-These are ranked targets, not implemented optimizations or measured speedups.
+All four remain open and unimplemented. The register records their costs,
+proof obligations and falsifiers. They are future optimization work; the existing
+opt-in qualification is unchanged, and no speedup is claimed for these leads.
 
 ## Reproduction and evidence scope
 
