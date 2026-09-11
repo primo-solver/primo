@@ -155,19 +155,25 @@ def main():
     parser.add_argument("--parser", default="build-slurm-rel/primo_parser_corpus")
     parser.add_argument("--solver-arg", action="append", default=[])
     parser.add_argument("--expected-git")
+    parser.add_argument("--continue-after-error", action="store_true",
+                        help="Collect all external-reference timing rows after process errors; "
+                        "still stop on wrong answers and return failure if any row failed")
     parser.add_argument("--timeout", type=float, default=30)
     parser.add_argument("--dolmen")
     parser.add_argument("--dolmen-timeout", type=float, default=60)
     parser.add_argument("--ref")
     parser.add_argument("--ref-arg", action="append", default=[])
     args = parser.parse_args()
+    if args.continue_after_error and (args.mode != "timing" or args.expected_git):
+        parser.error("continue-after-error is restricted to external-reference timing")
     if args.mode == "inventory":
         inventory(args.archive, args.root, args.manifest)
         return 0
     if not args.solver or not args.out or not 0 <= args.shard_index < args.shards:
         parser.error("solver, out, and valid shard index required")
     args.out.mkdir(parents=True, exist_ok=False)
-    version = subprocess.check_output([args.solver, "--version"], text=True, timeout=10)
+    version = subprocess.check_output([args.solver, "--version"], text=True, timeout=10,
+                                      stderr=subprocess.STDOUT)
     if args.expected_git and f"git: {args.expected_git}" not in version.splitlines():
         raise ValueError("candidate revision mismatch")
     binary_hash = digest(Path(args.solver))
@@ -229,13 +235,14 @@ def main():
         write_json(args.out / "summary.json", rows)
         if row["outcome"] in {"wrong-answer", "error", "failure"}:
             print(json.dumps(row))
-            return 1
+            if row["outcome"] != "error" or not args.continue_after_error:
+                return 1
     if digest(Path(args.solver)) != binary_hash:
         raise ValueError("binary changed during run")
     print(json.dumps({"sessions": len(rows), "outcomes": {
         name: sum(row["outcome"] == name for row in rows)
         for name in sorted({row["outcome"] for row in rows})}}))
-    return 0
+    return int(any(row["outcome"] == "error" for row in rows))
 
 
 if __name__ == "__main__":

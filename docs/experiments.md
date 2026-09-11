@@ -306,6 +306,22 @@ do not request the same download in both lists. A failed download stops preparat
 and `--check-only` never runs either target list. This option is intended for
 small dependency downloads, not compilation on the login host.
 
+`scripts/slurm_opensmt_incremental.sbatch` adds an external OpenSMT reference to
+the native UF archive and the two established LRA BMW sessions. It uses the
+unchanged input streams through `native_uf_sessions.py timing`, with 30-second
+UF and 600-second LRA session limits. `benchmarks/native-lra-opensmt.json` selects
+the original first two LRA files and retains their hash-qualified per-query
+status oracles. `summarize_opensmt_incremental.py` joins these runs to preserved
+Primo/Z3/cvc5 results, checks overlapping answers and rejects incomplete coverage.
+
+The reference batch explicitly requests `--continue-after-error`: process errors
+remain error rows with PAR2 penalties, but subsequent files are still attempted.
+The driver returns failure after collecting such rows. Wrong answers always stop
+the shard. This option is limited to external-reference timing (no
+`--expected-git`), and the default remains stop-on-error. Solver version capture
+includes stderr because OpenSMT prints its version there. Separate model
+validation remains necessary for candidate correctness qualification.
+
 For example, a fuzz workspace that already has the native build dependencies
 and Z3 but lacks the pinned YinYang environment can be prepared with:
 

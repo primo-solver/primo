@@ -3,6 +3,35 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-11-opensmt-native-crash-triage",
+      "date": "2026-09-11",
+      "kind": "external-reference-comparison-triage",
+      "candidate": "847a73f",
+      "build_job": "142839",
+      "benchmark_job": "142840",
+      "status": "paused and cancelled after reproducible external reference crash; no wrong-answer observed",
+      "solver": "OpenSMT v2.9.2 --pipe",
+      "solver_sha256": "b7899e9aff299026d3251df7a28f51f56d8bd1e5b0fd7be11bcc72c4f2803a98",
+      "host": "node-02",
+      "limits": {
+        "uf_session_seconds": 30,
+        "lra_session_seconds": 600,
+        "memory_gib": 8,
+        "requested_cpus": 1
+      },
+      "input": "incremental/QF_UF/20190906-CLEARSY/0000/00310.smt2",
+      "index": 785,
+      "outcome": {
+        "exit_code": -11,
+        "partial_queries": 30,
+        "mismatches": 0
+      },
+      "triage": "Same binary crashes locally at the same query with and without --pipe. This input belongs to the recorded full native Primo model qualification; archived Z3 answers are available. External crash remains an error, never a completed solve. No Primo source changed.",
+      "artifacts": "results/opensmt-incremental-67387f3",
+      "verification": "make check (34 C++/CLI and 174 Python), make lint, make docs, bash -n and SLURM validator pass. Eight new tests cover coverage, partial answers, post-answer process failure, stderr version capture, continuation and mandatory wrong-answer stop. No C++ source changed; prior whole-tree static/ownership baseline reused; harness and metadata paths reviewed freshly.",
+      "followup": "Add explicit external-reference-only error collection to finish counting failures without stopping at the first crash. Preserve default stop behavior, wrong-answer stop, error PAR2 and failing exit. Add child-process tests; retain all first-attempt rows separately."
+    },
+    {
       "id": "2026-09-11-opensmt-login-provisioning",
       "date": "2026-09-11",
       "kind": "reference-tool-provisioning",
