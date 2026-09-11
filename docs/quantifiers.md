@@ -66,17 +66,20 @@ From *The SMT-LIB Standard, Version 2.6*, revision 2021-05-12:
 - The builder is **iterative** (`TermBuilder`), and any new traversal must be
   too.
 
-Two existing frontend gaps turn into binder bugs once bound variables exist:
+Two frontend gaps in `main` would turn into binder bugs once bound variables
+exist. Both are already fixed on `feature/incremental-smt-sessions`, which is to
+be merged into `main` before quantifier parsing lands:
 
-1. **`define-fun` bodies are scoped dynamically.** A free name in a body resolves
-   through the `let`s in force at the *call site*. Today this is already a wrong
-   answer (`unsat` on a satisfiable input), recorded in
-   `bugs/define-fun-dynamic-scoping/`. With binders it is capture of bound
-   variables.
-2. **Quoted symbols are not normalized.** The lexer keeps the bars, so `|a|` and
-   `a` are different names. Today that is an `unknown symbol` rejection; z3
-   answers both probes conformingly. With binders, `(forall ((|x| U)) (P x))`
-   would silently bind the global `x` if one is declared.
+1. **`define-fun` bodies are scoped dynamically in `main`.** A free name in a
+   parameterized body resolves through the `let`s, and enclosing definition
+   parameters, in force at the *call site*. That is already a wrong answer in
+   both directions (`bugs/define-fun-dynamic-scoping/`); with binders it would
+   be capture of bound variables. The branch fixes it in `5bc811b`.
+2. **Quoted symbols are not normalized in `main`.** The lexer keeps the bars, so
+   `|a|` and `a` are different names. Today that is an `unknown symbol`
+   rejection, while z3 answers both probes conformingly. With binders,
+   `(forall ((|x| U)) (P x))` would silently bind a declared global `x`. The
+   branch fixes it in `8e9dc59`.
 
 ## Options
 
@@ -216,9 +219,9 @@ What the numbers say:
 Store **de Bruijn indices**, and construct and consume terms **locally
 nameless** (option D):
 
-1. **Fix the two frontend gaps first**: lexical scoping for `define-fun` bodies,
-   and quoted-symbol normalization. Both are wrong or unsupported today,
-   independent of quantifiers.
+1. **Build on the frontend fixes of `feature/incremental-smt-sessions`**:
+   lexical scoping for `define-fun` bodies (`5bc811b`) and quoted-symbol
+   normalization (`8e9dc59`). That branch is to be merged into `main` first.
 2. **Append kinds** for a bound variable (index and sort) and for `forall` and
    `exists`. A quantifier carries its body, its variable sorts, and its
    patterns. Variable names stay out of the hash key, in a side table used for
@@ -247,8 +250,8 @@ everywhere open terms move.
    or a side table.
 3. What a placeholder is during parsing: a reserved internal constant, or a
    distinct kind that never survives closing.
-4. Whether the `define-fun` scoping fix lands on this branch or separately on
-   `main`, since it is a wrong answer there.
+4. Sequencing: quantifier parsing lands after `feature/incremental-smt-sessions`
+   is merged into `main`, on top of its frontend.
 
 ## References
 

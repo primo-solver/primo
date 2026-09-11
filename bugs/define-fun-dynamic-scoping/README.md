@@ -2,11 +2,18 @@
 
 ## Status
 
-**OPEN, found 2026-09-11, not fixed.** Wrong answer (`unsat` on a satisfiable
-input) on conforming SMT-LIB. Found while planning quantifier parsing, where the
-same mechanism would capture bound variables; see `docs/quantifiers.md`.
+**OPEN in `main`; fixed on `feature/incremental-smt-sessions`, not yet merged.**
+Wrong answers on conforming SMT-LIB, in both directions. Found 2026-09-11 while
+planning quantifier parsing, where the same mechanism would capture bound
+variables; see `docs/quantifiers.md`.
 
-## Witness
+The unmerged branch fixes it in `5bc811b` (2026-09-09). `lookup_bound_term`
+stops at the innermost definition's scope base (`definition_scope_bases_`), and
+`definitions_are_lexical_not_dynamic` in `tests/unit/smt_session_tests.cpp`
+covers both the call-site `let` shape and the enclosing-parameter shape. A
+separate fix on branch `quantifiers` duplicated it and was dropped.
+
+## Witnesses
 
 `witness.smt2`, in QF_LIA:
 
@@ -19,38 +26,46 @@ same mechanism would capture bound variables; see `docs/quantifiers.md`.
 The `b` in `f`'s body is the global constant. Inside the `let`, `(+ 1 b)` is 6
 and `(f 1)` is `1 + b`, so the assertion says `b /= 5`: satisfiable.
 
-| solver | answer |
-| --- | --- |
-| primo `24ede53` (`build/primo`; no `src/` change up to `b529a8b`) | `unsat` |
-| z3 (`contrib/local/bin/z3`) | `sat` |
-| cvc5 (`contrib/local/bin/cvc5`) | `sat` |
-| yices-smt2 (`contrib/local/bin/yices-smt2`) | `sat` |
+Two QF_UF shapes, both unsatisfiable. Both use
+`(declare-fun a () A) (declare-fun b () A) (assert (not (= a b)))` and
+`(define-fun is_b ((x A)) Bool (= x b))`:
 
-## Mechanism
+- a call-site `let`: `(assert (let ((b a)) (is_b b)))`;
+- an enclosing definition's parameter:
+  `(define-fun wrap ((b A)) Bool (is_b b)) (assert (wrap a))`.
+
+| input | primo `24ede53` | z3 | cvc5 | yices-smt2 |
+| --- | --- | --- | --- | --- |
+| `witness.smt2` | `unsat` | `sat` | `sat` | `sat` |
+| call-site `let` (QF_UF) | `sat` | `unsat` | `unsat` | not run |
+| enclosing parameter (QF_UF) | `sat` | `unsat` | `unsat` | not run |
+
+`24ede53` (`build/primo`) has the same `src/` as `b529a8b`, the commit
+`quantifiers` started from. The reference solvers are the binaries in
+`contrib/local/bin`.
+
+## Mechanism (as in `main`)
 
 `TermBuilder::dispatch_instantiate_definition` (`src/smt/frontend.cpp`) binds
 the parameters by pushing one more map onto `let_scopes_`, then builds the
-stored body s-expression. The `let` scopes that are live at the call site stay on
-that stack, and `lookup_bound_term` consults every scope before the symbol table.
-A free name in the body therefore resolves to whatever `let` is in force where
-the definition is *called*, which is dynamic scoping. SMT-LIB 2.6 section 3.6.3
-("Shadowing") requires lexical scoping.
+stored body s-expression. The scopes live at the call site stay on that stack,
+and `lookup_bound_term` consults every scope before the symbol table. A free name
+in the body therefore resolves to whatever `let`, or enclosing definition
+parameter, is in force where the definition is *called*. That is dynamic
+scoping, where SMT-LIB 2.6 section 3.6.3 ("Shadowing") requires lexical scoping.
 
-Not probed, but the same lookup implies two more cases: the parameters of an
-enclosing definition being expanded are visible in a nested definition's body,
-and a parameter name used as a free name in a callee resolves to the caller's
-argument.
+Nullary definitions are not affected: they are compiled at their declaration,
+where no scope is live.
 
 ## History
 
 Parameter scopes on the let stack date from `4f5696a` (2026-07-11, "Support
-QF_UF define-fun macros"), which is in `main`. The current form of the code is
-from `bbf74c7` (the tactic-module split).
+QF_UF define-fun macros"). The current form of the code in `main` is from
+`bbf74c7` (the tactic-module split).
 
 ## Relevance to quantifiers
 
 With binders, the call site's live scopes include quantified variables. A body
 that mentions a global symbol spelled like a bound variable would silently refer
-to the bound variable, which is capture. A lexically scoped instantiation (the
-body built only in the environment of its definition plus its parameters) fixes
-both.
+to the bound variable, which is capture. Quantifier parsing should therefore be
+built on top of the lexical fix.
