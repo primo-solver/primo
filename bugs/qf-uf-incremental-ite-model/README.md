@@ -1,6 +1,8 @@
 # Incremental UF model construction over original ITE arguments
 
-Status: fixed locally; fresh exact-commit SLURM qualification pending.
+Status: fixed and qualified at `fa2fe5c`. The fresh 6,000-session UF gates and
+all 49,773 selected native SAT models pass independent Dolmen validation.
+The deterministic compute-node gate also reruns both witnesses.
 
 Fresh gate 142579, seed 202639843, found a second-query model error at d96902f.
 The same error reproduces on the preserved 1595948 binary with Auto and Off;

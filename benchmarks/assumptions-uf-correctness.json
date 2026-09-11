@@ -2,7 +2,7 @@
   "candidate_commit": "282336d",
   "candidate_sha256": "2164aa63f75d2dcc3e7d9ed73d9043d845732050485f31d0f48cd7e8280a55ba",
   "solver_sources_identical_to": "df47b12",
-  "status": "6000 scoped sessions pass across source-identical builds; native model qualification pending",
+  "status": "historical passing gates; superseded by assumptions-uf-evaluation.json after the active-lowered-root model fix at fa2fe5c",
   "gate_profiles": {
     "auto": {
       "sessions": 2000,
@@ -161,5 +161,7 @@
     "pass": 6000,
     "queries": 48000,
     "sat_models": 28366
-  }
+  },
+  "qualification_limit": "These gates missed the ITE model construction error later found by job 142579. They do not qualify the final implementation; current evidence is recorded separately.",
+  "superseded_by": "benchmarks/assumptions-uf-evaluation.json"
 }

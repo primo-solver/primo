@@ -3,6 +3,402 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-11-uf-assumptions-qualified-fa2fe5c",
+      "date": "2026-09-11",
+      "kind": "exact-candidate-slurm-correctness-native-timing-model-qualification",
+      "evidence_status": "qualified for complete sessions; full artifacts collected and verified; opt-in accepted",
+      "candidate_commit": "fa2fe5c2d03afaf20e5496f2f3e4ced9fd2526ac",
+      "binary_sha256": "05b8f3550e7301bcfe242506781d040f46569eeaad009ca7875b985e72ecb260",
+      "archive_sha256": "52c55a17ee15e5c4a0fc723b9605ae42615da34499efc7e5a5e8b2c0ffc26a27",
+      "manifest_sha256": "4cc0c9b35b3725ae2893e626f0ee29ca798830462b080a0dea16585bbcc48b85",
+      "benchmark": "sandbox/QF_UF.tar.zst: all 1778 original stdin sessions, 29990 queries; 766 Goel and 1012 CLEARSY",
+      "jobs": {
+        "regressions": "142599",
+        "auto_gate": "142601",
+        "matrix_gate": "142606",
+        "extra_gate": "142611",
+        "mixed_gate": "142616",
+        "default_uf": "142620",
+        "default_other": "142661",
+        "timing": "142665",
+        "validation": "142666",
+        "build": "142598",
+        "artifact_collection_attempt": "142729",
+        "artifact_collection": "142733"
+      },
+      "command_metadata": "benchmarks/assumptions-uf-evaluation.json contains exact submission commands, per-shard gate run metadata and per-profile native arguments. Full raw run.json records are in the collected artifact.",
+      "commands": [
+        "scripts/slurm_prepare_benchmark_workspace.py: clean fa2fe5c worktree, Release build, compute-tool checks and --check-only --no-sync preflight before every submission",
+        "scripts/slurm_incremental_uf_regressions.sbatch: five CTest targets, eight Python tests, seven Boolean-argument seeds and two ITE witnesses",
+        "scripts/slurm_incremental_uf_gate.sbatch: Auto, matrix, extra Auto; 1000 generated plus 1000 native mutations per invocation; --incremental-mode=assumptions --max-theory-conflicts=10000",
+        "scripts/slurm_incremental_gate.sbatch: 1000 default-rebuild mixed-logic sessions with --max-theory-conflicts=10000",
+        "scripts/slurm_native_uf_sessions.sbatch: candidate array slots 0,1,4,5,...,60,61; timing concurrency 8, validation concurrency 32; rebuild and assumptions --quiet --stats --max-theory-conflicts=10000",
+        "python3 scripts/summarize_native_uf.py --timing results/uf-native-timing-fa2fe5c --validation results/uf-native-validation-fa2fe5c --out tmp/uf-fa-final-summary.json",
+        "scripts/slurm_collect_native_uf.sbatch: ten independent archive parts, four concurrent tasks, successful native validation checked before submission"
+      ],
+      "environment": {
+        "build": "Release, fa2fe5c, CaDiCaL 3.0.0-7b99c07",
+        "hosts": [
+          "node-02.ciircluster",
+          "node-03.ciircluster"
+        ],
+        "python": "3.9.18",
+        "reference": "Z3 5.1.0, SHA256 54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+        "validator": "Dolmen 0.10, SHA256 08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+        "other_timing_reference": "cvc5 1.3.4"
+      },
+      "resource_limits": {
+        "timing": {
+          "session_seconds": 30,
+          "theory_conflicts_per_query": 10000,
+          "memory_gib_per_task": 8,
+          "walltime_hours_per_shard": 2,
+          "concurrent_tasks": 8,
+          "cpus_requested_per_task": 1,
+          "logical_cpus_allocated_per_task": 2,
+          "solver_processes_per_task": 1,
+          "host": "node-02.ciircluster"
+        },
+        "native_validation": {
+          "query_and_reference_seconds": 120,
+          "dolmen_seconds": 120,
+          "memory_gib_per_task": 8,
+          "walltime_hours_per_shard": 2,
+          "concurrent_tasks": 32,
+          "cpus_requested_per_task": 1,
+          "logical_cpus_allocated_per_task": 2,
+          "hosts": [
+            "node-02.ciircluster",
+            "node-03.ciircluster"
+          ],
+          "excluded_from_timing": true
+        },
+        "uf_gates": {
+          "query_and_reference_seconds": 20,
+          "dolmen_seconds": 30,
+          "memory_gib_per_task": 4,
+          "walltime_hours_per_shard": 1,
+          "cases_per_shard": 250
+        },
+        "artifact_collection": {
+          "memory_gib_per_task": 4,
+          "walltime_minutes_per_task": 75,
+          "compression_threads_per_task": 1,
+          "concurrent_tasks": 4,
+          "parts": 10,
+          "cpus_requested_per_task": 1,
+          "logical_cpus_allocated_per_task": 2
+        }
+      },
+      "uf_gates": {
+        "generated": 3000,
+        "native_mutations": 3000,
+        "pass": 6000,
+        "queries": 48000,
+        "direct_dolmen_sat_models": 28352,
+        "wrong_answer": 0,
+        "crash": 0,
+        "parser_type_error": 0,
+        "timeout": 0,
+        "unknown": 0,
+        "unsupported": 0,
+        "reference_disagreement": 0,
+        "invalid_model": 0,
+        "seed_bases": {
+          "auto": 202639120,
+          "matrix": 202649120,
+          "extra": 202659120
+        },
+        "seed_allocation": "Each invocation has eight 250-case shards: first four generated, next four native; shard seed = base + 250 * shard index. Ten pinned native seeds and generator hashes are recorded per run.",
+        "profiles": "Auto and Off preprocessing; Online and Conflict propagation in the matrix, Auto schedule in the two Auto campaigns"
+      },
+      "mixed_gate": {
+        "sessions": 1000,
+        "pass": 1000,
+        "queries": 15000,
+        "sat_models": 10000,
+        "seed_range": [
+          202609100,
+          202610099
+        ],
+        "logics": [
+          "QF_UF",
+          "QF_LRA",
+          "QF_LIA",
+          "QF_UFLRA",
+          "QF_UFLIA"
+        ],
+        "query_seconds": 10,
+        "dolmen_seconds": 20
+      },
+      "deterministic_regressions": {
+        "ctest_pass": 5,
+        "python_pass": 8,
+        "seed_and_witness_sessions": 9,
+        "queries": 19,
+        "sat_models": 13
+      },
+      "default_preservation": {
+        "files": 25,
+        "pass": 25,
+        "sessions": 50,
+        "queries": 200,
+        "sat_models": 121,
+        "file_seconds": 16.3949088267982,
+        "prior_04d2e23_file_seconds": 16.6212056055665,
+        "median_candidate_over_prior": 0.9928090050866649,
+        "baseline_commit": "04d2e23",
+        "lost_solved": 0,
+        "limits": "UF conflict limit 10000; other four logics 1000; identical accepted sample options; file timings separate from model replay"
+      },
+      "native_timing": {
+        "rebuild": {
+          "sessions": 1778,
+          "outcomes": {
+            "complete": 1775,
+            "timeout": 3
+          },
+          "completed_queries": 29573,
+          "partial_queries": 373,
+          "mean_par2": 0.8293804476400094,
+          "max_measured_rss_kib": 1013616
+        },
+        "assumptions": {
+          "sessions": 1778,
+          "outcomes": {
+            "complete": 1772,
+            "unknown": 6
+          },
+          "completed_queries": 29978,
+          "partial_queries": 12,
+          "mean_par2": 0.4828373348985718,
+          "max_measured_rss_kib": 919232
+        },
+        "z3": {
+          "sessions": 1778,
+          "outcomes": {
+            "complete": 1778
+          },
+          "completed_queries": 29990,
+          "partial_queries": 0,
+          "mean_par2": 0.16908912344220753,
+          "max_measured_rss_kib": 160132
+        },
+        "cvc5": {
+          "sessions": 1778,
+          "outcomes": {
+            "complete": 1768,
+            "timeout": 10
+          },
+          "completed_queries": 29970,
+          "partial_queries": 0,
+          "mean_par2": 0.8312656262070276,
+          "max_measured_rss_kib": 198896
+        }
+      },
+      "paired_comparison": {
+        "both_complete": 1770,
+        "median_speedup": 2.9637770579058045,
+        "geomean_speedup": 2.7380900503137977,
+        "gains": [
+          14,
+          852
+        ],
+        "losses": [
+          656,
+          659,
+          660,
+          661,
+          662
+        ]
+      },
+      "native_models": {
+        "rebuild": {
+          "replayed_sessions": 1778,
+          "qualified_complete_sessions": 1775,
+          "qualified_queries": 29573,
+          "sat_models": 24746,
+          "changed_answers": [],
+          "failures": [],
+          "complete_without_qualification": []
+        },
+        "assumptions": {
+          "replayed_sessions": 1778,
+          "qualified_complete_sessions": 1772,
+          "qualified_queries": 29978,
+          "sat_models": 25027,
+          "changed_answers": [],
+          "failures": [],
+          "complete_without_qualification": []
+        }
+      },
+      "correctness": "49773/49773 selected native SAT models pass direct Dolmen; all replay answers match timing and independent query-context Z3 results. Zero wrong answers, crashes, parser/type errors, changed replay answers, reference disagreements, validator errors or missing selected qualification.",
+      "reference_timing_reuse": "Z3 and cvc5 original timings from job 142464 are reused unchanged; no new reference performance run. Reference comparison during model validation is correctness-only.",
+      "reuse_probe": {
+        "rebuild": {
+          "index": 852,
+          "file": "incremental/QF_UF/20190906-CLEARSY/0002/00126.smt2",
+          "seconds": 30.018455805256963,
+          "outcome": "timeout",
+          "queries": 371,
+          "counters": {
+            "session.queries": 371,
+            "session.frontend-builds": 371
+          }
+        },
+        "assumptions": {
+          "index": 852,
+          "file": "incremental/QF_UF/20190906-CLEARSY/0002/00126.smt2",
+          "seconds": 4.5331408604979515,
+          "outcome": "complete",
+          "queries": 413,
+          "counters": {
+            "session.euf-new-boolean-arguments": 0,
+            "session.euf-new-prepared-atoms": 1,
+            "session.engine-queries": 413,
+            "session.theory-state-resets": 413,
+            "session.retired-selectors": 453,
+            "session.active-selectors": 2,
+            "session.retained-terms": 7392,
+            "session.active-model-roots": 69,
+            "session.retained-atoms": 2459,
+            "session.prepared-atoms": 2459,
+            "session.euf-flat-terms": 7750,
+            "session.euf-flat-definitions": 5892,
+            "session.pure-theory-filter": 0,
+            "session.sat-preprocessing": 0,
+            "session.sat-inprocessing": 0,
+            "session.clauses-added": 16280,
+            "session.retained-active-clauses": 15135,
+            "session.retained-redundant-clauses": 0,
+            "session.engine-builds": 1,
+            "session.translated-assertions": 2551,
+            "session.incremental-assumptions": 1,
+            "session.safe-rewrite-pipeline": 1,
+            "session.pipeline.lower-extended-terms": 1,
+            "session.pipeline.lower-real-equalities": 0,
+            "session.queries": 413,
+            "session.frontend-builds": 1
+          }
+        }
+      },
+      "provenance_audit": {
+        "matched_candidate_shards": 32,
+        "binary_manifest_options_and_driver_match": true,
+        "all_selected_models_qualified": true,
+        "collected_binary_manifest_and_original_archive_match": true,
+        "all_ten_archive_checksums_and_stream_integrity_pass": true,
+        "matched_exact_candidate_uf_gate_shards": 24
+      },
+      "verification": {
+        "check": "34 C++/CLI tests and 164 Python tests pass",
+        "asan": "34/34 pass",
+        "lint": "pass",
+        "docs": "pass",
+        "static_analysis": "Whole-tree 110 tracked C++ file tidy and advisory include-cleaner baseline at d96902f, followed by fresh focused scans of both changed C++ files at fa2fe5c; no blocking diagnostics. Existing direct-provider advisories and paired self-includes retained.",
+        "review": "Whole-tree code/hygiene/ownership review plus focused insertion and active-model-root reviews; no blocking code findings. Final evidence review confirms same binary, options, driver and manifest across timing/model shards."
+      },
+      "review": "No blocking code, ownership, hygiene or documentation finding after fixing stale historical qualification status. Whole-tree review inventory and analyzer logs preserved in the delivery evidence archive; final documentation synchronization and provenance join checked.",
+      "limitations": [
+        "Only complete Primo timing sessions are model-qualified; three rebuild timeouts and six assumptions unknown sessions remain unqualified, including earlier responses.",
+        "UNSAT has reference comparison, not proof certification.",
+        "Z3 and cvc5 timing records are reused without rerunning references; independent Dolmen validation covers Primo models.",
+        "Opt-in acceptance only: assumptions gains two sessions and loses five; default rebuild remains unchanged."
+      ],
+      "decision": "Accept the new QF_UF assumptions engine as opt-in. Z3 remains faster overall. Two gained and five lost sessions prevent default-promotion claims; lost Goel cases reach the explicit conflict limit. Profiling of the original firewire regression points to preprocessing/search/callback costs, not merely fresh-state copying. Default corpus retains every solved case.",
+      "orchestration": "Old successful dependency 142599 expired from scheduler acceptance before later submission. Its completed status and all fresh prerequisites were verified with sacct; remaining default shards were submitted without the expired dependency, then timing depended on the new default job 142661. A transient SSH banner failure was retried after audit; no duplicate campaign was launched.",
+      "artifacts": {
+        "timing": "results/uf-native-timing-fa2fe5c",
+        "validation": "results/uf-native-validation-fa2fe5c",
+        "remote_workspace": "/home/janotmik/primo-model-fix",
+        "archive_parts": "results/uf-fa2fe5c-artifacts",
+        "extracted_provenance": "results/uf-fa2fe5c-preserved",
+        "job_logs": "results/uf-fa2fe5c-job-logs.tar.gz",
+        "verification_and_submission_records": "results/uf-fa2fe5c-delivery",
+        "parts": [
+          {
+            "path": "results/uf-fa2fe5c-artifacts/default.tar.zst",
+            "sha256": "4b9ba04104915ab0fbf094de886bd425bd18ba60f84c9ef0e0dd34cc378caed3",
+            "bytes": 3205843
+          },
+          {
+            "path": "results/uf-fa2fe5c-artifacts/gate-auto.tar.zst",
+            "sha256": "8f5ca5fbfc12d7f8ce1f5d688c7ed61924c9a90d415cdbb9e923e3ba8e69deab",
+            "bytes": 4234123
+          },
+          {
+            "path": "results/uf-fa2fe5c-artifacts/gate-extra.tar.zst",
+            "sha256": "bf78f65c8ff77f7920359a3e7fdce8264c55ee5bf310e2c70a56a3631b49c1c7",
+            "bytes": 4231814
+          },
+          {
+            "path": "results/uf-fa2fe5c-artifacts/gate-matrix.tar.zst",
+            "sha256": "d4de484440e1c2474549cc90f39311fbc4830256a68d2d581b003751899f1bc3",
+            "bytes": 4191422
+          },
+          {
+            "path": "results/uf-fa2fe5c-artifacts/gate-mixed.tar.zst",
+            "sha256": "e73f289db14cea1c6fa163655fae921e17d26bcf8b753b0185ab0d656b02c1e1",
+            "bytes": 1566350
+          },
+          {
+            "path": "results/uf-fa2fe5c-artifacts/inputs-binary.tar.zst",
+            "sha256": "14645ce970469d1f319d9e9a971867926db6e9a508d7a0869a9118cabce12567",
+            "bytes": 56022894
+          },
+          {
+            "path": "results/uf-fa2fe5c-artifacts/models-assumptions.tar.zst",
+            "sha256": "cd78bdaf40d613d99096b8300eae2fc64da19057f1cd173aecbd1e170c49c4b9",
+            "bytes": 176117041
+          },
+          {
+            "path": "results/uf-fa2fe5c-artifacts/models-rebuild.tar.zst",
+            "sha256": "e23fa2b7c898c0a5e4faf7fee8ff6610bb3200ad6660cb1ca10b28ba45764ff3",
+            "bytes": 181996066
+          },
+          {
+            "path": "results/uf-fa2fe5c-artifacts/regressions.tar.zst",
+            "sha256": "4e0c6abd026676740902d5d3ca133e702bab5c9e878bc6729bf8a71d1a176c9b",
+            "bytes": 8477
+          },
+          {
+            "path": "results/uf-fa2fe5c-artifacts/timing.tar.zst",
+            "sha256": "d34fd5f350d714a9445e5e3e4b3ae92c7a0d48b0ab797e911a77f334297bb3e5",
+            "bytes": 11002580
+          }
+        ],
+        "parts_total_bytes": 442576610,
+        "delivery_bundle": {
+          "path": "results/uf-fa2fe5c-delivery.tar.gz",
+          "sha256": "99e86c2ea4a9fcc2f253fc7c7bfe5f2b92cb0d8c1c2e42b572dcbeb444218488",
+          "bytes": 69589
+        },
+        "job_logs_sha256": "b075ea631d8bdd8971dc8704a2324b1fd2f9a9e4f183d53600cdf29be21806cd",
+        "accounting": {
+          "path": "results/uf-fa2fe5c-delivery/slurm-accounting.txt",
+          "sha256": "278476e9c79f634db5f7105192793d756a7a2b4f6d9751aa5fa12213bdd0b081"
+        }
+      },
+      "artifact_collection_history": {
+        "first_job": "142729",
+        "state": "cancelled after 26m44s; incomplete archive is not qualification evidence",
+        "reason": "Serial traversal of many query files was too slow for its 45-minute budget. scontrol TimeLimit extension was denied; resubmitted independent bounded archive parts via fresh preflight. Solver outputs were never changed.",
+        "replacement_job": "142733",
+        "first_archive": "results/uf-fa2fe5c-artifacts.partial.tar.zst",
+        "diagnostics": "Read-only process inspection used an overlapping srun step inside the collector allocation. A direct compute-node SSH probe emitted a changed-host-key warning, so subsequent diagnostics used Slurm; no host-key configuration was changed.",
+        "replacement_state": "all ten parts completed, downloaded and verified"
+      },
+      "terminal_audit": {
+        "active_slurm_jobs": 0,
+        "all_current_solver_build_gate_timing_validation_and_collection_jobs_completed": true,
+        "cancelled_collection_attempt": "142729 (superseded by completed array 142733)",
+        "accounting_rows": 222,
+        "remote_login_solver_processes": 0,
+        "local_solver_processes": 0,
+        "collected_parts": 10
+      }
+    },
+    {
       "id": "2026-09-11-uf-active-lowered-model-roots",
       "date": "2026-09-11",
       "kind": "fresh-gate-model-failure-and-correctness-fix",

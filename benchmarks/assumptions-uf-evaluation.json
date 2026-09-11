@@ -1,0 +1,2551 @@
+{
+  "candidate_commit": "fa2fe5c2d03afaf20e5496f2f3e4ced9fd2526ac",
+  "candidate_sha256": "05b8f3550e7301bcfe242506781d040f46569eeaad009ca7875b985e72ecb260",
+  "archive_sha256": "52c55a17ee15e5c4a0fc723b9605ae42615da34499efc7e5a5e8b2c0ffc26a27",
+  "manifest_sha256": "4cc0c9b35b3725ae2893e626f0ee29ca798830462b080a0dea16585bbcc48b85",
+  "status": "qualified for complete sessions; full artifacts collected and verified; opt-in accepted",
+  "jobs": {
+    "regressions": "142599",
+    "auto_gate": "142601",
+    "matrix_gate": "142606",
+    "extra_gate": "142611",
+    "mixed_gate": "142616",
+    "default_uf": "142620",
+    "default_other": "142661",
+    "timing": "142665",
+    "validation": "142666",
+    "build": "142598",
+    "artifact_collection_attempt": "142729",
+    "artifact_collection": "142733"
+  },
+  "uf_gates": {
+    "auto": {
+      "sessions": 2000,
+      "pass": 2000,
+      "queries": 16000,
+      "sat_models": 9458,
+      "untriaged_failure": 0,
+      "shards": 8,
+      "run_metadata": [
+        {
+          "command": [
+            "scripts/incremental_uf_gate.py",
+            "--kind",
+            "generated",
+            "--seed",
+            "202639120",
+            "--count",
+            "250",
+            "--solver",
+            "build-slurm-rel/primo",
+            "--solver-arg=--quiet",
+            "--solver-arg=--incremental-mode=assumptions",
+            "--solver-arg=--max-theory-conflicts=10000",
+            "--solver-arg=--preprocessing-mode=auto",
+            "--solver-arg=--euf-prop=auto",
+            "--ref",
+            "contrib/local/bin/z3",
+            "--dolmen",
+            "contrib/local/bin/dolmen",
+            "--expected-git",
+            "fa2fe5c",
+            "--timeout",
+            "20",
+            "--dolmen-timeout",
+            "30",
+            "--out",
+            "/home/janotmik/primo-model-fix/results/uf-auto-gate-fa2fe5c/shard-0"
+          ],
+          "version": "primo 0.1.0\ngit: fa2fe5c\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+          "host": "node-02.ciircluster",
+          "slurm_job_id": "142602",
+          "solver_sha256": "05b8f3550e7301bcfe242506781d040f46569eeaad009ca7875b985e72ecb260",
+          "generator_sha256": "710bc0f0f0c73e414d3d3dd9efcb68cd05cefcd09594084904f8c3116c8f0c06",
+          "boolean_generator_sha256": "4ff7cd809c0d820dc6fe0012756dabd5dde0ad7564c3c9b126ca99a9b463fdd7",
+          "reference": {
+            "command": [
+              "contrib/local/bin/z3"
+            ],
+            "sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+            "version": "Z3 version 5.1.0 - 64 bit\n"
+          },
+          "dolmen": {
+            "command": "contrib/local/bin/dolmen",
+            "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+            "version": "0.10\n"
+          },
+          "native_seeds": {}
+        },
+        {
+          "command": [
+            "scripts/incremental_uf_gate.py",
+            "--kind",
+            "generated",
+            "--seed",
+            "202639370",
+            "--count",
+            "250",
+            "--solver",
+            "build-slurm-rel/primo",
+            "--solver-arg=--quiet",
+            "--solver-arg=--incremental-mode=assumptions",
+            "--solver-arg=--max-theory-conflicts=10000",
+            "--solver-arg=--preprocessing-mode=auto",
+            "--solver-arg=--euf-prop=auto",
+            "--ref",
+            "contrib/local/bin/z3",
+            "--dolmen",
+            "contrib/local/bin/dolmen",
+            "--expected-git",
+            "fa2fe5c",
+            "--timeout",
+            "20",
+            "--dolmen-timeout",
+            "30",
+            "--out",
+            "/home/janotmik/primo-model-fix/results/uf-auto-gate-fa2fe5c/shard-1"
+          ],
+          "version": "primo 0.1.0\ngit: fa2fe5c\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+          "host": "node-02.ciircluster",
+          "slurm_job_id": "142603",
+          "solver_sha256": "05b8f3550e7301bcfe242506781d040f46569eeaad009ca7875b985e72ecb260",
+          "generator_sha256": "710bc0f0f0c73e414d3d3dd9efcb68cd05cefcd09594084904f8c3116c8f0c06",
+          "boolean_generator_sha256": "4ff7cd809c0d820dc6fe0012756dabd5dde0ad7564c3c9b126ca99a9b463fdd7",
+          "reference": {
+            "command": [
+              "contrib/local/bin/z3"
+            ],
+            "sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+            "version": "Z3 version 5.1.0 - 64 bit\n"
+          },
+          "dolmen": {
+            "command": "contrib/local/bin/dolmen",
+            "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+            "version": "0.10\n"
+          },
+          "native_seeds": {}
+        },
+        {
+          "command": [
+            "scripts/incremental_uf_gate.py",
+            "--kind",
+            "generated",
+            "--seed",
+            "202639620",
+            "--count",
+            "250",
+            "--solver",
+            "build-slurm-rel/primo",
+            "--solver-arg=--quiet",
+            "--solver-arg=--incremental-mode=assumptions",
+            "--solver-arg=--max-theory-conflicts=10000",
+            "--solver-arg=--preprocessing-mode=auto",
+            "--solver-arg=--euf-prop=auto",
+            "--ref",
+            "contrib/local/bin/z3",
+            "--dolmen",
+            "contrib/local/bin/dolmen",
+            "--expected-git",
+            "fa2fe5c",
+            "--timeout",
+            "20",
+            "--dolmen-timeout",
+            "30",
+            "--out",
+            "/home/janotmik/primo-model-fix/results/uf-auto-gate-fa2fe5c/shard-2"
+          ],
+          "version": "primo 0.1.0\ngit: fa2fe5c\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+          "host": "node-02.ciircluster",
+          "slurm_job_id": "142604",
+          "solver_sha256": "05b8f3550e7301bcfe242506781d040f46569eeaad009ca7875b985e72ecb260",
+          "generator_sha256": "710bc0f0f0c73e414d3d3dd9efcb68cd05cefcd09594084904f8c3116c8f0c06",
+          "boolean_generator_sha256": "4ff7cd809c0d820dc6fe0012756dabd5dde0ad7564c3c9b126ca99a9b463fdd7",
+          "reference": {
+            "command": [
+              "contrib/local/bin/z3"
+            ],
+            "sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+            "version": "Z3 version 5.1.0 - 64 bit\n"
+          },
+          "dolmen": {
+            "command": "contrib/local/bin/dolmen",
+            "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+            "version": "0.10\n"
+          },
+          "native_seeds": {}
+        },
+        {
+          "command": [
+            "scripts/incremental_uf_gate.py",
+            "--kind",
+            "generated",
+            "--seed",
+            "202639870",
+            "--count",
+            "250",
+            "--solver",
+            "build-slurm-rel/primo",
+            "--solver-arg=--quiet",
+            "--solver-arg=--incremental-mode=assumptions",
+            "--solver-arg=--max-theory-conflicts=10000",
+            "--solver-arg=--preprocessing-mode=auto",
+            "--solver-arg=--euf-prop=auto",
+            "--ref",
+            "contrib/local/bin/z3",
+            "--dolmen",
+            "contrib/local/bin/dolmen",
+            "--expected-git",
+            "fa2fe5c",
+            "--timeout",
+            "20",
+            "--dolmen-timeout",
+            "30",
+            "--out",
+            "/home/janotmik/primo-model-fix/results/uf-auto-gate-fa2fe5c/shard-3"
+          ],
+          "version": "primo 0.1.0\ngit: fa2fe5c\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+          "host": "node-02.ciircluster",
+          "slurm_job_id": "142605",
+          "solver_sha256": "05b8f3550e7301bcfe242506781d040f46569eeaad009ca7875b985e72ecb260",
+          "generator_sha256": "710bc0f0f0c73e414d3d3dd9efcb68cd05cefcd09594084904f8c3116c8f0c06",
+          "boolean_generator_sha256": "4ff7cd809c0d820dc6fe0012756dabd5dde0ad7564c3c9b126ca99a9b463fdd7",
+          "reference": {
+            "command": [
+              "contrib/local/bin/z3"
+            ],
+            "sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+            "version": "Z3 version 5.1.0 - 64 bit\n"
+          },
+          "dolmen": {
+            "command": "contrib/local/bin/dolmen",
+            "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+            "version": "0.10\n"
+          },
+          "native_seeds": {}
+        },
+        {
+          "command": [
+            "scripts/incremental_uf_gate.py",
+            "--kind",
+            "native",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_paper_v3_ab_reg_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_b02_ab_min_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_Arbiter_ab_core_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_synabs_ab_min_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_usb_phy_ab_core_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00969.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00015.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0013/00001.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0009/00173.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0015/00242.smt2",
+            "--seed",
+            "202640120",
+            "--count",
+            "250",
+            "--solver",
+            "build-slurm-rel/primo",
+            "--solver-arg=--quiet",
+            "--solver-arg=--incremental-mode=assumptions",
+            "--solver-arg=--max-theory-conflicts=10000",
+            "--solver-arg=--preprocessing-mode=auto",
+            "--solver-arg=--euf-prop=auto",
+            "--ref",
+            "contrib/local/bin/z3",
+            "--dolmen",
+            "contrib/local/bin/dolmen",
+            "--expected-git",
+            "fa2fe5c",
+            "--timeout",
+            "20",
+            "--dolmen-timeout",
+            "30",
+            "--out",
+            "/home/janotmik/primo-model-fix/results/uf-auto-gate-fa2fe5c/shard-4"
+          ],
+          "version": "primo 0.1.0\ngit: fa2fe5c\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+          "host": "node-02.ciircluster",
+          "slurm_job_id": "142621",
+          "solver_sha256": "05b8f3550e7301bcfe242506781d040f46569eeaad009ca7875b985e72ecb260",
+          "generator_sha256": "710bc0f0f0c73e414d3d3dd9efcb68cd05cefcd09594084904f8c3116c8f0c06",
+          "boolean_generator_sha256": "4ff7cd809c0d820dc6fe0012756dabd5dde0ad7564c3c9b126ca99a9b463fdd7",
+          "reference": {
+            "command": [
+              "contrib/local/bin/z3"
+            ],
+            "sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+            "version": "Z3 version 5.1.0 - 64 bit\n"
+          },
+          "dolmen": {
+            "command": "contrib/local/bin/dolmen",
+            "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+            "version": "0.10\n"
+          },
+          "native_seeds": {
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_paper_v3_ab_reg_max.smt2": "cccae406b1d97de7d36aef2aa11aab90140b8ea7e7a6a3e9b81b54358c1a0eae",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_b02_ab_min_max.smt2": "66d3dbef0e7feb3e195f71a1f28b24c790abac816649bacae8fa43512f077425",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_Arbiter_ab_core_max.smt2": "48913d9887cbfa7ceb9ff52460f1f9805554c56f5e8c8412d03bacd63716311a",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_synabs_ab_min_max.smt2": "58b4df8a6f9936274f670715f40a8401e13ade6422c72d261366a9a898e44af9",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_usb_phy_ab_core_max.smt2": "cced17503fb8106d58f043fb3c8eb74ad0d5f70e1df7d94c1dd7865cd66d5425",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00969.smt2": "a850e7fb3fa142707032ad43404726dc9dbb8242c452f487a4627066bfaaa6cc",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00015.smt2": "98d52edeb3923a8dc783b43194f7127ed033c9899f045043f5714d82c3f26ff5",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0013/00001.smt2": "3ab5ccc5ac159dfcc0877bccd0e674903729d170c746b69050cf22844283cf6e",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0009/00173.smt2": "6db9d7d7faeab38101310b2ea19ed500bd6e832f27346de4dbebc7e176e2e215",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0015/00242.smt2": "7d9af29081d26c874c64782b69effdf04c9b568b0b7d322285d47ee78940a0f7"
+          }
+        },
+        {
+          "command": [
+            "scripts/incremental_uf_gate.py",
+            "--kind",
+            "native",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_paper_v3_ab_reg_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_b02_ab_min_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_Arbiter_ab_core_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_synabs_ab_min_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_usb_phy_ab_core_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00969.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00015.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0013/00001.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0009/00173.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0015/00242.smt2",
+            "--seed",
+            "202640370",
+            "--count",
+            "250",
+            "--solver",
+            "build-slurm-rel/primo",
+            "--solver-arg=--quiet",
+            "--solver-arg=--incremental-mode=assumptions",
+            "--solver-arg=--max-theory-conflicts=10000",
+            "--solver-arg=--preprocessing-mode=auto",
+            "--solver-arg=--euf-prop=auto",
+            "--ref",
+            "contrib/local/bin/z3",
+            "--dolmen",
+            "contrib/local/bin/dolmen",
+            "--expected-git",
+            "fa2fe5c",
+            "--timeout",
+            "20",
+            "--dolmen-timeout",
+            "30",
+            "--out",
+            "/home/janotmik/primo-model-fix/results/uf-auto-gate-fa2fe5c/shard-5"
+          ],
+          "version": "primo 0.1.0\ngit: fa2fe5c\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+          "host": "node-02.ciircluster",
+          "slurm_job_id": "142622",
+          "solver_sha256": "05b8f3550e7301bcfe242506781d040f46569eeaad009ca7875b985e72ecb260",
+          "generator_sha256": "710bc0f0f0c73e414d3d3dd9efcb68cd05cefcd09594084904f8c3116c8f0c06",
+          "boolean_generator_sha256": "4ff7cd809c0d820dc6fe0012756dabd5dde0ad7564c3c9b126ca99a9b463fdd7",
+          "reference": {
+            "command": [
+              "contrib/local/bin/z3"
+            ],
+            "sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+            "version": "Z3 version 5.1.0 - 64 bit\n"
+          },
+          "dolmen": {
+            "command": "contrib/local/bin/dolmen",
+            "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+            "version": "0.10\n"
+          },
+          "native_seeds": {
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_paper_v3_ab_reg_max.smt2": "cccae406b1d97de7d36aef2aa11aab90140b8ea7e7a6a3e9b81b54358c1a0eae",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_b02_ab_min_max.smt2": "66d3dbef0e7feb3e195f71a1f28b24c790abac816649bacae8fa43512f077425",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_Arbiter_ab_core_max.smt2": "48913d9887cbfa7ceb9ff52460f1f9805554c56f5e8c8412d03bacd63716311a",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_synabs_ab_min_max.smt2": "58b4df8a6f9936274f670715f40a8401e13ade6422c72d261366a9a898e44af9",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_usb_phy_ab_core_max.smt2": "cced17503fb8106d58f043fb3c8eb74ad0d5f70e1df7d94c1dd7865cd66d5425",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00969.smt2": "a850e7fb3fa142707032ad43404726dc9dbb8242c452f487a4627066bfaaa6cc",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00015.smt2": "98d52edeb3923a8dc783b43194f7127ed033c9899f045043f5714d82c3f26ff5",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0013/00001.smt2": "3ab5ccc5ac159dfcc0877bccd0e674903729d170c746b69050cf22844283cf6e",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0009/00173.smt2": "6db9d7d7faeab38101310b2ea19ed500bd6e832f27346de4dbebc7e176e2e215",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0015/00242.smt2": "7d9af29081d26c874c64782b69effdf04c9b568b0b7d322285d47ee78940a0f7"
+          }
+        },
+        {
+          "command": [
+            "scripts/incremental_uf_gate.py",
+            "--kind",
+            "native",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_paper_v3_ab_reg_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_b02_ab_min_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_Arbiter_ab_core_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_synabs_ab_min_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_usb_phy_ab_core_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00969.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00015.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0013/00001.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0009/00173.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0015/00242.smt2",
+            "--seed",
+            "202640620",
+            "--count",
+            "250",
+            "--solver",
+            "build-slurm-rel/primo",
+            "--solver-arg=--quiet",
+            "--solver-arg=--incremental-mode=assumptions",
+            "--solver-arg=--max-theory-conflicts=10000",
+            "--solver-arg=--preprocessing-mode=auto",
+            "--solver-arg=--euf-prop=auto",
+            "--ref",
+            "contrib/local/bin/z3",
+            "--dolmen",
+            "contrib/local/bin/dolmen",
+            "--expected-git",
+            "fa2fe5c",
+            "--timeout",
+            "20",
+            "--dolmen-timeout",
+            "30",
+            "--out",
+            "/home/janotmik/primo-model-fix/results/uf-auto-gate-fa2fe5c/shard-6"
+          ],
+          "version": "primo 0.1.0\ngit: fa2fe5c\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+          "host": "node-02.ciircluster",
+          "slurm_job_id": "142623",
+          "solver_sha256": "05b8f3550e7301bcfe242506781d040f46569eeaad009ca7875b985e72ecb260",
+          "generator_sha256": "710bc0f0f0c73e414d3d3dd9efcb68cd05cefcd09594084904f8c3116c8f0c06",
+          "boolean_generator_sha256": "4ff7cd809c0d820dc6fe0012756dabd5dde0ad7564c3c9b126ca99a9b463fdd7",
+          "reference": {
+            "command": [
+              "contrib/local/bin/z3"
+            ],
+            "sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+            "version": "Z3 version 5.1.0 - 64 bit\n"
+          },
+          "dolmen": {
+            "command": "contrib/local/bin/dolmen",
+            "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+            "version": "0.10\n"
+          },
+          "native_seeds": {
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_paper_v3_ab_reg_max.smt2": "cccae406b1d97de7d36aef2aa11aab90140b8ea7e7a6a3e9b81b54358c1a0eae",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_b02_ab_min_max.smt2": "66d3dbef0e7feb3e195f71a1f28b24c790abac816649bacae8fa43512f077425",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_Arbiter_ab_core_max.smt2": "48913d9887cbfa7ceb9ff52460f1f9805554c56f5e8c8412d03bacd63716311a",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_synabs_ab_min_max.smt2": "58b4df8a6f9936274f670715f40a8401e13ade6422c72d261366a9a898e44af9",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_usb_phy_ab_core_max.smt2": "cced17503fb8106d58f043fb3c8eb74ad0d5f70e1df7d94c1dd7865cd66d5425",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00969.smt2": "a850e7fb3fa142707032ad43404726dc9dbb8242c452f487a4627066bfaaa6cc",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00015.smt2": "98d52edeb3923a8dc783b43194f7127ed033c9899f045043f5714d82c3f26ff5",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0013/00001.smt2": "3ab5ccc5ac159dfcc0877bccd0e674903729d170c746b69050cf22844283cf6e",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0009/00173.smt2": "6db9d7d7faeab38101310b2ea19ed500bd6e832f27346de4dbebc7e176e2e215",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0015/00242.smt2": "7d9af29081d26c874c64782b69effdf04c9b568b0b7d322285d47ee78940a0f7"
+          }
+        },
+        {
+          "command": [
+            "scripts/incremental_uf_gate.py",
+            "--kind",
+            "native",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_paper_v3_ab_reg_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_b02_ab_min_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_Arbiter_ab_core_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_synabs_ab_min_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_usb_phy_ab_core_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00969.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00015.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0013/00001.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0009/00173.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0015/00242.smt2",
+            "--seed",
+            "202640870",
+            "--count",
+            "250",
+            "--solver",
+            "build-slurm-rel/primo",
+            "--solver-arg=--quiet",
+            "--solver-arg=--incremental-mode=assumptions",
+            "--solver-arg=--max-theory-conflicts=10000",
+            "--solver-arg=--preprocessing-mode=auto",
+            "--solver-arg=--euf-prop=auto",
+            "--ref",
+            "contrib/local/bin/z3",
+            "--dolmen",
+            "contrib/local/bin/dolmen",
+            "--expected-git",
+            "fa2fe5c",
+            "--timeout",
+            "20",
+            "--dolmen-timeout",
+            "30",
+            "--out",
+            "/home/janotmik/primo-model-fix/results/uf-auto-gate-fa2fe5c/shard-7"
+          ],
+          "version": "primo 0.1.0\ngit: fa2fe5c\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+          "host": "node-02.ciircluster",
+          "slurm_job_id": "142601",
+          "solver_sha256": "05b8f3550e7301bcfe242506781d040f46569eeaad009ca7875b985e72ecb260",
+          "generator_sha256": "710bc0f0f0c73e414d3d3dd9efcb68cd05cefcd09594084904f8c3116c8f0c06",
+          "boolean_generator_sha256": "4ff7cd809c0d820dc6fe0012756dabd5dde0ad7564c3c9b126ca99a9b463fdd7",
+          "reference": {
+            "command": [
+              "contrib/local/bin/z3"
+            ],
+            "sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+            "version": "Z3 version 5.1.0 - 64 bit\n"
+          },
+          "dolmen": {
+            "command": "contrib/local/bin/dolmen",
+            "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+            "version": "0.10\n"
+          },
+          "native_seeds": {
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_paper_v3_ab_reg_max.smt2": "cccae406b1d97de7d36aef2aa11aab90140b8ea7e7a6a3e9b81b54358c1a0eae",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_b02_ab_min_max.smt2": "66d3dbef0e7feb3e195f71a1f28b24c790abac816649bacae8fa43512f077425",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_Arbiter_ab_core_max.smt2": "48913d9887cbfa7ceb9ff52460f1f9805554c56f5e8c8412d03bacd63716311a",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_synabs_ab_min_max.smt2": "58b4df8a6f9936274f670715f40a8401e13ade6422c72d261366a9a898e44af9",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_usb_phy_ab_core_max.smt2": "cced17503fb8106d58f043fb3c8eb74ad0d5f70e1df7d94c1dd7865cd66d5425",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00969.smt2": "a850e7fb3fa142707032ad43404726dc9dbb8242c452f487a4627066bfaaa6cc",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00015.smt2": "98d52edeb3923a8dc783b43194f7127ed033c9899f045043f5714d82c3f26ff5",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0013/00001.smt2": "3ab5ccc5ac159dfcc0877bccd0e674903729d170c746b69050cf22844283cf6e",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0009/00173.smt2": "6db9d7d7faeab38101310b2ea19ed500bd6e832f27346de4dbebc7e176e2e215",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0015/00242.smt2": "7d9af29081d26c874c64782b69effdf04c9b568b0b7d322285d47ee78940a0f7"
+          }
+        }
+      ]
+    },
+    "matrix": {
+      "sessions": 2000,
+      "pass": 2000,
+      "queries": 16000,
+      "sat_models": 9432,
+      "untriaged_failure": 0,
+      "shards": 8,
+      "run_metadata": [
+        {
+          "command": [
+            "scripts/incremental_uf_gate.py",
+            "--kind",
+            "generated",
+            "--seed",
+            "202649120",
+            "--count",
+            "250",
+            "--solver",
+            "build-slurm-rel/primo",
+            "--solver-arg=--quiet",
+            "--solver-arg=--incremental-mode=assumptions",
+            "--solver-arg=--max-theory-conflicts=10000",
+            "--solver-arg=--preprocessing-mode=auto",
+            "--solver-arg=--euf-prop=online",
+            "--ref",
+            "contrib/local/bin/z3",
+            "--dolmen",
+            "contrib/local/bin/dolmen",
+            "--expected-git",
+            "fa2fe5c",
+            "--timeout",
+            "20",
+            "--dolmen-timeout",
+            "30",
+            "--out",
+            "/home/janotmik/primo-model-fix/results/uf-matrix-gate-fa2fe5c/shard-0"
+          ],
+          "version": "primo 0.1.0\ngit: fa2fe5c\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+          "host": "node-02.ciircluster",
+          "slurm_job_id": "142607",
+          "solver_sha256": "05b8f3550e7301bcfe242506781d040f46569eeaad009ca7875b985e72ecb260",
+          "generator_sha256": "710bc0f0f0c73e414d3d3dd9efcb68cd05cefcd09594084904f8c3116c8f0c06",
+          "boolean_generator_sha256": "4ff7cd809c0d820dc6fe0012756dabd5dde0ad7564c3c9b126ca99a9b463fdd7",
+          "reference": {
+            "command": [
+              "contrib/local/bin/z3"
+            ],
+            "sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+            "version": "Z3 version 5.1.0 - 64 bit\n"
+          },
+          "dolmen": {
+            "command": "contrib/local/bin/dolmen",
+            "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+            "version": "0.10\n"
+          },
+          "native_seeds": {}
+        },
+        {
+          "command": [
+            "scripts/incremental_uf_gate.py",
+            "--kind",
+            "generated",
+            "--seed",
+            "202649370",
+            "--count",
+            "250",
+            "--solver",
+            "build-slurm-rel/primo",
+            "--solver-arg=--quiet",
+            "--solver-arg=--incremental-mode=assumptions",
+            "--solver-arg=--max-theory-conflicts=10000",
+            "--solver-arg=--preprocessing-mode=off",
+            "--solver-arg=--euf-prop=online",
+            "--ref",
+            "contrib/local/bin/z3",
+            "--dolmen",
+            "contrib/local/bin/dolmen",
+            "--expected-git",
+            "fa2fe5c",
+            "--timeout",
+            "20",
+            "--dolmen-timeout",
+            "30",
+            "--out",
+            "/home/janotmik/primo-model-fix/results/uf-matrix-gate-fa2fe5c/shard-1"
+          ],
+          "version": "primo 0.1.0\ngit: fa2fe5c\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+          "host": "node-02.ciircluster",
+          "slurm_job_id": "142608",
+          "solver_sha256": "05b8f3550e7301bcfe242506781d040f46569eeaad009ca7875b985e72ecb260",
+          "generator_sha256": "710bc0f0f0c73e414d3d3dd9efcb68cd05cefcd09594084904f8c3116c8f0c06",
+          "boolean_generator_sha256": "4ff7cd809c0d820dc6fe0012756dabd5dde0ad7564c3c9b126ca99a9b463fdd7",
+          "reference": {
+            "command": [
+              "contrib/local/bin/z3"
+            ],
+            "sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+            "version": "Z3 version 5.1.0 - 64 bit\n"
+          },
+          "dolmen": {
+            "command": "contrib/local/bin/dolmen",
+            "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+            "version": "0.10\n"
+          },
+          "native_seeds": {}
+        },
+        {
+          "command": [
+            "scripts/incremental_uf_gate.py",
+            "--kind",
+            "generated",
+            "--seed",
+            "202649620",
+            "--count",
+            "250",
+            "--solver",
+            "build-slurm-rel/primo",
+            "--solver-arg=--quiet",
+            "--solver-arg=--incremental-mode=assumptions",
+            "--solver-arg=--max-theory-conflicts=10000",
+            "--solver-arg=--preprocessing-mode=auto",
+            "--solver-arg=--euf-prop=conflict",
+            "--ref",
+            "contrib/local/bin/z3",
+            "--dolmen",
+            "contrib/local/bin/dolmen",
+            "--expected-git",
+            "fa2fe5c",
+            "--timeout",
+            "20",
+            "--dolmen-timeout",
+            "30",
+            "--out",
+            "/home/janotmik/primo-model-fix/results/uf-matrix-gate-fa2fe5c/shard-2"
+          ],
+          "version": "primo 0.1.0\ngit: fa2fe5c\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+          "host": "node-02.ciircluster",
+          "slurm_job_id": "142609",
+          "solver_sha256": "05b8f3550e7301bcfe242506781d040f46569eeaad009ca7875b985e72ecb260",
+          "generator_sha256": "710bc0f0f0c73e414d3d3dd9efcb68cd05cefcd09594084904f8c3116c8f0c06",
+          "boolean_generator_sha256": "4ff7cd809c0d820dc6fe0012756dabd5dde0ad7564c3c9b126ca99a9b463fdd7",
+          "reference": {
+            "command": [
+              "contrib/local/bin/z3"
+            ],
+            "sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+            "version": "Z3 version 5.1.0 - 64 bit\n"
+          },
+          "dolmen": {
+            "command": "contrib/local/bin/dolmen",
+            "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+            "version": "0.10\n"
+          },
+          "native_seeds": {}
+        },
+        {
+          "command": [
+            "scripts/incremental_uf_gate.py",
+            "--kind",
+            "generated",
+            "--seed",
+            "202649870",
+            "--count",
+            "250",
+            "--solver",
+            "build-slurm-rel/primo",
+            "--solver-arg=--quiet",
+            "--solver-arg=--incremental-mode=assumptions",
+            "--solver-arg=--max-theory-conflicts=10000",
+            "--solver-arg=--preprocessing-mode=off",
+            "--solver-arg=--euf-prop=conflict",
+            "--ref",
+            "contrib/local/bin/z3",
+            "--dolmen",
+            "contrib/local/bin/dolmen",
+            "--expected-git",
+            "fa2fe5c",
+            "--timeout",
+            "20",
+            "--dolmen-timeout",
+            "30",
+            "--out",
+            "/home/janotmik/primo-model-fix/results/uf-matrix-gate-fa2fe5c/shard-3"
+          ],
+          "version": "primo 0.1.0\ngit: fa2fe5c\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+          "host": "node-02.ciircluster",
+          "slurm_job_id": "142610",
+          "solver_sha256": "05b8f3550e7301bcfe242506781d040f46569eeaad009ca7875b985e72ecb260",
+          "generator_sha256": "710bc0f0f0c73e414d3d3dd9efcb68cd05cefcd09594084904f8c3116c8f0c06",
+          "boolean_generator_sha256": "4ff7cd809c0d820dc6fe0012756dabd5dde0ad7564c3c9b126ca99a9b463fdd7",
+          "reference": {
+            "command": [
+              "contrib/local/bin/z3"
+            ],
+            "sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+            "version": "Z3 version 5.1.0 - 64 bit\n"
+          },
+          "dolmen": {
+            "command": "contrib/local/bin/dolmen",
+            "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+            "version": "0.10\n"
+          },
+          "native_seeds": {}
+        },
+        {
+          "command": [
+            "scripts/incremental_uf_gate.py",
+            "--kind",
+            "native",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_paper_v3_ab_reg_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_b02_ab_min_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_Arbiter_ab_core_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_synabs_ab_min_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_usb_phy_ab_core_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00969.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00015.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0013/00001.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0009/00173.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0015/00242.smt2",
+            "--seed",
+            "202650120",
+            "--count",
+            "250",
+            "--solver",
+            "build-slurm-rel/primo",
+            "--solver-arg=--quiet",
+            "--solver-arg=--incremental-mode=assumptions",
+            "--solver-arg=--max-theory-conflicts=10000",
+            "--solver-arg=--preprocessing-mode=auto",
+            "--solver-arg=--euf-prop=online",
+            "--ref",
+            "contrib/local/bin/z3",
+            "--dolmen",
+            "contrib/local/bin/dolmen",
+            "--expected-git",
+            "fa2fe5c",
+            "--timeout",
+            "20",
+            "--dolmen-timeout",
+            "30",
+            "--out",
+            "/home/janotmik/primo-model-fix/results/uf-matrix-gate-fa2fe5c/shard-4"
+          ],
+          "version": "primo 0.1.0\ngit: fa2fe5c\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+          "host": "node-02.ciircluster",
+          "slurm_job_id": "142624",
+          "solver_sha256": "05b8f3550e7301bcfe242506781d040f46569eeaad009ca7875b985e72ecb260",
+          "generator_sha256": "710bc0f0f0c73e414d3d3dd9efcb68cd05cefcd09594084904f8c3116c8f0c06",
+          "boolean_generator_sha256": "4ff7cd809c0d820dc6fe0012756dabd5dde0ad7564c3c9b126ca99a9b463fdd7",
+          "reference": {
+            "command": [
+              "contrib/local/bin/z3"
+            ],
+            "sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+            "version": "Z3 version 5.1.0 - 64 bit\n"
+          },
+          "dolmen": {
+            "command": "contrib/local/bin/dolmen",
+            "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+            "version": "0.10\n"
+          },
+          "native_seeds": {
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_paper_v3_ab_reg_max.smt2": "cccae406b1d97de7d36aef2aa11aab90140b8ea7e7a6a3e9b81b54358c1a0eae",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_b02_ab_min_max.smt2": "66d3dbef0e7feb3e195f71a1f28b24c790abac816649bacae8fa43512f077425",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_Arbiter_ab_core_max.smt2": "48913d9887cbfa7ceb9ff52460f1f9805554c56f5e8c8412d03bacd63716311a",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_synabs_ab_min_max.smt2": "58b4df8a6f9936274f670715f40a8401e13ade6422c72d261366a9a898e44af9",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_usb_phy_ab_core_max.smt2": "cced17503fb8106d58f043fb3c8eb74ad0d5f70e1df7d94c1dd7865cd66d5425",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00969.smt2": "a850e7fb3fa142707032ad43404726dc9dbb8242c452f487a4627066bfaaa6cc",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00015.smt2": "98d52edeb3923a8dc783b43194f7127ed033c9899f045043f5714d82c3f26ff5",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0013/00001.smt2": "3ab5ccc5ac159dfcc0877bccd0e674903729d170c746b69050cf22844283cf6e",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0009/00173.smt2": "6db9d7d7faeab38101310b2ea19ed500bd6e832f27346de4dbebc7e176e2e215",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0015/00242.smt2": "7d9af29081d26c874c64782b69effdf04c9b568b0b7d322285d47ee78940a0f7"
+          }
+        },
+        {
+          "command": [
+            "scripts/incremental_uf_gate.py",
+            "--kind",
+            "native",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_paper_v3_ab_reg_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_b02_ab_min_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_Arbiter_ab_core_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_synabs_ab_min_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_usb_phy_ab_core_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00969.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00015.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0013/00001.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0009/00173.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0015/00242.smt2",
+            "--seed",
+            "202650370",
+            "--count",
+            "250",
+            "--solver",
+            "build-slurm-rel/primo",
+            "--solver-arg=--quiet",
+            "--solver-arg=--incremental-mode=assumptions",
+            "--solver-arg=--max-theory-conflicts=10000",
+            "--solver-arg=--preprocessing-mode=off",
+            "--solver-arg=--euf-prop=online",
+            "--ref",
+            "contrib/local/bin/z3",
+            "--dolmen",
+            "contrib/local/bin/dolmen",
+            "--expected-git",
+            "fa2fe5c",
+            "--timeout",
+            "20",
+            "--dolmen-timeout",
+            "30",
+            "--out",
+            "/home/janotmik/primo-model-fix/results/uf-matrix-gate-fa2fe5c/shard-5"
+          ],
+          "version": "primo 0.1.0\ngit: fa2fe5c\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+          "host": "node-02.ciircluster",
+          "slurm_job_id": "142625",
+          "solver_sha256": "05b8f3550e7301bcfe242506781d040f46569eeaad009ca7875b985e72ecb260",
+          "generator_sha256": "710bc0f0f0c73e414d3d3dd9efcb68cd05cefcd09594084904f8c3116c8f0c06",
+          "boolean_generator_sha256": "4ff7cd809c0d820dc6fe0012756dabd5dde0ad7564c3c9b126ca99a9b463fdd7",
+          "reference": {
+            "command": [
+              "contrib/local/bin/z3"
+            ],
+            "sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+            "version": "Z3 version 5.1.0 - 64 bit\n"
+          },
+          "dolmen": {
+            "command": "contrib/local/bin/dolmen",
+            "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+            "version": "0.10\n"
+          },
+          "native_seeds": {
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_paper_v3_ab_reg_max.smt2": "cccae406b1d97de7d36aef2aa11aab90140b8ea7e7a6a3e9b81b54358c1a0eae",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_b02_ab_min_max.smt2": "66d3dbef0e7feb3e195f71a1f28b24c790abac816649bacae8fa43512f077425",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_Arbiter_ab_core_max.smt2": "48913d9887cbfa7ceb9ff52460f1f9805554c56f5e8c8412d03bacd63716311a",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_synabs_ab_min_max.smt2": "58b4df8a6f9936274f670715f40a8401e13ade6422c72d261366a9a898e44af9",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_usb_phy_ab_core_max.smt2": "cced17503fb8106d58f043fb3c8eb74ad0d5f70e1df7d94c1dd7865cd66d5425",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00969.smt2": "a850e7fb3fa142707032ad43404726dc9dbb8242c452f487a4627066bfaaa6cc",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00015.smt2": "98d52edeb3923a8dc783b43194f7127ed033c9899f045043f5714d82c3f26ff5",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0013/00001.smt2": "3ab5ccc5ac159dfcc0877bccd0e674903729d170c746b69050cf22844283cf6e",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0009/00173.smt2": "6db9d7d7faeab38101310b2ea19ed500bd6e832f27346de4dbebc7e176e2e215",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0015/00242.smt2": "7d9af29081d26c874c64782b69effdf04c9b568b0b7d322285d47ee78940a0f7"
+          }
+        },
+        {
+          "command": [
+            "scripts/incremental_uf_gate.py",
+            "--kind",
+            "native",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_paper_v3_ab_reg_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_b02_ab_min_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_Arbiter_ab_core_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_synabs_ab_min_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_usb_phy_ab_core_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00969.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00015.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0013/00001.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0009/00173.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0015/00242.smt2",
+            "--seed",
+            "202650620",
+            "--count",
+            "250",
+            "--solver",
+            "build-slurm-rel/primo",
+            "--solver-arg=--quiet",
+            "--solver-arg=--incremental-mode=assumptions",
+            "--solver-arg=--max-theory-conflicts=10000",
+            "--solver-arg=--preprocessing-mode=auto",
+            "--solver-arg=--euf-prop=conflict",
+            "--ref",
+            "contrib/local/bin/z3",
+            "--dolmen",
+            "contrib/local/bin/dolmen",
+            "--expected-git",
+            "fa2fe5c",
+            "--timeout",
+            "20",
+            "--dolmen-timeout",
+            "30",
+            "--out",
+            "/home/janotmik/primo-model-fix/results/uf-matrix-gate-fa2fe5c/shard-6"
+          ],
+          "version": "primo 0.1.0\ngit: fa2fe5c\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+          "host": "node-02.ciircluster",
+          "slurm_job_id": "142626",
+          "solver_sha256": "05b8f3550e7301bcfe242506781d040f46569eeaad009ca7875b985e72ecb260",
+          "generator_sha256": "710bc0f0f0c73e414d3d3dd9efcb68cd05cefcd09594084904f8c3116c8f0c06",
+          "boolean_generator_sha256": "4ff7cd809c0d820dc6fe0012756dabd5dde0ad7564c3c9b126ca99a9b463fdd7",
+          "reference": {
+            "command": [
+              "contrib/local/bin/z3"
+            ],
+            "sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+            "version": "Z3 version 5.1.0 - 64 bit\n"
+          },
+          "dolmen": {
+            "command": "contrib/local/bin/dolmen",
+            "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+            "version": "0.10\n"
+          },
+          "native_seeds": {
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_paper_v3_ab_reg_max.smt2": "cccae406b1d97de7d36aef2aa11aab90140b8ea7e7a6a3e9b81b54358c1a0eae",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_b02_ab_min_max.smt2": "66d3dbef0e7feb3e195f71a1f28b24c790abac816649bacae8fa43512f077425",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_Arbiter_ab_core_max.smt2": "48913d9887cbfa7ceb9ff52460f1f9805554c56f5e8c8412d03bacd63716311a",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_synabs_ab_min_max.smt2": "58b4df8a6f9936274f670715f40a8401e13ade6422c72d261366a9a898e44af9",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_usb_phy_ab_core_max.smt2": "cced17503fb8106d58f043fb3c8eb74ad0d5f70e1df7d94c1dd7865cd66d5425",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00969.smt2": "a850e7fb3fa142707032ad43404726dc9dbb8242c452f487a4627066bfaaa6cc",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00015.smt2": "98d52edeb3923a8dc783b43194f7127ed033c9899f045043f5714d82c3f26ff5",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0013/00001.smt2": "3ab5ccc5ac159dfcc0877bccd0e674903729d170c746b69050cf22844283cf6e",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0009/00173.smt2": "6db9d7d7faeab38101310b2ea19ed500bd6e832f27346de4dbebc7e176e2e215",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0015/00242.smt2": "7d9af29081d26c874c64782b69effdf04c9b568b0b7d322285d47ee78940a0f7"
+          }
+        },
+        {
+          "command": [
+            "scripts/incremental_uf_gate.py",
+            "--kind",
+            "native",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_paper_v3_ab_reg_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_b02_ab_min_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_Arbiter_ab_core_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_synabs_ab_min_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_usb_phy_ab_core_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00969.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00015.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0013/00001.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0009/00173.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0015/00242.smt2",
+            "--seed",
+            "202650870",
+            "--count",
+            "250",
+            "--solver",
+            "build-slurm-rel/primo",
+            "--solver-arg=--quiet",
+            "--solver-arg=--incremental-mode=assumptions",
+            "--solver-arg=--max-theory-conflicts=10000",
+            "--solver-arg=--preprocessing-mode=off",
+            "--solver-arg=--euf-prop=conflict",
+            "--ref",
+            "contrib/local/bin/z3",
+            "--dolmen",
+            "contrib/local/bin/dolmen",
+            "--expected-git",
+            "fa2fe5c",
+            "--timeout",
+            "20",
+            "--dolmen-timeout",
+            "30",
+            "--out",
+            "/home/janotmik/primo-model-fix/results/uf-matrix-gate-fa2fe5c/shard-7"
+          ],
+          "version": "primo 0.1.0\ngit: fa2fe5c\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+          "host": "node-02.ciircluster",
+          "slurm_job_id": "142606",
+          "solver_sha256": "05b8f3550e7301bcfe242506781d040f46569eeaad009ca7875b985e72ecb260",
+          "generator_sha256": "710bc0f0f0c73e414d3d3dd9efcb68cd05cefcd09594084904f8c3116c8f0c06",
+          "boolean_generator_sha256": "4ff7cd809c0d820dc6fe0012756dabd5dde0ad7564c3c9b126ca99a9b463fdd7",
+          "reference": {
+            "command": [
+              "contrib/local/bin/z3"
+            ],
+            "sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+            "version": "Z3 version 5.1.0 - 64 bit\n"
+          },
+          "dolmen": {
+            "command": "contrib/local/bin/dolmen",
+            "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+            "version": "0.10\n"
+          },
+          "native_seeds": {
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_paper_v3_ab_reg_max.smt2": "cccae406b1d97de7d36aef2aa11aab90140b8ea7e7a6a3e9b81b54358c1a0eae",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_b02_ab_min_max.smt2": "66d3dbef0e7feb3e195f71a1f28b24c790abac816649bacae8fa43512f077425",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_Arbiter_ab_core_max.smt2": "48913d9887cbfa7ceb9ff52460f1f9805554c56f5e8c8412d03bacd63716311a",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_synabs_ab_min_max.smt2": "58b4df8a6f9936274f670715f40a8401e13ade6422c72d261366a9a898e44af9",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_usb_phy_ab_core_max.smt2": "cced17503fb8106d58f043fb3c8eb74ad0d5f70e1df7d94c1dd7865cd66d5425",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00969.smt2": "a850e7fb3fa142707032ad43404726dc9dbb8242c452f487a4627066bfaaa6cc",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00015.smt2": "98d52edeb3923a8dc783b43194f7127ed033c9899f045043f5714d82c3f26ff5",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0013/00001.smt2": "3ab5ccc5ac159dfcc0877bccd0e674903729d170c746b69050cf22844283cf6e",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0009/00173.smt2": "6db9d7d7faeab38101310b2ea19ed500bd6e832f27346de4dbebc7e176e2e215",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0015/00242.smt2": "7d9af29081d26c874c64782b69effdf04c9b568b0b7d322285d47ee78940a0f7"
+          }
+        }
+      ]
+    },
+    "extra": {
+      "sessions": 2000,
+      "pass": 2000,
+      "queries": 16000,
+      "sat_models": 9462,
+      "untriaged_failure": 0,
+      "shards": 8,
+      "run_metadata": [
+        {
+          "command": [
+            "scripts/incremental_uf_gate.py",
+            "--kind",
+            "generated",
+            "--seed",
+            "202659120",
+            "--count",
+            "250",
+            "--solver",
+            "build-slurm-rel/primo",
+            "--solver-arg=--quiet",
+            "--solver-arg=--incremental-mode=assumptions",
+            "--solver-arg=--max-theory-conflicts=10000",
+            "--solver-arg=--preprocessing-mode=auto",
+            "--solver-arg=--euf-prop=auto",
+            "--ref",
+            "contrib/local/bin/z3",
+            "--dolmen",
+            "contrib/local/bin/dolmen",
+            "--expected-git",
+            "fa2fe5c",
+            "--timeout",
+            "20",
+            "--dolmen-timeout",
+            "30",
+            "--out",
+            "/home/janotmik/primo-model-fix/results/uf-extra-gate-fa2fe5c/shard-0"
+          ],
+          "version": "primo 0.1.0\ngit: fa2fe5c\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+          "host": "node-02.ciircluster",
+          "slurm_job_id": "142612",
+          "solver_sha256": "05b8f3550e7301bcfe242506781d040f46569eeaad009ca7875b985e72ecb260",
+          "generator_sha256": "710bc0f0f0c73e414d3d3dd9efcb68cd05cefcd09594084904f8c3116c8f0c06",
+          "boolean_generator_sha256": "4ff7cd809c0d820dc6fe0012756dabd5dde0ad7564c3c9b126ca99a9b463fdd7",
+          "reference": {
+            "command": [
+              "contrib/local/bin/z3"
+            ],
+            "sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+            "version": "Z3 version 5.1.0 - 64 bit\n"
+          },
+          "dolmen": {
+            "command": "contrib/local/bin/dolmen",
+            "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+            "version": "0.10\n"
+          },
+          "native_seeds": {}
+        },
+        {
+          "command": [
+            "scripts/incremental_uf_gate.py",
+            "--kind",
+            "generated",
+            "--seed",
+            "202659370",
+            "--count",
+            "250",
+            "--solver",
+            "build-slurm-rel/primo",
+            "--solver-arg=--quiet",
+            "--solver-arg=--incremental-mode=assumptions",
+            "--solver-arg=--max-theory-conflicts=10000",
+            "--solver-arg=--preprocessing-mode=auto",
+            "--solver-arg=--euf-prop=auto",
+            "--ref",
+            "contrib/local/bin/z3",
+            "--dolmen",
+            "contrib/local/bin/dolmen",
+            "--expected-git",
+            "fa2fe5c",
+            "--timeout",
+            "20",
+            "--dolmen-timeout",
+            "30",
+            "--out",
+            "/home/janotmik/primo-model-fix/results/uf-extra-gate-fa2fe5c/shard-1"
+          ],
+          "version": "primo 0.1.0\ngit: fa2fe5c\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+          "host": "node-02.ciircluster",
+          "slurm_job_id": "142613",
+          "solver_sha256": "05b8f3550e7301bcfe242506781d040f46569eeaad009ca7875b985e72ecb260",
+          "generator_sha256": "710bc0f0f0c73e414d3d3dd9efcb68cd05cefcd09594084904f8c3116c8f0c06",
+          "boolean_generator_sha256": "4ff7cd809c0d820dc6fe0012756dabd5dde0ad7564c3c9b126ca99a9b463fdd7",
+          "reference": {
+            "command": [
+              "contrib/local/bin/z3"
+            ],
+            "sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+            "version": "Z3 version 5.1.0 - 64 bit\n"
+          },
+          "dolmen": {
+            "command": "contrib/local/bin/dolmen",
+            "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+            "version": "0.10\n"
+          },
+          "native_seeds": {}
+        },
+        {
+          "command": [
+            "scripts/incremental_uf_gate.py",
+            "--kind",
+            "generated",
+            "--seed",
+            "202659620",
+            "--count",
+            "250",
+            "--solver",
+            "build-slurm-rel/primo",
+            "--solver-arg=--quiet",
+            "--solver-arg=--incremental-mode=assumptions",
+            "--solver-arg=--max-theory-conflicts=10000",
+            "--solver-arg=--preprocessing-mode=auto",
+            "--solver-arg=--euf-prop=auto",
+            "--ref",
+            "contrib/local/bin/z3",
+            "--dolmen",
+            "contrib/local/bin/dolmen",
+            "--expected-git",
+            "fa2fe5c",
+            "--timeout",
+            "20",
+            "--dolmen-timeout",
+            "30",
+            "--out",
+            "/home/janotmik/primo-model-fix/results/uf-extra-gate-fa2fe5c/shard-2"
+          ],
+          "version": "primo 0.1.0\ngit: fa2fe5c\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+          "host": "node-02.ciircluster",
+          "slurm_job_id": "142614",
+          "solver_sha256": "05b8f3550e7301bcfe242506781d040f46569eeaad009ca7875b985e72ecb260",
+          "generator_sha256": "710bc0f0f0c73e414d3d3dd9efcb68cd05cefcd09594084904f8c3116c8f0c06",
+          "boolean_generator_sha256": "4ff7cd809c0d820dc6fe0012756dabd5dde0ad7564c3c9b126ca99a9b463fdd7",
+          "reference": {
+            "command": [
+              "contrib/local/bin/z3"
+            ],
+            "sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+            "version": "Z3 version 5.1.0 - 64 bit\n"
+          },
+          "dolmen": {
+            "command": "contrib/local/bin/dolmen",
+            "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+            "version": "0.10\n"
+          },
+          "native_seeds": {}
+        },
+        {
+          "command": [
+            "scripts/incremental_uf_gate.py",
+            "--kind",
+            "generated",
+            "--seed",
+            "202659870",
+            "--count",
+            "250",
+            "--solver",
+            "build-slurm-rel/primo",
+            "--solver-arg=--quiet",
+            "--solver-arg=--incremental-mode=assumptions",
+            "--solver-arg=--max-theory-conflicts=10000",
+            "--solver-arg=--preprocessing-mode=auto",
+            "--solver-arg=--euf-prop=auto",
+            "--ref",
+            "contrib/local/bin/z3",
+            "--dolmen",
+            "contrib/local/bin/dolmen",
+            "--expected-git",
+            "fa2fe5c",
+            "--timeout",
+            "20",
+            "--dolmen-timeout",
+            "30",
+            "--out",
+            "/home/janotmik/primo-model-fix/results/uf-extra-gate-fa2fe5c/shard-3"
+          ],
+          "version": "primo 0.1.0\ngit: fa2fe5c\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+          "host": "node-02.ciircluster",
+          "slurm_job_id": "142615",
+          "solver_sha256": "05b8f3550e7301bcfe242506781d040f46569eeaad009ca7875b985e72ecb260",
+          "generator_sha256": "710bc0f0f0c73e414d3d3dd9efcb68cd05cefcd09594084904f8c3116c8f0c06",
+          "boolean_generator_sha256": "4ff7cd809c0d820dc6fe0012756dabd5dde0ad7564c3c9b126ca99a9b463fdd7",
+          "reference": {
+            "command": [
+              "contrib/local/bin/z3"
+            ],
+            "sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+            "version": "Z3 version 5.1.0 - 64 bit\n"
+          },
+          "dolmen": {
+            "command": "contrib/local/bin/dolmen",
+            "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+            "version": "0.10\n"
+          },
+          "native_seeds": {}
+        },
+        {
+          "command": [
+            "scripts/incremental_uf_gate.py",
+            "--kind",
+            "native",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_paper_v3_ab_reg_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_b02_ab_min_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_Arbiter_ab_core_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_synabs_ab_min_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_usb_phy_ab_core_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00969.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00015.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0013/00001.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0009/00173.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0015/00242.smt2",
+            "--seed",
+            "202660120",
+            "--count",
+            "250",
+            "--solver",
+            "build-slurm-rel/primo",
+            "--solver-arg=--quiet",
+            "--solver-arg=--incremental-mode=assumptions",
+            "--solver-arg=--max-theory-conflicts=10000",
+            "--solver-arg=--preprocessing-mode=auto",
+            "--solver-arg=--euf-prop=auto",
+            "--ref",
+            "contrib/local/bin/z3",
+            "--dolmen",
+            "contrib/local/bin/dolmen",
+            "--expected-git",
+            "fa2fe5c",
+            "--timeout",
+            "20",
+            "--dolmen-timeout",
+            "30",
+            "--out",
+            "/home/janotmik/primo-model-fix/results/uf-extra-gate-fa2fe5c/shard-4"
+          ],
+          "version": "primo 0.1.0\ngit: fa2fe5c\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+          "host": "node-02.ciircluster",
+          "slurm_job_id": "142627",
+          "solver_sha256": "05b8f3550e7301bcfe242506781d040f46569eeaad009ca7875b985e72ecb260",
+          "generator_sha256": "710bc0f0f0c73e414d3d3dd9efcb68cd05cefcd09594084904f8c3116c8f0c06",
+          "boolean_generator_sha256": "4ff7cd809c0d820dc6fe0012756dabd5dde0ad7564c3c9b126ca99a9b463fdd7",
+          "reference": {
+            "command": [
+              "contrib/local/bin/z3"
+            ],
+            "sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+            "version": "Z3 version 5.1.0 - 64 bit\n"
+          },
+          "dolmen": {
+            "command": "contrib/local/bin/dolmen",
+            "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+            "version": "0.10\n"
+          },
+          "native_seeds": {
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_paper_v3_ab_reg_max.smt2": "cccae406b1d97de7d36aef2aa11aab90140b8ea7e7a6a3e9b81b54358c1a0eae",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_b02_ab_min_max.smt2": "66d3dbef0e7feb3e195f71a1f28b24c790abac816649bacae8fa43512f077425",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_Arbiter_ab_core_max.smt2": "48913d9887cbfa7ceb9ff52460f1f9805554c56f5e8c8412d03bacd63716311a",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_synabs_ab_min_max.smt2": "58b4df8a6f9936274f670715f40a8401e13ade6422c72d261366a9a898e44af9",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_usb_phy_ab_core_max.smt2": "cced17503fb8106d58f043fb3c8eb74ad0d5f70e1df7d94c1dd7865cd66d5425",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00969.smt2": "a850e7fb3fa142707032ad43404726dc9dbb8242c452f487a4627066bfaaa6cc",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00015.smt2": "98d52edeb3923a8dc783b43194f7127ed033c9899f045043f5714d82c3f26ff5",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0013/00001.smt2": "3ab5ccc5ac159dfcc0877bccd0e674903729d170c746b69050cf22844283cf6e",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0009/00173.smt2": "6db9d7d7faeab38101310b2ea19ed500bd6e832f27346de4dbebc7e176e2e215",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0015/00242.smt2": "7d9af29081d26c874c64782b69effdf04c9b568b0b7d322285d47ee78940a0f7"
+          }
+        },
+        {
+          "command": [
+            "scripts/incremental_uf_gate.py",
+            "--kind",
+            "native",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_paper_v3_ab_reg_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_b02_ab_min_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_Arbiter_ab_core_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_synabs_ab_min_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_usb_phy_ab_core_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00969.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00015.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0013/00001.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0009/00173.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0015/00242.smt2",
+            "--seed",
+            "202660370",
+            "--count",
+            "250",
+            "--solver",
+            "build-slurm-rel/primo",
+            "--solver-arg=--quiet",
+            "--solver-arg=--incremental-mode=assumptions",
+            "--solver-arg=--max-theory-conflicts=10000",
+            "--solver-arg=--preprocessing-mode=auto",
+            "--solver-arg=--euf-prop=auto",
+            "--ref",
+            "contrib/local/bin/z3",
+            "--dolmen",
+            "contrib/local/bin/dolmen",
+            "--expected-git",
+            "fa2fe5c",
+            "--timeout",
+            "20",
+            "--dolmen-timeout",
+            "30",
+            "--out",
+            "/home/janotmik/primo-model-fix/results/uf-extra-gate-fa2fe5c/shard-5"
+          ],
+          "version": "primo 0.1.0\ngit: fa2fe5c\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+          "host": "node-02.ciircluster",
+          "slurm_job_id": "142628",
+          "solver_sha256": "05b8f3550e7301bcfe242506781d040f46569eeaad009ca7875b985e72ecb260",
+          "generator_sha256": "710bc0f0f0c73e414d3d3dd9efcb68cd05cefcd09594084904f8c3116c8f0c06",
+          "boolean_generator_sha256": "4ff7cd809c0d820dc6fe0012756dabd5dde0ad7564c3c9b126ca99a9b463fdd7",
+          "reference": {
+            "command": [
+              "contrib/local/bin/z3"
+            ],
+            "sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+            "version": "Z3 version 5.1.0 - 64 bit\n"
+          },
+          "dolmen": {
+            "command": "contrib/local/bin/dolmen",
+            "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+            "version": "0.10\n"
+          },
+          "native_seeds": {
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_paper_v3_ab_reg_max.smt2": "cccae406b1d97de7d36aef2aa11aab90140b8ea7e7a6a3e9b81b54358c1a0eae",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_b02_ab_min_max.smt2": "66d3dbef0e7feb3e195f71a1f28b24c790abac816649bacae8fa43512f077425",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_Arbiter_ab_core_max.smt2": "48913d9887cbfa7ceb9ff52460f1f9805554c56f5e8c8412d03bacd63716311a",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_synabs_ab_min_max.smt2": "58b4df8a6f9936274f670715f40a8401e13ade6422c72d261366a9a898e44af9",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_usb_phy_ab_core_max.smt2": "cced17503fb8106d58f043fb3c8eb74ad0d5f70e1df7d94c1dd7865cd66d5425",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00969.smt2": "a850e7fb3fa142707032ad43404726dc9dbb8242c452f487a4627066bfaaa6cc",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00015.smt2": "98d52edeb3923a8dc783b43194f7127ed033c9899f045043f5714d82c3f26ff5",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0013/00001.smt2": "3ab5ccc5ac159dfcc0877bccd0e674903729d170c746b69050cf22844283cf6e",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0009/00173.smt2": "6db9d7d7faeab38101310b2ea19ed500bd6e832f27346de4dbebc7e176e2e215",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0015/00242.smt2": "7d9af29081d26c874c64782b69effdf04c9b568b0b7d322285d47ee78940a0f7"
+          }
+        },
+        {
+          "command": [
+            "scripts/incremental_uf_gate.py",
+            "--kind",
+            "native",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_paper_v3_ab_reg_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_b02_ab_min_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_Arbiter_ab_core_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_synabs_ab_min_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_usb_phy_ab_core_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00969.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00015.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0013/00001.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0009/00173.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0015/00242.smt2",
+            "--seed",
+            "202660620",
+            "--count",
+            "250",
+            "--solver",
+            "build-slurm-rel/primo",
+            "--solver-arg=--quiet",
+            "--solver-arg=--incremental-mode=assumptions",
+            "--solver-arg=--max-theory-conflicts=10000",
+            "--solver-arg=--preprocessing-mode=auto",
+            "--solver-arg=--euf-prop=auto",
+            "--ref",
+            "contrib/local/bin/z3",
+            "--dolmen",
+            "contrib/local/bin/dolmen",
+            "--expected-git",
+            "fa2fe5c",
+            "--timeout",
+            "20",
+            "--dolmen-timeout",
+            "30",
+            "--out",
+            "/home/janotmik/primo-model-fix/results/uf-extra-gate-fa2fe5c/shard-6"
+          ],
+          "version": "primo 0.1.0\ngit: fa2fe5c\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+          "host": "node-02.ciircluster",
+          "slurm_job_id": "142629",
+          "solver_sha256": "05b8f3550e7301bcfe242506781d040f46569eeaad009ca7875b985e72ecb260",
+          "generator_sha256": "710bc0f0f0c73e414d3d3dd9efcb68cd05cefcd09594084904f8c3116c8f0c06",
+          "boolean_generator_sha256": "4ff7cd809c0d820dc6fe0012756dabd5dde0ad7564c3c9b126ca99a9b463fdd7",
+          "reference": {
+            "command": [
+              "contrib/local/bin/z3"
+            ],
+            "sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+            "version": "Z3 version 5.1.0 - 64 bit\n"
+          },
+          "dolmen": {
+            "command": "contrib/local/bin/dolmen",
+            "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+            "version": "0.10\n"
+          },
+          "native_seeds": {
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_paper_v3_ab_reg_max.smt2": "cccae406b1d97de7d36aef2aa11aab90140b8ea7e7a6a3e9b81b54358c1a0eae",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_b02_ab_min_max.smt2": "66d3dbef0e7feb3e195f71a1f28b24c790abac816649bacae8fa43512f077425",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_Arbiter_ab_core_max.smt2": "48913d9887cbfa7ceb9ff52460f1f9805554c56f5e8c8412d03bacd63716311a",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_synabs_ab_min_max.smt2": "58b4df8a6f9936274f670715f40a8401e13ade6422c72d261366a9a898e44af9",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_usb_phy_ab_core_max.smt2": "cced17503fb8106d58f043fb3c8eb74ad0d5f70e1df7d94c1dd7865cd66d5425",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00969.smt2": "a850e7fb3fa142707032ad43404726dc9dbb8242c452f487a4627066bfaaa6cc",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00015.smt2": "98d52edeb3923a8dc783b43194f7127ed033c9899f045043f5714d82c3f26ff5",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0013/00001.smt2": "3ab5ccc5ac159dfcc0877bccd0e674903729d170c746b69050cf22844283cf6e",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0009/00173.smt2": "6db9d7d7faeab38101310b2ea19ed500bd6e832f27346de4dbebc7e176e2e215",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0015/00242.smt2": "7d9af29081d26c874c64782b69effdf04c9b568b0b7d322285d47ee78940a0f7"
+          }
+        },
+        {
+          "command": [
+            "scripts/incremental_uf_gate.py",
+            "--kind",
+            "native",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_paper_v3_ab_reg_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_b02_ab_min_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_Arbiter_ab_core_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_synabs_ab_min_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_usb_phy_ab_core_max.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00969.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00015.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0013/00001.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0009/00173.smt2",
+            "--native-seed",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0015/00242.smt2",
+            "--seed",
+            "202660870",
+            "--count",
+            "250",
+            "--solver",
+            "build-slurm-rel/primo",
+            "--solver-arg=--quiet",
+            "--solver-arg=--incremental-mode=assumptions",
+            "--solver-arg=--max-theory-conflicts=10000",
+            "--solver-arg=--preprocessing-mode=auto",
+            "--solver-arg=--euf-prop=auto",
+            "--ref",
+            "contrib/local/bin/z3",
+            "--dolmen",
+            "contrib/local/bin/dolmen",
+            "--expected-git",
+            "fa2fe5c",
+            "--timeout",
+            "20",
+            "--dolmen-timeout",
+            "30",
+            "--out",
+            "/home/janotmik/primo-model-fix/results/uf-extra-gate-fa2fe5c/shard-7"
+          ],
+          "version": "primo 0.1.0\ngit: fa2fe5c\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+          "host": "node-02.ciircluster",
+          "slurm_job_id": "142611",
+          "solver_sha256": "05b8f3550e7301bcfe242506781d040f46569eeaad009ca7875b985e72ecb260",
+          "generator_sha256": "710bc0f0f0c73e414d3d3dd9efcb68cd05cefcd09594084904f8c3116c8f0c06",
+          "boolean_generator_sha256": "4ff7cd809c0d820dc6fe0012756dabd5dde0ad7564c3c9b126ca99a9b463fdd7",
+          "reference": {
+            "command": [
+              "contrib/local/bin/z3"
+            ],
+            "sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+            "version": "Z3 version 5.1.0 - 64 bit\n"
+          },
+          "dolmen": {
+            "command": "contrib/local/bin/dolmen",
+            "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+            "version": "0.10\n"
+          },
+          "native_seeds": {
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_paper_v3_ab_reg_max.smt2": "cccae406b1d97de7d36aef2aa11aab90140b8ea7e7a6a3e9b81b54358c1a0eae",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_b02_ab_min_max.smt2": "66d3dbef0e7feb3e195f71a1f28b24c790abac816649bacae8fa43512f077425",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_Arbiter_ab_core_max.smt2": "48913d9887cbfa7ceb9ff52460f1f9805554c56f5e8c8412d03bacd63716311a",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_synabs_ab_min_max.smt2": "58b4df8a6f9936274f670715f40a8401e13ade6422c72d261366a9a898e44af9",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/2018-Goel-hwbench/QF_UF_usb_phy_ab_core_max.smt2": "cced17503fb8106d58f043fb3c8eb74ad0d5f70e1df7d94c1dd7865cd66d5425",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00969.smt2": "a850e7fb3fa142707032ad43404726dc9dbb8242c452f487a4627066bfaaa6cc",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0023/00015.smt2": "98d52edeb3923a8dc783b43194f7127ed033c9899f045043f5714d82c3f26ff5",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0013/00001.smt2": "3ab5ccc5ac159dfcc0877bccd0e674903729d170c746b69050cf22844283cf6e",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0009/00173.smt2": "6db9d7d7faeab38101310b2ea19ed500bd6e832f27346de4dbebc7e176e2e215",
+            "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb/incremental/QF_UF/20190906-CLEARSY/0015/00242.smt2": "7d9af29081d26c874c64782b69effdf04c9b568b0b7d322285d47ee78940a0f7"
+          }
+        }
+      ]
+    }
+  },
+  "mixed_gate": {
+    "sessions": 1000,
+    "pass": 1000,
+    "queries": 15000,
+    "sat_models": 10000
+  },
+  "default_preservation": {
+    "files": 25,
+    "pass": 25,
+    "sessions": 50,
+    "queries": 200,
+    "sat_models": 121,
+    "file_seconds": 16.3949088267982,
+    "prior_04d2e23_file_seconds": 16.6212056055665,
+    "median_candidate_over_prior": 0.9928090050866649
+  },
+  "summary": {
+    "profiles": {
+      "rebuild": {
+        "sessions": 1778,
+        "outcomes": {
+          "complete": 1775,
+          "timeout": 3
+        },
+        "completed_queries": 29573,
+        "partial_queries": 373,
+        "partial_definite_answers": 373,
+        "partial_unknown_answers": 0,
+        "expected_sat_models": 24746,
+        "total_par2": 1474.6384359039366,
+        "mean_par2": 0.8293804476400094,
+        "median_complete_seconds": 0.2911167349666357,
+        "max_measured_rss_kib": 1013616,
+        "rss_samples": 1778,
+        "full_archive_timing": true,
+        "families": {
+          "2018-Goel-hwbench": {
+            "sessions": 766,
+            "outcomes": {
+              "complete": 764,
+              "timeout": 2
+            },
+            "completed_queries": 1528,
+            "partial_queries": 2,
+            "partial_definite_answers": 2,
+            "partial_unknown_answers": 0,
+            "expected_sat_models": 1066,
+            "total_par2": 962.7276216596365,
+            "mean_par2": 1.2568245713572277,
+            "median_complete_seconds": 0.8005242580547929,
+            "max_measured_rss_kib": 1013616,
+            "rss_samples": 766,
+            "validation": {
+              "replayed_sessions": 766,
+              "qualified_complete_sessions": 764,
+              "qualified_queries": 1528,
+              "sat_models": 1066,
+              "changed_answers": [],
+              "failures": [],
+              "complete_without_qualification": []
+            }
+          },
+          "20190906-CLEARSY": {
+            "sessions": 1012,
+            "outcomes": {
+              "complete": 1011,
+              "timeout": 1
+            },
+            "completed_queries": 28045,
+            "partial_queries": 371,
+            "partial_definite_answers": 371,
+            "partial_unknown_answers": 0,
+            "expected_sat_models": 23680,
+            "total_par2": 511.9108142443001,
+            "mean_par2": 0.505840725537846,
+            "median_complete_seconds": 0.07847768254578114,
+            "max_measured_rss_kib": 19536,
+            "rss_samples": 1012,
+            "validation": {
+              "replayed_sessions": 1012,
+              "qualified_complete_sessions": 1011,
+              "qualified_queries": 28045,
+              "sat_models": 23680,
+              "changed_answers": [],
+              "failures": [],
+              "complete_without_qualification": []
+            }
+          }
+        },
+        "validation": {
+          "replayed_sessions": 1778,
+          "qualified_complete_sessions": 1775,
+          "qualified_queries": 29573,
+          "sat_models": 24746,
+          "changed_answers": [],
+          "failures": [],
+          "complete_without_qualification": []
+        }
+      },
+      "assumptions": {
+        "sessions": 1778,
+        "outcomes": {
+          "complete": 1772,
+          "unknown": 6
+        },
+        "completed_queries": 29978,
+        "partial_queries": 12,
+        "partial_definite_answers": 5,
+        "partial_unknown_answers": 7,
+        "expected_sat_models": 25027,
+        "total_par2": 858.4847814496607,
+        "mean_par2": 0.4828373348985718,
+        "median_complete_seconds": 0.07483524642884731,
+        "max_measured_rss_kib": 919232,
+        "rss_samples": 1778,
+        "full_archive_timing": true,
+        "families": {
+          "2018-Goel-hwbench": {
+            "sessions": 766,
+            "outcomes": {
+              "complete": 760,
+              "unknown": 6
+            },
+            "completed_queries": 1520,
+            "partial_queries": 12,
+            "partial_definite_answers": 5,
+            "partial_unknown_answers": 7,
+            "expected_sat_models": 1062,
+            "total_par2": 760.0728838406503,
+            "mean_par2": 0.9922622504447132,
+            "median_complete_seconds": 0.23188186064362526,
+            "max_measured_rss_kib": 919232,
+            "rss_samples": 766,
+            "validation": {
+              "replayed_sessions": 766,
+              "qualified_complete_sessions": 760,
+              "qualified_queries": 1520,
+              "sat_models": 1062,
+              "changed_answers": [],
+              "failures": [],
+              "complete_without_qualification": []
+            }
+          },
+          "20190906-CLEARSY": {
+            "sessions": 1012,
+            "outcomes": {
+              "complete": 1012
+            },
+            "completed_queries": 28458,
+            "partial_queries": 0,
+            "partial_definite_answers": 0,
+            "partial_unknown_answers": 0,
+            "expected_sat_models": 23965,
+            "total_par2": 98.41189760901034,
+            "mean_par2": 0.09724495811167029,
+            "median_complete_seconds": 0.028651274740695953,
+            "max_measured_rss_kib": 25520,
+            "rss_samples": 1012,
+            "validation": {
+              "replayed_sessions": 1012,
+              "qualified_complete_sessions": 1012,
+              "qualified_queries": 28458,
+              "sat_models": 23965,
+              "changed_answers": [],
+              "failures": [],
+              "complete_without_qualification": []
+            }
+          }
+        },
+        "validation": {
+          "replayed_sessions": 1778,
+          "qualified_complete_sessions": 1772,
+          "qualified_queries": 29978,
+          "sat_models": 25027,
+          "changed_answers": [],
+          "failures": [],
+          "complete_without_qualification": []
+        }
+      },
+      "z3": {
+        "sessions": 1778,
+        "outcomes": {
+          "complete": 1778
+        },
+        "completed_queries": 29990,
+        "partial_queries": 0,
+        "partial_definite_answers": 0,
+        "partial_unknown_answers": 0,
+        "expected_sat_models": 25035,
+        "total_par2": 300.640461480245,
+        "mean_par2": 0.16908912344220753,
+        "median_complete_seconds": 0.040514715015888214,
+        "max_measured_rss_kib": 160132,
+        "rss_samples": 1778,
+        "full_archive_timing": true,
+        "families": {
+          "2018-Goel-hwbench": {
+            "sessions": 766,
+            "outcomes": {
+              "complete": 766
+            },
+            "completed_queries": 1532,
+            "partial_queries": 0,
+            "partial_definite_answers": 0,
+            "partial_unknown_answers": 0,
+            "expected_sat_models": 1070,
+            "total_par2": 258.7292988523841,
+            "mean_par2": 0.33776670868457453,
+            "median_complete_seconds": 0.21141600981354713,
+            "max_measured_rss_kib": 160132,
+            "rss_samples": 766
+          },
+          "20190906-CLEARSY": {
+            "sessions": 1012,
+            "outcomes": {
+              "complete": 1012
+            },
+            "completed_queries": 28458,
+            "partial_queries": 0,
+            "partial_definite_answers": 0,
+            "partial_unknown_answers": 0,
+            "expected_sat_models": 23965,
+            "total_par2": 41.911162627860904,
+            "mean_par2": 0.04141419232002066,
+            "median_complete_seconds": 0.020115772262215614,
+            "max_measured_rss_kib": 33176,
+            "rss_samples": 1012
+          }
+        }
+      },
+      "cvc5": {
+        "sessions": 1778,
+        "outcomes": {
+          "complete": 1768,
+          "timeout": 10
+        },
+        "completed_queries": 29970,
+        "partial_queries": 0,
+        "partial_definite_answers": 0,
+        "partial_unknown_answers": 0,
+        "expected_sat_models": 25020,
+        "total_par2": 1477.990283396095,
+        "mean_par2": 0.8312656262070276,
+        "median_complete_seconds": 0.10150773357599974,
+        "max_measured_rss_kib": 198896,
+        "rss_samples": 1778,
+        "full_archive_timing": true,
+        "families": {
+          "2018-Goel-hwbench": {
+            "sessions": 766,
+            "outcomes": {
+              "complete": 756,
+              "timeout": 10
+            },
+            "completed_queries": 1512,
+            "partial_queries": 0,
+            "partial_definite_answers": 0,
+            "partial_unknown_answers": 0,
+            "expected_sat_models": 1055,
+            "total_par2": 1342.8579124491662,
+            "mean_par2": 1.7530782146855954,
+            "median_complete_seconds": 0.41436302103102207,
+            "max_measured_rss_kib": 198896,
+            "rss_samples": 766
+          },
+          "20190906-CLEARSY": {
+            "sessions": 1012,
+            "outcomes": {
+              "complete": 1012
+            },
+            "completed_queries": 28458,
+            "partial_queries": 0,
+            "partial_definite_answers": 0,
+            "partial_unknown_answers": 0,
+            "expected_sat_models": 23965,
+            "total_par2": 135.13237094692886,
+            "mean_par2": 0.13353001081712337,
+            "median_complete_seconds": 0.0307229058817029,
+            "max_measured_rss_kib": 27328,
+            "rss_samples": 1012
+          }
+        }
+      }
+    },
+    "reference_disagreements": [],
+    "assumptions_vs_rebuild": {
+      "gains": [
+        14,
+        852
+      ],
+      "losses": [
+        656,
+        659,
+        660,
+        661,
+        662
+      ],
+      "both_complete": 1770,
+      "median_speedup": 2.9637770579058045,
+      "geomean_speedup": 2.7380900503137977,
+      "largest_regressions": [
+        {
+          "index": 267,
+          "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_firewire_tree.5.prop3_ab_core_max.smt2",
+          "rebuild_seconds": 9.868147483095527,
+          "assumptions_seconds": 23.45603688247502
+        },
+        {
+          "index": 263,
+          "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_firewire_tree.5.prop1_ab_core_max.smt2",
+          "rebuild_seconds": 11.932476719841361,
+          "assumptions_seconds": 20.920967161655426
+        },
+        {
+          "index": 265,
+          "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_firewire_tree.5.prop2_ab_core_max.smt2",
+          "rebuild_seconds": 11.872432481497526,
+          "assumptions_seconds": 20.374424817040563
+        },
+        {
+          "index": 288,
+          "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_frogs.3.prop1_ab_core_max.smt2",
+          "rebuild_seconds": 10.180464582517743,
+          "assumptions_seconds": 15.610055634751916
+        },
+        {
+          "index": 507,
+          "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_needham.4.prop2_ab_core_max.smt2",
+          "rebuild_seconds": 3.018902726471424,
+          "assumptions_seconds": 6.190780740231276
+        },
+        {
+          "index": 292,
+          "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_frogs.5.prop1_ab_core_max.smt2",
+          "rebuild_seconds": 4.329781252890825,
+          "assumptions_seconds": 6.792963268235326
+        },
+        {
+          "index": 261,
+          "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_firewire_tree.4.prop3_ab_core_max.smt2",
+          "rebuild_seconds": 3.734433628618717,
+          "assumptions_seconds": 6.158696584403515
+        },
+        {
+          "index": 257,
+          "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_firewire_tree.4.prop1_ab_core_max.smt2",
+          "rebuild_seconds": 3.574512019753456,
+          "assumptions_seconds": 5.75391954742372
+        },
+        {
+          "index": 446,
+          "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_loyd.3.prop1_ab_core_max.smt2",
+          "rebuild_seconds": 2.0693019218742847,
+          "assumptions_seconds": 2.8480918407440186
+        },
+        {
+          "index": 170,
+          "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_collision.5.prop1_ab_core_max.smt2",
+          "rebuild_seconds": 1.933715932071209,
+          "assumptions_seconds": 2.622983878478408
+        },
+        {
+          "index": 607,
+          "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_plc.1.prop2_ab_core_max.smt2",
+          "rebuild_seconds": 1.8928377255797386,
+          "assumptions_seconds": 2.5108334105461836
+        },
+        {
+          "index": 501,
+          "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_needham.3.prop3_ab_core_max.smt2",
+          "rebuild_seconds": 1.9477244075387716,
+          "assumptions_seconds": 2.510329984128475
+        },
+        {
+          "index": 613,
+          "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_plc.4.prop2_ab_core_max.smt2",
+          "rebuild_seconds": 2.108643239364028,
+          "assumptions_seconds": 2.6607808712869883
+        },
+        {
+          "index": 611,
+          "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_plc.3.prop2_ab_core_max.smt2",
+          "rebuild_seconds": 2.0697193201631308,
+          "assumptions_seconds": 2.5837582778185606
+        },
+        {
+          "index": 609,
+          "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_plc.2.prop2_ab_core_max.smt2",
+          "rebuild_seconds": 2.0526932030916214,
+          "assumptions_seconds": 2.558736987411976
+        },
+        {
+          "index": 266,
+          "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_firewire_tree.5.prop2_ab_min_max.smt2",
+          "rebuild_seconds": 3.8646231461316347,
+          "assumptions_seconds": 4.275587299838662
+        },
+        {
+          "index": 491,
+          "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_needham.2.prop2_ab_core_max.smt2",
+          "rebuild_seconds": 1.0665017012506723,
+          "assumptions_seconds": 1.4729004297405481
+        },
+        {
+          "index": 264,
+          "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_firewire_tree.5.prop1_ab_min_max.smt2",
+          "rebuild_seconds": 4.131376449018717,
+          "assumptions_seconds": 4.503358840942383
+        },
+        {
+          "index": 509,
+          "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_needham.4.prop3_ab_core_max.smt2",
+          "rebuild_seconds": 1.4943015277385712,
+          "assumptions_seconds": 1.7166408244520426
+        },
+        {
+          "index": 499,
+          "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_needham.3.prop2_ab_core_max.smt2",
+          "rebuild_seconds": 1.1998031102120876,
+          "assumptions_seconds": 1.2958114799112082
+        }
+      ]
+    },
+    "timing_root": "results/uf-native-timing-fa2fe5c",
+    "validation_root": "results/uf-native-validation-fa2fe5c"
+  },
+  "reuse_probe": {
+    "rebuild": {
+      "index": 852,
+      "file": "incremental/QF_UF/20190906-CLEARSY/0002/00126.smt2",
+      "seconds": 30.018455805256963,
+      "outcome": "timeout",
+      "queries": 371,
+      "counters": {
+        "session.queries": 371,
+        "session.frontend-builds": 371
+      }
+    },
+    "assumptions": {
+      "index": 852,
+      "file": "incremental/QF_UF/20190906-CLEARSY/0002/00126.smt2",
+      "seconds": 4.5331408604979515,
+      "outcome": "complete",
+      "queries": 413,
+      "counters": {
+        "session.euf-new-boolean-arguments": 0,
+        "session.euf-new-prepared-atoms": 1,
+        "session.engine-queries": 413,
+        "session.theory-state-resets": 413,
+        "session.retired-selectors": 453,
+        "session.active-selectors": 2,
+        "session.retained-terms": 7392,
+        "session.active-model-roots": 69,
+        "session.retained-atoms": 2459,
+        "session.prepared-atoms": 2459,
+        "session.euf-flat-terms": 7750,
+        "session.euf-flat-definitions": 5892,
+        "session.pure-theory-filter": 0,
+        "session.sat-preprocessing": 0,
+        "session.sat-inprocessing": 0,
+        "session.clauses-added": 16280,
+        "session.retained-active-clauses": 15135,
+        "session.retained-redundant-clauses": 0,
+        "session.engine-builds": 1,
+        "session.translated-assertions": 2551,
+        "session.incremental-assumptions": 1,
+        "session.safe-rewrite-pipeline": 1,
+        "session.pipeline.lower-extended-terms": 1,
+        "session.pipeline.lower-real-equalities": 0,
+        "session.queries": 413,
+        "session.frontend-builds": 1
+      }
+    }
+  },
+  "reference_timing_reuse": {
+    "parent_commit": "1595948",
+    "job": "142464",
+    "directory": "results/uf-native-timing-1595948",
+    "note": "Z3/cvc5 timing records unchanged; original run metadata retained. No reference performance rerun."
+  },
+  "timing_provenance": {
+    "rebuild": {
+      "arguments": {
+        "mode": "timing",
+        "archive": null,
+        "root": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb",
+        "manifest": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb.json",
+        "out": "/home/janotmik/primo-model-fix/results/uf-native-timing-fa2fe5c/rebuild/shard-0",
+        "timing_out": null,
+        "shards": 16,
+        "shard_index": 0,
+        "solver": "build-slurm-rel/primo",
+        "parser": "build-slurm-rel/primo_parser_corpus",
+        "solver_arg": [
+          "--quiet",
+          "--stats",
+          "--max-theory-conflicts=10000",
+          "--incremental-mode=rebuild"
+        ],
+        "expected_git": "fa2fe5c",
+        "timeout": 30.0,
+        "dolmen": null,
+        "dolmen_timeout": 60.0,
+        "ref": null,
+        "ref_arg": []
+      },
+      "version": "primo 0.1.0\ngit: fa2fe5c\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+      "solver_sha256": "05b8f3550e7301bcfe242506781d040f46569eeaad009ca7875b985e72ecb260",
+      "driver_sha256": "cca1aba519f37ed2e38e04d3e367265af0f72c84c893788721e59dbbbe36d595",
+      "manifest_sha256": "4cc0c9b35b3725ae2893e626f0ee29ca798830462b080a0dea16585bbcc48b85",
+      "host": "node-02.ciircluster",
+      "slurm_job_id": "142667",
+      "validation_tools": {}
+    },
+    "assumptions": {
+      "arguments": {
+        "mode": "timing",
+        "archive": null,
+        "root": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb",
+        "manifest": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb.json",
+        "out": "/home/janotmik/primo-model-fix/results/uf-native-timing-fa2fe5c/assumptions/shard-0",
+        "timing_out": null,
+        "shards": 16,
+        "shard_index": 0,
+        "solver": "build-slurm-rel/primo",
+        "parser": "build-slurm-rel/primo_parser_corpus",
+        "solver_arg": [
+          "--quiet",
+          "--stats",
+          "--max-theory-conflicts=10000",
+          "--incremental-mode=assumptions"
+        ],
+        "expected_git": "fa2fe5c",
+        "timeout": 30.0,
+        "dolmen": null,
+        "dolmen_timeout": 60.0,
+        "ref": null,
+        "ref_arg": []
+      },
+      "version": "primo 0.1.0\ngit: fa2fe5c\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+      "solver_sha256": "05b8f3550e7301bcfe242506781d040f46569eeaad009ca7875b985e72ecb260",
+      "driver_sha256": "cca1aba519f37ed2e38e04d3e367265af0f72c84c893788721e59dbbbe36d595",
+      "manifest_sha256": "4cc0c9b35b3725ae2893e626f0ee29ca798830462b080a0dea16585bbcc48b85",
+      "host": "node-02.ciircluster",
+      "slurm_job_id": "142668",
+      "validation_tools": {}
+    },
+    "z3": {
+      "arguments": {
+        "mode": "timing",
+        "archive": null,
+        "root": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb",
+        "manifest": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb.json",
+        "out": "/home/janotmik/primo-model-fix/results/uf-native-timing-1595948/z3/shard-0",
+        "timing_out": null,
+        "shards": 16,
+        "shard_index": 0,
+        "solver": "contrib/local/bin/z3",
+        "parser": "build-slurm-rel/primo_parser_corpus",
+        "solver_arg": [
+          "-in"
+        ],
+        "expected_git": null,
+        "timeout": 30.0,
+        "dolmen": null,
+        "dolmen_timeout": 60.0,
+        "ref": null,
+        "ref_arg": []
+      },
+      "version": "Z3 version 5.1.0 - 64 bit\n",
+      "solver_sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+      "driver_sha256": "cca1aba519f37ed2e38e04d3e367265af0f72c84c893788721e59dbbbe36d595",
+      "manifest_sha256": "4cc0c9b35b3725ae2893e626f0ee29ca798830462b080a0dea16585bbcc48b85",
+      "host": "node-02.ciircluster",
+      "slurm_job_id": "142471",
+      "validation_tools": {}
+    },
+    "cvc5": {
+      "arguments": {
+        "mode": "timing",
+        "archive": null,
+        "root": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb",
+        "manifest": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb.json",
+        "out": "/home/janotmik/primo-model-fix/results/uf-native-timing-1595948/cvc5/shard-0",
+        "timing_out": null,
+        "shards": 16,
+        "shard_index": 0,
+        "solver": "/home/janotmik/primo-cadical-profile/contrib/local/bin/cvc5",
+        "parser": "build-slurm-rel/primo_parser_corpus",
+        "solver_arg": [
+          "--incremental",
+          "--lang=smt2"
+        ],
+        "expected_git": null,
+        "timeout": 30.0,
+        "dolmen": null,
+        "dolmen_timeout": 60.0,
+        "ref": null,
+        "ref_arg": []
+      },
+      "version": "cvc5 1.3.4 [git f3b21c4 on branch HEAD]\ncompiled with GCC version Ubuntu Clang 18.1.3 (1ubuntu1) on May  7 2026 15:33:02\n\nCopyright (c) 2009-2026 by the authors and their institutional\naffiliations listed at https://cvc5.github.io/people.html\n\ncvc5 is open-source and is covered by the BSD license (modified).\n\nTHIS SOFTWARE IS PROVIDED AS-IS, WITHOUT ANY WARRANTIES.\nUSE AT YOUR OWN RISK.\n\nThis version of cvc5 is linked against the following non-(L)GPL'ed\nthird party libraries.\n\n  CaDiCaL - Simplified Satisfiability Solver\n  See https://github.com/arminbiere/cadical for copyright information.\n\n  SymFPU - The Symbolic Floating Point Unit\n  See https://github.com/martin-cs/symfpu/tree/CVC4 for copyright information.\n\nThis version of cvc5 is linked against the following third party\nlibraries covered by the LGPLv3 license.\nSee licenses/lgpl-3.0.txt for more information.\n\n  GMP - Gnu Multi Precision Arithmetic Library\n  See http://gmplib.org for copyright information.\n\n  LibPoly polynomial library\n  See https://github.com/SRI-CSL/libpoly for copyright and\n  licensing information.\n\ncvc5 is statically linked against these libraries. To recompile\nthis version of cvc5 with different versions of these libraries\nfollow the instructions on https://github.com/cvc5/cvc5/blob/main/INSTALL.md\n\nSee the file COPYING (distributed with the source code, and with\nall binaries) for the full cvc5 copyright, licensing, and (lack of)\nwarranty information.\n\n",
+      "solver_sha256": "4a93548398445cf1a774655583f5465b156c26f63f2cdfb94f4728fdf7adde46",
+      "driver_sha256": "cca1aba519f37ed2e38e04d3e367265af0f72c84c893788721e59dbbbe36d595",
+      "manifest_sha256": "4cc0c9b35b3725ae2893e626f0ee29ca798830462b080a0dea16585bbcc48b85",
+      "host": "node-02.ciircluster",
+      "slurm_job_id": "142472",
+      "validation_tools": {}
+    }
+  },
+  "artifacts": {
+    "timing": "results/uf-native-timing-fa2fe5c",
+    "validation": "results/uf-native-validation-fa2fe5c",
+    "remote_workspace": "/home/janotmik/primo-model-fix",
+    "archive_parts": "results/uf-fa2fe5c-artifacts",
+    "extracted_provenance": "results/uf-fa2fe5c-preserved",
+    "job_logs": "results/uf-fa2fe5c-job-logs.tar.gz",
+    "verification_and_submission_records": "results/uf-fa2fe5c-delivery",
+    "parts": [
+      {
+        "path": "results/uf-fa2fe5c-artifacts/default.tar.zst",
+        "sha256": "4b9ba04104915ab0fbf094de886bd425bd18ba60f84c9ef0e0dd34cc378caed3",
+        "bytes": 3205843
+      },
+      {
+        "path": "results/uf-fa2fe5c-artifacts/gate-auto.tar.zst",
+        "sha256": "8f5ca5fbfc12d7f8ce1f5d688c7ed61924c9a90d415cdbb9e923e3ba8e69deab",
+        "bytes": 4234123
+      },
+      {
+        "path": "results/uf-fa2fe5c-artifacts/gate-extra.tar.zst",
+        "sha256": "bf78f65c8ff77f7920359a3e7fdce8264c55ee5bf310e2c70a56a3631b49c1c7",
+        "bytes": 4231814
+      },
+      {
+        "path": "results/uf-fa2fe5c-artifacts/gate-matrix.tar.zst",
+        "sha256": "d4de484440e1c2474549cc90f39311fbc4830256a68d2d581b003751899f1bc3",
+        "bytes": 4191422
+      },
+      {
+        "path": "results/uf-fa2fe5c-artifacts/gate-mixed.tar.zst",
+        "sha256": "e73f289db14cea1c6fa163655fae921e17d26bcf8b753b0185ab0d656b02c1e1",
+        "bytes": 1566350
+      },
+      {
+        "path": "results/uf-fa2fe5c-artifacts/inputs-binary.tar.zst",
+        "sha256": "14645ce970469d1f319d9e9a971867926db6e9a508d7a0869a9118cabce12567",
+        "bytes": 56022894
+      },
+      {
+        "path": "results/uf-fa2fe5c-artifacts/models-assumptions.tar.zst",
+        "sha256": "cd78bdaf40d613d99096b8300eae2fc64da19057f1cd173aecbd1e170c49c4b9",
+        "bytes": 176117041
+      },
+      {
+        "path": "results/uf-fa2fe5c-artifacts/models-rebuild.tar.zst",
+        "sha256": "e23fa2b7c898c0a5e4faf7fee8ff6610bb3200ad6660cb1ca10b28ba45764ff3",
+        "bytes": 181996066
+      },
+      {
+        "path": "results/uf-fa2fe5c-artifacts/regressions.tar.zst",
+        "sha256": "4e0c6abd026676740902d5d3ca133e702bab5c9e878bc6729bf8a71d1a176c9b",
+        "bytes": 8477
+      },
+      {
+        "path": "results/uf-fa2fe5c-artifacts/timing.tar.zst",
+        "sha256": "d34fd5f350d714a9445e5e3e4b3ae92c7a0d48b0ab797e911a77f334297bb3e5",
+        "bytes": 11002580
+      }
+    ],
+    "parts_total_bytes": 442576610,
+    "delivery_bundle": {
+      "path": "results/uf-fa2fe5c-delivery.tar.gz",
+      "sha256": "99e86c2ea4a9fcc2f253fc7c7bfe5f2b92cb0d8c1c2e42b572dcbeb444218488",
+      "bytes": 69589
+    },
+    "job_logs_sha256": "b075ea631d8bdd8971dc8704a2324b1fd2f9a9e4f183d53600cdf29be21806cd",
+    "accounting": {
+      "path": "results/uf-fa2fe5c-delivery/slurm-accounting.txt",
+      "sha256": "278476e9c79f634db5f7105192793d756a7a2b4f6d9751aa5fa12213bdd0b081"
+    }
+  },
+  "provenance_audit": {
+    "matched_candidate_shards": 32,
+    "binary_manifest_options_and_driver_match": true,
+    "all_selected_models_qualified": true,
+    "collected_binary_manifest_and_original_archive_match": true,
+    "all_ten_archive_checksums_and_stream_integrity_pass": true,
+    "matched_exact_candidate_uf_gate_shards": 24
+  },
+  "uf_gate_totals": {
+    "generated": 3000,
+    "native_mutations": 3000,
+    "pass": 6000,
+    "queries": 48000,
+    "direct_dolmen_sat_models": 28352,
+    "wrong_answer": 0,
+    "crash": 0,
+    "parser_type_error": 0,
+    "timeout": 0,
+    "unknown": 0,
+    "unsupported": 0,
+    "reference_disagreement": 0,
+    "invalid_model": 0
+  },
+  "resource_limits": {
+    "timing": {
+      "session_seconds": 30,
+      "theory_conflicts_per_query": 10000,
+      "memory_gib_per_task": 8,
+      "walltime_hours_per_shard": 2,
+      "concurrent_tasks": 8,
+      "cpus_requested_per_task": 1,
+      "logical_cpus_allocated_per_task": 2,
+      "solver_processes_per_task": 1,
+      "host": "node-02.ciircluster"
+    },
+    "native_validation": {
+      "query_and_reference_seconds": 120,
+      "dolmen_seconds": 120,
+      "memory_gib_per_task": 8,
+      "walltime_hours_per_shard": 2,
+      "concurrent_tasks": 32,
+      "cpus_requested_per_task": 1,
+      "logical_cpus_allocated_per_task": 2,
+      "hosts": [
+        "node-02.ciircluster",
+        "node-03.ciircluster"
+      ],
+      "excluded_from_timing": true
+    },
+    "uf_gates": {
+      "query_and_reference_seconds": 20,
+      "dolmen_seconds": 30,
+      "memory_gib_per_task": 4,
+      "walltime_hours_per_shard": 1,
+      "cases_per_shard": 250
+    },
+    "artifact_collection": {
+      "memory_gib_per_task": 4,
+      "walltime_minutes_per_task": 75,
+      "compression_threads_per_task": 1,
+      "concurrent_tasks": 4,
+      "parts": 10,
+      "cpus_requested_per_task": 1,
+      "logical_cpus_allocated_per_task": 2
+    }
+  },
+  "qualification_limits": [
+    "Only complete Primo timing sessions are model-qualified; three rebuild timeouts and six assumptions unknown sessions remain unqualified, including earlier responses.",
+    "UNSAT has reference comparison, not proof certification.",
+    "Z3 and cvc5 timing records are reused without rerunning references; independent Dolmen validation covers Primo models.",
+    "Opt-in acceptance only: assumptions gains two sessions and loses five; default rebuild remains unchanged."
+  ],
+  "verification": {
+    "check": "34 C++/CLI tests and 164 Python tests pass",
+    "asan": "34/34 pass",
+    "lint": "pass",
+    "docs": "pass",
+    "static_analysis": "Whole-tree 110 tracked C++ file tidy and advisory include-cleaner baseline at d96902f, followed by fresh focused scans of both changed C++ files at fa2fe5c; no blocking diagnostics. Existing direct-provider advisories and paired self-includes retained.",
+    "review": "Whole-tree code/hygiene/ownership review plus focused insertion and active-model-root reviews; no blocking code findings. Final evidence review confirms same binary, options, driver and manifest across timing/model shards."
+  },
+  "submission_metadata": {
+    "uf-artifact-collection-fa2fe5c-submission.json": {
+      "command": "cd /home/janotmik/primo-model-fix && sbatch --parsable --ntasks=1 --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-model-fix,PRIMO_EXPECTED_REVISION=fa2fe5c,PRIMO_UF_MANIFEST=tmp/native-uf-ce91bfb.json,PRIMO_UF_ARCHIVE=tmp/native-uf-archive/sandbox/QF_UF.tar.zst --dependency=afterok:142666 tmp/uf-collect-artifacts.sbatch",
+      "stdout": "142729\n",
+      "stderr": "",
+      "environment": {
+        "PRIMO_WORKDIR": "/home/janotmik/primo-model-fix",
+        "PRIMO_EXPECTED_REVISION": "fa2fe5c",
+        "PRIMO_UF_MANIFEST": "tmp/native-uf-ce91bfb.json",
+        "PRIMO_UF_ARCHIVE": "tmp/native-uf-archive/sandbox/QF_UF.tar.zst"
+      },
+      "dependency": "142666"
+    },
+    "uf-auto-gate-fa2fe5c-submission.json": {
+      "command": "cd /home/janotmik/primo-model-fix && sbatch --parsable --ntasks=1 --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-model-fix,PRIMO_EXPECTED_REVISION=fa2fe5c,PRIMO_UF_ROOT=/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb,PRIMO_UF_SEEDS=/home/janotmik/primo-model-fix/benchmarks/native-uf-incremental-seeds.txt,PRIMO_CTEST=/home/janotmik/primo-cadical-profile/.venv-build/bin/ctest,PRIMO_INCREMENTAL_OUT=/home/janotmik/primo-model-fix/results/uf-auto-gate-fa2fe5c,PRIMO_UF_GATE_SEED=202639120,PRIMO_UF_GATE_PROFILE=auto --dependency=afterok:142599 scripts/slurm_incremental_uf_gate.sbatch",
+      "stdout": "142601\n",
+      "stderr": "",
+      "environment": {
+        "PRIMO_WORKDIR": "/home/janotmik/primo-model-fix",
+        "PRIMO_EXPECTED_REVISION": "fa2fe5c",
+        "PRIMO_UF_ROOT": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb",
+        "PRIMO_UF_SEEDS": "/home/janotmik/primo-model-fix/benchmarks/native-uf-incremental-seeds.txt",
+        "PRIMO_CTEST": "/home/janotmik/primo-cadical-profile/.venv-build/bin/ctest",
+        "PRIMO_INCREMENTAL_OUT": "/home/janotmik/primo-model-fix/results/uf-auto-gate-fa2fe5c",
+        "PRIMO_UF_GATE_SEED": "202639120",
+        "PRIMO_UF_GATE_PROFILE": "auto"
+      },
+      "dependency": "142599"
+    },
+    "uf-default-other-fa2fe5c-submission.json": {
+      "command": "cd /home/janotmik/primo-model-fix && sbatch --parsable --ntasks=1 --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-model-fix,PRIMO_EXPECTED_REVISION=fa2fe5c,PRIMO_UF_ROOT=/home/janotmik/primo-cadical-profile/tmp/QF_UF,PRIMO_LIA_ROOT=/home/janotmik/primo-cadical-profile/sandbox/non-incremental/QF_LIA,PRIMO_LRA_ROOT=/home/janotmik/primo-cadical-profile/sandbox/non-incremental/QF_LRA,PRIMO_UFLRA_ROOT=/home/janotmik/primo-cadical-profile/sandbox/non-incremental/QF_UFLRA,PRIMO_UFLIA_ROOT=/home/janotmik/primo-model-fix/tmp/QF_UFLIA,PRIMO_CORPUS_OUT=/home/janotmik/primo-model-fix/results/uf-default-fa2fe5c,PRIMO_THEORY_CONFLICT_LIMIT=1000 --array=1-4 scripts/slurm_incremental_corpus.sbatch",
+      "stdout": "142661\n",
+      "stderr": "",
+      "environment": {
+        "PRIMO_WORKDIR": "/home/janotmik/primo-model-fix",
+        "PRIMO_EXPECTED_REVISION": "fa2fe5c",
+        "PRIMO_UF_ROOT": "/home/janotmik/primo-cadical-profile/tmp/QF_UF",
+        "PRIMO_LIA_ROOT": "/home/janotmik/primo-cadical-profile/sandbox/non-incremental/QF_LIA",
+        "PRIMO_LRA_ROOT": "/home/janotmik/primo-cadical-profile/sandbox/non-incremental/QF_LRA",
+        "PRIMO_UFLRA_ROOT": "/home/janotmik/primo-cadical-profile/sandbox/non-incremental/QF_UFLRA",
+        "PRIMO_UFLIA_ROOT": "/home/janotmik/primo-model-fix/tmp/QF_UFLIA",
+        "PRIMO_CORPUS_OUT": "/home/janotmik/primo-model-fix/results/uf-default-fa2fe5c",
+        "PRIMO_THEORY_CONFLICT_LIMIT": "1000"
+      },
+      "dependency": ""
+    },
+    "uf-default-uf-fa2fe5c-submission.json": {
+      "command": "cd /home/janotmik/primo-model-fix && sbatch --parsable --ntasks=1 --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-model-fix,PRIMO_EXPECTED_REVISION=fa2fe5c,PRIMO_UF_ROOT=/home/janotmik/primo-cadical-profile/tmp/QF_UF,PRIMO_LIA_ROOT=/home/janotmik/primo-cadical-profile/sandbox/non-incremental/QF_LIA,PRIMO_LRA_ROOT=/home/janotmik/primo-cadical-profile/sandbox/non-incremental/QF_LRA,PRIMO_UFLRA_ROOT=/home/janotmik/primo-cadical-profile/sandbox/non-incremental/QF_UFLRA,PRIMO_UFLIA_ROOT=/home/janotmik/primo-model-fix/tmp/QF_UFLIA,PRIMO_CORPUS_OUT=/home/janotmik/primo-model-fix/results/uf-default-fa2fe5c,PRIMO_THEORY_CONFLICT_LIMIT=10000 --dependency=afterok:142599 --array=0 scripts/slurm_incremental_corpus.sbatch",
+      "stdout": "142620\n",
+      "stderr": "",
+      "environment": {
+        "PRIMO_WORKDIR": "/home/janotmik/primo-model-fix",
+        "PRIMO_EXPECTED_REVISION": "fa2fe5c",
+        "PRIMO_UF_ROOT": "/home/janotmik/primo-cadical-profile/tmp/QF_UF",
+        "PRIMO_LIA_ROOT": "/home/janotmik/primo-cadical-profile/sandbox/non-incremental/QF_LIA",
+        "PRIMO_LRA_ROOT": "/home/janotmik/primo-cadical-profile/sandbox/non-incremental/QF_LRA",
+        "PRIMO_UFLRA_ROOT": "/home/janotmik/primo-cadical-profile/sandbox/non-incremental/QF_UFLRA",
+        "PRIMO_UFLIA_ROOT": "/home/janotmik/primo-model-fix/tmp/QF_UFLIA",
+        "PRIMO_CORPUS_OUT": "/home/janotmik/primo-model-fix/results/uf-default-fa2fe5c",
+        "PRIMO_THEORY_CONFLICT_LIMIT": "10000"
+      },
+      "dependency": "142599"
+    },
+    "uf-extra-gate-fa2fe5c-submission.json": {
+      "command": "cd /home/janotmik/primo-model-fix && sbatch --parsable --ntasks=1 --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-model-fix,PRIMO_EXPECTED_REVISION=fa2fe5c,PRIMO_UF_ROOT=/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb,PRIMO_UF_SEEDS=/home/janotmik/primo-model-fix/benchmarks/native-uf-incremental-seeds.txt,PRIMO_CTEST=/home/janotmik/primo-cadical-profile/.venv-build/bin/ctest,PRIMO_INCREMENTAL_OUT=/home/janotmik/primo-model-fix/results/uf-extra-gate-fa2fe5c,PRIMO_UF_GATE_SEED=202659120,PRIMO_UF_GATE_PROFILE=auto --dependency=afterok:142599 scripts/slurm_incremental_uf_gate.sbatch",
+      "stdout": "142611\n",
+      "stderr": "",
+      "environment": {
+        "PRIMO_WORKDIR": "/home/janotmik/primo-model-fix",
+        "PRIMO_EXPECTED_REVISION": "fa2fe5c",
+        "PRIMO_UF_ROOT": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb",
+        "PRIMO_UF_SEEDS": "/home/janotmik/primo-model-fix/benchmarks/native-uf-incremental-seeds.txt",
+        "PRIMO_CTEST": "/home/janotmik/primo-cadical-profile/.venv-build/bin/ctest",
+        "PRIMO_INCREMENTAL_OUT": "/home/janotmik/primo-model-fix/results/uf-extra-gate-fa2fe5c",
+        "PRIMO_UF_GATE_SEED": "202659120",
+        "PRIMO_UF_GATE_PROFILE": "auto"
+      },
+      "dependency": "142599"
+    },
+    "uf-matrix-gate-fa2fe5c-submission.json": {
+      "command": "cd /home/janotmik/primo-model-fix && sbatch --parsable --ntasks=1 --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-model-fix,PRIMO_EXPECTED_REVISION=fa2fe5c,PRIMO_UF_ROOT=/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb,PRIMO_UF_SEEDS=/home/janotmik/primo-model-fix/benchmarks/native-uf-incremental-seeds.txt,PRIMO_CTEST=/home/janotmik/primo-cadical-profile/.venv-build/bin/ctest,PRIMO_INCREMENTAL_OUT=/home/janotmik/primo-model-fix/results/uf-matrix-gate-fa2fe5c,PRIMO_UF_GATE_SEED=202649120,PRIMO_UF_GATE_PROFILE=matrix --dependency=afterok:142599 scripts/slurm_incremental_uf_gate.sbatch",
+      "stdout": "142606\n",
+      "stderr": "",
+      "environment": {
+        "PRIMO_WORKDIR": "/home/janotmik/primo-model-fix",
+        "PRIMO_EXPECTED_REVISION": "fa2fe5c",
+        "PRIMO_UF_ROOT": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb",
+        "PRIMO_UF_SEEDS": "/home/janotmik/primo-model-fix/benchmarks/native-uf-incremental-seeds.txt",
+        "PRIMO_CTEST": "/home/janotmik/primo-cadical-profile/.venv-build/bin/ctest",
+        "PRIMO_INCREMENTAL_OUT": "/home/janotmik/primo-model-fix/results/uf-matrix-gate-fa2fe5c",
+        "PRIMO_UF_GATE_SEED": "202649120",
+        "PRIMO_UF_GATE_PROFILE": "matrix"
+      },
+      "dependency": "142599"
+    },
+    "uf-mixed-gate-fa2fe5c-submission.json": {
+      "command": "cd /home/janotmik/primo-model-fix && sbatch --parsable --ntasks=1 --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-model-fix,PRIMO_EXPECTED_REVISION=fa2fe5c,PRIMO_UF_ROOT=/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb,PRIMO_UF_SEEDS=/home/janotmik/primo-model-fix/benchmarks/native-uf-incremental-seeds.txt,PRIMO_CTEST=/home/janotmik/primo-cadical-profile/.venv-build/bin/ctest,PRIMO_INCREMENTAL_OUT=/home/janotmik/primo-model-fix/results/uf-mixed-gate-fa2fe5c,PRIMO_INCREMENTAL_SOLVER_ARGS=--max-theory-conflicts=10000 --dependency=afterok:142599 scripts/slurm_incremental_gate.sbatch",
+      "stdout": "142616\n",
+      "stderr": "",
+      "environment": {
+        "PRIMO_WORKDIR": "/home/janotmik/primo-model-fix",
+        "PRIMO_EXPECTED_REVISION": "fa2fe5c",
+        "PRIMO_UF_ROOT": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb",
+        "PRIMO_UF_SEEDS": "/home/janotmik/primo-model-fix/benchmarks/native-uf-incremental-seeds.txt",
+        "PRIMO_CTEST": "/home/janotmik/primo-cadical-profile/.venv-build/bin/ctest",
+        "PRIMO_INCREMENTAL_OUT": "/home/janotmik/primo-model-fix/results/uf-mixed-gate-fa2fe5c",
+        "PRIMO_INCREMENTAL_SOLVER_ARGS": "--max-theory-conflicts=10000"
+      },
+      "dependency": "142599"
+    },
+    "uf-regressions-fa2fe5c-submission.json": {
+      "command": "cd /home/janotmik/primo-model-fix && sbatch --parsable --ntasks=1 --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-model-fix,PRIMO_EXPECTED_REVISION=fa2fe5c,PRIMO_UF_ROOT=/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb,PRIMO_UF_SEEDS=/home/janotmik/primo-model-fix/benchmarks/native-uf-incremental-seeds.txt,PRIMO_CTEST=/home/janotmik/primo-cadical-profile/.venv-build/bin/ctest,PRIMO_INCREMENTAL_OUT=/home/janotmik/primo-model-fix/results/uf-regressions-fa2fe5c scripts/slurm_incremental_uf_regressions.sbatch",
+      "stdout": "142599\n",
+      "stderr": "",
+      "environment": {
+        "PRIMO_WORKDIR": "/home/janotmik/primo-model-fix",
+        "PRIMO_EXPECTED_REVISION": "fa2fe5c",
+        "PRIMO_UF_ROOT": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb",
+        "PRIMO_UF_SEEDS": "/home/janotmik/primo-model-fix/benchmarks/native-uf-incremental-seeds.txt",
+        "PRIMO_CTEST": "/home/janotmik/primo-cadical-profile/.venv-build/bin/ctest",
+        "PRIMO_INCREMENTAL_OUT": "/home/janotmik/primo-model-fix/results/uf-regressions-fa2fe5c"
+      },
+      "dependency": ""
+    },
+    "uf-timing-fa2fe5c-submission.json": {
+      "command": "cd /home/janotmik/primo-model-fix && sbatch --parsable --ntasks=1 --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-model-fix,PRIMO_EXPECTED_REVISION=fa2fe5c,PRIMO_UF_ROOT=/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb,PRIMO_UF_MANIFEST=/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb.json,PRIMO_CVC5=/home/janotmik/primo-cadical-profile/contrib/local/bin/cvc5,PRIMO_INCREMENTAL_OUT=/home/janotmik/primo-model-fix/results/uf-native-timing-fa2fe5c,PRIMO_UF_PHASE=timing --dependency=afterok:142661 --array=0,1,4,5,8,9,12,13,16,17,20,21,24,25,28,29,32,33,36,37,40,41,44,45,48,49,52,53,56,57,60,61%8 scripts/slurm_native_uf_sessions.sbatch",
+      "stdout": "142665\n",
+      "stderr": "",
+      "environment": {
+        "PRIMO_WORKDIR": "/home/janotmik/primo-model-fix",
+        "PRIMO_EXPECTED_REVISION": "fa2fe5c",
+        "PRIMO_UF_ROOT": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb",
+        "PRIMO_UF_MANIFEST": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb.json",
+        "PRIMO_CVC5": "/home/janotmik/primo-cadical-profile/contrib/local/bin/cvc5",
+        "PRIMO_INCREMENTAL_OUT": "/home/janotmik/primo-model-fix/results/uf-native-timing-fa2fe5c",
+        "PRIMO_UF_PHASE": "timing"
+      },
+      "dependency": "142661"
+    },
+    "uf-validation-fa2fe5c-submission.json": {
+      "command": "cd /home/janotmik/primo-model-fix && sbatch --parsable --ntasks=1 --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-model-fix,PRIMO_EXPECTED_REVISION=fa2fe5c,PRIMO_UF_ROOT=/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb,PRIMO_UF_MANIFEST=/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb.json,PRIMO_CVC5=/home/janotmik/primo-cadical-profile/contrib/local/bin/cvc5,PRIMO_INCREMENTAL_OUT=/home/janotmik/primo-model-fix/results/uf-native-validation-fa2fe5c,PRIMO_UF_PHASE=validate,PRIMO_UF_TIMING=/home/janotmik/primo-model-fix/results/uf-native-timing-fa2fe5c,PRIMO_UF_TIMEOUT=120,PRIMO_UF_DOLMEN_TIMEOUT=120 --dependency=afterok:142665 --array=0,1,4,5,8,9,12,13,16,17,20,21,24,25,28,29,32,33,36,37,40,41,44,45,48,49,52,53,56,57,60,61%32 scripts/slurm_native_uf_sessions.sbatch",
+      "stdout": "142666\n",
+      "stderr": "",
+      "environment": {
+        "PRIMO_WORKDIR": "/home/janotmik/primo-model-fix",
+        "PRIMO_EXPECTED_REVISION": "fa2fe5c",
+        "PRIMO_UF_ROOT": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb",
+        "PRIMO_UF_MANIFEST": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb.json",
+        "PRIMO_CVC5": "/home/janotmik/primo-cadical-profile/contrib/local/bin/cvc5",
+        "PRIMO_INCREMENTAL_OUT": "/home/janotmik/primo-model-fix/results/uf-native-validation-fa2fe5c",
+        "PRIMO_UF_PHASE": "validate",
+        "PRIMO_UF_TIMING": "/home/janotmik/primo-model-fix/results/uf-native-timing-fa2fe5c",
+        "PRIMO_UF_TIMEOUT": "120",
+        "PRIMO_UF_DOLMEN_TIMEOUT": "120"
+      },
+      "dependency": "142665"
+    },
+    "uf-artifact-parts-fa2fe5c-submission.json": {
+      "command": "cd /home/janotmik/primo-model-fix && sbatch --parsable --ntasks=1 --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-model-fix,PRIMO_EXPECTED_REVISION=fa2fe5c,PRIMO_UF_MANIFEST=tmp/native-uf-ce91bfb.json,PRIMO_UF_ARCHIVE=tmp/native-uf-archive/sandbox/QF_UF.tar.zst tmp/uf-collect-artifacts-parts.sbatch",
+      "stdout": "142733\n",
+      "stderr": "",
+      "environment": {
+        "PRIMO_WORKDIR": "/home/janotmik/primo-model-fix",
+        "PRIMO_EXPECTED_REVISION": "fa2fe5c",
+        "PRIMO_UF_MANIFEST": "tmp/native-uf-ce91bfb.json",
+        "PRIMO_UF_ARCHIVE": "tmp/native-uf-archive/sandbox/QF_UF.tar.zst"
+      },
+      "dependency": ""
+    }
+  },
+  "artifact_collection_history": {
+    "first_job": "142729",
+    "state": "cancelled after 26m44s; incomplete archive is not qualification evidence",
+    "reason": "Serial traversal of many query files was too slow for its 45-minute budget. scontrol TimeLimit extension was denied; resubmitted independent bounded archive parts via fresh preflight. Solver outputs were never changed.",
+    "replacement_job": "142733",
+    "first_archive": "results/uf-fa2fe5c-artifacts.partial.tar.zst",
+    "diagnostics": "Read-only process inspection used an overlapping srun step inside the collector allocation. A direct compute-node SSH probe emitted a changed-host-key warning, so subsequent diagnostics used Slurm; no host-key configuration was changed.",
+    "replacement_state": "all ten parts completed, downloaded and verified"
+  },
+  "terminal_audit": {
+    "active_slurm_jobs": 0,
+    "all_current_solver_build_gate_timing_validation_and_collection_jobs_completed": true,
+    "cancelled_collection_attempt": "142729 (superseded by completed array 142733)",
+    "accounting_rows": 222,
+    "remote_login_solver_processes": 0,
+    "local_solver_processes": 0,
+    "collected_parts": 10
+  },
+  "collector_script_sha256": "ffac7105360d5ed135aa3a3629f45c087ecece0fb08cdcc9a3bc125e9be74cab"
+}

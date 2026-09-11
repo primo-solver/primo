@@ -1,7 +1,8 @@
 # Assumption-based incremental QF_UF
 
-Status: initial archive timing complete; a shared model-construction fix is
-under qualification. The initial replay is incomplete.
+Status: opt-in QF_UF implementation qualified at `fa2fe5c` on the scoped gates
+and completed native sessions described below. Timed-out and unknown sessions
+remain unqualified. Full artifacts have been collected and verified.
 The design checklist below was recorded before implementation.
 The default remains `rebuild`. The input archive is `sandbox/QF_UF.tar.zst`,
 SHA-256 `52c55a17ee15e5c4a0fc723b9605ae42615da34499efc7e5a5e8b2c0ffc26a27`.
@@ -129,87 +130,124 @@ and default cross-logic tests. Run check, ASan, lint, docs and required reviews/
 static scans, record experiments in `run-log.json`, commit coherent milestones,
 collect artifacts and audit all jobs/processes and the worktree before handoff.
 
-## Native archive measurement at `1595948`
+## Qualified native evaluation at `fa2fe5c`
 
-SLURM timing job **142464** replayed all 1,778 unchanged files through real stdin,
+SLURM timing job **142665** replayed all 1,778 unchanged files through real stdin,
 with 30 seconds per whole session and a 10,000 theory-conflict budget for both
-Primo modes. The Release binary uses CaDiCaL `3.0.0-7b99c07`; the references are
-Z3 5.1.0 and cvc5 1.3.4. Tasks ran serially on `node-02.ciircluster`, with 8 GiB
-requested per task. The scheduler allocated two logical CPUs for each requested
-single-CPU task. Each result retains direct-child peak RSS, stdout and stderr.
+Primo modes. The Release binary uses CaDiCaL `3.0.0-7b99c07`. Z3 5.1.0 and cvc5
+1.3.4 timings are the unchanged records from job **142464**; reference performance
+was not rerun. Timing ran serially per task on `node-02.ciircluster`, with 8 GiB
+requested and two logical CPUs allocated for each requested single-CPU task.
+The Linux driver retains direct-child peak RSS, stdout, stderr and exact commands.
 
 | Profile | Complete sessions | Timeout | Unknown | Mean whole-session PAR2 (s) | Complete-session queries |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Rebuild | 1,775 | 2 | 1 | 0.8223 | 29,573 |
-| Assumptions | 1,772 | 0 | 6 | 0.4804 | 29,978 |
+| Rebuild | 1,775 | 3 | 0 | 0.8294 | 29,573 |
+| Assumptions | 1,772 | 0 | 6 | 0.4828 | 29,978 |
 | Z3 | 1,778 | 0 | 0 | 0.1691 | 29,990 |
 | cvc5 | 1,768 | 10 | 0 | 0.8313 | 29,970 |
 
 There are zero answer disagreements among overlapping definite query answers,
-zero crashes and zero parser errors. These are timing results; separate model
-qualification is required below. An incomplete session receives 60 seconds PAR2
-regardless of partial progress. Rebuild additionally printed 380 responses in
+zero crashes and zero parser errors. An incomplete session receives 60 seconds
+PAR2 regardless of partial progress. Rebuild printed another 373 responses in
 incomplete sessions; assumptions printed 12, including its unknown responses.
 Those responses do not increase the complete-session count.
 
 Among the 1,770 sessions completed by both Primo modes, the median rebuild /
-assumptions runtime ratio is 2.952 and the geometric mean is 2.741. Assumptions
-gains two complete sessions and loses five, for a net loss of three. The losses
-are Goel `rushhour` cases reaching the query conflict limit, not incorrect
-answers. Z3 remains faster overall and completes more sessions. Peak observed
-solver RSS is 987 MiB rebuild, 903 MiB assumptions, 156 MiB Z3 and 194 MiB cvc5;
-these maxima come from potentially different inputs and are not paired ratios.
+assumptions runtime ratio is **2.964** and the geometric mean is **2.738**.
+Assumptions gains two complete sessions and loses five, for a net loss of three.
+The losses are Goel `rushhour` cases reaching the query conflict limit. Z3 remains
+faster overall and completes more sessions. Peak observed solver RSS is 990 MiB
+rebuild, 898 MiB assumptions, 156 MiB Z3 and 194 MiB cvc5; these maxima come from
+potentially different inputs and are not paired ratios.
 
 | Family | Rebuild complete / mean PAR2 (s) | Assumptions | Z3 | cvc5 |
 | --- | ---: | ---: | ---: | ---: |
-| Goel (766) | 764 / 1.2415 | 760 / 0.9892 | 766 / 0.3378 | 756 / 1.7531 |
-| CLEARSY (1,012) | 1,011 / 0.5049 | 1,012 / 0.0953 | 1,012 / 0.0414 | 1,012 / 0.1335 |
+| Goel (766) | 764 / 1.2568 | 760 / 0.9923 | 766 / 0.3378 | 756 / 1.7531 |
+| CLEARSY (1,012) | 1,011 / 0.5058 | 1,012 / 0.0972 | 1,012 / 0.0414 | 1,012 / 0.1335 |
 
 Reuse is observable on CLEARSY `0002/00126.smt2`: assumptions completes all 413
-queries in 4.502 seconds, with one frontend, one engine, 413 working-state
-resets, 2,551 translated assertions, 2,459 prepared atoms and 453 retired
-selectors. Rebuild times out after 377 queries and frontend creations. Retained
-storage at the last assumptions query includes 7,392 core terms, 7,750 flat
-terms, 5,892 flat definitions and 15,135 active SAT clauses. This is persistent
-frontend/SAT/preparation reuse, with fresh working theory state each query.
+queries in 4.533 seconds, with one frontend, one engine, 413 working-state resets,
+2,551 translated assertions, 2,459 prepared atoms and 453 retired selectors.
+Rebuild times out after 371 queries and frontend creations. At the last
+assumptions query there are 69 active lowered model roots, 7,392 retained core
+terms, 7,750 flat terms, 5,892 flat definitions and 15,135 active SAT clauses.
+This demonstrates persistent frontend/SAT/preparation reuse with fresh working
+theory state per query.
 
-The largest completed-session regression is Goel
-`QF_UF_firewire_tree.5.prop2_ab_core_max.smt2`: 11.966 seconds rebuild versus
-20.436 assumptions. Its first assumptions query spends 14.932 seconds solving
-and 3.913 seconds preprocessing, compared with 8.994 and 0.704 in rebuild.
-The assumptions working-state reset costs 0.041 seconds. A local `-pg` profile
-attributes self samples primarily to assignment callbacks (23.53%), SAT
+The Goel regressions were investigated before acceptance. Baseline `1595948`
+profiling of `QF_UF_firewire_tree.5.prop2_ab_core_max.smt2` found 14.932 seconds
+solving and 3.913 seconds preprocessing in the first assumptions query, compared
+with 8.994 and 0.704 in rebuild. Its working-state reset cost 0.041 seconds.
+Local `-pg` self samples were dominated by assignment callbacks (23.53%), SAT
 propagation (22.79%), congruence merging (13.73%) and trail restoration (5.88%).
-The reduced safe preprocessing and different retained search therefore matter;
-working-state recreation alone does not explain the regression. The local
-profile is diagnostic and does not replace SLURM timings. No unsafe whole-goal
-preprocessing or silent fallback was introduced to recover these cases.
+The safe preprocessing restrictions and retained search matter; working-state
+recreation alone does not explain the regression. This profile is diagnostic,
+not a replacement for the final SLURM timings. No unsafe whole-goal preprocessing
+or silent fallback was introduced to recover these cases.
 
-Fresh Auto gate **142459** passed 1,000 generated scoped sessions and 1,000 native
-seed mutations, with 16,000 reference-checked queries and 9,458 direct Dolmen SAT
-model passes. Earlier source-identical Auto/matrix jobs **142359/142364** passed
-another 4,000 sessions and 18,908 models. The unchanged default passed the
-25-file cross-logic preservation sample (**142369/142370**): 50 scoped sessions,
-200 queries and 121 Dolmen models, with no lost solved files; median file-mode
-runtime ratio against the previous accepted LRA-session build was 1.013.
+## Correctness coverage and acceptance
 
-Separate native validation job **142519** selects all complete Primo sessions:
-24,746 rebuild SAT query models and 25,027 assumptions SAT query models. The initial replay encountered eight response
-timeouts in model-heavy Goel `adding` sessions. Job **142567** retried affected
-shards at 120 seconds; both runs were stopped after the bottleneck below was
-profiled. Qualification of that binary is **incomplete**. The corrected
-candidate requires a fresh replay. This stage checks actual incremental models, query-context Z3
-answers, successful process exit, and exact agreement with the timed answer
-sequence. Timeout/unknown sessions remain unqualified even if some queries
-answered SAT. No full-session correctness claim applies to them.
+Fresh jobs **142601**, **142606** and **142611** passed **3,000 generated scoped
+UF sessions plus 3,000 native mutations**, with 48,000 reference-checked queries
+and 28,352 direct Dolmen SAT model passes. Auto/Off preprocessing and
+Online/Conflict propagation are covered separately by the matrix gate.
+The cross-logic gate **142616** passed another 1,000 rebuild sessions, 15,000
+queries and 10,000 models. Deterministic compute-node regressions **142599**
+include the minimized and generated ITE-model witnesses below, seven existing
+Boolean-argument seeds, and the backend/session/closure/CLI tests.
 
-Reproduction uses `scripts/slurm_native_uf_sessions.sbatch` and
-`scripts/summarize_native_uf.py`; exact per-shard invocations, binary/input hashes,
-reference versions and limits are retained in `run.json`. See `run-log.json`
-entry `2026-09-11-assumptions-uf-native-1595948`. Timing artifacts are collected
-under `results/uf-native-timing-1595948`; large model replay artifacts are kept
-in the corresponding SLURM workspace until collection. The mode remains opt-in;
-these mixed solve counts do not support changing the default.
+The default preservation sample (**142620/142661**) passed all 25 files,
+50 scoped sessions, 200 queries and 121 Dolmen models, with no lost solved files.
+The median file-mode runtime ratio against the accepted `04d2e23` result is
+0.993; summed file-mode time is 16.395 seconds versus 16.621. Model-validation
+work is excluded from those timing diagnostics.
+
+Separate native validation job **142666** completed all selected sessions:
+
+| Profile | Qualified complete sessions | Reference-checked queries | Expected SAT models | Direct Dolmen passes |
+| --- | ---: | ---: | ---: | ---: |
+| Rebuild | 1,775 | 29,573 | 24,746 | 24,746 |
+| Assumptions | 1,772 | 29,978 | 25,027 | 25,027 |
+
+There are no missing selected rows, model errors, replay answer changes,
+reference disagreements, validator rejections or validation timeouts. Each
+actual session model was checked against its original query context, and every
+replay answer matched the timed sequence. The correctness-only budgets were
+120 seconds per solver/reference response and 120 seconds per Dolmen check;
+this work ran after timing on `node-02`/`node-03` and is excluded from PAR2.
+The three rebuild timeouts and six assumptions unknown sessions remain
+unqualified, including any earlier SAT responses. Model checking does not
+certify UNSAT; those answers have independent reference comparison.
+
+The earlier `1595948` timing run remains historical, with incomplete model
+qualification. It exposed the shared reconstruction cost described below.
+Fresh gate `142579` at `d96902f` then exposed the original-root model error;
+that candidate's dependent timing never ran. Both issues were fixed before the
+qualified `fa2fe5c` evaluation. Earlier passing gates are not substituted for
+current evidence.
+
+The mode is accepted **as opt-in**. Its lower PAR2 and strong CLEARSY reuse do not
+justify default promotion given the Goel losses. Tests, ASan, lint, docs,
+code/efficiency review and static scans are recorded with their exact scope in
+`run-log.json`. No source changes from a rejected solver optimization remain.
+
+Reproduce with `scripts/slurm_native_uf_sessions.sbatch` and
+`scripts/summarize_native_uf.py`. Set `PRIMO_UF_TIMEOUT=120` and
+`PRIMO_UF_DOLMEN_TIMEOUT=120` only for the separate validation phase; timing keeps
+30 seconds. Exact invocations, hashes, versions, profiles, input identities and
+per-family coverage are in `benchmarks/assumptions-uf-evaluation.json` and the
+per-shard `run.json` files. `scripts/slurm_collect_native_uf.sbatch` archives the
+raw model contexts/responses, validators, timing outputs, gates, preserved
+binary and original input archive after successful validation. Collection array
+**142733** completed ten independently checksummed archives under
+`results/uf-fa2fe5c-artifacts/`; all ten were collected locally and passed checksum
+and compressed-stream integrity checks. Their sizes and hashes, terminal job
+accounting, and the verification-log bundle are recorded in the evaluation
+metadata. The collected binary, manifest and original input archive match their
+pinned identities. No solver or collection jobs remain active. The initial serial collection job **142729**
+was cancelled when traversal proved too slow for its resource budget; its
+partial archive is retained separately and is not accepted evidence.
 
 ## Model replay bottleneck and insertion checklist
 
@@ -221,7 +259,9 @@ representative calls: 73.81% of self samples in `representative`, 18.25% in
 `check_disequalities`. Larger `adding` sessions exceeded the separate replay
 budget before their first answer. Timing without model construction is preserved.
 
-The following original micro-optimization checklist was recorded before editing:
+The original checklist was recorded before editing. Its endpoint-registration
+premise was corrected during unit review: registration can eagerly propagate
+congruences, and those merges already check all older pairs. The final checklist is:
 
 - Keep the existing closure, disequality vector, conflict explanation and
   snapshot representation from [](euf). This is an invariant-based scan reduction,
