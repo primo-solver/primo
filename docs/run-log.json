@@ -3,6 +3,72 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-11-incremental-smt-and-uf-separate-merges",
+      "date": "2026-09-11",
+      "kind": "merge-verification-no-new-solver-experiment",
+      "base": "9803d1a",
+      "merges": [
+        {
+          "commit": "3169a1c",
+          "branch": "feature/incremental-smt-sessions",
+          "tip": "5d930be",
+          "exact_feature_tree": true,
+          "qualified_source": "04d2e23",
+          "src_tree": "9c914d7b22c69d6c0950c229935510bc166b1636"
+        },
+        {
+          "commit": "10b69c7",
+          "branch": "feature/assumptions-qf-uf",
+          "tip": "7a98245",
+          "exact_feature_tree": true,
+          "qualified_source": "fa2fe5c",
+          "src_tree": "9a1b36b13d67fcd00d8843689e8d0e960811cd20"
+        }
+      ],
+      "commands": [
+        "git switch main",
+        "git merge --no-ff --no-commit feature/incremental-smt-sessions",
+        "git diff --cached --exit-code feature/incremental-smt-sessions",
+        "CMAKE_BUILD_PARALLEL_LEVEL=4 make check",
+        "make docs",
+        "git commit (3169a1c)",
+        "git merge --no-ff --no-commit feature/assumptions-qf-uf",
+        "git diff --cached --exit-code feature/assumptions-qf-uf",
+        "CMAKE_BUILD_PARALLEL_LEVEL=4 make check",
+        "CMAKE_BUILD_PARALLEL_LEVEL=2 make asan-test",
+        "make docs",
+        "git commit (10b69c7)",
+        "git diff --exit-code HEAD feature/assumptions-qf-uf"
+      ],
+      "verification": {
+        "lra_check": "33 C++/CLI and 156 Python tests pass; lint passes",
+        "lra_docs": "make docs passes",
+        "uf_check": "34 C++/CLI and 166 Python tests pass; lint passes",
+        "uf_asan": "34 tests pass; address sanitizer with leak detection and strict initialization ordering",
+        "uf_docs": "make docs passes",
+        "review": "No conflict resolutions or source edits. Exact tree and source identity checks pass; prior whole-tree reviews, static scans and correctness qualification remain applicable. Status documentation synchronized after merges."
+      },
+      "qualification_reused": [
+        "2026-09-11-assumptions-lra-qualification",
+        "2026-09-11-uf-assumptions-qualified-fa2fe5c"
+      ],
+      "limits": "No new fuzz, model-validation, benchmark or static-analysis campaign: merged source trees are identical to qualified implementations. Existing incomplete-session limitations remain; no default promotion or new speedup claim.",
+      "remote": "git fetch origin failed: Host key verification failed (ssh_askpass missing). Used existing local refs; no host-key settings changed and no push attempted.",
+      "artifacts": {
+        "directory": "results/incremental-merges-20260911",
+        "verification_log_sha256": {
+          "lra-check.log": "d50be05be10b3f6cb147eacdb06c151bede44eec46e2c9d6f1fd597b23120519",
+          "lra-docs.log": "3b02263943f1ba10b7415c8d780c2b8b2070f6ec35bcf0f31d191169a4888668",
+          "uf-asan.log": "ac919e06a58658eaa7c77a2503a1b2cf1f81643da73e04439559c29c09aa5b6b",
+          "uf-check.log": "098abd99c407f1226539de19ee1234504dd6021fa33a059e7c3edea73e0e95f6",
+          "uf-docs.log": "c3d382b0396dfdb8e8e3e7fd7f65ac190f48bef2f32303e3cdbe32e80362f22f"
+        }
+      },
+      "jobs": {
+        "new_slurm_jobs": 0
+      }
+    },
+    {
       "id": "2026-09-11-native-uf-z3-gap-profiling-8573f60",
       "date": "2026-09-11",
       "kind": "qualified-gap-ranking-local-profiling-and-reference-statistics",

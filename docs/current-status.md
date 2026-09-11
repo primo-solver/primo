@@ -18,11 +18,14 @@ identical owned parser/solver sources and a fresh hash-checked replay. Detailed
 qualification and limitations remain in the run log; this is not a full-corpus
 evaluation or a blanket branch merge-readiness claim.
 
-This is the current-state map for `feature/assumptions-qf-uf`, extending
-`feature/incremental-smt-sessions` at `5d930be`, based on `main` at `9803d1a`.
-Qualified UF solver sources are at `fa2fe5c`; the theory-combination
-implementation and its earlier qualification remain at `b883d6f`/`d4e604e`.
-Neither session branch has been merged into that `main` revision.
+This is the current-state map for `main` after the separate incremental-session
+and QF_UF merges on 2026-09-11. Merge `3169a1c` integrates
+`feature/incremental-smt-sessions` at `5d930be`; merge `10b69c7` integrates
+`feature/assumptions-qf-uf` at `7a98245`. Each merge preserves the corresponding
+feature branch's exact tree. Qualified UF solver sources remain at `fa2fe5c`;
+the theory-combination implementation and its earlier qualification remain at
+`b883d6f`/`d4e604e`. Rebuild remains the default, with QF_LRA/QF_UF assumptions
+mode opt-in. The four profiling leads remain open and unimplemented.
 Dated experiments elsewhere retain their original revisions
 and limitations. Exact commands, manifests, hashes and jobs belong in
 [](run-log.md), not in a moving headline benchmark.
@@ -56,8 +59,8 @@ division requires a nonzero literal divisor. They are not a claim of strict
 QF_LIA/QF_UFLIA grammar conformance, and a Dolmen logic rejection is not a model
 pass. See [](arithmetic.md) and [](preprocessing.md).
 
-The session feature branch adds interactive SMT-LIB `push`/`pop` with scoped
-declarations/definitions and repeated checks. It rebuilds solving state per
+Sessions support interactive SMT-LIB `push`/`pop` with scoped
+declarations/definitions and repeated checks. Solving state is rebuilt per
 query by default. An opt-in `--incremental-mode=assumptions` now retains frontend,
 SAT and prepared QF_LRA or QF_UF structure, with fresh working theory state
 for each check. The separate QF_LRA bounded gate passed 2,000 scoped
