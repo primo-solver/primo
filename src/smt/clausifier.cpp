@@ -137,12 +137,12 @@ struct BooleanClausifier::Implementation {
   std::size_t register_boolean_argument_terms() {
     const std::size_t before = registered_boolean_argument_terms_.size();
     std::unordered_set<core::TermId> visited;
-    // theory_atoms_ grows as terms are registered; re-reading size() each
-    // iteration walks the new entries too, exactly as
-    // materialize_boolean_argument_literals does. Newly registered entries are
-    // childless constants, so this terminates.
-    for (std::size_t index = 0; index < theory_atoms_.size(); ++index) {
-      std::vector<core::TermId> pending{theory_atoms_[index].term};
+    // The registry is append-only and terms are immutable. Completed roots need
+    // no rescan after pop or polarity changes (docs/assumption-incremental-uf.md).
+    // Registration may grow theory_atoms_; snapshot IDs, re-read size(), and
+    // advance only after completing the root. Keep DAG scratch local to this call.
+    for (; boolean_argument_scan_count_ < theory_atoms_.size(); ++boolean_argument_scan_count_) {
+      std::vector<core::TermId> pending{theory_atoms_[boolean_argument_scan_count_].term};
       while (!pending.empty()) {
         const core::TermId term_id = pending.back();
         pending.pop_back();
@@ -164,6 +164,8 @@ struct BooleanClausifier::Implementation {
   std::size_t boolean_argument_registration_count() const {
     return registered_boolean_argument_terms_.size();
   }
+
+  std::size_t boolean_argument_scan_count() const { return boolean_argument_scan_count_; }
 
   std::size_t boolean_domain_bridge_count() const { return boolean_domain_bridged_terms_.size(); }
 
@@ -568,6 +570,7 @@ struct BooleanClausifier::Implementation {
   std::vector<std::size_t> theory_atom_by_term_;
   std::vector<std::uint8_t> polarity_seen_by_term_;
   std::vector<TheoryAtom> theory_atoms_;
+  std::size_t boolean_argument_scan_count_ = 0;
   bool boolean_domain_constants_initialized_ = false;
   std::unordered_set<core::TermId> boolean_domain_bridged_terms_;
   std::unordered_set<core::TermId> registered_boolean_argument_terms_;
@@ -609,6 +612,10 @@ std::size_t BooleanClausifier::register_boolean_argument_terms() {
 
 std::size_t BooleanClausifier::boolean_argument_registration_count() const {
   return implementation_->boolean_argument_registration_count();
+}
+
+std::size_t BooleanClausifier::boolean_argument_scan_count() const {
+  return implementation_->boolean_argument_scan_count();
 }
 
 std::size_t BooleanClausifier::boolean_domain_bridge_count() const {

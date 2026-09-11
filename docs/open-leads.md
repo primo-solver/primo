@@ -63,7 +63,7 @@ implementing from these historical measurements.
 | [19](#lead-bounding-transformations) | Double-Bounded reduction + Mixed-Echelon-Hermite: make branch-and-bound terminate | +169 QF_LIA, 162 of them in `20180326-Bromberger` (806 files here) | large | open, gated on 17 |
 | [20](#lead-decision-recommendation) | Evaluate `--lra-model-phase` on QF_LIA and consider promoting it | +129 QF_LIA, **116 of them `convert`**; the source's number is for the mechanism Primo already has | **none -- an A/B of an existing flag** | **open; cheapest lead in this register** |
 | [21](#lead-divisibility) | Divisibility-aware `div`/`mod`: modular normalization, then a first-class `k \| t` atom | **not a corpus lead** -- 0 of 600 QF_LIA benchmarks use these operators; 2 of 400 generated cases hit the branch-and-bound node limit where Z3 decides | small (piece 1); medium-large (piece 2) | **open; read the falsifier before sizing it** |
-| [22](#lead-incremental-uf-scans) | Incremental UF: avoid rescanning old atoms and initializing full-manager scratch | preparation/reset is 41% of one long session; only part is addressable here | small-medium | **open; not implemented** |
+| [22](#lead-incremental-uf-scans) | Incremental UF: avoid rescanning old atoms and initializing full-manager scratch | atom cursors: 2.25% lower full-archive PAR2; 21% less time on the 413-query pair | small-medium | **atom cursors accepted; traversal scratch open** |
 | [23](#lead-incremental-uf-distinct) | Compact large `distinct` handling | 554,403 pairwise constraints in the worst completed ratio | large | **open; design required** |
 | [24](#lead-incremental-uf-equations) | Incrementally sound equation elimination | search dominates `firewire`; Z3 eliminates 22,931 variables in its first query | large | **open; substitution/restoration deferred** |
 | [25](#lead-incremental-uf-structure) | Share immutable EUF structure across checks | 413 copies of each prepared structure in one session | medium-large | **open; not implemented** |
@@ -2565,17 +2565,31 @@ belongs to [](#lead-recursion-audit).
 (lead-incremental-uf-scans)=
 ## 22. Incremental UF: avoid repeated retained-data scans
 
-**Status: open, not implemented (2026-09-11). Cost: small-medium.** First in the
-profiling study's suggested order; split atom cursors and traversal scratch into
+**Status: atom cursors accepted at `7ac555c`; traversal scratch remains open
+(2026-09-11). Cost: small-medium.** [](incremental-uf-atom-scans.md) records the
+change on `perf/incremental-uf-atom-scans`, its fresh 2,000-session scoped gate,
+25,027 independently validated native models and unchanged completed-session
+set. Full-archive PAR2 falls 2.25%; fresh paired timing improves the 413-query
+CLEARSY runtime by 21%. This remains opt-in and is not yet merged into `main`.
+Traversal scratch remains unimplemented. First in the profiling study's suggested
+order; split atom cursors and traversal scratch into
 separate measured changes. Evidence for leads 22–25 is [](uf-z3-profiling.md),
 recorded at `7a67935`: local profiling of `8573f60`, with solver sources unchanged
 from qualified `fa2fe5c`, and reused SLURM timings. These are hypotheses about
 that revision, not measured optimization gains or requirements for merging the
 opt-in implementation.
 
+The [additional OpenSMT comparison](opensmt-incremental-comparison.md) keeps
+short CLEARSY sessions relevant to this lead: on 1,008 jointly completed sessions,
+the median Primo/OpenSMT ratio is 1.813. OpenSMT also crashes on four other
+CLEARSY sessions, which are excluded from that ratio and retained as failures.
+This black-box timing gap does not identify its internal cause or qualify a new
+Primo optimization. Z3 remains ahead on full-archive PAR2.
+
 **Claim and evidence.** Append-only registration/preparation cursors and touched
 scratch could avoid work proportional to all retained atoms/terms on every
-small append or check. `BooleanClausifier::register_boolean_argument_terms` and
+small append or check. At the profiled baseline,
+`BooleanClausifier::register_boolean_argument_terms` and
 `PreparedFlatTheory::ensure_theory_atoms` scan old atoms each query;
 `simplify_extended_terms_round` initializes full-manager arrays per invocation.
 On CLEARSY `0002/00126`, preparation plus reset costs 1.854 of 4.533 seconds

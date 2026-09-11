@@ -25,7 +25,12 @@ and QF_UF merges on 2026-09-11. Merge `3169a1c` integrates
 feature branch's exact tree. Qualified UF solver sources remain at `fa2fe5c`;
 the theory-combination implementation and its earlier qualification remain at
 `b883d6f`/`d4e604e`. Rebuild remains the default, with QF_LRA/QF_UF assumptions
-mode opt-in. The four profiling leads remain open and unimplemented.
+mode opt-in. On `perf/incremental-uf-atom-scans`, the separately qualified
+`7ac555c` follow-up removes repeated UF atom scans; see
+[](incremental-uf-atom-scans.md). That follow-up is not yet merged into `main`.
+Traversal scratch and the other profiling leads remain open. The separate
+[OpenSMT comparison](opensmt-incremental-comparison.md) adds native UF/LRA
+reference timings and records external crashes without changing solver defaults.
 Dated experiments elsewhere retain their original revisions
 and limitations. Exact commands, manifests, hashes and jobs belong in
 [](run-log.md), not in a moving headline benchmark.
@@ -71,7 +76,7 @@ QF_UF qualification at `fa2fe5c` passed 6,000 generated/mutated sessions. On the
 independently validated SAT models; six conflict-limited sessions remain
 unqualified. Rebuild remains the default. See [](assumption-incremental-uf) for
 paired results, Goel losses and evidence limits, and [](uf-z3-profiling) for the
-four unimplemented optimization leads now indexed in [](open-leads.md).
+optimization leads and their current disposition in [](open-leads.md).
 For the rebuild baseline, SLURM qualification matched 15,000 answers across 1,000 generated
 sessions and independently validated 10,000 session models. A separate
 100-input, five-logic sample retained every solve and shared non-timing counter;
