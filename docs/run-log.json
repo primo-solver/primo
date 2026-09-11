@@ -3,6 +3,241 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-11-opensmt-native-incremental-comparison",
+      "date": "2026-09-11",
+      "kind": "complete-external-reference-comparison",
+      "status": "comparison collected and reviewed; external crashes and incomplete sessions retained as failures",
+      "harness_commit": "16abc94",
+      "source_changes": "Python orchestration/reference collection only; Primo solver sources remain identical to qualified 7ac555c.",
+      "solver": "OpenSMT 2.9.2",
+      "solver_sha256": "b7899e9aff299026d3251df7a28f51f56d8bd1e5b0fd7be11bcc72c4f2803a98",
+      "command": [
+        "contrib/local/bin/opensmt",
+        "--pipe"
+      ],
+      "benchmark_script": "scripts/slurm_opensmt_incremental.sbatch",
+      "summary_script": "scripts/summarize_opensmt_incremental.py",
+      "jobs": {
+        "build": 142851,
+        "uf": 142854,
+        "lra": 142852
+      },
+      "host": "node-02.ciircluster",
+      "resources": {
+        "uf_whole_session_seconds": 30,
+        "lra_whole_session_seconds": 600,
+        "requested_cpus": 1,
+        "memory_gib": 8,
+        "uf_tasks_at_once": 4,
+        "lra_tasks_at_once": 2
+      },
+      "corpora": {
+        "uf": {
+          "archive_sha256": "52c55a17ee15e5c4a0fc723b9605ae42615da34499efc7e5a5e8b2c0ffc26a27",
+          "sessions": 1778,
+          "queries": 29990,
+          "manifest_sha256": "4cc0c9b35b3725ae2893e626f0ee29ca798830462b080a0dea16585bbcc48b85"
+        },
+        "lra": {
+          "manifest": "benchmarks/native-lra-opensmt.json",
+          "selection": "Original BMW BMC and induction, indices 0 and 1 in native LRA manifest",
+          "sessions": 2,
+          "queries": 303
+        }
+      },
+      "opensmt_uf": {
+        "sessions": 1778,
+        "outcomes": {
+          "complete": 1764,
+          "error": 4,
+          "timeout": 10
+        },
+        "completed_queries": 29489,
+        "partial_queries": 174,
+        "partial_definite_answers": 174,
+        "partial_unknown_answers": 0,
+        "expected_sat_models": 24604,
+        "total_par2": 1578.4831675067544,
+        "mean_par2": 0.8877858084964872,
+        "median_complete_seconds": 0.058532869443297386,
+        "max_measured_rss_kib": 1201176,
+        "rss_samples": 1778
+      },
+      "uf_comparison": {
+        "primo-assumptions-7ac555c": {
+          "sessions": 1778,
+          "outcomes": {
+            "complete": 1772,
+            "unknown": 6
+          },
+          "completed_queries": 29978,
+          "partial_queries": 12,
+          "partial_definite_answers": 5,
+          "partial_unknown_answers": 7,
+          "expected_sat_models": 25027,
+          "total_par2": 839.1429135221988,
+          "mean_par2": 0.47195889399448754,
+          "median_complete_seconds": 0.06839724816381931,
+          "max_measured_rss_kib": 925480,
+          "rss_samples": 1778
+        },
+        "z3": {
+          "sessions": 1778,
+          "outcomes": {
+            "complete": 1778
+          },
+          "completed_queries": 29990,
+          "partial_queries": 0,
+          "partial_definite_answers": 0,
+          "partial_unknown_answers": 0,
+          "expected_sat_models": 25035,
+          "total_par2": 300.640461480245,
+          "mean_par2": 0.16908912344220753,
+          "median_complete_seconds": 0.040514715015888214,
+          "max_measured_rss_kib": 160132,
+          "rss_samples": 1778
+        },
+        "cvc5": {
+          "sessions": 1778,
+          "outcomes": {
+            "complete": 1768,
+            "timeout": 10
+          },
+          "completed_queries": 29970,
+          "partial_queries": 0,
+          "partial_definite_answers": 0,
+          "partial_unknown_answers": 0,
+          "expected_sat_models": 25020,
+          "total_par2": 1477.990283396095,
+          "mean_par2": 0.8312656262070276,
+          "median_complete_seconds": 0.10150773357599974,
+          "max_measured_rss_kib": 198896,
+          "rss_samples": 1778
+        },
+        "rebuild": {
+          "sessions": 1778,
+          "outcomes": {
+            "complete": 1775,
+            "timeout": 3
+          },
+          "completed_queries": 29573,
+          "partial_queries": 373,
+          "partial_definite_answers": 373,
+          "partial_unknown_answers": 0,
+          "expected_sat_models": 24746,
+          "total_par2": 1474.6384359039366,
+          "mean_par2": 0.8293804476400094,
+          "median_complete_seconds": 0.2911167349666357,
+          "max_measured_rss_kib": 1013616,
+          "rss_samples": 1778
+        }
+      },
+      "uf_crash_indices": [
+        778,
+        785,
+        824,
+        1688
+      ],
+      "uf_definite_answer_disagreements": 0,
+      "uf_crash_triage": "All four SIGSEGV failures reproduce locally with the identical binary and exact pre-crash answer sequences. Primo and Z3 complete these inputs; they belong to the recorded native Primo model gate. Reference errors are never solved cases.",
+      "opensmt_lra": {
+        "sessions": 2,
+        "outcomes": {
+          "complete": 1,
+          "timeout": 1
+        },
+        "completed_queries": 101,
+        "partial_queries": 111,
+        "partial_definite_answers": 111,
+        "partial_unknown_answers": 0,
+        "expected_sat_models": 0,
+        "total_par2": 1364.553895657882,
+        "mean_par2": 682.276947828941,
+        "median_complete_seconds": 164.5538956578821,
+        "max_measured_rss_kib": 794120,
+        "rss_samples": 2
+      },
+      "lra_bmc_seconds": 164.5538956578821,
+      "lra_induction_timeout_queries": 111,
+      "lra_reference_comparison": "Preserved Primo assumptions: BMC 126.97 s, induction timeout after 95 answers. Rebuild: timeout after 38/53 answers. Recorded Z3: 58/73; cvc5: 69/77. LRA whole-session timeout 600 s, no partial-count speedup claim.",
+      "qualification": {
+        "primo_uf": "Preserved 7ac555c run: 1772 complete sessions, 29978 queries, 25027 independently validated actual SAT models, job 142793. No new Primo behavior.",
+        "opensmt_uf": "29663 definite answers, including partial sessions, match recorded references. No independent OpenSMT SAT-model validation claimed.",
+        "lra": "BMC has 101 UNSAT answers; induction times out after 111 matching declared answers. No full induction qualification. Native first-four-query prefixes also match."
+      },
+      "reference_reuse": "Primo UF 7ac555c timing/model jobs 142774/142793; prior rebuild/assumptions fa2fe5c timing 142665; Z3/cvc5 UF 142464. Primo LRA 04d2e23 and references 142089 reused without retiming.",
+      "limitations": [
+        "Reference rows are answer comparisons, not independent OpenSMT model validation.",
+        "Primo UF model qualification remains the separate recorded 7ac555c run.",
+        "Incomplete sessions receive twice the whole-session limit, regardless of partial progress.",
+        "Primo has a 10000 theory-conflict/query limit; external references have no matching cap.",
+        "Reused runs are not contemporaneous paired measurements."
+      ],
+      "verification": [
+        "make check: 34 C++/CLI and 174 Python pass",
+        "make python-test: 174 pass after final summary changes",
+        "make lint",
+        "make docs",
+        "bash -n and slurm_validate_sbatch.py",
+        "18 shard solver/version/driver/timeout identities matched",
+        "four crashes reproduced locally using identical binary"
+      ],
+      "review": "Reviewed the new helper, timing error paths, summarizer coverage/ratio rules, full metadata joins and linked docs against unchanged project architecture and prior whole-tree source/static baseline. No new C++/SAT/theory algorithm; ASAN and clang-tidy not rerun for Python/benchmark-only work. All 18 shards retain the exact reference and driver identities; all error rows remain penalties and are locally reproduced.",
+      "terminal_audit": {
+        "archive_verification": {
+          "first-attempt.tar.gz": {
+            "gzip_crc": "pass",
+            "tar_members": 2844
+          },
+          "slurm-logs.tar.gz": {
+            "gzip_crc": "pass",
+            "tar_members": 36
+          },
+          "completed-uf-bmc.tar.gz": {
+            "gzip_crc": "pass",
+            "tar_members": 8947
+          },
+          "completed-lra.tar.gz": {
+            "gzip_crc": "pass",
+            "tar_members": 17
+          }
+        },
+        "local_solver_processes": [],
+        "job_states": {
+          "CANCELLED by 50383": 6,
+          "CANCELLED": 5,
+          "COMPLETED": 41,
+          "FAILED": 8
+        },
+        "job_accounting": "results/opensmt-incremental-67387f3/job-accounting.txt",
+        "terminal_job_step_rows": 60,
+        "current_reference_arrays": {
+          "142852": {
+            "task_states": {
+              "COMPLETED": 2
+            }
+          },
+          "142854": {
+            "task_states": {
+              "COMPLETED": 13,
+              "FAILED": 3
+            }
+          }
+        },
+        "note": "FAILED reference shards retain complete coverage and exit 1 because of recorded OpenSMT crashes; first-attempt cancellations are preserved. No active SLURM jobs remained at collection."
+      },
+      "metadata": "benchmarks/opensmt-incremental-comparison.json",
+      "report": "docs/opensmt-incremental-comparison.md",
+      "artifact_root": "results/opensmt-incremental-67387f3",
+      "delivery_archive": {
+        "path": "results/opensmt-incremental-delivery-16abc94.tar.gz",
+        "bytes": 2615716,
+        "sha256": "620a344bc6cd2b43bdfddfae98e4cffff80dfb7533b14aed8cd5dbacbf280239",
+        "members": 9059,
+        "integrity": "gzip CRC and full tar member traversal pass"
+      }
+    },
+    {
       "id": "2026-09-11-opensmt-native-crash-triage",
       "date": "2026-09-11",
       "kind": "external-reference-comparison-triage",

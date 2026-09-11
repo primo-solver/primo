@@ -28,7 +28,9 @@ the theory-combination implementation and its earlier qualification remain at
 mode opt-in. On `perf/incremental-uf-atom-scans`, the separately qualified
 `7ac555c` follow-up removes repeated UF atom scans; see
 [](incremental-uf-atom-scans.md). That follow-up is not yet merged into `main`.
-Traversal scratch and the other profiling leads remain open.
+Traversal scratch and the other profiling leads remain open. The separate
+[OpenSMT comparison](opensmt-incremental-comparison.md) adds native UF/LRA
+reference timings and records external crashes without changing solver defaults.
 Dated experiments elsewhere retain their original revisions
 and limitations. Exact commands, manifests, hashes and jobs belong in
 [](run-log.md), not in a moving headline benchmark.

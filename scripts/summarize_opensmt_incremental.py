@@ -37,6 +37,12 @@ def compare(left, right):
         "disagreements": disagreements,
         "mutually_complete_sessions": len(ratios),
         "median_left_over_right_seconds": statistics.median(ratios) if ratios else None,
+        "only_left_complete": sorted(i for i in left.keys() & right.keys()
+                                     if left[i]["outcome"] == "complete"
+                                     and right[i]["outcome"] != "complete"),
+        "only_right_complete": sorted(i for i in left.keys() & right.keys()
+                                      if right[i]["outcome"] == "complete"
+                                      and left[i]["outcome"] != "complete"),
     }
 
 
@@ -60,6 +66,10 @@ def main():
         for family in families:
             uf[label]["families"][family] = group(
                 [r for r in rows.values() if r["file"].split("/")[2] == family])
+            uf[label]["families"][family]["versus_opensmt"] = compare(
+                {i: r for i, r in rows.items() if r["file"].split("/")[2] == family},
+                {i: r for i, r in data["opensmt"].items()
+                 if r["file"].split("/")[2] == family})
         uf[label]["versus_opensmt"] = compare(rows, data["opensmt"])
     lra = checked_rows(args.opensmt / "lra", 2, allow_errors=True)
     candidate = json.loads(args.lra_candidate.read_text())

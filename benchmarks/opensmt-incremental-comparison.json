@@ -1,0 +1,2227 @@
+{
+  "run_id": "2026-09-11-opensmt-native-incremental-comparison",
+  "status": "complete reference comparison, with four reproducible external crashes and incomplete sessions retained as failures",
+  "harness_commit": "16abc94",
+  "provenance": {
+    "harness_revision": "16abc94",
+    "reference_version": "OpenSMT v2.9.2",
+    "solver_sha256": "b7899e9aff299026d3251df7a28f51f56d8bd1e5b0fd7be11bcc72c4f2803a98",
+    "uf_job": "142854",
+    "lra_job": "142852",
+    "build_job": "142851",
+    "root": "/home/janotmik/primo-model-fix/results/opensmt-incremental-16abc94",
+    "limits": {
+      "uf_whole_session_seconds": 30,
+      "lra_whole_session_seconds": 600,
+      "requested_cpus": 1,
+      "memory_gib": 8,
+      "uf_tasks_at_once": 4,
+      "lra_tasks_at_once": 2
+    },
+    "command": [
+      "contrib/local/bin/opensmt",
+      "--pipe"
+    ],
+    "source_files": {
+      "scripts/native_uf_sessions.py": "434f488d75364fae01530657d13a814c75827e8db9479fcd479b0ca767876138",
+      "scripts/slurm_opensmt_incremental.sbatch": "c48618aa571502521928f94ea54e1205b30ce9dddadf9e332438670cb7b840fd",
+      "scripts/summarize_opensmt_incremental.py": "70b0f7635453426be048377140b186355ea045fafbfec05368e262e1e3b1969f",
+      "benchmarks/native-lra-opensmt.json": "0f2b18fcfe908799118e1e797c980f1b498ce4db01079d4b57723ec3c6b02a4c"
+    }
+  },
+  "uf": {
+    "opensmt": {
+      "all": {
+        "sessions": 1778,
+        "outcomes": {
+          "complete": 1764,
+          "error": 4,
+          "timeout": 10
+        },
+        "completed_queries": 29489,
+        "partial_queries": 174,
+        "partial_definite_answers": 174,
+        "partial_unknown_answers": 0,
+        "expected_sat_models": 24604,
+        "total_par2": 1578.4831675067544,
+        "mean_par2": 0.8877858084964872,
+        "median_complete_seconds": 0.058532869443297386,
+        "max_measured_rss_kib": 1201176,
+        "rss_samples": 1778
+      },
+      "families": {
+        "2018-Goel-hwbench": {
+          "sessions": 766,
+          "outcomes": {
+            "complete": 756,
+            "timeout": 10
+          },
+          "completed_queries": 1512,
+          "partial_queries": 2,
+          "partial_definite_answers": 2,
+          "partial_unknown_answers": 0,
+          "expected_sat_models": 1055,
+          "total_par2": 1263.5760499257594,
+          "mean_par2": 1.6495770886759262,
+          "median_complete_seconds": 0.38056095503270626,
+          "max_measured_rss_kib": 1201176,
+          "rss_samples": 766,
+          "versus_opensmt": {
+            "disagreements": [],
+            "mutually_complete_sessions": 756,
+            "median_left_over_right_seconds": 1.0,
+            "only_left_complete": [],
+            "only_right_complete": []
+          }
+        },
+        "20190906-CLEARSY": {
+          "sessions": 1012,
+          "outcomes": {
+            "complete": 1008,
+            "error": 4
+          },
+          "completed_queries": 27977,
+          "partial_queries": 172,
+          "partial_definite_answers": 172,
+          "partial_unknown_answers": 0,
+          "expected_sat_models": 23549,
+          "total_par2": 314.90711758099496,
+          "mean_par2": 0.3111730410879397,
+          "median_complete_seconds": 0.014634004794061184,
+          "max_measured_rss_kib": 52224,
+          "rss_samples": 1012,
+          "versus_opensmt": {
+            "disagreements": [],
+            "mutually_complete_sessions": 1008,
+            "median_left_over_right_seconds": 1.0,
+            "only_left_complete": [],
+            "only_right_complete": []
+          }
+        }
+      },
+      "versus_opensmt": {
+        "disagreements": [],
+        "mutually_complete_sessions": 1764,
+        "median_left_over_right_seconds": 1.0,
+        "only_left_complete": [],
+        "only_right_complete": []
+      }
+    },
+    "primo-assumptions-7ac555c": {
+      "all": {
+        "sessions": 1778,
+        "outcomes": {
+          "complete": 1772,
+          "unknown": 6
+        },
+        "completed_queries": 29978,
+        "partial_queries": 12,
+        "partial_definite_answers": 5,
+        "partial_unknown_answers": 7,
+        "expected_sat_models": 25027,
+        "total_par2": 839.1429135221988,
+        "mean_par2": 0.47195889399448754,
+        "median_complete_seconds": 0.06839724816381931,
+        "max_measured_rss_kib": 925480,
+        "rss_samples": 1778
+      },
+      "families": {
+        "2018-Goel-hwbench": {
+          "sessions": 766,
+          "outcomes": {
+            "complete": 760,
+            "unknown": 6
+          },
+          "completed_queries": 1520,
+          "partial_queries": 12,
+          "partial_definite_answers": 5,
+          "partial_unknown_answers": 7,
+          "expected_sat_models": 1062,
+          "total_par2": 752.1275253929198,
+          "mean_par2": 0.9818897198340989,
+          "median_complete_seconds": 0.22757850028574467,
+          "max_measured_rss_kib": 925480,
+          "rss_samples": 766,
+          "versus_opensmt": {
+            "disagreements": [],
+            "mutually_complete_sessions": 750,
+            "median_left_over_right_seconds": 0.655229580749508,
+            "only_left_complete": [
+              263,
+              264,
+              265,
+              266,
+              267,
+              268,
+              615,
+              616,
+              617,
+              618
+            ],
+            "only_right_complete": [
+              656,
+              658,
+              659,
+              660,
+              661,
+              662
+            ]
+          }
+        },
+        "20190906-CLEARSY": {
+          "sessions": 1012,
+          "outcomes": {
+            "complete": 1012
+          },
+          "completed_queries": 28458,
+          "partial_queries": 0,
+          "partial_definite_answers": 0,
+          "partial_unknown_answers": 0,
+          "expected_sat_models": 23965,
+          "total_par2": 87.01538812927902,
+          "mean_par2": 0.08598358510798322,
+          "median_complete_seconds": 0.0275556780397892,
+          "max_measured_rss_kib": 26332,
+          "rss_samples": 1012,
+          "versus_opensmt": {
+            "disagreements": [],
+            "mutually_complete_sessions": 1008,
+            "median_left_over_right_seconds": 1.8133949114051324,
+            "only_left_complete": [
+              778,
+              785,
+              824,
+              1688
+            ],
+            "only_right_complete": []
+          }
+        }
+      },
+      "versus_opensmt": {
+        "disagreements": [],
+        "mutually_complete_sessions": 1758,
+        "median_left_over_right_seconds": 1.3931919807264894,
+        "only_left_complete": [
+          263,
+          264,
+          265,
+          266,
+          267,
+          268,
+          615,
+          616,
+          617,
+          618,
+          778,
+          785,
+          824,
+          1688
+        ],
+        "only_right_complete": [
+          656,
+          658,
+          659,
+          660,
+          661,
+          662
+        ]
+      }
+    },
+    "rebuild": {
+      "all": {
+        "sessions": 1778,
+        "outcomes": {
+          "complete": 1775,
+          "timeout": 3
+        },
+        "completed_queries": 29573,
+        "partial_queries": 373,
+        "partial_definite_answers": 373,
+        "partial_unknown_answers": 0,
+        "expected_sat_models": 24746,
+        "total_par2": 1474.6384359039366,
+        "mean_par2": 0.8293804476400094,
+        "median_complete_seconds": 0.2911167349666357,
+        "max_measured_rss_kib": 1013616,
+        "rss_samples": 1778
+      },
+      "families": {
+        "2018-Goel-hwbench": {
+          "sessions": 766,
+          "outcomes": {
+            "complete": 764,
+            "timeout": 2
+          },
+          "completed_queries": 1528,
+          "partial_queries": 2,
+          "partial_definite_answers": 2,
+          "partial_unknown_answers": 0,
+          "expected_sat_models": 1066,
+          "total_par2": 962.7276216596365,
+          "mean_par2": 1.2568245713572277,
+          "median_complete_seconds": 0.8005242580547929,
+          "max_measured_rss_kib": 1013616,
+          "rss_samples": 766,
+          "versus_opensmt": {
+            "disagreements": [],
+            "mutually_complete_sessions": 754,
+            "median_left_over_right_seconds": 2.050675368844879,
+            "only_left_complete": [
+              263,
+              264,
+              265,
+              266,
+              267,
+              268,
+              615,
+              616,
+              617,
+              618
+            ],
+            "only_right_complete": [
+              14,
+              658
+            ]
+          }
+        },
+        "20190906-CLEARSY": {
+          "sessions": 1012,
+          "outcomes": {
+            "complete": 1011,
+            "timeout": 1
+          },
+          "completed_queries": 28045,
+          "partial_queries": 371,
+          "partial_definite_answers": 371,
+          "partial_unknown_answers": 0,
+          "expected_sat_models": 23680,
+          "total_par2": 511.9108142443001,
+          "mean_par2": 0.505840725537846,
+          "median_complete_seconds": 0.07847768254578114,
+          "max_measured_rss_kib": 19536,
+          "rss_samples": 1012,
+          "versus_opensmt": {
+            "disagreements": [],
+            "mutually_complete_sessions": 1007,
+            "median_left_over_right_seconds": 4.832974528234689,
+            "only_left_complete": [
+              778,
+              785,
+              824,
+              1688
+            ],
+            "only_right_complete": [
+              852
+            ]
+          }
+        }
+      },
+      "versus_opensmt": {
+        "disagreements": [],
+        "mutually_complete_sessions": 1761,
+        "median_left_over_right_seconds": 3.3812195447894138,
+        "only_left_complete": [
+          263,
+          264,
+          265,
+          266,
+          267,
+          268,
+          615,
+          616,
+          617,
+          618,
+          778,
+          785,
+          824,
+          1688
+        ],
+        "only_right_complete": [
+          14,
+          658,
+          852
+        ]
+      }
+    },
+    "assumptions": {
+      "all": {
+        "sessions": 1778,
+        "outcomes": {
+          "complete": 1772,
+          "unknown": 6
+        },
+        "completed_queries": 29978,
+        "partial_queries": 12,
+        "partial_definite_answers": 5,
+        "partial_unknown_answers": 7,
+        "expected_sat_models": 25027,
+        "total_par2": 858.4847814496607,
+        "mean_par2": 0.4828373348985718,
+        "median_complete_seconds": 0.07483524642884731,
+        "max_measured_rss_kib": 919232,
+        "rss_samples": 1778
+      },
+      "families": {
+        "2018-Goel-hwbench": {
+          "sessions": 766,
+          "outcomes": {
+            "complete": 760,
+            "unknown": 6
+          },
+          "completed_queries": 1520,
+          "partial_queries": 12,
+          "partial_definite_answers": 5,
+          "partial_unknown_answers": 7,
+          "expected_sat_models": 1062,
+          "total_par2": 760.0728838406503,
+          "mean_par2": 0.9922622504447132,
+          "median_complete_seconds": 0.23188186064362526,
+          "max_measured_rss_kib": 919232,
+          "rss_samples": 766,
+          "versus_opensmt": {
+            "disagreements": [],
+            "mutually_complete_sessions": 750,
+            "median_left_over_right_seconds": 0.6703133499779881,
+            "only_left_complete": [
+              263,
+              264,
+              265,
+              266,
+              267,
+              268,
+              615,
+              616,
+              617,
+              618
+            ],
+            "only_right_complete": [
+              656,
+              658,
+              659,
+              660,
+              661,
+              662
+            ]
+          }
+        },
+        "20190906-CLEARSY": {
+          "sessions": 1012,
+          "outcomes": {
+            "complete": 1012
+          },
+          "completed_queries": 28458,
+          "partial_queries": 0,
+          "partial_definite_answers": 0,
+          "partial_unknown_answers": 0,
+          "expected_sat_models": 23965,
+          "total_par2": 98.41189760901034,
+          "mean_par2": 0.09724495811167029,
+          "median_complete_seconds": 0.028651274740695953,
+          "max_measured_rss_kib": 25520,
+          "rss_samples": 1012,
+          "versus_opensmt": {
+            "disagreements": [],
+            "mutually_complete_sessions": 1008,
+            "median_left_over_right_seconds": 1.9154010442122398,
+            "only_left_complete": [
+              778,
+              785,
+              824,
+              1688
+            ],
+            "only_right_complete": []
+          }
+        }
+      },
+      "versus_opensmt": {
+        "disagreements": [],
+        "mutually_complete_sessions": 1758,
+        "median_left_over_right_seconds": 1.4454400463057882,
+        "only_left_complete": [
+          263,
+          264,
+          265,
+          266,
+          267,
+          268,
+          615,
+          616,
+          617,
+          618,
+          778,
+          785,
+          824,
+          1688
+        ],
+        "only_right_complete": [
+          656,
+          658,
+          659,
+          660,
+          661,
+          662
+        ]
+      }
+    },
+    "z3": {
+      "all": {
+        "sessions": 1778,
+        "outcomes": {
+          "complete": 1778
+        },
+        "completed_queries": 29990,
+        "partial_queries": 0,
+        "partial_definite_answers": 0,
+        "partial_unknown_answers": 0,
+        "expected_sat_models": 25035,
+        "total_par2": 300.640461480245,
+        "mean_par2": 0.16908912344220753,
+        "median_complete_seconds": 0.040514715015888214,
+        "max_measured_rss_kib": 160132,
+        "rss_samples": 1778
+      },
+      "families": {
+        "2018-Goel-hwbench": {
+          "sessions": 766,
+          "outcomes": {
+            "complete": 766
+          },
+          "completed_queries": 1532,
+          "partial_queries": 0,
+          "partial_definite_answers": 0,
+          "partial_unknown_answers": 0,
+          "expected_sat_models": 1070,
+          "total_par2": 258.7292988523841,
+          "mean_par2": 0.33776670868457453,
+          "median_complete_seconds": 0.21141600981354713,
+          "max_measured_rss_kib": 160132,
+          "rss_samples": 766,
+          "versus_opensmt": {
+            "disagreements": [],
+            "mutually_complete_sessions": 756,
+            "median_left_over_right_seconds": 0.5812099147323582,
+            "only_left_complete": [
+              263,
+              264,
+              265,
+              266,
+              267,
+              268,
+              615,
+              616,
+              617,
+              618
+            ],
+            "only_right_complete": []
+          }
+        },
+        "20190906-CLEARSY": {
+          "sessions": 1012,
+          "outcomes": {
+            "complete": 1012
+          },
+          "completed_queries": 28458,
+          "partial_queries": 0,
+          "partial_definite_answers": 0,
+          "partial_unknown_answers": 0,
+          "expected_sat_models": 23965,
+          "total_par2": 41.911162627860904,
+          "mean_par2": 0.04141419232002066,
+          "median_complete_seconds": 0.020115772262215614,
+          "max_measured_rss_kib": 33176,
+          "rss_samples": 1012,
+          "versus_opensmt": {
+            "disagreements": [],
+            "mutually_complete_sessions": 1008,
+            "median_left_over_right_seconds": 1.3520601172168942,
+            "only_left_complete": [
+              778,
+              785,
+              824,
+              1688
+            ],
+            "only_right_complete": []
+          }
+        }
+      },
+      "versus_opensmt": {
+        "disagreements": [],
+        "mutually_complete_sessions": 1764,
+        "median_left_over_right_seconds": 0.7620745217689802,
+        "only_left_complete": [
+          263,
+          264,
+          265,
+          266,
+          267,
+          268,
+          615,
+          616,
+          617,
+          618,
+          778,
+          785,
+          824,
+          1688
+        ],
+        "only_right_complete": []
+      }
+    },
+    "cvc5": {
+      "all": {
+        "sessions": 1778,
+        "outcomes": {
+          "complete": 1768,
+          "timeout": 10
+        },
+        "completed_queries": 29970,
+        "partial_queries": 0,
+        "partial_definite_answers": 0,
+        "partial_unknown_answers": 0,
+        "expected_sat_models": 25020,
+        "total_par2": 1477.990283396095,
+        "mean_par2": 0.8312656262070276,
+        "median_complete_seconds": 0.10150773357599974,
+        "max_measured_rss_kib": 198896,
+        "rss_samples": 1778
+      },
+      "families": {
+        "2018-Goel-hwbench": {
+          "sessions": 766,
+          "outcomes": {
+            "complete": 756,
+            "timeout": 10
+          },
+          "completed_queries": 1512,
+          "partial_queries": 0,
+          "partial_definite_answers": 0,
+          "partial_unknown_answers": 0,
+          "expected_sat_models": 1055,
+          "total_par2": 1342.8579124491662,
+          "mean_par2": 1.7530782146855954,
+          "median_complete_seconds": 0.41436302103102207,
+          "max_measured_rss_kib": 198896,
+          "rss_samples": 766,
+          "versus_opensmt": {
+            "disagreements": [],
+            "mutually_complete_sessions": 756,
+            "median_left_over_right_seconds": 1.0569571645857527,
+            "only_left_complete": [],
+            "only_right_complete": []
+          }
+        },
+        "20190906-CLEARSY": {
+          "sessions": 1012,
+          "outcomes": {
+            "complete": 1012
+          },
+          "completed_queries": 28458,
+          "partial_queries": 0,
+          "partial_definite_answers": 0,
+          "partial_unknown_answers": 0,
+          "expected_sat_models": 23965,
+          "total_par2": 135.13237094692886,
+          "mean_par2": 0.13353001081712337,
+          "median_complete_seconds": 0.0307229058817029,
+          "max_measured_rss_kib": 27328,
+          "rss_samples": 1012,
+          "versus_opensmt": {
+            "disagreements": [],
+            "mutually_complete_sessions": 1008,
+            "median_left_over_right_seconds": 2.0555882490846464,
+            "only_left_complete": [
+              778,
+              785,
+              824,
+              1688
+            ],
+            "only_right_complete": []
+          }
+        }
+      },
+      "versus_opensmt": {
+        "disagreements": [],
+        "mutually_complete_sessions": 1764,
+        "median_left_over_right_seconds": 1.712684428483327,
+        "only_left_complete": [
+          778,
+          785,
+          824,
+          1688
+        ],
+        "only_right_complete": []
+      }
+    }
+  },
+  "lra": {
+    "opensmt": {
+      "all": {
+        "sessions": 2,
+        "outcomes": {
+          "complete": 1,
+          "timeout": 1
+        },
+        "completed_queries": 101,
+        "partial_queries": 111,
+        "partial_definite_answers": 111,
+        "partial_unknown_answers": 0,
+        "expected_sat_models": 0,
+        "total_par2": 1364.553895657882,
+        "mean_par2": 682.276947828941,
+        "median_complete_seconds": 164.5538956578821,
+        "max_measured_rss_kib": 794120,
+        "rss_samples": 2
+      },
+      "rows": [
+        {
+          "outcome": "complete",
+          "answers": [
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat",
+            "unsat"
+          ],
+          "mismatches": [],
+          "exit_code": 0,
+          "timed_out": false,
+          "queries": 101,
+          "seconds": 164.5538956578821,
+          "par2": 164.5538956578821,
+          "maxrss_kib": 794120,
+          "index": 0,
+          "file": "incremental/QF_LRA/hybrid_networks/bmwlin_20_5_1.inter.bmc_k100.smt2"
+        },
+        {
+          "outcome": "timeout",
+          "answers": [
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat",
+            "sat",
+            "unsat"
+          ],
+          "mismatches": [],
+          "exit_code": null,
+          "timed_out": true,
+          "queries": 111,
+          "seconds": 600.0250333920121,
+          "par2": 1200.0,
+          "maxrss_kib": 684600,
+          "index": 1,
+          "file": "incremental/QF_LRA/hybrid_networks/bmwlin_20_5_1.inter.ind_k100.smt2"
+        }
+      ]
+    },
+    "recorded_primo": {
+      "selection": [
+        0,
+        1
+      ],
+      "family": "hybrid_networks/bmwlin",
+      "timeout_seconds": 600,
+      "rows": [
+        {
+          "index": 0,
+          "mode": "rebuild",
+          "file": "incremental/QF_LRA/hybrid_networks/bmwlin_20_5_1.inter.bmc_k100.smt2",
+          "sha256": "5af910b06320a21413677b0eb429486c949d91ceceebadcac77ceeafa45e1fbf",
+          "queries": 101,
+          "outcome": "timeout",
+          "completed_sessions": 0,
+          "seconds": 600.017509996891,
+          "observed_answers": 38,
+          "observed_sat": 0,
+          "observed_unsat": 38,
+          "observed_unknown": 0,
+          "observed_status_mismatches": 0,
+          "par2_seconds": 1200,
+          "slurm_batch_maxrss_kib": 602996,
+          "reuse_at_last_completed_query": {
+            ":session.queries": 38,
+            ":session.frontend-builds": 38
+          },
+          "phase_microseconds_for_completed_queries": {
+            ":time.total-us": 576726328,
+            ":time.parse-us": 1915727,
+            ":time.frontend-us": 338115054,
+            ":time.preprocessing-us": 92164247,
+            ":time.solve-us": 144528257,
+            ":time.tactic.simplify-constant-ites-us": 125,
+            ":time.tactic.simplify-extended-terms-us": 41,
+            ":time.tactic.lower-extended-terms-us": 38,
+            ":time.tactic.normalize-boolean-us": 11546969,
+            ":time.tactic.strategy-sequence-us": 87939836,
+            ":time.tactic.preprocessing-profile-us": 53,
+            ":time.tactic.equality-bridge-us": 3549651,
+            ":time.tactic.derive-equalities-us": 20959563,
+            ":time.tactic.boolean-unit-propagation-us": 15853074,
+            ":time.tactic.forced-atom-propagation-us": 19322411,
+            ":time.tactic.propagate-values-us": 35176146,
+            ":time.tactic.solved-constant-substitution-us": 11792547,
+            ":time.tactic.solve-eqs-us": 11792837,
+            ":time.tactic.unit-equality-propagation-us": 17401276,
+            ":time.tactic.preprocessing-round-us": 67929485,
+            ":time.tactic.preprocessing-fixed-point-us": 68969024,
+            ":time.tactic.finite-domain-constraints-us": 2005487,
+            ":time.tactic.finite-domain-preprocess-us": 2005582,
+            ":time.tactic.normalize-arithmetic-us": 4034429,
+            ":time.tactic.purify-mixed-us": 1382191,
+            ":time.tactic.solve-qf-lra-us": 143362823,
+            ":time.tactic.solver-dispatch-us": 144528094
+          },
+          "actual_sat_model_qualification": "Only the separately replayed first-four-query prefix is model-qualified; no full-session correctness or performance qualification.",
+          "artifact": "results/assumptions-native-04d2e23/case-0-rebuild"
+        },
+        {
+          "index": 0,
+          "mode": "assumptions",
+          "file": "incremental/QF_LRA/hybrid_networks/bmwlin_20_5_1.inter.bmc_k100.smt2",
+          "sha256": "5af910b06320a21413677b0eb429486c949d91ceceebadcac77ceeafa45e1fbf",
+          "queries": 101,
+          "outcome": "pass",
+          "completed_sessions": 1,
+          "seconds": 126.9712988100946,
+          "observed_answers": 101,
+          "observed_sat": 0,
+          "observed_unsat": 101,
+          "observed_unknown": 0,
+          "observed_status_mismatches": 0,
+          "par2_seconds": 126.9712988100946,
+          "slurm_batch_maxrss_kib": 1081836,
+          "reuse_at_last_completed_query": {
+            ":session.engine-queries": 101,
+            ":session.retired-selectors": 100,
+            ":session.active-selectors": 1,
+            ":session.retained-terms": 721255,
+            ":session.retained-atoms": 33591,
+            ":session.prepared-atoms": 33591,
+            ":session.sat-preprocessing": 0,
+            ":session.sat-inprocessing": 0,
+            ":session.theory-state-resets": 101,
+            ":session.clauses-added": 1227891,
+            ":session.retained-active-clauses": 1221030,
+            ":session.retained-redundant-clauses": 44773,
+            ":session.engine-builds": 1,
+            ":session.translated-assertions": 202,
+            ":session.incremental-assumptions": 1,
+            ":session.safe-rewrite-pipeline": 1,
+            ":session.pipeline.lower-extended-terms": 1,
+            ":session.pipeline.lower-real-equalities": 1,
+            ":session.queries": 101,
+            ":session.frontend-builds": 1
+          },
+          "phase_microseconds_for_completed_queries": {
+            ":time.session.append-us": 917635,
+            ":time.session.theory-reset-us": 402220,
+            ":time.solve-us": 71277111,
+            ":time.total-us": 124898905,
+            ":time.tactic.simplify-extended-terms-us": 554,
+            ":time.tactic.normalize-boolean-us": 1256,
+            ":time.tactic.lower-extended-terms-us": 108,
+            ":time.tactic.normalize-arithmetic-us": 991655,
+            ":time.preprocessing-us": 995973,
+            ":time.parse-us": 4775268,
+            ":time.frontend-us": 48216345
+          },
+          "actual_sat_model_qualification": "No SAT results in completed BMC session; no SAT models require validation.",
+          "artifact": "results/assumptions-native-04d2e23/case-0-assumptions"
+        },
+        {
+          "index": 1,
+          "mode": "rebuild",
+          "file": "incremental/QF_LRA/hybrid_networks/bmwlin_20_5_1.inter.ind_k100.smt2",
+          "sha256": "5e80a003cd084f7de02cbd11314ce9cd4a9c1845d9a43080dbaa427f64eb435d",
+          "queries": 202,
+          "outcome": "timeout",
+          "completed_sessions": 0,
+          "seconds": 600.0154819916934,
+          "observed_answers": 53,
+          "observed_sat": 26,
+          "observed_unsat": 27,
+          "observed_unknown": 0,
+          "observed_status_mismatches": 0,
+          "par2_seconds": 1200,
+          "slurm_batch_maxrss_kib": 458492,
+          "reuse_at_last_completed_query": {
+            ":session.queries": 53,
+            ":session.frontend-builds": 53
+          },
+          "phase_microseconds_for_completed_queries": {
+            ":time.total-us": 573023282,
+            ":time.parse-us": 1960328,
+            ":time.frontend-us": 367379785,
+            ":time.preprocessing-us": 61109964,
+            ":time.solve-us": 142519682,
+            ":time.tactic.simplify-constant-ites-us": 172,
+            ":time.tactic.simplify-extended-terms-us": 60,
+            ":time.tactic.lower-extended-terms-us": 58,
+            ":time.tactic.normalize-boolean-us": 11328798,
+            ":time.tactic.strategy-sequence-us": 57027361,
+            ":time.tactic.preprocessing-profile-us": 62,
+            ":time.tactic.equality-bridge-us": 3356740,
+            ":time.tactic.derive-equalities-us": 3526643,
+            ":time.tactic.boolean-unit-propagation-us": 15236622,
+            ":time.tactic.forced-atom-propagation-us": 15621661,
+            ":time.tactic.propagate-values-us": 30859114,
+            ":time.tactic.solved-constant-substitution-us": 3286964,
+            ":time.tactic.solve-eqs-us": 3291670,
+            ":time.tactic.unit-equality-propagation-us": 166183,
+            ":time.tactic.preprocessing-round-us": 37678511,
+            ":time.tactic.preprocessing-fixed-point-us": 38508391,
+            ":time.tactic.finite-domain-constraints-us": 1943178,
+            ":time.tactic.finite-domain-preprocess-us": 1943302,
+            ":time.tactic.normalize-arithmetic-us": 3920083,
+            ":time.tactic.purify-mixed-us": 1324804,
+            ":time.tactic.solve-qf-lra-us": 141374350,
+            ":time.tactic.solver-dispatch-us": 142519473
+          },
+          "actual_sat_model_qualification": "Only the separately replayed first-four-query prefix is model-qualified; no full-session correctness or performance qualification.",
+          "artifact": "results/assumptions-native-04d2e23/case-1-rebuild"
+        },
+        {
+          "index": 1,
+          "mode": "assumptions",
+          "file": "incremental/QF_LRA/hybrid_networks/bmwlin_20_5_1.inter.ind_k100.smt2",
+          "sha256": "5e80a003cd084f7de02cbd11314ce9cd4a9c1845d9a43080dbaa427f64eb435d",
+          "queries": 202,
+          "outcome": "timeout",
+          "completed_sessions": 0,
+          "seconds": 600.0415656846017,
+          "observed_answers": 95,
+          "observed_sat": 47,
+          "observed_unsat": 48,
+          "observed_unknown": 0,
+          "observed_status_mismatches": 0,
+          "par2_seconds": 1200,
+          "slurm_batch_maxrss_kib": 951960,
+          "reuse_at_last_completed_query": {
+            ":session.engine-queries": 95,
+            ":session.retired-selectors": 94,
+            ":session.active-selectors": 2,
+            ":session.retained-terms": 673647,
+            ":session.retained-atoms": 36589,
+            ":session.prepared-atoms": 36589,
+            ":session.sat-preprocessing": 0,
+            ":session.sat-inprocessing": 0,
+            ":session.theory-state-resets": 95,
+            ":session.clauses-added": 1224881,
+            ":session.retained-active-clauses": 1358295,
+            ":session.retained-redundant-clauses": 38374,
+            ":session.engine-builds": 1,
+            ":session.translated-assertions": 191,
+            ":session.incremental-assumptions": 1,
+            ":session.safe-rewrite-pipeline": 1,
+            ":session.pipeline.lower-extended-terms": 1,
+            ":session.pipeline.lower-real-equalities": 1,
+            ":session.queries": 95,
+            ":session.frontend-builds": 1
+          },
+          "phase_microseconds_for_completed_queries": {
+            ":time.session.append-us": 863603,
+            ":time.session.theory-reset-us": 286351,
+            ":time.solve-us": 554847565,
+            ":time.total-us": 597159029,
+            ":time.tactic.simplify-extended-terms-us": 464,
+            ":time.tactic.normalize-boolean-us": 1027,
+            ":time.tactic.lower-extended-terms-us": 96,
+            ":time.tactic.normalize-arithmetic-us": 827535,
+            ":time.preprocessing-us": 831183,
+            ":time.parse-us": 3529840,
+            ":time.frontend-us": 37755484
+          },
+          "actual_sat_model_qualification": "Only the separately replayed first-four-query prefix is model-qualified; no full-session correctness or performance qualification.",
+          "artifact": "results/assumptions-native-04d2e23/case-1-assumptions"
+        }
+      ],
+      "aggregate": {
+        "rebuild": {
+          "completed_sessions": 0,
+          "mean_par2_seconds": 1200,
+          "observed_answers": [
+            38,
+            53
+          ]
+        },
+        "assumptions": {
+          "completed_sessions": 1,
+          "mean_par2_seconds": 663.4856494050473,
+          "observed_answers": [
+            101,
+            95
+          ]
+        }
+      },
+      "interpretation": "Assumptions completes BMC with all 101 source-status-checked UNSAT answers in 126.97 s; rebuild times out at 600 s. Induction remains incomplete in both modes; its partial answers are diagnostic and its SAT models beyond the separately validated prefix are unqualified. No full-induction or full-corpus qualification. The two-session PAR2 includes the prescribed timeout penalty; progress counts are not speedup ratios.",
+      "memory_interpretation": "SLURM sampled batch-step MaxRSS, not isolated solver allocations; tasks finish at different query counts. Retained storage has no compaction until reset.",
+      "timing_interpretation": "Wall-clock session timing excludes model validation. Per-phase counters sum completed queries only; timed-out query work is missing. Frontend time contains preprocessing and append subphases, which must not be added again."
+    },
+    "recorded_references": {
+      "primo": {
+        "completed_sessions": 0,
+        "timeout_sessions": 2,
+        "process_errors": 0,
+        "unexpected_output": 0,
+        "observed_status_mismatches": 0,
+        "observed_answers_per_file": [
+          38,
+          53
+        ],
+        "mean_session_par2_seconds": 1200
+      },
+      "z3": {
+        "completed_sessions": 0,
+        "timeout_sessions": 2,
+        "process_errors": 0,
+        "unexpected_output": 0,
+        "observed_status_mismatches": 0,
+        "observed_answers_per_file": [
+          58,
+          73
+        ],
+        "mean_session_par2_seconds": 1200
+      },
+      "cvc5": {
+        "completed_sessions": 0,
+        "timeout_sessions": 2,
+        "process_errors": 0,
+        "unexpected_output": 0,
+        "observed_status_mismatches": 0,
+        "observed_answers_per_file": [
+          69,
+          77
+        ],
+        "mean_session_par2_seconds": 1200
+      }
+    }
+  },
+  "uf_noncomplete_rows": [
+    {
+      "outcome": "error",
+      "answers": [
+        "sat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "sat",
+        "sat",
+        "sat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "sat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat"
+      ],
+      "mismatches": [],
+      "exit_code": -11,
+      "timed_out": false,
+      "queries": 30,
+      "seconds": 0.1349016223102808,
+      "par2": 60.0,
+      "maxrss_kib": 16720,
+      "index": 785,
+      "file": "incremental/QF_UF/20190906-CLEARSY/0000/00310.smt2"
+    },
+    {
+      "outcome": "timeout",
+      "answers": [
+        "sat"
+      ],
+      "mismatches": [],
+      "exit_code": null,
+      "timed_out": true,
+      "queries": 1,
+      "seconds": 30.030022136867046,
+      "par2": 60.0,
+      "maxrss_kib": 616136,
+      "index": 266,
+      "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_firewire_tree.5.prop2_ab_min_max.smt2"
+    },
+    {
+      "outcome": "timeout",
+      "answers": [],
+      "mismatches": [],
+      "exit_code": null,
+      "timed_out": true,
+      "queries": 0,
+      "seconds": 30.038146685808897,
+      "par2": 60.0,
+      "maxrss_kib": 958536,
+      "index": 618,
+      "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_pouring.2.prop1_ab_min_max.smt2"
+    },
+    {
+      "outcome": "error",
+      "answers": [
+        "unsat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat"
+      ],
+      "mismatches": [],
+      "exit_code": -11,
+      "timed_out": false,
+      "queries": 6,
+      "seconds": 0.09936999715864658,
+      "par2": 60.0,
+      "maxrss_kib": 15480,
+      "index": 778,
+      "file": "incremental/QF_UF/20190906-CLEARSY/0000/00291.smt2"
+    },
+    {
+      "outcome": "timeout",
+      "answers": [],
+      "mismatches": [],
+      "exit_code": null,
+      "timed_out": true,
+      "queries": 0,
+      "seconds": 30.02550678513944,
+      "par2": 60.0,
+      "maxrss_kib": 568020,
+      "index": 267,
+      "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_firewire_tree.5.prop3_ab_core_max.smt2"
+    },
+    {
+      "outcome": "timeout",
+      "answers": [],
+      "mismatches": [],
+      "exit_code": null,
+      "timed_out": true,
+      "queries": 0,
+      "seconds": 30.028266759589314,
+      "par2": 60.0,
+      "maxrss_kib": 613460,
+      "index": 268,
+      "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_firewire_tree.5.prop3_ab_min_max.smt2"
+    },
+    {
+      "outcome": "timeout",
+      "answers": [],
+      "mismatches": [],
+      "exit_code": null,
+      "timed_out": true,
+      "queries": 0,
+      "seconds": 30.023228503763676,
+      "par2": 60.0,
+      "maxrss_kib": 567696,
+      "index": 263,
+      "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_firewire_tree.5.prop1_ab_core_max.smt2"
+    },
+    {
+      "outcome": "timeout",
+      "answers": [],
+      "mismatches": [],
+      "exit_code": null,
+      "timed_out": true,
+      "queries": 0,
+      "seconds": 30.04941096715629,
+      "par2": 60.0,
+      "maxrss_kib": 1201176,
+      "index": 615,
+      "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_pouring.1.prop1_ab_core_max.smt2"
+    },
+    {
+      "outcome": "timeout",
+      "answers": [
+        "sat"
+      ],
+      "mismatches": [],
+      "exit_code": null,
+      "timed_out": true,
+      "queries": 1,
+      "seconds": 30.026615604758263,
+      "par2": 60.0,
+      "maxrss_kib": 617496,
+      "index": 264,
+      "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_firewire_tree.5.prop1_ab_min_max.smt2"
+    },
+    {
+      "outcome": "timeout",
+      "answers": [],
+      "mismatches": [],
+      "exit_code": null,
+      "timed_out": true,
+      "queries": 0,
+      "seconds": 30.04840999096632,
+      "par2": 60.0,
+      "maxrss_kib": 1198656,
+      "index": 616,
+      "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_pouring.1.prop1_ab_min_max.smt2"
+    },
+    {
+      "outcome": "error",
+      "answers": [
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "sat",
+        "sat",
+        "sat"
+      ],
+      "mismatches": [],
+      "exit_code": -11,
+      "timed_out": false,
+      "queries": 33,
+      "seconds": 0.13045010901987553,
+      "par2": 60.0,
+      "maxrss_kib": 15268,
+      "index": 824,
+      "file": "incremental/QF_UF/20190906-CLEARSY/0001/00313.smt2"
+    },
+    {
+      "outcome": "error",
+      "answers": [
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "unsat",
+        "sat",
+        "sat",
+        "sat",
+        "unsat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "unsat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat",
+        "sat"
+      ],
+      "mismatches": [],
+      "exit_code": -11,
+      "timed_out": false,
+      "queries": 103,
+      "seconds": 0.1477985754609108,
+      "par2": 60.0,
+      "maxrss_kib": 15520,
+      "index": 1688,
+      "file": "incremental/QF_UF/20190906-CLEARSY/0023/00268.smt2"
+    },
+    {
+      "outcome": "timeout",
+      "answers": [],
+      "mismatches": [],
+      "exit_code": null,
+      "timed_out": true,
+      "queries": 0,
+      "seconds": 30.022850150242448,
+      "par2": 60.0,
+      "maxrss_kib": 568024,
+      "index": 265,
+      "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_firewire_tree.5.prop2_ab_core_max.smt2"
+    },
+    {
+      "outcome": "timeout",
+      "answers": [],
+      "mismatches": [],
+      "exit_code": null,
+      "timed_out": true,
+      "queries": 0,
+      "seconds": 30.037069022655487,
+      "par2": 60.0,
+      "maxrss_kib": 959136,
+      "index": 617,
+      "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_pouring.2.prop1_ab_core_max.smt2"
+    }
+  ],
+  "run_provenance": {
+    "uf": [
+      {
+        "arguments": {
+          "mode": "timing",
+          "archive": null,
+          "root": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb",
+          "manifest": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb.json",
+          "out": "/home/janotmik/primo-model-fix/results/opensmt-incremental-16abc94/uf/shard-0",
+          "timing_out": null,
+          "shards": 16,
+          "shard_index": 0,
+          "solver": "/home/janotmik/primo-model-fix/contrib/local/bin/opensmt",
+          "parser": "build-slurm-rel/primo_parser_corpus",
+          "solver_arg": [
+            "--pipe"
+          ],
+          "expected_git": null,
+          "continue_after_error": true,
+          "timeout": 30.0,
+          "dolmen": null,
+          "dolmen_timeout": 60,
+          "ref": null,
+          "ref_arg": []
+        },
+        "version": "v2.9.2\n",
+        "solver_sha256": "b7899e9aff299026d3251df7a28f51f56d8bd1e5b0fd7be11bcc72c4f2803a98",
+        "driver_sha256": "434f488d75364fae01530657d13a814c75827e8db9479fcd479b0ca767876138",
+        "manifest_sha256": "4cc0c9b35b3725ae2893e626f0ee29ca798830462b080a0dea16585bbcc48b85",
+        "host": "node-02.ciircluster",
+        "slurm_job_id": "142855",
+        "validation_tools": {}
+      },
+      {
+        "arguments": {
+          "mode": "timing",
+          "archive": null,
+          "root": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb",
+          "manifest": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb.json",
+          "out": "/home/janotmik/primo-model-fix/results/opensmt-incremental-16abc94/uf/shard-1",
+          "timing_out": null,
+          "shards": 16,
+          "shard_index": 1,
+          "solver": "/home/janotmik/primo-model-fix/contrib/local/bin/opensmt",
+          "parser": "build-slurm-rel/primo_parser_corpus",
+          "solver_arg": [
+            "--pipe"
+          ],
+          "expected_git": null,
+          "continue_after_error": true,
+          "timeout": 30.0,
+          "dolmen": null,
+          "dolmen_timeout": 60,
+          "ref": null,
+          "ref_arg": []
+        },
+        "version": "v2.9.2\n",
+        "solver_sha256": "b7899e9aff299026d3251df7a28f51f56d8bd1e5b0fd7be11bcc72c4f2803a98",
+        "driver_sha256": "434f488d75364fae01530657d13a814c75827e8db9479fcd479b0ca767876138",
+        "manifest_sha256": "4cc0c9b35b3725ae2893e626f0ee29ca798830462b080a0dea16585bbcc48b85",
+        "host": "node-02.ciircluster",
+        "slurm_job_id": "142856",
+        "validation_tools": {}
+      },
+      {
+        "arguments": {
+          "mode": "timing",
+          "archive": null,
+          "root": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb",
+          "manifest": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb.json",
+          "out": "/home/janotmik/primo-model-fix/results/opensmt-incremental-16abc94/uf/shard-10",
+          "timing_out": null,
+          "shards": 16,
+          "shard_index": 10,
+          "solver": "/home/janotmik/primo-model-fix/contrib/local/bin/opensmt",
+          "parser": "build-slurm-rel/primo_parser_corpus",
+          "solver_arg": [
+            "--pipe"
+          ],
+          "expected_git": null,
+          "continue_after_error": true,
+          "timeout": 30.0,
+          "dolmen": null,
+          "dolmen_timeout": 60,
+          "ref": null,
+          "ref_arg": []
+        },
+        "version": "v2.9.2\n",
+        "solver_sha256": "b7899e9aff299026d3251df7a28f51f56d8bd1e5b0fd7be11bcc72c4f2803a98",
+        "driver_sha256": "434f488d75364fae01530657d13a814c75827e8db9479fcd479b0ca767876138",
+        "manifest_sha256": "4cc0c9b35b3725ae2893e626f0ee29ca798830462b080a0dea16585bbcc48b85",
+        "host": "node-02.ciircluster",
+        "slurm_job_id": "142865",
+        "validation_tools": {}
+      },
+      {
+        "arguments": {
+          "mode": "timing",
+          "archive": null,
+          "root": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb",
+          "manifest": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb.json",
+          "out": "/home/janotmik/primo-model-fix/results/opensmt-incremental-16abc94/uf/shard-11",
+          "timing_out": null,
+          "shards": 16,
+          "shard_index": 11,
+          "solver": "/home/janotmik/primo-model-fix/contrib/local/bin/opensmt",
+          "parser": "build-slurm-rel/primo_parser_corpus",
+          "solver_arg": [
+            "--pipe"
+          ],
+          "expected_git": null,
+          "continue_after_error": true,
+          "timeout": 30.0,
+          "dolmen": null,
+          "dolmen_timeout": 60,
+          "ref": null,
+          "ref_arg": []
+        },
+        "version": "v2.9.2\n",
+        "solver_sha256": "b7899e9aff299026d3251df7a28f51f56d8bd1e5b0fd7be11bcc72c4f2803a98",
+        "driver_sha256": "434f488d75364fae01530657d13a814c75827e8db9479fcd479b0ca767876138",
+        "manifest_sha256": "4cc0c9b35b3725ae2893e626f0ee29ca798830462b080a0dea16585bbcc48b85",
+        "host": "node-02.ciircluster",
+        "slurm_job_id": "142866",
+        "validation_tools": {}
+      },
+      {
+        "arguments": {
+          "mode": "timing",
+          "archive": null,
+          "root": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb",
+          "manifest": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb.json",
+          "out": "/home/janotmik/primo-model-fix/results/opensmt-incremental-16abc94/uf/shard-12",
+          "timing_out": null,
+          "shards": 16,
+          "shard_index": 12,
+          "solver": "/home/janotmik/primo-model-fix/contrib/local/bin/opensmt",
+          "parser": "build-slurm-rel/primo_parser_corpus",
+          "solver_arg": [
+            "--pipe"
+          ],
+          "expected_git": null,
+          "continue_after_error": true,
+          "timeout": 30.0,
+          "dolmen": null,
+          "dolmen_timeout": 60,
+          "ref": null,
+          "ref_arg": []
+        },
+        "version": "v2.9.2\n",
+        "solver_sha256": "b7899e9aff299026d3251df7a28f51f56d8bd1e5b0fd7be11bcc72c4f2803a98",
+        "driver_sha256": "434f488d75364fae01530657d13a814c75827e8db9479fcd479b0ca767876138",
+        "manifest_sha256": "4cc0c9b35b3725ae2893e626f0ee29ca798830462b080a0dea16585bbcc48b85",
+        "host": "node-02.ciircluster",
+        "slurm_job_id": "142867",
+        "validation_tools": {}
+      },
+      {
+        "arguments": {
+          "mode": "timing",
+          "archive": null,
+          "root": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb",
+          "manifest": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb.json",
+          "out": "/home/janotmik/primo-model-fix/results/opensmt-incremental-16abc94/uf/shard-13",
+          "timing_out": null,
+          "shards": 16,
+          "shard_index": 13,
+          "solver": "/home/janotmik/primo-model-fix/contrib/local/bin/opensmt",
+          "parser": "build-slurm-rel/primo_parser_corpus",
+          "solver_arg": [
+            "--pipe"
+          ],
+          "expected_git": null,
+          "continue_after_error": true,
+          "timeout": 30.0,
+          "dolmen": null,
+          "dolmen_timeout": 60,
+          "ref": null,
+          "ref_arg": []
+        },
+        "version": "v2.9.2\n",
+        "solver_sha256": "b7899e9aff299026d3251df7a28f51f56d8bd1e5b0fd7be11bcc72c4f2803a98",
+        "driver_sha256": "434f488d75364fae01530657d13a814c75827e8db9479fcd479b0ca767876138",
+        "manifest_sha256": "4cc0c9b35b3725ae2893e626f0ee29ca798830462b080a0dea16585bbcc48b85",
+        "host": "node-02.ciircluster",
+        "slurm_job_id": "142868",
+        "validation_tools": {}
+      },
+      {
+        "arguments": {
+          "mode": "timing",
+          "archive": null,
+          "root": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb",
+          "manifest": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb.json",
+          "out": "/home/janotmik/primo-model-fix/results/opensmt-incremental-16abc94/uf/shard-14",
+          "timing_out": null,
+          "shards": 16,
+          "shard_index": 14,
+          "solver": "/home/janotmik/primo-model-fix/contrib/local/bin/opensmt",
+          "parser": "build-slurm-rel/primo_parser_corpus",
+          "solver_arg": [
+            "--pipe"
+          ],
+          "expected_git": null,
+          "continue_after_error": true,
+          "timeout": 30.0,
+          "dolmen": null,
+          "dolmen_timeout": 60,
+          "ref": null,
+          "ref_arg": []
+        },
+        "version": "v2.9.2\n",
+        "solver_sha256": "b7899e9aff299026d3251df7a28f51f56d8bd1e5b0fd7be11bcc72c4f2803a98",
+        "driver_sha256": "434f488d75364fae01530657d13a814c75827e8db9479fcd479b0ca767876138",
+        "manifest_sha256": "4cc0c9b35b3725ae2893e626f0ee29ca798830462b080a0dea16585bbcc48b85",
+        "host": "node-02.ciircluster",
+        "slurm_job_id": "142869",
+        "validation_tools": {}
+      },
+      {
+        "arguments": {
+          "mode": "timing",
+          "archive": null,
+          "root": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb",
+          "manifest": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb.json",
+          "out": "/home/janotmik/primo-model-fix/results/opensmt-incremental-16abc94/uf/shard-15",
+          "timing_out": null,
+          "shards": 16,
+          "shard_index": 15,
+          "solver": "/home/janotmik/primo-model-fix/contrib/local/bin/opensmt",
+          "parser": "build-slurm-rel/primo_parser_corpus",
+          "solver_arg": [
+            "--pipe"
+          ],
+          "expected_git": null,
+          "continue_after_error": true,
+          "timeout": 30.0,
+          "dolmen": null,
+          "dolmen_timeout": 60,
+          "ref": null,
+          "ref_arg": []
+        },
+        "version": "v2.9.2\n",
+        "solver_sha256": "b7899e9aff299026d3251df7a28f51f56d8bd1e5b0fd7be11bcc72c4f2803a98",
+        "driver_sha256": "434f488d75364fae01530657d13a814c75827e8db9479fcd479b0ca767876138",
+        "manifest_sha256": "4cc0c9b35b3725ae2893e626f0ee29ca798830462b080a0dea16585bbcc48b85",
+        "host": "node-02.ciircluster",
+        "slurm_job_id": "142854",
+        "validation_tools": {}
+      },
+      {
+        "arguments": {
+          "mode": "timing",
+          "archive": null,
+          "root": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb",
+          "manifest": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb.json",
+          "out": "/home/janotmik/primo-model-fix/results/opensmt-incremental-16abc94/uf/shard-2",
+          "timing_out": null,
+          "shards": 16,
+          "shard_index": 2,
+          "solver": "/home/janotmik/primo-model-fix/contrib/local/bin/opensmt",
+          "parser": "build-slurm-rel/primo_parser_corpus",
+          "solver_arg": [
+            "--pipe"
+          ],
+          "expected_git": null,
+          "continue_after_error": true,
+          "timeout": 30.0,
+          "dolmen": null,
+          "dolmen_timeout": 60,
+          "ref": null,
+          "ref_arg": []
+        },
+        "version": "v2.9.2\n",
+        "solver_sha256": "b7899e9aff299026d3251df7a28f51f56d8bd1e5b0fd7be11bcc72c4f2803a98",
+        "driver_sha256": "434f488d75364fae01530657d13a814c75827e8db9479fcd479b0ca767876138",
+        "manifest_sha256": "4cc0c9b35b3725ae2893e626f0ee29ca798830462b080a0dea16585bbcc48b85",
+        "host": "node-02.ciircluster",
+        "slurm_job_id": "142857",
+        "validation_tools": {}
+      },
+      {
+        "arguments": {
+          "mode": "timing",
+          "archive": null,
+          "root": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb",
+          "manifest": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb.json",
+          "out": "/home/janotmik/primo-model-fix/results/opensmt-incremental-16abc94/uf/shard-3",
+          "timing_out": null,
+          "shards": 16,
+          "shard_index": 3,
+          "solver": "/home/janotmik/primo-model-fix/contrib/local/bin/opensmt",
+          "parser": "build-slurm-rel/primo_parser_corpus",
+          "solver_arg": [
+            "--pipe"
+          ],
+          "expected_git": null,
+          "continue_after_error": true,
+          "timeout": 30.0,
+          "dolmen": null,
+          "dolmen_timeout": 60,
+          "ref": null,
+          "ref_arg": []
+        },
+        "version": "v2.9.2\n",
+        "solver_sha256": "b7899e9aff299026d3251df7a28f51f56d8bd1e5b0fd7be11bcc72c4f2803a98",
+        "driver_sha256": "434f488d75364fae01530657d13a814c75827e8db9479fcd479b0ca767876138",
+        "manifest_sha256": "4cc0c9b35b3725ae2893e626f0ee29ca798830462b080a0dea16585bbcc48b85",
+        "host": "node-02.ciircluster",
+        "slurm_job_id": "142858",
+        "validation_tools": {}
+      },
+      {
+        "arguments": {
+          "mode": "timing",
+          "archive": null,
+          "root": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb",
+          "manifest": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb.json",
+          "out": "/home/janotmik/primo-model-fix/results/opensmt-incremental-16abc94/uf/shard-4",
+          "timing_out": null,
+          "shards": 16,
+          "shard_index": 4,
+          "solver": "/home/janotmik/primo-model-fix/contrib/local/bin/opensmt",
+          "parser": "build-slurm-rel/primo_parser_corpus",
+          "solver_arg": [
+            "--pipe"
+          ],
+          "expected_git": null,
+          "continue_after_error": true,
+          "timeout": 30.0,
+          "dolmen": null,
+          "dolmen_timeout": 60,
+          "ref": null,
+          "ref_arg": []
+        },
+        "version": "v2.9.2\n",
+        "solver_sha256": "b7899e9aff299026d3251df7a28f51f56d8bd1e5b0fd7be11bcc72c4f2803a98",
+        "driver_sha256": "434f488d75364fae01530657d13a814c75827e8db9479fcd479b0ca767876138",
+        "manifest_sha256": "4cc0c9b35b3725ae2893e626f0ee29ca798830462b080a0dea16585bbcc48b85",
+        "host": "node-02.ciircluster",
+        "slurm_job_id": "142859",
+        "validation_tools": {}
+      },
+      {
+        "arguments": {
+          "mode": "timing",
+          "archive": null,
+          "root": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb",
+          "manifest": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb.json",
+          "out": "/home/janotmik/primo-model-fix/results/opensmt-incremental-16abc94/uf/shard-5",
+          "timing_out": null,
+          "shards": 16,
+          "shard_index": 5,
+          "solver": "/home/janotmik/primo-model-fix/contrib/local/bin/opensmt",
+          "parser": "build-slurm-rel/primo_parser_corpus",
+          "solver_arg": [
+            "--pipe"
+          ],
+          "expected_git": null,
+          "continue_after_error": true,
+          "timeout": 30.0,
+          "dolmen": null,
+          "dolmen_timeout": 60,
+          "ref": null,
+          "ref_arg": []
+        },
+        "version": "v2.9.2\n",
+        "solver_sha256": "b7899e9aff299026d3251df7a28f51f56d8bd1e5b0fd7be11bcc72c4f2803a98",
+        "driver_sha256": "434f488d75364fae01530657d13a814c75827e8db9479fcd479b0ca767876138",
+        "manifest_sha256": "4cc0c9b35b3725ae2893e626f0ee29ca798830462b080a0dea16585bbcc48b85",
+        "host": "node-02.ciircluster",
+        "slurm_job_id": "142860",
+        "validation_tools": {}
+      },
+      {
+        "arguments": {
+          "mode": "timing",
+          "archive": null,
+          "root": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb",
+          "manifest": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb.json",
+          "out": "/home/janotmik/primo-model-fix/results/opensmt-incremental-16abc94/uf/shard-6",
+          "timing_out": null,
+          "shards": 16,
+          "shard_index": 6,
+          "solver": "/home/janotmik/primo-model-fix/contrib/local/bin/opensmt",
+          "parser": "build-slurm-rel/primo_parser_corpus",
+          "solver_arg": [
+            "--pipe"
+          ],
+          "expected_git": null,
+          "continue_after_error": true,
+          "timeout": 30.0,
+          "dolmen": null,
+          "dolmen_timeout": 60,
+          "ref": null,
+          "ref_arg": []
+        },
+        "version": "v2.9.2\n",
+        "solver_sha256": "b7899e9aff299026d3251df7a28f51f56d8bd1e5b0fd7be11bcc72c4f2803a98",
+        "driver_sha256": "434f488d75364fae01530657d13a814c75827e8db9479fcd479b0ca767876138",
+        "manifest_sha256": "4cc0c9b35b3725ae2893e626f0ee29ca798830462b080a0dea16585bbcc48b85",
+        "host": "node-02.ciircluster",
+        "slurm_job_id": "142861",
+        "validation_tools": {}
+      },
+      {
+        "arguments": {
+          "mode": "timing",
+          "archive": null,
+          "root": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb",
+          "manifest": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb.json",
+          "out": "/home/janotmik/primo-model-fix/results/opensmt-incremental-16abc94/uf/shard-7",
+          "timing_out": null,
+          "shards": 16,
+          "shard_index": 7,
+          "solver": "/home/janotmik/primo-model-fix/contrib/local/bin/opensmt",
+          "parser": "build-slurm-rel/primo_parser_corpus",
+          "solver_arg": [
+            "--pipe"
+          ],
+          "expected_git": null,
+          "continue_after_error": true,
+          "timeout": 30.0,
+          "dolmen": null,
+          "dolmen_timeout": 60,
+          "ref": null,
+          "ref_arg": []
+        },
+        "version": "v2.9.2\n",
+        "solver_sha256": "b7899e9aff299026d3251df7a28f51f56d8bd1e5b0fd7be11bcc72c4f2803a98",
+        "driver_sha256": "434f488d75364fae01530657d13a814c75827e8db9479fcd479b0ca767876138",
+        "manifest_sha256": "4cc0c9b35b3725ae2893e626f0ee29ca798830462b080a0dea16585bbcc48b85",
+        "host": "node-02.ciircluster",
+        "slurm_job_id": "142862",
+        "validation_tools": {}
+      },
+      {
+        "arguments": {
+          "mode": "timing",
+          "archive": null,
+          "root": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb",
+          "manifest": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb.json",
+          "out": "/home/janotmik/primo-model-fix/results/opensmt-incremental-16abc94/uf/shard-8",
+          "timing_out": null,
+          "shards": 16,
+          "shard_index": 8,
+          "solver": "/home/janotmik/primo-model-fix/contrib/local/bin/opensmt",
+          "parser": "build-slurm-rel/primo_parser_corpus",
+          "solver_arg": [
+            "--pipe"
+          ],
+          "expected_git": null,
+          "continue_after_error": true,
+          "timeout": 30.0,
+          "dolmen": null,
+          "dolmen_timeout": 60,
+          "ref": null,
+          "ref_arg": []
+        },
+        "version": "v2.9.2\n",
+        "solver_sha256": "b7899e9aff299026d3251df7a28f51f56d8bd1e5b0fd7be11bcc72c4f2803a98",
+        "driver_sha256": "434f488d75364fae01530657d13a814c75827e8db9479fcd479b0ca767876138",
+        "manifest_sha256": "4cc0c9b35b3725ae2893e626f0ee29ca798830462b080a0dea16585bbcc48b85",
+        "host": "node-02.ciircluster",
+        "slurm_job_id": "142863",
+        "validation_tools": {}
+      },
+      {
+        "arguments": {
+          "mode": "timing",
+          "archive": null,
+          "root": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb",
+          "manifest": "/home/janotmik/primo-model-fix/tmp/native-uf-ce91bfb.json",
+          "out": "/home/janotmik/primo-model-fix/results/opensmt-incremental-16abc94/uf/shard-9",
+          "timing_out": null,
+          "shards": 16,
+          "shard_index": 9,
+          "solver": "/home/janotmik/primo-model-fix/contrib/local/bin/opensmt",
+          "parser": "build-slurm-rel/primo_parser_corpus",
+          "solver_arg": [
+            "--pipe"
+          ],
+          "expected_git": null,
+          "continue_after_error": true,
+          "timeout": 30.0,
+          "dolmen": null,
+          "dolmen_timeout": 60,
+          "ref": null,
+          "ref_arg": []
+        },
+        "version": "v2.9.2\n",
+        "solver_sha256": "b7899e9aff299026d3251df7a28f51f56d8bd1e5b0fd7be11bcc72c4f2803a98",
+        "driver_sha256": "434f488d75364fae01530657d13a814c75827e8db9479fcd479b0ca767876138",
+        "manifest_sha256": "4cc0c9b35b3725ae2893e626f0ee29ca798830462b080a0dea16585bbcc48b85",
+        "host": "node-02.ciircluster",
+        "slurm_job_id": "142864",
+        "validation_tools": {}
+      }
+    ],
+    "lra": [
+      {
+        "arguments": {
+          "mode": "timing",
+          "archive": null,
+          "root": "/home/janotmik/primo-model-fix/tmp/native-qf-lra.ipGdkx",
+          "manifest": "/home/janotmik/primo-model-fix/benchmarks/native-lra-opensmt.json",
+          "out": "/home/janotmik/primo-model-fix/results/opensmt-incremental-16abc94/lra/shard-0",
+          "timing_out": null,
+          "shards": 2,
+          "shard_index": 0,
+          "solver": "/home/janotmik/primo-model-fix/contrib/local/bin/opensmt",
+          "parser": "build-slurm-rel/primo_parser_corpus",
+          "solver_arg": [
+            "--pipe"
+          ],
+          "expected_git": null,
+          "continue_after_error": true,
+          "timeout": 600.0,
+          "dolmen": null,
+          "dolmen_timeout": 60,
+          "ref": null,
+          "ref_arg": []
+        },
+        "version": "v2.9.2\n",
+        "solver_sha256": "b7899e9aff299026d3251df7a28f51f56d8bd1e5b0fd7be11bcc72c4f2803a98",
+        "driver_sha256": "434f488d75364fae01530657d13a814c75827e8db9479fcd479b0ca767876138",
+        "manifest_sha256": "0f2b18fcfe908799118e1e797c980f1b498ce4db01079d4b57723ec3c6b02a4c",
+        "host": "node-02.ciircluster",
+        "slurm_job_id": "142853",
+        "validation_tools": {}
+      },
+      {
+        "arguments": {
+          "mode": "timing",
+          "archive": null,
+          "root": "/home/janotmik/primo-model-fix/tmp/native-qf-lra.ipGdkx",
+          "manifest": "/home/janotmik/primo-model-fix/benchmarks/native-lra-opensmt.json",
+          "out": "/home/janotmik/primo-model-fix/results/opensmt-incremental-16abc94/lra/shard-1",
+          "timing_out": null,
+          "shards": 2,
+          "shard_index": 1,
+          "solver": "/home/janotmik/primo-model-fix/contrib/local/bin/opensmt",
+          "parser": "build-slurm-rel/primo_parser_corpus",
+          "solver_arg": [
+            "--pipe"
+          ],
+          "expected_git": null,
+          "continue_after_error": true,
+          "timeout": 600.0,
+          "dolmen": null,
+          "dolmen_timeout": 60,
+          "ref": null,
+          "ref_arg": []
+        },
+        "version": "v2.9.2\n",
+        "solver_sha256": "b7899e9aff299026d3251df7a28f51f56d8bd1e5b0fd7be11bcc72c4f2803a98",
+        "driver_sha256": "434f488d75364fae01530657d13a814c75827e8db9479fcd479b0ca767876138",
+        "manifest_sha256": "0f2b18fcfe908799118e1e797c980f1b498ce4db01079d4b57723ec3c6b02a4c",
+        "host": "node-02.ciircluster",
+        "slurm_job_id": "142852",
+        "validation_tools": {}
+      }
+    ]
+  },
+  "qualification": {
+    "primo_uf": "Preserved 7ac555c run: 1772 complete sessions, 29978 queries, 25027 independently validated actual SAT models, job 142793. No new Primo behavior.",
+    "opensmt_uf": "29663 definite answers, including partial sessions, match recorded references. No independent OpenSMT SAT-model validation claimed.",
+    "lra": "BMC has 101 UNSAT answers; induction times out after 111 matching declared answers. No full induction qualification. Native first-four-query prefixes also match."
+  },
+  "verification": [
+    "make check: 34 C++/CLI and 174 Python pass",
+    "make python-test: 174 pass after final summary changes",
+    "make lint",
+    "make docs",
+    "bash -n and slurm_validate_sbatch.py",
+    "18 shard solver/version/driver/timeout identities matched",
+    "four crashes reproduced locally using identical binary"
+  ],
+  "limitations": [
+    "Reference rows are answer comparisons, not independent OpenSMT model validation.",
+    "Primo UF model qualification remains the separate recorded 7ac555c run.",
+    "Incomplete sessions receive twice the whole-session limit, regardless of partial progress.",
+    "Primo has a 10000 theory-conflict/query limit; external references have no matching cap.",
+    "Reused runs are not contemporaneous paired measurements."
+  ],
+  "artifacts": {
+    "completed-uf-bmc.tar.gz": {
+      "path": "results/opensmt-incremental-67387f3/completed-uf-bmc.tar.gz",
+      "bytes": 300922,
+      "sha256": "b81fa8bbab131005ec677cef153feee44f5d97cbc95bbb000aba2b47b82a3375"
+    },
+    "completed-lra.tar.gz": {
+      "path": "results/opensmt-incremental-67387f3/completed-lra.tar.gz",
+      "bytes": 1496,
+      "sha256": "d6bd51fc647419e16660d90d653352b45160d1466802100a78bdc0318549ecd8"
+    },
+    "slurm-logs.tar.gz": {
+      "path": "results/opensmt-incremental-67387f3/slurm-logs.tar.gz",
+      "bytes": 1154,
+      "sha256": "7f8e3ac38d5a7f127b5e6e68cb3d4b77dac0d89516aeb8248e41500b50997e85"
+    },
+    "first-attempt.tar.gz": {
+      "path": "results/opensmt-incremental-67387f3/first-attempt.tar.gz",
+      "bytes": 94004,
+      "sha256": "d00cf0caecc093df17c1daeb7662db9a6fe3e2deccfb7c907b0ca334542081ad"
+    },
+    "opensmt-2.9.2": {
+      "path": "results/opensmt-incremental-67387f3/opensmt-2.9.2",
+      "bytes": 4753808,
+      "sha256": "b7899e9aff299026d3251df7a28f51f56d8bd1e5b0fd7be11bcc72c4f2803a98"
+    }
+  },
+  "terminal_audit": {
+    "archive_verification": {
+      "first-attempt.tar.gz": {
+        "gzip_crc": "pass",
+        "tar_members": 2844
+      },
+      "slurm-logs.tar.gz": {
+        "gzip_crc": "pass",
+        "tar_members": 36
+      },
+      "completed-uf-bmc.tar.gz": {
+        "gzip_crc": "pass",
+        "tar_members": 8947
+      },
+      "completed-lra.tar.gz": {
+        "gzip_crc": "pass",
+        "tar_members": 17
+      }
+    },
+    "local_solver_processes": [],
+    "job_states": {
+      "CANCELLED by 50383": 6,
+      "CANCELLED": 5,
+      "COMPLETED": 41,
+      "FAILED": 8
+    },
+    "job_accounting": "results/opensmt-incremental-67387f3/job-accounting.txt",
+    "terminal_job_step_rows": 60,
+    "current_reference_arrays": {
+      "142852": {
+        "task_states": {
+          "COMPLETED": 2
+        }
+      },
+      "142854": {
+        "task_states": {
+          "COMPLETED": 13,
+          "FAILED": 3
+        }
+      }
+    },
+    "note": "FAILED reference shards retain complete coverage and exit 1 because of recorded OpenSMT crashes; first-attempt cancellations are preserved. No active SLURM jobs remained at collection."
+  },
+  "review": "Reviewed the new helper, timing error paths, summarizer coverage/ratio rules, full metadata joins and linked docs against unchanged project architecture and prior whole-tree source/static baseline. No new C++/SAT/theory algorithm; ASAN and clang-tidy not rerun for Python/benchmark-only work. All 18 shards retain the exact reference and driver identities; all error rows remain penalties and are locally reproduced.",
+  "delivery_archive": {
+    "path": "results/opensmt-incremental-delivery-16abc94.tar.gz",
+    "bytes": 2615716,
+    "sha256": "620a344bc6cd2b43bdfddfae98e4cffff80dfb7533b14aed8cd5dbacbf280239",
+    "members": 9059,
+    "integrity": "gzip CRC and full tar member traversal pass"
+  }
+}

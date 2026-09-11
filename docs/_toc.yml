@@ -15,6 +15,7 @@ parts:
           - file: assumption-incremental-uf
           - file: uf-z3-profiling
           - file: incremental-uf-atom-scans
+          - file: opensmt-incremental-comparison
       - file: model-interpretation
       - file: tactics
         sections:

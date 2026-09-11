@@ -2579,6 +2579,13 @@ from qualified `fa2fe5c`, and reused SLURM timings. These are hypotheses about
 that revision, not measured optimization gains or requirements for merging the
 opt-in implementation.
 
+The [additional OpenSMT comparison](opensmt-incremental-comparison.md) keeps
+short CLEARSY sessions relevant to this lead: on 1,008 jointly completed sessions,
+the median Primo/OpenSMT ratio is 1.813. OpenSMT also crashes on four other
+CLEARSY sessions, which are excluded from that ratio and retained as failures.
+This black-box timing gap does not identify its internal cause or qualify a new
+Primo optimization. Z3 remains ahead on full-archive PAR2.
+
 **Claim and evidence.** Append-only registration/preparation cursors and touched
 scratch could avoid work proportional to all retained atoms/terms on every
 small append or check. At the profiled baseline,

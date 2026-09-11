@@ -24,6 +24,8 @@ class OpenSmtComparisonTest(unittest.TestCase):
                          [{"index": 0, "query": 0, "answers": ["sat", "unsat"]}])
         self.assertEqual(result["mutually_complete_sessions"], 0)
         self.assertIsNone(result["median_left_over_right_seconds"])
+        self.assertEqual(result["only_left_complete"], [])
+        self.assertEqual(result["only_right_complete"], [0])
 
     def test_complete_count_mismatch_is_rejected(self):
         with self.assertRaises(ValueError):

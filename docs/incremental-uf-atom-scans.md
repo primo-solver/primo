@@ -144,3 +144,10 @@ invariants, not a new paper-backed congruence-closure algorithm. Its algorithmic
 basis and remaining callback/model obligations are the local design note above
 and [](assumption-incremental-uf.md). The earlier profile remains
 [](uf-z3-profiling.md).
+
+## Additional OpenSMT reference
+
+[](opensmt-incremental-comparison.md) adds OpenSMT 2.9.2 using the same native
+inputs and session limits. The Primo and existing reference timings here remain
+unchanged; the new report separates completed sessions, errors, partial query
+progress and model-qualification coverage.
