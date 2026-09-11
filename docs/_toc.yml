@@ -88,6 +88,7 @@ parts:
       - file: papers/bromberger-linear-arithmetic-thesis
       - file: papers/monotone-variable-elimination
       - file: papers/difference-constraint-propagation
+      - file: papers/enumerative-instantiation
 
   - caption: Reference
     chapters:
