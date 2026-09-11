@@ -70,20 +70,20 @@ From *The SMT-LIB Standard, Version 2.6*, revision 2021-05-12:
 - The builder is **iterative** (`TermBuilder`), and any new traversal must be
   too.
 
-Two frontend gaps in `main` would turn into binder bugs once bound variables
-exist. Both are already fixed on `feature/incremental-smt-sessions`, which is to
-be merged into `main` before quantifier parsing lands:
+Two frontend gaps would have turned into binder bugs once bound variables
+exist. Both were fixed on `feature/incremental-smt-sessions`, which is now merged
+into `main`; this branch is rebased onto it (`605062f`):
 
-1. **`define-fun` bodies are scoped dynamically in `main`.** A free name in a
-   parameterized body resolves through the `let`s, and enclosing definition
-   parameters, in force at the *call site*. That is already a wrong answer in
-   both directions (`bugs/define-fun-dynamic-scoping/`); with binders it would
-   be capture of bound variables. The branch fixes it in `5bc811b`.
-2. **Quoted symbols are not normalized in `main`.** The lexer keeps the bars, so
-   `|a|` and `a` are different names. Today that is an `unknown symbol`
-   rejection, while z3 answers both probes conformingly. With binders,
-   `(forall ((|x| U)) (P x))` would silently bind a declared global `x`. The
-   branch fixes it in `8e9dc59`.
+1. **`define-fun` bodies were scoped dynamically.** A free name in a
+   parameterized body resolved through the `let`s, and enclosing definition
+   parameters, in force at the *call site*: a wrong answer in both directions
+   (`bugs/define-fun-dynamic-scoping/`), and with binders capture of bound
+   variables. Fixed in `5bc811b`: `lookup_bound_term` stops at the innermost
+   definition's scope base (`definition_scope_bases_`).
+2. **Quoted symbols were not normalized.** The lexer kept the bars, so `|a|` and
+   `a` were different names; with binders, `(forall ((|x| U)) (P x))` would
+   silently bind a declared global `x`. Fixed in `8e9dc59`: the lexer strips the
+   delimiters.
 
 ## Options
 
@@ -305,9 +305,8 @@ isolation.
 
 ### Representation
 
-1. **Build on the frontend fixes of `feature/incremental-smt-sessions`**:
-   lexical scoping for `define-fun` bodies (`5bc811b`) and quoted-symbol
-   normalization (`8e9dc59`). That branch is to be merged into `main` first.
+1. **Build on the frontend fixes now on `main`**: lexical scoping for
+   `define-fun` bodies (`5bc811b`) and quoted-symbol normalization (`8e9dc59`).
 2. **Bound variables.** A new `BoundVariable` kind carries an index and a sort,
    both part of the hash key. It is a distinct kind, so no `Constant` case
    matches it.
@@ -606,9 +605,6 @@ the gate.
 5. **Naming passes on open subterms.** The proposal is to skip them under
    binders and name instances; the alternative is naming with Skolem functions
    of the enclosing variables.
-6. **Sequencing.** Quantifier parsing lands after
-   `feature/incremental-smt-sessions` is merged into `main`, on top of its
-   frontend.
 
 ## References
 
