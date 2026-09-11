@@ -116,6 +116,8 @@ Evaluate the complete 1,778-file archive with original stdin, initially at
 complete sessions separately from partial query progress and compute whole-session
 PAR2. Check every successful candidate session's SAT query models in a separate
 replay with identical options; timed-out/incomplete runs remain unqualified.
+Replay answers must match both the timed query sequence and the independent
+reference; a changed answer blocks qualification even if the replay model passes.
 Investigate lost solves and significant regressions with phase counters and
 profiling before deciding acceptance. Preserve the existing QF_LRA assumptions
 and default cross-logic tests. Run check, ASan, lint, docs and required reviews/

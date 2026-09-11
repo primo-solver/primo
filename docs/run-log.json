@@ -3,6 +3,51 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-11-assumptions-uf-gate-invocation-repair",
+      "date": "2026-09-11",
+      "kind": "native-parser-and-gate-invocation-check",
+      "evidence_status": "full production parser pass; fuzz invocation failed before any query",
+      "candidate_commit": "ce91bfb",
+      "jobs": {
+        "build": 142321,
+        "regressions": 142322,
+        "inventory": 142323,
+        "auto_gate_invocation_failures": 142324,
+        "matrix_gate_invocation_failures": 142325
+      },
+      "parser": {
+        "sessions": 1778,
+        "queries": 29990,
+        "pass": 1778,
+        "unsupported": 0,
+        "seconds": 294,
+        "archive_sha256": "52c55a17ee15e5c4a0fc723b9605ae42615da34499efc7e5a5e8b2c0ffc26a27"
+      },
+      "regressions": {
+        "ctest_pass": 4,
+        "boolean_seed_sessions": 7,
+        "queries": 7,
+        "dolmen_models": 3
+      },
+      "failure": "All 16 fuzz shards stopped before first query: exit 109, unexpected --euf-propagation flag. Correct flag is --euf-prop. No generated solver result was accepted.",
+      "fix": "Correct batch flag and exercise all six supported explicit CLI option combinations in the existing UF CLI regression. Also compare replay query answers with timed answers explicitly, in addition to live reference comparison.",
+      "commands": [
+        "scripts/slurm_native_uf_inventory.sbatch",
+        "scripts/slurm_incremental_uf_regressions.sbatch",
+        "scripts/slurm_incremental_uf_gate.sbatch, PRIMO_UF_GATE_PROFILE=auto and matrix"
+      ],
+      "artifacts": [
+        "SLURM /home/janotmik/primo-model-fix/results/uf-inventory-ce91bfb",
+        "SLURM /home/janotmik/primo-model-fix/results/uf-regressions-ce91bfb",
+        "SLURM /home/janotmik/primo-model-fix/results/uf-auto-gate-ce91bfb",
+        "SLURM /home/janotmik/primo-model-fix/results/uf-matrix-gate-ce91bfb",
+        "tmp/uf-*-ce91bfb-submission.json"
+      ],
+      "host": "SLURM node-02 and compute nodes; Python 3.9.18",
+      "resources": "Inventory 1 serial parser, 4 GiB allocation, 30s/file, 20min allocation. Gates 4 concurrent shards per array, 4 GiB/task, 20s query/reference and 30s Dolmen budget, 1h allocation. Scheduler allocates two logical CPUs per single-task job.",
+      "verification": "Focused six-option CLI regression, batch syntax, make lint/docs, existing C++ source unchanged."
+    },
+    {
       "id": "2026-09-11-assumptions-uf-harness-portability",
       "date": "2026-09-11",
       "kind": "slurm-preflight-and-harness-repair",

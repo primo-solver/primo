@@ -199,6 +199,10 @@ def main():
                 # Live independent reference checks avoid treating candidate
                 # answers or incompletely annotated native metadata as an oracle.
                 row = validate(source.read_text(), out, args)
+                if (row["outcome"] == "pass" and
+                        [q["answer"] for q in row["queries"]] != prior["answers"]):
+                    row["outcome"] = "failure"
+                    row["message"] = "replay answers differ from timed query answers"
         row.update({"index": index, "file": entry["file"]})
         rows.append(row)
         out.mkdir(exist_ok=True)

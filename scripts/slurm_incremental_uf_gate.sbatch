@@ -34,7 +34,7 @@ python3 scripts/incremental_uf_gate.py --kind "$kind" "${seed_args[@]}" \
   --solver build-slurm-rel/primo --solver-arg=--quiet \
   --solver-arg=--incremental-mode=assumptions --solver-arg=--max-theory-conflicts=10000 \
   --solver-arg="--preprocessing-mode=$preprocessing" \
-  --solver-arg="--euf-propagation=$propagation" \
+  --solver-arg="--euf-prop=$propagation" \
   --ref contrib/local/bin/z3 --dolmen contrib/local/bin/dolmen \
   --expected-git "${PRIMO_EXPECTED_REVISION:?}" \
   --timeout 20 --dolmen-timeout 30 --out "${PRIMO_INCREMENTAL_OUT:?}/shard-$slot"
