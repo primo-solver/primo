@@ -3,6 +3,25 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-11-opensmt-login-provisioning",
+      "date": "2026-09-11",
+      "kind": "reference-tool-provisioning",
+      "candidate": "67387f3",
+      "status": "compute-node installer stalled; cancelled before build; login-host binary download support added",
+      "job": "142827",
+      "command": "slurm_prepare_benchmark_workspace.py --reuse-dependencies --contrib-target contrib-opensmt --build-via-slurm --jobs 4 --require-tool contrib/local/bin/opensmt",
+      "evidence": "results/opensmt-incremental-67387f3/prepare.log",
+      "diagnosis": "Installer remained in urllib download on compute node; login-node HTTPS request returned HTTP 200. No benchmark was run in this attempt.",
+      "local_protocol": "OpenSMT v2.9.2: UF and LRA each return sat/unsat/sat through stdin with and without --pipe; exit 0; results/opensmt-incremental-67387f3/local-protocol.json",
+      "change": "Optional --login-contrib-target runs explicit dependency target after sync, before build allocation; check-only stays read-only. Existing behavior unchanged without option.",
+      "verification": [
+        "5 helper unit tests pass, including provision-before-allocation ordering and shell quoting",
+        "make lint pass",
+        "make docs pass"
+      ],
+      "review": "Reviewed helper ownership, failure propagation, check-only path, source identity and shell quoting. C++ source unchanged from the qualified 7ac555c baseline; no fresh C++ static scan or solver fuzz gate needed for this orchestration-only option."
+    },
+    {
       "id": "2026-09-11-incremental-uf-atom-scans-delivery-7ac555c",
       "date": "2026-09-11",
       "kind": "qualified-artifact-collection-and-final-review",

@@ -341,6 +341,13 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--login-contrib-target",
+        action="append",
+        default=[],
+        help="Run an explicit make target on the login host before the build allocation; "
+        "use for binary downloads when compute nodes lack network access.",
+    )
+    parser.add_argument(
         "--with-z3",
         action="store_true",
         help="Install and require contrib/local/bin/z3 in the remote workspace.",
@@ -409,6 +416,10 @@ def main() -> int:
             rsync_repo(args.ssh_config, args.local_dir, args.remote, args.remote_dir)
 
     if not args.check_only:
+        if args.login_contrib_target:
+            targets = " ".join(shlex.quote(target) for target in args.login_contrib_target)
+            ssh(args.ssh_config, args.remote,
+                f"set -eu\ncd {shlex.quote(args.remote_dir)}\nmake MAKEFLAGS= {targets}")
         command = build_command(
             args.remote_dir,
             args.cmake,

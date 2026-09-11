@@ -297,6 +297,15 @@ accepts either `ipasir_up.h` or the compatible `ipasir.h`, matching the
 alternatives in CMake; requiring only the former would falsely reprovision a
 valid CaDiCaL installation on every synchronization.
 
+When compute nodes lack network access, explicitly request a binary-download
+target with `--login-contrib-target contrib-opensmt`. The preparation helper runs
+that target through SSH after source synchronization and before entering the
+build allocation. Use this with `--reuse-dependencies --build-via-slurm` to keep
+compilation on compute nodes. Login targets are separate from `--contrib-target`;
+do not request the same download in both lists. A failed download stops preparation,
+and `--check-only` never runs either target list. This option is intended for
+small dependency downloads, not compilation on the login host.
+
 For example, a fuzz workspace that already has the native build dependencies
 and Z3 but lacks the pinned YinYang environment can be prepared with:
 
