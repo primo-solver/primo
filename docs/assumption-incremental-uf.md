@@ -319,3 +319,10 @@ Original repair checklist, recorded before implementation:
 This changes the model builder's input roots only; it adds no rewriting rule,
 SAT lemma or new congruence algorithm. The retained assignment remains the source
 of theory facts. See [](model-interpretation) for final-goal model construction.
+
+## Profiling follow-up
+
+[](uf-z3-profiling) analyzes the qualified gap to Z3 with fresh local gprof and
+per-query reference statistics. It identifies large pairwise `distinct`
+expansion, search/preprocessing gaps and repeated preparation/state-copy costs.
+The study changes no solver behavior or qualification status.

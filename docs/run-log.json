@@ -3,6 +3,168 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-11-native-uf-z3-gap-profiling-8573f60",
+      "date": "2026-09-11",
+      "kind": "qualified-gap-ranking-local-profiling-and-reference-statistics",
+      "evidence_status": "diagnostic, no solver changes or new headline performance qualification",
+      "commit": "8573f60b7226c1b17300ac0297456c95808ecba8",
+      "solver_implementation_identical_to": "fa2fe5c2d03afaf20e5496f2f3e4ced9fd2526ac",
+      "benchmark": "Five original native QF_UF sessions selected from the qualified 1778-file archive; indices 14,267,852,1688,656. Original headline timing jobs 142665 and reused Z3 job 142464.",
+      "archive_sha256": "52c55a17ee15e5c4a0fc723b9605ae42615da34499efc7e5a5e8b2c0ffc26a27",
+      "manifest_sha256": "4cc0c9b35b3725ae2893e626f0ee29ca798830462b080a0dea16585bbcc48b85",
+      "host": "mikolas-ThinkPad-T14s-Gen-5",
+      "cpu": "Intel Core Ultra 7 155U (reported in /proc/cpuinfo)",
+      "platform": "Linux-7.0.0-30-generic-x86_64-with-glibc2.39",
+      "profile_binary_sha256": "3300b970330c285dc426f1fcbbd3dfd7b480df07c72aca0143c81ddea8200182",
+      "profile_build": "RelWithDebInfo -O2 -g -pg; link -pg; inherited PRIMO_WARNINGS_AS_ERRORS=OFF; static CaDiCaL not compiled with -pg",
+      "limits": {
+        "wall_seconds_per_process": 120,
+        "native_theory_conflicts_per_query": 10000,
+        "execution": "serial local profiling; no new SLURM jobs",
+        "model_output": false
+      },
+      "commands": [
+        "cmake -S . -B build-gprof-current -DPRIMO_GIT_REVISION_OVERRIDE=8573f60; cmake --build build-gprof-current --target primo -j 4 (existing RelWithDebInfo -O2 -g -pg configuration; predecessor binary preserved)",
+        "python3 scripts/profile_native_uf_gaps.py --timing results/uf-native-timing-fa2fe5c --root tmp/native-uf-inputs --manifest tmp/native-uf-inventory/manifest.json --solver build-gprof-current/primo --expected-git 8573f60 --indices 14 267 852 1688 656 --timeout 120 --out results/uf-z3-profile-8573f60/current",
+        "python3 scripts/rank_qfuf_gaps.py --native OUT/assumptions.csv --ref OUT/z3.csv --timeout 30 --fast-ref 1 --top 50 --out OUT/ranked.csv (driver exports whole-session eligibility and checks all definite answers first)",
+        "Add --reference-stats results/uf-z3-profile-8573f60/z3-5.1.0 and use separate z3-query-stats output to collect read-only per-query Z3 statistics; actual child argv and transformed inputs are retained",
+        "For repetitions 1,2,3: run --plain with --indices 852 1688 using the preserved fa2fe5c Release binary, then repeat with --omit-stats, each in its own plain-on/off-N output directory",
+        "perf stat -e task-clock -- true (unsupported PMU event; no permission changes)"
+      ],
+      "profiling_outcomes": {
+        "sessions": 5,
+        "complete": 4,
+        "known_resource_limit_unknown": 1,
+        "queries": 792,
+        "matching_definite_answers": 791,
+        "unknown_answers": 1,
+        "timeout": 0,
+        "wrong_answer": 0,
+        "crash": 0,
+        "parser_type_error": 0,
+        "unsupported": 0,
+        "reference_disagreement": 0
+      },
+      "reference_stats": {
+        "version": "Z3 version 5.1.0 - 64 bit\n",
+        "sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+        "sessions_per_probe": 5,
+        "queries_per_probe": 792,
+        "outcome": "all complete and matching",
+        "history": "Local installed Z3 was 5.0.0; staged and hash-checked the exact qualified 5.1.0 binary. Initial -st collection exposed final-counter reset/context changes; per-query get-info collection supersedes it. Neither probe replaces reference performance measurements."
+      },
+      "qualified_gap_distribution": {
+        "all": {
+          "paired_complete": 1772,
+          "median_primo_over_z3": 1.1859369201043817,
+          "p90_primo_over_z3": 2.742627327515706,
+          "at_least_5x": 51,
+          "at_least_10x": 4,
+          "primo_seconds": 498.48478144966066,
+          "z3_seconds": 290.2482253164053
+        },
+        "2018-Goel-hwbench": {
+          "paired_complete": 760,
+          "median_primo_over_z3": 1.055432927251084,
+          "p90_primo_over_z3": 1.9738305452045126,
+          "at_least_5x": 19,
+          "at_least_10x": 4,
+          "primo_seconds": 400.0728838406503,
+          "z3_seconds": 248.3370626885444
+        },
+        "20190906-CLEARSY": {
+          "paired_complete": 1012,
+          "median_primo_over_z3": 1.3586704486623655,
+          "p90_primo_over_z3": 3.0039321574926787,
+          "at_least_5x": 32,
+          "at_least_10x": 0,
+          "primo_seconds": 98.41189760901034,
+          "z3_seconds": 41.911162627860904
+        }
+      },
+      "findings": [
+        "Two large distinct expressions (1051 and 73 operands) expand into 554403 pairs. Adding.5 retains 556973 atoms/1121604 terms for 3560 flat terms. Qualified frontend 3.046s (preprocessing nested 1.861s), solve 0.307s in 4.997s wall. Z3 first-query stats: 1800 created Bool variables and 2118 eliminated variables; counters are not directly interchangeable.",
+        "Firewire.5.prop3 spends 18.104/23.456s solving. gprof: apply_assignment 23.29%, SAT propagate 22.44%, merge_classes 15.81% of sampled executable time. 7.50M merge routine calls and 59.83M trail-entry restores. Z3 first-query stats report 22931 eliminated variables; incremental equation elimination is deliberately unsupported in Primo v1.",
+        "CLEARSY 0002/00126: 413 structural copies; preparation 0.714s plus fresh state/reconnect 1.140s, approximately 41% of 4.533s. Both Boolean-argument registration and preparation re-scan all retained atoms each query.",
+        "Six original rushhour unknown sessions contribute 360 PAR2 seconds; their excess penalties over Z3 explain about 62.7% of the aggregate PAR2 gap. Representative second query stops at 10005 theory conflicts. Raising the limit was not evaluated.",
+        "CLI stats on/off: three local pairs on each of two long sessions show no consistent benefit; no output-overhead or speedup claim. The smaller gprof probe has 16 samples and is too coarse for precise percentage ranking."
+      ],
+      "statistics_output_probe": {
+        "852": {
+          "on": {
+            "seconds": [
+              1.8688300140202045,
+              2.0003524689236656,
+              2.318583987071179
+            ],
+            "median_seconds": 2.0003524689236656
+          },
+          "off": {
+            "seconds": [
+              1.84343855897896,
+              2.0572303789667785,
+              2.3872920889407396
+            ],
+            "median_seconds": 2.0572303789667785
+          }
+        },
+        "1688": {
+          "on": {
+            "seconds": [
+              0.3879589269636199,
+              0.3790907149668783,
+              0.5271423179656267
+            ],
+            "median_seconds": 0.3879589269636199
+          },
+          "off": {
+            "seconds": [
+              0.31685989000834525,
+              0.4074848329182714,
+              0.4300827259430662
+            ],
+            "median_seconds": 0.4074848329182714
+          }
+        },
+        "conclusion": "Inconclusive/no consistent benefit from disabling output in three paired local probes; no printing-overhead attribution or speedup claim."
+      },
+      "limitations": [
+        "All headline times are reused qualified SLURM records. Local gprof/reference/plain diagnostic times are not substituted.",
+        "gprof percentages are fractions of sampled executable time; shared libraries, instrumentation overhead and inlining limit attribution.",
+        "Nested phase times overlap. SAT counters can be cumulative, while working-theory counters are query-local.",
+        "Z3 first/final-query counter scopes differ; no direct equivalence between its objects and Primo variables is claimed.",
+        "The unknown session remains unqualified. No new model-validation claim is based on the instrumented profiles."
+      ],
+      "verification": {
+        "runner_protocol_tests": "6 pass, including partial answer followed by nonzero exit and timeout",
+        "profiling_adapter_tests": "2 pass: read-only insertion preserves strings/comments; reference statistics do not hide process failure or missing data",
+        "gprof_runs": "4 complete, 1 known conflict-limited unknown; 791 matching definite answers and 1 unknown; no timeout/crash/disagreement",
+        "reference_runs": "Initial final-stats and follow-up per-query probes each complete 5 sessions/792 answers with the exact pinned Z3 binary",
+        "plain_runs": "12 complete sessions with matching reference sequences",
+        "solver_changes": "none",
+        "python_suite": "166 tests pass; final adapter-focused tests pass after review fixes",
+        "lint": "make lint passes",
+        "docs": "make docs passes",
+        "review": "No blocking code, hygiene or documentation finding; review.txt retained in artifacts",
+        "adapter_replay": "Final adapter matches all five saved reference inputs/transcripts and 792 answers",
+        "final_driver_smoke": "Final reviewed driver completes native index 0 and matches both reference answers"
+      },
+      "artifacts": {
+        "directory": "results/uf-z3-profile-8573f60",
+        "archive": "results/uf-z3-profile-8573f60.tar.gz",
+        "metadata": "benchmarks/uf-z3-profile-8573f60.json",
+        "report": "docs/uf-z3-profiling.md",
+        "archive_sha256": "b39f1ba1fc7047c63f043a8cf32b747f5f7637699dcba5a268530bd5a833426f",
+        "archive_bytes": 61723058
+      },
+      "decision": "Profiling complete. Recommend reducing repeated old-atom/scratch work, designing compact distinct support, then sound incremental equation elimination/restoration and reduced structural copying. No solver patch or default promotion is claimed.",
+      "terminal_audit": {
+        "active_local_solver_profiler_test_processes": 0,
+        "active_slurm_jobs": 0,
+        "new_slurm_jobs": 0
+      }
+    },
+    {
       "id": "2026-09-11-uf-assumptions-qualified-fa2fe5c",
       "date": "2026-09-11",
       "kind": "exact-candidate-slurm-correctness-native-timing-model-qualification",

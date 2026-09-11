@@ -13,6 +13,7 @@ parts:
           - file: lexical-conformance
           - file: assumption-incremental-lra
           - file: assumption-incremental-uf
+          - file: uf-z3-profiling
       - file: model-interpretation
       - file: tactics
         sections:
