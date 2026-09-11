@@ -3,6 +3,68 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-11-incremental-uf-atom-scan-baseline-605062f",
+      "date": "2026-09-11",
+      "kind": "bounded-local-performance-baseline",
+      "commit": "605062f",
+      "lead": 22,
+      "status": "baseline-only; candidate acceptance pending",
+      "evidence_basis": "2026-09-11-native-uf-z3-gap-profiling-8573f60; merged baseline retains identical solver sources",
+      "artifacts": "results/uf-atom-scans-605062f",
+      "command": [
+        "/workspace/results/uf-atom-scans-605062f/primo-baseline",
+        "--quiet",
+        "--stats",
+        "--incremental-mode=assumptions",
+        "--max-theory-conflicts=10000"
+      ],
+      "reproduction": "python3 scripts/profile_native_uf_gaps.py --timing results/uf-native-timing-fa2fe5c --root tmp/native-uf-inputs --manifest tmp/native-uf-inventory/manifest.json --solver results/uf-atom-scans-605062f/primo-baseline --expected-git 605062f --indices 14 267 852 1688 656 --plain --timeout 120 --out OUT",
+      "binary_sha256": "1c6f7740fe1c807ca306851da8303695d076cbfccdd1640a92d576d6f9ad354d",
+      "manifest_sha256": "4cc0c9b35b3725ae2893e626f0ee29ca798830462b080a0dea16585bbcc48b85",
+      "host": "mikolas-ThinkPad-T14s-Gen-5",
+      "limits": {
+        "wall_seconds_per_session": 120,
+        "theory_conflicts_per_query": 10000,
+        "model_output": false
+      },
+      "outcomes": {
+        "complete": 4,
+        "unknown": 1,
+        "timeout": 0,
+        "wrong_answer": 0,
+        "error": 0,
+        "reference_disagreement": 0
+      },
+      "profiles": [
+        {
+          "index": 14,
+          "outcome": "complete",
+          "seconds": 3.15215472294949
+        },
+        {
+          "index": 267,
+          "outcome": "complete",
+          "seconds": 12.163379564066418
+        },
+        {
+          "index": 852,
+          "outcome": "complete",
+          "seconds": 2.027634538942948
+        },
+        {
+          "index": 1688,
+          "outcome": "complete",
+          "seconds": 0.4588246850762516
+        },
+        {
+          "index": 656,
+          "outcome": "unknown",
+          "seconds": 1.471483465982601
+        }
+      ],
+      "qualification": "Local diagnostics only; original reference timings and model qualification reused as baseline context, not fresh evidence for the candidate."
+    },
+    {
       "id": "2026-09-11-incremental-smt-and-uf-separate-merges",
       "date": "2026-09-11",
       "kind": "merge-verification-no-new-solver-experiment",

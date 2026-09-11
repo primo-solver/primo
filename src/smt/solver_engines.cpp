@@ -897,7 +897,7 @@ struct PreparedFlatTheory {
 
   // Extend the structural preparation without adding round-specific facts.
   std::size_t ensure_theory_atoms(const core::TermManager& terms,
-                                  const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms);
+                                  std::span<const BooleanClausifier::TheoryAtom> theory_atoms);
   std::vector<AssignedTheoryAtom> align_assignments(
       const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
       const std::vector<AssignedTheoryAtom>& assignments) const;
@@ -1146,8 +1146,7 @@ PreparedFlatTheory::PreparedFlatTheory(
 }
 
 std::size_t PreparedFlatTheory::ensure_theory_atoms(
-    const core::TermManager& terms,
-    const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms) {
+    const core::TermManager& terms, std::span<const BooleanClausifier::TheoryAtom> theory_atoms) {
   std::size_t appended = 0;
   for (const BooleanClausifier::TheoryAtom& atom : theory_atoms) {
     const std::uint64_t key =
@@ -12304,12 +12303,21 @@ class IncrementalUfEngine final : public IncrementalEngine {
     const auto start = std::chrono::steady_clock::now();
     util::Statistics statistics;
     const auto prepare_start = std::chrono::steady_clock::now();
-    // Scan once per query, after all pending appends, before freezing the registry
-    // for the callback. Boolean argument meanings survive retirement of roots.
+    // Complete the new registry suffix before freezing it for the callback.
+    // Boolean argument meanings survive retirement of roots; see the lead 22
+    // checklist in docs/assumption-incremental-uf.md.
+    const auto scanned_before = clausifier_.boolean_argument_scan_count();
     statistics.set(":session.euf-new-boolean-arguments",
                    clausifier_.register_boolean_argument_terms());
-    statistics.set(":session.euf-new-prepared-atoms",
-                   prepared_.ensure_theory_atoms(terms_, clausifier_.theory_atoms()));
+    statistics.set(":session.euf-registration-atoms-scanned",
+                   clausifier_.boolean_argument_scan_count() - scanned_before);
+    const auto new_atoms = std::span(clausifier_.theory_atoms()).subspan(prepared_atom_count_);
+    const auto appended = prepared_.ensure_theory_atoms(terms_, new_atoms);
+    if (appended != new_atoms.size())
+      throw std::logic_error("duplicate atom in incremental UF registry suffix");
+    prepared_atom_count_ += appended;
+    statistics.set(":session.euf-preparation-atoms-scanned", new_atoms.size());
+    statistics.set(":session.euf-new-prepared-atoms", appended);
     statistics.set(":time.session.prepare-us", elapsed(prepare_start));
     for (const auto& atom : clausifier_.theory_atoms())
       backend_.protect_variable(std::abs(atom.lit.value));
@@ -12424,6 +12432,7 @@ class IncrementalUfEngine final : public IncrementalEngine {
   core::TermId true_term_;
   core::TermId false_term_;
   PreparedFlatTheory prepared_;
+  std::size_t prepared_atom_count_ = 0;
   std::vector<sat::Lit> selectors_;
   std::vector<core::TermId> model_roots_;
   std::vector<std::size_t> model_boundaries_;

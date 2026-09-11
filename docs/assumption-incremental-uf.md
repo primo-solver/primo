@@ -326,3 +326,44 @@ of theory facts. See [](model-interpretation) for final-goal model construction.
 per-query reference statistics. It identifies large pairwise `distinct`
 expansion, search/preprocessing gaps and repeated preparation/state-copy costs.
 The study changes no solver behavior or qualification status.
+
+## Lead 22: atom-scan experiment checklist
+
+This is an original scan-reduction design for [open lead 22](#lead-incremental-uf-scans),
+recorded before implementation on `perf/incremental-uf-atom-scans`, based on
+`605062f`. It uses the append-only identity and conservative-definition invariants
+above; it introduces no new congruence algorithm. Acceptance is pending measurement
+and fresh correctness qualification. Traversal scratch and structural copies are
+separate, deferred experiments.
+
+- `BooleanClausifier::Implementation` owns a numeric registration cursor into its
+  append-only `theory_atoms_`. Terms and their children are immutable; registration
+  does not depend on assertion polarity or whether the originating scope is active.
+  After scanning one root completely, advance the cursor. Re-read registry size
+  while scanning: registration may append Boolean argument atoms to the same vector.
+- Keep the visited-term set local to each registration call. New roots may revisit
+  shared subterms, but completed roots are not scanned again. This removes repeated
+  root scans across checks without allocating a persistent visited set proportional
+  to the retained term manager. It does not claim linear total DAG traversal across
+  all future appends.
+- Snapshot term IDs and child vectors before registration can grow the atom vector.
+  No reference into that vector may survive registration. A repeated call without
+  appended atoms visits zero roots. Pop never rewinds the cursor: definitions and
+  historical atoms remain valid; reset destroys their owner and resets the cursor.
+- `IncrementalUfEngine` owns a separate prepared-atom cursor. Pass only the new
+  registry suffix as a read-only span to `PreparedFlatTheory::ensure_theory_atoms`.
+  Retain that helper's arbitrary-batch/deduplication semantics for mixed-theory
+  callers. Require one prepared atom per suffix entry before advancing the cursor.
+- The prepared closure still installs every new flat definition. All atoms remain
+  observed/protected, all required root assignments are replayed, and working
+  closures remain fresh per query. Assignment alignment and model construction
+  keep their current complete-registry inputs.
+- Publish per-query registration-root and preparation-input counts. Repeated
+  checks must report zero for both; new registration atoms must be included in
+  preparation during the same check. Tests cover growth, retained terms reused
+  after pop, redeclaration, SAT/UNSAT/unknown recovery and scoped Boolean arguments.
+- Compare the five representative native sessions with the preserved baseline;
+  gate broad evaluation on fresh scoped generated/native-seed tests. Before
+  accepting, independently validate actual native SAT models and check the default
+  route. Reject the experiment if scan counts fall without a repeatable session
+  benefit, or if any unexplained solved-case loss or correctness failure remains.
