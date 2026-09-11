@@ -499,7 +499,7 @@ Auto uses context-independent extended-term/Boolean rewriting, mandatory
 extended-term lowering, and arithmetic equality lowering. Off retains mandatory
 lowering. Basic/Strong, portfolios, splitting, fixed-variable elimination,
 preprocess-only, assertion-dependent preprocessing and custom CaDiCaL options
-are rejected. Unsupported logics are rejected explicitly. The dedicated QF_UFLRA
+are rejected. Unsupported logics, and quantified assertions, are rejected explicitly. The dedicated QF_UFLRA
 engine and the default rebuild pipeline are unchanged.
 
 QF_UF uses `IncrementalUfEngine` and retains structural flat-term preparation,

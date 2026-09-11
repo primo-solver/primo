@@ -20,6 +20,7 @@
 #include "smt/incremental_engine.hpp"
 #include "smt/preprocessing_tactics.hpp"
 #include "smt/session_portfolio.hpp"
+#include "smt/solver_error.hpp"
 #include "smt/solver_session.hpp"
 #include "smt/tactic.hpp"
 #include "smtlib/ast.hpp"
@@ -128,6 +129,11 @@ struct SmtSession::Implementation final : SessionExecutor {
 
   void append_incremental(std::size_t first) {
     if (first == assertions.size()) return;
+    for (auto root = assertions.begin() + static_cast<std::ptrdiff_t>(first);
+         root != assertions.end(); ++root) {
+      if (frontend->terms().contains_quantifier(*root))
+        throw UnsupportedInput("assumptions mode does not support quantified formulas");
+    }
     const auto start = Clock::now();
     TacticContext context(frontend->terms(), preprocessing_statistics, {}, false,
                           [this](core::SortId sort, std::string_view prefix) {
@@ -265,7 +271,7 @@ struct SmtSession::Implementation final : SessionExecutor {
     if (command.kind == Kind::SetLogic) {
       if (logic) throw std::invalid_argument("set-logic requires start mode; use reset first");
       if (command.logic != "QF_UF" && command.logic != "QF_LRA" && command.logic != "QF_UFLRA" &&
-          command.logic != "QF_LIA" && command.logic != "QF_UFLIA") {
+          command.logic != "QF_LIA" && command.logic != "QF_UFLIA" && command.logic != "UF") {
         return response(ResponseKind::Unsupported, "unsupported logic: " + command.logic);
       }
       if (assumptions()) {

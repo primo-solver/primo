@@ -52,8 +52,10 @@ conversions, and use `core::ModelEvaluator` and `smtlib::print_model`. A functio
 symbol and evaluated typed argument tuple have exactly one result. Printing
 cannot repair or replace that result. See [](model-interpretation.md).
 
-The frontend accepts the five named logics above, nonrecursive `define-fun`,
-typed `let`, ITEs and the documented linear arithmetic operators. `div`, `mod`
+The frontend accepts the five named logics above and `UF`, nonrecursive
+`define-fun`, typed `let`, ITEs and the documented linear arithmetic operators.
+Quantified assertions are parsed but answered `unsupported` before
+preprocessing; see [](quantifiers.md). `div`, `mod`
 and `abs` are deliberate Int extensions to the accepted logic declarations;
 division requires a nonzero literal divisor. They are not a claim of strict
 QF_LIA/QF_UFLIA grammar conformance, and a Dolmen logic rejection is not a model

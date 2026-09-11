@@ -262,7 +262,12 @@ The constructors do not currently canonicalize commutative operands. For example
 
 ### Interaction with SMT-LIB `let`
 
-SMT-LIB `let` does not create a term node. `smt::Frontend` keeps a stack of local maps from variable names to `TermId`. Binding right-hand sides are built in the outer scope, then the body is built in an extended scope. Because bound names resolve to existing `TermId` values, `let` expansion does not duplicate subtrees beyond the normal constructor calls and hash-consing behavior.
+SMT-LIB `let` does not create a term node. `smt::Frontend` keeps a stack of local maps from names to bindings. A binding is either a built `TermId`, stamped with the quantifier depth it was built at, or a variable bound by an enclosing `forall`/`exists`, stored as its binder level. Binding right-hand sides are built in the outer scope, then the body is built in an extended scope. A name resolves in one of two ways:
+
+- a value is shifted under the quantifiers entered since it was built, which is the identity outside quantifiers;
+- a bound variable becomes its de Bruijn index (see [](quantifiers.md)).
+
+Because bound names resolve to existing `TermId` values, `let` expansion does not duplicate subtrees beyond the normal constructor calls and hash-consing behavior.
 
 SMT-LIB `define-fun` supports nonrecursive macros over the admitted term
 language, not only UF terms. `smt::Frontend::Definition` has two representations. A nullary

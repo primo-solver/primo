@@ -602,6 +602,15 @@ CheckSatOutcome run_query(std::string_view input, CheckSatOptions options,
       }
     }
     Frontend& frontend = *owned_frontend;
+    // Quantified formulas must never reach preprocessing or a ground leaf,
+    // whose passes treat unknown kinds as opaque. Until the quantifier route
+    // exists they are unsupported; see docs/quantifiers.md.
+    if (frontend.terms().quantifier_count() > 0 &&
+        std::any_of(assertions.begin(), assertions.end(), [&frontend](core::TermId assertion) {
+          return frontend.terms().contains_quantifier(assertion);
+        })) {
+      return finish(CheckSatResult::Unsupported, "quantified formulas are not supported yet");
+    }
     statistics.set(kStatAssertionsInitial, assertions.size());
     statistics.set(":frontend.define-fun.nullary-direct-uses",
                    frontend.nullary_definition_direct_uses());

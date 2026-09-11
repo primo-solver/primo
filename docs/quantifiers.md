@@ -19,7 +19,7 @@ source or documentation informs this note (clean-room policy, `AGENTS.md`).
 | --- | --- |
 | M0: paper note for enumerative instantiation | done: [](papers/enumerative-instantiation.md) |
 | M1: core representation and index operations | done, see below |
-| M2: frontend parsing and the routing gate | planned |
+| M2: frontend parsing and the routing gate | implemented; UF parse pass and fuzz gate pending |
 | M3: component protocol and driver extension for queued lemmas | planned |
 | M4: quantifier component, enumerative instantiation, UF route | planned |
 
@@ -47,6 +47,40 @@ Deviations from the proposal:
 Quantifier-free behaviour is preserved. On 40 local inputs (the smoke QF_UF,
 QF_UFLIA and QF_LIA sets, plus the ten smallest QF_LRA, QF_UFLRA and QF_LIA
 corpus files), answers and non-timing statistics match the pre-change binary.
+
+**M2**, frontend parsing and the gate:
+
+- **Parsing.** `TermBuilder::dispatch_quantifier` parses `forall`/`exists`. A
+  variable list becomes one node, and a repeated name is shadowed by its last
+  occurrence.
+- **Depth-stamped scopes.** Every lexical scope entry is either a built value
+  stamped with the quantifier depth it was built at, or a quantified variable
+  stored as its binder level. `lookup_bound_term` shifts a value by the depth
+  entered since it was built, and turns a variable into
+  `BoundVariable(depth − level − 1)`. The same rule serves `let` values,
+  definition arguments and definition-validation parameters.
+- **Patterns.** `(! body :pattern (…))` directly under a binder becomes
+  `Pattern` children. Other attributes are validated and dropped, as before.
+- **Boolean arguments.** An open Boolean argument of an application is no
+  longer named by a fresh constant; a closed one still is.
+- **Logic.** `UF` is accepted. Without quantifiers it takes the existing ground
+  route.
+- **Gate.** `run_query` answers `unsupported` ("quantified formulas are not
+  supported yet") for any assertion containing a quantifier, before
+  preprocessing. Assumptions-mode sessions reject quantified assertions
+  explicitly.
+- **Tests.** `tests/unit/quantifier_frontend_tests.cpp` covers:
+  - nesting, shadowing, duplicate and quoted names, and a bound variable
+    shadowing a constant;
+  - `let` values used deeper, including a would-be capture;
+  - definitions under binders, and patterns;
+  - open Boolean arguments;
+  - malformed binders;
+  - the gate.
+
+On the same 40 quantifier-free inputs, answers and non-timing statistics match
+the M1 binary. Still pending before M2 is complete: the parse pass over the UF
+corpus, and the quantifier-free fuzz merge gate.
 
 ## Scope of step 1
 
