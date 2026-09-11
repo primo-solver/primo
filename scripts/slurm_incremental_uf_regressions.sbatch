@@ -7,6 +7,7 @@
 #SBATCH --error=slurm_logs/%x-%j.err
 set -euo pipefail
 cd "${PRIMO_WORKDIR:?}"
+python3 -m unittest discover -s tests/python -p test_incremental_uf_gate.py
 "${PRIMO_CTEST:?}" --test-dir build-slurm-rel \
   -R 'primo_(smt_session_tests|sat_backend_tests|assumptions.*cli)' \
   --timeout 120 --output-on-failure

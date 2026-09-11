@@ -30,20 +30,39 @@ def digest(path):
 
 
 def run_session(command, source, out, timeout):
-    start = time.monotonic()
     timed_out = False
     with (source.open("rb") as stdin, (out / "stdout").open("wb") as stdout,
           (out / "stderr").open("wb") as stderr):
+        start = time.monotonic()
         process = subprocess.Popen(
-            ["/usr/bin/time", "-f", "%M", "-o", str(out / "maxrss-kib"), *command],
-            stdin=stdin, stdout=stdout, stderr=stderr, start_new_session=True)
+            command, stdin=stdin, stdout=stdout, stderr=stderr, start_new_session=True)
         try:
-            code = process.wait(timeout=timeout)
-        except subprocess.TimeoutExpired:
-            timed_out, code = True, None
-            os.killpg(process.pid, signal.SIGKILL)
-            process.wait()
-    return code, timed_out, time.monotonic() - start
+            while True:
+                pid, status, usage = os.wait4(process.pid, os.WNOHANG)
+                if pid:
+                    break
+                if time.monotonic() - start >= timeout:
+                    timed_out = True
+                    try:
+                        os.killpg(process.pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass  # Exited between the nonblocking wait and deadline check.
+                    _, status, usage = os.wait4(process.pid, 0)
+                    break
+                time.sleep(0.001)
+            # wait4 owns reaping; prevent Popen's destructor from waiting again.
+            process.returncode = os.waitstatus_to_exitcode(status)
+            code = None if timed_out else process.returncode
+            seconds = time.monotonic() - start
+            (out / "maxrss-kib").write_text(str(usage.ru_maxrss) + "\n")
+        finally:
+            if process.returncode is None:
+                try:
+                    os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                process.wait()
+    return code, timed_out, seconds
 
 
 def query_metadata(text):

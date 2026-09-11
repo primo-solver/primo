@@ -3,6 +3,73 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-11-assumptions-uf-correctness-and-resource-driver",
+      "date": "2026-09-11",
+      "kind": "scoped-uf-correctness-default-preservation-and-timing-infrastructure",
+      "evidence_status": "correctness gates pass; no timing run completed yet",
+      "candidate_commit": "282336d",
+      "candidate_sha256": "2164aa63f75d2dcc3e7d9ed73d9043d845732050485f31d0f48cd7e8280a55ba",
+      "solver_sources_identical_to": "df47b12",
+      "summary_artifact": "benchmarks/assumptions-uf-correctness.json",
+      "jobs": {
+        "build": 142356,
+        "regressions": 142358,
+        "auto_gate": 142359,
+        "matrix_gate": 142364,
+        "default_uf": 142369,
+        "default_other": 142370,
+        "timing_infrastructure_failure": 142388
+      },
+      "gates": {
+        "auto": {
+          "generated": 1000,
+          "native_mutations": 1000,
+          "queries": 16000,
+          "sat_models": 9465,
+          "pass": 2000
+        },
+        "matrix": {
+          "generated": 1000,
+          "native_mutations": 1000,
+          "queries": 16000,
+          "sat_models": 9443,
+          "pass": 2000
+        },
+        "wrong_answer": 0,
+        "crash": 0,
+        "parser_type_error": 0,
+        "unknown_timeout": 0,
+        "unsupported": 0,
+        "reference_disagreement": 0,
+        "invalid_model": 0
+      },
+      "gate_commands": "scripts/slurm_incremental_uf_gate.sbatch, PRIMO_UF_GATE_PROFILE=auto with seed base 202619120, or matrix with seed base 202609120; eight 250-session shards per invocation, first four generated and remaining four mutate benchmarks/native-uf-incremental-seeds.txt. Exact commands and solver/reference/Dolmen versions and hashes in per-shard run.json.",
+      "default_preservation": {
+        "files": 25,
+        "sessions": 50,
+        "queries": 200,
+        "sat_models": 121,
+        "pass_files": 25,
+        "lost_solved": 0,
+        "candidate_total_seconds": 16.889311581850052,
+        "prior_04d2e23_total_seconds": 16.6212056055665,
+        "median_candidate_over_prior": 1.0133743801873143,
+        "note": "Separate file-mode timing diagnostics; scoped/Dolmen validation time excluded. UF conflict budget 10000, others 1000, matching prior accepted options."
+      },
+      "timing_failure": "All 64 timing tasks failed before solver creation: compute nodes lack /usr/bin/time even though the login-node probe succeeded. No reference solver was timed or rerun. Replaced wrapper with direct Linux wait4 resource accounting and bounded process-group termination. Added actual post-answer exit and timeout/resource tests.",
+      "artifacts": [
+        "results/uf-auto-gate-282336d",
+        "results/uf-matrix-gate-282336d",
+        "results/uf-default-282336d",
+        "results/uf-regressions-282336d",
+        "SLURM /home/janotmik/primo-model-fix/results/uf-candidate-282336d/primo",
+        "SLURM /home/janotmik/primo-model-fix/slurm_logs/primo-native-uf-142388_*.err",
+        "tmp/uf-candidate-282336d-provenance.log"
+      ],
+      "resources": "Gates: 4 concurrent tasks/array, two arrays, 4 GiB/task, one serial driver, 20s query/reference and 30s Dolmen budget. Timing attempted 8 GiB/task, 30s whole-session limit, but failed before launch. Scheduler reserves two logical CPUs for each one-task/one-CPU request. Python 3.9.18.",
+      "verification": "6 focused UF harness tests (including real child reaping/RSS, failed exit and timeout), batch validation, make lint/docs; all solver C++ unchanged."
+    },
+    {
       "id": "2026-09-11-assumptions-uf-gate-invocation-repair",
       "date": "2026-09-11",
       "kind": "native-parser-and-gate-invocation-check",

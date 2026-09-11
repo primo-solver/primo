@@ -118,6 +118,10 @@ PAR2. Check every successful candidate session's SAT query models in a separate
 replay with identical options; timed-out/incomplete runs remain unqualified.
 Replay answers must match both the timed query sequence and the independent
 reference; a changed answer blocks qualification even if the replay model passes.
+The Linux timing driver reaps the direct solver with `wait4`, collecting peak
+RSS even after a timeout. It kills the solver's process group on timeout and
+polls at 1 ms intervals; sub-millisecond timing differences are not meaningful.
+Opening artifact files and writing resource metadata are outside the timed span.
 Investigate lost solves and significant regressions with phase counters and
 profiling before deciding acceptance. Preserve the existing QF_LRA assumptions
 and default cross-logic tests. Run check, ASan, lint, docs and required reviews/

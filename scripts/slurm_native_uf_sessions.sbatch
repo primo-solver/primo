@@ -9,8 +9,9 @@
 set -euo pipefail
 cd "${PRIMO_WORKDIR:?}"
 slot=$SLURM_ARRAY_TASK_ID
-profile=$((slot / 16))
-shard=$((slot % 16))
+# Interleave profiles so reference and candidate results arrive together.
+profile=$((slot % 4))
+shard=$((slot / 4))
 label=rebuild
 solver=build-slurm-rel/primo
 solver_args=(--solver-arg=--quiet --solver-arg=--stats --solver-arg=--max-theory-conflicts=10000)

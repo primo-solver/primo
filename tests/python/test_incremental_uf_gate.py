@@ -8,12 +8,30 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 from incremental_uf_gate import generated, scoped
-from native_uf_sessions import classify, query_metadata
+from native_uf_sessions import classify, query_metadata, run_session
 import native_uf_sessions
 from validate_incremental import QueryJournal, command_spans
 
 
 class UfGateTests(unittest.TestCase):
+    def test_direct_child_resources_exit_and_timeout(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "input.smt2"
+            source.write_text("(check-sat)")
+            for index, program in enumerate((
+                    "print('sat'); raise SystemExit(3)",
+                    "import time; print('sat', flush=True); time.sleep(10)")):
+                out = root / str(index)
+                out.mkdir()
+                code, timed_out, seconds = run_session(
+                    [sys.executable, "-c", program], source, out, 0.1)
+                self.assertEqual(timed_out, index == 1)
+                self.assertEqual(code, None if timed_out else 3)
+                self.assertGreater(int((out / "maxrss-kib").read_text()), 0)
+                self.assertLess(seconds, 2)
+                self.assertEqual((out / "stdout").read_text().strip(), "sat")
+
     def test_reference_passing_replay_cannot_change_timed_answer(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
