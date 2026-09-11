@@ -1,7 +1,8 @@
 # Quantifiers: parsing and term representation
 
-**Status: design note, no quantifier code yet. The proposal at the end (revised
-2026-09-11) is pending review.**
+**Status: design note, no quantifier code yet. The proposal (de Bruijn indices,
+revised 2026-09-11) is pending review. An earlier proposal, variables with
+identity allocated on conflict, is kept below as a considered alternative.**
 
 This is step 1 of quantifier support: getting `forall`/`exists` from SMT-LIB into
 `core::Term`. It weighs how bound variables should be represented, against the
@@ -103,8 +104,8 @@ lists its variable terms.
   - so is a definition argument that mentions a bound variable, placed under a
     binder of the same name in the body.
 
-  Some renaming is required. The proposal below confines it to conflicts
-  detected while terms are built.
+  Some renaming is required. The alternative considered after the proposal
+  confines it to conflicts detected while terms are built.
 
 ### B. De Bruijn indices
 
@@ -165,6 +166,10 @@ open part of the body again. Maziarz et al. (section 2) make the same point
 about locally nameless hashing: "as we pass each lambda, we must re-hash the
 entire body".
 
+The proposal below stores B's terms and confines the arithmetic to a few core
+operations, as D does. But its parser builds indices directly rather than
+closing placeholder names, which would intern every open body twice.
+
 ## What the representation affects
 
 In an instantiation-based SMT solver, quantified formulas are abstracted as
@@ -182,7 +187,9 @@ It matters only while a formula still has binders:
 - the number of distinct quantified formulas, which is the number of
   abstraction atoms and of separately instantiated formulas;
 - pattern terms;
-- rewrites that act under binders (Skolemization, miniscoping, prenexing).
+- rewrites that act under binders (Skolemization, miniscoping, prenexing);
+- **where correctness lives**: in a few core operations, or in every pass that
+  builds quantifiers or moves open subterms.
 
 ## Measurements: SMT-LIB `UF`, 7,590 files
 
@@ -286,162 +293,213 @@ implementation representation:
 
 So the one SMT precedent found is **named variables made capture-safe by an
 invariant established during `let` expansion**, with a fresh variable for every
-quantifier (option C's allocation). The proposal keeps an invariant of that kind
-but renames only on conflict, which is what keeps A's sharing.
+quantifier (option C's allocation). The alternative considered below keeps an
+invariant of that kind but renames only on conflict. The proposal uses indices
+instead, where no renaming exists at all.
 
-## Proposal (pending)
+## Proposal (pending): de Bruijn indices
 
-**Variables with identity; the name is display only.** There is one local
-invariant, enforced where quantifier terms are constructed, and a parser
-allocation rule that satisfies it without retrying.
+Store **de Bruijn indices**. The parser builds them directly from depth-stamped
+scopes. All index arithmetic lives in a few core operations that are tested in
+isolation.
 
 ### Representation
 
 1. **Build on the frontend fixes of `feature/incremental-smt-sessions`**:
    lexical scoping for `define-fun` bodies (`5bc811b`) and quoted-symbol
    normalization (`8e9dc59`). That branch is to be merged into `main` first.
-2. **Variables.** A bound variable is a term of a new `Variable` kind whose
-   `symbol` is a `SymbolId` of a new variable symbol kind. The existing `Symbol`
-   record already carries the display name and the sort. Variable symbols are
-   not entered into name lookup, so several may share a name without clashing
-   with each other or with user symbols. Identity is the `SymbolId`, so it is
-   part of the hash key; the name is not.
-3. **Quantifiers.** `Forall` and `Exists` kinds carry their variables, their
-   body, and their patterns.
-4. **Per-term caches**, computed at intern time bottom-up: `FV(t)`, `BV(t)`, and
-   whether `t` contains a quantifier. All three are empty on quantifier-free
-   terms.
+2. **Bound variables.** A new `BoundVariable` kind carries an index and a sort,
+   both part of the hash key. It is a distinct kind, so no `Constant` case
+   matches it.
+3. **Quantifiers.** `Forall` and `Exists` kinds carry the sorts of their
+   variables, their body, and their patterns. A binder with a variable list is
+   one node, read with SMT-LIB's nested semantics: in `Q(x1…xn). b`, `xn` has
+   index 0 in `b`, and `x1` has index `n−1`.
+4. **Names are display only.** They are kept out of the hash key, so
+   alpha-equivalent formulas are one term. A side table keyed by the quantifier's
+   `TermId` records the first-seen names for printing and diagnostics.
+5. **Loose-index cache.** One integer per term, computed at intern time
+   bottom-up: one past the largest index that is not bound inside the term, and 0
+   when the term is closed. It is 0 on every quantifier-free term. A second
+   cached bit records whether the term contains a quantifier.
 
 ### Invariants
 
-For a term `s`, `FV(s)` is its set of free variables, and `BV(s)` is the set of
-variables bound by quantifier nodes inside `s`.
+- **C (closed formulas).** Every assertion and every lemma handed to the solver
+  has loose index 0. The check is O(1). This is Charguéraud's *locally closed*
+  (section 3.3), in its index-based form: "each bound variable has an index
+  smaller than the number of enclosing abstractions".
+- **Sort agreement.** A `BoundVariable(i, σ)` occurrence refers to a binder
+  variable of sort `σ`. This is not local, since it depends on the enclosing
+  binders, so a debug checker verifies it over whole terms.
 
-**W (no rebinding).** Every quantifier node `Q(v1, …, vn). b` in the term store
-has pairwise distinct `v1, …, vn`, and `{v1, …, vn} ∩ BV(b) = ∅`.
+There is no rebinding invariant to maintain, and no renaming: a binder has no
+variables of its own to clash with.
 
-- It is a precondition of the quantifier constructors, checked against the cached
-  `BV(b)`. A violation is a programming error, not unsupported input.
-- It is local: it depends only on the node and its body, so hash-consed sharing
-  cannot break it.
-- It is equivalent to: no root-to-leaf path passes through two binders of the
-  same variable.
+### Core operations
 
-**C (closed formulas).** Every assertion and every lemma handed to the solver is
-closed.
+These are the only code that computes indices. They are memoized over the DAG,
+iterative (explicit stack), and skip every subterm whose loose index is at or
+below the current cutoff.
 
-Consequences, for a node `Q(v̄). b`:
+- **`shift(t, k)`** adds `k` to every loose index of `t`, counting binders passed
+  in the cutoff. It is the identity on closed terms, in O(1).
+- **`instantiate(Q, s̄)`** opens the binder of `Q` with terms `s̄` and returns the
+  body:
+  - an index that reaches an opened variable is replaced by its term, shifted by
+    the number of binders passed;
+  - an index beyond the opened binder drops by the number of opened variables.
 
-1. **Plain replacement.** Every occurrence of a `vi` in `b` is bound by this
-   node. Substituting for `vi` in `b` is plain replacement, memoized over the
-   DAG, skipping subterms where `vi ∉ FV`.
-2. **No capture.** Substituting a term `s` for `vi` in `b` cannot capture when
-   every variable in `FV(s)` is bound by a binder enclosing this node; ground `s`
-   is the special case. A capture would need a binder of some `w ∈ FV(s)`
-   inside `b`. But `w` is bound by an enclosing binder `E`, and W at `E` rules
-   out a binder of `w` anywhere in `E`'s body, which contains `b`.
-3. **W is preserved.** The result still satisfies W when `s` contains no
-   binders.
+  For a closed `Q` and ground `s̄`, this is plain replacement at the matching
+  depth. It serves instantiation (ground `s̄`) and Skolemization (a fresh
+  constant, or a Skolem term over enclosing variables) alike.
+- **`abstract(t, c)`** turns a free constant into a binder index. It is needed
+  only by later rewrites that introduce binders.
 
-Deliberately **not** invariants:
+**Tests.** Property tests for the shift laws, and for `instantiate` after
+`abstract` being the identity. A differential test compares `instantiate`
+against a naive substitution with fresh names on random terms. The debug checker
+covers C and sort agreement.
 
-- **Shared variables.** Distinct closed formulas may share variables: every
-  instance of a quantifier shares its inner binders' variables with it. A
-  technique that treats several quantified formulas jointly renames them apart
-  itself.
-- **Sibling binders.** The same variable may be bound by sibling binders.
-- **Names.** A name says nothing about identity.
+### Parsing
+
+- **Depth.** The frontend keeps a depth `D`: the number of variables bound by
+  binders under construction, counting each variable in a list.
+- **Binding.** A binder declaring `x1…xn` gives them levels `D … D+n−1`, then
+  raises `D` by `n` for the body. Resolving a bound name at depth `D'` yields
+  `BoundVariable(D' − level − 1, sort)`. Lexical lookup finds the innermost
+  binding, so duplicate names in one list resolve to the last one, as 3.6.1
+  requires.
+- **Depth-stamped scopes.** Every `let` value and every `define-fun` argument
+  records the depth at which it was built. A lookup at depth `D'` returns
+  `shift(value, D' − built_depth)`.
+  - This is the identity for closed values, and so for all compiled nullary
+    definitions.
+  - The same rule covers `let` and definition arguments. A definition body is
+    built at the call site, so its binders continue from the caller's depth.
+  - On `UF` it creates new nodes for the 5,991 shifted `let` uses and no others.
+- **No placeholders.** Building bodies over free placeholder names and closing
+  them afterwards (option D's discipline) would intern every open body twice.
+  The discarded copies would stay in the term store and shift TermIds, which
+  `docs/termid-order-sensitivity.md` tracks as a source of behaviour changes.
 
 ### Worked example
 
-Take `Q = ∀x. ∃y. ∀z. F` and instantiate `x := t`, where `t` is ground and
-binder-free.
+Take `Q = ∀x. ∃y. ∀z. F`. Inside `F`, `z` is `%0`, `y` is `%1`, and `x` is `%2`.
 
-- **The instance** is `I = ∃y. ∀z. F[x:=t]`, keeping the same `y` and `z`. There
-  is no renaming: `I` satisfies W by consequence 3 and is closed. Patterns on
-  `∀z` that mention `x` get `t` as well.
-- **The lemma `Q ⇒ I`** satisfies W: `Q` and `I` are siblings under `⇒`, not
-  nested. Instantiating again with the same `t` yields the same term.
-- **Skolemizing `∃y` in `I`**, which is positive and outermost, gives
-  `∀z. F[t][y:=c]` for a fresh constant `c`. W and C hold.
-- **Skolemizing before instantiating** gives `∀x. ∀z. F[y:=f(x)]`, capture-free
-  by consequence 2. The rebuilt `∀x` node satisfies W because its body still has
-  no binder of `x`.
+- **Instantiating `x := t`**, with `t` ground: `instantiate(Q, t)` replaces `%2`
+  inside `F` by `t`, since shifting a ground term does nothing, and no index
+  exceeds it. The instance `I = ∃. ∀. F[t]` keeps `y` as `%1` and `z` as `%0`.
+  Nothing is renamed. The same `t` gives the same `I`, and so does any
+  alpha-equivalent `Q`.
+- **Skolemizing `∃y` in `I`**, which is positive and outermost, is
+  `instantiate` of that binder with a fresh constant `c`: `∀. F[t][c]`.
+- **Skolemizing before instantiating**: the `∃` node sits under `∀x`, where `x`
+  is `%0`. Its Skolem term is `f(%0)`, and `instantiate(∃…, f(%0))` rewrites
+  inside `F`:
+  - `%1` (y) becomes `shift(f(%0), 1) = f(%1)`;
+  - `%2` (x) drops to `%1`.
 
-### When renaming happens
-
-Constructors never rename. A caller about to build a node that would violate W
-picks a fresh variable for its own binder. Renaming `x` to `x'` in the body `A`
-of an existing `∀x. A` is plain replacement, because W already rules out a binder
-of `x` inside `A`.
-
-- **Prenexing** `(∀x. A) ∧ (∀x. B)` into one prefix would put a binder of `x`
-  under another, so one side is renamed first.
-- **Parsing** chooses variables so that the precondition holds without retrying:
-  - **State.** The frontend keeps a pool of variables per (name, sort), and a
-    stack of the variables bound by binders under construction, across
-    `define-fun` expansion. It also keeps `S`, the union of `BV` over every value
-    that can be spliced in by name at this point: `let` values in scope, argument
-    values of definitions being expanded, and compiled nullary definitions.
-  - **Choice.** At a binder, each declared variable takes the first variable in
-    its pool that is in neither the stack nor `S`. The lexical scope then maps
-    the name to it.
-  - **Why the chosen `v` is not in `BV(body)`.** Every binder in the body is
-    either built inside the body, so its variable avoids the stack (which holds
-    `v`), or comes from a spliced value, whose binders are in `S`. Constructors
-    return only their arguments or new nodes, so nothing else brings binders in.
-  - **Why this also prevents capture.** Assertions are closed, so the free
-    variables of spliced values are bound by open binders, which are on the
-    stack. For example, `(define-fun g ((y U)) Bool (forall ((x U)) (p x y)))`
-    used as `(forall ((x U)) (g x))` gives the body's binder a second variable
-    named `x`.
-  - **A closed quantifier spliced in by `let`.** In
-    `(let ((T (forall ((x U)) (P x)))) (forall ((x U)) (and (Q x) T)))`, `T`'s
-    variable is in `S`, so the outer binder gets another variable and `T` stays
-    shared.
-  - **Duplicate names in one list** (3.6.1). The later occurrence avoids the
-    earlier one on the stack, matching the nested reading.
-  - **Rejected alternative: rebuild on conflict.** Nested conflicts multiply, so
-    a body at nesting depth `d` can be rebuilt `2^d` times. Discarded attempts
-    also stay interned and shift TermIds, which
-    `docs/termid-order-sensitivity.md` tracks as a source of behaviour changes.
-  - **Cost.** `S` is conservative: a variable changes even when the spliced
-    value is not used in this body, and sharing is lost in that case.
-  - **Result.** Textually repeated quantifiers, and repeated expansions of a
-    quantified definition in the same context, intern to the same term.
-  - **Evidence from `UF`, and its gaps.** There is no lexical shadowing, and no
-    open argument reaches a quantified definition. Not measured, because the
-    scan tracks neither: closed quantifiers spliced in by `let` or nullary
-    definitions under a binder with the same name and sort, and quantified
-    definition bodies (54 in 36 `20190906-CLEARSY` files) expanded under such a
-    binder.
+  The result is `∀x. ∀z. F[y:=f(x)]`, with `x` as `%1` and `z` as `%0`.
+- **Prenexing** `(∀. A) ∧ B` into `∀. (A ∧ shift(B, 1))` is the identity on
+  `B` when `B` is closed.
 
 ### Gate
 
-Any assertion whose contains-a-quantifier flag is set returns `unsupported`
-before preprocessing. The flag is cached, so quantifiers reached through `let`,
+Any assertion whose contains-a-quantifier bit is set returns `unsupported`
+before preprocessing. The bit is cached, so quantifiers reached through `let`,
 definitions, Boolean-argument side assertions, or `ite` are caught without a
 syntactic search.
 
-### Why not D
+### Why indices after all
 
-Its extra gains are small or can be had without indices:
+The comparison with the alternative below turns on where correctness lives, not
+on memory, where they differ by 1.2%:
 
-- **Instances are ground** and identical under every representation.
-- **Alpha-equivalence merges 0.3%** of `UF` quantifiers beyond named variables.
-- **Capture safety** comes from W and the allocation rule instead.
+- **With indices, no term can have a variable bound by the wrong binder,**
+  except through a bug in `shift`, `instantiate`, `abstract`, or the one scope
+  lookup in the parser. That is a small, reviewable, property-testable surface.
+- **With variables with identity**, invariant W is checked at construction, so
+  rebinding errors are loud. But a pass that moves an open subterm under another
+  binder of the *same* variable produces a silently wrong formula. Reusing
+  variables across quantifiers makes such coincidences common. Every pass that
+  builds quantifiers or moves open subterms carries that obligation.
+- **The parser is simpler**: depth-stamped scopes, instead of variable pools, a
+  stack of open binders, and the spliceable set `S`.
+- **The cache is smaller**: one integer per term, instead of free- and
+  bound-variable sets.
+- **Alpha-equivalent quantifiers merge**, 0.3% more than named variables on
+  `UF`.
 
-What D would cost is index arithmetic, or open-and-close with rehashing, in every
-non-ground rewrite. Variables that are ordinary terms also suit E-matching's
-variable-to-register mapping, substitution maps, and printing.
+What indices cost is shifting (74,123 extra nodes on `UF`), the index arithmetic
+inside the core operations, and names only for display.
 
 ### Why not C
 
-C is this same representation with an "always fresh" allocation policy, which is
-veriT's choice. On `UF` it doubles the DAG and splits the 8.7% of repeated
-quantifiers into separate atoms. Because the representation is shared, switching
-policy is a frontend change, and it can be measured if a technique later wants
-variables renamed apart everywhere.
+Fresh variables per binder, veriT's allocation, double the `UF` DAG. They also
+give 9.8% more distinct quantifier terms than indices (2,492,357 against
+2,268,902), each a separate abstraction atom.
+
+### Alternative considered: variables with identity (superseded)
+
+This was the proposal before the switch to indices. It is kept because the
+discussion that led to indices went through it, and because its invariant
+statement is the reference for what indices make unnecessary.
+
+**Representation.** A bound variable is a term of a new `Variable` kind whose
+`symbol` is a `SymbolId` of a new variable symbol kind. The `Symbol` record
+carries the display name and the sort, and is kept out of name lookup. Identity
+is the `SymbolId`. Per-term caches hold `FV(t)`, `BV(t)`, and a
+contains-a-quantifier flag.
+
+**Invariants.**
+
+- **W (no rebinding).** Every quantifier node `Q(v1, …, vn). b` has pairwise
+  distinct `v1, …, vn`, and `{v1, …, vn} ∩ BV(b) = ∅`. It is a precondition of
+  the quantifier constructors, checked against the cached `BV(b)`. It is local,
+  so hash-consed sharing cannot break it. It is equivalent to: no root-to-leaf
+  path passes through two binders of the same variable.
+- **C.** Every assertion and every lemma is closed.
+- **Consequences**, for a node `Q(v̄). b`:
+  1. Substituting for `vi` in `b` is plain replacement, skipping subterms where
+     `vi ∉ FV`.
+  2. Substituting `s` cannot capture when every variable in `FV(s)` is bound by
+     a binder enclosing the node. A capture would need a binder of some
+     `w ∈ FV(s)` inside `b`, which W at `w`'s binder rules out.
+  3. The result satisfies W when `s` has no binders.
+- **Deliberately not invariants**: distinct closed formulas may share variables
+  (every instance shares its inner binders' variables with the quantifier); the
+  same variable may be bound by sibling binders; names say nothing about
+  identity.
+
+**Worked example.** Instantiating `Q = ∀x. ∃y. ∀z. F` with ground `t` gives
+`∃y. ∀z. F[x:=t]` with the same `y` and `z`. The lemma `Q ⇒ I` satisfies W,
+since `Q` and `I` are siblings, not nested. Skolemizing before instantiating
+gives `∀x. ∀z. F[y:=f(x)]`, capture-free by consequence 2.
+
+**Renaming.** Constructors never rename. A caller about to violate W picks a
+fresh variable for its own binder, for example when prenexing
+`(∀x. A) ∧ (∀x. B)`. The parser avoids retries:
+
+- **State.** A pool of variables per (name, sort), a stack of variables bound by
+  binders under construction, and `S`, the union of `BV` over every value
+  spliceable by name: `let` values in scope, argument values of definitions
+  being expanded, and compiled nullary definitions.
+- **Choice.** Each declared variable takes the first pool variable in neither
+  the stack nor `S`. Every binder in the body is then built inside it (and avoids
+  the stack) or spliced in (and is in `S`), so the chosen variable is not in
+  `BV(body)`. Capture through definition arguments is prevented because their
+  free variables are on the stack.
+- **Rejected sub-alternative: rebuild on conflict.** It can take `2^d` rebuilds
+  at nesting depth `d`, and it interns discarded attempts.
+- **Evidence from `UF`, and its gaps.** There is no lexical shadowing and no
+  open argument into a quantified definition. Not measured: closed quantifiers
+  spliced in under a binder with the same name and sort, and quantified
+  definition bodies expanded under such a binder.
+
+**Why it was proposed.** Instances are ground, so indices buy nothing for them;
+alpha-equivalence merges only 0.3% on `UF`; variables are ordinary terms. **Why
+it was superseded**: see "Why indices after all" above.
 
 ## Risks
 
@@ -452,9 +510,9 @@ the gate.
 1. **Passes that do not know about binders.**
    - **Kind-agnostic traversals** descend into quantifier bodies.
      `summarize_formula_features` (`formula_analysis.cpp`) summarizes every child
-     this way, so an open `P(y)` would count as an EUF predicate. Any pass that
+     this way, so an open `P(%0)` would count as an EUF predicate. Any pass that
      registers atoms by walking children would likewise hand open atoms, and
-     variables that look like constants, to theory solvers.
+     bound variables, to theory solvers.
    - **Exhaustive switches without `default:`.** The clausifier's assertion and
      encoding switches list every kind explicitly. A new kind matches no case:
      at the assertion root it would add no clause, silently dropping the
@@ -464,74 +522,93 @@ the gate.
      assertion. The frontend does this for every non-constant Boolean argument
      of an application (`bind_bool_argument_if_needed`), and preprocessing
      receives a fresh-constant factory through `TacticContext`. Applied to an
-     open subterm, the defining assertion has free variables, breaking C. The
+     open subterm, the defining assertion is not closed, breaking C. The
      constant also cannot depend on the bound variable, so the formula's meaning
      changes. Step 1 must make the frontend skip naming for open subterms;
      instances are ground and can be named after instantiation.
    - **Generic rebuilders.** `rebuild_lowered_node` (`preprocessing.cpp`)
      rebuilds a node from rewritten children for the simplification and lowering
-     passes. A quantifier reaching such a helper must be rebuilt through the
-     checked constructors, and the rewrites applied to its body must preserve W.
-
-   *Mitigation:* the gate makes all of this unreachable in step 1. Lifting the
-   gate requires an audit of every pass, a distinct `Variable` kind so that no
-   `Constant` case matches a variable, and assertions in the theory solvers that
-   no variable reaches them.
-2. **Context-dependent facts on shared open subterms.** Reusing variables shares
-   open subterms such as `(member ?x ?s1)` across quantifiers. A memo keyed only
-   by `TermId` is wrong for such a subterm if the fact depends on its context:
-   polarity, relevance, a candidate value for a variable, or a simplification
-   under assumptions.
-
-   *Mitigation:* such memos key on the context too, or apply only to ground
-   terms. The clausifier's polarity memo, keyed by term and polarity, has the
-   right shape.
-3. **Constructing quantifiers around the check.** W holds only if every
-   quantifier node goes through the checked constructors.
-
-   *Mitigation:* offer no other way to intern `Forall` or `Exists`, and run a
-   whole-store invariant checker (explicit stack) in tests and fuzzing.
-4. **An incomplete gate.** A syntactic search would miss quantifiers reached
-   through definitions or side assertions.
-
-   *Mitigation:* the cached flag, as above.
-5. **Silent unsoundness that tests miss.** A capture or a leaked context yields a
-   different formula, not a crash. `sat` answers on quantified input cannot be
-   validated by evaluating a finite model, the way the existing quantifier-free
-   model gates do, and `unsat` answers need proofs.
+     passes. A rewrite applied under a binder must not move open subterms across
+     binders except through the core operations.
 
    *Mitigation:*
-   - unit tests per shape: shadowing, duplicate names, a spliced closed
-     quantifier, definition arguments, prenex renaming, nested instantiation;
-   - the invariant checker;
+   - the gate makes all of this unreachable in step 1;
+   - lifting the gate requires an audit of every pass, and assertions in the
+     theory solvers that no bound variable reaches them.
+
+   One point in favour of indices: a pass that treats a bound variable as a
+   constant conflates every quantifier's `%0`, so it fails on nearly any
+   quantified test rather than only where names coincide.
+2. **Context-dependent facts on shared open subterms.** Indices share more open
+   subterms than named variables do (Maziarz et al.'s false positives): `%0` is
+   the same term in every quantifier. A memo keyed only by `TermId` is wrong for
+   an open subterm if the fact depends on its context: polarity, relevance, a
+   candidate value for a variable, or a simplification under assumptions.
+
+   *Mitigation:* such memos key on the context too, or apply only to closed
+   terms. The clausifier's polarity memo, keyed by term and polarity, has the
+   right shape.
+3. **Index arithmetic errors are silent.** A missed or doubled shift usually
+   yields an in-range index that points at another binder, not a malformed
+   term. Only out-of-range results break C and are caught.
+
+   *Mitigation:* confine arithmetic to the core operations and the parser's
+   scope lookup, and apply the tests above.
+4. **Moving open subterms around the core.** Code that rebuilds a quantifier
+   body by hand, placing an open subterm under a different number of binders
+   without `shift`, is the index analogue of capture.
+
+   *Mitigation:* a review rule that only the core operations move open subterms
+   across binders, plus the debug checker in tests and fuzzing.
+5. **An incomplete gate.** A syntactic search would miss quantifiers reached
+   through definitions or side assertions.
+
+   *Mitigation:* the cached bit, as above.
+6. **Silent unsoundness that tests miss.** A wrong binder yields a different
+   formula, not a crash. `sat` answers on quantified input cannot be validated by
+   evaluating a finite model, the way the existing quantifier-free model gates
+   do, and `unsat` answers need proofs.
+
+   *Mitigation:*
+   - unit tests per shape: shadowing, duplicate names, `let` values used deeper,
+     definition arguments, Skolemization under a binder, prenexing, nested
+     instantiation;
+   - the property and differential tests of the core;
    - differential runs against reference solvers used as black boxes.
-6. **Cost on quantifier-free input.** `FV`/`BV` caches on every term would tax
-   large inputs that have no quantifiers.
+7. **Shifting cost on adversarial input.** A `let` value used at many different
+   depths gets a shifted copy for each distinct depth difference. Deep nesting
+   from fuzzers can make that large. `UF` needs 5,991 shifts.
 
-   *Mitigation:* store interned sets, one id per term, and take a fast path when
-   no quantifier has been interned, as `extended_term_count()` does for extended
-   terms.
-7. **Ambiguous printing.** Two distinct variables with the same display name in
-   one printed term are ambiguous to anyone reading dumped terms, instances, or
-   proofs.
+   *Mitigation:* memoize shifts by (term, amount) across lookups, with a bound.
+8. **Cost on quantifier-free input.** One integer and one bit per term.
 
-   *Mitigation:* add a disambiguating suffix on collision.
+   *Mitigation:* a fast path when no quantifier has been interned, as
+   `extended_term_count()` does for extended terms.
+9. **Printing open terms** needs names. The side table holds first-seen names
+   per quantifier.
+
+   *Mitigation:* the printer invents distinct display names when nested binders
+   share a name.
 
 ### Open questions
 
-1. Node layout for quantifiers:
-   - how the variables are held: a variable-list child, or a count;
-   - whether patterns are children inside the hash key (two formulas that differ
-     only in patterns become different terms) or a side table keyed by the
-     quantifier.
-2. Whether variable symbols live in `core::SymbolTable` under a new symbol kind
-   kept out of `symbol_by_name_`, or in a separate table.
-3. The form of the `FV`/`BV` caches: interned sets, bitsets, or bounds.
-4. How naming passes treat open subterms. The proposal is to skip them under
+1. **Where the index and the binder sorts live.** `Term` has no free field, and
+   `Key` has no sort list.
+   - The index could go in `rational_value`, as `Times`, `IntDiv` and `IntMod`
+     already store their literal there, or in a new field.
+   - A quantifier's variable sorts could be child terms, a new field, or a side
+     table.
+2. **Patterns.** Children inside the hash key (two formulas that differ only in
+   patterns become different terms), or a side table keyed by the quantifier.
+3. **Names for merged formulas.** Alpha-equivalent formulas merge, so the side
+   table keeps one set of names. Is first-seen enough for diagnostics?
+4. **Shift memo scope:** per lookup, per assertion, or global with a bound.
+5. **Naming passes on open subterms.** The proposal is to skip them under
    binders and name instances; the alternative is naming with Skolem functions
    of the enclosing variables.
-5. Sequencing: quantifier parsing lands after `feature/incremental-smt-sessions`
-   is merged into `main`, on top of its frontend.
+6. **Sequencing.** Quantifier parsing lands after
+   `feature/incremental-smt-sessions` is merged into `main`, on top of its
+   frontend.
 
 ## References
 
@@ -543,8 +620,8 @@ DOIs checked to resolve at doi.org on 2026-09-11.
   sections 3.1, 3.6, 5.2.
 - A. Charguéraud. The Locally Nameless Representation. *Journal of Automated
   Reasoning*, online 2011. doi:[10.1007/s10817-011-9225-2](https://doi.org/10.1007/s10817-011-9225-2).
-  Read: sections 1–2.4, in the author's manuscript
-  <https://www.chargueraud.org/research/2009/ln/main.pdf>.
+  Read: sections 1–2.4 and 3.3 (locally closed terms),
+  in the author's manuscript <https://www.chargueraud.org/research/2009/ln/main.pdf>.
 - C. McBride, J. McKinna. Functional pearl: I am not a number—I am a free
   variable. *Haskell Workshop 2004*.
   doi:[10.1145/1017472.1017477](https://doi.org/10.1145/1017472.1017477). Read:
