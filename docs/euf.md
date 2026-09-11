@@ -7,6 +7,13 @@ with `--euf-engine=lazy` for diagnostics.
 
 ## Current Solver Path
 
+The default incremental SMT session rebuilds this one-shot path. Opt-in
+`--incremental-mode=assumptions` uses `IncrementalUfEngine`, retaining the SAT
+encoding and definition-only `PreparedFlatTheory` while constructing a fresh
+`OnlineEufPropagator` and working closure for each query. Pure-theory filtering
+is disabled in that mode. Scope, option and model invariants and current
+qualification are specified in [](assumption-incremental-uf).
+
 SMT-LIB assertions are parsed into hash-consed terms. Boolean structure is
 clausified into SAT clauses. Equality atoms and Boolean predicate applications
 are tracked as theory atoms.
@@ -585,6 +592,13 @@ applications. After congruence completion it replays eliminated definitions
 backwards against fixed function tables and freezes an owning `core::Model`.
 The session checks and serializes that model; the printer cannot complete or
 replace a row. See [](model-interpretation.md) for the shared cross-logic design.
+
+The model closure checks only the newly appended disequality on insertion;
+endpoint registration may merge classes, and every such merge checks all
+stored pairs before the new pair is appended. The `:model.congruence.disequality-checks` counter exposes
+that work, including the remaining merge scans. See the original invariant and
+linear insertion regression in [](assumption-incremental-uf). No ownership,
+rollback or explanation representation changes.
 
 Boolean completion is part of that quotient construction. A Bool constant or
 Bool-valued application that disappeared from the final SAT problem may have no

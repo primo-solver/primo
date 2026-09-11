@@ -34,6 +34,8 @@ class ComponentModelBuilder {
  public:
   explicit ComponentModelBuilder(core::TermManager& terms) : terms_(terms), closure_(terms) {}
 
+  std::uint64_t disequality_checks() const { return closure_.stats().disequality_checks; }
+
   std::shared_ptr<const core::Model> build(
       std::span<const core::TermId> assertions, std::span<const TheoryModelAssignment> assignments,
       const std::unordered_map<core::TermId, util::Rational>& numeric_values,
@@ -345,10 +347,11 @@ std::shared_ptr<const core::Model> build_typed_model(
     const ModelConversionChain& conversions, std::size_t* completed_integers,
     util::Statistics* statistics, std::optional<std::vector<core::SymbolId>> visible_symbols) {
   const auto start = std::chrono::steady_clock::now();
-  auto model =
-      ComponentModelBuilder(terms).build(assertions, assignments, numeric_values, conversions,
-                                         completed_integers, std::move(visible_symbols));
+  ComponentModelBuilder builder(terms);
+  auto model = builder.build(assertions, assignments, numeric_values, conversions,
+                             completed_integers, std::move(visible_symbols));
   if (statistics != nullptr) {
+    statistics->increment(":model.congruence.disequality-checks", builder.disequality_checks());
     statistics->increment(
         ":time.model.reconstruction-us",
         static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(

@@ -535,3 +535,8 @@ The assumptions session executes these leaves individually. General composition
 and whole-goal tactics remain unclassified; existing rebuild execution is
 unrestricted. Equation elimination and substitution replay/restoration are
 explicitly deferred, as described in [](assumption-incremental-lra).
+
+QF_UF assumptions uses the same Boolean and extended-term leaves, omitting
+arithmetic normalization. It does not run finite-domain symmetry constraints or
+polarity-based theory filtering: a later assertion can change atom polarity.
+See [](assumption-incremental-uf).

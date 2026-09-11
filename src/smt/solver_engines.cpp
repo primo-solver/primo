@@ -1321,13 +1321,34 @@ class IncrementalFlatAssignmentState {
                                  PureTheoryFilterMode pure_theory_filter,
                                  EufExplainSearchMode explain_search_mode,
                                  bool proof_forest_diagnostics, util::Statistics& statistics,
-                                 bool flush_live_stats)
+                                 bool flush_live_stats,
+                                 const PreparedFlatTheory* prepared = nullptr)
       : terms_(terms),
         pure_theory_filter_(pure_theory_filter),
-        flat_(terms),
-        closure_(0, flat_explanation_search_mode(explain_search_mode), proof_forest_diagnostics),
+        flat_(prepared ? prepared->flat : theory::equality::FlatTermIndex(terms)),
+        closure_(prepared ? prepared->base_closure
+                          : theory::equality::FlatCongruenceClosure(
+                                0, flat_explanation_search_mode(explain_search_mode),
+                                proof_forest_diagnostics)),
         statistics_(statistics),
         flush_live_stats_(flush_live_stats) {
+    // Original session design: docs/assumption-incremental-uf.md. Copy only
+    // structural definitions; no preceding query's assignments or reasons.
+    if (prepared != nullptr) {
+      true_flat_ = prepared->true_flat;
+      false_flat_ = prepared->false_flat;
+      flat_atoms_ = prepared->flat_atoms;
+      if (flat_atoms_.size() != theory_atoms.size())
+        throw std::logic_error("prepared EUF atom count mismatch");
+      for (std::size_t i = 0; i < flat_atoms_.size(); ++i) {
+        if (flat_atoms_[i].source.term != theory_atoms[i].term ||
+            flat_atoms_[i].source.lit != theory_atoms[i].lit.value)
+          throw std::logic_error("prepared EUF atom identity mismatch");
+        flat_atom_by_var_.emplace(std::abs(theory_atoms[i].lit.value), i);
+      }
+      publish_stats();
+      return;
+    }
     true_flat_ = flat_.flatten(true_term);
     false_flat_ = flat_.flatten(false_term);
     flat_atoms_.reserve(theory_atoms.size());
@@ -1621,7 +1642,7 @@ class OnlineEufPropagator final : public sat::ExternalPropagator {
                       const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
                       core::TermId true_term, core::TermId false_term,
                       const CheckSatOptions& options, bool adaptive_propagation,
-                      util::Statistics& statistics)
+                      util::Statistics& statistics, const PreparedFlatTheory* prepared = nullptr)
       : terms_(terms),
         theory_atoms_(theory_atoms),
         true_term_(true_term),
@@ -1657,7 +1678,7 @@ class OnlineEufPropagator final : public sat::ExternalPropagator {
       incremental_state_.emplace(terms_, theory_atoms_, true_term_, false_term_,
                                  options_.pure_theory_filter, options_.euf_explain_search,
                                  options_.euf_proof_forest_diagnostics, statistics_,
-                                 /*flush_live_stats=*/false);
+                                 /*flush_live_stats=*/false, prepared);
       build_candidate_index();
     }
   }
@@ -12235,6 +12256,182 @@ CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
 }  // namespace
 
 namespace {
+// Original activation/preparation contract: docs/assumption-incremental-uf.md.
+// Only definitions inhabit prepared_; query facts belong to the fresh callback.
+class IncrementalUfEngine final : public IncrementalEngine {
+ public:
+  IncrementalUfEngine(core::TermManager& terms, const CheckSatOptions& options)
+      : terms_(terms),
+        backend_(options.cadical_options, true),
+        clausifier_(backend_, terms, false),
+        true_term_(terms.mk_bool(true)),
+        false_term_(terms.mk_bool(false)),
+        prepared_(terms, {}, true_term_, false_term_, options.euf_explain_search,
+                  options.euf_proof_forest_diagnostics) {}
+
+  void push() override {
+    selectors_.push_back({0});
+    model_boundaries_.push_back(model_roots_.size());
+  }
+  void pop() override {
+    if (selectors_.empty()) throw std::invalid_argument("engine scope underflow");
+    const auto selector = selectors_.back();
+    selectors_.pop_back();
+    model_roots_.resize(model_boundaries_.back());
+    model_boundaries_.pop_back();
+    if (selector.value != 0) {
+      backend_.add_clause({sat::Lit{-selector.value}});
+      ++retired_;
+    }
+  }
+  void append(const std::vector<core::TermId>& assertions) override {
+    const auto start = std::chrono::steady_clock::now();
+    for (const auto root : assertions) {
+      model_roots_.push_back(root);
+      if (selectors_.empty()) {
+        clausifier_.assert_formula(root);
+      } else {
+        if (selectors_.back().value == 0) {
+          selectors_.back() = {backend_.new_var()};
+          backend_.protect_variable(selectors_.back().value);
+        }
+        clausifier_.assert_guarded_formula(root, selectors_.back());
+      }
+    }
+    append_us_ += elapsed(start);
+  }
+  CheckSatOutcome check(const std::vector<core::TermId>&, const CheckSatOptions& options) override {
+    const auto start = std::chrono::steady_clock::now();
+    util::Statistics statistics;
+    const auto prepare_start = std::chrono::steady_clock::now();
+    // Scan once per query, after all pending appends, before freezing the registry
+    // for the callback. Boolean argument meanings survive retirement of roots.
+    statistics.set(":session.euf-new-boolean-arguments",
+                   clausifier_.register_boolean_argument_terms());
+    statistics.set(":session.euf-new-prepared-atoms",
+                   prepared_.ensure_theory_atoms(terms_, clausifier_.theory_atoms()));
+    statistics.set(":time.session.prepare-us", elapsed(prepare_start));
+    for (const auto& atom : clausifier_.theory_atoms())
+      backend_.protect_variable(std::abs(atom.lit.value));
+    statistics.increment(kStatSolverQfUf);
+    statistics.set(kStatTheoryAtoms, prepared_.flat_atoms.size());
+    statistics.set(kStatPureTheoryFilterEnabled, 0);
+    CheckSatOptions resolved = options;
+    resolved.pure_theory_filter = PureTheoryFilterMode::Off;
+    resolved.euf_propagation =
+        resolve_euf_propagation_mode(options, clausifier_.theory_atoms().size(), statistics);
+    const auto phase =
+        resolve_theory_phase_mode(options.theory_phase, clausifier_.theory_atoms(), statistics);
+    for (const auto& atom : clausifier_.theory_atoms()) {
+      if (phase == TheoryPhaseMode::Negative ||
+          (phase == TheoryPhaseMode::Polarity && atom.occurs_negative && !atom.occurs_positive))
+        backend_.phase(sat::Lit{-atom.lit.value});
+      else if (phase == TheoryPhaseMode::Positive ||
+               (phase == TheoryPhaseMode::Polarity && atom.occurs_positive &&
+                !atom.occurs_negative))
+        backend_.phase(atom.lit);
+    }
+    SolveTerminator terminator(options.cancelled, statistics, options.max_theory_conflicts);
+    const ScopedTerminatorConnection termination(backend_, terminator);
+    const auto reset_start = std::chrono::steady_clock::now();
+    OnlineEufPropagator propagator(terms_, clausifier_.theory_atoms(), true_term_, false_term_,
+                                   resolved, options.euf_propagation == EufPropagationMode::Auto,
+                                   statistics, &prepared_);
+    std::vector<int> observed;
+    for (const auto& atom : clausifier_.theory_atoms())
+      observed.push_back(std::abs(atom.lit.value));
+    backend_.reconnect_external_propagator(propagator, observed);
+    struct Disconnect {
+      sat::IpasirUpBackend& backend;
+      ~Disconnect() { backend.disconnect_external_propagator(); }
+    } disconnect{backend_};
+    statistics.set(":time.session.theory-reset-us", elapsed(reset_start));
+    CheckSatOutcome outcome;
+    outcome.result = CheckSatResult::Unknown;
+    const auto solve_start = std::chrono::steady_clock::now();
+    while (!terminator.terminate()) {
+      for (const auto selector : selectors_)
+        if (selector.value != 0) backend_.assume(selector);
+      statistics.increment(kStatSatSolveCalls);
+      outcome.result = map_sat_result(backend_.solve());
+      propagator.flush_incremental_stats();
+      if (terminator.terminate() || outcome.result != CheckSatResult::Sat) break;
+      statistics.increment(kStatTheoryChecks);
+      const auto conflict = propagator.incremental_conflict();
+      if (!conflict) break;
+      statistics.increment(kStatTheoryConflicts);
+      backend_.add_clause(*conflict);
+    }
+    statistics.set(":time.solve-us", elapsed(solve_start));
+    if (terminator.cancelled_reached() || terminator.conflict_limit_reached()) {
+      outcome.result = CheckSatResult::Unknown;
+      outcome.reason = terminator.cancelled_reached() ? InconclusiveReason::Cancelled
+                                                      : InconclusiveReason::ResourceLimit;
+      outcome.message = terminator.cancelled_reached() ? "cancelled" : "theory conflict limit";
+    }
+    if (outcome.result == CheckSatResult::Sat && options.produce_model) {
+      const auto model_start = std::chrono::steady_clock::now();
+      std::vector<TheoryModelAssignment> assigned;
+      for (const auto& atom : clausifier_.theory_atoms()) {
+        const auto value = backend_.value(std::abs(atom.lit.value));
+        if (!value) throw std::logic_error("SAT backend did not assign observed EUF atom");
+        assigned.push_back({atom.term, atom.lit.value > 0 ? *value : !*value, false});
+      }
+      // Reconstruct the final lowered goal. Original applications over an ITE
+      // argument must be evaluated through that model, not completed as new UF
+      // classes. SmtSession checks the model against the original assertions.
+      outcome.typed_model = build_typed_model(terms_, model_roots_, assigned, {}, {}, nullptr,
+                                              &statistics, terms_.symbols().visible_symbols());
+      statistics.set(":time.model-us", elapsed(model_start));
+    }
+    statistics.set(":session.engine-queries", ++queries_);
+    statistics.set(":session.theory-state-resets", queries_);
+    statistics.set(":session.retired-selectors", retired_);
+    statistics.set(":session.active-selectors", static_cast<std::size_t>(std::count_if(
+                                                    selectors_.begin(), selectors_.end(),
+                                                    [](sat::Lit lit) { return lit.value != 0; })));
+    statistics.set(":session.retained-terms", terms_.size());
+    statistics.set(":session.active-model-roots", model_roots_.size());
+    statistics.set(":session.retained-atoms", prepared_.flat_atoms.size());
+    statistics.set(":session.prepared-atoms", prepared_.flat_atoms.size());
+    statistics.set(":session.euf-flat-terms", prepared_.flat.size());
+    statistics.set(":session.euf-flat-definitions", prepared_.installed_definition_count);
+    statistics.set(":session.pure-theory-filter", 0);
+    statistics.set(":session.sat-preprocessing", 0);
+    statistics.set(":session.sat-inprocessing", 0);
+    statistics.set(":time.session.append-us", append_us_);
+    append_us_ = 0;
+    const auto sat_stats = backend_.statistics();
+    publish_sat_stats(sat_stats, statistics);
+    statistics.set(":session.clauses-added", sat_stats.clauses);
+    statistics.set(":session.retained-active-clauses",
+                   sat_stats.active_irredundant_clauses + sat_stats.active_redundant_clauses);
+    statistics.set(":session.retained-redundant-clauses", sat_stats.active_redundant_clauses);
+    statistics.set(":time.total-us", elapsed(start));
+    outcome.statistics = std::move(statistics);
+    return outcome;
+  }
+
+ private:
+  static std::uint64_t elapsed(std::chrono::steady_clock::time_point start) {
+    return static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(
+                                          std::chrono::steady_clock::now() - start)
+                                          .count());
+  }
+  core::TermManager& terms_;
+  sat::CadicalBackend backend_;
+  BooleanClausifier clausifier_;
+  core::TermId true_term_;
+  core::TermId false_term_;
+  PreparedFlatTheory prepared_;
+  std::vector<sat::Lit> selectors_;
+  std::vector<core::TermId> model_roots_;
+  std::vector<std::size_t> model_boundaries_;
+  std::size_t retired_ = 0;
+  std::size_t queries_ = 0;
+  std::uint64_t append_us_ = 0;
+};
+
 // Activation-root encoding and fresh working theory state are specified in
 // docs/assumption-incremental-lra.md. The structural base never receives bounds.
 class IncrementalLraEngine final : public IncrementalEngine {
@@ -12370,6 +12567,11 @@ class IncrementalLraEngine final : public IncrementalEngine {
   std::uint64_t append_us_ = 0;
 };
 }  // namespace
+
+std::unique_ptr<IncrementalEngine> make_incremental_uf_engine(core::TermManager& terms,
+                                                              const CheckSatOptions& options) {
+  return std::make_unique<IncrementalUfEngine>(terms, options);
+}
 
 std::unique_ptr<IncrementalEngine> make_incremental_lra_engine(core::TermManager& terms,
                                                                const CheckSatOptions& options) {

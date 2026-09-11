@@ -1,0 +1,10 @@
+incremental/QF_UF/2018-Goel-hwbench/QF_UF_paper_v3_ab_reg_max.smt2
+incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_b02_ab_min_max.smt2
+incremental/QF_UF/2018-Goel-hwbench/QF_UF_h_Arbiter_ab_core_max.smt2
+incremental/QF_UF/2018-Goel-hwbench/QF_UF_synabs_ab_min_max.smt2
+incremental/QF_UF/2018-Goel-hwbench/QF_UF_usb_phy_ab_core_max.smt2
+incremental/QF_UF/20190906-CLEARSY/0023/00969.smt2
+incremental/QF_UF/20190906-CLEARSY/0023/00015.smt2
+incremental/QF_UF/20190906-CLEARSY/0013/00001.smt2
+incremental/QF_UF/20190906-CLEARSY/0009/00173.smt2
+incremental/QF_UF/20190906-CLEARSY/0015/00242.smt2

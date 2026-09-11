@@ -70,6 +70,13 @@ read-only after construction; neither evaluation nor serialization completes it.
 
 The model owns no AST, SAT objects, term references, or component caches. The
 signature snapshot allows printing after the original term manager is destroyed.
+Assumptions sessions pass explicit visible-symbol IDs to the model builder.
+For QF_UF, the builder sees the complete retained theory assignment and active
+lowered assertion roots, while completion and printing expose only the active
+signature. Original ITE arguments are evaluated through that final model, rather
+than completed as separate unlowered UF classes. The session checks the model
+against original assertions. Popped declarations can reuse names with fresh IDs; prior snapshots
+remain independent across pop and reset. See [](assumption-incremental-uf).
 An evaluator borrows a live const term manager while evaluating its IDs; IDs
 are meaningful only in that manager. An evaluator's memo belongs to one frozen
 model and cannot survive replacing it with a different interpretation.
@@ -251,3 +258,10 @@ For an explicit visible signature, `ComponentModelBuilder` completes visible
 symbols and symbols required by retained atom interpretations. It omits unused
 popped declarations. Dense construction slots preserve SymbolId indexing, and
 unpopulated slots are removed before constructing the immutable model.
+
+The shared builder reports `:model.congruence.disequality-checks`. Inserting a
+disequality checks only the new pair after endpoint registration finishes;
+any merges during registration still scan all older pairs. This avoids quadratic work
+for pure disequality batches while preserving conflict reasons and rollback.
+The proof checklist and native model replay evidence are in
+[](assumption-incremental-uf).

@@ -315,6 +315,10 @@ are rejected there, and the ordinary constructor retains its configuration.
 
 Backend tests exercise permanent assignment replay, assumptions disappearing,
 popped conflicts, new atoms, external unit reasons and cancellation recovery.
-The persistent QF_LRA engine disconnects before destroying each working
+The persistent QF_LRA and QF_UF engines disconnect before destroying each working
 propagator. Permanent clauses and valid learned clauses remain in the backend.
 See [](assumption-incremental-lra) for the scope proof and evaluation status.
+The QF_UF engine reobserves the complete retained atom registry after Boolean
+argument registration, including proxies first introduced after an earlier
+query. Its prepared base contains no query assignments; see
+[](assumption-incremental-uf).

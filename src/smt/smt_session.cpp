@@ -87,7 +87,8 @@ struct SmtSession::Implementation final : SessionExecutor {
     if (logic) frontend->process_command(*logic, assertions);
     for (const auto& entry : journal) frontend->process_command(entry.command, assertions);
     if (assumptions()) {
-      engine = make_incremental_lra_engine(frontend->terms(), options);
+      engine = logic->logic == "QF_UF" ? make_incremental_uf_engine(frontend->terms(), options)
+                                       : make_incremental_lra_engine(frontend->terms(), options);
       ++engine_builds;
     }
     ++rebuilds;
@@ -96,7 +97,21 @@ struct SmtSession::Implementation final : SessionExecutor {
 
   bool assumptions() const { return options.incremental_mode == IncrementalMode::Assumptions; }
 
-  void validate_incremental_options() const {
+  void validate_incremental_options(std::string_view selected_logic) const {
+    if (selected_logic == "QF_UF") {
+      if (options.euf_engine != EufEngine::Incremental ||
+          options.euf_boolean_domain != EufBooleanDomain::Registration ||
+          (options.euf_propagation != EufPropagationMode::Auto &&
+           options.euf_propagation != EufPropagationMode::Online &&
+           options.euf_propagation != EufPropagationMode::Conflict) ||
+          options.euf_dynamic_ackermann_shadow || options.euf_diseq_ackermann)
+        throw std::invalid_argument(
+            "QF_UF assumptions requires incremental EUF, Boolean registration, "
+            "auto/online/conflict propagation and no experimental Ackermann modes");
+      if (options.pure_theory_filter == PureTheoryFilterMode::On)
+        throw std::invalid_argument(
+            "QF_UF assumptions requires pure-theory-filter=auto or off; auto resolves to off");
+    }
     if (options.preprocessing_mode != PreprocessingMode::Auto &&
         options.preprocessing_mode != PreprocessingMode::Off)
       throw std::invalid_argument("assumptions mode requires preprocessing-mode=auto or off");
@@ -128,8 +143,9 @@ struct SmtSession::Implementation final : SessionExecutor {
       goal = make_normalize_boolean({})(context, goal);
     }
     goal = make_lower_extended_terms()(context, goal);
-    goal = make_normalize_arithmetic({.canonicalize = options.arithmetic_atom_canonicalization,
-                                      .lower_real_equalities = true})(context, goal);
+    if (logic->logic == "QF_LRA")
+      goal = make_normalize_arithmetic({.canonicalize = options.arithmetic_atom_canonicalization,
+                                        .lower_real_equalities = true})(context, goal);
     if (goal.size() != 1) throw TacticError("incremental pipeline must preserve one conjunction");
     preprocessing_us += micros(start);
     engine->append(goal.alternatives().front().assertions());
@@ -139,7 +155,9 @@ struct SmtSession::Implementation final : SessionExecutor {
     ensure_frontend();
     const auto check_start = Clock::now();
     selected.produce_model = selected.produce_model || selected.check_model;
-    auto outcome = engine->check(frontend->declared_real_constant_terms(), selected);
+    auto outcome = logic->logic == "QF_UF"
+                       ? engine->check(assertions, selected)
+                       : engine->check(frontend->declared_real_constant_terms(), selected);
     if (outcome.typed_model) {
       const auto start = Clock::now();
       if (selected.check_model) {
@@ -159,7 +177,8 @@ struct SmtSession::Implementation final : SessionExecutor {
     outcome.statistics.set(":session.safe-rewrite-pipeline",
                            options.preprocessing_mode == PreprocessingMode::Auto ? 1 : 0);
     outcome.statistics.set(":session.pipeline.lower-extended-terms", 1);
-    outcome.statistics.set(":session.pipeline.lower-real-equalities", 1);
+    outcome.statistics.set(":session.pipeline.lower-real-equalities",
+                           logic->logic == "QF_LRA" ? 1 : 0);
     for (const auto& key : preprocessing_statistics.keys())
       outcome.statistics.set(key, preprocessing_statistics.get(key));
     preprocessing_statistics = {};
@@ -250,9 +269,10 @@ struct SmtSession::Implementation final : SessionExecutor {
         return response(ResponseKind::Unsupported, "unsupported logic: " + command.logic);
       }
       if (assumptions()) {
-        validate_incremental_options();
-        if (command.logic != "QF_LRA")
-          return response(ResponseKind::Unsupported, "assumptions mode supports only QF_LRA");
+        validate_incremental_options(command.logic);
+        if (command.logic != "QF_LRA" && command.logic != "QF_UF")
+          return response(ResponseKind::Unsupported,
+                          "assumptions mode supports only QF_LRA and QF_UF");
       }
       discard_translation();
       logic = std::move(command);
@@ -328,7 +348,7 @@ struct SmtSession::Implementation final : SessionExecutor {
     ensure_frontend();
     const auto start = Clock::now();
     validate_parameterized_definition(command);
-    if (assumptions() && command.kind == Kind::DeclareSort)
+    if (assumptions() && logic->logic != "QF_UF" && command.kind == Kind::DeclareSort)
       throw std::invalid_argument("assumptions mode rejects uninterpreted sorts");
     const auto first = assertions.size();
     frontend->process_command(command, assertions);

@@ -4,6 +4,7 @@
 
 #include <cassert>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <utility>
 
@@ -19,13 +20,173 @@ using primo::smt::SmtSession;
 namespace {
 void accept(SmtSession& session, const std::string& text) {
   const auto response = session.execute(text);
-  assert(response.kind == ResponseKind::Success);
+  if (response.kind != ResponseKind::Success)
+    throw std::runtime_error("command failed: " + text + ": " + response.message);
 }
 
 void expect(SmtSession& session, CheckSatResult result) {
   const auto response = session.execute("(check-sat)");
   assert(response.kind == ResponseKind::CheckSat);
   assert(response.outcome->result == result);
+}
+
+void uf_assumption_scopes_and_preparation() {
+  for (const auto preprocessing :
+       {primo::smt::PreprocessingMode::Off, primo::smt::PreprocessingMode::Auto}) {
+    for (const auto propagation :
+         {primo::smt::EufPropagationMode::Online, primo::smt::EufPropagationMode::Conflict}) {
+      primo::smt::CheckSatOptions options;
+      options.incremental_mode = primo::smt::IncrementalMode::Assumptions;
+      options.preprocessing_mode = preprocessing;
+      options.euf_propagation = propagation;
+      options.produce_model = true;
+      options.check_model = true;
+      SmtSession session(options);
+      accept(session, "(set-option :produce-models true)");
+      accept(session, "(set-logic QF_UF)");
+      accept(session, "(declare-sort U 0)");
+      accept(session, "(declare-const a U)");
+      accept(session, "(declare-const b U)");
+      accept(session, "(declare-const p Bool)");
+      accept(session, "(declare-fun f (U U) U)");
+      accept(session, "(declare-fun g (Bool) U)");
+      accept(session, "(define-fun d () U (ite p (g (not p)) a))");
+      accept(session, "(assert (= a b))");
+      expect(session, CheckSatResult::Sat);
+      const auto saved = session.execute("(get-model)").outcome;
+      accept(session, "(push 2)");
+      accept(session, "(assert (distinct (f a (f a b)) (f b (f b a))))");
+      expect(session, CheckSatResult::Unsat);
+      accept(session, "(pop 1)");
+      expect(session, CheckSatResult::Sat);
+      accept(session, "(declare-sort Local 0)");
+      accept(session, "(declare-const local Local)");
+      accept(session, "(assert p)");
+      accept(session, "(assert (= d (g false)))");
+      expect(session, CheckSatResult::Sat);
+      const auto scoped = session.execute("(get-model)").outcome;
+      accept(session, "(assert (distinct (g p) (g true)))");
+      expect(session, CheckSatResult::Unsat);
+      accept(session, "(pop 1)");
+      accept(session, "(declare-sort Local 0)");
+      accept(session, "(declare-const local Bool)");
+      accept(session, "(assert local)");
+      accept(session, "(push 1)");
+      accept(session, "(assert (not p))");
+      accept(session, "(assert (= d a))");
+      expect(session, CheckSatResult::Sat);
+      accept(session, "(pop 1)");
+      accept(session, "(assert p)");
+      accept(session, "(assert (distinct d (g false)))");
+      expect(session, CheckSatResult::Unsat);
+      const auto repeated = session.execute("(check-sat)").outcome;
+      assert(repeated->statistics.get(":session.engine-builds") == 1);
+      assert(repeated->statistics.get(":session.frontend-builds") == 1);
+      assert(repeated->statistics.get(":session.euf-new-prepared-atoms") == 0);
+      assert(repeated->statistics.get(":session.retired-selectors") == 3);
+      accept(session, "(reset)");
+      assert(saved->model.find("local") == std::string::npos);
+      assert(scoped->model.find("local () Local") != std::string::npos);
+    }
+  }
+}
+
+void uf_assumption_growth_cancellation_and_options() {
+  primo::smt::CheckSatOptions options;
+  options.incremental_mode = primo::smt::IncrementalMode::Assumptions;
+  options.produce_model = true;
+  options.check_model = true;
+  bool cancelled = true;
+  options.cancelled = [&cancelled] { return cancelled; };
+  SmtSession session(options);
+  accept(session, "(set-logic QF_UF)");
+  accept(session, "(declare-const p Bool)");
+  expect(session, CheckSatResult::Unknown);
+  cancelled = false;
+  expect(session, CheckSatResult::Sat);
+  for (int i = 0; i < 64; ++i) {
+    accept(session, "(push 1)");
+    accept(session, "(declare-sort U 0)");
+    accept(session, "(declare-fun f (Bool) U)");
+    accept(session, "(define-fun d () U (f (not p)))");
+    accept(session, "(assert (distinct (f p) d))");
+    expect(session, CheckSatResult::Sat);
+    accept(session, "(assert (= (f true) (f false)))");
+    expect(session, CheckSatResult::Unsat);
+    accept(session, "(pop 1)");
+  }
+  const auto final = session.execute("(check-sat)").outcome;
+  assert(final->result == CheckSatResult::Sat);
+  assert(final->typed_model->visible_symbols().size() == 1);
+  assert(final->statistics.get(":session.retired-selectors") == 64);
+  accept(session, "(reset-assertions)");
+  accept(session, "(declare-const p Bool)");
+  expect(session, CheckSatResult::Sat);
+  assert(session.execute("(pop 1)").kind == ResponseKind::Error);
+  options.max_theory_conflicts = 1;
+  options.euf_propagation = primo::smt::EufPropagationMode::Conflict;
+  SmtSession bounded(options);
+  accept(bounded, "(set-logic QF_UF)");
+  accept(bounded, "(declare-sort U 0)");
+  accept(bounded, "(declare-const a U)");
+  accept(bounded, "(declare-const b U)");
+  accept(bounded, "(declare-fun f (U) U)");
+  accept(bounded, "(assert (= a b))");
+  accept(bounded, "(push 1)");
+  accept(bounded, "(assert (distinct (f a) (f b)))");
+  expect(bounded, CheckSatResult::Unknown);
+  accept(bounded, "(pop 1)");
+  expect(bounded, CheckSatResult::Sat);
+  for (int invalid = 0; invalid < 4; ++invalid) {
+    auto rejected_options = options;
+    if (invalid == 0) rejected_options.pure_theory_filter = primo::smt::PureTheoryFilterMode::On;
+    if (invalid == 1) rejected_options.euf_engine = primo::smt::EufEngine::Lazy;
+    if (invalid == 2)
+      rejected_options.euf_boolean_domain = primo::smt::EufBooleanDomain::BridgeAtoms;
+    if (invalid == 3) rejected_options.euf_propagation = primo::smt::EufPropagationMode::Model;
+    SmtSession rejected(rejected_options);
+    assert(rejected.execute("(set-logic QF_UF)").kind == ResponseKind::Error);
+  }
+}
+
+void uf_assumption_models_use_active_lowered_roots() {
+  for (const auto preprocessing :
+       {primo::smt::PreprocessingMode::Off, primo::smt::PreprocessingMode::Auto}) {
+    primo::smt::CheckSatOptions options;
+    options.incremental_mode = primo::smt::IncrementalMode::Assumptions;
+    options.preprocessing_mode = preprocessing;
+    options.produce_model = true;
+    options.check_model = true;
+    SmtSession session(options);
+    accept(session, "(set-option :produce-models true)");
+    accept(session, "(set-logic QF_UF)");
+    accept(session, "(declare-sort U 0)");
+    accept(session, "(declare-const a U)");
+    accept(session, "(declare-const c U)");
+    accept(session, "(declare-const b Bool)");
+    accept(session, "(declare-fun f (U) Bool)");
+    expect(session, CheckSatResult::Sat);
+    accept(session, "(push 2)");
+    accept(session, "(assert (f (ite b a c)))");
+    expect(session, CheckSatResult::Sat);
+    const auto saved = session.execute("(get-model)").outcome;
+    const auto saved_text = saved->model;
+    expect(session, CheckSatResult::Sat);
+    accept(session, "(assert (not (f (ite b a c))))");
+    expect(session, CheckSatResult::Unsat);
+    accept(session, "(pop 1)");
+    const auto empty = session.execute("(check-sat)").outcome;
+    assert(empty->result == CheckSatResult::Sat);
+    assert(empty->statistics.get(":session.active-model-roots") == 0);
+    accept(session, "(push 1)");
+    accept(session, "(assert (not (f (ite b a c))))");
+    expect(session, CheckSatResult::Sat);
+    accept(session, "(pop 2)");
+    expect(session, CheckSatResult::Sat);
+    accept(session, "(reset)");
+    assert(saved->model == saved_text);
+    assert(saved->typed_model != nullptr);
+  }
 }
 
 void assumption_mode_scopes_and_reuse() {
@@ -398,6 +559,9 @@ void canonical_names_and_categories() {
 }  // namespace
 
 int main() {
+  uf_assumption_scopes_and_preparation();
+  uf_assumption_growth_cancellation_and_options();
+  uf_assumption_models_use_active_lowered_roots();
   assumption_mode_scopes_and_reuse();
   assumption_scope_storage_growth_and_budget();
   assumption_mode_cancellation_and_options();

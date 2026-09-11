@@ -1,0 +1,1250 @@
+{
+  "source_commit": "8573f60",
+  "source_commit_full": "8573f60b7226c1b17300ac0297456c95808ecba8",
+  "solver_implementation_qualified_at": "fa2fe5c2d03afaf20e5496f2f3e4ced9fd2526ac",
+  "scope": "Profiling only; no solver behavior changes or new headline performance qualification",
+  "qualified_timing_jobs": {
+    "native": "142665",
+    "reused_references": "142464"
+  },
+  "profile_command": [
+    "/workspace/build-gprof-current/primo",
+    "--quiet",
+    "--stats",
+    "--incremental-mode=assumptions",
+    "--max-theory-conflicts=10000"
+  ],
+  "profile_binary_sha256": "3300b970330c285dc426f1fcbbd3dfd7b480df07c72aca0143c81ddea8200182",
+  "profile_version": "primo 0.1.0\ngit: 8573f60\nbuild: RelWithDebInfo, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+  "profile_host": "mikolas-ThinkPad-T14s-Gen-5",
+  "profile_platform": "Linux-7.0.0-30-generic-x86_64-with-glibc2.39",
+  "profile_cpu": "Intel Core Ultra 7 155U (reported in /proc/cpuinfo)",
+  "profile_build": "RelWithDebInfo -O2 -g -pg; link -pg; inherited PRIMO_WARNINGS_AS_ERRORS=OFF; static CaDiCaL not compiled with -pg",
+  "timeout_seconds_per_process": 120,
+  "theory_conflict_limit_per_query": 10000,
+  "input_archive_sha256": "52c55a17ee15e5c4a0fc723b9605ae42615da34499efc7e5a5e8b2c0ffc26a27",
+  "manifest_sha256": "4cc0c9b35b3725ae2893e626f0ee29ca798830462b080a0dea16585bbcc48b85",
+  "reference_sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+  "reference_version": "Z3 version 5.1.0 - 64 bit\n",
+  "reference_command": [
+    "/workspace/results/uf-z3-profile-8573f60/z3-5.1.0",
+    "-smt2",
+    "-in"
+  ],
+  "reference_input_adaptation": "Insert only (get-info :all-statistics) after each check-sat. Transformed inputs and hashes are preserved.",
+  "comparison": {
+    "all": {
+      "paired_complete": 1772,
+      "median_primo_over_z3": 1.1859369201043817,
+      "p90_primo_over_z3": 2.742627327515706,
+      "at_least_5x": 51,
+      "at_least_10x": 4,
+      "primo_seconds": 498.48478144966066,
+      "z3_seconds": 290.2482253164053
+    },
+    "2018-Goel-hwbench": {
+      "paired_complete": 760,
+      "median_primo_over_z3": 1.055432927251084,
+      "p90_primo_over_z3": 1.9738305452045126,
+      "at_least_5x": 19,
+      "at_least_10x": 4,
+      "primo_seconds": 400.0728838406503,
+      "z3_seconds": 248.3370626885444
+    },
+    "20190906-CLEARSY": {
+      "paired_complete": 1012,
+      "median_primo_over_z3": 1.3586704486623655,
+      "p90_primo_over_z3": 3.0039321574926787,
+      "at_least_5x": 32,
+      "at_least_10x": 0,
+      "primo_seconds": 98.41189760901034,
+      "z3_seconds": 41.911162627860904
+    }
+  },
+  "profiles": [
+    {
+      "index": 14,
+      "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_adding.5.prop1_ab_min_max.smt2",
+      "input_sha256": "22e91c7dfa6b54ba0a3d76a21806815bd7930c763fc8a6429019761b345338f6",
+      "profile_outcome": "complete",
+      "profile_seconds": 3.7645835620351136,
+      "profile_queries": 2,
+      "qualified_timing": {
+        "assumptions": {
+          "outcome": "complete",
+          "seconds": 4.996722282841802,
+          "queries": 2,
+          "par2": 4.996722282841802
+        },
+        "rebuild": {
+          "outcome": "timeout",
+          "seconds": 30.030411088839173,
+          "queries": 1,
+          "par2": 60.0
+        },
+        "z3": {
+          "outcome": "complete",
+          "seconds": 0.13868867605924606,
+          "queries": 2,
+          "par2": 0.13868867605924606
+        }
+      },
+      "qualified_phase_microseconds": {
+        ":time.total-us": {
+          "sum": 4594431,
+          "last": 805212,
+          "queries": 2
+        },
+        ":time.parse-us": {
+          "sum": 23344,
+          "last": 48,
+          "queries": 2
+        },
+        ":time.frontend-us": {
+          "sum": 3046024,
+          "last": 16323,
+          "queries": 2
+        },
+        ":time.preprocessing-us": {
+          "sum": 1860517,
+          "last": 16180,
+          "queries": 2
+        },
+        ":time.session.append-us": {
+          "sum": 414632,
+          "last": 103,
+          "queries": 2
+        },
+        ":time.session.prepare-us": {
+          "sum": 519438,
+          "last": 213993,
+          "queries": 2
+        },
+        ":time.session.theory-reset-us": {
+          "sum": 540344,
+          "last": 244593,
+          "queries": 2
+        },
+        ":time.solve-us": {
+          "sum": 307064,
+          "last": 243300,
+          "queries": 2
+        },
+        ":time.tactic.simplify-extended-terms-us": {
+          "sum": 1395801,
+          "last": 13795,
+          "queries": 2
+        }
+      },
+      "sampled_seconds": 0.78,
+      "gprof_top_functions": [
+        {
+          "self_percent": 8.97,
+          "cumulative_seconds": 0.07,
+          "self_seconds": 0.07,
+          "calls": 2253291,
+          "function": "std::_Hashtable<primo::core::TermManager::Key, std::pair<primo::core::TermManager::Key const, unsigned int>, std::allocator<std::pair<primo::core::TermManager::Key const, unsigned int> >, std::__detail::_Select1st, std::equal_to<primo::core::TermManager::Key>, primo::core::TermManager::KeyHash, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<true, false, true> >::_M_find_before_node(unsigned long, primo::core::TermManager::Key const&, unsigned long) const"
+        },
+        {
+          "self_percent": 7.69,
+          "cumulative_seconds": 0.13,
+          "self_seconds": 0.06,
+          "calls": 1671529,
+          "function": "primo::theory::equality::FlatCongruenceClosure::assert_distinct(unsigned long, unsigned long, std::vector<primo::sat::Lit, std::allocator<primo::sat::Lit> >)"
+        },
+        {
+          "self_percent": 7.69,
+          "cumulative_seconds": 0.19,
+          "self_seconds": 0.06,
+          "calls": 17,
+          "function": "std::_Hashtable<primo::core::TermManager::Key, std::pair<primo::core::TermManager::Key const, unsigned int>, std::allocator<std::pair<primo::core::TermManager::Key const, unsigned int> >, std::__detail::_Select1st, std::equal_to<primo::core::TermManager::Key>, primo::core::TermManager::KeyHash, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<true, false, true> >::_M_rehash(unsigned long, unsigned long const&)"
+        },
+        {
+          "self_percent": 6.41,
+          "cumulative_seconds": 0.24,
+          "self_seconds": 0.05,
+          "calls": 42,
+          "function": "void std::vector<primo::theory::equality::FlatCongruenceClosure::Disequality, std::allocator<primo::theory::equality::FlatCongruenceClosure::Disequality> >::_M_realloc_insert<primo::theory::equality::FlatCongruenceClosure::Disequality>(__gnu_cxx::__normal_iterator<primo::theory::equality::FlatCongruenceClosure::Disequality*, std::vector<primo::theory::equality::FlatCongruenceClosure::Disequality, std::allocator<primo::theory::equality::FlatCongruenceClosure::Disequality> > >, primo::theory::equality::FlatCongruenceClosure::Disequality&&)"
+        },
+        {
+          "self_percent": 6.41,
+          "cumulative_seconds": 0.29,
+          "self_seconds": 0.05,
+          "calls": null,
+          "function": "CaDiCaL::External::init(int, bool)"
+        },
+        {
+          "self_percent": 5.13,
+          "cumulative_seconds": 0.33,
+          "self_seconds": 0.04,
+          "calls": 1131689,
+          "function": "primo::core::TermManager::intern(primo::core::TermManager::Key)"
+        },
+        {
+          "self_percent": 5.13,
+          "cumulative_seconds": 0.37,
+          "self_seconds": 0.04,
+          "calls": 36,
+          "function": "void std::vector<primo::theory::equality::FlatCongruenceClosure::TrailEntry, std::allocator<primo::theory::equality::FlatCongruenceClosure::TrailEntry> >::_M_realloc_insert<primo::theory::equality::FlatCongruenceClosure::TrailEntry>(__gnu_cxx::__normal_iterator<primo::theory::equality::FlatCongruenceClosure::TrailEntry*, std::vector<primo::theory::equality::FlatCongruenceClosure::TrailEntry, std::allocator<primo::theory::equality::FlatCongruenceClosure::TrailEntry> > >, primo::theory::equality::FlatCongruenceClosure::TrailEntry&&)"
+        },
+        {
+          "self_percent": 5.13,
+          "cumulative_seconds": 0.41,
+          "self_seconds": 0.04,
+          "calls": 1,
+          "function": "primo::smt::Frontend::Implementation::~Implementation()"
+        },
+        {
+          "self_percent": 3.85,
+          "cumulative_seconds": 0.44,
+          "self_seconds": 0.03,
+          "calls": 22,
+          "function": "void std::vector<primo::core::Term, std::allocator<primo::core::Term> >::_M_realloc_insert<primo::core::Term>(__gnu_cxx::__normal_iterator<primo::core::Term*, std::vector<primo::core::Term, std::allocator<primo::core::Term> > >, primo::core::Term&&)"
+        },
+        {
+          "self_percent": 2.56,
+          "cumulative_seconds": 0.46,
+          "self_seconds": 0.02,
+          "calls": 2354,
+          "function": "primo::smt::BooleanClausifier::Implementation::collect_theory_atom_polarities(unsigned int, bool)"
+        },
+        {
+          "self_percent": 2.56,
+          "cumulative_seconds": 0.48,
+          "self_seconds": 0.02,
+          "calls": 3,
+          "function": "primo::smt::(anonymous namespace)::PreparedFlatTheory::ensure_theory_atoms(primo::core::TermManager const&, std::vector<primo::smt::BooleanClausifier::TheoryAtom, std::allocator<primo::smt::BooleanClausifier::TheoryAtom> > const&)"
+        },
+        {
+          "self_percent": 2.56,
+          "cumulative_seconds": 0.5,
+          "self_seconds": 0.02,
+          "calls": null,
+          "function": "CaDiCaL::Internal::assign_original_unit(long, int)"
+        },
+        {
+          "self_percent": 1.28,
+          "cumulative_seconds": 0.51,
+          "self_seconds": 0.01,
+          "calls": 3894065,
+          "function": "std::__detail::_Insert_base<unsigned int, unsigned int, std::allocator<unsigned int>, std::__detail::_Identity, std::equal_to<unsigned int>, std::hash<unsigned int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, true, true> >::insert(unsigned int const&)"
+        },
+        {
+          "self_percent": 1.28,
+          "cumulative_seconds": 0.52,
+          "self_seconds": 0.01,
+          "calls": 1118812,
+          "function": "std::_Hashtable<primo::theory::equality::FlatCongruenceClosure::ExplanationKey, std::pair<primo::theory::equality::FlatCongruenceClosure::ExplanationKey const, unsigned long>, std::allocator<std::pair<primo::theory::equality::FlatCongruenceClosure::ExplanationKey const, unsigned long> >, std::__detail::_Select1st, std::equal_to<primo::theory::equality::FlatCongruenceClosure::ExplanationKey>, primo::theory::equality::FlatCongruenceClosure::ExplanationKeyHash, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<true, false, true> >::_M_rehash(unsigned long, unsigned long const&)"
+        },
+        {
+          "self_percent": 1.28,
+          "cumulative_seconds": 0.53,
+          "self_seconds": 0.01,
+          "calls": 1113838,
+          "function": "primo::smt::(anonymous namespace)::OnlineEufPropagator::apply_assignment(std::vector<int, std::allocator<int> > const&)"
+        }
+      ],
+      "reference_first_query_statistics": {
+        "added-eqs": "1693",
+        "binary-propagations": "387",
+        "conflicts": "11",
+        "decisions": "327",
+        "del-clause": "304",
+        "final-checks": "1",
+        "max-memory": "23.05",
+        "memory": "20.58",
+        "mk-bool-var": "1800",
+        "mk-clause": "1489",
+        "mk-clause-binary": "388",
+        "num-allocs": "2843840",
+        "num-checks": "1",
+        "propagations": "1117",
+        "rlimit-count": "308163",
+        "solve-eqs-elim-vars": "2118",
+        "solve-eqs-steps": "2405",
+        "time": "0.03"
+      },
+      "reference_last_query_statistics": {
+        "added-eqs": "1916",
+        "binary-propagations": "903",
+        "conflicts": "8",
+        "decisions": "221",
+        "del-clause": "8308",
+        "final-checks": "1",
+        "max-memory": "23.69",
+        "memory": "23.69",
+        "mk-bool-var": "6766",
+        "mk-clause": "9183",
+        "mk-clause-binary": "5238",
+        "num-allocs": "4724061",
+        "num-checks": "1",
+        "propagations": "3650",
+        "rlimit-count": "419280",
+        "time": "0.01"
+      }
+    },
+    {
+      "index": 267,
+      "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_firewire_tree.5.prop3_ab_core_max.smt2",
+      "input_sha256": "502df85a528ac3106b02ce9f5bddb1d6ed6645572f9fe24a83af33c2a5d49de8",
+      "profile_outcome": "complete",
+      "profile_seconds": 13.627965583000332,
+      "profile_queries": 2,
+      "qualified_timing": {
+        "assumptions": {
+          "outcome": "complete",
+          "seconds": 23.45603688247502,
+          "queries": 2,
+          "par2": 23.45603688247502
+        },
+        "rebuild": {
+          "outcome": "complete",
+          "seconds": 9.868147483095527,
+          "queries": 2,
+          "par2": 9.868147483095527
+        },
+        "z3": {
+          "outcome": "complete",
+          "seconds": 3.6070357467979193,
+          "queries": 2,
+          "par2": 3.6070357467979193
+        }
+      },
+      "qualified_phase_microseconds": {
+        ":time.total-us": {
+          "sum": 23088230,
+          "last": 445792,
+          "queries": 2
+        },
+        ":time.parse-us": {
+          "sum": 256155,
+          "last": 2346,
+          "queries": 2
+        },
+        ":time.frontend-us": {
+          "sum": 4461291,
+          "last": 295011,
+          "queries": 2
+        },
+        ":time.preprocessing-us": {
+          "sum": 4031198,
+          "last": 284469,
+          "queries": 2
+        },
+        ":time.session.append-us": {
+          "sum": 118003,
+          "last": 7318,
+          "queries": 2
+        },
+        ":time.session.prepare-us": {
+          "sum": 79993,
+          "last": 35213,
+          "queries": 2
+        },
+        ":time.session.theory-reset-us": {
+          "sum": 117219,
+          "last": 78655,
+          "queries": 2
+        },
+        ":time.solve-us": {
+          "sum": 18103799,
+          "last": 587,
+          "queries": 2
+        },
+        ":time.tactic.simplify-extended-terms-us": {
+          "sum": 2923510,
+          "last": 207995,
+          "queries": 2
+        }
+      },
+      "sampled_seconds": 4.68,
+      "gprof_top_functions": [
+        {
+          "self_percent": 23.29,
+          "cumulative_seconds": 1.09,
+          "self_seconds": 1.09,
+          "calls": 997991,
+          "function": "primo::smt::(anonymous namespace)::OnlineEufPropagator::apply_assignment(std::vector<int, std::allocator<int> > const&)"
+        },
+        {
+          "self_percent": 22.44,
+          "cumulative_seconds": 2.14,
+          "self_seconds": 1.05,
+          "calls": null,
+          "function": "CaDiCaL::Internal::propagate()"
+        },
+        {
+          "self_percent": 15.81,
+          "cumulative_seconds": 2.88,
+          "self_seconds": 0.74,
+          "calls": 7498097,
+          "function": "primo::theory::equality::FlatCongruenceClosure::merge_classes(primo::theory::equality::FlatCongruenceClosure::PendingMerge)"
+        },
+        {
+          "self_percent": 4.49,
+          "cumulative_seconds": 3.09,
+          "self_seconds": 0.21,
+          "calls": 59830148,
+          "function": "primo::theory::equality::FlatCongruenceClosure::restore_trail_entry(primo::theory::equality::FlatCongruenceClosure::TrailEntry&)"
+        },
+        {
+          "self_percent": 3.85,
+          "cumulative_seconds": 3.27,
+          "self_seconds": 0.18,
+          "calls": 7495445,
+          "function": "primo::theory::equality::FlatCongruenceClosure::process_use_list(unsigned long, unsigned long)"
+        },
+        {
+          "self_percent": 3.42,
+          "cumulative_seconds": 3.43,
+          "self_seconds": 0.16,
+          "calls": 8593206,
+          "function": "std::__detail::_Map_base<int, std::pair<int const, primo::smt::(anonymous namespace)::MixedTheoryPropagationDispatcher::PropagationOwner>, std::allocator<std::pair<int const, primo::smt::(anonymous namespace)::MixedTheoryPropagationDispatcher::PropagationOwner> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true>, true>::operator[](int const&)"
+        },
+        {
+          "self_percent": 3.21,
+          "cumulative_seconds": 3.58,
+          "self_seconds": 0.15,
+          "calls": 14894150,
+          "function": "primo::theory::equality::FlatCongruenceClosure::explain_equal_via_structural_proof_forest_into(unsigned long, unsigned long, std::vector<primo::sat::Lit, std::allocator<primo::sat::Lit> >&) const"
+        },
+        {
+          "self_percent": 2.56,
+          "cumulative_seconds": 3.7,
+          "self_seconds": 0.12,
+          "calls": null,
+          "function": "CaDiCaL::Internal::copy_phases(std::vector<signed char, std::allocator<signed char> >&)"
+        },
+        {
+          "self_percent": 1.5,
+          "cumulative_seconds": 3.77,
+          "self_seconds": 0.07,
+          "calls": null,
+          "function": "CaDiCaL::Internal::notify_assignments()"
+        },
+        {
+          "self_percent": 1.5,
+          "cumulative_seconds": 3.84,
+          "self_seconds": 0.07,
+          "calls": null,
+          "function": "CaDiCaL::Internal::update_target_and_best()"
+        },
+        {
+          "self_percent": 1.28,
+          "cumulative_seconds": 3.9,
+          "self_seconds": 0.06,
+          "calls": 8451145,
+          "function": "primo::theory::equality::FlatCongruenceClosure::propagate()"
+        },
+        {
+          "self_percent": 1.28,
+          "cumulative_seconds": 3.96,
+          "self_seconds": 0.06,
+          "calls": 6983,
+          "function": "primo::theory::equality::FlatCongruenceClosure::pop(unsigned long)"
+        },
+        {
+          "self_percent": 1.28,
+          "cumulative_seconds": 4.02,
+          "self_seconds": 0.06,
+          "calls": null,
+          "function": "CaDiCaL::Internal::next_decision_variable()"
+        },
+        {
+          "self_percent": 1.07,
+          "cumulative_seconds": 4.07,
+          "self_seconds": 0.05,
+          "calls": 3256506,
+          "function": "primo::smtlib::SExpr::~SExpr()"
+        },
+        {
+          "self_percent": 0.85,
+          "cumulative_seconds": 4.11,
+          "self_seconds": 0.04,
+          "calls": 8593206,
+          "function": "primo::smt::(anonymous namespace)::assert_flat_assigned_atom(primo::theory::equality::FlatCongruenceClosure&, primo::smt::(anonymous namespace)::FlatAssignedTheoryAtom const&, unsigned long, unsigned long)"
+        }
+      ],
+      "reference_first_query_statistics": {
+        "added-eqs": "53590",
+        "binary-propagations": "2516715",
+        "conflicts": "308",
+        "decisions": "578158",
+        "del-clause": "15400",
+        "final-checks": "1",
+        "max-memory": "120.79",
+        "memory": "102.84",
+        "minimized-lits": "13",
+        "mk-bool-var": "38511",
+        "mk-clause": "44828",
+        "mk-clause-binary": "37691",
+        "num-allocs": "359724757",
+        "num-checks": "1",
+        "propagations": "4172248",
+        "restarts": "2",
+        "rlimit-count": "18874090",
+        "solve-eqs-elim-vars": "22931",
+        "solve-eqs-steps": "36540",
+        "time": "1.24"
+      },
+      "reference_last_query_statistics": {
+        "added-eqs": "4158",
+        "binary-propagations": "12251",
+        "conflicts": "1",
+        "max-memory": "130.82",
+        "memory": "130.82",
+        "mk-bool-var": "90928",
+        "mk-clause": "120004",
+        "mk-clause-binary": "34832",
+        "num-allocs": "483298336",
+        "num-checks": "1",
+        "propagations": "42638",
+        "rlimit-count": "20554340",
+        "time": "0.21"
+      }
+    },
+    {
+      "index": 852,
+      "file": "incremental/QF_UF/20190906-CLEARSY/0002/00126.smt2",
+      "input_sha256": "4b9a57aa8287c3e648e76cdb8516a0800d5bd540c8270c75731ea1977914214d",
+      "profile_outcome": "complete",
+      "profile_seconds": 2.6808527670800686,
+      "profile_queries": 413,
+      "qualified_timing": {
+        "assumptions": {
+          "outcome": "complete",
+          "seconds": 4.5331408604979515,
+          "queries": 413,
+          "par2": 4.5331408604979515
+        },
+        "rebuild": {
+          "outcome": "timeout",
+          "seconds": 30.018455805256963,
+          "queries": 371,
+          "par2": 60.0
+        },
+        "z3": {
+          "outcome": "complete",
+          "seconds": 1.8602601792663336,
+          "queries": 413,
+          "par2": 1.8602601792663336
+        }
+      },
+      "qualified_phase_microseconds": {
+        ":time.total-us": {
+          "sum": 4307118,
+          "last": 12672,
+          "queries": 413
+        },
+        ":time.parse-us": {
+          "sum": 28515,
+          "last": 19,
+          "queries": 413
+        },
+        ":time.frontend-us": {
+          "sum": 47212,
+          "last": 32,
+          "queries": 413
+        },
+        ":time.preprocessing-us": {
+          "sum": 13876,
+          "last": 14,
+          "queries": 413
+        },
+        ":time.session.append-us": {
+          "sum": 8979,
+          "last": 3,
+          "queries": 413
+        },
+        ":time.session.prepare-us": {
+          "sum": 713533,
+          "last": 2069,
+          "queries": 413
+        },
+        ":time.session.theory-reset-us": {
+          "sum": 1140247,
+          "last": 3684,
+          "queries": 413
+        },
+        ":time.solve-us": {
+          "sum": 1462066,
+          "last": 4007,
+          "queries": 413
+        },
+        ":time.tactic.simplify-extended-terms-us": {
+          "sum": 1128,
+          "last": 2,
+          "queries": 413
+        }
+      },
+      "sampled_seconds": 1.02,
+      "gprof_top_functions": [
+        {
+          "self_percent": 11.76,
+          "cumulative_seconds": 0.12,
+          "self_seconds": 0.12,
+          "calls": 6576,
+          "function": "void std::vector<primo::theory::equality::FlatCongruenceClosure::TrailEntry, std::allocator<primo::theory::equality::FlatCongruenceClosure::TrailEntry> >::_M_realloc_insert<primo::theory::equality::FlatCongruenceClosure::TrailEntry>(__gnu_cxx::__normal_iterator<primo::theory::equality::FlatCongruenceClosure::TrailEntry*, std::vector<primo::theory::equality::FlatCongruenceClosure::TrailEntry, std::allocator<primo::theory::equality::FlatCongruenceClosure::TrailEntry> > >, primo::theory::equality::FlatCongruenceClosure::TrailEntry&&)"
+        },
+        {
+          "self_percent": 8.82,
+          "cumulative_seconds": 0.21,
+          "self_seconds": 0.09,
+          "calls": 960543,
+          "function": "primo::theory::equality::FlatCongruenceClosure::merge_classes(primo::theory::equality::FlatCongruenceClosure::PendingMerge)"
+        },
+        {
+          "self_percent": 8.82,
+          "cumulative_seconds": 0.3,
+          "self_seconds": 0.09,
+          "calls": 413,
+          "function": "primo::theory::equality::FlatTermIndex::FlatTermIndex(primo::theory::equality::FlatTermIndex const&)"
+        },
+        {
+          "self_percent": 4.9,
+          "cumulative_seconds": 0.35,
+          "self_seconds": 0.05,
+          "calls": 414,
+          "function": "primo::smt::(anonymous namespace)::PreparedFlatTheory::ensure_theory_atoms(primo::core::TermManager const&, std::vector<primo::smt::BooleanClausifier::TheoryAtom, std::allocator<primo::smt::BooleanClausifier::TheoryAtom> > const&)"
+        },
+        {
+          "self_percent": 3.92,
+          "cumulative_seconds": 0.39,
+          "self_seconds": 0.04,
+          "calls": 1997142,
+          "function": "std::_Hashtable<primo::theory::equality::FlatCongruenceClosure::ApplyKey, std::pair<primo::theory::equality::FlatCongruenceClosure::ApplyKey const, unsigned long>, std::allocator<std::pair<primo::theory::equality::FlatCongruenceClosure::ApplyKey const, unsigned long> >, std::__detail::_Select1st, std::equal_to<primo::theory::equality::FlatCongruenceClosure::ApplyKey>, primo::theory::equality::FlatCongruenceClosure::ApplyKeyHash, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<true, false, true> >::_M_find_before_node(unsigned long, primo::theory::equality::FlatCongruenceClosure::ApplyKey const&, unsigned long) const"
+        },
+        {
+          "self_percent": 3.92,
+          "cumulative_seconds": 0.43,
+          "self_seconds": 0.04,
+          "calls": 1239,
+          "function": "std::_Hashtable<unsigned int, std::pair<unsigned int const, unsigned long>, std::allocator<std::pair<unsigned int const, unsigned long> >, std::__detail::_Select1st, std::equal_to<unsigned int>, std::hash<unsigned int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_Hashtable(std::_Hashtable<unsigned int, std::pair<unsigned int const, unsigned long>, std::allocator<std::pair<unsigned int const, unsigned long> >, std::__detail::_Select1st, std::equal_to<unsigned int>, std::hash<unsigned int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> > const&)"
+        },
+        {
+          "self_percent": 3.92,
+          "cumulative_seconds": 0.47,
+          "self_seconds": 0.04,
+          "calls": 413,
+          "function": "primo::theory::equality::FlatCongruenceClosure::FlatCongruenceClosure(primo::theory::equality::FlatCongruenceClosure const&)"
+        },
+        {
+          "self_percent": 3.92,
+          "cumulative_seconds": 0.51,
+          "self_seconds": 0.04,
+          "calls": null,
+          "function": "CaDiCaL::Internal::propagate()"
+        },
+        {
+          "self_percent": 2.94,
+          "cumulative_seconds": 0.54,
+          "self_seconds": 0.03,
+          "calls": 1921086,
+          "function": "primo::theory::equality::FlatCongruenceClosure::explain_equal_via_structural_proof_forest_into(unsigned long, unsigned long, std::vector<primo::sat::Lit, std::allocator<primo::sat::Lit> >&) const"
+        },
+        {
+          "self_percent": 2.94,
+          "cumulative_seconds": 0.57,
+          "self_seconds": 0.03,
+          "calls": 960485,
+          "function": "primo::theory::equality::FlatCongruenceClosure::process_use_list(unsigned long, unsigned long)"
+        },
+        {
+          "self_percent": 2.94,
+          "cumulative_seconds": 0.6,
+          "self_seconds": 0.03,
+          "calls": 3717,
+          "function": "std::vector<std::vector<unsigned long, std::allocator<unsigned long> >, std::allocator<std::vector<unsigned long, std::allocator<unsigned long> > > >::vector(std::vector<std::vector<unsigned long, std::allocator<unsigned long> >, std::allocator<std::vector<unsigned long, std::allocator<unsigned long> > > > const&)"
+        },
+        {
+          "self_percent": 2.94,
+          "cumulative_seconds": 0.63,
+          "self_seconds": 0.03,
+          "calls": 3407,
+          "function": "std::_Hashtable<int, std::pair<int const, unsigned long>, std::allocator<std::pair<int const, unsigned long> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true> >::_M_rehash(unsigned long, unsigned long const&)"
+        },
+        {
+          "self_percent": 2.94,
+          "cumulative_seconds": 0.66,
+          "self_seconds": 0.03,
+          "calls": null,
+          "function": "CaDiCaL::Internal::add_observed_var(int)"
+        },
+        {
+          "self_percent": 1.96,
+          "cumulative_seconds": 0.68,
+          "self_seconds": 0.02,
+          "calls": 4202421,
+          "function": "std::__detail::_Insert_base<unsigned int, unsigned int, std::allocator<unsigned int>, std::__detail::_Identity, std::equal_to<unsigned int>, std::hash<unsigned int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, true, true> >::insert(unsigned int const&)"
+        },
+        {
+          "self_percent": 1.96,
+          "cumulative_seconds": 0.7,
+          "self_seconds": 0.02,
+          "calls": 843561,
+          "function": "primo::theory::equality::FlatCongruenceClosure::assert_equal(unsigned long, unsigned long, std::vector<primo::sat::Lit, std::allocator<primo::sat::Lit> >)"
+        }
+      ],
+      "reference_first_query_statistics": {
+        "added-eqs": "1141",
+        "decisions": "54",
+        "final-checks": "1",
+        "max-memory": "19.28",
+        "memory": "19.28",
+        "mk-bool-var": "1953",
+        "mk-clause": "62",
+        "num-allocs": "109175",
+        "num-checks": "1",
+        "propagations": "30",
+        "rlimit-count": "73901",
+        "time": "0.01"
+      },
+      "reference_last_query_statistics": {
+        "added-eqs": "227701",
+        "conflicts": "13",
+        "decisions": "15490",
+        "del-clause": "11555",
+        "final-checks": "285",
+        "max-memory": "19.48",
+        "memory": "19.43",
+        "mk-bool-var": "368169",
+        "mk-clause": "11617",
+        "num-allocs": "333972492",
+        "num-checks": "413",
+        "propagations": "8690",
+        "rlimit-count": "13887408"
+      }
+    },
+    {
+      "index": 1688,
+      "file": "incremental/QF_UF/20190906-CLEARSY/0023/00268.smt2",
+      "input_sha256": "a2a5e6cf5fae0f81a1a99e38157dafd7ec16ad608cd819e4c6e8301a2424308b",
+      "profile_outcome": "complete",
+      "profile_seconds": 0.552449103910476,
+      "profile_queries": 373,
+      "qualified_timing": {
+        "assumptions": {
+          "outcome": "complete",
+          "seconds": 0.8635682929307222,
+          "queries": 373,
+          "par2": 0.8635682929307222
+        },
+        "rebuild": {
+          "outcome": "complete",
+          "seconds": 2.2356766760349274,
+          "queries": 373,
+          "par2": 2.2356766760349274
+        },
+        "z3": {
+          "outcome": "complete",
+          "seconds": 0.08865918777883053,
+          "queries": 373,
+          "par2": 0.08865918777883053
+        }
+      },
+      "qualified_phase_microseconds": {
+        ":time.total-us": {
+          "sum": 671348,
+          "last": 2397,
+          "queries": 373
+        },
+        ":time.parse-us": {
+          "sum": 13075,
+          "last": 18,
+          "queries": 373
+        },
+        ":time.frontend-us": {
+          "sum": 19957,
+          "last": 30,
+          "queries": 373
+        },
+        ":time.preprocessing-us": {
+          "sum": 7647,
+          "last": 13,
+          "queries": 373
+        },
+        ":time.session.append-us": {
+          "sum": 2459,
+          "last": 3,
+          "queries": 373
+        },
+        ":time.session.prepare-us": {
+          "sum": 81855,
+          "last": 283,
+          "queries": 373
+        },
+        ":time.session.theory-reset-us": {
+          "sum": 167493,
+          "last": 590,
+          "queries": 373
+        },
+        ":time.solve-us": {
+          "sum": 231038,
+          "last": 920,
+          "queries": 373
+        },
+        ":time.tactic.simplify-extended-terms-us": {
+          "sum": 803,
+          "last": 2,
+          "queries": 373
+        }
+      },
+      "sampled_seconds": 0.16,
+      "gprof_top_functions": [
+        {
+          "self_percent": 18.75,
+          "cumulative_seconds": 0.03,
+          "self_seconds": 0.03,
+          "calls": 145618,
+          "function": "primo::theory::equality::FlatCongruenceClosure::merge_classes(primo::theory::equality::FlatCongruenceClosure::PendingMerge)"
+        },
+        {
+          "self_percent": 12.5,
+          "cumulative_seconds": 0.05,
+          "self_seconds": 0.02,
+          "calls": 206810,
+          "function": "std::_Hashtable<primo::theory::equality::FlatCongruenceClosure::ApplyKey, std::pair<primo::theory::equality::FlatCongruenceClosure::ApplyKey const, unsigned long>, std::allocator<std::pair<primo::theory::equality::FlatCongruenceClosure::ApplyKey const, unsigned long> >, std::__detail::_Select1st, std::equal_to<primo::theory::equality::FlatCongruenceClosure::ApplyKey>, primo::theory::equality::FlatCongruenceClosure::ApplyKeyHash, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<true, false, true> >::_M_find_before_node(unsigned long, primo::theory::equality::FlatCongruenceClosure::ApplyKey const&, unsigned long) const"
+        },
+        {
+          "self_percent": 6.25,
+          "cumulative_seconds": 0.06,
+          "self_seconds": 0.01,
+          "calls": 1339472,
+          "function": "primo::theory::equality::FlatCongruenceClosure::restore_trail_entry(primo::theory::equality::FlatCongruenceClosure::TrailEntry&)"
+        },
+        {
+          "self_percent": 6.25,
+          "cumulative_seconds": 0.07,
+          "self_seconds": 0.01,
+          "calls": 52887,
+          "function": "primo::smt::(anonymous namespace)::OnlineEufPropagator::apply_assignment(std::vector<int, std::allocator<int> > const&)"
+        },
+        {
+          "self_percent": 6.25,
+          "cumulative_seconds": 0.08,
+          "self_seconds": 0.01,
+          "calls": 4960,
+          "function": "void std::vector<primo::theory::equality::FlatCongruenceClosure::TrailEntry, std::allocator<primo::theory::equality::FlatCongruenceClosure::TrailEntry> >::_M_realloc_insert<primo::theory::equality::FlatCongruenceClosure::TrailEntry>(__gnu_cxx::__normal_iterator<primo::theory::equality::FlatCongruenceClosure::TrailEntry*, std::vector<primo::theory::equality::FlatCongruenceClosure::TrailEntry, std::allocator<primo::theory::equality::FlatCongruenceClosure::TrailEntry> > >, primo::theory::equality::FlatCongruenceClosure::TrailEntry&&)"
+        },
+        {
+          "self_percent": 6.25,
+          "cumulative_seconds": 0.09,
+          "self_seconds": 0.01,
+          "calls": 3357,
+          "function": "std::vector<std::vector<unsigned long, std::allocator<unsigned long> >, std::allocator<std::vector<unsigned long, std::allocator<unsigned long> > > >::vector(std::vector<std::vector<unsigned long, std::allocator<unsigned long> >, std::allocator<std::vector<unsigned long, std::allocator<unsigned long> > > > const&)"
+        },
+        {
+          "self_percent": 6.25,
+          "cumulative_seconds": 0.1,
+          "self_seconds": 0.01,
+          "calls": 1318,
+          "function": "primo::smt::(anonymous namespace)::OnlineEufPropagator::current_assigned_atoms() const"
+        },
+        {
+          "self_percent": 6.25,
+          "cumulative_seconds": 0.11,
+          "self_seconds": 0.01,
+          "calls": 373,
+          "function": "primo::smt::(anonymous namespace)::OnlineEufPropagator::~OnlineEufPropagator()"
+        },
+        {
+          "self_percent": 6.25,
+          "cumulative_seconds": 0.12,
+          "self_seconds": 0.01,
+          "calls": 373,
+          "function": "primo::smt::BooleanClausifier::Implementation::register_boolean_argument_terms()"
+        },
+        {
+          "self_percent": 6.25,
+          "cumulative_seconds": 0.13,
+          "self_seconds": 0.01,
+          "calls": 373,
+          "function": "std::vector<std::vector<unsigned long, std::allocator<unsigned long> >, std::allocator<std::vector<unsigned long, std::allocator<unsigned long> > > >::_M_fill_assign(unsigned long, std::vector<unsigned long, std::allocator<unsigned long> > const&)"
+        },
+        {
+          "self_percent": 6.25,
+          "cumulative_seconds": 0.14,
+          "self_seconds": 0.01,
+          "calls": 288,
+          "function": "std::_Function_handler<void (std::vector<unsigned int, std::allocator<unsigned int> >), primo::smt::TermBuilder::dispatch(primo::smtlib::SExpr const&, std::function<void (unsigned int)>)::{lambda(std::vector<unsigned int, std::allocator<unsigned int> >)#1}>::_M_invoke(std::_Any_data const&, std::vector<unsigned int, std::allocator<unsigned int> >&&)"
+        },
+        {
+          "self_percent": 6.25,
+          "cumulative_seconds": 0.15,
+          "self_seconds": 0.01,
+          "calls": null,
+          "function": "CaDiCaL::Solver::add_observed_var(int)"
+        },
+        {
+          "self_percent": 6.25,
+          "cumulative_seconds": 0.16,
+          "self_seconds": 0.01,
+          "calls": null,
+          "function": "CaDiCaL::External::init(int, bool)"
+        },
+        {
+          "self_percent": 0.0,
+          "cumulative_seconds": 0.16,
+          "self_seconds": 0.0,
+          "calls": 1271826,
+          "function": "primo::core::TermManager::get(unsigned int) const"
+        },
+        {
+          "self_percent": 0.0,
+          "cumulative_seconds": 0.16,
+          "self_seconds": 0.0,
+          "calls": 629502,
+          "function": "std::__detail::_Insert_base<unsigned int, unsigned int, std::allocator<unsigned int>, std::__detail::_Identity, std::equal_to<unsigned int>, std::hash<unsigned int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, true, true> >::insert(unsigned int const&)"
+        }
+      ],
+      "reference_first_query_statistics": {
+        "added-eqs": "42",
+        "final-checks": "1",
+        "max-memory": "17.23",
+        "memory": "17.23",
+        "mk-bool-var": "150",
+        "num-allocs": "13095",
+        "num-checks": "1",
+        "rlimit-count": "4828"
+      },
+      "reference_last_query_statistics": {
+        "added-eqs": "2979",
+        "conflicts": "2",
+        "decisions": "381",
+        "del-clause": "439",
+        "final-checks": "354",
+        "max-memory": "17.43",
+        "memory": "17.43",
+        "mk-bool-var": "10632",
+        "mk-clause": "439",
+        "num-allocs": "31372",
+        "num-checks": "373",
+        "propagations": "191",
+        "rlimit-count": "386177"
+      }
+    },
+    {
+      "index": 656,
+      "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_rushhour.1.prop1_ab_min_max.smt2",
+      "input_sha256": "54faab915107071e228c93a7b726e5289912cff19b12f16eb6cfd22ef449e292",
+      "profile_outcome": "unknown",
+      "profile_seconds": 1.9778585570165887,
+      "profile_queries": 2,
+      "qualified_timing": {
+        "assumptions": {
+          "outcome": "unknown",
+          "seconds": 3.0265816152095795,
+          "queries": 2,
+          "par2": 60.0
+        },
+        "rebuild": {
+          "outcome": "complete",
+          "seconds": 10.054150708019733,
+          "queries": 2,
+          "par2": 10.054150708019733
+        },
+        "z3": {
+          "outcome": "complete",
+          "seconds": 1.3008127957582474,
+          "queries": 2,
+          "par2": 1.3008127957582474
+        }
+      },
+      "qualified_phase_microseconds": {
+        ":time.total-us": {
+          "sum": 2961760,
+          "last": 2234532,
+          "queries": 2
+        },
+        ":time.parse-us": {
+          "sum": 58433,
+          "last": 13,
+          "queries": 2
+        },
+        ":time.frontend-us": {
+          "sum": 282968,
+          "last": 235,
+          "queries": 2
+        },
+        ":time.preprocessing-us": {
+          "sum": 202327,
+          "last": 218,
+          "queries": 2
+        },
+        ":time.session.append-us": {
+          "sum": 20558,
+          "last": 9,
+          "queries": 2
+        },
+        ":time.session.prepare-us": {
+          "sum": 16805,
+          "last": 6125,
+          "queries": 2
+        },
+        ":time.session.theory-reset-us": {
+          "sum": 15415,
+          "last": 7228,
+          "queries": 2
+        },
+        ":time.solve-us": {
+          "sum": 2575315,
+          "last": 2216553,
+          "queries": 2
+        },
+        ":time.tactic.simplify-extended-terms-us": {
+          "sum": 133495,
+          "last": 165,
+          "queries": 2
+        }
+      },
+      "sampled_seconds": 0.89,
+      "gprof_top_functions": [
+        {
+          "self_percent": 16.85,
+          "cumulative_seconds": 0.15,
+          "self_seconds": 0.15,
+          "calls": 221051,
+          "function": "primo::smt::(anonymous namespace)::OnlineEufPropagator::apply_assignment(std::vector<int, std::allocator<int> > const&)"
+        },
+        {
+          "self_percent": 15.73,
+          "cumulative_seconds": 0.29,
+          "self_seconds": 0.14,
+          "calls": 1143915,
+          "function": "primo::theory::equality::FlatCongruenceClosure::merge_classes(primo::theory::equality::FlatCongruenceClosure::PendingMerge)"
+        },
+        {
+          "self_percent": 15.73,
+          "cumulative_seconds": 0.43,
+          "self_seconds": 0.14,
+          "calls": null,
+          "function": "CaDiCaL::Internal::propagate()"
+        },
+        {
+          "self_percent": 6.74,
+          "cumulative_seconds": 0.49,
+          "self_seconds": 0.06,
+          "calls": null,
+          "function": "CaDiCaL::Internal::next_decision_variable()"
+        },
+        {
+          "self_percent": 6.74,
+          "cumulative_seconds": 0.55,
+          "self_seconds": 0.06,
+          "calls": null,
+          "function": "CaDiCaL::Internal::explain_external_propagations()"
+        },
+        {
+          "self_percent": 5.62,
+          "cumulative_seconds": 0.6,
+          "self_seconds": 0.05,
+          "calls": 25558,
+          "function": "primo::theory::equality::FlatCongruenceClosure::explain_equal_into(unsigned long, unsigned long, std::vector<primo::sat::Lit, std::allocator<primo::sat::Lit> >&, unsigned long) const"
+        },
+        {
+          "self_percent": 4.49,
+          "cumulative_seconds": 0.64,
+          "self_seconds": 0.04,
+          "calls": 2274506,
+          "function": "primo::theory::equality::FlatCongruenceClosure::explain_equal_via_structural_proof_forest_into(unsigned long, unsigned long, std::vector<primo::sat::Lit, std::allocator<primo::sat::Lit> >&) const"
+        },
+        {
+          "self_percent": 2.25,
+          "cumulative_seconds": 0.66,
+          "self_seconds": 0.02,
+          "calls": 2031344,
+          "function": "primo::smt::(anonymous namespace)::assert_flat_assigned_atom(primo::theory::equality::FlatCongruenceClosure&, primo::smt::(anonymous namespace)::FlatAssignedTheoryAtom const&, unsigned long, unsigned long)"
+        },
+        {
+          "self_percent": 2.25,
+          "cumulative_seconds": 0.68,
+          "self_seconds": 0.02,
+          "calls": 2031344,
+          "function": "std::__detail::_Map_base<int, std::pair<int const, primo::smt::(anonymous namespace)::MixedTheoryPropagationDispatcher::PropagationOwner>, std::allocator<std::pair<int const, primo::smt::(anonymous namespace)::MixedTheoryPropagationDispatcher::PropagationOwner> >, std::__detail::_Select1st, std::equal_to<int>, std::hash<int>, std::__detail::_Mod_range_hashing, std::__detail::_Default_ranged_hash, std::__detail::_Prime_rehash_policy, std::__detail::_Hashtable_traits<false, false, true>, true>::operator[](int const&)"
+        },
+        {
+          "self_percent": 2.25,
+          "cumulative_seconds": 0.7,
+          "self_seconds": 0.02,
+          "calls": 1696923,
+          "function": "primo::theory::equality::FlatCongruenceClosure::assert_distinct(unsigned long, unsigned long, std::vector<primo::sat::Lit, std::allocator<primo::sat::Lit> >)"
+        },
+        {
+          "self_percent": 2.25,
+          "cumulative_seconds": 0.72,
+          "self_seconds": 0.02,
+          "calls": 176083,
+          "function": "primo::theory::equality::FlatCongruenceClosure::push()"
+        },
+        {
+          "self_percent": 2.25,
+          "cumulative_seconds": 0.74,
+          "self_seconds": 0.02,
+          "calls": 29937,
+          "function": "primo::theory::equality::FlatCongruenceClosure::pop(unsigned long)"
+        },
+        {
+          "self_percent": 2.25,
+          "cumulative_seconds": 0.76,
+          "self_seconds": 0.02,
+          "calls": null,
+          "function": "CaDiCaL::Internal::copy_phases(std::vector<signed char, std::allocator<signed char> >&)"
+        },
+        {
+          "self_percent": 2.25,
+          "cumulative_seconds": 0.78,
+          "self_seconds": 0.02,
+          "calls": null,
+          "function": "CaDiCaL::Internal::update_target_and_best()"
+        },
+        {
+          "self_percent": 2.25,
+          "cumulative_seconds": 0.8,
+          "self_seconds": 0.02,
+          "calls": null,
+          "function": "CaDiCaL::Internal::learn_external_reason_clause(int, int, bool)"
+        }
+      ],
+      "reference_first_query_statistics": {
+        "added-eqs": "48996",
+        "binary-propagations": "84158",
+        "conflicts": "124",
+        "decisions": "17126",
+        "del-clause": "2901",
+        "final-checks": "1",
+        "max-memory": "36.33",
+        "memory": "31.54",
+        "mk-bool-var": "6483",
+        "mk-clause": "6579",
+        "mk-clause-binary": "5144",
+        "num-allocs": "12920947",
+        "num-checks": "1",
+        "propagations": "174641",
+        "restarts": "1",
+        "rlimit-count": "2368225",
+        "solve-eqs-elim-vars": "6272",
+        "solve-eqs-steps": "10034",
+        "time": "0.15"
+      },
+      "reference_last_query_statistics": {
+        "added-eqs": "1084096",
+        "binary-propagations": "698848",
+        "conflicts": "1538",
+        "decisions": "73573",
+        "del-clause": "16060",
+        "dyn-ack": "3",
+        "final-checks": "1",
+        "max-memory": "40.21",
+        "memory": "40.21",
+        "minimized-lits": "688",
+        "mk-bool-var": "20665",
+        "mk-clause": "23773",
+        "mk-clause-binary": "11001",
+        "num-allocs": "22557551",
+        "num-checks": "1",
+        "propagations": "1523438",
+        "restarts": "9",
+        "rlimit-count": "7372912",
+        "time": "0.46"
+      }
+    }
+  ],
+  "perf_probe": "event syntax error: 'task-clock'\n                     \\___ Bad event name\n\nUnable to find event on a PMU of 'task-clock'\nRun 'perf list' for a list of valid events\n\n Usage: perf stat [<options>] [<command>]\n\n    -e, --event <event>   event selector. use 'perf list' to list available events\n",
+  "artifacts": "results/uf-z3-profile-8573f60",
+  "new_slurm_jobs": [],
+  "limits": [
+    "All headline times are reused qualified SLURM records. Local gprof/reference/plain diagnostic times are not substituted.",
+    "gprof percentages are fractions of sampled executable time; shared libraries, instrumentation overhead and inlining limit attribution.",
+    "Nested phase times overlap. SAT counters can be cumulative, while working-theory counters are query-local.",
+    "Z3 first/final-query counter scopes differ; no direct equivalence between its objects and Primo variables is claimed.",
+    "The unknown session remains unqualified. No new model-validation claim is based on the instrumented profiles."
+  ],
+  "distinct_probe": {
+    "index": 14,
+    "largest_arities": [
+      1051,
+      73
+    ],
+    "pairwise_constraints_from_two_expressions": 554403,
+    "retained_theory_atoms": 556973,
+    "sat_variables": 558006,
+    "retained_terms": 1121604,
+    "flat_terms": 3560
+  },
+  "statistics_output_probe": {
+    "852": {
+      "on": {
+        "seconds": [
+          1.8688300140202045,
+          2.0003524689236656,
+          2.318583987071179
+        ],
+        "median_seconds": 2.0003524689236656
+      },
+      "off": {
+        "seconds": [
+          1.84343855897896,
+          2.0572303789667785,
+          2.3872920889407396
+        ],
+        "median_seconds": 2.0572303789667785
+      }
+    },
+    "1688": {
+      "on": {
+        "seconds": [
+          0.3879589269636199,
+          0.3790907149668783,
+          0.5271423179656267
+        ],
+        "median_seconds": 0.3879589269636199
+      },
+      "off": {
+        "seconds": [
+          0.31685989000834525,
+          0.4074848329182714,
+          0.4300827259430662
+        ],
+        "median_seconds": 0.4074848329182714
+      }
+    },
+    "conclusion": "Inconclusive/no consistent benefit from disabling output in three paired local probes; no printing-overhead attribution or speedup claim."
+  },
+  "verification": {
+    "runner_protocol_tests": "6 pass, including partial answer followed by nonzero exit and timeout",
+    "profiling_adapter_tests": "2 pass: read-only insertion preserves strings/comments; reference statistics do not hide process failure or missing data",
+    "gprof_runs": "4 complete, 1 known conflict-limited unknown; 791 matching definite answers and 1 unknown; no timeout/crash/disagreement",
+    "reference_runs": "Initial final-stats and follow-up per-query probes each complete 5 sessions/792 answers with the exact pinned Z3 binary",
+    "plain_runs": "12 complete sessions with matching reference sequences",
+    "solver_changes": "none",
+    "python_suite": "166 tests pass; final adapter-focused tests pass after review fixes",
+    "lint": "make lint passes",
+    "docs": "make docs passes",
+    "review": "No blocking code, hygiene or documentation finding; review.txt retained in artifacts",
+    "adapter_replay": "Final adapter matches all five saved reference inputs/transcripts and 792 answers",
+    "final_driver_smoke": "Final reviewed driver completes native index 0 and matches both reference answers"
+  },
+  "recommendation_status": {
+    "status": "open_not_implemented",
+    "annotated_date": "2026-09-11",
+    "register": "docs/open-leads.md",
+    "lead_ids_in_recommendation_order": [22, 23, 24, 25],
+    "qualification_effect": "none; future optimization hypotheses, not measured speedups"
+  },
+  "recommendations": [
+    "Append-only atom registration/preparation cursors and per-traversal touched scratch storage, preserving root replay and Boolean registration.",
+    "Original compact-distinct design with scoped congruence explanations and models.",
+    "Incrementally sound equation elimination with substitution/restoration, not enabling unsafe whole-goal tactics.",
+    "Reduce structural copies/allocation while retaining fresh working facts and callback lifecycle."
+  ],
+  "artifact_archive": {
+    "path": "results/uf-z3-profile-8573f60.tar.gz",
+    "sha256": "b39f1ba1fc7047c63f043a8cf32b747f5f7637699dcba5a268530bd5a833426f",
+    "bytes": 61723058
+  },
+  "terminal_audit": {
+    "active_local_solver_profiler_test_processes": 0,
+    "active_slurm_jobs": 0,
+    "new_slurm_jobs": 0
+  }
+}

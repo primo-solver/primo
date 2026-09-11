@@ -1,8 +1,9 @@
 # Incremental SMT sessions
 
 `--incremental-mode=rebuild` is the default described by the historical baseline
-sections below. The new opt-in QF_LRA `assumptions` mode is described in
-[](assumption-incremental-lra), including its bounded correctness evidence.
+sections below. Opt-in `assumptions` mode is described in
+[](assumption-incremental-lra) and [](assumption-incremental-uf), including each
+logic's qualification status.
 
 The subsequent [](lexical-conformance.md) audit found quoted-name identity bugs
 that can change answers. Its repair preserves token categories and canonical
@@ -487,7 +488,7 @@ paths; neither submits jobs implicitly.
 
 ## Opt-in assumptions engine
 
-`--incremental-mode=assumptions` selects a persistent QF_LRA engine; `rebuild`
+`--incremental-mode=assumptions` selects a persistent QF_LRA or QF_UF engine; `rebuild`
 remains the default. `SmtSession` keeps its frontend and an SMT-owned
 `IncrementalEngine` across checks and pops, destroying the engine first at reset.
 Name bindings, definition bindings, declared numeric symbols and side-constraint
@@ -500,6 +501,17 @@ lowering. Basic/Strong, portfolios, splitting, fixed-variable elimination,
 preprocess-only, assertion-dependent preprocessing and custom CaDiCaL options
 are rejected. Unsupported logics are rejected explicitly. The dedicated QF_UFLRA
 engine and the default rebuild pipeline are unchanged.
+
+QF_UF uses `IncrementalUfEngine` and retains structural flat-term preparation,
+copying its definition-only base into a fresh working congruence closure per
+query. Boolean UF argument registration runs before preparing new atoms.
+The engine also retains active lowered model roots and scope boundaries; model
+construction uses that final goal, while session validation evaluates the original
+assertions. `:session.active-model-roots` exposes scope retirement for these roots.
+Pure-theory filtering Auto resolves to Off; explicit On, lazy EUF, bridge atoms,
+Off/Model propagation and experimental Ackermann modes are rejected. Scoped
+sort and function declarations retain historical identities after pop. See
+[](assumption-incremental-uf) for invariants and qualification status.
 
 Nonempty pushed scopes acquire selectors lazily. Roots and lowering side
 constraints are guarded; full Boolean definitions are permanent. Pop asserts

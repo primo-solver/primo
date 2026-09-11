@@ -1,0 +1,167 @@
+{
+  "candidate_commit": "282336d",
+  "candidate_sha256": "2164aa63f75d2dcc3e7d9ed73d9043d845732050485f31d0f48cd7e8280a55ba",
+  "solver_sources_identical_to": "df47b12",
+  "status": "historical passing gates; superseded by assumptions-uf-evaluation.json after the active-lowered-root model fix at fa2fe5c",
+  "gate_profiles": {
+    "auto": {
+      "sessions": 2000,
+      "pass": 2000,
+      "queries": 16000,
+      "sat_models": 9465,
+      "untriaged_failure": 0,
+      "shards": 8,
+      "run_metadata": {
+        "command": [
+          "scripts/incremental_uf_gate.py",
+          "--kind",
+          "generated",
+          "--seed",
+          "202619120",
+          "--count",
+          "250",
+          "--solver",
+          "build-slurm-rel/primo",
+          "--solver-arg=--quiet",
+          "--solver-arg=--incremental-mode=assumptions",
+          "--solver-arg=--max-theory-conflicts=10000",
+          "--solver-arg=--preprocessing-mode=auto",
+          "--solver-arg=--euf-prop=auto",
+          "--ref",
+          "contrib/local/bin/z3",
+          "--dolmen",
+          "contrib/local/bin/dolmen",
+          "--expected-git",
+          "282336d",
+          "--timeout",
+          "20",
+          "--dolmen-timeout",
+          "30",
+          "--out",
+          "/home/janotmik/primo-model-fix/results/uf-auto-gate-282336d/shard-0"
+        ],
+        "version": "primo 0.1.0\ngit: 282336d\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+        "host": "node-02.ciircluster",
+        "slurm_job_id": "142360",
+        "solver_sha256": "2164aa63f75d2dcc3e7d9ed73d9043d845732050485f31d0f48cd7e8280a55ba",
+        "generator_sha256": "710bc0f0f0c73e414d3d3dd9efcb68cd05cefcd09594084904f8c3116c8f0c06",
+        "boolean_generator_sha256": "4ff7cd809c0d820dc6fe0012756dabd5dde0ad7564c3c9b126ca99a9b463fdd7",
+        "reference": {
+          "command": [
+            "contrib/local/bin/z3"
+          ],
+          "sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+          "version": "Z3 version 5.1.0 - 64 bit\n"
+        },
+        "dolmen": {
+          "command": "contrib/local/bin/dolmen",
+          "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+          "version": "0.10\n"
+        },
+        "native_seeds": {}
+      }
+    },
+    "matrix": {
+      "sessions": 2000,
+      "pass": 2000,
+      "queries": 16000,
+      "sat_models": 9443,
+      "untriaged_failure": 0,
+      "shards": 8,
+      "run_metadata": {
+        "command": [
+          "scripts/incremental_uf_gate.py",
+          "--kind",
+          "generated",
+          "--seed",
+          "202609120",
+          "--count",
+          "250",
+          "--solver",
+          "build-slurm-rel/primo",
+          "--solver-arg=--quiet",
+          "--solver-arg=--incremental-mode=assumptions",
+          "--solver-arg=--max-theory-conflicts=10000",
+          "--solver-arg=--preprocessing-mode=auto",
+          "--solver-arg=--euf-prop=online",
+          "--ref",
+          "contrib/local/bin/z3",
+          "--dolmen",
+          "contrib/local/bin/dolmen",
+          "--expected-git",
+          "282336d",
+          "--timeout",
+          "20",
+          "--dolmen-timeout",
+          "30",
+          "--out",
+          "/home/janotmik/primo-model-fix/results/uf-matrix-gate-282336d/shard-0"
+        ],
+        "version": "primo 0.1.0\ngit: 282336d\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+        "host": "node-02.ciircluster",
+        "slurm_job_id": "142365",
+        "solver_sha256": "2164aa63f75d2dcc3e7d9ed73d9043d845732050485f31d0f48cd7e8280a55ba",
+        "generator_sha256": "710bc0f0f0c73e414d3d3dd9efcb68cd05cefcd09594084904f8c3116c8f0c06",
+        "boolean_generator_sha256": "4ff7cd809c0d820dc6fe0012756dabd5dde0ad7564c3c9b126ca99a9b463fdd7",
+        "reference": {
+          "command": [
+            "contrib/local/bin/z3"
+          ],
+          "sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+          "version": "Z3 version 5.1.0 - 64 bit\n"
+        },
+        "dolmen": {
+          "command": "contrib/local/bin/dolmen",
+          "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+          "version": "0.10\n"
+        },
+        "native_seeds": {}
+      }
+    }
+  },
+  "default_preservation": {
+    "files": 25,
+    "pass": 25,
+    "sessions": 50,
+    "queries": 200,
+    "sat_models": 121
+  },
+  "jobs": {
+    "build": 142356,
+    "regressions": 142358,
+    "auto_gate": 142359,
+    "matrix_gate": 142364,
+    "default_uf": 142369,
+    "default_other": 142370,
+    "timing": 142388
+  },
+  "latest_candidate_commit": "1595948",
+  "latest_candidate_sha256": "6205f9e304518c8c6dace4dae163521d47f0f11bd2c584b223dcdcdccc04037a",
+  "latest_auto_gate": {
+    "job": 142459,
+    "seed_base": 202629120,
+    "generated": 1000,
+    "native_mutations": 1000,
+    "pass": 2000,
+    "queries": 16000,
+    "sat_models": 9458,
+    "wrong_answer": 0,
+    "crash": 0,
+    "parser_type_error": 0,
+    "unknown": 0,
+    "timeout": 0,
+    "unsupported": 0,
+    "reference_disagreement": 0,
+    "invalid_model": 0,
+    "artifact": "results/uf-auto-gate-1595948"
+  },
+  "aggregate_gate_totals": {
+    "generated": 3000,
+    "native_mutations": 3000,
+    "pass": 6000,
+    "queries": 48000,
+    "sat_models": 28366
+  },
+  "qualification_limit": "These gates missed the ITE model construction error later found by job 142579. They do not qualify the final implementation; current evidence is recorded separately.",
+  "superseded_by": "benchmarks/assumptions-uf-evaluation.json"
+}
