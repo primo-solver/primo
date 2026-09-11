@@ -332,9 +332,10 @@ The study changes no solver behavior or qualification status.
 This is an original scan-reduction design for [open lead 22](#lead-incremental-uf-scans),
 recorded before implementation on `perf/incremental-uf-atom-scans`, based on
 `605062f`. It uses the append-only identity and conservative-definition invariants
-above; it introduces no new congruence algorithm. Acceptance is pending measurement
-and fresh correctness qualification. Traversal scratch and structural copies are
-separate, deferred experiments.
+above; it introduces no new congruence algorithm. The subsequent implementation
+at `7ac555c` passed fresh scoped/default gates and full native model qualification;
+[](incremental-uf-atom-scans.md) records its measured acceptance. Traversal scratch
+and structural copies are separate, deferred experiments.
 
 - `BooleanClausifier::Implementation` owns a numeric registration cursor into its
   append-only `theory_atoms_`. Terms and their children are immutable; registration
