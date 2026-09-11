@@ -12269,11 +12269,16 @@ class IncrementalUfEngine final : public IncrementalEngine {
         prepared_(terms, {}, true_term_, false_term_, options.euf_explain_search,
                   options.euf_proof_forest_diagnostics) {}
 
-  void push() override { selectors_.push_back({0}); }
+  void push() override {
+    selectors_.push_back({0});
+    model_boundaries_.push_back(model_roots_.size());
+  }
   void pop() override {
     if (selectors_.empty()) throw std::invalid_argument("engine scope underflow");
     const auto selector = selectors_.back();
     selectors_.pop_back();
+    model_roots_.resize(model_boundaries_.back());
+    model_boundaries_.pop_back();
     if (selector.value != 0) {
       backend_.add_clause({sat::Lit{-selector.value}});
       ++retired_;
@@ -12282,6 +12287,7 @@ class IncrementalUfEngine final : public IncrementalEngine {
   void append(const std::vector<core::TermId>& assertions) override {
     const auto start = std::chrono::steady_clock::now();
     for (const auto root : assertions) {
+      model_roots_.push_back(root);
       if (selectors_.empty()) {
         clausifier_.assert_formula(root);
       } else {
@@ -12294,8 +12300,7 @@ class IncrementalUfEngine final : public IncrementalEngine {
     }
     append_us_ += elapsed(start);
   }
-  CheckSatOutcome check(const std::vector<core::TermId>& model_terms,
-                        const CheckSatOptions& options) override {
+  CheckSatOutcome check(const std::vector<core::TermId>&, const CheckSatOptions& options) override {
     const auto start = std::chrono::steady_clock::now();
     util::Statistics statistics;
     const auto prepare_start = std::chrono::steady_clock::now();
@@ -12372,7 +12377,10 @@ class IncrementalUfEngine final : public IncrementalEngine {
         if (!value) throw std::logic_error("SAT backend did not assign observed EUF atom");
         assigned.push_back({atom.term, atom.lit.value > 0 ? *value : !*value, false});
       }
-      outcome.typed_model = build_typed_model(terms_, model_terms, assigned, {}, {}, nullptr,
+      // Reconstruct the final lowered goal. Original applications over an ITE
+      // argument must be evaluated through that model, not completed as new UF
+      // classes. SmtSession checks the model against the original assertions.
+      outcome.typed_model = build_typed_model(terms_, model_roots_, assigned, {}, {}, nullptr,
                                               &statistics, terms_.symbols().visible_symbols());
       statistics.set(":time.model-us", elapsed(model_start));
     }
@@ -12383,6 +12391,7 @@ class IncrementalUfEngine final : public IncrementalEngine {
                                                     selectors_.begin(), selectors_.end(),
                                                     [](sat::Lit lit) { return lit.value != 0; })));
     statistics.set(":session.retained-terms", terms_.size());
+    statistics.set(":session.active-model-roots", model_roots_.size());
     statistics.set(":session.retained-atoms", prepared_.flat_atoms.size());
     statistics.set(":session.prepared-atoms", prepared_.flat_atoms.size());
     statistics.set(":session.euf-flat-terms", prepared_.flat.size());
@@ -12416,6 +12425,8 @@ class IncrementalUfEngine final : public IncrementalEngine {
   core::TermId false_term_;
   PreparedFlatTheory prepared_;
   std::vector<sat::Lit> selectors_;
+  std::vector<core::TermId> model_roots_;
+  std::vector<std::size_t> model_boundaries_;
   std::size_t retired_ = 0;
   std::size_t queries_ = 0;
   std::uint64_t append_us_ = 0;

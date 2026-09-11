@@ -53,7 +53,7 @@ and the already tested adapter reconnection contract.
   query-local closure checkpoints. No callback or reason stream outlives its
   owner. Only equality/congruence consequences with complete literal reasons
   may survive as SAT learning.
-- Model construction consumes the complete theory assignment and explicit
+- Model construction consumes active lowered roots, the complete theory assignment and explicit
   visible symbol IDs. A popped sort/name may be redeclared with a fresh ID;
   retained historical symbols must not appear in current model output.
 
@@ -248,3 +248,34 @@ The insertion fix reduces representative calls on the same instrumented
 `adding.5` assumptions probe now completes both model-producing queries within
 the local 120-second bound, with approximately 1.33 billion pair checks per
 query. These are mechanism diagnostics, not qualified benchmark speedups.
+
+## Active lowered roots for UF model construction
+
+Fresh gate `142579`, seed `202639843`, exposed a model error already present at
+`1595948`, independently of the disequality scan fix. The minimal assertion is
+`(f (ite b a c))` for `f : U -> Bool`. Lowering assigns `f(aux)` true, but adding
+the original application `f(ite b a c)` to the model closure invents an unrelated
+Boolean completion. The two applications then evaluate at the same argument
+and disagree. Rebuild already constructs from its final lowered goal.
+
+Original repair checklist, recorded before implementation:
+
+- `IncrementalUfEngine` retains a vector of active lowered assertion IDs and
+  a stack of vector boundaries alongside selectors. These IDs borrow the same
+  session term manager and include the guarded lowering side constraints.
+- Append records each lowered root once. Push records the current root count;
+  pop truncates to that boundary. Empty and nested scopes preserve the ordinary
+  assertion-stack invariant. Historical SAT atoms and preparation remain allocated.
+- Construct the UF model from these active lowered roots plus the complete
+  retained theory assignment and visible symbol IDs. Do not seed uninterpreted
+  applications over original unlowered arguments with invented class values.
+- `SmtSession` still validates the resulting immutable model against the active
+  original assertions, so this does not weaken the model acceptance condition.
+  Evaluation of an original ITE argument uses the resulting function table.
+- Test both Auto and Off, repeat/pop/reappend, saved models, and agreement of
+  original-expression evaluation. Keep the minimized witness in the deterministic
+  compute-node regression gate, and rerun fresh scoped/model qualification.
+
+This changes the model builder's input roots only; it adds no rewriting rule,
+SAT lemma or new congruence algorithm. The retained assignment remains the source
+of theory facts. See [](model-interpretation) for final-goal model construction.

@@ -505,6 +505,9 @@ engine and the default rebuild pipeline are unchanged.
 QF_UF uses `IncrementalUfEngine` and retains structural flat-term preparation,
 copying its definition-only base into a fresh working congruence closure per
 query. Boolean UF argument registration runs before preparing new atoms.
+The engine also retains active lowered model roots and scope boundaries; model
+construction uses that final goal, while session validation evaluates the original
+assertions. `:session.active-model-roots` exposes scope retirement for these roots.
 Pure-theory filtering Auto resolves to Off; explicit On, lazy EUF, bridge atoms,
 Off/Model propagation and experimental Ackermann modes are rejected. Scoped
 sort and function declarations retain historical identities after pop. See

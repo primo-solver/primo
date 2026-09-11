@@ -3,6 +3,97 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-11-uf-active-lowered-model-roots",
+      "date": "2026-09-11",
+      "kind": "fresh-gate-model-failure-and-correctness-fix",
+      "evidence_status": "local fix verified; fresh exact-commit SLURM qualification pending",
+      "baseline_commit": "d96902f",
+      "reproduces_on": "1595948; Auto and Off assumptions; rebuild passes",
+      "jobs": {
+        "build": 142576,
+        "regressions": 142578,
+        "failed_uf_gate": 142579,
+        "passed_mixed_gate": 142584,
+        "default_uf": 142588,
+        "default_other": 142589,
+        "cancelled_dependent_timing": 142593,
+        "cancelled_dependent_validation": 142594
+      },
+      "binary_sha256": "acfb58a73fb6cad9ad3742fed6c5cd4faee78e1a94c77e0615b83b00cfb899c4",
+      "environment": "node-02.ciircluster; Release, CaDiCaL 3.0.0-7b99c07; same pinned QF_UF archive and native seeds as prior run",
+      "failed_gate": {
+        "seed_base": 202639120,
+        "failure_seed": 202639843,
+        "attempted_sessions": 1166,
+        "pass_sessions": 1165,
+        "model_construction_errors": 1,
+        "definite_sat_unsat_disagreements": 0,
+        "printed_invalid_models": 0,
+        "model_error": "component applications disagree at an evaluated tuple for fn0 on query 1; query 0 was provisional before the process error",
+        "limits": "250 cases per shard, 20s solver/reference response and 30s Dolmen; stopped remaining shards after failure"
+      },
+      "mixed_gate": {
+        "sessions": 1000,
+        "pass": 1000,
+        "queries": 15000,
+        "sat_models": 10000,
+        "seed_range": [
+          202609100,
+          202610099
+        ],
+        "logics": [
+          "QF_UF",
+          "QF_LRA",
+          "QF_LIA",
+          "QF_UFLRA",
+          "QF_UFLIA"
+        ],
+        "command": "scripts/slurm_incremental_gate.sbatch; default rebuild with --max-theory-conflicts=10000; 10s query/reference and 20s Dolmen"
+      },
+      "diagnosis": "The original f(ite b a c) application was completed as a separate UF class from lowered f(aux), then both evaluated at the same tuple with conflicting Bool values. The insertion-scan optimization does not cause this; both baseline binaries reproduce the minimized case.",
+      "fix": "IncrementalUfEngine retains active lowered roots and scope boundaries and uses those roots for final model construction. Original assertions remain the session model-validation authority. No SAT encoding or theory lemma changed.",
+      "witnesses": [
+        "bugs/qf-uf-incremental-ite-model/witness.smt2",
+        "bugs/qf-uf-incremental-ite-model/generated-witness.smt2"
+      ],
+      "local_replay": {
+        "profiles": [
+          "auto",
+          "off"
+        ],
+        "sessions": 4,
+        "queries": 24,
+        "direct_dolmen_models": 20,
+        "pass": 4,
+        "command": "scripts/validate_incremental.py on both witnesses, --incremental-mode=assumptions --max-theory-conflicts=10000; query/reference 20s and Dolmen 30s"
+      },
+      "local_gate": {
+        "seed": 202639800,
+        "count": 100,
+        "pass": 100,
+        "queries": 900,
+        "sat_models": 650,
+        "binary_version": "d96902f-dirty (working fix before this commit)",
+        "command": "scripts/incremental_uf_gate.py --kind generated --seed 202639800 --count 100 --expected-git d96902f-dirty --solver build/primo --solver-arg=--quiet --solver-arg=--incremental-mode=assumptions --solver-arg=--max-theory-conflicts=10000 --ref contrib/local/bin/z3 --dolmen contrib/local/bin/dolmen --timeout 20 --dolmen-timeout 30",
+        "preliminary_attempt": "An initial invocation expected the clean revision and was rejected before queries; rerun records the actual dirty build version."
+      },
+      "validator_dependency": "Local Dolmen was absent. Staged the already verified cluster Dolmen 0.10 binary locally, SHA256 08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e; then both local replay profiles pass. The failed missing-tool attempt is retained separately.",
+      "verification": "make check: 34 C++/CLI and 164 Python; make asan-test: 34/34; lint/docs pass. Whole-tree 110-file tidy/include baseline at d96902f followed by fresh focused make tidy and include-cleaner on both changed C++ files: no blocking diagnostics, existing direct-provider advisories retained. Ownership and scope-boundary review passed.",
+      "artifacts": [
+        "results/uf-auto-gate-d96902f",
+        "results/uf-mixed-gate-d96902f",
+        "results/uf-default-d96902f",
+        "results/uf-candidate-d96902f (SLURM preserved binary)",
+        "tmp/uf-ite-model-validation-auto-dolmen",
+        "tmp/uf-ite-model-validation-off-dolmen",
+        "tmp/uf-ite-model-local-gate-fixed",
+        "tmp/uf-ite-model-check.log",
+        "tmp/uf-ite-model-asan.log",
+        "tmp/uf-ite-model-tidy.log",
+        "tmp/uf-ite-model-include-cleaner.log"
+      ]
+    },
+    {
       "id": "2026-09-11-uf-model-disequality-insertion-profile",
       "date": "2026-09-11",
       "kind": "model-construction-profile-and-original-invariant-fix",

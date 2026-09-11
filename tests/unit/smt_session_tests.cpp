@@ -149,6 +149,46 @@ void uf_assumption_growth_cancellation_and_options() {
   }
 }
 
+void uf_assumption_models_use_active_lowered_roots() {
+  for (const auto preprocessing :
+       {primo::smt::PreprocessingMode::Off, primo::smt::PreprocessingMode::Auto}) {
+    primo::smt::CheckSatOptions options;
+    options.incremental_mode = primo::smt::IncrementalMode::Assumptions;
+    options.preprocessing_mode = preprocessing;
+    options.produce_model = true;
+    options.check_model = true;
+    SmtSession session(options);
+    accept(session, "(set-option :produce-models true)");
+    accept(session, "(set-logic QF_UF)");
+    accept(session, "(declare-sort U 0)");
+    accept(session, "(declare-const a U)");
+    accept(session, "(declare-const c U)");
+    accept(session, "(declare-const b Bool)");
+    accept(session, "(declare-fun f (U) Bool)");
+    expect(session, CheckSatResult::Sat);
+    accept(session, "(push 2)");
+    accept(session, "(assert (f (ite b a c)))");
+    expect(session, CheckSatResult::Sat);
+    const auto saved = session.execute("(get-model)").outcome;
+    const auto saved_text = saved->model;
+    expect(session, CheckSatResult::Sat);
+    accept(session, "(assert (not (f (ite b a c))))");
+    expect(session, CheckSatResult::Unsat);
+    accept(session, "(pop 1)");
+    const auto empty = session.execute("(check-sat)").outcome;
+    assert(empty->result == CheckSatResult::Sat);
+    assert(empty->statistics.get(":session.active-model-roots") == 0);
+    accept(session, "(push 1)");
+    accept(session, "(assert (not (f (ite b a c))))");
+    expect(session, CheckSatResult::Sat);
+    accept(session, "(pop 2)");
+    expect(session, CheckSatResult::Sat);
+    accept(session, "(reset)");
+    assert(saved->model == saved_text);
+    assert(saved->typed_model != nullptr);
+  }
+}
+
 void assumption_mode_scopes_and_reuse() {
   for (const auto mode :
        {primo::smt::PreprocessingMode::Off, primo::smt::PreprocessingMode::Auto}) {
@@ -521,6 +561,7 @@ void canonical_names_and_categories() {
 int main() {
   uf_assumption_scopes_and_preparation();
   uf_assumption_growth_cancellation_and_options();
+  uf_assumption_models_use_active_lowered_roots();
   assumption_mode_scopes_and_reuse();
   assumption_scope_storage_growth_and_budget();
   assumption_mode_cancellation_and_options();
