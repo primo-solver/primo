@@ -256,3 +256,10 @@ For an explicit visible signature, `ComponentModelBuilder` completes visible
 symbols and symbols required by retained atom interpretations. It omits unused
 popped declarations. Dense construction slots preserve SymbolId indexing, and
 unpopulated slots are removed before constructing the immutable model.
+
+The shared builder reports `:model.congruence.disequality-checks`. Inserting a
+disequality checks only the new pair after endpoint registration finishes;
+any merges during registration still scan all older pairs. This avoids quadratic work
+for pure disequality batches while preserving conflict reasons and rollback.
+The proof checklist and native model replay evidence are in
+[](assumption-incremental-uf).

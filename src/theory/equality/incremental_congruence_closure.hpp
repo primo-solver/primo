@@ -86,7 +86,7 @@ class IncrementalCongruenceClosure {
                      bool congruence);
   void process_use_list(core::TermId old_repr, core::TermId new_repr);
   void add_edge(core::TermId lhs, core::TermId rhs, std::vector<sat::Lit> reason);
-  void check_disequalities();
+  void check_disequalities(std::size_t first = 0);
   std::optional<std::vector<sat::Lit>> explain_equal_without_propagation(core::TermId lhs,
                                                                          core::TermId rhs) const;
   std::vector<sat::Lit> congruence_reason(core::TermId lhs, core::TermId rhs) const;

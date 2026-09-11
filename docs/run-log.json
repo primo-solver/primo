@@ -3,6 +3,488 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-11-uf-model-disequality-insertion-profile",
+      "date": "2026-09-11",
+      "kind": "model-construction-profile-and-original-invariant-fix",
+      "baseline_commit": "1595948",
+      "candidate_commit": "this commit; fresh SLURM qualification pending",
+      "host": "local workspace",
+      "limits": "120 seconds per process, --max-theory-conflicts=10000",
+      "command": "RelWithDebInfo gprof build: --quiet --stats --check-model --incremental-mode=assumptions --max-theory-conflicts=10000 < adding.1.prop1_ab_core_max.smt2; gprof primo gmon.out",
+      "finding": "Baseline 1,871,013,144 representative calls, 73.81% self samples; check_disequalities 18.25%. Insertion rescans the old vector although each actual merge already checks existing pairs.",
+      "change": "Check only the appended disequality after endpoint registration; endpoint registration may process congruence merges, each retaining the original full check. Full scans after actual merges and snapshot/reason behavior unchanged.",
+      "mechanism_result": "Same local instrumented probe: representative calls 172,130,838 after fix (10.87x fewer), model disequality checks 86,058,135. Reconstruction timer 14.427s before versus 3.219s after; diagnostic under local build load, not headline timing.",
+      "preimplementation_note": "docs/assumption-incremental-uf.md insertion checklist, original invariant-based scan reduction; no new optimized closure algorithm claim.",
+      "regression": "2048 insertions without merges require exactly 2048 pair checks; older/new contradictory pairs, eager endpoint congruence, reasons and rollback are checked. Initial test wrongly assumed endpoint registration defers congruence; corrected test and checklist after it exposed the existing eager propagate call.",
+      "artifacts": [
+        "tmp/uf-profile-model-5",
+        "tmp/uf-profile-model-fixed-5",
+        "tmp/uf-profile-model-fixed-14",
+        "tmp/uf-model-fix-gprof-build.log"
+      ],
+      "status": "local verification passed; fresh SLURM gates pending; reference timings retained",
+      "verification": "make check: 34 C++/CLI and 164 Python tests; make asan-test: 34/34; make lint and make docs pass; make tidy: all 110 tracked C++ files, 25 suppressed external warnings and no owned diagnostics; make include-cleaner: 311 advisory diagnostics, 22 unused-header reports all paired self-includes retained, remaining direct-provider reports inspected. Code/efficiency review found no blocking issue.",
+      "verification_artifacts": ["tmp/uf-insertion-check.log", "tmp/uf-insertion-asan-final.log", "tmp/uf-insertion-lint-final.log", "tmp/uf-insertion-docs-final.log", "tmp/uf-insertion-tidy.log", "tmp/uf-insertion-include-cleaner.log", "tmp/assumptions-uf-review.txt"]
+    },
+    {
+      "id": "2026-09-11-assumptions-uf-native-1595948",
+      "date": "2026-09-11",
+      "kind": "scoped-uf-correctness-native-archive-comparison-and-model-qualification",
+      "evidence_status": "baseline timing complete; model qualification incomplete and superseded after profiling",
+      "candidate_commit": "1595948",
+      "solver_sources_identical_to": "df47b12",
+      "candidate_sha256": "6205f9e304518c8c6dace4dae163521d47f0f11bd2c584b223dcdcdccc04037a",
+      "archive": "sandbox/QF_UF.tar.zst",
+      "archive_sha256": "52c55a17ee15e5c4a0fc723b9605ae42615da34499efc7e5a5e8b2c0ffc26a27",
+      "manifest_sha256": "4cc0c9b35b3725ae2893e626f0ee29ca798830462b080a0dea16585bbcc48b85",
+      "jobs": {
+        "build": 142456,
+        "compute_regressions": 142458,
+        "auto_gate": 142459,
+        "native_timing": 142464,
+        "native_validation": 142519,
+        "model_retry_120_seconds": 142567
+      },
+      "environment": {
+        "host": "node-02.ciircluster",
+        "workspace": "/home/janotmik/primo-model-fix",
+        "build": "Release; CaDiCaL 3.0.0-7b99c07",
+        "cpu_allocation": "one serial solver per task; request 1 task x 1 CPU; scheduler allocated 2 logical CPUs",
+        "timing_resources": "8 GiB per task; 2 hours per shard; 30 seconds per complete session; array 64 shards, concurrency 8",
+        "gate_resources": "4 GiB per task; 1 hour; 20 seconds per query/reference; Dolmen 30 seconds; array 8 x 250 sessions"
+      },
+      "preparation": "scripts/slurm_prepare_benchmark_workspace.py with reuse-dependencies/build-via-slurm and exact-commit check-only before each submission; absolute CMake/CTest from primo-cadical-profile/.venv-build/bin",
+      "gate": {
+        "generated": 1000,
+        "native_mutations": 1000,
+        "seed_base": 202629120,
+        "pass": 2000,
+        "queries": 16000,
+        "sat_models": 9458,
+        "wrong_answer": 0,
+        "crash": 0,
+        "parser_type_error": 0,
+        "timeout": 0,
+        "unknown": 0,
+        "unsupported": 0,
+        "reference_disagreement": 0,
+        "invalid_model": 0,
+        "command": "scripts/slurm_incremental_uf_gate.sbatch with PRIMO_UF_GATE_PROFILE=auto; exact commands and binary/generator/seed/reference/Dolmen hashes in per-shard run.json"
+      },
+      "compute_regressions": "6 Python harness regressions, 4 CTest matches, 7 tracked Boolean argument seeds (3 Dolmen SAT models): pass",
+      "timing_command": "scripts/slurm_native_uf_sessions.sbatch PRIMO_UF_PHASE=timing; 16 shards per profile, interleaved. Original files via stdin. Primo --quiet --stats --max-theory-conflicts=10000 --incremental-mode=rebuild|assumptions; Z3 -in; cvc5 --incremental --lang=smt2.",
+      "validation_scheduling": "After timing completed, increased job 142519 ArrayTaskThrottle from 8 to 32 using scontrol; spare node-02/node-03 CPU capacity, unchanged total tasks and per-task limits. No validation concurrent with timing.",
+      "validation_command": "same script with PRIMO_UF_PHASE=validate, PRIMO_UF_TIMING pointing at immutable timing results, candidate profile array indices 0,1,4,5,...,60,61; add --check-model and actual per-query get-model; Z3 query-context oracle and independent Dolmen --check-model=true --strict=false --size=1G; query/reference 30 seconds, Dolmen 60 seconds.",
+      "timing_summary": {
+        "profiles": {
+          "rebuild": {
+            "sessions": 1778,
+            "outcomes": {
+              "complete": 1775,
+              "timeout": 2,
+              "unknown": 1
+            },
+            "completed_queries": 29573,
+            "partial_queries": 380,
+            "partial_definite_answers": 379,
+            "partial_unknown_answers": 1,
+            "expected_sat_models": 24746,
+            "total_par2": 1461.9785826765,
+            "mean_par2": 0.822260170234252,
+            "median_complete_seconds": 0.29063820093870163,
+            "max_measured_rss_kib": 1010556,
+            "rss_samples": 1778,
+            "full_archive_timing": true,
+            "families": {
+              "2018-Goel-hwbench": {
+                "sessions": 766,
+                "outcomes": {
+                  "complete": 764,
+                  "timeout": 1,
+                  "unknown": 1
+                },
+                "completed_queries": 1528,
+                "partial_queries": 3,
+                "partial_definite_answers": 2,
+                "partial_unknown_answers": 1,
+                "expected_sat_models": 1066,
+                "total_par2": 951.0189492590725,
+                "mean_par2": 1.2415390982494419,
+                "median_complete_seconds": 0.7776431133970618,
+                "max_measured_rss_kib": 1010556,
+                "rss_samples": 766
+              },
+              "20190906-CLEARSY": {
+                "sessions": 1012,
+                "outcomes": {
+                  "complete": 1011,
+                  "timeout": 1
+                },
+                "completed_queries": 28045,
+                "partial_queries": 377,
+                "partial_definite_answers": 377,
+                "partial_unknown_answers": 0,
+                "expected_sat_models": 23680,
+                "total_par2": 510.95963341742754,
+                "mean_par2": 0.5049008235350074,
+                "median_complete_seconds": 0.07804745063185692,
+                "max_measured_rss_kib": 19536,
+                "rss_samples": 1012
+              }
+            }
+          },
+          "assumptions": {
+            "sessions": 1778,
+            "outcomes": {
+              "complete": 1772,
+              "unknown": 6
+            },
+            "completed_queries": 29978,
+            "partial_queries": 12,
+            "partial_definite_answers": 5,
+            "partial_unknown_answers": 7,
+            "expected_sat_models": 25027,
+            "total_par2": 854.1544122211635,
+            "mean_par2": 0.4804018066485734,
+            "median_complete_seconds": 0.07379723992198706,
+            "max_measured_rss_kib": 925120,
+            "rss_samples": 1778,
+            "full_archive_timing": true,
+            "families": {
+              "2018-Goel-hwbench": {
+                "sessions": 766,
+                "outcomes": {
+                  "complete": 760,
+                  "unknown": 6
+                },
+                "completed_queries": 1520,
+                "partial_queries": 12,
+                "partial_definite_answers": 5,
+                "partial_unknown_answers": 7,
+                "expected_sat_models": 1062,
+                "total_par2": 757.7013757005334,
+                "mean_par2": 0.9891662868153177,
+                "median_complete_seconds": 0.23169634398072958,
+                "max_measured_rss_kib": 925120,
+                "rss_samples": 766
+              },
+              "20190906-CLEARSY": {
+                "sessions": 1012,
+                "outcomes": {
+                  "complete": 1012
+                },
+                "completed_queries": 28458,
+                "partial_queries": 0,
+                "partial_definite_answers": 0,
+                "partial_unknown_answers": 0,
+                "expected_sat_models": 23965,
+                "total_par2": 96.45303652063012,
+                "mean_par2": 0.09530932462512857,
+                "median_complete_seconds": 0.028643855825066566,
+                "max_measured_rss_kib": 25180,
+                "rss_samples": 1012
+              }
+            }
+          },
+          "z3": {
+            "sessions": 1778,
+            "outcomes": {
+              "complete": 1778
+            },
+            "completed_queries": 29990,
+            "partial_queries": 0,
+            "partial_definite_answers": 0,
+            "partial_unknown_answers": 0,
+            "expected_sat_models": 25035,
+            "total_par2": 300.640461480245,
+            "mean_par2": 0.16908912344220753,
+            "median_complete_seconds": 0.040514715015888214,
+            "max_measured_rss_kib": 160132,
+            "rss_samples": 1778,
+            "full_archive_timing": true,
+            "families": {
+              "2018-Goel-hwbench": {
+                "sessions": 766,
+                "outcomes": {
+                  "complete": 766
+                },
+                "completed_queries": 1532,
+                "partial_queries": 0,
+                "partial_definite_answers": 0,
+                "partial_unknown_answers": 0,
+                "expected_sat_models": 1070,
+                "total_par2": 258.7292988523841,
+                "mean_par2": 0.33776670868457453,
+                "median_complete_seconds": 0.21141600981354713,
+                "max_measured_rss_kib": 160132,
+                "rss_samples": 766
+              },
+              "20190906-CLEARSY": {
+                "sessions": 1012,
+                "outcomes": {
+                  "complete": 1012
+                },
+                "completed_queries": 28458,
+                "partial_queries": 0,
+                "partial_definite_answers": 0,
+                "partial_unknown_answers": 0,
+                "expected_sat_models": 23965,
+                "total_par2": 41.911162627860904,
+                "mean_par2": 0.04141419232002066,
+                "median_complete_seconds": 0.020115772262215614,
+                "max_measured_rss_kib": 33176,
+                "rss_samples": 1012
+              }
+            }
+          },
+          "cvc5": {
+            "sessions": 1778,
+            "outcomes": {
+              "complete": 1768,
+              "timeout": 10
+            },
+            "completed_queries": 29970,
+            "partial_queries": 0,
+            "partial_definite_answers": 0,
+            "partial_unknown_answers": 0,
+            "expected_sat_models": 25020,
+            "total_par2": 1477.990283396095,
+            "mean_par2": 0.8312656262070276,
+            "median_complete_seconds": 0.10150773357599974,
+            "max_measured_rss_kib": 198896,
+            "rss_samples": 1778,
+            "full_archive_timing": true,
+            "families": {
+              "2018-Goel-hwbench": {
+                "sessions": 766,
+                "outcomes": {
+                  "complete": 756,
+                  "timeout": 10
+                },
+                "completed_queries": 1512,
+                "partial_queries": 0,
+                "partial_definite_answers": 0,
+                "partial_unknown_answers": 0,
+                "expected_sat_models": 1055,
+                "total_par2": 1342.8579124491662,
+                "mean_par2": 1.7530782146855954,
+                "median_complete_seconds": 0.41436302103102207,
+                "max_measured_rss_kib": 198896,
+                "rss_samples": 766
+              },
+              "20190906-CLEARSY": {
+                "sessions": 1012,
+                "outcomes": {
+                  "complete": 1012
+                },
+                "completed_queries": 28458,
+                "partial_queries": 0,
+                "partial_definite_answers": 0,
+                "partial_unknown_answers": 0,
+                "expected_sat_models": 23965,
+                "total_par2": 135.13237094692886,
+                "mean_par2": 0.13353001081712337,
+                "median_complete_seconds": 0.0307229058817029,
+                "max_measured_rss_kib": 27328,
+                "rss_samples": 1012
+              }
+            }
+          }
+        },
+        "reference_disagreements": [],
+        "assumptions_vs_rebuild": {
+          "gains": [
+            14,
+            852
+          ],
+          "losses": [
+            656,
+            659,
+            660,
+            661,
+            662
+          ],
+          "both_complete": 1770,
+          "median_speedup": 2.951918414487966,
+          "geomean_speedup": 2.7412056325579846,
+          "largest_regressions": [
+            {
+              "index": 267,
+              "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_firewire_tree.5.prop3_ab_core_max.smt2",
+              "rebuild_seconds": 12.015164602547884,
+              "assumptions_seconds": 24.69918086193502
+            },
+            {
+              "index": 265,
+              "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_firewire_tree.5.prop2_ab_core_max.smt2",
+              "rebuild_seconds": 11.965793212875724,
+              "assumptions_seconds": 20.436282858252525
+            },
+            {
+              "index": 263,
+              "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_firewire_tree.5.prop1_ab_core_max.smt2",
+              "rebuild_seconds": 11.9886684268713,
+              "assumptions_seconds": 20.127701608464122
+            },
+            {
+              "index": 288,
+              "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_frogs.3.prop1_ab_core_max.smt2",
+              "rebuild_seconds": 9.797072218731046,
+              "assumptions_seconds": 15.3491265270859
+            },
+            {
+              "index": 507,
+              "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_needham.4.prop2_ab_core_max.smt2",
+              "rebuild_seconds": 3.383192704990506,
+              "assumptions_seconds": 6.102023560553789
+            },
+            {
+              "index": 261,
+              "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_firewire_tree.4.prop3_ab_core_max.smt2",
+              "rebuild_seconds": 3.605221653357148,
+              "assumptions_seconds": 6.173826040700078
+            },
+            {
+              "index": 292,
+              "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_frogs.5.prop1_ab_core_max.smt2",
+              "rebuild_seconds": 4.2192238625139,
+              "assumptions_seconds": 6.775162560865283
+            },
+            {
+              "index": 257,
+              "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_firewire_tree.4.prop1_ab_core_max.smt2",
+              "rebuild_seconds": 3.4660632871091366,
+              "assumptions_seconds": 5.582253308966756
+            },
+            {
+              "index": 446,
+              "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_loyd.3.prop1_ab_core_max.smt2",
+              "rebuild_seconds": 2.0583236943930387,
+              "assumptions_seconds": 2.832213193178177
+            },
+            {
+              "index": 170,
+              "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_collision.5.prop1_ab_core_max.smt2",
+              "rebuild_seconds": 1.9129224214702845,
+              "assumptions_seconds": 2.6316556353121996
+            },
+            {
+              "index": 607,
+              "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_plc.1.prop2_ab_core_max.smt2",
+              "rebuild_seconds": 1.901801485568285,
+              "assumptions_seconds": 2.5341963563114405
+            },
+            {
+              "index": 501,
+              "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_needham.3.prop3_ab_core_max.smt2",
+              "rebuild_seconds": 1.8848996479064226,
+              "assumptions_seconds": 2.4809850435703993
+            },
+            {
+              "index": 266,
+              "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_firewire_tree.5.prop2_ab_min_max.smt2",
+              "rebuild_seconds": 3.749390995129943,
+              "assumptions_seconds": 4.283217629417777
+            },
+            {
+              "index": 611,
+              "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_plc.3.prop2_ab_core_max.smt2",
+              "rebuild_seconds": 2.009757863357663,
+              "assumptions_seconds": 2.5367820877581835
+            },
+            {
+              "index": 609,
+              "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_plc.2.prop2_ab_core_max.smt2",
+              "rebuild_seconds": 1.9616342261433601,
+              "assumptions_seconds": 2.463010171428323
+            },
+            {
+              "index": 613,
+              "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_plc.4.prop2_ab_core_max.smt2",
+              "rebuild_seconds": 2.072370834648609,
+              "assumptions_seconds": 2.568578427657485
+            },
+            {
+              "index": 264,
+              "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_firewire_tree.5.prop1_ab_min_max.smt2",
+              "rebuild_seconds": 4.067480659112334,
+              "assumptions_seconds": 4.466124748811126
+            },
+            {
+              "index": 509,
+              "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_needham.4.prop3_ab_core_max.smt2",
+              "rebuild_seconds": 1.4831640757620335,
+              "assumptions_seconds": 1.7428130973130465
+            },
+            {
+              "index": 284,
+              "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_frogs.1.prop1_ab_core_max.smt2",
+              "rebuild_seconds": 1.7681188602000475,
+              "assumptions_seconds": 1.938982579857111
+            },
+            {
+              "index": 491,
+              "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_needham.2.prop2_ab_core_max.smt2",
+              "rebuild_seconds": 1.278003428131342,
+              "assumptions_seconds": 1.4403659738600254
+            }
+          ]
+        },
+        "timing_root": "results/uf-native-timing-1595948",
+        "validation_root": null
+      },
+      "artifacts": [
+        "results/uf-native-timing-1595948",
+        "results/uf-auto-gate-1595948",
+        "SLURM results/uf-native-validation-1595948",
+        "SLURM results/uf-candidate-1595948/primo",
+        "tmp/uf-current-sacct.txt",
+        "scripts/summarize_native_uf.py"
+      ],
+      "limitations": "No completed-session performance qualification until all selected SAT models pass. Timeout/unknown sessions remain unqualified. No default promotion.",
+      "validation_result": {
+        "original_attempt": {
+          "rebuild_pass_sessions": 922,
+          "assumptions_pass_sessions": 912,
+          "response_timeouts": 8
+        },
+        "retry_120_pass_sessions": 10,
+        "stopped": "Cancelled remaining jobs 142519 and 142567 after profiling a shared model construction bottleneck. No wrong answers or invalid models observed; this is incomplete qualification. Preserve timings and reference rows for the new candidate comparison."
+      }
+    },
+    {
+      "id": "2026-09-11-assumptions-uf-local-profile",
+      "date": "2026-09-11",
+      "kind": "local-profile-of-native-regressions",
+      "evidence_status": "diagnostic; no solver change or speed claim",
+      "candidate_commit": "1595948",
+      "host": "local workspace",
+      "build": "RelWithDebInfo -O2 -g -pg; local CaDiCaL; not headline timing binary",
+      "command": "cmake -S . -B build-gprof-current -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_FLAGS=-pg -DCMAKE_EXE_LINKER_FLAGS=-pg -DPRIMO_GIT_REVISION_OVERRIDE=1595948; build target primo; --quiet --stats --incremental-mode=assumptions --max-theory-conflicts=10000 < input; gprof primo gmon.out",
+      "resource_limit": "120 seconds per local profile; both completed successfully",
+      "instances": [
+        {
+          "index": 265,
+          "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_firewire_tree.5.prop2_ab_core_max.smt2"
+        },
+        {
+          "index": 656,
+          "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_rushhour.1.prop1_ab_min_max.smt2"
+        }
+      ],
+      "findings": {
+        "firewire_index_265": "Self samples: assignment callback 23.53%, SAT propagate 22.79%, merge_classes 13.73%, restore_trail_entry 5.88%. SLURM first-query solve 14.93s and preprocessing 3.91s; rebuild solve 8.99s/preprocessing 0.70s. Working reset 0.041s. Search and reduced preprocessing are the principal measured regression; batching scratch allocations alone would not remove it.",
+        "rushhour_index_656": "Self samples: assignment callback 23.58%, SAT propagate 14.15%, merge_classes 9.43%; second query reaches 10000 theory-conflict limit. Rebuild completes both queries in 8.79s. The opt-in safe pipeline and retained search differ from rebuild; no silent fallback or unsafe preprocessing enabled.",
+        "decision": "Accept measured limitations only for opt-in mode; default rebuild unchanged. No new algorithm designed from this profile."
+      },
+      "profiler_limitation": "perf unavailable: no supported PMU/task-clock event; used gprof instead. Sampling includes instrumented owned code and uninstrumented CaDiCaL samples; call graph timings are diagnostic.",
+      "artifacts": [
+        "tmp/uf-profile-265",
+        "tmp/uf-profile-656",
+        "tmp/uf-gprof-build.log"
+      ]
+    },
+    {
       "id": "2026-09-11-assumptions-uf-correctness-and-resource-driver",
       "date": "2026-09-11",
       "kind": "scoped-uf-correctness-default-preservation-and-timing-infrastructure",

@@ -319,6 +319,50 @@ void incremental_closure_reports_disequality_conflict() {
   check(closure.stats().conflict_reason_length_le_4 == 1);
 }
 
+void incremental_closure_checks_only_inserted_disequality_until_a_merge() {
+  primo::core::SymbolTable symbols;
+  const auto sort = symbols.declare_sort("A");
+  const auto a = symbols.declare_constant("a", sort);
+  const auto b = symbols.declare_constant("b", sort);
+  const auto f = symbols.declare_function("f", {sort}, sort);
+  primo::core::TermManager terms(symbols);
+  const auto lhs = terms.mk_constant(a);
+  const auto rhs = terms.mk_constant(b);
+  const auto f_lhs = terms.mk_app(f, {lhs});
+  const auto f_rhs = terms.mk_app(f, {rhs});
+  IncrementalCongruenceClosure closure(terms);
+  for (std::size_t i = 0; i < 2048; ++i) {
+    closure.assert_distinct(lhs, rhs, {primo::sat::Lit{-10}});
+  }
+  check(!closure.conflict());
+  check(closure.stats().disequality_checks == 2048);
+  const auto checkpoint = closure.push();
+  closure.assert_equal(lhs, rhs, {primo::sat::Lit{-11}});
+  check(closure.conflict().has_value());
+  check(closure.conflict()->size() == 2);
+  closure.pop(checkpoint);
+  check(!closure.conflict());
+  const auto next = closure.push();
+  closure.assert_distinct(lhs, lhs, {primo::sat::Lit{-12}});
+  check(closure.conflict().has_value());
+  check(closure.conflict()->size() == 1);
+  check(closure.conflict()->front().value == -12);
+  closure.pop(next);
+  check(!closure.conflict());
+
+  IncrementalCongruenceClosure queued(terms);
+  queued.assert_equal(lhs, rhs, {primo::sat::Lit{-21}});
+  const auto before_terms = queued.push();
+  // Endpoint registration processes congruence before appending the new pair.
+  queued.assert_distinct(f_lhs, f_rhs, {primo::sat::Lit{-22}});
+  check(queued.conflict().has_value());
+  check(queued.conflict()->size() == 2);
+  queued.pop(before_terms);
+  check(!queued.conflict());
+  queued.assert_distinct(f_lhs, f_lhs, {primo::sat::Lit{-23}});
+  check(queued.conflict().has_value());
+}
+
 void incremental_closure_backtracks_and_rediscoveres_congruence() {
   primo::core::SymbolTable symbols;
   const auto sort = symbols.declare_sort("A");
@@ -1423,6 +1467,7 @@ int main() {
   incremental_closure_discovers_unary_congruence_with_lookup();
   incremental_closure_discovers_binary_shared_subterm_congruence();
   incremental_closure_reports_disequality_conflict();
+  incremental_closure_checks_only_inserted_disequality_until_a_merge();
   incremental_closure_backtracks_and_rediscoveres_congruence();
   flat_congruence_closure_protects_borrowed_checkpoint();
   flat_terms_curry_nary_applications_deterministically();

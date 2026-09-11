@@ -128,7 +128,10 @@ void IncrementalCongruenceClosure::assert_distinct(core::TermId lhs, core::TermI
   add_term(rhs);
   has_nonempty_reasons_ = has_nonempty_reasons_ || !reason.empty();
   disequalities_.push_back(Disequality{lhs, rhs, std::move(reason)});
-  check_disequalities();
+  // Endpoint registration may merge classes, checking all older pairs there.
+  // Appending the pair itself cannot change representatives, so only this pair
+  // remains unchecked. Original invariant: docs/assumption-incremental-uf.md.
+  check_disequalities(disequalities_.size() - 1);
 }
 
 void IncrementalCongruenceClosure::saturate() { propagate(); }
@@ -297,11 +300,12 @@ void IncrementalCongruenceClosure::add_edge(core::TermId lhs, core::TermId rhs,
   edges_.push_back(Edge{lhs, rhs, std::move(reason)});
 }
 
-void IncrementalCongruenceClosure::check_disequalities() {
+void IncrementalCongruenceClosure::check_disequalities(std::size_t first) {
   if (conflict_.has_value()) {
     return;
   }
-  for (const Disequality& disequality : disequalities_) {
+  for (std::size_t index = first; index < disequalities_.size(); ++index) {
+    const Disequality& disequality = disequalities_[index];
     ++stats_.disequality_checks;
     if (representative(disequality.lhs) != representative(disequality.rhs)) {
       continue;

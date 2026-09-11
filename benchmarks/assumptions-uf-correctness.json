@@ -2,7 +2,7 @@
   "candidate_commit": "282336d",
   "candidate_sha256": "2164aa63f75d2dcc3e7d9ed73d9043d845732050485f31d0f48cd7e8280a55ba",
   "solver_sources_identical_to": "df47b12",
-  "status": "correctness-gates-passed; full native timing/model qualification pending",
+  "status": "6000 scoped sessions pass across source-identical builds; native model qualification pending",
   "gate_profiles": {
     "auto": {
       "sessions": 2000,
@@ -134,5 +134,32 @@
     "default_uf": 142369,
     "default_other": 142370,
     "timing": 142388
+  },
+  "latest_candidate_commit": "1595948",
+  "latest_candidate_sha256": "6205f9e304518c8c6dace4dae163521d47f0f11bd2c584b223dcdcdccc04037a",
+  "latest_auto_gate": {
+    "job": 142459,
+    "seed_base": 202629120,
+    "generated": 1000,
+    "native_mutations": 1000,
+    "pass": 2000,
+    "queries": 16000,
+    "sat_models": 9458,
+    "wrong_answer": 0,
+    "crash": 0,
+    "parser_type_error": 0,
+    "unknown": 0,
+    "timeout": 0,
+    "unsupported": 0,
+    "reference_disagreement": 0,
+    "invalid_model": 0,
+    "artifact": "results/uf-auto-gate-1595948"
+  },
+  "aggregate_gate_totals": {
+    "generated": 3000,
+    "native_mutations": 3000,
+    "pass": 6000,
+    "queries": 48000,
+    "sat_models": 28366
   }
 }

@@ -33,4 +33,5 @@ python3 scripts/native_uf_sessions.py "$mode" \
   --root "${PRIMO_UF_ROOT:?}" --manifest "${PRIMO_UF_MANIFEST:?}" \
   --shards 16 --shard-index "$shard" --solver "$solver" "${solver_args[@]}" \
   "${revision_args[@]}" "${validation_args[@]}" \
-  --timeout 30 --dolmen-timeout 60 --out "${PRIMO_INCREMENTAL_OUT:?}/$label/shard-$shard"
+  --timeout "${PRIMO_UF_TIMEOUT:-30}" --dolmen-timeout "${PRIMO_UF_DOLMEN_TIMEOUT:-60}" \
+  --out "${PRIMO_INCREMENTAL_OUT:?}/$label/shard-$shard"

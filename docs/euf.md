@@ -593,6 +593,13 @@ backwards against fixed function tables and freezes an owning `core::Model`.
 The session checks and serializes that model; the printer cannot complete or
 replace a row. See [](model-interpretation.md) for the shared cross-logic design.
 
+The model closure checks only the newly appended disequality on insertion;
+endpoint registration may merge classes, and every such merge checks all
+stored pairs before the new pair is appended. The `:model.congruence.disequality-checks` counter exposes
+that work, including the remaining merge scans. See the original invariant and
+linear insertion regression in [](assumption-incremental-uf). No ownership,
+rollback or explanation representation changes.
+
 Boolean completion is part of that quotient construction. A Bool constant or
 Bool-valued application that disappeared from the final SAT problem may have no
 explicit model assignment. Primo prints such a term as `false`. Before function
