@@ -195,7 +195,13 @@ What the numbers say:
     positions. In `misc/set5.smt2`, `(member ?x ?s1)` is `member(%2, %1)` in the
     axioms that bind `?x ?s1 ?s2` together, but `member(%0, %2)` under an inner
     `?x` binder. The named encoding shares one term across both.
-- **Fresh variables double the DAG**, so C is out.
+- **Fresh variables double the DAG.** The ratio is 2.00 in `sledgehammer` and
+  2.10 in `20170428-Barrett`, but only 1.29 in `grasshopper` and 1.02 in
+  `20190906-CLEARSY`. The cause is lost sharing of open subterms across
+  quantifiers. In `misc/set5.smt2` (43 nodes named, 75 fresh), `(member ?x ?s1)`
+  is one node named but six fresh, and the three variable leaves become 20. Node
+  count is a memory proxy, not solving time, so this is a cost to weigh against
+  C's simplicity (no capture, shadowing, or shifting), not a disqualification.
 - **Alpha-equivalence buys little in `UF`.** Distinct quantifiers fall by 0.3%
   under de Bruijn, because benchmark generators already name variables
   consistently.
