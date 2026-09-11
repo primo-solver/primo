@@ -1,0 +1,17 @@
+{
+  "archive": "sandbox/QF_UF.tar.zst",
+  "archive_sha256": "52c55a17ee15e5c4a0fc723b9605ae42615da34499efc7e5a5e8b2c0ffc26a27",
+  "manifest_sha256": "4cc0c9b35b3725ae2893e626f0ee29ca798830462b080a0dea16585bbcc48b85",
+  "sessions": 1778,
+  "queries": 29990,
+  "pushes": 33716,
+  "pops": 33716,
+  "fresh_status_annotations": 1532,
+  "families": {
+    "2018-Goel-hwbench": 766,
+    "20190906-CLEARSY": 1012
+  },
+  "reproduce": "python3 scripts/native_uf_sessions.py inventory --archive sandbox/QF_UF.tar.zst --root tmp/native-uf-inputs --manifest tmp/native-uf-inventory/manifest.json",
+  "mutation_seeds": "benchmarks/native-uf-incremental-seeds.txt",
+  "seed_selection": "Per family sorted by byte size, indices 0,10,25,50,100; exact native prefixes through first check-sat."
+}

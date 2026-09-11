@@ -70,6 +70,11 @@ read-only after construction; neither evaluation nor serialization completes it.
 
 The model owns no AST, SAT objects, term references, or component caches. The
 signature snapshot allows printing after the original term manager is destroyed.
+Assumptions sessions pass explicit visible-symbol IDs to the model builder.
+For QF_UF, the builder sees the complete retained theory assignment and active
+original assertion roots, while completion and printing expose only the active
+signature. Popped declarations can reuse names with fresh IDs; prior snapshots
+remain independent across pop and reset. See [](assumption-incremental-uf).
 An evaluator borrows a live const term manager while evaluating its IDs; IDs
 are meaningful only in that manager. An evaluator's memo belongs to one frozen
 model and cannot survive replacing it with a different interpretation.

@@ -27,4 +27,7 @@ class IncrementalEngine {
 std::unique_ptr<IncrementalEngine> make_incremental_lra_engine(core::TermManager& terms,
                                                                const CheckSatOptions& options);
 
+std::unique_ptr<IncrementalEngine> make_incremental_uf_engine(core::TermManager& terms,
+                                                              const CheckSatOptions& options);
+
 }  // namespace primo::smt

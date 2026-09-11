@@ -543,7 +543,7 @@ int run_main(int argc, char** argv) {
                  "Preprocessing preset for all supported logics: off, basic, strong, or auto")
       ->check(CLI::IsMember({"off", "basic", "strong", "auto"}));
   app.add_option("--incremental-mode", incremental_mode,
-                 "Session engine: rebuild (default), or opt-in QF_LRA assumptions")
+                 "Session engine: rebuild (default), or opt-in QF_LRA/QF_UF assumptions")
       ->check(CLI::IsMember({"rebuild", "assumptions"}));
   app.add_option("--auto-preprocess-selector", auto_preprocess_selector,
                  "Auto preprocessing selector: legacy assertion-count heuristics or "

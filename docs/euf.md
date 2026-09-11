@@ -7,6 +7,13 @@ with `--euf-engine=lazy` for diagnostics.
 
 ## Current Solver Path
 
+The default incremental SMT session rebuilds this one-shot path. Opt-in
+`--incremental-mode=assumptions` uses `IncrementalUfEngine`, retaining the SAT
+encoding and definition-only `PreparedFlatTheory` while constructing a fresh
+`OnlineEufPropagator` and working closure for each query. Pure-theory filtering
+is disabled in that mode. Scope, option and model invariants and current
+qualification are specified in [](assumption-incremental-uf).
+
 SMT-LIB assertions are parsed into hash-consed terms. Boolean structure is
 clausified into SAT clauses. Equality atoms and Boolean predicate applications
 are tracked as theory atoms.

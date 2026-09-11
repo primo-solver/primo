@@ -3,6 +3,120 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-11-assumptions-uf-local-development",
+      "date": "2026-09-11",
+      "kind": "native-uf-baseline-inventory-and-development-smoke",
+      "evidence_status": "preliminary-local-only; SLURM qualification pending",
+      "base_commit": "5d930be",
+      "baseline_binary_revision": "04d2e23",
+      "baseline_binary_sha256": "f823de911dbdb008ab89acebebf2fa5e467d24eb45f88fa1fe94f05c600249e8",
+      "archive": {
+        "archive": "sandbox/QF_UF.tar.zst",
+        "archive_sha256": "52c55a17ee15e5c4a0fc723b9605ae42615da34499efc7e5a5e8b2c0ffc26a27",
+        "manifest_sha256": "4cc0c9b35b3725ae2893e626f0ee29ca798830462b080a0dea16585bbcc48b85",
+        "sessions": 1778,
+        "queries": 29990,
+        "pushes": 33716,
+        "pops": 33716,
+        "fresh_status_annotations": 1532,
+        "families": {
+          "2018-Goel-hwbench": 766,
+          "20190906-CLEARSY": 1012
+        },
+        "reproduce": "python3 scripts/native_uf_sessions.py inventory --archive sandbox/QF_UF.tar.zst --root tmp/native-uf-inputs --manifest tmp/native-uf-inventory/manifest.json",
+        "mutation_seeds": "benchmarks/native-uf-incremental-seeds.txt",
+        "seed_selection": "Per family sorted by byte size, indices 0,10,25,50,100; exact native prefixes through first check-sat."
+      },
+      "baseline": [
+        {
+          "file": "incremental/QF_UF/2018-Goel-hwbench/QF_UF_needham.3.prop1_ab_core_max.smt2",
+          "bytes": 381058,
+          "sha256": "1176735c2f9f7a2249e5903bea336537f3b5b79f138c938f3bc6ddfd5ab17e10",
+          "query_count_lexical": 2,
+          "push_count_lexical": 0,
+          "pop_count_lexical": 0,
+          "check_sat_assuming_lexical": 0,
+          "command": [
+            "results/assumptions-native-04d2e23/primo",
+            "--quiet",
+            "--stats",
+            "--max-theory-conflicts=10000",
+            "tmp/uf-baseline-smoke/case-0.smt2"
+          ],
+          "status": "done",
+          "exit": 0,
+          "seconds": 0.33400351309683174,
+          "answers": [
+            "sat",
+            "unsat"
+          ]
+        },
+        {
+          "file": "incremental/QF_UF/20190906-CLEARSY/0008/00064.smt2",
+          "bytes": 20766,
+          "sha256": "8e299a7186e72d30eea7ec448cd9f489fab24f1b292d6497e1a1bd4f007e893d",
+          "query_count_lexical": 2,
+          "push_count_lexical": 2,
+          "pop_count_lexical": 2,
+          "check_sat_assuming_lexical": 0,
+          "command": [
+            "results/assumptions-native-04d2e23/primo",
+            "--quiet",
+            "--stats",
+            "--max-theory-conflicts=10000",
+            "tmp/uf-baseline-smoke/case-1.smt2"
+          ],
+          "status": "done",
+          "exit": 0,
+          "seconds": 0.010139239951968193,
+          "answers": [
+            "sat",
+            "sat"
+          ]
+        }
+      ],
+      "development_smoke": {
+        "source": "uncommitted candidate based on 5d930be; not final-commit fuzz evidence",
+        "command": "python3 tmp/uf-local-differential.py; incremental_uf_gate.generated(seed), seeds 0..99; build/primo --quiet --incremental-mode=assumptions --check-model versus contrib/local/bin/z3 -in",
+        "sessions": 100,
+        "pass": 100,
+        "wrong_answer": 0,
+        "crash": 0,
+        "invalid_internal_model": 0,
+        "timeout": 0,
+        "independent_models": "not run locally; Dolmen is installed on SLURM",
+        "timeout_seconds_per_process": 15,
+        "artifacts": "tmp/uf-local-differential, tmp/uf-local-differential.log"
+      },
+      "artifacts": [
+        "tmp/uf-baseline-smoke",
+        "tmp/native-uf-inventory",
+        "tmp/uf-archive-staging.log"
+      ],
+      "limitations": "Local smoke only. Remote pre-existing UF archives checksum c5cec6881390d2bda18482526b84127f5c13cc7881b02944a7ef5dd1525b46ad differs from requested archive; exact input staged using repository helper.",
+      "host": "mikolas-ThinkPad-T14s-Gen-5",
+      "native_smoke": {
+        "sessions": 10,
+        "pass": 10,
+        "wrong_answer": 0,
+        "crash": 0,
+        "invalid_internal_model": 0,
+        "timeout": 0,
+        "command": "python3 tmp/uf-native-smoke.py; native_prefix + scoped(seed 0..9, mutate=True); build/primo --quiet --incremental-mode=assumptions --max-theory-conflicts=10000 --check-model versus contrib/local/bin/z3 -in",
+        "timeout_seconds_per_process": 15,
+        "artifacts": "tmp/uf-native-smoke.json and tmp/uf-native-smoke-*.smt2"
+      },
+      "verification": {
+        "cpp_cli": "make check: 34/34 C++/CLI tests, final log tmp/assumptions-uf-check-final.log",
+        "asan": "make asan-test: 34/34, including 64 repeated scoped sort/function redeclarations and unknown recovery",
+        "python": "make check: 160/160 Python tests",
+        "lint": "make lint pass",
+        "docs": "make docs pass",
+        "review": "tmp/assumptions-uf-review.txt; source ownership, base-state isolation, explanations, visible models, safe configuration and whole tracked-file baseline reviewed. Exact-commit SLURM gate and performance/model qualification remain pending.",
+        "static": "make tidy: all 110 tracked non-generated C++ translation units, no owned diagnostics, 25 suppressed external warnings. make include-cleaner: all 110 files, 311 advisory diagnostics comprising paired self-includes and transitive provider reports; no actionable unused header. Logs tmp/assumptions-uf-tidy.log and tmp/assumptions-uf-includes.log."
+      }
+    },
+    {
       "id": "2026-09-11-assumptions-lra-qualification",
       "date": "2026-09-11",
       "kind": "scoped-lra-correctness-default-preservation-and-native-comparison",

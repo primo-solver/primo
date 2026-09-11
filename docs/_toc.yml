@@ -12,6 +12,7 @@ parts:
         sections:
           - file: lexical-conformance
           - file: assumption-incremental-lra
+          - file: assumption-incremental-uf
       - file: model-interpretation
       - file: tactics
         sections:
