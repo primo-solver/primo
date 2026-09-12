@@ -185,6 +185,36 @@ void pure_theory_filter_stays_off_while_lemmas_grow() {
   }
 }
 
+// benchmarks/regressions/uf_quantified_lemmas_before_complete_assignment.smt2:
+// with the quantifier component consulted mid-search, its queued lemmas muted
+// EUF before any decision-dependent conflict and this stayed unknown.
+void instances_wait_for_complete_assignments() {
+  const std::string input = R"(
+    (set-logic UF)
+    (declare-sort Loc 0) (declare-sort Set 0) (declare-sort Fld 0)
+    (declare-fun null () Loc) (declare-fun ep (Fld Set Loc) Loc)
+    (declare-fun btwn (Fld Loc Loc Loc) Bool) (declare-fun in (Loc Set) Bool)
+    (declare-fun a () Loc) (declare-fun next () Fld) (declare-fun fp () Set)
+    (assert (forall ((v Loc)) (or false (= v null) (not (btwn next null v null)))))
+    (assert (not (= a null)))
+    (assert (forall ((s Set) (f Fld) (x Loc) (y Loc)) (or false (not (in y fp)) (in (ep next fp x) fp))))
+    (assert (forall ((f Fld) (u Loc) (x Loc) (y Loc) (z Loc))
+      (or false (not (btwn next x y z)) (and (btwn next x y x) (btwn next z z y)))))
+    (assert (forall ((f Fld) (x Loc) (y Loc) (z Loc)) (or false false (btwn next x y x) (btwn f x z z))))
+    (check-sat)
+  )";
+  for (const bool simplify : {true, false}) {
+    CheckSatOptions options;
+    options.quantifier_instance_simplification = simplify;
+    const CheckSatOutcome outcome = check_sat_smtlib(input, options);
+    assert(outcome.result == CheckSatResult::Unsat);
+    // 302 instances with the fix. Consulted mid-search, the component kept
+    // queuing instances until the whole 100,000-instance budget was spent
+    // before EUF could refute; instance counts are deterministic, time is not.
+    assert(outcome.statistics.get(":quant.instances") < 2000);
+  }
+}
+
 }  // namespace
 
 int main() {
@@ -198,5 +228,6 @@ int main() {
   budgets_models_and_logics();
   instances_are_normalized_and_deduplicated();
   pure_theory_filter_stays_off_while_lemmas_grow();
+  instances_wait_for_complete_assignments();
   return 0;
 }
