@@ -95,9 +95,17 @@ std::vector<core::TermId> name_boolean_arguments(core::TermManager& terms,
 
 CheckSatOutcome solve_quantified_uf(
     core::TermManager& terms, const std::vector<core::TermId>& assertions,
-    const CheckSatOptions& options, util::Statistics& statistics,
+    const CheckSatOptions& requested, util::Statistics& statistics,
     const std::function<core::TermId(core::SortId, std::string_view)>& fresh_constant) {
   statistics.increment(":solver.quantified-uf");
+  CheckSatOptions options = requested;
+  // The pure-theory filter skips theory assignments against an atom's only
+  // polarity, which presumes the clause set is final. Instance lemmas keep
+  // adding occurrences, so an atom pure when registered can stop being pure
+  // and its skipped assignments matter: with the filter, instances reusing
+  // ground atoms in the other orientation lost refutations (sledgehammer
+  // FFT/uf.860560). Incremental sessions turn it off for the same reason.
+  options.pure_theory_filter = PureTheoryFilterMode::Off;
   if (options.produce_model) {
     return {CheckSatResult::Unsupported, "models for quantified formulas are not supported",
             statistics, "", InconclusiveReason::Unsupported};

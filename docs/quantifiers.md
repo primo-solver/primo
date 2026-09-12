@@ -58,6 +58,17 @@ Deviations from the proposal:
   open inside bodies, and lowers extended terms.
 - `lower_extended_terms` treats quantified formulas as opaque. This change was
   planned for M3.
+- The route turns the pure-theory filter off. The filter skips a theory
+  assignment that goes against an atom's only polarity, which is valid only for
+  a final clause set. Instance lemmas add occurrences during the search, so an
+  atom that was pure can stop being pure. Incremental sessions turn the filter
+  off for the same reason.
+
+  With the filter on, the quantified route discarded 1.27 million EUF
+  assignments on `sledgehammer/FFT/uf.860560`. Instances that used a ground atom
+  in the other orientation never produced their conflict, and six instances
+  that refute the problem left it `unknown`. The UF evaluation below predates
+  this fix.
 - `run_query` routes quantified assertions in logic `UF` there, after the model
   request is known. Models, other logics and assumptions mode are `unsupported`.
 - The answer is `unsat` from the ground solver. It is `sat` only when every

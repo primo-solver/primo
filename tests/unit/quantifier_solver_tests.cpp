@@ -154,6 +154,37 @@ void instances_are_normalized_and_deduplicated() {
   assert(trivial.statistics.get(":quant.instances.trivial") >= 1);
 }
 
+// benchmarks/regressions/uf_quantified_pure_filter_growth.smt2: the pure-theory
+// filter assumes a final clause set, but instance lemmas add atom occurrences,
+// so the quantified route must not filter. With the filter this was unknown.
+void pure_theory_filter_stays_off_while_lemmas_grow() {
+  const std::string input = R"(
+    (set-logic UF)
+    (declare-sort A 0) (declare-sort B 0) (declare-sort C 0) (declare-sort D 0)
+    (declare-sort E 0) (declare-sort F 0) (declare-sort G 0)
+    (declare-fun a () A) (declare-fun h (C B) D) (declare-fun c () C)
+    (declare-fun k (C E) D) (declare-fun m (D) C) (declare-fun n (B) D)
+    (declare-fun b () B) (declare-fun r (F B) B) (declare-fun s (G B) F)
+    (declare-fun g () G) (declare-fun d () B) (declare-fun u (B B) E)
+    (declare-fun q (B B) A) (declare-fun w (E E) E) (declare-fun x (B E) E)
+    (declare-fun e () E) (declare-fun t (B B) E)
+    (assert (forall ((y B)) (= (h c b) (k (m (h (m (n b)) (r (s g y) b))) (t b b)))))
+    (assert (forall ((y B) (v B)) (or (not (= a (q d v))) (= (u d v) (w (x y e) (t d v))))))
+    (assert (and (= (q d b) a) (not (= (k c (u d b)) (k c (w (x b e) (t d b)))))))
+    (check-sat)
+  )";
+  for (const bool simplify : {true, false}) {
+    for (const auto filter :
+         {primo::smt::PureTheoryFilterMode::Auto, primo::smt::PureTheoryFilterMode::On}) {
+      CheckSatOptions options;
+      options.quantifier_instance_simplification = simplify;
+      options.pure_theory_filter = filter;
+      options.quantifier_max_instances = 5000;
+      assert(check_sat_smtlib(input, options).result == CheckSatResult::Unsat);
+    }
+  }
+}
+
 }  // namespace
 
 int main() {
@@ -166,5 +197,6 @@ int main() {
   answers_short_of_refutation();
   budgets_models_and_logics();
   instances_are_normalized_and_deduplicated();
+  pure_theory_filter_stays_off_while_lemmas_grow();
   return 0;
 }
