@@ -19,9 +19,9 @@ source or documentation informs this note (clean-room policy, `AGENTS.md`).
 | --- | --- |
 | M0: paper note for enumerative instantiation | done: [](papers/enumerative-instantiation.md) |
 | M1: core representation and index operations | done, see below |
-| M2: frontend parsing and the routing gate | implemented; UF parse pass and fuzz gate pending |
-| M3: component protocol and driver extension for queued lemmas | implemented; QF_UFLIA cluster preservation run pending |
-| M4: quantifier component, enumerative instantiation, UF route | implemented; UF corpus evaluation and fuzzing pending |
+| M2: frontend parsing and the routing gate | done; all 7,590 UF files parse, quantifier-free fuzz gates clean |
+| M3: component protocol and driver extension for queued lemmas | done; QF_UFLIA preservation identical to main |
+| M4: quantifier component, enumerative instantiation, UF route | done; evaluated on the UF division below |
 
 **M1**, the representation from the proposal below:
 
@@ -76,7 +76,51 @@ Local M4 checks, 2026-09-11:
   `unknown` that Primo prints when cancelled as an answer and reported 22
   `unknown`; the harness classifies those runs as timeouts.
 
-This is not the corpus evaluation, which still needs the cluster.
+**Evaluation** on the SLURM cluster at `a6d3ff2`, whose solver sources equal
+`5acd21c`. Each run has an entry in `docs/run-log.json`.
+
+- **UF division.** All 7,590 files, 60 s each, using
+  `scripts/slurm_uf_quantifier_compare.sbatch` and
+  `scripts/summarize_uf_quantifier_compare.py`:
+
+  | Solver | Solved | sat | unsat | unknown | timeout | PAR2 |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | Primo | 1,749 | 1 | 1,748 | 495 | 5,346 | 706,277 |
+  | Z3 5.1.0 | 2,765 | 109 | 2,656 | 1 | 4,824 | 580,843 |
+  | cvc5 1.3.4 | 3,154 | 1 | 3,153 | 641 | 3,795 | 534,091 |
+
+  - **Correctness.** Primo gave no wrong answer against `:status` (3,394
+    `unsat`, 801 `sat`, 3,395 without a status) and never disagreed with Z3
+    or cvc5. No file was an error or `unsupported`.
+  - **Unique solves.** Primo solves 31 files that neither reference solves.
+    Twenty-nine have declared status `unsat`. The two without a status are
+    unsat for Primo:
+    - `universalInstance` is confirmed by cvc5 with `--enum-inst` and
+      `--full-saturate-quant`.
+    - `koenigslemma/x2015_09_10_16_51_52_445_1059832` is confirmed by no
+      reference. Z3, cvc5 `--enum-inst` and cvc5 `--full-saturate-quant` all
+      time out after 900 s, so this one answer is unverified.
+  - **Where Primo falls short.** Of its 495 `unknown` answers, 471 hit the
+    instance budget and 24 found no new instance. The references solve 1,602
+    files that Primo does not, mostly in `sledgehammer` and `20170428-Barrett`.
+    Z3 answers `sat` on 109 files and Primo on one of them. The other 108,
+    including all ten `wintersteiger` files, need model finding, which
+    enumerative instantiation does not provide.
+- **Mutation fuzzing.** typefuzz produced 3,785 mutants from the smallest
+  seeds of every family, run against Z3. Z3 answered 938 of them, and Primo's
+  446 definite answers on those all agree. Primo's `unsat` on the 5 mutants Z3
+  could not decide is confirmed by cvc5 `--enum-inst`. About 70% of the
+  mutants are ill-formed, and both solvers reject them.
+- **Quantifier-free gates.** Two fuzz gates ran against Z3:
+  - QF_UFLIA model fuzzing: 3,000 of 3,000 answers pass.
+  - QF_UF Boolean-argument fuzzing: 11,000 of 11,000 pass.
+
+  Every `sat` model passes Dolmen. The validator marks `unsat` cases as solver
+  errors because `(get-model)` after `unsat` exits 2 since main's `5bc811b`;
+  main `605062f` behaves identically.
+- **Preservation.** main `605062f` and the branch agree on all 659 QF_UFLIA
+  files: same answers (405 `sat`, 169 `unsat`, 85 timeouts in both) and same
+  non-timing statistics.
 
 Quantifier-free behaviour is preserved. On 40 local inputs (the smoke QF_UF,
 QF_UFLIA and QF_LIA sets, plus the ten smallest QF_LRA, QF_UFLRA and QF_LIA

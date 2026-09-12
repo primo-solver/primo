@@ -10,8 +10,8 @@ Reference:
 Read for Primo's quantifier component: Sections 2, 3, 4 and 4.1, including
 Figure 2. Section 5 (experiments) was not used.
 
-**Status: implemented (M4 of [](../quantifiers.md)); corpus evaluation
-pending.** This note is the paper checklist written before the instantiation
+**Status: implemented (M4 of [](../quantifiers.md)) and evaluated on the
+SMT-LIB UF division.** This note is the paper checklist written before the instantiation
 code. It records what the paper says and which subset Primo implements.
 
 ## Section 2: the instantiation loop
