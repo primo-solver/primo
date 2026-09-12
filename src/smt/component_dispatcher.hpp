@@ -52,7 +52,7 @@ class ComponentDispatcher final : public sat::ExternalPropagator {
     std::size_t component = 0;
     sat::Clause clause;
   };
-  bool partial_check();
+  bool partial_check(bool complete_assignment = false);
   void accept_result(std::size_t component, theory::TheoryCheckResult result);
   std::vector<theory::TheoryComponent*> components_;
   std::vector<std::optional<Route>> routes_;

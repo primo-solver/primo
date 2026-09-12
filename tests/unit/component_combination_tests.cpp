@@ -819,10 +819,12 @@ void queued_lemmas_are_drained_at_the_growth_boundary() {
     ConsultedOnFullModel,
     NoHook,
     BatchedDrain,
+    NotConsultedMidSearch,
   };
   for (const Scenario scenario :
        {Scenario::RefuteNewAtom, Scenario::KeepNewAtom, Scenario::NeverConsulted,
-        Scenario::ConsultedOnFullModel, Scenario::NoHook, Scenario::BatchedDrain}) {
+        Scenario::ConsultedOnFullModel, Scenario::NoHook, Scenario::BatchedDrain,
+        Scenario::NotConsultedMidSearch}) {
     Fixture f;
     const auto sort = f.symbols.declare_sort("S");
     const core::TermId a = f.variable("a", sort);
@@ -864,6 +866,14 @@ void queued_lemmas_are_drained_at_the_growth_boundary() {
         batches = {{equal, f.terms.mk_not(equal)}};
         expected = smt::CheckSatResult::Unsat;
         break;
+      case Scenario::NotConsultedMidSearch:
+        // The ground component rejects every assignment of its marker, a
+        // conflict only the theory finds. A full-model component consulted
+        // first mid-search would stop the solve with queued lemmas, mute the
+        // ground component, and let SAT accept a propositional model.
+        batches = {{lemma_marker}, {lemma_marker}};
+        expected = smt::CheckSatResult::Unsat;
+        break;
     }
 
     bool owner_saw_new_atom = false;
@@ -872,6 +882,9 @@ void queued_lemmas_are_drained_at_the_growth_boundary() {
     recipe.online = true;
     recipe.model_guided = false;
     recipe.online_order = {0, 1};
+    if (scenario == Scenario::NotConsultedMidSearch) {
+      recipe.online_order = {1, 0};
+    }
     recipe.timing_prefix = ":time.lemma-test.";
     if (scenario != Scenario::NoHook) {
       recipe.prepare_lemmas = [](std::vector<core::TermId> formulas) { return formulas; };
@@ -883,10 +896,17 @@ void queued_lemmas_are_drained_at_the_growth_boundary() {
       auto component = std::make_unique<PartitionComponent>(f.terms, "ground", ground_marker,
                                                             std::vector<Restriction>{});
       component->owns_equalities = true;
-      component->corrupt = [&owner_saw_new_atom, owner = component.get(),
-                            equal](theory::TheoryCheckResult&) {
+      component->corrupt = [&owner_saw_new_atom, owner = component.get(), equal, ground_marker,
+                            scenario](theory::TheoryCheckResult& result) {
         for (const auto& assigned : owner->assignments()) {
           owner_saw_new_atom = owner_saw_new_atom || (assigned.atom == equal && assigned.value);
+          // A conflict only this component can report: SAT alone satisfies
+          // the assertions, and nothing else refutes the marker.
+          if (scenario == Scenario::NotConsultedMidSearch && assigned.atom == ground_marker &&
+              assigned.value) {
+            result.status = theory::TheoryCheckStatus::LearnedClause;
+            result.clause = {sat::Lit{-assigned.lit.value}};
+          }
         }
       };
       return component;
@@ -921,6 +941,11 @@ void queued_lemmas_are_drained_at_the_growth_boundary() {
       case Scenario::BatchedDrain:
         assert(drained == 2);
         assert(statistics.get(":combination.lemmas.formulas") == 2);
+        break;
+      case Scenario::NotConsultedMidSearch:
+        // Refuted before any complete assignment: the lemma source was never
+        // asked, so nothing was drained.
+        assert(drained == 0 && lemma_checks == 0);
         break;
     }
   }

@@ -142,12 +142,19 @@ void ComponentDispatcher::accept_result(std::size_t component, theory::TheoryChe
   }
 }
 
-bool ComponentDispatcher::partial_check() {
+bool ComponentDispatcher::partial_check(bool complete_assignment) {
   if (failure_.has_value() || lemmas_pending_.has_value() || external_clause_.has_value()) {
     return !external_clause_.has_value();
   }
   for (std::size_t index = 0; index < components_.size(); ++index) {
     if (!dirty_[index]) {
+      continue;
+    }
+    // A component whose work depends on the whole assignment is consulted only
+    // once SAT has one; it stays dirty until then. Consulting it mid-search let
+    // a quantifier component whose atoms are root units interrupt every round
+    // before the ground search could reach its conflicts.
+    if (!complete_assignment && components_[index]->descriptor().capabilities.check_on_full_model) {
       continue;
     }
     dirty_[index] = false;
@@ -172,7 +179,7 @@ bool ComponentDispatcher::cb_check_found_model(const std::vector<int>& model) {
       dirty_[index] = true;
     }
   }
-  return partial_check();
+  return partial_check(true);
 }
 
 int ComponentDispatcher::cb_decide() {

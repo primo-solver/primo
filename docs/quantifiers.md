@@ -58,6 +58,14 @@ Deviations from the proposal:
   open inside bodies, and lowers extended terms.
 - `lower_extended_terms` treats quantified formulas as opaque. This change was
   planned for M3.
+- Instances are generated only at complete SAT assignments. The dispatcher
+  consults `check_on_full_model` components only from `cb_check_found_model`.
+  Before that change the component ran at the first check of every round,
+  because quantified assertions are root units. Its `LemmasPending` stop
+  muted EUF before the search could reach decision-dependent conflicts, so
+  problems that six or a hundred instances refute went `unknown` whenever
+  instances kept coming. Instance normalization made that common.
+  [](n-way-combination-migration.md) has the protocol detail.
 - The route turns the pure-theory filter off. The filter skips a theory
   assignment that goes against an atom's only polarity, which is valid only for
   a final clause set. Instance lemmas add occurrences during the search, so an

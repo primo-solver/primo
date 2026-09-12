@@ -317,9 +317,18 @@ changed; only the component protocol and the online driver grew.
   consequence of the assertions.
 - **`TheoryComponent::take_lemmas(limit)`.** Hands over up to `limit` of them.
   The default returns none.
-- **`ComponentCapabilities::check_on_full_model`.** The dispatcher marks such a
-  component dirty at every `cb_check_found_model`, so a complete assignment is
-  never accepted without consulting it, even when none of its atoms changed.
+- **`ComponentCapabilities::check_on_full_model`.** The dispatcher consults such
+  a component only at `cb_check_found_model`, and there on every complete
+  assignment, even when none of its atoms changed, so a complete assignment is
+  never accepted without it. Mid-search checks skip it and leave it dirty.
+
+  Consulting it earlier broke quantified UF. Quantified assertions are root
+  units, so the quantifier component answered `LemmasPending` at the first
+  check of every round. That stop muted the ground components before the search
+  reached a conflict that needed decisions, and SAT accepted a propositional
+  model. Easy `unsat` problems went `unknown` whenever new instances kept
+  coming (sledgehammer/FFT/uf.860560, grasshopper
+  find_last_check_heap_access_14_2).
 - **`ComponentDispatcher::lemmas_pending()`.** The dispatcher records the stop
   there, not as a failure. It then makes no further checks, decisions or
   propagations for that solve.
