@@ -3,6 +3,148 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-13-quantifiers-uf-mutation-fuzz-144199",
+      "date": "2026-09-13",
+      "commit": "cec20ce",
+      "branch": "quantifiers",
+      "kind": "seed-mutation-fuzz-campaign",
+      "scope": "Mutation-fuzz gate at the dispatcher scheduling fix (cec20ce), which also carries instance normalization (ca5cdaa) and the pure-theory filter fix (b1b2fbe): typefuzz on UF seeds against Z3, answers only, then classification of every retained mutant and confirmation of answers Z3 could not decide.",
+      "environment": {
+        "host": "CIIRC SLURM cluster, partition compute",
+        "workspace": "/home/janotmik/primo-quantifiers, build-slurm-rel/primo reporting git cec20ce; instance normalization on (default)",
+        "fuzzer": "YinYang typefuzz 0.3.0, --keep-logic --hoist-declarations --keep-mutants, 50 iterations per seed, solver timeout 5 s, random seeds 202609140-202609143",
+        "seeds": "build_fuzz_seed_corpus.py --per-family 3 --max-bytes 20000 over the UF division: 21 seeds, 19 valid per task",
+        "reference": "contrib/local/bin/z3 (Z3 5.1.0); confirmations with Z3 and contrib/local/bin/cvc5 (cvc5 1.3.4) --enum-inst / --full-saturate-quant"
+      },
+      "jobs": {
+        "fuzz": "144199",
+        "classification": "144362",
+        "confirmation": "144394"
+      },
+      "commands": {
+        "fuzz": "sbatch --time=01:00:00 --export=ALL,PRIMO_WORKDIR=$HOME/primo-quantifiers,PRIMO_CORPUS_ROOT=$HOME/primo-quantifiers-data/non-incremental/UF,PRIMO_FUZZ_YINYANG_WALL_SECONDS=3000,PRIMO_FUZZ_RANDOM_SEED=202609140 scripts/slurm_uf_quantifier_mutation_fuzz.sbatch",
+        "classification": "sbatch --array=0-31 --time=01:00:00 --export=ALL,PRIMO_WORKDIR=$HOME/primo-quantifiers,PRIMO_COMPARE_ROOT=fuzz-results/uf-quantifier-mutation-144199,PRIMO_COMPARE_TIMEOUT=5,PRIMO_COMPARE_SHARDS=16,PRIMO_COMPARE_SOLVERS='primo=build-slurm-rel/primo --quiet;z3=contrib/local/bin/z3' scripts/slurm_uf_quantifier_compare.sbatch",
+        "confirmation": "uf_long_reference_check.sbatch (scratch, validated) with PRIMO_LONG_CHECK_SECONDS=120 on the seven mutants in results/uf-mutant-classify-144199/unconfirmed.txt"
+      },
+      "results": {
+        "fuzz": "7,321 solver calls, 3,765 retained mutants, 0 bug triggers.",
+        "classification_coverage": "3,849 files (3,765 mutants, 84 seed copies), 16/16 shards per solver.",
+        "mutants": "Z3 gave a definite answer on 835 mutants; Primo answered 352 unsat and 15 sat on those, all agreeing, 442 unknown and 26 timeouts. Both solvers rejected 2,752 ill-formed mutants; Primo rejected 142 more on which Z3 ran to its timeout. Primo wrong answers: 0; disagreements: 0.",
+        "unconfirmed_unsat": "11 files Z3 did not decide: 4 copies of the universalInstance seed (confirmed earlier by cvc5 enumerative modes) and 7 of its mutants: Z3 timed out at 120 s on each, and cvc5 --enum-inst and --full-saturate-quant both answered unsat on all seven (job 144394).",
+        "artifacts": "/home/janotmik/primo-quantifiers/fuzz-results/uf-quantifier-mutation-144199, /home/janotmik/primo-quantifiers/results/uf-mutant-classify-144199 (summary.json, unconfirmed.txt, long-check-3.txt) (SLURM-backed)"
+      },
+      "evidence_status": "current"
+    },
+    {
+      "id": "2026-09-13-quantifiers-simplification-ab-144000",
+      "date": "2026-09-13",
+      "commit": "b1b2fbe",
+      "branch": "quantifiers",
+      "kind": "paired-configuration-comparison",
+      "scope": "Instance normalization on versus off (--no-quantifier-instance-simplification) over the SMT-LIB UF division, with the pure-theory filter fix but before the dispatcher scheduling fix (cec20ce). Kept as the before-fix baseline.",
+      "environment": {
+        "host": "CIIRC SLURM cluster, partition compute, 160 single-CPU array tasks",
+        "solver": "/home/janotmik/primo-quantifiers/build-slurm-rel/primo --quiet --stats, git b1b2fbe",
+        "corpus": "tmp/UF hard links of the 7,590-file division (manifest prefix 38feaaabff90657e)",
+        "references": "Z3 5.1.0 and cvc5 1.3.4 answers reused from job 143196 by path (same corpus and timeout); not rerun",
+        "timeout": "60 s"
+      },
+      "jobs": {
+        "ab": "144000"
+      },
+      "commands": {
+        "ab": "sbatch --array=0-159%160 --export=ALL,PRIMO_WORKDIR=$HOME/primo-quantifiers,PRIMO_COMPARE_ROOT=tmp/UF,PRIMO_COMPARE_TIMEOUT=60,PRIMO_COMPARE_SHARDS=80,PRIMO_COMPARE_SOLVERS='primo=build-slurm-rel/primo --quiet --stats;primo-nosimp=build-slurm-rel/primo --quiet --stats --no-quantifier-instance-simplification' scripts/slurm_uf_quantifier_compare.sbatch",
+        "summaries": "summarize_uf_quantifier_compare.py (candidate primo and primo-nosimp, z3/cvc5 linked from 143196); summarize_quantifier_instance_counters.py --arms primo primo-nosimp"
+      },
+      "results": {
+        "coverage": "80/80 shards and 7,590 files per arm.",
+        "solve_counts": "normalization on 1,668 (1 sat, 1,667 unsat; 1,170 unknown, 4,752 timeouts); off 1,749 (1 sat, 1,748 unsat; 648 unknown, 5,193 timeouts). Off equals the pre-filter-fix M4 count (143196).",
+        "correctness": "0 wrong answers against :status and 0 disagreements with Z3 or cvc5 in either arm.",
+        "paired": "on solves 18 files off does not; off solves 99 files on does not.",
+        "counters": "on: 278.5M instances tried, 61.9M raw duplicates, 201.3M changed by normalization, 80.4M normalized duplicates, 278k trivial, 144.8M lemmas, 1.31M rounds. off: 218.2M instances, 66.9M raw duplicates, 261k trivial, 160.0M lemmas, 1.44M rounds. About 51% of tried instances are duplicates with normalization, 31% without.",
+        "reading": "The loss with normalization is the dispatcher scheduling defect fixed in cec20ce: with cheaper, duplicate-free instances the quantifier component interrupted every round before the ground search reached decision-dependent conflicts. This run does not measure normalization on its own and is superseded by the rerun at the fixed commit.",
+        "artifacts": "/home/janotmik/primo-quantifiers/results/uf-quantifier-compare-144000 (summary-primo.json, summary-nosimp.json, counters.json) (SLURM-backed)"
+      },
+      "evidence_status": "superseded"
+    },
+    {
+      "id": "2026-09-12-quantifiers-uf-mutation-fuzz-144001",
+      "date": "2026-09-12",
+      "commit": "b1b2fbe",
+      "branch": "quantifiers",
+      "kind": "seed-mutation-fuzz-campaign",
+      "scope": "Fresh mutation-fuzz gate for the changed lemma generation (instance normalization and caches, ca5cdaa) with the pure-theory filter fix (b1b2fbe): typefuzz on UF seeds against Z3, answers only, then classification of every retained mutant.",
+      "environment": {
+        "host": "CIIRC SLURM cluster, partition compute",
+        "workspace": "/home/janotmik/primo-quantifiers, build-slurm-rel/primo reporting git b1b2fbe; instance simplification on (default)",
+        "fuzzer": "YinYang typefuzz 0.3.0, --keep-logic --hoist-declarations --keep-mutants, 50 iterations per seed, solver timeout 5 s, random seeds 202609130-202609133",
+        "seeds": "build_fuzz_seed_corpus.py --per-family 3 --max-bytes 20000 over the UF division: 21 seeds, 19 valid per task",
+        "reference": "contrib/local/bin/z3 (Z3 5.1.0); confirmations with Z3 and contrib/local/bin/cvc5 (cvc5 1.3.4) --enum-inst / --full-saturate-quant"
+      },
+      "jobs": {
+        "fuzz": "144001",
+        "classification": "144164",
+        "confirmation": "144196"
+      },
+      "commands": {
+        "fuzz": "sbatch --time=01:00:00 --export=ALL,PRIMO_WORKDIR=$HOME/primo-quantifiers,PRIMO_CORPUS_ROOT=$HOME/primo-quantifiers-data/non-incremental/UF,PRIMO_FUZZ_YINYANG_WALL_SECONDS=3000,PRIMO_FUZZ_RANDOM_SEED=202609130 scripts/slurm_uf_quantifier_mutation_fuzz.sbatch",
+        "classification": "sbatch --array=0-31 --time=01:00:00 --export=ALL,PRIMO_WORKDIR=$HOME/primo-quantifiers,PRIMO_COMPARE_ROOT=fuzz-results/uf-quantifier-mutation-144001,PRIMO_COMPARE_TIMEOUT=5,PRIMO_COMPARE_SHARDS=16,PRIMO_COMPARE_SOLVERS='primo=build-slurm-rel/primo --quiet;z3=contrib/local/bin/z3' scripts/slurm_uf_quantifier_compare.sbatch",
+        "confirmation": "uf_long_reference_check.sbatch (scratch, validated) with PRIMO_LONG_CHECK_SECONDS=120 on the three mutants in results/uf-mutant-classify-144001/unconfirmed.txt"
+      },
+      "results": {
+        "fuzz": "7,354 solver calls, 3,800 retained mutants, 0 bug triggers.",
+        "classification_coverage": "3,884 files (3,800 mutants, 84 seed copies), 16/16 shards per solver.",
+        "mutants": "Z3 gave a definite answer on 1,026 mutants; Primo answered 414 unsat and 8 sat on those, all agreeing, 577 unknown and 27 timeouts. Both solvers rejected 2,673 ill-formed mutants; Primo rejected 77 more on which Z3 ran to its timeout. Primo wrong answers: 0; disagreements: 0.",
+        "unconfirmed_unsat": "7 files Z3 did not decide: 4 copies of the universalInstance seed (confirmed by cvc5 enumerative modes in the earlier gate) and 3 of its mutants: Z3 timed out at 120 s on each, and cvc5 --enum-inst and --full-saturate-quant both answered unsat on all three (job 144196).",
+        "superseded": "143836 (same gate at ca5cdaa, pure-theory filter still active): 3,800 mutants, 0 bug triggers, not classified.",
+        "artifacts": "/home/janotmik/primo-quantifiers/fuzz-results/uf-quantifier-mutation-144001, /home/janotmik/primo-quantifiers/results/uf-mutant-classify-144001 (summary.json, unconfirmed.txt, long-check-2.txt) (SLURM-backed)"
+      },
+      "evidence_status": "current"
+    },
+    {
+      "id": "2026-09-12-quantifiers-instance-redundancy-local",
+      "date": "2026-09-12",
+      "commit": "ca5cdaa",
+      "branch": "quantifiers",
+      "kind": "local-smoke-measurement",
+      "scope": "First look at quantifier instance redundancy after adding InstanceSimplifier and the raw/canonical instance caches, before any cluster run.",
+      "environment": {
+        "host": "local workstation, 14 cores, other work running",
+        "corpus": "the 30 smallest files of the SMT-LIB UF division",
+        "command": "build/primo --stats [--no-quantifier-instance-simplification] FILE under timeout 10"
+      },
+      "results": {
+        "baseline_dedup": "Before this change TermId deduplication removed almost nothing: list2 20,632 instances -> 20,569 lemmas, uf.575042 38,372 -> 38,312, smtlib.993850 3,897 -> 3,895.",
+        "set_family": "On the misc set* files normalization found most redundancy: set8 64,051 instances tried, 36,531 simplified duplicates, 1,353 raw duplicates, 28 trivial, 27,473 lemmas (off: 24,806 instances, 868 raw duplicates, 24,807 lemmas in the same 10 s). Enumeration gets through 2-2.6x more tuples per lemma added.",
+        "regression_found": "sledgehammer/FFT uf.860560, uf.860500 and uf.860456 went from unsat with 6 instances (off) to unknown after 10,000+ instances (on). Traced to the pure-theory filter on the quantified route, not to the simplifier; see 2026-09-12-quantifiers-pure-filter-diagnosis.",
+        "artifacts": "local scratch only (redundancy.txt); superseded by the cluster A/B at b1b2fbe"
+      },
+      "evidence_status": "superseded"
+    },
+    {
+      "id": "2026-09-12-quantifiers-pure-filter-diagnosis",
+      "date": "2026-09-12",
+      "commit": "b1b2fbe",
+      "branch": "quantifiers",
+      "kind": "bug-diagnosis-and-reduction",
+      "scope": "Why instance normalization lost refutations on sledgehammer/FFT/uf.860560, and the fix.",
+      "environment": {
+        "host": "local workstation",
+        "defective_binary": "build/primo at ca5cdaa plus a temporary debug print (not committed), kept as scratch primo-filter-bug",
+        "reference": "contrib/local/bin/z3"
+      },
+      "results": {
+        "observation": "With normalization on, the six first-round instances were equivalent to the raw ones, yet no EUF conflict arose and the run went unknown; the term pool grew from 47 to 86,685 terms.",
+        "isolation": "Asserting the six simplified instances directly: QF_UF unsat and Z3 unsat, but the quantified route unknown with normalization on. Minimal orientation cases (E1, E5) stayed unsat, so orientation alone was not the cause.",
+        "cause": "--pure-theory-filter=off restored unsat in 30 instances; with the filter on the route discarded 1,269,246 EUF assignments. The filter presumes a final clause set, and instance lemmas keep adding atom occurrences; normalized instances reuse ground atoms in the other orientation, which made the loss frequent. The QF_UFLIA route was unaffected on the reconstructed problem (unsat with the filter auto and off, current and pre-M1 binaries).",
+        "fix": "solve_quantified_uf forces PureTheoryFilterMode::Off, as incremental sessions already do.",
+        "reduction": "ddsmt -j 4 --timeout 15 with predicate 'defective binary not unsat in 3 s, same binary with --pure-theory-filter=off unsat, Z3 unsat': 1,408 -> 925 bytes; renamed and saved as benchmarks/regressions/uf_quantified_pure_filter_growth.smt2 (defective unknown with normalization on and off, fixed unsat, Z3 unsat) and a unit test.",
+        "impact_on_earlier_evidence": "The M4 UF evaluation (143196, a6d3ff2) ran with the filter active; its answers were all correct but its solve count predates the fix.",
+        "superseded_cluster_jobs": "143835 (A/B at ca5cdaa) cancelled; 143836 (UF mutation fuzz at ca5cdaa, 3,800 mutants, 0 bug triggers) superseded by the rerun at b1b2fbe."
+      },
+      "evidence_status": "current"
+    },
+    {
       "id": "2026-09-12-quantifiers-uf-division-compare-143196",
       "date": "2026-09-12",
       "commit": "a6d3ff2",
