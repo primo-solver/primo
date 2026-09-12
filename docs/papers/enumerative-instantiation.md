@@ -109,8 +109,11 @@ satisfiable problems better (Example 3).
   model-soundness claim is made from this pool.
 - **Term order.** Order of first appearance, which the paper allows ("arbitrary").
   Entailed-equal terms are not merged.
-- **Entailment.** The instance cache only; no congruence-based entailment check.
-  More instances may be generated, but each is still a valid consequence.
+- **Entailment.** No congruence-based entailment check. Two caches replace it:
+  instances as instantiated, and instances after a shallow equivalence-preserving
+  normalization (`theory::InstanceSimplifier`). Instances true outright are
+  dropped. More instances may be generated than the paper's filter allows, but
+  each is still a valid consequence.
 - **Answers.** `unsat` from the ground solver. `sat` only when every assigned
   quantifier atom is covered by a Skolem lemma, so that no universal remains.
   Otherwise `unknown`: without the entailment check, Corollary 1 is not

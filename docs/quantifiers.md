@@ -1,8 +1,9 @@
 # Quantifiers: parsing and term representation
 
-**Status: design note, no quantifier code yet. The proposal (de Bruijn indices,
-revised 2026-09-11) is pending review. An earlier proposal, variables with
-identity allocated on conflict, is kept below as a considered alternative.**
+**Status: de Bruijn indices are implemented, and the quantified UF route (M4)
+is evaluated; see "Implementation status" below. The design discussion that
+chose indices is kept, including the earlier proposal of variables with
+identity allocated on conflict.**
 
 This is step 1 of quantifier support: getting `forall`/`exists` from SMT-LIB into
 `core::Term`. It weighs how bound variables should be represented, against the
@@ -64,6 +65,40 @@ Deviations from the proposal:
   `unknown`: reason `unknown` when no new instance exists, `resource-limit` at
   the instance budget.
 - `tests/unit/quantifier_solver_tests.cpp`.
+
+**Instance simplification and duplicate instances.** Many enumerated instances
+are redundant: different tuples can give the same instance, and instances often
+differ only in trivia such as operand order. The quantifier component therefore
+filters each instance in four steps:
+
+1. **Raw cache.** Skip the instance if the cache keyed by (atom, assignment
+   value, instance TermId) already holds it.
+2. **Normalize.** Rewrite it with `theory::InstanceSimplifier`
+   (`src/theory/quantifiers/instance_simplifier.*`), a shallow,
+   equivalence-preserving pass:
+   - `implies` becomes `or`;
+   - flat, constant-folded, sorted and deduplicated `and`/`or`, where a
+     complementary pair collapses the connective;
+   - equality: constant or complementary Boolean sides fold, other
+     equalities are oriented;
+   - `ite` folding;
+   - quantified subformulas stay opaque.
+3. **Canonical cache.** Skip it if the cache of normalized instances under the
+   same key already holds it.
+4. **Trivial instances.** Drop it if it is already true for its polarity.
+
+The lemma itself is normalized before the lemma set. Each outcome has a counter:
+
+- `:quant.instances.raw-duplicates`
+- `:quant.instances.simplified`
+- `:quant.instances.simplified-duplicates`
+- `:quant.instances.trivial`
+- `:quant.instances.duplicate-lemmas`
+
+`--no-quantifier-instance-simplification` keeps the raw cache and the trivial
+check but skips normalization, for A/B comparison. `tests/unit/instance_simplifier_tests.cpp`
+checks each rule, the canonical shape and the fixed point. It also evaluates
+random ground formulas against their simplified forms on random models.
 
 Local M4 checks, 2026-09-11:
 

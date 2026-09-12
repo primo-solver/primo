@@ -129,7 +129,8 @@ CheckSatOutcome solve_quantified_uf(
         return std::make_unique<theory::QuantifierComponent>(
             terms, ground, factory,
             theory::QuantifierInstantiationOptions{options.quantifier_instances_per_round,
-                                                   options.quantifier_max_instances},
+                                                   options.quantifier_max_instances,
+                                                   options.quantifier_instance_simplification},
             statistics);
       }};
   return solve_component_recipe(terms, ground, {}, options, statistics, recipe);

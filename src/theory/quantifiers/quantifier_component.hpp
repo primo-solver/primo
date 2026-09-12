@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "core/ids.hpp"
+#include "theory/quantifiers/instance_simplifier.hpp"
 #include "theory/theory_component.hpp"
 
 namespace primo::core {
@@ -31,6 +32,9 @@ struct QuantifierInstantiationOptions {
   std::size_t instances_per_round = 128;
   // Instantiations tried in one solve before reporting ResourceLimit.
   std::size_t max_instances = 100000;
+  // Normalize instances with InstanceSimplifier before the duplicate check and
+  // before they become lemmas. Off, instances are compared as instantiated.
+  bool simplify_instances = true;
 };
 
 // Online component owning every Forall/Exists atom of the Boolean abstraction
@@ -81,6 +85,27 @@ class QuantifierComponent final : public TheoryComponent {
     std::size_t first_open_level = 0;
   };
 
+  // One instance of an atom under one assignment value, the key of the caches
+  // that recognize an instance generated before.
+  struct InstanceKey {
+    core::TermId atom = core::kInvalidTermId;
+    bool value = false;
+    core::TermId instance = core::kInvalidTermId;
+    bool operator==(const InstanceKey&) const = default;
+  };
+  struct InstanceKeyHash {
+    std::size_t operator()(const InstanceKey& key) const noexcept {
+      std::size_t hash = std::hash<core::TermId>{}(key.atom);
+      hash ^= std::hash<core::TermId>{}(key.instance) + 0x9e3779b97f4a7c15ULL + (hash << 6) +
+              (hash >> 2);
+      return hash ^ static_cast<std::size_t>(key.value);
+    }
+  };
+
+  // Returns the canonical form of `term` when simplification is on.
+  core::TermId canonical(core::TermId term);
+  // Records and queues one enumerated instance; false when it adds nothing.
+  bool add_instance(core::TermId atom, bool value, core::TermId instance);
   void add_pool_terms(core::TermId root);
   const std::vector<core::TermId>& pool(core::SortId sort);
   bool enqueue(core::TermId lemma);
@@ -93,6 +118,7 @@ class QuantifierComponent final : public TheoryComponent {
   QuantifierInstantiationOptions options_;
   util::Statistics& statistics_;
   ComponentDescriptor descriptor_;
+  InstanceSimplifier simplifier_;
 
   std::size_t registered_atoms_ = 0;
   std::vector<AssignedTheoryLiteral> trail_;
@@ -104,6 +130,8 @@ class QuantifierComponent final : public TheoryComponent {
   std::map<std::pair<core::TermId, bool>, Enumeration> enumerations_;
   std::deque<core::TermId> queue_;
   std::unordered_set<core::TermId> lemmas_;
+  std::unordered_set<InstanceKey, InstanceKeyHash> raw_instances_;
+  std::unordered_set<InstanceKey, InstanceKeyHash> canonical_instances_;
   std::size_t instances_ = 0;
   std::size_t next_obligation_ = 0;
   std::uint64_t revision_ = 0;

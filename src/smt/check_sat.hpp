@@ -494,6 +494,9 @@ struct CheckSatOptions {
   // instances tried in one solve before answering unknown (docs/quantifiers.md).
   std::size_t quantifier_instances_per_round = 128;
   std::size_t quantifier_max_instances = 100000;
+  // Normalize quantifier instances before duplicate detection and lemma
+  // generation (theory/quantifiers/instance_simplifier.hpp).
+  bool quantifier_instance_simplification = true;
   std::size_t qf_uf_portfolio_conflicts = 2000;
   std::vector<std::pair<std::string, int>> cadical_options;
   std::function<bool()> cancelled;

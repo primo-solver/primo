@@ -131,6 +131,29 @@ void budgets_models_and_logics() {
              .result == CheckSatResult::Unsupported);
 }
 
+void instances_are_normalized_and_deduplicated() {
+  // (a, b) and (b, a) instantiate to (or (p a) (p b)) and (or (p b) (p a)).
+  const std::string symmetric =
+      "(assert (forall ((x U) (y U)) (or (p x) (p y)))) "
+      "(assert (not (p a))) (assert (not (p b)))";
+  const CheckSatOutcome simplified = solve(symmetric);
+  assert(simplified.result == CheckSatResult::Unsat);
+  assert(simplified.statistics.get(":quant.instances.simplified-duplicates") >= 1);
+
+  CheckSatOptions plain;
+  plain.quantifier_instance_simplification = false;
+  const CheckSatOutcome unsimplified = solve(symmetric, plain);
+  assert(unsimplified.result == CheckSatResult::Unsat);
+  assert(unsimplified.statistics.get(":quant.instances.simplified-duplicates") == 0);
+
+  // x := y makes the instance true outright; it must not become a lemma.
+  const CheckSatOutcome trivial = solve(
+      "(assert (forall ((x U) (y U)) (or (= x y) (r x y)))) (assert (not (r a b))) (assert (not (= "
+      "a b)))");
+  assert(trivial.result == CheckSatResult::Unsat);
+  assert(trivial.statistics.get(":quant.instances.trivial") >= 1);
+}
+
 }  // namespace
 
 int main() {
@@ -142,5 +165,6 @@ int main() {
   boolean_structure_in_bodies_is_prepared();
   answers_short_of_refutation();
   budgets_models_and_logics();
+  instances_are_normalized_and_deduplicated();
   return 0;
 }

@@ -211,6 +211,7 @@ int run_main(int argc, char** argv) {
   bool no_ite_equality_distribution = false;
   bool no_cite_simplification = false;
   bool no_eq_bridge = false;
+  bool no_quantifier_instance_simplification = false;
   bool no_lra_propagation = false;
   bool no_solved_constant_substitution = false;
   bool no_gaussian_elimination = false;
@@ -319,6 +320,12 @@ int run_main(int argc, char** argv) {
                         "(open-leads lead 16, piece 1)");
   add_flag_with_default(app, "--no-cite-simplification", no_cite_simplification,
                         "Disable constant if-then-else simplification");
+  add_flag_with_default(app, "--quantifier-instance-simplification",
+                        solver_options.quantifier_instance_simplification,
+                        "Quantified UF: normalize instances before duplicate detection");
+  add_flag_with_default(app, "--no-quantifier-instance-simplification",
+                        no_quantifier_instance_simplification,
+                        "Quantified UF: compare and assert instances as instantiated");
   add_flag_with_default(app, "--eq-bridge", solver_options.eq_bridge,
                         "Add equalities implied by every branch of selected QF_UF disjunctions");
   add_flag_with_default(app, "--no-eq-bridge", no_eq_bridge,
@@ -822,13 +829,13 @@ int run_main(int argc, char** argv) {
     // solved-constant substitution, the online-propagation knobs, and
     // quantified UF instantiation.
     if (starts_with(name, "--euf-") || starts_with(name, "--quantifier-") ||
-        starts_with(name, "--no-euf-") || starts_with(name, "--finite-domain-") ||
-        starts_with(name, "--no-finite-domain-") || starts_with(name, "--ground-") ||
-        starts_with(name, "--guarded-ground-") || starts_with(name, "--model-equality-") ||
-        starts_with(name, "--no-model-equality-") || starts_with(name, "--nelson-oppen-") ||
-        starts_with(name, "--qf-uf-") || starts_with(name, "--auto-basic-") ||
-        starts_with(name, "--no-auto-basic-") || name == "--eq-bridge" ||
-        name == "--no-eq-bridge" || name == "--uf-symmetry-breaking" ||
+        starts_with(name, "--no-quantifier-") || starts_with(name, "--no-euf-") ||
+        starts_with(name, "--finite-domain-") || starts_with(name, "--no-finite-domain-") ||
+        starts_with(name, "--ground-") || starts_with(name, "--guarded-ground-") ||
+        starts_with(name, "--model-equality-") || starts_with(name, "--no-model-equality-") ||
+        starts_with(name, "--nelson-oppen-") || starts_with(name, "--qf-uf-") ||
+        starts_with(name, "--auto-basic-") || starts_with(name, "--no-auto-basic-") ||
+        name == "--eq-bridge" || name == "--no-eq-bridge" || name == "--uf-symmetry-breaking" ||
         name == "--no-uf-symmetry-breaking" || name == "--no-solved-constant-substitution" ||
         name == "--prop-interval" || name == "--prop-assign-threshold" ||
         name == "--prop-delivery-budget") {
@@ -935,6 +942,9 @@ int run_main(int argc, char** argv) {
   }
   if (no_eq_bridge) {
     solver_options.eq_bridge = false;
+  }
+  if (no_quantifier_instance_simplification) {
+    solver_options.quantifier_instance_simplification = false;
   }
   if (no_lra_propagation) {
     solver_options.lra_propagation = false;

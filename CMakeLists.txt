@@ -348,6 +348,12 @@ primo_enable_sanitizers(primo_quantifier_solver_tests)
 target_link_libraries(primo_quantifier_solver_tests PRIVATE primo_core)
 add_test(NAME primo_quantifier_solver_tests COMMAND primo_quantifier_solver_tests)
 
+add_executable(primo_instance_simplifier_tests tests/unit/instance_simplifier_tests.cpp)
+primo_enable_warnings(primo_instance_simplifier_tests)
+primo_enable_sanitizers(primo_instance_simplifier_tests)
+target_link_libraries(primo_instance_simplifier_tests PRIVATE primo_core)
+add_test(NAME primo_instance_simplifier_tests COMMAND primo_instance_simplifier_tests)
+
 add_executable(primo_model_tests tests/unit/model_tests.cpp)
 primo_enable_warnings(primo_model_tests)
 primo_enable_sanitizers(primo_model_tests)

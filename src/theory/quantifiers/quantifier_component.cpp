@@ -28,7 +28,8 @@ QuantifierComponent::QuantifierComponent(core::TermManager& terms,
     : terms_(terms),
       fresh_constant_(std::move(fresh_constant)),
       options_(options),
-      statistics_(statistics) {
+      statistics_(statistics),
+      simplifier_(terms) {
   descriptor_.id = "quantifiers";
   descriptor_.fragment = "enumerative instantiation of quantified formulas";
   descriptor_.convexity = Convexity::Convex;
@@ -205,6 +206,43 @@ const std::vector<core::TermId>& QuantifierComponent::pool(core::SortId sort) {
   return terms;
 }
 
+core::TermId QuantifierComponent::canonical(core::TermId term) {
+  return options_.simplify_instances ? simplifier_.simplify(term) : term;
+}
+
+bool QuantifierComponent::add_instance(core::TermId atom, bool value, core::TermId instance) {
+  // Different tuples can yield the same instance, for example when a variable
+  // does not occur in the body.
+  if (!raw_instances_.insert({atom, value, instance}).second) {
+    statistics_.increment(":quant.instances.raw-duplicates");
+    return false;
+  }
+  if (options_.simplify_instances) {
+    const core::TermId simplified = simplifier_.simplify(instance);
+    if (simplified != instance) {
+      statistics_.increment(":quant.instances.simplified");
+    }
+    // Distinct as instantiated, equal after normalization: generated before.
+    if (!canonical_instances_.insert({atom, value, simplified}).second) {
+      statistics_.increment(":quant.instances.simplified-duplicates");
+      return false;
+    }
+    instance = simplified;
+  }
+  // A true atom's lemma is `not Q or inst` and a false one's `Q or not inst`;
+  // either is valid outright when the instance has that value.
+  if (const core::Term& node = terms_.get(instance);
+      node.kind == core::TermKind::BoolValue && node.bool_value == value) {
+    statistics_.increment(":quant.instances.trivial");
+    return false;
+  }
+  if (!enqueue(canonical(lemma_for(atom, value, instance)))) {
+    statistics_.increment(":quant.instances.duplicate-lemmas");
+    return false;
+  }
+  return true;
+}
+
 bool QuantifierComponent::enqueue(core::TermId lemma) {
   const core::Term& node = terms_.get(lemma);
   if (node.kind == core::TermKind::BoolValue && node.bool_value) {
@@ -231,8 +269,8 @@ void QuantifierComponent::skolemize(core::TermId atom, bool value) {
   for (const core::SortId sort : core::quantifier_sorts(terms_, atom)) {
     constants.push_back(fresh_constant_(sort, "skolem"));
   }
-  const core::TermId instance = core::instantiate(terms_, atom, constants);
-  if (enqueue(lemma_for(atom, value, instance))) {
+  const core::TermId instance = canonical(core::instantiate(terms_, atom, constants));
+  if (enqueue(canonical(lemma_for(atom, value, instance)))) {
     statistics_.increment(":quant.skolem-lemmas");
   }
 }
@@ -290,8 +328,8 @@ std::size_t QuantifierComponent::enumerate(core::TermId atom, bool value, std::s
         if (instances_ < options_.max_instances && state.tried.insert(tuple).second) {
           ++instances_;
           statistics_.increment(":quant.instances");
-          const core::TermId instance = core::instantiate(terms_, atom, tuple);
-          if (enqueue(lemma_for(atom, value, instance)) && ++made == budget) {
+          if (add_instance(atom, value, core::instantiate(terms_, atom, tuple)) &&
+              ++made == budget) {
             return made;
           }
         }
