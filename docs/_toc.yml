@@ -25,6 +25,7 @@ parts:
       - file: preprocessing
       - file: structural-auto-preprocessing
       - file: quantifiers
+      - file: quantifier-entailment-design
 
   - caption: Theories
     chapters:

@@ -152,7 +152,8 @@ every cvc5 configuration adds conflict-based instantiation.
    open formula can use the existing normalizer.
    - Criterion 2 is what drives the paper's example, so this may rarely fire.
    - Count how often a partial substitution is redundant before relying on it.
-3. **The entailment check, then fail masks from it.** A congruence-based check
+3. **The entailment check, then fail masks from it** (scoped in
+   [](../quantifier-entailment-design.md)). A congruence-based check
    of an instance against the current assignment (TACAS 2018, Section 4.1),
    then fail masks derived from it. This is the largest effect in the paper
    (217 against 31 uniquely solved), and also the largest change: the check has
