@@ -234,6 +234,38 @@ void instances_wait_for_complete_assignments() {
   }
 }
 
+// Every tuple order is complete for refutation on small inputs: the paper's
+// Example 2, a Theorem 1 shape needing a term from an instance, and a
+// two-variable symmetric instance.
+void every_tuple_order_refutes() {
+  using primo::smt::QuantifierTupleOrder;
+  const std::string example_two = R"(
+    (declare-fun c () U) (declare-fun s (U) Bool)
+    (assert (not (p a))) (assert (q b)) (assert (s c))
+    (assert (forall ((x U)) (or (q x) (s x))))
+    (assert (forall ((x U)) (or (not (q x)) (p x))))
+    (assert (forall ((x U)) (or (not (s x)) (p x))))
+  )";
+  const std::string theorem_one =
+      "(assert (forall ((x U)) (p (f x)))) (assert (forall ((y U)) (not (p y))))";
+  const std::string two_variables =
+      "(assert (forall ((x U) (y U)) (or (r x y) (r y x)))) (assert (not (r a b))) "
+      "(assert (not (r b a)))";
+  for (const auto order :
+       {QuantifierTupleOrder::MaxDigit, QuantifierTupleOrder::MaxDigitColex,
+        QuantifierTupleOrder::SumOfDigits, QuantifierTupleOrder::Leximax,
+        QuantifierTupleOrder::IterativeDeepening, QuantifierTupleOrder::RandomWalk}) {
+    for (const bool simplify : {true, false}) {
+      CheckSatOptions options;
+      options.quantifier_tuple_order = order;
+      options.quantifier_instance_simplification = simplify;
+      for (const auto& problem : {example_two, theorem_one, two_variables}) {
+        assert(solve(problem, options).result == CheckSatResult::Unsat);
+      }
+    }
+  }
+}
+
 }  // namespace
 
 int main() {
@@ -249,5 +281,6 @@ int main() {
   pure_theory_filter_stays_off_while_lemmas_grow();
   instances_wait_for_complete_assignments();
   duplicate_instances_do_not_spend_the_budget();
+  every_tuple_order_refutes();
   return 0;
 }

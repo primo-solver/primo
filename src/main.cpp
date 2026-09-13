@@ -266,6 +266,7 @@ int run_main(int argc, char** argv) {
   bool euf_dynamic_ackermann_shadow = solver_options.euf_dynamic_ackermann_shadow;
   bool euf_diseq_ackermann = solver_options.euf_diseq_ackermann;
   std::string pure_theory_filter = "auto";
+  std::string quantifier_tuple_order = "max";
   std::string theory_phase = "negative";
   std::string euf_prop_budget = "auto";
   std::string euf_prop_delivery = "1000";
@@ -757,6 +758,15 @@ int run_main(int argc, char** argv) {
   app.add_option("--quantifier-max-instances", solver_options.quantifier_max_instances,
                  "Quantified UF: distinct instances generated before answering unknown")
       ->check(CLI::Range(1, 1000000000));
+  app.add_option("--quantifier-tuple-order", quantifier_tuple_order,
+                 "Quantified UF: tuple enumeration order: max, max-colex, sum, leximax, "
+                 "deepening, or random")
+      ->check(CLI::IsMember({"max", "max-colex", "sum", "leximax", "deepening", "random"}));
+  app.add_option("--quantifier-deepening-increment", solver_options.quantifier_deepening_increment,
+                 "Quantified UF: maximum-depth increment of the deepening tuple order")
+      ->check(CLI::Range(1, 1000000));
+  app.add_option("--quantifier-random-seed", solver_options.quantifier_random_seed,
+                 "Quantified UF: seed of the random tuple order");
   app.add_option("files", files, "SMT-LIB input files. Reads stdin when omitted")
       ->type_name("FILE")
       ->default_str("");
@@ -1123,6 +1133,19 @@ int run_main(int argc, char** argv) {
     solver_options.pure_theory_filter = primo::smt::PureTheoryFilterMode::On;
   } else {
     solver_options.pure_theory_filter = primo::smt::PureTheoryFilterMode::Auto;
+  }
+  if (quantifier_tuple_order == "max-colex") {
+    solver_options.quantifier_tuple_order = primo::smt::QuantifierTupleOrder::MaxDigitColex;
+  } else if (quantifier_tuple_order == "sum") {
+    solver_options.quantifier_tuple_order = primo::smt::QuantifierTupleOrder::SumOfDigits;
+  } else if (quantifier_tuple_order == "leximax") {
+    solver_options.quantifier_tuple_order = primo::smt::QuantifierTupleOrder::Leximax;
+  } else if (quantifier_tuple_order == "deepening") {
+    solver_options.quantifier_tuple_order = primo::smt::QuantifierTupleOrder::IterativeDeepening;
+  } else if (quantifier_tuple_order == "random") {
+    solver_options.quantifier_tuple_order = primo::smt::QuantifierTupleOrder::RandomWalk;
+  } else {
+    solver_options.quantifier_tuple_order = primo::smt::QuantifierTupleOrder::MaxDigit;
   }
   if (theory_phase == "positive") {
     solver_options.theory_phase = primo::smt::TheoryPhaseMode::Positive;

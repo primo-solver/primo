@@ -288,75 +288,68 @@ std::size_t QuantifierComponent::enumerate(core::TermId atom, bool value, std::s
   // Snapshot the pools: instantiating does not change them, but pool() may
   // create a term for an empty sort, which would reallocate the map's vectors.
   std::vector<std::vector<core::TermId>> pools;
+  std::vector<std::size_t> sizes;
   pools.reserve(arity);
+  sizes.reserve(arity);
   for (const core::SortId sort : state.sorts) {
     pools.push_back(pool(sort));
-  }
-  std::size_t largest = 0;
-  for (const auto& terms : pools) {
-    largest = std::max(largest, terms.size());
+    sizes.push_back(pools.back().size());
   }
 
   std::size_t made = 0;
   std::vector<core::TermId> tuple(arity);
-  for (std::size_t level = state.first_open_level; level < largest; ++level) {
-    bool clipped = false;
-    for (const auto& terms : pools) {
-      clipped = clipped || terms.size() <= level;
+  // Instantiates one index tuple. False once this round's share or the
+  // instance budget is spent.
+  const TupleVisitor visit = [&](const IndexTuple& indices) {
+    for (std::size_t position = 0; position < arity; ++position) {
+      tuple[position] = pools[position][indices[position]];
     }
-    // Tuples whose largest index is exactly `level`, grouped by the first
-    // position holding it: earlier positions range below the level, later
-    // ones up to it. Each such tuple is produced once.
-    for (std::size_t first = 0; first < arity; ++first) {
-      if (pools[first].size() <= level) {
-        continue;
-      }
-      std::vector<std::size_t> bound(arity);
-      bool empty = false;
-      for (std::size_t position = 0; position < arity; ++position) {
-        const std::size_t size = pools[position].size();
-        bound[position] = position < first    ? std::min(level, size)
-                          : position == first ? 1
-                                              : std::min(level + 1, size);
-        empty = empty || bound[position] == 0;
-      }
-      if (empty) {
-        continue;
-      }
-      std::vector<std::size_t> index(arity, 0);
-      while (true) {
-        for (std::size_t position = 0; position < arity; ++position) {
-          tuple[position] =
-              position == first ? pools[position][level] : pools[position][index[position]];
-        }
-        if (instances_ < options_.max_instances && state.tried.insert(tuple).second) {
-          statistics_.increment(":quant.instances");
-          if (add_instance(atom, value, core::instantiate(terms_, atom, tuple)) &&
-              ++made == budget) {
-            return made;
-          }
-        }
-        if (instances_ >= options_.max_instances) {
-          return made;
-        }
-        bool done = true;
-        for (std::size_t position = arity; position-- > 0;) {
-          if (position == first) {
-            continue;
-          }
-          if (++index[position] < bound[position]) {
-            done = false;
-            break;
-          }
-          index[position] = 0;
-        }
-        if (done) {
-          break;
-        }
+    if (instances_ < options_.max_instances && state.tried.insert(tuple).second) {
+      statistics_.increment(":quant.instances");
+      if (add_instance(atom, value, core::instantiate(terms_, atom, tuple)) && ++made == budget) {
+        return false;
       }
     }
-    if (!clipped && level == state.first_open_level) {
-      ++state.first_open_level;
+    return instances_ < options_.max_instances;
+  };
+
+  const TupleOrder order = options_.tuple_order;
+  if (is_staged(order)) {
+    const std::size_t stages = stage_count(order, sizes);
+    for (std::size_t stage = state.first_open_level; stage < stages; ++stage) {
+      bool clipped = false;
+      if (!visit_stage(order, stage, sizes, visit, clipped)) {
+        return made;
+      }
+      if (!clipped && stage == state.first_open_level) {
+        ++state.first_open_level;
+      }
+    }
+    return made;
+  }
+
+  IndexTuple indices;
+  if (order == TupleOrder::IterativeDeepening) {
+    if (!state.deepening) {
+      state.deepening = std::make_unique<IterativeDeepening>(options_.deepening_increment);
+    }
+    while (state.deepening->next(sizes, indices)) {
+      if (!visit(indices)) {
+        return made;
+      }
+    }
+    return made;
+  }
+  if (!state.random) {
+    // Each quantifier and polarity gets its own reproducible stream.
+    const std::uint64_t seed = options_.random_seed ^
+                               (static_cast<std::uint64_t>(atom) * 0x9e3779b97f4a7c15ULL) ^
+                               (value ? 1U : 0U);
+    state.random = std::make_unique<RandomWalk>(seed);
+  }
+  while (state.random->next(sizes, indices)) {
+    if (!visit(indices)) {
+      return made;
     }
   }
   return made;

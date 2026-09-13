@@ -107,8 +107,25 @@ filters each instance in four steps:
 4. **Trivial instances.** Drop it if it is already true for its polarity.
 
 These cover two of the three redundancy criteria of Janota, Barbosa, Fontaine
-and Reynolds (FMCAD 2021); the missing entailment check, fail masks and
-alternative tuple orders are in [](papers/fair-adventurous-enumeration.md).
+and Reynolds (FMCAD 2021); the missing entailment check and fail masks are in
+[](papers/fair-adventurous-enumeration.md).
+
+**Tuple orders.** `--quantifier-tuple-order` selects the order in which each
+quantifier's candidate tuples are enumerated, following Section III of the same
+paper:
+
+- `max` is the default, the original order;
+- `max-colex` is the paper's maximal-digit order;
+- `sum` stages tuples by the sum of their indices;
+- `leximax` orders them by the descending-sorted tuple;
+- `deepening` is iterative deepening, with `--quantifier-deepening-increment`
+  setting the depth increment;
+- `random` is a random walk, seeded by `--quantifier-random-seed`.
+
+The first four respect the Pareto order, except `max` within a stage.
+`deepening` and `random` do not respect it.
+Every order is complete for a fixed term pool, and each tuple is instantiated
+at most once.
 
 The lemma itself is normalized before the lemma set. Each outcome has a counter:
 

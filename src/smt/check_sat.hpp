@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -51,6 +52,17 @@ enum class EufPropagationMode {
 enum class EufEngine {
   Lazy,
   Incremental,
+};
+
+// Tuple enumeration order of quantified UF instantiation
+// (theory/quantifiers/tuple_orders.hpp, docs/papers/fair-adventurous-enumeration.md).
+enum class QuantifierTupleOrder {
+  MaxDigit,
+  MaxDigitColex,
+  SumOfDigits,
+  Leximax,
+  IterativeDeepening,
+  RandomWalk,
 };
 
 // How the two-element domain of `Bool` is communicated to congruence closure.
@@ -498,6 +510,9 @@ struct CheckSatOptions {
   // Normalize quantifier instances before duplicate detection and lemma
   // generation (theory/quantifiers/instance_simplifier.hpp).
   bool quantifier_instance_simplification = true;
+  QuantifierTupleOrder quantifier_tuple_order = QuantifierTupleOrder::MaxDigit;
+  std::size_t quantifier_deepening_increment = 2;
+  std::uint64_t quantifier_random_seed = 0;
   std::size_t qf_uf_portfolio_conflicts = 2000;
   std::vector<std::pair<std::string, int>> cadical_options;
   std::function<bool()> cancelled;

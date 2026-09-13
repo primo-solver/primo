@@ -91,6 +91,24 @@ std::vector<core::TermId> name_boolean_arguments(core::TermManager& terms,
   return result;
 }
 
+theory::TupleOrder tuple_order_for(QuantifierTupleOrder order) {
+  switch (order) {
+    case QuantifierTupleOrder::MaxDigit:
+      return theory::TupleOrder::MaxDigit;
+    case QuantifierTupleOrder::MaxDigitColex:
+      return theory::TupleOrder::MaxDigitColex;
+    case QuantifierTupleOrder::SumOfDigits:
+      return theory::TupleOrder::SumOfDigits;
+    case QuantifierTupleOrder::Leximax:
+      return theory::TupleOrder::Leximax;
+    case QuantifierTupleOrder::IterativeDeepening:
+      return theory::TupleOrder::IterativeDeepening;
+    case QuantifierTupleOrder::RandomWalk:
+      return theory::TupleOrder::RandomWalk;
+  }
+  return theory::TupleOrder::MaxDigit;
+}
+
 }  // namespace
 
 CheckSatOutcome solve_quantified_uf(
@@ -119,6 +137,14 @@ CheckSatOutcome solve_quantified_uf(
   const std::vector<core::TermId> ground =
       lower_extended_terms(terms, assertions, factory).assertions;
 
+  theory::QuantifierInstantiationOptions instantiation;
+  instantiation.instances_per_round = options.quantifier_instances_per_round;
+  instantiation.max_instances = options.quantifier_max_instances;
+  instantiation.simplify_instances = options.quantifier_instance_simplification;
+  instantiation.tuple_order = tuple_order_for(options.quantifier_tuple_order);
+  instantiation.deepening_increment = options.quantifier_deepening_increment;
+  instantiation.random_seed = options.quantifier_random_seed;
+
   CombinationRecipe recipe;
   recipe.online = true;
   recipe.model_guided = false;
@@ -131,16 +157,11 @@ CheckSatOutcome solve_quantified_uf(
     return lower_extended_terms(terms, name_boolean_arguments(terms, lemmas, factory), factory)
         .assertions;
   };
-  recipe.factories = {
-      [&](bool) { return make_uf_euf_component(terms, options, statistics, true); },
-      [&](bool) -> std::unique_ptr<theory::TheoryComponent> {
-        return std::make_unique<theory::QuantifierComponent>(
-            terms, ground, factory,
-            theory::QuantifierInstantiationOptions{options.quantifier_instances_per_round,
-                                                   options.quantifier_max_instances,
-                                                   options.quantifier_instance_simplification},
-            statistics);
-      }};
+  recipe.factories = {[&](bool) { return make_uf_euf_component(terms, options, statistics, true); },
+                      [&](bool) -> std::unique_ptr<theory::TheoryComponent> {
+                        return std::make_unique<theory::QuantifierComponent>(
+                            terms, ground, factory, instantiation, statistics);
+                      }};
   return solve_component_recipe(terms, ground, {}, options, statistics, recipe);
 }
 

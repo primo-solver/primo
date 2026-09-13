@@ -5,6 +5,7 @@
 #include <deque>
 #include <functional>
 #include <map>
+#include <memory>
 #include <set>
 #include <span>
 #include <string_view>
@@ -15,6 +16,7 @@
 
 #include "core/ids.hpp"
 #include "theory/quantifiers/instance_simplifier.hpp"
+#include "theory/quantifiers/tuple_orders.hpp"
 #include "theory/theory_component.hpp"
 
 namespace primo::core {
@@ -36,6 +38,12 @@ struct QuantifierInstantiationOptions {
   // Normalize instances with InstanceSimplifier before the duplicate check and
   // before they become lemmas. Off, instances are compared as instantiated.
   bool simplify_instances = true;
+  // Order of the candidate tuples for each quantifier (tuple_orders.hpp).
+  TupleOrder tuple_order = TupleOrder::MaxDigit;
+  // Maximum-depth increment of TupleOrder::IterativeDeepening.
+  std::size_t deepening_increment = 2;
+  // Seed of TupleOrder::RandomWalk, mixed with each quantifier's atom.
+  std::uint64_t random_seed = 0;
 };
 
 // Online component owning every Forall/Exists atom of the Boolean abstraction
@@ -50,9 +58,12 @@ struct QuantifierInstantiationOptions {
 // Enumeration is strategy u of Reynolds, Barbosa and Fontaine, "Revisiting
 // Enumerative Instantiation", TACAS 2018, section 4 and 4.1, over ground terms
 // of the assertions and of every lemma already handed over (Theorem 1's term
-// set), with the max-then-lexicographic order on tuples. The subset and the
-// deviations are listed in docs/papers/enumerative-instantiation.md. With no
-// entailment check, running out of instances is `Unknown`, never `sat`.
+// set). The tuple order is selectable (tuple_orders.hpp, after Janota, Barbosa,
+// Fontaine and Reynolds, FMCAD 2021); the default is the original
+// max-then-grouped order. The subset and the deviations are listed in
+// docs/papers/enumerative-instantiation.md and
+// docs/papers/fair-adventurous-enumeration.md. With no entailment check,
+// running out of instances is `Unknown`, never `sat`.
 class QuantifierComponent final : public TheoryComponent {
  public:
   using FreshConstantFactory = std::function<core::TermId(core::SortId, std::string_view)>;
@@ -81,9 +92,12 @@ class QuantifierComponent final : public TheoryComponent {
   struct Enumeration {
     std::vector<core::SortId> sorts;
     std::set<std::vector<core::TermId>> tried;
-    // Every tuple whose largest pool index is below this level was tried with
-    // no pool clipped, so pool growth can add no tuple there.
+    // Staged orders: every stage below this one was enumerated with no tuple
+    // outside the pools, so pool growth can add no tuple there.
     std::size_t first_open_level = 0;
+    // Walk orders keep their traversal between rounds.
+    std::unique_ptr<IterativeDeepening> deepening;
+    std::unique_ptr<RandomWalk> random;
   };
 
   // One instance of an atom under one assignment value, the key of the caches
