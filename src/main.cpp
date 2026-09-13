@@ -26,6 +26,7 @@
 #include "smt/preprocessing.hpp"
 #include "smt/smt_session.hpp"
 #include "smtlib/parser.hpp"
+#include "theory/quantifiers/tuple_orders.hpp"
 #include "util/statistics.hpp"
 
 namespace {
@@ -266,7 +267,12 @@ int run_main(int argc, char** argv) {
   bool euf_dynamic_ackermann_shadow = solver_options.euf_dynamic_ackermann_shadow;
   bool euf_diseq_ackermann = solver_options.euf_diseq_ackermann;
   std::string pure_theory_filter = "auto";
-  std::string quantifier_tuple_order = "max";
+  std::string quantifier_tuple_order{
+      primo::theory::tuple_order_name(solver_options.quantifier_tuple_order)};
+  std::vector<std::string> tuple_order_names;
+  for (const auto& entry : primo::theory::kTupleOrderNames) {
+    tuple_order_names.emplace_back(entry.first);
+  }
   std::string theory_phase = "negative";
   std::string euf_prop_budget = "auto";
   std::string euf_prop_delivery = "1000";
@@ -759,9 +765,9 @@ int run_main(int argc, char** argv) {
                  "Quantified UF: distinct instances generated before answering unknown")
       ->check(CLI::Range(1, 1000000000));
   app.add_option("--quantifier-tuple-order", quantifier_tuple_order,
-                 "Quantified UF: tuple enumeration order: max, max-colex, sum, leximax, "
-                 "deepening, or random")
-      ->check(CLI::IsMember({"max", "max-colex", "sum", "leximax", "deepening", "random"}));
+                 "Quantified UF: tuple enumeration order")
+      ->check(CLI::IsMember(tuple_order_names))
+      ->capture_default_str();
   app.add_option("--quantifier-deepening-increment", solver_options.quantifier_deepening_increment,
                  "Quantified UF: maximum-depth increment of the deepening tuple order")
       ->check(CLI::Range(1, 1000000));
@@ -1134,19 +1140,8 @@ int run_main(int argc, char** argv) {
   } else {
     solver_options.pure_theory_filter = primo::smt::PureTheoryFilterMode::Auto;
   }
-  if (quantifier_tuple_order == "max-colex") {
-    solver_options.quantifier_tuple_order = primo::smt::QuantifierTupleOrder::MaxDigitColex;
-  } else if (quantifier_tuple_order == "sum") {
-    solver_options.quantifier_tuple_order = primo::smt::QuantifierTupleOrder::SumOfDigits;
-  } else if (quantifier_tuple_order == "leximax") {
-    solver_options.quantifier_tuple_order = primo::smt::QuantifierTupleOrder::Leximax;
-  } else if (quantifier_tuple_order == "deepening") {
-    solver_options.quantifier_tuple_order = primo::smt::QuantifierTupleOrder::IterativeDeepening;
-  } else if (quantifier_tuple_order == "random") {
-    solver_options.quantifier_tuple_order = primo::smt::QuantifierTupleOrder::RandomWalk;
-  } else {
-    solver_options.quantifier_tuple_order = primo::smt::QuantifierTupleOrder::MaxDigit;
-  }
+  // IsMember admits only names in the table.
+  solver_options.quantifier_tuple_order = *primo::theory::parse_tuple_order(quantifier_tuple_order);
   if (theory_phase == "positive") {
     solver_options.theory_phase = primo::smt::TheoryPhaseMode::Positive;
   } else if (theory_phase == "none") {

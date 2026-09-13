@@ -91,24 +91,6 @@ std::vector<core::TermId> name_boolean_arguments(core::TermManager& terms,
   return result;
 }
 
-theory::TupleOrder tuple_order_for(QuantifierTupleOrder order) {
-  switch (order) {
-    case QuantifierTupleOrder::MaxDigit:
-      return theory::TupleOrder::MaxDigit;
-    case QuantifierTupleOrder::MaxDigitColex:
-      return theory::TupleOrder::MaxDigitColex;
-    case QuantifierTupleOrder::SumOfDigits:
-      return theory::TupleOrder::SumOfDigits;
-    case QuantifierTupleOrder::Leximax:
-      return theory::TupleOrder::Leximax;
-    case QuantifierTupleOrder::IterativeDeepening:
-      return theory::TupleOrder::IterativeDeepening;
-    case QuantifierTupleOrder::RandomWalk:
-      return theory::TupleOrder::RandomWalk;
-  }
-  return theory::TupleOrder::MaxDigit;
-}
-
 }  // namespace
 
 CheckSatOutcome solve_quantified_uf(
@@ -141,7 +123,7 @@ CheckSatOutcome solve_quantified_uf(
   instantiation.instances_per_round = options.quantifier_instances_per_round;
   instantiation.max_instances = options.quantifier_max_instances;
   instantiation.simplify_instances = options.quantifier_instance_simplification;
-  instantiation.tuple_order = tuple_order_for(options.quantifier_tuple_order);
+  instantiation.tuple_order = options.quantifier_tuple_order;
   instantiation.deepening_increment = options.quantifier_deepening_increment;
   instantiation.random_seed = options.quantifier_random_seed;
 

@@ -58,8 +58,8 @@ The frontend accepts the five named logics above and `UF`, nonrecursive
 Quantified assertions skip preprocessing: in `UF` they go to the quantified
 route above, and in any other logic, or in assumptions mode, they are
 `unsupported`. On the SMT-LIB UF division at 60 s, the route solves 1,867 of
-7,590 files with the default tuple order, and 1,911 with
-`--quantifier-tuple-order=sum`. All but one answer are `unsat`, with no wrong
+7,590 files with the original `max` tuple order, and 1,911 with `sum`, now
+the default. All but one answer are `unsat`, with no wrong
 answers or reference disagreements. The virtual best of the six tuple orders
 solves 2,020. Z3 solves 2,765 and cvc5 3,154; see [](quantifiers.md). `div`, `mod`
 and `abs` are deliberate Int extensions to the accepted logic declarations;

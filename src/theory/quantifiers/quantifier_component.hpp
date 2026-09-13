@@ -39,7 +39,7 @@ struct QuantifierInstantiationOptions {
   // before they become lemmas. Off, instances are compared as instantiated.
   bool simplify_instances = true;
   // Order of the candidate tuples for each quantifier (tuple_orders.hpp).
-  TupleOrder tuple_order = TupleOrder::MaxDigit;
+  TupleOrder tuple_order = kDefaultTupleOrder;
   // Maximum-depth increment of TupleOrder::IterativeDeepening.
   std::size_t deepening_increment = 2;
   // Seed of TupleOrder::RandomWalk, mixed with each quantifier's atom.

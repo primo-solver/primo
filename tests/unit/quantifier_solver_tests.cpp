@@ -7,6 +7,7 @@
 
 #include "smt/check_sat.hpp"
 #include "smt/inconclusive_reason.hpp"
+#include "theory/quantifiers/tuple_orders.hpp"
 
 using primo::smt::check_sat_smtlib;
 using primo::smt::CheckSatOptions;
@@ -238,7 +239,6 @@ void instances_wait_for_complete_assignments() {
 // Example 2, a Theorem 1 shape needing a term from an instance, and a
 // two-variable symmetric instance.
 void every_tuple_order_refutes() {
-  using primo::smt::QuantifierTupleOrder;
   const std::string example_two = R"(
     (declare-fun c () U) (declare-fun s (U) Bool)
     (assert (not (p a))) (assert (q b)) (assert (s c))
@@ -251,13 +251,10 @@ void every_tuple_order_refutes() {
   const std::string two_variables =
       "(assert (forall ((x U) (y U)) (or (r x y) (r y x)))) (assert (not (r a b))) "
       "(assert (not (r b a)))";
-  for (const auto order :
-       {QuantifierTupleOrder::MaxDigit, QuantifierTupleOrder::MaxDigitColex,
-        QuantifierTupleOrder::SumOfDigits, QuantifierTupleOrder::Leximax,
-        QuantifierTupleOrder::IterativeDeepening, QuantifierTupleOrder::RandomWalk}) {
+  for (const auto& entry : primo::theory::kTupleOrderNames) {
     for (const bool simplify : {true, false}) {
       CheckSatOptions options;
-      options.quantifier_tuple_order = order;
+      options.quantifier_tuple_order = entry.second;
       options.quantifier_instance_simplification = simplify;
       for (const auto& problem : {example_two, theorem_one, two_variables}) {
         assert(solve(problem, options).result == CheckSatResult::Unsat);

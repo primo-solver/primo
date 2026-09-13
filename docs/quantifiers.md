@@ -114,9 +114,9 @@ and Reynolds (FMCAD 2021); the missing entailment check and fail masks are in
 quantifier's candidate tuples are enumerated, following Section III of the same
 paper:
 
-- `max` is the default, the original order;
+- `sum`, the default, stages tuples by the sum of their indices;
+- `max` is the original order, the default until the evaluation below;
 - `max-colex` is the paper's maximal-digit order;
-- `sum` stages tuples by the sum of their indices;
 - `leximax` orders them by the descending-sorted tuple;
 - `deepening` is iterative deepening, with `--quantifier-deepening-increment`
   setting the depth increment;

@@ -118,8 +118,8 @@ instantiations is redundant.
 | Paper element | Primo |
 | --- | --- |
 | per-variable sequence `Ti` sorted by preference | one pool per sort, shared by every variable of that sort; order of discovery by a depth-first walk of the assertions and drained lemmas; no preference order |
-| A. stages by maximal digit | `max` (default): the original order, grouped within a stage by the first position holding the level, then an odometer with the rightmost position fastest, e.g. `(1,0), (1,1), (0,1)`. It is fair but not Pareto-respecting. `max-colex`: the paper's order, colexicographic within a stage, e.g. `(1,0), (0,1), (1,1)` |
-| B. sum of digits | `sum`: descending lexicographic within a stage |
+| A. stages by maximal digit | `max` (the default before the evaluation): the original order, grouped within a stage by the first position holding the level, then an odometer with the rightmost position fastest, e.g. `(1,0), (1,1), (0,1)`. It is fair but not Pareto-respecting. `max-colex`: the paper's order, colexicographic within a stage, e.g. `(1,0), (0,1), (1,1)` |
+| B. sum of digits | `sum` (default): descending lexicographic within a stage |
 | C. leximax | `leximax` |
 | D. iterative deepening | `deepening`, with the increment set by `--quantifier-deepening-increment` (default 2) |
 | random walk | `random`, seeded per quantifier from `--quantifier-random-seed` |
@@ -139,7 +139,8 @@ every cvc5 configuration adds conflict-based instantiation.
 
 1. **Selectable tuple orders (implemented, `theory/quantifiers/tuple_orders.*`,
    `tests/unit/tuple_order_tests.cpp`).** `sum`, `lmax`, `id-k` and `rwlk` as
-   values of a `--quantifier-tuple-order` option, with `max` as the default. They only
+   values of a `--quantifier-tuple-order` option. `max` was the default until the
+   evaluation below made it `sum`. They only
    replace the tuple generator inside `enumerate`. The per-atom tried set stays,
    so any order keeps each tuple to one instance.
    - Evaluate each order against `max` on the UF division.
