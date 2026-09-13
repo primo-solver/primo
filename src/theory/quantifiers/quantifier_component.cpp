@@ -229,6 +229,10 @@ bool QuantifierComponent::add_instance(core::TermId atom, bool value, core::Term
     }
     instance = simplified;
   }
+  // The budget counts distinct instances. Counting every tuple let duplicates
+  // exhaust it: with normalization on, sledgehammer/TwoSquares files spent
+  // 100,000 tuples on about 400 lemmas and gave up where 700 instances refute.
+  ++instances_;
   // A true atom's lemma is `not Q or inst` and a false one's `Q or not inst`;
   // either is valid outright when the instance has that value.
   if (const core::Term& node = terms_.get(instance);
@@ -326,7 +330,6 @@ std::size_t QuantifierComponent::enumerate(core::TermId atom, bool value, std::s
               position == first ? pools[position][level] : pools[position][index[position]];
         }
         if (instances_ < options_.max_instances && state.tried.insert(tuple).second) {
-          ++instances_;
           statistics_.increment(":quant.instances");
           if (add_instance(atom, value, core::instantiate(terms_, atom, tuple)) &&
               ++made == budget) {

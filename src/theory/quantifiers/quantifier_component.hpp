@@ -30,7 +30,8 @@ namespace primo::theory {
 struct QuantifierInstantiationOptions {
   // Instances queued at one complete assignment, across all quantifiers.
   std::size_t instances_per_round = 128;
-  // Instantiations tried in one solve before reporting ResourceLimit.
+  // Distinct instances generated in one solve before reporting ResourceLimit;
+  // instances recognized as generated before do not count.
   std::size_t max_instances = 100000;
   // Normalize instances with InstanceSimplifier before the duplicate check and
   // before they become lemmas. Off, instances are compared as instantiated.

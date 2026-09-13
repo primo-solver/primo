@@ -185,6 +185,25 @@ void pure_theory_filter_stays_off_while_lemmas_grow() {
   }
 }
 
+// The instance budget counts distinct instances, not tuples tried: y does not
+// occur in the body, so 16 tuples over four constants give only four distinct
+// instances. Counting tuples, a budget of five ran out (resource-limit) before
+// enumeration was exhausted; counting instances, it answers plain unknown.
+void duplicate_instances_do_not_spend_the_budget() {
+  for (const bool simplify : {true, false}) {
+    CheckSatOptions options;
+    options.quantifier_instance_simplification = simplify;
+    options.quantifier_max_instances = 5;
+    const CheckSatOutcome outcome = solve(
+        "(declare-fun c () U) (declare-fun d () U) (assert (distinct a b c d)) "
+        "(assert (forall ((x U) (y U)) (p x)))",
+        options);
+    assert(outcome.result == CheckSatResult::Unknown);
+    assert(outcome.reason == InconclusiveReason::Unknown);
+    assert(outcome.statistics.get(":quant.instances") > 5);
+  }
+}
+
 // benchmarks/regressions/uf_quantified_lemmas_before_complete_assignment.smt2:
 // with the quantifier component consulted mid-search, its queued lemmas muted
 // EUF before any decision-dependent conflict and this stayed unknown.
@@ -229,5 +248,6 @@ int main() {
   instances_are_normalized_and_deduplicated();
   pure_theory_filter_stays_off_while_lemmas_grow();
   instances_wait_for_complete_assignments();
+  duplicate_instances_do_not_spend_the_budget();
   return 0;
 }

@@ -491,7 +491,8 @@ struct CheckSatOptions {
   std::optional<std::size_t> nelson_oppen_arrangement_probe_limit;
   std::optional<std::size_t> max_theory_conflicts;
   // Quantified UF: enumerative instances queued per complete assignment, and
-  // instances tried in one solve before answering unknown (docs/quantifiers.md).
+  // distinct instances generated in one solve before answering unknown
+  // (docs/quantifiers.md).
   std::size_t quantifier_instances_per_round = 128;
   std::size_t quantifier_max_instances = 100000;
   // Normalize quantifier instances before duplicate detection and lemma

@@ -755,7 +755,7 @@ int run_main(int argc, char** argv) {
                  "Quantified UF: enumerative instances queued per complete assignment")
       ->check(CLI::Range(1, 1000000000));
   app.add_option("--quantifier-max-instances", solver_options.quantifier_max_instances,
-                 "Quantified UF: instances tried before answering unknown")
+                 "Quantified UF: distinct instances generated before answering unknown")
       ->check(CLI::Range(1, 1000000000));
   app.add_option("files", files, "SMT-LIB input files. Reads stdin when omitted")
       ->type_name("FILE")

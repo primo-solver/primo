@@ -3,6 +3,40 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-13-quantifiers-simplification-ab-144198",
+      "date": "2026-09-13",
+      "commit": "cec20ce",
+      "branch": "quantifiers",
+      "kind": "paired-configuration-comparison",
+      "scope": "Instance normalization on versus off over the SMT-LIB UF division at the dispatcher scheduling fix (cec20ce), which also carries the pure-theory filter fix; compared with the M4 evaluation (143196) and the pre-fix A/B (144000).",
+      "environment": {
+        "host": "CIIRC SLURM cluster, partition compute, 160 single-CPU array tasks",
+        "solver": "/home/janotmik/primo-quantifiers/build-slurm-rel/primo --quiet --stats, git cec20ce, default budget 100,000 instances counted per tuple tried",
+        "corpus": "tmp/UF hard links of the 7,590-file division (manifest prefix 38feaaabff90657e)",
+        "references": "Z3 5.1.0 and cvc5 1.3.4 answers reused from job 143196 by path; not rerun",
+        "timeout": "60 s"
+      },
+      "jobs": {
+        "ab": "144198"
+      },
+      "commands": {
+        "ab": "sbatch --array=0-159%160 --export=ALL,PRIMO_WORKDIR=$HOME/primo-quantifiers,PRIMO_COMPARE_ROOT=tmp/UF,PRIMO_COMPARE_TIMEOUT=60,PRIMO_COMPARE_SHARDS=80,PRIMO_COMPARE_SOLVERS='primo=build-slurm-rel/primo --quiet --stats;primo-nosimp=build-slurm-rel/primo --quiet --stats --no-quantifier-instance-simplification' scripts/slurm_uf_quantifier_compare.sbatch",
+        "summaries": "summarize_uf_quantifier_compare.py --candidate primo and --candidate primo-nosimp (z3/cvc5 linked from 143196); summarize_quantifier_instance_counters.py --arms primo primo-nosimp"
+      },
+      "results": {
+        "coverage": "80/80 shards and 7,590 files per arm.",
+        "solve_counts": "normalization on 1,840 (1 sat, 1,839 unsat; 1,146 unknown, 4,604 timeouts); off 1,882 (1 sat, 1,881 unsat; 619 unknown, 5,089 timeouts). M4 (143196, a6d3ff2) 1,749; pre-fix on (144000) 1,668.",
+        "correctness": "0 wrong answers against :status and 0 disagreements with Z3 or cvc5 in either arm. Reference-less answers: on 30, off 29, of which all but two carry declared status unsat; the two without status are universalInstance (confirmed by cvc5 enumerative modes) and koenigslemma x2015_09_10_16_51_52_445_1059832 (unconfirmed by any reference, as in 143196).",
+        "fixes_effect": "Against M4 the normalization-on arm gains 153 files and loses 62; grasshopper goes from 150 to 271 in both arms. Virtual best of Z3 and cvc5 3,320, with both Primo arms 3,350.",
+        "par2": "M4 706,277; on 694,665; off 690,397 (timeout counted as 120 s).",
+        "families": "M4/on/off/Z3/cvc5 solved: 20170428-Barrett 907/909/910/1281/1517 of 2963; 20190906-CLEARSY 13/13/13/42/20 of 50; induction-by-reflection 4/4/4/8/8 of 32; grasshopper 150/271/271/362/350 of 376; misc 5/6/6/17/14 of 19; sledgehammer 670/637/678/1045/1245 of 4140; wintersteiger 0/0/0/10/0 of 10.",
+        "counters": "on: 263.2M tuples instantiated, 60.2M raw duplicates, 189.4M changed by normalization, 78.5M normalized duplicates, 271k trivial, 132.8M lemmas, 1.06M rounds. off: 203.9M tuples, 64.8M raw duplicates, 254k trivial, 147.5M lemmas, 1.18M rounds. Duplicates are 53% of instantiated tuples with normalization and 32% without.",
+        "budget_finding": "Normalization loses 58 files and gains 16. Of the 58, the on arm answered unknown with the whole 100,000-instance budget spent on 53 (median 99% of its tuples normalized duplicates) and timed out on 5; for example sledgehammer/TwoSquares/uf.781811 spent 100,000 tuples on 402 lemmas where the off arm refutes with 676 instances in 0.1 s. Unknown answers with the budget spent: on 1,123 of 1,146, off 595 of 619. The budget counted tuples, so recognized duplicates exhausted it; the follow-up counts distinct instances only.",
+        "artifacts": "/home/janotmik/primo-quantifiers/results/uf-quantifier-compare-144198 (summary-primo.json, summary-primo-nosimp.json, counters.json) (SLURM-backed)"
+      },
+      "evidence_status": "current"
+    },
+    {
       "id": "2026-09-13-quantifiers-uf-mutation-fuzz-144199",
       "date": "2026-09-13",
       "commit": "cec20ce",

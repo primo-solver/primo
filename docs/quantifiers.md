@@ -114,6 +114,35 @@ The lemma itself is normalized before the lemma set. Each outcome has a counter:
 - `:quant.instances.trivial`
 - `:quant.instances.duplicate-lemmas`
 
+The budget `--quantifier-max-instances` counts distinct instances, meaning those
+that pass both caches. Tuples instantiated are reported as `:quant.instances`.
+Counting tuples let recognized duplicates exhaust the budget.
+
+**Normalization on the UF division.** SLURM job 144198 at `cec20ce`, 60 s per
+file, compared with and without normalization. Both arms still counted the
+budget per tuple.
+
+| Build | Normalization | Solved | Unknown | PAR2 |
+| --- | --- | --- | --- | --- |
+| M4, `a6d3ff2` | none | 1,749 | 495 | 706,277 |
+| `cec20ce` | on | 1,840 | 1,146 | 694,665 |
+| `cec20ce` | off | 1,882 | 619 | 690,397 |
+
+- **Correctness.** No wrong answers and no disagreement with Z3 or cvc5 in
+  either arm.
+- **Redundancy is real.** With normalization on, 53% of instantiated tuples
+  are duplicates: 60.2 M raw and 78.5 M after normalization, out of 263.2 M.
+  Without it, 32% are raw duplicates.
+- **Normalization exposed two defects.** Fixing them raised the count from
+  1,749 to 1,882 without normalization. Grasshopper went from 150 to 271
+  solved in both arms.
+  - The pure-theory filter was active on this route.
+  - The quantifier component was consulted mid-search.
+- **Net effect of normalization.** It gained 16 files and lost 58. On 53 of the
+  58, the budget ran out: a median of 99% of the tuples were duplicates, so the
+  run gave up after a few hundred lemmas. The distinct-instance budget above
+  addresses exactly this. Its effect on the corpus is not yet measured.
+
 `--no-quantifier-instance-simplification` keeps the raw cache and the trivial
 check but skips normalization, for A/B comparison. `tests/unit/instance_simplifier_tests.cpp`
 checks each rule, the canonical shape and the fixed point. It also evaluates
