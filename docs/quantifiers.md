@@ -156,7 +156,9 @@ file, normalization on, PAR2 counting a timeout as 120 s:
   files have neither status nor a reference answer: `universalInstance`,
   confirmed by cvc5's enumerative modes; `koenigslemma/…1059832`, still
   unconfirmed; and two `llist2` files that only `deepening` and `random`
-  solve, whose confirmation is pending.
+  solve, also unconfirmed. At 900 s, cvc5 `--enum-inst` and
+  `--full-saturate-quant` time out on both, and Z3 times out on one and
+  answers `unknown` on the other.
 
 The lemma itself is normalized before the lemma set. Each outcome has a counter:
 
