@@ -13,8 +13,9 @@ Read in full: Sections I–VI, Table I and Figures 1–3.
 
 **Status: the orders of Section III are implemented as
 `--quantifier-tuple-order` (`max`, `max-colex`, `sum`, `leximax`, `deepening`,
-`random`), with the corpus evaluation pending. Two of the three redundancy
-criteria exist; the entailment check and fail masks do not.** This note
+`random`) and evaluated on the UF division: `sum` is the best single order,
+and the six orders are orthogonal. Two of the three redundancy criteria
+exist; the entailment check and fail masks do not.** This note
 complements [](enumerative-instantiation.md), which covers the loop, Theorem 1
 and strategy u. The instantiation code is described in [](../quantifiers.md).
 
@@ -148,6 +149,17 @@ every cvc5 configuration adds conflict-based instantiation.
    - A deep or random order gives up the Pareto fairness that Corollary 2 of
      the TACAS paper relies on, so an `unknown` from such an order is weaker
      than one from `max`.
+   - **Result** (SLURM job 144606, 60 s; the table is in
+     [](../quantifiers.md)). Solved: `max` 1,867, `max-colex` 1,891, `sum`
+     1,911, `leximax` 1,876, `deepening` 1,864, `random` 1,846. The virtual
+     best of the six is 2,020.
+     - *Unlike the paper,* two alternatives beat the default on UF. Primo's
+       `max` is not the paper's `u`, and the paper's orders also run with
+       conflict-based instantiation.
+     - *Like the paper,* the orders are orthogonal. The deep and random
+       orders solve the most files that no other order solves (14 and 26),
+       and in sledgehammer the virtual best gains 51 over the best single
+       order.
 2. **Fail masks from criterion 3 alone.** Rewriting a partially instantiated,
    open formula can use the existing normalizer.
    - Criterion 2 is what drives the paper's example, so this may rarely fire.

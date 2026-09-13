@@ -127,6 +127,37 @@ The first four respect the Pareto order, except `max` within a stage.
 Every order is complete for a fixed term pool, and each tuple is instantiated
 at most once.
 
+**Tuple orders on the UF division.** SLURM job 144606 at `fc786f1`, 60 s per
+file, normalization on, PAR2 counting a timeout as 120 s:
+
+| Order | Solved | Unknown | PAR2 | Only this order | Against `max` |
+| --- | --- | --- | --- | --- | --- |
+| `max` | 1,867 | 30 | 691,797 | 3 | |
+| `max-colex` | 1,891 | 32 | 689,076 | 5 | +30 −6 |
+| `sum` | **1,911** | 30 | **686,644** | 17 | +82 −38 |
+| `leximax` | 1,876 | 30 | 690,473 | 5 | +49 −40 |
+| `deepening` | 1,864 | 35 | 691,943 | 14 | +81 −84 |
+| `random` | 1,846 | 34 | 694,509 | 26 | +77 −98 |
+
+- **Single orders.** `sum` is the best single order, 44 above `max` and 17
+  above normalization off at `1670dd4`. The paper's maximal-digit order
+  `max-colex` beats Primo's `max` by 24.
+- **Portfolio.** The virtual best of the six solves 2,020, 153 above `max`.
+  Greedily from `max`, `sum` adds 82, `random` 40, `deepening` 21, and
+  `max-colex` and `leximax` 5 each. With Z3 and cvc5 the virtual best rises
+  from 3,320 to 3,360.
+- **Noise.** `max` solved exactly the same files as the identical
+  configuration in job 144396, so these differences are not rerun noise at
+  this timeout.
+- **Families.** `sum` gains in Barrett (946 against 914) and grasshopper (281
+  against 271). The virtual best gains most in Barrett (996) and sledgehammer
+  (711 against 658), where no single order exceeds 660.
+- **Correctness.** No answer contradicts `:status`, Z3 or cvc5. Four `unsat`
+  files have neither status nor a reference answer: `universalInstance`,
+  confirmed by cvc5's enumerative modes; `koenigslemma/…1059832`, still
+  unconfirmed; and two `llist2` files that only `deepening` and `random`
+  solve, whose confirmation is pending.
+
 The lemma itself is normalized before the lemma set. Each outcome has a counter:
 
 - `:quant.instances.raw-duplicates`
