@@ -118,30 +118,36 @@ The budget `--quantifier-max-instances` counts distinct instances, meaning those
 that pass both caches. Tuples instantiated are reported as `:quant.instances`.
 Counting tuples let recognized duplicates exhaust the budget.
 
-**Normalization on the UF division.** SLURM job 144198 at `cec20ce`, 60 s per
-file, compared with and without normalization. Both arms still counted the
-budget per tuple.
+**Normalization on the UF division.** SLURM, 60 s per file, with and without
+normalization. The `cec20ce` run still counted the budget per tuple; `1670dd4`
+counts distinct instances.
 
 | Build | Normalization | Solved | Unknown | PAR2 |
 | --- | --- | --- | --- | --- |
 | M4, `a6d3ff2` | none | 1,749 | 495 | 706,277 |
-| `cec20ce` | on | 1,840 | 1,146 | 694,665 |
-| `cec20ce` | off | 1,882 | 619 | 690,397 |
+| `cec20ce` (job 144198) | on | 1,840 | 1,146 | 694,665 |
+| `cec20ce` (job 144198) | off | 1,882 | 619 | 690,397 |
+| `1670dd4` (job 144396) | on | 1,867 | 32 | 691,760 |
+| `1670dd4` (job 144396) | off | 1,894 | 33 | 689,143 |
 
-- **Correctness.** No wrong answers and no disagreement with Z3 or cvc5 in
-  either arm.
-- **Redundancy is real.** With normalization on, 53% of instantiated tuples
-  are duplicates: 60.2 M raw and 78.5 M after normalization, out of 263.2 M.
-  Without it, 32% are raw duplicates.
-- **Normalization exposed two defects.** Fixing them raised the count from
-  1,749 to 1,882 without normalization. Grasshopper went from 150 to 271
-  solved in both arms.
+- **Correctness.** No wrong answers and no disagreement with Z3 or cvc5 in any
+  arm.
+- **Redundancy is real.** In job 144198, 53% of instantiated tuples are
+  duplicates with normalization: 60.2 M raw and 78.5 M after normalization, out
+  of 263.2 M. Without it, 32% are raw duplicates. Job 144396 has no comparable
+  totals, because most timed-out runs print no statistics.
+- **Normalization exposed three defects.** Fixing them raised the count from
+  1,749 to 1,894 without normalization. Grasshopper went from 150 to 271 solved.
   - The pure-theory filter was active on this route.
   - The quantifier component was consulted mid-search.
-- **Net effect of normalization.** It gained 16 files and lost 58. On 53 of the
-  58, the budget ran out: a median of 99% of the tuples were duplicates, so the
-  run gave up after a few hundred lemmas. The distinct-instance budget above
-  addresses exactly this. Its effect on the corpus is not yet measured.
+  - The budget counted duplicates, so they ran it down.
+- **The distinct-instance budget.** It gained 27 files with normalization and
+  12 without, and lost none. Unknown answers fell from 1,146 and 619 to 32 and
+  33.
+- **Normalization is still a net loss.** At `1670dd4` it gains 16 files and
+  loses 43, mostly in sledgehammer (658 against 685), and all of the gap is in
+  timeouts. The cause is not established. Normalization may cost time itself,
+  or canonical atoms may add SAT variables that slow the ground search.
 
 `--no-quantifier-instance-simplification` keeps the raw cache and the trivial
 check but skips normalization, for A/B comparison. `tests/unit/instance_simplifier_tests.cpp`
