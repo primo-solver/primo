@@ -3,6 +3,38 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-13-quantifiers-tuple-order-fuzz",
+      "date": "2026-09-13",
+      "commit": "fc786f1",
+      "branch": "quantifiers",
+      "kind": "seed-mutation-fuzz-campaign",
+      "scope": "Mutation-fuzz gate for the selectable tuple orders (fc786f1): one typefuzz task per non-default order against Z3, answers only. The tuple order changes which instances become lemmas, never their content.",
+      "environment": {
+        "host": "CIIRC SLURM cluster, partition compute",
+        "workspace": "/home/janotmik/primo-quantifiers, build-slurm-rel/primo reporting git fc786f1; instance normalization on (default)",
+        "fuzzer": "YinYang typefuzz 0.3.0, --keep-logic --hoist-declarations --keep-mutants, 50 iterations per seed, solver timeout 5 s",
+        "seeds": "build_fuzz_seed_corpus.py --per-family 3 --max-bytes 20000 over the UF division: 21 seeds, 19 valid per task",
+        "reference": "contrib/local/bin/z3 (Z3 5.1.0)"
+      },
+      "jobs": {
+        "max-colex": "144607 (seed 202609160)",
+        "sum": "144608 (seed 202609170)",
+        "leximax": "144609 (seed 202609180)",
+        "deepening": "144610 (seed 202609190)",
+        "random": "144611 (seed 202609200)"
+      },
+      "commands": {
+        "fuzz": "for each order: sbatch --array=0 --time=01:00:00 --export=ALL,PRIMO_WORKDIR=$HOME/primo-quantifiers,PRIMO_CORPUS_ROOT=$HOME/primo-quantifiers-data/non-incremental/UF,PRIMO_FUZZ_YINYANG_WALL_SECONDS=3000,PRIMO_FUZZ_RANDOM_SEED=<seed>,PRIMO_FUZZ_SOLVER_ARGS=--quantifier-tuple-order=<order>,PRIMO_FUZZ_OUT_ROOT=$HOME/primo-quantifiers/fuzz-results/uf-tuple-order-<order>-<seed> scripts/slurm_uf_quantifier_mutation_fuzz.sbatch"
+      },
+      "results": {
+        "per_order": "max-colex 950 mutants, 1,844 solver calls; sum 950, 1,848; leximax 929, 1,856; deepening 950, 1,802; random 930, 1,758. Every task: 0 bug triggers, 19 of 21 seeds valid, the order flag present in the logged solver command.",
+        "total": "4,709 retained mutants, 9,108 solver calls, 0 disagreements with Z3.",
+        "not_done": "The retained mutants were not classified (Primo against Z3 at 5 s) as the earlier normalization gates were; typefuzz's own comparison is the gate here.",
+        "artifacts": "/home/janotmik/primo-quantifiers/fuzz-results/uf-tuple-order-<order>-<seed>/task-0 (SLURM-backed)"
+      },
+      "evidence_status": "current"
+    },
+    {
       "id": "2026-09-13-quantifiers-simplification-ab-144396",
       "date": "2026-09-13",
       "commit": "1670dd4",
