@@ -360,6 +360,12 @@ primo_enable_sanitizers(primo_tuple_order_tests)
 target_link_libraries(primo_tuple_order_tests PRIVATE primo_core)
 add_test(NAME primo_tuple_order_tests COMMAND primo_tuple_order_tests)
 
+add_executable(primo_option_names_tests tests/unit/option_names_tests.cpp)
+primo_enable_warnings(primo_option_names_tests)
+primo_enable_sanitizers(primo_option_names_tests)
+target_link_libraries(primo_option_names_tests PRIVATE primo_core)
+add_test(NAME primo_option_names_tests COMMAND primo_option_names_tests)
+
 add_executable(primo_model_tests tests/unit/model_tests.cpp)
 primo_enable_warnings(primo_model_tests)
 primo_enable_sanitizers(primo_model_tests)

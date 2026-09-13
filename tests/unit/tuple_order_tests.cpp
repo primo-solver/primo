@@ -6,7 +6,6 @@
 #include <cstddef>
 #include <set>
 #include <span>
-#include <string_view>
 #include <vector>
 
 #include "theory/quantifiers/tuple_orders.hpp"
@@ -213,21 +212,7 @@ void random_walk_is_reproducible_and_complete() {
 
 }  // namespace
 
-// Every order has one option name that parses back to it.
-void option_names_round_trip() {
-  std::set<std::string_view> names;
-  for (const auto& entry : primo::theory::kTupleOrderNames) {
-    assert(names.insert(entry.first).second);
-    assert(primo::theory::tuple_order_name(entry.second) == entry.first);
-    assert(primo::theory::parse_tuple_order(entry.first) == entry.second);
-  }
-  assert(names.size() == static_cast<std::size_t>(TupleOrder::RandomWalk) + 1);
-  assert(!primo::theory::parse_tuple_order("maximal").has_value());
-  assert(names.contains(primo::theory::tuple_order_name(primo::theory::kDefaultTupleOrder)));
-}
-
 int main() {
-  option_names_round_trip();
   staged_orders_match_documented_sequences();
   staged_orders_cover_every_tuple_once();
   staged_orders_resume_after_pools_grow();

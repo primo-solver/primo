@@ -5,9 +5,9 @@
 #include <cassert>
 #include <string>
 
+#include "cli/option_names.hpp"
 #include "smt/check_sat.hpp"
 #include "smt/inconclusive_reason.hpp"
-#include "theory/quantifiers/tuple_orders.hpp"
 
 using primo::smt::check_sat_smtlib;
 using primo::smt::CheckSatOptions;
@@ -251,10 +251,10 @@ void every_tuple_order_refutes() {
   const std::string two_variables =
       "(assert (forall ((x U) (y U)) (or (r x y) (r y x)))) (assert (not (r a b))) "
       "(assert (not (r b a)))";
-  for (const auto& entry : primo::theory::kTupleOrderNames) {
+  for (const auto& entry : primo::cli::kTupleOrderNames) {
     for (const bool simplify : {true, false}) {
       CheckSatOptions options;
-      options.quantifier_tuple_order = entry.second;
+      options.quantifier_tuple_order = entry.value;
       options.quantifier_instance_simplification = simplify;
       for (const auto& problem : {example_two, theorem_one, two_variables}) {
         assert(solve(problem, options).result == CheckSatResult::Unsat);

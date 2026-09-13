@@ -1,15 +1,11 @@
 #pragma once
 
-#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
-#include <optional>
 #include <random>
 #include <set>
 #include <span>
-#include <string_view>
-#include <utility>
 #include <vector>
 
 namespace primo::theory {
@@ -47,20 +43,6 @@ enum class TupleOrder {
 // The only definition of the default order, the best single order on the
 // SMT-LIB UF division (docs/quantifiers.md).
 inline constexpr TupleOrder kDefaultTupleOrder = TupleOrder::SumOfDigits;
-
-// Option names of the orders, in enumerator order.
-inline constexpr std::array<std::pair<std::string_view, TupleOrder>, 6> kTupleOrderNames{{
-    {"max", TupleOrder::MaxDigit},
-    {"max-colex", TupleOrder::MaxDigitColex},
-    {"sum", TupleOrder::SumOfDigits},
-    {"leximax", TupleOrder::Leximax},
-    {"deepening", TupleOrder::IterativeDeepening},
-    {"random", TupleOrder::RandomWalk},
-}};
-
-std::string_view tuple_order_name(TupleOrder order);
-// The order with option name `name`, if any.
-std::optional<TupleOrder> parse_tuple_order(std::string_view name);
 
 using IndexTuple = std::vector<std::size_t>;
 // Receives one tuple; returns false to stop the enumeration.

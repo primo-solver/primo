@@ -363,22 +363,4 @@ bool RandomWalk::next(std::span<const std::size_t> sizes, IndexTuple& tuple) {
   return true;
 }
 
-std::string_view tuple_order_name(TupleOrder order) {
-  for (const auto& entry : kTupleOrderNames) {
-    if (entry.second == order) {
-      return entry.first;
-    }
-  }
-  throw std::logic_error("tuple order without a name");
-}
-
-std::optional<TupleOrder> parse_tuple_order(std::string_view name) {
-  for (const auto& entry : kTupleOrderNames) {
-    if (entry.first == name) {
-      return entry.second;
-    }
-  }
-  return std::nullopt;
-}
-
 }  // namespace primo::theory

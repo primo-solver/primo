@@ -47,7 +47,9 @@ foreach(option_pattern IN ITEMS
     "--preprocessing-mode[^\n]*\\[[^]]+\\]"
     "--preprocessing-passes[^\n]*\\[[^]]+\\]"
     "--preprocessing-adaptive-extra-passes[^\n]*\\[[^]]+\\]"
-    "--preprocessing-adaptive-shrink-percent[^\n]*\\[[^]]+\\]")
+    "--preprocessing-adaptive-shrink-percent[^\n]*\\[[^]]+\\]"
+    "--euf-boolean-domain[^\n]*\\[[^]]+\\]"
+    "--quantifier-tuple-order[^\n]*\\[[^]]+\\]")
   if(NOT help_stdout MATCHES "${option_pattern}")
     message(FATAL_ERROR
       "help defaults: no generated default matched '${option_pattern}'\n${help_stdout}")

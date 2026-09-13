@@ -2,6 +2,7 @@
 #include <unistd.h>
 
 #include <CLI/CLI.hpp>
+#include <array>
 #include <chrono>
 #include <csignal>
 #include <cstddef>
@@ -18,6 +19,7 @@
 #include <utility>
 #include <vector>
 
+#include "cli/option_names.hpp"
 #include "cli/response_printer.hpp"
 #include "generated/primo_git_revision.hpp"
 #include "sat/cadical_backend.hpp"
@@ -26,7 +28,6 @@
 #include "smt/preprocessing.hpp"
 #include "smt/smt_session.hpp"
 #include "smtlib/parser.hpp"
-#include "theory/quantifiers/tuple_orders.hpp"
 #include "util/statistics.hpp"
 
 namespace {
@@ -152,6 +153,19 @@ std::optional<primo::smt::AutoBudget> parse_auto_budget(const std::string& text)
   }
 }
 
+// Inverse of parse_auto_budget, for --help defaults.
+std::string format_auto_budget(const primo::smt::AutoBudget& budget) {
+  switch (budget.kind) {
+    case primo::smt::AutoBudget::Kind::Auto:
+      return "auto";
+    case primo::smt::AutoBudget::Kind::Unlimited:
+      return "unlimited";
+    case primo::smt::AutoBudget::Kind::Fixed:
+      return std::to_string(budget.value);
+  }
+  return "auto";
+}
+
 std::optional<std::pair<std::string, int>> parse_cadical_option(const std::string& text) {
   const std::size_t separator = text.find('=');
   if (separator == std::string::npos || separator == 0 || separator + 1 == text.size()) {
@@ -179,6 +193,27 @@ CLI::Option* add_flag_with_default(CLI::App& app, std::string name, bool& value,
   return option;
 }
 
+// An option selecting an enumerator of `value` by its name in `names`. The
+// parsed value is written straight into `value`, and --help shows the name of
+// the value it holds when the option is added, so the default is written only
+// where `value` is initialized.
+template <typename Enum, std::size_t N>
+CLI::Option* add_enum_option(CLI::App& app, std::string name, Enum& value,
+                             const std::array<primo::cli::EnumName<Enum>, N>& names,
+                             std::string description) {
+  std::vector<std::string> choices;
+  for (const auto& entry : names) {
+    choices.emplace_back(entry.name);
+  }
+  CLI::Option* option = app.add_option_function<std::string>(
+      std::move(name),
+      [&value, &names](const std::string& text) { value = *primo::cli::parse_enum(names, text); },
+      std::move(description));
+  option->check(CLI::IsMember(std::move(choices)));
+  option->default_str(std::string(primo::cli::enum_name(names, value)));
+  return option;
+}
+
 // --help section headings. CLI11 emits sections in order of the first
 // option registered into each, so the printed order follows registration
 // order in main() -- currently Procedural, QF_UF, QF_LRA, Preprocessing,
@@ -202,7 +237,7 @@ int run_main(int argc, char** argv) {
   std::vector<std::string> files;
   bool quiet = false;
   bool print_stats = false;
-  unsigned int cancel_grace_seconds = 1;
+  unsigned int cancel_grace_seconds = static_cast<unsigned int>(g_cancel_grace_seconds);
   bool no_uf_symmetry_breaking = false;
   bool no_finite_domain_value_precedence = false;
   bool finite_domain_equality_definitions = solver_options.auto_finite_domain_equality_definitions;
@@ -238,21 +273,7 @@ int run_main(int argc, char** argv) {
   bool auto_basic_multi = solver_options.auto_basic_multi_preprocessing;
   bool no_auto_basic_multi = false;
   bool no_auto_basic_multi_polarity = false;
-  std::string preprocessing_mode = "auto";
-  std::string incremental_mode = "rebuild";
-  std::string auto_preprocess_selector = "legacy";
-  std::string boolean_implies_rewrite = "off";
   std::string qf_uf_profile = "default";
-  std::string qf_uf_portfolio = "off";
-  std::string euf_engine = "incremental";
-  std::string euf_boolean_domain = "registration";
-  std::string euf_prop = "auto";
-  std::string euf_explain_search = "one-sided";
-  std::string lra_pivoting_rule = "sparse";
-  std::string lra_soi_minimize = "quickxplain";
-  std::string lra_soi_minimize_order = "id";
-  std::string mixed_dispatch = "narrow";
-  std::string qf_uflra_lra_equality_producer = "legacy";
   bool no_lra_sparse_leaving = false;
   bool lra_least_violated_leaving = false;
   bool euf_proof_forest_diagnostics = false;
@@ -261,24 +282,12 @@ int run_main(int argc, char** argv) {
   bool nelson_oppen_diagnostics = false;
   bool nelson_oppen_model_equality_branching = false;
   bool no_nelson_oppen_model_equality_mutation = false;
-  std::string model_equality_mutation_scope = "all";
-  std::string nelson_oppen_propagation = "final";
-  std::string model_equality_branch_policy = "first";
   bool euf_dynamic_ackermann_shadow = solver_options.euf_dynamic_ackermann_shadow;
   bool euf_diseq_ackermann = solver_options.euf_diseq_ackermann;
-  std::string pure_theory_filter = "auto";
-  std::string quantifier_tuple_order{
-      primo::theory::tuple_order_name(solver_options.quantifier_tuple_order)};
-  std::vector<std::string> tuple_order_names;
-  for (const auto& entry : primo::theory::kTupleOrderNames) {
-    tuple_order_names.emplace_back(entry.first);
-  }
-  std::string theory_phase = "negative";
-  std::string euf_prop_budget = "auto";
-  std::string euf_prop_delivery = "1000";
+  std::string euf_prop_budget = format_auto_budget(solver_options.euf_propagation_budget);
+  std::string euf_prop_delivery = format_auto_budget(solver_options.euf_propagation_delivery);
   std::size_t nelson_oppen_arrangement_probe_limit = 0;
   std::size_t max_theory_conflicts = 0;
-  std::size_t qf_uf_portfolio_conflicts = 2000;
   std::vector<std::string> cadical_options;
   CLI::App app{"Primo SMT solver scaffold"};
   app.add_flag("--check-model", solver_options.check_model,
@@ -378,18 +387,18 @@ int run_main(int argc, char** argv) {
                         "Enable experimental QF_LRA model-based SAT phase hints: keep CaDiCaL's "
                         "variable choice, but refresh arithmetic atom polarity from the current "
                         "tableau assignment at quiescence points");
-  app.add_option("--lra-pivoting-rule", lra_pivoting_rule,
-                 "QF_LRA Check/Pivot variable-selection rule: sparse (prices "
-                 "what a pivot costs: among the entering candidates that all repair the "
-                 "violation equally, take the one occurring in the fewest rows, since "
-                 "those are exactly the rows the pivot rewrites), bland "
-                 "(anti-cycling-proven), dantzig "
-                 "(largest-violation/largest-coefficient), or soi "
-                 "(Sum-of-Infeasibilities Simplex, King/Barrett/Dutertre FMCAD 2013 -- a "
-                 "global Check/Pivot objective across every violated row at once). All "
-                 "but bland fall back to bland selection after enough pivots within one "
-                 "check(), which is what keeps termination proven")
-      ->check(CLI::IsMember({"bland", "dantzig", "soi", "sparse"}));
+  add_enum_option(app, "--lra-pivoting-rule", solver_options.lra_pivoting_rule,
+                  primo::cli::kLraPivotingRuleNames,
+                  "QF_LRA Check/Pivot variable-selection rule: sparse (prices "
+                  "what a pivot costs: among the entering candidates that all repair the "
+                  "violation equally, take the one occurring in the fewest rows, since "
+                  "those are exactly the rows the pivot rewrites), bland "
+                  "(anti-cycling-proven), dantzig "
+                  "(largest-violation/largest-coefficient), or soi "
+                  "(Sum-of-Infeasibilities Simplex, King/Barrett/Dutertre FMCAD 2013 -- a "
+                  "global Check/Pivot objective across every violated row at once). All "
+                  "but bland fall back to bland selection after enough pivots within one "
+                  "check(), which is what keeps termination proven");
   add_flag_with_default(app, "--lra-least-violated-leaving", lra_least_violated_leaving,
                         "Experimental leaving-variable rule from Griggio's thesis (2.5.3, p.53):\n"
                         "pick the LEAST-violated basic variable, tie-broken by the shorter row.\n"
@@ -405,20 +414,22 @@ int run_main(int argc, char** argv) {
                  "eligible candidate). 1 is the cheapest possible pricing. Never cuts short "
                  "the search for whether an eligible candidate exists, so any value is sound")
       ->check(CLI::Range(0, 1000000));
-  app.add_option("--lra-soi-minimize", lra_soi_minimize,
-                 "How --lra-pivoting-rule soi shrinks a multi-row conflict before turning "
-                 "it into a clause: quickxplain (Junker 2001), deletion "
-                 "(iterative, and steerable by --lra-soi-minimize-order), or none "
-                 "(ablation baseline). Inert under every other pivoting rule. Measured, "
-                 "the error set averages 2.83 variables and never exceeded 9, so this "
-                 "changes which minimal conflict is learned rather than how fast it is "
-                 "found");
-  app.add_option("--lra-soi-minimize-order", lra_soi_minimize_order,
-                 "Order --lra-soi-minimize deletion offers candidates for removal, worst "
-                 "first: id (ascending, reproduces quickxplain's input order), "
-                 "row-support (longest row first -- the row support dominates clause "
-                 "length, so this sheds the rows contributing most literals), or "
-                 "violation (largest bound violation first)");
+  add_enum_option(app, "--lra-soi-minimize", solver_options.lra_tuning.soi_minimization,
+                  primo::cli::kLraSoiMinimizationNames,
+                  "How --lra-pivoting-rule soi shrinks a multi-row conflict before turning "
+                  "it into a clause: quickxplain (Junker 2001), deletion "
+                  "(iterative, and steerable by --lra-soi-minimize-order), or none "
+                  "(ablation baseline). Inert under every other pivoting rule. Measured, "
+                  "the error set averages 2.83 variables and never exceeded 9, so this "
+                  "changes which minimal conflict is learned rather than how fast it is "
+                  "found");
+  add_enum_option(app, "--lra-soi-minimize-order", solver_options.lra_tuning.soi_minimization_order,
+                  primo::cli::kLraSoiMinimizationOrderNames,
+                  "Order --lra-soi-minimize deletion offers candidates for removal, worst "
+                  "first: id (ascending, reproduces quickxplain's input order), "
+                  "row-support (longest row first -- the row support dominates clause "
+                  "length, so this sheds the rows contributing most literals), or "
+                  "violation (largest bound violation first)");
   app.add_option("--lra-bland-fallback-factor", solver_options.lra_tuning.bland_fallback_factor,
                  "Per-variable coefficient of check()'s Bland's-rule fallback point, which is "
                  "factor * variables + offset pivots within one check. Smaller "
@@ -427,16 +438,16 @@ int run_main(int argc, char** argv) {
   app.add_option("--lra-bland-fallback-offset", solver_options.lra_tuning.bland_fallback_offset,
                  "Constant term of the Bland's-rule fallback point")
       ->check(CLI::Range(0, 1000000000));
-  app.add_option("--mixed-dispatch", mixed_dispatch,
-                 "Which formulas reach the mixed EUF/LRA solver: narrow (only a "
-                 "Bool-sorted function APPLICATION counts as an EUF predicate, so a formula "
-                 "that is pure QF_LRA apart from propositional variables stays on the pure "
-                 "path) or wide (a Bool-sorted constant counts too -- the pre-2026-08-07 "
-                 "behaviour, routing any QF_LRA formula containing one propositional variable "
-                 "to the mixed solver). Usually much worse, but genuinely better on some "
-                 "instances; kept as a portfolio dimension and so differential fuzzing can "
-                 "reach the mixed path")
-      ->check(CLI::IsMember({"narrow", "wide"}));
+  add_enum_option(app, "--mixed-dispatch", solver_options.mixed_dispatch,
+                  primo::cli::kMixedDispatchNames,
+                  "Which formulas reach the mixed EUF/LRA solver: narrow (only a "
+                  "Bool-sorted function APPLICATION counts as an EUF predicate, so a formula "
+                  "that is pure QF_LRA apart from propositional variables stays on the pure "
+                  "path) or wide (a Bool-sorted constant counts too -- the pre-2026-08-07 "
+                  "behaviour, routing any QF_LRA formula containing one propositional variable "
+                  "to the mixed solver). Usually much worse, but genuinely better on some "
+                  "instances; kept as a portfolio dimension and so differential fuzzing can "
+                  "reach the mixed path");
   add_flag_with_default(
       app, "--lra-fixed-elimination", solver_options.lra_fixed_elimination,
       "Pivot a basic LRA variable out of the basis as soon as its bounds coincide "
@@ -464,12 +475,13 @@ int run_main(int argc, char** argv) {
       app, "--qf-uflra-candidate-final-scan", qf_uflra_candidate_final_scan,
       "Enable experimental mixed QF_UFLRA candidate-first final LRA equality scans before "
       "falling back to the full shared-Real pair scan");
-  app.add_option("--qf-uflra-lra-equality-producer", qf_uflra_lra_equality_producer,
-                 "LRA-to-EUF opportunistic equality producer: legacy exact-offset row indexes "
-                 "or model-unit current-model-filtered unit rows; adaptive bootstraps legacy to "
-                 "a propagation fixed point, then uses model-unit until a later shared-model "
-                 "split")
-      ->check(CLI::IsMember({"legacy", "model-unit", "adaptive"}));
+  add_enum_option(app, "--qf-uflra-lra-equality-producer",
+                  solver_options.qf_uflra_lra_equality_producer,
+                  primo::cli::kQfUflraLraEqualityProducerNames,
+                  "LRA-to-EUF opportunistic equality producer: legacy exact-offset row indexes "
+                  "or model-unit current-model-filtered unit rows; adaptive bootstraps legacy to "
+                  "a propagation fixed point, then uses model-unit until a later shared-model "
+                  "split");
   add_flag_with_default(
       app, "--qf-uflra-model-reconciliation", qf_uflra_model_reconciliation,
       "Explicitly enable convex QF_UFLRA shared-model reconciliation with scratch "
@@ -553,16 +565,16 @@ int run_main(int argc, char** argv) {
                  "which reports statistics, before answering unknown and exiting")
       ->check(CLI::Range(1U, 3600U))
       ->capture_default_str();
-  app.add_option("--preprocessing-mode", preprocessing_mode,
-                 "Preprocessing preset for all supported logics: off, basic, strong, or auto")
-      ->check(CLI::IsMember({"off", "basic", "strong", "auto"}));
-  app.add_option("--incremental-mode", incremental_mode,
-                 "Session engine: rebuild (default), or opt-in QF_LRA/QF_UF assumptions")
-      ->check(CLI::IsMember({"rebuild", "assumptions"}));
-  app.add_option("--auto-preprocess-selector", auto_preprocess_selector,
-                 "Auto preprocessing selector: legacy assertion-count heuristics or "
-                 "representation-stable structural analysis")
-      ->check(CLI::IsMember({"legacy", "structural"}));
+  add_enum_option(app, "--preprocessing-mode", solver_options.preprocessing_mode,
+                  primo::cli::kPreprocessingModeNames,
+                  "Preprocessing preset for all supported logics");
+  add_enum_option(app, "--incremental-mode", solver_options.incremental_mode,
+                  primo::cli::kIncrementalModeNames,
+                  "Session engine; assumptions is opt-in for QF_LRA and QF_UF");
+  add_enum_option(app, "--auto-preprocess-selector", solver_options.auto_preprocess_selector,
+                  primo::cli::kAutoPreprocessSelectorNames,
+                  "Auto preprocessing selector: legacy assertion-count heuristics or "
+                  "representation-stable structural analysis");
   app.add_option("--auto-preprocess-large-conjunct-limit",
                  solver_options.auto_preprocess_tuning.large_conjunct_limit,
                  "Maximum implicit top-level conjunct occurrences for repeated auto "
@@ -606,29 +618,23 @@ int run_main(int argc, char** argv) {
   CLI::Option* profile_option = app.add_option("--qf-uf-profile", qf_uf_profile,
                                                "QF_UF profile: default or tuned-interesting")
                                     ->check(CLI::IsMember({"default", "tuned-interesting"}));
-  app.add_option("--qf-uf-portfolio", qf_uf_portfolio,
-                 "QF_UF portfolio mode: off or basic-polarity")
-      ->check(CLI::IsMember({"off", "basic-polarity"}));
-  app.add_option("--qf-uf-portfolio-conflicts", qf_uf_portfolio_conflicts,
+  add_enum_option(app, "--qf-uf-portfolio", solver_options.qf_uf_portfolio,
+                  primo::cli::kQfUfPortfolioNames, "QF_UF portfolio mode");
+  app.add_option("--qf-uf-portfolio-conflicts", solver_options.qf_uf_portfolio_conflicts,
                  "Theory-conflict budget for the first QF_UF portfolio attempt")
       ->check(CLI::Range(1, 1000000000));
-  app.add_option("--euf-prop", euf_prop,
-                 "EUF propagation mode: auto, off, conflict, model, or online")
-      ->check(CLI::IsMember({"auto", "off", "conflict", "model", "online"}));
-  app.add_option("--euf-engine", euf_engine, "EUF engine: incremental or lazy")
-      ->check(CLI::IsMember({"lazy", "incremental"}));
-  app.add_option("--euf-boolean-domain", euf_boolean_domain,
-                 "How Bool's two-element domain reaches congruence closure: registration\n"
-                 "(register Bool-sorted arguments as theory atoms; no extra SAT variable or\n"
-                 "clause) or bridge-atoms (the older encoding, 2 atoms and 3 clauses per\n"
-                 "term). Selectable only to A/B the two; bridge-atoms is going away\n"
-                 "[default: registration]")
-      ->check(CLI::IsMember({"registration", "bridge-atoms"}));
-  app.add_option("--euf-explain-search", euf_explain_search,
-                 "Incremental EUF explanation search: one-sided, bidirectional, proof-forest, "
-                 "reoriented-proof-forest, or structural-proof-forest")
-      ->check(CLI::IsMember({"one-sided", "bidirectional", "proof-forest",
-                             "reoriented-proof-forest", "structural-proof-forest"}));
+  add_enum_option(app, "--euf-prop", solver_options.euf_propagation,
+                  primo::cli::kEufPropagationNames, "EUF propagation mode");
+  add_enum_option(app, "--euf-engine", solver_options.euf_engine, primo::cli::kEufEngineNames,
+                  "EUF engine");
+  add_enum_option(app, "--euf-boolean-domain", solver_options.euf_boolean_domain,
+                  primo::cli::kEufBooleanDomainNames,
+                  "How Bool's two-element domain reaches congruence closure: registration\n"
+                  "(register Bool-sorted arguments as theory atoms; no extra SAT variable or\n"
+                  "clause) or bridge-atoms (the older encoding, 2 atoms and 3 clauses per\n"
+                  "term). Selectable only to A/B the two; bridge-atoms is going away");
+  add_enum_option(app, "--euf-explain-search", solver_options.euf_explain_search,
+                  primo::cli::kEufExplainSearchNames, "Incremental EUF explanation search");
   add_flag_with_default(app, "--euf-proof-forest-diagnostics", euf_proof_forest_diagnostics,
                         "Record proof-forest path counters for incremental EUF explanations");
   add_flag_with_default(
@@ -646,23 +652,25 @@ int run_main(int argc, char** argv) {
       app, "--no-model-equality-mutation", no_nelson_oppen_model_equality_mutation,
       "Disable the Section 5.2 greedy LRA model-diversification sweep used by the "
       "experimental QF_UFLRA shared-model and model-equality branching paths");
-  app.add_option("--model-equality-mutation-scope", model_equality_mutation_scope,
-                 "QF_UFLRA LRA model-mutation scope: all shared Real terms or current EUF "
-                 "care-pair endpoints")
-      ->check(CLI::IsMember({"all", "care"}));
-  app.add_option("--nelson-oppen-prop", nelson_oppen_propagation,
-                 "QF_UFLRA Nelson-Oppen interface equality propagation mode: exact, final, or "
-                 "online. Exact keeps the mandatory convex closure but disables opportunistic "
-                 "LRA producers; off is a backward-compatible alias for exact. Pure QF_UF and "
-                 "QF_LRA keep their direct theory propagators")
-      ->check(CLI::IsMember({"off", "exact", "final", "online"}));
+  add_enum_option(app, "--model-equality-mutation-scope",
+                  solver_options.nelson_oppen_model_equality_mutation_scope,
+                  primo::cli::kModelEqualityMutationScopeNames,
+                  "QF_UFLRA LRA model-mutation scope: all shared Real terms or current EUF "
+                  "care-pair endpoints");
+  add_enum_option(app, "--nelson-oppen-prop", solver_options.nelson_oppen_propagation,
+                  primo::cli::kNelsonOppenPropagationNames,
+                  "QF_UFLRA Nelson-Oppen interface equality propagation mode. Exact keeps the "
+                  "mandatory convex closure but disables opportunistic LRA producers; off is a "
+                  "backward-compatible alias for exact. Pure QF_UF and QF_LRA keep their direct "
+                  "theory propagators");
   app.add_option("--model-equality-branch-budget",
                  solver_options.nelson_oppen_model_equality_branch_budget,
                  "Maximum QF_UFLRA model-equality branch assumptions per check-sat")
       ->check(CLI::Range(0, 1000000));
-  app.add_option("--model-equality-branch-policy", model_equality_branch_policy,
-                 "QF_UFLRA model-equality branch policy: first, ranked, adaptive, or care-queued")
-      ->check(CLI::IsMember({"first", "ranked", "adaptive", "care-queued"}));
+  add_enum_option(app, "--model-equality-branch-policy",
+                  solver_options.nelson_oppen_model_equality_branch_policy,
+                  primo::cli::kModelEqualityBranchPolicyNames,
+                  "QF_UFLRA model-equality branch policy");
   CLI::Option* no_arrangement_probe_limit_option =
       app.add_option("--nelson-oppen-arrangement-probe-limit", nelson_oppen_arrangement_probe_limit,
                      "Return unknown once mixed QF_UFLRA final equality sharing or "
@@ -685,14 +693,11 @@ int run_main(int argc, char** argv) {
   app.add_option("--euf-diseq-ackermann-per-symbol", solver_options.euf_diseq_ackermann_per_symbol,
                  "Maximum watched disequality Ackermann candidates per function symbol")
       ->check(CLI::Range(0, 1000000000));
-  app.add_option("--pure-theory-filter", pure_theory_filter,
-                 "T-pure theory literal filtering mode: auto, on, or off")
-      ->check(CLI::IsMember({"auto", "on", "off"}));
+  add_enum_option(app, "--pure-theory-filter", solver_options.pure_theory_filter,
+                  primo::cli::kPureTheoryFilterNames, "T-pure theory literal filtering mode");
   CLI::Option* theory_phase_option =
-      app.add_option(
-             "--theory-phase", theory_phase,
-             "Initial SAT phase for theory atoms: negative, positive, none, polarity, or auto")
-          ->check(CLI::IsMember({"negative", "positive", "none", "polarity", "auto"}));
+      add_enum_option(app, "--theory-phase", solver_options.theory_phase,
+                      primo::cli::kTheoryPhaseNames, "Initial SAT phase for theory atoms");
   app.add_option("--euf-prop-budget", euf_prop_budget,
                  "EUF propagation candidate budget: auto, unlimited, or a nonnegative integer");
   app.add_option("--euf-prop-delivery,--prop-delivery-budget", euf_prop_delivery,
@@ -723,10 +728,10 @@ int run_main(int argc, char** argv) {
                  "so they reintroduce nesting that --boolean-flatten-threshold (which runs "
                  "before them) cannot see. 0 disables")
       ->check(CLI::Range(0, 1000000));
-  app.add_option("--boolean-implies-rewrite", boolean_implies_rewrite,
-                 "Post-preprocessing implication rewrite: off, clause (only expose flat "
-                 "clauses), or all (rewrite A=>B to (or (not A) B) without distribution)")
-      ->check(CLI::IsMember({"off", "clause", "all"}));
+  add_enum_option(app, "--boolean-implies-rewrite", solver_options.boolean_implies_rewrite,
+                  primo::cli::kBooleanImpliesRewriteNames,
+                  "Post-preprocessing implication rewrite: off, clause (only expose flat "
+                  "clauses), or all (rewrite A=>B to (or (not A) B) without distribution)");
   app.add_option("--preprocessing-adaptive-extra-passes",
                  solver_options.preprocessing_adaptive_extra_passes,
                  "Additional adaptive preprocessing passes after the configured pass cap")
@@ -764,10 +769,8 @@ int run_main(int argc, char** argv) {
   app.add_option("--quantifier-max-instances", solver_options.quantifier_max_instances,
                  "Quantified UF: distinct instances generated before answering unknown")
       ->check(CLI::Range(1, 1000000000));
-  app.add_option("--quantifier-tuple-order", quantifier_tuple_order,
-                 "Quantified UF: tuple enumeration order")
-      ->check(CLI::IsMember(tuple_order_names))
-      ->capture_default_str();
+  add_enum_option(app, "--quantifier-tuple-order", solver_options.quantifier_tuple_order,
+                  primo::cli::kTupleOrderNames, "Quantified UF: tuple enumeration order");
   app.add_option("--quantifier-deepening-increment", solver_options.quantifier_deepening_increment,
                  "Quantified UF: maximum-depth increment of the deepening tuple order")
       ->check(CLI::Range(1, 1000000));
@@ -886,28 +889,6 @@ int run_main(int argc, char** argv) {
                  "backtracking and shared-equality-decision state)\n";
     return 2;
   }
-  if (preprocessing_mode == "off") {
-    solver_options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
-  } else if (preprocessing_mode == "strong") {
-    solver_options.preprocessing_mode = primo::smt::PreprocessingMode::Strong;
-  } else if (preprocessing_mode == "auto") {
-    solver_options.preprocessing_mode = primo::smt::PreprocessingMode::Auto;
-  } else {
-    solver_options.preprocessing_mode = primo::smt::PreprocessingMode::Basic;
-  }
-  solver_options.incremental_mode = incremental_mode == "assumptions"
-                                        ? primo::smt::IncrementalMode::Assumptions
-                                        : primo::smt::IncrementalMode::Rebuild;
-  solver_options.auto_preprocess_selector = auto_preprocess_selector == "structural"
-                                                ? primo::smt::AutoPreprocessSelectorMode::Structural
-                                                : primo::smt::AutoPreprocessSelectorMode::Legacy;
-  if (boolean_implies_rewrite == "clause") {
-    solver_options.boolean_implies_rewrite = primo::smt::BooleanImpliesRewriteMode::Clause;
-  } else if (boolean_implies_rewrite == "all") {
-    solver_options.boolean_implies_rewrite = primo::smt::BooleanImpliesRewriteMode::All;
-  } else {
-    solver_options.boolean_implies_rewrite = primo::smt::BooleanImpliesRewriteMode::Off;
-  }
   if (profile_option->count() > 0 && qf_uf_profile == "tuned-interesting") {
     solver_options.uf_symmetry_breaking = true;
     solver_options.eq_bridge = true;
@@ -924,12 +905,6 @@ int run_main(int argc, char** argv) {
       euf_prop_delivery = "1000";
     }
   }
-  if (qf_uf_portfolio == "basic-polarity") {
-    solver_options.qf_uf_portfolio = primo::smt::QfUfPortfolioMode::BasicPolarity;
-  } else {
-    solver_options.qf_uf_portfolio = primo::smt::QfUfPortfolioMode::Off;
-  }
-  solver_options.qf_uf_portfolio_conflicts = qf_uf_portfolio_conflicts;
   if (no_uf_symmetry_breaking) {
     solver_options.uf_symmetry_breaking = false;
   }
@@ -978,15 +953,6 @@ int run_main(int argc, char** argv) {
     solver_options.qf_uflra_fixed_elimination = false;
   }
   solver_options.qf_uflra_candidate_final_scan = qf_uflra_candidate_final_scan;
-  if (qf_uflra_lra_equality_producer == "model-unit") {
-    solver_options.qf_uflra_lra_equality_producer =
-        primo::smt::QfUflraLraEqualityProducer::ModelUnit;
-  } else if (qf_uflra_lra_equality_producer == "adaptive") {
-    solver_options.qf_uflra_lra_equality_producer =
-        primo::smt::QfUflraLraEqualityProducer::Adaptive;
-  } else {
-    solver_options.qf_uflra_lra_equality_producer = primo::smt::QfUflraLraEqualityProducer::Legacy;
-  }
   if (qf_uflra_model_reconciliation) {
     solver_options.qf_uflra_model_reconciliation = true;
   }
@@ -1034,38 +1000,6 @@ int run_main(int argc, char** argv) {
   if (no_auto_basic_multi_polarity) {
     solver_options.auto_basic_multi_polarity = false;
   }
-  if (euf_prop == "auto") {
-    solver_options.euf_propagation = primo::smt::EufPropagationMode::Auto;
-  } else if (euf_prop == "conflict") {
-    solver_options.euf_propagation = primo::smt::EufPropagationMode::Conflict;
-  } else if (euf_prop == "model") {
-    solver_options.euf_propagation = primo::smt::EufPropagationMode::Model;
-  } else if (euf_prop == "online") {
-    solver_options.euf_propagation = primo::smt::EufPropagationMode::Online;
-  } else {
-    solver_options.euf_propagation = primo::smt::EufPropagationMode::Off;
-  }
-  if (euf_engine == "incremental") {
-    solver_options.euf_engine = primo::smt::EufEngine::Incremental;
-  } else {
-    solver_options.euf_engine = primo::smt::EufEngine::Lazy;
-  }
-  if (euf_boolean_domain == "bridge-atoms") {
-    solver_options.euf_boolean_domain = primo::smt::EufBooleanDomain::BridgeAtoms;
-  } else {
-    solver_options.euf_boolean_domain = primo::smt::EufBooleanDomain::Registration;
-  }
-  if (euf_explain_search == "bidirectional") {
-    solver_options.euf_explain_search = primo::smt::EufExplainSearchMode::BidirectionalBfs;
-  } else if (euf_explain_search == "proof-forest") {
-    solver_options.euf_explain_search = primo::smt::EufExplainSearchMode::ProofForest;
-  } else if (euf_explain_search == "reoriented-proof-forest") {
-    solver_options.euf_explain_search = primo::smt::EufExplainSearchMode::ReorientedProofForest;
-  } else if (euf_explain_search == "structural-proof-forest") {
-    solver_options.euf_explain_search = primo::smt::EufExplainSearchMode::StructuralProofForest;
-  } else {
-    solver_options.euf_explain_search = primo::smt::EufExplainSearchMode::OneSidedBfs;
-  }
   solver_options.euf_proof_forest_diagnostics = euf_proof_forest_diagnostics;
   if (lra_least_violated_leaving) {
     solver_options.lra_least_violated_leaving = true;
@@ -1073,86 +1007,15 @@ int run_main(int argc, char** argv) {
   if (no_lra_sparse_leaving) {
     solver_options.lra_sparse_leaving = false;
   }
-  if (mixed_dispatch == "wide") {
-    solver_options.mixed_dispatch = primo::smt::MixedDispatchMode::Wide;
-  }
-  if (lra_soi_minimize == "deletion") {
-    solver_options.lra_tuning.soi_minimization = primo::smt::LraSoiMinimization::Deletion;
-  } else if (lra_soi_minimize == "none") {
-    solver_options.lra_tuning.soi_minimization = primo::smt::LraSoiMinimization::None;
-  } else {
-    solver_options.lra_tuning.soi_minimization = primo::smt::LraSoiMinimization::QuickXplain;
-  }
-  if (lra_soi_minimize_order == "row-support") {
-    solver_options.lra_tuning.soi_minimization_order =
-        primo::smt::LraSoiMinimizationOrder::RowSupport;
-  } else if (lra_soi_minimize_order == "violation") {
-    solver_options.lra_tuning.soi_minimization_order =
-        primo::smt::LraSoiMinimizationOrder::Violation;
-  } else {
-    solver_options.lra_tuning.soi_minimization_order = primo::smt::LraSoiMinimizationOrder::Id;
-  }
-  if (lra_pivoting_rule == "dantzig") {
-    solver_options.lra_pivoting_rule = primo::smt::LraPivotingRule::Dantzig;
-  } else if (lra_pivoting_rule == "soi") {
-    solver_options.lra_pivoting_rule = primo::smt::LraPivotingRule::Soi;
-  } else if (lra_pivoting_rule == "sparse") {
-    solver_options.lra_pivoting_rule = primo::smt::LraPivotingRule::Sparse;
-  } else {
-    solver_options.lra_pivoting_rule = primo::smt::LraPivotingRule::Bland;
-  }
   solver_options.euf_diseq_propagation_diagnostics = euf_diseq_propagation_diagnostics;
   solver_options.euf_ackermann_diagnostics = euf_ackermann_diagnostics;
   solver_options.nelson_oppen_diagnostics = nelson_oppen_diagnostics;
   solver_options.nelson_oppen_model_equality_branching = nelson_oppen_model_equality_branching;
-  if (nelson_oppen_propagation == "off" || nelson_oppen_propagation == "exact") {
-    solver_options.nelson_oppen_propagation = primo::smt::NelsonOppenPropagationMode::Exact;
-  } else if (nelson_oppen_propagation == "online") {
-    solver_options.nelson_oppen_propagation = primo::smt::NelsonOppenPropagationMode::Online;
-  } else {
-    solver_options.nelson_oppen_propagation = primo::smt::NelsonOppenPropagationMode::Final;
-  }
   if (no_nelson_oppen_model_equality_mutation) {
     solver_options.nelson_oppen_model_equality_mutation = false;
   }
-  solver_options.nelson_oppen_model_equality_mutation_scope =
-      model_equality_mutation_scope == "care" ? primo::smt::ModelEqualityMutationScope::Care
-                                              : primo::smt::ModelEqualityMutationScope::All;
-  if (model_equality_branch_policy == "adaptive") {
-    solver_options.nelson_oppen_model_equality_branch_policy =
-        primo::smt::ModelEqualityBranchPolicy::Adaptive;
-  } else if (model_equality_branch_policy == "care-queued") {
-    solver_options.nelson_oppen_model_equality_branch_policy =
-        primo::smt::ModelEqualityBranchPolicy::CareQueued;
-  } else if (model_equality_branch_policy == "ranked") {
-    solver_options.nelson_oppen_model_equality_branch_policy =
-        primo::smt::ModelEqualityBranchPolicy::Ranked;
-  } else {
-    solver_options.nelson_oppen_model_equality_branch_policy =
-        primo::smt::ModelEqualityBranchPolicy::First;
-  }
   solver_options.euf_dynamic_ackermann_shadow = euf_dynamic_ackermann_shadow;
   solver_options.euf_diseq_ackermann = euf_diseq_ackermann;
-  if (pure_theory_filter == "off") {
-    solver_options.pure_theory_filter = primo::smt::PureTheoryFilterMode::Off;
-  } else if (pure_theory_filter == "on") {
-    solver_options.pure_theory_filter = primo::smt::PureTheoryFilterMode::On;
-  } else {
-    solver_options.pure_theory_filter = primo::smt::PureTheoryFilterMode::Auto;
-  }
-  // IsMember admits only names in the table.
-  solver_options.quantifier_tuple_order = *primo::theory::parse_tuple_order(quantifier_tuple_order);
-  if (theory_phase == "positive") {
-    solver_options.theory_phase = primo::smt::TheoryPhaseMode::Positive;
-  } else if (theory_phase == "none") {
-    solver_options.theory_phase = primo::smt::TheoryPhaseMode::None;
-  } else if (theory_phase == "polarity") {
-    solver_options.theory_phase = primo::smt::TheoryPhaseMode::Polarity;
-  } else if (theory_phase == "auto") {
-    solver_options.theory_phase = primo::smt::TheoryPhaseMode::Auto;
-  } else {
-    solver_options.theory_phase = primo::smt::TheoryPhaseMode::Negative;
-  }
   if (theory_phase_option->count() > 0) {
     solver_options.auto_basic_single_predicate_polarity = false;
     solver_options.auto_basic_multi_polarity = false;
