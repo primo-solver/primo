@@ -89,6 +89,7 @@ parts:
       - file: papers/monotone-variable-elimination
       - file: papers/difference-constraint-propagation
       - file: papers/enumerative-instantiation
+      - file: papers/fair-adventurous-enumeration
 
   - caption: Reference
     chapters:

@@ -106,6 +106,10 @@ filters each instance in four steps:
    same key already holds it.
 4. **Trivial instances.** Drop it if it is already true for its polarity.
 
+These cover two of the three redundancy criteria of Janota, Barbosa, Fontaine
+and Reynolds (FMCAD 2021); the missing entailment check, fail masks and
+alternative tuple orders are in [](papers/fair-adventurous-enumeration.md).
+
 The lemma itself is normalized before the lemma set. Each outcome has a counter:
 
 - `:quant.instances.raw-duplicates`
