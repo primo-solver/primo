@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import lzma
+import os
 import shutil
 import subprocess
 import tarfile
@@ -15,9 +16,9 @@ DEFAULT_VERSION = "6.3.0"
 URL_TEMPLATE = "https://ftp.gnu.org/gnu/gmp/gmp-{version}.tar.xz"
 
 
-def run(command: list[str], cwd: Path | None = None) -> None:
+def run(command: list[str], cwd: Path | None = None, env: dict[str, str] | None = None) -> None:
     print("+", " ".join(command))
-    subprocess.run(command, cwd=cwd, check=True)
+    subprocess.run(command, cwd=cwd, env=env, check=True)
 
 
 def main() -> int:
@@ -56,6 +57,16 @@ def main() -> int:
         shutil.rmtree(source_dir)
     shutil.copytree(extract_dir, source_dir)
 
+    # GMP 6.3.0's configure probes rely on old-style K&R function
+    # declarations (e.g. calling `g()` with arguments) that are legal
+    # under C17's "unspecified parameters" semantics but a hard error
+    # under C23, where an empty parameter list means "takes no
+    # arguments". GCC 15+ defaults to -std=gnu23, which makes every
+    # candidate compiler fail configure's compiler checks. Force an
+    # older standard so configure can find a working compiler.
+    configure_env = os.environ.copy()
+    configure_env["CFLAGS"] = f"{configure_env.get('CFLAGS', '')} -std=gnu17".strip()
+
     run(
         [
             "./configure",
@@ -65,6 +76,7 @@ def main() -> int:
             "--with-pic",
         ],
         cwd=source_dir,
+        env=configure_env,
     )
     run(["make", f"-j{args.jobs}"], cwd=source_dir)
     run(["make", "check"], cwd=source_dir)

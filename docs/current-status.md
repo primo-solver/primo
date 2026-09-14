@@ -18,14 +18,20 @@ identical owned parser/solver sources and a fresh hash-checked replay. Detailed
 qualification and limitations remain in the run log; this is not a full-corpus
 evaluation or a blanket branch merge-readiness claim.
 
-This is the current-state map for `main` after the separate incremental-session
-and QF_UF merges on 2026-09-11. Merge `3169a1c` integrates
+This is the current-state map for `main` after the incremental-session, QF_UF
+and atom-scan merges on 2026-09-11. Merge `3169a1c` integrates
 `feature/incremental-smt-sessions` at `5d930be`; merge `10b69c7` integrates
 `feature/assumptions-qf-uf` at `7a98245`. Each merge preserves the corresponding
-feature branch's exact tree. Qualified UF solver sources remain at `fa2fe5c`;
+feature branch's exact tree. Those first two merges retain the UF baseline
+qualified at `fa2fe5c`;
 the theory-combination implementation and its earlier qualification remain at
 `b883d6f`/`d4e604e`. Rebuild remains the default, with QF_LRA/QF_UF assumptions
-mode opt-in. The four profiling leads remain open and unimplemented.
+mode opt-in. Merge `40adb28` integrates `perf/incremental-uf-atom-scans` at
+`3a96e86`, preserving its exact tree. Its separately qualified `7ac555c` solver
+change removes repeated UF atom scans; see [](incremental-uf-atom-scans.md).
+Traversal scratch and the other profiling leads remain open. The separate
+[OpenSMT comparison](opensmt-incremental-comparison.md) adds native UF/LRA
+reference timings and records external crashes without changing solver defaults.
 Dated experiments elsewhere retain their original revisions
 and limitations. Exact commands, manifests, hashes and jobs belong in
 [](run-log.md), not in a moving headline benchmark.
@@ -79,7 +85,7 @@ QF_UF qualification at `fa2fe5c` passed 6,000 generated/mutated sessions. On the
 independently validated SAT models; six conflict-limited sessions remain
 unqualified. Rebuild remains the default. See [](assumption-incremental-uf) for
 paired results, Goel losses and evidence limits, and [](uf-z3-profiling) for the
-four unimplemented optimization leads now indexed in [](open-leads.md).
+optimization leads and their current disposition in [](open-leads.md).
 For the rebuild baseline, SLURM qualification matched 15,000 answers across 1,000 generated
 sessions and independently validated 10,000 session models. A separate
 100-input, five-logic sample retained every solve and shared non-timing counter;

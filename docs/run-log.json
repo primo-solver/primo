@@ -573,6 +573,1361 @@
       "evidence_status": "current"
     },
     {
+      "id": "2026-09-11-incremental-uf-merge-40adb28",
+      "build_stamp_note": "The verified executable reports 40adb28-dirty because merge-status documentation edits were pending during make check. src, scripts and tests have no worktree diff; the source tree equals the qualified 7ac555c tree.",
+      "date": "2026-09-11",
+      "kind": "merge-integration-verification",
+      "status": "merged locally into main; verification passed",
+      "merge_commit": "40adb289b3c39a571a03ff026404a643dc5ef1f8",
+      "parents": [
+        "605062f4170d5014f7479dded6d2191899d4a5dc",
+        "3a96e86831ce0195c6f47e1e9d32860a3ded236a"
+      ],
+      "branch": "perf/incremental-uf-atom-scans",
+      "branch_tip": "3a96e86831ce0195c6f47e1e9d32860a3ded236a",
+      "merge_tree": "ce1efa40e6a8cbbd182afad92288c5d4847e0bf0",
+      "exact_branch_tree_preserved": true,
+      "qualified_source_commit": "7ac555c",
+      "qualified_and_merged_source_tree": "2f6441cf276fe6d2d44defaa524db92fc05a6b49",
+      "changes": "No conflict resolution or source edits; update current-status, atom-scan report and open-lead merge status in adjacent documentation commit. Rebuild stays default.",
+      "verification": {
+        "make_check": "pass: lint, 34 C++/CLI tests, 174 Python tests",
+        "make_docs": "pass",
+        "git_diff_check": "pass",
+        "version": "primo 0.1.0\ngit: 40adb28-dirty\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+        "local_solver_processes": []
+      },
+      "qualification": "Identical source tree to 7ac555c: ASAN, focused static scans, 2000 scoped sessions, 25027 native SAT models, default 25-file preservation. No new solver behavior, benchmark rerun or SLURM job.",
+      "artifacts": "results/merge-incremental-uf-40adb28",
+      "remote_changes": "No push or remote branch mutation in this integration."
+    },
+    {
+      "id": "2026-09-11-opensmt-native-incremental-comparison",
+      "date": "2026-09-11",
+      "kind": "complete-external-reference-comparison",
+      "status": "comparison collected and reviewed; external crashes and incomplete sessions retained as failures",
+      "harness_commit": "16abc94",
+      "source_changes": "Python orchestration/reference collection only; Primo solver sources remain identical to qualified 7ac555c.",
+      "solver": "OpenSMT 2.9.2",
+      "solver_sha256": "b7899e9aff299026d3251df7a28f51f56d8bd1e5b0fd7be11bcc72c4f2803a98",
+      "command": [
+        "contrib/local/bin/opensmt",
+        "--pipe"
+      ],
+      "benchmark_script": "scripts/slurm_opensmt_incremental.sbatch",
+      "summary_script": "scripts/summarize_opensmt_incremental.py",
+      "jobs": {
+        "build": 142851,
+        "uf": 142854,
+        "lra": 142852
+      },
+      "host": "node-02.ciircluster",
+      "resources": {
+        "uf_whole_session_seconds": 30,
+        "lra_whole_session_seconds": 600,
+        "requested_cpus": 1,
+        "memory_gib": 8,
+        "uf_tasks_at_once": 4,
+        "lra_tasks_at_once": 2
+      },
+      "corpora": {
+        "uf": {
+          "archive_sha256": "52c55a17ee15e5c4a0fc723b9605ae42615da34499efc7e5a5e8b2c0ffc26a27",
+          "sessions": 1778,
+          "queries": 29990,
+          "manifest_sha256": "4cc0c9b35b3725ae2893e626f0ee29ca798830462b080a0dea16585bbcc48b85"
+        },
+        "lra": {
+          "manifest": "benchmarks/native-lra-opensmt.json",
+          "selection": "Original BMW BMC and induction, indices 0 and 1 in native LRA manifest",
+          "sessions": 2,
+          "queries": 303
+        }
+      },
+      "opensmt_uf": {
+        "sessions": 1778,
+        "outcomes": {
+          "complete": 1764,
+          "error": 4,
+          "timeout": 10
+        },
+        "completed_queries": 29489,
+        "partial_queries": 174,
+        "partial_definite_answers": 174,
+        "partial_unknown_answers": 0,
+        "expected_sat_models": 24604,
+        "total_par2": 1578.4831675067544,
+        "mean_par2": 0.8877858084964872,
+        "median_complete_seconds": 0.058532869443297386,
+        "max_measured_rss_kib": 1201176,
+        "rss_samples": 1778
+      },
+      "uf_comparison": {
+        "primo-assumptions-7ac555c": {
+          "sessions": 1778,
+          "outcomes": {
+            "complete": 1772,
+            "unknown": 6
+          },
+          "completed_queries": 29978,
+          "partial_queries": 12,
+          "partial_definite_answers": 5,
+          "partial_unknown_answers": 7,
+          "expected_sat_models": 25027,
+          "total_par2": 839.1429135221988,
+          "mean_par2": 0.47195889399448754,
+          "median_complete_seconds": 0.06839724816381931,
+          "max_measured_rss_kib": 925480,
+          "rss_samples": 1778
+        },
+        "z3": {
+          "sessions": 1778,
+          "outcomes": {
+            "complete": 1778
+          },
+          "completed_queries": 29990,
+          "partial_queries": 0,
+          "partial_definite_answers": 0,
+          "partial_unknown_answers": 0,
+          "expected_sat_models": 25035,
+          "total_par2": 300.640461480245,
+          "mean_par2": 0.16908912344220753,
+          "median_complete_seconds": 0.040514715015888214,
+          "max_measured_rss_kib": 160132,
+          "rss_samples": 1778
+        },
+        "cvc5": {
+          "sessions": 1778,
+          "outcomes": {
+            "complete": 1768,
+            "timeout": 10
+          },
+          "completed_queries": 29970,
+          "partial_queries": 0,
+          "partial_definite_answers": 0,
+          "partial_unknown_answers": 0,
+          "expected_sat_models": 25020,
+          "total_par2": 1477.990283396095,
+          "mean_par2": 0.8312656262070276,
+          "median_complete_seconds": 0.10150773357599974,
+          "max_measured_rss_kib": 198896,
+          "rss_samples": 1778
+        },
+        "rebuild": {
+          "sessions": 1778,
+          "outcomes": {
+            "complete": 1775,
+            "timeout": 3
+          },
+          "completed_queries": 29573,
+          "partial_queries": 373,
+          "partial_definite_answers": 373,
+          "partial_unknown_answers": 0,
+          "expected_sat_models": 24746,
+          "total_par2": 1474.6384359039366,
+          "mean_par2": 0.8293804476400094,
+          "median_complete_seconds": 0.2911167349666357,
+          "max_measured_rss_kib": 1013616,
+          "rss_samples": 1778
+        }
+      },
+      "uf_crash_indices": [
+        778,
+        785,
+        824,
+        1688
+      ],
+      "uf_definite_answer_disagreements": 0,
+      "uf_crash_triage": "All four SIGSEGV failures reproduce locally with the identical binary and exact pre-crash answer sequences. Primo and Z3 complete these inputs; they belong to the recorded native Primo model gate. Reference errors are never solved cases.",
+      "opensmt_lra": {
+        "sessions": 2,
+        "outcomes": {
+          "complete": 1,
+          "timeout": 1
+        },
+        "completed_queries": 101,
+        "partial_queries": 111,
+        "partial_definite_answers": 111,
+        "partial_unknown_answers": 0,
+        "expected_sat_models": 0,
+        "total_par2": 1364.553895657882,
+        "mean_par2": 682.276947828941,
+        "median_complete_seconds": 164.5538956578821,
+        "max_measured_rss_kib": 794120,
+        "rss_samples": 2
+      },
+      "lra_bmc_seconds": 164.5538956578821,
+      "lra_induction_timeout_queries": 111,
+      "lra_reference_comparison": "Preserved Primo assumptions: BMC 126.97 s, induction timeout after 95 answers. Rebuild: timeout after 38/53 answers. Recorded Z3: 58/73; cvc5: 69/77. LRA whole-session timeout 600 s, no partial-count speedup claim.",
+      "qualification": {
+        "primo_uf": "Preserved 7ac555c run: 1772 complete sessions, 29978 queries, 25027 independently validated actual SAT models, job 142793. No new Primo behavior.",
+        "opensmt_uf": "29663 definite answers, including partial sessions, match recorded references. No independent OpenSMT SAT-model validation claimed.",
+        "lra": "BMC has 101 UNSAT answers; induction times out after 111 matching declared answers. No full induction qualification. Native first-four-query prefixes also match."
+      },
+      "reference_reuse": "Primo UF 7ac555c timing/model jobs 142774/142793; prior rebuild/assumptions fa2fe5c timing 142665; Z3/cvc5 UF 142464. Primo LRA 04d2e23 and references 142089 reused without retiming.",
+      "limitations": [
+        "Reference rows are answer comparisons, not independent OpenSMT model validation.",
+        "Primo UF model qualification remains the separate recorded 7ac555c run.",
+        "Incomplete sessions receive twice the whole-session limit, regardless of partial progress.",
+        "Primo has a 10000 theory-conflict/query limit; external references have no matching cap.",
+        "Reused runs are not contemporaneous paired measurements."
+      ],
+      "verification": [
+        "make check: 34 C++/CLI and 174 Python pass",
+        "make python-test: 174 pass after final summary changes",
+        "make lint",
+        "make docs",
+        "bash -n and slurm_validate_sbatch.py",
+        "18 shard solver/version/driver/timeout identities matched",
+        "four crashes reproduced locally using identical binary"
+      ],
+      "review": "Reviewed the new helper, timing error paths, summarizer coverage/ratio rules, full metadata joins and linked docs against unchanged project architecture and prior whole-tree source/static baseline. No new C++/SAT/theory algorithm; ASAN and clang-tidy not rerun for Python/benchmark-only work. All 18 shards retain the exact reference and driver identities; all error rows remain penalties and are locally reproduced.",
+      "terminal_audit": {
+        "archive_verification": {
+          "first-attempt.tar.gz": {
+            "gzip_crc": "pass",
+            "tar_members": 2844
+          },
+          "slurm-logs.tar.gz": {
+            "gzip_crc": "pass",
+            "tar_members": 36
+          },
+          "completed-uf-bmc.tar.gz": {
+            "gzip_crc": "pass",
+            "tar_members": 8947
+          },
+          "completed-lra.tar.gz": {
+            "gzip_crc": "pass",
+            "tar_members": 17
+          }
+        },
+        "local_solver_processes": [],
+        "job_states": {
+          "CANCELLED by 50383": 6,
+          "CANCELLED": 5,
+          "COMPLETED": 41,
+          "FAILED": 8
+        },
+        "job_accounting": "results/opensmt-incremental-67387f3/job-accounting.txt",
+        "terminal_job_step_rows": 60,
+        "current_reference_arrays": {
+          "142852": {
+            "task_states": {
+              "COMPLETED": 2
+            }
+          },
+          "142854": {
+            "task_states": {
+              "COMPLETED": 13,
+              "FAILED": 3
+            }
+          }
+        },
+        "note": "FAILED reference shards retain complete coverage and exit 1 because of recorded OpenSMT crashes; first-attempt cancellations are preserved. No active SLURM jobs remained at collection."
+      },
+      "metadata": "benchmarks/opensmt-incremental-comparison.json",
+      "report": "docs/opensmt-incremental-comparison.md",
+      "artifact_root": "results/opensmt-incremental-67387f3",
+      "delivery_archive": {
+        "path": "results/opensmt-incremental-delivery-16abc94.tar.gz",
+        "bytes": 2615716,
+        "sha256": "620a344bc6cd2b43bdfddfae98e4cffff80dfb7533b14aed8cd5dbacbf280239",
+        "members": 9059,
+        "integrity": "gzip CRC and full tar member traversal pass"
+      }
+    },
+    {
+      "id": "2026-09-11-opensmt-native-crash-triage",
+      "date": "2026-09-11",
+      "kind": "external-reference-comparison-triage",
+      "candidate": "847a73f",
+      "build_job": "142839",
+      "benchmark_job": "142840",
+      "status": "paused and cancelled after reproducible external reference crash; no wrong-answer observed",
+      "solver": "OpenSMT v2.9.2 --pipe",
+      "solver_sha256": "b7899e9aff299026d3251df7a28f51f56d8bd1e5b0fd7be11bcc72c4f2803a98",
+      "host": "node-02",
+      "limits": {
+        "uf_session_seconds": 30,
+        "lra_session_seconds": 600,
+        "memory_gib": 8,
+        "requested_cpus": 1
+      },
+      "input": "incremental/QF_UF/20190906-CLEARSY/0000/00310.smt2",
+      "index": 785,
+      "outcome": {
+        "exit_code": -11,
+        "partial_queries": 30,
+        "mismatches": 0
+      },
+      "triage": "Same binary crashes locally at the same query with and without --pipe. This input belongs to the recorded full native Primo model qualification; archived Z3 answers are available. External crash remains an error, never a completed solve. No Primo source changed.",
+      "artifacts": "results/opensmt-incremental-67387f3",
+      "verification": "make check (34 C++/CLI and 174 Python), make lint, make docs, bash -n and SLURM validator pass. Eight new tests cover coverage, partial answers, post-answer process failure, stderr version capture, continuation and mandatory wrong-answer stop. No C++ source changed; prior whole-tree static/ownership baseline reused; harness and metadata paths reviewed freshly.",
+      "followup": "Add explicit external-reference-only error collection to finish counting failures without stopping at the first crash. Preserve default stop behavior, wrong-answer stop, error PAR2 and failing exit. Add child-process tests; retain all first-attempt rows separately."
+    },
+    {
+      "id": "2026-09-11-opensmt-login-provisioning",
+      "date": "2026-09-11",
+      "kind": "reference-tool-provisioning",
+      "candidate": "67387f3",
+      "status": "compute-node installer stalled; cancelled before build; login-host binary download support added",
+      "job": "142827",
+      "command": "slurm_prepare_benchmark_workspace.py --reuse-dependencies --contrib-target contrib-opensmt --build-via-slurm --jobs 4 --require-tool contrib/local/bin/opensmt",
+      "evidence": "results/opensmt-incremental-67387f3/prepare.log",
+      "diagnosis": "Installer remained in urllib download on compute node; login-node HTTPS request returned HTTP 200. No benchmark was run in this attempt.",
+      "local_protocol": "OpenSMT v2.9.2: UF and LRA each return sat/unsat/sat through stdin with and without --pipe; exit 0; results/opensmt-incremental-67387f3/local-protocol.json",
+      "change": "Optional --login-contrib-target runs explicit dependency target after sync, before build allocation; check-only stays read-only. Existing behavior unchanged without option.",
+      "verification": [
+        "5 helper unit tests pass, including provision-before-allocation ordering and shell quoting",
+        "make lint pass",
+        "make docs pass"
+      ],
+      "review": "Reviewed helper ownership, failure propagation, check-only path, source identity and shell quoting. C++ source unchanged from the qualified 7ac555c baseline; no fresh C++ static scan or solver fuzz gate needed for this orchestration-only option."
+    },
+    {
+      "id": "2026-09-11-incremental-uf-atom-scans-delivery-7ac555c",
+      "date": "2026-09-11",
+      "kind": "qualified-artifact-collection-and-final-review",
+      "candidate": "7ac555c",
+      "status": "accepted opt-in optimization; all required artifacts collected",
+      "jobs": [
+        "142810",
+        "142818"
+      ],
+      "archives": {
+        "parts": [
+          {
+            "path": "results/uf-atom-scans-605062f/artifacts/part-0.tar.zst",
+            "sha256": "69b6f4b2b7b377168b86b7780c4a96d7daabe96d5a52017c5eb61244c8a3e075",
+            "bytes": 10877961,
+            "members": 10820,
+            "sat_model_files": 134,
+            "query_contexts": 219,
+            "integrity": "checksum/zstd/tar pass"
+          },
+          {
+            "path": "results/uf-atom-scans-605062f/artifacts/part-1.tar.zst",
+            "sha256": "55c6acc92af9475b7fc97ba088fc609fbeb457225965071d1185577c42cb922c",
+            "bytes": 40972516,
+            "members": 55810,
+            "sat_model_files": 5872,
+            "query_contexts": 7015,
+            "integrity": "checksum/zstd/tar pass"
+          },
+          {
+            "path": "results/uf-atom-scans-605062f/artifacts/part-2.tar.zst",
+            "sha256": "0668b43ef35a473157a751c7320412bbd8d806b4509a4233ca2fc558f9b64bcf",
+            "bytes": 46681187,
+            "members": 69726,
+            "sat_model_files": 7437,
+            "query_contexts": 8862,
+            "integrity": "checksum/zstd/tar pass"
+          },
+          {
+            "path": "results/uf-atom-scans-605062f/artifacts/part-3.tar.zst",
+            "sha256": "668a4e045b23f3f529b1663c80c93c682016ed9aaddf582cff53fedf5b23f959",
+            "bytes": 50784900,
+            "members": 62292,
+            "sat_model_files": 6614,
+            "query_contexts": 7866,
+            "integrity": "checksum/zstd/tar pass"
+          },
+          {
+            "path": "results/uf-atom-scans-605062f/artifacts/part-4.tar.zst",
+            "sha256": "beec100e726009c7dd423750b1b5ac44737b3840f2e243bfddd90aabe088c6ca",
+            "bytes": 36931132,
+            "members": 49607,
+            "sat_model_files": 5104,
+            "query_contexts": 6235,
+            "integrity": "checksum/zstd/tar pass"
+          },
+          {
+            "path": "results/uf-atom-scans-605062f/artifacts/part-5.tar.zst",
+            "sha256": "aad725d06ecf0c5001ae644f71640a3a7ac3948547baaa24cac8699b1c8b8ba8",
+            "bytes": 4087712,
+            "members": 122321,
+            "sat_model_files": 9432,
+            "query_contexts": 16000,
+            "integrity": "checksum/zstd/tar pass"
+          }
+        ],
+        "total_bytes": 190335408,
+        "native_models": 25027,
+        "native_contexts": 29978,
+        "binary_sha256": "23bd107c28165d1e54c9e2512e1c0c96daefb3659947dfd5345a894ebf65065f"
+      },
+      "accounting": "All 120 recorded job/step rows COMPLETED, exit 0:0; results/uf-atom-scans-605062f/job-accounting.txt",
+      "review": "No blocking code, ownership, hygiene, documentation or efficiency finding; unchanged source/tests match exact qualified 7ac555c. No default promotion.",
+      "metadata": "benchmarks/incremental-uf-atom-scans.json",
+      "report": "docs/incremental-uf-atom-scans.md",
+      "artifacts": "results/uf-atom-scans-605062f",
+      "local_delivery_archive": {
+        "path": "results/uf-atom-scans-605062f-delivery.tar.gz",
+        "sha256": "02e9c2cd19dc8a43d4dc95cf62fc36a5afc901845ae71cedf9282342008f5418",
+        "bytes": 26121876,
+        "contents": "local diagnostics/binaries, analysis and submission scripts, collected timing/validation metadata, reviews, logs and pre-commit terminal audit; six raw corpus archives stored separately"
+      },
+      "terminal_audit": "No active local solver/test/analyzer/fuzzer or SLURM jobs. Temporary qualified checkout removed. Final clean git audit follows the metadata commit."
+    },
+    {
+      "id": "2026-09-11-incremental-uf-atom-scans-qualified-7ac555c",
+      "date": "2026-09-11",
+      "kind": "final-native-model-qualification",
+      "candidate": "7ac555c",
+      "status": "correctness and performance qualified as opt-in; artifact transfer pending",
+      "job": "142793",
+      "qualification": {
+        "replayed_sessions": 1778,
+        "qualified_complete_sessions": 1772,
+        "qualified_queries": 29978,
+        "sat_models": 25027,
+        "changed_answers": [],
+        "failures": [],
+        "complete_without_qualification": []
+      },
+      "identity_checks": "All 16 timing/replay shard binary, manifest, driver hashes and solver arguments match. Every replayed answer equals its timed answer.",
+      "validator": "Dolmen with a separate live Z3 reference per query; versions and hashes in per-shard run.json",
+      "validation_concurrency": "8 initially; scontrol update JobId=142793 ArrayTaskThrottle=16 after checking spare CPU/memory capacity; one requested CPU (two allocated logical CPUs) and 8G per task unchanged",
+      "artifact_collection_jobs": [
+        "142810",
+        "142818"
+      ],
+      "metadata": "benchmarks/incremental-uf-atom-scans.json",
+      "artifacts": "results/uf-atom-scans-605062f",
+      "limitations": [
+        "Six incomplete sessions remain unqualified, including earlier SAT responses.",
+        "No default-mode promotion; scratch initialization and working-state copies remain open.",
+        "Peak RSS increases about 0.7%; no memory-reduction claim.",
+        "Full-run regression rows 914 and 1151 remain in the totals; their regressions did not repeat in fresh paired rechecks.",
+        "Existing whole-tree static/review baseline reused for unchanged files; fresh scans cover three changed translation units."
+      ]
+    },
+    {
+      "id": "2026-09-11-incremental-uf-scan-outlier-rechecks-7ac555c",
+      "date": "2026-09-11",
+      "kind": "targeted-paired-regression-recheck",
+      "candidate": "7ac555c",
+      "baseline": "fa2fe5c",
+      "job": "142815",
+      "motivation": "Full-run rows 914 and 1151 were 51% and 12% slower than their recorded baseline; investigate before accepting the optimization.",
+      "profile": "--quiet --stats --incremental-mode=assumptions --max-theory-conflicts=10000; unchanged stdin, 30-second whole-session bound",
+      "paired_order": "baseline/candidate, candidate/baseline, baseline/candidate",
+      "measurements": [
+        {
+          "index": 914,
+          "seconds": {
+            "baseline": [
+              0.766266718506813,
+              0.7727752681821585,
+              0.7791981939226389
+            ],
+            "candidate": [
+              0.6763575915247202,
+              0.6804572194814682,
+              0.6816522888839245
+            ]
+          },
+          "median_candidate_over_baseline": 0.8805370040919464
+        },
+        {
+          "index": 1151,
+          "seconds": {
+            "baseline": [
+              0.9723394960165024,
+              0.9725399669259787,
+              0.9644633568823338
+            ],
+            "candidate": [
+              0.8635130412876606,
+              0.8501474410295486,
+              0.8420787192881107
+            ]
+          },
+          "median_candidate_over_baseline": 0.874331902090214
+        }
+      ],
+      "outcomes": {
+        "sessions": 12,
+        "complete": 12,
+        "unknown": 0,
+        "timeout": 0,
+        "error": 0,
+        "reference_disagreement": 0
+      },
+      "conclusion": "The apparent regressions do not repeat: paired candidate medians improve about 12% and 13%. Original full-run rows remain unchanged; no precise cause for timing variation is claimed. Model qualification remains the separate native replay.",
+      "artifacts": "results/uf-atom-scans-605062f/regression-pair",
+      "batch_variant": "slurm_incremental_uf_pair.sbatch with indices=(914 1151) and array=0-1%2; exact variant preserved in artifacts",
+      "submission": "regression-pair-submission.json"
+    },
+    {
+      "id": "2026-09-11-incremental-uf-atom-scan-timing-7ac555c",
+      "date": "2026-09-11",
+      "kind": "paired-and-full-native-uf-timing",
+      "status": "timing complete; independent candidate model qualification pending",
+      "candidate": "7ac555c",
+      "baseline": "fa2fe5c (same solver sources as merged 605062f)",
+      "jobs": {
+        "paired": "142771",
+        "native": "142774",
+        "validation": "142793"
+      },
+      "full_comparison": {
+        "baseline": {
+          "sessions": 1778,
+          "outcomes": {
+            "complete": 1772,
+            "unknown": 6
+          },
+          "completed_queries": 29978,
+          "partial_queries": 12,
+          "partial_definite_answers": 5,
+          "partial_unknown_answers": 7,
+          "expected_sat_models": 25027,
+          "total_par2": 858.4847814496607,
+          "mean_par2": 0.4828373348985718,
+          "median_complete_seconds": 0.07483524642884731,
+          "max_measured_rss_kib": 919232,
+          "rss_samples": 1778
+        },
+        "candidate": {
+          "sessions": 1778,
+          "outcomes": {
+            "complete": 1772,
+            "unknown": 6
+          },
+          "completed_queries": 29978,
+          "partial_queries": 12,
+          "partial_definite_answers": 5,
+          "partial_unknown_answers": 7,
+          "expected_sat_models": 25027,
+          "total_par2": 839.1429135221988,
+          "mean_par2": 0.47195889399448754,
+          "median_complete_seconds": 0.06839724816381931,
+          "max_measured_rss_kib": 925480,
+          "rss_samples": 1778
+        },
+        "z3": {
+          "sessions": 1778,
+          "outcomes": {
+            "complete": 1778
+          },
+          "completed_queries": 29990,
+          "partial_queries": 0,
+          "partial_definite_answers": 0,
+          "partial_unknown_answers": 0,
+          "expected_sat_models": 25035,
+          "total_par2": 300.640461480245,
+          "mean_par2": 0.16908912344220753,
+          "median_complete_seconds": 0.040514715015888214,
+          "max_measured_rss_kib": 160132,
+          "rss_samples": 1778
+        },
+        "lost": [],
+        "gained": [],
+        "paired_median_candidate_over_baseline": 0.9703345302779738,
+        "families": {
+          "2018-Goel-hwbench": {
+            "baseline": {
+              "sessions": 766,
+              "outcomes": {
+                "complete": 760,
+                "unknown": 6
+              },
+              "completed_queries": 1520,
+              "partial_queries": 12,
+              "partial_definite_answers": 5,
+              "partial_unknown_answers": 7,
+              "expected_sat_models": 1062,
+              "total_par2": 760.0728838406503,
+              "mean_par2": 0.9922622504447132,
+              "median_complete_seconds": 0.23188186064362526,
+              "max_measured_rss_kib": 919232,
+              "rss_samples": 766
+            },
+            "candidate": {
+              "sessions": 766,
+              "outcomes": {
+                "complete": 760,
+                "unknown": 6
+              },
+              "completed_queries": 1520,
+              "partial_queries": 12,
+              "partial_definite_answers": 5,
+              "partial_unknown_answers": 7,
+              "expected_sat_models": 1062,
+              "total_par2": 752.1275253929198,
+              "mean_par2": 0.9818897198340989,
+              "median_complete_seconds": 0.22757850028574467,
+              "max_measured_rss_kib": 925480,
+              "rss_samples": 766
+            }
+          },
+          "20190906-CLEARSY": {
+            "baseline": {
+              "sessions": 1012,
+              "outcomes": {
+                "complete": 1012
+              },
+              "completed_queries": 28458,
+              "partial_queries": 0,
+              "partial_definite_answers": 0,
+              "partial_unknown_answers": 0,
+              "expected_sat_models": 23965,
+              "total_par2": 98.41189760901034,
+              "mean_par2": 0.09724495811167029,
+              "median_complete_seconds": 0.028651274740695953,
+              "max_measured_rss_kib": 25520,
+              "rss_samples": 1012
+            },
+            "candidate": {
+              "sessions": 1012,
+              "outcomes": {
+                "complete": 1012
+              },
+              "completed_queries": 28458,
+              "partial_queries": 0,
+              "partial_definite_answers": 0,
+              "partial_unknown_answers": 0,
+              "expected_sat_models": 23965,
+              "total_par2": 87.01538812927902,
+              "mean_par2": 0.08598358510798322,
+              "median_complete_seconds": 0.0275556780397892,
+              "max_measured_rss_kib": 26332,
+              "rss_samples": 1012
+            }
+          }
+        }
+      },
+      "paired_comparison": [
+        {
+          "index": 14,
+          "baseline": [
+            {
+              "seconds": 4.797533357515931,
+              "outcome": "complete",
+              "maxrss_kib": 925624,
+              "prepare_us": 482437,
+              "registration_atoms_scanned": null,
+              "preparation_atoms_scanned": null,
+              "queries": 2,
+              "answers_sha256": "9cd32ab88561dc52e7be94a3d4b43a913793544ce434e6d132fd2d615a755a83"
+            },
+            {
+              "seconds": 4.943461744114757,
+              "outcome": "complete",
+              "maxrss_kib": 922676,
+              "prepare_us": 496899,
+              "registration_atoms_scanned": null,
+              "preparation_atoms_scanned": null,
+              "queries": 2,
+              "answers_sha256": "9cd32ab88561dc52e7be94a3d4b43a913793544ce434e6d132fd2d615a755a83"
+            },
+            {
+              "seconds": 4.983388481661677,
+              "outcome": "complete",
+              "maxrss_kib": 925936,
+              "prepare_us": 500584,
+              "registration_atoms_scanned": null,
+              "preparation_atoms_scanned": null,
+              "queries": 2,
+              "answers_sha256": "9cd32ab88561dc52e7be94a3d4b43a913793544ce434e6d132fd2d615a755a83"
+            }
+          ],
+          "candidate": [
+            {
+              "seconds": 4.758247649297118,
+              "outcome": "complete",
+              "maxrss_kib": 923732,
+              "prepare_us": 292958,
+              "registration_atoms_scanned": 556973,
+              "preparation_atoms_scanned": 556973,
+              "queries": 2,
+              "answers_sha256": "9cd32ab88561dc52e7be94a3d4b43a913793544ce434e6d132fd2d615a755a83"
+            },
+            {
+              "seconds": 4.8020925745368,
+              "outcome": "complete",
+              "maxrss_kib": 918688,
+              "prepare_us": 299558,
+              "registration_atoms_scanned": 556973,
+              "preparation_atoms_scanned": 556973,
+              "queries": 2,
+              "answers_sha256": "9cd32ab88561dc52e7be94a3d4b43a913793544ce434e6d132fd2d615a755a83"
+            },
+            {
+              "seconds": 4.820976426824927,
+              "outcome": "complete",
+              "maxrss_kib": 923800,
+              "prepare_us": 292183,
+              "registration_atoms_scanned": 556973,
+              "preparation_atoms_scanned": 556973,
+              "queries": 2,
+              "answers_sha256": "9cd32ab88561dc52e7be94a3d4b43a913793544ce434e6d132fd2d615a755a83"
+            }
+          ],
+          "median_candidate_over_baseline": 0.9714027989098414
+        },
+        {
+          "index": 267,
+          "baseline": [
+            {
+              "seconds": 24.591152073815465,
+              "outcome": "complete",
+              "maxrss_kib": 266548,
+              "prepare_us": 81771,
+              "registration_atoms_scanned": null,
+              "preparation_atoms_scanned": null,
+              "queries": 2,
+              "answers_sha256": "dbf977a271f707c0b49ce8d9095faa279a514b4c5aa99fad29c2685354c6b1e7"
+            },
+            {
+              "seconds": 23.7573582213372,
+              "outcome": "complete",
+              "maxrss_kib": 269036,
+              "prepare_us": 77920,
+              "registration_atoms_scanned": null,
+              "preparation_atoms_scanned": null,
+              "queries": 2,
+              "answers_sha256": "dbf977a271f707c0b49ce8d9095faa279a514b4c5aa99fad29c2685354c6b1e7"
+            },
+            {
+              "seconds": 23.76185149140656,
+              "outcome": "complete",
+              "maxrss_kib": 269176,
+              "prepare_us": 73240,
+              "registration_atoms_scanned": null,
+              "preparation_atoms_scanned": null,
+              "queries": 2,
+              "answers_sha256": "dbf977a271f707c0b49ce8d9095faa279a514b4c5aa99fad29c2685354c6b1e7"
+            }
+          ],
+          "candidate": [
+            {
+              "seconds": 23.946889132261276,
+              "outcome": "complete",
+              "maxrss_kib": 268544,
+              "prepare_us": 43438,
+              "registration_atoms_scanned": 52341,
+              "preparation_atoms_scanned": 52341,
+              "queries": 2,
+              "answers_sha256": "dbf977a271f707c0b49ce8d9095faa279a514b4c5aa99fad29c2685354c6b1e7"
+            },
+            {
+              "seconds": 24.069149823859334,
+              "outcome": "complete",
+              "maxrss_kib": 268932,
+              "prepare_us": 43762,
+              "registration_atoms_scanned": 52341,
+              "preparation_atoms_scanned": 52341,
+              "queries": 2,
+              "answers_sha256": "dbf977a271f707c0b49ce8d9095faa279a514b4c5aa99fad29c2685354c6b1e7"
+            },
+            {
+              "seconds": 23.01430688239634,
+              "outcome": "complete",
+              "maxrss_kib": 270728,
+              "prepare_us": 46843,
+              "registration_atoms_scanned": 52341,
+              "preparation_atoms_scanned": 52341,
+              "queries": 2,
+              "answers_sha256": "dbf977a271f707c0b49ce8d9095faa279a514b4c5aa99fad29c2685354c6b1e7"
+            }
+          ],
+          "median_candidate_over_baseline": 1.007787172683982
+        },
+        {
+          "index": 852,
+          "baseline": [
+            {
+              "seconds": 4.427864156663418,
+              "outcome": "complete",
+              "maxrss_kib": 24948,
+              "prepare_us": 703198,
+              "registration_atoms_scanned": null,
+              "preparation_atoms_scanned": null,
+              "queries": 413,
+              "answers_sha256": "0bca42e1ee365f4c34c2dbfe73eb7a984b30b03b039b89497a92fab77f99c1bf"
+            },
+            {
+              "seconds": 4.373648192733526,
+              "outcome": "complete",
+              "maxrss_kib": 24496,
+              "prepare_us": 694448,
+              "registration_atoms_scanned": null,
+              "preparation_atoms_scanned": null,
+              "queries": 413,
+              "answers_sha256": "0bca42e1ee365f4c34c2dbfe73eb7a984b30b03b039b89497a92fab77f99c1bf"
+            },
+            {
+              "seconds": 4.3588312696665525,
+              "outcome": "complete",
+              "maxrss_kib": 24944,
+              "prepare_us": 697055,
+              "registration_atoms_scanned": null,
+              "preparation_atoms_scanned": null,
+              "queries": 413,
+              "answers_sha256": "0bca42e1ee365f4c34c2dbfe73eb7a984b30b03b039b89497a92fab77f99c1bf"
+            }
+          ],
+          "candidate": [
+            {
+              "seconds": 3.4447245355695486,
+              "outcome": "complete",
+              "maxrss_kib": 25448,
+              "prepare_us": 11086,
+              "registration_atoms_scanned": 2459,
+              "preparation_atoms_scanned": 2459,
+              "queries": 413,
+              "answers_sha256": "0bca42e1ee365f4c34c2dbfe73eb7a984b30b03b039b89497a92fab77f99c1bf"
+            },
+            {
+              "seconds": 3.431068966165185,
+              "outcome": "complete",
+              "maxrss_kib": 25104,
+              "prepare_us": 11155,
+              "registration_atoms_scanned": 2459,
+              "preparation_atoms_scanned": 2459,
+              "queries": 413,
+              "answers_sha256": "0bca42e1ee365f4c34c2dbfe73eb7a984b30b03b039b89497a92fab77f99c1bf"
+            },
+            {
+              "seconds": 3.620743051171303,
+              "outcome": "complete",
+              "maxrss_kib": 25656,
+              "prepare_us": 11930,
+              "registration_atoms_scanned": 2459,
+              "preparation_atoms_scanned": 2459,
+              "queries": 413,
+              "answers_sha256": "0bca42e1ee365f4c34c2dbfe73eb7a984b30b03b039b89497a92fab77f99c1bf"
+            }
+          ],
+          "median_candidate_over_baseline": 0.787608967107297
+        },
+        {
+          "index": 1688,
+          "baseline": [
+            {
+              "seconds": 0.864034615457058,
+              "outcome": "complete",
+              "maxrss_kib": 15368,
+              "prepare_us": 82455,
+              "registration_atoms_scanned": null,
+              "preparation_atoms_scanned": null,
+              "queries": 373,
+              "answers_sha256": "9ac1e6a5bc7f5ad4386fd52636a54cb07642ba8e1ef899f90cf1e3eb464e9218"
+            },
+            {
+              "seconds": 0.8661965578794479,
+              "outcome": "complete",
+              "maxrss_kib": 15368,
+              "prepare_us": 82199,
+              "registration_atoms_scanned": null,
+              "preparation_atoms_scanned": null,
+              "queries": 373,
+              "answers_sha256": "9ac1e6a5bc7f5ad4386fd52636a54cb07642ba8e1ef899f90cf1e3eb464e9218"
+            },
+            {
+              "seconds": 0.8680838122963905,
+              "outcome": "complete",
+              "maxrss_kib": 15368,
+              "prepare_us": 82351,
+              "registration_atoms_scanned": null,
+              "preparation_atoms_scanned": null,
+              "queries": 373,
+              "answers_sha256": "9ac1e6a5bc7f5ad4386fd52636a54cb07642ba8e1ef899f90cf1e3eb464e9218"
+            }
+          ],
+          "candidate": [
+            {
+              "seconds": 0.787546519190073,
+              "outcome": "complete",
+              "maxrss_kib": 15364,
+              "prepare_us": 2984,
+              "registration_atoms_scanned": 474,
+              "preparation_atoms_scanned": 474,
+              "queries": 373,
+              "answers_sha256": "9ac1e6a5bc7f5ad4386fd52636a54cb07642ba8e1ef899f90cf1e3eb464e9218"
+            },
+            {
+              "seconds": 0.7913167029619217,
+              "outcome": "complete",
+              "maxrss_kib": 15364,
+              "prepare_us": 2973,
+              "registration_atoms_scanned": 474,
+              "preparation_atoms_scanned": 474,
+              "queries": 373,
+              "answers_sha256": "9ac1e6a5bc7f5ad4386fd52636a54cb07642ba8e1ef899f90cf1e3eb464e9218"
+            },
+            {
+              "seconds": 0.788117490708828,
+              "outcome": "complete",
+              "maxrss_kib": 15220,
+              "prepare_us": 2933,
+              "registration_atoms_scanned": 474,
+              "preparation_atoms_scanned": 474,
+              "queries": 373,
+              "answers_sha256": "9ac1e6a5bc7f5ad4386fd52636a54cb07642ba8e1ef899f90cf1e3eb464e9218"
+            }
+          ],
+          "median_candidate_over_baseline": 0.9098598736506563
+        },
+        {
+          "index": 656,
+          "baseline": [
+            {
+              "seconds": 2.929994383826852,
+              "outcome": "unknown",
+              "maxrss_kib": 61140,
+              "prepare_us": 17220,
+              "registration_atoms_scanned": null,
+              "preparation_atoms_scanned": null,
+              "queries": 2,
+              "answers_sha256": "d3e94540fca0ca6dc0f9f9947675280310f7c76dc14148b148a5adcb311bbc92"
+            },
+            {
+              "seconds": 2.9097225554287434,
+              "outcome": "unknown",
+              "maxrss_kib": 60696,
+              "prepare_us": 16786,
+              "registration_atoms_scanned": null,
+              "preparation_atoms_scanned": null,
+              "queries": 2,
+              "answers_sha256": "d3e94540fca0ca6dc0f9f9947675280310f7c76dc14148b148a5adcb311bbc92"
+            },
+            {
+              "seconds": 2.822564387694001,
+              "outcome": "unknown",
+              "maxrss_kib": 61136,
+              "prepare_us": 16597,
+              "registration_atoms_scanned": null,
+              "preparation_atoms_scanned": null,
+              "queries": 2,
+              "answers_sha256": "d3e94540fca0ca6dc0f9f9947675280310f7c76dc14148b148a5adcb311bbc92"
+            }
+          ],
+          "candidate": [
+            {
+              "seconds": 3.0650832299143076,
+              "outcome": "unknown",
+              "maxrss_kib": 61084,
+              "prepare_us": 11108,
+              "registration_atoms_scanned": 12286,
+              "preparation_atoms_scanned": 12286,
+              "queries": 2,
+              "answers_sha256": "d3e94540fca0ca6dc0f9f9947675280310f7c76dc14148b148a5adcb311bbc92"
+            },
+            {
+              "seconds": 3.3414297942072153,
+              "outcome": "unknown",
+              "maxrss_kib": 60236,
+              "prepare_us": 11069,
+              "registration_atoms_scanned": 12286,
+              "preparation_atoms_scanned": 12286,
+              "queries": 2,
+              "answers_sha256": "d3e94540fca0ca6dc0f9f9947675280310f7c76dc14148b148a5adcb311bbc92"
+            },
+            {
+              "seconds": 2.8224077485501766,
+              "outcome": "unknown",
+              "maxrss_kib": 61612,
+              "prepare_us": 10660,
+              "registration_atoms_scanned": 12286,
+              "preparation_atoms_scanned": 12286,
+              "queries": 2,
+              "answers_sha256": "d3e94540fca0ca6dc0f9f9947675280310f7c76dc14148b148a5adcb311bbc92"
+            }
+          ],
+          "median_candidate_over_baseline": null
+        }
+      ],
+      "limits": {
+        "timing_seconds_per_session": 30,
+        "theory_conflicts_per_query": 10000,
+        "model_validation_response_seconds": 120,
+        "dolmen_seconds": 120
+      },
+      "references": "Reuse qualified fa2fe5c, Z3 and cvc5 timings; fresh paired baseline runs measure local cluster variability. Validation uses fresh Z3/Dolmen separately.",
+      "artifacts": "results/uf-atom-scans-605062f",
+      "submissions": [
+        "paired-submission.json",
+        "native-submission.json",
+        "validation-submission.json"
+      ],
+      "qualification": "All 1778 session rows collected; 1772 complete and the same six resource-limited misses. No lost/gained solved cases or definite-answer disagreements. Complete-session SAT models remain pending independent validation; no final performance qualification yet."
+    },
+    {
+      "id": "2026-09-11-incremental-uf-atom-scan-gate-7ac555c",
+      "date": "2026-09-11",
+      "kind": "fresh-scoped-gate-and-default-preservation",
+      "candidate": "7ac555c",
+      "status": "correctness gates passed; performance evaluation pending",
+      "jobs": {
+        "build": "142754",
+        "regressions": "142756",
+        "gate": "142757",
+        "default_uf": "142762",
+        "default_other": "142763"
+      },
+      "gate": {
+        "generated": 1000,
+        "native_mutations": 1000,
+        "sessions": 2000,
+        "pass": 2000,
+        "queries": 16000,
+        "sat_models": 9432,
+        "untriaged_failure": 0,
+        "wrong_answer": 0,
+        "crash": 0,
+        "parser_type_error": 0,
+        "timeout": 0,
+        "unsupported": 0,
+        "reference_disagreement": 0
+      },
+      "deterministic_regressions": {
+        "ctest": 5,
+        "boolean_and_model_seed_sessions": 9,
+        "queries": 19,
+        "sat_models": 13
+      },
+      "default_preservation": {
+        "files": 25,
+        "pass": 25,
+        "sessions": 50,
+        "queries": 200,
+        "sat_models": 121,
+        "lost_solves": 0,
+        "file_seconds": 16.54029319435358,
+        "prior_fa2fe5c_file_seconds": 16.3949088267982
+      },
+      "profile": "--incremental-mode=assumptions --preprocessing-mode=auto --euf-prop=auto --max-theory-conflicts=10000",
+      "generator": "scripts/incremental_uf_gate.py with qf_uf_boolean_fuzz.py; scoped original native-prefix mutations",
+      "seed_base": 202649120,
+      "shards": "8 x 250; seed offset 250*shard, 0-3 generated and 4-7 native",
+      "limits": {
+        "solver_reference_response_seconds": 20,
+        "dolmen_seconds": 30
+      },
+      "reference": "contrib/local/bin/z3; exact SHA/version in each gate shard run.json",
+      "validator": "contrib/local/bin/dolmen; independently validates each actual SAT model",
+      "artifacts": "results/uf-atom-scans-605062f",
+      "submissions": [
+        "gate-submission.json",
+        "default-uf-submission.json",
+        "default-other-submission.json"
+      ],
+      "provenance": {
+        "command": [
+          "scripts/incremental_uf_gate.py",
+          "--kind",
+          "generated",
+          "--seed",
+          "202649120",
+          "--count",
+          "250",
+          "--solver",
+          "build-slurm-rel/primo",
+          "--solver-arg=--quiet",
+          "--solver-arg=--incremental-mode=assumptions",
+          "--solver-arg=--max-theory-conflicts=10000",
+          "--solver-arg=--preprocessing-mode=auto",
+          "--solver-arg=--euf-prop=auto",
+          "--ref",
+          "contrib/local/bin/z3",
+          "--dolmen",
+          "contrib/local/bin/dolmen",
+          "--expected-git",
+          "7ac555c",
+          "--timeout",
+          "20",
+          "--dolmen-timeout",
+          "30",
+          "--out",
+          "/home/janotmik/primo-model-fix/results/uf-scans-gate-7ac555c/shard-0"
+        ],
+        "version": "primo 0.1.0\ngit: 7ac555c\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+        "host": "node-02.ciircluster",
+        "slurm_job_id": "142758",
+        "solver_sha256": "23bd107c28165d1e54c9e2512e1c0c96daefb3659947dfd5345a894ebf65065f",
+        "generator_sha256": "710bc0f0f0c73e414d3d3dd9efcb68cd05cefcd09594084904f8c3116c8f0c06",
+        "boolean_generator_sha256": "4ff7cd809c0d820dc6fe0012756dabd5dde0ad7564c3c9b126ca99a9b463fdd7",
+        "reference": {
+          "command": [
+            "contrib/local/bin/z3"
+          ],
+          "sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+          "version": "Z3 version 5.1.0 - 64 bit\n"
+        },
+        "dolmen": {
+          "command": "contrib/local/bin/dolmen",
+          "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+          "version": "0.10\n"
+        },
+        "native_seeds": {}
+      }
+    },
+    {
+      "id": "2026-09-11-incremental-uf-atom-scan-local-7ac555c",
+      "date": "2026-09-11",
+      "kind": "local-candidate-and-paired-diagnostics",
+      "candidate": "7ac555c",
+      "baseline": "605062f",
+      "lead": 22,
+      "status": "preliminary; SLURM and independent candidate model qualification pending",
+      "host": "mikolas-ThinkPad-T14s-Gen-5",
+      "binary_sha256": "e24dfbbb02cd5501aba6031c423f2bf43de8ddc45d48fdc491f8c14f23901120",
+      "manifest_sha256": "4cc0c9b35b3725ae2893e626f0ee29ca798830462b080a0dea16585bbcc48b85",
+      "command": [
+        "/workspace/results/uf-atom-scans-605062f/primo-candidate",
+        "--quiet",
+        "--stats",
+        "--incremental-mode=assumptions",
+        "--max-theory-conflicts=10000"
+      ],
+      "driver_sha256": "54758754a5c9eeeede314378d2c692c7806f6177b8bcbea2e78742fc9da43853",
+      "limits": {
+        "wall_seconds_per_session": 120,
+        "theory_conflicts_per_query": 10000
+      },
+      "artifacts": "results/uf-atom-scans-605062f",
+      "paired_measurements": [
+        {
+          "index": 14,
+          "measurements": {
+            "baseline": [
+              {
+                "seconds": 3.3634573090821505,
+                "prepare_us": 190033,
+                "outcome": "complete"
+              },
+              {
+                "seconds": 4.143519122968428,
+                "prepare_us": 208978,
+                "outcome": "complete"
+              },
+              {
+                "seconds": 4.248584856977686,
+                "prepare_us": 208497,
+                "outcome": "complete"
+              }
+            ],
+            "candidate": [
+              {
+                "seconds": 4.3541189500829205,
+                "prepare_us": 136940,
+                "outcome": "complete"
+              },
+              {
+                "seconds": 4.174879485974088,
+                "prepare_us": 127703,
+                "outcome": "complete"
+              },
+              {
+                "seconds": 4.0827448890777305,
+                "prepare_us": 124229,
+                "outcome": "complete"
+              }
+            ]
+          },
+          "median_candidate_over_baseline": 1.0075685334313587
+        },
+        {
+          "index": 852,
+          "measurements": {
+            "baseline": [
+              {
+                "seconds": 2.108297690981999,
+                "prepare_us": 330145,
+                "outcome": "complete"
+              },
+              {
+                "seconds": 2.4931617829715833,
+                "prepare_us": 391119,
+                "outcome": "complete"
+              },
+              {
+                "seconds": 2.4090906579513103,
+                "prepare_us": 376557,
+                "outcome": "complete"
+              }
+            ],
+            "candidate": [
+              {
+                "seconds": 2.2565713189542294,
+                "prepare_us": 9010,
+                "outcome": "complete"
+              },
+              {
+                "seconds": 2.1325446339324117,
+                "prepare_us": 8587,
+                "outcome": "complete"
+              },
+              {
+                "seconds": 2.0618682339554653,
+                "prepare_us": 7959,
+                "outcome": "complete"
+              }
+            ]
+          },
+          "median_candidate_over_baseline": 0.8852072988178563
+        },
+        {
+          "index": 1688,
+          "measurements": {
+            "baseline": [
+              {
+                "seconds": 0.5318257759790868,
+                "prepare_us": 48638,
+                "outcome": "complete"
+              },
+              {
+                "seconds": 0.620866843033582,
+                "prepare_us": 56700,
+                "outcome": "complete"
+              },
+              {
+                "seconds": 0.530946688959375,
+                "prepare_us": 48002,
+                "outcome": "complete"
+              }
+            ],
+            "candidate": [
+              {
+                "seconds": 0.4944421809632331,
+                "prepare_us": 2076,
+                "outcome": "complete"
+              },
+              {
+                "seconds": 0.4582715710857883,
+                "prepare_us": 1991,
+                "outcome": "complete"
+              },
+              {
+                "seconds": 0.47536693303845823,
+                "prepare_us": 2112,
+                "outcome": "complete"
+              }
+            ]
+          },
+          "median_candidate_over_baseline": 0.8938395890332914
+        }
+      ],
+      "initial_candidate_profiles": [
+        {
+          "index": 14,
+          "seconds": 3.3072481700219214,
+          "outcome": "complete"
+        },
+        {
+          "index": 267,
+          "seconds": 14.247723276959732,
+          "outcome": "complete"
+        },
+        {
+          "index": 852,
+          "seconds": 1.91615542198997,
+          "outcome": "complete"
+        },
+        {
+          "index": 1688,
+          "seconds": 0.44435801508370787,
+          "outcome": "complete"
+        },
+        {
+          "index": 656,
+          "seconds": 1.6695361529709771,
+          "outcome": "unknown"
+        }
+      ],
+      "outcomes": {
+        "initial_sessions": 5,
+        "initial_complete": 4,
+        "initial_known_unknown": 1,
+        "paired_sessions": 18,
+        "paired_complete": 18,
+        "wrong_answer": 0,
+        "error": 0,
+        "timeout": 0,
+        "reference_disagreement": 0
+      },
+      "mechanism": {
+        "native_852_baseline_registry_entries_across_checks": 908809,
+        "native_852_candidate_registration_roots": 2459,
+        "native_852_candidate_preparation_inputs": 2459,
+        "native_852_prepare_us_before": 317002,
+        "native_852_prepare_us_after": 7306
+      },
+      "verification": {
+        "make_check": "34 C++/CLI and 166 Python tests pass; lint passes",
+        "make_asan_test": "34 tests pass",
+        "make_docs": "passes",
+        "static": "focused clang-tidy/analyzer and advisory include-cleaner pass on 3 changed translation units; pre-existing indirect-header advisories, no new unused include; unchanged whole-tree baseline reviewed at fa2fe5c",
+        "review": "no blocking ownership, invariant, layering, hygiene or efficiency finding; raw review and logs retained"
+      },
+      "limitations": "Local timing variance; no full-corpus or qualified speedup claim. Candidate acceptance pending exact-source SLURM gate and independent SAT models."
+    },
+    {
+      "id": "2026-09-11-incremental-uf-atom-scan-baseline-605062f",
+      "date": "2026-09-11",
+      "kind": "bounded-local-performance-baseline",
+      "commit": "605062f",
+      "lead": 22,
+      "status": "baseline-only; candidate acceptance pending",
+      "evidence_basis": "2026-09-11-native-uf-z3-gap-profiling-8573f60; merged baseline retains identical solver sources",
+      "artifacts": "results/uf-atom-scans-605062f",
+      "command": [
+        "/workspace/results/uf-atom-scans-605062f/primo-baseline",
+        "--quiet",
+        "--stats",
+        "--incremental-mode=assumptions",
+        "--max-theory-conflicts=10000"
+      ],
+      "reproduction": "python3 scripts/profile_native_uf_gaps.py --timing results/uf-native-timing-fa2fe5c --root tmp/native-uf-inputs --manifest tmp/native-uf-inventory/manifest.json --solver results/uf-atom-scans-605062f/primo-baseline --expected-git 605062f --indices 14 267 852 1688 656 --plain --timeout 120 --out OUT",
+      "binary_sha256": "1c6f7740fe1c807ca306851da8303695d076cbfccdd1640a92d576d6f9ad354d",
+      "manifest_sha256": "4cc0c9b35b3725ae2893e626f0ee29ca798830462b080a0dea16585bbcc48b85",
+      "host": "mikolas-ThinkPad-T14s-Gen-5",
+      "limits": {
+        "wall_seconds_per_session": 120,
+        "theory_conflicts_per_query": 10000,
+        "model_output": false
+      },
+      "outcomes": {
+        "complete": 4,
+        "unknown": 1,
+        "timeout": 0,
+        "wrong_answer": 0,
+        "error": 0,
+        "reference_disagreement": 0
+      },
+      "profiles": [
+        {
+          "index": 14,
+          "outcome": "complete",
+          "seconds": 3.15215472294949
+        },
+        {
+          "index": 267,
+          "outcome": "complete",
+          "seconds": 12.163379564066418
+        },
+        {
+          "index": 852,
+          "outcome": "complete",
+          "seconds": 2.027634538942948
+        },
+        {
+          "index": 1688,
+          "outcome": "complete",
+          "seconds": 0.4588246850762516
+        },
+        {
+          "index": 656,
+          "outcome": "unknown",
+          "seconds": 1.471483465982601
+        }
+      ],
+      "qualification": "Local diagnostics only; original reference timings and model qualification reused as baseline context, not fresh evidence for the candidate."
+    },
+    {
       "id": "2026-09-11-incremental-smt-and-uf-separate-merges",
       "date": "2026-09-11",
       "kind": "merge-verification-no-new-solver-experiment",

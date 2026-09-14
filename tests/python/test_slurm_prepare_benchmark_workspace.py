@@ -75,6 +75,8 @@ class SshDiagnosticsTest(unittest.TestCase):
                     "--jobs",
                     "2",
                     "--reuse-dependencies",
+                    "--login-contrib-target",
+                    "contrib-opensmt",
                 ],
             ),
             mock.patch.object(
@@ -102,6 +104,15 @@ class SshDiagnosticsTest(unittest.TestCase):
         self.assertIn("cd '/cluster/work space'", words[-1])
         self.assertIn("--target primo -j2", words[-1])
         self.assertIn("PRIMO_GIT_REVISION_OVERRIDE=abc123", words[-1])
+        self.assertNotIn("contrib-opensmt", words[-1])
+        login_command = next(
+            call.args[2] for call in ssh.call_args_list
+            if "make MAKEFLAGS= contrib-opensmt" in call.args[2]
+        )
+        MODULE.shell_syntax_check(login_command)
+        self.assertIn("cd '/cluster/work space'", login_command)
+        commands = [call.args[2] for call in ssh.call_args_list]
+        self.assertLess(commands.index(login_command), commands.index(command))
 
     def test_failure_is_printed_before_it_is_raised(self) -> None:
         failed = subprocess.CompletedProcess(

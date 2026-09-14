@@ -167,9 +167,10 @@ gap to statistics printing on this evidence.
    allocation. Keep fresh query facts, valid SAT learning and callback lifetimes
    intact; no selective root-replay shortcut is justified by this profile.
 
-All four remain open and unimplemented. The register records their costs,
-proof obligations and falsifiers. They are future optimization work; the existing
-opt-in qualification is unchanged, and no speedup is claimed for these leads.
+All four were open and unimplemented at the profiled revision. The live register
+records subsequent experiments, costs, proof obligations and falsifiers. This
+profile claims no speedup for the proposed leads; candidate qualification belongs
+to each follow-up experiment.
 
 ## Reproduction and evidence scope
 

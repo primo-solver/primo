@@ -44,7 +44,10 @@ class BooleanClausifier {
   const TheoryAtom& ensure_generated_theory_atom_with_lit(core::TermId term, sat::Lit lit);
   const std::vector<TheoryAtom>& theory_atoms() const;
   void materialize_boolean_argument_literals();
+  // Scan only new atom roots, including atoms appended by registration itself.
   std::size_t register_boolean_argument_terms();
+  // Cumulative completed roots; subtract successive values for per-query work.
+  std::size_t boolean_argument_scan_count() const;
   std::size_t boolean_argument_registration_count() const;
   std::size_t boolean_domain_bridge_count() const;
 

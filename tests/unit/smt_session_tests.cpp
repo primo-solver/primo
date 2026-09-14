@@ -3,6 +3,7 @@
 #endif
 
 #include <cassert>
+#include <cstdint>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -110,11 +111,68 @@ void uf_assumption_scopes_and_preparation() {
       assert(repeated->statistics.get(":session.engine-builds") == 1);
       assert(repeated->statistics.get(":session.frontend-builds") == 1);
       assert(repeated->statistics.get(":session.euf-new-prepared-atoms") == 0);
+      assert(repeated->statistics.get(":session.euf-registration-atoms-scanned") == 0);
+      assert(repeated->statistics.get(":session.euf-preparation-atoms-scanned") == 0);
       assert(repeated->statistics.get(":session.retired-selectors") == 3);
       accept(session, "(reset)");
       assert(saved->model.find("local") == std::string::npos);
       assert(scoped->model.find("local () Local") != std::string::npos);
     }
+  }
+}
+
+void uf_assumption_atom_scans_follow_only_registry_growth() {
+  for (const auto preprocessing :
+       {primo::smt::PreprocessingMode::Off, primo::smt::PreprocessingMode::Auto}) {
+    primo::smt::CheckSatOptions options;
+    options.incremental_mode = primo::smt::IncrementalMode::Assumptions;
+    options.preprocessing_mode = preprocessing;
+    options.produce_model = true;
+    options.check_model = true;
+    SmtSession session(options);
+    accept(session, "(set-logic QF_UF)");
+    accept(session, "(declare-sort U 0)");
+    accept(session, "(declare-fun f (Bool) U)");
+    accept(session, "(declare-const p Bool)");
+    accept(session, "(assert p)");
+    std::uint64_t retained = 0;
+    const auto check = [&](CheckSatResult expected) {
+      const auto outcome = session.execute("(check-sat)").outcome;
+      assert(outcome->result == expected);
+      const auto after = outcome->statistics.get(":session.retained-atoms");
+      assert(outcome->statistics.get(":session.euf-registration-atoms-scanned") ==
+             after - retained);
+      assert(outcome->statistics.get(":session.euf-preparation-atoms-scanned") == after - retained);
+      retained = after;
+    };
+    check(CheckSatResult::Sat);
+    // An old atom becomes a Bool argument only after its root was scanned.
+    accept(session, "(push 1)");
+    accept(session, "(assert (distinct (f p) (f true)))");
+    check(CheckSatResult::Unsat);
+    accept(session, "(pop 1)");
+    check(CheckSatResult::Sat);
+    for (int i = 0; i < 96; ++i) {
+      accept(session, "(push 1)");
+      accept(session, "(declare-const q Bool)");
+      // Registration grows the registry itself; each redeclaration has a fresh ID.
+      accept(session, "(assert (distinct (f q) (f false)))");
+      check(CheckSatResult::Sat);
+      check(CheckSatResult::Sat);
+      accept(session, "(assert (not q))");
+      check(CheckSatResult::Unsat);
+      accept(session, "(pop 1)");
+      check(CheckSatResult::Sat);
+    }
+    // The retained f(p) root is reused without rescanning or losing registration.
+    accept(session, "(assert (distinct (f p) (f true)))");
+    check(CheckSatResult::Unsat);
+    accept(session, "(reset)");
+    retained = 0;
+    accept(session, "(set-logic QF_UF)");
+    accept(session, "(declare-const p Bool)");
+    accept(session, "(assert p)");
+    check(CheckSatResult::Sat);
   }
 }
 
@@ -588,6 +646,7 @@ void canonical_names_and_categories() {
 int main() {
   arithmetic_auxiliaries_keep_scoped_definitions();
   uf_assumption_scopes_and_preparation();
+  uf_assumption_atom_scans_follow_only_registry_growth();
   uf_assumption_growth_cancellation_and_options();
   uf_assumption_models_use_active_lowered_roots();
   assumption_mode_scopes_and_reuse();

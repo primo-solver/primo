@@ -204,3 +204,10 @@ seeds, jobs, resource limits, phase counters and artifact paths are recorded in
 `benchmarks/assumptions-lra-summary.json` and run-log entry
 `2026-09-11-assumptions-lra-qualification`. The initial development entry remains
 preliminary historical evidence; the collected exact-candidate runs supersede it.
+
+## Additional OpenSMT reference
+
+[](opensmt-incremental-comparison.md) adds OpenSMT 2.9.2 using the same native
+inputs and session limits. The Primo and existing reference timings here remain
+unchanged; the new report separates completed sessions, errors, partial query
+progress and model-qualification coverage.
