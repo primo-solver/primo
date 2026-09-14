@@ -53,6 +53,20 @@ round and predate this soundness repair. They remain historical measurements;
 they do not qualify the repaired solver or measure the new default. Fresh
 correctness evidence is recorded separately in `run-log.json`.
 
+At `2fb97bd`, the fresh SLURM gate completed 3,000 targeted generated cases,
+1,000 native Boolean-wrapper mutations, and 1,000 arithmetic auxiliary cases.
+These contain 1,215, 979, and 999 distinct input hashes respectively. Both
+Boolean-domain modes were checked; generated cases also covered all six tuple
+orders. All 38,827 definite candidate answers were reference-confirmed,
+including 33 answers confirmed by a separate cvc5 enumerative follow-up.
+The native runs also returned 701 unknowns and reached 472 timeouts across
+both modes; these are not counted as solved cases. No crash, input rejection
+or disagreement was detected. The 25-file ground preservation sample passed
+200 queries, with all 121 SAT query models accepted by Dolmen. This is targeted
+correctness evidence, not full quantified-model or performance qualification.
+Exact commands, hashes, coverage and limitations are retained in
+`benchmarks/quantifier-preparation-2fb97bd.json` and the run log.
+
 | Milestone | Status |
 | --- | --- |
 | M0: paper note for enumerative instantiation | done: [](papers/enumerative-instantiation.md) |

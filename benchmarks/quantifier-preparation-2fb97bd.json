@@ -1,0 +1,475 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-14",
+  "commit": "2fb97bd",
+  "branch": "quantifiers",
+  "purpose": "Correctness qualification of generated-term preparation and the user-requested single-instance default; not a performance evaluation.",
+  "binaries": {
+    "primo": {
+      "sha256": "9626b377f161ae0761d6c801fdc035d54bd19e0837860343bc936403982164c1",
+      "version": "primo 0.1.0\ngit: 2fb97bd\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n"
+    },
+    "ref0": {
+      "sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+      "version": "Z3 version 5.1.0 - 64 bit"
+    },
+    "ref1": {
+      "sha256": "4a93548398445cf1a774655583f5465b156c26f63f2cdfb94f4728fdf7adde46",
+      "version": "cvc5 1.3.4 [git f3b21c4 on branch HEAD]"
+    }
+  },
+  "gate": {
+    "job": "145249",
+    "terminal_state": "60/60 COMPLETED 0:0",
+    "environment": "CIIRC SLURM compute partition; per-shard hosts in run.json",
+    "seed": 20260914,
+    "seconds_per_process": 5,
+    "task_minutes": 30,
+    "requested_cpus_per_task": 1,
+    "allocated_cpus_per_task": 2,
+    "memory_per_task": "4G",
+    "array_throttle": "4, raised to 8",
+    "command": "PRIMO_WORKDIR=/home/janotmik/primo-quantifiers PRIMO_GATE_OUT=/home/janotmik/primo-quantifiers/results/quant-prep-2fb97bd PRIMO_UF_CORPUS=/home/janotmik/primo-quantifiers-data/non-incremental/UF PRIMO_EXPECTED_REVISION=2fb97bd sbatch scripts/slurm_quantifier_preparation_gate.sbatch",
+    "candidate_arguments": [
+      "--quiet",
+      "--max-theory-conflicts=1000",
+      "--quantifier-max-instances=2000",
+      "--euf-boolean-domain=<registration|bridge-atoms>",
+      "--quantifier-tuple-order=<order>"
+    ],
+    "batch": "Default 1, omitted from command to exercise the public default.",
+    "reference_commands": [
+      "contrib/local/bin/z3 <input>",
+      "contrib/local/bin/cvc5 <input>"
+    ],
+    "profiles": "Generated: both Boolean modes times all six orders; native/arithmetic: both modes, sum order. References run once per input.",
+    "modes": {
+      "generated": {
+        "cases": 3000,
+        "distinct_input_hashes": 1215,
+        "counts": {
+          "primo-registration-sum:unsat": 1875,
+          "reference-confirmed-candidate-answers": 36000,
+          "primo-registration-max:unsat": 1875,
+          "primo-registration-max-colex:unsat": 1875,
+          "primo-registration-leximax:unsat": 1875,
+          "primo-registration-deepening:unsat": 1875,
+          "primo-registration-random:unsat": 1875,
+          "primo-bridge-atoms-sum:unsat": 1875,
+          "primo-bridge-atoms-max:unsat": 1875,
+          "primo-bridge-atoms-max-colex:unsat": 1875,
+          "primo-bridge-atoms-leximax:unsat": 1875,
+          "primo-bridge-atoms-deepening:unsat": 1875,
+          "primo-bridge-atoms-random:unsat": 1875,
+          "ref0:unsat": 1875,
+          "ref1:unsat": 946,
+          "reference-definite-inputs": 3000,
+          "ref1:unknown": 929,
+          "primo-registration-sum:sat": 1125,
+          "primo-registration-max:sat": 1125,
+          "primo-registration-max-colex:sat": 1125,
+          "primo-registration-leximax:sat": 1125,
+          "primo-registration-deepening:sat": 1125,
+          "primo-registration-random:sat": 1125,
+          "primo-bridge-atoms-sum:sat": 1125,
+          "primo-bridge-atoms-max:sat": 1125,
+          "primo-bridge-atoms-max-colex:sat": 1125,
+          "primo-bridge-atoms-leximax:sat": 1125,
+          "primo-bridge-atoms-deepening:sat": 1125,
+          "primo-bridge-atoms-random:sat": 1125,
+          "ref0:sat": 1125,
+          "ref1:sat": 1125
+        },
+        "unconfirmed": []
+      },
+      "mutations": {
+        "cases": 1000,
+        "distinct_input_hashes": 979,
+        "counts": {
+          "primo-registration-sum:unsat": 413,
+          "reference-confirmed-candidate-answers": 794,
+          "primo-bridge-atoms-sum:unsat": 410,
+          "ref0:unsat": 436,
+          "ref1:unsat": 435,
+          "reference-definite-inputs": 913,
+          "primo-registration-sum:timeout": 230,
+          "primo-bridge-atoms-sum:timeout": 242,
+          "ref0:sat": 477,
+          "ref1:unknown": 521,
+          "primo-registration-sum:unknown": 355,
+          "primo-bridge-atoms-sum:unknown": 346,
+          "ref0:timeout": 87,
+          "reference-inconclusive-inputs": 87,
+          "ref1:sat": 44,
+          "primo-registration-sum:sat": 2,
+          "primo-bridge-atoms-sum:sat": 2
+        },
+        "unconfirmed": [
+          {
+            "index": 121,
+            "profile": "primo-registration-sum",
+            "answer": "unsat"
+          },
+          {
+            "index": 121,
+            "profile": "primo-bridge-atoms-sum",
+            "answer": "unsat"
+          },
+          {
+            "index": 742,
+            "profile": "primo-registration-sum",
+            "answer": "unsat"
+          },
+          {
+            "index": 742,
+            "profile": "primo-bridge-atoms-sum",
+            "answer": "unsat"
+          },
+          {
+            "index": 443,
+            "profile": "primo-registration-sum",
+            "answer": "unsat"
+          },
+          {
+            "index": 443,
+            "profile": "primo-bridge-atoms-sum",
+            "answer": "unsat"
+          },
+          {
+            "index": 144,
+            "profile": "primo-registration-sum",
+            "answer": "unsat"
+          },
+          {
+            "index": 144,
+            "profile": "primo-bridge-atoms-sum",
+            "answer": "unsat"
+          },
+          {
+            "index": 305,
+            "profile": "primo-registration-sum",
+            "answer": "unsat"
+          },
+          {
+            "index": 305,
+            "profile": "primo-bridge-atoms-sum",
+            "answer": "unsat"
+          },
+          {
+            "index": 466,
+            "profile": "primo-registration-sum",
+            "answer": "unsat"
+          },
+          {
+            "index": 466,
+            "profile": "primo-bridge-atoms-sum",
+            "answer": "unsat"
+          },
+          {
+            "index": 328,
+            "profile": "primo-registration-sum",
+            "answer": "unsat"
+          },
+          {
+            "index": 328,
+            "profile": "primo-bridge-atoms-sum",
+            "answer": "unsat"
+          },
+          {
+            "index": 788,
+            "profile": "primo-registration-sum",
+            "answer": "unsat"
+          },
+          {
+            "index": 788,
+            "profile": "primo-bridge-atoms-sum",
+            "answer": "unsat"
+          },
+          {
+            "index": 190,
+            "profile": "primo-registration-sum",
+            "answer": "unsat"
+          },
+          {
+            "index": 190,
+            "profile": "primo-bridge-atoms-sum",
+            "answer": "unsat"
+          },
+          {
+            "index": 650,
+            "profile": "primo-registration-sum",
+            "answer": "unsat"
+          },
+          {
+            "index": 650,
+            "profile": "primo-bridge-atoms-sum",
+            "answer": "unsat"
+          },
+          {
+            "index": 673,
+            "profile": "primo-registration-sum",
+            "answer": "unsat"
+          },
+          {
+            "index": 834,
+            "profile": "primo-registration-sum",
+            "answer": "unsat"
+          },
+          {
+            "index": 834,
+            "profile": "primo-bridge-atoms-sum",
+            "answer": "unsat"
+          },
+          {
+            "index": 75,
+            "profile": "primo-registration-sum",
+            "answer": "unsat"
+          },
+          {
+            "index": 535,
+            "profile": "primo-registration-sum",
+            "answer": "unsat"
+          },
+          {
+            "index": 236,
+            "profile": "primo-registration-sum",
+            "answer": "unsat"
+          },
+          {
+            "index": 236,
+            "profile": "primo-bridge-atoms-sum",
+            "answer": "unsat"
+          },
+          {
+            "index": 397,
+            "profile": "primo-registration-sum",
+            "answer": "unsat"
+          },
+          {
+            "index": 397,
+            "profile": "primo-bridge-atoms-sum",
+            "answer": "unsat"
+          },
+          {
+            "index": 98,
+            "profile": "primo-registration-sum",
+            "answer": "unsat"
+          },
+          {
+            "index": 98,
+            "profile": "primo-bridge-atoms-sum",
+            "answer": "unsat"
+          },
+          {
+            "index": 558,
+            "profile": "primo-registration-sum",
+            "answer": "unsat"
+          },
+          {
+            "index": 558,
+            "profile": "primo-bridge-atoms-sum",
+            "answer": "unsat"
+          }
+        ]
+      },
+      "arithmetic": {
+        "cases": 1000,
+        "distinct_input_hashes": 999,
+        "counts": {
+          "primo-registration-sum:sat": 500,
+          "reference-confirmed-candidate-answers": 2000,
+          "primo-bridge-atoms-sum:sat": 500,
+          "ref0:sat": 500,
+          "ref1:sat": 500,
+          "reference-definite-inputs": 1000,
+          "primo-registration-sum:unsat": 500,
+          "primo-bridge-atoms-sum:unsat": 500,
+          "ref0:unsat": 500,
+          "ref1:unsat": 500
+        },
+        "unconfirmed": []
+      }
+    },
+    "totals": {
+      "inputs": 5000,
+      "candidate_runs": 40000,
+      "reference_runs": 10000,
+      "candidate_definite_answers": 38827,
+      "candidate_unknown": 701,
+      "candidate_timeout": 472,
+      "wrong_answers": 0,
+      "crash": 0,
+      "parser_or_type_error": 0,
+      "unsupported": 0,
+      "reference_disagreement": 0,
+      "unconfirmed_after_followup": 0
+    },
+    "limitations": [
+      "3000 generated cases contain 1215 distinct hashes across eight targeted formula shapes; this is not arbitrary quantified formula coverage.",
+      "1000 native Boolean-wrapper mutations contain 979 distinct hashes from small single-query UF seeds (at most 6000 bytes, four smallest per family); this is not TypeFuzz.",
+      "1000 arithmetic cases contain 999 distinct hashes and cover fixed-divisor QF_LIA/QF_UFLIA auxiliaries, not quantified arithmetic; the mixed-logic slice is SAT only.",
+      "The native gate completed its inputs, not all solver queries: unknowns and timeouts are retained separately. Quantified SAT models were not independently validated."
+    ]
+  },
+  "followup": {
+    "job": "145314",
+    "terminal_state": "COMPLETED 0:0",
+    "command": "timeout 30 contrib/local/bin/cvc5 --enum-inst <input>",
+    "requested_cpus": 1,
+    "allocated_cpus": 2,
+    "memory": "4G",
+    "task_minutes": 15,
+    "inputs": 18,
+    "confirmed_candidate_answers": 33,
+    "answer": "unsat",
+    "input_hashes": {
+      "75": "e13e6da1e25a847fbc58ed5cb53358a8dd2d22961d561b68aa261c86762cc027",
+      "98": "4082f1f175792f40216a9806d1c07a4df6ddc1122b4ad20219c12e42b605d459",
+      "121": "632f49af2e28b62037c475555aea37d16c839bf080d0acf43c1aefbbaca1e54a",
+      "144": "9a32db15bb2de5a55a187346e29aa13509e6dbc5357ac881d343314c001d41e3",
+      "190": "74fff483f096f42fdaf14b3c728195ea05a574e065a13392256f710794e60183",
+      "236": "5b10aa0adc3abdd721165da2cf4af4fa73e57068f6d5cf7bcc909d975e41ba7d",
+      "305": "f79084e0273c51c83c9358a423eb39f4cdebb2e9ce3fa5eeaf76e074f8098aff",
+      "328": "b913346424fff95d85f772ac20c546851585af60566b7ab9a0df564ef06e1d83",
+      "397": "43dd8d8859f9acaf491e921d56e6bad6a87c4cb7d682d493624b943c282666d7",
+      "443": "c70a5a4760743dfcf82d3aadbaeb34360fa2bc794b57cd5bca99df30e6986339",
+      "466": "b8ae7e24acd32a2ce87864f1d14d8f355156db00bf65de6c3ab28baf511b2ed5",
+      "535": "c33ee7f99d010328dd2569490861d10c318764c23ab36f37ea381214c6600dc7",
+      "558": "14241513d2517c692738db245185246aa8af1e90a4c5b8745401edeb60be70f1",
+      "650": "2accf9d73b50a9616124c7358b501b2a89a5e0b0eb1135d9418e0cf68d4d925e",
+      "673": "7bf68ba77148bcfecf050ff7d8410c40d1464a6622a1db0b0062e689f0e51ba2",
+      "742": "dd560b0e05de0fe6061c68d4c867a4067a3beeff7beb01d7bcdccc8ac9a921b6",
+      "788": "d669708f8efb998079c41090a066e06b898bae9d71b5dc3168d1835993525e3b",
+      "834": "0c199ff83343f4b8dde520f5d70a63633a2fb47b6182524aa9a7691ba9b84e47"
+    },
+    "scope": "All unconfirmed native answers came from equivalent Boolean-wrapper mutations of one source with unknown declared status; every actual mutated input was rerun.",
+    "recipe": "results/quantifier-preparation-fix/confirm.sbatch"
+  },
+  "preservation": {
+    "jobs": [
+      "145258_0",
+      "145263_1",
+      "145263_2",
+      "145263_3",
+      "145263_4"
+    ],
+    "terminal_state": "5/5 COMPLETED 0:0",
+    "manifest": "benchmarks/incremental-parser-real-25.json",
+    "manifest_sha256": "18aa6e5a8a413e77474dcf1ef340e79d7f25f915873caeb73860c985f4e9e249",
+    "files": 25,
+    "sessions": 50,
+    "queries": 200,
+    "sat_models_validated": 121,
+    "dolmen_version": "0.10",
+    "dolmen_sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+    "seconds_per_solver_and_validator": 30,
+    "stdin_chunk_bytes": 127,
+    "theory_conflict_limit": "10000 for QF_UF, 1000 for the other four logics; matches the established sample configuration.",
+    "oracle": "hash-pinned SMT-LIB declared status, agreeing with recorded Primo result; metamorphic queries follow scoped_session; no reference solver calls",
+    "per_logic": {
+      "QF_LIA": {
+        "files": 5,
+        "queries": 40,
+        "answers": {
+          "sat": 29,
+          "unsat": 11
+        },
+        "dolmen_validated": 29
+      },
+      "QF_LRA": {
+        "files": 5,
+        "queries": 40,
+        "answers": {
+          "sat": 23,
+          "unsat": 17
+        },
+        "dolmen_validated": 23
+      },
+      "QF_UF": {
+        "files": 5,
+        "queries": 40,
+        "answers": {
+          "sat": 11,
+          "unsat": 29
+        },
+        "dolmen_validated": 11
+      },
+      "QF_UFLIA": {
+        "files": 5,
+        "queries": 40,
+        "answers": {
+          "sat": 29,
+          "unsat": 11
+        },
+        "dolmen_validated": 29
+      },
+      "QF_UFLRA": {
+        "files": 5,
+        "queries": 40,
+        "answers": {
+          "sat": 29,
+          "unsat": 11
+        },
+        "dolmen_validated": 29
+      }
+    },
+    "submission_commands": [
+      {
+        "job": "145258",
+        "command": [
+          "sbatch",
+          "--parsable",
+          "--array=0",
+          "--export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-quantifiers,PRIMO_EXPECTED_REVISION=2fb97bd,PRIMO_CORPUS_OUT=/home/janotmik/primo-quantifiers/results/quant-prep-default-2fb97bd,PRIMO_UF_ROOT=/home/janotmik/primo-cadical-profile/tmp/QF_UF,PRIMO_LIA_ROOT=/home/janotmik/primo-cadical-profile/sandbox/non-incremental/QF_LIA,PRIMO_LRA_ROOT=/home/janotmik/primo-cadical-profile/sandbox/non-incremental/QF_LRA,PRIMO_UFLRA_ROOT=/home/janotmik/primo-cadical-profile/sandbox/non-incremental/QF_UFLRA,PRIMO_UFLIA_ROOT=/home/janotmik/primo-model-fix/tmp/QF_UFLIA,PRIMO_THEORY_CONFLICT_LIMIT=10000",
+          "scripts/slurm_incremental_corpus.sbatch"
+        ]
+      },
+      {
+        "job": "145263",
+        "command": [
+          "sbatch",
+          "--parsable",
+          "--array=1-4%2",
+          "--export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-quantifiers,PRIMO_EXPECTED_REVISION=2fb97bd,PRIMO_CORPUS_OUT=/home/janotmik/primo-quantifiers/results/quant-prep-default-2fb97bd,PRIMO_UF_ROOT=/home/janotmik/primo-cadical-profile/tmp/QF_UF,PRIMO_LIA_ROOT=/home/janotmik/primo-cadical-profile/sandbox/non-incremental/QF_LIA,PRIMO_LRA_ROOT=/home/janotmik/primo-cadical-profile/sandbox/non-incremental/QF_LRA,PRIMO_UFLRA_ROOT=/home/janotmik/primo-cadical-profile/sandbox/non-incremental/QF_UFLRA,PRIMO_UFLIA_ROOT=/home/janotmik/primo-model-fix/tmp/QF_UFLIA,PRIMO_THEORY_CONFLICT_LIMIT=1000",
+          "scripts/slurm_incremental_corpus.sbatch"
+        ]
+      }
+    ]
+  },
+  "verification": {
+    "commands": [
+      "make check",
+      "make asan-test",
+      "make lint",
+      "make docs",
+      "make tidy",
+      "make include-cleaner",
+      "make python-test"
+    ],
+    "ctest": 39,
+    "python_tests": 170,
+    "asan_ctest": 39,
+    "clang_tidy_files": 120,
+    "clang_tidy": "No emitted project diagnostic; 28 non-user-code warnings suppressed.",
+    "include_cleaner": "384 reviewed advisories: 361 direct-include suggestions, 22 paired-header suggestions retained, one variant suggestion retained for std::get use. Not a warning-free scan.",
+    "review": "Code review pass: no blocking issues found. Existing rescan costs and larger-batch no-progress behavior remain documented limitations."
+  },
+  "build": {
+    "first_job": "145247 FAILED 2:0: compute node lacked standard C++ headers.",
+    "retry_job": "145248 COMPLETED 0:0: header manifest provisioned through the workspace preparation helper; all objects rebuilt.",
+    "note": "Build reported filesystem/node clock skew; clean rebuild and embedded revision/hash checks rule out stale candidate objects.",
+    "log": "results/quantifier-preparation-fix/remote-prepare-headers.log"
+  },
+  "artifacts": {
+    "local_root": "results/quantifier-preparation-fix",
+    "remote_root": "/home/janotmik/primo-quantifiers/results",
+    "archives": {
+      "gate-artifacts.tar.gz": "95f922d3b34bf2bed7f08bc8f5d2417fb5ecf4a37c3b2c052c921fa4b11ba220",
+      "preservation-artifacts.tar.gz": "c847de18c080410fd82eaed0f3da7715078b6f02df923f45539ea6b25af1ea92",
+      "confirmation-artifacts.tar.gz": "0b3c5bdb9e31c6bf7684702981ad024853a98b3e557f85e141f2a8db737f64a0"
+    },
+    "summary_command": "python3 scripts/summarize_quantifier_preparation_gate.py --root results/quantifier-preparation-fix/quant-prep-2fb97bd --out results/quantifier-preparation-fix/gate-summary.json",
+    "audit": "results/quantifier-preparation-fix/final-job-audit.txt"
+  },
+  "qualification_limit": "No full UF-division timing, PAR2 improvement, or full quantified-model qualification is claimed. The old batch-128 results predate the soundness fix."
+}

@@ -7,10 +7,25 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 
 from quantifier_preparation_gate import classify, mutate, quantified
+from summarize_quantifier_preparation_gate import verify_case
 from validate_qfuf_models_with_dolmen import command_spans
 
 
 class QuantifierPreparationGateTests(unittest.TestCase):
+    def test_summary_rejects_missing_duplicate_and_failed_answers(self):
+        row = {"profile": "primo", "answer": "sat", "exit": 0, "input_sha256": "same"}
+        reference = row | {"profile": "ref"}
+        verify_case([row, reference], {"primo", "ref"})
+        for rows in [
+            [row],
+            [row, row],
+            [row | {"exit": 1}, reference],
+            [row | {"answer": "unsat"}, reference],
+            [row | {"input_sha256": "different"}, reference],
+        ]:
+            with self.assertRaises(ValueError):
+                verify_case(rows, {"primo", "ref"})
+
     def test_answer_does_not_hide_a_crash(self):
         self.assertEqual(classify("done", -11, "sat\n"), "crash")
         self.assertEqual(classify("done", 2, "unsat\n"), "error")
