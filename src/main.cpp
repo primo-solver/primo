@@ -70,7 +70,7 @@ void install_cancellation_handlers() {
 
 std::string version_text() {
   std::ostringstream version;
-  version << "primo 0.1.0\n";
+  version << "primo 0.2.0\n";
   version << "git: " << PRIMO_GIT_REVISION << "\n";
   version << "build: " << PRIMO_BUILD_TYPE << ", sanitizers: " << PRIMO_SANITIZERS_BANNER << "\n";
   version << "cadical: " << primo::sat::cadical_signature();
