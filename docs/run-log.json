@@ -3,6 +3,57 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-14-cli-enum-contracts",
+      "date": "2026-09-14",
+      "commit": "52394653b5fb9c8c26aa4b424504290e886eec7b",
+      "kind": "cli-contract-hardening-and-smoke-gate",
+      "scope": "Explicit callback parse failure; documented borrowed storage and bounded compiler-dependent enum coverage. No option/default or solver-algorithm change. Removed unused main preprocessing include and added direct test enum-definition include.",
+      "verification": {
+        "commands": [
+          "make check",
+          "make asan-test",
+          "make lint",
+          "make docs",
+          "clang-tidy -p build <all 121 tracked C++ files>",
+          "clang-tidy -p build -checks=-*,clang-diagnostic-*,misc-include-cleaner <all 121 tracked C++ files>"
+        ],
+        "tests": "40 CTest and 170 Python pass; 40 ASan tests pass. After include cleanup, rebuilt both binaries; option-name/preprocessing CLI tests pass in Release and ASan; all 66 enum names accepted and invalid names rejected for all 20 options.",
+        "review": "Code review pass: no blocking issues. clang-tidy warnings triaged: CLI11 std::function callback is owned by Option/App, enum-cast paths assume an impossible declaration-mask result. Full diagnostic counts and paths in local review.md. Include-cleaner initially emitted 382 advisories; the actual unused header and new-test direct dependency were fixed, modified-file follow-up clear; existing paired-header/transitive suggestions and variant used by std::get retained."
+      },
+      "fuzz": {
+        "commit": "52394653b5fb9c8c26aa4b424504290e886eec7b",
+        "host": "mikolas-ThinkPad-T14s-Gen-5",
+        "seed": 20260914,
+        "count": 100,
+        "timeout_seconds": 5,
+        "command": "python3 scripts/qf_uf_boolean_fuzz.py --solver ./build/primo --solver-arg=--quiet --solver-arg=--euf-boolean-domain=registration --ref contrib/local/bin/z3 --count 100 --seed 20260914 --timeout 5 --keep-passing --out results/enum-option-contracts/committed-smoke",
+        "binaries": {
+          "build/primo": {
+            "sha256": "1061f81ba01fb15776d7b800a968c7d77bb8a349060cac9107fd0ad3d20e32e4",
+            "version": "primo 0.1.0\ngit: 5239465\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n"
+          },
+          "contrib/local/bin/z3": {
+            "sha256": "450bffa1b87541409c37cd678b2e7261c5d20912144e5c052fd264b1f3a2077f",
+            "version": "Z3 version 5.0.0 - 64 bit\n"
+          }
+        },
+        "answers": {
+          "unsat": 39,
+          "sat": 61
+        },
+        "pass": 100,
+        "wrong_answers": 0,
+        "crash": 0,
+        "parser_type_error": 0,
+        "timeout": 0,
+        "unsupported": 0,
+        "reference_disagreement": 0
+      },
+      "preliminary": "The same 100-case smoke passed before commit (61 sat, 39 unsat), base c8028c4-dirty; exact initial binary hashes/version in results/enum-option-contracts/smoke-provenance.json. The committed revision was rebuilt and rerun for the gate above.",
+      "artifacts": "results/enum-option-contracts: source-review inventory, review.md, full check/sanitizer/lint/docs/static logs, CLI check script/results, initial and committed inputs/summary/provenance.",
+      "limitations": "Local smoke is proportional to defensive CLI handling with unchanged accepted inputs and defaults. It is not a solver/theory merge or performance qualification. Enum coverage remains bounded to 0..63 and compiler spelling."
+    },
+    {
       "id": "2026-09-14-generated-term-preparation-qualification",
       "date": "2026-09-14",
       "commit": "2fb97bd",
