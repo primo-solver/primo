@@ -71,6 +71,29 @@ configuration is confined to `primo_sat`, and GMP to `primo_util`.
   `solver_session.cpp` owns parsing/frontend lifetime, preprocessing-strategy
   execution, final solver-strategy compilation, timing, and outcome conversion.
 
+## Command-line enum options
+
+`cli::EnumName` tables in `src/cli/option_names.hpp` map command-line names to
+typed solver enums. A value may have aliases; its first table entry is the
+canonical spelling. `CheckSatOptions` owns the defaults. The CLI's
+`add_enum_option` helper derives the displayed default from the initialized
+field and uses the same table for allowed choices and parsing. Solver and
+theory code do not depend on CLI spellings.
+
+The callback borrows the option field and table, which must outlive the
+`CLI::App`; tables must remain unchanged while the app uses them. Current
+call sites use static tables and option storage declared before the app.
+The callback owns its diagnostic option name and checks parse failure before
+assigning the field, independently of the CLI validator.
+
+The table tests check unique names, aliases, round trips and coverage of
+declared enum values in the range 0–63. Detection relies on GCC/Clang function
+signature spelling and has a compiler-format self-check. This is a bounded
+test, not exhaustive reflection: an unnamed negative value or a sparse jump
+such as `NewMode = 100` is not detected. The upper-bound guard catches dense
+growth into the boundary only. Review the probe range when changing enum
+values, and keep the name table synchronized with the declaration.
+
 ## Term Representation
 
 The primary term types are:

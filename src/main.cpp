@@ -25,7 +25,6 @@
 #include "sat/cadical_backend.hpp"
 #include "smt/check_sat.hpp"
 #include "smt/experimental_tactics.hpp"
-#include "smt/preprocessing.hpp"
 #include "smt/smt_session.hpp"
 #include "smtlib/parser.hpp"
 #include "util/statistics.hpp"
@@ -196,7 +195,9 @@ CLI::Option* add_flag_with_default(CLI::App& app, std::string name, bool& value,
 // An option selecting an enumerator of `value` by its name in `names`. The
 // parsed value is written straight into `value`, and --help shows the name of
 // the value it holds when the option is added, so the default is written only
-// where `value` is initialized.
+// where `value` is initialized. The callback borrows `value` and `names`:
+// both must outlive the app, and the table must remain unchanged. Call sites
+// use static name tables and options declared before the app.
 template <typename Enum, std::size_t N>
 CLI::Option* add_enum_option(CLI::App& app, std::string name, Enum& value,
                              const std::array<primo::cli::EnumName<Enum>, N>& names,
@@ -206,8 +207,12 @@ CLI::Option* add_enum_option(CLI::App& app, std::string name, Enum& value,
     choices.emplace_back(entry.name);
   }
   CLI::Option* option = app.add_option_function<std::string>(
-      std::move(name),
-      [&value, &names](const std::string& text) { value = *primo::cli::parse_enum(names, text); },
+      name,
+      [name, &value, &names](const std::string& text) {
+        const auto parsed = primo::cli::parse_enum(names, text);
+        if (!parsed) throw CLI::ValidationError(name, "unrecognized value: " + text);
+        value = *parsed;
+      },
       std::move(description));
   option->check(CLI::IsMember(std::move(choices)));
   option->default_str(std::string(primo::cli::enum_name(names, value)));

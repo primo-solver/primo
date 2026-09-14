@@ -11,6 +11,7 @@
 #include <utility>
 
 #include "cli/option_names.hpp"
+#include "smt/check_sat.hpp"
 
 namespace {
 
@@ -18,9 +19,10 @@ using primo::cli::enum_name;
 using primo::cli::EnumName;
 using primo::cli::parse_enum;
 
-// Values probed per enum. An enum whose last probed value is declared fails
-// the check, which asks for a larger limit instead of silently ignoring the
-// rest.
+// Bounded coverage check for values 0..63, not exhaustive enum reflection.
+// Rejecting a declared final value catches dense growth into the boundary;
+// it cannot detect an unnamed negative value or a jump outside this range
+// (for example, NewMode = 100). Such enum changes require a range review.
 constexpr std::size_t kProbeLimit = 64;
 
 // Whether `Probe` is a declared enumerator. C++20 has no enumerator
@@ -68,8 +70,9 @@ void probe_reads_declarations() {
   }
 }
 
-// Names are unique and parse to their entry, every declared enumerator has a
-// canonical name that parses back to it, and unknown names are rejected.
+// Names are unique and parse to their entry, every declared value within the
+// probed range has a canonical name that parses back to it, and unknown names
+// are rejected. Named values outside the probed range also fail this check.
 template <typename Enum, std::size_t N>
 void check_table(const std::array<EnumName<Enum>, N>& names) {
   const auto declared = declared_values<Enum>();
