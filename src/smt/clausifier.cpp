@@ -88,6 +88,9 @@ struct BooleanClausifier::Implementation {
         }
         const std::vector<core::TermId> children = terms_.get(term_id).children;
         const core::TermKind kind = terms_.get(term_id).kind;
+        // Only closed instances enter ground EUF; binder bodies and patterns
+        // must not create domain bridges for bound variables.
+        if (kind == core::TermKind::Forall || kind == core::TermKind::Exists) continue;
         if (kind == core::TermKind::Application) {
           if (terms_.get(term_id).sort == terms_.symbols().bool_sort()) {
             ensure_boolean_domain_bridge(term_id);
@@ -149,8 +152,10 @@ struct BooleanClausifier::Implementation {
         if (!visited.insert(term_id).second) {
           continue;
         }
+        const core::TermKind kind = terms_.get(term_id).kind;
+        if (kind == core::TermKind::Forall || kind == core::TermKind::Exists) continue;
         const std::vector<core::TermId> children = terms_.get(term_id).children;
-        if (terms_.get(term_id).kind == core::TermKind::Application) {
+        if (kind == core::TermKind::Application) {
           for (const core::TermId child : children) {
             register_boolean_argument_term(child);
           }

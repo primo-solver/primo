@@ -1614,7 +1614,9 @@ Implemented:
 - CLI-default `auto` preprocessing dispatcher;
 - goal-owned typed model-conversion records, with reverse simultaneous replay;
 - first-class ITE/div/mod/abs terms and mandatory extended-term lowering even
-  when optional preprocessing is off;
+  when optional preprocessing is off; later generated ground formulas require
+  their own lowering call, with auxiliary definitions included in the returned
+  assertions (the lifecycle audit is in [](euf-boolean-arguments.md));
 - default-on bounded constant-ITE simplification and equality-ITE distribution;
 - default-off arithmetic-atom canonicalization and monotone Real elimination;
 - equality bridging under disjunctions;

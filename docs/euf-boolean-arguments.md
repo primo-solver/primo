@@ -1,5 +1,47 @@
 # Boolean Arguments in EUF
 
+## Generated-term preparation contract
+
+The original design obligation here is independent of the producer of a term:
+before a ground solve, asserted formulas and all of their auxiliary definitions
+must have been lowered, clausified and prepared for their owning theories.
+Allocating a sorted symbol does not establish its semantic constraints.
+
+`CombinationRecipe::prepare_boolean` is an idempotent registry-completion hook.
+The component driver calls it before initial ownership planning and at every
+atom-installation boundary, after disconnecting the old dispatcher and before
+borrowing the atom registry. Preparation may append atoms of its own; those
+atoms must also be installed and observed before the next solve. Existing
+identities and domain definitions survive repeated preparation. Ground walks
+stop at quantifiers, including their annotations; closed instances are prepared
+when they enter the ground formula. No pass walks every allocated symbol.
+
+This is a repair of the existing Boolean-domain invariant, not a new
+instantiation or theory algorithm. Its proof obligations are that each Boolean
+argument receives its SAT truth value in EUF, that no open binder body enters
+ground EUF, and that registry growth cannot invalidate a borrowed term or atom.
+
+The producer audit is:
+
+| Producer | Definitions and preparation owner |
+| --- | --- |
+| Initial assertions and frontend Boolean names | Frontend side assertions and mandatory lowering precede the selected engine's domain preparation. |
+| Quantifier instances and Skolem lemmas | `prepare_lemmas` names Boolean arguments and lowers each batch, including its definitions; the driver's installation boundary completes the registry. |
+| Ground ITE, `div` and `mod` | `lower_extended_terms` returns rewritten roots together with defining constraints. ITE auxiliaries keep their result sort. Quotients are Int, with bounds on the residual; integer theory enforces integrality. |
+| Component interface encodings | Materialization emits ground equivalences; installation prepares all resulting atoms before reconnection. The existing fixed interface scopes are not extended by this repair. |
+| Assumptions-mode UF appends | The persistent engine prepares Boolean arguments once per query after all appends, before constructing its working propagator. |
+| Assumptions-mode LRA appends | The session's mandatory lowering supplies scoped roots and side constraints; append prepares arithmetic atoms before checking. No UF Boolean domain is involved. |
+
+Quotient sharing is local to one lowering call. A later call emits its own
+definitions, so a cached result cannot outlive popped defining assertions.
+Lowering processes children before parents and builds definitions from already
+lowered terms. Fresh terms produced in a later batch require another lowering
+call. Unsupported quantified arithmetic remains unsupported.
+
+Repeated domain preparation currently traverses the reachable atom DAG on this
+branch. Incremental scan improvements on `main` must be preserved at integration;
+this repair does not claim a scan-complexity optimization.
+
 ## Semantic invariant
 
 SMT-LIB permits uninterpreted functions over arbitrary sorts, including

@@ -3,6 +3,35 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-14-generated-term-preparation-repair",
+      "date": "2026-09-14",
+      "kind": "correctness-repair-and-default-scheduling-change",
+      "base_commit": "c882d3a",
+      "evidence_status": "local-verified-candidate-remote-qualification-pending",
+      "scope": "Shared generated-atom preparation, opaque quantifier walks, default one useful enumerative instance per round, immediate delivery of queued Skolem lemmas; original targeted generated/metamorphic and arithmetic gates.",
+      "design": "docs/euf-boolean-arguments.md; docs/quantifiers.md; docs/open-leads.md",
+      "local": {
+        "commands": [
+          "make check",
+          "make docs",
+          "ctest --test-dir build --output-on-failure --timeout 120",
+          "python3 scripts/quantifier_preparation_gate.py --mode generated --count 16 --solver build/primo --ref contrib/local/bin/z3 --ref contrib/local/bin/cvc5 --timeout 3 --out results/quant-fix-generated-smoke",
+          "python3 scripts/quantifier_preparation_gate.py --mode arithmetic --count 24 --solver build/primo --ref contrib/local/bin/z3 --ref contrib/local/bin/cvc5 --timeout 3 --out results/quant-fix-arithmetic-smoke"
+        ],
+        "checks": "39 CTest and 169 Python tests pass; lint and docs pass. First duplicate-normalization test expected the old batch behavior; now requests 128 explicitly. Branch baseline lint failures repaired (three executable bits, narrowed malformed-input exception handling). All 39 ASan tests pass (74.60 seconds). make tidy passes all 120 tracked C++ files (28 suppressed non-user-code warnings, no emitted project diagnostic); make include-cleaner completes all 120 files: 384 advisories inspected (361 requests for direct includes, 22 paired-header suggestions, one variant suggestion retained because std::get reads a variant). Direct cstddef/utility includes added to the new test; no real unused include identified. Additional later-batch modulo and idempotent-clause tests pass in Release and ASan.",
+        "generated": "16 inputs, 12 profiles, 192 candidate answers: 120 unsat and 72 sat; Z3 decides all 16, cvc5 gives 12 definite answers and 4 unknown; no disagreement/error/timeout.",
+        "arithmetic": "24 inputs, two profiles, 48 candidate answers: 24 sat and 24 unsat, both references agree on all 24; no error/timeout.",
+        "provenance": "Uncommitted candidate on c882d3a. Each gate retains binary hashes, version, seed, exact commands and every input/output in run.json and rows.jsonl. Generated and arithmetic RNG seed 20260914; timeout 3 seconds; local development host.",
+        "artifacts": [
+          "results/quantifier-preparation-fix",
+          "results/quant-fix-generated-smoke",
+          "results/quant-fix-arithmetic-smoke"
+        ]
+      },
+      "remaining": "Fresh candidate SLURM generated/mutation/arithmetic gates, 25-file scoped preservation with Dolmen, final artifact collection and audits.",
+      "limitations": "No full quantified-corpus timing or model qualification. Earlier quantified timings used batch 128 and predate the soundness repair. Native mutation is an original Boolean-wrapper metamorphic gate, not TypeFuzz. Larger batches and no-progress/time-based continuation remain open leads."
+    },
+    {
       "id": "2026-09-13-quantifiers-tuple-orders-144606",
       "date": "2026-09-13",
       "commit": "fc786f1",

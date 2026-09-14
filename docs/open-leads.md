@@ -38,6 +38,27 @@ implementing from these historical measurements.
 
 ## At a glance
 
+### Quantifiers: bounded larger instance batches
+
+**Open, not implemented or performance-qualified.** The default is now one
+useful instance per round. The previous default waited for 128 useful instances
+and could scan 67,108,864 substitutions of unused Boolean variables while an
+already queued lemma would immediately refute the problem. See
+[](quantifiers.md) for the regression and the distinction from queue draining.
+
+Larger batches might amortize ground-solver restarts. Before extending the
+default, design elapsed-time and no-progress limits that give up filling the
+batch and hand queued work to SAT. Cover duplicate-heavy scans, cancellation,
+resumable traversal and scans that produce no lemma. A yield must not skip
+tuples, claim enumeration is exhausted or justify SAT. Single-instance rounds
+also do not bound time spent finding the first useful instance.
+
+**Falsifier:** reject a larger-batch policy if it delays the unused-variable
+refutation, loses refutations through broken resumption, or fails to improve
+validated solved counts/PAR2 against batch size 1. Measure on the corrected
+solver; old UF-division runs used batch size 128 and predate the Boolean-domain
+soundness repair.
+
 | # | lead | expected size | cost | status |
 |---|---|---|---|---|
 | [1](#lead-pure-filter-lra) | Extend `--pure-theory-filter` to LRA atoms | zero as a wiring fix; the filter reaches only the once-called final check | large if done properly | **downgraded**; merge into lead 5 |

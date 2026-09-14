@@ -500,7 +500,8 @@ def analyze_file(path):
             commands = parse(handle.read())
         for command in commands:
             analysis.command(command)
-    except Exception as error:  # a malformed benchmark is a data point, not a crash
+    except (OSError, ValueError, IndexError, KeyError) as error:
+        # Malformed benchmark structure is a data point, not a corpus-wide abort.
         row["error"] = f"{type(error).__name__}: {error}"[:200]
     row.update(analysis.row())
     return row

@@ -886,6 +886,12 @@ void queued_lemmas_are_drained_at_the_growth_boundary() {
       recipe.online_order = {1, 0};
     }
     recipe.timing_prefix = ":time.lemma-test.";
+    bool prepared_new_atom = false;
+    recipe.prepare_boolean = [&](smt::BooleanClausifier& clausifier) {
+      for (const auto& atom : clausifier.theory_atoms()) {
+        prepared_new_atom = prepared_new_atom || atom.term == equal;
+      }
+    };
     if (scenario != Scenario::NoHook) {
       recipe.prepare_lemmas = [](std::vector<core::TermId> formulas) { return formulas; };
     }
@@ -928,6 +934,7 @@ void queued_lemmas_are_drained_at_the_growth_boundary() {
         break;
       case Scenario::KeepNewAtom:
         assert(drained == 1);
+        assert(prepared_new_atom);
         // The lemma's new equality atom reached its owner at the growth boundary.
         assert(owner_saw_new_atom);
         break;

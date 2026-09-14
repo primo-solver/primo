@@ -30,6 +30,33 @@ void expect(SmtSession& session, CheckSatResult result) {
   assert(response.outcome->result == result);
 }
 
+void arithmetic_auxiliaries_keep_scoped_definitions() {
+  for (const auto preprocessing :
+       {primo::smt::PreprocessingMode::Off, primo::smt::PreprocessingMode::Auto}) {
+    primo::smt::CheckSatOptions options;
+    options.preprocessing_mode = preprocessing;
+    SmtSession session(options);
+    accept(session, "(set-logic QF_LIA)");
+    accept(session, "(declare-const x Int)");
+    // Reuse the same extended terms after popping their first constraints.
+    for (const std::string value : {"5", "(- 5)"}) {
+      accept(session, "(push 1)");
+      accept(session, "(assert (= x " + value + "))");
+      expect(session, CheckSatResult::Sat);
+      accept(session, "(push 1)");
+      accept(session, "(assert (= (mod x 3) 0))");
+      expect(session, CheckSatResult::Unsat);
+      accept(session, "(pop 1)");
+      accept(session, "(assert (= (mod x 3) " + std::string(value == "5" ? "2" : "1") + "))");
+      accept(session, "(assert (= (+ (* 3 (div x 3)) (mod x 3)) x))");
+      expect(session, CheckSatResult::Sat);
+      accept(session, "(assert (< (mod x 3) 0))");
+      expect(session, CheckSatResult::Unsat);
+      accept(session, "(pop 1)");
+    }
+  }
+}
+
 void uf_assumption_scopes_and_preparation() {
   for (const auto preprocessing :
        {primo::smt::PreprocessingMode::Off, primo::smt::PreprocessingMode::Auto}) {
@@ -559,6 +586,7 @@ void canonical_names_and_categories() {
 }  // namespace
 
 int main() {
+  arithmetic_auxiliaries_keep_scoped_definitions();
   uf_assumption_scopes_and_preparation();
   uf_assumption_growth_cancellation_and_options();
   uf_assumption_models_use_active_lowered_roots();

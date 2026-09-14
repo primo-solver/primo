@@ -48,6 +48,10 @@ enum class TupleOrder {
 // SMT-LIB UF division (docs/quantifiers.md).
 inline constexpr TupleOrder kDefaultTupleOrder = TupleOrder::SumOfDigits;
 
+// Deliver the first useful instance to SAT instead of scanning duplicate
+// tuples to fill a batch. Larger rounds remain an explicit option.
+inline constexpr std::size_t kDefaultQuantifierInstancesPerRound = 1;
+
 // Option names of the orders, in enumerator order.
 inline constexpr std::array<std::pair<std::string_view, TupleOrder>, 6> kTupleOrderNames{{
     {"max", TupleOrder::MaxDigit},

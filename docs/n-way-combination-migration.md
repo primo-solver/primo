@@ -336,14 +336,19 @@ changed; only the component protocol and the online driver grew.
   pending, the driver:
   1. drains up to `CombinationRecipe::lemma_batch` lemmas from the owning
      component;
-  2. passes them through `CombinationRecipe::prepare_lemmas` and clausifies the
-     result;
-  3. calls the existing `install_atoms()` growth boundary, which registers new
-     atoms with their owners and rebuilds the dispatcher;
+  2. disconnects the previous dispatcher, passes the lemmas through
+     `CombinationRecipe::prepare_lemmas` and clausifies the result, including
+     all lowering definitions;
+  3. calls `install_atoms()`, which first completes Boolean-domain preparation,
+     then registers every new atom with its owner and rebuilds the dispatcher;
   4. solves again.
 
   An UNSAT result with a stop pending is still UNSAT, since lemmas only
   strengthen the formula. Without `prepare_lemmas` the stop is `Unsupported`.
+  The same installation checkpoint prepares generated interface encodings.
+  Initial planning also runs preparation before taking the registry snapshot;
+  the hook must be idempotent. See [](euf-boolean-arguments.md) for the
+  generated-term ownership and lifetime contract.
 - **Counters.** `:combination.lemmas.batches` and `:combination.lemmas.formulas`
   appear only when lemmas are drained, so existing recipes' statistics are
   unchanged.
