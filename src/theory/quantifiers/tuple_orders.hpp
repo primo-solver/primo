@@ -44,6 +44,10 @@ enum class TupleOrder {
 // SMT-LIB UF division (docs/quantifiers.md).
 inline constexpr TupleOrder kDefaultTupleOrder = TupleOrder::SumOfDigits;
 
+// Deliver the first useful instance to SAT instead of scanning duplicate
+// tuples to fill a batch. Larger rounds remain an explicit option.
+inline constexpr std::size_t kDefaultQuantifierInstancesPerRound = 1;
+
 using IndexTuple = std::vector<std::size_t>;
 // Receives one tuple; returns false to stop the enumeration.
 using TupleVisitor = std::function<bool(const IndexTuple&)>;

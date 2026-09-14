@@ -31,7 +31,7 @@ namespace primo::theory {
 
 struct QuantifierInstantiationOptions {
   // Instances queued at one complete assignment, across all quantifiers.
-  std::size_t instances_per_round = 128;
+  std::size_t instances_per_round = kDefaultQuantifierInstancesPerRound;
   // Distinct instances generated in one solve before reporting ResourceLimit;
   // instances recognized as generated before do not count.
   std::size_t max_instances = 100000;
@@ -59,8 +59,8 @@ struct QuantifierInstantiationOptions {
 // Enumerative Instantiation", TACAS 2018, section 4 and 4.1, over ground terms
 // of the assertions and of every lemma already handed over (Theorem 1's term
 // set). The tuple order is selectable (tuple_orders.hpp, after Janota, Barbosa,
-// Fontaine and Reynolds, FMCAD 2021); the default is the original
-// max-then-grouped order. The subset and the deviations are listed in
+// Fontaine and Reynolds, FMCAD 2021); the default is sum-of-indices order.
+// The subset and the deviations are listed in
 // docs/papers/enumerative-instantiation.md and
 // docs/papers/fair-adventurous-enumeration.md. With no entailment check,
 // running out of instances is `Unknown`, never `sat`.

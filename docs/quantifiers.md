@@ -16,6 +16,57 @@ source or documentation informs this note (clean-room policy, `AGENTS.md`).
 
 ## Implementation status
 
+### Generated-term repair and single-instance rounds
+
+The review at `c882d3a` found an incorrect SAT answer for an existential
+Boolean argument: an instance introduced a Skolem constant after the one-time
+Boolean-domain preparation. EUF could then give that Boolean a third value.
+The bridge-atoms alternative also traversed open binder bodies and rejected
+valid quantified input. The shared preparation contract and producer audit are
+in [](euf-boolean-arguments.md). Both walks now leave binders opaque, and the
+component driver completes the registry at every installation boundary.
+
+`--quantifier-instances-per-round` now defaults to **1**, defined once for both
+the public solver options and `QuantifierInstantiationOptions`. A useful
+enumerative lemma returns immediately to SAT; queued Skolem lemmas are handed
+over before starting universal enumeration. Explicit larger rounds remain
+available. The separate `CombinationRecipe::lemma_batch` limit of 64 only
+drains an existing queue and does not wait for it to fill.
+
+With 26 unused Boolean variables, `forall xs. p` has 67,108,864 tuples, all
+producing `p`. Under the old default of 128 useful instances per round,
+duplicate filtering kept the first lemma queued while scanning the entire
+product. The new regression asserts one attempted instance before refuting
+that formula together with `not p`, for every tuple order and both instance
+normalization settings. Distinct-instance budget accounting is unchanged.
+
+**Open lead: bounded larger batches.** Larger rounds may amortize restarts,
+but their benefit is unqualified. Before promoting them, design an elapsed-time
+and no-progress limit that gives up filling a batch and delivers queued lemmas.
+It must cover duplicate-heavy scans, cancellation, resumable traversal and
+calls with no queued lemma. Yielding must not skip tuples, claim exhaustion or
+justify SAT. Defaulting to one useful instance does not guarantee termination
+when no useful instance is found. No tuple-work threshold is implemented here.
+
+All UF-division timings below used the previous default of 128 instances per
+round and predate this soundness repair. They remain historical measurements;
+they do not qualify the repaired solver or measure the new default. Fresh
+correctness evidence is recorded separately in `run-log.json`.
+
+At `2fb97bd`, the fresh SLURM gate completed 3,000 targeted generated cases,
+1,000 native Boolean-wrapper mutations, and 1,000 arithmetic auxiliary cases.
+These contain 1,215, 979, and 999 distinct input hashes respectively. Both
+Boolean-domain modes were checked; generated cases also covered all six tuple
+orders. All 38,827 definite candidate answers were reference-confirmed,
+including 33 answers confirmed by a separate cvc5 enumerative follow-up.
+The native runs also returned 701 unknowns and reached 472 timeouts across
+both modes; these are not counted as solved cases. No crash, input rejection
+or disagreement was detected. The 25-file ground preservation sample passed
+200 queries, with all 121 SAT query models accepted by Dolmen. This is targeted
+correctness evidence, not full quantified-model or performance qualification.
+Exact commands, hashes, coverage and limitations are retained in
+`benchmarks/quantifier-preparation-2fb97bd.json` and the run log.
+
 | Milestone | Status |
 | --- | --- |
 | M0: paper note for enumerative instantiation | done: [](papers/enumerative-instantiation.md) |

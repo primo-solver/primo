@@ -3,10 +3,16 @@
 #endif
 
 #include <cassert>
+#include <cstddef>
 #include <string>
+#include <utility>
 
 #include "cli/option_names.hpp"
+#include "core/symbol_table.hpp"
+#include "core/term_manager.hpp"
+#include "sat/cadical_backend.hpp"
 #include "smt/check_sat.hpp"
+#include "smt/clausifier.hpp"
 #include "smt/inconclusive_reason.hpp"
 
 using primo::smt::check_sat_smtlib;
@@ -16,6 +22,121 @@ using primo::smt::CheckSatResult;
 using primo::smt::InconclusiveReason;
 
 namespace {
+
+void generated_boolean_arguments_receive_their_domain() {
+  const std::string prelude =
+      "(set-logic UF) (declare-sort U 0) (declare-fun h (Bool) U) "
+      "(declare-fun p (U) Bool) ";
+  for (const auto domain :
+       {primo::smt::EufBooleanDomain::Registration, primo::smt::EufBooleanDomain::BridgeAtoms}) {
+    CheckSatOptions options;
+    options.euf_boolean_domain = domain;
+    for (const std::string assertion :
+         {"(exists ((b Bool)) (and (distinct (h b) (h true)) "
+          "(distinct (h b) (h false))))",
+          "(not (forall ((b Bool)) (or (= (h b) (h true)) (= (h b) (h false)))))",
+          // A second Skolem batch, then a compound argument named during lowering.
+          "(exists ((x U)) (exists ((b Bool)) (and "
+          "(distinct (h (and b (p x))) (h true)) "
+          "(distinct (h (and b (p x))) (h false)))))"}) {
+      const auto outcome =
+          check_sat_smtlib(prelude + "(assert " + assertion + ")(check-sat)", options);
+      assert(outcome.result == CheckSatResult::Unsat);
+      assert(outcome.statistics.get(":combination.lemmas.batches") >= 1);
+    }
+    for (const std::string assertion :
+         {"(exists ((x U)) (p x))", "(exists ((x U)) (! (p x) :pattern ((p x))))",
+          "(exists ((b Bool)) (= (h b) (h true)))"}) {
+      assert(check_sat_smtlib(prelude + "(assert " + assertion + ")(check-sat)", options).result ==
+             CheckSatResult::Sat);
+    }
+  }
+}
+
+// Exercise the preparation API independently of a quantifier/Skolem producer.
+// Each iteration introduces a fresh argument after the previous preparation.
+// Varied arena occupancy exercises registry and term reallocations under ASan.
+void domain_preparation_is_closed_and_idempotent() {
+  for (const bool bridges : {false, true}) {
+    primo::core::SymbolTable symbols;
+    primo::core::TermManager terms(symbols);
+    primo::sat::CadicalBackend backend;
+    primo::smt::BooleanClausifier clausifier(backend, terms, false);
+    const auto boolean = symbols.bool_sort();
+    const auto sort = symbols.declare_sort("U");
+    const auto function = symbols.declare_function("h", {boolean}, sort);
+    const auto truth = terms.mk_bool(true);
+    const auto bound = terms.mk_bound_variable(0, boolean);
+    const auto open_application = terms.mk_app(function, {bound});
+    const auto true_application = terms.mk_app(function, {truth});
+    const auto body = terms.mk_eq(open_application, true_application);
+    clausifier.assert_formula(terms.mk_forall({boolean}, body));
+    const auto prepare = [&] {
+      if (bridges)
+        clausifier.materialize_boolean_argument_literals();
+      else
+        static_cast<void>(clausifier.register_boolean_argument_terms());
+    };
+    prepare();
+    assert(clausifier.theory_atoms().size() == 1);
+    for (std::size_t index = 0; index < 257; ++index) {
+      const auto symbol = symbols.declare_internal_constant("b" + std::to_string(index), boolean);
+      const auto argument = terms.mk_constant(symbol);
+      const auto application = terms.mk_app(function, {argument});
+      clausifier.assert_formula(terms.mk_eq(application, true_application));
+      prepare();
+      const auto atoms = clausifier.theory_atoms();
+      const auto term_count = terms.size();
+      const auto bridge_count = clausifier.boolean_domain_bridge_count();
+      const auto registered_count = clausifier.boolean_argument_registration_count();
+      const auto backend_before = backend.statistics();
+      prepare();
+      assert(terms.size() == term_count);
+      assert(clausifier.theory_atoms().size() == atoms.size());
+      assert(clausifier.boolean_domain_bridge_count() == bridge_count);
+      assert(clausifier.boolean_argument_registration_count() == registered_count);
+      assert(backend.statistics().clauses == backend_before.clauses);
+      assert(backend.statistics().variables == backend_before.variables);
+      for (std::size_t atom = 0; atom < atoms.size(); ++atom) {
+        assert(terms.loose_index(atoms[atom].term) == 0);
+        assert(clausifier.theory_atoms()[atom].term == atoms[atom].term);
+        assert(clausifier.theory_atoms()[atom].lit.value == atoms[atom].lit.value);
+      }
+    }
+  }
+}
+
+void one_instance_reaches_sat_before_duplicate_enumeration() {
+  std::string variables;
+  for (int index = 0; index < 26; ++index) {
+    variables += "(x" + std::to_string(index) + " Bool)";
+  }
+  const std::string input =
+      "(set-logic UF) (declare-const p Bool) (assert (not p)) "
+      "(assert (forall (" +
+      variables + ") p)) (check-sat)";
+  assert(CheckSatOptions{}.quantifier_instances_per_round == 1);
+  for (const auto& entry : primo::cli::kTupleOrderNames) {
+    for (const bool simplify : {false, true}) {
+      CheckSatOptions options;
+      options.quantifier_tuple_order = entry.value;
+      options.quantifier_instance_simplification = simplify;
+      for (const bool explicit_default : {false, true}) {
+        if (explicit_default) options.quantifier_instances_per_round = 1;
+        const auto outcome = check_sat_smtlib(input, options);
+        assert(outcome.result == CheckSatResult::Unsat);
+        assert(outcome.statistics.get(":quant.instances") == 1);
+      }
+    }
+  }
+  // Preserve the explicit batching option on a bounded product.
+  CheckSatOptions batched;
+  batched.quantifier_instances_per_round = 8;
+  assert(check_sat_smtlib("(set-logic UF) (declare-const p Bool) (assert (not p)) "
+                          "(assert (forall ((x Bool) (y Bool)) p)) (check-sat)",
+                          batched)
+             .result == CheckSatResult::Unsat);
+}
 
 const std::string kPrelude = R"(
   (set-logic UF)
@@ -137,11 +258,15 @@ void instances_are_normalized_and_deduplicated() {
   const std::string symmetric =
       "(assert (forall ((x U) (y U)) (or (p x) (p y)))) "
       "(assert (not (p a))) (assert (not (p b)))";
-  const CheckSatOutcome simplified = solve(symmetric);
+  // This test deliberately fills a batch to exercise duplicate filtering;
+  // the default now refutes after its first useful instance.
+  CheckSatOptions batched;
+  batched.quantifier_instances_per_round = 128;
+  const CheckSatOutcome simplified = solve(symmetric, batched);
   assert(simplified.result == CheckSatResult::Unsat);
   assert(simplified.statistics.get(":quant.instances.simplified-duplicates") >= 1);
 
-  CheckSatOptions plain;
+  CheckSatOptions plain = batched;
   plain.quantifier_instance_simplification = false;
   const CheckSatOutcome unsimplified = solve(symmetric, plain);
   assert(unsimplified.result == CheckSatResult::Unsat);
@@ -266,6 +391,9 @@ void every_tuple_order_refutes() {
 }  // namespace
 
 int main() {
+  generated_boolean_arguments_receive_their_domain();
+  domain_preparation_is_closed_and_idempotent();
+  one_instance_reaches_sat_before_duplicate_enumeration();
   single_instances_refute();
   skolemization_covers_both_polarities();
   nested_quantifiers_become_atoms_of_instances();

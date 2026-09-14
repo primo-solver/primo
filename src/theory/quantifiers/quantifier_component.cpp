@@ -134,6 +134,14 @@ TheoryCheckResult QuantifierComponent::check(TheoryCheckEffort effort,
     return result;
   }
 
+  // Skolem lemmas already give SAT new work. Do not hold them while searching
+  // a universal's tuple product for another useful instance.
+  if (!queue_.empty()) {
+    statistics_.increment(":quant.rounds");
+    result.status = TheoryCheckStatus::LemmasPending;
+    return result;
+  }
+
   if (!universal.empty()) {
     // Fairness across quantifiers: a rotating start and an even share first.
     const std::size_t share =

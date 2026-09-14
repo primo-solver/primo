@@ -3,6 +3,87 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-14-generated-term-preparation-qualification",
+      "date": "2026-09-14",
+      "commit": "2fb97bd",
+      "branch": "quantifiers",
+      "kind": "correctness-campaign-and-default-preservation",
+      "evidence_status": "complete-with-explicit-coverage-limits",
+      "scope": "Fresh exact-candidate qualification of Boolean-domain preparation after atom growth, opaque binders, and default single useful quantifier instance per round. No performance qualification.",
+      "metadata": "benchmarks/quantifier-preparation-2fb97bd.json",
+      "environment": {
+        "host": "CIIRC SLURM compute; per-shard host names retained in run.json",
+        "candidate": "Release 2fb97bd, CaDiCaL 3.0.0-7b99c07, SHA256 9626b377f161ae0761d6c801fdc035d54bd19e0837860343bc936403982164c1",
+        "references": "Z3 5.1.0; cvc5 1.3.4 f3b21c4; all executable hashes in committed metadata",
+        "gate_resources": "1 CPU requested, 2 allocated, 4G and 30 minutes per task; 5 seconds per solver process; array throttle 4 raised to 8",
+        "seed": 20260914
+      },
+      "commands": {
+        "gate": "PRIMO_WORKDIR=/home/janotmik/primo-quantifiers PRIMO_GATE_OUT=/home/janotmik/primo-quantifiers/results/quant-prep-2fb97bd PRIMO_UF_CORPUS=/home/janotmik/primo-quantifiers-data/non-incremental/UF PRIMO_EXPECTED_REVISION=2fb97bd sbatch scripts/slurm_quantifier_preparation_gate.sbatch",
+        "candidate": "build-slurm-rel/primo --quiet --max-theory-conflicts=1000 --quantifier-max-instances=2000 --euf-boolean-domain=<mode> --quantifier-tuple-order=<order> <input>; omitted batch exercises default 1",
+        "references": "contrib/local/bin/z3 <input>; contrib/local/bin/cvc5 <input>",
+        "confirmations": "timeout 30 contrib/local/bin/cvc5 --enum-inst <input>; 18 actual mutations, 1 CPU requested/2 allocated, 4G, 15-minute task",
+        "preservation": "scripts/slurm_incremental_corpus.sbatch, arrays 0 and 1-4, PRIMO_EXPECTED_REVISION=2fb97bd; full submission arguments in committed metadata. 30-second solver/Dolmen limits, 127-byte stdin chunks; established conflict limits 10000 for QF_UF and 1000 otherwise.",
+        "summary": "python3 scripts/summarize_quantifier_preparation_gate.py --root results/quantifier-preparation-fix/quant-prep-2fb97bd --out results/quantifier-preparation-fix/gate-summary.json"
+      },
+      "jobs": {
+        "build_initial": "145247 FAILED 2:0: missing compute-node C++ standard headers; infrastructure failure",
+        "build_retry": "145248 COMPLETED 0:0 after helper header-manifest provisioning; clean rebuild and revision/hash checks passed",
+        "gate": "145249: all 60 tasks COMPLETED 0:0",
+        "confirmation": "145314 COMPLETED 0:0",
+        "preservation": "145258_0 and 145263_1..4: all five COMPLETED 0:0"
+      },
+      "results": {
+        "generated": "3000 cases (1215 distinct input hashes), both Boolean modes times six tuple orders: 36000 candidate answers, all reference-confirmed. Per profile: 1125 sat, 1875 unsat. Z3 decides all cases; cvc5: 1125 sat, 946 unsat, 929 unknown.",
+        "native_mutations": "1000 cases (979 distinct hashes), both Boolean modes/default sum. Registration: 2 sat, 413 unsat, 355 unknown, 230 timeout. Bridge-atoms: 2 sat, 410 unsat, 346 unknown, 242 timeout. Z3: 477 sat, 436 unsat, 87 timeout; cvc5: 44 sat, 435 unsat, 521 unknown. 794 candidate answers confirmed within 5 seconds.",
+        "native_followup": "The other 33 candidate unsat answers concern 18 mutations of one source with unknown declared status. cvc5 --enum-inst confirmed every mutated input unsat (exit 0); no definite candidate answer remains unconfirmed.",
+        "arithmetic": "1000 cases (999 distinct hashes), QF_LIA/QF_UFLIA auxiliary lowering, both Boolean modes: each profile 500 sat/500 unsat; both references agree on all cases.",
+        "total": "5000 cases, 40000 candidate executions and 10000 initial reference executions. Candidate: 38827 reference-confirmed definite answers including follow-up, 701 unknown, 472 timeout. Zero detected wrong answers, crashes, parser/type errors, unsupported cases or reference disagreements.",
+        "preservation": "25/25 hash-pinned real files pass across QF_UF/QF_LIA/QF_LRA/QF_UFLIA/QF_UFLRA; 50 stdin/scoped sessions, 200/200 actual queries: 121 sat, 79 unsat. Dolmen 0.10 directly accepts all 121 SAT query models. Known status/scoped metamorphic oracle; no reference reruns or timing comparison.",
+        "local": "make check: 39 CTest and 169 Python tests; final harness follow-up make python-test: 170 tests. make asan-test: 39 tests. make lint and make docs pass. make tidy covers all 120 tracked C++ files without emitted project diagnostic (28 non-user-code warnings suppressed). make include-cleaner: 384 reviewed advisories, not a warning-free scan. Code/efficiency review: no blocking issue."
+      },
+      "limitations": [
+        "Generated cases vary eight targeted shapes and include duplicates; native mutations are original fresh-Boolean wrappers over small single-query seeds, not TypeFuzz. Arithmetic coverage uses fixed divisors and a SAT-only mixed-logic slice, not quantified arithmetic.",
+        "Native unknowns/timeouts are not solved cases. No quantified SAT-model validation, full UF-division evaluation, PAR2 or speedup claim. Prior batch-128 timings predate this repair.",
+        "One-instance rounds avoid holding the first useful lemma for duplicates; they do not guarantee termination when no useful lemma exists. Bounded larger batches remain an open lead."
+      ],
+      "artifacts": {
+        "local": "results/quantifier-preparation-fix (raw gate, preservation, confirmations, binaries, logs, review, compressed archives)",
+        "remote": "/home/janotmik/primo-quantifiers/results/quant-prep-2fb97bd, quant-prep-default-2fb97bd, quant-prep-confirm-2fb97bd",
+        "integrity": "Archive SHA256 values and binary identities in benchmarks/quantifier-preparation-2fb97bd.json; summary checks exact shard/profile coverage, input hashes and failures.",
+        "audit": "results/quantifier-preparation-fix/final-job-audit.txt: all submitted jobs terminal; failed initial build triaged and replaced by successful retry."
+      }
+    },
+    {
+      "id": "2026-09-14-generated-term-preparation-repair",
+      "date": "2026-09-14",
+      "kind": "correctness-repair-and-default-scheduling-change",
+      "base_commit": "c882d3a",
+      "evidence_status": "local-verified-followed-by-2fb97bd-slurm-qualification",
+      "scope": "Shared generated-atom preparation, opaque quantifier walks, default one useful enumerative instance per round, immediate delivery of queued Skolem lemmas; original targeted generated/metamorphic and arithmetic gates.",
+      "design": "docs/euf-boolean-arguments.md; docs/quantifiers.md; docs/open-leads.md",
+      "local": {
+        "commands": [
+          "make check",
+          "make docs",
+          "ctest --test-dir build --output-on-failure --timeout 120",
+          "python3 scripts/quantifier_preparation_gate.py --mode generated --count 16 --solver build/primo --ref contrib/local/bin/z3 --ref contrib/local/bin/cvc5 --timeout 3 --out results/quant-fix-generated-smoke",
+          "python3 scripts/quantifier_preparation_gate.py --mode arithmetic --count 24 --solver build/primo --ref contrib/local/bin/z3 --ref contrib/local/bin/cvc5 --timeout 3 --out results/quant-fix-arithmetic-smoke"
+        ],
+        "checks": "39 CTest and 169 Python tests pass; lint and docs pass. First duplicate-normalization test expected the old batch behavior; now requests 128 explicitly. Branch baseline lint failures repaired (three executable bits, narrowed malformed-input exception handling). All 39 ASan tests pass (74.60 seconds). make tidy passes all 120 tracked C++ files (28 suppressed non-user-code warnings, no emitted project diagnostic); make include-cleaner completes all 120 files: 384 advisories inspected (361 requests for direct includes, 22 paired-header suggestions, one variant suggestion retained because std::get reads a variant). Direct cstddef/utility includes added to the new test; no real unused include identified. Additional later-batch modulo and idempotent-clause tests pass in Release and ASan.",
+        "generated": "16 inputs, 12 profiles, 192 candidate answers: 120 unsat and 72 sat; Z3 decides all 16, cvc5 gives 12 definite answers and 4 unknown; no disagreement/error/timeout.",
+        "arithmetic": "24 inputs, two profiles, 48 candidate answers: 24 sat and 24 unsat, both references agree on all 24; no error/timeout.",
+        "provenance": "Uncommitted candidate on c882d3a. Each gate retains binary hashes, version, seed, exact commands and every input/output in run.json and rows.jsonl. Generated and arithmetic RNG seed 20260914; timeout 3 seconds; local development host.",
+        "artifacts": [
+          "results/quantifier-preparation-fix",
+          "results/quant-fix-generated-smoke",
+          "results/quant-fix-arithmetic-smoke"
+        ]
+      },
+      "followup": "Completed in 2026-09-14-generated-term-preparation-qualification; source milestone 2fb97bd, all candidate answers reference-confirmed, artifacts collected and jobs terminal.",
+      "limitations": "No full quantified-corpus timing or model qualification. Earlier quantified timings used batch 128 and predate the soundness repair. Native mutation is an original Boolean-wrapper metamorphic gate, not TypeFuzz. Larger batches and no-progress/time-based continuation remain open leads."
+    },
+    {
       "id": "2026-09-13-quantifiers-tuple-orders-144606",
       "date": "2026-09-13",
       "commit": "fc786f1",
