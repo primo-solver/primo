@@ -785,6 +785,11 @@ int run_main(int argc, char** argv) {
       ->check(CLI::Range(1, 1000000));
   app.add_option("--quantifier-random-seed", solver_options.quantifier_random_seed,
                  "Quantified UF: seed of the random tuple order");
+  app.add_option("--quantifier-export-pools", solver_options.quantifier_export_pools,
+                 "Quantified UF: write the instantiation tuples and Skolem lemmas as SMT-LIB "
+                 "pools to FILE, for scripts/quantifier_pool_check.py")
+      ->type_name("FILE")
+      ->default_str("");
   app.add_option("files", files, "SMT-LIB input files. Reads stdin when omitted")
       ->type_name("FILE")
       ->default_str("");

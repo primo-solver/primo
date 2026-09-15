@@ -210,6 +210,7 @@ const std::vector<core::TermId>& QuantifierComponent::pool(core::SortId sort) {
   if (terms.empty()) {
     // Theorem 1 assumes a term of each sort; supply one for an empty sort.
     terms.push_back(fresh_constant_(sort, "herbrand"));
+    if (options_.export_sink != nullptr) options_.export_sink->constants.push_back(terms.back());
   }
   return terms;
 }
@@ -282,8 +283,14 @@ void QuantifierComponent::skolemize(core::TermId atom, bool value) {
     constants.push_back(fresh_constant_(sort, "skolem"));
   }
   const core::TermId instance = canonical(core::instantiate(terms_, atom, constants));
-  if (enqueue(canonical(lemma_for(atom, value, instance)))) {
+  const core::TermId lemma = canonical(lemma_for(atom, value, instance));
+  if (options_.export_sink != nullptr) {
+    auto& created = options_.export_sink->constants;
+    created.insert(created.end(), constants.begin(), constants.end());
+  }
+  if (enqueue(lemma)) {
     statistics_.increment(":quant.skolem-lemmas");
+    if (options_.export_sink != nullptr) options_.export_sink->skolem_lemmas.push_back(lemma);
   }
 }
 
@@ -318,6 +325,8 @@ std::size_t QuantifierComponent::enumerate(core::TermId atom, bool value, std::s
       statistics_.increment(":quant.instances");
       if (add_instance(atom, value, core::instantiate(terms_, atom, tuple))) {
         idle = 0;
+        if (options_.export_sink != nullptr)
+          options_.export_sink->tuples.emplace_back(state.sorts, tuple);
         return ++made < budget && instances_ < options_.max_instances;
       }
     }

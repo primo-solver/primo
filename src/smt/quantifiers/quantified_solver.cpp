@@ -9,6 +9,7 @@
 #include "core/term_manager.hpp"
 #include "smt/component_solver.hpp"
 #include "smt/preprocessing.hpp"
+#include "smt/quantifiers/pool_export.hpp"
 #include "smt/solver_engines.hpp"
 #include "theory/quantifiers/quantifier_component.hpp"
 #include "util/statistics.hpp"
@@ -127,6 +128,8 @@ CheckSatOutcome solve_quantified_uf(
   instantiation.tuple_order = options.quantifier_tuple_order;
   instantiation.deepening_increment = options.quantifier_deepening_increment;
   instantiation.random_seed = options.quantifier_random_seed;
+  theory::QuantifierExport exported;
+  if (!options.quantifier_export_pools.empty()) instantiation.export_sink = &exported;
 
   CombinationRecipe recipe;
   recipe.online = true;
@@ -145,7 +148,12 @@ CheckSatOutcome solve_quantified_uf(
                         return std::make_unique<theory::QuantifierComponent>(
                             terms, ground, factory, instantiation, statistics);
                       }};
-  return solve_component_recipe(terms, ground, {}, options, statistics, recipe);
+  CheckSatOutcome outcome = solve_component_recipe(terms, ground, {}, options, statistics, recipe);
+  if (instantiation.export_sink != nullptr) {
+    write_pool_export(terms, exported, options.quantifier_export_pools, statistics);
+    outcome.statistics = statistics;
+  }
+  return outcome;
 }
 
 }  // namespace primo::smt

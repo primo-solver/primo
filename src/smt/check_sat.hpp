@@ -506,6 +506,9 @@ struct CheckSatOptions {
   theory::TupleOrder quantifier_tuple_order = theory::kDefaultTupleOrder;
   std::size_t quantifier_deepening_increment = 2;
   std::uint64_t quantifier_random_seed = 0;
+  // Quantified UF: file receiving the instantiation tuples and Skolem lemmas as
+  // SMT-LIB pools (smt/quantifiers/pool_export.hpp); empty writes nothing.
+  std::string quantifier_export_pools;
   std::size_t qf_uf_portfolio_conflicts = 2000;
   std::vector<std::pair<std::string, int>> cadical_options;
   std::function<bool()> cancelled;

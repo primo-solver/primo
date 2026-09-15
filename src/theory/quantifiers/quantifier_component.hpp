@@ -29,6 +29,17 @@ class Statistics;
 
 namespace primo::theory {
 
+// What instantiation used, recorded for checking an answer with another solver
+// (smt/quantifiers/pool_export.hpp). Terms belong to the solve's TermManager.
+struct QuantifierExport {
+  // Constants the component created (Skolem and Herbrand), in creation order.
+  std::vector<core::TermId> constants;
+  // Skolem lemmas, as queued.
+  std::vector<core::TermId> skolem_lemmas;
+  // Tuples whose instance became a lemma, with their quantifier's variable sorts.
+  std::vector<std::pair<std::vector<core::SortId>, std::vector<core::TermId>>> tuples;
+};
+
 struct QuantifierInstantiationOptions {
   // Instances queued at one complete assignment, across all quantifiers.
   std::size_t instances_per_round = kDefaultQuantifierInstancesPerRound;
@@ -48,6 +59,8 @@ struct QuantifierInstantiationOptions {
   std::size_t deepening_increment = 2;
   // Seed of TupleOrder::RandomWalk, mixed with each quantifier's atom.
   std::uint64_t random_seed = 0;
+  // Receives what instantiation used; null records nothing.
+  QuantifierExport* export_sink = nullptr;
 };
 
 // Online component owning every Forall/Exists atom of the Boolean abstraction

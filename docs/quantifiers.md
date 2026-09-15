@@ -67,6 +67,29 @@ for a round's first useful lemma, which stays long when no tuple produces one,
 and cancellation is not observed inside a scan. The default of 65,536 is
 chosen, not tuned.
 
+**Checking unsat answers with cvc5 pools.** `--quantifier-export-pools FILE`
+writes what instantiation used as SMT-LIB. The file declares the Skolem and
+Herbrand constants and asserts the Skolem lemmas. It also defines one cvc5
+pool per variable-sort signature, holding the tuples whose instances became
+lemmas. `smtlib::print_term` prints the terms; a lemma or tuple that
+mentions another internal constant is skipped and counted
+(`:quant.export.*`). `scripts/quantifier_pool_check.py` runs Primo with the
+export, then runs cvc5 `--pool-inst` on the original input with these
+changes: the logic becomes `ALL`, the export is added before the assertions,
+and every quantifier whose sorts have a pool gets a `:pool` annotation.
+
+The check trusts only cvc5. Pools and annotations do not change what the
+problem means, and a Skolem lemma naming a fresh constant keeps a satisfiable
+problem satisfiable whatever formula it names, so a printing mistake cannot
+create a false confirmation. As a self-check, removing the annotations must
+give back the input's commands. With `--force` the same check runs on inputs
+Primo did not refute, as a negative control that must never answer unsat.
+
+The three reference-less `unsat` answers of the UF evaluations were all
+confirmed this way, each in under 0.25 s of cvc5 time: the two `llist2` files
+and `koenigslemma`, which Primo refutes with `--quantifier-tuple-order=max`.
+cvc5 alone had timed out on each, even at 900 s.
+
 The UF-division tables below predate the soundness repair and remain
 historical. The fresh runs at `ff72a12` are the run-log entries
 `2026-09-14-quantifiers-merge-readiness-ff72a12` and

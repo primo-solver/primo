@@ -4,6 +4,10 @@
 
 #include <cassert>
 #include <cstddef>
+#include <filesystem>
+#include <fstream>
+#include <random>
+#include <sstream>
 #include <string>
 #include <utility>
 
@@ -152,6 +156,34 @@ void stalled_scans_deliver_queued_lemmas() {
                           "(assert (forall ((x Bool) (y Bool)) p)) (check-sat)",
                           unbounded)
              .result == CheckSatResult::Unsat);
+}
+
+// The pool export declares the Skolem constants, asserts their lemmas and pools
+// the tuples that became lemmas, including one that needs a Skolem constant.
+void pool_export_lists_skolems_and_tuples() {
+  const auto path = std::filesystem::temp_directory_path() /
+                    ("primo-pool-export-" + std::to_string(std::random_device{}()) + ".smt2");
+  CheckSatOptions options;
+  options.quantifier_export_pools = path.string();
+  const std::string input =
+      "(set-logic UF) (declare-sort U 0) (declare-fun a () U) "
+      "(declare-fun q (U) Bool) (declare-fun r (U U) Bool) "
+      "(assert (exists ((z U)) (not (q z)))) "
+      "(assert (forall ((x U) (y U)) (or (r x y) (q y)))) "
+      "(assert (forall ((x U)) (not (r a x)))) (check-sat)";
+  const CheckSatOutcome outcome = check_sat_smtlib(input, options);
+  assert(outcome.result == CheckSatResult::Unsat);
+  std::stringstream buffer;
+  buffer << std::ifstream(path).rdbuf();
+  const std::string text = buffer.str();
+  std::filesystem::remove(path);
+  assert(text.find("(declare-fun $primo_skolem_") != std::string::npos);
+  assert(text.find("(assert (or ") != std::string::npos);
+  assert(text.find("; primo-pool primo_pool_") != std::string::npos);
+  assert(text.find("(Tuple U U)") != std::string::npos);
+  assert(text.find("(tuple a $primo_skolem_") != std::string::npos);
+  assert(outcome.statistics.get(":quant.export.tuples") >= 2);
+  assert(outcome.statistics.get(":quant.export.skipped-tuples") == 0);
 }
 
 // A stall ends a round without losing enumeration state. Here the refuting
@@ -435,6 +467,7 @@ int main() {
   domain_preparation_is_closed_and_idempotent();
   stalled_scans_deliver_queued_lemmas();
   stalls_resume_without_skipping_tuples();
+  pool_export_lists_skolems_and_tuples();
   single_instances_refute();
   skolemization_covers_both_polarities();
   nested_quantifiers_become_atoms_of_instances();
