@@ -71,6 +71,29 @@ configuration is confined to `primo_sat`, and GMP to `primo_util`.
   `solver_session.cpp` owns parsing/frontend lifetime, preprocessing-strategy
   execution, final solver-strategy compilation, timing, and outcome conversion.
 
+## Command-line enum options
+
+`cli::EnumName` tables in `src/cli/option_names.hpp` map command-line names to
+typed solver enums. A value may have aliases; its first table entry is the
+canonical spelling. `CheckSatOptions` owns the defaults. The CLI's
+`add_enum_option` helper derives the displayed default from the initialized
+field and uses the same table for allowed choices and parsing. Solver and
+theory code do not depend on CLI spellings.
+
+The callback borrows the option field and table, which must outlive the
+`CLI::App`; tables must remain unchanged while the app uses them. Current
+call sites use static tables and option storage declared before the app.
+The callback owns its diagnostic option name and checks parse failure before
+assigning the field, independently of the CLI validator.
+
+The table tests check unique names, aliases, round trips and coverage of
+declared enum values in the range 0–63. Detection relies on GCC/Clang function
+signature spelling and has a compiler-format self-check. This is a bounded
+test, not exhaustive reflection: an unnamed negative value or a sparse jump
+such as `NewMode = 100` is not detected. The upper-bound guard catches dense
+growth into the boundary only. Review the probe range when changing enum
+values, and keep the name table synchronized with the declaration.
+
 ## Term Representation
 
 The primary term types are:
@@ -86,8 +109,10 @@ Term:
   id:        TermId
   kind:      BoolValue | Constant | Application | Equality | Not | And | Or | Implies
              | Rational | Plus | Times | Le | Lt | Ite | IntDiv | IntMod | Abs
+             | BoundVariable | Forall | Exists | Pattern
   sort:      SortId
-  symbol:    SymbolId, only meaningful for Constant and Application
+  symbol:    SymbolId for Constant and Application; the de Bruijn index for
+             BoundVariable; the number of bound variables for Forall/Exists
   children:  vector<TermId>
   bool_value: meaningful only for BoolValue
   rational_value: literal value, scale coefficient, or normalized integer divisor
@@ -141,6 +166,58 @@ The hash-consing key contains:
 `TermManager::intern` first looks up this key. If an identical key already exists, it returns the existing `TermId`; otherwise it appends a new `Term` to `terms_` and records the key-to-id mapping.
 
 The equality notion here is syntactic identity after local simplification. If two constructed terms receive the same `TermId`, they are structurally identical under the current constructors. This is separate from EUF congruence equality, which is computed later by the equality theory.
+
+### Quantifiers and bound variables
+
+Quantified terms use de Bruijn indices; the design and its alternatives are in
+[](quantifiers.md).
+
+- **`BoundVariable`.** A leaf whose `symbol` field holds the index and whose
+  `sort` is the variable's sort. Index 0 is the innermost enclosing bound
+  variable. `Rational` has no integer accessor, which is why the index is not
+  kept in `rational_value`.
+- **`Forall`/`Exists`.** Bool nodes whose `symbol` is the arity `n`. Their
+  children are `n` declaration leaves `BoundVariable(n-1-i, sort_i)` in SMT-LIB
+  order, then the body, then `Pattern` nodes. The declarations keep an unused
+  variable's sort in the hash key. Alpha-equivalent formulas are therefore the
+  same term.
+- **`Pattern`.** A Bool node holding the terms of one `:pattern`. `mk_pattern`
+  rejects terms that contain quantifiers.
+
+`TermManager` caches two binder facts per node, computed once at intern time
+from the children:
+
+- `loose_index`: one past the largest index not bound inside the term, so 0
+  exactly for closed terms;
+- `contains_quantifier`.
+
+The storage is created by the first binder node. A quantifier-free session
+therefore allocates nothing, and every earlier term reads as closed.
+`quantifier_count()` counts interned `Forall`/`Exists` nodes, like
+`extended_term_count()`.
+
+`core/binders.hpp` is the only code that computes indices:
+
+- `shift` moves an open term under more binders;
+- `instantiate` opens a quantifier with replacement terms, shifting each
+  replacement as it passes inner binders and lowering indices that point past
+  the opened binder;
+- `check_bound_variables` is a debug checker for scoping and sorts.
+
+All three are iterative, memoized per `(term, cutoff)`, and skip any subterm
+whose loose index shows it is unaffected. `tests/unit/binder_tests.cpp` covers
+constructor validation, cache values, shift laws, the design note's worked
+examples, and a differential test against a named-variable oracle with capture
+avoidance. It also covers 20,000 nested binders.
+
+Every exhaustive `TermKind` switch handles the new kinds:
+
+- the clausifier treats `Forall`/`Exists` as opaque theory atoms;
+- the evaluator, EUF flattening, mixed purification and preprocessing either
+  reject them or pass them through as opaque leaves.
+
+Quantified input does not reach those passes yet: frontend parsing and the
+routing gate are later milestones in [](quantifiers.md).
 
 ### Sorts and Symbols
 
@@ -208,7 +285,12 @@ The constructors do not currently canonicalize commutative operands. For example
 
 ### Interaction with SMT-LIB `let`
 
-SMT-LIB `let` does not create a term node. `smt::Frontend` keeps a stack of local maps from variable names to `TermId`. Binding right-hand sides are built in the outer scope, then the body is built in an extended scope. Because bound names resolve to existing `TermId` values, `let` expansion does not duplicate subtrees beyond the normal constructor calls and hash-consing behavior.
+SMT-LIB `let` does not create a term node. `smt::Frontend` keeps a stack of local maps from names to bindings. A binding is either a built `TermId`, stamped with the quantifier depth it was built at, or a variable bound by an enclosing `forall`/`exists`, stored as its binder level. Binding right-hand sides are built in the outer scope, then the body is built in an extended scope. A name resolves in one of two ways:
+
+- a value is shifted under the quantifiers entered since it was built, which is the identity outside quantifiers;
+- a bound variable becomes its de Bruijn index (see [](quantifiers.md)).
+
+Because bound names resolve to existing `TermId` values, `let` expansion does not duplicate subtrees beyond the normal constructor calls and hash-consing behavior.
 
 SMT-LIB `define-fun` supports nonrecursive macros over the admitted term
 language, not only UF terms. `smt::Frontend::Definition` has two representations. A nullary

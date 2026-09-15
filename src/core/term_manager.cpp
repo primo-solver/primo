@@ -404,6 +404,118 @@ TermId TermManager::mk_abs(TermId operand) {
 
 std::size_t TermManager::extended_term_count() const { return extended_term_count_; }
 
+TermId TermManager::mk_bound_variable(std::uint32_t index, SortId sort) {
+  static_cast<void>(symbols_.get_sort(sort));
+  // One past the index must still fit, because that is the loose index.
+  if (index >= kInvalidSymbolId - 1) {
+    throw std::invalid_argument("bound variable index out of range");
+  }
+  return intern(Key{TermKind::BoundVariable, sort, index, {}, false, util::Rational(0)});
+}
+
+TermId TermManager::mk_forall(const std::vector<SortId>& sorts, TermId body,
+                              std::vector<TermId> patterns) {
+  return mk_quantifier(TermKind::Forall, sorts, body, std::move(patterns));
+}
+
+TermId TermManager::mk_exists(const std::vector<SortId>& sorts, TermId body,
+                              std::vector<TermId> patterns) {
+  return mk_quantifier(TermKind::Exists, sorts, body, std::move(patterns));
+}
+
+TermId TermManager::mk_quantifier(TermKind kind, const std::vector<SortId>& sorts, TermId body,
+                                  std::vector<TermId> patterns) {
+  if (sorts.empty()) {
+    throw std::invalid_argument("a quantifier binds at least one variable");
+  }
+  if (sorts.size() >= kInvalidSymbolId - 1) {
+    throw std::invalid_argument("too many bound variables");
+  }
+  require_bool(body);
+  for (const TermId pattern : patterns) {
+    if (require_term(pattern).kind != TermKind::Pattern) {
+      throw std::invalid_argument("a quantifier pattern must be a Pattern node");
+    }
+  }
+  const auto arity = static_cast<std::uint32_t>(sorts.size());
+  std::vector<TermId> children;
+  children.reserve(sorts.size() + 1 + patterns.size());
+  for (std::uint32_t position = 0; position < arity; ++position) {
+    children.push_back(mk_bound_variable(arity - 1 - position, sorts[position]));
+  }
+  children.push_back(body);
+  children.insert(children.end(), patterns.begin(), patterns.end());
+  const std::size_t before = terms_.size();
+  const TermId id =
+      intern(Key{kind, symbols_.bool_sort(), arity, std::move(children), false, util::Rational(0)});
+  if (terms_.size() != before) {
+    ++quantifier_count_;
+  }
+  return id;
+}
+
+TermId TermManager::mk_pattern(std::vector<TermId> pattern_terms) {
+  if (pattern_terms.empty()) {
+    throw std::invalid_argument("a pattern has at least one term");
+  }
+  for (const TermId term : pattern_terms) {
+    if (contains_quantifier(term)) {
+      throw std::invalid_argument("pattern terms must not contain quantifiers");
+    }
+  }
+  return intern(Key{TermKind::Pattern, symbols_.bool_sort(), kInvalidSymbolId,
+                    std::move(pattern_terms), false, util::Rational(0)});
+}
+
+std::uint32_t TermManager::loose_index(TermId id) const {
+  static_cast<void>(require_term(id));
+  return id < loose_index_.size() ? loose_index_[id] : 0;
+}
+
+bool TermManager::contains_quantifier(TermId id) const {
+  static_cast<void>(require_term(id));
+  return id < contains_quantifier_.size() && contains_quantifier_[id];
+}
+
+std::size_t TermManager::quantifier_count() const { return quantifier_count_; }
+
+// Binder facts follow the arena: each new node derives them once from its
+// children, which are always older. Until the first binder node exists there
+// is no storage, so a quantifier-free session pays one branch per new node.
+void TermManager::record_binder_facts(TermId id) {
+  const Term& term = terms_[id];
+  const bool binder_kind = term.kind == TermKind::BoundVariable || term.kind == TermKind::Forall ||
+                           term.kind == TermKind::Exists || term.kind == TermKind::Pattern;
+  if (!binder_facts_active_) {
+    if (!binder_kind) {
+      return;
+    }
+    binder_facts_active_ = true;
+    loose_index_.assign(id, 0);
+    contains_quantifier_.assign(id, false);
+  }
+  std::uint32_t loose = 0;
+  bool quantified = false;
+  if (term.kind == TermKind::BoundVariable) {
+    loose = term.symbol + 1;
+  } else if (term.kind == TermKind::Forall || term.kind == TermKind::Exists) {
+    // Declarations are not occurrences: only the body and patterns count.
+    const std::uint32_t arity = term.symbol;
+    for (std::size_t position = arity; position < term.children.size(); ++position) {
+      loose = std::max(loose, loose_index_[term.children[position]]);
+    }
+    loose = loose > arity ? loose - arity : 0;
+    quantified = true;
+  } else {
+    for (const TermId child : term.children) {
+      loose = std::max(loose, loose_index_[child]);
+      quantified = quantified || contains_quantifier_[child];
+    }
+  }
+  loose_index_.push_back(loose);
+  contains_quantifier_.push_back(quantified);
+}
+
 const Term& TermManager::get(TermId id) const { return require_term(id); }
 
 const SymbolTable& TermManager::symbols() const { return symbols_; }
@@ -441,6 +553,7 @@ TermId TermManager::intern(Key key) {
   term.bool_value = key.bool_value;
   term.rational_value = key.rational_value;
   terms_.push_back(std::move(term));
+  record_binder_facts(id);
   term_by_key_.emplace(std::move(key), id);
   return id;
 }

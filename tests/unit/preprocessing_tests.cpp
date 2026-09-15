@@ -2145,6 +2145,45 @@ void lowering_rewrites_abs_through_the_ite_encoding() {
   check(lowered.assertions.size() == 3);
 }
 
+void lowering_prepares_new_modulo_terms_in_later_batches() {
+  primo::core::SymbolTable symbols;
+  const auto int_sort = symbols.int_sort();
+  const auto symbol = symbols.declare_constant("x", int_sort);
+  primo::core::TermManager terms(symbols);
+  AuxiliaryFactory auxiliaries{symbols, terms};
+  const auto x = terms.mk_constant(symbol);
+  const auto zero = terms.mk_rational(primo::util::Rational(0), int_sort);
+  const auto quotient = terms.mk_int_div(primo::util::Rational(3), x);
+  const auto first_root = terms.mk_le(zero, quotient);
+  const auto first = primo::smt::lower_extended_terms(terms, {first_root}, auxiliaries.factory());
+  check(first.quotients == 1 && first.assertions.size() == 3);
+
+  // This mod did not exist during the first call. Its defining quotient and
+  // both bounds must be emitted when the later formula is admitted.
+  const auto remainder = terms.mk_int_mod(primo::util::Rational(5), x);
+  const auto later_root = terms.mk_le(remainder, zero);
+  const auto later = primo::smt::lower_extended_terms(terms, {later_root}, auxiliaries.factory());
+  check(later.quotients == 1 && later.assertions.size() == 3);
+  check(auxiliaries.next == 2);
+
+  // Re-admitting the same term cannot reuse a quotient whose constraints were
+  // admitted in an earlier, possibly popped scope.
+  const auto again = primo::smt::lower_extended_terms(terms, {first_root}, auxiliaries.factory());
+  check(again.quotients == 1 && again.assertions.size() == 3);
+  check(auxiliaries.next == 3);
+  for (const auto& batch : {first, later, again}) {
+    std::vector<primo::core::TermId> pending = batch.assertions;
+    while (!pending.empty()) {
+      const auto term = terms.get(pending.back());
+      pending.pop_back();
+      check(term.kind != primo::core::TermKind::IntDiv);
+      check(term.kind != primo::core::TermKind::IntMod);
+      if (term.kind == primo::core::TermKind::Constant) check(term.sort == int_sort);
+      pending.insert(pending.end(), term.children.begin(), term.children.end());
+    }
+  }
+}
+
 // The walk is an explicit stack, so nesting depth is bounded by memory rather
 // than by the C++ stack.
 void lowering_handles_deeply_nested_terms() {
@@ -2248,6 +2287,7 @@ int main() {
   lowering_defines_a_term_ite_with_two_guarded_equalities();
   lowering_expands_a_boolean_ite_without_an_auxiliary();
   lowering_shares_one_quotient_between_div_and_mod();
+  lowering_prepares_new_modulo_terms_in_later_batches();
   lowering_rewrites_abs_through_the_ite_encoding();
   lowering_handles_deeply_nested_terms();
   monotone_elimination_keeps_variable_pinned_by_equality();

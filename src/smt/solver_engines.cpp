@@ -6530,6 +6530,11 @@ bool formula_needs_mixed_purification(const core::TermManager& terms, core::Term
     case core::TermKind::Rational:
     case core::TermKind::Plus:
     case core::TermKind::Times:
+    // Quantified input never takes a mixed route; opaque if it ever did.
+    case core::TermKind::BoundVariable:
+    case core::TermKind::Forall:
+    case core::TermKind::Exists:
+    case core::TermKind::Pattern:
       break;
   }
   formula_memo.emplace(term_id, result);
@@ -6841,6 +6846,10 @@ core::TermId purify_mixed_formula(const PurificationScope& scope, core::TermId t
       case core::TermKind::Rational:
       case core::TermKind::Plus:
       case core::TermKind::Times:
+      case core::TermKind::BoundVariable:
+      case core::TermKind::Forall:
+      case core::TermKind::Exists:
+      case core::TermKind::Pattern:
         break;
     }
     state.formula_rewrite_memo.emplace(visit.term, result);
@@ -12634,6 +12643,26 @@ void record_ackermann_cost_diagnostics_for_session(const core::TermManager& term
                                                    const std::vector<core::TermId>& roots,
                                                    util::Statistics& statistics) {
   record_ackermann_cost_diagnostics(terms, roots, statistics);
+}
+
+std::unique_ptr<theory::TheoryComponent> make_uf_euf_component(core::TermManager& terms,
+                                                               const CheckSatOptions& options,
+                                                               util::Statistics& statistics,
+                                                               bool online) {
+#if PRIMO_HAVE_IPASIR
+  return std::make_unique<UfliaEufComponent>(terms, options, statistics, online);
+#else
+  static_cast<void>(terms);
+  static_cast<void>(options);
+  static_cast<void>(statistics);
+  static_cast<void>(online);
+  return nullptr;
+#endif
+}
+
+void apply_euf_boolean_domain(BooleanClausifier& clausifier, const CheckSatOptions& options,
+                              util::Statistics& statistics) {
+  apply_boolean_domain_encoding(clausifier, options, statistics);
 }
 
 Tactic make_purify_mixed(PurifyMixedOptions options) {

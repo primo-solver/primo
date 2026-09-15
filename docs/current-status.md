@@ -52,14 +52,25 @@ results. A logic declaration alone is therefore not a reliable activation counte
 | QF_LIA | Arithmetic relaxation and bounded integer completion | `build_typed_model` |
 | QF_UFLRA | Dedicated convex EUF/LRA coordinator and shared-Real reconciliation | `build_typed_model` with compatible component inputs |
 | QF_UFLIA | EUF/LIA recipe through the N-component driver and online dispatcher | Validated component fragments and `assemble_component_model` |
+| UF with quantifiers | EUF plus an enumerative-instantiation component through the N-component driver; `unsat`, Skolem-covered `sat`, otherwise `unknown` | None: model requests are `unsupported` |
 
 All model routes freeze the same owning `core::Model`, replay goal-owned
 conversions, and use `core::ModelEvaluator` and `smtlib::print_model`. A function
 symbol and evaluated typed argument tuple have exactly one result. Printing
 cannot repair or replace that result. See [](model-interpretation.md).
 
-The frontend accepts the five named logics above, nonrecursive `define-fun`,
-typed `let`, ITEs and the documented linear arithmetic operators. `div`, `mod`
+The frontend accepts the five named logics above and `UF`, nonrecursive
+`define-fun`, typed `let`, ITEs and the documented linear arithmetic operators.
+Quantified assertions skip preprocessing: in `UF` they go to the quantified
+route above, and in any other logic, or in assumptions mode, they are
+`unsupported`. On the SMT-LIB UF division at 60 s, the route at `72d00d3`
+solves 1,948 of 7,590 files with its defaults: the `sum` tuple order, rounds
+of 128 instances and the stall cutoff. All but one answer are `unsat`, with no
+wrong answers or reference disagreements. Z3 solves 2,765 and cvc5 3,154; cvc5
+restricted to enumerative instantiation without E-matching solves 2,930. An
+independent check with cvc5 pools over Primo's own instantiations confirms
+1,601 of those `unsat` answers and refutes none. The earlier tuple-order
+comparison predates the Boolean-domain repair; see [](quantifiers.md). `div`, `mod`
 and `abs` are deliberate Int extensions to the accepted logic declarations;
 division requires a nonzero literal divisor. They are not a claim of strict
 QF_LIA/QF_UFLIA grammar conformance, and a Dolmen logic rejection is not a model
@@ -86,7 +97,8 @@ All 122 SAT results from those rounds passed separate Dolmen replay.
 This is bounded baseline qualification, not a full-corpus or zero-overhead claim.
 See [](incremental-smt.md).
 
-Not implemented: quantifiers, arrays, bit-vectors, nonlinear arithmetic,
+Not implemented: quantified arithmetic, E-matching and conflict-based
+instantiation, arrays, bit-vectors, nonlinear arithmetic,
 proof production, or dedicated QF_IDL/QF_RDL admission.
 Within-query SAT/theory callbacks are distinct from cross-query reuse, which
 requires the opt-in assumptions engine and its reconnection contract. Integer

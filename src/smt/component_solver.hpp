@@ -25,7 +25,17 @@ struct CombinationRecipe {
   bool model_guided = true;
   std::size_t decision_budget = 0;
   std::string timing_prefix;
+  // Idempotent registry completion before initial ownership planning and at
+  // every atom installation, including generated interface/lemma atoms.
+  // May append atoms; callers must not borrow the registry across this hook.
+  // See docs/euf-boolean-arguments.md for the generated-term contract.
   std::function<void(BooleanClausifier&)> prepare_boolean;
+  // Prepares the lemmas an online component queued with LemmasPending -- for
+  // example by lowering extended terms -- and returns the formulas to
+  // clausify. Without it such a stop is Unsupported. `lemma_batch` bounds how
+  // many queued lemmas are drained at each growth boundary.
+  std::function<std::vector<core::TermId>(std::vector<core::TermId>)> prepare_lemmas;
+  std::size_t lemma_batch = 64;
 };
 
 CheckSatOutcome solve_component_recipe(core::TermManager& terms,

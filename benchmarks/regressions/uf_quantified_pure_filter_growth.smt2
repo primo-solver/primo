@@ -1,0 +1,36 @@
+; Quantified UF route with the pure-theory filter left on: unsat, but answered
+; unknown. The instance of the second quantifier at (b, b) uses the ground atom
+; (= (q d b) a) in the other orientation; the filter, which assumes a final
+; clause set, discarded the EUF assignments that make the instance refute.
+; Reduced with ddsmt from SMT-LIB UF sledgehammer/FFT/uf.860560.smt2, symbols
+; renamed. Declaration and assertion order matter: they fix TermId order.
+(set-info :status unsat)
+(set-logic UF)
+(declare-sort A 0)
+(declare-sort B 0)
+(declare-sort C 0)
+(declare-sort D 0)
+(declare-sort E 0)
+(declare-sort F 0)
+(declare-sort G 0)
+(declare-fun a () A)
+(declare-fun h (C B) D)
+(declare-fun c () C)
+(declare-fun k (C E) D)
+(declare-fun m (D) C)
+(declare-fun n (B) D)
+(declare-fun b () B)
+(declare-fun r (F B) B)
+(declare-fun s (G B) F)
+(declare-fun g () G)
+(declare-fun d () B)
+(declare-fun u (B B) E)
+(declare-fun q (B B) A)
+(declare-fun w (E E) E)
+(declare-fun x (B E) E)
+(declare-fun e () E)
+(declare-fun t (B B) E)
+(assert (forall ((y B)) (= (h c b) (k (m (h (m (n b)) (r (s g y) b))) (t b b)))))
+(assert (forall ((y B) (v B)) (or (not (= a (q d v))) (= (u d v) (w (x y e) (t d v))))))
+(assert (and (= (q d b) a) (not (= (k c (u d b)) (k c (w (x b e) (t d b)))))))
+(check-sat)

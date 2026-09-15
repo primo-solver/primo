@@ -26,6 +26,8 @@ parts:
       - file: dpllt
       - file: preprocessing
       - file: structural-auto-preprocessing
+      - file: quantifiers
+      - file: quantifier-entailment-design
 
   - caption: Theories
     chapters:
@@ -89,6 +91,8 @@ parts:
       - file: papers/bromberger-linear-arithmetic-thesis
       - file: papers/monotone-variable-elimination
       - file: papers/difference-constraint-propagation
+      - file: papers/enumerative-instantiation
+      - file: papers/fair-adventurous-enumeration
 
   - caption: Reference
     chapters:

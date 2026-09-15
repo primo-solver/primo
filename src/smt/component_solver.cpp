@@ -127,6 +127,12 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
   }
   std::map<PairKey, theory::InterfaceRelation> registered;
   std::size_t bridge_clauses = 0;
+  std::unique_ptr<ComponentDispatcher> dispatcher;
+  const DetachComponents detach{backend, dispatcher};
+  const auto detach_dispatcher = [&]() {
+    if (dispatcher) backend.disconnect_external_propagator();
+    dispatcher.reset();
+  };
   const auto materialize = [&](const theory::InterfacePair& requested) -> std::optional<sat::Lit> {
     const theory::InterfacePair pair{std::min(requested.lhs, requested.rhs),
                                      std::max(requested.lhs, requested.rhs), requested.sort};
@@ -135,6 +141,7 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
     const PairKey key{pair.sort, pair.lhs, pair.rhs};
     if (const auto found = registered.find(key); found != registered.end())
       return found->second.equality_lit;
+    detach_dispatcher();
     const auto equality = terms.mk_eq(pair.lhs, pair.rhs);
     for (const auto participant : plan.scopes()[*scope_index].participants) {
       const auto encoding = components[participant]->encode_equality(pair);
@@ -208,13 +215,13 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
     }
     for (const auto index : online_order) online_components.push_back(components[index]);
   }
-  std::unique_ptr<ComponentDispatcher> dispatcher;
-  const DetachComponents detach{backend, dispatcher};
   std::size_t installed_atoms = 0;
   std::size_t installed_pairs = 0;
   const auto install_atoms = [&]() {
-    if (dispatcher) backend.disconnect_external_propagator();
-    dispatcher.reset();
+    detach_dispatcher();
+    // Every producer uses this boundary, including generated interface
+    // encodings. Complete the registry before taking any view of its storage.
+    if (recipe.prepare_boolean) recipe.prepare_boolean(clausifier);
     const bool first = statistics.get(":combination.components.full-builds") == 0;
     CombinationTimer timer(statistics, recipe.timing_prefix + (first ? "component-rebuild-us"
                                                                      : "component-growth-us"));
@@ -302,6 +309,34 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
     if (terminator.conflict_limit_reached())
       return {CheckSatResult::Unknown, "theory conflict limit reached", statistics, "",
               InconclusiveReason::ResourceLimit};
+    // Lemma queue: an online component that must add consequences over new
+    // atoms stops the search; its queue is drained here, at the established
+    // growth boundary, and the problem is solved again. An UNSAT result with a
+    // stop pending is still UNSAT, since lemmas only strengthen the formula.
+    if (dispatcher && dispatcher->lemmas_pending().has_value() &&
+        sat_result == sat::SatResult::Sat) {
+      if (!recipe.prepare_lemmas) {
+        return {CheckSatResult::Unsupported,
+                "a component queued lemmas but the recipe cannot prepare them", statistics, "",
+                InconclusiveReason::Unsupported};
+      }
+      const std::size_t owner = online_order.at(*dispatcher->lemmas_pending());
+      std::vector<core::TermId> lemmas = components[owner]->take_lemmas(recipe.lemma_batch);
+      if (lemmas.empty()) {
+        throw std::logic_error("a component reported queued lemmas but supplied none");
+      }
+      detach_dispatcher();
+      statistics.increment(":combination.lemmas.batches");
+      statistics.increment(":combination.lemmas.formulas", lemmas.size());
+      {
+        CombinationTimer timer(statistics, recipe.timing_prefix + "lemma-us");
+        for (const auto formula : recipe.prepare_lemmas(std::move(lemmas))) {
+          clausifier.assert_formula(formula);
+        }
+      }
+      install_atoms();
+      continue;
+    }
     if (dispatcher && dispatcher->failure().has_value()) {
       const auto& failure = *dispatcher->failure();
       const bool unsupported = failure.status == theory::TheoryCheckStatus::Unsupported;

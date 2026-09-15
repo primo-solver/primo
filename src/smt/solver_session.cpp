@@ -19,6 +19,7 @@
 #include "smt/model_reconstruction.hpp"
 #include "smt/preprocessing.hpp"
 #include "smt/preprocessing_strategy.hpp"
+#include "smt/quantifiers/quantified_solver.hpp"
 #include "smt/solver_engines.hpp"
 #include "smt/solver_error.hpp"
 #include "smt/solver_leaves.hpp"
@@ -622,6 +623,28 @@ CheckSatOutcome run_query(std::string_view input, CheckSatOptions options,
         return finish(CheckSatResult::Unsupported, "get-model requires :produce-models true");
       }
       options.produce_model = true;
+    }
+    // Quantified formulas must never reach preprocessing or a ground leaf,
+    // whose passes treat unknown kinds as opaque. They take their own route in
+    // logic UF and are unsupported elsewhere; see docs/quantifiers.md.
+    if (frontend.terms().quantifier_count() > 0 &&
+        std::any_of(assertions.begin(), assertions.end(), [&frontend](core::TermId assertion) {
+          return frontend.terms().contains_quantifier(assertion);
+        })) {
+      if (frontend.logic() != std::optional<std::string>("UF")) {
+        return finish(CheckSatResult::Unsupported,
+                      "quantified formulas are supported only in logic UF");
+      }
+      const PhaseClock::time_point solve_start = PhaseClock::now();
+      CheckSatOutcome outcome =
+          solve_quantified_uf(frontend.terms(), assertions, options, statistics,
+                              [&frontend](core::SortId sort, std::string_view prefix) {
+                                return frontend.fresh_internal_constant(sort, prefix);
+                              });
+      statistics.set(kStatTimeSolveUs, elapsed_microseconds(solve_start, PhaseClock::now()));
+      statistics.set(kStatTimeTotalUs, elapsed_microseconds(total_start, PhaseClock::now()));
+      outcome.statistics = statistics;
+      return outcome;
     }
     const std::vector<core::TermId> original_assertions =
         options.produce_model ? assertions : std::vector<core::TermId>{};

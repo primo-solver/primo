@@ -187,6 +187,13 @@ ModelValue evaluate_model_operator(const Term& node, std::span<const ModelValue>
     case TermKind::Constant:
     case TermKind::Application:
       throw ModelError("non-interpreted node passed to operator evaluator");
+    // Quantified formulas have no evaluation over a finite interpretation
+    // here; see docs/quantifiers.md. Reaching this is a routing bug.
+    case TermKind::BoundVariable:
+    case TermKind::Forall:
+    case TermKind::Exists:
+    case TermKind::Pattern:
+      throw ModelError("quantified term passed to operator evaluator");
   }
   return value;
 }

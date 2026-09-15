@@ -55,6 +55,23 @@ enum class TermKind {
   IntDiv,
   IntMod,
   Abs,
+  // Quantifiers, with de Bruijn bound variables (docs/quantifiers.md).
+  //
+  // BoundVariable keeps its index in `symbol` -- a SymbolId-sized integer,
+  // not a symbol -- and its sort in `sort`. Index 0 is the innermost enclosing
+  // bound variable. Only core/binders.hpp computes indices.
+  //
+  // Forall and Exists are Bool nodes whose `symbol` holds the number n of
+  // variables they bind. Their children are n declaration leaves
+  // BoundVariable(n-1-i, sort_i) in SMT-LIB declaration order, then the body,
+  // then zero or more Pattern nodes. The declarations are what keep an unused
+  // variable's sort in the hash key.
+  //
+  // Pattern is a Bool node holding the terms of one :pattern attribute.
+  BoundVariable,
+  Forall,
+  Exists,
+  Pattern,
 };
 
 struct Term {

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -15,6 +16,7 @@
 #include <utility>
 #include <vector>
 
+#include "core/binders.hpp"
 #include "core/ids.hpp"
 #include "core/symbol_table.hpp"
 #include "core/term.hpp"
@@ -92,6 +94,7 @@ class TermBuilder {
 
   void dispatch(const smtlib::SExpr& expr, Continuation k);
   void dispatch_let(const smtlib::SExpr& expr, Continuation k);
+  void dispatch_quantifier(const smtlib::SExpr& expr, bool universal, Continuation k);
   void dispatch_ite(const smtlib::SExpr& expr, Continuation k);
   void dispatch_implies(const smtlib::SExpr& expr, Continuation k);
   void dispatch_xor(const smtlib::SExpr& expr, Continuation k);
@@ -148,7 +151,7 @@ struct Frontend::Implementation {
         return;
       case smtlib::CommandKind::SetLogic:
         if (command.logic != "QF_UF" && command.logic != "QF_LRA" && command.logic != "QF_UFLRA" &&
-            command.logic != "QF_LIA" && command.logic != "QF_UFLIA") {
+            command.logic != "QF_LIA" && command.logic != "QF_UFLIA" && command.logic != "UF") {
           throw UnsupportedInput("unsupported logic: " + command.logic);
         }
         logic_ = command.logic;
@@ -285,13 +288,21 @@ struct Frontend::Implementation {
     }
   }
 
-  std::optional<core::TermId> lookup_bound_term(const std::string& name) const {
+  // Resolves a lexical name. A let value or definition argument is shifted
+  // under the quantifiers entered since it was built, and a quantified
+  // variable becomes its de Bruijn index; both are identities outside any
+  // quantifier (docs/quantifiers.md).
+  std::optional<core::TermId> lookup_bound_term(const std::string& name) {
     const std::size_t base = definition_scope_bases_.empty() ? 0 : definition_scope_bases_.back();
     for (std::size_t index = let_scopes_.size(); index > base; --index) {
       const auto& scope = let_scopes_[index - 1];
       const auto found = scope.find(name);
       if (found != scope.end()) {
-        return found->second;
+        const Binding binding = found->second;
+        if (binding.value == core::kInvalidTermId) {
+          return terms_.mk_bound_variable(binder_depth_ - binding.depth - 1, binding.variable_sort);
+        }
+        return core::shift(terms_, binding.value, binder_depth_ - binding.depth);
       }
     }
     return std::nullopt;
@@ -332,6 +343,11 @@ struct Frontend::Implementation {
     const core::Term& node = terms_.get(term);
     if (node.sort != symbols_.bool_sort() || node.kind == core::TermKind::BoolValue ||
         node.kind == core::TermKind::Constant) {
+      return term;
+    }
+    // An open argument cannot be named by a constant: its value depends on
+    // the enclosing bound variables. A ground instance is named later.
+    if (terms_.loose_index(term) > 0) {
       return term;
     }
     const core::TermId auxiliary = fresh_auxiliary_constant(symbols_.bool_sort(), "bool_arg");
@@ -440,10 +456,12 @@ struct Frontend::Implementation {
       if (validate_parameterized_definitions_) {
         // Validate in the current declaration environment using fresh internal
         // parameters. No second frontend or declaration-prefix replay is needed.
-        std::unordered_map<std::string, core::TermId> parameters;
+        std::unordered_map<std::string, Binding> parameters;
         for (std::size_t i = 0; i < definition.parameters.size(); ++i)
-          parameters.emplace(definition.parameters[i],
-                             fresh_auxiliary_constant(definition.parameter_sorts[i], "parameter"));
+          parameters.emplace(
+              definition.parameters[i],
+              Binding{fresh_auxiliary_constant(definition.parameter_sorts[i], "parameter"),
+                      binder_depth_});
         let_scopes_.push_back(std::move(parameters));
         clear_side_assertion_capture();
         core::TermId body;
@@ -484,7 +502,18 @@ struct Frontend::Implementation {
 
   core::SymbolTable symbols_;
   core::TermManager terms_{symbols_};
-  std::vector<std::unordered_map<std::string, core::TermId>> let_scopes_;
+  // One lexical name: a let value or definition argument together with the
+  // quantifier depth it was built at, or -- when `value` is invalid -- a
+  // variable bound by an enclosing quantifier at binder level `depth`.
+  struct Binding {
+    core::TermId value = core::kInvalidTermId;
+    std::uint32_t depth = 0;
+    core::SortId variable_sort = core::kInvalidSortId;
+  };
+
+  std::vector<std::unordered_map<std::string, Binding>> let_scopes_;
+  // Number of variables bound by the quantifiers currently being built.
+  std::uint32_t binder_depth_ = 0;
   std::vector<std::size_t> definition_scope_bases_;
   std::unordered_map<std::string, Definition> definitions_;
   std::unordered_set<std::string> expanding_definitions_;
@@ -612,6 +641,10 @@ void TermBuilder::dispatch(const smtlib::SExpr& expr, Continuation k) {
   if (expr.list[0].atom_kind == smtlib::TokenKind::Reserved) {
     if (head == "let") {
       dispatch_let(expr, std::move(k));
+      return;
+    }
+    if (head == "forall" || head == "exists") {
+      dispatch_quantifier(expr, head == "forall", std::move(k));
       return;
     }
     if (head == "!") {
@@ -744,18 +777,102 @@ void TermBuilder::dispatch_let(const smtlib::SExpr& expr, Continuation k) {
   }
   schedule_all(binding_value_exprs, [this, &expr, &bindings_expr,
                                      k = std::move(k)](std::vector<core::TermId> values) mutable {
-    std::unordered_map<std::string, core::TermId> scope;
+    std::unordered_map<std::string, Frontend::Implementation::Binding> scope;
     for (std::size_t i = 0; i < bindings_expr.list.size(); ++i) {
       const std::string& name = bindings_expr.list[i].list[0].atom;
       // Selected Z3 compatibility extension: last duplicate wins, but every
       // right-hand side was evaluated outside this new parallel scope.
-      scope.insert_or_assign(name, values[i]);
+      scope.insert_or_assign(name,
+                             Frontend::Implementation::Binding{values[i], frontend_.binder_depth_});
     }
     frontend_.let_scopes_.push_back(std::move(scope));
     schedule(expr.list[2], [this, k = std::move(k)](core::TermId body) mutable {
       frontend_.let_scopes_.pop_back();
       resume(std::move(k), body);
     });
+  });
+}
+
+// SMT-LIB 2.6 section 3.6: `(forall ((x1 s1) ... (xn sn)) body)`, stored as
+// one node with de Bruijn indices (docs/quantifiers.md). The variables get
+// binder levels depth..depth+n-1 and the body is built at depth+n; a repeated
+// name in the list is shadowed by its last occurrence (section 3.6.1). A body
+// annotated directly with `(! body :pattern (t ...))` keeps its patterns.
+void TermBuilder::dispatch_quantifier(const smtlib::SExpr& expr, bool universal, Continuation k) {
+  const std::string binder = universal ? "forall" : "exists";
+  Frontend::Implementation::require_arity(expr, 3, binder);
+  const smtlib::SExpr& declarations = expr.list[1];
+  if (declarations.kind != smtlib::SExpr::Kind::List || declarations.list.empty()) {
+    throw UnsupportedInput(binder + " requires a nonempty sorted variable list");
+  }
+  const std::uint32_t depth = frontend_.binder_depth_;
+  std::vector<core::SortId> sorts;
+  sorts.reserve(declarations.list.size());
+  std::unordered_map<std::string, Frontend::Implementation::Binding> scope;
+  for (const smtlib::SExpr& declaration : declarations.list) {
+    if (declaration.kind != smtlib::SExpr::Kind::List || declaration.list.size() != 2 ||
+        !declaration.list[0].is_symbol() || !declaration.list[1].is_symbol()) {
+      throw UnsupportedInput("malformed sorted variable in " + binder);
+    }
+    const core::SortId sort = frontend_.lookup_sort_name(declaration.list[1].atom);
+    scope.insert_or_assign(
+        declaration.list[0].atom,
+        Frontend::Implementation::Binding{core::kInvalidTermId,
+                                          depth + static_cast<std::uint32_t>(sorts.size()), sort});
+    sorts.push_back(sort);
+  }
+
+  auto parts = std::make_shared<std::vector<const smtlib::SExpr*>>();
+  std::vector<std::size_t> pattern_sizes;
+  const smtlib::SExpr& body = expr.list[2];
+  if (body.kind == smtlib::SExpr::Kind::List && !body.list.empty() &&
+      body.list[0].atom_kind == smtlib::TokenKind::Reserved && body.list[0].atom == "!") {
+    if (body.list.size() < 3 ||
+        !smtlib::valid_attributes(std::span<const smtlib::SExpr>(body.list).subspan(2))) {
+      throw UnsupportedInput("annotated term expects a body and nonempty attribute sequence");
+    }
+    parts->push_back(&body.list[1]);
+    for (std::size_t position = 2; position < body.list.size(); ++position) {
+      const smtlib::SExpr& attribute = body.list[position];
+      if (attribute.atom_kind != smtlib::TokenKind::Keyword || attribute.atom != ":pattern") {
+        continue;
+      }
+      if (position + 1 == body.list.size() ||
+          body.list[position + 1].kind != smtlib::SExpr::Kind::List ||
+          body.list[position + 1].list.empty()) {
+        throw UnsupportedInput(":pattern expects a nonempty list of terms");
+      }
+      for (const smtlib::SExpr& pattern_term : body.list[position + 1].list) {
+        parts->push_back(&pattern_term);
+      }
+      pattern_sizes.push_back(body.list[position + 1].list.size());
+      ++position;
+    }
+  } else {
+    parts->push_back(&body);
+  }
+
+  frontend_.let_scopes_.push_back(std::move(scope));
+  frontend_.binder_depth_ = depth + static_cast<std::uint32_t>(sorts.size());
+  schedule_all(parts, [this, universal, depth, sorts = std::move(sorts),
+                       pattern_sizes = std::move(pattern_sizes),
+                       k = std::move(k)](std::vector<core::TermId> values) mutable {
+    frontend_.let_scopes_.pop_back();
+    frontend_.binder_depth_ = depth;
+    const core::TermId body_term = values.front();
+    if (frontend_.terms_.get(body_term).sort != frontend_.symbols_.bool_sort()) {
+      throw UnsupportedInput("quantifier body is not Boolean");
+    }
+    std::vector<core::TermId> patterns;
+    patterns.reserve(pattern_sizes.size());
+    auto next = values.begin() + 1;
+    for (const std::size_t size : pattern_sizes) {
+      const auto end = next + static_cast<std::ptrdiff_t>(size);
+      patterns.push_back(frontend_.terms_.mk_pattern(std::vector<core::TermId>(next, end)));
+      next = end;
+    }
+    resume(std::move(k), universal ? frontend_.terms_.mk_forall(sorts, body_term, patterns)
+                                   : frontend_.terms_.mk_exists(sorts, body_term, patterns));
   });
 }
 
@@ -1036,12 +1153,15 @@ void TermBuilder::dispatch_instantiate_definition(const std::string& name,
     return;
   }
 
-  std::unordered_map<std::string, core::TermId> scope;
+  std::unordered_map<std::string, Frontend::Implementation::Binding> scope;
   for (std::size_t i = 0; i < args.size(); ++i) {
     if (frontend_.terms_.get(args[i]).sort != definition.parameter_sorts[i]) {
       throw UnsupportedInput("define-fun argument sort mismatch: " + name);
     }
-    if (!scope.emplace(definition.parameters[i], args[i]).second) {
+    if (!scope
+             .emplace(definition.parameters[i],
+                      Frontend::Implementation::Binding{args[i], frontend_.binder_depth_})
+             .second) {
       throw UnsupportedInput("duplicate define-fun parameter: " + definition.parameters[i]);
     }
   }

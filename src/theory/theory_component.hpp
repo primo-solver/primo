@@ -29,6 +29,11 @@ struct ComponentCapabilities {
   bool care_pairs = false;
   bool incremental = false;
   bool interface_extension = false;
+  // The online dispatcher checks this component at every complete SAT
+  // assignment, even when none of its atoms changed since its last check.
+  // A component whose obligations depend on the whole assignment -- such as
+  // quantifier instantiation -- must not be skipped there.
+  bool check_on_full_model = false;
   EqualityPropagationStrength equality_propagation = EqualityPropagationStrength::None;
   bool operator==(const ComponentCapabilities&) const = default;
 };
@@ -113,6 +118,15 @@ class TheoryComponent {
   }
   [[nodiscard]] virtual ComponentModelFragment export_model(
       const TheoryModelToken& token) const = 0;
+  // Hands over up to `limit` queued lemmas after a LemmasPending check. Each is
+  // a closed Boolean formula that is a valid consequence of the assertions; the
+  // SMT driver prepares and clausifies it, registers new atoms with their
+  // owners, and solves again. Components never reporting LemmasPending keep
+  // this default.
+  [[nodiscard]] virtual std::vector<core::TermId> take_lemmas(std::size_t limit) {
+    static_cast<void>(limit);
+    return {};
+  }
 };
 
 }  // namespace primo::theory

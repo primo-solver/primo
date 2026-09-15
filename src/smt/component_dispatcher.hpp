@@ -39,6 +39,8 @@ class ComponentDispatcher final : public sat::ExternalPropagator {
   bool cb_has_external_clause() override;
   int cb_add_external_clause_lit() override;
   [[nodiscard]] const std::optional<theory::TheoryCheckResult>& failure() const { return failure_; }
+  // Online index of the component whose check reported LemmasPending, if any.
+  [[nodiscard]] const std::optional<std::size_t>& lemmas_pending() const { return lemmas_pending_; }
   [[nodiscard]] const ComponentDispatchStatistics& statistics() const { return statistics_; }
 
  private:
@@ -50,7 +52,7 @@ class ComponentDispatcher final : public sat::ExternalPropagator {
     std::size_t component = 0;
     sat::Clause clause;
   };
-  bool partial_check();
+  bool partial_check(bool complete_assignment = false);
   void accept_result(std::size_t component, theory::TheoryCheckResult result);
   std::vector<theory::TheoryComponent*> components_;
   std::vector<std::optional<Route>> routes_;
@@ -67,6 +69,7 @@ class ComponentDispatcher final : public sat::ExternalPropagator {
   std::size_t reason_cursor_ = 0;
   std::uint64_t epoch_ = 0;
   std::optional<theory::TheoryCheckResult> failure_;
+  std::optional<std::size_t> lemmas_pending_;
   ComponentDispatchStatistics statistics_;
   std::function<void(sat::Lit)> publish_phase_;
 };

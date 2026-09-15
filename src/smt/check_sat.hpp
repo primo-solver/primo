@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -12,6 +13,7 @@
 #include "core/model.hpp"
 #include "smt/inconclusive_reason.hpp"
 #include "smt/preprocessing.hpp"
+#include "theory/quantifiers/tuple_orders.hpp"
 #include "util/statistics.hpp"
 
 namespace primo::smt {
@@ -490,6 +492,23 @@ struct CheckSatOptions {
   std::size_t finite_domain_eqdefs_auto_term_limit = 5000;
   std::optional<std::size_t> nelson_oppen_arrangement_probe_limit;
   std::optional<std::size_t> max_theory_conflicts;
+  // Quantified UF: enumerative instances queued per complete assignment; tuples
+  // a quantifier may visit without a new lemma before a round with queued
+  // lemmas yields (0 never); distinct instances generated in one solve before
+  // answering unknown (docs/quantifiers.md).
+  std::size_t quantifier_instances_per_round = theory::kDefaultQuantifierInstancesPerRound;
+  std::size_t quantifier_stall_tuples = theory::kDefaultQuantifierStallTuples;
+  std::size_t quantifier_max_instances = 100000;
+  // Normalize quantifier instances before duplicate detection and lemma
+  // generation (theory/quantifiers/instance_simplifier.hpp).
+  bool quantifier_instance_simplification = true;
+  // Tuple enumeration order (docs/papers/fair-adventurous-enumeration.md).
+  theory::TupleOrder quantifier_tuple_order = theory::kDefaultTupleOrder;
+  std::size_t quantifier_deepening_increment = 2;
+  std::uint64_t quantifier_random_seed = 0;
+  // Quantified UF: file receiving the instantiation tuples and Skolem lemmas as
+  // SMT-LIB pools (smt/quantifiers/pool_export.hpp); empty writes nothing.
+  std::string quantifier_export_pools;
   std::size_t qf_uf_portfolio_conflicts = 2000;
   std::vector<std::pair<std::string, int>> cadical_options;
   std::function<bool()> cancelled;
