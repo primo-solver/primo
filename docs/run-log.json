@@ -3,6 +3,44 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-15-quantifiers-cvc5-pool-checks",
+      "date": "2026-09-15",
+      "commit": "3b9264a",
+      "branch": "quantifiers",
+      "kind": "independent-answer-confirmation",
+      "scope": "Independent confirmation of Primo's quantified UF unsat answers with cvc5 pool-based instantiation (scripts/quantifier_pool_check.py). Primo exports its Skolem constants and lemmas and one pool of instantiation tuples per variable-sort signature (--quantifier-export-pools); the script adds them to the unmodified input as declare-pool and :pool annotations, Skolemizes top-level existential assertions in the input text with Primo's constants (from 3b9264a), and runs cvc5 --pool-inst. Pools and annotations do not change the problem, and each Skolem constant group witnesses exactly one existential formula, so an unsat from cvc5 confirms the answer without trusting Primo. A negative control applies the same pipeline (--force) to files Z3 or cvc5 answered sat.",
+      "environment": {
+        "host": "CIIRC SLURM cluster, partition compute; local laptop for single-file diagnosis",
+        "solver": "/home/janotmik/primo-quantifiers/build-slurm-rel/primo at the listed revision, default options (sum order, rounds of 128, stall limit 65,536)",
+        "checker": "contrib/local/bin/cvc5 (cvc5 1.3.4 f3b21c4) --pool-inst; pool syntax established only by running the binary on small probes (clean-room: no cvc5 source, documentation or repository files were read)",
+        "lists": "results/pool-check/primo-unsat-145714.txt: the 1,947 files 145714 answered unsat; results/pool-check/reference-sat-143196.txt: the 109 files Z3 or cvc5 answered sat in 143196",
+        "limits": "60 s for Primo and 60 s for cvc5 per file, 1 CPU and 4 GB per array task"
+      },
+      "jobs": {
+        "unsat_9e6fd5e": "145996 (40 tasks)",
+        "control_9e6fd5e": "145997 (8 tasks)",
+        "clearsy_rerun_ab9d240": "146045 (unsat), 146046 (control)",
+        "unsat_3b9264a": "146068 (40 tasks)",
+        "control_3b9264a": "146069 (8 tasks)"
+      },
+      "commands": {
+        "unsat": "sbatch --array=0-39 --export=ALL,PRIMO_WORKDIR=$HOME/primo-quantifiers,PRIMO_POOL_LIST=$HOME/primo-quantifiers/results/pool-check/primo-unsat-145714.txt,PRIMO_POOL_OUT=$HOME/primo-quantifiers/results/pool-check/unsat-<rev>,PRIMO_POOL_SHARDS=40,PRIMO_POOL_TIMEOUT=60 scripts/slurm_quantifier_pool_check.sbatch",
+        "control": "sbatch --array=0-7 \"--export=ALL,PRIMO_WORKDIR=$HOME/primo-quantifiers,PRIMO_POOL_LIST=$HOME/primo-quantifiers/results/pool-check/reference-sat-143196.txt,PRIMO_POOL_OUT=$HOME/primo-quantifiers/results/pool-check/control-<rev>,PRIMO_POOL_SHARDS=8,PRIMO_POOL_TIMEOUT=60,PRIMO_POOL_ARGS=--force --primo-arg=--quantifier-max-instances=5000\" scripts/slurm_quantifier_pool_check.sbatch",
+        "summary": "python3 summarize_pool_checks.py pool-check/unsat-<rev> pool-check/control-<rev> (scratch summarizer; plain cvc5 answers from 143196)"
+      },
+      "results": {
+        "unconfirmed_answers": "The three reference-less unsat answers of the earlier UF evaluations are confirmed locally at 9e6fd5e: llist2 x2015_09_10_16_53_56_947_1222396 (cvc5 with pools 0.21 s) and x2015_09_10_16_54_01_121_1224387 (0.20 s), and koenigslemma x2015_09_10_16_51_52_445_1059832 with --primo-arg=--quantifier-tuple-order=max (0.09 s); cvc5 alone times out on each at 60 s, and earlier at 900 s.",
+        "unsat_9e6fd5e": "1,947 files: 1,588 confirmed (median cvc5 time 0.126 s, maximum 55 s), 358 inconclusive (cvc5 timeout 209, unknown 149), 1 not checked (Primo timed out on the rerun); 0 refuted. 26 of the 38 reference-less answers and 46 files cvc5 alone did not solve in 143196 are confirmed. Not confirmed by family: Barrett 140, grasshopper 116, sledgehammer 102, misc 1.",
+        "control_9e6fd5e": "109 files: no cvc5 unsat. 100 controls ran (cvc5 unknown 62, timeout 17, parse error 21) and 9 were not checked (Primo timeout 8, sat 1). The 21 parse errors were all CLEARSY files: the script annotated quantifiers inside define-fun bodies but emitted definitions before the pools (fixed in ab9d240).",
+        "clearsy_rerun_ab9d240": "12 CLEARSY unsat files: 12 confirmed. 26 CLEARSY control files: 25 controls with cvc5 unknown, 1 not checked; no parse error.",
+        "diagnosis": "Inconclusive checks at 9e6fd5e split into timeouts (209; median 76 Skolem lemmas and 68 pools against 2 and 43 for confirmed files, similar pool coverage) and quick unknowns (149; small inputs, every quantifier pooled). On three unknown examples Primo skipped no tuple or lemma. In the smallest (sledgehammer Fundamental_Theorem_Algebra uf.1158451) cvc5 turned unsat once the input's top-level existential body was bound to Primo's Skolem constants with let: cvc5 had not recognized Primo's printed existential as the input's, so the pool terms built from Primo's constants were useless. 3b9264a links such Skolemizations to the input text. Black-box probes show cvc5 keeps pools through conjunction splitting, unused variables and disjoint variables. grasshopper dispose_loop_check_free_19_4 (no Skolem constants) stays unknown for an unexplained reason.",
+        "unsat_3b9264a": "1,947 files: 1,601 confirmed (median cvc5 time 0.126 s, maximum 55 s, total 1,335 s), 345 inconclusive (cvc5 timeout 204, unknown 141), 1 not checked (Primo timed out on the rerun); 0 refuted. Against 9e6fd5e: 14 newly confirmed, 1 no longer confirmed (Barrett x2015_09_10_17_01_49_670_1779530: 0.12 s, now a timeout). 997 top-level Skolemizations in 356 files were linked to the input text and 459 were not. 29 of the 38 reference-less answers and 50 files cvc5 alone did not solve in 143196 are confirmed; the 9 reference-less answers left are Barrett gram_lang x2015_09_10_16_50_45_459_1267903 and parallel x2015_09_10_16_56_42_740_1008448, grasshopper dl_copy_loop_invariant_36_3, dl_reverse_loop_invariant_28_3 and insert_postcondition_of_insert_27_4, and sledgehammer Fundamental_Theorem_Algebra uf.878138, uf.878946, uf.880874 and uf.881705. Not confirmed by family: Barrett 141, grasshopper 116, sledgehammer 88, misc 1.",
+        "control_3b9264a": "109 files: 100 controls with no cvc5 unsat (unknown 83, timeout 17) and no parse error; 9 not checked (Primo timeout 8, sat 1).",
+        "artifacts": "/home/janotmik/primo-quantifiers/results/pool-check (file lists, unsat-9e6fd5e, control-9e6fd5e, unsat-clearsy-ab9d240, control-clearsy-ab9d240, unsat-3b9264a, control-3b9264a, summary-9e6fd5e.json, summary-3b9264a.json) (SLURM-backed)"
+      },
+      "evidence_status": "current"
+    },
+    {
       "id": "2026-09-15-quantifiers-stall-cutoff-72d00d3",
       "date": "2026-09-15",
       "commit": "72d00d3",

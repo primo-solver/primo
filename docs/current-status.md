@@ -66,9 +66,10 @@ route above, and in any other logic, or in assumptions mode, they are
 `unsupported`. On the SMT-LIB UF division at 60 s, the route at `72d00d3`
 solves 1,948 of 7,590 files with its defaults: the `sum` tuple order, rounds
 of 128 instances and the stall cutoff. All but one answer are `unsat`, with no
-wrong answers or reference disagreements. Z3 solves 2,765 and cvc5 3,154. The
-earlier tuple-order comparison predates the Boolean-domain repair; see
-[](quantifiers.md). `div`, `mod`
+wrong answers or reference disagreements. Z3 solves 2,765 and cvc5 3,154. An
+independent check with cvc5 pools over Primo's own instantiations confirms
+1,601 of those `unsat` answers and refutes none. The earlier tuple-order
+comparison predates the Boolean-domain repair; see [](quantifiers.md). `div`, `mod`
 and `abs` are deliberate Int extensions to the accepted logic declarations;
 division requires a nonzero literal divisor. They are not a claim of strict
 QF_LIA/QF_UFLIA grammar conformance, and a Dolmen logic rejection is not a model

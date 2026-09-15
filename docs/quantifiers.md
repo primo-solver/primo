@@ -101,6 +101,28 @@ confirmed this way, each in under 0.25 s of cvc5 time: the two `llist2` files
 and `koenigslemma`, which Primo refutes with `--quantifier-tuple-order=max`.
 cvc5 alone had timed out on each, even at 900 s.
 
+On SLURM at `3b9264a`, with 60 s each for Primo and cvc5, the check ran over
+the 1,947 files answered `unsat` in UF-division job 145714:
+
+- **Confirmed:** 1,601, with a median cvc5 time of 0.13 s. They include 50
+  files cvc5 alone does not solve in 60 s, and 29 of the 38 answers that
+  neither Z3 nor cvc5 confirms.
+- **Inconclusive:** 345, where cvc5 times out on 204 and answers `unknown`
+  on 141. One file was not checked: Primo timed out on the rerun.
+- **Refuted:** none.
+- **Linking top-level Skolemizations:** it added 14 confirmations and lost
+  one, against the run before it. Of the Skolemizations, 997 were linked and
+  459 were not, mostly nested existentials, which the input text does not
+  state at top level.
+- **Negative control:** over the 109 files that Z3 or cvc5 answered `sat`,
+  cvc5 answered `unsat` on none. 100 controls ran, and 9 were not checked.
+
+Nine reference-less answers remain unconfirmed; the run log lists them. For
+some inconclusive files the cause is not yet known. One grasshopper file, for
+example, has no Skolem constants and every quantifier pooled, but cvc5 still
+answers `unknown`. Black-box probes show that cvc5 keeps a pool through
+conjunction splitting and through unused or disjoint variables.
+
 The UF-division tables below predate the soundness repair and remain
 historical. The fresh runs at `ff72a12` are the run-log entries
 `2026-09-14-quantifiers-merge-readiness-ff72a12` and
