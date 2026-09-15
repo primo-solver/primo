@@ -55,6 +55,13 @@ skips no tuple and justifies neither `unknown` nor `sat`. The regressions
 refute the 26-variable formula after exactly one stall, and still find, for
 every order, a refutation that comes only after earlier stalls.
 
+On the UF division at 60 s, `72d00d3` with the cutoff solves 1,948 files
+(job 145714), against 1,932 for rounds of 128 without it: 19 gained, 3 lost.
+It gives no wrong answer or reference disagreement. Among files that printed
+statistics, 274 stalled at least once. On files both runs solve, rounds and
+SAT calls are unchanged, and tuples instantiated fall from 29.5 million to
+13.5 million.
+
 **Still open.** The cutoff counts tuples, not time. Nothing bounds the scan
 for a round's first useful lemma, which stays long when no tuple produces one,
 and cancellation is not observed inside a scan. The default of 65,536 is

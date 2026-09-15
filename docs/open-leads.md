@@ -45,7 +45,9 @@ round again, with a tuple-count stall cutoff (`--quantifier-stall-tuples`,
 default 65,536): a quantifier whose scan stops queuing new lemmas hands the
 round's queued lemmas to SAT, without skipping tuples. See [](quantifiers.md).
 Single-instance rounds, the default at `2fb97bd`, solved 1,686 UF-division files
-against 1,932 for rounds of 128 on the same binary.
+against 1,932 for rounds of 128 on the same binary. With the cutoff, `72d00d3`
+solves 1,948 (19 gained and 3 lost against unbounded rounds of 128), so the
+falsifier below did not fire.
 
 Still open: an elapsed-time limit, cancellation inside a scan, a bound on the
 search for a round's first useful lemma, and tuning the stall limit.

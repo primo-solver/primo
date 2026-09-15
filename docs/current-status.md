@@ -63,11 +63,12 @@ The frontend accepts the five named logics above and `UF`, nonrecursive
 `define-fun`, typed `let`, ITEs and the documented linear arithmetic operators.
 Quantified assertions skip preprocessing: in `UF` they go to the quantified
 route above, and in any other logic, or in assumptions mode, they are
-`unsupported`. On the SMT-LIB UF division at 60 s, the route solves 1,867 of
-7,590 files with the original `max` tuple order, and 1,911 with `sum`, now
-the default. All but one answer are `unsat`, with no wrong
-answers or reference disagreements. The virtual best of the six tuple orders
-solves 2,020. Z3 solves 2,765 and cvc5 3,154; see [](quantifiers.md). `div`, `mod`
+`unsupported`. On the SMT-LIB UF division at 60 s, the route at `72d00d3`
+solves 1,948 of 7,590 files with its defaults: the `sum` tuple order, rounds
+of 128 instances and the stall cutoff. All but one answer are `unsat`, with no
+wrong answers or reference disagreements. Z3 solves 2,765 and cvc5 3,154. The
+earlier tuple-order comparison predates the Boolean-domain repair; see
+[](quantifiers.md). `div`, `mod`
 and `abs` are deliberate Int extensions to the accepted logic declarations;
 division requires a nonzero literal divisor. They are not a claim of strict
 QF_LIA/QF_UFLIA grammar conformance, and a Dolmen logic rejection is not a model
