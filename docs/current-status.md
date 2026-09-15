@@ -32,6 +32,10 @@ change removes repeated UF atom scans; see [](incremental-uf-atom-scans.md).
 Traversal scratch and the other profiling leads remain open. The separate
 [OpenSMT comparison](opensmt-incremental-comparison.md) adds native UF/LRA
 reference timings and records external crashes without changing solver defaults.
+Merge `90ac7e9` on 2026-09-15 integrates `quantifiers` at `42a9915`, preserving
+its exact tree: quantified `UF` by enumerative instantiation, qualified at
+`ff72a12` (with `c7bc7c0` merged in), `72d00d3` and `3b9264a`; see
+[](quantifiers.md).
 Dated experiments elsewhere retain their original revisions
 and limitations. Exact commands, manifests, hashes and jobs belong in
 [](run-log.md), not in a moving headline benchmark.

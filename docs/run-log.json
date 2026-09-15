@@ -3,6 +3,28 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-15-quantifiers-merge-into-main",
+      "date": "2026-09-15",
+      "commit": "90ac7e9",
+      "branch": "main",
+      "kind": "merge-record",
+      "scope": "Merge 90ac7e9 integrates quantifiers at 42a9915 into main at 18a1e8d. The merge tree is identical to 42a9915 (git diff quantifiers 90ac7e9 is empty), so the branch qualification applies to main unchanged. No new solver runs were made for the merge itself.",
+      "environment": {
+        "host": "local repository; qualification ran on the CIIRC SLURM cluster",
+        "baseline": "origin/main 18a1e8d (version 0.2.0). c7bc7c0 was merged into quantifiers at ff72a12 before qualification; 42a9915 merges 18a1e8d, which changes only the version string in src/main.cpp.",
+        "candidate": "quantifiers 42a9915; solver sources identical to 3b9264a apart from the version string"
+      },
+      "commands": {
+        "merge": "git merge --no-ff origin/main (on quantifiers, giving 42a9915); git branch -f main origin/main; git merge --no-ff quantifiers (in a worktree of main); git diff --stat quantifiers HEAD (empty)"
+      },
+      "results": {
+        "evidence": "2026-09-14-quantifiers-merge-readiness-ff72a12: quantifier preparation gate, QF_UFLIA and QF_UF fuzz gates, preservation against origin/main c7bc7c0 (answers identical; QF_UFLIA EUF assignment-notification counters higher from the dispatcher detach of 2fb97bd), UF typefuzz and the UF division. 2026-09-15-quantifiers-instances-per-round-attribution-145630 and 2026-09-15-quantifiers-stall-cutoff-72d00d3: rounds of 128 with the stall cutoff solve 1,948 UF-division files with no wrong answer or reference disagreement, after a clean preparation gate and UF typefuzz. 2026-09-15-quantifiers-cvc5-pool-checks: cvc5 pools confirm 1,601 of the 1,947 unsat answers and refute none; the negative control gives no unsat. 2026-09-15-quantifiers-uf-cvc5-enumerative-146116: cvc5 --enum-inst --no-e-matching solves 2,930 for comparison.",
+        "after_qualification": "9e6fd5e, ab9d240 and 3b9264a add the pool export behind --quantifier-export-pools (off by default: the component records nothing) and the checking script; 9710505 and 57f56e3 change documentation only. At 3b9264a: 41/41 CTest, 41/41 ASan CTest, lint and the script tests pass; the pool-check jobs ran the 3b9264a binary with the export on over the 1,947 files. At 42a9915: make check passes (41/41 CTest, 188 Python tests) and primo --version reports 0.2.0.",
+        "open": "Nine reference-less unsat answers remain unconfirmed by the pool check (cvc5 --enum-inst answers 36 of the 38). 345 pool checks are inconclusive; for two small examples the exported instances suffice when asserted as ground instances, so cvc5 --pool-inst does not use pools that are sufficient. Primo solves 982 fewer UF files than cvc5's enumerative instantiation; the entailment check and fail masks are not implemented (docs/quantifier-entailment-design.md)."
+      },
+      "evidence_status": "current"
+    },
+    {
       "id": "2026-09-15-quantifiers-uf-cvc5-enumerative-146116",
       "date": "2026-09-15",
       "commit": "3b9264a",
