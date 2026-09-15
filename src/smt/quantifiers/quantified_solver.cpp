@@ -150,7 +150,7 @@ CheckSatOutcome solve_quantified_uf(
                       }};
   CheckSatOutcome outcome = solve_component_recipe(terms, ground, {}, options, statistics, recipe);
   if (instantiation.export_sink != nullptr) {
-    write_pool_export(terms, exported, options.quantifier_export_pools, statistics);
+    write_pool_export(terms, ground, exported, options.quantifier_export_pools, statistics);
     outcome.statistics = statistics;
   }
   return outcome;

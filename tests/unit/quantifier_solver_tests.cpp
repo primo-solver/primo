@@ -182,6 +182,9 @@ void pool_export_lists_skolems_and_tuples() {
   assert(text.find("; primo-pool primo_pool_") != std::string::npos);
   assert(text.find("(Tuple U U)") != std::string::npos);
   assert(text.find("(tuple a $primo_skolem_") != std::string::npos);
+  assert(text.find("; primo-skolem-root exists 0 :sorts U :constants $primo_skolem_") !=
+         std::string::npos);
+  assert(outcome.statistics.get(":quant.export.skolem-roots") == 1);
   assert(outcome.statistics.get(":quant.export.tuples") >= 2);
   assert(outcome.statistics.get(":quant.export.skipped-tuples") == 0);
 }

@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include "core/binders.hpp"
 #include "core/symbol_table.hpp"
 #include "core/term.hpp"
 #include "core/term_manager.hpp"
@@ -80,8 +81,9 @@ std::string pool_name(const core::SymbolTable& symbols, std::size_t index) {
 
 }  // namespace
 
-void write_pool_export(const core::TermManager& terms, const theory::QuantifierExport& record,
-                       const std::string& path, util::Statistics& statistics) {
+void write_pool_export(const core::TermManager& terms, std::span<const core::TermId> roots,
+                       const theory::QuantifierExport& record, const std::string& path,
+                       util::Statistics& statistics) {
   const core::SymbolTable& symbols = terms.symbols();
   std::unordered_set<core::SymbolId> created;
   for (const core::TermId constant : record.constants) created.insert(terms.get(constant).symbol);
@@ -95,13 +97,51 @@ void write_pool_export(const core::TermManager& terms, const theory::QuantifierE
         << smtlib::print_sort(symbols, node.sort) << ")\n";
   }
 
-  std::size_t skipped_lemmas = 0;
-  for (const core::TermId lemma : record.skolem_lemmas) {
-    if (!printable(lemma)) {
-      ++skipped_lemmas;
+  // Top-level assertions a Skolemization can witness: an Exists root, or a Not
+  // over a Forall root, numbered by occurrence among the roots of the same
+  // kind and variable sorts. An atom is named by its first occurrence.
+  std::map<std::pair<core::TermId, bool>, std::size_t> root_occurrence;
+  std::map<std::pair<bool, std::vector<core::SortId>>, std::size_t> roots_seen;
+  for (const core::TermId root : roots) {
+    core::TermId atom = root;
+    bool value = true;
+    const core::TermKind kind = terms.get(root).kind;
+    if (kind == core::TermKind::Not &&
+        terms.get(terms.get(root).children.front()).kind == core::TermKind::Forall) {
+      atom = terms.get(root).children.front();
+      value = false;
+    } else if (kind != core::TermKind::Exists) {
       continue;
     }
-    out << "(assert " << smtlib::print_term(terms, lemma) << ")\n";
+    const std::size_t occurrence = roots_seen[{value, core::quantifier_sorts(terms, atom)}]++;
+    root_occurrence.emplace(std::pair{atom, value}, occurrence);
+  }
+
+  std::size_t printed_lemmas = 0;
+  std::size_t skipped_lemmas = 0;
+  std::size_t skolem_roots = 0;
+  for (const auto& skolemization : record.skolemizations) {
+    const bool queued = skolemization.lemma != core::kInvalidTermId;
+    const bool printed = queued && printable(skolemization.lemma);
+    if (queued && !printed) ++skipped_lemmas;
+    const auto found = root_occurrence.find({skolemization.atom, skolemization.value});
+    if (found != root_occurrence.end()) {
+      ++skolem_roots;
+      out << "; primo-skolem-root " << (skolemization.value ? "exists" : "not-forall") << " "
+          << found->second << " :sorts";
+      for (const core::TermId constant : skolemization.constants) {
+        out << " " << smtlib::print_sort(symbols, terms.get(constant).sort);
+      }
+      out << " :constants";
+      for (const core::TermId constant : skolemization.constants) {
+        out << " " << smtlib::symbol_text(symbols.get_symbol(terms.get(constant).symbol).name);
+      }
+      out << " :lemma " << (printed ? "next" : "none") << "\n";
+    }
+    if (printed) {
+      ++printed_lemmas;
+      out << "(assert " << smtlib::print_term(terms, skolemization.lemma) << ")\n";
+    }
   }
 
   // Ordered by signature, and by first use within one, so the file is stable.
@@ -159,7 +199,8 @@ void write_pool_export(const core::TermManager& terms, const theory::QuantifierE
   if (!file) throw std::runtime_error("cannot write the quantifier pool export to " + path);
 
   statistics.set(":quant.export.constants", record.constants.size());
-  statistics.set(":quant.export.skolem-lemmas", record.skolem_lemmas.size() - skipped_lemmas);
+  statistics.set(":quant.export.skolem-lemmas", printed_lemmas);
+  statistics.set(":quant.export.skolem-roots", skolem_roots);
   statistics.set(":quant.export.skipped-lemmas", skipped_lemmas);
   statistics.set(":quant.export.tuples", exported_tuples);
   statistics.set(":quant.export.skipped-tuples", skipped_tuples);

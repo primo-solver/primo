@@ -284,13 +284,14 @@ void QuantifierComponent::skolemize(core::TermId atom, bool value) {
   }
   const core::TermId instance = canonical(core::instantiate(terms_, atom, constants));
   const core::TermId lemma = canonical(lemma_for(atom, value, instance));
-  if (options_.export_sink != nullptr) {
-    auto& created = options_.export_sink->constants;
-    created.insert(created.end(), constants.begin(), constants.end());
-  }
-  if (enqueue(lemma)) {
+  const bool queued = enqueue(lemma);
+  if (queued) {
     statistics_.increment(":quant.skolem-lemmas");
-    if (options_.export_sink != nullptr) options_.export_sink->skolem_lemmas.push_back(lemma);
+  }
+  if (options_.export_sink != nullptr) {
+    auto& sink = *options_.export_sink;
+    sink.constants.insert(sink.constants.end(), constants.begin(), constants.end());
+    sink.skolemizations.push_back({atom, value, constants, queued ? lemma : core::kInvalidTermId});
   }
 }
 

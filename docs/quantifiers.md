@@ -78,10 +78,21 @@ export, then runs cvc5 `--pool-inst` on the original input with these
 changes: the logic becomes `ALL`, the export is added before the assertions,
 and every quantifier whose sorts have a pool gets a `:pool` annotation.
 
+A Skolemization of a top-level assertion is announced in the export by a
+`; primo-skolem-root` comment. The script finds that assertion in the input
+text, looking through `let` and `!`, and Skolemizes the input's own text with
+Primo's constants as `(let ((v c) ...) body)`; Primo's lemma is then dropped.
+Without this, cvc5 saw Primo's printing of the formula, with generated names
+and normalized connectives, as a different formula from the input's. It then
+Skolemized the input itself, and the pool terms built from Primo's constants
+were useless.
+
 The check trusts only cvc5. Pools and annotations do not change what the
-problem means, and a Skolem lemma naming a fresh constant keeps a satisfiable
-problem satisfiable whatever formula it names, so a printing mistake cannot
-create a false confirmation. As a self-check, removing the annotations must
+problem means. Each group of Skolem constants witnesses exactly one
+existential formula, either one of the input's own assertions or a formula
+Primo printed, so it keeps a satisfiable problem satisfiable whatever that
+formula is. A printing mistake or a wrong match therefore cannot create a
+false confirmation. As a self-check, removing the annotations must
 give back the input's commands. With `--force` the same check runs on inputs
 Primo did not refute, as a negative control that must never answer unsat.
 

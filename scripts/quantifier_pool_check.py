@@ -9,14 +9,21 @@ cvc5 pools and runs cvc5 with --pool-inst:
     pools need; declarations come first, then the export, then definitions
     and assertions, which may use its pools;
   - every quantifier whose variable sorts have a pool gets a :pool annotation;
-  - Primo's Skolem and Herbrand constants are declared and its Skolem lemmas
-    asserted.
+  - Primo's Skolem and Herbrand constants are declared;
+  - a top-level assertion Primo Skolemized, (exists ...) or (not (forall ...))
+    possibly under lets and annotations, is Skolemized again in its original
+    text with Primo's constants, as (assert ... (let ((v c) ...) body)); Primo's
+    own lemma for it is dropped, since cvc5 need not recognize Primo's printing
+    of the formula as the input's;
+  - Primo's other Skolem lemmas are asserted as printed.
 
-Pools and annotations do not change what the problem means, and a Skolem lemma
-naming a fresh constant keeps a satisfiable problem satisfiable whatever
-formula it names. An unsat answer from cvc5 therefore confirms the input
-without trusting Primo's instantiation or printing. As a self-check, removing
-the added annotations must give back the original commands.
+Pools and annotations do not change what the problem means. Every group of
+Skolem constants witnesses exactly one existential formula, either one of the
+input's own assertions or a formula Primo printed, so it keeps a satisfiable
+problem satisfiable whatever that formula is. An unsat answer from cvc5
+therefore confirms the input without trusting Primo's instantiation or
+printing. As a self-check, removing the added annotations must give back the
+original commands.
 
 Verdicts: confirmed (cvc5 unsat), refuted (cvc5 sat: Primo's unsat is wrong,
 exit status 3), inconclusive (anything else from cvc5), not-checked (Primo did
@@ -163,6 +170,87 @@ def read_pools(export_text):
     return pools
 
 
+def read_skolem_roots(export_lines):
+    """Skolemizations of top-level assertions, from `; primo-skolem-root` lines.
+
+    Each record has the comment's line index, the assertion's kind and
+    occurrence, the variable sorts, the constants, and whether Primo's lemma
+    follows on the next line."""
+    prefix = '; primo-skolem-root '
+    records = []
+    for index, line in enumerate(export_lines):
+        if not line.startswith(prefix):
+            continue
+        tokens = tokenize(line[len(prefix):])
+        fields = {}
+        key = None
+        for token in tokens[2:]:
+            if token.startswith(':'):
+                key = token
+                fields[key] = []
+            elif key is not None:
+                fields[key].append(token)
+        records.append({
+            'line': index,
+            'kind': tokens[0],
+            'occurrence': int(tokens[1]),
+            'sorts': tuple(symbol_key(sort) for sort in fields.get(':sorts', [])),
+            'constants': fields.get(':constants', []),
+            'lemma_follows': fields.get(':lemma', ['none'])[0] == 'next',
+        })
+    return records
+
+
+def root_skolem_target(term):
+    """How a top-level assertion's term can be Skolemized, if at all.
+
+    Looks through `!` annotations and `let` bindings for an exists, or for a
+    not over a forall. Returns (kind, sorts, rebuild), where rebuild(constants)
+    gives the term with the quantifier replaced by its body under a let binding
+    its variables to `constants`, keeping the surrounding lets and negation.
+    Returns None for any other term."""
+    wrappers = []
+    negated = False
+    current = term
+    while isinstance(current, list) and current:
+        if current[0] == '!' and len(current) >= 2:
+            current = current[1]
+        elif current[0] == 'let' and len(current) == 3:
+            wrappers.append(('let', current[1]))
+            current = current[2]
+        elif current[0] == 'not' and len(current) == 2 and not negated:
+            wrappers.append(('not', None))
+            negated = True
+            current = current[1]
+        else:
+            break
+    if not is_quantifier(current):
+        return None
+    if current[0] == 'exists' and not negated:
+        kind = 'exists'
+    elif current[0] == 'forall' and negated:
+        kind = 'not-forall'
+    else:
+        return None
+    binders = current[1]
+    body = current[2]
+    # Attributes directly under a quantifier (:pattern, the added :pool) belong
+    # to the quantifier; they do not change the body's meaning and are not
+    # allowed once the body stands alone.
+    if isinstance(body, list) and len(body) >= 2 and body[0] == '!':
+        body = body[1]
+    sorts = tuple(serialize(copy_tree(binding[1], symbol_key)) for binding in binders)
+
+    def rebuild(constants):
+        result = ['let', [[binding[0], constant] for binding, constant in zip(binders, constants)],
+                  copy_tree(body)]
+        for wrapper, bindings in reversed(wrappers):
+            result = ['not', result] if wrapper == 'not' else ['let', copy_tree(bindings), result]
+        return result
+
+    return kind, sorts, rebuild
+
+
 def is_quantifier(node):
     return (isinstance(node, list) and len(node) == 3 and node[0] in ('forall', 'exists')
             and isinstance(node[1], list) and node[1]
@@ -238,7 +326,10 @@ def build_check(input_text, export_text):
     # names a defined symbol.
     definitions = []
     assertions = []
-    counts = {'pools': len(pools), 'annotated': 0, 'unpooled': 0, 'assertions': 0}
+    counts = {'pools': len(pools), 'annotated': 0, 'unpooled': 0, 'assertions': 0,
+              'skolem_linked': 0, 'skolem_unlinked': 0}
+    # Top-level assertions that can be Skolemized, by kind and sorts, in order.
+    targets = {}
     for command in parse(input_text):
         if not isinstance(command, list) or not command:
             raise ValueError('unexpected top-level atom')
@@ -256,18 +347,44 @@ def build_check(input_text, export_text):
             if head == 'assert':
                 counts['assertions'] += 1
                 assertions.append(annotated)
+                target = root_skolem_target(annotated[1]) if len(annotated) == 2 else None
+                if target is not None:
+                    targets.setdefault(target[:2], []).append(target[2])
             else:
                 definitions.append(annotated)
         elif head == 'set-option':
             options.append(command)
         else:
             declarations.append(command)
+
+    export_lines = export_text.rstrip('\n').splitlines()
+    dropped = set()
+    used = set()
+    skolemized = []
+    for record in read_skolem_roots(export_lines):
+        key = (record['kind'], record['sorts'])
+        group = targets.get(key, [])
+        target = (key, record['occurrence'])
+        if (record['occurrence'] < len(group) and target not in used
+                and len(record['constants']) == len(record['sorts'])):
+            used.add(target)
+            skolemized.append(['assert', group[record['occurrence']](record['constants'])])
+            counts['skolem_linked'] += 1
+            if record['lemma_follows']:
+                lemma_line = record['line'] + 1
+                if lemma_line >= len(export_lines) or not export_lines[lemma_line].startswith('(assert '):
+                    raise ValueError('a primo-skolem-root comment is not followed by its lemma')
+                dropped.add(lemma_line)
+        else:
+            counts['skolem_unlinked'] += 1
+
     lines = [serialize(command) for command in options]
     lines.append('(set-logic ALL)')
     lines.extend(serialize(command) for command in declarations)
-    lines.append(export_text.rstrip('\n'))
+    lines.extend(line for index, line in enumerate(export_lines) if index not in dropped)
     lines.extend(serialize(command) for command in definitions)
     lines.extend(serialize(command) for command in assertions)
+    lines.extend(serialize(command) for command in skolemized)
     lines.append('(check-sat)')
     return '\n'.join(lines) + '\n', counts
 

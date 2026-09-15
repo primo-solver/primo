@@ -32,10 +32,17 @@ namespace primo::theory {
 // What instantiation used, recorded for checking an answer with another solver
 // (smt/quantifiers/pool_export.hpp). Terms belong to the solve's TermManager.
 struct QuantifierExport {
+  // One Skolemization: the atom and the value it behaved existentially under,
+  // its constants in the atom's declaration order, and its lemma if queued.
+  struct Skolemization {
+    core::TermId atom = core::kInvalidTermId;
+    bool value = false;
+    std::vector<core::TermId> constants;
+    core::TermId lemma = core::kInvalidTermId;
+  };
   // Constants the component created (Skolem and Herbrand), in creation order.
   std::vector<core::TermId> constants;
-  // Skolem lemmas, as queued.
-  std::vector<core::TermId> skolem_lemmas;
+  std::vector<Skolemization> skolemizations;
   // Tuples whose instance became a lemma, with their quantifier's variable sorts.
   std::vector<std::pair<std::vector<core::SortId>, std::vector<core::TermId>>> tuples;
 };

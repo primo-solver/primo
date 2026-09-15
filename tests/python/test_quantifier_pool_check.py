@@ -18,7 +18,42 @@ EXPORT = """; Primo quantifier pool export (scripts/quantifier_pool_check.py)
 """
 
 
+EXPORT_WITH_ROOTS = """; Primo quantifier pool export (scripts/quantifier_pool_check.py)
+(declare-fun $primo_skolem_0 () U)
+(declare-fun $primo_skolem_1 () U)
+; primo-skolem-root exists 0 :sorts U :constants $primo_skolem_0 :lemma next
+(assert (or (not (exists ((?x0 U)) (p ?x0))) (p $primo_skolem_0)))
+; primo-skolem-root not-forall 0 :sorts U :constants $primo_skolem_1 :lemma none
+; primo-pool primo_pool_0 U
+(declare-pool primo_pool_0 U (a $primo_skolem_0 $primo_skolem_1))
+"""
+
+PRIMO_LEMMA = '(assert (or (not (exists ((?x0 U)) (p ?x0))) (p $primo_skolem_0)))'
+
+
 class PoolCheckTests(unittest.TestCase):
+    def test_top_level_skolemizations_use_the_input_text(self):
+        source = ('(set-logic UF)\n(declare-sort U 0)\n(declare-fun a () U)\n'
+                  '(declare-fun p (U) Bool)\n(assert (! (exists ((z U)) (p z)) :named goal))\n'
+                  '(assert (let ((b a)) (not (forall ((y U)) (= y b)))))\n(check-sat)\n')
+        text, counts = MODULE.build_check(source, EXPORT_WITH_ROOTS)
+        lines = text.splitlines()
+        self.assertNotIn(PRIMO_LEMMA, lines)
+        self.assertIn('(assert (! (exists ((z U)) (! (p z) :pool (primo_pool_0))) :named goal))', lines)
+        self.assertIn('(assert (let ((z $primo_skolem_0)) (p z)))', lines)
+        self.assertIn('(assert (let ((b a)) (not (let ((y $primo_skolem_1)) (= y b)))))', lines)
+        self.assertEqual(lines[-1], '(check-sat)')
+        self.assertEqual((counts['skolem_linked'], counts['skolem_unlinked']), (2, 0))
+
+    def test_unmatched_skolemizations_keep_primo_lemmas(self):
+        source = ('(set-logic UF)\n(declare-sort U 0)\n(declare-fun a () U)\n'
+                  '(declare-fun p (U) Bool)\n(assert (p a))\n'
+                  '(assert (forall ((y U)) (p y)))\n(check-sat)\n')
+        text, counts = MODULE.build_check(source, EXPORT_WITH_ROOTS)
+        self.assertIn(PRIMO_LEMMA, text.splitlines())
+        self.assertEqual((counts['skolem_linked'], counts['skolem_unlinked']), (0, 2))
+
+
     def test_tokens_drop_comments_and_keep_strings_and_quoted_symbols(self):
         tokens = MODULE.tokenize('(set-info :source "a ""b"" ; c") ; note\n(declare-fun |x y| () U)')
         self.assertIn('"a ""b"" ; c"', tokens)
