@@ -66,7 +66,8 @@ route above, and in any other logic, or in assumptions mode, they are
 `unsupported`. On the SMT-LIB UF division at 60 s, the route at `72d00d3`
 solves 1,948 of 7,590 files with its defaults: the `sum` tuple order, rounds
 of 128 instances and the stall cutoff. All but one answer are `unsat`, with no
-wrong answers or reference disagreements. Z3 solves 2,765 and cvc5 3,154. An
+wrong answers or reference disagreements. Z3 solves 2,765 and cvc5 3,154; cvc5
+restricted to enumerative instantiation without E-matching solves 2,930. An
 independent check with cvc5 pools over Primo's own instantiations confirms
 1,601 of those `unsat` answers and refutes none. The earlier tuple-order
 comparison predates the Boolean-domain repair; see [](quantifiers.md). `div`, `mod`

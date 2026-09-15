@@ -3,6 +3,37 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-15-quantifiers-uf-cvc5-enumerative-146116",
+      "date": "2026-09-15",
+      "commit": "3b9264a",
+      "branch": "quantifiers",
+      "kind": "reference-configuration-comparison",
+      "scope": "cvc5 restricted to enumerative instantiation without E-matching over the SMT-LIB UF division, the same technique Primo's quantified route implements, compared with Primo at its current defaults (145714, 72d00d3), default cvc5 and Z3 (143196). The Primo binary is not rerun; the commit names the workspace the job ran from.",
+      "environment": {
+        "host": "CIIRC SLURM cluster, partition compute, 80 single-CPU array tasks",
+        "solver": "contrib/local/bin/cvc5 --enum-inst --no-e-matching (cvc5 1.3.4 f3b21c4); options chosen and checked by running the binary (a toy Skolem problem: default unknown, --enum-inst unsat; llist2 x2015_09_10_16_53_56_947_1222396 unsat only without E-matching within 20 s)",
+        "corpus": "tmp/UF hard links of the 7,590-file division (manifest prefix 38feaaabff90657e)",
+        "timeout": "60 s"
+      },
+      "jobs": {
+        "cvc5_enum": "146116 (80 tasks, all COMPLETED)"
+      },
+      "commands": {
+        "cvc5_enum": "sbatch --array=0-79%80 --export=\"ALL,PRIMO_WORKDIR=$HOME/primo-quantifiers,PRIMO_COMPARE_ROOT=tmp/UF,PRIMO_COMPARE_TIMEOUT=60,PRIMO_COMPARE_SHARDS=80,PRIMO_COMPARE_SOLVERS=cvc5-enum=contrib/local/bin/cvc5 --enum-inst --no-e-matching\" scripts/slurm_uf_quantifier_compare.sbatch",
+        "summary": "python3 analyze_cvc5_enum.py uf-quantifier-compare-146116 (scratch analyzer; Primo from 145714, default cvc5 and Z3 from 143196); enum-summary.json"
+      },
+      "results": {
+        "solve_counts": "cvc5 --enum-inst --no-e-matching 2,930 (1 sat, 2,929 unsat; 59 unknown, 4,601 timeouts), PAR2 564,369. Primo 72d00d3 1,948, PAR2 682,792. Default cvc5 3,154, PAR2 534,091. Z3 2,765, PAR2 580,843. PAR2 counts a timeout as 120 s.",
+        "correctness": "0 wrong answers against :status and 0 disagreements with Primo, default cvc5 or Z3.",
+        "pairwise": "Primo only 21, cvc5-enum only 1,003; default cvc5 only 399, cvc5-enum only 175. Virtual best Primo and cvc5-enum 2,951; default cvc5 and cvc5-enum 3,329; all four 3,452.",
+        "families": "files; cvc5-enum, Primo, default cvc5, Z3: Barrett 2963; 1381, 954, 1517, 1281. CLEARSY 50; 20, 13, 20, 42. induction-by-reflection 32; 4, 4, 8, 8. grasshopper 376; 354, 281, 350, 362. misc 19; 12, 7, 14, 17. sledgehammer 4140; 1159, 689, 1245, 1045. wintersteiger 10; 0, 0, 0, 10.",
+        "time": "On the 1,927 files both Primo and cvc5-enum solve, the median Primo/cvc5-enum time ratio is 0.863, but the totals are 5,581 s against 1,161 s.",
+        "reference_less": "Of Primo's 38 unsat answers that neither default cvc5 nor Z3 answers, cvc5-enum answers unsat on 36.",
+        "artifacts": "/home/janotmik/primo-quantifiers/results/uf-quantifier-compare-146116 (cvc5-enum shards, enum-summary.json) (SLURM-backed)"
+      },
+      "evidence_status": "current"
+    },
+    {
       "id": "2026-09-15-quantifiers-cvc5-pool-checks",
       "date": "2026-09-15",
       "commit": "3b9264a",

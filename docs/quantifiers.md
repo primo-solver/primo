@@ -55,6 +55,24 @@ skips no tuple and justifies neither `unknown` nor `sat`. The regressions
 refute the 26-variable formula after exactly one stall, and still find, for
 every order, a refutation that comes only after earlier stalls.
 
+**Against cvc5's enumerative instantiation.** cvc5 with `--enum-inst
+--no-e-matching` uses the technique this route implements; the options were
+checked by running the binary. On the UF division at 60 s (job 146116) it
+solves 2,930 files, against 1,948 for Primo at `72d00d3`:
+
+- **Correctness:** no wrong answer and no disagreement with Primo, default
+  cvc5 or Z3.
+- **Unique solves:** Primo solves 21 files that cvc5 in this mode does not;
+  cvc5 in this mode solves 1,003 that Primo does not.
+- **Families:** the gap is mostly in sledgehammer (1,159 against 689) and in
+  Barrett (1,381 against 954).
+- **Time:** on files both solve, Primo's median time is slightly lower, but
+  its total is 5,581 s against 1,161 s.
+- **Reference-less answers:** this mode answers `unsat` on 36 of the 38 Primo
+  `unsat` answers that neither default cvc5 nor Z3 answers.
+- **Default cvc5:** it solves 3,154 files; 399 of them are not solved in this
+  mode, and this mode solves 175 files default cvc5 does not.
+
 On the UF division at 60 s, `72d00d3` with the cutoff solves 1,948 files
 (job 145714), against 1,932 for rounds of 128 without it: 19 gained, 3 lost.
 It gives no wrong answer or reference disagreement. Among files that printed
