@@ -123,9 +123,11 @@ satisfiable problems better (Example 3).
   `true` and `false` only.
 - **Rounds.** At each complete assignment, at most
   `--quantifier-instances-per-round` new instances are queued, shared evenly
-  across the universally behaving atoms, starting from a rotating one. One solve
-  tries at most `--quantifier-max-instances` instances, then answers `unknown`
-  with reason `resource-limit`.
+  across the universally behaving atoms, starting from a rotating one. Once the
+  round has a lemma, an atom whose scan visits `--quantifier-stall-tuples`
+  tuples without a new one stops; the round keeps its enumeration state. One
+  solve tries at most `--quantifier-max-instances` distinct instances, then
+  answers `unknown` with reason `resource-limit`.
 - **Not implemented.** Relevant domains, sort inference, and model export.
 
 ## Tests derived from the paper

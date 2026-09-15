@@ -121,6 +121,7 @@ CheckSatOutcome solve_quantified_uf(
 
   theory::QuantifierInstantiationOptions instantiation;
   instantiation.instances_per_round = options.quantifier_instances_per_round;
+  instantiation.stall_tuples = options.quantifier_stall_tuples;
   instantiation.max_instances = options.quantifier_max_instances;
   instantiation.simplify_instances = options.quantifier_instance_simplification;
   instantiation.tuple_order = options.quantifier_tuple_order;

@@ -14,6 +14,7 @@
 #include "smt/check_sat.hpp"
 #include "smt/clausifier.hpp"
 #include "smt/inconclusive_reason.hpp"
+#include "theory/quantifiers/tuple_orders.hpp"
 
 using primo::smt::check_sat_smtlib;
 using primo::smt::CheckSatOptions;
@@ -106,7 +107,10 @@ void domain_preparation_is_closed_and_idempotent() {
   }
 }
 
-void one_instance_reaches_sat_before_duplicate_enumeration() {
+// forall over 26 unused Booleans has 67,108,864 tuples and one instance. A
+// round must not hold that instance while it scans for more: the scan yields
+// after the stall limit, and a round of one instance yields at once.
+void stalled_scans_deliver_queued_lemmas() {
   std::string variables;
   for (int index = 0; index < 26; ++index) {
     variables += "(x" + std::to_string(index) + " Bool)";
@@ -115,27 +119,64 @@ void one_instance_reaches_sat_before_duplicate_enumeration() {
       "(set-logic UF) (declare-const p Bool) (assert (not p)) "
       "(assert (forall (" +
       variables + ") p)) (check-sat)";
-  assert(CheckSatOptions{}.quantifier_instances_per_round == 1);
+  const CheckSatOptions defaults;
+  assert(defaults.quantifier_instances_per_round ==
+         primo::theory::kDefaultQuantifierInstancesPerRound);
+  assert(defaults.quantifier_stall_tuples == primo::theory::kDefaultQuantifierStallTuples);
+  const auto by_default = check_sat_smtlib(input, defaults);
+  assert(by_default.result == CheckSatResult::Unsat);
+  assert(by_default.statistics.get(":quant.stalls") == 1);
+  assert(by_default.statistics.get(":quant.instances") ==
+         1 + primo::theory::kDefaultQuantifierStallTuples);
   for (const auto& entry : primo::cli::kTupleOrderNames) {
     for (const bool simplify : {false, true}) {
       CheckSatOptions options;
       options.quantifier_tuple_order = entry.value;
       options.quantifier_instance_simplification = simplify;
-      for (const bool explicit_default : {false, true}) {
-        if (explicit_default) options.quantifier_instances_per_round = 1;
-        const auto outcome = check_sat_smtlib(input, options);
-        assert(outcome.result == CheckSatResult::Unsat);
-        assert(outcome.statistics.get(":quant.instances") == 1);
-      }
+      options.quantifier_stall_tuples = 64;
+      const auto stalled = check_sat_smtlib(input, options);
+      assert(stalled.result == CheckSatResult::Unsat);
+      assert(stalled.statistics.get(":quant.stalls") == 1);
+      assert(stalled.statistics.get(":quant.instances") == 65);
+      options.quantifier_instances_per_round = 1;
+      const auto single = check_sat_smtlib(input, options);
+      assert(single.result == CheckSatResult::Unsat);
+      assert(single.statistics.get(":quant.instances") == 1);
+      assert(single.statistics.get(":quant.stalls") == 0);
     }
   }
-  // Preserve the explicit batching option on a bounded product.
-  CheckSatOptions batched;
-  batched.quantifier_instances_per_round = 8;
+  // Without a stall limit, batching still works on a bounded product.
+  CheckSatOptions unbounded;
+  unbounded.quantifier_stall_tuples = 0;
   assert(check_sat_smtlib("(set-logic UF) (declare-const p Bool) (assert (not p)) "
                           "(assert (forall ((x Bool) (y Bool)) p)) (check-sat)",
-                          batched)
+                          unbounded)
              .result == CheckSatResult::Unsat);
+}
+
+// A stall ends a round without losing enumeration state. Here the refuting
+// tuple (x := c) comes only after rounds that queued the useless instances
+// (q a) and (q b) and then stalled on their Boolean duplicates.
+void stalls_resume_without_skipping_tuples() {
+  std::string booleans;
+  for (int index = 0; index < 10; ++index) {
+    booleans += "(b" + std::to_string(index) + " Bool)";
+  }
+  const std::string input =
+      "(set-logic UF) (declare-sort U 0) (declare-const a U) (declare-const b U) "
+      "(declare-const c U) (declare-fun q (U) Bool) (assert (q a)) (assert (q b)) "
+      "(assert (not (q c))) (assert (forall (" +
+      booleans + " (x U)) (q x))) (check-sat)";
+  for (const auto& entry : primo::cli::kTupleOrderNames) {
+    CheckSatOptions options;
+    options.quantifier_tuple_order = entry.value;
+    options.quantifier_stall_tuples = 4;
+    const auto outcome = check_sat_smtlib(input, options);
+    assert(outcome.result == CheckSatResult::Unsat);
+    if (entry.value == primo::theory::TupleOrder::SumOfDigits) {
+      assert(outcome.statistics.get(":quant.stalls") >= 1);
+    }
+  }
 }
 
 const std::string kPrelude = R"(
@@ -258,8 +299,7 @@ void instances_are_normalized_and_deduplicated() {
   const std::string symmetric =
       "(assert (forall ((x U) (y U)) (or (p x) (p y)))) "
       "(assert (not (p a))) (assert (not (p b)))";
-  // This test deliberately fills a batch to exercise duplicate filtering;
-  // the default now refutes after its first useful instance.
+  // A batch of 128, as by default, lets duplicates meet within one round.
   CheckSatOptions batched;
   batched.quantifier_instances_per_round = 128;
   const CheckSatOutcome simplified = solve(symmetric, batched);
@@ -393,7 +433,8 @@ void every_tuple_order_refutes() {
 int main() {
   generated_boolean_arguments_receive_their_domain();
   domain_preparation_is_closed_and_idempotent();
-  one_instance_reaches_sat_before_duplicate_enumeration();
+  stalled_scans_deliver_queued_lemmas();
+  stalls_resume_without_skipping_tuples();
   single_instances_refute();
   skolemization_covers_both_polarities();
   nested_quantifiers_become_atoms_of_instances();

@@ -771,6 +771,10 @@ int run_main(int argc, char** argv) {
   app.add_option("--quantifier-instances-per-round", solver_options.quantifier_instances_per_round,
                  "Quantified UF: enumerative instances queued per complete assignment")
       ->check(CLI::Range(1, 1000000000));
+  app.add_option("--quantifier-stall-tuples", solver_options.quantifier_stall_tuples,
+                 "Quantified UF: tuples a quantifier may visit without a new lemma before a "
+                 "round that has queued lemmas hands them to SAT; 0 never yields")
+      ->check(CLI::Range(0, 1000000000));
   app.add_option("--quantifier-max-instances", solver_options.quantifier_max_instances,
                  "Quantified UF: distinct instances generated before answering unknown")
       ->check(CLI::Range(1, 1000000000));

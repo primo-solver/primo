@@ -16,7 +16,7 @@ source or documentation informs this note (clean-room policy, `AGENTS.md`).
 
 ## Implementation status
 
-### Generated-term repair and single-instance rounds
+### Generated-term repair and instance rounds
 
 The review at `c882d3a` found an incorrect SAT answer for an existential
 Boolean argument: an instance introduced a Skolem constant after the one-time
@@ -26,32 +26,44 @@ valid quantified input. The shared preparation contract and producer audit are
 in [](euf-boolean-arguments.md). Both walks now leave binders opaque, and the
 component driver completes the registry at every installation boundary.
 
-`--quantifier-instances-per-round` now defaults to **1**, defined once for both
-the public solver options and `QuantifierInstantiationOptions`. A useful
-enumerative lemma returns immediately to SAT; queued Skolem lemmas are handed
-over before starting universal enumeration. Explicit larger rounds remain
-available. The separate `CombinationRecipe::lemma_batch` limit of 64 only
-drains an existing queue and does not wait for it to fill.
+`--quantifier-instances-per-round` defaults to **128**, and
+`--quantifier-stall-tuples` (default 65,536) bounds how long a round holds
+lemmas it already has. Both defaults are defined once for the public solver
+options and `QuantifierInstantiationOptions`. Queued Skolem lemmas are handed
+over before universal enumeration starts. The separate
+`CombinationRecipe::lemma_batch` limit of 64 only drains an existing queue and
+does not wait for it to fill.
 
-With 26 unused Boolean variables, `forall xs. p` has 67,108,864 tuples, all
-producing `p`. Under the old default of 128 useful instances per round,
-duplicate filtering kept the first lemma queued while scanning the entire
-product. The new regression asserts one attempted instance before refuting
-that formula together with `not p`, for every tuple order and both instance
-normalization settings. Distinct-instance budget accounting is unchanged.
+`2fb97bd` had made the default one instance per round. With 26 unused Boolean
+variables, `forall xs. p` has 67,108,864 tuples, all producing `p`, and a round
+of 128 kept the first lemma queued while it scanned the whole product. On the
+UF division at 60 s, though, single-instance rounds solved 1,686 files against
+1,932 for rounds of 128 on the same binary (`ff72a12`, jobs 145389 and 145630),
+with no wrong answer in either. Every round is a SAT re-solve and a component
+rebuild: on the 1,542 files solved both by 145389 and by the earlier
+128-per-round run 144606, the median number of rounds rose from 3 to 413. The
+run log has the attribution.
 
-**Open lead: bounded larger batches.** Larger rounds may amortize restarts,
-but their benefit is unqualified. Before promoting them, design an elapsed-time
-and no-progress limit that gives up filling a batch and delivers queued lemmas.
-It must cover duplicate-heavy scans, cancellation, resumable traversal and
-calls with no queued lemma. Yielding must not skip tuples, claim exhaustion or
-justify SAT. Defaulting to one useful instance does not guarantee termination
-when no useful instance is found. No tuple-work threshold is implemented here.
+**Stall cutoff.** Once a round has queued a lemma, a quantifier that visits
+`--quantifier-stall-tuples` tuples in a row without queuing another stops, and
+the round moves on to the next quantifier or ends; `:quant.stalls` counts the
+stops. A stop needs a non-empty queue, so every round still delivers a new
+lemma or enumerates to the end. A stopped enumeration resumes where it was:
+every tuple it visited is in the tried set, staged orders do not mark the
+interrupted stage complete, and the walks keep their state. A stop therefore
+skips no tuple and justifies neither `unknown` nor `sat`. The regressions
+refute the 26-variable formula after exactly one stall, and still find, for
+every order, a refutation that comes only after earlier stalls.
 
-All UF-division timings below used the previous default of 128 instances per
-round and predate this soundness repair. They remain historical measurements;
-they do not qualify the repaired solver or measure the new default. Fresh
-correctness evidence is recorded separately in `run-log.json`.
+**Still open.** The cutoff counts tuples, not time. Nothing bounds the scan
+for a round's first useful lemma, which stays long when no tuple produces one,
+and cancellation is not observed inside a scan. The default of 65,536 is
+chosen, not tuned.
+
+The UF-division tables below predate the soundness repair and remain
+historical. The fresh runs at `ff72a12` are the run-log entries
+`2026-09-14-quantifiers-merge-readiness-ff72a12` and
+`2026-09-15-quantifiers-instances-per-round-attribution-145630`.
 
 At `2fb97bd`, the fresh SLURM gate completed 3,000 targeted generated cases,
 1,000 native Boolean-wrapper mutations, and 1,000 arithmetic auxiliary cases.

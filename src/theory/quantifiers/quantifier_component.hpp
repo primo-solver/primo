@@ -32,6 +32,10 @@ namespace primo::theory {
 struct QuantifierInstantiationOptions {
   // Instances queued at one complete assignment, across all quantifiers.
   std::size_t instances_per_round = kDefaultQuantifierInstancesPerRound;
+  // Tuples one quantifier may visit without queuing a new lemma, once the round
+  // has a lemma to deliver, before its enumeration yields to SAT; 0 never
+  // yields. A yield skips no tuple and marks no stage complete.
+  std::size_t stall_tuples = kDefaultQuantifierStallTuples;
   // Distinct instances generated in one solve before reporting ResourceLimit;
   // instances recognized as generated before do not count.
   std::size_t max_instances = 100000;

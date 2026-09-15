@@ -305,18 +305,29 @@ std::size_t QuantifierComponent::enumerate(core::TermId atom, bool value, std::s
   }
 
   std::size_t made = 0;
+  // Tuples visited since this obligation last queued a lemma.
+  std::size_t idle = 0;
   std::vector<core::TermId> tuple(arity);
   // Instantiates one index tuple. False once this round's share or the
-  // instance budget is spent.
+  // instance budget is spent, or once the scan stalls with lemmas queued.
   const TupleVisitor visit = [&](const IndexTuple& indices) {
     for (std::size_t position = 0; position < arity; ++position) {
       tuple[position] = pools[position][indices[position]];
     }
     if (instances_ < options_.max_instances && state.tried.insert(tuple).second) {
       statistics_.increment(":quant.instances");
-      if (add_instance(atom, value, core::instantiate(terms_, atom, tuple)) && ++made == budget) {
-        return false;
+      if (add_instance(atom, value, core::instantiate(terms_, atom, tuple))) {
+        idle = 0;
+        return ++made < budget && instances_ < options_.max_instances;
       }
+    }
+    // A long run of tuples that add nothing would hold back lemmas SAT can
+    // already use: 26 unused Boolean variables give 67,108,864 tuples and one
+    // instance. The queue stays empty until this round queues a lemma, so a
+    // round still delivers one or enumerates to the end.
+    if (options_.stall_tuples != 0 && !queue_.empty() && ++idle >= options_.stall_tuples) {
+      statistics_.increment(":quant.stalls");
+      return false;
     }
     return instances_ < options_.max_instances;
   };

@@ -492,10 +492,12 @@ struct CheckSatOptions {
   std::size_t finite_domain_eqdefs_auto_term_limit = 5000;
   std::optional<std::size_t> nelson_oppen_arrangement_probe_limit;
   std::optional<std::size_t> max_theory_conflicts;
-  // Quantified UF: enumerative instances queued per complete assignment, and
-  // distinct instances generated in one solve before answering unknown
-  // (docs/quantifiers.md).
+  // Quantified UF: enumerative instances queued per complete assignment; tuples
+  // a quantifier may visit without a new lemma before a round with queued
+  // lemmas yields (0 never); distinct instances generated in one solve before
+  // answering unknown (docs/quantifiers.md).
   std::size_t quantifier_instances_per_round = theory::kDefaultQuantifierInstancesPerRound;
+  std::size_t quantifier_stall_tuples = theory::kDefaultQuantifierStallTuples;
   std::size_t quantifier_max_instances = 100000;
   // Normalize quantifier instances before duplicate detection and lemma
   // generation (theory/quantifiers/instance_simplifier.hpp).

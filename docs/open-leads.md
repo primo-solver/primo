@@ -40,24 +40,19 @@ implementing from these historical measurements.
 
 ### Quantifiers: bounded larger instance batches
 
-**Open, not implemented or performance-qualified.** The default is now one
-useful instance per round. The previous default waited for 128 useful instances
-and could scan 67,108,864 substitutions of unused Boolean variables while an
-already queued lemma would immediately refute the problem. See
-[](quantifiers.md) for the regression and the distinction from queue draining.
+**Partly implemented (2026-09-15).** The default is 128 useful instances per
+round again, with a tuple-count stall cutoff (`--quantifier-stall-tuples`,
+default 65,536): a quantifier whose scan stops queuing new lemmas hands the
+round's queued lemmas to SAT, without skipping tuples. See [](quantifiers.md).
+Single-instance rounds, the default at `2fb97bd`, solved 1,686 UF-division files
+against 1,932 for rounds of 128 on the same binary.
 
-Larger batches might amortize ground-solver restarts. Before extending the
-default, design elapsed-time and no-progress limits that give up filling the
-batch and hand queued work to SAT. Cover duplicate-heavy scans, cancellation,
-resumable traversal and scans that produce no lemma. A yield must not skip
-tuples, claim enumeration is exhausted or justify SAT. Single-instance rounds
-also do not bound time spent finding the first useful instance.
+Still open: an elapsed-time limit, cancellation inside a scan, a bound on the
+search for a round's first useful lemma, and tuning the stall limit.
 
-**Falsifier:** reject a larger-batch policy if it delays the unused-variable
-refutation, loses refutations through broken resumption, or fails to improve
-validated solved counts/PAR2 against batch size 1. Measure on the corrected
-solver; old UF-division runs used batch size 128 and predate the Boolean-domain
-soundness repair.
+**Falsifier:** drop the cutoff if it delays the unused-variable refutation,
+loses refutations through broken resumption, or solves fewer validated
+UF-division files than unbounded rounds of 128.
 
 | # | lead | expected size | cost | status |
 |---|---|---|---|---|

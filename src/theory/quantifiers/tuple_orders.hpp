@@ -44,9 +44,15 @@ enum class TupleOrder {
 // SMT-LIB UF division (docs/quantifiers.md).
 inline constexpr TupleOrder kDefaultTupleOrder = TupleOrder::SumOfDigits;
 
-// Deliver the first useful instance to SAT instead of scanning duplicate
-// tuples to fill a batch. Larger rounds remain an explicit option.
-inline constexpr std::size_t kDefaultQuantifierInstancesPerRound = 1;
+// Useful instances queued per round. Every round costs a SAT re-solve and a
+// component rebuild, so single-instance rounds lose solves to restarts
+// (docs/quantifiers.md); the stall limit below bounds how long a round holds
+// lemmas it already has.
+inline constexpr std::size_t kDefaultQuantifierInstancesPerRound = 128;
+
+// Tuples one quantifier may visit without queuing a new lemma, once its round
+// has a lemma to deliver, before its enumeration yields. 0 never yields.
+inline constexpr std::size_t kDefaultQuantifierStallTuples = 65536;
 
 using IndexTuple = std::vector<std::size_t>;
 // Receives one tuple; returns false to stop the enumeration.
