@@ -70,6 +70,21 @@ class PoolCheckTests(unittest.TestCase):
         self.assertNotIn('(get-model)', lines)
         self.assertEqual((counts['assertions'], counts['annotated'], counts['pools']), (2, 1, 2))
 
+    def test_definitions_follow_the_pools_they_use(self):
+        source = ('(set-logic UF)\n(declare-sort U 0)\n(declare-fun p (U) Bool)\n'
+                  '(define-fun all_p () Bool (forall ((x U)) (p x)))\n'
+                  '(declare-fun a () U)\n(assert all_p)\n(assert (not (p a)))\n(check-sat)\n')
+        text, counts = MODULE.build_check(source, EXPORT)
+        lines = text.splitlines()
+        definition = '(define-fun all_p () Bool (forall ((x U)) (! (p x) :pool (primo_pool_0))))'
+        self.assertIn(definition, lines)
+        self.assertLess(lines.index('(declare-fun a () U)'),
+                        lines.index('(declare-pool primo_pool_0 U (a $primo_skolem_0))'))
+        self.assertLess(lines.index('(declare-pool primo_pool_0 U (a $primo_skolem_0))'),
+                        lines.index(definition))
+        self.assertLess(lines.index(definition), lines.index('(assert all_p)'))
+        self.assertEqual(counts['annotated'], 1)
+
     def test_verdicts(self):
         self.assertEqual(MODULE.verdict('unsat', 'unsat'), 'confirmed')
         self.assertEqual(MODULE.verdict('unsat', 'sat'), 'refuted')

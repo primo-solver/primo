@@ -6,7 +6,8 @@ Primo records the instantiation tuples and Skolem lemmas it used
 cvc5 pools and runs cvc5 with --pool-inst:
 
   - every command of the input is kept; set-logic becomes ALL, which tuple
-    pools need, and declarations move before the assertions;
+    pools need; declarations come first, then the export, then definitions
+    and assertions, which may use its pools;
   - every quantifier whose variable sorts have a pool gets a :pool annotation;
   - Primo's Skolem and Herbrand constants are declared and its Skolem lemmas
     asserted.
@@ -231,6 +232,11 @@ def build_check(input_text, export_text):
     names = set(pools.values())
     options = []
     declarations = []
+    # Definitions and assertions may carry :pool annotations, so they follow
+    # the export that declares the pools. A definition refers only to symbols
+    # declared before it, and Primo expands definitions, so the export never
+    # names a defined symbol.
+    definitions = []
     assertions = []
     counts = {'pools': len(pools), 'annotated': 0, 'unpooled': 0, 'assertions': 0}
     for command in parse(input_text):
@@ -251,7 +257,7 @@ def build_check(input_text, export_text):
                 counts['assertions'] += 1
                 assertions.append(annotated)
             else:
-                declarations.append(annotated)
+                definitions.append(annotated)
         elif head == 'set-option':
             options.append(command)
         else:
@@ -260,6 +266,7 @@ def build_check(input_text, export_text):
     lines.append('(set-logic ALL)')
     lines.extend(serialize(command) for command in declarations)
     lines.append(export_text.rstrip('\n'))
+    lines.extend(serialize(command) for command in definitions)
     lines.extend(serialize(command) for command in assertions)
     lines.append('(check-sat)')
     return '\n'.join(lines) + '\n', counts
@@ -280,12 +287,16 @@ def run(command, timeout):
     except subprocess.TimeoutExpired:
         return {'answer': 'timeout', 'seconds': round(time.monotonic() - start, 3), 'exit': None}
     words = completed.stdout.split()
-    return {
+    result = {
         'answer': words[0] if words else '',
         'seconds': round(time.monotonic() - start, 3),
         'exit': completed.returncode,
         'stderr': completed.stderr.strip()[:300],
     }
+    if result['answer'].startswith('(error'):
+        # cvc5 reports errors on standard output.
+        result['stdout'] = completed.stdout.strip()[:300]
+    return result
 
 
 def check(input_path, args, work):
