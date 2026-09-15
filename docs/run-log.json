@@ -3,6 +3,89 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-15-quantifiers-instances-per-round-attribution-145630",
+      "date": "2026-09-15",
+      "commit": "ff72a12",
+      "branch": "quantifiers",
+      "kind": "paired-configuration-comparison",
+      "scope": "Attribution of the UF-division loss at ff72a12 (145389: 1,686 solved at the default of one instance per round, against 1,911 for the 128-per-round sum arm of 144606 at fc786f1). The same binary is rerun on the UF division with --quantifier-instances-per-round=128, which separates the default introduced in 2fb97bd from the generated-term repair and the origin/main merge.",
+      "environment": {
+        "host": "CIIRC SLURM cluster, partition compute, 80 single-CPU array tasks",
+        "solver": "/home/janotmik/primo-quantifiers/build-slurm-rel/primo --quiet --stats --quantifier-instances-per-round=128, git ff72a12 (default sum tuple order)",
+        "corpus": "tmp/UF hard links of the 7,590-file division (manifest prefix 38feaaabff90657e)",
+        "references": "Z3 5.1.0 and cvc5 1.3.4 answers reused from 143196 by path; not rerun",
+        "timeout": "60 s"
+      },
+      "jobs": {
+        "batch128": "145630 (80 tasks, all COMPLETED)",
+        "default_one_per_round": "145389"
+      },
+      "commands": {
+        "batch128": "sbatch --array=0-79%80 --export=\"ALL,PRIMO_WORKDIR=$HOME/primo-quantifiers,PRIMO_COMPARE_ROOT=tmp/UF,PRIMO_COMPARE_TIMEOUT=60,PRIMO_COMPARE_SHARDS=80,PRIMO_COMPARE_SOLVERS=batch128=build-slurm-rel/primo --quiet --stats --quantifier-instances-per-round=128\" scripts/slurm_uf_quantifier_compare.sbatch",
+        "summaries": "summarize_uf_quantifier_compare.py results/uf-quantifier-compare-145630 --candidate batch128 --shards 80 --expected-files 7590 --json summary-batch128.json (z3/cvc5 linked from 143196); a scratch analyzer comparing against 143196 references, the 144606 sum arm and 145389 wrote default-summary.json"
+      },
+      "results": {
+        "coverage": "80/80 shards and 7,590 files.",
+        "batch128": "Solved 1,932 (1 sat, 1,931 unsat), 34 unknown, 5,624 timeouts, PAR2 684,291 (timeout counted as 120 s). 0 wrong answers against :status and 0 disagreements with Z3 or cvc5. Virtual best with Z3 and cvc5 3,358 (Primo alone 38).",
+        "against_one_per_round": "145389 at the same commit solved 1,686 with PAR2 716,807. Batch 128 solves 372 files the default does not; the default solves 126 that batch 128 does not (Barrett 57, sledgehammer 69). The virtual best of the two is 2,058.",
+        "against_144606_sum": "The 128-per-round sum arm at fc786f1, before the generated-term repair and the origin/main merge, solved 1,911 with PAR2 686,644. Batch 128 at ff72a12 gains 28 files and loses 7. The repair and the merge therefore do not account for the loss; the default of one instance per round does.",
+        "families": "files; batch128, 145389 default, 144606 sum: Barrett 2963; 953, 843, 946. CLEARSY 50; 13, 12, 13. induction-by-reflection 32; 4, 3, 4. grasshopper 376; 280, 220, 281. misc 19; 6, 5, 8. sledgehammer 4140; 676, 603, 659. wintersteiger 10; 0, 0, 0.",
+        "mechanism": "From the files solved by both 145389 (one per round) and 144606 (128 per round), 1,542 files: median :quant.rounds 413.5 against 3; median :sat.solve-calls and :combination.online-components.rebuilds 234 against 5; median :quant.instances 566 against 411.5; median time 0.206 s against 0.041 s, total 6,551 s against 2,382 s. Each round is a SAT re-solve and a component rebuild, so single-instance rounds multiply that cost. The 369 files 145389 lost took a median 1.41 s and 32 rounds in 144606.",
+        "unconfirmed": "Reference-less answers: 35 match a declared unsat status; 3 have none: universalInstance (confirmed earlier by cvc5 enumerative modes) and the two llist2 files (unsat in 0.18 s each here, 43-47 s at the default; still unconfirmed, see 145107-145112). koenigslemma x2015_09_10_16_51_52_445_1059832 times out.",
+        "artifacts": "/home/janotmik/primo-quantifiers/results/uf-quantifier-compare-145630 (summary-batch128.json, default-summary.json) and results/uf-quantifier-compare-145389 (summary-primo.json, default-summary.json) (SLURM-backed)"
+      },
+      "evidence_status": "current"
+    },
+    {
+      "id": "2026-09-14-quantifiers-merge-readiness-ff72a12",
+      "date": "2026-09-14",
+      "commit": "ff72a12",
+      "branch": "quantifiers",
+      "kind": "merge-readiness-gates",
+      "scope": "Fresh gates on ff72a12, the local merge of origin/main c7bc7c0 into quantifiers 05c631c, before merging quantifiers into main. Both sides changed BooleanClausifier::register_boolean_argument_terms: main added a registration cursor (7ac555c), and quantifiers completes that registry at every growth boundary of the quantified route (2fb97bd). The auto-merge combined both. The gates are: the quantifier preparation gate of 2fb97bd, repeated; quantifier-free fuzz merge gates; answers-and-counters preservation against the origin/main baseline; a UF typefuzz gate; and the UF division at current defaults.",
+      "environment": {
+        "host": "CIIRC SLURM cluster, partition compute",
+        "candidate": "/home/janotmik/primo-quantifiers/build-slurm-rel/primo reporting git ff72a12",
+        "baseline": "/home/janotmik/primo-quantifiers-base/build-slurm-rel/primo reporting git c7bc7c0 (origin/main)",
+        "prepare": "slurm_prepare_benchmark_workspace.py --reuse-dependencies --build-via-slurm --jobs 16 --sync-mode archive --cxx-header-manifest /home/janotmik/primo-cadical-profile/contrib/local/clang-tools-env/cxx-headers/include-paths.txt, once from the quantifiers checkout and once from a detached origin/main worktree (--allow-active-jobs)",
+        "references": "contrib/local/bin/z3 (Z3 5.1.0), contrib/local/bin/cvc5 (cvc5 1.3.4 f3b21c4), contrib/local/bin/dolmen (0.10), .venv-yinyang/bin/typefuzz (0.3.0)",
+        "local": "Before submission, on the merged tree: 40/40 CTest, 40/40 ASan CTest, 178 Python tests, make lint and make docs pass."
+      },
+      "jobs": {
+        "quantifier_preparation": "145386 (60 tasks, all COMPLETED)",
+        "qf_uflia_model_fuzz": "145387 (4 tasks, exit 1 from the model stage, see results)",
+        "qf_uf_boolean_fuzz": "145388 (11 tasks; 10 exit 1 from the model stage, see results)",
+        "uf_compare": "145389",
+        "uf_mutation_fuzz": "145390 (4 tasks, all COMPLETED)",
+        "preservation_qf_uflia": "145510",
+        "preservation_qf_uf_sample": "145511 (16 tasks, all COMPLETED)"
+      },
+      "commands": {
+        "quantifier_preparation": "PRIMO_WORKDIR=$HOME/primo-quantifiers PRIMO_GATE_OUT=$HOME/primo-quantifiers/results/quant-prep-ff72a12 PRIMO_UF_CORPUS=$HOME/primo-quantifiers-data/non-incremental/UF PRIMO_EXPECTED_REVISION=ff72a12 sbatch --array=0-59%8 scripts/slurm_quantifier_preparation_gate.sbatch (seed 20260914, 5 s per solver process); python3 scripts/summarize_quantifier_preparation_gate.py --root results/quant-prep-ff72a12 --out results/quant-prep-ff72a12/gate-summary.json",
+        "qf_uflia_model_fuzz": "sbatch --export=ALL,PRIMO_WORKDIR=$HOME/primo-quantifiers,PRIMO_FUZZ_SEED_BASE=202609140 scripts/slurm_qf_uflia_model_fuzz_gate.sbatch (4 tasks x 750, shape mixed, depth 3, timeout 5)",
+        "qf_uf_boolean_fuzz": "sbatch --export=ALL,PRIMO_WORKDIR=$HOME/primo-quantifiers,PRIMO_FUZZ_SEED_BASE=202609140 scripts/slurm_qf_uf_boolean_fuzz_gate.sbatch (11 shapes x 1000, timeout 10)",
+        "preservation": "for corpus in QF_UFLIA QF_UF-1of8: sbatch --export=ALL,PRIMO_WORKDIR=$HOME/primo-quantifiers,PRIMO_BASELINE=$HOME/primo-quantifiers-base/build-slurm-rel/primo,PRIMO_CANDIDATE=$HOME/primo-quantifiers/build-slurm-rel/primo,PRIMO_PRESERVE_ROOT=$HOME/primo-quantifiers-data/$corpus,PRIMO_PRESERVE_OUT_ROOT=$HOME/primo-quantifiers/results/merge-preservation-ff72a12-$corpus scripts/slurm_quantifier_qf_preservation.sbatch (60 s, one repeat); totals by a scratch summarizer over the per-shard summary.json files",
+        "qf_uf_sample": "Every 8th file of the sorted 7,503-file QF_UF corpus at $HOME/primo-qfuf-eval/tmp/QF_UF, hard-linked into $HOME/primo-quantifiers-data/QF_UF-1of8: 938 files, manifest sha256 prefix a4074fc108053ee0, path+size sha256 prefix 37b8e583660bd913 (799 QG-classification, 96 2018-Goel-hwbench, 12 eq_diamond, 7 SEQ, 6 PEQ, 6 NEQ, 6 20190906-CLEARSY, 5 20170829-Rodin, 1 TypeSafe)",
+        "uf_compare": "sbatch --array=0-79%80 --export=\"ALL,PRIMO_WORKDIR=$HOME/primo-quantifiers,PRIMO_COMPARE_ROOT=tmp/UF,PRIMO_COMPARE_TIMEOUT=60,PRIMO_COMPARE_SHARDS=80,PRIMO_COMPARE_SOLVERS=primo=build-slurm-rel/primo --quiet --stats\" scripts/slurm_uf_quantifier_compare.sbatch; Z3/cvc5 answers reused from 143196",
+        "uf_mutation_fuzz": "sbatch --time=01:00:00 --export=ALL,PRIMO_WORKDIR=$HOME/primo-quantifiers,PRIMO_CORPUS_ROOT=$HOME/primo-quantifiers-data/non-incremental/UF,PRIMO_FUZZ_YINYANG_WALL_SECONDS=3000,PRIMO_FUZZ_RANDOM_SEED=202609140,PRIMO_FUZZ_OUT_ROOT=$HOME/primo-quantifiers/fuzz-results/uf-mutation-ff72a12 scripts/slurm_uf_quantifier_mutation_fuzz.sbatch"
+      },
+      "results": {
+        "quantifier_preparation": "5,000 cases, 40,000 candidate executions, zero wrong answers, crashes, parser or type errors, unsupported cases, or reference disagreements. Generated: 3,000 cases (1,215 distinct inputs), both Boolean-domain modes times six tuple orders, 36,000 reference-confirmed answers (1,125 sat and 1,875 unsat per profile). Arithmetic: 1,000 cases, 2,000 confirmed answers (500 sat per profile). Native mutations: 1,000 cases (979 distinct inputs); registration 2 sat, 412 unsat, 354 unknown, 232 timeout; bridge-atoms 2 sat, 408 unsat, 346 unknown, 244 timeout; Z3 477 sat, 436 unsat, 87 timeout; cvc5 44 sat, 435 unsat, 521 unknown; 792 candidate answers confirmed within 5 s.",
+        "quantifier_preparation_confirmation": "The 32 unconfirmed candidate unsat answers are 18 distinct inputs, each byte-identical (SHA-256) to the input at the same index in quant-prep-2fb97bd, which cvc5 --enum-inst confirmed unsat in job 145314. The confirmations are reused; no definite candidate answer remains unconfirmed. Against 2fb97bd, the mutation outcomes differ only in which cases reach the 5 s limit (registration 413/355/230 then, bridge-atoms 410/346/242).",
+        "qf_uflia_model_fuzz": "Answers: 2,999 PASS against Z3 and 1 UNKNOWN_INVOLVED (task-0 case-00290: Primo unknown, Z3 sat; the c7bc7c0 baseline also answers unknown in 0.87 s, ff72a12 in 0.85 s). Models: all 1,515 sat models pass Dolmen. The tasks exit 1 because the validator records get-model after the 1,484 unsat answers and 1 unknown answer as solver-error (exit 2, 'get-model requires a current SAT model'), exactly as in 142923 at a6d3ff2; the c7bc7c0 baseline exits 2 on the same unsat input.",
+        "qf_uf_boolean_fuzz": "Answers: 11,000/11,000 PASS across 11 shapes against Z3. Models: all 6,805 sat models pass Dolmen; the 4,195 unsat answers give the same get-model exit 2 as above, which accounts for the 10 failed tasks (the model-reconstruction shape has no unsat case).",
+        "preservation_qf_uf_sample": "938 files: all non-timing counters match; 937 answers match (541 unsat, 396 sat); PEQ/PEQ013_size8.smt2 (status unsat) is reported as a disagreement because both binaries timed out at 60 s. Rerun twice per binary on node-02, both time out at 60 s, as does Z3. Sum of medians: baseline 594.2 s, candidate 593.7 s.",
+        "preservation_qf_uflia": "659 files (path+size manifest prefix 1d752c3ef2f50bc6, as 142925): all answers match (405 sat, 169 unsat); the 85 reported disagreements are files where both binaries time out at 60 s, the same count as 142925. Non-timing counters differ on 286 files (mathsat 233, wisas 50, Certora 3), only in :euf.assignments, :euf.eq-assignments and :euf.diseq-assignments, always higher in the candidate (+1 to +559); every other counter matches, including SAT conflicts, decisions, propagations, solve calls, rebuilds and growths. 142925 at a6d3ff2 had no counter difference. Sum of medians: baseline 6,307.4 s, candidate 6,300.4 s.",
+        "preservation_qf_uflia_cause": "The counters count assignment notifications delivered to EUF. 2fb97bd detaches the SAT dispatcher before materializing a new interface equality (solve_component_recipe, materialize), so no view of the atom registry survives term and clause creation; reconnecting delivers the current assignment again. Removing only that detach_dispatcher() call locally restores the baseline counts exactly on three affected mathsat/Wisa files (2,058/1,719/339, 2,386/1,884/502 and 2,199/2,117/82 instead of 2,060, 2,391 and 2,205), with the same answers and SAT conflicts. The difference is repeated notification, not a change in search; the detach was kept.",
+        "uf_mutation_fuzz": "4 tasks at ff72a12, 21 seeds each (19 valid, 2 invalid): 3,754 retained mutants (934, 923, 950, 947), 7,205 solver calls (1,771, 1,827, 1,810, 1,797), 0 bug triggers.",
+        "uf_compare": "80/80 shards, 7,590 files at the current defaults (sum order, 1 instance per round): solved 1,686 (1 sat, 1,685 unsat), 25 unknown, 5,879 timeouts, PAR2 716,807 (timeout counted as 120 s). 0 wrong answers against :status and 0 disagreements with Z3 or cvc5. Primo alone solves 41 files; the virtual best of Z3 and cvc5 rises from 3,320 to 3,361.",
+        "uf_compare_regression": "Against the sum arm of 144606 (fc786f1: 128 instances per round, before the generated-term repair), which solved 1,911 with PAR2 686,644, this run gains 144 files and loses 369, net -225. It is also below M4 (143196: 1,749). Families (now / 144606 sum): Barrett 843 / 946, CLEARSY 12 / 13, induction-by-reflection 3 / 4, grasshopper 220 / 281, misc 5 / 8, sledgehammer 603 / 659, wintersteiger 0 / 0. Both the default of one instance per round and the generated-term repair came in 2fb97bd, whose qualification made no performance claim; 2026-09-15-quantifiers-instances-per-round-attribution-145630 attributes the loss to that default.",
+        "uf_compare_unconfirmed": "Reference-less answers: 38 match a declared unsat status; 3 have no status: universalInstance (confirmed earlier by cvc5 enumerative modes) and the two llist2 files x2015_09_10_16_53_56_947_1222396 and x2015_09_10_16_54_01_121_1224387, now unsat at 43 s and 47 s under the default order, still unconfirmed (cvc5 --enum-inst, --full-saturate-quant and Z3 inconclusive at 900 s, jobs 145107-145112). koenigslemma x2015_09_10_16_51_52_445_1059832 times out.",
+        "artifacts": "/home/janotmik/primo-quantifiers/results/quant-prep-ff72a12 (gate-summary.json), fuzz-results/qf-uflia-model-gate-145387, fuzz-results/qf-uf-boolean-145388, fuzz-results/uf-mutation-ff72a12, results/merge-preservation-ff72a12-QF_UFLIA, results/merge-preservation-ff72a12-QF_UF-1of8, results/uf-quantifier-compare-145389 (default-summary.json) (SLURM-backed)"
+      },
+      "evidence_status": "current"
+    },
+    {
       "id": "2026-09-14-cli-enum-contracts",
       "date": "2026-09-14",
       "commit": "52394653b5fb9c8c26aa4b424504290e886eec7b",
