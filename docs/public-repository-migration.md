@@ -26,7 +26,7 @@ migration.
 | Public history | Preserve history if the publication audit permits | Transfer the repository or publish a curated starting revision. |
 | Contributions | Contributors retain their rights and contribute under the project license | DCO sign-off is proposed; no copyright assignment or separate CLA is proposed at this stage. |
 | Documentation | Maintain source and documentation in the same repository and review them together | Public hosting, release-version URLs, and CI configuration. |
-| Experiment records | One JSON record per run, with generated catalogs | Schema, lossless legacy migration, durable artifact hosting, and coordinated writer cutover; see [](benchmark-record-storage.md). |
+| Experiment records | PostgreSQL for collected results, separate artifact storage, portable JSON/CSV snapshots | Data model, hosting and backup ownership, lossless legacy import, and coordinated writer cutover; see [](benchmark-record-storage.md). |
 | Governance | Public technical decisions and an explicit route to maintainership | Initial maintainers, organization owners, review authority, and dispute resolution. |
 
 The existing private repository's license file is not treated as a decision
@@ -131,10 +131,10 @@ before it is marked complete. Owners and dates are not yet assigned.
 - Review the source archive contents. The current `make archive` workflow omits
   Markdown/MyST sources; decide the public release packaging explicitly so
   documentation sources remain available and editable alongside each release.
-- Replace the shared experimental ledger with the independently mergeable run
-  records proposed in [](benchmark-record-storage.md). Preserve historical IDs,
-  provenance, and evidence limitations; generate aggregate views instead of
-  editing a central index on every branch.
+- Replace the shared experimental ledger with the database and artifact storage
+  proposed in [](benchmark-record-storage.md). Preserve historical IDs,
+  provenance, and evidence limitations. Keep schema/tools and reviewed reports
+  in Git, with immutable exports for published results.
 
 ### 3. Configure the organization and verification workflow
 
@@ -149,6 +149,9 @@ before it is marked complete. Owners and dates are not yet assigned.
   exact candidate being reviewed. Existing correctness gates remain in force.
 - Configure documentation previews and publication. Enable repository/edit
   links only after their destination exists.
+- Assign database and artifact-storage ownership; test concurrent ingestion,
+  offline recovery, backups/restoration, and portable exports before retiring
+  the existing ledger. Builds must not require service access.
 
 ### 4. Qualify and publish the first release
 

@@ -115,10 +115,11 @@ applicable, host or job IDs, resource limits, outcomes, and artifact locations.
 Separate passes from timeouts, unsupported cases, crashes, wrong answers, and
 reference disagreements. See [](experiments.md) and [](run-log.md).
 
-The proposed replacement in [](benchmark-record-storage.md) gives each run its
-own JSON record and generates the catalog, so branches can add evidence without
-editing a shared array. Continue using the current ledger until the tooling and
-policy cutover is complete; the new storage layout is not yet implemented.
+The proposed replacement in [](benchmark-record-storage.md) collects results in
+PostgreSQL, retains large artifacts separately, and publishes portable evidence
+snapshots. Collection supports offline work; contributors should not need
+database administration access. Continue using the current ledger until the
+tooling and policy cutover is complete; the service is not yet implemented.
 
 If you cannot run an expensive or infrastructure-specific check, state what
 you ran and what remains. A maintainer should arrange the remaining work and

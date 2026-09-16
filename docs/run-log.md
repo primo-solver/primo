@@ -4,10 +4,11 @@
 evidence. Use it for benchmark campaigns, fuzzing, profiling, parameter tuning,
 SAT dependency profile checks, and reference-solver comparisons.
 
-The proposed replacement is described in [](benchmark-record-storage.md): one
-JSON file per run record, with generated indexes and separate durable artifacts.
-It addresses repeated merge conflicts between branches. The migration is not
-implemented; this page still describes the active recording policy.
+The proposed replacement is described in [](benchmark-record-storage.md):
+PostgreSQL for collected metadata and individual results, separate durable
+artifacts, and portable evidence exports. It addresses branch merge conflicts
+and long-term analysis. The migration is not implemented; this page still
+describes the active recording policy.
 
 The ledger uses JSON rather than a database service. It should be
 updated in the same commit as the script, manifest, documentation, or solver
