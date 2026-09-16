@@ -10779,6 +10779,181 @@ CheckSatOutcome solve_qf_lra_engine_impl(core::TermManager& terms,
   return outcome;
 }
 
+// How compute_forced_model_equalities ended. Each terminal value names the
+// situation; the caller owns the outcome it builds and the statistics it
+// counts, which is the only thing the final-arrangement and model
+// reconstruction paths disagree about.
+enum class ForcedModelEqualityStatus {
+  Success,
+  // A learned conflict or a forced interface equality restarted the round.
+  Recheck,
+  EqualityScanProbeLimit,
+  SeparationProbeLimit,
+  SeparationFailed,
+};
+
+// The LRA state the equality scan reads. Pointers, because the caller only
+// establishes them for the checks that need them.
+struct LraCheckInputs {
+  const std::vector<BooleanClausifier::TheoryAtom>& atoms;
+  const PreparedLraTheory* prepared = nullptr;
+  const theory::arithmetic::LraTableau* tableau = nullptr;
+  const std::vector<AssignedTheoryAtom>& assignments;
+};
+
+struct ForcedModelEqualityInputs {
+  const FlatEufModelView& euf_model;
+  const std::vector<core::TermId>& shared_real_terms;
+  // The atoms and assignments the separation works over, which are the round's
+  // own, not the ones the equality scan checks.
+  const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms;
+  const std::vector<AssignedTheoryAtom>& lra_assignments;
+  LraCheckInputs check;
+  const std::optional<LraModelEqualPartition>& lra_model_partition;
+  bool candidate_final_scan_enabled = false;
+  const std::vector<core::TermId>& candidate_lra_implied_equalities;
+  bool candidate_had_internal_model_equalities = false;
+  bool lra_implied_equalities_for_model_complete = false;
+  const std::vector<core::TermId>& lra_implied_equalities_for_model;
+  std::optional<std::uint64_t> propagation_start;
+  // Model reconstruction keeps the LRA-implied equalities for its model
+  // assignments, so it deduplicates the internal equalities against those
+  // alone; the final arrangement folds everything into one list and
+  // deduplicates against the EUF-implied equalities too.
+  bool keep_lra_equalities_separate = false;
+};
+
+struct ForcedModelEqualityResult {
+  ForcedModelEqualityStatus status = ForcedModelEqualityStatus::Success;
+  std::vector<core::TermId> euf_equalities;
+  std::vector<core::TermId> lra_equalities;
+  std::vector<core::TermId> forced_equalities;
+  RealModelSeparationResult separation;
+};
+
+// The shared-Real equalities EUF and LRA force on a candidate model, and the
+// atoms that separate the rest. Two call sites ran this sequence -- the final
+// arrangement under !produce_model and model reconstruction under
+// produce_model -- as independent copies of the same scan, separation,
+// candidate-scan fallback and retry. Keeping equality classification in one
+// place is what this is for: two hand-maintained copies of it produced the
+// soundness bug that the mergeable-skip LRA-to-EUF experiment had to revert.
+ForcedModelEqualityResult compute_forced_model_equalities(
+    core::TermManager& terms, BooleanClausifier& clausifier, sat::CadicalBackend& backend,
+    TheoryCombinationManager& no_manager, ModelEqualityArrangementState& arrangement,
+    const ForcedModelEqualityInputs& inputs, const CheckSatOptions& options,
+    util::Statistics& statistics) {
+  ForcedModelEqualityResult result;
+  const std::vector<ExplainedInterfaceEquality> explained_euf_equalities =
+      euf_implied_real_equalities(terms, inputs.euf_model, inputs.shared_real_terms, statistics);
+  result.euf_equalities = interface_equality_terms(explained_euf_equalities);
+  bool deferred_candidate_lra_implied_equalities_for_model = false;
+  // Only the precomputed complete set is deduplicated against the EUF-implied
+  // equalities when the two lists are folded together.
+  bool complete_source = false;
+  if (inputs.candidate_final_scan_enabled) {
+    result.lra_equalities = inputs.candidate_lra_implied_equalities;
+    deferred_candidate_lra_implied_equalities_for_model = true;
+  } else if (inputs.lra_implied_equalities_for_model_complete) {
+    complete_source = true;
+    result.lra_equalities = inputs.lra_implied_equalities_for_model;
+  } else {
+    const LraImpliedRealEqualitiesResult scan = lra_implied_real_equalities_for_partition(
+        terms, inputs.check.atoms, *inputs.check.prepared, *inputs.check.tableau,
+        inputs.check.assignments, inputs.lra_model_partition.value(), inputs.euf_model, no_manager,
+        options, statistics);
+    if (scan.probe_limit_hit) {
+      result.status = ForcedModelEqualityStatus::EqualityScanProbeLimit;
+      return result;
+    }
+    const std::vector<core::TermId> equality_terms = interface_equality_terms(scan.equalities);
+    result.lra_equalities.insert(result.lra_equalities.end(), equality_terms.begin(),
+                                 equality_terms.end());
+  }
+
+  const std::vector<core::TermId> internal_equalities =
+      shared_model_internal_equality_terms(terms, no_manager);
+  if (inputs.keep_lra_equalities_separate) {
+    append_unique_equalities_by_pair(terms, result.lra_equalities, internal_equalities);
+    result.forced_equalities = result.euf_equalities;
+    result.forced_equalities.insert(result.forced_equalities.end(), result.lra_equalities.begin(),
+                                    result.lra_equalities.end());
+  } else {
+    result.forced_equalities = result.euf_equalities;
+    if (complete_source) {
+      append_unique_equalities_by_pair(terms, result.forced_equalities, result.lra_equalities);
+    } else {
+      result.forced_equalities.insert(result.forced_equalities.end(), result.lra_equalities.begin(),
+                                      result.lra_equalities.end());
+    }
+    append_unique_equalities_by_pair(terms, result.forced_equalities, internal_equalities);
+  }
+
+  result.separation = shared_real_model_separation_atoms(
+      terms, inputs.lra_atoms, inputs.lra_assignments, inputs.euf_model, inputs.shared_real_terms,
+      result.forced_equalities, options, statistics);
+  if (result.separation.status == RealModelSeparationStatus::Inconsistent &&
+      deferred_candidate_lra_implied_equalities_for_model) {
+    // The candidate scan's equalities did not survive separation; redo the
+    // exact scan and use what it forces instead.
+    statistics.increment(":no.interface.candidate-final-scan-fallbacks");
+    if (options.qf_uflra_model_reconciliation) {
+      statistics.increment(":no.shared-model.exact-fallbacks");
+    }
+    if (inputs.candidate_had_internal_model_equalities) {
+      statistics.increment(":no.interface.lra-to-euf-skip-model-reconstruction-fallbacks");
+    }
+    const LraImpliedRealEqualitiesResult scan = lra_implied_real_equalities_for_partition(
+        terms, inputs.check.atoms, *inputs.check.prepared, *inputs.check.tableau,
+        inputs.check.assignments, inputs.lra_model_partition.value(), inputs.euf_model, no_manager,
+        options, statistics);
+    if (scan.probe_limit_hit) {
+      result.status = ForcedModelEqualityStatus::EqualityScanProbeLimit;
+      return result;
+    }
+    statistics.increment(":no.interface.candidate-final-scan-fallback-equalities",
+                         scan.equalities.size());
+    const LraToEufEqualityFilterResult filtered_equalities =
+        filter_lra_implied_equalities_for_euf(terms, no_manager, inputs.euf_model, scan.equalities,
+                                              options.qf_uflra_model_reconciliation, statistics);
+    if (learn_shared_model_direct_conflict(filtered_equalities, backend, statistics)) {
+      arrangement.record_theory_conflict(inputs.propagation_start, statistics);
+      result.status = ForcedModelEqualityStatus::Recheck;
+      return result;
+    }
+    const InterfacePropagationResult propagation = force_implied_interface_equalities(
+        terms, clausifier, backend, no_manager, filtered_equalities.forced_equalities,
+        inputs.check.assignments, InterfaceEqualityClassification::LraImplied, statistics);
+    publish_interface_propagation_result(propagation, ":no.interface.lra-to-euf", statistics);
+    if (propagation.triggered_recheck()) {
+      if (arrangement.has_active_branch()) {
+        arrangement.record_rejection(std::nullopt, statistics);
+      }
+      result.status = ForcedModelEqualityStatus::Recheck;
+      return result;
+    }
+    if (inputs.keep_lra_equalities_separate) {
+      result.lra_equalities = filtered_equalities.model_equalities;
+      append_unique_equalities_by_pair(terms, result.forced_equalities, result.lra_equalities);
+    } else {
+      append_unique_equalities_by_pair(terms, result.forced_equalities,
+                                       filtered_equalities.model_equalities);
+    }
+    result.separation = shared_real_model_separation_atoms(
+        terms, inputs.lra_atoms, inputs.lra_assignments, inputs.euf_model, inputs.shared_real_terms,
+        result.forced_equalities, options, statistics);
+  }
+  if (result.separation.status == RealModelSeparationStatus::ProbeLimit) {
+    result.status = ForcedModelEqualityStatus::SeparationProbeLimit;
+    return result;
+  }
+  if (result.separation.status != RealModelSeparationStatus::Success) {
+    result.status = ForcedModelEqualityStatus::SeparationFailed;
+    return result;
+  }
+  return result;
+}
+
 CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
                                            const std::vector<core::TermId>& assertions,
                                            const std::vector<core::TermId>& model_terms,
@@ -11963,109 +12138,37 @@ CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
     if (!options.produce_model && euf_model.has_value()) {
       if (!shared_real_terms.empty()) {
         statistics.increment(":no.interface.arrangement-checks");
-        const std::vector<ExplainedInterfaceEquality> explained_euf_equalities =
-            euf_implied_real_equalities(terms, euf_model.value(), shared_real_terms, statistics);
-        std::vector<core::TermId> forced_model_equalities =
-            interface_equality_terms(explained_euf_equalities);
-        bool deferred_candidate_lra_implied_equalities_for_model = false;
-        if (!shared_real_terms.empty()) {
-          if (candidate_final_scan_enabled) {
-            forced_model_equalities.insert(forced_model_equalities.end(),
-                                           candidate_lra_implied_equalities.begin(),
-                                           candidate_lra_implied_equalities.end());
-            deferred_candidate_lra_implied_equalities_for_model = true;
-          } else if (lra_implied_equalities_for_model_complete) {
-            append_unique_equalities_by_pair(terms, forced_model_equalities,
-                                             lra_implied_equalities_for_model);
-          } else {
-            const LraImpliedRealEqualitiesResult lra_implied_equalities_for_euf =
-                lra_implied_real_equalities_for_partition(
-                    terms, lra_atoms_for_check, *prepared_lra_theory_for_check,
-                    *checked_lra_tableau, lra_assignments_for_check, lra_model_partition.value(),
-                    euf_model.value(), no_manager, options, statistics);
-            if (lra_implied_equalities_for_euf.probe_limit_hit) {
-              statistics.increment(":no.interface.arrangement-failures");
-              return CheckSatOutcome{
-                  CheckSatResult::Unknown,
-                  "mixed QF_UFLRA final arrangement equality scan hit the LRA extra-atom probe "
-                  "limit",
-                  statistics, ""};
-            }
-            const std::vector<core::TermId> equality_terms =
-                interface_equality_terms(lra_implied_equalities_for_euf.equalities);
-            forced_model_equalities.insert(forced_model_equalities.end(), equality_terms.begin(),
-                                           equality_terms.end());
-          }
+        const ForcedModelEqualityResult forced = compute_forced_model_equalities(
+            terms, clausifier, backend, no_manager, model_equality_arrangement,
+            ForcedModelEqualityInputs{
+                euf_model.value(), shared_real_terms, lra_atoms, lra_assignments,
+                LraCheckInputs{lra_atoms_for_check, prepared_lra_theory_for_check,
+                               checked_lra_tableau, lra_assignments_for_check},
+                lra_model_partition, candidate_final_scan_enabled, candidate_lra_implied_equalities,
+                candidate_lra_implied_equalities_had_internal_model_equalities,
+                lra_implied_equalities_for_model_complete, lra_implied_equalities_for_model,
+                active_model_equality_propagation_start, false},
+            options, statistics);
+        if (forced.status == ForcedModelEqualityStatus::Recheck) {
+          publish_sat_stats(backend.statistics(), statistics);
+          continue;
         }
-        append_unique_equalities_by_pair(terms, forced_model_equalities,
-                                         shared_model_internal_equality_terms(terms, no_manager));
-        RealModelSeparationResult separation_atoms = shared_real_model_separation_atoms(
-            terms, lra_atoms, lra_assignments, euf_model.value(), shared_real_terms,
-            forced_model_equalities, options, statistics);
-        if (separation_atoms.status == RealModelSeparationStatus::Inconsistent &&
-            deferred_candidate_lra_implied_equalities_for_model) {
-          statistics.increment(":no.interface.candidate-final-scan-fallbacks");
-          if (options.qf_uflra_model_reconciliation) {
-            statistics.increment(":no.shared-model.exact-fallbacks");
-          }
-          if (candidate_lra_implied_equalities_had_internal_model_equalities) {
-            statistics.increment(":no.interface.lra-to-euf-skip-model-reconstruction-fallbacks");
-          }
-          const LraImpliedRealEqualitiesResult lra_implied_equalities_for_euf =
-              lra_implied_real_equalities_for_partition(
-                  terms, lra_atoms_for_check, *prepared_lra_theory_for_check, *checked_lra_tableau,
-                  lra_assignments_for_check, lra_model_partition.value(), euf_model.value(),
-                  no_manager, options, statistics);
-          if (lra_implied_equalities_for_euf.probe_limit_hit) {
-            statistics.increment(":no.interface.arrangement-failures");
-            return CheckSatOutcome{
-                CheckSatResult::Unknown,
-                "mixed QF_UFLRA final arrangement equality scan hit the LRA extra-atom probe "
-                "limit",
-                statistics, ""};
-          }
-          if (deferred_candidate_lra_implied_equalities_for_model) {
-            statistics.increment(":no.interface.candidate-final-scan-fallback-equalities",
-                                 lra_implied_equalities_for_euf.equalities.size());
-          }
-          const LraToEufEqualityFilterResult filtered_equalities =
-              filter_lra_implied_equalities_for_euf(
-                  terms, no_manager, euf_model.value(), lra_implied_equalities_for_euf.equalities,
-                  options.qf_uflra_model_reconciliation, statistics);
-          if (learn_shared_model_direct_conflict(filtered_equalities, backend, statistics)) {
-            model_equality_arrangement.record_theory_conflict(
-                active_model_equality_propagation_start, statistics);
-            publish_sat_stats(backend.statistics(), statistics);
-            continue;
-          }
-          if (deferred_candidate_lra_implied_equalities_for_model) {
-            const InterfacePropagationResult propagation = force_implied_interface_equalities(
-                terms, clausifier, backend, no_manager, filtered_equalities.forced_equalities,
-                lra_assignments_for_check, InterfaceEqualityClassification::LraImplied, statistics);
-            publish_interface_propagation_result(propagation, ":no.interface.lra-to-euf",
-                                                 statistics);
-            if (propagation.triggered_recheck()) {
-              if (model_equality_arrangement.has_active_branch()) {
-                model_equality_arrangement.record_rejection(std::nullopt, statistics);
-              }
-              publish_sat_stats(backend.statistics(), statistics);
-              continue;
-            }
-          }
-          append_unique_equalities_by_pair(terms, forced_model_equalities,
-                                           filtered_equalities.model_equalities);
-          separation_atoms = shared_real_model_separation_atoms(
-              terms, lra_atoms, lra_assignments, euf_model.value(), shared_real_terms,
-              forced_model_equalities, options, statistics);
+        if (forced.status == ForcedModelEqualityStatus::EqualityScanProbeLimit) {
+          statistics.increment(":no.interface.arrangement-failures");
+          return CheckSatOutcome{
+              CheckSatResult::Unknown,
+              "mixed QF_UFLRA final arrangement equality scan hit the LRA extra-atom probe "
+              "limit",
+              statistics, ""};
         }
-        if (separation_atoms.status == RealModelSeparationStatus::ProbeLimit) {
+        if (forced.status == ForcedModelEqualityStatus::SeparationProbeLimit) {
           statistics.increment(":no.interface.arrangement-failures");
           return CheckSatOutcome{
               CheckSatResult::Unknown,
               "mixed QF_UFLRA final arrangement hit the LRA extra-atom probe limit", statistics,
               ""};
         }
-        if (separation_atoms.status != RealModelSeparationStatus::Success) {
+        if (forced.status == ForcedModelEqualityStatus::SeparationFailed) {
           statistics.increment(":no.interface.arrangement-failures");
           if (options.qf_uflra_model_reconciliation) {
             statistics.increment(":no.shared-model.validation-failures");
@@ -12075,6 +12178,7 @@ CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
               "mixed QF_UFLRA final arrangement could not separate Real argument constants",
               statistics, ""};
         }
+        const RealModelSeparationResult& separation_atoms = forced.separation;
         statistics.set(":no.interface.arrangement-separations", separation_atoms.atoms.size());
         if (options.qf_uflra_model_reconciliation) {
           for (const core::TermId atom : separation_atoms.atoms) {
@@ -12090,105 +12194,35 @@ CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
       std::vector<core::TermId> lra_implied_equalities_for_euf;
       std::vector<core::TermId> extra_lra_model_atoms;
       if (euf_model.has_value() && !shared_real_terms.empty()) {
-        const std::vector<ExplainedInterfaceEquality> explained_euf_equalities =
-            euf_implied_real_equalities(terms, euf_model.value(), shared_real_terms, statistics);
-        euf_implied_equalities = interface_equality_terms(explained_euf_equalities);
-        bool deferred_candidate_lra_implied_equalities_for_model = false;
-        if (!shared_real_terms.empty()) {
-          if (candidate_final_scan_enabled) {
-            lra_implied_equalities_for_euf = candidate_lra_implied_equalities;
-            deferred_candidate_lra_implied_equalities_for_model = true;
-          } else if (lra_implied_equalities_for_model_complete) {
-            lra_implied_equalities_for_euf = lra_implied_equalities_for_model;
-          } else {
-            const LraImpliedRealEqualitiesResult lra_implied_scan =
-                lra_implied_real_equalities_for_partition(
-                    terms, lra_atoms_for_check, *prepared_lra_theory_for_check,
-                    *checked_lra_tableau, lra_assignments_for_check, lra_model_partition.value(),
-                    euf_model.value(), no_manager, options, statistics);
-            if (lra_implied_scan.probe_limit_hit) {
-              return CheckSatOutcome{
-                  CheckSatResult::Unknown,
-                  "mixed QF_UFLRA model reconstruction equality scan hit the LRA extra-atom probe "
-                  "limit",
-                  statistics, ""};
-            }
-            lra_implied_equalities_for_euf = interface_equality_terms(lra_implied_scan.equalities);
-          }
+        const ForcedModelEqualityResult forced = compute_forced_model_equalities(
+            terms, clausifier, backend, no_manager, model_equality_arrangement,
+            ForcedModelEqualityInputs{
+                euf_model.value(), shared_real_terms, lra_atoms, lra_assignments,
+                LraCheckInputs{lra_atoms_for_check, prepared_lra_theory_for_check,
+                               checked_lra_tableau, lra_assignments_for_check},
+                lra_model_partition, candidate_final_scan_enabled, candidate_lra_implied_equalities,
+                candidate_lra_implied_equalities_had_internal_model_equalities,
+                lra_implied_equalities_for_model_complete, lra_implied_equalities_for_model,
+                active_model_equality_propagation_start, true},
+            options, statistics);
+        if (forced.status == ForcedModelEqualityStatus::Recheck) {
+          publish_sat_stats(backend.statistics(), statistics);
+          continue;
         }
-        append_unique_equalities_by_pair(terms, lra_implied_equalities_for_euf,
-                                         shared_model_internal_equality_terms(terms, no_manager));
-        extra_lra_model_atoms = euf_implied_equalities;
-        std::vector<core::TermId> forced_model_equalities = euf_implied_equalities;
-        forced_model_equalities.insert(forced_model_equalities.end(),
-                                       lra_implied_equalities_for_euf.begin(),
-                                       lra_implied_equalities_for_euf.end());
-        RealModelSeparationResult separation_atoms = shared_real_model_separation_atoms(
-            terms, lra_atoms, lra_assignments, euf_model.value(), shared_real_terms,
-            forced_model_equalities, options, statistics);
-        if (separation_atoms.status == RealModelSeparationStatus::Inconsistent &&
-            deferred_candidate_lra_implied_equalities_for_model) {
-          statistics.increment(":no.interface.candidate-final-scan-fallbacks");
-          if (options.qf_uflra_model_reconciliation) {
-            statistics.increment(":no.shared-model.exact-fallbacks");
-          }
-          if (candidate_lra_implied_equalities_had_internal_model_equalities) {
-            statistics.increment(":no.interface.lra-to-euf-skip-model-reconstruction-fallbacks");
-          }
-          const LraImpliedRealEqualitiesResult lra_implied_scan =
-              lra_implied_real_equalities_for_partition(
-                  terms, lra_atoms_for_check, *prepared_lra_theory_for_check, *checked_lra_tableau,
-                  lra_assignments_for_check, lra_model_partition.value(), euf_model.value(),
-                  no_manager, options, statistics);
-          if (lra_implied_scan.probe_limit_hit) {
-            return CheckSatOutcome{
-                CheckSatResult::Unknown,
-                "mixed QF_UFLRA model reconstruction equality scan hit the LRA extra-atom probe "
-                "limit",
-                statistics, ""};
-          }
-          if (deferred_candidate_lra_implied_equalities_for_model) {
-            statistics.increment(":no.interface.candidate-final-scan-fallback-equalities",
-                                 lra_implied_scan.equalities.size());
-          }
-          const LraToEufEqualityFilterResult filtered_equalities =
-              filter_lra_implied_equalities_for_euf(
-                  terms, no_manager, euf_model.value(), lra_implied_scan.equalities,
-                  options.qf_uflra_model_reconciliation, statistics);
-          if (learn_shared_model_direct_conflict(filtered_equalities, backend, statistics)) {
-            model_equality_arrangement.record_theory_conflict(
-                active_model_equality_propagation_start, statistics);
-            publish_sat_stats(backend.statistics(), statistics);
-            continue;
-          }
-          if (deferred_candidate_lra_implied_equalities_for_model) {
-            const InterfacePropagationResult propagation = force_implied_interface_equalities(
-                terms, clausifier, backend, no_manager, filtered_equalities.forced_equalities,
-                lra_assignments_for_check, InterfaceEqualityClassification::LraImplied, statistics);
-            publish_interface_propagation_result(propagation, ":no.interface.lra-to-euf",
-                                                 statistics);
-            if (propagation.triggered_recheck()) {
-              if (model_equality_arrangement.has_active_branch()) {
-                model_equality_arrangement.record_rejection(std::nullopt, statistics);
-              }
-              publish_sat_stats(backend.statistics(), statistics);
-              continue;
-            }
-          }
-          lra_implied_equalities_for_euf = filtered_equalities.model_equalities;
-          append_unique_equalities_by_pair(terms, forced_model_equalities,
-                                           lra_implied_equalities_for_euf);
-          separation_atoms = shared_real_model_separation_atoms(
-              terms, lra_atoms, lra_assignments, euf_model.value(), shared_real_terms,
-              forced_model_equalities, options, statistics);
+        if (forced.status == ForcedModelEqualityStatus::EqualityScanProbeLimit) {
+          return CheckSatOutcome{
+              CheckSatResult::Unknown,
+              "mixed QF_UFLRA model reconstruction equality scan hit the LRA extra-atom probe "
+              "limit",
+              statistics, ""};
         }
-        if (separation_atoms.status == RealModelSeparationStatus::ProbeLimit) {
+        if (forced.status == ForcedModelEqualityStatus::SeparationProbeLimit) {
           return CheckSatOutcome{
               CheckSatResult::Unknown,
               "mixed QF_UFLRA model reconstruction hit the LRA extra-atom probe limit", statistics,
               ""};
         }
-        if (separation_atoms.status != RealModelSeparationStatus::Success) {
+        if (forced.status == ForcedModelEqualityStatus::SeparationFailed) {
           if (options.qf_uflra_model_reconciliation) {
             statistics.increment(":no.shared-model.validation-failures");
           }
@@ -12197,6 +12231,11 @@ CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
               "mixed QF_UFLRA model reconstruction could not separate Real argument constants",
               statistics, ""};
         }
+        // The model assignments below are built from these two lists.
+        euf_implied_equalities = forced.euf_equalities;
+        lra_implied_equalities_for_euf = forced.lra_equalities;
+        extra_lra_model_atoms = euf_implied_equalities;
+        const RealModelSeparationResult& separation_atoms = forced.separation;
         extra_lra_model_atoms.insert(extra_lra_model_atoms.end(), separation_atoms.atoms.begin(),
                                      separation_atoms.atoms.end());
         if (options.qf_uflra_model_reconciliation) {
