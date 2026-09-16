@@ -14,6 +14,9 @@ and its qualification boundary.
 
 ## Documentation policy
 
+- The proposed public contribution workflow is in [](contributing.md), with
+  pending license and governance decisions in [](public-repository-migration.md).
+  Both are discussion drafts; the migration has not adopted them as policy.
 - Use MyST Markdown for architecture, design, algorithm, paper, and developer notes.
 - Use notebooks only for executable experiments, benchmark analysis, and plotted reports.
 - Keep claims synchronized with implemented functionality.
@@ -38,8 +41,9 @@ Five parts, in the order they are normally needed:
   specifies the production collection driver and its completed qualification;
   its nested notes contain performance history, the convex merge plan, pure-LRA
   isolation regression, and arithmetic equality-sharing details.
-- **Evidence and practice** explains experiments, the canonical run log, debugging,
-  and TermId order sensitivity.
+- **Evidence and practice** contains the draft contribution and public-migration
+  guides, experiments, the canonical run log, debugging, and TermId order
+  sensitivity.
 - **Paper notes** starts with [](literature.md), which defines the reading and
   confidence policy, followed by the deeply read algorithm papers.
 - **Reference** contains retrospectives that do not describe Primo itself.

@@ -58,6 +58,8 @@ parts:
 
   - caption: Evidence and practice
     chapters:
+      - file: contributing
+      - file: public-repository-migration
       - file: experiments
       - file: run-log
       - file: debugging
