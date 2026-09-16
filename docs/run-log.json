@@ -36810,7 +36810,7 @@
     {
       "id": "2026-09-16-qf-uflra-forced-equality-extraction",
       "date": "2026-09-16",
-      "commit": "d5305e9",
+      "commit": "073d89a",
       "branch": "qf-uflra-forced-equality-dedup",
       "kind": "refactor-preservation-check",
       "scope": "solve_qf_uflra_engine_impl carried two near-identical blocks of forced model-equality logic, one under !options.produce_model and one under options.produce_model: the same EUF equality scan, the same real-model separation, the same candidate final-scan fallback. They are extracted into compute_forced_model_equalities(). Behaviour must not change, so the check is preservation of answers and of every non-timing counter, not a solve count.",
