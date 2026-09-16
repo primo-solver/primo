@@ -62,6 +62,8 @@ parts:
       - file: public-repository-migration
       - file: experiments
       - file: run-log
+        sections:
+          - file: benchmark-record-storage
       - file: debugging
         sections:
           - file: finite-domain-fuzzing

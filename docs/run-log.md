@@ -4,7 +4,12 @@
 evidence. Use it for benchmark campaigns, fuzzing, profiling, parameter tuning,
 SAT dependency profile checks, and reference-solver comparisons.
 
-The ledger is intentionally small JSON, not a database service. It should be
+The proposed replacement is described in [](benchmark-record-storage.md): one
+JSON file per run record, with generated indexes and separate durable artifacts.
+It addresses repeated merge conflicts between branches. The migration is not
+implemented; this page still describes the active recording policy.
+
+The ledger uses JSON rather than a database service. It should be
 updated in the same commit as the script, manifest, documentation, or solver
 change that relies on the run. Large raw artifacts may stay under `results/`,
 `fuzz-results/`, or on the SLURM workspace, but the tracked JSON entry must make
