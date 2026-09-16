@@ -36832,6 +36832,31 @@
         "open": "The cluster run is SLURM array 146259 over the 1,284-file QF_UFLRA corpus at primo-cadical-profile/tmp/QF_UFLRA, baseline main 45a16ad (sha256 2eb0fc2d) against candidate 3f5bf21 (sha256 d9119cfc), 16 tasks all COMPLETED at a 30-second timeout. Every non-timing counter matches on all 1,284 files. 1,266 also match on answers. The other 18 are large cpachecker-bmc and cpachecker-induction files on which BOTH binaries time out at 30 seconds with no answer; compare_local_solver_stats.py requires status ok on every run, so it records a mutual timeout as a disagreement. Their counters match even in that state. Job 146275 rechecked those 18 at a 300-second timeout: 6 answer sat on both binaries with identical answers, 12 time out on both, and none diverge. That job's SLURM state is FAILED with exit code 1:0 only because compare_local_solver_stats.py exits 1 whenever any file is unmatched, which the mutual timeouts are; the run itself completed and wrote all 36 rows. Final tally over the corpus: every non-timing counter matches on all 1,284 files, 1,272 match on answers, and the remaining 12 are unsolved by both binaries rather than disagreeing. No file exists where one binary answers and the other does not, which is where a behavioural change from the extraction would have shown."
       },
       "notes": "The duplication was flagged as mixed-model-equality-dedup and survived the earlier move into solver_engines.cpp. The two callers keep their own diagnostic wording and their own :no.interface.arrangement-failures increments, and the arrangement caller deduplicates a complete precomputed LRA list where the model caller copies plainly, which is why the helper takes a complete_source flag rather than assuming one shape."
+    },
+    {
+      "id": "2026-09-16-qf-uflra-forced-equality-merge",
+      "date": "2026-09-16",
+      "commit": "32b9032",
+      "branch": "main",
+      "kind": "merge-record",
+      "scope": "Merge 32b9032 integrates qf-uflra-forced-equality-dedup at c62d63f into main at 45a16ad. The merge tree is identical to c62d63f (git diff qf-uflra-forced-equality-dedup 32b9032 is empty), so the branch qualification applies to main unchanged. No new solver runs were made for the merge itself.",
+      "environment": {
+        "host": "local repository; qualification ran locally and on the CIIRC SLURM cluster",
+        "baseline": "main 45a16ad, which the branch was cut from and which had not moved (main and origin/main identical at merge time)",
+        "candidate": "qf-uflra-forced-equality-dedup c62d63f"
+      },
+      "commands": {
+        "merge": "git checkout main; git merge --no-ff qf-uflra-forced-equality-dedup -F <message file>; git diff --stat qf-uflra-forced-equality-dedup HEAD (empty)",
+        "gate": "make check on c62d63f after the cherry-pick: 41/41 CTest and 188 Python tests. The merged tree equals that tree, so the gate was not repeated."
+      },
+      "results": {
+        "evidence": "2026-09-16-qf-uflra-forced-equality-extraction carries the full qualification: make check, make asan-test and make lint; four local preservation comparisons over 15 tracked QF_UFLRA files and 120 generated cases, each run plain and with :produce-models true; SLURM array 146259 over all 1,284 QF_UFLRA files with every non-timing counter matching, and job 146275 rechecking the mutual timeouts at 300 seconds. 1,272 of 1,284 files match on answers and the other 12 are unsolved by both binaries.",
+        "seeds": "The merge also carries c62d63f, a cherry-pick of e7bccb1 from mixed-model-equality-dedup. It adds benchmarks/seeds/qf_uflra_scale (a README and two real-file QF_UFLRA mutation seeds) and no code. Nothing outside benchmarks references that directory, and tests/unit/boolean_solver_tests.cpp reads seed files by exact path under benchmarks/seeds/qf_uflra, so the new directory cannot perturb it.",
+        "superseded_branch": "mixed-model-equality-dedup (e7bccb1, published, never merged) attempted the same extraction against src/smt/check_sat.cpp. Its patch no longer applies to main -- verified with git apply --check against a worktree at 45a16ad, which fails at check_sat.cpp:10430 -- because the forced-equality logic moved to src/smt/solver_engines.cpp. With its seeds now on main, the branch holds nothing unique.",
+        "open": "The 12 cpachecker-bmc and cpachecker-induction files that neither binary solves at 300 seconds are a solver-capability question, unrelated to this refactor. Deleting the published mixed-model-equality-dedup branch is left to the user."
+      },
+      "notes": "compare_local_solver_stats.py requires status ok on every run, so any non-zero exit or timeout is recorded as a disagreement. Both false alarms during this qualification had the same signature: answers disagreeing everywhere while every non-timing counter agreed. A model-path preservation run needs :produce-models true, or the produce_model branch is never entered and the comparison proves nothing.",
+      "evidence_status": "current"
     }
   ]
 }
