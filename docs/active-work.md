@@ -17,15 +17,18 @@ open planning action, not an implied assignment to a contributor.
   and `2381f8f`. The project owner reports that the `primo-solver` organization
   has been created and is empty; this is not a repository publication. The book
   now has separate entry points for completed work, active work, and open leads.
+  The results-storage direction is agreed: Git records in `primo-solver/results`
+  with a generated local SQLite query index and separately retained large artifacts.
 - **Being worked on:** reviewing the migration plan. The next step is to assign
   milestone owners and settle the release prerequisites.
 - **Remaining acceptance criteria:** the [migration milestones](public-repository-migration.md#migration-milestones)
   must have owners and evidence of their outcomes. Rights, licensing, history,
   repository setup, public verification, packaging, and release qualification
-  remain pending. The plan must settle whether the proposed database cutover is
+  remain pending. The plan must settle whether the results-record cutover is
   a prerequisite for publication.
 - **Related proposal:** [](benchmark-record-storage.md) is design work only;
-  this entry does not assert that service implementation or deployment has begun.
+  repository setup, record tooling, and legacy migration remain pending. No
+  central database service is required by the agreed design.
 - **Completion boundary:** completing the planning documents does not complete
   the migration. Publication requires the checks and outside-user reproduction
   described in [](public-repository-migration.md).

@@ -28,7 +28,7 @@ migration.
 | Public history | Preserve history if the publication audit permits | Transfer the repository or publish a curated starting revision. |
 | Contributions | Contributors retain their rights and contribute under the project license | DCO sign-off is proposed; no copyright assignment or separate CLA is proposed at this stage. |
 | Documentation | Maintain source and documentation in the same repository and review them together | Public hosting, release-version URLs, and CI configuration. |
-| Experiment records | PostgreSQL for collected results, separate artifact storage, portable JSON/CSV snapshots | Data model, hosting and backup ownership, lossless legacy import, and coordinated writer cutover; see [](benchmark-record-storage.md). |
+| Experiment records | Git is authoritative in `primo-solver/results`; SQLite is a generated local query index | Agreed direction; repository setup, schema/tools, artifact retention, lossless legacy import, and coordinated writer cutover remain pending; see [](benchmark-record-storage.md). |
 | Governance | Public technical decisions and an explicit route to maintainership | Initial maintainers, organization owners, review authority, and dispute resolution. |
 
 The existing private repository's license file is not treated as a decision
@@ -154,10 +154,11 @@ before it is marked complete. Owners and dates are not yet assigned.
 - Review the source archive contents. The current `make archive` workflow omits
   Markdown/MyST sources; decide the public release packaging explicitly so
   documentation sources remain available and editable alongside each release.
-- Replace the shared experimental ledger with the database and artifact storage
-  proposed in [](benchmark-record-storage.md). Preserve historical IDs,
-  provenance, and evidence limitations. Keep schema/tools and reviewed reports
-  in Git, with immutable exports for published results.
+- Replace the shared experimental ledger with separate run directories in the
+  planned `primo-solver/results` repository, as described in
+  [](benchmark-record-storage.md). Preserve historical IDs, provenance, and
+  evidence limitations. Generate an untracked SQLite query index from a pinned
+  results commit; publish versioned snapshots and retain large artifacts separately.
 
 ### 3. Configure the organization and verification workflow
 
@@ -173,9 +174,10 @@ before it is marked complete. Owners and dates are not yet assigned.
   exact candidate being reviewed. Existing correctness gates remain in force.
 - Configure documentation previews and publication. Enable repository/edit
   links only after their destination exists.
-- Assign database and artifact-storage ownership; test concurrent ingestion,
-  offline recovery, backups/restoration, and portable exports before retiring
-  the existing ledger. Builds must not require service access.
+- Set up results-repository review and CI, and assign artifact-retention and
+  restoration ownership. Pilot independent contributor submissions, offline
+  collection, index rebuilds, and snapshots before retiring the existing ledger.
+  No database server is required; source/docs builds must not need a results clone.
 
 ### 4. Qualify and publish the first release
 

@@ -1,203 +1,234 @@
-# Benchmark storage and database: draft
+# Benchmark records in Git with a generated SQLite index
 
-**Status: proposed migration, 2026-09-16.** The working direction is PostgreSQL
-for collected results, separate artifact storage, and portable exports. No
-service, schema, or importer is implemented by this document. Continue recording
-evidence in `docs/run-log.json` until the coordinated cutover described below.
+**Status: direction agreed, 2026-09-21; implementation pending.** Store reviewed
+experiment records in a dedicated `primo-solver/results` Git repository and
+build an untracked SQLite database for queries. Large artifacts remain separate.
+This supersedes the earlier PostgreSQL-first proposal. No results repository,
+record schema, importer, or CI workflow is created by this document. Continue
+recording evidence in `docs/run-log.json` until the coordinated cutover below.
 
-## Problem and scale
+## Problem and decision
 
 Branches independently prepend records to `docs/run-log.json`, so unrelated
-experiments repeatedly conflict when merged. At the inspected revision
-`e344c5d`, the ledger contains 699 entries, 36,789 lines, and 2,804,534 bytes.
-There are no duplicate IDs, but one entry lacks an ID. Historical records also
-use varied fields and levels of detail.
+experiments repeatedly conflict when merged. At revision `559dcb5`, the ledger
+contains 700 entries and 2,807,542 bytes. There are no duplicate IDs, but one
+entry lacks an ID. Historical fields and evidence detail vary substantially.
 
-One file per run would remove most merge conflicts and remains a possible
-interim measure. It does not by itself provide efficient cross-run queries,
-consistent relationships, or concurrent collection of individual results over
-years. We should design for both campaign summaries and per-input results:
-1,000 campaigns over 10,000 inputs would produce 10 million result rows before
-retries and validation. This is an illustrative workload, not a measured Primo
-volume or database capacity claim.
+The agreed design separates durable records from query indexes. Each experiment
+adds its own directory in Git. Contributors can collect offline, submit a pull
+request, and review evidence without database accounts. SQLite supplies indexed
+queries over the records at a specified results-repository commit. Deleting the
+local database must lose no authoritative information.
+
+This design needs no central database server, ingestion API, or VM. The results
+repository is separate from the solver repository so accumulating experiments
+do not enlarge every source checkout. Neither repository stores a changing
+SQLite database or a shared generated ledger that every experiment must edit.
 
 ## Storage responsibilities
 
 | Store | Responsibility |
 | --- | --- |
-| PostgreSQL | Authoritative collected run metadata, configurations, input identities, individual results, validation outcomes, relationships, and artifact references. |
-| Artifact storage | Compressed logs, models, profiles, binaries, and large input/result bundles, identified by checksums. |
-| Git | Schema migrations, collection and analysis tools, small benchmark manifests, documentation, and reviewed reports identifying immutable evidence snapshots. |
-| JSON/CSV exports | Versioned, portable evidence snapshots for publication, offline analysis, and independent reproduction. |
-| Optional local SQLite | Offline collection or analysis of a campaign; an upload source or downloaded snapshot, not a second editable authority for accepted central results. |
+| Results Git repository | Authoritative reviewed run metadata, manageable per-input result tables, validation records, artifact manifests, corrections, and analyses. |
+| Solver Git repository | Collection/validation/index tools, versioned schemas, benchmark manifests, design documentation, and solver reports citing exact results commits. |
+| Local SQLite | Disposable query index derived from an exact results commit and pinned schema/tool revisions; never independently edited or merged. |
+| Artifact storage or release assets | Large result tables, compressed logs, models, profiles, binaries, and input bundles, identified by hashes and retained at stable locations. |
+| Published SQLite/CSV snapshots | Downloadable derived evidence for a fixed results commit, with provenance and checksums. |
 
-PostgreSQL is the proposed shared service because branches and cluster jobs
-need concurrent transactional recording and indexed joins. Branches and commits
-are metadata in the same database, not separate database histories to merge.
-PostgreSQL's [concurrency model](https://www.postgresql.org/docs/current/mvcc-intro.html)
-is the relevant infrastructure basis; this document does not claim a new
-storage algorithm or a measured throughput result.
+Large externally stored tables remain part of the evidence through their tracked
+manifests. A full index requires those objects; if any are unavailable, indexing
+must fail or explicitly report partial coverage. Missing data must not silently
+turn into an empty or successful run. Small metadata-only queries may work
+without fetching every artifact.
 
-SQLite is useful for local collection and portable analysis. Do not put one
-SQLite database on a shared cluster filesystem for many nodes to write directly;
-its documentation recommends a client/server database for that access pattern.
-See [SQLite deployment guidance](https://www.sqlite.org/whentouse.html).
+Git repository size and clone cost need explicit budgets before cutover. Decide
+which tables remain in Git using measured record sizes and a representative
+pilot. GitHub recommends small repositories and limits individual files; see
+[GitHub storage guidance](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github).
+Moving a large file out later does not remove it from existing history.
 
-There must be one authoritative store after cutover. JSON exports and SQLite
-snapshots carry their source snapshot identity and are not independently edited
-and synchronized back as competing ledgers. Importing additional observations
-creates new results or explicit corrections through the ingestion workflow.
+## Record layout and contributor workflow
 
-## Queries the design must support
+The initial layout is illustrative; filenames and exact fields must be fixed
+by a versioned schema before producers switch:
 
-- Compare solved counts, PAR2, memory, and per-family regressions for two exact
-  binaries/configurations under compatible execution conditions.
-- Find individual inputs that became slower or changed their answers.
-- List SAT results without independent model validation and report coverage.
-- Reuse reference answers by input content hash while preserving solver,
-  configuration, and resource-limit provenance.
-- Identify incomplete campaigns, missing shards, failed attempts, and retries.
-- Retrieve the exact evidence and analysis supporting a release claim, even
-  after later experiments or corrections arrive.
+```text
+runs/
+  <run-uuid>/
+    metadata.json
+    results.csv
+    validation.csv
+    artifacts.json
+    analysis.md
+corrections/
+  <correction-uuid>.json
+reviews/
+  <review-uuid>.json
+```
+
+Optional files must declare whether their data is absent, pending, external, or
+not applicable. Multi-shard campaigns use unique attempt/shard records and a
+campaign identity; workers do not append to one shared CSV or JSON file. A
+published directory may describe an incomplete campaign, with expected and
+observed coverage recorded explicitly.
+
+1. A contributor runs a versioned experiment specification with a pinned input
+   manifest and collects a local result bundle. Solver execution and timing do
+   not depend on network access or a results checkout.
+2. A packaging tool validates the bundle and writes its uniquely named directory.
+   Retain local results until records and referenced artifacts are preserved.
+3. The contributor submits a pull request to `primo-solver/results`. Ordinary
+   contributors need no direct write access to the accepted branch.
+4. CI checks the schema, unique identities, references, coverage declarations,
+   and hashes of available artifacts, and builds the SQLite index. Revalidate
+   against the merge candidate so separately valid submissions cannot introduce
+   conflicting identities or corrections when combined.
+5. A maintainer reviews provenance, reproducibility, and evidence limitations.
+   A record can be accepted as a report of a failed or unqualified experiment;
+   merging it does not certify solver answers or promote a performance claim.
+6. Readers check out a results commit and build the index, or download a
+   published snapshot generated from that commit.
+
+CI treats submissions as data. It must not execute scripts or reproduction
+commands supplied in result bundles with publication credentials or cluster
+access. Maintainers arrange any independent solver/model checks separately.
 
 ## Data model and invariants
 
-The initial relational schema should distinguish the following entities. Exact
-column names and indexes are implementation work, to be reviewed against these
-queries before deployment.
+The record schema and generated relational schema must represent the same
+identities and relationships. Exact columns and indexes are implementation work.
 
 | Entity | Identity and essential information |
 | --- | --- |
-| Campaign | Stable UUID, purpose, expected input/shard coverage, creator, UTC timestamps, and execution state. |
+| Campaign | Stable UUID, purpose, expected input/shard coverage, submitter, UTC timestamps, and execution state. |
 | Build and configuration | Solver/tool identity, source revision, binary SHA-256, build settings, exact arguments, and relevant environment settings. Dirty source snapshots require an archived patch/tree identity. |
 | Input and manifest | Input content hash, corpus/version, manifest hash and membership; generator/version/seed/count where applicable. Paths are labels, not content identity. |
 | Execution attempt | Stable UUID, campaign, build/configuration, machine/cluster, job and shard identity, resource limits, timing method, and retry relationship. |
 | Individual result | Attempt, input, repetition or query identity, process outcome, solver answer, wall/CPU time, memory and counters with explicit units. |
 | Validation | Target result/build/input/configuration, validation method/tool, outcome, coverage, and separate resource measurements. |
 | Artifact | Role, checksum, size, format, location(s), access/availability status, and retention policy. |
-| Analysis and correction | Referenced runs/results or snapshot, analysis script revision and parameters, conclusion, limitations, author, and explicit correction/supersession relationships. |
+| Analysis, review, and correction | Referenced runs/results or snapshot, tool revision and parameters, conclusion, limitations, author, date, and correction/supersession relationships. |
 
-Allocate UUIDs before collection, persist them locally, and retain them when
-retrying uploads. A new execution gets a new attempt ID. Branch names,
-timestamps, commits, and SLURM job numbers alone do not uniquely identify runs.
-Use uniqueness constraints and foreign keys to prevent double-counting and
-orphaned records. Include repetition and query identity so intentional repeated
-measurements and incremental sessions are not mistaken for duplicate uploads.
+Allocate UUIDs before collection and retain them across packaging and submission
+retries. A new execution receives a new attempt ID. Reimporting identical
+records must not duplicate rows; different contents under the same identity
+must be rejected. Enforce unique keys and foreign keys in the generated index.
+Include repetition and query identity so repeated measurements and incremental
+sessions remain distinct.
 
-Keep execution completion, correctness coverage, and acceptance of an experiment
-separate. A completed timing run is not automatically validated. Retain unknown,
-timeout, crash, unsupported, and disagreement outcomes separately; process
-success alone does not mean an input was solved. A stopped campaign remains
-visible with actual versus expected coverage.
+Keep execution completion, correctness coverage, record review, and acceptance
+of an experiment's proposed change separate. Preserve unknown, timeout, crash,
+unsupported, and disagreement outcomes. A stopped campaign remains visible with
+actual versus expected coverage. CI format checks are not solver validation.
 
-Record the code that ran separately from the collection or analysis revision.
-Reference results reused from an older campaign keep their original provenance.
-Missing historical fields remain explicitly unknown with reasons; a successful
-import must not upgrade their evidence status.
+Record the solver revision separately from collector, schema, and analysis
+revisions. Compare performance under compatible machines, limits, and timing
+methods; input identity alone is insufficient. Prefer paired baseline/candidate
+runs on the contributor's machine. Reused reference answers retain their original
+provenance. Model-validation costs never enter timing/PAR2, and validation of one
+binary/profile cannot qualify another.
 
-## Collection, concurrency, and corrections
+The schema must specify numeric types, units, null values, and CSV encoding.
+Preserve exact large integers and other values without conversion through a
+lossy floating-point representation. Historical unknowns retain their reasons;
+importing them cannot upgrade their evidence status.
 
-Cluster workers should collect results locally and submit bounded batches
-through an authenticated ingestion API or controlled importer. Ordinary workers
-must not need database administration credentials. Keep solver execution and
-measured solver time independent of uploads and database availability.
+## Corrections, validation, and query generation
 
-Uploads are transactional and idempotent: the same upload identity and payload
-can be retried without adding rows; the same identity with different data is an
-error requiring investigation. Interrupted uploads resume from acknowledged
-batches. Local journals or bundles must survive until collection is verified,
-so service downtime does not require rerunning a finished solver experiment.
+After merge, measurements are immutable observations. Later validation,
+reference confirmation, and revised analysis add linked records with fresh IDs.
+Corrections name the target, original value, replacement, author, date, and
+reason. Preserve original observations and failed attempts; conflicting
+corrections require explicit resolution, not timestamp precedence. Git history
+supports review, but an unexplained edit is not a scientific correction record.
 
-Verify uploaded artifact checksums and collection completeness before claiming
-that a campaign's evidence is fully retained. A campaign can be execution-complete
-while artifact collection or model validation is still incomplete.
+The SQLite builder reads a fixed results commit and records that commit, its
+schema version, tool revision, and external artifact hashes in the index.
+It must reject unsupported schema versions and invalid relationships. An
+interrupted build must not replace a previously valid index with a partial one.
+A clean rebuild must produce equivalent records and query results; byte-identical
+SQLite files are not a requirement. Users change authoritative records through
+Git, never by editing the index and attempting to synchronize it back.
 
-Lifecycle metadata may advance as a campaign runs. Accepted measurements remain
-immutable. New executions, model validation, reference confirmation, and revised
-analysis add linked records rather than overwriting timing rows. Metadata
-corrections identify the original value, replacement, author, time, and reason.
-Preserve original observations and failed attempts. Conflicting corrections must
-be visible and resolved explicitly, not by silently preferring a timestamp.
+Required queries include:
 
-The database should enforce structural integrity; reviewed analysis defines
-scientific comparability. Matching input hashes alone does not make timings
-from different machines or limits comparable. Model validation costs never enter
-the original runtime/PAR2, and validation of one configuration cannot qualify
-another.
+- Compare solved counts, PAR2, memory, and per-family regressions for two exact
+  binaries/configurations under compatible execution conditions.
+- Find individual inputs that became slower or changed their answers.
+- List SAT results without independent model validation and report coverage.
+- Find reusable reference answers by input hash with provenance intact.
+- Identify incomplete campaigns, missing shards, failed attempts, and retries.
+- Reproduce the evidence and analysis supporting a release claim at its cited
+  results commit, even after later corrections are merged.
 
-## Publication, reproducibility, and operations
+SQLite is suited to local analysis; see its
+[data-analysis and deployment guidance](https://www.sqlite.org/whentouse.html).
+No worker opens a shared database over the cluster filesystem. Measure build
+cost, query latency, and disk usage with representative data before promising
+scale. PostgreSQL is a future option only if measured needs justify a service;
+record identities and portable formats should survive such a change.
 
-A live database is not sufficient archival evidence. Published reports cite an
-immutable snapshot ID and manifest hash, not a query whose answer changes as
-new rows arrive. Export a transactionally consistent selection with schema
-version, IDs, relationships, provenance, result rows, artifact hashes, and the
-analysis revision/parameters needed to reproduce the report. Keep exact large
-integers and other typed values recoverable in the interchange format. Archive
-the export and publish a stable location and checksum.
+## Publication and maintenance
 
-The source repository holds a small citation or report for published evidence,
-not a dump refreshed after every run. Public read access and downloadable
-snapshots should support analysis without a contributor account. Confidential
-inputs or artifacts need explicit access restrictions and visible reproducibility
-limitations; never include secrets in stored command lines or environment data.
+Published reports identify the solver revision/binary, results-repository commit,
+selected run IDs, manifest hashes, and analysis revision/parameters. A moving
+branch or a database query without a snapshot identity is not a citation.
+Publish downloadable SQLite/CSV snapshots with a provenance manifest and
+checksum; give corrections new versions rather than silently replacing them.
+Generated static reports can be hosted alongside the documentation.
 
-Before relying on the service, assign an operational owner and settle:
+Assign maintainers for results review, schema/tool compatibility, artifact
+retention, repository mirrors, and restoration. Test rebuilding an index from a
+fresh clone plus restored external artifacts. A Git mirror cannot back up
+objects stored only in release assets or external storage; preserve those
+separately. Keep confidential inputs restricted and disclose reproduction
+limitations. Audit records for secrets and redistribution rights before public
+submission, including command lines and environment metadata.
 
-- Hosting and artifact storage, access roles, ingestion permissions, and costs.
-- Backup frequency, retention, recovery objectives, and a tested restore process
-  covering both database records and referenced artifacts.
-- Schema migration and server upgrade procedures, with compatibility between
-  collectors, exports, and readers.
-- Monitoring of capacity, ingestion failures, missing artifacts, and backups.
-- Data retention, correction/deletion authority, and an exit plan that preserves
-  portable exports if hosting ends.
-
-Use [PostgreSQL backup and restore guidance](https://www.postgresql.org/docs/current/backup.html)
-as an operational reference. JSON exports are useful for portability but are not
-a substitute for backing up the service's full state and configuration.
-
-Evaluate indexes and query latency with a representative scaled dataset before
-choosing partitioning or extra infrastructure. Record the workload and measured
-results; do not assume either that millions of rows require elaborate machinery
-or that an untested design will remain fast indefinitely. A normal source build
-and documentation build must work without this service or its credentials.
+Normal source and documentation builds must require neither a results clone
+nor network access to a database. Contributor collection and local validation
+must remain usable offline; public snapshots support analysis without an account.
 
 ## Migration and verification
 
-Implement the migration as a dedicated tooling task:
+Implement this as a separate tooling task, with the first milestone being the
+versioned result-bundle format, validator, legacy importer, and SQLite builder.
+Repository creation, access settings, and publication are separate setup work.
 
-1. Agree on the data model, hosting/backup ownership, collection protocol, and
-   export contract. Commit schema migrations and tools to Git.
-2. Build and test ingestion, queries, exports, and offline collection with a
-   disposable database before directing production campaigns to it.
+1. Assign owners and finalize the schema, artifact-size policy, review workflow,
+   and query contract. Version the schema and tools in the solver repository.
+2. Test packaging, validation, indexing, and queries on a local results fixture
+   before directing real campaigns to the new layout.
 3. Import the old ledger losslessly. Retain original entry payloads, IDs, order,
    top-level metadata, and an archived original with its byte hash. Assign the
    missing-ID entry a deterministic migration ID with an explicit mapping.
-   Normalize known fields without discarding unexpected or ambiguous content.
+   Preserve unexpected or ambiguous content. Publication auditing may restrict
+   the original archive; any public redaction must be documented, not disguised
+   as a lossless copy.
 4. Verify counts and canonical per-entry JSON hashes. A legacy round-trip export
    must preserve all JSON values and original order; formatting may differ.
    Preserve old IDs as searchable aliases for existing documentation citations.
 5. Import available per-input artifacts with provenance and checksums. Mark
-   missing artifacts and summary-only historical records as such; do not
+   missing artifacts and summary-only historical records explicitly; do not
    manufacture detailed results from aggregate counts.
-6. Pilot two independent branch/cluster campaigns and verify concurrent uploads,
-   analysis, export, and restoration before the cutover.
+6. Pilot independent campaigns from two contributors or machines, including
+   simultaneous PRs, a duplicate submission, an interrupted run, later model
+   validation, and a correction. Verify offline collection, merge checks,
+   report generation, snapshot export, and restoration.
 7. Switch producers, policy pages, `AGENTS.md`, and relevant skills together.
-   Retire the shared ledger as a writable source. Explain how outstanding
-   branches import their additions using existing IDs without duplicates, and
-   provide a generated legacy export for consumers still expecting an array.
+   Freeze the shared ledger as historical evidence. Explain how outstanding
+   branches migrate additions by existing ID without duplicates. Keep a generated
+   legacy export available for older consumers, outside the tracked writable path.
 
-Required tests include duplicate/retried and interrupted uploads; concurrent
-collection; differing payloads under one identity; malformed data and unknown
-schema versions; missing/cyclic provenance relationships; repetitions and
-incremental-query identity; partial shard coverage; conflicting corrections;
-consistent snapshot export; artifact checksum mismatch; legacy round-trip
-preservation; service-outage recovery; and backup restoration. Verify explicitly
-that adding validation cannot mutate timing results or qualify a different
-binary/profile. Measure representative query performance separately.
+Required tests cover duplicate/conflicting identities; malformed records and
+unknown schema versions; missing/cyclic relationships; incremental queries and
+repetitions; partial shard coverage; conflicting corrections; external artifact
+loss or checksum mismatch; interrupted/repeated index builds; equivalent clean
+rebuilds; lossless legacy round trips; and restoration. Verify that additional
+validation cannot alter timing rows or qualify a different binary/profile.
+Measure index/query performance separately from solver timings.
 
-Completion requires reviewed tools and schema migrations, reconciled imported
-data, preserved citations, tested backup/restore and offline collection, stable
-public evidence exports, and a passing strict documentation build. Separate
-branches must record runs without changing shared Git metadata. Until then,
-[](run-log.md) remains the operational policy.
+Completion requires reviewed tools and schemas, reconciled imported data,
+preserved citations, an independent-contributor pilot, verified restoration,
+reproducible snapshots/reports, and a strict documentation build. Until that
+cutover is recorded, [](run-log.md) remains the operational policy.

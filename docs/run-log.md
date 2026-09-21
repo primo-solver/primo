@@ -4,11 +4,11 @@
 evidence. Use it for benchmark campaigns, fuzzing, profiling, parameter tuning,
 SAT dependency profile checks, and reference-solver comparisons.
 
-The proposed replacement is described in [](benchmark-record-storage.md):
-PostgreSQL for collected metadata and individual results, separate durable
-artifacts, and portable evidence exports. It addresses branch merge conflicts
-and long-term analysis. The migration is not implemented; this page still
-describes the active recording policy.
+The agreed replacement is described in [](benchmark-record-storage.md):
+separate run directories in the planned `primo-solver/results` Git repository,
+a generated local SQLite query index, and separate large artifacts identified
+by hashes. Published evidence cites a results commit. The migration is not
+implemented; this page still describes the active recording policy.
 
 The ledger uses JSON rather than a database service. It should be
 updated in the same commit as the script, manifest, documentation, or solver

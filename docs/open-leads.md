@@ -11,12 +11,12 @@ Keep stable lead labels and evidence links when a lead changes state.
 
 ## Project and tooling leads
 
-- **Benchmark storage:** [](benchmark-record-storage.md) proposes a database,
-  artifact storage, and portable exports. Implementation has not been recorded.
-  The next decision is whether this work must precede public release; agreement
-  on an owner, data model, and collection/export contract precedes implementation.
-  Reconsider the design if its pilot cannot preserve legacy evidence losslessly
-  or keep collection recoverable during service outages.
+- **Benchmark storage tooling:** [](benchmark-record-storage.md) records the
+  agreed Git-records/generated-SQLite direction; implementation remains pending.
+  Assign an owner and build the record schema, validator, legacy importer, and
+  index builder. Decide whether cutover must precede public release. The pilot
+  must preserve legacy evidence losslessly and support independent contributor
+  submissions and offline collection; measure repository growth and query cost.
 
 Public-migration planning itself is tracked in [](active-work.md). Its pending
 milestones remain in the migration plan rather than being duplicated here.

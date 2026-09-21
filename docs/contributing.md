@@ -132,11 +132,13 @@ applicable, host or job IDs, resource limits, outcomes, and artifact locations.
 Separate passes from timeouts, unsupported cases, crashes, wrong answers, and
 reference disagreements. See [](experiments.md) and [](run-log.md).
 
-The proposed replacement in [](benchmark-record-storage.md) collects results in
-PostgreSQL, retains large artifacts separately, and publishes portable evidence
-snapshots. Collection supports offline work; contributors should not need
-database administration access. Continue using the current ledger until the
-tooling and policy cutover is complete; the service is not yet implemented.
+The agreed replacement in [](benchmark-record-storage.md) stores separate run
+directories in `primo-solver/results`, submitted through pull requests. SQLite
+is an untracked query index rebuilt from an exact results commit. Large artifacts
+remain separate, with hashes and locations in Git. Contributors can collect
+offline without database accounts; record-format checks do not certify solver
+answers. Continue using the current ledger until repository setup, tooling, and
+the policy cutover are complete; the new workflow is not yet implemented.
 
 If you cannot run an expensive or infrastructure-specific check, state what
 you ran and what remains. A maintainer should arrange the remaining work and
