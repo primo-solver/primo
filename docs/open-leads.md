@@ -1,5 +1,28 @@
 # Open leads register
 
+This is the **open leads** entry point. Leads are candidates for future work,
+not commitments or evidence that work is underway. Confirmed ongoing work is
+tracked in [](active-work.md); accepted behavior is described in
+[](current-status.md).
+
+The solver lead register below retains completed and rejected investigations
+as dated history, with their dispositions. Those entries are not open tasks.
+Keep stable lead labels and evidence links when a lead changes state.
+
+## Project and tooling leads
+
+- **Benchmark storage:** [](benchmark-record-storage.md) proposes a database,
+  artifact storage, and portable exports. Implementation has not been recorded.
+  The next decision is whether this work must precede public release; agreement
+  on an owner, data model, and collection/export contract precedes implementation.
+  Reconsider the design if its pilot cannot preserve legacy evidence losslessly
+  or keep collection recoverable during service outages.
+
+Public-migration planning itself is tracked in [](active-work.md). Its pending
+milestones remain in the migration plan rather than being duplicated here.
+
+## Solver leads and investigation history
+
 A single place to find every live idea for improving Primo's solver
 performance, what evidence supports it, what it would cost, and -- stated
 before the work starts -- what result would kill it.
@@ -60,15 +83,10 @@ UF-division files than unbounded rounds of 128.
 |---|---|---|---|---|
 | [1](#lead-pure-filter-lra) | Extend `--pure-theory-filter` to LRA atoms | zero as a wiring fix; the filter reaches only the once-called final check | large if done properly | **downgraded**; merge into lead 5 |
 | [2](#lead-flag-first) | Flag-first decision ordering | unknown | blocked | **attempted; belongs to the theory-combination layer** |
-| [2b](#lead-two-lra-paths) | Dispatch trigger: propositional variables route pure QF_LRA to the NO path | historical 300s regression; narrow dispatch now keeps the pure path | done | **fixed**; see [](nelson-oppen-qf-lra-regression.md) |
-| [3](#lead-leaving-rule) | MathSAT's real leaving rule: least-violated, short-row tie-break | 167 vs 174 on the bar; beats the *other* existing policy by 5 | done | **implemented, opt-in; did not clear its bar** |
-| [3b](#lead-occurs-in) | `occurs_in_` maintenance: the representation is half a sparse matrix | tropical 1/10 -> **2/10** at 1200s, gained 1 / lost 0; bar-neutral on the stratified sample | **large** (representation change) | **implemented, default**; 2 earlier prototypes rejected |
 | [4](#lead-aep) | Adaptive Early Pruning | ~20% total time in its source | small-medium | open |
 | [5](#lead-relevancy) | Relevancy propagation | unknown, principled | **large** | open, gated on 1 |
 | [6](#lead-justification) | Justification / goal-directed decision heuristics | unknown | medium-large | open, no paper note yet |
-| [7](#lead-row-representation) | Compare row representation against sorted arrays of pairs | already the endorsed design; 0.00% map cost in the profile | done | **closed: already implemented** |
 | [8](#lead-dl6) | DL6: decide precision statically before search | unknown | small | blocked on a DL solver |
-| [9](#lead-monotone) | Monotone (one-sided) variable elimination | neutral on the promotion bar | done | **implemented, opt-in; did not clear its bar** |
 | [10](#lead-z3-cheap-shared-equality) | Current-model-filtered unit-row equality recognition | unknown; removes exact-offset arithmetic and hashing from mixed equality production | medium | **open; QF_UFLRA only** |
 | [11](#lead-unconstrained-terms) | Unconstrained-term substitution (Brummayer/Bruttomesso) | 131/4.76M reals (QF_LRA), 1/217K (QF_UFLRA) -- negligible on both local corpora | small-medium | **open; not implemented, evidence says don't -- see falsifier** |
 | [12](#lead-qflia) | QF_LIA preprocessing disabled; conflict clauses do not generalize | +339 answered on the full division from 12d and 12f so far | done/partial | **12d and 12f implemented; 12b, 12c, 12e open** |
@@ -89,11 +107,25 @@ UF-division files than unbounded rounds of 128.
 | -- | D4 revised simplex, LU-factored basis | unknown | largest | open, see [](qf-lra-heuristics.md) |
 | -- | H4 batched bound assertion; H6 DL fast path; H11 fill-in-aware preprocessing elimination | -- | -- | design only, see [](qf-lra-heuristics.md) |
 | [R1](#lead-recursion-audit) | Audit input-sized recursion across the repository | robustness; prevents depth-dependent crashes | medium-large | **open; deliberately deferred** |
-| [12a](#lead-qflia-preprocessing-safe) | QF_LIA: enable bare-form solved-constant substitution | no measurable effect on the 2 motivating instances; real but narrow win elsewhere | small | **done: substitution shipped default-on; atom canonicalization attempted and reverted, unsafe as written** |
 | [12b](#lead-qflia-preprocessing-gauss) | QF_LIA: partial (unit-pivot) Gaussian elimination | needs a population census first | medium | open, gated on a census |
 | [12c](#lead-qflia-dio-hnf-cube) | QF_LIA: Diophantine/HNF/cube search-time reasoning | z3 closes 96% of calypto's conflicts via Dio, not branching | large | open; paper note now exists, split into patching (done), cubes (needs the octagon twist first), Dio/HNF (large) |
-| [12d](#lead-qflia-conflict-generalization) | QF_LIA: generalizing (Farkas-style) arithmetic conflict clauses | lemmas 27-55x larger than the certificate the tableau already returned | small (est. large, wrongly) | **done: shipped default-on; full corpus +19 solves, PAR2 43.12 -> 42.94, 0 wrong** |
 | [12e](#lead-qflia-extended-gcd) | QF_LIA: extended GCD test for bounded-but-not-fixed rows | closes the divergence `gcd_uncatchable_divergent_system_hits_the_node_limit` pins | small | open, gated on a census |
+
+### Completed investigations (historical)
+
+These outcomes are retained to explain previous decisions. They are not open
+tasks, and their measurements qualify only the revisions cited in the linked
+entries. Use [](current-status.md) for current supported behavior.
+
+| # | lead | expected size | cost | status |
+|---|---|---|---|---|
+| [2b](#lead-two-lra-paths) | Dispatch trigger: propositional variables route pure QF_LRA to the NO path | historical 300s regression; narrow dispatch now keeps the pure path | done | **fixed**; see [](nelson-oppen-qf-lra-regression.md) |
+| [3](#lead-leaving-rule) | MathSAT's real leaving rule: least-violated, short-row tie-break | 167 vs 174 on the bar; beats the *other* existing policy by 5 | done | **implemented, opt-in; did not clear its bar** |
+| [3b](#lead-occurs-in) | `occurs_in_` maintenance: the representation is half a sparse matrix | tropical 1/10 -> **2/10** at 1200s, gained 1 / lost 0; bar-neutral on the stratified sample | **large** (representation change) | **implemented, default**; 2 earlier prototypes rejected |
+| [7](#lead-row-representation) | Compare row representation against sorted arrays of pairs | already the endorsed design; 0.00% map cost in the profile | done | **closed: already implemented** |
+| [9](#lead-monotone) | Monotone (one-sided) variable elimination | neutral on the promotion bar | done | **implemented, opt-in; did not clear its bar** |
+| [12a](#lead-qflia-preprocessing-safe) | QF_LIA: enable bare-form solved-constant substitution | no measurable effect on the 2 motivating instances; real but narrow win elsewhere | small | **done: substitution shipped default-on; atom canonicalization attempted and reverted, unsafe as written** |
+| [12d](#lead-qflia-conflict-generalization) | QF_LIA: generalizing (Farkas-style) arithmetic conflict clauses | lemmas 27-55x larger than the certificate the tableau already returned | small (est. large, wrongly) | **done: shipped default-on; full corpus +19 solves, PAR2 43.12 -> 42.94, 0 wrong** |
 | [12f](#lead-qflia-patching) | QF_LIA: patching (paper Sect. 4.1) | entire deficit vs cvc5 is on sat; this is the layer that finds models | small | **done: full corpus +300 solves (356 gained / 56 lost), 331 of them sat, PAR2 42.91 -> 40.20, 0 wrong; cvc5 gap -535 -> -212** |
 
 (lead-pure-filter-lra)=
@@ -2708,6 +2740,11 @@ progress alongside PAR2. The noisy statistics-on/off probe remains inconclusive;
 it does not support a separate printing-overhead optimization claim.
 
 ## Adding a lead
+
+When work starts, add an entry to [](active-work.md) and link it from the lead.
+When it finishes, record whether it was accepted, rejected, or deferred. For an
+accepted change, update the component reference and [](current-status.md) with
+its qualified scope; leave remaining hypotheses explicitly open.
 
 Give it: the claim in one sentence; the evidence, with counters or timings and
 whether they are local or SLURM; a cost estimate; the sequencing constraint if

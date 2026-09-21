@@ -21,7 +21,7 @@ the project's issue tracker once the public repository is established.
 
 ## Documentation is part of the change
 
-We propose a documentation-as-code policy: documentation lives with the source,
+Primo follows a documentation-as-code policy: documentation lives with the source,
 uses the same review process, and ships with the behavior it describes. A pull
 request changing behavior or an architectural contract is incomplete until its
 affected documentation is updated. If no documentation change is needed, say
@@ -31,6 +31,23 @@ Use the nearest existing page under `docs/`. Keep the README as an entry point
 and [](current-status.md) as the capability map; link detailed explanations
 instead of copying them into several places. Add new pages to `docs/_toc.yml`
 and use the existing MyST conventions in [](index.md).
+
+Maintain the three documentation states alongside the change:
+
+- **Done:** update [](current-status.md) and the relevant reference page with the
+  implemented scope, limitations, accepted revision, and verification evidence.
+  Code awaiting required checks remains work in progress.
+- **Being worked on:** update [](active-work.md) with an owner (or explicitly
+  unassigned), date, branch/PR or design link, next step, blockers, and remaining
+  acceptance criteria. List completed subsets without calling the whole task done.
+- **Open leads:** use [](open-leads.md) for proposals and follow-ups, with their
+  motivation, evidence, prerequisites, and a concrete next investigation or
+  falsifier. An attractive idea alone is not active work.
+
+Update the affected indexes when work changes state. Preserve design and experiment
+history with dated outcomes, including rejected work; link to it instead of
+copying it into each index. These engineering requirements already apply;
+the public contribution licensing and governance choices remain draft proposals.
 
 | Change | Documentation expected |
 | --- | --- |

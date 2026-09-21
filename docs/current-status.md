@@ -1,5 +1,10 @@
 # Current implementation and qualification
 
+This is the **what has been done** entry point: implemented behavior and its
+qualification boundaries. Work still underway belongs in [](active-work.md);
+possible follow-ups belong in [](open-leads.md). Historical qualification below
+applies to its recorded revisions, not automatically to the current checkout.
+
 **Direct stdin parser (2026-09-10):** `e24dfcd` uses a persistent stream lexer
 and one-command parser, with no separate text framer or lookahead after a
 completed command. The fresh 1,000-session recorded-reference replay and 100

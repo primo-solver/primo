@@ -1,8 +1,9 @@
 # Public repository migration: draft
 
-**Status: discussion draft, 2026-09-16.** The intended destination is a public
-repository in a separate organization. Apache-2.0 is preferred provisionally;
-MIT remains an alternative. No license selection, university authorization,
+**Status: discussion draft, updated 2026-09-21.** The project owner reports that
+the destination organization, `primo-solver`, has been created and is empty.
+Repository creation or transfer remains pending. Apache-2.0 is preferred
+provisionally; MIT remains an alternative. No license selection, university authorization,
 repository transfer, or publication is recorded by this document.
 
 ## Purpose
@@ -23,6 +24,7 @@ migration.
 | --- | --- | --- |
 | License for Primo-owned code | Apache-2.0 | MIT is also under consideration; establish authority to license before selection. |
 | Institutional rights | Resolve with the university before release | Employment, funding, contributor rights, and authority for any patent grant. |
+| Destination | Existing `primo-solver` organization, reported by the project owner | Repository name, creation or transfer, owners, and access configuration. |
 | Public history | Preserve history if the publication audit permits | Transfer the repository or publish a curated starting revision. |
 | Contributions | Contributors retain their rights and contribute under the project license | DCO sign-off is proposed; no copyright assignment or separate CLA is proposed at this stage. |
 | Documentation | Maintain source and documentation in the same repository and review them together | Public hosting, release-version URLs, and CI configuration. |
@@ -71,6 +73,24 @@ Before opening contributions publicly:
   the founding group's infrastructure.
 
 ## Documentation as code
+
+Documentation as code is an existing project requirement. Source, tests, and
+affected documentation are maintained and reviewed together. Public hosting
+and contribution-policy decisions do not defer that requirement.
+
+Documentation has three status entry points, visible in the book navigation:
+
+| State | Entry point | Required distinction |
+| --- | --- | --- |
+| What has been done | [](current-status.md) and component reference pages | Implemented and qualified scope, accepted revisions, evidence, and limitations. |
+| What is being worked on | [](active-work.md) | Owner, last review date, branch/PR or design, next step, blockers, and acceptance criteria still outstanding. |
+| Open leads | [](open-leads.md) | Ideas and follow-ups with evidence, prerequisites, and a next investigation or falsifier; no implied commitment to implementation. |
+
+Update these indexes in the same change that advances or closes the work.
+Partial implementations stay explicit, and completed experiments record whether
+their changes were accepted or rejected. Historical design and evidence pages
+retain their dated outcomes and stable links. Their existence is not evidence
+of current activity or qualification of a later revision.
 
 Primo already authors documentation in `docs/` using MyST Markdown, builds it
 with Jupyter Book, and stores experiment metadata in `docs/run-log.json`.
@@ -122,6 +142,9 @@ before it is marked complete. Owners and dates are not yet assigned.
 - Reconcile the README, current-status page, and theory documentation on the
   exact release candidate. Remove obsolete branch language and describe
   quantified UF and incremental-mode limitations consistently.
+- Review the three status indexes against the release candidate. Close completed
+  active entries, identify owners and blockers for ongoing work, and separate
+  remaining leads from implemented claims and dated experimental history.
 - Verify a clean build without local caches or private infrastructure. Document
   supported platforms, prerequisites, dependency versions, and download checks.
 - Provide small examples for solving, models, sessions, and quantified input,
@@ -138,8 +161,9 @@ before it is marked complete. Owners and dates are not yet assigned.
 
 ### 3. Configure the organization and verification workflow
 
-- Choose the organization/repository names, owners, recovery arrangements, and
-  least-privilege access. Set required reviews and status checks.
+- Configure the existing `primo-solver` organization: settle the repository name,
+  owners, recovery arrangements, and least-privilege access. Set required reviews
+  and status checks.
 - Run build/tests and the documentation gate in public CI. Provide scheduled or
   maintainer-run sanitizer, static-analysis, fuzzing, and benchmark jobs as
   appropriate; record which checks are required for each change category.

@@ -6,17 +6,30 @@ This documentation is authored in MyST Markdown and built with Jupyter Book.
 Build it from the repository root with `scripts/build_docs.sh`; generated HTML
 is written under `docs/_build/html`.
 
-Start with [](current-status.md) for supported logics, current solver routes,
-model ownership, qualification evidence and remaining limitations. It separates
-the implemented component architecture from older experiments and future work.
-See [](incremental-smt.md) for the new rebuild-based interactive session layer
-and its qualification boundary.
+## Work status
+
+The documentation separates three questions:
+
+| Status | Entry point | What belongs here |
+| --- | --- | --- |
+| What has been done | [](current-status.md) | Implemented behavior, accepted results, supporting revisions and verification, and known limitations. |
+| What is being worked on | [](active-work.md) | Work actually underway, its owner, branch or review, remaining acceptance criteria, and blockers. |
+| Open leads | [](open-leads.md) | Ideas and proposed work, their evidence, prerequisites, and the next investigation that could accept or reject them. |
+
+Status indexes link to the relevant component, design, and evidence pages;
+they do not duplicate those pages. A proposal is not active work until someone
+starts it, and an implementation awaiting required qualification is not done.
+Dated experiments retain their original revisions and outcomes, including
+rejected results. A completed experiment need not produce an accepted feature.
 
 ## Documentation policy
 
+- Documentation as code is an existing engineering requirement: review source,
+  tests, and affected documentation together, and update status as work changes.
 - The proposed public contribution workflow is in [](contributing.md), with
   pending license and governance decisions in [](public-repository-migration.md).
-  Both are discussion drafts; the migration has not adopted them as policy.
+  Their public licensing and governance proposals remain discussion drafts;
+  existing engineering requirements continue to apply.
 - Use MyST Markdown for architecture, design, algorithm, paper, and developer notes.
 - Use notebooks only for executable experiments, benchmark analysis, and plotted reports.
 - Keep claims synchronized with implemented functionality.
@@ -28,9 +41,11 @@ and its qualification boundary.
 
 ## How the book is organised
 
-Five parts, in the order they are normally needed:
+Six parts, in the order they are normally needed:
 
-- **Core architecture** covers current status, ownership invariants, typed models,
+- **Work status** separates completed work, active work, and open leads through
+  the three entry points above.
+- **Core architecture** covers ownership invariants, typed models,
   tactics, IPASIR-UP, DPLL(T), and preprocessing.
 - **Theories** gives each implemented theory an entry point. [](euf.md) covers
   congruence closure and Boolean arguments. [](arithmetic.md) is the QF_LRA

@@ -4,9 +4,14 @@ root: index
 # Theory reference pages are entry points; detailed design and evidence notes
 # are nested beneath the component they qualify.
 parts:
-  - caption: Core architecture
+  - caption: Work status
     chapters:
       - file: current-status
+      - file: active-work
+      - file: open-leads
+
+  - caption: Core architecture
+    chapters:
       - file: architecture
       - file: incremental-smt
         sections:
@@ -42,7 +47,6 @@ parts:
               - file: qf-lia-profile
           - file: qf-lra-heuristics
           - file: tuning-parameters
-          - file: open-leads
           - file: tropical-matrix-structure
           - file: fuzz-coverage-qf-lra
       - file: nelson-oppen
