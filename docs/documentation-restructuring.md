@@ -1,8 +1,9 @@
-# Documentation restructuring before public migration
+# Documentation restructuring before public release
 
 **Status: planning and inventory, 2026-09-23; restructuring not implemented.**
 The project owner has made substantial documentation restructuring a priority
-before the public repository move. The three status entry points added in
+before the first public release. A private repository transfer can happen first.
+The three status entry points added in
 `559dcb5` establish the distinction between done, active, and open work; they do
 not by themselves reorganize the underlying material. Owner and reviewers for
 the rewrite remain unassigned.
@@ -15,11 +16,28 @@ reconstructing a sequence of branch experiments. Active work and open leads
 must be clearly distinct from the current manual. Historical evidence must
 remain accessible and attributable to the revision it measured.
 
-Complete and review the restructuring on the existing repository before its
-public transfer or publication. Rights and infrastructure planning can proceed
-in parallel, but a passing documentation build alone does not satisfy this gate.
+Merge the code intended for the release, then complete and review the
+restructuring against that revision before making the repository public. The
+repository can move privately into the destination organization first. Rights
+and infrastructure planning can proceed in parallel, but a passing documentation
+build alone does not satisfy this gate.
 The results-storage implementation is a separate workstream: this rewrite can
 link existing run IDs while the new storage tools are still pending.
+
+## Source links and documented revisions
+
+Use GitHub links pinned to a commit for code explanations, optionally including
+line anchors. A moving `main` link is suitable for browsing current development,
+but cannot identify the implementation described by a released book. Configure
+the repository URL and source revision centrally in the documentation build,
+display the documented revision, and generate code links from those settings.
+This is planned tooling, not functionality already provided by the current build.
+
+Check the source revision and referenced paths in the destination before
+publishing. If a curated history changes commit identities, use the explicit
+provenance mapping and available public revisions rather than linking to
+unavailable private commits. Keep historical evidence attached to the code
+actually measured. See [GitHub's permanent-link documentation](https://docs.github.com/en/repositories/working-with-files/using-files/getting-permanent-links-to-files).
 
 ## Inventory findings
 
@@ -117,7 +135,7 @@ solver bug requires its normal implementation, review, and correctness gates;
 a documentation rewrite cannot waive them. Documentation-only moves and prose
 need factual/link review and strict builds, not unrelated performance campaigns.
 
-## Acceptance checklist before public transfer
+## Acceptance checklist before public release
 
 - Every baseline page has a recorded disposition; additions during the rewrite
   are accounted for. No important explanation or evidence disappears by omission.
@@ -140,6 +158,9 @@ need factual/link review and strict builds, not unrelated performance campaigns.
   executed, internal and compatibility links are checked, and rendered pages
   are reviewed. Notebook execution remains disabled unless explicitly enabled
   and tested; a book build alone is not behavioral verification.
+- Code links resolve to the displayed documented revision in the destination
+  repository; source-link configuration is reviewed separately from links for
+  editing the documentation on an active branch.
 - Editable documentation sources are included in the public release artifact.
   The packaging change has its own appropriate checks, and the documented
   archive workflow is exercised.

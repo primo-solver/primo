@@ -2,7 +2,8 @@
 
 **Status: discussion draft, updated 2026-09-23.** The project owner reports that
 the destination organization, `primo-solver`, has been created and is empty.
-Repository creation or transfer remains pending. The project owner decided on
+The project owner intends to transfer the existing repository while keeping it
+private; completion has not been verified. The project owner decided on
 2026-09-23 to retain the existing MIT license for Primo. University authorization,
 repository transfer, and publication remain separate pending work.
 
@@ -18,9 +19,10 @@ provide a reproducible starting point. New theory support and performance
 improvements are separate development work, not prerequisites invented for the
 migration.
 
-Substantial documentation restructuring is a prerequisite for the public move.
-Complete [](documentation-restructuring.md) in the existing repository before
-transfer or publication. The three status entry points are a starting point;
+Substantial documentation restructuring is a prerequisite for public release.
+A private transfer into `primo-solver` can precede it. Merge the intended code,
+then complete [](documentation-restructuring.md) against that revision before
+making the repository public. The three status entry points are a starting point;
 the underlying reference material, active plans, and historical evidence still
 need to be separated and rewritten for outside readers.
 
@@ -30,10 +32,10 @@ need to be separated and rewritten for outside readers.
 | --- | --- | --- |
 | License for Primo-owned code, documentation, and examples | Retain MIT; decided 2026-09-23 | Verify publication rights and distribution notices; license selection is settled. |
 | Institutional rights | Resolve with the university before release | Employment, funding, contributor rights, and authority to publish the included material. |
-| Destination | Existing `primo-solver` organization, reported by the project owner | Repository name, creation or transfer, owners, and access configuration. |
+| Destination | Transfer the existing repository to `primo-solver`, retaining private visibility during preparation | Confirm transfer completion, owners, access configuration, and plan-dependent features. |
 | Public history | Preserve history if the publication audit permits | Transfer the repository or publish a curated starting revision. |
 | Contributions | Contributors retain their rights and contribute under MIT | DCO sign-off is proposed; no copyright assignment or separate CLA is proposed at this stage. |
-| Documentation | Restructure before public transfer; maintain source and documentation together | Complete [](documentation-restructuring.md), then public hosting, release-version URLs, and CI configuration. |
+| Documentation | Restructure against merged code before public release; a private transfer can happen first | Complete [](documentation-restructuring.md), then public hosting, release-version URLs, and CI configuration. |
 | Experiment records | Git is authoritative in `primo-solver/results`; SQLite is a generated local query index | Agreed direction; repository setup, schema/tools, artifact retention, lossless legacy import, and coordinated writer cutover remain pending; see [](benchmark-record-storage.md). |
 | Governance | Public technical decisions and an explicit route to maintainership | Initial maintainers, organization owners, review authority, and dispute resolution. |
 
@@ -125,6 +127,12 @@ change.
 Each milestone needs a named owner, evidence links, and a recorded outcome
 before it is marked complete. Owners and dates are not yet assigned.
 
+A private ownership transfer is preparatory work and can precede these release
+milestones. It does not satisfy the publication audit or change the release
+gate. Verify destination permissions and feature availability, retain private
+visibility, and update remotes after confirming the transfer. Local unpushed
+commits remain in their local clones and need a later push to reach GitHub.
+
 ### 1. Restructure and qualify the documentation
 
 - Execute [](documentation-restructuring.md): account for every page, establish
@@ -132,9 +140,9 @@ before it is marked complete. Owners and dates are not yet assigned.
   and preserve dated evidence and stable links.
 - Verify examples against the documented source revision, review the rendered
   book, and include editable documentation in the release archive.
-- Record the closing review and commits. Do not transfer or publish the
-  repository before this gate passes. Rights and infrastructure planning may
-  proceed alongside the documentation work.
+- Record the closing review and commits. Do not make the repository public
+  before this gate passes. A private transfer, rights review, and infrastructure
+  planning may proceed before or alongside the documentation work.
 
 ### 2. Establish publication rights and inspect the material
 
