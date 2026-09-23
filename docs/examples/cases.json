@@ -1,0 +1,81 @@
+[
+  {
+    "name": "first-solve",
+    "input": "first-solve.smt2",
+    "expected": "first-solve.txt",
+    "args": [],
+    "exit_code": 0
+  },
+  {
+    "name": "model",
+    "input": "model.smt2",
+    "expected": "model.txt",
+    "args": [
+      "--check-model"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "session",
+    "input": "session.smt2",
+    "expected": "session.txt",
+    "args": [],
+    "exit_code": 0
+  },
+  {
+    "name": "quantified",
+    "input": "quantified.smt2",
+    "expected": "quantified.txt",
+    "args": [],
+    "exit_code": 0
+  },
+  {
+    "name": "unsupported",
+    "input": "unsupported.smt2",
+    "expected": "unsupported.txt",
+    "args": [],
+    "exit_code": 2
+  },
+  {
+    "name": "stale-model",
+    "input": "stale-model.smt2",
+    "expected": "stale-model.txt",
+    "args": [],
+    "exit_code": 2
+  },
+  {
+    "name": "unknown",
+    "input": "unknown.smt2",
+    "expected": "unknown.txt",
+    "args": [
+      "--preprocess-only"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "first-solve-assumptions",
+    "input": "first-solve.smt2",
+    "expected": "first-solve.txt",
+    "args": [
+      "--incremental-mode=assumptions"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "session-assumptions",
+    "input": "session.smt2",
+    "expected": "session.txt",
+    "args": [
+      "--incremental-mode=assumptions"
+    ],
+    "exit_code": 0
+  },
+  {
+    "name": "stdin",
+    "input": "first-solve.smt2",
+    "expected": "first-solve.txt",
+    "args": [],
+    "exit_code": 0,
+    "stdin": true
+  }
+]

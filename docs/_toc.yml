@@ -10,6 +10,14 @@ parts:
       - file: active-work
       - file: open-leads
 
+  - caption: Using Primo
+    chapters:
+      - file: guide/getting-started
+      - file: guide/input
+      - file: guide/models
+      - file: guide/sessions
+      - file: reference/options
+
   - caption: Core architecture
     chapters:
       - file: architecture
@@ -74,6 +82,8 @@ parts:
         sections:
           - file: finite-domain-fuzzing
       - file: termid-order-sensitivity
+      - file: development/documentation
+      - file: archive/current-status
 
   - caption: Paper notes
     chapters:

@@ -1,4 +1,4 @@
-title: Primo Solver Notes
+title: Primo documentation
 author: Primo contributors
 logo: _static/primo-logo.svg
 
@@ -25,9 +25,19 @@ parse:
     - tasklist
 
 sphinx:
+  extra_extensions:
+    - sphinx.ext.extlinks
   # Preserve Jupyter Book's repository settings when adding theme options below.
   recursive_update: true
   config:
+    # Solver source reviewed for the new manual; historical reports keep their
+    # own measured revisions. Advance only after checking affected claims.
+    extlinks:
+      source:
+        - "https://github.com/primo-solver/primo/blob/ac0daf4987281fa33d5e438bacdbaf2492607a03/%s"
+        - "%s"
+    myst_substitutions:
+      source_revision: "ac0daf4987281fa33d5e438bacdbaf2492607a03"
     # Generate implicit targets for headings down to level 3, so that an
     # ordinary `[text](#some-heading)` link resolves as a MyST reference
     # instead of warning and falling back to a bare HTML anchor.

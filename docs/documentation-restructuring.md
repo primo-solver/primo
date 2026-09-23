@@ -1,12 +1,12 @@
 # Documentation restructuring before public release
 
-**Status: execution plan and proposed page map, 2026-09-23; rewrite not started.**
+**Status: rewrite in progress, 2026-09-23; first user-manual batch implemented.**
 The project owner has made substantial documentation restructuring a priority
 before the first public release. A private repository transfer can happen first.
 The three status entry points added in
 `559dcb5` establish the distinction between done, active, and open work; they do
-not by themselves reorganize the underlying material. Owner and reviewers for
-the rewrite remain unassigned.
+not by themselves reorganize the underlying material. Codex is executing the
+current manual batch; independent review ownership remains unassigned.
 
 ## Outcome and publication gate
 
@@ -31,7 +31,9 @@ line anchors. A moving `main` link is suitable for browsing current development,
 but cannot identify the implementation described by a released book. Configure
 the repository URL and source revision centrally in the documentation build,
 display the documented revision, and generate code links from those settings.
-This is planned tooling, not functionality already provided by the current build.
+The first batch now provides the centrally configured `source` role and displays
+the documented revision. Automatic path/line validation, build-revision metadata
+and archive-aware provenance remain planned tooling.
 
 Check the source revision and referenced paths in the destination before
 publishing. If a curated history changes commit identities, use the explicit
@@ -102,8 +104,9 @@ responsibility and extraction work, not a claim that a rename alone is sufficien
 The {download}`page map <documentation-page-map.csv>` accounts for all **76
 tracked Markdown pages under `docs/` at `4921f07`**, including paper notes and
 the predecessor retrospective. Each row proposes a milestone, audience,
-disposition, and destination. All content reviews and compatibility-anchor
-inventories are still pending; file coverage is not a correctness audit.
+disposition, and destination. New pages and completed batch reviews are now
+included too. Untouched content reviews and compatibility-anchor inventories
+remain pending; file coverage is not a correctness audit.
 Destinations are relative to `docs/`; `<lead-id>` and `<component>` must be
 resolved during the relevant content review. A proposed archive destination
 does not mean all facts in that page are obsolete: extract any current contract
@@ -142,7 +145,7 @@ an active extension, and several open leads at the same time.
 | Fact or document | Canonical home and required content |
 | --- | --- |
 | Supported behavior | `current-status.md`: logic/mode/model matrix, defaults versus opt-in, limitations, source revision and qualification links. `guide/input.md` explains syntax and examples without maintaining a second independent support table. |
-| Options and commands | `reference/options.md`, checked against `src/cli/options.cpp`, `src/cli/options.hpp` and the candidate binary's help. Include default, domain, affected modes, failure behavior and a useful example; subsystem pages link here. |
+| Options and commands | `reference/options.md`, checked against CLI registration in `src/main.cpp`, defaults in `src/smt/check_sat.hpp`, enum spellings in `src/cli/option_names.hpp` and the candidate binary's help. The `src/cli/options.*` files are placeholders. Include default, domain, affected modes, failure behavior and a useful example; subsystem pages link here. |
 | Implementation contract | Each `implementation/` chapter: concrete types/files, inputs/outputs, representation, ownership/lifetime, invariants, allocating operations, failure/unknown paths, one worked example, limitations and test links. |
 | Algorithm basis | Same chapter: primary source and section, implemented operations/subset, deviations, complexity expectations, proof obligations and invariant tests. Link detailed paper notes; do not repeat whole summaries. |
 | Active item | `active-work.md` indexes a plan with owner or unassigned, last review date, branch/PR, completed subset, next action, blockers and remaining acceptance criteria. |
@@ -217,6 +220,60 @@ Keep source behavior changes separate from this reorganization. A discovered
 solver bug requires its normal implementation, review, and correctness gates;
 a documentation rewrite cannot waive them. Documentation-only moves and prose
 need factual/link review and strict builds, not unrelated performance campaigns.
+
+## First manual batch: 2026-09-23
+
+The baseline merge is `13b226c`, bringing in `main` at
+`ac0daf4987281fa33d5e438bacdbaf2492607a03` without conflicts. Solver sources,
+tests, build files and dependency installers match that source revision.
+No solver behavior/default was changed and no fresh benchmark qualification is
+claimed. The documentation commit following this baseline carries the first
+manual batch and its review record.
+
+Delivered:
+
+- Short README and landing page, the three status entrances and a user-guide
+  navigation section.
+- Build/first-solve, input/results, model and session guides, plus a practical
+  options reference and captured exhaustive CLI help. The old claim that
+  quantifiers were wholly unimplemented and sessions only existed on a feature
+  branch is removed.
+- A concise current capability map. The former qualification narrative is
+  preserved in `archive/current-status.md` with relative links adjusted;
+  original current-status headings remain as compatibility targets.
+- Centrally configured, commit-pinned source links through Sphinx's `extlinks`
+  extension; the documented source revision is visible in the book. The 13
+  source targets used by the new manual exist at that revision and match the
+  checkout. This was checked locally, not by unauthenticated GitHub requests.
+- `docs/examples/` contains the programs, expected outputs, help snapshot and
+  invocation manifest. `scripts/check_doc_examples.py` checks all 11 invocations
+  including help; both default and admitted assumptions engines are exercised.
+- `development/documentation.md` records authoring, preview, source-link and
+  example-check conventions, and the current archive-format limitation.
+
+Validation on the local Linux workspace: `make build`, `make test` (41 tests),
+`python3 scripts/check_doc_examples.py --solver ./build/primo` (11 checks),
+strict `make docs`, source-path/revision checks, `git diff --check`, and
+`make lint`. The lint pass also makes the pre-existing non-raising subprocess
+behavior explicit with `check=False` in `scripts/quantifier_pool_check.py`;
+this does not change its treatment of external solver exits and is committed
+separately as `85a18f5`. All 14 quantifier Python tests pass. C++ source is
+unchanged, so ASan, clang-tidy and fresh fuzz campaigns are not part of this
+documentation batch.
+
+Rendered review covered the landing page in light mode and the getting-started
+guide in dark mode (`tmp/doc-rewrite/`, ignored preview artifacts). All ten old
+heading targets on the rewritten index and capability pages remain in the HTML.
+The page map accounts for all 83 current Markdown pages. An empty-output solver
+negative control fails all 11 manual checks, confirming failures are reported.
+
+This is a completed manual slice across M0–M2, not completion of those full
+milestones or of the public-doc gate. Still required: disposition/anchor reviews
+for untouched pages, the SAT implementation-template pilot, automated source
+link checks and build metadata, private CI previews, full option semantics,
+deeper chapter extraction, clean-checkout and archive reproduction, and the
+independent reader walkthrough. The local build bootstrapped dependencies but
+was not an isolated end-to-end fresh-clone test. Website deployment remains off.
 
 ## Acceptance checklist before public release
 
@@ -304,5 +361,5 @@ The organization's current plan has not been verified. Keep deployment off
 during the private rewrite; a public preview would itself publish documentation
 and is not part of this plan's preparation work.
 
-The inventory and this plan are the current deliverables. Passing their build
-checks does not complete the restructuring or publish the website.
+The first manual batch and this plan are the current deliverables. Passing their
+build checks does not complete the restructuring or publish the website.

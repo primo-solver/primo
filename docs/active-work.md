@@ -21,17 +21,16 @@ open planning action, not an implied assignment to a contributor.
   The results-storage direction is agreed: Git records in `primo-solver/results`
   with a generated local SQLite query index and separately retained large artifacts.
   On 2026-09-23, the project owner decided to retain the existing MIT license.
-- **Being worked on:** making the documentation rewrite executable. The
-  [rewrite plan](documentation-restructuring.md) now specifies target paths,
-  canonical facts, source-revision handling and milestones M0–M6; its downloadable
-  page map covers all 76 baseline documentation pages. Dispositions are proposed,
-  and content/anchor reviews remain pending. The next step is M0: confirm the
-  merged source baseline, review the map and assign rewrite/review ownership.
+- **Being worked on:** the documentation rewrite described below. The
+  [rewrite plan](documentation-restructuring.md) specifies target paths,
+  canonical facts, source-revision handling and milestones M0–M6. Its page map
+  tracks the 76 original pages and the new manual pages; untouched dispositions
+  and their content/anchor reviews remain pending.
   GitHub Pages hosting is proposed in the same plan, with private build-artifact
   review first and website deployment after the publication gate; no hosting
   workflow or site is configured yet.
   Substantial documentation restructuring is required before public release;
-  its inventory and execution plan are recorded, but the rewrite is pending.
+  its user-facing manual has begun, while the deeper rewrite remains underway.
   The reported transfer is complete; visibility and access settings still need
   verification while the repository is intended to remain private.
 - **Remaining acceptance criteria:** the [migration milestones](public-repository-migration.md#migration-milestones)
@@ -49,6 +48,29 @@ open planning action, not an implied assignment to a contributor.
 - **Completion boundary:** completing the planning documents does not complete
   the migration. Publication requires the checks and outside-user reproduction
   described in [](public-repository-migration.md).
+
+## Documentation rewrite
+
+**Last reviewed: 2026-09-23. Status: first manual batch implemented; wider
+rewrite in progress.** Execution in this session: Codex. Independent review
+ownership remains unassigned. Branch: `docs/public-repository-migration`.
+
+- **Completed subset:** merged `origin/main` in `13b226c`; solver sources match
+  the documented baseline `ac0daf4987281fa33d5e438bacdbaf2492607a03`. Added build,
+  input, model and session guides, a practical CLI reference, pinned source
+  links, executable examples and a shorter capability map. Preserved the old
+  qualification narrative in [](archive/current-status.md).
+- **Verification:** 11 manual checks, 41 CTest tests and the strict book build
+  pass. Detailed batch review and remaining limitations belong in
+  [](documentation-restructuring.md).
+- **Next:** review the core representation/session chapters against code,
+  complete source-link validation and private CI previews, and continue the
+  page-map reviews. Do not move historical pages without preserving their
+  evidence and compatibility labels.
+- **Remaining acceptance:** the SAT template pilot, deeper implementation and
+  contributor rewrites, open-lead/history extraction, clean-checkout and archive
+  walkthroughs, independent reader review and publication gates remain open.
+  No solver behavior or defaults are changed by this manual batch.
 
 This is an initial register based on the work reviewed on this branch. Other
 contributors should add confirmed active work; absence here is not evidence
