@@ -18,6 +18,12 @@ provide a reproducible starting point. New theory support and performance
 improvements are separate development work, not prerequisites invented for the
 migration.
 
+Substantial documentation restructuring is a prerequisite for the public move.
+Complete [](documentation-restructuring.md) in the existing repository before
+transfer or publication. The three status entry points are a starting point;
+the underlying reference material, active plans, and historical evidence still
+need to be separated and rewritten for outside readers.
+
 ## Decisions and remaining work
 
 | Decision | Agreed direction or working proposal | What remains open |
@@ -27,7 +33,7 @@ migration.
 | Destination | Existing `primo-solver` organization, reported by the project owner | Repository name, creation or transfer, owners, and access configuration. |
 | Public history | Preserve history if the publication audit permits | Transfer the repository or publish a curated starting revision. |
 | Contributions | Contributors retain their rights and contribute under MIT | DCO sign-off is proposed; no copyright assignment or separate CLA is proposed at this stage. |
-| Documentation | Maintain source and documentation in the same repository and review them together | Public hosting, release-version URLs, and CI configuration. |
+| Documentation | Restructure before public transfer; maintain source and documentation together | Complete [](documentation-restructuring.md), then public hosting, release-version URLs, and CI configuration. |
 | Experiment records | Git is authoritative in `primo-solver/results`; SQLite is a generated local query index | Agreed direction; repository setup, schema/tools, artifact retention, lossless legacy import, and coordinated writer cutover remain pending; see [](benchmark-record-storage.md). |
 | Governance | Public technical decisions and an explicit route to maintainership | Initial maintainers, organization owners, review authority, and dispute resolution. |
 
@@ -119,7 +125,18 @@ change.
 Each milestone needs a named owner, evidence links, and a recorded outcome
 before it is marked complete. Owners and dates are not yet assigned.
 
-### 1. Establish publication rights and inspect the material
+### 1. Restructure and qualify the documentation
+
+- Execute [](documentation-restructuring.md): account for every page, establish
+  reader paths, rewrite current references, separate active work and open leads,
+  and preserve dated evidence and stable links.
+- Verify examples against the documented source revision, review the rendered
+  book, and include editable documentation in the release archive.
+- Record the closing review and commits. Do not transfer or publish the
+  repository before this gate passes. Rights and infrastructure planning may
+  proceed alongside the documentation work.
+
+### 2. Establish publication rights and inspect the material
 
 - Resolve university and contributor publication authorization under the retained
   MIT license, and verify the included notices.
@@ -134,7 +151,7 @@ before it is marked complete. Owners and dates are not yet assigned.
   private archive and a public provenance mapping sufficient to identify the
   qualified source snapshot, without exposing material removed by the audit.
 
-### 2. Make the repository usable by an outside contributor
+### 3. Make the repository usable by an outside contributor
 
 - Reconcile the README, current-status page, and theory documentation on the
   exact release candidate. Remove obsolete branch language and describe
@@ -157,7 +174,7 @@ before it is marked complete. Owners and dates are not yet assigned.
   evidence limitations. Generate an untracked SQLite query index from a pinned
   results commit; publish versioned snapshots and retain large artifacts separately.
 
-### 3. Configure the organization and verification workflow
+### 4. Configure the organization and verification workflow
 
 - Configure the existing `primo-solver` organization: settle the repository name,
   owners, recovery arrangements, and least-privilege access. Set required reviews
@@ -176,7 +193,7 @@ before it is marked complete. Owners and dates are not yet assigned.
   collection, index rebuilds, and snapshots before retiring the existing ledger.
   No database server is required; source/docs builds must not need a results clone.
 
-### 4. Qualify and publish the first release
+### 5. Qualify and publish the first release
 
 - Verify the exact candidate using the applicable existing checks and gates.
   Do not describe old measurements as fresh qualification of changed behavior.
@@ -201,5 +218,6 @@ historical logs as part of the migration.
 This draft is complete when the plan and proposed contribution guide are
 reviewable and build with the documentation. The migration itself is complete
 only when rights and policy decisions are recorded, publication checks pass,
-and an outside user can access and reproduce the released project. Pending
+the documentation-restructuring gate has passed, and an outside user can access
+and reproduce the released project. Pending
 publication-rights, sign-off, and governance decisions remain visible until settled.

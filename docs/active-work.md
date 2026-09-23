@@ -21,12 +21,18 @@ open planning action, not an implied assignment to a contributor.
   with a generated local SQLite query index and separately retained large artifacts.
   On 2026-09-23, the project owner decided to retain the existing MIT license.
 - **Being worked on:** reviewing the migration plan. The next step is to assign
-  milestone owners and settle the release prerequisites.
+  owners for [](documentation-restructuring.md) and the other milestones.
+  Substantial documentation restructuring is required before public transfer;
+  its inventory and execution plan are recorded, but the rewrite is pending.
 - **Remaining acceptance criteria:** the [migration milestones](public-repository-migration.md#migration-milestones)
   must have owners and evidence of their outcomes. Publication rights, sign-off, history,
   repository setup, public verification, packaging, and release qualification
   remain pending. The plan must settle whether the results-record cutover is
   a prerequisite for publication.
+- **Documentation gate:** finish the page map and code-grounded rewrites,
+  separate current reference from proposals and history, verify examples and
+  links, review the rendered book, and include editable sources in the archive.
+  Completing this planning entry or its documentation build does not close the gate.
 - **Related proposal:** [](benchmark-record-storage.md) is design work only;
   repository setup, record tooling, and legacy migration remain pending. No
   central database service is required by the agreed design.

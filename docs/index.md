@@ -24,6 +24,10 @@ rejected results. A completed experiment need not produce an accepted feature.
 
 ## Documentation policy
 
+- Substantial restructuring before public transfer is planned in
+  [](documentation-restructuring.md). The current three status entry points
+  establish the intended distinction; the underlying book still needs the
+  content review, extraction, and rewrites specified there.
 - Documentation as code is an existing engineering requirement: review source,
   tests, and affected documentation together, and update status as work changes.
 - The proposed public contribution workflow is in [](contributing.md), with

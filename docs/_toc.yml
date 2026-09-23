@@ -64,6 +64,8 @@ parts:
     chapters:
       - file: contributing
       - file: public-repository-migration
+        sections:
+          - file: documentation-restructuring
       - file: experiments
       - file: run-log
         sections:
