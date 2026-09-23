@@ -400,7 +400,9 @@ def run(command, timeout):
     """First output word, time and exit status of `command`."""
     start = time.monotonic()
     try:
-        completed = subprocess.run(command, capture_output=True, text=True, timeout=timeout)
+        completed = subprocess.run(
+            command, capture_output=True, text=True, timeout=timeout, check=False
+        )
     except subprocess.TimeoutExpired:
         return {'answer': 'timeout', 'seconds': round(time.monotonic() - start, 3), 'exit': None}
     words = completed.stdout.split()
