@@ -21,8 +21,15 @@ open planning action, not an implied assignment to a contributor.
   The results-storage direction is agreed: Git records in `primo-solver/results`
   with a generated local SQLite query index and separately retained large artifacts.
   On 2026-09-23, the project owner decided to retain the existing MIT license.
-- **Being worked on:** reviewing the migration plan. The next step is to assign
-  owners for [](documentation-restructuring.md) and the other milestones.
+- **Being worked on:** making the documentation rewrite executable. The
+  [rewrite plan](documentation-restructuring.md) now specifies target paths,
+  canonical facts, source-revision handling and milestones M0–M6; its downloadable
+  page map covers all 76 baseline documentation pages. Dispositions are proposed,
+  and content/anchor reviews remain pending. The next step is M0: confirm the
+  merged source baseline, review the map and assign rewrite/review ownership.
+  GitHub Pages hosting is proposed in the same plan, with private build-artifact
+  review first and website deployment after the publication gate; no hosting
+  workflow or site is configured yet.
   Substantial documentation restructuring is required before public release;
   its inventory and execution plan are recorded, but the rewrite is pending.
   The reported transfer is complete; visibility and access settings still need

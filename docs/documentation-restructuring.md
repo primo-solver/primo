@@ -1,6 +1,6 @@
 # Documentation restructuring before public release
 
-**Status: planning and inventory, 2026-09-23; restructuring not implemented.**
+**Status: execution plan and proposed page map, 2026-09-23; rewrite not started.**
 The project owner has made substantial documentation restructuring a priority
 before the first public release. A private repository transfer can happen first.
 The three status entry points added in
@@ -97,38 +97,121 @@ responsibility and extraction work, not a claim that a rename alone is sufficien
 | [](literature.md), `docs/papers/`, [](reference/llm2smt-retrospective.md) | Separate reading/index guidance, primary-source notes, implementation mappings, and predecessor retrospective; retain clean-room boundaries. |
 | [](contributing.md), [](public-repository-migration.md), [](benchmark-record-storage.md), this plan | Current contributor requirements plus clearly marked migration/design work; agreement on a design must remain distinct from implementation. |
 
-## Execution sequence
+## Page map and target layout
 
-1. **Finish the inventory and freeze the review baseline.** Account for every
-   tracked page, including pages outside the table of contents. Assign an owner,
-   audience, disposition, destination, and any split to a page map. Record source
-   and evidence revisions; do not infer current activity from an old branch name.
-2. **Build the reader-facing skeleton.** Add getting-started, user-reference,
-   contributor, implementation, and archive entry points under the three status
-   entrances. Decide canonical ownership for supported fragments, options,
-   defaults, and commands so those facts are not independently maintained in
-   several narratives.
-3. **Rewrite current material against code.** Work by subsystem, starting with
-   onboarding, input/mode/model boundaries, sessions, and quantified UF. Inspect
-   the actual types and options, retain ownership/lifetime and algorithmic
-   invariants, and cite the implemented paper subset. Capture contradictions as
-   review findings rather than resolving them by picking the newer prose.
-4. **Extract history and proposals.** Preserve original evidence, rejected
-   experiments, run IDs, source revisions, commands, and limitations. Add dated
-   outcome headers and current-reference links. Move confirmed active work into
-   its register and unfinished hypotheses into open leads. Do not manufacture
-   fresh qualification or erase inconvenient outcomes during editing.
-5. **Update navigation and preserve links.** Apply the reviewed page map in
-   coherent commits. Update MyST references and the table of contents; preserve
-   explicit labels. For old paths/fragments used in reports or external links,
-   retain a compatibility page/anchor or tested redirect. Do not leave two
-   independently maintained copies of the same reference text.
-6. **Verify examples, packaging, and reader journeys.** Run behavior-bearing
-   examples against the documented binary, record expected output and limits,
-   build the book strictly, and inspect rendered navigation and long tables.
-   Update release packaging so MyST sources ship and the documented archive
-   workflow works. Have a reader unfamiliar with the development history follow
-   the user and contributor paths.
+The {download}`page map <documentation-page-map.csv>` accounts for all **76
+tracked Markdown pages under `docs/` at `4921f07`**, including paper notes and
+the predecessor retrospective. Each row proposes a milestone, audience,
+disposition, and destination. All content reviews and compatibility-anchor
+inventories are still pending; file coverage is not a correctness audit.
+Destinations are relative to `docs/`; `<lead-id>` and `<component>` must be
+resolved during the relevant content review. A proposed archive destination
+does not mean all facts in that page are obsolete: extract any current contract
+first. Reconcile the map with newly added or removed pages at every milestone.
+
+Use these paths as the working layout. Create pages as their content is ready;
+do not fill the published navigation with empty placeholders.
+
+```text
+index.md                       Three entrances and first-solve link
+current-status.md              Done: capability and qualification map
+guide/                        Getting started, input, models, sessions
+reference/                    Options, tactics, statistics; retrospective retained
+implementation/               Architecture, core, frontend, sessions, models,
+                              preprocessing, tactics, clausification, SAT,
+                              DPLL(T), EUF, LRA, LIA, combination, quantifiers
+contributing.md                Contributor entrance
+development/                  Testing, debugging, validation, experiments, docs
+active-work.md                 Short index of work actually underway
+work/                         Scoped active plans and review checklists
+open-leads.md                  Short index of open hypotheses
+leads/                        One investigation per stable lead ID
+archive/                      Dated investigations, decisions, rejected results
+literature.md + papers/        Primary-source notes and implementation mappings
+run-log.md + run-log.json      Existing evidence interface until storage cutover
+```
+
+The done entrance links the guide, reference, implementation and contributor
+material. Active work and open leads remain equally visible entrances; the
+archive and literature are supporting navigation. Directories organize page
+roles, not feature maturity: a component can have an accepted implementation,
+an active extension, and several open leads at the same time.
+
+## Canonical facts and page contracts
+
+| Fact or document | Canonical home and required content |
+| --- | --- |
+| Supported behavior | `current-status.md`: logic/mode/model matrix, defaults versus opt-in, limitations, source revision and qualification links. `guide/input.md` explains syntax and examples without maintaining a second independent support table. |
+| Options and commands | `reference/options.md`, checked against `src/cli/options.cpp`, `src/cli/options.hpp` and the candidate binary's help. Include default, domain, affected modes, failure behavior and a useful example; subsystem pages link here. |
+| Implementation contract | Each `implementation/` chapter: concrete types/files, inputs/outputs, representation, ownership/lifetime, invariants, allocating operations, failure/unknown paths, one worked example, limitations and test links. |
+| Algorithm basis | Same chapter: primary source and section, implemented operations/subset, deviations, complexity expectations, proof obligations and invariant tests. Link detailed paper notes; do not repeat whole summaries. |
+| Active item | `active-work.md` indexes a plan with owner or unassigned, last review date, branch/PR, completed subset, next action, blockers and remaining acceptance criteria. |
+| Open lead | Stable ID, hypothesis, motivating evidence/revision, prerequisites, next experiment and falsifier. Accepted pieces link current reference; rejected pieces link a dated decision. |
+| Historical result | Dated outcome, measured revisions/configurations, run IDs, commands/artifact links, correctness limits, accepted/rejected/deferred disposition and current-reference link. Preserve original negative results. |
+
+Keep `README.md` short: identity, first build/solve, documentation entrances,
+license and contribution link. Put an executable example's SMT-LIB input in one
+small fixture and include or link it from prose; record expected output and
+mode restrictions. Do not introduce a generated full API manual in this pass.
+Source links and selected type explanations are enough for the initial rewrite.
+
+## Source-revision workflow
+
+M0 records the merged source baseline explicitly; it is not automatically the
+head of this documentation branch or an older benchmark commit. M1 implements
+one source-link helper configured by repository URL and a full source commit.
+Authors supply a repository-relative file path and optional line range; the
+helper emits the GitHub `blob/<commit>/...` URL. Use file links by default and
+line anchors only when they improve the explanation. Validate tracked paths and
+line bounds against that commit, and display the documented source revision in
+the book. Store the book/build revision separately.
+
+Historical reports keep their measured commit links, even when the book's
+source revision advances. They must not inherit the current source revision
+through the helper's default. Release archives use the recorded source revision
+and `SOURCE-REVISION` provenance without requiring a `.git` directory; the
+packaging step must include any source-link manifest required for that build.
+
+Source development need not stop during the rewrite. Before closing a batch,
+compare its inspected source paths with the intended merged revision. Re-review
+affected claims/examples after changes; do not merely replace the commit in
+every URL. At final integration, choose one source revision for the current
+manual and resolve remaining differences. Benchmark evidence retains its own
+revision and is never silently requalified by this process.
+
+## Execution milestones
+
+Each row is a reviewable batch, split into smaller coherent commits where
+necessary. Every batch updates the page map and active-work entry, preserves
+links for moved content, and passes strict `make docs`. Owners and reviewers
+remain unassigned; executing this plan does not assign work to other people.
+
+| Milestone | Deliverable and order | Evidence required to close it |
+| --- | --- | --- |
+| M0: baseline and inventory review | Confirm intended code is merged; record full source commit; review every page-map disposition, section split and old path/label. Add README, AGENTS, relevant skills, build/config/assets and packaging files to the supporting-file checklist. | Complete map with concrete destinations and compatibility obligations; contradictions recorded with source paths to inspect. No unresolved ownership of canonical facts. |
+| M1: navigation and source links | Add the three-entrance navigation and source-link helper, documented revision, page templates and archive convention. Use the SAT adapter chapter as a pilot for the implementation template. | Pilot traces paper → types → tests → evidence; source links validated locally and authenticated destination links checked where available. Light/dark rendered navigation reviewed. |
+| M2: usable manual | Rewrite README and capability map; add `guide/getting-started.md`, `guide/input.md`, `guide/models.md`, `guide/sessions.md`, and `reference/options.md`. Explicitly reconcile quantified UF and session claims. | Clean-checkout build and first solve; SAT model, scoped session, supported quantified example and unsupported/unknown boundaries exercised against the selected binary. Help/default comparison recorded. |
+| M3a: representations and sessions | Rewrite architecture, core terms/symbols, frontend, model ownership and incremental-session contracts. Extract dated gates into the archive in the same batch. | Read relevant `src/core/`, `src/smtlib/`, CLI and SMT interfaces; review identity, allocation/invalidation, scoping and saved-model invariants against code and tests. |
+| M3b: Boolean pipeline | Rewrite tactics, preprocessing, clausification, SAT adapter and DPLL(T); separate default mechanisms from experiments. | Trace an input through the layers; verify option names and defaults, explanations/callback lifetimes, paper scope and test references. |
+| M3c: theories | Rewrite EUF, LRA, LIA, combination and quantified UF in separate chapter commits. | Each chapter satisfies the implementation contract; distinguish specialized convex and N-component routes, bounded integer completion and quantifier/model limitations. Resolve current claims from source, not chronology. |
+| M4: contribution and reproduction | Rewrite testing, debugging, statistics, validation and experiment procedures. Add a root `CONTRIBUTING.md` pointer and synchronize affected AGENTS/skill links. | A contributor can run the local path without a maintainer's cluster account; optional cluster qualification and separate model validation are clear. Result-record instructions match the storage actually implemented. |
+| M5: work registers and evidence | Finish extraction into short active/open indexes, individual leads and dated archive pages; review literature mappings. Move migration/storage plans under `work/`. | Every old page and explicit label accounted for; accepted/rejected/deferred outcomes preserved; run IDs and evidence links unchanged or mapped explicitly. No proposal presented as implementation. |
+| M6: integration and release readiness | Reconcile against final merged source; update archive packaging to include editable docs; verify links, examples and reader journeys; close map rows with review evidence. | Strict book build, compatibility-link check, example report, extracted-archive build/docs check and rendered review. Record closing commits and remaining limitations; obtain the outside-reader walkthrough before declaring the public-doc gate closed. |
+
+M0 → M1 → M2 is the initial path. Complete M3a–M3c in subsystem batches,
+then M4 and M5, with history extraction happening alongside each rewrite rather
+than deferred to the end. M6 requires all previous milestones. Results-storage
+tooling and site hosting can proceed separately; neither is needed to start
+rewriting. Keep the existing run-log authoritative until its coordinated cutover.
+Public hosting remains a migration task and does not require changing book
+technology during this rewrite.
+
+For each batch, record inspected source revision/paths, rewritten and archived
+pages, example commands/results, strict build outcome, link/visual review and
+commit IDs in the work plan. Use `docs/run-log.json` for new solver experiments
+when needed, not routine editorial builds. Any inaccessible primary source
+needed to substantiate an algorithm claim blocks that chapter's claim review;
+record the missing paper and section rather than infer its content.
 
 Keep source behavior changes separate from this reorganization. A discovered
 solver bug requires its normal implementation, review, and correctness gates;
@@ -168,5 +251,58 @@ need factual/link review and strict builds, not unrelated performance campaigns.
   remaining known limitations, and closing commits. All required documentation
   and packaging changes are committed before the publication gate is closed.
 
+## Website and deployment plan
+
+**Recommendation, 2026-09-23: publish the existing book with GitHub Pages.**
+Keep authored documentation in `primo-solver/primo` alongside its code. The
+proposed project URL is `https://primo-solver.github.io/primo/`. A separate
+organization landing page at `https://primo-solver.github.io/` would require
+the `primo-solver.github.io` repository; it can later link to the manual and
+results without becoming a second documentation source. No custom domain is
+needed initially. These URL conventions are documented in
+[GitHub's Pages overview](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages).
+Neither site has been configured by this planning task.
+
+Add the following hosting work alongside the rewrite:
+
+1. **Build checks during M1.** Add `.github/workflows/docs.yml` to install the
+   documented Python/docs dependencies and run strict `make docs` for pull
+   requests and pushes to `main`. Save `docs/_build/html` as a downloadable
+   artifact for review. PR builds receive read-only repository permissions and
+   do not deploy. While private, reviewers use authorized Actions artifacts or
+   `make docs-serve` locally.
+2. **Deployment preparation during M6.** In repository **Settings → Pages**,
+   choose **GitHub Actions** as the source when publication is ready. Prepare a
+   deployment job using `actions/configure-pages`,
+   `actions/upload-pages-artifact` with `docs/_build/html`, and
+   `actions/deploy-pages`. Select and pin supported action revisions when
+   implementing. Restrict deployment to successful `main` builds, with
+   `pages: write`, `id-token: write`, the `github-pages` environment and a
+   concurrency group. Keep PR artifact uploads separate from Pages deployment.
+   Follow [GitHub's custom-workflow instructions](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages).
+3. **Publication after the public-release gate.** Enable the deployment only
+   when publication is authorized. Verify the deployed `/primo/` base path,
+   navigation, search, downloads, logo/theme assets and source links. Add the
+   live URL to the README and repository About field. Record the deployed book
+   and source revisions and workflow run. A failing build must leave the last
+   successful site intact.
+4. **Release versions.** Initially label the root site as the development
+   manual for `main`, with its exact documented revision. Before advertising
+   stable documentation for a tagged release, add preserved `releases/<tag>/`
+   builds and a release index; each Pages upload must retain prior versions.
+   Do not suggest that updating the root site preserves old release URLs
+   automatically. Define that retention workflow before promising those URLs.
+
+**Private source does not imply a private website.** GitHub Free for
+organizations supports Pages from public repositories; private-repository Pages
+requires an eligible paid plan. Restricting website access itself requires
+GitHub Enterprise Cloud for eligible organization project sites, and is not
+available for an organization-root site. See the
+[plan availability](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages)
+and [Pages access-control rules](https://docs.github.com/en/enterprise-cloud@latest/pages/getting-started-with-github-pages/changing-the-visibility-of-your-github-pages-site).
+The organization's current plan has not been verified. Keep deployment off
+during the private rewrite; a public preview would itself publish documentation
+and is not part of this plan's preparation work.
+
 The inventory and this plan are the current deliverables. Passing their build
-checks does not complete the restructuring described above.
+checks does not complete the restructuring or publish the website.
