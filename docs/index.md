@@ -71,3 +71,12 @@ Six parts, in the order they are normally needed:
 For current behavior and flags, use the status guide and relevant theory chapter. For
 design rationale and rejected experiments, read its nested notes. For measured
 results tied to exact commits and commands, use [](run-log.md).
+
+## Logo assets
+
+The lowercase `primo` wordmark is drawn with original SVG paths, with navy
+lettering and a teal dot. The book uses light and dark variants through
+`docs/_config.yml`. Editable assets are `docs/_static/primo-logo.svg`,
+`docs/_static/primo-logo-dark.svg`, and the square `docs/_static/primo-avatar.svg`;
+`docs/_static/primo-avatar.png` is the 512-pixel export for profile uploads.
+The artwork needs no external font and follows the repository's MIT license.

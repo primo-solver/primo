@@ -1,6 +1,6 @@
 title: Primo Solver Notes
 author: Primo contributors
-logo: ""
+logo: _static/primo-logo.svg
 
 execute:
   execute_notebooks: "off"
@@ -36,5 +36,9 @@ sphinx:
     html_show_sourcelink: false
     html_theme_options:
       use_download_button: false
+      logo:
+        image_light: _static/primo-logo.svg
+        image_dark: _static/primo-logo-dark.svg
+        alt_text: Primo
     suppress_warnings:
       - myst.header

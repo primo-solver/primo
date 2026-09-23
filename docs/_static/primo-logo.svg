@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="370" height="132" viewBox="0 0 370 132"
+     role="img" aria-labelledby="title desc">
+  <title id="title">Primo</title>
+  <desc id="desc">Lowercase primo wordmark in navy with a teal dot over the i.</desc>
+  <g fill="none" stroke="#172b3a" stroke-width="14" stroke-linecap="round"
+     stroke-linejoin="round">
+    <path d="M24 112V38 M24 62C24 47 34 36 48 36S73 47 73 62S63 88 48 88S24 77 24 62"/>
+    <path d="M100 88V38 M100 60C100 45 112 36 128 36"/>
+    <path d="M150 38V88"/>
+    <path d="M177 88V38 M177 58C177 44 185 36 199 36S222 44 222 58V88
+             M222 58C222 44 230 36 244 36S267 44 267 58V88"/>
+    <ellipse cx="316" cy="62" rx="25" ry="26"/>
+  </g>
+  <circle cx="150" cy="14" r="7" fill="#16827d"/>
+</svg>
