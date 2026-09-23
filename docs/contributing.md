@@ -1,10 +1,9 @@
 # Contributing to Primo: draft
 
-**Status: proposed public contribution guide, 2026-09-16.** Review this guide
-with [](public-repository-migration.md) before adopting it. Apache-2.0 is the
-provisional preference for the public release, with MIT still under
-consideration. Contribution licensing and any DCO requirement are undecided;
-this draft does not obtain consent or change the repository's license.
+**Status: proposed public contribution guide, updated 2026-09-23.** Review this
+guide with [](public-repository-migration.md) before adopting it. Primo retains
+its existing MIT license, as decided on 2026-09-23. Publication-rights checks and
+any DCO requirement remain pending; this draft does not obtain contributor consent.
 
 ## What we welcome
 
@@ -47,7 +46,7 @@ Maintain the three documentation states alongside the change:
 Update the affected indexes when work changes state. Preserve design and experiment
 history with dated outcomes, including rejected work; link to it instead of
 copying it into each index. These engineering requirements already apply;
-the public contribution licensing and governance choices remain draft proposals.
+the public sign-off and governance choices remain draft proposals.
 
 | Change | Documentation expected |
 | --- | --- |
@@ -160,7 +159,7 @@ explanation is not proof that an invariant holds. Never put credentials or
 confidential benchmark inputs into public reports or tool transcripts.
 
 The proposed contribution-rights model is that contributors retain their rights
-and authorize contributions under the selected project license. Any required
+and authorize contributions under MIT. Any required
 employer or university authorization must be resolved. Whether to require a
 Developer Certificate of Origin sign-off remains a migration decision; no
 additional agreement is imposed by this draft.

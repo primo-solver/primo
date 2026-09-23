@@ -27,9 +27,9 @@ rejected results. A completed experiment need not produce an accepted feature.
 - Documentation as code is an existing engineering requirement: review source,
   tests, and affected documentation together, and update status as work changes.
 - The proposed public contribution workflow is in [](contributing.md), with
-  pending license and governance decisions in [](public-repository-migration.md).
-  Their public licensing and governance proposals remain discussion drafts;
-  existing engineering requirements continue to apply.
+  the decision to retain MIT and pending publication-rights, sign-off, and
+  governance decisions in [](public-repository-migration.md). The public
+  workflow remains a draft; existing engineering requirements continue to apply.
 - Use MyST Markdown for architecture, design, algorithm, paper, and developer notes.
 - Use notebooks only for executable experiments, benchmark analysis, and plotted reports.
 - Keep claims synchronized with implemented functionality.

@@ -7,7 +7,7 @@ itself establish that implementation or execution is active today.
 
 ## Public repository migration planning
 
-**Last reviewed: 2026-09-21. Status: planning and documentation review.**
+**Last reviewed: 2026-09-23. Status: planning and documentation review.**
 The work is recorded on `docs/public-repository-migration`. A migration owner
 and owners for individual milestones are **unassigned**; assigning them is an
 open planning action, not an implied assignment to a contributor.
@@ -19,10 +19,11 @@ open planning action, not an implied assignment to a contributor.
   now has separate entry points for completed work, active work, and open leads.
   The results-storage direction is agreed: Git records in `primo-solver/results`
   with a generated local SQLite query index and separately retained large artifacts.
+  On 2026-09-23, the project owner decided to retain the existing MIT license.
 - **Being worked on:** reviewing the migration plan. The next step is to assign
   milestone owners and settle the release prerequisites.
 - **Remaining acceptance criteria:** the [migration milestones](public-repository-migration.md#migration-milestones)
-  must have owners and evidence of their outcomes. Rights, licensing, history,
+  must have owners and evidence of their outcomes. Publication rights, sign-off, history,
   repository setup, public verification, packaging, and release qualification
   remain pending. The plan must settle whether the results-record cutover is
   a prerequisite for publication.

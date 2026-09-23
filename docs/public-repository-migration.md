@@ -1,10 +1,10 @@
 # Public repository migration: draft
 
-**Status: discussion draft, updated 2026-09-21.** The project owner reports that
+**Status: discussion draft, updated 2026-09-23.** The project owner reports that
 the destination organization, `primo-solver`, has been created and is empty.
-Repository creation or transfer remains pending. Apache-2.0 is preferred
-provisionally; MIT remains an alternative. No license selection, university authorization,
-repository transfer, or publication is recorded by this document.
+Repository creation or transfer remains pending. The project owner decided on
+2026-09-23 to retain the existing MIT license for Primo. University authorization,
+repository transfer, and publication remain separate pending work.
 
 ## Purpose
 
@@ -18,36 +18,32 @@ provide a reproducible starting point. New theory support and performance
 improvements are separate development work, not prerequisites invented for the
 migration.
 
-## Decisions to settle
+## Decisions and remaining work
 
-| Decision | Working proposal | What remains open |
+| Decision | Agreed direction or working proposal | What remains open |
 | --- | --- | --- |
-| License for Primo-owned code | Apache-2.0 | MIT is also under consideration; establish authority to license before selection. |
-| Institutional rights | Resolve with the university before release | Employment, funding, contributor rights, and authority for any patent grant. |
+| License for Primo-owned code, documentation, and examples | Retain MIT; decided 2026-09-23 | Verify publication rights and distribution notices; license selection is settled. |
+| Institutional rights | Resolve with the university before release | Employment, funding, contributor rights, and authority to publish the included material. |
 | Destination | Existing `primo-solver` organization, reported by the project owner | Repository name, creation or transfer, owners, and access configuration. |
 | Public history | Preserve history if the publication audit permits | Transfer the repository or publish a curated starting revision. |
-| Contributions | Contributors retain their rights and contribute under the project license | DCO sign-off is proposed; no copyright assignment or separate CLA is proposed at this stage. |
+| Contributions | Contributors retain their rights and contribute under MIT | DCO sign-off is proposed; no copyright assignment or separate CLA is proposed at this stage. |
 | Documentation | Maintain source and documentation in the same repository and review them together | Public hosting, release-version URLs, and CI configuration. |
 | Experiment records | Git is authoritative in `primo-solver/results`; SQLite is a generated local query index | Agreed direction; repository setup, schema/tools, artifact retention, lossless legacy import, and coordinated writer cutover remain pending; see [](benchmark-record-storage.md). |
 | Governance | Public technical decisions and an explicit route to maintainership | Initial maintainers, organization owners, review authority, and dispute resolution. |
 
-The existing private repository's license file is not treated as a decision
-about the public release. Review any permissions already granted separately.
-Do not describe the release as Apache-licensed until that choice is authorized
-and the repository notices have been updated consistently.
+Keep the existing standard MIT text in the root `LICENSE`. The decision retains
+the current license for Primo-owned code, original documentation, and examples.
+Publication-rights checks and the contribution sign-off decision remain open.
 
-Use the standard license text after selection. Inventory third-party code,
-patches, dependencies, documentation, and benchmark data separately; the choice
-for Primo-owned code does not replace their terms. Decide and document whether
-original documentation and examples use the same license. Check source and
+Inventory third-party code, patches, dependencies, documentation, and benchmark
+data separately; the choice for Primo-owned material does not replace their
+terms. Check source and
 binary distributions separately, including linked dependencies and notices.
 
-Relevant decision references are the [Apache-2.0 license, especially section
-3](https://www.apache.org/licenses/LICENSE-2.0), the
-[MIT license](https://opensource.org/license/mit), and the
+Relevant references are the [MIT license](https://opensource.org/license/mit)
+and the
 [Developer Certificate of Origin](https://developercertificate.org/).
-These references inform the pending choice; they do not establish rights in
-Primo or authorize a release.
+The license choice is settled; the DCO remains a proposed contribution process.
 
 ## Contribution model
 
@@ -58,7 +54,7 @@ not an additional contribution agreement.
 
 Before opening contributions publicly:
 
-- Agree on contribution licensing and any sign-off requirement. Explain what a
+- Document contributions under MIT and decide any sign-off requirement. Explain what a
   sign-off certifies and how to provide one; distinguish it from a cryptographic
   commit signature.
 - Publish a short root `CONTRIBUTING.md` that points to the maintained guide,
@@ -125,7 +121,8 @@ before it is marked complete. Owners and dates are not yet assigned.
 
 ### 1. Establish publication rights and inspect the material
 
-- Resolve university and contributor authorization and select the license.
+- Resolve university and contributor publication authorization under the retained
+  MIT license, and verify the included notices.
 - Inventory dependency and data provenance and required notices.
 - Audit all history, branches, tags, attachments, and hosted artifacts intended
   for publication for secrets and material without redistribution permission.
@@ -205,4 +202,4 @@ This draft is complete when the plan and proposed contribution guide are
 reviewable and build with the documentation. The migration itself is complete
 only when rights and policy decisions are recorded, publication checks pass,
 and an outside user can access and reproduce the released project. Pending
-license and governance choices remain visible until decided.
+publication-rights, sign-off, and governance decisions remain visible until settled.
