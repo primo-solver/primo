@@ -6,10 +6,12 @@ execute:
   execute_notebooks: "off"
 
 repository:
+  url: https://github.com/primo-solver/primo
+  branch: main
   path_to_book: docs
 
 html:
-  use_repository_button: false
+  use_repository_button: true
   use_issues_button: false
   use_edit_page_button: false
 
@@ -23,6 +25,8 @@ parse:
     - tasklist
 
 sphinx:
+  # Preserve Jupyter Book's repository settings when adding theme options below.
+  recursive_update: true
   config:
     # Generate implicit targets for headings down to level 3, so that an
     # ordinary `[text](#some-heading)` link resolves as a MyST reference

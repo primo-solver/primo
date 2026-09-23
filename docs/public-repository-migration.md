@@ -1,11 +1,12 @@
 # Public repository migration: draft
 
-**Status: discussion draft, updated 2026-09-23.** The project owner reports that
-the destination organization, `primo-solver`, has been created and is empty.
-The project owner intends to transfer the existing repository while keeping it
-private; completion has not been verified. The project owner decided on
-2026-09-23 to retain the existing MIT license for Primo. University authorization,
-repository transfer, and publication remain separate pending work.
+**Status: discussion draft, updated 2026-09-23.** The project owner reports the
+transfer to [primo-solver/primo](https://github.com/primo-solver/primo) complete.
+The repository is intended to remain private during preparation; visibility,
+access settings, and plan-dependent features still need verification. The
+project owner decided on 2026-09-23 to retain the existing MIT license for Primo.
+University authorization, documentation restructuring, and publication remain
+pending work.
 
 ## Purpose
 
@@ -32,8 +33,8 @@ need to be separated and rewritten for outside readers.
 | --- | --- | --- |
 | License for Primo-owned code, documentation, and examples | Retain MIT; decided 2026-09-23 | Verify publication rights and distribution notices; license selection is settled. |
 | Institutional rights | Resolve with the university before release | Employment, funding, contributor rights, and authority to publish the included material. |
-| Destination | Transfer the existing repository to `primo-solver`, retaining private visibility during preparation | Confirm transfer completion, owners, access configuration, and plan-dependent features. |
-| Public history | Preserve history if the publication audit permits | Transfer the repository or publish a curated starting revision. |
+| Destination | Transfer to [primo-solver/primo](https://github.com/primo-solver/primo) reported complete on 2026-09-23 | Verify private visibility, owners, access configuration, and plan-dependent features. |
+| Public history | Preserve history if the publication audit permits; private transfer is complete as reported | Audit the history before publication; a curated public starting revision remains an alternative if needed. |
 | Contributions | Contributors retain their rights and contribute under MIT | DCO sign-off is proposed; no copyright assignment or separate CLA is proposed at this stage. |
 | Documentation | Restructure against merged code before public release; a private transfer can happen first | Complete [](documentation-restructuring.md), then public hosting, release-version URLs, and CI configuration. |
 | Experiment records | Git is authoritative in `primo-solver/results`; SQLite is a generated local query index | Agreed direction; repository setup, schema/tools, artifact retention, lossless legacy import, and coordinated writer cutover remain pending; see [](benchmark-record-storage.md). |
@@ -184,9 +185,9 @@ commits remain in their local clones and need a later push to reach GitHub.
 
 ### 4. Configure the organization and verification workflow
 
-- Configure the existing `primo-solver` organization: settle the repository name,
-  owners, recovery arrangements, and least-privilege access. Set required reviews
-  and status checks.
+- Review `primo-solver/primo` after transfer: verify private visibility, owners,
+  recovery arrangements, least-privilege access, and available plan features.
+  Set required reviews and status checks where supported.
 - Run build/tests and the documentation gate in public CI. Provide scheduled or
   maintainer-run sanitizer, static-analysis, fuzzing, and benchmark jobs as
   appropriate; record which checks are required for each change category.
@@ -194,8 +195,9 @@ commits remain in their local clones and need a later push to reach GitHub.
   publication credentials, and cluster access.
 - Assign maintainers to run expensive qualification and attach evidence to the
   exact candidate being reviewed. Existing correctness gates remain in force.
-- Configure documentation previews and publication. Enable repository/edit
-  links only after their destination exists.
+- Configure documentation previews and publication. The book's repository link
+  now uses the reported destination. Configure and verify edit links and
+  revision-pinned code links as part of the documentation restructuring.
 - Set up results-repository review and CI, and assign artifact-retention and
   restoration ownership. Pilot independent contributor submissions, offline
   collection, index rebuilds, and snapshots before retiring the existing ledger.

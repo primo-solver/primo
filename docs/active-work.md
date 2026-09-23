@@ -14,8 +14,9 @@ open planning action, not an implied assignment to a contributor.
 
 - **Done so far:** reviewable drafts of the migration plan, public contribution
   guide, and benchmark-storage proposal were committed in `869000f`, `4ec07e4`,
-  and `2381f8f`. The project owner reports that the `primo-solver` organization
-  has been created and is empty; this is not a repository publication. The book
+  and `2381f8f`. On 2026-09-23 the project owner reported the transfer to
+  [primo-solver/primo](https://github.com/primo-solver/primo) complete; public
+  release remains pending. The book
   now has separate entry points for completed work, active work, and open leads.
   The results-storage direction is agreed: Git records in `primo-solver/results`
   with a generated local SQLite query index and separately retained large artifacts.
@@ -24,8 +25,8 @@ open planning action, not an implied assignment to a contributor.
   owners for [](documentation-restructuring.md) and the other milestones.
   Substantial documentation restructuring is required before public release;
   its inventory and execution plan are recorded, but the rewrite is pending.
-  The project owner intends to transfer the repository privately first;
-  transfer completion has not been verified here.
+  The reported transfer is complete; visibility and access settings still need
+  verification while the repository is intended to remain private.
 - **Remaining acceptance criteria:** the [migration milestones](public-repository-migration.md#migration-milestones)
   must have owners and evidence of their outcomes. Publication rights, sign-off, history,
   repository setup, public verification, packaging, and release qualification
