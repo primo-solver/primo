@@ -36806,6 +36806,57 @@
         "bug_status_correction": "That single model error is the same nested-application shape as bugs/qf-uflia-nested-application-model, which was recorded as FIXED the previous day on the strength of 0 errors in 3000 at seed base 202609100. A different seed base finds one. The bug file now reads LARGELY FIXED, about a 95% reduction from 21, with witness-residual-2026-09-07.smt2 kept: 12 invented Int values against 5 purification labels, so the unvalued terms are again ones no label covers."
       },
       "notes": "The lesson worth keeping is the one that prompted this run: a default was promoted on a single logic's evidence when the pass runs for all of them, and the check took one submission. The same reasoning applies to the fuzz gate: 0 errors in 3000 is a statement about a seed, and a second seed is what turns it into a statement about the code."
+    },
+    {
+      "id": "2026-09-16-qf-uflra-forced-equality-extraction",
+      "date": "2026-09-16",
+      "commit": "073d89a",
+      "branch": "qf-uflra-forced-equality-dedup",
+      "kind": "refactor-preservation-check",
+      "scope": "solve_qf_uflra_engine_impl carried two near-identical blocks of forced model-equality logic, one under !options.produce_model and one under options.produce_model: the same EUF equality scan, the same real-model separation, the same candidate final-scan fallback. They are extracted into compute_forced_model_equalities(). Behaviour must not change, so the check is preservation of answers and of every non-timing counter, not a solve count.",
+      "environment": {
+        "host": "local workstation; no cluster job",
+        "baseline": "main 45a16ad, built in a separate worktree",
+        "candidate": "qf-uflra-forced-equality-dedup; the only changed source file is src/smt/solver_engines.cpp (+226/-187)",
+        "corpus": "15 tracked QF_UFLRA files (regressions and seeds) plus 120 generated QF_UFLRA cases; each corpus run twice, once as written and once with :produce-models true"
+      },
+      "commands": {
+        "gates": "make check (41/41 CTest, 188 Python), make asan-test (41/41), make lint",
+        "preservation": "scripts/compare_local_solver_stats.py --baseline <main worktree build>/primo --candidate build/primo --root <corpus> --manifest <manifest> --repeats 1",
+        "generation": "the QF_UFLRA case generator, 120 cases, each agreeing with z3"
+      },
+      "results": {
+        "preservation": "Four comparisons, all with answers match: True and non-time stats match: True. 15 tracked files as written; 15 with :produce-models true (3 sat keep (get-model)); 120 generated cases as written; 120 generated with :produce-models true (76 sat keep (get-model)).",
+        "coverage": "The model-requesting arms are what exercise the options.produce_model half of the extraction; without them the refactored branch is never entered, so the plain runs alone would not have qualified the change.",
+        "harness_note": "A first attempt appended (get-model) without setting :produce-models true. Both binaries then printed the same answer and the same error and exited non-zero, and compare_local_solver_stats.py marks any non-zero run as a disagreement, so all 135 model files reported disagreement while every counter matched. The signature of a harness artefact rather than a regression is exactly that: answers disagree everywhere, counters agree everywhere. Fixed by setting the option and dropping (get-model) from the files that answer unsat.",
+        "open": "The cluster run is SLURM array 146259 over the 1,284-file QF_UFLRA corpus at primo-cadical-profile/tmp/QF_UFLRA, baseline main 45a16ad (sha256 2eb0fc2d) against candidate 3f5bf21 (sha256 d9119cfc), 16 tasks all COMPLETED at a 30-second timeout. Every non-timing counter matches on all 1,284 files. 1,266 also match on answers. The other 18 are large cpachecker-bmc and cpachecker-induction files on which BOTH binaries time out at 30 seconds with no answer; compare_local_solver_stats.py requires status ok on every run, so it records a mutual timeout as a disagreement. Their counters match even in that state. Job 146275 rechecked those 18 at a 300-second timeout: 6 answer sat on both binaries with identical answers, 12 time out on both, and none diverge. That job's SLURM state is FAILED with exit code 1:0 only because compare_local_solver_stats.py exits 1 whenever any file is unmatched, which the mutual timeouts are; the run itself completed and wrote all 36 rows. Final tally over the corpus: every non-timing counter matches on all 1,284 files, 1,272 match on answers, and the remaining 12 are unsolved by both binaries rather than disagreeing. No file exists where one binary answers and the other does not, which is where a behavioural change from the extraction would have shown."
+      },
+      "notes": "The duplication was flagged as mixed-model-equality-dedup and survived the earlier move into solver_engines.cpp. The two callers keep their own diagnostic wording and their own :no.interface.arrangement-failures increments, and the arrangement caller deduplicates a complete precomputed LRA list where the model caller copies plainly, which is why the helper takes a complete_source flag rather than assuming one shape."
+    },
+    {
+      "id": "2026-09-16-qf-uflra-forced-equality-merge",
+      "date": "2026-09-16",
+      "commit": "32b9032",
+      "branch": "main",
+      "kind": "merge-record",
+      "scope": "Merge 32b9032 integrates qf-uflra-forced-equality-dedup at c62d63f into main at 45a16ad. The merge tree is identical to c62d63f (git diff qf-uflra-forced-equality-dedup 32b9032 is empty), so the branch qualification applies to main unchanged. No new solver runs were made for the merge itself.",
+      "environment": {
+        "host": "local repository; qualification ran locally and on the CIIRC SLURM cluster",
+        "baseline": "main 45a16ad, which the branch was cut from and which had not moved (main and origin/main identical at merge time)",
+        "candidate": "qf-uflra-forced-equality-dedup c62d63f"
+      },
+      "commands": {
+        "merge": "git checkout main; git merge --no-ff qf-uflra-forced-equality-dedup -F <message file>; git diff --stat qf-uflra-forced-equality-dedup HEAD (empty)",
+        "gate": "make check on c62d63f after the cherry-pick: 41/41 CTest and 188 Python tests. The merged tree equals that tree, so the gate was not repeated."
+      },
+      "results": {
+        "evidence": "2026-09-16-qf-uflra-forced-equality-extraction carries the full qualification: make check, make asan-test and make lint; four local preservation comparisons over 15 tracked QF_UFLRA files and 120 generated cases, each run plain and with :produce-models true; SLURM array 146259 over all 1,284 QF_UFLRA files with every non-timing counter matching, and job 146275 rechecking the mutual timeouts at 300 seconds. 1,272 of 1,284 files match on answers and the other 12 are unsolved by both binaries.",
+        "seeds": "The merge also carries c62d63f, a cherry-pick of e7bccb1 from mixed-model-equality-dedup. It adds benchmarks/seeds/qf_uflra_scale (a README and two real-file QF_UFLRA mutation seeds) and no code. Nothing outside benchmarks references that directory, and tests/unit/boolean_solver_tests.cpp reads seed files by exact path under benchmarks/seeds/qf_uflra, so the new directory cannot perturb it.",
+        "superseded_branch": "mixed-model-equality-dedup (e7bccb1, published, never merged) attempted the same extraction against src/smt/check_sat.cpp. Its patch no longer applies to main -- verified with git apply --check against a worktree at 45a16ad, which fails at check_sat.cpp:10430 -- because the forced-equality logic moved to src/smt/solver_engines.cpp. With its seeds now on main, the branch holds nothing unique.",
+        "open": "The 12 cpachecker-bmc and cpachecker-induction files that neither binary solves at 300 seconds are a solver-capability question, unrelated to this refactor. Deleting the published mixed-model-equality-dedup branch is left to the user."
+      },
+      "notes": "compare_local_solver_stats.py requires status ok on every run, so any non-zero exit or timeout is recorded as a disagreement. Both false alarms during this qualification had the same signature: answers disagreeing everywhere while every non-timing counter agreed. A model-path preservation run needs :produce-models true, or the produce_model branch is never entered and the comparison proves nothing.",
+      "evidence_status": "current"
     }
   ]
 }
