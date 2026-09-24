@@ -29,6 +29,12 @@ Library embedding and incremental memory are separate open-work pages. Their
 investigations remain pending; documenting the current core does not choose a
 new public API or reclamation design.
 
+The architecture draft now includes a code-grounded query-flow map and an
+explanatory SAT/theory loop adapted from the supplied TikZ sketch. Editable
+sources and HTML-ready SVG exports live in `docs-next/`; figure regeneration
+and review are recorded in its review guide. Online callbacks and limited
+quantified completion are stated explicitly in the surrounding text.
+
 ## Outcome and publication gate
 
 An outside reader must be able to build and use Primo, understand its supported

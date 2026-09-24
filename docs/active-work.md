@@ -71,6 +71,8 @@ Branch: `docs/public-repository-migration`.
   drafts, open-work pages, commit-pinned function/type/test links, and a page
   review ledger. The core representation draft explains sort/symbol/term
   storage, local construction, borrowed references, and session lifetimes.
+  The architecture overview now includes a query-flow map and a simplified
+  SAT/theory loop, with maintained TikZ sources and SVGs for the HTML book.
   Build it with `make docs-next`; preview it with `make docs-next-serve` on
   port 8001. No page is accepted and no book replacement has occurred.
 - **Verification:** the first manual batch passed 11 manual checks, 41 CTest
@@ -83,6 +85,9 @@ Branch: `docs/public-repository-migration`.
   paths/line ranges, lint, and preview isolation; `docs-next/review.md` records
   the scope and remaining user review. The core chapter adds a compiled C++
   example and reruns the existing core, binder, model, and session tests.
+  The architecture figures are checked against code, rendered from their
+  sources, and inspected in the draft HTML; their loop caption distinguishes
+  the explanatory lazy picture from online theory callbacks.
 - **Next:** correct the audit's stale status claims and reconcile fuzz-gate
   wording as material is rewritten. The user has chosen a separate `docs-next/`
   preview for page-by-page review; the home page, contributor correctness

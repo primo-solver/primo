@@ -1,7 +1,7 @@
 Page,Stage,Source,Checks,Review still needed
 index.md,Verified,ac0daf4,Source admission and entry-point links; first example; strict build,User review of introduction and three work states
 development/correctness.md,Verified,ac0daf4,Make targets and scripts inspected; policy comparison; source links; strict build,User review of gate clarity and contributor usability; no campaign rerun
-implementation/architecture.md,Verified,ac0daf4,Owning headers and control flow inspected; source and test links; strict build,User review of explanation and depth; detailed component algorithms remain separate work
+implementation/architecture.md,Verified,ac0daf4,Owning headers and control flow inspected; source and test links; TikZ/SVG figures rendered and inspected; strict builds,User review of explanation and depth; detailed component algorithms remain separate work
 implementation/core.md,Verified,ac0daf4,Owning code and 50 source/test links checked; C++ example compiled and run; 4 focused CTest suites; strict builds and rendered review,User review of identity/lifetime explanation; deeper binder and model algorithms remain separate chapters
 leads/library-api.md,Draft,ac0daf4,Initial build targets and interface pointers inspected,API and embedding audit not started; external-consumer prototype and user review pending
 leads/incremental-memory.md,Draft,ac0daf4,Term/session ownership and historical memory-report pointers inspected; official Z3/cvc5 reference-counting documentation checked,Current memory reproduction and ownership design pending; GC risks recorded; no reclamation design selected

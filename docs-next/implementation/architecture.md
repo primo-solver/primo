@@ -12,6 +12,17 @@ Making these boundaries suitable for a public library API is
 [open work](../leads/library-api.md). The existing internal interfaces have
 not yet been qualified as an embedding contract.
 
+```{figure} ../_static/query-flow.svg
+:name: query-flow
+:alt: Parser passes commands to SmtSession, which uses Frontend to construct typed assertion roots. Ground assertions take preprocessing and engine dispatch; quantified UF assertions take a separate instantiation route. Both return CheckSatOutcome.
+:width: 100%
+
+The default rebuild route. Rounded boxes are processing stages; square boxes
+are data. Arrows show data flow, not ownership or a complete call graph.
+Preprocessing may answer without invoking an engine; early errors and admission
+checks are omitted. The numbered walkthrough below links each stage to code.
+```
+
 ## Follow one query through the code
 
 1. **Read a command.** {source}`execute_stream <src/main.cpp#L87-L119>` owns a
@@ -92,6 +103,33 @@ external clauses, and checking a candidate assignment. Theory interaction can
 happen during Boolean search as well as when a complete assignment is found.
 SAT literals themselves do not contain terms; the SMT-owned atom registry
 connects them to the corresponding theory obligations.
+
+```{figure} ../_static/lazy-smt-loop.svg
+:name: lazy-smt-loop
+:alt: Boolean clauses enter a SAT solver. An inconsistent Boolean problem yields UNSAT. Otherwise a candidate assignment is checked by theory reasoning: consistency yields SAT, and a conflict produces a theory lemma returned to the SAT solver.
+:width: 100%
+
+The simplified lazy SMT loop explains why theory lemmas feed back into Boolean
+search. In Primo, assignment notifications, backtracking, and explained
+propagation can also occur during search. This picture omits those callbacks,
+model construction, and `unknown`/`unsupported` exits.
+```
+
+In this picture, clauses cross the
+{source}`IpasirUpBackend::add_clause boundary <src/sat/ipasir_up.hpp#L68-L79>`;
+the assignment and lemma arrows stand for interactions mediated by the
+{source}`SMT-owned abstraction and atom registry <src/smt/clausifier.hpp#L20-L57>`.
+They do not give the SAT backend access to core terms. A candidate Boolean
+assignment is not yet the typed model returned to the user.
+
+Quantified solving adds further obligations. The
+{source}`quantified UF entry point <src/smt/quantifiers/quantified_solver.hpp>`
+uses instantiation with limited SAT completion; a ground candidate alone does
+not establish that all quantified assertions hold. The route can return SAT
+only when every assigned quantifier is covered by a Skolem lemma; otherwise
+an unrefuted candidate may still yield `unknown`. Quantified models are not
+produced. The detailed instantiation and completion rules belong in the
+quantifier chapter.
 
 Mixed solving must also establish agreement between components. The production
 `QF_UFLIA` engine enters

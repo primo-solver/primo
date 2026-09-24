@@ -139,6 +139,39 @@ measure incremental memory or qualify a library API. No solver implementation
 changes or fresh fuzz/ASan/static-analysis campaigns are included. The page
 still needs user review and acceptance.
 
+## Architecture figures
+
+The architecture page has a data-flow map of the default rebuild route and a
+simplified lazy SMT loop adapted from the user-provided `sandbox/pic.tex`.
+The map follows the linked command/session/frontend and solver-dispatch code.
+The loop is explanatory: the accompanying text identifies online callbacks,
+omitted outcomes, and the separate quantified-UF completion limits.
+
+Editable sources are retained with the book:
+{download}`query-flow.tex <figures/query-flow.tex>` and
+{download}`lazy-smt-loop.tex <figures/lazy-smt-loop.tex>`. Their comments record
+the meaning and routing corridor of each edge. SVG exports are checked in under
+`_static/`; the ordinary book build needs no TeX installation. Regeneration
+requires `pdflatex` with TikZ and the `standalone` class, and Poppler's
+`pdftocairo`. From the repository root:
+
+```bash
+figure_build=$(mktemp -d)
+for figure in query-flow lazy-smt-loop; do
+  pdflatex -halt-on-error -interaction=nonstopmode \
+    -output-directory="$figure_build" "docs-next/figures/$figure.tex" || break
+  pdftocairo -svg "$figure_build/$figure.pdf" \
+    "docs-next/_static/$figure.svg" || break
+done
+```
+
+Temporary PDFs and logs stay in `$figure_build` for inspection. After any
+diagram edit, regenerate its SVG, inspect the PDF and HTML for legible labels,
+arrow direction, overlaps, and clipping, then run both strict book builds.
+Keep source and export in the same commit. The current figures passed those
+checks and their accompanying source links were verified locally. This is a
+documentation check, not a new solver correctness gate or page acceptance.
+
 ## Replacing the old book
 
 The preserved baseline is tagged `docs-before-restructure-2026-09-24`; the tag
