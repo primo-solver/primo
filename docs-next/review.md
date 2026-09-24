@@ -62,6 +62,10 @@ belongs to the current documentation branch. No page is accepted yet.
 3. [Architecture](implementation/architecture.md): can a developer follow a
    query and find the owning code, understand object lifetimes, and avoid
    mixing session, SAT, and theory responsibilities?
+4. [Library API](leads/library-api.md) and
+   [incremental memory](leads/incremental-memory.md): do the work items capture
+   the intended direction, available evidence, and unresolved design questions?
+   Reviewing these leads does not complete their investigations.
 
 Record findings by page and section, distinguishing factual corrections,
 missing explanations, and editorial preferences. Fix them in that page's

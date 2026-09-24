@@ -66,6 +66,15 @@ still await acceptance. These are draft explanations of existing behavior.
 
 ## Open leads
 
+Primo should also be usable as a library. The
+[library API and embedding work item](leads/library-api.md) records the required
+boundary audit and a first external-consumer prototype; implementation has
+not started.
+
+The related [incremental-memory lead](leads/incremental-memory.md) will
+investigate high memory use, storage reclamation, and whether reference-counted
+term handles are needed.
+
 Possible solver extensions and research ideas remain in the existing book's
 open-leads register. They are candidates for investigation, not commitments or
 implemented features. The rewrite will give them a separate index and preserve

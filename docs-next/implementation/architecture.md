@@ -8,6 +8,10 @@ appropriate Boolean/theory engines for an answer.
 This overview maps the implemented boundaries to their owning types and
 functions. Detailed algorithms belong in the component chapters.
 
+Making these boundaries suitable for a public library API is
+[open work](../leads/library-api.md). The existing internal interfaces have
+not yet been qualified as an embedding contract.
+
 ## Follow one query through the code
 
 1. **Read a command.** {source}`execute_stream <src/main.cpp#L87-L119>` owns a

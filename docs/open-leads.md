@@ -11,6 +11,19 @@ Keep stable lead labels and evidence links when a lead changes state.
 
 ## Project and tooling leads
 
+- **Library API and embedding:** Primo should also work inside another
+  application. The draft work item in `docs-next/leads/library-api.md` records
+  an audit of the public API, ownership, errors, cancellation, instance
+  isolation, and packaging. Start with a small external consumer of the
+  existing layers before proposing a refactor. Status: open; owner unassigned;
+  no API or thread-safety guarantee yet. The draft preview includes this under
+  **Open work**.
+- **Incremental memory and reference counting:** `docs-next/leads/incremental-memory.md`
+  records the open question of term/context ownership and reclamation for long
+  sessions and the library API. Earlier QF_UF reports contain high RSS
+  measurements; reproduce them and attribute retained storage before choosing
+  reference counting or another policy. Status: open; owner unassigned;
+  investigation not started.
 - **Benchmark storage tooling:** [](benchmark-record-storage.md) records the
   agreed Git-records/generated-SQLite direction; implementation remains pending.
   Assign an owner and build the record schema, validator, legacy importer, and

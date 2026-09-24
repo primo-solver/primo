@@ -138,6 +138,8 @@ parts:
           - file: work/public-repository-migration
       - file: leads/index
         sections:
+          - file: leads/library-api
+          - file: leads/incremental-memory
           - file: leads/difference-logic
           - file: leads/euf-disequality-propagation
           - file: leads/lead-aep

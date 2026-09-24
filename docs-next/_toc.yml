@@ -7,6 +7,10 @@ parts:
   - caption: Understanding Primo
     chapters:
       - file: implementation/architecture
+  - caption: Open work
+    chapters:
+      - file: leads/library-api
+      - file: leads/incremental-memory
   - caption: Reviewing this draft
     chapters:
       - file: review
