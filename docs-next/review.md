@@ -64,7 +64,10 @@ belongs to the current documentation branch. No page is accepted yet.
    mixing session, SAT, and theory responsibilities?
 4. [Core representation](implementation/core.md): are identity, borrowing,
    constructor simplification, and storage retention clear enough to use safely?
-5. [Library API](leads/library-api.md) and
+5. [Boolean abstraction and SAT integration](implementation/sat.md): can a
+   reader derive the worked clauses, distinguish definitions from assertions
+   and assumptions, and find the lifetime and explanation obligations?
+6. [Library API](leads/library-api.md) and
    [incremental memory](leads/incremental-memory.md), together with
    [compact term storage](leads/term-storage.md): do the work items capture
    the intended direction, available evidence, and unresolved design questions?
@@ -139,6 +142,43 @@ batch. This checks the example and its cited regression coverage; it does not
 measure incremental memory or qualify a library API. No solver implementation
 changes or fresh fuzz/ASan/static-analysis campaigns are included. The page
 still needs user review and acceptance.
+
+## SAT chapter checks
+
+The Boolean abstraction/SAT draft was checked against the clausifier, atom
+registry, backend adapter, scoped engines, and relevant regression tests.
+Tseitin §1 (English reprint p. 467) and IPASIR-UP §§2.1–2.4 were read for its
+paper-to-code checklist. The chapter distinguishes current root rules from
+the rejected root-polarity prototype and records interface omissions and
+compatibility differences.
+
+The executable example uses the current internals without frontend or
+preprocessing passes. It checks four variables/four clauses before search,
+all eight primary assignments, both guard settings over those assignments,
+and permanent selector retirement. With the normal dependencies installed:
+
+```bash
+cmake --build build --target primo_boolean_solver_tests primo_sat_backend_tests primo_smt_session_tests primo_quantifier_solver_tests primo_component_combination_tests --parallel 2
+c++ -std=c++20 -Wall -Wextra -Werror -UNDEBUG \
+  -Isrc -isystem contrib/local/include \
+  docs-next/examples/boolean-abstraction.cpp \
+  build/libprimo_smt.a build/libprimo_sat.a contrib/local/lib/libcadical.a \
+  build/libprimo_terms.a build/libprimo_util.a \
+  contrib/local/lib/libgmpxx.a contrib/local/lib/libgmp.a \
+  -o /tmp/primo-boolean-abstraction
+/tmp/primo-boolean-abstraction
+ctest --test-dir build -R '^primo_(boolean_solver|sat_backend|smt_session|quantifier_solver|component_combination)_tests$' --output-on-failure
+```
+
+This command assumes the existing `build/` configuration and default static
+dependency installation. The example reports 24 checked assignments and a
+rejected attempt to reactivate a retired selector. It fails explicitly if
+CaDiCaL is unavailable; it must run with assertions enabled (`-UNDEBUG`).
+All five regression suites passed. Both strict book builds, source-link
+validation, and rendered-page inspection passed. This documentation/example
+change does not alter solver behavior; no new performance, fuzz, ASan, or
+whole-tree static-analysis qualification is claimed. The chapter and SAT
+implementation-template pilot still require user review and acceptance.
 
 ## Architecture figures
 

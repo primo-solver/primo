@@ -6,6 +6,9 @@ by numeric IDs. The [architecture overview](architecture.md) shows where these
 owners fit into a solving session; this chapter explains their storage and
 lifetime contracts.
 
+Continue with [Boolean abstraction and SAT integration](sat.md) to see how
+Boolean terms become clauses while their meanings remain in the SMT layer.
+
 ## Representation
 
 | Type and code | Stored data | Ownership contract |

@@ -40,6 +40,14 @@ sources and HTML-ready SVG exports live in `docs-next/`; figure regeneration
 and review are recorded in its review guide. Online callbacks and limited
 quantified completion are stated explicitly in the surrounding text.
 
+`docs-next/implementation/sat.md` is now the Boolean abstraction and SAT
+integration draft and the implementation-template pilot. It covers the
+clausifier/adapter boundary with a runnable clause/guard example and a
+paper-to-code checklist. Five focused regression suites and both book builds
+pass; reader review and pilot acceptance remain pending. The separate planned
+clausification chapter can later expand preprocessing/encoding policy; this
+draft already owns the basic encoding and interface contract.
+
 ## Outcome and publication gate
 
 An outside reader must be able to build and use Primo, understand its supported
@@ -314,8 +322,8 @@ negative control fails all 11 manual checks, confirming failures are reported.
 
 This is a completed manual slice across M0–M2, not completion of those full
 milestones or of the public-doc gate. Still required: disposition/anchor reviews
-for untouched pages, the SAT implementation-template pilot, automated source
-link checks and build metadata, private CI previews, full option semantics,
+for untouched pages, acceptance of the drafted SAT implementation-template
+pilot, automated source link checks and build metadata, private CI previews, full option semantics,
 deeper chapter extraction, clean-checkout and archive reproduction, and the
 independent reader walkthrough. The local build bootstrapped dependencies but
 was not an isolated end-to-end fresh-clone test. Website deployment remains off.

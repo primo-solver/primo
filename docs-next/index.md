@@ -52,9 +52,11 @@ production are outside the implemented scope.
 
 The [architecture overview](implementation/architecture.md) explains the
 component boundaries; [terms, symbols, and ownership](implementation/core.md)
-explains the core representation and its lifetimes. The full capability matrix
-and user guides remain in the existing book while they undergo page review
-for this draft.
+explains the core representation and its lifetimes.
+[Boolean abstraction and SAT integration](implementation/sat.md) follows those
+terms into clauses and describes assumptions and theory callbacks. The full
+capability matrix and user guides remain in the existing book while they
+undergo page review for this draft.
 
 A documentation build or a successful example does not certify solver
 correctness across a benchmark corpus.

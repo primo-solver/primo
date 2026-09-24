@@ -67,7 +67,7 @@ Branch: `docs/public-repository-migration`.
   pages and 24 outside Markdown files, records stale claims and proposed
   destinations, and captures compatibility targets. The local tag
   `docs-before-restructure-2026-09-24` preserves the pre-audit snapshot.
-  A separate replacement book now lives in `docs-next/`, with four content
+  A separate replacement book now lives in `docs-next/`, with five content
   drafts, open-work pages, commit-pinned function/type/test links, and a page
   review ledger. The core representation draft explains sort/symbol/term
   storage, local construction, borrowed references, and session lifetimes.
@@ -75,6 +75,8 @@ Branch: `docs/public-repository-migration`.
   SAT/theory loop, with maintained TikZ sources and SVGs for the HTML book.
   A separate compact-term-storage lead records preliminary layout sizes and
   future leaf-payload questions; solver implementation remains deferred.
+  The Boolean abstraction/SAT chapter adds clause templates, a runnable
+  example, scope guards, callback ownership, and a paper-to-code checklist.
   Build it with `make docs-next`; preview it with `make docs-next-serve` on
   port 8001. No page is accepted and no book replacement has occurred.
 - **Verification:** the first manual batch passed 11 manual checks, 41 CTest
@@ -90,17 +92,21 @@ Branch: `docs/public-repository-migration`.
   The architecture figures are checked against code, rendered from their
   sources, and inspected in the draft HTML; their loop caption distinguishes
   the explanatory lazy picture from online theory callbacks.
+  The SAT chapter's example checks 24 assignments and selector retirement;
+  five relevant existing CTest suites pass. Paper sections, source links,
+  strict builds, and the rendered chapter are checked in the draft review guide.
 - **Next:** correct the audit's stale status claims and reconcile fuzz-gate
   wording as material is rewritten. The user has chosen a separate `docs-next/`
   preview for page-by-page review; the home page, contributor correctness
-  guide, architecture overview, core chapter, and review ledger await review.
-  Review those pages before accepting them; Boolean abstraction and the SAT
-  interface are the next proposed component targets.
+  guide, architecture overview, core and SAT chapters, and review ledger await
+  review. Review those pages before accepting them; DPLL(T) and theory
+  interaction are the next proposed component target.
   Source links point to owning types/functions and regression tests at the
   documented revision. The old book remains available; historical evidence
   and targets must survive eventual replacement.
-- **Remaining acceptance:** the SAT template pilot, deeper implementation and
-  contributor rewrites, open-lead/history extraction, clean-checkout and archive
+- **Remaining acceptance:** review/acceptance of the drafted SAT template pilot,
+  deeper implementation and contributor rewrites, open-lead/history extraction,
+  clean-checkout and archive
   walkthroughs, independent reader review and publication gates remain open.
   No solver behavior or defaults are changed by this manual batch.
 

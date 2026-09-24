@@ -8,6 +8,7 @@ parts:
     chapters:
       - file: implementation/architecture
       - file: implementation/core
+      - file: implementation/sat
   - caption: Open work
     chapters:
       - file: leads/library-api

@@ -92,6 +92,9 @@ model; it must not repair inconsistent function rows.
 
 ## Where SAT and theories meet
 
+The [Boolean abstraction and SAT integration chapter](sat.md) follows terms
+into clauses, explains scope guards, and details the callback ownership contract.
+
 The {source}`IpasirUpBackend interface <src/sat/ipasir_up.hpp#L68-L94>` exposes
 SAT variables, clauses, assumptions, solving, and result queries. The concrete
 {source}`CadicalBackend <src/sat/cadical_backend.hpp>` contains backend-specific
