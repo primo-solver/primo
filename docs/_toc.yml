@@ -74,6 +74,7 @@ parts:
       - file: public-repository-migration
         sections:
           - file: documentation-restructuring
+          - file: work/documentation-audit
       - file: experiments
       - file: run-log
         sections:

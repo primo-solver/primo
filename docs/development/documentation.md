@@ -46,8 +46,11 @@ accepted component can still have active extensions and open hypotheses.
 
 Add pages to `docs/_toc.yml`. Preserve explicit labels and old heading targets
 when moving a page, and update relative links in extracted content. The
-{download}`page map <../documentation-page-map.csv>` tracks proposed moves and
-completed batches; unresolved rows do not imply completed review.
+{download}`page map <../documentation-page-map.csv>` tracks reviewed structural
+dispositions and completed batches; structural review is not factual sign-off.
+The [inventory audit](../work/documentation-audit.md) also links the supporting
+file map, captured old targets, and proposed final contents. Check its
+compatibility snapshot before moving or renaming a page.
 
 For an implementation chapter, include concrete types and source files,
 inputs/outputs, representation, ownership/lifetime, stable IDs versus borrowed

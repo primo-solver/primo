@@ -1,12 +1,18 @@
 # Documentation restructuring before public release
 
-**Status: rewrite in progress, 2026-09-23; first user-manual batch implemented.**
+**Status: rewrite in progress, 2026-09-24; first user-manual batch implemented,
+full structural inventory audited.**
 The project owner has made substantial documentation restructuring a priority
 before the first public release. A private repository transfer can happen first.
 The three status entry points added in
 `559dcb5` establish the distinction between done, active, and open work; they do
 not by themselves reorganize the underlying material. Codex is executing the
-current manual batch; independent review ownership remains unassigned.
+current rewrite; independent review ownership remains unassigned.
+
+The [2026-09-24 inventory audit](work/documentation-audit.md) records per-page
+dispositions, supporting files, concrete stale claims, captured compatibility
+targets, and the proposed final contents. It is a structural review, not full
+code/paper/evidence sign-off. Start there for the current extraction priorities.
 
 ## Outcome and publication gate
 
@@ -43,9 +49,11 @@ actually measured. See [GitHub's permanent-link documentation](https://docs.gith
 
 ## Inventory findings
 
-The baseline at `70e7aae` has 75 tracked Markdown pages under `docs/`. This is
-an audit of navigation, headings, introductory status, and selected content,
-not a completed code-to-documentation correctness review.
+The historical baseline at `70e7aae` has 75 tracked Markdown pages under `docs/`.
+This is an audit of navigation, headings, introductory status, and selected content,
+not a completed code-to-documentation correctness review. The findings below
+describe that earlier state; the later [audit](work/documentation-audit.md)
+distinguishes completed manual work from still-open corrections.
 
 | Finding | Concrete example | Required treatment |
 | --- | --- | --- |
@@ -80,7 +88,8 @@ without reading it first to discover how the current solver works.
 
 ## Content moves and rewrites
 
-Final paths will be chosen during the inventory step. The table specifies
+The reviewed working destinations are now in the page map and proposed contents
+linked below. The table specifies
 responsibility and extraction work, not a claim that a rename alone is sufficient.
 
 | Existing material | Intended treatment |
@@ -105,10 +114,17 @@ The {download}`page map <documentation-page-map.csv>` accounts for all **76
 tracked Markdown pages under `docs/` at `4921f07`**, including paper notes and
 the predecessor retrospective. Each row proposes a milestone, audience,
 disposition, and destination. New pages and completed batch reviews are now
-included too. Untouched content reviews and compatibility-anchor inventories
-remain pending; file coverage is not a correctness audit.
-Destinations are relative to `docs/`; `<lead-id>` and `<component>` must be
-resolved during the relevant content review. A proposed archive destination
+included too. The 2026-09-24 pass gives all **83 baseline book pages** a reviewed
+structural disposition and adds this audit's report as the 84th page.
+Full factual reviews and per-anchor destination routing remain pending;
+file coverage is not a correctness audit. The
+{download}`compatibility snapshot <documentation-compatibility.json>` captures
+old paths, rendered targets and explicit labels, while the
+{download}`supporting-file map <documentation-support-map.csv>` covers root
+documents, skills, figures, fixtures and workflows. Destinations are relative
+to `docs/` and no longer contain unresolved path placeholders.
+The {download}`proposed final contents <documentation-target-toc.yml>` is a
+review artifact, not the active book configuration. A proposed archive destination
 does not mean all facts in that page are obsolete: extract any current contract
 first. Reconcile the map with newly added or removed pages at every milestone.
 
@@ -120,11 +136,12 @@ index.md                       Three entrances and first-solve link
 current-status.md              Done: capability and qualification map
 guide/                        Getting started, input, models, sessions
 reference/                    Options, tactics, statistics; retrospective retained
-implementation/               Architecture, core, frontend, sessions, models,
+implementation/               Architecture, core, numerics, frontend, sessions, models,
                               preprocessing, tactics, clausification, SAT,
                               DPLL(T), EUF, LRA, LIA, combination, quantifiers
 contributing.md                Contributor entrance
-development/                  Testing, debugging, validation, experiments, docs
+development/                  Contributing changes, testing, fuzzing, debugging,
+                              validation, experiments, tuning, docs
 active-work.md                 Short index of work actually underway
 work/                         Scoped active plans and review checklists
 open-leads.md                  Short index of open hypotheses
@@ -361,5 +378,6 @@ The organization's current plan has not been verified. Keep deployment off
 during the private rewrite; a public preview would itself publish documentation
 and is not part of this plan's preparation work.
 
-The first manual batch and this plan are the current deliverables. Passing their
-build checks does not complete the restructuring or publish the website.
+The first manual batch, contributor fuzzing requirements, and structural audit
+are completed subsets. Passing their build checks does not complete the
+restructuring or publish the website.

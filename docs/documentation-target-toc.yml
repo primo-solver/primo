@@ -1,0 +1,169 @@
+# Proposed final structure, reviewed 2026-09-24. Not the active book configuration.
+# Create and review content before moving its entry into docs/_toc.yml.
+format: jb-book
+root: index
+parts:
+  - caption: Work status
+    chapters:
+      - file: current-status
+      - file: active-work
+      - file: open-leads
+  - caption: Using Primo
+    chapters:
+      - file: guide/getting-started
+      - file: guide/input
+      - file: guide/models
+      - file: guide/sessions
+  - caption: Reference
+    chapters:
+      - file: reference/options
+      - file: reference/tactics
+      - file: reference/statistics
+  - caption: Implementation
+    chapters:
+      - file: implementation/architecture
+      - file: implementation/core
+      - file: implementation/numerics
+      - file: implementation/frontend
+      - file: implementation/sessions
+      - file: implementation/models
+      - file: implementation/tactics
+      - file: implementation/preprocessing
+      - file: implementation/clausification
+      - file: implementation/sat
+      - file: implementation/dpllt
+      - file: implementation/euf
+      - file: implementation/lra
+      - file: implementation/lia
+      - file: implementation/combination
+      - file: implementation/quantifiers
+  - caption: Contributing
+    chapters:
+      - file: contributing
+      - file: development/contributing-changes
+      - file: development/testing
+      - file: development/fuzzing
+      - file: development/finite-domain-fuzzing
+      - file: development/validation
+      - file: development/debugging
+      - file: development/order-sensitivity
+      - file: development/experiments
+      - file: development/tuning
+      - file: development/documentation
+  - caption: Research and evidence
+    chapters:
+      - file: literature
+        sections:
+          - file: papers/arithmetic-solving-in-z3
+          - file: papers/bromberger-linear-arithmetic-thesis
+          - file: papers/cvc4-architecture
+          - file: papers/difference-constraint-propagation
+          - file: papers/enumerative-instantiation
+          - file: papers/fair-adventurous-enumeration
+          - file: papers/fast-congruence-closure
+          - file: papers/fast-congruence-closure-implementation
+          - file: papers/fast-linear-arithmetic-dpllt
+          - file: papers/fastsmt-strategy-synthesis
+          - file: papers/finite-model-finding-sorts
+          - file: papers/griggio-mathsat-thesis
+          - file: papers/integer-division-and-modulo
+          - file: papers/ipasir-up
+          - file: papers/lra-atom-canonicalization
+          - file: papers/lra-related-work
+          - file: papers/model-based-theory-combination
+          - file: papers/monotone-variable-elimination
+          - file: papers/nelson-oppen-closure-methods
+          - file: papers/smt-symmetry-breaking
+          - file: papers/source-notes
+          - file: papers/summaries
+          - file: papers/tactic-configuration-evidence
+          - file: papers/word-gcd-notes
+      - file: run-log
+      - file: archive/index
+        sections:
+          - file: archive/architecture
+          - file: archive/arithmetic
+          - file: archive/assumption-incremental-lra
+          - file: archive/assumption-incremental-uf
+          - file: archive/bool-argument-congruence-bug
+          - file: archive/boolean-dag-flattening
+          - file: archive/current-status
+          - file: archive/debugging
+          - file: archive/dpllt
+          - file: archive/euf
+          - file: archive/euf-boolean-arguments
+          - file: archive/experiments
+          - file: archive/fast-congruence-closure-audit
+          - file: archive/finite-domain-fuzzing
+          - file: archive/fuzz-coverage-qf-lra
+          - file: archive/incremental-smt
+          - file: archive/incremental-uf-atom-scans
+          - file: archive/lexical-conformance
+          - file: archive/model-based-combination-integration
+          - file: archive/model-interpretation
+          - file: archive/modular-theory-combination
+          - file: archive/n-way-combination-migration
+          - file: archive/nelson-oppen
+          - file: archive/nelson-oppen-intake
+          - file: archive/nelson-oppen-qf-lra-regression
+          - file: archive/open-leads
+          - file: archive/opensmt-incremental-comparison
+          - file: archive/preprocessing
+          - file: archive/qf-lia-branch-and-bound
+          - file: archive/qf-lia-profile
+          - file: archive/qf-lra-equality-sharing
+          - file: archive/qf-lra-heuristics
+          - file: archive/qf-uflra-convex-no-merge-plan
+          - file: archive/qf-uflra-model-guided-performance
+          - file: archive/qfuf-disequality-propagation
+          - file: archive/quantifiers
+          - file: archive/root-polarity-clausification
+          - file: archive/sat-ipasir-up
+          - file: archive/structural-auto-preprocessing
+          - file: archive/tactic-reference
+          - file: archive/tactics
+          - file: archive/termid-order-sensitivity
+          - file: archive/tropical-matrix-structure
+          - file: archive/tuning-parameters
+          - file: archive/uf-z3-profiling
+      - file: reference/llm2smt-retrospective
+  - caption: Work and lead details
+    chapters:
+      - file: work/index
+        sections:
+          - file: work/benchmark-record-storage
+          - file: work/documentation-audit
+          - file: work/documentation-restructuring
+          - file: work/public-repository-migration
+      - file: leads/index
+        sections:
+          - file: leads/difference-logic
+          - file: leads/euf-disequality-propagation
+          - file: leads/lead-aep
+          - file: leads/lead-boolean-bridge-exclusion
+          - file: leads/lead-bounding-transformations
+          - file: leads/lead-decision-recommendation
+          - file: leads/lead-divisibility
+          - file: leads/lead-dl6
+          - file: leads/lead-equality-basis
+          - file: leads/lead-flag-first
+          - file: leads/lead-hard-backtrack
+          - file: leads/lead-incremental-uf-distinct
+          - file: leads/lead-incremental-uf-equations
+          - file: leads/lead-incremental-uf-scans
+          - file: leads/lead-incremental-uf-structure
+          - file: leads/lead-ite-preprocessing
+          - file: leads/lead-justification
+          - file: leads/lead-monotone-int
+          - file: leads/lead-pure-filter-lra
+          - file: leads/lead-qflia-preprocessing
+          - file: leads/lead-qflira
+          - file: leads/lead-recursion-audit
+          - file: leads/lead-relevancy
+          - file: leads/lead-unconstrained-terms
+          - file: leads/lead-z3-cheap-shared-equality
+          - file: leads/lra-heuristics
+          - file: leads/mixed-real-performance
+          - file: leads/quantifier-batching
+          - file: leads/quantifier-entailment
+          - file: leads/tropical-matrix

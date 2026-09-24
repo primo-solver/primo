@@ -24,8 +24,9 @@ open planning action, not an implied assignment to a contributor.
 - **Being worked on:** the documentation rewrite described below. The
   [rewrite plan](documentation-restructuring.md) specifies target paths,
   canonical facts, source-revision handling and milestones M0–M6. Its page map
-  tracks the 76 original pages and the new manual pages; untouched dispositions
-  and their content/anchor reviews remain pending.
+  now includes reviewed structural dispositions for 83 baseline pages and the
+  new audit report. The [inventory audit](work/documentation-audit.md) captures
+  old paths/targets; full factual review and destination routing remain pending.
   GitHub Pages hosting is proposed in the same plan, with private build-artifact
   review first and website deployment after the publication gate; no hosting
   workflow or site is configured yet.
@@ -51,22 +52,32 @@ open planning action, not an implied assignment to a contributor.
 
 ## Documentation rewrite
 
-**Last reviewed: 2026-09-23. Status: first manual batch implemented; wider
-rewrite in progress.** Execution in this session: Codex. Independent review
-ownership remains unassigned. Branch: `docs/public-repository-migration`.
+**Last reviewed: 2026-09-24. Status: first manual batch and structural inventory
+audit implemented; wider rewrite in progress.** Execution in this session:
+Codex. Independent review ownership remains unassigned.
+Branch: `docs/public-repository-migration`.
 
 - **Completed subset:** merged `origin/main` in `13b226c`; solver sources match
   the documented baseline `ac0daf4987281fa33d5e438bacdbaf2492607a03`. Added build,
   input, model and session guides, a practical CLI reference, pinned source
   links, executable examples and a shorter capability map. Preserved the old
   qualification narrative in [](archive/current-status.md).
-- **Verification:** 11 manual checks, 41 CTest tests and the strict book build
-  pass. Detailed batch review and remaining limitations belong in
-  [](documentation-restructuring.md).
-- **Next:** review the core representation/session chapters against code,
-  complete source-link validation and private CI previews, and continue the
-  page-map reviews. Do not move historical pages without preserving their
-  evidence and compatibility labels.
+  Added explicit contributor fuzzing requirements in `3eddb42`. The subsequent
+  [structural audit](work/documentation-audit.md) covers all 83 baseline book
+  pages and 24 outside Markdown files, records stale claims and proposed
+  destinations, and captures compatibility targets. The local tag
+  `docs-before-restructure-2026-09-24` preserves the pre-audit snapshot.
+- **Verification:** the first manual batch passed 11 manual checks, 41 CTest
+  tests and the strict book build. The inventory batch passed coverage,
+  proposed-navigation, and compatibility checks plus strict `make docs`; its
+  rendered report was inspected. These are editorial checks, not fresh solver
+  qualification. Detailed batch limits belong in
+  [](documentation-restructuring.md) and [](work/documentation-audit.md).
+- **Next:** correct the audit's stale status claims and reconcile fuzz-gate
+  wording, then extract the contributor correctness procedures and complete
+  the SAT chapter pilot before the deeper implementation rewrite. The audit's
+  proposed final contents now gives those batches concrete destinations.
+  Do not move historical pages without preserving their evidence and targets.
 - **Remaining acceptance:** the SAT template pilot, deeper implementation and
   contributor rewrites, open-lead/history extraction, clean-checkout and archive
   walkthroughs, independent reader review and publication gates remain open.
