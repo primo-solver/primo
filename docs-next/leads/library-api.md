@@ -11,6 +11,11 @@ is a literature reference for separating shared terms, mutable solving
 contexts, and independent model snapshots. It motivates this ownership audit;
 it does not establish that Primo already supports the same public API.
 
+The [literal-capacity item](../implementation/sat.md#literal-range-and-exhaustion)
+is a small related hardening task: allocation exhaustion and invalid literal
+values need a controlled API failure, with no signed overflow or process abort.
+It does not require a wider literal representation by itself.
+
 ## Starting points in the code
 
 - The {source}`CMake library targets <CMakeLists.txt#L187-L240>` already separate

@@ -276,6 +276,16 @@ note rendering, and visual inspection. The new lead remains open, with user
 review and all implementation/evaluation work pending. This is documentation
 only; solver tests, fuzz campaigns, ASan, and clang-tidy are not rerun.
 
+## Literal-capacity documentation check
+
+The SAT chapter's range note was checked against `sat::Lit`, both backend
+allocation paths, and the installed CaDiCaL public literal contract on
+2026-09-24. It records unchecked signed increments and the distinction between
+the representation's upper bound and supported backend capacity. This is an
+open hardening item, with no observed overflow, capacity stress run, code fix,
+or completed boundary tests. Both book builds and source/local-link checks
+cover the documentation change; the implementation remains deferred.
+
 ## Replacing the old book
 
 The preserved baseline is tagged `docs-before-restructure-2026-09-24`; the tag

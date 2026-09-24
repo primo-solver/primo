@@ -11,6 +11,17 @@ Keep stable lead labels and evidence links when a lead changes state.
 
 ## Project and tooling leads
 
+- **SAT literal/variable-ID exhaustion:** low-priority correctness hardening;
+  no overflow observed in the documentation review. `sat::Lit` is signed
+  32-bit, and `CadicalBackend::new_observed_var()` computes a new ID with an
+  unchecked signed `+ 1`; fallback `new_var()` branches also increment
+  unchecked. Specify an effective limit compatible with the backend, reject
+  exhaustion before mutation, and test boundaries with an artificial small
+  limit. Include zero/`INT32_MIN`, negation, and derived indexing in the audit.
+  Long incremental sessions merit attention even if ordinary workloads are
+  unlikely to exhaust IDs. See [](sat-ipasir-up.md#deferred-scope) and the
+  draft SAT chapter's **Literal range and exhaustion** subsection. Status:
+  open; owner unassigned; implementation deferred. Retain 32-bit storage for now.
 - **Library API and embedding:** Primo should also work inside another
   application. The draft work item in `docs-next/leads/library-api.md` records
   an audit of the public API, ownership, errors, cancellation, instance

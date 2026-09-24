@@ -28,6 +28,13 @@ The SAT layer owns Primo's propositional variables, literals, clauses, assumptio
 
 ## Deferred scope
 
+- explicit variable-ID exhaustion handling: `Lit` has a signed 32-bit
+  representation, while `new_observed_var()` and fallback `new_var()` paths
+  contain unchecked increments. Record this as low-priority hardening, with
+  rejection before overflow/backend mutation and small-limit boundary tests.
+  The representation admits positive IDs only through `2³¹ − 1`; this is not
+  a guaranteed backend capacity. Zero and `INT32_MIN` are not valid clause
+  literals. Widening Primo's field alone would not widen the CaDiCaL API.
 - proof-producing integration
 - safe removal of observed variables from a live mixed-theory search
 - proof infrastructure for external clauses and external propagation reasons

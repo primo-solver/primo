@@ -34,6 +34,38 @@ Copy the IDs/literals needed, then reacquire entries. The core term-reference
 invalidation rules still apply, including when Boolean-domain bridges create
 new terms.
 
+### Literal range and exhaustion
+
+`Lit` uses a signed 32-bit value. Positive variable IDs therefore have a
+representational upper bound of `2³¹ − 1` (2,147,483,647); negation changes
+the sign, not the variable ID. Zero is reserved, and `INT32_MIN` cannot be a
+valid literal because its positive counterpart is not representable. This
+bounds variable IDs, not the number of clauses or literal occurrences.
+
+The installed CaDiCaL API also requires 32-bit literals and excludes `INT_MIN`.
+The representational bound is not a promise that the backend can allocate
+that many variables. Widening only Primo's `Lit` would not widen that API.
+
+There is a concrete hardening gap: {source}`new_observed_var
+<src/sat/cadical_backend.cpp#L173-L187>` computes
+`max(max_var_, solver_->vars()) + 1` in signed arithmetic without an explicit
+capacity check. The fallback branches of {source}`new_var
+<src/sat/cadical_backend.cpp#L153-L171>` also increment unchecked; the current
+preferred branch delegates allocation to CaDiCaL. Signed overflow is not a
+valid wraparound strategy. Allocation exhaustion should produce a controlled
+resource-limit failure before arithmetic or backend mutation.
+
+**Open, low-priority hardening item; no overflow observed in this review.**
+The expected likelihood is low at ordinary workload sizes, but this is not
+protected by a guarantee that memory runs out first. Long-lived incremental
+sessions can keep allocating auxiliaries and scope selectors; deleting clauses
+does not by itself give Primo permission to reuse their IDs. Audit allocation,
+invalid externally supplied literals, and derived index/size arithmetic before
+declaring a supported limit. Boundary tests should use a testable capacity
+check or small artificial limit, rather than allocating billions of variables.
+The contributor should preserve 32-bit storage unless a separate backend/API
+design establishes a need for wider IDs. No allocation behavior is changed here.
+
 ## From terms to clauses
 
 The input is a Boolean root in the borrowed term manager. In the solving
