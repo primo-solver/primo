@@ -51,8 +51,10 @@ rebuilding solving state. Opt-in assumptions engines retain more state for
 production are outside the implemented scope.
 
 The [architecture overview](implementation/architecture.md) explains the
-component boundaries. The full capability matrix and user guides remain in
-the existing book while they undergo page review for this draft.
+component boundaries; [terms, symbols, and ownership](implementation/core.md)
+explains the core representation and its lifetimes. The full capability matrix
+and user guides remain in the existing book while they undergo page review
+for this draft.
 
 A documentation build or a successful example does not certify solver
 correctness across a benchmark corpus.

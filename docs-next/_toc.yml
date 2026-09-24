@@ -7,6 +7,7 @@ parts:
   - caption: Understanding Primo
     chapters:
       - file: implementation/architecture
+      - file: implementation/core
   - caption: Open work
     chapters:
       - file: leads/library-api

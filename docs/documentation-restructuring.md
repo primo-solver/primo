@@ -23,6 +23,12 @@ ledger. Local verification and user acceptance are separate states; none of
 these pages is accepted yet. The destination paths in the inventory remain
 relative to the final `docs/` tree, with `docs-next/` used during preparation.
 
+The next component draft is now `docs-next/implementation/core.md`, covering
+representation and ownership with function/test links and a compiled example.
+Library embedding and incremental memory are separate open-work pages. Their
+investigations remain pending; documenting the current core does not choose a
+new public API or reclamation design.
+
 ## Outcome and publication gate
 
 An outside reader must be able to build and use Primo, understand its supported

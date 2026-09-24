@@ -49,6 +49,9 @@ Preprocessing can settle a goal or expose a simpler route.
 
 ## Representation and ownership
 
+The [core representation chapter](core.md) details sorts, symbols, term shapes,
+construction, and what survives queries and scope changes.
+
 | Object and code | What it owns or borrows | Lifetime rule |
 | --- | --- | --- |
 | {source}`Frontend::Implementation <src/smt/frontend.cpp#L503-L504>` | Symbol table and term manager | The manager borrows the symbol table; the frontend keeps them together. |

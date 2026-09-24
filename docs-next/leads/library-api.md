@@ -29,6 +29,9 @@ These are inspection starting points, not findings that the solver violates
 an established embedding contract. No public API, ABI stability, or thread
 safety guarantee is introduced by this work item.
 
+The [core chapter](../implementation/core.md) describes current identity,
+borrowing, and scope lifetimes for this audit to start from.
+
 The related [incremental-memory investigation](incremental-memory.md) considers
 term reclamation and reference counting. Resolve those lifetime requirements
 before committing to a public handle API.

@@ -62,7 +62,9 @@ belongs to the current documentation branch. No page is accepted yet.
 3. [Architecture](implementation/architecture.md): can a developer follow a
    query and find the owning code, understand object lifetimes, and avoid
    mixing session, SAT, and theory responsibilities?
-4. [Library API](leads/library-api.md) and
+4. [Core representation](implementation/core.md): are identity, borrowing,
+   constructor simplification, and storage retention clear enough to use safely?
+5. [Library API](leads/library-api.md) and
    [incremental memory](leads/incremental-memory.md): do the work items capture
    the intended direction, available evidence, and unresolved design questions?
    Reviewing these leads does not complete their investigations.
@@ -116,6 +118,26 @@ draft is inspected. Paper algorithms, historical measurements, and outside-reade
 reproduction are not requalified by this work. Solver source and behavior are
 unchanged; fresh solver fuzz, ASan, and clang-tidy campaigns are not part of
 this documentation/build-wrapper change.
+
+## Core chapter checks
+
+The core representation draft was checked against the owning headers,
+constructors, symbol-scope operations, session teardown paths, and model
+ownership. Source links are checked against their configured commit. Its C++
+example is extracted from the page, compiled against `primo_terms`, `primo_util`,
+and GMP, and executed with assertions enabled. The existing regression suites
+are rebuilt and run with:
+
+```bash
+cmake --build build --target primo_core_tests primo_binder_tests primo_model_tests primo_smt_session_tests --parallel 2
+ctest --test-dir build -R '^primo_(core|binder|model|smt_session)_tests$' --output-on-failure
+```
+
+Both strict book builds and rendered-page checks complete this documentation
+batch. This checks the example and its cited regression coverage; it does not
+measure incremental memory or qualify a library API. No solver implementation
+changes or fresh fuzz/ASan/static-analysis campaigns are included. The page
+still needs user review and acceptance.
 
 ## Replacing the old book
 

@@ -9,6 +9,9 @@ measurement. Reference counting is a candidate, not a selected design.
 
 ## Evidence and current ownership
 
+The [core chapter](../implementation/core.md) explains the storage and lifetime
+contracts that this investigation may need to change.
+
 The {source}`historical QF_UF session evaluation <docs/assumption-incremental-uf.md>`
 at `fa2fe5c` records peak solver RSS of 898 MiB in assumptions mode and 990 MiB
 in rebuild mode, over 1,778 sessions with a 30-second whole-session limit and
