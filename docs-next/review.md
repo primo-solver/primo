@@ -46,10 +46,11 @@ unimplemented proposal accurately.
 :widths: 18, 12, 14, 28, 28
 ```
 
-The {download}`CSV ledger <review.csv>` is the record behind this table.
-`ac0daf4` abbreviates solver revision {{ source_revision }}. The preview/review
-workflow is newer than that baseline and belongs to the current documentation
-branch. No page is accepted yet.
+The {download}`CSV ledger <review.csv>` is the record behind this table. Its
+Source column records the commit inspected during verification. Those entries
+are evidence of a review, so they change only when a new review is recorded.
+The preview/review workflow is newer than the inspected solver baseline and
+belongs to the current documentation branch. No page is accepted yet.
 
 ## Review order and questions
 
@@ -77,10 +78,17 @@ and to relevant regression tests. Use the centrally configured `source` role:
 {source}`execute_stream <src/main.cpp#L87-L119>`
 ````
 
-These expand to GitHub URLs pinned to the full source revision in `_config.yml`.
-Keep its URL revision and displayed `source_revision` substitution identical.
+These expand to GitHub URLs using the single commit-pinned URL under
+`sphinx.config.extlinks.source` in `_config.yml`. Authors write paths and
+optional line ranges; they do not repeat a commit hash in chapter prose.
 Line anchors are appropriate for short functions and declarations; use a file
 link when a mechanism spans many operations.
+
+Write the manual as a description of the code it accompanies. Update an
+explanation when behavior, ownership, or an interface changes. Advancing the
+source-link revision is one configuration edit, and a documentation-only edit
+does not require it. Keep exact revisions in this ledger and in dated experiment
+records; changing the link configuration does not revalidate either record.
 
 Before marking a page verified, check each path and line range against
 `git show <revision>:<path>` and read the referenced code. Confirm that the

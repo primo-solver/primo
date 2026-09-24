@@ -5,9 +5,8 @@ solving attempt. The session remembers declarations and assertions; a solving
 attempt translates that context into typed terms, transforms it, and asks the
 appropriate Boolean/theory engines for an answer.
 
-This overview describes solver revision {{ source_revision }}. Each code link
-is pinned to that commit. It is a map of implemented boundaries; detailed
-algorithm and paper audits will accompany the component chapters.
+This overview maps the implemented boundaries to their owning types and
+functions. Detailed algorithms belong in the component chapters.
 
 ## Follow one query through the code
 
@@ -156,7 +155,7 @@ This page is an original integration overview based on the interfaces and
 implementations linked above. Existing Primo design notes provide the detailed
 {source}`session replay contract <docs/incremental-smt.md>`,
 {source}`model ownership contract <docs/model-interpretation.md>`, and
-{source}`tactic contract <docs/tactics.md>` at the same solver revision.
+{source}`tactic contract <docs/tactics.md>`.
 
 The existing {source}`IPASIR-UP paper map <docs/papers/ipasir-up.md>` and
 {source}`combination implementation notes <docs/modular-theory-combination.md>`

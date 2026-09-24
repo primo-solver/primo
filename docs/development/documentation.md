@@ -85,6 +85,12 @@ that commit; the ordinary Sphinx build does not fetch GitHub or check source
 path existence. Source-path validation and an archive-aware manifest remain
 planned automation in [](../documentation-restructuring.md).
 
+The replacement book uses its own `docs-next/_config.yml`, with a single
+commit-pinned URL and no revision substitution in chapter prose. Write those
+pages as explanations of the code they accompany. Its review ledger records
+which commit was inspected; exact revisions also belong in dated experiments.
+Changing the central URL does not update or revalidate those evidence records.
+
 Advance the source revision only after reviewing changes in affected code and
 examples. A documentation-only commit need not change the solver revision.
 Historical experiments must use explicit measured-commit links, not the

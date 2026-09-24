@@ -156,10 +156,6 @@ The separate Git-results repository and generated SQLite index remain planned;
 the existing ledger is still authoritative.
 The {source}`recording contract <docs/run-log.md>` defines the required metadata.
 
-Code and workflow links identify revision {{ source_revision }}. The temporary
-`docs-next` build commands are introduced by this rewrite and are tracked in
-the [review ledger](../review.md); they are newer than that solver baseline.
-
 The pull request should state what changed, the violated or preserved
 invariant, the documentation updated, checks run, linked run records, and
 remaining limitations. Missing checks stay visible until completed. Do not

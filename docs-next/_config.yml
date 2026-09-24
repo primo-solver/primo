@@ -32,8 +32,6 @@ sphinx:
       source:
         - "https://github.com/primo-solver/primo/blob/ac0daf4987281fa33d5e438bacdbaf2492607a03/%s"
         - "%s"
-    myst_substitutions:
-      source_revision: "ac0daf4987281fa33d5e438bacdbaf2492607a03"
     myst_heading_anchors: 3
     html_show_copyright: false
     html_show_sourcelink: false

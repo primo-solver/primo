@@ -54,8 +54,6 @@ The [architecture overview](implementation/architecture.md) explains the
 component boundaries. The full capability matrix and user guides remain in
 the existing book while they undergo page review for this draft.
 
-**Documented solver revision:** {{ source_revision }}. Code links identify
-that revision; historical experiments retain their own measured revisions.
 A documentation build or a successful example does not certify solver
 correctness across a benchmark corpus.
 

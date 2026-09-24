@@ -44,11 +44,12 @@ link existing run IDs while the new storage tools are still pending.
 Use GitHub links pinned to a commit for code explanations, optionally including
 line anchors. A moving `main` link is suitable for browsing current development,
 but cannot identify the implementation described by a released book. Configure
-the repository URL and source revision centrally in the documentation build,
-display the documented revision, and generate code links from those settings.
-The first batch now provides the centrally configured `source` role and displays
-the documented revision. Automatic path/line validation, build-revision metadata
-and archive-aware provenance remain planned tooling.
+the repository URL and source revision centrally in the documentation build
+and generate code links from those settings. Keep revision metadata in the
+review ledger or build information; ordinary chapters explain the code without
+revision boilerplate. The replacement book uses one commit-pinned URL for its
+`source` role. Automatic path/line validation, build-revision metadata and
+archive-aware provenance remain planned tooling.
 
 Check the source revision and referenced paths in the destination before
 publishing. If a curated history changes commit identities, use the explicit
@@ -192,8 +193,9 @@ one source-link helper configured by repository URL and a full source commit.
 Authors supply a repository-relative file path and optional line range; the
 helper emits the GitHub `blob/<commit>/...` URL. Use file links by default and
 line anchors only when they improve the explanation. Validate tracked paths and
-line bounds against that commit, and display the documented source revision in
-the book. Store the book/build revision separately.
+line bounds against that commit, and record the inspected revision in review
+metadata. Do not repeat it in chapter prose. Store the book/build revision
+separately.
 
 Historical reports keep their measured commit links, even when the book's
 source revision advances. They must not inherit the current source revision
