@@ -11,6 +11,15 @@ Keep stable lead labels and evidence links when a lead changes state.
 
 ## Project and tooling leads
 
+- **EUF callback assignment-marker rollback:** the DPLL(T) documentation audit
+  found that `OnlineEufPropagator::level_starts_` starts with `{0}`, appends
+  boundaries on new levels, and indexes `new_level` on rollback. Backtracking
+  to zero therefore clears even root assignment markers, while the closure's
+  separate checkpoints preserve root facts. Audit retained-level indices,
+  callback replay, propagation filtering, and model-scope eligibility; add a
+  focused lifecycle regression before changing behavior. Status: open;
+  source-level mismatch identified, runtime impact not established, no
+  reproduced wrong answer. Details: `docs-next/implementation/dpllt.md`.
 - **Statistics instrumentation:** inspect hot-loop counters, string-key
   lookups, timers, and diagnostic-only traversals. The design preference is
   typed counter IDs with names resolved for reporting; string-key diagnostics

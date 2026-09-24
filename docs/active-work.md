@@ -67,7 +67,7 @@ Branch: `docs/public-repository-migration`.
   pages and 24 outside Markdown files, records stale claims and proposed
   destinations, and captures compatibility targets. The local tag
   `docs-before-restructure-2026-09-24` preserves the pre-audit snapshot.
-  A separate replacement book now lives in `docs-next/`, with five content
+  A separate replacement book now lives in `docs-next/`, with six content
   drafts, open-work pages, commit-pinned function/type/test links, and a page
   review ledger. The core representation draft explains sort/symbol/term
   storage, local construction, borrowed references, and session lifetimes.
@@ -89,6 +89,10 @@ Branch: `docs/public-repository-migration`.
   rejected root-only prototype. A statistics-instrumentation lead records
   typed-counter preferences, optional diagnostic builds, and always-on
   operational accounting. Neither solver change has started.
+  The DPLL(T) draft now maps assignment routing, explanation lifetimes,
+  route-specific retention and final-check responsibilities to code, with an
+  equality example spanning three scoped queries. Removed the unused empty
+  `smt::Dpllt` scaffold; existing drivers and runtime behavior are unchanged.
   Build it with `make docs-next`; preview it with `make docs-next-serve` on
   port 8001. No page is accepted and no book replacement has occurred.
 - **Verification:** the first manual batch passed 11 manual checks, 41 CTest

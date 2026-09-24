@@ -180,6 +180,91 @@ change does not alter solver behavior; no new performance, fuzz, ASan, or
 whole-tree static-analysis qualification is claimed. The chapter and SAT
 implementation-template pilot still require user review and acceptance.
 
+(dpllt-chapter-checks)=
+## DPLL(T) chapter checks
+
+The DPLL(T) draft was checked against the dedicated EUF/LRA drivers,
+`ComponentDispatcher`, `TheoryComponent`, the component solver/coordinator,
+the SAT adapter, and session model finalization. The reading covers
+Nieuwenhuis–Oliveras–Tinelli (2006), §§4.1, 4.4, 5.1–5.2, and IPASIR-UP
+(2023), §§2.1–2.4, from the primary PDFs already used by this book. The
+chapter is the local representation/invariant/operation checklist for these
+integration mechanisms, with explicit limits on completeness and retention.
+No other solver implementation was used as an implementation source.
+
+The unused `src/smt/dpllt.hpp` empty class and its include-only `.cpp` were
+removed after a whole-tree reference search found no users. CMake discovers
+SMT sources with `CONFIGURE_DEPENDS`; a successful rebuild verifies removal.
+No active driver, callback, solver option, or runtime behavior changed. Existing
+source links remain pinned to the unchanged implementations at the configured
+revision; none of them points to the deleted scaffold. Harmonizing the actual
+drivers remains a separate design decision.
+
+From the repository root, reproduce the example matrix with:
+
+```bash
+make check
+python3 - <<'PY'
+import subprocess
+profiles = [
+    [],
+    ['--preprocessing-mode=off', '--euf-prop=online'],
+    ['--preprocessing-mode=off', '--euf-prop=conflict'],
+    ['--preprocessing-mode=off', '--euf-engine=lazy', '--euf-prop=off'],
+    ['--preprocessing-mode=off', '--incremental-mode=assumptions', '--euf-prop=online'],
+]
+for flags in profiles:
+    result = subprocess.run(
+        ['./build/primo', '--quiet', '--check-model', *flags,
+         'docs-next/examples/dpllt-equality.smt2'],
+        check=True, text=True, capture_output=True, timeout=30)
+    assert result.stdout.split() == ['sat', 'unsat', 'sat'], result.stdout
+print('5 profiles: 15 expected answers; requested SAT models checked internally')
+PY
+make docs
+make docs-next
+```
+
+All five profiles produced the expected answers. This checks the input's
+semantics and selected routes, not the illustrative SAT decision order or
+an exact learned-clause trace. The chapter links existing callback, explanation,
+and session regressions; `make check` passed lint, all 41 CTest suites, and
+188 Python tests after the scaffold removal. No new solver fuzz campaign,
+ASan run, or external corpus/model-validation claim is made for this
+documentation and unreachable-scaffold cleanup.
+
+Verification also covers source paths/line bounds, both strict book builds,
+local HTML links, navigation/ledger coverage, and preservation of the original
+book targets. The draft still needs user acceptance. The review distinguishes
+partial callback checks from final reconciliation, live reasons from candidate
+queues, and the component dispatcher's forgettable clauses from protected
+dedicated EUF/LRA conflicts. No common retention policy is claimed.
+
+The code review identified a separate EUF marker/closure rollback mismatch:
+with `r` root literals, the marker boundaries become `{0, r}` at the first
+decision, so `apply_backtrack(0)` clears to zero rather than `r`. Closure
+checkpoints retain the root facts. The chapter and old-book open-leads register
+record the exact source and required lifecycle regression; no wrong answer or
+runtime impact is claimed, and no callback repair is included here. This limits
+the rollback claims that the documentation can make. It does not block removal
+of the unrelated unused scaffold.
+
+`make tidy` completed over all 123 tracked source/test `.cpp` files remaining
+after removal. It reports 18 enum-cast diagnostics in the unchanged generic
+option-name tests and one potential leak in the external CLI11 header. These
+are outside the removed stub; they were not fixed or presented as a clean
+static-analysis baseline. `make include-cleaner` completed with 390 advisory
+diagnostics. Of its 22 unused-header suggestions, 21 are paired self-includes;
+the remaining `<variant>` include supplies `std::get` in
+`instance_simplifier_tests.cpp`. Those includes were retained. The other
+advisories concern direct includes and remain a separate hygiene task.
+
+Code-review verdict for the scaffold removal: no blocking issues found.
+The automated scans cover the whole tracked C++ tree; manual review focuses
+on the removed API's users/build wiring and the chapter's integration paths.
+The identified EUF synchronization issue remains explicitly open, so this
+verdict is not a claim that all solver invariants have been verified.
+
 ## Architecture figures
 
 The architecture page has a data-flow map of the default rebuild route and a

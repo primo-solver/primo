@@ -21,6 +21,13 @@ selects the leaf after preprocessing; `solver_leaves.cpp` adapts it to the engin
 the QF_UFLIA recipe enters `solve_component_recipe` in `component_solver.cpp`.
 Public `check_sat.cpp` is only the session boundary wrapper.
 
+The unused empty `smt::Dpllt` class and its include-only translation unit were
+removed during the documentation rewrite. They had no call sites and owned
+no solver state. The drivers listed above remain separate; this cleanup does
+not harmonize their scheduling or change solver behavior. The replacement
+chapter is `docs-next/implementation/dpllt.md`, with a runnable equality example
+and links to the actual owners.
+
 Boolean abstraction belongs to `BooleanClausifier`. Theory components receive
 typed literals and explanations, never SMT-LIB syntax or ownership of the SAT
 backend. Online callbacks maintain assignment trails and decision levels,
@@ -78,6 +85,13 @@ active solver pointer.
 Do not add a fallback in-house SAT solver. If CaDiCaL/IPASIR-UP is missing, report the missing dependency clearly.
 
 ## Sources and implementation status
+
+The dedicated EUF/LRA callbacks request non-forgettable external conflicts in
+the API variant with that flag, whereas
+{source}`ComponentDispatcher <src/smt/component_dispatcher.cpp#L247-L255>`
+marks its external clauses forgettable. Reason-vector lifetime is separate
+from this eligibility flag and from actual backend deletion. The
+[forgetting note](papers/clause-forgetting.md) records this route distinction.
 
 The SAT callback contract is mapped to the IPASIR-UP paper in
 [](papers/ipasir-up.md). The implemented theory kernels and their subsets are

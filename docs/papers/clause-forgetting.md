@@ -118,6 +118,7 @@ capability; it does not stop the loop from rediscovering it forever.
 | Propagation explanations | {source}`EUF reasons <src/smt/solver_engines.cpp#L1925-L1950>` and {source}`LRA reasons <src/smt/solver_engines.cpp#L7265-L7297>` are streamed on request; their data must survive every legal callback request. The [Yices note](yices.md#what-primo-and-its-backend-already-do) records the installed backend's reason-retention contract and the unresolved default documentation discrepancy. |
 | Clause retention control | {source}`ExternalPropagator <src/sat/ipasir_up.hpp#L39-L60>` carries a forgettable flag for external clauses. The adapter does not expose a corresponding Primo-level per-reason retention selector. Eligibility for backend deletion would not establish actual deletion timing. |
 | Component routing | The {source}`component bridge <src/smt/solver_engines.cpp#L10082-L10102>` consumes the callback result into `TheoryCheckResult`; it does not preserve the local `forgettable` value in that result. Audit the consuming route before proposing a common policy. |
+| Component external-clause policy | {source}`ComponentDispatcher::cb_has_external_clause <src/smt/component_dispatcher.cpp#L247-L255>` sets `is_forgettable = true`. This differs from the dedicated EUF/LRA callbacks. It establishes eligibility, not measured deletion or a proved progress policy. |
 
 Deletion of a SAT clause, release of a C++ explanation vector, and reclamation
 of core terms are distinct lifetime operations. A clause can be logically

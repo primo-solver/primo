@@ -5,6 +5,14 @@ incremental Nieuwenhuis-Oliveras-style congruence-closure engine over flat
 terms. The older lazy EUF solver over `core::TermId` values is still available
 with `--euf-engine=lazy` for diagnostics.
 
+The DPLL(T) documentation audit identified an open assignment-marker rollback
+question in the dedicated online propagator: its extra initial trail boundary
+can clear root markers while the closure's own checkpoints retain root facts.
+See [](open-leads.md#project-and-tooling-leads) and the detailed source trace in
+`docs-next/implementation/dpllt.md`. Runtime impact and a focused lifecycle
+regression remain pending; the documentation example is not coverage of this
+internal synchronization invariant.
+
 ## Current Solver Path
 
 The default incremental SMT session rebuilds this one-shot path. Opt-in

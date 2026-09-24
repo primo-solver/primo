@@ -9,6 +9,7 @@ parts:
       - file: implementation/architecture
       - file: implementation/core
       - file: implementation/sat
+      - file: implementation/dpllt
   - caption: Literature
     chapters:
       - file: papers/yices

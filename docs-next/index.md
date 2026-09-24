@@ -55,7 +55,9 @@ component boundaries; [terms, symbols, and ownership](implementation/core.md)
 explains the core representation and its lifetimes.
 [Boolean abstraction and SAT integration](implementation/sat.md) follows those
 terms into clauses and describes assumptions and theory callbacks. The full
-capability matrix and user guides remain in the existing book while they
+interaction is followed in [DPLL(T)](implementation/dpllt.md), including
+explained conflicts, backtracking, and final consistency checks. The capability
+matrix and user guides remain in the existing book while they
 undergo page review for this draft.
 
 The [Yices literature survey](papers/yices.md) connects three papers/talks to

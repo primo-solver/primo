@@ -5,6 +5,8 @@ SAT literals mean. The SAT layer owns propositional search through CaDiCaL;
 it receives no core terms or SMT-LIB syntax. This chapter follows that boundary
 from an assertion to a SAT answer. The [architecture overview](architecture.md)
 places it in a query, and the [core chapter](core.md) explains term identity.
+The [DPLL(T) chapter](dpllt.md) continues through theory callbacks and the
+checks needed before that SAT answer becomes an SMT answer.
 
 The owning implementation is
 {source}`BooleanClausifier <src/smt/clausifier.hpp#L20-L57>`.

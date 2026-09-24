@@ -94,6 +94,8 @@ model; it must not repair inconsistent function rows.
 
 The [Boolean abstraction and SAT integration chapter](sat.md) follows terms
 into clauses, explains scope guards, and details the callback ownership contract.
+The [DPLL(T) chapter](dpllt.md) follows assignments, explanations, backtracking,
+and the final checks through the concrete SMT drivers.
 
 The {source}`IpasirUpBackend interface <src/sat/ipasir_up.hpp#L68-L94>` exposes
 SAT variables, clauses, assumptions, solving, and result queries. The concrete
