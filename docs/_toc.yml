@@ -95,6 +95,7 @@ parts:
       - file: papers/ipasir-up
       - file: papers/yices
       - file: papers/clause-forgetting
+      - file: papers/polarity-aware-cnf
       - file: papers/cvc4-architecture
       - file: papers/fastsmt-strategy-synthesis
       - file: papers/tactic-configuration-evidence

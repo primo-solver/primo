@@ -93,8 +93,8 @@ worklist with a visited set local to the call:
 | `Implies(a, b)` | One clause `¬lit(a) ∨ lit(b)`. |
 | Other supported roots, or `Or` with `top_level_or_tseitin=true` | Encode the root and assert its literal as a unit clause. |
 
-Nested connectives need a literal whose meaning survives use under either
-polarity. {source}`encode <src/smt/clausifier.cpp#L397-L507>` walks the DAG
+Primo currently gives nested connectives a literal whose meaning survives use
+under either polarity. {source}`encode <src/smt/clausifier.cpp#L397-L507>` walks the DAG
 iteratively, caches literals, and emits full definitions. Writing `xᵢ` for a
 child literal and `v` for the new output literal, the implemented templates are:
 
@@ -122,6 +122,25 @@ may revisit shared structure across separate assertions; their visited set is
 not shared across calls. Dense arrays also consume space for term indices
 outside the encoded Boolean DAG. These bounds describe translation, not SAT
 search time or total solver memory.
+
+### Polarity-aware definitions: an open lead
+
+Full equivalence is sufficient, but is not always necessary. With a fresh
+auxiliary `v` for subformula `F`, **Plaisted–Greenbaum** conversion needs
+`v → F` for positive-only occurrences and `F → v` for negative-only
+occurrences. Both directions are required when one shared auxiliary serves
+both polarities. The root requirement is still asserted.
+
+In the example below, `q ∧ ¬r` occurs only positively, so a directional encoder
+could omit `v ∨ ¬q ∨ r`, reducing four clauses to three. Primo currently emits
+all four. Its atom-polarity metadata does not perform this optimization.
+
+The [literature note](../papers/polarity-aware-cnf.md) includes direct SMT
+references and an implementation checklist. General PG encoding remains an
+open lead: incremental opposite-polarity uses require completing definitions,
+and a one-direction auxiliary cannot automatically stand for the exact value
+of a Boolean term in a model or function argument. The earlier rejected
+root-polarity prototype did not evaluate general PG conversion.
 
 ### Atom registry and polarity
 
@@ -282,7 +301,7 @@ SAT search. Proof-producing integration is not implemented by this interface.
 
 This section is the local paper-to-code checklist for the chapter. The
 clauses and lifetimes above describe the implemented subset; they do not claim
-the full mechanisms or results of either paper.
+the full mechanisms or results of the cited papers.
 
 - **G. S. Tseitin, “On the Complexity of Derivation in Propositional
   Calculus” (1968; English reprint in *Automation of Reasoning*, 1983,
@@ -294,6 +313,11 @@ the full mechanisms or results of either paper.
   The paper's validity reduction negates its root; Primo asserts the desired
   formula positively for satisfiability. No proof-complexity algorithm or
   complete polarity-sensitive clausifier is claimed.
+- **Plaisted–Greenbaum conversion and SMT:** the
+  [dedicated note](../papers/polarity-aware-cnf.md) records Masina, Spallitta,
+  and Sebastiani (JAIR 2025), §§2.1 and 3.2, and SMTInterpol's primary
+  documentation. General directional encoding is **open work**, not the
+  implemented full definitions described above.
 - **K. Fazekas, A. Niemetz, M. Preiner, M. Kirchweger, S. Szeider, and A. Biere,
   “IPASIR-UP: User Propagators for CDCL,” SAT 2023, §§2.1–2.4.**
   [Primary text and publication record](https://doi.org/10.4230/LIPIcs.SAT.2023.8).

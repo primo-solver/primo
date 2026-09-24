@@ -84,6 +84,11 @@ Branch: `docs/public-repository-migration`.
   A follow-up literature note distinguishes theory-lemma deletion from
   termination and live-reason safety, with a separate open lead. It covers
   the DPLL(T) calculus, a verified SAT framework, and deletion-policy experiments.
+  A polarity-aware CNF note now adds direct SMT references and separates
+  general Plaisted–Greenbaum work from current full definitions and the
+  rejected root-only prototype. A statistics-instrumentation lead records
+  typed-counter preferences, optional diagnostic builds, and always-on
+  operational accounting. Neither solver change has started.
   Build it with `make docs-next`; preview it with `make docs-next-serve` on
   port 8001. No page is accepted and no book replacement has occurred.
 - **Verification:** the first manual batch passed 11 manual checks, 41 CTest

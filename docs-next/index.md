@@ -97,6 +97,12 @@ survey, including the need to measure CaDiCaL's existing reason retention.
 The related [safe-forgetting lead](leads/theory-lemma-forgetting.md) separates
 logical redundancy from reason lifetime and termination across restarts.
 
+[Polarity-aware CNF](papers/polarity-aware-cnf.md) records the directional
+definitions permitted by Plaisted–Greenbaum and their SMT references.
+General PG encoding remains open work. The
+[statistics instrumentation lead](leads/statistics-instrumentation.md) proposes
+typed counters and optional diagnostics while preserving solver-control state.
+
 During review, `make docs-next-serve` serves this draft at
 `http://localhost:8001`; `make docs-serve` serves the existing book at
 `http://localhost:8000`. These are local previews. No website is published by

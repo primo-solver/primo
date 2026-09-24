@@ -4,6 +4,10 @@ This page records a rejected Boolean clausification prototype and the invariant
 it clarified. Primo does not currently provide a root-polarity clausification
 option.
 
+The separate [polarity-aware CNF survey](papers/polarity-aware-cnf.md) records
+general Plaisted–Greenbaum conversion and its SMT literature. That remains
+an open lead; rejection of the root-only experiment below does not evaluate it.
+
 ## Assertion semantics
 
 At `check-sat`, all active SMT-LIB assertions denote one implicit conjunction.

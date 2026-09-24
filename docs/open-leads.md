@@ -11,6 +11,20 @@ Keep stable lead labels and evidence links when a lead changes state.
 
 ## Project and tooling leads
 
+- **Statistics instrumentation:** inspect hot-loop counters, string-key
+  lookups, timers, and diagnostic-only traversals. The design preference is
+  typed counter IDs with names resolved for reporting; string-key diagnostics
+  must be compiled out of production. The draft
+  `docs-next/leads/statistics-instrumentation.md` proposes an explicit build
+  setting independent of Release, while retaining operational counts such as
+  `TheoryConflicts`, which enforces a resource budget. Status: open; owner
+  unassigned; no switch implemented or overhead measured.
+- **Polarity-aware CNF:** [](papers/polarity-aware-cnf.md) records general
+  Plaisted–Greenbaum encoding and direct SMT literature. Emit only the
+  implication directions justified by all uses, with incremental upgrades and
+  exact values at theory/model boundaries. Current nested definitions remain
+  full; the rejected root-only prototype was a different experiment. Status:
+  open; owner unassigned; implementation and performance evaluation deferred.
 - **SAT literal/variable-ID exhaustion:** low-priority correctness hardening;
   no overflow observed in the documentation review. `sat::Lit` is signed
   32-bit, and `CadicalBackend::new_observed_var()` computes a new ID with an

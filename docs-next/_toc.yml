@@ -13,11 +13,13 @@ parts:
     chapters:
       - file: papers/yices
       - file: papers/clause-forgetting
+      - file: papers/polarity-aware-cnf
   - caption: Open work
     chapters:
       - file: leads/library-api
       - file: leads/incremental-memory
       - file: leads/term-storage
+      - file: leads/statistics-instrumentation
       - file: leads/theory-lemmas
       - file: leads/theory-lemma-forgetting
   - caption: Reviewing this draft

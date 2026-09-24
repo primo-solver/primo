@@ -286,6 +286,38 @@ open hardening item, with no observed overflow, capacity stress run, code fix,
 or completed boundary tests. Both book builds and source/local-link checks
 cover the documentation change; the implementation remains deferred.
 
+## Directional CNF and statistics review
+
+The 2026-09-24 follow-up adds a shared
+[polarity-aware CNF note](papers/polarity-aware-cnf.md), with precise reading
+scope and an explicit access gap for the original 1986 paper. Algorithmic
+claims use the accessible 2025 primary SMT paper; the original first-order
+translation is not claimed reviewed. Reading-copy SHA-256 values:
+
+```text
+arXiv-2303.14971v7.pdf  007fd0b665579bea739c7e2fa0c2d835f2d1b1171716dc55f09107378f3fe2bf
+SMTInterpol-2023.pdf   33da7a2b387a04722d2b888c5d573d160ab63ff3dd4040185fe995a02e41366f
+```
+
+The canonical page is `docs/papers/polarity-aware-cnf.md`, included by the draft
+wrapper. Relocate it at book cutover, as for the other shared literature notes.
+The chapter's current full definitions were checked against the clausifier;
+the positive-only and negative-only examples were exhaustively checked over
+their original atoms with existential projection of the auxiliary.
+
+The [statistics lead](leads/statistics-instrumentation.md) records source
+inspection of typed/string updates, local EUF counters, timers, diagnostic
+traversals, CLI printing, and conflict-budget consumers. It is an initial
+audit and design preference, not an implemented switch, whole-tree
+classification, or performance measurement. String-key diagnostics should be
+absent from production; operational accounting
+must remain. Public library layout and counter availability remain design work.
+
+Verification covers both strict book builds, source links, local HTML targets,
+shared note rendering, navigation/ledger coverage, and baseline compatibility.
+No solver code changed; solver tests, fuzzing, ASan, and clang-tidy are not
+rerun for these documentation additions. User review remains pending.
+
 ## Replacing the old book
 
 The preserved baseline is tagged `docs-before-restructure-2026-09-24`; the tag

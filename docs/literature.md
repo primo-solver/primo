@@ -31,6 +31,19 @@ Safe forgetting is an open investigation in
 `docs-next/leads/theory-lemma-forgetting.md`, alongside lemma retention and
 incremental-memory work. No deletion policy has been selected or implemented.
 
+## Polarity-aware CNF and SMT
+
+[](papers/polarity-aware-cnf.md) records the positive-only `v → F` and
+negative-only `F → v` definitions of Plaisted–Greenbaum conversion. It cites
+Masina–Spallitta–Sebastiani's JAIR 2025 SAT/SMT enumeration paper and
+SMTInterpol's primary documentation. The original 1986 reference is listed
+with its full-text access gap, not represented as read.
+
+Primo's current nested definitions remain bidirectional. General PG is an
+open lead with incremental direction upgrades and exact Boolean-value
+obligations; atom-polarity flags and the rejected root-only prototype do not
+implement it. Enumeration results are not decision-solving performance evidence.
+
 ## Lexical specification and external parser audit
 
 [](lexical-conformance.md) records the SMT-LIB 2.7 Sections 3.1–3.3 and binder

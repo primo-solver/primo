@@ -47,6 +47,16 @@ deletion heuristics experimentally. These are not interchangeable forms of
 evidence, and none establishes a safe or faster policy for Primo without an
 adapter/lifetime/progress audit.
 
+## Polarity-aware CNF in SMT (2023, 2025)
+
+The [directional-CNF note](polarity-aware-cnf.md) records the sections read on
+2026-09-24 from Masina, Spallitta, and Sebastiani's JAIR 2025 paper, plus
+SMTInterpol's 2023 description and official CNF proof explanation. The former
+gives the polarity rules, projected-model guarantee, and a distinct NNF variant
+for enumeration; the latter confirms direct use in SMT. The original 1986
+Plaisted–Greenbaum paper is bibliography-only here because full-text access
+failed. General PG and its incremental/model integration remain open in Primo.
+
 (lu-smt-select)=
 ## Lu et al., "Learning SMT Algorithm Selection with High-Level Natural-Language Descriptions" (2026)
 

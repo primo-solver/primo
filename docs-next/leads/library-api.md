@@ -16,6 +16,11 @@ is a small related hardening task: allocation exhaustion and invalid literal
 values need a controlled API failure, with no signed overflow or process abort.
 It does not require a wider literal representation by itself.
 
+The [statistics instrumentation lead](statistics-instrumentation.md) proposes
+typed counters and a build-time boundary for optional diagnostics. Library
+builds must preserve resource-limit accounting and a consistent public layout;
+unavailable diagnostics need an explicit API contract.
+
 ## Starting points in the code
 
 - The {source}`CMake library targets <CMakeLists.txt#L187-L240>` already separate
