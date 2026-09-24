@@ -77,6 +77,10 @@ The related [incremental-memory lead](leads/incremental-memory.md) will
 investigate high memory use, storage reclamation, and whether reference-counted
 term handles are needed.
 
+[Compact term storage](leads/term-storage.md) is a separate open lead: compare
+payload representations and account for future leaf data. The current layout
+remains in use; implementation is deferred.
+
 Possible solver extensions and research ideas remain in the existing book's
 open-leads register. They are candidates for investigation, not commitments or
 implemented features. The rewrite will give them a separate index and preserve

@@ -65,7 +65,8 @@ belongs to the current documentation branch. No page is accepted yet.
 4. [Core representation](implementation/core.md): are identity, borrowing,
    constructor simplification, and storage retention clear enough to use safely?
 5. [Library API](leads/library-api.md) and
-   [incremental memory](leads/incremental-memory.md): do the work items capture
+   [incremental memory](leads/incremental-memory.md), together with
+   [compact term storage](leads/term-storage.md): do the work items capture
    the intended direction, available evidence, and unresolved design questions?
    Reviewing these leads does not complete their investigations.
 

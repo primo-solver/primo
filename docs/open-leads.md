@@ -25,6 +25,12 @@ Keep stable lead labels and evidence links when a lead changes state.
   reference counting or another policy. The lead links Z3/cvc5 reference-counting
   precedents and records incremental GC's root-tracking, lifetime, and pause
   risks. Status: open; owner unassigned; investigation not started.
+- **Compact term storage and future payloads:** `docs-next/leads/term-storage.md`
+  records the union/variant question, duplicated interning data, and how new
+  leaf payloads could enlarge every node or complicate ownership. The local
+  layout probe is preserved with the draft; it is not a solver performance
+  result. Keep the current representation while the design is open.
+  Status: open; owner unassigned; implementation deferred.
 - **Benchmark storage tooling:** [](benchmark-record-storage.md) records the
   agreed Git-records/generated-SQLite direction; implementation remains pending.
   Assign an owner and build the record schema, validator, legacy importer, and

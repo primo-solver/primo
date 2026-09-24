@@ -29,6 +29,11 @@ Library embedding and incremental memory are separate open-work pages. Their
 investigations remain pending; documenting the current core does not choose a
 new public API or reclamation design.
 
+The compact-term-storage lead separately records union/variant layout probes,
+duplicated interning data, and future leaf-payload constraints. The current
+representation remains in use; implementation and solver measurements are
+deferred.
+
 The architecture draft now includes a code-grounded query-flow map and an
 explanatory SAT/theory loop adapted from the supplied TikZ sketch. Editable
 sources and HTML-ready SVG exports live in `docs-next/`; figure regeneration

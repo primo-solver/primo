@@ -140,6 +140,7 @@ parts:
         sections:
           - file: leads/library-api
           - file: leads/incremental-memory
+          - file: leads/term-storage
           - file: leads/difference-logic
           - file: leads/euf-disequality-propagation
           - file: leads/lead-aep

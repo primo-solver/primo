@@ -12,6 +12,7 @@ parts:
     chapters:
       - file: leads/library-api
       - file: leads/incremental-memory
+      - file: leads/term-storage
   - caption: Reviewing this draft
     chapters:
       - file: review

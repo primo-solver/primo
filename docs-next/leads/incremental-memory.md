@@ -11,6 +11,9 @@ measurement. Reference counting is a candidate, not a selected design.
 
 The [core chapter](../implementation/core.md) explains the storage and lifetime
 contracts that this investigation may need to change.
+The separate [compact term storage lead](term-storage.md) covers bytes per
+node, duplicated interning payloads, and future leaf data. A more compact node
+would not by itself reclaim terms retained by an incremental session.
 
 The {source}`historical QF_UF session evaluation <docs/assumption-incremental-uf.md>`
 at `fa2fe5c` records peak solver RSS of 898 MiB in assumptions mode and 990 MiB

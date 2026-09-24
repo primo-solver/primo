@@ -73,6 +73,8 @@ Branch: `docs/public-repository-migration`.
   storage, local construction, borrowed references, and session lifetimes.
   The architecture overview now includes a query-flow map and a simplified
   SAT/theory loop, with maintained TikZ sources and SVGs for the HTML book.
+  A separate compact-term-storage lead records preliminary layout sizes and
+  future leaf-payload questions; solver implementation remains deferred.
   Build it with `make docs-next`; preview it with `make docs-next-serve` on
   port 8001. No page is accepted and no book replacement has occurred.
 - **Verification:** the first manual batch passed 11 manual checks, 41 CTest

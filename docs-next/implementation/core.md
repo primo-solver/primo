@@ -188,6 +188,10 @@ lists and rational payloads in both records. Memory estimates must include
 nodes, edges, keys, container capacity, and numeric payload storage. Counting
 only `sizeof(Term)` per node misses part of that cost.
 
+[Compact term storage](../leads/term-storage.md) tracks possible union or
+separate-payload representations, including the effect of future leaf types.
+The existing record layout remains in use; that redesign is deferred.
+
 ## Queries, pop, and reset
 
 The term manager has no per-term release, tracing collector, or scope-pop
