@@ -468,3 +468,22 @@ used `<variant>` include in `instance_simplifier_tests.cpp`. No new diagnostic
 was introduced. The source change adds no scans or instrumentation; this is a
 correctness repair, with no performance/default-promotion claim. Baseline
 static-analysis cleanup and assignment-owner consolidation remain separate.
+
+
+Fresh merge-gate evidence is recorded in `docs/run-log.json`, entry
+`2026-09-24-euf-assignment-rollback-ac2aaaf`. The release binary built from
+`ac2aaaf` passed 1,000 QF_UF FuzzSMT cases against Z3/cvc5, 1,000 mixed QF_UFLRA
+cases against Z3 with online EUF enabled, and 1,000 QF_UFLIA component cases
+against Z3/cvc5. All use seed 20260924 and five-second process timeouts, with
+preprocessing disabled and online EUF propagation selected. There were no
+wrong answers, crashes, parser/type errors, timeouts, unsupported cases, unknown
+answers, or reference disagreements. All generated inputs and CSV summaries
+remain in `fuzz-results/euf-rollback-20260924-ac2aaaf/`; exact commands, versions,
+binary and summary hashes, resource limits, and local artifact status are in
+the ledger. This is answer comparison, not independent printed-model validation
+or a performance/default-promotion campaign.
+
+Both books now pin source links centrally to the repair commit; the 37
+solver-engine line ranges were advanced against its diff and checked. Other
+chapter source bodies are unchanged from the prior audit. The earlier dated
+reviews retain their original source/evidence revisions.

@@ -17,7 +17,7 @@ or speedup has been measured.
 | {source}`Ackermann cost diagnostics <src/smt/solver_engines.cpp#L403-L482>` | A dedicated traversal allocates scratch storage and groups applications to compute counters. A useful disabled mode must omit diagnostic computation, not just its output. |
 | {source}`CLI statistics printing <src/main.cpp#L87-L119>` | `--stats` controls printing. It does not disable the instrumentation that produced the result. |
 | {source}`SolveTerminator::terminate <src/smt/solver_runtime.cpp#L12-L27>` | Reads `StatKey::TheoryConflicts` to enforce a resource limit. This count is operational state and must survive disabling diagnostics. |
-| {source}`EUF scheduling <src/smt/solver_engines.cpp#L2313-L2321>` | Reads `EufPropagationRounds` to decide whether to run propagation. The DPLL(T) audit confirms that adaptive scheduling state also lives in the statistics store. |
+| {source}`EUF scheduling <src/smt/solver_engines.cpp#L2310-L2318>` | Reads `EufPropagationRounds` to decide whether to run propagation. The DPLL(T) audit confirms that adaptive scheduling state also lives in the statistics store. |
 
 The conflict budget also controls when the
 {source}`QF_UF session portfolio <src/smt/session_portfolio.cpp#L19-L48>` falls

@@ -3,6 +3,183 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-24-euf-assignment-rollback-ac2aaaf",
+      "date": "2026-09-24",
+      "commit": "ac2aaaf2894207047cdd5468b3ccad1a6436d3a5",
+      "branch": "docs/public-repository-migration",
+      "kind": "correctness-regression-and-fuzz",
+      "scope": "Repair OnlineEufPropagator decision-boundary indexing; preserve root and retained-level assignment markers. Shared assignment ownership remains deferred. No algorithm/default/performance promotion.",
+      "environment": {
+        "host": "mikolas-ThinkPad-T14s-Gen-5",
+        "platform": "Linux-7.0.0-31-generic-x86_64-with-glibc2.39",
+        "execution": "local; three independent generator drivers; one solver process at a time per driver",
+        "limits": {
+          "timeout_seconds_per_solver_process": 5,
+          "memory_limit": "none explicitly imposed"
+        },
+        "binary_sha256": "e8908704cde1b076f994517e6b58c18e72229c3ef8b290fe3b31772f109675e8",
+        "z3": "Z3 version 5.0.0 - 64 bit",
+        "cvc5": "cvc5 1.3.4 [git f3b21c4 on branch HEAD]",
+        "fuzzsmt_jar_sha256": "89f887283d409842ebb19af6fce7a33a1b4a6c006746801b98ca8d716a3b0552",
+        "build": "Release; CaDiCaL 3.0.0 7b99c07; clean committed build of ac2aaaf; subsequent changes are documentation only"
+      },
+      "regression": {
+        "baseline": "b0a1072 with the new test file and CMake target; existing solver source unchanged",
+        "before": "Three deterministic groups fail: root assignments, retained level, empty levels/repeated backtracks. Conflict explanations and reassignment/exported-model-fact groups pass. No incorrect SAT/UNSAT answer reproduced.",
+        "after": "All five groups pass. Explanations checked independently over all 5^5 interpretations of five constants and against current assignments. The mixed QF_UFLRA rejected-candidate-merge test now requests and validates a model and requires zero recovery assignments, replacing its previous positive counter expectation.",
+        "before_log": "fuzz-results/euf-rollback-20260924-ac2aaaf/callback-before.log",
+        "after_log": "fuzz-results/euf-rollback-20260924-ac2aaaf/callback-after.log",
+        "tests": [
+          "tests/unit/euf_callback_tests.cpp",
+          "tests/unit/qf_lra_solver_tests.cpp:qf_uf_lra_live_euf_model_rolls_back_rejected_candidate_merges",
+          "benchmarks/smoke/qf_uf/euf_retained_equalities_unsat.smt2"
+        ]
+      },
+      "verification": {
+        "make check": "PASS: 42 CTest suites, 188 Python tests, lint/format",
+        "make asan-test": "PASS: 42 suites with detect_leaks=1:strict_init_order=1; focused callback executable rebuilt and rerun under ASan after direct-include cleanup",
+        "make docs; make docs-next": "PASS before source commit and after the adjacent evidence/source-link update; 319 source links validated, local HTML checked, 83 baseline pages and 1223 HTML IDs preserved",
+        "make tidy": "124 tracked source/test translation units; 19 diagnostics identical to prior baseline: 18 unchanged option-name enum-cast diagnostics, one external CLI11 potential-leak diagnostic",
+        "make include-cleaner": "390 advisories identical to prior baseline; 22 unused-header suggestions inspected (21 paired self-includes and actually used variant include); no newly introduced diagnostics",
+        "code_review": "No blocking issue in focused repair; pre-existing static-analysis cleanup and assignment-owner consolidation remain deferred"
+      },
+      "smoke": {
+        "input": "benchmarks/smoke/qf_uf/euf_retained_equalities_unsat.smt2",
+        "expected": "unsat",
+        "command_template": "./build/primo --quiet <profile> benchmarks/smoke/qf_uf/euf_retained_equalities_unsat.smt2",
+        "profiles": [
+          "defaults",
+          "--preprocessing-mode=off --euf-prop=online",
+          "--preprocessing-mode=off --euf-prop=conflict",
+          "--preprocessing-mode=off --euf-engine=lazy --euf-prop=off",
+          "--preprocessing-mode=off --incremental-mode=assumptions --euf-prop=online"
+        ],
+        "references": [
+          "z3 benchmarks/smoke/qf_uf/euf_retained_equalities_unsat.smt2",
+          "cvc5 benchmarks/smoke/qf_uf/euf_retained_equalities_unsat.smt2"
+        ],
+        "result": "All agree; no prescribed SAT decision sequence"
+      },
+      "runs": [
+        {
+          "logic": "QF_UF",
+          "generator": "FuzzSMT 0.3",
+          "generator_commit": "ac2aaaf2894207047cdd5468b3ccad1a6436d3a5",
+          "seed": 20260924,
+          "count": 1000,
+          "command": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver './build/primo --quiet --preprocessing-mode=off --euf-prop=online' --refs z3 cvc5 --logic QF_UF --count 1000 --seed 20260924 --timeout 5 --fuzzer-args '-ms 1 -Ms 2 -mv 2 -Mv 5 -mf 3 -mp 3 -ma 1 -Ma 3' --out fuzz-results/euf-rollback-20260924-ac2aaaf/qf-uf",
+          "reference_commands": [
+            "z3 <case>",
+            "cvc5 <case>"
+          ],
+          "timeout_seconds_per_solver_process": 5,
+          "artifact_directory": "fuzz-results/euf-rollback-20260924-ac2aaaf/qf-uf",
+          "summary_csv": "fuzz-results/euf-rollback-20260924-ac2aaaf/qf-uf/summary.csv",
+          "summary_sha256": "03a73c753d899d5607fa331a7a26bb2b87fa80266b6a1b6bd9ad98c27917279d",
+          "answers": {
+            "sat": 908,
+            "unsat": 92
+          },
+          "counts": {
+            "pass": 1000,
+            "wrong_answer": 0,
+            "crash": 0,
+            "parser_or_type_error": 0,
+            "timeout": 0,
+            "unsupported": 0,
+            "reference_disagreement": 0,
+            "unknown": 0
+          },
+          "exit_code": 0
+        },
+        {
+          "logic": "QF_UFLRA",
+          "generator": "Primo original scripts/qf_uflra_smoke_fuzz.py",
+          "generator_commit": "ac2aaaf2894207047cdd5468b3ccad1a6436d3a5",
+          "seed": 20260924,
+          "count": 1000,
+          "command": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/qf_uflra_smoke_fuzz.py --solver ./build/primo --ref z3 --count 1000 --seed 20260924 --timeout 5 --shape mixed --solver-arg=--quiet --solver-arg=--preprocessing-mode=off --solver-arg=--qf-uflra-online-euf --solver-arg=--euf-prop=online --out fuzz-results/euf-rollback-20260924-ac2aaaf/qf-uflra",
+          "reference_commands": [
+            "z3 <case>"
+          ],
+          "timeout_seconds_per_solver_process": 5,
+          "artifact_directory": "fuzz-results/euf-rollback-20260924-ac2aaaf/qf-uflra",
+          "summary_csv": "fuzz-results/euf-rollback-20260924-ac2aaaf/qf-uflra/summary.csv",
+          "summary_sha256": "29460decd909fa68e8e85c08d03df0c658a4f59b6a66d184bb29b302386385bc",
+          "answers": {
+            "unsat": 432,
+            "sat": 568
+          },
+          "counts": {
+            "pass": 1000,
+            "wrong_answer": 0,
+            "crash": 0,
+            "parser_or_type_error": 0,
+            "timeout": 0,
+            "unsupported": 0,
+            "reference_disagreement": 0,
+            "unknown": 0
+          },
+          "exit_code": 0
+        },
+        {
+          "logic": "QF_UFLIA",
+          "generator": "Primo original scripts/qf_uflia_fuzz.py",
+          "generator_commit": "ac2aaaf2894207047cdd5468b3ccad1a6436d3a5",
+          "seed": 20260924,
+          "count": 1000,
+          "command": "PATH=\"/workspace/contrib/local/bin:$PATH\" python3 scripts/qf_uflia_fuzz.py --solver ./build/primo --ref z3 --ref cvc5 --count 1000 --seed 20260924 --timeout 5 --shape mixed --solver-arg=--quiet --solver-arg=--preprocessing-mode=off --solver-arg=--euf-prop=online --out fuzz-results/euf-rollback-20260924-ac2aaaf/qf-uflia",
+          "reference_commands": [
+            "z3 <case>",
+            "cvc5 <case>"
+          ],
+          "timeout_seconds_per_solver_process": 5,
+          "artifact_directory": "fuzz-results/euf-rollback-20260924-ac2aaaf/qf-uflia",
+          "summary_csv": "fuzz-results/euf-rollback-20260924-ac2aaaf/qf-uflia/summary.csv",
+          "summary_sha256": "0514337a316d13ff16bf126dc67980335b0ee774c463623d940758deb1d41a84",
+          "answers": {
+            "unsat": 501,
+            "sat": 499
+          },
+          "counts": {
+            "pass": 1000,
+            "wrong_answer": 0,
+            "crash": 0,
+            "parser_or_type_error": 0,
+            "timeout": 0,
+            "unsupported": 0,
+            "reference_disagreement": 0,
+            "unknown": 0
+          },
+          "exit_code": 0
+        }
+      ],
+      "aggregate": {
+        "generated_cases": 3000,
+        "pass": 3000,
+        "wrong_answer": 0,
+        "crash": 0,
+        "parser_or_type_error": 0,
+        "timeout": 0,
+        "unsupported": 0,
+        "reference_disagreement": 0,
+        "unknown": 0
+      },
+      "artifacts": {
+        "directory": "fuzz-results/euf-rollback-20260924-ac2aaaf",
+        "metadata": "fuzz-results/euf-rollback-20260924-ac2aaaf/metadata.json",
+        "metadata_sha256": "5e6c12d4c32852ed1eea7ab342fcb0635be08ca25a46c8d910b684e50b1b3c5e",
+        "retention": "All 3000 generated cases and summaries retained locally under ignored fuzz-results; commands, counts and hashes committed in this ledger. No external archive/publication."
+      },
+      "limitations": [
+        "Answer-comparison fuzzing does not independently validate printed SAT models; the strengthened mixed unit regression uses Primo typed-model validation.",
+        "Direct callback tests do not deterministically exercise borrowed-model-scope deferred notifications or every combined-theory schedule.",
+        "No real-corpus performance comparison, mutation campaign, or default-promotion claim.",
+        "The reproduced regression is lost propagation, not a demonstrated wrong SAT/UNSAT answer."
+      ],
+      "evidence_status": "current"
+    },
+    {
       "id": "2026-09-15-quantifiers-merge-into-main",
       "date": "2026-09-15",
       "commit": "90ac7e9",

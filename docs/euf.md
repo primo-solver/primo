@@ -10,7 +10,7 @@ rollback. See [the regression and its limits](#callback-assignment-rollback).
 
 ## Callback assignment rollback
 
-`OnlineEufPropagator` in `src/smt/solver_engines.cpp` owns the assignment array,
+{source}`OnlineEufPropagator <src/smt/solver_engines.cpp#L1796-L1825>` owns the assignment array,
 an observed-literal trail, and a vector of decision boundaries. These are
 distinct from `IncrementalFlatAssignmentState`'s assignment records and closure
 checkpoints. Each new decision appends the current trail size: entry `k` is
@@ -30,7 +30,8 @@ no new theory literal arrives. This change adds no new congruence-closure
 algorithm or ownership transfer.
 
 Before the correction, an extra initial zero boundary shifted the callback's
-indexing. `tests/unit/euf_callback_tests.cpp` drives the production callback
+indexing. The {source}`callback regression <tests/unit/euf_callback_tests.cpp>`
+drives the production callback
 through the existing `make_uf_euf_component` factory and `TheoryComponent`
 interface. Three traces failed on the old code: propagation depending on root
 facts, on a retained decision level, and after empty levels/repeated backtracks.
@@ -54,6 +55,12 @@ is a separate end-to-end regression; its SAT decision sequence is unspecified.
 The deterministic tests do not directly cover deferred callbacks during a
 borrowed model scope or all combined-theory schedules. Shared assignment
 bookkeeping remains an [open lead](open-leads.md#project-and-tooling-leads).
+
+The qualification entry `2026-09-24-euf-assignment-rollback-ac2aaaf` in
+`docs/run-log.json` records passing normal/ASan suites and 3,000 fresh generated
+answer comparisons across QF_UF, QF_UFLRA, and QF_UFLIA. It records exact commands,
+provenance, and the limits of that evidence; it is not a performance claim.
+
 
 ## Current Solver Path
 

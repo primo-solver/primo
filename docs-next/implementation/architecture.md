@@ -138,11 +138,11 @@ quantifier chapter.
 
 Mixed solving must also establish agreement between components. The production
 `QF_UFLIA` engine enters
-{source}`solve_component_recipe <src/smt/solver_engines.cpp#L10382-L10414>`;
+{source}`solve_component_recipe <src/smt/solver_engines.cpp#L10381-L10413>`;
 component capabilities and model fragments are described by
 {source}`TheoryComponent's interface types <src/theory/theory_component.hpp>`.
 `QF_UFLRA` retains a
-{source}`dedicated engine <src/smt/solver_engines.cpp#L10957-L10977>`.
+{source}`dedicated engine <src/smt/solver_engines.cpp#L10956-L10976>`.
 These routes must not be described as one uniform implementation merely because
 both combine uninterpreted functions with arithmetic.
 

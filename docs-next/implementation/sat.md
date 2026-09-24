@@ -173,7 +173,7 @@ for both-polarity theory relevance. This reuses their existing literal when
 present; an argument not previously encoded still needs its first SAT variable.
 The {source}`alternative bridge encoding <src/smt/clausifier.cpp#L196-L231>`
 adds explicit equality atoms and clauses. The
-{source}`mode dispatch <src/smt/solver_engines.cpp#L10522-L10533>` selects these
+{source}`mode dispatch <src/smt/solver_engines.cpp#L10521-L10532>` selects these
 mechanisms; their EUF reasoning is separate chapter work.
 
 ## Worked example: one nested conjunction
@@ -225,10 +225,10 @@ literal safe to reuse under either polarity; a one-way implication alone
 would not guarantee that equivalence.
 
 The opt-in assumptions engines implement scopes on top of this SAT interface.
-For example, {source}`IncrementalUfEngine <src/smt/solver_engines.cpp#L12307-L12349>`
+For example, {source}`IncrementalUfEngine <src/smt/solver_engines.cpp#L12306-L12348>`
 creates a selector when a scope first gains an assertion and permanently adds
 `¬s` when that scope is popped. Its
-{source}`query loop <src/smt/solver_engines.cpp#L12390-L12420>` resubmits active
+{source}`query loop <src/smt/solver_engines.cpp#L12389-L12419>` resubmits active
 selectors on every solve, including theory-refinement retries. No clause or
 term deletion follows from this scheme. Default rebuild sessions have a
 different owner lifetime, as explained in the [architecture chapter](architecture.md).

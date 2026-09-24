@@ -26,7 +26,7 @@ adaptation around this boundary.
 | SAT trail and clause database | CaDiCaL behind {source}`CadicalBackend <src/sat/cadical_backend.hpp>`. Neither SAT literals nor the backend contain core terms. |
 | Meaning of SAT variables | {source}`BooleanClausifier <src/smt/clausifier.hpp#L20-L57>` owns the atom registry and term-to-literal map, borrowing the backend and term manager. |
 | Dedicated EUF callback state | {source}`OnlineEufPropagator <src/smt/solver_engines.cpp#L1638-L1690>` borrows the atom vector, terms, options, and statistics; owns assignment/index arrays, trail boundaries, candidate queues, reasons, and optional incremental closure state. |
-| Dedicated arithmetic callback state | {source}`OnlineLraPropagator <src/smt/solver_engines.cpp#L7067-L7108>` owns a mutable tableau copied from prepared structural state, assignment markers, checkpoints, queues, and reasons; borrows the prepared data, atom vector, backend, and statistics. |
+| Dedicated arithmetic callback state | {source}`OnlineLraPropagator <src/smt/solver_engines.cpp#L7066-L7107>` owns a mutable tableau copied from prepared structural state, assignment markers, checkpoints, queues, and reasons; borrows the prepared data, atom vector, backend, and statistics. |
 | Component routing | {source}`ComponentDispatcher <src/smt/component_dispatcher.hpp#L23-L77>` owns variable routes, assignment deltas, a trail, stream cursors, and explanation clauses; it borrows component pointers. |
 | Component facts and outcomes | {source}`AssignedTheoryLiteral and TheoryCheckResult <src/theory/theory_solver.hpp>` carry a core atom, its SAT literal/value, clauses, consequences, model stamps, or a typed stop result. {source}`TheoryComponent <src/theory/theory_component.hpp#L88-L130>` owns theory-local execution behind this contract and receives no SAT backend handle. |
 
@@ -49,7 +49,7 @@ may be batched; a callback must reason over the notified trail, not assume a
 fresh independent model each time.
 
 1. **Receive assignments.** A signed integer reports which literal became
-   true. {source}`EUF routing <src/smt/solver_engines.cpp#L2071-L2103>` looks up
+   true. {source}`EUF routing <src/smt/solver_engines.cpp#L2068-L2100>` looks up
    its atom, records the assignment once, and updates the incremental state
    when present. {source}`ComponentDispatcher::notify_assignment
    <src/smt/component_dispatcher.cpp#L58-L88>` batches deltas by owner and marks
@@ -70,7 +70,7 @@ fresh independent model each time.
    propagation and selects the resulting backjump. Primo supplies theory
    reasons, not its own CDCL implementation.
 5. **Undo assignments.** EUF's {source}`apply_backtrack
-   <src/smt/solver_engines.cpp#L1803-L1828>` rolls back the removed suffix,
+   <src/smt/solver_engines.cpp#L1803-L1825>` rolls back the removed suffix,
    restores closure state, and clears pending candidates/conflicts. The
    {source}`component dispatcher <src/smt/component_dispatcher.cpp#L97-L125>`
    similarly removes non-retained assignments and their reasons, then pops
@@ -90,10 +90,11 @@ zero entry. At the first decision, `r` root literals therefore produced
 boundaries `{0, r}`; backtracking to zero cleared their assignment markers,
 while the closure's separate
 {source}`checkpoints <src/smt/solver_engines.cpp#L1365-L1393>` preserved the facts.
-The callback now starts with an empty boundary vector and keeps exactly
+The {source}`corrected callback <src/smt/solver_engines.cpp#L1796-L1825>`
+now starts with an empty boundary vector and keeps exactly
 `new_level` boundaries on rollback. Entry `k` marks the start of level `k+1`.
 
-Dedicated tests in `tests/unit/euf_callback_tests.cpp` drive the production
+Dedicated {source}`callback tests <tests/unit/euf_callback_tests.cpp>` drive the production
 callback through the existing EUF component adapter. Three traces reproduced
 lost transitive-equality propagation before the repair: root retention,
 retained-level retention, and repeated backtracks with empty observed levels.
@@ -141,11 +142,11 @@ them when building a SAT clause. Dedicated propagators instead retain clause
 tails already carrying the required signs. Confusing the two conventions
 would reverse the meaning of an explanation.
 
-{source}`EUF reason storage <src/smt/solver_engines.cpp#L2240-L2279>` checks
+{source}`EUF reason storage <src/smt/solver_engines.cpp#L2237-L2276>` checks
 that a candidate reason contains its conclusion exactly once and that its
 other literals are currently false and observed. This is a shape/trail check,
 not an independent proof of theory validity. The
-{source}`reason callback <src/smt/solver_engines.cpp#L1925-L1950>` streams the
+{source}`reason callback <src/smt/solver_engines.cpp#L1922-L1947>` streams the
 conclusion and clause tail, ending with zero. The component route similarly
 {source}`stores a reason before returning a propagation
 <src/smt/component_dispatcher.cpp#L207-L245>`.
@@ -159,7 +160,7 @@ from that same literal can create a cycle in conflict analysis.
 ### Reason lifetime is separate from clause retention
 
 A reason for a propagation that survives backtracking may still be requested.
-The {source}`LRA rollback <src/smt/solver_engines.cpp#L7116-L7142>` and component
+The {source}`LRA rollback <src/smt/solver_engines.cpp#L7115-L7141>` and component
 dispatcher erase reasons for assignments actually removed, preserving earlier
 ones. Pending, undelivered candidates may be discarded and rediscovered; live
 reasons are not interchangeable with that queue. The existing
@@ -167,8 +168,8 @@ reasons are not interchangeable with that queue. The existing
 <tests/unit/component_combination_tests.cpp#L526-L579>` checks this distinction.
 
 The dedicated {source}`EUF conflict callback
-<src/smt/solver_engines.cpp#L1952-L1976>` and
-{source}`LRA conflict callback <src/smt/solver_engines.cpp#L7345-L7355>` request
+<src/smt/solver_engines.cpp#L1949-L1973>` and
+{source}`LRA conflict callback <src/smt/solver_engines.cpp#L7344-L7354>` request
 non-forgettable external clauses in the API variant carrying that flag.
 In contrast, {source}`ComponentDispatcher::cb_has_external_clause
 <src/smt/component_dispatcher.cpp#L247-L255>` sets it to **true**. Do not describe
@@ -198,8 +199,8 @@ Use the actual {source}`CLI names <src/main.cpp#L630-L634>`:
 | Online component recipe | Route assignments and partial checks through `ComponentDispatcher` | Inspect pending lemmas/failures, then perform full component checks and shared-model reconciliation. |
 
 The owning loops are {source}`solve_qf_uf_engine_impl
-<src/smt/solver_engines.cpp#L10535-L10749>`,
-{source}`solve_qf_lra_impl <src/smt/solver_engines.cpp#L8321-L8462>`, and
+<src/smt/solver_engines.cpp#L10534-L10748>`,
+{source}`solve_qf_lra_impl <src/smt/solver_engines.cpp#L8320-L8461>`, and
 {source}`solve_component_recipe <src/smt/component_solver.cpp#L75-L467>`.
 “Lazy” above describes when the theory check runs; it does not describe lazy
 reason construction or scoped incremental sessions.
@@ -215,7 +216,7 @@ theory, combination, and result-construction obligations.
   blocking theory clause and another solve; absence of conflict permits the
   single-theory SAT result, with typed model construction when requested.
 - **Dedicated LRA:** {source}`cb_check_found_model
-  <src/smt/solver_engines.cpp#L7174-L7184>` returns true because this route
+  <src/smt/solver_engines.cpp#L7173-L7183>` returns true because this route
   relies on eager callback scheduling to finish deferred tableau repair before
   SAT acceptance. That is a coupling to the installed adapter/backend protocol,
   not a general rule that model callbacks need no checks. Switching to lazy
@@ -229,7 +230,7 @@ theory, combination, and result-construction obligations.
   then requests `FullModel` checks and verifies the selected arrangement/
   model-projection contract. Local consistency of each theory alone is
   insufficient.
-- **Other logics:** {source}`QF_UFLRA <src/smt/solver_engines.cpp#L10957-L10983>`
+- **Other logics:** {source}`QF_UFLRA <src/smt/solver_engines.cpp#L10956-L10982>`
   retains a dedicated combination driver. Integer search adds integrality and
   resource-limit obligations; quantified UF adds instantiation/completion
   obligations. Neither is explained by the ground-EUF example below.
@@ -278,7 +279,7 @@ Consider a branch choosing `p=true`. Boolean propagation gives `A`, `B`, and
 `f(a) = f(c)`, contradicting `¬C`. Its explanation is the theory-valid clause
 `¬A ∨ ¬B ∨ C`. In the dedicated online route, assignment notifications feed
 the closure, {source}`maybe_store_conflict
-<src/smt/solver_engines.cpp#L2557-L2568>` queues the explanation, and the
+<src/smt/solver_engines.cpp#L2554-L2565>` queues the explanation, and the
 external-clause callbacks stream it to CaDiCaL.
 
 One possible conflict-analysis derivation is:

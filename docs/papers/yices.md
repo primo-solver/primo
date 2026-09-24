@@ -69,7 +69,7 @@ it does not prove a better worst-case pair bound.
 | All-pairs cost diagnostics | **Implemented, diagnostic only.** `--euf-ackermann-diagnostics` estimates expansion costs; it does not install the reduction. See the {source}`diagnostic tests <tests/unit/boolean_solver_tests.cpp#L2147-L2200>`. |
 | SAT-visible candidate discovery | **Implemented, restricted.** {source}`build_dynamic_ackermann_candidate_index <src/smt/solver_engines.cpp#L964-L1047>` starts from an existing equality between same-symbol applications and requires SAT atoms for every argument equality. It skips missing atoms. |
 | Dynamic Ackermann shadow mode | **Implemented, diagnostic only.** `--euf-dynamic-ackermann-shadow` measures candidate states without adding the corresponding clauses. See {source}`shadow tests <tests/unit/boolean_solver_tests.cpp#L2202-L2274>`. |
-| Watched argument-disequality propagation | **Partially implements the paper idea.** Default-off `--euf-diseq-ackermann` queues existing candidates by affected SAT variables and uses the clause as a propagation reason or conflict. {source}`Watch construction <src/smt/solver_engines.cpp#L2160-L2224>` applies width/per-symbol caps; {source}`candidate evaluation <src/smt/solver_engines.cpp#L2448-L2560>` requires the result equality to be false. |
+| Watched argument-disequality propagation | **Partially implements the paper idea.** Default-off `--euf-diseq-ackermann` queues existing candidates by affected SAT variables and uses the clause as a propagation reason or conflict. {source}`Watch construction <src/smt/solver_engines.cpp#L2157-L2221>` applies width/per-symbol caps; {source}`candidate evaluation <src/smt/solver_engines.cpp#L2445-L2557>` requires the result equality to be false. |
 | Selecting congruence steps from conflicts, then retaining their clauses for reuse | **Deferred as a complete policy.** The existing candidate index and assignment queue are not the conflict-explanation selector described by the paper. Missing-atom creation for this mechanism and a deliberate deletion policy also remain design questions. |
 | Earlier scan-based dynamic clause experiment | **Not adopted; reverted.** `f83828f` introduced `--euf-dynamic-ackermann`; `160ce4e` reverted it. This old option is not the current `--euf-diseq-ackermann` mechanism. |
 
@@ -197,11 +197,11 @@ explanation and the clause learned from it.
 
 **Implemented interface/storage; selective Yices policy not established.**
 {source}`OnlineEufPropagator::store_reason
-<src/smt/solver_engines.cpp#L2262-L2308>` validates a clause against the current
+<src/smt/solver_engines.cpp#L2259-L2305>` validates a clause against the current
 assignment and retains its antecedents. Its {source}`reason callback
-<src/smt/solver_engines.cpp#L1925-L1950>` streams the propagated literal and
+<src/smt/solver_engines.cpp#L1922-L1947>` streams the propagated literal and
 antecedents when requested. The {source}`LRA reason callback
-<src/smt/solver_engines.cpp#L7265-L7297>` similarly streams stored reasons.
+<src/smt/solver_engines.cpp#L7264-L7296>` similarly streams stored reasons.
 Much of this explanation data is already constructed before the callback;
 having a callback is not proof of the fully deferred construction on slide 11.
 
@@ -217,7 +217,7 @@ default and a `reason_forgettable` parameter. Measure the effective backend
 configuration before claiming exactly when reasons can be deleted.
 
 For explicit external conflicts, the {source}`EUF callback
-<src/smt/solver_engines.cpp#L1952-L1976>` sets `is_forgettable = false` in the
+<src/smt/solver_engines.cpp#L1949-L1973>` sets `is_forgettable = false` in the
 API variant that carries this flag. Thus we must not describe Primo as
 discarding all theory clauses, nor add a second cache without establishing
 what the backend already keeps. The missing investigation is selection,
