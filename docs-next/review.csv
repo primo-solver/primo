@@ -3,5 +3,5 @@ index.md,Verified,ac0daf4,Source admission and entry-point links; first example;
 development/correctness.md,Verified,ac0daf4,Make targets and scripts inspected; policy comparison; source links; strict build,User review of gate clarity and contributor usability; no campaign rerun
 implementation/architecture.md,Verified,ac0daf4,Owning headers and control flow inspected; source and test links; strict build,User review of explanation and depth; detailed component algorithms remain separate work
 leads/library-api.md,Draft,ac0daf4,Initial build targets and interface pointers inspected,API and embedding audit not started; external-consumer prototype and user review pending
-leads/incremental-memory.md,Draft,ac0daf4,Term/session ownership and historical memory-report pointers inspected,Current memory reproduction and ownership design pending; no reference-counting decision
+leads/incremental-memory.md,Draft,ac0daf4,Term/session ownership and historical memory-report pointers inspected; official Z3/cvc5 reference-counting documentation checked,Current memory reproduction and ownership design pending; GC risks recorded; no reclamation design selected
 review.md,Verified,current docs branch,Book selection and previews; source-link convention; ledger coverage,User review of acceptance procedure; no page accepted

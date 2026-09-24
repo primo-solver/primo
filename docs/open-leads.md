@@ -22,8 +22,9 @@ Keep stable lead labels and evidence links when a lead changes state.
   records the open question of term/context ownership and reclamation for long
   sessions and the library API. Earlier QF_UF reports contain high RSS
   measurements; reproduce them and attribute retained storage before choosing
-  reference counting or another policy. Status: open; owner unassigned;
-  investigation not started.
+  reference counting or another policy. The lead links Z3/cvc5 reference-counting
+  precedents and records incremental GC's root-tracking, lifetime, and pause
+  risks. Status: open; owner unassigned; investigation not started.
 - **Benchmark storage tooling:** [](benchmark-record-storage.md) records the
   agreed Git-records/generated-SQLite direction; implementation remains pending.
   Assign an owner and build the record schema, validator, legacy importer, and

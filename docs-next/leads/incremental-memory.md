@@ -35,6 +35,36 @@ and reclaiming unused storage; it is not whether Primo uses any reference
 counting at all. Define that boundary together with the
 [library API](library-api.md).
 
+## Reference counting precedent and GC risks
+
+Z3 and cvc5 provide relevant reference-counting precedents:
+
+- Z3's `Z3_mk_context_rc` API uses explicit AST retain/release operations.
+  Its API also offers a context-lifetime mode for ASTs. See the
+  [Z3 context and AST reference-counting documentation](https://z3prover.github.io/api/html/group__capi.html).
+- cvc5 documents owning `Node` handles that maintain reference counts and
+  non-owning `TNode` handles. Nodes with no remaining owners become eligible
+  for reclamation, which may be deferred and batched. See the
+  [cvc5 developer guide](https://github.com/cvc5/cvc5/wiki/Developer-Guide#dealing-with-expressions-nodes-and-tnodes).
+
+These are comparison points for the investigation. Primo's ownership contract
+and implementation must follow its own design and measurements. Reference
+counting and the timing of reclamation are separate decisions.
+
+Tracing garbage collection during incremental sessions is another candidate,
+with substantial design risk. Even collection between queries needs a complete
+account of live roots beyond the active assertions: external handles, retained
+SAT/theory mappings, explanations and backtracking state, reconstruction data,
+and caches. Collection must coordinate hash-cons cleanup and ID validity with
+those owners. A compacting collector would additionally need to preserve or
+update every live reference when moving storage.
+
+The design must identify safe collection points, specify which callbacks or
+borrows can remain live, and bound collection pauses. Evaluate implementation
+and maintenance cost as well as reclaimed memory. GC for incremental sessions
+remains an open alternative; no collector or reference-counting scheme is
+selected.
+
 ## First investigation
 
 - Reproduce high-memory sessions on the candidate build, recording exact input,
