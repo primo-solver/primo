@@ -36,6 +36,11 @@ Propagation options affect the schedule; they do not remove mandatory final
 consistency or combination checks. The diagnostic lazy EUF engine remains
 available with `--euf-engine=lazy`.
 
+The [EUF callback regression](euf.md#callback-assignment-rollback) records the
+repair of a decision-boundary indexing mismatch that lost propagations after
+backtracking. Assignment-view consolidation is still an open lead; the repair
+keeps the existing callback ownership boundaries.
+
 The following is the final-check skeleton, not the complete callback protocol:
 
 ```text

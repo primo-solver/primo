@@ -241,13 +241,11 @@ queues, and the component dispatcher's forgettable clauses from protected
 dedicated EUF/LRA conflicts. No common retention policy is claimed.
 
 The code review identified a separate EUF marker/closure rollback mismatch:
-with `r` root literals, the marker boundaries become `{0, r}` at the first
-decision, so `apply_backtrack(0)` clears to zero rather than `r`. Closure
-checkpoints retain the root facts. The chapter and old-book open-leads register
-record the exact source and required lifecycle regression; no wrong answer or
-runtime impact is claimed, and no callback repair is included here. This limits
-the rollback claims that the documentation can make. It does not block removal
-of the unrelated unused scaffold.
+with `r` root literals, the marker boundaries became `{0, r}` at the first
+decision, so `apply_backtrack(0)` cleared to zero rather than `r`. The subsequent
+focused correctness investigation below reproduces lost propagation and
+repairs the indexing. The scaffold-removal verification above is historical;
+it does not itself qualify the later behavior change.
 
 `make tidy` completed over all 123 tracked source/test `.cpp` files remaining
 after removal. It reports 18 enum-cast diagnostics in the unchanged generic
@@ -417,3 +415,56 @@ links must have destinations. Test the clean-checkout and editable-archive
 workflows. Then replace `docs/` with the accepted tree and remove the temporary
 draft targets and duplicate assets. Until then, the two versions have separate
 previews and there is no publication or automatic cutover.
+
+
+## EUF callback rollback regression
+
+The new `primo_euf_callback_tests` suite uses the existing production EUF
+component factory, without exposing private state or depending on SAT decisions.
+On the code before repair, root retention, retained-level retention, and
+empty-level/repeated-backtrack cases fail with **lost equality propagation**.
+Conflict explanations and reassignment/exported-model-fact controls pass.
+The corrected decision-boundary convention passes all five groups. Every
+returned explanation is independently checked by exhaustive interpretations
+of the five fixture constants and against the notified literal assignment.
+No incorrect SAT/UNSAT answer was reproduced.
+
+The existing mixed QF_UFLRA rejected-candidate-merge regression is also
+strengthened to produce and validate a model. Its previous expectation of a
+positive model-callback recovery count depended on the lost markers; the
+corrected trace requires zero recovery assignments while retaining the closure
+reuse and compatibility-split checks. This is end-to-end coverage of model
+reconciliation, not a deterministic test of the deferred-callback queue.
+
+Reproduce the focused check with:
+
+```bash
+cmake --build build --target primo_euf_callback_tests
+ctest --test-dir build -R primo_euf_callback_tests --output-on-failure
+```
+
+`benchmarks/smoke/qf_uf/euf_retained_equalities_unsat.smt2` adds an end-to-end
+UNSAT input whose root equalities refute either disjunct. Its decision order is
+unspecified; it complements the deterministic callback tests. The consolidated
+assignment-view design remains an open lead. Direct tests of borrowed model
+scope callback deferral and every combined-theory schedule remain limitations.
+
+Regression verification: `make check` passes all 42 CTest suites and 188 Python
+tests, including formatting/lint; `make asan-test` passes all 42 suites with
+leak detection. Both strict books build, local links resolve, and all 83
+baseline pages/1223 HTML IDs are preserved. The new UNSAT smoke case agrees
+with Z3 and cvc5 under default, forced online, conflict-only, lazy, and
+assumptions profiles. Fresh fuzz qualification is recorded separately in the
+run ledger after the repair commit; these unit results alone are not a full
+solver correctness claim.
+
+The pre-commit code/documentation review found no blocking issue in the focused
+repair. `make tidy` scanned all 124 tracked source/test translation units: the
+19 emitted diagnostics match the previous baseline (18 enum-cast warnings in
+unchanged option-name tests and one external CLI11 potential-leak warning).
+`make include-cleaner` reported the same 390 advisories as the previous scan;
+its 22 unused-header suggestions are 21 paired self-includes and the actually
+used `<variant>` include in `instance_simplifier_tests.cpp`. No new diagnostic
+was introduced. The source change adds no scans or instrumentation; this is a
+correctness repair, with no performance/default-promotion claim. Baseline
+static-analysis cleanup and assignment-owner consolidation remain separate.

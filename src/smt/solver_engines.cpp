@@ -1810,10 +1810,7 @@ class OnlineEufPropagator final : public sat::ExternalPropagator {
       --assigned_var_count_;
       clear_pending_var(var);
     }
-    level_starts_.resize(std::min<std::size_t>(new_level + 1, level_starts_.size()));
-    if (level_starts_.empty()) {
-      level_starts_.push_back(0);
-    }
+    level_starts_.resize(std::min(new_level, level_starts_.size()));
     if (incremental_state_.has_value()) {
       incremental_state_->pop_to_level(new_level);
     }
@@ -2629,7 +2626,9 @@ class OnlineEufPropagator final : public sat::ExternalPropagator {
   std::size_t assigned_var_count_ = 0;
   bool generated_registration_valid_ = true;
   std::vector<int> trail_;
-  std::vector<std::size_t> level_starts_{0};
+  // IPASIR-UP Section 2.2: entry k starts level k+1, so backtrack(k)
+  // retains its prefix, including root assignments. No synthetic root entry.
+  std::vector<std::size_t> level_starts_;
   std::deque<int> pending_;
   std::vector<unsigned char> pending_vars_;
   std::deque<std::size_t> candidate_queue_;

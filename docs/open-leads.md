@@ -11,15 +11,28 @@ Keep stable lead labels and evidence links when a lead changes state.
 
 ## Project and tooling leads
 
-- **EUF callback assignment-marker rollback:** the DPLL(T) documentation audit
-  found that `OnlineEufPropagator::level_starts_` starts with `{0}`, appends
-  boundaries on new levels, and indexes `new_level` on rollback. Backtracking
-  to zero therefore clears even root assignment markers, while the closure's
-  separate checkpoints preserve root facts. Audit retained-level indices,
-  callback replay, propagation filtering, and model-scope eligibility; add a
-  focused lifecycle regression before changing behavior. Status: open;
-  source-level mismatch identified, runtime impact not established, no
-  reproduced wrong answer. Details: `docs-next/implementation/dpllt.md`.
+- **Shared SMT assignment bookkeeping:** consolidate the mirrored assignments,
+  literal trails, and decision-level boundaries in the dedicated EUF/LRA,
+  mixed, and component callback paths. SAT owns the authoritative Boolean
+  assignment, but the current adapter exposes notifications rather than a live
+  trail or a list of unassigned literals. Prefer one SMT-side owner with views
+  for consumers; investigate whether a backend-provided view could avoid that
+  mirror without coupling theory code to CaDiCaL. Theories still need their
+  own undo records for merges and bounds. Include the separate
+  `theory::ComponentAssignment` copy in this audit; `sat::Trail` and
+  `sat::TrailView` are currently empty scaffolds, not usable shared storage.
+  Specify notification timing, observed
+  variable subsets, deferred model-scope callbacks, reason lifetimes, and
+  retained sessions before refactoring. Status: open; consolidation deferred.
+  The focused EUF rollback regression below must protect this work.
+- **EUF callback assignment-marker rollback (repaired):** dedicated tests
+  reproduced lost transitive-equality propagation after root, retained-level,
+  and repeated backtracks. An extra initial boundary erased assignment markers
+  while closure checkpoints preserved facts. The callback now records one
+  boundary per decision and retains exactly `new_level` boundaries on rollback.
+  Conflict and exported-model-fact controls pass; no incorrect SAT/UNSAT answer
+  was reproduced. See [](euf.md#callback-assignment-rollback) for evidence and
+  remaining coverage limits. This is a repair, not the bookkeeping consolidation.
 - **Statistics instrumentation:** inspect hot-loop counters, string-key
   lookups, timers, and diagnostic-only traversals. The design preference is
   typed counter IDs with names resolved for reporting; string-key diagnostics

@@ -5,13 +5,55 @@ incremental Nieuwenhuis-Oliveras-style congruence-closure engine over flat
 terms. The older lazy EUF solver over `core::TermId` values is still available
 with `--euf-engine=lazy` for diagnostics.
 
-The DPLL(T) documentation audit identified an open assignment-marker rollback
-question in the dedicated online propagator: its extra initial trail boundary
-can clear root markers while the closure's own checkpoints retain root facts.
-See [](open-leads.md#project-and-tooling-leads) and the detailed source trace in
-`docs-next/implementation/dpllt.md`. Runtime impact and a focused lifecycle
-regression remain pending; the documentation example is not coverage of this
-internal synchronization invariant.
+The DPLL(T) documentation audit led to a focused correction of online assignment
+rollback. See [the regression and its limits](#callback-assignment-rollback).
+
+## Callback assignment rollback
+
+`OnlineEufPropagator` in `src/smt/solver_engines.cpp` owns the assignment array,
+an observed-literal trail, and a vector of decision boundaries. These are
+distinct from `IncrementalFlatAssignmentState`'s assignment records and closure
+checkpoints. Each new decision appends the current trail size: entry `k` is
+the start of level `k+1`. Backtracking to `k` retains the prefix ending at that
+entry and then keeps `k` boundaries. The vector starts empty, so backtracking
+to zero preserves assignments preceding the first decision. Boundary creation
+is amortized constant time; clearing assignment markers is linear in the
+discarded observed literals, separate from theory rollback and queue cleanup.
+
+This implements the notification contract of [IPASIR-UP](https://doi.org/10.4230/LIPIcs.SAT.2023.8), Section 2.2
+(Fazekas et al., SAT 2023), as exposed
+by the installed CaDiCaL vector notification API. The local design obligations
+are: preserve root and retained-level assignments; unassign discarded literals;
+keep reasons consistent with current assignments; and match the closure's
+retained facts. An unobserved SAT decision still creates a boundary, even when
+no new theory literal arrives. This change adds no new congruence-closure
+algorithm or ownership transfer.
+
+Before the correction, an extra initial zero boundary shifted the callback's
+indexing. `tests/unit/euf_callback_tests.cpp` drives the production callback
+through the existing `make_uf_euf_component` factory and `TheoryComponent`
+interface. Three traces failed on the old code: propagation depending on root
+facts, on a retained decision level, and after empty levels/repeated backtracks.
+All five test groups pass after correcting initialization and boundary trimming.
+The other groups check retained-fact conflicts, changed polarity after rollback,
+and exported model facts. Every returned explanation is checked against all
+$5^5$ interpretations of the fixture's five constants, independently of Primo's
+equality engine, as well as against the current literal assignment.
+
+The existing mixed QF_UFLRA rejected-candidate-merge regression is also
+strengthened to produce and validate a model. Its previous expectation of a
+positive model-callback recovery count depended on the lost markers; the
+corrected trace requires zero recovery assignments while retaining the closure
+reuse and compatibility-split checks. This is end-to-end coverage of model
+reconciliation, not a deterministic test of the deferred-callback queue.
+
+The reproduced defect is lost propagation, not an incorrect SAT/UNSAT result.
+The conflict controls pass before and after the repair because the closure
+retains the required facts. `benchmarks/smoke/qf_uf/euf_retained_equalities_unsat.smt2`
+is a separate end-to-end regression; its SAT decision sequence is unspecified.
+The deterministic tests do not directly cover deferred callbacks during a
+borrowed model scope or all combined-theory schedules. Shared assignment
+bookkeeping remains an [open lead](open-leads.md#project-and-tooling-leads).
 
 ## Current Solver Path
 

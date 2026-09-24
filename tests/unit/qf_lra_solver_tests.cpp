@@ -2886,6 +2886,7 @@ void qf_uf_lra_live_euf_model_rolls_back_rejected_candidate_merges() {
   options.nelson_oppen_model_equality_mutation = false;
   options.qf_uflra_online_euf = true;
   const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
     (set-logic QF_UFLRA)
     (declare-fun x () Real)
     (declare-fun y () Real)
@@ -2895,15 +2896,19 @@ void qf_uf_lra_live_euf_model_rolls_back_rejected_candidate_merges() {
     (assert (p x))
     (assert (not (p y)))
     (check-sat)
+    (get-model)
   )",
                                        options);
   assert(result.result == CheckSatResult::Sat);
+  assert(!result.model.empty());
   assert(result.statistics.get(":no.shared-model.compatibility-splits") >= 1);
   assert(result.statistics.get(":no.shared-model.split-materializations") >= 1);
   assert(result.statistics.get(":no.interface.euf-live-model-reuses") >= 2);
   assert(result.statistics.get(":no.interface.euf-live-model-fallbacks") == 0);
   assert(result.statistics.get(":no.interface.euf-live-model-incomplete") == 0);
-  assert(result.statistics.get(":no.interface.euf-live-model-callback-assignments") >= 1);
+  // Retained assignments must survive backtracking; this trace needs no
+  // model-callback replay to repair missing assignment markers.
+  assert(result.statistics.get(":no.interface.euf-live-model-callback-assignments") == 0);
   assert(result.statistics.get(":no.interface.euf-final-closure-rebuilds") == 0);
   assert(result.statistics.get(":no.online.euf-generated-equality-registration-failures") == 0);
 }

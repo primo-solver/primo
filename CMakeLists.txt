@@ -419,6 +419,12 @@ primo_enable_sanitizers(primo_euf_solver_tests)
 target_link_libraries(primo_euf_solver_tests PRIVATE primo_core)
 add_test(NAME primo_euf_solver_tests COMMAND primo_euf_solver_tests)
 
+add_executable(primo_euf_callback_tests tests/unit/euf_callback_tests.cpp)
+primo_enable_warnings(primo_euf_callback_tests)
+primo_enable_sanitizers(primo_euf_callback_tests)
+target_link_libraries(primo_euf_callback_tests PRIVATE primo_core)
+add_test(NAME primo_euf_callback_tests COMMAND primo_euf_callback_tests)
+
 add_executable(primo_preprocessing_tests tests/unit/preprocessing_tests.cpp)
 primo_enable_warnings(primo_preprocessing_tests)
 primo_enable_sanitizers(primo_preprocessing_tests)

@@ -75,7 +75,7 @@ fresh independent model each time.
    {source}`component dispatcher <src/smt/component_dispatcher.cpp#L97-L125>`
    similarly removes non-retained assignments and their reasons, then pops
    all components to the reported SAT level. The required contract preserves
-   root and retained-level facts; the EUF marker caveat below needs follow-up.
+   root and retained-level facts; the regression below exercises that contract.
 
 Routing a batch is linear in its literal count plus the receiving components'
 work. Streaming a clause costs one callback per literal plus a terminator.
@@ -83,25 +83,43 @@ Neither observation bounds the cost of a theory check, explanation, rollback,
 or the full search. Dense SAT-variable arrays also consume space up to their
 largest registered index, including gaps.
 
-### Open audit finding: EUF assignment markers
+### Assignment rollback regression
 
-The dedicated EUF propagator initializes
-{source}`level_starts_ with a zero entry <src/smt/solver_engines.cpp#L2625-L2637>`,
-then appends the current trail size on each new decision level. Its rollback
-uses `level_starts_[new_level]`. Consequently, a backtrack to zero clears all
-its local assignment markers, including any assignments received before the
-first decision. The closure's separate
-{source}`checkpoints <src/smt/solver_engines.cpp#L1365-L1393>` instead record the
-root assignment count and preserve those facts. The LRA and component marker
-stacks do not use that extra initial entry.
+The audit found that EUF initialized its decision boundaries with an extra
+zero entry. At the first decision, `r` root literals therefore produced
+boundaries `{0, r}`; backtracking to zero cleared their assignment markers,
+while the closure's separate
+{source}`checkpoints <src/smt/solver_engines.cpp#L1365-L1393>` preserved the facts.
+The callback now starts with an empty boundary vector and keeps exactly
+`new_level` boundaries on rollback. Entry `k` marks the start of level `k+1`.
 
-This is a source-level synchronization mismatch, not a reproduced wrong answer.
-Audit callback replay, retained-level markers, propagation filtering, and model
-scope eligibility before deciding its runtime impact or a repair. A focused
-regression should deliver root facts, open multiple levels, backtrack to a
-retained level and to zero, and verify both markers and theory facts. Existing
-solver tests and the chapter example do not establish this internal invariant.
-The finding remains open; this documentation task changes no callback behavior.
+Dedicated tests in `tests/unit/euf_callback_tests.cpp` drive the production
+callback through the existing EUF component adapter. Three traces reproduced
+lost transitive-equality propagation before the repair: root retention,
+retained-level retention, and repeated backtracks with empty observed levels.
+All five groups pass after the repair. Conflict and exported-model-fact controls
+pass both before and after; returned explanations are independently checked
+against every interpretation of the fixture's five constants. No incorrect
+SAT/UNSAT answer was reproduced. Deferred callbacks during a borrowed model
+scope and every combined-theory schedule are outside these direct tests.
+
+### Open lead: shared assignment bookkeeping
+
+The current SAT interface provides assignment/decision/backtrack notifications;
+a backtrack reports a level, not the individual literals removed. Its model
+query is not a live trail accessor. The callback therefore needs some record
+of received assignments to update its state efficiently. Nevertheless, the
+EUF, arithmetic, mixed, and component paths duplicate this bookkeeping.
+Investigate a single SMT-side assignment owner with views for consumers, or an
+appropriate backend view, before refactoring these copies. Preserve notification
+ordering, observed-variable subsets, reason lifetimes, and deferred model-scope
+replay. Theory-specific undo records for equality merges and arithmetic bounds
+remain necessary. The component route additionally owns a
+{source}`ComponentAssignment <src/theory/component_assignment.hpp>` copy;
+{source}`sat::Trail <src/sat/trail.hpp>` and
+{source}`sat::TrailView <src/sat/trail_view.hpp>` are empty scaffolds.
+This consolidation is deferred; the focused boundary repair
+keeps the current ownership structure.
 
 ## Conflicts, propagations, and explanations
 
