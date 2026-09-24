@@ -81,6 +81,9 @@ Branch: `docs/public-repository-migration`.
   lemma retention, and distinguishes current Ackermann propagation from the
   reverted experiment and open conflict-selection work. The draft adds an
   open-work page for these questions; no solver implementation has started.
+  A follow-up literature note distinguishes theory-lemma deletion from
+  termination and live-reason safety, with a separate open lead. It covers
+  the DPLL(T) calculus, a verified SAT framework, and deletion-policy experiments.
   Build it with `make docs-next`; preview it with `make docs-next-serve` on
   port 8001. No page is accepted and no book replacement has occurred.
 - **Verification:** the first manual batch passed 11 manual checks, 41 CTest

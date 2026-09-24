@@ -28,6 +28,11 @@ retaining external reason clauses. Start by measuring its effective policy
 and memory cost, then decide whether additional selection or deletion controls
 would help. Building another store is not the first step.
 
+The deletion part now has a separate
+[safe-forgetting lead](theory-lemma-forgetting.md), grounded in papers that
+state termination conditions. It must account for progress across restarts
+and the outer SMT loop as well as live reason ownership.
+
 The [worked explanation](../papers/yices.md#the-2016-talk-what-lemma-caching-means)
 shows why caching a reason clause differs from retaining a C++ explanation
 vector or learning the final conflict resolvent. Backend watch handling stays

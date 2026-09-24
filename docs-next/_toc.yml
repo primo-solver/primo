@@ -12,12 +12,14 @@ parts:
   - caption: Literature
     chapters:
       - file: papers/yices
+      - file: papers/clause-forgetting
   - caption: Open work
     chapters:
       - file: leads/library-api
       - file: leads/incremental-memory
       - file: leads/term-storage
       - file: leads/theory-lemmas
+      - file: leads/theory-lemma-forgetting
   - caption: Reviewing this draft
     chapters:
       - file: review

@@ -36,6 +36,17 @@ ideas needed for the ongoing rewrite. The slides give heuristics rather than
 a complete cache policy; implementation and performance claims need separate
 design and evidence.
 
+## Forgetting, restarts, and termination (2006, 2018, 2025)
+
+The [clause-forgetting note](clause-forgetting.md) records targeted sections
+read on 2026-09-24 from Nieuwenhuis–Oliveras–Tinelli's DPLL(T) paper and
+Blanchette et al.'s journal formalization, plus the main text and Appendix A
+of Gstrein et al.'s *Learn to Unlearn*. The first two give sufficient
+correctness/termination conditions for specified calculi; the third compares
+deletion heuristics experimentally. These are not interchangeable forms of
+evidence, and none establishes a safe or faster policy for Primo without an
+adapter/lifetime/progress audit.
+
 (lu-smt-select)=
 ## Lu et al., "Learning SMT Algorithm Selection with High-Level Natural-Language Descriptions" (2026)
 

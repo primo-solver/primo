@@ -186,6 +186,13 @@ deduplication, or lifetime specification. It gives no asymptotic speedup claim.
 Our expected tradeoff is less repeated theory reasoning versus more clause
 memory and Boolean work; it needs measurement on Primo.
 
+Forgetting requires a separate progress argument. Being able to regenerate a
+deleted theory lemma does not prevent repeatedly encountering the same conflict
+after restarts. The [clause-forgetting survey](clause-forgetting.md) gives
+papers on logical redundancy, reason lifetime, and sufficient termination
+conditions, including a worked distinction between the original conflict
+explanation and the clause learned from it.
+
 ### What Primo and its backend already do
 
 **Implemented interface/storage; selective Yices policy not established.**

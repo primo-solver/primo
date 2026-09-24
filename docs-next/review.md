@@ -249,6 +249,33 @@ Representation equivalence for Yices parent hooks and ITE transformations is
 explicitly deferred to the corresponding chapter audits. User acceptance of
 the literature page and the open leads remains pending.
 
+## Clause-forgetting literature checks
+
+The 2026-09-24 follow-up reads the sections named in
+[the literature note](papers/clause-forgetting.md) from primary PDFs. The
+Blanchette et al. source is the four-author JAR 2018 version, whose restart/
+forget strategy is §4.5; the shorter conference version numbers it §4.4.
+The three reading copies have these SHA-256 values:
+
+```text
+NieOT-JACM-06.pdf          30df2e90891fd19228f2f76c442a1fa8d13af9bc0dc0abf4aef191a57afcdb15
+Blanchette-et-al-JAR.pdf   df39fe3e417c0a386fd92cd1d98a588916228a6dc00d79a3d08a6e1208777fe1
+LIPIcs.SAT.2025.14.pdf     06a34e609ffcaee547e40d789513e20330c9c6dcb5f19672d0d357a83ba0791a
+```
+
+The maintained page is `docs/papers/clause-forgetting.md`; the draft includes
+it through `papers/clause-forgetting.md`, with the same cutover rule as the
+Yices note. Source inspection covers callback flags, reason streaming, the
+adapter API, and the component bridge. It does not measure effective backend
+deletion or establish a termination theorem for Primo. No other solver's
+implementation source was used.
+
+Checks cover both strict builds, source paths and anchor bounds, local HTML
+links, navigation/ledger coverage, preserved baseline targets, identical shared
+note rendering, and visual inspection. The new lead remains open, with user
+review and all implementation/evaluation work pending. This is documentation
+only; solver tests, fuzz campaigns, ASan, and clang-tidy are not rerun.
+
 ## Replacing the old book
 
 The preserved baseline is tagged `docs-before-restructure-2026-09-24`; the tag

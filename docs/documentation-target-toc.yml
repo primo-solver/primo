@@ -58,6 +58,7 @@ parts:
           - file: papers/arithmetic-solving-in-z3
           - file: papers/bromberger-linear-arithmetic-thesis
           - file: papers/cvc4-architecture
+          - file: papers/clause-forgetting
           - file: papers/difference-constraint-propagation
           - file: papers/enumerative-instantiation
           - file: papers/fair-adventurous-enumeration
@@ -143,6 +144,7 @@ parts:
           - file: leads/incremental-memory
           - file: leads/term-storage
           - file: leads/theory-lemmas
+          - file: leads/theory-lemma-forgetting
           - file: leads/difference-logic
           - file: leads/euf-disequality-propagation
           - file: leads/lead-aep

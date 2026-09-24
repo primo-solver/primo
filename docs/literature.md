@@ -17,6 +17,20 @@ documents retaining external reason clauses; audit its effective policy before
 proposing a separate cache. The note is also rendered under **Literature** in
 the replacement book.
 
+## Clause forgetting and termination
+
+[](papers/clause-forgetting.md) records three complementary sources:
+Nieuwenhuis–Oliveras–Tinelli (2006), Definition 3.2, Theorem 3.7 and §4.4,
+for theory-lemma forgetting; Blanchette et al. (JAR 2018), §§3.4–3.5 and 4.5,
+for formally verified restart/forget strategies; and Gstrein et al.,
+*Learn to Unlearn* (SAT 2025), for empirical deletion-policy tradeoffs.
+The note distinguishes logical redundancy, live explanation lifetime, and
+search progress. It maps these obligations to Primo's callback/adapter boundary.
+
+Safe forgetting is an open investigation in
+`docs-next/leads/theory-lemma-forgetting.md`, alongside lemma retention and
+incremental-memory work. No deletion policy has been selected or implemented.
+
 ## Lexical specification and external parser audit
 
 [](lexical-conformance.md) records the SMT-LIB 2.7 Sections 3.1–3.3 and binder

@@ -94,6 +94,8 @@ the outcomes of accepted and rejected experiments.
 [Dynamic Ackermannization and theory-lemma retention](leads/theory-lemmas.md)
 records the remaining selection, reuse, and deletion questions from the Yices
 survey, including the need to measure CaDiCaL's existing reason retention.
+The related [safe-forgetting lead](leads/theory-lemma-forgetting.md) separates
+logical redundancy from reason lifetime and termination across restarts.
 
 During review, `make docs-next-serve` serves this draft at
 `http://localhost:8001`; `make docs-serve` serves the existing book at

@@ -15,6 +15,11 @@ The separate [compact term storage lead](term-storage.md) covers bytes per
 node, duplicated interning payloads, and future leaf data. A more compact node
 would not by itself reclaim terms retained by an incremental session.
 
+The [theory-lemma forgetting lead](theory-lemma-forgetting.md) covers retained
+SAT clauses and their explanation lifetimes. Include those stores in memory
+attribution before choosing a term reclamation policy; they have different
+owners and correctness obligations.
+
 The {source}`historical QF_UF session evaluation <docs/assumption-incremental-uf.md>`
 at `fa2fe5c` records peak solver RSS of 898 MiB in assumptions mode and 990 MiB
 in rebuild mode, over 1,778 sessions with a 30-second whole-session limit and

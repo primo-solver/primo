@@ -6,6 +6,12 @@ beyond a lazy prototype. The SAT backend remains CaDiCaL; Primo does not contain
 a fallback SAT solver. See [](sat-ipasir-up.md) for callback contracts and
 [](current-status.md) for the route matrix.
 
+The [clause-forgetting note](papers/clause-forgetting.md) distinguishes the
+original theory-conflict explanation from the clause learned by conflict
+analysis. Any future forgetting policy needs both live-reason safety and a
+progress argument covering the backend and outer SMT loop. This is an open
+investigation; the note does not change current clause retention.
+
 ## Control flow and ownership
 
 `solver_session.cpp` owns the frontend, original assertion roots, preprocessing

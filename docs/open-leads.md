@@ -51,6 +51,14 @@ preview. Existing bounded Ackermann propagation is partial overlap; CaDiCaL
 already documents retaining reasons. Neither lead starts implementation or
 reopens the reverted scan experiment unchanged.
 
+**Safe forgetting of theory lemmas** is a separate open lead in
+`docs-next/leads/theory-lemma-forgetting.md`. Its
+[literature basis](papers/clause-forgetting.md) distinguishes semantic
+redundancy, live reason protection, and a termination argument covering
+restarts and repeated SMT refinement. Start with retention/memory attribution
+and the backend contract. Status: open; owner unassigned; no implementation
+or evaluation active.
+
 A single place to find every live idea for improving Primo's solver
 performance, what evidence supports it, what it would cost, and -- stated
 before the work starts -- what result would kill it.
