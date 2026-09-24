@@ -45,16 +45,20 @@ batches and remaining work. A public website has not been deployed by this work.
 ## Contributing and verification
 
 Start with the [contribution guide](docs/contributing.md). Source, tests and
-affected documentation are reviewed together. Keep current behavior distinct
-from experiments and proposals.
+affected documentation are reviewed together. Correctness comes before
+performance: solver behavior changes require fresh
+[fuzzing evidence](docs/contributing.md#required-fuzzing-before-merge), and
+wrong answers, invalid models, or crashes block acceptance. Keep current
+behavior distinct from experiments and proposals.
 
 ```bash
-make test
+make check
 python3 scripts/check_doc_examples.py --solver ./build/primo
 make docs
 ```
 
-Solver changes additionally need the [review and correctness gates](AGENTS.md),
+`make check` runs lint and tests, but does not run fuzzing. Solver changes
+additionally need the [review and correctness gates](AGENTS.md),
 including the appropriate fuzzing and model-validation checks. Benchmark
 provenance belongs in the [run log](docs/run-log.md).
 

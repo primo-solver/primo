@@ -1,6 +1,6 @@
 # Contributing to Primo: draft
 
-**Status: proposed public contribution guide, updated 2026-09-23.** Review this
+**Status: proposed public contribution guide, updated 2026-09-24.** Review this
 guide with [](public-repository-migration.md) before adopting it. Primo retains
 its existing MIT license, as decided on 2026-09-23. Publication-rights checks and
 any DCO requirement remain pending; this draft does not obtain contributor consent.
@@ -12,6 +12,11 @@ implementations, and reproducible evidence. Contributions include documentation
 corrections, small examples, minimized bug reports, tests, tooling, and solver
 development. Documentation improvements are valuable contributions in their
 own right.
+
+Correctness comes before performance. Solver behavior changes require fresh
+fuzzing evidence before they are complete. Wrong answers, invalid models, and
+crashes block acceptance; a speedup cannot compensate for them. The correctness
+requirements below already apply, independently of the draft public policy.
 
 For a substantial algorithm, new dependency, interface change, or change to
 default behavior, discuss the problem and proposed design before committing to
@@ -113,7 +118,8 @@ make check
 make docs
 ```
 
-`make check` includes lint and tests. Memory-sensitive changes also require
+`make check` includes lint, C++ tests, and Python tests; it does **not** run
+fuzzing. Memory-sensitive changes also require
 `make asan-test`. Read the relevant workflow under `skills/` and the repository
 `AGENTS.md` for allocation-boundary testing, review, static analysis, and the
 applicable fuzz gate. Those files currently define the detailed engineering
@@ -121,15 +127,81 @@ checks; this draft does not waive them.
 
 Documentation-only prose edits normally need the strict documentation build
 and factual review. Solver, parser, preprocessing, SAT, theory, model, and
-behavior-changing option work needs fresh differential evidence appropriate to
-its risk. Benchmark comparisons also need separate correctness/model checking;
-model validation time must not enter the timing comparison.
+behavior-changing option work needs the fresh fuzzing evidence described below.
+Full evaluations and default promotions also require separate independent SAT
+model validation with Dolmen; agreement on `sat` does not validate the printed
+model. See [model validation](debugging.md#model-validation) and
+[](experiments.md). Model validation time must not enter the timing comparison.
 
-Record substantial experiments in `docs/run-log.json`: exact candidate and
-reference commands, revisions, generator/seed/count, input hashes where
-applicable, host or job IDs, resource limits, outcomes, and artifact locations.
-Separate passes from timeouts, unsupported cases, crashes, wrong answers, and
-reference disagreements. See [](experiments.md) and [](run-log.md).
+### Required fuzzing before merge
+
+Run a fresh gate against the current candidate commit and the options being
+changed. This applies to parsing, printing, type checking, term construction,
+rewriting, preprocessing, clausification, SAT integration, solver control flow,
+theory solving, generated lemmas, models, and options that alter behavior.
+Rerun the applicable gate after a behavior-changing fix; evidence for an older
+implementation does not qualify the new one.
+
+| Gate | When required | Minimum coverage |
+| --- | --- | --- |
+| Smoke | Narrow parser/printer/core changes with low solver impact | 100 generated or mutated inputs, plus focused unit tests. Insufficient for theory, SAT, preprocessing, or default-profile changes. |
+| Merge | Ordinary solver, theory, preprocessing, or SAT behavior changes | 1,000 generated or mutated inputs compared against a trusted reference. |
+| Campaign | Promoting a profile, propagation mode, preprocessing transformation, theory engine, or SAT interaction to default/headline status | 3,000 generated QF_UF cases for QF_UF work, or comparable coverage for other logics, plus mutation of representative real benchmark seeds when available. |
+
+Choose generators and seeds that exercise the changed logic, mechanism, and
+options. Case counts alone do not establish coverage. Use the
+[fuzzing and reduction workflow](debugging.md#fuzzing-and-reduction) for the
+available generators, mutation tools, and logic-specific gates. Long campaigns
+should run on SLURM with maintainer help when needed.
+
+For a local QF_UF differential merge run, install the dependencies and invoke
+the wrapper with an explicit count and seed from the repository root:
+
+```bash
+make build contrib-fuzzsmt contrib-z3
+PATH="$PWD/contrib/local/bin:$PATH" python3 scripts/fuzz_external.py \
+  --fuzzer fuzzsmt --solver './build/primo --quiet' --refs z3 \
+  --logic QF_UF --count 1000 --seed 20260924 --timeout 5 \
+  --fuzzer-args '-ms 1 -Ms 2 -mv 1 -Mv 2 -mf 1 -mp 1 -ma 1 -Ma 2' \
+  --out fuzz-results/contribution-qf-uf-merge
+```
+
+Use a new output directory for each run, and adapt the formula sizes and shapes
+to the change. This example checks QF_UF answers; it does not cover other logics
+or validate printed models. The current `make fuzzsmt` convenience target runs
+only 20 cases, below even the smoke minimum. `make fuzz` is also a short local
+entry point, not a complete campaign.
+
+Inspect the generated `summary.csv` and actual case count, not only the exit
+status. The wrapper can exit successfully after skipping a missing fuzzer.
+Skipped runs, unavailable references, and unexecuted cases are not passes.
+Install missing tools when feasible; otherwise record the failed command and
+the gate that remains incomplete.
+
+### Triage failures and preserve evidence
+
+Stop performance tuning on wrong answers, crashes, invalid models, rejection
+of valid generated input, or untriaged reference disagreements. Preserve the
+input and outputs, reproduce with the candidate and references, minimize the
+failure, and add a regression for a confirmed bug. Fix correctness defects
+before accepting the change. A disagreement needs investigation; the reference
+solver is not automatically right. Document a demonstrated unsupported case
+precisely rather than counting it as a pass.
+
+Report timeouts and `unknown` separately from passes. Timeouts alone are not
+correctness failures, but they reduce conclusive coverage. Rerun and classify
+saved failures before using an old `bugs/` directory as evidence.
+
+Record every fuzz gate and other substantial experiments in `docs/run-log.json`:
+exact candidate and reference commands, revisions, generator/seed/count, input
+hashes where applicable, host or job IDs, resource limits, outcomes, and artifact
+locations. Separate passes from timeouts, unknown results, unsupported cases,
+crashes, wrong answers, parser/type errors, invalid models, and reference
+disagreements.
+Preserve failure inputs and logs in the recorded artifact directory. Link the
+run-log entry and summarize the gate, coverage, outcomes, and remaining gaps
+in the pull request. A raw CSV without a run-log entry does not qualify a
+solver change. See [](experiments.md) and [](run-log.md).
 
 The agreed replacement in [](benchmark-record-storage.md) stores separate run
 directories in `primo-solver/results`, submitted through pull requests. SQLite
