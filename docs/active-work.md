@@ -77,6 +77,10 @@ Branch: `docs/public-repository-migration`.
   future leaf-payload questions; solver implementation remains deferred.
   The Boolean abstraction/SAT chapter adds clause templates, a runnable
   example, scope guards, callback ownership, and a paper-to-code checklist.
+  A shared Yices literature note now covers all three local PDFs, explains
+  lemma retention, and distinguishes current Ackermann propagation from the
+  reverted experiment and open conflict-selection work. The draft adds an
+  open-work page for these questions; no solver implementation has started.
   Build it with `make docs-next`; preview it with `make docs-next-serve` on
   port 8001. No page is accepted and no book replacement has occurred.
 - **Verification:** the first manual batch passed 11 manual checks, 41 CTest

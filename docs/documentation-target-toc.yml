@@ -79,6 +79,7 @@ parts:
           - file: papers/summaries
           - file: papers/tactic-configuration-evidence
           - file: papers/word-gcd-notes
+          - file: papers/yices
       - file: run-log
       - file: archive/index
         sections:
@@ -141,6 +142,7 @@ parts:
           - file: leads/library-api
           - file: leads/incremental-memory
           - file: leads/term-storage
+          - file: leads/theory-lemmas
           - file: leads/difference-logic
           - file: leads/euf-disequality-propagation
           - file: leads/lead-aep

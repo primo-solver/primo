@@ -58,6 +58,9 @@ terms into clauses and describes assumptions and theory callbacks. The full
 capability matrix and user guides remain in the existing book while they
 undergo page review for this draft.
 
+The [Yices literature survey](papers/yices.md) connects three papers/talks to
+the code and distinguishes implemented mechanisms from ideas for investigation.
+
 A documentation build or a successful example does not certify solver
 correctness across a benchmark corpus.
 
@@ -87,6 +90,10 @@ Possible solver extensions and research ideas remain in the existing book's
 open-leads register. They are candidates for investigation, not commitments or
 implemented features. The rewrite will give them a separate index and preserve
 the outcomes of accepted and rejected experiments.
+
+[Dynamic Ackermannization and theory-lemma retention](leads/theory-lemmas.md)
+records the remaining selection, reuse, and deletion questions from the Yices
+survey, including the need to measure CaDiCaL's existing reason retention.
 
 During review, `make docs-next-serve` serves this draft at
 `http://localhost:8001`; `make docs-serve` serves the existing book at

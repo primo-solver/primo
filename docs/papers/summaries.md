@@ -25,6 +25,17 @@ Rules for entries here:
 - Reference PDFs stay untracked (`.gitignore` excludes `*.pdf`); only these
   summaries are committed.
 
+## Yices tool papers and engineering talk (2006, 2014, 2016)
+
+Read all three `sandbox/yices-*.pdf` documents on 2026-09-24. The
+[dedicated survey](yices.md) gives citations, section/slide coverage, and
+paper-to-code status. It explains the difference between conflict-selected
+Ackermann clauses, lazy explanation construction, and retaining theory lemmas
+in SAT. It also captures the term/context/model architecture and representation
+ideas needed for the ongoing rewrite. The slides give heuristics rather than
+a complete cache policy; implementation and performance claims need separate
+design and evidence.
+
 (lu-smt-select)=
 ## Lu et al., "Learning SMT Algorithm Selection with High-Level Natural-Language Descriptions" (2026)
 

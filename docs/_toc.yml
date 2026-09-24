@@ -93,6 +93,7 @@ parts:
           - file: papers/summaries
           - file: papers/lra-related-work
       - file: papers/ipasir-up
+      - file: papers/yices
       - file: papers/cvc4-architecture
       - file: papers/fastsmt-strategy-synthesis
       - file: papers/tactic-configuration-evidence

@@ -182,6 +182,12 @@ different owner lifetime, as explained in the [architecture chapter](architectur
 
 ## The backend and callback contract
 
+The [Yices literature note](../papers/yices.md#the-2016-talk-what-lemma-caching-means)
+explains how a requested theory explanation can also become a reusable SAT
+clause. Reason storage in a propagator, deferred construction, and retention
+by the backend are separate mechanisms; their remaining policy questions are
+recorded as [open work](../leads/theory-lemmas.md).
+
 {source}`CadicalBackend::new_var <src/sat/cadical_backend.cpp#L153-L171>` uses
 the available dependency API to declare ordinary variables between solves.
 {source}`new_observed_var <src/sat/cadical_backend.cpp#L173-L187>` is the

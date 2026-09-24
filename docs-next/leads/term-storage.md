@@ -55,6 +55,12 @@ capacity, and auxiliary data; see the [core chapter](../implementation/core.md).
 
 ## Design questions
 
+The [Yices survey](../papers/yices.md#other-ideas-retained-from-the-talk)
+adds the SMT 2016 talk's integer-indexed term tables and separate descriptors
+as a concrete representation reference. It is a candidate to compare with the
+current layout, not an adopted design or evidence of a particular reclamation
+policy.
+
 - Compare a union whose active member is determined by `TermKind` with a
   compact node containing IDs into separate payload stores. Include the hash
   key in the design; shrinking only the visible node leaves duplicated data.

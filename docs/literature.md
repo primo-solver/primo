@@ -1,5 +1,22 @@
 # Literature
 
+## Yices architecture and theory-lemma reuse
+
+[](papers/yices.md) covers all three local Yices sources: Dutertre and de
+Moura's 2006 tool paper, Dutertre's CAV 2014 *Yices 2.2*, and his SMT 2016
+*The Nuts and Bolts of Yices* talk. The survey maps conflict-driven
+Ackermannization, lazy explanations, and selective SAT lemma retention to
+Primo's current code, including the limited default-off Ackermann propagator
+and the reverted scan-based experiment. It also records library lifetimes,
+compact descriptors, parent occurrences, and ITE preprocessing as inputs to
+the relevant chapter audits.
+
+The remaining Ackermann selection and lemma-retention investigations are
+**open leads**, not active implementations. In particular, CaDiCaL already
+documents retaining external reason clauses; audit its effective policy before
+proposing a separate cache. The note is also rendered under **Literature** in
+the replacement book.
+
 ## Lexical specification and external parser audit
 
 [](lexical-conformance.md) records the SMT-LIB 2.7 Sections 3.1–3.3 and binder

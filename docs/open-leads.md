@@ -43,6 +43,14 @@ milestones remain in the migration plan rather than being duplicated here.
 
 ## Solver leads and investigation history
 
+The new [Yices survey](papers/yices.md#open-investigations-and-acceptance-conditions)
+records two open investigations: conflict-selected dynamic Ackermann clauses,
+and theory-lemma retention/deletion through the SAT backend. The draft work
+item is `docs-next/leads/theory-lemmas.md`, under **Open work** in the draft
+preview. Existing bounded Ackermann propagation is partial overlap; CaDiCaL
+already documents retaining reasons. Neither lead starts implementation or
+reopens the reverted scan experiment unchanged.
+
 A single place to find every live idea for improving Primo's solver
 performance, what evidence supports it, what it would cost, and -- stated
 before the work starts -- what result would kill it.

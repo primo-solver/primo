@@ -6,6 +6,11 @@ Primo should be usable as a library inside another application as well as
 through its command-line executable. This is an intended direction. Whether
 the current abstractions need substantial changes remains an open question.
 
+The [Yices 2.2 architecture](../papers/yices.md#the-2014-paper-terms-contexts-and-models)
+is a literature reference for separating shared terms, mutable solving
+contexts, and independent model snapshots. It motivates this ownership audit;
+it does not establish that Primo already supports the same public API.
+
 ## Starting points in the code
 
 - The {source}`CMake library targets <CMakeLists.txt#L187-L240>` already separate

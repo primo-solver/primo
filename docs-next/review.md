@@ -213,6 +213,42 @@ Keep source and export in the same commit. The current figures passed those
 checks and their accompanying source links were verified locally. This is a
 documentation check, not a new solver correctness gate or page acceptance.
 
+## Yices literature checks
+
+The 2026-09-24 survey reads all three local Yices PDFs and checks their
+Ackermann/explanation claims against the configured solver source revision.
+The 2006 paper's p. 3 and the 2016 talk's printed slides 13–14 were also
+inspected as rendered pages. Official Yices links identify the original
+publications. Local reading-copy SHA-256 values are:
+
+```text
+yices-tool-paper-2006.pdf  f85699440a641ce4247e57ec5aecf5fd99d126ae1a39692b91a47c8399818fde
+yices-cav2014.pdf          c8f968f526218c5cb00ad84f904e44c501b37c26f5ed31fe1baa3f6d19990060
+yices-smt2016-talk.pdf     b8ee6c2f1fa7442a76776130387b9e55499f434a7ca07c89bddc82e1c153e8c7
+```
+
+`docs/papers/yices.md` is the single maintained note; the draft's
+`papers/yices.md` includes it. Both books use the same source-link role.
+Check both builds and both rendered copies after edits. The draft review and
+support ledgers record the wrapper; the old-book page map records the source.
+Move the maintained content into the accepted tree before removing `docs-next/`
+at final cutover.
+
+The backend comparison uses the installed public `cadical.hpp` API from
+CaDiCaL `rel-3.0.0`, checkout `7b99c07f0bcab5824a5a3ce62c7066554017f641`,
+and Primo's adapter. It establishes a documented reason-retention mechanism,
+not measured deletion behavior. The header's conflicting default descriptions
+are recorded as an investigation question. No Yices implementation source was
+used. The older Ackermann run remains historical and `needs_revalidation`.
+
+Verification covers `make docs`, `make docs-next`, source paths/line ranges,
+local HTML links/anchors, navigation/ledger coverage, preserved baseline HTML
+targets, and rendered inspection. No solver code or option changes, fresh
+performance results, or fuzz/ASan/clang-tidy claims belong to this survey.
+Representation equivalence for Yices parent hooks and ITE transformations is
+explicitly deferred to the corresponding chapter audits. User acceptance of
+the literature page and the open leads remains pending.
+
 ## Replacing the old book
 
 The preserved baseline is tagged `docs-before-restructure-2026-09-24`; the tag
