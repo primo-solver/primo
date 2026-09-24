@@ -67,17 +67,27 @@ Branch: `docs/public-repository-migration`.
   pages and 24 outside Markdown files, records stale claims and proposed
   destinations, and captures compatibility targets. The local tag
   `docs-before-restructure-2026-09-24` preserves the pre-audit snapshot.
+  A separate replacement book now lives in `docs-next/`, with three content
+  drafts, commit-pinned function/type/test links, and a page review ledger.
+  Build it with `make docs-next`; preview it with `make docs-next-serve` on
+  port 8001. No page is accepted and no book replacement has occurred.
 - **Verification:** the first manual batch passed 11 manual checks, 41 CTest
   tests and the strict book build. The inventory batch passed coverage,
   proposed-navigation, and compatibility checks plus strict `make docs`; its
   rendered report was inspected. These are editorial checks, not fresh solver
   qualification. Detailed batch limits belong in
   [](documentation-restructuring.md) and [](work/documentation-audit.md).
+  The draft batch checks both builds, its first-solve example, local source
+  paths/line ranges, lint, and preview isolation; `docs-next/review.md` records
+  the scope and remaining user review.
 - **Next:** correct the audit's stale status claims and reconcile fuzz-gate
-  wording, then extract the contributor correctness procedures and complete
-  the SAT chapter pilot before the deeper implementation rewrite. The audit's
-  proposed final contents now gives those batches concrete destinations.
-  Do not move historical pages without preserving their evidence and targets.
+  wording as material is rewritten. The user has chosen a separate `docs-next/`
+  preview for page-by-page review; the home page, contributor correctness
+  guide, architecture overview, and review ledger are the first draft batch.
+  Review those pages before accepting them and extending the component chapters.
+  Source links point to owning types/functions and regression tests at the
+  documented revision. The old book remains available; historical evidence
+  and targets must survive eventual replacement.
 - **Remaining acceptance:** the SAT template pilot, deeper implementation and
   contributor rewrites, open-lead/history extraction, clean-checkout and archive
   walkthroughs, independent reader review and publication gates remain open.

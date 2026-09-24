@@ -1,0 +1,12 @@
+format: jb-book
+root: index
+parts:
+  - caption: Contributing
+    chapters:
+      - file: development/correctness
+  - caption: Understanding Primo
+    chapters:
+      - file: implementation/architecture
+  - caption: Reviewing this draft
+    chapters:
+      - file: review

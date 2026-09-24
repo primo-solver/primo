@@ -14,6 +14,15 @@ dispositions, supporting files, concrete stale claims, captured compatibility
 targets, and the proposed final contents. It is a structural review, not full
 code/paper/evidence sign-off. Start there for the current extraction priorities.
 
+**Execution update, 2026-09-24:** the user chose a separate draft book in
+`docs-next/` for page-by-page review. `make docs-next` and
+`make docs-next-serve` build and preview it independently. The current `docs/`
+book remains available until replacement acceptance. The first draft set is
+the home page, contributor correctness guide, architecture overview, and review
+ledger. Local verification and user acceptance are separate states; none of
+these pages is accepted yet. The destination paths in the inventory remain
+relative to the final `docs/` tree, with `docs-next/` used during preparation.
+
 ## Outcome and publication gate
 
 An outside reader must be able to build and use Primo, understand its supported

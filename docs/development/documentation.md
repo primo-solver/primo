@@ -7,6 +7,11 @@ repository's existing documentation requirements already apply.
 
 ## Build and preview
 
+The replacement book is now developed separately in `docs-next/`. Use
+`make docs-next` to build it, or `make docs-next-serve` for its preview at
+`http://localhost:8001`. Its `review.md` and `review.csv` track page review and
+acceptance. The commands below continue to build the existing book.
+
 ```bash
 make docs
 make docs-serve
@@ -33,6 +38,11 @@ response, both admitted assumptions routes, and the captured CLI help. It does
 not fuzz the solver or independently prove model validity.
 
 ## Page roles
+
+Apply the roles below to new draft pages as well. Do not copy the entire old
+tree into the draft. Keep source links tied to the explained revision and
+record checks and remaining review questions for each page. The draft must
+pass page review and the release gates before replacing this book.
 
 Use [](../current-status.md) for the canonical capability map,
 `guide/` for user tasks, `reference/` for interface details, and implementation

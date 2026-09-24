@@ -1,11 +1,18 @@
 #!/usr/bin/env bash
-# Build the Jupyter Book developer documentation.
+# Build the current book or the separately reviewed draft book.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 VENV="${PRIMO_DOCS_VENV:-$REPO_ROOT/.venv-docs}"
+BOOK_DIR="${PRIMO_DOCS_DIR:-docs}"
+
+# Keep the two book outputs separate while sharing the existing toolchain.
+case "$BOOK_DIR" in
+    docs|docs-next) ;;
+    *) echo "error: PRIMO_DOCS_DIR must be docs or docs-next" >&2; exit 2 ;;
+esac
 
 cd "$REPO_ROOT"
 
@@ -33,5 +40,5 @@ fi
 "$VENV/bin/python" -c '
 import sys
 from jupyter_book.cli.main import main
-main(args=["build", "docs"] + sys.argv[1:], standalone_mode=True)
-' "${BUILD_ARGS[@]}" "$@"
+main(args=["build", sys.argv[1]] + sys.argv[2:], standalone_mode=True)
+' "$BOOK_DIR" "${BUILD_ARGS[@]}" "$@"

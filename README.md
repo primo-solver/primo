@@ -42,6 +42,11 @@ Open `http://localhost:8000`. Documentation is being restructured before public
 release; [the plan](docs/documentation-restructuring.md) records completed
 batches and remaining work. A public website has not been deployed by this work.
 
+Review the replacement book separately with `make docs-next-serve`, then open
+`http://localhost:8001`. Its [page review ledger](docs-next/review.md) tracks
+drafting, verification, review, and acceptance. `make docs` continues to build
+the existing book; `make docs-next` builds only the draft.
+
 ## Contributing and verification
 
 Start with the [contribution guide](docs/contributing.md). Source, tests and

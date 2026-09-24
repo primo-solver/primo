@@ -1,0 +1,46 @@
+title: Primo — draft documentation
+author: Primo contributors
+logo: _static/primo-logo.svg
+
+execute:
+  execute_notebooks: "off"
+
+repository:
+  url: https://github.com/primo-solver/primo
+  branch: main
+  path_to_book: docs-next
+
+html:
+  use_repository_button: true
+  use_issues_button: false
+  use_edit_page_button: false
+
+parse:
+  myst_enable_extensions:
+    - colon_fence
+    - deflist
+    - fieldlist
+    - substitution
+    - tasklist
+
+sphinx:
+  extra_extensions:
+    - sphinx.ext.extlinks
+  recursive_update: true
+  config:
+    extlinks:
+      source:
+        - "https://github.com/primo-solver/primo/blob/ac0daf4987281fa33d5e438bacdbaf2492607a03/%s"
+        - "%s"
+    myst_substitutions:
+      source_revision: "ac0daf4987281fa33d5e438bacdbaf2492607a03"
+    myst_heading_anchors: 3
+    html_show_copyright: false
+    html_show_sourcelink: false
+    html_theme_options:
+      announcement: "Draft rewrite — pages await review. The existing book remains in docs/."
+      use_download_button: false
+      logo:
+        image_light: _static/primo-logo.svg
+        image_dark: _static/primo-logo-dark.svg
+        alt_text: Primo

@@ -6,6 +6,11 @@ review, extraction, rewrite, and independent reader review remain open.
 The solver revision for the existing manual remains
 `ac0daf4987281fa33d5e438bacdbaf2492607a03`.
 
+**Subsequent execution update:** the replacement book is now drafted separately
+in `docs-next/`, with its own preview and page review ledger. Inventory counts
+below describe the audit checkpoint; the supporting map and proposed contents
+also record additions made during that draft work.
+
 ## Findings and priority
 
 The main problem is mixed document roles: current contracts, historical evidence,
@@ -54,7 +59,7 @@ The review artifacts are:
   Verification targets name what to inspect in the rewrite; they are not a
   claim that those files have all been reviewed.
 - {download}`Supporting-file inventory <../documentation-support-map.csv>`:
-  65 files covering root documents, agent skills, bug and benchmark notes,
+  initially 65 files covering root documents, agent skills, bug and benchmark notes,
   fixtures, figures, configuration, evidence, and relevant workflow code.
 - {download}`Compatibility snapshot <../documentation-compatibility.json>`:
   all 83 old book paths, **1,223 rendered content targets**, and **139 explicit
@@ -115,7 +120,7 @@ and infinitesimals deserve a home outside a history of LRA tuning. Likewise,
 SMT-LIB construct, a theory, or a regression; an architectural tour alone does
 not teach those tasks.
 
-The proposed tree has 147 paths, including extracted history, individual leads,
+At the audit checkpoint the proposed tree had 147 paths, including extracted history, individual leads,
 and small indexes. That is an extraction plan, not 147 new chapters or a page
 count target. Collapse redundant destinations when the material warrants it,
 updating the map and compatibility routing together. Closed top-level leads

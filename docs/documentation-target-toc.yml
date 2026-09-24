@@ -40,6 +40,7 @@ parts:
   - caption: Contributing
     chapters:
       - file: contributing
+      - file: development/correctness
       - file: development/contributing-changes
       - file: development/testing
       - file: development/fuzzing
