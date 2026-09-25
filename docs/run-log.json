@@ -3,6 +3,764 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-25-shared-assignment-slurm",
+      "date": "2026-09-25",
+      "commit": "e4abefb9f19202c47458547fd37b67c8c858fea8",
+      "kind": "correctness-and-migration-comparison",
+      "decision": "accept shared assignment ownership; no profile/default promotion or performance improvement claim",
+      "implementation_commit": "45e25a68916c30e3008ad50716b0c4e46a67abbc",
+      "baseline_commit": "fd4d1eb3a40ccaf30fab823237849491ca34ac6c",
+      "scope": "One observed-assignment mirror per SAT connection across every production route; kernel undo remains separate. C++ sources unchanged between implementation and measured build. Final harness/docs revisions do not change solver behavior.",
+      "candidate": {
+        "version": "primo 0.2.0\ngit: e4abefb\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+        "binary_sha256": "35b90610318700683cc807be1189e1a61d7b1e34e180b2a49d5a0feb36af05d3"
+      },
+      "reference_versions": {
+        "z3": {
+          "version": "Z3 version 5.1.0 - 64 bit\n",
+          "sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0"
+        },
+        "cvc5": {
+          "version": "cvc5 1.3.4 [git f3b21c4 on branch HEAD]\ncompiled with GCC version Ubuntu Clang 18.1.3 (1ubuntu1) on May  7 2026 15:33:02\n\nCopyright (c) 2009-2026 by the authors and their institutional\naffiliations listed at https://cvc5.github.io/people.html\n\ncvc5 is open-source and is covered by the BSD license (modified).\n\nTHIS SOFTWARE IS PROVIDED AS-IS, WITHOUT ANY WARRANTIES.\nUSE AT YOUR OWN RISK.\n\nThis version of cvc5 is linked against the following non-(L)GPL'ed\nthird party libraries.\n\n  CaDiCaL - Simplified Satisfiability Solver\n  See https://github.com/arminbiere/cadical for copyright information.\n\n  SymFPU - The Symbolic Floating Point Unit\n  See https://github.com/martin-cs/symfpu/tree/CVC4 for copyright information.\n\nThis version of cvc5 is linked against the following third party\nlibraries covered by the LGPLv3 license.\nSee licenses/lgpl-3.0.txt for more information.\n\n  GMP - Gnu Multi Precision Arithmetic Library\n  See http://gmplib.org for copyright information.\n\n  LibPoly polynomial library\n  See https://github.com/SRI-CSL/libpoly for copyright and\n  licensing information.\n\ncvc5 is statically linked against these libraries. To recompile\nthis version of cvc5 with different versions of these libraries\nfollow the instructions on https://github.com/cvc5/cvc5/blob/main/INSTALL.md\n\nSee the file COPYING (distributed with the source code, and with\nall binaries) for the full cvc5 copyright, licensing, and (lack of)\nwarranty information.\n\n",
+          "sha256": "4a93548398445cf1a774655583f5465b156c26f63f2cdfb94f4728fdf7adde46"
+        },
+        "dolmen": {
+          "version": "0.10\n",
+          "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+        }
+      },
+      "environment": {
+        "execution": "remote SLURM via user-requested jump host; exact hostnames and absolute commands in preserved raw provenance",
+        "build_jobs": [
+          "151294",
+          "151295"
+        ],
+        "main_gate_limits": "one CPU/4 GiB per task; array concurrency 4; per-input limits recorded by each driver",
+        "comparison_limits": "5s per solve, 4 shards, two paired rounds with opposite arm order, one CPU/4 GiB per task",
+        "sanitizer_limits": "4 CPUs/12 GiB; GCCcore 11.3, matching staged C headers after C++ include paths; address sanitizer, leak detection, 600s per CTest",
+        "policy": "All accepted solver batches ran through SLURM. Earlier stopped local run remains preliminary only."
+      },
+      "verification": {
+        "normal_job": "151323",
+        "ctest": 43,
+        "python": 190,
+        "extra_python_selection_tests": 2,
+        "normal_commands": [
+          "cmake --build build-slurm-rel -j4",
+          "ctest --test-dir build-slurm-rel --timeout 300 --output-on-failure",
+          "python3 -m unittest discover -s tests/python",
+          "check_solver_seed_corpus.py: 12 mixed + 2 scale seeds in each of two exact online profiles"
+        ],
+        "asan_job": "151383",
+        "asan_ctest": 43,
+        "asan_seconds": 99.12,
+        "lint": "make lint passed locally; syntax/static checks do not launch solvers",
+        "static_review": "All 128 tracked C++ translation units reviewed; clang-tidy 19 pre-existing diagnostics, no new ones; include-cleaner advisory inspected; final changed-span scans clean. Logs retained with local review artifacts.",
+        "docs_job_before_final_evidence": "151335; both strict books passed; final evidence text rebuilt separately",
+        "setup_failures": {
+          "151304": "ctest missing from PATH; retry uses .venv-build/bin/ctest",
+          "151305": "compute nodes have no PyPI access; dependencies provisioned before retry",
+          "151334": "system libasan linker script references absent file",
+          "151352": "module initialization absent on compute nodes",
+          "151359": "toolchain lacked compute-node C system headers",
+          "151377": "C header search ordered before C++ include_next wrappers; fixed with -idirafter",
+          "151355": "/usr/bin/time absent on compute nodes; replaced with Python resource RSS wrapper",
+          "151364,151365,151366": "canceled dependent jobs after failed timing setup"
+        }
+      },
+      "fuzz_runs": [
+        {
+          "name": "QF_UF online",
+          "job_id": "151303",
+          "task": 0,
+          "seed": 202609250,
+          "count": 1000,
+          "timeout_seconds": 5,
+          "counts": {
+            "PASS": 1000
+          },
+          "commands": [
+            [
+              "python3",
+              "scripts/fuzz_external.py",
+              "--fuzzer",
+              "fuzzsmt",
+              "--solver",
+              "${WORKDIR}/build-slurm-rel/primo --quiet --preprocessing-mode=off --euf-prop=online",
+              "--refs",
+              "z3",
+              "cvc5",
+              "--logic",
+              "QF_UF",
+              "--count",
+              "1000",
+              "--seed",
+              "202609250",
+              "--timeout",
+              "5",
+              "--fuzzer-args",
+              "-ms 1 -Ms 2 -mv 2 -Mv 5 -mf 3 -mp 3 -ma 1 -Ma 3",
+              "--out",
+              "${WORKDIR}/fuzz-results/shared-assignment-e4abefb/task-0/answers"
+            ]
+          ],
+          "summary": {
+            "path": "results/shared-assignment-20260925/remote/fuzz-results/shared-assignment-e4abefb/task-0/answers/summary.csv",
+            "sha256": "1663977b437535050c9b0f2dac1ebcdcb5b6ed5b2514211b509b0585bdf0ff42"
+          },
+          "provenance": {
+            "path": "results/shared-assignment-20260925/remote/fuzz-results/shared-assignment-e4abefb/task-0/provenance.json",
+            "sha256": "71746c4291276d46f3a0b83191fa783a41eaca58f0eee38cab70e58b2f548ac1"
+          }
+        },
+        {
+          "name": "QF_UF lazy",
+          "job_id": "151303",
+          "task": 1,
+          "seed": 202609251,
+          "count": 1000,
+          "timeout_seconds": 5,
+          "counts": {
+            "PASS": 1000
+          },
+          "commands": [
+            [
+              "python3",
+              "scripts/fuzz_external.py",
+              "--fuzzer",
+              "fuzzsmt",
+              "--solver",
+              "${WORKDIR}/build-slurm-rel/primo --quiet --preprocessing-mode=off --euf-engine=lazy --euf-prop=off",
+              "--refs",
+              "z3",
+              "cvc5",
+              "--logic",
+              "QF_UF",
+              "--count",
+              "1000",
+              "--seed",
+              "202609251",
+              "--timeout",
+              "5",
+              "--fuzzer-args",
+              "-ms 1 -Ms 2 -mv 2 -Mv 5 -mf 3 -mp 3 -ma 1 -Ma 3",
+              "--out",
+              "${WORKDIR}/fuzz-results/shared-assignment-e4abefb/task-1/answers"
+            ]
+          ],
+          "summary": {
+            "path": "results/shared-assignment-20260925/remote/fuzz-results/shared-assignment-e4abefb/task-1/answers/summary.csv",
+            "sha256": "9fdb7b2690310e0f7c4a1976c853b94a7478f8e95c99004b31f25dec62d2b43f"
+          },
+          "provenance": {
+            "path": "results/shared-assignment-20260925/remote/fuzz-results/shared-assignment-e4abefb/task-1/provenance.json",
+            "sha256": "ba5a1cef3561f26f9d46ef9b605442a2994e047f98c8f3fd058ab8ee3ddafb21"
+          }
+        },
+        {
+          "name": "QF_LRA",
+          "job_id": "151303",
+          "task": 2,
+          "seed": 202609252,
+          "count": 1000,
+          "timeout_seconds": 5,
+          "counts": {
+            "PASS": 983,
+            "TIMEOUT": 16,
+            "REFERENCE_UNUSABLE": 1
+          },
+          "commands": [
+            [
+              "python3",
+              "scripts/fuzz_external.py",
+              "--fuzzer",
+              "fuzzsmt",
+              "--solver",
+              "${WORKDIR}/build-slurm-rel/primo --quiet --preprocessing-mode=off",
+              "--refs",
+              "z3",
+              "cvc5",
+              "--logic",
+              "QF_LRA",
+              "--count",
+              "1000",
+              "--seed",
+              "202609252",
+              "--timeout",
+              "5",
+              "--fuzzer-args",
+              "-mv 1 -Mv 4 -mc 1 -Mc 3 -Mbw 4",
+              "--out",
+              "${WORKDIR}/fuzz-results/shared-assignment-e4abefb/task-2/answers"
+            ]
+          ],
+          "summary": {
+            "path": "results/shared-assignment-20260925/remote/fuzz-results/shared-assignment-e4abefb/task-2/answers/summary.csv",
+            "sha256": "61491466a94d9e41d43c676dd3d5d306bd89db543cbce1cc77689fc96846a2a1"
+          },
+          "provenance": {
+            "path": "results/shared-assignment-20260925/remote/fuzz-results/shared-assignment-e4abefb/task-2/provenance.json",
+            "sha256": "af22e5a48a7189e2e6a74b9581822523c818a5f8b483ce22de4f5579bca0932f"
+          }
+        },
+        {
+          "name": "QF_LIA",
+          "job_id": "151303",
+          "task": 3,
+          "seed": 202609253,
+          "count": 1000,
+          "timeout_seconds": 5,
+          "counts": {
+            "PASS": 995,
+            "TIMEOUT": 5
+          },
+          "commands": [
+            [
+              "python3",
+              "scripts/fuzz_external.py",
+              "--fuzzer",
+              "fuzzsmt",
+              "--solver",
+              "${WORKDIR}/build-slurm-rel/primo --quiet --preprocessing-mode=off",
+              "--refs",
+              "z3",
+              "cvc5",
+              "--logic",
+              "QF_LIA",
+              "--count",
+              "1000",
+              "--seed",
+              "202609253",
+              "--timeout",
+              "5",
+              "--fuzzer-args",
+              "-mv 1 -Mv 4 -mc 1 -Mc 3 -Mbw 4",
+              "--out",
+              "${WORKDIR}/fuzz-results/shared-assignment-e4abefb/task-3/answers"
+            ]
+          ],
+          "summary": {
+            "path": "results/shared-assignment-20260925/remote/fuzz-results/shared-assignment-e4abefb/task-3/answers/summary.csv",
+            "sha256": "ec1ab79d32114200853b906cb6926fd523a1bfe8a2e0a2e51bccf1c265624ad1"
+          },
+          "provenance": {
+            "path": "results/shared-assignment-20260925/remote/fuzz-results/shared-assignment-e4abefb/task-3/provenance.json",
+            "sha256": "34cf17347d2e7efa1779cd3f11269ce92fde15a7438ada6d51e5670cbbd6c218"
+          }
+        },
+        {
+          "name": "QF_UFLIA online",
+          "job_id": "151303",
+          "task": 6,
+          "seed": 202609256,
+          "count": 1000,
+          "timeout_seconds": 5,
+          "counts": {
+            "PASS": 999,
+            "TIMEOUT": 1
+          },
+          "commands": [
+            [
+              "python3",
+              "scripts/qf_uflia_fuzz.py",
+              "--solver",
+              "${WORKDIR}/build-slurm-rel/primo",
+              "--solver-arg=--quiet",
+              "--solver-arg=--preprocessing-mode=off",
+              "--solver-arg=--euf-prop=online",
+              "--ref",
+              "z3",
+              "--ref",
+              "cvc5",
+              "--count",
+              "1000",
+              "--seed",
+              "202609256",
+              "--timeout",
+              "5",
+              "--shape",
+              "mixed",
+              "--out",
+              "${WORKDIR}/fuzz-results/shared-assignment-e4abefb/task-6/answers"
+            ]
+          ],
+          "summary": {
+            "path": "results/shared-assignment-20260925/remote/fuzz-results/shared-assignment-e4abefb/task-6/answers/summary.csv",
+            "sha256": "8a77d91589d6d6ad6b694946e4260c23bea29ce703956c0786de3e6db9bbbece"
+          },
+          "provenance": {
+            "path": "results/shared-assignment-20260925/remote/fuzz-results/shared-assignment-e4abefb/task-6/provenance.json",
+            "sha256": "6da9560b4c216db3e32f06617e9ad74419dd26ba0f0073f76cca4e1f6221afa5"
+          }
+        },
+        {
+          "name": "QF_UFLIA offline",
+          "job_id": "151303",
+          "task": 7,
+          "seed": 202609257,
+          "count": 1000,
+          "timeout_seconds": 5,
+          "counts": {
+            "PASS": 1000
+          },
+          "commands": [
+            [
+              "python3",
+              "scripts/qf_uflia_fuzz.py",
+              "--solver",
+              "${WORKDIR}/build-slurm-rel/primo",
+              "--solver-arg=--quiet",
+              "--solver-arg=--preprocessing-mode=off",
+              "--solver-arg=--no-qf-uflia-online-components",
+              "--ref",
+              "z3",
+              "--ref",
+              "cvc5",
+              "--count",
+              "1000",
+              "--seed",
+              "202609257",
+              "--timeout",
+              "5",
+              "--shape",
+              "mixed",
+              "--out",
+              "${WORKDIR}/fuzz-results/shared-assignment-e4abefb/task-7/answers"
+            ]
+          ],
+          "summary": {
+            "path": "results/shared-assignment-20260925/remote/fuzz-results/shared-assignment-e4abefb/task-7/answers/summary.csv",
+            "sha256": "3754202a104da8ff86570aa040fbaf1a94f3af926417f90635cffe95efc01e80"
+          },
+          "provenance": {
+            "path": "results/shared-assignment-20260925/remote/fuzz-results/shared-assignment-e4abefb/task-7/provenance.json",
+            "sha256": "6ead908a7f97284920934631e5dcd36b46cce1be32190042c06818db8efb7ec4"
+          }
+        },
+        {
+          "name": "QF_LRA Boolean arithmetic with models",
+          "job_id": "151303",
+          "task": 17,
+          "seed": 202609267,
+          "count": 1000,
+          "timeout_seconds": 5,
+          "counts": {
+            "PASS": 1000
+          },
+          "commands": [
+            [
+              "python3",
+              "scripts/qf_lra_boolean_arithmetic_fuzz.py",
+              "--solver",
+              "${WORKDIR}/build-slurm-rel/primo",
+              "--solver-arg=--quiet",
+              "--solver-arg=--preprocessing-mode=off",
+              "--count",
+              "1000",
+              "--seed",
+              "202609267",
+              "--timeout",
+              "5",
+              "--dolmen-timeout",
+              "5",
+              "--dolmen",
+              "contrib/local/bin/dolmen",
+              "--out",
+              "${WORKDIR}/fuzz-results/shared-assignment-e4abefb/task-17/boolean"
+            ]
+          ],
+          "summary": {
+            "path": "results/shared-assignment-20260925/remote/fuzz-results/shared-assignment-e4abefb/task-17/boolean/summary.csv",
+            "sha256": "02613a29e5c7c437b585f4176181d37f55cbc7900db51a349a3333acccde8bb1"
+          },
+          "provenance": {
+            "path": "results/shared-assignment-20260925/remote/fuzz-results/shared-assignment-e4abefb/task-17/provenance.json",
+            "sha256": "cbcfb0108e2ad6468e3d467e8a21b56513c06bc2744031b88e8e07d2f45f6a1c"
+          }
+        },
+        {
+          "name": "QF_UFLRA arithmetic",
+          "answer_job_id": "151324",
+          "model_job_id": "151353",
+          "task": 4,
+          "seed": 202609254,
+          "solver_args": [
+            "--quiet"
+          ],
+          "timeout_seconds": 5,
+          "model_timeout_seconds": 10,
+          "reference_commands": [
+            "z3",
+            "cvc5 (finite cases)"
+          ],
+          "generator": "qf_uflra_smoke_fuzz.py and finite_domain_fuzz.py; seeds +100000/+200000 for finite cases",
+          "answer_counts": {
+            "general": {
+              "PASS": 1000
+            },
+            "finite-qf-uf": {
+              "PASS": 56
+            },
+            "finite-qf-uflra": {
+              "PASS": 56
+            }
+          },
+          "model_counts": {
+            "general": {
+              "pass": 583
+            },
+            "finite-qf-uf": {
+              "pass": 28
+            },
+            "finite-qf-uflra": {
+              "pass": 28
+            }
+          },
+          "artifacts": "results/shared-assignment-20260925/remote/fuzz-results/shared-assignment-mixed-retry-e4abefb/task-4",
+          "model_artifacts": "results/shared-assignment-20260925/remote/fuzz-results/shared-assignment-mixed-models-e4abefb/task-4",
+          "recipes": [
+            "scripts/slurm_qf_uflra_fuzz_gate.sbatch",
+            "scripts/qualification/shared_assignment/mixed-models.sbatch"
+          ],
+          "note": "Finite QF_UF uses preprocessing=strong. Initial tasks 4/5 supplied conflicting preprocessing options (exit 114); retry answers passed. Initial all-input model stage requested get-model after UNSAT and failed with expected command errors. Successful-SAT-only replay replaces that invalid measurement."
+        },
+        {
+          "name": "QF_UFLRA online EUF and arithmetic",
+          "answer_job_id": "151324",
+          "model_job_id": "151353",
+          "task": 5,
+          "seed": 202609255,
+          "solver_args": [
+            "--quiet",
+            "--qf-uflra-online-euf",
+            "--euf-prop=online"
+          ],
+          "timeout_seconds": 5,
+          "model_timeout_seconds": 10,
+          "reference_commands": [
+            "z3",
+            "cvc5 (finite cases)"
+          ],
+          "generator": "qf_uflra_smoke_fuzz.py and finite_domain_fuzz.py; seeds +100000/+200000 for finite cases",
+          "answer_counts": {
+            "general": {
+              "PASS": 1000
+            },
+            "finite-qf-uf": {
+              "PASS": 56
+            },
+            "finite-qf-uflra": {
+              "PASS": 56
+            }
+          },
+          "model_counts": {
+            "general": {
+              "pass": 570
+            },
+            "finite-qf-uf": {
+              "pass": 28
+            },
+            "finite-qf-uflra": {
+              "pass": 28
+            }
+          },
+          "artifacts": "results/shared-assignment-20260925/remote/fuzz-results/shared-assignment-mixed-retry-e4abefb/task-5",
+          "model_artifacts": "results/shared-assignment-20260925/remote/fuzz-results/shared-assignment-mixed-models-e4abefb/task-5",
+          "recipes": [
+            "scripts/slurm_qf_uflra_fuzz_gate.sbatch",
+            "scripts/qualification/shared_assignment/mixed-models.sbatch"
+          ],
+          "note": "Finite QF_UF uses preprocessing=strong. Initial tasks 4/5 supplied conflicting preprocessing options (exit 114); retry answers passed. Initial all-input model stage requested get-model after UNSAT and failed with expected command errors. Successful-SAT-only replay replaces that invalid measurement."
+        },
+        {
+          "name": "retained UF",
+          "job_id": "151303",
+          "task": 8,
+          "seed": 202609258,
+          "summary": {
+            "sessions": 100,
+            "pass": 100,
+            "queries": 900,
+            "sat_models": 614,
+            "untriaged_failure": 0,
+            "failures": []
+          },
+          "artifact": {
+            "path": "results/shared-assignment-20260925/remote/fuzz-results/shared-assignment-e4abefb/task-8/sessions/summary.json",
+            "sha256": "b8b06c51e573e4450e45c95f82c89c941b016025872f4b34c4d3b2475bf74b8c"
+          },
+          "limits": "10s solver and Dolmen; 100 generated sessions"
+        },
+        {
+          "name": "retained LRA",
+          "job_id": "151303",
+          "task": 9,
+          "seed": 202609259,
+          "summary": {
+            "sessions": 100,
+            "pass": 100,
+            "sat_models": 800,
+            "queries": 1100,
+            "failures": [],
+            "untriaged_failure": 0
+          },
+          "artifact": {
+            "path": "results/shared-assignment-20260925/remote/fuzz-results/shared-assignment-e4abefb/task-9/sessions/summary.json",
+            "sha256": "f2cd773e739cfdf4d01a2954fe9f756983b8c8989dd43b02c263534e09c9b6e9"
+          },
+          "limits": "10s solver and Dolmen; 100 generated sessions"
+        },
+        {
+          "name": "UF valid generation and scope-preserving mutation",
+          "job_id": "151336",
+          "seed": 20260925,
+          "generated_count": 1000,
+          "mutated_count": 200,
+          "limits": "5s per solver; 4 shards; max 1000 theory conflicts and 2000 quantifier instances per candidate",
+          "reference_commands": [
+            "contrib/local/bin/z3",
+            "contrib/local/bin/cvc5"
+          ],
+          "generator": "scripts/quantifier_preparation_gate.py",
+          "recipe": "scripts/qualification/shared_assignment/uf-extra.sbatch",
+          "counts": {
+            "generated": {
+              "primo-registration-sum:unsat": 625,
+              "primo-registration-max:unsat": 625,
+              "primo-registration-max-colex:unsat": 625,
+              "primo-registration-leximax:unsat": 625,
+              "primo-registration-deepening:unsat": 625,
+              "primo-registration-random:unsat": 625,
+              "primo-bridge-atoms-sum:unsat": 625,
+              "primo-bridge-atoms-max:unsat": 625,
+              "primo-bridge-atoms-max-colex:unsat": 625,
+              "primo-bridge-atoms-leximax:unsat": 625,
+              "primo-bridge-atoms-deepening:unsat": 625,
+              "primo-bridge-atoms-random:unsat": 625,
+              "ref0:unsat": 625,
+              "ref1:unsat": 313,
+              "cases": 1000,
+              "reference-definite": 1000,
+              "ref1:unknown": 312,
+              "primo-registration-sum:sat": 375,
+              "primo-registration-max:sat": 375,
+              "primo-registration-max-colex:sat": 375,
+              "primo-registration-leximax:sat": 375,
+              "primo-registration-deepening:sat": 375,
+              "primo-registration-random:sat": 375,
+              "primo-bridge-atoms-sum:sat": 375,
+              "primo-bridge-atoms-max:sat": 375,
+              "primo-bridge-atoms-max-colex:sat": 375,
+              "primo-bridge-atoms-leximax:sat": 375,
+              "primo-bridge-atoms-deepening:sat": 375,
+              "primo-bridge-atoms-random:sat": 375,
+              "ref0:sat": 375,
+              "ref1:sat": 375
+            },
+            "mutations": {
+              "primo-registration-sum:unknown": 105,
+              "primo-bridge-atoms-sum:unknown": 102,
+              "ref0:sat": 93,
+              "ref1:unknown": 102,
+              "cases": 200,
+              "reference-definite": 182,
+              "primo-registration-sum:unsat": 89,
+              "primo-bridge-atoms-sum:unsat": 90,
+              "ref0:unsat": 89,
+              "ref1:unsat": 89,
+              "ref0:timeout": 18,
+              "reference-inconclusive": 18,
+              "primo-bridge-atoms-sum:timeout": 8,
+              "ref1:sat": 9,
+              "primo-registration-sum:timeout": 6
+            }
+          },
+          "artifacts": "results/shared-assignment-20260925/remote/fuzz-results/shared-assignment-uf-extra-e4abefb"
+        },
+        {
+          "name": "UF TypeFuzz retained-input audit",
+          "generator_job_id": "151303",
+          "triage_job_id": "151337",
+          "tasks": "10..16",
+          "seeds": "21 family-stratified small inputs from SMT-LIB 2025 UF; seed=202609250+task",
+          "generator": "YinYang/typefuzz 0.3.0; 100 mutations per seed; 2s solver/reference; 1200s per shard; 20kB input limit",
+          "reference_commands": [
+            "contrib/local/bin/z3",
+            "contrib/local/bin/cvc5 --enum-inst (60s original-seed confirmation, 30s mutation confirmation)"
+          ],
+          "counts": {
+            "input-rejected-by-dolmen": 1615,
+            "answer-pass": 82,
+            "solver-unknown": 175,
+            "solver-timeout": 27,
+            "answer-confirmed-cvc5": 1
+          },
+          "invalid_diagnostics": {
+            "unbound_identifier": 1490,
+            "ill_typed_term": 125
+          },
+          "acceptance": "1615 malformed inputs excluded; 83 confirmed answers, 175 unknown and 27 timeout outcomes remain distinct; zero valid-input solver errors or wrong answers",
+          "artifacts": "results/shared-assignment-20260925/remote/fuzz-results/shared-assignment-uf-triage-e4abefb",
+          "raw_mutants": "results/shared-assignment-20260925/remote/fuzz-results/shared-assignment-e4abefb",
+          "recipe": "scripts/qualification/shared_assignment/uf-triage.sbatch"
+        }
+      ],
+      "comparison": {
+        "manifest": "benchmarks/shared-assignment-20260925/manifest.json",
+        "summary": "benchmarks/shared-assignment-20260925/comparison-summary.json",
+        "jobs": {
+          "default": "151367",
+          "online": "151371",
+          "lazy-uf": "151372",
+          "offline-uflia": "151373"
+        },
+        "reference_job": "151378",
+        "reference_confirmation_job": "151402",
+        "reference_note": "All definite reference answers agree. universalInstance needs cvc5 --enum-inst beyond the initial timeout/unknown reference results; confirmation is separate from timing.",
+        "profiles": {
+          "default": {
+            "rows": 240,
+            "baseline_solved": 212,
+            "candidate_solved": 212,
+            "par2_ratio": 1.0004204093136593,
+            "common_runtime_ratio": 1.0104925378383103,
+            "strict_timing_status": "needs-triage",
+            "lost": [],
+            "disagreements": [],
+            "models": {
+              "expected": 104,
+              "outcomes": {
+                "pass": 94,
+                "input-nonconforming": 10
+              }
+            },
+            "rss": {
+              "baseline": {
+                "min_kib": 18636,
+                "median_kib": 45762.0,
+                "max_kib": 71400
+              },
+              "candidate": {
+                "min_kib": 18636,
+                "median_kib": 45478.0,
+                "max_kib": 73584
+              }
+            }
+          },
+          "online": {
+            "rows": 240,
+            "baseline_solved": 204,
+            "candidate_solved": 204,
+            "par2_ratio": 1.0002351161321519,
+            "common_runtime_ratio": 1.006588702282971,
+            "strict_timing_status": "pass",
+            "lost": [],
+            "disagreements": [],
+            "models": {
+              "expected": 104,
+              "outcomes": {
+                "pass": 94,
+                "input-nonconforming": 10
+              }
+            },
+            "rss": {
+              "baseline": {
+                "min_kib": 19464,
+                "median_kib": 52994.0,
+                "max_kib": 68336
+              },
+              "candidate": {
+                "min_kib": 19464,
+                "median_kib": 53132.0,
+                "max_kib": 65952
+              }
+            }
+          },
+          "lazy-uf": {
+            "rows": 62,
+            "baseline_solved": 46,
+            "candidate_solved": 46,
+            "par2_ratio": 1.0000133064086612,
+            "common_runtime_ratio": 1.0057081564580541,
+            "strict_timing_status": "pass",
+            "lost": [],
+            "disagreements": [],
+            "models": {
+              "expected": 20,
+              "outcomes": {
+                "pass": 20
+              }
+            },
+            "rss": {
+              "baseline": {
+                "min_kib": 18368,
+                "median_kib": 18862.0,
+                "max_kib": 19108
+              },
+              "candidate": {
+                "min_kib": 18636,
+                "median_kib": 18640.0,
+                "max_kib": 19504
+              }
+            }
+          },
+          "offline-uflia": {
+            "rows": 32,
+            "baseline_solved": 26,
+            "candidate_solved": 26,
+            "par2_ratio": 1.001798843570468,
+            "common_runtime_ratio": 1.012322244937915,
+            "strict_timing_status": "needs-triage",
+            "lost": [],
+            "disagreements": [],
+            "models": {
+              "expected": 12,
+              "outcomes": {
+                "pass": 12
+              }
+            },
+            "rss": {
+              "baseline": {
+                "min_kib": 19124,
+                "median_kib": 21048.0,
+                "max_kib": 24292
+              },
+              "candidate": {
+                "min_kib": 19128,
+                "median_kib": 21496.0,
+                "max_kib": 24392
+              }
+            }
+          }
+        },
+        "interpretation": "Solved counts unchanged in all four profiles. Default/offline-Int common times exceed strict 1% threshold by 0.05/0.23 percentage points; preserve needs-triage flags, do not claim a speed benefit. Default mixed scheduling changes work counters (generated case-0833: SAT calls 4 to 16; case-0666: 9 to 6). RSS includes Python harness/descendants and does not isolate trail memory. This sample is not a full-corpus evaluation."
+      },
+      "model_replay": {
+        "jobs": [
+          "151379",
+          "151395"
+        ],
+        "wider_logic_triage_job": "151399",
+        "expected_sat": 240,
+        "replayed_sat": 240,
+        "direct_dolmen_pass": 220,
+        "wider_logic_dolmen_pass": 20,
+        "invalid_models": 0,
+        "changed_answers": 0,
+        "solver_errors": 0,
+        "timeouts": 0,
+        "missing": 0,
+        "limits": "30s model production and validator; separate from timing",
+        "limitation": "Five generated QF_LRA inputs (20 profile/round rows) rejected for constant negative-denominator syntax. Same saved assertions and model validate with --force-smtlib2-logic=QF_NRA. Strict declared-logic coverage remains incomplete for those 20; do not count them as direct passes. No quantified-UF SAT row was produced."
+      },
+      "artifacts": {
+        "collected_root": "results/shared-assignment-20260925/remote",
+        "reproducible_recipes": "scripts/qualification/shared_assignment/",
+        "main_gate": "scripts/shared_assignment_gate.py",
+        "large_artifacts": "ignored results/fuzz directories; retained both locally and on SLURM; no generated inputs or binaries committed"
+      }
+    },
+    {
       "id": "2026-09-25-shared-assignment-local-preliminary",
       "date": "2026-09-25",
       "commit": "45e25a68916c30e3008ad50716b0c4e46a67abbc",

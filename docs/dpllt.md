@@ -14,7 +14,8 @@ investigation; the note does not change current clause retention.
 
 ## Control flow and ownership
 
-### Shared assignment protocol: implementation underway
+(shared-assignment-protocol-implementation-underway)=
+### Shared assignment protocol
 
 The shared-stack migration replaces independently mutable Boolean assignment
 copies with one SMT-owned coordinator per SAT connection. The storage types
@@ -24,7 +25,7 @@ from the indexed trail entry rather than stored in another value array.
 Consumers borrow a read-only view and receive accepted assignment deltas and
 the exact removed literals on backtracking. Term registries and theory undo
 records remain separate. This section is the local implementation checklist;
-route migration and qualification are tracked in [](active-work.md).
+qualification is summarized in [](current-status.md#shared-assignment-ownership).
 
 This is a projection of the SAT assignment onto observed variables, not a
 second complete SAT trail. Tseytin variables used only for Boolean structure
@@ -56,9 +57,11 @@ copy. Lazy routes populate one completed-model snapshot without enabling
 online propagation. Mixed routes observe new interface atoms before every
 SAT round, including when only their arithmetic child is online.
 
-Production migration is implemented; final fuzzing and baseline comparison
-are still pending. The earlier rollback qualification does not qualify this
-new ownership change.
+Production migration is implemented and has fresh six-logic SLURM evidence,
+normal/ASan suites, retained-session checks and a paired baseline comparison.
+Run-log entry `2026-09-25-shared-assignment-slurm` records the exact profiles,
+timeouts and validator limitations. This is bounded migration qualification,
+not a performance promotion or a full-corpus evaluation.
 
 The basis is Fazekas et al., *IPASIR-UP: User Propagators for CDCL*, SAT 2023,
 [Section 2.2](https://doi.org/10.4230/LIPIcs.SAT.2023.8), read together with the

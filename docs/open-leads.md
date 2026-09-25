@@ -11,13 +11,13 @@ Keep stable lead labels and evidence links when a lead changes state.
 
 ## Project and tooling leads
 
-- **Shared SMT assignment bookkeeping (active):** the all-route migration is
-  now tracked in [](active-work.md#shared-assignment-ownership), with its
+- **Shared SMT assignment bookkeeping (implemented):** the all-route migration is
+  recorded in [](current-status.md#shared-assignment-ownership), with its
   protocol and acceptance checklist in
   [](dpllt.md#shared-assignment-protocol-implementation-underway).
   `sat::Trail`, `sat::TrailView`, and `smt::AssignmentCoordinator` now implement
-  and test the shared protocol. Production consumers are migrated; cross-route
-  qualification and baseline comparison are in progress.
+  and test the shared protocol. Production consumers are migrated; fresh
+  cross-route gates and a bounded baseline comparison are recorded in the run log.
   The chosen boundary retains one Primo-side mirror, without a CaDiCaL
   extension. Theory merge/bound undo logs remain separate. The focused EUF
   rollback regression below protects this work.

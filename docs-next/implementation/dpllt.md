@@ -151,9 +151,15 @@ assignments. Retained sessions reconnect with a new owner and re-observe root
 facts after the preceding connection has settled its reason callbacks.
 {source}`Protocol tests <tests/unit/assignment_coordinator_tests.cpp>` cover
 root/retained levels, empty levels, duplicate and invalid events, growth,
-reentrancy, protected replay, and reconnect. Route qualification and baseline
-comparison are still underway; the previous rollback fuzz gate does not qualify
-this migration.
+reentrancy, protected replay, and reconnect. Fresh six-logic SLURM gates,
+retained-session checks, 43 normal/ASan test groups and a paired 120-input
+baseline sample now qualify the migrated routes. No solved answers were lost
+in four comparison profiles. Of 240 successful SAT rows, 220 passed Dolmen
+under their declared logic; 20 replays of five generated LRA inputs required
+the wider `QF_NRA` validator logic for constant-denominator syntax. The same
+saved assertions and models passed, but strict declared-logic coverage remains
+incomplete for those rows. Exact evidence and timing limitations are in
+`docs/run-log.json`, entry `2026-09-25-shared-assignment-slurm`.
 
 ## Conflicts, propagations, and explanations
 

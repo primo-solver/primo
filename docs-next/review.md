@@ -527,6 +527,12 @@ Efficiency review: callback assignment and rollback operate on deltas; the
 normal path does not allocate an event copy. Only deferred/reentrant events
 are queued. Final-model completeness scans remain linear in registered atoms;
 quantifiers temporarily sort their projection by assignment position. No
-performance improvement is claimed. Fresh differential fuzzing, fixed-input
-baseline comparison, and model replay remain pending. Both books now pin source links to `45e25a6`;
+performance improvement is claimed. Fresh SLURM six-logic gates, retained-session checks and the paired 120-input
+baseline comparison are recorded in `2026-09-25-shared-assignment-slurm`.
+All four profiles retain their solved counts. All 240 SAT rows were replayed:
+220 direct Dolmen passes and 20 additional passes with wider arithmetic logic
+on the same saved assertions/models. Those 20 remain incomplete under strict
+declared-logic validation. Default mixed search counters can change; two
+profiles narrowly exceed the strict 1% common-runtime threshold. No performance
+promotion is claimed. Both books pin source links to `45e25a6`;
 shifted ranges were mapped and changed spans reviewed against the owning code.

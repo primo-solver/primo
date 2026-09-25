@@ -7,21 +7,14 @@ itself establish that implementation or execution is active today.
 
 ## Shared assignment ownership
 
-Implementation is underway on `docs/public-repository-migration`, from
-`fd4d1eb`. The scope is every dedicated, mixed, component, and quantified-UF
-route, retaining one Primo-side mirror of the backend assignment. The protocol
-and acceptance checklist are in [](dpllt.md#shared-assignment-protocol-implementation-underway).
-Stages: shared storage/coordinator and deterministic tests; dedicated EUF;
-dedicated arithmetic; mixed reconciliation/protection; component and quantifier
-views; final ownership audit and qualification. The existing rollback repair
-remains in place. The foundation is committed as `365b918` and the route migration as `45e25a6`.
-All production consumers now read the shared owner; 43 normal/ASan groups pass
-and whole-tree static review is complete. Fresh SLURM qualification and paired
-baseline comparison remain pending. The interrupted local attempt is preliminary
-evidence only (`2026-09-25-shared-assignment-local-preliminary` in the run log).
-`scripts/shared_assignment_gate.py` refuses execution without a SLURM allocation;
-its array covers six logics, retained sessions and seven real-UF seed shards.
-No new performance claim is made yet.
+The all-route implementation and bounded SLURM qualification are complete;
+the result has moved to [](current-status.md#shared-assignment-ownership).
+The foundation is `365b918`, production migration `45e25a6`, and measured
+candidate `e4abefb` against baseline `fd4d1eb`. One observed-assignment mirror
+remains at the SAT interface. Full-corpus performance qualification and uniform
+declared-logic model-checker coverage are not claimed. The interrupted local
+attempt remains preliminary evidence only; the accepted result uses the remote
+gates recorded in `2026-09-25-shared-assignment-slurm`.
 
 ## Public repository migration planning
 

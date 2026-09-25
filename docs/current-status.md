@@ -5,8 +5,8 @@ and the evidence available for it. Start with [](guide/getting-started.md) to
 build and run Primo. Work underway belongs in [](active-work.md); possible next
 work belongs in [](open-leads.md).
 
-**Documented solver source:** {{ source_revision }}. The manual rewrite uses
-merged `main` at this revision. Its {source}`command interface <src/main.cpp>`
+**Documented solver source:** {{ source_revision }}. The manual links to this
+reviewed source revision. Its {source}`command interface <src/main.cpp>`
 and {source}`solver entry points <src/smt/solver_engines.cpp>` are linked to that
 commit. New guide examples are small reproducibility checks, not a fresh
 full-corpus qualification. Historical results keep their own measured revisions.
@@ -77,6 +77,36 @@ Begin with the default command line. The [option reference](reference/options.md
 owns the user-facing defaults and links to the captured CLI help. Opt-in modes
 need their own qualification; neither a successful build nor a small example
 justifies promoting one to default.
+
+## Shared assignment ownership
+
+Every dedicated, mixed, component, quantified-UF and retained-session route
+now uses one Primo-side assignment owner per SAT connection. Consumers borrow
+`sat::TrailView`; their theory undo logs remain separate. This mirrors only
+observed variables, while CaDiCaL owns its full SAT trail. Ordinary Tseytin
+auxiliaries stay in SAT; generated Boolean terms used as function arguments
+also have a theory meaning. See [](dpllt.md) for the protocol and lifetime rules.
+
+The implementation is `45e25a6`; the measured build `e4abefb` has identical C++
+sources. Fresh SLURM gates cover all six logics, retained sessions, generated
+quantified inputs and real-seed mutations. All 43 normal and ASan test groups
+pass. The fixed 120-input comparison against `fd4d1eb` has unchanged solved
+counts and no answer disagreements in four profiles; exact metadata is in
+`benchmarks/shared-assignment-20260925/` and run-log entry
+`2026-09-25-shared-assignment-slurm`.
+
+This is bounded correctness/ownership evidence, not a full-corpus speed claim.
+The default and offline-Int profiles narrowly exceed the comparison script's
+strict 1% common-runtime threshold (1.05% and 1.23% respectively). Search
+counters can change in the default mixed route. RSS includes the benchmark
+harness and does not isolate the trail's memory cost.
+
+Independent model replay covers all 240 successful SAT rows: 220 direct Dolmen
+passes and 20 passes with its logic widened to `QF_NRA`, for five generated LRA
+inputs rejected under the declared linear syntax. The saved assertions and
+models are unchanged. Strict declared-logic model coverage remains incomplete
+for those rows; they are not silently counted as direct passes. TypeFuzz's
+1,615 malformed UF mutants are likewise excluded from passing-case counts.
 
 ## Evidence boundary
 
