@@ -289,12 +289,12 @@ propositional structure has to set it.
 - Nothing here extends to a sort of fixed cardinality other than `Bool`.
   Uninterpreted sorts are unconstrained, so the question does not arise for
   them today; a future finite-sort feature would need its own enumeration.
-- No claim about `div`/`mod`/`divisible` or QF_LIRA's `to_int`, none of which
-  Primo implements. They matter to the *neighbouring* argument in
-  [](open-leads.md)'s lead 14, not to this one.
-- The equivalence of the two encodings is measured, not proved: they agree on
-  every corpus and generated case tried, and they demonstrably differ on the
-  filter interaction described above, which the corpora do not contain.
+- This Boolean-domain argument does not establish the arithmetic semantics of
+  `div`, `mod`, `divisible` or `to_int`. Those belong to the arithmetic layer
+  and the separate combination discussion in [](open-leads.md)'s lead 14.
+- Historical A/B agreement with the removed bridge encoding is empirical
+  evidence, not an equivalence proof. The purity-filter interaction above
+  explains why registration needs its explicit both-polarities relevance flag.
 
 ## Scope and limitations
 
@@ -326,8 +326,10 @@ against z3. Eleven shapes: `argument`, `result`, `compound`, `nested`,
 `mixed-sort`, `two-valued`, `converse`, `pure-polarity`,
 `model-reconstruction`, `random`, `all`.
 `scripts/slurm_qf_uf_boolean_fuzz_gate.sbatch` runs one shard per shape, keeps
-every generated input, reruns it with model production, and requires Dolmen to
-accept every satisfiable model. A failure therefore names the capacity rather
+every generated input, selects successful SAT answers for model replay, and
+requires Dolmen to accept each returned model. Replay also requires the answer
+to remain SAT. UNSAT inputs receive no model request; a run without successful
+SAT cases skips replay while preserving any answer-check failure. A failure names the capacity rather
 than only a case number. Model validation is intentionally part of this gate:
 answer differential fuzzing cannot detect an invalid model attached to a
 correct `sat` result. Prepared workspaces use the pinned
