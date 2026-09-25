@@ -578,7 +578,10 @@ obligations. The worked trace is explanatory; it does not claim a particular
 preprocessor or SAT search order.
 
 The local primary PDF `docs/oliveras-euf.pdf` was read at Sections 3.1–3.5,
-4, and 5.2–5.5. The review separates the default BFS mechanism from the
+4, and 5.2–5.5. The representation introduction now cites Sections 3.1.1 and
+3.1.2 at the point of use, distinguishes currying from flattening, and states
+that `FlatTermId`s are local to their `FlatTermIndex`.
+The review separates the default BFS mechanism from the
 optional proof forests and the paper's complexity results. It also records
 Primo's sparse undo policy, structural-alias restrictions, and the bounded
 existing-atom Ackermann mode. Broader heuristic proposals and experiment

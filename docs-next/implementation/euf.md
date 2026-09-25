@@ -15,10 +15,17 @@ consequence is propagated immediately.
 
 ## Representation and ownership
 
+Primo represents function applications using binary `apply` nodes and gives
+each application result an internal name. This follows the currying and
+flattening transformations in [Nieuwenhuis and Oliveras, *Fast Congruence
+Closure and Extensions*](https://doi.org/10.1016/j.ic.2006.08.009),
+Sections 3.1.1 and 3.1.2, respectively.
+
 Three identities have different meanings. A core `TermId` identifies immutable
-syntax. A `FlatTermId` identifies a node in one flattened representation. A
-congruence-class representative identifies the terms currently known equal;
-that representative can change after a merge or backtrack.
+syntax. A `FlatTermId` indexes a node stored by a
+{source}`FlatTermIndex <src/theory/equality/flat_terms.hpp>`; these IDs are local
+to that table. A congruence-class representative identifies the terms currently
+known equal; that representative can change after a merge or backtrack.
 
 | State | Owner and lifetime |
 | --- | --- |
@@ -42,8 +49,8 @@ without carrying mutable facts from one candidate into another.
 ### Turning applications into binary definitions
 
 {source}`FlatTermIndex::flatten <src/theory/equality/flat_terms.cpp#L25-L91>`
-represents an application as successive uses of an internal binary `apply`.
-For `g(a, b)`, write its internal nodes as:
+performs both transformations. Currying turns `g(a, b)` into
+`apply(apply(g, a), b)`. Flattening then names the application results:
 
 ```text
 apply(g, a) = u
