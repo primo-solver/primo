@@ -18,6 +18,7 @@
 #include "core/symbol_table.hpp"
 #include "core/term_manager.hpp"
 #include "sat/cadical_backend.hpp"
+#include "smt/assignment_coordinator.hpp"
 #include "smt/component_dispatcher.hpp"
 #include "smt/component_model_coordinator.hpp"
 #include "smt/component_solver.hpp"
@@ -534,7 +535,16 @@ void incremental_routing_backtracking_and_explanation_lifetime() {
   for (std::size_t index = 0; index < f.atoms.size(); ++index) {
     dispatcher.register_atoms(index, std::span(&f.atoms[index], 1));
   }
-  dispatcher.notify_assignment({1, 3, 99, 1});
+  smt::AssignmentCoordinator owner(dispatcher);
+  bool missing_notifications_rejected = false;
+  try {
+    static_cast<void>(owner.cb_check_found_model({1, 2, 3, 4}));
+  } catch (const std::logic_error&) {
+    missing_notifications_rejected = true;
+  }
+  assert(missing_notifications_rejected);
+  assert(owner.view().size() == 0);
+  owner.notify_assignment({1, 3, 99, 1});
   assert(f.owned[0]->assignments().size() == 1);
   assert(f.owned[1]->assignments().empty());
   assert(f.owned[2]->assignments().size() == 1);
@@ -552,22 +562,22 @@ void incremental_routing_backtracking_and_explanation_lifetime() {
   consequence.reasons = {sat::Lit{1}};
   f.owned[1]->pending_propagation = consequence;
   assert(dispatcher.cb_propagate() == 2);
-  dispatcher.notify_assignment({2});
-  dispatcher.notify_new_decision_level();
-  dispatcher.notify_assignment({-4});
-  dispatcher.notify_new_decision_level();
-  dispatcher.notify_backtrack(0);
+  owner.notify_assignment({2});
+  owner.notify_new_decision_level();
+  owner.notify_assignment({-4});
+  owner.notify_new_decision_level();
+  owner.notify_backtrack(0);
   assert(f.owned[3]->assignments().empty());
   assert(f.owned[1]->assignments().size() == 1);
   // The root propagation's explanation survives unrelated non-root undo.
   assert(dispatcher.cb_add_reason_clause_lit(2) == 2);
   assert(dispatcher.cb_add_reason_clause_lit(2) == -1);
   assert(dispatcher.cb_add_reason_clause_lit(2) == 0);
-  dispatcher.notify_new_decision_level();
-  dispatcher.notify_assignment({4});
+  owner.notify_new_decision_level();
+  owner.notify_assignment({4});
   assert(f.owned[3]->assignments().size() == 1);
   assert(f.owned[3]->assignments()[0].value);
-  dispatcher.notify_backtrack(0);
+  owner.notify_backtrack(0);
 
   f.owned[0]->corrupt = [](auto& result) {
     result.status = theory::TheoryCheckStatus::Cancelled;

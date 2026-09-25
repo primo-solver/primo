@@ -16,7 +16,8 @@ Keep stable lead labels and evidence links when a lead changes state.
   protocol and acceptance checklist in
   [](dpllt.md#shared-assignment-protocol-implementation-underway).
   `sat::Trail`, `sat::TrailView`, and `smt::AssignmentCoordinator` now implement
-  and test the shared protocol; production consumers still await migration.
+  and test the shared protocol. Production consumers are migrated; cross-route
+  qualification and baseline comparison are in progress.
   The chosen boundary retains one Primo-side mirror, without a CaDiCaL
   extension. Theory merge/bound undo logs remain separate. The focused EUF
   rollback regression below protects this work.

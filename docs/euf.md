@@ -10,30 +10,26 @@ rollback. See [the regression and its limits](#callback-assignment-rollback).
 
 ## Callback assignment rollback
 
-{source}`OnlineEufPropagator <src/smt/solver_engines.cpp#L1796-L1825>` owns the assignment array,
-an observed-literal trail, and a vector of decision boundaries. These are
-distinct from `IncrementalFlatAssignmentState`'s assignment records and closure
-checkpoints. Each new decision appends the current trail size: entry `k` is
-the start of level `k+1`. Backtracking to `k` retains the prefix ending at that
-entry and then keeps `k` boundaries. The vector starts empty, so backtracking
-to zero preserves assignments preceding the first decision. Boundary creation
-is amortized constant time; clearing assignment markers is linear in the
-discarded observed literals, separate from theory rollback and queue cleanup.
+`OnlineEufPropagator` reads the shared `sat::TrailView`. It owns atom
+registration, candidate queues, reasons, and its optional incremental closure.
+`AssignmentCoordinator` owns observed literals and decision boundaries;
+`IncrementalFlatAssignmentState` owns only closure checkpoints and kernel state.
+The [shared protocol](dpllt.md#shared-assignment-protocol-implementation-underway)
+preserves root and retained-level assignments, reports exact removed literals,
+and rejects opposite assignments without rollback. The kernel still receives
+every decision notification, including levels without an observed atom.
 
-This implements the notification contract of [IPASIR-UP](https://doi.org/10.4230/LIPIcs.SAT.2023.8), Section 2.2
-(Fazekas et al., SAT 2023), as exposed
-by the installed CaDiCaL vector notification API. The local design obligations
-are: preserve root and retained-level assignments; unassign discarded literals;
-keep reasons consistent with current assignments; and match the closure's
-retained facts. An unobserved SAT decision still creates a boundary, even when
-no new theory literal arrives. This change adds no new congruence-closure
-algorithm or ownership transfer.
+The boundary follows [IPASIR-UP](https://doi.org/10.4230/LIPIcs.SAT.2023.8),
+Section 2.2 (Fazekas et al., SAT 2023), with the installed CaDiCaL vector API.
+Assignment append/lookup is amortized constant time, and assignment rollback
+visits only discarded literals; theory rollback and candidate cleanup have
+separate costs. This changes assignment ownership, not the closure algorithm.
 
 Before the correction, an extra initial zero boundary shifted the callback's
 indexing. The {source}`callback regression <tests/unit/euf_callback_tests.cpp>`
 drives the production callback
-through the existing `make_uf_euf_component` factory and `TheoryComponent`
-interface. Three traces failed on the old code: propagation depending on root
+through `make_uf_euf_component`, `ComponentDispatcher`, and the shared
+coordinator. The fixture keeps an independent assignment oracle. Three traces failed on the old code: propagation depending on root
 facts, on a retained decision level, and after empty levels/repeated backtracks.
 All five test groups pass after correcting initialization and boundary trimming.
 The other groups check retained-fact conflicts, changed polarity after rollback,
@@ -52,9 +48,10 @@ The reproduced defect is lost propagation, not an incorrect SAT/UNSAT result.
 The conflict controls pass before and after the repair because the closure
 retains the required facts. `benchmarks/smoke/qf_uf/euf_retained_equalities_unsat.smt2`
 is a separate end-to-end regression; its SAT decision sequence is unspecified.
-The deterministic tests do not directly cover deferred callbacks during a
-borrowed model scope or all combined-theory schedules. Shared assignment
-bookkeeping remains an [open lead](open-leads.md#project-and-tooling-leads).
+The dedicated EUF traces do not enumerate every combined-theory schedule.
+`assignment_coordinator_tests.cpp` separately checks protected/reentrant
+notification ordering and retained-session root replay. The cross-route
+ownership migration is tracked in [active work](active-work.md).
 
 The qualification entry `2026-09-24-euf-assignment-rollback-ac2aaaf` in
 `docs/run-log.json` records passing normal/ASan suites and 3,000 fresh generated
@@ -343,23 +340,20 @@ that propagation work. Reasons are sound, but not guaranteed minimum.
 observes only EUF-relevant SAT variables: equality atoms and Boolean predicate
 applications. The propagator tracks assignments and backtracking notifications,
 then asks for entailed unassigned theory literals and their reason clauses.
-The observed-variable set and theory-atom list are fixed after clausification,
-so the callback stores observed-variable marks, variable-to-theory-atom
-pointers, current assignments, pending-propagation marks, and queued-candidate
-marks in vectors indexed by SAT variable or theory-atom index. Rollback uses
-the same literal trail as before: `notify_backtrack` clears assignment and
-pending slots for popped trail literals, and candidate queues are scratch state
-cleared on backtrack. This replaces hot hash tables in assignment callbacks; it
-does not add theory-aware SAT branching or change the set of learned theory
-clauses.
+The callback keeps observed-variable and atom-index metadata, pending-propagation
+marks, and queued-candidate marks in indexed vectors. The shared owner stores
+truth and assignment order. Exact removal deltas clear discarded reasons;
+candidate queues remain scratch state. Generated mixed-interface equalities
+extend registration without invalidating the shared view.
 With `--euf-engine=lazy`, reason queries use the older explained closure. With
 `--euf-engine=incremental`, they use a persistent flat curried closure owned by
-the external propagator. The propagator checkpoints assignment-trail positions
-when SAT enters a new decision level and creates a flat-closure checkpoint
+the external propagator. The coordinator checkpoints assignment-trail positions when SAT enters a new
+decision level; the propagator creates a flat-closure checkpoint
 lazily, immediately before the first theory atom is asserted at that level. On
 backtrack it restores the first checkpoint among the discarded levels, walks a
 sparse undo trail for representative, class, use-list, disequality, edge, and
-lookup mutations, and trims the assignment trail. This avoids replaying every
+lookup mutations. The coordinator has already trimmed the shared assignment
+trail before notifying the kernel. This avoids replaying every
 retained assignment after each backtrack and avoids copying the closure for
 decision levels that never touch theory state, but it is still an
 implementation-local trail rather than the paper's timestamped lookup undo
@@ -771,7 +765,7 @@ the EUF direction and the eventual data structures. Primo now implements the
 Section 3 use-list, lookup, pending-merge shape as an opt-in conflict and
 propagation checker over deterministic Curry-style flat definitions. Online
 incremental propagation owns a persistent flat closure and uses SAT
-decision-level callbacks with assignment-trail checkpoints. Closure checkpoint
+decision-level callbacks with kernel checkpoints and a shared assignment view. Closure checkpoint
 creation is lazy per decision level and rollback uses a sparse undo trail, but
 backtracking is not yet the paper's timestamped lookup undo structure. Under
 `conflict`/`online` propagation, the final per-solve-call conflict check reuses

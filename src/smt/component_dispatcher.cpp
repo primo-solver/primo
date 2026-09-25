@@ -39,16 +39,20 @@ ComponentDispatcher::ComponentDispatcher(std::span<theory::TheoryComponent* cons
   }
 }
 
+void ComponentDispatcher::bind_assignment_view(sat::TrailView view) {
+  sat::ExternalPropagator::bind_assignment_view(view);
+  for (auto* component : components_) component->bind_assignment_view(view);
+}
+
 void ComponentDispatcher::register_atoms(std::size_t component,
                                          std::span<const theory::ComponentAtom> atoms) {
-  if (component >= components_.size() || !trail_.empty() || !levels_.empty()) {
+  if (component >= components_.size() || assignment_view().attached()) {
     throw std::logic_error("routing may grow only at a detached preparation boundary");
   }
   for (const auto& atom : atoms) {
     const auto var = variable(atom.lit.value);
     if (var >= routes_.size()) {
       routes_.resize(var + 1);
-      assignment_.resize(var + 1, 0);
     }
     if (routes_[var].has_value()) {
       throw std::logic_error("ambiguous component SAT variable owner");
@@ -64,20 +68,12 @@ void ComponentDispatcher::notify_assignment(const std::vector<int>& lits) {
     if (var >= routes_.size() || !routes_[var].has_value()) {
       continue;
     }
-    if (assignment_[var] != 0) {
-      if (assignment_[var] != literal) {
-        throw std::logic_error("opposite assignment without component backtrack");
-      }
-      continue;
-    }
     const auto& route = *routes_[var];
     if (deltas_[route.component].empty()) {
       touched_.push_back(route.component);
     }
     deltas_[route.component].push_back(
         {route.atom.term, route.atom.lit, (literal > 0) == (route.atom.lit.value > 0)});
-    assignment_[var] = literal;
-    trail_.push_back(literal);
     ++statistics_.routed_literals;
   }
   for (const auto component : touched_) {
@@ -86,40 +82,31 @@ void ComponentDispatcher::notify_assignment(const std::vector<int>& lits) {
     dirty_[component] = true;
     ++statistics_.assignment_batches;
   }
-  ++epoch_;
 }
 
 void ComponentDispatcher::notify_new_decision_level() {
-  levels_.push_back(trail_.size());
   for (auto* component : components_) {
     component->push_level();
   }
 }
 
-void ComponentDispatcher::notify_backtrack(std::size_t level) {
-  if (level > levels_.size()) {
-    throw std::logic_error("component backtrack beyond current level");
-  }
-  if (level < levels_.size()) {
-    const auto keep = levels_[level];
-    while (trail_.size() > keep) {
-      const auto literal = trail_.back();
-      trail_.pop_back();
-      assignment_[variable(literal)] = 0;
-      reasons_.erase(literal);
-      reasons_.erase(-literal);
-    }
-    levels_.resize(level);
+void ComponentDispatcher::notify_backtrack(std::size_t) {
+  throw std::logic_error("component backtrack requires the shared removal delta");
+}
+void ComponentDispatcher::notify_backtrack_delta(std::size_t level,
+                                                 const std::vector<int>& removed) {
+  for (const int literal : removed) {
+    reasons_.erase(literal);
+    reasons_.erase(-literal);
   }
   for (auto* component : components_) {
-    component->pop_to_level(level);
+    component->backtrack(level, removed);
   }
   std::fill(dirty_.begin(), dirty_.end(), true);
   external_clause_.reset();
   clause_cursor_ = 0;
   reason_literal_ = 0;
   reason_cursor_ = 0;
-  ++epoch_;
 }
 
 void ComponentDispatcher::accept_result(std::size_t component, theory::TheoryCheckResult result) {
@@ -159,7 +146,8 @@ bool ComponentDispatcher::partial_check(bool complete_assignment) {
     }
     dirty_[index] = false;
     ++statistics_.partial_checks;
-    accept_result(index, components_[index]->check(theory::TheoryCheckEffort::Partial, epoch_, {}));
+    accept_result(index, components_[index]->check(theory::TheoryCheckEffort::Partial,
+                                                   assignment_view().epoch(), {}));
     if (publish_phase_) {
       for (const auto phase : components_[index]->phase_literals()) {
         publish_phase_(phase);
@@ -173,7 +161,11 @@ bool ComponentDispatcher::partial_check(bool complete_assignment) {
 }
 
 bool ComponentDispatcher::cb_check_found_model(const std::vector<int>& model) {
-  notify_assignment(model);
+  (void)model;
+  for (std::size_t var = 1; var < routes_.size(); ++var) {
+    if (routes_[var] && assignment_view().literal(static_cast<int>(var)) == 0)
+      throw std::logic_error("component model contains an unnotified observed atom");
+  }
   for (std::size_t index = 0; index < components_.size(); ++index) {
     if (components_[index]->descriptor().capabilities.check_on_full_model) {
       dirty_[index] = true;
@@ -188,7 +180,8 @@ int ComponentDispatcher::cb_decide() {
       const auto literal = component->suggest_literal();
       if (literal.value != 0) {
         const auto var = variable(literal.value);
-        if (var < routes_.size() && routes_[var].has_value() && assignment_[var] == 0) {
+        if (var < routes_.size() && routes_[var].has_value() &&
+            assignment_view().literal(static_cast<int>(var)) == 0) {
           return literal.value;
         }
       }
@@ -212,10 +205,10 @@ int ComponentDispatcher::cb_propagate() {
       if (var >= routes_.size() || !routes_[var].has_value()) {
         throw std::logic_error("component propagated an unregistered literal");
       }
-      if (assignment_[var] == literal) {
+      if (assignment_view().literal(static_cast<int>(var)) == literal) {
         continue;
       }
-      if (assignment_[var] == -literal) {
+      if (assignment_view().literal(static_cast<int>(var)) == -literal) {
         accept_result(index, std::move(*result));
         return 0;
       }

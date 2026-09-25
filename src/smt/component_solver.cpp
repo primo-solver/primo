@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdint>
+#include <cstdlib>
 #include <map>
 #include <optional>
 #include <stdexcept>
@@ -11,6 +12,7 @@
 
 #include "core/term.hpp"
 #include "sat/cadical_backend.hpp"
+#include "smt/assignment_coordinator.hpp"
 #include "smt/component_dispatcher.hpp"
 #include "smt/component_model_assembler.hpp"
 #include "smt/component_model_coordinator.hpp"
@@ -36,14 +38,6 @@ class CombinationTimer {
   util::Statistics& statistics_;
   std::string key_;
   std::chrono::steady_clock::time_point start_;
-};
-
-struct DetachComponents {
-  sat::IpasirUpBackend& backend;
-  const std::unique_ptr<ComponentDispatcher>& dispatcher;
-  ~DetachComponents() {
-    if (dispatcher) backend.disconnect_external_propagator();
-  }
 };
 
 using PairKey = std::tuple<core::SortId, core::TermId, core::TermId>;
@@ -85,6 +79,7 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
   for (const auto assertion : assertions) clausifier.assert_formula(assertion);
   if (recipe.prepare_boolean) recipe.prepare_boolean(clausifier);
 
+  sat::Trail completed_assignment;
   std::vector<std::unique_ptr<theory::TheoryComponent>> owned;
   std::vector<theory::TheoryComponent*> components;
   for (const auto& factory : recipe.factories) {
@@ -128,9 +123,9 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
   std::map<PairKey, theory::InterfaceRelation> registered;
   std::size_t bridge_clauses = 0;
   std::unique_ptr<ComponentDispatcher> dispatcher;
-  const DetachComponents detach{backend, dispatcher};
+  std::unique_ptr<AssignmentConnection> assignment_connection;
   const auto detach_dispatcher = [&]() {
-    if (dispatcher) backend.disconnect_external_propagator();
+    assignment_connection.reset();
     dispatcher.reset();
   };
   const auto materialize = [&](const theory::InterfacePair& requested) -> std::optional<sat::Lit> {
@@ -256,12 +251,15 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
         dispatcher->register_atoms(index, atoms_by_component[online_order[index]]);
         for (const auto phase : online_components[index]->phase_literals()) backend.phase(phase);
       }
-      backend.connect_external_propagator(dispatcher.get());
+      assignment_connection = std::make_unique<AssignmentConnection>(backend, *dispatcher);
       for (const auto& atoms : atoms_by_component) {
         for (const auto& atom : atoms)
           backend.add_observed_var(atom.lit.value < 0 ? -atom.lit.value : atom.lit.value);
       }
       statistics.increment(":combination.online-components.rebuilds");
+    } else {
+      for (auto* component : components)
+        component->bind_assignment_view(sat::TrailView(completed_assignment));
     }
     statistics.increment(first ? ":combination.components.full-builds"
                                : ":combination.components.incremental-growths");
@@ -386,12 +384,20 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
     {
       CombinationTimer timer(statistics, recipe.timing_prefix + "assignment-extraction-us");
       if (!recipe.online) {
+        completed_assignment.clear();
+        for (const auto& atoms : atoms_by_component) {
+          for (const auto& atom : atoms) {
+            const int var = std::abs(atom.lit.value);
+            const auto value = backend.value(var);
+            if (!value) throw std::logic_error("SAT model omitted a component atom");
+            completed_assignment.assign(*value ? var : -var);
+          }
+        }
         for (std::size_t index = 0; index < components.size(); ++index) {
           std::vector<theory::AssignedTheoryLiteral> assignment;
           for (const auto& atom : atoms_by_component[index]) {
-            const auto value = backend.value(atom.lit.value < 0 ? -atom.lit.value : atom.lit.value);
-            if (!value.has_value()) throw std::logic_error("SAT model omitted a component atom");
-            assignment.push_back({atom.term, atom.lit, *value == (atom.lit.value > 0)});
+            const auto literal = completed_assignment.literal(std::abs(atom.lit.value));
+            assignment.push_back({atom.term, atom.lit, literal == atom.lit.value});
           }
           components[index]->reset();
           components[index]->assign(assignment);

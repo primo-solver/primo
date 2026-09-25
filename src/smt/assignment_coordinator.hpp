@@ -29,6 +29,8 @@ class AssignmentCoordinator final : public sat::ExternalPropagator {
   bool cb_has_external_clause() override;
   int cb_add_external_clause_lit() override;
   void flush();
+  [[nodiscard]] bool has_pending() const { return !pending_.empty(); }
+  [[nodiscard]] std::size_t deferred_notifications() const { return deferred_notifications_; }
   [[nodiscard]] sat::TrailView view() const { return sat::TrailView(trail_); }
 
  private:
@@ -46,5 +48,29 @@ class AssignmentCoordinator final : public sat::ExternalPropagator {
   std::deque<Event> pending_;
   std::vector<int> delta_;
   bool delivering_ = false;
+  std::size_t deferred_notifications_ = 0;
+};
+// Lifetime boundary: settle the backend's reason callbacks before the view and
+// consumer can be destroyed. Re-observe root variables on retained sessions.
+class AssignmentConnection {
+ public:
+  AssignmentConnection(sat::IpasirUpBackend& backend, sat::ExternalPropagator& consumer,
+                       const std::vector<int>& observed = {})
+      : backend_(backend), coordinator_(consumer) {
+    backend_.reconnect_external_propagator(coordinator_, observed);
+  }
+  ~AssignmentConnection() { backend_.disconnect_external_propagator(); }
+  AssignmentConnection(const AssignmentConnection&) = delete;
+  AssignmentConnection& operator=(const AssignmentConnection&) = delete;
+  void flush() { coordinator_.flush(); }
+  [[nodiscard]] bool has_pending() const { return coordinator_.has_pending(); }
+  [[nodiscard]] std::size_t deferred_notifications() const {
+    return coordinator_.deferred_notifications();
+  }
+  [[nodiscard]] sat::TrailView view() const { return coordinator_.view(); }
+
+ private:
+  sat::IpasirUpBackend& backend_;
+  AssignmentCoordinator coordinator_;
 };
 }  // namespace primo::smt

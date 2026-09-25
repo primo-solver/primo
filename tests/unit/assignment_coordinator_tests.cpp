@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <vector>
 
+#include "sat/cadical_backend.hpp"
 #include "smt/assignment_coordinator.hpp"
 
 namespace {
@@ -89,6 +90,7 @@ void protected_and_reentrant_delivery() {
   owner.notify_assignment({3});
   require(owner.view().epoch() == epoch && owner.view().size() == 1);
   require(consumer.assignments == 1 && consumer.backtracks == 0);
+  require(owner.deferred_notifications() == 6);
   require(owner.cb_add_reason_clause_lit(7) == 7);
   rejects([&] { owner.cb_propagate(); });
   consumer.protected_model = false;
@@ -122,6 +124,31 @@ void protection_can_begin_during_replay() {
   owner.flush();
   require(owner.view().literal(2) == 2);
 }
+void connection_replays_roots_and_retires_assumptions() {
+  primo::sat::CadicalBackend backend({}, true);
+  if (!backend.capabilities().external_propagation) return;
+  const int root = backend.new_var();
+  const int atom = backend.new_var();
+  backend.add_clause({{root}});
+  Consumer first;
+  {
+    const primo::smt::AssignmentConnection connection(backend, first, {root, atom});
+    backend.assume({atom});
+    require(backend.solve() == primo::sat::SatResult::Sat);
+    require(connection.view().literal(root) == root && connection.view().literal(atom) == atom);
+  }
+  require(!first.assignment_view().attached());
+  Consumer second;
+  {
+    const primo::smt::AssignmentConnection connection(backend, second, {root, atom});
+    backend.assume({-atom});
+    require(backend.solve() == primo::sat::SatResult::Sat);
+    require(connection.view().literal(root) == root && connection.view().literal(atom) == -atom);
+    backend.assume({-root});
+    require(backend.solve() == primo::sat::SatResult::Unsat);
+  }
+  require(!second.assignment_view().attached());
+}
 void snapshot_and_growth() {
   primo::sat::Trail model;
   const primo::sat::TrailView view(model);
@@ -141,6 +168,7 @@ int main() {
     protected_and_reentrant_delivery();
     snapshot_and_growth();
     protection_can_begin_during_replay();
+    connection_replays_roots_and_retires_assumptions();
     std::cout << "PASS: shared assignment protocol\n";
   } catch (const std::exception& error) {
     std::cerr << error.what() << '\n';

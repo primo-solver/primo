@@ -195,6 +195,11 @@ Deviations from the proposal:
   atom. At a complete assignment it queues one Skolem lemma per atom that behaves
   existentially, and enumerative instances for atoms that behave universally.
   The subset and its deviations are in [](papers/enumerative-instantiation.md).
+  Its `ComponentAssignmentView` owns only registration metadata. At a complete
+  model it reads the shared trail, sorting the quantifier projection by trail
+  position to preserve obligation order; it owns no assignment or decision
+  stack. Projection costs O(q log q) for q quantifier atoms and is temporary.
+  Enumeration/Skolem caches survive SAT backtracking as before.
 - `solve_quantified_uf` (`src/smt/quantifiers/`) pairs it with the QF_UFLIA EUF
   component, exported from `solver_engines` together with its Boolean-domain
   preparation. It lowers the ground parts, then prepares each drained lemma: it

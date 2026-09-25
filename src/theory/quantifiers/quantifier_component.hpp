@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "core/ids.hpp"
+#include "theory/component_assignment.hpp"
 #include "theory/quantifiers/instance_simplifier.hpp"
 #include "theory/quantifiers/tuple_orders.hpp"
 #include "theory/theory_component.hpp"
@@ -102,6 +103,10 @@ class QuantifierComponent final : public TheoryComponent {
   void register_interface(std::span<const ComponentInterfaceScope> scopes) override;
   void register_atoms(std::span<const ComponentAtom> atoms) override;
   core::TermId encode_equality(const InterfacePair& pair) override;
+  void bind_assignment_view(sat::TrailView view) override {
+    TheoryComponent::bind_assignment_view(view);
+    assignment_.bind(view);
+  }
   void reset() override;
   void push_level() override;
   void pop_to_level(std::size_t level) override;
@@ -159,9 +164,7 @@ class QuantifierComponent final : public TheoryComponent {
   ComponentDescriptor descriptor_;
   InstanceSimplifier simplifier_;
 
-  std::size_t registered_atoms_ = 0;
-  std::vector<AssignedTheoryLiteral> trail_;
-  std::vector<std::size_t> levels_;
+  ComponentAssignmentView assignment_;
 
   std::unordered_map<core::SortId, std::vector<core::TermId>> pools_;
   std::unordered_set<core::TermId> walked_;

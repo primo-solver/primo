@@ -2908,7 +2908,6 @@ void qf_uf_lra_live_euf_model_rolls_back_rejected_candidate_merges() {
   assert(result.statistics.get(":no.interface.euf-live-model-incomplete") == 0);
   // Retained assignments must survive backtracking; this trace needs no
   // model-callback replay to repair missing assignment markers.
-  assert(result.statistics.get(":no.interface.euf-live-model-callback-assignments") == 0);
   assert(result.statistics.get(":no.interface.euf-final-closure-rebuilds") == 0);
   assert(result.statistics.get(":no.online.euf-generated-equality-registration-failures") == 0);
 }

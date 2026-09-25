@@ -16,6 +16,8 @@
 #include "core/symbol_table.hpp"
 #include "core/term_manager.hpp"
 #include "sat/lit.hpp"
+#include "sat/trail.hpp"
+#include "sat/trail_view.hpp"
 #include "smt/model_based_combination.hpp"
 #include "smt/theory_combination.hpp"
 #include "theory/theory_solver.hpp"
@@ -526,15 +528,10 @@ void manager_tracks_interface_equality_assignment_snapshots() {
   assert(manager.register_interface_equality_atom(eq_ab, primo::sat::Lit{17}));
   assert(manager.register_interface_equality_atom(eq_bc, primo::sat::Lit{19}));
 
-  manager.refresh_interface_equality_assignments([](primo::sat::Lit lit) -> std::optional<bool> {
-    if (lit.value == 17) {
-      return true;
-    }
-    if (lit.value == 19) {
-      return false;
-    }
-    return std::nullopt;
-  });
+  primo::sat::Trail assignment;
+  manager.bind_assignment_view(primo::sat::TrailView(assignment));
+  assignment.assign(17);
+  assignment.assign(-19);
 
   assert(manager.interface_equality_assignment(a, b) == InterfaceEqualityAssignment::True);
   assert(manager.interface_equality_assignment(b, c) == InterfaceEqualityAssignment::False);
@@ -545,7 +542,7 @@ void manager_tracks_interface_equality_assignment_snapshots() {
          1);
   assert(manager.registered_interface_equality_atom_count() == 2);
 
-  manager.clear_interface_equality_assignments();
+  assignment.clear();
   assert(manager.interface_equality_assignment(a, b) == InterfaceEqualityAssignment::Unknown);
   assert(manager.interface_equality_lit(a, b)->value == 17);
 }
@@ -568,22 +565,30 @@ void manager_rolls_back_interface_equality_assignments_by_decision_level() {
   assert(manager.ensure_interface_pair(b, c).has_value());
   assert(manager.ensure_interface_pair(a, c).has_value());
 
-  assert(manager.set_interface_equality_assignment(a, b, InterfaceEqualityAssignment::True));
-  manager.push_level();
-  assert(manager.set_interface_equality_assignment(a, b, InterfaceEqualityAssignment::False));
-  assert(manager.set_interface_equality_assignment(b, c, InterfaceEqualityAssignment::True));
-  manager.push_level();
-  assert(manager.set_interface_equality_assignment(a, c, InterfaceEqualityAssignment::False));
-
-  manager.pop_to_level(1);
-  assert(manager.interface_equality_assignment(a, b) == InterfaceEqualityAssignment::False);
-  assert(manager.interface_equality_assignment(b, c) == InterfaceEqualityAssignment::True);
+  const auto eq_ab = terms.mk_eq(a, b);
+  const auto eq_bc = terms.mk_eq(b, c);
+  const auto eq_ac = terms.mk_eq(a, c);
+  assert(manager.register_interface_equality_atom(eq_ab, primo::sat::Lit{1}));
+  assert(manager.register_interface_equality_atom(eq_bc, primo::sat::Lit{2}));
+  assert(manager.register_interface_equality_atom(eq_ac, primo::sat::Lit{3}));
+  primo::sat::Trail assignment;
+  manager.bind_assignment_view(primo::sat::TrailView(assignment));
+  assignment.assign(1);
+  assignment.push_level();
+  assignment.assign(-2);
+  assignment.push_level();
+  assignment.assign(3);
+  std::vector<int> removed;
+  assignment.backtrack(1, removed);
+  assert(manager.interface_equality_assignment(a, b) == InterfaceEqualityAssignment::True);
+  assert(manager.interface_equality_assignment(b, c) == InterfaceEqualityAssignment::False);
   assert(manager.interface_equality_assignment(a, c) == InterfaceEqualityAssignment::Unknown);
-
-  manager.pop_to_level(0);
+  assignment.backtrack(0, removed);
   assert(manager.interface_equality_assignment(a, b) == InterfaceEqualityAssignment::True);
   assert(manager.interface_equality_assignment(b, c) == InterfaceEqualityAssignment::Unknown);
-  assert(manager.interface_equality_assignment(a, c) == InterfaceEqualityAssignment::Unknown);
+  assignment.push_level();
+  assignment.assign(2);
+  assert(manager.interface_equality_assignment(b, c) == InterfaceEqualityAssignment::True);
 }
 
 void manager_tracks_per_round_interface_equality_classifications() {

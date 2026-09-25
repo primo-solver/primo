@@ -26,6 +26,23 @@ the exact removed literals on backtracking. Term registries and theory undo
 records remain separate. This section is the local implementation checklist;
 route migration and qualification are tracked in [](active-work.md).
 
+All dedicated, retained-session, mixed, component, and quantified-UF routes now
+use this boundary. `AssignmentConnection` disconnects the backend while the
+coordinator and consumers still live, then unbinds borrowed views. The
+component driver's detached preparation boundary also uses this lifetime guard.
+`ComponentAssignmentView` owns only atom-registration metadata and derives
+values from the common trail; quantifiers construct a temporary projection in
+SAT assignment order. `TheoryCombinationManager` reads interface assignments
+from the same view, while retaining its distinct model-equality undo log.
+`IncrementalFlatAssignmentState` keeps closure checkpoints, not an assignment
+copy. Lazy routes populate one completed-model snapshot without enabling
+online propagation. Mixed routes observe new interface atoms before every
+SAT round, including when only their arithmetic child is online.
+
+Production migration is implemented; final fuzzing and baseline comparison
+are still pending. The earlier rollback qualification does not qualify this
+new ownership change.
+
 The basis is Fazekas et al., *IPASIR-UP: User Propagators for CDCL*, SAT 2023,
 [Section 2.2](https://doi.org/10.4230/LIPIcs.SAT.2023.8), read together with the
 installed CaDiCaL vector-notification contract. This is an original ownership
@@ -70,16 +87,17 @@ and links to the actual owners.
 
 Boolean abstraction belongs to `BooleanClausifier`. Theory components receive
 typed literals and explanations, never SMT-LIB syntax or ownership of the SAT
-backend. Online callbacks maintain assignment trails and decision levels,
-produce explained conflicts/propagations, and undo state on backtracking.
+backend. `AssignmentCoordinator` maintains the shared observed assignment and
+decision boundaries. Consumers read `sat::TrailView`, produce explained
+conflicts/propagations, and undo their kernel state on backtracking.
 Propagation options affect the schedule; they do not remove mandatory final
 consistency or combination checks. The diagnostic lazy EUF engine remains
 available with `--euf-engine=lazy`.
 
 The [EUF callback regression](euf.md#callback-assignment-rollback) records the
 repair of a decision-boundary indexing mismatch that lost propagations after
-backtracking. Assignment-view consolidation is still an open lead; the repair
-keeps the existing callback ownership boundaries.
+backtracking. The shared assignment owner now replaces the duplicated callback bookkeeping;
+its cross-route qualification is tracked above.
 
 The following is the final-check skeleton, not the complete callback protocol:
 

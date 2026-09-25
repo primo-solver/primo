@@ -2,7 +2,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <functional>
 #include <optional>
 #include <unordered_map>
 #include <unordered_set>
@@ -10,6 +9,7 @@
 
 #include "core/ids.hpp"
 #include "sat/lit.hpp"
+#include "sat/trail_view.hpp"
 
 namespace primo::core {
 class TermManager;
@@ -67,7 +67,6 @@ struct InterfaceEqualityRegistryEntry {
   sat::Lit lit;
   InterfaceEqualityStatus status = InterfaceEqualityStatus::Missing;
   InterfaceEqualityValue value = InterfaceEqualityValue::Unknown;
-  InterfaceEqualityAssignment assignment = InterfaceEqualityAssignment::Unknown;
   std::uint32_t classifications = 0;
 };
 
@@ -168,11 +167,7 @@ class TheoryCombinationManager {
   void clear_interface_equality_values();
   InterfaceEqualityAssignment interface_equality_assignment(core::TermId lhs,
                                                             core::TermId rhs) const;
-  bool set_interface_equality_assignment(core::TermId lhs, core::TermId rhs,
-                                         InterfaceEqualityAssignment assignment);
-  void clear_interface_equality_assignments();
-  void refresh_interface_equality_assignments(
-      const std::function<std::optional<bool>(sat::Lit)>& lit_value);
+  void bind_assignment_view(sat::TrailView view) { assignment_view_ = view; }
   std::vector<InterfaceEqualityRegistryEntry> interface_equalities_with_assignment(
       InterfaceEqualityAssignment assignment) const;
   bool mark_interface_equality_classification(core::TermId lhs, core::TermId rhs,
@@ -208,11 +203,6 @@ class TheoryCombinationManager {
     InterfaceEqualityValue old_value = InterfaceEqualityValue::Unknown;
   };
 
-  struct EqualityAssignmentTrailEntry {
-    std::size_t index = 0;
-    InterfaceEqualityAssignment old_assignment = InterfaceEqualityAssignment::Unknown;
-  };
-
   static std::uint64_t equality_key(core::TermId lhs, core::TermId rhs);
   static std::uint32_t classification_bit(InterfaceEqualityClassification classification);
   void rebuild_equality_index();
@@ -225,9 +215,8 @@ class TheoryCombinationManager {
   std::unordered_map<core::TermId, core::SortId> interface_sort_by_term_;
   std::unordered_map<std::uint64_t, std::size_t> equality_index_;
   std::vector<EqualityValueTrailEntry> value_trail_;
-  std::vector<EqualityAssignmentTrailEntry> assignment_trail_;
   std::vector<std::size_t> value_level_starts_;
-  std::vector<std::size_t> assignment_level_starts_;
+  sat::TrailView assignment_view_;
   SharedModelState shared_model_;
   SharedEqualityDecisionState shared_equality_decisions_;
   std::unordered_map<std::uint64_t, std::size_t> explained_equality_index_;

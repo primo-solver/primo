@@ -41,6 +41,7 @@ void AssignmentCoordinator::notify_backtrack(std::size_t level) {
 }
 
 void AssignmentCoordinator::enqueue(Event event) {
+  if (consumer_.assignment_notifications_deferred()) ++deferred_notifications_;
   pending_.push_back(std::move(event));
   flush();
 }

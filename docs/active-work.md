@@ -14,7 +14,10 @@ and acceptance checklist are in [](dpllt.md#shared-assignment-protocol-implement
 Stages: shared storage/coordinator and deterministic tests; dedicated EUF;
 dedicated arithmetic; mixed reconciliation/protection; component and quantifier
 views; final ownership audit and qualification. The existing rollback repair
-remains in place. No completed migration or new performance claim is made yet.
+remains in place. The foundation is committed as `365b918`; all production
+consumers now read the shared owner, and the 43-group C++ suite passes. ASan,
+whole-tree review, fresh fuzzing, and baseline comparison qualify the migration
+before it is recorded as complete. No new performance claim is made yet.
 
 ## Public repository migration planning
 

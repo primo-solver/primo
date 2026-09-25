@@ -24,20 +24,21 @@ adaptation around this boundary.
 | State | Owner and representation |
 | --- | --- |
 | SAT trail and clause database | CaDiCaL behind {source}`CadicalBackend <src/sat/cadical_backend.hpp>`. Neither SAT literals nor the backend contain core terms. |
+| Primo's observed assignment | {source}`AssignmentCoordinator <src/smt/assignment_coordinator.hpp>` is the sole writer of {source}`sat::Trail <src/sat/trail.hpp>`. Consumers read {source}`sat::TrailView <src/sat/trail_view.hpp>`; truth comes from the trail's variable-to-position index. |
 | Meaning of SAT variables | {source}`BooleanClausifier <src/smt/clausifier.hpp#L20-L57>` owns the atom registry and term-to-literal map, borrowing the backend and term manager. |
-| Dedicated EUF callback state | {source}`OnlineEufPropagator <src/smt/solver_engines.cpp#L1638-L1690>` borrows the atom vector, terms, options, and statistics; owns assignment/index arrays, trail boundaries, candidate queues, reasons, and optional incremental closure state. |
-| Dedicated arithmetic callback state | {source}`OnlineLraPropagator <src/smt/solver_engines.cpp#L7066-L7107>` owns a mutable tableau copied from prepared structural state, assignment markers, checkpoints, queues, and reasons; borrows the prepared data, atom vector, backend, and statistics. |
-| Component routing | {source}`ComponentDispatcher <src/smt/component_dispatcher.hpp#L23-L77>` owns variable routes, assignment deltas, a trail, stream cursors, and explanation clauses; it borrows component pointers. |
+| Dedicated EUF callback state | {source}`OnlineEufPropagator <src/smt/solver_engines.cpp#L1638-L1690>` borrows the atom vector, terms, options, and statistics; owns atom-index metadata, candidate queues, reasons, and optional incremental closure state; reads the shared assignment view. |
+| Dedicated arithmetic callback state | {source}`OnlineLraPropagator <src/smt/solver_engines.cpp#L7066-L7107>` owns a mutable tableau copied from prepared structural state, kernel checkpoints, queues, and reasons; reads the shared assignment view and borrows the prepared data, atom vector, backend, and statistics. |
+| Component routing | {source}`ComponentDispatcher <src/smt/component_dispatcher.hpp#L23-L77>` owns variable routes, temporary assignment deltas, stream cursors, and explanation clauses; it borrows component pointers. |
 | Component facts and outcomes | {source}`AssignedTheoryLiteral and TheoryCheckResult <src/theory/theory_solver.hpp>` carry a core atom, its SAT literal/value, clauses, consequences, model stamps, or a typed stop result. {source}`TheoryComponent <src/theory/theory_component.hpp#L88-L130>` owns theory-local execution behind this contract and receives no SAT backend handle. |
 
 Copying a `TermId` or `sat::Lit` does not extend its owner's lifetime. Registration
 and callbacks can grow vectors/maps, so borrowed entries must not survive those
 mutations. The [core ownership rules](core.md) still apply. Connecting a
 propagator does not transfer ownership to SAT; callbacks must stop before their
-targets are destroyed or their routing is replaced. The component driver uses
-{source}`DetachComponents and detach_dispatcher <src/smt/component_solver.cpp#L41-L47>`
-and {source}`its preparation boundary <src/smt/component_solver.cpp#L130-L146>`
-for this purpose.
+targets are destroyed or their routing is replaced. The {source}`AssignmentConnection guard <src/smt/assignment_coordinator.hpp>`
+disconnects with the consumer and shared view still alive, then unbinds the view.
+The component driver uses it at
+{source}`its detached preparation boundary <src/smt/component_solver.cpp>`.
 
 ## Follow an assignment through the callbacks
 
@@ -49,14 +50,15 @@ may be batched; a callback must reason over the notified trail, not assume a
 fresh independent model each time.
 
 1. **Receive assignments.** A signed integer reports which literal became
-   true. {source}`EUF routing <src/smt/solver_engines.cpp#L2068-L2100>` looks up
-   its atom, records the assignment once, and updates the incremental state
+   true. The coordinator rejects invalid/opposite events, ignores identical
+   duplicates, updates the shared view, then delivers the new literals. {source}`EUF routing <src/smt/solver_engines.cpp#L2068-L2100>` looks up
+   its atom and updates the incremental state
    when present. {source}`ComponentDispatcher::notify_assignment
    <src/smt/component_dispatcher.cpp#L58-L88>` batches deltas by owner and marks
    affected components dirty. Optional relevance filtering is an SMT policy;
    it is not a license for a theory to ignore arbitrary assigned constraints.
-2. **Open a SAT decision level.** EUF saves a trail boundary and opens a
-   closure checkpoint through {source}`apply_new_decision_level
+2. **Open a SAT decision level.** The coordinator saves the trail boundary.
+   EUF records a kernel level, creating its closure checkpoint lazily through {source}`apply_new_decision_level
    <src/smt/solver_engines.cpp#L1796-L1801>`. The component dispatcher tells
    every component to `push_level`, even when the SAT decision itself names
    no theory atom. SAT levels are not SMT-LIB assertion scopes.
@@ -69,13 +71,13 @@ fresh independent model each time.
 4. **Let SAT react.** CaDiCaL uses the explanation for conflict analysis or
    propagation and selects the resulting backjump. Primo supplies theory
    reasons, not its own CDCL implementation.
-5. **Undo assignments.** EUF's {source}`apply_backtrack
-   <src/smt/solver_engines.cpp#L1803-L1825>` rolls back the removed suffix,
-   restores closure state, and clears pending candidates/conflicts. The
-   {source}`component dispatcher <src/smt/component_dispatcher.cpp#L97-L125>`
-   similarly removes non-retained assignments and their reasons, then pops
-   all components to the reported SAT level. The required contract preserves
-   root and retained-level facts; the regression below exercises that contract.
+5. **Undo assignments.** The coordinator removes the suffix and supplies its
+   exact literals after updating the view. EUF's {source}`apply_backtrack
+   <src/smt/solver_engines.cpp>` restores closure state, removes discarded
+   reasons, and clears pending candidates/conflicts. The
+   {source}`component dispatcher <src/smt/component_dispatcher.cpp>` similarly
+   prunes reasons and pops each component's kernel to the reported level.
+   Root and retained-level facts survive; same-level rollback is a no-op.
 
 Routing a batch is linear in its literal count plus the receiving components'
 work. Streaming a clause costs one callback per literal plus a terminator.
@@ -90,12 +92,12 @@ zero entry. At the first decision, `r` root literals therefore produced
 boundaries `{0, r}`; backtracking to zero cleared their assignment markers,
 while the closure's separate
 {source}`checkpoints <src/smt/solver_engines.cpp#L1365-L1393>` preserved the facts.
-The {source}`corrected callback <src/smt/solver_engines.cpp#L1796-L1825>`
-now starts with an empty boundary vector and keeps exactly
-`new_level` boundaries on rollback. Entry `k` marks the start of level `k+1`.
+The repair in `ac2aaaf` removed the synthetic root boundary. The shared
+{source}`trail now owns this rule <src/sat/trail.cpp>`: entry `k` marks the
+start of level `k+1`, and rollback keeps exactly `new_level` boundaries.
 
 Dedicated {source}`callback tests <tests/unit/euf_callback_tests.cpp>` drive the production
-callback through the existing EUF component adapter. Three traces reproduced
+callback through the EUF component adapter, dispatcher, and shared coordinator. Three traces reproduced
 lost transitive-equality propagation before the repair: root retention,
 retained-level retention, and repeated backtracks with empty observed levels.
 All five groups pass after the repair. Conflict and exported-model-fact controls
@@ -104,23 +106,32 @@ against every interpretation of the fixture's five constants. No incorrect
 SAT/UNSAT answer was reproduced. Deferred callbacks during a borrowed model
 scope and every combined-theory schedule are outside these direct tests.
 
-### Open lead: shared assignment bookkeeping
+### Shared assignment ownership
 
-The current SAT interface provides assignment/decision/backtrack notifications;
-a backtrack reports a level, not the individual literals removed. Its model
-query is not a live trail accessor. The callback therefore needs some record
-of received assignments to update its state efficiently. Nevertheless, the
-EUF, arithmetic, mixed, and component paths duplicate this bookkeeping.
-Investigate a single SMT-side assignment owner with views for consumers, or an
-appropriate backend view, before refactoring these copies. Preserve notification
-ordering, observed-variable subsets, reason lifetimes, and deferred model-scope
-replay. Theory-specific undo records for equality merges and arithmetic bounds
-remain necessary. The component route additionally owns a
-{source}`ComponentAssignment <src/theory/component_assignment.hpp>` copy;
-{source}`sat::Trail <src/sat/trail.hpp>` and
-{source}`sat::TrailView <src/sat/trail_view.hpp>` are empty scaffolds.
-This consolidation is deferred; the focused boundary repair
-keeps the current ownership structure.
+The SAT API reports notifications and a backtrack level, so Primo retains one
+mirror of the observed assignment per connection. No backend-native trail
+extension is required. The dedicated EUF/arithmetic, mixed, component, and
+quantified-UF consumers no longer own mutable truth arrays or assignment
+boundaries. Theory-specific merge/bound undo logs remain necessary.
+
+{source}`ComponentAssignmentView <src/theory/component_assignment.hpp>` stores
+atom-registration metadata and projects values from the shared view. Full
+component checks build temporary snapshots; quantifiers order their projection
+by SAT trail position to preserve scheduling. Lazy routes load a completed-model
+snapshot through the same read interface, without enabling online propagation.
+The mixed route registers newly generated interface atoms before each solve,
+including when only arithmetic uses online callbacks. The interface manager
+reads their assignment from the view; its tentative model-equality values are
+separate theory state.
+
+Online model callbacks validate notified state instead of filling missing
+assignments. Retained sessions reconnect with a new owner and re-observe root
+facts after the preceding connection has settled its reason callbacks.
+{source}`Protocol tests <tests/unit/assignment_coordinator_tests.cpp>` cover
+root/retained levels, empty levels, duplicate and invalid events, growth,
+reentrancy, protected replay, and reconnect. Route qualification and baseline
+comparison are still underway; the previous rollback fuzz gate does not qualify
+this migration.
 
 ## Conflicts, propagations, and explanations
 
@@ -216,11 +227,9 @@ theory, combination, and result-construction obligations.
   blocking theory clause and another solve; absence of conflict permits the
   single-theory SAT result, with typed model construction when requested.
 - **Dedicated LRA:** {source}`cb_check_found_model
-  <src/smt/solver_engines.cpp#L7173-L7183>` returns true because this route
-  relies on eager callback scheduling to finish deferred tableau repair before
-  SAT acceptance. That is a coupling to the installed adapter/backend protocol,
-  not a general rule that model callbacks need no checks. Switching to lazy
-  registration would require revisiting this invariant.
+  <src/smt/solver_engines.cpp>` validates observed-atom completeness, finishes
+  any deferred tableau check, and rejects a conflict. Eager registration
+  normally finishes this repair earlier through the external-clause callback.
 - **Component recipes:** the model callback's `Partial` check is not the
   final combination decision. The outer loop first handles
   {source}`pending lemmas and typed failures
@@ -255,6 +264,19 @@ builds or with `--check-model`, then prints the typed interpretation. This
 check is conditional, and does not replace the solving obligations above or
 independent validation. A model-construction failure is an internal error,
 not evidence of theory UNSAT.
+
+### Protected model scopes
+
+The optional mixed online-EUF route borrows its live closure for tentative
+model merges. During that scope the coordinator freezes the shared view and
+queues all assignment, level, and rollback events. It replays them together
+for every consumer after the scope ends. Ordinary callbacks cannot run while
+protected; stored reasons may be streamed, but EUF cannot reconstruct a missing
+reason from temporary merges. Before accepting a model, any queued notifications
+force release, replay, and another SAT/theory round. The
+{source}`coordinator tests <tests/unit/assignment_coordinator_tests.cpp>` cover
+this scheduling protocol directly; mixed solver regressions cover model merging
+and reconstructed-model validity.
 
 ## Worked example: equality rejects a Boolean branch
 

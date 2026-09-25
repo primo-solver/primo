@@ -31,6 +31,7 @@
 #include "sat/clause.hpp"
 #include "sat/ipasir_up.hpp"
 #include "sat/lit.hpp"
+#include "smt/assignment_coordinator.hpp"
 #include "smt/boolean_solver.hpp"
 #include "smt/check_sat.hpp"
 #include "smt/clausifier.hpp"
@@ -1362,13 +1363,12 @@ class IncrementalFlatAssignmentState {
     publish_stats();
   }
 
-  void push_level() { checkpoints_.push_back(Checkpoint{assignments_.size(), std::nullopt}); }
+  void push_level() { checkpoints_.push_back(Checkpoint{std::nullopt}); }
 
   void pop_to_level(std::size_t new_level) {
     if (checkpoints_.size() <= new_level) {
       return;
     }
-    const std::size_t assignment_count = checkpoints_[new_level].assignment_count;
     std::optional<std::size_t> closure_checkpoint;
     for (std::size_t index = new_level; index < checkpoints_.size(); ++index) {
       if (checkpoints_[index].closure_checkpoint.has_value()) {
@@ -1377,7 +1377,6 @@ class IncrementalFlatAssignmentState {
       }
     }
     checkpoints_.resize(new_level);
-    assignments_.resize(assignment_count);
     if (closure_checkpoint.has_value()) {
       publish_stats();
       closure_.pop(closure_checkpoint.value());
@@ -1399,7 +1398,6 @@ class IncrementalFlatAssignmentState {
       return;
     }
     ensure_current_level_checkpoint();
-    assignments_.push_back(assignment);
     flat_atom->source.value = assignment.value;
     flat_atom->source.filtered = assignment.filtered;
     assert_flat_assigned_atom(closure_, flat_atom.value(), true_flat_, false_flat_);
@@ -1603,7 +1601,6 @@ class IncrementalFlatAssignmentState {
   const core::TermManager& terms_;
   PureTheoryFilterMode pure_theory_filter_ = PureTheoryFilterMode::Auto;
   struct Checkpoint {
-    std::size_t assignment_count = 0;
     std::optional<std::size_t> closure_checkpoint;
   };
 
@@ -1614,7 +1611,6 @@ class IncrementalFlatAssignmentState {
   theory::equality::FlatTermId false_flat_ = theory::equality::kInvalidFlatTermId;
   std::vector<FlatAssignedTheoryAtom> flat_atoms_;
   std::unordered_map<int, std::size_t> flat_atom_by_var_;
-  std::vector<AssignedTheoryAtom> assignments_;
   std::vector<Checkpoint> checkpoints_;
   bool flush_live_stats_ = false;
   std::size_t unflushed_publications_ = 0;
@@ -1656,7 +1652,6 @@ class OnlineEufPropagator final : public sat::ExternalPropagator {
     }
     observed_vars_.assign(static_cast<std::size_t>(max_theory_var) + 1, 0);
     atom_index_by_var_.assign(static_cast<std::size_t>(max_theory_var) + 1, std::nullopt);
-    assignment_by_var_.assign(static_cast<std::size_t>(max_theory_var) + 1, 0);
     pending_vars_.assign(static_cast<std::size_t>(max_theory_var) + 1, 0);
     queued_candidate_indices_.assign(theory_atoms_.size(), 0);
     for (std::size_t atom_index = 0; atom_index < theory_atoms_.size(); ++atom_index) {
@@ -1721,67 +1716,17 @@ class OnlineEufPropagator final : public sat::ExternalPropagator {
     return true;
   }
 
-  void notify_assignment(const std::vector<int>& lits) override {
-    if (model_scope_active()) {
-      deferred_callbacks_.push_back(DeferredCallback{DeferredCallbackKind::Assignment, lits, 0});
-      return;
-    }
-    apply_assignment(lits);
+  bool assignment_notifications_deferred() const override { return model_scope_active(); }
+  void notify_assignment(const std::vector<int>& lits) override { apply_assignment(lits); }
+  void notify_new_decision_level() override { apply_new_decision_level(); }
+  void notify_backtrack(std::size_t) override {
+    throw std::logic_error("EUF backtrack requires the shared removal delta");
   }
-
-  void notify_new_decision_level() override {
-    if (model_scope_active()) {
-      deferred_callbacks_.push_back(
-          DeferredCallback{DeferredCallbackKind::NewDecisionLevel, {}, 0});
-      return;
-    }
-    apply_new_decision_level();
-  }
-
-  void notify_backtrack(size_t new_level) override {
-    if (model_scope_active()) {
-      deferred_callbacks_.push_back(
-          DeferredCallback{DeferredCallbackKind::Backtrack, {}, new_level});
-      return;
-    }
-    apply_backtrack(new_level);
-  }
-
-  void flush_deferred_callbacks() {
-    if (model_scope_active()) {
-      throw std::logic_error("cannot replay EUF callbacks while a model scope is active");
-    }
-    std::vector<DeferredCallback> callbacks = std::move(deferred_callbacks_);
-    deferred_callbacks_.clear();
-    for (const DeferredCallback& callback : callbacks) {
-      switch (callback.kind) {
-        case DeferredCallbackKind::Assignment:
-          apply_assignment(callback.lits);
-          break;
-        case DeferredCallbackKind::NewDecisionLevel:
-          apply_new_decision_level();
-          break;
-        case DeferredCallbackKind::Backtrack:
-          apply_backtrack(callback.level);
-          break;
-      }
-    }
-    statistics_.increment(":no.interface.euf-live-deferred-callbacks", callbacks.size());
+  void notify_backtrack_delta(std::size_t level, const std::vector<int>& removed) override {
+    apply_backtrack(level, removed);
   }
 
  private:
-  enum class DeferredCallbackKind {
-    Assignment,
-    NewDecisionLevel,
-    Backtrack,
-  };
-
-  struct DeferredCallback {
-    DeferredCallbackKind kind = DeferredCallbackKind::Assignment;
-    std::vector<int> lits;
-    std::size_t level = 0;
-  };
-
   bool model_scope_active() const {
     return incremental_state_.has_value() && incremental_state_->model_scope_active();
   }
@@ -1794,23 +1739,17 @@ class OnlineEufPropagator final : public sat::ExternalPropagator {
   }
 
   void apply_new_decision_level() {
-    level_starts_.push_back(trail_.size());
     if (incremental_state_.has_value()) {
       incremental_state_->push_level();
     }
   }
 
-  void apply_backtrack(std::size_t new_level) {
-    const std::size_t keep = new_level < level_starts_.size() ? level_starts_[new_level] : 0;
-    while (trail_.size() > keep) {
-      const int lit = trail_.back();
-      trail_.pop_back();
-      const int var = lit > 0 ? lit : -lit;
-      assignment_by_var_[static_cast<std::size_t>(var)] = 0;
-      --assigned_var_count_;
-      clear_pending_var(var);
+  void apply_backtrack(std::size_t new_level, const std::vector<int>& removed) {
+    for (const int lit : removed) {
+      clear_pending_var(lit > 0 ? lit : -lit);
+      reasons_.erase(lit);
+      reasons_.erase(-lit);
     }
-    level_starts_.resize(std::min(new_level, level_starts_.size()));
     if (incremental_state_.has_value()) {
       incremental_state_->pop_to_level(new_level);
     }
@@ -1826,10 +1765,11 @@ class OnlineEufPropagator final : public sat::ExternalPropagator {
 
  public:
   bool cb_check_found_model(const std::vector<int>& model) override {
-    const std::size_t before = assigned_var_count_;
-    apply_assignment(model);
-    statistics_.increment(":no.interface.euf-live-model-callback-assignments",
-                          assigned_var_count_ - before);
+    (void)model;
+    for (std::size_t i = 0; i < atom_count(); ++i) {
+      if (!is_assigned_var(std::abs(atom_at(i).lit.value)))
+        throw std::logic_error("EUF model contains an unnotified observed atom");
+    }
     if (incremental_state_.has_value()) {
       incremental_state_->flush_stats();
     }
@@ -1868,8 +1808,9 @@ class OnlineEufPropagator final : public sat::ExternalPropagator {
     if (!generated_registration_valid_) {
       return ModelScopeAvailability::InvalidRegistration;
     }
-    if (assigned_var_count_ != atom_count()) {
-      return ModelScopeAvailability::IncompleteAssignment;
+    for (std::size_t i = 0; i < atom_count(); ++i) {
+      if (!is_assigned_var(std::abs(atom_at(i).lit.value)))
+        return ModelScopeAvailability::IncompleteAssignment;
     }
     if (incremental_state_->conflict().has_value()) {
       return ModelScopeAvailability::Conflict;
@@ -1921,6 +1862,8 @@ class OnlineEufPropagator final : public sat::ExternalPropagator {
 
   int cb_add_reason_clause_lit(int propagated_lit) override {
     if (!reasons_.contains(propagated_lit)) {
+      if (model_scope_active())
+        throw std::logic_error("cannot reconstruct an EUF reason inside a model scope");
       compute_reason_for(propagated_lit);
     }
     const auto found = reasons_.find(propagated_lit);
@@ -2008,7 +1951,6 @@ class OnlineEufPropagator final : public sat::ExternalPropagator {
     const std::size_t size = static_cast<std::size_t>(var) + 1U;
     observed_vars_.resize(std::max(observed_vars_.size(), size), 0);
     atom_index_by_var_.resize(std::max(atom_index_by_var_.size(), size), std::nullopt);
-    assignment_by_var_.resize(std::max(assignment_by_var_.size(), size), 0);
     pending_vars_.resize(std::max(pending_vars_.size(), size), 0);
     diseq_ackermann_indices_by_var_.resize(std::max(diseq_ackermann_indices_by_var_.size(), size));
   }
@@ -2019,13 +1961,10 @@ class OnlineEufPropagator final : public sat::ExternalPropagator {
   }
 
   bool is_assigned_var(int var) const {
-    return var >= 0 && static_cast<std::size_t>(var) < assignment_by_var_.size() &&
-           assignment_by_var_[static_cast<std::size_t>(var)] != 0;
+    return is_observed_var(var) && assignment_view().literal(var) != 0;
   }
 
-  bool assigned_value(int var) const {
-    return assignment_by_var_[static_cast<std::size_t>(var)] > 0;
-  }
+  bool assigned_value(int var) const { return assignment_view().literal(var) > 0; }
 
   bool literal_is_true(sat::Lit lit) const {
     const int var = lit.value > 0 ? lit.value : -lit.value;
@@ -2071,12 +2010,6 @@ class OnlineEufPropagator final : public sat::ExternalPropagator {
     if (!is_observed_var(var)) {
       return;
     }
-    if (is_assigned_var(var)) {
-      return;
-    }
-    assignment_by_var_[static_cast<std::size_t>(var)] = lit > 0 ? 1 : -1;
-    ++assigned_var_count_;
-    trail_.push_back(lit);
     clear_pending_var(var);
     enqueue_diseq_ackermann_candidates(var);
     if (!incremental_state_.has_value()) {
@@ -2217,7 +2150,7 @@ class OnlineEufPropagator final : public sat::ExternalPropagator {
 
   std::vector<AssignedTheoryAtom> current_assigned_atoms() const {
     std::vector<AssignedTheoryAtom> atoms;
-    atoms.reserve(assigned_var_count_);
+    atoms.reserve(atom_count());
     for (std::size_t atom_index = 0; atom_index < atom_count(); ++atom_index) {
       const BooleanClausifier::TheoryAtom& atom = atom_at(atom_index);
       const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
@@ -2622,13 +2555,7 @@ class OnlineEufPropagator final : public sat::ExternalPropagator {
   util::Statistics& statistics_;
   std::vector<unsigned char> observed_vars_;
   std::vector<std::optional<std::size_t>> atom_index_by_var_;
-  std::vector<signed char> assignment_by_var_;
-  std::size_t assigned_var_count_ = 0;
   bool generated_registration_valid_ = true;
-  std::vector<int> trail_;
-  // IPASIR-UP Section 2.2: entry k starts level k+1, so backtrack(k)
-  // retains its prefix, including root assignments. No synthetic root entry.
-  std::vector<std::size_t> level_starts_;
   std::deque<int> pending_;
   std::vector<unsigned char> pending_vars_;
   std::deque<std::size_t> candidate_queue_;
@@ -2640,7 +2567,6 @@ class OnlineEufPropagator final : public sat::ExternalPropagator {
   std::deque<std::size_t> diseq_ackermann_queue_;
   std::vector<unsigned char> queued_diseq_ackermann_candidates_;
   std::vector<std::vector<std::size_t>> diseq_ackermann_indices_by_var_;
-  std::vector<DeferredCallback> deferred_callbacks_;
   std::optional<IncrementalFlatAssignmentState> incremental_state_;
   sat::Clause external_clause_;
   std::size_t external_clause_index_ = 0;
@@ -2842,12 +2768,6 @@ std::optional<bool> lit_value_in_backend(const sat::IpasirUpBackend& backend, sa
 
 std::size_t registered_interface_equality_atom_count(const TheoryCombinationManager& manager) {
   return manager.registered_interface_equality_atom_count();
-}
-
-void refresh_interface_equality_assignment_state(const sat::IpasirUpBackend& backend,
-                                                 TheoryCombinationManager& manager) {
-  manager.refresh_interface_equality_assignments(
-      [&](sat::Lit lit) { return lit_value_in_backend(backend, lit); });
 }
 
 void append_interface_equalities(
@@ -3748,38 +3668,29 @@ std::shared_ptr<const core::Model> build_qf_lia_model(
   return build_typed_model(terms, {}, assignments, values, conversions, nullptr, &statistics);
 }
 
-std::vector<AssignedTheoryAtom> assigned_atoms_from_backend(
-    const sat::IpasirUpBackend& backend,
-    const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms) {
-  std::vector<AssignedTheoryAtom> assigned_atoms;
-  assigned_atoms.reserve(theory_atoms.size());
-  for (const BooleanClausifier::TheoryAtom& atom : theory_atoms) {
-    const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
-    const std::optional<bool> assignment = backend.value(var);
-    if (!assignment.has_value()) {
-      throw UnsupportedInput("SAT backend did not assign theory atom");
-    }
-    const bool atom_value = atom.lit.value > 0 ? assignment.value() : !assignment.value();
-    assigned_atoms.push_back(assigned_theory_atom(PureTheoryFilterMode::Off, atom, atom_value));
+void load_assignment_snapshot(const sat::IpasirUpBackend& backend,
+                              const std::vector<BooleanClausifier::TheoryAtom>& atoms,
+                              sat::Trail& snapshot) {
+  snapshot.clear();
+  for (const auto& atom : atoms) {
+    const int var = std::abs(atom.lit.value);
+    const auto value = backend.value(var);
+    if (!value) throw UnsupportedInput("SAT backend did not assign theory atom");
+    snapshot.assign(*value ? var : -var);
   }
-  return assigned_atoms;
 }
 
-std::vector<AssignedTheoryAtom> assigned_atoms_from_backend(
-    const sat::IpasirUpBackend& backend,
-    const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms, PureTheoryFilterMode mode) {
-  std::vector<AssignedTheoryAtom> assigned_atoms;
-  assigned_atoms.reserve(theory_atoms.size());
-  for (const BooleanClausifier::TheoryAtom& atom : theory_atoms) {
-    const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
-    const std::optional<bool> assignment = backend.value(var);
-    if (!assignment.has_value()) {
-      throw UnsupportedInput("SAT backend did not assign theory atom");
-    }
-    const bool atom_value = atom.lit.value > 0 ? assignment.value() : !assignment.value();
-    assigned_atoms.push_back(assigned_theory_atom(mode, atom, atom_value));
+std::vector<AssignedTheoryAtom> assigned_atoms_from_view(
+    sat::TrailView view, const std::vector<BooleanClausifier::TheoryAtom>& atoms,
+    PureTheoryFilterMode mode = PureTheoryFilterMode::Off) {
+  std::vector<AssignedTheoryAtom> result;
+  result.reserve(atoms.size());
+  for (const auto& atom : atoms) {
+    const int literal = view.literal(std::abs(atom.lit.value));
+    if (literal == 0) throw std::logic_error("assignment view omitted a theory atom");
+    result.push_back(assigned_theory_atom(mode, atom, literal == atom.lit.value));
   }
-  return assigned_atoms;
+  return result;
 }
 
 bool is_lra_theory_atom(const core::TermManager& terms, core::TermId term_id) {
@@ -4537,9 +4448,8 @@ std::vector<TermPairKey> unresolved_interface_pairs(const FlatEufModelView& euf,
   std::vector<TermPairKey> unresolved;
   unresolved.reserve(pairs.size());
   for (const TermPairKey& pair : pairs) {
-    const std::optional<InterfaceEqualityRegistryEntry> registered =
-        manager.interface_equality(pair.lhs, pair.rhs);
-    if ((registered.has_value() && registered->assignment == InterfaceEqualityAssignment::True) ||
+    if (manager.interface_equality_assignment(pair.lhs, pair.rhs) ==
+            InterfaceEqualityAssignment::True ||
         flat_closure_equal_on_terms(euf, pair.lhs, pair.rhs)) {
       statistics.increment(":no.interface.lra-exact-fallback-skipped-pairs");
       continue;
@@ -4946,9 +4856,8 @@ LraImpliedRealEqualitiesResult resolve_class_entailed_equalities(
       const TermPairKey pair = canonical_term_pair(anchor, candidate);
       statistics.increment(":no.interface.lra-model-filter-physical-pairs");
       statistics.increment(":no.interface.lra-exact-fallback-streamed-pairs");
-      const std::optional<InterfaceEqualityRegistryEntry> registered =
-          manager.interface_equality(pair.lhs, pair.rhs);
-      if ((registered.has_value() && registered->assignment == InterfaceEqualityAssignment::True) ||
+      if (manager.interface_equality_assignment(pair.lhs, pair.rhs) ==
+              InterfaceEqualityAssignment::True ||
           flat_closure_equal_on_terms(euf, pair.lhs, pair.rhs)) {
         // Already true against this anchor specifically -- not (yet) known
         // true against any other class member, so it still needs a real
@@ -4976,10 +4885,8 @@ LraImpliedRealEqualitiesResult resolve_class_entailed_equalities(
     for (std::size_t i = 0; i < linked.size(); ++i) {
       for (std::size_t j = i + 1; j < linked.size(); ++j) {
         const TermPairKey transitive_pair = canonical_term_pair(linked[i], linked[j]);
-        const std::optional<InterfaceEqualityRegistryEntry> registered =
-            manager.interface_equality(transitive_pair.lhs, transitive_pair.rhs);
-        if ((registered.has_value() &&
-             registered->assignment == InterfaceEqualityAssignment::True) ||
+        if (manager.interface_equality_assignment(transitive_pair.lhs, transitive_pair.rhs) ==
+                InterfaceEqualityAssignment::True ||
             flat_closure_equal_on_terms(euf, transitive_pair.lhs, transitive_pair.rhs)) {
           continue;
         }
@@ -5020,9 +4927,8 @@ LraImpliedRealEqualitiesResult lra_implied_real_equalities_for_partition(
   while (const std::optional<TermPairKey> pair = cursor.next()) {
     statistics.increment(":no.interface.lra-model-filter-physical-pairs");
     statistics.increment(":no.interface.lra-exact-fallback-streamed-pairs");
-    const std::optional<InterfaceEqualityRegistryEntry> registered =
-        manager.interface_equality(pair->lhs, pair->rhs);
-    if ((registered.has_value() && registered->assignment == InterfaceEqualityAssignment::True) ||
+    if (manager.interface_equality_assignment(pair->lhs, pair->rhs) ==
+            InterfaceEqualityAssignment::True ||
         flat_closure_equal_on_terms(euf, pair->lhs, pair->rhs)) {
       statistics.increment(":no.interface.lra-exact-fallback-skipped-pairs");
       continue;
@@ -7092,8 +6998,6 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
           std::max(max_theory_var, atom.lit.value > 0 ? atom.lit.value : -atom.lit.value);
     }
     observed_vars_.assign(static_cast<std::size_t>(max_theory_var) + 1, 0);
-    assigned_.assign(static_cast<std::size_t>(max_theory_var) + 1, 0);
-    assigned_lit_by_var_.assign(static_cast<std::size_t>(max_theory_var) + 1, 0);
     model_phase_by_var_.assign(static_cast<std::size_t>(max_theory_var) + 1, 0);
     model_phase_dirty_bound_vars_.assign(prepared_.base_tableau.variable_count(), 0);
     atom_index_by_var_.assign(static_cast<std::size_t>(max_theory_var) + 1, theory_atoms_.size());
@@ -7112,33 +7016,20 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
     }
   }
 
-  void notify_new_decision_level() override {
-    checkpoints_.push_back(tableau_.push());
-    level_starts_.push_back(var_trail_.size());
-  }
+  void notify_new_decision_level() override { checkpoints_.push_back(tableau_.push()); }
 
-  void notify_backtrack(size_t new_level) override {
+  void notify_backtrack(std::size_t) override {
+    throw std::logic_error("arithmetic backtrack requires the shared removal delta");
+  }
+  void notify_backtrack_delta(std::size_t new_level, const std::vector<int>& removed) override {
     if (new_level < checkpoints_.size()) {
       tableau_.pop(checkpoints_[new_level]);
       checkpoints_.resize(new_level);
     }
-    if (new_level < level_starts_.size()) {
-      const std::size_t keep = level_starts_[new_level];
-      while (var_trail_.size() > keep) {
-        const int var = var_trail_.back();
-        var_trail_.pop_back();
-        assigned_[static_cast<std::size_t>(var)] = 0;
-        // Only erase reasons_ entries for literals actually unassigned by
-        // this backtrack -- CaDiCaL can still legitimately ask (e.g. during
-        // conflict analysis of a *later* conflict) for the reason of an
-        // earlier propagation that remains on the trail after backtracking
-        // to new_level, and clearing it unconditionally here would answer
-        // that with an empty (invalid) reason clause.
-        reasons_.erase(var);
-        reasons_.erase(-var);
-        assigned_lit_by_var_[static_cast<std::size_t>(var)] = 0;
-      }
-      level_starts_.resize(new_level);
+    // Retained propagations still own reasons after unrelated backtracking.
+    for (const int literal : removed) {
+      reasons_.erase(literal);
+      reasons_.erase(-literal);
     }
     rebuild_true_interface_bounds();
     published_interface_pairs_.clear();
@@ -7164,23 +7055,15 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
     }
   }
 
-  // Unconditional `true` is sound, but only because this propagator runs in
-  // EAGER mode, and that coupling is not local -- so it is stated here.
-  //
-  // CaDiCaL's search loop (contrib/src/cadical/src/internal.cpp) runs
-  // `external_propagate()` BEFORE it tests `satisfied()`, and
-  // `external_propagate()` calls `ask_external_clause()` -- hence
-  // `cb_has_external_clause()`, hence run_deferred_check_if_needed() --
-  // unconditionally whenever there is no conflict
-  // (external_propagate.cpp, "if (!unsat && !conflict)"). So by the time
-  // `external_check_solution()` asks us to approve a model, the theory check
-  // has already run this iteration and produced no conflict clause. There is
-  // nothing left to verify.
-  //
-  // That entire argument collapses if the propagator is ever registered lazy.
-  // The SAT adapter owns that backend-specific registration detail; CaDiCaL's
-  // adapter currently leaves ExternalPropagator::is_lazy at its eager default.
-  bool cb_check_found_model(const std::vector<int>& /*model*/) override { return true; }
+  // Validate the notification contract at a complete model; never backfill it.
+  bool cb_check_found_model(const std::vector<int>&) override {
+    for (const auto& atom : theory_atoms_) {
+      if (!is_assigned_var(std::abs(atom.lit.value)))
+        throw std::logic_error("arithmetic model contains an unnotified observed atom");
+    }
+    run_deferred_check_if_needed();
+    return !conflict_.has_value();
+  }
 
   // Competitiveness-roadmap item 8: called by CaDiCaL right before it would
   // otherwise make a generic VSIDS decision (Internal::ask_decision(),
@@ -7387,8 +7270,7 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
   }
 
   bool is_assigned_var(int var) const {
-    return var >= 0 && static_cast<std::size_t>(var) < assigned_.size() &&
-           assigned_[static_cast<std::size_t>(var)] != 0;
+    return is_observed_var(var) && assignment_view().literal(var) != 0;
   }
 
   void publish_elimination_stats() {
@@ -7408,9 +7290,6 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
     if (!is_observed_var(var)) {
       return;
     }
-    assigned_[static_cast<std::size_t>(var)] = 1;
-    assigned_lit_by_var_[static_cast<std::size_t>(var)] = lit;
-    var_trail_.push_back(var);
     const std::size_t atom_index = atom_index_by_var_[static_cast<std::size_t>(var)];
     const PreparedLraTheory::PreparedAtom& prepared_atom = prepared_.atoms[atom_index];
     if (!prepared_atom.is_arithmetic) {
@@ -7647,7 +7526,7 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
       if (!is_assigned_var(var)) {
         continue;
       }
-      const int assigned_lit = assigned_lit_by_var_[static_cast<std::size_t>(var)];
+      const int assigned_lit = assignment_view().literal(var);
       const bool atom_value = atom.lit.value > 0 ? assigned_lit > 0 : assigned_lit < 0;
       if (atom_value) {
         true_lra_le_reasons_[pair] = sat::Lit{-assigned_lit};
@@ -7883,15 +7762,11 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
   util::Statistics& statistics_;
   bool count_query_conflicts_ = false;
   std::vector<char> observed_vars_;
-  std::vector<char> assigned_;
-  std::vector<int> assigned_lit_by_var_;
   std::vector<int> model_phase_by_var_;
   std::vector<char> model_phase_dirty_bound_vars_;
   std::vector<theory::arithmetic::LraVarId> model_phase_dirty_bound_var_list_;
-  std::vector<int> var_trail_;
   std::vector<std::size_t> atom_index_by_var_;
   std::vector<std::size_t> checkpoints_;
-  std::vector<std::size_t> level_starts_;
   std::deque<PendingPropagation> pending_;
   std::deque<InterfaceEqualityPropagation> pending_interface_equalities_;
   bool interface_equalities_enabled_ = false;
@@ -7948,7 +7823,6 @@ class MixedTheoryPropagationDispatcher final : public sat::ExternalPropagator {
         max_var = std::max(max_var, sat_var(entry.lit));
       }
     }
-    assignment_by_var_.assign(static_cast<std::size_t>(max_var) + 1, 0);
     interface_pair_by_var_.assign(static_cast<std::size_t>(max_var) + 1, TermPairKey{});
     observed_interface_var_.assign(static_cast<std::size_t>(max_var) + 1, 0);
 
@@ -7957,7 +7831,9 @@ class MixedTheoryPropagationDispatcher final : public sat::ExternalPropagator {
 
   void observe_registered_interface_equalities(bool count_observation = true) {
     statistics_.increment(":no.interface.euf-live-registry-syncs");
-    for (const InterfaceEqualityRegistryEntry& entry : manager_.summary().equality_registry) {
+    for (std::size_t index = 0; index < manager_.summary().equality_registry.size(); ++index) {
+      // Observation can synchronously deliver assignments and extend this registry.
+      const auto entry = manager_.summary().equality_registry[index];
       observe_interface_equality_entry(entry, count_observation);
     }
   }
@@ -7972,10 +7848,13 @@ class MixedTheoryPropagationDispatcher final : public sat::ExternalPropagator {
     return euf_propagator_ != nullptr ? euf_propagator_->begin_model_scope() : std::nullopt;
   }
 
-  void flush_deferred_euf_callbacks() {
-    if (euf_propagator_ != nullptr) {
-      euf_propagator_->flush_deferred_callbacks();
-    }
+  void bind_assignment_view(sat::TrailView view) override {
+    sat::ExternalPropagator::bind_assignment_view(view);
+    if (euf_propagator_) euf_propagator_->bind_assignment_view(view);
+    if (lra_propagator_) lra_propagator_->bind_assignment_view(view);
+  }
+  bool assignment_notifications_deferred() const override {
+    return euf_propagator_ && euf_propagator_->assignment_notifications_deferred();
   }
 
   void notify_assignment(const std::vector<int>& lits) override {
@@ -8001,26 +7880,25 @@ class MixedTheoryPropagationDispatcher final : public sat::ExternalPropagator {
       lra_propagator_->notify_new_decision_level();
     }
     manager_.push_level();
-    level_starts_.push_back(trail_.size());
   }
 
-  void notify_backtrack(size_t new_level) override {
+  void notify_backtrack(std::size_t) override {
+    throw std::logic_error("mixed backtrack requires the shared removal delta");
+  }
+  void notify_backtrack_delta(std::size_t new_level, const std::vector<int>& removed) override {
     if (euf_propagator_ != nullptr) {
-      euf_propagator_->notify_backtrack(new_level);
+      euf_propagator_->notify_backtrack_delta(new_level, removed);
     }
     if (lra_propagator_ != nullptr) {
-      lra_propagator_->notify_backtrack(new_level);
+      lra_propagator_->notify_backtrack_delta(new_level, removed);
     }
     manager_.pop_to_level(new_level);
-    const std::size_t keep = new_level < level_starts_.size() ? level_starts_[new_level] : 0;
-    while (trail_.size() > keep) {
-      const int lit = trail_.back();
-      trail_.pop_back();
-      assignment_by_var_[static_cast<std::size_t>(sat_var(sat::Lit{lit}))] = 0;
+    for (const int lit : removed) {
       reasons_.erase(lit);
       reasons_.erase(-lit);
+      propagated_owner_.erase(lit);
+      propagated_owner_.erase(-lit);
     }
-    level_starts_.resize(std::min<std::size_t>(new_level, level_starts_.size()));
     pending_.clear();
     pending_pairs_.clear();
     reason_stream_active_lit_ = 0;
@@ -8067,8 +7945,7 @@ class MixedTheoryPropagationDispatcher final : public sat::ExternalPropagator {
         continue;
       }
       const int var = sat_var(equality_lit.value());
-      if (var < static_cast<int>(assignment_by_var_.size()) &&
-          assignment_by_var_[static_cast<std::size_t>(var)] != 0) {
+      if (assignment_view().literal(var) != 0) {
         statistics_.increment(":no.online.skipped-assigned");
         continue;
       }
@@ -8173,21 +8050,11 @@ class MixedTheoryPropagationDispatcher final : public sat::ExternalPropagator {
 
   void notify_assignment_lit(int lit) {
     const int var = sat_var(sat::Lit{lit});
-    if (var >= static_cast<int>(assignment_by_var_.size())) {
-      return;
-    }
-    if (assignment_by_var_[static_cast<std::size_t>(var)] != 0) {
-      return;
-    }
-    assignment_by_var_[static_cast<std::size_t>(var)] = lit > 0 ? 1 : -1;
-    trail_.push_back(lit);
+    if (static_cast<std::size_t>(var) >= interface_pair_by_var_.size()) return;
     statistics_.increment(":no.online.assignments");
 
     const TermPairKey interface_pair = interface_pair_by_var_[static_cast<std::size_t>(var)];
     if (interface_pair.lhs != core::kInvalidTermId) {
-      manager_.set_interface_equality_assignment(
-          interface_pair.lhs, interface_pair.rhs,
-          lit > 0 ? InterfaceEqualityAssignment::True : InterfaceEqualityAssignment::False);
       manager_.set_interface_equality_value(
           interface_pair.lhs, interface_pair.rhs,
           lit > 0 ? InterfaceEqualityValue::Equal : InterfaceEqualityValue::Disequal);
@@ -8262,8 +8129,7 @@ class MixedTheoryPropagationDispatcher final : public sat::ExternalPropagator {
       return;
     }
     const std::size_t needed = static_cast<std::size_t>(var) + 1U;
-    if (assignment_by_var_.size() < needed) {
-      assignment_by_var_.resize(needed, 0);
+    if (interface_pair_by_var_.size() < needed) {
       interface_pair_by_var_.resize(needed, TermPairKey{});
       observed_interface_var_.resize(needed, 0);
     }
@@ -8302,9 +8168,6 @@ class MixedTheoryPropagationDispatcher final : public sat::ExternalPropagator {
   OnlineLraPropagator* lra_propagator_ = nullptr;
   bool publish_lra_interface_equalities_ = false;
   util::Statistics& statistics_;
-  std::vector<int> assignment_by_var_;
-  std::vector<int> trail_;
-  std::vector<std::size_t> level_starts_;
   std::vector<TermPairKey> interface_pair_by_var_;
   std::deque<PendingEquality> pending_;
   std::unordered_set<TermPairKey, TermPairKeyHash> pending_pairs_;
@@ -8353,7 +8216,7 @@ CheckSatOutcome solve_qf_lra_impl(core::TermManager& terms,
       options.lra_theory_decisions, options.lra_model_phase,
       options.lra_pivoting_rule == LraPivotingRule::Soi || options.lra_fixed_elimination,
       options.lra_row_propagation_limits, backend, statistics);
-  backend.connect_external_propagator(&online_propagator);
+  const AssignmentConnection assignment_connection(backend, online_propagator);
   for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
     const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
     backend.add_observed_var(var);
@@ -8372,6 +8235,13 @@ CheckSatOutcome solve_qf_lra_impl(core::TermManager& terms,
       return CheckSatOutcome{map_sat_result(sat_result), "", statistics, ""};
     }
     statistics.increment(kStatLraTheoryChecks);
+#if PRIMO_HAVE_IPASIR
+    const sat::TrailView model_assignment = assignment_connection.view();
+#else
+    sat::Trail completed_assignment;
+    load_assignment_snapshot(backend, clausifier.theory_atoms(), completed_assignment);
+    const sat::TrailView model_assignment(completed_assignment);
+#endif
 
 #if PRIMO_HAVE_IPASIR
     // Authoritative already -- see OnlineLraPropagator::conflict()'s
@@ -8381,7 +8251,7 @@ CheckSatOutcome solve_qf_lra_impl(core::TermManager& terms,
     const std::optional<sat::Clause> conflict_clause = online_propagator.conflict();
 #else
     const std::vector<AssignedTheoryAtom> assigned_atoms =
-        assigned_atoms_from_backend(backend, clausifier.theory_atoms());
+        assigned_atoms_from_view(model_assignment, clausifier.theory_atoms());
 
     const std::optional<sat::Clause> conflict_clause =
         find_incremental_lra_theory_conflict(prepared_theory, assigned_atoms);
@@ -8392,7 +8262,7 @@ CheckSatOutcome solve_qf_lra_impl(core::TermManager& terms,
         return CheckSatOutcome{CheckSatResult::Sat, "", statistics, ""};
       }
       const std::vector<AssignedTheoryAtom> assigned_atoms =
-          assigned_atoms_from_backend(backend, clausifier.theory_atoms());
+          assigned_atoms_from_view(model_assignment, clausifier.theory_atoms());
 #if PRIMO_HAVE_IPASIR
       return CheckSatOutcome{
           CheckSatResult::Sat,
@@ -8545,7 +8415,7 @@ CheckSatOutcome solve_qf_lia_impl(core::TermManager& terms,
       options.lra_theory_decisions, options.lra_model_phase,
       options.lra_pivoting_rule == LraPivotingRule::Soi || options.lra_fixed_elimination,
       options.lra_row_propagation_limits, backend, statistics);
-  backend.connect_external_propagator(&online_propagator);
+  const AssignmentConnection assignment_connection(backend, online_propagator);
   for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
     const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
     backend.add_observed_var(var);
@@ -8564,12 +8434,19 @@ CheckSatOutcome solve_qf_lia_impl(core::TermManager& terms,
       return CheckSatOutcome{map_sat_result(sat_result), "", statistics, ""};
     }
     statistics.increment(kStatLraTheoryChecks);
+#if PRIMO_HAVE_IPASIR
+    const sat::TrailView model_assignment = assignment_connection.view();
+#else
+    sat::Trail completed_assignment;
+    load_assignment_snapshot(backend, clausifier.theory_atoms(), completed_assignment);
+    const sat::TrailView model_assignment(completed_assignment);
+#endif
 
 #if PRIMO_HAVE_IPASIR
     const std::optional<sat::Clause> conflict_clause = online_propagator.conflict();
 #else
     const std::vector<AssignedTheoryAtom> assigned_atoms =
-        assigned_atoms_from_backend(backend, clausifier.theory_atoms());
+        assigned_atoms_from_view(model_assignment, clausifier.theory_atoms());
     const std::optional<sat::Clause> conflict_clause =
         find_incremental_lra_theory_conflict(prepared_theory, assigned_atoms);
 #endif
@@ -8577,7 +8454,7 @@ CheckSatOutcome solve_qf_lia_impl(core::TermManager& terms,
       publish_sat_stats(backend.statistics(), statistics);
 #if PRIMO_HAVE_IPASIR
       const std::vector<AssignedTheoryAtom> assigned_atoms =
-          assigned_atoms_from_backend(backend, clausifier.theory_atoms());
+          assigned_atoms_from_view(model_assignment, clausifier.theory_atoms());
       theory::arithmetic::LraTableau lia_tableau = online_propagator.tableau();
 #else
       theory::arithmetic::LraTableau lia_tableau = prepared_theory.base_tableau;
@@ -8904,8 +8781,6 @@ class ComponentLraExecution final {
           std::max(max_theory_var, atom.lit.value > 0 ? atom.lit.value : -atom.lit.value);
     }
     observed_vars_.assign(static_cast<std::size_t>(max_theory_var) + 1, 0);
-    assigned_.assign(static_cast<std::size_t>(max_theory_var) + 1, 0);
-    assigned_lit_by_var_.assign(static_cast<std::size_t>(max_theory_var) + 1, 0);
     model_phase_by_var_.assign(static_cast<std::size_t>(max_theory_var) + 1, 0);
     model_phase_dirty_bound_vars_.assign(prepared_.base_tableau.variable_count(), 0);
     atom_index_by_var_.assign(static_cast<std::size_t>(max_theory_var) + 1, theory_atoms_.size());
@@ -8918,39 +8793,25 @@ class ComponentLraExecution final {
     refresh_model_phases();
   }
 
+  void bind_assignment_view(sat::TrailView view) { assignment_view_ = view; }
+  sat::TrailView assignment_view() const { return assignment_view_; }
   void notify_assignment(const std::vector<int>& lits) {
     for (const int lit : lits) {
       notify_assignment_lit(lit);
     }
   }
 
-  void notify_new_decision_level() {
-    checkpoints_.push_back(tableau_.push());
-    level_starts_.push_back(var_trail_.size());
-  }
+  void notify_new_decision_level() { checkpoints_.push_back(tableau_.push()); }
 
-  void notify_backtrack(size_t new_level) {
+  void notify_backtrack_delta(std::size_t new_level, const std::vector<int>& removed) {
     if (new_level < checkpoints_.size()) {
       tableau_.pop(checkpoints_[new_level]);
       checkpoints_.resize(new_level);
     }
-    if (new_level < level_starts_.size()) {
-      const std::size_t keep = level_starts_[new_level];
-      while (var_trail_.size() > keep) {
-        const int var = var_trail_.back();
-        var_trail_.pop_back();
-        assigned_[static_cast<std::size_t>(var)] = 0;
-        // Only erase reasons_ entries for literals actually unassigned by
-        // this backtrack -- CaDiCaL can still legitimately ask (e.g. during
-        // conflict analysis of a *later* conflict) for the reason of an
-        // earlier propagation that remains on the trail after backtracking
-        // to new_level, and clearing it unconditionally here would answer
-        // that with an empty (invalid) reason clause.
-        reasons_.erase(var);
-        reasons_.erase(-var);
-        assigned_lit_by_var_[static_cast<std::size_t>(var)] = 0;
-      }
-      level_starts_.resize(new_level);
+    // Retained propagations still own reasons after unrelated backtracking.
+    for (const int literal : removed) {
+      reasons_.erase(literal);
+      reasons_.erase(-literal);
     }
     rebuild_true_interface_bounds();
     published_interface_pairs_.clear();
@@ -9192,8 +9053,7 @@ class ComponentLraExecution final {
   }
 
   bool is_assigned_var(int var) const {
-    return var >= 0 && static_cast<std::size_t>(var) < assigned_.size() &&
-           assigned_[static_cast<std::size_t>(var)] != 0;
+    return is_observed_var(var) && assignment_view().literal(var) != 0;
   }
 
   void publish_elimination_stats() {
@@ -9213,9 +9073,6 @@ class ComponentLraExecution final {
     if (!is_observed_var(var)) {
       return;
     }
-    assigned_[static_cast<std::size_t>(var)] = 1;
-    assigned_lit_by_var_[static_cast<std::size_t>(var)] = lit;
-    var_trail_.push_back(var);
     const std::size_t atom_index = atom_index_by_var_[static_cast<std::size_t>(var)];
     const PreparedLraTheory::PreparedAtom& prepared_atom = prepared_.atoms[atom_index];
     if (!prepared_atom.is_arithmetic) {
@@ -9450,7 +9307,7 @@ class ComponentLraExecution final {
       if (!is_assigned_var(var)) {
         continue;
       }
-      const int assigned_lit = assigned_lit_by_var_[static_cast<std::size_t>(var)];
+      const int assigned_lit = assignment_view().literal(var);
       const bool atom_value = atom.lit.value > 0 ? assigned_lit > 0 : assigned_lit < 0;
       if (atom_value) {
         true_lra_le_reasons_[pair] = sat::Lit{-assigned_lit};
@@ -9685,15 +9542,11 @@ class ComponentLraExecution final {
   std::function<void(sat::Lit)> publish_phase_;
   util::Statistics& statistics_;
   std::vector<char> observed_vars_;
-  std::vector<char> assigned_;
-  std::vector<int> assigned_lit_by_var_;
   std::vector<int> model_phase_by_var_;
   std::vector<char> model_phase_dirty_bound_vars_;
   std::vector<theory::arithmetic::LraVarId> model_phase_dirty_bound_var_list_;
-  std::vector<int> var_trail_;
   std::vector<std::size_t> atom_index_by_var_;
   std::vector<std::size_t> checkpoints_;
-  std::vector<std::size_t> level_starts_;
   std::deque<PendingPropagation> pending_;
   std::deque<InterfaceEqualityPropagation> pending_interface_equalities_;
   bool interface_equalities_enabled_ = false;
@@ -9717,6 +9570,7 @@ class ComponentLraExecution final {
   // not trail state; a stale position after backtracking is harmless
   // (worst case, this decision's order is less well-chosen than usual).
   std::size_t decide_cursor_ = 0;
+  sat::TrailView assignment_view_;
 };
 
 #endif
@@ -10033,6 +9887,10 @@ class UfliaComponentBase : public theory::TheoryComponent {
                      util::Statistics& statistics, bool online)
       : terms_(terms), options_(options), statistics_(statistics), online_(online) {}
 
+  void bind_assignment_view(sat::TrailView view) override {
+    theory::TheoryComponent::bind_assignment_view(view);
+    assignment_.bind(view);
+  }
   const theory::ComponentDescriptor& descriptor() const override { return descriptor_; }
   void register_interface(std::span<const theory::ComponentInterfaceScope> scopes) override {
     shared_.clear();
@@ -10047,7 +9905,6 @@ class UfliaComponentBase : public theory::TheoryComponent {
 
  protected:
   void append_atoms(std::span<const theory::ComponentAtom> atoms) {
-    assignment_.reset();
     assignment_.register_atoms(atoms);
     for (const auto& atom : atoms) {
       atoms_.push_back({atom.lit, atom.term, atom.occurs_positive, atom.occurs_negative,
@@ -10056,7 +9913,7 @@ class UfliaComponentBase : public theory::TheoryComponent {
     token_.reset();
   }
   void record_assignment(std::span<const theory::AssignedTheoryLiteral> delta) {
-    assignment_.assign(delta);
+    assignment_.check_delta(delta);
     delta_literals_.clear();
     for (const auto& assigned : delta) {
       delta_literals_.push_back(assigned.value ? assigned.lit.value : -assigned.lit.value);
@@ -10119,7 +9976,7 @@ class UfliaComponentBase : public theory::TheoryComponent {
   util::Statistics& statistics_;
   bool online_;
   theory::ComponentDescriptor descriptor_;
-  theory::ComponentAssignment assignment_;
+  theory::ComponentAssignmentView assignment_;
   std::vector<BooleanClausifier::TheoryAtom> atoms_;
   std::vector<core::TermId> shared_;
   std::vector<int> delta_literals_;
@@ -10152,6 +10009,10 @@ class UfliaEufComponent final : public UfliaComponentBase {
         .interface_extension = true,
         .equality_propagation = theory::EqualityPropagationStrength::Opportunistic};
   }
+  void bind_assignment_view(sat::TrailView view) override {
+    UfliaComponentBase::bind_assignment_view(view);
+    if (execution_) execution_->bind_assignment_view(view);
+  }
   bool owns_atom(core::TermId atom) const override { return is_uflia_euf_atom(terms_, atom); }
   std::vector<core::TermId> interface_variables(core::TermId atom) const override {
     std::unordered_set<core::TermId> variables;
@@ -10181,7 +10042,6 @@ class UfliaEufComponent final : public UfliaComponentBase {
     reset();
   }
   void reset() override {
-    assignment_.reset();
     token_.reset();
     execution_.reset();
     if (online_) {
@@ -10191,16 +10051,18 @@ class UfliaEufComponent final : public UfliaComponentBase {
       execution_ = std::make_unique<OnlineEufPropagator>(
           terms_, atoms_, terms_.mk_bool(true), terms_.mk_bool(false), online_options_,
           options_.euf_propagation == EufPropagationMode::Auto, statistics_);
+      execution_->bind_assignment_view(assignment_view());
     }
   }
   void push_level() override {
-    assignment_.push_level();
     if (execution_) execution_->notify_new_decision_level();
   }
-  void pop_to_level(std::size_t level) override {
-    assignment_.pop_to_level(level);
+  void pop_to_level(std::size_t) override {
+    throw std::logic_error("EUF component backtrack requires the shared removal delta");
+  }
+  void backtrack(std::size_t level, const std::vector<int>& removed) override {
     token_.reset();
-    if (execution_) execution_->notify_backtrack(level);
+    if (execution_) execution_->notify_backtrack_delta(level, removed);
   }
   void assign(std::span<const theory::AssignedTheoryLiteral> delta) override {
     record_assignment(delta);
@@ -10272,6 +10134,10 @@ class UfliaLiaComponent final : public UfliaComponentBase {
                                 .interface_extension = true,
                                 .equality_propagation = theory::EqualityPropagationStrength::None};
   }
+  void bind_assignment_view(sat::TrailView view) override {
+    UfliaComponentBase::bind_assignment_view(view);
+    if (execution_) execution_->bind_assignment_view(view);
+  }
   bool owns_atom(core::TermId atom) const override {
     const auto& node = terms_.get(atom);
     return (node.kind == core::TermKind::Le || node.kind == core::TermKind::Lt) &&
@@ -10308,7 +10174,6 @@ class UfliaLiaComponent final : public UfliaComponentBase {
     reset();
   }
   void reset() override {
-    assignment_.reset();
     token_.reset();
     phases_.clear();
     if (online_ && full_) {
@@ -10319,16 +10184,18 @@ class UfliaLiaComponent final : public UfliaComponentBase {
           options_.lra_pivoting_rule == LraPivotingRule::Soi || options_.lra_fixed_elimination,
           options_.lra_row_propagation_limits, [this](sat::Lit phase) { phases_.push_back(phase); },
           statistics_);
+      execution_->bind_assignment_view(assignment_view());
     }
   }
   void push_level() override {
-    assignment_.push_level();
     if (execution_) execution_->notify_new_decision_level();
   }
-  void pop_to_level(std::size_t level) override {
-    assignment_.pop_to_level(level);
+  void pop_to_level(std::size_t) override {
+    throw std::logic_error("arithmetic component backtrack requires the shared removal delta");
+  }
+  void backtrack(std::size_t level, const std::vector<int>& removed) override {
     token_.reset();
-    if (execution_) execution_->notify_backtrack(level);
+    if (execution_) execution_->notify_backtrack_delta(level, removed);
   }
   void assign(std::span<const theory::AssignedTheoryLiteral> delta) override {
     record_assignment(delta);
@@ -10604,6 +10471,7 @@ CheckSatOutcome solve_qf_uf_engine_impl(core::TermManager& terms,
 
   const core::TermId true_term = terms.mk_bool(true);
   const core::TermId false_term = terms.mk_bool(false);
+  sat::Trail completed_assignment;
   std::unordered_set<std::string> learned_model_propagations;
   std::optional<PreparedFlatTheory> prepared_flat_theory;
   if (options.euf_engine == EufEngine::Incremental) {
@@ -10613,12 +10481,13 @@ CheckSatOutcome solve_qf_uf_engine_impl(core::TermManager& terms,
 
 #if PRIMO_HAVE_IPASIR
   std::optional<OnlineEufPropagator> online_propagator;
+  std::optional<AssignmentConnection> assignment_connection;
   if (euf_propagation == EufPropagationMode::Online ||
       euf_propagation == EufPropagationMode::Conflict) {
     online_propagator.emplace(terms, clausifier.theory_atoms(), true_term, false_term,
                               resolved_options, options.euf_propagation == EufPropagationMode::Auto,
                               statistics);
-    backend.connect_external_propagator(&online_propagator.value());
+    assignment_connection.emplace(backend, *online_propagator);
     for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
       const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
       backend.add_observed_var(var);
@@ -10655,20 +10524,19 @@ CheckSatOutcome solve_qf_uf_engine_impl(core::TermManager& terms,
     }
     statistics.increment(kStatTheoryChecks);
 
-    std::vector<AssignedTheoryAtom> assigned_atoms;
-    for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
-      const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
-      const std::optional<bool> assignment = backend.value(var);
-      if (!assignment.has_value()) {
-        return CheckSatOutcome{CheckSatResult::Unknown, "SAT backend did not assign theory atom",
-                               statistics, ""};
-      }
-      const bool atom_value = atom.lit.value > 0 ? assignment.value() : !assignment.value();
-      AssignedTheoryAtom assigned =
-          assigned_theory_atom(options.pure_theory_filter, atom, atom_value);
-      count_filtered_assignment(assigned, statistics);
-      assigned_atoms.push_back(assigned);
+    sat::TrailView model_assignment;
+#if PRIMO_HAVE_IPASIR
+    if (assignment_connection) {
+      model_assignment = assignment_connection->view();
+    } else
+#endif
+    {
+      load_assignment_snapshot(backend, clausifier.theory_atoms(), completed_assignment);
+      model_assignment = sat::TrailView(completed_assignment);
     }
+    const auto assigned_atoms = assigned_atoms_from_view(
+        model_assignment, clausifier.theory_atoms(), options.pure_theory_filter);
+    for (const auto& assigned : assigned_atoms) count_filtered_assignment(assigned, statistics);
     if (resolved_options.euf_diseq_propagation_diagnostics && prepared_flat_theory.has_value()) {
       record_disequality_propagation_opportunities(terms, prepared_flat_theory.value(),
                                                    assigned_atoms, statistics);
@@ -11284,7 +11152,6 @@ CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
   statistics.set(":no.interface.euf-live-model-fallbacks", 0);
   statistics.set(":no.interface.euf-live-model-incomplete", 0);
   statistics.set(":no.interface.euf-live-model-registration-invalid", 0);
-  statistics.set(":no.interface.euf-live-model-callback-assignments", 0);
   statistics.set(":no.interface.euf-live-deferred-callbacks", 0);
   statistics.set(":no.interface.euf-final-closure-rebuilds", 0);
   statistics.set(":no.interface.euf-live-registry-syncs", 0);
@@ -11359,6 +11226,7 @@ CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
   std::optional<OnlineEufPropagator> online_euf_propagator;
   std::optional<OnlineLraPropagator> online_lra_propagator;
   std::optional<MixedTheoryPropagationDispatcher> mixed_online_dispatcher;
+  std::optional<AssignmentConnection> assignment_connection;
   if (!lra_atoms.empty() && !options.nelson_oppen_model_equality_branching) {
     online_lra_propagator.emplace(
         base_prepared_lra_theory, lra_atoms, options.lra_propagation, options.lra_row_propagation,
@@ -11382,7 +11250,7 @@ CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
         online_euf_propagator ? &online_euf_propagator.value() : nullptr,
         online_lra_propagator ? &online_lra_propagator.value() : nullptr, lra_atoms,
         publish_lra_interface_equalities, statistics);
-    backend.connect_external_propagator(&mixed_online_dispatcher.value());
+    assignment_connection.emplace(backend, *mixed_online_dispatcher);
     mixed_online_dispatcher->observe_registered_interface_equalities(
         /*count_observation=*/false);
     if (online_euf_propagator) {
@@ -11392,7 +11260,7 @@ CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
       statistics.set(":no.interface.euf-online-enabled", 1);
     }
   } else if (online_lra_propagator) {
-    backend.connect_external_propagator(&online_lra_propagator.value());
+    assignment_connection.emplace(backend, *online_lra_propagator);
   }
   if (online_lra_propagator) {
     for (const BooleanClausifier::TheoryAtom& atom : lra_atoms) {
@@ -11401,6 +11269,10 @@ CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
   }
 #endif
 
+  sat::Trail completed_assignment;
+#if PRIMO_HAVE_IPASIR
+  std::size_t observed_atom_count = 0;
+#endif
   MixedLraModelEpoch lra_model_epoch;
   MixedEufCareEpoch euf_care_epoch;
   ModelBasedCombinationCoordinator generic_model_coordinator;
@@ -11409,8 +11281,18 @@ CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
     statistics.increment(kStatSatSolveCalls);
 #if PRIMO_HAVE_IPASIR
     if (mixed_online_dispatcher.has_value()) {
-      mixed_online_dispatcher->flush_deferred_euf_callbacks();
+      assignment_connection->flush();
+      statistics.set(":no.interface.euf-live-deferred-callbacks",
+                     assignment_connection->deferred_notifications());
       mixed_online_dispatcher->observe_registered_interface_equalities();
+    }
+    if (assignment_connection) {
+      // Lazy children and generated interface atoms share the same owner too.
+      // Copy the ID before observation: callbacks can grow the atom registry.
+      while (observed_atom_count < clausifier.theory_atoms().size()) {
+        const int var = std::abs(clausifier.theory_atoms()[observed_atom_count++].lit.value);
+        backend.add_observed_var(var);
+      }
     }
 #endif
     model_equality_arrangement.activate_pending_branch(statistics);
@@ -11438,7 +11320,17 @@ CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
       statistics.increment(":no.shared-model.rounds");
     }
     no_manager.clear_interface_equality_classifications();
-    refresh_interface_equality_assignment_state(backend, no_manager);
+    sat::TrailView model_assignment;
+#if PRIMO_HAVE_IPASIR
+    if (assignment_connection) {
+      model_assignment = assignment_connection->view();
+    } else
+#endif
+    {
+      load_assignment_snapshot(backend, clausifier.theory_atoms(), completed_assignment);
+      model_assignment = sat::TrailView(completed_assignment);
+    }
+    no_manager.bind_assignment_view(model_assignment);
     const std::vector<InterfaceEqualityRegistryEntry> true_interface_equalities =
         no_manager.interface_equalities_with_assignment(InterfaceEqualityAssignment::True);
     const std::vector<InterfaceEqualityRegistryEntry> false_interface_equalities =
@@ -11457,6 +11349,19 @@ CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
     std::optional<IncrementalFlatAssignmentState::ModelScope> live_euf_model_scope;
 #endif
     std::optional<FlatEufModelView> euf_model;
+    const auto replay_changed_assignment = [&]() {
+#if PRIMO_HAVE_IPASIR
+      if (assignment_connection && assignment_connection->has_pending()) {
+        euf_model.reset();
+        live_euf_model_scope.reset();
+        assignment_connection->flush();
+        statistics.set(":no.interface.euf-live-deferred-callbacks",
+                       assignment_connection->deferred_notifications());
+        return true;
+      }
+#endif
+      return false;
+    };
     std::vector<AssignedTheoryAtom> euf_assignments;
     // Only copy euf_atoms when this round actually has an interface equality
     // to layer in; append_*_interface_equalities need a mutable vector to
@@ -11475,7 +11380,8 @@ CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
     EufCarePairDiagnostics euf_care;
     if (!euf_atoms.empty()) {
       statistics.increment(kStatTheoryChecks);
-      euf_assignments = assigned_atoms_from_backend(backend, euf_atoms, options.pure_theory_filter);
+      euf_assignments =
+          assigned_atoms_from_view(model_assignment, euf_atoms, options.pure_theory_filter);
       for (const AssignedTheoryAtom& atom : euf_assignments) {
         count_filtered_assignment(atom, statistics);
       }
@@ -11577,7 +11483,7 @@ CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
     const std::vector<BooleanClausifier::TheoryAtom>& lra_atoms_for_check =
         lra_atoms_need_interface_equalities ? lra_atoms_for_check_storage : lra_atoms;
     std::vector<AssignedTheoryAtom> lra_assignments =
-        assigned_atoms_from_backend(backend, lra_atoms);
+        assigned_atoms_from_view(model_assignment, lra_atoms);
     std::vector<AssignedTheoryAtom> lra_assignments_for_check = lra_assignments;
     if (lra_atoms_need_interface_equalities) {
       append_true_interface_equalities(true_interface_equalities, lra_atoms_for_check_storage,
@@ -11993,6 +11899,7 @@ CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
             if (!options.produce_model) {
               statistics.increment(":no.shared-model.converged-rounds");
               publish_sat_stats(backend.statistics(), statistics);
+              if (replay_changed_assignment()) continue;
               return CheckSatOutcome{CheckSatResult::Sat, "", statistics, ""};
             }
 
@@ -12019,6 +11926,7 @@ CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
             statistics.increment(":no.shared-model.reconstructed-models");
             statistics.increment(":no.shared-model.converged-rounds");
             publish_sat_stats(backend.statistics(), statistics);
+            if (replay_changed_assignment()) continue;
             return CheckSatOutcome{CheckSatResult::Sat,      "",   statistics, "",
                                    InconclusiveReason::None, model};
           }
@@ -12287,6 +12195,7 @@ CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
       for (const core::TermId equality : lra_implied_equalities_for_euf) {
         uf_model_assignments.push_back(TheoryModelAssignment{equality, true, false});
       }
+      if (replay_changed_assignment()) continue;
       return CheckSatOutcome{CheckSatResult::Sat,
                              "",
                              statistics,
@@ -12295,6 +12204,7 @@ CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
                              build_typed_model(terms, assertions, uf_model_assignments, real_values,
                                                conversions, nullptr, &statistics)};
     }
+    if (replay_changed_assignment()) continue;
     return CheckSatOutcome{CheckSatResult::Sat, "", statistics, ""};
   }
 }
@@ -12395,11 +12305,7 @@ class IncrementalUfEngine final : public IncrementalEngine {
     std::vector<int> observed;
     for (const auto& atom : clausifier_.theory_atoms())
       observed.push_back(std::abs(atom.lit.value));
-    backend_.reconnect_external_propagator(propagator, observed);
-    struct Disconnect {
-      sat::IpasirUpBackend& backend;
-      ~Disconnect() { backend.disconnect_external_propagator(); }
-    } disconnect{backend_};
+    const AssignmentConnection assignment_connection(backend_, propagator, observed);
     statistics.set(":time.session.theory-reset-us", elapsed(reset_start));
     CheckSatOutcome outcome;
     outcome.result = CheckSatResult::Unknown;
@@ -12560,12 +12466,7 @@ class IncrementalLraEngine final : public IncrementalEngine {
     std::vector<int> observed;
     for (const auto& atom : clausifier_.theory_atoms())
       observed.push_back(std::abs(atom.lit.value));
-    backend_.reconnect_external_propagator(propagator, observed);
-    // Destruction order settles callback reasons before destroying propagator.
-    struct Disconnect {
-      sat::IpasirUpBackend& backend;
-      ~Disconnect() { backend.disconnect_external_propagator(); }
-    } disconnect{backend_};
+    const AssignmentConnection assignment_connection(backend_, propagator, observed);
     statistics.set(":session.theory-state-resets", ++resets_);
     statistics.set(":time.session.theory-reset-us", elapsed(reset_start));
     CheckSatOutcome outcome;
@@ -12589,7 +12490,8 @@ class IncrementalLraEngine final : public IncrementalEngine {
     }
     if (outcome.result == CheckSatResult::Sat && options.produce_model) {
       const auto model_start = std::chrono::steady_clock::now();
-      const auto assigned = assigned_atoms_from_backend(backend_, clausifier_.theory_atoms());
+      const auto assigned =
+          assigned_atoms_from_view(assignment_connection.view(), clausifier_.theory_atoms());
       outcome.typed_model =
           build_qf_lra_model(terms_, model_terms, {}, prepared_, propagator.tableau(), assigned,
                              statistics, terms_.symbols().visible_symbols());

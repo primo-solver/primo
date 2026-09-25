@@ -820,17 +820,15 @@ trail-synchronized closure instead of copying `PreparedFlatTheory::base_closure`
 `:no.interface.euf-final-closure-rebuilds` is the direct count of broad final
 closure copies. Retained assignments must stay recorded across repeated solves
 and backtracks; they need not be reported as new assignments again.
-`:no.interface.euf-live-model-callback-assignments` counts missing values
-synchronized from the complete model vector passed to `cb_check_found_model`.
-It is a recovery diagnostic, not evidence that SAT omitted required callbacks.
-The [EUF boundary regression](euf.md#callback-assignment-rollback) found that an
-extra root boundary erased assignment markers and made this counter positive
-in the rejected-candidate-merge test. With corrected rollback, that test needs
-no model-callback recovery and still checks its returned model.
-`:no.interface.euf-live-deferred-callbacks` counts assignment, level, or
-backtrack callbacks queued while a protected model scope is active and replayed
-before the next solve. `:no.interface.euf-live-registry-syncs` counts the
-pre-solve generated-equality registry synchronization passes. A
+The old `:no.interface.euf-live-model-callback-assignments` recovery counter
+was removed with shared assignment ownership. An online model that lacks an
+observed assignment now raises an internal error instead of repairing state.
+The [EUF boundary regression](euf.md#callback-assignment-rollback) explains
+why that recovery once concealed lost assignment markers.
+`:no.interface.euf-live-deferred-callbacks` now counts notifications queued by
+the shared coordinator during a protected model scope, across all consumers.
+The driver publishes it after replay. `:no.interface.euf-live-registry-syncs`
+counts pre-solve generated-equality registry synchronization passes. A
 protected-checkpoint exception indicates that coordinator or callback code
 tried to roll back SAT-owned EUF state through a live model scope.
 

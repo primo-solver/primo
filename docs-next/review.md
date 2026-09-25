@@ -487,3 +487,45 @@ Both books now pin source links centrally to the repair commit; the 37
 solver-engine line ranges were advanced against its diff and checked. Other
 chapter source bodies are unchanged from the prior audit. The earlier dated
 reviews retain their original source/evidence revisions.
+
+
+## Shared assignment migration review
+
+The assignment protocol now has one owner per active SAT connection. All
+production callback consumers read `sat::TrailView`; lazy routes use a completed
+model snapshot. Kernel checkpoints and tentative model-equality undo remain
+separate. Full-model token serials identify reconciliation rounds, not a second
+Boolean assignment. The old rollback audit above records the pre-migration
+implementation and its evidence.
+
+The coordinator tests exercise root retention, empty levels, duplicates,
+contradictory/invalid notifications, reentrant delivery, protected model scopes,
+registration growth, reason callbacks and reconnect. Protection freezes the
+whole stream; replay rechecks whether a consumer opened a new protected scope.
+The real backend reason test also exercises fresh-variable propagation through
+the shared owner before disconnect and reconnect. Component model callbacks
+reject unnotified atoms without backfilling them.
+
+Two existing mixed-arithmetic tests caught a migration error: generated
+interface atoms were not observed between SAT rounds when only arithmetic was
+online. Observing every new atom after child registration, before each solve,
+restores both the Bool-to-Real congruence UNSAT case and model reconstruction.
+The existing model-reconciliation regression still checks the produced model,
+closure reuse and compatibility splitting. The obsolete backfill counter is
+removed; deferred notification counts now belong to the coordinator.
+
+`make check` passes 43 CTest groups and 188 Python tests. `make asan-test` passes
+all 43 groups; the final reason/reconnect test also passes separately under
+ASan. Static analysis covers all 128 tracked C++ translation units, including
+documentation examples. Its 19 diagnostics match the baseline: 18 deliberate
+out-of-range enum casts in an option test and one external CLI11 diagnostic.
+The include-cleaner advisory has no newly identified removable include; paired
+self-includes are retained. The registry iteration at the observation boundary
+copies its entry before callbacks can grow the registry.
+
+Efficiency review: callback assignment and rollback operate on deltas; the
+normal path does not allocate an event copy. Only deferred/reentrant events
+are queued. Final-model completeness scans remain linear in registered atoms;
+quantifiers temporarily sort their projection by assignment position. No
+performance improvement is claimed. Fresh differential fuzzing, fixed-input
+baseline comparison, model replay and updated source pins remain pending.

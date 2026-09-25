@@ -266,17 +266,21 @@ The default-off `--qf-uflra-online-euf` path borrows the callback-owned EUF
 closure after a SAT result. Clause insertion can make CaDiCaL synchronously
 call `notify_backtrack` before control returns to the coordinator. Applying that
 backtrack immediately would pop SAT-owned closure checkpoints through the
-temporary model checkpoint. `OnlineEufPropagator` therefore queues assignment,
-new-level, and backtrack callbacks received while the model scope is protected,
-then replays them in order before the next `solve()`. This is a scheduling
-adapter around the IPASIR-UP callback contract, not a second SAT trail.
+temporary model checkpoint. `AssignmentCoordinator` therefore freezes the shared
+view and queues the entire notification stream while the EUF model scope is
+protected. Arithmetic, interface routing, and EUF resume together, in event
+order, after the temporary scope is released. Replay happens before the next
+solve or ordinary callback. If queued notifications arrive while preparing an
+accepted model, the driver releases the borrowed model view, replays them,
+and starts another SAT/theory round before accepting.
 
-On repeated solves, ordinary trail notifications need not replay every observed
-value needed by the final model view. CaDiCaL passes the complete reconstructed
-observed-variable model to `cb_check_found_model`; the EUF child asserts missing
-values through the same assignment operation before approving that model. The
-live-scope, model-callback, deferred-callback, and fallback counters are
-documented in `docs/debugging.md`.
+Stored reason streams remain available while notifications wait; EUF cannot
+reconstruct a missing reason from temporary model merges. The ordinary online
+model callbacks require every registered atom to have been notified and check
+consistency with the backend model. They never backfill lost assignments.
+Retained sessions disconnect with the old consumer alive, bind a fresh shared
+owner, and re-observe permanent roots. Lazy routes use an explicit completed-model
+snapshot instead. See [](dpllt.md) for the ownership and test checklist.
 
 ## References
 

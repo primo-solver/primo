@@ -13,7 +13,9 @@
 #include "core/term_manager.hpp"
 #include "sat/clause.hpp"
 #include "sat/lit.hpp"
+#include "smt/assignment_coordinator.hpp"
 #include "smt/check_sat.hpp"
+#include "smt/component_dispatcher.hpp"
 #include "smt/solver_engines.hpp"
 #include "theory/theory_component.hpp"
 #include "theory/theory_solver.hpp"
@@ -37,6 +39,8 @@ struct Fixture {
   util::Statistics statistics;
   std::vector<theory::ComponentAtom> atoms;
   std::unique_ptr<theory::TheoryComponent> component;
+  std::unique_ptr<smt::ComponentDispatcher> dispatcher;
+  std::unique_ptr<smt::AssignmentCoordinator> owner;
   std::array<int, 6> assignment{};
   static constexpr std::array<std::pair<std::size_t, std::size_t>, 5> endpoints{
       {{0, 1}, {1, 2}, {2, 3}, {0, 3}, {3, 4}}};
@@ -60,13 +64,15 @@ struct Fixture {
     require(component != nullptr, "EUF callback tests require the IPASIR backend");
     component->register_interface({});
     component->register_atoms(atoms);
+    const std::array components{component.get()};
+    dispatcher = std::make_unique<smt::ComponentDispatcher>(components);
+    dispatcher->register_atoms(0, atoms);
+    owner = std::make_unique<smt::AssignmentCoordinator>(*dispatcher);
   }
 
   void assign(Atom atom, bool value = true) {
     const auto index = static_cast<std::size_t>(atom);
-    const std::array delta{
-        theory::AssignedTheoryLiteral{atoms[index - 1].term, atoms[index - 1].lit, value}};
-    component->assign(delta);
+    owner->notify_assignment({value ? static_cast<int>(atom) : -static_cast<int>(atom)});
     assignment[index] = value ? 1 : -1;
   }
 
@@ -129,11 +135,11 @@ void root_assignments_survive() {
   Fixture f;
   f.assign(Fixture::AB);
   f.assign(Fixture::BC);
-  f.component->push_level();
+  f.owner->notify_new_decision_level();
   f.assign(Fixture::DE);
-  f.component->pop_to_level(0);
+  f.owner->notify_backtrack(0);
   f.assignment[Fixture::DE] = 0;
-  f.component->push_level();
+  f.owner->notify_new_decision_level();
   f.assign(Fixture::CD);
   f.expect_ad_propagation();
 }
@@ -141,11 +147,11 @@ void root_assignments_survive() {
 void retained_level_assignments_survive() {
   Fixture f;
   f.assign(Fixture::AB);
-  f.component->push_level();
+  f.owner->notify_new_decision_level();
   f.assign(Fixture::BC);
-  f.component->push_level();
+  f.owner->notify_new_decision_level();
   f.assign(Fixture::DE);
-  f.component->pop_to_level(1);
+  f.owner->notify_backtrack(1);
   f.assignment[Fixture::DE] = 0;
   f.assign(Fixture::CD);
   f.expect_ad_propagation();
@@ -154,15 +160,15 @@ void retained_level_assignments_survive() {
 void empty_levels_and_repeated_backtracks() {
   Fixture f;
   f.assign(Fixture::AB);
-  f.component->push_level();
+  f.owner->notify_new_decision_level();
   f.assign(Fixture::BC);
-  f.component->push_level();  // SAT decision on an unobserved variable.
-  f.component->push_level();
+  f.owner->notify_new_decision_level();  // SAT decision on an unobserved variable.
+  f.owner->notify_new_decision_level();
   f.assign(Fixture::DE);
-  f.component->pop_to_level(2);
+  f.owner->notify_backtrack(2);
   f.assignment[Fixture::DE] = 0;
-  f.component->pop_to_level(1);
-  f.component->push_level();
+  f.owner->notify_backtrack(1);
+  f.owner->notify_new_decision_level();
   f.assign(Fixture::CD);
   f.expect_ad_propagation();
 }
@@ -171,11 +177,11 @@ void closure_preserves_root_and_retained_facts() {
   for (const bool root : {false, true}) {
     Fixture f;
     f.assign(Fixture::AB);
-    if (!root) f.component->push_level();
+    if (!root) f.owner->notify_new_decision_level();
     f.assign(Fixture::BC);
-    f.component->push_level();
+    f.owner->notify_new_decision_level();
     f.assign(Fixture::DE);
-    f.component->pop_to_level(root ? 0 : 1);
+    f.owner->notify_backtrack(root ? 0 : 1);
     f.assignment[Fixture::DE] = 0;
     f.assign(Fixture::CD);
     f.assign(Fixture::AD, false);
@@ -186,15 +192,15 @@ void closure_preserves_root_and_retained_facts() {
 void discarded_assignments_can_change_polarity() {
   Fixture f;
   f.assign(Fixture::AB);
-  f.component->push_level();
+  f.owner->notify_new_decision_level();
   f.assign(Fixture::BC);
   f.assign(Fixture::CD);
   f.assign(Fixture::AD, false);
   f.expect_conflict(true);
-  f.component->pop_to_level(0);
+  f.owner->notify_backtrack(0);
   f.assignment = {};
   f.assignment[Fixture::AB] = 1;
-  f.component->push_level();
+  f.owner->notify_new_decision_level();
   f.assign(Fixture::BC, false);
   f.assign(Fixture::CD);
   f.assign(Fixture::AD, false);

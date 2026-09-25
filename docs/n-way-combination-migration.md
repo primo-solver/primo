@@ -96,18 +96,20 @@ Implemented production architecture:
 
 Production `UfliaEufComponent` and `UfliaLiaComponent` currently live beside
 their preparation helpers in `solver_engines.cpp`. They expose no SAT backend
-or private model state through `TheoryComponent`. `ComponentAssignment` owns
-the dense variable index, assignment trail and decision-level boundaries;
-callbacks route deltas without rescanning the full atom set. Interface growth
+or private model state through `TheoryComponent`. `ComponentAssignmentView`
+owns atom-registration metadata and reads the shared assignment owner; it has
+no mutable truth values, literal trail, or decision boundaries. Callbacks route
+deltas without rescanning the full atom set. Offline recipes populate one
+completed-model snapshot through the same view API. Interface growth
 detaches the dispatcher before extending preparation and rebuilding live
 callbacks. LIA exports exact values from its private integer-completed model;
 EUF exports retained facts, not arbitrary numeric anchors. Arithmetic remains
 first for full-model reconciliation and EUF first for online checking.
 
-Two transitional duplications preserve the explicitly frozen routes:
+Two algorithmic duplications remain after the shared-assignment migration:
 `ComponentLraExecution` ports Primo's existing online arithmetic execution with
-phase publication replacing its backend reference; the original callback is
-unchanged. `FragmentModelBuilder` extends Primo's existing typed reconstruction
+phase publication replacing its backend reference. Both arithmetic execution
+classes now read the shared assignment view and retain their own tableau undo. `FragmentModelBuilder` extends Primo's existing typed reconstruction
 algorithm behind the fragment boundary; the old typed builder remains unchanged
 for QF_UFLRA and the other routes. These are not new simplex or reconstruction
 algorithms, nor copies from another solver. Moving engine-local preparation

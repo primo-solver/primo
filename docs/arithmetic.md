@@ -1,5 +1,12 @@
 # Arithmetic
 
+`OnlineLraPropagator` and `ComponentLraExecution` now read a shared SAT assignment
+view. They retain tableau checkpoints, bound/explanation caches, and pending
+consequences; they own no Boolean assignment array or literal trail. Backtracking
+receives the exact removed literals and preserves reasons for retained
+propagations. See [the ownership protocol](dpllt.md#shared-assignment-protocol-implementation-underway)
+for lifetime, model-scope deferral, and qualification status.
+
 This is the Real-arithmetic reference and historical development record.
 Integer completion is implemented in [](qf-lia-branch-and-bound.md), and mixed
 integer combination in [](n-way-combination-migration.md). For the current
