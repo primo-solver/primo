@@ -710,3 +710,18 @@ investigation and dated comparisons remain in place; no algorithm was added
 or solver experiment run. Integration, evaluation and reader acceptance remain
 open. Both strict books and source/HTML link checks pass with 20 draft pages;
 the existing page and anchor compatibility baseline is preserved.
+
+### Why leading-coefficient normalization was chosen
+
+The follow-up history check inspected the original design (`d5e1a54`), the
+H1b implementation commit (`1e6554d`), the early-canonicalization note and
+current code. The original objective was proportional-row sharing; no
+isolated comparison with coprime-integer tableau normalization was found.
+The chapter now distinguishes the simple scaling operation from a demonstrated
+performance advantage, records the possible cost of introducing fractions,
+and separates it from the default-off primitive-integer core rewrite.
+Stale descriptions of that early pass as mandatory were corrected in the
+retained arithmetic and H1 notes. These are documentation corrections;
+normalization behavior and option defaults are unchanged.
+Both strict books and source/HTML link checks pass; the old page/anchor
+baseline is preserved. No solver batch or new performance experiment was run.

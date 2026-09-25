@@ -260,11 +260,17 @@ atoms over a single variable are asserted directly as bounds on it.
   bound orientation. The resulting exact sorted coefficient vector is the
   `PolynomialKey`; relation, strictness and scaled right-hand side are not in
   the key because they are bounds on the shared polynomial value.
-- The mandatory early atom pass now performs the primitive-integer GCD rewrite
-  on the core predicate, so `2x+3y<=5` and `4x+6y<=10` hash-cons to the same
-  SAT atom. `PreparedLraTheory` still applies leading-coefficient division as a
-  defensive boundary, representing that direction internally as
+- When enabled, the default-off early atom pass performs the primitive-integer
+  GCD rewrite on the core predicate, so `2x+3y<=5` and `4x+6y<=10` hash-cons
+  to the same SAT atom. `PreparedLraTheory` still applies leading-coefficient
+  division as a defensive boundary, representing that direction internally as
   `x+3/2y<=5/2`. Both forms identify the same rational scale class.
+- The original H1b comparisons evaluated sharing proportional polynomials,
+  not leading-coefficient-one versus coprime-integer tableau rows. The former
+  gives a simple uniform scaling operation but can introduce fractions;
+  there is no isolated performance result here establishing it as the better
+  coefficient representation. The later early-atom-pass experiments retain
+  the same tableau normalization and do not settle that question either.
 - Look up each compound key in `slack_by_polynomial`. The first occurrence
   allocates a slack and defining row; every later proportional atom reuses that
   slack as its `PreparedAtom::bound_var`. This lookup, rather than a comparison

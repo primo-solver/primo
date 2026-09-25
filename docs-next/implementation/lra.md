@@ -91,6 +91,40 @@ same inequality and give proportional polynomials a common representation.
 In both cases the threshold must be scaled by the same factor as the
 coefficients.
 
+**Why use leading coefficient one?** The original H1b change,
+[`1e6554d`](https://github.com/primo-solver/primo/commit/1e6554db8d5688bcb817c49c1ec6607dbb5c9ad5),
+aimed to make proportional polynomials share a row. It records this convention
+and its equivalence to the paper's convention, but does not establish that
+it is faster than coprime-integer normalization. The recorded comparisons
+were against the earlier sharing scheme, not between these two normal forms.
+
+The engineering advantage visible in
+{source}`canonical_polynomial <src/smt/solver_engines.cpp#L3296-L3313>` is
+simplicity: use the first coefficient as the divisor for every term and the
+threshold. There is no separate common-denominator/GCD computation across
+the coefficient vector, and a first coefficient already equal to one skips
+all these divisions. Individual rational operations still perform reductions.
+This is an explanation of the code's simplicity, not a recorded performance
+justification for choosing it over the paper's form.
+
+The tradeoff is that it can introduce fractions into an initially integer
+row, as the example above shows. Coprime-integer normalization would avoid
+those initial fractions, though clearing input denominators can enlarge
+integer coefficients, and later simplex pivots can introduce fractions again.
+The earlier {source}`LIA arithmetic profile <docs/qf-lia-profile.md#L171-L176>`
+already raised this cost question. Changing the initial normalization and
+maintaining integer rows throughout pivoting are separate proposals. An
+isolated comparison of the two initial forms is not recorded in that evidence.
+
+Primo also has a separate, optional
+{source}`early atom canonicalizer <src/smt/preprocessing.cpp#L499-L599>` that
+uses coprime integer coefficients in core terms, so equivalent predicates can
+share a SAT atom. It is
+{source}`off by default <src/smt/check_sat.hpp#L321-L324>`. Even when enabled,
+tableau preparation still applies leading-coefficient division. Evaluations
+of that early pass therefore do not compare the two tableau representations;
+see the {source}`early canonicalization note <docs/papers/lra-atom-canonicalization.md>`.
+
 Real equality is lowered to two inequalities before this path. Negating it
 gives a Boolean choice between strict inequalities, handled by SAT. The
 low-level `Eq` case's rejection of a false equality is therefore not a

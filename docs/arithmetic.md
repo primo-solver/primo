@@ -732,8 +732,9 @@ The editable TikZ source is `docs/figures/lra-tableau-occurrence-index.tex`.
      `slack_by_polynomial`. Reuse the existing slack when found; on the first
      occurrence allocate one slack, add its defining row, and insert the key.
 
-  Since 2026-08-17 this is also preceded by a global GCD rewrite of the core
-  arithmetic atom. The mandatory pre-clausification pass clears coefficient
+  The optional early atom canonicalizer, introduced on 2026-08-17 and now
+  default-off, can precede this with a global GCD rewrite of the core
+  arithmetic atom. When enabled, the pre-clausification pass clears coefficient
   denominators, divides by integer content, fixes the sign, and rebuilds the
   predicate through `TermManager`. `PreparedLraTheory` still divides by the
   first nonzero coefficient as a defensive theory-boundary invariant. For
@@ -755,9 +756,9 @@ The editable TikZ source is `docs/figures/lra-tableau-occurrence-index.tex`.
   | `2x + 2y <= 12` | `s <= 6` (a distinct, weaker upper bound) |
   | `-x - y <= -5` | `s >= 5` (the opposite orientation) |
 
-  The first two source bounds become the same hash-consed core atom before
-  clausification. At the tableau level `LraTableau::assert_upper` therefore
-  sees only one SAT atom for that semantic predicate.
+  With early atom canonicalization enabled, the first two source bounds become
+  the same hash-consed core atom before clausification. Without that pass,
+  tableau sharing alone does not merge their SAT atoms.
   The `s <= 6` atom cannot be discarded from the prepared problem, however:
   under arbitrary Boolean structure it may be assigned without `s <= 5`, or
   assigned false and therefore assert `s > 6`. What is shared globally is the
@@ -1169,9 +1170,10 @@ The editable TikZ source is `docs/figures/lra-tableau-occurrence-index.tex`.
   and `2x<=10` still get separate slacks~~ -- **fixed 2026-07-28**. Item H1a
   made both single-variable forms direct bounds on `x`, with no slack at all;
   item H1b made compound `PolynomialKey`s scale-canonical, so `x+y<=5` and
-  `2x+2y<=10` share the one slack for `x+y`. Since 2026-08-17, the early
-  primitive-integer atom pass also maps equivalent source predicates to one
-  hash-consed SAT atom; `PreparedLraTheory` retains scale-canonical keys as a
+  `2x+2y<=10` share the one slack for `x+y`. The early primitive-integer
+  atom pass, introduced on 2026-08-17 and now default-off, also maps equivalent
+  source predicates to one hash-consed SAT atom when enabled;
+  `PreparedLraTheory` retains scale-canonical keys as a
   defensive boundary. See [](papers/lra-atom-canonicalization.md).
 - **Propagation only relates atoms sharing the exact same slack**, not
   Dutertre & de Moura's stronger row-based/interval bound propagation
