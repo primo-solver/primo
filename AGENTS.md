@@ -1,5 +1,22 @@
 # Primo Agent Guide
 
+## Execution location: SLURM required
+
+The owner's laptop is an interactive workstation. Do not run builds, full test
+suites, static-analysis sweeps, fuzzing campaigns, benchmarks, or corpus/model
+validation on it. These run in SLURM allocations, including remote builds via
+`scripts/slurm_prepare_benchmark_workspace.py --build-via-slurm`. An available
+local binary, many CPU cores, or a missing remote dependency is not permission
+to fall back to local execution. Do not run compute on the SSH login host.
+
+Local work is limited to editing, Git operations, reading results, syntax checks,
+and explicitly bounded focused smoke checks expected to finish within two
+minutes. Do not combine many smoke checks into a local campaign. Use the SSH
+route supplied in the session; keep connection details outside tracked files.
+If remote execution is unavailable, preserve the work and report that blocker.
+Before finishing or changing execution location, inspect the process tree and
+terminate every experiment process started locally, including descendants.
+
 ## Clean-room policy
 
 Primo is a new solver, not a continuation of LLM2SMT.
