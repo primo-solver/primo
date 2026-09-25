@@ -10,6 +10,7 @@ parts:
       - file: implementation/core
       - file: implementation/sat
       - file: implementation/dpllt
+      - file: implementation/euf
   - caption: Literature
     chapters:
       - file: papers/yices

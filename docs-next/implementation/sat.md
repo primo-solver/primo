@@ -172,8 +172,9 @@ for both-polarity theory relevance. This reuses their existing literal when
 present; an argument not previously encoded still needs its first SAT variable.
 Registration adds no equality atoms or linking clauses. The shared
 {source}`register_euf_boolean_arguments <src/smt/solver_engines.cpp#L12570-L12577>` entry point
-completes this preparation for ground and quantified EUF recipes; its EUF
-reasoning is separate chapter work.
+completes this preparation for ground and quantified EUF recipes. The
+[EUF chapter](euf.md#boolean-arguments-and-propagation) follows the registered
+literal into an explained equality with `true` or `false`.
 
 ## Worked example: one nested conjunction
 

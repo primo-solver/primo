@@ -77,7 +77,7 @@ The QF_UF engine is `solve_qf_uf_engine_impl` in
 
 ```text
 clausify assertions
-register the Boolean/EUF domain bridge before preparing the theory atoms
+register Boolean argument terms before preparing the theory atoms
 resolve propagation and phase policies from options and formula features
 prepare flat EUF structure and connect callbacks when the selected mode uses them
 loop:

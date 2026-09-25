@@ -10,8 +10,8 @@ and backjumping to CaDiCaL. Its SMT drivers translate SAT assignments into
 theory facts, schedule theory checks, and decide whether a candidate can become
 a solver answer. There is no single C++ driver for every logic. This chapter
 describes their common contract and the differences that affect correctness;
-congruence closure, arithmetic, and combination algorithms need their own
-chapters.
+[EUF](euf.md) explains congruence closure, its reasons, and theory undo.
+Arithmetic and combination algorithms remain separate chapter work.
 
 ## Representation and ownership
 

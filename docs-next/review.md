@@ -565,3 +565,32 @@ is preserved separately; the repaired gate passed on a fresh run. Whole-tree
 static analysis covers 128 C++ translation units, with 17 expected analyzer
 diagnostics and no blocking code-review finding. No page acceptance is implied
 by these checks; reader review remains pending.
+
+## EUF chapter checks
+
+The new [EUF chapter](implementation/euf.md) follows the default flat kernel
+through a conflict and backtrack. Its source review uses the existing
+`e6d9fcb` pin: `FlatTermIndex`, `FlatCongruenceClosure`, `ProofForest`, the
+prepared/working closures and callback paths in `solver_engines.cpp`, Boolean
+argument registration, and the typed model-builder boundary. The chapter maps
+the relevant tests to representation, explanation, rollback, and propagation
+obligations. The worked trace is explanatory; it does not claim a particular
+preprocessor or SAT search order.
+
+The local primary PDF `docs/oliveras-euf.pdf` was read at Sections 3.1–3.5,
+4, and 5.2–5.5. The review separates the default BFS mechanism from the
+optional proof forests and the paper's complexity results. It also records
+Primo's sparse undo policy, structural-alias restrictions, and the bounded
+existing-atom Ackermann mode. Broader heuristic proposals and experiment
+histories remain in the existing book; their migration is not marked complete.
+
+This is a documentation-only change. The existing SLURM qualification is
+recorded above; no solver batch was rerun for this chapter. `make docs` and
+`make docs-next` pass their strict full builds. Source-link targets and line
+ranges were checked against the shared pin; rendered local links resolve.
+All 17 draft pages have navigation and ledger entries. The old book's 83
+captured pages and 1,223 anchors remain available.
+
+The documentation self-review found no remaining blocking discrepancy in this
+chapter. Reader review of the explanation, depth, and chapter boundaries
+remains pending; the checks do not mark the page accepted.

@@ -56,7 +56,9 @@ explains the core representation and its lifetimes.
 [Boolean abstraction and SAT integration](implementation/sat.md) follows those
 terms into clauses and describes assumptions and theory callbacks. The full
 interaction is followed in [DPLL(T)](implementation/dpllt.md), including
-explained conflicts, backtracking, and final consistency checks. The capability
+explained conflicts, backtracking, and final consistency checks.
+[EUF: congruence, explanations, and rollback](implementation/euf.md) follows
+the equality kernel through a conflict and its undo. The capability
 matrix and user guides remain in the existing book while they
 undergo page review for this draft.
 
