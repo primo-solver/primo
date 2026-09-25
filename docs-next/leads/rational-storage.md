@@ -36,7 +36,7 @@ The {download}`C++ layout probe <../examples/rational-layout.cpp>` reports:
 | Union of small pair / owned pointer, plus separate tag | 24 |
 | Union of numerator / owned pointer, tagged by denominator | 16 |
 | Union of small pair / inline `mpq_class`, plus separate tag | 40 |
-| Current `DeltaRational` / candidate using compact rationals | 48 / 32 |
+| Current {source}`DeltaRational <src/theory/arithmetic/lra_tableau.hpp#L24-L56>` / candidate using compact rationals | 48 / 32 |
 | Current `LraTableau::RowEntry` / candidate using compact rational | 40 / 32 |
 
 The separate-tag union has a 16-byte payload plus its tag and alignment
