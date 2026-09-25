@@ -13,11 +13,11 @@ or speedup has been measured.
 | --- | --- |
 | {source}`Statistics <src/util/statistics.hpp#L239-L280>` and its {source}`updates <src/util/statistics.cpp#L265-L313>` | Enum keys update dense arrays and remember first use. String keys also perform hash lookups; new extra keys allocate storage. Not every increment is a map update. |
 | {source}`EUF merge/use-list counters <src/theory/equality/incremental_congruence_closure.cpp#L233-L280>` | Plain field increments occur inside solver operations. These are cheaper than string-key updates, but their total cost and effect on generated code need measurement. |
-| {source}`ScopedStatisticsTimer <src/smt/solver_engines.cpp#L375-L400>` and {source}`CombinationTimer <src/smt/component_solver.cpp#L24-L40>` | Clock reads and publication of elapsed time; removing only the final increment would leave timing work behind. |
-| {source}`Ackermann cost diagnostics <src/smt/solver_engines.cpp#L403-L482>` | A dedicated traversal allocates scratch storage and groups applications to compute counters. A useful disabled mode must omit diagnostic computation, not just its output. |
+| {source}`ScopedStatisticsTimer <src/smt/solver_engines.cpp#L376-L401>` and {source}`CombinationTimer <src/smt/component_solver.cpp#L26-L41>` | Clock reads and publication of elapsed time; removing only the final increment would leave timing work behind. |
+| {source}`Ackermann cost diagnostics <src/smt/solver_engines.cpp#L404-L483>` | A dedicated traversal allocates scratch storage and groups applications to compute counters. A useful disabled mode must omit diagnostic computation, not just its output. |
 | {source}`CLI statistics printing <src/main.cpp#L87-L119>` | `--stats` controls printing. It does not disable the instrumentation that produced the result. |
 | {source}`SolveTerminator::terminate <src/smt/solver_runtime.cpp#L12-L27>` | Reads `StatKey::TheoryConflicts` to enforce a resource limit. This count is operational state and must survive disabling diagnostics. |
-| {source}`EUF scheduling <src/smt/solver_engines.cpp#L2310-L2318>` | Reads `EufPropagationRounds` to decide whether to run propagation. The DPLL(T) audit confirms that adaptive scheduling state also lives in the statistics store. |
+| {source}`EUF scheduling <src/smt/solver_engines.cpp#L2243-L2251>` | Reads `EufPropagationRounds` to decide whether to run propagation. The DPLL(T) audit confirms that adaptive scheduling state also lives in the statistics store. |
 
 The conflict budget also controls when the
 {source}`QF_UF session portfolio <src/smt/session_portfolio.cpp#L19-L48>` falls

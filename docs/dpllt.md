@@ -151,7 +151,7 @@ Do not add a fallback in-house SAT solver. If CaDiCaL/IPASIR-UP is missing, repo
 
 The dedicated EUF/LRA callbacks request non-forgettable external conflicts in
 the API variant with that flag, whereas
-{source}`ComponentDispatcher <src/smt/component_dispatcher.cpp#L247-L255>`
+{source}`ComponentDispatcher <src/smt/component_dispatcher.cpp#L240-L248>`
 marks its external clauses forgettable. Reason-vector lifetime is separate
 from this eligibility flag and from actual backend deletion. The
 [forgetting note](papers/clause-forgetting.md) records this route distinction.

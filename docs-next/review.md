@@ -528,4 +528,5 @@ normal path does not allocate an event copy. Only deferred/reentrant events
 are queued. Final-model completeness scans remain linear in registered atoms;
 quantifiers temporarily sort their projection by assignment position. No
 performance improvement is claimed. Fresh differential fuzzing, fixed-input
-baseline comparison, model replay and updated source pins remain pending.
+baseline comparison, and model replay remain pending. Both books now pin source links to `45e25a6`;
+shifted ranges were mapped and changed spans reviewed against the owning code.

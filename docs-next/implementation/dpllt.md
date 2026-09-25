@@ -26,10 +26,10 @@ adaptation around this boundary.
 | SAT trail and clause database | CaDiCaL behind {source}`CadicalBackend <src/sat/cadical_backend.hpp>`. Neither SAT literals nor the backend contain core terms. |
 | Primo's observed assignment | {source}`AssignmentCoordinator <src/smt/assignment_coordinator.hpp>` is the sole writer of {source}`sat::Trail <src/sat/trail.hpp>`. Consumers read {source}`sat::TrailView <src/sat/trail_view.hpp>`; truth comes from the trail's variable-to-position index. |
 | Meaning of SAT variables | {source}`BooleanClausifier <src/smt/clausifier.hpp#L20-L57>` owns the atom registry and term-to-literal map, borrowing the backend and term manager. |
-| Dedicated EUF callback state | {source}`OnlineEufPropagator <src/smt/solver_engines.cpp#L1638-L1690>` borrows the atom vector, terms, options, and statistics; owns atom-index metadata, candidate queues, reasons, and optional incremental closure state; reads the shared assignment view. |
-| Dedicated arithmetic callback state | {source}`OnlineLraPropagator <src/smt/solver_engines.cpp#L7066-L7107>` owns a mutable tableau copied from prepared structural state, kernel checkpoints, queues, and reasons; reads the shared assignment view and borrows the prepared data, atom vector, backend, and statistics. |
-| Component routing | {source}`ComponentDispatcher <src/smt/component_dispatcher.hpp#L23-L77>` owns variable routes, temporary assignment deltas, stream cursors, and explanation clauses; it borrows component pointers. |
-| Component facts and outcomes | {source}`AssignedTheoryLiteral and TheoryCheckResult <src/theory/theory_solver.hpp>` carry a core atom, its SAT literal/value, clauses, consequences, model stamps, or a typed stop result. {source}`TheoryComponent <src/theory/theory_component.hpp#L88-L130>` owns theory-local execution behind this contract and receives no SAT backend handle. |
+| Dedicated EUF callback state | {source}`OnlineEufPropagator <src/smt/solver_engines.cpp#L1634-L1673>` borrows the atom vector, terms, options, and statistics; owns atom-index metadata, candidate queues, reasons, and optional incremental closure state; reads the shared assignment view. |
+| Dedicated arithmetic callback state | {source}`OnlineLraPropagator <src/smt/solver_engines.cpp#L6972-L7011>` owns a mutable tableau copied from prepared structural state, kernel checkpoints, queues, and reasons; reads the shared assignment view and borrows the prepared data, atom vector, backend, and statistics. |
+| Component routing | {source}`ComponentDispatcher <src/smt/component_dispatcher.hpp#L23-L75>` owns variable routes, temporary assignment deltas, stream cursors, and explanation clauses; it borrows component pointers. |
+| Component facts and outcomes | {source}`AssignedTheoryLiteral and TheoryCheckResult <src/theory/theory_solver.hpp>` carry a core atom, its SAT literal/value, clauses, consequences, model stamps, or a typed stop result. {source}`TheoryComponent <src/theory/theory_component.hpp#L90-L140>` owns theory-local execution behind this contract and receives no SAT backend handle. |
 
 Copying a `TermId` or `sat::Lit` does not extend its owner's lifetime. Registration
 and callbacks can grow vectors/maps, so borrowed entries must not survive those
@@ -43,7 +43,7 @@ The component driver uses it at
 ## Follow an assignment through the callbacks
 
 The callback protocol is defined by {source}`ExternalPropagator
-<src/sat/ipasir_up.hpp#L39-L60>` and implemented through the
+<src/sat/ipasir_up.hpp#L40-L73>` and implemented through the
 {source}`CaDiCaL adapter <src/sat/cadical_backend.cpp#L35-L85>`.
 Only observed variables reach theory assignment routing. Their notifications
 may be batched; a callback must reason over the notified trail, not assume a
@@ -51,21 +51,21 @@ fresh independent model each time.
 
 1. **Receive assignments.** A signed integer reports which literal became
    true. The coordinator rejects invalid/opposite events, ignores identical
-   duplicates, updates the shared view, then delivers the new literals. {source}`EUF routing <src/smt/solver_engines.cpp#L2068-L2100>` looks up
+   duplicates, updates the shared view, then delivers the new literals. {source}`EUF routing <src/smt/solver_engines.cpp#L2008-L2033>` looks up
    its atom and updates the incremental state
    when present. {source}`ComponentDispatcher::notify_assignment
-   <src/smt/component_dispatcher.cpp#L58-L88>` batches deltas by owner and marks
+   <src/smt/component_dispatcher.cpp#L64-L85>` batches deltas by owner and marks
    affected components dirty. Optional relevance filtering is an SMT policy;
    it is not a license for a theory to ignore arbitrary assigned constraints.
 2. **Open a SAT decision level.** The coordinator saves the trail boundary.
    EUF records a kernel level, creating its closure checkpoint lazily through {source}`apply_new_decision_level
-   <src/smt/solver_engines.cpp#L1796-L1801>`. The component dispatcher tells
+   <src/smt/solver_engines.cpp#L1741-L1745>`. The component dispatcher tells
    every component to `push_level`, even when the SAT decision itself names
    no theory atom. SAT levels are not SMT-LIB assertion scopes.
 3. **Check or propagate.** A conflict supplies a clause falsified by the
    current trail. A propagation supplies a literal with an explanation.
    In the component route, {source}`partial_check
-   <src/smt/component_dispatcher.cpp#L145-L183>` visits dirty components;
+   <src/smt/component_dispatcher.cpp#L132-L161>` visits dirty components;
    components marked `check_on_full_model` wait for a complete assignment.
    These checks use `Partial` effort even inside the model callback.
 4. **Let SAT react.** CaDiCaL uses the explanation for conflict analysis or
@@ -73,7 +73,7 @@ fresh independent model each time.
    reasons, not its own CDCL implementation.
 5. **Undo assignments.** The coordinator removes the suffix and supplies its
    exact literals after updating the view. EUF's {source}`apply_backtrack
-   <src/smt/solver_engines.cpp>` restores closure state, removes discarded
+   <src/smt/solver_engines.cpp#L1747-L1765>` restores closure state, removes discarded
    reasons, and clears pending candidates/conflicts. The
    {source}`component dispatcher <src/smt/component_dispatcher.cpp>` similarly
    prunes reasons and pops each component's kernel to the reported level.
@@ -91,7 +91,7 @@ The audit found that EUF initialized its decision boundaries with an extra
 zero entry. At the first decision, `r` root literals therefore produced
 boundaries `{0, r}`; backtracking to zero cleared their assignment markers,
 while the closure's separate
-{source}`checkpoints <src/smt/solver_engines.cpp#L1365-L1393>` preserved the facts.
+{source}`checkpoints <src/smt/solver_engines.cpp#L1366-L1390>` preserved the facts.
 The repair in `ac2aaaf` removed the synthetic root boundary. The shared
 {source}`trail now owns this rule <src/sat/trail.cpp>`: entry `k` marks the
 start of level `k+1`, and rollback keeps exactly `new_level` boundaries.
@@ -153,14 +153,14 @@ them when building a SAT clause. Dedicated propagators instead retain clause
 tails already carrying the required signs. Confusing the two conventions
 would reverse the meaning of an explanation.
 
-{source}`EUF reason storage <src/smt/solver_engines.cpp#L2237-L2276>` checks
+{source}`EUF reason storage <src/smt/solver_engines.cpp#L2170-L2209>` checks
 that a candidate reason contains its conclusion exactly once and that its
 other literals are currently false and observed. This is a shape/trail check,
 not an independent proof of theory validity. The
-{source}`reason callback <src/smt/solver_engines.cpp#L1922-L1947>` streams the
+{source}`reason callback <src/smt/solver_engines.cpp#L1863-L1890>` streams the
 conclusion and clause tail, ending with zero. The component route similarly
 {source}`stores a reason before returning a propagation
-<src/smt/component_dispatcher.cpp#L207-L245>`.
+<src/smt/component_dispatcher.cpp#L203-L238>`.
 
 Reason delivery can be delayed until SAT asks for it. That does not mean the
 reason is always computed lazily: a propagator may already have built and
@@ -171,19 +171,19 @@ from that same literal can create a cycle in conflict analysis.
 ### Reason lifetime is separate from clause retention
 
 A reason for a propagation that survives backtracking may still be requested.
-The {source}`LRA rollback <src/smt/solver_engines.cpp#L7115-L7141>` and component
+The {source}`LRA rollback <src/smt/solver_engines.cpp#L7024-L7056>` and component
 dispatcher erase reasons for assignments actually removed, preserving earlier
 ones. Pending, undelivered candidates may be discarded and rediscovered; live
 reasons are not interchangeable with that queue. The existing
 {source}`root-reason lifetime regression
-<tests/unit/component_combination_tests.cpp#L526-L579>` checks this distinction.
+<tests/unit/component_combination_tests.cpp#L527-L589>` checks this distinction.
 
 The dedicated {source}`EUF conflict callback
-<src/smt/solver_engines.cpp#L1949-L1973>` and
-{source}`LRA conflict callback <src/smt/solver_engines.cpp#L7344-L7354>` request
+<src/smt/solver_engines.cpp#L1892-L1916>` and
+{source}`LRA conflict callback <src/smt/solver_engines.cpp#L7227-L7237>` request
 non-forgettable external clauses in the API variant carrying that flag.
 In contrast, {source}`ComponentDispatcher::cb_has_external_clause
-<src/smt/component_dispatcher.cpp#L247-L255>` sets it to **true**. Do not describe
+<src/smt/component_dispatcher.cpp#L240-L248>` sets it to **true**. Do not describe
 all Primo theory conflicts as permanently retained. Backend retention of a
 requested reason, a propagator's C++ storage, and SAT's learned backjump clause
 are three separate things. The [Yices note](../papers/yices.md) and
@@ -196,7 +196,7 @@ timing or a global termination proof.
 The EUF engine choice and propagation schedule are separate options. The
 {source}`defaults <src/smt/check_sat.hpp#L243-L250>` select incremental EUF with
 automatic scheduling; {source}`mode resolution
-<src/smt/solver_engines.cpp#L483-L552>` chooses a schedule for the goal.
+<src/smt/solver_engines.cpp#L484-L553>` chooses a schedule for the goal.
 Use the actual {source}`CLI names <src/main.cpp#L630-L634>`:
 `--euf-engine` and `--euf-prop`.
 
@@ -210,9 +210,9 @@ Use the actual {source}`CLI names <src/main.cpp#L630-L634>`:
 | Online component recipe | Route assignments and partial checks through `ComponentDispatcher` | Inspect pending lemmas/failures, then perform full component checks and shared-model reconciliation. |
 
 The owning loops are {source}`solve_qf_uf_engine_impl
-<src/smt/solver_engines.cpp#L10534-L10748>`,
-{source}`solve_qf_lra_impl <src/smt/solver_engines.cpp#L8320-L8461>`, and
-{source}`solve_component_recipe <src/smt/component_solver.cpp#L75-L467>`.
+<src/smt/solver_engines.cpp#L10401-L10616>`,
+{source}`solve_qf_lra_impl <src/smt/solver_engines.cpp#L8183-L8310>`, and
+{source}`solve_component_recipe <src/smt/component_solver.cpp#L70-L473>`.
 “Lazy” above describes when the theory check runs; it does not describe lazy
 reason construction or scoped incremental sessions.
 
@@ -227,26 +227,26 @@ theory, combination, and result-construction obligations.
   blocking theory clause and another solve; absence of conflict permits the
   single-theory SAT result, with typed model construction when requested.
 - **Dedicated LRA:** {source}`cb_check_found_model
-  <src/smt/solver_engines.cpp>` validates observed-atom completeness, finishes
+  <src/smt/solver_engines.cpp#L7058-L7077>` validates observed-atom completeness, finishes
   any deferred tableau check, and rejects a conflict. Eager registration
   normally finishes this repair earlier through the external-clause callback.
 - **Component recipes:** the model callback's `Partial` check is not the
   final combination decision. The outer loop first handles
   {source}`pending lemmas and typed failures
-  <src/smt/component_solver.cpp#L307-L351>`. New lemmas are clausified at a
+  <src/smt/component_solver.cpp#L305-L349>`. New lemmas are clausified at a
   detached atom-growth boundary before another solve. The
   {source}`coordinator <src/smt/component_model_coordinator.cpp#L140-L208>`
   then requests `FullModel` checks and verifies the selected arrangement/
   model-projection contract. Local consistency of each theory alone is
   insufficient.
-- **Other logics:** {source}`QF_UFLRA <src/smt/solver_engines.cpp#L10956-L10982>`
+- **Other logics:** {source}`QF_UFLRA <src/smt/solver_engines.cpp#L10824-L10850>`
   retains a dedicated combination driver. Integer search adds integrality and
   resource-limit obligations; quantified UF adds instantiation/completion
   obligations. Neither is explained by the ground-EUF example below.
 
 Reversible model-equality choices are resubmitted as assumptions. An UNSAT
 answer under those choices can reject only that branch:
-{source}`the component loop <src/smt/component_solver.cpp#L352-L369>` learns
+{source}`the component loop <src/smt/component_solver.cpp#L350-L367>` learns
 a clause over failed choices and retries, rather than immediately declaring
 the input UNSAT. The SAT chapter explains ordinary assertion-scope selectors.
 
@@ -301,7 +301,7 @@ Consider a branch choosing `p=true`. Boolean propagation gives `A`, `B`, and
 `f(a) = f(c)`, contradicting `¬C`. Its explanation is the theory-valid clause
 `¬A ∨ ¬B ∨ C`. In the dedicated online route, assignment notifications feed
 the closure, {source}`maybe_store_conflict
-<src/smt/solver_engines.cpp#L2554-L2565>` queues the explanation, and the
+<src/smt/solver_engines.cpp#L2487-L2498>` queues the explanation, and the
 external-clause callbacks stream it to CaDiCaL.
 
 One possible conflict-analysis derivation is:
@@ -361,7 +361,7 @@ above. It separates the papers' contracts from Primo's scheduling choices.
 | --- | --- |
 | A theory conflict reaches SAT even without optional propagation | {source}`EUF external-conflict tests <tests/unit/boolean_solver_tests.cpp#L2589-L2635>`; ordinary solver regressions, not a proof of the kernel. |
 | Explained propagation occurs during search | {source}`online congruence test <tests/unit/boolean_solver_tests.cpp#L2480-L2500>` checks delivered propagation; broader explanation algorithms belong in the EUF chapter. |
-| Rollback preserves surviving reasons and assignment routing | {source}`component lifecycle regression <tests/unit/component_combination_tests.cpp#L526-L579>` and {source}`backend reconnect regressions <tests/unit/sat_backend_tests.cpp#L193-L235>`. |
+| Rollback preserves surviving reasons and assignment routing | {source}`component lifecycle regression <tests/unit/component_combination_tests.cpp#L527-L589>` and {source}`backend reconnect regressions <tests/unit/sat_backend_tests.cpp#L194-L235>`. |
 | A candidate with pending work or a typed failure is not accepted as SMT SAT | Component-loop checks above and {source}`component regression suite <tests/unit/component_combination_tests.cpp>`; detailed combination/quantifier completeness is separate work. |
 | Scoped assertions change satisfiability without corrupting earlier state | The worked example, {source}`session regressions <tests/unit/smt_session_tests.cpp>`, and the distinct session ownership described above. |
 

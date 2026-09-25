@@ -97,12 +97,12 @@ into clauses, explains scope guards, and details the callback ownership contract
 The [DPLL(T) chapter](dpllt.md) follows assignments, explanations, backtracking,
 and the final checks through the concrete SMT drivers.
 
-The {source}`IpasirUpBackend interface <src/sat/ipasir_up.hpp#L68-L94>` exposes
+The {source}`IpasirUpBackend interface <src/sat/ipasir_up.hpp#L81-L107>` exposes
 SAT variables, clauses, assumptions, solving, and result queries. The concrete
 {source}`CadicalBackend <src/sat/cadical_backend.hpp>` contains backend-specific
 integration. Primo does not implement its own SAT search engine.
 
-{source}`ExternalPropagator <src/sat/ipasir_up.hpp#L39-L60>` is the callback
+{source}`ExternalPropagator <src/sat/ipasir_up.hpp#L40-L73>` is the callback
 boundary for assignment notifications, backtracking, explained propagation,
 external clauses, and checking a candidate assignment. Theory interaction can
 happen during Boolean search as well as when a complete assignment is found.
@@ -121,7 +121,7 @@ model construction, and `unknown`/`unsupported` exits.
 ```
 
 In this picture, clauses cross the
-{source}`IpasirUpBackend::add_clause boundary <src/sat/ipasir_up.hpp#L68-L79>`;
+{source}`IpasirUpBackend::add_clause boundary <src/sat/ipasir_up.hpp#L81-L92>`;
 the assignment and lemma arrows stand for interactions mediated by the
 {source}`SMT-owned abstraction and atom registry <src/smt/clausifier.hpp#L20-L57>`.
 They do not give the SAT backend access to core terms. A candidate Boolean
@@ -138,11 +138,11 @@ quantifier chapter.
 
 Mixed solving must also establish agreement between components. The production
 `QF_UFLIA` engine enters
-{source}`solve_component_recipe <src/smt/solver_engines.cpp#L10381-L10413>`;
+{source}`solve_component_recipe <src/smt/solver_engines.cpp#L10248-L10280>`;
 component capabilities and model fragments are described by
 {source}`TheoryComponent's interface types <src/theory/theory_component.hpp>`.
 `QF_UFLRA` retains a
-{source}`dedicated engine <src/smt/solver_engines.cpp#L10956-L10976>`.
+{source}`dedicated engine <src/smt/solver_engines.cpp#L10824-L10844>`.
 These routes must not be described as one uniform implementation merely because
 both combine uninterpreted functions with arithmetic.
 

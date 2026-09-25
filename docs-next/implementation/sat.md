@@ -173,7 +173,7 @@ for both-polarity theory relevance. This reuses their existing literal when
 present; an argument not previously encoded still needs its first SAT variable.
 The {source}`alternative bridge encoding <src/smt/clausifier.cpp#L196-L231>`
 adds explicit equality atoms and clauses. The
-{source}`mode dispatch <src/smt/solver_engines.cpp#L10521-L10532>` selects these
+{source}`mode dispatch <src/smt/solver_engines.cpp#L10388-L10399>` selects these
 mechanisms; their EUF reasoning is separate chapter work.
 
 ## Worked example: one nested conjunction
@@ -225,10 +225,10 @@ literal safe to reuse under either polarity; a one-way implication alone
 would not guarantee that equivalence.
 
 The opt-in assumptions engines implement scopes on top of this SAT interface.
-For example, {source}`IncrementalUfEngine <src/smt/solver_engines.cpp#L12306-L12348>`
+For example, {source}`IncrementalUfEngine <src/smt/solver_engines.cpp#L12216-L12258>`
 creates a selector when a scope first gains an assertion and permanently adds
 `¬s` when that scope is popped. Its
-{source}`query loop <src/smt/solver_engines.cpp#L12389-L12419>` resubmits active
+{source}`query loop <src/smt/solver_engines.cpp#L12299-L12325>` resubmits active
 selectors on every solve, including theory-refinement retries. No clause or
 term deletion follows from this scheme. Default rebuild sessions have a
 different owner lifetime, as explained in the [architecture chapter](architecture.md).
@@ -249,7 +249,7 @@ already created inside CaDiCaL and observes the new variable. The
 {source}`capability flags <src/sat/cadical_backend.cpp#L290-L300>` describe what
 this backend supports; a caller must not assume another adapter supports it.
 
-The {source}`ExternalPropagator interface <src/sat/ipasir_up.hpp#L39-L60>`
+The {source}`ExternalPropagator interface <src/sat/ipasir_up.hpp#L40-L73>`
 provides the following exchanges. The connected SMT propagator owns the term
 mapping and theory state behind them.
 

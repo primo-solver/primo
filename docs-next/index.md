@@ -6,7 +6,7 @@ together and, for supported inputs, can produce a satisfying model. Its SMT
 implementation is original; propositional search is delegated to CaDiCaL
 through IPASIR-UP. Primo-owned code and documentation use the MIT license.
 The {source}`command loop <src/main.cpp#L87-L119>` is the executable entry
-point; {source}`IpasirUpBackend <src/sat/ipasir_up.hpp#L68-L94>` defines the SAT
+point; {source}`IpasirUpBackend <src/sat/ipasir_up.hpp#L81-L107>` defines the SAT
 boundary.
 
 Correctness is the first requirement. Wrong answers, invalid models, and crashes
