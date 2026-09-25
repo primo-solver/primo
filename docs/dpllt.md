@@ -28,12 +28,15 @@ route migration and qualification are tracked in [](active-work.md).
 
 This is a projection of the SAT assignment onto observed variables, not a
 second complete SAT trail. Tseytin variables used only for Boolean structure
-remain inside CaDiCaL. A Boolean expression used as a theory term, such as
-`(and p q)` passed to an uninterpreted function, needs its value communicated
-to EUF: the encoding can register its literal directly or introduce observed
-equalities to the Boolean domain constants. Decision boundaries include levels
-with no observed assignments. The dense variable-to-position index can still
-contain empty slots for unobserved variables below its largest observed ID.
+remain inside CaDiCaL. A compound Boolean function argument is different:
+`f(and p q)` is rewritten to `f(b)` with a fresh Boolean term `b` and the SAT
+definition `b ↔ (p ∧ q)`. The default registration mode observes the variable
+for `b`; EUF uses its assignment to merge `b` with `true` or `false`, without
+introducing a separate SAT equality variable. The older optional
+`bridge-atoms` mode instead adds explicit equality atoms and linking clauses;
+see [](euf-boolean-arguments.md). Decision boundaries include levels with no
+observed assignments. The dense variable-to-position index can still contain
+empty slots for unobserved variables below its largest observed ID.
 
 The extra assignment storage is required by our current consumer design and
 notification interface, not by DPLL(T) itself. Eliminating it would require a

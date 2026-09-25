@@ -116,11 +116,16 @@ boundaries. Theory-specific merge/bound undo logs remain necessary.
 
 The mirror contains observed assignments, not every SAT assignment. Ordinary
 Tseytin variables that only encode Boolean connectives stay inside CaDiCaL.
-If a Boolean expression is also a theory term, such as `(and p q)` passed to
-`f : Bool → U`, its value must reach EUF. The
-{source}`Boolean argument encoding <src/smt/clausifier.cpp>` can register the
-expression's literal directly or introduce observed equalities to `true` and
-`false`. Thus being generated does not by itself make a variable SAT-only.
+Generated Boolean terms used as function arguments are different. For example,
+with `f : Bool → U`, the frontend rewrites `f(and p q)` to `f(b)` and defines
+the fresh Boolean term `b` by `b ↔ (p ∧ q)`. The
+{source}`default registration mode <src/smt/clausifier.cpp#L140-L194>` observes
+the variable for `b`. Its assignment tells EUF to merge `b` with `true` or
+`false`, with the assigned literal as the reason; this creates no separate SAT
+variable for that equality. The optional older
+{source}`bridge-atoms encoding <src/smt/clausifier.cpp#L196-L231>` introduces
+explicit equality atoms and linking clauses instead. Thus a generated term
+used by EUF must be distinguished from an auxiliary used only for CNF structure.
 Every SAT decision level still gets a boundary, including levels with no
 observed assignments.
 

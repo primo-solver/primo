@@ -1,0 +1,1140 @@
+{
+  "default": {
+    "timing_status": "needs-triage",
+    "note": "Timing only; independent SAT-model coverage and recorded-reference joins are separate acceptance gates. Any lost solve requires three paired reruns; loss in at least two blocks acceptance.",
+    "identities": {
+      "baseline": [
+        "85de43b409b4ebc9067af5b41ec147247b65673544bea2340d5cfc1084ef8dc0"
+      ],
+      "candidate": [
+        "35b90610318700683cc807be1189e1a61d7b1e34e180b2a49d5a0feb36af05d3"
+      ]
+    },
+    "expected_unique_inputs": 120,
+    "timeout": 5.0,
+    "ratio_limit": 1.01,
+    "rounds": [
+      {
+        "baseline": {
+          "rows": 120,
+          "solved": 106,
+          "sat": 52,
+          "unsat": 54,
+          "timeout": 6,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 8,
+          "wrong_answer": 0,
+          "par2": 145.852596
+        },
+        "candidate": {
+          "rows": 120,
+          "solved": 106,
+          "sat": 52,
+          "unsat": 54,
+          "timeout": 6,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 8,
+          "wrong_answer": 0,
+          "par2": 145.909546
+        },
+        "disagreements": [],
+        "lost": [],
+        "gained": [],
+        "common_solved": 106,
+        "baseline_common_seconds": 5.852596,
+        "candidate_common_seconds": 5.909546,
+        "par2_ratio": 1.000390462710722,
+        "common_runtime_ratio": 1.0097307246220308
+      },
+      {
+        "baseline": {
+          "rows": 120,
+          "solved": 106,
+          "sat": 52,
+          "unsat": 54,
+          "timeout": 6,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 8,
+          "wrong_answer": 0,
+          "par2": 145.834567
+        },
+        "candidate": {
+          "rows": 120,
+          "solved": 106,
+          "sat": 52,
+          "unsat": 54,
+          "timeout": 6,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 8,
+          "wrong_answer": 0,
+          "par2": 145.900245
+        },
+        "disagreements": [],
+        "lost": [],
+        "gained": [],
+        "common_solved": 106,
+        "baseline_common_seconds": 5.834567,
+        "candidate_common_seconds": 5.900245,
+        "par2_ratio": 1.0004503596187866,
+        "common_runtime_ratio": 1.011256705081971
+      }
+    ],
+    "aggregate": {
+      "baseline": {
+        "rows": 240,
+        "solved": 212,
+        "sat": 104,
+        "unsat": 108,
+        "timeout": 12,
+        "error": 0,
+        "unsupported": 0,
+        "unknown": 16,
+        "wrong_answer": 0,
+        "par2": 291.687163
+      },
+      "candidate": {
+        "rows": 240,
+        "solved": 212,
+        "sat": 104,
+        "unsat": 108,
+        "timeout": 12,
+        "error": 0,
+        "unsupported": 0,
+        "unknown": 16,
+        "wrong_answer": 0,
+        "par2": 291.809791
+      },
+      "disagreements": [],
+      "lost": [],
+      "gained": [],
+      "common_solved": 212,
+      "baseline_common_seconds": 11.687163,
+      "candidate_common_seconds": 11.809791,
+      "par2_ratio": 1.0004204093136593,
+      "common_runtime_ratio": 1.0104925378383103
+    },
+    "families": {
+      "QF_LIA": {
+        "baseline": {
+          "rows": 28,
+          "solved": 26,
+          "sat": 22,
+          "unsat": 4,
+          "timeout": 2,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong_answer": 0,
+          "par2": 20.63527
+        },
+        "candidate": {
+          "rows": 28,
+          "solved": 26,
+          "sat": 22,
+          "unsat": 4,
+          "timeout": 2,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong_answer": 0,
+          "par2": 20.642208
+        },
+        "disagreements": [],
+        "lost": [],
+        "gained": [],
+        "common_solved": 26,
+        "baseline_common_seconds": 0.63527,
+        "candidate_common_seconds": 0.642208,
+        "par2_ratio": 1.0003362204613753,
+        "common_runtime_ratio": 1.010921340532372
+      },
+      "QF_LRA": {
+        "baseline": {
+          "rows": 24,
+          "solved": 24,
+          "sat": 16,
+          "unsat": 8,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong_answer": 0,
+          "par2": 0.529743
+        },
+        "candidate": {
+          "rows": 24,
+          "solved": 24,
+          "sat": 16,
+          "unsat": 8,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong_answer": 0,
+          "par2": 0.5353950000000001
+        },
+        "disagreements": [],
+        "lost": [],
+        "gained": [],
+        "common_solved": 24,
+        "baseline_common_seconds": 0.529743,
+        "candidate_common_seconds": 0.5353950000000001,
+        "par2_ratio": 1.0106693245592675,
+        "common_runtime_ratio": 1.0106693245592675
+      },
+      "QF_UF": {
+        "baseline": {
+          "rows": 62,
+          "solved": 62,
+          "sat": 24,
+          "unsat": 38,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong_answer": 0,
+          "par2": 5.482561
+        },
+        "candidate": {
+          "rows": 62,
+          "solved": 62,
+          "sat": 24,
+          "unsat": 38,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong_answer": 0,
+          "par2": 5.502176
+        },
+        "disagreements": [],
+        "lost": [],
+        "gained": [],
+        "common_solved": 62,
+        "baseline_common_seconds": 5.482561,
+        "candidate_common_seconds": 5.502176,
+        "par2_ratio": 1.0035777075713341,
+        "common_runtime_ratio": 1.0035777075713341
+      },
+      "QF_UFLIA": {
+        "baseline": {
+          "rows": 32,
+          "solved": 30,
+          "sat": 14,
+          "unsat": 16,
+          "timeout": 2,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong_answer": 0,
+          "par2": 24.14536
+        },
+        "candidate": {
+          "rows": 32,
+          "solved": 30,
+          "sat": 14,
+          "unsat": 16,
+          "timeout": 2,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong_answer": 0,
+          "par2": 24.238303
+        },
+        "disagreements": [],
+        "lost": [],
+        "gained": [],
+        "common_solved": 30,
+        "baseline_common_seconds": 4.14536,
+        "candidate_common_seconds": 4.238303,
+        "par2_ratio": 1.0038493110063382,
+        "common_runtime_ratio": 1.022420971881815
+      },
+      "QF_UFLRA": {
+        "baseline": {
+          "rows": 52,
+          "solved": 52,
+          "sat": 28,
+          "unsat": 24,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong_answer": 0,
+          "par2": 0.659614
+        },
+        "candidate": {
+          "rows": 52,
+          "solved": 52,
+          "sat": 28,
+          "unsat": 24,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong_answer": 0,
+          "par2": 0.661726
+        },
+        "disagreements": [],
+        "lost": [],
+        "gained": [],
+        "common_solved": 52,
+        "baseline_common_seconds": 0.659614,
+        "candidate_common_seconds": 0.661726,
+        "par2_ratio": 1.0032018726103449,
+        "common_runtime_ratio": 1.0032018726103449
+      },
+      "UF": {
+        "baseline": {
+          "rows": 42,
+          "solved": 18,
+          "sat": 0,
+          "unsat": 18,
+          "timeout": 8,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 16,
+          "wrong_answer": 0,
+          "par2": 240.234615
+        },
+        "candidate": {
+          "rows": 42,
+          "solved": 18,
+          "sat": 0,
+          "unsat": 18,
+          "timeout": 8,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 16,
+          "wrong_answer": 0,
+          "par2": 240.229983
+        },
+        "disagreements": [],
+        "lost": [],
+        "gained": [],
+        "common_solved": 18,
+        "baseline_common_seconds": 0.234615,
+        "candidate_common_seconds": 0.229983,
+        "par2_ratio": 0.9999807188485307,
+        "common_runtime_ratio": 0.9802570168147817
+      }
+    },
+    "reference_join": {
+      "confirmed": 210,
+      "reference-inconclusive": 2
+    },
+    "models": {
+      "expected": 104,
+      "outcomes": {
+        "pass": 94,
+        "input-nonconforming": 10
+      }
+    },
+    "work_counters_common_solved": {
+      "baseline": {
+        ":sat.solve-calls": 1168,
+        ":sat.decisions": 344628,
+        ":sat.conflicts": 12460,
+        ":sat.propagations": 2072872,
+        ":euf.incremental.merges": 2093428,
+        ":combination.rounds": 790,
+        ":no.interface.euf-live-model-deferred-notifications": 0
+      },
+      "candidate": {
+        ":sat.solve-calls": 1184,
+        ":sat.decisions": 345194,
+        ":sat.conflicts": 12466,
+        ":sat.propagations": 2073906,
+        ":euf.incremental.merges": 2093706,
+        ":combination.rounds": 790,
+        ":no.interface.euf-live-model-deferred-notifications": 0
+      }
+    },
+    "counter_changed_rows": {
+      ":sat.decisions": 18,
+      ":sat.propagations": 12,
+      ":sat.solve-calls": 6,
+      ":sat.conflicts": 6,
+      ":euf.incremental.merges": 6
+    },
+    "rss_harness_and_descendants": {
+      "baseline": {
+        "min_kib": 18636,
+        "median_kib": 45762.0,
+        "max_kib": 71400
+      },
+      "candidate": {
+        "min_kib": 18636,
+        "median_kib": 45478.0,
+        "max_kib": 73584
+      }
+    }
+  },
+  "online": {
+    "timing_status": "pass",
+    "note": "Timing only; independent SAT-model coverage and recorded-reference joins are separate acceptance gates. Any lost solve requires three paired reruns; loss in at least two blocks acceptance.",
+    "identities": {
+      "baseline": [
+        "85de43b409b4ebc9067af5b41ec147247b65673544bea2340d5cfc1084ef8dc0"
+      ],
+      "candidate": [
+        "35b90610318700683cc807be1189e1a61d7b1e34e180b2a49d5a0feb36af05d3"
+      ]
+    },
+    "expected_unique_inputs": 120,
+    "timeout": 5.0,
+    "ratio_limit": 1.01,
+    "rounds": [
+      {
+        "baseline": {
+          "rows": 120,
+          "solved": 102,
+          "sat": 52,
+          "unsat": 50,
+          "timeout": 10,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 8,
+          "wrong_answer": 0,
+          "par2": 186.625494
+        },
+        "candidate": {
+          "rows": 120,
+          "solved": 102,
+          "sat": 52,
+          "unsat": 50,
+          "timeout": 10,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 8,
+          "wrong_answer": 0,
+          "par2": 186.727328
+        },
+        "disagreements": [],
+        "lost": [],
+        "gained": [],
+        "common_solved": 102,
+        "baseline_common_seconds": 6.625494,
+        "candidate_common_seconds": 6.727328,
+        "par2_ratio": 1.0005456596406919,
+        "common_runtime_ratio": 1.0153700237295513
+      },
+      {
+        "baseline": {
+          "rows": 120,
+          "solved": 102,
+          "sat": 52,
+          "unsat": 50,
+          "timeout": 10,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 8,
+          "wrong_answer": 0,
+          "par2": 186.696401
+        },
+        "candidate": {
+          "rows": 120,
+          "solved": 102,
+          "sat": 52,
+          "unsat": 50,
+          "timeout": 10,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 8,
+          "wrong_answer": 0,
+          "par2": 186.682341
+        },
+        "disagreements": [],
+        "lost": [],
+        "gained": [],
+        "common_solved": 102,
+        "baseline_common_seconds": 6.696401,
+        "candidate_common_seconds": 6.682341,
+        "par2_ratio": 0.9999246905675487,
+        "common_runtime_ratio": 0.9979003646884349
+      }
+    ],
+    "aggregate": {
+      "baseline": {
+        "rows": 240,
+        "solved": 204,
+        "sat": 104,
+        "unsat": 100,
+        "timeout": 20,
+        "error": 0,
+        "unsupported": 0,
+        "unknown": 16,
+        "wrong_answer": 0,
+        "par2": 373.321895
+      },
+      "candidate": {
+        "rows": 240,
+        "solved": 204,
+        "sat": 104,
+        "unsat": 100,
+        "timeout": 20,
+        "error": 0,
+        "unsupported": 0,
+        "unknown": 16,
+        "wrong_answer": 0,
+        "par2": 373.409669
+      },
+      "disagreements": [],
+      "lost": [],
+      "gained": [],
+      "common_solved": 204,
+      "baseline_common_seconds": 13.321895,
+      "candidate_common_seconds": 13.409669,
+      "par2_ratio": 1.0002351161321519,
+      "common_runtime_ratio": 1.006588702282971
+    },
+    "families": {
+      "QF_LIA": {
+        "baseline": {
+          "rows": 28,
+          "solved": 26,
+          "sat": 22,
+          "unsat": 4,
+          "timeout": 2,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong_answer": 0,
+          "par2": 20.641575
+        },
+        "candidate": {
+          "rows": 28,
+          "solved": 26,
+          "sat": 22,
+          "unsat": 4,
+          "timeout": 2,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong_answer": 0,
+          "par2": 20.646756
+        },
+        "disagreements": [],
+        "lost": [],
+        "gained": [],
+        "common_solved": 26,
+        "baseline_common_seconds": 0.641575,
+        "candidate_common_seconds": 0.646756,
+        "par2_ratio": 1.000250998288648,
+        "common_runtime_ratio": 1.0080754393484783
+      },
+      "QF_LRA": {
+        "baseline": {
+          "rows": 24,
+          "solved": 24,
+          "sat": 16,
+          "unsat": 8,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong_answer": 0,
+          "par2": 0.535208
+        },
+        "candidate": {
+          "rows": 24,
+          "solved": 24,
+          "sat": 16,
+          "unsat": 8,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong_answer": 0,
+          "par2": 0.537605
+        },
+        "disagreements": [],
+        "lost": [],
+        "gained": [],
+        "common_solved": 24,
+        "baseline_common_seconds": 0.535208,
+        "candidate_common_seconds": 0.537605,
+        "par2_ratio": 1.0044786326063886,
+        "common_runtime_ratio": 1.0044786326063886
+      },
+      "QF_UF": {
+        "baseline": {
+          "rows": 62,
+          "solved": 54,
+          "sat": 24,
+          "unsat": 30,
+          "timeout": 8,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong_answer": 0,
+          "par2": 81.447013
+        },
+        "candidate": {
+          "rows": 62,
+          "solved": 54,
+          "sat": 24,
+          "unsat": 30,
+          "timeout": 8,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong_answer": 0,
+          "par2": 81.474419
+        },
+        "disagreements": [],
+        "lost": [],
+        "gained": [],
+        "common_solved": 54,
+        "baseline_common_seconds": 1.4470129999999999,
+        "candidate_common_seconds": 1.474419,
+        "par2_ratio": 1.0003364887058535,
+        "common_runtime_ratio": 1.0189397054483962
+      },
+      "QF_UFLIA": {
+        "baseline": {
+          "rows": 32,
+          "solved": 30,
+          "sat": 14,
+          "unsat": 16,
+          "timeout": 2,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong_answer": 0,
+          "par2": 29.788185
+        },
+        "candidate": {
+          "rows": 32,
+          "solved": 30,
+          "sat": 14,
+          "unsat": 16,
+          "timeout": 2,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong_answer": 0,
+          "par2": 29.84369
+        },
+        "disagreements": [],
+        "lost": [],
+        "gained": [],
+        "common_solved": 30,
+        "baseline_common_seconds": 9.788185,
+        "candidate_common_seconds": 9.84369,
+        "par2_ratio": 1.0018633226562814,
+        "common_runtime_ratio": 1.005670612069551
+      },
+      "QF_UFLRA": {
+        "baseline": {
+          "rows": 52,
+          "solved": 52,
+          "sat": 28,
+          "unsat": 24,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong_answer": 0,
+          "par2": 0.673302
+        },
+        "candidate": {
+          "rows": 52,
+          "solved": 52,
+          "sat": 28,
+          "unsat": 24,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong_answer": 0,
+          "par2": 0.672745
+        },
+        "disagreements": [],
+        "lost": [],
+        "gained": [],
+        "common_solved": 52,
+        "baseline_common_seconds": 0.673302,
+        "candidate_common_seconds": 0.672745,
+        "par2_ratio": 0.999172733780681,
+        "common_runtime_ratio": 0.999172733780681
+      },
+      "UF": {
+        "baseline": {
+          "rows": 42,
+          "solved": 18,
+          "sat": 0,
+          "unsat": 18,
+          "timeout": 8,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 16,
+          "wrong_answer": 0,
+          "par2": 240.236612
+        },
+        "candidate": {
+          "rows": 42,
+          "solved": 18,
+          "sat": 0,
+          "unsat": 18,
+          "timeout": 8,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 16,
+          "wrong_answer": 0,
+          "par2": 240.234454
+        },
+        "disagreements": [],
+        "lost": [],
+        "gained": [],
+        "common_solved": 18,
+        "baseline_common_seconds": 0.23661200000000002,
+        "candidate_common_seconds": 0.234454,
+        "par2_ratio": 0.9999910171893366,
+        "common_runtime_ratio": 0.9908795834530792
+      }
+    },
+    "reference_join": {
+      "confirmed": 202,
+      "reference-inconclusive": 2
+    },
+    "models": {
+      "expected": 104,
+      "outcomes": {
+        "pass": 94,
+        "input-nonconforming": 10
+      }
+    },
+    "work_counters_common_solved": {
+      "baseline": {
+        ":sat.solve-calls": 1602,
+        ":sat.decisions": 526608,
+        ":sat.conflicts": 14562,
+        ":sat.propagations": 4079144,
+        ":euf.incremental.merges": 779256,
+        ":combination.rounds": 1176,
+        ":no.interface.euf-live-model-deferred-notifications": 0
+      },
+      "candidate": {
+        ":sat.solve-calls": 1602,
+        ":sat.decisions": 526608,
+        ":sat.conflicts": 14562,
+        ":sat.propagations": 4079144,
+        ":euf.incremental.merges": 779256,
+        ":combination.rounds": 1176,
+        ":no.interface.euf-live-model-deferred-notifications": 0
+      }
+    },
+    "counter_changed_rows": {},
+    "rss_harness_and_descendants": {
+      "baseline": {
+        "min_kib": 19464,
+        "median_kib": 52994.0,
+        "max_kib": 68336
+      },
+      "candidate": {
+        "min_kib": 19464,
+        "median_kib": 53132.0,
+        "max_kib": 65952
+      }
+    }
+  },
+  "lazy-uf": {
+    "timing_status": "pass",
+    "note": "Timing only; independent SAT-model coverage and recorded-reference joins are separate acceptance gates. Any lost solve requires three paired reruns; loss in at least two blocks acceptance.",
+    "identities": {
+      "baseline": [
+        "85de43b409b4ebc9067af5b41ec147247b65673544bea2340d5cfc1084ef8dc0"
+      ],
+      "candidate": [
+        "35b90610318700683cc807be1189e1a61d7b1e34e180b2a49d5a0feb36af05d3"
+      ]
+    },
+    "expected_unique_inputs": 31,
+    "timeout": 5.0,
+    "ratio_limit": 1.01,
+    "rounds": [
+      {
+        "baseline": {
+          "rows": 31,
+          "solved": 23,
+          "sat": 10,
+          "unsat": 13,
+          "timeout": 8,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong_answer": 0,
+          "par2": 80.186941
+        },
+        "candidate": {
+          "rows": 31,
+          "solved": 23,
+          "sat": 10,
+          "unsat": 13,
+          "timeout": 8,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong_answer": 0,
+          "par2": 80.189244
+        },
+        "disagreements": [],
+        "lost": [],
+        "gained": [],
+        "common_solved": 23,
+        "baseline_common_seconds": 0.186941,
+        "candidate_common_seconds": 0.189244,
+        "par2_ratio": 1.000028720387276,
+        "common_runtime_ratio": 1.0123193948892966
+      },
+      {
+        "baseline": {
+          "rows": 31,
+          "solved": 23,
+          "sat": 10,
+          "unsat": 13,
+          "timeout": 8,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong_answer": 0,
+          "par2": 80.18691
+        },
+        "candidate": {
+          "rows": 31,
+          "solved": 23,
+          "sat": 10,
+          "unsat": 13,
+          "timeout": 8,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong_answer": 0,
+          "par2": 80.186741
+        },
+        "disagreements": [],
+        "lost": [],
+        "gained": [],
+        "common_solved": 23,
+        "baseline_common_seconds": 0.18691,
+        "candidate_common_seconds": 0.186741,
+        "par2_ratio": 0.9999978924240877,
+        "common_runtime_ratio": 0.9990958215183778
+      }
+    ],
+    "aggregate": {
+      "baseline": {
+        "rows": 62,
+        "solved": 46,
+        "sat": 20,
+        "unsat": 26,
+        "timeout": 16,
+        "error": 0,
+        "unsupported": 0,
+        "unknown": 0,
+        "wrong_answer": 0,
+        "par2": 160.373851
+      },
+      "candidate": {
+        "rows": 62,
+        "solved": 46,
+        "sat": 20,
+        "unsat": 26,
+        "timeout": 16,
+        "error": 0,
+        "unsupported": 0,
+        "unknown": 0,
+        "wrong_answer": 0,
+        "par2": 160.375985
+      },
+      "disagreements": [],
+      "lost": [],
+      "gained": [],
+      "common_solved": 46,
+      "baseline_common_seconds": 0.373851,
+      "candidate_common_seconds": 0.375985,
+      "par2_ratio": 1.0000133064086612,
+      "common_runtime_ratio": 1.0057081564580541
+    },
+    "families": {
+      "QF_UF": {
+        "baseline": {
+          "rows": 62,
+          "solved": 46,
+          "sat": 20,
+          "unsat": 26,
+          "timeout": 16,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong_answer": 0,
+          "par2": 160.373851
+        },
+        "candidate": {
+          "rows": 62,
+          "solved": 46,
+          "sat": 20,
+          "unsat": 26,
+          "timeout": 16,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong_answer": 0,
+          "par2": 160.375985
+        },
+        "disagreements": [],
+        "lost": [],
+        "gained": [],
+        "common_solved": 46,
+        "baseline_common_seconds": 0.373851,
+        "candidate_common_seconds": 0.375985,
+        "par2_ratio": 1.0000133064086612,
+        "common_runtime_ratio": 1.0057081564580541
+      }
+    },
+    "reference_join": {
+      "confirmed": 46
+    },
+    "models": {
+      "expected": 20,
+      "outcomes": {
+        "pass": 20
+      }
+    },
+    "work_counters_common_solved": {
+      "baseline": {
+        ":sat.solve-calls": 150,
+        ":sat.decisions": 106,
+        ":sat.conflicts": 50,
+        ":sat.propagations": 1636,
+        ":euf.incremental.merges": 0,
+        ":combination.rounds": 0,
+        ":no.interface.euf-live-model-deferred-notifications": 0
+      },
+      "candidate": {
+        ":sat.solve-calls": 150,
+        ":sat.decisions": 106,
+        ":sat.conflicts": 50,
+        ":sat.propagations": 1636,
+        ":euf.incremental.merges": 0,
+        ":combination.rounds": 0,
+        ":no.interface.euf-live-model-deferred-notifications": 0
+      }
+    },
+    "counter_changed_rows": {},
+    "rss_harness_and_descendants": {
+      "baseline": {
+        "min_kib": 18368,
+        "median_kib": 18862.0,
+        "max_kib": 19108
+      },
+      "candidate": {
+        "min_kib": 18636,
+        "median_kib": 18640.0,
+        "max_kib": 19504
+      }
+    }
+  },
+  "offline-uflia": {
+    "timing_status": "needs-triage",
+    "note": "Timing only; independent SAT-model coverage and recorded-reference joins are separate acceptance gates. Any lost solve requires three paired reruns; loss in at least two blocks acceptance.",
+    "identities": {
+      "baseline": [
+        "85de43b409b4ebc9067af5b41ec147247b65673544bea2340d5cfc1084ef8dc0"
+      ],
+      "candidate": [
+        "35b90610318700683cc807be1189e1a61d7b1e34e180b2a49d5a0feb36af05d3"
+      ]
+    },
+    "expected_unique_inputs": 16,
+    "timeout": 5.0,
+    "ratio_limit": 1.01,
+    "rounds": [
+      {
+        "baseline": {
+          "rows": 16,
+          "solved": 13,
+          "sat": 6,
+          "unsat": 7,
+          "timeout": 3,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong_answer": 0,
+          "par2": 35.124428
+        },
+        "candidate": {
+          "rows": 16,
+          "solved": 13,
+          "sat": 6,
+          "unsat": 7,
+          "timeout": 3,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong_answer": 0,
+          "par2": 35.176118
+        },
+        "disagreements": [],
+        "lost": [],
+        "gained": [],
+        "common_solved": 13,
+        "baseline_common_seconds": 5.124428,
+        "candidate_common_seconds": 5.176118000000001,
+        "par2_ratio": 1.001471625388462,
+        "common_runtime_ratio": 1.0100869794638545
+      },
+      {
+        "baseline": {
+          "rows": 16,
+          "solved": 13,
+          "sat": 6,
+          "unsat": 7,
+          "timeout": 3,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong_answer": 0,
+          "par2": 35.13182
+        },
+        "candidate": {
+          "rows": 16,
+          "solved": 13,
+          "sat": 6,
+          "unsat": 7,
+          "timeout": 3,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong_answer": 0,
+          "par2": 35.20651
+        },
+        "disagreements": [],
+        "lost": [],
+        "gained": [],
+        "common_solved": 13,
+        "baseline_common_seconds": 5.131819999999999,
+        "candidate_common_seconds": 5.20651,
+        "par2_ratio": 1.0021259929032997,
+        "common_runtime_ratio": 1.0145542906804994
+      }
+    ],
+    "aggregate": {
+      "baseline": {
+        "rows": 32,
+        "solved": 26,
+        "sat": 12,
+        "unsat": 14,
+        "timeout": 6,
+        "error": 0,
+        "unsupported": 0,
+        "unknown": 0,
+        "wrong_answer": 0,
+        "par2": 70.256248
+      },
+      "candidate": {
+        "rows": 32,
+        "solved": 26,
+        "sat": 12,
+        "unsat": 14,
+        "timeout": 6,
+        "error": 0,
+        "unsupported": 0,
+        "unknown": 0,
+        "wrong_answer": 0,
+        "par2": 70.382628
+      },
+      "disagreements": [],
+      "lost": [],
+      "gained": [],
+      "common_solved": 26,
+      "baseline_common_seconds": 10.256248,
+      "candidate_common_seconds": 10.382628,
+      "par2_ratio": 1.001798843570468,
+      "common_runtime_ratio": 1.012322244937915
+    },
+    "families": {
+      "QF_UFLIA": {
+        "baseline": {
+          "rows": 32,
+          "solved": 26,
+          "sat": 12,
+          "unsat": 14,
+          "timeout": 6,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong_answer": 0,
+          "par2": 70.256248
+        },
+        "candidate": {
+          "rows": 32,
+          "solved": 26,
+          "sat": 12,
+          "unsat": 14,
+          "timeout": 6,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong_answer": 0,
+          "par2": 70.382628
+        },
+        "disagreements": [],
+        "lost": [],
+        "gained": [],
+        "common_solved": 26,
+        "baseline_common_seconds": 10.256248,
+        "candidate_common_seconds": 10.382628,
+        "par2_ratio": 1.001798843570468,
+        "common_runtime_ratio": 1.012322244937915
+      }
+    },
+    "reference_join": {
+      "confirmed": 26
+    },
+    "models": {
+      "expected": 12,
+      "outcomes": {
+        "pass": 12
+      }
+    },
+    "work_counters_common_solved": {
+      "baseline": {
+        ":sat.solve-calls": 9092,
+        ":sat.decisions": 122876,
+        ":sat.conflicts": 1974,
+        ":sat.propagations": 2520486,
+        ":euf.incremental.merges": 75542,
+        ":combination.rounds": 9024,
+        ":no.interface.euf-live-model-deferred-notifications": 0
+      },
+      "candidate": {
+        ":sat.solve-calls": 9092,
+        ":sat.decisions": 122876,
+        ":sat.conflicts": 1974,
+        ":sat.propagations": 2520486,
+        ":euf.incremental.merges": 75542,
+        ":combination.rounds": 9024,
+        ":no.interface.euf-live-model-deferred-notifications": 0
+      }
+    },
+    "counter_changed_rows": {},
+    "rss_harness_and_descendants": {
+      "baseline": {
+        "min_kib": 19124,
+        "median_kib": 21048.0,
+        "max_kib": 24292
+      },
+      "candidate": {
+        "min_kib": 19128,
+        "median_kib": 21496.0,
+        "max_kib": 24392
+      }
+    }
+  }
+}
