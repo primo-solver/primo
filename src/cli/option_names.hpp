@@ -85,11 +85,6 @@ inline constexpr auto kEufEngineNames = std::to_array<EnumName<smt::EufEngine>>(
     {"incremental", smt::EufEngine::Incremental},
 });
 
-inline constexpr auto kEufBooleanDomainNames = std::to_array<EnumName<smt::EufBooleanDomain>>({
-    {"registration", smt::EufBooleanDomain::Registration},
-    {"bridge-atoms", smt::EufBooleanDomain::BridgeAtoms},
-});
-
 inline constexpr auto kEufExplainSearchNames = std::to_array<EnumName<smt::EufExplainSearchMode>>({
     {"one-sided", smt::EufExplainSearchMode::OneSidedBfs},
     {"bidirectional", smt::EufExplainSearchMode::BidirectionalBfs},

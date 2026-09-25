@@ -38,8 +38,9 @@ if(NOT help_exit EQUAL 0)
     "help defaults: expected exit 0, got ${help_exit}\n"
     "stdout: ${help_stdout}\nstderr: ${help_stderr}")
 endif()
-if(help_stdout MATCHES "--qf-uf-preprocess" OR help_stdout MATCHES "--qf-uf-auto-selector")
-  message(FATAL_ERROR "removed preprocessing aliases still appear in --help\n${help_stdout}")
+if(help_stdout MATCHES "--qf-uf-preprocess" OR help_stdout MATCHES "--qf-uf-auto-selector"
+    OR help_stdout MATCHES "--euf-boolean-domain")
+  message(FATAL_ERROR "removed options still appear in --help\n${help_stdout}")
 endif()
 
 foreach(option_pattern IN ITEMS
@@ -48,7 +49,6 @@ foreach(option_pattern IN ITEMS
     "--preprocessing-passes[^\n]*\\[[^]]+\\]"
     "--preprocessing-adaptive-extra-passes[^\n]*\\[[^]]+\\]"
     "--preprocessing-adaptive-shrink-percent[^\n]*\\[[^]]+\\]"
-    "--euf-boolean-domain[^\n]*\\[[^]]+\\]"
     "--quantifier-tuple-order[^\n]*\\[[^]]+\\]")
   if(NOT help_stdout MATCHES "${option_pattern}")
     message(FATAL_ERROR

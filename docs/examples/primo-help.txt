@@ -108,14 +108,6 @@ QF_UF / EUF theory options:
                               EUF propagation mode
           --euf-engine TEXT:{lazy,incremental} [incremental]
                               EUF engine
-          --euf-boolean-domain TEXT:{registration,bridge-atoms} [registration]
-                              How Bool's two-element domain reaches congruence closure:
-                              registration
-                              (register Bool-sorted arguments as theory atoms; no extra SAT
-                              variable or
-                              clause) or bridge-atoms (the older encoding, 2 atoms and 3
-                              clauses per
-                              term). Selectable only to A/B the two; bridge-atoms is going away
           --euf-explain-search TEXT:{one-sided,bidirectional,proof-forest,reoriented-proof-forest,structural-proof-forest} [one-sided]
                               Incremental EUF explanation search
           --euf-proof-forest-diagnostics [default: off]

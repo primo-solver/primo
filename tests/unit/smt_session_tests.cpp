@@ -222,13 +222,11 @@ void uf_assumption_growth_cancellation_and_options() {
   expect(bounded, CheckSatResult::Unknown);
   accept(bounded, "(pop 1)");
   expect(bounded, CheckSatResult::Sat);
-  for (int invalid = 0; invalid < 4; ++invalid) {
+  for (int invalid = 0; invalid < 3; ++invalid) {
     auto rejected_options = options;
     if (invalid == 0) rejected_options.pure_theory_filter = primo::smt::PureTheoryFilterMode::On;
     if (invalid == 1) rejected_options.euf_engine = primo::smt::EufEngine::Lazy;
-    if (invalid == 2)
-      rejected_options.euf_boolean_domain = primo::smt::EufBooleanDomain::BridgeAtoms;
-    if (invalid == 3) rejected_options.euf_propagation = primo::smt::EufPropagationMode::Model;
+    if (invalid == 2) rejected_options.euf_propagation = primo::smt::EufPropagationMode::Model;
     SmtSession rejected(rejected_options);
     assert(rejected.execute("(set-logic QF_UF)").kind == ResponseKind::Error);
   }

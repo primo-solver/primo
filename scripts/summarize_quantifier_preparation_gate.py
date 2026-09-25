@@ -9,7 +9,7 @@ import json
 from collections import Counter
 from pathlib import Path
 
-from quantifier_preparation_gate import DEFINITE, DOMAINS, ORDERS
+from quantifier_preparation_gate import DEFINITE, ORDERS
 
 
 def verify_case(rows: list[dict], profiles: set[str]) -> None:
@@ -33,8 +33,7 @@ def summarize(root: Path) -> dict:
     result: dict = {"modes": {}, "binaries": {}, "commit": None}
     for mode, (count, shards) in modes.items():
         profiles = {
-            f"primo-{domain}-{order}"
-            for domain in DOMAINS
+            f"primo-{order}"
             for order in (ORDERS if mode == "generated" else ("sum",))
         } | {"ref0", "ref1"}
         totals: Counter[str] = Counter()

@@ -119,13 +119,11 @@ Tseytin variables that only encode Boolean connectives stay inside CaDiCaL.
 Generated Boolean terms used as function arguments are different. For example,
 with `f : Bool → U`, the frontend rewrites `f(and p q)` to `f(b)` and defines
 the fresh Boolean term `b` by `b ↔ (p ∧ q)`. The
-{source}`default registration mode <src/smt/clausifier.cpp#L140-L194>` observes
+{source}`Boolean-argument registration <src/smt/clausifier.cpp#L140-L194>` observes
 the variable for `b`. Its assignment tells EUF to merge `b` with `true` or
 `false`, with the assigned literal as the reason; this creates no separate SAT
-variable for that equality. The optional older
-{source}`bridge-atoms encoding <src/smt/clausifier.cpp#L196-L231>` introduces
-explicit equality atoms and linking clauses instead. Thus a generated term
-used by EUF must be distinguished from an auxiliary used only for CNF structure.
+variable for that equality. A generated term used by EUF therefore has a
+theory role in addition to its propositional definition.
 Every SAT decision level still gets a boundary, including levels with no
 observed assignments.
 

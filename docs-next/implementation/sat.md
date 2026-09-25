@@ -33,8 +33,7 @@ arrays as new terms appear. Atom registration can grow the atom vector;
 references returned by `ensure_theory_atom` and elements obtained through
 `theory_atoms()` must not be kept across operations that can append entries.
 Copy the IDs/literals needed, then reacquire entries. The core term-reference
-invalidation rules still apply, including when Boolean-domain bridges create
-new terms.
+invalidation rules also apply to any helper that creates terms.
 
 ### Literal range and exhaustion
 
@@ -167,14 +166,14 @@ a theory lemma.
 
 Boolean arguments to uninterpreted functions need additional care: Bool has
 two values, so a propositional assignment must agree with the EUF value of an
-argument. The default registration mode
+argument. Boolean-argument registration
 {source}`marks the relevant Boolean constants <src/smt/clausifier.cpp#L140-L194>`
 for both-polarity theory relevance. This reuses their existing literal when
 present; an argument not previously encoded still needs its first SAT variable.
-The {source}`alternative bridge encoding <src/smt/clausifier.cpp#L196-L231>`
-adds explicit equality atoms and clauses. The
-{source}`mode dispatch <src/smt/solver_engines.cpp#L10388-L10399>` selects these
-mechanisms; their EUF reasoning is separate chapter work.
+Registration adds no equality atoms or linking clauses. The shared
+{source}`register_euf_boolean_arguments <src/smt/solver_engines.cpp>` entry point
+completes this preparation for ground and quantified EUF recipes; its EUF
+reasoning is separate chapter work.
 
 ## Worked example: one nested conjunction
 
@@ -334,7 +333,7 @@ the full mechanisms or results of the cited papers.
 | --- | --- |
 | Definitions preserve Boolean meaning and sharing with linear clause output | `BooleanClausifier` caches, worklists, and templates above; the worked truth table and {source}`reconvergent DAG regression <tests/unit/boolean_solver_tests.cpp#L825-L847>`. |
 | Popped roots cease constraining the problem while definitions remain valid | Guarded-root construction and selectors; {source}`UF scope tests <tests/unit/smt_session_tests.cpp#L61-L122>` and {source}`LRA scope tests <tests/unit/smt_session_tests.cpp#L277-L325>`. |
-| Bool-valued arguments have only their two semantic values | Registration and bridge contracts; {source}`Boolean-domain regressions <tests/unit/boolean_solver_tests.cpp#L2875-L2931>`. |
+| Bool-valued arguments have only their two semantic values | Boolean-argument registration contract; {source}`Boolean-domain regressions <tests/unit/boolean_solver_tests.cpp#L2875-L2931>`. |
 | Trail changes, reason lifetime, cancellation, and fresh observation respect the backend protocol | {source}`backend regressions <tests/unit/sat_backend_tests.cpp>` and {source}`component explanation tests <tests/unit/component_combination_tests.cpp>`. Callback costs depend on the chosen theory; the interface promises no constant-time theory operation. |
 
 Original Primo notes explain the

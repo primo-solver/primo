@@ -38,9 +38,11 @@ Lowering processes children before parents and builds definitions from already
 lowered terms. Fresh terms produced in a later batch require another lowering
 call. Unsupported quantified arithmetic remains unsupported.
 
-Repeated domain preparation currently traverses the reachable atom DAG on this
-branch. Incremental scan improvements on `main` must be preserved at integration;
-this repair does not claim a scan-complexity optimization.
+`BooleanClausifier::boolean_argument_scan_count_` advances through the
+append-only atom registry. Repeated preparation visits only new roots, including
+roots appended by registration itself; the visited-term set is local to each
+call. Existing roots need no rescan after scope pop. The retained-session
+invariants and tests are recorded in [](assumption-incremental-uf.md).
 
 ## Semantic invariant
 
@@ -177,7 +179,7 @@ any assigned theory atom whose term is a `Bool`-sorted `Constant`,
 
 ```text
 t = true    with reason {lit(t)}      when SAT assigns lit(t) true
-t = false   with reason {lit(t)}      when SAT assigns lit(t) false
+t = false   with reason {not lit(t)}  when SAT assigns lit(t) false
 ```
 
 and `true != false` is asserted unconditionally when the closure is built
@@ -185,8 +187,9 @@ and `true != false` is asserted unconditionally when the closure is built
 `find_theory_conflict`).
 
 **Cost.** `theory_atom_for_term` routes to `encode_theory_atom_lit`, which
-returns the literal the term already has, so registration introduces **no SAT
-variable and no clause**. The counter `:no.boolean-domain.registered-terms`
+reuses the argument's existing literal. An argument not yet encoded receives
+its first SAT variable. Registration introduces **no separate equality variable
+and no linking clause**. The counter `:no.boolean-domain.registered-terms`
 reports how many terms were registered; it is 0 for any problem whose functions
 take no `Bool` argument, which is almost all of the SMT-LIB QF_UF division --
 five files in a 289-file sample register anything at all.
@@ -195,11 +198,10 @@ Deliberately not registered, with reasons in the correctness argument below:
 `Bool`-valued applications, operands of source-level `Bool` equality, and the
 constants `true`/`false` themselves.
 
-This replaced an older encoding (`--euf-boolean-domain=bridge-atoms`, retained
-only to keep the A/B reproducible) that manufactured `(= t true)` / `(= t
-false)` as fresh atoms with selector and exclusion clauses: 2 atoms and 3
-clauses per term, applied to `Bool`-valued applications as well. The two are
-equivalent in effect; see [](open-leads.md)'s lead 15 for its removal.
+Registration is now the sole encoding. The former `bridge-atoms` path and
+`--euf-boolean-domain` selector have been removed, together with their bridge
+counters. Historical A/B runs remain reproducible from the revisions recorded
+in the run log; see {ref}`the removal record <lead-boolean-bridge-exclusion>`.
 
 ## Correctness argument
 
@@ -207,9 +209,9 @@ equivalent in effect; see [](open-leads.md)'s lead 15 for its removal.
 
 **Claim.** The encoding cannot turn a satisfiable problem unsatisfiable.
 
-The propositional abstraction is *unchanged*: registration adds no clause and
-no variable, so the set of satisfying SAT assignments is exactly what it was.
-The only difference is that the theory receives additional assertions. Adding
+Registration adds no clause. A previously unencoded argument may receive an
+unconstrained SAT variable, which does not restrict the existing propositional
+assignments. The theory then receives the argument's assigned truth value. Adding
 theory assertions can produce a conflict where none was found before, but it
 can only be a real conflict provided every added assertion is **entailed**. So
 soundness reduces to entailment of the two assertion kinds:

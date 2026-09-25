@@ -101,13 +101,12 @@ struct SmtSession::Implementation final : SessionExecutor {
   void validate_incremental_options(std::string_view selected_logic) const {
     if (selected_logic == "QF_UF") {
       if (options.euf_engine != EufEngine::Incremental ||
-          options.euf_boolean_domain != EufBooleanDomain::Registration ||
           (options.euf_propagation != EufPropagationMode::Auto &&
            options.euf_propagation != EufPropagationMode::Online &&
            options.euf_propagation != EufPropagationMode::Conflict) ||
           options.euf_dynamic_ackermann_shadow || options.euf_diseq_ackermann)
         throw std::invalid_argument(
-            "QF_UF assumptions requires incremental EUF, Boolean registration, "
+            "QF_UF assumptions requires incremental EUF, "
             "auto/online/conflict propagation and no experimental Ackermann modes");
       if (options.pure_theory_filter == PureTheoryFilterMode::On)
         throw std::invalid_argument(

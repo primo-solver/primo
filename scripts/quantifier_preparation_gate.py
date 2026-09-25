@@ -20,7 +20,6 @@ from pathlib import Path
 from validate_qfuf_models_with_dolmen import command_spans, run_command, write_json
 
 ORDERS = ("sum", "max", "max-colex", "leximax", "deepening", "random")
-DOMAINS = ("registration", "bridge-atoms")
 DEFINITE = {"sat", "unsat"}
 
 
@@ -319,13 +318,11 @@ def main() -> int:
                     orders = ORDERS if args.mode == "generated" else ("sum",)
                     configurations = [
                         (
-                            f"{domain}-{order}",
+                            order,
                             [
-                                f"--euf-boolean-domain={domain}",
                                 f"--quantifier-tuple-order={order}",
                             ],
                         )
-                        for domain in DOMAINS
                         for order in orders
                     ]
                 for configuration, options in configurations:

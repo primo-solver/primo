@@ -21,10 +21,11 @@ source or documentation informs this note (clean-room policy, `AGENTS.md`).
 The review at `c882d3a` found an incorrect SAT answer for an existential
 Boolean argument: an instance introduced a Skolem constant after the one-time
 Boolean-domain preparation. EUF could then give that Boolean a third value.
-The bridge-atoms alternative also traversed open binder bodies and rejected
-valid quantified input. The shared preparation contract and producer audit are
-in [](euf-boolean-arguments.md). Both walks now leave binders opaque, and the
-component driver completes the registry at every installation boundary.
+The now-removed bridge-atoms alternative also traversed open binder bodies
+and rejected valid quantified input. The shared preparation contract and
+producer audit are in [](euf-boolean-arguments.md). Registration leaves binders
+opaque, and the component driver completes the registry at every installation
+boundary.
 
 `--quantifier-instances-per-round` defaults to **128**, and
 `--quantifier-stall-tuples` (default 65,536) bounds how long a round holds

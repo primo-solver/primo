@@ -632,12 +632,6 @@ int run_main(int argc, char** argv) {
                   primo::cli::kEufPropagationNames, "EUF propagation mode");
   add_enum_option(app, "--euf-engine", solver_options.euf_engine, primo::cli::kEufEngineNames,
                   "EUF engine");
-  add_enum_option(app, "--euf-boolean-domain", solver_options.euf_boolean_domain,
-                  primo::cli::kEufBooleanDomainNames,
-                  "How Bool's two-element domain reaches congruence closure: registration\n"
-                  "(register Bool-sorted arguments as theory atoms; no extra SAT variable or\n"
-                  "clause) or bridge-atoms (the older encoding, 2 atoms and 3 clauses per\n"
-                  "term). Selectable only to A/B the two; bridge-atoms is going away");
   add_enum_option(app, "--euf-explain-search", solver_options.euf_explain_search,
                   primo::cli::kEufExplainSearchNames, "Incremental EUF explanation search");
   add_flag_with_default(app, "--euf-proof-forest-diagnostics", euf_proof_forest_diagnostics,

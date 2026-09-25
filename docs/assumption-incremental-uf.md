@@ -67,7 +67,7 @@ SAT preprocessing/inprocessing stay disabled and selectors/proxies protected.
 
 The initial QF_UF route uses the incremental flat checker, Boolean argument
 registration and Auto/Online/Conflict callback schedules. Reject unsupported
-checker/schedule/domain combinations explicitly. Auto pure-theory filtering
+checker/schedule combinations explicitly. Auto pure-theory filtering
 resolves to Off here; explicit On is rejected. Syntactic atom polarity changes
 across assertions and retained definitions, so the existing one-shot filtering
 argument is not an incremental proof. See [](euf-boolean-arguments) for the

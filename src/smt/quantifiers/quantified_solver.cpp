@@ -137,7 +137,7 @@ CheckSatOutcome solve_quantified_uf(
   recipe.online_order = {0, 1};
   recipe.timing_prefix = ":time.quantified-uf.";
   recipe.prepare_boolean = [&](BooleanClausifier& clausifier) {
-    apply_euf_boolean_domain(clausifier, options, statistics);
+    register_euf_boolean_arguments(clausifier, statistics);
   };
   recipe.prepare_lemmas = [&](std::vector<core::TermId> lemmas) {
     return lower_extended_terms(terms, name_boolean_arguments(terms, lemmas, factory), factory)

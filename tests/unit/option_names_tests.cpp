@@ -107,7 +107,6 @@ int main() {
   check_table(kQfUfPortfolioNames);
   check_table(kEufPropagationNames);
   check_table(kEufEngineNames);
-  check_table(kEufBooleanDomainNames);
   check_table(kEufExplainSearchNames);
   check_table(kLraPivotingRuleNames);
   check_table(kLraSoiMinimizationNames);

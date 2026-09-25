@@ -171,7 +171,7 @@ UF-division files than unbounded rounds of 128.
 | [12](#lead-qflia) | QF_LIA preprocessing disabled; conflict clauses do not generalize | +339 answered on the full division from 12d and 12f so far | done/partial | **12d and 12f implemented; 12b, 12c, 12e open** |
 | [13](#lead-qflira) | QF_LIRA -- frontend gap, not a solver gap | search core already runs mixed tableaus | medium (frontend) | **open; run the falsifier first** |
 | [14](#lead-monotone-int) | Monotone elimination for `Int`, not just `Real` | unmeasured -- the QF_LIA zero is definitional | small, gated on 9 | **open; measure candidate density first** |
-| [15](#lead-boolean-bridge-exclusion) | Delete the `bridge-atoms` Boolean-domain encoding | superseded by registration: 0 disagreements on both fragments, 3% faster on QF_UF | small (deletion) | **open; the A/B is done and came out flat** |
+| [15](#lead-boolean-bridge-exclusion) | Delete the `bridge-atoms` Boolean-domain encoding | superseded by registration: 0 disagreements on both fragments, 3% faster on QF_UF | small (deletion) | **closed; encoding and selector removed** |
 | [16](#lead-ite-preprocessing) | If-then-else preprocessing: CITE simplification + ITE compression + ITE reconstruction | **+1693 QF_LIA in the source's own ablation**; 3449 files of Primo's corpus are in the affected families | medium-large | **open; largest measured number in any paper Primo has read. Unblocked 2026-09-04: ITE is a term kind now, so the ordering constraint this lead called its main design question is gone** |
 | [17](#lead-equality-basis) | Complete implied-equality basis (Bromberger thesis Ch. 5) | replaces per-pair two-orientation probing with one strict-system check + normal-form hashing | medium-large | **open; also the gate for 12c and 19** |
 | [18](#lead-hard-backtrack) | `HardBacktrack`: revert bounds only, recompute the assignment | +123 QF_LIA, **+117 on `convert` alone** in the source's ablation | **small (a deletion)** | **open; cheapest entry on this list** |
@@ -2104,16 +2104,19 @@ costs an afternoon, with no solver change written.
 (lead-boolean-bridge-exclusion)=
 ## 15. Delete the `bridge-atoms` Boolean-domain encoding
 
-**Status: open, added 2026-08-26, rewritten the same day after the QF_UF
-cardinality fix (`fa44295`) landed.**
+**Status: closed, removed 2026-09-25.**
 
-**Claim.** `EufBooleanDomain::BridgeAtoms` should be deleted, along with
-`materialize_boolean_argument_literals`, `ensure_boolean_domain_bridge`,
-`ensure_boolean_domain_constants` and the `--euf-boolean-domain` flag. The
-default `Registration` encoding supersedes it: same information to congruence
-closure, no SAT variable and no clause per term instead of 2 atoms and 3
-clauses, and it does not bridge Bool-VALUED applications, which are already
-theory atoms.
+Removed `EufBooleanDomain`, `materialize_boolean_argument_literals`,
+`ensure_boolean_domain_bridge`, `ensure_boolean_domain_constants`, the
+`--euf-boolean-domain` selector and the bridge-only counters. Boolean-argument
+registration is the sole path for ground, mixed and quantified EUF. The existing
+semantic and registry-idempotence tests remain; obsolete option permutations
+were removed from the quantified preparation gate.
+
+Registration reuses an argument's SAT literal or creates its first one when
+needed. It creates no separate equality variables or linking clauses. The
+assigned literal justifies merging that Boolean argument with `true` or `false`
+in EUF. See [](euf-boolean-arguments.md).
 
 **Evidence already in hand.** Both encodings were A/B-ed on one binary
 (2026-08-26). QF_UF division, 7,503 files at 60s: zero answer disagreements,
@@ -2132,16 +2135,11 @@ unchanged, with conflicts over those 208 files going 270 -> 223. But the clause
 only exists inside the encoding this lead now proposes to delete outright, so
 the narrower question does not need answering separately.
 
-**Cost.** Small: a deletion plus removing one option and its plumbing. The only
-reason it is not already done is that the flag is what makes the A/B above
-reproducible, and deleting it in the same commit as the fix would have made a
-later regression harder to bisect.
-
-**Falsifier.** None needed beyond what is recorded -- the measurement that
-would have justified keeping `bridge-atoms` has already been taken and came
-out flat. If anything, delete it only after one more full QF_UFLRA run at the
-next opportunity, so the deletion rests on two independent readings rather
-than one.
+The A/B selector was originally retained for reproducibility and bisecting.
+Those historical revisions preserve both implementations; keeping the selector
+in the current solver is no longer necessary. The removal changes the available
+options, not the registration algorithm. Fresh removal qualification is recorded
+separately from the historical performance measurements in `docs/run-log.json`.
 
 (lead-ite-preprocessing)=
 ## 16. If-then-else preprocessing: CITE simplification, compression, reconstruction

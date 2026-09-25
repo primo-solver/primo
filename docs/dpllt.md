@@ -31,11 +31,9 @@ This is a projection of the SAT assignment onto observed variables, not a
 second complete SAT trail. Tseytin variables used only for Boolean structure
 remain inside CaDiCaL. A compound Boolean function argument is different:
 `f(and p q)` is rewritten to `f(b)` with a fresh Boolean term `b` and the SAT
-definition `b ↔ (p ∧ q)`. The default registration mode observes the variable
+definition `b ↔ (p ∧ q)`. Boolean-argument registration observes the variable
 for `b`; EUF uses its assignment to merge `b` with `true` or `false`, without
-introducing a separate SAT equality variable. The older optional
-`bridge-atoms` mode instead adds explicit equality atoms and linking clauses;
-see [](euf-boolean-arguments.md). Decision boundaries include levels with no
+introducing a separate SAT equality variable; see [](euf-boolean-arguments.md). Decision boundaries include levels with no
 observed assignments. The dense variable-to-position index can still contain
 empty slots for unobserved variables below its largest observed ID.
 

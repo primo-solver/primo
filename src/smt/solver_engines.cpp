@@ -8612,9 +8612,6 @@ CheckSatOutcome solve_qf_lia_engine_impl(core::TermManager& terms,
   return outcome;
 }
 
-void apply_boolean_domain_encoding(BooleanClausifier& clausifier, const CheckSatOptions& options,
-                                   util::Statistics& statistics);
-
 bool is_uflia_euf_atom(const core::TermManager& terms, core::TermId term_id) {
   const core::Term& term = terms.get(term_id);
   if (term.kind == core::TermKind::Equality) {
@@ -10263,7 +10260,7 @@ CheckSatOutcome solve_qf_uflia_engine_impl(core::TermManager& terms,
   recipe.online_order = {1, 0};
   recipe.timing_prefix = ":time.qf-uflia.";
   recipe.prepare_boolean = [&](BooleanClausifier& clausifier) {
-    apply_boolean_domain_encoding(clausifier, options, statistics);
+    register_euf_boolean_arguments(clausifier, statistics);
   };
   recipe.factories = {
       [&](bool guided) {
@@ -10381,23 +10378,6 @@ void record_disequality_propagation_opportunities(const core::TermManager& terms
   }
 }
 
-// Communicates Bool's fixed cardinality to congruence closure, by whichever
-// encoding is selected. Both callers use this rather than either encoding
-// directly, so QF_UF and the mixed path cannot drift apart again -- they did,
-// and bugs/qf-uf-boolean-argument-congruence is what that cost.
-void apply_boolean_domain_encoding(BooleanClausifier& clausifier, const CheckSatOptions& options,
-                                   util::Statistics& statistics) {
-  switch (options.euf_boolean_domain) {
-    case EufBooleanDomain::Registration:
-      statistics.increment(util::StatKey::BooleanDomainRegisteredTerms,
-                           clausifier.register_boolean_argument_terms());
-      break;
-    case EufBooleanDomain::BridgeAtoms:
-      clausifier.materialize_boolean_argument_literals();
-      break;
-  }
-}
-
 CheckSatOutcome solve_qf_uf_engine_impl(core::TermManager& terms,
                                         const std::vector<core::TermId>& assertions,
                                         const CheckSatOptions& options,
@@ -10414,10 +10394,7 @@ CheckSatOutcome solve_qf_uf_engine_impl(core::TermManager& terms,
   // Bool's two-element domain, before the atom list is measured or consumed:
   // PreparedFlatTheory::align_assignments requires the atom count to be final
   // for the whole solve, and every heuristic below reads theory_atoms().
-  apply_boolean_domain_encoding(clausifier, options, statistics);
-  // Published here too, so --euf-boolean-domain=bridge-atoms is measurable on
-  // QF_UF rather than only on the mixed path.
-  statistics.set(":no.boolean-domain.bridged-terms", clausifier.boolean_domain_bridge_count());
+  register_euf_boolean_arguments(clausifier, statistics);
   statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
   statistics.set(kStatPureTheoryFilterEnabled,
                  pure_theory_filter_enabled(options.pure_theory_filter) ? 1 : 0);
@@ -10840,7 +10817,7 @@ CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
   for (const core::TermId assertion : assertions) {
     clausifier.assert_formula(assertion);
   }
-  apply_boolean_domain_encoding(clausifier, options, statistics);
+  register_euf_boolean_arguments(clausifier, statistics);
 
   std::vector<BooleanClausifier::TheoryAtom> euf_atoms;
   std::vector<BooleanClausifier::TheoryAtom> lra_atoms;
@@ -10877,16 +10854,6 @@ CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
   bool adaptive_model_unit_attempted = false;
   bool adaptive_legacy_equality_producer = false;
   statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
-  statistics.set(":no.boolean-domain.bridged-terms", clausifier.boolean_domain_bridge_count());
-  // The two equality atoms per bridged term, plus the single (= true false)
-  // atom ensure_boolean_domain_constants creates -- and that one exists only
-  // when at least one term was actually bridged, which is false under the
-  // Registration encoding. Reporting a phantom atom made the counter say 1 on
-  // a run with no bridging at all.
-  statistics.set(":no.boolean-domain.equality-atoms",
-                 clausifier.boolean_domain_bridge_count() == 0
-                     ? 0
-                     : clausifier.boolean_domain_bridge_count() * 2 + 1);
   statistics.set(":no.mixed.euf-atoms", euf_atoms.size());
   statistics.set(":no.mixed.lra-atoms", lra_atoms.size());
   statistics.set(":no.interface.shared-real-terms", shared_real_terms.size());
@@ -12600,9 +12567,12 @@ std::unique_ptr<theory::TheoryComponent> make_uf_euf_component(core::TermManager
 #endif
 }
 
-void apply_euf_boolean_domain(BooleanClausifier& clausifier, const CheckSatOptions& options,
-                              util::Statistics& statistics) {
-  apply_boolean_domain_encoding(clausifier, options, statistics);
+void register_euf_boolean_arguments(BooleanClausifier& clausifier, util::Statistics& statistics) {
+  // Every EUF recipe uses the same Boolean cardinality preparation; see
+  // docs/euf-boolean-arguments.md. Generated batches must complete it again
+  // before the atom registry is borrowed or observed by a theory consumer.
+  statistics.increment(util::StatKey::BooleanDomainRegisteredTerms,
+                       clausifier.register_boolean_argument_terms());
 }
 
 Tactic make_purify_mixed(PurifyMixedOptions options) {
