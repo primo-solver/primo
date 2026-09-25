@@ -27,7 +27,7 @@ adaptation around this boundary.
 | Primo's observed assignment | {source}`AssignmentCoordinator <src/smt/assignment_coordinator.hpp>` is the sole writer of {source}`sat::Trail <src/sat/trail.hpp>`. Consumers read {source}`sat::TrailView <src/sat/trail_view.hpp>`; truth comes from the trail's variable-to-position index. |
 | Meaning of SAT variables | {source}`BooleanClausifier <src/smt/clausifier.hpp#L20-L55>` owns the atom registry and term-to-literal map, borrowing the backend and term manager. |
 | Dedicated EUF callback state | {source}`OnlineEufPropagator <src/smt/solver_engines.cpp#L1634-L1673>` borrows the atom vector, terms, options, and statistics; owns atom-index metadata, candidate queues, reasons, and optional incremental closure state; reads the shared assignment view. |
-| Dedicated arithmetic callback state | {source}`OnlineLraPropagator <src/smt/solver_engines.cpp#L6972-L7011>` owns a mutable tableau copied from prepared structural state, kernel checkpoints, queues, and reasons; reads the shared assignment view and borrows the prepared data, atom vector, backend, and statistics. |
+| Dedicated arithmetic callback state | {source}`OnlineLraPropagator <src/smt/solver_engines.cpp#L6972-L7011>` owns a mutable tableau copied from prepared structural state, checkpoints for backtracking, queues, and reasons; reads the shared assignment view and borrows the prepared data, atom vector, backend, and statistics. |
 | Component routing | {source}`ComponentDispatcher <src/smt/component_dispatcher.hpp#L23-L75>` owns variable routes, temporary assignment deltas, stream cursors, and explanation clauses; it borrows component pointers. |
 | Component facts and outcomes | {source}`AssignedTheoryLiteral and TheoryCheckResult <src/theory/theory_solver.hpp>` carry a core atom, its SAT literal/value, clauses, consequences, model stamps, or a typed stop result. {source}`TheoryComponent <src/theory/theory_component.hpp#L90-L140>` owns theory-local execution behind this contract and receives no SAT backend handle. |
 
@@ -58,7 +58,7 @@ fresh independent model each time.
    affected components dirty. Optional relevance filtering is an SMT policy;
    it is not a license for a theory to ignore arbitrary assigned constraints.
 2. **Open a SAT decision level.** The coordinator saves the trail boundary.
-   EUF records a kernel level, creating its closure checkpoint lazily through {source}`apply_new_decision_level
+   EUF records the new level, creating its closure checkpoint lazily through {source}`apply_new_decision_level
    <src/smt/solver_engines.cpp#L1741-L1745>`. The component dispatcher tells
    every component to `push_level`, even when the SAT decision itself names
    no theory atom. SAT levels are not SMT-LIB assertion scopes.
@@ -76,7 +76,7 @@ fresh independent model each time.
    <src/smt/solver_engines.cpp#L1747-L1765>` restores closure state, removes discarded
    reasons, and clears pending candidates/conflicts. The
    {source}`component dispatcher <src/smt/component_dispatcher.cpp>` similarly
-   prunes reasons and pops each component's kernel to the reported level.
+   prunes reasons and restores each component's theory state to the reported level.
    Root and retained-level facts survive; same-level rollback is a no-op.
 
 Routing a batch is linear in its literal count plus the receiving components'
@@ -371,7 +371,8 @@ above. It separates the papers' contracts from Primo's scheduling choices.
   analysis. These mechanisms are implemented through the owners above.
   Primo does not implement the paper's full abstract calculus or inherit its
   termination theorem merely by using callbacks. Explanation minimization and
-  exhaustive propagation are not promised; kernel complexity is separate.
+  exhaustive propagation are not promised; the cost of each theory algorithm
+  needs its own analysis.
 - **Fazekas, Niemetz, Preiner, Kirchweger, Szeider, and Biere,
   *IPASIR-UP: User Propagators for CDCL*, SAT 2023, §§2.1–2.4.**
   [Primary text and publication record](https://doi.org/10.4230/LIPIcs.SAT.2023.8).
@@ -390,7 +391,7 @@ above. It separates the papers' contracts from Primo's scheduling choices.
 
 | Obligation | Existing verification and limitation |
 | --- | --- |
-| A theory conflict reaches SAT even without optional propagation | {source}`EUF external-conflict tests <tests/unit/boolean_solver_tests.cpp#L2589-L2635>`; ordinary solver regressions, not a proof of the kernel. |
+| A theory conflict reaches SAT even without optional propagation | {source}`EUF external-conflict tests <tests/unit/boolean_solver_tests.cpp#L2589-L2635>`; regressions for conflict delivery, not a correctness proof of congruence closure. |
 | Explained propagation occurs during search | {source}`online congruence test <tests/unit/boolean_solver_tests.cpp#L2480-L2500>` checks delivered propagation; broader explanation algorithms belong in the EUF chapter. |
 | Rollback preserves surviving reasons and assignment routing | {source}`component lifecycle regression <tests/unit/component_combination_tests.cpp#L527-L589>` and {source}`backend reconnect regressions <tests/unit/sat_backend_tests.cpp#L194-L235>`. |
 | A candidate with pending work or a typed failure is not accepted as SMT SAT | Component-loop checks above and {source}`component regression suite <tests/unit/component_combination_tests.cpp>`; detailed combination/quantifier completeness is separate work. |

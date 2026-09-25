@@ -493,7 +493,7 @@ reviews retain their original source/evidence revisions.
 
 The assignment protocol now has one owner per active SAT connection. All
 production callback consumers read `sat::TrailView`; lazy routes use a completed
-model snapshot. Kernel checkpoints and tentative model-equality undo remain
+model snapshot. Theory solver checkpoints and tentative model-equality undo remain
 separate. Full-model token serials identify reconciliation rounds, not a second
 Boolean assignment. The old rollback audit above records the pre-migration
 implementation and its evidence.
@@ -568,7 +568,7 @@ by these checks; reader review remains pending.
 
 ## EUF chapter checks
 
-The new [EUF chapter](implementation/euf.md) follows the default flat kernel
+The new [EUF chapter](implementation/euf.md) follows `FlatCongruenceClosure`
 through a conflict and backtrack. Its source review uses the existing
 `e6d9fcb` pin: `FlatTermIndex`, `FlatCongruenceClosure`, `ProofForest`, the
 prepared/working closures and callback paths in `solver_engines.cpp`, Boolean

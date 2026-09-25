@@ -7,11 +7,11 @@ the equalities implied by the current assignments and detects when an asserted
 disequality contradicts them.
 
 The [DPLL(T) chapter](dpllt.md) describes how assignments reach theory solvers
-and how SAT uses their explanations. This chapter follows the equality kernel
-inside that interface. The {source}`default options <src/smt/check_sat.hpp#L219-L242>`
-select the incremental flat kernel and one-sided BFS explanations. Propagation
-scheduling is a separate option; selecting this kernel does not mean every
-consequence is propagated immediately.
+and how SAT uses their explanations. This chapter explains the congruence-closure
+implementation behind that interface. The {source}`default options <src/smt/check_sat.hpp#L219-L242>`
+select `FlatCongruenceClosure` and one-sided BFS explanations. Propagation
+scheduling is a separate option; selecting this implementation does not mean
+every consequence is propagated immediately.
 
 ## Representation and ownership
 
@@ -32,14 +32,14 @@ known equal; that representative can change after a merge or backtrack.
 | Typed terms and symbols | {source}`core::TermManager <src/core/term_manager.hpp>` owns the terms. EUF borrows the manager; it must outlive the flattened index and any interpretation of its core IDs. |
 | Flattened nodes and definitions | {source}`FlatTermIndex <src/theory/equality/flat_terms.hpp>` owns append-only node/definition vectors and maps from core IDs and application pairs. Numeric IDs remain stable as this index grows; references into its vectors do not. |
 | Prepared query structure | {source}`PreparedFlatTheory <src/smt/solver_engines.cpp#L893-L913>` owns an index, atom mappings, and a base closure containing application definitions and `true ≠ false`. Preparation adds no query-specific assignments or reasons. |
-| Online equality state | {source}`IncrementalFlatAssignmentState <src/smt/solver_engines.cpp#L1280-L1440>` owns a working index and `FlatCongruenceClosure`, optionally copied from prepared structure. SAT decision levels determine its lazy kernel checkpoints. |
+| Online equality state | {source}`IncrementalFlatAssignmentState <src/smt/solver_engines.cpp#L1280-L1440>` owns a working index and `FlatCongruenceClosure`, optionally copied from prepared structure. SAT decision levels determine when it saves closure checkpoints. |
 | Classes, explanations, and undo | {source}`FlatCongruenceClosure <src/theory/equality/flat_congruence_closure.hpp>` owns these separately: representatives answer equality queries, labelled edges justify equalities, and undo records restore mutations. None owns the SAT assignment. |
 
 `FlatTermId` is a `std::size_t` index, not a public term handle or a SAT variable.
-The kernel stores numeric endpoints without core sort information: callers must
-supply correctly typed equations. It neither parses SMT-LIB nor creates core
-terms. See [core ownership](core.md) for the term manager's separate lifetime
-and allocation rules.
+`FlatCongruenceClosure` stores numeric endpoints without core sort information:
+callers must supply correctly typed equations. It neither parses SMT-LIB nor
+creates core terms. See [core ownership](core.md) for the term manager's separate
+lifetime and allocation rules.
 
 Checks outside the live callback can instead copy the prepared base and replay
 the candidate's assignments, as in {source}`check_incremental_euf_closure
@@ -73,7 +73,8 @@ That obligation belongs to the SMT preparation described below.
 
 Let `p` be the SAT literal for `a = b`, and `q` the literal for
 `f(a) = f(b)`. Assume the two application definitions were installed before
-search. Consider this kernel trace, with `¬q` retained at the root:
+search. The following steps show how congruence closure detects a conflict and
+undoes its changes on backtracking, with `¬q` retained at the root:
 
 | Step | Equality state | Explanation information |
 | --- | --- | --- |
@@ -94,7 +95,7 @@ combination. In particular, with `¬q` retained it can derive `¬p`.
 
 The signs come from {source}`assert_flat_assigned_atom
 <src/smt/solver_engines.cpp#L1200-L1214>`: each asserted fact carries its
-**negated SAT assignment**. The kernel combines those literals without
+**negated SAT assignment**. `FlatCongruenceClosure` combines those literals without
 negating them again. In this example `explain_equal(f(a), f(b))` supplies
 `[¬p]`; the disequality conflict supplies `[¬p, q]`. An empty reason is reserved
 for an unconditional fact, such as `true ≠ false`, rather than an unexplained
@@ -107,7 +108,7 @@ SMT-LIB assertion `push`/`pop`, as explained in [DPLL(T)](dpllt.md).
 
 ## How a merge finds its consequences
 
-The {source}`kernel data structures <src/theory/equality/flat_congruence_closure.hpp#L209-L240>`
+The {source}`data structures in FlatCongruenceClosure <src/theory/equality/flat_congruence_closure.hpp#L209-L240>`
 implement the flat congruence-closure scheme from Nieuwenhuis and Oliveras,
 Section 3:
 
@@ -152,7 +153,7 @@ operations expected to be constant time.
 This is not an `O(n log n)` bound for a Primo query. Disequality-list work,
 explanations, copied preparation, undo storage, propagation scheduling, and
 repeated search after backtracking add costs. The
-{source}`kernel counters <src/theory/equality/congruence_stats.hpp>` expose
+{source}`congruence-closure counters <src/theory/equality/congruence_stats.hpp>` expose
 lookup probes/hits, congruence merges, disequality checks, duplicate skips,
 explanation visits, and trail entries so those mechanisms can be measured.
 
@@ -206,7 +207,7 @@ and historical comparisons remain in the {source}`paper design note
 save vector lengths and restore recorded mutations. Class-member suffixes let
 undo restore the moved members' representatives together. Other records restore
 use lists, disequality lists, lookup insertions, explanation adjacency, and
-optional proof-forest state. Definitions and nodes added after a kernel
+optional proof-forest state. Definitions and nodes added after a closure
 checkpoint are also removed from that closure; definitions installed before it
 remain. Popping consumes the selected checkpoint and all younger checkpoints.
 
@@ -285,13 +286,13 @@ model. {source}`build_typed_model <src/smt/typed_model_builder.cpp#L343-L350>`
 constructs an owning `core::Model` with typed values and function tables.
 Its {source}`ComponentModelBuilder <src/smt/typed_model_builder.cpp#L33-L60>`
 uses a separate, direct-`TermId` `IncrementalCongruenceClosure`. That class's
-name must not be confused with the flat search kernel documented here.
+name must not be confused with `FlatCongruenceClosure`, used during search.
 Boolean completion, reconstruction of eliminated terms, and combined-theory
 models need their own model chapter.
 
 The alternate lazy checking path uses {source}`ExplainedCongruenceClosure
 <src/smt/solver_engines.cpp#L2630-L2696>`. Its rebuilding and explanation
-strategy is distinct from the default flat kernel. Neither route supplies
+strategy is distinct from `FlatCongruenceClosure`. Neither route supplies
 general quantified reasoning or arithmetic semantics; those obligations belong
 to other components.
 
@@ -309,8 +310,8 @@ primary algorithmic source. The local review copy is `docs/oliveras-euf.pdf`.
 | Sections 4 and 5.2–5.5 | Basis of the optional proof modes above. Default BFS, causal caching, alias materialization, and rollback details are distinguished in the local design notes. No shortest-explanation or exported-proof claim. |
 | Primo's local EUF/SMT design | SAT reason signs, Boolean-domain preparation, changed-term delivery, and model-scope protection. These are integration obligations, not algorithms attributed to the paper. |
 
-The paper's integer-offset extension is outside this kernel's implemented
-subset. Arithmetic reasoning and theory combination require separate chapters.
+`FlatCongruenceClosure` does not implement the paper's integer-offset extension.
+Arithmetic reasoning and theory combination require separate chapters.
 Lemma-retention policy remains in the [theory-lemma lead](../leads/theory-lemmas.md)
 and [safe-forgetting lead](../leads/theory-lemma-forgetting.md).
 
