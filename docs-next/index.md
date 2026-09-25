@@ -97,6 +97,10 @@ term handles are needed.
 payload representations and account for future leaf data. The current layout
 remains in use; implementation is deferred.
 
+[Compact rational storage](leads/rational-storage.md) is a related lead.
+A layout probe identifies a possible 24-to-16-byte reduction while retaining
+`unique_ptr` ownership; implementation and solver evaluation remain open.
+
 Possible solver extensions and research ideas remain in the existing book's
 open-leads register. They are candidates for investigation, not commitments or
 implemented features. The rewrite will give them a separate index and preserve

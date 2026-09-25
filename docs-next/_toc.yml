@@ -23,6 +23,7 @@ parts:
       - file: leads/library-api
       - file: leads/incremental-memory
       - file: leads/term-storage
+      - file: leads/rational-storage
       - file: leads/statistics-instrumentation
       - file: leads/theory-lemmas
       - file: leads/theory-lemma-forgetting

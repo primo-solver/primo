@@ -725,3 +725,20 @@ retained arithmetic and H1 notes. These are documentation corrections;
 normalization behavior and option defaults are unchanged.
 Both strict books and source/HTML link checks pass; the old page/anchor
 baseline is preserved. No solver batch or new performance experiment was run.
+
+### Rational layout lead
+
+The rational-storage question is recorded separately from the outer term-payload
+union. The current fields and constructor/copy ownership were inspected; the
+new `examples/rational-layout.cpp` was formatted, compiled with C++20 and
+warnings as errors, and run locally without invoking the solver.
+On GCC 13.3.0/libstdc++, current and raw-pointer layouts are both 24 bytes;
+the pointer itself is eight bytes in either case. The separate-tag union
+remains 24 bytes, the denominator-tag union is 16, and the inline-GMP union
+is 40. Candidate delta values and row entries measure 32 bytes each versus
+48 and 40 currently. No candidate is constructed or used for arithmetic.
+
+The draft now has 21 pages with navigation/review/support entries. Both strict
+book builds, source/HTML links and old page/anchor compatibility checks pass.
+Lifetime design, implementation, solver qualification and memory/runtime
+evaluation remain open; no solver batch ran for this documentation change.

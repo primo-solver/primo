@@ -82,6 +82,11 @@ Compact storage and [incremental reclamation](incremental-memory.md) address
 different factors: bytes per retained term and the number of retained terms.
 Coordinate their ownership rules with the [library API lead](library-api.md).
 
+The [compact rational storage lead](rational-storage.md) considers reducing
+`Rational` itself from 24 to 16 inline bytes while retaining owned big values.
+This would affect both term payloads and arithmetic data structures; evaluate
+it separately from the outer term-payload union described here.
+
 ## Decision and completion
 
 Start by attributing memory to nodes, keys, edges, and payload allocations.

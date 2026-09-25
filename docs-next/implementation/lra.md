@@ -144,6 +144,12 @@ This is the two-tier representation discussed by Monniaux §4 and Griggio
 floating-point solver and forced-pivoting algorithm remain an
 [open lead: floating-point-guided basis selection](../leads/lra-floating-point.md).
 
+The separate [compact rational storage lead](../leads/rational-storage.md)
+examines the current 24-byte representation. Its local layout probe finds
+that `unique_ptr` is pointer-sized; overlapping the small numerator and big
+pointer with a denominator tag could reduce the object to 16 bytes. This is
+a layout candidate, not an implemented or benchmarked arithmetic change.
+
 A strict bound uses an exact symbolic infinitesimal. `DeltaRational` stores
 two rationals `(q, k)`, interpreted as `q + k*δ`, ordered lexicographically.
 There is no floating-point tolerance. For an unflipped Real atom:

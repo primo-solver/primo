@@ -82,6 +82,13 @@ Keep stable lead labels and evidence links when a lead changes state.
   index builder. Decide whether cutover must precede public release. The pilot
   must preserve legacy evidence losslessly and support independent contributor
   submissions and offline collection; measure repository growth and query cost.
+- **Compact rational storage:** `docs-next/leads/rational-storage.md` records
+  a local layout probe: `Rational` is 24 bytes and its `unique_ptr` costs the
+  same eight bytes as a raw pointer. A numerator/pointer union using denominator
+  zero as its tag could reach 16 bytes while preserving ownership. A separate
+  tag retains 24 bytes; directly embedding GMP reaches 40 bytes in the probed
+  layout. These are candidate sizes, not solver memory or speed results.
+  Status: open; owner unassigned; implementation and evaluation deferred.
 
 Public-migration planning itself is tracked in [](active-work.md). Its pending
 milestones remain in the migration plan rather than being duplicated here.
