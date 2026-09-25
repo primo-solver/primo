@@ -14,10 +14,14 @@ and acceptance checklist are in [](dpllt.md#shared-assignment-protocol-implement
 Stages: shared storage/coordinator and deterministic tests; dedicated EUF;
 dedicated arithmetic; mixed reconciliation/protection; component and quantifier
 views; final ownership audit and qualification. The existing rollback repair
-remains in place. The foundation is committed as `365b918`; all production
-consumers now read the shared owner, and the 43-group C++ suite passes. ASan,
-whole-tree review, fresh fuzzing, and baseline comparison qualify the migration
-before it is recorded as complete. No new performance claim is made yet.
+remains in place. The foundation is committed as `365b918` and the route migration as `45e25a6`.
+All production consumers now read the shared owner; 43 normal/ASan groups pass
+and whole-tree static review is complete. Fresh SLURM qualification and paired
+baseline comparison remain pending. The interrupted local attempt is preliminary
+evidence only (`2026-09-25-shared-assignment-local-preliminary` in the run log).
+`scripts/shared_assignment_gate.py` refuses execution without a SLURM allocation;
+its array covers six logics, retained sessions and seven real-UF seed shards.
+No new performance claim is made yet.
 
 ## Public repository migration planning
 

@@ -3,6 +3,460 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-25-shared-assignment-local-preliminary",
+      "date": "2026-09-25",
+      "commit": "45e25a68916c30e3008ad50716b0c4e46a67abbc",
+      "kind": "preliminary-correctness",
+      "evidence_status": "preliminary; SLURM qualification pending",
+      "scope": "Shared assignment ownership across all routes. Local batches were launched contrary to the owner's standing SLURM requirement and stopped when corrected; they do not complete the planned qualification. All local descendants were terminated.",
+      "binary_sha256": "ef596e8023a978729f90de06dfadae851084ae598740d596c710996f0afff4c7",
+      "version": "primo 0.2.0\ngit: 45e25a6\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+      "environment": {
+        "execution": "local workstation; six driver threads",
+        "resource_limits": "5s per generated/reference process; 2s mutation; 10s retained-session/model stages; no explicit memory cap",
+        "exact_host_and_commands": "fuzz-results/shared-assignment-45e25a6/commands.json",
+        "metadata_sha256": "82c90aab3c79265154e637a566e374ec2a3978dc7c51641a078804aaf9d16992"
+      },
+      "runs": [
+        {
+          "name": "qf_uf-online",
+          "command": [
+            "python3",
+            "scripts/fuzz_external.py",
+            "--fuzzer",
+            "fuzzsmt",
+            "--solver",
+            "results/shared-assignment-20260925/bin/primo-45e25a6 --quiet --preprocessing-mode=off --euf-prop=online",
+            "--refs",
+            "z3",
+            "cvc5",
+            "--logic",
+            "QF_UF",
+            "--count",
+            "1000",
+            "--seed",
+            "20260925",
+            "--timeout",
+            "5",
+            "--fuzzer-args",
+            "-ms 1 -Ms 2 -mv 2 -Mv 5 -mf 3 -mp 3 -ma 1 -Ma 3",
+            "--out",
+            "fuzz-results/shared-assignment-45e25a6/qf_uf-online"
+          ],
+          "artifacts": "fuzz-results/shared-assignment-45e25a6/qf_uf-online",
+          "rows": 1000,
+          "counts": {
+            "PASS": 1000
+          },
+          "summary_sha256": "0d470e190d34597e0e08bfd60ef8fa733b6f2651bab25b7110e35439e8e20471",
+          "status": "completed locally; preliminary only",
+          "driver": {
+            "name": "qf_uf-online",
+            "exit_code": 0,
+            "elapsed_seconds": 42.24014687538147
+          }
+        },
+        {
+          "name": "qf_uf-lazy",
+          "command": [
+            "python3",
+            "scripts/fuzz_external.py",
+            "--fuzzer",
+            "fuzzsmt",
+            "--solver",
+            "results/shared-assignment-20260925/bin/primo-45e25a6 --quiet --preprocessing-mode=off --euf-engine=lazy --euf-prop=off",
+            "--refs",
+            "z3",
+            "cvc5",
+            "--logic",
+            "QF_UF",
+            "--count",
+            "1000",
+            "--seed",
+            "20260925",
+            "--timeout",
+            "5",
+            "--fuzzer-args",
+            "-ms 1 -Ms 2 -mv 2 -Mv 5 -mf 3 -mp 3 -ma 1 -Ma 3",
+            "--out",
+            "fuzz-results/shared-assignment-45e25a6/qf_uf-lazy"
+          ],
+          "artifacts": "fuzz-results/shared-assignment-45e25a6/qf_uf-lazy",
+          "rows": 1000,
+          "counts": {
+            "PASS": 1000
+          },
+          "summary_sha256": "166f35553466eb69d3abc01f60a19a46a64d08ae4dc70332f55f1aeff2b5cdf1",
+          "status": "completed locally; preliminary only",
+          "driver": {
+            "name": "qf_uf-lazy",
+            "exit_code": 0,
+            "elapsed_seconds": 40.280831813812256
+          }
+        },
+        {
+          "name": "qf_lra-default",
+          "command": [
+            "python3",
+            "scripts/fuzz_external.py",
+            "--fuzzer",
+            "fuzzsmt",
+            "--solver",
+            "results/shared-assignment-20260925/bin/primo-45e25a6 --quiet --preprocessing-mode=off",
+            "--refs",
+            "z3",
+            "cvc5",
+            "--logic",
+            "QF_LRA",
+            "--count",
+            "1000",
+            "--seed",
+            "20260925",
+            "--timeout",
+            "5",
+            "--fuzzer-args",
+            "-mv 1 -Mv 5 -mc 1 -Mc 3 -Mbw 4",
+            "--out",
+            "fuzz-results/shared-assignment-45e25a6/qf_lra-default"
+          ],
+          "artifacts": "fuzz-results/shared-assignment-45e25a6/qf_lra-default",
+          "status": "interrupted; gate incomplete"
+        },
+        {
+          "name": "qf_lia-default",
+          "command": [
+            "python3",
+            "scripts/fuzz_external.py",
+            "--fuzzer",
+            "fuzzsmt",
+            "--solver",
+            "results/shared-assignment-20260925/bin/primo-45e25a6 --quiet --preprocessing-mode=off",
+            "--refs",
+            "z3",
+            "cvc5",
+            "--logic",
+            "QF_LIA",
+            "--count",
+            "1000",
+            "--seed",
+            "20260925",
+            "--timeout",
+            "5",
+            "--fuzzer-args",
+            "-mv 1 -Mv 4 -mc 1 -Mc 3 -Mbw 4",
+            "--out",
+            "fuzz-results/shared-assignment-45e25a6/qf_lia-default"
+          ],
+          "artifacts": "fuzz-results/shared-assignment-45e25a6/qf_lia-default",
+          "rows": 1000,
+          "counts": {
+            "PASS": 993,
+            "TIMEOUT": 6,
+            "REFERENCE_UNUSABLE": 1
+          },
+          "summary_sha256": "58093e4c406c408c903f309e4cec3e1f9bc959b87ea74d74b84e7518389d9a04",
+          "status": "completed locally; preliminary only",
+          "driver": {
+            "name": "qf_lia-default",
+            "exit_code": 1,
+            "elapsed_seconds": 205.89162850379944
+          }
+        },
+        {
+          "name": "qf_uflra-arithmetic",
+          "command": [
+            "python3",
+            "scripts/qf_uflra_smoke_fuzz.py",
+            "--solver",
+            "results/shared-assignment-20260925/bin/primo-45e25a6",
+            "--ref",
+            "z3",
+            "--count",
+            "1000",
+            "--seed",
+            "20260925",
+            "--timeout",
+            "5",
+            "--shape",
+            "mixed",
+            "--solver-arg=--quiet",
+            "--solver-arg=--preprocessing-mode=off",
+            "--out",
+            "fuzz-results/shared-assignment-45e25a6/qf_uflra-arithmetic"
+          ],
+          "artifacts": "fuzz-results/shared-assignment-45e25a6/qf_uflra-arithmetic",
+          "rows": 1000,
+          "counts": {
+            "PASS": 1000
+          },
+          "summary_sha256": "26039c2d536788d7816f272b2f9b45455d4c403e94a3ec4cb2fe27c2e87bf31f",
+          "status": "completed locally; preliminary only",
+          "driver": {
+            "name": "qf_uflra-arithmetic",
+            "exit_code": 0,
+            "elapsed_seconds": 28.49964928627014
+          }
+        },
+        {
+          "name": "qf_uflra-both",
+          "command": [
+            "python3",
+            "scripts/qf_uflra_smoke_fuzz.py",
+            "--solver",
+            "results/shared-assignment-20260925/bin/primo-45e25a6",
+            "--ref",
+            "z3",
+            "--count",
+            "1000",
+            "--seed",
+            "20260925",
+            "--timeout",
+            "5",
+            "--shape",
+            "mixed",
+            "--solver-arg=--quiet",
+            "--solver-arg=--preprocessing-mode=off",
+            "--solver-arg=--qf-uflra-online-euf",
+            "--solver-arg=--euf-prop=online",
+            "--out",
+            "fuzz-results/shared-assignment-45e25a6/qf_uflra-both"
+          ],
+          "artifacts": "fuzz-results/shared-assignment-45e25a6/qf_uflra-both",
+          "rows": 1000,
+          "counts": {
+            "PASS": 1000
+          },
+          "summary_sha256": "34ff15bd1823197180ed2a164cc85b582ea54ddc6ec5290862b3d62c226f691e",
+          "status": "completed locally; preliminary only",
+          "driver": {
+            "name": "qf_uflra-both",
+            "exit_code": 0,
+            "elapsed_seconds": 28.217936277389526
+          }
+        },
+        {
+          "name": "qf_uflia-online",
+          "command": [
+            "python3",
+            "scripts/qf_uflia_fuzz.py",
+            "--solver",
+            "results/shared-assignment-20260925/bin/primo-45e25a6",
+            "--ref",
+            "z3",
+            "--count",
+            "1000",
+            "--seed",
+            "20260925",
+            "--timeout",
+            "5",
+            "--shape",
+            "mixed",
+            "--ref",
+            "cvc5",
+            "--solver-arg=--quiet",
+            "--solver-arg=--preprocessing-mode=off",
+            "--solver-arg=--euf-prop=online",
+            "--out",
+            "fuzz-results/shared-assignment-45e25a6/qf_uflia-online"
+          ],
+          "artifacts": "fuzz-results/shared-assignment-45e25a6/qf_uflia-online",
+          "rows": 1000,
+          "counts": {
+            "PASS": 1000
+          },
+          "summary_sha256": "09b3205e00e0e2281c4dda052bcf6aede43501cc4c4624903572a83e27434a30",
+          "status": "completed locally; preliminary only",
+          "driver": {
+            "name": "qf_uflia-online",
+            "exit_code": 0,
+            "elapsed_seconds": 38.849984884262085
+          }
+        },
+        {
+          "name": "qf_uflia-offline",
+          "command": [
+            "python3",
+            "scripts/qf_uflia_fuzz.py",
+            "--solver",
+            "results/shared-assignment-20260925/bin/primo-45e25a6",
+            "--ref",
+            "z3",
+            "--count",
+            "1000",
+            "--seed",
+            "20260925",
+            "--timeout",
+            "5",
+            "--shape",
+            "mixed",
+            "--ref",
+            "cvc5",
+            "--solver-arg=--quiet",
+            "--solver-arg=--preprocessing-mode=off",
+            "--solver-arg=--no-qf-uflia-online-components",
+            "--out",
+            "fuzz-results/shared-assignment-45e25a6/qf_uflia-offline"
+          ],
+          "artifacts": "fuzz-results/shared-assignment-45e25a6/qf_uflia-offline",
+          "rows": 1000,
+          "counts": {
+            "PASS": 1000
+          },
+          "summary_sha256": "f6a2727a5fe5b6c128706f5880facba514eabd0c6c5dfd40df70d954d2fca87c",
+          "status": "completed locally; preliminary only",
+          "driver": {
+            "name": "qf_uflia-offline",
+            "exit_code": 0,
+            "elapsed_seconds": 38.53974962234497
+          }
+        },
+        {
+          "name": "retained-uf",
+          "command": [
+            "python3",
+            "scripts/incremental_uf_gate.py",
+            "--kind",
+            "generated",
+            "--seed",
+            "20260925",
+            "--count",
+            "100",
+            "--solver",
+            "results/shared-assignment-20260925/bin/primo-45e25a6",
+            "--ref",
+            "contrib/local/bin/z3",
+            "--dolmen",
+            "contrib/local/bin/dolmen",
+            "--expected-git",
+            "45e25a6",
+            "--timeout",
+            "10",
+            "--dolmen-timeout",
+            "10",
+            "--solver-arg=--incremental-mode=assumptions",
+            "--solver-arg=--preprocessing-mode=off",
+            "--solver-arg=--euf-prop=online",
+            "--out",
+            "fuzz-results/shared-assignment-45e25a6/retained-uf"
+          ],
+          "artifacts": "fuzz-results/shared-assignment-45e25a6/retained-uf",
+          "summary": {
+            "sessions": 100,
+            "pass": 100,
+            "queries": 900,
+            "sat_models": 614,
+            "untriaged_failure": 0,
+            "failures": []
+          },
+          "status": "completed locally; preliminary only",
+          "driver": {
+            "name": "retained-uf",
+            "exit_code": 0,
+            "elapsed_seconds": 27.2111713886261
+          }
+        },
+        {
+          "name": "retained-lra",
+          "command": [
+            "python3",
+            "scripts/incremental_lra_gate.py",
+            "--kind",
+            "generated",
+            "--seed",
+            "20260925",
+            "--count",
+            "100",
+            "--solver",
+            "results/shared-assignment-20260925/bin/primo-45e25a6",
+            "--ref",
+            "contrib/local/bin/z3",
+            "--dolmen",
+            "contrib/local/bin/dolmen",
+            "--expected-git",
+            "45e25a6",
+            "--timeout",
+            "10",
+            "--dolmen-timeout",
+            "10",
+            "--solver-arg=--incremental-mode=assumptions",
+            "--solver-arg=--preprocessing-mode=off",
+            "--out",
+            "fuzz-results/shared-assignment-45e25a6/retained-lra"
+          ],
+          "artifacts": "fuzz-results/shared-assignment-45e25a6/retained-lra",
+          "summary": {
+            "sessions": 100,
+            "pass": 100,
+            "sat_models": 800,
+            "queries": 1100,
+            "failures": [],
+            "untriaged_failure": 0
+          },
+          "status": "completed locally; preliminary only",
+          "driver": {
+            "name": "retained-lra",
+            "exit_code": 0,
+            "elapsed_seconds": 35.66078972816467
+          }
+        },
+        {
+          "name": "uf-mutation",
+          "command": [
+            "scripts/yinyang_fuzz.sh",
+            "--seeds",
+            "tmp/shared-assignment-data/uf-seeds",
+            "--solver",
+            "results/shared-assignment-20260925/bin/primo-45e25a6 --quiet --preprocessing-mode=off",
+            "--ref",
+            "contrib/local/bin/z3",
+            "--seconds",
+            "1800",
+            "--iterations",
+            "100",
+            "--solver-timeout",
+            "2",
+            "--bugs",
+            "fuzz-results/shared-assignment-45e25a6/uf-mutation/bugs",
+            "--scratch",
+            "fuzz-results/shared-assignment-45e25a6/uf-mutation/scratch",
+            "--logs",
+            "fuzz-results/shared-assignment-45e25a6/uf-mutation/logs",
+            "--file-size-limit",
+            "20000",
+            "--typefuzz",
+            "/tmp/primo-shared-yinyang-venv/bin/typefuzz",
+            "--random-seed",
+            "20260925",
+            "--keep-logic",
+            "--hoist-declarations",
+            "--keep-mutants"
+          ],
+          "artifacts": "fuzz-results/shared-assignment-45e25a6/uf-mutation",
+          "status": "interrupted; gate incomplete"
+        }
+      ],
+      "partial": {
+        "qf_lra": {
+          "log_rows": 487,
+          "pass": 473,
+          "timeout": 14,
+          "complete_summary": false
+        },
+        "uf_mutation": {
+          "retained_files": 701,
+          "bugs_found": 0,
+          "status": "interrupted; inputs not independently classified; no passing-gate claim"
+        }
+      },
+      "verification": {
+        "normal": "43 CTest groups; 188 Python tests before adding the SLURM driver",
+        "asan": "43 CTest groups; final reason/reconnect test rerun under ASan",
+        "static": "128 tracked C++ translation units; 19 baseline diagnostics; include-cleaner advisory reviewed",
+        "documentation": "Both strict books build; 321 source links checked; 83 old pages and 1223 HTML IDs preserved; five DPLL(T) example profiles pass"
+      },
+      "remaining": "Fresh SLURM six-logic gates and UF mutation classification; paired fd4d1eb comparison; separate SAT model replay; final qualification record"
+    },
+    {
       "id": "2026-09-24-euf-assignment-rollback-ac2aaaf",
       "date": "2026-09-24",
       "commit": "ac2aaaf2894207047cdd5468b3ccad1a6436d3a5",
