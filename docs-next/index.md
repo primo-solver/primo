@@ -114,6 +114,10 @@ General PG encoding remains open work. The
 [statistics instrumentation lead](leads/statistics-instrumentation.md) proposes
 typed counters and optional diagnostics while preserving solver-control state.
 
+[Floating-point-guided LRA basis selection](leads/lra-floating-point.md)
+carries forward lead D2: use an approximate solver to suggest a basis, then
+perform exact pivots and checking. Its benefit in Primo remains unmeasured.
+
 During review, `make docs-next-serve` serves this draft at
 `http://localhost:8001`; `make docs-serve` serves the existing book at
 `http://localhost:8000`. These are local previews. No website is published by

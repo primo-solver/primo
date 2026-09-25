@@ -26,6 +26,7 @@ parts:
       - file: leads/statistics-instrumentation
       - file: leads/theory-lemmas
       - file: leads/theory-lemma-forgetting
+      - file: leads/lra-floating-point
   - caption: Reviewing this draft
     chapters:
       - file: review

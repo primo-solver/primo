@@ -694,3 +694,19 @@ this chapter. All 19 draft pages have navigation and ledger entries; all
 was run. Existing tests are linked by the invariant they exercise, without
 claiming a fresh fuzz or benchmark qualification. Reader acceptance, complete
 historical extraction and the published table-to-artifact mapping remain open.
+
+### Normalization clarification and D2 lead
+
+The LRA preparation explanation now replaces the unexplained H1a/H1b labels
+with the two concrete savings and compares normalization on
+`4*x + 6*y <= 10`: the paper's integer coefficients become `2, 3`, whereas
+Primo's become `1, 3/2`. Both scale the threshold as well. The explanation
+was checked against `canonical_polynomial`, `append_atom` and Monniaux §2.1.
+
+The existing [D2 lead](leads/lra-floating-point.md) is now visible in the draft's
+Open work navigation and linked from the LRA chapter. Monniaux §3, Algorithm 2
+and its basis-feasibility argument were read for this extraction. The original
+investigation and dated comparisons remain in place; no algorithm was added
+or solver experiment run. Integration, evaluation and reader acceptance remain
+open. Both strict books and source/HTML link checks pass with 20 draft pages;
+the existing page and anchor compatibility baseline is preserved.

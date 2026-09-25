@@ -88,6 +88,13 @@ milestones remain in the migration plan rather than being duplicated here.
 
 ## Solver leads and investigation history
 
+**Floating-point-guided LRA basis selection (D2)** now also has a draft page
+at `docs-next/leads/lra-floating-point.md`, under **Open work** in the new book.
+It records Monniaux's approximate basis suggestion and exact forced-pivoting
+procedure, its correctness obligations and evaluation questions. The original
+{ref}`D2 discussion <d2>` and dated comparisons remain in place.
+Status: open; owner unassigned; no Primo implementation or evaluation.
+
 The new [Yices survey](papers/yices.md#open-investigations-and-acceptance-conditions)
 records two open investigations: conflict-selected dynamic Ackermann clauses,
 and theory-lemma retention/deletion through the SAT backend. The draft work

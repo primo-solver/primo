@@ -51,8 +51,9 @@ Unlowered `ite`, `div`, `mod` and `abs` raise an exception at this boundary.
 
 {source}`normalize_atom <src/theory/arithmetic/lra_atom.cpp#L10-L37>` subtracts
 the right side and moves the constant to the threshold. Preparation then
-sorts coefficients by `TermId` and divides by the first coefficient, making
-it one. A negative divisor reverses the inequality. This canonicalization
+orders variables by `TermId` and divides every coefficient and the threshold
+by the first coefficient, making that coefficient one. A negative divisor
+reverses the inequality. This canonicalization
 identifies proportional polynomials; it does not merge their SAT variables.
 
 For example, these predicates can share the variable `s = x + y`:
@@ -66,11 +67,29 @@ For example, these predicates can share the variable `s = x + y`:
 
 The thresholds and SAT reasons stay separate, including when a predicate is
 assigned false. A single-variable polynomial instead becomes a direct bound:
-`2*x <= 10` needs `x <= 5`, with no slack row. These are the H1a/H1b mechanisms
-in {source}`PreparedLraTheory::append_atom <src/smt/solver_engines.cpp#L3411-L3514>`.
+`2*x <= 10` needs `x <= 5`, with no auxiliary variable or equation.
+{source}`PreparedLraTheory::append_atom <src/smt/solver_engines.cpp#L3411-L3514>`
+implements both savings: bounds on a single variable use that variable
+directly, while bounds on proportional compound polynomials share one
+auxiliary variable and its defining row. This keeps the tableau smaller and
+puts related bounds on the same variable, where they can be compared directly.
+
 Monniaux's [CAV 2009 paper](https://arxiv.org/abs/0904.3525), §2.1, describes
-the normalization and direct-bound approach; Primo uses leading coefficient
-one rather than coprime integer coefficients.
+both ideas, but chooses a different standard form for the coefficients.
+The paper clears denominators and removes common integer factors, choosing
+the sign so the first coefficient is positive. Primo divides by the first
+coefficient, so it becomes exactly one; the remaining coefficients may be
+fractions. For example, assuming `x` comes before `y` in the variable order:
+
+| Input | Paper's integer form | Primo's form |
+| --- | --- | --- |
+| `4*x + 6*y <= 10` | `2*x + 3*y <= 5` | `x + (3/2)*y <= 5/2` |
+
+The paper's coefficients `2` and `3` have greatest common divisor one: this
+is what “coprime integer coefficients” means here. Both forms express the
+same inequality and give proportional polynomials a common representation.
+In both cases the threshold must be scaled by the same factor as the
+coefficients.
 
 Real equality is lowered to two inequalities before this path. Negating it
 gives a Boolean choice between strict inequalities, handled by SAT. The
@@ -87,8 +106,9 @@ Operations use checked wide intermediates and fall back to GMP rationals.
 Results that fit return to the small representation: equal values must compare
 and hash alike regardless of the arithmetic path that produced them.
 This is the two-tier representation discussed by Monniaux §4 and Griggio
-§2.5.2, with 64-bit rather than Monniaux's 32-bit small values. Primo does
-not implement that paper's floating-point oracle and forced-pivoting algorithm.
+§2.5.2, with 64-bit rather than Monniaux's 32-bit small values. The paper's
+floating-point solver and forced-pivoting algorithm remain an
+[open lead: floating-point-guided basis selection](../leads/lra-floating-point.md).
 
 A strict bound uses an exact symbolic infinitesimal. `DeltaRational` stores
 two rationals `(q, k)`, interpreted as `q + k*δ`, ordered lexicographically.
@@ -345,7 +365,8 @@ their own settings and measurement scope; linking the paper does not promote
 them to current defaults. Exact table-to-artifact mapping remains open.
 
 Open investigations include alternative rational libraries, further fill-in
-control and batched assignment updates. The
+control, batched assignment updates and
+[floating-point-guided basis selection](../leads/lra-floating-point.md). The
 {source}`heuristics register <docs/qf-lra-heuristics.md>` retains their
 hypotheses and falsifiers. They should not be merged into the implemented
 description merely because they occur beside completed work in that record.
