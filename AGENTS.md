@@ -2,16 +2,18 @@
 
 ## Execution location: SLURM required
 
-The owner's laptop is an interactive workstation. Do not run builds, full test
-suites, static-analysis sweeps, fuzzing campaigns, benchmarks, or corpus/model
-validation on it. These run in SLURM allocations, including remote builds via
-`scripts/slurm_prepare_benchmark_workspace.py --build-via-slurm`. An available
+The owner's laptop is an interactive workstation. Every batch run of the solver
+belongs outside it, in SLURM: full solver test suites, fuzzing campaigns,
+benchmarks, and corpus/model validation. Local builds for interactive debugging
+with gdb or similar tools are allowed. Use
+`scripts/slurm_prepare_benchmark_workspace.py --build-via-slurm` for builds
+supporting cluster qualification. An available
 local binary, many CPU cores, or a missing remote dependency is not permission
 to fall back to local execution. Do not run compute on the SSH login host.
 
-Local work is limited to editing, Git operations, reading results, syntax checks,
-and explicitly bounded focused smoke checks expected to finish within two
-minutes. Do not combine many smoke checks into a local campaign. Use the SSH
+Local work also includes editing, Git operations, reading results, syntax checks,
+and explicitly bounded individual debugging/smoke runs expected to finish within
+two minutes. Do not combine smoke runs into a local batch. Use the SSH
 route supplied in the session; keep connection details outside tracked files.
 If remote execution is unavailable, preserve the work and report that blocker.
 Before finishing or changing execution location, inspect the process tree and
