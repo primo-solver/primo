@@ -114,6 +114,23 @@ extension is required. The dedicated EUF/arithmetic, mixed, component, and
 quantified-UF consumers no longer own mutable truth arrays or assignment
 boundaries. Theory-specific merge/bound undo logs remain necessary.
 
+The mirror contains observed assignments, not every SAT assignment. Ordinary
+Tseytin variables that only encode Boolean connectives stay inside CaDiCaL.
+If a Boolean expression is also a theory term, such as `(and p q)` passed to
+`f : Bool → U`, its value must reach EUF. The
+{source}`Boolean argument encoding <src/smt/clausifier.cpp>` can register the
+expression's literal directly or introduce observed equalities to `true` and
+`false`. Thus being generated does not by itself make a variable SAT-only.
+Every SAT decision level still gets a boundary, including levels with no
+observed assignments.
+
+This extra storage follows from the current notification interface and
+consumer requirements; it is not inherent to DPLL(T). Avoiding it would need a
+backend API for assignment/order/rollback access with defined mutation and
+lifetime rules. The current {source}`dense position index <src/sat/trail.cpp>`
+also has a memory limitation: unobserved variable IDs can leave empty slots
+below the largest observed ID, even though their literals are not on the mirror.
+
 {source}`ComponentAssignmentView <src/theory/component_assignment.hpp>` stores
 atom-registration metadata and projects values from the shared view. Full
 component checks build temporary snapshots; quantifiers order their projection

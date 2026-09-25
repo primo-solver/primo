@@ -44,8 +44,8 @@ completed rows, scenario counts, and aggregate activation counters.
 
 ## Permanent gates
 
-`make fuzz-finite-domain` runs a bounded local smoke against Z3. It is useful for
-development but is not merge-grade evidence.
+`make fuzz-finite-domain` runs a bounded smoke against Z3 inside a SLURM
+allocation. It is useful for development but is not merge-grade evidence.
 
 The standard `scripts/slurm_qf_uflra_fuzz_gate.sbatch` keeps its 3,000 general
 mixed cases and adds 1,000 finite-domain cases: 500 strong-profile QF_UF and 500
@@ -54,6 +54,11 @@ cvc5. The QF_UFLRA portion is also rerun with model production and checked by
 Dolmen; its durable rows are stored below `model-validation/` and counted
 separately from verdict comparisons. Model checking is on by default and a
 missing Dolmen executable fails the gate.
+The model stage uses `scripts/select_fuzz_sat_inputs.py` to select only
+successful SAT rows from the answer summary, then requires a successful SAT
+replay and a Dolmen pass for each selected input. UNSAT cases are excluded:
+requesting a model after UNSAT is a protocol error, not an invalid SAT model.
+Timeouts, unknown answers, and nonzero exits remain answer-stage outcomes.
 `scripts/slurm_finite_domain_fuzz_gate.sbatch` is the focused profile
 matrix for finite-domain or preprocessing changes; it covers QF_UF strong and
 raw-only profiles plus QF_UFLRA default, strong, and raw-only profiles.

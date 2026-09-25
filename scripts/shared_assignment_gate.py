@@ -97,7 +97,7 @@ def main() -> int:
         # Reference timeouts remain explicit unresolved rows, never passes.
         summary = fuzz_summary(rows, code)
     elif args.task in (4, 5):
-        flags = common + (["--qf-uflra-online-euf", "--euf-prop=online"]
+        flags = ["--quiet"] + (["--qf-uflra-online-euf", "--euf-prop=online"]
                           if args.task == 5 else [])
         code = run(["env", "PRIMO_FUZZ_COUNT=1000", "PRIMO_FINITE_DOMAIN_FUZZ_COUNT=56",
                     "PRIMO_FUZZ_SEED_BASE=202609250", "PRIMO_FUZZ_MODEL_VALIDATION=1",

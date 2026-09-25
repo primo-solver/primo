@@ -110,13 +110,19 @@ Use C++20 and the repository's `clang-format` configuration. Python tooling
 should use the standard library unless a dependency is documented. Keep changes
 focused enough to explain and review.
 
-The existing local entry points are:
+The existing entry points are:
 
 ```bash
 make build
 make check
 make docs
 ```
+
+On the maintainer's workstation, local builds for interactive debugging are
+allowed, but all solver batches, including test suites and fuzzing, run on the
+remote cluster through SLURM. Run `make check` and `make asan-test` inside an
+allocation. See `AGENTS.md` for the execution boundary and
+`scripts/slurm_prepare_benchmark_workspace.py` for remote preparation.
 
 `make check` includes lint, C++ tests, and Python tests; it does **not** run
 fuzzing. Memory-sensitive changes also require
@@ -151,11 +157,12 @@ implementation does not qualify the new one.
 Choose generators and seeds that exercise the changed logic, mechanism, and
 options. Case counts alone do not establish coverage. Use the
 [fuzzing and reduction workflow](debugging.md#fuzzing-and-reduction) for the
-available generators, mutation tools, and logic-specific gates. Long campaigns
-should run on SLURM with maintainer help when needed.
+available generators, mutation tools, and logic-specific gates. Solver batches
+run on SLURM, with maintainer help when needed.
 
-For a local QF_UF differential merge run, install the dependencies and invoke
-the wrapper with an explicit count and seed from the repository root:
+For a QF_UF differential merge run, prepare the remote dependencies and invoke
+the wrapper with an explicit count and seed from the repository root inside
+a SLURM allocation:
 
 ```bash
 make build contrib-fuzzsmt contrib-z3
@@ -169,7 +176,7 @@ PATH="$PWD/contrib/local/bin:$PATH" python3 scripts/fuzz_external.py \
 Use a new output directory for each run, and adapt the formula sizes and shapes
 to the change. This example checks QF_UF answers; it does not cover other logics
 or validate printed models. The current `make fuzzsmt` convenience target runs
-only 20 cases, below even the smoke minimum. `make fuzz` is also a short local
+only 20 cases, below even the smoke minimum. `make fuzz` is also a short
 entry point, not a complete campaign.
 
 Inspect the generated `summary.csv` and actual case count, not only the exit

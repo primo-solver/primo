@@ -26,6 +26,20 @@ the exact removed literals on backtracking. Term registries and theory undo
 records remain separate. This section is the local implementation checklist;
 route migration and qualification are tracked in [](active-work.md).
 
+This is a projection of the SAT assignment onto observed variables, not a
+second complete SAT trail. Tseytin variables used only for Boolean structure
+remain inside CaDiCaL. A Boolean expression used as a theory term, such as
+`(and p q)` passed to an uninterpreted function, needs its value communicated
+to EUF: the encoding can register its literal directly or introduce observed
+equalities to the Boolean domain constants. Decision boundaries include levels
+with no observed assignments. The dense variable-to-position index can still
+contain empty slots for unobserved variables below its largest observed ID.
+
+The extra assignment storage is required by our current consumer design and
+notification interface, not by DPLL(T) itself. Eliminating it would require a
+backend API exposing equivalent assignment/order/rollback information with
+explicit lifetime rules; the current migration does not add that API.
+
 All dedicated, retained-session, mixed, component, and quantified-UF routes now
 use this boundary. `AssignmentConnection` disconnects the backend while the
 coordinator and consumers still live, then unbinds borrowed views. The
