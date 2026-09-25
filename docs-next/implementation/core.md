@@ -202,12 +202,12 @@ operation. The surrounding session decides when to destroy it.
 
 | Session operation | Effect on the term owner |
 | --- | --- |
-| Rebuild-mode `check-sat` | {source}`Transfers the frontend <src/smt/smt_session.cpp#L225-L232>` into one solving attempt. A later query recreates translation from the active journal; IDs from the old manager do not carry over. |
+| Rebuild-mode `check-sat` | {source}`Transfers the frontend <src/smt/smt_session.cpp#L224-L231>` into one solving attempt. A later query recreates translation from the active journal; IDs from the old manager do not carry over. |
 | Assumptions-mode `check-sat` | {source}`Reuses the frontend and engine <src/smt/smt_session.cpp#L84-L96>` across checks. Persistent IDs belong to that retained manager. |
-| Assumptions-mode `pop` | {source}`Pops solver/frontend scopes and active assertion roots <src/smt/smt_session.cpp#L295-L326>`. Signature bindings are removed, but the retained manager still owns its previously created terms. |
+| Assumptions-mode `pop` | {source}`Pops solver/frontend scopes and active assertion roots <src/smt/smt_session.cpp#L294-L325>`. Signature bindings are removed, but the retained manager still owns its previously created terms. |
 | Nonzero rebuild-mode `pop` | Removes journal entries and discards translation; remaining commands are replayed when needed. |
-| `reset-assertions` | {source}`Clears the journal and translation <src/smt/smt_session.cpp#L287-L292>`, including user declarations under Primo's scoped-declaration policy; retains the selected logic and session option state. |
-| `reset` | {source}`Also clears the selected logic and session model/print-success flags <src/smt/smt_session.cpp#L243-L251>`. Neither reset operation makes old term IDs usable in the new manager. |
+| `reset-assertions` | {source}`Clears the journal and translation <src/smt/smt_session.cpp#L286-L291>`, including user declarations under Primo's scoped-declaration policy; retains the selected logic and session option state. |
+| `reset` | {source}`Also clears the selected logic and session model/print-success flags <src/smt/smt_session.cpp#L242-L250>`. Neither reset operation makes old term IDs usable in the new manager. |
 
 {source}`discard_translation <src/smt/smt_session.cpp#L77-L82>` destroys the
 engine before the frontend whose terms it borrows. The
@@ -285,8 +285,8 @@ Existing regression entry points connect the explanation to executable checks:
   {source}`ITE constructor boundary <tests/unit/core_tests.cpp#L379-L422>`.
 - {source}`Binder construction and metadata <tests/unit/binder_tests.cpp#L71-L132>`.
 - {source}`UF scope growth <tests/unit/smt_session_tests.cpp#L179-L210>` and
-  {source}`LRA scope growth <tests/unit/smt_session_tests.cpp#L367-L389>`;
-  {source}`models retained across rebuilds <tests/unit/smt_session_tests.cpp#L404-L432>`.
+  {source}`LRA scope growth <tests/unit/smt_session_tests.cpp#L365-L387>`;
+  {source}`models retained across rebuilds <tests/unit/smt_session_tests.cpp#L402-L430>`.
 - {source}`Model ownership and printing <tests/unit/model_tests.cpp#L242-L263>`.
 
 The original Primo notes on

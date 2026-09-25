@@ -30,7 +30,7 @@ unavailable diagnostics need an explicit API contract.
   SMT-LIB commands. Decide how an application constructs and asserts typed
   terms directly, without having to generate SMT-LIB text or depend on parser
   syntax objects.
-- {source}`CheckSatOutcome <src/smt/check_sat.hpp#L233-L240>` already carries a
+- {source}`CheckSatOutcome <src/smt/check_sat.hpp#L210-L217>` already carries a
   structured result and an owning typed model. The
   {source}`term manager <src/core/term_manager.hpp>` and
   {source}`model interfaces <src/core/model.hpp>` provide starting points for

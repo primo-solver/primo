@@ -35,7 +35,7 @@ checks are omitted. The numbered walkthrough below links each stage to code.
    last query outcome. The journal is the replayable source of declarations
    and assertions.
 3. **Translate and solve.** In the default rebuild mode,
-   {source}`SmtSession::Implementation::execute <src/smt/smt_session.cpp#L224-L232>`
+   {source}`SmtSession::Implementation::execute <src/smt/smt_session.cpp#L223-L231>`
    transfers the frontend and assertion roots into
    {source}`check_sat_frontend_once <src/smt/solver_session.cpp#L808-L815>`.
    The {source}`Frontend <src/smt/frontend.hpp#L25-L56>` resolves names and
@@ -49,7 +49,7 @@ checks are omitted. The numbered walkthrough below links each stage to code.
    {source}`make_session_solver_strategy <src/smt/solver_leaves.cpp>` connects
    these leaves to concrete engines.
 5. **Return an owning outcome.**
-   {source}`CheckSatOutcome <src/smt/check_sat.hpp#L233-L240>` carries the result,
+   {source}`CheckSatOutcome <src/smt/check_sat.hpp#L210-L217>` carries the result,
    diagnostic, statistics, model text, and optional immutable typed model.
    The {source}`command loop <src/main.cpp#L103-L119>` prints responses and
    handles command errors separately from solver answers.
@@ -69,7 +69,7 @@ construction, and what survives queries and scope changes.
 | {source}`core::TermManager <src/core/term_manager.hpp>` | Term vector and hash-cons table | A `TermId` identifies a term in this manager. It is not portable across frontend instances. |
 | {source}`smt::Goal <src/smt/tactic.hpp#L29-L57>` | Shared immutable goal data: assertion IDs, reconstruction records, optional typed model | Owning a vector of IDs does not own the term manager those IDs address. |
 | {source}`smt::TacticContext <src/smt/tactic.hpp#L85-L141>` | Borrowed manager/statistics; invocation callbacks and deadlines | Execution state must remain within the owning solve. Strategies obtain capabilities from the executing context. |
-| {source}`smt::BooleanClausifier <src/smt/clausifier.hpp#L20-L57>` | Boolean abstraction and theory-atom registry; borrowed backend and terms | The SMT layer owns the term-to-SAT mapping; the SAT backend receives literals and clauses. |
+| {source}`smt::BooleanClausifier <src/smt/clausifier.hpp#L20-L55>` | Boolean abstraction and theory-atom registry; borrowed backend and terms | The SMT layer owns the term-to-SAT mapping; the SAT backend receives literals and clauses. |
 | {source}`core::Model <src/core/model.hpp#L53-L75>` | Copied signature, typed values, and interpretation tables | The completed model can survive destruction of the query frontend; evaluation of terms still needs their live manager. |
 
 {source}`TermManager::intern <src/core/term_manager.cpp#L540-L560>` looks up a
@@ -123,7 +123,7 @@ model construction, and `unknown`/`unsupported` exits.
 In this picture, clauses cross the
 {source}`IpasirUpBackend::add_clause boundary <src/sat/ipasir_up.hpp#L81-L92>`;
 the assignment and lemma arrows stand for interactions mediated by the
-{source}`SMT-owned abstraction and atom registry <src/smt/clausifier.hpp#L20-L57>`.
+{source}`SMT-owned abstraction and atom registry <src/smt/clausifier.hpp#L20-L55>`.
 They do not give the SAT backend access to core terms. A candidate Boolean
 assignment is not yet the typed model returned to the user.
 
@@ -138,36 +138,36 @@ quantifier chapter.
 
 Mixed solving must also establish agreement between components. The production
 `QF_UFLIA` engine enters
-{source}`solve_component_recipe <src/smt/solver_engines.cpp#L10248-L10280>`;
+{source}`solve_component_recipe <src/smt/solver_engines.cpp#L10245-L10277>`;
 component capabilities and model fragments are described by
 {source}`TheoryComponent's interface types <src/theory/theory_component.hpp>`.
 `QF_UFLRA` retains a
-{source}`dedicated engine <src/smt/solver_engines.cpp#L10824-L10844>`.
+{source}`dedicated engine <src/smt/solver_engines.cpp#L10801-L10821>`.
 These routes must not be described as one uniform implementation merely because
 both combine uninterpreted functions with arithmetic.
 
 ## Sessions and result validity
 
 The default is
-{source}`IncrementalMode::Rebuild <src/smt/check_sat.hpp#L242-L249>`.
+{source}`IncrementalMode::Rebuild <src/smt/check_sat.hpp#L219-L226>`.
 Rebuilding solving state does not prevent the user from making repeated queries
 or using scopes. In this mode, replay constructs a frontend from the current
 journal after the previous one has been consumed.
 
 The opt-in assumptions mode retains additional frontend/engine state and is
 admitted only for `QF_UF` and `QF_LRA`. Its
-{source}`option validation <src/smt/smt_session.cpp#L100-L127>` excludes
+{source}`option validation <src/smt/smt_session.cpp#L100-L126>` excludes
 transformations and modes that are unsafe or unsupported in that setting.
 SAT decision-level backtracking and SMT-LIB `push`/`pop` are different lifetimes.
 
-{source}`Scope changes and get-model <src/smt/smt_session.cpp#L290-L332>` show
+{source}`Scope changes and get-model <src/smt/smt_session.cpp#L289-L331>` show
 the user-facing boundary: changing the active context invalidates the last
 answer, and `get-model` requires both model production and a current SAT model.
 An old owning model may still exist in memory without being valid for the
 session's new context.
 
 `unknown`, `unsupported`, and command errors are distinct from `unsat`.
-{source}`CheckSatResult <src/smt/check_sat.hpp#L214-L219>` and
+{source}`CheckSatResult <src/smt/check_sat.hpp#L191-L196>` and
 {source}`CommandResponse <src/smt/smt_session.hpp#L12-L21>` keep those layers
 separate. For requested ground models, the
 {source}`finalization path <src/smt/solver_session.cpp#L650-L674>` optionally

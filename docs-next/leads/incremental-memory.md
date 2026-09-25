@@ -32,7 +32,7 @@ also explicitly makes no memory-reduction claim.
 hash-cons table. {source}`intern <src/core/term_manager.cpp#L540-L560>` appends
 new terms and returns numeric IDs; the manager exposes no individual term-release
 operation. The assumptions-mode
-{source}`pop path <src/smt/smt_session.cpp#L295-L326>` removes active assertions
+{source}`pop path <src/smt/smt_session.cpp#L294-L325>` removes active assertions
 while retaining the frontend and engine. Popping a scope therefore does not
 by itself establish that its term storage has been reclaimed. The existing
 {source}`LRA retention note <docs/assumption-incremental-lra.md>` explicitly
@@ -40,7 +40,7 @@ defers automatic compaction of accumulated terms, atoms, clauses, and retired
 scopes.
 
 {source}`Goal <src/smt/tactic.hpp#L29-L57>` and
-{source}`CheckSatOutcome <src/smt/check_sat.hpp#L233-L240>` already use shared
+{source}`CheckSatOutcome <src/smt/check_sat.hpp#L210-L217>` already use shared
 ownership for some objects. The open question concerns term/context lifetime
 and reclaiming unused storage; it is not whether Primo uses any reference
 counting at all. Define that boundary together with the

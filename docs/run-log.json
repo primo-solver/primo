@@ -3,6 +3,84 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-25-bridge-atoms-removal",
+      "date": "2026-09-25",
+      "recorded_at": "2026-09-25T13:07:49.192638+02:00",
+      "commit": "e6d9fcb06f476375aded43a13c22a6d6b4939144",
+      "kind": "cleanup-correctness-qualification",
+      "decision": "accept removal of the superseded Boolean-domain bridge and selector; registration remains the sole encoding; no performance claim",
+      "scope": "Remove code, option plumbing and bridge-only counters. Preserve registration and semantic tests. Repair the Boolean fuzz model selector discovered during qualification. Clarify premise-versus-clause storage in the DPLL(T) draft.",
+      "metadata": "benchmarks/bridge-atoms-removal-20260925.json",
+      "metadata_sha256": "afcb7e14cc08387b432f7f094a302511fe4b881ce934511444c724cccc9a3abe",
+      "verification": {
+        "build_job": "151436",
+        "normal_job": "151439",
+        "asan_job": "151440",
+        "normal_ctest_groups": 43,
+        "asan_ctest_groups": 43,
+        "normal_ctest_seconds": 12.77,
+        "asan_ctest_seconds": 97.9,
+        "python_tests_final": 194,
+        "python_job": "151449_10",
+        "commands": [
+          "make lint",
+          "ctest --test-dir build-slurm-rel --timeout 300 --output-on-failure",
+          "python3 -m unittest discover -s tests/python",
+          "bash scripts/qualification/shared_assignment/asan.sbatch",
+          "make docs",
+          "make docs-next"
+        ],
+        "static_review": "128 tracked C++ translation units; clang-tidy exits zero with 16 deliberate enum-cast diagnostics and one external CLI11 diagnostic. 408 include-cleaner advisories inspected, including documentation examples; no newly identified unused include or blocking review issue.",
+        "seed_checks": "12 QF_UFLRA seeds plus 2 scale seeds, under arithmetic-online and both-theories-online profiles, all PASS; exact commands in checks.sbatch",
+        "docs": "Strict full builds of both books; source references remapped to e6d9fcb; 83 baseline pages and 1223 HTML IDs preserved; explanation storage illustrated with signed premises; CLI help matches captured output after command-name/whitespace normalization.",
+        "recipe": "scripts/qualification/shared_assignment/checks.sbatch and asan.sbatch; complete GCCcore 11.3 toolchain plus matching C system headers via -idirafter for ASan"
+      },
+      "fuzz_summary": {
+        "boolean_qf_uf": 1000,
+        "mixed_qf_uflra": 1000,
+        "finite_cases": 112,
+        "quantified_uf": 1000,
+        "quantified_profiles": 6,
+        "dolmen_models_pass": 1209,
+        "hard_failures_final": {
+          "wrong_answer": 0,
+          "solver_crash": 0,
+          "parser_or_type_error": 0,
+          "unsupported": 0,
+          "timeout": 0,
+          "invalid_model": 0,
+          "reference_disagreement": 0
+        }
+      },
+      "jobs": {
+        "build": "151436",
+        "normal": "151439",
+        "asan": "151440",
+        "boolean_retry": "151449_10",
+        "quantified": "151442_0..3",
+        "mixed": "151445_4"
+      },
+      "superseded_attempt": {
+        "job": "151441_10",
+        "status": "FAILED; harness defect, corrected in 6f46e32",
+        "answers": {
+          "PASS": 1000
+        },
+        "model_stage": {
+          "pass": 598,
+          "solver_error_after_unsat": 402
+        },
+        "triage": "Every error row is exactly an UNSAT input followed by get-model; each stdout says get-model requires a current SAT model. All SAT models passed. Repaired harness selects only successful SAT rows and requires replay to remain SAT; fresh retry is the accepted gate.",
+        "artifacts": "results/bridge-atoms-removal-20260925/remote/boolean"
+      },
+      "artifacts": "results/bridge-atoms-removal-20260925",
+      "limitations": [
+        "Cleanup preserves the registration traversal and per-term operation byte-for-byte; no performance/default promotion or full-corpus benchmark claim.",
+        "Quantified generation has 564 distinct input hashes across 1000 cases; 6000 Primo answers are reference-confirmed. cvc5 returned unknown on 312 inputs, all decided by Z3. Quantified SAT models were not independently checked.",
+        "Independent model coverage is 598 Boolean QF_UF plus 583 general and 28 finite QF_UFLRA cases; the additional finite QF_UF answer gate does not include model replay."
+      ]
+    },
+    {
       "id": "2026-09-25-shared-assignment-slurm",
       "started_at": "2026-09-25T10:57:31+02:00",
       "recorded_at": "2026-09-25T09:57:28+00:00",

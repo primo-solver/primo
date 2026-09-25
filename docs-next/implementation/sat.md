@@ -9,7 +9,7 @@ The [DPLL(T) chapter](dpllt.md) continues through theory callbacks and the
 checks needed before that SAT answer becomes an SMT answer.
 
 The owning implementation is
-{source}`BooleanClausifier <src/smt/clausifier.hpp#L20-L57>`.
+{source}`BooleanClausifier <src/smt/clausifier.hpp#L20-L55>`.
 The separately named {source}`Abstraction <src/smt/abstraction.hpp>` is an
 empty scaffold; it does not own the working term-to-literal map.
 
@@ -19,7 +19,7 @@ empty scaffold; it does not own the working term-to-literal map.
 | --- | --- | --- |
 | {source}`sat::Lit <src/sat/lit.hpp>` | Signed 32-bit integer: `v` or `-v` for positive variable ID `v` | Contains no term, backend identity, or lifetime guard. Zero is not a clause literal. |
 | {source}`sat::Clause <src/sat/clause.hpp>` | Vector of literals, interpreted as a disjunction | `add_clause` submits it to the backend; an empty clause is false. |
-| {source}`BooleanClausifier::Implementation <src/smt/clausifier.cpp#L587-L601>` | Dense term-indexed literal/registry-index/polarity arrays, atom vector, and Boolean-domain bookkeeping | Owns the maps; borrows one backend and one term manager, which must outlive it. |
+| {source}`BooleanClausifier::Implementation <src/smt/clausifier.cpp#L512-L524>` | Dense term-indexed literal/registry-index/polarity arrays, atom vector, and Boolean-domain bookkeeping | Owns the maps; borrows one backend and one term manager, which must outlive it. |
 | {source}`TheoryAtom <src/smt/clausifier.hpp#L25-L31>` | Literal, `TermId`, syntactic polarity flags, and a both-polarities relevance flag | Entry in an SMT-owned vector; its name does not imply that every entry requires theory reasoning. |
 | {source}`CadicalBackend <src/sat/cadical_backend.hpp>` | CaDiCaL solver, callback adapters, variable accounting, last result, and counters | Owns the solver and adapters; adapters borrow the connected propagator and terminator. |
 
@@ -28,7 +28,7 @@ reuses its literal. Negation can reuse the same variable with the opposite
 sign, so the relationship is not one fresh SAT variable per `TermId`. A SAT
 variable is not a `TermId` and must not be interpreted as one.
 
-{source}`ensure_term_index <src/smt/clausifier.cpp#L543-L549>` grows the dense
+{source}`ensure_term_index <src/smt/clausifier.cpp#L468-L474>` grows the dense
 arrays as new terms appear. Atom registration can grow the atom vector;
 references returned by `ensure_theory_atom` and elements obtained through
 `theory_atoms()` must not be kept across operations that can append entries.
@@ -83,7 +83,7 @@ maps; this operation does not itself search or decide theory consistency.
 
 ### Asserted roots and reusable definitions
 
-{source}`assert_positive <src/smt/clausifier.cpp#L323-L395>` uses an explicit
+{source}`assert_positive <src/smt/clausifier.cpp#L248-L320>` uses an explicit
 worklist with a visited set local to the call:
 
 | Asserted root | Clauses emitted |
@@ -95,21 +95,21 @@ worklist with a visited set local to the call:
 | Other supported roots, or `Or` with `top_level_or_tseitin=true` | Encode the root and assert its literal as a unit clause. |
 
 Primo currently gives nested connectives a literal whose meaning survives use
-under either polarity. {source}`encode <src/smt/clausifier.cpp#L397-L507>` walks the DAG
+under either polarity. {source}`encode <src/smt/clausifier.cpp#L322-L432>` walks the DAG
 iteratively, caches literals, and emits full definitions. Writing `xᵢ` for a
 child literal and `v` for the new output literal, the implemented templates are:
 
 | Definition | Required clauses | Owning operation |
 | --- | --- | --- |
-| `v ↔ And(x₁, …, xₙ)` | `¬v ∨ xᵢ` for each child; `v ∨ ¬x₁ ∨ … ∨ ¬xₙ` | {source}`encode_and <src/smt/clausifier.cpp#L551-L559>` |
-| `v ↔ Or(x₁, …, xₙ)` | `¬xᵢ ∨ v` for each child; `¬v ∨ x₁ ∨ … ∨ xₙ` | {source}`encode_or <src/smt/clausifier.cpp#L561-L569>` |
-| `v ↔ (a → b)` | `a ∨ v`; `¬b ∨ v`; `¬v ∨ ¬a ∨ b` | {source}`encode_implies <src/smt/clausifier.cpp#L571-L575>` |
+| `v ↔ And(x₁, …, xₙ)` | `¬v ∨ xᵢ` for each child; `v ∨ ¬x₁ ∨ … ∨ ¬xₙ` | {source}`encode_and <src/smt/clausifier.cpp#L476-L484>` |
+| `v ↔ Or(x₁, …, xₙ)` | `¬xᵢ ∨ v` for each child; `¬v ∨ x₁ ∨ … ∨ xₙ` | {source}`encode_or <src/smt/clausifier.cpp#L486-L494>` |
+| `v ↔ (a → b)` | `a ∨ v`; `¬b ∨ v`; `¬v ∨ ¬a ∨ b` | {source}`encode_implies <src/smt/clausifier.cpp#L496-L500>` |
 
 `Not(t)` uses `-lit(t)` without a new definition. When an encoded constant
-needs a literal, {source}`true_lit <src/smt/clausifier.cpp#L533-L539>` creates a
+needs a literal, {source}`true_lit <src/smt/clausifier.cpp#L458-L464>` creates a
 shared unit-constrained variable; false uses its negation.
 
-The {source}`option defaults <src/smt/check_sat.hpp#L446-L447>` select direct
+The {source}`option defaults <src/smt/check_sat.hpp#L422-L423>` select direct
 root-OR clauses, but a
 {source}`formula-shape policy <src/smt/formula_analysis.cpp#L142-L152>` can
 enable root-OR definitions for a selected goal. The worked example below fixes
@@ -145,13 +145,13 @@ root-polarity prototype did not evaluate general PG conversion.
 
 ### Atom registry and polarity
 
-{source}`theory_atom_for_term <src/smt/clausifier.cpp#L311-L321>` reuses an
+{source}`theory_atom_for_term <src/smt/clausifier.cpp#L236-L246>` reuses an
 existing term/literal association or appends a registry entry. Boolean
 constants and predicates are registered as well as equality and arithmetic
 atoms. Quantified roots are opaque atoms for their separate solver route;
 their bodies are not traversed as ordinary ground Boolean structure.
 
-{source}`collect_theory_atom_polarities <src/smt/clausifier.cpp#L233-L309>`
+{source}`collect_theory_atom_polarities <src/smt/clausifier.cpp#L158-L234>`
 tracks positive/negative occurrence through connectives: `Not` reverses the
 sign and an implication reverses it for the antecedent. These flags describe
 syntax, not the current SAT assignment. They accumulate in the retained
@@ -167,11 +167,11 @@ a theory lemma.
 Boolean arguments to uninterpreted functions need additional care: Bool has
 two values, so a propositional assignment must agree with the EUF value of an
 argument. Boolean-argument registration
-{source}`marks the relevant Boolean constants <src/smt/clausifier.cpp#L140-L194>`
+{source}`marks the relevant Boolean constants <src/smt/clausifier.cpp#L104-L156>`
 for both-polarity theory relevance. This reuses their existing literal when
 present; an argument not previously encoded still needs its first SAT variable.
 Registration adds no equality atoms or linking clauses. The shared
-{source}`register_euf_boolean_arguments <src/smt/solver_engines.cpp>` entry point
+{source}`register_euf_boolean_arguments <src/smt/solver_engines.cpp#L12570-L12577>` entry point
 completes this preparation for ground and quantified EUF recipes; its EUF
 reasoning is separate chapter work.
 
@@ -224,10 +224,10 @@ literal safe to reuse under either polarity; a one-way implication alone
 would not guarantee that equivalence.
 
 The opt-in assumptions engines implement scopes on top of this SAT interface.
-For example, {source}`IncrementalUfEngine <src/smt/solver_engines.cpp#L12216-L12258>`
+For example, {source}`IncrementalUfEngine <src/smt/solver_engines.cpp#L12183-L12225>`
 creates a selector when a scope first gains an assertion and permanently adds
 `¬s` when that scope is popped. Its
-{source}`query loop <src/smt/solver_engines.cpp#L12299-L12325>` resubmits active
+{source}`query loop <src/smt/solver_engines.cpp#L12266-L12292>` resubmits active
 selectors on every solve, including theory-refinement retries. No clause or
 term deletion follows from this scheme. Default rebuild sessions have a
 different owner lifetime, as explained in the [architecture chapter](architecture.md).
@@ -332,7 +332,7 @@ the full mechanisms or results of the cited papers.
 | Obligation | Implemented owner and verification |
 | --- | --- |
 | Definitions preserve Boolean meaning and sharing with linear clause output | `BooleanClausifier` caches, worklists, and templates above; the worked truth table and {source}`reconvergent DAG regression <tests/unit/boolean_solver_tests.cpp#L825-L847>`. |
-| Popped roots cease constraining the problem while definitions remain valid | Guarded-root construction and selectors; {source}`UF scope tests <tests/unit/smt_session_tests.cpp#L61-L122>` and {source}`LRA scope tests <tests/unit/smt_session_tests.cpp#L277-L325>`. |
+| Popped roots cease constraining the problem while definitions remain valid | Guarded-root construction and selectors; {source}`UF scope tests <tests/unit/smt_session_tests.cpp#L61-L122>` and {source}`LRA scope tests <tests/unit/smt_session_tests.cpp#L275-L323>`. |
 | Bool-valued arguments have only their two semantic values | Boolean-argument registration contract; {source}`Boolean-domain regressions <tests/unit/boolean_solver_tests.cpp#L2875-L2931>`. |
 | Trail changes, reason lifetime, cancellation, and fresh observation respect the backend protocol | {source}`backend regressions <tests/unit/sat_backend_tests.cpp>` and {source}`component explanation tests <tests/unit/component_combination_tests.cpp>`. Callback costs depend on the chosen theory; the interface promises no constant-time theory operation. |
 

@@ -77,12 +77,12 @@ from ordinary PG and from Primo's earlier root-only experiment.
 
 | Mechanism | Primo owner and status |
 | --- | --- |
-| Cached term-to-literal association | {source}`BooleanClausifier::encode <src/smt/clausifier.cpp#L397-L507>` skips a term once its literal exists. **Implemented**, assuming its full definition is already available. |
-| Both directions for nested connectives | {source}`encode_and/or/implies <src/smt/clausifier.cpp#L551-L575>`. **Implemented** ordinary definitional templates. |
-| Atom occurrence signs | {source}`collect_theory_atom_polarities <src/smt/clausifier.cpp#L233-L309>`. **Implemented** metadata for theory policies; not a record of emitted definition directions. |
-| Positive-root shortcuts | {source}`assert_positive <src/smt/clausifier.cpp#L323-L395>`. **Implemented** root rules, without general PG conversion. |
+| Cached term-to-literal association | {source}`BooleanClausifier::encode <src/smt/clausifier.cpp#L322-L432>` skips a term once its literal exists. **Implemented**, assuming its full definition is already available. |
+| Both directions for nested connectives | {source}`encode_and/or/implies <src/smt/clausifier.cpp#L476-L500>`. **Implemented** ordinary definitional templates. |
+| Atom occurrence signs | {source}`collect_theory_atom_polarities <src/smt/clausifier.cpp#L158-L234>`. **Implemented** metadata for theory policies; not a record of emitted definition directions. |
+| Positive-root shortcuts | {source}`assert_positive <src/smt/clausifier.cpp#L248-L320>`. **Implemented** root rules, without general PG conversion. |
 | Required-value root worklist | {source}`historical prototype <docs/root-polarity-clausification.md>`. **Not adopted**; it retained full nested definitions, so its rejection is not an evaluation of general PG. |
-| Directional definition tracking | **Open lead**; the current {source}`term-indexed state <src/smt/clausifier.cpp#L587-L601>` has no emitted-direction mask. |
+| Directional definition tracking | **Open lead**; the current {source}`term-indexed state <src/smt/clausifier.cpp#L512-L524>` has no emitted-direction mask. |
 
 The clausifier owns the maps and borrows the term manager/backend. A future
 direction mask belongs to this same lifetime, indexed by `TermId`; it is not
@@ -108,7 +108,7 @@ not a claim that either paper supplies Primo's incremental integration.
 3. Preserve exact semantic values wherever the SMT layer needs them. A
    Boolean expression passed as an uninterpreted-function argument cannot
    silently acquire the value of an inexact directional proxy. Audit
-   {source}`Boolean argument registration/bridges <src/smt/clausifier.cpp#L140-L231>`,
+   {source}`Boolean argument registration <src/smt/clausifier.cpp#L104-L156>`,
    model reconstruction, and externally reused literals; require full
    definitions at such boundaries or prove a separate reconstruction rule.
    SAT observation alone does not confer Boolean equivalence.

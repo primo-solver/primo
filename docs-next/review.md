@@ -536,3 +536,32 @@ declared-logic validation. Default mixed search counters can change; two
 profiles narrowly exceed the strict 1% common-runtime threshold. No performance
 promotion is claimed. Both books pin source links to `45e25a6`;
 shifted ranges were mapped and changed spans reviewed against the owning code.
+
+
+## Boolean-domain cleanup and explanation wording
+
+The completed A/B comparison no longer needs a selectable bridge encoding.
+`e6d9fcb` removes that encoding, its option and its counters. The registration
+traversal and per-term operation are unchanged; generated-term, polarity,
+congruence and preparation-idempotence tests remain. Both books now pin their
+source links to this cleanup revision, with shifted ranges checked against the
+diff. Historical comparison results remain tied to their original revisions.
+
+The DPLL(T) explanation section now uses `a ∧ ¬b ⇒ q`, whose SAT clause is
+`¬a ∨ b ∨ q`. Its table distinguishes storing the premises `[a, ¬b]` from
+storing the other clause literals `[¬a, b]`, and states where negation occurs.
+
+The run-log entry `2026-09-25-bridge-atoms-removal` records the SLURM build,
+43 normal and 43 ASan CTest groups, 194 Python tests, 1,000 Boolean QF_UF cases,
+1,000 mixed cases plus 112 finite cases, and 1,000 quantified cases across six
+profiles. The quantified generator produced 564 distinct inputs; every Primo
+answer was reference-confirmed. All 1,209 independently checked SAT models
+passed Dolmen. This is targeted cleanup qualification, not a full-corpus or
+performance evaluation. Quantified models were not independently validated.
+
+The first Boolean model gate mistakenly requested models for UNSAT inputs.
+`6f46e32` fixes its selection and adds mocked regressions. The failed attempt
+is preserved separately; the repaired gate passed on a fresh run. Whole-tree
+static analysis covers 128 C++ translation units, with 17 expected analyzer
+diagnostics and no blocking code-review finding. No page acceptance is implied
+by these checks; reader review remains pending.

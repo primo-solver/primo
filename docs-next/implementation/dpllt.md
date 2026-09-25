@@ -17,7 +17,7 @@ chapters.
 
 An engine receives assertion `TermId`s, options, model-conversion records, and
 a live term manager. Its result is a {source}`CheckSatOutcome
-<src/smt/check_sat.hpp#L233-L240>`, not a raw SAT assignment. The
+<src/smt/check_sat.hpp#L210-L217>`, not a raw SAT assignment. The
 [architecture chapter](architecture.md) places engine selection and result
 adaptation around this boundary.
 
@@ -25,7 +25,7 @@ adaptation around this boundary.
 | --- | --- |
 | SAT trail and clause database | CaDiCaL behind {source}`CadicalBackend <src/sat/cadical_backend.hpp>`. Neither SAT literals nor the backend contain core terms. |
 | Primo's observed assignment | {source}`AssignmentCoordinator <src/smt/assignment_coordinator.hpp>` is the sole writer of {source}`sat::Trail <src/sat/trail.hpp>`. Consumers read {source}`sat::TrailView <src/sat/trail_view.hpp>`; truth comes from the trail's variable-to-position index. |
-| Meaning of SAT variables | {source}`BooleanClausifier <src/smt/clausifier.hpp#L20-L57>` owns the atom registry and term-to-literal map, borrowing the backend and term manager. |
+| Meaning of SAT variables | {source}`BooleanClausifier <src/smt/clausifier.hpp#L20-L55>` owns the atom registry and term-to-literal map, borrowing the backend and term manager. |
 | Dedicated EUF callback state | {source}`OnlineEufPropagator <src/smt/solver_engines.cpp#L1634-L1673>` borrows the atom vector, terms, options, and statistics; owns atom-index metadata, candidate queues, reasons, and optional incremental closure state; reads the shared assignment view. |
 | Dedicated arithmetic callback state | {source}`OnlineLraPropagator <src/smt/solver_engines.cpp#L6972-L7011>` owns a mutable tableau copied from prepared structural state, kernel checkpoints, queues, and reasons; reads the shared assignment view and borrows the prepared data, atom vector, backend, and statistics. |
 | Component routing | {source}`ComponentDispatcher <src/smt/component_dispatcher.hpp#L23-L75>` owns variable routes, temporary assignment deltas, stream cursors, and explanation clauses; it borrows component pointers. |
@@ -119,7 +119,7 @@ Tseytin variables that only encode Boolean connectives stay inside CaDiCaL.
 Generated Boolean terms used as function arguments are different. For example,
 with `f : Bool → U`, the frontend rewrites `f(and p q)` to `f(b)` and defines
 the fresh Boolean term `b` by `b ↔ (p ∧ q)`. The
-{source}`Boolean-argument registration <src/smt/clausifier.cpp#L140-L194>` observes
+{source}`Boolean-argument registration <src/smt/clausifier.cpp#L104-L156>` observes
 the variable for `b`. Its assignment tells EUF to merge `b` with `true` or
 `false`, with the assigned literal as the reason; this creates no separate SAT
 variable for that equality. A generated term used by EUF therefore has a
@@ -173,18 +173,23 @@ premises. A model preference such as “these two terms happen to have equal
 values” is not an entailed equality. Such choices need assumptions or an
 explained case split, not unconditional propagation.
 
-In the component API, `TheoryCheckResult::reasons` contains **true antecedents**.
-{source}`implication_clause <src/smt/component_dispatcher.cpp#L18-L24>` negates
-them when building a SAT clause. Dedicated propagators instead retain clause
-tails already carrying the required signs. Confusing the two conventions
-would reverse the meaning of an explanation.
+For example, if `a ∧ ¬b` implies `q`, the reason sent to SAT is
+`¬a ∨ b ∨ q`. The two APIs store this explanation differently:
+
+| API | Stored literals | Conversion to the SAT reason |
+| --- | --- | --- |
+| Component API: `TheoryCheckResult::reasons` | `[a, ¬b]`, the premises that hold | {source}`implication_clause <src/smt/component_dispatcher.cpp#L18-L24>` negates the premises and adds `q`. |
+| Dedicated EUF/LRA propagators | `[¬a, b]`, the other literals of the reason clause | The reason callback adds `q` and returns the stored literals unchanged. |
+
+The premises must be negated exactly once. Negating the dedicated propagator's
+stored `[¬a, b]` again would incorrectly produce `a ∨ ¬b ∨ q`.
 
 {source}`EUF reason storage <src/smt/solver_engines.cpp#L2170-L2209>` checks
 that a candidate reason contains its conclusion exactly once and that its
 other literals are currently false and observed. This is a shape/trail check,
 not an independent proof of theory validity. The
 {source}`reason callback <src/smt/solver_engines.cpp#L1863-L1890>` streams the
-conclusion and clause tail, ending with zero. The component route similarly
+propagated literal followed by the other clause literals, ending with zero. The component route similarly
 {source}`stores a reason before returning a propagation
 <src/smt/component_dispatcher.cpp#L203-L238>`.
 
@@ -220,7 +225,7 @@ timing or a global termination proof.
 ## Lazy and online routes
 
 The EUF engine choice and propagation schedule are separate options. The
-{source}`defaults <src/smt/check_sat.hpp#L243-L250>` select incremental EUF with
+{source}`defaults <src/smt/check_sat.hpp#L220-L226>` select incremental EUF with
 automatic scheduling; {source}`mode resolution
 <src/smt/solver_engines.cpp#L484-L553>` chooses a schedule for the goal.
 Use the actual {source}`CLI names <src/main.cpp#L630-L634>`:
@@ -236,7 +241,7 @@ Use the actual {source}`CLI names <src/main.cpp#L630-L634>`:
 | Online component recipe | Route assignments and partial checks through `ComponentDispatcher` | Inspect pending lemmas/failures, then perform full component checks and shared-model reconciliation. |
 
 The owning loops are {source}`solve_qf_uf_engine_impl
-<src/smt/solver_engines.cpp#L10401-L10616>`,
+<src/smt/solver_engines.cpp#L10381-L10593>`,
 {source}`solve_qf_lra_impl <src/smt/solver_engines.cpp#L8183-L8310>`, and
 {source}`solve_component_recipe <src/smt/component_solver.cpp#L70-L473>`.
 “Lazy” above describes when the theory check runs; it does not describe lazy
@@ -265,7 +270,7 @@ theory, combination, and result-construction obligations.
   then requests `FullModel` checks and verifies the selected arrangement/
   model-projection contract. Local consistency of each theory alone is
   insufficient.
-- **Other logics:** {source}`QF_UFLRA <src/smt/solver_engines.cpp#L10824-L10850>`
+- **Other logics:** {source}`QF_UFLRA <src/smt/solver_engines.cpp#L10801-L10827>`
   retains a dedicated combination driver. Integer search adds integrality and
   resource-limit obligations; quantified UF adds instantiation/completion
   obligations. Neither is explained by the ground-EUF example below.

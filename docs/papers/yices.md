@@ -80,9 +80,9 @@ a candidate. Backtracking clears queued work and the pending external clause;
 the candidate catalogue belongs to that propagator. These occurrence lists
 are SMT-side scheduling data, not CaDiCaL's two watched literals.
 
-The {source}`option defaults <src/smt/check_sat.hpp#L256-L266>` keep the
+The {source}`option defaults <src/smt/check_sat.hpp#L232-L242>` keep the
 experimental modes off. The {source}`assumptions-mode admission check
-<src/smt/smt_session.cpp#L101-L113>` rejects both shadow and disequality
+<src/smt/smt_session.cpp#L101-L112>` rejects both shadow and disequality
 Ackermann modes. Existing tests cover unary propagation, conflict delivery,
 skipping a missing argument atom, and the n-ary disjunction invariant:
 {source}`Ackermann regressions <tests/unit/boolean_solver_tests.cpp#L2276-L2389>`.
