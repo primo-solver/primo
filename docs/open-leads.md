@@ -14,7 +14,7 @@ Keep stable lead labels and evidence links when a lead changes state.
 - **Shared SMT assignment bookkeeping (implemented):** the all-route migration is
   recorded in [](current-status.md#shared-assignment-ownership), with its
   protocol and acceptance checklist in
-  [](dpllt.md#shared-assignment-protocol-implementation-underway).
+  [](dpllt.md#shared-assignment-protocol).
   `sat::Trail`, `sat::TrailView`, and `smt::AssignmentCoordinator` now implement
   and test the shared protocol. Production consumers are migrated; fresh
   cross-route gates and a bounded baseline comparison are recorded in the run log.

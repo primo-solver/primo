@@ -4,6 +4,8 @@
   "entries": [
     {
       "id": "2026-09-25-shared-assignment-slurm",
+      "started_at": "2026-09-25T10:57:31+02:00",
+      "recorded_at": "2026-09-25T09:54:06+00:00",
       "date": "2026-09-25",
       "commit": "e4abefb9f19202c47458547fd37b67c8c858fea8",
       "kind": "correctness-and-migration-comparison",
@@ -41,6 +43,10 @@
         "policy": "All accepted solver batches ran through SLURM. Earlier stopped local run remains preliminary only."
       },
       "verification": {
+        "final_solver_build": "b26b8b5; job 151403; unchanged C++ sources",
+        "final_repaired_mixed_gate": "job 151405 tasks 4/5: 1000 general plus 56 finite QF_UF and 56 finite QF_UFLRA per profile; all answers and selected SAT model replays pass",
+        "final_gate_artifacts": "results/shared-assignment-20260925/remote/fuzz-results/shared-assignment-final-b26b8b5",
+        "docs_retry": "151404 caught three stale heading links after the status heading changed; repaired before final rendering",
         "normal_job": "151323",
         "ctest": 43,
         "python": 190,

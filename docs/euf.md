@@ -14,7 +14,7 @@ rollback. See [the regression and its limits](#callback-assignment-rollback).
 registration, candidate queues, reasons, and its optional incremental closure.
 `AssignmentCoordinator` owns observed literals and decision boundaries;
 `IncrementalFlatAssignmentState` owns only closure checkpoints and kernel state.
-The [shared protocol](dpllt.md#shared-assignment-protocol-implementation-underway)
+The [shared protocol](dpllt.md#shared-assignment-protocol)
 preserves root and retained-level assignments, reports exact removed literals,
 and rejects opposite assignments without rollback. The kernel still receives
 every decision notification, including levels without an observed atom.
