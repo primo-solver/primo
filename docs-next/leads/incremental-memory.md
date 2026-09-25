@@ -46,6 +46,34 @@ and reclaiming unused storage; it is not whether Primo uses any reference
 counting at all. Define that boundary together with the
 [library API](library-api.md).
 
+## Lifetime of flattened EUF terms
+
+Reference counting for core terms would also require a policy for the
+[flattened EUF representation](../implementation/euf.md#representation-and-ownership).
+{source}`FlatTermIndex <src/theory/equality/flat_terms.hpp>` stores core `TermId`s
+in its maps and original-term fields, alongside separately allocated flat nodes
+and definitions. {source}`PreparedFlatTheory <src/smt/solver_engines.cpp#L893-L913>`
+retains this structure, and working closures can copy it. Reclaiming a core
+term would not automatically reclaim its flattened representation.
+
+The ownership design must answer:
+
+- Should the core-to-flat maps and original-term fields keep core terms alive,
+  or be non-owning references that must be invalidated before reclamation?
+  Retaining every mapped term could defeat the intended memory saving.
+- What keeps a flat node alive? Shared curried prefixes, definitions, prepared
+  and working closures, atom mappings, explanations, and undo records must all
+  be considered. Dropping the last caller handle to a core term is insufficient
+  grounds to delete a flat node still used by theory state.
+- Should flat nodes have their own reference counts, use another collection
+  policy, or be reclaimed by rebuilding the index and dependent state at safe
+  boundaries? Any reuse or remapping of `FlatTermId`s must preserve live
+  references, including those in retained SAT/theory mappings.
+
+Measure core and flattened storage separately during repeated scope creation
+and retirement, including prepared structures and working copies. This is part
+of the reclamation investigation; no ownership or collection policy is selected.
+
 ## Reference counting precedent and GC risks
 
 Z3 and cvc5 provide relevant reference-counting precedents:

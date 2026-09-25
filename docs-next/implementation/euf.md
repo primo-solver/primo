@@ -228,8 +228,10 @@ invalidated by an ordinary pop.
 
 Retaining SAT state across SMT-LIB queries does not retain the preceding
 query's mutable equality facts. The assumptions engine reuses prepared
-structure and creates a working closure for the current query. Term storage
-reclamation is a separate [open lead](../leads/incremental-memory.md).
+structure and creates a working closure for the current query. The
+[incremental-memory lead](../leads/incremental-memory.md#lifetime-of-flattened-euf-terms)
+also asks how a reference-counting design would manage flat nodes, their core
+term references, and dependent theory state.
 
 ## Boolean arguments and propagation
 

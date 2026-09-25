@@ -67,7 +67,9 @@ Keep stable lead labels and evidence links when a lead changes state.
   measurements; reproduce them and attribute retained storage before choosing
   reference counting or another policy. The lead links Z3/cvc5 reference-counting
   precedents and records incremental GC's root-tracking, lifetime, and pause
-  risks. Status: open; owner unassigned; investigation not started.
+  risks. It also asks how to reclaim flattened EUF nodes and their dependent
+  state, and whether their core-term references should keep terms alive.
+  Status: open; owner unassigned; investigation not started.
 - **Compact term storage and future payloads:** `docs-next/leads/term-storage.md`
   records the union/variant question, duplicated interning data, and how new
   leaf payloads could enlarge every node or complicate ownership. The local
