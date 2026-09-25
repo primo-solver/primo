@@ -93,6 +93,7 @@ parts:
           - file: papers/summaries
           - file: papers/lra-related-work
       - file: papers/ipasir-up
+      - file: papers/primo-qflra-results
       - file: papers/yices
       - file: papers/clause-forgetting
       - file: papers/polarity-aware-cnf

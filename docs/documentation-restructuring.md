@@ -23,11 +23,18 @@ ledger. Local verification and user acceptance are separate states; none of
 these pages is accepted yet. The destination paths in the inventory remain
 relative to the final `docs/` tree, with `docs-next/` used during preparation.
 
-The next component draft is now `docs-next/implementation/core.md`, covering
+The core draft in `docs-next/implementation/core.md` covers
 representation and ownership with function/test links and a compiled example.
 Library embedding and incremental memory are separate open-work pages. Their
 investigations remain pending; documenting the current core does not choose a
 new public API or reclamation design.
+
+**Next chapter, 2026-09-25:** DPLL(T) and EUF drafts are now available for
+reader review. LRA is next, including the King, Griggio and Bromberger PhD
+theses. The source audit is blocked on readable copies of the latter two;
+`docs-next/review.md` records the failed URLs and remaining chapter scope.
+The shared [](papers/primo-qflra-results.md) note links the published evaluation
+separately; its exact revision/artifact mapping remains open work.
 
 The compact-term-storage lead separately records union/variant layout probes,
 duplicated interning data, and future leaf-payload constraints. The current

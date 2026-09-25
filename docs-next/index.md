@@ -65,6 +65,10 @@ undergo page review for this draft.
 The [Yices literature survey](papers/yices.md) connects three papers/talks to
 the code and distinguishes implemented mechanisms from ideas for investigation.
 
+[Reported QF_LRA results](papers/primo-qflra-results.md) links Primo's September
+2026 paper and its benchmark tables. Published configurations and results are
+kept separate from current defaults and qualification evidence.
+
 A documentation build or a successful example does not certify solver
 correctness across a benchmark corpus.
 

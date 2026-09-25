@@ -1,5 +1,12 @@
 # Literature
 
+## Primo's published QF_LRA results
+
+[](papers/primo-qflra-results.md) records Janota and Jakubův's September 2026
+paper, its measured configurations and the scope of its benchmark comparisons.
+It separates published results from current defaults and records the remaining
+work to connect the paper's tables to repository artifacts.
+
 ## Yices architecture and theory-lemma reuse
 
 [](papers/yices.md) covers all three local Yices sources: Dutertre and de

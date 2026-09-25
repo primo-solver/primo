@@ -125,9 +125,13 @@ Branch: `docs/public-repository-migration`.
 - **Next:** correct the audit's stale status claims and reconcile fuzz-gate
   wording as material is rewritten. The user has chosen a separate `docs-next/`
   preview for page-by-page review; the home page, contributor correctness
-  guide, architecture overview, core and SAT chapters, and review ledger await
-  review. Review those pages before accepting them; DPLL(T) and theory
-  interaction are the next proposed component target.
+  guide, architecture overview, core, SAT, DPLL(T) and EUF chapters await
+  reader acceptance. LRA is the next chapter. Its primary-source audit is
+  blocked on readable copies of the Griggio and Bromberger theses; the exact
+  access failures and planned scope are recorded in `docs-next/review.md`.
+  The shared [](papers/primo-qflra-results.md) note now links the published
+  QF_LRA evaluation. Matching its tables to exact revisions and raw artifacts
+  remains open work; it is not fresh solver qualification.
   Source links point to owning types/functions and regression tests at the
   documented revision. The old book remains available; historical evidence
   and targets must survive eventual replacement.

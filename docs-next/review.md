@@ -597,3 +597,45 @@ captured pages and 1,223 anchors remain available.
 The documentation self-review found no remaining blocking discrepancy in this
 chapter. Reader review of the explanation, depth, and chapter boundaries
 remains pending; the checks do not mark the page accepted.
+
+## QF_LRA publication and next chapter
+
+On 2026-09-25, the PDF of Janota and Jakubův's
+[results paper](papers/primo-qflra-results.md), arXiv:2609.16706v1, was read.
+The shared note records selected rows of Tables 1–2, the Figure 3 configuration,
+resource limits and reference versions. Current option defaults were checked
+in `CheckSatOptions`. The paper's aggregate results still need a verified
+mapping to exact Primo revisions and raw experiment records; no solver runs
+or new qualification claims were made. The maintained note lives in
+`docs/papers/primo-qflra-results.md`; the draft includes it, following the
+same relocation rule as the other shared notes at book cutover.
+
+Both strict book builds pass. All 18 draft pages have navigation, review and
+support entries; 3,679 local HTML links/assets resolve, and the old book's
+83 captured pages and 1,223 anchors remain available. The two books render
+identical publication-note content. Source-link paths and line ranges resolve
+against the shared pin. These editorial checks do not constitute acceptance
+of the performance claims or completion of the LRA chapter.
+
+The next implementation chapter remains **linear real arithmetic**. Its
+planned scope is polynomial/atom preparation, exact and strict arithmetic,
+sparse tableau ownership, simplex repair, conflict explanations, rollback,
+propagation and model extraction, with current defaults separated from
+optional modes. A worked contradiction will use `x + y <= 2`, `x >= 2`,
+and `y > 0`. The chapter must link owning operations and regression tests.
+
+The literature audit must retain all three arithmetic PhD theses:
+
+| Thesis | Planned reading for this chapter | Access in this audit |
+|---|---|---|
+| Tim King, *Effective Algorithms for the Satisfiability of Quantifier-Free Formulas Over Linear Real and Integer Arithmetic*, NYU, 2014 | §2.2.7 representation; §2.2.12 heuristic termination; Chapter 3 for the optional sum-of-infeasibilities mode | [Primary PDF](https://cs.nyu.edu/media/publications/king_tim.pdf) retrieved; §§2.2.7 and 2.2.12 read; Chapter 3 review remains |
+| Alberto Griggio, *An Effective SMT Engine for Formal Verification*, Trento, 2009 | §2.5, especially §2.5.3; recheck existing heuristic comparisons | [University PDF](https://iris.unitn.it/retrieve/b99837a1-89d9-4e52-8ac1-0e3a2eb32d9d/thesis.pdf) returns HTTP 403; [older author-linked PDF](https://eprints-phd.biblio.unitn.it/166/2/thesis.pdf) times out |
+| Martin Bromberger, *Decision Procedures for Linear Arithmetic*, Saarland, 2019 | §§7.1 and 8.1; distinguish complete-equality work in Chapter 5 from Primo's implemented subset | [University PDF](https://publikationen.sulb.uni-saarland.de/bitstream/20.500.11880/28955/1/thesis_bromberger_v20200224.pdf) returns HTTP 403; HAL serves a bot challenge |
+
+The Griggio and Bromberger PDFs named in the existing notes are absent from
+this checkout. Those notes preserve earlier reading history; they are not a
+fresh primary-source review. Under the repository's paper-grounding rule,
+the dependent chapter work is blocked until readable copies are available.
+Dutertre–de Moura's technical report and the results paper were retrieved;
+neither substitutes for the missing theses. No LRA chapter is marked drafted
+or verified by this update.
