@@ -126,9 +126,15 @@ Branch: `docs/public-repository-migration`.
   wording as material is rewritten. The user has chosen a separate `docs-next/`
   preview for page-by-page review; the home page, contributor correctness
   guide, architecture overview, core, SAT, DPLL(T) and EUF chapters await
-  reader acceptance. LRA is the next chapter. Its primary-source audit is
-  blocked on readable copies of the Griggio and Bromberger theses; the exact
-  access failures and planned scope are recorded in `docs-next/review.md`.
+  reader acceptance. The LRA chapter is now drafted after the user supplied
+  primary PDFs in `external/papers/`. It preserves the substantial arithmetic
+  implementation and engineering history: code/test links explain current
+  mechanisms, while an inventory retains detailed experiments and rejected
+  approaches. King, Griggio, Bromberger, Monniaux and the CAV 2024 arithmetic
+  paper are mapped to the implementation; Brummayer's thesis is added to the
+  correctness guide. Section-level reading and verification are recorded in
+  `docs-next/review.md`. Reader acceptance and full historical extraction remain
+  pending; integer arithmetic and theory combination need their own chapters.
   The shared [](papers/primo-qflra-results.md) note now links the published
   QF_LRA evaluation. Matching its tables to exact revisions and raw artifacts
   remains open work; it is not fresh solver qualification.

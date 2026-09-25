@@ -186,10 +186,12 @@ that reduction order matters when reductions are interdependent.
 ## King, "Effective Algorithms for the Satisfiability of Quantifier-Free Formulas Over Linear Real and Integer Arithmetic" (NYU, 2014)
 
 > Tim King. PhD thesis, New York University, 2014. Local copy
-> `docs/papers/king_tim.pdf` (untracked).
+> `external/papers/king_tim.pdf` (untracked).
 > **Read 2026-08-06**: Section 2.2.7 (Tableau) in full, including 2.2.7.1 Row
-> Addition, its Figures 2.9 and 2.10, and 2.2.7.3 Complexity. The rest is
-> cited elsewhere in this project from summaries only.
+> Addition, its Figures 2.9 and 2.10, and 2.2.7.3 Complexity.
+> **Source refresh 2026-09-25:** §§2.2.7, 2.2.12 and 3.2–3.3 read from the
+> supplied thesis for the replacement LRA chapter. This is not a claim that
+> the entire thesis has been reviewed.
 
 ### Section 2.2.7 -- the tableau representation
 
@@ -203,8 +205,8 @@ time proportional to its number of non-zeros.
 King states three constant-time operations explicitly: maintaining each row's
 and column's non-zero count; adding an entry known to be currently zero; and
 **setting an entry to zero by unlinking it, "given a pointer to the entry"**.
-That last clause is the whole point of the structure and the thing Primo
-currently lacks.
+That last clause matters when comparing complexity: Primo's indexed-column
+removal still needs a binary search to repair a moved occurrence's row entry.
 
 **The detail that matters most when comparing to Primo, and is easy to miss:**
 
@@ -222,7 +224,8 @@ unsorted, King cannot merge them; instead he loads row `k` into a **temporary
 dense partial map** of O(n) entries, then walks row `i`'s non-zeros looking
 each up. Cost is O(||Ti||s + ||Tk||s). Crucially, when the sum becomes zero
 the algorithm already holds the entry (via the map) and unlinks it in O(1) --
-which is exactly the removal Primo currently performs with a linear scan.
+Primo now uses swap-pop column removal with a row-entry backlink repair,
+rather than the historical linear column scan.
 
 Pivot (Fig. 2.10) is then one row addition to build the new row, followed by a
 row addition for every `k` with `Tk,j != 0` -- iterating the column list.
@@ -236,15 +239,16 @@ the version to implement.
 
 | | King | Primo today |
 |---|---|---|
-| row storage | unsorted doubly linked list | sorted contiguous `vector<pair>` |
+| row storage | unsorted doubly linked list | sorted contiguous `vector<RowEntry>` |
 | row addition | dense scratch map | two-way merge (item H8) |
-| entry removal | **O(1) unlink, pointer in hand** | **linear scan of the column list** |
+| entry removal | **O(1) unlink, pointer in hand** | swap-pop in the column; O(log row length) lookup to repair the moved entry's `occ_slot` |
 | column size | maintained O(1) | `occurs_in_[var].size()` |
 
-Both reach O(||Ti|| + ||Tk||) row addition. King pays an O(n) scratch map and
-loses contiguity; Primo pays sortedness maintenance and gets cache-friendly
-merges -- and then pays for removal, because without cross-links it cannot
-unlink an entry it is already holding.
+Both have a linear coefficient-combination pass. Primo additionally pays for
+occurrence repairs; this must be included when comparing the complete row
+operation. King uses an O(n) scratch map, while Primo merges sorted vectors.
+The current representation and reverse-link invariant are described in
+[](../arithmetic.md#tableau-sparse-row-and-occurrence-representation).
 
 ### Also read
 

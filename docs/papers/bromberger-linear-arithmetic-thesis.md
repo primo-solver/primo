@@ -11,10 +11,15 @@ Sturm, Christoph Weidenbach. 342 pages.
 HAL id `tel-02427371`, <https://inria.hal.science/tel-02427371v1> (link checked
 2026-08-29, HTTP 200).
 
-Local copy: `docs/papers/Bromberger_Decision_Procedures_for_Linear_Arithmetic.pdf`
+Local copy: `external/papers/Bromberger_Decision_Procedures_for_Linear_Arithmetic.pdf`
 -- **untracked**, per the standing practice that reference papers are read
 locally and never committed (`.gitignore` excludes `*.pdf`). This note is
 original prose written for Primo, not a reproduction of the thesis.
+
+**Source refresh, 2026-09-25:** the user supplied this copy for the documentation
+rewrite, resolving the failed online retrieval. Sections 7.1.3–7.1.4 were
+reread for rollback and representation; §7.1.1 and §8.1.1 were consulted for
+context. The full earlier reading scope below remains a historical record.
 
 **Read 2026-08-29**: §1.3--1.5 (unboundedness, contributions); Chapter 4
 (§4.2--4.6) in full; Chapter 5 (§5.2--5.7) in full including the `EqBasis`,
@@ -30,7 +35,7 @@ the detailed Mixed-Echelon-Hermite algorithms in §6.2/§6.4 (Figures 6.4--6.10)
 Simon Schwarz, Christoph Weidenbach. *SPASS-SATT: A CDCL(LA) Solver.* CADE 2019,
 LNAI 11716, 111--122. DOI
 [10.1007/978-3-030-29436-6_7](https://doi.org/10.1007/978-3-030-29436-6_7).
-Local copy `docs/papers/SPASS-SATT.pdf`, supplied by the user -- **untracked**,
+Local copy `external/papers/SPASS-SATT.pdf`, supplied by the user -- **untracked**,
 copyrighted, and covered by `.gitignore`'s `*.pdf`. Twelve pages summarising
 Chapters 7--8. It is mostly redundant against the thesis, with two exceptions
 that are *not*: **footnote 3**, which gives the decision-recommendation rule

@@ -9,7 +9,7 @@ Two companion sources, both consulted for this map:
 
 - **The extended technical report**, Bruno Dutertre and Leonardo de Moura,
   *Integrating Simplex with DPLL(T)*, CSL Technical Report SRI-CSL-06-01,
-  23 May 2006 (`docs/papers/qflra-sri-csl-06-01.pdf`, untracked -- reference
+  23 May 2006 (`external/papers/qflra-sri-csl-06-01.pdf`, untracked -- reference
   papers are read locally and never committed). It carries the material the
   CAV version compresses: Section 3.1 Preprocessing, the `update` /
   `pivotAndUpdate` / `Check` pseudocode, the termination proof, and Gomory
@@ -65,15 +65,15 @@ recurring.
 
 | Paper | Implemented as | Where |
 |---|---|---|
-| Section 2 -- normalized linear terms and `t ~ c` atoms | `LinearPolynomial`, atom normalization | `theory/arithmetic/linear_polynomial.{hpp,cpp}`, `lra_atom.{hpp,cpp}` |
+| TR Section 3.1 -- normalized linear terms and bound atoms | `LinearPolynomial`, atom normalization | `theory/arithmetic/linear_polynomial.{hpp,cpp}`, `lra_atom.{hpp,cpp}` |
 | TR Section 3.2.1 -- `Check`, `update`, `pivotAndUpdate`, "based on the dual Simplex algorithm and relies on Bland's pivot-selection rule to ensure termination" | `LraTableau::check()`, `update()`, `pivot()` (Primo splits `pivotAndUpdate` into `pivot` + `update`, which is why `check()` always calls them as a pair) | `theory/arithmetic/lra_tableau.{hpp,cpp}` |
 | TR Section 3.2.3 -- assertion procedures | `LraTableau::assert_upper` / `assert_lower` | `lra_tableau.cpp` |
-| Section 3.1 -- infinitesimal delta for strict inequalities | `DeltaRational` (`q + k*delta`, lexicographically ordered); no floating point anywhere | `lra_tableau.hpp` |
-| Section 3.2 -- conflict explanation from row coefficients and the stuck variables' binding bounds | `LraTableau::build_conflict` | `lra_tableau.cpp` |
-| TR Section 3.2.4 -- backtracking | `push()` / `pop(checkpoint)`, trailing **bounds only** as the report specifies; `PivotingRule::Soi` additionally trails assignments, pivots and its f-row | `lra_tableau.{hpp,cpp}` |
-| Section 4 -- precomputing the tableau once per problem | `PreparedLraTheory` (mirrors `PreparedFlatTheory` for EUF) | `smt/solver_engines.cpp` |
-| Section 4.2 -- "deriving satisfied atoms" | `OnlineLraPropagator::scan_for_propagations`, over the atoms sharing a bound variable | `smt/solver_engines.cpp` |
-| Section 4.2 -- deriving *new* bounds from equations plus bounds (the slides' `x = y - z`, `y <= 2`, `z >= 3` gives `x <= -1`, explained by `y <= 2, z >= 3`) | `compute_implied_bound` / `compute_implied_child_bound`, **opt-in and off by default** -- `--lra-row-propagation`, `--lra-bidirectional-row-propagation` | `smt/solver_engines.cpp` |
+| TR Section 3.3 -- infinitesimal delta for strict inequalities | `DeltaRational` (`q + k*delta`, lexicographically ordered); no floating point anywhere | `lra_tableau.hpp` |
+| TR Section 3.2.2 -- conflict explanation from row coefficients and the stuck variables' binding bounds | `LraTableau::build_conflict` | `lra_tableau.cpp` |
+| TR Section 3.2.4 -- backtracking | `push()` / `pop(checkpoint)` trail bounds on the ordinary path; Primo retains the current assignment rather than restoring the report's saved successful assignment. SOI additionally trails assignments, pivots and its f-row | `lra_tableau.{hpp,cpp}` |
+| TR Section 3.1 -- precomputing equations before bound assertions | `PreparedLraTheory` (mirrors `PreparedFlatTheory` for EUF) | `smt/solver_engines.cpp` |
+| TR Section 3.2.5 -- deriving already-present atoms | `OnlineLraPropagator::scan_for_propagations`, over the atoms sharing a bound variable | `smt/solver_engines.cpp` |
+| TR Section 3.2.5 -- deriving bounds from equations plus bounds (the slides' `x = y - z`, `y <= 2`, `z >= 3` gives `x <= -1`, explained by `y <= 2, z >= 3`) | `compute_implied_bound` / `compute_implied_child_bound`, **opt-in and off by default** -- `--lra-row-propagation`, `--lra-bidirectional-row-propagation` | `smt/solver_engines.cpp` |
 
 **A note on that last row, since it is a paper feature we do not enable.**
 The slides list "Efficient Theory Propagation" as a headline contribution,
@@ -109,15 +109,20 @@ before it, so Section 4.2 propagation is unaffected. See
   non-Bland prefix followed by a Bland suffix is still covered by the paper's
   own argument. The threshold (`4 * vars_.size() + 64`) is a heuristic, not a
   derived bound. `--lra-pivoting-rule bland` restores the paper's choice.
-- **Backtracking now follows the paper** ([heuristics-note item H9](#h9), 2026-07-31, commit `ec6244e`).
-  TR Section 3.2.4: "We just need to save the value of `u_i` (`l_i`) on a
-  stack before it is updated... Backtracking does not require to save the
-  successive betas on a stack... Since no pivoting or other expensive
-  operation is used, backtracking is very cheap." Primo used to trail and
-  undo bounds, assignments *and* every pivot's row rewrite, justified by an
-  argument that was circular -- reverting the assignments is what forced
-  reverting the pivots. It now trails bounds only. The soundness argument
-  lives on `LraTableau`'s class comment.
+- **Bounds-only rollback retains the current assignment**
+  ([heuristics-note item H9](#h9), 2026-07-31, commit `ec6244e`).
+  TR §3.2.4 trails changed bounds without undoing pivots, but also describes
+  saving the last successful assignment for backtracking. Primo's ordinary
+  path instead retains the current assignment and basis. The equations and
+  nonbasic bounds remain satisfied when bounds relax; basic feasibility is
+  established by `check()`. `pop()` itself restores bounds and rebuilds the
+  violated-variable set, without an unconditional consistency check.
+  Bromberger's thesis §7.1.3 explicitly compares saved-assignment rollback
+  with keeping the current assignment and recalculating a solution. Primo's
+  scheduling is its own adaptation, not a verbatim implementation of either
+  complete backtracking procedure. The class comment's description of the
+  retained-assignment policy as the paper's own design should be read with
+  this distinction.
 
   *Why the report is so emphatic about this.* TR Sections 2.2-2.3 are an
   argument against the incremental-Simplex solvers that preceded it --
@@ -162,12 +167,12 @@ before it, so Section 4.2 propagation is unaffected. See
   The lowering runs as the final preprocessing step (`lower_real_equalities`),
   not at parse time, so solve-eqs and the other `Equality`-aware passes still
   see genuine Real equalities. See [](../preprocessing.md).
-- **`pop()` rebuilds the `occurs_in_` reverse index** rather than diffing it
-  incrementally -- once per `pop()` call, not once per pivot undone. An
-  incremental version was built and measured on 2026-07-31 and is *slower*
-  (1.4-1.8x); see [](../qf-lra-heuristics.md) section 6.2b. Note this index
-  exists only to serve the explicit tableau, so it would disappear entirely
-  under the paper's backtracking scheme above.
+- **Structural rollback rebuilds `occurs_in_` once per `pop()`.** This is
+  needed when SOI restores pivoted rows or its objective row. Ordinary
+  bounds-only rollback leaves rows and occurrences in place. Forward pivots
+  maintain the index incrementally; the earlier rejected maintenance attempt
+  remains documented in [](../qf-lra-heuristics.md) section 6.2b. The index
+  still serves assignment updates and pivoting independently of rollback.
 - **Model extraction is implemented for the supported model fragments.** TR
   Section 3.3's second half converts a satisfying β' over the
   delta-rationals into a concrete rational assignment by computing

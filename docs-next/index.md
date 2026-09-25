@@ -58,7 +58,10 @@ terms into clauses and describes assumptions and theory callbacks. The full
 interaction is followed in [DPLL(T)](implementation/dpllt.md), including
 explained conflicts, backtracking, and final consistency checks.
 [EUF: congruence, explanations, and rollback](implementation/euf.md) follows
-the congruence-closure implementation through a conflict and its undo. The capability
+the congruence-closure implementation through a conflict and its undo.
+[Linear real arithmetic](implementation/lra.md) covers exact numbers, shared
+polynomial rows, sparse simplex, strict conflicts and rollback, with links to
+the retained arithmetic development and experiments. The capability
 matrix and user guides remain in the existing book while they
 undergo page review for this draft.
 

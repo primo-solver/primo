@@ -54,6 +54,26 @@ not run remains incomplete, with its failed command and reason recorded.
 
 ## Choose a fuzz gate
 
+### Fuzzing and reduction sources
+
+Robert Daniel Brummayer, *Efficient SMT Solving for Bit-Vectors and the
+Extensional Theory of Arrays*, PhD thesis, Johannes Kepler University Linz,
+September 2009, Chapter 4, explains why grammar-based generation must reach
+solver internals with valid formulas, and how structure- and type-aware
+delta debugging reduces failures while preserving the observed defect.
+Section 4.4.2 covers FuzzSMT's extension beyond bit-vectors, including linear
+arithmetic. The supplied source is
+`external/papers/Brummayer-PhD-Thesis-2009.pdf`.
+
+This complements Brummayer and Biere's *Fuzzing and Delta-Debugging SMT
+Solvers* (SMT 2009), already recorded in the
+{source}`literature notes <docs/literature.md#L324-L380>`.
+Primo invokes external generators and reduction tools; it does not claim an
+implementation of the thesis's generator or reducer. The gate counts below
+are project policy, not thresholds established by that thesis.
+
+### Gate size and coverage
+
 Fresh fuzzing is required for changes to parsing, printing, type checking,
 terms, rewriting, preprocessing, clausification, SAT integration, solver control
 flow, theories, generated lemmas, models, and options that alter behavior.

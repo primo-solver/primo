@@ -1,5 +1,12 @@
 # Arithmetic
 
+The replacement chapter is `docs-next/implementation/lra.md`, available with
+`make docs-next-serve`. It explains the current representations and operations
+and maps them to code, tests and primary sources. This page retains the
+development history, detailed experiments and original anchors during review;
+its dated milestone limitations can have been superseded by later work.
+The rewrite does not discard the arithmetic implementation or its evidence.
+
 `OnlineLraPropagator` and `ComponentLraExecution` now read a shared SAT assignment
 view. They retain tableau checkpoints, bound/explanation caches, and pending
 consequences; they own no Boolean assignment array or literal trail. Backtracking
@@ -268,8 +275,10 @@ The editable TikZ source is `docs/figures/lra-tableau-occurrence-index.tex`.
   3.2). Strict inequalities via `DeltaRational` (q + k*delta, exact, no
   floating point). Incremental: `push()`/`pop(checkpoint)` are genuinely
   trail-based. The default non-SOI path trails bounds only: `pop` relaxes
-  bounds while retaining the feasible assignment and current basis, following
-  the technical report's Section 3.2.4 and the implemented H9 design below.
+  bounds while retaining the current assignment and basis. The equations and
+  nonbasic bounds remain satisfied; `check()` establishes basic feasibility.
+  This adapts the technical report's Section 3.2.4; the distinction from its
+  saved successful assignment is recorded in [](papers/fast-linear-arithmetic-dpllt.md).
   SOI is the exception: its basis-dependent objective retains full
   bound/assignment/pivot rollback. Do not mix assignment rollback with a
   retained basis. The original full-trail prototype is historical, not the
@@ -282,7 +291,8 @@ The editable TikZ source is `docs/figures/lra-tableau-occurrence-index.tex`.
   `PreparedAtom` then stores the same `bound_var`, so an atom encountered in
   any later callback refers to the same tableau variable. Slacks are therefore
   global to the prepared problem, not allocated afresh for each theory check.
-  The online path copies this base tableau once and trails bounds and pivots;
+  The online path copies this base tableau once and trails bounds (also
+  assignments and pivots in SOI mode);
   the fallback may copy it for a check, but preserves the prepared variable
   numbering and atom-to-variable map. A **single-variable** atom gets no slack
   and no row at all -- it is a bound on that variable itself (see "Direct

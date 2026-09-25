@@ -5,7 +5,13 @@
 Nikolaj Bjørner and Lev Nachmanson. "Arithmetic Solving in Z3." CAV 2024,
 LNCS 14681, pp. 26-41.
 [DOI](https://doi.org/10.1007/978-3-031-65627-9_2).
-Local copy: `docs/papers/arithmetic-reimplemented.pdf`.
+Local copy: `external/papers/arithmetic-reimplemented.pdf` (untracked).
+
+**Source refresh, 2026-09-25:** §§2–3 and 6 were reread from the supplied PDF
+for the replacement LRA chapter. The chapter retains direct/indirect propagation
+and the optional §3.2 model-unit producer, including its unpromoted status.
+The implementation and experiment trail below remains available for the
+integer and combination chapters; this refresh does not rerun its evaluations.
 
 Read 2026-08-17: Sections 2, 3, 6, and 8 in full; the integer and nonlinear
 sections were read only to delimit their relevance to what was then Primo's

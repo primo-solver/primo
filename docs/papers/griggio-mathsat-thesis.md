@@ -7,7 +7,7 @@ PhD dissertation, International Doctorate School in Information and
 Communication Technologies, DISI -- University of Trento, December 2009.
 Advisor: Roberto Sebastiani. Co-advisor: Alessandro Cimatti.
 
-Local copy: `docs/papers/griggio.pdf` -- **untracked**, per the standing
+Local copy: `external/papers/griggio.pdf` -- **untracked**, per the standing
 practice that reference papers are read locally and never committed
 (`.gitignore` excludes `*.pdf`). This note is an original-prose map of the
 thesis written for Primo; it is not a reproduction of it, and it is the only
@@ -38,8 +38,11 @@ The thesis is explicitly an *engineering* document -- Chapter 2 states that its
 contribution is the design choices and heuristics that research papers usually
 omit -- which is exactly the register Primo's own heuristics note works in.
 
-Nothing here is implemented *from* this thesis yet. The one concrete
-actionable finding is [](#leaving-rule-discrepancy) below.
+**Current mapping, checked 2026-09-25:** the least-violated leaving rule from
+§2.5.3 is implemented as the default-off `lra_least_violated_leaving` option.
+The default Sparse policy chooses the shortest row first. The supplied PDF's
+§2.5 was reread for the replacement chapter; the distinction below is retained
+with its implementation status corrected.
 
 (chapter-map)=
 ## Chapter map
@@ -303,21 +306,20 @@ Primo's Dantzig choice. **The primary source says the opposite.** Page 53 select
 the basic variable *closest* to its violated bound -- the least-violated one --
 and uses the short-row criterion only as a tie-break.
 
-This matters because it is not a point Primo has tested. The current
-`LraTableau::select` code offers exactly two leaving policies:
+The initial reading identified a missing comparison. The current
+`LraTableau::check` now offers all three policies:
 
 - Dantzig-style **most-violated** first, tie-broken by smallest index
-  (`lra_tableau.cpp`, the `violation > best_violation` branch) -- the default
-  under `PivotingRule::Sparse`;
-- **shortest-row** first with violation magnitude as the tie-break, behind the
-  opt-in `set_sparse_leaving` knob.
+  (`lra_tableau.cpp`, the `violation > best_violation` branch);
+- **shortest-row** first with larger violation as the tie-break, the default
+  under Sparse;
+- **least-violated** first, shortest row as tie-break, enabled by
+  `--lra-least-violated-leaving` under Sparse.
 
-MathSAT's actual rule is a third point in that space that Primo has never run:
-*least*-violated primary key, shortest row as tie-break. Both of Primo's
-existing options invert one half of it. Since the thesis reports the greedy rule
-as worth a 1.42x median and 2.77x mean over Bland, and since the leaving rule is
-a handful of lines inside an existing selection loop, this is a cheap experiment
-with a primary source behind it.
+The least-violated alternative has been implemented and measured; it was not
+promoted to default. The dated comparison remains in the QF_LRA options table
+in [](../arithmetic.md). Re-reading the
+thesis supplies no new performance evidence.
 
 Two caveats before anyone treats the docs as simply wrong:
 

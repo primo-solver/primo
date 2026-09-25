@@ -617,25 +617,80 @@ identical publication-note content. Source-link paths and line ranges resolve
 against the shared pin. These editorial checks do not constitute acceptance
 of the performance claims or completion of the LRA chapter.
 
-The next implementation chapter remains **linear real arithmetic**. Its
-planned scope is polynomial/atom preparation, exact and strict arithmetic,
-sparse tableau ownership, simplex repair, conflict explanations, rollback,
-propagation and model extraction, with current defaults separated from
-optional modes. A worked contradiction will use `x + y <= 2`, `x >= 2`,
-and `y > 0`. The chapter must link owning operations and regression tests.
+The initial LRA audit was blocked by HTTP 403 responses for Griggio and
+Bromberger, an older Griggio URL timeout, and a HAL bot challenge. The user
+subsequently supplied the primary PDFs in `external/papers/`, resolving that
+blocker. The completed source reading for the chapter is recorded below;
+the earlier access failures are not the current status.
 
-The literature audit must retain all three arithmetic PhD theses:
+## LRA chapter checks
 
-| Thesis | Planned reading for this chapter | Access in this audit |
-|---|---|---|
-| Tim King, *Effective Algorithms for the Satisfiability of Quantifier-Free Formulas Over Linear Real and Integer Arithmetic*, NYU, 2014 | §2.2.7 representation; §2.2.12 heuristic termination; Chapter 3 for the optional sum-of-infeasibilities mode | [Primary PDF](https://cs.nyu.edu/media/publications/king_tim.pdf) retrieved; §§2.2.7 and 2.2.12 read; Chapter 3 review remains |
-| Alberto Griggio, *An Effective SMT Engine for Formal Verification*, Trento, 2009 | §2.5, especially §2.5.3; recheck existing heuristic comparisons | [University PDF](https://iris.unitn.it/retrieve/b99837a1-89d9-4e52-8ac1-0e3a2eb32d9d/thesis.pdf) returns HTTP 403; [older author-linked PDF](https://eprints-phd.biblio.unitn.it/166/2/thesis.pdf) times out |
-| Martin Bromberger, *Decision Procedures for Linear Arithmetic*, Saarland, 2019 | §§7.1 and 8.1; distinguish complete-equality work in Chapter 5 from Primo's implemented subset | [University PDF](https://publikationen.sulb.uni-saarland.de/bitstream/20.500.11880/28955/1/thesis_bromberger_v20200224.pdf) returns HTTP 403; HAL serves a bot challenge |
+The [linear real arithmetic chapter](implementation/lra.md) was drafted against
+the shared source pin on 2026-09-25. It covers preparation and direct bounds,
+exact numbers and infinitesimals, sparse rows and reverse occurrences, repair
+and termination, conflict signs, online propagation, rollback and model values.
+The trace `x + y <= 2`, `x >= 2`, `y > 0` is a mathematical explanation of the
+operations, not a captured SAT execution or a new solver test.
 
-The Griggio and Bromberger PDFs named in the existing notes are absent from
-this checkout. Those notes preserve earlier reading history; they are not a
-fresh primary-source review. Under the repository's paper-grounding rule,
-the dependent chapter work is blocked until readable copies are available.
-Dutertre–de Moura's technical report and the results paper were retrieved;
-neither substitutes for the missing theses. No LRA chapter is marked drafted
-or verified by this update.
+The rewrite preserves the substantial arithmetic work. An explicit inventory
+links H1/H2/H3, H5/H7/H8/H9/H10, SOI, preprocessing, equality sharing,
+assumption-based sessions and their experiment records. The existing arithmetic
+page, diagrams, detailed notes, rejected approaches and run ledger remain in
+place. Historical extraction and the integer/model/combination chapters are
+not marked complete by this LRA draft.
+
+### Primary sources read
+
+The supplied PDFs remain ignored local reference material. These are the
+sections used in this audit, not a claim that every supplied paper was read
+in full:
+
+| File or source | Reading and use |
+| --- | --- |
+| `king_tim.pdf` | §§2.2.7, 2.2.12, 3.2–3.3: sparse structures, eventual Bland fallback and SOI. |
+| `griggio.pdf` | §2.5.1–2.5.3: fixed-equation invariants, exact-number/storage choices and least-violated selection. |
+| `Bromberger_Decision_Procedures_for_Linear_Arithmetic.pdf` | §§7.1.3–7.1.4: rollback alternatives and representation; opening parts of §§7.1.1 and 8.1.1 for context. The earlier Chapter 5 reading remains in its existing note; no fresh audit of the complete equality-basis algorithm was done. |
+| `Brummayer-PhD-Thesis-2009.pdf` | §4.1, introduction to §4.2, §4.3 and FuzzSMT scope in §4.4.2: contributor correctness guidance, not a simplex source. |
+| `Monniaux-cav09.pdf` | §§2.1–2.2, the sparse forced-pivot ordering discussion in §3, and §4's rational representation. The downloaded arXiv copy was also consulted. |
+| `arithmetic-reimplemented.pdf` | §§2–3 and 6: exact sparse arithmetic, direct/indirect propagation, optional model-unit equality producer and combination boundary. The integer/nonlinear sections are not re-audited here. |
+| `SPASS-SATT.pdf` | §3, especially footnote 3: model-based phase recommendations. |
+| `Presolving.pdf` | §3.1, especially (iv): fixed-variable elimination as motivation; distinction from Primo's reversible pivot-based adaptation. |
+| Dutertre–de Moura, SRI-CSL-06-01 | §§3.1–3.3, downloaded primary PDF: preparation, repair/termination, explanations, rollback, propagation and strict bounds. |
+
+The source review corrected stale King and Griggio comparisons: Primo now
+has indexed occurrence removal rather than a linear column scan, and the
+least-violated rule is implemented as an opt-in alternative. The chapter also
+distinguishes Bromberger's sorted linked rows and common denominators from
+Primo's sorted vectors and per-entry rationals. Monniaux's normalization,
+sparsity rationale and two-tier arithmetic are credited without claiming his
+floating-point acceleration. The 2024 model-unit producer remains optional.
+The base-paper note also now distinguishes the report's saved successful
+assignment from Primo's retained-assignment rollback and records when the
+occurrence index actually needs rebuilding.
+
+The original tableau diagram is reused from the existing book. A browser
+check found that its SVG-font export lost glyphs and typography in Chrome;
+it was regenerated from the unchanged TikZ source with outlined glyphs:
+
+```bash
+mkdir -p /tmp/primo-lra-figure
+pdflatex -interaction=nonstopmode -halt-on-error \
+  -output-directory=/tmp/primo-lra-figure \
+  docs/figures/lra-tableau-occurrence-index.tex
+dvisvgm --pdf --no-fonts \
+  --output=docs/_static/lra-tableau-occurrence-index.svg \
+  /tmp/primo-lra-figure/lra-tableau-occurrence-index.pdf
+```
+
+The regenerated SVG was inspected in headless Chrome. Both books use the
+same maintained figure; the draft does not introduce a second editable copy.
+
+### Verification and acceptance boundary
+
+Both strict book builds, source-link checks, navigation/ledger coverage,
+rendered content/asset checks and the old-page compatibility audit pass for
+this chapter. All 19 draft pages have navigation and ledger entries; all
+83 baseline pages and 1,223 captured anchors remain available. Solver source is unchanged; no local or remote solver batch
+was run. Existing tests are linked by the invariant they exercise, without
+claiming a fresh fuzz or benchmark qualification. Reader acceptance, complete
+historical extraction and the published table-to-artifact mapping remain open.

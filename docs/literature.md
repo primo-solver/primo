@@ -320,6 +320,17 @@ pure-filtering counters show a useful hit rate.
 
 ## Fuzzing and delta-debugging SMT solvers
 
+The broader source is Robert Daniel Brummayer, *Efficient SMT Solving for
+Bit-Vectors and the Extensional Theory of Arrays*, PhD thesis, Johannes Kepler
+University Linz, September 2009, Chapter 4. The supplied copy is
+`external/papers/Brummayer-PhD-Thesis-2009.pdf`. Section 4.1, the introduction
+to §4.2, §4.3, and the
+FuzzSMT scope in §4.4.2 were read for the documentation rewrite on 2026-09-25.
+The thesis motivates valid-input generation and structure-aware failure
+reduction; project-specific gate counts and current qualification remain
+separate evidence. Primo uses external tools rather than implementing the
+thesis's fuzzer or reducer.
+
 Robert Brummayer and Armin Biere, *Fuzzing and delta-debugging SMT solvers*,
 SMT 2009. DOI:
 [`10.1145/1670412.1670413`](https://dl.acm.org/doi/10.1145/1670412.1670413).

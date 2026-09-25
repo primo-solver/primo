@@ -16,6 +16,14 @@ otherwise so it doesn't get mistaken for near-term reading.
 
 ## Access status
 
+**Local source refresh, 2026-09-25.** The user supplied reference PDFs under
+`external/papers/`, including `Monniaux-cav09.pdf`,
+`arithmetic-reimplemented.pdf`, `king_tim.pdf`, `griggio.pdf`,
+`Bromberger_Decision_Procedures_for_Linear_Arithmetic.pdf`, `SPASS-SATT.pdf`
+and `Presolving.pdf`. The LRA chapter's section-level reading record is in
+`docs-next/review.md`. Availability does not mean every section of every new
+PDF has been audited. The online-access reports below are dated history.
+
 Checked by actually fetching each URL, not just search-result snippets.
 
 **DOI audit, 2026-08-13.** DOI records in this page were checked title-by-title
@@ -349,16 +357,16 @@ the reference that settles two questions for us.
   accurate as a source, but H3 should not be read as a technique transferred
   from one paper -- it is what everyone in this space already does. King also
   records Griggio's most-violated leaving-variable rule (used by CVC4 and
-  MathSAT5), which is our Dantzig-style leaving choice; our opt-in
-  *shortest-row* leaving rule (`--lra-sparse-leaving`) is the part with no
+  MathSAT5), which is our Dantzig-style leaving choice; our default
+  *shortest-row* leaving rule is the part with no
   counterpart described here.
 
   **Corrected 2026-08-04, on reading Griggio's thesis itself.** The primary
   source states the *opposite* rule: §2.5.3 (p. 53) picks the violated basic
   variable **closest** to its violated bound -- least-violated, not most --
-  and uses the short-row criterion only as a tie-break. So neither of Primo's
-  two leaving policies is MathSAT's: our default inverts its primary key and
-  our opt-in promotes its tie-break. Note the version caveat before treating
+  and uses the short-row criterion only as a tie-break. Primo now implements
+  this third policy behind `--lra-least-violated-leaving`; it remains off by
+  default. Note the version caveat before treating
   King as simply wrong: the thesis is Dec 2009 and describes MathSAT **4**,
   while King (2014) attributes most-violated to MathSAT**5**, so the rule may
   have changed between them and the error may be only in our conflating the

@@ -11,6 +11,7 @@ parts:
       - file: implementation/sat
       - file: implementation/dpllt
       - file: implementation/euf
+      - file: implementation/lra
   - caption: Literature
     chapters:
       - file: papers/primo-qflra-results

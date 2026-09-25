@@ -29,10 +29,13 @@ Library embedding and incremental memory are separate open-work pages. Their
 investigations remain pending; documenting the current core does not choose a
 new public API or reclamation design.
 
-**Next chapter, 2026-09-25:** DPLL(T) and EUF drafts are now available for
-reader review. LRA is next, including the King, Griggio and Bromberger PhD
-theses. The source audit is blocked on readable copies of the latter two;
-`docs-next/review.md` records the failed URLs and remaining chapter scope.
+**Theory chapters, 2026-09-25:** DPLL(T), EUF and LRA drafts are now available
+for reader review. Supplied PDFs in `external/papers/` resolved the LRA source
+access blocker. The rewrite preserves the arithmetic implementation and its
+development evidence; an explicit inventory in the LRA chapter links detailed
+engineering, experiments and rejected approaches. King, Griggio, Bromberger,
+Monniaux and the 2024 arithmetic paper are mapped to their implemented subsets.
+`docs-next/review.md` records section-level reading and remaining extraction.
 The shared [](papers/primo-qflra-results.md) note links the published evaluation
 separately; its exact revision/artifact mapping remains open work.
 

@@ -311,7 +311,8 @@ primary algorithmic source. The local review copy is `docs/oliveras-euf.pdf`.
 | Primo's local EUF/SMT design | SAT reason signs, Boolean-domain preparation, changed-term delivery, and model-scope protection. These are integration obligations, not algorithms attributed to the paper. |
 
 `FlatCongruenceClosure` does not implement the paper's integer-offset extension.
-Arithmetic reasoning and theory combination require separate chapters.
+[Linear real arithmetic](lra.md) covers the arithmetic solver. Theory
+combination remains a separate chapter to prepare.
 Lemma-retention policy remains in the [theory-lemma lead](../leads/theory-lemmas.md)
 and [safe-forgetting lead](../leads/theory-lemma-forgetting.md).
 
