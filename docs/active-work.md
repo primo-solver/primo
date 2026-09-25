@@ -5,6 +5,17 @@ has been implemented and qualified, and [](open-leads.md) for possible next
 work. A draft, an old branch, or a historical job marked pending does not by
 itself establish that implementation or execution is active today.
 
+## Shared assignment ownership
+
+Implementation is underway on `docs/public-repository-migration`, from
+`fd4d1eb`. The scope is every dedicated, mixed, component, and quantified-UF
+route, retaining one Primo-side mirror of the backend assignment. The protocol
+and acceptance checklist are in [](dpllt.md#shared-assignment-protocol-implementation-underway).
+Stages: shared storage/coordinator and deterministic tests; dedicated EUF;
+dedicated arithmetic; mixed reconciliation/protection; component and quantifier
+views; final ownership audit and qualification. The existing rollback repair
+remains in place. No completed migration or new performance claim is made yet.
+
 ## Public repository migration planning
 
 **Last reviewed: 2026-09-23. Status: planning and documentation review.**

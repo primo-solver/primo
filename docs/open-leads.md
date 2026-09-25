@@ -11,20 +11,15 @@ Keep stable lead labels and evidence links when a lead changes state.
 
 ## Project and tooling leads
 
-- **Shared SMT assignment bookkeeping:** consolidate the mirrored assignments,
-  literal trails, and decision-level boundaries in the dedicated EUF/LRA,
-  mixed, and component callback paths. SAT owns the authoritative Boolean
-  assignment, but the current adapter exposes notifications rather than a live
-  trail or a list of unassigned literals. Prefer one SMT-side owner with views
-  for consumers; investigate whether a backend-provided view could avoid that
-  mirror without coupling theory code to CaDiCaL. Theories still need their
-  own undo records for merges and bounds. Include the separate
-  `theory::ComponentAssignment` copy in this audit; `sat::Trail` and
-  `sat::TrailView` are currently empty scaffolds, not usable shared storage.
-  Specify notification timing, observed
-  variable subsets, deferred model-scope callbacks, reason lifetimes, and
-  retained sessions before refactoring. Status: open; consolidation deferred.
-  The focused EUF rollback regression below must protect this work.
+- **Shared SMT assignment bookkeeping (active):** the all-route migration is
+  now tracked in [](active-work.md#shared-assignment-ownership), with its
+  protocol and acceptance checklist in
+  [](dpllt.md#shared-assignment-protocol-implementation-underway).
+  `sat::Trail`, `sat::TrailView`, and `smt::AssignmentCoordinator` now implement
+  and test the shared protocol; production consumers still await migration.
+  The chosen boundary retains one Primo-side mirror, without a CaDiCaL
+  extension. Theory merge/bound undo logs remain separate. The focused EUF
+  rollback regression below protects this work.
 - **EUF callback assignment-marker rollback (repaired):** dedicated tests
   reproduced lost transitive-equality propagation after root, retained-level,
   and repeated backtracks. An extra initial boundary erased assignment markers

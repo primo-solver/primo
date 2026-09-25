@@ -14,6 +14,46 @@ investigation; the note does not change current clause retention.
 
 ## Control flow and ownership
 
+### Shared assignment protocol: implementation underway
+
+The shared-stack migration replaces independently mutable Boolean assignment
+copies with one SMT-owned coordinator per SAT connection. The storage types
+`sat::Trail` and `sat::TrailView` contain only literal IDs: an ordered trail,
+variable-to-position index, decision boundaries, and an epoch. Truth is read
+from the indexed trail entry rather than stored in another value array.
+Consumers borrow a read-only view and receive accepted assignment deltas and
+the exact removed literals on backtracking. Term registries and theory undo
+records remain separate. This section is the local implementation checklist;
+route migration and qualification are tracked in [](active-work.md).
+
+The basis is Fazekas et al., *IPASIR-UP: User Propagators for CDCL*, SAT 2023,
+[Section 2.2](https://doi.org/10.4230/LIPIcs.SAT.2023.8), read together with the
+installed CaDiCaL vector-notification contract. This is an original ownership
+design implementing that contract, not a new solving algorithm.
+
+- Each decision records the current trail length, even without an observed
+  assignment. Boundary `k` begins level `k+1`; backtrack to `k` retains its
+  prefix. Root assignments survive; same-level rollback is a no-op.
+- Identical assignment notifications are idempotent. Contradictory assignments
+  without rollback, invalid literals, and invalid levels are internal errors.
+- Append and lookup are amortized constant time; rollback visits only removed
+  literals. Registration growth never invalidates the view's owner pointer.
+  No borrowed entry/range may survive a mutating callback.
+- The coordinator commits state before dispatching the corresponding delta.
+  Nested notifications are queued in order. Protected model scopes defer the
+  entire notification stream, not only EUF, until borrowed model views are
+  released. Ordinary solving/checking callbacks cannot run while protected.
+- Reasons for retained propagations survive unrelated backtracking. Removal
+  events prune only discarded reasons; immutable stored reason streams remain
+  available while model scopes are protected.
+- Online final-model callbacks validate the notified state; they do not repair
+  lost markers. Offline checks load a completed-model snapshot through the
+  same view interface. Disconnect finishes reason handling before owner
+  destruction; reconnect initializes a fresh view and replays permanent facts.
+- Deterministic tests cover retained/root facts, empty levels, duplicate and
+  invalid events, reentrancy, protection, growth, reason lifetime and reconnect.
+  Differential fuzzing and both normal/ASan suites qualify each migrated route.
+
 `solver_session.cpp` owns the frontend, original assertion roots, preprocessing
 and result adaptation. Tactic goals own conversion records. `solver_strategy.cpp`
 selects the leaf after preprocessing; `solver_leaves.cpp` adapts it to the engine.

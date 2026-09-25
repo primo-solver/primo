@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "sat/clause.hpp"
+#include "sat/trail_view.hpp"
 
 namespace primo::sat {
 
@@ -40,6 +41,15 @@ class ExternalPropagator {
  public:
   virtual ~ExternalPropagator() = default;
 
+  virtual void bind_assignment_view(TrailView view) { assignment_view_ = view; }
+  [[nodiscard]] TrailView assignment_view() const { return assignment_view_; }
+  // A protected theory-model view delays the whole assignment notification stream.
+  virtual bool assignment_notifications_deferred() const { return false; }
+  virtual void notify_backtrack_delta(std::size_t new_level, const std::vector<int>& removed) {
+    (void)removed;
+    notify_backtrack(new_level);
+  }
+
   virtual void notify_assignment(const std::vector<int>& lits) = 0;
   virtual void notify_new_decision_level() = 0;
   virtual void notify_backtrack(std::size_t new_level) = 0;
@@ -57,6 +67,9 @@ class ExternalPropagator {
   }
   virtual bool cb_has_external_clause() { return false; }
   virtual int cb_add_external_clause_lit() { return 0; }
+
+ private:
+  TrailView assignment_view_;
 };
 
 class Terminator {
