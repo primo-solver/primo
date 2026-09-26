@@ -145,6 +145,13 @@ and anchors together. Ordinary Sphinx builds do not perform this Git/source
 validation automatically. GitHub viewing requires repository access while
 Primo is private.
 
+## Automated link checks
+
+```{include} ../docs/development/documentation.md
+:start-after: "## Check hyperlinks"
+:end-before: "## Page roles"
+```
+
 ## First draft batch: checks and limits
 
 The records below describe successive reviews at their recorded revisions.
@@ -822,3 +829,27 @@ coverage, and preservation of old-book and pre-edit draft anchors.
 are unchanged, and no solver qualification was rerun. Page-acceptance states
 are unchanged; reader acceptance and remaining factual investigations stay
 listed in the ledger.
+
+## Hyperlink-checking pass, 2026-09-26
+
+The new `make docs-check-links` command passed for both books: 113 generated
+pages, 17,230 local links, and 356 distinct Primo Git URLs. Seven focused Python
+tests cover successful checks and failures, including missing anchors, URL
+encoding, unavailable Git history, and line ranges checked at the cited commit.
+Both strict book builds, `make lint`, and the checker self-review passed.
+No solver behavior changed or solver qualification was rerun.
+
+`make docs-check-external` completed both Sphinx audits and returned failure:
+12 URLs in the existing book and two in the draft remain unverified. Ten
+returned HTTP 403, two were rate-limited with HTTP 429, one had a TLS certificate
+error, and one refused the connection. These are access failures, not evidence
+that the cited papers have disappeared. The
+{download}`audit snapshot <../docs/documentation-link-audit.json>` records the
+URLs, source locations, tool versions, and results. It is evidence from this
+run, not an exclusion list; subsequent runs check those URLs again.
+
+The pass also fixed accidental web links created from bare `AGENTS.md` text
+and used literal HTML anchors for two GitHub headings. The linked CaDiCaL
+header's dynamic line fragment has a documented anchor-only exception; its
+page remains subject to HTTP checking. The solver source pin and page-acceptance
+states are unchanged. External access failures remain open for review.

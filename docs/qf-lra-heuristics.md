@@ -1489,7 +1489,7 @@ Release build, commit `35878c4`), recorded in `docs/run-log.json` under
 for a design decision, not benchmark claims.
 
 Every **result** claimed for an implemented item comes from Slurm, per
-AGENTS.md, and has its own run-log entry:
+`AGENTS.md`, and has its own run-log entry:
 
 | item | implementation | gates | promotion-bar run |
 |---|---|---|---|

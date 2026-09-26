@@ -1,0 +1,157 @@
+{
+  "checked_at_utc": "2026-09-26T21:03:08+00:00",
+  "documentation_base_commit": "ca8a0a4d839e239600e54a252541adae3ccb2e1c",
+  "scope": "Both books with the checker and citation edits committed alongside this snapshot; source pin unchanged.",
+  "command": "make docs-check-external",
+  "exit_status": 2,
+  "tool_versions": {
+    "Sphinx": "7.4.7",
+    "jupyter-book": "1.0.4.post1"
+  },
+  "local_check": {
+    "pages": 113,
+    "local_links": 17230,
+    "git_urls": 356,
+    "external_urls_deferred": 162,
+    "failures": []
+  },
+  "external_checks": {
+    "docs": {
+      "report": "docs/_build/linkcheck/output.json",
+      "counts_by_status": {
+        "broken": 12,
+        "ignored": 53,
+        "redirected": 48,
+        "unchecked": 48,
+        "working": 94
+      },
+      "unresolved": [
+        {
+          "filename": "literature.md",
+          "lineno": 276,
+          "status": "broken",
+          "code": 0,
+          "uri": "https://disi.unitn.it/rseba/papers/JSAT-2007.pdf",
+          "info": "HTTPSConnectionPool(host='disi.unitn.it', port=443): Max retries exceeded with url: /rseba/papers/JSAT-2007.pdf (Caused by SSLError(SSLCertVerificationError(1, '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1018)')))"
+        },
+        {
+          "filename": "literature.md",
+          "lineno": 334,
+          "status": "broken",
+          "code": 0,
+          "uri": "https://dl.acm.org/doi/10.1145/1670412.1670413",
+          "info": "403 Client Error: Forbidden for url: https://dl.acm.org/doi/10.1145/1670412.1670413"
+        },
+        {
+          "filename": "quantifiers.md",
+          "lineno": 1075,
+          "status": "broken",
+          "code": 0,
+          "uri": "https://doi.org/10.1145/1017472.1017477",
+          "info": "403 Client Error: Forbidden for url: https://dl.acm.org/doi/10.1145/1017472.1017477"
+        },
+        {
+          "filename": "papers/nelson-oppen-closure-methods.md",
+          "lineno": 1387,
+          "status": "broken",
+          "code": 0,
+          "uri": "https://doi.org/10.1145/357073.357079",
+          "info": "403 Client Error: Forbidden for url: https://dl.acm.org/doi/10.1145/357073.357079"
+        },
+        {
+          "filename": "papers/lra-related-work.md",
+          "lineno": 317,
+          "status": "broken",
+          "code": 0,
+          "uri": "https://doi.org/10.1287/moor.2.2.103",
+          "info": "403 Client Error: Forbidden for url: https://pubsonline.informs.org/doi/10.1287/moor.2.2.103"
+        },
+        {
+          "filename": "quantifiers.md",
+          "lineno": 1079,
+          "status": "broken",
+          "code": 0,
+          "uri": "https://doi.org/10.1145/3453483.3454088",
+          "info": "403 Client Error: Forbidden for url: https://dl.acm.org/doi/10.1145/3453483.3454088"
+        },
+        {
+          "filename": "papers/lra-related-work.md",
+          "lineno": 458,
+          "status": "broken",
+          "code": 0,
+          "uri": "https://doi.org/10.1287/opre.50.1.3.17780",
+          "info": "403 Client Error: Forbidden for url: https://pubsonline.informs.org/doi/10.1287/opre.50.1.3.17780"
+        },
+        {
+          "filename": "qf-lra-heuristics.md",
+          "lineno": 1084,
+          "status": "broken",
+          "code": 0,
+          "uri": "https://doi.org/10.3233/SAT190034",
+          "info": "403 Client Error: Forbidden for url: https://journals.sagepub.com/doi/full/10.3233/SAT190034"
+        },
+        {
+          "filename": "lexical-conformance.md",
+          "lineno": 177,
+          "status": "broken",
+          "code": 0,
+          "uri": "https://github.com/Gbury/dolmen/blob/5c9161a691872cee9ed0c58fe820a8b0b9e485ab/tests/parsing/smtlib/v2.7/errors/xxx_lexing_invalid_char_in_quoted_symbol.smt2",
+          "info": "429 Client Error: Too Many Requests for url: https://github.com/Gbury/dolmen/blob/5c9161a691872cee9ed0c58fe820a8b0b9e485ab/tests/parsing/smtlib/v2.7/errors/xxx_lexing_invalid_char_in_quoted_symbol.smt2"
+        },
+        {
+          "filename": "lexical-conformance.md",
+          "lineno": 177,
+          "status": "broken",
+          "code": 0,
+          "uri": "https://github.com/Gbury/dolmen/blob/5c9161a691872cee9ed0c58fe820a8b0b9e485ab/tests/parsing/smtlib/v2.7/pass/quoted_symbol.smt2",
+          "info": "429 Client Error: Too Many Requests for url: https://github.com/Gbury/dolmen/blob/5c9161a691872cee9ed0c58fe820a8b0b9e485ab/tests/parsing/smtlib/v2.7/pass/quoted_symbol.smt2"
+        },
+        {
+          "filename": "papers/lra-related-work.md",
+          "lineno": 281,
+          "status": "broken",
+          "code": 0,
+          "uri": "https://www.cs.utexas.edu/~hunt/FMCAD/FMCAD13/papers/73-Simplex-Sum-SMT.pdf",
+          "info": "HTTPSConnectionPool(host='www.cs.utexas.edu', port=443): Max retries exceeded with url: /~hunt/FMCAD/FMCAD13/papers/73-Simplex-Sum-SMT.pdf (Caused by NewConnectionError(\"HTTPSConnection(host='www.cs.utexas.edu', port=443): Failed to establish a new connection: [Errno 111] Connection refused\"))"
+        },
+        {
+          "filename": "papers/nelson-oppen-closure-methods.md",
+          "lineno": 1391,
+          "status": "broken",
+          "code": 0,
+          "uri": "https://www.sciencedirect.com/science/article/pii/0304397580900596",
+          "info": "403 Client Error: Forbidden for url: https://www.sciencedirect.com/science/article/pii/0304397580900596"
+        }
+      ]
+    },
+    "docs-next": {
+      "report": "docs-next/_build/linkcheck/output.json",
+      "counts_by_status": {
+        "broken": 2,
+        "ignored": 345,
+        "redirected": 7,
+        "unchecked": 24,
+        "working": 18
+      },
+      "unresolved": [
+        {
+          "filename": "implementation/lra.md",
+          "lineno": 423,
+          "status": "broken",
+          "code": 0,
+          "uri": "https://publikationen.sulb.uni-saarland.de/handle/20.500.11880/28955",
+          "info": "403 Client Error: Forbidden for url: https://publikationen.sulb.uni-saarland.de/handle/20.500.11880/28955"
+        },
+        {
+          "filename": "implementation/lra.md",
+          "lineno": 422,
+          "status": "broken",
+          "code": 0,
+          "uri": "https://iris.unitn.it/handle/11572/368265",
+          "info": "403 Client Error: Forbidden for url: https://iris.unitn.it/handle/11572/368265"
+        }
+      ]
+    }
+  },
+  "interpretation": "Unresolved URLs failed access checks and remain unverified. This snapshot is not an exclusion list. Unchecked records are not external URL successes; Primo Git URLs are checked locally and its private landing page is excluded."
+}

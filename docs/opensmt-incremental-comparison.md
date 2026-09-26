@@ -3,7 +3,7 @@
 OpenSMT 2.9.2 is added as an external reference, using its release binary and
 `opensmt --pipe`. The original SMT-LIB streams are passed through real stdin.
 No assertion, declaration, scope or query is changed. The
-[upstream usage documentation](https://github.com/usi-verification-and-security/opensmt#capabilities-and-usage-examples)
+[upstream usage documentation](https://github.com/usi-verification-and-security/opensmt#user-content-capabilities-and-usage-examples)
 describes native incremental SMT-LIB input; local and remote black-box probes
 verify SAT, scoped UNSAT and SAT after pop for both logics. No OpenSMT
 implementation source was used.

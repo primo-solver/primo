@@ -168,8 +168,10 @@ For each rewrite batch:
 These are slices of the existing M0–M6 plan, not replacement acceptance gates.
 The contributor correctness path is prioritized because the user identified
 fuzzing discoverability as essential. Private preview CI, full option semantics,
-source-link validation, packaging, and publication remain outstanding work in
+packaging, and publication remain outstanding work in
 [](../documentation-restructuring.md). Website deployment remains off.
+Local source-path and line-range validation is now automated alongside HTML
+link checking; see the [maintenance guide](../development/documentation.md#check-hyperlinks).
 
 ## Verification of this audit
 

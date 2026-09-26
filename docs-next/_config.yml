@@ -33,6 +33,20 @@ sphinx:
         - "https://github.com/primo-solver/primo/blob/e6d9fcb06f476375aded43a13c22a6d6b4939144/%s"
         - "%s"
     myst_heading_anchors: 3
+    linkcheck_workers: 4
+    linkcheck_timeout: 15
+    linkcheck_retries: 1
+    linkcheck_rate_limit_timeout: 30
+    linkcheck_allow_unauthorized: false
+    linkcheck_report_timeouts_as_broken: false
+    linkcheck_anchors_ignore_for_url:
+      # GitHub implements code-line fragments dynamically; still check the file URL.
+      - '^https://github\.com/arminbiere/cadical/blob/rel-3\.0\.0/src/cadical\.hpp$'
+    linkcheck_ignore:
+      # Validated from local Git by make docs-check-links; no GitHub login needed.
+      - '^https://github\.com/primo-solver/primo/(?:blob|commit)/'
+      # Repository landing page requires access while the repository is private.
+      - '^https://github\.com/primo-solver/primo/?$'
     html_show_copyright: false
     html_show_sourcelink: false
     html_theme_options:

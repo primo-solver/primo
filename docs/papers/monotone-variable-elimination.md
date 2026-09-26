@@ -191,7 +191,7 @@ variable's direction.
 
 ## What Primo claims
 
-The implemented subset, stated the way AGENTS.md asks:
+The implemented subset, stated the way `AGENTS.md` asks:
 
 - **Implemented:** one-sided detection over Le/Lt atoms with polarity tracked
   through `Not`/`Implies` (the input is not in NNF), constant folding of the

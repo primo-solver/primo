@@ -86,7 +86,7 @@ Z3 and cvc5 provide relevant reference-counting precedents:
 - cvc5 documents owning `Node` handles that maintain reference counts and
   non-owning `TNode` handles. Nodes with no remaining owners become eligible
   for reclamation, which may be deferred and batched. See the
-  [cvc5 developer guide](https://github.com/cvc5/cvc5/wiki/Developer-Guide#dealing-with-expressions-nodes-and-tnodes).
+  [cvc5 developer guide](https://github.com/cvc5/cvc5/wiki/Developer-Guide#user-content-dealing-with-expressions-nodes-and-tnodes).
 
 These are comparison points for the investigation. Primo's ownership contract
 and implementation must follow its own design and measurements. Reference

@@ -1606,7 +1606,7 @@ evidence.
   including unit-test-level evidence (decision-count reduction on
   hand-built cases) that the mechanism itself works correctly.
 - **Milestone 4b (done, 2026-07-24)**: the campaign-tier fuzz gate
-  (AGENTS.md: >=3000 cases plus a seed-mutation campaign) that promotes
+  (`AGENTS.md`: >=3000 cases plus a seed-mutation campaign) that promotes
   QF_LRA from "experimental" to "supported"/default. Ran on the
   `llm2smt-slurm` cluster after fixing two remote-infrastructure gaps
   (missing fuzzsmt/z3/yinyang tooling; a workspace-sync rsync clobbering

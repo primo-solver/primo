@@ -37,6 +37,60 @@ UF, selected unsupported/error responses, the preprocessing-only `unknown`
 response, both admitted assumptions routes, and the captured CLI help. It does
 not fuzz the solver or independently prove model validity.
 
+## Check hyperlinks
+
+```bash
+make docs-check-links       # rebuild both books; check local and pinned Git links
+make docs-check-external    # also check external URLs with Sphinx
+```
+
+The local check uses `scripts/check_doc_links.py`, a standard-library Python
+script. It checks rendered HTML links, assets referenced by `href`/`src`, and
+HTML fragments, including percent-encoded paths and anchors. Theme templates
+and downloaded examples are not scanned as book pages. Links to Primo files
+and commits on GitHub are resolved in the local Git checkout: files must exist
+at the named commit, and line ranges must fit that version. Moving branch
+references and unsupported Git fragments fail explicitly. The check does not
+establish that a cited function still supports the surrounding explanation.
+
+The local JSON report is `docs/_build/linkcheck-local.json`. A missing book,
+file, anchor, or Git object makes the command fail. A shallow checkout may need
+the referenced history fetched first. To inspect an existing build without
+rebuilding it:
+
+```bash
+python3 scripts/check_doc_links.py docs/_build/html docs-next/_build/html
+```
+
+The external stage uses Sphinx's built-in
+[linkcheck builder](https://www.sphinx-doc.org/en/master/usage/builders/index.html#sphinx.builders.linkcheck.CheckExternalLinksBuilder),
+already included in the documentation environment. Each book writes
+`_build/linkcheck/output.txt` and `output.json` (one JSON object per line),
+identifying the source page, line, URL, and result. Both books are checked even
+if one reports failures. Requests use four workers, a 15-second timeout, one
+attempt, and a 30-second backoff limit; server `Retry-After` headers take
+precedence. External HTML anchors are checked where supported by Sphinx;
+PDF page fragments are not validated.
+
+Primo's Git file/commit URLs are excluded from HTTP checking because the local
+stage checks them without GitHub credentials. The repository landing page is
+also excluded while the repository is private. These are the only configured
+URL exclusions, documented in each book's `_config.yml`.
+
+The linked CaDiCaL API header has a separate anchor-only exception: GitHub
+implements its code-line fragments dynamically. Sphinx still checks that the
+page is reachable, but does not validate its line range. Primo's own source
+line ranges are checked locally as described above. GitHub README and wiki
+heading links use their literal `user-content-` HTML anchors so they can be
+checked without JavaScript.
+
+Review external failures before changing a citation: a 403, rate limit, or
+timeout can be an access problem rather than a missing paper. Sphinx records
+some temporary outages, such as HTTP 503, as `ignored`; those remain unverified.
+Do not treat an ignored or inaccessible URL as a successful check or add broad
+domain exclusions to hide failures. Preserve the report and resolve or record
+each outstanding link. No credentials are stored in the book configuration.
+
 ## Page roles
 
 Apply the roles below to new draft pages as well. Do not copy the entire old
@@ -82,8 +136,9 @@ Use the Sphinx `source` role in new pages:
 commit-pinned repository URL, and defines the displayed `source_revision`
 substitution. Keep those revisions consistent. Validate referenced files against
 that commit; the ordinary Sphinx build does not fetch GitHub or check source
-path existence. Source-path validation and an archive-aware manifest remain
-planned automation in [](../documentation-restructuring.md).
+path existence. `make docs-check-links` validates paths and line ranges against
+local Git. An archive-aware manifest remains planned in
+[](../documentation-restructuring.md).
 
 The replacement book uses its own `docs-next/_config.yml`, with a single
 commit-pinned URL and no revision substitution in chapter prose. Write those

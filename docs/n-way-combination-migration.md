@@ -394,7 +394,7 @@ changed; only the component protocol and the online driver grew.
 
 No new permanent CLI profile is planned. Default promotion requires all gates;
 the frozen external baseline is the A/B control. Operational details belong in
-the existing testing, benchmarking and model-validation skills, not AGENTS.md.
+the existing testing, benchmarking and model-validation skills, not `AGENTS.md`.
 
 `slurm_component_migration_compare.sbatch` takes explicit baseline/candidate
 binaries and expected revisions, runs both on the same allocated node, reverses

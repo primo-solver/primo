@@ -333,10 +333,16 @@ negative control fails all 11 manual checks, confirming failures are reported.
 This is a completed manual slice across M0–M2, not completion of those full
 milestones or of the public-doc gate. Still required: disposition/anchor reviews
 for untouched pages, acceptance of the drafted SAT implementation-template
-pilot, automated source link checks and build metadata, private CI previews, full option semantics,
+pilot, build metadata, private CI previews, full option semantics,
 deeper chapter extraction, clean-checkout and archive reproduction, and the
 independent reader walkthrough. The local build bootstrapped dependencies but
 was not an isolated end-to-end fresh-clone test. Website deployment remains off.
+
+Local source-path/line checks and rendered HTML link checks are now automated
+by `make docs-check-links`; `make docs-check-external` adds Sphinx's external
+URL audit. The [maintenance guide](development/documentation.md#check-hyperlinks)
+documents coverage and reports. These checks do not replace factual code review
+or the archive/release checks above.
 
 ## Acceptance checklist before public release
 

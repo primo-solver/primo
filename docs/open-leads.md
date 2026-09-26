@@ -1164,7 +1164,7 @@ theory assertion, propagation and explanation.
 **Sequencing.** Gated on lead 1, which is its cheap static approximation. If
 filtering on polarity alone moves these families, dynamic relevance is worth
 the investment; if it does not, that is evidence about the family before a
-large mechanism gets built. Needs its own paper note first, per AGENTS.md.
+large mechanism gets built. Needs its own paper note first, per `AGENTS.md`.
 
 (lead-justification)=
 ## 6. Justification / goal-directed decision heuristics
