@@ -1,6 +1,9 @@
 # Compact term storage and future payloads
 
-**Status: open lead; implementation deferred. Owner: unassigned.**
+**Status: Open lead. Owner: unassigned.**
+
+An initial layout probe is complete. Representation design, implementation,
+and solver evaluation remain pending.
 
 Keep the current representation while investigating how to reduce per-term
 storage. No union, variant, or separate payload store has been selected.
@@ -30,11 +33,11 @@ ID, kind, sort, and separate child vector. Children cannot simply be an
 alternative to the scalar payload: an application needs a symbol and children,
 and `Times` needs a rational coefficient and a child.
 
-These are layout observations on the local Linux x86-64 GCC 13.3.0/libstdc++ build,
-not portable size guarantees or measured solver memory/runtime improvements.
+The probe used Linux x86-64 GCC 13.3.0/libstdc++; sizes depend on the ABI and
+library implementation. It measures inline storage only.
 The straightforward variant adds its own discriminator alongside `TermKind`
-and provides no inline size reduction in this probe. This does not establish
-that variant access is slow. The union candidate saves eight inline bytes but
+and provides no inline size reduction in this probe. Access costs were not
+measured. The union candidate saves eight inline bytes but
 still reserves room for the largest alternative in every node. Neither
 candidate is a working replacement for `Term`.
 
@@ -98,5 +101,4 @@ cost. A smaller `sizeof` alone does not establish that a candidate is better.
 Any implementation needs a local representation/invariant design note, updated
 core documentation, hash-consing and lifetime regressions, sanitizer checks,
 and the applicable [correctness gates](../development/correctness.md). Record
-solver evaluations in the run ledger before claiming an improvement. Those
-experiments and any implementation remain deferred.
+solver evaluations in the run ledger before claiming an improvement.

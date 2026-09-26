@@ -1,15 +1,16 @@
 # Library API and embedding
 
-**Status: open work; audit not started. Owner: unassigned.**
+**Status: Open lead. Owner: unassigned.**
+
+The API audit and external-consumer prototype have not started.
 
 Primo should be usable as a library inside another application as well as
-through its command-line executable. This is an intended direction. Whether
-the current abstractions need substantial changes remains an open question.
+through its command-line executable. Whether the current abstractions need
+substantial changes remains an open question.
 
 The [Yices 2.2 architecture](../papers/yices.md#the-2014-paper-terms-contexts-and-models)
 is a literature reference for separating shared terms, mutable solving
-contexts, and independent model snapshots. It motivates this ownership audit;
-it does not establish that Primo already supports the same public API.
+contexts, and independent model snapshots.
 
 The [literal-capacity item](../implementation/sat.md#literal-range-and-exhaustion)
 is a small related hardening task: allocation exhaustion and invalid literal
@@ -37,12 +38,11 @@ unavailable diagnostics need an explicit API contract.
   defining caller-visible identity and lifetime rules.
 - The {source}`CLI entry point <src/main.cpp#L33-L69>` owns process signal
   handling and a deadline path that exits the process. Keep executable policy
-  outside the embedding contract; audit cancellation and error paths through
+  outside the library API; audit cancellation and error paths through
   the library and its dependencies separately.
 
-These are inspection starting points, not findings that the solver violates
-an established embedding contract. No public API, ABI stability, or thread
-safety guarantee is introduced by this work item.
+Public API stability, binary compatibility, and thread-safety guarantees still
+need to be defined.
 
 The [core chapter](../implementation/core.md) describes current identity,
 borrowing, and scope lifetimes for this audit to start from.

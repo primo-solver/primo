@@ -10,8 +10,9 @@ point; {source}`IpasirUpBackend <src/sat/ipasir_up.hpp#L81-L107>` defines the SA
 boundary.
 
 Correctness is the first requirement. Wrong answers, invalid models, and crashes
-block acceptance of solver changes. Contributions need explanations, tests,
-and reproducible evidence; see [](development/correctness.md).
+block acceptance of solver changes. Contributions that change solver behavior
+need explanations, regression tests, fuzzing, and reproducible evidence;
+see [](development/correctness.md).
 
 ## Build and solve a first problem
 
@@ -34,7 +35,8 @@ The example contains:
 The answer is `unsat`: equal arguments must give equal results when passed to
 the same function, so these assertions contradict each other.
 
-## Implemented now
+(implemented-now)=
+## Implemented
 
 Primo supports quantifier-free uninterpreted functions, linear Real arithmetic,
 linear Int arithmetic, and their supported combinations. Integer search is
@@ -72,15 +74,12 @@ the code and distinguishes implemented mechanisms from ideas for investigation.
 2026 paper and its benchmark tables. Published configurations and results are
 kept separate from current defaults and qualification evidence.
 
-A documentation build or a successful example does not certify solver
-correctness across a benchmark corpus.
+(work-underway)=
+## Active work
 
-## Work underway
-
-This replacement manual is being written and reviewed page by page. Start with
-the home page, the contributor correctness guide, and the architecture overview.
-The [review ledger](review.md) records what has been checked and which pages
-still await acceptance. These are draft explanations of existing behavior.
+The documentation rewrite is being reviewed page by page. The
+[review ledger](review.md) records completed checks, remaining chapters, and
+pages awaiting acceptance.
 
 ## Open leads
 
@@ -101,10 +100,10 @@ remains in use; implementation is deferred.
 A layout probe identifies a possible 24-to-16-byte reduction while retaining
 `unique_ptr` ownership; implementation and solver evaluation remain open.
 
-Possible solver extensions and research ideas remain in the existing book's
-open-leads register. They are candidates for investigation, not commitments or
-implemented features. The rewrite will give them a separate index and preserve
-the outcomes of accepted and rejected experiments.
+Further solver extensions and research ideas are listed in the
+{source}`open-leads register <docs/open-leads.md>`, alongside the outcomes of
+earlier experiments. An open lead is a candidate for investigation, with no
+implementation commitment.
 
 [Dynamic Ackermannization and theory-lemma retention](leads/theory-lemmas.md)
 records the remaining selection, reuse, and deletion questions from the Yices
@@ -114,12 +113,12 @@ logical redundancy from reason lifetime and termination across restarts.
 
 [Polarity-aware CNF](papers/polarity-aware-cnf.md) records the directional
 definitions permitted by Plaisted–Greenbaum and their SMT references.
-General PG encoding remains open work. The
+General PG encoding remains an open lead. The
 [statistics instrumentation lead](leads/statistics-instrumentation.md) proposes
 typed counters and optional diagnostics while preserving solver-control state.
 
 [Floating-point-guided LRA basis selection](leads/lra-floating-point.md)
-carries forward lead D2: use an approximate solver to suggest a basis, then
+proposes using an approximate solver to suggest a basis, then
 perform exact pivots and checking. Its benefit in Primo remains unmeasured.
 
 During review, `make docs-next-serve` serves this draft at

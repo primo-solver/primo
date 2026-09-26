@@ -1,9 +1,9 @@
 # Polarity-aware CNF in SMT
 
-**Status: literature reviewed; general Plaisted–Greenbaum encoding is an open
-lead, not implemented in Primo.** The current clausifier emits full definitions
-for nested Boolean connectives. Syntactic theory-atom polarity and shortcuts
-for asserted roots are different mechanisms.
+**Status: Open lead.** The literature has been reviewed; general
+Plaisted–Greenbaum encoding is not implemented in Primo. The clausifier emits
+full definitions for nested Boolean connectives. Syntactic theory-atom polarity
+and shortcuts for asserted roots are different mechanisms.
 
 ## Sources and reading scope
 
@@ -11,7 +11,7 @@ for asserted roots are different mechanisms.
   *On CNF Conversion for SAT and SMT Enumeration*, JAIR 83 (2025),
   [DOI](https://doi.org/10.1613/jair.1.16870),
   [primary text, arXiv v7](https://arxiv.org/pdf/2303.14971v7).
-  Read on 2026-09-24: §2.1 (polarity and projected equivalence), §3.2
+  Sections used: §2.1 (polarity and projected equivalence), §3.2
   (directional definitions), §4 through Theorem 1 and Remark 1 (NNF and
   enumeration), and §5.3 plus the experiment description at the start of §5.4.
   This is direct SAT/SMT research, including AllSMT experiments with MathSAT
@@ -23,17 +23,14 @@ for asserted roots are different mechanisms.
   p. 1, explicitly identifies Plaisted–Greenbaum-based CNF conversion.
   The authors' [proof-format explanation](https://ultimate.informatik.uni-freiburg.de/smtinterpol/proof-format.html#cnf-conversion),
   **CNF conversion** and **SMT solving**, exhibits directional clauses followed
-  by equality reasoning. These passages were read on 2026-09-24; no solver
-  implementation source was used.
+  by equality reasoning.
 - Original attribution: David A. Plaisted and Steven Greenbaum,
   *A Structure-preserving Clause Form Translation*, Journal of Symbolic
   Computation 2(3), 293–304 (1986),
   [DOI](https://doi.org/10.1016/S0747-7171(86)80028-1).
-  **Bibliographic reference only in this review:** the publisher's full text
-  returned HTTP 403; the author lists reprints without a downloadable copy.
-  The algorithmic account below is grounded in the accessible 2025 primary
-  SMT paper. A review of the original first-order translation remains open;
-  no claims about its additional mechanisms are made here.
+  **Bibliographic attribution:** the original full text was unavailable during
+  review. The algorithmic account below uses the 2025 primary SMT paper.
+  Reviewing the original first-order translation remains an open task.
 
 ## Which implication is needed
 
@@ -93,8 +90,8 @@ bound for an implemented Primo PG encoder.
 
 ## Open lead: obligations before implementation
 
-The following are Primo design obligations inferred from the papers and code,
-not a claim that either paper supplies Primo's incremental integration.
+Primo's incremental integration requires the following design work in addition
+to the translation described by the papers.
 
 1. Track requested and emitted directions separately from literal allocation.
    If another assertion or assumption later uses a term in the opposite
@@ -120,11 +117,10 @@ not a claim that either paper supplies Primo's incremental integration.
    DAGs, incremental upgrades, guards, and Bool-valued arguments. Count clauses
    and literal occurrences saved, terms needing both directions, and upgrades.
    Run the applicable fresh solver fuzz gate and independent model validation
-   before acceptance. No such solver change has been made or qualified here.
+   before acceptance.
 6. Compare against current full definitions with identical solver settings,
    recording decisions, propagations, theory calls, runtime, memory, and PAR2.
    Fewer clauses can change propagation and search; clause count alone is not
    a performance result. NNF conversion is a separate design/evaluation choice.
 
-Owner unassigned; implementation and evaluation have not started. This note
-is the initial checklist, not an accepted encoding design.
+Owner unassigned; integration design, implementation, and evaluation have not started.

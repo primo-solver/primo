@@ -34,8 +34,9 @@ feature can have a draft explanation; an accepted explanation can describe an
 unimplemented proposal accurately.
 
 - **Draft:** the page exists but factual verification is incomplete.
-- **Verified:** the recorded source/command/example checks passed; editorial
-  and user review are still pending. This does not certify solver correctness.
+- **Verified:** the recorded source/command/example checks passed; remaining
+  editorial and reader checks are listed in the ledger. This does not certify
+  solver correctness.
 - **Reviewed:** page review has occurred and its findings are resolved.
 - **Accepted:** the user or designated reviewer explicitly accepts the page
   for the replacement book. A successful build never assigns this state.
@@ -67,16 +68,52 @@ belongs to the current documentation branch. No page is accepted yet.
 5. [Boolean abstraction and SAT integration](implementation/sat.md): can a
    reader derive the worked clauses, distinguish definitions from assertions
    and assumptions, and find the lifetime and explanation obligations?
-6. [Library API](leads/library-api.md) and
+6. [DPLL(T)](implementation/dpllt.md): are assignment ownership, callback
+   ordering, reason signs and lifetimes, and final consistency checks clear?
+7. [EUF](implementation/euf.md) and [LRA](implementation/lra.md): can the reader
+   follow each worked example through the owning code and understand the
+   representations, invariants, defaults, limitations, and paper basis?
+8. [Library API](leads/library-api.md) and
    [incremental memory](leads/incremental-memory.md), together with
    [compact term storage](leads/term-storage.md): do the work items capture
    the intended direction, available evidence, and unresolved design questions?
-   Reviewing these leads does not complete their investigations.
+   Apply the same questions to the remaining lead pages. Reviewing a lead
+   does not complete its investigation.
+9. Literature notes: are the cited sections, implemented subsets, deviations,
+   and open questions clear? Keep published results attached to their original
+   configurations and evidence.
 
 Record findings by page and section, distinguishing factual corrections,
 missing explanations, and editorial preferences. Fix them in that page's
 next commit, update the ledger, and rebuild. Acceptance concerns the page's
 declared scope; unfinished component chapters remain separate work.
+
+## Work states and writing conventions
+
+Use three work states consistently in the home page, navigation, and lead pages:
+
+- **Implemented:** behavior present in the linked code. State whether it is
+  enabled by default or opt-in, and identify its supported scope.
+- **Active work:** an investigation, implementation, or documentation task
+  currently being carried out, with its next step recorded.
+- **Open leads:** candidates for investigation. Each lead names its owner and
+  separates completed inspection or probes from pending design and evaluation.
+
+These describe project work; the page-review states above describe documentation.
+An initial probe does not by itself make a lead an active implementation.
+
+Implementation chapters explain current behavior in the present tense. Lead
+with the problem and a concrete example, connect operations to their owning
+types, and explain invariants, lifetimes, limitations, and sources. Link type
+and function names directly to code; give regression links descriptive labels.
+Define acronyms and internal terms at first use. Put historical identifiers
+such as H1 or D2 after the mechanism's descriptive name.
+
+Keep design tradeoffs in the chapter. Put repair chronology, commands already
+run, and verification outcomes in dated review or experiment records, linked
+from the explanation. State each limitation where it helps the reader; avoid
+repeating general disclaimers about what writing a chapter does not establish.
+Paper-specific limitations and incomplete validation remain explicit.
 
 ## Code links are part of the review
 
@@ -109,6 +146,11 @@ validation automatically. GitHub viewing requires repository access while
 Primo is private.
 
 ## First draft batch: checks and limits
+
+The records below describe successive reviews at their recorded revisions.
+Statements about source pins, page counts, and pending work belong to those
+reviews; later records may supersede them. The configuration holds the current
+source-link pin, and the page ledger records outstanding acceptance checks.
 
 The three content pages were checked against the linked local source interfaces,
 workflow definitions, and existing design notes. Code paths and anchor bounds
@@ -530,8 +572,9 @@ quantifiers temporarily sort their projection by assignment position. No
 performance improvement is claimed. Fresh SLURM six-logic gates, retained-session checks and the paired 120-input
 baseline comparison are recorded in `2026-09-25-shared-assignment-slurm`.
 All four profiles retain their solved counts. All 240 SAT rows were replayed:
-220 direct Dolmen passes and 20 additional passes with wider arithmetic logic
-on the same saved assertions/models. Those 20 remain incomplete under strict
+220 direct Dolmen passes and 20 replays of five generated LRA inputs using
+the wider `QF_NRA` validator logic for constant-denominator syntax, on the same
+saved assertions/models. Those 20 remain incomplete under strict
 declared-logic validation. Default mixed search counters can change; two
 profiles narrowly exceed the strict 1% common-runtime threshold. No performance
 promotion is claimed. Both books pin source links to `45e25a6`;
@@ -714,12 +757,15 @@ the existing page and anchor compatibility baseline is preserved.
 ### Why leading-coefficient normalization was chosen
 
 The follow-up history check inspected the original design (`d5e1a54`), the
-H1b implementation commit (`1e6554d`), the early-canonicalization note and
+[H1b implementation commit](https://github.com/primo-solver/primo/commit/1e6554db8d5688bcb817c49c1ec6607dbb5c9ad5),
+the early-canonicalization note and
 current code. The original objective was proportional-row sharing; no
 isolated comparison with coprime-integer tableau normalization was found.
 The chapter now distinguishes the simple scaling operation from a demonstrated
 performance advantage, records the possible cost of introducing fractions,
 and separates it from the default-off primitive-integer core rewrite.
+The earlier {source}`LIA arithmetic profile <docs/qf-lia-profile.md#L171-L176>`
+also raised the cost question; it did not isolate the two normalization forms.
 Stale descriptions of that early pass as mandatory were corrected in the
 retained arithmetic and H1 notes. These are documentation corrections;
 normalization behavior and option defaults are unchanged.
@@ -742,3 +788,37 @@ The draft now has 21 pages with navigation/review/support entries. Both strict
 book builds, source/HTML links and old page/anchor compatibility checks pass.
 Lifetime design, implementation, solver qualification and memory/runtime
 evaluation remain open; no solver batch ran for this documentation change.
+
+## Editorial consistency pass — 2026-09-26
+
+This pass covers the draft implementation and contributor chapters, home page,
+eight lead pages, and four shared literature notes. It resolves the style review
+by standardizing work states, defining terminology, linking representation types
+directly, and replacing repeated editorial caveats with specific limitations.
+The LRA equality-sharing explanation uses row examples checked against
+`model_filtered_unit_equalities`; no executable example changed.
+
+Repair chronology and detailed qualification counts now live in this review
+record, with links from DPLL(T). The normalization rationale keeps the technical
+tradeoffs in LRA and the historical evidence here. Published measurements,
+rejected experiments, source attribution, validation gaps, and option defaults
+are preserved. The source-link revision remains unchanged.
+
+Contributor fuzzing requirements concern coverage, outcomes, and reproducible
+evidence, independent of which machine a contributor uses. This clarification
+does not change the workspace's agent execution instructions. Public contribution
+governance and sign-off remain outside the correctness guide's scope.
+
+Reading-copy details remain here rather than in chapter introductions: the EUF
+review used `docs/oliveras-euf.pdf`; the Yices copies listed above have 5, 8, and
+30 PDF pages respectively. The original Plaisted–Greenbaum paper's publisher
+returned HTTP 403, and the author's reprint listing offered no download; the
+directional-encoding account therefore uses the accessible 2025 primary paper.
+
+Verification passed: `make docs`, `make docs-next`, source-link targets and line
+bounds, rendered local links, shared-note consistency, navigation and ledger
+coverage, and preservation of old-book and pre-edit draft anchors.
+`git diff --check` also passed. Only documentation changed; executable examples
+are unchanged, and no solver qualification was rerun. Page-acceptance states
+are unchanged; reader acceptance and remaining factual investigations stay
+listed in the ledger.

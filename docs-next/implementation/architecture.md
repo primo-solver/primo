@@ -9,8 +9,8 @@ This overview maps the implemented boundaries to their owning types and
 functions. Detailed algorithms belong in the component chapters.
 
 Making these boundaries suitable for a public library API is
-[open work](../leads/library-api.md). The existing internal interfaces have
-not yet been qualified as an embedding contract.
+[an open lead](../leads/library-api.md). The internal interfaces still need
+review and testing for use as a public library API.
 
 ```{figure} ../_static/query-flow.svg
 :name: query-flow
@@ -45,7 +45,8 @@ checks are omitted. The numbered walkthrough below links each stage to code.
    {source}`separate quantified-UF route <src/smt/solver_session.cpp#L624-L649>`.
    Ground goals pass through preprocessing and
    {source}`make_solver_dispatch <src/smt/solver_strategy.cpp>`, using formula
-   features, declared logic, and model requirements to choose a leaf.
+   features, declared logic, and model requirements to choose a strategy leaf:
+   a terminal strategy step that invokes a solver engine.
    {source}`make_session_solver_strategy <src/smt/solver_leaves.cpp>` connects
    these leaves to concrete engines.
 5. **Return an owning outcome.**
@@ -54,9 +55,8 @@ checks are omitted. The numbered walkthrough below links each stage to code.
    The {source}`command loop <src/main.cpp#L103-L119>` prints responses and
    handles command errors separately from solver answers.
 
-A declared logic is therefore an admission rule and dispatch input, not a
-promise that every assertion travels through the same theory engine.
-Preprocessing can settle a goal or expose a simpler route.
+A declared logic determines which inputs are accepted and helps select an
+engine. Preprocessing can settle a goal or expose a simpler route.
 
 ## Representation and ownership
 
@@ -143,8 +143,7 @@ component capabilities and model fragments are described by
 {source}`TheoryComponent's interface types <src/theory/theory_component.hpp>`.
 `QF_UFLRA` retains a
 {source}`dedicated engine <src/smt/solver_engines.cpp#L10801-L10821>`.
-These routes must not be described as one uniform implementation merely because
-both combine uninterpreted functions with arithmetic.
+The two logics therefore use different implementations of theory combination.
 
 ## Sessions and result validity
 
@@ -178,38 +177,30 @@ model inconsistency is not a logical UNSAT result.
 
 In the [first example](../index.md#build-and-solve-a-first-problem), the session
 records declarations for `a`, `b`, and `f`, followed by `a = b` and
-`f(a) != f(b)`. The frontend creates sorted core terms. The conjunction is
+`f(a) != f(b)`. The frontend creates typed core terms. The conjunction is
 unsatisfiable because function congruence requires `f(a) = f(b)`.
 
-Preprocessing may expose that contradiction before a full SAT/theory exchange;
-the example does not promise a particular callback trace. The abstraction
-boundary remains the same: the
-{source}`BooleanClausifier <src/smt/clausifier.hpp>` maps Boolean structure and
+Preprocessing may expose that contradiction before a full SAT/theory exchange.
+The {source}`BooleanClausifier <src/smt/clausifier.hpp>` maps Boolean structure and
 atoms to SAT literals while theory code reasons about terms.
 
 Useful entry points for checking these contracts are:
 
 - {source}`core identity and construction tests <tests/unit/core_tests.cpp>`;
-- {source}`incremental_closure_discovers_unary_congruence_with_lookup <tests/unit/euf_solver_tests.cpp#L248-L269>`;
+- {source}`unary congruence and lookup tests <tests/unit/euf_solver_tests.cpp#L248-L269>`;
 - {source}`session scope and reuse tests <tests/unit/smt_session_tests.cpp>`;
 - {source}`model representation tests <tests/unit/model_tests.cpp>`;
 - {source}`SAT backend protocol tests <tests/unit/sat_backend_tests.cpp>`;
 - {source}`strategy lifetime tests <tests/unit/strategy_lifetime_tests.cpp>`.
 
-These are code pointers and regression coverage, not substitutes for the
-[fresh correctness gates](../development/correctness.md).
-
 ## Sources and implementation status
 
-This page is an original integration overview based on the interfaces and
-implementations linked above. Existing Primo design notes provide the detailed
+Primo's design notes provide the detailed
 {source}`session replay contract <docs/incremental-smt.md>`,
 {source}`model ownership contract <docs/model-interpretation.md>`, and
 {source}`tactic contract <docs/tactics.md>`.
 
 The existing {source}`IPASIR-UP paper map <docs/papers/ipasir-up.md>` and
 {source}`combination implementation notes <docs/modular-theory-combination.md>`
-record algorithm sources and implemented subsets. Their detailed paper-to-code
-audits remain separate chapter work. This overview does not establish full
-paper-algorithm implementation, generic support for additional theories, proof
-production, or completeness for bounded integer/quantified search.
+record algorithm sources and implemented subsets. Component chapters explain
+the corresponding algorithms and their limitations.

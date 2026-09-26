@@ -9,8 +9,8 @@ disequality contradicts them.
 The [DPLL(T) chapter](dpllt.md) describes how assignments reach theory solvers
 and how SAT uses their explanations. This chapter explains the congruence-closure
 implementation behind that interface. The {source}`default options <src/smt/check_sat.hpp#L219-L242>`
-select `FlatCongruenceClosure` and one-sided BFS explanations. Propagation
-scheduling is a separate option; selecting this implementation does not mean
+select `FlatCongruenceClosure` and one-sided breadth-first search (BFS)
+explanations. Propagation scheduling is a separate option; selecting this implementation does not mean
 every consequence is propagated immediately.
 
 ## Representation and ownership
@@ -101,8 +101,8 @@ negating them again. In this example `explain_equal(f(a), f(b))` supplies
 for an unconditional fact, such as `true ≠ false`, rather than an unexplained
 SAT assumption.
 
-This is a trace of theory operations, not a promise that preprocessing and
-SAT choose this exact search order. The [first input](../index.md#build-and-solve-a-first-problem)
+Preprocessing and SAT may reach this contradiction in a different order.
+The [first input](../index.md#build-and-solve-a-first-problem)
 expresses the same contradiction. SAT decision checkpoints also differ from
 SMT-LIB assertion `push`/`pop`, as explained in [DPLL(T)](dpllt.md).
 
@@ -183,7 +183,7 @@ not a proof object exported to the user.
 ### Optional explanation algorithms
 
 `--euf-explain-search` chooses among these implemented modes. All except
-`one-sided` are opt-in; this chapter makes no performance promotion.
+`one-sided` are opt-in.
 
 | Value | Implemented mechanism and limitation |
 | --- | --- |
@@ -261,7 +261,7 @@ truth values, appending the consequence to the explanation clause. It does
 not directly explain arbitrary negative equality candidates. Candidate queues,
 budgets, and final consistency checks belong to the SMT driver.
 
-There is also a default-off bounded mode, `--euf-diseq-ackermann`, using
+The optional bounded mode `--euf-diseq-ackermann` is off by default. It uses
 functional-consistency clauses over existing atoms. For a binary function its
 clause has the form:
 
@@ -301,7 +301,7 @@ to other components.
 Robert Nieuwenhuis and Albert Oliveras, *Fast Congruence Closure and Extensions*,
 Information and Computation **205** (2007), 557–580,
 [doi:10.1016/j.ic.2006.08.009](https://doi.org/10.1016/j.ic.2006.08.009), is the
-primary algorithmic source. The local review copy is `docs/oliveras-euf.pdf`.
+primary algorithmic source.
 
 | Basis | Implemented scope and deviations |
 | --- | --- |
@@ -312,7 +312,7 @@ primary algorithmic source. The local review copy is `docs/oliveras-euf.pdf`.
 
 `FlatCongruenceClosure` does not implement the paper's integer-offset extension.
 [Linear real arithmetic](lra.md) covers the arithmetic solver. Theory
-combination remains a separate chapter to prepare.
+combination is outside this chapter's scope.
 Lemma-retention policy remains in the [theory-lemma lead](../leads/theory-lemmas.md)
 and [safe-forgetting lead](../leads/theory-lemma-forgetting.md).
 

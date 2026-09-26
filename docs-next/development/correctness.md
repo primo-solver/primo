@@ -5,10 +5,9 @@ required checks support it. Wrong answers, invalid models, crashes, and
 unresolved reference disagreements take priority over tuning. Faster results
 cannot compensate for a correctness defect.
 
-This guide explains the engineering requirements already in force. It does
-not settle the public contribution policy's pending governance or sign-off
-questions. Documentation improvements, minimized bug reports, tests, and tools
-are useful contributions alongside solver development.
+Documentation improvements, minimized bug reports, tests, and tools are useful
+contributions alongside solver development. This guide covers the engineering
+checks required for those contributions.
 
 ## Start with the contract and a regression
 
@@ -24,11 +23,12 @@ comparisons; their source, tests, build files, parser grammars, and documentatio
 must not supply implementation material. Contributions must also respect the
 [layer and ownership boundaries](../implementation/architecture.md).
 
-Update the affected documentation with the code. Keep accepted behavior,
-active work, and open hypotheses distinct. A passing unit test alone does not
+Update the affected documentation with the code. Keep implemented behavior,
+active work, and open leads distinct. A passing unit test alone does not
 establish an algorithm's invariant or qualify a new default.
 
-## Run the applicable local checks
+(run-the-applicable-local-checks)=
+## Run the applicable checks
 
 Run commands from the repository root:
 
@@ -62,15 +62,13 @@ September 2009, Chapter 4, explains why grammar-based generation must reach
 solver internals with valid formulas, and how structure- and type-aware
 delta debugging reduces failures while preserving the observed defect.
 Section 4.4.2 covers FuzzSMT's extension beyond bit-vectors, including linear
-arithmetic. The supplied source is
-`external/papers/Brummayer-PhD-Thesis-2009.pdf`.
+arithmetic.
 
 This complements Brummayer and Biere's *Fuzzing and Delta-Debugging SMT
 Solvers* (SMT 2009), already recorded in the
 {source}`literature notes <docs/literature.md#L324-L380>`.
-Primo invokes external generators and reduction tools; it does not claim an
-implementation of the thesis's generator or reducer. The gate counts below
-are project policy, not thresholds established by that thesis.
+Primo uses external generators and reduction tools. The gate counts below are
+project policy, not thresholds established by that thesis.
 
 ### Gate size and coverage
 
@@ -78,7 +76,9 @@ Fresh fuzzing is required for changes to parsing, printing, type checking,
 terms, rewriting, preprocessing, clausification, SAT integration, solver control
 flow, theories, generated lemmas, models, and options that alter behavior.
 Use the candidate revision and the exact options being claimed. Repeat the
-applicable gate after a behavior-changing fix.
+applicable gate after a behavior-changing fix. Contributors may use any
+suitable machine; acceptance depends on the coverage, results, and reproducible
+evidence recorded below.
 
 | Gate | Applicable change | Minimum coverage |
 | --- | --- | --- |
@@ -91,7 +91,7 @@ its activation counters where available. Thousands of inputs that bypass the
 relevant path are weak evidence. In particular, generated answers do not test
 model printing, and one-shot inputs do not cover session scoping.
 
-For a local QF_UF differential run:
+For a QF_UF differential run:
 
 ```bash
 make build contrib-fuzzsmt contrib-z3
@@ -120,7 +120,6 @@ Logic-specific workflows live in `scripts/`; the existing book's debugging
 and finite-domain-fuzzing chapters describe their coverage. Install missing
 dependencies when feasible. For long campaigns or inaccessible infrastructure,
 record the remaining gate and arrange a maintainer handoff before merge.
-Contributors do not need a private cluster account to submit useful work.
 
 ## Investigate every failure
 

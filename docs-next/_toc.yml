@@ -18,7 +18,7 @@ parts:
       - file: papers/yices
       - file: papers/clause-forgetting
       - file: papers/polarity-aware-cnf
-  - caption: Open work
+  - caption: Open leads
     chapters:
       - file: leads/library-api
       - file: leads/incremental-memory

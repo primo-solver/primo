@@ -12,15 +12,15 @@ a solver answer. There is no single C++ driver for every logic. This chapter
 describes their common contract and the differences that affect correctness;
 [EUF](euf.md) explains congruence closure, its reasons, and theory undo.
 [Linear real arithmetic](lra.md) explains the tableau and its repair operations.
-Combination algorithms remain separate chapter work.
+Detailed combination algorithms are outside this chapter's scope.
 
 ## Representation and ownership
 
 An engine receives assertion `TermId`s, options, model-conversion records, and
 a live term manager. Its result is a {source}`CheckSatOutcome
 <src/smt/check_sat.hpp#L210-L217>`, not a raw SAT assignment. The
-[architecture chapter](architecture.md) places engine selection and result
-adaptation around this boundary.
+[architecture chapter](architecture.md) explains engine selection and how the
+session turns the outcome into an SMT-LIB response.
 
 | State | Owner and representation |
 | --- | --- |
@@ -38,8 +38,8 @@ mutations. The [core ownership rules](core.md) still apply. Connecting a
 propagator does not transfer ownership to SAT; callbacks must stop before their
 targets are destroyed or their routing is replaced. The {source}`AssignmentConnection guard <src/smt/assignment_coordinator.hpp>`
 disconnects with the consumer and shared view still alive, then unbinds the view.
-The component driver uses it at
-{source}`its detached preparation boundary <src/smt/component_solver.cpp>`.
+The {source}`component driver <src/smt/component_solver.cpp>` disconnects the
+propagator while preparing new atoms, then reconnects it before search resumes.
 
 ## Follow an assignment through the callbacks
 
@@ -86,34 +86,28 @@ Neither observation bounds the cost of a theory check, explanation, rollback,
 or the full search. Dense SAT-variable arrays also consume space up to their
 largest registered index, including gaps.
 
-### Assignment rollback regression
+(assignment-rollback-regression)=
+### Decision boundaries and rollback
 
-The audit found that EUF initialized its decision boundaries with an extra
-zero entry. At the first decision, `r` root literals therefore produced
-boundaries `{0, r}`; backtracking to zero cleared their assignment markers,
-while the closure's separate
-{source}`checkpoints <src/smt/solver_engines.cpp#L1366-L1390>` preserved the facts.
-The repair in `ac2aaaf` removed the synthetic root boundary. The shared
-{source}`trail now owns this rule <src/sat/trail.cpp>`: entry `k` marks the
-start of level `k+1`, and rollback keeps exactly `new_level` boundaries.
+In the shared {source}`trail <src/sat/trail.cpp>`, boundary `k` marks the start
+of level `k+1`. Rolling back to `new_level` keeps exactly that many boundaries
+and preserves root assignments. The theory's separate
+{source}`checkpoints <src/smt/solver_engines.cpp#L1366-L1390>` must preserve the
+same facts.
 
-Dedicated {source}`callback tests <tests/unit/euf_callback_tests.cpp>` drive the production
-callback through the EUF component adapter, dispatcher, and shared coordinator. Three traces reproduced
-lost transitive-equality propagation before the repair: root retention,
-retained-level retention, and repeated backtracks with empty observed levels.
-All five groups pass after the repair. Conflict and exported-model-fact controls
-pass both before and after; returned explanations are independently checked
-against every interpretation of the fixture's five constants. No incorrect
-SAT/UNSAT answer was reproduced. Deferred callbacks during a borrowed model
-scope and every combined-theory schedule are outside these direct tests.
+The {source}`callback tests <tests/unit/euf_callback_tests.cpp>` exercise root
+retention, retained levels, and repeated backtracks through empty observed
+levels. They check explanations against every interpretation of the fixture's
+five constants. The [repair record](../review.md#euf-callback-rollback-regression)
+documents the earlier boundary error and the limits of those tests.
 
 ### Shared assignment ownership
 
 The SAT API reports notifications and a backtrack level, so Primo retains one
 mirror of the observed assignment per connection. No backend-native trail
 extension is required. The dedicated EUF/arithmetic, mixed, component, and
-quantified-UF consumers no longer own mutable truth arrays or assignment
-boundaries. Theory-specific merge/bound undo logs remain necessary.
+quantified-UF consumers read this shared state instead of owning truth arrays
+or assignment boundaries. Theory-specific merge/bound undo logs remain necessary.
 
 The mirror contains observed assignments, not every SAT assignment. Ordinary
 Tseytin variables that only encode Boolean connectives stay inside CaDiCaL.
@@ -150,15 +144,9 @@ assignments. Retained sessions reconnect with a new owner and re-observe root
 facts after the preceding connection has settled its reason callbacks.
 {source}`Protocol tests <tests/unit/assignment_coordinator_tests.cpp>` cover
 root/retained levels, empty levels, duplicate and invalid events, growth,
-reentrancy, protected replay, and reconnect. Fresh six-logic SLURM gates,
-retained-session checks, 43 normal/ASan test groups and a paired 120-input
-baseline sample now qualify the migrated routes. No solved answers were lost
-in four comparison profiles. Of 240 successful SAT rows, 220 passed Dolmen
-under their declared logic; 20 replays of five generated LRA inputs required
-the wider `QF_NRA` validator logic for constant-denominator syntax. The same
-saved assertions and models passed, but strict declared-logic coverage remains
-incomplete for those rows. Exact evidence and timing limitations are in
-`docs/run-log.json`, entry `2026-09-25-shared-assignment-slurm`.
+reentrancy, protected replay, and reconnect. The
+[migration review](../review.md#shared-assignment-migration-review) records
+the qualification runs, model-validation gaps, and timing limitations.
 
 ## Conflicts, propagations, and explanations
 
@@ -215,13 +203,12 @@ The dedicated {source}`EUF conflict callback
 {source}`LRA conflict callback <src/smt/solver_engines.cpp#L7227-L7237>` request
 non-forgettable external clauses in the API variant carrying that flag.
 In contrast, {source}`ComponentDispatcher::cb_has_external_clause
-<src/smt/component_dispatcher.cpp#L240-L248>` sets it to **true**. Do not describe
-all Primo theory conflicts as permanently retained. Backend retention of a
+<src/smt/component_dispatcher.cpp#L240-L248>` sets it to **true**, making those
+clauses eligible for deletion. Backend retention of a
 requested reason, a propagator's C++ storage, and SAT's learned backjump clause
 are three separate things. The [Yices note](../papers/yices.md) and
 [forgetting investigation](../leads/theory-lemma-forgetting.md) cover the
-remaining policy questions; this chapter does not establish actual deletion
-timing or a global termination proof.
+remaining questions about deletion timing and termination across restarts.
 
 ## Lazy and online routes
 
@@ -229,7 +216,7 @@ The EUF engine choice and propagation schedule are separate options. The
 {source}`defaults <src/smt/check_sat.hpp#L220-L226>` select incremental EUF with
 automatic scheduling; {source}`mode resolution
 <src/smt/solver_engines.cpp#L484-L553>` chooses a schedule for the goal.
-Use the actual {source}`CLI names <src/main.cpp#L630-L634>`:
+The {source}`CLI options <src/main.cpp#L630-L634>` are
 `--euf-engine` and `--euf-prop`.
 
 | Route | During SAT search | After a SAT candidate |
@@ -265,12 +252,13 @@ theory, combination, and result-construction obligations.
 - **Component recipes:** the model callback's `Partial` check is not the
   final combination decision. The outer loop first handles
   {source}`pending lemmas and typed failures
-  <src/smt/component_solver.cpp#L305-L349>`. New lemmas are clausified at a
-  detached atom-growth boundary before another solve. The
+  <src/smt/component_solver.cpp#L305-L349>`. With the propagator disconnected,
+  it clausifies new lemmas and registers their atoms before another solve. The
   {source}`coordinator <src/smt/component_model_coordinator.cpp#L140-L208>`
-  then requests `FullModel` checks and verifies the selected arrangement/
-  model-projection contract. Local consistency of each theory alone is
-  insufficient.
+  then requests `FullModel` checks. It checks the chosen equalities and
+  disequalities between shared terms (the *arrangement*) or reconciles the
+  components' models on those terms, according to the combination policy.
+  Each theory being consistent on its own is insufficient.
 - **Other logics:** {source}`QF_UFLRA <src/smt/solver_engines.cpp#L10801-L10827>`
   retains a dedicated combination driver. Integer search adds integrality and
   resource-limit obligations; quantified UF adds instantiation/completion
@@ -352,16 +340,12 @@ schedules for the same logical obstruction.
 
 With `p=false`, all three assertions hold, so the initial query is SAT.
 Asserting `p` in the new scope makes it UNSAT; popping that assertion restores
-SAT. The derivation illustrates a valid branch and resolution sequence, not
-a promise about CaDiCaL's decision order, exact learned clause, or whether
-preprocessing discovers the contradiction first. The example is checked across
-lazy, online, conflict-only, and retained-session configurations in the
-{ref}`review procedure <dpllt-chapter-checks>`.
+SAT. CaDiCaL may choose a different branch or learned clause, and preprocessing
+may discover the contradiction before search. The
+{ref}`review record <dpllt-chapter-checks>` includes checks of this example
+under lazy, online, conflict-only, and retained-session configurations.
 
 ## Sources and implementation status
-
-This section is the implementation checklist for the integration described
-above. It separates the papers' contracts from Primo's scheduling choices.
 
 - **Nieuwenhuis, Oliveras, and Tinelli, *Solving SAT and SAT Modulo Theories:
   From an Abstract Davis–Putnam–Logemann–Loveland Procedure to DPLL(T)*,
@@ -385,19 +369,19 @@ above. It separates the papers' contracts from Primo's scheduling choices.
 - **Original Primo design:** {source}`component combination contract
   <docs/n-way-combination-migration.md>` and
   {source}`retained UF session design <docs/assumption-incremental-uf.md>`.
-  These specify local ownership, detached growth, result adaptation, and
-  session reuse. SAT backtracking, a callback's incremental theory state,
+  These specify ownership, atom registration between SAT connections,
+  handling of component results, and session reuse. SAT backtracking,
+  a callback's incremental theory state,
   and SMT-LIB `push`/`pop` are distinct lifetimes. The default session rebuilds;
   opt-in assumptions engines retain clauses and selectors across queries.
 
 | Obligation | Existing verification and limitation |
 | --- | --- |
-| A theory conflict reaches SAT even without optional propagation | {source}`EUF external-conflict tests <tests/unit/boolean_solver_tests.cpp#L2589-L2635>`; regressions for conflict delivery, not a correctness proof of congruence closure. |
+| A theory conflict reaches SAT even without optional propagation | {source}`EUF external-conflict tests <tests/unit/boolean_solver_tests.cpp#L2589-L2635>`. |
 | Explained propagation occurs during search | {source}`online congruence test <tests/unit/boolean_solver_tests.cpp#L2480-L2500>` checks delivered propagation; broader explanation algorithms belong in the EUF chapter. |
 | Rollback preserves surviving reasons and assignment routing | {source}`component lifecycle regression <tests/unit/component_combination_tests.cpp#L527-L589>` and {source}`backend reconnect regressions <tests/unit/sat_backend_tests.cpp#L194-L235>`. |
 | A candidate with pending work or a typed failure is not accepted as SMT SAT | Component-loop checks above and {source}`component regression suite <tests/unit/component_combination_tests.cpp>`; detailed combination/quantifier completeness is separate work. |
 | Scoped assertions change satisfiability without corrupting earlier state | The worked example, {source}`session regressions <tests/unit/smt_session_tests.cpp>`, and the distinct session ownership described above. |
 
-These checks support the documentation, not a new default promotion or a
-performance claim. The [correctness gates](../development/correctness.md) still
-apply to future changes to callbacks, explanations, scheduling, or final checks.
+Changes to callbacks, explanations, scheduling, or final checks require the
+[correctness gates](../development/correctness.md).

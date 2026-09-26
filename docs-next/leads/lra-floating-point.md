@@ -1,14 +1,17 @@
 # Floating-point-guided LRA basis selection
 
-**Status: open lead D2; owner unassigned. Not implemented or evaluated in Primo.**
+**Status: Open lead. Owner: unassigned.**
+
+The primary algorithm has been reviewed. Integration design, implementation,
+and evaluation remain pending.
+
 Use a floating-point linear-programming solver to suggest a useful starting
 configuration for the exact arithmetic solver. The intended saving is fewer
 expensive rational pivots. Whether that saving exceeds the extra work remains
 an experimental question.
 
 This carries forward the existing
-{source}`D2 investigation <docs/qf-lra-heuristics.md#L2033-L2113>`;
-it is not a new implementation commitment. The
+{source}`investigation recorded as D2 <docs/qf-lra-heuristics.md#L2033-L2113>`. The
 [LRA chapter](../implementation/lra.md) describes the current exact solver.
 
 ## Proposed mechanism and paper basis
@@ -32,9 +35,9 @@ Arithmetic Decision Procedure*, CAV 2009,
    search.
 
 The safety argument depends on exact pivots preserving the equations and
-exact checking producing all answers, explanations and model values. Keeping
-the existing finite fallback to Bland is also necessary for eventual exact
-search to terminate. A floating-point result alone cannot justify a learned
+exact checking producing all answers, explanations and model values. Preserve
+the existing eventual fallback to Bland so exact search retains its termination
+guarantee. A floating-point result alone cannot justify a learned
 clause or a printed model.
 
 ## Integration questions
@@ -49,7 +52,7 @@ clause or a printed model.
   provides an exact pivot operation, but Primo has no target-basis driver.
   Specify assignment restoration, reverse-occurrence maintenance, violated-row
   tracking and rollback before connecting one to the live tableau. Account
-  separately for the optional SOI mode's additional state.
+  separately for the optional sum-of-infeasibilities (SOI) mode's additional state.
 - **Where the cost goes.** Measure conversion, approximate solving, forced
   pivots and remaining exact repair separately. Track fill-in, coefficient
   sizes and memory: a promising basis can be expensive to reach or store.
@@ -62,9 +65,9 @@ clause or a printed model.
 The retained D2 discussion and
 {source}`related-work survey <docs/papers/lra-related-work.md>` include later
 studies and reasons to temper expectations. Their historical gains and
-Primo profiles are not estimates for the current revision. Reprofile first;
-the supplied `external/papers/Monniaux-cav09.pdf` §3 was read for this lead,
-but the follow-up studies have not been freshly audited here.
+Primo profiles are not estimates for the current revision. Reprofile before
+choosing an experiment. The [review record](../review.md#normalization-clarification-and-d2-lead)
+identifies the primary reading; the follow-up studies still need review.
 
 Any prototype needs tests for an unreachable target basis, strict inequalities,
 misleading numerical results, partial conversion and incremental rollback.
@@ -73,4 +76,4 @@ runtime, solved count, PAR2 and memory against the same exact-only baseline on
 SLURM. Measure representative easy cases as well as cases dominated by exact
 arithmetic. Reject or restrict the approach if conversion and forced pivots
 consume the savings, or if gains depend on a narrow set with substantial wider
-regressions. Implementation, evaluation and default promotion remain deferred.
+regressions.

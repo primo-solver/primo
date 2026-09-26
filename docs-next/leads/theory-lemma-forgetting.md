@@ -1,11 +1,13 @@
 # Safe forgetting of theory lemmas
 
-**Status: open lead; investigation not started. Owner: unassigned.**
+**Status: Open lead. Owner: unassigned.**
+
+The literature and callback interfaces have been inspected. Investigation of
+the effective deletion policy and its costs has not started.
 
 Investigate whether selected theory lemmas can be made eligible for backend
 deletion to control memory and Boolean propagation cost while preserving
-correct answers, valid explanations, and termination. Primo's current
-retention behavior remains in place while this question is open.
+correct answers, valid explanations, and termination.
 
 ## Literature basis and boundary
 
@@ -24,7 +26,7 @@ reasons have a separate lifetime constraint.
 The [current-code map](../papers/clause-forgetting.md#representation-and-current-primo-boundary)
 identifies the callback flags, explanation stores, adapter boundary, and the
 component route that does not preserve the callback's forgettability value.
-The DPLL(T) chapter audit also confirms that the component dispatcher sets
+The component dispatcher sets
 `is_forgettable = true`, whereas the dedicated EUF/LRA conflict callbacks set
 it false. Some current routes therefore already permit forgetting; this lead
 must audit and explain existing behavior as well as any proposed extension.
@@ -48,8 +50,7 @@ The SAT backend continues to own clause reduction and watch maintenance.
 
 Reject a candidate if it cannot preserve the callback/progress invariants,
 if it merely moves memory into another store, or if additional rederivation
-and repeated conflicts erase the measured benefit. No implementation or
-experiment is active yet.
+and repeated conflicts erase the measured benefit.
 
 This refines the deletion question in
 [theory-lemma retention](theory-lemmas.md#which-theory-lemmas-should-survive).

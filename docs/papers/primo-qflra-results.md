@@ -33,19 +33,10 @@ The paper's configuration names must stay attached to its measured snapshot.
 Its early capability description also predates the broader implementation
 described in the manual.
 
-The paper complements the primary algorithm papers and theses; it does not
-replace their operation-by-operation mapping to Primo's code. That mapping
-belongs in the implementation chapters.
-
 ## Evidence still to connect
 
-The publication has been read, but the two aggregate tables have not yet been
-matched to exact Primo commits, input manifests, commands and raw artifacts
-in the repository's run ledger. Linking those records is open documentation
+The two aggregate tables still need to be matched to exact Primo commits,
+input manifests, commands and raw artifacts in the repository's run ledger.
+Linking those records is open documentation
 work. Do not infer a matching experiment merely from the corpus size or an
 option name: the ledger contains other QF_LRA runs with different settings.
-
-No experiments were rerun for this note. It adds no current-commit fuzzing,
-model-validation or default-promotion evidence. Preserve the published numbers
-when later runs are added, and report each new comparison with its own
-revision, configuration, resource limits and correctness checks.

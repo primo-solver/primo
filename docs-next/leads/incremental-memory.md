@@ -1,6 +1,9 @@
 # Incremental memory and reference counting
 
-**Status: open lead; investigation not started. Owner: unassigned.**
+**Status: Open lead. Owner: unassigned.**
+
+Historical measurements and current owners are identified below. Reproduction
+on the current implementation and reclamation design have not started.
 
 Can Primo support long-lived incremental sessions and a library API without
 reference-counted term handles? High memory use has been observed during
@@ -26,7 +29,7 @@ in rebuild mode, over 1,778 sessions with a 30-second whole-session limit and
 10,000 theory conflicts per query. These are maxima across potentially different
 inputs, not a paired memory comparison or a measurement of the current code.
 The {source}`later atom-scan evaluation <docs/incremental-uf-atom-scans.md>`
-also explicitly makes no memory-reduction claim.
+reports runtime results without measuring memory reduction.
 
 {source}`TermManager <src/core/term_manager.hpp>` owns a term vector and a
 hash-cons table. {source}`intern <src/core/term_manager.cpp#L540-L560>` appends
@@ -71,8 +74,7 @@ The ownership design must answer:
   references, including those in retained SAT/theory mappings.
 
 Measure core and flattened storage separately during repeated scope creation
-and retirement, including prepared structures and working copies. This is part
-of the reclamation investigation; no ownership or collection policy is selected.
+and retirement, including prepared structures and working copies.
 
 ## Reference counting precedent and GC risks
 
@@ -100,9 +102,7 @@ update every live reference when moving storage.
 
 The design must identify safe collection points, specify which callbacks or
 borrows can remain live, and bound collection pauses. Evaluate implementation
-and maintenance cost as well as reclaimed memory. GC for incremental sessions
-remains an open alternative; no collector or reference-counting scheme is
-selected.
+and maintenance cost as well as reclaimed memory.
 
 ## First investigation
 

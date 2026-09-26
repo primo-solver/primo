@@ -1,10 +1,10 @@
 # Yices: architecture, dynamic Ackermannization, and lemma reuse
 
-This survey covers all three `sandbox/yices-*.pdf` files. The 2006 paper
+This survey connects three Yices publications to Primo. The 2006 paper
 explains conflict-driven Ackermann clauses; the 2014 paper gives the library
 architecture and theory combination; the 2016 talk explains representation,
 lazy explanations, and selective retention of theory lemmas. These are
-historical descriptions of Yices, not claims about its current release.
+descriptions of the Yices designs at their respective publication dates.
 
 Primo has an optional, restricted Ackermann propagation mechanism. It does
 not implement the whole conflict-driven selection policy described in 2006.
@@ -13,16 +13,13 @@ presence of a reason callback alone does not answer that question.
 
 ## Sources and reading coverage
 
-| Source | Local reading copy | Sections used |
-| --- | --- | --- |
-| Bruno Dutertre and Leonardo de Moura, *The Yices SMT Solver*, 2006. [Paper](https://yices.csl.sri.com/papers/tool-paper.pdf) | `sandbox/yices-tool-paper-2006.pdf`, 5 pages | §2: SAT/core/satellite architecture, equality exchange, dynamic Ackermannization (p. 3); §3: contexts and library use. |
-| Bruno Dutertre, *Yices 2.2*, CAV 2014. [Paper](https://yices.csl.sri.com/papers/cav2014.pdf) | `sandbox/yices-cav2014.pdf`, 8 pages | §3: terms, contexts, models; §4: Boolean-aware UF and dynamic clauses; §5: preprocessing and model-based combination. |
-| Bruno Dutertre, *The Nuts and Bolts of Yices*, SMT Workshop 2016, Coimbra. [Slides](https://yices.csl.sri.com/papers/smt2016-talk.pdf) | `sandbox/yices-smt2016-talk.pdf`, 30 PDF pages | Slides 2–6: architecture/representation; 7–14: DPLL(T), explanations, watches, caching; 15–22: congruence closure; 23–27: preprocessing. |
+| Source | Sections used |
+| --- | --- |
+| Bruno Dutertre and Leonardo de Moura, *The Yices SMT Solver*, 2006. [Paper](https://yices.csl.sri.com/papers/tool-paper.pdf) | §2: SAT/core/satellite architecture, equality exchange, dynamic Ackermannization (p. 3); §3: contexts and library use. |
+| Bruno Dutertre, *Yices 2.2*, CAV 2014. [Paper](https://yices.csl.sri.com/papers/cav2014.pdf) | §3: terms, contexts, models; §4: Boolean-aware UF and dynamic clauses; §5: preprocessing and model-based combination. |
+| Bruno Dutertre, *The Nuts and Bolts of Yices*, SMT Workshop 2016, Coimbra. [Slides](https://yices.csl.sri.com/papers/smt2016-talk.pdf) | Slides 2–6: architecture/representation; 7–14: DPLL(T), explanations, watches, caching; 15–22: congruence closure; 23–27: preprocessing. |
 
-All three documents were read for this survey. Slide references use the printed
-number; PDF page 15 is printed slide 14. The local PDFs are reading material,
-not redistributed book assets. This note is maintained in `docs/papers/yices.md`
-and included in the replacement book so the two previews share one account.
+Slide references use the printed number; PDF page 15 is printed slide 14.
 
 ## The 2006 paper: exposing useful congruence to SAT
 
@@ -69,8 +66,8 @@ it does not prove a better worst-case pair bound.
 | All-pairs cost diagnostics | **Implemented, diagnostic only.** `--euf-ackermann-diagnostics` estimates expansion costs; it does not install the reduction. See the {source}`diagnostic tests <tests/unit/boolean_solver_tests.cpp#L2147-L2200>`. |
 | SAT-visible candidate discovery | **Implemented, restricted.** {source}`build_dynamic_ackermann_candidate_index <src/smt/solver_engines.cpp#L965-L1048>` starts from an existing equality between same-symbol applications and requires SAT atoms for every argument equality. It skips missing atoms. |
 | Dynamic Ackermann shadow mode | **Implemented, diagnostic only.** `--euf-dynamic-ackermann-shadow` measures candidate states without adding the corresponding clauses. See {source}`shadow tests <tests/unit/boolean_solver_tests.cpp#L2202-L2274>`. |
-| Watched argument-disequality propagation | **Partially implements the paper idea.** Default-off `--euf-diseq-ackermann` queues existing candidates by affected SAT variables and uses the clause as a propagation reason or conflict. {source}`Watch construction <src/smt/solver_engines.cpp#L2090-L2126>` applies width/per-symbol caps; {source}`candidate evaluation <src/smt/solver_engines.cpp#L2378-L2490>` requires the result equality to be false. |
-| Selecting congruence steps from conflicts, then retaining their clauses for reuse | **Deferred as a complete policy.** The existing candidate index and assignment queue are not the conflict-explanation selector described by the paper. Missing-atom creation for this mechanism and a deliberate deletion policy also remain design questions. |
+| Watched argument-disequality propagation | **Implemented subset; off by default.** `--euf-diseq-ackermann` queues existing candidates by affected SAT variables and uses the clause as a propagation reason or conflict. {source}`Watch construction <src/smt/solver_engines.cpp#L2090-L2126>` applies width/per-symbol caps; {source}`candidate evaluation <src/smt/solver_engines.cpp#L2378-L2490>` requires the result equality to be false. |
+| Selecting congruence steps from conflicts, then retaining their clauses for reuse | **Open lead.** The existing candidate index and assignment queue are not the conflict-explanation selector described by the paper. Missing-atom creation and a deletion policy also need designs. |
 | Earlier scan-based dynamic clause experiment | **Not adopted; reverted.** `f83828f` introduced `--euf-dynamic-ackermann`; `160ce4e` reverted it. This old option is not the current `--euf-diseq-ackermann` mechanism. |
 
 `DynamicAckermannCandidate` owns atom indices and a copied `sat::Clause`;
@@ -86,7 +83,6 @@ experimental modes off. The {source}`assumptions-mode admission check
 Ackermann modes. Existing tests cover unary propagation, conflict delivery,
 skipping a missing argument atom, and the n-ary disjunction invariant:
 {source}`Ackermann regressions <tests/unit/boolean_solver_tests.cpp#L2276-L2389>`.
-They are code pointers, not a claim of a fresh fuzz campaign.
 
 The rejected scan experiment is recorded as
 `2026-07-28-qfuf-dynamic-ackermann-real-f83828f-weak-local` in
@@ -112,29 +108,27 @@ Hash-consing and compact term descriptors reduce duplication in the shared
 database. The paper does not establish a particular reference-counting or
 garbage-collection algorithm for Primo to adopt.
 
-**Partially matching building blocks; public library design deferred.** Primo
+**Public library design: open lead.** Primo
 has {source}`TermManager <src/core/term_manager.hpp>` and
 {source}`Model <src/core/model.hpp>`, but its
 {source}`SmtSession <src/smt/smt_session.hpp>` is a command-oriented facade.
 `Model` owns copied sort/symbol/value data; `ModelEvaluator` also borrows a live
-term manager. This does not establish a supported shared-term/multiple-context
-public API. The library and incremental-memory leads must define that ownership
-contract explicitly.
+term manager. A public API for shared terms and multiple contexts still needs
+explicit ownership rules, covered by the library and incremental-memory leads.
 
 Section 4 explains treating equality itself as a Boolean-valued term in UF.
 This permits congruence to transport a false equality through equivalent
 endpoints. It also cites dynamic Ackermannization, but provides no replacement
 for the 2006 conflict-selection explanation. Section 5 describes symmetry
 breaking and model-based theory combination: try to reconcile theory models
-before introducing an interface split. Neither statement means all those
-Yices mechanisms are implemented together in Primo. Existing separate notes
+before introducing an interface split. Primo's separate design notes
 cover {source}`Boolean/equality propagation <docs/qfuf-disequality-propagation.md>`,
 {source}`symmetry breaking <docs/papers/smt-symmetry-breaking.md>`, and
 {source}`model-based combination <docs/papers/model-based-theory-combination.md>`.
 
-The article is a tool overview, not a full algorithm listing. Its historical
-benchmark plots do not provide evidence about Primo. Arrays, bit-vectors,
-and the richer Yices type system are outside this survey's adoption scope.
+The article gives an architectural overview. Detailed algorithms require the
+primary sources cited in those design notes. Arrays, bit-vectors, and the
+richer Yices type system are outside this survey's adoption scope.
 
 ## The 2016 talk: what lemma caching means
 
@@ -218,20 +212,19 @@ configuration before claiming exactly when reasons can be deleted.
 
 For explicit external conflicts, the {source}`EUF callback
 <src/smt/solver_engines.cpp#L1892-L1916>` sets `is_forgettable = false` in the
-API variant that carries this flag. Thus we must not describe Primo as
-discarding all theory clauses, nor add a second cache without establishing
-what the backend already keeps. The missing investigation is selection,
-retention cost, and deletion safety, not merely the existence of a clause store.
+API variant that carries this flag. Establish what the backend already keeps
+before designing additional caching. The open questions concern selection,
+retention cost, and deletion safety.
 
 ## Other ideas retained from the talk
 
 | Slides | Idea and data/invariant | Primo disposition |
 | --- | --- | --- |
-| 2–4 | Shared term tables and separately allocated descriptors, addressed through integer IDs. | **Partially matching concept; layout redesign deferred.** Primo interns terms, but {source}`Term <src/core/term.hpp#L77-L85>` stores children and several payload fields in every record. Compare descriptors as one compact-storage candidate; do not assume the Yices layout has already been adopted. |
+| 2–4 | Shared term tables and separately allocated descriptors, addressed through integer IDs. | **Layout redesign: open lead.** Primo interns terms, but {source}`Term <src/core/term.hpp#L77-L85>` stores children and several payload fields in every record. Separate descriptors are a compact-storage candidate. |
 | 5 | A polarity bit represents negation without allocating an explicit negation node. | **Not adopted at the core-term layer.** Primo has `TermKind::Not`; signed {source}`SAT literals <src/sat/lit.hpp>` are a different layer. |
-| 6 | Small exact rationals fall back to GMP when needed. | **Related implemented idea, different representation.** {source}`Rational <src/util/rational.hpp>` uses an inline 64-bit path, rather than the slide's 32-bit pair. This survey does not change its recorded algorithmic provenance. |
+| 6 | Small exact rationals fall back to GMP when needed. | **Related implemented idea, different representation.** {source}`Rational <src/util/rational.hpp>` uses an inline 64-bit path; the slide uses a 32-bit pair. |
 | 10–11 | Phase restrictions on theory callbacks; deferred explanation expansion. | **Partial overlap.** Primo follows its IPASIR-UP contract, not Yices' callback API. Deferred reason streaming and deferred reason construction require separate accounting. |
-| 15–22 | Boolean-aware classes, congruence representatives, and parent occurrence vectors. Per-argument hooks locate removable occurrences without searching an entire vector. | **Further representation audit deferred.** Compare against {source}`FlatCongruenceClosure <src/theory/equality/flat_congruence_closure.hpp>` and its own paper basis. This survey does not claim equivalence to Yices' signed circular class lists or hooked descriptors. A change would need rollback invariants and occurrence-maintenance counters. |
+| 15–22 | Boolean-aware classes, congruence representatives, and parent occurrence vectors. Per-argument hooks locate removable occurrences without searching an entire vector. | **Representation comparison: open lead.** Compare the signed circular class lists and hooked descriptors with {source}`FlatCongruenceClosure <src/theory/equality/flat_congruence_closure.hpp>` and its own paper basis. A change would need rollback invariants and occurrence-maintenance counters. |
 | 23–27 | Preserve useful ITE structure: auxiliary terms, finite domains from constant leaves, and flatter path-guard encodings can avoid expansion or unnecessary intermediate terms. | **Further mechanism audit deferred.** Compare the existing {source}`preprocessing <src/smt/preprocessing.cpp>` passes with each transformation before declaring a gap. Constant values must be provably distinct; uninterpreted constants do not automatically have distinct interpretations. Sharing, model reconstruction, and clause growth need explicit checks. |
 
 ## Open investigations and acceptance conditions
@@ -254,9 +247,8 @@ antecedents; consequences depending on scoped assertions must preserve those
 dependencies or guards. A cache must never turn a branch-local fact into an
 unconditional unit.
 
-These are open leads, not active implementations or default changes. Before
-implementation, complete an operation-by-operation design note, including
-data owners, callback phases, lifetime/rollback rules, complexity expectations,
+Before implementing either lead, complete an operation-by-operation design note
+covering data owners, callback phases, lifetime/rollback rules, complexity expectations,
 and proof obligations. Tests must check missing atoms, n-ary reasoning,
 backtracking, repeated checks, scope retirement, and any deletion/rederivation
 policy. Counters must distinguish useful reuse from candidate scans, duplicate

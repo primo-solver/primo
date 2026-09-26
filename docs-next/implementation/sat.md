@@ -56,7 +56,9 @@ preferred branch delegates allocation to CaDiCaL. Signed overflow is not a
 valid wraparound strategy. Allocation exhaustion should produce a controlled
 resource-limit failure before arithmetic or backend mutation.
 
-**Open, low-priority hardening item; no overflow observed in this review.**
+**Open lead: literal-capacity checks (low priority).** The
+[capacity review](../review.md#literal-capacity-documentation-check) records no
+observed overflow.
 The expected likelihood is low at ordinary workload sizes, but this is not
 protected by a guarantee that memory runs out first. Long-lived incremental
 sessions can keep allocating auxiliaries and scope selectors; deleting clauses
@@ -65,7 +67,7 @@ invalid externally supplied literals, and derived index/size arithmetic before
 declaring a supported limit. Boundary tests should use a testable capacity
 check or small artificial limit, rather than allocating billions of variables.
 The contributor should preserve 32-bit storage unless a separate backend/API
-design establishes a need for wider IDs. No allocation behavior is changed here.
+design establishes a need for wider IDs.
 
 ## From terms to clauses
 
@@ -113,8 +115,8 @@ The {source}`option defaults <src/smt/check_sat.hpp#L422-L423>` select direct
 root-OR clauses, but a
 {source}`formula-shape policy <src/smt/formula_analysis.cpp#L142-L152>` can
 enable root-OR definitions for a selected goal. The worked example below fixes
-the constructor flag explicitly. Its clause counts are not a promise for the
-same formula after an arbitrary preprocessing/dispatch path.
+the constructor flag explicitly; preprocessing and strategy selection can
+change the clause counts in a full solve.
 
 Each encoded `And` or `Or` with `n` children contributes `n + 1` clauses and
 `3n + 1` literal occurrences. Definitions are cached across calls, and their
@@ -198,8 +200,7 @@ The executable {download}`example <../examples/boolean-abstraction.cpp>`
 constructs these terms directly, calls the real clausifier and CaDiCaL adapter,
 checks the clause counters before search, and checks all eight assignments to
 `p`, `q`, and `r`. It also checks the guarded version described next. Using the
-internal API here isolates clausification from parser and preprocessing effects;
-it is not a public library API example.
+internal API here isolates clausification from parser and preprocessing effects.
 The [review guide](../review.md#sat-chapter-checks) gives the build/run commands.
 
 ## Permanent clauses, assumptions, and scope guards
@@ -239,7 +240,7 @@ The [Yices literature note](../papers/yices.md#the-2016-talk-what-lemma-caching-
 explains how a requested theory explanation can also become a reusable SAT
 clause. Reason storage in a propagator, deferred construction, and retention
 by the backend are separate mechanisms; their remaining policy questions are
-recorded as [open work](../leads/theory-lemmas.md).
+recorded as [open leads](../leads/theory-lemmas.md).
 
 {source}`CadicalBackend::new_var <src/sat/cadical_backend.cpp#L153-L171>` uses
 the available dependency API to declare ordinary variables between solves.
@@ -301,10 +302,6 @@ SAT search. Proof-producing integration is not implemented by this interface.
 
 ## Sources and implementation status
 
-This section is the local paper-to-code checklist for the chapter. The
-clauses and lifetimes above describe the implemented subset; they do not claim
-the full mechanisms or results of the cited papers.
-
 - **G. S. Tseitin, “On the Complexity of Derivation in Propositional
   Calculus” (1968; English reprint in *Automation of Reasoning*, 1983,
   pp. 466–483), §1, p. 467.**
@@ -313,13 +310,12 @@ the full mechanisms or results of the cited papers.
   their meanings. Primo implements ordinary definitional clauses for its
   Boolean DAG, with n-ary connective templates and direct positive-root rules.
   The paper's validity reduction negates its root; Primo asserts the desired
-  formula positively for satisfiability. No proof-complexity algorithm or
-  complete polarity-sensitive clausifier is claimed.
+  formula positively for satisfiability.
 - **Plaisted–Greenbaum conversion and SMT:** the
   [dedicated note](../papers/polarity-aware-cnf.md) records Masina, Spallitta,
   and Sebastiani (JAIR 2025), §§2.1 and 3.2, and SMTInterpol's primary
-  documentation. General directional encoding is **open work**, not the
-  implemented full definitions described above.
+  documentation. General directional encoding is an **open lead**; Primo
+  emits the full definitions described above.
 - **K. Fazekas, A. Niemetz, M. Preiner, M. Kirchweger, S. Szeider, and A. Biere,
   “IPASIR-UP: User Propagators for CDCL,” SAT 2023, §§2.1–2.4.**
   [Primary text and publication record](https://doi.org/10.4230/LIPIcs.SAT.2023.8).
@@ -327,8 +323,7 @@ the full mechanisms or results of the cited papers.
   CaDiCaL C++ adapter. Its assignment notification is vector-shaped; the
   compatibility branch wraps a scalar notification and discards its fixed flag.
   Primo omits the paper's `remove_observed_var`, `is_decision`, and `unphase`
-  operations. This is not a complete implementation of every proposed API or
-  of the paper's proof-producing applications.
+  operations and proof-producing applications.
 
 | Obligation | Implemented owner and verification |
 | --- | --- |
@@ -341,7 +336,5 @@ Original Primo notes explain the
 {source}`guarded-scope design <docs/assumption-incremental-uf.md>` and
 {source}`Boolean sharing contract <docs/boolean-dag-flattening.md>`.
 The {source}`root-polarity prototype <docs/root-polarity-clausification.md>`
-was rejected; its signed root worklist is not current behavior. Clause/search
-counters are diagnostics, not evidence of a newly measured speedup. The
-[review ledger](../review.md) records this chapter's checks; future solver
-changes still require the [fresh correctness gates](../development/correctness.md).
+was rejected; its signed root worklist is not current behavior. The
+[review ledger](../review.md#sat-chapter-checks) records the chapter's checks.

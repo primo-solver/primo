@@ -1,6 +1,10 @@
 # Compact rational storage
 
-**Status: open lead; layout probe complete; implementation deferred. Owner: unassigned.**
+**Status: Open lead. Owner: unassigned.**
+
+The layout probe is complete. Lifetime design, implementation, and solver
+evaluation remain pending.
+
 Investigate overlapping the small numerator and owned big-number pointer in
 `util::Rational`. Keep this separate from changing the arithmetic algorithms
 or adopting another rational library.
@@ -37,7 +41,7 @@ The {download}`C++ layout probe <../examples/rational-layout.cpp>` reports:
 | Union of numerator / owned pointer, tagged by denominator | 16 |
 | Union of small pair / inline `mpq_class`, plus separate tag | 40 |
 | Current {source}`DeltaRational <src/theory/arithmetic/lra_tableau.hpp#L24-L56>` / candidate using compact rationals | 48 / 32 |
-| Current `LraTableau::RowEntry` / candidate using compact rational | 40 / 32 |
+| Current {source}`LraTableau::RowEntry <src/theory/arithmetic/lra_tableau.hpp#L290-L295>` / candidate using compact rational | 40 / 32 |
 
 The separate-tag union has a 16-byte payload plus its tag and alignment
 padding, so it saves nothing here. A smaller candidate uses the denominator
@@ -95,5 +99,4 @@ sanitizers, the [solver correctness gates](../development/correctness.md),
 and SLURM comparisons covering both small-value-heavy and big-value-heavy
 inputs. Compare allocation counts, peak/retained memory and total runtime.
 Keep the current layout if the ownership complexity or runtime regressions
-outweigh the memory saving. No implementation or performance claim follows
-from the layout probe alone.
+outweigh the memory saving.

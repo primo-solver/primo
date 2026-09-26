@@ -3,8 +3,8 @@
 Theory lemmas can be forgotten under an appropriate search strategy. The
 obligation is more specific than remembering that the lemma can be derived
 again: forgetting and restarting must still permit progress. This note gives
-the literature basis for an open investigation; Primo's retention policy is
-unchanged. The [Yices survey](yices.md) explains the related caching mechanism.
+the literature basis for an open investigation. The [Yices survey](yices.md)
+explains the related caching mechanism.
 
 ## Reading guide and sources
 
@@ -32,7 +32,7 @@ conflict analysis. Retaining the original explanation as well is optional in
 that strategy. Section 5.2 gives dependence on earlier trail literals as a
 sufficient condition for terminating backwards resolution, avoiding cycles.
 
-**Primo status: deferred policy audit.** This is the most direct SMT source;
+**Primo status: open lead for a policy audit.** This is the most direct SMT source;
 it does not certify Primo's particular backend, atom-generation, or restart policy.
 
 ### Blanchette, Fleury, Lammich, and Weidenbach (2018)
@@ -81,7 +81,7 @@ includes clause scores, use markers, and a reduction schedule.
 Appendix A explains why clauses currently used as reasons need protection;
 the experimental baseline backtracks to level zero before reduction to remove
 that source of bias. These are empirical results, not a termination theorem
-or measurements of Primo. **Primo status: deferred experimental motivation.**
+or measurements of Primo. **Primo status: motivation for an open lead.**
 Do not transfer a numerical threshold or implement a SAT clause database in
 Primo on the strength of these results.
 
@@ -127,8 +127,7 @@ live explanations says nothing about global progress after repeated restarts.
 
 ## Design obligations for the open lead
 
-The following are proposed Primo checks, not claims that these papers prove
-the existing implementation correct:
+An investigation of Primo's deletion policy needs to:
 
 1. **Classify eligible clauses.** Separate input assertions, Boolean definitions,
    scope-selector clauses, theory-valid lemmas, and consequences depending on
@@ -147,7 +146,6 @@ the existing implementation correct:
    backend and workload; report memory, runtime/PAR2, rederived lemmas, and
    repeated conflicts. A lower clause count alone is not an improvement.
 
-There is no selected deletion algorithm or complexity improvement claim.
 Candidate tests must exercise repeated conflict/restart patterns, live reason
 requests, deletion followed by rederivation, and `push`/`pop`/reconnect. Such
 tests can expose cycles; passing a finite test cannot replace the progress

@@ -113,7 +113,7 @@ records that boundary and its motivating failure.
 The arithmetic constructors perform their own limited normalization and exact
 constant folding. For example,
 {source}`mk_plus and mk_times <src/core/term_manager.cpp#L197-L262>` can flatten
-arithmetic shapes; the Boolean nesting rule is not a promise for every operator.
+arithmetic shapes, whereas `mk_and` and `mk_or` preserve nested connectives.
 {source}`Int division/modulo validation <src/core/term_manager.cpp#L350-L389>`
 requires a nonzero integral literal divisor. These constructors are not a
 complete arithmetic normalizer or theory solver.
@@ -231,13 +231,13 @@ Retained terms, clauses, caches, and model snapshots all contribute to memory.
 The [incremental-memory lead](../leads/incremental-memory.md) tracks profiling,
 reference counting, and possible collection policies. The
 [library lead](../leads/library-api.md) tracks public handle and lifetime
-guarantees. Neither is implemented by documenting the current representation.
+guarantees.
 
 ## Worked example
 
 This complete program uses the internal core headers. It shows repeated
 construction sharing an ID, followed by name removal without term reclamation.
-It is an illustration of the current internals, not a stable public library API.
+These internal interfaces may change as the public library API is designed.
 
 ```cpp
 #include <cassert>
@@ -294,7 +294,5 @@ The original Primo notes on
 {source}`binder representation <docs/quantifiers.md>`, and
 {source}`model ownership <docs/model-interpretation.md>` record the design
 decisions behind these boundaries. Those notes also contain historical plans
-and evaluations; this chapter describes the linked implementation. It does not
-claim a new paper algorithm, a complete rewrite system, memory reclamation, or
-library readiness. Detailed binder, model-construction, and preprocessing
-algorithms remain separate chapters.
+and evaluations. Detailed binder, model-construction, and preprocessing
+algorithms are outside this chapter's scope.

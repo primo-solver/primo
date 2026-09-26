@@ -21,12 +21,12 @@ literals. It does not parse SMT-LIB or inspect the SAT solver's internals.
 
 | Representation | Owner, identity and lifetime |
 | --- | --- |
-| `LinearPolynomial` | Owns a constant and a map from `TermId` to nonzero rational coefficients. Repeated occurrences add; exact cancellation removes an entry. See {source}`linear_polynomial.hpp <src/theory/arithmetic/linear_polynomial.hpp>`. |
-| `LraAtom` | Owns a normalized polynomial, relation `Le`, `Lt` or `Eq`, and right-hand-side rational. It is a value, not a SAT literal. See {source}`lra_atom.hpp <src/theory/arithmetic/lra_atom.hpp>`. |
-| `PreparedLraTheory` | Borrows the term manager and owns the base tableau, term-to-variable map, polynomial-to-slack map, and prepared atom vector. Each atom retains its own threshold and orientation. See {source}`prepared state <src/smt/solver_engines.cpp#L3332-L3388>`. |
-| `LraVarId` | A numeric index local to a tableau and its structurally matching copies. It can denote an input leaf or an auxiliary polynomial value. It is neither a `TermId` nor a SAT variable. |
-| `LraTableau` | Owns assignments, bounds with reasons, basic/nonbasic membership, sparse rows, reverse occurrences, violated-variable set and undo records. See {source}`lra_tableau.hpp <src/theory/arithmetic/lra_tableau.hpp>`. |
-| `OnlineLraPropagator` | Borrows prepared data and owns a working tableau copied from the base, decision-level checkpoints, pending consequences and retained reasons. It reads the shared SAT assignment view. See {source}`construction and backtracking <src/smt/solver_engines.cpp#L6972-L7063>`. |
+| {source}`LinearPolynomial <src/theory/arithmetic/linear_polynomial.hpp>` | Owns a constant and a map from `TermId` to nonzero rational coefficients. Repeated occurrences add; exact cancellation removes an entry. |
+| {source}`LraAtom <src/theory/arithmetic/lra_atom.hpp>` | Owns a normalized polynomial, relation `Le`, `Lt` or `Eq`, and right-hand-side rational. It is a value, not a SAT literal. |
+| {source}`PreparedLraTheory <src/smt/solver_engines.cpp#L3332-L3388>` | Borrows the term manager and owns the base tableau, term-to-variable map, polynomial-to-slack map, and prepared atom vector. Each atom retains its own threshold and orientation. |
+| {source}`LraVarId <src/theory/arithmetic/lra_tableau.hpp#L17>` | A numeric index local to a tableau and its structurally matching copies. It denotes an input leaf or an auxiliary polynomial value, independently of core and SAT IDs. |
+| {source}`LraTableau <src/theory/arithmetic/lra_tableau.hpp>` | Owns assignments, bounds with reasons, basic/nonbasic membership, sparse rows, reverse occurrences, violated-variable set and undo records. |
+| {source}`OnlineLraPropagator <src/smt/solver_engines.cpp#L6972-L7063>` | Borrows prepared data and owns a working tableau copied from the base, decision-level checkpoints, pending consequences and retained reasons. It reads the shared SAT assignment view. |
 
 The term manager must outlive preparation and any interpretation of its IDs.
 Tableau IDs survive pivots and rollback; being basic is a mutable property of
@@ -91,39 +91,30 @@ same inequality and give proportional polynomials a common representation.
 In both cases the threshold must be scaled by the same factor as the
 coefficients.
 
-**Why use leading coefficient one?** The original H1b change,
-[`1e6554d`](https://github.com/primo-solver/primo/commit/1e6554db8d5688bcb817c49c1ec6607dbb5c9ad5),
-aimed to make proportional polynomials share a row. It records this convention
-and its equivalence to the paper's convention, but does not establish that
-it is faster than coprime-integer normalization. The recorded comparisons
-were against the earlier sharing scheme, not between these two normal forms.
+Leading-coefficient normalization gives Primo a simple way to share rows.
+{source}`canonical_polynomial <src/smt/solver_engines.cpp#L3296-L3313>` uses
+one coefficient as the divisor for every term and the threshold, skipping
+those divisions when it is already one. It needs no separate
+common-denominator or greatest-common-divisor computation across the vector;
+individual rational operations still reduce their results.
 
-The engineering advantage visible in
-{source}`canonical_polynomial <src/smt/solver_engines.cpp#L3296-L3313>` is
-simplicity: use the first coefficient as the divisor for every term and the
-threshold. There is no separate common-denominator/GCD computation across
-the coefficient vector, and a first coefficient already equal to one skips
-all these divisions. Individual rational operations still perform reductions.
-This is an explanation of the code's simplicity, not a recorded performance
-justification for choosing it over the paper's form.
-
-The tradeoff is that it can introduce fractions into an initially integer
-row, as the example above shows. Coprime-integer normalization would avoid
-those initial fractions, though clearing input denominators can enlarge
-integer coefficients, and later simplex pivots can introduce fractions again.
-The earlier {source}`LIA arithmetic profile <docs/qf-lia-profile.md#L171-L176>`
-already raised this cost question. Changing the initial normalization and
-maintaining integer rows throughout pivoting are separate proposals. An
-isolated comparison of the two initial forms is not recorded in that evidence.
+The tradeoff is that this can introduce fractions into an initially integer
+row. Coprime-integer normalization avoids those initial fractions, but clearing
+input denominators can enlarge coefficients, and later pivots can introduce
+fractions again. There is no recorded direct performance comparison of the
+two normal forms; the [normalization review](../review.md#why-leading-coefficient-normalization-was-chosen)
+records the original row-sharing objective and available evidence. Choosing
+an initial normal form and maintaining integer rows throughout pivoting are
+separate design questions.
 
 Primo also has a separate, optional
 {source}`early atom canonicalizer <src/smt/preprocessing.cpp#L499-L599>` that
 uses coprime integer coefficients in core terms, so equivalent predicates can
 share a SAT atom. It is
 {source}`off by default <src/smt/check_sat.hpp#L321-L324>`. Even when enabled,
-tableau preparation still applies leading-coefficient division. Evaluations
-of that early pass therefore do not compare the two tableau representations;
-see the {source}`early canonicalization note <docs/papers/lra-atom-canonicalization.md>`.
+tableau preparation still applies leading-coefficient division. The
+{source}`early canonicalization note <docs/papers/lra-atom-canonicalization.md>`
+describes that separate transformation and its evaluation.
 
 Real equality is lowered to two inequalities before this path. Negating it
 gives a Boolean choice between strict inequalities, handled by SAT. The
@@ -144,11 +135,9 @@ This is the two-tier representation discussed by Monniaux §4 and Griggio
 floating-point solver and forced-pivoting algorithm remain an
 [open lead: floating-point-guided basis selection](../leads/lra-floating-point.md).
 
-The separate [compact rational storage lead](../leads/rational-storage.md)
-examines the current 24-byte representation. Its local layout probe finds
-that `unique_ptr` is pointer-sized; overlapping the small numerator and big
-pointer with a denominator tag could reduce the object to 16 bytes. This is
-a layout candidate, not an implemented or benchmarked arithmetic change.
+The [compact rational storage lead](../leads/rational-storage.md) investigates
+overlapping the small numerator and owned big-number pointer. It includes a
+reproducible layout probe and the remaining ownership and evaluation questions.
 
 A strict bound uses an exact symbolic infinitesimal.
 {source}`DeltaRational <src/theory/arithmetic/lra_tableau.hpp#L24-L56>` stores
@@ -190,8 +179,9 @@ length. It is not the constant-time unlink of a doubly linked matrix.
 ```{figure} ../../docs/_static/lra-tableau-occurrence-index.svg
 :alt: Sorted tableau rows linked by occ_slot to unordered column occurrence lists, with swap-pop removal and backlink repair.
 
-The retained arithmetic representation diagram. The editable source is
-`docs/figures/lra-tableau-occurrence-index.tex`; `occ` abbreviates `occurs_in_`.
+Sorted rows and their reverse occurrence index. Each row entry's `occ_slot`
+locates its entry in a column list; `occ` abbreviates `occurs_in_`.
+The editable source is `docs/figures/lra-tableau-occurrence-index.tex`.
 ```
 
 The distinction among the thesis representations matters. King §2.2.7 uses
@@ -246,14 +236,14 @@ The solver's default is **Sparse**, although a directly constructed
 | Policy | Implemented choice |
 | --- | --- |
 | Default sparse leaving | Shortest violated row; greatest violation breaks ties. |
-| Sparse entering | Fewest column occurrences among priced eligible candidates; unit coefficient, then variable ID break ties. The default pricing cap is 16 eligible candidates, not 16 scanned entries. |
+| Sparse entering | Fewest column occurrences among eligible candidates considered; unit coefficient, then variable ID break ties. By default, compare at most 16 eligible candidates. The scan may visit more entries to find them. |
 | Optional least-violated leaving | Griggio §2.5.3: smallest violation first, then shortest row. This overrides the default leaving policy under Sparse. |
 | Optional Dantzig | Greatest violation first; largest absolute entering coefficient, with variable IDs breaking ties. |
 | Bland | Smallest eligible variable IDs on both sides; also the termination fallback. |
 
 Monniaux §3 also describes preferring shorter rows and fewer column
-occurrences to reduce pivot cost, in the context of forced pivoting. H3
-applies that sparsity rationale to Primo's ordinary feasibility search;
+occurrences to reduce pivot cost, in the context of forced pivoting. Primo's
+sparse policy applies that rationale to ordinary feasibility search;
 it does not import the surrounding floating-point/forced-pivot procedure.
 King §2.2.12 provides the direct comparison for minimum-column selection
 and eventual Bland fallback in SMT.
@@ -314,7 +304,7 @@ must exist; row-size and fanout caps may decline work. See
 Neither mode performs complete arithmetic consequence discovery.
 
 Bjørner and Nachmanson's [*Arithmetic Solving in Z3*](https://doi.org/10.1007/978-3-031-65627-9_2)
-(CAV 2024, the supplied `arithmetic-reimplemented.pdf`), §3.3, makes the same
+(CAV 2024), §3.3, makes the same
 direct/indirect propagation distinction. Primo's row mode queries implied
 bounds to explain existing Boolean atoms; this does not mean it implements
 every bound-refinement policy described for Z3.
@@ -330,7 +320,7 @@ removed, following the shared-assignment protocol in [DPLL(T)](dpllt.md).
 
 ## Rollback and model values
 
-`push()` returns an undo-trail position. On the ordinary non-SOI path,
+`push()` returns an undo-trail position. With the default sparse policy,
 {source}`pop <src/theory/arithmetic/lra_tableau.cpp#L1892-L1962>` restores
 bounds and rebuilds the set of violated basic variables. It retains the
 current basis and assignment. Relaxing bounds preserves nonbasic feasibility,
@@ -343,7 +333,7 @@ Bromberger §7.1.3 compares that with keeping the current assignment and
 rechecking. Primo neither restores an old assignment against a changed basis
 nor unconditionally runs `check()` inside `pop()`. SAT decision rollback and
 SMT-LIB assertion scopes remain different operations. The latter's reuse
-design is preserved in {source}`assumption-incremental-lra.md <docs/assumption-incremental-lra.md>`.
+design is described in the {source}`retained LRA session note <docs/assumption-incremental-lra.md>`.
 
 The optional **sum-of-infeasibilities (SOI)** mode has a basis-dependent
 objective representing the current violations. Its rollback also restores
@@ -364,58 +354,66 @@ part of the model builder; a feasible tableau alone is not the printed model.
 
 ### Equalities for combination
 
-The 2024 paper's §3.2 also informs an implemented **optional** equality
-producer for QF_UFLRA. Starting from a feasible tableau,
+Bjørner and Nachmanson's *Arithmetic Solving in Z3*, §3.2, also informs an
+optional equality producer for QF_UFLRA. Starting from a feasible tableau,
 {source}`model_filtered_unit_equalities <src/theory/arithmetic/lra_tableau.cpp#L1261-L1456>`
-groups shared variables by their exact current value, then checks row shapes
-that justify equality in every model: a direct unit connection with fixed
-remainder, or two rows with the same signed unit connector and fixed remainders.
-The current value acts as a filter; fixing bounds supply the explanation.
-The method avoids constructing the large rational offsets used by the older
-producer. Primo emits a spanning set and retains its exact fallback machinery.
+groups shared variables by their exact current value. It then looks for
+equalities justified by bounds and equations. Two variables fixed to the same
+value are equal. For variables related by rows, it checks two shapes:
+
+- `x = y + r`, where every variable in the remainder `r` is fixed by matching
+  lower and upper bounds. If `x` and `y` have equal current values, `r` is
+  zero and remains zero while those bounds hold.
+- `x = s*z + r₁` and `y = s*z + r₂`, where the shared coefficient `s` is
+  `1` or `-1` and both remainders contain only fixed variables. Equal current
+  values of `x` and `y` establish that the fixed remainders are equal too.
+
+Current values filter candidate pairs; the bounds fixing the remainders
+supply the explanations. This avoids constructing the large rational offsets
+used by the older producer. The method emits an equality only when it connects
+previously separate groups; transitivity supplies the remaining connections.
+The surrounding combination solver retains its exact fallback checks.
 
 This is the `model-unit` option. The
 {source}`default remains legacy <src/smt/check_sat.hpp#L396-L402>`; pure
 QF_LRA calls neither producer. The full-corpus comparisons and the unpromoted
 adaptive follow-up are preserved in the
 {source}`2024 paper implementation note <docs/papers/arithmetic-solving-in-z3.md#L277-L461>`.
-The paper's integer and nonlinear waterfall is broader than this LRA chapter;
-its existence is not evidence that Primo implements every stage.
+The paper's integer and nonlinear procedures are outside this chapter's scope.
 
 ## Further implemented work and its evidence
 
-The arithmetic development includes more than the default loop. The following
-work remains part of the documentation, with its original measurements and
-rejected alternatives retained. These links are an inventory for continued
-migration, not new performance claims.
+The following notes explain additional arithmetic mechanisms and preserve
+their measurements and rejected alternatives. H1–H10 are identifiers in the
+historical heuristics register.
 
 | Work already done | Current explanation and retained record |
 | --- | --- |
-| H1/H2: direct bounds, shared polynomial rows and small rationals | Explained above; {source}`design and measurements <docs/qf-lra-heuristics.md#L217-L433>`. |
-| H3: sparse pivot selection and tuning | Explained above; {source}`pivoting investigation <docs/qf-lra-heuristics.md#L434-L532>` and {source}`tuning controls <docs/tuning-parameters.md>`. |
-| H8/H9/H10: sorted row merging, bounds-only rollback, delta-maintained occurrences | Explained above; {source}`design progression <docs/qf-lra-heuristics.md#L731-L943>`. The earlier rejected occurrence-maintenance attempt is retained in the same record. |
-| H7: fixed-basic-variable elimination | {source}`try_eliminate_fixed_basic <src/theory/arithmetic/lra_tableau.cpp#L393-L431>` pivots a fixed basic variable out and pins its value. Off for pure LRA, on by default in the QF_UFLRA route; {source}`route defaults <src/smt/check_sat.hpp#L295-L310>` and {source}`design/evidence <docs/qf-lra-heuristics.md#L533-L730>`. |
-| H5: model-based phase hints | {source}`refresh_model_phase_atom <src/smt/solver_engines.cpp#L7415-L7473>` supplies preferred polarities while SAT keeps variable selection. Off by default; {source}`phase-selection investigation <docs/qf-lra-heuristics.md#L976-L1233>`. |
-| SOI and alternative pivot policies | {source}`LraTableau::check <src/theory/arithmetic/lra_tableau.cpp#L1711-L1805>` and the {source}`base-paper deviation map <docs/papers/fast-linear-arithmetic-dpllt.md>`. Implemented options are not automatically preferred defaults. |
+| Direct bounds, shared polynomial rows and small rationals (H1/H2) | Explained above; {source}`design and measurements <docs/qf-lra-heuristics.md#L217-L433>`. |
+| Sparse pivot selection and tuning (H3) | Explained above; {source}`pivoting investigation <docs/qf-lra-heuristics.md#L434-L532>` and {source}`tuning controls <docs/tuning-parameters.md>`. |
+| Sorted row merging, bounds-only rollback, incremental occurrence updates (H8/H9/H10) | Explained above; {source}`design progression <docs/qf-lra-heuristics.md#L731-L943>`, including the earlier rejected occurrence-maintenance attempt. |
+| Fixed-basic-variable elimination (H7) | {source}`try_eliminate_fixed_basic <src/theory/arithmetic/lra_tableau.cpp#L393-L431>` pivots a fixed basic variable out and pins its value. Off by default for pure LRA, on by default for QF_UFLRA; {source}`route defaults <src/smt/check_sat.hpp#L295-L310>` and {source}`design and evidence <docs/qf-lra-heuristics.md#L533-L730>`. |
+| Model-based phase hints (H5) | {source}`refresh_model_phase_atom <src/smt/solver_engines.cpp#L7415-L7473>` supplies preferred polarities while SAT keeps variable selection. Off by default; {source}`phase-selection investigation <docs/qf-lra-heuristics.md#L976-L1233>`. |
+| SOI and alternative pivot policies | {source}`LraTableau::check <src/theory/arithmetic/lra_tableau.cpp#L1711-L1805>` and the {source}`base-paper deviation map <docs/papers/fast-linear-arithmetic-dpllt.md>` explain these opt-in policies. |
 | Equality sharing and model reconciliation | {source}`equality-sharing design <docs/qf-lra-equality-sharing.md>` and {source}`tableau equality/model interfaces <src/theory/arithmetic/lra_tableau.hpp#L331-L600>`. Model coincidence is not an entailed equality. Detailed combination behavior belongs in its own chapter. |
-| Preprocessing and experiment history | {source}`monotone elimination <docs/papers/monotone-variable-elimination.md>`, {source}`guarded equality experiments <docs/qf-lra-heuristics.md#L1234-L1347>` and {source}`arithmetic development record <docs/arithmetic.md>`. Their dated outcomes must be preserved when extracted. |
+| Preprocessing and experiment history | {source}`monotone elimination <docs/papers/monotone-variable-elimination.md>`, {source}`guarded equality experiments <docs/qf-lra-heuristics.md#L1234-L1347>` and {source}`arithmetic development record <docs/arithmetic.md>`. |
 
 The [published QF_LRA results](../papers/primo-qflra-results.md) are another
 part of this evidence trail. The tuned configurations in that paper have
-their own settings and measurement scope; linking the paper does not promote
-them to current defaults. Exact table-to-artifact mapping remains open.
+their own settings and measurement scope. Exact table-to-artifact mapping
+remains open.
 
 Open investigations include alternative rational libraries, further fill-in
 control, batched assignment updates and
 [floating-point-guided basis selection](../leads/lra-floating-point.md). The
 {source}`heuristics register <docs/qf-lra-heuristics.md>` retains their
-hypotheses and falsifiers. They should not be merged into the implemented
-description merely because they occur beside completed work in that record.
+hypotheses and the measurements that would support or reject them.
 
 ## Sources and implementation status
 
-The supplied thesis copies are under `external/papers/`; PDFs remain local
-reference material. The implementation mapping uses these specific sections:
+The implementation uses the following papers, theses, and sections. The
+[review record](../review.md#primary-sources-read) identifies the reading copies
+and sections checked.
 
 | Source | Role and limits |
 | --- | --- |
@@ -431,29 +429,25 @@ reference material. The implementation mapping uses these specific sections:
 
 Robert Daniel Brummayer's *Efficient SMT Solving for Bit-Vectors and the
 Extensional Theory of Arrays* (PhD thesis, JKU Linz, September 2009),
-Chapter 4, is also relevant to this work through correctness testing. Its
-grammar-based fuzzing and failure-reduction guidance belongs in the
-[contributor correctness guide](../development/correctness.md#fuzzing-and-reduction-sources),
-rather than being presented as a source for simplex.
+Chapter 4, informs the grammar-based fuzzing and failure reduction described
+in the [contributor correctness guide](../development/correctness.md#fuzzing-and-reduction-sources).
 
 ## Invariants exercised by existing tests
 
 | Obligation | Regression or mechanism test |
 | --- | --- |
 | Exact promotion/demotion preserves arithmetic, equality and hashing | {source}`rational representation and GMP comparison tests <tests/unit/rational_tests.cpp#L272-L383>` |
-| A strict boundary cannot be rounded into a satisfying equality | {source}`strict_inequality_conflicts_with_touching_nonstrict_bound <tests/unit/lra_tableau_tests.cpp#L177-L197>` |
+| A strict boundary cannot be rounded into a satisfying equality | {source}`strict-bound conflict test <tests/unit/lra_tableau_tests.cpp#L177-L197>` |
 | Sparse pricing finds candidates and really uses occurrence counts | {source}`sparse selection tests <tests/unit/lra_tableau_tests.cpp#L533-L625>` |
-| Heuristic repair eventually invokes the counted Bland fallback | {source}`bland_fallback_is_counted_under_the_sparse_rule <tests/unit/lra_tableau_tests.cpp#L725-L753>` |
+| Heuristic repair eventually invokes the counted Bland fallback | {source}`Bland fallback test <tests/unit/lra_tableau_tests.cpp#L725-L753>` |
 | Rows stay sorted; cancelled coefficients lose their occurrences | {source}`row/occurrence tests <tests/unit/lra_tableau_tests.cpp#L1208-L1397>` |
 | Rollback preserves equation consistency; SOI restores its extra state | {source}`ordinary rollback tests <tests/unit/lra_tableau_tests.cpp#L238-L416>` and {source}`SOI rollback <tests/unit/lra_tableau_tests.cpp#L867-L904>` |
 | Shared polynomials preserve scaled thresholds and flipped strictness | {source}`preparation tests <tests/unit/qf_lra_solver_tests.cpp#L4363-L4450>` |
 | Propagation has a Boolean effect and respects configured caps | {source}`same-variable/row propagation tests <tests/unit/qf_lra_solver_tests.cpp#L3268-L3447>` |
-| SOI exercises the paper's worked pivot example | {source}`soi_reproduces_paper_fig6_worked_example <tests/unit/lra_tableau_tests.cpp#L798-L829>` |
+| SOI exercises the paper's worked pivot example | {source}`SOI worked-example test <tests/unit/lra_tableau_tests.cpp#L798-L829>` |
 
-These are existing tests, not a claim that they were rerun for this chapter.
 Performance investigations additionally use pivot, row-update, term-operation,
 Bland-fallback and propagation counters; their publication is visible in
 {source}`run_deferred_check_if_needed <src/smt/solver_engines.cpp#L7379-L7413>`.
 Correctness qualification still requires the fresh fuzzing and independent
-model checks described in the contributor guide. Solver batches for this
-workspace run remotely through SLURM.
+model checks described in the [contributor guide](../development/correctness.md).
