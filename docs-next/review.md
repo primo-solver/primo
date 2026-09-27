@@ -1052,3 +1052,38 @@ the LRA crosslink resolves and all prior anchors on the affected pages remain.
 The review CSV has unique page entries, and `git diff --check` passed.
 External URLs are unchanged; the earlier external audit's access failures
 remain recorded separately.
+
+(model-mutation-scheduling-review)=
+### Model mutation scheduling, 2026-09-27
+
+The combination chapter now states when the dedicated Real route attempts
+scratch LRA diversification: after the outer SAT candidate passes component
+checks, before the final explained-equality passes and EUF reconciliation.
+It records the enable condition, one call per eligible round, repeated calls
+after a SAT recheck, and the mutation-disabled projection after targeted
+disequality repair. The bounded sweep, early exits, scratch ownership, and
+acceptance conditions are distinguished from the later EUF model adaptation
+and from the general driver's mutation protocol.
+
+Re-read de Moura and Bjørner, *Model-based Theory Combination*, §§4 and 5.2.
+The primary text explicitly leaves `M-Mutate` scheduling unspecified; the
+chapter distinguishes that freedom from Primo's concrete call order. The
+default order can spend mutation work on a candidate discarded by subsequent
+equality propagation. No alternative schedule or performance improvement is
+claimed here.
+
+Inspected the outer solve loop, both partition-construction calls, the
+diversifier, option defaults and CLI flags, and existing regressions for a
+single mutation call, pair pruning, untouched tableau state, and mandatory
+disequalities. The LRA chapter links to the schedule, and the review ledger
+and combination test map include these checks. Solver sources and their pin
+are unchanged. No solver tests, fuzzing, or benchmarks were run for this
+documentation-only clarification.
+
+`make docs-check-links` passed both strict books: 116 pages, 17,633 local
+links, 428 unique Git links, and zero failures. The generated scheduling
+section, LRA crosslink, source/test links, and explanatory text were checked;
+all prior anchors on the affected pages are preserved. The review CSV has
+unique page entries, and `git diff --check` passed. External URLs are
+unchanged; the earlier full external audit's access failures remain recorded
+separately.

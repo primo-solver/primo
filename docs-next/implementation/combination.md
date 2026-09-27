@@ -184,6 +184,84 @@ The component result type makes the distinction explicit:
 
 ## The dedicated Real route
 
+### When model mutation runs
+
+De Moura and Bjørner deliberately leave mutation scheduling open. Section 4
+of [*Model-based Theory Combination*](https://doi.org/10.1016/j.entcs.2008.04.079)
+says, “We do not need to specify when
+M-Mutate is applied.” Models may temporarily lag behind assigned literals;
+the paper postpones model-based equality choices until case splits on
+existing literals have been performed. Section 5.2 gives a greedy
+freedom-interval procedure for diversifying a feasible arithmetic model,
+but does not prescribe a call frequency for that procedure.
+
+Primo makes that scheduling choice in its outer QF_UFLRA loop. With default
+options, a round that has an EUF model and shared Real terms proceeds as
+follows:
+
+1. **Obtain a SAT candidate and check both theories.** After the
+   {source}`SAT call <src/smt/solver_engines.cpp#L11247-L11288>` returns a
+   candidate, EUF checks its assigned literals and LRA obtains a feasible
+   tableau for its bounds and selected interface equalities. Conflicts are
+   handled here; only consistent checks reach the mutation stage.
+2. **Attempt one LRA diversification.** The
+   {source}`partition construction <src/smt/solver_engines.cpp#L11547-L11565>`
+   calls `lra_model_equal_partition`, which invokes
+   {source}`diversify_shared_model <src/smt/solver_engines.cpp#L4266-L4295>`
+   on a scratch assignment. The resulting equal-value classes describe the
+   candidate arithmetic model for this round.
+3. **Repair any remaining mandatory disequalities.** If SAT has selected
+   `x != y` but the candidate still gives them equal values, the
+   {source}`targeted separation step <src/smt/solver_engines.cpp#L11566-L11599>`
+   searches strict orientations. A successful repair rebuilds the partition
+   with diversification disabled. Unresolved obligations lead to the exact
+   fallback; a probe limit returns `unknown`.
+4. **Exchange explained equalities.** The engine runs the final
+   {source}`EUF equality pass <src/smt/solver_engines.cpp#L11633-L11652>` and
+   {source}`LRA equality pass <src/smt/solver_engines.cpp#L11655-L11708>`.
+   An equality or conflict requiring another SAT check restarts the outer
+   loop. Otherwise the candidate proceeds to reconciliation.
+5. **Reconcile the candidate with EUF.** The
+   {source}`reconciliation result <src/smt/solver_engines.cpp#L11836-L11873>`
+   leads to acceptance, new equality assumptions followed by another SAT
+   call, or exact fallback checks.
+
+Thus the scratch mutation runs **before the final equality-exchange passes**,
+without waiting for their fixed point or an EUF/LRA model disagreement.
+A propagated equality can discard that round's candidate, and the next
+feasible round attempts mutation again. Reusing a checked LRA tableau does
+not cache its diversified candidate. This ordering is Primo's current
+implementation choice; the paper does not require it. Mutation is performed
+at this outer-loop stage, outside SAT's decision and propagation callbacks.
+
+The {source}`enable condition <src/smt/solver_engines.cpp#L10810-L10812>` is
+that mutation is allowed and either model reconciliation or model-equality
+branching is enabled. Reconciliation and mutation are both enabled by
+default. `--no-model-equality-mutation` disables diversification. Disabling
+reconciliation also disables it unless `--model-equality-branching` is
+enabled. Pure QF_LRA does not call this routine, and the production general
+component route has no mutation-capable EUF/LIA adapters, as described below.
+
+One call is a bounded greedy sweep, not a search for the most diverse model.
+{source}`diversify_shared_model <src/theory/arithmetic/lra_tableau.cpp#L1550-L1708>`
+copies the tableau assignment and considers nonbasic variables that can
+change coincident shared values. It tries a bounded set of values within
+each variable's freedom interval, updating dependent basic values without
+pivoting. It keeps a move only if the number of value classes does not
+decrease, no already-satisfied mandatory disequality is broken, and either
+a mandatory disequality is repaired or the number of classes increases.
+An empty scope needs no sweep. Neither does a model with no coincident scoped
+values and no violated mandatory disequalities. A scheduled call can therefore
+make no updates.
+The live tableau's assignment, bounds, and basis remain unchanged.
+
+For example, `x >= 0` and `y >= 0` allow a candidate with `x = y = 0`.
+Moving `x` to 1 removes this accidental equality before EUF reconciliation
+considers it. The new values prove neither `x != y` nor `x = y` as a theory
+consequence. Likewise, failure to separate a pair is no equality proof:
+the bounded sweep can miss feasible alternatives. Any model change still
+has to pass the later combination checks.
+
 ### Explained equality exchange
 
 EUF projects its shared congruence classes and emits a spanning set of
@@ -193,8 +271,8 @@ transitivity supplies the remaining equalities.
 (lra-default-equality-rules)=
 #### Default LRA rules
 
-LRA first looks for equalities that follow directly from the current bounds
-and tableau rows. The default producer,
+LRA's opportunistic equality producer looks for consequences of the current
+bounds and tableau rows. The default producer,
 {source}`LraTableau::entailed_equalities <src/theory/arithmetic/lra_tableau.cpp#L1078-L1259>`,
 implements four rules from de Moura and Bjørner, *Model-based Theory
 Combination*, §5.1. Each conclusion remains true while its explaining bounds
@@ -283,11 +361,10 @@ arithmetic model that still identifies its endpoints is insufficient.
 
 ### Reconciling candidate models
 
-Default QF_UFLRA model reconciliation first uses a feasible arithmetic model,
-optionally diversified by freedom-interval updates. These updates change
-values while preserving the tableau equations and bounds. They do not establish
-new consequences. Required shared disequalities remain obligations throughout
-model construction.
+Reconciliation consumes the arithmetic candidate built by the
+[mutation and separation stage](#when-model-mutation-runs). It now tries to
+adapt the EUF model to that candidate's remaining equalities. Required shared
+disequalities remain obligations throughout model construction.
 
 {source}`reconcile_lra_candidate_with_euf <src/smt/solver_engines.cpp#L5082-L5202>`
 then tries a spanning presentation of the LRA value classes in the EUF closure:
@@ -510,6 +587,7 @@ repeated SAT calls can still dominate.
 | Mechanism | Cost boundary and evidence in counters |
 | --- | --- |
 | Sparse equality creation | Registry entries and materialized SAT pairs grow on demand. Compare `:no.interface.registry-entries` or `:combination.model.materialized-pairs` with the corresponding total-pair count. |
+| Scratch LRA diversification | Each call copies all tableau values; trial moves update dependent rows and regroup scoped values. `:no.interface.lra-model-mutation-calls` counts invocations, including calls with no accepted `:no.interface.lra-model-mutation-updates`. These counts need not match SAT calls or successful reconciliation rounds. |
 | Convex exact fallback | Equal-valued unresolved pairs may still require many arithmetic probes. `:no.interface.lra-exact-fallback-equalities` counts discovered equalities; it is not a count of all work. |
 | Real model reconciliation | Candidate edges can induce larger congruence closures. `:no.shared-model.compatibility-consequence-disagreements` exposes disagreements created by those consequences. |
 | Component model comparison | For a fixed number of participants, the ordinary care/spanning pass is linear in the supplied edges, with expected constant-time partition lookups. `:combination.model.care-pair-agreements` and `.spanning-pair-checks` count visits, including duplicates. This does not bound mutation or component solving. |
@@ -517,12 +595,15 @@ repeated SAT calls can still dominate.
 
 ## Defaults and limitations
 
-The {source}`option definitions <src/smt/check_sat.hpp#L396-L421>` distinguish
-enabled behavior from experiments:
+The {source}`combination options <src/smt/check_sat.hpp#L396-L421>` and
+{source}`mutation options <src/smt/check_sat.hpp#L234-L240>` distinguish enabled
+behavior from experiments:
 
 | Control | Current setting and scope |
 | --- | --- |
 | QF_UFLRA model reconciliation | Enabled; `--no-qf-uflra-model-reconciliation` selects the retained exact route. |
+| `--no-model-equality-mutation` | Disables scratch LRA diversification, which otherwise runs when reconciliation or model-equality branching is enabled. |
+| `--model-equality-mutation-scope={all,care}` | `all` by default. Experimental `care` scores EUF care-pair endpoints, then checks the complete shared partition and rejects a result with more candidate pairs. |
 | `--nelson-oppen-prop` | `final` by default. `online` is an opt-in paired-bound propagation path. `exact` disables the optional equality producer while retaining required combination checks; legacy `off` is an alias for `exact`. |
 | QF_UFLIA model guidance | Enabled independently of the EUF engine choice. `--no-qf-uflia-model-combination` selects complete arrangements directly. The model-decision budget defaults to 512. |
 | QF_UFLIA online components | Enabled when the incremental EUF engine is selected. |
@@ -562,6 +643,8 @@ sections read for this chapter.
 | Equality must travel in both directions until the convex problem is settled | {source}`EUF–LRA–EUF fixed-point regression <tests/unit/qf_lra_solver_tests.cpp#L1429-L1452>` |
 | A propagated equality remains guarded by the branch that proves it | {source}`assignment-guard regression <tests/unit/qf_lra_solver_tests.cpp#L1553-L1594>` |
 | A candidate merge must preserve arithmetic agreement after congruence | {source}`optional-merge consequence regression <tests/unit/qf_lra_solver_tests.cpp#L2530-L2553>` |
+| A mixed model can separate a coincident pair without materializing its equality | {source}`single-call mutation and pair-pruning regression <tests/unit/qf_lra_solver_tests.cpp#L2299-L2326>` |
+| Mutation preserves tableau state and already-satisfied mandatory disequalities | {source}`scratch-state regression <tests/unit/lra_tableau_tests.cpp#L2295-L2324>`; {source}`mandatory-disequality regressions <tests/unit/lra_tableau_tests.cpp#L2393-L2444>` |
 | Combination values roll back and SAT truth comes from the shared view | {source}`manager rollback and assignment tests <tests/unit/theory_combination_tests.cpp#L474-L592>` |
 | Scope normalization rejects invalid ownership and respects disconnected sorts | {source}`admission and scope tests <tests/unit/component_combination_tests.cpp#L268-L344>` |
 | More than two participants agree with an independent partition oracle | {source}`three/four-component cases <tests/unit/component_combination_tests.cpp#L409-L487>` |

@@ -357,7 +357,10 @@ part of the model builder; a feasible tableau alone is not the printed model.
 The default QF_UFLRA producer uses four rules based on fixed variables and
 matching tableau rows. Their worked examples, bound explanations, and
 incompleteness are described in
-[the combination chapter](#lra-default-equality-rules).
+[the combination chapter](#lra-default-equality-rules). That chapter also gives
+the [model-mutation schedule](combination.md#when-model-mutation-runs): the
+dedicated Real route attempts scratch diversification before its final
+equality-exchange passes and model reconciliation.
 
 Bjørner and Nachmanson's *Arithmetic Solving in Z3*, §3.2, also informs an
 optional equality producer for QF_UFLRA. Starting from a feasible tableau,
