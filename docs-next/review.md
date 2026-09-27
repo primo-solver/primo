@@ -1087,3 +1087,35 @@ all prior anchors on the affected pages are preserved. The review CSV has
 unique page entries, and `git diff --check` passed. External URLs are
 unchanged; the earlier full external audit's access failures remain recorded
 separately.
+
+(combination-lead-separation)=
+### Separate combination proposals from implementation, 2026-09-28
+
+The combination chapter now ends with an evidence section and brief links to
+separate open leads. The previous `evidence-and-open-leads` anchor is retained.
+The implemented-route summary describes the current split between the general
+driver and the dedicated Real engine; the proposal details live elsewhere.
+
+Added open, unassigned pages for a complete implied-equality basis, migration
+of QF_UFLRA to the existing general driver, and further model-based transition
+integration. The two existing care leads remain separate. All five are linked
+from the chapter and the landing page's Open leads section. The three new
+pages appear in navigation, the review ledger, and the supporting-file map;
+the architecture overview links to the migration lead.
+
+The extraction preserves the original equality-basis investigation and the
+dated component/transition records as references. Bromberger §5.4 and de
+Moura–Bjørner §4 and Appendix A supply the paper context; the current driver
+and route boundaries remain those checked in the preceding chapter reviews.
+This is documentation organization, not a new implementation plan or a claim
+of fresh solver qualification. The new lead pages await reader review and
+further design work. Solver source and its documentation pin are unchanged.
+
+`make docs-check-links` passed both strict books and the local/source-link
+check. The previous HTML anchors were preserved throughout the draft, and
+the navigation, review ledger, and support inventory cover all 27 draft
+pages. The three new pages render with open/unassigned status and source
+links; all five leads are reachable from the chapter and landing page.
+`git diff --check` passed. External URLs are unchanged; the earlier external
+audit's access failures remain recorded separately. No solver batches were
+part of this cleanup.

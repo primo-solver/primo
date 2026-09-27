@@ -17,8 +17,8 @@ The current solver routes use these drivers:
 The general driver supports component collections. Existing
 {source}`three- and four-component tests <tests/unit/component_combination_tests.cpp#L409-L487>`
 exercise its SAT loop, online and offline execution, and model construction.
-Migrating QF_UFLRA to this existing driver is the remaining architectural work;
-the general driver itself is already in use.
+QF_UFLRA currently remains on its dedicated route; the general driver itself
+is already in use.
 
 This chapter focuses on combining uninterpreted functions with arithmetic.
 Their solvers must agree on equalities between shared terms while keeping their
@@ -656,7 +656,8 @@ sections read for this chapter.
 | A zero guidance budget reaches complete arrangements | {source}`fallback regression <tests/unit/qf_uflia_solver_tests.cpp#L275-L299>` |
 | Purified arguments use their arithmetic values in the printed model | {source}`integer argument-model regression <tests/unit/qf_uflia_solver_tests.cpp#L353-L380>` |
 
-## Evidence and open leads
+(evidence-and-open-leads)=
+## Evidence
 
 The {source}`component migration record <docs/n-way-combination-migration.md>`
 retains the paired QF_UFLIA evaluations, fuzzing and independent model checks.
@@ -666,22 +667,10 @@ their separate revision boundaries and limitations. Exact run provenance is in
 {source}`the run log <docs/run-log.json>`; these historical runs are not fresh
 qualification of this documentation pass.
 
-The {source}`complete implied-equality basis lead <docs/open-leads.md#L2344-L2401>`
-asks whether Bromberger's method can reduce the need for exact pair probes.
-Two care-related investigations are recorded separately:
+## Related open leads
 
+- [Complete implied-equality basis](../leads/lra-equality-basis.md)
 - [More selective and cheaper care-pair generation](../leads/care-pair-generation.md)
-  retains the current model checks and evaluates filtering and lazy generation.
 - [Reducing combination obligations with care graphs](../leads/care-guided-combination.md)
-  requires a stronger component contract, a correctness argument, and a method
-  for constructing compatible models from the reduced set of obligations.
-
-The architectural follow-up is to migrate QF_UFLRA onto the existing general
-component driver. That migration must preserve the dedicated route's explained
-equality exchange, internal model reconciliation, explanation lifetimes, model
-construction, and exact fallback. QF_UFLIA already uses the general driver.
-
-The care leads change the work needed to choose or accept a combination; they
-do not introduce the general architecture. Full `DPLL(T^M)` integration is a
-separate algorithmic investigation. The {source}`earlier transition checklist
-<docs/papers/model-based-theory-combination.md>` preserves that investigation.
+- [Move QF_UFLRA to the general component driver](../leads/real-combination-migration.md)
+- [Further model-based combination transitions](../leads/model-based-combination.md)

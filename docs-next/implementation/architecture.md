@@ -147,7 +147,8 @@ fragments are described by
 {source}`TheoryComponent's interface types <src/theory/theory_component.hpp>`.
 QF_UFLRA retains a
 {source}`dedicated engine <src/smt/solver_engines.cpp#L10801-L10821>`.
-Migrating that Real route to the existing general driver remains open. The
+[Migrating that Real route](../leads/real-combination-migration.md) to the
+existing general driver remains open. The
 [theory-combination chapter](combination.md) explains shared equality
 obligations, candidate models, and final acceptance.
 

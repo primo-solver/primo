@@ -29,8 +29,11 @@ parts:
       - file: leads/theory-lemmas
       - file: leads/theory-lemma-forgetting
       - file: leads/lra-floating-point
+      - file: leads/lra-equality-basis
       - file: leads/care-pair-generation
       - file: leads/care-guided-combination
+      - file: leads/real-combination-migration
+      - file: leads/model-based-combination
   - caption: Reviewing this draft
     chapters:
       - file: review

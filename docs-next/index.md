@@ -67,7 +67,7 @@ the retained arithmetic development and experiments.
 [Theory combination](implementation/combination.md) explains purification,
 Nelson–Oppen equality exchange, model-guided choices, and the implemented general
 component driver used by QF_UFLIA and quantified UF. QF_UFLRA retains its
-dedicated coordinator; migrating it to the general driver remains open. The
+dedicated coordinator. The
 capability matrix and user guides remain in the existing book while they
 undergo page review for this draft.
 
@@ -130,6 +130,14 @@ and cheaper suggestions while retaining complete model checks. The separate
 [care-guided combination lead](leads/care-guided-combination.md) asks when a
 stronger care-function contract can justify reducing those obligations. Both
 are open; the existing care-pair heuristic and general driver are implemented.
+
+The [complete equality-basis lead](leads/lra-equality-basis.md) investigates
+reducing exact arithmetic equality probes. The
+[QF_UFLRA migration lead](leads/real-combination-migration.md) records the
+remaining consolidation onto the existing general driver. The separate
+[model-based transition lead](leads/model-based-combination.md) records
+further `DPLL(T^M)` work. These are open investigations, not active
+implementation tasks.
 
 During review, `make docs-next-serve` serves this draft at
 `http://localhost:8001`; `make docs-serve` serves the existing book at
