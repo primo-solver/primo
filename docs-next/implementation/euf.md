@@ -311,8 +311,9 @@ primary algorithmic source.
 | Primo's local EUF/SMT design | SAT reason signs, Boolean-domain preparation, changed-term delivery, and model-scope protection. These are integration obligations, not algorithms attributed to the paper. |
 
 `FlatCongruenceClosure` does not implement the paper's integer-offset extension.
-[Linear real arithmetic](lra.md) covers the arithmetic solver. Theory
-combination is outside this chapter's scope.
+[Linear real arithmetic](lra.md) covers the arithmetic solver.
+[Theory combination](combination.md) explains equality exchange and the
+additional congruence checks required when reconciling candidate models.
 Lemma-retention policy remains in the [theory-lemma lead](../leads/theory-lemmas.md)
 and [safe-forgetting lead](../leads/theory-lemma-forgetting.md).
 

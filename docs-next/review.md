@@ -73,13 +73,17 @@ belongs to the current documentation branch. No page is accepted yet.
 7. [EUF](implementation/euf.md) and [LRA](implementation/lra.md): can the reader
    follow each worked example through the owning code and understand the
    representations, invariants, defaults, limitations, and paper basis?
-8. [Library API](leads/library-api.md) and
+8. [Theory combination](implementation/combination.md): is the difference
+   between entailment and a model choice clear, and can the reader identify
+   the two production routes, their acceptance conditions, and their fallback
+   and model-construction obligations?
+9. [Library API](leads/library-api.md) and
    [incremental memory](leads/incremental-memory.md), together with
    [compact term storage](leads/term-storage.md): do the work items capture
    the intended direction, available evidence, and unresolved design questions?
    Apply the same questions to the remaining lead pages. Reviewing a lead
    does not complete its investigation.
-9. Literature notes: are the cited sections, implemented subsets, deviations,
+10. Literature notes: are the cited sections, implemented subsets, deviations,
    and open questions clear? Keep published results attached to their original
    configurations and evidence.
 
@@ -853,3 +857,74 @@ and used literal HTML anchors for two GitHub headings. The linked CaDiCaL
 header's dynamic line fragment has a documented anchor-only exception; its
 page remains subject to HTTP checking. The solver source pin and page-acceptance
 states are unchanged. External access failures remain open for review.
+
+(theory-combination-chapter)=
+## Theory-combination chapter, 2026-09-27
+
+The new chapter consolidates the current contracts of `docs/nelson-oppen.md`,
+`docs/modular-theory-combination.md`, and `docs/n-way-combination-migration.md`.
+It explains purification, convex equality exchange, non-convex arrangements,
+model choices, component ownership and shared scopes, freshness checks, exact
+and complete-arrangement fallbacks, and typed model assembly. Source and test
+links use the unchanged `e6d9fcb06f476375aded43a13c22a6d6b4939144` pin. Solver
+sources are identical to that revision; newer documentation-tool and UF-fuzzer
+tests do not change the combination code reviewed here.
+
+### Primary sections read
+
+| Reading copy | Sections used in this pass |
+| --- | --- |
+| Nelson and Oppen, 1978 Stanford report STAN-CS-78-652; retrieved from the report mirror linked in the chapter | §§2.2–2.4: purification, equality exchange, and convex/non-convex search. The Stanford download endpoint refused the connection; the mirror supplied the authors' original report. This was not a reading of the 1979 journal layout. |
+| `external/papers/model-guided-no.pdf` | §§2.1, 4, 5.1–5.2 and Appendix A: arrangements, model decisions, opportunistic equality rules, freedom intervals, and the broader transition system. |
+| Bruttomesso et al., LPAR 2006 author manuscript `lpar06_dtc.pdf`, linked in the chapter | §§2–3 and Figure 4: SAT-mediated interface search and the extra hypotheses of the paper's NO-emulation strategy. No branching-bound claim is transferred to Primo. |
+| `external/papers/griggio.pdf` | §1.5.1, printed pp. 28–35: purification, shared variables, stable infiniteness, convex closure, and delayed combination. |
+| `external/papers/king_tim.pdf` | §§1.5.5–1.5.6, printed pp. 26–28: theory-engine responsibility, partial/full checks, and shared-term explanations. |
+| `external/papers/Bromberger_Decision_Procedures_for_Linear_Arithmetic.pdf` | §5.4: equality-basis normalization and justifications. The full basis algorithm remains an open lead; this pass does not re-audit all of Chapter 5. |
+
+The original reports were read as papers, not as solver implementation
+sources. The current chapter uses Primo's own code for representation and
+control-flow claims. Its clause examples were checked algebraically against
+the materializer and explanation conventions; they are reasoning traces,
+not newly measured execution traces.
+
+### Corrections and evidence boundary
+
+The old dedicated Real page still described a private SAT-assignment snapshot
+and a separate assignment trail in `TheoryCombinationManager`. It now describes
+the shared `TrailView` and the distinct undo log for arrangement values. The
+draft also distinguishes the production `ComponentModelCoordinator` from the
+older experimental `ModelBasedCombinationCoordinator`, and distinguishes
+protocol-level mutation support from the production adapters, which disable it.
+
+Existing tests were inspected for guarded equality exchange, congruence effects
+of model merges, non-convex choices, independent partition-oracle coverage,
+projection freshness, mutation side effects, rollback, arrangement fallback,
+and reconstruction of purified arguments. No solver batch, fuzz gate, model
+validation, or performance evaluation was run for this documentation change.
+The qualification and migration records remain in place with their original
+revisions, results, and limits. LIA's internal search and the full model chapter
+remain separate writing tasks; reader acceptance is still pending.
+
+### Verification
+
+`make docs-check-links` checks both strict books, generated local links and
+anchors, and pinned source files and line ranges. The chapter adds 51 source
+links. The compatibility check also preserves the old book's 83 baseline pages
+and 1,223 captured anchors, plus every pre-existing draft anchor. Navigation,
+review-ledger coverage, and identical rendering of the shared literature notes
+were checked separately. `git diff --check` passed.
+
+`make docs-check-external` completed both audits, returning failure for 14
+external URLs: 11 in the existing book and three in the draft. Ten returned
+HTTP 403, two returned HTTP 429, one failed TLS verification, and one refused
+the connection. The newly cited Nelson–Oppen report mirror and DTC manuscript
+both passed. The rate-limited draft URL was the existing CaDiCaL API-header
+reference; the two thesis repository landing pages again returned HTTP 403.
+Their local PDFs supplied the reading copies. Reports are in each book's
+`_build/linkcheck/output.json`; no URL was excluded to clear this run.
+
+The document-critic pass found no remaining blocking documentation issue after
+correcting the assignment-ownership description and checking the source ranges.
+The external access failures, final historical extraction, and reader acceptance
+remain explicit limitations. No C++ changed, so solver tests, ASan, fuzzing,
+and clang-tidy were not rerun.

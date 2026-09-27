@@ -12,7 +12,8 @@ a solver answer. There is no single C++ driver for every logic. This chapter
 describes their common contract and the differences that affect correctness;
 [EUF](euf.md) explains congruence closure, its reasons, and theory undo.
 [Linear real arithmetic](lra.md) explains the tableau and its repair operations.
-Detailed combination algorithms are outside this chapter's scope.
+The [theory-combination chapter](combination.md) follows equality exchange,
+model-guided choices, and arrangement fallback through the two mixed routes.
 
 ## Representation and ownership
 

@@ -143,7 +143,8 @@ component capabilities and model fragments are described by
 {source}`TheoryComponent's interface types <src/theory/theory_component.hpp>`.
 `QF_UFLRA` retains a
 {source}`dedicated engine <src/smt/solver_engines.cpp#L10801-L10821>`.
-The two logics therefore use different implementations of theory combination.
+The [theory-combination chapter](combination.md) explains both routes and their
+shared obligations for equalities, candidate models, and final acceptance.
 
 ## Sessions and result validity
 

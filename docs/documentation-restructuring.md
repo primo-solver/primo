@@ -23,6 +23,12 @@ ledger. Local verification and user acceptance are separate states; none of
 these pages is accepted yet. The destination paths in the inventory remain
 relative to the final `docs/` tree, with `docs-next/` used during preparation.
 
+The combination draft in `docs-next/implementation/combination.md` now
+consolidates the dedicated Real and component-based Int routes, with primary
+paper/thesis mappings, code links, and regression obligations. The original
+combination pages and their dated evaluations remain in place. Final extraction,
+reader acceptance, and the separate LIA/model chapters are still pending.
+
 The core draft in `docs-next/implementation/core.md` covers
 representation and ownership with function/test links and a compiled example.
 Library embedding and incremental memory are separate open-work pages. Their

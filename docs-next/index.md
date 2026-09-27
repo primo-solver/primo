@@ -63,7 +63,10 @@ explained conflicts, backtracking, and final consistency checks.
 the congruence-closure implementation through a conflict and its undo.
 [Linear real arithmetic](implementation/lra.md) covers exact numbers, shared
 polynomial rows, sparse simplex, strict conflicts and rollback, with links to
-the retained arithmetic development and experiments. The capability
+the retained arithmetic development and experiments.
+[Theory combination](implementation/combination.md) explains purification,
+Nelson–Oppen equality exchange, model-guided choices, and the separate Real and
+Int coordination routes. The capability
 matrix and user guides remain in the existing book while they
 undergo page review for this draft.
 

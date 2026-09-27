@@ -12,6 +12,7 @@ parts:
       - file: implementation/dpllt
       - file: implementation/euf
       - file: implementation/lra
+      - file: implementation/combination
   - caption: Literature
     chapters:
       - file: papers/primo-qflra-results

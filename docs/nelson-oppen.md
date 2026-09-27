@@ -92,13 +92,13 @@ the no-site fast path.
 | --- | --- | --- |
 | `core::SymbolTable` / `core::TermManager` | The table owns sorts/symbols; the manager owns terms, including fresh purification/equality terms | Solver context; the table outlives the manager. Stable `TermId`s, not borrowed nodes, cross allocating calls. |
 | `BooleanClausifier` | SAT literals for Boolean structure and theory atoms | One mixed solve; maps formula atoms initially and lazily materializes a missing interface equality when the coordinator requests one. |
-| `TheoryCombinationManager` | Interface terms, canonical equality entries, assignment snapshots, arrangement values, classifications, shared-model projection, and lazy equality-decision state | One mixed solve. Equality values and assignment state are trailed; shared-model data is round-scoped. |
+| `TheoryCombinationManager` | Interface terms, canonical equality entries, a shared assignment view, arrangement values, classifications, shared-model projection, and lazy equality-decision state | One mixed solve. Arrangement values have their own undo log; SAT truth is read from the shared view. Shared-model data is round-scoped. |
 | `PreparedFlatTheory` and `IncrementalFlatAssignmentState` | Flattened EUF definitions and congruence closure | EUF-owned structural preparation and assignment/model scopes. The manager stores no congruence closure. |
 | `PreparedLraTheory`, `MixedLraModelEpoch`, and `LraTableau` | LRA atom mapping, retained prepared/check state, exact rational assignment, and explanations | LRA-owned component state. The manager stores only its projection on shared terms. |
 | `solve_qf_uflra_engine_impl()` | The mixed fixed-point and model-reconciliation control flow | One `check-sat`; it invokes the components and decides when SAT must be re-entered. |
 | `sat::IpasirUpBackend` | Clauses, assumptions, observed variables, assignments, and failed assumptions | SAT-owned. It never contains theory terms. |
 
-`TheoryCombinationManager::SharedModelState` is valid only for its current
+The manager's `SharedModelState` is valid only for its current
 shared-model round and generation. It stores LRA value classes, their term-to-
 class map, deterministic spanning equalities, explained equalities, equalities
 absorbed into the candidate EUF model, and selected LRA separation atoms. A new
@@ -119,9 +119,12 @@ pair `(min(lhs,rhs), max(lhs,rhs))` and records:
 - the equality term and SAT literal, if materialized;
 - whether the pair is still missing a visible atom;
 - its combination value: unknown, equal, or disequal;
-- its current SAT assignment snapshot: unknown, true, or false;
 - round-local classifications such as EUF-implied, LRA-implied, SAT-forced,
   assigned-false, EUF-mergeable, EUF-forbidden, or model-internal.
+
+The current SAT assignment of a registered equality is queried through the
+bound `sat::TrailView`, returning unknown, true, or false. It is not stored
+as another assignment snapshot in the registry.
 
 The registry is sparse. `ensure_interface_pair()` validates same-sort interface
 ownership but does not itself allocate a SAT variable. A producer that actually
@@ -130,8 +133,10 @@ literal, and, during online propagation, asks IPASIR-UP to observe the fresh
 variable. The diagnostic count of all possible shared Real pairs is not an
 allocation request.
 
-The combination value and SAT-assignment trails have independent level starts.
-`push_level()` and `pop_to_level()` restore their old values. Per-round
+`push_level()` and `pop_to_level()` restore the combination arrangement values.
+SAT assignment rollback belongs to the shared assignment owner described in
+[](dpllt.md); {source}`the manager's assignment query and rollback
+<src/smt/theory_combination.cpp#L625-L699>` use that boundary. Per-round
 classifications are cleared or rebuilt when the coordinator starts another
 candidate-model round.
 
