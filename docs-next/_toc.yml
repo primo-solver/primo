@@ -29,6 +29,8 @@ parts:
       - file: leads/theory-lemmas
       - file: leads/theory-lemma-forgetting
       - file: leads/lra-floating-point
+      - file: leads/care-pair-generation
+      - file: leads/care-guided-combination
   - caption: Reviewing this draft
     chapters:
       - file: review

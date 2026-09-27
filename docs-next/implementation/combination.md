@@ -488,6 +488,14 @@ qualification of this documentation pass.
 
 The {source}`complete implied-equality basis lead <docs/open-leads.md#L2344-L2401>`
 asks whether Bromberger's method can reduce the need for exact pair probes.
+Two care-related investigations are recorded separately:
+
+- [More selective and cheaper care-pair generation](../leads/care-pair-generation.md)
+  retains the current model checks and evaluates filtering and lazy generation.
+- [Reducing combination obligations with care graphs](../leads/care-guided-combination.md)
+  requires a stronger component contract, a correctness argument, and a method
+  for constructing compatible models from the reduced set of obligations.
+
 Full `DPLL(T^M)` integration and a common Real/Int coordinator remain further
 design work. They require explicit mappings of the retained Real behavior,
 explanation lifetimes, model acceptance, and fallback guarantees before any

@@ -124,6 +124,12 @@ typed counters and optional diagnostics while preserving solver-control state.
 proposes using an approximate solver to suggest a basis, then
 perform exact pivots and checking. Its benefit in Primo remains unmeasured.
 
+[Care-pair generation](leads/care-pair-generation.md) investigates more selective
+and cheaper suggestions while retaining complete model checks. The separate
+[care-guided combination lead](leads/care-guided-combination.md) asks when a
+stronger care-function contract can justify reducing those obligations. Both
+are open; the existing care-pair heuristic and general driver are implemented.
+
 During review, `make docs-next-serve` serves this draft at
 `http://localhost:8001`; `make docs-serve` serves the existing book at
 `http://localhost:8000`. These are local previews. No website is published by

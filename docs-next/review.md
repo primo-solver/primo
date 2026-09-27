@@ -956,3 +956,32 @@ and its source/paper links were inspected in the generated HTML, and the review
 CSV was checked for unique page entries. Both newly cited paper PDFs returned
 HTTP 200. The full external audit was not repeated; its earlier access failures
 remain recorded above. `git diff --check` passed.
+
+(care-combination-leads)=
+### Two care-related open leads, 2026-09-27
+
+Recorded [more selective and cheaper care-pair generation](leads/care-pair-generation.md)
+and [reducing combination obligations with care graphs](leads/care-guided-combination.md)
+as separate open, unassigned investigations. Both appear in the draft navigation,
+landing page, combination chapter, review ledger, and support inventory.
+
+The first preserves current acceptance checks and records the existing Real
+cache as implemented. The second requires a component contract, a correctness
+argument for the admitted combinations, progress under changing state, and
+construction of compatible models. Neither is described as active
+implementation or qualified performance work.
+
+The paper reading now includes §3.1 of Jovanović and Barrett's 2013 journal
+article: the growing care-graph fixed point, Theorem 1, and its model-extension
+argument. This supplements Definitions 6–8 and the EUF construction read for
+the chapter. The cited theorem covers two theories; adaptation to Primo's
+component collections remains an explicit design obligation. Source links
+retain the existing solver pin. No solver implementation or batch execution
+was part of recording these leads.
+
+`make docs-check-links` passed both strict books: 116 pages, 17,611 local
+links, 409 unique Git links, and zero failures. Navigation, review-ledger
+coverage, and support-inventory coverage agree on all 24 draft pages. Both new
+HTML pages contain the open status, pinned source links, paper citations, and
+correctness-gate links. `git diff --check` passed. External URLs are unchanged
+from the preceding care-pair update; no full external audit was rerun.
