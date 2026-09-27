@@ -279,6 +279,54 @@ SAT variables before search resumes. The dispatcher routes assignment changes
 through the shared trail view and preserves explanations across unrelated
 backtracking.
 
+### Care pairs: which equality questions matter?
+
+A **care pair** `(x, y)` identifies two shared terms of the same sort whose
+equality a component wants the coordinator to examine. The pair asks whether
+`x = y`; it supplies neither an answer nor an explanation. A **care graph**
+has shared terms as vertices and care pairs as edges.
+
+For example, suppose `x`, `y`, and `z` are shared Int constants and the EUF
+part contains applications `f(x)`, `f(y)`, and `g(z)`, where `f` and `g` are
+distinct unary function symbols:
+
+| Shared pair | Relevance to these applications |
+| --- | --- |
+| `(x, y)` | If `x = y`, congruence forces `f(x) = f(y)`. This can merge result classes or contradict a disequality between the results. |
+| `(x, z)` | Equating these arguments does not by itself connect `f(x)` and `g(z)`: their function symbols differ. |
+| `(y, z)` | The same distinction holds for `f(y)` and `g(z)`. |
+
+Primo's EUF producer therefore proposes `(x, y)` for these applications.
+Arithmetic might currently assign `x` and `y` the same value while the EUF
+model keeps them distinct. The coordinator can then try the equality through
+SAT, causing both components to check that choice. Merely putting `(x, y)`
+in the care graph does not justify learning `x = y` as a theory consequence.
+
+The {source}`EUF pair generator <src/smt/solver_engines.cpp#L2969-L3072>`
+uses the [curried, flattened applications](euf.md). It collects definitions
+whose argument is a shared term, groups them by the current congruence class
+of their function term, and returns distinct argument pairs within each group.
+For a multiargument application, that function term can represent a partially
+applied prefix. The proposed pairs can therefore change when congruence classes
+change. The QF_UFLIA EUF component
+{source}`refreshes its pairs after a successful full check and returns them for the checked model token <src/smt/solver_engines.cpp#L10071-L10093>`.
+
+Jovanović and Barrett's *Being Careful about Theory Combination*, §3,
+Definition 8, gives care functions a stronger contract: for a satisfiable
+component, an empty care graph must guarantee that every complete arrangement
+extending the propagated equalities and disequalities remains satisfiable. This
+allows their combination method to restrict arrangement search. Section 4
+derives an EUF care function from the argument positions that can trigger
+congruence; the [source table](#sources-and-implementation-status) also links
+the earlier *Sharing is Caring* paper.
+
+Primo borrows that EUF insight to prioritize choices. Its pair generator does
+not implement all the paper's exclusions for already settled argument pairs
+and application results. The general component driver accepts suggestions
+through {source}`TheoryComponent::care_pairs <src/theory/theory_component.hpp#L123-L125>`
+without requiring the paper's care-function guarantee. It retains the complete
+model-partition check described below, even when the care list is empty.
+
 ### Comparing complete model projections
 
 {source}`ComponentModelCoordinator::reconcile <src/smt/component_model_coordinator.cpp#L140-L424>`
@@ -287,11 +335,19 @@ In model-guided mode it validates a complete partition of every assigned
 scope: every shared term appears exactly once, the sort matches, the component
 and assignment epoch are current, and all SAT-selected relations hold.
 
-The coordinator first considers disagreements on **care pairs**, which a
-component nominates as useful pairs to inspect. If none is found, it compares
-spanning edges from every projected partition. Agreement on those edges in
-both directions establishes equality of the partitions without enumerating
-all pairs. A disagreement creates a positive equality choice for SAT.
+The coordinator first compares the component models on the suggested care
+pairs. A pair is a disagreement when one model puts its endpoints in the same
+class and another keeps them separate. The
+{source}`selection code <src/smt/component_model_coordinator.cpp#L347-L423>`
+chooses a disagreeing care pair before considering other pairs, materializes
+its equality literal, and returns a positive equality choice for SAT.
+
+If no care pair disagrees, the coordinator compares spanning edges from every
+projected partition. Each partition's spanning equalities must also hold for
+the other participants in that scope; checking all of them establishes that
+the partitions are identical without enumerating all pairs. A disagreement
+found here also creates an equality choice. Agreement on care pairs alone is
+insufficient for accepting the combined model.
 
 The protocol also supports model mutation. A successful mutation must advance
 the model revision and preserve every requested relation. The coordinator
@@ -391,6 +447,7 @@ queries; online state within a solve does not imply cross-query persistence.
 | Greg Nelson and Derek C. Oppen, *Simplification by Cooperating Decision Procedures*, TOPLAS 1(2), 1979, pp. 245–257. The [1978 Stanford report](https://ftpmirror.your.org/pub/misc/bitsavers/pdf/stanford/Stanford_CS_TR_Collection_2025-12-12/OCR/CS-TR-78-652-ocr.pdf), §§2.2–2.4, is the reading copy. | Purification, equality exchange, and the distinction between convex closure and case splitting. Primo's SAT integration and representation are separate adaptations. |
 | [Leonardo de Moura and Nikolaj Bjørner, *Model-based Theory Combination*](https://doi.org/10.1016/j.entcs.2008.04.079), ENTCS 198(2), 2008, pp. 37–49, §§2.1, 4, 5.1–5.2 and Appendix A | Candidate-model partitions, reversible equality choices, opportunistic LRA equalities, and freedom-interval mutation. The dedicated Real path implements these mechanisms with its own reconciliation checks. Neither route implements the full Appendix A `DPLL(T^M)` transition system. |
 | [Bruttomesso, Cimatti, Franzén, Griggio and Sebastiani, *Delayed Theory Combination vs. Nelson–Oppen for Satisfiability Modulo Theories: A Comparative Analysis*](https://es-static.fbk.eu/people/griggio/papers/lpar06_dtc.pdf), LPAR 2006, §§2–3, Figure 4 | SAT-visible arrangements and learned clauses permit incomplete equality deduction and non-convex components. Primo does not claim the paper's NO-emulation branching bound or its particular last-UIP/negative-first strategy. |
+| [Dejan Jovanović and Clark Barrett, *Sharing is Caring: Combination of Theories*](https://cvc4.github.io/publications/2011/JB11-FroCoS.pdf), FroCoS 2011, pp. 195–210; expanded as [*Being Careful about Theory Combination*](https://theory.stanford.edu/~barrett/pubs/JB13.pdf), Formal Methods in System Design 42(1), 2013, pp. 67–90, §§3–4 | EUF argument pairs that can trigger congruence motivate Primo's care-pair generator. The component driver uses its output to prioritize model disagreements. It retains complete partition comparison and arrangement fallback rather than relying on the paper's care-function contract to omit other relations. |
 | [Alberto Griggio, *An Effective SMT Engine for Formal Verification*](https://iris.unitn.it/handle/11572/368265), PhD thesis, 2009, §1.5.1, pp. 28–35 | Detailed purification, shared-variable definitions, arrangement criterion, and the distinction between classical and SAT-mediated combination. This is an explanatory source, not MathSAT implementation code. |
 | [Tim King, *Effective Algorithms for the Satisfiability of Quantifier-Free Formulas Over Linear Real and Integer Arithmetic*](https://cs.nyu.edu/media/publications/king_tim.pdf), PhD thesis, 2014, §§1.5.5–1.5.6 | Theory-engine ownership, dispatch, and the distinction between partial and full checks. Its care-graph discussion is context; Primo's care-pair selection does not implement a general care-graph algorithm. |
 | [Martin Bromberger, *Decision Procedures for Linear Arithmetic*](https://publikationen.sulb.uni-saarland.de/handle/20.500.11880/28955), PhD thesis, 2019, §5.4 | Equality-basis normalization and explanations motivate a further arithmetic equality producer. This complete basis method remains unimplemented; local tableau rules and exact probes have different costs and completeness mechanisms. |
@@ -413,6 +470,8 @@ sections read for this chapter.
 | More than two participants agree with an independent partition oracle | {source}`three/four-component cases <tests/unit/component_combination_tests.cpp#L409-L487>` |
 | Stale or incomplete model projections cannot be accepted | {source}`malformed-projection tests <tests/unit/component_combination_tests.cpp#L489-L525>` |
 | Mutations cannot hide newly created disagreements; non-convex choices remain alternatives | {source}`mutation and disjunction tests <tests/unit/component_combination_tests.cpp#L591-L650>` |
+| EUF care pairs follow function classes, including prefixes of multiargument applications | {source}`EUF care-pair regressions <tests/unit/qf_lra_solver_tests.cpp#L2068-L2140>` |
+| Care pairs take priority, while agreements still lead to the spanning check and invalid pairs are rejected | {source}`care selection and validation regression <tests/unit/component_combination_tests.cpp#L652-L701>` |
 | A surviving propagated literal keeps its explanation across unrelated rollback | {source}`routing and explanation-lifetime test <tests/unit/component_combination_tests.cpp#L527-L589>` |
 | A zero guidance budget reaches complete arrangements | {source}`fallback regression <tests/unit/qf_uflia_solver_tests.cpp#L275-L299>` |
 | Purified arguments use their arithmetic values in the printed model | {source}`integer argument-model regression <tests/unit/qf_uflia_solver_tests.cpp#L353-L380>` |

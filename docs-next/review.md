@@ -928,3 +928,31 @@ correcting the assignment-ownership description and checking the source ranges.
 The external access failures, final historical extraction, and reader acceptance
 remain explicit limitations. No C++ changed, so solver tests, ASan, fuzzing,
 and clang-tidy were not rerun.
+
+### Care-pair explanation, 2026-09-27
+
+Reader review found that the chapter named care pairs without explaining why
+a pair matters. The new subsection defines a pair and its graph, works through
+`f(x)`, `f(y)`, and `g(z)`, and maps the example to the current flattened EUF
+generator and the general component driver's choice ordering. It explains why
+an equality question supplies no entailment and why agreement on care pairs
+does not replace complete model-partition comparison.
+
+The author PDF of Jovanović and Barrett's *Being Careful about Theory
+Combination* was read in §3 (Definitions 6–8) and §§4.1–4.2. The chapter now
+cites it directly together with the earlier *Sharing is Caring* paper. The
+paper's empty-care-graph guarantee and EUF exclusions are distinguished from
+Primo's simpler pair generator and heuristic use of its output. Existing EUF
+generation and component selection/validation tests are linked; their source
+was inspected, without rerunning solver batches.
+
+The solver source pin and reader-acceptance state remain unchanged. The other
+review findings about the architecture introduction, default equality rules,
+and option conditions remain pending.
+
+`make docs-check-links` passed both strict books and checked 114 pages,
+17,409 local links, and 405 unique Git links with zero failures. The new section
+and its source/paper links were inspected in the generated HTML, and the review
+CSV was checked for unique page entries. Both newly cited paper PDFs returned
+HTTP 200. The full external audit was not repeated; its earlier access failures
+remain recorded above. `git diff --check` passed.
