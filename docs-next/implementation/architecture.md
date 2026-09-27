@@ -136,15 +136,20 @@ an unrefuted candidate may still yield `unknown`. Quantified models are not
 produced. The detailed instantiation and completion rules belong in the
 quantifier chapter.
 
-Mixed solving must also establish agreement between components. The production
-`QF_UFLIA` engine enters
-{source}`solve_component_recipe <src/smt/solver_engines.cpp#L10245-L10277>`;
-component capabilities and model fragments are described by
+The implemented general component driver,
+{source}`solve_component_recipe <src/smt/component_solver.hpp#L19-L45>`, owns
+the shared SAT loop and component lifecycle. The
+{source}`QF_UFLIA recipe <src/smt/solver_engines.cpp#L10245-L10277>` supplies
+EUF and integer arithmetic; the
+{source}`quantified-UF recipe <src/smt/quantifiers/quantified_solver.cpp#L134-L151>`
+supplies EUF and quantifier instantiation. Component capabilities and model
+fragments are described by
 {source}`TheoryComponent's interface types <src/theory/theory_component.hpp>`.
-`QF_UFLRA` retains a
+QF_UFLRA retains a
 {source}`dedicated engine <src/smt/solver_engines.cpp#L10801-L10821>`.
-The [theory-combination chapter](combination.md) explains both routes and their
-shared obligations for equalities, candidate models, and final acceptance.
+Migrating that Real route to the existing general driver remains open. The
+[theory-combination chapter](combination.md) explains shared equality
+obligations, candidate models, and final acceptance.
 
 ## Sessions and result validity
 

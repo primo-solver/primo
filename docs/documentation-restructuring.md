@@ -24,8 +24,10 @@ these pages is accepted yet. The destination paths in the inventory remain
 relative to the final `docs/` tree, with `docs-next/` used during preparation.
 
 The combination draft in `docs-next/implementation/combination.md` now
-consolidates the dedicated Real and component-based Int routes, with primary
-paper/thesis mappings, code links, and regression obligations. The original
+describes the implemented general component driver used by QF_UFLIA and
+quantified UF, alongside the retained dedicated Real coordinator. Migrating
+QF_UFLRA to the general driver is still open. Primary paper/thesis mappings,
+code links, and regression obligations accompany the current behavior. The original
 combination pages and their dated evaluations remain in place. Final extraction,
 reader acceptance, and the separate LIA/model chapters are still pending.
 

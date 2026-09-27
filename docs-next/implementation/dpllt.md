@@ -8,12 +8,14 @@ those obligations through explained conflicts and consequences.
 Primo delegates decisions, Boolean propagation, conflict analysis, learning,
 and backjumping to CaDiCaL. Its SMT drivers translate SAT assignments into
 theory facts, schedule theory checks, and decide whether a candidate can become
-a solver answer. There is no single C++ driver for every logic. This chapter
-describes their common contract and the differences that affect correctness;
+a solver answer. An implemented general component driver serves QF_UFLIA and
+quantified UF; other routes retain dedicated drivers. This chapter describes
+their common contract and the differences that affect correctness;
 [EUF](euf.md) explains congruence closure, its reasons, and theory undo.
 [Linear real arithmetic](lra.md) explains the tableau and its repair operations.
 The [theory-combination chapter](combination.md) follows equality exchange,
-model-guided choices, and arrangement fallback through the two mixed routes.
+model-guided choices, and arrangement fallback in the general component driver
+and the dedicated Real coordinator.
 
 ## Representation and ownership
 
@@ -250,8 +252,8 @@ theory, combination, and result-construction obligations.
   <src/smt/solver_engines.cpp#L7058-L7077>` validates observed-atom completeness, finishes
   any deferred tableau check, and rejects a conflict. Eager registration
   normally finishes this repair earlier through the external-clause callback.
-- **Component recipes:** the model callback's `Partial` check is not the
-  final combination decision. The outer loop first handles
+- **General component driver (QF_UFLIA and quantified UF):** the model callback's
+  `Partial` check is not the final combination decision. The outer loop first handles
   {source}`pending lemmas and typed failures
   <src/smt/component_solver.cpp#L305-L349>`. With the propagator disconnected,
   it clausifies new lemmas and registers their atoms before another solve. The
@@ -259,11 +261,12 @@ theory, combination, and result-construction obligations.
   then requests `FullModel` checks. It checks the chosen equalities and
   disequalities between shared terms (the *arrangement*) or reconciles the
   components' models on those terms, according to the combination policy.
-  Each theory being consistent on its own is insufficient.
-- **Other logics:** {source}`QF_UFLRA <src/smt/solver_engines.cpp#L10801-L10827>`
-  retains a dedicated combination driver. Integer search adds integrality and
-  resource-limit obligations; quantified UF adds instantiation/completion
-  obligations. Neither is explained by the ground-EUF example below.
+  Each theory being consistent on its own is insufficient. Integer search adds
+  integrality and resource-limit obligations; quantified UF adds instantiation
+  and completion obligations. Neither is explained by the ground-EUF example below.
+- **Dedicated Real combination:** {source}`QF_UFLRA <src/smt/solver_engines.cpp#L10801-L10827>`
+  retains its own driver for equality exchange, model reconciliation, and exact
+  fallback checks.
 
 Reversible model-equality choices are resubmitted as assumptions. An UNSAT
 answer under those choices can reject only that branch:

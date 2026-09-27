@@ -65,9 +65,10 @@ the congruence-closure implementation through a conflict and its undo.
 polynomial rows, sparse simplex, strict conflicts and rollback, with links to
 the retained arithmetic development and experiments.
 [Theory combination](implementation/combination.md) explains purification,
-Nelson–Oppen equality exchange, model-guided choices, and the separate Real and
-Int coordination routes. The capability
-matrix and user guides remain in the existing book while they
+Nelson–Oppen equality exchange, model-guided choices, and the implemented general
+component driver used by QF_UFLIA and quantified UF. QF_UFLRA retains its
+dedicated coordinator; migrating it to the general driver remains open. The
+capability matrix and user guides remain in the existing book while they
 undergo page review for this draft.
 
 The [Yices literature survey](papers/yices.md) connects three papers/talks to

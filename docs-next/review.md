@@ -985,3 +985,40 @@ coverage, and support-inventory coverage agree on all 24 draft pages. Both new
 HTML pages contain the open status, pinned source links, paper citations, and
 correctness-gate links. `git diff --check` passed. External URLs are unchanged
 from the preceding care-pair update; no full external audit was rerun.
+
+(general-combination-status)=
+### General combination is implemented, 2026-09-27
+
+The chapter now leads with `solve_component_recipe` as the implemented general
+driver. Its route table identifies QF_UFLIA and quantified UF as current users
+and QF_UFLRA as the retained dedicated route. `CombinationRecipe` supplies the
+component collection and priorities; existing three/four-component tests exercise
+the actual driver. The quantified recipe reuses the lifecycle and SAT loop for
+instantiation lemmas; it is not an additional arithmetic-combination claim.
+
+The body heading now names the general driver while preserving the previous
+`the-component-collection-route` anchor. The architecture overview, DPLL(T)
+introduction, landing page, and restructuring record use the same distinction.
+The defaults table separates QF_UFLIA model guidance from the incremental-EUF
+requirement for online execution. The older experimental Real-only coordinator
+and its flag are distinguished from the production general driver.
+
+The architectural follow-up is migration of QF_UFLRA onto that existing driver,
+preserving its current behavior and optimizations. The care leads concern
+choice generation and acceptance obligations. Full `DPLL(T^M)` integration
+remains separate algorithmic work. These edits resolve the earlier review's
+architecture and option-condition findings; the default equality-rule
+explanation and reader acceptance remain pending.
+
+The recipe definitions, both production callers, coordinator interface, and
+three/four-component test bodies were inspected. Solver sources and their
+documentation pin are unchanged. No solver batches or new qualification were
+part of this documentation clarification.
+
+`make docs-check-links` passed both strict books: 116 pages, 17,614 local
+links, 412 unique Git links, and zero failures. Generated HTML includes the
+new general-driver heading, the previous collection-route anchor, and the
+production caller links. All prior anchors on the affected draft pages were
+preserved. `git diff --check` passed, and comparison with the source pin found
+no changes under `src/`. External URLs are unchanged; the earlier external
+audit's access failures remain recorded separately.

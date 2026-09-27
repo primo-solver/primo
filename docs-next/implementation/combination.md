@@ -1,18 +1,32 @@
 # Theory combination
 
-Primo combines uninterpreted functions with arithmetic by making their solvers
-agree on the equalities between shared terms. Each solver keeps its own
-representation and checks its own constraints. The SMT layer purifies mixed
-terms, communicates explained consequences, and coordinates candidate models.
-The [DPLL(T) chapter](dpllt.md) describes the surrounding Boolean search;
-[EUF](euf.md) and [LRA](lra.md) describe the participating solvers.
+Primo has an implemented general combination driver,
+{source}`solve_component_recipe <src/smt/component_solver.cpp>`. It operates on
+a collection of theory components supplied through a
+{source}`CombinationRecipe <src/smt/component_solver.hpp#L19-L45>`, sharing the
+SAT loop, assignment dispatch, equality decisions, and model coordination.
 
-There are two production routes:
+The current solver routes use these drivers:
 
-| Fragment | Implementation |
-| --- | --- |
-| `QF_UFLRA` | {source}`solve_qf_uflra_engine_impl <src/smt/solver_engines.cpp#L10801-L10847>` uses a dedicated EUF/LRA coordinator, explained equality exchange, model reconciliation, and exact fallback checks. |
-| `QF_UFLIA` | {source}`solve_qf_uflia_engine_impl <src/smt/solver_engines.cpp#L10245-L10278>` supplies EUF and integer-arithmetic components to {source}`solve_component_recipe <src/smt/component_solver.cpp>`. Model guidance creates reversible equality choices; complete arrangements provide the fallback. Integer search remains bounded and can return `unknown`. |
+| Fragment | Driver | Components and behavior |
+| --- | --- | --- |
+| `QF_UFLIA` | General component driver | {source}`The integer recipe <src/smt/solver_engines.cpp#L10245-L10278>` supplies EUF and integer arithmetic. Model guidance creates reversible equality choices; complete arrangements provide the fallback. Integer search remains bounded and can return `unknown`. |
+| Quantified `UF` | General component driver | {source}`The quantified-UF recipe <src/smt/quantifiers/quantified_solver.cpp#L134-L151>` supplies EUF and a quantifier-instantiation component. It reuses the component lifecycle and SAT loop, adding queued instance lemmas. |
+| `QF_UFLRA` | Dedicated Real coordinator | {source}`The Real engine <src/smt/solver_engines.cpp#L10801-L10847>` retains explained EUF/LRA equality exchange, model reconciliation, and exact fallback checks. |
+
+The general driver supports component collections. Existing
+{source}`three- and four-component tests <tests/unit/component_combination_tests.cpp#L409-L487>`
+exercise its SAT loop, online and offline execution, and model construction.
+Migrating QF_UFLRA to this existing driver is the remaining architectural work;
+the general driver itself is already in use.
+
+This chapter focuses on combining uninterpreted functions with arithmetic.
+Their solvers must agree on equalities between shared terms while keeping their
+own representations. The SMT layer purifies mixed terms, communicates
+explained consequences, and coordinates candidate models. The
+[DPLL(T) chapter](dpllt.md) describes the surrounding Boolean search;
+[EUF](euf.md) and [LRA](lra.md) describe the participating solvers. Quantifier
+instantiation has additional obligations beyond this arithmetic combination.
 
 ## Why the solvers must communicate
 
@@ -121,6 +135,7 @@ compatible component models, or a typed inconclusive result.
 | {source}`InterfaceEqualityRegistryEntry <src/smt/theory_combination.hpp#L62-L71>` | A value in the Real route's `TheoryCombinationManager`. It records endpoints, sort, optional equality term/SAT literal, arrangement value, and classifications. |
 | {source}`SharedModelState <src/smt/theory_combination.hpp#L121-L132>` | Owned by that manager for the current model round: value classes, explained equalities, accepted internal model equalities, and separation atoms. A new round or rollback invalidates it. |
 | {source}`SharedEqualityDecisionState <src/smt/theory_combination.hpp#L138-L144>` | Solve-scoped pending, active, and tried equality choices. The engine applies them as SAT assumptions. |
+| {source}`CombinationRecipe <src/smt/component_solver.hpp#L19-L45>` | Solve-scoped configuration supplied by the calling engine: component factories, check priorities, and preparation hooks. The general driver constructs and owns the resulting components. |
 | {source}`TheoryComponent <src/theory/theory_component.hpp#L90-L140>` | Each instance owns its prepared theory data and mutable solving state. `solve_component_recipe` owns instances through `unique_ptr`; coordinators borrow pointers while those instances live. |
 | {source}`TheoryCombinationPlan <src/smt/theory_combination_plan.hpp>` | Owns validated descriptor copies, atom-owner mappings, and shared scopes for one solve. Component registration uses this plan before search. |
 | {source}`TheoryModelProjection and TheoryModelToken <src/theory/theory_solver.hpp#L63-L85>` | Owning equality-class vectors plus a component identity, assignment epoch, and model revision. A projection describes a candidate model, not logical entailments. |
@@ -229,7 +244,16 @@ uses the exact convex fallback. Some conflicts compose explained equalities
 directly without making all pairs visible to SAT. Unexplained candidate merges
 remain confined to model reconciliation.
 
-## The component collection route
+(the-component-collection-route)=
+## The general component driver
+
+{source}`solve_component_recipe <src/smt/component_solver.cpp>` owns the SAT
+loop and component lifecycle. Its
+{source}`ComponentModelCoordinator <src/smt/component_model_coordinator.hpp#L18-L38>`
+works with the validated component collection; theory-specific choices of
+components and checking order come from the recipe. The following sections
+describe its QF_UFLIA use. Quantified UF uses the same driver with a
+lemma-preparation hook for newly generated instances.
 
 ### Planning ownership and shared scopes
 
@@ -430,11 +454,13 @@ enabled behavior from experiments:
 | --- | --- |
 | QF_UFLRA model reconciliation | Enabled; `--no-qf-uflra-model-reconciliation` selects the retained exact route. |
 | `--nelson-oppen-prop` | `final` by default. `online` is an opt-in paired-bound propagation path. `exact` disables the optional equality producer while retaining required combination checks; legacy `off` is an alias for `exact`. |
-| QF_UFLIA model guidance / online components | Both enabled with the incremental EUF engine. `--no-qf-uflia-model-combination` selects complete arrangements directly. The model-decision budget defaults to 512. |
-| `--experimental-generic-model-combination` | Off. It selects the older `ModelBasedCombinationCoordinator` for the experimental QF_UFLRA path, not the production collection driver. |
+| QF_UFLIA model guidance | Enabled independently of the EUF engine choice. `--no-qf-uflia-model-combination` selects complete arrangements directly. The model-decision budget defaults to 512. |
+| QF_UFLIA online components | Enabled when the incremental EUF engine is selected. |
+| `--experimental-generic-model-combination` | Off. It selects the older `ModelBasedCombinationCoordinator` inside QF_UFLRA. Production uses of the general component driver do not require this flag. |
 
-The reusable protocol has tests with three and four components, but the
-production arithmetic combinations still pair EUF with one arithmetic theory.
+The general driver is tested with three and four components. Its production
+recipes currently pair EUF with integer arithmetic or quantifier instantiation;
+the dedicated Real route pairs EUF with LRA.
 Finite shared domains, overlapping interpreted signatures, and unrestricted
 combinations of arbitrary new theories are outside its admitted contract.
 The default session rebuilds solving state between
@@ -496,8 +522,12 @@ Two care-related investigations are recorded separately:
   requires a stronger component contract, a correctness argument, and a method
   for constructing compatible models from the reduced set of obligations.
 
-Full `DPLL(T^M)` integration and a common Real/Int coordinator remain further
-design work. They require explicit mappings of the retained Real behavior,
-explanation lifetimes, model acceptance, and fallback guarantees before any
-route can be replaced. The {source}`earlier transition checklist
+The architectural follow-up is to migrate QF_UFLRA onto the existing general
+component driver. That migration must preserve the dedicated route's explained
+equality exchange, internal model reconciliation, explanation lifetimes, model
+construction, and exact fallback. QF_UFLIA already uses the general driver.
+
+The care leads change the work needed to choose or accept a combination; they
+do not introduce the general architecture. Full `DPLL(T^M)` integration is a
+separate algorithmic investigation. The {source}`earlier transition checklist
 <docs/papers/model-based-theory-combination.md>` preserves that investigation.
