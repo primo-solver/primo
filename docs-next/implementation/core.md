@@ -149,7 +149,8 @@ to an enclosing variable of the right sort. The separate
 {source}`check_bound_variables interface <src/core/binders.hpp>` checks that
 whole-term condition. The same module exposes shifting, instantiation, and
 operator rebuilding; those can create terms and require the lifetime discipline
-below. Their algorithms and quantified solving are separate chapter work.
+below. The [quantifier chapter](quantifiers.md) explains their algorithms and
+the instantiation loop that uses them.
 
 ## Allocation and borrowed references
 

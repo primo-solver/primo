@@ -67,8 +67,9 @@ the retained arithmetic development and experiments.
 [Theory combination](implementation/combination.md) explains purification,
 Nelson–Oppen equality exchange, model-guided choices, and the implemented general
 component driver used by QF_UFLIA and quantified UF. QF_UFLRA retains its
-dedicated coordinator. The
-capability matrix and user guides remain in the existing book while they
+dedicated coordinator. [Quantifiers](implementation/quantifiers.md) explains
+binding, universal instances, existential witnesses, and the current answer
+boundary. The capability matrix and user guides remain in the existing book while they
 undergo page review for this draft.
 
 The [Yices literature survey](papers/yices.md) connects three papers/talks to
@@ -138,6 +139,11 @@ remaining consolidation onto the existing general driver. The separate
 [model-based transition lead](leads/model-based-combination.md) records
 further `DPLL(T^M)` work. These are open investigations, not active
 implementation tasks.
+
+[Quantifier instantiation efficiency](leads/quantifier-instantiation.md)
+records entailment filtering, fail masks, and bounded enumeration work as
+open investigations. The existing enumerator and its stall cutoff remain
+the implemented baseline.
 
 During review, `make docs-next-serve` serves this draft at
 `http://localhost:8001`; `make docs-serve` serves the existing book at

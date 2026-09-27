@@ -13,6 +13,7 @@ parts:
       - file: implementation/euf
       - file: implementation/lra
       - file: implementation/combination
+      - file: implementation/quantifiers
   - caption: Literature
     chapters:
       - file: papers/primo-qflra-results
@@ -34,6 +35,7 @@ parts:
       - file: leads/care-guided-combination
       - file: leads/real-combination-migration
       - file: leads/model-based-combination
+      - file: leads/quantifier-instantiation
   - caption: Reviewing this draft
     chapters:
       - file: review

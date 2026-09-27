@@ -262,8 +262,9 @@ theory, combination, and result-construction obligations.
   disequalities between shared terms (the *arrangement*) or reconciles the
   components' models on those terms, according to the combination policy.
   Each theory being consistent on its own is insufficient. Integer search adds
-  integrality and resource-limit obligations; quantified UF adds instantiation
-  and completion obligations. Neither is explained by the ground-EUF example below.
+  integrality and resource-limit obligations; quantified UF adds
+  [instantiation and completion obligations](quantifiers.md#supported-scope-and-answers).
+  Neither is explained by the ground-EUF example below.
 - **Dedicated Real combination:** {source}`QF_UFLRA <src/smt/solver_engines.cpp#L10801-L10827>`
   retains its own driver for equality exchange, model reconciliation, and exact
   fallback checks.
@@ -384,7 +385,7 @@ under lazy, online, conflict-only, and retained-session configurations.
 | A theory conflict reaches SAT even without optional propagation | {source}`EUF external-conflict tests <tests/unit/boolean_solver_tests.cpp#L2589-L2635>`. |
 | Explained propagation occurs during search | {source}`online congruence test <tests/unit/boolean_solver_tests.cpp#L2480-L2500>` checks delivered propagation; broader explanation algorithms belong in the EUF chapter. |
 | Rollback preserves surviving reasons and assignment routing | {source}`component lifecycle regression <tests/unit/component_combination_tests.cpp#L527-L589>` and {source}`backend reconnect regressions <tests/unit/sat_backend_tests.cpp#L194-L235>`. |
-| A candidate with pending work or a typed failure is not accepted as SMT SAT | Component-loop checks above and {source}`component regression suite <tests/unit/component_combination_tests.cpp>`; detailed combination/quantifier completeness is separate work. |
+| A candidate with pending work or a typed failure is not accepted as SMT SAT | Component-loop checks above and {source}`component regression suite <tests/unit/component_combination_tests.cpp>`; the [combination](combination.md) and [quantifier](quantifiers.md) chapters explain their additional obligations. |
 | Scoped assertions change satisfiability without corrupting earlier state | The worked example, {source}`session regressions <tests/unit/smt_session_tests.cpp>`, and the distinct session ownership described above. |
 
 Changes to callbacks, explanations, scheduling, or final checks require the

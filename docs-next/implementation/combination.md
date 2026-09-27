@@ -25,8 +25,9 @@ Their solvers must agree on equalities between shared terms while keeping their
 own representations. The SMT layer purifies mixed terms, communicates
 explained consequences, and coordinates candidate models. The
 [DPLL(T) chapter](dpllt.md) describes the surrounding Boolean search;
-[EUF](euf.md) and [LRA](lra.md) describe the participating solvers. Quantifier
-instantiation has additional obligations beyond this arithmetic combination.
+[EUF](euf.md) and [LRA](lra.md) describe the participating solvers.
+[Quantifier instantiation](quantifiers.md) has additional obligations beyond
+this arithmetic combination.
 
 ## Why the solvers must communicate
 

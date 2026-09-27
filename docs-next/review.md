@@ -77,13 +77,16 @@ belongs to the current documentation branch. No page is accepted yet.
    between entailment and a model choice clear, and can the reader identify
    the two production routes, their acceptance conditions, and their fallback
    and model-construction obligations?
-9. [Library API](leads/library-api.md) and
+9. [Quantifiers](implementation/quantifiers.md): can the reader follow binding,
+   both polarities, term-pool growth, and queue scheduling, and explain why
+   exhausting candidates does not establish `sat`?
+10. [Library API](leads/library-api.md) and
    [incremental memory](leads/incremental-memory.md), together with
    [compact term storage](leads/term-storage.md): do the work items capture
    the intended direction, available evidence, and unresolved design questions?
    Apply the same questions to the remaining lead pages. Reviewing a lead
    does not complete its investigation.
-10. Literature notes: are the cited sections, implemented subsets, deviations,
+11. Literature notes: are the cited sections, implemented subsets, deviations,
    and open questions clear? Keep published results attached to their original
    configurations and evidence.
 
@@ -1119,3 +1122,64 @@ links; all five leads are reachable from the chapter and landing page.
 `git diff --check` passed. External URLs are unchanged; the earlier external
 audit's access failures remain recorded separately. No solver batches were
 part of this cleanup.
+
+(quantifiers-chapter)=
+### Quantifiers chapter, 2026-09-28
+
+Added a chapter covering the current quantified-UF route, indexed binders,
+capture-safe substitution, all four quantifier/polarity cases, term-pool
+growth, tuple orders, redundancy caches, queue scheduling, and budgets.
+The answer table distinguishes refutation, Skolem-covered existential SAT,
+unresolved universal obligations, and unsupported model requests. A worked
+refutation and nested-binder examples accompany links to the owning source
+and existing regressions. The general-driver, DPLL(T), core, and landing
+pages now link to this chapter.
+
+Inspected `quantified_solver`, `QuantifierComponent`, binder/frontend
+operations, tuple generators, instance simplification, the component driver
+and dispatcher, option defaults, and the pool export/checker. Checked the
+worked clauses and index substitutions against those operations and their
+existing tests. The chapter describes the current `sum` default and keeps
+earlier default descriptions in the dated development records. Pools and
+caches survive backtracking but belong to one solve; generated terms remain
+in the session's term manager.
+
+Read these primary sources for the chapter:
+
+- SMT-LIB 2.6 revision 2021-05-12, §3.6: quantifier declaration lists, scope,
+  and parallel `let` bindings.
+- Charguéraud, *The Locally Nameless Representation*, §§2.3 and 3.3:
+  de Bruijn indices and local closure.
+- Reynolds, Barbosa and Fontaine, TACAS 2018, §§2–4.1, particularly
+  Theorem 1 and the entailment/completion distinction.
+- Janota et al., FMCAD 2021, §§III–IV: enumeration orders and redundancy.
+- Reynolds's 2013 thesis, §§3.1.1–3.1.2: instantiation and model acceptance.
+- Barbosa's 2017 thesis, §5.1 and §§7.1.1–7.1.2: shared terms,
+  capture-safe transformations, and contextual Skolemization.
+
+The source table distinguishes implemented ideas from comparison points;
+the thesis algorithms are not claimed as fully implemented. The primary
+PDFs were read from their linked author/standard URLs. The retained local
+paper checklists and original binder note remain traceability records.
+The new open-lead page carries forward entailment filtering and fail masks,
+alongside bounded work before the first useful lemma and cancellation.
+No investigation is presented as active implementation.
+
+Historical correctness and performance records remain attached to their
+original revisions. Pool-guided cvc5 confirmations are distinguished from
+inconclusive runs and from proof certificates. Solver sources and the
+documentation source pin remain unchanged. No solver tests, fuzzing, or
+benchmarks were run for this documentation-only chapter. Reader acceptance,
+final historical extraction, and the LIA/model/preprocessing/frontend
+chapters remain pending.
+
+`make docs-check-links` passed both strict books: 121 HTML pages, 18,205
+local links, 471 unique Git links, and zero failures. All prior anchors
+across the 31 pre-existing draft HTML files were preserved. Navigation,
+review entries, and the supporting-file inventory cover all 29 draft pages.
+The generated chapter sections, source/test/paper links, and separate
+open-lead status were inspected. `git diff --check` passed, and comparison
+with the documentation pin found no changes to solver source or the cited
+unit suites. Linked primary PDFs were retrieved successfully for reading;
+the full external audit was not rerun, and its earlier access failures
+remain recorded separately.

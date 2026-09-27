@@ -31,6 +31,14 @@ code links, and regression obligations accompany the current behavior. The origi
 combination pages and their dated evaluations remain in place. Final extraction,
 reader acceptance, and the separate LIA/model chapters are still pending.
 
+The quantifier draft in `docs-next/implementation/quantifiers.md` now covers
+binders, enumerative quantified-UF solving, witness clauses, queue scheduling,
+tuple orders, budgets, and the conservative answer boundary. Primary papers
+and the Reynolds/Barbosa theses are mapped to the code and existing tests.
+Entailment filtering, fail masks, and bounded enumeration work have a separate
+open-lead page. The original quantifier design and dated evaluations remain
+in place; reader acceptance and final archival extraction are pending.
+
 The core draft in `docs-next/implementation/core.md` covers
 representation and ownership with function/test links and a compiled example.
 Library embedding and incremental memory are separate open-work pages. Their
