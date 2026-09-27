@@ -354,6 +354,11 @@ part of the model builder; a feasible tableau alone is not the printed model.
 
 ### Equalities for combination
 
+The default QF_UFLRA producer uses four rules based on fixed variables and
+matching tableau rows. Their worked examples, bound explanations, and
+incompleteness are described in
+[the combination chapter](#lra-default-equality-rules).
+
 Bjørner and Nachmanson's *Arithmetic Solving in Z3*, §3.2, also informs an
 optional equality producer for QF_UFLRA. Starting from a feasible tableau,
 {source}`model_filtered_unit_equalities <src/theory/arithmetic/lra_tableau.cpp#L1261-L1456>`

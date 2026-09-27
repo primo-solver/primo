@@ -1022,3 +1022,33 @@ production caller links. All prior anchors on the affected draft pages were
 preserved. `git diff --check` passed, and comparison with the source pin found
 no changes under `src/`. External URLs are unchanged; the earlier external
 audit's access failures remain recorded separately.
+
+(default-lra-equality-rule-review)=
+### Default LRA equality rules, 2026-09-27
+
+Expanded the combination chapter's default equality producer into worked
+examples for `FixedEq`, `EqRow`, `EqOffsetRows`, and `EqRows`. The explanation
+defines fixedness using matching bounds, identifies which shared variables
+must be basic, and shows how bound premises guard a propagated equality.
+It describes Primo's grouping and representative selection, distinguishes
+its scan from the paper's scheduling, and uses the existing fixed-slack
+regression to illustrate a basis-dependent missed equality. Model agreement
+and exact fallback remain separate acceptance mechanisms.
+
+Re-read de Moura and Bjørner, *Model-based Theory Combination*, §5.1 from the
+local primary PDF and checked the examples against `entailed_equalities`,
+its result type, the combination caller, and the existing rule and
+fixed-elimination regressions. The LRA chapter now links to this explanation;
+the combination test map links to the positive and negative rule cases.
+This resolves the default equality-rule explanation item in the earlier
+review. Reader acceptance and the remaining chapter rewrites are still open.
+Solver sources and their documentation pin are unchanged. No solver batches
+or new solver qualification were part of this documentation edit.
+
+`make docs-check-links` passed both strict books: 116 pages, 17,625 local
+links, 415 unique Git links, and zero failures. The generated HTML contains
+the rule examples, new section targets, and pinned implementation/test links;
+the LRA crosslink resolves and all prior anchors on the affected pages remain.
+The review CSV has unique page entries, and `git diff --check` passed.
+External URLs are unchanged; the earlier external audit's access failures
+remain recorded separately.

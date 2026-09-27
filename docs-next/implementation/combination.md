@@ -190,12 +190,82 @@ EUF projects its shared congruence classes and emits a spanning set of
 equalities for each class. A class of `k` terms needs `k - 1` such edges:
 transitivity supplies the remaining equalities.
 
-LRA's default opportunistic producer uses the `FixedEq`, `EqRow`,
-`EqOffsetRows`, and `EqRows` mechanisms of de Moura and Bjørner, §5.1. Their
-{source}`tableau implementation <src/theory/arithmetic/lra_tableau.cpp#L1078-L1259>`
-retains bound explanations. These rules are sound but do not discover every
-entailed equality. The alternative `model-unit` producer is described in
-[LRA](lra.md#equalities-for-combination); it remains opt-in.
+(lra-default-equality-rules)=
+#### Default LRA rules
+
+LRA first looks for equalities that follow directly from the current bounds
+and tableau rows. The default producer,
+{source}`LraTableau::entailed_equalities <src/theory/arithmetic/lra_tableau.cpp#L1078-L1259>`,
+implements four rules from de Moura and Bjørner, *Model-based Theory
+Combination*, §5.1. Each conclusion remains true while its explaining bounds
+hold, even if the arithmetic model changes.
+
+A variable is **fixed** when its active lower and upper bounds coincide
+exactly: `5 <= a <= 5` fixes `a` at 5. A linear expression is fixed when
+every variable with a nonzero coefficient is fixed. Its value can then be
+computed from those bounds. A current model value alone does not fix a
+variable: `a >= 0` permits values other than the current choice `a = 0`.
+
+The equations below are tableau row identities, preserved by every pivot.
+The variables `x` and `y` represent shared terms; helper variables need not
+be shared. A basic variable is the variable defined on the left of a row;
+the right side contains nonbasic variables, as described in
+[LRA's row representation](lra.md#sparse-rows-and-reverse-occurrences).
+
+1. **`FixedEq`: two variables fixed at the same value.** Bounds
+   `5 <= x <= 5` and `5 <= y <= 5` prove `x = y`. The explanation contains
+   the bounds fixing both variables. Neither needs to be basic.
+
+2. **`EqRow`: one row with a fixed zero remainder.** In a row `x = y + d`,
+   fixing `d` at zero proves `x = y`. More generally, the remainder can be
+   any fixed linear expression whose value is zero. The explanation uses
+   the bounds fixing that remainder. Here `x` must be basic and `y` must
+   have coefficient **+1**: `x = -y` alone would not prove equality.
+
+3. **`EqOffsetRows`: two rows with the same variable and fixed offset.**
+   Suppose `x = z + a` and `y = z + b`, with both `a` and `b` fixed at 2.
+   Both rows define `z + 2`, so `x = y` even though `z` can vary. Each
+   offset may be a different fixed linear expression; only its exact value
+   must agree. The explanation uses the bounds fixing both offsets.
+
+4. **`EqRows`: two rows with the same nonfixed expression and fixed offset.**
+   This generalizes the previous rule. For example, `x = 2*u - 3*v + a`
+   and `y = 2*u - 3*v + b`, with `a` and `b` fixed at 5, prove `x = y`.
+   The coefficients of the nonfixed variables must match exactly. Merely
+   evaluating two different expressions to the same number in the current
+   model does not suffice. Again, the bounds fixing the offsets explain
+   the equality. Both two-row rules require `x` and `y` to be basic.
+
+For example, let SAT literals `p` and `q` assert `d >= 0` and `d <= 0`.
+Given the row identity `x = y + d`, `EqRow` justifies the clause
+`not p or not q or e`, where `e` represents `x = y`. If either bound is
+later undone, this clause remains valid without asserting equality
+unconditionally. The special row `x = y` needs no bound premises at all.
+
+Primo applies these rules in a scan when the combination engine requests
+equalities. `FixedEq` groups shared variables by fixed value. The two-row
+rules group shared basic rows by their nonfixed variable/coefficient list
+and exact fixed offset. Each group retains a representative and emits
+equalities to it, avoiding enumeration of all pairs. Building these keys
+still requires scanning row entries and performing exact arithmetic. This
+scan differs from the paper's scheduling of the first three rules eagerly
+and the last before a model-based equality choice. The alternative
+`model-unit` producer is explained in [LRA](lra.md#equalities-for-combination)
+and remains opt-in.
+
+These rules are sound but incomplete, and their success depends on the
+current basis. For example, suppose the only row is `s = x - y`, the
+nonshared slack `s` is fixed at zero, and shared `x` and `y` are nonbasic.
+The constraints entail `x = y`, but neither shared variable is fixed or
+has a row for these scans to inspect. Pivoting to `x = y + s` exposes an
+`EqRow` match. The
+{source}`fixed-variable elimination regression <tests/unit/lra_tableau_tests.cpp#L2027-L2041>`
+demonstrates this change of basis. Closing this particular gap does not make
+the rules complete. Finding no equality is therefore insufficient to accept
+a combined model; the route retains model reconciliation and exact checks.
+
+(lra-exact-equality-fallback)=
+#### Exact fallback
 
 When the exact fallback is required,
 {source}`lra_implied_real_equalities_for_partition <src/smt/solver_engines.cpp#L4907-L4947>`
@@ -488,6 +558,7 @@ sections read for this chapter.
 
 | Obligation | Regression or mechanism test |
 | --- | --- |
+| Default LRA equality rules require matching bounds, zero remainders, and identical nonfixed expressions | {source}`FixedEq and EqRow regressions <tests/unit/lra_tableau_tests.cpp#L1528-L1661>`; {source}`two-row matching and rejection regressions <tests/unit/lra_tableau_tests.cpp#L1681-L1774>` |
 | Equality must travel in both directions until the convex problem is settled | {source}`EUF–LRA–EUF fixed-point regression <tests/unit/qf_lra_solver_tests.cpp#L1429-L1452>` |
 | A propagated equality remains guarded by the branch that proves it | {source}`assignment-guard regression <tests/unit/qf_lra_solver_tests.cpp#L1553-L1594>` |
 | A candidate merge must preserve arithmetic agreement after congruence | {source}`optional-merge consequence regression <tests/unit/qf_lra_solver_tests.cpp#L2530-L2553>` |
