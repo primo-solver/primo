@@ -1303,3 +1303,21 @@ model-replay tables, code examples, and chapter navigation were inspected in
 Chromium. `git diff --check` passed. Source and unit-test files still match
 the documentation pin. The full external URL audit was not rerun; the cited
 primary filtering PDF was retrieved and read separately.
+
+(quantifier-negation-checks)=
+### Quantifier negation checks, 2026-09-28
+
+Clarified that `Q` in the polarity table denotes the quantified formula without
+its surrounding negation. The clausifier represents `not Q` by the opposite
+SAT literal; the component classifies the quantifier kind together with its
+assigned truth value. The chapter now derives both negated cases, explains
+why an occurrence under negation in a larger Boolean formula need not force
+that value, and follows negation through an alternating nested example.
+
+Read the negation constructor, clausifier, quantifier classification and lemma
+construction, and existing polarity regressions. Guards and retained witness
+records were checked against the backtracking explanation. This is a local
+exposition correction; the remaining quantifier TODOs and reader acceptance
+are unchanged. Both strict books and local/source links pass
+`make docs-check-links`; rendered sections and existing chapter anchors were
+checked. No solver behavior changed or solver batches ran.

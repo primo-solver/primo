@@ -149,8 +149,25 @@ scope and sorts; the generic `core::Substitution` scaffold is not this API.
 
 ## Universal instances and existential witnesses
 
-SAT's assignment determines how a quantifier behaves. Write `B[t]` for its
-body instantiated with a tuple `t`, and `k` for fresh witness constants.
+SAT's assignment determines how a quantifier behaves: the component classifies
+the pair **(quantifier kind, assigned truth value)**. Here `Q` denotes the
+quantified formula itself, without any surrounding negation. Write `B[t]` for
+its body instantiated with a tuple `t`, and `k` for fresh witness constants.
+
+If `Q` has SAT literal `q`, the {source}`clausifier
+<src/smt/clausifier.cpp#L335-L340>` encodes `not Q` as `not q`.
+Asserting `not Q` therefore assigns `Q` false. The quantifier component then
+applies the false row below, implementing
+the familiar dualities:
+
+```text
+not (forall x. B(x))   ≡   exists x. not B(x)
+not (exists x. B(x))   ≡   forall x. not B(x)
+```
+
+The negation changes both the effective quantifier and the required truth of
+its body. This handling does not require rewriting the stored `Forall` node
+into an `Exists` node, or vice versa.
 
 | Quantified atom `Q` | SAT value | Work required | Formula installed |
 | --- | --- | --- | --- |
@@ -159,13 +176,38 @@ body instantiated with a tuple `t`, and `k` for fresh witness constants.
 | `exists x. B(x)` | true | Choose witnesses | `not Q or B[k]` |
 | `exists x. B(x)` | false | Enumerate candidate tuples | `Q or not B[t]` |
 
-The {source}`classification <src/theory/quantifiers/quantifier_component.cpp#L92-L104>`
+The {source}`classification <src/theory/quantifiers/quantifier_component.cpp#L98-L108>`
 and {source}`formula construction <src/theory/quantifiers/quantifier_component.cpp#L260-L286>`
 implement these four cases. Universal instances are logical consequences.
 Witness constraints instead extend the signature with fresh constants while
 preserving satisfiability: `exists x. p(x)` does not imply `p(k)` for an
 arbitrary existing constant. `skolemize` creates witnesses once per atom and
 existential polarity, and retains them across backtracking.
+
+### Following a negated quantifier
+
+For an assertion `not (forall x. p(x))`, let `Q` stand for `forall x. p(x)`.
+SAT must assign `Q = false`. The component creates a fresh constant `k` and
+installs `Q or not p(k)`. Under that assignment the formula requires
+`not p(k)`: `k` is the counterexample witnessing why the universal is false.
+
+For `not (exists x. p(x))`, now let `Q` stand for `exists x. p(x)`.
+That atom is also false, but the obligation is universal.
+For each candidate term `t`, the component installs
+`Q or not p(t)`. An additional assertion `p(a)` is contradicted by the instance
+at `a`. Exhausting the current candidates still does not establish this
+universal obligation, so the usual `unknown` boundary applies.
+The {source}`polarity regressions <tests/unit/quantifier_solver_tests.cpp#L226-L236>`
+cover both negated forms.
+
+Within a larger Boolean formula, an occurrence under `not` need not force the
+atom false: `not Q or s` also permits `Q = true, s = true`. The component uses
+the current SAT value, not a once-for-all classification of the occurrence.
+If backtracking changes that value, it changes the obligation. The guards make
+previously generated formulas conditional: `Q or not B[k]`, for example, imposes no
+condition on the witness when `Q` becomes true.
+
+### Nested obligations
 
 Primo does not first convert the whole input to prenex Skolem normal form.
 For `forall x. exists y. r(x,y)`, an outer instance at `a` produces a new
@@ -175,6 +217,13 @@ atom and witness. The current component uses constants for these already
 instantiated obligations; it does not construct a global Skolem function
 of `x`. Nested quantified bodies become further atoms as their containing
 instances are installed.
+
+The same process carries negation through nesting. For
+`not (forall x. exists y. r(x,y))`, the false outer universal gets a witness
+`k` and requires `not (exists y. r(k,y))`. That inner existential becomes an
+atom assigned false, so it generates `not r(k,t)` obligations for candidate
+terms `t`, each guarded by the inner atom. This realizes
+`exists x. forall y. not r(x,y)` one instantiated level at a time.
 
 ## When instantiation runs
 
