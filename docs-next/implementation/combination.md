@@ -369,8 +369,13 @@ arithmetic model that still identifies its endpoints is insufficient.
 
 ### Online equality propagation
 
-The Real route also has an opt-in `--nelson-oppen-prop=online` path. Suppose
-assigned literals `p` and `q` represent `x <= y` and `y <= x`, with `x` and
+The Real route also has an opt-in `--nelson-oppen-prop=online` path.
+It requires `--model-equality-branching` to be disabled: the
+{source}`construction guard <src/smt/solver_engines.cpp#L11194-L11208>` omits
+the online LRA propagator when that branching mode is enabled, even if
+`--nelson-oppen-prop=online` was selected.
+
+Suppose assigned literals `p` and `q` represent `x <= y` and `y <= x`, with `x` and
 `y` shared between arithmetic and EUF. Together they force equality. Writing
 `e` for `x = y`, the explanation clause is
 
@@ -390,8 +395,15 @@ that the endpoints form a shared interface pair and queues it. On delivery it
 reuses an existing equality literal or creates and registers an observed one
 on demand. Its {source}`propagation callback
 <src/smt/solver_engines.cpp#L7920-L7958>` supplies an unassigned equality
-literal with the clause above as its reason. Assigned pairs are left to the
-other consistency and combination checks.
+literal with the clause above as its reason.
+
+If `e` is already true, no propagation is needed. If `e` is false, SAT requires
+`x != y`. The callback skips this assigned literal, but its disequality remains
+an obligation for the later
+[mandatory-disequality checks](#when-model-mutation-runs) and
+[exact fallback](#lra-exact-equality-fallback). With `p` and `q` both true,
+that disequality is impossible; skipping the callback does not permit the
+combination engine to accept the candidate.
 
 The equality can expose an EUF conflict. For example, if literal `d` asserts
 `f(x) != f(y)`, congruence gives the clause `not e or not d`. Combining the
@@ -655,7 +667,7 @@ behavior from experiments:
 | QF_UFLRA model reconciliation | Enabled; `--no-qf-uflra-model-reconciliation` selects the retained exact route. |
 | `--no-model-equality-mutation` | Disables scratch LRA diversification, which otherwise runs when reconciliation or model-equality branching is enabled. |
 | `--model-equality-mutation-scope={all,care}` | `all` by default. Experimental `care` scores EUF care-pair endpoints, then checks the complete shared partition and rejects a result with more candidate pairs. |
-| `--nelson-oppen-prop` | `final` by default. `online` is an opt-in paired-bound propagation path. `exact` disables the optional equality producer while retaining required combination checks; legacy `off` is an alias for `exact`. |
+| `--nelson-oppen-prop` | `final` by default. `online` enables the paired-bound propagation path when `--model-equality-branching` is disabled. `exact` disables the optional equality producer while retaining required combination checks; legacy `off` is an alias for `exact`. |
 | QF_UFLIA model guidance | Enabled independently of the EUF engine choice. `--no-qf-uflia-model-combination` selects complete arrangements directly. The model-decision budget defaults to 512. |
 | QF_UFLIA online components | Enabled when the incremental EUF engine is selected. |
 | `--experimental-generic-model-combination` | Off. It selects the older `ModelBasedCombinationCoordinator` inside QF_UFLRA. Production uses of the general component driver do not require this flag. |

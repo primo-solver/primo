@@ -406,6 +406,9 @@ The implementation uses derived bounds to test already registered atoms. It
 does not install every derived numeric bound or iterate interval refinement
 to a fixed point. Only when SAT assigns a propagated atom does its bound enter
 the usual assignment path and become available for further propagation.
+In the forward example, deriving `s <= 7` proves the existing atom `s <= 8`.
+Assigning that atom submits the bound 8 to the tableau, not the derived bound
+7; an already stronger stored bound remains in force.
 
 After a nonconflicting assigned bound, the
 {source}`notification hook <src/smt/solver_engines.cpp#L7340-L7347>` invokes

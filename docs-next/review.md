@@ -1383,3 +1383,10 @@ checked with `make docs-check-links`; existing page anchors were retained.
 Solver sources and the documentation pin remain unchanged. No solver tests,
 fuzzing or benchmark batches ran for this documentation-only change.
 The SOI, integer-arithmetic and retained-evidence TODOs remain open.
+
+The follow-up review clarified three boundaries: propagation installs the
+existing atom's threshold (8 in the worked example), online LRA propagation
+is disabled by model-equality branching, and an already-false interface
+equality remains a mandatory disequality for later combination checks.
+The relevant assertion and construction paths were rechecked, with both
+strict books and local/source links verified after these edits.
