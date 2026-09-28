@@ -44,7 +44,7 @@ unimplemented proposal accurately.
 - **Draft:** the page exists but factual verification is incomplete.
 - **Verified:** the recorded source/command/example checks passed; remaining
   editorial and reader checks are listed in the ledger. This does not certify
-  solver correctness.
+  solver correctness or complete content coverage.
 - **Reviewed:** page review has occurred and its findings are resolved.
 - **Accepted:** the user or designated reviewer explicitly accepts the page
   for the replacement book. A successful build never assigns this state.
@@ -60,6 +60,18 @@ Source column records the commit inspected during verification. Those entries
 are evidence of a review, so they change only when a new review is recorded.
 The preview/review workflow is newer than the inspected solver baseline and
 belongs to the current documentation branch. No page is accepted yet.
+
+```{admonition} TODO: Audit content coverage before accepting the replacement
+:class: note
+
+Extend the file-level migration map to account for every substantive old
+section: preserved with an exact destination, intentionally superseded with
+a reason, archived as dated history, or still missing with an inline TODO.
+Resolve the coverage gaps before accepting a replacement chapter. Check that
+current algorithms, correctness arguments, design rationale, examples, option
+contracts, and evidence boundaries all have an explanatory home. A source
+link or an old-page inventory is not by itself evidence of complete coverage.
+```
 
 ## Review order and questions
 
@@ -129,6 +141,14 @@ run, and verification outcomes in dated review or experiment records, linked
 from the explanation. State each limitation where it helps the reader; avoid
 repeating general disclaimers about what writing a chapter does not establish.
 Paper-specific limitations and incomplete validation remain explicit.
+
+Visible TODO callouts record unfinished documentation from the coverage review;
+they do not mark solver features as unimplemented or create new research leads.
+Keep each TODO beside the explanation it qualifies, with a concrete completion
+criterion. Before removing it, check that a reader can reconstruct the argument
+or worked step without inferring missing conventions from source code. Preserve
+the full reasoning in its owning chapter or a linked algorithm note, while
+keeping dated experiments and abandoned designs in the evidence archive.
 
 ## Code links are part of the review
 
@@ -1206,3 +1226,18 @@ the index, leaving the other 27 pages untouched. The edit was then restored
 and rebuilt. Full-build and link checks, shell syntax checks, `make lint`, and
 `git diff --check` passed. This changes documentation tooling only; C++ tests,
 sanitizers, static analysis, and solver fuzzing are not applicable.
+
+(documentation-coverage-todos)=
+### Documentation coverage TODOs, 2026-09-28
+
+The comparison with the older book identified missing explanations alongside
+chapters still awaiting their first draft. Visible TODO callouts now identify
+the required arguments, worked steps, design rationale, operational references,
+and evidence extraction at the relevant locations. Whole missing chapters are
+recorded at their existing entry points; no empty chapter placeholders were
+added. The review ledger retains these as unresolved coverage work, separate
+from earlier factual checks. The writing conventions now require an explanatory
+home and a section-level content audit before replacement acceptance.
+
+These edits record work to do; they do not complete the explanations or change
+solver behavior. Existing source and historical evidence remain in place.

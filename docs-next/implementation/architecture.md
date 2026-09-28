@@ -58,6 +58,17 @@ checks are omitted. The numbered walkthrough below links each stage to code.
 A declared logic determines which inputs are accepted and helps select an
 engine. Preprocessing can settle a goal or expose a simpler route.
 
+```{admonition} TODO: Write the preprocessing and tactic chapters
+:class: note
+
+Expand the {source}`preprocessing record <docs/preprocessing.md>` and
+{source}`tactic contracts <docs/tactics.md>` into current explanations of
+transformation order, mandatory lowering even with preprocessing off,
+automatic profile selection, strategy composition, and reconstruction records.
+Follow one goal through the selected passes and show how its model conversions
+are retained. Link those chapters from the route-selection step above.
+```
+
 ## Representation and ownership
 
 The [core representation chapter](core.md) details sorts, symbols, term shapes,
@@ -179,6 +190,17 @@ separate. For requested ground models, the
 {source}`finalization path <src/smt/solver_session.cpp#L650-L674>` optionally
 checks the original assertions and then serializes the model. An internal
 model inconsistency is not a logical UNSAT result.
+
+```{admonition} TODO: Write the frontend and session chapters
+:class: note
+
+Explain lexical scope, `define-fun` expansion, command-state rules, journal
+replay, retained engines, and unsupported option combinations. Trace a scoped
+session through declaration, query, pop, and model invalidation. Extract the
+current contracts from the {source}`session design <docs/incremental-smt.md>`
+and {source}`lexical audit <docs/lexical-conformance.md>`, with exact links from
+this overview to the resulting chapters.
+```
 
 ## Worked example and tests
 

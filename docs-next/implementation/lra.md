@@ -13,6 +13,17 @@ bounds, small-rational arithmetic, sparse pivoting, occurrence indices, deferred
 checks and bounds-only rollback. Section numbers for this source refer to the
 **technical report**, whose numbering differs from the CAV paper.
 
+```{admonition} TODO: Write the integer-arithmetic companion chapter
+:class: note
+
+Extract the current algorithms from the
+{source}`integer development record <docs/qf-lia-branch-and-bound.md>`:
+branch-and-bound, GCD checks, Gomory cuts, patching, and conflict generalization.
+Explain their order, guards, budgets, and concrete incompleteness examples,
+with links to the pure and combined integer routes. Keep dated experiments
+separate from the current algorithm and its limitations.
+```
+
 ## Representation and ownership
 
 The input to arithmetic preparation is typed core terms plus their Boolean
@@ -303,6 +314,15 @@ must exist; row-size and fanout caps may decline work. See
 {source}`propagation options <src/smt/check_sat.hpp#L245-L269>`.
 Neither mode performs complete arithmetic consequence discovery.
 
+```{admonition} TODO: Work through row propagation
+:class: note
+
+Derive a bound from a concrete row and signed coefficients, showing which
+lower or upper bounds supply each contribution. Include the reverse direction
+and the resulting SAT explanation clause. Show when a missing bound or a
+configured cap prevents propagation; connect each step to the code above.
+```
+
 Bjørner and Nachmanson's [*Arithmetic Solving in Z3*](https://doi.org/10.1007/978-3-031-65627-9_2)
 (CAV 2024), §3.3, makes the same
 direct/indirect propagation distinction. Primo's row mode queries implied
@@ -342,6 +362,19 @@ in {source}`trails_assignments_and_pivots <src/theory/arithmetic/lra_tableau.hpp
 King §§3.2–3.3 and King–Barrett–Dutertre's FMCAD 2013 paper provide the
 algorithmic basis; Primo adds a finite fallback to ordinary Bland repair.
 The default sparse policy does not optimize an SOI objective.
+
+```{admonition} TODO: Explain the implemented SOI algorithm
+:class: note
+
+Add a dedicated subsection or algorithm page defining the violation objective,
+its maintained row, breakpoint selection, multi-row conflict construction,
+and conflict minimization. Work through a pivot and explain why objective
+state needs additional rollback. Use the
+{source}`retained SOI description <docs/arithmetic.md#L451-L541>` as an extraction
+checklist, verifying each mechanism against the current code and primary
+paper. Preserve its opt-in status and distinguish historical measurements
+from current qualification.
+```
 
 For a satisfying Real model,
 {source}`choose_concrete_delta <src/smt/solver_engines.cpp#L3516-L3561>`
@@ -394,6 +427,17 @@ The paper's integer and nonlinear procedures are outside this chapter's scope.
 The following notes explain additional arithmetic mechanisms and preserve
 their measurements and rejected alternatives. H1–H10 are identifiers in the
 historical heuristics register.
+
+```{admonition} TODO: Give retained arithmetic work permanent explanatory homes
+:class: note
+
+For each mechanism below, identify the current algorithm explanation and a
+precise dated evidence record. Extract current design rationale from the long
+development notes before archiving them. Record configuration, revision,
+outcome, and qualification limits in evidence summaries, retaining rejected
+alternatives and raw-record links. This inventory must not substitute for
+the missing algorithm explanations.
+```
 
 | Work already done | Current explanation and retained record |
 | --- | --- |

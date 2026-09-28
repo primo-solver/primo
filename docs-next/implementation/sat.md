@@ -300,6 +300,16 @@ the theory engines have further obligations before returning a solver answer.
 Builds without CaDiCaL return `Unsupported` from the adapter, not a fallback
 SAT search. Proof-producing integration is not implemented by this interface.
 
+```{admonition} TODO: Restore the backend operational reference
+:class: note
+
+Give CaDiCaL option overrides, factoring/BVA, version-specific builds, and SAT
+statistics interpretation a current reference page. Extract those procedures
+from the {source}`existing backend reference <docs/sat-ipasir-up.md#L98-L213>`
+and link them here. Keep dated profiling results and unpromoted tuning choices
+separate from ordinary usage and defaults.
+```
+
 ## Sources and implementation status
 
 - **G. S. Tseitin, “On the Complexity of Derivation in Propositional

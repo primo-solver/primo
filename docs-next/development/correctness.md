@@ -177,6 +177,18 @@ The separate Git-results repository and generated SQLite index remain planned;
 the existing ledger is still authoritative.
 The {source}`recording contract <docs/run-log.md>` defines the required metadata.
 
+```{admonition} TODO: Restore the contributor procedures and statistics reference
+:class: note
+
+Write the missing debugging, experiment, tuning, and statistics pages from the
+{source}`debugging material <docs/debugging.md>`,
+{source}`experiment procedures <docs/experiments.md>`, and
+{source}`tuning reference <docs/tuning-parameters.md>`.
+Include reproducible commands, counter interpretation, failure reduction,
+and separate timing/model-validation steps. Link the procedures from this guide;
+its acceptance rules do not replace instructions for performing the work.
+```
+
 The pull request should state what changed, the violated or preserved
 invariant, the documentation updated, checks run, linked run records, and
 remaining limitations. Missing checks stay visible until completed. Do not

@@ -83,6 +83,16 @@ manager; they remain subject to the [core lifetime rules](core.md#allocation-and
 
 ### What a de Bruijn index means
 
+```{admonition} TODO: Explain why indexed variables were chosen
+:class: note
+
+Summarize the design tradeoff against named variables and variables with
+identity: sharing under renaming, where capture-avoidance obligations live,
+and parser/core complexity. Revisit the
+{source}`recorded choice <docs/quantifiers.md#L871-L899>` against the implemented
+operations; keep abandoned proposals and prototype measurements historical.
+```
+
 Index 0 names the innermost bound variable, index 1 the next outer variable,
 and so on. A list of declarations counts as nested binders in declaration
 order. Thus the body of
@@ -246,6 +256,17 @@ prepared assertions and delivered lemmas, beyond the terms selected by one
 ground assignment. This implementation does not claim the paper's general
 SAT-completion result or unbounded refutational completeness.
 
+```{admonition} TODO: Connect growing pools to the refutation argument
+:class: note
+
+State Theorem 1's assumptions and explain why terms introduced by successive
+instances suffice in its setting. Distinguish that result, fair enumeration,
+the paper's SAT-completion condition, and Primo's bounded procedure. Expand
+the {source}`existing theorem checklist <docs/papers/enumerative-instantiation.md>`
+into an argument the reader can follow, explaining why exhausting the current
+candidate pools does not establish the general SAT condition here.
+```
+
 ## Tuple orders and duplicate instances
 
 For `n` quantified variables with pool sizes `m₁, …, mₙ`, the candidate
@@ -271,6 +292,17 @@ snapshots the candidate vectors for one scan and records each tried tuple.
 Finite-product coverage is tested separately from any claim about an
 unbounded instantiation procedure. Traversal order and fairness toward
 different variables are also distinct from logical soundness.
+
+```{admonition} TODO: Explain fairness and the default tuple order
+:class: note
+
+Define the ordering notions used in the
+{source}`enumeration note <docs/papers/fair-adventurous-enumeration.md>` and
+compare concrete tuples. Explain finite-pool coverage, growth, and resumable
+traversal separately from unbounded fairness. Add the rationale for the `sum`
+default with a precise dated comparison and its qualification limits; the
+sequence prefixes alone do not explain that choice.
+```
 
 {source}`add_instance <src/theory/quantifiers/quantifier_component.cpp#L212-L246>`
 then applies three filters: the tuple's instantiated body may already have
@@ -367,6 +399,19 @@ The historical {source}`quantifier record <docs/quantifiers.md>` and
 UF corpus evaluations, tuple-order comparisons, and the measurements behind
 the current round and stall defaults. Those records qualify their named
 revisions; this documentation rewrite does not rerun or extend them.
+
+```{admonition} TODO: Extract the quantifier evidence and checking argument
+:class: note
+
+Replace broad historical pointers with a curated evidence summary for tuple
+orders, instance-round and stall defaults, correctness repairs, and remaining
+unconfirmed answers. Preserve exact revisions, configurations, and run IDs.
+Explain why the pool-guided cvc5 check preserves satisfiability despite using
+Primo-generated terms and witness information, including top-level linking,
+skipped exports, and negative controls. Verify the trust argument in the
+{source}`original checker discussion <docs/quantifiers.md#L88-L149>` against
+the script; a reference solver invocation alone is not that argument.
+```
 
 `--quantifier-export-pools FILE` records printable witness constants, witness
 constraints, and tuples that produced lemmas through

@@ -236,6 +236,19 @@ term references, and dependent theory state.
 
 ## Boolean arguments and propagation
 
+```{admonition} TODO: Restore the filtering and Boolean-domain arguments
+:class: note
+
+Explain when pure-theory filtering is sound, why Boolean function arguments
+violate its precondition, and how `theory_relevant_at_both_polarities` protects
+them. Include the counterexample from the
+{source}`older filtering explanation <docs/euf.md#L120-L197>` and the argument
+that every relevant Boolean term receives one of the two values from the
+{source}`Boolean-domain note <docs/euf-boolean-arguments.md#L208-L286>`.
+State the premises and derive the conclusion; registration and test links
+alone do not supply that explanation.
+```
+
 Bool has exactly two values. If `b` occurs in `f(b)`, EUF must agree with SAT
 about whether that argument is `true` or `false`. Otherwise it could incorrectly
 satisfy `f(b) ≠ f(true)` and `f(b) ≠ f(false)` using a third Boolean value.
@@ -289,6 +302,17 @@ uses a separate, direct-`TermId` `IncrementalCongruenceClosure`. That class's
 name must not be confused with `FlatCongruenceClosure`, used during search.
 Boolean completion, reconstruction of eliminated terms, and combined-theory
 models need their own model chapter.
+
+```{admonition} TODO: Write the model-construction chapter
+:class: note
+
+Expand the {source}`existing reconstruction contract <docs/model-interpretation.md>`
+into a current chapter covering reverse conversion replay, authoritative and
+provisional values, evaluated argument tuples, function defaults, dependency
+invalidation, and freezing the interpretation. Trace one preprocessed input
+through reconstruction to its printed model, including Boolean completion and
+combined-theory values, then link that chapter here.
+```
 
 The alternate lazy checking path uses {source}`ExplainedCongruenceClosure
 <src/smt/solver_engines.cpp#L2630-L2696>`. Its rebuilding and explanation

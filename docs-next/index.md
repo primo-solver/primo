@@ -72,6 +72,18 @@ binding, universal instances, existential witnesses, and the current answer
 boundary. The capability matrix and user guides remain in the existing book while they
 undergo page review for this draft.
 
+```{admonition} TODO: Restore the user guides and capability reference
+:class: note
+
+Bring the {source}`capability matrix <docs/current-status.md>`, supported input,
+model requests, scoped sessions, and everyday options into this book, with
+working examples and explicit unsupported/unknown boundaries. The current
+starting points are the {source}`input guide <docs/guide/input.md>`,
+{source}`model guide <docs/guide/models.md>`,
+{source}`session guide <docs/guide/sessions.md>`, and
+{source}`options reference <docs/reference/options.md>`.
+```
+
 The [Yices literature survey](papers/yices.md) connects three papers/talks to
 the code and distinguishes implemented mechanisms from ideas for investigation.
 
