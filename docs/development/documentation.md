@@ -183,3 +183,8 @@ teal dot. `docs/_config.yml` selects light and dark variants. Editable assets
 are `docs/_static/primo-logo.svg`, `docs/_static/primo-logo-dark.svg`, and
 `docs/_static/primo-avatar.svg`; `docs/_static/primo-avatar.png` is the
 512-pixel profile export. They need no external font and follow the MIT license.
+
+Both books use the white `p` on navy from `primo-avatar.png` as their favicon,
+selected by `html.favicon` in each book's configuration. Keep the copy in
+`docs-next/_static/` synchronized with the original until the draft replaces
+the existing book.

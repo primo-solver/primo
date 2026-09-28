@@ -20,7 +20,8 @@ Ctrl-C. Set `DOCS_NEXT_PORT` to use another draft port, for example
 Both builds use `scripts/build_docs.sh`, the shared `.venv-docs` environment,
 and `docs/requirements.txt`. Each has its own configuration, navigation, and
 generated output. Notebook execution is disabled. The draft carries copies
-of Primo's two original wordmark SVGs; keep those assets synchronized until
+of Primo's two original wordmark SVGs and the `p` avatar PNG used as the favicon;
+keep those assets synchronized until
 the draft replaces the existing book.
 
 The build wrapper defaults to `docs`; setting `PRIMO_DOCS_DIR=docs-next`
