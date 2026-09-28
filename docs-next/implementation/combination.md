@@ -577,6 +577,10 @@ cannot acquire inconsistent outputs after model assembly. Conversion records
 restore eliminated expressions, and final assertions are evaluated before the
 immutable `core::Model` is returned.
 
+The [model-construction chapter](models.md) explains evaluated tuple keys,
+component-local domain labels, reverse conversion replay, and the boundary
+between mutable construction and the frozen interpretation.
+
 ## Cost and observable mechanisms
 
 With `n` shared terms in one scope, a complete arrangement contains

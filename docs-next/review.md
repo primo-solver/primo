@@ -100,13 +100,16 @@ link or an old-page inventory is not by itself evidence of complete coverage.
 9. [Quantifiers](implementation/quantifiers.md): can the reader follow binding,
    both polarities, term-pool growth, and queue scheduling, and explain why
    exhausting candidates does not establish `sat`?
-10. [Library API](leads/library-api.md) and
+10. [Model construction](implementation/models.md): can the reader follow
+   authoritative values, evaluated function tuples, and reverse replay, and
+   explain why an evaluator cannot survive a change of interpretation?
+11. [Library API](leads/library-api.md) and
    [incremental memory](leads/incremental-memory.md), together with
    [compact term storage](leads/term-storage.md): do the work items capture
    the intended direction, available evidence, and unresolved design questions?
    Apply the same questions to the remaining lead pages. Reviewing a lead
    does not complete its investigation.
-11. Literature notes: are the cited sections, implemented subsets, deviations,
+12. Literature notes: are the cited sections, implemented subsets, deviations,
    and open questions clear? Keep published results attached to their original
    configurations and evidence.
 
@@ -1264,3 +1267,39 @@ Both strict books and local/source links were checked with `make docs-check-link
 existing HTML anchors were preserved. No solver behavior changed, no solver
 batches ran, and no historical qualification was promoted. Reader acceptance
 remains pending.
+
+(model-construction-chapter-checks)=
+### Model-construction chapter checks, 2026-09-28
+
+Resolved the second EUF TODO with a separate model chapter. It describes the
+typed owning representation, both construction adapters, Boolean completion,
+authoritative component values, function defaults and evaluated tuple keys,
+component-local domain labels, reverse conversion replay, and the boundary
+between construction, freezing, checking and printing. The worked example
+restores eliminated constants through a fixed function table, with Boolean
+completion and arithmetic values explained explicitly.
+
+The source pass covered `core::Model` and its evaluator, both builders and
+their callers, the typed conversion log, solved-constant cycle rejection,
+fragment validation and assembly, session finalization, and serialization.
+The reader pass checked stage order, simultaneous updates, the reason for
+fresh evaluation epochs, and the distinction between a cyclic EUF equation
+and a self-dependent substitution. The older contract's references to
+invalidation are explained by the implemented epoch mechanism; no selective
+dependency worklist is claimed. Existing unit regressions are mapped to their
+obligations, and earlier qualification stays attached to its original revisions.
+
+Navigation, chapter entry points, the review ledger, and migration inventories
+include the new chapter. Both EUF TODOs are now resolved. Reader acceptance,
+the broader section-level coverage audit, user guides, and other chapters'
+TODOs remain open. Solver sources and the source-link revision are unchanged.
+No solver test, fuzzing, or benchmark batch was run for these documentation edits.
+
+`make docs-check-links` passed both full strict builds: 122 HTML pages,
+18,380 local links, 522 unique Git links, and zero failures. The 33 existing
+draft HTML files retained all their anchors; navigation, ledger, and support
+inventory cover all 30 draft pages. Rendered Boolean-domain coverage and
+model-replay tables, code examples, and chapter navigation were inspected in
+Chromium. `git diff --check` passed. Source and unit-test files still match
+the documentation pin. The full external URL audit was not rerun; the cited
+primary filtering PDF was retrieved and read separately.

@@ -413,19 +413,10 @@ constructs an owning `core::Model` with typed values and function tables.
 Its {source}`ComponentModelBuilder <src/smt/typed_model_builder.cpp#L33-L60>`
 uses a separate, direct-`TermId` `IncrementalCongruenceClosure`. That class's
 name must not be confused with `FlatCongruenceClosure`, used during search.
-Boolean completion, reconstruction of eliminated terms, and combined-theory
-models need their own model chapter.
-
-```{admonition} TODO: Write the model-construction chapter
-:class: note
-
-Expand the {source}`existing reconstruction contract <docs/model-interpretation.md>`
-into a current chapter covering reverse conversion replay, authoritative and
-provisional values, evaluated argument tuples, function defaults, dependency
-invalidation, and freezing the interpretation. Trace one preprocessed input
-through reconstruction to its printed model, including Boolean completion and
-combined-theory values, then link that chapter here.
-```
+The [model-construction chapter](models.md) follows Boolean completion,
+evaluated function tables, and reverse preprocessing replay through a worked
+example. It also describes the separate fragment adapter used for combined
+QF_UFLIA models and the checks required before printing.
 
 The alternate lazy checking path uses {source}`ExplainedCongruenceClosure
 <src/smt/solver_engines.cpp#L2630-L2696>`. Its rebuilding and explanation

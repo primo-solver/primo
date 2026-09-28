@@ -295,5 +295,6 @@ The original Primo notes on
 {source}`binder representation <docs/quantifiers.md>`, and
 {source}`model ownership <docs/model-interpretation.md>` record the design
 decisions behind these boundaries. Those notes also contain historical plans
-and evaluations. Detailed binder, model-construction, and preprocessing
-algorithms are outside this chapter's scope.
+and evaluations. The [quantifier chapter](quantifiers.md) covers binder
+algorithms; [model construction](models.md) covers interpretation and replay.
+Detailed preprocessing algorithms remain outside this chapter's scope.

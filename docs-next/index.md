@@ -69,7 +69,9 @@ Nelson–Oppen equality exchange, model-guided choices, and the implemented gene
 component driver used by QF_UFLIA and quantified UF. QF_UFLRA retains its
 dedicated coordinator. [Quantifiers](implementation/quantifiers.md) explains
 binding, universal instances, existential witnesses, and the current answer
-boundary. The capability matrix and user guides remain in the existing book while they
+boundary. [Model construction](implementation/models.md) explains typed values,
+function tables, and restoration of expressions removed by preprocessing.
+The capability matrix and user guides remain in the existing book while they
 undergo page review for this draft.
 
 ```{admonition} TODO: Restore the user guides and capability reference

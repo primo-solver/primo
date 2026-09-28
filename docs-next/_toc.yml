@@ -14,6 +14,7 @@ parts:
       - file: implementation/lra
       - file: implementation/combination
       - file: implementation/quantifiers
+      - file: implementation/models
   - caption: Literature
     chapters:
       - file: papers/primo-qflra-results

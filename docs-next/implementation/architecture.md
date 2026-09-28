@@ -99,7 +99,8 @@ Model ownership is a separate contract.
 construction validates the interpretation. The
 {source}`ModelEvaluator <src/core/model.hpp#L77-L94>` borrows a live term manager
 and caches values for that interpretation. The printer serializes the completed
-model; it must not repair inconsistent function rows.
+model; it must not repair inconsistent function rows. [Model construction](models.md)
+explains how the SMT layer establishes that consistency before freezing the model.
 
 ## Where SAT and theories meet
 
