@@ -51,6 +51,19 @@ open lead with incremental direction upgrades and exact Boolean-value
 obligations; atom-polarity flags and the rejected root-only prototype do not
 implement it. Enumeration results are not decision-solving performance evidence.
 
+## Don't-care reasoning and relevance
+
+[](papers/relevance-filtering.md) covers de Moura and Bjørner's *Relevancy
+Propagation* (2007), Sebastiani's SMT survey (2007) and partial-assignment
+analysis (2020), and Niemetz–Preiner–Biere's FMCAD 2014 work on don't-care
+reasoning. The note records the sections read, data structures, invariants,
+costs, and limits of transferring these ideas to quantified UF.
+
+Primo currently processes every assigned quantified atom. Dynamic filtering
+and a completion rule based on sufficient Boolean support remain an open lead
+in `docs-next/leads/quantifier-relevance.md`. NNF and directly asserted
+quantifier specialization have separate leads; none is claimed as implemented.
+
 ## Lexical specification and external parser audit
 
 [](lexical-conformance.md) records the SMT-LIB 2.7 Sections 3.1–3.3 and binder

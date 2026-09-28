@@ -60,6 +60,7 @@ parts:
           - file: papers/cvc4-architecture
           - file: papers/clause-forgetting
           - file: papers/polarity-aware-cnf
+          - file: papers/relevance-filtering
           - file: papers/difference-constraint-propagation
           - file: papers/enumerative-instantiation
           - file: papers/fair-adventurous-enumeration
@@ -176,4 +177,7 @@ parts:
           - file: leads/mixed-real-performance
           - file: leads/quantifier-batching
           - file: leads/quantifier-entailment
+          - file: leads/quantifier-nnf
+          - file: leads/asserted-quantifiers
+          - file: leads/quantifier-relevance
           - file: leads/tropical-matrix

@@ -1322,3 +1322,38 @@ exposition correction; the remaining quantifier TODOs and reader acceptance
 are unchanged. Both strict books and local/source links pass
 `make docs-check-links`; rendered sections and existing chapter anchors were
 checked. No solver behavior changed or solver batches ran.
+
+(quantifier-specialization-and-relevance-checks)=
+### Quantifier specialization and relevance leads, 2026-09-28
+
+Recorded three separate investigations: optional NNF through binders, fixed
+obligations from directly asserted quantifiers, and omission of quantified
+don't-cares. The implementation chapter now states that the current component
+processes all assigned quantifiers, including irrelevant ones, and explains
+the possible effect on `unknown`. No optimization is claimed as implemented.
+
+Read de Moura–Bjørner's relevance report §§1–3; Sebastiani's 2007 survey §6.9
+and §§7.2.1–7.2.2 alongside §6.10; Niemetz–Preiner–Biere's FMCAD 2014 paper
+§§II–III and §IV.A–B; and Sebastiani's 2020 partial-assignment analysis §§3–4.
+The shared literature note distinguishes online watches, structural candidate
+reduction, dual extraction, and entailment versus three-valued evaluation.
+Masina–Spallitta–Sebastiani §4, §5.5 and Appendix C provide limited context
+for the NNF proposal, with enumeration results separated from decision solving.
+
+Checked the current preprocessing and instance-simplification boundaries, root
+clausification, kind/value classification, witness guards, full-model decision,
+and the complete-candidate scheduling regression. The proposed relevance
+contract requires support of all active roots and required nested obligations;
+it does not infer quantified satisfiability from exhausted enumeration.
+The older arithmetic relevance lead retains its independent evaluation sequence
+and now links the paper survey. Navigation and migration inventories include
+the new pages. All three leads remain unassigned and require design, proof,
+implementation and evaluation before acceptance as solver mechanisms.
+
+`make docs-check-links` passed both full strict builds and checked 127 HTML
+pages, 19,248 local links and 534 unique Git links with zero failures. Existing
+anchors in 126 prior HTML files were preserved. The ledger and support inventory
+cover all 34 navigated draft pages; rendered titles, tables and links were
+inspected. Source and unit-test files still match the source-link pin.
+The external URL audit was not rerun; the cited primary texts were accessed
+and read for this survey. No solver batches ran or new qualification was claimed.

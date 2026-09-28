@@ -5,6 +5,12 @@
 The [quantifier chapter](../implementation/quantifiers.md) describes the
 implemented enumerator, caches, queue scheduling, and conservative answer
 boundary. The following investigations remain separate from that baseline.
+Optional [NNF through quantifiers](quantifier-nnf.md) and
+[special treatment of directly asserted quantifiers](asserted-quantifiers.md)
+have separate leads, so their costs and benefits can be evaluated independently.
+[Relevance filtering](quantifier-relevance.md) asks whether a quantified
+obligation is needed at all; the filters below concern instances of an
+obligation that remains relevant.
 
 ## Entailment filtering and fail masks
 

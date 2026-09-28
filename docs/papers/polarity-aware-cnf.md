@@ -14,7 +14,9 @@ and shortcuts for asserted roots are different mechanisms.
   Sections used: §2.1 (polarity and projected equivalence), §3.2
   (directional definitions), §4 through Theorem 1 and Remark 1 (NNF and
   enumeration), and §5.3 plus the experiment description at the start of §5.4.
-  This is direct SAT/SMT research, including AllSMT experiments with MathSAT
+  The quantified-NNF follow-up also reads §5.5 and Appendix C: their plain
+  SAT/SMT tests found no advantage for NNF plus PG. This is direct SAT/SMT
+  research, including AllSMT experiments with MathSAT
   and TabularAllSMT. Its enumeration results do not establish a speedup for
   Primo's decision-solving workload.
 - Jochen Hoenicke and Tanja Schindler, *SMTInterpol with resolution proofs*,

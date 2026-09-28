@@ -207,6 +207,14 @@ If backtracking changes that value, it changes the obligation. The guards make
 previously generated formulas conditional: `Q or not B[k]`, for example, imposes no
 condition on the witness when `Q` becomes true.
 
+The current component also processes assignments that the Boolean formula
+does not need. For `X or Q` with `X = true`, that assertion imposes no
+condition on `Q`, yet Primo still handles its assigned polarity. An unnecessary
+universal obligation can therefore leave the final answer `unknown`.
+[Relevance filtering](../leads/quantifier-relevance.md) is an open lead:
+it would require support for every active assertion and every required nested
+obligation before omitting an atom from generation or final checking.
+
 ### Nested obligations
 
 Primo does not first convert the whole input to prenex Skolem normal form.
@@ -478,3 +486,9 @@ not refute.
 ## Related open leads
 
 - [Quantifier instantiation efficiency](../leads/quantifier-instantiation.md)
+- [Optional NNF through quantifiers](../leads/quantifier-nnf.md): compare
+  normalization while retaining support for general formulas and both SAT values.
+- [Exploiting directly asserted quantifiers](../leads/asserted-quantifiers.md):
+  use fixed root obligations to investigate earlier witnesses and less bookkeeping.
+- [Skipping irrelevant quantified obligations](../leads/quantifier-relevance.md):
+  avoid work on don't-care atoms while preserving a sufficient support for the input.

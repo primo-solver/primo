@@ -159,6 +159,16 @@ records entailment filtering, fail masks, and bounded enumeration work as
 open investigations. The existing enumerator and its stall cutoff remain
 the implemented baseline.
 
+[Optional NNF through quantifiers](leads/quantifier-nnf.md) investigates whether
+normalization simplifies subsequent work. [Directly asserted quantifiers](leads/asserted-quantifiers.md)
+could use their fixed polarity for earlier witness generation and less
+bookkeeping. Both remain optional specializations of the general route.
+
+[Skipping irrelevant quantified obligations](leads/quantifier-relevance.md)
+investigates don't-cares such as `X or Q` when `X` already satisfies the
+assertion. The [supporting survey](papers/relevance-filtering.md) distinguishes
+candidate filtering from relevance maintained during SAT search.
+
 During review, `make docs-next-serve` serves this draft at
 `http://localhost:8001`; `make docs-serve` serves the existing book at
 `http://localhost:8000`. These are local previews. No website is published by

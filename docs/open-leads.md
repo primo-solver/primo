@@ -1149,8 +1149,9 @@ one stats run and it gates the whole item.
 ## 5. Relevancy propagation
 
 **Claim.** Do not assert theory atoms that the current partial assignment has
-made irrelevant. z3's mechanism (de Moura and Bjorner); absent from Primo and
-from [](papers/lra-related-work.md) entirely.
+made irrelevant. De Moura and Bjørner's relevance mechanism is not implemented
+in Primo. The primary sources are now reviewed in
+[](papers/relevance-filtering.md).
 
 **Evidence.** Indirect but strong. The tropical encoding puts 468 arithmetic
 definitions under guards, and the unguarding experiment shows what happens when
@@ -1164,7 +1165,10 @@ theory assertion, propagation and explanation.
 **Sequencing.** Gated on lead 1, which is its cheap static approximation. If
 filtering on polarity alone moves these families, dynamic relevance is worth
 the investment; if it does not, that is evidence about the family before a
-large mechanism gets built. Needs its own paper note first, per `AGENTS.md`.
+large mechanism gets built. This sequence concerns the arithmetic families
+above; it does not gate the separate quantified don't-care investigation in
+`docs-next/leads/quantifier-relevance.md`. The paper-note prerequisite is now
+satisfied; integration design, completion proof and evaluation remain open.
 
 (lead-justification)=
 ## 6. Justification / goal-directed decision heuristics
