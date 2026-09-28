@@ -64,7 +64,7 @@ lemmas are constructed through that manager.
 | State | Representation and lifetime |
 | --- | --- |
 | Bound occurrence | `BoundVariable` stores its sort and a de Bruijn index in `Term::symbol`. |
-| Quantifier | `Forall` or `Exists`, of sort Bool. `symbol` stores the arity; children are declaration leaves in source order, then the body and any patterns. |
+| Quantifier | `Forall` or `Exists`, of sort Bool. `symbol` stores the number of bound variables; children are declaration leaves in source order, then the body and any patterns. |
 | Per-sort candidates | `QuantifierComponent::pools_` stores append-only vectors of term IDs for one solve. |
 | Enumeration | A state per `(quantifier atom, assigned value)` stores tried tuples and resumable ordering state. |
 | Redundancy records | Raw-instance and normalized-instance caches include the atom, polarity, and instance ID. A separate set records queued lemma IDs. |
