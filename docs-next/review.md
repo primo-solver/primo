@@ -1241,3 +1241,26 @@ home and a section-level content audit before replacement acceptance.
 
 These edits record work to do; they do not complete the explanations or change
 solver behavior. Existing source and historical evidence remain in place.
+
+(euf-filtering-coverage-checks)=
+### EUF filtering and Boolean-domain coverage, 2026-09-28
+
+Replaced the filtering/domain TODO with the monotonicity argument, a complete
+Boolean-argument counterexample, the protection flag's contract, and a coverage
+argument for ground frontend-prepared input. Read Sebastiani's §6.10 and
+Proposition 2.3 and SMT-LIB 2.6 Definition 8. Traced frontend naming, polarity
+collection, registration, assignment filtering, signed reasons, propagation
+exclusions, and model completion in the source baseline. Existing regressions
+are linked as obligations, not reported as newly run.
+
+The older coverage claim was too strong under filtering: a predicate-result
+class can remain unanchored in the search closure. The new text distinguishes
+protected Boolean arguments from those safely completable results and explains
+why completion cannot change an application signature. It also makes explicit
+that predicate applications used as ground arguments receive frontend names.
+The model-construction TODO remains for the next chapter.
+
+Both strict books and local/source links were checked with `make docs-check-links`;
+existing HTML anchors were preserved. No solver behavior changed, no solver
+batches ran, and no historical qualification was promoted. Reader acceptance
+remains pending.

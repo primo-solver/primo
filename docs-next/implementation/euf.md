@@ -236,22 +236,11 @@ term references, and dependent theory state.
 
 ## Boolean arguments and propagation
 
-```{admonition} TODO: Restore the filtering and Boolean-domain arguments
-:class: note
-
-Explain when pure-theory filtering is sound, why Boolean function arguments
-violate its precondition, and how `theory_relevant_at_both_polarities` protects
-them. Include the counterexample from the
-{source}`older filtering explanation <docs/euf.md#L120-L197>` and the argument
-that every relevant Boolean term receives one of the two values from the
-{source}`Boolean-domain note <docs/euf-boolean-arguments.md#L208-L286>`.
-State the premises and derive the conclusion; registration and test links
-alone do not supply that explanation.
-```
-
 Bool has exactly two values. If `b` occurs in `f(b)`, EUF must agree with SAT
 about whether that argument is `true` or `false`. Otherwise it could incorrectly
 satisfy `f(b) ≠ f(true)` and `f(b) ≠ f(false)` using a third Boolean value.
+
+### Connecting Boolean terms to SAT
 
 {source}`Boolean-argument registration <src/smt/clausifier.cpp#L104-L155>`
 makes the relevant Boolean constants theory-visible under either polarity.
@@ -261,12 +250,136 @@ wrapper merges the Boolean node with the chosen canonical value and supplies
 the negated assignment as its reason. The base closure enforces
 `true ≠ false` without a SAT premise.
 
-Compound arguments such as `f(and p q)` are first named by a fresh Boolean
-term `b` with a SAT definition `b ↔ (p ∧ q)`. EUF sees that term in argument
-position. Pure CNF auxiliary variables that do not denote theory terms need
-no EUF node. The [SAT chapter](sat.md) describes this preparation boundary;
-{source}`Boolean-argument tests <tests/unit/boolean_solver_tests.cpp#L2836-L2951>`
-cover both polarities and the two-valued domain.
+For ground SMT-LIB input, the {source}`frontend naming step
+<src/smt/frontend.cpp#L342-L357>` replaces every Boolean argument other than
+a constant or Boolean value with a fresh Boolean constant and a defining
+equivalence. Thus `f(and p q)` becomes `f(b)` with `b ↔ (p ∧ q)`.
+This also applies to a predicate used as an argument: `f(P(a))` becomes `f(b)`
+with `b ↔ P(a)`. Registration protects `b`; the equivalence makes both
+polarities of `P(a)` visible. Pure CNF auxiliary variables that do not denote
+theory terms need no EUF node. The [SAT chapter](sat.md) describes that boundary.
+
+These assertions are justified by the SAT assignment, not guessed theory
+facts. If the literal for `b` is `p`, assigning `p` entails `b = true` and
+assigning `¬p` entails `b = false`. The corresponding reason tails are `[¬p]`
+and `[p]`, following this chapter's negated-assignment convention.
+`true ≠ false` is unconditional. Registration therefore excludes only
+assignments incompatible with the two-element Boolean domain; it cannot
+exclude a satisfying SMT-LIB interpretation.
+
+### When pure-theory filtering is sound
+
+The {source}`pure-theory filter <src/smt/solver_engines.cpp#L517-L553>` may omit
+an assigned literal from EUF while leaving it in SAT. For an atom occurring
+only positively in the asserted Boolean structure, it omits a false
+assignment; for a negative-only atom, it omits a true assignment. Mixed-polarity
+atoms are retained. `--pure-theory-filter=auto|on|off` controls this rule;
+`auto` currently enables it. This is the assignment-filtering technique of
+[Sebastiani, *Lazy Satisfiability Modulo Theories*](https://disi.unitn.it/rseba/papers/JSAT-2007.pdf),
+§6.10 and Proposition 2.3, rather than SAT pure-literal elimination.
+
+Let `F` be the Boolean abstraction of the prepared assertions and `M` a
+satisfying SAT assignment. Suppose atom `a` occurs only positively and
+`M(a) = false`. In negation-normal form, changing just `a` from false to true
+cannot make `F` false: conjunction and disjunction are monotone in that
+argument. The mirror statement holds for a negative-only atom assigned true.
+Consequently, after deleting these opposite-polarity literals from `M`,
+**every completion of the remaining atom assignment still satisfies `F`**.
+
+If a theory interpretation satisfies the retained literals, its truth values
+provide such a completion, so it satisfies the prepared assertions. The same
+argument permits several deletions. It concerns the original Boolean
+structure: Tseitin auxiliaries can be reevaluated for the completed atom
+values and need not keep their old SAT values.
+
+The crucial premise is that the theory check really supplies an interpretation
+of those atoms under the intended semantics. For ordinary EUF equalities,
+unconstrained classes can receive distinct values in an uninterpreted sort.
+For Boolean arguments, congruence closure additionally needs the two-element
+domain constraint. Omitting an argument's truth assignment can remove the
+very constraint that makes the closure correspond to a Boolean interpretation.
+Propositional purity alone does not justify that omission.
+
+### The Boolean-argument counterexample
+
+Consider this complete input, also covered by the
+{source}`positive-polarity regression <tests/unit/boolean_solver_tests.cpp#L2836-L2856>`:
+
+```lisp
+(set-logic QF_UF)
+(declare-sort U 0)
+(declare-fun p () Bool)
+(declare-fun q () Bool)
+(declare-fun tb (Bool) U)
+(assert (= (tb true) (tb false)))
+(assert (not (= (tb p) (tb true))))
+(assert (or p q))
+(check-sat)
+```
+
+If `p = true`, congruence contradicts the second assertion directly.
+If `p = false`, congruence and the first assertion give the same contradiction.
+Those cases exhaust Bool, so the input is unsatisfiable.
+
+But the Boolean skeleton admits `p = false, q = true`. Polarity collection
+sees `p` only positively in `p ∨ q`; it stops at the surrounding equality
+atoms and does not count the argument of `tb`. If filtering dropped `p = false`
+from the theory assignment, the closure could keep `p` separate from both
+Boolean constants and `tb(p)` separate from their common result. That closure
+would be consistent only because it was missing the Boolean-domain constraint.
+
+`TheoryAtom::theory_relevant_at_both_polarities` prevents this. Registration
+sets it even when an argument already has an atom and polarity flags;
+`should_filter_assignment` checks it before applying the purity rule.
+The negative-polarity case has the same obligation. Any future encoding that
+uses an atom's assignment to enforce additional theory semantics must review
+this condition explicitly.
+
+### Why no third Boolean value is needed
+
+The coverage argument applies to a complete assignment of the ground,
+prepared EUF input. Registration and frontend naming cover the following cases:
+
+| Boolean occurrence | Why the two-element domain is respected |
+| --- | --- |
+| `true` or `false` | These are the canonical values, and the base closure keeps them distinct. |
+| Constant in a function argument | Registration keeps its assigned equality to `true` or `false` at either polarity. |
+| Compound term or predicate application in an argument | The frontend names it as above. The name is protected, and its defining equivalence fixes its relation to the original expression. |
+| Predicate result used as a formula | A retained assignment links it to a canonical value. A filtered result may remain unanchored, as explained below. |
+| Source-level Boolean `=` or `distinct` | The {source}`frontend <src/smt/frontend.cpp#L318-L340>` lowers these to equivalence or exclusive-or. They impose propositional constraints rather than disequalities between unconstrained Boolean classes. |
+| Term used only in the propositional structure | Its value is handled by SAT; merely encoding a connective does not put a Boolean argument into EUF. |
+
+Thus **every Boolean argument that can affect an application signature is
+anchored**. Congruent predicate applications already have the same result
+class. A remaining unanchored predicate-result class has no outgoing role as
+an unnamed Boolean argument and no source-level Boolean disequality to preserve.
+It can be assigned either Boolean value without changing the argument
+signatures or invalidating retained facts. Anchored classes keep their values;
+the two canonical classes cannot be merged in a consistent closure.
+
+This yields a two-valued interpretation of the Boolean terms. Ordinary EUF
+class completion supplies values for the uninterpreted sorts, and the filtering
+argument above shows that the completed atom values satisfy the assertions.
+It would be too strong to claim that every Boolean node is already anchored
+in the *search* closure: filtered predicate results need not be.
+The {source}`model builder's completion step
+<src/smt/typed_model_builder.cpp#L90-L112>` assigns false to Boolean constants
+and applications still unanchored after saturation, then checks consistency.
+
+This is an implementation argument for the prepared ground fragment, not a
+machine-checked proof or a finite-domain procedure for arbitrary sorts.
+Quantified bodies require the separate [quantifier preparation](quantifiers.md).
+The {source}`Boolean-domain regressions <tests/unit/boolean_solver_tests.cpp#L2836-L2951>`
+cover both filtered polarities, domain exhaustion, a satisfiable case, and
+ordinary predicates that require no argument registration.
+
+### Propagation and bounded Ackermann clauses
+
+Filtered assignments must also be absent from propagation premises, and a
+candidate with a filtered polarity must not be propagated. The
+{source}`model-time propagation builder <src/smt/solver_engines.cpp#L1228-L1277>`
+checks both conditions. Otherwise propagation could reinstate a constraint
+that filtering deliberately left out, or use a premise never asserted to EUF.
 
 The ordinary {source}`incremental propagation path
 <src/smt/solver_engines.cpp#L1435-L1460>` explains equality atoms and Boolean
@@ -332,6 +445,8 @@ primary algorithmic source.
 | Sections 3.1–3.5 | Currying/flattening, eager representatives, smaller-class merging, use lists, lookup, and pending merges. Primo adds indexed disequalities and can stop saturation at a conflict. |
 | Section 3.3, backtracking paragraph | Motivation for undoable closure. Primo restores sparse lookup insertions; it does not implement the paper's timestamped lookup policy. |
 | Sections 4 and 5.2–5.5 | Basis of the optional proof modes above. Default BFS, causal caching, alias materialization, and rollback details are distinguished in the local design notes. No shortest-explanation or exported-proof claim. |
+| Sebastiani, *Lazy Satisfiability Modulo Theories* (2007), §6.10 and Proposition 2.3 | Opposite-polarity assignment filtering and exclusion of filtered propagation candidates. Primo adds explicit protection for Boolean argument terms; ghost-literal decision avoidance is not implemented. |
+| [SMT-LIB 2.6 reference](https://smt-lib.org/papers/smt-lib-reference-v2.6-r2021-05-12.pdf), Definition 8 | Bool has exactly two distinct values. Frontend naming, registration, and the completion argument above are Primo's integration design for that semantic requirement. |
 | Primo's local EUF/SMT design | SAT reason signs, Boolean-domain preparation, changed-term delivery, and model-scope protection. These are integration obligations, not algorithms attributed to the paper. |
 
 `FlatCongruenceClosure` does not implement the paper's integer-offset extension.
@@ -353,6 +468,7 @@ and [safe-forgetting lead](../leads/theory-lemma-forgetting.md).
 | Paper-specific proof operations preserve their labels. | {source}`Path reversal and structural-class tests <tests/unit/euf_solver_tests.cpp#L1297-L1458>`. |
 | Draining notifications does not resurrect them during pop. | {source}`Drain and generation tests <tests/unit/euf_solver_tests.cpp#L541-L627>`. |
 | SAT levels preserve root facts and permit opposite assignments after rollback. | {source}`Production callback regressions <tests/unit/euf_callback_tests.cpp#L134-L209>`. |
+| Boolean arguments retain both polarities and cannot take a third value. | {source}`Filtering and Boolean-domain tests <tests/unit/boolean_solver_tests.cpp#L2836-L2951>` include satisfiable and unsatisfiable cases. |
 | Bounded disequality propagation requires existing atoms and uses the n-ary disjunction. | {source}`Ackermann propagation tests <tests/unit/boolean_solver_tests.cpp#L2276-L2393>`. |
 
 These links identify tests to maintain when changing the mechanisms. The
