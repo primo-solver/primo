@@ -1382,7 +1382,8 @@ signs and rendered sections. Both strict books and local/source links were
 checked with `make docs-check-links`; existing page anchors were retained.
 Solver sources and the documentation pin remain unchanged. No solver tests,
 fuzzing or benchmark batches ran for this documentation-only change.
-The SOI, integer-arithmetic and retained-evidence TODOs remain open.
+The SOI TODO was resolved in the following pass. The integer-arithmetic and
+retained-evidence TODOs remain open.
 
 The follow-up review clarified three boundaries: propagation installs the
 existing atom's threshold (8 in the worked example), online LRA propagation
@@ -1390,3 +1391,35 @@ is disabled by model-equality branching, and an already-false interface
 equality remains a mandatory disequality for later combination checks.
 The relevant assertion and construction paths were rechecked, with both
 strict books and local/source links verified after these edits.
+
+(soi-exposition-checks)=
+### SOI objective, selection and conflicts, 2026-09-28
+
+Expanded the optional SOI algorithm from King–Barrett–Dutertre, FMCAD 2013,
+§V, and King's thesis §§3.2–3.3, including §3.3.5 and Figure 3.6. Checked
+the objective/direction updates, breakpoint ordering, entering and leaving
+choices, restricted-row conflict test, minimizers, finite fallback, and undo
+records against their owning source and existing regression tests.
+
+The chapter now derives the objective, works through Figure 6, explains a
+conflict requiring two rows, and distinguishes implemented selection and
+minimization choices from the primary algorithms. Historical evidence is
+identified by run-log ID, revision and qualification limit. Older claims of
+implementing the full paper algorithm were qualified. Both books now enable
+MyST dollar-delimited mathematics, with the authoring convention documented.
+
+A single bounded component debug run exposed a zero-breakpoint discrepancy:
+the current walk applies a slope change when a variable starts on a bound and
+moves into its feasible interval. The retained download and run-log entry
+`2026-09-28-soi-zero-breakpoint-debug` reproduce two pivots where the objective
+admits a one-pivot repair. The example reaches a valid assignment. Endpoint
+correction, dedicated regression coverage and subsequent remote qualification
+remain separate implementation work; no solver behavior was changed here.
+
+Both strict books and local/source links passed `make docs-check-links`.
+All anchors in the 131 prior HTML files were preserved, solver source and unit
+tests still agree with the source pin, and the downloadable debug example
+passes `clang-format --dry-run --Werror`. Browser review covered the objective,
+worked pivot/table and conflict derivation with MathJax rendering; a long
+display was split into three lines. The full external-link audit was not rerun.
+No solver test suite, fuzz campaign or benchmark batch ran for this change.

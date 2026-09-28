@@ -231,7 +231,8 @@ returns an immediate conflict without installing the contradictory bound.
 If a nonbasic value falls outside a new bound, `update` moves it to that bound
 and updates dependent basic values. Basic variables may then need repair.
 
-{source}`check <src/theory/arithmetic/lra_tableau.cpp#L1711-L1890>` selects a
+For the ordinary repair policies,
+{source}`check <src/theory/arithmetic/lra_tableau.cpp#L1793-L1890>` selects a
 violated basic variable and a nonbasic variable that can move in the required
 direction. It pivots the latter into the basis, then moves the now-nonbasic
 leaving variable to its violated bound. For example, pivoting `y` into the
@@ -251,6 +252,7 @@ The solver's default is **Sparse**, although a directly constructed
 | Optional least-violated leaving | Griggio §2.5.3: smallest violation first, then shortest row. This overrides the default leaving policy under Sparse. |
 | Optional Dantzig | Greatest violation first; largest absolute entering coefficient, with variable IDs breaking ties. |
 | Bland | Smallest eligible variable IDs on both sides; also the termination fallback. |
+| Optional SOI | Maintains a joint objective for all current violations; see [sum of infeasibilities](#lra-soi). |
 
 Monniaux §3 also describes preferring shorter rows and fewer column
 occurrences to reduce pivot cost, in the context of forced pivoting. Primo's
@@ -466,6 +468,290 @@ check because the rejected bound never entered the tableau. See
 Delivered propagation reasons remain available until their assignments are
 removed, following the shared-assignment protocol in [DPLL(T)](dpllt.md).
 
+(lra-soi)=
+## Optional sum of infeasibilities
+
+`--lra-pivoting-rule soi` selects **sum of infeasibilities (SOI)**. This mode
+uses all current bound violations to guide a repair step. The ordinary
+sparse policy remains the solver default. The algorithmic basis is
+King, Barrett and Dutertre's
+[Simplex with Sum of Infeasibilities for SMT](https://theory.stanford.edu/~barrett/pubs/KBD13.pdf),
+FMCAD 2013, §V, and [King's thesis](https://cs.nyu.edu/media/publications/king_tim.pdf),
+§§3.2–3.3. The implementation choices and departures are described below.
+
+### The violation objective and its row
+
+Write $\beta(x)$ for the current exact assignment, and $l(x)$ and $u(x)$
+for the active bounds when present. Define the violation of a variable by
+
+$$
+v_\beta(x)=
+\begin{cases}
+l(x)-\beta(x), & \beta(x)<l(x),\\
+\beta(x)-u(x), & \beta(x)>u(x),\\
+0, & \text{otherwise}.
+\end{cases}
+\qquad
+V(\beta)=\sum_x v_\beta(x).
+$$
+
+Only present bounds participate in these cases. Values and comparisons use
+`DeltaRational`, so strict inequalities retain their infinitesimal part.
+Nonbasic variables already satisfy their bounds; the error set $E$ consists
+of violated basic variables. Thus $V(\beta)=0$ precisely when the current
+assignment satisfies all bounds as well as the tableau equations.
+
+The objective is piecewise linear: its slope changes when a variable reaches
+a bound. For each basic variable $x_i$, let $d_i=-1$ when it is below its
+lower bound, $d_i=+1$ when above its upper bound, and $d_i=0$ otherwise.
+Substituting the basic rows gives a linear expression over nonbasic variables:
+
+$$
+f=\sum_{i\in E}d_i x_i
+ =\sum_{j\in N}c_j x_j,
+\qquad c_j=\sum_{i\in E}d_i a_{ij}.
+$$
+
+Here $N$ is the nonbasic set and $a_{ij}$ is the coefficient of $x_j$ in
+row $x_i$. If $b_i$ is the bound currently violated by $x_i$, then
+$V(\beta)=f(\beta)-\sum_{i\in E}d_i b_i$. The row for $f$ therefore records
+the current linear part; evaluating it alone does not give the total violation.
+
+{source}`LraTableau's SOI constructor <src/theory/arithmetic/lra_tableau.hpp#L246-L258>`
+allocates an unbounded auxiliary basic variable `f_var_` and an initially empty
+row. The tableau owns this row and the cached directions `soi_directions_`.
+When a direction changes,
+{source}`set_soi_direction <src/theory/arithmetic/lra_tableau.cpp#L446-L501>`
+adds $(d_i^{\mathrm{new}}-d_i^{\mathrm{old}})$ times that basic row to the objective row.
+Bound assertion and assignment updates call this operation. A pivot removes
+the leaving variable's contribution before rewriting the basis, and ordinary
+row substitution rewrites the objective too. Once the pivot and assignment
+update finish, the row must again equal the signed sum of the violated rows.
+The selector uses its coefficients, rather than treating the auxiliary
+variable's stored assignment as $V$.
+
+### Selecting a step at a bound crossing
+
+{source}`soi_select <src/theory/arithmetic/lra_tableau.cpp#L516-L689>` considers
+a nonbasic $x_j$ occurring in the objective row if it can move in the direction
+that decreases $f$: decrease it when $c_j>0$, or increase it when $c_j<0$.
+Its own lower or upper bound must leave room for that movement. The paper
+calls these variables *flexible*.
+
+Let $h$ be the proposed change to $\beta(x_j)$; this step is distinct from the
+infinitesimal $\delta$. In a dependent row, the change to $\beta(x_i)$ is
+$a_{ij}h$. Reaching a bound $b$ of that basic variable gives a **breakpoint**
+
+$$
+h=\frac{b-\beta(x_i)}{a_{ij}}.
+$$
+
+The selector collects lower- and upper-bound crossings in the chosen direction,
+plus the entering variable's own bound if present. It sorts them by distance
+along that direction and discards points beyond the entering variable's bound.
+Basic variables may become violated along the walk; the chosen step is judged
+by the sum of violations, while nonbasic variables remain within bounds.
+
+The walk starts with slope $c_j$ and zero change in $V$. Between consecutive
+breakpoints $h_{old}$ and $h_{new}$, a constant slope $m$ gives
+
+$$
+\Delta V(h_{new})=\Delta V(h_{old})+m(h_{new}-h_{old}).
+$$
+
+Crossing a basic bound changes that row's contribution to the slope by
+$(d_i^{\mathrm{after}}-d_i^{\mathrm{before}})a_{ij}$. Coincident breakpoints are
+processed together before continuing. Primo scores candidates with this walk
+without temporarily changing the live tableau.
+
+For a fixed entering variable, Primo chooses the breakpoint with the smallest
+computed $\Delta V$, then the smallest $|h|$, then the smallest leaving-variable ID.
+Across entering variables, it prefers a strict decrease over a zero change,
+then the largest $|c_j|$, then the smallest entering ID. It does **not** compare
+the size of the decrease across different entering variables.
+The current calculation has a zero-length-crossing limitation described below.
+
+{source}`check's SOI loop <src/theory/arithmetic/lra_tableau.cpp#L1727-L1791>`
+applies the selected step. If the entering variable reaches its own bound,
+it only updates that variable. Otherwise, Primo first pivots the selected
+basic variable out, then sets it to the reached bound. This produces the same
+final assignment as updating the entering variable and then pivoting it in.
+
+### A worked pivot
+
+The paper's Figure 6 starts with
+
+$$
+\begin{gathered}
+x_1=2x_2-x_3,\\
+3\le x_1\le7,\qquad x_2\le3,\qquad x_3\ge1,\\
+\beta(x_1)=\beta(x_2)=\beta(x_3)=1.
+\end{gathered}
+$$
+
+Only $x_1$ is violated, by two, so $f=-x_1=-2x_2+x_3$. Decreasing $x_3$
+would help but its lower bound blocks that move. Increasing $x_2$ is possible.
+The retained breakpoints for its step $h$ are:
+
+| Step | Bound reached | Resulting values | Total violation |
+| --- | --- | --- | --- |
+| $h=1$ | $x_1=3$ | $x_1=3,\ x_2=2,\ x_3=1$ | $0$ |
+| $h=2$ | $x_2=3$ | $x_1=5,\ x_2=3,\ x_3=1$ | $0$ |
+
+The upper bound $x_1=7$ would give $h=3$, which Primo discards because it
+would move $x_2$ beyond its own upper bound. Both retained steps remove the
+violation, so the smaller step wins: $x_2$ enters and $x_1$ leaves. Solving
+the row for $x_2$ gives $x_2=(x_1+x_3)/2$. Setting the now-nonbasic $x_1=3$
+therefore sets $x_2=2$, and all bounds hold after one pivot.
+
+The {source}`worked-example regression <tests/unit/lra_tableau_tests.cpp#L781-L829>`
+checks the resulting basis and values. It adds $x_2\ge1$ to establish the
+initial assignment through the public bound API; that extra bound does not
+restrict the increasing walk used here.
+
+### Combining rows into a conflict
+
+If the objective has no flexible variable and $E$ is empty, `check()` succeeds.
+If $E$ is nonempty, the current assignment minimizes the linear expression
+$f$ using the nonbasic bounds, but still has positive violation. This proves
+a conflict that may need several rows.
+
+For example, consider two basic rows and three asserted atoms:
+
+```text
+s1 = x + y       p: s1 <= -1
+s2 = x - y       q: s2 <= -1
+                r: x >= 0
+```
+
+At the all-zero assignment both upper bounds are violated. Their directions
+are $+1$, so $f=s_1+s_2=2x$. Decreasing $x$ is blocked by `r`, and $y$
+cancels from the objective. The rows and `r` imply $s_1+s_2\ge0$, whereas
+`p` and `q` require $s_1+s_2\le-2$. The explanation clause is
+`¬p ∨ ¬q ∨ ¬r`. Each basic row alone could be repaired by moving $y$;
+their combination exposes why both cannot be repaired together.
+
+More generally, for a nonempty subset $S$ of the current error set, form
+$f_S=\sum_{i\in S}d_i x_i=\sum_j c_j x_j$. If this restricted row has no
+flexible variable, each positive coefficient is blocked at its lower bound
+and each negative coefficient at its upper bound. These bounds establish
+
+$$
+f_S\ \ge\ \sum_{c_j>0}c_j l(x_j)+\sum_{c_j<0}c_j u(x_j)
+\ =\ f_S(\beta)\ >\ \sum_{i\in S}d_i b_i.
+$$
+
+The last inequality holds because every variable in $S$ has positive
+violation. Its selected bound requires $d_i x_i\le d_i b_i$, so those bounds
+together contradict the displayed lower bound on $f_S$.
+{source}`build_soi_conflict <src/theory/arithmetic/lra_tableau.cpp#L696-L738>`
+collects the blocking nonbasic-bound reasons and each selected violated-bound
+reason. They already have their clause signs, as in the
+[single-row explanation](#follow-a-strict-conflict).
+
+### Shrinking the explanation
+
+The initial set $E$ can include unrelated conflicts. The default
+{source}`QuickXplain-style minimizer <src/theory/arithmetic/lra_tableau.cpp#L740-L810>`
+recursively splits the candidate error variables, trying one half against a
+background containing the other. Its test rebuilds the restricted row $f_S$
+and checks for a flexible variable; the empty set is explicitly rejected.
+It searches for a smaller conflict in the **current assignment and basis**,
+without another simplex search.
+
+`--lra-soi-minimize deletion` instead
+{source}`tries removing one row at a time <src/theory/arithmetic/lra_tableau.cpp#L812-L882>`
+and keeps a removal only when the remaining set still passes that conflict
+test. `--lra-soi-minimize-order` controls its visit order: `id` uses increasing
+IDs, `row-support` tries longer rows first, and `violation` tries larger
+violations first. This option has no effect on the default `quickxplain` or
+on `none`, which retains all error variables.
+
+This is heuristic explanation reduction, without a guarantee of a globally
+smallest clause. Removing a row changes the coefficients of $f_S$ and can
+expose or cancel nonbasic variables. The result contains a reason for each
+selected violated bound **and** each nonzero coefficient's blocking bound;
+minimizing the number of selected rows does not necessarily minimize the
+number of clause literals.
+
+### Cost, termination and implemented scope
+
+Primo follows the paper's violation objective, breakpoint walk and multi-row
+conflict derivation. It makes several concrete choices:
+
+- The walk considers only the direction that initially decreases $f$, as
+  permitted by §V-A, and keeps the entering variable within its own bounds.
+  It scans every flexible variable in the objective row. For each candidate
+  it scans dependent rows to find coefficients, sorts the breakpoints, and
+  scans rows again at crossings. Sorting $k$ points costs $O(k\log k)$
+  comparisons, in addition to those row scans and exact arithmetic.
+- The objective update merges and sorts the old objective row with a signed
+  basic row. This can cost more than an ordinary repair step, especially
+  when the objective accumulates many nonzero coefficients.
+- Unlike the paper's §V-C rule, Primo retains the coefficient preference
+  between entering variables even when the best steps make no progress.
+  It instead bounds the SOI prefix using the
+  {source}`finite fallback settings <src/theory/arithmetic/lra_tableau.hpp#L223-L237>`:
+  by default `4 * variable_count + 64`. The local counter counts selected
+  SOI steps, including updates without a pivot. Once it exceeds the threshold,
+  ordinary Bland repair handles the rest of that `check()` call. The threshold
+  does not cap the total work or make the result `unknown`.
+- The minimizer uses the restricted-row test described in §V-B and King's
+  §3.3.5. It does not implement the thesis's Figure 3.6 row-selection loop,
+  which grows a conflicting subset using coefficient signs before recursive
+  reduction. Deletion and its orderings are additional Primo choices.
+- The SOI selector does not run Figure 5's preliminary `CheckAllConflicts`
+  scan. It detects direct contradictory bounds during assertion and builds
+  a row-combination conflict when its objective has no flexible variable;
+  ordinary row-conflict checking also remains available after fallback.
+- SOI also maintains its objective during bound assertion and SAT rollback.
+  Its extra trail state is described [below](#rollback-and-model-values).
+
+```{admonition} Known limitation: zero-length breakpoints
+:class: note
+
+The current walk applies its crossing slope adjustment at a zero-length
+breakpoint even when the variable starts on that bound and moves into its
+feasible interval. Its cached direction is already zero there, so this can
+miscompute the subsequent change in the objective.
+
+For a concrete example, start at zero with `s = x + y`, `t = x - y`,
+`y = 0`, `s >= 1`, and `t >= 0`. Only `s` is violated, giving
+`f = -x - y`. Increasing `x` by one removes the violation, while `t` moves
+inside its feasible interval. The walk processes `t`'s lower bound at
+step zero and changes its slope from `-1` to `0`; it then incorrectly scores
+the step of one as making no improvement. The distance tie-break selects
+the zero-step pivot first.
+
+A single {download}`focused debug reproduction <../examples/soi-zero-step.cpp>`
+confirmed two pivots and the final values `x = 1`, `y = 0`, recorded as
+`2026-09-28-soi-zero-breakpoint-debug` in the
+{download}`run log bundled with this draft <../../docs/run-log.json>`.
+The final assignment is
+valid in this example. Correcting the endpoint calculation and qualifying
+zero, coincident, and strict-bound crossings remain follow-up implementation
+work; the existing Figure 6 regression does not exercise this case.
+```
+
+Existing tests cover the worked pivot, rollback, reduction of independent
+conflicts, and the selectable minimization strategies. Counters distinguish
+multi-row conflicts, minimizer calls, reductions in the error set, emitted
+reason literals, and Bland fallbacks. A smaller error set alone is not evidence
+of faster solving.
+
+The {source}`run log <docs/run-log.json>` preserves dated SOI evidence:
+
+| Record | Result and limitation |
+| --- | --- |
+| `2026-07-25-qf-lra-soi-simplex-quick-eval`, `fc06922` | SOI and Bland solved the same 7 of 17 instances at a five-second limit. This was a local exploratory comparison without committed raw artifacts. |
+| `2026-07-25-qf-lra-soi-simplex-slurm-smoke-gate`, `bcdf7ef` | Of 500 generated cases, 324 passed and 176 timed out; no crashes or wrong answers were reported. This is historical partial coverage, below today's merge-gate count. |
+| `2026-08-10-soi-minimization-arms-measured`, `8ddd62d` | A selected 18-instance local comparison measured reason-literal counts for five strategies. No deletion ordering consistently improved on QuickXplain; runtime/PAR2 was not evaluated. |
+
+These records explain the retained experiments, but do not qualify the current
+revision or establish a speed advantage. The endpoint debug example above is
+also not a substitute for a fresh fuzz gate. SOI remains opt-in, with QuickXplain
+as its default minimizer.
+
 ## Rollback and model values
 
 `push()` returns an undo-trail position. With the default sparse policy,
@@ -483,26 +769,17 @@ nor unconditionally runs `check()` inside `pop()`. SAT decision rollback and
 SMT-LIB assertion scopes remain different operations. The latter's reuse
 design is described in the {source}`retained LRA session note <docs/assumption-incremental-lra.md>`.
 
-The optional **sum-of-infeasibilities (SOI)** mode has a basis-dependent
-objective representing the current violations. Its rollback also restores
-assignments, pivoted rows and objective changes. This exception is explicit
-in {source}`trails_assignments_and_pivots <src/theory/arithmetic/lra_tableau.hpp#L843>`.
-King §§3.2–3.3 and King–Barrett–Dutertre's FMCAD 2013 paper provide the
-algorithmic basis; Primo adds a finite fallback to ordinary Bland repair.
-The default sparse policy does not optimize an SOI objective.
-
-```{admonition} TODO: Explain the implemented SOI algorithm
-:class: note
-
-Add a dedicated subsection or algorithm page defining the violation objective,
-its maintained row, breakpoint selection, multi-row conflict construction,
-and conflict minimization. Work through a pivot and explain why objective
-state needs additional rollback. Use the
-{source}`retained SOI description <docs/arithmetic.md#L451-L541>` as an extraction
-checklist, verifying each mechanism against the current code and primary
-paper. Preserve its opt-in status and distinguish historical measurements
-from current qualification.
-```
+The [SOI objective](#lra-soi) depends on which basic variables currently
+violate which bounds. Restoring bounds alone would leave its cached directions
+and row describing the abandoned state. Primo therefore trails assignments,
+pivoted rows, and objective changes in SOI mode, as selected by
+{source}`trails_assignments_and_pivots <src/theory/arithmetic/lra_tableau.hpp#L843>`.
+Each {source}`FRowTrailEntry <src/theory/arithmetic/lra_tableau.hpp#L790-L800>`
+saves the previous objective row together with the changed variable's previous
+direction. Undo restores both, and `pop` rebuilds the occurrence index after
+row restoration and the violated-variable set after all undo operations.
+This is Primo's current restoration strategy; an alternative could recompute
+the objective from the retained basis and restored bounds.
 
 For a satisfying Real model,
 {source}`choose_concrete_delta <src/smt/solver_engines.cpp#L3516-L3561>`
@@ -574,7 +851,7 @@ the missing algorithm explanations.
 | Sorted row merging, bounds-only rollback, incremental occurrence updates (H8/H9/H10) | Explained above; {source}`design progression <docs/qf-lra-heuristics.md#L731-L943>`, including the earlier rejected occurrence-maintenance attempt. |
 | Fixed-basic-variable elimination (H7) | {source}`try_eliminate_fixed_basic <src/theory/arithmetic/lra_tableau.cpp#L393-L431>` pivots a fixed basic variable out and pins its value. Off by default for pure LRA, on by default for QF_UFLRA; {source}`route defaults <src/smt/check_sat.hpp#L295-L310>` and {source}`design and evidence <docs/qf-lra-heuristics.md#L533-L730>`. |
 | Model-based phase hints (H5) | {source}`refresh_model_phase_atom <src/smt/solver_engines.cpp#L7415-L7473>` supplies preferred polarities while SAT keeps variable selection. Off by default; {source}`phase-selection investigation <docs/qf-lra-heuristics.md#L976-L1233>`. |
-| SOI and alternative pivot policies | {source}`LraTableau::check <src/theory/arithmetic/lra_tableau.cpp#L1711-L1805>` and the {source}`base-paper deviation map <docs/papers/fast-linear-arithmetic-dpllt.md>` explain these opt-in policies. |
+| SOI and alternative pivot policies | [SOI objective, selection, conflicts and historical evidence](#lra-soi); the {source}`base-paper deviation map <docs/papers/fast-linear-arithmetic-dpllt.md>` separates these policies from the default repair loop. |
 | Equality sharing and model reconciliation | [Theory combination](combination.md), the {source}`equality-sharing design <docs/qf-lra-equality-sharing.md>` and {source}`tableau equality/model interfaces <src/theory/arithmetic/lra_tableau.hpp#L331-L600>`. Model coincidence is not an entailed equality. |
 | Preprocessing and experiment history | {source}`monotone elimination <docs/papers/monotone-variable-elimination.md>`, {source}`guarded equality experiments <docs/qf-lra-heuristics.md#L1234-L1347>` and {source}`arithmetic development record <docs/arithmetic.md>`. |
 
@@ -602,7 +879,7 @@ and sections checked.
 | [Alberto Griggio, *An Effective SMT Engine for Formal Verification*](https://iris.unitn.it/handle/11572/368265), PhD thesis, Trento, 2009, §2.5 | Exact-number and tableau engineering; the implemented opt-in least-violated rule. Its reported MathSAT heuristic is distinct from Primo's default. |
 | [Martin Bromberger, *Decision Procedures for Linear Arithmetic*](https://publikationen.sulb.uni-saarland.de/handle/20.500.11880/28955), PhD thesis, Saarland, 2019, §§7.1.3–7.1.4 | Backtracking alternatives and sparse data structures. The complete equality-basis algorithms of Chapter 5 remain further work; current local equality rules do not implement that complete method. |
 | David Monniaux, *On Using Floating-Point Computations to Help an Exact Linear Arithmetic Decision Procedure*, CAV 2009, §§2.1, 3 and 4 | Polynomial normalization, sparse pivot-cost rationale and two-tier rationals. The floating-point acceleration is not implemented. |
-| Tim King, Clark Barrett and Bruno Dutertre, *Simplex with Sum of Infeasibilities for SMT*, FMCAD 2013 | Optional SOI mode; see also King's thesis. This does not characterize the default sparse repair loop. |
+| Tim King, Clark Barrett and Bruno Dutertre, [*Simplex with Sum of Infeasibilities for SMT*](https://theory.stanford.edu/~barrett/pubs/KBD13.pdf), FMCAD 2013, §V | Optional SOI objective, breakpoint walk and multi-row conflicts; [implemented choices](#lra-soi) distinguish the finite Bland fallback and minimizer from the paper and King's thesis. This does not characterize the default sparse repair loop. |
 | Nikolaj Bjørner and Lev Nachmanson, *Arithmetic Solving in Z3*, CAV 2024, §§2, 3 and 6 | Modern comparison for exact sparse arithmetic and propagation; §3.2 is the basis for the optional model-unit equality producer. Integer/nonlinear techniques need their own mappings. |
 | Martin Bromberger, Mathias Fleury, Simon Schwarz and Christoph Weidenbach, *SPASS-SATT: A CDCL(LA) Solver*, CADE 2019, §3 and footnote 3 | Theory-model phase recommendations underlying H5. Primo refreshes backend phase hints rather than exposing SPASS-SATT's `GetPhase` callback. |
 | Erling D. Andersen and Knud D. Andersen, *Presolving in Linear Programming*, Mathematical Programming 71, 1995, §3.1(iv) | Fixed-variable elimination motivates H7. Primo keeps variables and reasons and pivots fixed basics out; it does not delete columns using the paper's full presolve/restoration pipeline. |
@@ -626,6 +903,8 @@ in the [contributor correctness guide](../development/correctness.md#fuzzing-and
 | Propagation has a Boolean effect and respects configured caps | {source}`same-variable/row propagation tests <tests/unit/qf_lra_solver_tests.cpp#L3268-L3447>` |
 | Reverse row propagation derives another variable's bound and can lead to conflict | {source}`reverse-direction regressions <tests/unit/qf_lra_solver_tests.cpp#L3449-L3535>` |
 | SOI exercises the paper's worked pivot example | {source}`SOI worked-example test <tests/unit/lra_tableau_tests.cpp#L798-L829>` |
+| SOI reduction can discard unrelated conflicting rows | {source}`independent-conflict minimization test <tests/unit/lra_tableau_tests.cpp#L941-L981>` |
+| SOI strategies return asserted reasons; deletion order affects clause length | {source}`minimization strategy tests <tests/unit/lra_tableau_tests.cpp#L2496-L2573>` |
 
 Performance investigations additionally use pivot, row-update, term-operation,
 Bland-fallback and propagation counters; their publication is visible in

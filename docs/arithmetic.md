@@ -454,8 +454,15 @@ The editable TikZ source is `docs/figures/lra-tableau-occurrence-index.tex`.
   Bland/Dantzig's single-row objective with a global one -- minimize the
   sum of infeasibilities across *every* out-of-bound basic variable at
   once, addressing Dutertre-de Moura's own documented weak point (no
-  global progress criterion). Full paper algorithm, not a scoped-down
-  version:
+  global progress criterion). The implemented mechanisms are listed below.
+  Primo differs from the paper in degenerate entering-variable tie-breaking,
+  uses a finite Bland fallback, and does not perform Figure 5's preliminary
+  all-row conflict scan. Its recursive minimizer uses the restricted-row
+  conflict test, rather than the row-selection procedure in King's thesis
+  Figure 3.6. Zero-length breakpoints also need correction: the current slope
+  update can count a change when a variable starts on a bound and moves into
+  its feasible interval, producing an unnecessary zero-step pivot. The draft
+  LRA chapter records a focused reproduction. Implemented mechanisms:
   - An incrementally-maintained "f-row" (`f_var_`, a real extra
     `LraVarId`/row so `pivot()`'s existing row-rewrite logic keeps it
     correct across basis changes for free) tracks `sum(d_i * row_i)` over

@@ -3,6 +3,42 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-09-28-soi-zero-breakpoint-debug",
+      "date": "2026-09-28",
+      "kind": "diagnostic",
+      "commit": "8f8c196",
+      "scope": "One bounded component debug example found during the SOI documentation rewrite; no solver behavior change or batch execution.",
+      "evidence_status": "diagnostic_only",
+      "environment": {
+        "type": "local",
+        "host": "workspace",
+        "build": "C++20 -O0 -g; lra_tableau.cpp and rational.cpp compiled directly from current source"
+      },
+      "command": "c++ -std=c++20 -O0 -g -Isrc -Icontrib/local/include docs-next/examples/soi-zero-step.cpp src/theory/arithmetic/lra_tableau.cpp src/util/rational.cpp contrib/local/lib/libgmpxx.a contrib/local/lib/libgmp.a -o /tmp/primo-soi-zero && timeout 10 /tmp/primo-soi-zero",
+      "artifacts": {
+        "reproducer": "docs-next/examples/soi-zero-step.cpp",
+        "explanation": "docs-next/implementation/lra.md, Known limitation: zero-length breakpoints"
+      },
+      "summary": {
+        "inputs": 1,
+        "exit_code": 0,
+        "stdout": "pivots=2 x=1 y=0",
+        "expected_selection": "The paper objective admits a one-pivot repair by increasing x by 1. The current zero-breakpoint slope adjustment instead selects an initial zero-step pivot.",
+        "verdict": "Valid final assignment in this example; confirmed selection discrepancy. No claim about broader correctness or performance."
+      },
+      "verification": {
+        "passed": [
+          "Single component debug execution finished within a ten-second timeout.",
+          "Final assignment x=1 and y=0 satisfies the example."
+        ],
+        "pending": [
+          "Correct the endpoint slope calculation and add zero/coincident/strict-bound regression coverage.",
+          "Run the required remote solver and fuzz gates for any subsequent behavior change."
+        ]
+      },
+      "notes": "The reproduction was initially compiled from a temporary copy; the same program, formatted with repository clang-format, is retained as a documentation download. Solver source is unchanged from the documentation source revision e6d9fcb."
+    },
+    {
       "id": "2026-09-25-bridge-atoms-removal",
       "date": "2026-09-25",
       "recorded_at": "2026-09-25T13:07:49.192638+02:00",

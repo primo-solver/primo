@@ -29,6 +29,10 @@ make docs-serve
 is in `docs/_build/html`. `make docs-serve` builds and serves it on port 8000.
 Use `PRIMO_DOCS_VENV` to select another documentation virtual environment.
 
+Both books enable MyST's `dollarmath` extension: use `$...$` for inline
+mathematics and `$$...$$` for displayed equations. Check the rendered page
+when adding equations or mathematical tables.
+
 Notebook execution is disabled. A successful book build checks references and
 rendering, not the behavior of solver examples. Run:
 

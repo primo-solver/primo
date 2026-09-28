@@ -279,17 +279,19 @@ examples. Directly relevant if Primo's tableau implementation later hits the
 same slow-convergence pathology Dutertre-de Moura is known for.
 
 **Implemented (2026-07-25, `PivotingRule::Soi`, opt-in via
-`--lra-pivoting-rule soi`).** The full algorithm, not a scoped-down
-version: the incremental f-row/direction tracking, the breakpoint-sorted
+`--lra-pivoting-rule soi`).** Implements incremental f-row/direction tracking,
+the breakpoint-sorted
 `ΔVio(j,δ)` walk (Section V-A), and the multi-row conflict +
 QuickXplain minimization (Section V-B) for when several rows are stuck
 simultaneously. Directly verified against the paper's own Fig 6 worked
 example (a white-box unit test reproduces the exact `(entering=x2, δ=1,
-leaving=x1)` pivot the paper hand-traces). See `docs/arithmetic.md`'s
-"SOI-Simplex pivoting" section for the full design, including the one
-genuinely new piece beyond the paper (trail/incremental integration with
-`push()`/`pop()`, which the paper's single non-incremental `Check` call
-doesn't address) and a real heap-use-after-free found there during manual
+leaving=x1)` pivot the paper hand-traces). Primo retains coefficient-based
+entering preference on zero-progress steps and uses a finite Bland fallback;
+it omits Figure 5's preliminary all-row conflict scan. Its recursive minimizer
+uses the restricted-row test, without King's thesis Figure 3.6 row-selection
+procedure. See `docs/arithmetic.md`'s "SOI-Simplex pivoting" section for the
+design and additional `push()`/`pop()` trail integration, and a real
+heap-use-after-free found there during manual
 testing, since fixed. A quick 17-file real-benchmark comparison found
 identical results to Bland (7/17 solved, same files) -- didn't move that
 particular narrow sample, matching this session's items 1-2 (solve-eqs,
