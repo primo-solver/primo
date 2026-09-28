@@ -1357,3 +1357,29 @@ cover all 34 navigated draft pages; rendered titles, tables and links were
 inspected. Source and unit-test files still match the source-link pin.
 The external URL audit was not rerun; the cited primary texts were accessed
 and read for this survey. No solver batches ran or new qualification was claimed.
+
+(row-propagation-exposition-checks)=
+### Row propagation and combination links, 2026-09-28
+
+Resolved the LRA row-propagation TODO with a signed-coefficient table, a
+forward bound and its SAT clause, a strict-bound variant, and a reverse
+derivation that divides by a negative coefficient. The description follows
+the implied-bound helpers through atom entailment, queued delivery and reason
+streaming. It records selective triggers, missing-bound behavior, index gates,
+size/fanout caps and defaults, without claiming complete interval saturation.
+
+Added reciprocal links to theory combination. A separate combination subsection
+explains the optional online paired-bound equality producer, lazy equality-atom
+registration and an arithmetic-to-EUF conflict chain. It distinguishes this
+producer from final tableau equality scans, exact fallback and model guesses.
+Existing forward, reverse, cap and online-equality regressions are linked;
+the review ledger and migration inventory reflect the resolved coverage gap.
+
+Reread Dutertre–de Moura's technical report §3.2.5 and the strict-bound
+convention in §3.3, and Bjørner–Nachmanson §3.3. Checked the owning code,
+callers and option defaults, then reviewed the example arithmetic, clause
+signs and rendered sections. Both strict books and local/source links were
+checked with `make docs-check-links`; existing page anchors were retained.
+Solver sources and the documentation pin remain unchanged. No solver tests,
+fuzzing or benchmark batches ran for this documentation-only change.
+The SOI, integer-arithmetic and retained-evidence TODOs remain open.

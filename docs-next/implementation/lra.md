@@ -298,6 +298,14 @@ object is a SAT clause, not an exported proof certificate with coefficients.
 
 ## Propagation and online checking
 
+Arithmetic propagation proves the value of an existing Boolean atom from
+active bounds and the tableau equations. It returns that literal with an
+explanation clause. [Equality exchange](combination.md#explained-equality-exchange)
+uses the same implication-to-clause principle to communicate consequences
+between theories; its conclusions are equalities of shared terms.
+
+### Bounds on the same variable
+
 Default propagation compares predicates bounding the same tableau variable.
 For instance, `p: s <= 2` entails `t: s <= 5`, with reason clause `¬p ∨ t`.
 {source}`scan_for_propagations <src/smt/solver_engines.cpp#L7554-L7600>` visits
@@ -306,28 +314,145 @@ unassigned atom. It uses bounds, not accidental equalities in the current
 candidate assignment. This is the cheap propagation of the technical report's
 §3.2.5.
 
-Row propagation is implemented but off by default. It can combine bounds
-on several row terms, and the optional reverse direction can bound a child
-from the row's basic-variable bound and its other terms. Every required bound
-must exist; row-size and fanout caps may decline work. See
-{source}`implied row bounds <src/smt/solver_engines.cpp#L6837-L6970>` and
-{source}`propagation options <src/smt/check_sat.hpp#L245-L269>`.
-Neither mode performs complete arithmetic consequence discovery.
+### Deriving a bound from a row
 
-```{admonition} TODO: Work through row propagation
-:class: note
+Optional row propagation combines bounds on several variables. Consider the
+current tableau row
 
-Derive a bound from a concrete row and signed coefficients, showing which
-lower or upper bounds supply each contribution. Include the reverse direction
-and the resulting SAT explanation clause. Show when a missing bound or a
-configured cap prevents propagation; connect each step to the code above.
+```text
+s = 2*x - 3*y + z
 ```
 
+Here `s` is basic and `x`, `y`, `z` are nonbasic; the equation is an identity
+maintained by pivoting, not an extra SAT assumption. Let `l(v)` and `u(v)`
+denote the active lower and upper bounds on variable `v`. Multiplication by
+a negative coefficient reverses order, so the bound used for each contribution
+depends on its sign:
+
+| Coefficient of `v` | Upper-bound contribution | Lower-bound contribution |
+| --- | --- | --- |
+| `a > 0` | `a*u(v)` | `a*l(v)` |
+| `a < 0` | `a*l(v)` | `a*u(v)` |
+
+Thus this row gives
+
+```text
+upper(s) = 2*u(x) - 3*l(y) + u(z)
+lower(s) = 2*l(x) - 3*u(y) + l(z)
+```
+
+These are candidate implied bounds; they need not be the strongest bounds
+entailed by the whole problem. {source}`compute_implied_bound
+<src/smt/solver_engines.cpp#L6854-L6879>` computes one direction at a time
+with exact `DeltaRational` arithmetic and collects the reasons of the selected
+bounds. It reads bounds, not the current model's values of `x`, `y` and `z`.
+
+For a concrete upper bound, suppose SAT literals `p`, `q`, `r` assert
+`x <= 4`, `y >= 1`, `z <= 2`. The contributions are at most 8, −3 and 2,
+respectively, so `s <= 7`. If an unassigned atom has literal `t` and means
+`s <= 8`, this entails `t` with the clause
+
+```text
+not p or not q or not r or t
+```
+
+The threshold may be weaker than the computed bound: `7 <= 8` suffices.
+For a lower-bound query the comparison reverses. The
+{source}`entailment check <src/smt/solver_engines.cpp#L7601-L7615>` makes this
+comparison against the bound imposed by each possible truth value of the
+target atom. It can therefore propagate the negation of an atom as well.
+
+The same calculation handles strict bounds using the
+[infinitesimal convention](#exact-numbers-and-strict-bounds). Replacing `x <= 4`
+by `x < 4` contributes `2*(4 - δ)` and gives `s <= 7 - 2*δ`. This is strong
+enough to imply the atom `s < 7`, whose upper bound is `7 - δ`.
+
+### Bounding a row variable in reverse
+
+The optional reverse direction isolates a nonbasic variable rather than the
+row's basic variable. In a separate candidate with the same row, let literals
+`a`, `b`, `c` assert `s <= 1`, `x >= 2`, `z >= 0`. Isolating `y` gives
+
+```text
+-3*y = s - 2*x - z <= 1 - 2*2 - 0 = -3
+   y >= 1
+```
+
+Dividing by −3 reverses the inequality. If literal `v` represents the
+unassigned atom `y >= 1`, its explanation is
+`not a or not b or not c or v`. This derivation uses the bound on `s` and
+the other row variables; it does not need an existing bound on `y`.
+
+In general, for `s = k*y + sum(k_j*x_j)` with nonzero `k`, isolate
+`y = (s - sum(k_j*x_j))/k`. Choose the numerator's upper or lower bound
+according to the requested direction and the sign of `k`, then apply the
+coefficient rule above to the subtracted terms. This is
+{source}`compute_implied_child_bound <src/smt/solver_engines.cpp#L6893-L6930>`.
+It returns a derived value and the clause literals explaining the selected
+bounds, without pivoting to make `y` basic.
+
+### Delivery, triggers and limits
+
+Both helpers retain the bounds' **already negated premise literals**: the
+forward example stores `not p`, `not q`, `not r`. The
+{source}`delivery and reason callbacks <src/smt/solver_engines.cpp#L7115-L7180>`
+return the target literal and these clause literals without negating them again.
+The propagator owns the queued candidates and delivered reasons, following the
+[explanation lifetime](dpllt.md#reason-lifetime-is-separate-from-clause-retention)
+rules. A row identity needs no SAT premise;
+changing basis does not invalidate the identity used to derive the clause.
+
+The implementation uses derived bounds to test already registered atoms. It
+does not install every derived numeric bound or iterate interval refinement
+to a fixed point. Only when SAT assigns a propagated atom does its bound enter
+the usual assignment path and become available for further propagation.
+
+After a nonconflicting assigned bound, the
+{source}`notification hook <src/smt/solver_engines.cpp#L7340-L7347>` invokes
+the optional row scan. {source}`scan_row_based_propagations
+<src/smt/solver_engines.cpp#L7630-L7668>` follows `occurs_in(changed_var)` to
+rows containing the changed variable. It skips rows without indexed atoms on
+their basic variable; otherwise it tests those atoms and, when enabled, runs
+the reverse scan over atoms on the other row variables.
+This is selective scheduling: a change to a basic variable's own bound alone
+does not visit its defining row through `occurs_in`. In the reverse example,
+a subsequent bound notification for `x` or `z` can trigger the calculation
+once the needed bounds are present. Pivots do not themselves run this scan.
+
+Missing bounds and cost caps can prevent a propagation without changing
+satisfiability. Without a lower bound on `y`, the forward example cannot
+compute its upper bound by this interval calculation; another direction or
+another row may still yield a consequence. A row wider than the size cap is
+skipped. If the changed variable occurs in more rows than the fanout cap,
+the scan skips all of them for that notification rather than taking a prefix.
+The {source}`default caps <src/smt/check_sat.hpp#L173-L178>` are 64 terms/rows
+for forward work and 32 for reverse work. Each target-atom query can rescan
+the row, so the cost also depends on how many atoms index the affected variables.
+
+{source}`The options <src/smt/check_sat.hpp#L245-L269>` enable same-variable
+propagation by default; row propagation requires `lra_row_propagation`, and
+the reverse direction additionally requires `lra_bidirectional_row_propagation`.
+Both row options default to false and depend on `lra_propagation`. These
+mechanisms do not perform complete arithmetic consequence discovery.
+
+Dutertre–de Moura's technical report §3.2.5 describes both same-variable
+propagation and row-bound refinement; applying it to an isolated row variable
+gives the reverse rule above. Primo's atom indexing, triggers and caps are
+implementation choices.
 Bjørner and Nachmanson's [*Arithmetic Solving in Z3*](https://doi.org/10.1007/978-3-031-65627-9_2)
 (CAV 2024), §3.3, makes the same
 direct/indirect propagation distinction. Primo's row mode queries implied
 bounds to explain existing Boolean atoms; this does not mean it implements
 every bound-refinement policy described for Z3.
+
+For mixed Real problems, a proved comparison can also contribute to
+[online shared-equality propagation](combination.md#online-equality-propagation):
+assigned `x <= y` and `y <= x` justify `x = y`. The default
+[tableau equality rules](#lra-default-equality-rules) are another producer,
+with their own scheduling and completeness limits. These are separate from
+guessing an equality because two current model values happen to coincide.
+
+### Deferred consistency checks
 
 The online propagator applies each assigned bound immediately but defers
 simplex repair until a consistency check is needed. This batches `check()`
@@ -496,6 +621,7 @@ in the [contributor correctness guide](../development/correctness.md#fuzzing-and
 | Rollback preserves equation consistency; SOI restores its extra state | {source}`ordinary rollback tests <tests/unit/lra_tableau_tests.cpp#L238-L416>` and {source}`SOI rollback <tests/unit/lra_tableau_tests.cpp#L867-L904>` |
 | Shared polynomials preserve scaled thresholds and flipped strictness | {source}`preparation tests <tests/unit/qf_lra_solver_tests.cpp#L4363-L4450>` |
 | Propagation has a Boolean effect and respects configured caps | {source}`same-variable/row propagation tests <tests/unit/qf_lra_solver_tests.cpp#L3268-L3447>` |
+| Reverse row propagation derives another variable's bound and can lead to conflict | {source}`reverse-direction regressions <tests/unit/qf_lra_solver_tests.cpp#L3449-L3535>` |
 | SOI exercises the paper's worked pivot example | {source}`SOI worked-example test <tests/unit/lra_tableau_tests.cpp#L798-L829>` |
 
 Performance investigations additionally use pivot, row-update, term-operation,

@@ -269,6 +269,13 @@ EUF projects its shared congruence classes and emits a spanning set of
 equalities for each class. A class of `k` terms needs `k - 1` such edges:
 transitivity supplies the remaining equalities.
 
+Arithmetic also propagates ordinary bound predicates within its own solver.
+The [LRA propagation section](lra.md#propagation-and-online-checking) derives
+their explanation clauses from individual bounds and tableau rows. Here the
+conclusions cross the theory boundary as shared equalities. Both mechanisms
+must explain entailment from active constraints, not from coincident values
+in one candidate model.
+
 (lra-default-equality-rules)=
 #### Default LRA rules
 
@@ -359,6 +366,45 @@ Explained equalities can be absorbed into EUF internally. Otherwise the engine
 materializes an equality atom and learns the guarded propagation clause before
 re-entering SAT. An equality selected false must also be respected: a feasible
 arithmetic model that still identifies its endpoints is insufficient.
+
+### Online equality propagation
+
+The Real route also has an opt-in `--nelson-oppen-prop=online` path. Suppose
+assigned literals `p` and `q` represent `x <= y` and `y <= x`, with `x` and
+`y` shared between arithmetic and EUF. Together they force equality. Writing
+`e` for `x = y`, the explanation clause is
+
+```text
+not p or not q or e
+```
+
+{source}`OnlineLraPropagator's paired-bound hook
+<src/smt/solver_engines.cpp#L7502-L7551>` recognizes these oppositely oriented,
+true non-strict comparisons and queues the pair with its reasons. It observes
+assigned atoms: an ordinary arithmetic propagation can supply one of the
+comparisons once SAT assigns it. This hook has its own enable condition;
+enabling row propagation alone does not enable online equality exchange.
+
+The {source}`mixed dispatcher <src/smt/solver_engines.cpp#L8064-L8125>` checks
+that the endpoints form a shared interface pair and queues it. On delivery it
+reuses an existing equality literal or creates and registers an observed one
+on demand. Its {source}`propagation callback
+<src/smt/solver_engines.cpp#L7920-L7958>` supplies an unassigned equality
+literal with the clause above as its reason. Assigned pairs are left to the
+other consistency and combination checks.
+
+The equality can expose an EUF conflict. For example, if literal `d` asserts
+`f(x) != f(y)`, congruence gives the clause `not e or not d`. Combining the
+two clauses gives `not p or not q or not d`: the arithmetic bounds and the
+EUF disequality cannot all hold. Each theory supplies its own explanation;
+EUF does not need to reason about the coefficients or bounds that proved `e`.
+
+This narrow online producer complements the final equality scans and model
+checks. It does not replace the [default row rules](#lra-default-equality-rules)
+or their [exact fallback](#lra-exact-equality-fallback), and the default
+`--nelson-oppen-prop=final` does not enable it. The
+[forward and reverse row derivations](lra.md#deriving-a-bound-from-a-row)
+explain how arithmetic can first establish bound literals used in such chains.
 
 ### Reconciling candidate models
 
@@ -647,6 +693,7 @@ sections read for this chapter.
 | Default LRA equality rules require matching bounds, zero remainders, and identical nonfixed expressions | {source}`FixedEq and EqRow regressions <tests/unit/lra_tableau_tests.cpp#L1528-L1661>`; {source}`two-row matching and rejection regressions <tests/unit/lra_tableau_tests.cpp#L1681-L1774>` |
 | Equality must travel in both directions until the convex problem is settled | {source}`EUF–LRA–EUF fixed-point regression <tests/unit/qf_lra_solver_tests.cpp#L1429-L1452>` |
 | A propagated equality remains guarded by the branch that proves it | {source}`assignment-guard regression <tests/unit/qf_lra_solver_tests.cpp#L1553-L1594>` |
+| Online paired bounds publish an explained equality and register its atom lazily | {source}`online equality regression <tests/unit/qf_lra_solver_tests.cpp#L2818-L2853>` |
 | A candidate merge must preserve arithmetic agreement after congruence | {source}`optional-merge consequence regression <tests/unit/qf_lra_solver_tests.cpp#L2530-L2553>` |
 | A mixed model can separate a coincident pair without materializing its equality | {source}`single-call mutation and pair-pruning regression <tests/unit/qf_lra_solver_tests.cpp#L2299-L2326>` |
 | Mutation preserves tableau state and already-satisfied mandatory disequalities | {source}`scratch-state regression <tests/unit/lra_tableau_tests.cpp#L2295-L2324>`; {source}`mandatory-disequality regressions <tests/unit/lra_tableau_tests.cpp#L2393-L2444>` |
