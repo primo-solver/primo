@@ -8,9 +8,16 @@ repository's existing documentation requirements already apply.
 ## Build and preview
 
 The replacement book is now developed separately in `docs-next/`. Use
-`make docs-next` to build it, or `make docs-next-serve` for its preview at
-`http://localhost:8001`. Its `review.md` and `review.csv` track page review and
+`make docs-next` to build it incrementally, or `make docs-next-serve` for its
+preview at `http://localhost:8001`. Its `review.md` and `review.csv` track page review and
 acceptance. The commands below continue to build the existing book.
+
+Draft builds reuse Sphinx's cache and rebuild changed pages and their
+dependants. Use `make docs-next-full` to re-read every draft page and check all
+warnings before accepting changes. Warnings are errors in both modes, but
+cached pages may hide warnings during an incremental build. The first build
+and configuration changes may require a full rebuild. When calling the wrapper
+directly, `PRIMO_DOCS_DIR=docs-next bash scripts/build_docs.sh --all` forces one.
 
 ```bash
 make docs
@@ -40,7 +47,7 @@ not fuzz the solver or independently prove model validity.
 ## Check hyperlinks
 
 ```bash
-make docs-check-links       # rebuild both books; check local and pinned Git links
+make docs-check-links       # fully rebuild both books; check local and pinned Git links
 make docs-check-external    # also check external URLs with Sphinx
 ```
 

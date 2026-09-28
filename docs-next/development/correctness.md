@@ -35,11 +35,13 @@ Run commands from the repository root:
 ```bash
 make check
 make docs
-make docs-next
+make docs-next-full
 ```
 
 `make check` runs formatting/lint checks, C++ tests, and Python tests. It does
 **not** run fuzzing, independent model validation, or the documentation build.
+For draft previews, `make docs-next` reuses the previous build; the full target
+above re-reads every page for validation.
 The {source}`check target <Makefile#L124>` lists those dependencies; the
 {source}`test and sanitizer targets <Makefile#L22-L32>` define their commands.
 Memory-sensitive C++ changes also require `make asan-test`, including changes

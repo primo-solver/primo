@@ -75,16 +75,19 @@ docs:
 docs-next:
 	PRIMO_DOCS_DIR=docs-next bash scripts/build_docs.sh
 
-.PHONY: docs-check-links docs-check-external
+.PHONY: docs-next-full docs-check-links docs-check-external
+docs-next-full:
+	PRIMO_DOCS_DIR=docs-next bash scripts/build_docs.sh --all
+
 docs-check-links:
 	$(MAKE) docs
-	$(MAKE) docs-next
+	$(MAKE) docs-next-full
 	$(PYTHON) scripts/check_doc_links.py docs/_build/html docs-next/_build/html --report docs/_build/linkcheck-local.json
 
 docs-check-external: docs-check-links
 	# Keep linkcheck reports separate from Jupyter Book's HTML output.
 	@status=0; for book in docs docs-next; do \
-		PRIMO_DOCS_DIR=$$book bash scripts/build_docs.sh --builder custom --custom-builder linkcheck || status=1; \
+		PRIMO_DOCS_DIR=$$book bash scripts/build_docs.sh --all --builder custom --custom-builder linkcheck || status=1; \
 	done; exit $$status
 
 docs-serve: docs

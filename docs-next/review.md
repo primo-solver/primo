@@ -8,8 +8,9 @@ appear in this book's navigation. The complete proposed structure remains in
 ## Preview either version
 
 ```bash
-make docs-next             # writes docs-next/_build/html/index.html
+make docs-next             # incremental build in docs-next/_build/html/
 make docs-next-serve       # serves the draft on http://localhost:8001
+make docs-next-full        # rebuild every draft page for validation
 ```
 
 The existing preview uses `make docs-serve` on port 8000. Stop a server with
@@ -26,6 +27,13 @@ The build wrapper defaults to `docs`; setting `PRIMO_DOCS_DIR=docs-next`
 selects the draft when invoking the wrapper directly. The Make targets select
 their book explicitly, so a shell environment setting cannot make `make docs`
 overwrite the draft or make `make docs-next` overwrite the existing book.
+
+Draft previews reuse Sphinx's cached documents and rebuild changed pages and
+their dependants. The first build, or a configuration change, can rebuild
+everything. Warnings remain errors. Use `make docs-next-full` for a complete
+warning check before accepting edits; `make docs-check-links` rebuilds both
+books fully before checking links. Direct wrapper calls can pass `--all` to
+force a full draft build.
 
 ## Page review ledger
 
@@ -1183,3 +1191,18 @@ with the documentation pin found no changes to solver source or the cited
 unit suites. Linked primary PDFs were retrieved successfully for reading;
 the full external audit was not rerun, and its earlier access failures
 remain recorded separately.
+
+(incremental-draft-builds)=
+### Incremental draft builds, 2026-09-28
+
+`make docs-next` and its preview target now reuse Sphinx's cached documents.
+`make docs-next-full`, both link-check targets, and the documentation
+qualification script retain full builds with warnings treated as errors.
+`make docs` retains its existing full-build behavior.
+
+Checked actual HTML modification times: an unchanged draft build rewrote no
+book pages; a temporary edit to the quantifier chapter rebuilt that page and
+the index, leaving the other 27 pages untouched. The edit was then restored
+and rebuilt. Full-build and link checks, shell syntax checks, `make lint`, and
+`git diff --check` passed. This changes documentation tooling only; C++ tests,
+sanitizers, static analysis, and solver fuzzing are not applicable.

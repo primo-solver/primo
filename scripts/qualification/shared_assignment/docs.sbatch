@@ -9,4 +9,4 @@ set -euo pipefail
 cd "${PRIMO_WORKDIR:?}"
 [[ -n ${SLURM_JOB_ID:-} ]]
 make docs
-make docs-next
+make docs-next-full
