@@ -1,7 +1,7 @@
 # Documentation restructuring before public release
 
-**Status: rewrite in progress, 2026-09-24; first user-manual batch implemented,
-full structural inventory audited.**
+**Status: rewrite in progress, 2026-09-29; implementation drafts through integer
+arithmetic available, with section-level preservation audits started.**
 The project owner has made substantial documentation restructuring a priority
 before the first public release. A private repository transfer can happen first.
 The three status entry points added in
@@ -28,8 +28,18 @@ describes the implemented general component driver used by QF_UFLIA and
 quantified UF, alongside the retained dedicated Real coordinator. Migrating
 QF_UFLRA to the general driver is still open. Primary paper/thesis mappings,
 code links, and regression obligations accompany the current behavior. The original
-combination pages and their dated evaluations remain in place. Final extraction,
-reader acceptance, and the separate LIA/model chapters are still pending.
+combination pages and their dated evaluations remain in place. Separate model
+and LIA drafts now cover model construction and integer completion. Final
+extraction and reader acceptance remain pending.
+
+**Integer chapter, 2026-09-29:** `docs-next/implementation/lia.md` explains the
+current stage order, integer/auxiliary-variable distinction, strict bounds,
+patching, GCD checks, cuts, branching and SAT explanations against source and
+the supplied primary papers. `docs-next/coverage/lia.md` maps every section of
+the old integer development chapter to its current explanation, supersession
+or retained history. Preprocessing policy and contributor experiment procedures
+are explicit remaining extractions. Preprocessing and tactics are the next
+implementation chapters; other chapters still need their section-level maps.
 
 The quantifier draft in `docs-next/implementation/quantifiers.md` now covers
 binders, enumerative quantified-UF solving, witness clauses, queue scheduling,
@@ -99,8 +109,9 @@ the repository URL and source revision centrally in the documentation build
 and generate code links from those settings. Keep revision metadata in the
 review ledger or build information; ordinary chapters explain the code without
 revision boilerplate. The replacement book uses one commit-pinned URL for its
-`source` role. Automatic path/line validation, build-revision metadata and
-archive-aware provenance remain planned tooling.
+`source` role. `make docs-check-links` now validates local HTML targets and
+Git source paths/line ranges. Build-revision metadata and archive-aware
+provenance remain further work.
 
 Check the source revision and referenced paths in the destination before
 publishing. If a curated history changes commit identities, use the explicit

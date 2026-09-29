@@ -13,16 +13,11 @@ bounds, small-rational arithmetic, sparse pivoting, occurrence indices, deferred
 checks and bounds-only rollback. Section numbers for this source refer to the
 **technical report**, whose numbering differs from the CAV paper.
 
-```{admonition} TODO: Write the integer-arithmetic companion chapter
-:class: note
-
-Extract the current algorithms from the
-{source}`integer development record <docs/qf-lia-branch-and-bound.md>`:
-branch-and-bound, GCD checks, Gomory cuts, patching, and conflict generalization.
-Explain their order, guards, budgets, and concrete incompleteness examples,
-with links to the pure and combined integer routes. Keep dated experiments
-separate from the current algorithm and its limitations.
-```
+The [integer-arithmetic companion](lia.md) explains how the pure and combined
+integer routes use this tableau as a real relaxation, then apply patching,
+GCD checks, Gomory cuts and branching. It covers their explanations, budgets
+and incomplete cases; [its preservation map](../coverage/lia.md) retains
+the dated experiments separately.
 
 ## Representation and ownership
 

@@ -614,6 +614,9 @@ driver.
 
 ## Building the combined model
 
+The shared {ref}`integer stages <lia-schedule>` explain how the LIA component
+completes a rational assignment and why it can return a resource limit.
+
 Agreement on shared equality classes is the combination criterion. Printed
 models must additionally preserve concrete arithmetic values, function
 interpretations, and the original expressions removed by preprocessing.

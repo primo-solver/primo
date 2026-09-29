@@ -74,6 +74,12 @@ contracts, and evidence boundaries all have an explanatory home. A source
 link or an old-page inventory is not by itself evidence of complete coverage.
 ```
 
+The first [section-level preservation map](coverage/lia.md) covers the old
+integer-arithmetic chapter. It distinguishes current explanations, superseded
+claims and dated evidence, and names the remaining preprocessing and contributor
+workflow extraction. This is the pattern for the other chapters; their audits
+remain pending.
+
 ## Review order and questions
 
 1. [Home page](index.md): does it explain Primo, offer a useful first action,
@@ -91,9 +97,12 @@ link or an old-page inventory is not by itself evidence of complete coverage.
    and assumptions, and find the lifetime and explanation obligations?
 6. [DPLL(T)](implementation/dpllt.md): are assignment ownership, callback
    ordering, reason signs and lifetimes, and final consistency checks clear?
-7. [EUF](implementation/euf.md) and [LRA](implementation/lra.md): can the reader
+7. [EUF](implementation/euf.md), [LRA](implementation/lra.md) and
+   [LIA](implementation/lia.md): can the reader
    follow each worked example through the owning code and understand the
    representations, invariants, defaults, limitations, and paper basis?
+   For integer reasoning, can they explain the stage order, auxiliary-variable
+   guards, cut and branch antecedents, and the cases that return `unknown`?
 8. [Theory combination](implementation/combination.md): is the difference
    between entailment and a model choice clear, and can the reader identify
    the two production routes, their acceptance conditions, and their fallback
@@ -1451,3 +1460,35 @@ rejections. Timeouts remain separate from passes. The run-log entry
 record commands, revisions, resources, jobs, setup retries, static-review
 results and evidence limits. SOI remains opt-in; this is a selection correction,
 not a new overall performance result.
+
+## Integer arithmetic and first preservation map, 2026-09-29
+
+The LIA chapter was checked against `bc5d21d`: arithmetic stage implementations,
+pure and combined callers, preparation and strict bounds, frontend admission,
+mandatory extended-term lowering, option defaults, model adaptation and the
+existing regression suites. Bjørner and Nachmanson's CAV 2024 §§4.1–4.5 and
+King's thesis §4.4.3, including Lemma 4.1 and equation (4.9), were read from
+the supplied primary PDFs.
+
+The chapter explains the private tableau lifetime, integer-variable guards,
+delta-aware thresholds, patch scoring, GCD scaling, four cut-coefficient cases,
+branch rollback and explanation antecedents. Worked examples include the
+paper's patching example, both cut orientations, divisibility, incomplete
+branching and the need to close both split branches before dropping their
+assumptions. Clause containment is identified as a defensive membership check,
+not a proof of theory validity. Unsupported mixed-input arithmetic and deferred
+integer methods remain explicit.
+
+The preservation map accounts for all 25 headings in the original LIA chapter,
+splitting mixed mechanism/history sections further where needed. It retains
+failed experiments and qualification limits, records superseded claims, and
+leaves visible TODOs for preprocessing policy and contributor workflows.
+Other old pages still need their own section audits; no page is accepted by
+this check.
+
+`make docs-check-links` passed both strict book builds and local/Git source-link
+validation. All 131 pre-existing HTML files retained their anchors. Browser
+inspection covered patching, the cut derivation and coefficient table, and
+the explanation argument; MathJax rendered 161 expressions without errors.
+The whole external-link audit was not rerun. This is a documentation change:
+the solver suites, fuzz campaigns and historical benchmarks were not rerun.

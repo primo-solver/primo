@@ -12,6 +12,7 @@ parts:
       - file: implementation/dpllt
       - file: implementation/euf
       - file: implementation/lra
+      - file: implementation/lia
       - file: implementation/combination
       - file: implementation/quantifiers
       - file: implementation/models
@@ -44,3 +45,5 @@ parts:
   - caption: Reviewing this draft
     chapters:
       - file: review
+        sections:
+          - file: coverage/lia

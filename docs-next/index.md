@@ -64,6 +64,9 @@ the congruence-closure implementation through a conflict and its undo.
 [Linear real arithmetic](implementation/lra.md) covers exact numbers, shared
 polynomial rows, sparse simplex, strict conflicts and rollback, with links to
 the retained arithmetic development and experiments.
+[Linear integer arithmetic](implementation/lia.md) follows the real relaxation
+through patching, divisibility checks, cuts and branching, including conflict
+explanations and resource limits.
 [Theory combination](implementation/combination.md) explains purification,
 Nelson–Oppen equality exchange, model-guided choices, and the implemented general
 component driver used by QF_UFLIA and quantified UF. QF_UFLRA retains its
