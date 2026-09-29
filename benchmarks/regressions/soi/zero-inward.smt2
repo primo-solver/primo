@@ -1,0 +1,8 @@
+(set-logic QF_LRA)
+(set-info :status sat)
+(declare-const x Real)
+(declare-const y Real)
+(assert (= y 0))
+(assert (>= (+ x y) 1))
+(assert (>= (- x y) 0))
+(check-sat)

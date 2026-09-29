@@ -569,7 +569,7 @@ computed $\Delta V$, then the smallest $|h|$, then the smallest leaving-variable
 Across entering variables, it prefers a strict decrease over a zero change,
 then the largest $|c_j|$, then the smallest entering ID. It does **not** compare
 the size of the decrease across different entering variables.
-The current calculation has a zero-length-crossing limitation described below.
+Starting-bound crossings use the one-sided slope described below.
 
 {source}`check's SOI loop <src/theory/arithmetic/lra_tableau.cpp#L1727-L1791>`
 applies the selected step. If the entering variable reaches its own bound,
@@ -707,30 +707,33 @@ conflict derivation. It makes several concrete choices:
 - SOI also maintains its objective during bound assertion and SAT rollback.
   Its extra trail state is described [below](#rollback-and-model-values).
 
-```{admonition} Known limitation: zero-length breakpoints
+```{admonition} Starting exactly on a bound
 :class: note
 
-The current walk applies its crossing slope adjustment at a zero-length
-breakpoint even when the variable starts on that bound and moves into its
-feasible interval. Its cached direction is already zero there, so this can
-miscompute the subsequent change in the objective.
+At step zero, a variable on a bound has direction zero. Moving into its
+feasible interval leaves that direction unchanged; moving out changes it
+to `+1` at an upper bound or `-1` at a lower bound. `SoiBreakPoint` retains
+the bound kind so the slope update can distinguish these cases. A fixed
+variable has two coincident events but contributes only once at zero.
+At a nonzero crossing, passing through its fixed value still changes the
+direction from `-1` to `+1`, or conversely, and contributes twice.
 
 For a concrete example, start at zero with `s = x + y`, `t = x - y`,
 `y = 0`, `s >= 1`, and `t >= 0`. Only `s` is violated, giving
 `f = -x - y`. Increasing `x` by one removes the violation, while `t` moves
-inside its feasible interval. The walk processes `t`'s lower bound at
-step zero and changes its slope from `-1` to `0`; it then incorrectly scores
-the step of one as making no improvement. The distance tie-break selects
-the zero-step pivot first.
+inside its feasible interval. Its zero-length lower-bound event leaves the
+slope at `-1`, and the step of one repairs the assignment in one pivot.
 
-A single {download}`focused debug reproduction <../examples/soi-zero-step.cpp>`
-confirmed two pivots and the final values `x = 1`, `y = 0`, recorded as
+The earlier implementation incorrectly changed the slope to `0` at that
+starting event, scored the step of one as making no improvement, and selected
+a zero-step pivot first. The historical two-pivot diagnostic is recorded as
 `2026-09-28-soi-zero-breakpoint-debug` in the
 {download}`run log bundled with this draft <../../docs/run-log.json>`.
-The final assignment is
-valid in this example. Correcting the endpoint calculation and qualifying
-zero, coincident, and strict-bound crossings remain follow-up implementation
-work; the existing Figure 6 regression does not exercise this case.
+The {download}`retained reproduction <../examples/soi-zero-step.cpp>` now
+asserts a single pivot and the same final values `x = 1`, `y = 0`.
+Dedicated tableau regressions cover inward/outward motion, both coefficient
+signs and walk directions, coincident fixed bounds, infinitesimal steps,
+and replay after rollback. The older Figure 6 regression remains separate.
 ```
 
 Existing tests cover the worked pivot, rollback, reduction of independent
@@ -748,8 +751,7 @@ The {source}`run log <docs/run-log.json>` preserves dated SOI evidence:
 | `2026-08-10-soi-minimization-arms-measured`, `8ddd62d` | A selected 18-instance local comparison measured reason-literal counts for five strategies. No deletion ordering consistently improved on QuickXplain; runtime/PAR2 was not evaluated. |
 
 These records explain the retained experiments, but do not qualify the current
-revision or establish a speed advantage. The endpoint debug example above is
-also not a substitute for a fresh fuzz gate. SOI remains opt-in, with QuickXplain
+revision or establish a speed advantage. SOI remains opt-in, with QuickXplain
 as its default minimizer.
 
 ## Rollback and model values

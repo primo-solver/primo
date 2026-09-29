@@ -459,10 +459,9 @@ The editable TikZ source is `docs/figures/lra-tableau-occurrence-index.tex`.
   uses a finite Bland fallback, and does not perform Figure 5's preliminary
   all-row conflict scan. Its recursive minimizer uses the restricted-row
   conflict test, rather than the row-selection procedure in King's thesis
-  Figure 3.6. Zero-length breakpoints also need correction: the current slope
-  update can count a change when a variable starts on a bound and moves into
-  its feasible interval, producing an unnecessary zero-step pivot. The draft
-  LRA chapter records a focused reproduction. Implemented mechanisms:
+  Figure 3.6. The [endpoint correction](#soi-endpoint-correction) distinguishes
+  inward and outward motion at a starting bound, avoiding an unnecessary
+  zero-step pivot. Implemented mechanisms:
   - An incrementally-maintained "f-row" (`f_var_`, a real extra
     `LraVarId`/row so `pivot()`'s existing row-rewrite logic keeps it
     correct across basis changes for free) tracks `sum(d_i * row_i)` over
@@ -2111,3 +2110,43 @@ campaign-tier confirmation specifically for `--lra-pivoting-rule dantzig`/`soi`
 if either is ever considered for becoming the default. Scale-invariant
 polynomial matching, formerly roadmap item 3, is implemented by H1b; see
 [](qf-lra-heuristics.md).
+
+(soi-endpoint-correction)=
+## SOI endpoint correction
+
+This correction follows King–Barrett–Dutertre, *Simplex with Sum of
+Infeasibilities for SMT*, FMCAD 2013, §V-A: between breakpoints, integrate
+the current slope; at a crossing, change it by `(new_direction - old_direction)
+* coefficient`. King's thesis §3.3.1 gives the corresponding breakpoint walk.
+The special case is its starting point, where a variable exactly on a bound
+has direction zero, rather than the direction just before crossing that bound.
+
+Implementation checklist:
+
+- `LraTableau::soi_select` owns a temporary vector of `SoiBreakPoint` records.
+  Retain whether each record denotes a lower or upper bound. This distinguishes
+  two coincident bounds of a fixed variable without a separate lookup set.
+- The slope initially comes from the current objective row. At a zero step,
+  an increasing basic value contributes `+coefficient` only for an upper bound;
+  a decreasing value contributes `-coefficient` only for a lower bound.
+  An inward move has no direction change. Both bounds of a fixed variable
+  therefore contribute only once at the starting point.
+- At a nonzero crossing, keep the existing `+1` or `-1` direction change for
+  each crossed bound. Passing through both bounds of a fixed variable changes
+  direction from `-1` to `+1`, or conversely, and must still count both.
+- Score all candidates at a coincident breakpoint before updating the slope
+  for the next segment. Keep zero-step pivot candidates, the entering
+  variable's own bound cap, and the existing tie-breaking and Bland fallback.
+- Use exact `DeltaRational` equality to identify step zero. A positive or
+  negative infinitesimal step is nonzero; there is no numeric tolerance.
+- Selection remains read-only over the tableau. There is no change to row
+  mutation, bound explanations, the objective trail, or public interfaces.
+  The record gains one bound-kind flag; time complexity and the number of
+  row scans remain unchanged.
+
+The proof obligation is that the slope after a starting-bound event matches
+the one-sided slope of the violation function in the chosen walk direction.
+Regression coverage must distinguish inward and outward motion on either
+bound, both entering directions and coefficient signs, fixed variables at zero
+and at nonzero crossings, coincident events, infinitesimal steps, and rollback.
+The original diagnostic must repair its feasible assignment with one pivot.

@@ -3,7 +3,7 @@
 
 #include "theory/arithmetic/lra_tableau.hpp"
 
-// One debug example for the SOI chapter's zero-length-breakpoint limitation.
+// Regression example for the SOI chapter's zero-length-breakpoint correction.
 // Keep assertions enabled: this is a standalone diagnostic, not a benchmark.
 using primo::sat::Lit;
 using primo::theory::arithmetic::DeltaRational;
@@ -23,6 +23,7 @@ int main() {
   assert(!t.assert_lower(s, value(1), Lit{3}));
   assert(!t.assert_lower(r, value(0), Lit{4}));
   assert(!t.check());
+  assert(t.pivot_count() == 1);
   std::cout << "pivots=" << t.pivot_count() << " x=" << t.assignment(x).rational.to_string()
             << " y=" << t.assignment(y).rational.to_string() << '\n';
   assert(t.assignment(x) == value(1) && t.assignment(y) == value(0));
