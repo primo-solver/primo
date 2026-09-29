@@ -2150,3 +2150,15 @@ Regression coverage must distinguish inward and outward motion on either
 bound, both entering directions and coefficient signs, fixed variables at zero
 and at nonzero crossings, coincident events, infinitesimal steps, and rollback.
 The original diagnostic must repair its feasible assignment with one pivot.
+
+The implemented correction is covered by
+{source}`dedicated tableau regressions <tests/unit/lra_tableau_tests.cpp#L831-L954>`
+and the two inputs under `benchmarks/regressions/soi/`. Fresh SLURM qualification
+passed all 43 normal and AddressSanitizer test groups, 201 Python tests, and
+36 comparisons against Z3 over arithmetic seeds and the endpoint regressions.
+The SOI-forced merge gate generated 1,000 distinct QF_LRA inputs: 958 agreed
+with Z3 and 42 timed out at five seconds, including two mutual timeouts;
+there were no wrong answers, crashes, input rejections or reference
+disagreements. The retained component example now takes one pivot.
+The run-log entry `2026-09-29-soi-endpoint-correction` records exact provenance.
+SOI remains opt-in; these results do not establish an overall speed gain.

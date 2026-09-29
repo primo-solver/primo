@@ -32,7 +32,7 @@ sphinx:
   config:
     extlinks:
       source:
-        - "https://github.com/primo-solver/primo/blob/e6d9fcb06f476375aded43a13c22a6d6b4939144/%s"
+        - "https://github.com/primo-solver/primo/blob/bc5d21dd7ab28d03d98f90815449b58a0d222d01/%s"
         - "%s"
     myst_heading_anchors: 3
     linkcheck_workers: 4

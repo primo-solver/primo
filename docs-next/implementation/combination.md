@@ -244,7 +244,7 @@ enabled. Pure QF_LRA does not call this routine, and the production general
 component route has no mutation-capable EUF/LIA adapters, as described below.
 
 One call is a bounded greedy sweep, not a search for the most diverse model.
-{source}`diversify_shared_model <src/theory/arithmetic/lra_tableau.cpp#L1550-L1708>`
+{source}`diversify_shared_model <src/theory/arithmetic/lra_tableau.cpp#L1554-L1712>`
 copies the tableau assignment and considers nonbasic variables that can
 change coincident shared values. It tries a bounded set of values within
 each variable's freedom interval, updating dependent basic values without
@@ -281,7 +281,7 @@ in one candidate model.
 
 LRA's opportunistic equality producer looks for consequences of the current
 bounds and tableau rows. The default producer,
-{source}`LraTableau::entailed_equalities <src/theory/arithmetic/lra_tableau.cpp#L1078-L1259>`,
+{source}`LraTableau::entailed_equalities <src/theory/arithmetic/lra_tableau.cpp#L1082-L1263>`,
 implements four rules from de Moura and Bjørner, *Model-based Theory
 Combination*, §5.1. Each conclusion remains true while its explaining bounds
 hold, even if the arithmetic model changes.
@@ -345,7 +345,7 @@ nonshared slack `s` is fixed at zero, and shared `x` and `y` are nonbasic.
 The constraints entail `x = y`, but neither shared variable is fixed or
 has a row for these scans to inspect. Pivoting to `x = y + s` exposes an
 `EqRow` match. The
-{source}`fixed-variable elimination regression <tests/unit/lra_tableau_tests.cpp#L2027-L2041>`
+{source}`fixed-variable elimination regression <tests/unit/lra_tableau_tests.cpp#L2152-L2166>`
 demonstrates this change of basis. Closing this particular gap does not make
 the rules complete. Finding no equality is therefore insufficient to accept
 a combined model; the route retains model reconciliation and exact checks.
@@ -702,13 +702,13 @@ sections read for this chapter.
 
 | Obligation | Regression or mechanism test |
 | --- | --- |
-| Default LRA equality rules require matching bounds, zero remainders, and identical nonfixed expressions | {source}`FixedEq and EqRow regressions <tests/unit/lra_tableau_tests.cpp#L1528-L1661>`; {source}`two-row matching and rejection regressions <tests/unit/lra_tableau_tests.cpp#L1681-L1774>` |
+| Default LRA equality rules require matching bounds, zero remainders, and identical nonfixed expressions | {source}`FixedEq and EqRow regressions <tests/unit/lra_tableau_tests.cpp#L1653-L1786>`; {source}`two-row matching and rejection regressions <tests/unit/lra_tableau_tests.cpp#L1806-L1899>` |
 | Equality must travel in both directions until the convex problem is settled | {source}`EUF–LRA–EUF fixed-point regression <tests/unit/qf_lra_solver_tests.cpp#L1429-L1452>` |
 | A propagated equality remains guarded by the branch that proves it | {source}`assignment-guard regression <tests/unit/qf_lra_solver_tests.cpp#L1553-L1594>` |
 | Online paired bounds publish an explained equality and register its atom lazily | {source}`online equality regression <tests/unit/qf_lra_solver_tests.cpp#L2818-L2853>` |
 | A candidate merge must preserve arithmetic agreement after congruence | {source}`optional-merge consequence regression <tests/unit/qf_lra_solver_tests.cpp#L2530-L2553>` |
 | A mixed model can separate a coincident pair without materializing its equality | {source}`single-call mutation and pair-pruning regression <tests/unit/qf_lra_solver_tests.cpp#L2299-L2326>` |
-| Mutation preserves tableau state and already-satisfied mandatory disequalities | {source}`scratch-state regression <tests/unit/lra_tableau_tests.cpp#L2295-L2324>`; {source}`mandatory-disequality regressions <tests/unit/lra_tableau_tests.cpp#L2393-L2444>` |
+| Mutation preserves tableau state and already-satisfied mandatory disequalities | {source}`scratch-state regression <tests/unit/lra_tableau_tests.cpp#L2420-L2449>`; {source}`mandatory-disequality regressions <tests/unit/lra_tableau_tests.cpp#L2518-L2569>` |
 | Combination values roll back and SAT truth comes from the shared view | {source}`manager rollback and assignment tests <tests/unit/theory_combination_tests.cpp#L474-L592>` |
 | Scope normalization rejects invalid ownership and respects disconnected sorts | {source}`admission and scope tests <tests/unit/component_combination_tests.cpp#L268-L344>` |
 | More than two participants agree with an independent partition oracle | {source}`three/four-component cases <tests/unit/component_combination_tests.cpp#L409-L487>` |

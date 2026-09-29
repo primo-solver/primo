@@ -86,7 +86,7 @@ skipping a missing argument atom, and the n-ary disjunction invariant:
 
 The rejected scan experiment is recorded as
 `2026-07-28-qfuf-dynamic-ackermann-real-f83828f-weak-local` in
-{source}`the historical run ledger <docs/run-log.json#L16203-L16313>`.
+{source}`the historical run ledger <docs/run-log.json#L16317-L16427>`.
 It inspected about 547 million candidates to add 990 unit clauses on a local
 weak manifest. That record is explicitly `needs_revalidation`; it is a warning
 about repeated scans, not a current performance comparison or a rejection of

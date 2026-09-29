@@ -1,0 +1,195 @@
+{
+  "schema_version": 1,
+  "id": "2026-09-29-soi-endpoint-correction",
+  "date": "2026-09-29",
+  "commit": "bc5d21dd7ab28d03d98f90815449b58a0d222d01",
+  "tree": "a044e9141557678fef0898d13400aa4438f7ad03",
+  "branch": "docs/public-repository-migration",
+  "decision": "Accept the SOI endpoint slope correction; SOI remains opt-in.",
+  "scope": "At step zero, update the slope only when a basic value leaves its feasible interval. A fixed variable contributes once at zero and twice at nonzero crossings. Ordinary repair policies and explanation construction are unchanged.",
+  "basis": "King, Barrett and Dutertre, FMCAD 2013, Section V-A; King thesis Section 3.3.1; implementation checklist in docs/arithmetic.md#soi-endpoint-correction.",
+  "source_sha256": "7794fce7c5416c11e47e34fab36ab07c1b4ef9b7e09f4a038e048b6b39253acb",
+  "environment": {
+    "execution": "All solver tests, sanitizer runs, reference comparisons and fuzzing ran in SLURM compute allocations. Local work was lint, documentation and static analysis of four documentation examples.",
+    "release": "GNU C++ 11.4.1, Release, assertions enabled for unit tests, CaDiCaL 3.0.0-7b99c07; matching pre-provisioned header manifest",
+    "asan": "GCCcore 11.3.0, Debug, PRIMO_SANITIZERS=address, ASAN_OPTIONS=detect_leaks=1:strict_init_order=1; matching C system headers",
+    "primo_binary_sha256": "69988220778f4f1e4878fda0aa3cf180c45aa6b9d6a46e1e893f7941c087d917",
+    "z3_version": "Z3 5.1.0 - 64 bit",
+    "z3_binary_sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+    "fuzzsmt_jar_sha256": "89f887283d409842ebb19af6fce7a33a1b4a6c006746801b98ca8d716a3b0552"
+  },
+  "jobs": {
+    "build": "153098",
+    "checks": "153104",
+    "asan": "153105",
+    "fuzz": "153106_0..3",
+    "normal_static": "153101",
+    "include_review": "153110"
+  },
+  "resources": {
+    "build_and_checks": {
+      "cpus": 4,
+      "memory": "8G",
+      "job_wall_limit": "00:30:00"
+    },
+    "asan": {
+      "cpus": 4,
+      "memory": "12G",
+      "job_wall_limit": "00:30:00"
+    },
+    "normal_static": {
+      "cpus": 2,
+      "memory": "4G",
+      "job_wall_limit": "00:30:00"
+    },
+    "includes": {
+      "cpus": 4,
+      "memory": "12G",
+      "job_wall_limit": "00:20:00"
+    },
+    "fuzz_per_shard": {
+      "cpus_requested": 1,
+      "cpus_allocated": 2,
+      "memory": "2G",
+      "job_wall_limit": "01:00:00",
+      "per_solver_wall_seconds": 5
+    },
+    "seed_comparisons": {
+      "per_solver_wall_seconds": 10
+    },
+    "timing_scope": "Concurrent correctness qualification, not an isolated performance measurement."
+  },
+  "commands": {
+    "prepare": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config \"$SSH_CONFIG\" --remote \"$SLURM_REMOTE\" --remote-dir \"$PRIMO_WORKDIR\" --local-dir \"$CLEAN_CANDIDATE\" --build-via-slurm --reuse-dependencies --jobs 4 --cxx-header-manifest \"$HEADER_MANIFEST\" --extra-target all --require-tool contrib/local/bin/z3",
+    "preflight": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config \"$SSH_CONFIG\" --remote \"$SLURM_REMOTE\" --remote-dir \"$PRIMO_WORKDIR\" --local-dir \"$CLEAN_CANDIDATE\" --check-only --no-sync --require-tool contrib/local/bin/z3",
+    "checks": "sbatch scripts/qualification/soi_endpoints/checks.sbatch; runs make -j4 check BUILD_DIR=build-slurm-rel, seed comparisons and the component reproduction",
+    "asan": "sbatch scripts/qualification/soi_endpoints/asan.sbatch; runs make -j4 asan-test ASAN_BUILD_DIR=build-soi-asan",
+    "static": "sbatch scripts/slurm_typed_model_static_review.sbatch; sbatch scripts/slurm_component_include_review.sbatch",
+    "fuzz": "sbatch --array=0-3 --time=01:00:00 scripts/slurm_qfuf_fuzz_gate.sbatch",
+    "fuzz_expansion": "python3 scripts/fuzz_external.py --fuzzer fuzzsmt --solver \"$PRIMO_WORKDIR/build-slurm-rel/primo --lra-pivoting-rule=soi --quiet\" --refs z3 --logic QF_LRA --count 250 --timeout 5 --seed <shard.seed> --fuzzer-args <shard.profile> --out <fresh-output>/fuzzsmt/shard-<shard>",
+    "generator_expansion": "fuzzsmt QF_LRA -seed <shard.seed> <shard.profile> -bulk-prefix fuzzsmt_<shard.seed>_ -bulk-export 250",
+    "reference": "z3 <generated-input.smt2>",
+    "local": "make lint; clang-format --dry-run --Werror docs-next/examples/*.cpp; make docs-check-links"
+  },
+  "fuzz_environment": {
+    "PRIMO_FUZZ_SOLVER": "$PRIMO_WORKDIR/build-slurm-rel/primo --lra-pivoting-rule=soi",
+    "PRIMO_FUZZ_FUZZSMT_SHARDS": "4",
+    "PRIMO_FUZZ_FUZZSMT_COUNT": "250",
+    "PRIMO_FUZZ_FUZZSMT_TIMEOUT": "5",
+    "PRIMO_FUZZ_FUZZSMT_LOGIC": "QF_LRA",
+    "PRIMO_FUZZ_FUZZSMT_REF": "z3",
+    "PRIMO_FUZZ_FUZZSMT_SEED_BASE": "629290",
+    "PRIMO_FUZZ_OPFUZZ_TASKS": "0",
+    "PRIMO_FUZZ_YINYANG_SHARDS": "0",
+    "PRIMO_FUZZ_MUTATION_REF": "z3",
+    "PRIMO_FUZZ_OPFUZZ_SEEDS": "$PRIMO_WORKDIR/benchmarks/seeds/qf_lra",
+    "PRIMO_FUZZ_YINYANG_SEEDS": "$PRIMO_WORKDIR/benchmarks/seeds/qf_lra",
+    "note": "The two seed paths satisfy the existing wrapper preflight; no mutation task ran."
+  },
+  "verification": {
+    "normal_ctest_groups": 43,
+    "normal_ctest_seconds": 12.61,
+    "asan_ctest_groups": 43,
+    "asan_ctest_seconds": 97.73,
+    "python_tests": 201,
+    "new_tableau_checks": 32,
+    "reference_comparisons": 36,
+    "seed_scope": "3 QF_LRA seeds, 2 QF_LIA smoke inputs and 12 QF_UFLRA seeds, each under SOI and sparse; 2 new SOI endpoint regressions with preprocessing off.",
+    "component_stdout": "pivots=1 x=1 y=0",
+    "component_comparison": "Historical diagnostic 2026-09-28-soi-zero-breakpoint-debug needed two pivots for the same valid final assignment.",
+    "lint": "Complete local make lint passed, including Ruff and C++ formatting. Remote make check lacked rg and the configured Ruff environment, so its partial lint is not the formatting/Python lint evidence.",
+    "static_review": "Normal clang-tidy returned zero after all 126 source/test translation units; four documentation examples also passed locally. The 18 visible normal diagnostics are 16 deliberate invalid-enum test casts, one external CLI11 advisory, and the previously recorded tactic.cpp:69 shared_ptr control-block leak advisory. Reinspection confirms ownership through Goal::data_ -> Data::assertions, no cycle or manual release; leak-enabled ASan passes. No diagnostic in the changed arithmetic source or tests. Advisory scans cover all 130 files: 404 source/test and 7 example include advisories inspected, with no spurious include identified. No warning-free baseline claim.",
+    "docs": "make docs-check-links passed both strict books: 127 pages, 19323 local links, 558 unique Git links, zero failures. All anchors in 131 prior HTML files retained. 173 external URLs deferred to HTTP audit.",
+    "static_job_completion": "Job 153101 completed its normal clang-tidy stage with exit zero. Its redundant serial include-cleaner stage was intentionally cancelled after job 153110 had already completed that scan on all 126 files. static-stage-transition.txt records the stage boundary; include-cleaner.log could only be opened after the successful first command under set -e.",
+    "code_review": "No blocking issues found; soundness, one-sided slopes, exact arithmetic, rollback, ownership, explanations, include hygiene and hot-path costs reviewed."
+  },
+  "fuzz_summary": {
+    "generated": 1000,
+    "unique_input_sha256": 1000,
+    "pass": 958,
+    "sat_agreements": 608,
+    "unsat_agreements": 350,
+    "timeout": 42,
+    "primo_only_timeout": 40,
+    "mutual_timeout": 2,
+    "reference_timeout": 2,
+    "wrong_answer": 0,
+    "crash": 0,
+    "parser_or_type_error": 0,
+    "unsupported": 0,
+    "reference_disagreement": 0,
+    "unknown_output": 0,
+    "timeout_references": {
+      "sat": 37,
+      "unsat": 3,
+      "timeout": 2
+    },
+    "shards": [
+      {
+        "shard": 0,
+        "seed": 629290,
+        "count": 250,
+        "profile": "-mv 1 -Mv 3 -mc 1 -Mc 3 -Mbw 4",
+        "counts": {
+          "PASS": 244,
+          "TIMEOUT": 6
+        },
+        "summary_sha256": "de7dbdf5d820420c0b7163628467f72b03a2aa227d3bfebc5bbc4672374deb17"
+      },
+      {
+        "shard": 1,
+        "seed": 629291,
+        "count": 250,
+        "profile": "-mv 1 -Mv 3 -mc 1 -Mc 3 -Mbw 16",
+        "counts": {
+          "PASS": 249,
+          "TIMEOUT": 1
+        },
+        "summary_sha256": "f282b0c090711c7ae69ea1f53ab979f1127f9ec8124fce92f0d8b4f2e219cb35"
+      },
+      {
+        "shard": 2,
+        "seed": 629292,
+        "count": 250,
+        "profile": "-mv 2 -Mv 5 -mc 1 -Mc 4 -Mbw 16",
+        "counts": {
+          "PASS": 218,
+          "TIMEOUT": 32
+        },
+        "summary_sha256": "c99d1a6ab76b6cf780b339cdbf69ef7a26ddb0a681ac0a913b1993bf72e74ef3"
+      },
+      {
+        "shard": 3,
+        "seed": 629293,
+        "count": 250,
+        "profile": "-mv 2 -Mv 5 -mc 1 -Mc 4 -Mbw 16 -bool-and",
+        "counts": {
+          "PASS": 247,
+          "TIMEOUT": 3
+        },
+        "summary_sha256": "a3c651a7447f43926f428d0e8df12e2d9daf45fe943aada66df42e7d80126c91"
+      }
+    ],
+    "failures_directory": "results/soi-endpoints-20260929/fuzz/fuzzsmt/shard-*/bugs",
+    "failure_classification": "All 42 retained non-pass inputs are timeouts; no stale bug corpus is used as evidence."
+  },
+  "superseded_setup_attempts": {
+    "jobs": [
+      "153099",
+      "153100",
+      "153102",
+      "153103"
+    ],
+    "cause": "Archive mtimes made existing dependency stamps stale, so make tried blocked downloads. MAKEFLAGS did not suppress those targets. No solver results from these jobs are counted.",
+    "resolution": "After the helper validated existing dependency headers/libraries/versions, each installation stamp was set to its corresponding installer-script mtime; make -n contrib-required then reported nothing to do. Fresh jobs 153104/153105 passed.",
+    "build_warnings": "Compute-node/filesystem clock skew produced make timestamp warnings. Source/build trees were freshly configured; revision preflights and complete normal/ASan suites passed."
+  },
+  "limitations": [
+    "42 timeout cases are not agreements or proofs of correctness.",
+    "This is an opt-in selection repair, not a full-corpus performance evaluation or default promotion.",
+    "No new independent printed-model validation or seed-mutation campaign was run. The merge gate uses generated QF_LRA inputs; existing tests and small QF_LIA/QF_UFLRA seed comparisons provide additional coverage.",
+    "External HTTP links were not re-audited; source and local HTML links were checked."
+  ],
+  "artifacts": "results/soi-endpoints-20260929",
+  "recipe": "scripts/qualification/soi_endpoints/README.md"
+}

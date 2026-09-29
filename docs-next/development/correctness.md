@@ -42,7 +42,7 @@ make docs-next-full
 **not** run fuzzing, independent model validation, or the documentation build.
 For draft previews, `make docs-next` reuses the previous build; the full target
 above re-reads every page for validation.
-The {source}`check target <Makefile#L124>` lists those dependencies; the
+The {source}`check target <Makefile#L139>` lists those dependencies; the
 {source}`test and sanitizer targets <Makefile#L22-L32>` define their commands.
 Memory-sensitive C++ changes also require `make asan-test`, including changes
 to parsing, term storage, ownership, or the SAT backend. Apply the repository's
@@ -68,7 +68,7 @@ arithmetic.
 
 This complements Brummayer and Biere's *Fuzzing and Delta-Debugging SMT
 Solvers* (SMT 2009), already recorded in the
-{source}`literature notes <docs/literature.md#L324-L380>`.
+{source}`literature notes <docs/literature.md#L355-L411>`.
 Primo uses external generators and reduction tools. The gate counts below are
 project policy, not thresholds established by that thesis.
 
@@ -109,7 +109,7 @@ change; this command is a QF_UF starting point, not a gate for every component.
 The current `make fuzzsmt` shortcut runs only 20 cases. `make fuzz` is a short
 mutation entry point. Neither automatically meets the table's thresholds.
 See the {source}`convenience recipes <Makefile#L40-L53>` and
-{source}`20-case recipe <Makefile#L126-L127>`.
+{source}`20-case recipe <Makefile#L141-L142>`.
 
 Inspect the wrapper's `summary.csv`, actual generated count, and available
 references. The {source}`external-fuzzer wrapper <scripts/fuzz_external.py#L99-L160>`

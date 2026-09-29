@@ -1423,3 +1423,31 @@ passes `clang-format --dry-run --Werror`. Browser review covered the objective,
 worked pivot/table and conflict derivation with MathJax rendering; a long
 display was split into three lines. The full external-link audit was not rerun.
 No solver test suite, fuzz campaign or benchmark batch ran for this change.
+
+### SOI endpoint correction, 2026-09-29
+
+The endpoint discrepancy found above is corrected in `bc5d21d`. The implementation
+checklist in `docs/arithmetic.md` follows FMCAD 2013 §V-A and King's thesis
+§3.3.1: starting exactly on a bound requires its one-sided direction change.
+The breakpoint record now distinguishes lower and upper bounds. Inward zero
+events leave the slope alone; outward events change it once, including fixed
+variables. Nonzero fixed-bound crossings still contribute both changes.
+
+Four new tableau regressions exercise 32 checks, covering both coefficient
+signs and walk directions, coincident bounds, rational and infinitesimal steps,
+and replay after rollback. The retained component reproduction now asserts one
+pivot and the original valid assignment. Two SMT-LIB regressions also run with
+preprocessing off. Both books link the corrected source and tests; ranges were
+remapped when advancing the shared source pin.
+
+SLURM qualification passed 43 normal and 43 AddressSanitizer test groups,
+201 Python tests, and 36 Z3 comparisons across the arithmetic seed/smoke
+suites and endpoint regressions. The fresh SOI-forced FuzzSMT gate generated
+1,000 distinct QF_LRA inputs: 958 agreements and 42 five-second timeouts,
+including two mutual timeouts, with no wrong answers, crashes or input
+rejections. Timeouts remain separate from passes. The run-log entry
+`2026-09-29-soi-endpoint-correction` and
+{download}`qualification metadata <../benchmarks/soi-endpoints-20260929.json>`
+record commands, revisions, resources, jobs, setup retries, static-review
+results and evidence limits. SOI remains opt-in; this is a selection correction,
+not a new overall performance result.

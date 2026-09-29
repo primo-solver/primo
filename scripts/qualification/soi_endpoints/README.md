@@ -5,6 +5,23 @@ prepare a clean candidate snapshot, reusing provisioned dependencies and the
 matching C++ header manifest where needed. Run its `--check-only --no-sync`
 preflight before submitting any batch. All solver batches run in SLURM.
 
+If the helper validated a reused dependency installation, archive timestamps
+can make its installation stamps older than the unchanged installer scripts.
+After checking the installed headers, libraries and version information,
+refresh those stamps before submitting the test jobs:
+
+```sh
+touch -r contrib/install_cli11.py contrib/local/.cli11.stamp
+touch -r contrib/install_cadical.py contrib/local/.cadical.stamp
+touch -r contrib/install_gmp.py contrib/local/.gmp.stamp
+make -n contrib-required
+```
+
+Use this only after the dependency preflight succeeds; the dry run must show
+no pending installation. Supply `rg`, `clang-format`, and the
+configured Ruff environment for remote lint, or record a separate complete
+local `make lint` result if the remote environment lacks those tools.
+
 - `checks.sbatch` runs `make check`, compares the small arithmetic seed/smoke suites
   against Z3 under SOI and default sparse pivoting, checks the two SMT-LIB
   endpoint regressions with preprocessing off, and runs the documented

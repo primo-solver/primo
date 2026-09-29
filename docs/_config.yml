@@ -36,10 +36,10 @@ sphinx:
     # own measured revisions. Advance only after checking affected claims.
     extlinks:
       source:
-        - "https://github.com/primo-solver/primo/blob/e6d9fcb06f476375aded43a13c22a6d6b4939144/%s"
+        - "https://github.com/primo-solver/primo/blob/bc5d21dd7ab28d03d98f90815449b58a0d222d01/%s"
         - "%s"
     myst_substitutions:
-      source_revision: "e6d9fcb06f476375aded43a13c22a6d6b4939144"
+      source_revision: "bc5d21dd7ab28d03d98f90815449b58a0d222d01"
     # Generate implicit targets for headings down to level 3, so that an
     # ordinary `[text](#some-heading)` link resolves as a MyST reference
     # instead of warning and falling back to a bare HTML anchor.

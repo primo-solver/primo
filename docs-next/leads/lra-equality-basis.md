@@ -11,7 +11,7 @@ evaluation remain open. This carries forward
 
 The [combination chapter](../implementation/combination.md#explained-equality-exchange)
 describes the local tableau rules and exact fallback. The
-{source}`local rules <src/theory/arithmetic/lra_tableau.cpp#L1078-L1259>` can
+{source}`local rules <src/theory/arithmetic/lra_tableau.cpp#L1082-L1263>` can
 miss entailed equalities; the
 {source}`fallback <src/smt/solver_engines.cpp#L4907-L4947>` tests unresolved
 model-equal pairs in both strict orientations. A complete equality basis is

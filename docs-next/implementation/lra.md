@@ -131,7 +131,7 @@ Real equality is lowered to two inequalities before this path. Negating it
 gives a Boolean choice between strict inequalities, handled by SAT. The
 low-level `Eq` case's rejection of a false equality is therefore not a
 restriction on surface Real disequality. See the
-{source}`equality-lowering design <docs/arithmetic.md#L123-L166>` and
+{source}`equality-lowering design <docs/arithmetic.md#L130-L173>` and
 {source}`bound assertion boundary <src/smt/solver_engines.cpp#L3222-L3254>`.
 
 ## Exact numbers and strict bounds
@@ -183,7 +183,7 @@ For entry e in rows_[b]:  occurs_in_[e.var][e.occ_slot] == b
 `occ_slot` locates the column occurrence, not the row entry. Removing an
 occurrence swaps the last column element into its place and repairs that
 element's row backlink using binary search. Thus
-{source}`unlink_occurrence <src/theory/arithmetic/lra_tableau.cpp#L2000-L2020>`
+{source}`unlink_occurrence <src/theory/arithmetic/lra_tableau.cpp#L2004-L2024>`
 avoids scanning the column, but repair is logarithmic in the moved row's
 length. It is not the constant-time unlink of a doubly linked matrix.
 
@@ -232,7 +232,7 @@ If a nonbasic value falls outside a new bound, `update` moves it to that bound
 and updates dependent basic values. Basic variables may then need repair.
 
 For the ordinary repair policies,
-{source}`check <src/theory/arithmetic/lra_tableau.cpp#L1793-L1890>` selects a
+{source}`check <src/theory/arithmetic/lra_tableau.cpp#L1797-L1894>` selects a
 violated basic variable and a nonbasic variable that can move in the required
 direction. It pivots the latter into the basis, then moves the now-nonbasic
 leaving variable to its violated bound. For example, pivoting `y` into the
@@ -267,7 +267,7 @@ not a bound on the total pivots needed. King §2.2.12 explains why eventual
 Bland selection matters. The selection scan must still find an eligible
 candidate beyond an unproductive row prefix; otherwise a cost cap could
 become an incorrect conflict. See
-{source}`select_entering_variable <src/theory/arithmetic/lra_tableau.cpp#L897-L982>`.
+{source}`select_entering_variable <src/theory/arithmetic/lra_tableau.cpp#L901-L986>`.
 
 ## Follow a strict conflict
 
@@ -532,7 +532,7 @@ variable's stored assignment as $V$.
 
 ### Selecting a step at a bound crossing
 
-{source}`soi_select <src/theory/arithmetic/lra_tableau.cpp#L516-L689>` considers
+{source}`soi_select <src/theory/arithmetic/lra_tableau.cpp#L517-L693>` considers
 a nonbasic $x_j$ occurring in the objective row if it can move in the direction
 that decreases $f$: decrease it when $c_j>0$, or increase it when $c_j<0$.
 Its own lower or upper bound must leave room for that movement. The paper
@@ -571,7 +571,7 @@ then the largest $|c_j|$, then the smallest entering ID. It does **not** compare
 the size of the decrease across different entering variables.
 Starting-bound crossings use the one-sided slope described below.
 
-{source}`check's SOI loop <src/theory/arithmetic/lra_tableau.cpp#L1727-L1791>`
+{source}`check's SOI loop <src/theory/arithmetic/lra_tableau.cpp#L1731-L1795>`
 applies the selected step. If the entering variable reaches its own bound,
 it only updates that variable. Otherwise, Primo first pivots the selected
 basic variable out, then sets it to the reached bound. This produces the same
@@ -644,7 +644,7 @@ $$
 The last inequality holds because every variable in $S$ has positive
 violation. Its selected bound requires $d_i x_i\le d_i b_i$, so those bounds
 together contradict the displayed lower bound on $f_S$.
-{source}`build_soi_conflict <src/theory/arithmetic/lra_tableau.cpp#L696-L738>`
+{source}`build_soi_conflict <src/theory/arithmetic/lra_tableau.cpp#L700-L742>`
 collects the blocking nonbasic-bound reasons and each selected violated-bound
 reason. They already have their clause signs, as in the
 [single-row explanation](#follow-a-strict-conflict).
@@ -652,7 +652,7 @@ reason. They already have their clause signs, as in the
 ### Shrinking the explanation
 
 The initial set $E$ can include unrelated conflicts. The default
-{source}`QuickXplain-style minimizer <src/theory/arithmetic/lra_tableau.cpp#L740-L810>`
+{source}`QuickXplain-style minimizer <src/theory/arithmetic/lra_tableau.cpp#L744-L814>`
 recursively splits the candidate error variables, trying one half against a
 background containing the other. Its test rebuilds the restricted row $f_S$
 and checks for a flexible variable; the empty set is explicitly rejected.
@@ -660,7 +660,7 @@ It searches for a smaller conflict in the **current assignment and basis**,
 without another simplex search.
 
 `--lra-soi-minimize deletion` instead
-{source}`tries removing one row at a time <src/theory/arithmetic/lra_tableau.cpp#L812-L882>`
+{source}`tries removing one row at a time <src/theory/arithmetic/lra_tableau.cpp#L816-L886>`
 and keeps a removal only when the remaining set still passes that conflict
 test. `--lra-soi-minimize-order` controls its visit order: `id` uses increasing
 IDs, `row-support` tries longer rows first, and `violation` tries larger
@@ -713,8 +713,9 @@ conflict derivation. It makes several concrete choices:
 At step zero, a variable on a bound has direction zero. Moving into its
 feasible interval leaves that direction unchanged; moving out changes it
 to `+1` at an upper bound or `-1` at a lower bound. `SoiBreakPoint` retains
-the bound kind so the slope update can distinguish these cases. A fixed
-variable has two coincident events but contributes only once at zero.
+the bound kind so the {source}`slope update <src/theory/arithmetic/lra_tableau.cpp#L638-L665>`
+can distinguish these cases. A fixed variable has two coincident events but
+contributes only once at zero.
 At a nonzero crossing, passing through its fixed value still changes the
 direction from `-1` to `+1`, or conversely, and contributes twice.
 
@@ -754,10 +755,16 @@ These records explain the retained experiments, but do not qualify the current
 revision or establish a speed advantage. SOI remains opt-in, with QuickXplain
 as its default minimizer.
 
+The correction's fresh SOI fuzz gate generated 1,000 distinct QF_LRA inputs:
+958 agreed with Z3 and 42 timed out at five seconds, including two mutual
+timeouts. It found no wrong answers, crashes or input rejections. See
+`2026-09-29-soi-endpoint-correction` in the bundled run log for qualification
+and limits; this is not a new overall performance claim.
+
 ## Rollback and model values
 
 `push()` returns an undo-trail position. With the default sparse policy,
-{source}`pop <src/theory/arithmetic/lra_tableau.cpp#L1892-L1962>` restores
+{source}`pop <src/theory/arithmetic/lra_tableau.cpp#L1896-L1966>` restores
 bounds and rebuilds the set of violated basic variables. It retains the
 current basis and assignment. Relaxing bounds preserves nonbasic feasibility,
 and the assignment still satisfies the retained equations. Basic feasibility
@@ -804,7 +811,7 @@ equality-exchange passes and model reconciliation.
 
 Bjørner and Nachmanson's *Arithmetic Solving in Z3*, §3.2, also informs an
 optional equality producer for QF_UFLRA. Starting from a feasible tableau,
-{source}`model_filtered_unit_equalities <src/theory/arithmetic/lra_tableau.cpp#L1261-L1456>`
+{source}`model_filtered_unit_equalities <src/theory/arithmetic/lra_tableau.cpp#L1265-L1460>`
 groups shared variables by their exact current value. It then looks for
 equalities justified by bounds and equations. Two variables fixed to the same
 value are equal. For variables related by rows, it checks two shapes:
@@ -826,7 +833,7 @@ This is the `model-unit` option. The
 {source}`default remains legacy <src/smt/check_sat.hpp#L396-L402>`; pure
 QF_LRA calls neither producer. The full-corpus comparisons and the unpromoted
 adaptive follow-up are preserved in the
-{source}`2024 paper implementation note <docs/papers/arithmetic-solving-in-z3.md#L277-L461>`.
+{source}`2024 paper implementation note <docs/papers/arithmetic-solving-in-z3.md#L283-L467>`.
 The paper's integer and nonlinear procedures are outside this chapter's scope.
 
 ## Further implemented work and its evidence
@@ -848,14 +855,14 @@ the missing algorithm explanations.
 
 | Work already done | Current explanation and retained record |
 | --- | --- |
-| Direct bounds, shared polynomial rows and small rationals (H1/H2) | Explained above; {source}`design and measurements <docs/qf-lra-heuristics.md#L217-L433>`. |
-| Sparse pivot selection and tuning (H3) | Explained above; {source}`pivoting investigation <docs/qf-lra-heuristics.md#L434-L532>` and {source}`tuning controls <docs/tuning-parameters.md>`. |
-| Sorted row merging, bounds-only rollback, incremental occurrence updates (H8/H9/H10) | Explained above; {source}`design progression <docs/qf-lra-heuristics.md#L731-L943>`, including the earlier rejected occurrence-maintenance attempt. |
-| Fixed-basic-variable elimination (H7) | {source}`try_eliminate_fixed_basic <src/theory/arithmetic/lra_tableau.cpp#L393-L431>` pivots a fixed basic variable out and pins its value. Off by default for pure LRA, on by default for QF_UFLRA; {source}`route defaults <src/smt/check_sat.hpp#L295-L310>` and {source}`design and evidence <docs/qf-lra-heuristics.md#L533-L730>`. |
-| Model-based phase hints (H5) | {source}`refresh_model_phase_atom <src/smt/solver_engines.cpp#L7415-L7473>` supplies preferred polarities while SAT keeps variable selection. Off by default; {source}`phase-selection investigation <docs/qf-lra-heuristics.md#L976-L1233>`. |
+| Direct bounds, shared polynomial rows and small rationals (H1/H2) | Explained above; {source}`design and measurements <docs/qf-lra-heuristics.md#L217-L439>`. |
+| Sparse pivot selection and tuning (H3) | Explained above; {source}`pivoting investigation <docs/qf-lra-heuristics.md#L440-L538>` and {source}`tuning controls <docs/tuning-parameters.md>`. |
+| Sorted row merging, bounds-only rollback, incremental occurrence updates (H8/H9/H10) | Explained above; {source}`design progression <docs/qf-lra-heuristics.md#L737-L949>`, including the earlier rejected occurrence-maintenance attempt. |
+| Fixed-basic-variable elimination (H7) | {source}`try_eliminate_fixed_basic <src/theory/arithmetic/lra_tableau.cpp#L393-L431>` pivots a fixed basic variable out and pins its value. Off by default for pure LRA, on by default for QF_UFLRA; {source}`route defaults <src/smt/check_sat.hpp#L295-L310>` and {source}`design and evidence <docs/qf-lra-heuristics.md#L539-L736>`. |
+| Model-based phase hints (H5) | {source}`refresh_model_phase_atom <src/smt/solver_engines.cpp#L7415-L7473>` supplies preferred polarities while SAT keeps variable selection. Off by default; {source}`phase-selection investigation <docs/qf-lra-heuristics.md#L982-L1239>`. |
 | SOI and alternative pivot policies | [SOI objective, selection, conflicts and historical evidence](#lra-soi); the {source}`base-paper deviation map <docs/papers/fast-linear-arithmetic-dpllt.md>` separates these policies from the default repair loop. |
 | Equality sharing and model reconciliation | [Theory combination](combination.md), the {source}`equality-sharing design <docs/qf-lra-equality-sharing.md>` and {source}`tableau equality/model interfaces <src/theory/arithmetic/lra_tableau.hpp#L331-L600>`. Model coincidence is not an entailed equality. |
-| Preprocessing and experiment history | {source}`monotone elimination <docs/papers/monotone-variable-elimination.md>`, {source}`guarded equality experiments <docs/qf-lra-heuristics.md#L1234-L1347>` and {source}`arithmetic development record <docs/arithmetic.md>`. |
+| Preprocessing and experiment history | {source}`monotone elimination <docs/papers/monotone-variable-elimination.md>`, {source}`guarded equality experiments <docs/qf-lra-heuristics.md#L1240-L1353>` and {source}`arithmetic development record <docs/arithmetic.md>`. |
 
 The [published QF_LRA results](../papers/primo-qflra-results.md) are another
 part of this evidence trail. The tuned configurations in that paper have
@@ -899,14 +906,15 @@ in the [contributor correctness guide](../development/correctness.md#fuzzing-and
 | A strict boundary cannot be rounded into a satisfying equality | {source}`strict-bound conflict test <tests/unit/lra_tableau_tests.cpp#L177-L197>` |
 | Sparse pricing finds candidates and really uses occurrence counts | {source}`sparse selection tests <tests/unit/lra_tableau_tests.cpp#L533-L625>` |
 | Heuristic repair eventually invokes the counted Bland fallback | {source}`Bland fallback test <tests/unit/lra_tableau_tests.cpp#L725-L753>` |
-| Rows stay sorted; cancelled coefficients lose their occurrences | {source}`row/occurrence tests <tests/unit/lra_tableau_tests.cpp#L1208-L1397>` |
-| Rollback preserves equation consistency; SOI restores its extra state | {source}`ordinary rollback tests <tests/unit/lra_tableau_tests.cpp#L238-L416>` and {source}`SOI rollback <tests/unit/lra_tableau_tests.cpp#L867-L904>` |
+| Rows stay sorted; cancelled coefficients lose their occurrences | {source}`row/occurrence tests <tests/unit/lra_tableau_tests.cpp#L1333-L1522>` |
+| Rollback preserves equation consistency; SOI restores its extra state | {source}`ordinary rollback tests <tests/unit/lra_tableau_tests.cpp#L238-L416>` and {source}`SOI rollback <tests/unit/lra_tableau_tests.cpp#L992-L1029>` |
 | Shared polynomials preserve scaled thresholds and flipped strictness | {source}`preparation tests <tests/unit/qf_lra_solver_tests.cpp#L4363-L4450>` |
 | Propagation has a Boolean effect and respects configured caps | {source}`same-variable/row propagation tests <tests/unit/qf_lra_solver_tests.cpp#L3268-L3447>` |
 | Reverse row propagation derives another variable's bound and can lead to conflict | {source}`reverse-direction regressions <tests/unit/qf_lra_solver_tests.cpp#L3449-L3535>` |
 | SOI exercises the paper's worked pivot example | {source}`SOI worked-example test <tests/unit/lra_tableau_tests.cpp#L798-L829>` |
-| SOI reduction can discard unrelated conflicting rows | {source}`independent-conflict minimization test <tests/unit/lra_tableau_tests.cpp#L941-L981>` |
-| SOI strategies return asserted reasons; deletion order affects clause length | {source}`minimization strategy tests <tests/unit/lra_tableau_tests.cpp#L2496-L2573>` |
+| Starting-bound slopes distinguish inward/outward motion and count fixed bounds correctly | {source}`SOI endpoint regressions <tests/unit/lra_tableau_tests.cpp#L831-L954>` cover both signs, infinitesimal steps and rollback. |
+| SOI reduction can discard unrelated conflicting rows | {source}`independent-conflict minimization test <tests/unit/lra_tableau_tests.cpp#L1066-L1106>` |
+| SOI strategies return asserted reasons; deletion order affects clause length | {source}`minimization strategy tests <tests/unit/lra_tableau_tests.cpp#L2621-L2698>` |
 
 Performance investigations additionally use pivot, row-update, term-operation,
 Bland-fallback and propagation counters; their publication is visible in
