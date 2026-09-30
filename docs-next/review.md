@@ -1598,3 +1598,20 @@ a change to the shared bibliography. These are documentation checks; no solver
 qualification or fresh paper-algorithm review is claimed. Existing direct DOI
 and stable author links remain valid citation forms; the shared file is the
 place for new structured references.
+
+## Infinitesimals in integer solving, 2026-09-30
+
+Reviewed `PreparedLraTheory::append_atom`, `bound_assertion`, the shared
+integer-value helpers, patching, cut eligibility and branch-and-bound.
+The LIA chapter now gives a possible tableau trace from an integer strict
+inequality through a delta-bearing auxiliary to an integer variable, followed
+by patching and the fallback split. The retained integer chapter's old claim
+that all intermediate integer assignments are delta-free is corrected.
+
+The [new lead](leads/lia-infinitesimals.md) derives exact grid-aware thresholds
+and records the requirements for avoiding those deltas during preparation.
+The distinction between integer terms and fractional auxiliaries remains
+essential. This is an original design proposal; no solver change or new
+qualification is claimed. Existing delta-only branching, strict-bound patching
+and cut-skip regressions were inspected, not rerun. Documentation validation
+uses the strict books, local/source link checker and rendered equation review.

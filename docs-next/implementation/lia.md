@@ -148,13 +148,50 @@ conservative: the input is integer-sorted and the normalization scale is
 $1$ or $-1$. Other auxiliary variables use the real strict-bound encoding,
 even if a stronger analysis could prove some of them integer-valued.
 
-Infinitesimals can consequently reach a basic integer variable through its
-row. The {source}`integer-value helpers
+(lia-infinitesimals)=
+### Why the relaxation can still contain infinitesimals
+
+The current invariant is that a **completed integer assignment** has no
+infinitesimal component. Intermediate relaxation assignments can have one,
+including on variables corresponding to `Int` terms.
+
+For example, let $P=2x+3y$ with integer $x,y$. Normalizing by the leading
+coefficient $2$ introduces $s=x+\tfrac32y=P/2$. Consider $P<0$:
+
+1. The current fallback represents it as $s\le-\delta$. The initial
+   assignment $x=y=s=0$ violates this bound.
+2. If simplex pivots on $x$, the row becomes $x=s-\tfrac32y$. Moving
+   $s$ to $-\delta$ gives $x=-\delta$, $y=0$. Every real constraint holds,
+   but $x$ is not integer-valued.
+3. Patching can move $s$ to $-1$, giving $x=-1$, $y=0$. This satisfies the
+   bound and makes both integer variables exact integers.
+4. If patching does not resolve the assignment, branch-and-bound uses
+   $\lfloor-\delta\rfloor=-1$ and splits on $x\le-1$ or $x\ge0$.
+   The first branch admits that same integer solution.
+
+This is a possible tableau trace, not a promised preprocessing or pivot order.
+
+The {source}`integer-value helpers
 <src/theory/arithmetic/lia_integer_values.hpp>` require both an integral
 rational part and a zero infinitesimal part. In particular,
 $\lfloor n-\delta\rfloor=n-1$ and
 $\lceil n+\delta\rceil=n+1$ for integer $n$. Treating $n-\delta$ as having
 floor $n$ would make branching repeatedly choose an already-satisfied bound.
+Patching targets exact integers; branch bounds have zero infinitesimal
+components. The cut generator skips a basic value with a nonzero
+infinitesimal, since its rational fractional-part formula does not cover
+that case. The {ref}`regression map <lia-models-evidence>` links the existing
+branching, patching and cut guards.
+
+There is room to avoid introducing these infinitesimals. Since $P$ is
+integer-valued, $P<0$ is equivalent to $P\le-1$, giving $s\le-1/2$ without a
+delta. This must use the spacing of $P/2$: rounding $s$ as if it were an
+integer would incorrectly require $s\le-1$ and exclude $x=1,y=-1$, where
+$s=-1/2$. The strengthened relaxation can still have fractional assignments;
+integer completion remains necessary.
+[Preserving this spacing during bound preparation](../leads/lia-infinitesimals.md)
+is an open lead. Simply discarding a nonzero delta would change a strict
+inequality and is not a valid replacement.
 
 (lia-patching)=
 ## Patching a feasible assignment

@@ -248,15 +248,16 @@ input. `LraAtom::normalize_atom` was reverted to fully sort-agnostic (the
 Bug-1 fix's atom-level tightening is now redundant and was removed, since
 `bound_assertion()` alone handles both the explicit-`Lt`-true and
 negated-`Le`-false cases correctly, from the one place that sees the
-final, possibly-scaled `rhs`). **The invariant this restores, and that any
-future change here must preserve**: no `DeltaRational` assigned to an
-`Int`-sorted tableau variable may ever carry a nonzero `infinitesimal`,
-regardless of what coefficient the original atom had before
-canonicalization. `find_fractional_variable` depends on this silently; a
-violation shows up as a variable that looks permanently fractional no
-matter how tightly it gets bounded (bug 1's symptom) or as a wrong answer
-from a bound that was never actually an integer threshold (bug 2's
-symptom).
+final, possibly-scaled `rhs`). **Correction to the original invariant claim:**
+this makes strict bounds on known integer-valued variables delta-free; it
+does not make every intermediate assignment delta-free. The auxiliary-variable
+fallback below can introduce an infinitesimal, which row equations can pass
+to a basic integer variable. Current `is_integer_valued` and `delta_floor`
+in `lia_integer_values.hpp` explicitly handle this. Zero infinitesimals are
+required for accepted integer values, not for every relaxation state. The
+replacement chapter explains this distinction in
+`docs-next/implementation/lia.md`; avoiding the auxiliary strict-bound delta
+is proposed in `docs-next/leads/lia-infinitesimals.md`.
 
 **Bug 3 (found by a real-world benchmark evaluation, not fuzzing -- see
 [Real-world benchmark evaluation and the fuzzing gap](#real-world-benchmark-evaluation-and-the-fuzzing-gap)

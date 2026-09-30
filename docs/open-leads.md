@@ -11,6 +11,13 @@ Keep stable lead labels and evidence links when a lead changes state.
 
 ## Project and tooling leads
 
+- **Infinitesimals in integer relaxation:** preserve an integer polynomial's
+  value spacing through scale normalization, so strict bounds on its auxiliary
+  can use exact rational thresholds. The proposal and proof obligations are in
+  `docs-next/leads/lia-infinitesimals.md`. Current completion already rejects
+  nonzero infinitesimals on integer values; eliminating them from intermediate
+  relaxation states remains open. Status: open; owner unassigned; no new
+  implementation or measurements.
 - **Shared SMT assignment bookkeeping (implemented):** the all-route migration is
   recorded in [](current-status.md#shared-assignment-ownership), with its
   protocol and acceptance checklist in
