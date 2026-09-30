@@ -23,9 +23,25 @@ It does not record a finer rational spacing. In an integer model, an auxiliary
 $s=P/2$ with integer-valued $P$ is restricted to half-integers.
 Using this fact could both remove a delta and strengthen the real relaxation.
 
+## Related work
+
+Integer-bound tightening is established. The relevant primary sources are:
+
+| Source | Relevant result and relation to Primo |
+| --- | --- |
+| King, thesis, §4.3, pp. 106–109 {cite:p}`king2014` | Clear rational denominators, replace strict integer inequalities by non-strict ones, divide coefficients by their GCD and round the bound. The assertion procedures also tighten negated inequalities received from SAT. This directly supports preparing exact bounds for both polarities. |
+| Pugh, *The Omega Test*, expanded 1992 version, §2.1 {cite:p}`pugh1992omega` | Earlier coefficient-GCD normalization and rounding of inequality constants, preserving integer solutions while strengthening the real relaxation. |
+| Griggio, thesis, §2.6.1, equations (2.11)–(2.12) {cite:p}`griggio2009` | Applies the same GCD-and-rounding rule in an SMT integer solver after equality elimination, citing Pugh. Primo need not adopt that elimination procedure to use the bound rule. |
+| Dutertre–de Moura, technical report, §4.1, pp. 20–21 {cite:p}`dutertre2006simplexreport` | Branch-and-bound over delta rationals, including $\lfloor n-\delta\rfloor=n-1$. This supports the existing fallback in Primo's {source}`integer-value helpers <src/theory/arithmetic/lia_integer_values.hpp>` and {source}`branching procedure <src/theory/arithmetic/lia_branch_and_bound.cpp>`. |
+
+The proposed work adapts integer tightening to Primo's leading-coefficient-one
+normalization, where the shared auxiliary can have fractional spacing. King's
+primitive integer normalization cannot simply be assumed for these auxiliaries.
+The sources above do not establish a performance benefit for this adaptation.
+
 ## Proposed rule and justification
 
-This is an original design proposal derived from integer discreteness.
+The following derives the bound rule in Primo's normalized coordinates.
 Let $P=\sum_i a_ix_i$ have integer coefficients and integer variables,
 with its constant moved to the bound. If normalization stores $s=P/c$,
 $c\ne0$, then every integer model has $s\in h\mathbb Z$, where

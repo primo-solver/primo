@@ -71,6 +71,7 @@ recurring.
 | TR Section 3.2.2 -- conflict explanation from row coefficients and the stuck variables' binding bounds | `LraTableau::build_conflict` | `lra_tableau.cpp` |
 | TR Section 3.2.4 -- backtracking | `push()` / `pop(checkpoint)` trail bounds on the ordinary path; Primo retains the current assignment rather than restoring the report's saved successful assignment. SOI additionally trails assignments, pivots and its f-row | `lra_tableau.{hpp,cpp}` |
 | TR Section 3.1 -- precomputing equations before bound assertions | `PreparedLraTheory` (mirrors `PreparedFlatTheory` for EUF) | `smt/solver_engines.cpp` |
+| TR Section 4.1 -- integer splitting over delta rationals | `delta_floor` and the split at that integer and its successor; Primo uses bounded chronological DFS, without the report's explanation-based non-chronological backtracking inside the integer search | {source}`lia_integer_values.hpp <src/theory/arithmetic/lia_integer_values.hpp>`, {source}`lia_branch_and_bound.cpp <src/theory/arithmetic/lia_branch_and_bound.cpp>` |
 | TR Section 3.2.5 -- deriving already-present atoms | `OnlineLraPropagator::scan_for_propagations`, over the atoms sharing a bound variable | `smt/solver_engines.cpp` |
 | TR Section 3.2.5 -- deriving bounds from equations plus bounds (the slides' `x = y - z`, `y <= 2`, `z >= 3` gives `x <= -1`, explained by `y <= 2, z >= 3`) | `compute_implied_bound` / `compute_implied_child_bound`, **opt-in and off by default** -- `--lra-row-propagation`, `--lra-bidirectional-row-propagation` | `smt/solver_engines.cpp` |
 
@@ -83,6 +84,15 @@ even with the mechanism firing 380x harder than at its default caps. See
 [](../qf-lra-heuristics.md) section 6.5's D1 outcome. This is a measured
 divergence from the paper on one benchmark family, not a claim that the
 technique is generally worthless.
+
+**Integer source coverage, reviewed 2026-09-30.** Report §4.1, pp. 20–21,
+explicitly supports branch-and-bound when the relaxation uses delta rationals.
+For $s+k\delta$, its floor is $\lfloor s\rfloor$ when $s$ is nonintegral;
+when $s$ is integral, it is $s-1$ if $k<0$, and $s$ otherwise. Primo's shared
+integer-value helper uses this rule. The report assumes integer-variable
+bounds can be rounded to integers; Primo's scaled auxiliaries need their own
+spacing argument before applying such rounding. This reading does not claim
+that Primo implements the report's complete branch-and-cut strategy.
 
 **DPLL(T) integration.** `OnlineLraPropagator` is a trail-synced
 `CaDiCaL::ExternalPropagator`: one `LraTableau` per solve, kept in sync with

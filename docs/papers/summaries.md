@@ -191,6 +191,8 @@ that reduction order matters when reductions are interdependent.
 > **Source refresh 2026-09-25:** §§2.2.7, 2.2.12 and 3.2–3.3 read from the
 > supplied thesis for the replacement LRA chapter. This is not a claim that
 > the entire thesis has been reviewed.
+> **Integer-normalization reading 2026-09-30:** §4.3, pp. 106–109,
+> including tightening at the assertion boundary on p. 109.
 
 ### Section 2.2.7 -- the tableau representation
 
@@ -261,6 +263,29 @@ implementation technique, and does not bear on the representation choice.
 thesis for fill-in, density, Markowitz or refactorization turns up only the
 sparse format itself, so the densification measured in
 [](../qf-lra-heuristics.md) section 6 is not a problem this source answers.
+
+(king-integer-normalization)=
+### Section 4.3 -- integer-bound normalization
+
+For a relation whose variables are all integer, King clears denominators,
+eliminates strictness using integer discreteness, then divides coefficients
+by their GCD and rounds the right-hand side. The resulting inequalities
+preserve integer solutions while potentially excluding fractional solutions
+of the earlier relaxation. Negated inequalities received from SAT are also
+tightened when asserting their bounds, so the rule covers both polarities.
+
+**Primo status: partially implemented.**
+{source}`bound_assertion <src/smt/solver_engines.cpp#L3169-L3187>` tightens
+strict bounds when the prepared variable is known to be integer.
+{source}`PreparedLraTheory::append_atom
+<src/smt/solver_engines.cpp#L3434-L3512>` normalizes compound polynomials to
+leading coefficient one. Those auxiliaries can have fractional spacing, so
+the thesis's primitive-integer normalization is not an invariant of Primo's
+prepared rows. The open lead in `docs-next/leads/lia-infinitesimals.md`
+adapts the tightening to this representation, with exact spacing metadata,
+polarity handling and regression obligations. It does not adopt the thesis's
+mixed-sort frontend or claim that tightened bounds alone complete integer
+solving.
 
 (jonas-strejcek-unconstrained)=
 ## Jonáš & Strejček, "On Simplification of Formulas with Unconstrained Variables and Quantifiers" (SAT 2017)

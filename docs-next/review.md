@@ -1611,7 +1611,24 @@ that all intermediate integer assignments are delta-free is corrected.
 The [new lead](leads/lia-infinitesimals.md) derives exact grid-aware thresholds
 and records the requirements for avoiding those deltas during preparation.
 The distinction between integer terms and fractional auxiliaries remains
-essential. This is an original design proposal; no solver change or new
+essential. This is a proposed adaptation to Primo's normalization; no solver change or new
 qualification is claimed. Existing delta-only branching, strict-bound patching
 and cut-skip regressions were inspected, not rerun. Documentation validation
 uses the strict books, local/source link checker and rendered equation review.
+
+## Integer-bound related work, 2026-09-30
+
+Read King's thesis §4.3, pp. 106–109, and Dutertre–de Moura's technical report
+§4.1, pp. 20–21; reread Pugh's expanded Omega paper §2.1 and Griggio's thesis
+§2.6.1, equations (2.11)–(2.12). King directly covers denominator clearing,
+strict integer bounds, coefficient-GCD normalization and negated SAT atoms.
+Pugh and Griggio provide the earlier integer-tightening connection. The report
+supplies the exact delta-aware floor already used by Primo's branching helper.
+
+The lead now distinguishes these established rules from their proposed
+adaptation to Primo's fractional auxiliaries. The retained integer chapter's
+claim that the report contains no integer material is corrected. Both books
+and the paper-to-code maps carry the section references. No solver behavior,
+source pin, qualification evidence or completeness claim changes. Verification
+covers both strict books, local/source links, the incremental draft build and
+rendered citations and equations.

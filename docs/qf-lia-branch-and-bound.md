@@ -25,11 +25,12 @@ needed.
 
 Three sources grounded this design:
 
-- Dutertre & de Moura, *Integrating Simplex with DPLL(T)* (SRI-CSL-06-01) --
-  already the basis of `LraTableau`; see `docs/papers/fast-linear-arithmetic-dpllt.md`.
-  No integer content; cited here only because every QF_LIA bound assertion
-  still goes through the exact same Assert-Bound/Check machinery it
-  describes.
+- Dutertre & de Moura, *Integrating Simplex with DPLL(T)* (SRI-CSL-06-01)
+  {cite:p}`dutertre2006simplexreport` -- the basis of `LraTableau`;
+  see [](papers/fast-linear-arithmetic-dpllt.md). Section 4.1 also describes
+  integer branching over delta rationals and gives the floor rule used by
+  `delta_floor`, including `floor(n - delta) = n - 1`. This corrects the
+  earlier source list's claim that the report had no integer content.
 - Bjørner & Nachmanson, *Arithmetic Solving in Z3* (CAV 2024), Sect. 4:
   stage 1 uses Sect. 4.4's plain branch-and-bound (on a fractional integer
   basic variable with value β(x), split on `x <= floor(β(x))` vs

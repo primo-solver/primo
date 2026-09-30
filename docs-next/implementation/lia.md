@@ -177,6 +177,8 @@ rational part and a zero infinitesimal part. In particular,
 $\lfloor n-\delta\rfloor=n-1$ and
 $\lceil n+\delta\rceil=n+1$ for integer $n$. Treating $n-\delta$ as having
 floor $n$ would make branching repeatedly choose an already-satisfied bound.
+Dutertre–de Moura's technical report §4.1, pp. 20–21, gives this delta-aware
+floor for branch-and-bound {cite:p}`dutertre2006simplexreport`.
 Patching targets exact integers; branch bounds have zero infinitesimal
 components. The cut generator skips a basic value with a nonzero
 infinitesimal, since its rational fractional-part formula does not cover
@@ -189,6 +191,8 @@ delta. This must use the spacing of $P/2$: rounding $s$ as if it were an
 integer would incorrectly require $s\le-1$ and exclude $x=1,y=-1$, where
 $s=-1/2$. The strengthened relaxation can still have fractional assignments;
 integer completion remains necessary.
+King's thesis §4.3 describes the underlying integer tightening, including
+strict bounds obtained from negated SAT atoms {cite:p}`king2014`.
 [Preserving this spacing during bound preparation](../leads/lia-infinitesimals.md)
 is an open lead. Simply discarding a nonzero delta would change a strict
 inequality and is not a valid replacement.
@@ -615,9 +619,9 @@ specific sections and their implementation status.
 | --- | --- |
 | *The Omega Test*, expanded CACM 1992 version of the 1991 paper, §2.1 {cite:p}`pugh1992omega`; *An Effective SMT Engine for Formal Verification*, thesis, §2.6.1, Algorithm 2.6 {cite:p}`griggio2009` | Earlier uses of the classical GCD divisibility criterion. Added for attribution; Primo's row-local check does not implement their equality-elimination procedures. The retained {source}`Griggio thesis note <docs/papers/griggio-mathsat-thesis.md>` covers the broader equation handler. |
 | Nikolaj Bjørner and Lev Nachmanson, [*Arithmetic Solving in Z3*](https://doi.org/10.1007/978-3-031-65627-9_2), CAV 2024, §§4.1, 4.3–4.4 | Freedom-interval patching, basic row GCD consistency and integer splits. Primo adds a finite target window and a strictly improving global patch score, and branches inside a private theory search. The paper's cubes, extended GCD and specialized cuts are not implemented. |
-| *Effective Algorithms for the Satisfiability of Quantifier-Free Formulas Over Linear Real and Integer Arithmetic*, thesis, §4.4.3, Lemma 4.1, equation (4.9) {cite:p}`king2014` | The mixed-cut derivation, represented by a fresh tableau row and bound. Nonbasic integrality is not used to strengthen the cut; no complete cutting-plane algorithm is claimed. |
+| *Effective Algorithms for the Satisfiability of Quantifier-Free Formulas Over Linear Real and Integer Arithmetic*, thesis, §§4.3, 4.4.3, Lemma 4.1, equation (4.9) {cite:p}`king2014` | The mixed-cut derivation, represented by a fresh tableau row and bound. Nonbasic integrality is not used to strengthen the cut; no complete cutting-plane algorithm is claimed. Section 4.3 supplies integer-bound normalization for the open lead on scaled auxiliaries; Primo's current preparation has the limitations described above. |
 | Martin Bromberger, [*Decision Procedures for Linear Arithmetic*](https://publikationen.sulb.uni-saarland.de/handle/20.500.11880/28955), PhD thesis, Saarland, 2019, Chapters 4–6 and §§7.2.3–7.2.4 | Cube tests, equality/bounded-direction analysis, bounding transformations and the separation of preparation from per-node work. These supply comparisons and concrete further work; Primo does not implement that complete combination. See the [reading guide](../papers/bromberger-linear-arithmetic.md). |
-| Bruno Dutertre and Leonardo de Moura, *Integrating Simplex with DPLL(T)*, SRI-CSL-06-01, §§2–3 | The rational tableau, bound assertions and consistency checks explained in [LRA](lra.md). Its §3.2.4 saves a successful assignment; Primo's sparse mode retains the current assignment and basis when popping bounds. This is relaxation machinery, not a source for integer completeness. |
+| Bruno Dutertre and Leonardo de Moura, *Integrating Simplex with DPLL(T)*, SRI-CSL-06-01, §§2–3 and 4.1 {cite:p}`dutertre2006simplexreport` | The rational tableau, bound assertions and consistency checks explained in [LRA](lra.md), plus integer splitting with delta-aware floor in §4.1. Section 3.2.4 saves a successful assignment; Primo's sparse mode retains the current assignment and basis when popping bounds. These implemented mechanisms do not establish completeness of Primo's integer procedure. |
 | Original Primo design: private integer completion and accumulated explanations | The owned tableau copy, internal DFS, cut lifetime and union of antecedents connect the cited arithmetic rules to Primo's SAT and component interfaces. Defensive clause containment is not a substitute for those rules' soundness. |
 
 The Griggio and Bromberger tableau

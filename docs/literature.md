@@ -4,6 +4,19 @@ The [bibliography](references.md) provides shared publication metadata for
 both books. The notes below record reading coverage and implementation status;
 they do not distribute the reference papers.
 
+## Integer bounds and infinitesimals
+
+{ref}`King's thesis §4.3 <king-integer-normalization>`
+gives integer normalization and strict-bound tightening, including negated
+inequalities received from SAT. Earlier GCD-and-rounding rules appear in
+Pugh's expanded Omega paper §2.1 {cite:p}`pugh1992omega` and Griggio's thesis
+§2.6.1, equations (2.11)–(2.12) {cite:p}`griggio2009`.
+[Dutertre–de Moura's report §4.1](papers/fast-linear-arithmetic-dpllt.md)
+separately supplies the delta-aware floor used by current integer branching.
+The remaining proposal in `docs-next/leads/lia-infinitesimals.md` applies
+established tightening to Primo's scaled auxiliaries. No implementation or
+performance improvement is claimed for that proposal.
+
 ## Integer-model repair and MIP primal heuristics
 
 [](papers/lia-primal-heuristics.md) connects Primo's fixed-window patching
