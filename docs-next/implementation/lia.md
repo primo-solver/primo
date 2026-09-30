@@ -30,7 +30,7 @@ $\delta$ a positive infinitesimal used to represent strict inequalities.
 | Prepared atoms and term-to-variable map | {source}`PreparedLraTheory <src/smt/solver_engines.cpp#L3332-L3410>` connects arithmetic terms and SAT atoms to tableau variables and bounds. |
 | `integer_vars` | The caller owns a vector of `LraVarId`s whose values must become integers. In the pure route it is collected from the `Int` terms in `variables_by_term`; the combined route also registers shared `Int` terms. It is not the set of all tableau variables. |
 | Working tableau | The integer call owns a copy of a rationally feasible tableau. Patching changes assignments; cuts allocate variables and rows; branching adds temporary bounds. These changes stay within this copy. |
-| `LiaExplanation` | One {source}`accumulator <src/theory/arithmetic/lia_explanation.hpp>` per integer completion collects the blocking literals used by GCD checks, cuts and branching. It owns a sorted, duplicate-free vector. |
+| `LiaExplanation` | This {source}`explanation object <src/theory/arithmetic/lia_explanation.hpp>` stores the blocking literals contributed by GCD checks, cuts and branching in a sorted, duplicate-free vector. The stages share one object so a later conflict retains the reasons for earlier cuts. |
 | Branch frames | {source}`branch_and_bound <src/theory/arithmetic/lia_branch_and_bound.cpp>` owns an explicit DFS stack. Each frame stores a variable ID, a split threshold, a tableau checkpoint and which side has been tried. |
 
 `LraVarId` is an index within a tableau and its matching copies, not a core
@@ -95,6 +95,10 @@ reused across successive Boolean candidates.
 
 (lia-input)=
 ## Input lowering and integer bounds
+
+Here, **lowering** means translating an input construct into simpler terms
+and constraints supported by the solving stages. Each translation below
+specifies the replacement and any fresh variables it introduces.
 
 The {source}`frontend <src/smt/frontend.cpp>` admits linear `Int` expressions
 and comparisons under `QF_LIA`; uninterpreted functions require `QF_UFLIA`.
@@ -222,30 +226,43 @@ paper example, fixed and strict bounds, and comparison of indexed scoring
 with an independent full-scan definition.
 
 (lia-gcd)=
-## Detecting impossible row divisibility
+(detecting-impossible-row-divisibility)=
+## Detecting integer-infeasible rows with GCDs
 
-{source}`gcd_inconsistent_row <src/theory/arithmetic/lia_gcd_consistency.cpp>`
-implements the basic GCD test from Bjørner and Nachmanson §4.3. It reads the
-tableau without changing rows, bounds or assignments.
+The equation $2x-2y=1$ has no integer solution because its left side is
+always divisible by $2$. More generally, for integer coefficients $C_i$
+and integer variables $z_i$, every value of $\sum_i C_i z_i$ is divisible
+by $g=\gcd(C_1,\ldots,C_k)$. An equation $\sum_i C_i z_i=R$ is therefore
+impossible when $g$ does not divide $R$.
 
-First rewrite a row as $x_b-\sum_j a_jx_j=0$. Substitute every variable
-whose lower and upper bounds agree at a value with zero infinitesimal part.
-This includes the basic variable if it is fixed. The remaining equation is
+This is the classical divisibility criterion for a linear Diophantine
+equation, a consequence of Bézout's identity. It predates Bjørner and
+Nachmanson: Pugh's [*Omega test*](https://www.cs.umd.edu/~pugh/papers/omega.pdf),
+§2.1 of the expanded 1992 paper, already uses it when normalizing equalities.
+Griggio's 2009 thesis, §2.6.1, Algorithm 2.6, step 4, applies the same
+criterion in an SMT equation solver. Bjørner and Nachmanson §4.3 is Primo's
+reference for applying the test to **tableau rows after fixed variables
+have been substituted**, not for the origin of the criterion.
 
-$$\sum_i c_i z_i=r.$$
+The read-only procedure {source}`gcd_inconsistent_row
+<src/theory/arithmetic/lia_gcd_consistency.cpp>` prepares each row as follows:
 
-Every remaining variable must belong to `integer_vars`. If even one is not
-known integer, the procedure skips the row. This check applies to both sides
-of the row, including auxiliary variables moved there by pivoting.
-If no free variables remain, this stage adds no conclusion beyond rational
-consistency.
+1. Rewrite $x_b=\sum_j a_jx_j$ as $x_b-\sum_j a_jx_j=0$.
+2. Substitute variables fixed by equal lower and upper bounds with zero
+   infinitesimal part, including $x_b$ if it is fixed. The remaining equation
+   is $\sum_i c_i z_i=r$, with possibly rational coefficients and residual.
+3. Require every remaining variable to belong to `integer_vars`. Otherwise
+   skip the row: a noninteger auxiliary variable could absorb a fractional
+   value. Pivoting can put such a variable on either side of the row.
+4. Scale the coefficients **and the residual together** to integers $C_i,R$
+   using `primitive_integer_scale`, and check whether their coefficient GCD
+   divides $R$.
 
-Next, `primitive_integer_scale` scales the coefficients **and the residual
-together** to integers $C_i,R$. Let $g=\gcd(C_1,\ldots,C_k)$. Every integer
-combination of the $C_i$ is a multiple of $g$, and Bézout's identity gives
-all such multiples. Thus the unconstrained integer equation is solvable
-exactly when $g$ divides $R$. Failure is a conflict. Success says nothing
-about whether its solutions meet the remaining inequalities.
+If no variables remain after substitution, the row supplies no additional
+integer test; rational consistency has already been checked. Otherwise,
+failure of divisibility proves a conflict. Passing the test establishes only
+that the isolated equation has an integer solution when the remaining bounds
+are ignored. It does not establish consistency of the whole tableau.
 
 For $2x-2y=1$, normalization can represent $s=x-y$ fixed to $1/2$.
 Substitution leaves $x-y=1/2$. Scaling the coefficients and residual by
@@ -258,9 +275,11 @@ sorts are unconditional invariants of the prepared problem. The scan builds
 a membership bitmap and visits basic rows with exact rational/GCD operations;
 numeric cost depends on coefficient size, not just row length.
 
-This is a row-local divisibility check, not a general Diophantine solver.
-It does not implement the paper's extended test using bounded but unfixed
-variables. The {source}`GCD regressions
+The [bounded-variable GCD extension](../leads/lia-extended-gcd.md) is an open
+lead carried forward from the original register. It can reject an interval
+containing no admissible residue even when no variable is fixed. Primo does
+not implement that extension or a general Diophantine equation solver.
+The {source}`GCD regressions
 <tests/unit/lia_gcd_consistency_tests.cpp>` cover fractional normalization,
 bounded-but-unfixed rows, and noninteger auxiliary variables in both basic
 and nonbasic positions.
@@ -274,7 +293,9 @@ basic variable to be integer in every solution. It treats nonbasic variables
 as continuous, so their bounds may be fractional and they need not belong to
 `integer_vars`.
 
-The selector takes the first eligible variable in the caller's integer list:
+The helper {source}`find_eligible_row
+<src/theory/arithmetic/lia_gomory_cuts.cpp#L93-L125>` chooses the row from
+which to derive a cut. It takes the first eligible variable in the caller's integer list:
 it must be basic, its current value must be fractional with **zero
 infinitesimal part**, and every nonbasic variable in its row must sit exactly
 at a lower or upper bound. A variable merely having a bound is insufficient.
@@ -305,7 +326,7 @@ $\sum_j C_j(x_j-b_j)\ge1$, with:
 | Upper | Negative | $a_j/(1-f)$ |
 
 The rational-bound reasoning also applies when a selected bound is strict:
-forgetting its infinitesimal gives a weaker bound. The selector's requirement
+forgetting its infinitesimal gives a weaker bound. The row-selection requirement
 that the basic value has zero infinitesimal ensures that its $v$ is the
 rational bound-site sum used above. It skips a basic value such as
 $3-\delta$ entirely; computing a fractional part from its rational part
@@ -419,7 +440,7 @@ Keeping only the first conflict and dropping its branch assumption would
 incorrectly yield $\neg p$. The implementation emits the accumulated clause
 only after integer infeasibility, never after a model or a resource limit.
 
-The accumulator can contain reasons from cuts or closed branches unnecessary
+The explanation can contain reasons from cuts or closed branches unnecessary
 to the final proof. Such extra disjuncts weaken a valid clause; they do not
 invalidate it. This is conservative explanation collection, not minimal-core
 extraction or a replayable external proof certificate.
@@ -548,6 +569,7 @@ for this chapter are available in the supplied `external/papers/` PDFs.
 
 | Source | Implemented subset and boundary |
 | --- | --- |
+| William Pugh, [*The Omega Test: a fast and practical integer programming algorithm for dependence analysis*](https://www.cs.umd.edu/~pugh/papers/omega.pdf), expanded CACM 1992 version of the 1991 paper, §2.1; Alberto Griggio, *An Effective SMT Engine for Formal Verification*, 2009, §2.6.1, Algorithm 2.6 | Earlier uses of the classical GCD divisibility criterion. Added for attribution; Primo's row-local check does not implement their equality-elimination procedures. The retained {source}`Griggio thesis note <docs/papers/griggio-mathsat-thesis.md>` covers the broader equation handler. |
 | Nikolaj Bjørner and Lev Nachmanson, [*Arithmetic Solving in Z3*](https://doi.org/10.1007/978-3-031-65627-9_2), CAV 2024, §§4.1, 4.3–4.4 | Freedom-interval patching, basic row GCD consistency and integer splits. Primo adds a finite target window and a strictly improving global patch score, and branches inside a private theory search. The paper's cubes, extended GCD and specialized cuts are not implemented. |
 | Tim King, [*Effective Algorithms for the Satisfiability of Quantifier-Free Formulas Over Linear Real and Integer Arithmetic*](https://cs.nyu.edu/media/publications/king_tim.pdf), PhD thesis, NYU, 2014, §4.4.3, Lemma 4.1, equation (4.9) | The mixed-cut derivation, represented by a fresh tableau row and bound. Nonbasic integrality is not used to strengthen the cut; no complete cutting-plane algorithm is claimed. |
 | Martin Bromberger, [*Decision Procedures for Linear Arithmetic*](https://publikationen.sulb.uni-saarland.de/handle/20.500.11880/28955), PhD thesis, Saarland, 2019, Chapters 4–6 and §§7.2.3–7.2.4 | Cube tests, equality/bounded-direction analysis, bounding transformations and the separation of preparation from per-node work. These supply comparisons and concrete further work; Primo does not implement that complete combination. See the [reading guide](../papers/bromberger-linear-arithmetic.md). |

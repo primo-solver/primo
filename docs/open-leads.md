@@ -1883,11 +1883,16 @@ on a per-round tableau copy.
 ### 12e. Extended GCD test for bounded-but-not-fixed rows
 
 **Claim.** Bjørner & Nachmanson Sect. 4.3 extends the basic GCD test from
-*fixed* variables to merely *bounded* ones: for a row `a.x + b.y + c = 0`
-with `x` bounded, if the achievable range `[l, u]` of `a.x` contains no
-value congruent to the required residue modulo `gcd(b, c)`, the row is
-infeasible. Primo's stage 2 implements only the basic test, because
-`fixed_value()` requires equal lower and upper bounds.
+*fixed* variables to merely *bounded* ones. For an integer-coefficient row
+`a.x + b.y + c = 0`, with integer `y` and `a.x` enclosed by `[l, u]`, let
+`g = gcd(b) > 0`. A solution requires `a.x` congruent to `-c` modulo `g`.
+If `ceil((l+c)/g) > floor((u+c)/g)`, that interval contains no suitable
+residue and the row is infeasible. This is a general residue formulation;
+the paper uses a restricted grouping and the potentially weaker divisor
+`gcd(b,c)`, for which the offset vanishes. Primo's stage 2 implements only
+the fixed-value test, because `fixed_value()` requires equal lower and
+upper bounds. The replacement lead at `docs-next/leads/lia-extended-gcd.md`
+records the remaining grouping, explanation and exact-endpoint obligations.
 
 **Evidence.** This closes the exact divergence
 [](qf-lia-branch-and-bound.md) documents as caught by neither stage 2 nor

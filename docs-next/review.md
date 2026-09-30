@@ -149,6 +149,17 @@ and function names directly to code; give regression links descriptive labels.
 Define acronyms and internal terms at first use. Put historical identifiers
 such as H1 or D2 after the mechanism's descriptive name.
 
+“Lowering” is established compiler terminology, used for example in the
+[MLIR tutorial](https://mlir.llvm.org/docs/Tutorials/Toy/Ch-5/). In this book
+it means translating a construct to simpler terms or constraints accepted by
+a later stage; it is not the name of a standardized SMT transformation.
+Name the actual operation where possible (equality encoding, `ite` elimination,
+or polynomial normalization), and explain its semantic contract. Introducing
+fresh variables generally requires an extension/projection argument, rather
+than a claim that the formulas have identical models over the same symbols.
+Name the function or decision rule behind phrases such as “the selector”; do
+not introduce an apparent component without explaining what it selects.
+
 Keep design tradeoffs in the chapter. Put repair chronology, commands already
 run, and verification outcomes in dated review or experiment records, linked
 from the explanation. State each limitation where it helps the reader; avoid

@@ -35,6 +35,7 @@ parts:
       - file: leads/theory-lemma-forgetting
       - file: leads/lra-floating-point
       - file: leads/lra-equality-basis
+      - file: leads/lia-extended-gcd
       - file: leads/care-pair-generation
       - file: leads/care-guided-combination
       - file: leads/real-combination-migration
