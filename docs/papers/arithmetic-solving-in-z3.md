@@ -5,7 +5,10 @@
 Nikolaj Bjørner and Lev Nachmanson. "Arithmetic Solving in Z3." CAV 2024,
 LNCS 14681, pp. 26-41.
 [DOI](https://doi.org/10.1007/978-3-031-65627-9_2).
-Local copy: `external/papers/arithmetic-reimplemented.pdf` (untracked).
+Local copy: `external/papers/Arithmetic_Solving_in_Z3.pdf` (untracked).
+The copy supplied on 2026-09-30 is byte-identical to
+`external/papers/arithmetic-reimplemented.pdf`, the filename used in earlier
+reading records; both refer to the same CAV 2024 paper.
 
 **Source refresh, 2026-09-25:** §§2–3 and 6 were reread from the supplied PDF
 for the replacement LRA chapter. The chapter retains direct/indirect propagation
