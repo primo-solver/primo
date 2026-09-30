@@ -27,7 +27,8 @@ Rules for entries here:
 
 ## Yices tool papers and engineering talk (2006, 2014, 2016)
 
-Read all three `sandbox/yices-*.pdf` documents on 2026-09-24. The
+Read the 2006 and 2014 Yices tool papers and the 2016 engineering talk
+on 2026-09-24 {cite:p}`dutertre2006yices,yices2,dutertre2016yices`. The
 [dedicated survey](yices.md) gives citations, section/slide coverage, and
 paper-to-code status. It explains the difference between conflict-selected
 Ackermann clauses, lazy explanation construction, and retaining theory lemmas
@@ -62,8 +63,7 @@ failed. General PG and its incremental/model integration remain open in Primo.
 
 > Zhengyang Lu, Paul Sarnighausen-Cahn, Jiahao Chen, Arie Gurfinkel,
 > Florin Manea, and Vijay Ganesh. FoIKS 2026, LNCS 16475, pp. 353--358.
-> DOI `10.1007/978-3-032-21540-6_23`. Local copy
-> `docs/papers/Learning_SMT_Algorithm_Selection_with_High-Level_Natural-Language_Descriptions.pdf`.
+> Publication: {cite:p}`lu2026selection`.
 > **Read 2026-08-30 in full.**
 
 The paper's portfolio members are complete SMT-COMP 2024 solver participants,
@@ -139,7 +139,7 @@ design must not be justified only by the former.
 ## Andersen & Andersen, "Presolving in Linear Programming" (1995)
 
 > Erling D. Andersen and Knud D. Andersen. *Mathematical Programming*
-> 71(2):221-245, 1995. Local copy `docs/papers/Presolving.pdf` (untracked).
+> 71(2):221-245, 1995 {cite:p}`Andersen1995`.
 > **Read 2026-08-05**: §3 (the reduction catalogue) and §4 (postsolve) in
 > full; §6's NETLIB results skimmed.
 
@@ -185,8 +185,7 @@ that reduction order matters when reductions are interdependent.
 (king-thesis)=
 ## King, "Effective Algorithms for the Satisfiability of Quantifier-Free Formulas Over Linear Real and Integer Arithmetic" (NYU, 2014)
 
-> Tim King. PhD thesis, New York University, 2014. Local copy
-> `external/papers/king_tim.pdf` (untracked).
+> Tim King. PhD thesis, New York University, 2014 {cite:p}`king2014`.
 > **Read 2026-08-06**: Section 2.2.7 (Tableau) in full, including 2.2.7.1 Row
 > Addition, its Figures 2.9 and 2.10, and 2.2.7.3 Complexity.
 > **Source refresh 2026-09-25:** §§2.2.7, 2.2.12 and 3.2–3.3 read from the
@@ -277,8 +276,9 @@ can therefore take any value without disturbing anything else. Terms built
 from such variables are *unconstrained terms* and can be replaced by a fresh
 variable: their example is `x + (5*y + z) = y*z` collapsing to `u = y*z`. The
 technique is credited to two independent PhD theses, Bruttomesso (Trento,
-2008) and Brummayer (Linz, 2010), both of which observed that industrial
-benchmarks carry a non-trivial number of such variables.
+2008) and Brummayer (Linz, 2009 {cite:p}`brummayer2009thesis`), both of
+which observed that industrial benchmarks carry a non-trivial number of
+such variables.
 
 The paper's own contribution is to generalize this in two directions. First,
 **partially constrained terms**: Definition 3 calls two terms

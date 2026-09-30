@@ -3,19 +3,18 @@
 ## Citation
 
 Bruno Dutertre, Leonardo de Moura:  
-A Fast Linear-Arithmetic Solver for DPLL(T). CAV 2006.
+A Fast Linear-Arithmetic Solver for DPLL(T). CAV 2006 {cite:p}`DutertreM06`.
 
 Two companion sources, both consulted for this map:
 
 - **The extended technical report**, Bruno Dutertre and Leonardo de Moura,
   *Integrating Simplex with DPLL(T)*, CSL Technical Report SRI-CSL-06-01,
-  23 May 2006 (`external/papers/qflra-sri-csl-06-01.pdf`, untracked -- reference
-  papers are read locally and never committed). It carries the material the
+  23 May 2006 {cite:p}`dutertre2006simplexreport`. It carries the material the
   CAV version compresses: Section 3.1 Preprocessing, the `update` /
   `pivotAndUpdate` / `Check` pseudocode, the termination proof, and Gomory
   cuts. **Section references below are to the technical report** where the
   two differ.
-- The authors' [CAV 2006 slides](https://yices.csl.sri.com/old/slides-cav06.pdf).
+- The authors' CAV 2006 slides {cite:p}`dutertre2006simplexslides`.
 
 Several names below are the authors' own rather than ours, and are noted as
 such.

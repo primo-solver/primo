@@ -1077,9 +1077,8 @@ JSAT 3(3-4):141-224, 2007, **§7.2.5 "DPLL branching heuristics for SMT"** --
 a paper this project already cites for §6.10. §7.2.5 is the survey statement
 that this was open:
 
-> "So far there seem to be no really-satisfactory proposal in the direction of
-> building theory-aware heuristics, and most tools simply use standard DPLL
-> heuristics."
+The survey reports that most tools still used ordinary DPLL heuristics and
+identifies theory-aware choices as an unresolved research direction.
 
 It then points at *look-ahead* and *privileged branching variables* -- neither
 is phase selection, so §7.2.5 is prior context, not prior art. DOI
@@ -1089,8 +1088,8 @@ publisher, whose landing page returns 403 to an automated fetch); author copy
 
 **Checked and found *not* to contain it**, recorded so nobody re-checks:
 Dutertre and de Moura's SRI technical report CSL-06-01
-(`docs/papers/qflra-sri-csl-06-01.pdf`) and Griggio's thesis
-(`docs/papers/griggio.pdf`, [](papers/griggio-mathsat-thesis.md)). Neither
+{cite:p}`dutertre2006simplexreport` and Griggio's thesis
+{cite:p}`griggio2009` ([](papers/griggio-mathsat-thesis.md)). Neither
 mentions phase, polarity, or a theory-driven decision heuristic anywhere.
 
 **For the SAT-side mechanism** H5 rides on, if a paper needs it: phase saving,
@@ -1109,18 +1108,16 @@ would also be wrong, because criterion 1 is absent (see
 [lead 20](lead-decision-recommendation)).
 
 **The CADE 2019 citation is now verified, and it changes the claim.** The paper
-was supplied by the user and read on 2026-08-29
-(`docs/papers/SPASS-SATT.pdf`, untracked -- copyrighted, and `.gitignore`
-excludes `*.pdf`). §3 does describe decision recommendations, so the citation
+was read on 2026-08-29 {cite:p}`bromberger2019spass`.
+§3 does describe decision recommendations, so the citation
 above stands without a caveat. It is also the better citation than the thesis
-here, because its **footnote 3 gives the rule exactly**, where the thesis gives
-only prose:
+here, because **footnote 3 specifies the phase-selection rule**, where the
+thesis gives only prose:
 
-> "In our own theory solver, `GetPhase(L) = ⊤` if the current theory assignment
-> satisfies `L` or if `Assert(¬L)` would return `⊥`. Otherwise,
-> `GetPhase(L) = ⊥`. (If unate propagations are enabled, then the case that
-> `Assert(¬L)` would return `⊥` is impossible because `L` would have been unate
-> propagated.)"
+The rule selects the positive phase when either the current arithmetic model
+satisfies the literal or asserting its negation would cause a conflict. It
+selects the negative phase otherwise. With unate propagation enabled, the
+conflict case has already forced the literal, so it cannot arise at a decision.
 
 Two corrections to what this note said before reading it.
 

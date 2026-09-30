@@ -2,8 +2,9 @@
 
 ## Citation
 
-Robert Nieuwenhuis, Albert Oliveras:  
-Fast Congruence Closure and Extensions.
+Robert Nieuwenhuis and Albert Oliveras, *Fast Congruence Closure and
+Extensions*, Information and Computation 205(4), 557–580, 2007
+{cite:p}`nieuwenhuis2007`. Section numbers refer to this journal edition.
 
 ## Role in Primo
 
@@ -52,7 +53,10 @@ alternative, not a default or a complete paper implementation. Backtracking
 trails ordinary mutable closure state rather than using the paper's optimized
 timestamped lookup-table policy.
 
-## Section 4/5 mechanism (read directly from `docs/oliveras-euf.pdf`, 2026-07-22)
+(section-4-5-mechanism-read-directly-from-docs-oliveras-euf-pdf-2026-07-22)=
+## Section 4/5 mechanism
+
+Sections 4 and 5 of {cite:p}`nieuwenhuis2007` were read on 2026-07-22.
 
 Prior proof-forest experiments (see `fast-congruence-closure-implementation.md`
 audit notes) built proof edges on top of Primo's existing size-oriented merge
@@ -69,10 +73,9 @@ w.l.o.g. that the tree of `e` has no more elements than the tree of `e'`:
 2. Add an edge `e -> e'`.
 
 This is a *separate* structure from the ordinary Representative/Find union-find
-used for congruence discovery (Theorem 15: "use the standard union-find with
-path compression and maintain at the same time the proof forest ... as an
-array of pointers to parents, as it is done in the union-find data structure
-itself" -- i.e. two independent parent arrays, not one overloaded structure).
+used for congruence discovery. Theorem 15 combines a path-compressed union-find
+with a separate parent array for the proof forest. Its two parent relations
+serve different purposes and must be maintained independently.
 Lemma 13: each proof-forest edge is reoriented at most O(log n) times over a
 sequence of n-1 unions, because each reversal at least doubles the reversed
 edge's tree size -- this is the amortized bound the whole approach depends on,

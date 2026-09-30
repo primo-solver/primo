@@ -56,7 +56,7 @@ investigations remain pending; documenting the current core does not choose a
 new public API or reclamation design.
 
 **Theory chapters, 2026-09-25:** DPLL(T), EUF and LRA drafts are now available
-for reader review. Supplied PDFs in `external/papers/` resolved the LRA source
+for reader review. Supplied primary texts resolved the LRA source
 access blocker. The rewrite preserves the arithmetic implementation and its
 development evidence; an explicit inventory in the LRA chapter links detailed
 engineering, experiments and rejected approaches. King, Griggio, Bromberger,

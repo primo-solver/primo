@@ -427,8 +427,8 @@ to other components.
 ## Sources and implementation status
 
 Robert Nieuwenhuis and Albert Oliveras, *Fast Congruence Closure and Extensions*,
-Information and Computation **205** (2007), 557–580,
-[doi:10.1016/j.ic.2006.08.009](https://doi.org/10.1016/j.ic.2006.08.009), is the
+Information and Computation **205** (2007), 557–580
+{cite:p}`nieuwenhuis2007`, is the
 primary algorithmic source.
 
 | Basis | Implemented scope and deviations |

@@ -232,8 +232,9 @@ half of why the completion fix above is not enough. The value has to come from
 This is a solved problem in the standard presentation, and the answer was in
 the repository's own paper collection the whole time.
 
-[](../../docs/papers/griggio-mathsat-thesis.md) sect. 1.5.1 (`docs/papers/griggio.pdf`,
-p. 30) gives the construction. Purification rewrites a mixed formula by
+[](../../docs/papers/griggio-mathsat-thesis.md) sect. 1.5.1
+([Griggio 2009](https://doi.org/10.15168/11572_368265), p. 30) gives the
+construction. Purification rewrites a mixed formula by
 labelling every alien subterm with a fresh variable and asserting the label:
 
 ```

@@ -16821,7 +16821,7 @@
         "type": "local",
         "host": "workspace",
         "binary": "build-feature-rel/primo (Release)",
-        "notes": "Read the actual paper (docs/oliveras-euf.pdf) Sections 4 and 5.1-5.5 directly before implementing. New standalone class src/theory/equality/proof_forest.{hpp,cpp}, unit-tested against hand-derived cases (not copied from paper diagrams) plus the existing randomized 180-step interleaved-backtracking oracle test, under default and ASAN suites."
+        "notes": "Read Nieuwenhuis and Oliveras (2007, doi:10.1016/j.ic.2006.08.009), Sections 4 and 5.1-5.5 directly before implementing. New standalone class src/theory/equality/proof_forest.{hpp,cpp}, unit-tested against hand-derived cases (not copied from paper diagrams) plus the existing randomized 180-step interleaved-backtracking oracle test, under default and ASAN suites."
       },
       "command": {
         "unit_tests": "cmake --build build --target primo_euf_solver_tests -j14 && ./build/primo_euf_solver_tests; same under build-asan",
@@ -16873,7 +16873,7 @@
         "type": "local",
         "host": "workspace",
         "binary": "build-rel/primo (Release)",
-        "notes": "Re-read Section 5.5 and Theorem 21 directly from docs/oliveras-euf.pdf; corrected a wrong prior characterization of 'structural class' (it is congruence-produced terms sharing one (function,argument) representative pair, not constants pre-merged by direct equations). Hand-derived unit tests built directly from the paper's own Example 22 and Example 23, plus the existing randomized 180-step interleaved-backtracking oracle test extended to this mode, under default and ASAN/UBSan builds."
+        "notes": "Re-read Section 5.5 and Theorem 21 in Nieuwenhuis and Oliveras (2007, doi:10.1016/j.ic.2006.08.009); corrected a wrong prior characterization of 'structural class' (it is congruence-produced terms sharing one (function,argument) representative pair, not constants pre-merged by direct equations). Hand-derived unit tests built directly from the paper's own Example 22 and Example 23, plus the existing randomized 180-step interleaved-backtracking oracle test extended to this mode, under default and ASAN/UBSan builds."
       },
       "command": {
         "unit_tests": "cmake --build build-rel --target primo_euf_solver_tests -j$(nproc) && ./build-rel/primo_euf_solver_tests; same under a freshly configured ASAN+UBSan build (PRIMO_SANITIZERS=address,undefined)",
@@ -27966,7 +27966,7 @@
         "slurm": null
       },
       "commands": {
-        "paper_extraction": "pdftotext -layout docs/papers/model-guided-no.pdf /tmp/model-guided-no.txt",
+        "paper_extraction": "pdftotext -layout <reading-copy:MouraB08> /tmp/model-guided-no.txt (historical input filename replaced by docs/references.bib key on 2026-09-30)",
         "focused_unit": "cmake --build build --target primo_qf_lra_solver_tests -j2 && ./build/primo_qf_lra_solver_tests",
         "build_check_lint_docs": "cmake --build build --target primo -j2 && make check && make lint && make docs",
         "test": "make test",
@@ -36385,7 +36385,7 @@
       "commands": {
         "yices": "curl https://yices.csl.sri.com/papers/cav2014.pdf; pdftotext -layout; grep -i 'branch|decision|heuristic|phase|polarity'",
         "sebastiani": "curl -k http://disi.unitn.it/rseba/papers/JSAT-2007.pdf; pdftotext -layout; read section 7.2.5",
-        "local_primaries": "pdftotext -layout docs/papers/qflra-sri-csl-06-01.pdf and docs/papers/griggio.pdf; grep -i 'phase|polarity|decision heuristic|branching heuristic'",
+        "local_primaries": "pdftotext -layout <reading-copy:dutertre2006simplexreport> and <reading-copy:griggio2009>; grep -i 'phase|polarity|decision heuristic|branching heuristic' (historical input filenames replaced by docs/references.bib keys on 2026-09-30)",
         "phase_saving": "curl https://dblp.org/search/publ/api?q=Lightweight+Component+Caching+Scheme+Satisfiability+Solvers",
         "link_checks": "curl -sSk -o /dev/null -w '%{http_code}' -L for every cited URL"
       },
@@ -36396,7 +36396,7 @@
         "authors_own_admission": "SPASS-SATT v1.1 SMT-COMP 2019 system description lists decision recommendations among techniques 'contained in existing SMT solvers' where 'not all have been described in the respective literature', naming the CADE-27 paper as the remedy.",
         "conclusion": "Cite Bromberger, Fleury, Schwarz, Weidenbach, SPASS-SATT: A CDCL(LA) Solver, CADE 2019 (DOI 10.1007/978-3-030-29436-6_7), and/or thesis section 8.1, for the technique; attribute origin to Yices without citing the Yices 2.2 paper as its description; position against Sebastiani JSAT 2007 section 7.2.5; cite Pipatsrisawat & Darwiche SAT 2007 for the SAT-side phase-saving mechanism H5 overrides."
       },
-      "caveats": "SUPERSEDED IN PART on the same day: the CADE 2019 paper was afterwards supplied by the user (docs/papers/SPASS-SATT.pdf, untracked) and read. It does describe decision recommendations in section 3, so the citation is confirmed rather than inferred, and its footnote 3 corrected the reading taken from the thesis prose -- see 2026-08-29-spass-satt-cade-paper-read. Sebastiani's JSAT DOI resolves 302 to the publisher, whose landing page returns 403 to an automated fetch; the author copy was the one read.",
+      "caveats": "SUPERSEDED IN PART on the same day: the CADE 2019 paper was afterwards supplied by the user (doi:10.1007/978-3-030-29436-6_7; untracked reading copy) and read. It does describe decision recommendations in section 3, so the citation is confirmed rather than inferred, and its footnote 3 corrected the reading taken from the thesis prose -- see 2026-08-29-spass-satt-cade-paper-read. Sebastiani's JSAT DOI resolves 302 to the publisher, whose landing page returns 403 to an automated fetch; the author copy was the one read.",
       "evidence_status": "current",
       "docs": "docs/qf-lra-heuristics.md H5 'What to cite for --lra-model-phase'; docs/arithmetic.md; docs/papers/bromberger-linear-arithmetic-thesis.md section 8.1",
       "superseded_by": "2026-08-29-spass-satt-cade-paper-read"
@@ -36414,7 +36414,7 @@
         "host": "workstation"
       },
       "commands": {
-        "source": "docs/papers/SPASS-SATT.pdf, supplied by the user; untracked and covered by .gitignore's *.pdf (copyrighted)",
+        "source": "SPASS-SATT: A CDCL(LA) Solver, CADE 2019, doi:10.1007/978-3-030-29436-6_7; user-supplied reading copy, not redistributed",
         "verify": "pdfinfo confirms Subject 'Automated Deduction - CADE 27, doi:10.1007/978-3-030-29436-6_7', 12 pages",
         "read": "pdftotext -layout, read in full",
         "code_checks": "grep -rn unate src/ (empty); grep -n lra_model_phase src/smt/check_sat.cpp (solve_qf_lia_impl passes it into OnlineLraPropagator)"
@@ -38434,7 +38434,7 @@
       "results": {
         "headline": "QF_UFLIA model fuzz gate, 3000 cases, seed base 202609100: 0 model errors, against 21 on the same seeds before the fix. 1535 satisfiable models all validated by Dolmen directly with no Z3 fallback. Answers unchanged at 2999 PASS plus the same single pre-existing unknown case earlier runs also reported. QF_UFLRA (132989) COMPLETED clean.",
         "root_cause": "The model printer invents an Int value when neither the component model nor the term's congruence class supplies one, via fresh_int_value handing out 0,1,2..., and that number becomes both a table key and, one level up, a result. Inventing is sound for an unconstrained term and unsound for a constrained one, and the builder cannot tell -- it never sees the assertions. Instrumented on witness.smt2: three values invented, all three for f applications, and they are exactly what makes the printed table self-inconsistent.",
-        "literature": "The construction was in the repository's own paper collection. Griggio's thesis sect. 1.5.1 (docs/papers/griggio.pdf p. 30): purification labels every alien subterm with a fresh variable and asserts the label, so in the purified formula every arithmetic-sorted UF application f(v_1..v_n) has a label of its own and all of them are interface variables the arithmetic solver assigns. The row is (val(v_1)..val(v_n)) -> val(v_f), read off rather than searched for, and no value can be missing. docs/papers/griggio-mathsat-thesis.md had skipped the combination background entirely; it now carries it.",
+        "literature": "The construction was described in Griggio's 2009 thesis, sect. 1.5.1 (doi:10.15168/11572_368265, PDF p. 30): purification labels every alien subterm with a fresh variable and asserts the label, so in the purified formula every arithmetic-sorted UF application f(v_1..v_n) has a label of its own and all of them are interface variables the arithmetic solver assigns. The row is (val(v_1)..val(v_n)) -> val(v_f), read off rather than searched for, and no value can be missing. docs/papers/griggio-mathsat-thesis.md had skipped the combination background entirely; it now carries it.",
         "fix_1": "e2058f1: MixedPurificationRewriteState::proxy_by_app already existed and was discarded at the return, since MixedTheoryPurificationResult carried only counts. It is now returned and appended to the model conversion chain as PurificationProxyConversion, so qf_uflia_int_values seeds each application's value from its label. 21 errors to 2.",
         "fix_2": "76e5e37: the two survivors were a different mechanism. A user constant is neither an EUF atom member (x = f(...) is an Int equality that goes to LIA) nor an LIA variable (the tableau's nine variables were all internal $primo_ symbols), so it reaches the model only through substitution facts. The value pass read only LiaSubstitutionConversion while the chain ran through a DirectedEqualitySubstitutionConversion, and applied substitutions to model_terms only. With both fixed the sum was still unvalued: evaluate memoizes failures as well as successes and terms are visited in arena order, so x (term 22) was evaluated before $primo_ite_0 (term 33) and the failure was cached permanently. The pass now runs in rounds discarding only failed entries. 2 to 0.",
         "refuted_attempt": "A bottom-up 'consistent completion' keyed by argument tuple rather than congruence class fixes two of the witnesses and regresses the corpus: same 750 cases, same seed, 8 model errors unchanged against 14 with the pass, and 43 against 21 over 3000 in a two-sweep variant. Forcing an application onto an existing row equates two applications whenever their printed argument values coincide, and those values are partly invented, so a collision merges applications the solver kept apart. Reverted; recorded in the bug file because it looks obviously right.",

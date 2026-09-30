@@ -63,10 +63,10 @@ to reduce total solving time?
 
 | Source | Reading scope and relevance |
 | --- | --- |
-| Tobias Achterberg, Timo Berthold and Gregor Hendel, [*Rounding and Propagation Heuristics for Mixed Integer Programming*](https://edocs.tib.eu/files/e01fn13/733448909l.pdf), ZIB Report 11-29, 2011 | §§2–3: rounding, ZI Round, Shifting and Shift-and-Propagate. These distinguish feasibility-preserving moves from temporary infeasibility and repair. |
-| Matteo Fischetti, Fred Glover and Andrea Lodi, [*The Feasibility Pump*](https://www.dei.unipd.it/~fisch/papers/feasibility_pump.pdf), Mathematical Programming 104, 91–104, 2005, DOI [10.1007/s10107-004-0570-3](https://doi.org/10.1007/s10107-004-0570-3) | §1 and Figure 1: alternating rounding and LP distance minimization, with perturbation when progress stalls. The detailed algorithm and experiments focus on binary integer variables. |
-| Timo Berthold, [*Heuristic algorithms in global MINLP solvers*](https://www.zib.de/userpage/berthold/Berthold2014.pdf), PhD thesis, 2014 | §§7.1–7.3, Definition 7.1, Lemma 7.2 and Figure 7.2: RENS and its bounded use within a solver. The chapter became [*RENS: the optimal rounding*](https://doi.org/10.1007/s12532-013-0060-9), Mathematical Programming Computation 6, 33–54, 2014. |
-| Nikolaj Bjørner and Lev Nachmanson, [*Arithmetic Solving in Z3*](https://doi.org/10.1007/978-3-031-65627-9_2), CAV 2024 | §2: SMT/MIP design tradeoffs. §4.1, including Example 3: Primo's existing freedom-interval patching basis. The retained {source}`paper note <docs/papers/arithmetic-solving-in-z3.md>` records the broader arithmetic stages. |
+| *Rounding and Propagation Heuristics for Mixed Integer Programming*, ZIB Report 11-29 {cite:p}`achterberg2011rounding` | §§2–3: rounding, ZI Round, Shifting and Shift-and-Propagate. These distinguish feasibility-preserving moves from temporary infeasibility and repair. |
+| *The Feasibility Pump* {cite:p}`fischetti2005pump` | §1 and Figure 1: alternating rounding and LP distance minimization, with perturbation when progress stalls. The detailed algorithm and experiments focus on binary integer variables. |
+| *Heuristic algorithms in global MINLP solvers*, PhD thesis {cite:p}`berthold2014thesis` | §§7.1–7.3, Definition 7.1, Lemma 7.2 and Figure 7.2: RENS and its bounded use within a solver. The chapter became *RENS: the optimal rounding* {cite:p}`berthold2014rens`. |
+| *Arithmetic Solving in Z3*, CAV 2024 {cite:p}`BjornerN24` | §2: SMT/MIP design tradeoffs. §4.1, including Example 3: Primo's existing freedom-interval patching basis. The retained {source}`paper note <docs/papers/arithmetic-solving-in-z3.md>` records the broader arithmetic stages. |
 
 ### Rounding, shifting and propagation
 

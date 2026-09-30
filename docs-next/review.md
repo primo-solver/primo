@@ -36,6 +36,20 @@ warning check before accepting edits; `make docs-check-links` rebuilds both
 books fully before checking links. Direct wrapper calls can pass `--all` to
 force a full draft build.
 
+## Publication references
+
+Use the shared `docs/references.bib` and MyST citation roles:
+
+````text
+The arithmetic procedure uses exact bounds {cite:p}`DutertreM06`.
+````
+
+The [bibliography](references.md) resolves these keys to publication metadata
+and DOI or stable source links.
+The existing book's `docs/development/documentation.md` describes authoring
+and checks. Local reading-copy names are not publication identifiers; keep
+edition and section details in the reading record instead.
+
 ## Page review ledger
 
 Documentation review state is separate from solver work state. An implemented
@@ -686,7 +700,7 @@ the relevant tests to representation, explanation, rollback, and propagation
 obligations. The worked trace is explanatory; it does not claim a particular
 preprocessor or SAT search order.
 
-The local primary PDF `docs/oliveras-euf.pdf` was read at Sections 3.1–3.5,
+The journal edition of {cite:p}`nieuwenhuis2007` was read at Sections 3.1–3.5,
 4, and 5.2–5.5. The representation introduction now cites Sections 3.1.1 and
 3.1.2 at the point of use, distinguishes currying from flattening, and states
 that `FlatTermId`s are local to their `FlatTermIndex`.
@@ -728,7 +742,7 @@ of the performance claims or completion of the LRA chapter.
 
 The initial LRA audit was blocked by HTTP 403 responses for Griggio and
 Bromberger, an older Griggio URL timeout, and a HAL bot challenge. The user
-subsequently supplied the primary PDFs in `external/papers/`, resolving that
+subsequently supplied the primary texts, resolving that
 blocker. The completed source reading for the chapter is recorded below;
 the earlier access failures are not the current status.
 
@@ -754,17 +768,17 @@ The supplied PDFs remain ignored local reference material. These are the
 sections used in this audit, not a claim that every supplied paper was read
 in full:
 
-| File or source | Reading and use |
+| Publication | Reading and use |
 | --- | --- |
-| `king_tim.pdf` | §§2.2.7, 2.2.12, 3.2–3.3: sparse structures, eventual Bland fallback and SOI. |
-| `griggio.pdf` | §2.5.1–2.5.3: fixed-equation invariants, exact-number/storage choices and least-violated selection. |
-| `Bromberger_Decision_Procedures_for_Linear_Arithmetic.pdf` | §§7.1.3–7.1.4: rollback alternatives and representation; opening parts of §§7.1.1 and 8.1.1 for context. The earlier Chapter 5 reading remains in its existing note; no fresh audit of the complete equality-basis algorithm was done. |
-| `Brummayer-PhD-Thesis-2009.pdf` | §4.1, introduction to §4.2, §4.3 and FuzzSMT scope in §4.4.2: contributor correctness guidance, not a simplex source. |
-| `Monniaux-cav09.pdf` | §§2.1–2.2, the sparse forced-pivot ordering discussion in §3, and §4's rational representation. The downloaded arXiv copy was also consulted. |
-| `arithmetic-reimplemented.pdf` | §§2–3 and 6: exact sparse arithmetic, direct/indirect propagation, optional model-unit equality producer and combination boundary. The integer/nonlinear sections are not re-audited here. |
-| `SPASS-SATT.pdf` | §3, especially footnote 3: model-based phase recommendations. |
-| `Presolving.pdf` | §3.1, especially (iv): fixed-variable elimination as motivation; distinction from Primo's reversible pivot-based adaptation. |
-| Dutertre–de Moura, SRI-CSL-06-01 | §§3.1–3.3, downloaded primary PDF: preparation, repair/termination, explanations, rollback, propagation and strict bounds. |
+| {cite:ts}`king2014` | §§2.2.7, 2.2.12, 3.2–3.3: sparse structures, eventual Bland fallback and SOI. |
+| {cite:ts}`griggio2009` | §2.5.1–2.5.3: fixed-equation invariants, exact-number/storage choices and least-violated selection. |
+| {cite:ts}`bromberger2019` | §§7.1.3–7.1.4: rollback alternatives and representation; opening parts of §§7.1.1 and 8.1.1 for context. The earlier Chapter 5 reading remains in its existing note; no fresh audit of the complete equality-basis algorithm was done. |
+| {cite:ts}`brummayer2009thesis` | §4.1, introduction to §4.2, §4.3 and FuzzSMT scope in §4.4.2: contributor correctness guidance, not a simplex source. |
+| {cite:ts}`Monniaux2009` | §§2.1–2.2, the sparse forced-pivot ordering discussion in §3, and §4's rational representation. The downloaded arXiv copy was also consulted. |
+| {cite:ts}`BjornerN24` | §§2–3 and 6: exact sparse arithmetic, direct/indirect propagation, optional model-unit equality producer and combination boundary. The integer/nonlinear sections are not re-audited here. |
+| {cite:ts}`bromberger2019spass` | §3, especially footnote 3: model-based phase recommendations. |
+| {cite:ts}`Andersen1995` | §3.1, especially (iv): fixed-variable elimination as motivation; distinction from Primo's reversible pivot-based adaptation. |
+| Dutertre–de Moura, SRI-CSL-06-01 {cite:p}`dutertre2006simplexreport` | §§3.1–3.3: preparation, repair/termination, explanations, rollback, propagation and strict bounds. |
 
 The source review corrected stale King and Griggio comparisons: Primo now
 has indexed occurrence removal rather than a linear column scan, and the
@@ -875,9 +889,9 @@ evidence, independent of which machine a contributor uses. This clarification
 does not change the workspace's agent execution instructions. Public contribution
 governance and sign-off remain outside the correctness guide's scope.
 
-Reading-copy details remain here rather than in chapter introductions: the EUF
-review used `docs/oliveras-euf.pdf`; the Yices copies listed above have 5, 8, and
-30 PDF pages respectively. The original Plaisted–Greenbaum paper's publisher
+Edition details remain here rather than in chapter introductions: the EUF
+review used the 2007 journal edition {cite:p}`nieuwenhuis2007`; the Yices
+copies listed above have 5, 8, and 30 PDF pages respectively. The original Plaisted–Greenbaum paper's publisher
 returned HTTP 403, and the author's reprint listing offered no download; the
 directional-encoding account therefore uses the accessible 2025 primary paper.
 
@@ -927,14 +941,14 @@ tests do not change the combination code reviewed here.
 
 ### Primary sections read
 
-| Reading copy | Sections used in this pass |
+| Publication and edition | Sections used in this pass |
 | --- | --- |
 | Nelson and Oppen, 1978 Stanford report STAN-CS-78-652; retrieved from the report mirror linked in the chapter | §§2.2–2.4: purification, equality exchange, and convex/non-convex search. The Stanford download endpoint refused the connection; the mirror supplied the authors' original report. This was not a reading of the 1979 journal layout. |
-| `external/papers/model-guided-no.pdf` | §§2.1, 4, 5.1–5.2 and Appendix A: arrangements, model decisions, opportunistic equality rules, freedom intervals, and the broader transition system. |
-| Bruttomesso et al., LPAR 2006 author manuscript `lpar06_dtc.pdf`, linked in the chapter | §§2–3 and Figure 4: SAT-mediated interface search and the extra hypotheses of the paper's NO-emulation strategy. No branching-bound claim is transferred to Primo. |
-| `external/papers/griggio.pdf` | §1.5.1, printed pp. 28–35: purification, shared variables, stable infiniteness, convex closure, and delayed combination. |
-| `external/papers/king_tim.pdf` | §§1.5.5–1.5.6, printed pp. 26–28: theory-engine responsibility, partial/full checks, and shared-term explanations. |
-| `external/papers/Bromberger_Decision_Procedures_for_Linear_Arithmetic.pdf` | §5.4: equality-basis normalization and justifications. The full basis algorithm remains an open lead; this pass does not re-audit all of Chapter 5. |
+| {cite:ts}`MouraB08` | §§2.1, 4, 5.1–5.2 and Appendix A: arrangements, model decisions, opportunistic equality rules, freedom intervals, and the broader transition system. |
+| Bruttomesso et al., LPAR 2006 author manuscript, linked in the chapter | §§2–3 and Figure 4: SAT-mediated interface search and the extra hypotheses of the paper's NO-emulation strategy. No branching-bound claim is transferred to Primo. |
+| {cite:ts}`griggio2009` | §1.5.1, printed pp. 28–35: purification, shared variables, stable infiniteness, convex closure, and delayed combination. |
+| {cite:ts}`king2014` | §§1.5.5–1.5.6, printed pp. 26–28: theory-engine responsibility, partial/full checks, and shared-term explanations. |
+| {cite:ts}`bromberger2019` | §5.4: equality-basis normalization and justifications. The full basis algorithm remains an open lead; this pass does not re-audit all of Chapter 5. |
 
 The original reports were read as papers, not as solver implementation
 sources. The current chapter uses Primo's own code for representation and
@@ -1548,3 +1562,39 @@ Both strict books and local/Git-source link checks passed during this pass.
 Rendered review checks the changed chapter and new mathematical lead; final
 verification also checks preservation of the pre-edit page anchors. This is
 a documentation review, with no solver batches or new performance claims.
+
+
+## Bibliography and reading-copy audit, 2026-09-30
+
+Both books now use `docs/references.bib`, with 26 publication records and one
+rendered bibliography per book. Relevant entries from the supplied BibTeX
+collection were imported as metadata only. The import corrects the 2008
+journal edition of *Model-based Theory Combination*, Tim King's author name,
+and TeX escaping in identifiers. Brummayer's thesis is recorded as 2009,
+consistent with the institutional record and the reading copy. Conference,
+report, thesis and slide editions remain distinct where section references
+require it.
+
+The audit covered tracked documentation, review and migration records, source
+comments and run-log source descriptions. Publication identifiers replace
+local reading filenames. Historical command inputs use explicitly marked
+bibliography-key placeholders; their dates, solver revisions, measurements
+and qualification status are unchanged. One old HTML fragment retains its
+filename-derived spelling solely to preserve incoming links.
+
+Long paper quotations in the retained literature and design notes were
+rewritten as attributed summaries, preserving the section references and
+mathematical conditions. No reference PDF or imported paper figure was found
+among tracked assets: the diagrams have project TikZ/SVG sources and the
+benchmark plots have project plotting scripts. Local reference PDFs and raw
+bibliography imports remain ignored. The source-comment changes only replace
+publication identifiers; solver behavior is unchanged.
+
+Verification: strict builds of both books, generated local and pinned-source
+links, pre-existing HTML anchors, BibTeX parsing and field checks, browser
+inspection of references and citation tables, and `make lint`. An isolated
+Sphinx check rejects a missing citation key. An incremental draft build detects
+a change to the shared bibliography. These are documentation checks; no solver
+qualification or fresh paper-algorithm review is claimed. Existing direct DOI
+and stable author links remain valid citation forms; the shared file is the
+place for new structured references.

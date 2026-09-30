@@ -824,8 +824,8 @@ Asked whether the cross-linked form is doable. Investigated 2026-08-06; the
 short answer is **yes, in array form, and it is smaller than it first looked**
 -- because a claim made earlier in this entry was wrong.
 
-**Source note, updated 2026-08-06.** King's thesis is now available at
-`docs/papers/king_tim.pdf` and Section 2.2.7 has been read -- summary in
+**Source note, updated 2026-08-06.** Section 2.2.7 of King's thesis
+{cite:p}`king2014` has been read -- summary in
 [](papers/summaries.md). Reading it confirmed the direction and exposed a fork
 this entry had not accounted for, recorded below. The array design further
 down is a *variant*, not King's design, and should not be attributed to him.
@@ -836,8 +836,7 @@ and backward pointers for both; setting an entry to zero is an O(1) unlink
 "given a pointer to the entry". That is precisely the missing capability. But
 one clause changes the comparison:
 
-> "(Note that these lists are not sorted. The elements may appear in any
-> order.)"
+The paper permits arbitrary element order in these lists; it does not require sorting.
 
 **King's rows are unsorted.** Primo's are sorted by variable id, which is the
 invariant `pivot()`'s two-way merge depends on and which item H8 was built
@@ -1473,10 +1472,10 @@ invertible with respect to that occurrence -- then the term can be replaced
 by a fresh variable of the same sort, because whatever value the rest of the
 formula needs from it, the lone occurrence can always be adjusted to produce.
 Independently discovered by Bruttomesso (PhD thesis, Trento, 2008) and
-Brummayer (PhD thesis, Linz, 2010; `docs/papers/Brummayer-PhD-Thesis-2009.pdf`,
+Brummayer (PhD thesis, Linz, 2009; {cite:p}`brummayer2009thesis`,
 Sect. 3.4, read 2026-08-17) for bit-vectors and arrays, and generalized to
 partially-constrained terms and quantified formulas by Jonáš & Strejček
-(SAT 2017, `docs/papers/On_Simplification_of_Formulas_with_Unconstrained_Variables_and_Quantifiers.pdf`,
+(SAT 2017, {cite:p}`Jon2017`,
 read in full 2026-08-17). See [](papers/monotone-variable-elimination.md) §3
 for the full reading trail and why this is a genuinely different rule from
 lead 9, not an instance of it: lead 9 needs *many* same-signed occurrences
@@ -2431,12 +2430,12 @@ classification *is* an equality basis of the homogeneous system, Lemma 5.5.1).
 
 **Claim.** Dutertre & de Moura's `Backtrack()` reverts bound values *and*
 restores a backed-up assignment. `HardBacktrack()` reverts only the bounds and
-lets `Check()` recompute. It is more expensive per call and lands in a better
-state, because
+lets `Check()` recompute. It is more expensive per call; the rationale for a
+better continuation state is given in the thesis:
 
-> "a good continuation point for the simplex algorithm depends not only on the
-> current assignment, but also on the current tableau ... Reverting to the
-> backup solution ... sometimes disconnects the assignment and the tableau."
+The thesis argues that the current basis and assignment jointly determine a
+useful continuation state. Restoring a saved assignment can discard its
+correspondence with the retained tableau.
 
 CVC4 and veriT are reported to do the same.
 
@@ -2571,11 +2570,10 @@ left open. Three of these leads name `convert`: this one (+116),
 whether those are the same instances. **They are, and the paper is explicit that
 the three are conjunctive rather than additive:**
 
-> "SPASS-SATT solves only two-thirds of the 319 instances if **one** of the
-> following three techniques is missing: (i) recalculating simplex states during
-> backtracking, (ii) decision recommendations, or (iii) the small CNF
-> transformation. SPASS-SATT with all three techniques solves all instances in
-> less than 2 s."
+The paper reports an ablation on 319 `convert` instances. Disabling any one
+of simplex-state recalculation, decision recommendations or the small-CNF
+transformation leaves about one third unsolved. With all three enabled, every
+instance takes less than two seconds in the reported experiment.
 
 So each is individually *necessary* and none is individually sufficient, and
 ~106 instances are being counted three times across the three ablations. Do not

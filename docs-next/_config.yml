@@ -2,6 +2,9 @@ title: Primo — draft documentation
 author: Primo contributors
 logo: _static/primo-logo.svg
 
+bibtex_bibfiles:
+  - ../docs/references.bib
+
 execute:
   execute_notebooks: "off"
 
@@ -30,6 +33,7 @@ sphinx:
     - sphinx.ext.extlinks
   recursive_update: true
   config:
+    bibtex_reference_style: label
     extlinks:
       source:
         - "https://github.com/primo-solver/primo/blob/bc5d21dd7ab28d03d98f90815449b58a0d222d01/%s"

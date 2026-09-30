@@ -1,7 +1,7 @@
 # What QF_LRA owes Nelson-Oppen: convexity and equality sharing
 
 Written 2026-08-07 for Primo's convex Nelson-Oppen work, based on de Moura and
-Bjørner's *Model-based Theory Combination* (`docs/papers/model-guided-no.pdf`,
+Bjørner's *Model-based Theory Combination* ({cite:p}`MouraB08`,
 ENTCS 198:37-49, 2008; see also [](papers/model-based-theory-combination.md)
 and [](papers/nelson-oppen-closure-methods.md)).
 
@@ -20,12 +20,10 @@ implement the paper's generic model-producing transition system.
 arithmetic is not — the paper's counterexample is `0 ≤ x₁,x₂,x₃ ≤ 1`, which
 entails a disjunction of equalities but no single one.
 
-The consequence is the reason this matters (paper §2.1):
-
-> For convex theories, instead of *guessing*, one can **deduce** the equalities
-> to be shared. The key idea is to propagate `x ≃ y` to `T₂` whenever
-> `T₁ ∪ Γ₁ ⊨ x ≃ y`, and vice-versa. This process is repeated until no further
-> equations can be propagated.
+Section 2.1 describes a propagation fixpoint: whenever one component entails
+an equality between shared variables, pass it to the other component and
+continue until neither can derive a new equality. Convexity lets this exchange
+use individual entailed equalities instead of guessing a disjunction's case.
 
 So **completeness on our side buys determinism on theirs.** If QF_LRA reports
 *every* entailed equality between shared variables, the combination layer needs
@@ -75,9 +73,9 @@ source; it is not the completeness mechanism.
 
 ### 1. Model-implied equalities — the `M-Propagate` trigger (§5)
 
-> The current model for the simplex solver is given by β. Enumerating the
-> equalities implied by β is simple: enumerate all the values of β(xᵢ),
-> inserting each value into a hash table. The expected time is O(|B ∪ N|).
+Section 5 groups variables by their values in the current simplex assignment
+β. Inserting those values into a hash table identifies equal-value classes in
+expected `O(|B ∪ N|)` time.
 
 Primo now implements this operation as `model_equal_classes()`, but intentionally
 does **not** expose its result as entailed equality propagation: equality in one
@@ -232,23 +230,21 @@ rather than theirs.
 
 **The global `--lra-fixed-elimination` default (item H7) is off.** The mixed
 QF_UFLRA path now has a separately measured scoped default, described below.
-The paper, §5.1:
-"We also aggressively remove fixed variables from the basis." Fixed variables
-are the premise of three of the four opportunistic rules, and a fixed variable
+The paper, §5.1, also removes fixed variables from the basis eagerly. Fixed
+variables are the premise of three of the four opportunistic rules, and a fixed variable
 sitting in the basis is one the rules cannot use. Our own note in
 [](arithmetic.md) records H7 as netting to nothing on the scrambled competition
 set — measured *without* any equality propagation depending on it. Under MBTC
 its value changes, because it is no longer only a pivoting economy.
 
-**`--lra-row-propagation` is off by default.** The paper, §5.1, immediately
-after listing the rules:
+**`--lra-row-propagation` is off by default.** Section 5.1 gives an example
+where the four rules miss an entailed equality.
+Bound propagation derives the missing lower bound `0 ≤ w`; together with the
+existing upper bound this fixes `w` and allows `EqRow` to apply.
 
-> These rules can miss some implied equalities. [...] Fortunately, the bound
-> propagation technique described in [8] can be used imply the bound `0 ≤ w`,
-> making `w` a fixed variable, and enabling the application of the rule EqRow.
-
-Reference [8] is Dutertre & de Moura — the paper our tableau is built from, and
-`--lra-row-propagation` is that technique; see [](arithmetic.md)'s
+The example cites Dutertre and de Moura's bound propagation
+{cite:p}`dutertre2006simplexreport`, the basis of `--lra-row-propagation`;
+see [](arithmetic.md)'s
 "Row-based/interval bound propagation" entry for our implementation of it
 (`compute_implied_bound` in `check_sat.cpp`), rather than just the paper
 citation. So bound propagation is not only a

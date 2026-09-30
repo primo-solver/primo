@@ -2,19 +2,9 @@
 
 ## Citation
 
-Martin Bromberger, *Decision Procedures for Linear Arithmetic*. Dissertation
-zur Erlangung des Grades des Doktors der Naturwissenschaften, Fakultät
-Mathematik und Informatik, Universität des Saarlandes, Saarbrücken, July 2019;
-colloquium 2019-12-10. Reviewers: Pascal Fontaine, Alberto Griggio, Thomas
-Sturm, Christoph Weidenbach. 342 pages.
-
-HAL id `tel-02427371`, <https://inria.hal.science/tel-02427371v1> (link checked
-2026-08-29, HTTP 200).
-
-Local copy: `external/papers/Bromberger_Decision_Procedures_for_Linear_Arithmetic.pdf`
--- **untracked**, per the standing practice that reference papers are read
-locally and never committed (`.gitignore` excludes `*.pdf`). This note is
-original prose written for Primo, not a reproduction of the thesis.
+Publication: {cite:p}`bromberger2019`, Universität des Saarlandes, 2019.
+Section and page references use the dissertation edition. This note records
+Primo's original analysis.
 
 **Source refresh, 2026-09-25:** the user supplied this copy for the documentation
 rewrite, resolving the failed online retrieval. Sections 7.1.3–7.1.4 were
@@ -31,12 +21,8 @@ Chapters 7--8. **Not read**: Chapter 2 (preliminaries) beyond what the above
 sections quote, Chapter 3 (CutSat++) beyond its summary in §1.5 and §6.1, and
 the detailed Mixed-Echelon-Hermite algorithms in §6.2/§6.4 (Figures 6.4--6.10).
 
-**Companion paper, also read 2026-08-29**: Martin Bromberger, Mathias Fleury,
-Simon Schwarz, Christoph Weidenbach. *SPASS-SATT: A CDCL(LA) Solver.* CADE 2019,
-LNAI 11716, 111--122. DOI
-[10.1007/978-3-030-29436-6_7](https://doi.org/10.1007/978-3-030-29436-6_7).
-Local copy `external/papers/SPASS-SATT.pdf`, supplied by the user -- **untracked**,
-copyrighted, and covered by `.gitignore`'s `*.pdf`. Twelve pages summarising
+**Companion paper, also read 2026-08-29**: *SPASS-SATT: A CDCL(LA) Solver*
+{cite:p}`bromberger2019spass`. Twelve pages summarising
 Chapters 7--8. It is mostly redundant against the thesis, with two exceptions
 that are *not*: **footnote 3**, which gives the decision-recommendation rule
 exactly where the thesis gives only prose (see §8.1 below, where it overturns a
@@ -143,19 +129,14 @@ contradictory.
 but the prescribed remedy is not the one the primary source gives.**
 Bromberger states the failure condition directly, twice:
 
-> "The unit cube test is also guaranteed to fail on problems containing boolean
-> variables, i.e., variables that are either 0 or 1 ... Whenever the problem
-> contains a boolean variable, it is beneficial to skip the unit cube test."
-> (§4.5)
+Section 4.5 identifies a sufficient failure condition: an integer variable
+restricted to 0 or 1 prevents the unit cube test from succeeding. It recommends
+skipping the test when this condition holds.
 
-and, in SPASS-IQ's actual waterfall (§7.2.4):
-
-> "We do, however, skip the unit cube test if one of the original integer
-> variables has bounds `U(x_i) - L(x_i) = 1` or if one of the slacked variables
-> has bounds `U(x_i) - L(x_i) = 0`. ... If some of the original integer
-> variables are fixed, i.e. `U(x_i) - L(x_i) = 0`, then we treat them as if
-> they were replaced by their constant values. This avoids another case where
-> the unit cube test would otherwise automatically fail."
+SPASS-IQ's waterfall (§7.2.4) skips the test if an original integer variable
+has bound width one or a slack variable has width zero. Fixed original integer variables are
+substituted by their values before testing, so those coordinates do not
+cause an avoidable failure.
 
 So the fixed-slack case Primo measured is a *known, named, cheaply detected
 skip condition*, not a defect to be engineered around. Two things follow.
@@ -163,10 +144,9 @@ skip condition*, not a defect to be engineered around. Two things follow.
 1. **The octagon twist is not the prerequisite.** It is z3's refinement for
    difference and octagon rows; it does nothing about a fixed slack. The
    thesis's own prerequisite for cubes in the presence of equalities is
-   **Chapter 5**: §5.7 lists as application (i) "we can use the equality basis
-   to eliminate all equalities from `Ax <= b`. It is, therefore, useful as a
-   preprocessing step for our cube tests." Chapter 5 exists *because* equalities
-   break Chapter 4 -- §5.2 opens with exactly that sentence.
+   **Chapter 5**: §5.7 proposes using an equality basis to remove the
+   equalities from the inequality system before running a cube test. This
+   addresses the equality-related failure described in §5.2.
 2. **The cheap version is a guard, not a twist.** Detect the skip condition and
    do not run the test. That is what makes the measured overhead "minor, almost
    immeasurable" in Figure 7.27.
@@ -231,11 +211,10 @@ recomputed. Asserting more bounds can only add tight variables.
 
 ### Nelson-Oppen (§5.4) -- the part that bears on Primo directly
 
-> "Linear arithmetic theory solvers sometimes *guess* these equations based on
-> one satisfying assignment. Then the equations are transferred according to the
-> Nelson-Oppen method without verification. This leads to a backtrack of the
-> combination procedure in case the guess was wrong ... With the availability
-> of an equality basis, the guesses can be verified directly and efficiently."
+Section 5.4 distinguishes equalities suggested by a single model from proved
+equalities. Exchanging a model-based guess can require combination backtracking
+if it later fails. An equality basis instead lets the arithmetic solver check
+the candidate before sharing it as an entailment.
 
 The procedure: run `FindTBnds()`, then normalise every variable through the
 substitution the tableau already encodes -- a tight non-basic `z_j` normalises
@@ -389,11 +368,9 @@ Dutertre--de Moura's `Backtrack()` reverts bounds *and* restores the backed-up
 assignment. `HardBacktrack()` reverts only the bounds and recomputes the
 assignment with `Check()`. It is strictly more expensive per call, but:
 
-> "a good continuation point for the simplex algorithm depends not only on the
-> current assignment, but also on the current tableau. Recomputing the solution
-> with `Check()` keeps the assignment and the tableau in sync ... Reverting to
-> the backup solution does the opposite and sometimes disconnects the assignment
-> and the tableau."
+Section 7.1.3 argues that the basis and assignment jointly determine how well
+simplex resumes. Recomputing with `Check()` adapts the assignment to the retained
+tableau; restoring an earlier assignment can lose that useful correspondence.
 
 Measured (Figs. 7.10--7.12): QF_LRA **1607 vs. 1602**; QF_LIA **6806 vs. 6683
 (+123)**; and on `convert` alone **319 vs. 202 (+117)**. CVC4 and veriT are said
@@ -460,12 +437,10 @@ Bromberger lists four deliberate departures from textbook CDCL(T), all four
 
 ### Weakened early pruning -- and the reason it is *weakened*
 
-Partial propositional models are checked for a **rational** solution only. The
-integer check runs once per *complete* model, because
-
-> "checking for an integer solution is too expensive and not incrementally
-> efficient enough to be done more than once per complete (propositionally
-> abstracted) model."
+Partial propositional models are checked for a **rational** solution only.
+Integer completion runs once per complete Boolean candidate: the authors
+cite its cost and limited incremental reuse as reasons to avoid repeated
+partial checks.
 
 This is the design [lead 4](lead-aep) (Adaptive Early Pruning) is about, stated
 as settled practice with its rationale. It also independently explains the
@@ -485,11 +460,10 @@ assignment.
 **Read the CADE 2019 paper for this one, not the thesis.** Its footnote 3 gives
 the rule exactly, and the exact form matters:
 
-> "In our own theory solver, `GetPhase(L) = ⊤` if the current theory assignment
-> satisfies `L` or if `Assert(¬L)` would return `⊥`. Otherwise,
-> `GetPhase(L) = ⊥`. (If unate propagations are enabled, then the case that
-> `Assert(¬L)` would return `⊥` is impossible because `L` would have been unate
-> propagated.)"
+The rule selects the positive phase when either the current arithmetic model
+satisfies the literal or asserting its negation would cause a conflict. It
+selects the negative phase otherwise. With unate propagation enabled, the
+conflict case has already forced the literal, so it cannot arise at a decision.
 
 The two conditions are a **disjunction**, not a filter plus a tie-break, and the
 conflict-freedom disjunct is **unreachable in their default configuration**,
@@ -826,11 +800,10 @@ but for a different reason -- Primo already has it as `--lra-propagation`
 **`convert` (319 files here) is named by three of these, and they are one
 target, not three.** The CADE 2019 paper settles what the thesis left ambiguous:
 
-> "SPASS-SATT solves only two-thirds of the 319 instances if **one** of the
-> following three techniques is missing: (i) recalculating simplex states during
-> backtracking, (ii) decision recommendations, or (iii) the small CNF
-> transformation. SPASS-SATT with all three techniques solves all instances in
-> less than 2 s."
+The paper reports an ablation on 319 `convert` instances. Disabling any one
+of simplex-state recalculation, decision recommendations or the small-CNF
+transformation leaves about one third unsolved. With all three enabled, every
+instance takes less than two seconds in the reported experiment.
 
 Each is individually necessary and none individually sufficient, so the +117 /
 +116 / +101 figures count roughly the same ~106 instances three times. See

@@ -15,9 +15,9 @@ presence of a reason callback alone does not answer that question.
 
 | Source | Sections used |
 | --- | --- |
-| Bruno Dutertre and Leonardo de Moura, *The Yices SMT Solver*, 2006. [Paper](https://yices.csl.sri.com/papers/tool-paper.pdf) | §2: SAT/core/satellite architecture, equality exchange, dynamic Ackermannization (p. 3); §3: contexts and library use. |
-| Bruno Dutertre, *Yices 2.2*, CAV 2014. [Paper](https://yices.csl.sri.com/papers/cav2014.pdf) | §3: terms, contexts, models; §4: Boolean-aware UF and dynamic clauses; §5: preprocessing and model-based combination. |
-| Bruno Dutertre, *The Nuts and Bolts of Yices*, SMT Workshop 2016, Coimbra. [Slides](https://yices.csl.sri.com/papers/smt2016-talk.pdf) | Slides 2–6: architecture/representation; 7–14: DPLL(T), explanations, watches, caching; 15–22: congruence closure; 23–27: preprocessing. |
+| *The Yices SMT Solver*, 2006 {cite:p}`dutertre2006yices` | §2: SAT/core/satellite architecture, equality exchange, dynamic Ackermannization (p. 3); §3: contexts and library use. |
+| *Yices 2.2*, CAV 2014 {cite:p}`yices2` | §3: terms, contexts, models; §4: Boolean-aware UF and dynamic clauses; §5: preprocessing and model-based combination. |
+| *The Nuts and Bolts of Yices*, SMT Workshop 2016 {cite:p}`dutertre2016yices` | Slides 2–6: architecture/representation; 7–14: DPLL(T), explanations, watches, caching; 15–22: congruence closure; 23–27: preprocessing. |
 
 Slide references use the printed number; PDF page 15 is printed slide 14.
 

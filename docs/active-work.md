@@ -127,7 +127,7 @@ Branch: `docs/public-repository-migration`.
   preview for page-by-page review; the home page, contributor correctness
   guide, architecture overview, core, SAT, DPLL(T) and EUF chapters await
   reader acceptance. The LRA chapter is now drafted after the user supplied
-  primary PDFs in `external/papers/`. It preserves the substantial arithmetic
+  primary texts. It preserves the substantial arithmetic
   implementation and engineering history: code/test links explain current
   mechanisms, while an inventory retains detailed experiments and rejected
   approaches. King, Griggio, Bromberger, Monniaux and the CAV 2024 arithmetic

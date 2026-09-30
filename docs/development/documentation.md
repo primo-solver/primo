@@ -134,6 +134,45 @@ and test/evidence links. Its paper mapping must state the relevant section,
 implemented subset, deviations and limitations. Do not claim a full paper
 algorithm when only a baseline or scaffold is present.
 
+## Publication references
+
+Both books use `docs/references.bib` and render a bibliography page. Add a
+publication there once, then cite its key in MyST:
+
+````text
+The arithmetic procedure uses exact bounds {cite:p}`DutertreM06`.
+{cite:ts}`king2014` describes the SOI algorithm in §3.3.
+````
+
+Use `doi` for the cited edition when available. Otherwise provide a stable
+institutional or author `url`, with the report number or thesis institution.
+Keep a conference paper, expanded report, thesis and slide deck as separate
+entries when their sections differ. Record the section, theorem or printed
+page in the surrounding explanation, including whether a page number refers
+to the PDF or the publication's pagination.
+
+Import only bibliographic metadata: authors, title, venue, date and publication
+identifiers. Check imported author order, names, year, entry type and identifier
+escaping. Keep DOI and URL values literal, without TeX escapes. Raw bibliography
+imports under `external/bib/` and local reading PDFs are ignored. Do not add
+abstracts, full text, local `file` fields or publisher figures to the book.
+Write the explanation in our own words and cite the source. Link to the
+publication; the project's MIT license does not license third-party papers.
+
+Reading notes must still distinguish the sections actually read, the
+implemented subset, deviations and open work. A bibliography entry does not
+establish any of those. Source comments and JSON records cannot use MyST roles;
+use a DOI or stable publication link there. If normalizing an old recorded
+command, mark a replaced input filename as a bibliography-key placeholder
+without presenting it as a literal command or a new run.
+
+`make docs-check-links` rebuilds both books, checks citation resolution through
+Sphinx, and verifies the generated local links. `make docs-check-external`
+also checks publication URLs. Keep each book's single bibliography directive
+on its `references.md` page; its default filter lists only works cited in that
+book. Changes to the shared BibTeX file also invalidate the draft's cached
+citation data.
+
 ## Source links and revisions
 
 Use the Sphinx `source` role in new pages:

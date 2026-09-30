@@ -2,16 +2,8 @@
 
 ## Citation
 
-Alberto Griggio, *An Effective SMT Engine for Formal Verification*.
-PhD dissertation, International Doctorate School in Information and
-Communication Technologies, DISI -- University of Trento, December 2009.
-Advisor: Roberto Sebastiani. Co-advisor: Alessandro Cimatti.
-
-Local copy: `external/papers/griggio.pdf` -- **untracked**, per the standing
-practice that reference papers are read locally and never committed
-(`.gitignore` excludes `*.pdf`). This note is an original-prose map of the
-thesis written for Primo; it is not a reproduction of it, and it is the only
-part of this material that belongs in the repository.
+Publication: {cite:p}`griggio2009`, University of Trento, December 2009.
+This note records Primo's original analysis of the thesis.
 
 ## Why this note exists
 

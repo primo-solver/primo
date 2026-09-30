@@ -36,7 +36,7 @@ foundational survey is:
 
 > Erling D. Andersen and Knud D. Andersen. "Presolving in linear
 > programming." *Mathematical Programming* 71(2):221-245, 1995.
-> Local copy `docs/papers/Presolving.pdf` (untracked).
+> Publication: {cite:p}`Andersen1995`.
 
 **Read 2026-08-05. It does not contain this rule, and an earlier draft of this
 note guessing that it did was wrong.** Recorded because the guess is a natural
@@ -91,10 +91,10 @@ The technique an SMT reader is most likely to assume this is, and it is a
 
 > Martin Jonáš and Jan Strejček. "On Simplification of Formulas with
 > Unconstrained Variables and Quantifiers." SAT 2017.
-> <https://www.fi.muni.cz/~xstrejc/publications/sat2017preprint.pdf>
+> Publication: {cite:p}`Jon2017`.
 
-**Status: read** (abstract, Section 1, and Section 4's Definition 3 /
-Theorem 2, 2026-08-05).
+**Status: read** (author manuscript: abstract, Section 1, and Section 4's
+Definition 3 / Theorem 2, 2026-08-05).
 
 That paper defines an *unconstrained variable* as one that **occurs only once
 in the formula**, so it can be set freely without disturbing anything else;
@@ -120,7 +120,8 @@ independent PhD theses, both worth knowing as the origin of that line:
 - Roberto Bruttomesso. *RTL Verification: From SAT to SMT(BV)*. PhD thesis,
   University of Trento, 2008.
 - Robert Brummayer. *Efficient SMT Solving for Bit Vectors and the Extensional
-  Theory of Arrays*. PhD thesis, Johannes Kepler University Linz, 2010.
+  Theory of Arrays*. PhD thesis, Johannes Kepler University Linz, 2009
+  {cite:p}`brummayer2009thesis`.
 
 All three are bit-vector-centric; the SAT 2017 evaluation is on bit-vector
 formulas. None of them is a source for the arithmetic polarity argument.

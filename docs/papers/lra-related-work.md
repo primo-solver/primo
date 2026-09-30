@@ -16,13 +16,12 @@ otherwise so it doesn't get mistaken for near-term reading.
 
 ## Access status
 
-**Local source refresh, 2026-09-25.** The user supplied reference PDFs under
-`external/papers/`, including `Monniaux-cav09.pdf`,
-`arithmetic-reimplemented.pdf`, `king_tim.pdf`, `griggio.pdf`,
-`Bromberger_Decision_Procedures_for_Linear_Arithmetic.pdf`, `SPASS-SATT.pdf`
-and `Presolving.pdf`. The LRA chapter's section-level reading record is in
-`docs-next/review.md`. Availability does not mean every section of every new
-PDF has been audited. The online-access reports below are dated history.
+**Source refresh, 2026-09-25.** Primary texts became available for
+Monniaux, Bjørner–Nachmanson, King, Griggio, Bromberger, SPASS-SATT and
+Andersen–Andersen {cite:p}`Monniaux2009,BjornerN24,king2014,griggio2009,bromberger2019,bromberger2019spass,Andersen1995`.
+The LRA chapter's section-level reading record is in `docs-next/review.md`.
+Availability does not establish that every section has been audited. The
+online-access reports below are dated history.
 
 Checked by actually fetching each URL, not just search-result snippets.
 
@@ -34,7 +33,7 @@ without DOI links because no DOI was found for those editions. An open-copy URL
 is retained alongside the DOI where useful.
 
 Freely accessible (fetched and read the actual PDF):
-- Bjørner/Nachmanson, "Arithmetic Solving in Z3" (CAV 2024, local copy,
+- Bjørner/Nachmanson, "Arithmetic Solving in Z3" (CAV 2024,
   DOI 10.1007/978-3-031-65627-9_2)
 - Monniaux, "On using floating-point computations to help an exact linear
   arithmetic decision procedure" (CAV 2009, arXiv:0904.3525)
@@ -54,9 +53,8 @@ Freely accessible (fetched and read the actual PDF):
   -- also subsumed by the thesis; **read 2026-08-29** in that form, see
   [](bromberger-linear-arithmetic-thesis.md)
 - Bromberger, *Decision Procedures for Linear Arithmetic* (PhD thesis, Saarland
-  University, 2019; HAL `tel-02427371`, link checked 2026-08-29). Local copy
-  `docs/papers/Bromberger_Decision_Procedures_for_Linear_Arithmetic.pdf`
-  (untracked). **Read 2026-08-29**, see
+  University, 2019; HAL `tel-02427371`, link checked 2026-08-29)
+  {cite:p}`bromberger2019`. **Read 2026-08-29**, see
   [](bromberger-linear-arithmetic-thesis.md)
 
 Open author copies located during the DOI audit (access checked 2026-08-13,
@@ -89,8 +87,8 @@ fetch a copy:
   Griggio's PhD thesis** for "a number of details on implementation and
   additional pivoting heuristics" for QF_LRA — likely a strong practical
   reference given MathSAT's QF_LRA solver is Simplex-for-DPLL(T)-based.
-  **Located and read 2026-08-04**; supplied by the user as
-  `docs/papers/griggio.pdf` (untracked). The lead was correct: its §2.5
+  **Located and read 2026-08-04** {cite:p}`griggio2009`.
+  The lead was correct: its §2.5
   (pp. 47-56) is exactly the promised material. Chapter map and findings are in
   [](griggio-mathsat-thesis.md). **It also contradicts the most-violated
   leaving-rule attribution recorded below** — see that note and the entry's own
@@ -125,13 +123,11 @@ states as ordinary practice rather than as contributions. They are cited
 here (and at the corresponding code) because they are the *source* of the
 design, even though they are not what the paper is about:
 
-- **Section 4, two-tier rational representation.** "Rational numbers are
-  implemented as quotients of two 32-bit numbers; in case of overflow,
-  extended precision rationals from the GMP library are used. The reason
-  behind a two-tier system is that GMP rationals inherently involve some
-  inefficiencies, including dynamic memory allocation, even for small
-  numerator and denominator. In many examples arising from verification
-  problems, one never needs to call GMP." **Implemented 2026-07-28** in
+- **Section 4, two-tier rational representation.** Monniaux stores small
+  rationals as pairs of 32-bit integers and uses GMP after overflow. This
+  avoids allocation and other arbitrary-precision overhead when the values
+  stay small, as they do throughout many of the verification examples he
+  discusses. **Implemented 2026-07-28** in
   `util::Rational` (competitiveness-roadmap H2) -- see `docs/arithmetic.md`
   and `docs/qf-lra-heuristics.md`. *Deviation:* Primo's small form is 64-bit
   rather than 32-bit, using `__int128` intermediates. That width was settled
@@ -144,9 +140,9 @@ design, even though they are not what the paper is about:
   real bignum arithmetic -- the same diagnosis the paper gives.
 - **Section 2.1, atom canonicalization.** Inequalities are scaled to coprime
   integer coefficients and optionally negated so the leading coefficient is
-  positive, "so that two inequalities constraining the same direction in
-  space appear with the exact same left-hand side"; and "for each left hand
-  side that is *not a variable*, a new variable is introduced". The second
+  positive, giving equivalent directions a common left-hand side. A compound
+  left-hand side is named by a fresh variable; a bare variable needs no such
+  name. The second
   half is the source for item H1a, the first half for item H1b (the
   long-deferred scale-invariant polynomial matching, roadmap item 3).
   **Tableau-level scale sharing and direct bounds were implemented 2026-07-28;
@@ -161,12 +157,10 @@ design, even though they are not what the paper is about:
   rescales to a leading coefficient of 1. The two representations denote the
   same rational direction. The implementation checklist and limitations are in
   [](lra-atom-canonicalization.md).
-- **Page 8, sparsity-ordered pivoting.** "We sort the variables ... according
-  to the number of nonzero coefficients in the corresponding equation ... the
-  pivoting steps are faster when the equation defining the basic variable to
-  be pivoted has few nonzero coefficients", and likewise pre-sorting by
-  "number of occurrences in equations". Stated there for the forced-pivoting
-  phase, but the cost argument is the same one behind heuristics-note item
+- **Page 8, sparsity-ordered pivoting.** The forced-pivoting phase orders
+  variables using row nonzero counts and column occurrences. Short defining
+  rows reduce the work of a pivot. Although the scheduling context differs,
+  this cost argument also motivates heuristics-note item
   H3. **Implemented 2026-07-29 and promoted to default** as
   `LraTableau::PivotingRule::Sparse` -- both criteria: the occurrence count
   prices the entering variable, the row length prices the leaving one. On the
@@ -222,14 +216,11 @@ Three things here matter more to us than the basis transfer itself.
    force-pivot path. The comparison set includes yices2 632, mathsat5 622, z3
    615.
 
-And the sentence that should be read before anyone budgets D2 as a large win:
-"In each of these studies, experimental results on SMT-LIB benchmarks show
-that existing SMT solvers outperform the experimental solvers modified to use
-LP solvers, **even if the LP solver results are not checked for correctness**.
-The main reason for this is that for these benchmarks ... solving requires
-many related calls to the theory solver, each of which is relatively simple."
-KBT's contribution is precisely the balanced control structure that makes it
-pay at all.
+Their account of earlier studies limits what to expect from D2. Existing
+SMT solvers outperformed the LP-assisted prototypes on the compared SMT-LIB
+benchmarks even without checking the LP results. The authors attribute this
+to the many related, individually simple theory calls in those workloads.
+KBT proposes a balanced control structure to make LP assistance worthwhile.
 
 **Diego Caminha B. de Oliveira, David Monniaux. "Experiments on the
 feasibility of using a floating-point simplex in an SMT solver." PAAR 2012,
@@ -347,13 +338,11 @@ The most complete implementor's account of Simplex-for-DPLL(T) available, and
 the reference that settles two questions for us.
 
 - **The column-length entering rule is the field's standard, not a novelty.**
-  Section 2.2.12: "The heuristic commonly used in implementations of
-  SimplexForSMT for selecting the entering variable is to select the `x_j`
-  with minimum column length `|(T^|)_j|` with ties broken by [the variable
-  order]. This heuristic works quite well in practice but is not guaranteed to
-  terminate. A simple means of ensuring termination is to count the number of
-  heuristic selections and switch to Bland's rule once this passes a finite
-  cap." That is precisely item H3 *and* its anti-cycling fallback, and King
+  Section 2.2.12 describes selecting an entering variable with the shortest
+  column, breaking ties by variable order. Since this heuristic alone has no
+  termination guarantee, King recommends a finite limit on heuristic choices
+  followed by Bland's rule. This is the basis of item H3 and its anti-cycling
+  fallback. King
   attributes the family to MathSAT, OpenSMT, Yices, Yices 2, z3 and CVC4. Our
   own citation of Monniaux (CAV 2009) for the sparsity criterion remains
   accurate as a source, but H3 should not be read as a technique transferred
@@ -578,9 +567,9 @@ of his with a plausible connection to Primo. The setting is first-order clause
 subsumption, which Primo does not do. What makes it worth a line is the
 bottleneck the abstract names and how they attack it:
 
-> "The bottleneck in this setup is deciding implication between the LRA
-> constraints of two clauses. Our new sample point heuristic pre-empts expensive
-> implication decisions in about 94% of all cases in benchmarks."
+The abstract identifies implication checks between clauses' LRA constraints
+as the expensive step. It reports that evaluating sample points avoids about
+94% of those checks in the paper's benchmark setting.
 
 That is structurally the same move as Primo's model-value filter in
 [](../qf-lra-equality-sharing.md) — use a cheap point evaluation to refute an

@@ -42,7 +42,7 @@ Three sources grounded this design:
   that, which is where the third source comes in.
 - Tim King, *Effective Algorithms for the Satisfiability of
   Quantifier-Free Formulas Over Linear Real and Integer Arithmetic* (PhD
-  thesis, NYU 2014, `docs/papers/king_tim.pdf`) -- already cited in
+  thesis, NYU 2014 {cite:p}`king2014`) -- already cited in
   `lra_tableau.hpp` for pivoting-rule details. Stage 3's Gomory cut comes
   from Sect. 4.4.3, Lemma 4.1, eq. 4.9 ("Mixed Gomory Cuts"); see
   [Gomory cuts](#gomory-cuts) for the formula and, importantly, why this

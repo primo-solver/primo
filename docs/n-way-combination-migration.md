@@ -35,7 +35,7 @@ Read for this migration:
 
 - de Moura and Bjorner, *Model-based Theory Combination*, ENTCS 198(2),
   2008, pp. 37–49, DOI <https://doi.org/10.1016/j.entcs.2008.04.079>;
-  local `papers/model-guided-no.pdf`, Sections 2.1, 4, 5.1 and 5.2.
+  {cite:p}`MouraB08`, Sections 2.1, 4, 5.1 and 5.2.
 - Bruttomesso, Cimatti, Franzen, Griggio and Sebastiani, *Delayed Theory
   Combination vs. Nelson-Oppen for Satisfiability Modulo Theories: A
   Comparative Analysis*, LPAR 2006, LNCS 4246, pp. 527–541,

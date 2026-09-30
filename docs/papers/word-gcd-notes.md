@@ -9,10 +9,9 @@ pathology is documented, and had been for over a decade.
 
 Daniel Lemire's 2013 benchmark states it plainly:
 
-> There are cases where the naive GCD algorithm is faster. If one of the two
-> integers is 1, then the naive algorithm returns immediately whereas the
-> binary algorithm might require many steps. Hybrid strategies may optimize for
-> edge cases where one operand is trivial.
+Lemire highlights a case where Euclid's remainder step beats binary GCD:
+when an operand is one, Euclid finishes immediately while repeated binary
+reductions may continue. He suggests hybrid handling for such trivial operands.
 
 That is precisely what this solver hits. A binary GCD makes progress by
 subtract-and-shift and never divides, so `gcd(a, 1)` costs O(log a) iterations
@@ -30,8 +29,8 @@ operands favour binary otherwise.
 Wikipedia's summary matches what GMP implements and is a fair statement of the
 settled practical art for machine words:
 
-- **branch-free except the loop exit**, because "unpredictable branches can have
-  a large, negative impact on performance";
+- **branch-free except the loop exit**, to avoid the cost of
+  unpredictable branches;
 - **count-trailing-zeros plus one shift**, rather than repeated division by two;
 - **iterative, not recursive**, maintaining the invariant that both operands are
   odd on entry to the loop;
@@ -45,8 +44,8 @@ things on top, and both are now in `gcd_u64`:
   eliminating the `if (a > b) swap` that would otherwise mispredict about half
   the time on unrelated operands;
 - the Euclidean step is **conditional**, taken only when the operands differ by
-  more than 2^16 — "if u is much bigger than v, reduce using a division rather
-  than chipping away at it bit-by-bit".
+  more than 2^16, so a highly unequal pair is reduced by division before
+  binary steps continue.
 
 Reported figures in the wild are consistent with what was measured here: a basic
 binary GCD around 7.7 M ops/s against 7.2 M for `std::gcd`, with hybrid

@@ -18,6 +18,7 @@ parts:
       - file: implementation/models
   - caption: Literature
     chapters:
+      - file: references
       - file: papers/primo-qflra-results
       - file: papers/bromberger-linear-arithmetic
       - file: papers/lia-primal-heuristics

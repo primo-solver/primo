@@ -1,8 +1,7 @@
 # Bromberger: integer search, cubes and preprocessing
 
-Martin Bromberger, [*Decision Procedures for Linear Arithmetic*](https://publikationen.sulb.uni-saarland.de/handle/20.500.11880/28955),
-PhD thesis, Universität des Saarlandes, 2019. The supplied primary source is
-`external/papers/Bromberger_Decision_Procedures_for_Linear_Arithmetic.pdf`.
+Martin Bromberger, *Decision Procedures for Linear Arithmetic*,
+PhD thesis, Universität des Saarlandes, 2019 {cite:p}`bromberger2019`.
 Section numbers below refer to the thesis, not its companion conference papers.
 
 This guide carries the existing thesis review into the replacement book.

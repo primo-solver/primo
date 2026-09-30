@@ -2,6 +2,9 @@ title: Primo documentation
 author: Primo contributors
 logo: _static/primo-logo.svg
 
+bibtex_bibfiles:
+  - references.bib
+
 execute:
   execute_notebooks: "off"
 
@@ -32,6 +35,7 @@ sphinx:
   # Preserve Jupyter Book's repository settings when adding theme options below.
   recursive_update: true
   config:
+    bibtex_reference_style: label
     # Solver source reviewed for the new manual; historical reports keep their
     # own measured revisions. Advance only after checking affected claims.
     extlinks:

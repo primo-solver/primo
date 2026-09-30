@@ -123,4 +123,5 @@ parts:
 
   - caption: Reference
     chapters:
+      - file: references
       - file: reference/llm2smt-retrospective
