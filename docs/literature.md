@@ -4,6 +4,28 @@ The [bibliography](references.md) provides shared publication metadata for
 both books. The notes below record reading coverage and implementation status;
 they do not distribute the reference papers.
 
+## Quantifier enumeration, model filtering and fail masks
+
+**MBQI is due to Ge and de Moura** {cite:p}`ge2009complete`. Section 6 of
+their CAV 2009 paper checks candidate models and converts counterexample
+values into instantiation terms. That section was read to distinguish MBQI
+from a proposed model-based filter on Primo's enumerator: the enumerator
+generates candidate instances, and model evaluation decides which to emit.
+Neither procedure is implemented in Primo.
+
+The [enumeration paper note](papers/enumerative-instantiation.md) distinguishes
+the TACAS 2018 paper's equality entailment by the current ground assignment
+from equality only in a candidate model {cite:p}`reynolds2018enumerative`.
+Its §4, Example 2 also distinguishes non-entailed instances from instances
+that falsify the current model. The open lead in
+`docs-next/leads/quantifier-instantiation.md` connects representative
+enumeration, entailment filtering, model-based filtering of instances, and the
+existing
+{ref}`fail-mask investigation <quantifier-entailment-fail-masks>`.
+The shared obligations cover validity across context changes, fairness and
+revisitation. These reductions remain unimplemented; no completeness defect
+in CVC4 or cvc5 is established here.
+
 ## Integer bounds and infinitesimals
 
 {ref}`King's thesis §4.3 <king-integer-normalization>`

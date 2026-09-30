@@ -1632,3 +1632,32 @@ and the paper-to-code maps carry the section references. No solver behavior,
 source pin, qualification evidence or completeness claim changes. Verification
 covers both strict books, local/source links, the incremental draft build and
 rendered citations and equations.
+
+## Quantifier representatives and model-based filtering, 2026-09-30
+
+Reread the TACAS 2018 enumeration paper's §3 completeness statement,
+§4 Figure 2 and Examples 2–3, and §4.1 term selection and entailment checks.
+The instantiation lead now records enumeration modulo current equalities,
+distinguishing entailment by the ground assignment from equality in one
+candidate model. It connects the proposal to entailment filtering and the
+objective of choosing lemmas that rule out that model, while preserving the
+distinction between non-entailed and model-falsified instances.
+
+Read Ge and de Moura's CAV 2009 §6 as the primary MBQI source. The proposal
+keeps enumerative candidate generation and uses model evaluation only as a
+filter; MBQI instead obtains instances from a counterexample search in the
+candidate model. The literature attribution and implementation-status table
+preserve this distinction.
+
+Reread FMCAD 2021 §IV and connected the existing fail-mask lead: each wildcard
+completion needs the rejection criterion, with evidence scoped to rewriting,
+the ground assignment or the candidate model. Model-truth masks are a proposed
+extension. The retained design's earlier claims that retries alone guarantee
+fairness are replaced with explicit scheduling and starvation obligations.
+
+Inspected the current syntactic pools, enumeration progress and persistent
+tried-tuple set. The open obligations cover class splits, representative and
+model changes, new terms, skipped-work lifetime, fairness and model coverage.
+No solver behavior changes or CVC completeness counterexample is claimed.
+Verification uses both strict documentation builds, local/source-link checks
+and rendered review; no solver batch is needed for this documentation change.

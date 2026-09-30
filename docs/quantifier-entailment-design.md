@@ -11,8 +11,25 @@ This note scopes item 3 of the proposal in
 
 The quantified UF route it extends is described in [](quantifiers.md).
 
+The broader selection objective is to find instances that rule out the current
+candidate model. Entailment filtering removes instances that cannot do so:
+every model of the current ground assignment already satisfies them. The
+remaining instances need not be false in the particular candidate model.
+The enumerator can filter its candidates by model evaluation, emitting those
+that contradict the current model. Candidate generation remains enumerative;
+this is distinct from MBQI's search for counterexample values. The filter
+needs a completeness argument, including reconsidering deferred work after
+model changes.
+That investigation is linked to enumeration modulo current equalities in
+`docs-next/leads/quantifier-instantiation.md`; it is not supplied by this
+entailment filter alone.
+
 Sources:
 
+- **Complete Instantiation for Quantified Formulas in Satisfiability Modulo
+  Theories.** Ge and de Moura, CAV 2009, §6 {cite:p}`ge2009complete`.
+  Primary source for MBQI; read to distinguish it from the proposed filter on
+  enumerated instances. Neither is implemented by this entailment design.
 - **Revisiting Enumerative Instantiation.** Reynolds, Barbosa and Fontaine,
   TACAS 2018, Section 4.1. The paper note is
   [](papers/enumerative-instantiation.md).
@@ -54,6 +71,12 @@ still be redundant: the current ground assignment `E` may already imply them.
   - the paper extends this to Boolean structure "in a straightforward way".
 - **Term order (TACAS 2018, Section 4.1).** A term joins the ordering only if
   `E` does not already entail it equal to a term already in it.
+  The separate open lead in `docs-next/leads/quantifier-instantiation.md`
+  investigates enumerating representatives under these equalities. It
+  distinguishes equality entailed by `E` from equality only in a candidate
+  model, and requires revisiting skipped tuples and preserving fairness when
+  classes or representatives change. This design's entailment filter alone
+  does not prove completeness of that candidate restriction.
 - **Redundancy criteria (FMCAD 2021, Section IV).** Three criteria in
   increasing cost:
   1. duplicate term vector;
@@ -169,12 +192,22 @@ state:
   new tuples at the next round. This keeps the staged orders' resume points
   and the walks' states unchanged.
 
-These rules are what make it safe to insert the check after the duplicate
-caches and before `enqueue`, in the paper's order of increasing cost. The
-retry list keeps the enumeration fair across rounds, which Corollary 2 of
-TACAS 2018 requires.
+These rules specify skipping after the duplicate caches and before `enqueue`,
+in the paper's order of increasing cost. Keeping tuples retryable is necessary
+but does not by itself prove fairness: the scheduler must also prevent retries
+from starving new tuples, including tuples exposed by changed equality
+classes. That proof remains required for applying Corollary 2 of TACAS 2018.
 
+(quantifier-entailment-fail-masks)=
 ### 5. Fail masks
+
+This generalizes the rejection check from one tuple to every completion of a
+partial tuple. It therefore connects to both representative enumeration and
+model-based filtering in `docs-next/leads/quantifier-instantiation.md`.
+The evaluator below proves entailment by `E`. A future model-based variant
+would need to prove satisfaction for every wildcard completion in that model,
+and invalidate its masks when the model changes. Changing representatives
+also requires rebuilding index patterns or preserving their term meanings.
 
 For a redundant substitution, apply FMCAD Section IV's greedy procedure with
 the evaluator from step 3. A dropped variable stays an open bound variable,
@@ -195,8 +228,10 @@ which evaluates to unknown. That is already enough for the paper's example:
 ### Deferred
 
 - **Pool deduplication.** Deduplicating pools modulo `E`, as in the TACAS 2018
-  term order. Pools are append-only across the solve while `E` changes, so
-  this could only reorder terms, never drop them.
+  term order. Retain the append-only original pools while considering a
+  temporary representative view. The separate open lead records the coverage,
+  fairness and revisitation argument needed when `E` changes; permanent
+  deletion based on a temporary equality would lose candidates.
 - **Satisfiable answers.** Deriving `sat` from "every instance over `T(E)` is
   entailed", Corollary 1 of TACAS 2018. Primo's pool is a superset of `T(E)`,
   and the check is incomplete, so this needs its own soundness argument and
@@ -242,16 +277,18 @@ shared EUF code changes.
   about quantifiers, but the quantified route depends on EUF's internal
   representation holding at a complete assignment. The epoch guard and the
   growth rebuild are where this can break.
-- **Completeness.** Skipped instances stay retryable, so the enumeration stays
-  fair. A bug in retry handling would lose refutations silently. The retry
-  test and the corpus comparison against the entailment-off arm are the
-  guard.
+- **Completeness.** Skipped instances must stay retryable, and scheduling must
+  still be fair across context changes. This needs a proof as well as retry,
+  starvation and mask-invalidation tests. Corpus comparisons against the
+  entailment-off arm supply additional evidence, not the completeness argument.
 
 ## Open questions
 
 - Should retry lists be bounded? A tuple entailed in every assignment would
   be retried forever. Candidates are a per-tuple retry cap, or retrying only
   when the obligation's pools or `E` changed.
+  A cap must not permanently discard a tuple whose contextual redundancy can
+  disappear; any deferred work needs a fair fallback.
 - Should masks survive backtracking when their literals' explanations are
   still implied at a lower level? That needs explanations for the classes,
   which `explain_equal` provides; it is deferred.

@@ -290,6 +290,16 @@ walks the prepared assertions and later the formulas handed over by
 visiting each term ID once. Quantifiers and pattern nodes stop the traversal;
 their open bodies do not supply ground candidates. The pool is syntactic:
 EUF-equivalent terms are not merged.
+The {ref}`open lead on enumeration modulo current equalities
+<quantifier-equality-enumeration>` asks whether representatives can reduce
+this pool safely, and records the completeness and revisitation obligations
+when the assignment or candidate model changes.
+It connects this reduction to {ref}`filtering enumerated instances against the
+current model <quantifier-model-refinement>`, distinguishing that policy from
+filtering instances already entailed by the ground assignment.
+The connected {ref}`fail-mask lead <quantifier-fail-masks>` generalizes a
+justified rejection to a family of tuples and tracks when that justification
+must be invalidated.
 
 Each sort has one append-only candidate sequence, shared by every quantified
 variable of that sort. Bool always uses `[false, true]`. When another sort has
@@ -422,6 +432,7 @@ eventually delivered.
 | Barrett, Fontaine and Tinelli, [*The SMT-LIB Standard, version 2.6, revision 2021-05-12*](https://smt-lib.org/papers/smt-lib-reference-v2.6-r2021-05-12.pdf), §3.6 | Sorted binders, lexical scope, sequential quantifier declarations, and parallel `let` bindings. The frontend implements these scope rules within its admitted fragment. |
 | Arthur Charguéraud, [*The Locally Nameless Representation*](https://www.chargueraud.org/research/2009/ln/main.pdf), JAR, §§2.3 and 3.3 | Explanation of de Bruijn indices, shifting, and local closure. Primo uses indexed bound variables; it does not implement the paper's Coq development. |
 | Reynolds, Barbosa and Fontaine, [*Revisiting Enumerative Instantiation*](https://hanielbarbosa.com/papers/tacas2018.pdf), TACAS 2018, §§2–4.1, Theorem 1 and Figure 2 | Enumerative instance loop and growth from existing terms. Primo uses guarded instances and syntactic caches, with the pool, Skolemization, entailment, and answer limitations described above. |
+| Ge and de Moura, *Complete Instantiation for Quantified Formulas in Satisfiability Modulo Theories*, CAV 2009, §6 {cite:p}`ge2009complete` | Primary source for MBQI. This supplies a comparison with the proposed model-based filter on enumerated candidates; neither that filter nor MBQI is implemented. |
 | Janota, Barbosa, Fontaine and Reynolds, [*Fair and Adventurous Enumeration of Quantifier Instantiations*](https://people.ciirc.cvut.cz/~janotmik/fmcad21.pdf), FMCAD 2021, §§III–IV | Tuple orders and duplicate filtering. The original `max` order is a Primo variant; entailment filtering and fail masks are unimplemented. |
 | Andrew Reynolds, [*Finite Model Finding in Satisfiability Modulo Theories*](https://homepage.divms.uiowa.edu/~ajreynol/thesis.pdf), PhD thesis, University of Iowa, 2013, §§3.1.1–3.1.2 | Context for pattern-based versus complete instantiation and the distinction between finding refutations and accepting quantified models. Its finite-model-finding algorithms are not implemented here. |
 | Haniel Barbosa, [*New Techniques for Instantiation and Proof Production in SMT Solving*](https://hanielbarbosa.com/papers/phd.pdf), PhD thesis, 2017, §5.1 and §§7.1.1–7.1.2 | Hash-consed terms and capture-safe formula processing. Its named-variable renaming and contextual Skolemization are comparison points; Primo uses indices and assignment-driven witness clauses, without that proof-production framework. |

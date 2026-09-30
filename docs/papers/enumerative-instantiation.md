@@ -4,8 +4,8 @@ Reference:
 
 - Andrew Reynolds, Haniel Barbosa and Pascal Fontaine, "Revisiting Enumerative
   Instantiation", TACAS 2018, LNCS 10806, pp. 112–131,
-  DOI: <https://doi.org/10.1007/978-3-319-89963-3_7> (resolves, checked
-  2026-09-11). Open access; the PDF is not stored in the repository.
+  {cite:p}`reynolds2018enumerative`. Open access; the PDF is not stored in the
+  repository.
 
 Read for Primo's quantifier component: Sections 2, 3, 4 and 4.1, including
 Figure 2. Section 5 (experiments) was not used.
@@ -55,6 +55,8 @@ domain `x̄`.
 
 Figure 2 lists four strategies: conflict-based (c), E-matching (e), model-based
 (m) and enumerative (u).
+MBQI is due to Ge and de Moura (CAV 2009, §6) {cite:p}`ge2009complete`;
+this paper supplies the comparison with enumerative instantiation.
 
 Enumerative instantiation `u(E, ∀x̄. ϕ)`:
 
@@ -86,6 +88,25 @@ satisfiable problems better (Example 3).
   problems.
 
 ## Primo mapping
+
+**Equality and completeness review, 2026-09-30.** Reread §3's completeness
+statement and §4.1's term-ordering and entailment rules. The equality used in
+term selection is entailment by the current ground assignment $E$. Two terms
+merely receiving the same value in a candidate model need not satisfy that
+condition. Substitutivity justifies replacing an instance by an equal tuple
+within a fixed context; a procedure retaining skipped work across changing
+contexts also needs a coverage and fairness argument. The open investigation
+in `docs-next/leads/quantifier-instantiation.md` records these obligations.
+No current cvc5 implementation audit or completeness counterexample is claimed.
+
+Also reread §4, Figure 2 and Example 2: a non-entailed instance need not be
+false in the chosen candidate model. The example shows how instances already
+satisfied by that model can still contribute to a short refutation together
+with another instance. An enumerator can still filter its candidates by their
+truth in the current model without becoming MBQI: enumeration generates the
+tuples, while the model test controls emission. The same open lead connects
+this proposed filter to equality-based enumeration and fail masks, with
+completeness and revisitation obligations for changing models.
 
 | Paper element | Primo owner |
 | --- | --- |

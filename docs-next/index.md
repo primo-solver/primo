@@ -158,9 +158,10 @@ further `DPLL(T^M)` work. These are open investigations, not active
 implementation tasks.
 
 [Quantifier instantiation efficiency](leads/quantifier-instantiation.md)
-records entailment filtering, fail masks, and bounded enumeration work as
-open investigations. The existing enumerator and its stall cutoff remain
-the implemented baseline.
+records enumeration modulo current equalities, its completeness obligations,
+model-based filtering of enumerated instances, entailment filtering, fail masks, and
+bounded enumeration work as connected open investigations. The existing
+enumerator and its stall cutoff remain the implemented baseline.
 
 [Optional NNF through quantifiers](leads/quantifier-nnf.md) investigates whether
 normalization simplifies subsequent work. [Directly asserted quantifiers](leads/asserted-quantifiers.md)
