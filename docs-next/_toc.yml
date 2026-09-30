@@ -20,6 +20,7 @@ parts:
     chapters:
       - file: papers/primo-qflra-results
       - file: papers/bromberger-linear-arithmetic
+      - file: papers/lia-primal-heuristics
       - file: papers/yices
       - file: papers/clause-forgetting
       - file: papers/polarity-aware-cnf
@@ -36,6 +37,7 @@ parts:
       - file: leads/lra-floating-point
       - file: leads/lra-equality-basis
       - file: leads/lia-extended-gcd
+      - file: leads/lia-patching
       - file: leads/care-pair-generation
       - file: leads/care-guided-combination
       - file: leads/real-combination-migration

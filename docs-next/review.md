@@ -1525,3 +1525,26 @@ Both strict books and the local/Git link check passed. Prior HTML anchors are
 preserved, including the renamed benchmark-interpretation section. Browser
 review checks the new guide's equations. There are no solver changes or new
 solver qualification runs; the full external-link audit was not repeated.
+
+## Integer arithmetic terminology and heuristic literature, 2026-09-30
+
+Clarified the shared `LiaExplanation` object and named `find_eligible_row`
+at its first use. Rewrote the GCD section around the divisibility argument,
+then the actual row preparation, guards and explanation. Read Pugh's expanded
+Omega paper §2.1 and reread Griggio §2.6.1 to separate the classical rule
+from its more recent tableau presentation. Carried original lead 12e into
+the draft with exact residue/interval reasoning and explanation obligations.
+The old GCD heading anchor remains available.
+
+Added a shared literature note on MIP primal heuristics after reading
+Achterberg–Berthold–Hendel §§2–3, Fischetti–Glover–Lodi §1 and Figure 1, and
+Berthold's 2014 thesis §§7.1–7.3. Bjørner–Nachmanson §2 supplies the SMT/MIP
+design comparison; the OMT paper is a context pointer based on its abstract,
+not an algorithm claimed as reviewed. The patching lead proposes a separate
+window parameter, candidate/score comparisons and bounded neighborhood
+search. All remain proposals; the solver and its defaults are unchanged.
+
+Both strict books and local/Git-source link checks passed during this pass.
+Rendered review checks the changed chapter and new mathematical lead; final
+verification also checks preservation of the pre-edit page anchors. This is
+a documentation review, with no solver batches or new performance claims.

@@ -112,6 +112,7 @@ parts:
         sections:
           - file: papers/word-gcd-notes
       - file: papers/integer-division-and-modulo
+      - file: papers/lia-primal-heuristics
       - file: papers/lra-atom-canonicalization
       - file: papers/griggio-mathsat-thesis
       - file: papers/bromberger-linear-arithmetic-thesis

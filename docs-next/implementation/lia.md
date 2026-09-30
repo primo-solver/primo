@@ -185,6 +185,12 @@ delta-aware floor $m$: $m,m+1,m-1,m+2,\ldots,m-3,m+4$, ordered by distance
 from the rational part. This is a heuristic window, not an exhaustive search
 of its feasible values.
 
+The width is currently the hard-coded `kTargetWindow = 4`; the existing
+`--lia-patch-limit` controls accepted moves, not this width. A
+[separate open lead](../leads/lia-patching.md) proposes a window parameter
+and compares more selective candidates with
+[MIP rounding and repair heuristics](../papers/lia-primal-heuristics.md).
+
 Every candidate is scored by the total number of required integer variables
 that would remain nonintegral. Only a strict reduction is accepted. Among
 inspected candidates with the same count, a smaller rational move wins;

@@ -1,5 +1,15 @@
 # Literature
 
+## Integer-model repair and MIP primal heuristics
+
+[](papers/lia-primal-heuristics.md) connects Primo's fixed-window patching
+to the ILP/MIP literature on rounding, shifting, the feasibility pump and
+relaxation enforced neighborhood search (RENS). It records the primary
+sections read, required state and invariants, cost controls and the distinction
+between finding a model and proving infeasibility. The proposed window
+parameter and experiments are tracked in `docs-next/leads/lia-patching.md`;
+the surveyed MIP methods are not claimed as implemented behavior.
+
 ## Primo's published QF_LRA results
 
 [](papers/primo-qflra-results.md) records Janota and Jakubův's September 2026
