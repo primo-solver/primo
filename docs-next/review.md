@@ -1492,3 +1492,25 @@ inspection covered patching, the cut derivation and coefficient table, and
 the explanation argument; MathJax rendered 161 expressions without errors.
 The whole external-link audit was not rerun. This is a documentation change:
 the solver suites, fuzz campaigns and historical benchmarks were not rerun.
+
+## Bromberger thesis coverage, 2026-09-30
+
+The thesis was already covered by the existing book's detailed literature note,
+including the 2026-08-29 reading and 2026-09-25 source refresh, and by the
+replacement LRA/combination chapters and equality-basis lead. The new
+[reading guide](papers/bromberger-linear-arithmetic.md) makes that work directly
+visible in the draft's literature navigation and expands its connection to LIA.
+
+Selected primary sections were reread from the supplied PDF: Chapter 4's cube
+transformation and unit/mixed tests, §5.7, Chapter 6's overview and selected
+definitions/termination results, §§7.2.3–7.2.4, and selected §8.2 passages.
+The guide records that scope, explains the cube guarantee and a coordinate
+change for the existing incomplete example, and distinguishes SPASS-IQ's
+schedule from Primo's callers and branch routine. Full implementation review
+of the transformation algorithms and preprocessing passes remains pending.
+The old note's claim that source-solver gains bound Primo gains was corrected.
+
+Both strict books and the local/Git link check passed. Prior HTML anchors are
+preserved, including the renamed benchmark-interpretation section. Browser
+review checks the new guide's equations. There are no solver changes or new
+solver qualification runs; the full external-link audit was not repeated.

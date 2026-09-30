@@ -469,12 +469,22 @@ direction. The {source}`node-limit regression
 <tests/unit/qf_lia_solver_tests.cpp#L252-L274>` preserves this incomplete case.
 Adding GCD checks and cuts before DFS does not supply a completeness proof.
 
+Bromberger's thesis, Chapter 6, addresses precisely the difference between
+bounded row expressions and bounded variables. Its Double-Bounded reduction
+and Mixed-Echelon-Hermite transformation provide a route to a finite integer
+search while preserving solutions through a change of coordinates. They are
+not implemented here. The {ref}`thesis reading guide <bromberger-bounded-search>`
+works through this example in coordinates $u=x+y$, $v=y$ and identifies the
+remaining implementation obligations.
+
 The cube test, extended bounded-variable GCD reasoning, general Diophantine
 or Hermite-normal-form reasoning, cuts within branch nodes, and CDCL-visible
 integer splits remain outside the implementation. In particular, cube tests
 attempt to establish feasibility by solving a strengthened relaxation;
 failure of that test is not an integer-infeasibility proof. The
-{source}`Bromberger thesis note <docs/papers/bromberger-linear-arithmetic-thesis.md>`
+{ref}`cube-test explanation <bromberger-unit-cube>` derives its strengthening,
+rounding guarantee and equality limitation. The
+{source}`earlier thesis note <docs/papers/bromberger-linear-arithmetic-thesis.md>`
 and {source}`integer open leads <docs/open-leads.md#L1759-L1828>` retain the
 separate investigations and their prerequisites.
 
@@ -540,12 +550,10 @@ for this chapter are available in the supplied `external/papers/` PDFs.
 | --- | --- |
 | Nikolaj Bjørner and Lev Nachmanson, [*Arithmetic Solving in Z3*](https://doi.org/10.1007/978-3-031-65627-9_2), CAV 2024, §§4.1, 4.3–4.4 | Freedom-interval patching, basic row GCD consistency and integer splits. Primo adds a finite target window and a strictly improving global patch score, and branches inside a private theory search. The paper's cubes, extended GCD and specialized cuts are not implemented. |
 | Tim King, [*Effective Algorithms for the Satisfiability of Quantifier-Free Formulas Over Linear Real and Integer Arithmetic*](https://cs.nyu.edu/media/publications/king_tim.pdf), PhD thesis, NYU, 2014, §4.4.3, Lemma 4.1, equation (4.9) | The mixed-cut derivation, represented by a fresh tableau row and bound. Nonbasic integrality is not used to strengthen the cut; no complete cutting-plane algorithm is claimed. |
+| Martin Bromberger, [*Decision Procedures for Linear Arithmetic*](https://publikationen.sulb.uni-saarland.de/handle/20.500.11880/28955), PhD thesis, Saarland, 2019, Chapters 4–6 and §§7.2.3–7.2.4 | Cube tests, equality/bounded-direction analysis, bounding transformations and the separation of preparation from per-node work. These supply comparisons and concrete further work; Primo does not implement that complete combination. See the [reading guide](../papers/bromberger-linear-arithmetic.md). |
 | Bruno Dutertre and Leonardo de Moura, *Integrating Simplex with DPLL(T)*, SRI-CSL-06-01, §§2–3 | The rational tableau, bound assertions and consistency checks explained in [LRA](lra.md). Its §3.2.4 saves a successful assignment; Primo's sparse mode retains the current assignment and basis when popping bounds. This is relaxation machinery, not a source for integer completeness. |
 | Original Primo design: private integer completion and accumulated explanations | The owned tableau copy, internal DFS, cut lifetime and union of antecedents connect the cited arithmetic rules to Primo's SAT and component interfaces. Defensive clause containment is not a substitute for those rules' soundness. |
 
-Bromberger's *Decision Procedures for Linear Arithmetic* (2019), Chapters
-4–5, concerns further cube/equality reasoning; its
-{source}`literature note <docs/papers/bromberger-linear-arithmetic-thesis.md>`
-records the scope of that future work. The Griggio and Bromberger tableau
+The Griggio and Bromberger tableau
 engineering references remain mapped in [LRA's source table](lra.md#sources-and-implementation-status);
 they are not additional implemented integer stages.

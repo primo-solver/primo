@@ -76,7 +76,8 @@ document.
 | **8** | **SPASS-SATT: CDCL(LA) + preprocessing** | **+1693 solved on QF_LIA from preprocessing alone** |
 | 9 | conclusion, SMT-COMP 2018 results | SPASS-SATT ranked 1st QF_LIA, 2nd QF_LRA |
 
-## The corpora coincide, which is what makes the numbers usable
+(the-corpora-coincide-which-is-what-makes-the-numbers-usable)=
+## How to interpret the benchmark overlap
 
 Chapters 7--8 evaluate on the SMT-LIB QF_LIA and QF_LRA divisions with a
 40-minute limit. Primo's `sandbox/non-incremental/QF_LIA` tree is the same
@@ -87,12 +88,14 @@ division: `20180326-Bromberger` (806 files here, 806 in the thesis), `nec-smt`
 (100 / 100), `tropical-matrix` (108 / 107), `calypto` (37 / 37),
 `miplib2003` (16 / 16), `tightrhombus` (22).
 
-The thesis's family-level counts are therefore directly comparable to Primo's,
-which is unusual and worth exploiting. Note the two caveats: SPASS-SATT's
-totals (6947 QF_LIA, 1649 QF_LRA) are the 2018/2019 division, smaller than the
-13,306 files Primo now runs, and its 40-minute limit is far above Primo's 60s
-benchmark timeout, so a "+N solved" here is an upper bound on what the same
-mechanism buys at Primo's timeout, not a prediction.
+The shared family names help identify mechanisms and candidate inputs for
+Primo experiments. They do not establish identical corpora or comparable
+solved counts. SPASS-SATT's totals (6947 QF_LIA, 1649 QF_LRA) concern the
+2018/2019 division, smaller than the 13,306 files in the Primo evaluation
+discussed here, and its 40-minute limit differs from that evaluation's 60s
+limit. A thesis ablation gain is neither a prediction nor an upper bound on
+the same idea's gain in Primo: implementations, interactions and workloads
+differ. The numbers below remain the thesis's measurements.
 
 ## Chapter 4 -- the cube tests, and what actually blocks them
 

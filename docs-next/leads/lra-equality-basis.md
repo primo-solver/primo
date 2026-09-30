@@ -26,6 +26,13 @@ a comparison of normalized expressions. Section 5.4.2 derives explanations
 from the tight bounds used by that normalization. These are proposed
 extensions to Primo, not a description of its current equality producer.
 
+The same thesis connects equality elimination to cube tests (§5.7), as
+explained in the {ref}`arithmetic reading guide <bromberger-unit-cube>`.
+An integer application needs a separate integrality argument: a rational
+substitution such as $x=y/2$ requires even $y$ when $x$ is integer. A complete
+basis of equalities over the real relaxation does not itself enforce these
+divisibility conditions or find every equality implied only over integers.
+
 Start by measuring exact-probe frequency and time across representative
 QF_UFLRA inputs, including the expensive tail. The retained
 {source}`thesis note <docs/papers/bromberger-linear-arithmetic-thesis.md>` and

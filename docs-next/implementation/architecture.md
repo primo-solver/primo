@@ -67,6 +67,10 @@ transformation order, mandatory lowering even with preprocessing off,
 automatic profile selection, strategy composition, and reconstruction records.
 Follow one goal through the selected passes and show how its model conversions
 are retained. Link those chapters from the route-selection step above.
+Use [Bromberger's thesis, §§8.2.2–8.2.4](../papers/bromberger-linear-arithmetic.md),
+in the paper-to-code review of sharing, arithmetic flattening, `ite` handling,
+variable definitions and CNF construction. Distinguish these formula passes
+from the arithmetic preparation before branch-and-bound in §7.2.4.
 ```
 
 ## Representation and ownership

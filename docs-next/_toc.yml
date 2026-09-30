@@ -19,6 +19,7 @@ parts:
   - caption: Literature
     chapters:
       - file: papers/primo-qflra-results
+      - file: papers/bromberger-linear-arithmetic
       - file: papers/yices
       - file: papers/clause-forgetting
       - file: papers/polarity-aware-cnf
