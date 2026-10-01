@@ -238,17 +238,9 @@ The owning loops are {source}`solve_qf_uf_engine_impl
 “Lazy” above describes when the theory check runs; it does not describe lazy
 reason construction or scoped incremental sessions.
 
-```{admonition} TODO: Explain effective scheduling and propagation controls
-:class: note
-
-Describe how `auto` selects a route, how candidate and delivery budgets affect
-propagation, and how phase policies interact with preprocessing and explicit
-options. Extract the current controls from the
-{source}`existing EUF reference <docs/euf.md#L215-L295>` into a maintained
-options reference, checking defaults and route restrictions against the code.
-Include an example showing the effective policy rather than only the requested
-option name.
-```
+The [policy reference](../reference/policies.md) gives the effective `auto`
+selection rules, candidate/delivery budgets, and phase precedence, including
+a worked budget example and the relevant counters.
 
 ## When a candidate becomes an answer
 

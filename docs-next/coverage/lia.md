@@ -70,16 +70,10 @@ The [preprocessing chapter](../implementation/preprocessing.md) now covers
 integer profile selection, restricted optional passes, mandatory translation,
 and model conversions from the old frontend policy.
 
-```{admonition} TODO: Preserve contributor fuzzing procedures
-:class: note
-
-The contributor fuzzing/experiment guide must extract the maintained procedure
-from the old {source}`fuzzing section <docs/qf-lia-branch-and-bound.md#L992-L1220>`:
-seed selection and staging after workspace preparation, current mutation-operator
-coverage, Dolmen grammar mode, bounded seed coverage and `unknown` classification.
-Reconcile recipes with today's scripts and contributor policy. Historical
-machine-specific failures and counts stay in the archive.
-```
+Preserved in [fuzzing](../development/fuzzing.md): seed selection/staging,
+mutation restrictions, visited-seed limits, and outcome classification.
+[Independent validation](../development/validation.md) records Dolmen grammar
+modes. Historical machine-specific counts remain in their dated records.
 
 This audit covers the original LIA development chapter. It does not certify
 the separate integer-division literature note, profiling report, all integer

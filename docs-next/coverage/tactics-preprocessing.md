@@ -78,23 +78,13 @@ batches locally. This rewrite ran documentation checks only.
 
 ## Remaining reference and workflow extraction
 
-```{admonition} TODO: Extract the tactic reference and composition-run procedure
-:class: note
-
-Before replacing the old book, move the complete list of builders, parameters,
-and counters from the {source}`tactic reference <docs/tactic-reference.md>` into the new reference
-section, including the distinction between public builders and internal round
-phases. Preserve the structural selector's threshold semantics and analysis
-cost in that reference.
-
-The contributor experiment guide must explain how to select a supported
-combination of passes, stage a remote run, verify the binary revision, and
-retain model-validation evidence. It must also distinguish checks that require
-a tactic to run on every input from checks that require it to run at least once
-in the corpus.
-Use the current scripts; do not copy historical local execution recipes as
-current policy. The same contributor guide must cover the {ref}`remaining LIA procedures <lia-remaining-extraction>`.
-```
+The complete [tactic inventory](../reference/tactics.md) and
+[policy reference](../reference/policies.md) preserve builders, counters,
+selector thresholds and analysis costs. The
+[composition workflow](../development/experiments.md#tactic-composition-checks)
+covers supported profiles, revision checks, activity requirements and separate
+model validation. The [fuzzing guide](../development/fuzzing.md) also covers
+seed staging and the remaining integer/finite-domain procedures.
 
 This audit covers the named chapters and selector note. It does not mark every
 linked literature note or open lead as migrated, and it does not assign reader

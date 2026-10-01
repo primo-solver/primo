@@ -77,20 +77,12 @@ dedicated coordinator. [Quantifiers](implementation/quantifiers.md) explains
 binding, universal instances, existential witnesses, and the current answer
 boundary. [Model construction](implementation/models.md) explains typed values,
 function tables, and restoration of expressions removed by preprocessing.
-The capability matrix and user guides remain in the existing book while they
-undergo page review for this draft.
+The capability matrix and practical guides are now available in this draft.
 
-```{admonition} TODO: Restore the user guides and capability reference
-:class: note
-
-Bring the {source}`capability matrix <docs/current-status.md>`, supported input,
-model requests, scoped sessions, and everyday options into this book, with
-working examples and explicit unsupported/unknown boundaries. The current
-starting points are the {source}`input guide <docs/guide/input.md>`,
-{source}`model guide <docs/guide/models.md>`,
-{source}`session guide <docs/guide/sessions.md>`, and
-{source}`options reference <docs/reference/options.md>`.
-```
+The [capability matrix](capabilities.md) and user guides cover
+[building](guide/getting-started.md), [input](guide/input.md),
+[models](guide/models.md), and [sessions](guide/sessions.md).
+The [reference](reference/options.md) lists options and effective policies.
 
 The [Yices literature survey](papers/yices.md) connects three papers/talks to
 the code and distinguishes implemented mechanisms from ideas for investigation.
