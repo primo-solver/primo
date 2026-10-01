@@ -1,49 +1,20 @@
-# Primo Design
+# Primo design
 
-Primo is a C++20, CMake-built SMT solver scaffold.
+The current design is documented in the replacement manual:
 
-## Architecture
+- [Architecture and layer boundaries](docs-next/implementation/architecture.md)
+- [Core terms, ownership and invariants](docs-next/implementation/core.md)
+- [SAT integration](docs-next/implementation/sat.md) and
+  [DPLL(T) coordination](docs-next/implementation/dpllt.md)
+- [Frontend binding](docs-next/implementation/frontend.md) and
+  [incremental sessions](docs-next/implementation/sessions.md)
+- [Supported capabilities and limits](docs-next/capabilities.md)
 
-- `smtlib/` parses, prints, and type-checks SMT-LIB.
-- `core/` owns sorts, symbols, terms, rewriting, substitutions, and models.
-- `sat/` owns SAT literals, clauses, assumptions, and the IPASIR-UP backend adapter.
-- `smt/` owns Boolean abstraction, clausification, assertion stacks, and lazy DPLL(T).
-- `theory/` owns theory solvers and explanations.
+The implementation chapters identify owning C++ types, paper sections,
+limitations and regression tests. [AGENTS.md](AGENTS.md) retains contributor
+rules and architectural constraints. The [original book](docs/index.md) remains
+available while the replacement awaits reader acceptance.
 
-## Core invariants
-
-### Term invariant
-
-- Terms are hash-consed.
-- Term equality is by `TermId`.
-- Every term has an explicit sort.
-- Boolean formulas are terms of sort `Bool`.
-- Applications are represented uniformly.
-- All terms are created through the term manager.
-
-### SAT invariant
-
-- Primo does not implement its own SAT solver.
-- SAT solving is delegated through IPASIR-UP, initially backed by CaDiCaL.
-- The SAT backend sees only clauses over SAT literals.
-- SMT atoms are mapped to SAT variables by the SMT layer.
-- The SAT backend must not inspect theory terms.
-- Assumptions are distinct from permanent clauses.
-- Backend-specific details must stay behind the SAT adapter.
-
-### Theory invariant
-
-A theory solver receives asserted theory literals.
-
-It may return:
-
-- consistent
-- conflict clause
-- propagated literal with explanation
-- model fragment
-
-### DPLL(T) invariant
-
-- The first implementation may use lazy theory checking.
-- Theory propagation is optional until the EUF checker is correct.
-- Every generated theory lemma must be independently checkable by tests.
+The [initial design summary](https://github.com/primo-solver/primo/blob/1f9f116c73520d960278139a0e82dd0dbd4c9b29/DESIGN.md)
+is retained as history; its scaffold and lazy-only milestones do not describe
+the current solver.

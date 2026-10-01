@@ -1,7 +1,16 @@
 # Documentation restructuring before public release
 
-**Status: rewrite in progress, 2026-09-29; implementation drafts through integer
-arithmetic available, with section-level preservation audits started.**
+**Status: replacement draft ready for reader review, 2026-10-01.**
+The implementation chapters, user guides, option/statistics/backend references,
+contributor procedures, literature mapping and research register now exist in
+`docs-next/`. The preservation audit maps all 91 original pages and their
+1,150 headings, 126 supporting entries, and 1,306 compatibility targets.
+Historical evidence remains tied to its original revision. Missing publication
+artifact identities and quantifier-checking limits are explicit evidence work.
+Reader acceptance, archive-route installation and the actual book switch remain
+pending; the existing book is still live. The dated updates below describe the
+rewrite's earlier milestones.
+
 The project owner has made substantial documentation restructuring a priority
 before the first public release. A private repository transfer can happen first.
 The three status entry points added in

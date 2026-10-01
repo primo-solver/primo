@@ -77,7 +77,6 @@ dedicated coordinator. [Quantifiers](implementation/quantifiers.md) explains
 binding, universal instances, existential witnesses, and the current answer
 boundary. [Model construction](implementation/models.md) explains typed values,
 function tables, and restoration of expressions removed by preprocessing.
-The capability matrix and practical guides are now available in this draft.
 
 The [capability matrix](capabilities.md) and user guides cover
 [building](guide/getting-started.md), [input](guide/input.md),
@@ -95,8 +94,11 @@ kept separate from current defaults and qualification evidence.
 ## Active work
 
 The documentation rewrite is being reviewed page by page. The
-[review ledger](review.md) records completed checks, remaining chapters, and
-pages awaiting acceptance.
+[review ledger](review.md) records completed checks and pages awaiting acceptance;
+the [preservation audit](coverage/index.md) maps the original material.
+[Replacement preparation](work/documentation.md),
+[evidence work](work/evidence.md), and [results storage](work/results-storage.md)
+record the remaining tasks and their completion conditions.
 
 ## Open leads
 

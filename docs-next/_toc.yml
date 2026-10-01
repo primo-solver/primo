@@ -43,6 +43,7 @@ parts:
       - file: implementation/models
   - caption: Literature
     chapters:
+      - file: literature
       - file: references
       - file: papers/primo-qflra-results
       - file: papers/bromberger-linear-arithmetic
@@ -53,6 +54,7 @@ parts:
       - file: papers/relevance-filtering
   - caption: Open leads
     chapters:
+      - file: leads/index
       - file: leads/library-api
       - file: leads/incremental-memory
       - file: leads/term-storage
@@ -73,14 +75,26 @@ parts:
       - file: leads/quantifier-nnf
       - file: leads/asserted-quantifiers
       - file: leads/quantifier-relevance
+      - file: leads/compact-distinct
+      - file: leads/incremental-equations
+      - file: leads/shared-euf-structure
   - caption: Active work
     chapters:
+      - file: work/documentation
+      - file: work/evidence
       - file: work/results-storage
+  - caption: Evidence and history
+    chapters:
+      - file: evidence/arithmetic
+      - file: evidence/quantifiers
+      - file: evidence/archive
   - caption: Reviewing this draft
     chapters:
       - file: review
         sections:
           - file: coverage/index
           - file: coverage/frontend-sessions
+          - file: coverage/solver
           - file: coverage/lia
           - file: coverage/tactics-preprocessing
+          - file: coverage/practice-literature

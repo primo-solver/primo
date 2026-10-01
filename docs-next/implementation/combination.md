@@ -734,6 +734,9 @@ their separate revision boundaries and limitations. Exact run provenance is in
 {source}`the run log <docs/run-log.json>`; these historical runs are not fresh
 qualification of this documentation pass.
 
+The [arithmetic evidence summary](../evidence/arithmetic.md#combination-evidence)
+connects those records to the current routes and remaining migration work.
+
 ## Related open leads
 
 - [Complete implied-equality basis](../leads/lra-equality-basis.md)

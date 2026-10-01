@@ -106,14 +106,18 @@ and normalized connectives, as a different formula from the input's. It then
 Skolemized the input itself, and the pool terms built from Primo's constants
 were useless.
 
-The check trusts only cvc5. Pools and annotations do not change what the
-problem means. Each group of Skolem constants witnesses exactly one
-existential formula, either one of the input's own assertions or a formula
-Primo printed, so it keeps a satisfiable problem satisfiable whatever that
-formula is. A printing mistake or a wrong match therefore cannot create a
-false confirmation. As a self-check, removing the annotations must
-give back the input's commands. With `--force` the same check runs on inputs
-Primo did not refute, as a negative control that must never answer unsat.
+The check uses cvc5's independent instantiation and reasoning. Pools and
+annotations preserve the problem, and fresh witness groups preserve
+satisfiability when the export obeys its conservative-extension contract.
+The script does not independently establish that contract for arbitrary
+printed assertions: unlinked witness lemmas still rely on correct export and
+serialization. These results are corroboration under that contract, not a
+proof check independent of every possible Primo printing defect. As a
+self-check, removing the annotations must give back the input's commands;
+this does not check all witness obligations. With `--force` the same check
+runs on inputs Primo did not refute as a negative control that must never
+answer unsat. The replacement book gives the full trust boundary in its
+quantifier evidence page.
 
 The three reference-less `unsat` answers of the UF evaluations were all
 confirmed this way, each in under 0.25 s of cvc5 time: the two `llist2` files

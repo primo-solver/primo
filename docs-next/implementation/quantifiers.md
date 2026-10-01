@@ -83,15 +83,18 @@ manager; they remain subject to the [core lifetime rules](core.md#allocation-and
 
 ### What a de Bruijn index means
 
-```{admonition} TODO: Explain why indexed variables were chosen
-:class: note
+Indices make renamed binders share a representation without assigning each
+variable a globally fresh identity. They concentrate the capture-avoidance
+operations in shifting, instantiation, abstraction and lexical scope lookup.
+They do not eliminate correctness obligations: moving an open term across a
+binder still requires the appropriate index adjustment.
 
-Summarize the design tradeoff against named variables and variables with
-identity: sharing under renaming, where capture-avoidance obligations live,
-and parser/core complexity. Revisit the
-{source}`recorded choice <docs/quantifiers.md#L871-L899>` against the implemented
-operations; keep abandoned proposals and prototype measurements historical.
-```
+Named or identity-bearing variables can be convenient for display, but require
+a separate policy for freshness, shadowing and sharing under renaming. Primo's
+choice keeps parser scope information and core binder operations explicit, at
+the cost of index arithmetic and occasional shifted terms. The
+{source}`original comparison <docs/quantifiers.md#L871-L899>` retains prototype
+size measurements; those measurements are historical, not current memory claims.
 
 Index 0 names the innermost bound variable, index 1 the next outer variable,
 and so on. A list of declarations counts as nested binders in declaration
@@ -362,15 +365,9 @@ establish that property. The completeness result is the cited Corollary 2,
 subject to its assumptions, rather than a guarantee for every selectable
 order or Primo's bounded run.
 
-```{admonition} TODO: Document the evidence for the default tuple order
-:class: note
-
-Extract the rationale for the `sum` default from the
-{source}`enumeration note <docs/papers/fair-adventurous-enumeration.md>`:
-give the dated Primo comparison, tested configurations and qualification
-limits. The cited enumeration results explain the method; they do not by
-themselves justify Primo's default.
-```
+The [tuple-order comparison](../evidence/quantifiers.md#tuple-order-and-round-size)
+records why `sum` was selected, including its gains, losses and older source
+revision. The paper's enumeration argument does not itself select Primo's default.
 
 {source}`add_instance <src/theory/quantifiers/quantifier_component.cpp#L212-L246>`
 then applies three filters: the tuple's instantiated body may already have
@@ -469,18 +466,11 @@ UF corpus evaluations, tuple-order comparisons, and the measurements behind
 the current round and stall defaults. Those records qualify their named
 revisions; this documentation rewrite does not rerun or extend them.
 
-```{admonition} TODO: Extract the quantifier evidence and checking argument
-:class: note
-
-Replace broad historical pointers with a curated evidence summary for tuple
-orders, instance-round and stall defaults, correctness repairs, and remaining
-unconfirmed answers. Preserve exact revisions, configurations, and run IDs.
-Explain why the pool-guided cvc5 check preserves satisfiability despite using
-Primo-generated terms and witness information, including top-level linking,
-skipped exports, and negative controls. Verify the trust argument in the
-{source}`original checker discussion <docs/quantifiers.md#L88-L149>` against
-the script; a reference solver invocation alone is not that argument.
-```
+The [quantifier evidence page](../evidence/quantifiers.md) records tuple-order,
+round-size, stall and repair evidence. It also explains pool-guided cvc5 UNSAT
+corroboration, top-level witness linking, skipped exports and negative controls.
+That check relies on the export's conservative-extension contract; it is not
+a proof checker independent of every printing or witness-generation defect.
 
 `--quantifier-export-pools FILE` records printable witness constants, witness
 constraints, and tuples that produced lemmas through

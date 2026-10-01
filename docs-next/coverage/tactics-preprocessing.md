@@ -51,7 +51,7 @@ Archive paths and redirects must be settled before that replacement.
 | {source}`Mixed-theory opportunities <docs/preprocessing.md#L1538-L1608>` | Retained research record. Current purification is explained in [combination](../implementation/combination.md); proposals are not presented as additional implemented preprocessing passes. |
 | {source}`Current status <docs/preprocessing.md#L1609-L1676>` | Superseded as the current narrative by the profile and pass descriptions checked against the code. Historical counts and formerly deferred work remain dated evidence. |
 | {source}`Paper traceability <docs/preprocessing.md#L1677-L1701>` | Preserved and qualified in {ref}`sources <preprocessing-sources>`; bibliography identifies papers, while earlier development inspiration stays retrospective. No old solver implementation is an implementation source. |
-| {source}`Structural selector design <docs/structural-auto-preprocessing.md#L1-L105>` | Selection semantics preserved in {ref}`profiles <preprocessing-profiles>`; detailed option inventory and analysis complexity remain in the design note pending the reference extraction below. |
+| {source}`Structural selector design <docs/structural-auto-preprocessing.md#L1-L105>` | Selection semantics preserved in {ref}`profiles <preprocessing-profiles>`; thresholds and analysis costs appear in the [policy reference](../reference/policies.md#structural-preprocessing-selection). |
 | {source}`Structural selector evaluation <docs/structural-auto-preprocessing.md#L106-L124>` | Retained history, including the rejected default promotion. The current selector remains legacy. |
 
 ## Evidence identities
@@ -76,7 +76,7 @@ The original chapters retain the detailed experiment tables. Relevant
 Historical local runs are provenance, not instructions to run current solver
 batches locally. This rewrite ran documentation checks only.
 
-## Remaining reference and workflow extraction
+## Reference and workflow destinations
 
 The complete [tactic inventory](../reference/tactics.md) and
 [policy reference](../reference/policies.md) preserve builders, counters,
@@ -84,7 +84,7 @@ selector thresholds and analysis costs. The
 [composition workflow](../development/experiments.md#tactic-composition-checks)
 covers supported profiles, revision checks, activity requirements and separate
 model validation. The [fuzzing guide](../development/fuzzing.md) also covers
-seed staging and the remaining integer/finite-domain procedures.
+seed staging and integer/finite-domain procedures.
 
 This audit covers the named chapters and selector note. It does not mark every
 linked literature note or open lead as migrated, and it does not assign reader

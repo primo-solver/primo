@@ -9,7 +9,8 @@ The longer {source}`literature record
 <docs/papers/bromberger-linear-arithmetic-thesis.md>` already records the
 August 29 reading, September 25 source refresh, ablations and research agenda.
 LRA and theory combination also cite it. Here the relevant sections are
-connected to the new integer chapter and the pending preprocessing rewrite.
+connected to the integer and [preprocessing](../implementation/preprocessing.md)
+chapters.
 The thesis covers both implemented engineering choices and possible extensions;
 its SPASS-IQ and SPASS-SATT evaluations remain evidence about those
 implementations, not measurements of Primo.
@@ -23,7 +24,7 @@ implementations, not measurements of Primo.
 | Chapter 6, especially Definition 6.2.1, Lemma 6.2.3 and Corollary 6.3.6 | Why bounded row expressions need not bound variables, and how transformations address divergent integer search. | Not implemented. Primo retains a finite branch budget and can return `unknown`. |
 | §§7.1.3–7.1.4 | Rollback and sparse arithmetic representation. | [LRA](../implementation/lra.md) maps the relevant choices and deviations to Primo's tableau. |
 | §§7.2.3–7.2.4, Figures 7.21–7.22 | Distinguish procedures before branching from procedures at each branch node. | A comparison for [Primo's stage schedule](../implementation/lia.md#when-integer-reasoning-runs), not the schedule Primo implements. |
-| §§8.2.2–8.2.4 | Term sharing and arithmetic flattening; `ite` transformations; variable definitions; pseudo-Boolean simplification; CNF construction. | A source checklist for the pending preprocessing chapter. Each mechanism still needs its own current-code mapping. |
+| §§8.2.2–8.2.4 | Term sharing and arithmetic flattening; `ite` transformations; variable definitions; pseudo-Boolean simplification; CNF construction. | The [preprocessing chapter](../implementation/preprocessing.md) maps the implemented transformations and their reconstruction obligations; the thesis's broader preprocessing suite is not implied. |
 
 (bromberger-unit-cube)=
 ## What a unit cube proves

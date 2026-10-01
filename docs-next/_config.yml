@@ -38,6 +38,9 @@ sphinx:
       source:
         - "https://github.com/primo-solver/primo/blob/bc5d21dd7ab28d03d98f90815449b58a0d222d01/%s"
         - "%s"
+      record:
+        - "https://github.com/primo-solver/primo/blob/1f9f116c73520d960278139a0e82dd0dbd4c9b29/%s"
+        - "%s"
     myst_heading_anchors: 3
     linkcheck_workers: 4
     linkcheck_timeout: 15

@@ -1,9 +1,10 @@
 # Review this draft
 
 This book is the replacement documentation under construction. The existing
-book remains in `docs/`; it is still built by `make docs`. Only drafted pages
-appear in this book's navigation. The complete proposed structure remains in
-`docs/documentation-target-toc.yml`.
+book remains in `docs/`; it is still built by `make docs`. The navigation now
+includes the replacement manual, references, contributor procedures, evidence
+and research registers. The original proposed structure remains in
+`docs/documentation-target-toc.yml` as a planning record.
 
 ## Preview either version
 
@@ -76,25 +77,17 @@ are evidence of a review, so they change only when a new review is recorded.
 The preview/review workflow is newer than the inspected solver baseline and
 belongs to the current documentation branch. No page is accepted yet.
 
-```{admonition} TODO: Audit content coverage before accepting the replacement
-:class: note
+The [preservation audit](coverage/index.md) accounts for all 91 original pages,
+1,150 section headings, 126 supporting entries and 1,306 compatibility targets.
+Its subject maps explain current destinations, corrected claims and retained
+history. These are ready for reader review; mapping a historical section does
+not independently certify every sentence or experiment in it.
 
-Extend the file-level migration map to account for every substantive old
-section: preserved with an exact destination, intentionally superseded with
-a reason, archived as dated history, or still missing with an inline TODO.
-Resolve the coverage gaps before accepting a replacement chapter. Check that
-current algorithms, correctness arguments, design rationale, examples, option
-contracts, and evidence boundaries all have an explanatory home. A source
-link or an old-page inventory is not by itself evidence of complete coverage.
-```
-
-The first [section-level preservation map](coverage/lia.md) covers the old
-integer-arithmetic chapter. It distinguishes current explanations, superseded
-claims and dated evidence, and names the remaining contributor workflow
-extraction. The
-[tactics and preprocessing map](coverage/tactics-preprocessing.md) records their
-current explanations, retained experiments, and remaining reference/workflow
-extraction. Other chapters still need their section-level audits.
+The documented algorithms, option contracts and contributor procedures now have
+replacement chapters. [Evidence work](work/evidence.md) names unresolved
+publication-to-run identities and quantifier checking limits. Review those
+boundaries along with the prose before accepting the replacement; installation
+of archive routes and the book switch remain separate publication steps.
 
 ## Review order and questions
 
@@ -1680,3 +1673,57 @@ remains an open lead; the citation does not settle that adaptation.
 
 Verification covers the strict documentation builds and local/source links.
 No solver behavior, qualification evidence or source pin changes.
+
+## Documentation gap completion, 2026-10-01
+
+The replacement now includes frontend and session contracts, practical user
+guides, a capability matrix, complete CLI/tactic/statistics/backend references,
+effective option policies, and contributor procedures for fuzzing, reduction,
+model validation, debugging, experiments, tuning and documentation. The first
+two milestones are `21a5fd4` and `e9d7bbb`. Executable examples reuse the original
+fixtures; they were not rerun by this documentation task.
+
+The remaining algorithm callouts are resolved: indexed-binder rationale,
+tuple-order evidence, quantifier checking, fixed-basic elimination, model-phase
+hints, and curated arithmetic history. The pool checker and exporter inspection
+identified an overclaim in the old trust argument. Both books and the ledger's
+scope now state the dependence on conservative witness exports. Recorded run
+commands and results are unchanged; this is not a newly discovered wrong solver
+answer or a new independent proof certificate.
+
+The [literature map](literature.md) connects papers and theses to implemented
+subsets and open directions. The [research register](leads/index.md) reconciles
+completed, rejected and remaining numbered leads, including compact `distinct`,
+incremental equation elimination and shared EUF preparation. Stale root design
+and milestone files now point to the current manual and work registers.
+
+The [preservation inventory](coverage/index.md) accounts for all 91 original
+Markdown pages and 1,150 headings at the retained snapshot. Its 126 supporting
+entries match the original support map. All 1,306 old HTML page/fragment targets
+remain present, with explicit archive routes prepared for cutover. A separate
+validation pass checked source ranges, original-file coverage, every replacement
+file/anchor, and the exact compatibility target set. The retained snapshot has
+its own `record` link role; implementation links keep their existing source pin.
+
+Verification: `make docs-check-links` passed for both strict books, including
+174 HTML pages and every local/Git link. Browser inspection covered sessions,
+policy tables, the literature map, preservation index, quantifier checking and
+LRA phase hints. Equations rendered without MathJax errors and inspected pages
+had no horizontal overflow. `git diff --check` passed. No solver, fuzzing,
+benchmark or model-checking batches ran, and no implementation files changed.
+
+`make docs-check-external` did not pass: Sphinx reported 14 failures plus two
+timeouts for the original book and five failures plus two timeouts for the
+replacement. Most are HTTP 403/429 access failures; the author survey host has
+a certificate-chain error and one old SOI paper host refused connections. The
+latter was replaced with the verified author-hosted PDF. The
+{download}`external audit <coverage/external-links.json>` records the exact
+URLs, classifications and repair. Remaining failures need a later access check;
+they were not hidden by new exclusions or disabled certificate validation.
+
+Reader acceptance, the actual book switch and publication remain pending.
+Missing publication-to-run mappings and quantified checking obligations remain
+explicit [evidence work](work/evidence.md); results-storage implementation is
+separate. The archive catalogue preserves detailed history without claiming
+that every old experiment is independently reproducible or qualifies today's
+solver.

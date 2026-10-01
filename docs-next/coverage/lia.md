@@ -64,7 +64,7 @@ The original chapter is still the archive location. Relevant entries in the
   to run solver batches locally.
 
 (lia-remaining-extraction)=
-## Remaining extraction outside the integer algorithm chapter
+## Destinations outside the integer algorithm chapter
 
 The [preprocessing chapter](../implementation/preprocessing.md) now covers
 integer profile selection, restricted optional passes, mandatory translation,
@@ -77,6 +77,6 @@ modes. Historical machine-specific counts remain in their dated records.
 
 This audit covers the original LIA development chapter. It does not certify
 the separate integer-division literature note, profiling report, all integer
-open leads or the whole corpus. They retain their file-level dispositions
-until reviewed section by section. Reader acceptance and archive routing
-remain pending.
+open leads or the whole corpus. Their sections are accounted for in the
+[complete inventory](index.md), with current literature and research mappings.
+Reader acceptance and installation of archive routes remain pending.

@@ -288,7 +288,7 @@ identical results to Bland (7/17 solved, same files) -- didn't move that
 particular narrow sample, matching this session's items 1-2 (solve-eqs,
 row-based propagation) each individually failing to close the same gap.
 Open version:
-<https://www.cs.utexas.edu/~hunt/FMCAD/FMCAD13/papers/73-Simplex-Sum-SMT.pdf>.
+<https://theory.stanford.edu/~barrett/pubs/KBD13.pdf>.
 
 **Tim King, Clark Barrett, Cesare Tinelli. "Leveraging Linear and Mixed
 Integer Programming for SMT." FMCAD 2014.**

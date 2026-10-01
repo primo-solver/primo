@@ -73,4 +73,5 @@ the unchanged speed run and link both in the run ledger.
 Printed models of quantified formulas are unsupported. The separate pool-guided
 cvc5 checker addresses selected quantified UNSAT answers; it is not the ordinary
 Dolmen model stage. Its satisfiability-preservation conditions and remaining
-unconfirmed answers are documented in {source}`quantifier checking record <docs/quantifiers.md#L88-L149>`.
+unconfirmed answers are documented in the
+[quantifier checking record](../evidence/quantifiers.md).

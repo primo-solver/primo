@@ -831,22 +831,85 @@ adaptive follow-up are preserved in the
 {source}`2024 paper implementation note <docs/papers/arithmetic-solving-in-z3.md#L283-L467>`.
 The paper's integer and nonlinear procedures are outside this chapter's scope.
 
+## Fixed-basic elimination
+
+When the lower and upper bounds of a basic variable become equal, its value is
+fixed while those bounds hold. With fixed elimination enabled,
+{source}`try_eliminate_fixed_basic <src/theory/arithmetic/lra_tableau.cpp#L393-L431>`
+pivots that variable out of the basis, then updates the now-nonbasic variable
+to its fixed value. Dependent rows receive the corresponding assignment update.
+A variable fixed at both bounds cannot be a useful entering candidate while
+those bounds remain in force.
+
+For example, if the row is $s=x+y$ and bounds fix $s=3$, pivoting on $x$ gives
+$x=s-y$. Setting the nonbasic $s$ to 3 makes the equality explicit in the
+assignment without repeatedly selecting a violated fixed basic row. This is
+a basis change, not deletion of the original variable or its explanation.
+When a bound is undone, ordinary bound rollback and feasibility repair apply;
+the basis need not return to its original shape.
+
+The operation runs from basic-variable bound assertion. An empty row is left
+for the ordinary consistency check, because forcing a nonzero value onto its
+constant-zero expression can be a real conflict. A row without an admissible
+entering variable is also left unchanged. The rule preserves bound reasons and
+does not implement the full column-deletion/restoration pipeline of LP presolve.
+
+The {source}`H7 design <docs/qf-lra-heuristics.md#L539-L736>` records the
+original adaptation and the rejected row-freezing extension. Current defaults
+are off for pure LRA and on for the dedicated mixed Real route, as declared in
+{source}`CheckSatOptions <src/smt/check_sat.hpp#L295-L310>`. Compare elimination
+pivots, later repair work and total runtime; fewer fixed basic rows alone is
+not a performance conclusion. The [evidence summary](../evidence/arithmetic.md)
+preserves the distinct pure/mixed evaluations.
+
+The {source}`fixed-elimination regression <tests/unit/qf_lra_solver_tests.cpp#L4549-L4565>`
+checks SAT and UNSAT examples with the option both enabled and disabled, and
+requires nonzero elimination counters when enabled.
+
+## Model phase hints
+
+`--lra-model-phase` lets the arithmetic assignment suggest a Boolean polarity
+for an arithmetic atom. If the current tableau assigns $x=2$, it recommends
+the positive literal for $x\leq3$ and the negative literal for $x<1$.
+This is a search preference: the current assignment is not a proof that either
+literal follows from the asserted constraints.
+
+{source}`model_phase_literal <src/smt/solver_engines.cpp#L7415-L7430>` tests
+the prepared bound, including its strict/integer normalization, against the
+`DeltaRational` assignment. Equality relations are skipped. The selected
+literal is passed to the SAT backend's phase interface; SAT still selects its
+decision variable and may choose a different search path.
+
+The tableau records which assignments may have changed, so local updates need
+refresh only their affected atoms; a pivot can require a full refresh.
+Refresh waits for a conflict-free state, and
+{source}`refresh_model_phase_atom <src/smt/solver_engines.cpp#L7459-L7473>`
+avoids resending an unchanged hint. Hints may become stale between refresh and
+the later SAT decision; no theory lemma is justified by their value.
+
+SPASS-SATT §3 and footnote 3 describe arithmetic decision recommendations
+{cite:p}`bromberger2019spass`. Primo tests whether the assignment satisfies each
+atom and updates its phase, rather than using the paper's immediate `GetPhase`
+callback. It does
+not replace SAT variable selection or implement a new entailment test here.
+The option remains off by default. The
+[dated arithmetic comparison](../evidence/arithmetic.md#different-routes-can-justify-different-choices)
+records gains and losses separately by logic.
+
+The {source}`phase-refresh regression <tests/unit/qf_lra_solver_tests.cpp#L3605-L3633>`
+forces a bound update to change the recommended phase, then checks that hints
+are refreshed and disappear when the option is disabled.
+
 ## Further implemented work and its evidence
 
 The following notes explain additional arithmetic mechanisms and preserve
 their measurements and rejected alternatives. H1–H10 are identifiers in the
 historical heuristics register.
 
-```{admonition} TODO: Give retained arithmetic work permanent explanatory homes
-:class: note
-
-For each mechanism below, identify the current algorithm explanation and a
-precise dated evidence record. Extract current design rationale from the long
-development notes before archiving them. Record configuration, revision,
-outcome, and qualification limits in evidence summaries, retaining rejected
-alternatives and raw-record links. This inventory must not substitute for
-the missing algorithm explanations.
-```
+The [arithmetic evidence summary](../evidence/arithmetic.md) connects these
+mechanisms to dated comparisons and rejected alternatives. Remaining published
+table-to-artifact identities are explicit [evidence work](../work/evidence.md),
+not inferred from matching aggregate counts.
 
 | Work already done | Current explanation and retained record |
 | --- | --- |
