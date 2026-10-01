@@ -90,9 +90,11 @@ link or an old-page inventory is not by itself evidence of complete coverage.
 
 The first [section-level preservation map](coverage/lia.md) covers the old
 integer-arithmetic chapter. It distinguishes current explanations, superseded
-claims and dated evidence, and names the remaining preprocessing and contributor
-workflow extraction. This is the pattern for the other chapters; their audits
-remain pending.
+claims and dated evidence, and names the remaining contributor workflow
+extraction. The
+[tactics and preprocessing map](coverage/tactics-preprocessing.md) records their
+current explanations, retained experiments, and remaining reference/workflow
+extraction. Other chapters still need their section-level audits.
 
 ## Review order and questions
 
@@ -106,34 +108,38 @@ remain pending.
    mixing session, SAT, and theory responsibilities?
 4. [Core representation](implementation/core.md): are identity, borrowing,
    constructor simplification, and storage retention clear enough to use safely?
-5. [Boolean abstraction and SAT integration](implementation/sat.md): can a
+5. [Tactics](implementation/tactics.md) and
+   [preprocessing](implementation/preprocessing.md): can the reader distinguish
+   conjunction, alternatives, and fallback; follow actual profile/pass order;
+   and explain the model and incremental-scope obligations?
+6. [Boolean abstraction and SAT integration](implementation/sat.md): can a
    reader derive the worked clauses, distinguish definitions from assertions
    and assumptions, and find the lifetime and explanation obligations?
-6. [DPLL(T)](implementation/dpllt.md): are assignment ownership, callback
+7. [DPLL(T)](implementation/dpllt.md): are assignment ownership, callback
    ordering, reason signs and lifetimes, and final consistency checks clear?
-7. [EUF](implementation/euf.md), [LRA](implementation/lra.md) and
+8. [EUF](implementation/euf.md), [LRA](implementation/lra.md) and
    [LIA](implementation/lia.md): can the reader
    follow each worked example through the owning code and understand the
    representations, invariants, defaults, limitations, and paper basis?
    For integer reasoning, can they explain the stage order, auxiliary-variable
    guards, cut and branch antecedents, and the cases that return `unknown`?
-8. [Theory combination](implementation/combination.md): is the difference
+9. [Theory combination](implementation/combination.md): is the difference
    between entailment and a model choice clear, and can the reader identify
    the two production routes, their acceptance conditions, and their fallback
    and model-construction obligations?
-9. [Quantifiers](implementation/quantifiers.md): can the reader follow binding,
+10. [Quantifiers](implementation/quantifiers.md): can the reader follow binding,
    both polarities, term-pool growth, and queue scheduling, and explain why
    exhausting candidates does not establish `sat`?
-10. [Model construction](implementation/models.md): can the reader follow
+11. [Model construction](implementation/models.md): can the reader follow
    authoritative values, evaluated function tuples, and reverse replay, and
    explain why an evaluator cannot survive a change of interpretation?
-11. [Library API](leads/library-api.md) and
+12. [Library API](leads/library-api.md) and
    [incremental memory](leads/incremental-memory.md), together with
    [compact term storage](leads/term-storage.md): do the work items capture
    the intended direction, available evidence, and unresolved design questions?
    Apply the same questions to the remaining lead pages. Reviewing a lead
    does not complete its investigation.
-12. Literature notes: are the cited sections, implemented subsets, deviations,
+13. Literature notes: are the cited sections, implemented subsets, deviations,
    and open questions clear? Keep published results attached to their original
    configurations and evidence.
 

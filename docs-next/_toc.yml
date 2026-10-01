@@ -8,6 +8,8 @@ parts:
     chapters:
       - file: implementation/architecture
       - file: implementation/core
+      - file: implementation/tactics
+      - file: implementation/preprocessing
       - file: implementation/sat
       - file: implementation/dpllt
       - file: implementation/euf
@@ -53,3 +55,4 @@ parts:
       - file: review
         sections:
           - file: coverage/lia
+          - file: coverage/tactics-preprocessing

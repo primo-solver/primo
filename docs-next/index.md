@@ -55,6 +55,9 @@ production are outside the implemented scope.
 The [architecture overview](implementation/architecture.md) explains the
 component boundaries; [terms, symbols, and ownership](implementation/core.md)
 explains the core representation and its lifetimes.
+[Goals, tactics, and strategies](implementation/tactics.md) follows query
+composition and engine selection. [Preprocessing](implementation/preprocessing.md)
+explains the pass order, profile selection, transformations, and model records.
 [Boolean abstraction and SAT integration](implementation/sat.md) follows those
 terms into clauses and describes assumptions and theory callbacks. The full
 interaction is followed in [DPLL(T)](implementation/dpllt.md), including

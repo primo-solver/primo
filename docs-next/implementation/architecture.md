@@ -58,20 +58,11 @@ checks are omitted. The numbered walkthrough below links each stage to code.
 A declared logic determines which inputs are accepted and helps select an
 engine. Preprocessing can settle a goal or expose a simpler route.
 
-```{admonition} TODO: Write the preprocessing and tactic chapters
-:class: note
+[Goals, tactics, and strategies](tactics.md) explains composition, route selection,
+and the lifetime of reconstruction records. [Preprocessing](preprocessing.md)
+follows the actual pass order, including required translations with the loop
+disabled, automatic profiles, and integer-specific restrictions.
 
-Expand the {source}`preprocessing record <docs/preprocessing.md>` and
-{source}`tactic contracts <docs/tactics.md>` into current explanations of
-transformation order, mandatory lowering even with preprocessing off,
-automatic profile selection, strategy composition, and reconstruction records.
-Follow one goal through the selected passes and show how its model conversions
-are retained. Link those chapters from the route-selection step above.
-Use [Bromberger's thesis, §§8.2.2–8.2.4](../papers/bromberger-linear-arithmetic.md),
-in the paper-to-code review of sharing, arithmetic flattening, `ite` handling,
-variable definitions and CNF construction. Distinguish these formula passes
-from the arithmetic preparation before branch-and-bound in §7.2.4.
-```
 
 ## Representation and ownership
 

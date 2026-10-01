@@ -22,7 +22,7 @@ destination links lead to explanations in this draft.
 | {source}`Scope <docs/qf-lia-branch-and-bound.md#L57-L64>` | Preserved in {ref}`input lowering <lia-input>` and {ref}`limits <lia-limits>`: constant-divisor extensions are supported; QF_LIRA is not. |
 | {source}`Where branching lives <docs/qf-lia-branch-and-bound.md#L66-L111>` | Preserved in {ref}`ownership <lia-representation>`, {ref}`scheduling <lia-schedule>`, {ref}`explanations <lia-explanations>` and {ref}`models <lia-models-evidence>`. Historical `check_sat.cpp` locations are replaced by the owning functions. |
 | {source}`The search <docs/qf-lia-branch-and-bound.md#L113-L135>` | Preserved in {ref}`branching <lia-branching>`, including return states and checkpoints. Bounds-only rollback is qualified for the optional SOI path. |
-| {source}`Int in the frontend <docs/qf-lia-branch-and-bound.md#L137-L189>` | Preserved in {ref}`input lowering <lia-input>` and [core representation](../implementation/core.md). Pass-by-pass preprocessing policy has a {ref}`remaining TODO <lia-remaining-extraction>`. |
+| {source}`Int in the frontend <docs/qf-lia-branch-and-bound.md#L137-L189>` | Preserved in {ref}`input lowering <lia-input>` and [core representation](../implementation/core.md). Pass-by-pass policy is preserved in [integer preprocessing profiles](../implementation/preprocessing.md#profiles-and-repetition). |
 | {source}`Integer strictness and three bugs <docs/qf-lia-branch-and-bound.md#L191-L304>` | Current rules and polarity examples preserved in {ref}`integer bounds <lia-input>`. Rejected atom-level tightening, naive threshold offsets, wrong auxiliary-variable rounding and their runs remain history at this link. The early delta-free-assignment claim is superseded. |
 | {source}`GCD-consistency <docs/qf-lia-branch-and-bound.md#L307-L415>` | Preserved in {ref}`row divisibility <lia-gcd>`, with scaling, both bound reasons and every-variable guards. Bugs 4/5 and the suspected extended-test formula erratum remain history. The early statement that all row terms are declared integers is superseded by the pivot-aware rule. |
 | {source}`Gomory cuts <docs/qf-lia-branch-and-bound.md#L418-L529>` | Preserved in {ref}`cuts <lia-cuts>`: eligibility, four coefficient cases, derivation, both worked examples, the `3x+5y=7` regression, private-row lifetime and the rejected need for backtrackable cut rows. |
@@ -66,14 +66,12 @@ The original chapter is still the archive location. Relevant entries in the
 (lia-remaining-extraction)=
 ## Remaining extraction outside the integer algorithm chapter
 
-```{admonition} TODO: Preserve integer preprocessing and fuzzing procedures
-:class: note
+The [preprocessing chapter](../implementation/preprocessing.md) now covers
+integer profile selection, restricted optional passes, mandatory translation,
+and model conversions from the old frontend policy.
 
-The preprocessing/tactics chapters must account for the old
-{source}`Int frontend policy <docs/qf-lia-branch-and-bound.md#L137-L189>`:
-automatic versus explicit profiles, integer-safe optional passes, disabled
-Gaussian/monotone transformations and mandatory lowering. Link the actual
-pass order and model conversions, rather than repeating this historical list.
+```{admonition} TODO: Preserve contributor fuzzing procedures
+:class: note
 
 The contributor fuzzing/experiment guide must extract the maintained procedure
 from the old {source}`fuzzing section <docs/qf-lia-branch-and-bound.md#L992-L1220>`:

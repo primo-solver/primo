@@ -139,6 +139,11 @@ responsibility of [the combination driver](combination.md#building-the-combined-
 
 ## Following a model back through preprocessing
 
+The [preprocessing chapter](preprocessing.md) follows the forward pass order;
+[the tactic contract](tactics.md#a-transformation-and-its-model) explains why
+each goal carries its own conversion history. This section follows that history
+backwards after solving.
+
 Write `F0 → F1 → … → Fn` for successive preprocessing stages. A conversion
 record for `Fi → Fi+1` describes how to turn a model of `Fi+1` into one of
 `Fi`. Construction starts from a model of `Fn`, so records must be replayed

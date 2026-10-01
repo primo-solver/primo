@@ -96,6 +96,10 @@ reused across successive Boolean candidates.
 (lia-input)=
 ## Input lowering and integer bounds
 
+[Preprocessing profiles](preprocessing.md#profiles-and-repetition) explains the
+automatic and explicit integer pass schedules. The transformations below run
+even when the optional repeated round is disabled.
+
 Here, **lowering** means translating an input construct into simpler terms
 and constraints supported by the solving stages. Each translation below
 specifies the replacement and any fresh variables it introduces.
