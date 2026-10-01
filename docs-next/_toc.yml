@@ -8,6 +8,8 @@ parts:
     chapters:
       - file: implementation/architecture
       - file: implementation/core
+      - file: implementation/frontend
+      - file: implementation/sessions
       - file: implementation/tactics
       - file: implementation/preprocessing
       - file: implementation/sat
@@ -54,5 +56,7 @@ parts:
     chapters:
       - file: review
         sections:
+          - file: coverage/index
+          - file: coverage/frontend-sessions
           - file: coverage/lia
           - file: coverage/tactics-preprocessing

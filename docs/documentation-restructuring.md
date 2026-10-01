@@ -38,8 +38,8 @@ patching, GCD checks, cuts, branching and SAT explanations against source and
 the supplied primary papers. `docs-next/coverage/lia.md` maps every section of
 the old integer development chapter to its current explanation, supersession
 or retained history. Preprocessing policy and contributor experiment procedures
-are explicit remaining extractions. Preprocessing and tactics are the next
-implementation chapters; other chapters still need their section-level maps.
+are explicit remaining extractions. Preprocessing and tactics now have implementation chapters and a preservation
+map. Frontend and sessions are drafted; the full gap-completion audit continues.
 
 The quantifier draft in `docs-next/implementation/quantifiers.md` now covers
 binders, enumerative quantified-UF solving, witness clauses, queue scheduling,

@@ -187,16 +187,10 @@ separate. For requested ground models, the
 checks the original assertions and then serializes the model. An internal
 model inconsistency is not a logical UNSAT result.
 
-```{admonition} TODO: Write the frontend and session chapters
-:class: note
-
-Explain lexical scope, `define-fun` expansion, command-state rules, journal
-replay, retained engines, and unsupported option combinations. Trace a scoped
-session through declaration, query, pop, and model invalidation. Extract the
-current contracts from the {source}`session design <docs/incremental-smt.md>`
-and {source}`lexical audit <docs/lexical-conformance.md>`, with exact links from
-this overview to the resulting chapters.
-```
+The [frontend chapter](frontend.md) explains lexical categories, binding,
+definition expansion and typed term construction. [Sessions](sessions.md)
+traces command scope, journal replay, retained engines and model invalidation,
+including the option restrictions needed for sound incremental preprocessing.
 
 ## Worked example and tests
 
