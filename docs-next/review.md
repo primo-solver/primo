@@ -1661,3 +1661,16 @@ model changes, new terms, skipped-work lifetime, fairness and model coverage.
 No solver behavior changes or CVC completeness counterexample is claimed.
 Verification uses both strict documentation builds, local/source-link checks
 and rendered review; no solver batch is needed for this documentation change.
+
+## Quantifier completeness citation scope, 2026-10-01
+
+Replaced the growing-pool TODO with a concise statement of the assumptions and
+results in Reynolds, Barbosa and Fontaine, TACAS 2018, §3, Theorem 1 and
+Corollaries 1–2. The chapter refers readers to the paper for the argument and
+retains Primo's pool, nesting, scheduling and resource-limit distinctions.
+The tuple-order TODO now concerns only the implementation-specific evidence
+for the `sum` default. Completeness of the proposed representative/model filters
+remains an open lead; the citation does not settle that adaptation.
+
+Verification covers the strict documentation builds and local/source links.
+No solver behavior, qualification evidence or source pin changes.
