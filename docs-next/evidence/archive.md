@@ -552,4 +552,3 @@ Retained record: {record}`docs/papers/lia-primal-heuristics.md <docs/papers/lia-
 
 Current destination: [replacement page](../references.md).
 Retained record: {record}`docs/references.md <docs/references.md>`.
-
