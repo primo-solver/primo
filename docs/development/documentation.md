@@ -134,6 +134,28 @@ and test/evidence links. Its paper mapping must state the relevant section,
 implemented subset, deviations and limitations. Do not claim a full paper
 algorithm when only a baseline or scaffold is present.
 
+## Writing conventions
+
+Explain what an operation does before describing its interface or limitations.
+Use standard mathematical and solver terminology, with these conventions:
+
+- Define a technical term or acronym at its first use when the reader needs
+  it to understand the next step. For example, explain a strategy leaf as one
+  tactic application, and expand CITE before discussing its simplification.
+- Keep code identifiers exact, but describe their behavior in ordinary prose.
+  Prefer “clauses generated before simplification” to an unexplained label
+  such as “raw clauses.”
+- Use concrete verbs and objects. Write “the transformation must preserve
+  satisfiability,” rather than “the transformation owes an equivalence.”
+  Avoid strings of compressed modifiers where a sentence would be clearer.
+- Keep warnings where they prevent a specific misunderstanding. State the
+  scope of tests and experiments once in the evidence section, rather than
+  repeatedly interrupting the algorithm with validation disclaimers.
+- Distinguish terms with different meanings. In particular, a logical guard
+  controls when a constraint applies; an acceptance check decides whether a
+  proposed rewrite is worth performing. Do not use “guard” for both without
+  explaining which is meant.
+
 ## Publication references
 
 Both books use `docs/references.bib` and render a bibliography page. Add a
