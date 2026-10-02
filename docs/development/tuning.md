@@ -18,6 +18,13 @@ on which inputs, and what observation would reject it? The
 5. Run fresh configuration-specific fuzzing and separate SAT-model checks
    before accepting a default or headline performance claim.
 
+The current irace and SMAC wrappers can score a decisive answer as a successful
+solve even if the process then exits abnormally. This
+[tooling defect](../coverage/page-review.md#supporting-tools-and-resource-controls)
+needs repair and post-answer-failure regressions. Until then, inspect exit
+statuses and exclude abnormal exits before trusting their tuning scores;
+later fuzzing does not correct a contaminated search objective.
+
 An inactive parameter consumes search budget without testing a mechanism.
 An average loss can still justify a portfolio lead if unique solves compensate
 for its scheduling cost, but it does not justify a new default. Record the

@@ -10,13 +10,18 @@ not part of solver speed measurements. The current model capabilities are in
 
 {source}`validate_qfuf_models_with_dolmen.py
 <scripts/validate_qfuf_models_with_dolmen.py>` supports more than QF_UF despite
-its historical filename. With a built solver and installed Dolmen:
+its historical filename. Select successful SAT rows before invoking it: the
+adapter requests `get-model`, which is a protocol error after UNSAT. Use
+{source}`select_fuzz_sat_inputs.py <scripts/select_fuzz_sat_inputs.py>` for a
+fuzz run, and `--expect-sat` to reject a changed answer during replay.
+For a known SAT smoke input, with a built solver and installed Dolmen:
 
 ```bash
 python3 scripts/validate_qfuf_models_with_dolmen.py \
   --solver ./build/primo --dolmen contrib/local/bin/dolmen \
-  --timeout 10 --dolmen-timeout 20 --require-dolmen-pass \
-  benchmarks/smoke/qf_uf/*.smt2 --out results/model-review
+  --timeout 10 --dolmen-timeout 20 --expect-sat --require-dolmen-pass \
+  benchmarks/smoke/qf_uf/sat_uninterpreted_constants.smt2 \
+  --out results/model-review
 ```
 
 Pass each solver option with a separate `--solver-arg=...`. Do not put options
@@ -24,10 +29,7 @@ inside the executable path. For a corpus, use the driver's manifest/root and
 shard options. Preserve input, `.rsmt2` response, stdout/stderr, metadata and CSV.
 Require complete metadata and one classified row for every selected input.
 
-Only successful SAT rows can supply models. Select them using
-{source}`select_fuzz_sat_inputs.py <scripts/select_fuzz_sat_inputs.py>` when
-validating a fuzz run. Requesting `get-model` after UNSAT creates a protocol
-error, not a model counterexample.
+UNSAT answers require other evidence; model validation does not check them.
 
 ## Grammar and validator boundaries
 
@@ -57,13 +59,29 @@ python3 scripts/validate_incremental.py \
   --timeout 10 --dolmen-timeout 20 --out results/session-review
 ```
 
-For retained mode, add `--solver-arg=--incremental-mode=assumptions` and use
-inputs admitted by that engine. Also exercise actual corpus sessions, live
+The command above generates mixed logics for the rebuild engine. Retained mode
+admits only QF_UF and QF_LRA; adding its option to that mixed generator is not
+a valid gate. Use the dedicated
+{source}`UF gate <scripts/incremental_uf_gate.py>` or
+{source}`LRA gate <scripts/incremental_lra_gate.py>`. For example, set
+`PRIMO_EXPECTED_REVISION` to the revision printed by the candidate's `--version`,
+then run the UF gate in the chosen test environment:
+
+```bash
+python3 scripts/incremental_uf_gate.py --kind generated \
+  --solver ./build/primo --solver-arg=--incremental-mode=assumptions \
+  --ref contrib/local/bin/z3 --dolmen contrib/local/bin/dolmen \
+  --count 1000 --seed 4101 --expected-git "$PRIMO_EXPECTED_REVISION" \
+  --timeout 10 --dolmen-timeout 20 --out results/retained-uf-review
+```
+
+Also exercise actual corpus sessions, live
 stdin, nested scope restoration, redeclaration, cancellation, and model
 invalidation. A single-query replay checks one active context; it does not
 check native response ordering or retained-state lifetime by itself.
 
-Use the native-prefix workflows when a whole session exceeds the available
+Use the {source}`native-prefix workflow <scripts/check_assumptions_native_prefix.py>`
+when a whole session exceeds the available
 budget. Report exactly which prefixes and SAT models were checked. A prefix
 pass is not a fully validated session. Keep validation artifacts separate from
 the unchanged speed run and link both in the run ledger.

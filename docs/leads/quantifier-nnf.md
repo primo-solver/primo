@@ -95,7 +95,9 @@ the {source}`existing NNF regressions <tests/unit/preprocessing_tests.cpp#L352-L
 and extend coverage to both binder polarities, alternating quantifiers,
 shared subterms, Boolean arguments, patterns, and generated guarded lemmas.
 Use small independently evaluated formulas to check equivalence, then fresh
-[correctness gates](../development/correctness.md) and paired remote SLURM
-evaluations. Record solved counts, resource limits, runtime/PAR2, and peak
+[correctness gates](../development/correctness.md) and paired evaluations. Record solved counts, resource limits, runtime/PAR2, and peak
 memory alongside normalization and cache counters. No implementation or new
 performance evidence is recorded yet.
+
+Contributors may use any suitable machine. In the maintainer workspace, these
+batches run on SLURM; see the {ref}`execution policy <run-the-applicable-local-checks>`.

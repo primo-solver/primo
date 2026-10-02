@@ -4,7 +4,7 @@
 
 Extend the {ref}`row divisibility check <lia-gcd>` to
 use bounds on variables that are not fixed. This carries forward
-{source}`lead 12e <docs/open-leads.md#L1903-L1946>`; it is not a newly discovered
+{source}`lead 12e <docs/open-leads.md#L1888-L1933>`; it is not a newly discovered
 gap or an implemented procedure.
 
 ## Why the existing test misses it
@@ -72,5 +72,8 @@ many timeouts that never reached integer completion; this rule cannot help
 those queries. Add regressions for offset residues, negative coefficients,
 fractional normalization, endpoints exactly on a multiple, auxiliary variables,
 and explanation validity. Compare total solving time and branch nodes, then
-run fresh fuzzing and independent SAT-model validation on SLURM. The existing
+run fresh fuzzing and independent SAT-model validation. The existing
 crafted case establishes a coverage gap, not a performance benefit.
+
+Contributors may use any suitable machine. In the maintainer workspace, these
+batches run on SLURM; see the {ref}`execution policy <run-the-applicable-local-checks>`.

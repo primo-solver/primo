@@ -2,7 +2,7 @@
 
 **Status: agreed design; implementation pending.**
 
-The current authoritative record is {source}`docs/run-log.json <docs/run-log.json>`.
+The current authoritative record is the [run ledger](../run-log.json).
 The proposed replacement stores separate run directories in a results Git
 repository, with a locally generated SQLite index for queries. Large artifacts
 remain separate and are identified by hashes; published references identify

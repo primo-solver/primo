@@ -92,7 +92,10 @@ nested alternation, Boolean witnesses, backtracking, repeated queries and
 push/pop, and ground-search progress. Extend the existing
 {source}`polarity and nesting tests <tests/unit/quantifier_solver_tests.cpp#L226-L244>`
 and preserve the pool-export/witness correspondence used by external checking.
-Run fresh [correctness gates](../development/correctness.md) and paired remote
-SLURM evaluations, reporting runtime/PAR2 and peak memory as well as saved
+Run fresh [correctness gates](../development/correctness.md) and paired
+evaluations, reporting runtime/PAR2 and peak memory as well as saved
 rounds and bookkeeping. No implementation, corpus proportion, or performance
 gain has yet been established.
+
+Contributors may use any suitable machine. In the maintainer workspace, these
+batches run on SLURM; see the {ref}`execution policy <run-the-applicable-local-checks>`.

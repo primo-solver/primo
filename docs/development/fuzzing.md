@@ -10,7 +10,7 @@ needs fresh evidence for its actual configuration.
 | Input family | Maintained entry points |
 | --- | --- |
 | General QF_UF generation | {source}`fuzz_external.py <scripts/fuzz_external.py>` with FuzzSMT; explicit count/seed/reference/timeout |
-| Real and mixed arithmetic | Dedicated `qf_lra_boolean_arithmetic_fuzz.py`, `qf_uflra_smoke_fuzz.py`, and model gates under {source}`scripts <scripts/slurm_qf_lra_model_fuzz_gate.sbatch>` |
+| Real and mixed arithmetic | {source}`QF_LRA generator <scripts/qf_lra_boolean_arithmetic_fuzz.py>`, {source}`QF_UFLRA generator <scripts/qf_uflra_smoke_fuzz.py>`, and {source}`LRA model gate <scripts/slurm_qf_lra_model_fuzz_gate.sbatch>` |
 | Integer and mixed integer | {source}`QF_LIA model gate <scripts/slurm_qf_lia_model_fuzz_gate.sbatch>` and {source}`QF_UFLIA generator <scripts/qf_uflia_fuzz.py>` |
 | Finite domains | {source}`finite_domain_fuzz.py <scripts/finite_domain_fuzz.py>` and its profile matrix |
 | Native sessions | {source}`validate_incremental.py <scripts/validate_incremental.py>` and scoped UF/LRA gates |
@@ -24,7 +24,7 @@ mechanism, not just files emitted by a generator.
 
 ## Seed preparation and mutation limits
 
-Create a bounded corpus from an available division:
+Select a small corpus from an available division:
 
 ```bash
 python3 scripts/build_fuzz_seed_corpus.py \
@@ -32,8 +32,11 @@ python3 scripts/build_fuzz_seed_corpus.py \
   --out benchmarks/seeds/qf_lia_division --per-family 2 --max-bytes 200000
 ```
 
-Record the selected files and family coverage. The size bound makes mutation
-practical but excludes larger shapes. Keep important witnesses such as large
+The {source}`seed selector <scripts/build_fuzz_seed_corpus.py#L37-L49>` prefers
+files below `--max-bytes`, but includes a family's smallest file if none fit.
+This is a soft size limit. Record actual sizes and family coverage, and set
+the mutation tool's own size limit consistently; otherwise selected seeds may
+be skipped. Favoring small files also misses larger shapes. Keep important witnesses such as large
 coefficients and proportional polynomial rows; the historical integer defects
 show why small-coefficient generation alone is insufficient.
 

@@ -43,8 +43,13 @@ Use standard mathematical and solver terminology, with these conventions:
 Use the shared bibliography in `docs/references.bib`, with DOI or stable publisher/
 author links. Ignored local PDF names are not bibliographic identifiers. Read
 relevant primary sections before claiming a mechanism is implemented, and state
-the subset/deviations. Keep source links in the central `source` role configuration;
-ordinary paragraphs should not carry repeated revision hashes.
+the subset/deviations. Keep implementation links in the centrally configured
+`source` role and historical snapshots in `record`; see the
+{project}`role configuration <docs/_config.yml#L37-L44>`.
+The `project` role selects the newer documentation/build-tooling snapshot.
+Ordinary paragraphs should not carry repeated revision hashes. Link the
+[bundled run ledger](../run-log.json) when referring to the manual's current
+evidence record, rather than an older implementation snapshot of it.
 
 Concrete source filenames in explanatory prose should be links, for example
 {source}`src/smt/strategy.hpp`. Use the MyST `source` role so the centrally
@@ -73,8 +78,10 @@ that question is not a completed review.
 Keep the inspected files, patch identity, findings and dispositions, reviewer
 verdict and verification in the commit or PR description. This is a scoped
 technical review; it does not advance the whole manual's reader-acceptance
-status. The repository's documentation skill provides the agent handoff and
-review checklist. Small typo and link repairs need the relevant checks without
+status. The {project}`documentation skill <skills/documentation/SKILL.md>`
+provides the handoff and the
+{project}`independent review checklist <skills/documentation/references/review.md>`.
+Small typo and link repairs need the relevant checks without
 starting another review cycle.
 
 ## Build and check
@@ -85,13 +92,14 @@ make docs-check-links
 make docs-check-external
 ```
 
+The {project}`Make targets <Makefile#L71-L94>` coordinate these commands.
 The first command is an incremental preview. The local/Git-link target rebuilds
 both books strictly, including the frozen historical book. The external checker produces
 separate Sphinx linkcheck reports; distinguish genuinely broken targets from
 transient timeout, rate-limit or authorization failures. Do not silently suppress
 a new failure. Inspect rendered equations, tables, navigation and source links.
 
-The local checker also flags unlinked concrete `src/` file paths in the main
+The {project}`local checker <scripts/check_doc_links.py>` also flags unlinked concrete `src/` file paths in the main
 book's prose. It excludes code blocks and the historical book from this style
 check; their links are still validated. This catches filename omissions, not
 unsupported claims or poor abstraction: those require the independent review.
@@ -106,11 +114,12 @@ retains logo asset, distribution and infrastructure history during migration.
 
 `make docs` builds the current and historical books, then assembles
 `docs/_build/site/`. `make docs-full` disables incremental reuse for both books.
-The site assembler verifies every archived compatibility target before replacing
+The {project}`site assembler <scripts/assemble_docs.py>` verifies every archived compatibility target before replacing
 the previous site. Its generated redirects have ordinary-link fallbacks.
 Documentation dependency installation disables pip's periodic version check,
 so builds do not print pip upgrade notices.
 
+The {project}`archive builder <scripts/create_source_archive.py>` invoked by
 `make archive` packages tracked source, editable books and the assembled HTML,
 with a source revision and SHA-256 checksum. It requires a clean checkout;
 `--allow-dirty` is only for diagnostic snapshots. Reading PDFs and cached tools

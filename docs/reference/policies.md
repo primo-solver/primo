@@ -81,9 +81,15 @@ strong. Defaults live in {source}`AutoPreprocessTuning <src/smt/check_sat.hpp#L3
 The [preprocessing chapter](../implementation/preprocessing.md) explains the
 selected transformations and the distinct integer policies.
 
-For $V$ unique reachable conjunction nodes, $E$ conjunction edges, $R$ roots,
-and $C$ terminal conjuncts, the conjunction analysis takes $O(V+E+R)$ time and
-$O(V+C)$ memory. Finite-domain recognition additionally counts pairs within
+For $V$ unique reachable conjunction nodes, $E$ conjunction edges, and $R$ roots,
+conjunction traversal and occurrence propagation take expected $O(V+E+R)$ time
+with hash-based lookup. The analysis also recognizes clauses at terminal
+conjuncts: with $L$ literal inspections, total expected time is
+$O(V+E+R+L)$. A single large disjunction can make $L$ large even when $V=0$.
+Auxiliary storage is $O(V+C+R)$ for $C$ distinct terminal conjuncts, including
+root-sized reservations. See the
+{source}`analysis and recognition calls <src/smt/preprocessing.cpp#L3100-L3158>`.
+Finite-domain recognition additionally counts pairs within
 observed value sets. It does not predict all later equality-definition,
 congruence, or repeated-round growth. Structural selection is an empirical
 policy; the {source}`rejected promotion <docs/structural-auto-preprocessing.md#L106>`
@@ -102,7 +108,7 @@ form dependent groups:
   dimensions of one unconditional tuning space.
 - Fixed-basic elimination and model phase hints have separate guards and route
   defaults. See [arithmetic](../implementation/lra.md).
-- Integer branch limits, patching radius, cut controls, quantifier tuple order,
+- Integer branch limits, the patching move budget (`--lia-patch-limit`), cut controls, quantifier tuple order,
   and instance budgets are listed in [CLI help](options.md#complete-cli-inventory)
   and explained in [LIA](../implementation/lia.md) and
   [quantifiers](../implementation/quantifiers.md).

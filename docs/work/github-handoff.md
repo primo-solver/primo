@@ -12,12 +12,13 @@ machine; never paste a token into an issue, document, or command transcript.
    third-party input inventory. Complete review of remote branches, tags,
    attachments, release assets, and Actions logs. A local Git scan cannot inspect
    hosted artifacts. Do not delete history without an agreed remediation.
-2. Review the assembled manual and the candidate's qualification report. Record
+2. Resolve the [correctness findings](../coverage/page-review.md#correctness-follow-ups),
+   then review the assembled manual and the candidate's qualification report. Record
    consolidated reader acceptance and the exact approved commit.
 3. Push the verified preparation commits if they are not already on the remote.
    Merge the reviewed branch into `main`, preserving the documented source and
    historical commits. Keep visibility private during these preparatory actions.
-4. Run **CI** on the merged revision and inspect `build-and-test` and `docs`.
+4. Run {project}`CI <.github/workflows/ci.yml>` on the merged revision and inspect `build-and-test` and `docs`.
    Require both checks for future pull requests. Install the
    [DCO app](https://github.com/apps/dco) only for Primo and require its `DCO`
    check on new contributions. Enable it after this migration so unsigned
@@ -43,9 +44,9 @@ reviews for outside contributions and document owner-reviewed maintenance.
 Prevent force pushes and deletion of `main`; use the protected deployment
 environment for publication approval independently of the merge policy.
 
-Run **Publish documentation** manually on `main`, approve the environment job,
+Run {project}`Publish documentation <.github/workflows/pages.yml>` manually on `main`, approve the environment job,
 and verify its deployment result. A private-repository run intentionally skips
-deployment. The **External documentation links** workflow is scheduled weekly
+deployment. The {project}`External documentation links <.github/workflows/external-links.yml>` workflow is scheduled weekly
 and can be run manually; inspect its reports rather than overriding failures.
 
 From a fresh unauthenticated environment, verify:

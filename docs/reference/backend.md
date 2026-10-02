@@ -9,7 +9,11 @@ comparison. Backend details stay behind
 ## Option overrides
 
 Repeated `--cadical-option name=value` arguments apply integer settings during
-backend configuration. An invalid name/value is rejected. These options are
+backend configuration. Malformed or non-integer values and unknown names are
+rejected. The {source}`adapter <src/sat/cadical_backend.cpp#L119-L122>` passes
+integer values to CaDiCaL, whose API clamps values outside an option's range
+to the nearest permitted endpoint. An accepted override therefore need not
+retain the requested integer unchanged. These options are
 not SMT-LIB `set-option` settings, and retained assumptions mode rejects custom
 overrides. Check option reachability with the attached external propagator;
 some backend processing is disabled or constrained by that interface.

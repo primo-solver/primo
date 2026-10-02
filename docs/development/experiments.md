@@ -16,8 +16,10 @@ binary or build it from an isolated checkout.
 The supplied SLURM workflows are reproducible execution options; contributors
 can use another adequate test environment while recording the same provenance.
 For the maintainer's cluster, use
-{source}`workspace preparation <scripts/slurm_prepare_benchmark_workspace.py>`
-before submitting jobs. Read its `--help` for connection and staging options.
+{project}`workspace preparation <scripts/slurm_prepare_benchmark_workspace.py>`
+with `--build-via-slurm` before submitting jobs, as required by the
+{project}`workspace execution policy <AGENTS.md#L3-L21>`.
+Read its `--help` for connection and staging options.
 It synchronizes tracked files; ignored seed corpora must be staged **after each
 sync**. Check dependencies and corpus paths on the execution host, not only on
 the submission host. Do not substitute a symlink for an in-workspace corpus
@@ -29,12 +31,19 @@ array size and expected rows per shard; a missing shard is not a timeout row.
 
 ## Select inputs and interpret outcomes
 
-{source}`analyze_smt2.py <scripts/analyze_smt2.py>` distinguishes declarations,
-applications, definitions, and expanded structure:
+{source}`analyze_smt2.py <scripts/analyze_smt2.py>` reports declaration counts
+and Real-arithmetic shape/polarity summaries:
 
 ```bash
 python3 scripts/analyze_smt2.py --json path/to/input.smt2
 ```
+
+It does not expand `define-fun` or reproduce frontend/session semantics.
+Its current `let` expansion also mishandles parallel bindings and shadowing;
+see the [tooling findings](../coverage/page-review.md#supporting-tools-and-resource-controls).
+Do not use those affected summaries as evidence that a constraint or variable
+is absent. Consult the [frontend](../implementation/frontend.md) for the actual
+binding and definition rules.
 
 Text search alone cannot establish which theory or transformation a file uses.
 Keep corpus exclusions explicit: parse rejection, unsupported constructs,
@@ -53,8 +62,10 @@ untriaged disagreement. Report timeouts and `unknown` separately from passes.
 The {source}`composition manifest <benchmarks/tactic-composition-matrix.json>`
 defines legal profiles, their logic sets, and required mechanism counters.
 The {source}`driver <scripts/tactic_composition_matrix.py>` compares references,
-checks answers, and independently validates models. A reproducible invocation
-inside the chosen test environment is:
+checks answers, and invokes independent model validation. Its current model
+stage incorrectly includes eligible UNSAT cases, whose `get-model` request
+then fails. SAT selection and coverage joining need repair before this command
+can serve as a complete mixed SAT/UNSAT qualification gate:
 
 ```bash
 python3 scripts/tactic_composition_matrix.py \
@@ -63,6 +74,11 @@ python3 scripts/tactic_composition_matrix.py \
   --dolmen contrib/local/bin/dolmen --timeout 10 --dolmen-timeout 20 \
   --repeat 1 --out results/composition-review
 ```
+
+`--allow-inconclusive` does not repair that selection error, and skipping model
+validation does not complete the gate. Until the driver is repaired, replay
+the successful SAT rows through the [separate validator](validation.md) and
+record the join between measured rows and validated models explicitly.
 
 {source}`The SLURM matrix <scripts/slurm_tactic_composition_matrix.sbatch>`
 adds generated cases by logic. Do not require every tactic on every input:
@@ -94,7 +110,7 @@ as rejected; remove their source changes before closing the investigation.
 
 ## Evidence storage
 
-The authoritative ledger remains {source}`docs/run-log.json <docs/run-log.json>`.
+The authoritative ledger remains the [run log bundled with this manual](../run-log.json).
 Follow the {source}`recording contract <docs/run-log.md>`: stable run ID,
 timestamps, kind/scope, exact commit and commands, generator/seed/count,
 references, environment/job IDs, limits, artifact paths, summary counts,

@@ -11,16 +11,12 @@ SMT result stream:
 For a model-producing script, stdout contains the result line followed by the
 SMT-LIB model response when the input requests it:
 
-```text
-(set-option :produce-models true)
-(check-sat)
-(get-model)
+```{literalinclude} ../examples/model.smt2
+:language: lisp
 ```
 
-```text
-sat
-(model
-  (define-fun ...))
+```{literalinclude} ../examples/model.txt
+:language: text
 ```
 
 Statistics are intentionally stable, colon-prefixed keys so benchmark scripts can
@@ -66,6 +62,13 @@ See {source}`session accounting <src/smt/smt_session.cpp#L160-L193>` and
 
 ## General timing and preprocessing
 
+For CLI queries, {source}`session accounting <src/smt/smt_session.cpp#L333-L349>`
+adds parser/frontend work accumulated since the preceding query to the engine's
+total. Parsing includes stream reads and waits for the client. This is not
+process wall time; startup and harness overhead remain outside it. In rebuild
+mode, {source}`solve timing <src/smt/solver_session.cpp#L784-L800>` also includes
+final model checking and serialization, whose own timers are nested.
+
 General counters include:
 
 - `:time.parse-us`: SMT-LIB parser elapsed time in microseconds;
@@ -73,10 +76,10 @@ General counters include:
   core term construction time in microseconds;
 - `:time.preprocessing-us`: shared preprocessing and pre-solve preparation time
   in microseconds;
-- `:time.solve-us`: solver-strategy execution time in microseconds, including
-  the selected SAT/theory leaf (not just EUF);
-- `:time.total-us`: total `check_sat_smtlib` time in microseconds, excluding
-  CLI file I/O and benchmark-harness process overhead;
+- `:time.solve-us`: solver-strategy execution and final model handling time
+  in rebuild mode, in microseconds;
+- `:time.total-us`: query-engine time plus the session's accumulated
+  parsing/frontend time, in microseconds;
 - `:input.assertions`;
 - `:preprocessing.ite.boolean`;
 - `:preprocessing.ite.auxiliaries` (both renamed from `:frontend.ite.*` when
@@ -250,7 +253,10 @@ ordinary runs:
 The diagnostic-only Ackermannization cost counters below are populated when
 `--euf-ackermann-diagnostics` is enabled. They count distinct reachable
 post-preprocessing UF applications and estimate the SAT-level functional
-consistency constraints from Bruttomesso et al.'s LPAR 2006 cost model. They are
+consistency constraints using the cost model attributed to Bruttomesso et al.
+in the {source}`Ackermannization comparison <docs/qfuf-disequality-propagation.md#L205-L236>`.
+The {source}`diagnostic producer <src/smt/solver_engines.cpp#L404-L481>` implements
+these counts. They are
 zero in ordinary runs:
 
 - `:euf.ackermann.applications`;
@@ -367,13 +373,20 @@ observed theory atoms. When `--euf-prop=auto` selects online callbacks, repeated
 zero-delivery scans increase the discovery interval, so the candidate counter
 can be much smaller than `rounds * theory-atoms`.
 
-For difficult instances, `--max-theory-conflicts N` returns `unknown` after at
-least `N` learned theory conflicts. In lazy mode this is checked after each
-post-model theory conflict, including EUF conflicts discovered by the mixed
-QF_UFLRA final-check loop. In online/conflict callback mode Primo also installs
-a CaDiCaL terminator, so a long in-progress SAT call can stop soon after the
-callback reaches the limit. This is intended for profiling and stats snapshots
-on timeout-prone benchmarks; it is not a solving heuristic.
+`--max-theory-conflicts N` limits the recorded theory-conflict count only on
+routes that wire it into their control flow. QF_UF
+{source}`passes the budget to its terminator <src/smt/solver_engines.cpp#L10388>`
+and checks post-model conflicts. The
+{source}`general component driver <src/smt/component_solver.cpp#L76>` also supplies
+the budget. Its terminator can stop an in-progress SAT call after the counted
+events reach the limit.
+
+Pure QF_LRA and QF_LIA omit the budget from their terminators. The dedicated
+QF_UFLRA route checks its final EUF-conflict path, but does not uniformly cap
+LRA conflicts or callback work. These
+[enforcement gaps](../coverage/page-review.md#supporting-tools-and-resource-controls)
+mean the option cannot currently provide a universal arithmetic or mixed-route
+bound. It also does not bound preprocessing, work between conflicts, or runtime.
 For mixed QF_UFLRA instances that finish SAT search but spend time in final
 equality sharing or arrangement/model reconstruction,
 `--nelson-oppen-arrangement-probe-limit N` instead caps temporary LRA
@@ -404,9 +417,9 @@ short grace period of their own, which must exceed `--cancel-grace-seconds` for
 the answer to be seen at all. A row answered by the watchdog carries `unknown`
 with no statistics; a row answered cooperatively carries both. Inspect
 `timed_out_with_stats`, `exit_code`, and `stderr_head` to tell them apart.
-Prefer `--max-theory-conflicts` for repeatable profiling, but remember that it
-cannot cap frontend work or a search that has not yet reported its first theory
-conflict.
+Use `--max-theory-conflicts` for profiling only after confirming that the
+selected route enforces it. Retain an external time limit for frontend work,
+search without counted conflicts, and routes with the gaps above.
 
 The auto counters record which concrete path `--euf-prop=auto` selected for the
 current abstraction.
@@ -678,7 +691,8 @@ EUF spanning and exact LRA fallback sharing remain active, while
 `:no.interface.lra-opportunistic-enabled` is zero and
 `:no.interface.lra-opportunistic-skipped-rounds` counts rounds that omit the
 optional opportunistic poll. LRA otherwise first polls the checked tableau's
-`FixedEq`, `EqRow`, `EqOffsetRows`, and `EqRows` rules. The
+`FixedEq`, `EqRow`, `EqOffsetRows`, and `EqRows` rules, explained under
+{ref}`Default LRA rules <lra-default-equality-rules>`. The
 `:no.interface.lra-opportunistic-*` counters
 split rule hits, reason literals, unmapped shared terms, lazy SAT atom delivery,
 clauses, and rechecks. After these cheap producers are quiescent, the feasible
@@ -762,10 +776,10 @@ the same rows are being checked under a different current SAT assignment.
 
 When default-off `--model-equality-branching` is enabled, the EUF care counters
 compare the full shared-Real cross product with pairs that occur as arguments
-under flat EUF function prefixes equal in the current EUF closure. Default
-solving leaves these counters at zero because LRA-to-EUF equality propagation,
-EUF-to-LRA equality propagation, model reconstruction, and final arrangement
-validation use the full shared Real pair set. The default
+under flat EUF function prefixes equal in the current EUF closure. This optional
+branch selector runs only when model reconciliation is disabled. Default
+reconciliation can establish compatible component models without a broad exact
+pair scan; the exact fallback retains complete coverage when needed. The default
 `--model-equality-branch-policy=first` path also uses the full pair order and
 reports the full pair count through `:no.interface.model-equality-care-pairs`
 for continuity. The `ranked` and `adaptive` policies use care-pair diagnostics
@@ -801,9 +815,9 @@ path, before falling back to per-candidate LRA consistency checks for pairs tied
 in that model.
 `:no.interface.lra-prepared-reused` counts mixed QF_UFLRA LRA checks that reuse
 the base prepared LRA theory because no SAT-visible interface equality is true
-in the current assignment. `:no.interface.lra-prepared-augmented` counts checks
-that rebuild an augmented prepared LRA theory to include true generated
-interface equality atoms.
+in the current assignment. `:no.interface.lra-prepared-augmented` counts actual
+constructions of an augmented prepared LRA theory on an equality-key cache miss.
+It does not count every round that uses true generated interface equalities.
 `:no.interface.lra-fixed-elimination-enabled` is one when fixed-variable
 elimination is active in the mixed tableau. It is on by default in QF_UFLRA,
 can be disabled with `--no-qf-uflra-fixed-elimination`, and does not describe
@@ -813,8 +827,10 @@ propagator for original arithmetic atoms, and
 `:no.interface.lra-online-final-checks` counts final SAT assignments whose base
 LRA consistency result came from that callback-owned state. This online path is
 disabled for the experimental `--model-equality-branching` mode; when generated
-interface equalities are true, the coordinator still rebuilds the augmented LRA
-theory and performs an ordinary final check.
+interface equalities are true, the coordinator uses the augmented LRA epoch.
+The same equality key reuses preparation; the same assignment can also reuse
+the completed check. A changed assignment can reuse the tableau and feasible
+basis. The epoch counters above distinguish these cases.
 
 EUF preparation follows the same reuse boundary. `:no.interface.euf-prepared-reused`
 counts rounds whose existing `PreparedFlatTheory` was sufficient, while
@@ -883,12 +899,13 @@ by lazy creation. `:no.online.lazy-equality-atoms-created` counts equality atoms
 created by the dispatcher from `cb_propagate()`, and
 `:no.online.lazy-equality-vars-observed` counts the corresponding fresh observed
 SAT variables.
-`:no.online.final-lra-equality-scan-skipped`,
-`:no.online.final-lra-equality-scan-fallbacks`, and
-`:no.online.final-lra-equality-scan-capped` remain compatibility counters and
-must be zero. Online mode retains the complete exact final fallback over
-unresolved pairs because a successful separation check is not sufficient to
-prove that omitted LRA-implied equalities are irrelevant to EUF congruence.
+`:no.online.final-lra-equality-scan-skipped` increments when model reconciliation
+establishes compatibility and avoids the broad final scan.
+`:no.online.final-lra-equality-scan-fallbacks` and
+`:no.online.final-lra-equality-scan-capped` remain zero-valued compatibility
+counters. The complete exact fallback remains available when compatibility
+has not been established; an unchecked omission of implied equalities could
+otherwise miss an EUF conflict.
 `:no.online.propagations` counts returned equality literals, and
 `:no.online.reason-lits` counts the two bound literals used as the SAT reason.
 `:no.online.skipped-assigned` counts candidates already assigned by SAT before
@@ -950,8 +967,9 @@ constants and applications in the class before typed reconstruction.
 `:no.interface.model-euf-real-fresh-classes` report that reconstruction;
 `model-euf-real-unmapped-terms` or `model-euf-real-value-conflicts` makes model
 construction fail with an internal error rather than print an invalid model.
-Resource limits during separation search can still return `unknown`. The final
-arrangement path then probes the current EUF closure with a
+Resource limits during separation search can still return `unknown`. When the
+exact arrangement fallback is required, or reconciliation is disabled, that
+path probes the current EUF closure with a
 temporary equality for each remaining shared-Real pair. A pair counted by
 `:no.interface.model-separation-euf-mergeable-pairs` is in different EUF
 classes but can still be merged without an EUF conflict, so it does not require
@@ -1011,8 +1029,12 @@ size, and ordinary theory conflicts reached while at least one guessed equality
 was active. A surviving model-equality guess is re-applied as an IPASIR
 assumption on later SAT calls while the coordinator tries additional model-equal
 pairs; it is still not a permanent unit clause.
-`:no.interface.lra-model-mutation-*` reports the one Section 5.2 scratch sweep
-performed per feasible mixed round: whether the path is enabled, calls, accepted
+`:no.interface.lra-model-mutation-*` reports the scratch diversification sweep
+from de Moura and Bjørner's *Model-based Theory Combination*, §5.2
+{cite:p}`MouraB08`, as implemented by
+{source}`diversify_shared_model <src/theory/arithmetic/lra_tableau.cpp#L1554-L1635>`.
+It runs once per feasible mixed round when enabled. The counters cover
+whether the path is enabled, calls, accepted
 updates, distinct value classes before/after, candidate pairs before/after, and
 pairs pruned. `--model-equality-mutation-scope=all|care` selects all shared Real
 variables (the default) or only current EUF care-pair endpoints. The scope

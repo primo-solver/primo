@@ -11,7 +11,10 @@ no new option or heuristic is implemented by this documentation change.
 ## Baseline and parameter contract
 
 {source}`integer_targets <src/theory/arithmetic/lia_patching.cpp#L17-L43>`
-currently sets `kTargetWindow = 4`. For floor $m$, it generates
+currently sets `kTargetWindow = 4`. Let $m$ be the
+{source}`delta-aware floor <src/theory/arithmetic/lia_integer_values.hpp#L20-L38>`
+of the current tableau value; for example, $\lfloor n-\delta\rfloor=n-1$
+for integer $n$. The routine generates
 $m,m+1,m-1,m+2,m-2,m+3,m-3,m+4$, then stably orders them by distance from
 the rational part. This window was not benchmark-tuned. The existing
 `--lia-patch-limit` limits **accepted moves**, not target distance or scoring
@@ -71,8 +74,11 @@ candidate/affected-row counters and add rejection or budget counters only
 where they distinguish the variants.
 
 Evaluate matched configurations on representative QF_LIA and QF_UFLIA families
-under SLURM, including SAT, UNSAT, `unknown` and timeout cases. Compare total
+including SAT, UNSAT, `unknown` and timeout cases. Compare total
 time, solved counts, integer model hits and downstream branch nodes; reducing
 the fractional count alone is not a win. Fresh fuzzing and independent model
 validation are correctness gates. Keep the default window at $4$ until a
 different policy has both correctness evidence and a measured overall benefit.
+
+Contributors may use any suitable machine. In the maintainer workspace, these
+batches run on SLURM; see the {ref}`execution policy <run-the-applicable-local-checks>`.

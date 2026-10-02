@@ -15,9 +15,9 @@
 
 ## Supporting files
 
-Keep the existing examples, expected responses and case manifest as shared
-fixtures during review. Keep the shared bibliography, requirements, build
-wrapper, diagram sources and original logo assets. The supporting-file inventory
-records the final homes and outstanding publication actions; file movement is
-deferred until acceptance. The generated SQLite index and a results repository
-are not dependencies of the documentation site.
+The examples, expected responses and case manifest are retained, together with
+the bibliography, requirements, build wrapper, diagram sources and original
+logo assets. The supporting-file inventory preserves the treatment decisions
+made before the move; its old paths and pending-movement labels are historical.
+The editable books now live in `docs/` and `docs-history/`. The generated SQLite
+index and a results repository are not dependencies of the documentation site.

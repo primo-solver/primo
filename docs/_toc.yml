@@ -97,6 +97,7 @@ parts:
     chapters:
       - file: review
         sections:
+          - file: coverage/page-review
           - file: coverage/index
           - file: coverage/frontend-sessions
           - file: coverage/solver

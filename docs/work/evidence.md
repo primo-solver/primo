@@ -16,7 +16,7 @@ incomplete correctness check.
 
 ## Publication preparation inspection, 2026-10-02
 
-The available ledger contains 709 historical/qualification entries. Searches
+The ledger at `f95ba8a` contained 709 historical/qualification entries. Searches
 for the published QF_LRA aggregate values and likely local paper/tuning artifact
 directories did not establish a matching experiment identity. A numerical
 substring hit in an unrelated incremental-UF record was rejected as evidence.

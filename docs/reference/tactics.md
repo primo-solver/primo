@@ -29,8 +29,11 @@ inspection/composition layer is declared in {source}`src/smt/strategy.hpp`.
 | `sequence(name, tactics)` | Ordered composition | Passes each result to the next tactic and stops when the combined result is terminal |
 | `conditional(name, predicate, yes, no)` | Per-goal branch | Evaluates a read-only predicate and runs exactly one branch |
 | `repeat(name, tactic, limit, ..., observer)` | Bounded fixed-point iteration | Stops on equivalence, a terminal result, a continuation decision, or the iteration bound; the optional observer sees every completed iteration |
-| `first_terminal(name, scheduler, tactics)` | Portfolio fallback | Gives every arm the same original input and returns the first terminal result, or the last inconclusive result |
+| `first_terminal(name, scheduler, tactics)` | Portfolio fallback | Gives every arm the same original input and returns the first terminal result, or the last inconclusive result; cancellation returns immediately without trying later arms |
 | `SequentialTacticScheduler` | Execution policy for `first_terminal` | Runs arms sequentially in declaration order; there is no parallel scheduler yet |
+
+The {source}`sequential scheduler <src/smt/tactic.cpp#L355-L369>` checks
+cancellation separately from a terminal SAT/UNSAT result.
 
 `Strategy` provides `Leaf`, `Sequence`, `Conditional`, `Repeat`, `TryInOrder`,
 `TryFor`, and `Skip` nodes, plus canonical printing and a stable `fnv1a64:`

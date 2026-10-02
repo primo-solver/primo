@@ -2,14 +2,14 @@
 
 This audit accompanies [tactics](../implementation/tactics.md) and
 [preprocessing](../implementation/preprocessing.md), checked against their
-implementations on 2026-10-01. The original pages remain available at their current
-paths and anchors while the replacement is reviewed.
+implementations on 2026-10-01. The original pages and anchors remain available
+in the historical book.
 
 **Preserved** identifies an explanatory destination for a current mechanism.
 **Superseded** names a correction or an intentionally different organization.
-**Retained history** identifies material to keep in the dated archive when
-the new book replaces the old one. Its experiments are not rerun by this audit.
-Archive paths and redirects must be settled before that replacement.
+**Retained history** identifies material preserved in the dated archive.
+Its experiments are not rerun by this audit. Archive paths and redirects are
+installed and checked at each build; reader acceptance and publication are separate.
 
 ## Tactics
 
@@ -22,10 +22,10 @@ Archive paths and redirects must be settled before that replacement.
 | {source}`Production composition <docs/tactics.md#L205-L321>` | Preserved in {ref}`session-to-engine flow <tactics-production>` and {ref}`preprocessing order <preprocessing-order>`. The initial passes run before profile selection. |
 | {source}`Exhaustive Boolean splitting <docs/tactics.md#L322-L372>` | Preserved in {ref}`splitting <tactics-experiments>`: complete alternatives, deterministic selection, model ownership, exponential storage growth, and the limit on selected atoms. |
 | {source}`Sequential evaluation <docs/tactics.md#L373-L413>` | Retained history: focused manifests, repeated measurements, branch costs and results. The new chapter makes no claim that splitting improves performance. |
-| {source}`Composition verification <docs/tactics.md#L414-L462>` | Current contracts preserved in {ref}`checks <tactics-evidence>`; the runner and SLURM manifest remain linked. Earlier execution instructions and provenance details are retained until the contributor guide is rewritten, as described below. |
+| {source}`Composition verification <docs/tactics.md#L414-L462>` | Current contracts preserved in {ref}`checks <tactics-evidence>`; the runner and SLURM manifest remain linked. Earlier instructions and provenance remain in the dated record; the [current composition workflow](../development/experiments.md#tactic-composition-checks) records procedures and tool limitations. |
 | {source}`Deviations, invariants and complexity <docs/tactics.md#L463-L526>` | Preserved across {ref}`composition <tactics-composition>`, {ref}`identity <tactics-strategy-identity>`, {ref}`scope <tactics-incremental>` and {ref}`paper subset <tactics-evidence>`. The blanket statement that incremental tactics are absent is superseded by the restricted set of tactics checked for incremental use. |
 | {source}`Incremental execution contract <docs/tactics.md#L527-L542>` | Preserved in {ref}`incremental use <tactics-incremental>` and its links to both assumptions-engine designs. |
-| {source}`Tactic-reference catalogue <docs/tactic-reference.md#L1-L157>` | Mechanisms preserved in both chapters; the full list of builders, parameters, and counters still belongs in a separate reference page, recorded below. |
+| {source}`Tactic-reference catalogue <docs/tactic-reference.md#L1-L157>` | Mechanisms preserved in both chapters; builders, parameters and tactic counters are listed in the [tactic reference](../reference/tactics.md). |
 | {source}`Unrepresented transformations and portfolio limitations <docs/tactic-reference.md#L158-L192>` | Preserved in {ref}`session portfolios <tactics-experiments>`, {ref}`strategy identity <tactics-strategy-identity>` and {ref}`limitations <tactics-evidence>`: no tactic parser, learned portfolio, or isolated parallel executor. |
 
 ## Preprocessing

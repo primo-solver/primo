@@ -1,12 +1,21 @@
 # Documentation closing review
 
-**Status: publication candidate; consolidated reader acceptance pending.**
+**Status: page-by-page technical review completed; correctness follow-up blocks
+publication readiness. Consolidated reader acceptance remains pending.**
 
 The replacement manual is now the main book. `make docs-serve` previews the
 assembled current and historical books at `http://localhost:8000`. Publication
 is a separate operation; changing the source tree does not deploy a website.
 
 ## Coverage and review record
+
+The [2 October page-by-page review](coverage/page-review.md) covers all 84 pages
+of the current manual at its baseline revision, records the corrections and
+lists unresolved source findings. In particular, the
+{ref}`symmetry comparison omits numeric payloads <symmetry-payloads>`; two
+independent source reviews traced a potentially unsound restriction. No solver
+reproduction or repair is claimed. The earlier qualification sample does not
+clear this finding.
 
 The [preservation audit](coverage/index.md) accounts for 91 old pages, 1,150
 section headings, 126 supporting entries, and 1,306 original URL targets.

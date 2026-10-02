@@ -3,18 +3,18 @@
 This section-level audit for the [LIA chapter](../implementation/lia.md) was
 checked on 2026-09-29 against the original
 {source}`QF_LIA development chapter <docs/qf-lia-branch-and-bound.md>`.
-The old file and HTML anchors remain available during replacement review.
+The old file and HTML anchors remain available in the historical book.
 
 **Preserved** means that the new destination explains the mechanism or contract.
 **Superseded** identifies a claim corrected against the current implementation.
-**Retained history** identifies the exact old section to keep in the dated
-archive at cutover. Retaining history does not revalidate an experiment.
-Final archive paths and redirects belong to the book-wide migration gate.
+**Retained history** identifies the exact old section preserved in the dated
+archive. Retaining history does not revalidate an experiment. The assembled
+site now checks the archive paths and redirects at every build.
 
 ## Section destinations
 
 Line links identify old sections at the centrally pinned source revision;
-destination links lead to explanations in this draft.
+destination links lead to explanations in the current manual.
 
 | Original section | Disposition and exact destination |
 | --- | --- |
@@ -79,4 +79,4 @@ This audit covers the original LIA development chapter. It does not certify
 the separate integer-division literature note, profiling report, all integer
 open leads or the whole corpus. Their sections are accounted for in the
 [complete inventory](index.md), with current literature and research mappings.
-Reader acceptance and installation of archive routes remain pending.
+The archive routes are installed; reader acceptance remains pending.

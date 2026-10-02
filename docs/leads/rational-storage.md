@@ -96,7 +96,10 @@ addresses a different way of reducing ownership obligations.
 
 A prototype needs focused lifetime and promotion/demotion regressions,
 sanitizers, the [solver correctness gates](../development/correctness.md),
-and SLURM comparisons covering both small-value-heavy and big-value-heavy
+and comparisons covering both small-value-heavy and big-value-heavy
 inputs. Compare allocation counts, peak/retained memory and total runtime.
 Keep the current layout if the ownership complexity or runtime regressions
 outweigh the memory saving.
+
+Contributors may use any suitable machine. In the maintainer workspace, these
+batches run on SLURM; see the {ref}`execution policy <run-the-applicable-local-checks>`.

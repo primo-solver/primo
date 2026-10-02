@@ -6,11 +6,14 @@ myst:
 
 # Historical documentation review
 
-This book is the replacement documentation under construction. The existing
-book remains in `docs/`; it is still built by `make docs`. The navigation now
-includes the replacement manual, references, contributor procedures, evidence
-and research registers. The original proposed structure remains in
-`docs/documentation-target-toc.yml` as a planning record.
+This page retains the review history from development of the replacement
+manual. The manual is now in `docs/`, and the historical book is in
+`docs-history/`. Use the [current build instructions](development/documentation.md#build-and-check)
+and [closing review](review.md) for the present workflow and status.
+
+The commands, paths and work states below describe their original review
+stages. In particular, the `docs-next` targets have been removed. Later entries
+record completed work without rewriting the earlier observations.
 
 ## Preview either version
 

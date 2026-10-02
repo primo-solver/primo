@@ -3,12 +3,16 @@
 **Status: open; ownership design required. Owner: unassigned.**
 
 Retained UF sessions keep prepared term/atom meanings but create fresh working
-theory state per query. Investigate whether immutable preparation can be shared
+theory state per query. The
+{source}`query setup <src/smt/solver_engines.cpp#L12226-L12271>` extends retained
+preparation and creates an online propagator; its
+{source}`assignment state <src/smt/solver_engines.cpp#L1318-L1340>` copies the
+flat representation, base closure and flat atoms. Investigate whether immutable preparation can be shared
 without copying the entire flat representation into each working closure.
 This concerns per-query copying, distinct from
 [reclaiming unused incremental storage](incremental-memory.md).
 
-{source}`Lead 25 <docs/open-leads.md#L2830-L2858>` records copies and reset costs
+{source}`Lead 25 <docs/open-leads.md#L2819-L2847>` records copies and reset costs
 on historical CLEARSY sessions. Reprofile after the accepted atom-scan changes
 so savings are not counted twice. Separate copied bytes, allocations, preparation,
 working-state reset, callback reconnection and peak memory.

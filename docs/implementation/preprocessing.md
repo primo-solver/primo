@@ -20,7 +20,7 @@ A **profile** selects which optional passes run and how often they repeat.
 | --- | --- |
 | {source}`CheckSatOptions <src/smt/check_sat.hpp>` | Requested profiles, pass switches, and size/iteration limits. |
 | {source}`PreprocessingProfile <src/smt/preprocessing_strategy.hpp>` | Selected passes, repetition limits, finite-domain analysis, and generated clauses retained for later use. |
-| {source}`PreparedPreprocessingStrategy <src/smt/preprocessing_strategy.hpp>` | Full strategy description, selected profile, and result after execution. Constructing this value runs the transformations. |
+| {source}`PreparedPreprocessingStrategy <src/smt/preprocessing_strategy.hpp>` | Full strategy description, selected profile, and result returned by `prepare_and_execute_preprocessing_strategy` after executing the transformations. |
 | {source}`PreprocessingRoundOptions <src/smt/preprocessing_tactics.hpp>` | Immutable settings for one simplification round. The round uses the executing tactic context. |
 | {source}`FiniteDomainPreprocessInput <src/smt/preprocessing_tactics.hpp#L65-L75>` | Assertions used for symmetry analysis, at-most-one clauses generated before simplification, and any previously computed symmetry result. |
 | {source}`ModelReconstruction <src/smt/model_reconstruction.hpp>` | Each goal's model-conversion records and forced equality/disequality pairs needed by later stages. |
@@ -151,8 +151,8 @@ has this order:
 3. Boolean unit propagation, then forced-atom propagation.
 4. Solved-constant substitution, optionally with Gaussian candidates, then
    optional direct or guarded ground-unit substitution.
-5. Add equality atoms already present in the formula as assertions when they
-   follow from asserted equalities.
+5. Simplify assertions using consequences of asserted equalities, and append
+   changed, non-true results while retaining the original assertions.
 
 Later phases can produce facts or definitions that earlier phases will use in
 the next round. Their order also determines which facts and model-reconstruction
@@ -179,9 +179,12 @@ each used in just one polarity, yet is unsatisfiable. Applying the propositional
 pure-literal rule to those theory atoms would incorrectly classify the formula
 as satisfiable: their truth values are constrained by equality reasoning.
 
-The final unit-equality phase takes equality atoms already present in the
-input and adds those implied by asserted equalities as unit assertions.
-This makes the consequences available before SAT encoding.
+The final {source}`unit-equality phase <src/smt/preprocessing.cpp#L3612-L3667>`
+builds congruence closure from asserted equalities. Equality tests established
+by that closure simplify to `true` inside the assertions. The phase retains
+the original assertions and appends changed, non-true simplified formulas,
+avoiding duplicates. For example, from $a=b$, $b=c$, and $a\ne c\lor p$,
+it can append $p$; from $a\ne c$ instead, it appends `false`.
 
 ### Eliminating definitions
 
@@ -191,12 +194,20 @@ on other pending definitions, and substitutions exceeding its definition-size
 or estimated-growth limits. Multiple rounds can therefore eliminate a chain
 of definitions that one round conservatively leaves in place.
 
-Optional Gaussian candidate generation isolates a Real variable in an
-asserted linear equality, such as $2x+y=6$, giving $x=3-y/2$. Candidates then
-pass the same substitution checks. This step only generates substitution
-candidates; it does not perform full Gaussian elimination on a matrix.
-The division is valid over the reals; applying it as an unconditional integer
-substitution would lose divisibility constraints. Integer profiles disable it.
+Optional {source}`Gaussian candidate generation <src/smt/preprocessing.cpp#L734-L858>`
+jointly reduces asserted Real equalities using exact-rational Gauss–Jordan
+elimination. It normalizes each pivot row and removes that variable from every
+other row, including rows used by earlier pivots. The reduced rows supply
+substitution candidates, which then pass the same acceptance checks as other
+definitions. For example, $2x+3y=5$ and $x-y=1$ yield $x=8/5$ and $y=3/5$;
+the {source}`joint-system regression <tests/unit/preprocessing_tests.cpp#L949-L977>`
+checks both substitutions.
+
+The generator skips systems with more than 128 collected equalities or 256
+eligible pivot variables. It is a bounded candidate-generation stage, not a
+complete arithmetic solver. Division is valid over the reals; applying it as
+an unconditional integer substitution would lose divisibility constraints.
+Integer profiles disable it.
 
 Ground-unit substitution instead picks representatives of equal ground terms
 and rewrites their uses. The `guarded` variant accepts a rewrite only if it
@@ -236,8 +247,12 @@ new function applications.
 performs a bounded number of bottom-up rewriting rounds. Structural ITE
 identities, constant folding, and identities for `div`, `mod`, and `abs` can remove
 operators before fresh variables become necessary. Equality distribution over
-an ITE has separate growth controls and is off by default: replacing a shared
-conditional at every use can enlarge the formula substantially.
+an ITE is {source}`enabled by default <src/smt/check_sat.hpp#L330-L348>`, with
+{source}`growth restrictions <src/smt/preprocessing.cpp#L4160-L4198>`:
+the ITE must not be shared by several parent edges, and neither immediate
+branch may itself be an ITE. These checks avoid duplicating a shared conditional
+or distributing only part of a nested chain. Use
+`--no-ite-equality-distribution` to disable this rule.
 
 A **constant if-then-else term** (CITE) has numeral branches, possibly nested
 under further conditionals or scaled and offset by constants. Its value can
@@ -291,7 +306,7 @@ if enabled it runs initially, again after finite-domain generation, and for
 comparisons after purification.
 
 Required {source}`arithmetic-equality elimination
-<src/smt/preprocessing.cpp#L2537-L2544>` translates $a=b$ to
+<src/smt/preprocessing.cpp#L2657-L2668>` translates $a=b$ to
 $(a\le b)\land(b\le a)$ for **both Real and Int**, despite the helper's
 `lower_real_equalities` name. Negation remains Boolean structure for SAT.
 This stage follows equality-producing passes, including finite-domain
@@ -328,7 +343,7 @@ for every possible term pair. Enabling these clauses in `auto` mode is a
 separate option, off by default, with limits on domain size, generated clauses,
 and formula size.
 
-{source}`UfSymmetryBreaker <src/smt/preprocessing.cpp#L5197-L5241>` checks
+{source}`UfSymmetryBreaker <src/smt/preprocessing.cpp#L5197-L5241>` attempts to check
 whether permuting a recognized set of uninterpreted constants leaves the
 assertions unchanged. It treats equality, `and`, and `or` as commutative when
 comparing formulas. Checking a cycle through the constants and a swap of the
@@ -350,6 +365,13 @@ Theorem 5 justifies the restriction by renaming models, and Lemma 6 justifies
 checking only the two generating permutations {cite:p}`deharbe2011symmetry`.
 The value-precedence rule for fixed terms is described in the design note.
 General graph-automorphism detection is outside Primo's implementation.
+
+The page-by-page source review found that the
+{source}`comparison key <src/smt/preprocessing.cpp#L2036-L2067>` omits rational
+values and multiplication coefficients. Consequently, the implemented comparison
+does not establish the required invariance for all mixed arithmetic formulas.
+This is an unresolved correctness finding, not an accepted limitation of the
+symmetry theorem; see the {ref}`review follow-up <symmetry-payloads>`.
 
 For a domain of size $n$, pairwise AMO generation can produce
 $n(n-1)/2$ clauses for one term. Equality-definition and congruence generation

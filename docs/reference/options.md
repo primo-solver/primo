@@ -17,7 +17,7 @@ common controls; the complete captured inventory below supplies accepted values 
 | `--check-model` | Off | Check original assertions against a requested model. Set `:produce-models true` separately; see [](../guide/models.md). |
 | `--incremental-mode` | `rebuild` | Choose `rebuild` or the restricted `assumptions` session engine. See [](../guide/sessions.md). |
 | `--preprocessing-mode` | `auto` | Choose `auto`, `off`, `basic`, or `strong`. `off` does not bypass required lowering. Assumptions mode admits only `auto` or `off`. |
-| `--max-theory-conflicts=N` | Unlimited | Positive budget, up to 1,000,000,000; return `unknown` after reaching the learned-theory-conflict limit. |
+| `--max-theory-conflicts=N` | Unlimited | Positive budget, up to 1,000,000,000. Enforcement differs by solver route; see [conflict-limit coverage](statistics.md#euf-callbacks-and-resource-limits). It is not a universal arithmetic or mixed-theory cap. |
 | `--lia-branch-limit=N` | `100000` | Bound integer branch-and-bound nodes; reaching the bound can return `unknown`. See [](../implementation/lia.md). |
 | `--cancel-grace-seconds=N` | `1` | Cooperative cancellation grace period after SIGINT/SIGTERM, from 1 to 3600 seconds. This is not a solve-time limit. |
 

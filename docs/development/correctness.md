@@ -30,7 +30,12 @@ establish an algorithm's invariant or qualify a new default.
 (run-the-applicable-local-checks)=
 ## Run the applicable checks
 
-Run commands from the repository root:
+Run commands from the repository root in the chosen test environment.
+Contributors may use any suitable machine. In the maintainer's workspace,
+solver test, fuzzing and model-validation batches must run in a SLURM allocation;
+see the {project}`execution policy <AGENTS.md#L3-L21>` and
+[workspace preparation](experiments.md#prepare-the-comparison).
+Documentation builds and other non-solver checks can run locally.
 
 ```bash
 make check
@@ -42,8 +47,8 @@ make docs-full
 **not** run fuzzing, independent model validation, or the documentation build.
 For local previews, `make docs` reuses the previous build; the full target
 above re-reads every page for validation.
-The {source}`check target <Makefile#L139>` lists those dependencies; the
-{source}`test and sanitizer targets <Makefile#L22-L32>` define their commands.
+The {source}`check target <Makefile#L146>` lists those dependencies; the
+{source}`test and sanitizer targets <Makefile#L22-L33>` define their commands.
 Memory-sensitive C++ changes also require `make asan-test`, including changes
 to parsing, term storage, ownership, or the SAT backend. Apply the repository's
 code-review and static-analysis requirements in {source}`AGENTS.md` and
@@ -68,7 +73,7 @@ arithmetic.
 
 This complements Brummayer and Biere's *Fuzzing and Delta-Debugging SMT
 Solvers* (SMT 2009), already recorded in the
-{source}`literature notes <docs/literature.md#L401-L457>`.
+{source}`literature notes <docs/literature.md#L383-L431>`.
 Primo uses external generators and reduction tools. The gate counts below are
 project policy, not thresholds established by that thesis.
 
@@ -108,8 +113,8 @@ Use a new output directory for each run. Adapt the shape/size parameters to the
 change; this command is a QF_UF starting point, not a gate for every component.
 The current `make fuzzsmt` shortcut runs only 20 cases. `make fuzz` is a short
 mutation entry point. Neither automatically meets the table's thresholds.
-See the {source}`convenience recipes <Makefile#L40-L53>` and
-{source}`20-case recipe <Makefile#L141-L142>`.
+See the {source}`convenience recipes <Makefile#L41-L54>` and
+{source}`20-case recipe <Makefile#L148-L149>`.
 
 Inspect the wrapper's `summary.csv`, actual generated count, and available
 references. The {source}`external-fuzzer wrapper <scripts/fuzz_external.py#L99-L160>`
@@ -118,8 +123,8 @@ skip, and its generic YinYang/STORM wrappers are placeholders. Use
 {source}`scripts/yinyang_fuzz.sh` for the implemented YinYang workflow. A zero exit code
 or requested case count is not by itself evidence that those tests ran.
 
-Logic-specific workflows live in `scripts/`; the existing book's debugging
-and finite-domain-fuzzing chapters describe their coverage. Install missing
+The [fuzzing guide](fuzzing.md) links the logic-specific workflows and explains
+finite-domain activation and seed coverage. Install missing
 dependencies when feasible. For long campaigns or inaccessible infrastructure,
 record the remaining gate and arrange a maintainer handoff before merge.
 
@@ -169,7 +174,7 @@ certify UNSAT answers.
 ## Attach reproducible evidence
 
 Every fuzz gate and substantial experiment needs a record in
-{source}`docs/run-log.json`. Include the run ID, candidate commit and binary identity,
+[the run ledger](../run-log.json). Include the run ID, candidate commit and binary identity,
 reference versions and commands, logic/corpus/manifest, generator and seed,
 actual counts, options, timeout and other resource limits, host or SLURM job
 ID, outcome counts, and artifact locations. Preserve failure inputs and logs.

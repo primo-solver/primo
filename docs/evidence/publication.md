@@ -40,9 +40,13 @@ The reference was Z3 5.1.0 and the model validator Dolmen 0.10.
 
 The [machine-readable summary](../coverage/publication-qualification.json)
 records selected artifacts, binary hashes, per-shard counts and hashes of sorted
-input-hash manifests. The reproducible commands are in
-`scripts/qualification/public_launch.sbatch`; its companion summarizer checks
-all selected shards, reference agreement and SAT-model coverage.
+input-hash manifests. The
+[launch recipe](https://github.com/primo-solver/primo/blob/99e43807d2015678d05ee748eef5d5c65b9da70e/scripts/qualification/public_launch.sbatch)
+contains the reproducible commands. The
+[qualification summarizer](https://github.com/primo-solver/primo/blob/cebb6c2525fbe2cf4bd00a14108b2f34e92e7964/scripts/qualification/summarize_public_launch.py)
+checks all selected shards, reference agreement and SAT-model coverage.
+These later recipe and verification-tool revisions are distinct from the solver
+candidate; their identities are retained in the summary metadata.
 
 ## Real-seed mutations
 
@@ -57,7 +61,8 @@ per LRA seed and 50 per mixed seed. Mutant comparison used a ten-second limit;
 original-seed and model checks used 30 seconds. The mutator itself used five
 seconds per solver and a 900-second wall limit.
 
-The recipe is `scripts/qualification/public_mutations.sbatch`. Imported seed
+The [mutation recipe](https://github.com/primo-solver/primo/blob/99e43807d2015678d05ee748eef5d5c65b9da70e/scripts/qualification/public_mutations.sbatch)
+records the commands. Imported seed
 publication terms remain unresolved; successful testing does not establish
 redistribution permission.
 

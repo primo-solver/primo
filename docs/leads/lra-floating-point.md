@@ -72,8 +72,10 @@ identifies the primary reading; the follow-up studies still need review.
 Any prototype needs tests for an unreachable target basis, strict inequalities,
 misleading numerical results, partial conversion and incremental rollback.
 Run the [correctness gates](../development/correctness.md), then compare total
-runtime, solved count, PAR2 and memory against the same exact-only baseline on
-SLURM. Measure representative easy cases as well as cases dominated by exact
+runtime, solved count, PAR2 and memory against the same exact-only baseline. Measure representative easy cases as well as cases dominated by exact
 arithmetic. Reject or restrict the approach if conversion and forced pivots
 consume the savings, or if gains depend on a narrow set with substantial wider
 regressions.
+
+Contributors may use any suitable machine. In the maintainer workspace, these
+batches run on SLURM; see the {ref}`execution policy <run-the-applicable-local-checks>`.

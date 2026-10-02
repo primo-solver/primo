@@ -51,5 +51,5 @@ User acceptance is recorded separately from source inspection and build checks.
 These inventories establish destinations, not independent certification of every
 historical sentence or experiment artifact. The subject maps identify corrected
 claims; [evidence work](../work/evidence.md) names unresolved provenance and
-checking limits. Reader acceptance and switching the published book remain
-separate steps.
+checking limits. The replacement is already the main local book; reader
+acceptance and website publication remain separate steps.

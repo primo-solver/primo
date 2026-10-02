@@ -4,8 +4,9 @@ This catalogue preserves the original Primo documentation at the snapshot taken
 before this gap-completion pass. Each entry links the current explanatory home
 and the original record. These are dated records, not current capability or
 performance claims. The [section inventory](../coverage/index.md) identifies
-precise source ranges and decisions within each page. No original page is
-deleted or redirected by this rewrite.
+precise source ranges and decisions within each page. The
+<a href="../archive/original/index.html">historical book</a> preserves the
+original pages and anchors; retired main-book paths redirect there.
 
 (record-active-work)=
 ## Active work

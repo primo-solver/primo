@@ -136,7 +136,9 @@ Measure selected and omitted quantifiers, witnesses, tuple visits, lemmas,
 SAT rounds, support time and memory, and resulting `sat`/`unsat`/`unknown`
 counts. Compare with the unchanged route, holding NNF, root specialization,
 budgets and tuple ordering fixed. Run fresh
-[correctness gates](../development/correctness.md) and paired remote SLURM
-evaluations before any promotion. Online watches, a dual extraction solver,
+[correctness gates](../development/correctness.md) and paired evaluations before any promotion. Online watches, a dual extraction solver,
 and general ground-theory filtering remain later experiments. No solver change
 or new performance result accompanies this lead.
+
+Contributors may use any suitable machine. In the maintainer workspace, these
+batches run on SLURM; see the {ref}`execution policy <run-the-applicable-local-checks>`.
