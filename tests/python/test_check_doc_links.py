@@ -53,6 +53,39 @@ class DocLinkTests(unittest.TestCase):
         self.assertEqual(len(checker.failures), 3)
         self.assertIn("missing HTML anchor", checker.failures[-1]["error"])
 
+    def test_unlinked_source_paths_in_article_prose_fail(self):
+        checker = self.check('''<article>
+            <p>Builders: <code>src/smt/strategy.hpp</code>.</p>
+            <p>Implementation: src/smt/tactic.cpp.</p>
+            <p><a id="label">src/core/term.hpp</a></p>
+            </article>''')
+        self.assertEqual(
+            [(failure["line"], failure["uri"]) for failure in checker.failures],
+            [(2, "src/smt/strategy.hpp"), (3, "src/smt/tactic.cpp"),
+             (4, "src/core/term.hpp")],
+        )
+
+    def test_source_links_code_blocks_and_navigation_are_not_omissions(self):
+        checker = self.check('''<nav>src/core/term.hpp</nav><article>
+            <a href="#owner"><code><span>src/smt/strategy.hpp</span></code></a>
+            <pre><code>clang-format src/smt/tactic.cpp</code></pre>
+            <script>const file = "src/core/term.hpp";</script>
+            <style>/* src/core/term.hpp */</style>
+            <h2 id="owner">Owner</h2><p><code>src/smt/</code> is a layer.</p>
+            <p>Use <code>src/smt/*.hpp</code> for a shell glob.</p></article>''')
+        self.assertEqual(checker.failures, [])
+        self.assertEqual(checker.local_links, 1)
+
+    def test_historical_prose_is_preserved_but_its_links_are_checked(self):
+        archive = self.book / "archive/original"
+        archive.mkdir(parents=True)
+        (archive / "old.html").write_text('''<article>
+            <code>src/smt/strategy.hpp</code><a href="missing.html">broken</a>
+            </article>''')
+        checker = self.check('<article>Current prose.</article>')
+        self.assertEqual(len(checker.failures), 1)
+        self.assertEqual(checker.failures[0]["error"], "local target does not exist")
+
     def test_cannot_escape_book_even_if_file_exists(self):
         (self.root / "outside.html").write_text("outside")
         checker = self.check('<a href="../outside.html">escape</a>')
@@ -114,7 +147,8 @@ class DocLinkTests(unittest.TestCase):
         )
 
     def test_cli_fails_and_preserves_json_report(self):
-        self.index.write_text('<a href="absent.html">broken</a>')
+        self.index.write_text('''<article><a href="absent.html">broken</a>
+            <code>src/smt/strategy.hpp</code></article>''')
         report = self.root / "report.json"
         result = subprocess.run(
             [
@@ -131,8 +165,9 @@ class DocLinkTests(unittest.TestCase):
             check=False,
         )
         self.assertEqual(result.returncode, 1)
-        self.assertEqual(len(json.loads(report.read_text())["failures"]), 1)
+        self.assertEqual(len(json.loads(report.read_text())["failures"]), 2)
         self.assertIn("absent.html", result.stdout)
+        self.assertIn("unlinked source filename", result.stdout)
 
 
 if __name__ == "__main__":

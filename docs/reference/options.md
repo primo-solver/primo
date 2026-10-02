@@ -72,8 +72,8 @@ These conventions come from {source}`src/main.cpp` and
 CLI registration and validation currently live in {source}`src/main.cpp`, enum
 spellings in {source}`src/cli/option_names.hpp`, and solver defaults in
 {source}`src/smt/check_sat.hpp`. Strategy selection can determine whether a
-particular option takes effect. The placeholder `src/cli/options.cpp` and
-`src/cli/options.hpp` are not the authoritative option implementation.
+particular option takes effect. The placeholder {source}`src/cli/options.cpp` and
+{source}`src/cli/options.hpp` are not the authoritative option implementation.
 
 The documentation example checker compares the captured help with the built
 binary. Update the help snapshot only after reviewing changed defaults and the

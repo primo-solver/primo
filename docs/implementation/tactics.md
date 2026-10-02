@@ -211,9 +211,11 @@ arithmetic atoms: eliminated terms and declared symbols still affect the
 requested model. [Theory combination](combination.md) explains which
 mixed coordinator each route uses.
 
-When converting the tactic result to a `CheckSatOutcome`, the code first
-checks for an inconclusive reason, then calls the truth function. A recorded
-interruption therefore takes precedence over an empty or false goal. After SAT,
+When converting the tactic result to a `CheckSatOutcome`,
+{source}`outcome_from_tactic_result <src/smt/solver_tactic.cpp#L80-L113>` computes
+syntactic truth first, but gives a recorded inconclusive reason precedence
+when choosing the outcome. An interruption therefore takes precedence over
+an empty or false goal. After SAT,
 the session can evaluate the original assertions against the reconstructed
 model before printing it; see [model construction](models.md).
 

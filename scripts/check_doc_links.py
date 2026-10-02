@@ -4,6 +4,9 @@
 Sphinx's linkcheck builder handles other HTTP(S) URLs. This check validates
 the generated HTML, including assets, and resolves Primo source links in Git.
 It checks source existence and line bounds, not the meaning of the cited code.
+In the current book, concrete src/ filenames in article prose must be linked.
+Code blocks and archive/original are exempt from this prose check, not from
+link validation. Symbol names and references without a full path need review.
 """
 
 from __future__ import annotations
@@ -16,16 +19,28 @@ from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
+SOURCE_PATH = re.compile(r"(?<![\w/])src/(?:[\w.+-]+/)*[\w.+-]+\.(?:hpp|cpp|h|cc)\b")
+
 
 class Page(HTMLParser):
     def __init__(self, text: str) -> None:
         super().__init__(convert_charrefs=True)
         self.ids: set[str] = set()
         self.links: list[tuple[int, str]] = []
+        self.unlinked_sources: list[tuple[int, str]] = []
+        self._article_depth = 0
+        self._anchors: list[bool] = []
+        self._excluded: list[str] = []
         self.feed(text)
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         values = dict(attrs)
+        if tag == "article":
+            self._article_depth += 1
+        if tag == "a":
+            self._anchors.append(bool(values.get("href")))
+        if tag in {"pre", "script", "style"}:
+            self._excluded.append(tag)
         for attribute in ("id", "name") if tag == "a" else ("id",):
             if value := values.get(attribute):
                 self.ids.add(value)
@@ -37,6 +52,21 @@ class Page(HTMLParser):
         for attribute in attributes:
             if value := values.get(attribute):
                 self.links.append((self.getpos()[0], value))
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag == "article":
+            self._article_depth = max(0, self._article_depth - 1)
+        if tag == "a" and self._anchors:
+            self._anchors.pop()
+        if tag in self._excluded:
+            self._excluded.remove(tag)
+
+    def handle_data(self, data: str) -> None:
+        if not self._article_depth or self._excluded or any(self._anchors):
+            return
+        for match in SOURCE_PATH.finditer(data):
+            line = self.getpos()[0] + data.count("\n", 0, match.start())
+            self.unlinked_sources.append((line, match.group()))
 
 
 class Checker:
@@ -142,6 +172,14 @@ class Checker:
             if set(path.relative_to(root).parts) & {"_static", "_downloads", "_sources"}:
                 continue
             self.pages += 1
+            # Keep frozen historical prose out of the new writing convention.
+            # Its actual link targets are still checked in the loop below.
+            if path.relative_to(root).parts[:2] != ("archive", "original"):
+                for line, source in self.page(path).unlinked_sources:
+                    self.failures.append(
+                        {"page": str(path), "line": line, "uri": source,
+                         "error": "unlinked source filename; use the MyST source role"}
+                    )
             for line, uri in self.page(path).links:
                 try:
                     error = self.check_link(root, path, uri)

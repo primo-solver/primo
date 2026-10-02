@@ -104,6 +104,14 @@ Do not consider a solver change complete unless the relevant documentation is up
 
 If documentation cannot be updated in the same task, state that as a blocker in the final response.
 
+For substantive documentation writing or restructuring, use the writer–reviewer
+loop in `skills/documentation/SKILL.md`. One agent owns edits; a separate,
+read-only agent reviews source accuracy and exposition and rechecks the fixes.
+This explicitly authorizes that bounded delegation for documentation work.
+An isolated typo or link repair needs the relevant checks, not a new agent.
+If an independent reviewer is unavailable, report that limitation rather than
+describing self-review as independent acceptance.
+
 ## Goal and completion discipline
 
 For broad solver tasks, define the goal as the full user-visible outcome, not

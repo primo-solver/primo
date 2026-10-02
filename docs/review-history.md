@@ -367,12 +367,13 @@ chapter is the local representation/invariant/operation checklist for these
 integration mechanisms, with explicit limits on completeness and retention.
 No other solver implementation was used as an implementation source.
 
-The unused `src/smt/dpllt.hpp` empty class and its include-only `.cpp` were
+The unused [DPLL(T) scaffold](https://github.com/primo-solver/primo/blob/012f7507da8a1441b0223be3f8dc8586e5ebfaff/src/smt/dpllt.hpp)
+and its include-only `.cpp` were
 removed after a whole-tree reference search found no users. CMake discovers
 SMT sources with `CONFIGURE_DEPENDS`; a successful rebuild verifies removal.
 No active driver, callback, solver option, or runtime behavior changed. Existing
-source links remain pinned to the unchanged implementations at the configured
-revision; none of them points to the deleted scaffold. Harmonizing the actual
+driver links remain pinned to the unchanged implementations at the configured
+revision; the historical link above records the removed scaffold. Harmonizing the actual
 drivers remains a separate design decision.
 
 From the repository root, reproduce the example matrix with:

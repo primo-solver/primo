@@ -46,9 +46,36 @@ relevant primary sections before claiming a mechanism is implemented, and state
 the subset/deviations. Keep source links in the central `source` role configuration;
 ordinary paragraphs should not carry repeated revision hashes.
 
+Concrete source filenames in explanatory prose should be links, for example
+{source}`src/smt/strategy.hpp`. Use the MyST `source` role so the centrally
+configured revision supplies the GitHub target. Link the relevant definition
+or operation when a whole file would make the reader search for it.
+
 Track coverage in [the preservation audit](../coverage/index.md) and verification
 separately from reader acceptance in [the review ledger](../review.md). Retain
 old paths/anchors through the compatibility manifest.
+
+## Writer and reviewer
+
+Substantive documentation changes use a writer and a separate reviewer. The
+writer supplies a bounded set of pages and their intended audience. The reviewer
+reads those pages and the relevant code independently, then reports located
+findings with evidence and suggested repairs. It reviews both source accuracy
+and explanation: missing links, undefined terms, omitted mechanisms, and shifts
+between architecture, algorithm, API reference and experimental history.
+
+The writer resolves the findings and returns the revised text for re-review.
+Required findings must be closed before acceptance; optional stylistic
+suggestions remain distinct. If a disagreement needs unavailable evidence or
+a design decision, record it explicitly. Repeating revisions without resolving
+that question is not a completed review.
+
+Keep the inspected files, patch identity, findings and dispositions, reviewer
+verdict and verification in the commit or PR description. This is a scoped
+technical review; it does not advance the whole manual's reader-acceptance
+status. The repository's documentation skill provides the agent handoff and
+review checklist. Small typo and link repairs need the relevant checks without
+starting another review cycle.
 
 ## Build and check
 
@@ -63,6 +90,11 @@ both books strictly, including the frozen historical book. The external checker 
 separate Sphinx linkcheck reports; distinguish genuinely broken targets from
 transient timeout, rate-limit or authorization failures. Do not silently suppress
 a new failure. Inspect rendered equations, tables, navigation and source links.
+
+The local checker also flags unlinked concrete `src/` file paths in the main
+book's prose. It excludes code blocks and the historical book from this style
+check; their links are still validated. This catches filename omissions, not
+unsupported claims or poor abstraction: those require the independent review.
 
 Book builds do not execute notebooks or solver examples. Changed executable
 examples need separate verification in the chosen test environment. Keep source

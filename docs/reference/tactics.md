@@ -19,8 +19,8 @@ named tactic is invoked.
 
 ## Generic tacticals
 
-Executable builders are declared in `src/smt/tactic.hpp`; the immutable
-inspection/composition layer is declared in `src/smt/strategy.hpp`.
+Executable builders are declared in {source}`src/smt/tactic.hpp`; the immutable
+inspection/composition layer is declared in {source}`src/smt/strategy.hpp`.
 
 | Builder or type | Operation | Termination and branching behavior |
 |---|---|---|
@@ -46,6 +46,25 @@ remains open work.
 
 ## Preprocessing tactics
 
+### Initial and profile-specific tactics
+
+These stages surround the repeated simplification round. See the
+[execution order](../implementation/preprocessing.md#execution-order) and
+[extended-term transformations](../implementation/preprocessing.md#extended-terms-and-arithmetic-normalization).
+
+| Runtime name | API status | Enabled when and effect |
+| --- | --- | --- |
+| `simplify-constant-ites` | Public builder: {source}`make_simplify_constant_ites <src/smt/preprocessing_tactics.cpp#L533-L544>` | Both extended simplification and constant-ITE simplification are enabled; simplifies comparisons involving constant if-then-else terms. |
+| `simplify-extended-terms` | Public builder: {source}`make_simplify_extended_terms <src/smt/preprocessing_tactics.cpp#L546-L564>` | Extended simplification is enabled; applies bounded rewrites before introducing definitions. |
+| `lower-extended-terms` | Public builder: {source}`make_lower_extended_terms <src/smt/preprocessing_tactics.cpp#L566-L583>` | Always included, even with preprocessing off; translates remaining extended operators to Boolean/linear terms and fresh definitions. |
+| `qf-lia-solve-eqs` | Internal profile leaf | Integer profile; up to eight syntactic substitution passes, without Gaussian elimination. |
+| `large-input-solve-eqs` | Internal profile leaf | Large-input bypass with solved-constant substitution enabled; one substitution pass with the configured Gaussian option. |
+
+The two internal leaves are constructed by the
+{source}`profile-specific preparation <src/smt/preprocessing_strategy.cpp#L426-L435>`.
+As with other sequences, an earlier terminal goal can prevent a later stage
+from running.
+
 ### Composites
 
 | Runtime name | API status | Contents |
@@ -58,7 +77,7 @@ remains open work.
 | `normalize-arithmetic` | Public typed builder | Arithmetic-atom canonicalization and/or Real-equality lowering at a typed pipeline stage |
 | `eliminate-monotone` | Public typed builder | Monotone-variable elimination with an ordered model-conversion record when model production is requested |
 | `purify-mixed` | Public typed builder | Mandatory mixed-theory purification and its dependent comparison-only arithmetic recanonicalization |
-| `preprocessing-round` | Public builder: `make_preprocessing_round(PreprocessingRoundOptions)` | Runs the selected phases below in a fixed order and deliberately completes the round even if an intermediate phase makes the formula terminal |
+| `preprocessing-round` | Public typed builder | Runs the selected phases below in a fixed order and deliberately completes the round even if an intermediate phase makes the formula terminal |
 | `preprocessing-profile` | Production strategy leaf | Records the immutable selected `PreprocessingProfile`; it does not transform the goal |
 | `preprocessing-fixed-point` | Production `Repeat` strategy node | Repeats `preprocessing-round` to ordered-assertion convergence, subject to baseline and adaptive reachable-term shrink limits |
 
@@ -67,7 +86,8 @@ remains open work.
 when it builds the context; the tactic holds no `Frontend` reference and throws
 `TacticError` if a context without a factory executes it.
 
-`PreprocessingRoundOptions` is immutable after strategy construction. It
+{source}`PreprocessingRoundOptions <src/smt/preprocessing_tactics.hpp#L19-L29>`
+is immutable after strategy construction. It
 selects phases without allowing them to read command-line state.
 
 ### Named phases inside `preprocessing-round`
@@ -98,11 +118,20 @@ candidates, cycle rejection, size guards, rewriting, and model reconstruction
 share the same transformation boundary. Disabling solved-constant substitution
 therefore also prevents that Gaussian candidate path from running.
 
+### Finite-domain emission
+
+The internal {source}`finite-domain-constraints phase <src/smt/preprocessing_tactics.cpp#L392-L477>`
+belongs to `finite-domain-preprocess`. It is enabled when symmetry breaking,
+at-most-one clauses, or equality definitions are selected, and emits the
+corresponding constraints. See
+[finite domains and symmetry](../implementation/preprocessing.md#finite-domains-and-symmetry)
+for the required order and retained analysis results.
+
 ## Solver tactics
 
 | Runtime name | Selection | API status |
 |---|---|---|
-| `solver-dispatch` | Classifies each goal by declared logic and formula features | Public builder: `make_solver_dispatch(...)` |
+| `solver-dispatch` | Classifies each goal by declared logic and formula features | Public builder: {source}`make_solver_dispatch <src/smt/solver_strategy.cpp#L26-L111>` |
 | `boolean-then-euf` | Used for formulas with no detected equality, application, or arithmetic; tries Boolean solving and then QF_UF on the same original goal | Production `first_terminal` composite internal to the dispatcher |
 | `solve-boolean` | Pure propositional conjunction | Solver-leaf module |
 | `solve-qf-uf` | Equality, uninterpreted applications, or Boolean-UF predicates without arithmetic | Solver-leaf module |
@@ -111,6 +140,27 @@ therefore also prevents that Gaussian candidate path from running.
 | `solve-qf-uflra` | Both arithmetic and equality or uninterpreted-predicate features | Solver-leaf module |
 | `solve-qf-lia` | Declared `QF_LIA` logic | Solver-leaf module |
 | `solve-qf-uflia` | Declared `QF_UFLIA` logic | Solver-leaf module; complete non-convex Int arrangement |
+
+{source}`make_solver_tactic <src/smt/solver_tactic.hpp>` adapts a single-goal
+solver to the tactic contract: SAT produces an empty goal, UNSAT a false goal,
+and an inconclusive result a goal with a typed reason. See
+[goal truth and alternatives](../implementation/tactics.md#conjunction-within-a-goal-alternatives-between-goals)
+for combination and stopping rules.
+
+{source}`make_session_solver_strategy <src/smt/solver_leaves.hpp>` constructs
+these engine leaves using the
+{source}`solver engine entry points <src/smt/solver_engines.hpp>`.
+Its returned strategy borrows one solve's frontend, statistics and context;
+those objects must remain alive through execution. Preprocessing builders read
+execution resources from `TacticContext`, but prepared finite-domain snapshots
+still contain IDs tied to the original manager and query. See
+[representation and lifetime](../implementation/tactics.md#representation).
+
+[Dispatch priorities](../implementation/tactics.md#from-a-session-query-to-an-engine)
+include model requirements as well as formula features. Model production is an
+execution-context capability, not part of the canonical strategy fingerprint.
+The experimental splitter, when enabled, precedes dispatch in a two-child
+sequence.
 
 ## Experimental goal-generation tactics
 
@@ -128,40 +178,14 @@ same encounter order. With only `m < k` candidates, it returns `2^m` goals.
 The statistics `:experimental.split-bools.input-goals`, `.selected`, and
 `.output-goals` expose the expansion.
 
-`make_solver_tactic(name, terms, solve)` is the common formula adapter.
-`make_session_solver_strategy` in `solver_leaves` owns all seven concrete leaf
-closures, their model-term selection, conversion-chain forwarding, and the
-typed `SolverAnswer` boundary. `solver_engines` exposes the complete
-single-goal QF_UF, QF_LRA, QF_LIA, QF_UFLRA, and QF_UFLIA engine entry points and
-contains their implementations and shared theory/model support. The
-session supplies only its frontend, immutable solve options, statistics, and
-execution context. With the experimental splitter disabled it compiles the
-returned `solver-dispatch` strategy leaf; with splitting enabled it compiles a
-two-child sequence containing the split leaf and dispatch.
-The executable leaf borrows the frontend, statistics, and context through that
-single execution; immutable solve options are held in shared value storage. A
-solver strategy is therefore session-scoped, unlike a preprocessing strategy,
-which reads everything it needs -- terms, statistics, and fresh constants --
-from the executing `TacticContext` and stays valid after its session is gone.
-Model-term selection and the `solve-qf-lra-model-only` dispatch branch consult
-the context capability. Model production is intentionally absent from the
-canonical strategy parameters and fingerprint.
-
-Every solver leaf returns a typed internal `SolverAnswer` through the
-formula-valued contract:
-an empty goal for `sat`, a goal containing `false` for `unsat`, and an
-inconclusive goal with a typed reason for `unknown`, cancellation, resource
-limits, or unsupported input. Message text is presentation-only. For an
-`AnyOf`, leaves stop at the first satisfiable alternative, collapse all-unsat to
-one false goal, and otherwise preserve inconclusive alternatives.
-
 ## Transformations not yet represented as tactics
 
 The following production control step remains outside formula-level strategy
 composition and must not be mistaken for an available formula tactic:
 
 - the experimental QF_UF session portfolio, implemented by
-  `execute_qf_uf_session_portfolio` over the `SessionExecutor` interface. Its
+  {source}`execute_qf_uf_session_portfolio <src/smt/session_portfolio.cpp>` over
+  the {source}`SessionExecutor interface <src/smt/session_portfolio.hpp>`. Its
   sequential implementation replays original input in fresh contexts and therefore
   cannot pass a `Goal` across arms. Only the first arm's typed
   `ResourceLimit` triggers fallback; cancellation and ordinary unknown stop.
@@ -194,7 +218,7 @@ parallel scheduler or external tactic language.
 ## Typed parameters and source
 
 The parameter definitions are {source}`preprocessing tactics <src/smt/preprocessing_tactics.hpp>`,
-{source}`round options <src/smt/preprocessing.hpp>`,
+{source}`round options <src/smt/preprocessing_tactics.hpp#L19-L29>`,
 {source}`experimental tactics <src/smt/experimental_tactics.hpp>`,
 {source}`composition <src/smt/tactic.hpp>` and
 {source}`strategy nodes <src/smt/strategy.hpp>`. Named invocations expose
