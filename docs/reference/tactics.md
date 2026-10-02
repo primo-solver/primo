@@ -37,12 +37,12 @@ inspection/composition layer is declared in `src/smt/strategy.hpp`.
 fingerprint. `compile(strategy)` lowers the immutable AST to the executable
 tacticals above. Strategy construction is C++-only.
 
-`assertion_count()` is the exported named numeric probe and `at_most(...)`
-constructs a named Boolean probe. The
-solver dispatcher additionally computes a `FormulaFeatureSummary`, and the
-preprocessing repeat uses reachable-term counts to decide whether adaptive
-passes are worthwhile. Those two analyses are currently embedded in their
-respective strategies rather than exported as reusable probe objects.
+`assertion_count()` and `at_most(...)` are the only built-in probe builders.
+Custom predicates and named probes can be supplied in C++; see
+[conditional predicates and probes](../implementation/tactics.md#conditional-predicates-and-probes)
+for their semantics and the distinction from production selection analyses.
+A broader [reusable probe library](../leads/index.md#reusable-tactic-probes)
+remains open work.
 
 ## Preprocessing tactics
 

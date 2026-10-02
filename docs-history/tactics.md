@@ -199,8 +199,10 @@ and its context. Their stable names participate in canonical strategy printing.
 The built-in `assertion-count` numeric probe and the named `at_most` Boolean
 comparison demonstrate dynamic selection: a conditional evaluates its probe on
 the current transformed goal received at that node, never on a captured copy of
-the original input. Preprocessing-specific structural probes are added with the
-preprocessing migration rather than hidden inside the generic layer.
+the original input. Production preprocessing and solver dispatch use richer analyses
+directly; these are not yet exported as named probes. See the
+<a href="../../implementation/tactics.html#conditional-predicates-and-probes">current probe explanation</a>
+and the <a href="../../leads/index.html#reusable-tactic-probes">reusable-probe open lead</a>.
 
 ## Production composition
 

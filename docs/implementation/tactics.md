@@ -83,7 +83,7 @@ constructs them from the graph.
 | --- | --- |
 | `skip` | Return the input unchanged. |
 | `sequence` | Feed each result into the next child; stop when the combined result is syntactically terminal. |
-| `conditional` | Evaluate the predicate on each current inconclusive goal, then run the selected child on it. |
+| `conditional` | Evaluate the [predicate](#conditional-predicates-and-probes) on each current inconclusive goal, then run the selected child on it. |
 | `repeat` | Apply the child until it returns a terminal result, reaches a fixed point, fails the condition for another iteration, or reaches the iteration limit. Zero iterations returns the input. |
 | `try_in_order` | Try each child strategy on the **original** input. Return the first terminal result; if none is terminal, return the last result. Cancellation stops the attempts. |
 | `try_for` | Run the child with the requested deadline, or an earlier enclosing deadline. If time expires and the result is still inconclusive, set its reason to `ResourceLimit`. |
@@ -139,11 +139,40 @@ use explicit traversal stacks, so a deeply nested strategy does not require
 an equally deep C++ call stack during those operations. Execution still follows
 the composed functions, whose stack use depends on their implementations.
 
+## Conditional predicates and probes
+
 A **probe** measures a property of the current goal or tests a condition on it.
-The built-in probes count assertions and compare a numeric measurement with
-a limit. A probe runs after the preceding transformations in the sequence.
-Preprocessing uses a separate function to select its profile from more detailed
-formula properties.
+The executable `conditional` takes a
+{source}`GoalPredicate <src/smt/tactic.hpp#L160-L175>`: a C++ callable returning
+`bool` from `const TacticContext&` and `const Goal&`. A caller can supply its
+own condition. The immutable strategy layer instead takes a named
+{source}`BooleanProbe <src/smt/strategy.hpp#L36-L63>`; `NumericProbe` returns
+`double`. Probe names appear in the canonical strategy description.
+
+Only two built-in probe builders are currently exported:
+
+| Builder | Meaning |
+| --- | --- |
+| {source}`assertion_count() <src/smt/strategy.cpp#L100-L104>` | Number of entries in the current goal's assertion vector, returned as `double`. It does not count conjuncts or deduplicate roots. |
+| {source}`at_most(probe, limit) <src/smt/strategy.cpp#L106-L113>` | Boolean test that the numeric probe's result is at most the supplied limit. |
+
+For example, `Strategy::conditional(at_most(assertion_count(), 1), A, B)`
+runs `A` on a goal with at most one assertion root and `B` otherwise.
+The goals `[p, q]` and `[p and q]` therefore select different branches, despite
+being logically equivalent. The probe sees each current inconclusive goal
+**after preceding transformations**; terminal goals bypass it. The
+{source}`existing regression <tests/unit/tactic_tests.cpp#L359-L384>` checks
+that changing one root to two changes the selected branch.
+
+Production selection uses richer analyses directly:
+[preprocessing profiles](preprocessing.md#profiles-and-repetition) inspect
+formula size, conjunct structure, and finite domains;
+{source}`solver dispatch <src/smt/solver_strategy.cpp#L50-L80>` inspects theory
+features, declared logic, and model requirements. Adaptive repetition compares
+reachable-term counts before and after a pass. These mechanisms do not use
+`Strategy::conditional` or export their measurements as named probes.
+Reusable structural probes and their composition are an
+[open lead](../leads/index.md#reusable-tactic-probes).
 
 (tactics-production)=
 ## From a session query to an engine

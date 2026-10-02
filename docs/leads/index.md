@@ -38,6 +38,37 @@ Every row retains its original numbered section in the
 implementation of the corresponding paper mechanism. None of these rows
 authorizes a default change without fresh correctness and performance evidence.
 
+## Reusable tactic probes
+
+The [conditional-tactic interface](../implementation/tactics.md#conditional-predicates-and-probes)
+already accepts custom predicates and named numeric/Boolean probes. The missing
+piece is a useful shared catalogue beyond `assertion_count()` and `at_most()`;
+production selection currently calls richer analyses directly.
+
+- Expose suitable existing measurements as named probes: reachable-term count,
+  conjunct structure, theory features, and finite-domain properties. Distinguish
+  assertion roots, conjunct occurrences, and unique terms explicitly.
+- Add reusable Boolean combinations and numeric comparisons. Give composed
+  probes stable identities including their parameters; canonical printing
+  currently records names, not the callable implementations.
+- Express appropriate profile choices through conditional strategies, preserving
+  logic admission, model reconstruction, and incremental restrictions. A size
+  heuristic must not replace a solver's applicability check.
+- Specify evaluation cost and lifetime. Read the current goal and executing
+  context, avoid formula mutation, and define cache validity across transformed
+  goals and different term managers. The existing
+  {source}`reachable-term counter <src/smt/formula_metrics.cpp#L11-L32>`
+  initializes scratch storage for the whole manager, so repeated scans can be
+  costly even for small surviving formulas.
+
+First expose existing decisions without changing defaults. Check probe values
+and selected branches after transformation and splitting, then compare with the
+current selectors on the supported UF and arithmetic benchmark sets. Record
+probe cost, branch counts, answers, validated models, solved counts, and PAR2;
+run the preprocessing fuzz gate before accepting behavior changes. Reject a
+selection policy whose analysis cost outweighs its benefit or which regresses
+correctness. No performance improvement is claimed for this proposal.
+
 ## Implemented or closed investigations
 
 | Original entry | Disposition |
