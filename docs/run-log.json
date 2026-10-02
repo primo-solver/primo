@@ -3,6 +3,217 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-10-02-symmetry-numeric-payload-repair",
+      "date": "2026-10-02",
+      "kind": "soundness-repair-qualification",
+      "commit": "a953edd5a345d8532141eea8c075d1f070772235",
+      "branch": "docs/public-repository-migration",
+      "baseline": "09749dd2bfecb6f8f296a83dc1939416c9ad7b01",
+      "scope": "D-006 exact numeric payload preservation in finite-choice symmetry comparison",
+      "decision": "Accept the D-006 correctness repair; six other page-review findings and publication approval remain open.",
+      "evidence_status": "current",
+      "environment": {
+        "execution": "SLURM compute allocations only; local editing, documentation builds, lint and evidence aggregation",
+        "compiler": "GCC 11.4.1 with matching provisioned C++ headers",
+        "build": "Release and Debug/AddressSanitizer; CaDiCaL 3.0.0-7b99c07",
+        "references": {
+          "z3": "5.1.0",
+          "cvc5": "1.3.4 f3b21c4"
+        },
+        "validator": "Dolmen 0.10",
+        "mutator": "YinYang/OpFuzz 0.3.0, scripts/seeded_opfuzz.py",
+        "asan_runtime": "Previously signature-verified libasan-11.5.0-14.el9 runtime from publication qualification; no system install",
+        "warnings": "Shared-filesystem clock-skew warnings during make; clean SLURM build and both complete test suites succeeded. No timing/performance claim."
+      },
+      "jobs": {
+        "baseline_build": "158804",
+        "baseline_reproduction": "158813",
+        "candidate_build": "158834",
+        "checks_and_asan": "158838",
+        "static": "158839",
+        "fuzz_array": "158840_0 through 158840_3",
+        "mutations": "158841"
+      },
+      "commands": {
+        "prepare": "python3 scripts/slurm_prepare_benchmark_workspace.py --build-via-slurm --reuse-dependencies --extra-target all --jobs 4 --cxx-header-manifest <matching-header-manifest> --require-tool contrib/local/bin/z3 --require-tool contrib/local/bin/cvc5 --require-tool contrib/local/bin/dolmen <connection-and-workspace-options>",
+        "preflight": "python3 scripts/slurm_prepare_benchmark_workspace.py --check-only --no-sync <same-workspace-and-tool-options>",
+        "baseline": "Build 09749dd through the helper; copy the three candidate benchmarks/smoke/qf_uflra/sat_symmetry_*.smt2 fixtures to tmp/symmetry in that workspace; PRIMO_WORKDIR=<workspace> sbatch scripts/qualification/symmetry_payloads/reproduce.sbatch (supply recipe from repair tree)",
+        "checks": "PRIMO_WORKDIR=<workspace> PRIMO_EXPECTED_REVISION=a953edd PRIMO_CMAKE_BIN=<cmake-bin> PRIMO_CXX_HEADER_MANIFEST=<matching-header-manifest> PRIMO_ASAN_RUNTIME_DIR=<verified-runtime-dir> sbatch scripts/qualification/symmetry_payloads/checks.sbatch",
+        "checks_detail": "ctest --test-dir build-slurm-rel --timeout 120 --output-on-failure -R primo_(preprocessing|boolean_solver)_tests; 12 regression/profile SAT-only Dolmen checks; make -o contrib-required check BUILD_DIR=build-slurm-rel; python3 scripts/check_doc_examples.py --solver build-slurm-rel/primo; make -o contrib-required asan-test ASAN_BUILD_DIR=build-public-asan",
+        "fuzz": "PRIMO_WORKDIR=<workspace> PRIMO_FUZZ_SEED_BASE=2026100300 PRIMO_FUZZ_OUT_DIR=results/symmetry-fuzz sbatch scripts/slurm_qf_uflra_fuzz_gate.sbatch",
+        "fuzz_references": "general: --ref z3; finite-choice QF_UF/QF_UFLRA: --ref z3 --ref cvc5. Primo build-slurm-rel/primo; finite-choice QF_UF additionally uses --preprocessing-mode=strong; other profiles default.",
+        "mutations": "PRIMO_WORKDIR=<workspace> PRIMO_EXPECTED_REVISION=a953edd PRIMO_YINYANG_BIN=<yinyang-bin> sbatch scripts/qualification/symmetry_payloads/mutations.sbatch",
+        "mutation_references": "Primo build-slurm-rel/primo --quiet versus z3 model_validate=true during OpFuzz; strict retained-input replay with check_solver_seed_corpus.py --ignore-declared-status --ref contrib/local/bin/z3, requiring decisive matching answers and zero exits.",
+        "models": "validate_model.py --solver build-slurm-rel/primo --solver-arg=--quiet --expect-sat --require-dolmen-pass --dolmen-arg=--strict=false; separate SAT-only replay, never included in speed measurements",
+        "static": "PRIMO_WORKDIR=<workspace> sbatch scripts/qualification/public_static.sbatch; all126 translation units through clang-tidy then misc-include-cleaner",
+        "orchestration": "New bounded recipes were copied to tmp/qualification in the frozen remote workspace and invoked there. No solver source was changed remotely. They are committed beside this record."
+      },
+      "resources": {
+        "build": {
+          "requested_cpus": 4,
+          "allocated_cpus": 4,
+          "memory": "8G",
+          "wall_limit": "30min"
+        },
+        "checks": {
+          "requested_cpus": 4,
+          "allocated_cpus": 4,
+          "memory": "8G",
+          "wall_limit": "40min",
+          "regression_solver_timeout_seconds": 10,
+          "regression_dolmen_timeout_seconds": 10
+        },
+        "static": {
+          "cpus": 8,
+          "memory": "16G",
+          "wall_limit": "45min"
+        },
+        "fuzz_per_shard": {
+          "requested_cpus": 1,
+          "allocated_cpus": 2,
+          "memory": "4G",
+          "wall_limit": "60min",
+          "answer_timeout_seconds": 5,
+          "model_solver_timeout_seconds": 10,
+          "dolmen_timeout_seconds": 10
+        },
+        "mutations": {
+          "requested_cpus": 1,
+          "allocated_cpus": 2,
+          "memory": "4G",
+          "wall_limit": "15min",
+          "campaign_seconds": 300,
+          "generation_solver_timeout_seconds": 5,
+          "strict_mutant_replay_timeout_seconds": 10,
+          "original_seed_timeout_seconds": 30,
+          "model_solver_timeout_seconds": 30,
+          "dolmen_timeout_seconds": 30
+        },
+        "baseline_reproduction": {
+          "requested_cpus": 1,
+          "allocated_cpus": 2,
+          "memory": "2G",
+          "wall_limit": "3min",
+          "solver_timeout_seconds": 10
+        }
+      },
+      "seeds": {
+        "general": [
+          2026100300,
+          2026100301,
+          2026100302,
+          2026100303
+        ],
+        "finite_qf_uf": [
+          2026200300,
+          2026200301,
+          2026200302,
+          2026200303
+        ],
+        "finite_qf_uflra": [
+          2026300300,
+          2026300301,
+          2026300302,
+          2026300303
+        ],
+        "mutations": 202610021,
+        "mutations_per_seed": 20,
+        "mutation_config": "scripts/fuzz_configs/model_linear_ops.txt",
+        "mutation_sources": [
+          "benchmarks/smoke/qf_uflra/sat_symmetry_numeric_values.smt2",
+          "benchmarks/smoke/qf_uflra/sat_symmetry_coefficients.smt2",
+          "benchmarks/smoke/qf_uflra/sat_symmetry_equal_numeric_values.smt2",
+          "benchmarks/seeds/qf_uflra_scale/mathsat_randomdecoupled_pb_real_40_80_60_01.smt2",
+          "benchmarks/seeds/qf_uflra_scale/mathsat_randomdecoupled_pb_real_40_80_60_36.smt2"
+        ]
+      },
+      "binaries": {
+        "build-slurm-rel/primo": "3b7fda0204c62d52078ca4e29de6364595d400ac35034fd09bd9862ace3d4b46",
+        "contrib/local/bin/z3": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+        "contrib/local/bin/cvc5": "4a93548398445cf1a774655583f5465b156c26f63f2cdfb94f4728fdf7adde46",
+        "contrib/local/bin/dolmen": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+        "build-public-asan/primo": "39c2a6e4ff474a2497184d683bd994dff45d00aa3c61dfbd760144517184d760"
+      },
+      "results": {
+        "baseline": "Two satisfiable regressions returned false UNSAT on09749dd under default, Basic0, and Basic0without precedence. Symmetry-off and both references returned SAT. The equal-payload control remained SAT. CandidateSAT in all12 fixture/profile combinations, all independently model-checked.",
+        "fresh": {
+          "generated_pass": 4000,
+          "mutant_pass": 100,
+          "wrong_answer": 0,
+          "crash": 0,
+          "parser_or_type_error": 0,
+          "timeout": 0,
+          "unsupported": 0,
+          "reference_disagreement": 0,
+          "invalid_model": 0,
+          "dolmen_pass": 2095,
+          "model_coverage": "2011 generated mixed/finite-choice arithmetic SAT cases +68 SAT mutants +4 SAT seeds +12 regression/profile models. Finite-choice QF_UF: answer comparison only."
+        },
+        "checks": {
+          "release_ctest": 43,
+          "asan_ctest": 43,
+          "python_tests": 216,
+          "documentation_examples": 12,
+          "direct_pass_calls": 40,
+          "integration_sat_assertions": 18,
+          "independent_regression_models": 12,
+          "status": "all passed"
+        },
+        "static": {
+          "translation_units": 126,
+          "clang_tidy_diagnostics": 18,
+          "include_cleaner_advisories": 404,
+          "errors": 0,
+          "disposition": "Same diagnostic baseline as the initial snapshot and preceding publication qualification. Two ownership-analysis reports and sixteen guarded-enum-probe reports reviewed; no new blocking diagnostic. Include advisories: twenty paired self-headers retained; variant is needed for std::get; remaining383 concern transitive includes. This is not a warning-free claim."
+        }
+      },
+      "superseded_attempt": {
+        "candidate": "2794606ab52a1cbcfe069c80a22e28803b6d4881",
+        "jobs": {
+          "build": "158816",
+          "checks": "158823",
+          "static": "158824",
+          "fuzz_array": "158825_0 through 158825_3",
+          "mutations": "158826"
+        },
+        "failure": "checks exited8 because the new integration fixtures were resolved from the build directory without ../. The direct pass tests passed. This was test setup, not a solver result. Fix the three paths and rerun all gates on a953edd; solver src/ byte-identical between snapshots. This attempt is not the accepted qualification.",
+        "completed_provisional_results": {
+          "generated_pass": 4000,
+          "generated_sat_models": 2011,
+          "mutant_pass": 100,
+          "mutant_sat_models": 68,
+          "seed_pass": 5,
+          "seed_sat_models": 4,
+          "wrong_answer": 0,
+          "crash": 0,
+          "parser_or_type_error": 0,
+          "timeout": 0,
+          "unsupported": 0,
+          "reference_disagreement": 0
+        },
+        "configuration": "Same generator/reference commands, seeds, counts and limits as selected run. Initial static18/404 advisories; no independent regression models or full checks reached."
+      },
+      "artifacts": {
+        "summary": "docs/coverage/symmetry-payload-qualification.json",
+        "summary_sha256": "a8db3aadbab2a2173b567a0a5e7a8957a4603ae15571359822c8a1cd0f5aa132",
+        "raw_root": "results/symmetry-payloads",
+        "candidate_results": "results/symmetry-payloads/qualified/results",
+        "failure_artifacts": "results/symmetry-payloads/qualified/results/symmetry-mutations/bugs (empty); generated cases and individual outputs retained in fuzz corpora",
+        "archives": {
+          "checks.tar.gz": "1bf960c78bece8cb06826bafa5d6512ea7b16ac8646e8cb2183898ba96bcd709",
+          "fuzz-and-mutations.tar.gz": "b827f77fde2f41de447a2e7ee74df72a9385483e1e15255929dd6b29ce8e9681",
+          "initial-candidate.tar.gz": "fce55afacaa20384e38ba51d22b91b02bda7061cf7e0168a51b3b3f2ae5c1e9a",
+          "static.tar.gz": "d9971fa170ef0be3a0da160ce8d30f1e2966e8f8a7384aa9456fa76ab225f157"
+        }
+      },
+      "limitations": [
+        "Bounded correctness repair, not a performance/default promotion or exhaustive all-logic proof.",
+        "The finite-choice templates deliberately repeat: 500cases in each finite corpus yield42 distinct inputs; general3000 yield2992; mutations100 yield80.",
+        "No new general symmetry detector or linear DAG normalization is implemented.",
+        "This qualification closes only D-006. Other six audit findings and publication requirements remain open."
+      ]
+    },
+    {
       "id": "2026-10-02-publication-qualification",
       "date": "2026-10-02",
       "kind": "correctness-qualification",

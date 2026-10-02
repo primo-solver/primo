@@ -1,7 +1,7 @@
 # Public launch preparation
 
-**Status: publication blocked by an unresolved correctness finding; owner review
-and GitHub handoff also pending.**
+**Status: symmetry soundness bug repaired and qualified; six review follow-ups,
+owner review and GitHub handoff remain pending.**
 
 The first launch publishes the repository and manual as a research snapshot.
 A new numbered release, results-repository/SQLite migration, and solver research
@@ -17,7 +17,7 @@ Repository visibility has not been changed.
 | Editable source archives and dependency notices | Prepared and tested, including documentation rebuild without Git and a SLURM source-archive build. Dependency notices travel with rendered HTML. |
 | Public CI and Pages workflow | Prepared and actionlint-checked; actual GitHub runs and settings pending. |
 | Correctness qualification | [Recorded](../evidence/publication.md): 8,000 generated inputs/sessions, 14 timeouts, 212 real-seed mutants, independent ground-model checks, release and ASan tests. |
-| Page-by-page source review | {ref}`Symmetry payload finding <symmetry-payloads>` requires reproduction, repair and fresh qualification. Recorded samples do not establish correctness of the affected transformation. |
+| Page-by-page source review | {ref}`Symmetry payload finding <symmetry-payloads>` reproduced and repaired; fresh SLURM tests, fuzzing and model checks passed. Six other review findings remain open. |
 | Local Git publication audit | [Recorded](../coverage/publication-audit.json); no secret detections or committed reading PDFs in the inspected named history. Hosted assets remain unaudited. |
 | Consolidated reader acceptance | Pending owner review of the [assembled manual](../review.md). |
 | Institutional/contributor publication authorization | Pending owner resolution. |
@@ -27,8 +27,9 @@ Repository visibility has not been changed.
 ## Remaining publication work
 
 Resolve the [correctness findings](../coverage/page-review.md#correctness-follow-ups)
-before treating this candidate as ready to publish. In particular, the symmetry
-invariance check omits numeric payloads; documentation edits do not repair it.
+before treating this candidate as ready to publish. The symmetry defect is
+closed; resource-budget enforcement, analyzer scope, model-validation selection,
+tuning exit-status handling and probe-name identity still need follow-up.
 
 The owner must resolve the rights inventory, accept the manual, and review hosted
 branches, attachments, release assets and Actions logs before changing visibility.

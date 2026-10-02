@@ -366,7 +366,8 @@ checking only the two generating permutations {cite:p}`deharbe2011symmetry`.
 The value-precedence rule for fixed terms is described in the design note.
 General graph-automorphism detection is outside Primo's implementation.
 
-The comparison must preserve every semantic term field: kind, sort, symbol,
+The {project}`repaired comparison <src/smt/preprocessing.cpp#L2036-L2070>`
+must preserve every semantic term field: kind, sort, symbol,
 Boolean value, exact rational value and children. The rational field stores
 numeric literals, multiplication coefficients and integer `div`/`mod` divisors.
 It is serialized using the canonical integer-or-fraction spelling of
@@ -376,7 +377,7 @@ three commutative kinds above have their children reordered.
 
 This repairs the payload omission found in the page-by-page review. The
 {ref}`repair and qualification record <symmetry-payloads>` retains the SAT
-counterexample and the outstanding checks. The proof obligation is structural:
+counterexample and the completed correctness checks. The proof obligation is structural:
 equal keys must identify the same syntax after these allowed operations. The
 balanced child encoding and full payloads distinguish other terms. Memo tables
 and strings belong to one comparison; it creates no terms and changes no solver

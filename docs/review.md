@@ -1,7 +1,7 @@
 # Documentation closing review
 
-**Status: page-by-page technical review completed; correctness follow-up blocks
-publication readiness. Consolidated reader acceptance remains pending.**
+**Status: page-by-page technical review completed and symmetry soundness bug
+repaired. Six implementation/tool follow-ups and reader acceptance remain pending.**
 
 The replacement manual is now the main book. `make docs-serve` previews the
 assembled current and historical books at `http://localhost:8000`. Publication
@@ -11,11 +11,10 @@ is a separate operation; changing the source tree does not deploy a website.
 
 The [2 October page-by-page review](coverage/page-review.md) covers all 84 pages
 of the current manual at its baseline revision, records the corrections and
-lists unresolved source findings. In particular, the
-{ref}`symmetry comparison omits numeric payloads <symmetry-payloads>`; two
-independent source reviews traced a potentially unsound restriction. No solver
-reproduction or repair is claimed. The earlier qualification sample does not
-clear this finding.
+lists source findings. The {ref}`numeric-payload omission in symmetry comparison
+<symmetry-payloads>` was confirmed to produce false UNSAT answers, then repaired
+and qualified on SLURM with regressions, differential fuzzing and separate model
+checks. Six supporting-tool and resource-control findings remain open.
 
 The [preservation audit](coverage/index.md) accounts for 91 old pages, 1,150
 section headings, 126 supporting entries, and 1,306 original URL targets.

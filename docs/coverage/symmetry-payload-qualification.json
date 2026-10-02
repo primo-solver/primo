@@ -1,0 +1,493 @@
+{
+  "candidate": "a953edd5a345d8532141eea8c075d1f070772235",
+  "baseline": "09749dd2bfecb6f8f296a83dc1939416c9ad7b01",
+  "scope": "D-006 exact numeric payload preservation in finite-choice symmetry comparison",
+  "baseline_answers": [
+    {
+      "input": "sat_symmetry_coefficients.smt2",
+      "profile": "default",
+      "exit": "0",
+      "answer": "unsat"
+    },
+    {
+      "input": "sat_symmetry_coefficients.smt2",
+      "profile": "basic-zero",
+      "exit": "0",
+      "answer": "unsat"
+    },
+    {
+      "input": "sat_symmetry_coefficients.smt2",
+      "profile": "basic-zero-no-precedence",
+      "exit": "0",
+      "answer": "unsat"
+    },
+    {
+      "input": "sat_symmetry_coefficients.smt2",
+      "profile": "symmetry-off",
+      "exit": "0",
+      "answer": "sat"
+    },
+    {
+      "input": "sat_symmetry_coefficients.smt2",
+      "profile": "z3",
+      "exit": "0",
+      "answer": "sat"
+    },
+    {
+      "input": "sat_symmetry_coefficients.smt2",
+      "profile": "cvc5",
+      "exit": "0",
+      "answer": "sat"
+    },
+    {
+      "input": "sat_symmetry_equal_numeric_values.smt2",
+      "profile": "default",
+      "exit": "0",
+      "answer": "sat"
+    },
+    {
+      "input": "sat_symmetry_equal_numeric_values.smt2",
+      "profile": "basic-zero",
+      "exit": "0",
+      "answer": "sat"
+    },
+    {
+      "input": "sat_symmetry_equal_numeric_values.smt2",
+      "profile": "basic-zero-no-precedence",
+      "exit": "0",
+      "answer": "sat"
+    },
+    {
+      "input": "sat_symmetry_equal_numeric_values.smt2",
+      "profile": "symmetry-off",
+      "exit": "0",
+      "answer": "sat"
+    },
+    {
+      "input": "sat_symmetry_equal_numeric_values.smt2",
+      "profile": "z3",
+      "exit": "0",
+      "answer": "sat"
+    },
+    {
+      "input": "sat_symmetry_equal_numeric_values.smt2",
+      "profile": "cvc5",
+      "exit": "0",
+      "answer": "sat"
+    },
+    {
+      "input": "sat_symmetry_numeric_values.smt2",
+      "profile": "default",
+      "exit": "0",
+      "answer": "unsat"
+    },
+    {
+      "input": "sat_symmetry_numeric_values.smt2",
+      "profile": "basic-zero",
+      "exit": "0",
+      "answer": "unsat"
+    },
+    {
+      "input": "sat_symmetry_numeric_values.smt2",
+      "profile": "basic-zero-no-precedence",
+      "exit": "0",
+      "answer": "unsat"
+    },
+    {
+      "input": "sat_symmetry_numeric_values.smt2",
+      "profile": "symmetry-off",
+      "exit": "0",
+      "answer": "sat"
+    },
+    {
+      "input": "sat_symmetry_numeric_values.smt2",
+      "profile": "z3",
+      "exit": "0",
+      "answer": "sat"
+    },
+    {
+      "input": "sat_symmetry_numeric_values.smt2",
+      "profile": "cvc5",
+      "exit": "0",
+      "answer": "sat"
+    }
+  ],
+  "fuzz": {
+    "general": {
+      "cases": 3000,
+      "distinct_inputs": 2992,
+      "outcomes": {
+        "PASS": 3000
+      },
+      "answers": {
+        "unsat": 1241,
+        "sat": 1759
+      },
+      "dolmen_pass": 1759,
+      "model_coverage": "all successful SAT rows replayed separately"
+    },
+    "finite-qf-uf": {
+      "cases": 500,
+      "distinct_inputs": 42,
+      "outcomes": {
+        "PASS": 500
+      },
+      "answers": {
+        "sat": 252,
+        "unsat": 248
+      },
+      "dolmen_pass": 0,
+      "model_coverage": "answer comparison only; no Dolmen stage for this corpus"
+    },
+    "finite-qf-uflra": {
+      "cases": 500,
+      "distinct_inputs": 42,
+      "outcomes": {
+        "PASS": 500
+      },
+      "answers": {
+        "sat": 252,
+        "unsat": 248
+      },
+      "dolmen_pass": 252,
+      "model_coverage": "all successful SAT rows replayed separately"
+    }
+  },
+  "mutations": {
+    "seed": {
+      "cases": 5,
+      "distinct_inputs": 5,
+      "outcomes": {
+        "PASS": 5
+      },
+      "answers": {
+        "unsat": 1,
+        "sat": 4
+      },
+      "dolmen_pass": 4
+    },
+    "mutant": {
+      "cases": 100,
+      "distinct_inputs": 80,
+      "outcomes": {
+        "PASS": 100
+      },
+      "answers": {
+        "sat": 68,
+        "unsat": 32
+      },
+      "dolmen_pass": 68
+    }
+  },
+  "summary_files": {
+    "symmetry-fuzz/task-0/finite-qf-uf/summary.csv": "74417ff7d8b387525a49030a6724a16993e4765c9cfb69724c47519dccdeda93",
+    "symmetry-fuzz/task-0/finite-qf-uflra/summary.csv": "0a3dcfb67ca3a124a99069ef6eb8f27a92a10831666adfedaf230926c4c6acc4",
+    "symmetry-fuzz/task-0/general/summary.csv": "055bd63c0d4b3c185112c797fdd3da2a172839bcd7a640959b5668d9da779d13",
+    "symmetry-fuzz/task-0/model-validation/finite-qf-uflra/summary.csv": "1a9065349ffa2f4c020f7e896c75955d43a124d751fed9b712e92658940c9e33",
+    "symmetry-fuzz/task-0/model-validation/general/summary.csv": "9b104d6f4beb806f12a7f1ee4a063d698ac1fa98af38d2579acb9a3878b0863b",
+    "symmetry-fuzz/task-1/finite-qf-uf/summary.csv": "355a052daa9b518de871fa0502c9d7b987deeb5340e480ef6df51e3b9fcd67c2",
+    "symmetry-fuzz/task-1/finite-qf-uflra/summary.csv": "cd6ce4764c90157a5bfd83c1696458b5c0c7acb953e3445c8a37534baf645399",
+    "symmetry-fuzz/task-1/general/summary.csv": "f6de71467822850b49a55dc4ddb02e5cd31dfe317b1971f7dae53e48111f922f",
+    "symmetry-fuzz/task-1/model-validation/finite-qf-uflra/summary.csv": "c0030c853d8713fe2aedfb56c7a9bcc99fd5aa7517a6273633d04cccfc845a25",
+    "symmetry-fuzz/task-1/model-validation/general/summary.csv": "58bfdd85ec657e22130d887531acd7ca2d55fadb3037ef710f67dcdd53867697",
+    "symmetry-fuzz/task-2/finite-qf-uf/summary.csv": "b07db21d4c24d740dcc3544262c2d07e7b3c2bc558369f7731acda01aa58c0c9",
+    "symmetry-fuzz/task-2/finite-qf-uflra/summary.csv": "e8dc59ee35de27f8235730dbebaaa29aeb4842ce907a3f38947da39a5452bb1d",
+    "symmetry-fuzz/task-2/general/summary.csv": "1a4dc16c67365728b2c82f6f4525ab25d1fd18498fc76255445dac4e64972506",
+    "symmetry-fuzz/task-2/model-validation/finite-qf-uflra/summary.csv": "7b149e8a474482311d1fba9287a3f74aa283857afdb6880353be270ee31066bf",
+    "symmetry-fuzz/task-2/model-validation/general/summary.csv": "f355e9b5936e55c64cd0727d8d7f6e66edfee1511dd538b273188b3eda0ee7d5",
+    "symmetry-fuzz/task-3/finite-qf-uf/summary.csv": "01bcf990ec8b49a86550815458099b1aac2f241a5fce5f55eed6c0daaad06464",
+    "symmetry-fuzz/task-3/finite-qf-uflra/summary.csv": "22e1e006e159fbb0bed9b7b7e1fa23e625eb8e44fc74729e8a0ffae326b053da",
+    "symmetry-fuzz/task-3/general/summary.csv": "ddc060101cb98a6fd3d77946b9e2d1208474726d5551079eb947f775d193d4b5",
+    "symmetry-fuzz/task-3/model-validation/finite-qf-uflra/summary.csv": "fa13ed82be419f161e94fa5291cea9208229f8e43e3ca34826168bb1ec583776",
+    "symmetry-fuzz/task-3/model-validation/general/summary.csv": "66242fe86ecfc10d4445b8a9e23fee09a069b2e77bfab52c1e457d097b9f6dfa",
+    "symmetry-mutations/mutant-answers.csv": "5e146da0d6bf7281058964a7ca79912a292e213d993afa0f6f10819427cd59f7",
+    "symmetry-mutations/mutant-models/summary.csv": "de1896bb06749f65a2b592fb060f292b9ca4f8a6164f23fa78b2eeb7b5ed54e6",
+    "symmetry-mutations/seed-answers.csv": "aa188cc9d41f31daa51fd9b61081fb522e89b41a1e47fab6d62508800c48161e",
+    "symmetry-mutations/seed-models/summary.csv": "820885e06a9021a8e2a720bad589e798112ce5a2e17618942271d73a756a3484",
+    "symmetry-checks/models-basic-zero/summary.csv": "1c2e70ede35a9b3f226b37ea1bdac3e00f90cc11fc56ba2c0d26a79a8ef066c3",
+    "symmetry-checks/models-basic-zero-no-precedence/summary.csv": "5b2c342067446500ad2fe6a0ea0b7fd41cd0f64497e1e5964a103e69aa4a86be",
+    "symmetry-checks/models-default/summary.csv": "a2b058a8a7ef3e6ec2ea420639dcda4250baa4f66dc0d1cd7384a864619346d2",
+    "symmetry-checks/models-symmetry-off/summary.csv": "a7fdc981edac9d51a3e9e6c77399f2a6b78a66265f7b7beaed775d6a64d85a24"
+  },
+  "date": "2026-10-02",
+  "decision": "Accept the D-006 correctness repair; six other page-review findings and publication approval remain open.",
+  "environment": {
+    "execution": "SLURM compute allocations only; local editing, documentation builds, lint and evidence aggregation",
+    "compiler": "GCC 11.4.1 with matching provisioned C++ headers",
+    "build": "Release and Debug/AddressSanitizer; CaDiCaL 3.0.0-7b99c07",
+    "references": {
+      "z3": "5.1.0",
+      "cvc5": "1.3.4 f3b21c4"
+    },
+    "validator": "Dolmen 0.10",
+    "mutator": "YinYang/OpFuzz 0.3.0, scripts/seeded_opfuzz.py",
+    "asan_runtime": "Previously signature-verified libasan-11.5.0-14.el9 runtime from publication qualification; no system install",
+    "warnings": "Shared-filesystem clock-skew warnings during make; clean SLURM build and both complete test suites succeeded. No timing/performance claim."
+  },
+  "jobs": {
+    "baseline_build": "158804",
+    "baseline_reproduction": "158813",
+    "candidate_build": "158834",
+    "checks_and_asan": "158838",
+    "static": "158839",
+    "fuzz_array": "158840_0 through 158840_3",
+    "mutations": "158841"
+  },
+  "job_status": "All selected jobs COMPLETED with exit code 0:0. Superseded attempt is separately listed below.",
+  "commands": {
+    "prepare": "python3 scripts/slurm_prepare_benchmark_workspace.py --build-via-slurm --reuse-dependencies --extra-target all --jobs 4 --cxx-header-manifest <matching-header-manifest> --require-tool contrib/local/bin/z3 --require-tool contrib/local/bin/cvc5 --require-tool contrib/local/bin/dolmen <connection-and-workspace-options>",
+    "preflight": "python3 scripts/slurm_prepare_benchmark_workspace.py --check-only --no-sync <same-workspace-and-tool-options>",
+    "baseline": "Build 09749dd through the helper; copy the three candidate benchmarks/smoke/qf_uflra/sat_symmetry_*.smt2 fixtures to tmp/symmetry in that workspace; PRIMO_WORKDIR=<workspace> sbatch scripts/qualification/symmetry_payloads/reproduce.sbatch (supply recipe from repair tree)",
+    "checks": "PRIMO_WORKDIR=<workspace> PRIMO_EXPECTED_REVISION=a953edd PRIMO_CMAKE_BIN=<cmake-bin> PRIMO_CXX_HEADER_MANIFEST=<matching-header-manifest> PRIMO_ASAN_RUNTIME_DIR=<verified-runtime-dir> sbatch scripts/qualification/symmetry_payloads/checks.sbatch",
+    "checks_detail": "ctest --test-dir build-slurm-rel --timeout 120 --output-on-failure -R primo_(preprocessing|boolean_solver)_tests; 12 regression/profile SAT-only Dolmen checks; make -o contrib-required check BUILD_DIR=build-slurm-rel; python3 scripts/check_doc_examples.py --solver build-slurm-rel/primo; make -o contrib-required asan-test ASAN_BUILD_DIR=build-public-asan",
+    "fuzz": "PRIMO_WORKDIR=<workspace> PRIMO_FUZZ_SEED_BASE=2026100300 PRIMO_FUZZ_OUT_DIR=results/symmetry-fuzz sbatch scripts/slurm_qf_uflra_fuzz_gate.sbatch",
+    "fuzz_references": "general: --ref z3; finite-choice QF_UF/QF_UFLRA: --ref z3 --ref cvc5. Primo build-slurm-rel/primo; finite-choice QF_UF additionally uses --preprocessing-mode=strong; other profiles default.",
+    "mutations": "PRIMO_WORKDIR=<workspace> PRIMO_EXPECTED_REVISION=a953edd PRIMO_YINYANG_BIN=<yinyang-bin> sbatch scripts/qualification/symmetry_payloads/mutations.sbatch",
+    "mutation_references": "Primo build-slurm-rel/primo --quiet versus z3 model_validate=true during OpFuzz; strict retained-input replay with check_solver_seed_corpus.py --ignore-declared-status --ref contrib/local/bin/z3, requiring decisive matching answers and zero exits.",
+    "models": "validate_model.py --solver build-slurm-rel/primo --solver-arg=--quiet --expect-sat --require-dolmen-pass --dolmen-arg=--strict=false; separate SAT-only replay, never included in speed measurements",
+    "static": "PRIMO_WORKDIR=<workspace> sbatch scripts/qualification/public_static.sbatch; all126 translation units through clang-tidy then misc-include-cleaner",
+    "orchestration": "New bounded recipes were copied to tmp/qualification in the frozen remote workspace and invoked there. No solver source was changed remotely. They are committed beside this record."
+  },
+  "resources": {
+    "build": {
+      "requested_cpus": 4,
+      "allocated_cpus": 4,
+      "memory": "8G",
+      "wall_limit": "30min"
+    },
+    "checks": {
+      "requested_cpus": 4,
+      "allocated_cpus": 4,
+      "memory": "8G",
+      "wall_limit": "40min",
+      "regression_solver_timeout_seconds": 10,
+      "regression_dolmen_timeout_seconds": 10
+    },
+    "static": {
+      "cpus": 8,
+      "memory": "16G",
+      "wall_limit": "45min"
+    },
+    "fuzz_per_shard": {
+      "requested_cpus": 1,
+      "allocated_cpus": 2,
+      "memory": "4G",
+      "wall_limit": "60min",
+      "answer_timeout_seconds": 5,
+      "model_solver_timeout_seconds": 10,
+      "dolmen_timeout_seconds": 10
+    },
+    "mutations": {
+      "requested_cpus": 1,
+      "allocated_cpus": 2,
+      "memory": "4G",
+      "wall_limit": "15min",
+      "campaign_seconds": 300,
+      "generation_solver_timeout_seconds": 5,
+      "strict_mutant_replay_timeout_seconds": 10,
+      "original_seed_timeout_seconds": 30,
+      "model_solver_timeout_seconds": 30,
+      "dolmen_timeout_seconds": 30
+    },
+    "baseline_reproduction": {
+      "requested_cpus": 1,
+      "allocated_cpus": 2,
+      "memory": "2G",
+      "wall_limit": "3min",
+      "solver_timeout_seconds": 10
+    }
+  },
+  "seeds": {
+    "general": [
+      2026100300,
+      2026100301,
+      2026100302,
+      2026100303
+    ],
+    "finite_qf_uf": [
+      2026200300,
+      2026200301,
+      2026200302,
+      2026200303
+    ],
+    "finite_qf_uflra": [
+      2026300300,
+      2026300301,
+      2026300302,
+      2026300303
+    ],
+    "mutations": 202610021,
+    "mutations_per_seed": 20,
+    "mutation_config": "scripts/fuzz_configs/model_linear_ops.txt",
+    "mutation_sources": [
+      "benchmarks/smoke/qf_uflra/sat_symmetry_numeric_values.smt2",
+      "benchmarks/smoke/qf_uflra/sat_symmetry_coefficients.smt2",
+      "benchmarks/smoke/qf_uflra/sat_symmetry_equal_numeric_values.smt2",
+      "benchmarks/seeds/qf_uflra_scale/mathsat_randomdecoupled_pb_real_40_80_60_01.smt2",
+      "benchmarks/seeds/qf_uflra_scale/mathsat_randomdecoupled_pb_real_40_80_60_36.smt2"
+    ]
+  },
+  "binaries": {
+    "build-slurm-rel/primo": "3b7fda0204c62d52078ca4e29de6364595d400ac35034fd09bd9862ace3d4b46",
+    "contrib/local/bin/z3": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+    "contrib/local/bin/cvc5": "4a93548398445cf1a774655583f5465b156c26f63f2cdfb94f4728fdf7adde46",
+    "contrib/local/bin/dolmen": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+    "build-public-asan/primo": "39c2a6e4ff474a2497184d683bd994dff45d00aa3c61dfbd760144517184d760"
+  },
+  "baseline_binary_sha256": "613dc2894d330b698d10ee17e606e5caee8fe3aaaa20f52025db36b4eeb9ea4e",
+  "regressions": {
+    "basic-zero": [
+      {
+        "input": "sat_symmetry_coefficients.smt2",
+        "answer": "sat",
+        "model": "pass",
+        "validator": "dolmen"
+      },
+      {
+        "input": "sat_symmetry_equal_numeric_values.smt2",
+        "answer": "sat",
+        "model": "pass",
+        "validator": "dolmen"
+      },
+      {
+        "input": "sat_symmetry_numeric_values.smt2",
+        "answer": "sat",
+        "model": "pass",
+        "validator": "dolmen"
+      }
+    ],
+    "basic-zero-no-precedence": [
+      {
+        "input": "sat_symmetry_coefficients.smt2",
+        "answer": "sat",
+        "model": "pass",
+        "validator": "dolmen"
+      },
+      {
+        "input": "sat_symmetry_equal_numeric_values.smt2",
+        "answer": "sat",
+        "model": "pass",
+        "validator": "dolmen"
+      },
+      {
+        "input": "sat_symmetry_numeric_values.smt2",
+        "answer": "sat",
+        "model": "pass",
+        "validator": "dolmen"
+      }
+    ],
+    "default": [
+      {
+        "input": "sat_symmetry_coefficients.smt2",
+        "answer": "sat",
+        "model": "pass",
+        "validator": "dolmen"
+      },
+      {
+        "input": "sat_symmetry_equal_numeric_values.smt2",
+        "answer": "sat",
+        "model": "pass",
+        "validator": "dolmen"
+      },
+      {
+        "input": "sat_symmetry_numeric_values.smt2",
+        "answer": "sat",
+        "model": "pass",
+        "validator": "dolmen"
+      }
+    ],
+    "symmetry-off": [
+      {
+        "input": "sat_symmetry_coefficients.smt2",
+        "answer": "sat",
+        "model": "pass",
+        "validator": "dolmen"
+      },
+      {
+        "input": "sat_symmetry_equal_numeric_values.smt2",
+        "answer": "sat",
+        "model": "pass",
+        "validator": "dolmen"
+      },
+      {
+        "input": "sat_symmetry_numeric_values.smt2",
+        "answer": "sat",
+        "model": "pass",
+        "validator": "dolmen"
+      }
+    ]
+  },
+  "checks": {
+    "release_ctest": 43,
+    "asan_ctest": 43,
+    "python_tests": 216,
+    "documentation_examples": 12,
+    "direct_pass_calls": 40,
+    "integration_sat_assertions": 18,
+    "independent_regression_models": 12,
+    "status": "all passed"
+  },
+  "static_analysis": {
+    "translation_units": 126,
+    "clang_tidy_diagnostics": 18,
+    "include_cleaner_advisories": 404,
+    "errors": 0,
+    "disposition": "Same diagnostic baseline as the initial snapshot and preceding publication qualification. Two ownership-analysis reports and sixteen guarded-enum-probe reports reviewed; no new blocking diagnostic. Include advisories: twenty paired self-headers retained; variant is needed for std::get; remaining383 concern transitive includes. This is not a warning-free claim."
+  },
+  "fresh_outcomes": {
+    "generated_pass": 4000,
+    "mutant_pass": 100,
+    "wrong_answer": 0,
+    "crash": 0,
+    "parser_or_type_error": 0,
+    "timeout": 0,
+    "unsupported": 0,
+    "reference_disagreement": 0,
+    "invalid_model": 0,
+    "dolmen_pass": 2095,
+    "model_coverage": "2011 generated mixed/finite-choice arithmetic SAT cases +68 SAT mutants +4 SAT seeds +12 regression/profile models. Finite-choice QF_UF: answer comparison only."
+  },
+  "superseded_attempt": {
+    "candidate": "2794606ab52a1cbcfe069c80a22e28803b6d4881",
+    "jobs": {
+      "build": "158816",
+      "checks": "158823",
+      "static": "158824",
+      "fuzz_array": "158825_0 through 158825_3",
+      "mutations": "158826"
+    },
+    "failure": "checks exited8 because the new integration fixtures were resolved from the build directory without ../. The direct pass tests passed. This was test setup, not a solver result. Fix the three paths and rerun all gates on a953edd; solver src/ byte-identical between snapshots. This attempt is not the accepted qualification.",
+    "completed_provisional_results": {
+      "generated_pass": 4000,
+      "generated_sat_models": 2011,
+      "mutant_pass": 100,
+      "mutant_sat_models": 68,
+      "seed_pass": 5,
+      "seed_sat_models": 4,
+      "wrong_answer": 0,
+      "crash": 0,
+      "parser_or_type_error": 0,
+      "timeout": 0,
+      "unsupported": 0,
+      "reference_disagreement": 0
+    },
+    "configuration": "Same generator/reference commands, seeds, counts and limits as selected run. Initial static18/404 advisories; no independent regression models or full checks reached."
+  },
+  "artifacts": {
+    "raw_root": "results/symmetry-payloads",
+    "candidate_results": "results/symmetry-payloads/qualified/results",
+    "failure_artifacts": "results/symmetry-payloads/qualified/results/symmetry-mutations/bugs (empty); generated cases and individual outputs retained in fuzz corpora",
+    "archives": {
+      "checks.tar.gz": "1bf960c78bece8cb06826bafa5d6512ea7b16ac8646e8cb2183898ba96bcd709",
+      "fuzz-and-mutations.tar.gz": "b827f77fde2f41de447a2e7ee74df72a9385483e1e15255929dd6b29ce8e9681",
+      "initial-candidate.tar.gz": "fce55afacaa20384e38ba51d22b91b02bda7061cf7e0168a51b3b3f2ae5c1e9a",
+      "static.tar.gz": "d9971fa170ef0be3a0da160ce8d30f1e2966e8f8a7384aa9456fa76ab225f157"
+    }
+  },
+  "limitations": [
+    "Bounded correctness repair, not a performance/default promotion or exhaustive all-logic proof.",
+    "The finite-choice templates deliberately repeat: 500cases in each finite corpus yield42 distinct inputs; general3000 yield2992; mutations100 yield80.",
+    "No new general symmetry detector or linear DAG normalization is implemented.",
+    "This qualification closes only D-006. Other six audit findings and publication requirements remain open."
+  ]
+}

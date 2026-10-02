@@ -68,7 +68,7 @@ The 84-page baseline excludes this newly added review record.
 | [Frontend: syntax, names, and typed terms](../implementation/frontend.md) | No required edits | — |
 | [Sessions: scopes, replay, and retained engines](../implementation/sessions.md) | No required edits | — |
 | [Goals, tactics, and strategies](../implementation/tactics.md) | Corrected | C-001, C-003; C-004 open |
-| [Preprocessing](../implementation/preprocessing.md) | Corrected | D-001–D-005; D-006 open |
+| [Preprocessing](../implementation/preprocessing.md) | Corrected | D-001–D-005; D-006 resolved below |
 | [Boolean abstraction and SAT integration](../implementation/sat.md) | No required edits | — |
 | [DPLL(T): connecting Boolean search and theory reasoning](../implementation/dpllt.md) | No required edits | — |
 | [EUF: congruence, explanations, and rollback](../implementation/euf.md) | No required edits | — |
@@ -125,8 +125,8 @@ The 84-page baseline excludes this newly added review record.
 
 | Page | Review outcome | Findings |
 | --- | --- | --- |
-| [Public launch preparation](../work/publication.md) | Corrected | B-008; D-006 hold |
-| [GitHub publication handoff](../work/github-handoff.md) | Corrected | B-008; D-006 hold |
+| [Public launch preparation](../work/publication.md) | Corrected | B-008; D-006 resolved below |
+| [GitHub publication handoff](../work/github-handoff.md) | Corrected | B-008; D-006 resolved below |
 | [Documentation replacement](../work/documentation.md) | Corrected | B-007 |
 | [Evidence work still open](../work/evidence.md) | Corrected | B-011 |
 | [Results storage](../work/results-storage.md) | Corrected | B-010 |
@@ -146,7 +146,7 @@ The 84-page baseline excludes this newly added review record.
 
 | Page | Review outcome | Findings |
 | --- | --- | --- |
-| [Documentation closing review](../review.md) | Corrected | R-002; D-006 hold |
+| [Documentation closing review](../review.md) | Corrected | R-002; D-006 resolved below |
 | [Preservation audit](../coverage/index.md) | Corrected | R-001 |
 | [Frontend and session preservation map](../coverage/frontend-sessions.md) | No required edits | — |
 | [Solver chapter preservation map](../coverage/solver.md) | No required edits | — |
@@ -160,14 +160,14 @@ The 84-page baseline excludes this newly added review record.
 Six read-only reviewers covered nine groups; the writer applied the changes.
 Each revised group returned to its original reviewer. The following summary
 records the required repairs and accepted suggestions, not just broken links.
-The source defects listed in the next section remain separate work.
+The source findings and their current dispositions are recorded below.
 
 | Group and reviewer | Findings and disposition |
 | --- | --- |
 | A — Hilbert; guides and reference | A-001–A-011: correct conflict-budget coverage, backend range handling, counter/default claims, traversal cost, timer boundaries, model examples, cancellation behavior, input navigation and paper/source links. A-012/A-013 remain implementation follow-ups. |
 | B — Kierkegaard; contributor guides and active work | B-001–B-011: use SAT-only model-validation inputs, describe analyzer limits, supply retained-session recipes, preserve the maintainer execution policy, qualify seed-size bounds, repair source selections and link the current ledger. B-012–B-014 remain tooling follow-ups with explicit runbook limitations. |
 | C — Averroes; core, frontend, sessions and tactics | C-001–C-003: distinguish strategy labels from callable behavior, typed-model ownership from printed text, and correct implementation links. C-004 remains a configuration-identity follow-up. |
-| D — Herschel; preprocessing, SAT, DPLL(T) and EUF | D-001–D-005: describe joint bounded Gauss–Jordan elimination, enabled ITE distribution, appended simplification consequences, passive result storage and the correct equality rewrite. D-006 remains a publication blocker, independently cross-checked by Avicenna. |
+| D — Herschel; preprocessing, SAT, DPLL(T) and EUF | D-001–D-005: describe joint bounded Gauss–Jordan elimination, enabled ITE distribution, appended simplification consequences, passive result storage and the correct equality rewrite. D-006 was independently cross-checked by Avicenna; the subsequent repair and qualification are recorded below. |
 | E — Avicenna; arithmetic | E-001–E-003: assign phase-refresh tracking to the online propagator and link the editable figure and actual rational fields. No required LIA chapter edits. |
 | F — Kuhn; combination, quantifiers and models | F-001–F-003: retain conservative unmapped-pair fallback, distinguish propositional from equality-dependent test coverage, and select the complete model lookup. |
 | G — Averroes; literature | G-001–G-003: include the clause-forgetting correctness section and select the actual Ackermann evidence and arithmetic relevance lead. |
@@ -191,8 +191,9 @@ proof audit of every citation or every paper section in the bibliography. The
 original Plaisted–Greenbaum full text remains unavailable; its literature page
 states that limit and identifies the primary modern account actually used.
 
-No solver, test suite, fuzzing campaign or benchmark was run. Existing
-qualification records were inspected without renewing them; raw experiment
+During the original documentation review, no solver, test suite, fuzzing
+campaign or benchmark was run. The subsequent D-006 qualification is recorded
+separately below. Existing qualification records were inspected without renewing them; raw experiment
 archives were not exhaustively reaggregated. Changed validation recipes were
 checked against their tools, not executed as fresh qualification. Historical
 pages were checked for preservation and link routing, not rewritten or newly
@@ -218,14 +219,14 @@ commands and access errors. These failures remain visible.
 
 ## Correctness follow-ups
 
-These findings come from source inspection. The candidate examples below were
-not executed, and no new solver qualification is claimed. Documentation repairs
-must not be mistaken for repairs to these implementations.
+These findings originated in source inspection. D-006 has since been reproduced,
+repaired and qualified on SLURM. The six supporting-tool and resource-control
+findings remain open; the documentation review does not repair them.
 
 (symmetry-payloads)=
 ### D-006: symmetry comparison omits numeric payloads
 
-**Publication blocker: repair prepared; runtime qualification pending.**
+**Resolved: reproduced on the reviewed solver, repaired and qualified on SLURM.**
 
 The reviewed {source}`symmetry comparison key <src/smt/preprocessing.cpp#L2036-L2067>`
 included term kind, sort, symbol, Boolean value and children, but omitted
@@ -234,7 +235,7 @@ payload. Consequently the key can identify different arithmetic expressions,
 invalidating the permutation-invariance test used by
 {source}`UfSymmetryBreaker <src/smt/preprocessing.cpp#L5197-L5241>`.
 
-A candidate counterexample has distinct uninterpreted values `c0`, `c1`, a
+The numeric-value regression has distinct uninterpreted values `c0`, `c1`, a
 fresh constant `t` restricted to those values, and a function `h` to Real.
 Create `c0` before `c1` so that its `TermId` is smaller:
 
@@ -248,20 +249,31 @@ h(t) = 1
 
 There is a model with `t = c1`. Swapping `c0` and `c1` does not preserve these
 assertions, but a key that identifies numeric `0` with `1` can accept that
-swap. The inspected value-precedence path then adds `not(t = c1)` for the
+swap. The faulty value-precedence path adds `not(t = c1)` for the
 first fixed term `t`, removing the satisfying choice. Two independent source
 reviews traced the faulty insertion, including the supported
 `--preprocessing-mode=basic --preprocessing-passes=0` path.
 
-This is a static candidate for reproduction,
-not a recorded solver answer. The implementation must preserve every semantic
-payload in its comparison, or enforce a proved narrower input contract.
+The old solver at `09749dd` returned **UNSAT** for this satisfiable input under
+both default preprocessing and Basic with zero rounds. A second regression uses
+different multiplication coefficients and exposes the same false answer. Z3,
+cvc5 and Primo with symmetry breaking disabled returned SAT for both.
 
-A repair needs a focused regression preserving this SAT result, fresh
-preprocessing fuzzing and separate model validation before publication readiness
-can be restored. Model validation alone would not detect a false UNSAT answer.
+| Regression | Old default | Repaired default | Z3 and cvc5 |
+| --- | --- | --- | --- |
+| {project}`Different numerals <benchmarks/smoke/qf_uflra/sat_symmetry_numeric_values.smt2>` | UNSAT (wrong) | SAT | SAT |
+| {project}`Different coefficients <benchmarks/smoke/qf_uflra/sat_symmetry_coefficients.smt2>` | UNSAT (wrong) | SAT | SAT |
+| {project}`Equal-payload control <benchmarks/smoke/qf_uflra/sat_symmetry_equal_numeric_values.smt2>` | SAT | SAT | SAT |
 
-The repair preserves the exact rational payload for every node, including
+The two failures also occur with Basic zero-round preprocessing and value
+precedence disabled. The repaired solver returns SAT in all four CLI profiles:
+default, Basic zero-round, Basic zero-round without value precedence, and Basic
+zero-round without symmetry breaking. Dolmen accepts all twelve resulting
+models. Reference comparison is necessary here: model validation alone would
+not detect a false UNSAT answer.
+
+The {project}`repair <src/smt/preprocessing.cpp#L2036-L2070>`
+preserves the exact rational payload for every node, including
 `Rational`, `Times`, `IntDiv` and `IntMod`. The design checklist follows
 Déharbe et al., §3, Definitions 2–4, Theorem 5 and Lemma 6
 {cite:p}`deharbe2011symmetry`: equality of comparison keys must imply identical
@@ -269,12 +281,35 @@ syntax after sort-preserving constant renaming and the permitted commutative
 reordering. It must not erase interpreted arithmetic values. General symmetry
 detection and a new value-precedence algorithm are outside this repair.
 
-Regression coverage checks unequal numeric payloads, signs, fractions, large
+The {project}`regression coverage <tests/unit/preprocessing_tests.cpp#L673-L740>`
+checks unequal numeric payloads, signs, fractions, large
 values, coefficients and divisors; equal-payload controls must still admit
-symmetry. Both restriction modes are covered. Three SMT-LIB fixtures exercise
-default preprocessing, Basic with zero rounds and symmetry disabled. Fresh
-SLURM results must be recorded before closing this finding; no new runtime
-result is claimed by this prepared repair.
+symmetry. Both restriction modes are covered. The
+{project}`three SMT-LIB regressions <tests/unit/boolean_solver_tests.cpp#L1281-L1297>`
+exercise default preprocessing, Basic with zero rounds and symmetry disabled:
+40 direct-pass calls and 18 solver assertions, including equal-payload controls.
+
+Qualification used the repaired snapshot `a953edd`. All 43 release CTest targets,
+216 Python tests, 12 documentation examples and all 43 ASan CTest targets passed.
+The fresh differential gate passed 3,000 general QF_UFLRA cases, 500 finite-choice
+QF_UF cases and 500 finite-choice QF_UFLRA cases. A separate campaign passed 100
+OpFuzz mutations of the three regressions and two real QF_UFLRA seeds. There were
+no wrong answers, crashes, parser/type errors, unsupported results, reference
+disagreements or timeouts in these gates.
+
+Separate Dolmen replay accepted all 2,011 SAT models from the general and
+finite-choice QF_UFLRA gates, 68 SAT mutant models, four SAT seed models, and the
+twelve regression/profile models. The finite-choice QF_UF gate compared answers
+with Z3 and cvc5; it did not include Dolmen replay. These are bounded samples:
+the three generated corpora contain 2,992, 42 and 42 distinct input files,
+respectively, and the mutations contain 80 distinct files.
+
+The [qualification summary](symmetry-payload-qualification.json) and
+[run ledger](../run-log.json) retain exact revisions, binary hashes, commands,
+seeds, counts, resource limits and job IDs. An initial test attempt failed to
+locate its fixtures from the CTest working directory; the paths were corrected
+and all gates rerun on `a953edd`. That superseded attempt is recorded separately.
+This closes D-006, not the six findings below or the remaining publication work.
 
 ### Supporting tools and resource controls
 

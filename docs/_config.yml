@@ -39,7 +39,7 @@ sphinx:
         - "https://github.com/primo-solver/primo/blob/c944fa790c2043ebac93b8d6f63c7b02b0c2c235/%s"
         - "%s"
       project:
-        - "https://github.com/primo-solver/primo/blob/8c76deb3994cb4c5f4119eac57bc03a661330f63/%s"
+        - "https://github.com/primo-solver/primo/blob/a953edd5a345d8532141eea8c075d1f070772235/%s"
         - "%s"
       record:
         - "https://github.com/primo-solver/primo/blob/1f9f116c73520d960278139a0e82dd0dbd4c9b29/%s"
