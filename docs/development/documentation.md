@@ -22,6 +22,13 @@ Use standard mathematical and solver terminology, with these conventions:
 - Keep warnings where they prevent a specific misunderstanding. State the
   scope of tests and experiments once in the evidence section, rather than
   repeatedly interrupting the algorithm with validation disclaimers.
+- Keep architecture sections about ownership, operations and invariants.
+  Put migration chronology, commit hashes, SLURM jobs, run IDs and measured
+  counts on evidence pages. Link to that evidence from a clearly named section;
+  readers should not need the development history to understand the design.
+- Keep syntax-specific rules, such as `let` scope and definition expansion,
+  in the frontend chapter. The architecture overview identifies the responsible
+  layer and links to that explanation.
 - Distinguish terms with different meanings. In particular, a logical guard
   controls when a constraint applies; an acceptance check decides whether a
   proposed rewrite is worth performing. Do not use “guard” for both without

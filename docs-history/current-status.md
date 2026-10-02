@@ -1,5 +1,13 @@
 # Current implementation and qualification
 
+```{note}
+This is the archived status page. See the
+<a href="../../capabilities.html">current capabilities</a> and the
+<a href="../../implementation/dpllt.html#shared-assignment-ownership">assignment ownership explanation</a>.
+Migration revisions, execution details and comparison results are collected in
+<a href="../../evidence/assignment.html">Assignment migration evidence</a>.
+```
+
 This is the **done** entrance: the implemented user interface, its limitations,
 and the evidence available for it. Start with [](guide/getting-started.md) to
 build and run Primo. Work underway belongs in [](active-work.md); possible next
@@ -79,6 +87,10 @@ need their own qualification; neither a successful build nor a small example
 justifies promoting one to default.
 
 ## Shared assignment ownership
+
+Current explanation: <a href="../../implementation/dpllt.html#shared-assignment-ownership">DPLL(T) — shared assignment ownership</a>.
+The dated results below are summarized separately in
+<a href="../../evidence/assignment.html">Assignment migration evidence</a>.
 
 Every dedicated, mixed, component, quantified-UF and retained-session route
 now uses one Primo-side assignment owner per SAT connection. Consumers borrow

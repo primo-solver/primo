@@ -187,8 +187,9 @@ separate. For requested ground models, the
 checks the original assertions and then serializes the model. An internal
 model inconsistency is not a logical UNSAT result.
 
-The [frontend chapter](frontend.md) explains lexical categories, binding,
-definition expansion and typed term construction. [Sessions](sessions.md)
+The [frontend chapter](frontend.md) explains lexical categories,
+[`let` bindings](frontend.md#let-bindings), definition expansion and typed term
+construction. [Sessions](sessions.md)
 traces command scope, journal replay, retained engines and model invalidation,
 including the option restrictions needed for sound incremental preprocessing.
 

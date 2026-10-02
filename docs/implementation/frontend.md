@@ -71,11 +71,21 @@ binding scopes before global declarations. Each binding records its term or
 binder level. Quantified variables become the indexed representation described
 in [quantifiers](quantifiers.md#what-a-de-bruijn-index-means).
 
+### Let bindings
+
+`let` is resolved during term construction; it does not introduce a core term
+node. At the same quantifier depth, a use of a bound name reuses the stored
+`TermId`. Inside additional quantifiers, lookup adjusts bound-variable indices;
+that adjustment can create new hash-consed terms through the term manager.
+The local lookup above implements these scope and index rules.
+
 `let` is parallel: every right-hand side is built before the new bindings become
 visible. For example, with global `a`, `(let ((a true) (b a)) b)` denotes the
 global `a`, not `true`. Duplicate names in one `let` use the selected
 last-binding-wins extension; all their right-hand sides still use the outer
 environment. See {source}`dispatch_let <src/smt/frontend.cpp#L764-L800>`.
+
+### Definition expansion
 
 A parameterized `define-fun` stores its body syntax and parameter sorts.
 Arguments are translated in the caller's environment, then the definition body

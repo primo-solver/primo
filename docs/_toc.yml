@@ -88,6 +88,7 @@ parts:
   - caption: Evidence and history
     chapters:
       - file: evidence/publication
+      - file: evidence/assignment
       - file: evidence/arithmetic
       - file: evidence/quantifiers
       - file: evidence/archive

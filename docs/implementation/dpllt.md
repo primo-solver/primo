@@ -106,13 +106,19 @@ documents the earlier boundary error and the limits of those tests.
 
 ### Shared assignment ownership
 
-The SAT API reports notifications and a backtrack level, so Primo retains one
-mirror of the observed assignment per connection. No backend-native trail
-extension is required. The dedicated EUF/arithmetic, mixed, component, and
-quantified-UF consumers read this shared state instead of owning truth arrays
-or assignment boundaries. Theory-specific merge/bound undo logs remain necessary.
+CaDiCaL owns the full SAT trail. Its API reports assignments and backtrack levels,
+so Primo keeps one trail of observed assignments per SAT connection.
+{source}`AssignmentCoordinator <src/smt/assignment_coordinator.hpp>` updates that
+trail before notifying the theory integrations. The dedicated EUF/arithmetic,
+mixed, component, and quantified-UF consumers all read it through
+{source}`sat::TrailView <src/sat/trail_view.hpp>`.
 
-The mirror contains observed assignments, not every SAT assignment. Ordinary
+The shared trail records which observed literals are true and where they occur
+in the assignment order. Each theory still owns the changes those assignments
+cause: for example, EUF class merges or arithmetic bounds. Its undo log restores
+that theory state when the coordinator reports a backtrack.
+
+Primo's trail contains observed assignments, not every SAT assignment. Ordinary
 Tseytin variables that only encode Boolean connectives stay inside CaDiCaL.
 Generated Boolean terms used as function arguments are different. For example,
 with `f : Bool → U`, the frontend rewrites `f(and p q)` to `f(b)` and defines
@@ -130,7 +136,7 @@ consumer requirements; it is not inherent to DPLL(T). Avoiding it would need a
 backend API for assignment/order/rollback access with defined mutation and
 lifetime rules. The current {source}`dense position index <src/sat/trail.cpp>`
 also has a memory limitation: unobserved variable IDs can leave empty slots
-below the largest observed ID, even though their literals are not on the mirror.
+below the largest observed ID, even though their literals are not on Primo's trail.
 
 {source}`ComponentAssignmentView <src/theory/component_assignment.hpp>` stores
 atom-registration metadata and projects values from the shared view. Full
@@ -145,11 +151,6 @@ separate theory state.
 Online model callbacks validate notified state instead of filling missing
 assignments. Retained sessions reconnect with a new owner and re-observe root
 facts after the preceding connection has settled its reason callbacks.
-{source}`Protocol tests <tests/unit/assignment_coordinator_tests.cpp>` cover
-root/retained levels, empty levels, duplicate and invalid events, growth,
-reentrancy, protected replay, and reconnect. The
-[migration review](../review-history.md#shared-assignment-migration-review) records
-the qualification runs, model-validation gaps, and timing limitations.
 
 ## Conflicts, propagations, and explanations
 
@@ -389,8 +390,11 @@ under lazy, online, conflict-only, and retained-session configurations.
 | A theory conflict reaches SAT even without optional propagation | {source}`EUF external-conflict tests <tests/unit/boolean_solver_tests.cpp#L2589-L2635>`. |
 | Explained propagation occurs during search | {source}`online congruence test <tests/unit/boolean_solver_tests.cpp#L2480-L2500>` checks delivered propagation; broader explanation algorithms belong in the EUF chapter. |
 | Rollback preserves surviving reasons and assignment routing | {source}`component lifecycle regression <tests/unit/component_combination_tests.cpp#L527-L589>` and {source}`backend reconnect regressions <tests/unit/sat_backend_tests.cpp#L194-L235>`. |
+| Assignment consumers see one consistent trail across callbacks and reconnections | {source}`Coordinator protocol tests <tests/unit/assignment_coordinator_tests.cpp>` cover root and retained levels, empty levels, duplicate/invalid events, registration growth, reentrant delivery, protected replay and reconnect. |
 | A candidate with pending work or a typed failure is not accepted as SMT SAT | Component-loop checks above and {source}`component regression suite <tests/unit/component_combination_tests.cpp>`; the [combination](combination.md) and [quantifier](quantifiers.md) chapters explain their additional obligations. |
 | Scoped assertions change satisfiability without corrupting earlier state | The worked example, {source}`session regressions <tests/unit/smt_session_tests.cpp>`, and the distinct session ownership described above. |
 
 Changes to callbacks, explanations, scheduling, or final checks require the
 [correctness gates](../development/correctness.md).
+The [assignment migration evidence](../evidence/assignment.md) records the dated
+tests, comparisons and model-validation limitations of that ownership change.

@@ -22,7 +22,10 @@ to a Boolean or pure-theory problem despite its declared mixed logic.
 The Real combination route retains a dedicated coordinator, while Int
 combination and quantified UF use the general component driver. See
 [architecture](implementation/architecture.md) and
-[combination](implementation/combination.md).
+[combination](implementation/combination.md). The
+[DPLL(T) ownership explanation](implementation/dpllt.md#shared-assignment-ownership)
+describes the shared assignment record used by these routes and the theory
+state each solver must undo separately.
 
 ## Limits
 
@@ -47,11 +50,12 @@ model checking and independent validation are separate operations.
 
 ## Qualification and maintenance
 
-The {source}`run ledger <docs/run-log.json>` records measured revisions,
-commands, resources, failures, and artifacts. The
-{source}`previous qualification snapshot <docs/archive/current-status.md>`
-and {source}`shared-assignment qualification <docs/current-status.md#L81-L109>`
-remain dated evidence. They do not qualify every later checkout or option.
+The [publication qualification](evidence/publication.md) records the checks of
+the publication candidate. Earlier results, including the
+[assignment migration](evidence/assignment.md), have their own evidence pages.
+Measured revisions, commands, resources, failures and artifacts belong in those
+records and the [run ledger](run-log.json). They do not qualify every later
+checkout or option.
 
 Use [options](reference/options.md) for defaults, and
 [correctness requirements](development/correctness.md) when changing behavior.

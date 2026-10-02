@@ -1,5 +1,13 @@
 # Architecture
 
+```{note}
+This chapter preserves the old documentation structure. Read the
+<a href="../../implementation/architecture.html">current architecture overview</a>
+for module responsibilities and data flow. The current explanation of
+<a href="../../implementation/frontend.html#let-bindings">SMT-LIB <code>let</code> bindings</a>
+belongs to the frontend chapter.
+```
+
 Primo is organized as layered components with explicit data ownership. This page describes the implementation that exists now, not the intended final solver.
 
 For the supported-route matrix and revision-scoped qualification, start with
@@ -284,6 +292,8 @@ Implemented constructors:
 The constructors do not currently canonicalize commutative operands. For example, `(= a b)` and `(= b a)` are different syntactic terms unless another layer rewrites them before calling `mk_eq`.
 
 ### Interaction with SMT-LIB `let`
+
+Current explanation: <a href="../../implementation/frontend.html#let-bindings">Frontend — let bindings</a>.
 
 SMT-LIB `let` does not create a term node. `smt::Frontend` keeps a stack of local maps from names to bindings. A binding is either a built `TermId`, stamped with the quantifier depth it was built at, or a variable bound by an enclosing `forall`/`exists`, stored as its binder level. Binding right-hand sides are built in the outer scope, then the body is built in an extended scope. A name resolves in one of two ways:
 

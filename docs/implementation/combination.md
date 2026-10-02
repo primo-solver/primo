@@ -729,7 +729,7 @@ sections read for this chapter.
 The {source}`component migration record <docs/n-way-combination-migration.md>`
 retains the paired QF_UFLIA evaluations, fuzzing and independent model checks.
 The {source}`Real combination record <docs/nelson-oppen.md>` and
-{source}`shared-assignment qualification <docs/current-status.md>` preserve
+[assignment migration evidence](../evidence/assignment.md) preserve
 their separate revision boundaries and limitations. Exact run provenance is in
 {source}`the run log <docs/run-log.json>`; these historical runs are not fresh
 qualification of this documentation pass.
