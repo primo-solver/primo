@@ -91,11 +91,11 @@
     "details": "Installed package notices and hashes; theme assets retain embedded license notices."
   },
   "followup_scan": {
-    "head": "99e43807d2015678d05ee748eef5d5c65b9da70e",
-    "commits_scanned": 1486,
-    "bytes_scanned": 57881964,
+    "head": "cebb6c2525fbe2cf4bd00a14108b2f34e92e7964",
+    "commits_scanned": 1487,
+    "bytes_scanned": 57934955,
     "detections": 0,
     "report": "results/public-launch/gitleaks-final.json",
-    "scope": "All named local/fetched refs; final evidence-only changes are subsequent to this scan."
+    "scope": "All named local/fetched refs; final artifact-checksum record is subsequent to this scan."
   }
 }

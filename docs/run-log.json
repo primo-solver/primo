@@ -321,14 +321,26 @@
       "artifacts": {
         "local_directory": "results/public-launch",
         "selected_summary": "docs/coverage/publication-qualification.json",
-        "full_raw_archive": "results/public-launch-evidence.tar.gz (remote experiment workspace; ignored local copy when collected)",
+        "full_raw_archive": "results/public-launch/public-launch-evidence.tar.gz",
         "raw_publication": "Raw generated inputs/models/logs are not published by this change. Committed metadata is not the full raw archive.",
         "source_archive": {
           "revision": "f95ba8a8fde11eeb59738ae0941ebf74692c5f4d",
           "path": "dist/primo-f95ba8a8fde1.tar.gz",
           "sha256": "fb4b9ebaaef627ff2b2fa56e2a22c014c5cf7d579fc771a797aa2c299e624f04",
           "primo_binary_sha256": "2727b66215e83ef6de03f60d9a109a0ee6e0631696d037f53bf89b321c1242a6"
-        }
+        },
+        "final_documentation_archive": {
+          "revision": "cebb6c2525fbe2cf4bd00a14108b2f34e92e7964",
+          "path": "dist/primo-cebb6c2525fb.tar.gz",
+          "sha256": "4736d0b4066aad42d34f4da92c63f77aff04eced46b55d61078898bf9ac70480",
+          "verification": "Both strict source books and compatibility assembler rebuilt from this archive without .git. Solver build was checked from the earlier f95ba8a archive; solver sources are identical."
+        },
+        "attempt_logs_archive": {
+          "path": "results/public-launch/public-launch-attempt-logs.tar.gz",
+          "sha256": "cd01105b7db016b9fc3b8be42ba989585cecc655c532ae9e289ddc9f2958b987"
+        },
+        "full_raw_archive_sha256": "12e47774c7dbe19d924e8d697dfe7c9dbf0b4ba21ce3cac83039fa77a148faf7",
+        "collection": "SLURM job 156744 completed; raw and attempt-log archives copied locally and SHA-256 verified. Raw archives remain ignored, not published."
       },
       "limitations": [
         "14 QF_LIA timeouts remain incomplete; no answer inferred from reference SAT.",
