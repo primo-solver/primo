@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"
+     role="img" aria-labelledby="title desc">
+  <title id="title">Primo avatar</title>
+  <desc id="desc">The lowercase p from the Primo wordmark, in white on navy.</desc>
+  <rect width="512" height="512" fill="#172b3a"/>
+  <path d="M24 112V38 M24 62C24 47 34 36 48 36S73 47 73 62S63 88 48 88S24 77 24 62"
+        transform="translate(81.4 -3) scale(3.6)" fill="none" stroke="#f2f6f8"
+        stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

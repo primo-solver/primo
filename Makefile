@@ -1,4 +1,4 @@
-.PHONY: build test python-test asan-build asan-test smoke compare fuzz fuzz-finite-domain fuzzsmt tactic-composition-test bench bench-interesting-qf-uf docs docs-next docs-venv docs-serve docs-next-serve archive lint tidy include-cleaner format check contrib contrib-required contrib-cli11 contrib-z3 contrib-cvc5 contrib-yices contrib-opensmt contrib-yinyang contrib-dolmen contrib-cadical contrib-gmp contrib-fuzzsmt contrib-ddsmt clean
+.PHONY: build test python-test asan-build asan-test smoke compare fuzz fuzz-finite-domain fuzzsmt tactic-composition-test bench bench-interesting-qf-uf docs docs-venv docs-serve archive lint tidy include-cleaner format check contrib contrib-required contrib-cli11 contrib-z3 contrib-cvc5 contrib-yices contrib-opensmt contrib-yinyang contrib-dolmen contrib-cadical contrib-gmp contrib-fuzzsmt contrib-ddsmt clean
 
 BUILD_DIR ?= build
 ASAN_BUILD_DIR ?= build-asan
@@ -6,7 +6,6 @@ PRIMO ?= $(BUILD_DIR)/primo
 CONTRIB_PREFIX ?= contrib/local
 CADICAL_TAG ?= rel-3.0.0
 PYTHON ?= python3
-DOCS_NEXT_PORT ?= 8001
 RUFF ?= .venv/bin/python -m ruff
 PATH_WITH_CONTRIB := $(CURDIR)/$(CONTRIB_PREFIX)/bin:$(PATH)
 CPP_FORMAT_FILES := $$(rg --files src tests -g '*.cpp' -g '*.hpp' -g '*.h')
@@ -71,30 +70,25 @@ docs-venv:
 
 docs:
 	PRIMO_DOCS_DIR=docs bash scripts/build_docs.sh
+	PRIMO_DOCS_DIR=docs-history bash scripts/build_docs.sh
+	$(PYTHON) scripts/assemble_docs.py
 
-docs-next:
-	PRIMO_DOCS_DIR=docs-next bash scripts/build_docs.sh
+.PHONY: docs-full docs-check-links docs-check-external
+docs-full:
+	PRIMO_DOCS_DIR=docs bash scripts/build_docs.sh --all
+	PRIMO_DOCS_DIR=docs-history bash scripts/build_docs.sh --all
+	$(PYTHON) scripts/assemble_docs.py
 
-.PHONY: docs-next-full docs-check-links docs-check-external
-docs-next-full:
-	PRIMO_DOCS_DIR=docs-next bash scripts/build_docs.sh --all
-
-docs-check-links:
-	$(MAKE) docs
-	$(MAKE) docs-next-full
-	$(PYTHON) scripts/check_doc_links.py docs/_build/html docs-next/_build/html --report docs/_build/linkcheck-local.json
+docs-check-links: docs-full
+	$(PYTHON) scripts/check_doc_links.py docs/_build/site --report docs/_build/linkcheck-local.json
 
 docs-check-external: docs-check-links
-	# Keep linkcheck reports separate from Jupyter Book's HTML output.
-	@status=0; for book in docs docs-next; do \
+	@status=0; for book in docs docs-history; do \
 		PRIMO_DOCS_DIR=$$book bash scripts/build_docs.sh --all --builder custom --custom-builder linkcheck || status=1; \
 	done; exit $$status
 
 docs-serve: docs
-	$(PYTHON) -m http.server 8000 -d docs/_build/html
-
-docs-next-serve: docs-next
-	$(PYTHON) -m http.server $(DOCS_NEXT_PORT) -d docs-next/_build/html
+	$(PYTHON) -m http.server 8000 -d docs/_build/site
 
 archive: docs
 	$(PYTHON) scripts/create_source_archive.py
@@ -216,4 +210,4 @@ contrib-ddsmt:
 	$(PYTHON) contrib/install_ddsmt.py --prefix $(CONTRIB_PREFIX)
 
 clean:
-	rm -rf $(BUILD_DIR) results fuzz-results _build docs/_build docs-next/_build
+	rm -rf $(BUILD_DIR) results fuzz-results _build docs/_build docs-history/_build

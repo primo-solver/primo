@@ -1,0 +1,450 @@
+Primo SMT solver scaffold
+
+
+primo [OPTIONS] [files...]
+
+
+POSITIONALS:
+  files FILE ...              SMT-LIB input files. Reads stdin when omitted
+
+Procedural options:
+  -h,     --help              Print this help message and exit
+          --check-model       Check original assertions against produced typed models
+  -q,     --quiet [default: off]
+                              Suppress startup version banner
+          --stats [default: off]
+                              Print solver statistics to stderr
+          --preprocess-only [default: off]
+                              Diagnostic: stop before search; report unsat if preprocessing
+                              refutes, otherwise unknown. Quantified input stops after the
+                              frontend
+          --cancel-grace-seconds UINT:UINT in [1 - 3600] [1]
+                              Seconds SIGTERM or SIGINT waits for the cooperative cancellation
+                              path, which reports statistics, before answering unknown and
+                              exiting
+          --version           Display program version information and exit
+
+Experimental tactic options:
+          --experimental-split-bools UINT:INT in [0 - 16] [0]
+                              EXPERIMENTAL: split on up to k Boolean atoms, materialize 2^k
+                              disjunctive goals, and solve them sequentially in false-first
+                              order; 0 disables
+          --experimental-generic-model-combination [default: off]
+                              Route QF_UFLRA shared-model decisions through the generic
+                              sequential coordinator
+
+QF_UF / EUF theory options:
+          --uf-symmetry-breaking [default: on]
+                              Enable QF_UF symmetry breaking over invariant finite-domain
+                              values
+          --no-uf-symmetry-breaking [default: off]
+                              Disable QF_UF finite-domain symmetry breaking
+          --finite-domain-value-precedence [default: on]
+                              Enable fixed-term value precedence inside finite-domain symmetry
+                              breaking
+          --no-finite-domain-value-precedence [default: off]
+                              Disable fixed-term value precedence inside finite-domain symmetry
+                              breaking
+          --finite-domain-equality-definitions [default: off]
+                              Enable guarded finite-domain equality definitions in auto
+                              preprocessing
+          --no-finite-domain-equality-definitions [default: off]
+                              Disable finite-domain SAT-visible equality definition clauses
+          --no-finite-domain-post-amo [default: off]
+                              Disable the post-simplification finite-domain AMO scan
+          --quantifier-instance-simplification [default: on]
+                              Quantified UF: normalize instances before duplicate detection
+          --no-quantifier-instance-simplification [default: off]
+                              Quantified UF: compare and assert instances as instantiated
+          --eq-bridge [default: on]
+                              Add equalities implied by every branch of selected QF_UF
+                              disjunctions
+          --no-eq-bridge [default: off]
+                              Disable equality bridging unless required by the preprocessing
+                              preset
+          --ground-congruence [default: off]
+                              Enable bounded SAT-visible ground congruence clauses
+          --ground-unit-substitution [default: off]
+                              Enable experimental ground substitution from visible unit
+                              equalities
+          --guarded-ground-unit-substitution [default: off]
+                              Enable guarded ground substitution only when preprocessing
+                              metrics predict a win
+          --no-solved-constant-substitution [default: off]
+                              Disable QF_UF solved-constant substitution
+          --auto-basic-compact-term-limit UINT:INT in [0 - 100000000] [20000]
+                              Maximum reachable terms for compact-clause basic auto
+                              preprocessing; 0 means unlimited
+          --auto-basic-compact-min-conjuncts UINT:INT in [1 - 100000000] [2]
+                              Minimum implicit top-level conjunct occurrences for
+                              compact-clause basic auto preprocessing
+          --auto-basic-single-term-limit UINT:INT in [0 - 100000000] [15000]
+                              Maximum reachable terms for finite-domain basic auto
+                              preprocessing; 0 means unlimited
+          --auto-basic-single-min-domains UINT:INT in [1 - 100000000] [200]
+                              Minimum recognized finite domains for finite-domain basic auto
+                              preprocessing
+          --auto-basic-single-max-symmetry-terms UINT:INT in [0 - 100000000] [6]
+                              Maximum terms in the accepted finite-domain symmetry group; 0
+                              means unlimited
+          --no-auto-basic-single [default: off]
+                              Disable the guarded auto basic-single preprocessing selector
+          --no-auto-basic-single-predicate-polarity [default: off]
+                              Disable polarity phase for auto basic-single formulas with
+                              Boolean UF predicates
+          --auto-basic-multi [default: on]
+                              Enable the experimental auto basic-multi preprocessing and phase
+                              heuristic
+          --no-auto-basic-multi [default: off]
+                              Disable the auto basic-multi preprocessing and phase heuristic
+          --no-auto-basic-multi-polarity [default: off]
+                              Disable polarity phase for auto basic-multi formulas
+          --qf-uf-profile TEXT:{default,tuned-interesting} [default]
+                              QF_UF profile: default or tuned-interesting
+          --qf-uf-portfolio TEXT:{off,basic-polarity} [off]
+                              QF_UF portfolio mode
+          --qf-uf-portfolio-conflicts UINT:INT in [1 - 1000000000] [2000]
+                              Theory-conflict budget for the first QF_UF portfolio attempt
+          --euf-prop TEXT:{auto,off,conflict,model,online} [auto]
+                              EUF propagation mode
+          --euf-engine TEXT:{lazy,incremental} [incremental]
+                              EUF engine
+          --euf-explain-search TEXT:{one-sided,bidirectional,proof-forest,reoriented-proof-forest,structural-proof-forest} [one-sided]
+                              Incremental EUF explanation search
+          --euf-proof-forest-diagnostics [default: off]
+                              Record proof-forest path counters for incremental EUF
+                              explanations
+          --euf-diseq-prop-diagnostics [default: off]
+                              Record diagnostic-only QF_UF app-disequality propagation
+                              opportunity counters
+          --euf-ackermann-diagnostics [default: off]
+                              Record diagnostic-only QF_UF Ackermannization cost counters
+          --nelson-oppen-diagnostics [default: off]
+                              Record diagnostic-only Nelson-Oppen interface counters
+          --model-equality-branching [default: off]
+                              Enable experimental QF_UFLRA model-equality branching over shared
+                              Real terms; not a full Nelson-Oppen model-equality implementation
+          --no-model-equality-mutation [default: off]
+                              Disable the Section 5.2 greedy LRA model-diversification sweep
+                              used by the experimental QF_UFLRA shared-model and model-equality
+                              branching paths
+          --model-equality-mutation-scope TEXT:{all,care} [all]
+                              QF_UFLRA LRA model-mutation scope: all shared Real terms or
+                              current EUF care-pair endpoints
+          --nelson-oppen-prop TEXT:{exact,off,final,online} [final]
+                              QF_UFLRA Nelson-Oppen interface equality propagation mode. Exact
+                              keeps the mandatory convex closure but disables opportunistic LRA
+                              producers; off is a backward-compatible alias for exact. Pure
+                              QF_UF and QF_LRA keep their direct theory propagators
+          --model-equality-branch-budget UINT:INT in [0 - 1000000] [16]
+                              Maximum QF_UFLRA model-equality branch assumptions per check-sat
+          --model-equality-branch-policy TEXT:{first,ranked,adaptive,care-queued} [first]
+                              QF_UFLRA model-equality branch policy
+          --nelson-oppen-arrangement-probe-limit UINT:INT in [1 - 1000000000] [unlimited]
+                              Return unknown once mixed QF_UFLRA final equality sharing or
+                              arrangement/model reconstruction has used this many temporary LRA
+                              consistency probes
+          --euf-dynamic-ackermann-shadow [default: off]
+                              Shadow-evaluate SAT-visible dynamic Ackermann clauses without
+                              adding them
+          --euf-diseq-ackermann [default: off]
+                              Enable watched QF_UF disequality Ackermann propagation
+          --euf-diseq-ackermann-max-width UINT:INT in [2 - 1000] [3]
+                              Maximum width of watched disequality Ackermann clauses
+          --euf-diseq-ackermann-queue-budget UINT:INT in [0 - 1000000000] [4096]
+                              Maximum watched disequality Ackermann candidates to inspect per
+                              propagation round
+          --euf-diseq-ackermann-per-symbol UINT:INT in [0 - 1000000000] [64]
+                              Maximum watched disequality Ackermann candidates per function
+                              symbol
+          --euf-prop-budget TEXT [auto]
+                              EUF propagation candidate budget: auto, unlimited, or a
+                              nonnegative integer
+          --euf-prop-delivery, --prop-delivery-budget TEXT [1000]
+                              EUF propagation delivery budget: auto, unlimited, or a
+                              nonnegative integer; 0 means unlimited
+          --finite-domain-eqdefs-auto-domain-limit UINT:INT in [0 - 1000000] [8]
+                              Maximum finite-domain value count for auto equality definitions;
+                              0 means unlimited
+          --finite-domain-eqdefs-auto-clause-limit UINT:INT in [0 - 100000000] [5000]
+                              Maximum generated equality-definition clauses per check-sat in
+                              auto; 0 means unlimited
+          --finite-domain-eqdefs-auto-term-limit UINT:INT in [0 - 100000000] [5000]
+                              Maximum initial reachable-term count for auto equality
+                              definitions on single-assertion formulas; 0 means unlimited
+          --prop-interval UINT:INT in [1 - 1000000] [32]
+                              Online EUF propagation discovery interval
+          --prop-assign-threshold FLOAT:FLOAT in [0 - 1] [0.25]
+                              Skip online EUF propagation discovery above this assigned-atom
+                              fraction
+          --quantifier-instances-per-round UINT:INT in [1 - 1000000000] [128]
+                              Quantified UF: enumerative instances queued per complete
+                              assignment
+          --quantifier-stall-tuples UINT:INT in [0 - 1000000000] [65536]
+                              Quantified UF: tuples a quantifier may visit without a new lemma
+                              before a round that has queued lemmas hands them to SAT; 0 never
+                              yields
+          --quantifier-max-instances UINT:INT in [1 - 1000000000] [100000]
+                              Quantified UF: distinct instances generated before answering
+                              unknown
+          --quantifier-tuple-order TEXT:{max,max-colex,sum,leximax,deepening,random} [sum]
+                              Quantified UF: tuple enumeration order
+          --quantifier-deepening-increment UINT:INT in [1 - 1000000] [2]
+                              Quantified UF: maximum-depth increment of the deepening tuple
+                              order
+          --quantifier-random-seed UINT [0]
+                              Quantified UF: seed of the random tuple order
+          --quantifier-export-pools FILE
+                              Quantified UF: write the instantiation tuples and Skolem lemmas
+                              as SMT-LIB pools to FILE, for scripts/quantifier_pool_check.py
+
+Preprocessing options:
+          --no-extended-simplification [default: off]
+                              Disable the ite/div/mod/abs rewrites that run before lowering
+                              (lowering itself always runs)
+          --extended-simplification-rounds UINT:UINT in [0 - 64] [1]
+                              Traversals the extended-term simplification runs; more rounds
+                              reach deeper nested ite, at a cost that is exponential in the
+                              limit
+          --ite-equality-distribution [default: on]
+                              Distribute (= u (ite c a b)) over the branches when neither
+                              branch is itself an ite
+          --no-ite-equality-distribution [default: off]
+                              Disable (= u (ite c a b)) distribution
+          --cite-simplification [default: on]
+                              Decide atoms over constant if-then-else terms branch by branch
+                              (open-leads lead 16, piece 1)
+          --no-cite-simplification [default: off]
+                              Disable constant if-then-else simplification
+          --arithmetic-atom-canonicalization [default: off]
+                              Enable experimental primitive-integer canonicalization of
+                              proportional Real comparisons and equalities before
+                              clausification
+          --preprocessing-mode TEXT:{off,basic,strong,auto} [auto]
+                              Preprocessing preset for all supported logics
+          --incremental-mode TEXT:{rebuild,assumptions} [rebuild]
+                              Session engine; assumptions is opt-in for QF_LRA and QF_UF
+          --auto-preprocess-selector TEXT:{legacy,structural} [legacy]
+                              Auto preprocessing selector: legacy assertion-count heuristics or
+                              representation-stable structural analysis
+          --auto-preprocess-large-conjunct-limit UINT:INT in [0 - 100000000] [10000]
+                              Maximum implicit top-level conjunct occurrences for repeated auto
+                              preprocessing; 0 means unlimited
+          --preprocessing-passes, --preprocess-passes UINT:INT in [0 - 100] [4]
+                              Number of shared preprocessing passes to run
+          --boolean-flatten-threshold UINT:INT in [0 - 1000000] [0]
+                              Flatten nested and/or nodes during preprocessing up to this
+                              arity; 0 disables
+          --boolean-flatten-post-threshold UINT:INT in [0 - 1000000] [2048]
+                              Apply the same bounded And/Or flattening again AFTER the
+                              rewriting preprocessing passes, up to this arity; 0 disables.
+                              Those passes build fresh nodes through TermManager, which no
+                              longer flattens at construction, so they reintroduce nesting that
+                              --boolean-flatten-threshold (which runs before them) cannot see.
+                              0 disables
+          --boolean-implies-rewrite TEXT:{off,clause,all} [off]
+                              Post-preprocessing implication rewrite: off, clause (only expose
+                              flat clauses), or all (rewrite A=>B to (or (not A) B) without
+                              distribution)
+          --preprocessing-adaptive-extra-passes UINT:INT in [0 - 100] [4]
+                              Additional adaptive preprocessing passes after the configured
+                              pass cap
+          --preprocessing-adaptive-shrink-percent UINT:INT in [0 - 100] [10]
+                              Minimum reachable-term shrink percentage required for another
+                              adaptive pass
+
+QF_LRA theory options:
+          --lra-propagation [default: on]
+                              Enable QF_LRA same-slack bound propagation (Milestone 3b)
+          --no-lra-propagation [default: off]
+                              Disable QF_LRA bound propagation (conflict detection only)
+          --lra-row-propagation [default: off]
+                              Enable experimental QF_LRA row-based/interval bound propagation
+                              across different variables (only takes effect if
+                              --lra-propagation is also on)
+          --lra-bidirectional-row-propagation [default: off]
+                              Enable the reverse direction of --lra-row-propagation: tighten a
+                              row's other terms from its own bound, not just derive the row's
+                              own implied bound (only takes effect if --lra-row-propagation is
+                              also on)
+          --lra-row-propagation-max-row-size UINT:POSITIVE [64]
+                              Cap on the row length --lra-row-propagation will derive an
+                              implied bound for. Rows longer than this are skipped, not
+                              truncated
+          --lra-row-propagation-max-fanout UINT:POSITIVE [64]
+                              Cap on how many rows a single bound change may trigger a
+                              --lra-row-propagation scan over. A variable occurring in more
+                              rows than this propagates nothing that round
+          --lra-bidirectional-row-propagation-max-row-size UINT:POSITIVE [32]
+                              Row-length cap for the reverse direction
+                              (--lra-bidirectional-row-propagation). Smaller than the forward
+                              cap because that direction costs O(row size) per other term, not
+                              per row
+          --lra-bidirectional-row-propagation-max-fanout UINT:POSITIVE [32]
+                              Fanout cap for the reverse direction
+                              (--lra-bidirectional-row-propagation)
+          --lra-theory-decisions [default: off]
+                              Enable experimental QF_LRA theory-guided decisions: the
+                              arithmetic theory ranks candidate atoms via CaDiCaL's cb_decide
+                              and supplies the decision literal itself instead of leaving every
+                              decision to generic VSIDS
+          --lra-model-phase [default: off]
+                              Enable experimental QF_LRA model-based SAT phase hints: keep
+                              CaDiCaL's variable choice, but refresh arithmetic atom polarity
+                              from the current tableau assignment at quiescence points
+          --lra-pivoting-rule TEXT:{bland,dantzig,soi,sparse} [sparse]
+                              QF_LRA Check/Pivot variable-selection rule: sparse (prices what a
+                              pivot costs: among the entering candidates that all repair the
+                              violation equally, take the one occurring in the fewest rows,
+                              since those are exactly the rows the pivot rewrites), bland
+                              (anti-cycling-proven), dantzig
+                              (largest-violation/largest-coefficient), or soi
+                              (Sum-of-Infeasibilities Simplex, King/Barrett/Dutertre FMCAD 2013
+                              -- a global Check/Pivot objective across every violated row at
+                              once). All but bland fall back to bland selection after enough
+                              pivots within one check(), which is what keeps termination proven
+          --lra-least-violated-leaving [default: off]
+                              Experimental leaving-variable rule from Griggio's thesis (2.5.3,
+                              p.53):
+                              pick the LEAST-violated basic variable, tie-broken by the shorter
+                              row.
+                              Only meaningful under --lra-pivoting-rule sparse
+          --no-lra-sparse-leaving [default: off]
+                              Disable the leaving-side half of --lra-pivoting-rule sparse
+                              (prefer repairing a violated variable whose row is short, using
+                              violation magnitude only as a tie-break), for ablation
+          --lra-sparse-pricing-candidates UINT:INT in [0 - 1000000] [16]
+                              How many eligible entering candidates --lra-pivoting-rule sparse
+                              scores before taking the best seen so far (0 means score every
+                              eligible candidate). 1 is the cheapest possible pricing. Never
+                              cuts short the search for whether an eligible candidate exists,
+                              so any value is sound
+          --lra-soi-minimize TEXT:{quickxplain,deletion,none} [quickxplain]
+                              How --lra-pivoting-rule soi shrinks a multi-row conflict before
+                              turning it into a clause: quickxplain (Junker 2001), deletion
+                              (iterative, and steerable by --lra-soi-minimize-order), or none
+                              (ablation baseline). Inert under every other pivoting rule.
+                              Measured, the error set averages 2.83 variables and never
+                              exceeded 9, so this changes which minimal conflict is learned
+                              rather than how fast it is found
+          --lra-soi-minimize-order TEXT:{id,row-support,violation} [id]
+                              Order --lra-soi-minimize deletion offers candidates for removal,
+                              worst first: id (ascending, reproduces quickxplain's input
+                              order), row-support (longest row first -- the row support
+                              dominates clause length, so this sheds the rows contributing most
+                              literals), or violation (largest bound violation first)
+          --lra-bland-fallback-factor UINT:INT in [0 - 1000000] [4]
+                              Per-variable coefficient of check()'s Bland's-rule fallback
+                              point, which is factor * variables + offset pivots within one
+                              check. Smaller switches to Bland's rule sooner: slower but
+                              anti-cycling-proven
+          --lra-bland-fallback-offset UINT:INT in [0 - 1000000000] [64]
+                              Constant term of the Bland's-rule fallback point
+          --mixed-dispatch TEXT:{narrow,wide} [narrow]
+                              Which formulas reach the mixed EUF/LRA solver: narrow (only a
+                              Bool-sorted function APPLICATION counts as an EUF predicate, so a
+                              formula that is pure QF_LRA apart from propositional variables
+                              stays on the pure path) or wide (a Bool-sorted constant counts
+                              too -- the pre-2026-08-07 behaviour, routing any QF_LRA formula
+                              containing one propositional variable to the mixed solver).
+                              Usually much worse, but genuinely better on some instances; kept
+                              as a portfolio dimension and so differential fuzzing can reach
+                              the mixed path
+          --lra-fixed-elimination [default: off]
+                              Pivot a basic LRA variable out of the basis as soon as its bounds
+                              coincide (heuristics item H7). It nets to nothing on the
+                              scrambled competition set, but doubles the >5MB band, so it is
+                              worth enabling on equality-dominated input
+          --no-qf-uflra-fixed-elimination [default: off]
+                              Disable mixed QF_UFLRA fixed-variable elimination, which exposes
+                              EqRow interface equalities before the exact pair fallback
+          --gaussian-elimination [default: on]
+                              Enable QF_LRA Gauss-Jordan elimination over asserted linear
+                              equality systems, feeding solve-eqs (campaign-fuzzed 2026-07-25)
+          --no-gaussian-elimination [default: off]
+                              Disable QF_LRA Gauss-Jordan equality-system elimination
+          --qf-uflra-candidate-final-scan [default: off]
+                              Enable experimental mixed QF_UFLRA candidate-first final LRA
+                              equality scans before falling back to the full shared-Real pair
+                              scan
+          --qf-uflra-lra-equality-producer TEXT:{legacy,model-unit,adaptive} [legacy]
+                              LRA-to-EUF opportunistic equality producer: legacy exact-offset
+                              row indexes or model-unit current-model-filtered unit rows;
+                              adaptive bootstraps legacy to a propagation fixed point, then
+                              uses model-unit until a later shared-model split
+          --qf-uflra-model-reconciliation [default: on]
+                              Explicitly enable convex QF_UFLRA shared-model reconciliation
+                              with scratch LRA mutation, EUF compatibility checks, and lazy
+                              positive equality splits
+          --no-qf-uflra-model-reconciliation [default: off]
+                              Disable convex QF_UFLRA shared-model reconciliation and use the
+                              explained exact equality-sharing fallback
+          --monotone-elimination [default: off]
+                              Enable experimental monotone (one-sided) real-variable
+                              elimination: a
+                              variable every constraint pushes the same way is discharged and
+                              its
+                              atoms folded to constants, shrinking the Boolean structure.
+                              Models are
+                              reconstructed for eliminated variables
+          --guarded-real-equality-lowering [default: off]
+                              Enable experimental guarded Real equality lowering: rewrite a
+                              disjunction with one Real equality child directly to two guarded
+                              inequalities, avoiding one Tseitin layer on some QF_LRA encodings
+
+QF_LIA theory options:
+          --qf-uflia-model-combination, --experimental-qf-uflia-model-combination [default: on]
+                              Guide non-convex QF_UFLIA arrangement search with component
+                              models before complete fallback
+          --no-qf-uflia-model-combination [default: off]
+                              Disable QF_UFLIA model guidance and start from the complete
+                              arrangement
+          --qf-uflia-online-components, --experimental-qf-uflia-online-components [default: on]
+                              Reuse trail-synchronized EUF and rational-arithmetic state during
+                              QF_UFLIA SAT search
+          --no-qf-uflia-online-components [default: off]
+                              Disable trail-synchronized QF_UFLIA components
+          --qf-uflia-model-decision-budget UINT [512]
+                              Maximum QF_UFLIA model-choice batches before complete arrangement
+                              fallback
+          --lia-branch-limit UINT:INT in [1 - 100000000] [100000]
+                              QF_LIA branch-and-bound node cap: plain branch-and-bound alone
+                              has no completeness argument (an unbounded integer-infeasible
+                              polytope can branch forever), so once this many nodes have been
+                              explored the search reports Unknown instead of continuing
+          --lia-gomory-cut-limit UINT:INT in [0 - 100000000] [100]
+                              QF_LIA Gomory-cut round cap, run before branch-and-bound on every
+                              candidate model: caps how many cut-and-recheck rounds are
+                              attempted before falling through to branch-and-bound regardless
+          --lia-patch-limit UINT:INT in [0 - 100000000] [100]
+                              QF_LIA patching budget, run before the integer refutation stages
+                              on every candidate model: caps how many nonbasic moves are taken
+                              to nudge Int variables onto integer values. 0 disables patching
+          --no-lia-conflict-generalization [default: off]
+                              Disable QF_LIA conflict generalization: build each
+                              integer-infeasibility lemma from every arithmetic atom in the
+                              problem instead of from the GCD/cut/branch derivation that
+                              actually proved it. The coarse form excludes one Boolean
+                              assignment per round
+
+SAT and DPLL(T) options:
+          --qf-uflra-online-euf [default: off]
+                              Enable experimental incremental EUF callbacks and live
+                              final-model closure reuse in mixed QF_UFLRA solving
+          --top-level-or-tseitin [default: off]
+                              Always encode top-level disjunctions with Tseitin support clauses
+          --no-top-level-or-tseitin [default: off]
+                              Never encode them: keep each top-level disjunction as one clause,
+                              and turn the automatic rule off too
+          --no-auto-top-level-or-tseitin [default: off]
+                              Disable the automatic rule, which encodes Tseitin-style only on
+                              finite-domain problems having 1000-2500 top-level OR nodes and at
+                              most 700 negations
+          --pure-theory-filter TEXT:{auto,on,off} [auto]
+                              T-pure theory literal filtering mode
+          --theory-phase TEXT:{negative,positive,none,polarity,auto} [negative]
+                              Initial SAT phase for theory atoms
+          --max-theory-conflicts UINT:INT in [1 - 1000000000] [unlimited]
+                              Return unknown after at least this many learned theory conflicts
+          --cadical-option TEXT
+                              Set a CaDiCaL integer option as name=value; may be repeated

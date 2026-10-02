@@ -45,7 +45,7 @@ Build/
 build-*/
 _build/
 docs/_build/
-docs-next/_build/
+docs-history/_build/
 
 # CMake generated files
 CMakeFiles/

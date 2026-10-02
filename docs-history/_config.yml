@@ -1,0 +1,75 @@
+title: Primo — historical documentation
+author: Primo contributors
+logo: _static/primo-logo.svg
+
+bibtex_bibfiles:
+  - references.bib
+
+execute:
+  execute_notebooks: "off"
+
+repository:
+  url: https://github.com/primo-solver/primo
+  branch: main
+  path_to_book: docs-history
+
+html:
+  favicon: _static/primo-avatar.png
+  use_repository_button: true
+  use_issues_button: false
+  use_edit_page_button: false
+
+parse:
+  myst_enable_extensions:
+    - colon_fence
+    - deflist
+    - dollarmath
+    - fieldlist
+    - linkify
+    - substitution
+    - tasklist
+
+sphinx:
+  extra_extensions:
+    - sphinx.ext.extlinks
+  # Preserve Jupyter Book's repository settings when adding theme options below.
+  recursive_update: true
+  config:
+    bibtex_reference_style: label
+    # Solver source reviewed for the new manual; historical reports keep their
+    # own measured revisions. Advance only after checking affected claims.
+    extlinks:
+      source:
+        - "https://github.com/primo-solver/primo/blob/c944fa790c2043ebac93b8d6f63c7b02b0c2c235/%s"
+        - "%s"
+    myst_substitutions:
+      source_revision: "c944fa790c2043ebac93b8d6f63c7b02b0c2c235"
+    # Generate implicit targets for headings down to level 3, so that an
+    # ordinary `[text](#some-heading)` link resolves as a MyST reference
+    # instead of warning and falling back to a bare HTML anchor.
+    myst_heading_anchors: 3
+    linkcheck_workers: 4
+    linkcheck_timeout: 15
+    linkcheck_retries: 1
+    linkcheck_rate_limit_timeout: 30
+    linkcheck_allow_unauthorized: false
+    linkcheck_report_timeouts_as_broken: false
+    linkcheck_anchors_ignore_for_url:
+      # GitHub implements code-line fragments dynamically; still check the file URL.
+      - '^https://github\.com/arminbiere/cadical/blob/rel-3\.0\.0/src/cadical\.hpp$'
+    linkcheck_ignore:
+      # Validated from local Git by make docs-check-links; no GitHub login needed.
+      - '^https://github\.com/primo-solver/primo/(?:blob|commit)/'
+      # Repository landing page requires access while the repository is private.
+      - '^https://github\.com/primo-solver/primo/?$'
+    html_show_copyright: false
+    html_show_sourcelink: false
+    html_theme_options:
+      announcement: "Historical manual preserved at the documentation replacement. Use the current manual for supported behavior."
+      use_download_button: false
+      logo:
+        image_light: _static/primo-logo.svg
+        image_dark: _static/primo-logo-dark.svg
+        alt_text: Primo
+    suppress_warnings:
+      - myst.header

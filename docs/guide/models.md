@@ -26,11 +26,11 @@ constructed model. In the default rebuild engine it requires model production
 to be enabled separately. The opt-in assumptions engine constructs a model
 internally when checking is requested, but `get-model` still requires
 `:produce-models true`. This is not independent validation by another solver. The separate
-[Dolmen workflow](../experiments.md) is used when qualifying experiment results.
+[Dolmen workflow](../development/validation.md) is used when qualifying experiment results.
 
 ## When a model is available
 
-The [capability map](../current-status.md#supported-routes) identifies routes
+The [capability map](../capabilities.md#supported-routes) identifies routes
 with model support. `get-model` requires all of the following:
 
 - `:produce-models true` was set in start mode;
@@ -61,6 +61,5 @@ each function and evaluated argument tuple.
 
 The {source}`session interpreter <src/smt/smt_session.cpp>` enforces model
 availability. The implementation's ownership, reconstruction and evaluation
-contracts remain in [](../model-interpretation.md), with the owning model in
-{source}`src/core/model.hpp`. That implementation chapter will be separated
-from its development history in the next rewrite batches.
+contracts remain in [](../implementation/models.md), with the owning model in
+{source}`src/core/model.hpp`. The chapter separates implemented contracts from historical evidence.

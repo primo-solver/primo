@@ -121,3 +121,7 @@ NNF separately. Neither transformation alone implements relevance filtering.
 The older {source}`arithmetic relevance lead <docs/open-leads.md#L1171-L1194>` retains
 its family-specific motivation; its measurement sequence is not a prerequisite
 for investigating quantified don't-cares.
+
+
+The [quantifier relevance lead](../leads/quantifier-relevance.md) records the
+candidate design and acceptance criteria for the replacement documentation.

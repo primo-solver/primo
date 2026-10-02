@@ -153,3 +153,8 @@ hits, candidates/row visits, LP work or nodes as appropriate, and total solver
 time on both SAT and UNSAT inputs. No MIP speedup transfers automatically to
 Primo. The replacement lead records the proposed parameter and evaluation
 order; implementation, fuzzing and corpus evaluation remain open.
+
+
+The [patching lead](../leads/lia-patching.md) records the proposed configuration
+and comparisons. The {ref}`implementation chapter <lia-patching>` explains
+the current feasible-move rule and its worked example.

@@ -1,8 +1,8 @@
 # SMT-LIB input and results
 
-Use the [capability map](../current-status.md#supported-routes) to choose a
+Use the [capability map](../capabilities.md#supported-routes) to choose a
 logic and session mode. This page explains the input conventions and how to
-interpret responses. It describes the source revision shown on that map.
+interpret responses. Source links identify the implementation described.
 
 ## A command stream
 
@@ -46,13 +46,13 @@ Primo does not implement floating-point arithmetic or general nonlinear solving.
 For integer input, `div`, `mod`, and `abs` are accepted extensions, with a
 nonzero literal divisor for division/remainder. Acceptance is not a claim of
 strict QF_LIA grammar conformance. Integer solving can return `unknown` even
-for accepted input. See the current [arithmetic reference](../arithmetic.md)
+for accepted input. See the current [arithmetic reference](../implementation/lra.md)
 for the lowering and search limitations.
 
 Quoted symbols are supported. A quoted and unquoted spelling of the same
 ordinary symbol name denote the same symbol; malformed metadata, leading-zero
 numerals and unquoted reserved names are rejected. The
-[lexical audit](../lexical-conformance.md) records the tested boundary, not a
+[lexical audit](../implementation/frontend.md) records the tested boundary, not a
 claim of complete SMT-LIB conformance. Term admission is implemented in
 {source}`src/smt/frontend.cpp`.
 
@@ -79,7 +79,7 @@ This route can prove contradictions, but a surviving candidate is not in
 general a SAT result: only the implemented covered cases return `sat`;
 otherwise the solver returns `unknown`. Quantified arithmetic, E-matching and
 printed models for quantified formulas are not supported. The
-[quantifier chapter](../quantifiers.md) explains the precise covered cases and
+[quantifier chapter](../implementation/quantifiers.md) explains the precise covered cases and
 implementation. Quantifiers are not enabled in assumptions mode.
 
 ## Reading the result

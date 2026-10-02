@@ -2,9 +2,9 @@
 
 Run `./build/primo --help` for the complete option inventory of your binary.
 The {download}`captured help <../examples/primo-help.txt>` belongs to the
-source revision shown in [](../current-status.md). This page explains the
-common controls; specialized switches remain documented in the linked
-component chapters while their reference material is being rewritten.
+documented implementation; source metadata is centralized in the review ledger. This page explains the
+common controls; the complete captured inventory below supplies accepted values and defaults.
+[Effective policies](policies.md) explains automatic selection and option dependencies.
 
 ## Everyday use
 
@@ -13,12 +13,12 @@ component chapters while their reference material is being rewritten.
 | `--help`, `-h` | Off | Print grouped CLI help and exit. |
 | `--version` | Off | Print revision/build information and exit. |
 | `--quiet`, `-q` | Off | Suppress the startup banner; SMT-LIB responses remain enabled. |
-| `--stats` | Off | Write query statistics to stderr. See [](../debugging.md). |
+| `--stats` | Off | Write query statistics to stderr. See [](../reference/statistics.md). |
 | `--check-model` | Off | Check original assertions against a requested model. Set `:produce-models true` separately; see [](../guide/models.md). |
 | `--incremental-mode` | `rebuild` | Choose `rebuild` or the restricted `assumptions` session engine. See [](../guide/sessions.md). |
 | `--preprocessing-mode` | `auto` | Choose `auto`, `off`, `basic`, or `strong`. `off` does not bypass required lowering. Assumptions mode admits only `auto` or `off`. |
 | `--max-theory-conflicts=N` | Unlimited | Positive budget, up to 1,000,000,000; return `unknown` after reaching the learned-theory-conflict limit. |
-| `--lia-branch-limit=N` | `100000` | Bound integer branch-and-bound nodes; reaching the bound can return `unknown`. See [](../qf-lia-branch-and-bound.md). |
+| `--lia-branch-limit=N` | `100000` | Bound integer branch-and-bound nodes; reaching the bound can return `unknown`. See [](../implementation/lia.md). |
 | `--cancel-grace-seconds=N` | `1` | Cooperative cancellation grace period after SIGINT/SIGTERM, from 1 to 3600 seconds. This is not a solve-time limit. |
 
 For example:
@@ -31,9 +31,9 @@ For example:
 
 Options accept only their declared values/ranges. A name beginning with
 `experimental` or a diagnostic switch does not identify a qualified default.
-For component-specific controls, use [](../preprocessing.md),
-[](../euf.md), [](../arithmetic.md), [](../quantifiers.md), and
-[](../tuning-parameters.md). The help snapshot includes every registered CLI
+For component-specific controls, use [](../implementation/preprocessing.md),
+[](../implementation/euf.md), [](../implementation/lra.md), [](../implementation/quantifiers.md), and
+[](../reference/policies.md). The help snapshot includes every registered CLI
 option; the prose above is intentionally a practical subset.
 
 ## Preprocessing diagnostic
@@ -79,3 +79,14 @@ The documentation example checker compares the captured help with the built
 binary. Update the help snapshot only after reviewing changed defaults and the
 affected manual pages; it is evidence for this revision, not a substitute for
 explaining new behavior.
+
+## Complete CLI inventory
+
+The snapshot is checked by the existing documentation example checker. The
+word “scaffold” in the banner is the current CLI description, not a capability
+classification. Experimental split counts are bounded by the available atoms,
+as explained in [tactics](tactics.md).
+
+```{literalinclude} ../examples/primo-help.txt
+:language: text
+```

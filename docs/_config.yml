@@ -16,8 +16,8 @@ repository:
 html:
   favicon: _static/primo-avatar.png
   use_repository_button: true
-  use_issues_button: false
-  use_edit_page_button: false
+  use_issues_button: true
+  use_edit_page_button: true
 
 parse:
   myst_enable_extensions:
@@ -25,28 +25,22 @@ parse:
     - deflist
     - dollarmath
     - fieldlist
-    - linkify
     - substitution
     - tasklist
 
 sphinx:
   extra_extensions:
     - sphinx.ext.extlinks
-  # Preserve Jupyter Book's repository settings when adding theme options below.
   recursive_update: true
   config:
     bibtex_reference_style: label
-    # Solver source reviewed for the new manual; historical reports keep their
-    # own measured revisions. Advance only after checking affected claims.
     extlinks:
       source:
         - "https://github.com/primo-solver/primo/blob/c944fa790c2043ebac93b8d6f63c7b02b0c2c235/%s"
         - "%s"
-    myst_substitutions:
-      source_revision: "c944fa790c2043ebac93b8d6f63c7b02b0c2c235"
-    # Generate implicit targets for headings down to level 3, so that an
-    # ordinary `[text](#some-heading)` link resolves as a MyST reference
-    # instead of warning and falling back to a bare HTML anchor.
+      record:
+        - "https://github.com/primo-solver/primo/blob/1f9f116c73520d960278139a0e82dd0dbd4c9b29/%s"
+        - "%s"
     myst_heading_anchors: 3
     linkcheck_workers: 4
     linkcheck_timeout: 15
@@ -70,5 +64,3 @@ sphinx:
         image_light: _static/primo-logo.svg
         image_dark: _static/primo-logo-dark.svg
         alt_text: Primo
-    suppress_warnings:
-      - myst.header

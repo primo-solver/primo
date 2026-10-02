@@ -1,7 +1,7 @@
 # Build and run Primo
 
 Start here to build Primo and solve a small SMT-LIB problem. Commands below run
-from the repository root. The [capability map](../current-status.md) describes
+from the repository root. The [capability map](../capabilities.md) describes
 what this version accepts and where solving can return `unknown`.
 
 ## Prerequisites
@@ -20,9 +20,6 @@ cd primo
 make build
 ./build/primo --version
 ```
-
-During private release preparation, cloning requires repository access.
-An authenticated SSH clone works too.
 
 `make build` installs CLI11, CaDiCaL and GMP under `contrib/local`, configures
 CMake in `build/`, and builds `build/primo`. It selects a Release build unless
@@ -78,7 +75,7 @@ python3 scripts/check_doc_examples.py --solver ./build/primo
 
 The example check verifies the small programs used in this manual. It is not
 a replacement for solver fuzzing or independent model validation. Contributor
-requirements are in [](../contributing.md).
+requirements are in [](../development/correctness.md).
 
 ## Read the book locally
 
@@ -87,8 +84,8 @@ make docs-serve
 ```
 
 Open `http://localhost:8000`. This first runs the strict documentation build,
-then serves `docs/_build/html`. Stop the server with Ctrl-C. For just the HTML,
-run `make docs` and open `docs/_build/html/index.html`.
+then serves `docs/_build/site`. Stop the server with Ctrl-C. For just the HTML,
+run `make docs` and open `docs/_build/site/index.html`.
 
 The generated book does not require a running solver or database service.
-Website deployment remains part of the [publication plan](../documentation-restructuring.md#website-and-deployment-plan).
+The same assembled site is the publication artifact; local preview commands do not deploy it.

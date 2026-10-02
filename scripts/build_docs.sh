@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build the current book or the separately reviewed draft book.
+# Build the current manual or the frozen historical book.
 
 set -euo pipefail
 
@@ -10,8 +10,8 @@ BOOK_DIR="${PRIMO_DOCS_DIR:-docs}"
 
 # Keep the two book outputs separate while sharing the existing toolchain.
 case "$BOOK_DIR" in
-    docs|docs-next) ;;
-    *) echo "error: PRIMO_DOCS_DIR must be docs or docs-next" >&2; exit 2 ;;
+    docs|docs-history) ;;
+    *) echo "error: PRIMO_DOCS_DIR must be docs or docs-history" >&2; exit 2 ;;
 esac
 
 cd "$REPO_ROOT"
@@ -23,13 +23,8 @@ fi
 
 "$VENV/bin/python" -m pip install -r docs/requirements.txt
 
-# Reuse Sphinx's cache for draft previews. Pass --all for a full draft build;
-# make docs-check-links does this because cached pages may hide warnings.
-# The current book keeps its full-build default.
+# Local previews are incremental; validation passes --all explicitly.
 BUILD_ARGS=()
-if [[ "$BOOK_DIR" == "docs" ]]; then
-    BUILD_ARGS+=(--all)
-fi
 # Warnings remain errors in either mode. PRIMO_DOCS_STRICT=0 permits a preview
 # despite warnings; use a strict full build before accepting documentation.
 if [[ "${PRIMO_DOCS_STRICT:-1}" != "0" ]]; then

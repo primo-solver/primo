@@ -1,0 +1,127 @@
+format: jb-book
+root: index
+
+# Theory reference pages are entry points; detailed design and evidence notes
+# are nested beneath the component they qualify.
+parts:
+  - caption: Work status
+    chapters:
+      - file: current-status
+      - file: active-work
+      - file: open-leads
+
+  - caption: Using Primo
+    chapters:
+      - file: guide/getting-started
+      - file: guide/input
+      - file: guide/models
+      - file: guide/sessions
+      - file: reference/options
+
+  - caption: Core architecture
+    chapters:
+      - file: architecture
+      - file: incremental-smt
+        sections:
+          - file: lexical-conformance
+          - file: assumption-incremental-lra
+          - file: assumption-incremental-uf
+          - file: uf-z3-profiling
+          - file: incremental-uf-atom-scans
+          - file: opensmt-incremental-comparison
+      - file: model-interpretation
+      - file: tactics
+        sections:
+          - file: tactic-reference
+      - file: boolean-dag-flattening
+      - file: root-polarity-clausification
+      - file: sat-ipasir-up
+      - file: dpllt
+      - file: preprocessing
+      - file: structural-auto-preprocessing
+      - file: quantifiers
+      - file: quantifier-entailment-design
+
+  - caption: Theories
+    chapters:
+      - file: euf
+        sections:
+          - file: euf-boolean-arguments
+          - file: qfuf-disequality-propagation
+      - file: arithmetic
+        sections:
+          - file: qf-lia-branch-and-bound
+            sections:
+              - file: qf-lia-profile
+          - file: qf-lra-heuristics
+          - file: tuning-parameters
+          - file: tropical-matrix-structure
+          - file: fuzz-coverage-qf-lra
+      - file: nelson-oppen
+        sections:
+          - file: modular-theory-combination
+          - file: n-way-combination-migration
+          - file: qf-uflra-model-guided-performance
+          - file: qf-uflra-convex-no-merge-plan
+          - file: nelson-oppen-qf-lra-regression
+          - file: qf-lra-equality-sharing
+      - file: bool-argument-congruence-bug
+      - file: difference_logic
+
+  - caption: Evidence and practice
+    chapters:
+      - file: contributing
+      - file: public-repository-migration
+        sections:
+          - file: documentation-restructuring
+          - file: work/documentation-audit
+      - file: experiments
+      - file: run-log
+        sections:
+          - file: benchmark-record-storage
+      - file: debugging
+        sections:
+          - file: finite-domain-fuzzing
+      - file: termid-order-sensitivity
+      - file: development/documentation
+      - file: archive/current-status
+
+  - caption: Paper notes
+    chapters:
+      - file: literature
+        sections:
+          - file: papers/summaries
+          - file: papers/lra-related-work
+      - file: papers/ipasir-up
+      - file: papers/primo-qflra-results
+      - file: papers/yices
+      - file: papers/clause-forgetting
+      - file: papers/polarity-aware-cnf
+      - file: papers/relevance-filtering
+      - file: papers/cvc4-architecture
+      - file: papers/fastsmt-strategy-synthesis
+      - file: papers/tactic-configuration-evidence
+      - file: papers/fast-congruence-closure
+      - file: papers/fast-congruence-closure-implementation
+      - file: papers/smt-symmetry-breaking
+      - file: papers/finite-model-finding-sorts
+      - file: papers/nelson-oppen-closure-methods
+      - file: papers/model-based-theory-combination
+      - file: papers/fast-linear-arithmetic-dpllt
+      - file: papers/arithmetic-solving-in-z3
+        sections:
+          - file: papers/word-gcd-notes
+      - file: papers/integer-division-and-modulo
+      - file: papers/lia-primal-heuristics
+      - file: papers/lra-atom-canonicalization
+      - file: papers/griggio-mathsat-thesis
+      - file: papers/bromberger-linear-arithmetic-thesis
+      - file: papers/monotone-variable-elimination
+      - file: papers/difference-constraint-propagation
+      - file: papers/enumerative-instantiation
+      - file: papers/fair-adventurous-enumeration
+
+  - caption: Reference
+    chapters:
+      - file: references
+      - file: reference/llm2smt-retrospective

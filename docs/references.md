@@ -1,14 +1,12 @@
 # Bibliography
 
-Publication metadata is maintained in the shared
-{download}`BibTeX file <references.bib>`. The entries below are cited in this
-book. Paper notes record the edition and sections read, the implemented
-subset and remaining questions; a bibliography entry alone does not mean
-the publication has been read or its method implemented.
+The current manual uses the {download}`BibTeX file <references.bib>`.
+The entries below are cited in this manual. The literature notes and review
+ledger record editions and sections actually read; inclusion here does not
+establish reading coverage or implementation status.
 
-Use DOI links for the cited edition when available, and an institutional
-record, report identifier or stable author link otherwise. Reference papers
-are not distributed with the documentation.
+The documentation distributes bibliographic metadata and original analysis,
+with DOI or stable publication links. Reference papers are not included.
 
 ```{bibliography}
 :style: plain

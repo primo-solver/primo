@@ -1,636 +1,90 @@
-# Literature
-
-The [bibliography](references.md) provides shared publication metadata for
-both books. The notes below record reading coverage and implementation status;
-they do not distribute the reference papers.
-
-## Quantifier enumeration, model filtering and fail masks
-
-**MBQI is due to Ge and de Moura** {cite:p}`ge2009complete`. Section 6 of
-their CAV 2009 paper checks candidate models and converts counterexample
-values into instantiation terms. That section was read to distinguish MBQI
-from a proposed model-based filter on Primo's enumerator: the enumerator
-generates candidate instances, and model evaluation decides which to emit.
-Neither procedure is implemented in Primo.
-
-The [enumeration paper note](papers/enumerative-instantiation.md) distinguishes
-the TACAS 2018 paper's equality entailment by the current ground assignment
-from equality only in a candidate model {cite:p}`reynolds2018enumerative`.
-Its §4, Example 2 also distinguishes non-entailed instances from instances
-that falsify the current model. The open lead in
-`docs-next/leads/quantifier-instantiation.md` connects representative
-enumeration, entailment filtering, model-based filtering of instances, and the
-existing
-{ref}`fail-mask investigation <quantifier-entailment-fail-masks>`.
-The shared obligations cover validity across context changes, fairness and
-revisitation. These reductions remain unimplemented; no completeness defect
-in CVC4 or cvc5 is established here.
-
-## Integer bounds and infinitesimals
-
-{ref}`King's thesis §4.3 <king-integer-normalization>`
-gives integer normalization and strict-bound tightening, including negated
-inequalities received from SAT. Earlier GCD-and-rounding rules appear in
-Pugh's expanded Omega paper §2.1 {cite:p}`pugh1992omega` and Griggio's thesis
-§2.6.1, equations (2.11)–(2.12) {cite:p}`griggio2009`.
-[Dutertre–de Moura's report §4.1](papers/fast-linear-arithmetic-dpllt.md)
-separately supplies the delta-aware floor used by current integer branching.
-The remaining proposal in `docs-next/leads/lia-infinitesimals.md` applies
-established tightening to Primo's scaled auxiliaries. No implementation or
-performance improvement is claimed for that proposal.
-
-## Integer-model repair and MIP primal heuristics
-
-[](papers/lia-primal-heuristics.md) connects Primo's fixed-window patching
-to the ILP/MIP literature on rounding, shifting, the feasibility pump and
-relaxation enforced neighborhood search (RENS). It records the primary
-sections read, required state and invariants, cost controls and the distinction
-between finding a model and proving infeasibility. The proposed window
-parameter and experiments are tracked in `docs-next/leads/lia-patching.md`;
-the surveyed MIP methods are not claimed as implemented behavior.
-
-## Primo's published QF_LRA results
-
-[](papers/primo-qflra-results.md) records Janota and Jakubův's September 2026
-paper, its measured configurations and the scope of its benchmark comparisons.
-It separates published results from current defaults and records the remaining
-work to connect the paper's tables to repository artifacts.
-
-## Yices architecture and theory-lemma reuse
-
-[](papers/yices.md) covers all three local Yices sources: Dutertre and de
-Moura's 2006 tool paper, Dutertre's CAV 2014 *Yices 2.2*, and his SMT 2016
-*The Nuts and Bolts of Yices* talk. The survey maps conflict-driven
-Ackermannization, lazy explanations, and selective SAT lemma retention to
-Primo's current code, including the limited default-off Ackermann propagator
-and the reverted scan-based experiment. It also records library lifetimes,
-compact descriptors, parent occurrences, and ITE preprocessing as inputs to
-the relevant chapter audits.
-
-The remaining Ackermann selection and lemma-retention investigations are
-**open leads**, not active implementations. In particular, CaDiCaL already
-documents retaining external reason clauses; audit its effective policy before
-proposing a separate cache. The note is also rendered under **Literature** in
-the replacement book.
-
-## Clause forgetting and termination
-
-[](papers/clause-forgetting.md) records three complementary sources:
-Nieuwenhuis–Oliveras–Tinelli (2006), Definition 3.2, Theorem 3.7 and §4.4,
-for theory-lemma forgetting; Blanchette et al. (JAR 2018), §§3.4–3.5 and 4.5,
-for formally verified restart/forget strategies; and Gstrein et al.,
-*Learn to Unlearn* (SAT 2025), for empirical deletion-policy tradeoffs.
-The note distinguishes logical redundancy, live explanation lifetime, and
-search progress. It maps these obligations to Primo's callback/adapter boundary.
-
-Safe forgetting is an open investigation in
-`docs-next/leads/theory-lemma-forgetting.md`, alongside lemma retention and
-incremental-memory work. No deletion policy has been selected or implemented.
-
-## Polarity-aware CNF and SMT
-
-[](papers/polarity-aware-cnf.md) records the positive-only `v → F` and
-negative-only `F → v` definitions of Plaisted–Greenbaum conversion. It cites
-Masina–Spallitta–Sebastiani's JAIR 2025 SAT/SMT enumeration paper and
-SMTInterpol's primary documentation. The original 1986 reference is listed
-with its full-text access gap, not represented as read.
-
-Primo's current nested definitions remain bidirectional. General PG is an
-open lead with incremental direction upgrades and exact Boolean-value
-obligations; atom-polarity flags and the rejected root-only prototype do not
-implement it. Enumeration results are not decision-solving performance evidence.
-
-## Don't-care reasoning and relevance
-
-[](papers/relevance-filtering.md) covers de Moura and Bjørner's *Relevancy
-Propagation* (2007), Sebastiani's SMT survey (2007) and partial-assignment
-analysis (2020), and Niemetz–Preiner–Biere's FMCAD 2014 work on don't-care
-reasoning. The note records the sections read, data structures, invariants,
-costs, and limits of transferring these ideas to quantified UF.
-
-Primo currently processes every assigned quantified atom. Dynamic filtering
-and a completion rule based on sufficient Boolean support remain an open lead
-in `docs-next/leads/quantifier-relevance.md`. NNF and directly asserted
-quantifier specialization have separate leads; none is claimed as implemented.
-
-## Lexical specification and external parser audit
-
-[](lexical-conformance.md) records the SMT-LIB 2.7 Sections 3.1–3.3 and binder
-rules used for original conformance tests, public cvc5/Dolmen test categories,
-and inspection of Griggio's older Flex/Bison parser. Symbol canonicalization
-and category-aware lexical/command validation are now implemented with explicit
-user-selected compatibility exceptions; leading-zero numerals remain forbidden.
-External code is an inspection source, not copied implementation or a substitute
-for the current standard. The historical matrix records the original wrong answers;
-repair qualification is tracked separately.
-
-## Scoped command sessions and incremental tactics
-
-[](incremental-smt.md) maps SMT-LIB 2.7 Sections 4.1–4.2 to the new
-`SmtSession` journal, scopes, protocol modes and query-local ownership. Its
-replay-based architecture is an original baseline. The Strategy Challenge,
-Section 3, remains the basis of existing ordered goals and model converters;
-Z3 Internals Sections 8.3 and 8.6 motivate, but do not qualify as implemented,
-future incoming-formula translation and restoration of eliminated constraints.
-Persistent incremental solving is deferred, not inferred from incremental
-theory callbacks. Tests specifically strengthen formulas after one-sided
-elimination and substitution, and discard previous disjunctive winners.
-
-This file collects implementation-oriented literature summaries.
-
-Do not claim to have read a paper unless the paper text or notes are available. When uncertain, mark the claim as uncertain.
-
-If a required paper cannot be downloaded or accessed, ask the user to provide it. Do not replace it with a secondary summary unless explicitly approved.
-
-## Template
-
-```markdown
-## Paper title
-
-Bibliographic data.
-
-### Relevance
-
-### Algorithm
-
-### Data structures
-
-### Implementation notes
-
-### Risks
-
-### Possible milestone
-```
-
-## Exploiting symmetry in SMT problems
-
-David Déharbe, Pascal Fontaine, Stephan Merz, and Bruno Woltzenlogel Paleo,
-CADE 2011.
-
-PDF: <https://www.verit-solver.org/papers/cade2011.pdf>
-
-### Relevance
-
-Motivates QF_UF symmetry breaking by permutations of uninterpreted constants.
-This is directly relevant to finite-domain-looking QF_UF benchmarks where many
-constants are interchangeable.
-
-### Algorithm
-
-The paper defines formula invariance under permutations of constants and uses
-that invariance to restrict the model search space. Primo implements a
-conservative syntactic check for the finite-domain choice patterns it already
-recognizes.
-
-### Data structures
-
-Primo uses hash-consed `TermId` formulas, groups finite-domain choices by value
-set, and canonicalizes formulas under candidate permutations.
-
-### Implementation notes
-
-Implemented as default-on `--uf-symmetry-breaking` in `src/smt/preprocessing.*`,
-with `--no-uf-symmetry-breaking` for ablation runs. Primo does not implement
-graph automorphism detection.
-
-### Risks
-
-The pass is only sound for moving terms if the generated restriction preserves
-the constants syntactically used by the selected term, as in Déharbe et al.'s
-Algorithm 1. Treating moving terms as a fixed value-precedence sequence is not a
-valid shortcut.
-
-### Possible milestone
-
-Benchmark-driven decision on whether the option should remain experimental or
-become part of a tuned QF_UF preset.
-
-## Symmetry Breaking Using Value Precedence
-
-Toby Walsh. *Symmetry Breaking Using Value Precedence.* ECAI 2006.
-arXiv: <https://arxiv.org/abs/0903.1136>.
-
-### Relevance
-
-Value precedence is the fixed-variable symmetry-breaking component used by
-Primo when an accepted finite-domain UF symmetry group contains recognized terms
-that do not themselves contain any permuted value.
-
-### Algorithm
-
-For an ordered sequence of fixed terms and interchangeable values, the first
-occurrence of each non-minimal value must be preceded by an occurrence of the
-previous value. Primo also emits prefix exclusions that prevent early fixed
-terms from using values outside their canonical prefix. The implementation is
-limited to terms whose syntax contains no permuted value. Groups containing
-moving terms use this value-precedence scheme only over the fixed subset; groups
-with no fixed terms use the separate Déharbe-style moving-term fallback.
-
-### Data structures
-
-`SymmetryGroup` stores the interchangeable values and candidate terms.
-`SymmetryTerm::used_values` records which group values occur inside a candidate
-term. Empty `used_values` selects the fixed-term subsequence for value
-precedence; nonempty groups with no fixed term are handled by the moving-term
-fallback.
-
-### Risks
-
-The July 2026 prototype stacked fixed-term value precedence with the moving-term
-Algorithm 1 restrictions for the same group. On the 151-file NEQ/PEQ/SEQ
-targeted SLURM run it improved PAR2 from 3972.164 to 2152.063 and solved 145
-instead of 140 instances, but it produced wrong `unsat` answers on
-`SEQ/SEQ018_size8.smt2` and `SEQ/SEQ019_size6.smt2`. The current implementation
-does not stack the two schemes for one group and keeps those SEQ cases as
-sat-preservation checks.
-
-### Possible milestone
-
-Study Reger, Riener, and Suda's broader principal-term symmetry-avoidance
-conditions before extending the current fixed-term subset to richer principal
-terms. Any extension must include sat-preservation tests for
-`SEQ/SEQ018_size8.smt2` and `SEQ/SEQ019_size6.smt2`-shaped formulas.
-
-## Symmetry Avoidance in MACE-Style Finite Model Finding
-
-Giles Reger, Martin Riener, and Martin Suda. *Symmetry Avoidance in MACE-Style
-Finite Model Finding.* FroCoS 2019, LNCS 11715.
-DOI: <https://doi.org/10.1007/978-3-030-29007-8_1>.
-
-### Relevance
-
-The NEQ, PEQ, and SEQ QF_UF benchmarks have the same finite-model flavor as
-MACE-style encodings: explicit domain constants, totality choices, and
-functionality/AMO clauses. The paper gives the soundness boundary for stronger
-symmetry-avoidance clauses over principal terms, including why terms containing
-domain constants need additional ordering conditions.
-
-### Algorithm
-
-Primo does not implement the paper's principal-term ordering schemes or the
-generalized non-constant-term conditions from Theorem 5.
-
-### Data structures
-
-The current symmetry data structures identify candidate value sets and term
-annotations, but a future principal-term implementation would need an explicit
-domain-constant order, a principal-term classifier, and checks that argument
-constants enter the sequence before the term that contains them.
-
-### Risks
-
-The paper explicitly warns that overly strong clauses for terms like `f(d1)` can
-be unsound. Any extension beyond fixed terms needs separate tests and benchmark
-counters.
-
-### Possible milestone
-
-Implement a documented principal-term sequence for finite-model-style QF_UF
-inputs only after deriving the admissible term ordering from the paper and
-adding sat-preservation tests for the SEQ counterexamples above.
-
-## Generating minimum transitivity constraints in P-time for deciding Equality Logic
-
-Ofer Strichman and Mirron Rozanov, SMT Workshop 2005.
-
-Paper text is not currently checked into this workspace. The title and authors
-come from the SMT-LIB equality-diamond benchmark metadata.
-
-### Relevance
-
-The SMT-LIB `eq_diamond` QF_UF benchmarks are crafted equality-logic formulas
-where each disjunction branch implies the same endpoint equality. A lazy EUF
-loop without preprocessing can explore exponentially many branch combinations.
-
-### Algorithm
-
-Primo does not implement the paper's full minimum-transitivity-constraint
-generation. The implemented `--eq-bridge` pass is narrower: for each `or`
-subformula, compute equality closure inside every branch and add only equalities
-that are implied by all branches.
-
-### Data structures
-
-The pass uses a local union-find over `core::TermId` values per disjunction
-branch and emits ordinary hash-consed equality terms as new assertions.
-
-### Implementation notes
-
-Implemented as default-off `--eq-bridge` in `src/smt/preprocessing.*`. See
-[](preprocessing.md).
-
-### Risks
-
-The pass is intentionally capped by branch count and pair checks. It is a
-targeted equality-diamond optimization, not a general replacement for theory
-propagation or a full transitivity-constraint generator.
-
-### Possible milestone
-
-Obtain the paper and decide whether a more general minimum-transitivity
-constraint pass is worth implementing.
-
-## Lazy Satisfiability Modulo Theories
-
-Roberto Sebastiani, *Lazy Satisfiability Modulo Theories*, Journal on
-Satisfiability, Boolean Modeling and Computation, 2007.
-
-PDF: <https://disi.unitn.it/rseba/papers/JSAT-2007.pdf>
-
-### Relevance
-
-Section 6.10 describes pure-literal filtering for SMT: non-Boolean theory atoms
-that occur only positively or only negatively in the input formula can have the
-opposite-polarity assigned theory literal omitted from the assignment sent to
-the theory solver. Section 7.2.2 describes the related, stronger idea of
-avoiding ghost literals.
-
-### Algorithm
-
-Primo implements only the pure-literal filtering subset for QF_UF. It records
-positive and negative occurrence of each theory atom during Boolean abstraction.
-At EUF check time, a false assignment of a positive-only atom and a true
-assignment of a negative-only atom are filtered out before congruence closure is
-updated.
-
-### Data structures
-
-The polarity bits are stored on `BooleanClausifier::TheoryAtom`. Assigned
-theory literals carry a `filtered` bit so the lazy and incremental EUF engines
-can preserve atom-to-flat-index mappings while skipping irrelevant assignments.
-
-### Implementation notes
-
-Polarity collection is implemented in `src/smt/clausifier.cpp`; filtering and
-EUF integration are in `src/smt/solver_engines.cpp`. Equality atoms and Boolean
-predicate applications can be filtered only when their theory meaning is
-exhausted by propositional occurrences. Boolean terms used as UF arguments
-are protected as relevant at both polarities; filtering those assignments
-would admit a third Boolean value. See [](euf-boolean-arguments.md). Filtered
-literals are not used as model-propagation premises or propagated candidates.
-
-### Risks
-
-This is not SAT pure-literal elimination and must not force pure theory atoms to
-a preferred truth value. Filtering can reduce pruning power, so benchmark
-evaluation must compare family-level solved counts, PAR2, and conflict counts.
-
-### Possible milestone
-
-Evaluate whether ghost-literal decision avoidance is worth adding after the
-pure-filtering counters show a useful hit rate.
-
-## Fuzzing and delta-debugging SMT solvers
-
-The broader source is Robert Daniel Brummayer, *Efficient SMT Solving for
-Bit-Vectors and the Extensional Theory of Arrays*, PhD thesis, Johannes Kepler
-University Linz, September 2009, Chapter 4 {cite:p}`brummayer2009thesis`.
-Section 4.1, the introduction
-to §4.2, §4.3, and the
-FuzzSMT scope in §4.4.2 were read for the documentation rewrite on 2026-09-25.
-The thesis motivates valid-input generation and structure-aware failure
-reduction; project-specific gate counts and current qualification remain
-separate evidence. Primo uses external tools rather than implementing the
-thesis's fuzzer or reducer.
-
-Robert Brummayer and Armin Biere, *Fuzzing and delta-debugging SMT solvers*,
-SMT 2009 {cite:p}`Brummayer2009`.
-
-### Relevance
-
-This is the debugging model Primo should use for solver validation: fuzz
-SMT-LIB formulas, compare with trusted solvers, and minimize failures before
-turning them into regression tests.
-
-### Algorithm
-
-The paper combines grammar-based random SMT formula generation with delta
-debugging for failure-inducing formulas. Primo uses YinYang/typefuzz for
-seed-based mutation and FuzzSMT for independent grammar-based generation.
-Reduction is handled through ddSMT when it is installed.
-
-### Data structures
-
-The key artifact is an SMT-LIB file plus metadata describing Primo's result,
-reference solver results, timeout, and failure class.
-
-### Implementation notes
-
-Use `scripts/yinyang_fuzz.sh` for seed mutation, `make fuzzsmt` for FuzzSMT
-`QF_UF` generation, `scripts/compare_with_z3.py` for differential
-classification, and `scripts/minimize_smt2.py` for ddSMT-backed reduction.
-
-### Risks
-
-Fuzzing without minimization produces bug piles that are hard to act on. Every
-SLURM fuzzing campaign should have a collection and reduction step.
-
-### Possible milestone
-
-Automate SLURM artifact collection and run reduction on every new
-`yinyang_bugs/` formula.
-
-## Using SAT and SMT Solvers for Finite Model Finding with Sorts
-
-Giles Reger and Martin Suda.
-
-PDF: <https://www.cs.man.ac.uk/~regerg/papers/arw16.pdf>
-
-### Relevance
-
-Documents MACE-style finite model finding with sorted domains and explicitly
-uses value ordering as symmetry breaking for efficiency.
-
-### Algorithm
-
-The full paper is about finite model finding by grounding over finite domains
-and using SAT/SMT to guide sort-size search. Primo keeps this as background
-only; the current QF_UF symmetry implementation uses the SMT-specific
-restriction algorithm from Déharbe et al.
-
-### Data structures
-
-There is no direct Primo implementation data structure for this paper at the
-moment.
-
-### Implementation notes
-
-Generated assertions say that `t_i` cannot use values later than `c_i`, and
-using `c_j` for `j > 0` requires an earlier term to use `c_{j-1}`.
-
-### Risks
-
-Value precedence alone is not a finite-model encoding. It must remain guarded by
-the SMT invariance check.
-
-### Possible milestone
-
-Add finite-domain AMO and equality-definition clauses once the QF_UF SAT/EUF
-interfaces are strong enough to expose useful stats and proof behavior.
-
-## CVC4 architecture and preprocessing
-
-Clark Barrett, Christopher L. Conway, Morgan Deters, Liana Hadarean, Dejan
-Jovanovic, Tim King, Andrew Reynolds, and Cesare Tinelli, *CVC4*, CAV 2011.
-
-PDF: <https://smt-comp.github.io/2012/system-descriptions/cvc4.pdf>
-
-### Relevance
-
-The system description separates formula preprocessing from the SAT/theory
-engines and lists nonclausal simplification, ITE simplification, and
-unconstrained-value simplification as important reductions before search.
-
-### Algorithm
-
-Primo currently has an experimental narrow unit-equality substitution subset of
-nonclausal simplification: positive equalities visible at top level or under
-top-level conjunction are preserved as facts and used to rewrite other
-non-Boolean ground terms before clausification. It is available for tuning but
-is not enabled by default.
-
-### Data structures
-
-The pass uses hash-consed `core::TermId` terms and a temporary union-find over
-visible equality endpoints. It does not introduce fresh terms or inspect SAT
-backend state.
-
-### Implementation notes
-
-Implemented in `substitute_ground_unit_equalities` in `src/smt/preprocessing.*`
-and counted by `:preprocessing.unit-equality.substitution-units` and
-`:preprocessing.unit-equality.substitutions`.
-
-### Risks
-
-The current subset does not use proof objects and does not rewrite Bool-sorted
-classes. It must preserve the unit equalities that justify substitutions.
-
-### Possible milestone
-
-Extend the nonclausal simplifier with proof-producing rewrites and a broader
-but still bounded congruence-aware representative selection.
-
-## Efficient conversion of term ITEs
-
-Sangyun Kim, Fabio Somenzi, and HoonSang Jin, *Efficient Term-ITE Conversion for
-Satisfiability Modulo Theories*, SAT 2009.
-
-DOI page: <https://link.springer.com/chapter/10.1007/978-3-642-02777-2_20>
-
-### Relevance
-
-QF_UF benchmarks with large term-level ITE tables can become much smaller when
-ITE conversion avoids unnecessary fresh terms and shares guards carefully.
-Recent NEQ/PEQ/SEQ targets inspected locally did not contain term ITEs, so this
-is not the immediate bottleneck for those families.
-
-### Algorithm
-
-Not implemented. Primo only lowers Boolean ITEs and the targeted
-`(= x (ite c a b))` assignment shape in the frontend.
-
-### Data structures
-
-Future work would need a design note mapping the paper's conversion state to
-`Frontend`, `TermManager`, and assertion-side constraints.
-
-### Implementation notes
-
-Documented as a future preprocessing target, not as implemented behavior.
-
-### Risks
-
-Naive ITE expansion can increase formula size. Any implementation needs size
-counters and benchmark gates before it is enabled by default.
-
-### Possible milestone
-
-Add a paper checklist and implement the paper's guarded sharing only for
-QF_UF formulas whose frontend ITE counters are nonzero.
-
-## Unconstrained-value simplification
-
-The CVC4 system description cites unconstrained-value simplification as a
-preprocessing technique. The accessible paper below is related follow-up
-material found during the survey; it should be read and checked against Primo's
-term/model invariants before implementation.
-
-Accessible preprint located during the survey:
-<https://www.fi.muni.cz/~xstrejc/publications/sat2017preprint.pdf>
-
-### Relevance
-
-Large ground formulas often contain terms whose values are unconstrained by the
-rest of the formula. Replacing such terms can eliminate equalities and branches
-before SAT search.
-
-### Algorithm
-
-Not implemented. The paper needs a separate design checklist before coding:
-which term occurrences are unconstrained, how replacements interact with
-hash-consing and SMT-LIB models, and which cases are proof-producing.
-
-### Data structures
-
-Likely requires occurrence/polarity information over `core::TermId` formulas
-and a controlled replacement map distinct from the current unit-equality
-substitution map.
-
-### Implementation notes
-
-Future target only.
-
-### Risks
-
-Unsoundness is easy if a term is considered unconstrained in one Boolean context
-but constrained elsewhere, or if model reconstruction is later required.
-
-### Possible milestone
-
-Start with a documentation checklist and tests for one paper-supported,
-model-preserving subset.
-
-## Equality-logic transitivity constraints and selective Ackermannization
-
-Randal E. Bryant, Steven German, and Miroslav N. Velev, *Processor verification
-using efficient reductions of the logic of uninterpreted functions to
-propositional logic*, ACM Transactions on Computational Logic 2001.
-
-Ofer Strichman and Mirron Rozanov's minimum-transitivity-constraint work is
-also relevant to equality-logic benchmark families.
-
-Bryant/Velev preprint: <https://arxiv.org/abs/cs/0008001>
-
-### Relevance
-
-Some QF_UF families are dominated by equality-logic search where adding the
-right transitivity or congruence clauses can make the SAT abstraction decisive
-before repeated lazy EUF conflicts.
-
-### Algorithm
-
-Not implemented beyond Primo's narrow equality bridge and optional bounded
-ground-congruence clauses. A full implementation needs a fresh clean-room design
-note from the paper algorithms.
-
-### Data structures
-
-Likely candidates are equality graphs over existing `TermId` endpoints, guarded
-clause generation, and counters separating generated transitivity,
-congruence, and skipped clauses.
-
-### Implementation notes
-
-Future target only. Do not copy encodings from another solver.
-
-### Risks
-
-Clause blowup can erase any benefit. Default behavior would need caps,
-family-level PAR2 evaluation, and proof plans.
-
-### Possible milestone
-
-Design and evaluate a bounded equality-graph pass on the small equality-logic
-instances where Z3, cvc5, and LLM2SMT are all subsecond but Primo still learns
-many EUF conflicts.
+# Literature and implementation mapping
+
+The [bibliography](references.md) identifies publications; this page explains
+where their algorithmic content belongs. A citation or reading note does not
+establish that an entire algorithm is implemented. The owning implementation
+chapter states the actual subset, deviations, invariants and tests.
+
+## SAT, EUF, and Boolean structure
+
+| Source or topic | Current role and retained reading note |
+| --- | --- |
+| IPASIR-UP | [SAT integration](implementation/sat.md) owns callbacks, reasons and the adapter boundary. The {source}`interface reading note <docs/papers/ipasir-up.md>` retains the paper checklist; Primo delegates propositional search. |
+| Nieuwenhuis–Oliveras, fast congruence closure | [EUF](implementation/euf.md) maps flattening, congruence, explanation and rollback to Primo. The {source}`algorithm note <docs/papers/fast-congruence-closure.md>` and {source}`implementation comparison <docs/papers/fast-congruence-closure-implementation.md>` preserve optimizations not adopted wholesale. |
+| CVC4 architecture | [Combination](implementation/combination.md) explains care pairs and the general component interface. The {source}`reading note <docs/papers/cvc4-architecture.md>` is architectural context, not a copied implementation. |
+| Yices | [Survey](papers/yices.md): dynamic Ackermannization and theory-lemma reuse are distinct from Primo's existing bounded propagators. |
+| Clause forgetting | [Survey](papers/clause-forgetting.md): logical redundancy, reason lifetime and termination are separate obligations. |
+| Plaisted–Greenbaum and SMT encodings | [Survey](papers/polarity-aware-cnf.md): direction-sensitive definitions remain an open extension; the rejected root-only prototype is retained history. |
+| Relevance and don't-cares | [Survey](papers/relevance-filtering.md) and [quantifier relevance](leads/quantifier-relevance.md): deciding which obligation matters differs from filtering instances of an active obligation. |
+
+## Arithmetic papers and theses
+
+| Source | Current role and retained reading note |
+| --- | --- |
+| Dutertre–de Moura, integrating simplex with DPLL(T) | [LRA](implementation/lra.md) covers preparation, bound repair, strict arithmetic, conflicts and rollback. The {source}`base-paper checklist <docs/papers/fast-linear-arithmetic-dpllt.md>` records departures and later optional methods. |
+| Tim King, *Effective Algorithms for the Satisfiability of Quantifier-Free Formulas Over Linear Real and Integer Arithmetic*, PhD thesis, 2014 | LRA sparse operations, finite fallback, SOI and conflict construction. [The chapter's source table](implementation/lra.md#sources-and-implementation-status) distinguishes Primo's representation from the complete thesis designs. |
+| Alberto Griggio, *An Effective SMT Engine for Formal Verification*, PhD thesis, 2009 | Sparse engineering, violation selection and early-pruning context. The {source}`thesis note <docs/papers/griggio-mathsat-thesis.md>` retains exact sections and the corrected least-violated attribution. |
+| Martin Bromberger, *Decision Procedures for Linear Arithmetic*, PhD thesis, 2019 | [Reading guide](papers/bromberger-linear-arithmetic.md), [LIA](implementation/lia.md) and [preprocessing](implementation/preprocessing.md). Complete equality bases, cube/bounding methods and other unimplemented algorithms remain comparisons/leads. The {source}`original thesis checklist <docs/papers/bromberger-linear-arithmetic-thesis.md>` retains the full intake. |
+| Monniaux, CAV 2009 | LRA normalization, direct bounds and sparse-pivot motivation. [Floating-point assistance](leads/lra-floating-point.md) is unimplemented; leading-coefficient-one normalization differs from the paper's integer normalization. |
+| King–Barrett–Dutertre, SOI | LRA's optional SOI section states the implemented objective, breakpoint method, conflict explanation and finite fallback; it does not describe the default sparse repair loop. |
+| Bjørner–Nachmanson, *Arithmetic Solving in Z3* | LRA's optional model-unit producer and LIA's selected patching/GCD/cut mechanisms. The {source}`paper map <docs/papers/arithmetic-solving-in-z3.md>` preserves broader unimplemented integer/nonlinear procedures. |
+| Word GCD and integer divisibility | [LIA](implementation/lia.md) states row integrality preconditions; {source}`word-GCD notes <docs/papers/word-gcd-notes.md>` are an engineering comparison, not the origin of the mathematical divisibility test. |
+| Integer division and modulo | [LIA](implementation/lia.md) and [preprocessing](implementation/preprocessing.md) describe the constant-divisor subset; the {source}`reading note <docs/papers/integer-division-and-modulo.md>` retains excluded variants. |
+| LP/MIP presolve and primal heuristics | [Repair survey](papers/lia-primal-heuristics.md), [patching lead](leads/lia-patching.md), and {source}`monotone-elimination note <docs/papers/monotone-variable-elimination.md>` keep rounding/repair and elimination obligations distinct. |
+| Atom canonicalization | Current normalization is explained in preprocessing and LRA; {source}`the comparison note <docs/papers/lra-atom-canonicalization.md>` retains rejected/default-off policy evidence. |
+| Difference constraints | {source}`Reading note <docs/papers/difference-constraint-propagation.md>` motivates a future dedicated route. It is not implemented difference-logic admission. |
+
+The {source}`arithmetic related-work index <docs/papers/lra-related-work.md>`
+retains additional comparisons. [Arithmetic evidence](evidence/arithmetic.md)
+separates implementation choices from the measurements that accepted or rejected
+them. [Primo's published results](papers/primo-qflra-results.md) have their own
+configuration and unresolved artifact mapping.
+
+## Preprocessing, strategies, and combination
+
+| Source/topic | Current role and retained note |
+| --- | --- |
+| de Moura–Passmore, *The Strategy Challenge in SMT Solving* | [Tactics](implementation/tactics.md) maps §3 to Primo's formula-valued composition and model conversion, with explicit limits. |
+| FastSMT and tactic configuration | The {source}`FastSMT note <docs/papers/fastsmt-strategy-synthesis.md>` and {source}`configuration evidence <docs/papers/tactic-configuration-evidence.md>` motivate future strategy selection. Primo has no implemented learned strategy system or parallel tactic scheduler. |
+| Symmetry breaking and value precedence | [Preprocessing](implementation/preprocessing.md) states the finite-domain/permutation conditions. The {source}`symmetry note <docs/papers/smt-symmetry-breaking.md>` and {source}`finite-model note <docs/papers/finite-model-finding-sorts.md>` retain broader comparisons; Primo is not a general finite-model finder. |
+| Nelson–Oppen closure methods | [Combination](implementation/combination.md) explains shared variables, equality exchange and completeness assumptions; the {source}`closure note <docs/papers/nelson-oppen-closure-methods.md>` is the retained algorithm intake. |
+| de Moura–Bjørner, model-based combination | The {source}`reading note <docs/papers/model-based-theory-combination.md>` and current combination chapter distinguish model mutation, guessed equalities, explanations, and exact fallback. This is separate from Ge–de Moura MBQI. |
+| MathSAT5; Bjørner–Fazekas incremental preprocessing | [Sessions](implementation/sessions.md) maps labels and safe preprocessing restrictions. Restoration/replay algorithms remain [open work](leads/incremental-equations.md). |
+
+## Quantifiers, syntax, and testing
+
+Reynolds, Barbosa and Fontaine's enumerative-instantiation results and Janota,
+Barbosa, Fontaine and Reynolds's tuple-order work are mapped in
+[quantifiers](implementation/quantifiers.md). The
+{source}`enumeration note <docs/papers/enumerative-instantiation.md>` and
+{source}`tuple-order note <docs/papers/fair-adventurous-enumeration.md>` preserve
+their reading checklists and historical evaluations. Entailment filtering,
+fail masks, equality representatives, model-refining filters and Ge–de Moura
+MBQI are distinct proposals in [quantifier leads](leads/quantifier-instantiation.md).
+The old statement that an `unknown` from one order is logically “weaker” is
+superseded: every `unknown` is inconclusive; fairness concerns the unbounded
+enumeration procedure, not a hierarchy of bounded `unknown` answers.
+
+The chapter also maps Andrew Reynolds's 2013 thesis, *Finite Model Finding in
+Satisfiability Modulo Theories*, §§3.1.1–3.1.2, and Haniel Barbosa's 2017 thesis,
+*New Techniques for Instantiation and Proof Production in SMT Solving*, §5.1
+and §§7.1.1–7.1.2. These supply the finite-model/instantiation distinction and
+formula-processing comparisons; Primo does not implement their complete
+finite-model-finding or proof-production frameworks.
+
+SMT-LIB 2.7 supplies the syntax/binding/session specification used by
+[frontend](implementation/frontend.md) and [sessions](implementation/sessions.md).
+Robert Daniel Brummayer's 2009 PhD thesis, Chapter 4, grounds
+[fuzzing and reduction](development/correctness.md#fuzzing-and-reduction-sources).
+The {source}`general reading summaries <docs/papers/summaries.md>` and
+{source}`original literature register <docs/literature.md>` retain initial
+questions and comparisons. Their old milestone language does not override
+the current capability or lead registers.
+
+## Maintaining the reading record
+
+Publication identity belongs in the bibliography, not an ignored PDF filename.
+For new work, read the relevant primary section and record operations, data,
+invariants, cost assumptions, proof obligations, tests, and implemented subset.
+If the required source is unavailable, record the access blocker rather than
+substituting another solver's implementation or a secondary summary.

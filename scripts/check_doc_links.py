@@ -139,7 +139,7 @@ class Checker:
         for path in sorted(root.rglob("*.html")):
             # Theme templates and downloaded examples are assets, not book pages.
             # A page linking to one still has its target checked below.
-            if path.relative_to(root).parts[0] in ("_static", "_downloads", "_sources"):
+            if set(path.relative_to(root).parts) & {"_static", "_downloads", "_sources"}:
                 continue
             self.pages += 1
             for line, uri in self.page(path).links:

@@ -66,21 +66,21 @@ Use its default companion options initially. Assumptions mode accepts
 `--preprocessing-mode=auto` or `off`; it rejects strong/basic preprocessing,
 portfolios, Boolean splitting, fixed-variable elimination, preprocess-only,
 custom CaDiCaL options and assertion-dependent preprocessing. QF_UF additionally
-requires incremental EUF, Boolean registration, auto/online/conflict propagation,
+requires incremental EUF, auto/online/conflict propagation,
 and no experimental Ackermann modes. Forced pure-theory filtering is rejected;
 `auto` resolves it to off. These restrictions protect the retained state and
 are checked by {source}`src/smt/smt_session.cpp`.
 
 Assumptions mode is not promised to be faster for every input. Historical
 qualification and timing limits are recorded separately for
-[QF_LRA](../assumption-incremental-lra.md) and
-[QF_UF](../assumption-incremental-uf.md). Keep the default rebuild mode as the
+{source}`QF_LRA <docs/assumption-incremental-lra.md>` and
+{source}`QF_UF <docs/assumption-incremental-uf.md>`. Keep the default rebuild mode as the
 starting point unless your workload calls for the opt-in route.
 
 ## Implementation and evidence
 
 The session's public boundary is {source}`src/smt/smt_session.hpp`; the command
 loop is in {source}`src/main.cpp`. The existing
-[implementation chapter](../incremental-smt.md) records replay, lifetime and
+[implementation chapter](../implementation/sessions.md) records replay, lifetime and
 scope invariants. Its historical gates apply to the revisions they measured,
 not automatically to every subsequent checkout.

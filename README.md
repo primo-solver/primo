@@ -22,14 +22,14 @@ for prerequisites, stdin use and build details.
 
 The manual has three entrances:
 
-- [Done: current behavior and qualification](docs/current-status.md).
-- [Active work](docs/active-work.md).
-- [Open leads](docs/open-leads.md).
+- [Done: current behavior and qualification](docs/capabilities.md).
+- [Active work](docs/work/publication.md).
+- [Open leads](docs/leads/index.md).
 
 For everyday use, read [SMT-LIB input](docs/guide/input.md),
 [models](docs/guide/models.md), [sessions](docs/guide/sessions.md), and
 [command-line options](docs/reference/options.md). Implementation explanations
-start at [architecture](docs/architecture.md); original algorithm sources and
+start at [architecture](docs/implementation/architecture.md); original algorithm sources and
 implementation mappings are indexed in [literature](docs/literature.md).
 
 Build and preview the book locally:
@@ -38,21 +38,19 @@ Build and preview the book locally:
 make docs-serve
 ```
 
-Open `http://localhost:8000`. Documentation is being restructured before public
-release; [the plan](docs/documentation-restructuring.md) records completed
-batches and remaining work. A public website has not been deployed by this work.
-
-Review the replacement book separately with `make docs-next-serve`, then open
-`http://localhost:8001`. Its [page review ledger](docs-next/review.md) tracks
-drafting, verification, review, and acceptance. `make docs` continues to build
-the existing book; `make docs-next` builds only the draft.
+Open `http://localhost:8000`. The assembled site includes the historical manual
+and preserves original page/fragment links. `make docs-full` performs a complete
+strict rebuild; `make docs-check-links` also validates links. The
+[closing review](docs/review.md) and [publication checklist](docs/work/publication.md)
+record verification and outstanding acceptance. The intended public manual is
+[Primo documentation](https://primo-solver.github.io/primo/); deployment is pending.
 
 ## Contributing and verification
 
-Start with the [contribution guide](docs/contributing.md). Source, tests and
+Start with the [contribution guide](docs/development/correctness.md). Source, tests and
 affected documentation are reviewed together. Correctness comes before
 performance: solver behavior changes require fresh
-[fuzzing evidence](docs/contributing.md#required-fuzzing-before-merge), and
+[fuzzing evidence](docs/development/correctness.md#required-fuzzing), and
 wrong answers, invalid models, or crashes block acceptance. Keep current
 behavior distinct from experiments and proposals.
 
@@ -65,7 +63,7 @@ make docs
 `make check` runs lint and tests, but does not run fuzzing. Solver changes
 additionally need the [review and correctness gates](AGENTS.md),
 including the appropriate fuzzing and model-validation checks. Benchmark
-provenance belongs in the [run log](docs/run-log.md).
+provenance belongs in the [run log](docs/development/experiments.md).
 
 Primo follows a [clean-room policy](AGENTS.md): existing solvers and the
 LLM2SMT predecessor may inform behavioral comparisons and retrospectives, but
