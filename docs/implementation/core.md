@@ -226,8 +226,9 @@ belongs to that interpretation.
 
 The copied signature includes the table's stored declarations; the model's
 visible-symbol list selects what is exposed, rather than shrinking those
-signature copies. Retaining a small printed model can therefore retain more
-signature data than appears in its output.
+signature copies. Retaining an owning typed model can therefore retain more
+signature data than appears in its printed output. The serialized text does
+not retain that storage.
 
 Retained terms, clauses, caches, and model snapshots all contribute to memory.
 The [incremental-memory lead](../leads/incremental-memory.md) tracks profiling,

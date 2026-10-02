@@ -75,7 +75,7 @@ rather than diagnostic text.
 (tactics-composition)=
 ## Composition and stopping
 
-The composition operations are implemented in
+The ordinary runtime combinators are implemented in
 {source}`tactic.cpp <src/smt/tactic.cpp#L273-L383>`; strategy compilation
 constructs them from the graph.
 
@@ -86,7 +86,7 @@ constructs them from the graph.
 | `conditional` | Evaluate the [predicate](#conditional-predicates-and-probes) on each current inconclusive goal, then run the selected child on it. |
 | `repeat` | Apply the child until it returns a terminal result, reaches a fixed point, fails the condition for another iteration, or reaches the iteration limit. Zero iterations returns the input. |
 | `try_in_order` | Try each child strategy on the **original** input. Return the first terminal result; if none is terminal, return the last result. Cancellation stops the attempts. |
-| `try_for` | Run the child with the requested deadline, or an earlier enclosing deadline. If time expires and the result is still inconclusive, set its reason to `ResourceLimit`. |
+| {source}`try_for <src/smt/strategy.cpp#L329-L346>` | Run the child with the requested deadline, or an earlier enclosing deadline. If time expires and the result is still inconclusive, set its reason to `ResourceLimit`. |
 
 For example, `try_in_order(A, B)` runs `B` if `A` is inconclusive and execution
 has not been cancelled, giving `B` the original formula. The sequence `A; B`
@@ -94,7 +94,8 @@ instead passes `A`'s transformed formula and model conversions to `B`.
 
 `make_goal_tactic` applies a tactic to each inconclusive goal and collects all
 the resulting alternatives into one `AnyOf`. It preserves terminal goals.
-Some preprocessing groups use the internal `complete_sequence` helper: every
+Some preprocessing groups use the internal
+{source}`complete_sequence <src/smt/preprocessing_tactics.cpp#L228-L237>` helper: every
 phase of the group runs, including bookkeeping phases, before the enclosing
 strategy can stop. It is not interchangeable with the public short-circuiting sequence.
 
@@ -129,9 +130,18 @@ The scheduler is sequential; no parallel tactic execution is implemented.
 composition, leaf identifiers and parameters, named probes and repeat policies,
 and time budgets. Parameters have a canonical ordering. `fingerprint()` hashes
 this string with FNV-1a; strategy equality compares the canonical strings.
-The fingerprint identifies the strategy configuration. It excludes the code
-implementing each tactic and the execution context. Reproducing an experiment
-therefore also requires the solver revision, options, inputs, and resource limits.
+
+This describes the supplied labels and rendered parameters, not the executable
+behavior or captured values of a callable. Callers must include relevant
+configuration in their probe names and repeat-policy identifiers.
+
+The built-in
+`at_most` currently prints its limit at the stream's default precision, so
+distinct numeric thresholds can even share a generated name; this limitation
+is recorded in the [probe lead](../leads/index.md#reusable-tactic-probes).
+Neither equal descriptions nor equal fingerprints establish behavioral
+equivalence. Reproducing an experiment also requires the solver revision,
+options, inputs, and resource limits.
 
 {source}`compile <src/smt/strategy.cpp#L296-L378>` walks the composition graph
 in postorder and builds runtime tactics. Both compilation and canonicalization

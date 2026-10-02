@@ -50,7 +50,13 @@ production selection currently calls richer analyses directly.
   assertion roots, conjunct occurrences, and unique terms explicitly.
 - Add reusable Boolean combinations and numeric comparisons. Give composed
   probes stable identities including their parameters; canonical printing
-  currently records names, not the callable implementations.
+  currently records names, not the callable implementations. Repair the
+  {source}`numeric-limit formatting <src/smt/strategy.cpp#L106-L113>`:
+  default stream precision can give distinct `at_most` thresholds the same
+  name. Specify a locale-independent representation that distinguishes the
+  supported limits, including a policy for non-finite values, and test the
+  resulting canonical descriptions. This affects configuration identity;
+  no solver-answer error has been established by the documentation review.
 - Express appropriate profile choices through conditional strategies, preserving
   logic admission, model reconstruction, and incremental restrictions. A size
   heuristic must not replace a solver's applicability check.
