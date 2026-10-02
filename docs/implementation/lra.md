@@ -131,7 +131,7 @@ restriction on surface Real disequality. See the
 
 ## Exact numbers and strict bounds
 
-{source}`util::Rational <src/util/rational.hpp#L13-L47>` uses an inline signed
+{source}`util::Rational <src/util/rational.hpp#L197-L199>` uses an inline signed
 64-bit numerator and denominator for values fitting its small representation.
 Operations use checked wide intermediates and fall back to GMP rationals.
 Results that fit return to the small representation: equal values must compare
@@ -187,7 +187,8 @@ length. It is not the constant-time unlink of a doubly linked matrix.
 
 Sorted rows and their reverse occurrence index. Each row entry's `occ_slot`
 locates its entry in a column list; `occ` abbreviates `occurs_in_`.
-The editable source is `docs/figures/lra-tableau-occurrence-index.tex`.
+The {source}`editable TikZ source <docs/figures/lra-tableau-occurrence-index.tex>`
+is retained with the figure.
 ```
 
 The distinction among the thesis representations matters. King §2.2.7 uses
@@ -880,8 +881,9 @@ the prepared bound, including its strict/integer normalization, against the
 literal is passed to the SAT backend's phase interface; SAT still selects its
 decision variable and may choose a different search path.
 
-The tableau records which assignments may have changed, so local updates need
-refresh only their affected atoms; a pivot can require a full refresh.
+The online propagator tracks which tableau assignments may have changed, so
+local updates need refresh only their affected atoms; a pivot can require a
+full refresh.
 Refresh waits for a conflict-free state, and
 {source}`refresh_model_phase_atom <src/smt/solver_engines.cpp#L7459-L7473>`
 avoids resending an unchanged hint. Hints may become stale between refresh and
