@@ -18,10 +18,10 @@ cd "$REPO_ROOT"
 
 if [[ ! -x "$VENV/bin/python" ]]; then
     python3 -m venv "$VENV"
-    "$VENV/bin/python" -m pip install --upgrade pip
+    "$VENV/bin/python" -m pip --disable-pip-version-check install --upgrade pip
 fi
 
-"$VENV/bin/python" -m pip install -r docs/requirements.txt
+"$VENV/bin/python" -m pip --disable-pip-version-check install -r docs/requirements.txt
 
 # Local previews are incremental; validation passes --all explicitly.
 BUILD_ARGS=()

@@ -65,8 +65,8 @@ bench-interesting-qf-uf: build
 
 docs-venv:
 	$(PYTHON) -m venv .venv-docs
-	.venv-docs/bin/python -m pip install --upgrade pip
-	.venv-docs/bin/python -m pip install -r docs/requirements.txt
+	.venv-docs/bin/python -m pip --disable-pip-version-check install --upgrade pip
+	.venv-docs/bin/python -m pip --disable-pip-version-check install -r docs/requirements.txt
 
 docs:
 	PRIMO_DOCS_DIR=docs bash scripts/build_docs.sh

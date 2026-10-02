@@ -66,6 +66,8 @@ retains logo asset, distribution and infrastructure history during migration.
 `docs/_build/site/`. `make docs-full` disables incremental reuse for both books.
 The site assembler verifies every archived compatibility target before replacing
 the previous site. Its generated redirects have ordinary-link fallbacks.
+Documentation dependency installation disables pip's periodic version check,
+so builds do not print pip upgrade notices.
 
 `make archive` packages tracked source, editable books and the assembled HTML,
 with a source revision and SHA-256 checksum. It requires a clean checkout;
