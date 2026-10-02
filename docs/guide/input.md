@@ -88,20 +88,13 @@ implementation. Quantifiers are not enabled in assumptions mode.
 | --- | --- |
 | `sat` | A satisfying interpretation was found for this query. Request a model separately. |
 | `unsat` | The active assertions are inconsistent. This is not an emitted proof certificate. |
-| `unknown` | The query was not decided, for example because of incomplete reasoning, a resource limit, cancellation, or a preprocessing-only run. |
+| `unknown` | The query was not decided, for example because of incomplete reasoning, a resource limit, or cancellation. |
 | `unsupported` | The requested logic, feature, command or option is not supported. A diagnostic is sent to stderr. |
 | `(error "...")` | A syntax, state or other command error occurred. The CLI stops processing that stream. |
 
-For a reproducible example of `unknown`, use the diagnostic mode that skips
-solving:
-
-```bash
-./build/primo --quiet --preprocess-only docs/examples/unknown.smt2
-```
-
-Expected output is `unknown`. This says nothing about the formula's actual
-satisfiability. Likewise, the included `unsupported.smt2` file requests `QF_BV`
-and produces `unsupported`, not `unsat`.
+An `unknown` response does not establish whether the formula is satisfiable.
+The included `unsupported.smt2` file requests `QF_BV` and produces
+`unsupported`, not `unsat`.
 
 Inspect both the response and the [process exit status](../reference/options.md#output-and-exit-status).
 Do not interpret every non-SAT response or nonzero exit as UNSAT.

@@ -564,7 +564,8 @@ int run_main(int argc, char** argv) {
       "problems having 1000-2500 top-level OR nodes and at most 700 negations");
   add_flag_with_default(
       app, "--preprocess-only", solver_options.preprocess_only,
-      "Run parsing and preprocessing, print unknown, and skip SAT/theory solving");
+      "Diagnostic: stop before search; report unsat if preprocessing refutes, otherwise unknown. "
+      "Quantified input stops after the frontend");
   app.add_option("--cancel-grace-seconds", cancel_grace_seconds,
                  "Seconds SIGTERM or SIGINT waits for the cooperative cancellation path, "
                  "which reports statistics, before answering unknown and exiting")

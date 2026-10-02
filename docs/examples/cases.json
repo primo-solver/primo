@@ -77,5 +77,14 @@
     "args": [],
     "exit_code": 0,
     "stdin": true
+  },
+  {
+    "name": "quantified-preprocessing-diagnostic",
+    "input": "quantified.smt2",
+    "expected": "unknown.txt",
+    "args": [
+      "--preprocess-only"
+    ],
+    "exit_code": 0
   }
 ]

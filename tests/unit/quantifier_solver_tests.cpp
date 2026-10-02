@@ -449,9 +449,41 @@ void every_tuple_order_refutes() {
   }
 }
 
+void preprocess_only_never_starts_search() {
+  CheckSatOptions options;
+  options.preprocess_only = true;
+  for (const std::string commands : {
+           "(assert (forall ((x U)) (p x))) (assert (not (p a)))",
+           "(assert (exists ((x U)) (p x)))",
+           "(assert (not (exists ((x U)) (p x)))) (assert (p a))",
+           // Ground goals still take the ordinary preprocessing route.
+           "(assert (p a))",
+           "(assert true)",
+       }) {
+    const auto outcome = solve(commands, options);
+    assert(outcome.result == CheckSatResult::Unknown);
+    assert(outcome.reason == InconclusiveReason::Unknown);
+    assert(outcome.statistics.get(":sat.solve-calls") == 0);
+    assert(outcome.statistics.get(":quant.instances") == 0);
+    assert(outcome.statistics.get(":quant.skolem-lemmas") == 0);
+    assert(outcome.statistics.get(":time.solve-us") == 0);
+    assert(outcome.model.empty());
+    assert(!outcome.typed_model);
+  }
+  const auto contradiction = solve("(assert false)", options);
+  assert(contradiction.result == CheckSatResult::Unsat);
+  assert(contradiction.statistics.get(":sat.solve-calls") == 0);
+  const auto unsupported = check_sat_smtlib(
+      "(set-logic QF_UF) (declare-sort U 0) (declare-fun p (U) Bool) "
+      "(assert (forall ((x U)) (p x))) (check-sat)",
+      options);
+  assert(unsupported.result == CheckSatResult::Unsupported);
+}
+
 }  // namespace
 
 int main() {
+  preprocess_only_never_starts_search();
   generated_boolean_arguments_receive_their_domain();
   domain_preparation_is_closed_and_idempotent();
   stalled_scans_deliver_queued_lemmas();

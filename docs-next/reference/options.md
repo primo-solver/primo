@@ -17,7 +17,6 @@ common controls; the complete captured inventory below supplies accepted values 
 | `--check-model` | Off | Check original assertions against a requested model. Set `:produce-models true` separately; see [](../guide/models.md). |
 | `--incremental-mode` | `rebuild` | Choose `rebuild` or the restricted `assumptions` session engine. See [](../guide/sessions.md). |
 | `--preprocessing-mode` | `auto` | Choose `auto`, `off`, `basic`, or `strong`. `off` does not bypass required lowering. Assumptions mode admits only `auto` or `off`. |
-| `--preprocess-only` | Off | Run parsing/preprocessing and report `unknown` without solving. Not accepted in assumptions mode. |
 | `--max-theory-conflicts=N` | Unlimited | Positive budget, up to 1,000,000,000; return `unknown` after reaching the learned-theory-conflict limit. |
 | `--lia-branch-limit=N` | `100000` | Bound integer branch-and-bound nodes; reaching the bound can return `unknown`. See [](../implementation/lia.md). |
 | `--cancel-grace-seconds=N` | `1` | Cooperative cancellation grace period after SIGINT/SIGTERM, from 1 to 3600 seconds. This is not a solve-time limit. |
@@ -36,6 +35,17 @@ For component-specific controls, use [](../implementation/preprocessing.md),
 [](../implementation/euf.md), [](../implementation/lra.md), [](../implementation/quantifiers.md), and
 [](../reference/policies.md). The help snapshot includes every registered CLI
 option; the prose above is intentionally a practical subset.
+
+## Preprocessing diagnostic
+
+`--preprocess-only` stops before search. Use it with `--stats` to inspect
+preprocessing cost and formula-size counters independently of solving. It
+returns `unsat` if ground preprocessing proves a contradiction and `unknown`
+otherwise, including when simplification leaves no assertions. It does not
+print the transformed formula. With quantified `UF` input it stops after the
+frontend: ground preprocessing does not support binders, and neither
+instantiation nor SAT/theory search runs. Unsupported inputs remain unsupported.
+The option defaults off and is not accepted in assumptions mode.
 
 ## Output and exit status
 

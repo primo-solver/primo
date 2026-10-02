@@ -14,6 +14,13 @@ SMT-LIB `UF` benchmarks.
 Sources are the SMT-LIB standard, papers, and PhD theses. No other solver's
 source or documentation informs this note (clean-room policy, `AGENTS.md`).
 
+## Preprocessing diagnostic
+
+With `--preprocess-only`, the session returns `unknown` for quantified `UF`
+after frontend processing. It does not enter `solve_quantified_uf` or run the
+ground preprocessing passes, which do not support binders. The option is for
+developer measurements, not formula export; see [](preprocessing.md).
+
 ## Implementation status
 
 ### Generated-term repair and instance rounds

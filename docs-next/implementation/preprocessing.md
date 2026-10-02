@@ -69,9 +69,11 @@ the initial sequence, arithmetic-equality elimination, purification, or final
 Boolean normalization. Optional stages still use their individual switches;
 required translations always run unless an earlier stage settles the goal.
 Integer syntactic solve-eqs also runs independently of this mode.
-For surviving goals, `--preprocess-only` stops before engine execution and
-returns `unknown` for the inspection request; preprocessing can still report
-UNSAT if every alternative has already reduced to false.
+`--preprocess-only` is a developer diagnostic for measuring preprocessing
+without search. It returns `unknown` for surviving goals, even an empty goal,
+and `unsat` if every alternative reduces to false. It does not print the
+transformed assertions. Quantified `UF` input stops after the frontend,
+without running these ground passes or entering the quantifier solver.
 
 (preprocessing-profiles)=
 ## Profiles and repetition

@@ -2,8 +2,9 @@
 """Compare the *size of the preprocessed formula* between two Primo builds.
 
 This is deliberately not a performance comparison. It runs each solver with
-``--preprocess-only --stats``, which parses and preprocesses the input, prints
-``unknown`` and skips search entirely. The counters it reports are therefore a
+``--preprocess-only --stats``, which parses and preprocesses ground input and
+skips search. The response is ``unsat`` if preprocessing proves a contradiction,
+otherwise ``unknown``. Quantified input stops after the frontend. The counters it reports are therefore a
 deterministic function of the input and the binary: no scheduler, no timeout
 boundary, no TermId-order-dependent search. Two runs of the same binary on the
 same file give byte-identical numbers.
@@ -102,8 +103,8 @@ def run_one(command: list[str], path: Path, timeout: int) -> dict[str, object]:
             check=False,
         )
         elapsed = time.monotonic() - started
-        # --stats writes the counters to stderr; stdout carries only the
-        # "unknown" that --preprocess-only prints in place of an answer.
+        # --stats writes counters to stderr; stdout is unknown, or unsat
+        # when preprocessing proves a contradiction.
         stats = parse_stats(completed.stderr)
         exit_code = completed.returncode
     except subprocess.TimeoutExpired:

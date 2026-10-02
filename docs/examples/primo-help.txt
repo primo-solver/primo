@@ -15,8 +15,9 @@ Procedural options:
           --stats [default: off]
                               Print solver statistics to stderr
           --preprocess-only [default: off]
-                              Run parsing and preprocessing, print unknown, and skip SAT/theory
-                              solving
+                              Diagnostic: stop before search; report unsat if preprocessing
+                              refutes, otherwise unknown. Quantified input stops after the
+                              frontend
           --cancel-grace-seconds UINT:UINT in [1 - 3600] [1]
                               Seconds SIGTERM or SIGINT waits for the cooperative cancellation
                               path, which reports statistics, before answering unknown and

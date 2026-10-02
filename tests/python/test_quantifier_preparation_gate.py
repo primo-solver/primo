@@ -6,12 +6,34 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 
-from quantifier_preparation_gate import classify, mutate, quantified
+from quantifier_preparation_gate import (
+    classify,
+    mutate,
+    preprocessing_stopped_before_search,
+    quantified,
+)
 from summarize_quantifier_preparation_gate import verify_case
 from validate_qfuf_models_with_dolmen import command_spans
 
 
 class QuantifierPreparationGateTests(unittest.TestCase):
+    def test_preprocessing_diagnostic_rejects_search_and_missing_statistics(self):
+        idle = ":sat.solve-calls 0\n:time.solve-us 0\n"
+        for answer in ("unknown", "unsat"):
+            self.assertTrue(preprocessing_stopped_before_search(answer, idle))
+        for answer in ("sat", "error", "crash", "timeout", "unsupported"):
+            self.assertFalse(preprocessing_stopped_before_search(answer, idle))
+        self.assertFalse(preprocessing_stopped_before_search("unknown", ""))
+        for key in (
+            ":sat.solve-calls",
+            ":quant.instances",
+            ":quant.skolem-lemmas",
+            ":time.solve-us",
+        ):
+            self.assertFalse(
+                preprocessing_stopped_before_search("unknown", idle + f"{key} 1\n")
+            )
+
     def test_summary_rejects_missing_duplicate_and_failed_answers(self):
         row = {"profile": "primo", "answer": "sat", "exit": 0, "input_sha256": "same"}
         reference = row | {"profile": "ref"}

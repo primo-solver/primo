@@ -20,6 +20,10 @@ formulas containing quantifiers to this route before ordinary ground
 preprocessing. They are supported only under declared logic `UF`. The route
 requires the IPASIR backend and does not export quantified models.
 
+The developer diagnostic `--preprocess-only` stops at this routing gate and
+returns `unknown` for quantified `UF`. It runs neither the ground preprocessing
+passes nor quantifier search. See [](preprocessing.md).
+
 | Result | Current condition |
 | --- | --- |
 | `unsat` | SAT and EUF refute the abstraction together with generated instances and witness constraints. |

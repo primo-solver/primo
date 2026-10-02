@@ -23,6 +23,24 @@ the round to an ordered-assertion fixed point and retains the existing adaptive
 reachable-term shrink test; users select presets and options, not an exposed
 tactic language.
 
+## Preprocessing without search
+
+`CheckSatOptions::preprocess_only` (CLI `--preprocess-only`) is a diagnostic
+for measuring preprocessing independently of search. In `solver_session.cpp`,
+ground goals run the ordinary preprocessing strategy and return `unsat` if
+all alternatives reduce to false; otherwise they return `unknown`, including
+for an empty goal. The option does not print transformed assertions. For
+quantified `UF`, the session returns `unknown` after the frontend, before
+`solve_quantified_uf`: ground preprocessing does not support binders. No SAT,
+theory, or quantifier search runs. Unsupported inputs remain unsupported.
+Terms and assertions retain their ordinary per-query frontend ownership;
+no preprocessed goal or model is exported. Use `--stats` for the counters.
+
+The `preprocess_only_never_starts_search` regression in
+`tests/unit/quantifier_solver_tests.cpp` checks universal and existential
+inputs, unchanged ground outcomes, absence of search and generated instances,
+and rejection of quantified assertions in `QF_UF`.
+
 ## Arithmetic atom canonicalization
 
 With `--arithmetic-atom-canonicalization`, Primo canonicalizes Real linear

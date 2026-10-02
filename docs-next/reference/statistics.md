@@ -313,10 +313,18 @@ The incremental closure counters include:
 - `:euf.incremental.trail-entries`;
 - `:euf.incremental.class-member-trail-entries-saved`.
 
-For preprocessing-only comparisons, pass `--preprocess-only --stats`. Primo
-then parses and preprocesses the input, prints `unknown`, skips SAT/theory
-solving, and emits the preprocessing counters. Do not use this mode for
-benchmark solved counts.
+For ground preprocessing comparisons, pass `--preprocess-only --stats`:
+
+```bash
+./build/primo --quiet --preprocess-only --stats docs/examples/unknown.smt2
+```
+
+This developer diagnostic emits preprocessing counters without entering
+SAT/theory search. It returns `unsat` if preprocessing proves a contradiction
+and `unknown` otherwise; it does not print the transformed assertions. With
+quantified `UF` input, it stops after the frontend and skips ground
+preprocessing as well as instantiation. Do not use this mode for benchmark
+solved counts.
 
 `:euf.theory-conflicts` counts EUF conflict clauses learned either by the
 ordinary post-model check or by the CaDiCaL external-clause callback used by

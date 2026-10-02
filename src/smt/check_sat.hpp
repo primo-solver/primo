@@ -429,6 +429,7 @@ struct CheckSatOptions {
   AutoPreprocessTuning auto_preprocess_tuning;
   BooleanImpliesRewriteMode boolean_implies_rewrite = BooleanImpliesRewriteMode::Off;
   QfUfPortfolioMode qf_uf_portfolio = QfUfPortfolioMode::Off;
+  // Diagnostic: stop before search; quantified input stops after the frontend.
   bool preprocess_only = false;
   std::size_t euf_propagation_interval = 32;
   double euf_propagation_assign_threshold = 0.25;
