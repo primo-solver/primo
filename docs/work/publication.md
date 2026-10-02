@@ -25,3 +25,19 @@ not prevent local preparation or Git inspection; it does prevent verification
 and configuration of repository settings through the API. Credentials stay
 outside tracked files and reports. The owner can perform the final documented
 settings steps without transferring credentials to this workspace.
+
+## Qualification recipe
+
+`scripts/qualification/public_launch.sbatch` selects eight routes: QF_UF,
+QF_LRA, QF_LIA, QF_UFLRA, QF_UFLIA, quantified UF, and the QF_UF/QF_LRA
+assumptions engines. Each route has four independently seeded 250-input shards.
+The job verifies the embedded candidate revision and retains commands, binary
+hashes, reference/validator versions, inputs and per-case outputs. Ground SAT
+models are checked with Dolmen; quantified answers use reference comparison
+and retain the documented quantified-model limitation. A missing shard, skipped
+fuzzer or incomplete validator run is not a pass. Inspect actual row counts and
+classifications, not only the SLURM exit status.
+
+This is fresh correctness qualification of a research snapshot, not a new
+full-corpus performance result. Test/sanitizer and real-seed mutation records
+are separate parts of the closing qualification report.
