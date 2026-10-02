@@ -41,9 +41,28 @@ The dedicated QF_UFLRA `:no.*` counters belong to a different route.
 
 Model costs are separate counters: `:time.model.reconstruction-us`,
 `:time.model.check-us`, and `:time.model.serialization-us`. Original-assertion
-checking requires a requested model and either debug mode or `--check-model`;
-the flag alone does not request a model. Dolmen replay is a separate process
-and is not included in these internal counters.
+checking in the rebuild engine requires a requested model and either debug mode
+or `--check-model`. The assumptions engine also constructs a model when
+`--check-model` is set and records checking and printing together in
+`:time.model.check-and-print-us`. Dolmen replay is a separate process and is
+not included in these internal counters.
+
+## Session counters
+
+The session interpreter reports `:session.queries` (completed queries) and
+`:session.frontend-builds` (frontend generations built). These are cumulative
+within the current session state, not counts for a single query.
+
+The assumptions engine additionally reports `:session.engine-builds`,
+`:session.translated-assertions`, and `:session.incremental-assumptions`.
+The first two count constructed engines and assertions translated into the
+persistent engine; the last is a mode indicator. The indicators
+`:session.safe-rewrite-pipeline`, `:session.pipeline.lower-extended-terms`, and
+`:session.pipeline.lower-real-equalities` describe the selected incremental
+preprocessing route. Preprocessing counters and time are drained after each
+query, so they must not be interpreted as cumulative engine work.
+See {source}`session accounting <src/smt/smt_session.cpp#L160-L193>` and
+[session ownership](../implementation/sessions.md).
 
 ## General timing and preprocessing
 

@@ -22,8 +22,10 @@ problem, different satisfying assignments are equally valid; do not require a
 particular arbitrary value or function-table order in an application.
 
 `--check-model` asks Primo to evaluate the original assertions against its own
-constructed model. It does **not** enable model production by itself, and it
-is not independent validation by another solver. The separate
+constructed model. In the default rebuild engine it requires model production
+to be enabled separately. The opt-in assumptions engine constructs a model
+internally when checking is requested, but `get-model` still requires
+`:produce-models true`. This is not independent validation by another solver. The separate
 [Dolmen workflow](../development/validation.md) is used when qualifying experiment results.
 
 ## When a model is available

@@ -1756,3 +1756,13 @@ ownership, term storage, parsing and the SAT backend were not changed.
 Both strict books and their local/Git links pass. The central source pin now
 identifies the tested implementation; affected line anchors were refreshed.
 Historical record pins and their evidence scope remain unchanged.
+
+## Publication closing review: initial corrections (2026-10-02)
+
+The frontend now distinguishes typed core terms, theory literals, and the SAT
+literal/clause boundary. The model guide and statistics reference distinguish
+rebuild and assumptions engines: internal model construction for `--check-model`
+does not relax the SMT-LIB `get-model` option requirement. Session accounting is
+now documented, including cumulative counters versus drained preprocessing work.
+The dependency introduction now includes GMP. These corrections change no solver
+behavior. Consolidated reader acceptance remains pending.

@@ -3,7 +3,9 @@
 The frontend turns each supported SMT-LIB command into typed core terms.
 The parser recognizes syntax; `Frontend` resolves names and checks sorts;
 `SmtSession` decides whether the command is legal in the current session.
-SAT and theory solvers receive core terms through the SMT layer, never parser nodes.
+The SMT layer translates these terms into SAT literals and clauses and passes
+theory literals to theory solvers. Neither interface exposes parser nodes;
+the SAT backend does not inspect core terms.
 
 ## Representation and ownership
 
