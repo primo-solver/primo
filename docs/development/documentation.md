@@ -59,3 +59,24 @@ examples need separate verification in the chosen test environment. Keep source
 fixtures and expected outputs synchronized, and review a changed CLI snapshot
 before replacing it. The full original {record}`authoring record <docs/development/documentation.md>`
 retains logo asset, distribution and infrastructure history during migration.
+
+## Publication and source archives
+
+`make docs` builds the current and historical books, then assembles
+`docs/_build/site/`. `make docs-full` disables incremental reuse for both books.
+The site assembler verifies every archived compatibility target before replacing
+the previous site. Its generated redirects have ordinary-link fallbacks.
+
+`make archive` packages tracked source, editable books and the assembled HTML,
+with a source revision and SHA-256 checksum. It requires a clean checkout;
+`--allow-dirty` is only for diagnostic snapshots. Reading PDFs and cached tools
+are excluded. The archive rebuilds without Git history; source-link validation
+still requires a checkout containing the pinned commits. See the root
+`THIRD_PARTY.md` before distributing dependencies or benchmark material.
+
+GitHub Actions builds PR previews with read-only repository access. Pages
+publication is restricted to public `main` and the `github-pages` environment;
+configure required approval there before enabling deployment. The site is served
+under `/primo/`, including the historical book at `/primo/archive/original/`.
+External-link checks are a separate scheduled/manual workflow so publisher
+rate limits do not obscure deterministic documentation failures.

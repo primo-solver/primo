@@ -40,7 +40,7 @@ make docs-full
 
 `make check` runs formatting/lint checks, C++ tests, and Python tests. It does
 **not** run fuzzing, independent model validation, or the documentation build.
-For draft previews, `make docs` reuses the previous build; the full target
+For local previews, `make docs` reuses the previous build; the full target
 above re-reads every page for validation.
 The {source}`check target <Makefile#L139>` lists those dependencies; the
 {source}`test and sanitizer targets <Makefile#L22-L32>` define their commands.

@@ -1,6 +1,7 @@
 # Contributing an implementation change
 
-Begin with the affected contract and the [correctness requirements](correctness.md).
+Read the {download}`MIT/DCO contribution policy <../../CONTRIBUTING.md>`,
+then begin with the affected contract and the [correctness requirements](correctness.md).
 Primo is implemented from primary literature and its own design notes. Existing
 solver source, tests, grammar and documentation are not implementation material.
 

@@ -81,6 +81,7 @@ parts:
   - caption: Active work
     chapters:
       - file: work/publication
+      - file: work/github-handoff
       - file: work/documentation
       - file: work/evidence
       - file: work/results-storage

@@ -47,7 +47,7 @@ record verification and outstanding acceptance. The intended public manual is
 
 ## Contributing and verification
 
-Start with the [contribution guide](docs/development/correctness.md). Source, tests and
+Start with [CONTRIBUTING.md](CONTRIBUTING.md) for MIT/DCO and the contribution guide. Source, tests and
 affected documentation are reviewed together. Correctness comes before
 performance: solver behavior changes require fresh
 [fuzzing evidence](docs/development/correctness.md#required-fuzzing), and
