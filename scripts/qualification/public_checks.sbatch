@@ -8,6 +8,8 @@
 set -euo pipefail
 cd "${PRIMO_WORKDIR:?}"
 export PATH="${PRIMO_CMAKE_BIN:?}:$PWD/contrib/local/clang-tools-env/bin:$PATH"
+command -v cmake
+command -v ctest
 export CMAKE_BUILD_PARALLEL_LEVEL=4 CTEST_PARALLEL_LEVEL=4 CTEST_TEST_TIMEOUT=120
 if [[ -n ${PRIMO_CXX_HEADER_MANIFEST:-} ]]; then
   while IFS= read -r header; do

@@ -30,12 +30,12 @@ out="$root/gate"
 common=(--solver "$solver" --count 250 --seed "$seed" --timeout 5 --out "$out")
 case $((slot / 4)) in
   0)
-    python3 scripts/qf_uf_boolean_fuzz.py "${common[@]}" --ref z3 \
-      --solver-arg=--quiet --keep-passing --validate-models --dolmen dolmen
+    python3 scripts/qf_uf_boolean_fuzz.py "${common[@]}" --ref contrib/local/bin/z3 \
+      --solver-arg=--quiet --keep-passing --validate-models --dolmen contrib/local/bin/dolmen
     ;;
   1)
     python3 scripts/qf_lra_boolean_arithmetic_fuzz.py "${common[@]}" \
-      --solver-arg=--quiet --z3 z3 --dolmen dolmen
+      --solver-arg=--quiet --z3 contrib/local/bin/z3 --dolmen contrib/local/bin/dolmen
     ;;
   2)
     command -v fuzzsmt
@@ -43,27 +43,30 @@ case $((slot / 4)) in
       --solver "$solver --quiet" --refs z3 --logic QF_LIA --count 250 \
       --seed "$seed" --timeout 5 --out "$out" \
       --fuzzer-args '-ms 1 -Ms 4 -mv 1 -Mv 6 -mf 1 -mp 1 -ma 1 -Ma 4'
-    python3 scripts/validate_model.py --solver "$solver" --solver-arg=--quiet \
-      --require-dolmen-pass --dolmen dolmen --dolmen-arg=--strict=false \
-      --timeout 10 --dolmen-timeout 10 --out "$root/models" "$out"/generated/*.smt2
-    ;;
-  3|4)
-    if (( slot / 4 == 3 )); then gate=qf_uflra_smoke_fuzz; else gate=qf_uflia_fuzz; fi
-    python3 "scripts/$gate.py" "${common[@]}" --solver-arg=--quiet --ref z3 --shape mixed
     python3 scripts/select_fuzz_sat_inputs.py "$out/summary.csv" --out "$root/sat-inputs.txt"
     if [[ -s "$root/sat-inputs.txt" ]]; then
       python3 scripts/validate_model.py --solver "$solver" --solver-arg=--quiet \
-        --require-dolmen-pass --expect-sat --dolmen dolmen --dolmen-arg=--strict=false \
+        --require-dolmen-pass --expect-sat --dolmen contrib/local/bin/dolmen --dolmen-arg=--strict=false \
+        --timeout 10 --dolmen-timeout 10 --manifest "$root/sat-inputs.txt" --out "$root/models"
+    fi
+    ;;
+  3|4)
+    if (( slot / 4 == 3 )); then gate=qf_uflra_smoke_fuzz; else gate=qf_uflia_fuzz; fi
+    python3 "scripts/$gate.py" "${common[@]}" --solver-arg=--quiet --ref contrib/local/bin/z3 --shape mixed
+    python3 scripts/select_fuzz_sat_inputs.py "$out/summary.csv" --out "$root/sat-inputs.txt"
+    if [[ -s "$root/sat-inputs.txt" ]]; then
+      python3 scripts/validate_model.py --solver "$solver" --solver-arg=--quiet \
+        --require-dolmen-pass --expect-sat --dolmen contrib/local/bin/dolmen --dolmen-arg=--strict=false \
         --timeout 10 --dolmen-timeout 10 --manifest "$root/sat-inputs.txt" --out "$root/models"
     fi
     ;;
   5)
     python3 scripts/quantifier_preparation_gate.py "${common[@]}" --mode generated \
-      --ref z3 --expected-git "$expected" --check-preprocess-only
+      --ref contrib/local/bin/z3 --expected-git "$expected" --check-preprocess-only
     ;;
   6|7)
     if (( slot / 4 == 6 )); then gate=incremental_uf_gate; else gate=incremental_lra_gate; fi
-    python3 "scripts/$gate.py" "${common[@]}" --kind generated --ref z3 --dolmen dolmen \
+    python3 "scripts/$gate.py" "${common[@]}" --kind generated --ref contrib/local/bin/z3 --dolmen contrib/local/bin/dolmen \
       --solver-arg=--quiet --solver-arg=--incremental-mode=assumptions \
       --expected-git "$expected" --dolmen-timeout 20
     ;;

@@ -60,3 +60,11 @@ toolchain; solver build/example checks from the archive are separate work.
 The external-link check retains access failures (publisher HTTP 403, rate limits,
 and a certificate error) in [its report](../coverage/external-links.json). These
 are not silently ignored and are distinct from passing local/source-link checks.
+
+The first execution exposed harness setup errors: some wrappers require reference
+and validator executable paths rather than PATH-only names; QF_LIA model replay
+must select successful SAT rows rather than request models after UNSAT; and the
+test allocation needs `ctest` as well as `cmake` on PATH. The job recipes were
+corrected and affected shards are rerun in new output directories. Original
+outputs remain available and are not counted as completed gates. No solver
+implementation changed for these harness corrections.

@@ -82,7 +82,7 @@ model against its query-indexed active context, including declaration and
 definition scopes; it does not substitute models from fresh Primo solves.
 Results remain provisional until the candidate exits successfully. Keep the
 original session, adapted command stream, query snapshots, model responses and
-reference/validator output together. See `docs/incremental-smt.md` for the
+reference/validator output together. See `docs/implementation/sessions.md` for the
 supported command subset and bounded SLURM driver. Assumptions, global
 declarations and unhandled options still require explicit unsupported/incomplete
 classification. This correctness driver does not extend the single-query timing
