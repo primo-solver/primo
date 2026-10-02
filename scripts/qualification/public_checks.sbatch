@@ -21,5 +21,14 @@ build-slurm-rel/primo --version | grep -Fx "git: ${PRIMO_EXPECTED_REVISION:?}"
 cpp_files=$(python3 -c 'from pathlib import Path; print(" ".join(str(p) for root in ("src", "tests") for p in sorted(Path(root).rglob("*")) if p.suffix in (".cpp", ".hpp", ".h")))')
 make -o contrib-required check BUILD_DIR=build-slurm-rel CPP_FORMAT_FILES="$cpp_files"
 python3 scripts/check_doc_examples.py --solver build-slurm-rel/primo
+asan_config=(-DCMAKE_BUILD_TYPE=Debug -DPRIMO_SANITIZERS=address
+  "-DCMAKE_PREFIX_PATH=$PWD/contrib/local"
+  "-DPRIMO_GIT_REVISION_OVERRIDE=$PRIMO_EXPECTED_REVISION")
+if [[ -n ${PRIMO_ASAN_RUNTIME_DIR:-} ]]; then
+  test -f "$PRIMO_ASAN_RUNTIME_DIR/libasan.so"
+  asan_config+=("-DCMAKE_EXE_LINKER_FLAGS=-L$PRIMO_ASAN_RUNTIME_DIR")
+  export LD_LIBRARY_PATH="$PRIMO_ASAN_RUNTIME_DIR${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+fi
+cmake -S . -B build-public-asan "${asan_config[@]}"
 make -o contrib-required asan-test ASAN_BUILD_DIR=build-public-asan
 sha256sum build-slurm-rel/primo

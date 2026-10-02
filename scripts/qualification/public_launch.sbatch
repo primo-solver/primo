@@ -26,6 +26,8 @@ sha256sum "$solver" contrib/local/bin/z3 contrib/local/bin/dolmen > "$root/execu
 z3 --version > "$root/reference-version.txt"
 dolmen --version > "$root/validator-version.txt"
 seed=$((202610020 + slot))
+# These generators use seed + case index; give shards disjoint seed ranges.
+if (( slot >= 20 )); then seed=$((202610020 + 10000 * slot)); fi
 out="$root/gate"
 common=(--solver "$solver" --count 250 --seed "$seed" --timeout 5 --out "$out")
 case $((slot / 4)) in

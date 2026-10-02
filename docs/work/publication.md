@@ -68,3 +68,13 @@ test allocation needs `ctest` as well as `cmake` on PATH. The job recipes were
 corrected and affected shards are rerun in new output directories. Original
 outputs remain available and are not counted as completed gates. No solver
 implementation changed for these harness corrections.
+
+The closing collection also checks per-input hashes. Session generators use
+`seed + case index`, so their shard seeds now occupy disjoint ranges. The
+arithmetic real-seed stage uses the existing linear-operator OpFuzz configuration
+with retained mutants, strict answer replay, and SAT-only model validation. The
+quantifier-specific mutator is not suitable for these ground arithmetic seeds.
+The sanitizer recipe can use a separately provisioned runtime directory when the
+cluster compiler installation is incomplete; it does not change system files.
+`scripts/qualification/summarize_public_launch.py` rejects incomplete shards,
+mixed binaries, missing SAT-model checks, and overlapping session inputs.
