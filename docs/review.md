@@ -24,7 +24,7 @@ compatibility snapshot were checked against that book before the move.
 The ledger records technical inspections at their original revisions. Its
 stages do not automatically advance after a successful build. Research leads
 remain proposals; accepting their descriptions does not approve implementation.
-The [earlier page-by-page review record](https://github.com/primo-solver/primo/blob/9ea9221/docs-next/review.md)
+The [earlier page-by-page review record](review-history.md)
 retains the detailed chronology and literature-reading notes.
 
 ## Closing corrections
@@ -39,6 +39,15 @@ retains the detailed chronology and literature-reading notes.
 - The dependency introduction includes GMP.
 - Current guides use the main book paths. Shared prose, examples, assets and
   bibliography are available without the former draft tree.
+
+## Technical verification
+
+The [publication qualification record](evidence/publication.md) records the
+SLURM checks, bounded fuzzing and model validation. Both books build strictly;
+local targets, pinned source links and historical routes are checked together.
+Browser inspection covered the project URL prefix, equations, navigation,
+favicon and an archived route. External-host access failures remain explicit
+in the link report. Technical checks do not substitute for reader acceptance.
 
 ## Acceptance review
 

@@ -82,7 +82,20 @@
   "unresolved": [
     "Institutional/contributor publication authorization",
     "Publication terms for 19 imported SMT-LIB files",
-    "Hosted branches/attachments/release assets/Actions-log review through owner account",
-    "Generated documentation asset notices review"
-  ]
+    "Hosted branches/attachments/release assets/Actions-log review through owner account"
+  ],
+  "documentation_asset_notices": {
+    "status": "collected and bundled with generated HTML",
+    "collector": "scripts/collect_doc_notices.py",
+    "manifest": "_static/licenses/index.json",
+    "details": "Installed package notices and hashes; theme assets retain embedded license notices."
+  },
+  "followup_scan": {
+    "head": "99e43807d2015678d05ee748eef5d5c65b9da70e",
+    "commits_scanned": 1486,
+    "bytes_scanned": 57881964,
+    "detections": 0,
+    "report": "results/public-launch/gitleaks-final.json",
+    "scope": "All named local/fetched refs; final evidence-only changes are subsequent to this scan."
+  }
 }

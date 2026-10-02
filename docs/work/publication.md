@@ -1,80 +1,62 @@
 # Public launch preparation
 
-**Status: implementation in progress; repository visibility unchanged.**
+**Status: local preparation complete; owner review and GitHub handoff pending.**
 
 The first launch publishes the repository and manual as a research snapshot.
 A new numbered release, results-repository/SQLite migration, and solver research
 leads are separate work. Primo-owned material retains MIT. New contributions
 will require DCO sign-off; the historical record will not be rewritten to add it.
+Repository visibility has not been changed.
 
 ## Completion record
 
 | Milestone | State |
 | --- | --- |
-| Documentation factual corrections | Committed as `9ea9221`; both strict books and local/source links passed. |
-| Main-book replacement and historical routing | Prepared; strict builds, 1,306 compatibility targets, 29,872 local links and 874 pinned Git links pass. Twelve documentation-tool tests and lint pass. |
-| Editable source archives and notices | Prepared; local packaging tests pass. Nineteen imported benchmark files lack declared license headers; publication terms remain unresolved. |
-| Public CI and Pages workflow | Prepared and actionlint-checked; GitHub execution/configuration pending. |
-| Qualification and publication audit | Gitleaks 8.30.1 scanned 1,481 commits across local/fetched refs with no detections. Solver qualification, hosted-artifact review remain in progress. Documentation dependency notices now travel with the site. |
-| Consolidated reader acceptance | Pending owner review. |
+| Documentation correction and replacement | Current book in `docs/`, historical book in `docs-history/`; strict builds, local/source links and 1,306 historical targets checked. |
+| Editable source archives and dependency notices | Prepared and tested, including documentation rebuild without Git and a SLURM source-archive build. Dependency notices travel with rendered HTML. |
+| Public CI and Pages workflow | Prepared and actionlint-checked; actual GitHub runs and settings pending. |
+| Correctness qualification | [Recorded](../evidence/publication.md): 8,000 generated inputs/sessions, 14 timeouts, 212 real-seed mutants, independent ground-model checks, release and ASan tests. |
+| Local Git publication audit | [Recorded](../coverage/publication-audit.json); no secret detections or committed reading PDFs in the inspected named history. Hosted assets remain unaudited. |
+| Consolidated reader acceptance | Pending owner review of the [assembled manual](../review.md). |
 | Institutional/contributor publication authorization | Pending owner resolution. |
-| GitHub settings and public visibility | Pending final authorized handoff; API authentication unavailable here. |
+| Imported benchmark publication terms | Unresolved for [19 files](../coverage/third-party-inputs.json); source attribution alone does not grant redistribution rights. |
+| GitHub configuration and public visibility | Pending the [owner handoff](github-handoff.md). |
 
-SSH access to the existing repository works. Absence of GitHub CLI login does
-not prevent local preparation or Git inspection; it does prevent verification
-and configuration of repository settings through the API. Credentials stay
-outside tracked files and reports. The owner can perform the final documented
-settings steps without transferring credentials to this workspace.
+## Remaining publication work
 
-## Qualification recipe
+The owner must resolve the rights inventory, accept the manual, and review hosted
+branches, attachments, release assets and Actions logs before changing visibility.
+The prepared workflows then need to run on the approved revision. Configure
+required checks, DCO, the protected Pages environment and private vulnerability
+reporting using the handoff. Verify the public clone and deployed site after
+publication. No new numbered release is needed for this launch.
 
-`scripts/qualification/public_launch.sbatch` selects eight routes: QF_UF,
-QF_LRA, QF_LIA, QF_UFLRA, QF_UFLIA, quantified UF, and the QF_UF/QF_LRA
-assumptions engines. Each route has four independently seeded 250-input shards.
-The job verifies the embedded candidate revision and retains commands, binary
-hashes, reference/validator versions, inputs and per-case outputs. Ground SAT
-models are checked with Dolmen; quantified answers use reference comparison
-and retain the documented quantified-model limitation. A missing shard, skipped
-fuzzer or incomplete validator run is not a pass. Inspect actual row counts and
-classifications, not only the SLURM exit status.
+SSH access to the repository works. GitHub CLI/API authentication is unavailable
+in this workspace, so repository settings, hosted artifacts, workflow execution
+and deployment cannot be verified here. The owner can perform those steps with
+an authenticated browser or CLI; credentials need not enter this workspace.
 
-This is fresh correctness qualification of a research snapshot, not a new
-full-corpus performance result. Test/sanitizer and real-seed mutation records
-are separate parts of the closing qualification report.
+The empty-dependency-cache SLURM build timed out downloading CLI11. Builds with
+provisioned dependencies and the Git-free source archive passed, but fresh
+bootstrap remains unverified until GitHub-hosted CI or another connected
+allocation runs it. External-link checks retain four current-book and 13
+historical-book access failures in [their report](../coverage/external-links.json).
+They are separate from passing local/source-link checks.
 
-## Qualification progress
+## Reproducing qualification
 
-The source candidate `6053dc2` built successfully in SLURM job 156656 using
-provisioned dependencies. Its solver sources are byte-identical to the previously
-reviewed `c944fa7` source tree; publication preparation changes documentation and
-tooling. Job 156671 runs the 32-shard correctness matrix. Test/sanitizer, static
-analysis, archive-build, and real-seed mutation jobs have separate records.
+`scripts/qualification/public_launch.sbatch` covers QF_UF, QF_LRA, QF_LIA,
+QF_UFLRA, QF_UFLIA, quantified UF and the QF_UF/QF_LRA assumptions engines.
+Each route has four 250-input shards. Tests/ASan, static analysis, archive
+rebuilding and real-seed OpFuzz mutations have separate job recipes in the same
+directory. Use the workspace-preparation helper and its preflight before solver
+jobs. The owner runs solver batches on SLURM; contributors may use any suitable
+machine and must supply the required fuzzing evidence.
 
-An empty-dependency-cache build (job 156670) failed downloading CLI11: the compute
-node timed out reaching the GitHub release URL. This does not establish a source
-compilation defect, but fresh dependency bootstrap remains unverified until the
-prepared GitHub-hosted CI or another suitable connected allocation runs it.
-The source archive's books rebuilt without `.git` using the pinned documentation
-toolchain; solver build/example checks from the archive are separate work.
-
-The external-link check retains access failures (publisher HTTP 403, rate limits,
-and a certificate error) in [its report](../coverage/external-links.json). These
-are not silently ignored and are distinct from passing local/source-link checks.
-
-The first execution exposed harness setup errors: some wrappers require reference
-and validator executable paths rather than PATH-only names; QF_LIA model replay
-must select successful SAT rows rather than request models after UNSAT; and the
-test allocation needs `ctest` as well as `cmake` on PATH. The job recipes were
-corrected and affected shards are rerun in new output directories. Original
-outputs remain available and are not counted as completed gates. No solver
-implementation changed for these harness corrections.
-
-The closing collection also checks per-input hashes. Session generators use
-`seed + case index`, so their shard seeds now occupy disjoint ranges. The
-arithmetic real-seed stage uses the existing linear-operator OpFuzz configuration
-with retained mutants, strict answer replay, and SAT-only model validation. The
-quantifier-specific mutator is not suitable for these ground arithmetic seeds.
-The sanitizer recipe can use a separately provisioned runtime directory when the
-cluster compiler installation is incomplete; it does not change system files.
-`scripts/qualification/summarize_public_launch.py` rejects incomplete shards,
-mixed binaries, missing SAT-model checks, and overlapping session inputs.
+`scripts/qualification/summarize_public_launch.py` rejects missing or failed
+shards, mixed binaries, skipped SAT-model checks and overlapping session seed
+ranges. It reports distinct input hashes separately: independent seeds can still
+produce the same small template. Timeouts remain incomplete results. See the
+qualification record and run ledger for the exact selected attempts, commands,
+resource limits and limitations. These samples make no full-corpus performance
+claim; unresolved historical paper-table mappings remain [evidence work](evidence.md).

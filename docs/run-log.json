@@ -3,6 +3,342 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-10-02-publication-qualification",
+      "date": "2026-10-02",
+      "kind": "correctness-qualification",
+      "commit": "6053dc28a88bc2a7eaa968295987516903898766",
+      "branch": "docs/public-repository-migration",
+      "validated_snapshot": "6053dc28a88bc2a7eaa968295987516903898766",
+      "provenance": "Frozen candidate built on SLURM; src/ is byte-identical to c944fa7. Later commits correct qualification scripts and prepare documentation, notices and reports. They are not solver implementation changes.",
+      "scope": "Public research snapshot preparation; bounded correctness qualification, not performance evaluation or default promotion.",
+      "decision": "Accept the documented local publication preparation. Public visibility remains pending rights clearance, reader acceptance and verified GitHub configuration/CI.",
+      "evidence_status": "current",
+      "environment": {
+        "execution": "All solver builds, tests, fuzzing, model replay and static analysis ran in SLURM compute allocations. Local work was documentation, packaging and tooling tests.",
+        "compiler": "GCC 11.4.1 with matching provisioned header snapshot",
+        "release": "Release; CaDiCaL 3.0.0-7b99c07",
+        "binaries": {
+          "build-slurm-rel/primo": "9788e4831775e601de8b6fbac9c0aeb6e5b9654f09b0cf47d810aee822453f4e",
+          "contrib/local/bin/z3": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+          "contrib/local/bin/dolmen": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+        },
+        "reference": "Z3 5.1.0",
+        "validator": "Dolmen 0.10",
+        "asan_binary_sha256": "30eaa0f0ef279049fade369052b704324a23d95fc750d1da32e65676e6187a5c",
+        "asan_runtime": {
+          "package": "libasan-11.5.0-14.el9.x86_64.rpm",
+          "source": "https://ftp.sh.cvut.cz/rocky/9.8/AppStream/x86_64/os/Packages/l/libasan-11.5.0-14.el9.x86_64.rpm",
+          "sha256": "e4670fc0e67a7b8f3553b42816ea94b7027fe69a3eb9eb49775bf69a6794ec23",
+          "verification": "rpmkeys --checksig: digests signatures OK; extracted in experiment workspace, not installed system-wide"
+        },
+        "warnings": "Shared-filesystem clock-skew warnings occurred during make. Qualification makes no timing claim; the clean candidate build and completed tests are recorded separately."
+      },
+      "jobs": {
+        "release_build": "156656",
+        "fresh_bootstrap_failed": "156670",
+        "initial_matrix": "156671",
+        "integer_and_tool_path_retry": "156709",
+        "disjoint_quantifier_and_session_seeds": "156730",
+        "checks_and_asan": "156739",
+        "static": "156704",
+        "mutations": "156728",
+        "gitless_archive": "156717",
+        "raw_evidence_archive": "156744"
+      },
+      "commands": {
+        "prepare": "python3 scripts/slurm_prepare_benchmark_workspace.py --build-via-slurm --reuse-dependencies --extra-target all --jobs 4 --cxx-header-manifest <matching-header-manifest> --require-tool contrib/local/bin/z3 --require-tool contrib/local/bin/dolmen <connection-and-workspace-options>",
+        "preflight": "python3 scripts/slurm_prepare_benchmark_workspace.py --check-only --no-sync <same-workspace-options>",
+        "matrix": "PRIMO_WORKDIR=<prepared-workspace> PRIMO_EXPECTED_REVISION=6053dc2 sbatch scripts/qualification/public_launch.sbatch; selected roots in docs/coverage/publication-qualification.json",
+        "checks": "scripts/qualification/public_checks.sbatch: make -o contrib-required check BUILD_DIR=build-slurm-rel; check_doc_examples.py; make -o contrib-required asan-test ASAN_BUILD_DIR=build-public-asan",
+        "mutations": "scripts/qualification/public_mutations.sbatch: seeded_opfuzz.py with model_linear_ops.txt, strict original/mutant answer comparison, successful-SAT-only Dolmen replay",
+        "static": "scripts/qualification/public_static.sbatch: clang-tidy for all 126 .cpp files, followed by misc-include-cleaner",
+        "summary": "python3 scripts/qualification/summarize_public_launch.py --root results/public-launch --initial 156671 --integer 156709 --sessions 156730 --candidate 6053dc28a88bc2a7eaa968295987516903898766 --out results/public-launch-summary.json",
+        "docs": [
+          "make docs-check-links",
+          "make docs-check-external (access failures retained)",
+          "make lint",
+          "actionlint .github/workflows/*.yml"
+        ],
+        "archive": "scripts/qualification/public_archive.sbatch; extracted f95ba8a source archive, provisioned dependencies, no .git, source revision verified, 12 documentation checks"
+      },
+      "resources": {
+        "matrix": {
+          "shards": 32,
+          "cpus_per_shard": 1,
+          "memory_per_shard": "4G",
+          "wall_limit_per_shard": "02:00:00",
+          "concurrency_limit": 4,
+          "cases_per_shard": 250,
+          "ground_seeds": "202610020 + slot (slots 0..19)",
+          "quantifier_session_seeds": "202610020 + 10000 * slot (slots 20..31)",
+          "answer_timeout_seconds": 5,
+          "ground_model_timeout_seconds": 10,
+          "session_dolmen_timeout_seconds": 20
+        },
+        "checks": {
+          "cpus": 4,
+          "memory": "8G",
+          "wall_limit": "00:40:00",
+          "ctest_timeout_seconds": 120
+        },
+        "static": {
+          "cpus": 8,
+          "memory": "16G",
+          "wall_limit": "00:45:00"
+        },
+        "mutations": {
+          "cpus_per_shard": 1,
+          "memory": "4G",
+          "wall_limit": "00:40:00",
+          "mutator_wall_seconds": 900,
+          "mutator_solver_timeout_seconds": 5,
+          "strict_mutant_replay_timeout_seconds": 10,
+          "seed_and_model_timeout_seconds": 30
+        }
+      },
+      "results": {
+        "ctest": {
+          "pass": 43,
+          "failed": 0
+        },
+        "python_tests": {
+          "pass": 208,
+          "failed": 0,
+          "later_report_checker_tests_local": 5
+        },
+        "documentation_examples": {
+          "pass": 12,
+          "failed": 0
+        },
+        "asan": {
+          "pass": 43,
+          "failed": 0,
+          "options": "detect_leaks=1:strict_init_order=1"
+        },
+        "fuzz": {
+          "generated_inputs_or_sessions": 8000,
+          "pass": 7986,
+          "timeout": 14,
+          "wrong_answer": 0,
+          "crash": 0,
+          "parser_type_error": 0,
+          "unsupported": 0,
+          "reference_disagreement": 0,
+          "routes": {
+            "QF_UF": {
+              "cases": 1000,
+              "pass": 1000,
+              "timeout": 0,
+              "sat_models": 619,
+              "queries": 0,
+              "distinct_inputs": 999
+            },
+            "QF_LRA": {
+              "cases": 1000,
+              "pass": 1000,
+              "timeout": 0,
+              "sat_models": 1000,
+              "queries": 0,
+              "distinct_inputs": 261
+            },
+            "QF_LIA": {
+              "cases": 1000,
+              "pass": 986,
+              "timeout": 14,
+              "sat_models": 869,
+              "queries": 0,
+              "distinct_inputs": 1000
+            },
+            "QF_UFLRA": {
+              "cases": 1000,
+              "pass": 1000,
+              "timeout": 0,
+              "sat_models": 557,
+              "queries": 0,
+              "distinct_inputs": 1000
+            },
+            "QF_UFLIA": {
+              "cases": 1000,
+              "pass": 1000,
+              "timeout": 0,
+              "sat_models": 506,
+              "queries": 0,
+              "distinct_inputs": 672
+            },
+            "UF": {
+              "cases": 1000,
+              "pass": 1000,
+              "timeout": 0,
+              "sat_models": 0,
+              "queries": 0,
+              "distinct_inputs": 559
+            },
+            "incremental_QF_UF": {
+              "cases": 1000,
+              "pass": 1000,
+              "timeout": 0,
+              "sat_models": 6284,
+              "queries": 9000,
+              "distinct_inputs": 825
+            },
+            "incremental_QF_LRA": {
+              "cases": 1000,
+              "pass": 1000,
+              "timeout": 0,
+              "sat_models": 8000,
+              "queries": 11000,
+              "distinct_inputs": 1000
+            }
+          },
+          "quantifier_profiles": [
+            "sum",
+            "max",
+            "max-colex",
+            "leximax",
+            "deepening",
+            "random",
+            "preprocess-only"
+          ],
+          "ground_sat_models_dolmen_pass": 17835,
+          "session_queries": 20000,
+          "quantified_model_validation": "not performed; documented checker limitation"
+        },
+        "mutations": {
+          "generator": "YinYang 0.3.0 OpFuzz, commit 04c8618a134e7a6c8b6d54fcd5ee9fd2ec64a2bb, linear operator configuration",
+          "seed_count": 16,
+          "mutants": 212,
+          "distinct_mutants": 205,
+          "pass": 212,
+          "sat_models_including_seeds": 158,
+          "wrong_answer": 0,
+          "crash": 0,
+          "parser_type_error": 0,
+          "timeout": 0,
+          "unsupported": 0,
+          "reference_disagreement": 0,
+          "shards": [
+            {
+              "slot": 0,
+              "logic": "QF_LRA",
+              "seed": 202610020,
+              "stages": {
+                "seed": {
+                  "cases": 14,
+                  "distinct_inputs": 14,
+                  "pass": 14,
+                  "sat_models": 5,
+                  "input_manifest_sha256": "4a628d55a24c2cb506920fc62bf7ae98c7ee76b69498e6e94e78d2ba0e672058"
+                },
+                "mutant": {
+                  "cases": 112,
+                  "distinct_inputs": 105,
+                  "pass": 112,
+                  "sat_models": 55,
+                  "input_manifest_sha256": "510bc82963999c9ef76ab8960037f83b5b70ff17e93c2392eda9de528703c82f"
+                }
+              }
+            },
+            {
+              "slot": 1,
+              "logic": "QF_UFLRA",
+              "seed": 202610021,
+              "stages": {
+                "seed": {
+                  "cases": 2,
+                  "distinct_inputs": 2,
+                  "pass": 2,
+                  "sat_models": 1,
+                  "input_manifest_sha256": "49c268f97a4af3df7d93322ada38a1339cbfb41bff798ae387a778ea4a7e566b"
+                },
+                "mutant": {
+                  "cases": 100,
+                  "distinct_inputs": 100,
+                  "pass": 100,
+                  "sat_models": 97,
+                  "input_manifest_sha256": "647853955578e216d48a1e851e1c111e045168d3a862bebdeffc2920ef19e71d"
+                }
+              }
+            }
+          ]
+        },
+        "static": {
+          "translation_units": 126,
+          "warnings": 18,
+          "include_advisories": 404,
+          "review": "Matches prior c944fa7 baseline: CLI11 and tactic shared_ptr analyzer ownership reports; 16 guarded enum-probe diagnostics. Reviewed the same ownership/cast paths. Include scan: 20 paired headers retained, <variant> used by std::get, 383 direct-include advisories. No new C++ implementation change."
+        },
+        "documentation": {
+          "strict_books": 2,
+          "pages": 253,
+          "local_links": 30327,
+          "git_links": 873,
+          "compatibility_targets": 1306,
+          "failures": 0,
+          "external_access_failures_current": 4,
+          "external_access_failures_history": 13
+        }
+      },
+      "attempts_excluded": [
+        {
+          "jobs": [
+            "156671_8-11"
+          ],
+          "reason": "SAT-model replay incorrectly included UNSAT cases; one replay timeout. Superseded by successful-SAT-only retry; initial answers do not replace retry counts."
+        },
+        {
+          "jobs": [
+            "156671_20-27",
+            "156706"
+          ],
+          "reason": "Wrapper required executable paths; PATH-only z3 failed before cases."
+        },
+        {
+          "jobs": [
+            "156703"
+          ],
+          "reason": "ctest absent from selected build-tool directory; no test pass claimed."
+        },
+        {
+          "jobs": [
+            "156710"
+          ],
+          "reason": "Release tests/examples passed; ASan link failed on missing system runtime. Superseded by 156739 with provisioned verified runtime."
+        },
+        {
+          "jobs": [
+            "156711"
+          ],
+          "reason": "Quantifier-specific mutation recipe rejected by both solvers on QF_LRA; mixed seeds excluded by size cap. Harness misuse, superseded by ground OpFuzz recipe."
+        },
+        {
+          "jobs": [
+            "156709_20-27",
+            "156671_28-31"
+          ],
+          "reason": "Completed but session seed ranges overlapped. Replaced by disjoint-range run 156730. Independently generated duplicate templates still reported as duplicates."
+        }
+      ],
+      "artifacts": {
+        "local_directory": "results/public-launch",
+        "selected_summary": "docs/coverage/publication-qualification.json",
+        "full_raw_archive": "results/public-launch-evidence.tar.gz (remote experiment workspace; ignored local copy when collected)",
+        "raw_publication": "Raw generated inputs/models/logs are not published by this change. Committed metadata is not the full raw archive.",
+        "source_archive": {
+          "revision": "f95ba8a8fde11eeb59738ae0941ebf74692c5f4d",
+          "path": "dist/primo-f95ba8a8fde1.tar.gz",
+          "sha256": "fb4b9ebaaef627ff2b2fa56e2a22c014c5cf7d579fc771a797aa2c299e624f04",
+          "primo_binary_sha256": "2727b66215e83ef6de03f60d9a109a0ee6e0631696d037f53bf89b321c1242a6"
+        }
+      },
+      "limitations": [
+        "14 QF_LIA timeouts remain incomplete; no answer inferred from reference SAT.",
+        "Counts include repeated generator templates; distinct hashes reported separately.",
+        "No independent quantified-model validation or new full-corpus speed result.",
+        "Fresh dependency bootstrap failed fetching CLI11; actual GitHub-hosted CI remains pending.",
+        "Rights/third-party-input terms, hosted-asset audit, reader acceptance, and GitHub settings remain owner work."
+      ]
+    },
+    {
       "id": "2026-10-02-preprocessing-diagnostic-routing",
       "date": "2026-10-02",
       "kind": "correctness-qualification",

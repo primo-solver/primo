@@ -118,6 +118,8 @@ def summarize_shard(folder: Path, slot: int, candidate: str) -> dict:
         result["pass"] = 250
         result["profile_answers"] = dict(counts)
     else:
+        command = read_json(gate / "run.json")["command"]
+        result["seed_begin"] = int(command[command.index("--seed") + 1])
         summaries = sorted(gate.glob("session-*/result.json"))
         require(len(summaries) == 250, "missing sessions")
         for path in summaries:
@@ -153,7 +155,9 @@ def aggregate(shards: list[dict]) -> dict:
         routes[name]["distinct_inputs"] = len(set(hashes))
         # Session generators use seed + index: overlap means a broken sharding recipe.
         if name.startswith("incremental_"):
-            require(len(set(hashes)) == len(hashes), "overlapping session inputs")
+            seeds = [seed for shard in group for seed in
+                     range(shard["seed_begin"], shard["seed_begin"] + shard["cases"])]
+            require(len(set(seeds)) == len(seeds), "overlapping session seed ranges")
     return {"routes": routes, "shards": shards}
 
 

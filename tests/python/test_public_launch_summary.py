@@ -14,6 +14,7 @@ class PublicLaunchSummaryTests(unittest.TestCase):
         return [{"slot": i, "route": ROUTES[i // 4], "binaries": {"primo": "same"},
                  "cases": 250, "pass": 250, "timeout": 0, "sat_models": 0,
                  "queries": 0, "input_sha256": [f"{i}-{j}" for j in range(250)]}
+                | {"seed_begin": i * 10000}
                 for i in range(32)]
 
     def test_missing_duplicate_and_mixed_binary_shards(self):
@@ -31,9 +32,15 @@ class PublicLaunchSummaryTests(unittest.TestCase):
 
     def test_overlapping_sessions_rejected(self):
         shards = self.shards()
-        shards[25]["input_sha256"] = shards[24]["input_sha256"]
+        shards[25]["seed_begin"] = shards[24]["seed_begin"] + 1
         with self.assertRaisesRegex(ValueError, "overlapping"):
             aggregate(shards)
+
+    def test_repeated_templates_are_reported_without_inflating_diversity(self):
+        shards = self.shards()
+        shards[25]["input_sha256"] = shards[24]["input_sha256"]
+        row = aggregate(shards)["routes"]["incremental_QF_UF"]
+        self.assertEqual((row["cases"], row["distinct_inputs"]), (1000, 750))
 
     def test_model_coverage_and_exit_status(self):
         with tempfile.TemporaryDirectory() as name:
