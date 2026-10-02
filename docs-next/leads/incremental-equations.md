@@ -19,7 +19,7 @@ pipeline. Assertion-dependent substitutions must not become unconditional
 definitions. Add tests for append/pop/restore sequences and counters for
 eliminated/restored variables and associated work.
 
-{source}`Lead 24 <docs/open-leads.md#L2793-L2819>` retains the historical
+{source}`Lead 24 <docs/open-leads.md#L2803-L2829>` retains the historical
 `firewire`/`rushhour` evidence. Start by measuring admissible elimination
 opportunities on the current code. Defer if too few exist; reject a design if
 restoration costs erase the benefit or correctness/previously solved sessions

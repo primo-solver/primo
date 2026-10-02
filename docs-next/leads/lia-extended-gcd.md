@@ -4,7 +4,7 @@
 
 Extend the {ref}`row divisibility check <lia-gcd>` to
 use bounds on variables that are not fixed. This carries forward
-{source}`lead 12e <docs/open-leads.md#L1892-L1935>`; it is not a newly discovered
+{source}`lead 12e <docs/open-leads.md#L1903-L1946>`; it is not a newly discovered
 gap or an implemented procedure.
 
 ## Why the existing test misses it

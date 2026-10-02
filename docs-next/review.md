@@ -1727,3 +1727,32 @@ explicit [evidence work](work/evidence.md); results-storage implementation is
 separate. The archive catalogue preserves detailed history without claiming
 that every old experiment is independently reproducible or qualifies today's
 solver.
+
+## Preprocessing diagnostic review — 2026-10-02
+
+`--preprocess-only` remains a developer diagnostic. Ground preprocessing may
+return `unsat`; surviving goals return `unknown`. Quantified `UF` now stops
+after the frontend, before instantiation or SAT/theory search. The input guide
+no longer uses this diagnostic to introduce `unknown`. The option reference,
+statistics reference, preprocessing and quantifier chapters, and CLI help
+state the supported behavior.
+
+The implementation at `c944fa7` passed 43 CTest groups, 202 Python tests and
+12 documentation examples in SLURM. The generated gate covered 1,000 cases
+(569 distinct input hashes): normal solving agreed with Z3 under all six
+tuple orders, while every diagnostic invocation returned `unknown` with no
+SAT calls, instances or witness lemmas. All 8,000 candidate/reference
+invocations exited successfully; there were no disagreements or timeouts.
+The run-log entry `2026-10-02-preprocessing-diagnostic-routing` records commands,
+limits, binary identities and retained artifacts.
+
+The source-file analyzer scan reached the test files before its allocation
+expired; a separate allocation completed all test files. The advisory include
+scan covered all 126 C++ translation units. Existing ownership and enum-probe
+warnings were reviewed and retained in the evidence, along with the include
+advice; no blocking issue was found in this change. ASan was not rerun because
+ownership, term storage, parsing and the SAT backend were not changed.
+
+Both strict books and their local/Git links pass. The central source pin now
+identifies the tested implementation; affected line anchors were refreshed.
+Historical record pins and their evidence scope remain unchanged.

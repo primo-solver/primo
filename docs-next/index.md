@@ -45,7 +45,7 @@ enumerative instantiation with limited SAT completion; it does not provide
 general quantifier solving or printed models for quantified assertions.
 The admitted logic names are checked by
 {source}`SmtSession <src/smt/smt_session.cpp#L270-L287>`; quantified assertions
-take the {source}`dedicated UF branch <src/smt/solver_session.cpp#L624-L649>`.
+take the {source}`dedicated UF branch <src/smt/solver_session.cpp#L624-L655>`.
 
 The default session engine supports repeated queries and `push`/`pop` by
 rebuilding solving state. Opt-in assumptions engines retain more state for

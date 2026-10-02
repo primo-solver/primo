@@ -68,7 +68,7 @@ arithmetic.
 
 This complements Brummayer and Biere's *Fuzzing and Delta-Debugging SMT
 Solvers* (SMT 2009), already recorded in the
-{source}`literature notes <docs/literature.md#L355-L411>`.
+{source}`literature notes <docs/literature.md#L401-L457>`.
 Primo uses external generators and reduction tools. The gate counts below are
 project policy, not thresholds established by that thesis.
 

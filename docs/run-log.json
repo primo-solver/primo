@@ -3,6 +3,169 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-10-02-preprocessing-diagnostic-routing",
+      "date": "2026-10-02",
+      "kind": "correctness-qualification",
+      "commit": "c944fa790c2043ebac93b8d6f63c7b02b0c2c235",
+      "branch": "docs/public-repository-migration",
+      "validated_snapshot": "c944fa790c2043ebac93b8d6f63c7b02b0c2c235",
+      "provenance": "The implementation commit was validated in an isolated worktree before acceptance on the working branch. The following evidence and source-link update changes documentation only.",
+      "scope": "Keep --preprocess-only as a diagnostic. Quantified UF stops after the frontend, before solve_quantified_uf. Ground preprocessing retains unsat for contradictions and unknown otherwise. No formula export.",
+      "decision": "Accept the routing guard and documentation correction; normal solving and preprocessing algorithms are unchanged.",
+      "evidence_status": "current",
+      "environment": {
+        "execution": "All solver and Python tests, documentation example executions, fuzzing and C++ static analysis ran in SLURM compute allocations.",
+        "build": "GNU C++ 11.4.1, Release, CaDiCaL 3.0.0-7b99c07; reused matching C++ header snapshot",
+        "primo_binary_sha256": "312c9ac39152a405a1e5e2846d47360e40a51cb7d0af88e0353c373fceea6037",
+        "reference": "Z3 5.1.0",
+        "reference_binary_sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0"
+      },
+      "jobs": {
+        "build": "156609",
+        "checks_and_gate": "156612",
+        "static_source_and_partial_tests": "156611",
+        "static_tests": "156616",
+        "include_cleaner": "156615"
+      },
+      "commands": {
+        "build": "python3 scripts/slurm_prepare_benchmark_workspace.py --build-via-slurm --reuse-dependencies --extra-target all --require-tool contrib/local/bin/z3 --jobs 4 --cxx-header-manifest <matching-header-manifest> <connection-and-workspace-options>",
+        "preflight": "python3 scripts/slurm_prepare_benchmark_workspace.py --check-only --no-sync --require-tool contrib/local/bin/z3 <connection-and-workspace-options>",
+        "checks": "make -o contrib-required check BUILD_DIR=build-slurm-rel CPP_FORMAT_FILES=\"<all tracked src/tests C++ files>\"; cached dependencies verified by the preparation helper",
+        "examples": "python3 scripts/check_doc_examples.py --solver build-slurm-rel/primo",
+        "gate": "python3 scripts/quantifier_preparation_gate.py --mode generated --solver build-slurm-rel/primo --expected-git c944fa7 --ref contrib/local/bin/z3 --count 1000 --seed 20261002 --timeout 5 --check-preprocess-only --out results/preprocess-diagnostic-gate",
+        "static": "clang-tidy -p build-slurm-rel <each of 126 tracked non-generated .cpp files>; repeated with -checks=-*,clang-diagnostic-*,misc-include-cleaner",
+        "docs": [
+          "make docs",
+          "make docs-next",
+          "python3 scripts/check_doc_links.py docs/_build/html docs-next/_build/html"
+        ],
+        "lint": "make lint"
+      },
+      "resources": {
+        "build": {
+          "cpus": 4,
+          "memory": "8G",
+          "wall_limit": "00:30:00"
+        },
+        "checks_and_gate": {
+          "cpus": 4,
+          "memory": "8G",
+          "wall_limit": "00:20:00",
+          "per_solver_timeout_seconds": 5
+        },
+        "static": {
+          "cpus": 2,
+          "memory": "8G",
+          "wall_limit": "00:20:00"
+        },
+        "static_tests": {
+          "cpus": 4,
+          "memory": "8G",
+          "wall_limit": "00:10:00"
+        },
+        "include_cleaner": {
+          "cpus": 4,
+          "memory": "8G",
+          "wall_limit": "00:10:00"
+        }
+      },
+      "results": {
+        "ctest": {
+          "passed": 43,
+          "failed": 0
+        },
+        "python": {
+          "passed": 202,
+          "failed": 0
+        },
+        "documentation_examples": {
+          "passed": 12,
+          "failed": 0
+        },
+        "fuzz": {
+          "generator": "scripts/quantifier_preparation_gate.py:quantified; existing template generator and Boolean wrappers",
+          "seed": 20261002,
+          "generated_cases": 1000,
+          "distinct_input_sha256": 569,
+          "invocations": 8000,
+          "pass": 1000,
+          "normal_solver_profiles": [
+            "sum",
+            "max",
+            "max-colex",
+            "leximax",
+            "deepening",
+            "random"
+          ],
+          "per_normal_profile": {
+            "sat": 375,
+            "unsat": 625,
+            "unknown": 0
+          },
+          "reference": {
+            "sat": 375,
+            "unsat": 625
+          },
+          "diagnostic": {
+            "unknown": 1000,
+            "sat_calls": 0,
+            "instances": 0,
+            "skolem_lemmas": 0
+          },
+          "wrong_answer": 0,
+          "crash": 0,
+          "parser_type_error": 0,
+          "timeout": 0,
+          "unsupported": 0,
+          "reference_disagreement": 0,
+          "audit": "Verified each case has all eight profiles, successful exits and matching retained-input hashes. Rechecked diagnostic statistics from the retained stderr files."
+        },
+        "static": {
+          "coverage": "All 90 source translation units were scanned before the first allocation timed out in tests; all 36 test translation units were scanned in the completed continuation. The advisory include scan completed for all 126 files.",
+          "compiler_errors": 0,
+          "warnings": "Existing CLI11 std::function and tactic shared_ptr ownership diagnostics; enum-table probe diagnostics. Reviewed ownership paths and guarded casts; no blocking issue in this change.",
+          "include_advisory_warnings": 404,
+          "include_review": "20 paired-header reports retained for header self-containment; the remaining unused-header report is <variant>, used by std::get<DomainValue> in instance_simplifier_tests.cpp. Other reports request direct includes for existing transitive dependencies; no header removal was warranted.",
+          "review": "Code review pass: no blocking issues found in the routing guard, ownership, session lifecycle, tests or performance."
+        },
+        "documentation": {
+          "strict_books": 2,
+          "pages": 174,
+          "local_links": 28178,
+          "git_links": 874,
+          "failures": 0
+        }
+      },
+      "artifacts": {
+        "directory": "results/preprocess-diagnostic-20261002",
+        "qualification_archive": "results/preprocess-diagnostic-20261002/qualification.tar.gz",
+        "qualification_archive_sha256": "c044e6fd6cdb5329c401b789fa5be25077bb2d28d8ed6b0ae1c00c6440a62688",
+        "gate_rows": "results/preprocess-diagnostic-gate/rows.jsonl",
+        "gate_inputs_and_outputs": "results/preprocess-diagnostic-gate/case-*",
+        "failures": "None; all inputs and outputs retained in the qualification archive.",
+        "static-initial.tar.gz": {
+          "path": "results/preprocess-diagnostic-20261002/static-initial.tar.gz",
+          "sha256": "3c27e4f8799e6e853983eb29feb1ca1529e7604135c1b26d0210a10898bced81"
+        },
+        "static-tests.tar.gz": {
+          "path": "results/preprocess-diagnostic-20261002/static-tests.tar.gz",
+          "sha256": "e7a75e411654febf04d52b35c96011eb99a988d2bd9a79e0c0104bff544d32a7"
+        },
+        "review": "results/preprocess-diagnostic-20261002/review.txt"
+      },
+      "limits": [
+        "This is a diagnostic control-flow correction, not a performance evaluation or default promotion.",
+        "The 1000 generated cases contain 569 distinct inputs; the count does not imply 1000 unique formulas.",
+        "ASan was not rerun: the change adds an early return and does not change ownership, term storage, parsing or SAT backend code."
+      ],
+      "operational_notes": [
+        "The first remote build lacked C++ standard headers; the clean rebuild used the existing matching header snapshot.",
+        "Job 156610 stopped before solver execution because a newline-separated file list broke the make lint recipe. Job 156612 used a space-separated list and completed all checks.",
+        "The make check rebuild emitted clock-skew warnings for generated makefiles. The candidate was built from a clean directory by the preparation helper and its exact binary hash was checked by the gate.",
+        "The full clang-tidy allocation 156611 timed out after scanning source files and part of the tests. Job 156616 completed all test units; job 156615 completed the advisory include scan. The refused request to extend the first allocation did not change its limit."
+      ]
+    },
+    {
       "id": "2026-09-29-soi-endpoint-correction",
       "date": "2026-09-29",
       "kind": "correctness-qualification",

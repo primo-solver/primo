@@ -26,10 +26,10 @@ are opaque. The {source}`integer preprocessing strategy
 <src/smt/preprocessing_strategy.cpp#L434-L445>` selects it within the enabled
 integer preprocessing loop. This is an existing textbook rewrite, not a new
 proposal; its contract is in the {source}`preprocessing note
-<docs/preprocessing.md#L100-L127>`.
+<docs/preprocessing.md#L118-L145>`.
 
 Quantified input {source}`takes a separate route before that pipeline
-<src/smt/solver_session.cpp#L624-L649>`. Its current
+<src/smt/solver_session.cpp#L624-L655>`. Its current
 {source}`instance simplifier <src/theory/quantifiers/instance_simplifier.cpp#L12-L15>`
 also treats quantifiers as opaque. The proposed work is to extend normalization
 through binders and select where it runs on the quantified route.

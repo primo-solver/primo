@@ -4,7 +4,7 @@
 
 The [frontend](../implementation/frontend.md) expands `distinct` into pairwise
 disequalities. With $n$ arguments that requires $n(n-1)/2$ pairs. The
-{source}`historical lead 23 <docs/open-leads.md#L2769-L2792>` records one native
+{source}`historical lead 23 <docs/open-leads.md#L2779-L2802>` records one native
 session with arities 1,051 and 73, producing 554,403 pairwise constraints.
 That is evidence of a representation cost at the measured revision, not a
 current speedup prediction or evidence of another solver's internal encoding.

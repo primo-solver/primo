@@ -274,7 +274,7 @@ an expression. Bound variables and quantified terms are outside its supported
 ground evaluation contract.
 
 In the rebuilding solver path, {source}`finalize_model
-<src/smt/solver_session.cpp#L649-L673>` checks the original, pre-preprocessing
+<src/smt/solver_session.cpp#L655-L679>` checks the original, pre-preprocessing
 assertions whenever model checking is requested, and also in debug builds when
 a model is produced. The {source}`retained-session path
 <src/smt/smt_session.cpp#L159-L179>` checks active assertions when `check_model`

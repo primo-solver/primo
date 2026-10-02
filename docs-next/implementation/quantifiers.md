@@ -15,7 +15,7 @@ queue, without model-guided arrangement search.
 
 ## Supported scope and answers
 
-The {source}`routing gate <src/smt/solver_session.cpp#L624-L649>` sends asserted
+The {source}`routing gate <src/smt/solver_session.cpp#L624-L655>` sends asserted
 formulas containing quantifiers to this route before ordinary ground
 preprocessing. They are supported only under declared logic `UF`. The route
 requires the IPASIR backend and does not export quantified models.
@@ -97,7 +97,7 @@ Named or identity-bearing variables can be convenient for display, but require
 a separate policy for freshness, shadowing and sharing under renaming. Primo's
 choice keeps parser scope information and core binder operations explicit, at
 the cost of index arithmetic and occasional shifted terms. The
-{source}`original comparison <docs/quantifiers.md#L871-L899>` retains prototype
+{source}`original comparison <docs/quantifiers.md#L882-L910>` retains prototype
 size measurements; those measurements are historical, not current memory claims.
 
 Index 0 names the innermost bound variable, index 1 the next outer variable,
@@ -390,7 +390,7 @@ relevant-domain restrictions, and model-based instantiation are absent.
 
 ## Budgets, costs, and observability
 
-The {source}`solver options <src/smt/check_sat.hpp#L471-L487>` and shared
+The {source}`solver options <src/smt/check_sat.hpp#L472-L488>` and shared
 {source}`defaults <src/theory/quantifiers/tuple_orders.hpp#L43-L60>` distinguish
 instance generation from queue delivery:
 

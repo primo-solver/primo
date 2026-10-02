@@ -54,7 +54,7 @@ available on the submission host, missing C++ headers on workers, unavailable
 timing utilities, corpus paths resolving outside the workspace, and missing
 result shards. Check these assumptions explicitly rather than carrying old
 host-specific paths into the procedure. The dated incidents remain in the
-{source}`original bisect record <docs/debugging.md#L1397>`.
+{source}`original bisect record <docs/debugging.md#L1405>`.
 
 ## Finish a repair
 

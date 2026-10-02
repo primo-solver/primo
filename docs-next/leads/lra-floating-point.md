@@ -11,7 +11,7 @@ expensive rational pivots. Whether that saving exceeds the extra work remains
 an experimental question.
 
 This carries forward the existing
-{source}`investigation recorded as D2 <docs/qf-lra-heuristics.md#L2039-L2119>`. The
+{source}`investigation recorded as D2 <docs/qf-lra-heuristics.md#L2036-L2116>`. The
 [LRA chapter](../implementation/lra.md) describes the current exact solver.
 
 ## Proposed mechanism and paper basis

@@ -557,7 +557,7 @@ failure of that test is not an integer-infeasibility proof. The
 {ref}`cube-test explanation <bromberger-unit-cube>` derives its strengthening,
 rounding guarantee and equality limitation. The
 {source}`earlier thesis note <docs/papers/bromberger-linear-arithmetic-thesis.md>`
-and {source}`integer open leads <docs/open-leads.md#L1759-L1828>` retain the
+and {source}`integer open leads <docs/open-leads.md#L1765-L1834>` retain the
 separate investigations and their prerequisites.
 
 `QF_LIRA`, mixing declared `Int` and `Real` variables, is not admitted. The

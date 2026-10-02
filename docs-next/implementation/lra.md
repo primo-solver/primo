@@ -828,7 +828,7 @@ This is the `model-unit` option. The
 {source}`default remains legacy <src/smt/check_sat.hpp#L396-L402>`; pure
 QF_LRA calls neither producer. The full-corpus comparisons and the unpromoted
 adaptive follow-up are preserved in the
-{source}`2024 paper implementation note <docs/papers/arithmetic-solving-in-z3.md#L283-L467>`.
+{source}`2024 paper implementation note <docs/papers/arithmetic-solving-in-z3.md#L280-L464>`.
 The paper's integer and nonlinear procedures are outside this chapter's scope.
 
 ## Fixed-basic elimination
@@ -917,10 +917,10 @@ not inferred from matching aggregate counts.
 | Sparse pivot selection and tuning (H3) | Explained above; {source}`pivoting investigation <docs/qf-lra-heuristics.md#L440-L538>` and {source}`tuning controls <docs/tuning-parameters.md>`. |
 | Sorted row merging, bounds-only rollback, incremental occurrence updates (H8/H9/H10) | Explained above; {source}`design progression <docs/qf-lra-heuristics.md#L737-L949>`, including the earlier rejected occurrence-maintenance attempt. |
 | Fixed-basic-variable elimination (H7) | {source}`try_eliminate_fixed_basic <src/theory/arithmetic/lra_tableau.cpp#L393-L431>` pivots a fixed basic variable out and pins its value. Off by default for pure LRA, on by default for QF_UFLRA; {source}`route defaults <src/smt/check_sat.hpp#L295-L310>` and {source}`design and evidence <docs/qf-lra-heuristics.md#L539-L736>`. |
-| Model-based phase hints (H5) | {source}`refresh_model_phase_atom <src/smt/solver_engines.cpp#L7415-L7473>` supplies preferred polarities while SAT keeps variable selection. Off by default; {source}`phase-selection investigation <docs/qf-lra-heuristics.md#L982-L1239>`. |
+| Model-based phase hints (H5) | {source}`refresh_model_phase_atom <src/smt/solver_engines.cpp#L7415-L7473>` supplies preferred polarities while SAT keeps variable selection. Off by default; {source}`phase-selection investigation <docs/qf-lra-heuristics.md#L982-L1236>`. |
 | SOI and alternative pivot policies | [SOI objective, selection, conflicts and historical evidence](#lra-soi); the {source}`base-paper deviation map <docs/papers/fast-linear-arithmetic-dpllt.md>` separates these policies from the default repair loop. |
 | Equality sharing and model reconciliation | [Theory combination](combination.md), the {source}`equality-sharing design <docs/qf-lra-equality-sharing.md>` and {source}`tableau equality/model interfaces <src/theory/arithmetic/lra_tableau.hpp#L331-L600>`. Model coincidence is not an entailed equality. |
-| Preprocessing and experiment history | {source}`monotone elimination <docs/papers/monotone-variable-elimination.md>`, {source}`guarded equality experiments <docs/qf-lra-heuristics.md#L1240-L1353>` and {source}`arithmetic development record <docs/arithmetic.md>`. |
+| Preprocessing and experiment history | {source}`monotone elimination <docs/papers/monotone-variable-elimination.md>`, {source}`guarded equality experiments <docs/qf-lra-heuristics.md#L1237-L1350>` and {source}`arithmetic development record <docs/arithmetic.md>`. |
 
 The [published QF_LRA results](../papers/primo-qflra-results.md) are another
 part of this evidence trail. The tuned configurations in that paper have

@@ -149,7 +149,7 @@ formula properties.
 ## From a session query to an engine
 
 The default rebuild path in
-{source}`solver_session.cpp <src/smt/solver_session.cpp#L624-L793>` first
+{source}`solver_session.cpp <src/smt/solver_session.cpp#L624-L799>` first
 routes quantified assertions to the dedicated quantified-UF implementation.
 For ground assertions it prepares and executes the
 [preprocessing strategy](preprocessing.md). The resulting alternatives retain

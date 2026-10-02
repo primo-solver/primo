@@ -25,6 +25,6 @@ accepted or rejected decision and all provenance through
 [the experiment workflow](experiments.md).
 
 The {source}`historical parameter inventory <docs/tuning-parameters.md>` and
-{source}`complementarity investigation <docs/open-leads.md#L2572-L2632>` retain
+{source}`complementarity investigation <docs/open-leads.md#L2583-L2642>` retain
 previous motivations and negative results. Recheck their preconditions instead
 of treating the old candidate list as a current recommendation.

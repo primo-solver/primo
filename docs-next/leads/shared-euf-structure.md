@@ -8,7 +8,7 @@ without copying the entire flat representation into each working closure.
 This concerns per-query copying, distinct from
 [reclaiming unused incremental storage](incremental-memory.md).
 
-{source}`Lead 25 <docs/open-leads.md#L2820-L2848>` records copies and reset costs
+{source}`Lead 25 <docs/open-leads.md#L2830-L2858>` records copies and reset costs
 on historical CLEARSY sessions. Reprofile after the accepted atom-scan changes
 so savings are not counted twice. Separate copied bytes, allocations, preparation,
 working-state reset, callback reconnection and peak memory.

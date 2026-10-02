@@ -219,7 +219,7 @@ The EUF engine choice and propagation schedule are separate options. The
 {source}`defaults <src/smt/check_sat.hpp#L220-L226>` select incremental EUF with
 automatic scheduling; {source}`mode resolution
 <src/smt/solver_engines.cpp#L484-L553>` chooses a schedule for the goal.
-The {source}`CLI options <src/main.cpp#L630-L634>` are
+The {source}`CLI options <src/main.cpp#L631-L635>` are
 `--euf-engine` and `--euf-prop`.
 
 | Route | During SAT search | After a SAT candidate |
@@ -288,7 +288,7 @@ records why this accounting cannot simply be disabled.
 
 For requested models, theory facts and numeric values feed model construction
 and reverse conversion. The {source}`session's finalization
-<src/smt/solver_session.cpp#L649-L676>` checks original assertions in debug
+<src/smt/solver_session.cpp#L655-L682>` checks original assertions in debug
 builds or with `--check-model`, then prints the typed interpretation. This
 check is conditional, and does not replace the solving obligations above or
 independent validation. A model-construction failure is an internal error,

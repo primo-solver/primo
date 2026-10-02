@@ -37,7 +37,7 @@ they do not establish Primo's best default configuration.
 
 Retain the comparison artifacts named in those records, including
 `results/uf-quantifier-compare-144606` and its per-order summaries. The
-{source}`original chronology <docs/quantifiers.md#L18-L149>` also preserves
+{source}`original chronology <docs/quantifiers.md#L25-L160>` also preserves
 round/stall counters and the separate cvc5 enumeration comparison.
 
 ## What a pool-guided cvc5 check proves

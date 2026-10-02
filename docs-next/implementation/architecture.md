@@ -37,12 +37,12 @@ checks are omitted. The numbered walkthrough below links each stage to code.
 3. **Translate and solve.** In the default rebuild mode,
    {source}`SmtSession::Implementation::execute <src/smt/smt_session.cpp#L223-L231>`
    transfers the frontend and assertion roots into
-   {source}`check_sat_frontend_once <src/smt/solver_session.cpp#L808-L815>`.
+   {source}`check_sat_frontend_once <src/smt/solver_session.cpp#L814-L821>`.
    The {source}`Frontend <src/smt/frontend.hpp#L25-L56>` resolves names and
    types and creates terms in its own manager. Solver and theory code consume
    core IDs rather than SMT-LIB syntax nodes.
 4. **Select a route.** Quantified formulas take a
-   {source}`separate quantified-UF route <src/smt/solver_session.cpp#L624-L649>`.
+   {source}`separate quantified-UF route <src/smt/solver_session.cpp#L624-L655>`.
    Ground goals pass through preprocessing and
    {source}`make_solver_dispatch <src/smt/solver_strategy.cpp>`, using formula
    features, declared logic, and model requirements to choose a strategy leaf:
@@ -183,7 +183,7 @@ session's new context.
 {source}`CheckSatResult <src/smt/check_sat.hpp#L191-L196>` and
 {source}`CommandResponse <src/smt/smt_session.hpp#L12-L21>` keep those layers
 separate. For requested ground models, the
-{source}`finalization path <src/smt/solver_session.cpp#L650-L674>` optionally
+{source}`finalization path <src/smt/solver_session.cpp#L656-L680>` optionally
 checks the original assertions and then serializes the model. An internal
 model inconsistency is not a logical UNSAT result.
 
