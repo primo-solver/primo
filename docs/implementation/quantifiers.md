@@ -57,7 +57,9 @@ SAT solve finds the contradiction. The quantified atom guards its instance:
 an instance of an unasserted universal cannot become an unconditional fact.
 
 The {source}`single-instance regressions <tests/unit/quantifier_solver_tests.cpp#L218-L224>`
-exercise this path, including equality reasoning in the ground component.
+exercise this path. A separate
+{source}`Boolean-argument congruence regression <tests/unit/quantifier_solver_tests.cpp#L277-L281>`
+requires equality reasoning after instantiation.
 
 ## Representation and ownership
 

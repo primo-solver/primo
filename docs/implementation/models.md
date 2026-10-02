@@ -109,7 +109,7 @@ last cannot repair them.
 
 Each function also has a default result for every tuple absent from its finite
 table. This makes the function total, including at arguments never encountered
-during solving. {source}`Model::apply <src/core/model.cpp#L104-L120>` returns
+during solving. {source}`Model::apply <src/core/model.cpp#L107-L123>` returns
 the explicit row when present and otherwise the default, without inserting
 anything or changing the model.
 

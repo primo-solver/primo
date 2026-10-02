@@ -355,9 +355,11 @@ a combined model; the route retains model reconciliation and exact checks.
 
 When the exact fallback is required,
 {source}`lra_implied_real_equalities_for_partition <src/smt/solver_engines.cpp#L4907-L4947>`
-restricts candidate pairs to equal-valued terms in a checked arithmetic model.
-Different model values disprove entailment immediately. For an unresolved pair
-with equal values, exact probes test the two alternatives `x < y` and `y < x`.
+filters pairs whose endpoints both have mapped arithmetic values: different
+values in the checked model disprove entailment, while equal-valued pairs
+remain candidates. Pairs with an unmapped endpoint also remain candidates.
+For an unresolved candidate, exact probes test the two alternatives `x < y`
+and `y < x`.
 Only infeasibility of both proves equality. The implementation reuses prepared
 arithmetic state and groups already established equalities to avoid redundant
 probes; a probe limit produces `unknown`.

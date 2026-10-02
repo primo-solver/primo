@@ -118,7 +118,7 @@ extension/model arguments. No new solver experiment accompanies this survey.
 
 The related [CNF note](polarity-aware-cnf.md) treats directional definitions and
 NNF separately. Neither transformation alone implements relevance filtering.
-The older {source}`arithmetic relevance lead <docs/open-leads.md#L1171-L1194>` retains
+The older {source}`arithmetic relevance lead <docs/open-leads.md#L1154-L1177>` retains
 its family-specific motivation; its measurement sequence is not a prerequisite
 for investigating quantified don't-cares.
 

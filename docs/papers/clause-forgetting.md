@@ -14,7 +14,7 @@ Robert Nieuwenhuis, Albert Oliveras, and Cesare Tinelli, *Solving SAT and SAT
 Modulo Theories: From an Abstract Davis–Putnam–Logemann–Loveland Procedure to
 DPLL(T)*, Journal of the ACM, 2006.
 [Author PDF](https://homepage.cs.uiowa.edu/~tinelli/papers/NieOT-JACM-06.pdf).
-Read §3.3, especially Definition 3.2, Theorem 3.7, and Property 3.9;
+Read §§3.3–3.4, especially Definition 3.2, Theorem 3.7, and Property 3.9;
 §§4.2 and 4.4; and §5.2 for explanation ordering.
 
 The state contains an assignment trail and a clause database. `T-Forget`
