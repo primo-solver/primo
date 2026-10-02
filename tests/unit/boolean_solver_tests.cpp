@@ -1278,6 +1278,24 @@ void preprocessing_extends_when_passes_keep_shrinking_terms() {
          result.statistics.get(":preprocessing.term-size.initial"));
 }
 
+void arithmetic_payloads_prevent_unsound_symmetry_restrictions() {
+  for (const char* path : {"../benchmarks/smoke/qf_uflra/sat_symmetry_numeric_values.smt2",
+                           "../benchmarks/smoke/qf_uflra/sat_symmetry_coefficients.smt2",
+                           "../benchmarks/smoke/qf_uflra/sat_symmetry_equal_numeric_values.smt2"}) {
+    const std::string input = read_text_file(path);
+    for (const bool value_precedence : {false, true}) {
+      CheckSatOptions options;
+      options.finite_domain_value_precedence = value_precedence;
+      assert(check_sat_smtlib(input, options).result == CheckSatResult::Sat);
+      options.preprocessing_mode = primo::smt::PreprocessingMode::Basic;
+      options.preprocessing_passes = 0;
+      assert(check_sat_smtlib(input, options).result == CheckSatResult::Sat);
+      options.uf_symmetry_breaking = false;
+      assert(check_sat_smtlib(input, options).result == CheckSatResult::Sat);
+    }
+  }
+}
+
 void preprocessing_adaptive_extra_passes_can_be_disabled() {
   primo::smt::CheckSatOptions options;
   options.preprocessing_mode = primo::smt::PreprocessingMode::Basic;
@@ -3222,6 +3240,7 @@ int main() {
   auto_preprocessing_skips_large_flat_assertion_batches();
   preprocessing_off_disables_basic_loop();
   preprocessing_extends_when_passes_keep_shrinking_terms();
+  arithmetic_payloads_prevent_unsound_symmetry_restrictions();
   preprocessing_adaptive_extra_passes_can_be_disabled();
   positive_pure_theory_literal_is_filtered_from_euf_check();
   pure_theory_literal_filter_can_be_disabled();

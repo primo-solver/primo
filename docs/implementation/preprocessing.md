@@ -366,12 +366,24 @@ checking only the two generating permutations {cite:p}`deharbe2011symmetry`.
 The value-precedence rule for fixed terms is described in the design note.
 General graph-automorphism detection is outside Primo's implementation.
 
-The page-by-page source review found that the
-{source}`comparison key <src/smt/preprocessing.cpp#L2036-L2067>` omits rational
-values and multiplication coefficients. Consequently, the implemented comparison
-does not establish the required invariance for all mixed arithmetic formulas.
-This is an unresolved correctness finding, not an accepted limitation of the
-symmetry theorem; see the {ref}`review follow-up <symmetry-payloads>`.
+The comparison must preserve every semantic term field: kind, sort, symbol,
+Boolean value, exact rational value and children. The rational field stores
+numeric literals, multiplication coefficients and integer `div`/`mod` divisors.
+It is serialized using the canonical integer-or-fraction spelling of
+{source}`Rational::to_string <src/util/rational.cpp#L627-L637>`, rather than a
+rounded value or a hash. Only the selected constants are renamed; only the
+three commutative kinds above have their children reordered.
+
+This repairs the payload omission found in the page-by-page review. The
+{ref}`repair and qualification record <symmetry-payloads>` retains the SAT
+counterexample and the outstanding checks. The proof obligation is structural:
+equal keys must identify the same syntax after these allowed operations. The
+balanced child encoding and full payloads distinguish other terms. Memo tables
+and strings belong to one comparison; it creates no terms and changes no solver
+state. Numeric serialization adds exact integer-to-text conversion; the key
+stores the complete resulting spelling. Existing subtree-string copying and
+child sorting remain; this is not an
+implementation of the paper's linear-time DAG representation.
 
 For a domain of size $n$, pairwise AMO generation can produce
 $n(n-1)/2$ clauses for one term. Equality-definition and congruence generation

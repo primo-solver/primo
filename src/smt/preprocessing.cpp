@@ -2058,8 +2058,11 @@ std::string canonical_key(const core::TermManager& terms, core::TermId root,
   }
 
   std::ostringstream key;
+  // The symmetry test must preserve every semantic payload (Deharbe et al.,
+  // CADE 2011, Section 3). This includes literals, coefficients and div/mod
+  // divisors; omitting them can turn asymmetric arithmetic into a false symmetry.
   key << static_cast<int>(term.kind) << ':' << term.sort << ':' << term.symbol << ':'
-      << (term.bool_value ? 1 : 0) << '(';
+      << (term.bool_value ? 1 : 0) << ':' << term.rational_value.to_string() << '(';
   for (const std::string& child : children) {
     key << child << ',';
   }
@@ -2116,7 +2119,7 @@ bool formulas_are_invariant_under_value_permutations(const core::TermManager& te
   // Déharbe, Fontaine, Merz, and Woltzenlogel Paleo's SMT symmetry-breaking
   // theorem applies when the formula is invariant under permutations of the
   // candidate constants. We use the cycle plus first-swap generators as the
-  // cheap syntactic check, matching the llm2smt QF_UF pass.
+  // syntactic check justified by Section 3, Definitions 2-4 and Lemma 6.
   const std::vector<std::string> base =
       canonical_formula_multiset(terms, assertions, identity_permutation(values));
   return base == canonical_formula_multiset(terms, assertions, cycle_permutation(values)) &&

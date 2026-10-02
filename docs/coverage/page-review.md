@@ -225,10 +225,10 @@ must not be mistaken for repairs to these implementations.
 (symmetry-payloads)=
 ### D-006: symmetry comparison omits numeric payloads
 
-**Publication blocker: unresolved suspected soundness defect.**
+**Publication blocker: repair prepared; runtime qualification pending.**
 
-The {source}`symmetry comparison key <src/smt/preprocessing.cpp#L2036-L2067>`
-includes term kind, sort, symbol, Boolean value and children, but omits
+The reviewed {source}`symmetry comparison key <src/smt/preprocessing.cpp#L2036-L2067>`
+included term kind, sort, symbol, Boolean value and children, but omitted
 `rational_value`. Numeric literals and multiplication coefficients use that
 payload. Consequently the key can identify different arithmetic expressions,
 invalidating the permutation-invariance test used by
@@ -260,6 +260,21 @@ payload in its comparison, or enforce a proved narrower input contract.
 A repair needs a focused regression preserving this SAT result, fresh
 preprocessing fuzzing and separate model validation before publication readiness
 can be restored. Model validation alone would not detect a false UNSAT answer.
+
+The repair preserves the exact rational payload for every node, including
+`Rational`, `Times`, `IntDiv` and `IntMod`. The design checklist follows
+Déharbe et al., §3, Definitions 2–4, Theorem 5 and Lemma 6
+{cite:p}`deharbe2011symmetry`: equality of comparison keys must imply identical
+syntax after sort-preserving constant renaming and the permitted commutative
+reordering. It must not erase interpreted arithmetic values. General symmetry
+detection and a new value-precedence algorithm are outside this repair.
+
+Regression coverage checks unequal numeric payloads, signs, fractions, large
+values, coefficients and divisors; equal-payload controls must still admit
+symmetry. Both restriction modes are covered. Three SMT-LIB fixtures exercise
+default preprocessing, Basic with zero rounds and symmetry disabled. Fresh
+SLURM results must be recorded before closing this finding; no new runtime
+result is claimed by this prepared repair.
 
 ### Supporting tools and resource controls
 
