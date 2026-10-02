@@ -6,11 +6,14 @@ terms are grouped by sort, and tuples of those terms replace bound variables.
 It does not currently use E-matching or model-based quantifier instantiation.
 
 {source}`solve_quantified_uf <src/smt/quantifiers/quantified_solver.cpp#L97-L157>`
-configures the [general component driver](combination.md#the-general-component-driver)
-with EUF and a `QuantifierComponent`. The latter owns quantified atoms and
+configures the [shared SMT driver](combination.md#the-shared-smt-driver)
+with EUF and a
+{source}`QuantifierComponent <src/theory/quantifiers/quantifier_component.hpp#L92-L107>`.
+Both implement the [theory solver interface](theory-interface.md).
+The quantifier solver owns quantified atoms and
 produces formulas; the SMT layer prepares and clausifies those formulas.
-The quantifier component has no shared equality interface and does not inspect
-EUF's congruence classes. This route uses the driver's lifecycle and lemma
+It has no shared equality interface and does not inspect EUF's congruence
+classes. This route uses the driver's lifecycle and lemma
 queue, without model-guided arrangement search.
 
 ## Supported scope and answers
@@ -51,7 +54,7 @@ formulas. This is also why a quantifier-free SAT assignment is only a candidate.
 
 Let `Q` be the SAT atom for `forall x. p(x)`. Initially SAT can satisfy
 `Q` and `not p(a)` because it does not inspect the quantified body. The
-quantifier component finds `a` in the `U` term pool, instantiates the body,
+quantifier solver finds `a` in the `U` term pool, instantiates the body,
 and queues `not Q or p(a)`. Once the driver installs that formula, the next
 SAT solve finds the contradiction. The quantified atom guards its instance:
 an instance of an unasserted universal cannot become an unconditional fact.
@@ -63,7 +66,7 @@ requires equality reasoning after instantiation.
 
 ## Representation and ownership
 
-All syntax lives in the session's `core::TermManager`. Components store
+All syntax lives in the session's `core::TermManager`. Theory solvers store
 `TermId`s; they do not own or copy term nodes. New instances, witnesses, and
 lemmas are constructed through that manager.
 
@@ -74,7 +77,7 @@ lemmas are constructed through that manager.
 | Per-sort candidates | `QuantifierComponent::pools_` stores append-only vectors of term IDs for one solve. |
 | Enumeration | A state per `(quantifier atom, assigned value)` stores tried tuples and resumable ordering state. |
 | Redundancy records | Raw-instance and normalized-instance caches include the atom, polarity, and instance ID. A separate set records queued lemma IDs. |
-| Pending output | A deque of formulas belongs to the component until `take_lemmas` hands them to the driver. |
+| Pending output | A deque of formulas belongs to the solver until `take_lemmas` hands them to the driver. |
 | Assignment truth | `ComponentAssignmentView` reads the shared SAT trail. Enumeration records do not duplicate SAT truth. |
 
 The concrete owners are
@@ -84,7 +87,7 @@ Enumeration, witness, and lemma caches survive SAT backtracking: retained
 formulas are guarded and witnesses belong to their recorded atom and polarity.
 They are not a cross-query instantiation cache. The default session rebuilds
 solving state for each query.
-Destroying the component does not reclaim its generated terms from the
+Destroying the solver does not reclaim its generated terms from the
 manager; they remain subject to the [core lifetime rules](core.md#allocation-and-borrowed-references).
 
 ### What a de Bruijn index means
@@ -158,14 +161,14 @@ scope and sorts; the generic `core::Substitution` scaffold is not this API.
 
 ## Universal instances and existential witnesses
 
-SAT's assignment determines how a quantifier behaves: the component classifies
+SAT's assignment determines how a quantifier behaves: the solver classifies
 the pair **(quantifier kind, assigned truth value)**. Here `Q` denotes the
 quantified formula itself, without any surrounding negation. Write `B[t]` for
 its body instantiated with a tuple `t`, and `k` for fresh witness constants.
 
 If `Q` has SAT literal `q`, the {source}`clausifier
 <src/smt/clausifier.cpp#L335-L340>` encodes `not Q` as `not q`.
-Asserting `not Q` therefore assigns `Q` false. The quantifier component then
+Asserting `not Q` therefore assigns `Q` false. The quantifier solver then
 applies the false row below, implementing
 the familiar dualities:
 
@@ -196,13 +199,13 @@ existential polarity, and retains them across backtracking.
 ### Following a negated quantifier
 
 For an assertion `not (forall x. p(x))`, let `Q` stand for `forall x. p(x)`.
-SAT must assign `Q = false`. The component creates a fresh constant `k` and
+SAT must assign `Q = false`. The solver creates a fresh constant `k` and
 installs `Q or not p(k)`. Under that assignment the formula requires
 `not p(k)`: `k` is the counterexample witnessing why the universal is false.
 
 For `not (exists x. p(x))`, now let `Q` stand for `exists x. p(x)`.
 That atom is also false, but the obligation is universal.
-For each candidate term `t`, the component installs
+For each candidate term `t`, the solver installs
 `Q or not p(t)`. An additional assertion `p(a)` is contradicted by the instance
 at `a`. Exhausting the current candidates still does not establish this
 universal obligation, so the usual `unknown` boundary applies.
@@ -210,13 +213,13 @@ The {source}`polarity regressions <tests/unit/quantifier_solver_tests.cpp#L226-L
 cover both negated forms.
 
 Within a larger Boolean formula, an occurrence under `not` need not force the
-atom false: `not Q or s` also permits `Q = true, s = true`. The component uses
+atom false: `not Q or s` also permits `Q = true, s = true`. The solver uses
 the current SAT value, not a once-for-all classification of the occurrence.
 If backtracking changes that value, it changes the obligation. The guards make
 previously generated formulas conditional: `Q or not B[k]`, for example, imposes no
 condition on the witness when `Q` becomes true.
 
-The current component also processes assignments that the Boolean formula
+The current solver also processes assignments that the Boolean formula
 does not need. For `X or Q` with `X = true`, that assertion imposes no
 condition on `Q`, yet Primo still handles its assigned polarity. An unnecessary
 universal obligation can therefore leave the final answer `unknown`.
@@ -230,7 +233,7 @@ Primo does not first convert the whole input to prenex Skolem normal form.
 For `forall x. exists y. r(x,y)`, an outer instance at `a` produces a new
 atom `exists y. r(a,y)`. If assigned true, that atom gets its own constant
 `k_a` and witness constraint. Another outer instance can introduce a different
-atom and witness. The current component uses constants for these already
+atom and witness. The current solver uses constants for these already
 instantiated obligations; it does not construct a global Skolem function
 of `x`. Nested quantified bodies become further atoms as their containing
 instances are installed.
@@ -245,10 +248,10 @@ terms `t`, each guarded by the inner atom. This realizes
 ## When instantiation runs
 
 The route's {source}`recipe <src/smt/quantifiers/quantified_solver.cpp#L134-L153>`
-checks EUF before the quantifier component and provides preparation hooks for
+checks EUF before the quantifier solver and provides preparation hooks for
 new lemmas. One cycle proceeds as follows:
 
-1. SAT searches with the currently installed clauses. The quantifier component
+1. SAT searches with the currently installed clauses. The quantifier solver
    declares `check_on_full_model`, so the
    {source}`dispatcher <src/smt/component_dispatcher.cpp#L132-L174>` waits for
    a complete SAT candidate before invoking its instance-generation check.
@@ -263,13 +266,13 @@ new lemmas. One cycle proceeds as follows:
 4. The {source}`outer driver <src/smt/component_solver.cpp#L310-L334>` drains
    a bounded batch, detaches the dispatcher, prepares and clausifies the
    formulas, registers new atoms, and reconnects assignment routing. SAT
-   then solves again. The component and its enumeration records persist.
+   then solves again. The solver and its enumeration records persist.
 5. If no formulas remain to install and ground checks succeed, the coordinator
    asks for `FullModel`. That check generates no new instances: it decides
    whether the narrow `sat` condition holds or returns an inconclusive result.
 
 The name `Partial` in the generation API describes check effort. The dispatcher
-still invokes that check at a complete SAT candidate for this component.
+still invokes that check at a complete SAT candidate for this solver.
 It must not repeatedly interrupt ground search as soon as quantified root
 units are assigned; the
 {source}`complete-assignment regression <tests/unit/quantifier_solver_tests.cpp#L394-L424>`

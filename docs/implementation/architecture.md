@@ -143,15 +143,16 @@ an unrefuted candidate may still yield `unknown`. Quantified models are not
 produced. The detailed instantiation and completion rules belong in the
 quantifier chapter.
 
-The implemented general component driver,
+The shared SMT driver,
 {source}`solve_component_recipe <src/smt/component_solver.hpp#L19-L45>`, owns
-the shared SAT loop and component lifecycle. The
+the SAT loop and theory solver lifecycle. The
 {source}`QF_UFLIA recipe <src/smt/solver_engines.cpp#L10245-L10277>` supplies
 EUF and integer arithmetic; the
 {source}`quantified-UF recipe <src/smt/quantifiers/quantified_solver.cpp#L134-L151>`
-supplies EUF and quantifier instantiation. Component capabilities and model
-fragments are described by
-{source}`TheoryComponent's interface types <src/theory/theory_component.hpp>`.
+supplies EUF and quantifier instantiation. Both use the
+[theory solver interface](theory-interface.md), called `TheoryComponent` in
+C++. That chapter describes registration, assignment changes, checks,
+explanations, and model contributions.
 QF_UFLRA retains a
 {source}`dedicated engine <src/smt/solver_engines.cpp#L10801-L10821>`.
 [Migrating that Real route](../leads/real-combination-migration.md) to the

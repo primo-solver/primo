@@ -46,6 +46,37 @@ a missing mechanism. Require the smallest repair that makes the meaning clear;
 separate optional stylistic preferences from defects. Keep implemented behavior,
 active work and research leads distinct.
 
+## Terminology pass
+
+Review vocabulary explicitly, including headings, tables, captions, and link
+labels. Do not assume that a name is standard because it appears in code or
+earlier documentation.
+
+- Distinguish mathematical concepts, established solver terminology, and local
+  implementation names. Prefer the established term in prose; keep exact C++
+  identifiers in linked implementation references.
+- Flag project-specific nouns that require readers to guess the actor or
+  operation. For example, explain `TheoryComponent` as the theory solver
+  interface instead of introducing an unexplained “component.” Check uses of
+  “kernel,” “lowering,” “accumulator,” and similar labels in context; this is
+  not a forbidden-word list.
+- Allow established architectural conventions when their meaning is stated.
+  Calling quantifier reasoning a theory solver can describe its interface role
+  without claiming that quantifiers form a separate background theory or that
+  the procedure is complete.
+- Check that one concept keeps the same name across adjacent chapters and that
+  distinct concepts do not silently share a label. In particular, distinguish
+  a model choice from an entailed equality and a theory from its implementation.
+- When standardness is uncertain and affects meaning, consult the cited primary
+  literature or report the uncertainty. Do not invent a replacement term.
+
+Treat terminology that changes meaning or leaves an essential operation or
+actor unexplained as a required finding. A harmless, clearly defined synonym
+is at most a suggestion. Give the conventional alternative or the missing
+definition and explain why the repair helps; do not merely label prose “LLM
+speech.” Include the terminology assessment in the review verdict, even when
+no findings remain.
+
 ## Findings and re-review
 
 For each finding, return:

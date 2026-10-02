@@ -16,6 +16,12 @@ Use standard mathematical and solver terminology, with these conventions:
 - Keep code identifiers exact, but describe their behavior in ordinary prose.
   Prefer “clauses generated before simplification” to an unexplained label
   such as “raw clauses.”
+- Prefer established SMT and mathematical terms to project-specific labels.
+  A C++ class name does not establish terminology: describe a `TheoryComponent`
+  as a theory solver and link its interface. Define broader architectural uses
+  explicitly, such as including quantifier reasoning under the theory solver
+  interface. Check the context before replacing a term that has an established
+  technical meaning.
 - Use concrete verbs and objects. Write “the transformation must preserve
   satisfiability,” rather than “the transformation owes an equivalence.”
   Avoid strings of compressed modifiers where a sentence would be clearer.
@@ -66,7 +72,7 @@ Substantive documentation changes use a writer and a separate reviewer. The
 writer supplies a bounded set of pages and their intended audience. The reviewer
 reads those pages and the relevant code independently, then reports located
 findings with evidence and suggested repairs. It reviews both source accuracy
-and explanation: missing links, undefined terms, omitted mechanisms, and shifts
+and explanation: missing links, nonstandard or undefined terms, omitted mechanisms, and shifts
 between architecture, algorithm, API reference and experimental history.
 
 The writer resolves the findings and returns the revised text for re-review.

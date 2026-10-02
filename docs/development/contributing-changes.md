@@ -13,10 +13,12 @@ and positive/negative examples. Exercise definitions, quoted names, nesting,
 scope replay and models where applicable. Keep parser syntax out of SAT/theory
 interfaces and update the [capability matrix](../capabilities.md).
 
-A new theory needs an explicit supported fragment, owned state, asserted-literal
-interface, explained conflicts/propagations and model export. The
-[combination chapter](../implementation/combination.md) describes the component
-boundary and combination conditions. A general interface does not establish
+A new theory needs an explicit supported fragment, owned state, an asserted-literal
+interface, explained conflicts/propagations, and a stated model-export capability.
+The [theory interface](../implementation/theory-interface.md) describes these
+operations, their lifecycle, and optional capabilities. The
+[combination chapter](../implementation/combination.md) gives the mathematical
+combination conditions. A general interface does not establish
 the completeness of a newly connected theory. Read the relevant primary
 algorithm, map operations and invariants to Primo types, and document the
 implemented subset before claiming the paper's mechanism.

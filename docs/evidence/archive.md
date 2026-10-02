@@ -197,13 +197,13 @@ Retained record: {record}`docs/model-interpretation.md <docs/model-interpretatio
 (record-modular-theory-combination)=
 ## Modular theory combination
 
-Current destination: [replacement page](../implementation/combination.md#the-general-component-driver).
+Current destination: [replacement page](../implementation/combination.md#the-shared-smt-driver).
 Retained record: {record}`docs/modular-theory-combination.md <docs/modular-theory-combination.md>`.
 
 (record-n-way-combination-migration)=
 ## N-component combination migration
 
-Current destination: [replacement page](../implementation/combination.md#the-general-component-driver).
+Current destination: [replacement page](../implementation/combination.md#the-shared-smt-driver).
 Retained record: {record}`docs/n-way-combination-migration.md <docs/n-way-combination-migration.md>`.
 
 (record-nelson-oppen-qf-lra-regression)=

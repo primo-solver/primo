@@ -8,9 +8,11 @@ those obligations through explained conflicts and consequences.
 Primo delegates decisions, Boolean propagation, conflict analysis, learning,
 and backjumping to CaDiCaL. Its SMT drivers translate SAT assignments into
 theory facts, schedule theory checks, and decide whether a candidate can become
-a solver answer. An implemented general component driver serves QF_UFLIA and
+a solver answer. A shared SMT driver serves QF_UFLIA and
 quantified UF; other routes retain dedicated drivers. This chapter describes
-their common contract and the differences that affect correctness;
+their common contract and the differences that affect correctness. The
+[theory solver interface](theory-interface.md) defines the operations and
+results supplied by a theory implementation;
 [EUF](euf.md) explains congruence closure, its reasons, and theory undo.
 [Linear real arithmetic](lra.md) explains the tableau and its repair operations.
 The [theory-combination chapter](combination.md) follows equality exchange,

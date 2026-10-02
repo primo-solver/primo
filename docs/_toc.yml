@@ -35,6 +35,7 @@ parts:
       - file: implementation/preprocessing
       - file: implementation/sat
       - file: implementation/dpllt
+      - file: implementation/theory-interface
       - file: implementation/euf
       - file: implementation/lra
       - file: implementation/lia

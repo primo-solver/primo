@@ -2,20 +2,22 @@
 
 Primo has an implemented general combination driver,
 {source}`solve_component_recipe <src/smt/component_solver.cpp>`. It operates on
-a collection of theory components supplied through a
+a collection of theory solvers supplied through a
 {source}`CombinationRecipe <src/smt/component_solver.hpp#L19-L45>`, sharing the
 SAT loop, assignment dispatch, equality decisions, and model coordination.
+Each solver implements the [theory solver interface](theory-interface.md),
+named `TheoryComponent` in C++; this also accommodates quantifier reasoning.
 
 The current solver routes use these drivers:
 
-| Fragment | Driver | Components and behavior |
+| Fragment | Driver | Theory solvers and behavior |
 | --- | --- | --- |
-| `QF_UFLIA` | General component driver | {source}`The integer recipe <src/smt/solver_engines.cpp#L10245-L10278>` supplies EUF and integer arithmetic. Model guidance creates reversible equality choices; complete arrangements provide the fallback. Integer search remains bounded and can return `unknown`. |
-| Quantified `UF` | General component driver | {source}`The quantified-UF recipe <src/smt/quantifiers/quantified_solver.cpp#L134-L151>` supplies EUF and a quantifier-instantiation component. It reuses the component lifecycle and SAT loop, adding queued instance lemmas. |
+| `QF_UFLIA` | Shared SMT driver | {source}`The integer recipe <src/smt/solver_engines.cpp#L10245-L10278>` supplies EUF and integer arithmetic. Model guidance creates reversible equality choices; complete arrangements provide the fallback. Integer search remains bounded and can return `unknown`. |
+| Quantified `UF` | Shared SMT driver | {source}`The quantified-UF recipe <src/smt/quantifiers/quantified_solver.cpp#L134-L151>` supplies EUF and quantifier reasoning. It reuses the theory solver lifecycle and SAT loop, adding queued instance lemmas. |
 | `QF_UFLRA` | Dedicated Real coordinator | {source}`The Real engine <src/smt/solver_engines.cpp#L10801-L10847>` retains explained EUF/LRA equality exchange, model reconciliation, and exact fallback checks. |
 
-The general driver supports component collections. Existing
-{source}`three- and four-component tests <tests/unit/component_combination_tests.cpp#L409-L487>`
+The general driver supports more than two theory solvers. Existing
+{source}`three- and four-solver tests <tests/unit/component_combination_tests.cpp#L409-L487>`
 exercise its SAT loop, online and offline execution, and model construction.
 QF_UFLRA currently remains on its dedicated route; the general driver itself
 is already in use.
@@ -453,13 +455,14 @@ directly without making all pairs visible to SAT. Unexplained candidate merges
 remain confined to model reconciliation.
 
 (the-component-collection-route)=
-## The general component driver
+(the-general-component-driver)=
+## The shared SMT driver
 
 {source}`solve_component_recipe <src/smt/component_solver.cpp>` owns the SAT
-loop and component lifecycle. Its
+loop and theory solver lifecycle. Its
 {source}`ComponentModelCoordinator <src/smt/component_model_coordinator.hpp#L18-L38>`
-works with the validated component collection; theory-specific choices of
-components and checking order come from the recipe. The following sections
+works with the validated collection of solvers; their selection and checking
+order come from the recipe. The following sections
 describe its QF_UFLIA use. Quantified UF uses the same driver with a
 lemma-preparation hook for newly generated instances.
 
