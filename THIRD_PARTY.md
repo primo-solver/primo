@@ -25,9 +25,10 @@ as a reference does not authorize copying its implementation into Primo.
 
 The documentation is built using Jupyter Book and Sphinx. Generated HTML also
 contains third-party theme, JavaScript, font and style assets. Preserve embedded
-notices; consult the installed packages' license metadata when redistributing
-the rendered site. Publication audit must cover these generated assets as well
-as tracked source files.
+notices. The build also bundles installed documentation-package notices and
+their versions/hashes under `_static/licenses/index.json`, including the theme,
+Bootstrap, Font Awesome, and icon notices supplied by those packages. This
+inventory travels with the assembled site and HTML source-archive contents.
 
 ## Benchmark inputs
 

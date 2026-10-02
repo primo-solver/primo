@@ -36,3 +36,6 @@ import sys
 from jupyter_book.cli.main import main
 main(args=["build", sys.argv[1]] + sys.argv[2:], standalone_mode=True)
 ' "$BOOK_DIR" "${BUILD_ARGS[@]}" "$@"
+
+"$VENV/bin/python" scripts/collect_doc_notices.py \
+    --output "$BOOK_DIR/_build/html/_static/licenses"

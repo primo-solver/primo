@@ -13,3 +13,13 @@ algorithms. The original records remain available and retain their limitations.
 Results-storage migration is [separate work](results-storage.md). Changing the
 storage format would not supply missing experiment identities or strengthen an
 incomplete correctness check.
+
+## Publication preparation inspection, 2026-10-02
+
+The available ledger contains 709 historical/qualification entries. Searches
+for the published QF_LRA aggregate values and likely local paper/tuning artifact
+directories did not establish a matching experiment identity. A numerical
+substring hit in an unrelated incremental-UF record was rejected as evidence.
+The paper report therefore retains its publication-level attribution and makes
+no raw-artifact reproducibility claim. The owner may have the tuning manifests
+and measurements elsewhere; no values or commit identities have been guessed.

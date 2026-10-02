@@ -1,17 +1,63 @@
 {
-  "date": "2026-10-01",
+  "date": "2026-10-02",
   "command": "make docs-check-external",
   "exit_code": 2,
-  "scope": "Both strict books and Sphinx external-link checks on the documentation gap-completion working tree. Internal/Git links passed separately. Access errors do not establish that the publications are absent. No new ignore rules or TLS exceptions were added.",
+  "scope": "Assembled current/historical books; access failures remain explicit. Local and pinned Git targets passed separately. No TLS bypass or new ignore patterns added.",
   "books": {
     "docs": {
       "status_counts": {
+        "ignored": 872,
+        "unchecked": 142,
+        "working": 45,
+        "broken": 4,
+        "redirected": 20
+      },
+      "failures": [
+        {
+          "filename": "implementation/euf.md",
+          "lineno": 272,
+          "status": "broken",
+          "code": 0,
+          "uri": "https://disi.unitn.it/rseba/papers/JSAT-2007.pdf",
+          "info": "HTTPSConnectionPool(host='disi.unitn.it', port=443): Max retries exceeded with url: /rseba/papers/JSAT-2007.pdf (Caused by SSLError(SSLCertVerificationError(1, '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1018)')))",
+          "classification": "certificate-verification"
+        },
+        {
+          "filename": "references.md",
+          "lineno": 1,
+          "status": "broken",
+          "code": 0,
+          "uri": "https://doi.org/10.15168/11572_368265",
+          "info": "403 Client Error: Forbidden for url: https://iris.unitn.it/handle/11572/368265",
+          "classification": "http-403"
+        },
+        {
+          "filename": "implementation/combination.md",
+          "lineno": 694,
+          "status": "broken",
+          "code": 0,
+          "uri": "https://iris.unitn.it/handle/11572/368265",
+          "info": "403 Client Error: Forbidden for url: https://iris.unitn.it/handle/11572/368265",
+          "classification": "http-403"
+        },
+        {
+          "filename": "implementation/combination.md",
+          "lineno": 696,
+          "status": "broken",
+          "code": 0,
+          "uri": "https://publikationen.sulb.uni-saarland.de/handle/20.500.11880/28955",
+          "info": "403 Client Error: Forbidden for url: https://publikationen.sulb.uni-saarland.de/handle/20.500.11880/28955",
+          "classification": "http-403"
+        }
+      ]
+    },
+    "docs-history": {
+      "status_counts": {
         "ignored": 67,
         "unchecked": 77,
-        "working": 104,
-        "redirected": 56,
-        "broken": 14,
-        "timeout": 2
+        "redirected": 58,
+        "working": 105,
+        "broken": 13
       },
       "failures": [
         {
@@ -25,7 +71,7 @@
         },
         {
           "filename": "quantifiers.md",
-          "lineno": 1079,
+          "lineno": 1086,
           "status": "broken",
           "code": 0,
           "uri": "https://doi.org/10.1145/1017472.1017477",
@@ -42,12 +88,30 @@
           "classification": "http-403"
         },
         {
+          "filename": "quantifiers.md",
+          "lineno": 1090,
+          "status": "broken",
+          "code": 0,
+          "uri": "https://doi.org/10.1145/3453483.3454088",
+          "info": "403 Client Error: Forbidden for url: https://dl.acm.org/doi/10.1145/3453483.3454088",
+          "classification": "http-403"
+        },
+        {
           "filename": "papers/nelson-oppen-closure-methods.md",
           "lineno": 1387,
           "status": "broken",
           "code": 0,
           "uri": "https://doi.org/10.1145/357073.357079",
           "info": "403 Client Error: Forbidden for url: https://dl.acm.org/doi/10.1145/357073.357079",
+          "classification": "http-403"
+        },
+        {
+          "filename": "papers/lra-related-work.md",
+          "lineno": 310,
+          "status": "broken",
+          "code": 0,
+          "uri": "https://doi.org/10.1287/moor.2.2.103",
+          "info": "403 Client Error: Forbidden for url: https://pubsonline.informs.org/doi/10.1287/moor.2.2.103",
           "classification": "http-403"
         },
         {
@@ -78,30 +142,21 @@
           "classification": "http-403"
         },
         {
-          "filename": "quantifiers.md",
-          "lineno": 1083,
+          "filename": "lexical-conformance.md",
+          "lineno": 171,
           "status": "broken",
           "code": 0,
-          "uri": "https://doi.org/10.1145/3453483.3454088",
-          "info": "403 Client Error: Forbidden for url: https://dl.acm.org/doi/10.1145/3453483.3454088",
-          "classification": "http-403"
+          "uri": "https://github.com/cvc5/cvc5/blob/f9e5d3c312d9476763dc0afa85ac637da5907d99/test/regress/cli/regress0/parser/issue11763-quoted-dt-cons.smt2",
+          "info": "429 Client Error: Too Many Requests for url: https://github.com/cvc5/cvc5/blob/f9e5d3c312d9476763dc0afa85ac637da5907d99/test/regress/cli/regress0/parser/issue11763-quoted-dt-cons.smt2",
+          "classification": "http-429"
         },
         {
-          "filename": "papers/lra-related-work.md",
-          "lineno": 310,
+          "filename": "lexical-conformance.md",
+          "lineno": 171,
           "status": "broken",
           "code": 0,
-          "uri": "https://doi.org/10.1287/moor.2.2.103",
-          "info": "403 Client Error: Forbidden for url: https://pubsonline.informs.org/doi/10.1287/moor.2.2.103",
-          "classification": "http-403"
-        },
-        {
-          "filename": "papers/yices.md",
-          "lineno": 202,
-          "status": "broken",
-          "code": 0,
-          "uri": "https://github.com/arminbiere/cadical/blob/rel-3.0.0/src/cadical.hpp#L1248-L1367",
-          "info": "429 Client Error: Too Many Requests for url: https://github.com/arminbiere/cadical/blob/rel-3.0.0/src/cadical.hpp",
+          "uri": "https://github.com/cvc5/cvc5/blob/f9e5d3c312d9476763dc0afa85ac637da5907d99/test/regress/cli/regress0/parser/non-std-char.smt2",
+          "info": "429 Client Error: Too Many Requests for url: https://github.com/cvc5/cvc5/blob/f9e5d3c312d9476763dc0afa85ac637da5907d99/test/regress/cli/regress0/parser/non-std-char.smt2",
           "classification": "http-429"
         },
         {
@@ -112,42 +167,6 @@
           "uri": "https://publikationen.sulb.uni-saarland.de/handle/20.500.11880/28955",
           "info": "403 Client Error: Forbidden for url: https://publikationen.sulb.uni-saarland.de/handle/20.500.11880/28955",
           "classification": "http-403"
-        },
-        {
-          "filename": "dpllt.md",
-          "lineno": 64,
-          "status": "timeout",
-          "code": 0,
-          "uri": "https://doi.org/10.4230/LIPIcs.SAT.2023.8",
-          "info": "HTTPSConnectionPool(host='drops.dagstuhl.de', port=443): Read timed out. (read timeout=15)",
-          "classification": "timeout"
-        },
-        {
-          "filename": "papers/clause-forgetting.md",
-          "lineno": 66,
-          "status": "timeout",
-          "code": 0,
-          "uri": "https://doi.org/10.4230/LIPIcs.SAT.2025.14",
-          "info": "HTTPSConnectionPool(host='drops.dagstuhl.de', port=443): Read timed out. (read timeout=15)",
-          "classification": "timeout"
-        },
-        {
-          "filename": "papers/tactic-configuration-evidence.md",
-          "lineno": 38,
-          "status": "broken",
-          "code": 0,
-          "uri": "https://web.archive.org/web/20240414123740id_/https://www.inf.utfsm.cl/~ngalvez/strategies.pdf",
-          "info": "429 Client Error: Too Many Requests for url: https://web.archive.org/web/20240414123740id_/https://www.inf.utfsm.cl/~ngalvez/strategies.pdf",
-          "classification": "http-429"
-        },
-        {
-          "filename": "papers/lra-related-work.md",
-          "lineno": 272,
-          "status": "broken",
-          "code": 0,
-          "uri": "https://www.cs.utexas.edu/~hunt/FMCAD/FMCAD13/papers/73-Simplex-Sum-SMT.pdf",
-          "info": "HTTPSConnectionPool(host='www.cs.utexas.edu', port=443): Max retries exceeded with url: /~hunt/FMCAD/FMCAD13/papers/73-Simplex-Sum-SMT.pdf (Caused by NewConnectionError(\"HTTPSConnection(host='www.cs.utexas.edu', port=443): Failed to establish a new connection: [Errno 111] Connection refused\"))",
-          "classification": "connection-refused"
         },
         {
           "filename": "papers/nelson-oppen-closure-methods.md",
@@ -159,89 +178,6 @@
           "classification": "http-403"
         }
       ]
-    },
-    "docs-next": {
-      "status_counts": {
-        "ignored": 872,
-        "unchecked": 142,
-        "working": 43,
-        "redirected": 18,
-        "broken": 5,
-        "timeout": 2
-      },
-      "failures": [
-        {
-          "filename": "implementation/euf.md",
-          "lineno": 272,
-          "status": "broken",
-          "code": 0,
-          "uri": "https://disi.unitn.it/rseba/papers/JSAT-2007.pdf",
-          "info": "HTTPSConnectionPool(host='disi.unitn.it', port=443): Max retries exceeded with url: /rseba/papers/JSAT-2007.pdf (Caused by SSLError(SSLCertVerificationError(1, '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1018)')))",
-          "classification": "certificate-verification"
-        },
-        {
-          "filename": "references.md",
-          "lineno": 1,
-          "status": "broken",
-          "code": 0,
-          "uri": "https://doi.org/10.15168/11572_368265",
-          "info": "403 Client Error: Forbidden for url: https://iris.unitn.it/handle/11572/368265",
-          "classification": "http-403"
-        },
-        {
-          "filename": "papers/yices.md",
-          "lineno": 203,
-          "status": "broken",
-          "code": 0,
-          "uri": "https://github.com/arminbiere/cadical/blob/rel-3.0.0/src/cadical.hpp#L1248-L1367",
-          "info": "429 Client Error: Too Many Requests for url: https://github.com/arminbiere/cadical/blob/rel-3.0.0/src/cadical.hpp",
-          "classification": "http-429"
-        },
-        {
-          "filename": "implementation/combination.md",
-          "lineno": 694,
-          "status": "broken",
-          "code": 0,
-          "uri": "https://iris.unitn.it/handle/11572/368265",
-          "info": "403 Client Error: Forbidden for url: https://iris.unitn.it/handle/11572/368265",
-          "classification": "http-403"
-        },
-        {
-          "filename": "implementation/combination.md",
-          "lineno": 696,
-          "status": "broken",
-          "code": 0,
-          "uri": "https://publikationen.sulb.uni-saarland.de/handle/20.500.11880/28955",
-          "info": "403 Client Error: Forbidden for url: https://publikationen.sulb.uni-saarland.de/handle/20.500.11880/28955",
-          "classification": "http-403"
-        },
-        {
-          "filename": "implementation/dpllt.md",
-          "lineno": 370,
-          "status": "timeout",
-          "code": 0,
-          "uri": "https://doi.org/10.4230/LIPIcs.SAT.2023.8",
-          "info": "HTTPSConnectionPool(host='drops.dagstuhl.de', port=443): Read timed out. (read timeout=15)",
-          "classification": "timeout"
-        },
-        {
-          "filename": "papers/clause-forgetting.md",
-          "lineno": 67,
-          "status": "timeout",
-          "code": 0,
-          "uri": "https://doi.org/10.4230/LIPIcs.SAT.2025.14",
-          "info": "HTTPSConnectionPool(host='drops.dagstuhl.de', port=443): Read timed out. (read timeout=15)",
-          "classification": "timeout"
-        }
-      ]
     }
-  },
-  "follow_up": [
-    {
-      "original_uri": "https://www.cs.utexas.edu/~hunt/FMCAD/FMCAD13/papers/73-Simplex-Sum-SMT.pdf",
-      "replacement_uri": "https://theory.stanford.edu/~barrett/pubs/KBD13.pdf",
-      "file": "docs/papers/lra-related-work.md",
-      "verification": "Author-hosted copy identified through its publication record; urllib.request GET returned HTTP 200, application/pdf, and %PDF- header. Link replaced. Remaining access failures are unresolved; retry before publication."
-    }
-  ]
+  }
 }
