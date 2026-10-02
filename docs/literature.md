@@ -21,6 +21,7 @@ chapter states the actual subset, deviations, invariants and tests.
 
 | Source | Current role and retained reading note |
 | --- | --- |
+| Arithmetic symmetry | [Open lead and reading scope](leads/arithmetic-symmetry.md): SyMT detection results, CVC4-SymBreak, and related LP/ILP work. These motivate investigation beyond the current finite-choice pass; they do not establish a QF_LIA/QF_LRA speedup for Primo. |
 | Dutertre–de Moura, integrating simplex with DPLL(T) | [LRA](implementation/lra.md) covers preparation, bound repair, strict arithmetic, conflicts and rollback. The {source}`base-paper checklist <docs/papers/fast-linear-arithmetic-dpllt.md>` records departures and later optional methods. |
 | Tim King, *Effective Algorithms for the Satisfiability of Quantifier-Free Formulas Over Linear Real and Integer Arithmetic*, PhD thesis, 2014 | LRA sparse operations, finite fallback, SOI and conflict construction. [The chapter's source table](implementation/lra.md#sources-and-implementation-status) distinguishes Primo's representation from the complete thesis designs. |
 | Alberto Griggio, *An Effective SMT Engine for Formal Verification*, PhD thesis, 2009 | Sparse engineering, violation selection and early-pruning context. The {source}`thesis note <docs/papers/griggio-mathsat-thesis.md>` retains exact sections and the corrected least-violated attribution. |

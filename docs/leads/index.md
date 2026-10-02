@@ -7,6 +7,8 @@ observable mechanism, and result that would reject the proposal.
 
 The dedicated lead pages in the navigation cover library lifetime, compact
 storage, statistics, theory lemmas, arithmetic, combination, and quantifiers.
+The [arithmetic-symmetry lead](arithmetic-symmetry.md) connects existing finite
+integer choices with broader SMT and integer-programming symmetry research.
 This register also accounts for the remaining numbered entries in the
 {source}`original register <docs/open-leads.md>`. Their full dated reasoning,
 negative results and evidence remain preserved; current dispositions follow.

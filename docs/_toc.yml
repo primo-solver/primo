@@ -62,6 +62,7 @@ parts:
       - file: leads/statistics-instrumentation
       - file: leads/theory-lemmas
       - file: leads/theory-lemma-forgetting
+      - file: leads/arithmetic-symmetry
       - file: leads/lra-floating-point
       - file: leads/lra-equality-basis
       - file: leads/lia-extended-gcd

@@ -365,6 +365,8 @@ Theorem 5 justifies the restriction by renaming models, and Lemma 6 justifies
 checking only the two generating permutations {cite:p}`deharbe2011symmetry`.
 The value-precedence rule for fixed terms is described in the design note.
 General graph-automorphism detection is outside Primo's implementation.
+The [arithmetic-symmetry lead](../leads/arithmetic-symmetry.md) records broader
+SMT and integer-programming approaches and their evaluation requirements.
 
 The {project}`repaired comparison <src/smt/preprocessing.cpp#L2036-L2070>`
 must preserve every semantic term field: kind, sort, symbol,
