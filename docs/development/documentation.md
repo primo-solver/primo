@@ -29,6 +29,9 @@ Use standard mathematical and solver terminology, with these conventions:
 - Keep syntax-specific rules, such as `let` scope and definition expansion,
   in the frontend chapter. The architecture overview identifies the responsible
   layer and links to that explanation.
+- Keep implementation-status summaries to one short sentence per feature,
+  with links to the detailed chapters. Put limitations and open work separately;
+  do not expand a summary bullet into an algorithm or experiment report.
 - Distinguish terms with different meanings. In particular, a logical guard
   controls when a constraint applies; an acceptance check decides whether a
   proposed rewrite is worth performing. Do not use “guard” for both without
