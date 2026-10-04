@@ -484,9 +484,6 @@ def main() -> int:
             file=sys.stderr,
         )
         return 2
-    if not args.skip_model_validation and executable(args.dolmen) is None:
-        print(f"Dolmen is unavailable: {args.dolmen}", file=sys.stderr)
-        return 2
 
     args.out.mkdir(parents=True, exist_ok=True)
     solver_version = run_command([solver_path, "--version"], args.timeout)

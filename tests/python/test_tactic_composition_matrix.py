@@ -20,6 +20,27 @@ SPEC.loader.exec_module(MODULE)
 
 
 class TacticCompositionMatrixTests(unittest.TestCase):
+    def test_unsat_only_run_does_not_require_dolmen(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            case, manifest, solver = root / "case.smt2", root / "matrix.json", root / "solver.py"
+            self.write_case(case)
+            self.write_manifest(manifest, case)
+            data = json.loads(manifest.read_text())
+            data["cases"][0]["expected"] = "unsat"
+            manifest.write_text(json.dumps(data))
+            self.write_executable(solver, "import sys\nprint('unsat')\n"
+                                  "print(':tactic.required.invocations 1', file=sys.stderr)\n")
+            result = subprocess.run(
+                [sys.executable, str(SCRIPT), "--manifest", str(manifest), "--solver", str(solver),
+                 "--refs", str(solver), "--dolmen", str(root / "missing-dolmen"),
+                 "--repeat", "1", "--out", str(root / "out")],
+                check=False, text=True, capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            coverage = json.loads((root / "out/profile/model-validation/coverage.json").read_text())
+            self.assertEqual(coverage["eligible_models"], 0)
+
     def test_model_selection_and_exact_coverage(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
