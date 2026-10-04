@@ -31,7 +31,7 @@ array size and expected rows per shard; a missing shard is not a timeout row.
 
 ## Select inputs and interpret outcomes
 
-{toolsource}`analyze_smt2.py <scripts/analyze_smt2.py#L105>` reports declaration counts
+{toolsource}`analyze_smt2.py <scripts/analyze_smt2.py#L110>` reports declaration counts
 and Real-arithmetic shape/polarity summaries:
 
 ```bash
@@ -39,7 +39,8 @@ python3 scripts/analyze_smt2.py --json path/to/input.smt2
 ```
 
 The analyzer expands lexical `let` bindings, including nested lets and
-shadowing. Each parallel right-hand side is expanded in the outer environment;
+shadowing. Quoted and simple spellings of the same name share one binding
+(`x` and `|x|`); duplicate equivalent bindings are rejected. Each parallel right-hand side is expanded in the outer environment;
 only the body sees the new bindings. For example,
 `(let ((x 1) (y x)) (+ x y))` expands to `(+ 1 x)`, preserving the free `x`.
 Malformed or duplicate bindings and unsupported binders (`forall`, `exists`,
@@ -48,7 +49,7 @@ not reproduce frontend/session semantics; consult the
 [frontend](../implementation/frontend.md) for the solver's binding rules.
 
 The expansion follows the parallel-substitution semantics of SMT-LIB 2.7,
-section 3.6.1, Let {cite:p}`smtlib2026`. Its `inline_lets` function owns an explicit
+section 3.6.1, Let, and symbol identity in section 3.1 {cite:p}`smtlib2026`. Its `inline_lets` function owns an explicit
 stack of visit/body frames, dictionaries of expanded bindings and fresh list
 trees. Right-hand-side frames finish before the body installs bindings;
 substituted trees are copied without revisiting their free names. These are the

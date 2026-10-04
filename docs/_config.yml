@@ -42,7 +42,7 @@ sphinx:
         - "https://github.com/primo-solver/primo/blob/a03fe0d/%s"
         - "%s"
       toolsource:
-        - "https://github.com/primo-solver/primo/blob/11cd06fdd742effc73379c17f1cef0d283b29bcb/%s"
+        - "https://github.com/primo-solver/primo/blob/d16acb42d87a55eaa5f76faf14a904900a9a7e8b/%s"
         - "%s"
       project:
         - "https://github.com/primo-solver/primo/blob/a953edd5a345d8532141eea8c075d1f070772235/%s"
