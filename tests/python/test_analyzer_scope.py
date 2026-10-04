@@ -16,6 +16,13 @@ def term(text):
 
 
 class AnalyzerScopeTests(unittest.TestCase):
+    def test_quoted_binding_identity(self):
+        self.assertEqual(MODULE.inline_lets(term('(let ((|x| 1)) x)')), '1')
+        self.assertEqual(MODULE.inline_lets(term('(let ((x 1)) |x|)')), '1')
+        self.assertEqual(MODULE.inline_lets(term('(let ((|| 1)) ||)')), '1')
+        with self.assertRaises(ValueError):
+            MODULE.inline_lets(term('(let ((x 1) (|x| 2)) x)'))
+
     def test_parallel_rhs_uses_outer_scope(self):
         self.assertEqual(MODULE.inline_lets(term('(let ((x 1) (y x)) (+ x y))')),
                          term('(+ 1 x)'))

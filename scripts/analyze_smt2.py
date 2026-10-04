@@ -102,6 +102,11 @@ def parse(tokens):
     return top
 
 
+def symbol_key(name):
+    """SMT-LIB 2.7 section 3.1: x and |x| denote the same symbol."""
+    return name[1:-1] if name.startswith('|') and name.endswith('|') else name
+
+
 def inline_lets(term):
     """Expand lexical, parallel SMT-LIB lets into a fresh tree without recursion.
 
@@ -118,11 +123,12 @@ def inline_lets(term):
         if kind == "body":
             bindings, values, body = node
             inner = dict(env)
-            inner.update(zip((binding[0] for binding in bindings), values))
+            inner.update(zip((symbol_key(binding[0]) for binding in bindings), values))
             work.append(("visit", body, inner, target, index))
             continue
         if isinstance(node, str):
-            target[index] = copy_tree(env[node]) if node in env else node
+            key = symbol_key(node)
+            target[index] = copy_tree(env[key]) if key in env else node
             continue
         if not isinstance(node, list) or not node:
             raise ValueError("malformed term in let expansion")
@@ -137,11 +143,11 @@ def inline_lets(term):
             for binding in bindings:
                 if (not isinstance(binding, list) or len(binding) != 2
                         or not isinstance(binding[0], str)
-                        or not re.fullmatch(r"[a-zA-Z~!@$%^&*_+=<>.?/\-][a-zA-Z0-9~!@$%^&*_+=<>.?/\-]*|\|[^|]+\|", binding[0])
+                        or not re.fullmatch(r"[a-zA-Z~!@$%^&*_+=<>.?/\-][a-zA-Z0-9~!@$%^&*_+=<>.?/\-]*|\|[^|\\]*\|", binding[0])
                         or binding[0] in {"let", "forall", "exists", "match", "!", "_", "as"}
-                        or binding[0] in names):
+                        or symbol_key(binding[0]) in names):
                     raise ValueError("malformed or duplicate let binding")
-                names.add(binding[0])
+                names.add(symbol_key(binding[0]))
             values = [None] * len(bindings)
             work.append(("body", (bindings, values, node[2]), env, target, index))
             for i, binding in enumerate(bindings):
