@@ -25,9 +25,10 @@ grep -Fx "git: $expected" "$root/version.txt"
 sha256sum "$solver" contrib/local/bin/z3 contrib/local/bin/dolmen > "$root/executables.sha256"
 z3 --version > "$root/reference-version.txt"
 dolmen --version > "$root/validator-version.txt"
-seed=$((202610020 + slot))
+seed_base=${PRIMO_SEED_BASE:-202610020}
+seed=$((seed_base + slot))
 # These generators use seed + case index; give shards disjoint seed ranges.
-if (( slot >= 20 )); then seed=$((202610020 + 10000 * slot)); fi
+if (( slot >= 20 )); then seed=$((seed_base + 10000 * slot)); fi
 out="$root/gate"
 common=(--solver "$solver" --count 250 --seed "$seed" --timeout 5 --out "$out")
 case $((slot / 4)) in
@@ -74,3 +75,8 @@ case $((slot / 4)) in
     ;;
   *) exit 2 ;;
 esac
+
+if [[ ${PRIMO_BUDGET_REPLAY:-0} == 1 ]]; then
+  python3 scripts/qualification/publication_followups/budget_replay.py \
+    --shard "$root" --slot "$slot" --solver "$solver" --reference contrib/local/bin/z3
+fi

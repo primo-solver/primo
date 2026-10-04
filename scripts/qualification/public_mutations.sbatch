@@ -38,7 +38,7 @@ scripts/yinyang_fuzz.sh --seeds "$corpus" --typefuzz "$PWD/scripts/seeded_opfuzz
   --solver "$PWD/build-slurm-rel/primo --quiet" --ref 'z3 model_validate=true' \
   --seconds 900 --iterations "$iterations" --solver-timeout 5 --file-size-limit 2000000 \
   --bugs "$out/bugs" --scratch "$out/scratch" --logs "$out/logs" \
-  --random-seed "$((202610020 + slot))" --keep-logic --hoist-declarations --keep-mutants
+  --random-seed "$((${PRIMO_SEED_BASE:-202610020} + slot))" --keep-logic --hoist-declarations --keep-mutants
 answer_status=0
 python3 scripts/check_solver_seed_corpus.py --seeds "$out/scratch" \
   --ignore-declared-status --solver build-slurm-rel/primo --solver-arg=--quiet \
