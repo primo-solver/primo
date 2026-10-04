@@ -179,22 +179,30 @@ def run_solver(
             timeout=timeout,
         )
         stdout = proc.stdout
+        stderr = proc.stderr
         exit_code = proc.returncode
     except subprocess.TimeoutExpired as exc:
         timed_out = True
         stdout = completed_text(exc.stdout)
+        stderr = completed_text(exc.stderr)
         exit_code = 124
     seconds = time.perf_counter() - start
     first_line = stdout.strip().splitlines()[0] if stdout.strip() else ""
     answer = first_line if first_line in ANSWERS else "error"
     expected = parse_status(path)
-    wrong = bool(expected) and answer in CHECKABLE and answer != expected
-    if wrong:
-        cost = 1000.0 * timeout
-        status = "wrong"
-    elif timed_out or (exit_code != 0 and answer == "error"):
+    wrong = (
+        not timed_out
+        and exit_code == 0
+        and bool(expected)
+        and answer in CHECKABLE
+        and answer != expected
+    )
+    if timed_out or exit_code != 0:
         cost = 2.0 * timeout
         status = "timeout" if timed_out else "error"
+    elif wrong:
+        cost = 1000.0 * timeout
+        status = "wrong"
     elif answer in CHECKABLE:
         cost = seconds
         status = "ok"
@@ -210,6 +218,8 @@ def run_solver(
         "seconds": f"{seconds:.6f}",
         "cost": f"{cost:.6f}",
         "exit_code": exit_code,
+        "stdout": stdout,
+        "stderr": stderr,
         "command": " ".join(shlex.quote(part) for part in command),
     }
 
@@ -351,6 +361,8 @@ def validate_rows(
             "seconds",
             "cost",
             "exit_code",
+            "stdout",
+            "stderr",
             "config_json",
             "command",
         ],
@@ -411,6 +423,8 @@ def main() -> int:
         "seconds",
         "cost",
         "exit_code",
+        "stdout",
+        "stderr",
         "config_json",
         "command",
     ]
