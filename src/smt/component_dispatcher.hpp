@@ -26,7 +26,8 @@ struct ComponentDispatchStatistics {
 class ComponentDispatcher final : public sat::ExternalPropagator {
  public:
   explicit ComponentDispatcher(std::span<theory::TheoryComponent* const> components,
-                               std::function<void(sat::Lit)> publish_phase = {});
+                               std::function<void(sat::Lit)> publish_phase = {},
+                               std::function<void()> report_conflict = {});
   void register_atoms(std::size_t component, std::span<const theory::ComponentAtom> atoms);
   void bind_assignment_view(sat::TrailView view) override;
   void notify_backtrack_delta(std::size_t level, const std::vector<int>& removed) override;
@@ -70,6 +71,7 @@ class ComponentDispatcher final : public sat::ExternalPropagator {
   std::optional<std::size_t> lemmas_pending_;
   ComponentDispatchStatistics statistics_;
   std::function<void(sat::Lit)> publish_phase_;
+  std::function<void()> report_conflict_;
 };
 
 }  // namespace primo::smt

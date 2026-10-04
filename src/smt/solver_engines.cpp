@@ -1637,14 +1637,16 @@ class OnlineEufPropagator final : public sat::ExternalPropagator {
                       const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms,
                       core::TermId true_term, core::TermId false_term,
                       const CheckSatOptions& options, bool adaptive_propagation,
-                      util::Statistics& statistics, const PreparedFlatTheory* prepared = nullptr)
+                      util::Statistics& statistics, const PreparedFlatTheory* prepared = nullptr,
+                      bool count_conflicts = true)
       : terms_(terms),
         theory_atoms_(theory_atoms),
         true_term_(true_term),
         false_term_(false_term),
         options_(options),
         adaptive_propagation_(adaptive_propagation),
-        statistics_(statistics) {
+        statistics_(statistics),
+        count_conflicts_(count_conflicts) {
     int max_theory_var = 0;
     for (const BooleanClausifier::TheoryAtom& atom : theory_atoms_) {
       max_theory_var =
@@ -2470,6 +2472,7 @@ class OnlineEufPropagator final : public sat::ExternalPropagator {
           external_clause_index_ = 0;
           statistics_.increment(kStatEufDiseqAckConflict);
           statistics_.increment(kStatTheoryConflicts);
+          if (count_conflicts_) record_theory_conflict(statistics_);
         }
         break;
       }
@@ -2495,6 +2498,7 @@ class OnlineEufPropagator final : public sat::ExternalPropagator {
     external_clause_ = std::move(conflict.value());
     external_clause_index_ = 0;
     statistics_.increment(kStatTheoryConflicts);
+    if (count_conflicts_) record_theory_conflict(statistics_);
   }
 
   void maybe_store_diseq_ackermann_conflict() {
@@ -2541,6 +2545,7 @@ class OnlineEufPropagator final : public sat::ExternalPropagator {
       external_clause_index_ = 0;
       statistics_.increment(kStatEufDiseqAckConflict);
       statistics_.increment(kStatTheoryConflicts);
+      if (count_conflicts_) record_theory_conflict(statistics_);
       return;
     }
   }
@@ -2553,6 +2558,7 @@ class OnlineEufPropagator final : public sat::ExternalPropagator {
   const CheckSatOptions& options_;
   bool adaptive_propagation_ = false;
   util::Statistics& statistics_;
+  bool count_conflicts_;
   std::vector<unsigned char> observed_vars_;
   std::vector<std::optional<std::size_t>> atom_index_by_var_;
   bool generated_registration_valid_ = true;
@@ -5591,6 +5597,7 @@ bool learn_shared_model_direct_conflict(const LraToEufEqualityFilterResult& resu
   }
   backend.add_clause(result.direct_conflict.value());
   statistics.increment(kStatTheoryConflicts);
+  record_theory_conflict(statistics);
   statistics.increment(":no.interface.combined-direct-conflicts");
   return true;
 }
@@ -7258,6 +7265,7 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
 
  private:
   void record_query_conflict() {
+    record_theory_conflict(statistics_);
     if (count_query_conflicts_) {
       statistics_.increment(kStatTheoryConflicts);
       statistics_.increment(kStatLraTheoryConflicts);
@@ -8187,7 +8195,7 @@ CheckSatOutcome solve_qf_lra_impl(core::TermManager& terms,
                                   const CheckSatOptions& options, util::Statistics& statistics) {
   statistics.increment(kStatSolverQfLra);
   sat::CadicalBackend backend(options.cadical_options);
-  SolveTerminator terminator(options.cancelled, statistics);
+  SolveTerminator terminator(options.cancelled, statistics, options.max_theory_conflicts);
   const ScopedTerminatorConnection terminator_connection(backend, terminator);
   BooleanClausifier clausifier(backend, terms, options.top_level_or_tseitin);
   for (const core::TermId assertion : assertions) {
@@ -8224,13 +8232,11 @@ CheckSatOutcome solve_qf_lra_impl(core::TermManager& terms,
 #endif
 
   while (true) {
+    if (auto stop = terminator.stop_outcome()) return *stop;
     statistics.increment(kStatSatSolveCalls);
     const sat::SatResult sat_result = backend.solve();
     publish_sat_stats(backend.statistics(), statistics);
-    if (terminator.cancelled_reached()) {
-      return CheckSatOutcome{CheckSatResult::Unknown, "cancelled", statistics, "",
-                             InconclusiveReason::Cancelled};
-    }
+    if (auto stop = terminator.stop_outcome()) return *stop;
     if (sat_result != sat::SatResult::Sat) {
       return CheckSatOutcome{map_sat_result(sat_result), "", statistics, ""};
     }
@@ -8300,6 +8306,8 @@ CheckSatOutcome solve_qf_lra_impl(core::TermManager& terms,
 #endif
     }
     statistics.increment(kStatLraTheoryConflicts);
+    record_theory_conflict(statistics);
+    if (auto stop = terminator.stop_outcome()) return *stop;
     if (conflict_clause->empty()) {
       publish_sat_stats(backend.statistics(), statistics);
       return CheckSatOutcome{CheckSatResult::Unsat, "", statistics, ""};
@@ -8381,7 +8389,7 @@ CheckSatOutcome solve_qf_lia_impl(core::TermManager& terms,
   // data these counters could be confused with.
   statistics.increment(kStatSolverQfLra);
   sat::CadicalBackend backend(options.cadical_options);
-  SolveTerminator terminator(options.cancelled, statistics);
+  SolveTerminator terminator(options.cancelled, statistics, options.max_theory_conflicts);
   const ScopedTerminatorConnection terminator_connection(backend, terminator);
   BooleanClausifier clausifier(backend, terms, options.top_level_or_tseitin);
   for (const core::TermId assertion : assertions) {
@@ -8423,13 +8431,11 @@ CheckSatOutcome solve_qf_lia_impl(core::TermManager& terms,
 #endif
 
   while (true) {
+    if (auto stop = terminator.stop_outcome()) return *stop;
     statistics.increment(kStatSatSolveCalls);
     const sat::SatResult sat_result = backend.solve();
     publish_sat_stats(backend.statistics(), statistics);
-    if (terminator.cancelled_reached()) {
-      return CheckSatOutcome{CheckSatResult::Unknown, "cancelled", statistics, "",
-                             InconclusiveReason::Cancelled};
-    }
+    if (auto stop = terminator.stop_outcome()) return *stop;
     if (sat_result != sat::SatResult::Sat) {
       return CheckSatOutcome{map_sat_result(sat_result), "", statistics, ""};
     }
@@ -8566,6 +8572,8 @@ CheckSatOutcome solve_qf_lia_impl(core::TermManager& terms,
         block.push_back(blocking_lit(assigned_atoms[i]));
       }
       statistics.increment(kStatLraTheoryConflicts);
+      record_theory_conflict(statistics);
+      if (auto stop = terminator.stop_outcome()) return *stop;
       if (block.empty()) {
         publish_sat_stats(backend.statistics(), statistics);
         return CheckSatOutcome{CheckSatResult::Unsat, "", statistics, ""};
@@ -8583,6 +8591,8 @@ CheckSatOutcome solve_qf_lia_impl(core::TermManager& terms,
       continue;
     }
     statistics.increment(kStatLraTheoryConflicts);
+    record_theory_conflict(statistics);
+    if (auto stop = terminator.stop_outcome()) return *stop;
     if (conflict_clause->empty()) {
       publish_sat_stats(backend.statistics(), statistics);
       return CheckSatOutcome{CheckSatResult::Unsat, "", statistics, ""};
@@ -10047,7 +10057,7 @@ class UfliaEufComponent final : public UfliaComponentBase {
           resolve_euf_propagation_mode(options_, atoms_.size(), statistics_);
       execution_ = std::make_unique<OnlineEufPropagator>(
           terms_, atoms_, terms_.mk_bool(true), terms_.mk_bool(false), online_options_,
-          options_.euf_propagation == EufPropagationMode::Auto, statistics_);
+          options_.euf_propagation == EufPropagationMode::Auto, statistics_, nullptr, false);
       execution_->bind_assignment_view(assignment_view());
     }
   }
@@ -10480,22 +10490,14 @@ CheckSatOutcome solve_qf_uf_engine_impl(core::TermManager& terms,
 #endif
 
   while (true) {
+    if (auto stop = terminator.stop_outcome()) return *stop;
     statistics.increment(kStatSatSolveCalls);
     const sat::SatResult sat_result = backend.solve();
     if (online_propagator.has_value()) {
       online_propagator->flush_incremental_stats();
     }
     publish_sat_stats(backend.statistics(), statistics);
-    if (terminator.cancelled_reached()) {
-      return CheckSatOutcome{CheckSatResult::Unknown, "cancelled", statistics, "",
-                             InconclusiveReason::Cancelled};
-    }
-    if (terminator.conflict_limit_reached() ||
-        (options.max_theory_conflicts.has_value() &&
-         statistics.get(kStatTheoryConflicts) >= options.max_theory_conflicts.value())) {
-      return CheckSatOutcome{CheckSatResult::Unknown, "theory conflict limit reached", statistics,
-                             "", InconclusiveReason::ResourceLimit};
-    }
+    if (auto stop = terminator.stop_outcome()) return *stop;
     if (sat_result != sat::SatResult::Sat) {
       return CheckSatOutcome{map_sat_result(sat_result), "", statistics, ""};
     }
@@ -10577,8 +10579,8 @@ CheckSatOutcome solve_qf_uf_engine_impl(core::TermManager& terms,
       return outcome;
     }
     statistics.increment(kStatTheoryConflicts);
-    if (options.max_theory_conflicts.has_value() &&
-        statistics.get(kStatTheoryConflicts) >= options.max_theory_conflicts.value()) {
+    record_theory_conflict(statistics);
+    if (terminator.conflict_limit_reached()) {
       publish_sat_stats(backend.statistics(), statistics);
       return CheckSatOutcome{CheckSatResult::Unknown, "theory conflict limit reached", statistics,
                              "", InconclusiveReason::ResourceLimit};
@@ -10811,7 +10813,7 @@ CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
       options.nelson_oppen_model_equality_mutation &&
       (options.nelson_oppen_model_equality_branching || options.qf_uflra_model_reconciliation);
   sat::CadicalBackend backend(options.cadical_options);
-  SolveTerminator terminator(options.cancelled, statistics);
+  SolveTerminator terminator(options.cancelled, statistics, options.max_theory_conflicts);
   const ScopedTerminatorConnection terminator_connection(backend, terminator);
   BooleanClausifier clausifier(backend, terms, options.top_level_or_tseitin);
   for (const core::TermId assertion : assertions) {
@@ -11265,12 +11267,10 @@ CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
     model_equality_arrangement.activate_pending_branch(statistics);
     const std::optional<std::uint64_t> active_model_equality_propagation_start =
         model_equality_arrangement.assume_active_branches(backend, statistics);
+    if (auto stop = terminator.stop_outcome()) return *stop;
     const sat::SatResult sat_result = backend.solve();
     publish_sat_stats(backend.statistics(), statistics);
-    if (terminator.cancelled_reached()) {
-      return CheckSatOutcome{CheckSatResult::Unknown, "cancelled", statistics, "",
-                             InconclusiveReason::Cancelled};
-    }
+    if (auto stop = terminator.stop_outcome()) return *stop;
     if (sat_result == sat::SatResult::Unsat && model_equality_arrangement.has_active_branch()) {
       model_equality_arrangement.learn_failed_assumption_clause(
           backend, active_model_equality_propagation_start, statistics);
@@ -11420,12 +11420,12 @@ CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
     }
     if (euf_conflict.has_value()) {
       statistics.increment(kStatTheoryConflicts);
+      record_theory_conflict(statistics);
       record_interface_conflict(euf_conflict, no_manager, ":no.interface.euf-conflicts",
                                 statistics);
       model_equality_arrangement.record_theory_conflict(active_model_equality_propagation_start,
                                                         statistics);
-      if (options.max_theory_conflicts.has_value() &&
-          statistics.get(kStatTheoryConflicts) >= options.max_theory_conflicts.value()) {
+      if (terminator.conflict_limit_reached()) {
         publish_sat_stats(backend.statistics(), statistics);
         return CheckSatOutcome{CheckSatResult::Unknown, "theory conflict limit reached", statistics,
                                "", InconclusiveReason::ResourceLimit};
@@ -11523,6 +11523,8 @@ CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
     }
     if (lra_conflict.has_value()) {
       statistics.increment(kStatLraTheoryConflicts);
+      record_theory_conflict(statistics);
+      if (auto stop = terminator.stop_outcome()) return *stop;
       statistics.increment(":no.interface.lra-conflict-lits", lra_conflict->size());
       record_interface_conflict(lra_conflict, no_manager, ":no.interface.lra-conflicts",
                                 statistics);
@@ -11811,6 +11813,13 @@ CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
                   publish_sat_stats(backend.statistics(), statistics);
                   continue;
                 case ModelBasedCombinationStatus::LearnClause:
+                  if (std::all_of(generic_result.clause.begin(), generic_result.clause.end(),
+                                  [&](sat::Lit literal) {
+                                    const auto value = backend.value(std::abs(literal.value));
+                                    return value && *value != (literal.value > 0);
+                                  }))
+                    record_theory_conflict(statistics);
+                  if (auto stop = terminator.stop_outcome()) return *stop;
                   if (generic_result.clause.empty()) {
                     return CheckSatOutcome{CheckSatResult::Unsat, "", statistics, ""};
                   }
@@ -12288,15 +12297,11 @@ class IncrementalUfEngine final : public IncrementalEngine {
       const auto conflict = propagator.incremental_conflict();
       if (!conflict) break;
       statistics.increment(kStatTheoryConflicts);
+      record_theory_conflict(statistics);
       backend_.add_clause(*conflict);
     }
     statistics.set(":time.solve-us", elapsed(solve_start));
-    if (terminator.cancelled_reached() || terminator.conflict_limit_reached()) {
-      outcome.result = CheckSatResult::Unknown;
-      outcome.reason = terminator.cancelled_reached() ? InconclusiveReason::Cancelled
-                                                      : InconclusiveReason::ResourceLimit;
-      outcome.message = terminator.cancelled_reached() ? "cancelled" : "theory conflict limit";
-    }
+    if (auto stop = terminator.stop_outcome()) outcome = *stop;
     if (outcome.result == CheckSatResult::Sat && options.produce_model) {
       const auto model_start = std::chrono::steady_clock::now();
       std::vector<TheoryModelAssignment> assigned;
@@ -12449,12 +12454,7 @@ class IncrementalLraEngine final : public IncrementalEngine {
       statistics.set(":time.solve-us", elapsed(solve_start));
     }
     static_cast<void>(terminator.terminate());
-    if (terminator.cancelled_reached() || terminator.conflict_limit_reached()) {
-      outcome.result = CheckSatResult::Unknown;
-      outcome.reason = terminator.cancelled_reached() ? InconclusiveReason::Cancelled
-                                                      : InconclusiveReason::ResourceLimit;
-      outcome.message = terminator.cancelled_reached() ? "cancelled" : "theory conflict limit";
-    }
+    if (auto stop = terminator.stop_outcome()) outcome = *stop;
     if (outcome.result == CheckSatResult::Sat && options.produce_model) {
       const auto model_start = std::chrono::steady_clock::now();
       const auto assigned =
@@ -12507,7 +12507,9 @@ CheckSatOutcome solve_qf_uf_engine(core::TermManager& terms,
                                    const std::vector<core::TermId>& assertions,
                                    const CheckSatOptions& options, util::Statistics& statistics,
                                    const ModelConversionChain& conversions) {
-  return solve_qf_uf_engine_impl(terms, assertions, options, statistics, conversions);
+  return enforce_theory_conflict_limit(
+      solve_qf_uf_engine_impl(terms, assertions, options, statistics, conversions), options,
+      statistics);
 }
 
 CheckSatOutcome solve_qf_lra_engine(core::TermManager& terms,
@@ -12515,7 +12517,9 @@ CheckSatOutcome solve_qf_lra_engine(core::TermManager& terms,
                                     const std::vector<core::TermId>& model_terms,
                                     const ModelConversionChain& conversions,
                                     const CheckSatOptions& options, util::Statistics& statistics) {
-  return solve_qf_lra_engine_impl(terms, assertions, model_terms, conversions, options, statistics);
+  return enforce_theory_conflict_limit(
+      solve_qf_lra_engine_impl(terms, assertions, model_terms, conversions, options, statistics),
+      options, statistics);
 }
 
 CheckSatOutcome solve_qf_lia_engine(core::TermManager& terms,
@@ -12523,7 +12527,9 @@ CheckSatOutcome solve_qf_lia_engine(core::TermManager& terms,
                                     const std::vector<core::TermId>& model_terms,
                                     const CheckSatOptions& options, util::Statistics& statistics,
                                     const ModelConversionChain& conversions) {
-  return solve_qf_lia_engine_impl(terms, assertions, model_terms, options, statistics, conversions);
+  return enforce_theory_conflict_limit(
+      solve_qf_lia_engine_impl(terms, assertions, model_terms, options, statistics, conversions),
+      options, statistics);
 }
 
 CheckSatOutcome solve_qf_uflra_engine(core::TermManager& terms,
@@ -12532,8 +12538,9 @@ CheckSatOutcome solve_qf_uflra_engine(core::TermManager& terms,
                                       const ModelConversionChain& conversions,
                                       const CheckSatOptions& options,
                                       util::Statistics& statistics) {
-  return solve_qf_uflra_engine_impl(terms, assertions, model_terms, conversions, options,
-                                    statistics);
+  return enforce_theory_conflict_limit(
+      solve_qf_uflra_engine_impl(terms, assertions, model_terms, conversions, options, statistics),
+      options, statistics);
 }
 
 CheckSatOutcome solve_qf_uflia_engine(core::TermManager& terms,
@@ -12542,8 +12549,9 @@ CheckSatOutcome solve_qf_uflia_engine(core::TermManager& terms,
                                       const ModelConversionChain& conversions,
                                       const CheckSatOptions& options,
                                       util::Statistics& statistics) {
-  return solve_qf_uflia_engine_impl(terms, assertions, model_terms, conversions, options,
-                                    statistics);
+  return enforce_theory_conflict_limit(
+      solve_qf_uflia_engine_impl(terms, assertions, model_terms, conversions, options, statistics),
+      options, statistics);
 }
 
 void record_ackermann_cost_diagnostics_for_session(const core::TermManager& terms,

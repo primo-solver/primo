@@ -246,7 +246,8 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
     }
     if (recipe.online) {
       dispatcher = std::make_unique<ComponentDispatcher>(
-          online_components, [&](sat::Lit phase) { backend.phase(phase); });
+          online_components, [&](sat::Lit phase) { backend.phase(phase); },
+          [&] { record_theory_conflict(statistics); });
       for (std::size_t index = 0; index < online_order.size(); ++index) {
         dispatcher->register_atoms(index, atoms_by_component[online_order[index]]);
         for (const auto phase : online_components[index]->phase_literals()) backend.phase(phase);
@@ -291,6 +292,7 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
     return outcome;
   };
   while (true) {
+    if (auto stop = terminator.stop_outcome()) return *stop;
     if (guided && decision_batches >= recipe.decision_budget)
       return fallback(":combination.model.fallback-budget");
     if (installed_pairs != registered.size()) install_atoms();
@@ -302,11 +304,7 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
       sat_result = backend.solve();
     }
     publish_sat_stats(backend.statistics(), statistics);
-    if (terminator.cancelled_reached())
-      return {CheckSatResult::Unknown, "cancelled", statistics, "", InconclusiveReason::Cancelled};
-    if (terminator.conflict_limit_reached())
-      return {CheckSatResult::Unknown, "theory conflict limit reached", statistics, "",
-              InconclusiveReason::ResourceLimit};
+    if (auto stop = terminator.stop_outcome()) return *stop;
     // Lemma queue: an online component that must add consequences over new
     // atoms stops the search; its queue is drained here, at the established
     // growth boundary, and the problem is solved again. An UNSAT result with a
@@ -415,6 +413,11 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
         break;
       case ModelBasedCombinationStatus::LearnClause:
         statistics.increment(util::StatKey::TheoryConflicts);
+        if (std::all_of(combined.clause.begin(), combined.clause.end(), [&](sat::Lit literal) {
+              const auto value = backend.value(std::abs(literal.value));
+              return value && *value != (literal.value > 0);
+            }))
+          record_theory_conflict(statistics);
         backend.add_clause(combined.clause);
         continue;
       case ModelBasedCombinationStatus::DecideEquality:

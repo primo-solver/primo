@@ -24,7 +24,7 @@ CheckSatOutcome solve_boolean_conjunction(core::TermManager& terms,
                                           const ModelConversionChain& conversions) {
   statistics.increment(util::StatKey::SolverBoolean);
   sat::CadicalBackend backend(options.cadical_options);
-  SolveTerminator terminator(options.cancelled, statistics);
+  SolveTerminator terminator(options.cancelled, statistics, options.max_theory_conflicts);
   const ScopedTerminatorConnection terminator_connection(backend, terminator);
   BooleanClausifier clausifier(backend, terms, options.top_level_or_tseitin);
   for (const core::TermId assertion : assertions) {
@@ -35,12 +35,10 @@ CheckSatOutcome solve_boolean_conjunction(core::TermManager& terms,
   publish_theory_atom_purity_stats(terms, clausifier.theory_atoms(), statistics);
   publish_sat_stats(backend.statistics(), statistics);
   statistics.increment(util::StatKey::SatSolveCalls);
+  if (auto stop = terminator.stop_outcome()) return *stop;
   const CheckSatResult result = map_sat_result(backend.solve());
   publish_sat_stats(backend.statistics(), statistics);
-  if (terminator.cancelled_reached()) {
-    return CheckSatOutcome{CheckSatResult::Unknown, "cancelled", statistics, "",
-                           InconclusiveReason::Cancelled};
-  }
+  if (auto stop = terminator.stop_outcome()) return *stop;
   if (result != CheckSatResult::Sat || !options.produce_model) {
     return CheckSatOutcome{result, "", statistics, ""};
   }

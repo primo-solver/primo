@@ -26,11 +26,13 @@ sat::Clause implication_clause(const theory::TheoryCheckResult& result) {
 }  // namespace
 
 ComponentDispatcher::ComponentDispatcher(std::span<theory::TheoryComponent* const> components,
-                                         std::function<void(sat::Lit)> publish_phase)
+                                         std::function<void(sat::Lit)> publish_phase,
+                                         std::function<void()> report_conflict)
     : components_(components.begin(), components.end()),
       deltas_(components.size()),
       dirty_(components.size(), false),
-      publish_phase_(std::move(publish_phase)) {
+      publish_phase_(std::move(publish_phase)),
+      report_conflict_(std::move(report_conflict)) {
   touched_.reserve(components.size());
   for (auto* component : components_) {
     if (component == nullptr || !component->descriptor().capabilities.incremental) {
@@ -126,6 +128,14 @@ void ComponentDispatcher::accept_result(std::size_t component, theory::TheoryChe
     // The owning solve loop must inspect this before accepting the SAT result.
     // Resource/cancellation/unsupported is never encoded as an empty clause.
     failure_ = std::move(result);
+  }
+  if (external_clause_ && report_conflict_ &&
+      std::all_of(external_clause_->clause.begin(), external_clause_->clause.end(),
+                  [&](sat::Lit literal) {
+                    return assignment_view().literal(static_cast<int>(variable(literal.value))) ==
+                           -literal.value;
+                  })) {
+    report_conflict_();
   }
 }
 

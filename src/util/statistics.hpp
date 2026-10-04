@@ -104,6 +104,7 @@ enum class StatKey : std::size_t {
   EufDiseqAssignments,
   TheoryChecks,
   TheoryConflicts,
+  TheoryConflictCount,
   EufPropagationRounds,
   EufPropagationCandidates,
   EufPropagationDelivered,

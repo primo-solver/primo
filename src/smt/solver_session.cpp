@@ -449,6 +449,7 @@ CheckSatOutcome run_query(std::string_view input, CheckSatOptions options,
   statistics.set(kStatEufDiseqAssignments, 0);
   statistics.set(kStatTheoryChecks, 0);
   statistics.set(kStatTheoryConflicts, 0);
+  statistics.set(util::StatKey::TheoryConflictCount, 0);
   statistics.set(kStatEufPropagationRounds, 0);
   statistics.set(kStatEufPropagationCandidates, 0);
   statistics.set(kStatEufPropagationDelivered, 0);

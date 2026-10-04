@@ -1078,3 +1078,28 @@ The [policy reference](policies.md) explains requested versus effective
 settings; [experiments](../development/experiments.md) explains paired
 comparisons. New mechanisms must document their counters and actual scope;
 `--stats` controls printing, not compilation of instrumentation.
+
+## Uniform conflict budget implementation contract
+
+The publication repair uses an SMT-owned aggregate `:theory.conflicts`, separate
+from the existing EUF and LRA diagnostic counters. The original runtime design
+counts one conflict reported to SMT/SAT, including integer infeasibility, but
+excludes ordinary propagations, quantifier instances and internal arithmetic
+branch failures. `record_theory_conflict` owns aggregate increments;
+`SolveTerminator` owns exhaustion checks. No theory kernel owns query budgets.
+
+The query's `Statistics` object carries consumption through solver retries,
+lemma-growth rounds and combination fallback. A new query owns fresh statistics.
+Callbacks finish their clause/reason protocol before the solver returns
+`Unknown` with `ResourceLimit` and `theory conflict limit reached`. Safe-boundary
+checks before and after SAT calls and after final theory checks must override
+terminal SAT/UNSAT answers when the budget is exhausted. Unlimited queries keep
+the same solving behavior. The limit does not bound preprocessing, elapsed time,
+or work between conflicts.
+
+This is an original resource-accounting contract, not a new paper-backed theory
+algorithm. Its proof obligations are single counting at the SMT reporting
+boundary, no double counting through component adapters, consumption shared
+within one query, and reset between queries. Regressions must cover online and
+lazy routes, integer conflicts, callback completion, fallback and retained
+sessions; qualification remains pending until recorded in the publication gate.

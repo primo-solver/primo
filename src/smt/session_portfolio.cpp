@@ -1,5 +1,6 @@
 #include "smt/session_portfolio.hpp"
 
+#include <algorithm>
 #include <cstddef>
 #include <string_view>
 #include <utility>
@@ -23,7 +24,9 @@ CheckSatOutcome execute_qf_uf_session_portfolio(std::string_view input, CheckSat
   first_options.qf_uf_portfolio = QfUfPortfolioMode::Off;
   first_options.preprocessing_mode = PreprocessingMode::Basic;
   first_options.theory_phase = TheoryPhaseMode::Polarity;
-  first_options.max_theory_conflicts = portfolio_conflicts;
+  first_options.max_theory_conflicts =
+      options.max_theory_conflicts ? std::min(portfolio_conflicts, *options.max_theory_conflicts)
+                                   : portfolio_conflicts;
   CheckSatOutcome first = executor.execute(input, std::move(first_options));
   first.statistics.set(":portfolio.qf-uf.attempts", 1);
   first.statistics.set(":portfolio.qf-uf.basic-polarity.attempted", 1);
@@ -36,9 +39,13 @@ CheckSatOutcome execute_qf_uf_session_portfolio(std::string_view input, CheckSat
     return first;
   }
 
+  const auto consumed = first.statistics.get(util::StatKey::TheoryConflictCount);
+  if (options.max_theory_conflicts && consumed >= *options.max_theory_conflicts) return first;
   CheckSatOptions fallback_options = std::move(options);
+  if (fallback_options.max_theory_conflicts) *fallback_options.max_theory_conflicts -= consumed;
   fallback_options.qf_uf_portfolio = QfUfPortfolioMode::Off;
   CheckSatOutcome fallback = executor.execute(input, std::move(fallback_options));
+  fallback.statistics.increment(util::StatKey::TheoryConflictCount, consumed);
   fallback.statistics.set(":portfolio.qf-uf.attempts", 2);
   fallback.statistics.set(":portfolio.qf-uf.basic-polarity.attempted", 1);
   fallback.statistics.set(":portfolio.qf-uf.basic-polarity.fell-back", 1);

@@ -588,6 +588,30 @@ void incremental_routing_backtracking_and_explanation_lifetime() {
   assert(dispatcher.cb_propagate() == 0);
 }
 
+void conflict_reports_are_counted_once_and_propagations_are_excluded() {
+  for (const bool conflicting : {false, true}) {
+    Fixture f;
+    const auto x = f.variable("x", f.symbols.int_sort());
+    const auto y = f.variable("y", f.symbols.int_sort());
+    f.add({{{x, y}, partitions(2)}});
+    std::size_t conflicts = 0;
+    smt::ComponentDispatcher dispatcher(f.components, {}, [&] { ++conflicts; });
+    dispatcher.register_atoms(0, std::span(&f.atoms[0], 1));
+    smt::AssignmentCoordinator owner(dispatcher);
+    owner.notify_assignment({1});
+    f.owned[0]->corrupt = [conflicting](auto& result) {
+      result.status = theory::TheoryCheckStatus::LearnedClause;
+      result.clause = {sat::Lit{conflicting ? -1 : 2}};
+    };
+    assert(dispatcher.cb_has_external_clause());
+    assert(dispatcher.cb_has_external_clause());
+    assert(conflicts == (conflicting ? 1 : 0));
+    assert(dispatcher.cb_add_external_clause_lit() == (conflicting ? -1 : 2));
+    assert(dispatcher.cb_add_external_clause_lit() == 0);
+    assert(conflicts == (conflicting ? 1 : 0));
+  }
+}
+
 void nonconvex_disjunction_and_mutation_side_effects() {
   for (const bool guided : {false, true}) {
     for (const bool contradiction : {false, true}) {
@@ -971,6 +995,7 @@ void queued_lemmas_are_drained_at_the_growth_boundary() {
 }  // namespace
 
 int main() {
+  conflict_reports_are_counted_once_and_propagations_are_excluded();
   admission_and_normalization();
   sort_nonparticipants_and_disconnected_groups();
   exhaustive_three_and_four_component_sat();

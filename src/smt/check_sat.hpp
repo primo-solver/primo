@@ -468,6 +468,8 @@ struct CheckSatOptions {
   std::size_t finite_domain_eqdefs_auto_clause_limit = 5000;
   std::size_t finite_domain_eqdefs_auto_term_limit = 5000;
   std::optional<std::size_t> nelson_oppen_arrangement_probe_limit;
+  // Per-query aggregate SMT conflict budget, shared across retries/fallback.
+  // Counts reports, not propagations, instances or internal arithmetic branches.
   std::optional<std::size_t> max_theory_conflicts;
   // Quantified UF: enumerative instances queued per complete assignment; tuples
   // a quantifier may visit without a new lemma before a round with queued
