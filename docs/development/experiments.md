@@ -31,19 +31,31 @@ array size and expected rows per shard; a missing shard is not a timeout row.
 
 ## Select inputs and interpret outcomes
 
-{source}`analyze_smt2.py <scripts/analyze_smt2.py>` reports declaration counts
+{toolsource}`analyze_smt2.py <scripts/analyze_smt2.py#L105>` reports declaration counts
 and Real-arithmetic shape/polarity summaries:
 
 ```bash
 python3 scripts/analyze_smt2.py --json path/to/input.smt2
 ```
 
-It does not expand `define-fun` or reproduce frontend/session semantics.
-Its current `let` expansion also mishandles parallel bindings and shadowing;
-see the [tooling findings](../coverage/page-review.md#supporting-tools-and-resource-controls).
-Do not use those affected summaries as evidence that a constraint or variable
-is absent. Consult the [frontend](../implementation/frontend.md) for the actual
-binding and definition rules.
+The analyzer expands lexical `let` bindings, including nested lets and
+shadowing. Each parallel right-hand side is expanded in the outer environment;
+only the body sees the new bindings. For example,
+`(let ((x 1) (y x)) (+ x y))` expands to `(+ 1 x)`, preserving the free `x`.
+Malformed or duplicate bindings and unsupported binders (`forall`, `exists`,
+`lambda`, `match`, and function definitions) produce errors. This tool does
+not reproduce frontend/session semantics; consult the
+[frontend](../implementation/frontend.md) for the solver's binding rules.
+
+The expansion follows the parallel-substitution semantics of SMT-LIB 2.7,
+section 3.6.1, Let {cite:p}`smtlib2026`. Its `inline_lets` function owns an explicit
+stack of visit/body frames, dictionaries of expanded bindings and fresh list
+trees. Right-hand-side frames finish before the body installs bindings;
+substituted trees are copied without revisiting their free names. These are the
+scope and capture-avoidance invariants checked by the parallel-binding,
+shadowing and deep-nesting regressions. Expansion is iterative but can use
+exponential time and space when a term is repeatedly copied; direct DAG
+traversal remains deferred.
 
 Text search alone cannot establish which theory or transformation a file uses.
 Keep corpus exclusions explicit: parse rejection, unsupported constructs,
@@ -61,11 +73,10 @@ untriaged disagreement. Report timeouts and `unknown` separately from passes.
 
 The {source}`composition manifest <benchmarks/tactic-composition-matrix.json>`
 defines legal profiles, their logic sets, and required mechanism counters.
-The {source}`driver <scripts/tactic_composition_matrix.py>` compares references,
-checks answers, and invokes independent model validation. Its current model
-stage incorrectly includes eligible UNSAT cases, whose `get-model` request
-then fails. SAT selection and coverage joining need repair before this command
-can serve as a complete mixed SAT/UNSAT qualification gate:
+The {toolsource}`driver <scripts/tactic_composition_matrix.py#L354>` compares references,
+checks answers, and invokes independent model validation. It selects successful
+SAT measurements and deduplicates them by profile and resolved input path.
+The model stage uses `--expect-sat`: a replay changing SAT to UNSAT fails.
 
 ```bash
 python3 scripts/tactic_composition_matrix.py \
@@ -75,10 +86,15 @@ python3 scripts/tactic_composition_matrix.py \
   --repeat 1 --out results/composition-review
 ```
 
-`--allow-inconclusive` does not repair that selection error, and skipping model
-validation does not complete the gate. Until the driver is repaired, replay
-the successful SAT rows through the [separate validator](validation.md) and
-record the join between measured rows and validated models explicitly.
+Each profile's `model-validation/coverage.json` joins validation outcomes back
+to every selected measurement, including repeats, and records eligible,
+validated and incomplete model counts. Missing, duplicate or unexpected
+validator rows fail the check, even when the validator exits successfully.
+An empty selection reports zero eligible models and skips the validator.
+`--allow-inconclusive` permits timeout/unknown replays only as incomplete
+validation; it never permits changed answers. Skipping validation does not
+complete the qualification gate. Historical results retain their original
+selection and must not be relabeled as evidence from this repaired driver.
 
 {source}`The SLURM matrix <scripts/slurm_tactic_composition_matrix.sbatch>`
 adds generated cases by logic. Do not require every tactic on every input:
