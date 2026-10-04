@@ -1105,8 +1105,10 @@ suppresses further component checks and propagations until the solve returns.
 The runtime supplies the final `ResourceLimit` outcome. This prevents extra
 conflict reports while the backend finishes its callback protocol.
 
-Direct `OnlineEufPropagator` and `OnlineLraPropagator` callbacks use the same
-runtime exhaustion predicate. They stop new propagation and conflict delivery
+Direct {repairsource}`OnlineEufPropagator <src/smt/solver_engines.cpp#L1848-L1867>`
+and {repairsource}`OnlineLraPropagator <src/smt/solver_engines.cpp#L7250-L7283>`
+callbacks use the same
+{repairsource}`runtime exhaustion predicate <src/smt/solver_runtime.cpp#L13-L17>`. They stop new propagation and conflict delivery
 once the budget is consumed, while preserving any pending clause or reason
 stream. The LRA aggregate increments at external-clause handoff, not when a
 bound check first discovers an internal conflict. Repeated availability checks
