@@ -658,6 +658,14 @@ void uniform_conflict_limits_cover_ground_and_quantified_routes() {
   const std::array inputs{
       R"((set-logic QF_UF) (declare-sort U 0) (declare-const a U) (declare-const b U)
          (declare-fun f (U) U) (assert (= a b)) (assert (distinct (f a) (f b))))",
+      R"((set-logic QF_UF) (declare-sort U 0) (declare-const q Bool)
+         (declare-const a U) (declare-fun tb (Bool) U)
+         (assert (= (tb q) a)) (assert (= (tb true) (tb false)))
+         (assert (distinct a (tb false))))",
+      R"((set-logic QF_LRA) (declare-const x Real)
+         (assert (or (< x 0) (> x 1))) (assert (<= x 1)) (assert (>= x 0)))",
+      R"((set-logic QF_LIA) (declare-const x Int)
+         (assert (or (< x 0) (> x 1))) (assert (<= x 1)) (assert (>= x 0)))",
       R"((set-logic QF_LRA) (declare-const x Real)
          (assert (<= x 0)) (assert (>= x 1)))",
       R"((set-logic QF_LIA) (declare-const x Int) (declare-const y Int)
@@ -708,6 +716,25 @@ void uniform_conflict_limits_cover_ground_and_quantified_routes() {
   }
 }
 
+void retained_uf_stops_callback_reports_and_resets_after_pop() {
+  primo::smt::CheckSatOptions options;
+  options.incremental_mode = primo::smt::IncrementalMode::Assumptions;
+  options.max_theory_conflicts = 1;
+  SmtSession session(options);
+  for (const auto* command :
+       {"(set-logic QF_UF)", "(declare-sort U 0)", "(declare-const q Bool)", "(declare-const a U)",
+        "(declare-fun tb (Bool) U)", "(assert (= (tb true) (tb false)))", "(push 1)",
+        "(assert (= (tb q) a))", "(assert (distinct a (tb false)))"})
+    accept(session, command);
+  const auto exhausted = session.execute("(check-sat)").outcome;
+  assert(exhausted->reason == primo::smt::InconclusiveReason::ResourceLimit);
+  assert(exhausted->statistics.get(":theory.conflicts") == 1);
+  accept(session, "(pop 1)");
+  const auto resumed = session.execute("(check-sat)").outcome;
+  assert(resumed->result == CheckSatResult::Sat);
+  assert(resumed->statistics.get(":theory.conflicts") == 0);
+}
+
 void conflict_runtime_keeps_query_consumption_and_ignores_diagnostics() {
   primo::util::Statistics statistics;
   primo::smt::SolveTerminator first({}, statistics, 2);
@@ -733,6 +760,7 @@ void conflict_runtime_keeps_query_consumption_and_ignores_diagnostics() {
 int main() {
   conflict_runtime_keeps_query_consumption_and_ignores_diagnostics();
   uniform_conflict_limits_cover_ground_and_quantified_routes();
+  retained_uf_stops_callback_reports_and_resets_after_pop();
   arithmetic_auxiliaries_keep_scoped_definitions();
   uf_assumption_scopes_and_preparation();
   uf_assumption_atom_scans_follow_only_registry_growth();

@@ -1104,3 +1104,12 @@ consumes the remaining budget. It finishes streaming that clause to SAT, then
 suppresses further component checks and propagations until the solve returns.
 The runtime supplies the final `ResourceLimit` outcome. This prevents extra
 conflict reports while the backend finishes its callback protocol.
+
+Direct `OnlineEufPropagator` and `OnlineLraPropagator` callbacks use the same
+runtime exhaustion predicate. They stop new propagation and conflict delivery
+once the budget is consumed, while preserving any pending clause or reason
+stream. The LRA aggregate increments at external-clause handoff, not when a
+bound check first discovers an internal conflict. Repeated availability checks
+for one pending clause do not increment it again. At exhaustion a complete SAT
+candidate may unwind the backend; the runtime must replace that candidate with
+`unknown` before any model or definitive solver answer is accepted.

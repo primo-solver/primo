@@ -1768,6 +1768,7 @@ class OnlineEufPropagator final : public sat::ExternalPropagator {
  public:
   bool cb_check_found_model(const std::vector<int>& model) override {
     (void)model;
+    if (conflict_budget_exhausted()) return true;
     for (std::size_t i = 0; i < atom_count(); ++i) {
       if (!is_assigned_var(std::abs(atom_at(i).lit.value)))
         throw std::logic_error("EUF model contains an unnotified observed atom");
@@ -1843,6 +1844,7 @@ class OnlineEufPropagator final : public sat::ExternalPropagator {
   }
 
   int cb_propagate() override {
+    if (conflict_budget_exhausted()) return 0;
     if (options_.euf_propagation == EufPropagationMode::Conflict) {
       return 0;
     }
@@ -1917,6 +1919,11 @@ class OnlineEufPropagator final : public sat::ExternalPropagator {
   }
 
  private:
+  bool conflict_budget_exhausted() const {
+    return count_conflicts_ &&
+           theory_conflict_limit_reached(statistics_, options_.max_theory_conflicts);
+  }
+
   enum class ReasonSource {
     EufPropagation,
     DiseqAckermann,
@@ -2488,6 +2495,7 @@ class OnlineEufPropagator final : public sat::ExternalPropagator {
   }
 
   void maybe_store_conflict() {
+    if (conflict_budget_exhausted()) return;
     if (!external_clause_.empty() || !incremental_state_.has_value()) {
       return;
     }
@@ -2502,6 +2510,7 @@ class OnlineEufPropagator final : public sat::ExternalPropagator {
   }
 
   void maybe_store_diseq_ackermann_conflict() {
+    if (conflict_budget_exhausted()) return;
     if (!external_clause_.empty() || !options_.euf_diseq_ackermann ||
         diseq_ackermann_queue_.empty()) {
       return;
@@ -6985,7 +6994,8 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
                       bool model_phase_enabled, bool model_phase_backtrack_may_change_beta,
                       const LraRowPropagationLimits& row_propagation_limits,
                       sat::IpasirUpBackend& backend, util::Statistics& statistics,
-                      bool count_query_conflicts = false)
+                      bool count_query_conflicts = false,
+                      std::optional<std::size_t> conflict_limit = std::nullopt)
       : theory_atoms_(theory_atoms),
         prepared_(prepared),
         tableau_(prepared.base_tableau),
@@ -6998,7 +7008,8 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
         row_propagation_limits_(row_propagation_limits),
         backend_(backend),
         statistics_(statistics),
-        count_query_conflicts_(count_query_conflicts) {
+        count_query_conflicts_(count_query_conflicts),
+        conflict_limit_(conflict_limit) {
     int max_theory_var = 0;
     for (const BooleanClausifier::TheoryAtom& atom : theory_atoms_) {
       max_theory_var =
@@ -7049,6 +7060,7 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
     // would lose an actually-outstanding repair.
     needs_check_ = false;
     external_clause_.clear();
+    external_clause_pending_ = false;
     external_clause_index_ = 0;
     // pending_ entries are just candidates, not delivered propagations --
     // safe to drop unconditionally (unlike reasons_ above): at worst a
@@ -7064,6 +7076,7 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
 
   // Validate the notification contract at a complete model; never backfill it.
   bool cb_check_found_model(const std::vector<int>&) override {
+    if (conflict_budget_exhausted()) return true;
     for (const auto& atom : theory_atoms_) {
       if (!is_assigned_var(std::abs(atom.lit.value)))
         throw std::logic_error("arithmetic model contains an unnotified observed atom");
@@ -7095,6 +7108,7 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
   // budget. Returning 0 defers to VSIDS -- only happens once every
   // arithmetic atom is already decided.
   int cb_decide() override {
+    if (conflict_budget_exhausted()) return 0;
     if (!theory_decisions_enabled_ || theory_atoms_.empty()) {
       return 0;
     }
@@ -7125,6 +7139,7 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
   // meantime (a decision, a different propagation) rather than proactively
   // pruning pending_ on every assignment.
   int cb_propagate() override {
+    if (conflict_budget_exhausted()) return 0;
     if (conflict_.has_value()) {
       return 0;
     }
@@ -7232,31 +7247,28 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
   }
 
   bool cb_has_external_clause(bool& is_forgettable) override {
+    is_forgettable = false;
+    if (external_clause_pending_) return true;
+    if (conflict_budget_exhausted()) return false;
     run_deferred_check_if_needed();
     refresh_model_phases_if_ready();
-    if (!conflict_.has_value()) {
-      return false;
-    }
+    if (!conflict_.has_value()) return false;
     external_clause_ = conflict_.value();
     external_clause_index_ = 0;
-    is_forgettable = false;
+    external_clause_pending_ = true;
+    record_theory_conflict(statistics_);
     return true;
   }
 
   bool cb_has_external_clause() override {
-    run_deferred_check_if_needed();
-    refresh_model_phases_if_ready();
-    if (!conflict_.has_value()) {
-      return false;
-    }
-    external_clause_ = conflict_.value();
-    external_clause_index_ = 0;
-    return true;
+    bool forgettable = false;
+    return cb_has_external_clause(forgettable);
   }
 
   int cb_add_external_clause_lit() override {
     if (external_clause_index_ >= external_clause_.size()) {
       external_clause_.clear();
+      external_clause_pending_ = false;
       external_clause_index_ = 0;
       return 0;
     }
@@ -7264,8 +7276,11 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
   }
 
  private:
+  bool conflict_budget_exhausted() const {
+    return theory_conflict_limit_reached(statistics_, conflict_limit_);
+  }
+
   void record_query_conflict() {
-    record_theory_conflict(statistics_);
     if (count_query_conflicts_) {
       statistics_.increment(kStatTheoryConflicts);
       statistics_.increment(kStatLraTheoryConflicts);
@@ -7769,6 +7784,8 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
   sat::IpasirUpBackend& backend_;
   util::Statistics& statistics_;
   bool count_query_conflicts_ = false;
+  std::optional<std::size_t> conflict_limit_;
+  bool external_clause_pending_ = false;
   std::vector<char> observed_vars_;
   std::vector<int> model_phase_by_var_;
   std::vector<char> model_phase_dirty_bound_vars_;
@@ -8223,7 +8240,7 @@ CheckSatOutcome solve_qf_lra_impl(core::TermManager& terms,
       options.lra_row_propagation, options.lra_bidirectional_row_propagation,
       options.lra_theory_decisions, options.lra_model_phase,
       options.lra_pivoting_rule == LraPivotingRule::Soi || options.lra_fixed_elimination,
-      options.lra_row_propagation_limits, backend, statistics);
+      options.lra_row_propagation_limits, backend, statistics, false, options.max_theory_conflicts);
   const AssignmentConnection assignment_connection(backend, online_propagator);
   for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
     const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
@@ -8422,7 +8439,7 @@ CheckSatOutcome solve_qf_lia_impl(core::TermManager& terms,
       options.lra_row_propagation, options.lra_bidirectional_row_propagation,
       options.lra_theory_decisions, options.lra_model_phase,
       options.lra_pivoting_rule == LraPivotingRule::Soi || options.lra_fixed_elimination,
-      options.lra_row_propagation_limits, backend, statistics);
+      options.lra_row_propagation_limits, backend, statistics, false, options.max_theory_conflicts);
   const AssignmentConnection assignment_connection(backend, online_propagator);
   for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
     const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
@@ -11209,7 +11226,8 @@ CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
         options.lra_bidirectional_row_propagation, options.lra_theory_decisions,
         options.lra_model_phase,
         options.lra_pivoting_rule == LraPivotingRule::Soi || mixed_fixed_elimination,
-        options.lra_row_propagation_limits, backend, statistics);
+        options.lra_row_propagation_limits, backend, statistics, false,
+        options.max_theory_conflicts);
     statistics.set(":no.interface.lra-online-enabled", 1);
   }
   const bool publish_lra_interface_equalities =
@@ -12441,7 +12459,8 @@ class IncrementalLraEngine final : public IncrementalEngine {
         prepared_, clausifier_.theory_atoms(), options.lra_propagation, options.lra_row_propagation,
         options.lra_bidirectional_row_propagation, options.lra_theory_decisions,
         options.lra_model_phase, options.lra_pivoting_rule == LraPivotingRule::Soi,
-        options.lra_row_propagation_limits, backend_, statistics, true);
+        options.lra_row_propagation_limits, backend_, statistics, true,
+        options.max_theory_conflicts);
     std::vector<int> observed;
     for (const auto& atom : clausifier_.theory_atoms())
       observed.push_back(std::abs(atom.lit.value));

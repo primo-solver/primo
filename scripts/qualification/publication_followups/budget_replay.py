@@ -118,7 +118,7 @@ def main():
         else:
             row["outcome"] = "pass"
             for expected, actual, count in zip(reference, bounded, counts):
-                if actual == "unknown" and count >= 1:
+                if actual == "unknown" and count == 1:
                     row["exhausted_queries"] += 1
                 elif actual != expected or count >= 1:
                     row["outcome"] = "wrong-answer-or-limit"

@@ -20,6 +20,7 @@ class BudgetReplayTests(unittest.TestCase):
     def test_exhaustion_is_separate_and_answers_require_clean_exit(self):
         for answer, count, code, expected in (
             ('unknown', 1, 0, 'resource-exhausted'),
+            ('unknown', 2, 0, 'wrong-answer-or-limit'),
             ('sat', 0, 0, 'pass'),
             ('sat', 1, 0, 'wrong-answer-or-limit'),
             ('unsat', 0, 0, 'wrong-answer-or-limit'),

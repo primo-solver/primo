@@ -10,10 +10,11 @@
 #include "util/statistics.hpp"
 
 namespace primo::smt {
-namespace {
-bool exhausted(const util::Statistics& statistics, std::optional<std::size_t> limit) {
+bool theory_conflict_limit_reached(const util::Statistics& statistics,
+                                   std::optional<std::size_t> limit) {
   return limit && statistics.get(util::StatKey::TheoryConflictCount) >= *limit;
 }
+namespace {
 CheckSatOutcome limit_outcome(const util::Statistics& statistics) {
   return {CheckSatResult::Unknown, "theory conflict limit reached", statistics, "",
           InconclusiveReason::ResourceLimit};
@@ -27,8 +28,9 @@ void record_theory_conflict(util::Statistics& statistics) {
 CheckSatOutcome enforce_theory_conflict_limit(CheckSatOutcome outcome,
                                               const CheckSatOptions& options,
                                               const util::Statistics& statistics) {
-  return exhausted(statistics, options.max_theory_conflicts) ? limit_outcome(statistics)
-                                                             : std::move(outcome);
+  return theory_conflict_limit_reached(statistics, options.max_theory_conflicts)
+             ? limit_outcome(statistics)
+             : std::move(outcome);
 }
 
 SolveTerminator::SolveTerminator(std::function<bool()> cancelled, util::Statistics& statistics,
@@ -39,7 +41,7 @@ SolveTerminator::SolveTerminator(std::function<bool()> cancelled, util::Statisti
 }
 
 bool SolveTerminator::conflict_limit_reached() const {
-  return exhausted(statistics_, conflict_limit_);
+  return theory_conflict_limit_reached(statistics_, conflict_limit_);
 }
 
 std::optional<CheckSatOutcome> SolveTerminator::stop_outcome() {

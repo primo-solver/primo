@@ -15,6 +15,8 @@ namespace primo::smt {
 
 // Original reporting/budget contract: docs/reference/statistics.md.
 void record_theory_conflict(util::Statistics& statistics);
+bool theory_conflict_limit_reached(const util::Statistics& statistics,
+                                   std::optional<std::size_t> limit);
 CheckSatOutcome enforce_theory_conflict_limit(CheckSatOutcome outcome,
                                               const CheckSatOptions& options,
                                               const util::Statistics& statistics);
