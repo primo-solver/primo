@@ -373,20 +373,15 @@ observed theory atoms. When `--euf-prop=auto` selects online callbacks, repeated
 zero-delivery scans increase the discovery interval, so the candidate counter
 can be much smaller than `rounds * theory-atoms`.
 
-`--max-theory-conflicts N` limits the recorded theory-conflict count only on
-routes that wire it into their control flow. QF_UF
-{source}`passes the budget to its terminator <src/smt/solver_engines.cpp#L10388>`
-and checks post-model conflicts. The
-{source}`general component driver <src/smt/component_solver.cpp#L76>` also supplies
-the budget. Its terminator can stop an in-progress SAT call after the counted
-events reach the limit.
-
-Pure QF_LRA and QF_LIA omit the budget from their terminators. The dedicated
-QF_UFLRA route checks its final EUF-conflict path, but does not uniformly cap
-LRA conflicts or callback work. These
-[enforcement gaps](../coverage/page-review.md#supporting-tools-and-resource-controls)
-mean the option cannot currently provide a universal arithmetic or mixed-route
-bound. It also does not bound preprocessing, work between conflicts, or runtime.
+`--max-theory-conflicts N` limits the per-query aggregate `:theory.conflicts`
+on supported ground, quantified and retained-session routes. It counts each
+conflict reported to SMT/SAT once, including integer-infeasibility conflicts.
+Ordinary propagations, quantifier instances and internal branch-and-bound
+failures are excluded. Existing EUF/LRA diagnostic counters remain separate;
+their sum is not the budget counter. See the
+[implementation contract](#uniform-conflict-budget-implementation-contract)
+for ownership, retry sharing and safe-boundary semantics. This does not bound
+preprocessing, elapsed time or work between conflicts.
 For mixed QF_UFLRA instances that finish SAT search but spend time in final
 equality sharing or arrangement/model reconstruction,
 `--nelson-oppen-arrangement-probe-limit N` instead caps temporary LRA
@@ -417,9 +412,7 @@ short grace period of their own, which must exceed `--cancel-grace-seconds` for
 the answer to be seen at all. A row answered by the watchdog carries `unknown`
 with no statistics; a row answered cooperatively carries both. Inspect
 `timed_out_with_stats`, `exit_code`, and `stderr_head` to tell them apart.
-Use `--max-theory-conflicts` for profiling only after confirming that the
-selected route enforces it. Retain an external time limit for frontend work,
-search without counted conflicts, and routes with the gaps above.
+Retain an external time limit for frontend work and search without counted conflicts.
 
 The auto counters record which concrete path `--euf-prop=auto` selected for the
 current abstraction.
@@ -1085,8 +1078,9 @@ The publication repair uses an SMT-owned aggregate `:theory.conflicts`, separate
 from the existing EUF and LRA diagnostic counters. The original runtime design
 counts one conflict reported to SMT/SAT, including integer infeasibility, but
 excludes ordinary propagations, quantifier instances and internal arithmetic
-branch failures. `record_theory_conflict` owns aggregate increments;
-`SolveTerminator` owns exhaustion checks. No theory kernel owns query budgets.
+branch failures. {repairsource}`record_theory_conflict <src/smt/solver_runtime.cpp>` owns aggregate
+increments; {repairsource}`SolveTerminator <src/smt/solver_runtime.hpp>` owns
+exhaustion checks. `StatKey::TheoryConflictCount` is the typed aggregate key. No theory kernel owns query budgets.
 
 The query's `Statistics` object carries consumption through solver retries,
 lemma-growth rounds and combination fallback. A new query owns fresh statistics.

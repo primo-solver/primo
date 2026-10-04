@@ -17,7 +17,7 @@ common controls; the complete captured inventory below supplies accepted values 
 | `--check-model` | Off | Check original assertions against a requested model. Set `:produce-models true` separately; see [](../guide/models.md). |
 | `--incremental-mode` | `rebuild` | Choose `rebuild` or the restricted `assumptions` session engine. See [](../guide/sessions.md). |
 | `--preprocessing-mode` | `auto` | Choose `auto`, `off`, `basic`, or `strong`. `off` does not bypass required lowering. Assumptions mode admits only `auto` or `off`. |
-| `--max-theory-conflicts=N` | Unlimited | Positive budget, up to 1,000,000,000. Enforcement differs by solver route; see [conflict-limit coverage](statistics.md#euf-callbacks-and-resource-limits). It is not a universal arithmetic or mixed-theory cap. |
+| `--max-theory-conflicts=N` | Unlimited | Positive budget, up to 1,000,000,000. Counts aggregate SMT-reported conflicts across supported routes; see [conflict-limit accounting](statistics.md#uniform-conflict-budget-implementation-contract). Exhaustion returns `unknown` with `ResourceLimit`. |
 | `--lia-branch-limit=N` | `100000` | Bound integer branch-and-bound nodes; reaching the bound can return `unknown`. See [](../implementation/lia.md). |
 | `--cancel-grace-seconds=N` | `1` | Cooperative cancellation grace period after SIGINT/SIGTERM, from 1 to 3600 seconds. This is not a solve-time limit. |
 
@@ -35,6 +35,13 @@ For component-specific controls, use [](../implementation/preprocessing.md),
 [](../implementation/euf.md), [](../implementation/lra.md), [](../implementation/quantifiers.md), and
 [](../reference/policies.md). The help snapshot includes every registered CLI
 option; the prose above is intentionally a practical subset.
+
+The two automatic-budget options, `--euf-prop-budget` and `--euf-prop-delivery`,
+accept exactly `auto`, `unlimited`, or unsigned decimal digits fitting in
+`std::size_t`. Zero and leading zeros are accepted; signs, whitespace, trailing
+characters and overflow are CLI errors detected before solving by
+{repairsource}`parse_auto_budget <src/main.cpp>`. The options'
+different zero meanings are described in [effective policies](policies.md).
 
 ## Preprocessing diagnostic
 

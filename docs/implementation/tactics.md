@@ -135,10 +135,14 @@ This describes the supplied labels and rendered parameters, not the executable
 behavior or captured values of a callable. Callers must include relevant
 configuration in their probe names and repeat-policy identifiers.
 
-The built-in
-`at_most` currently prints its limit at the stream's default precision, so
-distinct numeric thresholds can even share a generated name; this limitation
-is recorded in the [probe lead](../leads/index.md#reusable-tactic-probes).
+The built-in {repairsource}`at_most <src/smt/strategy.cpp>` renders finite thresholds with the classic locale and
+`max_digits10` precision, so distinct finite `double` values have distinct
+names, except signed zeros, both rendered as `0`. Non-finite names are `inf`,
+`-inf`, and `nan`; the callable still uses ordinary `<=` comparison (including
+false comparisons with NaN). Fingerprint formatting also uses the classic
+locale. This repairs configuration identity; affected strategy descriptions
+and fingerprints change. Historical experiment records retain their original
+identities and require their recorded solver revision for interpretation.
 Neither equal descriptions nor equal fingerprints establish behavioral
 equivalence. Reproducing an experiment also requires the solver revision,
 options, inputs, and resource limits.
@@ -164,7 +168,7 @@ Only two built-in probe builders are currently exported:
 | Builder | Meaning |
 | --- | --- |
 | {source}`assertion_count() <src/smt/strategy.cpp#L100-L104>` | Number of entries in the current goal's assertion vector, returned as `double`. It does not count conjuncts or deduplicate roots. |
-| {source}`at_most(probe, limit) <src/smt/strategy.cpp#L106-L113>` | Boolean test that the numeric probe's result is at most the supplied limit. |
+| {repairsource}`at_most(probe, limit) <src/smt/strategy.cpp>` | Boolean test that the numeric probe's result is at most the supplied limit. |
 
 For example, `Strategy::conditional(at_most(assertion_count(), 1), A, B)`
 runs `A` on a goal with at most one assertion root and `B` otherwise.
