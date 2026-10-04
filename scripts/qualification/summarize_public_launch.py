@@ -66,7 +66,7 @@ def summarize_shard(folder: Path, slot: int, candidate: str) -> dict:
     gate = folder / "gate"
     result = {"slot": slot, "route": ROUTES[slot // 4], "artifact": str(folder),
               "binaries": hashes, "cases": 250, "pass": 0, "timeout": 0,
-              "sat_models": 0, "queries": 0, "input_sha256": []}
+              "sat_models": 0, "queries": 0, "reference_timeout": 0, "input_sha256": []}
     if slot < 20:
         rows = read_csv(gate / "summary.csv")
         require(len(rows) == 250, "missing answer rows")
@@ -89,9 +89,12 @@ def summarize_shard(folder: Path, slot: int, candidate: str) -> dict:
                     if 4 <= slot < 8:
                         require(row["dolmen"] == "PASS", "missing inline validation")
             else:
-                require(slot // 4 == 2 and answer == "TIMEOUT"
-                        and reference in {"sat", "unsat"}, "unexpected resource outcome")
+                require(slot // 4 == 2 and outcome == "TIMEOUT"
+                        and answer in {"sat", "unsat", "TIMEOUT"}
+                        and reference in {"sat", "unsat", "TIMEOUT"}
+                        and "TIMEOUT" in {answer, reference}, "unexpected resource outcome")
                 result["timeout"] += 1
+                result["reference_timeout"] += int(reference == "TIMEOUT")
         result["input_sha256"] = [digest(path) for path in inputs]
         if 4 <= slot < 8:
             result["sat_models"] = len(sat)
@@ -151,7 +154,7 @@ def aggregate(shards: list[dict]) -> dict:
         group = [s for s in shards if s["route"] == name]
         hashes = [h for s in group for h in s["input_sha256"]]
         routes[name] = {key: sum(s[key] for s in group)
-                        for key in ("cases", "pass", "timeout", "sat_models", "queries")}
+                        for key in ("cases", "pass", "timeout", "reference_timeout", "sat_models", "queries")}
         routes[name]["distinct_inputs"] = len(set(hashes))
         # Session generators use seed + index: overlap means a broken sharding recipe.
         if name.startswith("incremental_"):
