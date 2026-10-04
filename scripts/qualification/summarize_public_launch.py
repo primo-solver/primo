@@ -154,7 +154,8 @@ def aggregate(shards: list[dict]) -> dict:
         group = [s for s in shards if s["route"] == name]
         hashes = [h for s in group for h in s["input_sha256"]]
         routes[name] = {key: sum(s[key] for s in group)
-                        for key in ("cases", "pass", "timeout", "reference_timeout", "sat_models", "queries")}
+                        for key in ("cases", "pass", "timeout", "sat_models", "queries")}
+        routes[name]["reference_timeout"] = sum(s.get("reference_timeout", 0) for s in group)
         routes[name]["distinct_inputs"] = len(set(hashes))
         # Session generators use seed + index: overlap means a broken sharding recipe.
         if name.startswith("incremental_"):
