@@ -100,6 +100,7 @@ class SshDiagnosticsTest(unittest.TestCase):
         MODULE.shell_syntax_check(command)
         words = shlex.split(command)
         self.assertIn("--cpus-per-task=2", words)
+        self.assertIn("--ntasks=1", words)
         self.assertEqual(words[-3:-1], ["bash", "-c"])
         self.assertIn("cd '/cluster/work space'", words[-1])
         self.assertIn("--target primo -j2", words[-1])
