@@ -135,6 +135,9 @@ std::optional<primo::smt::AutoBudget> parse_auto_budget(const std::string& text)
     budget.kind = primo::smt::AutoBudget::Kind::Unlimited;
     return budget;
   }
+  if (text.empty() || text.find_first_not_of("0123456789") != std::string::npos) {
+    return std::nullopt;
+  }
   try {
     std::size_t consumed = 0;
     const unsigned long long value = std::stoull(text, &consumed);

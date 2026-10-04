@@ -2,10 +2,13 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <iomanip>
 #include <ios>
+#include <limits>
+#include <locale>
 #include <memory>
 #include <span>
 #include <sstream>
@@ -53,6 +56,7 @@ std::string hash_string(std::string_view value) {
     hash *= 1099511628211ULL;
   }
   std::ostringstream output;
+  output.imbue(std::locale::classic());
   output << std::hex << std::setfill('0') << std::setw(16) << hash;
   return output.str();
 }
@@ -105,7 +109,18 @@ NumericProbe assertion_count() {
 
 BooleanProbe at_most(NumericProbe probe, double limit) {
   std::ostringstream name;
-  name << "(<= " << probe.name() << " " << limit << ")";
+  name.imbue(std::locale::classic());
+  name << "(<= " << probe.name() << " ";
+  if (std::isnan(limit)) {
+    name << "nan";
+  } else if (std::isinf(limit)) {
+    name << (limit < 0 ? "-inf" : "inf");
+  } else if (limit == 0) {
+    name << "0";
+  } else {
+    name << std::setprecision(std::numeric_limits<double>::max_digits10) << limit;
+  }
+  name << ")";
   return BooleanProbe(name.str(), [probe = std::move(probe), limit](const TacticContext& context,
                                                                     const Goal& goal) {
     return probe(context, goal) <= limit;

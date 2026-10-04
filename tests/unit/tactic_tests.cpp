@@ -1,5 +1,8 @@
 #include <chrono>
+#include <cmath>
 #include <cstdlib>
+#include <limits>
+#include <locale>
 #include <memory>
 #include <optional>
 #include <stdexcept>
@@ -1254,7 +1257,58 @@ void session_portfolio_uses_typed_reasons_and_isolated_sequential_arms() {
 
 }  // namespace
 
+// C-004: a custom facet makes locale coverage independent of installed locales.
+class ProbeTestPunctuation final : public std::numpunct<char> {
+ protected:
+  char do_decimal_point() const override { return ','; }
+  char do_thousands_sep() const override { return '_'; }
+  std::string do_grouping() const override { return "\3"; }
+};
+
+void probe_threshold_identity_is_round_trip_and_locale_independent() {
+  using primo::smt::assertion_count;
+  using primo::smt::at_most;
+  Fixture fixture;
+  const primo::smt::Goal empty;
+  check(at_most(assertion_count(), 0.0)(fixture.context, empty));
+  check(
+      at_most(assertion_count(), std::numeric_limits<double>::infinity())(fixture.context, empty));
+  check(!at_most(assertion_count(), -std::numeric_limits<double>::infinity())(fixture.context,
+                                                                              empty));
+  check(!at_most(assertion_count(), std::numeric_limits<double>::quiet_NaN())(fixture.context,
+                                                                              empty));
+  const double base = 1.0;
+  const double next = std::nextafter(base, 2.0);
+  check(at_most(assertion_count(), base).name() != at_most(assertion_count(), next).name());
+  check(at_most(assertion_count(), 0.0).name() == at_most(assertion_count(), -0.0).name());
+  check(at_most(assertion_count(), std::numeric_limits<double>::infinity()).name() ==
+        "(<= assertion-count inf)");
+  check(at_most(assertion_count(), -std::numeric_limits<double>::infinity()).name() ==
+        "(<= assertion-count -inf)");
+  check(at_most(assertion_count(), -std::numeric_limits<double>::quiet_NaN()).name() ==
+        "(<= assertion-count nan)");
+  for (const double value :
+       {std::numeric_limits<double>::denorm_min(), std::numeric_limits<double>::min(),
+        12345.678901234567, std::numeric_limits<double>::max()}) {
+    const auto make = [value]() {
+      return primo::smt::Strategy::conditional(at_most(assertion_count(), value),
+                                               primo::smt::Strategy::skip(),
+                                               primo::smt::Strategy::skip());
+    };
+    const auto normal = make();
+    const std::locale previous = std::locale();
+    std::locale::global(std::locale(std::locale::classic(), new ProbeTestPunctuation));
+    const auto localized = make();
+    check(normal.canonical() == localized.canonical());
+    check(normal.fingerprint() == localized.fingerprint());
+    std::locale::global(previous);
+    check(at_most(assertion_count(), value).name() !=
+          at_most(assertion_count(), std::nextafter(value, 0.0)).name());
+  }
+}
+
 int main() {
+  probe_threshold_identity_is_round_trip_and_locale_independent();
   incremental_context_rejects_unclassified_tactics();
   goal_truth_is_derived_from_assertions();
   reconstruction_records_are_goal_local_immutable_values();

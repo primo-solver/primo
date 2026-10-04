@@ -55,3 +55,15 @@ foreach(option_pattern IN ITEMS
       "help defaults: no generated default matched '${option_pattern}'\n${help_stdout}")
   endif()
 endforeach()
+
+# A-012: only unsigned decimal spelling or the two exact keywords is legal.
+foreach(option IN ITEMS euf-prop-budget euf-prop-delivery)
+  foreach(value IN ITEMS auto unlimited 0 0000 0007 42)
+    run_primo_case("${option} accepts ${value}" 0 "" "--${option}=${value}")
+  endforeach()
+  foreach(value IN ITEMS "" -1 +1 " 1" "1 " "1x" "1.0" "0x1" Auto
+      "184467440737095516160000000000000000000")
+    run_primo_case("${option} rejects ${value}" 1 "invalid --${option} value"
+      "--${option}=${value}")
+  endforeach()
+endforeach()
