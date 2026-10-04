@@ -10014,6 +10014,7 @@ class UfliaEufComponent final : public UfliaComponentBase {
         .care_pairs = true,
         .incremental = true,
         .interface_extension = true,
+        .check_on_full_model = online && options.euf_engine == EufEngine::Lazy,
         .equality_propagation = theory::EqualityPropagationStrength::Opportunistic};
   }
   void bind_assignment_view(sat::TrailView view) override {
@@ -10051,7 +10052,7 @@ class UfliaEufComponent final : public UfliaComponentBase {
   void reset() override {
     token_.reset();
     execution_.reset();
-    if (online_) {
+    if (online_ && options_.euf_engine == EufEngine::Incremental) {
       online_options_ = options_;
       online_options_.euf_propagation =
           resolve_euf_propagation_mode(options_, atoms_.size(), statistics_);
@@ -10082,6 +10083,12 @@ class UfliaEufComponent final : public UfliaComponentBase {
                                   std::span<const theory::InterfaceRelation> arrangement) override {
     if (effort == theory::TheoryCheckEffort::Partial) {
       if (execution_) return partial(*execution_);
+      if (online_ && options_.euf_engine == EufEngine::Lazy) {
+        // check_on_full_model schedules this before quantifier generation.
+        // Without incremental closure, rebuild EUF over the complete candidate.
+        full_->set_assignment_epoch(epoch);
+        return full_->check(assignment_.full_assignment(), arrangement);
+      }
       theory::TheoryCheckResult result;
       result.status = theory::TheoryCheckStatus::Consistent;
       return result;

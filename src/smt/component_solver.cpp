@@ -247,7 +247,10 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
     if (recipe.online) {
       dispatcher = std::make_unique<ComponentDispatcher>(
           online_components, [&](sat::Lit phase) { backend.phase(phase); },
-          [&] { record_theory_conflict(statistics); });
+          [&] {
+            record_theory_conflict(statistics);
+            return terminator.conflict_limit_reached();
+          });
       for (std::size_t index = 0; index < online_order.size(); ++index) {
         dispatcher->register_atoms(index, atoms_by_component[online_order[index]]);
         for (const auto phase : online_components[index]->phase_literals()) backend.phase(phase);

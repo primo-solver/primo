@@ -1097,3 +1097,9 @@ boundary, no double counting through component adapters, consumption shared
 within one query, and reset between queries. Regressions must cover online and
 lazy routes, integer conflicts, callback completion, fallback and retained
 sessions; qualification remains pending until recorded in the publication gate.
+
+The component dispatcher latches exhaustion when it receives the conflict that
+consumes the remaining budget. It finishes streaming that clause to SAT, then
+suppresses further component checks and propagations until the solve returns.
+The runtime supplies the final `ResourceLimit` outcome. This prevents extra
+conflict reports while the backend finishes its callback protocol.

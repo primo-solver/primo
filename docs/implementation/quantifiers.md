@@ -249,7 +249,11 @@ terms `t`, each guarded by the inner atom. This realizes
 
 The route's {source}`recipe <src/smt/quantifiers/quantified_solver.cpp#L134-L153>`
 checks EUF before the quantifier solver and provides preparation hooks for
-new lemmas. One cycle proceeds as follows:
+new lemmas. With the lazy EUF option, `UfliaEufComponent` declares
+`check_on_full_model` and rebuilds the EUF check over the complete candidate
+before instance generation. With the incremental option, its online closure
+checks assignments as they arrive. A lazy component must not use the absence
+of an incremental conflict as evidence that the ground candidate is consistent. One cycle proceeds as follows:
 
 1. SAT searches with the currently installed clauses. The quantifier solver
    declares `check_on_full_model`, so the

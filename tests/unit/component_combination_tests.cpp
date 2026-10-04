@@ -595,7 +595,10 @@ void conflict_reports_are_counted_once_and_propagations_are_excluded() {
     const auto y = f.variable("y", f.symbols.int_sort());
     f.add({{{x, y}, partitions(2)}});
     std::size_t conflicts = 0;
-    smt::ComponentDispatcher dispatcher(f.components, {}, [&] { ++conflicts; });
+    smt::ComponentDispatcher dispatcher(f.components, {}, [&] {
+      ++conflicts;
+      return true;
+    });
     dispatcher.register_atoms(0, std::span(&f.atoms[0], 1));
     smt::AssignmentCoordinator owner(dispatcher);
     owner.notify_assignment({1});
@@ -609,6 +612,12 @@ void conflict_reports_are_counted_once_and_propagations_are_excluded() {
     assert(dispatcher.cb_add_external_clause_lit() == (conflicting ? -1 : 2));
     assert(dispatcher.cb_add_external_clause_lit() == 0);
     assert(conflicts == (conflicting ? 1 : 0));
+    if (conflicting) {
+      assert(dispatcher.failure()->status == theory::TheoryCheckStatus::ResourceLimit);
+      assert(!dispatcher.cb_has_external_clause());
+      assert(dispatcher.cb_propagate() == 0);
+      assert(conflicts == 1);
+    }
   }
 }
 

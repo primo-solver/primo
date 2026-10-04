@@ -27,7 +27,7 @@ sat::Clause implication_clause(const theory::TheoryCheckResult& result) {
 
 ComponentDispatcher::ComponentDispatcher(std::span<theory::TheoryComponent* const> components,
                                          std::function<void(sat::Lit)> publish_phase,
-                                         std::function<void()> report_conflict)
+                                         std::function<bool()> report_conflict)
     : components_(components.begin(), components.end()),
       deltas_(components.size()),
       dirty_(components.size(), false),
@@ -135,7 +135,14 @@ void ComponentDispatcher::accept_result(std::size_t component, theory::TheoryChe
                     return assignment_view().literal(static_cast<int>(variable(literal.value))) ==
                            -literal.value;
                   })) {
-    report_conflict_();
+    if (report_conflict_()) {
+      // Finish streaming this conflict, but request no further component work.
+      // The solve runtime owns budget accounting and the final typed outcome.
+      theory::TheoryCheckResult exhausted;
+      exhausted.status = theory::TheoryCheckStatus::ResourceLimit;
+      exhausted.diagnostic = "theory conflict limit reached";
+      failure_ = std::move(exhausted);
+    }
   }
 }
 
