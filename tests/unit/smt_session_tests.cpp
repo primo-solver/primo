@@ -12,9 +12,11 @@
 
 #include "cli/response_printer.hpp"
 #include "smt/check_sat.hpp"
+#include "smt/inconclusive_reason.hpp"
 #include "smt/smt_session.hpp"
 #include "smt/solver_runtime.hpp"
 #include "smtlib/parser.hpp"
+#include "util/statistics.hpp"
 
 using primo::smt::CheckSatResult;
 using primo::smt::ResponseKind;

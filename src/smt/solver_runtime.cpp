@@ -5,6 +5,8 @@
 #include <optional>
 #include <utility>
 
+#include "smt/check_sat.hpp"
+#include "smt/inconclusive_reason.hpp"
 #include "util/statistics.hpp"
 
 namespace primo::smt {

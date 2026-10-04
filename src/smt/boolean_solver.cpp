@@ -8,7 +8,6 @@
 #include "sat/cadical_backend.hpp"
 #include "smt/check_sat.hpp"
 #include "smt/clausifier.hpp"
-#include "smt/inconclusive_reason.hpp"
 #include "smt/model_reconstruction.hpp"
 #include "smt/solver_runtime.hpp"
 #include "smt/solver_support.hpp"
