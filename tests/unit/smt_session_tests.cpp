@@ -663,9 +663,9 @@ void uniform_conflict_limits_cover_ground_and_quantified_routes() {
          (assert (= (tb q) a)) (assert (= (tb true) (tb false)))
          (assert (distinct a (tb false))))",
       R"((set-logic QF_LRA) (declare-const x Real)
-         (assert (or (< x 0) (> x 1))) (assert (<= x 1)) (assert (>= x 0)))",
+         (assert (or (<= x 0) (>= x 3))) (assert (<= x 2)) (assert (>= x 1)))",
       R"((set-logic QF_LIA) (declare-const x Int)
-         (assert (or (< x 0) (> x 1))) (assert (<= x 1)) (assert (>= x 0)))",
+         (assert (or (<= x 0) (>= x 3))) (assert (<= x 2)) (assert (>= x 1)))",
       R"((set-logic QF_LRA) (declare-const x Real)
          (assert (<= x 0)) (assert (>= x 1)))",
       R"((set-logic QF_LIA) (declare-const x Int) (declare-const y Int)
