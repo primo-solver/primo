@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import csv
 import importlib.util
 import json
@@ -19,6 +20,53 @@ SPEC.loader.exec_module(MODULE)
 
 
 class TacticCompositionMatrixTests(unittest.TestCase):
+    def test_model_selection_and_exact_coverage(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            profile = MODULE.Profile("p", (), frozenset(), (), {}, {})
+            args = argparse.Namespace(out=root, dolmen="dolmen", timeout=1,
+                                      dolmen_timeout=1, allow_inconclusive=True)
+            def measurement(file, answer="sat", outcome="pass", repeat="0"):
+                return {"profile": "p", "file": str(root / file), "answer": answer,
+                        "outcome": outcome, "repeat": repeat}
+            rows = [measurement("sat.smt2"), measurement("sat.smt2", repeat="1"),
+                    measurement("unsat.smt2", "unsat"), measurement("bad.smt2", outcome="crash")]
+            output = root / "p/model-validation"
+            for outcomes, rc, fail, incomplete in [
+                ([("sat.smt2", "pass")], 0, False, 0),
+                ([("sat.smt2", "not-sat")], 1, True, 0),
+                ([("sat.smt2", "answer-changed")], 1, True, 0),
+                ([("sat.smt2", "solver-timeout")], 1, False, 1),
+                ([("sat.smt2", "solver-unknown")], 1, False, 1),
+                ([], 0, True, 0),
+                ([("other.smt2", "pass")], 0, True, 0),
+                ([("sat.smt2", "pass"), ("sat.smt2", "pass")], 0, True, 0),
+                ([("sat.smt2", "pass")], 2, True, 0),
+            ]:
+                def validate(command, **kwargs):
+                    self.assertIn("--expect-sat", command)
+                    self.assertEqual((output / "cases.txt").read_text().splitlines(),
+                                     [str(root / "sat.smt2")])
+                    with (output / "summary.csv").open("w") as handle:
+                        writer = csv.writer(handle)
+                        writer.writerow(["file", "outcome"])
+                        writer.writerows((str(root / path), outcome) for path, outcome in outcomes)
+                    return subprocess.CompletedProcess(command, rc)
+                with self.subTest(outcomes=outcomes, rc=rc), mock.patch.object(
+                    MODULE.subprocess, "run", side_effect=validate
+                ):
+                    failures, pending = MODULE.run_model_validation(profile, rows, args, "primo")
+                    self.assertEqual(bool(failures), fail)
+                    self.assertEqual(pending, incomplete)
+                    coverage = json.loads((output / "coverage.json").read_text())
+                    self.assertEqual(coverage["eligible_models"], 1)
+                    self.assertEqual(coverage["measured_sat_rows"], 2)
+                    self.assertEqual(len(coverage["rows"]), 2)
+            with mock.patch.object(MODULE.subprocess, "run") as run:
+                self.assertEqual(MODULE.run_model_validation(profile, rows[2:], args, "primo"), (0, 0))
+                run.assert_not_called()
+                self.assertEqual(json.loads((output / "coverage.json").read_text())["eligible_models"], 0)
+
     def test_qf_uflia_is_a_supported_matrix_logic(self) -> None:
         self.assertIn("QF_UFLIA", MODULE.LOGICS)
 
