@@ -93,17 +93,54 @@ def mutation_summary(folder: Path, candidate: str, binaries: dict) -> dict:
     return report
 
 
+def verified_resource_triage(path: Path | None, candidate: str) -> dict:
+    """Accept only hash-bound, clean replays with an explicit resource diagnostic."""
+    if path is None:
+        return {}
+    records = read_json(path)
+    require(records["candidate"] == candidate, 'wrong triage revision')
+    result = {}
+    for entry in records["cases"]:
+        folder = Path(entry['replay_artifact'])
+        input_hash = entry['input_sha256']
+        require(input_hash not in result and digest(folder / 'input.smt2') == input_hash,
+                'duplicate or changed triage input')
+        require(entry['reason'] == 'integer branch-and-bound node limit',
+                'unsupported resource triage reason')
+        require(f'git: {candidate[:7]}' in
+                (folder / 'current.version').read_text().splitlines(), 'wrong replay revision')
+        for name in ('current', 'prior', 'reference'):
+            require((folder / f'{name}.exit').read_text().strip() == '0',
+                    'failed triage replay')
+            expected = entry['reference_answer'] if name == 'reference' else 'unknown'
+            require(expected in {'sat', 'unsat', 'unknown'} and
+                    (folder / f'{name}.stdout').read_text().strip() == expected,
+                    'triage replay answer changed')
+            if name != 'reference':
+                require(entry['reason'] in (folder / f'{name}.stderr').read_text().splitlines(),
+                        'missing resource diagnostic')
+        require(entry['reference_answer'] in {'sat', 'unsat'}, 'incomplete triage reference')
+        result[input_hash] = entry
+    return result
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--gate-job', required=True)
     parser.add_argument('--mutation-job', required=True)
     parser.add_argument('--candidate', required=True)
     parser.add_argument('--out', type=Path, required=True)
+    parser.add_argument('--resource-triage', type=Path)
     args = parser.parse_args()
+    triage = verified_resource_triage(args.resource_triage, args.candidate)
     gate = Path('results/public-launch') / args.gate_job
-    shards = [summarize_shard(gate / f'shard-{slot}', slot, args.candidate)
+    shards = [summarize_shard(gate / f'shard-{slot}', slot, args.candidate, triage)
               for slot in range(32)]
+    used = [value for shard in shards for value in shard['resource_triage']]
+    require(len(used) == len(set(used)) and set(used) == set(triage),
+            'missing, duplicate or unexpected resource triage')
     report = aggregate(shards)
+    report['resource_triage'] = list(triage.values())
     for shard in shards:
         hashes = shard.pop('input_sha256')
         shard['distinct_inputs'] = len(set(hashes))

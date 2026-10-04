@@ -56,7 +56,8 @@ def models(path: Path, expected: set[Path]) -> int:
     return len(rows)
 
 
-def summarize_shard(folder: Path, slot: int, candidate: str) -> dict:
+def summarize_shard(folder: Path, slot: int, candidate: str,
+                    resource_triage: dict | None = None) -> dict:
     require((folder / "exit-code").read_text().strip() == "0", "failed shard")
     version = (folder / "version.txt").read_text()
     require(f"git: {candidate[:7]}" in version.splitlines(), "wrong revision")
@@ -66,7 +67,8 @@ def summarize_shard(folder: Path, slot: int, candidate: str) -> dict:
     gate = folder / "gate"
     result = {"slot": slot, "route": ROUTES[slot // 4], "artifact": str(folder),
               "binaries": hashes, "cases": 250, "pass": 0, "timeout": 0,
-              "sat_models": 0, "queries": 0, "reference_timeout": 0, "input_sha256": []}
+              "sat_models": 0, "queries": 0, "reference_timeout": 0, "input_sha256": [],
+              "resource_incomplete": 0, "resource_triage": []}
     if slot < 20:
         rows = read_csv(gate / "summary.csv")
         require(len(rows) == 250, "missing answer rows")
@@ -76,9 +78,16 @@ def summarize_shard(folder: Path, slot: int, candidate: str) -> dict:
         for row, path in zip(rows, inputs):
             answer = row.get("ours", row.get("answer"))
             outcome = row["outcome"]
-            require(outcome in {"PASS", "TIMEOUT"}, f"blocking outcome: {outcome}")
             reference = row.get("reference", row.get("refs", row.get("references")))
-            if outcome == "PASS":
+            if outcome == "UNKNOWN_INVOLVED":
+                input_hash = digest(path)
+                triage = (resource_triage or {}).get(input_hash)
+                require(triage is not None and triage["route"] == result["route"]
+                        and answer == "unknown" and reference == triage["reference_answer"]
+                        and row.get("ours_code") == "0", "untriaged unknown result")
+                result["resource_incomplete"] += 1
+                result["resource_triage"].append(input_hash)
+            elif outcome == "PASS":
                 require(answer in {"sat", "unsat"} and reference == answer,
                         "reference mismatch or nondefinite pass")
                 require(row.get("ours_code", "0") == "0"
@@ -155,6 +164,7 @@ def aggregate(shards: list[dict]) -> dict:
         hashes = [h for s in group for h in s["input_sha256"]]
         routes[name] = {key: sum(s[key] for s in group)
                         for key in ("cases", "pass", "timeout", "sat_models", "queries")}
+        routes[name]["resource_incomplete"] = sum(s.get("resource_incomplete", 0) for s in group)
         routes[name]["reference_timeout"] = sum(s.get("reference_timeout", 0) for s in group)
         routes[name]["distinct_inputs"] = len(set(hashes))
         # Session generators use seed + index: overlap means a broken sharding recipe.
