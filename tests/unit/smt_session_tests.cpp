@@ -655,7 +655,7 @@ void uniform_conflict_limits_cover_ground_and_quantified_routes() {
   using primo::smt::InconclusiveReason;
   const std::array inputs{
       R"((set-logic QF_UF) (declare-sort U 0) (declare-const a U) (declare-const b U)
-         (declare-fun f (U) U) (assert (= a b)) (assert (distinct (f a) (f b)))",
+         (declare-fun f (U) U) (assert (= a b)) (assert (distinct (f a) (f b))))",
       R"((set-logic QF_LRA) (declare-const x Real)
          (assert (<= x 0)) (assert (>= x 1)))",
       R"((set-logic QF_LIA) (declare-const x Int) (declare-const y Int)
