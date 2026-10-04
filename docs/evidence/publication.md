@@ -1,6 +1,10 @@
 # Publication qualification
 
-The publication candidate is `6053dc28a88bc2a7eaa968295987516903898766`.
+The [later six-finding qualification](publication-followups.md) records the
+repaired solver and fresh October 4–5 gate. The results below remain the original
+October 2 snapshot.
+
+The original publication candidate was `6053dc28a88bc2a7eaa968295987516903898766`.
 Its C++ solver sources are identical to `c944fa7`; this work changes the manual,
 packaging, policies and verification tooling. All solver builds, tests, fuzzing
 and model validation below ran in SLURM compute allocations on 2 October 2026.

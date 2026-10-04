@@ -3,6 +3,440 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-10-05-publication-six-findings-qualified",
+      "date": "2026-10-05",
+      "kind": "publication-repair-qualification",
+      "commit": "5c96568bd817eefb3f77e47e6ca55fd8ea99aad1",
+      "branch": "docs/public-repository-migration",
+      "scope": [
+        "A-012",
+        "A-013",
+        "B-012",
+        "B-013",
+        "B-014",
+        "C-004"
+      ],
+      "evidence_status": "accepted-correctness-sample",
+      "decision": "Close all six technical findings with regressions and fresh SLURM evidence. Publication rights, owner acceptance, GitHub settings and visibility remain separate. No performance claim.",
+      "reporting_revision": "83d35da",
+      "reporting_changes": "Metadata-only fixes f5f4429 and83d35da preserve old aggregate fields and require exact hash-bound resource triage. Solver sources, binaries and gate recipes remain5c96568.",
+      "execution": {
+        "environment": "SLURM compute allocations",
+        "workspace": "primo-public-followups-final",
+        "local_work": "Editing, Git, mocked-process Python checks, lint, docs and artifact inspection; no local solver batch. Strict SSH host-key verification used existing trusted keys; connection details stay outside tracked files.",
+        "compiler": "GCC11.4.1",
+        "sat_backend": "CaDiCaL3.0.0-7b99c07",
+        "reference": "Z3 5.1.0",
+        "model_validator": "Dolmen0.10",
+        "binary_sha256": {
+          "build-slurm-rel/primo": "608e6b0f0f06f1de2c65da801632ec59ff0e490486b1b5c218c348b26119411c",
+          "contrib/local/bin/z3": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+          "contrib/local/bin/dolmen": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+        }
+      },
+      "commands": {
+        "prepare": "python3 scripts/slurm_prepare_benchmark_workspace.py --local-dir <clean-5c96568-worktree> --remote-dir <workspace> --cmake <cmake> --build-via-slurm --reuse-dependencies --cxx-header-manifest <matching-header-manifest> --extra-target all",
+        "preflight": "python3 scripts/slurm_prepare_benchmark_workspace.py --local-dir <clean-5c96568-worktree> --remote-dir <workspace> --cmake <cmake> --check-only",
+        "checks": "PRIMO_WORKDIR=<workspace> PRIMO_EXPECTED_REVISION=5c96568 PRIMO_CMAKE_BIN=<cmake-bin> PRIMO_CXX_HEADER_MANIFEST=<matching-header-manifest> PRIMO_ASAN_RUNTIME_DIR=<verified-runtime-dir> sbatch --ntasks=1 scripts/qualification/public_checks.sbatch",
+        "focused": "srun --ntasks=1 --job-name=primo-followup-focused --cpus-per-task=1 --mem=4G --time=00:05:00 <ctest> --test-dir build-slurm-rel --output-on-failure --timeout 120 -R primo_(smt_session|component_combination)_tests",
+        "static": "PRIMO_WORKDIR=<workspace> sbatch --ntasks=1 scripts/qualification/public_static.sbatch",
+        "static_examples": "PRIMO_WORKDIR=<workspace> PRIMO_CXX_HEADER_MANIFEST=<matching-header-manifest> sbatch --ntasks=1 scripts/qualification/publication_followups/static_examples.sbatch",
+        "generated": "PRIMO_WORKDIR=<workspace> PRIMO_EXPECTED_REVISION=5c96568 PRIMO_SEED_BASE=202810040 PRIMO_BUDGET_REPLAY=1 sbatch --ntasks=1 --array=0-31%8 scripts/qualification/public_launch.sbatch",
+        "mutations": "PRIMO_WORKDIR=<workspace> PRIMO_EXPECTED_REVISION=5c96568 PRIMO_SEED_BASE=202810040 PRIMO_YINYANG_BIN=<yinyang-bin> sbatch --ntasks=1 scripts/qualification/public_mutations.sbatch",
+        "report": "srun --ntasks=1 --job-name=primo-followup-summary --cpus-per-task=1 --mem=4G --time=00:10:00 python3 scripts/qualification/publication_followups/summarize.py --gate-job 165257 --mutation-job 165258 --candidate 5c96568bd817eefb3f77e47e6ca55fd8ea99aad1 --resource-triage results/publication-followups-resource-triage.json --out results/publication-followups-qualification.json",
+        "final_python": "srun --ntasks=1 --job-name=primo-followup-python --cpus-per-task=1 --mem=2G --time=00:05:00 python3 -m unittest discover -s tests/python",
+        "node_limit_replay": "In SLURM job165296: timeout 30 build-slurm-rel/primo --stats <original-input>; timeout 30 results/primo-71cd492 --stats <original-input>; timeout 30 contrib/local/bin/z3 <original-input>. Capture each exit/stdout/stderr separately and hash input/binaries.",
+        "local": "make lint; make docs; make docs-check-links; git diff --check"
+      },
+      "jobs": {
+        "build": "165252",
+        "focused": "165253",
+        "checks": "165291",
+        "static": "165255",
+        "static_examples": "165256",
+        "generated": "165257",
+        "mutations": "165258",
+        "resource_replay": "165296",
+        "report": "165309",
+        "final_python": "165310"
+      },
+      "checks": {
+        "release": "43/43 passed",
+        "asan": "43/43 passed",
+        "python": "228 passed in165291; 229 after final report regression in165310",
+        "documentation_examples": "12/12 passed",
+        "focused": "2/2 passed",
+        "static": {
+          "translation_units": 130,
+          "ordinary_diagnostics": 18,
+          "include_cleaner_advisories": 411,
+          "disposition": "Pre-repair a953edd baseline from job158839, results/symmetry-payloads/static.tar.gz:18 normal and404 source/test include diagnostics; final normalized diagnostics match it, plus7 unchanged example advisories. Compared with intermediate71cd492,7 source/test advisories removed and0 added (418 to411 total). Existing callback ownership and guarded enum-conversion diagnostics inspected; paired headers and transitive-provider advisories retained. No warning-free claim."
+        },
+        "code_review": "Whole-tree tracked non-generated review with focused implementation audit: no blocking issue remains. Hot-path typed guards are constant-time; no new full callback scan. Lazy quantified full-candidate check repairs omitted reasoning; no speed claim.",
+        "local_documentation": {
+          "lint": "make lint passed",
+          "build": "make docs passed",
+          "links": "make docs-check-links passed:258 pages,31716 local links,997 unique Git links,0 failures;376 external URLs deferred, not claimed checked",
+          "rendering": "Writer checked4 desktop pages at1440x1100: no overflow, MathJax errors or Sphinx error nodes; inspected evidence table and closure screenshots. Not a mobile/accessibility audit."
+        }
+      },
+      "generated": {
+        "generator": "Per-route scripts in public_launch.sbatch; FuzzSMT for QF_LIA",
+        "seed_base": 202810040,
+        "seed_rule": "base+slot for ground; base+10000*slot for quantified/sessions; sessions then seed+index",
+        "count": 8000,
+        "pass": 7976,
+        "timeout": 23,
+        "timeout_detail": "18 Primo timeouts with Z3 SAT;5 both-solver timeouts",
+        "resource_incomplete": 1,
+        "wrong_answer": 0,
+        "crash": 0,
+        "parser_type_error": 0,
+        "unsupported": 0,
+        "untriaged_reference_disagreement": 0,
+        "invalid_model": 0,
+        "timeout_seconds": 5,
+        "ground_model_timeout_seconds": 10,
+        "session_model_timeout_seconds": 20,
+        "ground_sat_models": 17849,
+        "session_queries": 20000,
+        "routes": {
+          "QF_UF": {
+            "cases": 1000,
+            "pass": 1000,
+            "timeout": 0,
+            "sat_models": 651,
+            "queries": 0,
+            "resource_incomplete": 0,
+            "reference_timeout": 0,
+            "distinct_inputs": 999
+          },
+          "QF_LRA": {
+            "cases": 1000,
+            "pass": 1000,
+            "timeout": 0,
+            "sat_models": 1000,
+            "queries": 0,
+            "resource_incomplete": 0,
+            "reference_timeout": 0,
+            "distinct_inputs": 273
+          },
+          "QF_LIA": {
+            "cases": 1000,
+            "pass": 977,
+            "timeout": 23,
+            "sat_models": 862,
+            "queries": 0,
+            "resource_incomplete": 0,
+            "reference_timeout": 5,
+            "distinct_inputs": 1000
+          },
+          "QF_UFLRA": {
+            "cases": 1000,
+            "pass": 1000,
+            "timeout": 0,
+            "sat_models": 578,
+            "queries": 0,
+            "resource_incomplete": 0,
+            "reference_timeout": 0,
+            "distinct_inputs": 1000
+          },
+          "QF_UFLIA": {
+            "cases": 1000,
+            "pass": 999,
+            "timeout": 0,
+            "sat_models": 498,
+            "queries": 0,
+            "resource_incomplete": 1,
+            "reference_timeout": 0,
+            "distinct_inputs": 672
+          },
+          "UF": {
+            "cases": 1000,
+            "pass": 1000,
+            "timeout": 0,
+            "sat_models": 0,
+            "queries": 0,
+            "resource_incomplete": 0,
+            "reference_timeout": 0,
+            "distinct_inputs": 554
+          },
+          "incremental_QF_UF": {
+            "cases": 1000,
+            "pass": 1000,
+            "timeout": 0,
+            "sat_models": 6260,
+            "queries": 9000,
+            "resource_incomplete": 0,
+            "reference_timeout": 0,
+            "distinct_inputs": 793
+          },
+          "incremental_QF_LRA": {
+            "cases": 1000,
+            "pass": 1000,
+            "timeout": 0,
+            "sat_models": 8000,
+            "queries": 11000,
+            "resource_incomplete": 0,
+            "reference_timeout": 0,
+            "distinct_inputs": 1000
+          }
+        }
+      },
+      "budget_replay": {
+        "count": 800,
+        "selection": "25 per shard",
+        "conflict_limit": 1,
+        "timeout_seconds": 10,
+        "pass_samples": 338,
+        "resource_exhausted_samples": 461,
+        "timeout_samples": 1,
+        "returned_queries": 2599,
+        "definitive_queries": 1995,
+        "exhausted_queries": 604,
+        "conflict_counts": {
+          "0": 1995,
+          "1": 604
+        },
+        "timeout_detail": "Both Z3 and Primo timed out with no answer: shard-9/budget-replay/00017, input SHA25682eff1b458c13c1392575f2b4926947572b23065e17271efa6c5fcd21fc4f712. Incomplete, not a pass.",
+        "overshoot_completed_replays": 0,
+        "incomplete_replay_scope": "Timeout/reference-incomplete partial answers are not accepted as checked. The only final timeout sample returned no answers from either solver.",
+        "wrong_answer": 0
+      },
+      "mutations": {
+        "generator": "YinYang OpFuzz with scripts/seeded_opfuzz.py and model_linear_ops.txt",
+        "seed_base": 202810040,
+        "seed_rule": "base+slot",
+        "seed_counts": [
+          14,
+          2
+        ],
+        "iterations_per_seed": [
+          8,
+          50
+        ],
+        "count": 212,
+        "pass": 212,
+        "wrong_answer": 0,
+        "crash": 0,
+        "timeout": 0,
+        "unsupported": 0,
+        "reference_disagreement": 0,
+        "mutant_sat_models": 171,
+        "seed_sat_models": 6,
+        "timeout_seconds": {
+          "seed": 30,
+          "generation_solver": 5,
+          "mutant_replay": 10,
+          "model_replay": 30
+        },
+        "shards": [
+          {
+            "seed": {
+              "count": 14,
+              "pass": 14,
+              "sat_models": 5,
+              "distinct_inputs": 14,
+              "input_manifest_sha256": "4a628d55a24c2cb506920fc62bf7ae98c7ee76b69498e6e94e78d2ba0e672058"
+            },
+            "mutant": {
+              "count": 112,
+              "pass": 112,
+              "sat_models": 71,
+              "distinct_inputs": 105,
+              "input_manifest_sha256": "39efca58180d30c58cc6e72a5af0baedac180e1a6ef23603a3b1f3ec19480bd3"
+            }
+          },
+          {
+            "seed": {
+              "count": 2,
+              "pass": 2,
+              "sat_models": 1,
+              "distinct_inputs": 2,
+              "input_manifest_sha256": "49c268f97a4af3df7d93322ada38a1339cbfb41bff798ae387a778ea4a7e566b"
+            },
+            "mutant": {
+              "count": 100,
+              "pass": 100,
+              "sat_models": 100,
+              "distinct_inputs": 100,
+              "input_manifest_sha256": "abac4cbc82984117e09caa4cacbf7c6565184aa26bc4eacc4d009d4544703368"
+            }
+          }
+        ]
+      },
+      "resource_triage": [
+        {
+          "input_sha256": "2e684de5ec74dcd125cd0a643d8f57fd0d0429da02bf6a0af4334ce9b6dcec38",
+          "route": "QF_UFLIA",
+          "reference_answer": "sat",
+          "reason": "integer branch-and-bound node limit",
+          "classification": "resource-incomplete",
+          "replay_job": "165296",
+          "replay_artifact": "results/followup-unknown-165296",
+          "prior_revision": "71cd492ebb24b8c845c9c693dbaf8b888cf7bf59",
+          "input": "results/public-launch/165257/shard-16/gate/cases/case-00086.smt2"
+        }
+      ],
+      "superseded_attempts": [
+        {
+          "job": "165254",
+          "result": "Release43/43 passed; three Python summary mocks lacked newly added reference_timeout field. Fixed optional aggregation in f5f4429; job165291 passed. ASan was not reached in165254."
+        },
+        {
+          "job": "165292",
+          "result": "Report rejected previously untriaged UNKNOWN_INVOLVED. No acceptance claimed."
+        },
+        {
+          "job": "165293",
+          "result": "Diagnostic confirmed integer node-limit message on both binaries, but appended unsupported get-info command caused exit2. Discard as clean-replay evidence; corrected original-input replay165296 has exit0 for all three solvers."
+        }
+      ],
+      "artifacts": {
+        "summary": "docs/coverage/publication-followups-qualification.json",
+        "triage": "docs/coverage/publication-followups-resource-triage.json",
+        "generated": "primo-public-followups-final/results/public-launch/165257",
+        "mutations": "primo-public-followups-final/results/public-mutations/165258",
+        "resource_replay": "primo-public-followups-final/results/followup-unknown-165296",
+        "checks": "results/publication-followups/checks-final",
+        "local_replay": "results/publication-followups/followup-unknown-165296",
+        "development": "results/publication-followups/development"
+      },
+      "limitations": [
+        "Bounded correctness sample, not a proof of completeness or a runtime comparison.",
+        "Quantified models not independently checked. Resource limits and timeouts are incomplete, not solved.",
+        "Local/source documentation links are distinct from external URL availability and unpublished GitHub state."
+      ],
+      "documentation_review": {
+        "status": "accepted by separate read-only reviewer",
+        "files": [
+          "docs/evidence/publication-followups.md",
+          "docs/coverage/page-review.md",
+          "docs/work/publication.md",
+          "docs/evidence/publication.md",
+          "docs/reference/statistics.md",
+          "docs/coverage/publication-followups-qualification.json",
+          "docs/coverage/publication-followups-resource-triage.json",
+          "docs/run-log.json"
+        ],
+        "reviewer": "review_experiments_docs",
+        "baseline": "83d35da",
+        "qualified_solver": "5c96568",
+        "findings": {
+          "PUB-FUP-01": "Restrict overshoot acceptance to completed replays and disclose unchecked incomplete partial results. Resolved and rechecked.",
+          "PUB-FUP-02": "Restore revision-pinned implementation and regression links for all6 findings. Resolved and rechecked; repairsource pins5c96568.",
+          "PUB-FUP-03": "Identify a953edd/job158839 baseline and distinguish intermediate71 seven-advisory cleanup. Resolved; reviewer independently compared archive."
+        },
+        "accepted_blobs": {
+          "docs/evidence/publication-followups.md": "3eb3ef7ecfbaf7ec003edbf97fad8b5fc595eff1",
+          "docs/coverage/page-review.md": "d26f46ac99ecb77fe2ad96ae0f84d5bae800a221",
+          "docs/work/publication.md": "9d95dde1f5b9998e5b02e2ed0042b6255c616768",
+          "docs/evidence/publication.md": "9502ce6f7775e388128cd2576067ad8ef88e47c6",
+          "docs/reference/statistics.md": "b524927e673dfffa7d1984a0dbffd51244489008",
+          "docs/_toc.yml": "fed1f72f93c3636e1483e47af0fd4f79f3e04743",
+          "docs/coverage/publication-followups-qualification.json": "2a8dfe26e8cc81033934303cb542058d36d885e1",
+          "docs/coverage/publication-followups-resource-triage.json": "074a4377a6dc0bc86cf7ccd65320631b027bf996",
+          "docs/_config.yml": "4f27d3db28edccdc3eb8d8e917fa45ba69d0614f"
+        },
+        "ledger_reviewed_blob_before_this_acceptance_record": "2f639d80aaf13da9758255ab57131762894a332a",
+        "unchecked": "Acceptance covers assigned evidence/closure changes and first2 ledger entries only. Reviewer did not reread every remote raw shard or independently check rendering/external URL availability."
+      }
+    },
+    {
+      "id": "2026-10-04-publication-followup-development",
+      "date": "2026-10-04",
+      "kind": "publication-repair-development",
+      "commit": "5c96568bd817eefb3f77e47e6ca55fd8ea99aad1",
+      "branch": "docs/public-repository-migration",
+      "scope": [
+        "A-012",
+        "A-013",
+        "B-012",
+        "B-013",
+        "B-014",
+        "C-004"
+      ],
+      "evidence_status": "superseded-by-final-qualification",
+      "decision": "Retain repairs and regressions; development attempts below are not the final publication gate.",
+      "execution": "Solver builds and tests ran in SLURM. Local work was editing, mocked-process Python regressions, lint, documentation and artifact inspection. SSH used existing trusted keys with strict host-key checking; connection details remain outside Git.",
+      "implementation": {
+        "B-014": "a19493701d7ab31931d7466fd88a44803f41abf3",
+        "B-012_B-013": "11cd06fdd742effc73379c17f1cef0d283b29bcb",
+        "A-012_C-004": "241a873af13b17d6a30862498747851f4330026a",
+        "A-013_initial": "a03fe0d41a512339143cd06eaafd0e42dc03ad87",
+        "B-012_quoted_binding_identity": "d16acb42d87a55eaa5f76faf14a904900a9a7e8b",
+        "B-013_empty_selection_dependency": "519b7b5",
+        "callback_and_lazy_quantified_followup": "71cd492ebb24b8c845c9c693dbaf8b888cf7bf59",
+        "direct_callback_followup": "451d0a1"
+      },
+      "commands": {
+        "prepare": "python3 scripts/slurm_prepare_benchmark_workspace.py --build-via-slurm --reuse-dependencies --cxx-header-manifest <matching-header-manifest> --cmake <cmake> --extra-target primo_smt_session_tests --extra-target primo_component_combination_tests <workspace-options>",
+        "checks": "PRIMO_WORKDIR=<workspace> PRIMO_EXPECTED_REVISION=<revision> PRIMO_CMAKE_BIN=<cmake-bin> PRIMO_CXX_HEADER_MANIFEST=<matching-header-manifest> PRIMO_ASAN_RUNTIME_DIR=<verified-runtime-dir> sbatch scripts/qualification/public_checks.sbatch",
+        "focused": "srun --ntasks=1 --job-name=primo-followup-focused --cpus-per-task=1 --mem=4G --time=00:05:00 <ctest> --test-dir build-slurm-rel --output-on-failure --timeout 120 -R primo_(smt_session|component_combination)_tests",
+        "tooling": "python3 -m unittest discover -s tests/python -p test_tuning_process_status.py; corresponding test_analyzer_scope.py, test_tactic_composition_matrix.py, test_slurm_prepare_benchmark_workspace.py and test_budget_replay.py; python3 scripts/analyze_smt2.py --selftest; make lint; make docs; make docs-check-links"
+      },
+      "attempts": [
+        {
+          "revision": "241a873",
+          "build_job": "165069",
+          "checks_job": "165070",
+          "result": "43/43 release and 43/43 ASan tests; 224 Python tests; documentation examples passed",
+          "binary_sha256": "c63c63060336706b52161c44bb92e31df4c9522ea0b72907f9589b9d1f214e52",
+          "artifacts": "primo-public-followups/results/public-checks-165070.{out,err}"
+        },
+        {
+          "revision": "a03fe0d",
+          "build_job": "165071",
+          "checks_job": "165072",
+          "result": "42/43 release tests passed; newly written UF regression fixture lacked a closing parenthesis. Fixed in 70d7abf; ASan not reached.",
+          "artifacts": "primo-public-followups-final/results/public-checks-165072.{out,err}"
+        },
+        {
+          "revision": "70d7abf",
+          "build_job": "165073",
+          "focused_job": "165074",
+          "result": "Component regression passed; session regression found aggregate count 3 at limit 1 in online QF_UFLIA. Diagnostic replay 165093 also exposed lazy quantified ground checking omission (30-second timeout). Fixed in 71cd492. Earlier diagnostic job165092 used an invalid CLI spelling and performed no solver checks.",
+          "artifacts": "primo-public-followups-final/results/conflict-diagnose-corrected/"
+        },
+        {
+          "revision": "71cd492",
+          "build_job": "165110",
+          "focused_job": "165127",
+          "result": "2/2 focused tests passed, including lazy/incremental ground and quantified limits, exact single counting, integer infeasibility, forced fallback, retained-query reset and callback streaming.",
+          "binary_sha256": "28a24fa982ddf78058909f076eea172bb6428c507515a82ae666e5c672a7c011"
+        },
+        {
+          "revision": "71cd492",
+          "checks_job": "165128",
+          "static_job": "165129",
+          "generated_job": "165130",
+          "mutations_job": "165131",
+          "static_examples_job": "165179",
+          "result": "43/43 release and ASan, 227 Python tests, 12 documentation checks. Generated gate: 7975 passes and 25 timeouts (one includes Z3 timeout); 212 mutant passes. Initial replay classifier accepted 800 samples, but count audit found 237 queries exceeded limit1, up to12 reports; reject this as final conflict-budget qualification. Direct callback guards repaired in a4b486e/451d0a1; strict replay now requires exactly1.",
+          "summary": "results/publication-followups/71-summary.json"
+        },
+        {
+          "revision": "d2de453",
+          "build_job": "165181",
+          "result": "Build passed with real unused include removed and direct-header advisories resolved. No qualification launched: completed earlier count audit required direct callback guards."
+        },
+        {
+          "revision": "a4b486e",
+          "build_job": "165250",
+          "result": "Build cancelled before qualification to incorporate independent reviewer DIRECT-DOC-01: recheck EUF exhaustion after a propagation scan can consume the budget."
+        },
+        {
+          "revision": "451d0a1",
+          "build_job": "165251",
+          "result": "Build cancelled before qualification to strengthen branching arithmetic fixtures: separated bound endpoints ensure theory reasoning rather than a propositional complement after lowering."
+        }
+      ],
+      "tooling_regressions": "Mocked wrappers reproduce post-answer abnormal-exit misclassification on the old implementation; lexical-let and composition regressions expose the old behavior. Final local targeted suites pass, including quoted-name identity and empty selection without Dolmen. No solver batch ran locally. A metadata-only regression now separates reference timeouts from errors; old summary attempt165180 rejected one both-solver timeout, corrected report produced afterward. Strict budget replay rejects overshoots.",
+      "build_correction": "The cluster default launched two tasks for bare srun. 5c25f96 makes preparation pass --ntasks=1 and adds a mocked command regression; build165110 and subsequent submissions explicitly request one task. Earlier timings are not performance evidence.",
+      "documentation_review": "Separate read-only reviewer accepted tuning, analyzer/composition, numeric/probe and resource-accounting documentation. CBQ-DOC-01 required source navigation for callback/lazy fixes; resolved with repairsource pinned71cd492 in00ed482. Builds and local/source-link checks pass; external URL availability is a separate publication concern. DIRECT-DOC-01 was resolved in451d0a1 and separately accepted; final source links use451d0a1.",
+      "limitations": "The complete publication qualification and final static-analysis triage are recorded separately. No speed/default-promotion claim."
+    },
+    {
       "id": "2026-10-02-symmetry-numeric-payload-repair",
       "date": "2026-10-02",
       "kind": "soundness-repair-qualification",

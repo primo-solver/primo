@@ -40,7 +40,7 @@ The 84-page baseline excludes this newly added review record.
 
 | Page | Review outcome | Findings |
 | --- | --- | --- |
-| [Command-line options and output](../reference/options.md) | Corrected | A-001; A-012/A-013 open |
+| [Command-line options and output](../reference/options.md) | Corrected | A-001; A-012/A-013 closed with SLURM evidence |
 | [Effective policies and option dependencies](../reference/policies.md) | Corrected | A-004, A-010 |
 | [Tactic reference](../reference/tactics.md) | Corrected | A-008 |
 | [Statistics reference](../reference/statistics.md) | Corrected | A-001, A-003, A-005–A-007, A-011 |
@@ -55,8 +55,8 @@ The 84-page baseline excludes this newly added review record.
 | [Fuzzing and reducing failures](../development/fuzzing.md) | Corrected | B-005, B-009 |
 | [Independent model and session validation](../development/validation.md) | Corrected | B-001, B-003 |
 | [Debugging and investigating regressions](../development/debugging.md) | No required edits | — |
-| [Reproducible experiments](../development/experiments.md) | Corrected | B-002, B-004, B-010; B-012/B-013 open |
-| [Tuning an existing configuration](../development/tuning.md) | Corrected | B-014 limitation; tool repair open |
+| [Reproducible experiments](../development/experiments.md) | Corrected | B-002, B-004, B-010; B-012/B-013 closed |
+| [Tuning an existing configuration](../development/tuning.md) | Corrected | B-014 repaired and qualified |
 | [Writing and checking documentation](../development/documentation.md) | Corrected | B-007 |
 
 ### Understanding Primo
@@ -67,7 +67,7 @@ The 84-page baseline excludes this newly added review record.
 | [Terms, symbols, and ownership](../implementation/core.md) | Corrected | C-002 |
 | [Frontend: syntax, names, and typed terms](../implementation/frontend.md) | No required edits | — |
 | [Sessions: scopes, replay, and retained engines](../implementation/sessions.md) | No required edits | — |
-| [Goals, tactics, and strategies](../implementation/tactics.md) | Corrected | C-001, C-003; C-004 open |
+| [Goals, tactics, and strategies](../implementation/tactics.md) | Corrected | C-001, C-003; C-004 closed |
 | [Preprocessing](../implementation/preprocessing.md) | Corrected | D-001–D-005; D-006 resolved below |
 | [Boolean abstraction and SAT integration](../implementation/sat.md) | No required edits | — |
 | [DPLL(T): connecting Boolean search and theory reasoning](../implementation/dpllt.md) | No required edits | — |
@@ -96,7 +96,7 @@ The 84-page baseline excludes this newly added review record.
 
 | Page | Review outcome | Findings |
 | --- | --- | --- |
-| [Research register](../leads/index.md) | Corrected | H-001; C-004 open |
+| [Research register](../leads/index.md) | Corrected | H-001; C-004 closed |
 | [Library API and embedding](../leads/library-api.md) | No required edits | — |
 | [Incremental memory and reference counting](../leads/incremental-memory.md) | No required edits | — |
 | [Compact term storage and future payloads](../leads/term-storage.md) | No required edits | — |
@@ -164,9 +164,9 @@ The source findings and their current dispositions are recorded below.
 
 | Group and reviewer | Findings and disposition |
 | --- | --- |
-| A — Hilbert; guides and reference | A-001–A-011: correct conflict-budget coverage, backend range handling, counter/default claims, traversal cost, timer boundaries, model examples, cancellation behavior, input navigation and paper/source links. A-012/A-013 remain implementation follow-ups. |
-| B — Kierkegaard; contributor guides and active work | B-001–B-011: use SAT-only model-validation inputs, describe analyzer limits, supply retained-session recipes, preserve the maintainer execution policy, qualify seed-size bounds, repair source selections and link the current ledger. B-012–B-014 remain tooling follow-ups with explicit runbook limitations. |
-| C — Averroes; core, frontend, sessions and tactics | C-001–C-003: distinguish strategy labels from callable behavior, typed-model ownership from printed text, and correct implementation links. C-004 remains a configuration-identity follow-up. |
+| A — Hilbert; guides and reference | A-001–A-011: correct conflict-budget coverage, backend range handling, counter/default claims, traversal cost, timer boundaries, model examples, cancellation behavior, input navigation and paper/source links. A-012/A-013 are now repaired and qualified below. |
+| B — Kierkegaard; contributor guides and active work | B-001–B-011: use SAT-only model-validation inputs, describe analyzer limits, supply retained-session recipes, preserve the maintainer execution policy, qualify seed-size bounds, repair source selections and link the current ledger. B-012–B-014 are now repaired and qualified below. |
+| C — Averroes; core, frontend, sessions and tactics | C-001–C-003: distinguish strategy labels from callable behavior, typed-model ownership from printed text, and correct implementation links. C-004 is now repaired and qualified below. |
 | D — Herschel; preprocessing, SAT, DPLL(T) and EUF | D-001–D-005: describe joint bounded Gauss–Jordan elimination, enabled ITE distribution, appended simplification consequences, passive result storage and the correct equality rewrite. D-006 was independently cross-checked by Avicenna; the subsequent repair and qualification are recorded below. |
 | E — Avicenna; arithmetic | E-001–E-003: assign phase-refresh tracking to the online propagator and link the editable figure and actual rational fields. No required LIA chapter edits. |
 | F — Kuhn; combination, quantifiers and models | F-001–F-003: retain conservative unmapped-pair fallback, distinguish propositional from equality-dependent test coverage, and select the complete model lookup. |
@@ -221,7 +221,8 @@ commands and access errors. These failures remain visible.
 
 These findings originated in source inspection. D-006 has since been reproduced,
 repaired and qualified on SLURM. The six supporting-tool and resource-control
-findings remain open; the documentation review does not repair them.
+findings are also repaired and qualified; their implementation regressions and
+fresh SLURM evidence are recorded below.
 
 (symmetry-payloads)=
 ### D-006: symmetry comparison omits numeric payloads
@@ -309,18 +310,26 @@ The [qualification summary](symmetry-payload-qualification.json) and
 seeds, counts, resource limits and job IDs. An initial test attempt failed to
 locate its fixtures from the CTest working directory; the paths were corrected
 and all gates rerun on `a953edd`. That superseded attempt is recorded separately.
-This closes D-006, not the six findings below or the remaining publication work.
+That qualification closed D-006. The later six-finding qualification follows;
+publication rights and GitHub handoff remain separate.
 
 ### Supporting tools and resource controls
 
-| Finding | Source evidence and required follow-up |
+**Closed on the qualified solver revision `5c96568`.** The
+[follow-up qualification](../evidence/publication-followups.md) and
+[machine-readable report](publication-followups-qualification.json) record the
+fresh eight-route gate, bounded-budget replays, independent ground-model checks,
+real-seed mutations and release/ASan checks. The [run ledger](../run-log.json)
+retains superseded attempts and exact commands, hashes and job IDs.
+
+| Finding | Repair and regression evidence |
 | --- | --- |
-| A-012: negative `auto` budgets | {source}`parse_auto_budget <src/main.cpp#L128-L152>` uses unsigned conversion without rejecting a minus sign. Check decimal spelling and add CLI regressions; retain the documented nonnegative contract. |
-| A-013: incomplete conflict-budget enforcement | Pure LRA/LIA and dedicated mixed routes do not all supply the budget to {source}`SolveTerminator <src/smt/solver_runtime.hpp#L14-L28>`. Decide and implement the intended route coverage, then test it. The reference now states the current limits. |
-| B-012: analyzer binding scope | {source}`inline_lets <scripts/analyze_smt2.py#L105-L169>` can expand parallel bindings sequentially and mishandle shadowing. Repair scope-aware expansion or reject those shapes before using its output as structural evidence. |
-| B-013: composition model-validation selection | {source}`run_model_validation <scripts/tactic_composition_matrix.py#L354-L389>` sends all eligible cases to an adapter that requests a model. Select successful SAT rows, require unchanged SAT answers and join their validation coverage. |
-| B-014: tuning exit-status handling | Repaired in the [irace](https://github.com/primo-solver/primo/blob/a19493701d7ab31931d7466fd88a44803f41abf3/scripts/irace/target_runner.py) and [SMAC](https://github.com/primo-solver/primo/blob/a19493701d7ab31931d7466fd88a44803f41abf3/scripts/smac/qfuf_gap_tune.py) wrappers: timeout and abnormal exits override printed answers with PAR2. [Mocked-process regressions](https://github.com/primo-solver/primo/blob/a19493701d7ab31931d7466fd88a44803f41abf3/tests/python/test_tuning_process_status.py) cover both answers, nonzero exits, signals, post-answer timeout and normal wrong answers; outputs and exit codes are retained. Publication closure remains pending the required SLURM qualification. |
-| C-004: numeric probe-name collisions | {source}`at_most <src/smt/strategy.cpp#L106-L113>` uses default stream precision in names. Distinct thresholds can have the same canonical strategy description. The [probe lead](../leads/index.md#reusable-tactic-probes) records the representation and test obligation. |
+| A-012: negative `auto` budgets | Exact `auto`/`unlimited` or unsigned decimal parsing; malformed spelling and overflow fail before solving. CLI regressions preserve zero and leading zeros. {repairsource}`Parser <src/main.cpp>` and {repairsource}`CLI regressions <tests/cmake/check_preprocessing_cli_options.cmake>`; implementation `241a873`. |
+| A-013: incomplete conflict-budget enforcement | Typed `:theory.conflicts` accounting and uniform runtime/callback boundaries across ground, quantified and retained routes; consumption survives retries/fallback and resets per query. Session/component tests cover lazy/online checks, integer conflicts, exact single counting and callback completion. {repairsource}`Runtime <src/smt/solver_runtime.cpp>`, {repairsource}`session tests <tests/unit/smt_session_tests.cpp>` and {repairsource}`component tests <tests/unit/component_combination_tests.cpp>`; initial repair `a03fe0d`, callback repairs through `451d0a1`, final fixture `5c96568`. The 800 bounded replay samples supplement the regressions, with one timeout kept incomplete. |
+| B-012: analyzer binding scope | Iterative lexical expansion evaluates parallel right-hand sides in the outer environment and preserves nested shadowing without capture. Malformed and unsupported bindings fail explicitly. {repairsource}`Analyzer <scripts/analyze_smt2.py>` and {repairsource}`scope regressions <tests/python/test_analyzer_scope.py>`; implementation `11cd06f`/`d16acb4`. The separate DAG redesign remains deferred. |
+| B-013: composition model-validation selection | Successful SAT rows only, deduplicated by profile/input, `--expect-sat`, exact coverage joins, explicit incomplete results and no validator for an empty selection. Changed SAT-to-UNSAT answers fail even with `--allow-inconclusive`. {repairsource}`Composition runner <scripts/tactic_composition_matrix.py>` and {repairsource}`selection regressions <tests/python/test_tactic_composition_matrix.py>`; implementation `11cd06f`/`519b7b5`. |
+| B-014: tuning exit-status handling | Both wrappers check timeout and abnormal exits before answers, apply PAR2 errors and retain output/status. Normal wrong-answer penalties remain. {repairsource}`irace <scripts/irace/target_runner.py>`, {repairsource}`SMAC <scripts/smac/qfuf_gap_tune.py>` and {repairsource}`mocked-process regressions <tests/python/test_tuning_process_status.py>` cover post-answer failures, signals and timeouts; implementation `a194937`. |
+| C-004: numeric probe-name collisions | Locale-independent round-trip thresholds, canonical signed zero and stable nonfinite spellings. Adjacent finite values and locale tests cover descriptions/fingerprints. {repairsource}`Probe implementation <src/smt/strategy.cpp>` and {repairsource}`identity regressions <tests/unit/tactic_tests.cpp>`; implementation `241a873`. Affected fingerprints change; historical records remain unchanged. |
 
 These are separate from an external URL that cannot be reached. The
 [external-link report](page-review-external-links.json) records certificate,

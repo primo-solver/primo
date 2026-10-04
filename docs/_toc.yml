@@ -90,6 +90,7 @@ parts:
   - caption: Evidence and history
     chapters:
       - file: evidence/publication
+      - file: evidence/publication-followups
       - file: evidence/assignment
       - file: evidence/arithmetic
       - file: evidence/quantifiers

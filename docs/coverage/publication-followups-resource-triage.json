@@ -1,0 +1,16 @@
+{
+  "candidate": "5c96568bd817eefb3f77e47e6ca55fd8ea99aad1",
+  "cases": [
+    {
+      "input_sha256": "2e684de5ec74dcd125cd0a643d8f57fd0d0429da02bf6a0af4334ce9b6dcec38",
+      "route": "QF_UFLIA",
+      "reference_answer": "sat",
+      "reason": "integer branch-and-bound node limit",
+      "classification": "resource-incomplete",
+      "replay_job": "165296",
+      "replay_artifact": "results/followup-unknown-165296",
+      "prior_revision": "71cd492ebb24b8c845c9c693dbaf8b888cf7bf59",
+      "input": "results/public-launch/165257/shard-16/gate/cases/case-00086.smt2"
+    }
+  ]
+}

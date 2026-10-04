@@ -1096,7 +1096,8 @@ algorithm. Its proof obligations are single counting at the SMT reporting
 boundary, no double counting through component adapters, consumption shared
 within one query, and reset between queries. Regressions must cover online and
 lazy routes, integer conflicts, callback completion, fallback and retained
-sessions; qualification remains pending until recorded in the publication gate.
+sessions. The [publication follow-up gate](../evidence/publication-followups.md)
+records the regressions and 800 strict bounded-budget replay samples.
 
 The {repairsource}`component dispatcher <src/smt/component_dispatcher.cpp#L114-L149>`
 latches exhaustion when it receives the conflict that
