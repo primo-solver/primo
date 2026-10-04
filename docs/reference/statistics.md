@@ -1098,7 +1098,8 @@ within one query, and reset between queries. Regressions must cover online and
 lazy routes, integer conflicts, callback completion, fallback and retained
 sessions; qualification remains pending until recorded in the publication gate.
 
-The component dispatcher latches exhaustion when it receives the conflict that
+The {repairsource}`component dispatcher <src/smt/component_dispatcher.cpp#L114-L149>`
+latches exhaustion when it receives the conflict that
 consumes the remaining budget. It finishes streaming that clause to SAT, then
 suppresses further component checks and propagations until the solve returns.
 The runtime supplies the final `ResourceLimit` outcome. This prevents extra
