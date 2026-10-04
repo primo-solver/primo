@@ -1851,7 +1851,8 @@ class OnlineEufPropagator final : public sat::ExternalPropagator {
     if (pending_.empty()) {
       compute_pending_propagations();
     }
-    if (pending_.empty()) {
+    // The scan can consume the final conflict budget after queuing a unit.
+    if (conflict_budget_exhausted() || pending_.empty()) {
       return 0;
     }
     const int lit = pending_.front();

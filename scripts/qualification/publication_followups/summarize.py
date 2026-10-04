@@ -38,6 +38,19 @@ def budget_summary(folder: Path) -> dict:
         require(digest(folder / f'{index:05d}/input.smt2') == row['adapted_sha256'],
                 'budget replay input changed')
         require(digest(Path(row['input'])) == row['sha256'], 'original input changed')
+    for row in rows:
+        if row['outcome'] not in {'pass', 'resource-exhausted'}:
+            continue
+        require(row['reference_exit'] == row['bounded_exit'] == 0,
+                'post-answer budget replay failure')
+        reference, bounded, counts = (row['reference_answers'], row['bounded_answers'],
+                                      row['conflicts'])
+        require(bool(reference) and len(reference) == len(bounded) == len(counts),
+                'missing budget replay query')
+        for expected, actual, count in zip(reference, bounded, counts):
+            require(expected in {'sat', 'unsat'} and (
+                (actual == 'unknown' and count == 1)
+                or (actual == expected and count == 0)), 'invalid bounded answer or overshoot')
     exhausted = sum(row['exhausted_queries'] for row in rows)
     summary = read_json(folder / 'summary.json')
     require(summary['count'] == len(rows) and summary['outcomes'] == dict(outcomes)
