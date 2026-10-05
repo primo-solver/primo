@@ -1,4 +1,4 @@
-.PHONY: build test python-test asan-build asan-test smoke compare fuzz fuzz-finite-domain fuzzsmt tactic-composition-test bench bench-interesting-qf-uf docs docs-venv docs-serve archive lint tidy include-cleaner format check contrib contrib-required contrib-cli11 contrib-z3 contrib-cvc5 contrib-yices contrib-opensmt contrib-yinyang contrib-dolmen contrib-cadical contrib-gmp contrib-fuzzsmt contrib-ddsmt clean
+.PHONY: build test python-test asan-build asan-test smoke compare fuzz fuzz-finite-domain fuzzsmt tactic-composition-test bench bench-interesting-qf-uf docs docs-history docs-site docs-venv docs-serve archive lint tidy include-cleaner format check contrib contrib-required contrib-cli11 contrib-z3 contrib-cvc5 contrib-yices contrib-opensmt contrib-yinyang contrib-dolmen contrib-cadical contrib-gmp contrib-fuzzsmt contrib-ddsmt clean
 
 BUILD_DIR ?= build
 ASAN_BUILD_DIR ?= build-asan
@@ -70,7 +70,12 @@ docs-venv:
 
 docs:
 	PRIMO_DOCS_DIR=docs bash scripts/build_docs.sh
+
+docs-history:
 	PRIMO_DOCS_DIR=docs-history bash scripts/build_docs.sh
+
+docs-site: docs
+	$(MAKE) docs-history
 	$(PYTHON) scripts/assemble_docs.py
 
 .PHONY: docs-full docs-check-links docs-check-external
@@ -88,9 +93,9 @@ docs-check-external: docs-check-links
 	done; exit $$status
 
 docs-serve: docs
-	$(PYTHON) -m http.server 8000 -d docs/_build/site
+	$(PYTHON) -m http.server 8000 -d docs/_build/html
 
-archive: docs
+archive: docs-site
 	$(PYTHON) scripts/create_source_archive.py
 
 lint:
