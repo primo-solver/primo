@@ -117,7 +117,8 @@
         "native_timing": "scripts/slurm_native_uf_sessions.sbatch with --ntasks=1 --hint=nomultithread; PRIMO_EXPECTED_REVISION=5efbd02,PRIMO_UF_PHASE=timing,matching root/manifest,CVC5 path;16 shards,4 profiles (rebuild,assumptions,z3,cvc5),arrays0-63%4 forUF and0-39%4 forLRA,30s or600s whole-session timeout. Primo flags --quiet --stats --max-theory-conflicts=10000 plus retained-mode selector.",
         "native_replay": "Same native driver/profiles/root/manifest; PRIMO_UF_PHASE=validate,PRIMO_UF_TIMING=<timing-root>,fresh validation output,60s Dolmen budget; afterany all20 timing arrays. Incomplete timing sessions remain unqualified, not model passes.",
         "summary": "scripts/qualification/evaluation_refresh/summarize.py --root results/refresh-timing --inventory results/refresh-inventory/inventory.json --reference-map results/refresh-reference-map.json --timeout 60 --out <report>",
-        "local_checks": "make lint; make docs; make docs-check-links; sbatch validators;2 mocked metadata tests"
+        "local_checks": "make lint; make docs; make docs-check-links; sbatch validators;2 mocked metadata tests",
+        "final_report": "PRIMO_WORKDIR=<workspace> PRIMO_REPORTING_DIR=results/reporting-01f31b5 sbatch --dependency=afterany:167641:167642:167643:167644:167645:167646:167647 scripts/qualification/evaluation_refresh/report.sbatch"
       },
       "jobs": {
         "build": "167167",
@@ -193,7 +194,9 @@
             "models": "167647"
           }
         },
-        "gate_report": "167432"
+        "gate_report": "167432",
+        "report_preflight": "168173",
+        "final_report": "168188"
       },
       "checks": {
         "release": "43/43 passed",
@@ -389,7 +392,8 @@
           },
           "qualification": "All 4000 answer cases passed. General and finite-UFLRA eligible SAT selections independently validated in full; finite-UF answer cases do not have an additional model replay in this supplemental gate."
         },
-        "report_docs": "make docs and make docs-check-links pass; 258 pages, 31719 local links,1005 Git links,0 failures,377 external URLs deferred. Revised section independently reviewed and desktop render inspected."
+        "report_docs": "make docs and make docs-check-links pass; 258 pages, 31719 local links,1005 Git links,0 failures,377 external URLs deferred. Revised section independently reviewed and desktop render inspected.",
+        "report_preflight": "Metadata-only job168173 intentionally ran before completion: exit1 for incomplete QF_LRA timings and missing model coverage. Native UF timing was complete with no answer failures/disagreements. This is an expected refusal of partial evidence, not a solver failure."
       },
       "shards_per_solver": {
         "QF_UF": 64,
@@ -455,6 +459,22 @@
           "finding": "REFRESH-HIST-01 fixed: explicit JSON file path and shard-parent root",
           "verdict": "ready; no required findings",
           "unchecked": "Result acceptance and independent rendering not covered."
+        },
+        "evidence_page": {
+          "baseline": "c3c5509",
+          "accepted_commit": "0561584",
+          "files": [
+            "docs/evidence/evaluation-refresh.md",
+            "docs/coverage/evaluation-refresh-qualification.json",
+            "docs/_toc.yml"
+          ],
+          "accepted_blobs": [
+            "3090eb32cd1251192621546ab410ba837b1087ad",
+            "38f4880c78cfbc3525189ec198dea7c67ce7a87d",
+            "b6cc52429e5d7a3db9616d876d5359629db7f717"
+          ],
+          "verdict": "Independent read-only reviewer: ready, no required findings. Scope includes method and completed correctness, not unfinished timing/model results.",
+          "checks": "make lint, make docs, docs-check-links pass;259pages,31951local links,1006Git links,0failures,379external URLs deferred. Scope/table rendering inspected."
         }
       },
       "reference_cancellation": {
@@ -494,20 +514,73 @@
       },
       "progress_snapshot": {
         "status": "partial; not final evaluation",
-        "artifact": "results/evaluation-refresh-20261005/progress-snapshot.json",
+        "artifact": "results/evaluation-refresh-20261005/progress-snapshot2.json",
         "finished_primo_timing": {
           "QF_UF": {
             "rows": 7503,
             "solved": 7497,
             "timeouts": 6
           },
+          "QF_LRA": {
+            "rows": 1753,
+            "solved": 1537,
+            "timeouts": 216
+          },
           "QF_UFLRA": {
             "rows": 1284,
             "solved": 1270,
             "timeouts": 14
+          },
+          "QF_UFLIA": {
+            "rows": 659,
+            "solved": 574,
+            "timeouts": 85
           }
         },
-        "limitations": "Other divisions and native sessions incomplete at snapshot; all post-timing model arrays still pending. Final historical comparison and model coverage not accepted yet."
+        "native_UF": {
+          "sessions_per_profile": 1778,
+          "rebuild": {
+            "complete": 1775,
+            "timeout": 3
+          },
+          "assumptions": {
+            "complete": 1772,
+            "unknown": 6
+          },
+          "unknown_triage": "All six unknown sessions report theory conflict limit reached and exactly10000 aggregate conflicts in an exhausted query; no overshoot. Artifact results/refresh-native-uf/unknown-triage.json."
+        },
+        "native_LRA": {
+          "sessions_per_profile": 10,
+          "rebuild": {
+            "timeout": 10,
+            "partial_queries": 328
+          },
+          "assumptions": {
+            "complete": 3,
+            "timeout": 7,
+            "completed_queries": 303,
+            "partial_queries": 450
+          }
+        },
+        "limitations": "QF_LIA and quantified UF timing still active; all post-timing model arrays pending. Available historical ground comparisons have no decisive disagreements so far. This is not final model or performance acceptance."
+      },
+      "report_recipe_revision": "6fa6f0b",
+      "session_shapes": {
+        "native_UF": {
+          "sessions": 1778,
+          "queries": 29990,
+          "minimum_queries": 2,
+          "median_queries": 3,
+          "maximum_queries": 494
+        },
+        "native_LRA": {
+          "sessions": 10,
+          "queries": 1515,
+          "queries_per_session": {
+            "101": 5,
+            "202": 5
+          }
+        }
       }
     },
     {
