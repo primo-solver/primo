@@ -98,8 +98,9 @@ make docs-check-links
 make docs-check-external
 ```
 
-The {project}`Make targets <Makefile#L71-L94>` coordinate these commands.
-The first command is an incremental preview. The local/Git-link target rebuilds
+The {docsbuildsource}`Make targets <Makefile#L71-L100>` coordinate these commands.
+The first command incrementally builds only the current manual.
+Use `make docs-history` to build the frozen historical book separately. The local/Git-link target rebuilds
 both books strictly, including the frozen historical book. The external checker produces
 separate Sphinx linkcheck reports; distinguish genuinely broken targets from
 transient timeout, rate-limit or authorization failures. Do not silently suppress
@@ -118,8 +119,11 @@ retains logo asset, distribution and infrastructure history during migration.
 
 ## Publication and source archives
 
-`make docs` builds the current and historical books, then assembles
-`docs/_build/site/`. `make docs-full` disables incremental reuse for both books.
+`make docs` builds the current manual in `docs/_build/html/`, and
+`make docs-serve` serves that directory. Historical links require the combined
+site: `make docs-site` builds both books and assembles `docs/_build/site/`.
+`make docs-full` disables incremental reuse for both books and assembles the
+combined site. Publication, full link checks, and `make archive` retain both books.
 The {project}`site assembler <scripts/assemble_docs.py>` verifies every archived compatibility target before replacing
 the previous site. Its generated redirects have ordinary-link fallbacks.
 Documentation dependency installation disables pip's periodic version check,

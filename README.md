@@ -38,9 +38,11 @@ Build and preview the book locally:
 make docs-serve
 ```
 
-Open `http://localhost:8000`. The assembled site includes the historical manual
-and preserves original page/fragment links. `make docs-full` performs a complete
-strict rebuild; `make docs-check-links` also validates links. The
+Open `http://localhost:8000` to preview the current manual. `make docs` builds
+only that manual; `make docs-history` builds the historical book separately.
+`make docs-site` assembles both books and preserves original page/fragment links.
+`make docs-full` strictly rebuilds the combined site; `make docs-check-links`
+also validates its links. The
 [closing review](docs/review.md) and [publication checklist](docs/work/publication.md)
 record verification and outstanding acceptance. The intended public manual is
 [Primo documentation](https://primo-solver.github.io/primo/); deployment is pending.
