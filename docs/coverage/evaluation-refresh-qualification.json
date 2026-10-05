@@ -1,0 +1,1275 @@
+{
+  "routes": {
+    "QF_UF": {
+      "cases": 1000,
+      "pass": 1000,
+      "timeout": 0,
+      "sat_models": 630,
+      "queries": 0,
+      "resource_incomplete": 0,
+      "reference_timeout": 0,
+      "distinct_inputs": 997
+    },
+    "QF_LRA": {
+      "cases": 1000,
+      "pass": 1000,
+      "timeout": 0,
+      "sat_models": 1000,
+      "queries": 0,
+      "resource_incomplete": 0,
+      "reference_timeout": 0,
+      "distinct_inputs": 285
+    },
+    "QF_LIA": {
+      "cases": 1000,
+      "pass": 978,
+      "timeout": 22,
+      "sat_models": 876,
+      "queries": 0,
+      "resource_incomplete": 0,
+      "reference_timeout": 3,
+      "distinct_inputs": 1000
+    },
+    "QF_UFLRA": {
+      "cases": 1000,
+      "pass": 1000,
+      "timeout": 0,
+      "sat_models": 574,
+      "queries": 0,
+      "resource_incomplete": 0,
+      "reference_timeout": 0,
+      "distinct_inputs": 999
+    },
+    "QF_UFLIA": {
+      "cases": 1000,
+      "pass": 1000,
+      "timeout": 0,
+      "sat_models": 525,
+      "queries": 0,
+      "resource_incomplete": 0,
+      "reference_timeout": 0,
+      "distinct_inputs": 672
+    },
+    "UF": {
+      "cases": 1000,
+      "pass": 1000,
+      "timeout": 0,
+      "sat_models": 0,
+      "queries": 0,
+      "resource_incomplete": 0,
+      "reference_timeout": 0,
+      "distinct_inputs": 560
+    },
+    "incremental_QF_UF": {
+      "cases": 1000,
+      "pass": 1000,
+      "timeout": 0,
+      "sat_models": 6272,
+      "queries": 9000,
+      "resource_incomplete": 0,
+      "reference_timeout": 0,
+      "distinct_inputs": 813
+    },
+    "incremental_QF_LRA": {
+      "cases": 1000,
+      "pass": 1000,
+      "timeout": 0,
+      "sat_models": 8000,
+      "queries": 11000,
+      "resource_incomplete": 0,
+      "reference_timeout": 0,
+      "distinct_inputs": 1000
+    }
+  },
+  "shards": [
+    {
+      "slot": 0,
+      "route": "QF_UF",
+      "artifact": "results/public-launch/167171/shard-0",
+      "binaries": {
+        "build-slurm-rel/primo": "d0f69f50540efa7561e7895d2f24acff26787756a85b9bdb9f67e7eaaed496e0",
+        "contrib/local/bin/z3": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+        "contrib/local/bin/dolmen": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+      },
+      "cases": 250,
+      "pass": 250,
+      "timeout": 0,
+      "sat_models": 153,
+      "queries": 0,
+      "reference_timeout": 0,
+      "resource_incomplete": 0,
+      "resource_triage": [],
+      "distinct_inputs": 250,
+      "input_manifest_sha256": "393f73f7cbd3743cc4f6d661f713029e772665fd5318d825130475f6ebe53474",
+      "budget_replay": {
+        "count": 25,
+        "timeout_seconds": 10,
+        "outcomes": {
+          "resource-exhausted": 15,
+          "pass": 10
+        },
+        "exhausted_queries": 15,
+        "queries": 25,
+        "conflict_counts": {
+          "1": 15,
+          "0": 10
+        }
+      }
+    },
+    {
+      "slot": 1,
+      "route": "QF_UF",
+      "artifact": "results/public-launch/167171/shard-1",
+      "binaries": {
+        "build-slurm-rel/primo": "d0f69f50540efa7561e7895d2f24acff26787756a85b9bdb9f67e7eaaed496e0",
+        "contrib/local/bin/z3": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+        "contrib/local/bin/dolmen": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+      },
+      "cases": 250,
+      "pass": 250,
+      "timeout": 0,
+      "sat_models": 157,
+      "queries": 0,
+      "reference_timeout": 0,
+      "resource_incomplete": 0,
+      "resource_triage": [],
+      "distinct_inputs": 250,
+      "input_manifest_sha256": "5176dedf6536b1278ac932bf18ae261ed1bafa17de814a2c96110c31c2ada5cc",
+      "budget_replay": {
+        "count": 25,
+        "timeout_seconds": 10,
+        "outcomes": {
+          "resource-exhausted": 14,
+          "pass": 11
+        },
+        "exhausted_queries": 14,
+        "queries": 25,
+        "conflict_counts": {
+          "1": 14,
+          "0": 11
+        }
+      }
+    },
+    {
+      "slot": 2,
+      "route": "QF_UF",
+      "artifact": "results/public-launch/167171/shard-2",
+      "binaries": {
+        "build-slurm-rel/primo": "d0f69f50540efa7561e7895d2f24acff26787756a85b9bdb9f67e7eaaed496e0",
+        "contrib/local/bin/z3": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+        "contrib/local/bin/dolmen": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+      },
+      "cases": 250,
+      "pass": 250,
+      "timeout": 0,
+      "sat_models": 160,
+      "queries": 0,
+      "reference_timeout": 0,
+      "resource_incomplete": 0,
+      "resource_triage": [],
+      "distinct_inputs": 250,
+      "input_manifest_sha256": "f0088e1d77ecd28e2cc34b17b56b76111d48070fdc7d8d4d3a3fac445bfca36c",
+      "budget_replay": {
+        "count": 25,
+        "timeout_seconds": 10,
+        "outcomes": {
+          "pass": 14,
+          "resource-exhausted": 11
+        },
+        "exhausted_queries": 11,
+        "queries": 25,
+        "conflict_counts": {
+          "0": 14,
+          "1": 11
+        }
+      }
+    },
+    {
+      "slot": 3,
+      "route": "QF_UF",
+      "artifact": "results/public-launch/167171/shard-3",
+      "binaries": {
+        "build-slurm-rel/primo": "d0f69f50540efa7561e7895d2f24acff26787756a85b9bdb9f67e7eaaed496e0",
+        "contrib/local/bin/z3": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+        "contrib/local/bin/dolmen": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+      },
+      "cases": 250,
+      "pass": 250,
+      "timeout": 0,
+      "sat_models": 160,
+      "queries": 0,
+      "reference_timeout": 0,
+      "resource_incomplete": 0,
+      "resource_triage": [],
+      "distinct_inputs": 250,
+      "input_manifest_sha256": "fc8a69c4623fef251dc3faaeb7bafcdf30bbf522c419f35350c6d92f6865c423",
+      "budget_replay": {
+        "count": 25,
+        "timeout_seconds": 10,
+        "outcomes": {
+          "resource-exhausted": 12,
+          "pass": 13
+        },
+        "exhausted_queries": 12,
+        "queries": 25,
+        "conflict_counts": {
+          "1": 12,
+          "0": 13
+        }
+      }
+    },
+    {
+      "slot": 4,
+      "route": "QF_LRA",
+      "artifact": "results/public-launch/167171/shard-4",
+      "binaries": {
+        "build-slurm-rel/primo": "d0f69f50540efa7561e7895d2f24acff26787756a85b9bdb9f67e7eaaed496e0",
+        "contrib/local/bin/z3": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+        "contrib/local/bin/dolmen": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+      },
+      "cases": 250,
+      "pass": 250,
+      "timeout": 0,
+      "sat_models": 250,
+      "queries": 0,
+      "reference_timeout": 0,
+      "resource_incomplete": 0,
+      "resource_triage": [],
+      "distinct_inputs": 117,
+      "input_manifest_sha256": "eedf516c56840a4904437d532b1a1c8411a86b1225c855616e207b6a0b642c85",
+      "budget_replay": {
+        "count": 25,
+        "timeout_seconds": 10,
+        "outcomes": {
+          "pass": 25
+        },
+        "exhausted_queries": 0,
+        "queries": 25,
+        "conflict_counts": {
+          "0": 25
+        }
+      }
+    },
+    {
+      "slot": 5,
+      "route": "QF_LRA",
+      "artifact": "results/public-launch/167171/shard-5",
+      "binaries": {
+        "build-slurm-rel/primo": "d0f69f50540efa7561e7895d2f24acff26787756a85b9bdb9f67e7eaaed496e0",
+        "contrib/local/bin/z3": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+        "contrib/local/bin/dolmen": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+      },
+      "cases": 250,
+      "pass": 250,
+      "timeout": 0,
+      "sat_models": 250,
+      "queries": 0,
+      "reference_timeout": 0,
+      "resource_incomplete": 0,
+      "resource_triage": [],
+      "distinct_inputs": 118,
+      "input_manifest_sha256": "1001ce29784eb939b862ee05208b0cc21f576d473b0b920e8e3aaaea7e0d8273",
+      "budget_replay": {
+        "count": 25,
+        "timeout_seconds": 10,
+        "outcomes": {
+          "pass": 25
+        },
+        "exhausted_queries": 0,
+        "queries": 25,
+        "conflict_counts": {
+          "0": 25
+        }
+      }
+    },
+    {
+      "slot": 6,
+      "route": "QF_LRA",
+      "artifact": "results/public-launch/167171/shard-6",
+      "binaries": {
+        "build-slurm-rel/primo": "d0f69f50540efa7561e7895d2f24acff26787756a85b9bdb9f67e7eaaed496e0",
+        "contrib/local/bin/z3": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+        "contrib/local/bin/dolmen": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+      },
+      "cases": 250,
+      "pass": 250,
+      "timeout": 0,
+      "sat_models": 250,
+      "queries": 0,
+      "reference_timeout": 0,
+      "resource_incomplete": 0,
+      "resource_triage": [],
+      "distinct_inputs": 108,
+      "input_manifest_sha256": "19d86751e81ec1777be36a22eeb02fec4c5a6989240d78b0010ef5859639f6c6",
+      "budget_replay": {
+        "count": 25,
+        "timeout_seconds": 10,
+        "outcomes": {
+          "pass": 25
+        },
+        "exhausted_queries": 0,
+        "queries": 25,
+        "conflict_counts": {
+          "0": 25
+        }
+      }
+    },
+    {
+      "slot": 7,
+      "route": "QF_LRA",
+      "artifact": "results/public-launch/167171/shard-7",
+      "binaries": {
+        "build-slurm-rel/primo": "d0f69f50540efa7561e7895d2f24acff26787756a85b9bdb9f67e7eaaed496e0",
+        "contrib/local/bin/z3": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+        "contrib/local/bin/dolmen": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+      },
+      "cases": 250,
+      "pass": 250,
+      "timeout": 0,
+      "sat_models": 250,
+      "queries": 0,
+      "reference_timeout": 0,
+      "resource_incomplete": 0,
+      "resource_triage": [],
+      "distinct_inputs": 111,
+      "input_manifest_sha256": "ce3365e2b5d344d5cbdd468e016ddc945f5deeb17aee2cd87fbf975f97574fd3",
+      "budget_replay": {
+        "count": 25,
+        "timeout_seconds": 10,
+        "outcomes": {
+          "pass": 25
+        },
+        "exhausted_queries": 0,
+        "queries": 25,
+        "conflict_counts": {
+          "0": 25
+        }
+      }
+    },
+    {
+      "slot": 8,
+      "route": "QF_LIA",
+      "artifact": "results/public-launch/167171/shard-8",
+      "binaries": {
+        "build-slurm-rel/primo": "d0f69f50540efa7561e7895d2f24acff26787756a85b9bdb9f67e7eaaed496e0",
+        "contrib/local/bin/z3": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+        "contrib/local/bin/dolmen": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+      },
+      "cases": 250,
+      "pass": 241,
+      "timeout": 9,
+      "sat_models": 214,
+      "queries": 0,
+      "reference_timeout": 1,
+      "resource_incomplete": 0,
+      "resource_triage": [],
+      "distinct_inputs": 250,
+      "input_manifest_sha256": "47c5280947d8617b76cf949880f80ee9452250e54aa562884be325c553ed0281",
+      "budget_replay": {
+        "count": 25,
+        "timeout_seconds": 10,
+        "outcomes": {
+          "resource-exhausted": 19,
+          "pass": 6
+        },
+        "exhausted_queries": 19,
+        "queries": 25,
+        "conflict_counts": {
+          "1": 19,
+          "0": 6
+        }
+      }
+    },
+    {
+      "slot": 9,
+      "route": "QF_LIA",
+      "artifact": "results/public-launch/167171/shard-9",
+      "binaries": {
+        "build-slurm-rel/primo": "d0f69f50540efa7561e7895d2f24acff26787756a85b9bdb9f67e7eaaed496e0",
+        "contrib/local/bin/z3": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+        "contrib/local/bin/dolmen": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+      },
+      "cases": 250,
+      "pass": 244,
+      "timeout": 6,
+      "sat_models": 214,
+      "queries": 0,
+      "reference_timeout": 1,
+      "resource_incomplete": 0,
+      "resource_triage": [],
+      "distinct_inputs": 250,
+      "input_manifest_sha256": "00bb2200c6f707d14b9e17f0bcf05f1d6483ba1100352fb55e56acb75d359f56",
+      "budget_replay": {
+        "count": 25,
+        "timeout_seconds": 10,
+        "outcomes": {
+          "resource-exhausted": 13,
+          "pass": 12
+        },
+        "exhausted_queries": 13,
+        "queries": 25,
+        "conflict_counts": {
+          "1": 13,
+          "0": 12
+        }
+      }
+    },
+    {
+      "slot": 10,
+      "route": "QF_LIA",
+      "artifact": "results/public-launch/167171/shard-10",
+      "binaries": {
+        "build-slurm-rel/primo": "d0f69f50540efa7561e7895d2f24acff26787756a85b9bdb9f67e7eaaed496e0",
+        "contrib/local/bin/z3": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+        "contrib/local/bin/dolmen": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+      },
+      "cases": 250,
+      "pass": 247,
+      "timeout": 3,
+      "sat_models": 222,
+      "queries": 0,
+      "reference_timeout": 1,
+      "resource_incomplete": 0,
+      "resource_triage": [],
+      "distinct_inputs": 250,
+      "input_manifest_sha256": "8ddad22571e8d537dd77e08b2e50a8a062b9a7ececc7cc26baad03a757b2d498",
+      "budget_replay": {
+        "count": 25,
+        "timeout_seconds": 10,
+        "outcomes": {
+          "pass": 4,
+          "resource-exhausted": 21
+        },
+        "exhausted_queries": 21,
+        "queries": 25,
+        "conflict_counts": {
+          "0": 4,
+          "1": 21
+        }
+      }
+    },
+    {
+      "slot": 11,
+      "route": "QF_LIA",
+      "artifact": "results/public-launch/167171/shard-11",
+      "binaries": {
+        "build-slurm-rel/primo": "d0f69f50540efa7561e7895d2f24acff26787756a85b9bdb9f67e7eaaed496e0",
+        "contrib/local/bin/z3": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+        "contrib/local/bin/dolmen": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+      },
+      "cases": 250,
+      "pass": 246,
+      "timeout": 4,
+      "sat_models": 226,
+      "queries": 0,
+      "reference_timeout": 0,
+      "resource_incomplete": 0,
+      "resource_triage": [],
+      "distinct_inputs": 250,
+      "input_manifest_sha256": "9a79b4cf30c02d300d904c27396b6fc1b0e9a3ca01870979efd072e6f411920c",
+      "budget_replay": {
+        "count": 25,
+        "timeout_seconds": 10,
+        "outcomes": {
+          "resource-exhausted": 17,
+          "pass": 8
+        },
+        "exhausted_queries": 17,
+        "queries": 25,
+        "conflict_counts": {
+          "1": 17,
+          "0": 8
+        }
+      }
+    },
+    {
+      "slot": 12,
+      "route": "QF_UFLRA",
+      "artifact": "results/public-launch/167171/shard-12",
+      "binaries": {
+        "build-slurm-rel/primo": "d0f69f50540efa7561e7895d2f24acff26787756a85b9bdb9f67e7eaaed496e0",
+        "contrib/local/bin/z3": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+        "contrib/local/bin/dolmen": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+      },
+      "cases": 250,
+      "pass": 250,
+      "timeout": 0,
+      "sat_models": 140,
+      "queries": 0,
+      "reference_timeout": 0,
+      "resource_incomplete": 0,
+      "resource_triage": [],
+      "distinct_inputs": 250,
+      "input_manifest_sha256": "9654191d1dc80d6e2b2e114a91d556887b66beb5a1a6dcc929f3f85b35033d16",
+      "budget_replay": {
+        "count": 25,
+        "timeout_seconds": 10,
+        "outcomes": {
+          "pass": 16,
+          "resource-exhausted": 9
+        },
+        "exhausted_queries": 9,
+        "queries": 25,
+        "conflict_counts": {
+          "0": 16,
+          "1": 9
+        }
+      }
+    },
+    {
+      "slot": 13,
+      "route": "QF_UFLRA",
+      "artifact": "results/public-launch/167171/shard-13",
+      "binaries": {
+        "build-slurm-rel/primo": "d0f69f50540efa7561e7895d2f24acff26787756a85b9bdb9f67e7eaaed496e0",
+        "contrib/local/bin/z3": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+        "contrib/local/bin/dolmen": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+      },
+      "cases": 250,
+      "pass": 250,
+      "timeout": 0,
+      "sat_models": 145,
+      "queries": 0,
+      "reference_timeout": 0,
+      "resource_incomplete": 0,
+      "resource_triage": [],
+      "distinct_inputs": 250,
+      "input_manifest_sha256": "550639fd452cf6f5839dd26c44ac4d48cefddd41d0179920be6cb25c7719ceb7",
+      "budget_replay": {
+        "count": 25,
+        "timeout_seconds": 10,
+        "outcomes": {
+          "pass": 17,
+          "resource-exhausted": 8
+        },
+        "exhausted_queries": 8,
+        "queries": 25,
+        "conflict_counts": {
+          "0": 17,
+          "1": 8
+        }
+      }
+    },
+    {
+      "slot": 14,
+      "route": "QF_UFLRA",
+      "artifact": "results/public-launch/167171/shard-14",
+      "binaries": {
+        "build-slurm-rel/primo": "d0f69f50540efa7561e7895d2f24acff26787756a85b9bdb9f67e7eaaed496e0",
+        "contrib/local/bin/z3": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+        "contrib/local/bin/dolmen": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+      },
+      "cases": 250,
+      "pass": 250,
+      "timeout": 0,
+      "sat_models": 145,
+      "queries": 0,
+      "reference_timeout": 0,
+      "resource_incomplete": 0,
+      "resource_triage": [],
+      "distinct_inputs": 250,
+      "input_manifest_sha256": "980d67552023dc3f84342fac58b794ee3ebe90d9586ef1773e41efc0a09624e5",
+      "budget_replay": {
+        "count": 25,
+        "timeout_seconds": 10,
+        "outcomes": {
+          "pass": 14,
+          "resource-exhausted": 11
+        },
+        "exhausted_queries": 11,
+        "queries": 25,
+        "conflict_counts": {
+          "0": 14,
+          "1": 11
+        }
+      }
+    },
+    {
+      "slot": 15,
+      "route": "QF_UFLRA",
+      "artifact": "results/public-launch/167171/shard-15",
+      "binaries": {
+        "build-slurm-rel/primo": "d0f69f50540efa7561e7895d2f24acff26787756a85b9bdb9f67e7eaaed496e0",
+        "contrib/local/bin/z3": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+        "contrib/local/bin/dolmen": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+      },
+      "cases": 250,
+      "pass": 250,
+      "timeout": 0,
+      "sat_models": 144,
+      "queries": 0,
+      "reference_timeout": 0,
+      "resource_incomplete": 0,
+      "resource_triage": [],
+      "distinct_inputs": 250,
+      "input_manifest_sha256": "634d69bf5859ddea49d8808b718bd04afe428bc2bf639ed75ef429c02c2c592c",
+      "budget_replay": {
+        "count": 25,
+        "timeout_seconds": 10,
+        "outcomes": {
+          "pass": 12,
+          "resource-exhausted": 13
+        },
+        "exhausted_queries": 13,
+        "queries": 25,
+        "conflict_counts": {
+          "0": 12,
+          "1": 13
+        }
+      }
+    },
+    {
+      "slot": 16,
+      "route": "QF_UFLIA",
+      "artifact": "results/public-launch/167171/shard-16",
+      "binaries": {
+        "build-slurm-rel/primo": "d0f69f50540efa7561e7895d2f24acff26787756a85b9bdb9f67e7eaaed496e0",
+        "contrib/local/bin/z3": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+        "contrib/local/bin/dolmen": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+      },
+      "cases": 250,
+      "pass": 250,
+      "timeout": 0,
+      "sat_models": 132,
+      "queries": 0,
+      "reference_timeout": 0,
+      "resource_incomplete": 0,
+      "resource_triage": [],
+      "distinct_inputs": 174,
+      "input_manifest_sha256": "f00b05a14621abb317683a468da2607eb7cf7f4d4f7b154fb4a30b5f16bd6d95",
+      "budget_replay": {
+        "count": 25,
+        "timeout_seconds": 10,
+        "outcomes": {
+          "resource-exhausted": 14,
+          "pass": 11
+        },
+        "exhausted_queries": 14,
+        "queries": 25,
+        "conflict_counts": {
+          "1": 14,
+          "0": 11
+        }
+      }
+    },
+    {
+      "slot": 17,
+      "route": "QF_UFLIA",
+      "artifact": "results/public-launch/167171/shard-17",
+      "binaries": {
+        "build-slurm-rel/primo": "d0f69f50540efa7561e7895d2f24acff26787756a85b9bdb9f67e7eaaed496e0",
+        "contrib/local/bin/z3": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+        "contrib/local/bin/dolmen": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+      },
+      "cases": 250,
+      "pass": 250,
+      "timeout": 0,
+      "sat_models": 131,
+      "queries": 0,
+      "reference_timeout": 0,
+      "resource_incomplete": 0,
+      "resource_triage": [],
+      "distinct_inputs": 174,
+      "input_manifest_sha256": "b7e60c86056d0d021789414335ed28ee0d21cd570d0061d4fece05a0c19c0124",
+      "budget_replay": {
+        "count": 25,
+        "timeout_seconds": 10,
+        "outcomes": {
+          "resource-exhausted": 13,
+          "pass": 12
+        },
+        "exhausted_queries": 13,
+        "queries": 25,
+        "conflict_counts": {
+          "1": 13,
+          "0": 12
+        }
+      }
+    },
+    {
+      "slot": 18,
+      "route": "QF_UFLIA",
+      "artifact": "results/public-launch/167171/shard-18",
+      "binaries": {
+        "build-slurm-rel/primo": "d0f69f50540efa7561e7895d2f24acff26787756a85b9bdb9f67e7eaaed496e0",
+        "contrib/local/bin/z3": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+        "contrib/local/bin/dolmen": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+      },
+      "cases": 250,
+      "pass": 250,
+      "timeout": 0,
+      "sat_models": 132,
+      "queries": 0,
+      "reference_timeout": 0,
+      "resource_incomplete": 0,
+      "resource_triage": [],
+      "distinct_inputs": 174,
+      "input_manifest_sha256": "e0403ee85926105d9368116573b002d066b8f8e121401fb72ac8d7943a18a566",
+      "budget_replay": {
+        "count": 25,
+        "timeout_seconds": 10,
+        "outcomes": {
+          "resource-exhausted": 13,
+          "pass": 12
+        },
+        "exhausted_queries": 13,
+        "queries": 25,
+        "conflict_counts": {
+          "1": 13,
+          "0": 12
+        }
+      }
+    },
+    {
+      "slot": 19,
+      "route": "QF_UFLIA",
+      "artifact": "results/public-launch/167171/shard-19",
+      "binaries": {
+        "build-slurm-rel/primo": "d0f69f50540efa7561e7895d2f24acff26787756a85b9bdb9f67e7eaaed496e0",
+        "contrib/local/bin/z3": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+        "contrib/local/bin/dolmen": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+      },
+      "cases": 250,
+      "pass": 250,
+      "timeout": 0,
+      "sat_models": 130,
+      "queries": 0,
+      "reference_timeout": 0,
+      "resource_incomplete": 0,
+      "resource_triage": [],
+      "distinct_inputs": 174,
+      "input_manifest_sha256": "f91f6a3a1bcaecd21c3683c6acce6182b118591c63f30f2c0cd6a64b4e68b247",
+      "budget_replay": {
+        "count": 25,
+        "timeout_seconds": 10,
+        "outcomes": {
+          "resource-exhausted": 13,
+          "pass": 12
+        },
+        "exhausted_queries": 13,
+        "queries": 25,
+        "conflict_counts": {
+          "1": 13,
+          "0": 12
+        }
+      }
+    },
+    {
+      "slot": 20,
+      "route": "UF",
+      "artifact": "results/public-launch/167171/shard-20",
+      "binaries": {
+        "build-slurm-rel/primo": "d0f69f50540efa7561e7895d2f24acff26787756a85b9bdb9f67e7eaaed496e0",
+        "contrib/local/bin/z3": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+        "contrib/local/bin/dolmen": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+      },
+      "cases": 250,
+      "pass": 250,
+      "timeout": 0,
+      "sat_models": 0,
+      "queries": 0,
+      "reference_timeout": 0,
+      "resource_incomplete": 0,
+      "resource_triage": [],
+      "profile_answers": {
+        "primo-sum:unsat": 156,
+        "primo-max:unsat": 156,
+        "primo-max-colex:unsat": 156,
+        "primo-leximax:unsat": 156,
+        "primo-deepening:unsat": 156,
+        "primo-random:unsat": 156,
+        "primo-preprocess-only:unknown": 250,
+        "ref0:unsat": 156,
+        "primo-sum:sat": 94,
+        "primo-max:sat": 94,
+        "primo-max-colex:sat": 94,
+        "primo-leximax:sat": 94,
+        "primo-deepening:sat": 94,
+        "primo-random:sat": 94,
+        "ref0:sat": 94
+      },
+      "distinct_inputs": 181,
+      "input_manifest_sha256": "0164484a621a020cc7e07dbed94711fc41177adac681ffb4f091c0c51f4d9aad",
+      "budget_replay": {
+        "count": 25,
+        "timeout_seconds": 10,
+        "outcomes": {
+          "resource-exhausted": 10,
+          "pass": 15
+        },
+        "exhausted_queries": 10,
+        "queries": 25,
+        "conflict_counts": {
+          "1": 10,
+          "0": 15
+        }
+      }
+    },
+    {
+      "slot": 21,
+      "route": "UF",
+      "artifact": "results/public-launch/167171/shard-21",
+      "binaries": {
+        "build-slurm-rel/primo": "d0f69f50540efa7561e7895d2f24acff26787756a85b9bdb9f67e7eaaed496e0",
+        "contrib/local/bin/z3": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+        "contrib/local/bin/dolmen": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+      },
+      "cases": 250,
+      "pass": 250,
+      "timeout": 0,
+      "sat_models": 0,
+      "queries": 0,
+      "reference_timeout": 0,
+      "resource_incomplete": 0,
+      "resource_triage": [],
+      "profile_answers": {
+        "primo-sum:unsat": 156,
+        "primo-max:unsat": 156,
+        "primo-max-colex:unsat": 156,
+        "primo-leximax:unsat": 156,
+        "primo-deepening:unsat": 156,
+        "primo-random:unsat": 156,
+        "primo-preprocess-only:unknown": 250,
+        "ref0:unsat": 156,
+        "primo-sum:sat": 94,
+        "primo-max:sat": 94,
+        "primo-max-colex:sat": 94,
+        "primo-leximax:sat": 94,
+        "primo-deepening:sat": 94,
+        "primo-random:sat": 94,
+        "ref0:sat": 94
+      },
+      "distinct_inputs": 187,
+      "input_manifest_sha256": "fec7c2d34fa89f4605f15bac9565c0f0400ec15deba69bbbe3085ec19674a0a4",
+      "budget_replay": {
+        "count": 25,
+        "timeout_seconds": 10,
+        "outcomes": {
+          "resource-exhausted": 10,
+          "pass": 15
+        },
+        "exhausted_queries": 10,
+        "queries": 25,
+        "conflict_counts": {
+          "1": 10,
+          "0": 15
+        }
+      }
+    },
+    {
+      "slot": 22,
+      "route": "UF",
+      "artifact": "results/public-launch/167171/shard-22",
+      "binaries": {
+        "build-slurm-rel/primo": "d0f69f50540efa7561e7895d2f24acff26787756a85b9bdb9f67e7eaaed496e0",
+        "contrib/local/bin/z3": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+        "contrib/local/bin/dolmen": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+      },
+      "cases": 250,
+      "pass": 250,
+      "timeout": 0,
+      "sat_models": 0,
+      "queries": 0,
+      "reference_timeout": 0,
+      "resource_incomplete": 0,
+      "resource_triage": [],
+      "profile_answers": {
+        "primo-sum:unsat": 156,
+        "primo-max:unsat": 156,
+        "primo-max-colex:unsat": 156,
+        "primo-leximax:unsat": 156,
+        "primo-deepening:unsat": 156,
+        "primo-random:unsat": 156,
+        "primo-preprocess-only:unknown": 250,
+        "ref0:unsat": 156,
+        "primo-sum:sat": 94,
+        "primo-max:sat": 94,
+        "primo-max-colex:sat": 94,
+        "primo-leximax:sat": 94,
+        "primo-deepening:sat": 94,
+        "primo-random:sat": 94,
+        "ref0:sat": 94
+      },
+      "distinct_inputs": 202,
+      "input_manifest_sha256": "e127a50128c464a46d37d4b93009b3ca3aa4ffe879a7e9bed53bb9012883e454",
+      "budget_replay": {
+        "count": 25,
+        "timeout_seconds": 10,
+        "outcomes": {
+          "resource-exhausted": 10,
+          "pass": 15
+        },
+        "exhausted_queries": 10,
+        "queries": 25,
+        "conflict_counts": {
+          "1": 10,
+          "0": 15
+        }
+      }
+    },
+    {
+      "slot": 23,
+      "route": "UF",
+      "artifact": "results/public-launch/167171/shard-23",
+      "binaries": {
+        "build-slurm-rel/primo": "d0f69f50540efa7561e7895d2f24acff26787756a85b9bdb9f67e7eaaed496e0",
+        "contrib/local/bin/z3": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+        "contrib/local/bin/dolmen": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+      },
+      "cases": 250,
+      "pass": 250,
+      "timeout": 0,
+      "sat_models": 0,
+      "queries": 0,
+      "reference_timeout": 0,
+      "resource_incomplete": 0,
+      "resource_triage": [],
+      "profile_answers": {
+        "primo-sum:unsat": 156,
+        "primo-max:unsat": 156,
+        "primo-max-colex:unsat": 156,
+        "primo-leximax:unsat": 156,
+        "primo-deepening:unsat": 156,
+        "primo-random:unsat": 156,
+        "primo-preprocess-only:unknown": 250,
+        "ref0:unsat": 156,
+        "primo-sum:sat": 94,
+        "primo-max:sat": 94,
+        "primo-max-colex:sat": 94,
+        "primo-leximax:sat": 94,
+        "primo-deepening:sat": 94,
+        "primo-random:sat": 94,
+        "ref0:sat": 94
+      },
+      "distinct_inputs": 187,
+      "input_manifest_sha256": "8e2972e2a684846d56cce659d0c22225513c2eb6dc5f1e994ab93fb5fc3af4e8",
+      "budget_replay": {
+        "count": 25,
+        "timeout_seconds": 10,
+        "outcomes": {
+          "resource-exhausted": 10,
+          "pass": 15
+        },
+        "exhausted_queries": 10,
+        "queries": 25,
+        "conflict_counts": {
+          "1": 10,
+          "0": 15
+        }
+      }
+    },
+    {
+      "slot": 24,
+      "route": "incremental_QF_UF",
+      "artifact": "results/public-launch/167171/shard-24",
+      "binaries": {
+        "build-slurm-rel/primo": "d0f69f50540efa7561e7895d2f24acff26787756a85b9bdb9f67e7eaaed496e0",
+        "contrib/local/bin/z3": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+        "contrib/local/bin/dolmen": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+      },
+      "cases": 250,
+      "pass": 250,
+      "timeout": 0,
+      "sat_models": 1526,
+      "queries": 2250,
+      "reference_timeout": 0,
+      "resource_incomplete": 0,
+      "resource_triage": [],
+      "seed_begin": 203250050,
+      "distinct_inputs": 229,
+      "input_manifest_sha256": "35deba36cdae290677df8d8177fcae6fac5d82daba35ae6cf7049e16eacd1fa7",
+      "budget_replay": {
+        "count": 25,
+        "timeout_seconds": 10,
+        "outcomes": {
+          "resource-exhausted": 25
+        },
+        "exhausted_queries": 78,
+        "queries": 225,
+        "conflict_counts": {
+          "0": 147,
+          "1": 78
+        }
+      }
+    },
+    {
+      "slot": 25,
+      "route": "incremental_QF_UF",
+      "artifact": "results/public-launch/167171/shard-25",
+      "binaries": {
+        "build-slurm-rel/primo": "d0f69f50540efa7561e7895d2f24acff26787756a85b9bdb9f67e7eaaed496e0",
+        "contrib/local/bin/z3": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+        "contrib/local/bin/dolmen": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+      },
+      "cases": 250,
+      "pass": 250,
+      "timeout": 0,
+      "sat_models": 1564,
+      "queries": 2250,
+      "reference_timeout": 0,
+      "resource_incomplete": 0,
+      "resource_triage": [],
+      "seed_begin": 203260050,
+      "distinct_inputs": 228,
+      "input_manifest_sha256": "fc13c055ab58355793352ca5a0bfc4d61e7a5b7bd858b09b6468347376d79b15",
+      "budget_replay": {
+        "count": 25,
+        "timeout_seconds": 10,
+        "outcomes": {
+          "resource-exhausted": 25
+        },
+        "exhausted_queries": 67,
+        "queries": 225,
+        "conflict_counts": {
+          "0": 158,
+          "1": 67
+        }
+      }
+    },
+    {
+      "slot": 26,
+      "route": "incremental_QF_UF",
+      "artifact": "results/public-launch/167171/shard-26",
+      "binaries": {
+        "build-slurm-rel/primo": "d0f69f50540efa7561e7895d2f24acff26787756a85b9bdb9f67e7eaaed496e0",
+        "contrib/local/bin/z3": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+        "contrib/local/bin/dolmen": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+      },
+      "cases": 250,
+      "pass": 250,
+      "timeout": 0,
+      "sat_models": 1606,
+      "queries": 2250,
+      "reference_timeout": 0,
+      "resource_incomplete": 0,
+      "resource_triage": [],
+      "seed_begin": 203270050,
+      "distinct_inputs": 230,
+      "input_manifest_sha256": "6200ba6ba9cfbd943d69b93707b1138738779805682f47a92a1d60ef8527e168",
+      "budget_replay": {
+        "count": 25,
+        "timeout_seconds": 10,
+        "outcomes": {
+          "resource-exhausted": 25
+        },
+        "exhausted_queries": 66,
+        "queries": 225,
+        "conflict_counts": {
+          "0": 159,
+          "1": 66
+        }
+      }
+    },
+    {
+      "slot": 27,
+      "route": "incremental_QF_UF",
+      "artifact": "results/public-launch/167171/shard-27",
+      "binaries": {
+        "build-slurm-rel/primo": "d0f69f50540efa7561e7895d2f24acff26787756a85b9bdb9f67e7eaaed496e0",
+        "contrib/local/bin/z3": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+        "contrib/local/bin/dolmen": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+      },
+      "cases": 250,
+      "pass": 250,
+      "timeout": 0,
+      "sat_models": 1576,
+      "queries": 2250,
+      "reference_timeout": 0,
+      "resource_incomplete": 0,
+      "resource_triage": [],
+      "seed_begin": 203280050,
+      "distinct_inputs": 232,
+      "input_manifest_sha256": "e4c35dd7129ee4801db4e6324d846945b9aeec7ea45a3a4c41561ddaa0e1770e",
+      "budget_replay": {
+        "count": 25,
+        "timeout_seconds": 10,
+        "outcomes": {
+          "resource-exhausted": 25
+        },
+        "exhausted_queries": 68,
+        "queries": 225,
+        "conflict_counts": {
+          "0": 157,
+          "1": 68
+        }
+      }
+    },
+    {
+      "slot": 28,
+      "route": "incremental_QF_LRA",
+      "artifact": "results/public-launch/167171/shard-28",
+      "binaries": {
+        "build-slurm-rel/primo": "d0f69f50540efa7561e7895d2f24acff26787756a85b9bdb9f67e7eaaed496e0",
+        "contrib/local/bin/z3": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+        "contrib/local/bin/dolmen": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+      },
+      "cases": 250,
+      "pass": 250,
+      "timeout": 0,
+      "sat_models": 2000,
+      "queries": 2750,
+      "reference_timeout": 0,
+      "resource_incomplete": 0,
+      "resource_triage": [],
+      "seed_begin": 203290050,
+      "distinct_inputs": 250,
+      "input_manifest_sha256": "2a2441990a0cde8427c7e2e84ab4d9ec4b67130e879a7caea81c1874e490863e",
+      "budget_replay": {
+        "count": 25,
+        "timeout_seconds": 10,
+        "outcomes": {
+          "resource-exhausted": 25
+        },
+        "exhausted_queries": 25,
+        "queries": 275,
+        "conflict_counts": {
+          "0": 250,
+          "1": 25
+        }
+      }
+    },
+    {
+      "slot": 29,
+      "route": "incremental_QF_LRA",
+      "artifact": "results/public-launch/167171/shard-29",
+      "binaries": {
+        "build-slurm-rel/primo": "d0f69f50540efa7561e7895d2f24acff26787756a85b9bdb9f67e7eaaed496e0",
+        "contrib/local/bin/z3": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+        "contrib/local/bin/dolmen": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+      },
+      "cases": 250,
+      "pass": 250,
+      "timeout": 0,
+      "sat_models": 2000,
+      "queries": 2750,
+      "reference_timeout": 0,
+      "resource_incomplete": 0,
+      "resource_triage": [],
+      "seed_begin": 203300050,
+      "distinct_inputs": 250,
+      "input_manifest_sha256": "3107d8942f91c19a5765e5dc913d52d7cbe9c3ee9ca722ebfb3848a09ea11b7f",
+      "budget_replay": {
+        "count": 25,
+        "timeout_seconds": 10,
+        "outcomes": {
+          "resource-exhausted": 25
+        },
+        "exhausted_queries": 25,
+        "queries": 275,
+        "conflict_counts": {
+          "0": 250,
+          "1": 25
+        }
+      }
+    },
+    {
+      "slot": 30,
+      "route": "incremental_QF_LRA",
+      "artifact": "results/public-launch/167171/shard-30",
+      "binaries": {
+        "build-slurm-rel/primo": "d0f69f50540efa7561e7895d2f24acff26787756a85b9bdb9f67e7eaaed496e0",
+        "contrib/local/bin/z3": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+        "contrib/local/bin/dolmen": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+      },
+      "cases": 250,
+      "pass": 250,
+      "timeout": 0,
+      "sat_models": 2000,
+      "queries": 2750,
+      "reference_timeout": 0,
+      "resource_incomplete": 0,
+      "resource_triage": [],
+      "seed_begin": 203310050,
+      "distinct_inputs": 250,
+      "input_manifest_sha256": "a7476d8674968a90bf54dc327c3afefc1b2220938d853a594d42da991819fffe",
+      "budget_replay": {
+        "count": 25,
+        "timeout_seconds": 10,
+        "outcomes": {
+          "resource-exhausted": 25
+        },
+        "exhausted_queries": 25,
+        "queries": 275,
+        "conflict_counts": {
+          "0": 250,
+          "1": 25
+        }
+      }
+    },
+    {
+      "slot": 31,
+      "route": "incremental_QF_LRA",
+      "artifact": "results/public-launch/167171/shard-31",
+      "binaries": {
+        "build-slurm-rel/primo": "d0f69f50540efa7561e7895d2f24acff26787756a85b9bdb9f67e7eaaed496e0",
+        "contrib/local/bin/z3": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+        "contrib/local/bin/dolmen": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+      },
+      "cases": 250,
+      "pass": 250,
+      "timeout": 0,
+      "sat_models": 2000,
+      "queries": 2750,
+      "reference_timeout": 0,
+      "resource_incomplete": 0,
+      "resource_triage": [],
+      "seed_begin": 203320050,
+      "distinct_inputs": 250,
+      "input_manifest_sha256": "ea8ca51126dc52328baad4497126fad159ec3361b3bebe62efcfc173422f0fca",
+      "budget_replay": {
+        "count": 25,
+        "timeout_seconds": 10,
+        "outcomes": {
+          "resource-exhausted": 25
+        },
+        "exhausted_queries": 25,
+        "queries": 275,
+        "conflict_counts": {
+          "0": 250,
+          "1": 25
+        }
+      }
+    }
+  ],
+  "resource_triage": [],
+  "mutations": [
+    {
+      "seed": {
+        "count": 14,
+        "pass": 14,
+        "sat_models": 5,
+        "distinct_inputs": 14,
+        "input_manifest_sha256": "4a628d55a24c2cb506920fc62bf7ae98c7ee76b69498e6e94e78d2ba0e672058"
+      },
+      "mutant": {
+        "count": 112,
+        "pass": 112,
+        "sat_models": 68,
+        "distinct_inputs": 105,
+        "input_manifest_sha256": "d53d6f37760a5a1d96c8543821232e2eccc2261b4ff92114ec51f7596bd06b36"
+      }
+    },
+    {
+      "seed": {
+        "count": 2,
+        "pass": 2,
+        "sat_models": 1,
+        "distinct_inputs": 2,
+        "input_manifest_sha256": "49c268f97a4af3df7d93322ada38a1339cbfb41bff798ae387a778ea4a7e566b"
+      },
+      "mutant": {
+        "count": 100,
+        "pass": 100,
+        "sat_models": 97,
+        "distinct_inputs": 100,
+        "input_manifest_sha256": "9a35ec01741a3d2aa3451bccea1e2ed74c7346952f02192cab265969289b340e"
+      }
+    }
+  ],
+  "candidate": "5efbd02293e15a53fbaad748ceda78bc7d27bbac",
+  "jobs": {
+    "generated": "167171",
+    "mutations": "167180"
+  },
+  "scope": "Correctness samples; resource exhaustion and timeouts are separate from successful solving. No performance claim."
+}
