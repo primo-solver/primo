@@ -11,7 +11,7 @@
       "timing_recipe_revision": "a4470b2",
       "evidence_status": "in-progress",
       "scope": "Fresh current-default Primo timings over all six supported non-incremental divisions; rebuild/assumptions over 1778 native UF and 10 native LRA sessions. Reuse comparable historical reference timings only after provenance checks. Separate post-timing supported ground SAT-model replay. Historical timings remain unchanged.",
-      "decision": "Correctness refresh passed with resource outcomes separated; Primo timing and model replay arrays active or queued. Reference timing reruns cancelled at user request. No final timing or model-qualification conclusion yet.",
+      "decision": "All fresh timings complete. All 11699 selected ground SAT models and native UF validation passed. Two native LRA sessions remain incomplete after Z3 reference timeouts; alternative Yices/OpenSMT full-session checks are running. Reference timing reruns remain cancelled.",
       "execution": {
         "workspace": "primo-evaluation-20261005",
         "environment": "SLURM compute allocations; no workstation or SSH-login solver batch",
@@ -581,6 +581,208 @@
             "202": 5
           }
         }
+      },
+      "completed_timing_and_validation": {
+        "QF_UF": {
+          "rows": 7503,
+          "solved": 7497,
+          "sat": 3142,
+          "unsat": 4355,
+          "statuses": {
+            "ok": 7497,
+            "timeout": 6
+          },
+          "unknown": 0,
+          "wrong": 0,
+          "par2": 4633.099264999995,
+          "models": {
+            "expected_sat": 3142,
+            "completed": 3142,
+            "missing": 0,
+            "outcomes": {
+              "pass": 3142
+            },
+            "shard_states": {
+              "complete": 64
+            },
+            "coverage_issues": [],
+            "fully_validated": true
+          },
+          "exception_rows": []
+        },
+        "QF_LRA": {
+          "rows": 1753,
+          "solved": 1537,
+          "sat": 932,
+          "unsat": 605,
+          "statuses": {
+            "timeout": 216,
+            "ok": 1537
+          },
+          "unknown": 0,
+          "wrong": 0,
+          "par2": 32834.02108299998,
+          "models": {
+            "expected_sat": 932,
+            "completed": 932,
+            "missing": 0,
+            "outcomes": {
+              "pass": 932
+            },
+            "shard_states": {
+              "complete": 16
+            },
+            "coverage_issues": [],
+            "fully_validated": true
+          },
+          "exception_rows": []
+        },
+        "QF_LIA": {
+          "rows": 13306,
+          "solved": 9705,
+          "sat": 6461,
+          "unsat": 3244,
+          "statuses": {
+            "ok": 10456,
+            "timeout": 2850
+          },
+          "unknown": 751,
+          "wrong": 0,
+          "par2": 470785.1583109994,
+          "models": {
+            "expected_sat": 6461,
+            "completed": 6461,
+            "missing": 0,
+            "outcomes": {
+              "pass": 6461
+            },
+            "shard_states": {
+              "complete": 128
+            },
+            "coverage_issues": [],
+            "fully_validated": true
+          },
+          "exception_rows": []
+        },
+        "QF_UFLRA": {
+          "rows": 1284,
+          "solved": 1270,
+          "sat": 759,
+          "unsat": 511,
+          "statuses": {
+            "ok": 1270,
+            "timeout": 14
+          },
+          "unknown": 0,
+          "wrong": 0,
+          "par2": 2399.475908999998,
+          "models": {
+            "expected_sat": 759,
+            "completed": 759,
+            "missing": 0,
+            "outcomes": {
+              "pass": 759
+            },
+            "shard_states": {
+              "complete": 16
+            },
+            "coverage_issues": [],
+            "fully_validated": true
+          },
+          "exception_rows": []
+        },
+        "QF_UFLIA": {
+          "rows": 659,
+          "solved": 574,
+          "sat": 405,
+          "unsat": 169,
+          "statuses": {
+            "timeout": 85,
+            "ok": 574
+          },
+          "unknown": 0,
+          "wrong": 0,
+          "par2": 11443.511550000007,
+          "models": {
+            "expected_sat": 405,
+            "completed": 405,
+            "missing": 0,
+            "outcomes": {
+              "pass": 405
+            },
+            "shard_states": {
+              "complete": 8
+            },
+            "coverage_issues": [],
+            "fully_validated": true
+          },
+          "exception_rows": []
+        },
+        "UF": {
+          "rows": 7590,
+          "solved": 1954,
+          "sat": 1,
+          "unsat": 1953,
+          "statuses": {
+            "timeout": 5602,
+            "ok": 1988
+          },
+          "unknown": 34,
+          "wrong": 0,
+          "par2": 681968.4267750009,
+          "models": {
+            "expected_sat": 1,
+            "completed": 0,
+            "missing": 1,
+            "outcomes": {},
+            "shard_states": {},
+            "coverage_issues": [],
+            "fully_validated": false
+          },
+          "exception_rows": []
+        },
+        "qualification": "Quantified UF models are outside the independent ground-model workflow; that route is not claimed model-validated."
+      },
+      "final_report_attempt": {
+        "job": "168188",
+        "exit": 1,
+        "artifact": "results/refresh-report-status.json",
+        "result": "All single-query timings and supported ground model coverage pass; native UF passes; native LRA incomplete due solely to two reference timeouts."
+      },
+      "alternative_reference_replay": {
+        "job": "172138",
+        "status": "running",
+        "script": "scripts/qualification/evaluation_refresh/native_lra_alternatives.sbatch",
+        "parent": "2026-10-05-full-evaluation-refresh",
+        "indices": [
+          6,
+          8
+        ],
+        "inputs": [
+          "incremental/QF_LRA/hybrid_networks/fisher_star_20_3.inter.bmc_k100.smt2",
+          "incremental/QF_LRA/hybrid_networks/rod_30_3.inter.bmc_k100.smt2"
+        ],
+        "queries_per_session": 101,
+        "profile": [
+          "--quiet",
+          "--stats",
+          "--max-theory-conflicts=10000",
+          "--incremental-mode=assumptions"
+        ],
+        "resources": "4 independent tasks;1 CPU,8GiB,2h each;600s per candidate/reference query,60s Dolmen. Whole-session replay preserves query scopes; timings unchanged.",
+        "command": "PRIMO_WORKDIR=<prepared-workspace> PRIMO_LRA_ROOT=<original-native-root> sbatch scripts/qualification/evaluation_refresh/native_lra_alternatives.sbatch",
+        "references": {
+          "yices-smt2": {
+            "version": "2.7.0, revision4f19700f0e272f4a68250080d12a873523bc7ac3",
+            "sha256": "eab7efbff2a6f0cce2fcd2c25cb4a94e0e048c902d8ef9e6fd7d7989aa54c501"
+          },
+          "opensmt": {
+            "version": "2.9.2 (printed to stderr; existing driver captures only stdout in run.json)",
+            "sha256": "b7899e9aff299026d3251df7a28f51f56d8bd1e5b0fd7be11bcc72c4f2803a98"
+          }
+        },
+        "artifacts": "results/refresh-native-lra/alternative-references/{yices-smt2,opensmt}/assumptions/shard-{6,8}",
+        "preflight": "Clean frozen5efbd02 workspace checked with preparation helper --check-only --no-sync; both reference executables and Dolmen verified. Batch script validator and lint pass."
       }
     },
     {

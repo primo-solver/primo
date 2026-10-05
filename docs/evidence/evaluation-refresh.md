@@ -1,9 +1,9 @@
 # October evaluation refresh
 
 This run establishes a new Primo timing baseline on revision
-`5efbd02293e15a53fbaad748ceda78bc7d27bbac`. Timing and post-timing model replay
-are **in progress**; the completed correctness evidence below does not yet
-qualify a full-corpus performance result. The
+`5efbd02293e15a53fbaad748ceda78bc7d27bbac`. All timings are complete. Ground SAT-model replay and native UF qualification
+passed; **two native LRA sessions remain incomplete** because Z3 reference
+checks timed out. Full-session replays with Yices and OpenSMT are running. The
 [run ledger](../run-log.json), entry `2026-10-05-full-evaluation-refresh`, records
 the jobs, commands, snapshots and remaining work. Earlier measurements retain
 their original revisions and dates.
@@ -50,6 +50,34 @@ known status annotations and exit successfully. Partial query progress, unknown 
 separately. An unknown from the conflict limit is resource exhaustion, not a
 successful solve. PAR2 charges an unsolved input or incomplete session twice its
 corresponding timeout; completed cases contribute their measured wall time.
+
+## Completed timing results
+
+All 32,095 non-incremental inputs were processed, with no execution errors or
+reported wrong answers. Timeouts and unknown answers remain unsolved.
+
+| Division | Solved | Timeout | Unknown |
+| --- | ---: | ---: | ---: |
+| QF_UF | 7,497 | 6 | 0 |
+| QF_LRA | 1,537 | 216 | 0 |
+| QF_LIA | 9,705 | 2,850 | 751 |
+| QF_UFLRA | 1,270 | 14 | 0 |
+| QF_UFLIA | 574 | 85 | 0 |
+| UF, quantified | 1,954 | 5,602 | 34 |
+
+Independent Dolmen checking passed all 11,699 selected ground SAT models.
+Native UF completed 1,775 sessions in rebuild mode and 1,772 in assumptions
+mode; their separate qualification checked 24,746 and 25,027 SAT models,
+respectively, with no changed answers or validation failures. The remaining
+three rebuild sessions timed out; six assumptions sessions exhausted their
+conflict limits.
+
+Native LRA completed no rebuild sessions (all ten timed out), and three
+assumptions sessions (seven timed out). One completed assumptions session is
+qualified. The other two stopped during Z3 reference checking after 82 and 68
+successful query comparisons, respectively; a reference timeout does not
+establish a wrong Primo answer. Alternative references must check the full
+101-query sessions before they can close coverage.
 
 ## Reference reuse and model qualification
 
@@ -117,5 +145,6 @@ is `d0f69f50540efa7561e7895d2f24acff26787756a85b9bdb9f67e7eaaed496e0`.
 Reporting-only commits do not change that binary. Raw artifacts remain under
 the `primo-evaluation-20261005` experiment workspace; the ledger names each
 result directory and job. The final metadata report requires complete timing
-coverage and supported model qualification before returning success. Its result
-and the full timing tables are still pending.
+coverage and supported model qualification before returning success. Its first final attempt (job `168188`) correctly failed on the two native LRA
+reference timeouts. Alternative replay job `172138` retains those attempts and
+the original timing data unchanged. Final native LRA acceptance remains pending.
