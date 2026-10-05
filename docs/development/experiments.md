@@ -196,6 +196,18 @@ Its default grouping remains the two native UF families. Its timing and
 validation roots must be selected explicitly; it does not verify historical
 reference provenance on the caller's behalf.
 
+For the six-division refresh with 1,778 native UF and ten native LRA sessions,
+the {refreshsource}`final report job <scripts/qualification/evaluation_refresh/report.sbatch>`
+joins the fixed `results/refresh-*` directories after replay. Set `PRIMO_WORKDIR`
+and `PRIMO_REPORTING_DIR` to the experiment workspace and its preserved reporting
+package. Supply the audited ground reference map and native UF reference-audit
+JSON files first. Native LRA reference timing is marked unavailable in this
+recipe. The job runs only metadata tools, writes coverage status, and returns
+nonzero for incomplete Primo timings, answer failures, disagreements, or missing
+supported model qualification. Quantified UF models remain outside independent
+ground-model validation. A zero exit does not remove the stated limits of the
+correctness samples or the historical timing comparisons.
+
 A refreshed baseline does not erase earlier runs. Retain their revisions and
 limitations, and record a new ledger entry naming the fresh source revision,
 corpus identities, profiles, limits, jobs, raw artifacts and qualification state.

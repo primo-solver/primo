@@ -39,7 +39,7 @@ sphinx:
         - "https://github.com/primo-solver/primo/blob/c944fa790c2043ebac93b8d6f63c7b02b0c2c235/%s"
         - "%s"
       refreshsource:
-        - "https://github.com/primo-solver/primo/blob/01f31b5/%s"
+        - "https://github.com/primo-solver/primo/blob/6fa6f0b/%s"
         - "%s"
       repairsource:
         - "https://github.com/primo-solver/primo/blob/5c96568/%s"
