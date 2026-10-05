@@ -78,7 +78,9 @@ def qualify(timing, models):
     }
 
 
-def summarize(data, models, expected_sessions):
+def summarize(data, models, expected_sessions, families=None):
+    if families is None:
+        families = ("2018-Goel-hwbench", "20190906-CLEARSY")
     disagreements = []
     for left, right in itertools.combinations(LABELS, 2):
         for index in sorted(data[left].keys() & data[right].keys()):
@@ -92,13 +94,13 @@ def summarize(data, models, expected_sessions):
         profile = group(list(rows.values()))
         profile["full_archive_timing"] = set(rows) == set(range(expected_sessions))
         profile["families"] = {
-            family: group([r for r in rows.values() if family in r["file"]])
-            for family in ("2018-Goel-hwbench", "20190906-CLEARSY")
+            family: group([r for r in rows.values() if family in Path(r["file"]).parts])
+            for family in families
         }
         if label in models:
             profile["validation"] = qualify(rows, models[label])
             for family, family_result in profile["families"].items():
-                selected = {i: r for i, r in rows.items() if family in r["file"]}
+                selected = {i: r for i, r in rows.items() if family in Path(r["file"]).parts}
                 family_result["validation"] = qualify(
                     selected, {i: r for i, r in models[label].items() if i in selected})
         result["profiles"][label] = profile
@@ -130,12 +132,15 @@ def main():
     parser.add_argument("--timing", type=Path, required=True)
     parser.add_argument("--validation", type=Path)
     parser.add_argument("--expected-sessions", type=int, default=1778)
+    parser.add_argument("--family", action="append",
+                        help="Archive path component to group; repeat for multiple families. "
+                             "Defaults to the two native UF families.")
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()
     data = {label: load_rows(args.timing / label) for label in LABELS}
     models = {label: load_rows(args.validation / label) for label in LABELS[:2]} \
         if args.validation else {}
-    result = summarize(data, models, args.expected_sessions)
+    result = summarize(data, models, args.expected_sessions, args.family)
     result["timing_root"] = str(args.timing)
     result["validation_root"] = str(args.validation) if args.validation else None
     args.out.write_text(json.dumps(result, indent=2) + "\n")

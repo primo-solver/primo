@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Summarize fresh timings only after checking their corpus and binary identities."""
+"""Summarize timings after checking identities and identifying reused references."""
 
 from __future__ import annotations
 
@@ -45,16 +45,36 @@ def main() -> int:
     parser.add_argument('--inventory', type=Path, required=True)
     parser.add_argument('--timeout', type=float, default=60)
     parser.add_argument('--out', type=Path, required=True)
+    parser.add_argument('--reference-map', type=Path,
+                        help='JSON mapping logic to reference label to {root, measurement_note}. '
+                             'Listed references are historical; omitted references are unavailable.')
     args = parser.parse_args()
     inventory = json.loads(args.inventory.read_text())
+    references = json.loads(args.reference_map.read_text()) if args.reference_map else None
+    if references is not None:
+        if set(references) - set(inventory['corpora']):
+            raise ValueError('reference map contains an unexpected logic')
+        for selected in references.values():
+            if set(selected) - {'z3', 'cvc5'}:
+                raise ValueError('reference map contains an unexpected solver')
+            for source in selected.values():
+                if not source.get('root') or not source.get('measurement_note'):
+                    raise ValueError('historical reference requires root and measurement_note')
     report = {'timeout_seconds': args.timeout, 'routes': {},
-              'scope': 'Fresh timing baseline. Model replay is a separate stage; '
+              'scope': 'Fresh Primo timings; reference timing origins are explicit per run. '
+                       'Model replay is a separate stage; '
                        'incomplete coverage is not independent model qualification.'}
     for logic, corpus in inventory['corpora'].items():
         raw = {}
         runs = {}
         for label in ('primo', 'z3', 'cvc5'):
             folder = args.root / logic / label
+            source = None
+            if label != 'primo' and references is not None:
+                source = references.get(logic, {}).get(label)
+                if source is None:
+                    continue
+                folder = Path(source['root'])
             verify_provenance(folder, corpus['inputs'], inventory['tools'][label]['sha256'],
                               ['--quiet'] if label == 'primo' else [], args.timeout)
             runs[label], raw[label] = load_run(folder, corpus['count'], args.timeout)
@@ -63,8 +83,14 @@ def main() -> int:
             runs[label]['solved_seconds'] = distribution(
                 [float(row['seconds']) for row in raw[label].values() if decisive(row)])
             runs[label]['mean_par2'] = runs[label]['par2'] / corpus['count']
+            runs[label]['timing_origin'] = 'historical' if source else 'fresh'
+            runs[label]['timing_root'] = str(folder)
+            if source:
+                runs[label]['measurement_note'] = source['measurement_note']
         comparisons = {}
         for reference in ('z3', 'cvc5'):
+            if reference not in raw:
+                continue
             paired = [name for name in raw['primo'] if decisive(raw['primo'][name])
                       and decisive(raw[reference][name])]
             ratios = [float(raw['primo'][name]['seconds']) /
@@ -79,7 +105,9 @@ def main() -> int:
             }
         report['routes'][logic] = {
             'runs': runs, 'comparisons': comparisons,
-            'reference_disagreements': [name for name in raw['z3']
+            'unavailable_references': [label for label in ('z3', 'cvc5') if label not in raw],
+            'reference_disagreements': [name for name in raw.get('z3', {})
+                if name in raw.get('cvc5', {})
                 if decisive(raw['z3'][name]) and decisive(raw['cvc5'][name])
                 and raw['z3'][name]['answer'] != raw['cvc5'][name]['answer']],
         }
