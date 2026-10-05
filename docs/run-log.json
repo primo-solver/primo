@@ -3,6 +3,514 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-10-05-full-evaluation-refresh",
+      "date": "2026-10-05",
+      "kind": "fresh-supported-logic-and-native-session-evaluation",
+      "commit": "5efbd02293e15a53fbaad748ceda78bc7d27bbac",
+      "reporting_revision": "01f31b5",
+      "timing_recipe_revision": "a4470b2",
+      "evidence_status": "in-progress",
+      "scope": "Fresh current-default Primo timings over all six supported non-incremental divisions; rebuild/assumptions over 1778 native UF and 10 native LRA sessions. Reuse comparable historical reference timings only after provenance checks. Separate post-timing supported ground SAT-model replay. Historical timings remain unchanged.",
+      "decision": "Correctness refresh passed with resource outcomes separated; Primo timing and model replay arrays active or queued. Reference timing reruns cancelled at user request. No final timing or model-qualification conclusion yet.",
+      "execution": {
+        "workspace": "primo-evaluation-20261005",
+        "environment": "SLURM compute allocations; no workstation or SSH-login solver batch",
+        "build": "Release GCC11.4.1, CaDiCaL3.0.0-7b99c07",
+        "tools": {
+          "primo": {
+            "sha256": "d0f69f50540efa7561e7895d2f24acff26787756a85b9bdb9f67e7eaaed496e0",
+            "version": "primo 0.2.0\ngit: 5efbd02\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n"
+          },
+          "z3": {
+            "sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+            "version": "Z3 version 5.1.0 - 64 bit\n"
+          },
+          "cvc5": {
+            "sha256": "4a93548398445cf1a774655583f5465b156c26f63f2cdfb94f4728fdf7adde46",
+            "version": "cvc5 1.3.4 [git f3b21c4 on branch HEAD]"
+          },
+          "dolmen": {
+            "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+            "version": "0.10\n"
+          }
+        },
+        "timing_resources": "Initial non-incremental allocation: 1 task,1 CPU,8GiB,3h per shard,compute partition,nomultithread; initial4-task concurrency, superseded by concurrency_updates. Each non-incremental shard records lscpu. Native allocations use1 task,1 CPU,8GiB,2h and their separately recorded whole-session timeouts.",
+        "reference_timing": "Cancelled remaining Z3/cvc5 timing reruns at user request; preserve partial artifacts, reuse historical reference rows only where identity and measurement settings permit.",
+        "concurrency_updates": {
+          "reason": "Use newly available SLURM capacity after cancelling reference timing reruns; per-process CPU, memory and time limits unchanged.",
+          "final_timing_throttles": {
+            "167587": 16,
+            "167590": 16,
+            "167593": 64,
+            "167596": 8,
+            "167599": 8,
+            "167602": 64,
+            "167605": 8,
+            "167607": 8
+          },
+          "final_replay_throttles": {
+            "167641": 16,
+            "167642": 8,
+            "167643": 32,
+            "167644": 8,
+            "167645": 8,
+            "167646": 16,
+            "167647": 8
+          },
+          "command": "scontrol update JobId=<owned-array> ArrayTaskThrottle=<count>; already-finished task warnings retained in submission logs."
+        }
+      },
+      "corpora": {
+        "QF_UF": {
+          "count": 7503,
+          "bytes": 988035549,
+          "manifest_sha256": "963e161de1928537b1db23f07a026d6f2a251b0a4024624af9df05a51ec9344b"
+        },
+        "QF_LRA": {
+          "count": 1753,
+          "bytes": 2575846184,
+          "manifest_sha256": "9542f4fb956f12ed139b66bd4189cbcafc4d85c53ae792cdbdfa3e81f7afcc0b"
+        },
+        "QF_LIA": {
+          "count": 13306,
+          "bytes": 8192190039,
+          "manifest_sha256": "4c28c67efc28c640f361c0dc6d55b099f2d5b819ec53d02302a2cb4cc4ae85bd"
+        },
+        "QF_UFLRA": {
+          "count": 1284,
+          "bytes": 1645365818,
+          "manifest_sha256": "5da4294c373b086fbc90af241cbe08b987098a2e99fb5da780e046978a79d7be"
+        },
+        "QF_UFLIA": {
+          "count": 659,
+          "bytes": 118566018,
+          "manifest_sha256": "c7bb65f38ebace9fa7972342f435b086a09ead030d9e0278b99bd0d477a3e3b8"
+        },
+        "UF": {
+          "count": 7590,
+          "bytes": 437074406,
+          "manifest_sha256": "9f9428111a417c54ead8295b083c3d65798a55a9783ce01fabdffa68ff61e721"
+        }
+      },
+      "corpus_provenance": {
+        "inventory_job": "167419",
+        "inventory_artifact": "results/refresh-inventory/inventory.json",
+        "manifest_format": "SHA256, two spaces, relative path, newline; sorted by relative path",
+        "ground_comparison_job": "167557",
+        "historical_comparison": "All5 ground corpora match every path/hash in the287b743 historical manifests:0 additions, removals or changed inputs.",
+        "qf_lia_restore": {
+          "url": "https://zenodo.org/records/16740866/files/QF_LIA.tar.zst",
+          "published_md5": "6b78b5c578394cf7a72b22087279f34f",
+          "stage_job": "167418",
+          "result": "Checksum accepted;13306 restored files match historical hashes."
+        }
+      },
+      "commands": {
+        "prepare": "python3 scripts/slurm_prepare_benchmark_workspace.py --local-dir <clean-5efbd02-worktree> --remote-dir <workspace> --cmake <cmake> --build-via-slurm --reuse-dependencies --cxx-header-manifest <matching-header-manifest> --extra-target all; --check-only with z3,cvc5,dolmen before submissions",
+        "checks": "PRIMO_WORKDIR=<workspace> PRIMO_EXPECTED_REVISION=5efbd02 PRIMO_CMAKE_BIN=<cmake-bin> PRIMO_CXX_HEADER_MANIFEST=<manifest> PRIMO_ASAN_RUNTIME_DIR=<verified-runtime-dir> sbatch --ntasks=1 scripts/qualification/public_checks.sbatch",
+        "static": "scripts/qualification/public_static.sbatch and publication_followups/static_examples.sbatch, --ntasks=1, same workspace/header manifest",
+        "gate": "PRIMO_EXPECTED_REVISION=5efbd02 PRIMO_SEED_BASE=203010050 PRIMO_BUDGET_REPLAY=1 sbatch --ntasks=1 --array=0-31%8 scripts/qualification/public_launch.sbatch",
+        "mutations": "Same revision/seed base; PRIMO_YINYANG_BIN=<verified-yinyang-bin> sbatch --ntasks=1 scripts/qualification/public_mutations.sbatch",
+        "mixed_gate": "PRIMO_FUZZ_SEED_BASE=203110050 PRIMO_FUZZ_SOLVER_ARGS=--quiet PRIMO_FUZZ_OUT_DIR=results/refresh-mixed-gate sbatch --ntasks=1 --array=0-3%4 scripts/slurm_qf_uflra_fuzz_gate.sbatch",
+        "ground_timing": "For each logic and solver: PRIMO_PHASE=benchmark PRIMO_TIMEOUT=60 PRIMO_SHARDS=<count> PRIMO_CORPUS_ROOT=<workspace>/corpora/<logic> PRIMO_CAMPAIGN_OUT=results/refresh-timing/<logic>/<solver> PRIMO_CAMPAIGN_ID=refresh-20261005-<logic>-<solver> PRIMO_SOLVER=<binary> PRIMO_SOLVER_ARGS=<--quiet only for Primo> PRIMO_EXPECTED_GIT=<5efbd02 only for Primo> sbatch --partition=compute --hint=nomultithread --array=0-<shards-minus1>%4 scripts/qualification/evaluation_refresh/timing.sbatch",
+        "ground_replay": "After all20 timing arrays: PRIMO_PHASE=replay PRIMO_MODEL_TIMEOUT=90 PRIMO_DOLMEN_TIMEOUT=30 PRIMO_DOLMEN_SIZE=8G PRIMO_CAMPAIGN_OUT=results/refresh-timing/<ground-logic>/primo sbatch --ntasks=1 --mem=12G --array=0-<shards-minus1>%4 --dependency=afterany:<all-timing-jobs> scripts/slurm_real_corpus_validation.sbatch",
+        "native_timing": "scripts/slurm_native_uf_sessions.sbatch with --ntasks=1 --hint=nomultithread; PRIMO_EXPECTED_REVISION=5efbd02,PRIMO_UF_PHASE=timing,matching root/manifest,CVC5 path;16 shards,4 profiles (rebuild,assumptions,z3,cvc5),arrays0-63%4 forUF and0-39%4 forLRA,30s or600s whole-session timeout. Primo flags --quiet --stats --max-theory-conflicts=10000 plus retained-mode selector.",
+        "native_replay": "Same native driver/profiles/root/manifest; PRIMO_UF_PHASE=validate,PRIMO_UF_TIMING=<timing-root>,fresh validation output,60s Dolmen budget; afterany all20 timing arrays. Incomplete timing sessions remain unqualified, not model passes.",
+        "summary": "scripts/qualification/evaluation_refresh/summarize.py --root results/refresh-timing --inventory results/refresh-inventory/inventory.json --reference-map results/refresh-reference-map.json --timeout 60 --out <report>",
+        "local_checks": "make lint; make docs; make docs-check-links; sbatch validators;2 mocked metadata tests"
+      },
+      "jobs": {
+        "build": "167167",
+        "checks": "167168",
+        "static": "167169",
+        "static_examples": "167170",
+        "generated": "167171",
+        "mutations": "167180",
+        "deterministic_seeds": "167414",
+        "mixed_gate": "167510",
+        "reporter_tests": "167514",
+        "native_lra_qualification": "167420",
+        "native_lra_manifest": "167606",
+        "timing": {
+          "QF_UF": {
+            "primo": "167587",
+            "z3": "167588",
+            "cvc5": "167589"
+          },
+          "QF_LRA": {
+            "primo": "167590",
+            "z3": "167591",
+            "cvc5": "167592"
+          },
+          "QF_LIA": {
+            "primo": "167593",
+            "z3": "167594",
+            "cvc5": "167595"
+          },
+          "QF_UFLRA": {
+            "primo": "167596",
+            "z3": "167597",
+            "cvc5": "167598"
+          },
+          "QF_UFLIA": {
+            "primo": "167599",
+            "z3": "167600",
+            "cvc5": "167601"
+          },
+          "UF": {
+            "primo": "167602",
+            "z3": "167603",
+            "cvc5": "167604"
+          },
+          "native_UF": {
+            "all": "167605"
+          },
+          "native_LRA": {
+            "manifest": "167606",
+            "all": "167607"
+          }
+        },
+        "model_replay": {
+          "QF_UF": {
+            "models": "167641"
+          },
+          "QF_LRA": {
+            "models": "167642"
+          },
+          "QF_LIA": {
+            "models": "167643"
+          },
+          "QF_UFLRA": {
+            "models": "167644"
+          },
+          "QF_UFLIA": {
+            "models": "167645"
+          },
+          "native_UF": {
+            "models": "167646"
+          },
+          "native_LRA": {
+            "models": "167647"
+          }
+        },
+        "gate_report": "167432"
+      },
+      "checks": {
+        "release": "43/43 passed",
+        "asan": "43/43 passed",
+        "python": "229 tests in qualification; 2 initial reporter tests passed in SLURM167514; six focused metadata tests passed locally after reporting-only01f31b5.",
+        "documentation_examples": "12/12 passed",
+        "static": "All 126 tracked source/test C++ units plus four documentation examples rescanned: 18 normal and 404 include advisories match normalized a953edd baseline exactly; 7 unchanged example include advisories. No warning-free claim.",
+        "generated": {
+          "count": 8000,
+          "pass": 7978,
+          "timeout": 22,
+          "other_incomplete": 0,
+          "wrong_answer": 0,
+          "crash": 0,
+          "invalid_model": 0,
+          "reference_disagreement": 0,
+          "selected_ground_sat_models": 17877,
+          "seed_base": 203010050,
+          "timeout_seconds": 5,
+          "routes": {
+            "QF_UF": {
+              "cases": 1000,
+              "pass": 1000,
+              "timeout": 0,
+              "sat_models": 630,
+              "queries": 0,
+              "resource_incomplete": 0,
+              "reference_timeout": 0,
+              "distinct_inputs": 997
+            },
+            "QF_LRA": {
+              "cases": 1000,
+              "pass": 1000,
+              "timeout": 0,
+              "sat_models": 1000,
+              "queries": 0,
+              "resource_incomplete": 0,
+              "reference_timeout": 0,
+              "distinct_inputs": 285
+            },
+            "QF_LIA": {
+              "cases": 1000,
+              "pass": 978,
+              "timeout": 22,
+              "sat_models": 876,
+              "queries": 0,
+              "resource_incomplete": 0,
+              "reference_timeout": 3,
+              "distinct_inputs": 1000
+            },
+            "QF_UFLRA": {
+              "cases": 1000,
+              "pass": 1000,
+              "timeout": 0,
+              "sat_models": 574,
+              "queries": 0,
+              "resource_incomplete": 0,
+              "reference_timeout": 0,
+              "distinct_inputs": 999
+            },
+            "QF_UFLIA": {
+              "cases": 1000,
+              "pass": 1000,
+              "timeout": 0,
+              "sat_models": 525,
+              "queries": 0,
+              "resource_incomplete": 0,
+              "reference_timeout": 0,
+              "distinct_inputs": 672
+            },
+            "UF": {
+              "cases": 1000,
+              "pass": 1000,
+              "timeout": 0,
+              "sat_models": 0,
+              "queries": 0,
+              "resource_incomplete": 0,
+              "reference_timeout": 0,
+              "distinct_inputs": 560
+            },
+            "incremental_QF_UF": {
+              "cases": 1000,
+              "pass": 1000,
+              "timeout": 0,
+              "sat_models": 6272,
+              "queries": 9000,
+              "resource_incomplete": 0,
+              "reference_timeout": 0,
+              "distinct_inputs": 813
+            },
+            "incremental_QF_LRA": {
+              "cases": 1000,
+              "pass": 1000,
+              "timeout": 0,
+              "sat_models": 8000,
+              "queries": 11000,
+              "resource_incomplete": 0,
+              "reference_timeout": 0,
+              "distinct_inputs": 1000
+            }
+          }
+        },
+        "budget_replay": {
+          "samples": 800,
+          "definitive_samples": 344,
+          "exhausted_samples": 456,
+          "timeout_samples": 0,
+          "queries": 2600,
+          "exhausted_queries": 635,
+          "limit": 1,
+          "timeout_seconds": 10,
+          "overshoot": 0
+        },
+        "mutations": {
+          "count": 212,
+          "pass": 212,
+          "seed_count": 16,
+          "mutant_sat_models": 165,
+          "seed_sat_models": 6,
+          "seed_base": 203010050,
+          "shards": [
+            {
+              "seed": {
+                "count": 14,
+                "pass": 14,
+                "sat_models": 5,
+                "distinct_inputs": 14,
+                "input_manifest_sha256": "4a628d55a24c2cb506920fc62bf7ae98c7ee76b69498e6e94e78d2ba0e672058"
+              },
+              "mutant": {
+                "count": 112,
+                "pass": 112,
+                "sat_models": 68,
+                "distinct_inputs": 105,
+                "input_manifest_sha256": "d53d6f37760a5a1d96c8543821232e2eccc2261b4ff92114ec51f7596bd06b36"
+              }
+            },
+            {
+              "seed": {
+                "count": 2,
+                "pass": 2,
+                "sat_models": 1,
+                "distinct_inputs": 2,
+                "input_manifest_sha256": "49c268f97a4af3df7d93322ada38a1339cbfb41bff798ae387a778ea4a7e566b"
+              },
+              "mutant": {
+                "count": 100,
+                "pass": 100,
+                "sat_models": 97,
+                "distinct_inputs": 100,
+                "input_manifest_sha256": "9a35ec01741a3d2aa3451bccea1e2ed74c7346952f02192cab265969289b340e"
+              }
+            }
+          ]
+        },
+        "native_lra": "All10 full parser checks and4-query validation prefixes passed, no known-answer mismatch and unchanged inputs/binaries. Full120s session diagnostics all timed out; exit1 from the strict gate is resource-incomplete, not a crash or a full-session pass.",
+        "mixed_campaign": {
+          "job": "167510",
+          "summary_job": "168102",
+          "seed_base": 203110050,
+          "results": {
+            "general": {
+              "cases": 3000,
+              "outcomes": {
+                "PASS": 3000
+              },
+              "eligible_sat": 1709,
+              "independent_models": 1709,
+              "model_outcomes": {
+                "pass": 1709
+              }
+            },
+            "finite-qf-uf": {
+              "cases": 500,
+              "outcomes": {
+                "PASS": 500
+              },
+              "eligible_sat": 252,
+              "independent_models": 0,
+              "model_outcomes": {}
+            },
+            "finite-qf-uflra": {
+              "cases": 500,
+              "outcomes": {
+                "PASS": 500
+              },
+              "eligible_sat": 252,
+              "independent_models": 252,
+              "model_outcomes": {
+                "pass": 252
+              }
+            }
+          },
+          "qualification": "All 4000 answer cases passed. General and finite-UFLRA eligible SAT selections independently validated in full; finite-UF answer cases do not have an additional model replay in this supplemental gate."
+        },
+        "report_docs": "make docs and make docs-check-links pass; 258 pages, 31719 local links,1005 Git links,0 failures,377 external URLs deferred. Revised section independently reviewed and desktop render inspected."
+      },
+      "shards_per_solver": {
+        "QF_UF": 64,
+        "QF_LRA": 16,
+        "QF_LIA": 128,
+        "QF_UFLRA": 16,
+        "QF_UFLIA": 8,
+        "UF": 64
+      },
+      "attempts": [
+        {
+          "job": "167556",
+          "result": "Native manifest adapter initially rejected legitimate unknown status annotations. Preserve them explicitly for fresh reference comparison; corrected retry167606 prepared all10 inputs."
+        },
+        {
+          "jobs": [
+            "167559",
+            "167562"
+          ],
+          "result": "Idle AMD-node hardware checks could not launch: Job credential expired. No solver ran in these allocations. Timing remains on working compute partition."
+        },
+        {
+          "job": "167419",
+          "result": "Inventory completed within15min allocation (9m04s). An attempted extension arrived after completion and was refused as already finished; no limit changed."
+        }
+      ],
+      "artifacts": {
+        "root": "primo-evaluation-20261005/results",
+        "local": "results/evaluation-refresh-20261005",
+        "preserved_binary": "results/refresh-inventory/primo-5efbd02",
+        "qualification": "results/refresh-qualification.json",
+        "timing": "results/refresh-timing",
+        "native": "results/refresh-native-{uf,lra}/{timing,validation}"
+      },
+      "limitations": [
+        "Timing and model replay are still in progress.",
+        "Quantified UF models are not independently validated by the supported ground-model workflow.",
+        "Native timings are whole-session measurements; partial query progress and unknown benchmark annotations remain explicit.",
+        "Reference timing reruns cancelled by user. Reuse only audited historical references; incomplete or unverified sets remain unavailable. No fresh-reference performance claim."
+      ],
+      "documentation_review": {
+        "reviewer": "review_experiments_docs",
+        "scope": "New timing-refresh runbook and source-role configuration only, not unfinished experiment outcomes",
+        "status": "accepted",
+        "findings": "REFRESH-DOC-01 source links and S01 result layout/tool identities resolved",
+        "accepted_blobs": {
+          "docs/development/experiments.md": "3c4b096fe4e692513bb3ac3fc21067c0c4b4432f",
+          "docs/_config.yml": "45f3a0abcd6d9167e06eae2dc41dbd7816316f1b"
+        },
+        "validation": "make docs and docs-check-links passed258pages31719local links1004Git links0failures;377external URLs deferred. Desktop section rendered without overflow/errors.",
+        "historical_reuse": {
+          "baseline": "f4f35c6",
+          "implementation": "01f31b5",
+          "reviewer": "independent read-only reviewer",
+          "files": [
+            "docs/development/experiments.md final section",
+            "docs/_config.yml refreshsource role"
+          ],
+          "accepted_blobs": [
+            "8162f67033efcba084f2cfda723499b65f810d66",
+            "a3f82027a39cd7500b4a44059b732bf0247f2581"
+          ],
+          "finding": "REFRESH-HIST-01 fixed: explicit JSON file path and shard-parent root",
+          "verdict": "ready; no required findings",
+          "unchecked": "Result acceptance and independent rendering not covered."
+        }
+      },
+      "reference_cancellation": {
+        "reason": "User clarified clean slate applies to Primo; cancel remaining reference timing reruns and reuse comparable historical timings. Fresh correctness references remain included.",
+        "jobs": [
+          "167588",
+          "167589",
+          "167591",
+          "167592",
+          "167594",
+          "167595",
+          "167597",
+          "167598",
+          "167600",
+          "167601",
+          "167603",
+          "167604"
+        ],
+        "native_tasks": "167605 slots 0..63 and 167607 slots 0..39 with slot modulo 4 in {2,3}; Primo profiles 0 and 1 retained.",
+        "verification": "squeue confirms no non-incremental reference jobs or native reference tasks remain active.",
+        "artifacts": "Partial reference timings retained unchanged, excluded from the requested fresh Primo baseline.",
+        "model_replay": "All seven replay arrays retained; afterany dependencies remain valid after cancellation cleanup."
+      },
+      "reference_audit": {
+        "job": "168031",
+        "artifact": "results/refresh-reference-audit.json",
+        "complete_hash_matched_ground_sets": 9,
+        "missing": "Historical cvc5 QF_LIA is incomplete (12445/13306 rows); quantified UF references use a different historical driver and are not part of this ground audit. Neither is automatically filled from cancelled runs.",
+        "historical_source": "results/full-revalidation-287b743/real",
+        "compatibility": "Same reference binaries, exact path/content hashes, arguments and 60s limits. Prior allocation 1CPU/4GiB versus fresh 1CPU/8GiB; report context, not a controlled same-node performance claim.",
+        "native_uf": {
+          "job": "168102",
+          "artifact": "results/refresh-native-reference-audit.json",
+          "historical_source": "results/uf-native-timing-1595948",
+          "result": "Both references have1778 exact-manifest sessions, unchanged binary hashes and30s limit; Z3 completes1778, cvc5 completes1768 with10timeouts. Ground/native historical inputs and binary identities checked before reuse."
+        }
+      },
+      "progress_snapshot": {
+        "status": "partial; not final evaluation",
+        "artifact": "results/evaluation-refresh-20261005/progress-snapshot.json",
+        "finished_primo_timing": {
+          "QF_UF": {
+            "rows": 7503,
+            "solved": 7497,
+            "timeouts": 6
+          },
+          "QF_UFLRA": {
+            "rows": 1284,
+            "solved": 1270,
+            "timeouts": 14
+          }
+        },
+        "limitations": "Other divisions and native sessions incomplete at snapshot; all post-timing model arrays still pending. Final historical comparison and model coverage not accepted yet."
+      }
+    },
+    {
       "id": "2026-10-05-publication-six-findings-qualified",
       "date": "2026-10-05",
       "kind": "publication-repair-qualification",
