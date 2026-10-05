@@ -1,9 +1,10 @@
 # October evaluation refresh
 
 This run establishes a new Primo timing baseline on revision
-`5efbd02293e15a53fbaad748ceda78bc7d27bbac`. All timings are complete. Ground SAT-model replay and native UF qualification
-passed; **two native LRA sessions remain incomplete** because Z3 reference
-checks timed out. Full-session replays with Yices and OpenSMT are running. The
+`5efbd02293e15a53fbaad748ceda78bc7d27bbac`. All timings and the selected correctness checks are complete.
+Independent ground-model validation and native UF qualification passed.
+OpenSMT closed the two native LRA reference gaps; Z3, Yices and cvc5 resource
+limits remain explicitly incomplete reference attempts. The
 [run ledger](../run-log.json), entry `2026-10-05-full-evaluation-refresh`, records
 the jobs, commands, snapshots and remaining work. Earlier measurements retain
 their original revisions and dates.
@@ -73,11 +74,21 @@ three rebuild sessions timed out; six assumptions sessions exhausted their
 conflict limits.
 
 Native LRA completed no rebuild sessions (all ten timed out), and three
-assumptions sessions (seven timed out). One completed assumptions session is
-qualified. The other two stopped during Z3 reference checking after 82 and 68
-successful query comparisons, respectively; a reference timeout does not
-establish a wrong Primo answer. Alternative references must check the full
-101-query sessions before they can close coverage.
+assumptions sessions (seven timed out). All three completed assumptions sessions are now qualified. Z3 checked one;
+OpenSMT checked the other two after Z3 reference timeouts. Each original
+101-query session completed under OpenSMT, and a fresh live Primo replay
+matched every recorded reference and timed answer with a successful exit.
+All 202 additional answers were UNSAT, so no SAT models arose in these replays.
+The [supplemental coverage report](../coverage/evaluation-refresh-native-lra.json)
+records exact input, binary and timing-result hashes and preserves the original
+incomplete attempt.
+
+Yices and cvc5 each timed out on both original sessions at the 600-second
+whole-session limit. Their partial UNSAT answers agreed but do not qualify
+complete sessions. The cvc5 attempt used the owner's incremental competition
+profile, including `--use-portfolio`; these are correctness checks, not a new
+reference timing baseline. Slower alternative fresh-context checks were
+cancelled after OpenSMT qualification and remain incomplete.
 
 ## Reference reuse and model qualification
 
@@ -146,5 +157,8 @@ Reporting-only commits do not change that binary. Raw artifacts remain under
 the `primo-evaluation-20261005` experiment workspace; the ledger names each
 result directory and job. The final metadata report requires complete timing
 coverage and supported model qualification before returning success. Its first final attempt (job `168188`) correctly failed on the two native LRA
-reference timeouts. Alternative replay job `172138` retains those attempts and
-the original timing data unchanged. Final native LRA acceptance remains pending.
+reference timeouts. Supplemental job `172142` closed that coverage gap with
+OpenSMT. The original report and attempts remain unchanged; acceptance uses
+the original ground/native UF reports together with the supplemental LRA
+coverage report. Generated timeouts, unknowns, incomplete native timing sessions,
+and unvalidated quantified models retain their stated limitations.
