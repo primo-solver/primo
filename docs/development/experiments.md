@@ -147,9 +147,13 @@ Use a new experiment workspace and result directory for a complete refresh.
 Build the selected clean revision with
 the {refreshsource}`preparation helper <scripts/slurm_prepare_benchmark_workspace.py>`
 and its `--build-via-slurm` option, finish its
-correctness gates, and preserve the candidate and reference binaries. Run fresh
-reference timings as well as Primo timings; do not mix old reference rows into
-the new timing table. Run independent model replay after all timing jobs finish.
+correctness gates, and preserve the candidate and reference binaries. A solver
+change requires fresh Primo measurements. Reuse historical reference timings
+when their input hashes, binaries, options, time limits and machine/resource
+conditions support the intended comparison. Identify their origin explicitly;
+do not label reused rows as fresh. Rerun reference timings when requested or
+when the existing evidence cannot support the comparison. Run independent
+model replay after all timing jobs finish.
 
 The recipes under `scripts/qualification/evaluation_refresh/` support the corpus
 checks for this workflow. The {refreshsource}`seed recipe <scripts/qualification/evaluation_refresh/seeds.sbatch>`
@@ -170,13 +174,27 @@ for separate `benchmark` and `replay` phases. They use
 {refreshsource}`refresh summarizer <scripts/qualification/evaluation_refresh/summarize.py>` takes `--root`, `--inventory`, `--timeout`
 and `--out`; it requires complete timing shards, exact inventory coverage,
 matching binary hashes and the intended profiles (`--quiet` for Primo, no extra
-reference arguments). It reports family counts, PAR2, solved-runtime median and
+reference arguments). To reuse audited references, pass `--reference-map FILE`,
+where the JSON file maps each logic to `z3` and/or `cvc5`, each containing `root`
+(the directory containing historical `shard-*` directories) and `measurement_note` (the resource and
+hardware comparison and its limitations). The same identity checks apply.
+Omitted references are reported as unavailable; partial fresh rows do not fill
+them. Hardware/resource comparability must be reviewed separately: the script
+records the note but does not verify it. Without this option, all three solver
+directories are required and labelled fresh.
+
+The report includes family counts, PAR2, solved-runtime median and
 nearest-rank 95th percentile, paired Primo/reference ratios and all decisive
 answer disagreements. Independent model coverage remains a separate field;
 complete timings alone do not qualify models. Timeout and unknown answers are
 unsolved and receive the PAR2 penalty. Native session measurements use their
 own query-aware drivers and whole-session limits rather than this single-query
-adapter.
+adapter. The {refreshsource}`native-session summarizer <scripts/summarize_native_uf.py>`
+accepts repeated `--family` options for archive path components; use
+`--family hybrid_networks --expected-sessions 10` for the native LRA set.
+Its default grouping remains the two native UF families. Its timing and
+validation roots must be selected explicitly; it does not verify historical
+reference provenance on the caller's behalf.
 
 A refreshed baseline does not erase earlier runs. Retain their revisions and
 limitations, and record a new ledger entry naming the fresh source revision,
