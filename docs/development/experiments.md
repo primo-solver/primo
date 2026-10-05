@@ -140,3 +140,44 @@ Git-based run directories and a derived SQLite query index are an agreed
 services. Large raw artifacts may remain outside Git, but the ledger must make
 them identifiable and retrievable. A record marked current describes its own
 measured revision and scope, not every subsequent commit.
+
+## Refreshing a timing baseline
+
+Use a new experiment workspace and result directory for a complete refresh.
+Build the selected clean revision with
+the {refreshsource}`preparation helper <scripts/slurm_prepare_benchmark_workspace.py>`
+and its `--build-via-slurm` option, finish its
+correctness gates, and preserve the candidate and reference binaries. Run fresh
+reference timings as well as Primo timings; do not mix old reference rows into
+the new timing table. Run independent model replay after all timing jobs finish.
+
+The recipes under `scripts/qualification/evaluation_refresh/` support the corpus
+checks for this workflow. The {refreshsource}`seed recipe <scripts/qualification/evaluation_refresh/seeds.sbatch>`
+checks deterministic ground seeds before timing. The
+{refreshsource}`QF_LIA staging recipe <scripts/qualification/evaluation_refresh/stage_qf_lia.sbatch>`
+verifies the published checksum of the official
+[SMT-LIB 2025 archive](https://zenodo.org/records/16740866) before extracting it into a fresh directory. The caller
+supplies the archive and maps `corpora/LOGIC` to each selected input root.
+The {refreshsource}`inventory recipe <scripts/qualification/evaluation_refresh/inventory.sbatch>`
+records every input's relative path, size and SHA-256, the Primo, Z3, cvc5 and
+Dolmen identities, and the allocated machine's CPU information. These are
+experiment artifacts, not timing samples.
+
+Use the {refreshsource}`corpus job recipe <scripts/slurm_real_corpus_validation.sbatch>`
+and {refreshsource}`benchmark/replay driver <scripts/benchmark_model_replay.py>`
+for separate `benchmark` and `replay` phases. They use
+`ROOT/LOGIC/{primo,z3,cvc5}/shard-N` result directories. The
+{refreshsource}`refresh summarizer <scripts/qualification/evaluation_refresh/summarize.py>` takes `--root`, `--inventory`, `--timeout`
+and `--out`; it requires complete timing shards, exact inventory coverage,
+matching binary hashes and the intended profiles (`--quiet` for Primo, no extra
+reference arguments). It reports family counts, PAR2, solved-runtime median and
+nearest-rank 95th percentile, paired Primo/reference ratios and all decisive
+answer disagreements. Independent model coverage remains a separate field;
+complete timings alone do not qualify models. Timeout and unknown answers are
+unsolved and receive the PAR2 penalty. Native session measurements use their
+own query-aware drivers and whole-session limits rather than this single-query
+adapter.
+
+A refreshed baseline does not erase earlier runs. Retain their revisions and
+limitations, and record a new ledger entry naming the fresh source revision,
+corpus identities, profiles, limits, jobs, raw artifacts and qualification state.
