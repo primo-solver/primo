@@ -5,8 +5,15 @@ Primo represents that work as **tactics**, which transform goals, and
 **strategies**, which describe how to compose those tactics. A **goal** is an
 ordered collection of assertions that must all hold, together with information
 needed to reconstruct a model after transformation. This chapter follows the
-default solving path for formulas without quantifiers;
-[preprocessing](preprocessing.md) gives its transformation order.
+default solving path for formulas without quantifiers.
+
+Preprocessing is implemented using this framework: its passes become tactics,
+its simplification round becomes a composite tactic, and its selected profile
+controls the strategy's sequence and repetition. Solver calls are also adapted
+to the goal contract, so a transformed goal carries its model-reconstruction
+history from preprocessing into solving. The preprocessing chapter traces
+[this execution path](preprocessing.md#how-tactics-execute-preprocessing)
+from options to tactics to solver dispatch, then gives the transformation order.
 
 The basis is de Moura and Passmore's *The Strategy Challenge in SMT Solving*,
 §3 {cite:p}`deMoura2013`: assertions within a goal are conjunctive, subgoals
@@ -245,6 +252,16 @@ $x\mapsto y+2$ in that goal's conversion chain. The defining equality becomes
 `true`, leaving $y\ge1$ as the only nontrivial obligation. A solver
 model with $y=1$ extends to $x=3$. Model reconstruction supplies this value for
 the eliminated symbol $x$.
+
+In the integer preprocessing profile, this step is performed by the
+{source}`qf-lia-solve-eqs tactic <src/smt/preprocessing_strategy.cpp#L87-L113>`.
+It calls `substitute_solved_constants` with Gaussian elimination disabled and,
+when a model is requested, appends a `LiaSubstitutionConversion` to the returned
+goal. This makes the division of work concrete: the preprocessing algorithm
+finds and applies $x\mapsto y+2$; the tactic preserves the information needed
+to recover $x$; the strategy determines when the tactic runs. This integer
+preparation runs even when the main simplification loop is off. Later passes
+may transform the remaining obligation further before a solver sees it.
 
 For a chain of transformations $G_0\to G_1\to G_2$, a model of $G_2$ must
 first be converted to a model of $G_1$, then to a model of $G_0$.

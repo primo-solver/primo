@@ -13,6 +13,71 @@ Clausification follows preprocessing and is described in [SAT integration](sat.m
 An **input goal** here is a collection of assertions without quantifiers.
 A **profile** selects which optional passes run and how often they repeat.
 
+(preprocessing-and-tactics)=
+## How tactics execute preprocessing
+
+Preprocessing is the first production use of the
+[goal, tactic, and strategy framework](tactics.md). A preprocessing algorithm
+performs a transformation such as substitution. Its **tactic** integrates that
+transformation with a `Goal`: it returns new assertions, preserves or extends
+model-reconstruction records, and records statistics. A **strategy** composes
+these tactics in the required order and controls repetition. A **profile** is
+the selection of passes and limits used to build that strategy.
+
+The distinction matters when reading the implementation:
+
+| Layer | Example | Responsibility |
+| --- | --- | --- |
+| Transformation algorithm | `substitute_solved_constants` in {source}`preprocessing.cpp <src/smt/preprocessing.cpp>` | Discover acceptable definitions, substitute them, and return rewritten assertions and substitutions. |
+| Tactic adapter | `solved-constant-substitution` in {source}`preprocessing_tactics.cpp <src/smt/preprocessing_tactics.cpp>` | Invoke the algorithm for a goal, update counters, and attach substitution conversions when a model is requested. |
+| Composite tactic | `preprocessing-round`, built by `make_preprocessing_round` | Run the selected propagation, substitution, and equality phases in their prescribed order. |
+| Strategy construction | `make_preprocessing_strategy` in {source}`preprocessing_strategy.cpp <src/smt/preprocessing_strategy.cpp>` | Place the round under `preprocessing-fixed-point` repetition and surround it with preparation and final normalization. |
+| Session integration | {source}`solver_session.cpp <src/smt/solver_session.cpp>` | Execute preprocessing, handle terminal or interrupted results, and pass surviving goals to solver dispatch. |
+
+For the default ground rebuild route, the connection works as follows:
+
+1. The session wraps the current assertions in a `Goal`, initially the sole
+   alternative in an `AnyOf`. The executing `TacticContext` supplies the term
+   manager, statistics, cancellation, model requirements, and fresh-symbol
+   creation.
+2. `prepare_and_execute_preprocessing_strategy` compiles and executes an
+   initial strategy for extended-term lowering and normalization. It analyzes
+   the resulting assertions to select a `PreprocessingProfile`. Selection
+   therefore sees the normalized formula, not just the parsed input.
+3. `make_preprocessing_strategy` uses that profile and the options to construct
+   the remaining strategy. `compile` turns its description into executable
+   tactics, which run on the already normalized goals. The returned
+   `PreparedPreprocessingStrategy` contains the full description, profile,
+   and **already computed** result; the session does not run the full strategy
+   again.
+4. The session handles false, empty, or interrupted goals and sends surviving
+   obligations, with their reconstruction records, to the
+   [solver tactics](tactics.md#from-a-session-query-to-an-engine). Production
+   preprocessing currently keeps one alternative; the `AnyOf` contract also
+   permits strategies that split a query into alternatives.
+
+Thus `--preprocessing-mode` selects how the built-in strategy is assembled;
+there is no separate preprocessing executor selected in place of tactics.
+In particular, `off` omits the repeated round while required lowering and
+other enabled stages remain in the strategy. The exact stages and their
+switches are listed in [execution order](#execution-order).
+
+The composition boundaries also explain two details of that order. An outer
+`Sequence` can stop once a goal is terminal. Inside `preprocessing-round`,
+the internal `complete_sequence` finishes the selected phases, including
+bookkeeping, before returning control to the enclosing strategy. The enclosing
+`Repeat` checks assertion-vector convergence and the profile's iteration and
+shrink limits. Arbitrarily reordering named phases would change which facts,
+definitions, and reconstruction records later phases receive.
+
+The [tactic reference](../reference/tactics.md#preprocessing-tactics) maps
+runtime names to public builders, internal phases, and production composites.
+It also distinguishes invocations from completed rounds: for example,
+`:tactic.preprocessing-round.invocations` records entry to the round, whereas
+`:preprocessing.passes` counts completed repeat iterations. The compatibility
+counter `:tactic.preprocessing-pass.invocations` counts those same completed
+iterations even though no executable tactic has that name.
+
 (preprocessing-representation)=
 ## Representation
 
