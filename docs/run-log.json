@@ -3,6 +3,132 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-10-06-integer-completion-unification",
+      "date": "2026-10-06",
+      "kind": "shared-integer-completion-and-driver-migration",
+      "baseline_commit": "8ca8ebe8db75966fc8aefdd928a0878e648e7f10",
+      "evidence_status": "in-progress-not-qualified",
+      "scope": "Extract shared integer completion, decouple adapters, and migrate standalone QF_LIA to the shared driver without changing arithmetic algorithms or retained sessions.",
+      "extraction_snapshot": "8e5e5010441a7f9949bbdf1a81f851bb1ff2f3fd",
+      "snapshot_note": "Accepted extraction milestone: exact source snapshot adopted after release, ASan, focused fuzz/model checks, lint, source/doc review and static scans. Adapter cleanup and driver migration remain unqualified.",
+      "jobs": {
+        "baseline_setup_cancelled": "172175",
+        "baseline_build": "172177",
+        "first_extraction_build_failed": "172182",
+        "baseline_inventory": "172183",
+        "corrected_extraction_build": "172184",
+        "extraction_checks": "172185",
+        "extraction_fuzz": "172186",
+        "extraction_static": "172187",
+        "resource_replay": "172197",
+        "include_cleanup_build": "172198",
+        "final_extraction_checks": "172200",
+        "final_extraction_fuzz": "172201"
+      },
+      "commands": {
+        "baseline_build": "python3 scripts/slurm_prepare_benchmark_workspace.py --local-dir <baseline-worktree> --build-via-slurm --remote-dir <baseline-workspace> --reuse-dependencies --cmake <existing-cmake> --cxx-header-manifest <matching-header-manifest> --jobs 4",
+        "extraction_build": "python3 scripts/slurm_prepare_benchmark_workspace.py --local-dir <extraction-worktree> --build-via-slurm --remote-dir <extraction-workspace> --reuse-dependencies --cmake <existing-cmake> --cxx-header-manifest <matching-header-manifest> --extra-target all --jobs 4",
+        "preflight": "python3 scripts/slurm_prepare_benchmark_workspace.py --local-dir <extraction-worktree> --check-only --remote-dir <extraction-workspace> --require-tool contrib/local/bin/z3 --require-tool contrib/local/bin/dolmen",
+        "checks": "PRIMO_EXPECTED_REVISION=8e5e501 sbatch scripts/qualification/integer_unification/extraction_checks.sbatch; executes make check and make asan-test in a 4-CPU 8-GiB 40-minute allocation",
+        "fuzz": "PRIMO_EXPECTED_REVISION=8e5e501 PRIMO_SEED_BASE=203610060 PRIMO_BUDGET_REPLAY=1 sbatch --ntasks=1 --array=8-11,16-19%4 scripts/qualification/public_launch.sbatch",
+        "static": "sbatch --ntasks=1 scripts/qualification/public_static.sbatch",
+        "local": "make lint; c++ -std=c++20 -fsyntax-only -Isrc -isystem contrib/local/include tests/unit/lia_completion_tests.cpp src/theory/arithmetic/lia_completion.cpp; make docs; make docs-check-links"
+      },
+      "resources": {
+        "build": {
+          "cpus": 4,
+          "memory_gib": 8,
+          "wall_minutes": 30
+        },
+        "planned_timing": {
+          "cpus": 1,
+          "memory_gib": 8,
+          "timeout_seconds": 60,
+          "paired_rounds": 2
+        },
+        "fuzz": {
+          "cpus_per_task": 1,
+          "memory_gib": 4,
+          "wall_minutes": 120,
+          "cases_per_task": 250,
+          "seed_base": 203610060,
+          "answer_timeout_seconds": 5,
+          "model_timeout_seconds": 10,
+          "dolmen_timeout_seconds": 10
+        }
+      },
+      "preliminary_results": {
+        "release_ctest": "44/44 pass",
+        "python_tests": "233 pass",
+        "lint": "pass",
+        "docs_build": "pass",
+        "docs_links": "pass: 260 pages, 32219 local links, 1012 unique Git source links; zero failures",
+        "asan": "44/44 pass on 8e5e501",
+        "fuzz": {
+          "revision": "8e5e501",
+          "total": 2000,
+          "pass": 1972,
+          "timeout": 26,
+          "unknown": 2,
+          "wrong_answer": 0,
+          "crash": 0,
+          "invalid_model": 0,
+          "reference_disagreement": 0,
+          "direct_dolmen_sat_pass": 1354,
+          "replay": "Both unknown inputs also return unknown with zero exit on baseline; both report integer branch-node limits. SLURM 172197.",
+          "artifact": "results/public-launch/172201",
+          "parser_type_error": 0,
+          "unsupported": 0
+        },
+        "static": "Revision b86126f2d916ab2c638aad26412758bbfa5dbed4, job172187: Both configured clang-tidy and advisory include scan completed on all 128 tracked C++ translation units; no compiler errors. Existing shared_ptr analyzer advisory, external CLI11 advisory, and deliberate invalid-enum test warnings remain. Removed three real unused includes and added direct providers in touched code. Paired self-includes retained.",
+        "docs_review": {
+          "reviewer": "lia_doc_review",
+          "scope": "changed extraction portions of docs/implementation/lia.md",
+          "findings": "LIA-DOC-01/02 source links repaired; LIA-DOC-03 terminology suggestion applied",
+          "verdict": "accepted after source-pin recheck",
+          "reviewed_blobs": {
+            "lia.md": "95da805943b556a56bf19dd7b290ebbbabb8552c",
+            "_config.yml": "1408866076ce5fde040f47c94bbf2cbb3023fc87"
+          }
+        },
+        "final_static": "Job172200 passed configured clang-tidy and advisory include-cleaner on four changed translation units. No owned-code configured warnings; pre-existing missing direct core ID providers in instance_simplifier_tests remain advisory.",
+        "review": "Extraction self-review: no blocking soundness, lifetime or extra-tableau-copy issues found. Shared explanation retains cut antecedents; patch success uses existing scoring count without a new full scan. Whole-tree configured static scans passed as summarized; this is not independent whole-manual acceptance."
+      },
+      "setup_notes": [
+        "Compute nodes cannot reach PyPI; cancelled setup job and reused remote CMake and dependencies with matching installer hashes.",
+        "First extraction test build failed because sat::Lit has no equality operator; changed test to compare literal values. Solver target compiled.",
+        "Clean cluster builds emitted shared-filesystem clock-skew warnings."
+      ],
+      "artifacts": {
+        "baseline_remote": "primo-integer-unification-baseline-8ca8ebe/results/integer-baseline",
+        "extraction_remote": "primo-integer-unification-extraction/results",
+        "build_logs_local": [
+          "/tmp/primo-integer-extraction-build.log",
+          "/tmp/primo-integer-extraction-build-v2.log"
+        ],
+        "qualification_scripts_local": "scripts/qualification/integer_unification",
+        "collected_evidence_local": "tmp/integer-unification/evidence (including extraction-fuzz-final-summary.json and integer-extraction-checks-172200/)"
+      },
+      "remaining": "Adapter cleanup, standalone-driver migration, final eight-route gate and real-seed mutations, preservation suites, backend-disabled scaffold, full paired timings and all successful candidate SAT model replays, regression reruns if needed, final documentation/source links, verified commits.",
+      "preceding_extraction_snapshot": "b86126f2d916ab2c638aad26412758bbfa5dbed4",
+      "baseline_binary_sha256": "4f5b5e403e0b92fa6543d2afb1bd6608df50f64e6bf6fc7ebc98758a9fc52ce4",
+      "baseline_corpora": {
+        "QF_LIA": {
+          "count": 13306,
+          "bytes": 8192190039,
+          "ordered_paths_sha256": "2c34c3a9c0076f3c093bca8138133a82258ac435d56a89d2dd40ca0e5af7844c",
+          "content_manifest_sha256": "c05c79405fb62a77379e747e7e7b8cfeaf710970e8def4d929aa80f5f2132d67"
+        },
+        "QF_UFLIA": {
+          "count": 659,
+          "bytes": 118566018,
+          "ordered_paths_sha256": "a650271d413483b210889ed2389e766b93d045cb99352aacb8a0af8200a803f7",
+          "content_manifest_sha256": "6a63fb5c6652187a52cd28ccf6f6197a55a04c77c57e1d20d3d0d5739cb06fc5"
+        }
+      },
+      "extraction_binary_sha256": "a2771ceb25833e65106cfd65008722b2f5237e5799475a0450f8180885b50a23"
+    },
+    {
       "id": "2026-10-05-full-evaluation-refresh",
       "date": "2026-10-05",
       "kind": "fresh-supported-logic-and-native-session-evaluation",
