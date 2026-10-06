@@ -11359,6 +11359,260 @@
                 "cpp_checks": "NoC++source changed in this investigation; previous solver checks retained, no new solver acceptance claim."
               }
             }
+          },
+          "profiling": {
+            "status": "Profiles complete; no solver change or performance qualification claim",
+            "question": "Does the repeated prp-67-50 loss come from different integer/search work or substantial shared-driver overhead? Locate dominant costs before changing code.",
+            "input": "nec-smt/large/getoption_group/prp-67-50.smt2",
+            "baseline_commit": "8ca8ebe8db75966fc8aefdd928a0878e648e7f10",
+            "candidate_commit": "25b44cc2204169ff0cc45a771b5ec56895a0511e",
+            "binary_sha256": {
+              "baseline": "4f5b5e403e0b92fa6543d2afb1bd6608df50f64e6bf6fc7ebc98758a9fc52ce4",
+              "candidate": "f3a3904e9cf7628eece6fb4c30f80de9f29eafa4ab89eca5a48afbf9643901a8"
+            },
+            "jobs": {
+              "sampler_probe": 175337,
+              "paired_profiles": 175339,
+              "sampler_tests": 175340,
+              "flatten_off_diagnostic": 175404
+            },
+            "resources": "SLURM, original amd-1 node, 8 GiB and one CPU with nomultithread. Each profile has a 180-second deadline. Probe and tests use 1 GiB and one CPU. No local solver runs.",
+            "method": "Frozen release binaries sampled through GDB/MI every 0.2 seconds, with seeded jitter between 0.8 and 1.2 times the interval and up to 41 frames. Two baseline/candidate pairs reverse arm order; seeds are 203610600 and 203610601. The ablation uses one profile per binary with seed 203610602. DEBUGINFOD_URLS is empty. perf is unavailable.",
+            "default_profiles": {
+              "baseline": {
+                "samples": 532,
+                "phase_samples": {
+                  "other_preprocessing": 83,
+                  "other": 13,
+                  "boolean_flattening": 129,
+                  "clausification": 78,
+                  "sat_preprocessing": 187,
+                  "other_sat_solve": 11,
+                  "frontend_cleanup": 31
+                },
+                "phase_percent": {
+                  "other_preprocessing": 15.601503759398497,
+                  "other": 2.443609022556391,
+                  "boolean_flattening": 24.24812030075188,
+                  "clausification": 14.661654135338345,
+                  "sat_preprocessing": 35.150375939849624,
+                  "other_sat_solve": 2.0676691729323307,
+                  "frontend_cleanup": 5.827067669172933
+                },
+                "allocator_percent": 36.46616541353384,
+                "profile_wall_seconds": [
+                  54.73459070362151,
+                  54.16130394116044
+                ]
+              },
+              "candidate": {
+                "samples": 528,
+                "phase_samples": {
+                  "other_preprocessing": 81,
+                  "other": 13,
+                  "boolean_flattening": 127,
+                  "clausification": 80,
+                  "sat_preprocessing": 185,
+                  "other_sat_solve": 11,
+                  "frontend_cleanup": 31
+                },
+                "phase_percent": {
+                  "other_preprocessing": 15.340909090909092,
+                  "other": 2.462121212121212,
+                  "boolean_flattening": 24.053030303030305,
+                  "clausification": 15.151515151515152,
+                  "sat_preprocessing": 35.03787878787879,
+                  "other_sat_solve": 2.0833333333333335,
+                  "frontend_cleanup": 5.871212121212121
+                },
+                "allocator_percent": 33.90151515151515,
+                "profile_wall_seconds": [
+                  53.88864952325821,
+                  54.26563106290996
+                ]
+              }
+            },
+            "default_per_run": {
+              "round-0-baseline": {
+                "answer": [
+                  "unsat"
+                ],
+                "samples": 267,
+                "statistics": {
+                  ":sat.vars": "774795",
+                  ":sat.clauses": "32089151",
+                  ":sat.clause-lits": "94730720",
+                  ":sat.conflicts": "342",
+                  ":sat.decisions": "131888",
+                  ":theory.conflicts": "30",
+                  ":lra.pivots": "313",
+                  ":time.preprocessing-us": "22311442",
+                  ":time.solve-us": "28587207",
+                  ":time.tactic.normalize-boolean-us": "13124033"
+                },
+                "profile_wall_seconds": 54.73459070362151
+              },
+              "round-0-candidate": {
+                "answer": [
+                  "unsat"
+                ],
+                "samples": 262,
+                "statistics": {
+                  ":sat.vars": "774795",
+                  ":sat.clauses": "32089151",
+                  ":sat.clause-lits": "94730720",
+                  ":sat.conflicts": "342",
+                  ":sat.decisions": "131888",
+                  ":theory.conflicts": "30",
+                  ":lra.pivots": "313",
+                  ":time.preprocessing-us": "21723755",
+                  ":time.solve-us": "28306208",
+                  ":time.tactic.normalize-boolean-us": "12802094"
+                },
+                "profile_wall_seconds": 53.88864952325821
+              },
+              "round-1-baseline": {
+                "answer": [
+                  "unsat"
+                ],
+                "samples": 265,
+                "statistics": {
+                  ":sat.vars": "774795",
+                  ":sat.clauses": "32089151",
+                  ":sat.clause-lits": "94730720",
+                  ":sat.conflicts": "342",
+                  ":sat.decisions": "131888",
+                  ":theory.conflicts": "30",
+                  ":lra.pivots": "313",
+                  ":time.preprocessing-us": "22030659",
+                  ":time.solve-us": "28289196",
+                  ":time.tactic.normalize-boolean-us": "12878700"
+                },
+                "profile_wall_seconds": 54.16130394116044
+              },
+              "round-1-candidate": {
+                "answer": [
+                  "unsat"
+                ],
+                "samples": 266,
+                "statistics": {
+                  ":sat.vars": "774795",
+                  ":sat.clauses": "32089151",
+                  ":sat.clause-lits": "94730720",
+                  ":sat.conflicts": "342",
+                  ":sat.decisions": "131888",
+                  ":theory.conflicts": "30",
+                  ":lra.pivots": "313",
+                  ":time.preprocessing-us": "21803610",
+                  ":time.solve-us": "28622748",
+                  ":time.tactic.normalize-boolean-us": "12811981"
+                },
+                "profile_wall_seconds": 54.26563106290996
+              }
+            },
+            "flatten_off": {
+              "baseline": {
+                "answer": [
+                  "unsat"
+                ],
+                "samples": 148,
+                "statistics": {
+                  ":sat.vars": "1540012",
+                  ":sat.clauses": "4598947",
+                  ":sat.clause-lits": "10729674",
+                  ":sat.conflicts": "1049",
+                  ":sat.decisions": "136668",
+                  ":theory.conflicts": "97",
+                  ":lra.pivots": "797",
+                  ":time.preprocessing-us": "9166964",
+                  ":time.solve-us": "18588334",
+                  ":time.tactic.normalize-boolean-us": "1351"
+                },
+                "profile_wall_seconds": 30.488582964986563
+              },
+              "candidate": {
+                "answer": [
+                  "unsat"
+                ],
+                "samples": 147,
+                "statistics": {
+                  ":sat.vars": "1540012",
+                  ":sat.clauses": "4598947",
+                  ":sat.clause-lits": "10729674",
+                  ":sat.conflicts": "1049",
+                  ":sat.decisions": "136668",
+                  ":theory.conflicts": "97",
+                  ":lra.pivots": "797",
+                  ":time.preprocessing-us": "8973413",
+                  ":time.solve-us": "18566271",
+                  ":time.tactic.normalize-boolean-us": "1346"
+                },
+                "profile_wall_seconds": 30.29583789408207
+              }
+            },
+            "finding": "Default phase distributions are nearly identical: about 40% in Primo preprocessing, 15% in clausification, 35% in CaDiCaL preprocessing, 2% in other SAT solving, and 6% in frontend cleanup. All four default runs have 774,795 SAT variables, 32,089,151 clauses, 342 SAT conflicts, 131,888 decisions, 30 theory conflicts and 313 LRA pivots. No substantial new integer-search or shared-driver hotspot was detected at this sample resolution. This does not establish the cause of the small cutoff crossings.",
+            "ablation_finding": "Disabling post-flattening yields 4,598,947 clauses versus 32,089,151, and 10,729,674 clause literals versus 94,730,720. Variables rise to 1,540,012 and SAT conflicts to 1,049. Both versions remain UNSAT. Instrumented wall duration falls from about 54 seconds to about 30 seconds. This identifies shared Boolean-expansion cost as a promising target; it is not a benchmark speedup or a recommendation to change defaults globally.",
+            "code_basis": [
+              "src/smt/preprocessing.cpp:3455: flatten_associative_booleans copies matching child operands subject to an arity bound, then rebuilds Boolean nodes.",
+              "src/core/term_manager.cpp:96: mk_and and mk_or construct deduplication sets for arity greater than 8.",
+              "src/smt/clausifier.cpp:476: encode_and and encode_or emit one binary clause per child plus a reverse clause."
+            ],
+            "limitations": [
+              "Wall-clock stack observations are not CPU events or call counts. GDB perturbs runtime, scheduling can bias counts, and optimized or deep frames may be missing.",
+              "Two default profiles per binary and one ablation profile per binary on one input are insufficient to attribute a small regression or promote an option.",
+              "Allocator fractions overlap phase shares. Phase counts use the first matching stack predicate, not stopwatch regions.",
+              "All six profiled runs exit normally with UNSAT; agreement is not an UNSAT proof. SAT-model validation is not applicable.",
+              "The original two-of-three lost-solve acceptance failure remains recorded; profiling does not waive it."
+            ],
+            "artifacts": [
+              "results/integer-loss-profile-25b",
+              "results/integer-loss-profile-flatten-off",
+              "tmp/integer-unification/evidence/profile-175339-summary.json",
+              "tmp/integer-unification/evidence/profile-175404-summary.json"
+            ],
+            "summary_sha256": {
+              "profile-175339-summary.json": "f7ee7f3e813484d5e6daa5a92756619595dfb7188bfcd616dfaba604dffa2505",
+              "profile-175404-summary.json": "609154bc9f34237cb9a2af6d4a689b5c84801c00071792b57b0a9923be19b8ea"
+            },
+            "commands": [
+              "export PRIMO_WORKDIR=<observation-workspace> PRIMO_BASELINE_SOLVER=<frozen-primo-8ca8ebe> PRIMO_CANDIDATE_SOLVER=<frozen-primo-25b44cc> PRIMO_PROFILE_INPUT=<corpus-root>/nec-smt/large/getoption_group/prp-67-50.smt2\ncd \"$PRIMO_WORKDIR\"\nexport PRIMO_PROFILE_OUT=\"$PWD/results/integer-loss-profile-25b\" PRIMO_PROFILE_SAMPLER=\"$PWD/results/profile_gdb_samples.py\"\nsbatch --partition=compute,gpu --nodelist=amd-1 --hint=nomultithread results/profile_pair.sbatch",
+              "sbatch --partition=compute,gpu --nodelist=amd-1 --hint=nomultithread --dependency=afterok:175339 results/primo-profile-ablation.sbatch\n# The staged file is scripts/qualification/integer_unification/profile_flatten_off.sbatch; use the new parent job ID when reproducing.",
+              "python3 scripts/summarize_gdb_samples.py <profile-root> > <summary.json>"
+            ],
+            "verification": {
+              "probe": "Job 175337 completed normally with 10 samples.",
+              "tests": "All three tests passed in job 175340: normal stacks, rejection of an answer followed by exit 7, and deadline cleanup of the inferior.",
+              "lint": "make lint passed.",
+              "frozen_identity": "The profile job passed sha256sum --check for both binaries, the input and sampler.",
+              "docs": "make docs and make docs-check-links passed: 260 pages, 32,227 local links, 1,035 Git links, zero failures.",
+              "rendered_inspection": "Inspected the new section in headless Chrome at 1400x2400; text, code block and source links display without clipping. Screenshot /tmp/primo-profile-doc.png. Browser exited.",
+              "scope": "Only profiling tools, tests and documentation changed. No new solver build, C++/ASan/clang-tidy run or performance promotion is claimed; existing solver qualification remains unchanged.",
+              "process_audit": "All four profiling/probe/test jobs completed. No local profiler, solver, test, fuzzer or browser processes remained."
+            },
+            "input_sha256": "7b82c687a760ef27dc0f4275a7f879b6762b7de7deffef6cee1d1a62778781bb",
+            "sampler_sha256": "11e12eb28df2bc297decdbd7ecbd73f813dd0513e8040f22c9d25414e42ef4b1",
+            "gdb_version": "GNU gdb (GDB) Rocky Linux 10.2-13.el9",
+            "tooling_commit": "90d29667fa8796b9db41967afb65ab202388b54e",
+            "reproduction_environment": [
+              "Use the already SLURM-built workspaces and frozen binaries recorded in this entry. Set PRIMO_WORKDIR to the observation workspace, PRIMO_BASELINE_SOLVER to frozen primo-8ca8ebe, PRIMO_CANDIDATE_SOLVER to frozen primo-25b44cc, and PRIMO_PROFILE_INPUT to the corpus root followed by the recorded input path.",
+              "Copy scripts/profile_gdb_samples.py into $PRIMO_WORKDIR/results/profile_gdb_samples.py. The executed profile_flatten_off.sbatch reads that staged sampler. Copy both batch scripts into results/ as well. Do not rebuild or replace either binary.",
+              "Run the preparation helper with --check-only --no-sync --build-via-slurm and the candidate 25b44cc checkout before submitting. From the remote workspace, export all variables in the command block below; inline environment assignments on an earlier sbatch command do not persist."
+            ],
+            "independent_review_repairs": {
+              "PROF-DOC-01": "Added profilesource pinned to the tooling commit containing both linked scripts.",
+              "PROF-DOC-02": "Recorded shared exported variables, staging prerequisites, actual node/hint options and parent dependency.",
+              "PROF-DOC-03": "Rewrote the profiling prose with word and number boundaries."
+            },
+            "independent_review": {
+              "reviewer": "profile_docs_review",
+              "verdict": "Ready; PROF-DOC-01, PROF-DOC-02 and PROF-DOC-03 resolved. Acceptance covers profiling documentation and inspected evidence only.",
+              "reviewed_blobs": {
+                "debugging.md": "fa8b9711ff40f80dcc32d9c2a8ebf2e470e79803",
+                "_config.yml": "2648002fd837a124d351a571ee39fde5fc605c36",
+                "run-log.json": "684a5bb71ca36fb4941b3518bd6dd9770b16569a"
+              },
+              "limits": "Reviewer checked source links, numeric artifacts and interpretation; did not independently execute cluster jobs or inspect rendering."
+            }
           }
         }
       },

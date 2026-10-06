@@ -26,6 +26,44 @@ the [fuzzing guide](fuzzing.md#triage-and-reduction) explains reduction.
 Memory-sensitive changes require the repository's ASan and allocation-boundary
 regressions, not only a successful release run.
 
+## Sample a frozen binary without rebuilding
+
+When hardware profiling tools are unavailable,
+{profilesource}`profile_gdb_samples.py <scripts/profile_gdb_samples.py>` samples a
+native executable through GDB's machine interface. Run it in the required
+experiment environment; the maintained paired SLURM recipe is
+{profilesource}`profile_pair.sbatch <scripts/qualification/integer_unification/profile_pair.sbatch>`.
+It runs frozen baseline/candidate binaries in both orders, on one allocation,
+and records executable, input and sampler hashes before checking them again.
+
+```bash
+python3 scripts/profile_gdb_samples.py --out results/profile-one \
+  --timeout 180 --interval 0.2 --seed 1 -- \
+  /path/to/frozen/primo --quiet --stats /path/to/input.smt2
+```
+
+The sampler owns the debugger and inferior processes. It periodically interrupts
+the inferior, records up to 41 frames of the selected thread, and resumes it.
+A seeded jitter avoids sampling at one fixed period. Debug-information network
+downloads are disabled. Normal exit completes the profile; nonzero exit,
+unexpected signals, or the deadline leave a failed profile. The cleanup path
+kills any remaining inferior and reaps the debugger. Tests exercise normal
+sampling, a program that prints an answer before failing, and deadline cleanup.
+
+Each fresh output directory contains the raw `gdb-mi.log`, durable
+`samples.jsonl` stack records and `summary.json` with the command, binary hash,
+seed, sample count, exit event and instrumented wall duration. Inspect the raw
+log for the solver's answer and counters; a completed profile alone does not
+establish answer correctness. Preserve the input hash and build identity with
+the experiment record.
+
+These are **wall-clock stack observations**, not CPU events or call counts.
+Debugger stops perturb execution; scheduling delays can bias the distribution,
+optimized frames may be missing, and deep stacks can be truncated. Only the
+selected thread is sampled. Do not use instrumented duration as benchmark time,
+or infer a small regression's cause from a few differing samples. Use repeated
+profiles to locate substantial costs, then test a focused hypothesis separately.
+
 ## Ordering sensitivity
 
 Semantically equivalent inputs can receive different term IDs and encounter
