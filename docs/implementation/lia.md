@@ -72,6 +72,12 @@ one component, there are no shared scopes, interface arrangements, equality
 bridges, or combination fallback. QF_UFLIA selects the same LIA component
 alongside EUF.
 
+The {retentionsource}`driver observes otherwise unowned Boolean constants <src/smt/component_solver.cpp#L276-L291>` through SAT's
+assignment interface, in the original atom registry order. Their assignments
+remain propositional: the dispatcher does not route them into the LIA component.
+Observing them preserves the standalone route's SAT elimination policy while
+making their values available in the shared assignment view and final model.
+
 At the full-model check boundary, the LIA adapter copies the rationally feasible
 online tableau once, or moves a newly rebuilt rational tableau, into integer
 completion. It passes {integersource}`LiaCompletionLimits
@@ -95,6 +101,16 @@ The shared driver adds it to the SAT backend and searches for another Boolean
 candidate. It reports `unsat` for the whole query when that search is exhausted;
 integer infeasibility of one candidate does not by itself refute a formula
 with other Boolean choices.
+
+The {retentionsource}`standalone recipe <src/smt/solver_engines.cpp#L10051-L10057>`
+sets {retentionsource}`CombinationRecipe::forgettable_clauses <src/smt/component_solver.hpp#L24-L26>` to false:
+its online external theory clauses remain permanent in the SAT backend, preserving the
+standalone route's retention policy.
+{retentionsource}`ComponentDispatcher <src/smt/component_dispatcher.cpp#L28-L39>` stores this policy
+for its lifetime and {retentionsource}`applies it to external clauses <src/smt/component_dispatcher.cpp#L259-L262>`,
+including after the driver {retentionsource}`rebuilds the dispatcher for new atoms <src/smt/component_solver.cpp#L264-L274>`. Combined recipes retain the default true
+policy, which permits SAT clause deletion. This affects search and memory use,
+not the validity of the theory clauses.
 
 `QF_UFLIA` calls the same `complete_integer_assignment` operation through
 {migrationsource}`complete_lia_integer_model

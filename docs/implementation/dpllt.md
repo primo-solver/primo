@@ -122,7 +122,11 @@ that theory state when the coordinator reports a backtrack.
 
 Primo's trail contains observed assignments, not every SAT assignment. Ordinary
 Tseytin variables that only encode Boolean connectives stay inside CaDiCaL.
-Generated Boolean terms used as function arguments are different. For example,
+For online recipes, the shared driver also {retentionsource}`observes Boolean constants it owns
+<src/smt/component_solver.cpp#L276-L291>`, preserving the standalone LIA route's
+SAT observation policy. These assignments are on the shared trail but have no
+theory routing destination. Generated Boolean terms used as function arguments
+have an additional theory role. For example,
 with `f : Bool → U`, the frontend rewrites `f(and p q)` to `f(b)` and defines
 the fresh Boolean term `b` by `b ↔ (p ∧ q)`. The
 {source}`Boolean-argument registration <src/smt/clausifier.cpp#L104-L156>` observes
@@ -208,9 +212,13 @@ The dedicated {source}`EUF conflict callback
 <src/smt/solver_engines.cpp#L1892-L1916>` and
 {source}`LRA conflict callback <src/smt/solver_engines.cpp#L7227-L7237>` request
 non-forgettable external clauses in the API variant carrying that flag.
-In contrast, {source}`ComponentDispatcher::cb_has_external_clause
-<src/smt/component_dispatcher.cpp#L240-L248>` sets it to **true**, making those
-clauses eligible for deletion. Backend retention of a
+The shared {retentionsource}`ComponentDispatcher::cb_has_external_clause
+<src/smt/component_dispatcher.cpp#L259-L262>` uses its recipe's retention policy.
+{retentionsource}`CombinationRecipe::forgettable_clauses
+<src/smt/component_solver.hpp#L24-L26>` defaults to true, permitting deletion for
+the existing combined recipes. The {retentionsource}`standalone LIA recipe
+<src/smt/solver_engines.cpp#L10051-L10057>` sets it to false to preserve its
+permanent external clauses. Backend retention of a
 requested reason, a propagator's C++ storage, and SAT's learned backjump clause
 are three separate things. The [Yices note](../papers/yices.md) and
 [forgetting investigation](../leads/theory-lemma-forgetting.md) cover the

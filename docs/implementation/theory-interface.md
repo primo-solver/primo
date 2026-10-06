@@ -96,7 +96,10 @@ a complete assignment. SAT auxiliary variables used only for Boolean structure
 are not routed to theory solvers. The dispatcher routes registered theory atoms.
 The {migrationsource}`driver <src/smt/component_solver.cpp#L89-L109>` also owns a Boolean constant when no component claims it. Such
 constants are excluded from the theory combination plan and component
-registration, and their final SAT values are preserved as model facts. A
+registration. For online recipes, the {retentionsource}`driver observes their SAT variables
+<src/smt/component_solver.cpp#L276-L291>` so their values are present in the shared
+assignment view, while the dispatcher skips them during component routing.
+Their final SAT values are preserved as model facts. A
 Boolean constant claimed by EUF remains with EUF, including Boolean function
 arguments. Predicates and other genuine theory atoms still require an owner.
 The same rule applies when new atoms arrive at the detached growth boundary.

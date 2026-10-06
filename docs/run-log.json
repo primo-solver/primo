@@ -109,7 +109,7 @@
         "qualification_scripts_local": "scripts/qualification/integer_unification",
         "collected_evidence_local": "tmp/integer-unification/evidence (including extraction-fuzz-final-summary.json and integer-extraction-checks-172200/)"
       },
-      "remaining": "Driver migration qualification, fresh eight-route gate and real-seed mutations, preservation suites, backend-disabled full scaffold build, full paired timings and every successful candidate SAT model replay, lost-solve reruns if needed, final evidence/documentation links and verified commits.",
+      "remaining": "Corrected25b full paired timing and preservation acceptance, every successful candidate measurement SAT model replay, all lost-solve paired reruns, final reference joins and evidence/documentation commits. Implementation, current eight-route/mutation gate, release/ASan/static and scaffold checks are complete; no default performance acceptance yet.",
       "preceding_extraction_snapshot": "b86126f2d916ab2c638aad26412758bbfa5dbed4",
       "baseline_binary_sha256": "4f5b5e403e0b92fa6543d2afb1bd6608df50f64e6bf6fc7ebc98758a9fc52ce4",
       "baseline_corpora": {
@@ -538,6 +538,1849 @@
             "sbatch results/primo-integer-resource-replay.sbatch",
             "sbatch results/primo-integer-mutation-resource-replay.sbatch"
           ]
+        },
+        "timing": {
+          "status": "rejected-cfc4136-repeated-lost-solves; remaining measurements running",
+          "candidate_commit": "cfc4136dd92f7db7928d7d76b10f5d1050bc9b96",
+          "baseline_commit": "8ca8ebe8db75966fc8aefdd928a0878e648e7f10",
+          "frozen_binaries": {
+            "baseline": "4f5b5e403e0b92fa6543d2afb1bd6608df50f64e6bf6fc7ebc98758a9fc52ce4",
+            "candidate": "231217363ee13a31976f8aa4c5e4fce982538c2737775c69810d2b72ced9299c"
+          },
+          "jobs": {
+            "QF_LIA": "172616",
+            "QF_UFLIA": "172617",
+            "five_logic_preservation": "172618",
+            "shared_default": "172780",
+            "shared_online": "172781",
+            "shared_lazy_uf": "172782",
+            "shared_offline_uflia": "172783"
+          },
+          "replay_jobs": {
+            "QF_LIA_round0": "172666",
+            "QF_LIA_round1": "172667",
+            "QF_UFLIA_round0": "172668",
+            "QF_UFLIA_round1": "172669",
+            "five_logic_preservation": "172670",
+            "shared_profiles": "172798",
+            "shared_lra_validator_triage": "172799"
+          },
+          "full_resources": {
+            "timeout_seconds": 60,
+            "memory_gib": 8,
+            "cpus": 1,
+            "rounds": 2,
+            "solver_args": [
+              "--quiet",
+              "--stats"
+            ],
+            "hint": "nomultithread",
+            "initial_partition": "compute",
+            "pending_jobs_partition_update": "compute,gpu; CPU-only allocation, no GPU requested; already running compute shards unchanged",
+            "pairing": "Both binaries and reversed second-round order within each allocation; node recorded per shard"
+          },
+          "shards": {
+            "QF_LIA": 256,
+            "QF_UFLIA": 16
+          },
+          "replay_resources": {
+            "model_timeout_seconds": 180,
+            "dolmen_timeout_seconds": 60,
+            "dolmen_size": "8G",
+            "memory_gib": 12,
+            "cpus": 1,
+            "timing_dependency": "afterany of all full and preservation timing arrays"
+          },
+          "artifacts": [
+            "results/integer-paired",
+            "results/integer-preservation-paired",
+            "results/integer-shared-paired"
+          ],
+          "submission_artifacts": [
+            "results/primo-integer-timing-submit.sh",
+            "results/primo-integer-replay-submit.sh",
+            "results/primo-integer-shared-submit.sh"
+          ],
+          "acceptance": "No loss reproduced in at least two of three further paired runs; aggregate PAR2 ratio <=1.02 in each full affected division; all candidate ground SAT timing rows independently validated.",
+          "five_logic_preservation": {
+            "QF_LIA": {
+              "timing_status": "needs-triage",
+              "aggregate": {
+                "baseline": {
+                  "rows": 40,
+                  "solved": 40,
+                  "sat": 28,
+                  "unsat": 12,
+                  "timeout": 0,
+                  "error": 0,
+                  "unsupported": 0,
+                  "unknown": 0,
+                  "wrong_answer": 0,
+                  "par2": 22.887871
+                },
+                "candidate": {
+                  "rows": 40,
+                  "solved": 40,
+                  "sat": 28,
+                  "unsat": 12,
+                  "timeout": 0,
+                  "error": 0,
+                  "unsupported": 0,
+                  "unknown": 0,
+                  "wrong_answer": 0,
+                  "par2": 25.999667
+                },
+                "par2_ratio": 1.1359582986115222,
+                "common_runtime_ratio": 1.1359582986115222,
+                "lost": [],
+                "gained": [],
+                "disagreements": []
+              }
+            },
+            "QF_LRA": {
+              "timing_status": "needs-triage",
+              "aggregate": {
+                "baseline": {
+                  "rows": 40,
+                  "solved": 40,
+                  "sat": 28,
+                  "unsat": 12,
+                  "timeout": 0,
+                  "error": 0,
+                  "unsupported": 0,
+                  "unknown": 0,
+                  "wrong_answer": 0,
+                  "par2": 23.931459
+                },
+                "candidate": {
+                  "rows": 40,
+                  "solved": 40,
+                  "sat": 28,
+                  "unsat": 12,
+                  "timeout": 0,
+                  "error": 0,
+                  "unsupported": 0,
+                  "unknown": 0,
+                  "wrong_answer": 0,
+                  "par2": 26.047765000000002
+                },
+                "par2_ratio": 1.0884319673113119,
+                "common_runtime_ratio": 1.0884319673113119,
+                "lost": [],
+                "gained": [],
+                "disagreements": []
+              }
+            },
+            "QF_UF": {
+              "timing_status": "needs-triage",
+              "aggregate": {
+                "baseline": {
+                  "rows": 40,
+                  "solved": 40,
+                  "sat": 8,
+                  "unsat": 32,
+                  "timeout": 0,
+                  "error": 0,
+                  "unsupported": 0,
+                  "unknown": 0,
+                  "wrong_answer": 0,
+                  "par2": 26.72856
+                },
+                "candidate": {
+                  "rows": 40,
+                  "solved": 40,
+                  "sat": 8,
+                  "unsat": 32,
+                  "timeout": 0,
+                  "error": 0,
+                  "unsupported": 0,
+                  "unknown": 0,
+                  "wrong_answer": 0,
+                  "par2": 29.214668
+                },
+                "par2_ratio": 1.093013166440691,
+                "common_runtime_ratio": 1.093013166440691,
+                "lost": [],
+                "gained": [],
+                "disagreements": []
+              }
+            },
+            "QF_UFLIA": {
+              "timing_status": "pass",
+              "aggregate": {
+                "baseline": {
+                  "rows": 40,
+                  "solved": 40,
+                  "sat": 34,
+                  "unsat": 6,
+                  "timeout": 0,
+                  "error": 0,
+                  "unsupported": 0,
+                  "unknown": 0,
+                  "wrong_answer": 0,
+                  "par2": 19.941238
+                },
+                "candidate": {
+                  "rows": 40,
+                  "solved": 40,
+                  "sat": 34,
+                  "unsat": 6,
+                  "timeout": 0,
+                  "error": 0,
+                  "unsupported": 0,
+                  "unknown": 0,
+                  "wrong_answer": 0,
+                  "par2": 19.27625
+                },
+                "par2_ratio": 0.9666526220689008,
+                "common_runtime_ratio": 0.9666526220689008,
+                "lost": [],
+                "gained": [],
+                "disagreements": []
+              }
+            },
+            "QF_UFLRA": {
+              "timing_status": "pass",
+              "aggregate": {
+                "baseline": {
+                  "rows": 40,
+                  "solved": 40,
+                  "sat": 24,
+                  "unsat": 16,
+                  "timeout": 0,
+                  "error": 0,
+                  "unsupported": 0,
+                  "unknown": 0,
+                  "wrong_answer": 0,
+                  "par2": 18.803288
+                },
+                "candidate": {
+                  "rows": 40,
+                  "solved": 40,
+                  "sat": 24,
+                  "unsat": 16,
+                  "timeout": 0,
+                  "error": 0,
+                  "unsupported": 0,
+                  "unknown": 0,
+                  "wrong_answer": 0,
+                  "par2": 17.974622
+                },
+                "par2_ratio": 0.9559297288857141,
+                "common_runtime_ratio": 0.9559297288857141,
+                "lost": [],
+                "gained": [],
+                "disagreements": []
+              }
+            }
+          },
+          "shared_profiles": {
+            "default": {
+              "timing_status": "pass",
+              "aggregate": {
+                "baseline": {
+                  "rows": 240,
+                  "solved": 212,
+                  "sat": 104,
+                  "unsat": 108,
+                  "timeout": 12,
+                  "error": 0,
+                  "unsupported": 0,
+                  "unknown": 16,
+                  "wrong_answer": 0,
+                  "par2": 292.091614
+                },
+                "candidate": {
+                  "rows": 240,
+                  "solved": 212,
+                  "sat": 104,
+                  "unsat": 108,
+                  "timeout": 12,
+                  "error": 0,
+                  "unsupported": 0,
+                  "unknown": 16,
+                  "wrong_answer": 0,
+                  "par2": 292.145708
+                },
+                "par2_ratio": 1.00018519532026,
+                "common_runtime_ratio": 1.004473679030773,
+                "lost": [],
+                "gained": [],
+                "disagreements": []
+              }
+            },
+            "online": {
+              "timing_status": "needs-triage",
+              "aggregate": {
+                "baseline": {
+                  "rows": 240,
+                  "solved": 204,
+                  "sat": 104,
+                  "unsat": 100,
+                  "timeout": 20,
+                  "error": 0,
+                  "unsupported": 0,
+                  "unknown": 16,
+                  "wrong_answer": 0,
+                  "par2": 373.414409
+                },
+                "candidate": {
+                  "rows": 240,
+                  "solved": 204,
+                  "sat": 104,
+                  "unsat": 100,
+                  "timeout": 20,
+                  "error": 0,
+                  "unsupported": 0,
+                  "unknown": 16,
+                  "wrong_answer": 0,
+                  "par2": 373.580847
+                },
+                "par2_ratio": 1.0004457192759266,
+                "common_runtime_ratio": 1.0124074046050033,
+                "lost": [],
+                "gained": [],
+                "disagreements": []
+              }
+            },
+            "lazy-uf": {
+              "timing_status": "pass",
+              "aggregate": {
+                "baseline": {
+                  "rows": 62,
+                  "solved": 46,
+                  "sat": 20,
+                  "unsat": 26,
+                  "timeout": 16,
+                  "error": 0,
+                  "unsupported": 0,
+                  "unknown": 0,
+                  "wrong_answer": 0,
+                  "par2": 160.376394
+                },
+                "candidate": {
+                  "rows": 62,
+                  "solved": 46,
+                  "sat": 20,
+                  "unsat": 26,
+                  "timeout": 16,
+                  "error": 0,
+                  "unsupported": 0,
+                  "unknown": 0,
+                  "wrong_answer": 0,
+                  "par2": 160.379643
+                },
+                "par2_ratio": 1.000020258592421,
+                "common_runtime_ratio": 1.0086319123046594,
+                "lost": [],
+                "gained": [],
+                "disagreements": []
+              }
+            },
+            "offline-uflia": {
+              "timing_status": "pass",
+              "aggregate": {
+                "baseline": {
+                  "rows": 32,
+                  "solved": 26,
+                  "sat": 12,
+                  "unsat": 14,
+                  "timeout": 6,
+                  "error": 0,
+                  "unsupported": 0,
+                  "unknown": 0,
+                  "wrong_answer": 0,
+                  "par2": 70.418998
+                },
+                "candidate": {
+                  "rows": 32,
+                  "solved": 26,
+                  "sat": 12,
+                  "unsat": 14,
+                  "timeout": 6,
+                  "error": 0,
+                  "unsupported": 0,
+                  "unknown": 0,
+                  "wrong_answer": 0,
+                  "par2": 70.368346
+                },
+                "par2_ratio": 0.9992807054709867,
+                "common_runtime_ratio": 0.9951384960434776,
+                "lost": [],
+                "gained": [],
+                "disagreements": []
+              }
+            }
+          },
+          "preservation_note": "All small preservation solved counts stable; no disagreements/lost solves. Five-logic QF_LIA/LRA/UF runtime regressions retained; four-profile online common runtime+1.24% exceeds its strict1% sample flag. Full-division PAR2 and lost-solve gates remain pending; no timing acceptance claimed.",
+          "historical_references": {
+            "QF_LIA/z3": {
+              "coverage": 13306,
+              "metrics": {
+                "rows": 13306,
+                "solved": 12144,
+                "sat": 7826,
+                "unsat": 4318,
+                "timeout": 1162,
+                "error": 0,
+                "unsupported": 0,
+                "unknown": 0,
+                "wrong_answer": 0,
+                "par2": 174585.785332
+              },
+              "solver": {
+                "path": "/home/janotmik/primo-cadical-profile/contrib/local/bin/z3",
+                "sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+                "version": "Z3 version 5.1.0 - 64 bit"
+              },
+              "root": "results/evaluation-refresh-20261005/historical-reference-metadata/QF_LIA/z3",
+              "measurement_note": "Historical 1CPU/4GiB/60s reference run; current paired Primo runs use1CPU/8GiB/60s. Exact input path/hash matches frozen current corpus. Context only, not same-node controlled speed comparison."
+            },
+            "QF_UFLIA/z3": {
+              "coverage": 659,
+              "metrics": {
+                "rows": 659,
+                "solved": 619,
+                "sat": 429,
+                "unsat": 190,
+                "timeout": 40,
+                "error": 0,
+                "unsupported": 0,
+                "unknown": 0,
+                "wrong_answer": 0,
+                "par2": 5390.248302
+              },
+              "solver": {
+                "path": "/home/janotmik/primo-cadical-profile/contrib/local/bin/z3",
+                "sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+                "version": "Z3 version 5.1.0 - 64 bit"
+              },
+              "root": "results/evaluation-refresh-20261005/historical-reference-metadata/QF_UFLIA/z3",
+              "measurement_note": "Historical 1CPU/4GiB/60s reference run; current paired Primo runs use1CPU/8GiB/60s. Exact input path/hash matches frozen current corpus. Context only, not same-node controlled speed comparison."
+            },
+            "QF_UFLIA/cvc5": {
+              "coverage": 659,
+              "metrics": {
+                "rows": 659,
+                "solved": 604,
+                "sat": 421,
+                "unsat": 183,
+                "timeout": 55,
+                "error": 0,
+                "unsupported": 0,
+                "unknown": 0,
+                "wrong_answer": 0,
+                "par2": 7433.8374650000005
+              },
+              "solver": {
+                "path": "/home/janotmik/primo-cadical-profile/contrib/local/bin/cvc5",
+                "sha256": "4a93548398445cf1a774655583f5465b156c26f63f2cdfb94f4728fdf7adde46",
+                "version": "cvc5 1.3.4 [git f3b21c4 on branch HEAD]\ncompiled with GCC version Ubuntu Clang 18.1.3 (1ubuntu1) on May  7 2026 15:33:02\n\nCopyright (c) 2009-2026 by the authors and their institutional\naffiliations listed at https://cvc5.github.io/people.html\n\ncvc5 is open-source and is covered by the BSD license (modified).\n\nTHIS SOFTWARE IS PROVIDED AS-IS, WITHOUT ANY WARRANTIES.\nUSE AT YOUR OWN RISK.\n\nThis version of cvc5 is linked against the following non-(L)GPL'ed\nthird party libraries.\n\n  CaDiCaL - Simplified Satisfiability Solver\n  See https://github.com/arminbiere/cadical for copyright information.\n\n  SymFPU - The Symbolic Floating Point Unit\n  See https://github.com/martin-cs/symfpu/tree/CVC4 for copyright information.\n\nThis version of cvc5 is linked against the following third party\nlibraries covered by the LGPLv3 license.\nSee licenses/lgpl-3.0.txt for more information.\n\n  GMP - Gnu Multi Precision Arithmetic Library\n  See http://gmplib.org for copyright information.\n\n  LibPoly polynomial library\n  See https://github.com/SRI-CSL/libpoly for copyright and\n  licensing information.\n\ncvc5 is statically linked against these libraries. To recompile\nthis version of cvc5 with different versions of these libraries\nfollow the instructions on https://github.com/cvc5/cvc5/blob/main/INSTALL.md\n\nSee the file COPYING (distributed with the source code, and with\nall binaries) for the full cvc5 copyright, licensing, and (lack of)\nwarranty information."
+              },
+              "root": "results/evaluation-refresh-20261005/historical-reference-metadata/QF_UFLIA/cvc5",
+              "measurement_note": "Historical 1CPU/4GiB/60s reference run; current paired Primo runs use1CPU/8GiB/60s. Exact input path/hash matches frozen current corpus. Context only, not same-node controlled speed comparison."
+            },
+            "unavailable": "Historical cvc5 QF_LIA has12445/13306 rows and is not used as a full-division timing baseline."
+          },
+          "loss_reruns": {
+            "job": "172809",
+            "manifest": "results/integer-first-losses.txt",
+            "artifact": "results/integer-losses-batch1",
+            "resources": "3 paired repetitions; 60 seconds, 8 GiB, 1 CPU, nomultithread; amd-2 matches original losses",
+            "confirmed_losses": {
+              "2019-cmodelsdiff/labyrinth/0143-labyrinth-14-0.smt2": {
+                "baseline_seconds": [
+                  11.254658,
+                  10.443865,
+                  10.699052
+                ],
+                "candidate": "3/3 timeouts"
+              },
+              "2019-cmodelsdiff/labyrinth/0190-labyrinth-18-0.smt2": {
+                "baseline_seconds": [
+                  35.76087,
+                  37.326277,
+                  35.729046
+                ],
+                "candidate": "3/3 timeouts"
+              }
+            },
+            "model_replay_jobs": [
+              "172812",
+              "172813",
+              "172814"
+            ],
+            "status": "completed; six of initial eleven losses repeated in at least two pairs",
+            "summary": {
+              "aggregate": {
+                "baseline": {
+                  "error": 0,
+                  "par2": 1877.537695,
+                  "rows": 33,
+                  "sat": 20,
+                  "solved": 29,
+                  "timeout": 4,
+                  "unknown": 0,
+                  "unsat": 9,
+                  "unsupported": 0,
+                  "wrong_answer": 0
+                },
+                "baseline_common_seconds": 597.412725,
+                "candidate": {
+                  "error": 0,
+                  "par2": 3257.438076,
+                  "rows": 33,
+                  "sat": 8,
+                  "solved": 11,
+                  "timeout": 22,
+                  "unknown": 0,
+                  "unsat": 3,
+                  "unsupported": 0,
+                  "wrong_answer": 0
+                },
+                "candidate_common_seconds": 617.438076,
+                "common_runtime_ratio": 1.0335201279818738,
+                "common_solved": 11,
+                "disagreements": [],
+                "gained": [],
+                "lost": [
+                  "round-0:2019-cmodelsdiff/labyrinth/0143-labyrinth-14-0.smt2",
+                  "round-0:2019-cmodelsdiff/labyrinth/0190-labyrinth-18-0.smt2",
+                  "round-0:nec-smt/large/checkpass_pwd/prp-33-48.smt2",
+                  "round-0:nec-smt/large/checkpass_pwd/prp-34-47.smt2",
+                  "round-0:nec-smt/large/checkpass_pwd/prp-53-50.smt2",
+                  "round-1:2019-cmodelsdiff/labyrinth/0143-labyrinth-14-0.smt2",
+                  "round-1:2019-cmodelsdiff/labyrinth/0190-labyrinth-18-0.smt2",
+                  "round-1:nec-smt/large/getoption_group/prp-9-49.smt2",
+                  "round-1:nec-smt/large/checkpass_pwd/prp-33-48.smt2",
+                  "round-1:nec-smt/large/checkpass_pwd/prp-34-47.smt2",
+                  "round-1:nec-smt/large/checkpass_pwd/prp-53-50.smt2",
+                  "round-1:nec-smt/large/checkpass_pwd/prp-55-50.smt2",
+                  "round-2:2019-cmodelsdiff/labyrinth/0143-labyrinth-14-0.smt2",
+                  "round-2:2019-cmodelsdiff/labyrinth/0190-labyrinth-18-0.smt2",
+                  "round-2:nec-smt/large/checkpass/prp-13-49.smt2",
+                  "round-2:nec-smt/large/checkpass_pwd/prp-33-48.smt2",
+                  "round-2:nec-smt/large/checkpass_pwd/prp-53-50.smt2",
+                  "round-2:nec-smt/large/checkpass_pwd/prp-55-50.smt2"
+                ],
+                "par2_ratio": 1.734952158177575
+              },
+              "expected_unique_inputs": 11,
+              "families": {
+                "2019-cmodelsdiff": {
+                  "baseline": {
+                    "error": 0,
+                    "par2": 141.213768,
+                    "rows": 6,
+                    "sat": 6,
+                    "solved": 6,
+                    "timeout": 0,
+                    "unknown": 0,
+                    "unsat": 0,
+                    "unsupported": 0,
+                    "wrong_answer": 0
+                  },
+                  "baseline_common_seconds": 0,
+                  "candidate": {
+                    "error": 0,
+                    "par2": 720.0,
+                    "rows": 6,
+                    "sat": 0,
+                    "solved": 0,
+                    "timeout": 6,
+                    "unknown": 0,
+                    "unsat": 0,
+                    "unsupported": 0,
+                    "wrong_answer": 0
+                  },
+                  "candidate_common_seconds": 0,
+                  "common_runtime_ratio": null,
+                  "common_solved": 0,
+                  "disagreements": [],
+                  "gained": [],
+                  "lost": [
+                    "round-0:2019-cmodelsdiff/labyrinth/0143-labyrinth-14-0.smt2",
+                    "round-0:2019-cmodelsdiff/labyrinth/0190-labyrinth-18-0.smt2",
+                    "round-1:2019-cmodelsdiff/labyrinth/0143-labyrinth-14-0.smt2",
+                    "round-1:2019-cmodelsdiff/labyrinth/0190-labyrinth-18-0.smt2",
+                    "round-2:2019-cmodelsdiff/labyrinth/0143-labyrinth-14-0.smt2",
+                    "round-2:2019-cmodelsdiff/labyrinth/0190-labyrinth-18-0.smt2"
+                  ],
+                  "par2_ratio": 5.0986529868674
+                },
+                "nec-smt": {
+                  "baseline": {
+                    "error": 0,
+                    "par2": 1736.323927,
+                    "rows": 27,
+                    "sat": 14,
+                    "solved": 23,
+                    "timeout": 4,
+                    "unknown": 0,
+                    "unsat": 9,
+                    "unsupported": 0,
+                    "wrong_answer": 0
+                  },
+                  "baseline_common_seconds": 597.412725,
+                  "candidate": {
+                    "error": 0,
+                    "par2": 2537.438076,
+                    "rows": 27,
+                    "sat": 8,
+                    "solved": 11,
+                    "timeout": 16,
+                    "unknown": 0,
+                    "unsat": 3,
+                    "unsupported": 0,
+                    "wrong_answer": 0
+                  },
+                  "candidate_common_seconds": 617.438076,
+                  "common_runtime_ratio": 1.0335201279818738,
+                  "common_solved": 11,
+                  "disagreements": [],
+                  "gained": [],
+                  "lost": [
+                    "round-0:nec-smt/large/checkpass_pwd/prp-33-48.smt2",
+                    "round-0:nec-smt/large/checkpass_pwd/prp-34-47.smt2",
+                    "round-0:nec-smt/large/checkpass_pwd/prp-53-50.smt2",
+                    "round-1:nec-smt/large/getoption_group/prp-9-49.smt2",
+                    "round-1:nec-smt/large/checkpass_pwd/prp-33-48.smt2",
+                    "round-1:nec-smt/large/checkpass_pwd/prp-34-47.smt2",
+                    "round-1:nec-smt/large/checkpass_pwd/prp-53-50.smt2",
+                    "round-1:nec-smt/large/checkpass_pwd/prp-55-50.smt2",
+                    "round-2:nec-smt/large/checkpass/prp-13-49.smt2",
+                    "round-2:nec-smt/large/checkpass_pwd/prp-33-48.smt2",
+                    "round-2:nec-smt/large/checkpass_pwd/prp-53-50.smt2",
+                    "round-2:nec-smt/large/checkpass_pwd/prp-55-50.smt2"
+                  ],
+                  "par2_ratio": 1.4613851923265007
+                }
+              },
+              "identities": {
+                "baseline": [
+                  "4f5b5e403e0b92fa6543d2afb1bd6608df50f64e6bf6fc7ebc98758a9fc52ce4"
+                ],
+                "candidate": [
+                  "231217363ee13a31976f8aa4c5e4fce982538c2737775c69810d2b72ced9299c"
+                ]
+              },
+              "loss_counts": {
+                "2019-cmodelsdiff/labyrinth/0143-labyrinth-14-0.smt2": 3,
+                "2019-cmodelsdiff/labyrinth/0190-labyrinth-18-0.smt2": 3,
+                "nec-smt/large/checkpass/prp-13-49.smt2": 1,
+                "nec-smt/large/checkpass_pwd/prp-33-48.smt2": 3,
+                "nec-smt/large/checkpass_pwd/prp-34-47.smt2": 2,
+                "nec-smt/large/checkpass_pwd/prp-53-50.smt2": 3,
+                "nec-smt/large/checkpass_pwd/prp-55-50.smt2": 2,
+                "nec-smt/large/getoption_group/prp-9-49.smt2": 1
+              },
+              "loss_rerun_status": "repeated-loss",
+              "note": "Three complete paired reruns; a loss in at least two blocks acceptance. This verdict covers the repeat-loss criterion only, not the full-corpus timing thresholds, model validation or recorded-reference evidence. Timeout/unknown rows remain explicit in each pair's metrics.",
+              "ratio_limit": 1.01,
+              "repeated_losses": [
+                "2019-cmodelsdiff/labyrinth/0143-labyrinth-14-0.smt2",
+                "2019-cmodelsdiff/labyrinth/0190-labyrinth-18-0.smt2",
+                "nec-smt/large/checkpass_pwd/prp-33-48.smt2",
+                "nec-smt/large/checkpass_pwd/prp-34-47.smt2",
+                "nec-smt/large/checkpass_pwd/prp-53-50.smt2",
+                "nec-smt/large/checkpass_pwd/prp-55-50.smt2"
+              ],
+              "rounds": [
+                {
+                  "baseline": {
+                    "error": 0,
+                    "par2": 731.060644,
+                    "rows": 11,
+                    "sat": 6,
+                    "solved": 8,
+                    "timeout": 3,
+                    "unknown": 0,
+                    "unsat": 2,
+                    "unsupported": 0,
+                    "wrong_answer": 0
+                  },
+                  "baseline_common_seconds": 165.594243,
+                  "candidate": {
+                    "error": 0,
+                    "par2": 1132.780878,
+                    "rows": 11,
+                    "sat": 2,
+                    "solved": 3,
+                    "timeout": 8,
+                    "unknown": 0,
+                    "unsat": 1,
+                    "unsupported": 0,
+                    "wrong_answer": 0
+                  },
+                  "candidate_common_seconds": 172.780878,
+                  "common_runtime_ratio": 1.0433990630942405,
+                  "common_solved": 3,
+                  "disagreements": [],
+                  "gained": [],
+                  "lost": [
+                    "2019-cmodelsdiff/labyrinth/0143-labyrinth-14-0.smt2",
+                    "2019-cmodelsdiff/labyrinth/0190-labyrinth-18-0.smt2",
+                    "nec-smt/large/checkpass_pwd/prp-33-48.smt2",
+                    "nec-smt/large/checkpass_pwd/prp-34-47.smt2",
+                    "nec-smt/large/checkpass_pwd/prp-53-50.smt2"
+                  ],
+                  "par2_ratio": 1.5495032967470206
+                },
+                {
+                  "baseline": {
+                    "error": 0,
+                    "par2": 606.290962,
+                    "rows": 11,
+                    "sat": 7,
+                    "solved": 10,
+                    "timeout": 1,
+                    "unknown": 0,
+                    "unsat": 3,
+                    "unsupported": 0,
+                    "wrong_answer": 0
+                  },
+                  "baseline_common_seconds": 169.514743,
+                  "candidate": {
+                    "error": 0,
+                    "par2": 1129.466532,
+                    "rows": 11,
+                    "sat": 2,
+                    "solved": 3,
+                    "timeout": 8,
+                    "unknown": 0,
+                    "unsat": 1,
+                    "unsupported": 0,
+                    "wrong_answer": 0
+                  },
+                  "candidate_common_seconds": 169.466532,
+                  "common_runtime_ratio": 0.999715594058978,
+                  "common_solved": 3,
+                  "disagreements": [],
+                  "gained": [],
+                  "lost": [
+                    "2019-cmodelsdiff/labyrinth/0143-labyrinth-14-0.smt2",
+                    "2019-cmodelsdiff/labyrinth/0190-labyrinth-18-0.smt2",
+                    "nec-smt/large/getoption_group/prp-9-49.smt2",
+                    "nec-smt/large/checkpass_pwd/prp-33-48.smt2",
+                    "nec-smt/large/checkpass_pwd/prp-34-47.smt2",
+                    "nec-smt/large/checkpass_pwd/prp-53-50.smt2",
+                    "nec-smt/large/checkpass_pwd/prp-55-50.smt2"
+                  ],
+                  "par2_ratio": 1.8629117087184945
+                },
+                {
+                  "baseline": {
+                    "error": 0,
+                    "par2": 540.186089,
+                    "rows": 11,
+                    "sat": 7,
+                    "solved": 11,
+                    "timeout": 0,
+                    "unknown": 0,
+                    "unsat": 4,
+                    "unsupported": 0,
+                    "wrong_answer": 0
+                  },
+                  "baseline_common_seconds": 262.303739,
+                  "candidate": {
+                    "error": 0,
+                    "par2": 995.190666,
+                    "rows": 11,
+                    "sat": 4,
+                    "solved": 5,
+                    "timeout": 6,
+                    "unknown": 0,
+                    "unsat": 1,
+                    "unsupported": 0,
+                    "wrong_answer": 0
+                  },
+                  "candidate_common_seconds": 275.19066599999996,
+                  "common_runtime_ratio": 1.0491297876619288,
+                  "common_solved": 5,
+                  "disagreements": [],
+                  "gained": [],
+                  "lost": [
+                    "2019-cmodelsdiff/labyrinth/0143-labyrinth-14-0.smt2",
+                    "2019-cmodelsdiff/labyrinth/0190-labyrinth-18-0.smt2",
+                    "nec-smt/large/checkpass/prp-13-49.smt2",
+                    "nec-smt/large/checkpass_pwd/prp-33-48.smt2",
+                    "nec-smt/large/checkpass_pwd/prp-53-50.smt2",
+                    "nec-smt/large/checkpass_pwd/prp-55-50.smt2"
+                  ],
+                  "par2_ratio": 1.8423108004175204
+                }
+              ],
+              "timeout": 60.0,
+              "timing_status": "needs-triage"
+            }
+          },
+          "QF_UFLIA_complete": {
+            "aggregate": {
+              "baseline": {
+                "error": 0,
+                "par2": 22571.64008,
+                "rows": 1318,
+                "sat": 810,
+                "solved": 1150,
+                "timeout": 168,
+                "unknown": 0,
+                "unsat": 340,
+                "unsupported": 0,
+                "wrong_answer": 0
+              },
+              "baseline_common_seconds": 2411.64008,
+              "candidate": {
+                "error": 0,
+                "par2": 22570.786199,
+                "rows": 1318,
+                "sat": 810,
+                "solved": 1150,
+                "timeout": 168,
+                "unknown": 0,
+                "unsat": 340,
+                "unsupported": 0,
+                "wrong_answer": 0
+              },
+              "candidate_common_seconds": 2410.786199,
+              "common_runtime_ratio": 0.9996459334844029,
+              "common_solved": 1150,
+              "disagreements": [],
+              "gained": [],
+              "lost": [],
+              "par2_ratio": 0.9999621701836031
+            },
+            "expected_unique_inputs": 659,
+            "families": {
+              "20230314-Jaroslav-Bendik-Certora": {
+                "baseline": {
+                  "error": 0,
+                  "par2": 17064.161802,
+                  "rows": 152,
+                  "sat": 10,
+                  "solved": 12,
+                  "timeout": 140,
+                  "unknown": 0,
+                  "unsat": 2,
+                  "unsupported": 0,
+                  "wrong_answer": 0
+                },
+                "baseline_common_seconds": 264.16180199999997,
+                "candidate": {
+                  "error": 0,
+                  "par2": 17068.049871,
+                  "rows": 152,
+                  "sat": 10,
+                  "solved": 12,
+                  "timeout": 140,
+                  "unknown": 0,
+                  "unsat": 2,
+                  "unsupported": 0,
+                  "wrong_answer": 0
+                },
+                "candidate_common_seconds": 268.049871,
+                "common_runtime_ratio": 1.0147185133148056,
+                "common_solved": 12,
+                "disagreements": [],
+                "gained": [],
+                "lost": [],
+                "par2_ratio": 1.0002278499843775
+              },
+              "TwoSquares": {
+                "baseline": {
+                  "error": 0,
+                  "par2": 0.897804,
+                  "rows": 42,
+                  "sat": 10,
+                  "solved": 42,
+                  "timeout": 0,
+                  "unknown": 0,
+                  "unsat": 32,
+                  "unsupported": 0,
+                  "wrong_answer": 0
+                },
+                "baseline_common_seconds": 0.897804,
+                "candidate": {
+                  "error": 0,
+                  "par2": 0.8625860000000001,
+                  "rows": 42,
+                  "sat": 10,
+                  "solved": 42,
+                  "timeout": 0,
+                  "unknown": 0,
+                  "unsat": 32,
+                  "unsupported": 0,
+                  "wrong_answer": 0
+                },
+                "candidate_common_seconds": 0.8625860000000001,
+                "common_runtime_ratio": 0.9607731754369551,
+                "common_solved": 42,
+                "disagreements": [],
+                "gained": [],
+                "lost": [],
+                "par2_ratio": 0.9607731754369551
+              },
+              "mathsat": {
+                "baseline": {
+                  "error": 0,
+                  "par2": 4758.825517,
+                  "rows": 908,
+                  "sat": 626,
+                  "solved": 882,
+                  "timeout": 26,
+                  "unknown": 0,
+                  "unsat": 256,
+                  "unsupported": 0,
+                  "wrong_answer": 0
+                },
+                "baseline_common_seconds": 1638.825517,
+                "candidate": {
+                  "error": 0,
+                  "par2": 4750.203506,
+                  "rows": 908,
+                  "sat": 626,
+                  "solved": 882,
+                  "timeout": 26,
+                  "unknown": 0,
+                  "unsat": 256,
+                  "unsupported": 0,
+                  "wrong_answer": 0
+                },
+                "candidate_common_seconds": 1630.203506,
+                "common_runtime_ratio": 0.9947389084984574,
+                "common_solved": 882,
+                "disagreements": [],
+                "gained": [],
+                "lost": [],
+                "par2_ratio": 0.9981882061090074
+              },
+              "wisas": {
+                "baseline": {
+                  "error": 0,
+                  "par2": 747.754957,
+                  "rows": 216,
+                  "sat": 164,
+                  "solved": 214,
+                  "timeout": 2,
+                  "unknown": 0,
+                  "unsat": 50,
+                  "unsupported": 0,
+                  "wrong_answer": 0
+                },
+                "baseline_common_seconds": 507.754957,
+                "candidate": {
+                  "error": 0,
+                  "par2": 751.670236,
+                  "rows": 216,
+                  "sat": 164,
+                  "solved": 214,
+                  "timeout": 2,
+                  "unknown": 0,
+                  "unsat": 50,
+                  "unsupported": 0,
+                  "wrong_answer": 0
+                },
+                "candidate_common_seconds": 511.670236,
+                "common_runtime_ratio": 1.0077109616479825,
+                "common_solved": 214,
+                "disagreements": [],
+                "gained": [],
+                "lost": [],
+                "par2_ratio": 1.0052360455298193
+              }
+            },
+            "identities": {
+              "baseline": [
+                "4f5b5e403e0b92fa6543d2afb1bd6608df50f64e6bf6fc7ebc98758a9fc52ce4"
+              ],
+              "candidate": [
+                "231217363ee13a31976f8aa4c5e4fce982538c2737775c69810d2b72ced9299c"
+              ]
+            },
+            "note": "Timing only; independent SAT-model coverage and recorded-reference joins are separate acceptance gates. Any lost solve requires three paired reruns; loss in at least two blocks acceptance.",
+            "ratio_limit": 1.02,
+            "rounds": [
+              {
+                "baseline": {
+                  "error": 0,
+                  "par2": 11305.052812,
+                  "rows": 659,
+                  "sat": 405,
+                  "solved": 575,
+                  "timeout": 84,
+                  "unknown": 0,
+                  "unsat": 170,
+                  "unsupported": 0,
+                  "wrong_answer": 0
+                },
+                "baseline_common_seconds": 1225.052812,
+                "candidate": {
+                  "error": 0,
+                  "par2": 11315.235546,
+                  "rows": 659,
+                  "sat": 405,
+                  "solved": 575,
+                  "timeout": 84,
+                  "unknown": 0,
+                  "unsat": 170,
+                  "unsupported": 0,
+                  "wrong_answer": 0
+                },
+                "candidate_common_seconds": 1235.235546,
+                "common_runtime_ratio": 1.0083120775694365,
+                "common_solved": 575,
+                "disagreements": [],
+                "gained": [],
+                "lost": [],
+                "par2_ratio": 1.0009007241424994
+              },
+              {
+                "baseline": {
+                  "error": 0,
+                  "par2": 11266.587268,
+                  "rows": 659,
+                  "sat": 405,
+                  "solved": 575,
+                  "timeout": 84,
+                  "unknown": 0,
+                  "unsat": 170,
+                  "unsupported": 0,
+                  "wrong_answer": 0
+                },
+                "baseline_common_seconds": 1186.587268,
+                "candidate": {
+                  "error": 0,
+                  "par2": 11255.550653,
+                  "rows": 659,
+                  "sat": 405,
+                  "solved": 575,
+                  "timeout": 84,
+                  "unknown": 0,
+                  "unsat": 170,
+                  "unsupported": 0,
+                  "wrong_answer": 0
+                },
+                "candidate_common_seconds": 1175.550653,
+                "common_runtime_ratio": 0.9906988594116619,
+                "common_solved": 575,
+                "disagreements": [],
+                "gained": [],
+                "lost": [],
+                "par2_ratio": 0.9990204118836105
+              }
+            ],
+            "timeout": 60.0,
+            "timing_status": "pass"
+          },
+          "replay_hold_note": "All original timing model replays held with scontrol hold pending final candidate timing dependency; release after final timing jobs are recorded. Held jobs:172666,172667,172668,172669,172670,172798,172799,172812,172813,172814."
+        },
+        "retention_followup": {
+          "snapshot": "94be9e44b657b8a73725ee0c521ef619d02a86d3",
+          "status": "superseded-by-observation-followup; small labyrinth recovered, larger probe still times out",
+          "diagnosis": "Legacy standalone OnlineLraPropagator marks external clauses permanent. Shared ComponentDispatcher marked them forgettable. Explicit recipe policy restores standalone false and preserves combined true; performance hypothesis awaits paired probes.",
+          "profile_job": "172818",
+          "profile_artifact": "results/integer-profile-172818",
+          "profile_command": "timeout --signal=TERM --kill-after=15 100 valgrind --tool=callgrind --callgrind-out-file=<artifact> <frozen-baseline-or-candidate> --quiet --stats <labyrinth0143>; SLURM 1 CPU 8 GiB, separate diagnostic, not timing evidence",
+          "build_job": "172820",
+          "checks_job": "172823",
+          "probe_job": "172824",
+          "probe_artifact": "results/retention-probe in retention workspace",
+          "probe_manifest": [
+            "2019-cmodelsdiff/labyrinth/0143-labyrinth-14-0.smt2",
+            "2019-cmodelsdiff/labyrinth/0190-labyrinth-18-0.smt2",
+            "nec-smt/large/checkpass_pwd/prp-30-41.smt2"
+          ],
+          "local_lint": "passed",
+          "documentation_review": "Independent reviewer accepted retention paragraph and pinned references; lia blob f56f3849d7e5549c53232fc3c60a648d49adc998, config blob 3d69a1409912285b4f5a433e7bcdf80f5deb2ecd; runtime qualification excluded.",
+          "probe_node_policy": "Initial amd-2 restriction removed before any probes started; paired probes scheduled compute,gpu with node recorded, unchanged 60s/8GiB/1CPU limits",
+          "profile_attempts": {
+            "172818": "Callgrind empty dumps, timeout SIGKILL; not usable",
+            "172829": "Cancelled: instrumentation control waiting; debuginfod downloads suspected",
+            "172838": "GDB attempts ended during debuginfod downloads; not usable",
+            "172888": "DEBUGINFOD_URLS empty; Callgrind explicit bounded dump succeeds, but interval mainly parsing; not SAT-search timing evidence",
+            "172934": "DEBUGINFOD_URLS empty; bounded 8s GDB samples captured baseline SAT clause reduction/garbage collection and cfc SAT fast-elimination/subsumption. Single stacks are diagnostic locations, not frequency estimates."
+          },
+          "checks_status": "completed 172823; release44/44, Python233, ASan44/44, scaffold build and3/3",
+          "binary_sha256": "4e54275582dff389645815441250185cc06f975d501cc43d71c5722e1ab2c971",
+          "probe_summary": {
+            "aggregate": {
+              "baseline": {
+                "error": 0,
+                "par2": 461.021733,
+                "rows": 9,
+                "sat": 8,
+                "solved": 8,
+                "timeout": 1,
+                "unknown": 0,
+                "unsat": 0,
+                "unsupported": 0,
+                "wrong_answer": 0
+              },
+              "baseline_common_seconds": 168.178351,
+              "candidate": {
+                "error": 0,
+                "par2": 650.472693,
+                "rows": 9,
+                "sat": 5,
+                "solved": 5,
+                "timeout": 4,
+                "unknown": 0,
+                "unsat": 0,
+                "unsupported": 0,
+                "wrong_answer": 0
+              },
+              "candidate_common_seconds": 170.472693,
+              "common_runtime_ratio": 1.01364231475905,
+              "common_solved": 5,
+              "disagreements": [],
+              "gained": [],
+              "lost": [
+                "round-0:2019-cmodelsdiff/labyrinth/0190-labyrinth-18-0.smt2",
+                "round-1:2019-cmodelsdiff/labyrinth/0190-labyrinth-18-0.smt2",
+                "round-2:2019-cmodelsdiff/labyrinth/0190-labyrinth-18-0.smt2"
+              ],
+              "par2_ratio": 1.4109371564051625
+            },
+            "expected_unique_inputs": 3,
+            "families": {
+              "2019-cmodelsdiff": {
+                "baseline": {
+                  "error": 0,
+                  "par2": 224.056774,
+                  "rows": 6,
+                  "sat": 6,
+                  "solved": 6,
+                  "timeout": 0,
+                  "unknown": 0,
+                  "unsat": 0,
+                  "unsupported": 0,
+                  "wrong_answer": 0
+                },
+                "baseline_common_seconds": 51.213392,
+                "candidate": {
+                  "error": 0,
+                  "par2": 411.875517,
+                  "rows": 6,
+                  "sat": 3,
+                  "solved": 3,
+                  "timeout": 3,
+                  "unknown": 0,
+                  "unsat": 0,
+                  "unsupported": 0,
+                  "wrong_answer": 0
+                },
+                "candidate_common_seconds": 51.875517,
+                "common_runtime_ratio": 1.0129287472308024,
+                "common_solved": 3,
+                "disagreements": [],
+                "gained": [],
+                "lost": [
+                  "round-0:2019-cmodelsdiff/labyrinth/0190-labyrinth-18-0.smt2",
+                  "round-1:2019-cmodelsdiff/labyrinth/0190-labyrinth-18-0.smt2",
+                  "round-2:2019-cmodelsdiff/labyrinth/0190-labyrinth-18-0.smt2"
+                ],
+                "par2_ratio": 1.8382640687310798
+              },
+              "nec-smt": {
+                "baseline": {
+                  "error": 0,
+                  "par2": 236.964959,
+                  "rows": 3,
+                  "sat": 2,
+                  "solved": 2,
+                  "timeout": 1,
+                  "unknown": 0,
+                  "unsat": 0,
+                  "unsupported": 0,
+                  "wrong_answer": 0
+                },
+                "baseline_common_seconds": 116.964959,
+                "candidate": {
+                  "error": 0,
+                  "par2": 238.597176,
+                  "rows": 3,
+                  "sat": 2,
+                  "solved": 2,
+                  "timeout": 1,
+                  "unknown": 0,
+                  "unsat": 0,
+                  "unsupported": 0,
+                  "wrong_answer": 0
+                },
+                "candidate_common_seconds": 118.59717599999999,
+                "common_runtime_ratio": 1.0139547520381724,
+                "common_solved": 2,
+                "disagreements": [],
+                "gained": [],
+                "lost": [],
+                "par2_ratio": 1.0068880099694402
+              }
+            },
+            "identities": {
+              "baseline": [
+                "4f5b5e403e0b92fa6543d2afb1bd6608df50f64e6bf6fc7ebc98758a9fc52ce4"
+              ],
+              "candidate": [
+                "4e54275582dff389645815441250185cc06f975d501cc43d71c5722e1ab2c971"
+              ]
+            },
+            "loss_counts": {
+              "2019-cmodelsdiff/labyrinth/0190-labyrinth-18-0.smt2": 3
+            },
+            "loss_rerun_status": "repeated-loss",
+            "note": "Three complete paired reruns; a loss in at least two blocks acceptance. This verdict covers the repeat-loss criterion only, not the full-corpus timing thresholds, model validation or recorded-reference evidence. Timeout/unknown rows remain explicit in each pair's metrics.",
+            "ratio_limit": 1.01,
+            "repeated_losses": [
+              "2019-cmodelsdiff/labyrinth/0190-labyrinth-18-0.smt2"
+            ],
+            "rounds": [
+              {
+                "baseline": {
+                  "error": 0,
+                  "par2": 196.000651,
+                  "rows": 3,
+                  "sat": 2,
+                  "solved": 2,
+                  "timeout": 1,
+                  "unknown": 0,
+                  "unsat": 0,
+                  "unsupported": 0,
+                  "wrong_answer": 0
+                },
+                "baseline_common_seconds": 16.882899,
+                "candidate": {
+                  "error": 0,
+                  "par2": 257.176392,
+                  "rows": 3,
+                  "sat": 1,
+                  "solved": 1,
+                  "timeout": 2,
+                  "unknown": 0,
+                  "unsat": 0,
+                  "unsupported": 0,
+                  "wrong_answer": 0
+                },
+                "candidate_common_seconds": 17.176392,
+                "common_runtime_ratio": 1.017384040501575,
+                "common_solved": 1,
+                "disagreements": [],
+                "gained": [],
+                "lost": [
+                  "2019-cmodelsdiff/labyrinth/0190-labyrinth-18-0.smt2"
+                ],
+                "par2_ratio": 1.312120090866433
+              },
+              {
+                "baseline": {
+                  "error": 0,
+                  "par2": 133.274747,
+                  "rows": 3,
+                  "sat": 3,
+                  "solved": 3,
+                  "timeout": 0,
+                  "unknown": 0,
+                  "unsat": 0,
+                  "unsupported": 0,
+                  "wrong_answer": 0
+                },
+                "baseline_common_seconds": 75.64859200000001,
+                "candidate": {
+                  "error": 0,
+                  "par2": 196.911722,
+                  "rows": 3,
+                  "sat": 2,
+                  "solved": 2,
+                  "timeout": 1,
+                  "unknown": 0,
+                  "unsat": 0,
+                  "unsupported": 0,
+                  "wrong_answer": 0
+                },
+                "candidate_common_seconds": 76.911722,
+                "common_runtime_ratio": 1.016697336547916,
+                "common_solved": 2,
+                "disagreements": [],
+                "gained": [],
+                "lost": [
+                  "2019-cmodelsdiff/labyrinth/0190-labyrinth-18-0.smt2"
+                ],
+                "par2_ratio": 1.4774871191464352
+              },
+              {
+                "baseline": {
+                  "error": 0,
+                  "par2": 131.746335,
+                  "rows": 3,
+                  "sat": 3,
+                  "solved": 3,
+                  "timeout": 0,
+                  "unknown": 0,
+                  "unsat": 0,
+                  "unsupported": 0,
+                  "wrong_answer": 0
+                },
+                "baseline_common_seconds": 75.64686,
+                "candidate": {
+                  "error": 0,
+                  "par2": 196.384579,
+                  "rows": 3,
+                  "sat": 2,
+                  "solved": 2,
+                  "timeout": 1,
+                  "unknown": 0,
+                  "unsat": 0,
+                  "unsupported": 0,
+                  "wrong_answer": 0
+                },
+                "candidate_common_seconds": 76.384579,
+                "common_runtime_ratio": 1.009752143049956,
+                "common_solved": 2,
+                "disagreements": [],
+                "gained": [],
+                "lost": [
+                  "2019-cmodelsdiff/labyrinth/0190-labyrinth-18-0.smt2"
+                ],
+                "par2_ratio": 1.4906265058530852
+              }
+            ],
+            "timeout": 60.0,
+            "timing_status": "needs-triage"
+          },
+          "probe_model_jobs": [
+            "172969",
+            "172970",
+            "172971"
+          ],
+          "probe_model_status": "submitted held until final timing completion"
+        },
+        "observation_followup": {
+          "snapshot": "25b44cc2204169ff0cc45a771b5ec56895a0511e",
+          "status": "correctness gate audited; focused repeated-loss criterion passed; full timing and probe/model acceptance pending",
+          "diagnosis": "Legacy QF_LIA observed all clausifier registry atoms. Migration omitted driver-owned Booleans from SAT observations, changing elimination/search. Observe them without component routing and retain registry order when present; existing recipes without driver-owned atoms retain their component observation order. Includes retention correction.",
+          "build_job": "172982",
+          "checks_job": "172989",
+          "probe_job": "172990",
+          "static_job": "172991",
+          "artifact": "results/observation-probe in separate observation workspace",
+          "local_lint": "passed",
+          "docs_review": "Independent read-only reviewer accepted lia blob9d408d691edc6f655847317a8e11d68fd4c8b8f0 and config blobc4fa6167ce4e313d3ae490e0352cd94705281908; runtime excluded.",
+          "superseded_snapshot": "e38b72aa865fa8042a24c434aad2080080b52ea9",
+          "superseded_build": "172935 failed compiling regression: AssignedTheoryLiteral field is atom, not term; solver source unchanged in correction",
+          "cancelled_dependent_jobs": [
+            "172943",
+            "172944",
+            "172945"
+          ],
+          "rendered_inspection": "/tmp/primo-observation-lia.png checked; observation and retention paragraphs readable with pinned links",
+          "docs_checks": "make docs and make docs-check-links pass;260pages32224local1033Gitlinks0failures before test-only revision pin update",
+          "eight_route_job": "173011",
+          "mutations_job": "173012",
+          "seed_base": 203610460,
+          "gate_note": "Fresh execution/generation at corrected snapshot; same frozen seeds as cfc gate for comparable coverage. Gates depend on checks172989.",
+          "preflight": "slurm_prepare_benchmark_workspace.py --check-only --build-via-slurm passed for25b44cc",
+          "build_status": "172982 completed0:0, clean Release all-target build",
+          "commands": {
+            "build": "python3 scripts/slurm_prepare_benchmark_workspace.py --local-dir /tmp/primo-integer-observation --build-via-slurm --remote-dir primo-integer-unification-observation --reuse-dependencies --cmake <existing-cmake> --cxx-header-manifest <matching-header-manifest> --extra-target all --jobs 4",
+            "checks": "PRIMO_EXPECTED_REVISION=25b44cc sbatch --dependency=afterok:172982 scripts/qualification/integer_unification/migration_checks.sbatch",
+            "probes": "PRIMO_EXPECTED_GIT=25b44cc PRIMO_COMPARE_TIMEOUT=60 PRIMO_COMPARE_SHARDS=3 sbatch --dependency=afterok:172982 --hint=nomultithread --partition=compute,gpu --array=0-2%3 scripts/slurm_component_loss_rerun.sbatch",
+            "static": "sbatch --dependency=afterok:172982 scripts/qualification/public_static.sbatch",
+            "eight_routes": "PRIMO_EXPECTED_REVISION=25b44cc PRIMO_SEED_BASE=203610460 PRIMO_BUDGET_REPLAY=1 sbatch --dependency=afterok:172989 --array=0-31%16 scripts/qualification/public_launch.sbatch",
+            "mutations": "PRIMO_EXPECTED_REVISION=25b44cc PRIMO_SEED_BASE=203610460 sbatch --dependency=afterok:172989 scripts/qualification/integer_unification/mutations.sbatch"
+          },
+          "checks_status": "172989 completed0:0; release44/44, Python233, ASan44/44, disabled-backend full build and3/3 scaffold tests",
+          "checks_artifact": "tmp/integer-unification/evidence/integer-observation-checks-172989",
+          "binary_sha256": "f3a3904e9cf7628eece6fb4c30f80de9f29eafa4ab89eca5a48afbf9643901a8",
+          "frozen_binary": "results/integer-frozen-binaries/primo-25b44cc",
+          "probe_summary": {
+            "aggregate": {
+              "baseline": {
+                "error": 0,
+                "par2": 367.53024,
+                "rows": 9,
+                "sat": 9,
+                "solved": 9,
+                "timeout": 0,
+                "unknown": 0,
+                "unsat": 0,
+                "unsupported": 0,
+                "wrong_answer": 0
+              },
+              "baseline_common_seconds": 367.53024,
+              "candidate": {
+                "error": 0,
+                "par2": 371.892834,
+                "rows": 9,
+                "sat": 9,
+                "solved": 9,
+                "timeout": 0,
+                "unknown": 0,
+                "unsat": 0,
+                "unsupported": 0,
+                "wrong_answer": 0
+              },
+              "candidate_common_seconds": 371.892834,
+              "common_runtime_ratio": 1.0118700273479537,
+              "common_solved": 9,
+              "disagreements": [],
+              "gained": [],
+              "lost": [],
+              "par2_ratio": 1.0118700273479537
+            },
+            "expected_unique_inputs": 3,
+            "families": {
+              "2019-cmodelsdiff": {
+                "baseline": {
+                  "error": 0,
+                  "par2": 199.202931,
+                  "rows": 6,
+                  "sat": 6,
+                  "solved": 6,
+                  "timeout": 0,
+                  "unknown": 0,
+                  "unsat": 0,
+                  "unsupported": 0,
+                  "wrong_answer": 0
+                },
+                "baseline_common_seconds": 199.202931,
+                "candidate": {
+                  "error": 0,
+                  "par2": 203.252323,
+                  "rows": 6,
+                  "sat": 6,
+                  "solved": 6,
+                  "timeout": 0,
+                  "unknown": 0,
+                  "unsat": 0,
+                  "unsupported": 0,
+                  "wrong_answer": 0
+                },
+                "candidate_common_seconds": 203.252323,
+                "common_runtime_ratio": 1.020327973989499,
+                "common_solved": 6,
+                "disagreements": [],
+                "gained": [],
+                "lost": [],
+                "par2_ratio": 1.020327973989499
+              },
+              "nec-smt": {
+                "baseline": {
+                  "error": 0,
+                  "par2": 168.327309,
+                  "rows": 3,
+                  "sat": 3,
+                  "solved": 3,
+                  "timeout": 0,
+                  "unknown": 0,
+                  "unsat": 0,
+                  "unsupported": 0,
+                  "wrong_answer": 0
+                },
+                "baseline_common_seconds": 168.327309,
+                "candidate": {
+                  "error": 0,
+                  "par2": 168.640511,
+                  "rows": 3,
+                  "sat": 3,
+                  "solved": 3,
+                  "timeout": 0,
+                  "unknown": 0,
+                  "unsat": 0,
+                  "unsupported": 0,
+                  "wrong_answer": 0
+                },
+                "candidate_common_seconds": 168.640511,
+                "common_runtime_ratio": 1.0018606725305637,
+                "common_solved": 3,
+                "disagreements": [],
+                "gained": [],
+                "lost": [],
+                "par2_ratio": 1.0018606725305637
+              }
+            },
+            "identities": {
+              "baseline": [
+                "4f5b5e403e0b92fa6543d2afb1bd6608df50f64e6bf6fc7ebc98758a9fc52ce4"
+              ],
+              "candidate": [
+                "f3a3904e9cf7628eece6fb4c30f80de9f29eafa4ab89eca5a48afbf9643901a8"
+              ]
+            },
+            "loss_counts": {},
+            "loss_rerun_status": "no-repeated-loss",
+            "note": "Three complete paired reruns; a loss in at least two blocks acceptance. This verdict covers the repeat-loss criterion only, not the full-corpus timing thresholds, model validation or recorded-reference evidence. Timeout/unknown rows remain explicit in each pair's metrics.",
+            "ratio_limit": 1.01,
+            "repeated_losses": [],
+            "rounds": [
+              {
+                "baseline": {
+                  "error": 0,
+                  "par2": 119.200749,
+                  "rows": 3,
+                  "sat": 3,
+                  "solved": 3,
+                  "timeout": 0,
+                  "unknown": 0,
+                  "unsat": 0,
+                  "unsupported": 0,
+                  "wrong_answer": 0
+                },
+                "baseline_common_seconds": 119.200749,
+                "candidate": {
+                  "error": 0,
+                  "par2": 120.833909,
+                  "rows": 3,
+                  "sat": 3,
+                  "solved": 3,
+                  "timeout": 0,
+                  "unknown": 0,
+                  "unsat": 0,
+                  "unsupported": 0,
+                  "wrong_answer": 0
+                },
+                "candidate_common_seconds": 120.833909,
+                "common_runtime_ratio": 1.0137009206208931,
+                "common_solved": 3,
+                "disagreements": [],
+                "gained": [],
+                "lost": [],
+                "par2_ratio": 1.0137009206208931
+              },
+              {
+                "baseline": {
+                  "error": 0,
+                  "par2": 121.13717700000001,
+                  "rows": 3,
+                  "sat": 3,
+                  "solved": 3,
+                  "timeout": 0,
+                  "unknown": 0,
+                  "unsat": 0,
+                  "unsupported": 0,
+                  "wrong_answer": 0
+                },
+                "baseline_common_seconds": 121.13717700000001,
+                "candidate": {
+                  "error": 0,
+                  "par2": 123.85113100000001,
+                  "rows": 3,
+                  "sat": 3,
+                  "solved": 3,
+                  "timeout": 0,
+                  "unknown": 0,
+                  "unsat": 0,
+                  "unsupported": 0,
+                  "wrong_answer": 0
+                },
+                "candidate_common_seconds": 123.85113100000001,
+                "common_runtime_ratio": 1.0224039726466467,
+                "common_solved": 3,
+                "disagreements": [],
+                "gained": [],
+                "lost": [],
+                "par2_ratio": 1.0224039726466467
+              },
+              {
+                "baseline": {
+                  "error": 0,
+                  "par2": 127.192314,
+                  "rows": 3,
+                  "sat": 3,
+                  "solved": 3,
+                  "timeout": 0,
+                  "unknown": 0,
+                  "unsat": 0,
+                  "unsupported": 0,
+                  "wrong_answer": 0
+                },
+                "baseline_common_seconds": 127.192314,
+                "candidate": {
+                  "error": 0,
+                  "par2": 127.207794,
+                  "rows": 3,
+                  "sat": 3,
+                  "solved": 3,
+                  "timeout": 0,
+                  "unknown": 0,
+                  "unsat": 0,
+                  "unsupported": 0,
+                  "wrong_answer": 0
+                },
+                "candidate_common_seconds": 127.207794,
+                "common_runtime_ratio": 1.0001217054672031,
+                "common_solved": 3,
+                "disagreements": [],
+                "gained": [],
+                "lost": [],
+                "par2_ratio": 1.0001217054672031
+              }
+            ],
+            "timeout": 60.0,
+            "timing_status": "needs-triage"
+          },
+          "probe_model_jobs": [
+            "173135",
+            "173136",
+            "173137"
+          ],
+          "probe_model_status": "held until headline timing completes; every successful candidate probe SAT measurement will be replayed",
+          "static": {
+            "job": "172991",
+            "status": "completed0:0",
+            "translation_units": 128,
+            "artifact": "tmp/integer-unification/evidence/observation-static-172991",
+            "review": "Configured clang-tidy warnings unchanged: existing shared_ptr/CLI11 leak-analysis paths and intentional invalid-enum test casts. Include-cleaner unused suggestions are paired self-includes; provider/transitive advisories inspected. No new warning in changed code."
+          },
+          "shared_preservation_gate": {
+            "job": "173081",
+            "tasks": "0-9,17",
+            "scope": "Fresh ground profile, finite-domain, retained-session and Boolean-LRA preservation checks. Raw invalid-input UF TypeFuzz tasks10-16 were triaged at cfc and are not counted as current-snapshot coverage; fresh real-seed mutations target changed integer routes."
+          },
+          "docs_contract_review": "Independent reviewer accepted theory-interface blob3e69bf9ad1e30b413408aa0ef6f5efd452620b55, dpllt blob676d13f1bc75c706180e455e9eab2757e7b24f07, config blob53a6fe8a8e945761b671e9810e0f2bb947274e66, source25b44cc. Qualifier online recipes added; no runtime acceptance.",
+          "eight_route": {
+            "job": "173011",
+            "audit_job": "173163",
+            "status": "strict audit passed",
+            "routes": {
+              "QF_UF": {
+                "cases": 1000,
+                "pass": 1000,
+                "timeout": 0,
+                "sat_models": 601,
+                "queries": 0,
+                "resource_incomplete": 0,
+                "reference_timeout": 0,
+                "distinct_inputs": 998
+              },
+              "QF_LRA": {
+                "cases": 1000,
+                "pass": 1000,
+                "timeout": 0,
+                "sat_models": 1000,
+                "queries": 0,
+                "resource_incomplete": 0,
+                "reference_timeout": 0,
+                "distinct_inputs": 261
+              },
+              "QF_LIA": {
+                "cases": 1000,
+                "pass": 980,
+                "timeout": 19,
+                "sat_models": 868,
+                "queries": 0,
+                "resource_incomplete": 1,
+                "reference_timeout": 2,
+                "distinct_inputs": 1000
+              },
+              "QF_UFLRA": {
+                "cases": 1000,
+                "pass": 1000,
+                "timeout": 0,
+                "sat_models": 589,
+                "queries": 0,
+                "resource_incomplete": 0,
+                "reference_timeout": 0,
+                "distinct_inputs": 997
+              },
+              "QF_UFLIA": {
+                "cases": 1000,
+                "pass": 1000,
+                "timeout": 0,
+                "sat_models": 501,
+                "queries": 0,
+                "resource_incomplete": 0,
+                "reference_timeout": 0,
+                "distinct_inputs": 672
+              },
+              "UF": {
+                "cases": 1000,
+                "pass": 1000,
+                "timeout": 0,
+                "sat_models": 0,
+                "queries": 0,
+                "resource_incomplete": 0,
+                "reference_timeout": 0,
+                "distinct_inputs": 567
+              },
+              "incremental_QF_UF": {
+                "cases": 1000,
+                "pass": 1000,
+                "timeout": 0,
+                "sat_models": 6214,
+                "queries": 9000,
+                "resource_incomplete": 0,
+                "reference_timeout": 0,
+                "distinct_inputs": 768
+              },
+              "incremental_QF_LRA": {
+                "cases": 1000,
+                "pass": 1000,
+                "timeout": 0,
+                "sat_models": 8000,
+                "queries": 11000,
+                "resource_incomplete": 0,
+                "reference_timeout": 0,
+                "distinct_inputs": 1000
+              }
+            },
+            "sat_models": 17773,
+            "wrong_answers": 0,
+            "crashes": 0,
+            "invalid_models": 0,
+            "untriaged_reference_disagreements": 0,
+            "budget_replay": {
+              "cases": 800,
+              "queries": 2600,
+              "outcomes": {
+                "resource-exhausted": 455,
+                "pass": 345
+              },
+              "conflict_counts": {
+                "1": 624,
+                "0": 1976
+              }
+            },
+            "artifact": "results/integer-observation-qualified-slurm.json",
+            "audit_script_sha256": "c1349d33558004a89212ee58ca5223219c36c03a7177b25c89682fd597e75398",
+            "parser_type_errors": 0,
+            "unsupported": 0
+          },
+          "mutations": {
+            "job": "173012",
+            "stages": [
+              {
+                "seed": {
+                  "count": 5,
+                  "outcomes": {
+                    "PASS": 5
+                  },
+                  "answers": {
+                    "unsat": 3,
+                    "sat": 2
+                  },
+                  "sat_models": 2,
+                  "distinct_inputs": 5,
+                  "resource_triage": [],
+                  "input_manifest_sha256": "1723ca9131b41d2e2f4f6fe874be9eaf05bda253197ea63c0ebde43212f89592"
+                },
+                "mutant": {
+                  "count": 100,
+                  "outcomes": {
+                    "PASS": 89,
+                    "INCOMPLETE": 11
+                  },
+                  "answers": {
+                    "sat": 70,
+                    "unknown": 5,
+                    "timeout": 5,
+                    "unsat": 20
+                  },
+                  "sat_models": 70,
+                  "distinct_inputs": 100,
+                  "resource_triage": [
+                    "84b47d85f5e5d6d583ce18c25e0c82828031c2b79914622633372efaf1a19479",
+                    "779897f08d02c7d6f987e5f5905a07606e425a8ac264576841ce8bc65d96f850",
+                    "2887d405a9246d926e91360d36c4f1070db0eb095338cd9fd65886dfebbb470b",
+                    "338e0c9b37d8cff3ccdff2cf3364a8987387a5f85b3352b1ebdc1cf41ba39509",
+                    "ede795510836a112ee4722b60f480b88fe204523dd8c6f6ca3174276a4dc2b1e"
+                  ],
+                  "input_manifest_sha256": "27bbef546aef5fecd1a271683f5c7eca785b374a0922bf84eb685e163085887d"
+                }
+              },
+              {
+                "seed": {
+                  "count": 5,
+                  "outcomes": {
+                    "PASS": 5
+                  },
+                  "answers": {
+                    "unsat": 2,
+                    "sat": 3
+                  },
+                  "sat_models": 3,
+                  "distinct_inputs": 5,
+                  "resource_triage": [],
+                  "input_manifest_sha256": "ed07e2f277c70b6df75a682e14fe09bb0d73f5e9b96dc80b3576e1bd1a2ce4c4"
+                },
+                "mutant": {
+                  "count": 100,
+                  "outcomes": {
+                    "PASS": 100
+                  },
+                  "answers": {
+                    "sat": 88,
+                    "unsat": 12
+                  },
+                  "sat_models": 88,
+                  "distinct_inputs": 99,
+                  "resource_triage": [],
+                  "input_manifest_sha256": "2190b5e59ac467a4a714b495f9a9c555c305c612c09820dcf1fe29c81785f295"
+                }
+              }
+            ],
+            "resource_replay_jobs": [
+              "173149",
+              "173150"
+            ],
+            "extra_model_job": "173153",
+            "incompleteness": "Five explicit branch limits also reproduced on baseline; five solver timeouts and one reference timeout; all candidate SAT mutants validated, including reference-incomplete SAT."
+          },
+          "documentation_checks": "make docs and make docs-check-links passed;260pages32224local1033uniqueGitlinks0failures; rendered observation/retention paragraphs inspected",
+          "review": "Whole-tree review coverage from cfc supplemented with current dispatcher, recipe, Boolean observation and regression changes. No borrowed registry storage invalidation: components/backend callbacks do not mutate the clausifier registry at installation. No arithmetic search algorithm/default or combined clause policy change; observation scan replaces the existing registration scan when propositional atoms exist.",
+          "timing": {
+            "status": "running-not-qualified",
+            "candidate_commit": "25b44cc2204169ff0cc45a771b5ec56895a0511e",
+            "baseline_commit": "8ca8ebe8db75966fc8aefdd928a0878e648e7f10",
+            "binary_sha256": "f3a3904e9cf7628eece6fb4c30f80de9f29eafa4ab89eca5a48afbf9643901a8",
+            "baseline_binary_sha256": "4f5b5e403e0b92fa6543d2afb1bd6608df50f64e6bf6fc7ebc98758a9fc52ce4",
+            "jobs": {
+              "QF_LIA": "173182",
+              "QF_UFLIA": "173183",
+              "five_logic_preservation": "173184",
+              "shared_default": "173336",
+              "shared_online": "173337",
+              "shared_lazy_uf": "173338",
+              "shared_offline_uflia": "173339"
+            },
+            "resources": {
+              "timeout_seconds": 60,
+              "memory_gib": 8,
+              "cpus": 1,
+              "rounds": 2,
+              "solver_args": [
+                "--quiet",
+                "--stats"
+              ],
+              "hint": "nomultithread",
+              "initial_partition": "compute,gpu",
+              "pending_jobs_partition_update": "none; CPU-only allocations from initial submission, no GPUs requested",
+              "pairing": "Both binaries and reversed second-round order within each allocation; node recorded per shard"
+            },
+            "shards": {
+              "QF_LIA": 256,
+              "QF_UFLIA": 16
+            },
+            "preservation_profiles": "Same frozen inputs and flags as preceding cfc run; five-logic20/division10s; shared default120/online120/lazyUF31/offlineUFLIA16,5s; all8GiB1CPUtwo paired rounds",
+            "artifacts": [
+              "results/integer-paired in observation workspace",
+              "results/integer-preservation-paired in observation workspace",
+              "results/integer-shared-paired in observation workspace"
+            ],
+            "submission_scripts": [
+              "results/primo-observation-timing-submit.sh",
+              "results/primo-observation-shared-submit.sh",
+              "results/primo-observation-replay-submit.sh"
+            ],
+            "replay_jobs": {
+              "QF_LIA_round0": "173360",
+              "QF_LIA_round1": "173361",
+              "QF_UFLIA_round0": "173362",
+              "QF_UFLIA_round1": "173363",
+              "five_logic_preservation": "173364",
+              "shared_profiles": "173365",
+              "shared_lra_validator_triage": "173366"
+            },
+            "replay_status": "submitted held; release after final timings and any lost-solve rerun dependencies are complete",
+            "acceptance": "No loss reproduced in at least two of three further paired runs; aggregate PAR2 ratio <=1.02 in each full affected division; all candidate ground SAT timing rows independently validated."
+          }
         }
       }
     },
