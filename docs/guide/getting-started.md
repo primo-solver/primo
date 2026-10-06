@@ -31,6 +31,19 @@ first solve. See {source}`Makefile`, {source}`CMakeLists.txt`, and the
 Record `--version` when sharing results: it identifies the revision and build
 configuration. Re-run `make build` after changing the source.
 
+If GMP bootstrap reports `Network is unreachable`, the failure is downloading
+the archive, before compilation. The installer tries GNU's download server,
+then the kernel.org GNU mirror if the first download fails or has a bad
+checksum. Downloads of the pinned GMP 6.3.0 release are checked against its
+SHA-256 digest before extraction; other versions do not yet have pinned
+digests. Each connection/read has a 30-second socket timeout, which is not a
+total download deadline. If both sources fail, the error lists both failures.
+To select an accessible release archive explicitly, run
+`python3 contrib/install_gmp.py --url https://your-mirror.example/gmp-6.3.0.tar.xz`.
+An explicit URL disables fallback and still checks the pinned release digest.
+An existing extracted source directory is reused without another download;
+download verification does not revalidate that directory.
+
 CMake also supports a backend-disabled scaffold (set
 `IPASIR_UP_INCLUDE_DIR=OFF` and `CADICAL_LIBRARY=OFF`). It compiles the
 non-backend infrastructure but supplies no SAT solver. Both

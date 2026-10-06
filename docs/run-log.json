@@ -3,6 +3,57 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-10-06-gmp-download-fallback",
+      "date": "2026-10-06",
+      "kind": "dependency-bootstrap-reliability",
+      "baseline_commit": "83c3821cdfe49a2af5cf8d301efb992e8c5f8751",
+      "scope": "Recover GMP archive downloads when the primary server is unreachable; keep GMP 6.3.0 and compilation settings unchanged.",
+      "source_sha256": {
+        "contrib/install_gmp.py": "6989e7a5be9593b047344a704ed5cf1018b4424e770a282f6f9c4caec4112fde",
+        "tests/python/test_install_gmp.py": "f65c5f7bc838eea15e241e05dfa8541355590103b654db8e5212921c02e9d307"
+      },
+      "network_probe": {
+        "primary": "https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz: URLError, No route to host",
+        "mirror": "https://mirrors.kernel.org/gnu/gmp/gmp-6.3.0.tar.xz: success, 2094196 bytes",
+        "archive_sha256": "a3c2b80201b89e68616f4ad30bc66aee4927c3ce50e33929ca819d5c43538898",
+        "checksum_cross_check": "https://gitlab.com/buildroot.org/buildroot/-/raw/master/package/gmp/gmp.hash",
+        "live_check": "Bounded local download through download_archive with an explicit mirror URL; verified pinned digest and tar member gmp-6.3.0/configure. This was a network/archive smoke check, not a solver batch or build."
+      },
+      "slurm": {
+        "job_id": "175433",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "cpus": 1,
+        "memory": "1 GiB",
+        "time_limit": "2 minutes",
+        "command": "python3 -m unittest discover -s tests/python -p test_install_gmp.py -v",
+        "tests_passed": 6,
+        "coverage": [
+          "unreachable primary",
+          "bad checksum",
+          "interrupted response",
+          "all sources fail",
+          "explicit URL disables fallback",
+          "primary succeeds"
+        ],
+        "provenance": "Standalone Python tests staged with the exact source hashes above; remote and local hashes matched. No solver binary built or exercised.",
+        "artifact": "tmp/gmp-download-check/tests-175433.log"
+      },
+      "checks": {
+        "lint": "make lint passed",
+        "docs": "make docs passed",
+        "review": "Pre-commit download, extraction handoff, Makefile and CI call-site review found no blocking issues. No C++ or solver behavior changed; no fresh C++ tests, ASan, clang-tidy or fuzz gate run.",
+        "independent_documentation_review": "gmp_docs_review accepted the GMP paragraph in docs/guide/getting-started.md with no required findings; rendered page inspected at /tmp/primo-gmp-doc.png.",
+        "links": "make docs-check-links passed: 260 pages, 32230 local links, 1036 unique Git links, zero failures; external URL checking deferred as reported by the checker."
+      },
+      "limitations": [
+        "GitHub CLI is not authenticated; the failed hosted run was not inspected or rerun.",
+        "Only GMP 6.3.0 has a pinned archive digest; existing extracted source directories are not revalidated.",
+        "The socket timeout is not a total download deadline. Both remote endpoints still require network access.",
+        "No fresh GMP compilation was run; the verified archive and compilation procedure are unchanged."
+      ]
+    },
+    {
       "id": "2026-10-06-integer-completion-unification",
       "date": "2026-10-06",
       "kind": "shared-integer-completion-and-driver-migration",
