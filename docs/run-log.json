@@ -11612,6 +11612,16 @@
                 "run-log.json": "684a5bb71ca36fb4941b3518bd6dd9770b16569a"
               },
               "limits": "Reviewer checked source links, numeric artifacts and interpretation; did not independently execute cluster jobs or inspect rendering."
+            },
+            "disposition": {
+              "priority": "low",
+              "status": "deferred potential tuning point",
+              "reason": "User requested recording the lead without treating it as substantial. The single-case profiles do not demonstrate a material migration bottleneck or a corpus-wide benefit. Preserve the measured local effect without promoting it to an optimization priority.",
+              "next_action": "None scheduled. If revisited, test an expansion-sensitive flattening policy on a representative family before considering any default change.",
+              "acceptance": "This prioritization does not waive or change the recorded lost-solve acceptance result.",
+              "documentation": "docs/development/tuning.md#deferred-tuning-note-boolean-post-flattening",
+              "documentation_review": "Independent reviewer tuning_note_review accepted the bounded note and disposition; no required corrections.",
+              "verification": "make docs and make docs-check-links passed (260 pages, 32,230 local links, 1,036 Git links, zero failures); rendered note inspected. No code changes or solver runs."
             }
           }
         }

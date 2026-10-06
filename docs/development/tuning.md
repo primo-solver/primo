@@ -43,3 +43,23 @@ The {source}`historical parameter inventory <docs/tuning-parameters.md>` and
 {source}`complementarity investigation <docs/open-leads.md#L2583-L2642>` retain
 previous motivations and negative results. Recheck their preconditions instead
 of treating the old candidate list as a current recommendation.
+
+## Deferred tuning note: Boolean post-flattening
+
+**Low priority; a potential tuning point, not a demonstrated migration
+bottleneck.** On the single QF_LIA input
+`nec-smt/large/getoption_group/prp-67-50.smt2`, baseline and migrated-driver
+profiles had nearly identical cost distributions and search counters. Disabling
+Boolean post-flattening reduced clauses from 32.1 million to 4.6 million and
+instrumented wall duration from about 54 to 30 seconds, while increasing SAT
+conflicts. Both binaries returned `unsat`.
+
+This is a case-specific lead about Boolean expansion. The GDB durations are
+not benchmark measurements, and the experiment does not establish a material
+migration regression or a worthwhile corpus-wide improvement. Record it for
+possible later tuning; no default change or follow-up experiment is scheduled.
+If revisited, first test whether an expansion-sensitive flattening policy helps
+a representative family without losing the benefits of flattening elsewhere.
+The [profiling record](https://github.com/primo-solver/primo/blob/b90671282c41d66cd2f3c1156c3723e814f2fb3a/docs/run-log.json)
+retains the commands, jobs, counts and limitations. This prioritization does
+not alter the recorded migration acceptance results.
