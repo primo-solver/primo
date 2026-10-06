@@ -49,9 +49,9 @@ remains open work.
 
 ## Preprocessing tactics
 
-These are the building blocks of the production preprocessing strategy.
-For how options and profiles assemble them, how the compiled tactics execute, and
-how their results reach a solver, see
+These tactics form the production preprocessing pipeline. For their order,
+the effect of profiles and options, and how they preserve model-reconstruction
+information, see
 [how tactics execute preprocessing](../implementation/preprocessing.md#how-tactics-execute-preprocessing).
 The tables below identify the API boundary of each block; being named and
 counted does not by itself make a phase independently configurable.

@@ -16,119 +16,47 @@ A **profile** selects which optional passes run and how often they repeat.
 (preprocessing-and-tactics)=
 ## How tactics execute preprocessing
 
-The preprocessing pipeline is a strategy built from tactics. To see why both
-concepts are useful, consider one operation: eliminating a variable whose value
-is fixed by an equality.
+Preprocessing passes are implemented as **tactics**: operations that return
+transformed goals together with the information needed to reconstruct models.
+Tactics can be composed in sequence or repeated; the resulting operation is
+also a tactic. Primo uses this composition to build its preprocessing pipeline.
+Users select profiles and pass options through command-line settings; there
+is currently no user-facing tactic language.
 
-Suppose a goal contains the Real assertions $x=y+2$ and $x>5$, and the
-substitution pass accepts $x=y+2$ as a definition of $x$. Replacing $x$ by
-$y+2$ turns the first assertion into $y+2=y+2$, which simplifies to `true`,
-and the second into $y+2>5$. The remaining obligation is therefore $y+2>5$.
-This is the transformation performed by
-{source}`substitute_solved_constants <src/smt/preprocessing.cpp>`: it returns
-rewritten assertions and the substitution $x\mapsto y+2$.
+For example, suppose a goal contains the Real assertions $x=y+2$ and $x>5$,
+and the substitution pass accepts the first assertion as a definition of $x$.
+Replacing $x$ by $y+2$ makes the defining equality trivially true and leaves
+$y+2>5$ as the remaining obligation.
+{source}`substitute_solved_constants <src/smt/preprocessing.cpp>` returns
+these rewritten assertions and the substitution $x\mapsto y+2$.
+The `solved-constant-substitution` tactic in
+{source}`preprocessing_tactics.cpp <src/smt/preprocessing_tactics.cpp>`
+keeps the rewritten assertions in the goal and, when a model is requested,
+records the substitution for reconstruction. If the solver later chooses
+$y=4$, reconstruction assigns $x=6$, satisfying both original assertions.
 
-The **tactic** makes that transformation usable within the solver pipeline.
-The `solved-constant-substitution` phase in
-{source}`preprocessing_tactics.cpp <src/smt/preprocessing_tactics.cpp>` calls
-the algorithm, records its statistics, and returns an updated `Goal`. When a
-model is requested, it also attaches the substitution to the goal's
-reconstruction records. A model of the remaining obligation might assign
-$y=4$; reconstruction then assigns $x=6$, so the reported model satisfies
-both original assertions. Passing only the rewritten assertions onward would
-lose the information needed to recover $x$.
+In the repeated simplification round, this substitution belongs to the
+`solve-eqs` group. Value propagation runs before that group, and derivation
+of unit-equality consequences follows it. Repeating the round allows facts
+found by later passes to help earlier passes on the next iteration. The
+selected profile and individual options control which optional passes run
+and the repetition limits. The example above isolates one step; other passes
+may simplify its result further.
 
-The **strategy** determines when this tactic runs relative to other tactics.
-In the repeated simplification loop, `solved-constant-substitution` belongs
-to the `solve-eqs` group inside `preprocessing-round`. Value propagation runs
-before that group, and derivation of unit-equality consequences follows it.
-{source}`make_preprocessing_strategy <src/smt/preprocessing_strategy.cpp>`
-places the round inside a bounded repetition and adds the preparation and
-normalization stages around it. The selected **profile**, together with the
-individual options, determines which optional phases are included and the
-repetition limits.
-
-Thus the algorithm supplies a formula transformation, the tactic carries its
-result and reconstruction information in a goal, and the strategy schedules
-it as part of preprocessing. The [tactic chapter](tactics.md) defines that goal
-contract and the composition operations in detail. The example above isolates
-one substitution step; other passes may simplify its result further.
-
-For the default ground rebuild route, the connection works as follows:
-
-1. The session wraps the current assertions in a `Goal`, initially the sole
-   alternative in an `AnyOf`. The executing `TacticContext` supplies the term
-   manager, statistics, cancellation, model requirements, and fresh-symbol
-   creation.
-2. `prepare_and_execute_preprocessing_strategy` compiles and executes an
-   initial strategy for extended-term lowering and normalization. It analyzes
-   the resulting assertions to select a `PreprocessingProfile`. Selection
-   therefore sees the normalized formula, not just the parsed input.
-3. `make_preprocessing_strategy` uses that profile and the options to construct
-   the remaining strategy. `compile` turns its description into executable
-   tactics, which run on the already normalized goals. The returned
-   `PreparedPreprocessingStrategy` contains the full description, profile,
-   and **already computed** result; the session does not run the full strategy
-   again.
-4. The session handles false, empty, or interrupted goals and sends surviving
-   obligations, with their reconstruction records, to the
-   [solver tactics](tactics.md#from-a-session-query-to-an-engine). Production
-   preprocessing currently keeps one alternative; the `AnyOf` contract also
-   permits strategies that split a query into alternatives.
-
-Thus `--preprocessing-mode` selects how the built-in strategy is assembled;
-there is no separate preprocessing executor selected in place of tactics.
-In particular, `off` omits the repeated round while required lowering and
-other enabled stages remain in the strategy. The exact stages and their
-switches are listed in [execution order](#execution-order).
-
-The composition boundaries also explain two details of that order. An outer
-`Sequence` can stop once a goal is terminal. Inside `preprocessing-round`,
-the internal `complete_sequence` finishes the selected phases, including
-bookkeeping, before returning control to the enclosing strategy. The enclosing
-`Repeat` checks assertion-vector convergence and the profile's iteration and
-shrink limits. Arbitrarily reordering named phases would change which facts,
-definitions, and reconstruction records later phases receive.
-
-The [tactic reference](../reference/tactics.md#preprocessing-tactics) maps
-runtime names to public builders, internal phases, and production composites.
-It also distinguishes invocations from completed rounds: for example,
-`:tactic.preprocessing-round.invocations` records entry to the round, whereas
-`:preprocessing.passes` counts completed repeat iterations. The compatibility
-counter `:tactic.preprocessing-pass.invocations` counts those same completed
-iterations even though no executable tactic has that name.
-
-(preprocessing-representation)=
-## Representation
-
-| Type and code | Responsibility |
-| --- | --- |
-| {source}`CheckSatOptions <src/smt/check_sat.hpp>` | Requested profiles, pass switches, and size/iteration limits. |
-| {source}`PreprocessingProfile <src/smt/preprocessing_strategy.hpp>` | Selected passes, repetition limits, finite-domain analysis, and generated clauses retained for later use. |
-| {source}`PreparedPreprocessingStrategy <src/smt/preprocessing_strategy.hpp>` | Full strategy description, selected profile, and result returned by `prepare_and_execute_preprocessing_strategy` after executing the transformations. |
-| {source}`PreprocessingRoundOptions <src/smt/preprocessing_tactics.hpp>` | Immutable settings for one simplification round. The round uses the executing tactic context. |
-| {source}`FiniteDomainPreprocessInput <src/smt/preprocessing_tactics.hpp#L65-L75>` | Assertions used for symmetry analysis, at-most-one clauses generated before simplification, and any previously computed symmetry result. |
-| {source}`ModelReconstruction <src/smt/model_reconstruction.hpp>` | Each goal's model-conversion records and forced equality/disequality pairs needed by later stages. |
-
-The term manager owns every original and generated term. Pass results refer
-to these terms by ID. Rewriting caches the result for each visited term and
-creates replacements through the manager, preserving shared subterms.
-IDs remain valid when term storage grows; borrowed references to term nodes
-may not. A pass must copy the child IDs and other data it needs before
-constructing another term.
-
-Finite-domain and symmetry analysis retain the assertions they examined and
-the constraints they generated. Simplification can remove a choice such as
-$t=c_0\lor t=c_1$, so a later scan might no longer find the same constraint.
-The saved data lets the final generation stage use the earlier result. It
-belongs to the current query and its term manager.
+Before choosing a profile, Primo lowers extended operators and normalizes
+the assertions. After the selected passes finish, the session handles goals
+already settled by preprocessing and sends remaining obligations, with their
+reconstruction records, to the [solver tactics](tactics.md#from-a-session-query-to-an-engine).
+The following sections give the execution order and stopping rules.
+The [tactic chapter](tactics.md) explains the common goal contract and
+composition operations.
 
 (preprocessing-order)=
 ## Execution order
 
 {source}`prepare_and_execute_preprocessing_strategy
 <src/smt/preprocessing_strategy.cpp#L554-L641>` executes the initial sequence,
-analyzes its result, then constructs and executes the remaining strategy.
+analyzes its result to select a profile, then runs the remaining passes.
 The following order is encoded by
 {source}`make_preprocessing_strategy <src/smt/preprocessing_strategy.cpp#L419-L552>`.
 A goal that reduces to true or false can stop the enclosing sequence early.
@@ -548,6 +476,31 @@ More generally, Boolean facts, directed substitutions, integer substitutions,
 monotone eliminations, and purification proxies have distinct conversion
 records. The [model chapter](models.md#following-a-model-back-through-preprocessing)
 describes their reverse replay and validation against original assertions.
+
+(preprocessing-representation)=
+## Representation
+
+| Type and code | Responsibility |
+| --- | --- |
+| {source}`CheckSatOptions <src/smt/check_sat.hpp>` | Requested profiles, pass switches, and size/iteration limits. |
+| {source}`PreprocessingProfile <src/smt/preprocessing_strategy.hpp>` | Selected passes, repetition limits, finite-domain analysis, and generated clauses retained for later use. |
+| {source}`PreparedPreprocessingStrategy <src/smt/preprocessing_strategy.hpp>` | Full strategy description, selected profile, and result returned by `prepare_and_execute_preprocessing_strategy` after executing the transformations. |
+| {source}`PreprocessingRoundOptions <src/smt/preprocessing_tactics.hpp>` | Immutable settings for one simplification round. The round uses the executing tactic context. |
+| {source}`FiniteDomainPreprocessInput <src/smt/preprocessing_tactics.hpp#L65-L75>` | Assertions used for symmetry analysis, at-most-one clauses generated before simplification, and any previously computed symmetry result. |
+| {source}`ModelReconstruction <src/smt/model_reconstruction.hpp>` | Each goal's model-conversion records and forced equality/disequality pairs needed by later stages. |
+
+The term manager owns every original and generated term. Pass results refer
+to these terms by ID. Rewriting caches the result for each visited term and
+creates replacements through the manager, preserving shared subterms.
+IDs remain valid when term storage grows; borrowed references to term nodes
+may not. A pass must copy the child IDs and other data it needs before
+constructing another term.
+
+Finite-domain and symmetry analysis retain the assertions they examined and
+the constraints they generated. Simplification can remove a choice such as
+$t=c_0\lor t=c_1$, so a later scan might no longer find the same constraint.
+The saved data lets the final generation stage use the earlier result. It
+belongs to the current query and its term manager.
 
 (preprocessing-evidence)=
 ## Correctness checks and evidence

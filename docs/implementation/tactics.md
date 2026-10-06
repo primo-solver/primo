@@ -1,19 +1,21 @@
 # Goals, tactics, and strategies
 
 A solver query passes through transformations before it reaches an engine.
-Primo represents that work as **tactics**, which transform goals, and
-**strategies**, which describe how to compose those tactics. A **goal** is an
-ordered collection of assertions that must all hold, together with information
-needed to reconstruct a model after transformation. This chapter follows the
-default solving path for formulas without quantifiers.
+Primo represents that work as **tactics**, which transform goals. A **goal**
+is an ordered collection of assertions that must all hold, together with
+information needed to reconstruct a model after transformation. Composing
+tactics in sequence, repeating them, or choosing between them produces another
+tactic. This chapter follows the default solving path for formulas without
+quantifiers.
 
-Preprocessing is implemented using this framework: its passes become tactics,
-its simplification round becomes a composite tactic, and its selected profile
-controls the strategy's sequence and repetition. Solver calls are also adapted
-to the goal contract, so a transformed goal carries its model-reconstruction
-history from preprocessing into solving. The preprocessing chapter traces
-[this execution path](preprocessing.md#how-tactics-execute-preprocessing)
-from options to tactics to solver dispatch, then gives the transformation order.
+Preprocessing uses these operations to combine its passes into a pipeline.
+Solver calls also follow the goal contract, so a transformed goal carries its
+model-reconstruction history from preprocessing into solving. The
+[preprocessing chapter](preprocessing.md#how-tactics-execute-preprocessing)
+explains that connection and the order of the passes. Construction of tactic
+compositions is internal C++ functionality; Primo has no user-facing tactic
+language. The internal `Strategy` representation is explained under
+[strategy identity and compilation](#strategy-identity-and-compilation).
 
 The basis is de Moura and Passmore's *The Strategy Challenge in SMT Solving*,
 §3 {cite:p}`deMoura2013`: assertions within a goal are conjunctive, subgoals
@@ -132,6 +134,26 @@ The scheduler is sequential; no parallel tactic execution is implemented.
 
 (tactics-strategy-identity)=
 ## Strategy identity and compilation
+
+This section concerns how Primo represents tactic compositions internally.
+`Strategy` is an abstract syntax tree (with shared nodes) for an internal
+language of tactic applications. `Tactic` is the executable form. Both can
+represent a single transformation or a composition; composition itself does
+not distinguish the two types.
+
+For example, a pipeline that first simplifies and then substitutes can be
+built directly as a composed `Tactic`. Alternatively, a `Strategy` can store a
+`Sequence` node with two `Leaf` children for those operations. Calling
+`compile` on that description constructs the composed `Tactic`; invoking the
+result executes the operations in the described order. Compilation does not
+make an additional scheduling choice.
+
+The explicit nodes let C++ code inspect the composition, print it, and compute
+a fingerprint. Leaf nodes retain executable tactics as well as their names
+and parameters, so this is not a standalone text language that users can
+submit to Primo. This representation is useful when working on the pipeline's
+implementation; it is not needed to select a preprocessing profile or
+understand the order of its passes.
 
 {source}`Strategy::canonical <src/smt/strategy.cpp#L230-L294>` serializes
 composition, leaf identifiers and parameters, named probes and repeat policies,
@@ -259,7 +281,8 @@ It calls `substitute_solved_constants` with Gaussian elimination disabled and,
 when a model is requested, appends a `LiaSubstitutionConversion` to the returned
 goal. This makes the division of work concrete: the preprocessing algorithm
 finds and applies $x\mapsto y+2$; the tactic preserves the information needed
-to recover $x$; the strategy determines when the tactic runs. This integer
+to recover $x$; the preprocessing pipeline places it before the optional
+simplification round. This integer
 preparation runs even when the main simplification loop is off. Later passes
 may transform the remaining obligation further before a solver sees it.
 
