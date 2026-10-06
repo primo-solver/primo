@@ -35,6 +35,31 @@ void rejects(Fn fn) {
   assert(rejected);
 }
 
+void driver_boolean_facts_do_not_bypass_fragment_validation() {
+  core::SymbolTable symbols;
+  core::TermManager terms(symbols);
+  const auto p = symbols.declare_constant("driver_p", symbols.bool_sort());
+  const auto pt = terms.mk_constant(p);
+  const auto n = symbols.declare_constant("driver_n", symbols.int_sort());
+  const auto nt = terms.mk_constant(n);
+  std::vector<theory::ComponentModelFact> facts{{pt, true}};
+  const std::vector assertions{pt};
+  const auto model =
+      smt::assemble_component_model(terms, assertions, {}, {}, nullptr, nullptr, facts);
+  assert(std::get<bool>(model->apply(p).payload));
+  std::vector<theory::ComponentModelFragment> fragments{{{"owner", 1, 1}, {}, {{pt, false}}, {}}};
+  rejects(
+      [&] { smt::assemble_component_model(terms, {}, fragments, {}, nullptr, nullptr, facts); });
+  fragments[0].facts.clear();
+  fragments[0].token.component.clear();
+  rejects(
+      [&] { smt::assemble_component_model(terms, {}, fragments, {}, nullptr, nullptr, facts); });
+  facts[0].atom = nt;
+  rejects([&] { smt::assemble_component_model(terms, {}, {}, {}, nullptr, nullptr, facts); });
+  facts[0].atom = terms.mk_not(pt);
+  rejects([&] { smt::assemble_component_model(terms, {}, {}, {}, nullptr, nullptr, facts); });
+}
+
 void component_fragments_are_owned_typed_and_checked() {
   core::SymbolTable symbols;
   core::TermManager terms(symbols);
@@ -341,6 +366,7 @@ void reconstruction_uses_staged_constants_and_fixed_tables() {
 }  // namespace
 
 int main() {
+  driver_boolean_facts_do_not_bypass_fragment_validation();
   canonical_identifier_model_roundtrip();
   component_fragments_are_owned_typed_and_checked();
   typed_tables_and_validation();

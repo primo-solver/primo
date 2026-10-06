@@ -86,9 +86,20 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
     owned.push_back(factory(recipe.model_guided));
     components.push_back(owned.back().get());
   }
+  const auto boolean_constant = [&](core::TermId term) {
+    const auto& node = terms.get(term);
+    return node.kind == core::TermKind::Constant && node.sort == terms.symbols().bool_sort();
+  };
   std::vector<theory::ComponentAtom> initial_atoms;
   for (const auto& atom : clausifier.theory_atoms()) {
-    if (atom.term != core::kInvalidTermId) initial_atoms.push_back(component_atom(atom));
+    if (atom.term == core::kInvalidTermId) continue;
+    // Keep Boolean arguments with EUF when it owns them. Only otherwise
+    // unowned Boolean constants are purely propositional driver assignments.
+    if (boolean_constant(atom.term) &&
+        std::none_of(components.begin(), components.end(),
+                     [&](const auto* component) { return component->owns_atom(atom.term); }))
+      continue;
+    initial_atoms.push_back(component_atom(atom));
   }
   std::optional<TheoryCombinationPlan> planned;
   try {
@@ -210,6 +221,7 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
     }
     for (const auto index : online_order) online_components.push_back(components[index]);
   }
+  std::vector<theory::ComponentAtom> propositional_atoms;
   std::size_t installed_atoms = 0;
   std::size_t installed_pairs = 0;
   const auto install_atoms = [&]() {
@@ -231,7 +243,12 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
           owner = index;
         }
       }
-      if (!owner.has_value()) throw UnsupportedCombination("generated atom has no owner");
+      if (!owner.has_value()) {
+        if (!boolean_constant(all[atom_index].term))
+          throw UnsupportedCombination("generated atom has no owner");
+        propositional_atoms.push_back(component_atom(all[atom_index]));
+        continue;
+      }
       const auto atom = component_atom(all[atom_index]);
       additions[*owner].push_back(atom);
       atoms_by_component[*owner].push_back(atom);
@@ -466,8 +483,14 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
         fragments.push_back(std::move(fragment));
       }
       std::size_t completed = 0;
+      std::vector<theory::ComponentModelFact> propositional_facts;
+      propositional_facts.reserve(propositional_atoms.size());
+      for (const auto& atom : propositional_atoms) {
+        const auto value = backend.value(std::abs(atom.lit.value));
+        propositional_facts.push_back({atom.term, value.value_or(false) == (atom.lit.value > 0)});
+      }
       outcome.typed_model = assemble_component_model(terms, assertions, fragments, conversions,
-                                                     &completed, &statistics);
+                                                     &completed, &statistics, propositional_facts);
       statistics.set(util::StatKey::ModelInventedIntValues, completed);
       outcome.statistics = statistics;
     }

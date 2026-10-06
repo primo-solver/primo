@@ -495,13 +495,27 @@ std::shared_ptr<const core::Model> assemble_component_model(
     core::TermManager& terms, std::span<const core::TermId> assertions,
     std::span<const theory::ComponentModelFragment> fragments,
     const ModelConversionChain& conversions, std::size_t* completed_integers,
-    util::Statistics* statistics) {
+    util::Statistics* statistics, std::span<const theory::ComponentModelFact> propositional_facts) {
   const auto start = std::chrono::steady_clock::now();
   FragmentDomains domains;
   std::set<std::string> components;
   std::optional<std::uint64_t> epoch;
   std::vector<TheoryModelAssignment> facts;
   std::unordered_map<core::TermId, bool> fact_values;
+  const auto add_fact = [&](const theory::ComponentModelFact& fact) {
+    if (fact.atom >= terms.size() || terms.get(fact.atom).sort != terms.symbols().bool_sort())
+      throw core::ModelError("component fact is not Boolean");
+    const auto [known, inserted] = fact_values.emplace(fact.atom, fact.value);
+    if (!inserted && known->second != fact.value)
+      throw core::ModelError("conflicting retained component facts");
+    if (inserted) facts.push_back({fact.atom, fact.value, false});
+  };
+  for (const auto& fact : propositional_facts) {
+    if (fact.atom >= terms.size() || terms.get(fact.atom).kind != core::TermKind::Constant)
+      throw core::ModelError("propositional model fact is not a Boolean constant");
+    add_fact(fact);
+  }
+
   std::unordered_map<core::TermId, std::pair<std::string, core::ModelValue>> bindings;
   std::vector<std::pair<std::string, core::ModelInterpretation>> contributions;
   for (const auto& fragment : fragments) {
@@ -524,16 +538,7 @@ std::shared_ptr<const core::Model> assemble_component_model(
         }
       }
     }
-    for (const auto& fact : fragment.facts) {
-      if (fact.atom >= terms.size() || terms.get(fact.atom).sort != terms.symbols().bool_sort()) {
-        throw core::ModelError("component fact is not Boolean");
-      }
-      const auto [known, inserted] = fact_values.emplace(fact.atom, fact.value);
-      if (!inserted && known->second != fact.value) {
-        throw core::ModelError("conflicting retained component facts");
-      }
-      if (inserted) facts.push_back({fact.atom, fact.value, false});
-    }
+    for (const auto& fact : fragment.facts) add_fact(fact);
     for (const auto& interpretation : fragment.interpretations) {
       domains.register_value(component, interpretation.default_value);
       for (const auto& row : interpretation.rows) {

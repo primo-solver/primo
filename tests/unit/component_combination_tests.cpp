@@ -1001,9 +1001,43 @@ void queued_lemmas_are_drained_at_the_growth_boundary() {
   }
 }
 
+void empty_component_conflicts_respect_the_aggregate_budget() {
+  for (const bool online : {false, true}) {
+    for (const bool limited : {false, true}) {
+      Fixture f;
+      const auto marker = f.variable("marker", f.symbols.bool_sort());
+      smt::CombinationRecipe recipe;
+      recipe.online = online;
+      recipe.online_order = {0};
+      recipe.model_guided = false;
+      recipe.timing_prefix = ":time.empty-conflict-test.";
+      recipe.factories = {[&](bool) {
+        auto component = std::make_unique<PartitionComponent>(f.terms, "empty-conflict", marker,
+                                                              std::vector<Restriction>{});
+        component->corrupt = [](theory::TheoryCheckResult& result) {
+          result.status = theory::TheoryCheckStatus::LearnedClause;
+          result.clause.clear();
+        };
+        return component;
+      }};
+      smt::CheckSatOptions options;
+      if (limited) options.max_theory_conflicts = 1;
+      util::Statistics statistics;
+      const std::vector assertions{marker};
+      const auto result =
+          smt::solve_component_recipe(f.terms, assertions, {}, options, statistics, recipe);
+      assert(result.result ==
+             (limited ? smt::CheckSatResult::Unknown : smt::CheckSatResult::Unsat));
+      assert(!limited || result.reason == smt::InconclusiveReason::ResourceLimit);
+      assert(result.statistics.get(util::StatKey::TheoryConflictCount) == 1);
+    }
+  }
+}
+
 }  // namespace
 
 int main() {
+  empty_component_conflicts_respect_the_aggregate_budget();
   conflict_reports_are_counted_once_and_propagations_are_excluded();
   admission_and_normalization();
   sort_nonparticipants_and_disconnected_groups();

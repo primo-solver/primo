@@ -3202,6 +3202,7 @@ BoundAssertion bound_assertion(theory::arithmetic::LraRelation relation, const u
                         theory::arithmetic::DeltaRational{rhs, util::Rational(is_upper ? -1 : 1)}};
 }
 
+#if PRIMO_HAVE_IPASIR
 // Whether `var`'s current bound in the direction `assertion` constrains is
 // already at least as tight as `assertion` -- i.e. whether the atom that
 // assertion came from is already entailed. Returns the entailing bound's
@@ -3222,6 +3223,8 @@ std::optional<sat::Lit> bound_entails(const theory::arithmetic::LraTableau& tabl
   }
   return std::nullopt;
 }
+
+#endif
 
 // The four caps that used to live here as constants are now
 // CheckSatOptions::lra_row_propagation_limits, whose defaults are these same
@@ -3664,24 +3667,6 @@ std::shared_ptr<const core::Model> build_qf_lra_model(
   }
   return build_typed_model(terms, {}, assignments, values, conversions, nullptr, &statistics,
                            std::move(visible_symbols));
-}
-
-std::shared_ptr<const core::Model> build_qf_lia_model(
-    core::TermManager& terms, const std::vector<core::TermId>& model_terms,
-    const PreparedLraTheory& prepared, const theory::arithmetic::LraTableau& tableau,
-    const ModelConversionChain& conversions, const std::vector<AssignedTheoryAtom>& assigned_atoms,
-    util::Statistics& statistics) {
-  std::unordered_map<core::TermId, util::Rational> values;
-  values.reserve(prepared.variables_by_term.size() + model_terms.size());
-  for (const auto& [term, variable] : prepared.variables_by_term) {
-    values.emplace(term, tableau.assignment(variable).rational);
-  }
-  std::vector<TheoryModelAssignment> assignments;
-  assignments.reserve(assigned_atoms.size());
-  for (const auto& atom : assigned_atoms) {
-    assignments.push_back({atom.term, atom.value, atom.filtered});
-  }
-  return build_typed_model(terms, {}, assignments, values, conversions, nullptr, &statistics);
 }
 
 void load_assignment_snapshot(const sat::IpasirUpBackend& backend,
@@ -6850,6 +6835,33 @@ std::optional<sat::Clause> find_incremental_lra_theory_conflict(
   return check_incremental_lra_theory(prepared, atoms).conflict;
 }
 
+// Publishes the prepared tableau's structural shape: how many variables it
+// has, how many of them define a row, and how many nonzero coefficients those
+// rows hold in total. Structural, not search state -- rows are all added
+// before the first push() (see LraTableau's class comment), so this is a
+// property of the formula and of how the frontend chose to encode it.
+//
+// These exist because the tableau's shape was previously invisible: item H1's
+// finding that 36-95% of rows on the lagging families were trivial `s = c*x`
+// slack rows had to be produced with throwaway instrumentation, and the
+// fill-in growth it also measured went unnoticed through eight roadmap items
+// for want of exactly this. See docs/qf-lra-heuristics.md.
+void publish_lra_tableau_shape_stats(const theory::arithmetic::LraTableau& tableau,
+                                     util::Statistics& statistics) {
+  std::size_t rows = 0;
+  std::size_t nonzeros = 0;
+  for (theory::arithmetic::LraVarId var = 0; var < tableau.variable_count(); ++var) {
+    if (!tableau.is_basic(var)) {
+      continue;
+    }
+    ++rows;
+    nonzeros += tableau.row(var).size();
+  }
+  statistics.set(util::StatKey::LraTableauVars, tableau.variable_count());
+  statistics.set(util::StatKey::LraRows, rows);
+  statistics.set(util::StatKey::LraRowNonzeros, nonzeros);
+}
+
 #if PRIMO_HAVE_IPASIR
 // Row-based/interval bound propagation (Dutertre & de Moura Section 4,
 // generalized beyond scan_for_propagations' same-slack case): the implied
@@ -6942,33 +6954,6 @@ compute_implied_child_bound(const theory::arithmetic::LraTableau& tableau,
   }
   const util::Rational inv = util::Rational(1) / target_coeff;
   return std::make_pair(total.scaled(inv), std::move(reasons));
-}
-
-// Publishes the prepared tableau's structural shape: how many variables it
-// has, how many of them define a row, and how many nonzero coefficients those
-// rows hold in total. Structural, not search state -- rows are all added
-// before the first push() (see LraTableau's class comment), so this is a
-// property of the formula and of how the frontend chose to encode it.
-//
-// These exist because the tableau's shape was previously invisible: item H1's
-// finding that 36-95% of rows on the lagging families were trivial `s = c*x`
-// slack rows had to be produced with throwaway instrumentation, and the
-// fill-in growth it also measured went unnoticed through eight roadmap items
-// for want of exactly this. See docs/qf-lra-heuristics.md.
-void publish_lra_tableau_shape_stats(const theory::arithmetic::LraTableau& tableau,
-                                     util::Statistics& statistics) {
-  std::size_t rows = 0;
-  std::size_t nonzeros = 0;
-  for (theory::arithmetic::LraVarId var = 0; var < tableau.variable_count(); ++var) {
-    if (!tableau.is_basic(var)) {
-      continue;
-    }
-    ++rows;
-    nonzeros += tableau.row(var).size();
-  }
-  statistics.set(util::StatKey::LraTableauVars, tableau.variable_count());
-  statistics.set(util::StatKey::LraRows, rows);
-  statistics.set(util::StatKey::LraRowNonzeros, nonzeros);
 }
 
 // Trail-synced CaDiCaL external propagator for QF_LRA (Milestone 3a of the
@@ -8285,9 +8270,9 @@ CheckSatOutcome solve_qf_lra_impl(core::TermManager& terms,
       if (!options.produce_model) {
         return CheckSatOutcome{CheckSatResult::Sat, "", statistics, ""};
       }
+#if PRIMO_HAVE_IPASIR
       const std::vector<AssignedTheoryAtom> assigned_atoms =
           assigned_atoms_from_view(model_assignment, clausifier.theory_atoms());
-#if PRIMO_HAVE_IPASIR
       return CheckSatOutcome{
           CheckSatResult::Sat,
           "",
@@ -8395,13 +8380,14 @@ void publish_lia_completion_stats(const theory::arithmetic::LiaCompletionResult&
 }
 
 sat::Clause integer_conflict_clause(const PreparedLraTheory& prepared,
-                                    const std::vector<AssignedTheoryAtom>& assigned,
+                                    std::span<const theory::AssignedTheoryLiteral> assigned,
                                     const theory::arithmetic::LiaExplanation& explanation,
                                     const CheckSatOptions& options, util::Statistics& statistics) {
   sat::Clause coarse;
   for (std::size_t index = 0; index < assigned.size(); ++index) {
-    if (prepared.atoms[index].is_arithmetic && !assigned[index].filtered)
-      coarse.push_back(blocking_lit(assigned[index]));
+    if (prepared.atoms[index].is_arithmetic)
+      coarse.push_back(
+          sat::Lit{assigned[index].value ? -assigned[index].lit.value : assigned[index].lit.value});
   }
   // No asserted arithmetic atoms is an unconditional conflict. Do not attempt
   // explanation generalization, whose empty-explanation policy is a fallback.
@@ -8409,175 +8395,11 @@ sat::Clause integer_conflict_clause(const PreparedLraTheory& prepared,
   return generalized_lia_lemma(coarse, explanation, statistics);
 }
 
-// QF_LIA, stage 1 (docs/qf-lia-branch-and-bound.md): a close structural
-// parallel of solve_qf_lra_impl above -- same clausifier/tableau/backend
-// loop shape, deliberately NOT a modification of that function or of
-// OnlineLraPropagator/LraTableau themselves. The one real difference: once
-// a round's Boolean+LRA assignment is confirmed consistent, that is not
-// yet an answer here. A branch-and-bound search runs on a private tableau
-// copy to additionally require every Int variable to come out integer --
-// producing a model, discarding the assignment via a whole-assignment
-// conflict clause (this branch is LIA-unsat, not necessarily the whole
-// problem), or giving up at the node limit (Unknown; see
-// LiaBranchAndBoundResult's own comment on why plain branch-and-bound
-// cannot be complete on its own).
 CheckSatOutcome solve_qf_lia_impl(core::TermManager& terms,
                                   const std::vector<core::TermId>& assertions,
                                   const std::vector<core::TermId>& model_terms,
                                   const CheckSatOptions& options, util::Statistics& statistics,
-                                  const ModelConversionChain& conversions) {
-  // Same tableau engine as QF_LRA; no separate QF_LIA statistic key yet --
-  // every run that reaches here came from (set-logic QF_LIA), which was
-  // rejected before this branch existed, so there is no historical QF_LRA
-  // data these counters could be confused with.
-  statistics.increment(kStatSolverQfLra);
-  sat::CadicalBackend backend(options.cadical_options);
-  SolveTerminator terminator(options.cancelled, statistics, options.max_theory_conflicts);
-  const ScopedTerminatorConnection terminator_connection(backend, terminator);
-  BooleanClausifier clausifier(backend, terms, options.top_level_or_tseitin);
-  for (const core::TermId assertion : assertions) {
-    clausifier.assert_formula(assertion);
-  }
-  statistics.set(kStatTheoryAtoms, clausifier.theory_atoms().size());
-  publish_theory_atom_purity_stats(terms, clausifier.theory_atoms(), statistics);
-  publish_sat_stats(backend.statistics(), statistics);
-
-  // Always collect variables_by_term regardless of options.produce_model:
-  // branch-and-bound needs every Int tableau variable to branch on, not
-  // just the ones a requested model would print.
-  const PreparedLraTheory prepared_theory(
-      terms, clausifier.theory_atoms(), lra_pivoting_rule_from_options(options.lra_pivoting_rule),
-      options.lra_sparse_leaving, options.lra_fixed_elimination, /*collect_model_variables=*/true,
-      options.lra_least_violated_leaving, lra_tuning_from_options(options.lra_tuning));
-  publish_lra_tableau_shape_stats(prepared_theory.base_tableau, statistics);
-
-  std::vector<theory::arithmetic::LraVarId> integer_vars;
-  integer_vars.reserve(prepared_theory.variables_by_term.size());
-  for (const auto& [term_id, var_id] : prepared_theory.variables_by_term) {
-    if (terms.get(term_id).sort == terms.symbols().int_sort()) {
-      integer_vars.push_back(var_id);
-    }
-  }
-
-#if PRIMO_HAVE_IPASIR
-  OnlineLraPropagator online_propagator(
-      prepared_theory, clausifier.theory_atoms(), options.lra_propagation,
-      options.lra_row_propagation, options.lra_bidirectional_row_propagation,
-      options.lra_theory_decisions, options.lra_model_phase,
-      options.lra_pivoting_rule == LraPivotingRule::Soi || options.lra_fixed_elimination,
-      options.lra_row_propagation_limits, backend, statistics, false, options.max_theory_conflicts);
-  const AssignmentConnection assignment_connection(backend, online_propagator);
-  for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
-    const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
-    backend.add_observed_var(var);
-  }
-#endif
-
-  while (true) {
-    if (auto stop = terminator.stop_outcome()) return *stop;
-    statistics.increment(kStatSatSolveCalls);
-    const sat::SatResult sat_result = backend.solve();
-    publish_sat_stats(backend.statistics(), statistics);
-    if (auto stop = terminator.stop_outcome()) return *stop;
-    if (sat_result != sat::SatResult::Sat) {
-      return CheckSatOutcome{map_sat_result(sat_result), "", statistics, ""};
-    }
-    statistics.increment(kStatLraTheoryChecks);
-#if PRIMO_HAVE_IPASIR
-    const sat::TrailView model_assignment = assignment_connection.view();
-#else
-    sat::Trail completed_assignment;
-    load_assignment_snapshot(backend, clausifier.theory_atoms(), completed_assignment);
-    const sat::TrailView model_assignment(completed_assignment);
-#endif
-
-#if PRIMO_HAVE_IPASIR
-    const std::optional<sat::Clause> conflict_clause = online_propagator.conflict();
-#else
-    const std::vector<AssignedTheoryAtom> assigned_atoms =
-        assigned_atoms_from_view(model_assignment, clausifier.theory_atoms());
-    const std::optional<sat::Clause> conflict_clause =
-        find_incremental_lra_theory_conflict(prepared_theory, assigned_atoms);
-#endif
-    if (!conflict_clause.has_value()) {
-      publish_sat_stats(backend.statistics(), statistics);
-#if PRIMO_HAVE_IPASIR
-      const std::vector<AssignedTheoryAtom> assigned_atoms =
-          assigned_atoms_from_view(model_assignment, clausifier.theory_atoms());
-      theory::arithmetic::LraTableau lia_tableau = online_propagator.tableau();
-#else
-      theory::arithmetic::LraTableau lia_tableau = prepared_theory.base_tableau;
-      for (std::size_t i = 0; i < assigned_atoms.size(); ++i) {
-        const AssignedTheoryAtom& atom = assigned_atoms[i];
-        const PreparedLraTheory::PreparedAtom& prepared_atom = prepared_theory.atoms[i];
-        if (!prepared_atom.is_arithmetic || atom.filtered) {
-          continue;
-        }
-        const auto bound_conflict = assert_lra_atom_bound(
-            lia_tableau, prepared_atom.bound_var, prepared_atom.relation, prepared_atom.rhs,
-            atom.value, prepared_atom.asserts_lower_when_true, blocking_lit(atom),
-            prepared_atom.is_integer);
-        if (bound_conflict.has_value()) {
-          throw core::ModelError("LIA reconstruction found a bound conflict");
-        }
-      }
-      if (lia_tableau.check().has_value()) {
-        throw core::ModelError("LIA reconstruction found a tableau conflict");
-      }
-#endif
-
-      const auto completion = theory::arithmetic::complete_integer_assignment(
-          lia_tableau, integer_vars,
-          {options.lia_patch_limit, options.lia_gomory_cut_limit, options.lia_branch_limit});
-      publish_lia_completion_stats(completion, options, statistics);
-      if (completion.status == theory::arithmetic::LiaCompletionResult::Status::Sat) {
-        return CheckSatOutcome{
-            CheckSatResult::Sat,
-            "",
-            statistics,
-            "",
-            InconclusiveReason::None,
-            options.produce_model
-                ? build_qf_lia_model(terms, model_terms, prepared_theory, lia_tableau, conversions,
-                                     assigned_atoms, statistics)
-                : nullptr};
-      }
-      if (completion.status == theory::arithmetic::LiaCompletionResult::Status::ResourceLimit) {
-        return CheckSatOutcome{CheckSatResult::Unknown,
-                               "QF_LIA branch-and-bound node limit reached", statistics, "",
-                               InconclusiveReason::ResourceLimit};
-      }
-      // Unsat: this Boolean+LRA assignment has no all-integer completion
-      // (found either by the GCD pre-check above or by branch-and-bound).
-      // Block it with the blocking literals of every arithmetic atom that
-      // fed the tableau -- coarse (the whole assignment, not a minimized
-      // explanation) but sound, since it excludes at least this
-      // assignment. See docs/qf-lia-branch-and-bound.md for why stage 1
-      // accepts this over a tighter, tableau-derived explanation.
-      sat::Clause block = integer_conflict_clause(prepared_theory, assigned_atoms,
-                                                  completion.explanation, options, statistics);
-      statistics.increment(kStatLraTheoryConflicts);
-      record_theory_conflict(statistics);
-      if (auto stop = terminator.stop_outcome()) return *stop;
-      if (block.empty()) {
-        publish_sat_stats(backend.statistics(), statistics);
-        return CheckSatOutcome{CheckSatResult::Unsat, "", statistics, ""};
-      }
-      backend.add_clause(block);
-      publish_sat_stats(backend.statistics(), statistics);
-      continue;
-    }
-    statistics.increment(kStatLraTheoryConflicts);
-    record_theory_conflict(statistics);
-    if (auto stop = terminator.stop_outcome()) return *stop;
-    if (conflict_clause->empty()) {
-      publish_sat_stats(backend.statistics(), statistics);
-      return CheckSatOutcome{CheckSatResult::Unsat, "", statistics, ""};
-    }
-    backend.add_clause(conflict_clause.value());
-    publish_sat_stats(backend.statistics(), statistics);
-  }
-}
+                                  const ModelConversionChain& conversions);
 
 CheckSatOutcome solve_qf_lia_engine_impl(core::TermManager& terms,
                                          const std::vector<core::TermId>& assertions,
@@ -8599,6 +8421,7 @@ CheckSatOutcome solve_qf_lia_engine_impl(core::TermManager& terms,
   return outcome;
 }
 
+#if PRIMO_HAVE_IPASIR
 bool is_euf_component_atom(const core::TermManager& terms, core::TermId term_id) {
   const core::Term& term = terms.get(term_id);
   if (term.kind == core::TermKind::Equality) {
@@ -8607,6 +8430,8 @@ bool is_euf_component_atom(const core::TermManager& terms, core::TermId term_id)
   return (term.kind == core::TermKind::Application || term.kind == core::TermKind::Constant) &&
          term.sort == terms.symbols().bool_sort();
 }
+
+#endif
 
 // Recipes own instrumentation policy. Empty keys disable timers entirely.
 struct LiaComponentTiming {
@@ -8629,7 +8454,7 @@ struct LiaComponentCheck {
 
 LiaComponentCheck complete_lia_integer_model(
     theory::arithmetic::LraTableau tableau, const PreparedLraTheory& prepared,
-    const std::vector<AssignedTheoryAtom>& assigned_atoms,
+    std::span<const theory::AssignedTheoryLiteral> assigned_atoms,
     const std::vector<theory::arithmetic::LraVarId>& integer_vars, const CheckSatOptions& options,
     util::Statistics& statistics, const LiaComponentTiming& timing) {
   ScopedStatisticsTimer integer_timer(statistics, timing.integer);
@@ -8651,7 +8476,8 @@ LiaComponentCheck complete_lia_integer_model(
 }
 
 LiaComponentCheck check_lia_component_assignment(
-    const PreparedLraTheory& prepared, const std::vector<AssignedTheoryAtom>& assigned_atoms,
+    const PreparedLraTheory& prepared,
+    std::span<const theory::AssignedTheoryLiteral> assigned_atoms,
     const std::vector<theory::arithmetic::LraVarId>& integer_vars, const CheckSatOptions& options,
     util::Statistics& statistics, const LiaComponentTiming& timing) {
   ScopedStatisticsTimer total_timer(statistics, timing.check);
@@ -8659,14 +8485,15 @@ LiaComponentCheck check_lia_component_assignment(
   {
     ScopedStatisticsTimer rational_timer(statistics, timing.rational);
     for (std::size_t i = 0; i < assigned_atoms.size(); ++i) {
-      const AssignedTheoryAtom& atom = assigned_atoms[i];
+      const theory::AssignedTheoryLiteral& atom = assigned_atoms[i];
       const PreparedLraTheory::PreparedAtom& prepared_atom = prepared.atoms[i];
-      if (!prepared_atom.is_arithmetic || atom.filtered) {
+      if (!prepared_atom.is_arithmetic) {
         continue;
       }
       const auto conflict = assert_lra_atom_bound(
           tableau, prepared_atom.bound_var, prepared_atom.relation, prepared_atom.rhs, atom.value,
-          prepared_atom.asserts_lower_when_true, blocking_lit(atom), prepared_atom.is_integer);
+          prepared_atom.asserts_lower_when_true,
+          sat::Lit{atom.value ? -atom.lit.value : atom.lit.value}, prepared_atom.is_integer);
       if (conflict.has_value()) {
         return LiaComponentCheck{.status = LiaComponentCheck::Status::Unsat,
                                  .conflict = conflict.value(),
@@ -9737,13 +9564,7 @@ class LiaComponentAdapter final : public theory::TheorySolver {
     if (assignment.size() != atoms_.size()) {
       throw std::logic_error("LIA component assignment size mismatch");
     }
-    std::vector<AssignedTheoryAtom> assigned;
-    assigned.reserve(assignment.size());
-    for (std::size_t index = 0; index < assignment.size(); ++index) {
-      assigned.push_back(
-          assigned_theory_atom(PureTheoryFilterMode::Off, atoms_[index], assignment[index].value));
-    }
-    LiaComponentCheck result = check_lia_component_assignment(prepared_, assigned, integer_vars_,
+    LiaComponentCheck result = check_lia_component_assignment(prepared_, assignment, integer_vars_,
                                                               options_, statistics_, timing_);
     return translate(std::move(result));
   }
@@ -9758,14 +9579,8 @@ class LiaComponentAdapter final : public theory::TheorySolver {
     if (assignment.size() != atoms_.size()) {
       throw std::logic_error("LIA component assignment size mismatch");
     }
-    std::vector<AssignedTheoryAtom> assigned;
-    assigned.reserve(assignment.size());
-    for (std::size_t index = 0; index < assignment.size(); ++index) {
-      assigned.push_back(
-          assigned_theory_atom(PureTheoryFilterMode::Off, atoms_[index], assignment[index].value));
-    }
     LiaComponentCheck result = complete_lia_integer_model(
-        rational_model, prepared_, assigned, integer_vars_, options_, statistics_, timing_);
+        rational_model, prepared_, assignment, integer_vars_, options_, statistics_, timing_);
     return translate(std::move(result));
   }
 
@@ -10086,9 +9901,10 @@ class LiaTheoryComponent final : public ComponentAdapterSupport {
  public:
   LiaTheoryComponent(core::TermManager& terms, const CheckSatOptions& options,
                      util::Statistics& statistics, bool online, bool produce_model_projection,
-                     LiaComponentTiming timing)
+                     LiaComponentTiming timing, bool publish_arithmetic_statistics)
       : ComponentAdapterSupport(terms, options, statistics, online, produce_model_projection),
-        timing_(timing) {
+        timing_(timing),
+        publish_arithmetic_statistics_(publish_arithmetic_statistics) {
     descriptor_.id = "lia";
     descriptor_.fragment = "purified quantifier-free linear integer arithmetic";
     descriptor_.signature_families = {"integer-linear-arithmetic"};
@@ -10136,6 +9952,8 @@ class LiaTheoryComponent final : public ComponentAdapterSupport {
                                                     shared_, 0, produce_model_projection_, options_,
                                                     statistics_, timing_);
       full_->register_interface_extensions();
+      if (publish_arithmetic_statistics_)
+        publish_lra_tableau_shape_stats(full_->prepared().base_tableau, statistics_);
     } else {
       for (std::size_t index = previous; index < atoms_.size(); ++index)
         full_->append_atom(atoms_[index]);
@@ -10185,14 +10003,18 @@ class LiaTheoryComponent final : public ComponentAdapterSupport {
       result.status = theory::TheoryCheckStatus::Consistent;
       return result;
     }
+    if (publish_arithmetic_statistics_) statistics_.increment(kStatLraTheoryChecks);
     full_->set_assignment_epoch(epoch);
+    theory::TheoryCheckResult result;
     if (execution_ && !produce_model_projection_) {
       statistics_.increment(":combination.online-components.integer-completions");
-      return stamp(
-          full_->complete_integer_model(assignment_.full_assignment(), execution_->tableau()),
-          epoch);
+      result = full_->complete_integer_model(assignment_.full_assignment(), execution_->tableau());
+    } else {
+      result = full_->check(assignment_.full_assignment(), arrangement);
     }
-    return stamp(full_->check(assignment_.full_assignment(), arrangement), epoch);
+    if (publish_arithmetic_statistics_ && result.status == theory::TheoryCheckStatus::LearnedClause)
+      statistics_.increment(kStatLraTheoryConflicts);
+    return stamp(std::move(result), epoch);
   }
   theory::ComponentModelFragment export_model(
       const theory::TheoryModelToken& token) const override {
@@ -10208,12 +10030,51 @@ class LiaTheoryComponent final : public ComponentAdapterSupport {
 
  private:
   LiaComponentTiming timing_;
+  bool publish_arithmetic_statistics_;
   std::unique_ptr<LiaComponentAdapter> full_;
   std::unique_ptr<ComponentLraExecution> execution_;
   std::vector<sat::Lit> phases_;
 };
 
 #endif
+
+// A single arithmetic component uses the same full-check completion boundary
+// as the combined recipe. Boolean constants belong to the shared SMT driver.
+CheckSatOutcome solve_qf_lia_impl(core::TermManager& terms,
+                                  const std::vector<core::TermId>& assertions,
+                                  const std::vector<core::TermId>& model_terms,
+                                  const CheckSatOptions& options, util::Statistics& statistics,
+                                  const ModelConversionChain& conversions) {
+  static_cast<void>(model_terms);
+  // Retain the historical arithmetic-route statistic key.
+  statistics.increment(kStatSolverQfLra);
+#if PRIMO_HAVE_IPASIR
+  CombinationRecipe recipe;
+  recipe.model_guided = false;
+  recipe.online = true;
+  recipe.online_order = {0};
+  recipe.timing_prefix = ":time.qf-lia.";
+  bool published_atom_statistics = false;
+  recipe.prepare_boolean = [&](BooleanClausifier& clausifier) {
+    if (!published_atom_statistics) {
+      publish_theory_atom_purity_stats(terms, clausifier.theory_atoms(), statistics);
+      published_atom_statistics = true;
+    }
+  };
+  recipe.factories = {[&](bool) {
+    return std::make_unique<LiaTheoryComponent>(terms, options, statistics, true, false,
+                                                LiaComponentTiming{}, true);
+  }};
+  return solve_component_recipe(terms, assertions, conversions, options, statistics, recipe);
+#else
+  static_cast<void>(terms);
+  static_cast<void>(assertions);
+  static_cast<void>(conversions);
+  static_cast<void>(options);
+  return {CheckSatResult::Unsupported, "integer solving requires an IPASIR backend", statistics, "",
+          InconclusiveReason::Unsupported};
+#endif
+}
 
 CheckSatOutcome solve_qf_uflia_engine_impl(core::TermManager& terms,
                                            const std::vector<core::TermId>& assertions,
@@ -10240,7 +10101,8 @@ CheckSatOutcome solve_qf_uflia_engine_impl(core::TermManager& terms,
         return std::make_unique<LiaTheoryComponent>(
             terms, options, statistics, online, guided,
             LiaComponentTiming{":time.qf-uflia.lia-check-us", ":time.qf-uflia.lia-rational-us",
-                               ":time.qf-uflia.lia-integer-us"});
+                               ":time.qf-uflia.lia-integer-us"},
+            false);
       },
       [&](bool guided) {
         return std::make_unique<EufTheoryComponent>(terms, options, statistics, online, guided,
@@ -10456,9 +10318,11 @@ CheckSatOutcome solve_qf_uf_engine_impl(core::TermManager& terms,
     if (auto stop = terminator.stop_outcome()) return *stop;
     statistics.increment(kStatSatSolveCalls);
     const sat::SatResult sat_result = backend.solve();
+#if PRIMO_HAVE_IPASIR
     if (online_propagator.has_value()) {
       online_propagator->flush_incremental_stats();
     }
+#endif
     publish_sat_stats(backend.statistics(), statistics);
     if (auto stop = terminator.stop_outcome()) return *stop;
     if (sat_result != sat::SatResult::Sat) {
@@ -10515,12 +10379,15 @@ CheckSatOutcome solve_qf_uf_engine_impl(core::TermManager& terms,
     }
 
     std::optional<sat::Clause> conflict_clause;
+#if PRIMO_HAVE_IPASIR
     if (options.euf_engine == EufEngine::Incremental && online_propagator.has_value()) {
       // The online/conflict SAT-callback propagator already owns a persistent
       // flat closure kept in sync with the trail; reuse its verdict instead of
       // rebuilding an equivalent closure from the full assignment below.
       conflict_clause = online_propagator->incremental_conflict();
-    } else if (options.euf_engine == EufEngine::Incremental) {
+    } else
+#endif
+        if (options.euf_engine == EufEngine::Incremental) {
       conflict_clause = find_incremental_theory_conflict(prepared_flat_theory.value(),
                                                          assigned_atoms, statistics);
     } else {
@@ -12152,6 +12019,7 @@ CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
 }  // namespace
 
 namespace {
+#if PRIMO_HAVE_IPASIR
 // Original activation/preparation contract: docs/assumption-incremental-uf.md.
 // Only definitions inhabit prepared_; query facts belong to the fresh callback.
 class IncrementalUfEngine final : public IncrementalEngine {
@@ -12456,16 +12324,29 @@ class IncrementalLraEngine final : public IncrementalEngine {
   std::size_t resets_ = 0;
   std::uint64_t append_us_ = 0;
 };
+#endif
 }  // namespace
 
 std::unique_ptr<IncrementalEngine> make_incremental_uf_engine(core::TermManager& terms,
                                                               const CheckSatOptions& options) {
+#if PRIMO_HAVE_IPASIR
   return std::make_unique<IncrementalUfEngine>(terms, options);
+#else
+  static_cast<void>(terms);
+  static_cast<void>(options);
+  throw UnsupportedInput("retained solving requires an IPASIR backend");
+#endif
 }
 
 std::unique_ptr<IncrementalEngine> make_incremental_lra_engine(core::TermManager& terms,
                                                                const CheckSatOptions& options) {
+#if PRIMO_HAVE_IPASIR
   return std::make_unique<IncrementalLraEngine>(terms, options);
+#else
+  static_cast<void>(terms);
+  static_cast<void>(options);
+  throw UnsupportedInput("retained solving requires an IPASIR backend");
+#endif
 }
 
 CheckSatOutcome solve_qf_uf_engine(core::TermManager& terms,
