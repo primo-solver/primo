@@ -76,6 +76,62 @@ run the preprocessing fuzz gate before accepting behavior changes. Reject a
 selection policy whose analysis cost outweighs its benefit or which regresses
 correctness. No performance improvement is claimed for this proposal.
 
+## Solver selection after preprocessing
+
+Investigate selecting a solver from the features remaining in each transformed
+goal, while retaining the declared logic and model-reconstruction obligations.
+A logic declaration permits a fragment; it does not imply that every feature
+of that fragment occurs in the assertions. Transformations can remove features
+that were present initially.
+
+Current handling is partial. The ground UF/Real
+{source}`dispatcher <src/smt/solver_strategy.cpp>` examines preprocessed goals,
+with additional checks for model requirements. Declared `QF_LIA` and `QF_UFLIA`
+retain their respective integer routes. The
+{source}`session <src/smt/solver_session.cpp>` checks whether quantifiers occur
+in the current assertions, but routes surviving quantified input before ground
+preprocessing; it does not generally simplify quantified input and then
+redispatch it through the ground pipeline. The
+{source}`frontend <src/smt/frontend.cpp>` rejects nonlinear logic declarations
+and multiplication of two nonconstant terms before preprocessing. Consequently,
+assertions such as $x=2$ and $x\cdot y>5$ cannot currently reach substitution
+and become the linear obligation $2y>5$.
+
+The investigation has two distinct scopes:
+
+- Within currently admitted inputs, recheck solver applicability after
+  transformations. Include mixed goals that become pure arithmetic, EUF, or
+  Boolean, and integer goals whose remaining assertions need less machinery.
+  Preserve reconstruction and interpretation of declared symbols even when
+  their occurrences disappear from the surviving assertions.
+- Separately, investigate admitting a broader, well-typed representation long
+  enough to simplify it into a supported fragment. Examples include eliminating
+  a quantifier with a constant body or substituting a known constant into a
+  nonlinear product. This requires a design for frontend admission and safe
+  preprocessing of those constructs; changing dispatch alone is insufficient.
+  It must not pass residual quantifiers or nonlinear terms to an engine that
+  assumes ground linear input, or silently accept violations of a declared
+  logic's input contract.
+
+Specify an applicability check at the solver boundary, including sort,
+quantifier, arithmetic, and model requirements. Unsupported residual features
+must produce an explicit unsupported or inconclusive outcome. Feature summaries
+must be recomputed or invalidated after transformations and goal splitting;
+retained sessions must also handle later assertions and scope changes that
+reintroduce features. Broadening input support requires an explicit contract
+and the relevant transformation proofs, not a claim of general nonlinear or
+quantified solving.
+
+Use focused examples for disappearing and surviving features, followed by
+supported UF, LRA, LIA, UFLRA, and UFLIA corpora and separately identified
+broader-fragment seeds. Check answers against references and validate SAT
+models against the original assertions. Record features before and after
+preprocessing, selected engines, applicability failures, classification cost,
+solved counts, and PAR2. Run correctness and timing campaigns in SLURM. Reject
+unsound routing or lost reconstruction; retain existing defaults if the added
+analysis or changed search causes a performance regression. This is an open
+design and evaluation lead, with no new input support or default change claimed.
+
 ## Implemented or closed investigations
 
 | Original entry | Disposition |
