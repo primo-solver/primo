@@ -9,7 +9,6 @@
 #include <span>
 #include <unordered_set>
 #include <utility>
-#include <variant>
 #include <vector>
 
 #include "core/model.hpp"

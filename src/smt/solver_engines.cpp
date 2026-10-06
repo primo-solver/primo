@@ -16,7 +16,6 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
-#include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -31,6 +30,7 @@
 #include "sat/clause.hpp"
 #include "sat/ipasir_up.hpp"
 #include "sat/lit.hpp"
+#include "sat/trail.hpp"
 #include "smt/assignment_coordinator.hpp"
 #include "smt/boolean_solver.hpp"
 #include "smt/check_sat.hpp"
@@ -50,11 +50,8 @@
 #include "smt/theory_combination.hpp"
 #include "smt/theory_combination_plan.hpp"
 #include "smt/typed_model_builder.hpp"
-#include "theory/arithmetic/lia_branch_and_bound.hpp"
+#include "theory/arithmetic/lia_completion.hpp"
 #include "theory/arithmetic/lia_explanation.hpp"
-#include "theory/arithmetic/lia_gcd_consistency.hpp"
-#include "theory/arithmetic/lia_gomory_cuts.hpp"
-#include "theory/arithmetic/lia_integer_values.hpp"
 #include "theory/arithmetic/lia_patching.hpp"
 #include "theory/arithmetic/linear_polynomial.hpp"
 #include "theory/arithmetic/lra_atom.hpp"
@@ -64,6 +61,7 @@
 #include "theory/equality/explained_congruence_closure.hpp"
 #include "theory/equality/flat_congruence_closure.hpp"
 #include "theory/equality/flat_terms.hpp"
+#include "theory/theory_component.hpp"
 #include "theory/theory_solver.hpp"
 #include "util/rational.hpp"
 #include "util/statistics.hpp"
@@ -8384,6 +8382,31 @@ sat::Clause generalized_lia_lemma(const sat::Clause& coarse,
   return explanation.literals();
 }
 
+void publish_lia_completion_stats(const theory::arithmetic::LiaCompletionResult& result,
+                                  const CheckSatOptions& options, util::Statistics& statistics) {
+  if (options.lia_patch_limit == 0) return;
+  statistics.increment(util::StatKey::LiaPatchSweeps);
+  statistics.increment(util::StatKey::LiaPatchedVariables, result.patched_variables);
+  add_lia_patching_stats(statistics, result.patch_stats);
+  if (result.patch_stats.fully_integral)
+    statistics.increment(util::StatKey::LiaPatchRoundsFullyIntegral);
+}
+
+sat::Clause integer_conflict_clause(const PreparedLraTheory& prepared,
+                                    const std::vector<AssignedTheoryAtom>& assigned,
+                                    const theory::arithmetic::LiaExplanation& explanation,
+                                    const CheckSatOptions& options, util::Statistics& statistics) {
+  sat::Clause coarse;
+  for (std::size_t index = 0; index < assigned.size(); ++index) {
+    if (prepared.atoms[index].is_arithmetic && !assigned[index].filtered)
+      coarse.push_back(blocking_lit(assigned[index]));
+  }
+  // No asserted arithmetic atoms is an unconditional conflict. Do not attempt
+  // explanation generalization, whose empty-explanation policy is a fallback.
+  if (coarse.empty() || !options.lia_conflict_generalization) return coarse;
+  return generalized_lia_lemma(coarse, explanation, statistics);
+}
+
 // QF_LIA, stage 1 (docs/qf-lia-branch-and-bound.md): a close structural
 // parallel of solve_qf_lra_impl above -- same clausifier/tableau/backend
 // loop shape, deliberately NOT a modification of that function or of
@@ -8501,79 +8524,26 @@ CheckSatOutcome solve_qf_lia_impl(core::TermManager& terms,
       }
 #endif
 
-      // Stage 5 (docs/qf-lia-branch-and-bound.md's "Patching"): the paper's
-      // first waterfall layer, and the only one here that tries to *find* an
-      // integer model instead of refuting a candidate. Runs before the
-      // refutation stages, matching Bjorner & Nachmanson Sect. 4's own order.
-      //
-      // It decides nothing and produces no lemma -- it only moves nonbasic
-      // values within their freedom intervals, which preserves feasibility by
-      // construction. When it integralizes everything, branch_and_bound's
-      // find_fractional_variable simply finds nothing to branch on and returns
-      // Sat at zero nodes, through the code below rather than a new path.
-      theory::arithmetic::LiaPatchingStats patch_stats;
-      const std::size_t patched = theory::arithmetic::patch_integer_variables(
-          lia_tableau, integer_vars, options.lia_patch_limit, &patch_stats);
-      if (options.lia_patch_limit > 0) {
-        statistics.increment(util::StatKey::LiaPatchSweeps);
-        statistics.increment(util::StatKey::LiaPatchedVariables, patched);
-        add_lia_patching_stats(statistics, patch_stats);
-        const bool fully_integral =
-            std::all_of(integer_vars.begin(), integer_vars.end(),
-                        [&lia_tableau](theory::arithmetic::LraVarId var) {
-                          return theory::arithmetic::is_integer_valued(lia_tableau.assignment(var));
-                        });
-        if (fully_integral) {
-          statistics.increment(util::StatKey::LiaPatchRoundsFullyIntegral);
-        }
+      const auto completion = theory::arithmetic::complete_integer_assignment(
+          lia_tableau, integer_vars,
+          {options.lia_patch_limit, options.lia_gomory_cut_limit, options.lia_branch_limit});
+      publish_lia_completion_stats(completion, options, statistics);
+      if (completion.status == theory::arithmetic::LiaCompletionResult::Status::Sat) {
+        return CheckSatOutcome{
+            CheckSatResult::Sat,
+            "",
+            statistics,
+            "",
+            InconclusiveReason::None,
+            options.produce_model
+                ? build_qf_lia_model(terms, model_terms, prepared_theory, lia_tableau, conversions,
+                                     assigned_atoms, statistics)
+                : nullptr};
       }
-
-      // Stage 4 (docs/qf-lia-branch-and-bound.md's "Conflict
-      // generalization"): one explanation accumulator per round, threaded
-      // through all three integer stages rather than one per stage. A cut
-      // derived by stage 3 stays in the tableau while branch-and-bound
-      // runs, so a conflict branch-and-bound finds can rest on stage 3's
-      // antecedents -- the two cannot be explained separately.
-      theory::arithmetic::LiaExplanation lia_explanation;
-
-      // Stage 2 (docs/qf-lia-branch-and-bound.md): a read-only structural
-      // pre-check, cheaper than branching and it catches cases plain
-      // branch-and-bound cannot terminate on at all (e.g. `2x - 2y = 1`
-      // with x, y unbounded -- gcd_inconsistent_row proves no integer
-      // assignment can satisfy that row directly; branch-and-bound alone
-      // would branch until --lia-branch-limit and report Unknown).
-      bool arithmetic_unsat =
-          theory::arithmetic::gcd_inconsistent_row(lia_tableau, integer_vars, &lia_explanation)
-              .has_value();
-      // Stage 3: mutates lia_tableau (adds cut rows/bounds -- safe here,
-      // see lia_gomory_cuts.cpp's module comment for why nothing needs to
-      // undo them within this per-round tableau copy) before
-      // branch-and-bound runs, so it only ever tightens what
-      // branch-and-bound has to search.
-      if (!arithmetic_unsat) {
-        arithmetic_unsat = theory::arithmetic::apply_gomory_cuts(
-            lia_tableau, integer_vars, options.lia_gomory_cut_limit, &lia_explanation);
-      }
-      if (!arithmetic_unsat) {
-        const theory::arithmetic::LiaBranchAndBoundResult bb_result =
-            theory::arithmetic::branch_and_bound(lia_tableau, integer_vars,
-                                                 options.lia_branch_limit, &lia_explanation);
-        if (bb_result.status == theory::arithmetic::LiaBranchAndBoundResult::Status::Sat) {
-          return CheckSatOutcome{
-              CheckSatResult::Sat,
-              "",
-              statistics,
-              "",
-              InconclusiveReason::None,
-              options.produce_model
-                  ? build_qf_lia_model(terms, model_terms, prepared_theory, lia_tableau,
-                                       conversions, assigned_atoms, statistics)
-                  : nullptr};
-        }
-        if (bb_result.status == theory::arithmetic::LiaBranchAndBoundResult::Status::LimitReached) {
-          return CheckSatOutcome{CheckSatResult::Unknown,
-                                 "QF_LIA branch-and-bound node limit reached", statistics, ""};
-        }
+      if (completion.status == theory::arithmetic::LiaCompletionResult::Status::ResourceLimit) {
+        return CheckSatOutcome{CheckSatResult::Unknown,
+                               "QF_LIA branch-and-bound node limit reached", statistics, "",
+                               InconclusiveReason::ResourceLimit};
       }
       // Unsat: this Boolean+LRA assignment has no all-integer completion
       // (found either by the GCD pre-check above or by branch-and-bound).
@@ -8582,27 +8552,14 @@ CheckSatOutcome solve_qf_lia_impl(core::TermManager& terms,
       // explanation) but sound, since it excludes at least this
       // assignment. See docs/qf-lia-branch-and-bound.md for why stage 1
       // accepts this over a tighter, tableau-derived explanation.
-      sat::Clause block;
-      for (std::size_t i = 0; i < assigned_atoms.size(); ++i) {
-        if (!prepared_theory.atoms[i].is_arithmetic || assigned_atoms[i].filtered) {
-          continue;
-        }
-        block.push_back(blocking_lit(assigned_atoms[i]));
-      }
+      sat::Clause block = integer_conflict_clause(prepared_theory, assigned_atoms,
+                                                  completion.explanation, options, statistics);
       statistics.increment(kStatLraTheoryConflicts);
       record_theory_conflict(statistics);
       if (auto stop = terminator.stop_outcome()) return *stop;
       if (block.empty()) {
         publish_sat_stats(backend.statistics(), statistics);
         return CheckSatOutcome{CheckSatResult::Unsat, "", statistics, ""};
-      }
-      // Narrow the coarse clause to what actually proved this branch
-      // integer-infeasible. Deliberately after the block.empty() check
-      // above: "no arithmetic atom fed the tableau at all" is a statement
-      // about the round, not about the derivation, and must keep answering
-      // Unsat outright.
-      if (options.lia_conflict_generalization) {
-        block = generalized_lia_lemma(block, lia_explanation, statistics);
       }
       backend.add_clause(block);
       publish_sat_stats(backend.statistics(), statistics);
@@ -8667,48 +8624,21 @@ LiaComponentCheck complete_lia_integer_model(
     const std::vector<theory::arithmetic::LraVarId>& integer_vars, const CheckSatOptions& options,
     util::Statistics& statistics) {
   ScopedStatisticsTimer integer_timer(statistics, ":time.qf-uflia.lia-integer-us");
-  theory::arithmetic::LiaPatchingStats patch_stats;
-  const std::size_t patched = theory::arithmetic::patch_integer_variables(
-      tableau, integer_vars, options.lia_patch_limit, &patch_stats);
-  if (options.lia_patch_limit > 0) {
-    statistics.increment(util::StatKey::LiaPatchSweeps);
-    statistics.increment(util::StatKey::LiaPatchedVariables, patched);
-    add_lia_patching_stats(statistics, patch_stats);
+  const auto completion = theory::arithmetic::complete_integer_assignment(
+      tableau, integer_vars,
+      {options.lia_patch_limit, options.lia_gomory_cut_limit, options.lia_branch_limit});
+  publish_lia_completion_stats(completion, options, statistics);
+  if (completion.status == theory::arithmetic::LiaCompletionResult::Status::Sat) {
+    return {.status = LiaComponentCheck::Status::Sat, .conflict = {}, .model = std::move(tableau)};
   }
-
-  theory::arithmetic::LiaExplanation explanation;
-  bool integer_unsat =
-      theory::arithmetic::gcd_inconsistent_row(tableau, integer_vars, &explanation).has_value();
-  if (!integer_unsat) {
-    integer_unsat = theory::arithmetic::apply_gomory_cuts(
-        tableau, integer_vars, options.lia_gomory_cut_limit, &explanation);
+  if (completion.status == theory::arithmetic::LiaCompletionResult::Status::ResourceLimit) {
+    return {
+        .status = LiaComponentCheck::Status::ResourceLimit, .conflict = {}, .model = std::nullopt};
   }
-  if (!integer_unsat) {
-    const theory::arithmetic::LiaBranchAndBoundResult result = theory::arithmetic::branch_and_bound(
-        tableau, integer_vars, options.lia_branch_limit, &explanation);
-    if (result.status == theory::arithmetic::LiaBranchAndBoundResult::Status::Sat) {
-      return LiaComponentCheck{
-          .status = LiaComponentCheck::Status::Sat, .conflict = {}, .model = std::move(tableau)};
-    }
-    if (result.status == theory::arithmetic::LiaBranchAndBoundResult::Status::LimitReached) {
-      return LiaComponentCheck{.status = LiaComponentCheck::Status::ResourceLimit,
-                               .conflict = {},
-                               .model = std::nullopt};
-    }
-  }
-
-  sat::Clause coarse;
-  for (std::size_t i = 0; i < assigned_atoms.size(); ++i) {
-    if (prepared.atoms[i].is_arithmetic && !assigned_atoms[i].filtered) {
-      coarse.push_back(blocking_lit(assigned_atoms[i]));
-    }
-  }
-  sat::Clause conflict = options.lia_conflict_generalization
-                             ? generalized_lia_lemma(coarse, explanation, statistics)
-                             : std::move(coarse);
-  return LiaComponentCheck{.status = LiaComponentCheck::Status::Unsat,
-                           .conflict = std::move(conflict),
-                           .model = std::nullopt};
+  return {.status = LiaComponentCheck::Status::Unsat,
+          .conflict = integer_conflict_clause(prepared, assigned_atoms, completion.explanation,
+                                              options, statistics),
+          .model = std::nullopt};
 }
 
 LiaComponentCheck check_lia_component_assignment(

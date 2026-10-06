@@ -1,0 +1,111 @@
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
+
+#include <algorithm>
+#include <cassert>
+
+#include "sat/lit.hpp"
+#include "theory/arithmetic/lia_completion.hpp"
+#include "theory/arithmetic/lia_integer_values.hpp"
+#include "theory/arithmetic/lra_tableau.hpp"
+#include "util/rational.hpp"
+
+using primo::sat::Lit;
+using primo::theory::arithmetic::complete_integer_assignment;
+using primo::theory::arithmetic::DeltaRational;
+using primo::theory::arithmetic::is_integer_valued;
+using primo::theory::arithmetic::LiaCompletionResult;
+using primo::theory::arithmetic::LraTableau;
+using primo::util::Rational;
+
+namespace {
+using Status = LiaCompletionResult::Status;
+
+DeltaRational rat(const Rational& value) { return DeltaRational::from_rational(value); }
+
+void patching_and_disabled_search() {
+  LraTableau tableau;
+  const auto x = tableau.add_variable();
+  assert(!tableau.assert_lower(x, rat(Rational(1, 3)), Lit{1}));
+  assert(!tableau.assert_upper(x, rat(Rational(5, 3)), Lit{2}));
+  assert(!tableau.check());
+  const auto limited = complete_integer_assignment(tableau, {x}, {0, 0, 0});
+  assert(limited.status == Status::ResourceLimit);
+  assert(tableau.lower_bound(x)->value == rat(Rational(1, 3)));
+  assert(tableau.upper_bound(x)->value == rat(Rational(5, 3)));
+  const auto patched = complete_integer_assignment(tableau, {x}, {1, 0, 0});
+  assert(patched.status == Status::Sat);
+  assert(patched.patched_variables == 1);
+  assert(patched.patch_stats.fully_integral);
+  assert(tableau.assignment(x) == rat(Rational(1)));
+}
+
+void branching_preserves_the_winning_assignment() {
+  LraTableau tableau;
+  const auto x = tableau.add_variable();
+  assert(!tableau.assert_lower(x, DeltaRational{Rational(0), Rational(1)}, Lit{3}));
+  assert(!tableau.assert_upper(x, rat(Rational(2)), Lit{4}));
+  assert(!tableau.check());
+  const auto result = complete_integer_assignment(tableau, {x}, {0, 0, 1});
+  assert(result.status == Status::Sat);
+  assert(is_integer_valued(tableau.assignment(x)));
+  assert(tableau.assignment(x) == rat(Rational(1)));
+}
+
+void gcd_precedes_the_zero_branch_budget() {
+  LraTableau tableau;
+  const auto x = tableau.add_variable();
+  const auto y = tableau.add_variable();
+  const auto sum = tableau.add_variable();
+  tableau.add_row(sum, {{x, Rational(4)}, {y, Rational(6)}});
+  assert(!tableau.assert_lower(sum, rat(Rational(3)), Lit{5}));
+  assert(!tableau.assert_upper(sum, rat(Rational(3)), Lit{6}));
+  assert(!tableau.check());
+  const auto result = complete_integer_assignment(tableau, {x, y}, {0, 0, 0});
+  assert(result.status == Status::Unsat);
+  assert(result.explanation.literals().size() == 2);
+  assert(result.explanation.literals()[0].value == 5);
+  assert(result.explanation.literals()[1].value == 6);
+}
+
+void cuts_retain_antecedents_for_later_branching() {
+  LraTableau tableau;
+  const auto a = tableau.add_variable();
+  const auto b = tableau.add_variable();
+  const auto integral_row = tableau.add_variable();
+  const auto impossible = tableau.add_variable();
+  tableau.add_row(integral_row, {{a, Rational(3)}, {b, Rational(5)}});
+  assert(!tableau.assert_lower(a, rat(Rational(0)), Lit{7}));
+  assert(!tableau.assert_lower(b, rat(Rational(1, 2)), Lit{8}));
+  assert(!tableau.assert_lower(impossible, rat(Rational(1, 4)), Lit{9}));
+  assert(!tableau.assert_upper(impossible, rat(Rational(3, 4)), Lit{10}));
+  assert(!tableau.check());
+  const auto before = tableau.variable_count();
+  const auto result = complete_integer_assignment(tableau, {integral_row, impossible}, {0, 1, 4});
+  assert(result.status == Status::Unsat);
+  assert(tableau.variable_count() > before);
+  // The first cut is satisfiable. The independent fractional interval fails
+  // only in branching; its explanation must not replace the earlier cut's.
+  for (const int reason : {7, 8, 9, 10}) {
+    assert(std::ranges::any_of(result.explanation.literals(),
+                               [reason](Lit literal) { return literal.value == reason; }));
+  }
+}
+
+void empty_integer_set_succeeds_without_search() {
+  LraTableau tableau;
+  const auto result = complete_integer_assignment(tableau, {}, {1, 0, 0});
+  assert(result.status == Status::Sat);
+  assert(result.explanation.empty());
+  assert(result.patch_stats.fully_integral);
+}
+}  // namespace
+
+int main() {
+  patching_and_disabled_search();
+  branching_preserves_the_winning_assignment();
+  gcd_precedes_the_zero_branch_budget();
+  cuts_retain_antecedents_for_later_branching();
+  empty_integer_set_succeeds_without_search();
+}

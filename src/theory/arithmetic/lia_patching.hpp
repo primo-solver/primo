@@ -11,6 +11,9 @@ namespace primo::theory::arithmetic {
 // contain no util::Statistics dependency; solver adapters decide how to expose
 // them publicly.
 struct LiaPatchingStats {
+  // Valid when patching is enabled, including an empty integer set. Reuses the
+  // scoring index's remaining count instead of rescanning the final tableau.
+  bool fully_integral = false;
   std::size_t occurrence_entries = 0;
   std::size_t candidates_scored = 0;
   std::size_t affected_rows_inspected = 0;

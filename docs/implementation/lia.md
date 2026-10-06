@@ -39,7 +39,7 @@ $\delta$ a positive infinitesimal used to represent strict inequalities.
 | --- | --- |
 | Prepared atoms and term-to-variable map | {source}`PreparedLraTheory <src/smt/solver_engines.cpp#L3332-L3410>` connects arithmetic terms and SAT atoms to tableau variables and bounds. |
 | `integer_vars` | The caller owns a vector of `LraVarId`s whose values must become integers. In the pure route it is collected from the `Int` terms in `variables_by_term`; the combined route also registers shared `Int` terms. It is not the set of all tableau variables. |
-| Working tableau | The integer call owns a copy of a rationally feasible tableau. Patching changes assignments; cuts allocate variables and rows; branching adds temporary bounds. These changes stay within this copy. |
+| Working tableau | SMT integration owns a copy of a rationally feasible tableau and lends it by mutable reference to {source}`complete_integer_assignment <src/theory/arithmetic/lia_completion.cpp>`. Patching changes assignments; cuts allocate variables and rows; branching adds temporary bounds. These changes stay within this copy. |
 | `LiaExplanation` | This {source}`explanation object <src/theory/arithmetic/lia_explanation.hpp>` stores the blocking literals contributed by GCD checks, cuts and branching in a sorted, duplicate-free vector. The stages share one object so a later conflict retains the reasons for earlier cuts. |
 | Branch frames | {source}`branch_and_bound <src/theory/arithmetic/lia_branch_and_bound.cpp>` owns an explicit DFS stack. Each frame stores a variable ID, a split threshold, a tableau checkpoint and which side has been tried. |
 
@@ -67,7 +67,10 @@ integers just because the original input used `Int`.
 The pure route, {source}`solve_qf_lia_impl
 <src/smt/solver_engines.cpp#L8373-L8593>`, clausifies the input and uses the
 ordinary arithmetic propagator during SAT search. Once a complete Boolean
-candidate has passed rational consistency, it copies the tableau and runs:
+candidate has passed rational consistency, it copies the tableau and calls
+`complete_integer_assignment` with {source}`LiaCompletionLimits
+<src/theory/arithmetic/lia_completion.hpp>` (patch moves, Gomory
+rounds, and branch nodes). This operation runs:
 
 | Order | Operation | Result used by the caller |
 | --- | --- | --- |
@@ -87,15 +90,42 @@ candidate. It reports `unsat` for the whole query when that search is exhausted;
 integer infeasibility of one candidate does not by itself refute a formula
 with other Boolean choices.
 
-`QF_UFLIA` reaches the same stage order through
+`QF_UFLIA` calls the same `complete_integer_assignment` operation through
 {source}`complete_lia_integer_model
-<src/smt/solver_engines.cpp#L8636-L8684>`. Its
+<src/smt/solver_engines.cpp#L8621-L8642>`. Its
 {source}`LIA component adapter <src/smt/solver_engines.cpp#L9731-L9864>`
 keeps the winning tableau, exports shared integer values, or returns a learned
 clause/resource-limit result to the general combination driver. Rational
 online propagation and final integer completion have separate responsibilities.
 The {ref}`combination chapter <the-component-collection-route>`
 explains the remaining equality arrangements and model-agreement checks.
+
+{source}`LiaCompletionResult <src/theory/arithmetic/lia_completion.hpp>` returns a typed `Sat`, `Unsat`, or `ResourceLimit`,
+one accumulated `LiaExplanation`, the number of patched variables, and
+`LiaPatchingStats`. The completion operation does not copy or prepare the
+tableau and preserves the supplied integer-variable ordering. On success the
+caller reads the winning assignment directly; after a failed or limited branch
+search, cuts remain but speculative branch bounds are removed. It does not
+restore the entry basis or assignment. The caller discards unsuccessful working
+copies. Limits and stage algorithms are unchanged; in particular, a zero branch
+budget permits an already integral assignment but no branch node.
+
+Both routes use SMT integration's
+{source}`integer_conflict_clause <src/smt/solver_engines.cpp#L8395-L8408>` to collect blocking
+literals from the asserted arithmetic atoms. It handles an empty coarse clause
+explicitly; otherwise the existing optional generalization checks the accumulated
+explanation against that clause. Individual failed integer branches do not increment the
+aggregate conflict budget; the SMT caller counts the reported theory conflict.
+The {source}`patcher's fully_integral statistic
+<src/theory/arithmetic/lia_patching.hpp>` uses its maintained remaining-variable
+count, avoiding another scan. {source}`Both routes publish it <src/smt/solver_engines.cpp#L8385-L8393>` when patching is enabled;
+this adds previously missing patch-success accounting to the combined route.
+
+The extraction is an ownership and scheduling refactor of the existing stages,
+not a new arithmetic algorithm. Its design obligations are to preserve stage
+order, variable order, limits, the winning assignment, and antecedents from cuts
+used by later branching. It adds no tableau copies, preparation, or full scans.
+The stage-specific sources and limitations below continue to apply.
 
 This design keeps integer branch choices inside the theory procedure. SAT
 learns the resulting conflict clause, but does not see individual integer

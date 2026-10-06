@@ -190,11 +190,13 @@ std::size_t patch_integer_variables(LraTableau& tableau, const std::vector<LraVa
   LiaPatchingStats& work = stats == nullptr ? ignored_stats : *stats;
   work = {};
   if (patch_limit == 0 || integer_vars.empty()) {
+    work.fully_integral = patch_limit > 0 && integer_vars.empty();
     return 0;
   }
   PatchingScoringIndex scoring(tableau, integer_vars, work);
   std::size_t remaining = scoring.remaining();
   if (remaining == 0) {
+    work.fully_integral = true;
     return 0;
   }
   const std::size_t initial = remaining;
@@ -241,6 +243,7 @@ std::size_t patch_integer_variables(LraTableau& tableau, const std::vector<LraVa
     assert(remaining == best->resulting_count);
   }
 
+  work.fully_integral = remaining == 0;
   return initial - remaining;
 }
 
