@@ -486,9 +486,10 @@ group may have at most one component supplying authoritative values for a
 shared sort. These normalization and admission rules are Primo's own design;
 they are not claimed as a verbatim algorithm from the two-theory papers.
 
-The QF_UFLIA recipe selects `EufTheoryComponent` and `LiaTheoryComponent`.
+The QF_UFLIA recipe selects {adaptersource}`EufTheoryComponent <src/smt/solver_engines.cpp#L9944-L10083>` and
+{adaptersource}`LiaTheoryComponent <src/smt/solver_engines.cpp#L10085-L10215>`.
 It passes the active guided/complete policy directly to each factory and owns
-the `:time.qf-uflia.*` timer keys. `ComponentAdapterSupport` shares assignment,
+the `:time.qf-uflia.*` timer keys. {adaptersource}`ComponentAdapterSupport <src/smt/solver_engines.cpp#L9836-L9942>` shares assignment,
 interface, and token handling; neither adapter derives this policy from the
 QF_UFLIA options. Their existing capability declarations and Int-only shared
 interface are unchanged. The integer completion pipeline is described in the
@@ -498,7 +499,7 @@ interface are unchanged. The integer completion pipeline is described in the
 
 For a pair `x`, `y`, a component's `encode_equality` returns an equivalent
 Boolean formula built from terms it understands. EUF returns `x = y`.
-`LiaTheoryComponent` returns
+{adaptersource}`LiaTheoryComponent <src/smt/solver_engines.cpp#L10125-L10129>` returns
 `x <= y and y <= x`.
 
 The {source}`SMT materializer <src/smt/component_solver.cpp#L126-L181>` links

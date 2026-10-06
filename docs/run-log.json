@@ -126,7 +126,55 @@
           "content_manifest_sha256": "6a63fb5c6652187a52cd28ccf6f6197a55a04c77c57e1d20d3d0d5739cb06fc5"
         }
       },
-      "extraction_binary_sha256": "a2771ceb25833e65106cfd65008722b2f5237e5799475a0450f8180885b50a23"
+      "extraction_binary_sha256": "a2771ceb25833e65106cfd65008722b2f5237e5799475a0450f8180885b50a23",
+      "adapter_cleanup": {
+        "snapshot": "a8ec696ec8a20e3df8350084ee34f8e9b977d20d",
+        "status": "accepted-adapter-cleanup-only",
+        "jobs": {
+          "build": "172215",
+          "checks": "172216",
+          "fuzz": "172217"
+        },
+        "command": "PRIMO_EXPECTED_REVISION=a8ec696 PRIMO_SEED_BASE=203610260 PRIMO_BUDGET_REPLAY=1 sbatch --ntasks=1 --array=16-23%4 scripts/qualification/public_launch.sbatch; checks use scripts/qualification/integer_unification/extraction_checks.sbatch",
+        "fuzz": {
+          "cases": 2000,
+          "qf_uflia": 1000,
+          "quantified_uf": 1000,
+          "pass": 2000,
+          "timeout": 0,
+          "unknown": 0,
+          "wrong_answer": 0,
+          "crash": 0,
+          "parser_type_error": 0,
+          "unsupported": 0,
+          "reference_disagreement": 0,
+          "ground_sat_models_dolmen_pass": 512,
+          "quantified_model_validation": "Not claimed; six enumeration profiles agree with Z3, plus expected preprocess-only unknown outcomes."
+        },
+        "binary_hashes": {
+          "build-slurm-rel/primo": "451ec43d91ca2742fe91c45af177564b36e528b4c1a708f771c9bd7edd3e0c54",
+          "contrib/local/bin/z3": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+          "contrib/local/bin/dolmen": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+        },
+        "budget_replay": {
+          "cases": 200,
+          "pass": 106,
+          "resource_exhausted": 94,
+          "timeout": 0
+        },
+        "artifacts": "results/public-launch/172217 and results/adapter-fuzz-qualified.json",
+        "docs_review": "lia_doc_review accepted changed lia/combination/quantifiers pages and config against a8ec696; LIA-ADAPTER-01..03 resolved; docs-check-links zero failures; rendered LIA section inspected.",
+        "checks": {
+          "release": "44/44",
+          "python": "233 pass",
+          "asan": "44/44",
+          "lint": "pass",
+          "configured_tidy": "pass on changed translation units; no owned-code diagnostics",
+          "advisory_include_cleaner": "pre-existing core ID provider advisories in instance_simplifier_tests only",
+          "review": "No blocking source/lifetime/extra-copy issue found in adapter diff. Projection/timer policy passed by recipes; result translation shared without changing scheduling."
+        },
+        "scaffold_pending": "Local -DPRIMO_HAVE_IPASIR=0 syntax check fails on both baseline8ca8ebe and adapter snapshot with unguarded existing online-helper references. Repair and full SLURM scaffold build remain required for final migration."
+      }
     },
     {
       "id": "2026-10-05-full-evaluation-refresh",

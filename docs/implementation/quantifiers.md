@@ -250,9 +250,10 @@ terms `t`, each guarded by the inner atom. This realizes
 The route's {source}`recipe <src/smt/quantifiers/quantified_solver.cpp#L134-L153>`
 checks EUF before the quantifier solver and provides preparation hooks for
 new lemmas. With the lazy EUF option,
-`EufTheoryComponent` declares
+{adaptersource}`EufTheoryComponent <src/smt/solver_engines.cpp#L9944-L10083>` declares
 `check_on_full_model` and rebuilds the EUF check over the complete candidate
-before instance generation. The quantified-UF factory explicitly passes its
+before instance generation. The {adaptersource}`quantified-UF factory
+<src/smt/solver_engines.cpp#L12528-L12544>` explicitly passes its
 existing projection and timer policy to this generic adapter; the rename does
 not alter scheduling. With the incremental option, its online closure
 checks assignments as they arrive. A lazy component must not use the absence
