@@ -1,5 +1,11 @@
 # Linear real arithmetic
 
+This theory follows the [shared assignment and explanation contract](theory-interface.md#theories-and-their-shared-contract).
+Its dedicated arithmetic checks and online callbacks currently provide that
+integration; the Real routes do not all use the `TheoryComponent` C++ interface.
+The [interface inventory](theory-interface.md#which-interface-is-used) and
+[combination routes](combination.md#the-shared-smt-driver) distinguish those paths.
+
 Primo's linear real arithmetic solver checks whether the inequalities selected
 by SAT have a common solution. It maintains exact values satisfying a fixed
 system of linear equations, then repairs violations of the selected bounds.

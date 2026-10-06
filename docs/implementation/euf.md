@@ -1,5 +1,9 @@
 # EUF: congruence, explanations, and rollback
 
+This is the equality-theory chapter in the [Theories section](theory-interface.md#theories-and-their-shared-contract).
+The [theory solver interface](theory-interface.md) defines the assignment,
+explanation, and model boundary around the congruence-closure implementation.
+
 Equality with uninterpreted functions (EUF) requires equal arguments to give
 equal results: `a = b` implies `f(a) = f(b)`. It does not require `f` to be
 injective: equal results need not imply equal arguments. The solver maintains

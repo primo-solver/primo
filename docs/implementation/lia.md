@@ -1,5 +1,11 @@
 # Linear integer arithmetic
 
+This theory follows the [shared assignment and explanation contract](theory-interface.md#theories-and-their-shared-contract).
+On the shared integer-combination route, the theory adapter implements
+`TheoryComponent`; the integer algorithms described here run behind that
+boundary. The [interface inventory](theory-interface.md#which-interface-is-used)
+explains the adapters and their responsibilities.
+
 An arithmetic assignment can satisfy every linear inequality and still fail
 to be an integer model. For example, `2*x - 2*y = 1` has the real solution
 `x = 1/2, y = 0`, but no integer solution: its left side is even. Primo first

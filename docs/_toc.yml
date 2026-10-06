@@ -35,13 +35,15 @@ parts:
       - file: implementation/preprocessing
       - file: implementation/sat
       - file: implementation/dpllt
+      - file: implementation/models
+  - caption: Theories
+    chapters:
       - file: implementation/theory-interface
       - file: implementation/euf
       - file: implementation/lra
       - file: implementation/lia
-      - file: implementation/combination
       - file: implementation/quantifiers
-      - file: implementation/models
+      - file: implementation/combination
   - caption: Literature
     chapters:
       - file: literature

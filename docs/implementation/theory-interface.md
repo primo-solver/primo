@@ -20,6 +20,27 @@ This chapter describes what a theory implementation must provide. The
 [combination chapter](combination.md) explains how several such solvers agree
 on shared equalities.
 
+## Theories and their shared contract
+
+The **Theories** section starts with this interface, then follows each solver's
+reasoning and finally the coordination between solvers. Read the individual
+chapters as implementations of the same architectural contract: receive the
+relevant assigned facts, check consistency, explain conflicts or consequences,
+and supply model information where supported. Quantifier reasoning also
+returns formulas for the SMT layer to clausify.
+
+| Chapter | Theory-specific responsibility | Connection to the shared contract |
+| --- | --- | --- |
+| [Equality with uninterpreted functions (EUF)](euf.md) | Maintain congruence and detect contradictory equalities and disequalities. | Its shared-driver adapters implement `TheoryComponent`; the congruence-closure data structure remains behind that boundary. |
+| [Linear real arithmetic (LRA)](lra.md) | Check exact linear constraints and explain infeasible bounds. | Dedicated arithmetic checks and propagation callbacks implement the assignment/explanation contract; the Real routes have not all migrated to `TheoryComponent`. |
+| [Linear integer arithmetic (LIA)](lia.md) | Extend the real relaxation with integer feasibility checks. | The shared integer-combination route implements `TheoryComponent`; bounded integer search may report `unknown`. |
+| [Quantifier reasoning](quantifiers.md) | Generate guarded instances and other supported quantified lemmas. | `QuantifierComponent` uses the same lifecycle and lemma queue; quantifiers are not a separate background theory. |
+
+[Theory combination](combination.md) explains how the SMT layer coordinates
+these solvers. It is coordination machinery, not another background theory.
+The interface names and production routes below make the distinction between
+the common contract and its current C++ implementations explicit.
+
 ## Which interface is used?
 
 Several interfaces coexist; they are not interchangeable names for one class.

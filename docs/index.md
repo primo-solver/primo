@@ -62,6 +62,10 @@ explains the pass order, profile selection, transformations, and model records.
 terms into clauses and describes assumptions and theory callbacks. The full
 interaction is followed in [DPLL(T)](implementation/dpllt.md), including
 explained conflicts, backtracking, and final consistency checks.
+The **Theories** section begins with the
+[theory solver interface](implementation/theory-interface.md), which explains
+the common assignment, explanation, and model contract and maps it to each
+solver's current integration path.
 [EUF: congruence, explanations, and rollback](implementation/euf.md) follows
 the congruence-closure implementation through a conflict and its undo.
 [Linear real arithmetic](implementation/lra.md) covers exact numbers, shared
