@@ -14,6 +14,12 @@ block acceptance of solver changes. Contributions that change solver behavior
 need explanations, regression tests, fuzzing, and reproducible evidence;
 see [](development/correctness.md).
 
+## Explore and contribute
+
+The [clickable documentation map](map.md) follows a query through the solver,
+links each area to its explanation and open leads, and suggests starting
+points for contributions in documentation, testing, experiments, and code.
+
 ## Build and solve a first problem
 
 From a repository checkout, with a C++20 compiler, CMake 3.20+, GNU Make, Git,

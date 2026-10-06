@@ -3,6 +3,7 @@ root: index
 parts:
   - caption: Using Primo
     chapters:
+      - file: map
       - file: capabilities
       - file: guide/getting-started
       - file: guide/input

@@ -86,6 +86,8 @@ sphinx:
       - '^https://github\.com/primo-solver/primo/(?:blob|commit)/'
       # Repository landing page requires access while the repository is private.
       - '^https://github\.com/primo-solver/primo/?$'
+    html_css_files:
+      - contribution-map.css
     html_show_copyright: false
     html_show_sourcelink: false
     html_theme_options:
