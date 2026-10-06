@@ -588,6 +588,29 @@ void incremental_routing_backtracking_and_explanation_lifetime() {
   assert(dispatcher.cb_propagate() == 0);
 }
 
+void external_clause_retention_follows_recipe_policy() {
+  assert(smt::CombinationRecipe{}.forgettable_clauses);
+  for (const bool forgettable : {false, true}) {
+    Fixture f;
+    const auto x = f.variable("x", f.symbols.int_sort());
+    const auto y = f.variable("y", f.symbols.int_sort());
+    f.add({{{x, y}, partitions(2)}});
+    smt::ComponentDispatcher dispatcher(f.components, {}, {}, forgettable);
+    dispatcher.register_atoms(0, std::span(&f.atoms[0], 1));
+    smt::AssignmentCoordinator owner(dispatcher);
+    owner.notify_assignment({1});
+    f.owned[0]->corrupt = [](auto& result) {
+      result.status = theory::TheoryCheckStatus::LearnedClause;
+      result.clause = {sat::Lit{-1}};
+    };
+    bool observed = !forgettable;
+    assert(dispatcher.cb_has_external_clause(observed));
+    assert(observed == forgettable);
+    assert(dispatcher.cb_add_external_clause_lit() == -1);
+    assert(dispatcher.cb_add_external_clause_lit() == 0);
+  }
+}
+
 void conflict_reports_are_counted_once_and_propagations_are_excluded() {
   for (const bool conflicting : {false, true}) {
     Fixture f;
@@ -1001,6 +1024,44 @@ void queued_lemmas_are_drained_at_the_growth_boundary() {
   }
 }
 
+void driver_owned_booleans_are_observed_without_component_routing() {
+  for (const bool value : {false, true}) {
+    Fixture f;
+    const auto marker = f.variable("marker", f.symbols.bool_sort());
+    const auto boolean = f.variable("driver_boolean", f.symbols.bool_sort());
+    sat::Lit boolean_lit;
+    bool observed = false;
+    smt::CombinationRecipe recipe;
+    recipe.online = true;
+    recipe.online_order = {0};
+    recipe.model_guided = false;
+    recipe.prepare_boolean = [&](smt::BooleanClausifier& clausifier) {
+      boolean_lit = clausifier.ensure_theory_atom(boolean).lit;
+    };
+    recipe.factories = {[&](bool) {
+      auto component = std::make_unique<PartitionComponent>(f.terms, "marker", marker,
+                                                            std::vector<Restriction>{});
+      auto* observer = component.get();
+      component->corrupt = [&, observer](theory::TheoryCheckResult&) {
+        const int literal = observer->assignment_view().literal(boolean_lit.value);
+        if (literal != 0) {
+          assert(literal == (value ? boolean_lit.value : -boolean_lit.value));
+          observed = true;
+        }
+        for (const auto& assignment : observer->assignments()) assert(assignment.atom == marker);
+      };
+      return component;
+    }};
+    smt::CheckSatOptions options;
+    util::Statistics statistics;
+    const std::vector assertions{marker, value ? boolean : f.terms.mk_not(boolean)};
+    const auto result =
+        smt::solve_component_recipe(f.terms, assertions, {}, options, statistics, recipe);
+    assert(result.result == smt::CheckSatResult::Sat);
+    assert(observed);
+  }
+}
+
 void empty_component_conflicts_respect_the_aggregate_budget() {
   for (const bool online : {false, true}) {
     for (const bool limited : {false, true}) {
@@ -1037,6 +1098,8 @@ void empty_component_conflicts_respect_the_aggregate_budget() {
 }  // namespace
 
 int main() {
+  driver_owned_booleans_are_observed_without_component_routing();
+  external_clause_retention_follows_recipe_policy();
   empty_component_conflicts_respect_the_aggregate_budget();
   conflict_reports_are_counted_once_and_propagations_are_excluded();
   admission_and_normalization();

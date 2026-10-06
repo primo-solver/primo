@@ -27,12 +27,14 @@ sat::Clause implication_clause(const theory::TheoryCheckResult& result) {
 
 ComponentDispatcher::ComponentDispatcher(std::span<theory::TheoryComponent* const> components,
                                          std::function<void(sat::Lit)> publish_phase,
-                                         std::function<bool()> report_conflict)
+                                         std::function<bool()> report_conflict,
+                                         bool forgettable_clauses)
     : components_(components.begin(), components.end()),
       deltas_(components.size()),
       dirty_(components.size(), false),
       publish_phase_(std::move(publish_phase)),
-      report_conflict_(std::move(report_conflict)) {
+      report_conflict_(std::move(report_conflict)),
+      forgettable_clauses_(forgettable_clauses) {
   touched_.reserve(components.size());
   for (auto* component : components_) {
     if (component == nullptr || !component->descriptor().capabilities.incremental) {
@@ -255,7 +257,7 @@ int ComponentDispatcher::cb_add_reason_clause_lit(int propagated_lit) {
 }
 
 bool ComponentDispatcher::cb_has_external_clause(bool& is_forgettable) {
-  is_forgettable = true;
+  is_forgettable = forgettable_clauses_;
   return cb_has_external_clause();
 }
 

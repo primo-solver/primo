@@ -28,7 +28,8 @@ class ComponentDispatcher final : public sat::ExternalPropagator {
   // report_conflict returns true when no further component work is permitted.
   explicit ComponentDispatcher(std::span<theory::TheoryComponent* const> components,
                                std::function<void(sat::Lit)> publish_phase = {},
-                               std::function<bool()> report_conflict = {});
+                               std::function<bool()> report_conflict = {},
+                               bool forgettable_clauses = true);
   void register_atoms(std::size_t component, std::span<const theory::ComponentAtom> atoms);
   void bind_assignment_view(sat::TrailView view) override;
   void notify_backtrack_delta(std::size_t level, const std::vector<int>& removed) override;
@@ -73,6 +74,7 @@ class ComponentDispatcher final : public sat::ExternalPropagator {
   ComponentDispatchStatistics statistics_;
   std::function<void(sat::Lit)> publish_phase_;
   std::function<bool()> report_conflict_;
+  bool forgettable_clauses_;
 };
 
 }  // namespace primo::smt

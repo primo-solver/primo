@@ -22,6 +22,8 @@ struct CombinationRecipe {
   std::vector<std::function<std::unique_ptr<theory::TheoryComponent>(bool)>> factories;
   std::vector<std::size_t> online_order;
   bool online = false;
+  // Preserve each recipe's SAT clause-retention policy across dispatcher rebuilds.
+  bool forgettable_clauses = true;
   bool model_guided = true;
   std::size_t decision_budget = 0;
   std::string timing_prefix;

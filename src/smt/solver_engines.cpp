@@ -10052,6 +10052,7 @@ CheckSatOutcome solve_qf_lia_impl(core::TermManager& terms,
   CombinationRecipe recipe;
   recipe.model_guided = false;
   recipe.online = true;
+  recipe.forgettable_clauses = false;
   recipe.online_order = {0};
   recipe.timing_prefix = ":time.qf-lia.";
   bool published_atom_statistics = false;

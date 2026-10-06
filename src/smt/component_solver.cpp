@@ -267,15 +267,26 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
           [&] {
             record_theory_conflict(statistics);
             return terminator.conflict_limit_reached();
-          });
+          },
+          recipe.forgettable_clauses);
       for (std::size_t index = 0; index < online_order.size(); ++index) {
         dispatcher->register_atoms(index, atoms_by_component[online_order[index]]);
         for (const auto phase : online_components[index]->phase_literals()) backend.phase(phase);
       }
       assignment_connection = std::make_unique<AssignmentConnection>(backend, *dispatcher);
-      for (const auto& atoms : atoms_by_component) {
-        for (const auto& atom : atoms)
-          backend.add_observed_var(atom.lit.value < 0 ? -atom.lit.value : atom.lit.value);
+      if (propositional_atoms.empty()) {
+        for (const auto& atoms : atoms_by_component) {
+          for (const auto& atom : atoms)
+            backend.add_observed_var(atom.lit.value < 0 ? -atom.lit.value : atom.lit.value);
+        }
+      } else {
+        // Driver-owned Boolean atoms need the same SAT observation contract as
+        // component atoms. Preserve registry order for the standalone recipe;
+        // dropping these observations changes SAT elimination and search.
+        for (const auto& atom : all) {
+          if (atom.term != core::kInvalidTermId)
+            backend.add_observed_var(atom.lit.value < 0 ? -atom.lit.value : atom.lit.value);
+        }
       }
       statistics.increment(":combination.online-components.rebuilds");
     } else {
