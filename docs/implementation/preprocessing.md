@@ -16,23 +16,43 @@ A **profile** selects which optional passes run and how often they repeat.
 (preprocessing-and-tactics)=
 ## How tactics execute preprocessing
 
-Preprocessing is the first production use of the
-[goal, tactic, and strategy framework](tactics.md). A preprocessing algorithm
-performs a transformation such as substitution. Its **tactic** integrates that
-transformation with a `Goal`: it returns new assertions, preserves or extends
-model-reconstruction records, and records statistics. A **strategy** composes
-these tactics in the required order and controls repetition. A **profile** is
-the selection of passes and limits used to build that strategy.
+The preprocessing pipeline is a strategy built from tactics. To see why both
+concepts are useful, consider one operation: eliminating a variable whose value
+is fixed by an equality.
 
-The distinction matters when reading the implementation:
+Suppose a goal contains the Real assertions $x=y+2$ and $x>5$, and the
+substitution pass accepts $x=y+2$ as a definition of $x$. Replacing $x$ by
+$y+2$ turns the first assertion into $y+2=y+2$, which simplifies to `true`,
+and the second into $y+2>5$. The remaining obligation is therefore $y+2>5$.
+This is the transformation performed by
+{source}`substitute_solved_constants <src/smt/preprocessing.cpp>`: it returns
+rewritten assertions and the substitution $x\mapsto y+2$.
 
-| Layer | Example | Responsibility |
-| --- | --- | --- |
-| Transformation algorithm | `substitute_solved_constants` in {source}`preprocessing.cpp <src/smt/preprocessing.cpp>` | Discover acceptable definitions, substitute them, and return rewritten assertions and substitutions. |
-| Tactic adapter | `solved-constant-substitution` in {source}`preprocessing_tactics.cpp <src/smt/preprocessing_tactics.cpp>` | Invoke the algorithm for a goal, update counters, and attach substitution conversions when a model is requested. |
-| Composite tactic | `preprocessing-round`, built by `make_preprocessing_round` | Run the selected propagation, substitution, and equality phases in their prescribed order. |
-| Strategy construction | `make_preprocessing_strategy` in {source}`preprocessing_strategy.cpp <src/smt/preprocessing_strategy.cpp>` | Place the round under `preprocessing-fixed-point` repetition and surround it with preparation and final normalization. |
-| Session integration | {source}`solver_session.cpp <src/smt/solver_session.cpp>` | Execute preprocessing, handle terminal or interrupted results, and pass surviving goals to solver dispatch. |
+The **tactic** makes that transformation usable within the solver pipeline.
+The `solved-constant-substitution` phase in
+{source}`preprocessing_tactics.cpp <src/smt/preprocessing_tactics.cpp>` calls
+the algorithm, records its statistics, and returns an updated `Goal`. When a
+model is requested, it also attaches the substitution to the goal's
+reconstruction records. A model of the remaining obligation might assign
+$y=4$; reconstruction then assigns $x=6$, so the reported model satisfies
+both original assertions. Passing only the rewritten assertions onward would
+lose the information needed to recover $x$.
+
+The **strategy** determines when this tactic runs relative to other tactics.
+In the repeated simplification loop, `solved-constant-substitution` belongs
+to the `solve-eqs` group inside `preprocessing-round`. Value propagation runs
+before that group, and derivation of unit-equality consequences follows it.
+{source}`make_preprocessing_strategy <src/smt/preprocessing_strategy.cpp>`
+places the round inside a bounded repetition and adds the preparation and
+normalization stages around it. The selected **profile**, together with the
+individual options, determines which optional phases are included and the
+repetition limits.
+
+Thus the algorithm supplies a formula transformation, the tactic carries its
+result and reconstruction information in a goal, and the strategy schedules
+it as part of preprocessing. The [tactic chapter](tactics.md) defines that goal
+contract and the composition operations in detail. The example above isolates
+one substitution step; other passes may simplify its result further.
 
 For the default ground rebuild route, the connection works as follows:
 
