@@ -50,22 +50,27 @@ class PublicationSummaryTests(unittest.TestCase):
                          outcome='PASS', ours_code='0') for index in range(250)]
             rows[0].update(ours='unknown', refs='sat', outcome='UNKNOWN_INVOLVED')
             triage = {'hash': {'route': 'QF_UFLIA', 'reference_answer': 'sat'}}
-            for manifest, exit_code, accepted in (
-                (None, '0', False), ({'other': triage['hash']}, '0', False),
-                (triage, '1', False), (triage, '0', True),
+            for manifest, exit_code, slot, accepted in (
+                (None, '0', 16, False), ({'other': triage['hash']}, '0', 16, False),
+                (triage, '1', 16, False), (triage, '0', 16, True),
+                (triage, None, 16, False),
+                ({'hash': {'route': 'QF_LIA', 'reference_answer': 'sat'}}, None, 8, True),
             ):
                 with self.subTest(manifest=manifest, exit_code=exit_code):
-                    rows[0]['ours_code'] = exit_code
+                    if exit_code is None:
+                        rows[0].pop('ours_code', None)
+                    else:
+                        rows[0]['ours_code'] = exit_code
                     with patch.object(SUMMARY, 'read_csv', return_value=rows), \
                             patch.object(SUMMARY, 'digest', return_value='hash'):
                         if accepted:
-                            result = SUMMARY.summarize_shard(folder, 16, '1234567', manifest)
+                            result = SUMMARY.summarize_shard(folder, slot, '1234567', manifest)
                             self.assertEqual(result['pass'], 249)
                             self.assertEqual(result['resource_incomplete'], 1)
                             self.assertEqual(result['resource_triage'], ['hash'])
                         else:
                             with self.assertRaises(ValueError):
-                                SUMMARY.summarize_shard(folder, 16, '1234567', manifest)
+                                SUMMARY.summarize_shard(folder, slot, '1234567', manifest)
 
 
 if __name__ == '__main__':

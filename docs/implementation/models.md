@@ -47,8 +47,22 @@ There are two adapters, with the same frozen representation and replay rules:
 
 | Route | Construction entry point |
 | --- | --- |
-| Boolean, QF_UF, standalone arithmetic, the dedicated mixed-Real route, and preprocessing-only solutions | {source}`build_typed_model <src/smt/typed_model_builder.cpp#L343-L363>` uses its private `ComponentModelBuilder`. Inputs include active reduced assertions, retained theory assignments, exact numeric values, and conversion records. |
-| General component route used by QF_UFLIA | {source}`assemble_component_model <src/smt/component_model_assembler.cpp#L494-L582>` validates and combines exported fragments, then uses its private `FragmentModelBuilder`. It also accepts authoritative symbol interpretations from components. |
+| Boolean, QF_UF, standalone QF_LRA, the dedicated mixed-Real route, and preprocessing-only solutions | {source}`build_typed_model <src/smt/typed_model_builder.cpp#L343-L363>` uses its private `ComponentModelBuilder`. Inputs include active reduced assertions, retained theory assignments, exact numeric values, and conversion records. |
+| General component route used by QF_LIA and QF_UFLIA | {migrationsource}`assemble_component_model <src/smt/component_model_assembler.cpp#L494-L587>` validates and combines exported fragments, then uses its private `FragmentModelBuilder`. It also accepts authoritative symbol interpretations from components. |
+
+For standalone QF_LIA, {migrationsource}`LiaTheoryComponent
+<src/smt/solver_engines.cpp#L10019-L10029>` exports integer bindings from the
+winning completion tableau. The {migrationsource}`shared driver <src/smt/component_solver.cpp#L477-L497>` adds facts for Boolean constants
+that no component owns, using their final SAT values. An unassigned naming
+SAT variable is completed as false, with literal polarity applied. These facts are passed
+as a separate {migrationsource}`propositional_facts span
+<src/smt/component_model_assembler.hpp#L27-L36>` to `assemble_component_model`, not as
+a component fragment with a synthetic token. The span is consumed during the
+call; only Boolean constants are accepted, and contradictory retained facts
+still raise `ModelError`. They need no EUF solving component. The shared
+assembler still uses its construction closure, completes unconstrained
+declarations, and replays eliminated definitions and model conversions. Model
+assembly is skipped when no model is requested.
 
 Despite its name, `ComponentModelBuilder` is the first adapter above, not the
 general component collection driver. Both builders use a separate,

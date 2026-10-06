@@ -1,7 +1,7 @@
 # Linear integer arithmetic
 
 This theory follows the [shared assignment and explanation contract](theory-interface.md#theories-and-their-shared-contract).
-On the shared integer-combination route, the theory adapter implements
+Both standalone QF_LIA and combined QF_UFLIA use one LIA adapter implementing
 `TheoryComponent`; the integer algorithms described here run behind that
 boundary. The [interface inventory](theory-interface.md#which-interface-is-used)
 explains the adapters and their responsibilities.
@@ -64,13 +64,19 @@ integers just because the original input used `Int`.
 (lia-schedule)=
 ## When integer reasoning runs
 
-The pure route, {integersource}`solve_qf_lia_impl
-<src/smt/solver_engines.cpp#L8422-L8578>`, clausifies the input and uses the
-ordinary arithmetic propagator during SAT search. Once a complete Boolean
-candidate has passed rational consistency, it copies the tableau and calls
-`complete_integer_assignment` with {integersource}`LiaCompletionLimits
-<src/theory/arithmetic/lia_completion.hpp>` (patch moves, Gomory
-rounds, and branch nodes). This operation runs:
+The standalone {migrationsource}`solve_qf_lia_impl recipe
+<src/smt/solver_engines.cpp#L10043-L10077>` selects one `LiaTheoryComponent`
+and calls {migrationsource}`solve_component_recipe <src/smt/component_solver.cpp#L70-L502>`. Online rational propagation stays enabled
+independently of EUF settings. Model-guided combination is disabled: with only
+one component, there are no shared scopes, interface arrangements, equality
+bridges, or combination fallback. QF_UFLIA selects the same LIA component
+alongside EUF.
+
+At the full-model check boundary, the LIA adapter copies the rationally feasible
+online tableau once, or moves a newly rebuilt rational tableau, into integer
+completion. It passes {integersource}`LiaCompletionLimits
+<src/theory/arithmetic/lia_completion.hpp>` (patch moves, Gomory rounds, and
+branch nodes). Both routes run this pipeline:
 
 | Order | Operation | Result used by the caller |
 | --- | --- | --- |
@@ -85,30 +91,30 @@ variable integral, the final success decision comes through branch-and-bound's
 integrality check, which then needs no branch nodes.
 
 A refuted candidate produces a clause over the original arithmetic atoms.
-The pure route adds it to the SAT backend and searches for another Boolean
+The shared driver adds it to the SAT backend and searches for another Boolean
 candidate. It reports `unsat` for the whole query when that search is exhausted;
 integer infeasibility of one candidate does not by itself refute a formula
 with other Boolean choices.
 
 `QF_UFLIA` calls the same `complete_integer_assignment` operation through
-{integersource}`complete_lia_integer_model
-<src/smt/solver_engines.cpp#L8621-L8642>`. Its
-{integersource}`LIA component adapter <src/smt/solver_engines.cpp#L9663-L9834>`
+{migrationsource}`complete_lia_integer_model
+<src/smt/solver_engines.cpp#L8455-L8476>`. Its
+{migrationsource}`LIA component adapter <src/smt/solver_engines.cpp#L9502-L9645>`
 keeps the winning tableau, exports shared integer values, or returns a learned
 clause/resource-limit result to the general combination driver. Rational
 online propagation and final integer completion have separate responsibilities.
-{adaptersource}`LiaTheoryComponent <src/smt/solver_engines.cpp#L10085-L10215>` owns this adapter and the optional online rational
-execution state. {adaptersource}`ComponentAdapterSupport <src/smt/solver_engines.cpp#L9836-L9942>` owns the assignment view, registered
+{migrationsource}`LiaTheoryComponent <src/smt/solver_engines.cpp#L9900-L10037>` owns this adapter and the optional online rational
+execution state. {migrationsource}`ComponentAdapterSupport <src/smt/solver_engines.cpp#L9651-L9757>` owns the assignment view, registered
 atoms, interface terms, and model-token revision. Atom growth destroys the
 online execution state before changing the preparation it borrows; assignment
 and backtracking invalidate the exported model token.
 
-The recipe passes model-projection policy and {adaptersource}`LiaComponentTiming <src/smt/solver_engines.cpp#L8612-L8616>` explicitly.
+The recipe passes model-projection policy and {migrationsource}`LiaComponentTiming <src/smt/solver_engines.cpp#L8437-L8441>` explicitly.
 The adapter does not read QF_UFLIA combination options to select its behavior.
 The combined recipe retains its check, rational, and integer timer keys; empty
 keys disable timer sampling. Both rebuilt rational checks and completion of an
-online tableau use {adaptersource}`LiaComponentAdapter::translate
-<src/smt/solver_engines.cpp#L9773-L9820>` to replace the retained
+online tableau use {migrationsource}`LiaComponentAdapter::translate
+<src/smt/solver_engines.cpp#L9588-L9635>` to replace the retained
 model and return a consistent, learned-clause, or resource-limit result. If
 requested projection omits a shared Int term, translation returns `Unknown`
 with that diagnostic. Shared
@@ -129,14 +135,14 @@ copies. Limits and stage algorithms are unchanged; in particular, a zero branch
 budget permits an already integral assignment but no branch node.
 
 Both routes use SMT integration's
-{integersource}`integer_conflict_clause <src/smt/solver_engines.cpp#L8395-L8408>` to collect blocking
+{migrationsource}`integer_conflict_clause <src/smt/solver_engines.cpp#L8382-L8396>` to collect blocking
 literals from the asserted arithmetic atoms. It handles an empty coarse clause
 explicitly; otherwise the existing optional generalization checks the accumulated
 explanation against that clause. Individual failed integer branches do not increment the
 aggregate conflict budget; the SMT caller counts the reported theory conflict.
 The {integersource}`patcher's fully_integral statistic
 <src/theory/arithmetic/lia_patching.hpp>` uses its maintained remaining-variable
-count, avoiding another scan. {integersource}`Both routes publish it <src/smt/solver_engines.cpp#L8385-L8393>` when patching is enabled;
+count, avoiding another scan. {migrationsource}`Both routes publish it <src/smt/solver_engines.cpp#L8372-L8380>` when patching is enabled;
 this adds previously missing patch-success accounting to the combined route.
 
 The extraction is an ownership and scheduling refactor of the existing stages,
@@ -584,10 +590,11 @@ by the pure and combined routes:
 | `--no-lia-conflict-generalization` | Absent | Disables the default attempt to replace coarse clauses with accumulated explanations. |
 
 These are finite operational limits, not empirically optimal settings.
-The pure route reports `unknown` with the diagnostic
-`QF_LIA branch-and-bound node limit reached`; the component route reports a
-resource limit to its driver. Neither may turn an unfinished search into
-`unsat`.
+Both routes report typed `ResourceLimit` to the shared driver, producing
+`unknown` with the diagnostic `integer branch-and-bound node limit`. An
+unfinished search must not become `unsat`. Cancellation and the aggregate
+theory-conflict budget remain SMT-driver outcomes, independent of internal
+failed integer branches.
 
 Consider unbounded integers $x,y$ with $2\le4x+4y\le3$. No multiple of four
 lies in that interval, yet the relaxation admits $x+y=1/2$. The normalized
@@ -636,10 +643,13 @@ admission and combined model construction still need design and validation.
 ## Models, regression coverage and retained evidence
 
 An integer result requires every variable in `integer_vars` to have a zero
-infinitesimal part and an integral rational part. The pure route's
-{source}`build_qf_lia_model <src/smt/solver_engines.cpp#L3653-L3669>` uses the
-winning values, restores preprocessing conversions, and completes declared
-Boolean constants even when rewriting removed their last occurrence.
+infinitesimal part and an integral rational part. Both routes export the
+winning values through `LiaTheoryComponent` to
+{migrationsource}`assemble_component_model <src/smt/component_model_assembler.cpp#L494-L587>`.
+The shared assembler restores preprocessing conversions and completes declared
+Boolean constants even when rewriting removed their last occurrence. The driver
+supplies assignments for otherwise unowned Boolean constants that remain in the
+SAT abstraction.
 Combined models must additionally agree with EUF on evaluated function
 arguments and shared values; see [model construction](models.md).
 
@@ -650,7 +660,7 @@ arguments and shared values; see [model construction](models.md).
 | Exclude fractional vertices while retaining legal integer points | {source}`Gomory tests <tests/unit/lia_gomory_cuts_tests.cpp>` |
 | Preserve feasibility and score all affected integer variables | {source}`Patching tests <tests/unit/lia_patching_tests.cpp>` |
 | Keep antecedents of cuts used by later conflicts | {source}`Explanation tests <tests/unit/lia_explanation_tests.cpp>` |
-| Strict polarity, normalization, extensions, model completion and stage controls | {source}`QF_LIA tests <tests/unit/qf_lia_solver_tests.cpp>` |
+| Strict polarity, normalization, extensions, model completion and stage controls | {migrationsource}`QF_LIA tests <tests/unit/qf_lia_solver_tests.cpp>` |
 | Integer completion within equality/model combination | {source}`QF_UFLIA tests <tests/unit/qf_uflia_solver_tests.cpp>` |
 
 Tests of hand-built tableaux exercise algorithm preconditions; whole-solver

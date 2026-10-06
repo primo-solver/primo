@@ -462,8 +462,10 @@ remain confined to model reconciliation.
 loop and theory solver lifecycle. Its
 {source}`ComponentModelCoordinator <src/smt/component_model_coordinator.hpp#L18-L38>`
 works with the validated collection of solvers; their selection and checking
-order come from the recipe. The following sections
-describe its QF_UFLIA use. Quantified UF uses the same driver with a
+order come from the recipe. Standalone QF_LIA also uses this driver with one
+LIA component and no shared scopes or equality arrangements; its full-check
+pipeline is described in the {doc}`LIA chapter <lia>`. The following sections
+describe the QF_UFLIA interaction. Quantified UF uses the same driver with a
 lemma-preparation hook for newly generated instances.
 
 ### Planning ownership and shared scopes

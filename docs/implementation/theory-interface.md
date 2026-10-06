@@ -48,7 +48,7 @@ Several interfaces coexist; they are not interchangeable names for one class.
 | Interface | Current use |
 | --- | --- |
 | {source}`TheoryComponent <src/theory/theory_component.hpp#L90-L140>` | The shared SMT driver uses it for EUF, integer arithmetic, and quantified UF. It covers registration, assignment changes, checking, and optional lemma/model operations. |
-| {source}`TheorySolver <src/theory/theory_solver.hpp#L150-L166>` | An older interface receives an assignment and arrangement together at each check. The EUF/LIA adapters behind QF_UFLIA still use it. In QF_UFLRA, it serves an opt-in experimental generic-coordinator branch. |
+| {source}`TheorySolver <src/theory/theory_solver.hpp#L150-L166>` | An older interface receives an assignment and arrangement together at each check. The EUF/LIA adapters behind the shared integer routes still use it. In QF_UFLRA, it serves an opt-in experimental generic-coordinator branch. |
 | {source}`IncrementalTheorySolver <src/theory/theory_solver.hpp#L184-L194>` | A separate lifecycle interface exercised by a {source}`test implementation <tests/unit/theory_combination_tests.cpp#L125-L190>`. Production solvers implement `TheoryComponent` directly. |
 
 The {source}`experimental Real branch <src/smt/solver_engines.cpp#L11719-L11750>`
@@ -59,8 +59,10 @@ The driver is
 {source}`solve_component_recipe <src/smt/component_solver.hpp#L19-L45>`.
 Its `CombinationRecipe` is the configuration that constructs the theory
 solvers, selects their checking order, and supplies preparation hooks. The
-{source}`integer recipe <src/smt/solver_engines.cpp#L10245-L10278>` supplies
-EUF and LIA; the
+{migrationsource}`combined integer recipe <src/smt/solver_engines.cpp#L10079-L10121>` supplies
+EUF and LIA. The {migrationsource}`standalone QF_LIA recipe
+<src/smt/solver_engines.cpp#L10043-L10077>` supplies only LIA, enables its
+online rational checks, and disables model-guided combination; the
 {source}`quantified-UF recipe <src/smt/quantifiers/quantified_solver.cpp#L134-L151>`
 supplies EUF and quantifier reasoning. These are internal interfaces, not yet
 the [planned public library API](../leads/library-api.md).
@@ -92,6 +94,12 @@ stores registration metadata and reads that view; it does not maintain a second
 assignment stack. It can materialize a temporary vector for a check that needs
 a complete assignment. SAT auxiliary variables used only for Boolean structure
 are not routed to theory solvers. The dispatcher routes registered theory atoms.
+The {migrationsource}`driver <src/smt/component_solver.cpp#L89-L109>` also owns a Boolean constant when no component claims it. Such
+constants are excluded from the theory combination plan and component
+registration, and their final SAT values are preserved as model facts. A
+Boolean constant claimed by EUF remains with EUF, including Boolean function
+arguments. Predicates and other genuine theory atoms still require an owner.
+The same rule applies when new atoms arrive at the detached growth boundary.
 
 Input spans and the trail view are borrowed. Implementations must not retain
 an input span after its call; they copy any registration data they need.

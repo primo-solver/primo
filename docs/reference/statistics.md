@@ -43,6 +43,26 @@ or `--check-model`. The assumptions engine also constructs a model when
 `:time.model.check-and-print-us`. Dolmen replay is a separate process and is
 not included in these internal counters.
 
+## Shared integer route instrumentation
+
+The {migrationsource}`QF_LIA recipe <src/smt/solver_engines.cpp#L10043-L10077>`
+retains the historical `:solver.qf-lra` route key and its prepared
+tableau shape counters. `:lra.theory-checks` counts its full arithmetic checks, while
+`:lra.theory-conflicts` counts refutations returned at that boundary. Online
+rational work keeps its existing arithmetic counters. Internal failed integer
+branches do not increment the aggregate `:theory.conflicts` budget counter.
+The shared driver counts each reported conflict once, including an empty
+blocking clause.
+
+Both integer recipes publish `:lia.patch-rounds-fully-integral` from the
+patcher's existing remaining-fractional count when patching is enabled. The
+shared-driver migration adds `:combination.*` diagnostics and
+`:time.qf-lia.*` driver timers to standalone QF_LIA; the historical
+`:euf.theory-conflicts` diagnostic may now include its driver-level learned
+clauses. QF_UFLIA's `:time.qf-uflia.*` timers remain attached to its recipe and
+are not emitted by standalone QF_LIA. Scheduling and diagnostic search counts
+need not match the old standalone loop even when results and limits agree.
+
 ## Session counters
 
 The session interpreter reports `:session.queries` (completed queries) and

@@ -31,6 +31,13 @@ first solve. See {source}`Makefile`, {source}`CMakeLists.txt`, and the
 Record `--version` when sharing results: it identifies the revision and build
 configuration. Re-run `make build` after changing the source.
 
+CMake also supports a backend-disabled scaffold (set
+`IPASIR_UP_INCLUDE_DIR=OFF` and `CADICAL_LIBRARY=OFF`). It compiles the
+non-backend infrastructure but supplies no SAT solver. Both
+{migrationsource}`integer solving <src/smt/solver_engines.cpp#L10069-L10076>` and
+{migrationsource}`retained solving <src/smt/solver_engines.cpp#L12330-L12351>`
+require an IPASIR backend; this build is not a solving fallback.
+
 ## First solve
 
 This problem is contradictory: equal arguments must give equal results for

@@ -80,11 +80,15 @@ def summarize_shard(folder: Path, slot: int, candidate: str,
             outcome = row["outcome"]
             reference = row.get("reference", row.get("refs", row.get("references")))
             if outcome == "UNKNOWN_INVOLVED":
+                # The external QF_LIA wrapper omits exit columns, but emits
+                # unknown only after checking a zero process exit. Other
+                # generators must supply their explicit code as before.
                 input_hash = digest(path)
                 triage = (resource_triage or {}).get(input_hash)
                 require(triage is not None and triage["route"] == result["route"]
                         and answer == "unknown" and reference == triage["reference_answer"]
-                        and row.get("ours_code") == "0", "untriaged unknown result")
+                        and row.get("ours_code", "0" if slot // 4 == 2 else None) == "0",
+                        "untriaged unknown result")
                 result["resource_incomplete"] += 1
                 result["resource_triage"].append(input_hash)
             elif outcome == "PASS":

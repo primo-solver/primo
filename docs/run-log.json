@@ -10,7 +10,7 @@
       "evidence_status": "in-progress-not-qualified",
       "scope": "Extract shared integer completion, decouple adapters, and migrate standalone QF_LIA to the shared driver without changing arithmetic algorithms or retained sessions.",
       "extraction_snapshot": "8e5e5010441a7f9949bbdf1a81f851bb1ff2f3fd",
-      "snapshot_note": "Accepted extraction milestone: exact source snapshot adopted after release, ASan, focused fuzz/model checks, lint, source/doc review and static scans. Adapter cleanup and driver migration remain unqualified.",
+      "snapshot_note": "Extraction and generic-adapter milestones adopted after their recorded verification. Driver migration snapshot is under qualification; no final correctness or performance acceptance is claimed.",
       "jobs": {
         "baseline_setup_cancelled": "172175",
         "baseline_build": "172177",
@@ -109,7 +109,7 @@
         "qualification_scripts_local": "scripts/qualification/integer_unification",
         "collected_evidence_local": "tmp/integer-unification/evidence (including extraction-fuzz-final-summary.json and integer-extraction-checks-172200/)"
       },
-      "remaining": "Adapter cleanup, standalone-driver migration, final eight-route gate and real-seed mutations, preservation suites, backend-disabled scaffold, full paired timings and all successful candidate SAT model replays, regression reruns if needed, final documentation/source links, verified commits.",
+      "remaining": "Driver migration qualification, fresh eight-route gate and real-seed mutations, preservation suites, backend-disabled full scaffold build, full paired timings and every successful candidate SAT model replay, lost-solve reruns if needed, final evidence/documentation links and verified commits.",
       "preceding_extraction_snapshot": "b86126f2d916ab2c638aad26412758bbfa5dbed4",
       "baseline_binary_sha256": "4f5b5e403e0b92fa6543d2afb1bd6608df50f64e6bf6fc7ebc98758a9fc52ce4",
       "baseline_corpora": {
@@ -174,6 +174,371 @@
           "review": "No blocking source/lifetime/extra-copy issue found in adapter diff. Projection/timer policy passed by recipes; result translation shared without changing scheduling."
         },
         "scaffold_pending": "Local -DPRIMO_HAVE_IPASIR=0 syntax check fails on both baseline8ca8ebe and adapter snapshot with unguarded existing online-helper references. Repair and full SLURM scaffold build remain required for final migration."
+      },
+      "driver_migration": {
+        "snapshot": "cfc4136dd92f7db7928d7d76b10f5d1050bc9b96",
+        "status": "implementation-committed-correctness-gates-audited-performance-pending",
+        "superseded_snapshot": "35f865347f5b0652004479e40b8237d08753afbe",
+        "superseded_build_job": "172228",
+        "superseded_note": "Built successfully; source review caught missing component token in proposed driver fact fragment before tests. Replaced it with an explicit propositional_facts assembler input and added a regression. No correctness claim from superseded snapshot.",
+        "implementation": "One-LIA online recipe; standalone loop and model builder removed; no guided combination or shared scopes. Driver owns otherwise unowned Boolean constants. Shared assembler accepts separately validated propositional facts. Existing backend-disabled guard errors repaired; full scaffold qualification passed in172378.",
+        "local_checks": "make lint passed after import/executable-mode cleanup; make docs-check-links passed: 260 pages, 32224 local links, 1027 Git links, zero failures. Rendered LIA scheduling chapter and shared model section inspected. Ownership/efficiency review fixed initial assembler-token mismatch; no added integer-stage scans or tableau copies. Whole-tree architectural include scan found no reverse SMT/parser dependencies in SAT/theory.",
+        "docs_review": {
+          "reviewer": "lia_doc_review",
+          "scope": "lia/models/theory-interface/statistics/getting-started and source-role config changes sinceef1b34b",
+          "resolved": [
+            "LIA-MIG-01",
+            "LIA-MIG-02",
+            "stale standalone model-builder paragraph at LIA models/evidence section"
+          ],
+          "verdict": "accepted source docs against cfc4136 including final LIA model paragraph; expanded runtime evidence independently reviewed separately",
+          "evidence_verdict": "accepted first-entry evidence by lia_doc_review against blob8a670b1590d9ee0f90c58042b1742fb288e77d45; current scaffold/model statuses, explicit error categories and separated validator limitation verified. Later metadata addition records successful identical audit172612. Raw individual model/UF triage files not independently rerun by reviewer."
+        },
+        "previous_checks": {
+          "snapshot": "478b18b5f9a7b5642292446a5f8ac0b56643075f",
+          "build_job": "172291",
+          "checks_job": "172294",
+          "release": "44/44 passed",
+          "python": "233 passed",
+          "asan": "44/44 passed",
+          "scaffold": "failed: assigned_atoms shadow and two backend-only unused functions under warnings-as-errors",
+          "repair": "Guard bound_entails and is_euf_component_atom for IPASIR; use existing assignment vector in backend-disabled QF_LRA model assembly. Subsequently verified by build172362 and checks172378.",
+          "artifacts": "tmp/integer-unification/evidence/integer-migration-checks-172294"
+        },
+        "build_job": "172362",
+        "build_status": "passed",
+        "checks_job": "172378",
+        "static_job": "172379",
+        "eight_route_job": "172380",
+        "integer_mutations_job": "172381",
+        "shared_preservation_gate_job": "172382",
+        "checks_status": "passed: release44, Python233, ASan44, backend-disabled full build and three backend-independent tests",
+        "seed_base": 203610460,
+        "binary_sha256": "231217363ee13a31976f8aa4c5e4fce982538c2737775c69810d2b72ced9299c",
+        "checks_artifact": "results/integer-migration-checks-172378",
+        "static": {
+          "job": "172379",
+          "translation_units": 128,
+          "configured_tidy": "completed; existing tactic.cpp shared_ptr and external CLI11 leak advisories; deliberate out-of-range enum test diagnostics",
+          "include_cleaner": "advisory completed; remaining unused-header suggestions are paired self-includes, retained. Direct-provider advisories remain across the tree; no new unused includes in migration.",
+          "artifact": "tmp/integer-unification/evidence/integer-migration-static-172379"
+        },
+        "eight_route": {
+          "job": "172380",
+          "routes": {
+            "QF_UF": {
+              "cases": 1000,
+              "pass": 1000,
+              "timeout": 0,
+              "sat_models": 601,
+              "queries": 0,
+              "resource_incomplete": 0,
+              "reference_timeout": 0,
+              "distinct_inputs": 998
+            },
+            "QF_LRA": {
+              "cases": 1000,
+              "pass": 1000,
+              "timeout": 0,
+              "sat_models": 1000,
+              "queries": 0,
+              "resource_incomplete": 0,
+              "reference_timeout": 0,
+              "distinct_inputs": 261
+            },
+            "QF_LIA": {
+              "cases": 1000,
+              "pass": 977,
+              "timeout": 22,
+              "sat_models": 865,
+              "queries": 0,
+              "resource_incomplete": 1,
+              "reference_timeout": 3,
+              "distinct_inputs": 1000
+            },
+            "QF_UFLRA": {
+              "cases": 1000,
+              "pass": 1000,
+              "timeout": 0,
+              "sat_models": 589,
+              "queries": 0,
+              "resource_incomplete": 0,
+              "reference_timeout": 0,
+              "distinct_inputs": 997
+            },
+            "QF_UFLIA": {
+              "cases": 1000,
+              "pass": 1000,
+              "timeout": 0,
+              "sat_models": 501,
+              "queries": 0,
+              "resource_incomplete": 0,
+              "reference_timeout": 0,
+              "distinct_inputs": 672
+            },
+            "UF": {
+              "cases": 1000,
+              "pass": 1000,
+              "timeout": 0,
+              "sat_models": 0,
+              "queries": 0,
+              "resource_incomplete": 0,
+              "reference_timeout": 0,
+              "distinct_inputs": 567
+            },
+            "incremental_QF_UF": {
+              "cases": 1000,
+              "pass": 1000,
+              "timeout": 0,
+              "sat_models": 6214,
+              "queries": 9000,
+              "resource_incomplete": 0,
+              "reference_timeout": 0,
+              "distinct_inputs": 768
+            },
+            "incremental_QF_LRA": {
+              "cases": 1000,
+              "pass": 1000,
+              "timeout": 0,
+              "sat_models": 8000,
+              "queries": 11000,
+              "resource_incomplete": 0,
+              "reference_timeout": 0,
+              "distinct_inputs": 1000
+            }
+          },
+          "total": 8000,
+          "pass": 7977,
+          "timeout": 22,
+          "resource_incomplete": 1,
+          "sat_models": 17770,
+          "wrong_answer": 0,
+          "crash": 0,
+          "invalid_model": 0,
+          "untriaged_reference_disagreement": 0,
+          "seed_base": 203610460,
+          "resource_replay_job": "172586",
+          "summary": "results/integer-migration-qualified.json",
+          "artifact": "results/public-launch/172380",
+          "budget_replay": {
+            "inputs_or_sessions": 800,
+            "queries": 2600,
+            "outcomes": {
+              "resource-exhausted": 455,
+              "pass": 345
+            }
+          },
+          "parser_type_error": 0,
+          "unsupported": 0
+        },
+        "mutations": {
+          "job": "172381",
+          "summary": [
+            {
+              "seed": {
+                "count": 5,
+                "outcomes": {
+                  "PASS": 5
+                },
+                "answers": {
+                  "unsat": 3,
+                  "sat": 2
+                },
+                "sat_models": 2,
+                "distinct_inputs": 5,
+                "resource_triage": [],
+                "input_manifest_sha256": "1723ca9131b41d2e2f4f6fe874be9eaf05bda253197ea63c0ebde43212f89592"
+              },
+              "mutant": {
+                "count": 100,
+                "outcomes": {
+                  "PASS": 89,
+                  "INCOMPLETE": 11
+                },
+                "answers": {
+                  "sat": 70,
+                  "unknown": 5,
+                  "timeout": 5,
+                  "unsat": 20
+                },
+                "sat_models": 70,
+                "distinct_inputs": 100,
+                "resource_triage": [
+                  "84b47d85f5e5d6d583ce18c25e0c82828031c2b79914622633372efaf1a19479",
+                  "779897f08d02c7d6f987e5f5905a07606e425a8ac264576841ce8bc65d96f850",
+                  "2887d405a9246d926e91360d36c4f1070db0eb095338cd9fd65886dfebbb470b",
+                  "338e0c9b37d8cff3ccdff2cf3364a8987387a5f85b3352b1ebdc1cf41ba39509",
+                  "ede795510836a112ee4722b60f480b88fe204523dd8c6f6ca3174276a4dc2b1e"
+                ],
+                "input_manifest_sha256": "27bbef546aef5fecd1a271683f5c7eca785b374a0922bf84eb685e163085887d"
+              }
+            },
+            {
+              "seed": {
+                "count": 5,
+                "outcomes": {
+                  "PASS": 5
+                },
+                "answers": {
+                  "unsat": 2,
+                  "sat": 3
+                },
+                "sat_models": 3,
+                "distinct_inputs": 5,
+                "resource_triage": [],
+                "input_manifest_sha256": "ed07e2f277c70b6df75a682e14fe09bb0d73f5e9b96dc80b3576e1bd1a2ce4c4"
+              },
+              "mutant": {
+                "count": 100,
+                "outcomes": {
+                  "PASS": 100
+                },
+                "answers": {
+                  "sat": 88,
+                  "unsat": 12
+                },
+                "sat_models": 88,
+                "distinct_inputs": 99,
+                "resource_triage": [],
+                "input_manifest_sha256": "2190b5e59ac467a4a714b495f9a9c555c305c612c09820dcf1fe29c81785f295"
+              }
+            }
+          ],
+          "unknown_replay_job": "172598",
+          "extra_sat_model_job": "172599",
+          "extra_sat_note": "One successful candidate SAT with reference timeout was omitted by PASS-only selector; separately replayed and accepted by Dolmen. All 158 mutant SAT models plus five seed SAT models validated.",
+          "resource_note": "Five candidate timeouts, one reference timeout, five candidate branch-limit unknowns. All unknowns replayed with zero exit and branch-limit diagnostics on frozen baseline and candidate. Incomplete cases remain separate from passes.",
+          "artifact": "results/integer-mutations/172381"
+        },
+        "shared_preservation": {
+          "job": "172382",
+          "status": "answer gate complete with resource outcomes; raw UF TypeFuzz failures independently triaged",
+          "uf_triage_job": "172584",
+          "uf_triage_counts": {
+            "input_rejected_by_dolmen": 1615,
+            "solver_unknown": 175,
+            "solver_timeout": 27,
+            "answer_pass": 82,
+            "answer_confirmed_cvc5": 1,
+            "unresolved": 0
+          },
+          "invalid_input_note": "All rejected inputs exited Dolmen with code4 and unbound/type diagnostics; they are generator-invalid coverage, never solver passes.",
+          "extra_ground_models_job": "172600",
+          "lra_validator_triage_job": "172606",
+          "model_status": "complete with validator limitation: 4049 direct Dolmen passes, 518 same-input/same-model passes with validator forced to QF_NRA for constant-denominator syntax. Raw task172600_2 failed direct input-logic validation; triage172606 resolves model correctness without relabeling those as direct QF_LRA passes.",
+          "artifact": "results/integer-shared-gate-cfc4136",
+          "model_summary": {
+            "task-0": {
+              "count": 920,
+              "outcomes": {
+                "pass": 920
+              }
+            },
+            "task-1": {
+              "count": 917,
+              "outcomes": {
+                "pass": 917
+              }
+            },
+            "task-2": {
+              "count": 864,
+              "outcomes": {
+                "pass": 346,
+                "input-nonconforming": 518
+              }
+            },
+            "task-3": {
+              "count": 862,
+              "outcomes": {
+                "pass": 862
+              }
+            },
+            "task-6": {
+              "count": 509,
+              "outcomes": {
+                "pass": 509
+              }
+            },
+            "task-7": {
+              "count": 495,
+              "outcomes": {
+                "pass": 495
+              }
+            },
+            "lra_triage": {
+              "counts": {
+                "model-pass-with-wider-logic": 518
+              },
+              "note": "Same saved assertions and model; validator forced to QF_NRA for constant-denominator syntax. These are not direct passes under the input logic."
+            }
+          }
+        },
+        "audit": {
+          "script": "scripts/qualification/integer_unification/summarize.py",
+          "command": [
+            "scripts/qualification/integer_unification/summarize.py",
+            "--gate",
+            "results/public-launch/172380",
+            "--mutations",
+            "results/integer-mutations/172381",
+            "--candidate",
+            "cfc4136dd92f7db7928d7d76b10f5d1050bc9b96",
+            "--baseline",
+            "8ca8ebe8db75966fc8aefdd928a0878e648e7f10",
+            "--resource-triage",
+            "results/integer-resource-replay-172586/summary.json",
+            "--resource-triage",
+            "results/integer-mutation-resource-replay-172598/summary.json",
+            "--extra-models",
+            "results/integer-extra-sat-models/summary.csv",
+            "--out",
+            "results/integer-migration-qualified.json"
+          ],
+          "original_script_sha256": "fdf6f88693c7ede472575608d7cf9a401d45699a79e5e37038ece4be5ef13ed7",
+          "summary_schema_fix": "External FuzzSMT omits exit-code columns but only classifies unknown after zero exit. Permit missing column for this QF_LIA route only, retaining mandatory hash-bound replay triage. Explicit nonzero and other missing-code routes remain rejected.",
+          "regression_job": "172588",
+          "regression_result": "2 tests passed, including new legacy-schema cases",
+          "final_script_sha256": "c1349d33558004a89212ee58ca5223219c36c03a7177b25c89682fd597e75398",
+          "final_summary": "results/integer-migration-qualified-final.json",
+          "final_command": [
+            "scripts/qualification/integer_unification/summarize.py",
+            "--gate",
+            "results/public-launch/172380",
+            "--mutations",
+            "results/integer-mutations/172381",
+            "--candidate",
+            "cfc4136dd92f7db7928d7d76b10f5d1050bc9b96",
+            "--baseline",
+            "8ca8ebe8db75966fc8aefdd928a0878e648e7f10",
+            "--resource-triage",
+            "results/integer-resource-replay-172586/summary.json",
+            "--resource-triage",
+            "results/integer-mutation-resource-replay-172598/summary.json",
+            "--extra-models",
+            "results/integer-extra-sat-models/summary.csv",
+            "--out",
+            "results/integer-migration-qualified-final.json"
+          ],
+          "slurm_job": "172612",
+          "slurm_summary": "results/integer-migration-qualified-slurm.json",
+          "slurm_status": "completed0:0; same audited coverage"
+        },
+        "remaining": "Full paired QF_LIA/QF_UFLIA and five-logic preservation timing, every successful candidate SAT replay, reference joins, three paired reruns of every lost solve, final PAR2 acceptance and final evidence commit.",
+        "commands": {
+          "build": "python3 scripts/slurm_prepare_benchmark_workspace.py --local-dir /tmp/primo-integer-extraction --build-via-slurm --remote-dir primo-integer-unification-extraction --reuse-dependencies --cmake <existing-cmake> --cxx-header-manifest <matching-header-manifest> --extra-target all --jobs 4",
+          "checks": "PRIMO_EXPECTED_REVISION=cfc4136 sbatch scripts/qualification/integer_unification/migration_checks.sbatch",
+          "static": "sbatch scripts/qualification/public_static.sbatch",
+          "eight_route": "PRIMO_EXPECTED_REVISION=cfc4136 PRIMO_SEED_BASE=203610460 PRIMO_BUDGET_REPLAY=1 sbatch --dependency=afterok:172378 --array=0-31%16 scripts/qualification/public_launch.sbatch",
+          "mutations": "PRIMO_EXPECTED_REVISION=cfc4136 PRIMO_SEED_BASE=203610460 sbatch --dependency=afterok:172378 scripts/qualification/integer_unification/mutations.sbatch",
+          "shared": "PRIMO_EXPECTED_GIT=cfc4136 sbatch --dependency=afterok:172378 --array=0-17%8 scripts/slurm_shared_assignment_gate.sbatch",
+          "shared_models": "PRIMO_EXPECTED_REVISION=cfc4136 sbatch scripts/qualification/integer_unification/shared_models.sbatch",
+          "uf_triage": "sbatch --dependency=afterany:172382 --array=10-16%7 scripts/qualification/shared_assignment/uf-triage.sbatch",
+          "lra_validator_triage": "sbatch --dependency=afterany:172600 results/primo-integer-shared-lra-triage.sbatch",
+          "resource_replays": [
+            "sbatch results/primo-integer-resource-replay.sbatch",
+            "sbatch results/primo-integer-mutation-resource-replay.sbatch"
+          ]
+        }
       }
     },
     {
