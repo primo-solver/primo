@@ -384,10 +384,12 @@ util::Statistics::Value elapsed_microseconds(PhaseClock::time_point start,
 class ScopedStatisticsTimer {
  public:
   ScopedStatisticsTimer(util::Statistics& statistics, std::string_view key)
-      : statistics_(statistics), key_(key), start_(PhaseClock::now()) {}
+      : statistics_(statistics),
+        key_(key),
+        start_(key.empty() ? PhaseClock::time_point{} : PhaseClock::now()) {}
 
   ~ScopedStatisticsTimer() {
-    statistics_.increment(key_, elapsed_microseconds(start_, PhaseClock::now()));
+    if (!key_.empty()) statistics_.increment(key_, elapsed_microseconds(start_, PhaseClock::now()));
   }
 
   ScopedStatisticsTimer(const ScopedStatisticsTimer&) = delete;
@@ -8597,7 +8599,7 @@ CheckSatOutcome solve_qf_lia_engine_impl(core::TermManager& terms,
   return outcome;
 }
 
-bool is_uflia_euf_atom(const core::TermManager& terms, core::TermId term_id) {
+bool is_euf_component_atom(const core::TermManager& terms, core::TermId term_id) {
   const core::Term& term = terms.get(term_id);
   if (term.kind == core::TermKind::Equality) {
     return true;
@@ -8605,6 +8607,13 @@ bool is_uflia_euf_atom(const core::TermManager& terms, core::TermId term_id) {
   return (term.kind == core::TermKind::Application || term.kind == core::TermKind::Constant) &&
          term.sort == terms.symbols().bool_sort();
 }
+
+// Recipes own instrumentation policy. Empty keys disable timers entirely.
+struct LiaComponentTiming {
+  std::string_view check;
+  std::string_view rational;
+  std::string_view integer;
+};
 
 struct LiaComponentCheck {
   enum class Status {
@@ -8622,8 +8631,8 @@ LiaComponentCheck complete_lia_integer_model(
     theory::arithmetic::LraTableau tableau, const PreparedLraTheory& prepared,
     const std::vector<AssignedTheoryAtom>& assigned_atoms,
     const std::vector<theory::arithmetic::LraVarId>& integer_vars, const CheckSatOptions& options,
-    util::Statistics& statistics) {
-  ScopedStatisticsTimer integer_timer(statistics, ":time.qf-uflia.lia-integer-us");
+    util::Statistics& statistics, const LiaComponentTiming& timing) {
+  ScopedStatisticsTimer integer_timer(statistics, timing.integer);
   const auto completion = theory::arithmetic::complete_integer_assignment(
       tableau, integer_vars,
       {options.lia_patch_limit, options.lia_gomory_cut_limit, options.lia_branch_limit});
@@ -8644,11 +8653,11 @@ LiaComponentCheck complete_lia_integer_model(
 LiaComponentCheck check_lia_component_assignment(
     const PreparedLraTheory& prepared, const std::vector<AssignedTheoryAtom>& assigned_atoms,
     const std::vector<theory::arithmetic::LraVarId>& integer_vars, const CheckSatOptions& options,
-    util::Statistics& statistics) {
-  ScopedStatisticsTimer total_timer(statistics, ":time.qf-uflia.lia-check-us");
+    util::Statistics& statistics, const LiaComponentTiming& timing) {
+  ScopedStatisticsTimer total_timer(statistics, timing.check);
   theory::arithmetic::LraTableau tableau = prepared.base_tableau;
   {
-    ScopedStatisticsTimer rational_timer(statistics, ":time.qf-uflia.lia-rational-us");
+    ScopedStatisticsTimer rational_timer(statistics, timing.rational);
     for (std::size_t i = 0; i < assigned_atoms.size(); ++i) {
       const AssignedTheoryAtom& atom = assigned_atoms[i];
       const PreparedLraTheory::PreparedAtom& prepared_atom = prepared.atoms[i];
@@ -8671,7 +8680,7 @@ LiaComponentCheck check_lia_component_assignment(
     }
   }
   return complete_lia_integer_model(std::move(tableau), prepared, assigned_atoms, integer_vars,
-                                    options, statistics);
+                                    options, statistics, timing);
 }
 
 // See project_lra_shared_model: the revision must advance across a mutation,
@@ -9537,7 +9546,8 @@ class EufComponentAdapter final : public theory::TheorySolver {
                       core::TermId false_term, core::SortId shared_sort,
                       std::vector<core::TermId> shared_terms, std::uint64_t assignment_epoch,
                       bool produce_model_projection, EufExplainSearchMode explain_search_mode,
-                      bool proof_forest_diagnostics, util::Statistics& statistics)
+                      bool proof_forest_diagnostics, util::Statistics& statistics,
+                      std::string_view check_timer)
       : properties_{.id = "euf",
                     .shared_sorts = {shared_sort},
                     .stably_infinite = theory::StableInfiniteness::Yes,
@@ -9553,7 +9563,8 @@ class EufComponentAdapter final : public theory::TheorySolver {
         shared_terms_(std::move(shared_terms)),
         assignment_epoch_(assignment_epoch),
         produce_model_projection_(produce_model_projection),
-        statistics_(statistics) {}
+        statistics_(statistics),
+        check_timer_(check_timer) {}
 
   const theory::TheoryProperties& properties() const override { return properties_; }
 
@@ -9578,7 +9589,7 @@ class EufComponentAdapter final : public theory::TheorySolver {
 
   theory::TheoryCheckResult check(std::span<const theory::AssignedTheoryLiteral> assignment,
                                   std::span<const theory::InterfaceRelation> arrangement) override {
-    ScopedStatisticsTimer timer(statistics_, ":time.qf-uflia.euf-check-us");
+    ScopedStatisticsTimer timer(statistics_, check_timer_);
     static_cast<void>(arrangement);
     if (assignment.size() != atoms_.size()) {
       throw std::logic_error("EUF component assignment size mismatch");
@@ -9656,6 +9667,7 @@ class EufComponentAdapter final : public theory::TheorySolver {
   std::uint64_t assignment_epoch_ = 0;
   bool produce_model_projection_ = false;
   util::Statistics& statistics_;
+  std::string_view check_timer_;
   std::optional<theory::TheoryModelToken> last_care_token_;
   std::vector<theory::InterfacePair> last_care_pairs_;
 };
@@ -9666,7 +9678,7 @@ class LiaComponentAdapter final : public theory::TheorySolver {
                       std::vector<BooleanClausifier::TheoryAtom> atoms, core::SortId shared_sort,
                       std::vector<core::TermId> shared_terms, std::uint64_t assignment_epoch,
                       bool produce_model_projection, const CheckSatOptions& options,
-                      util::Statistics& statistics)
+                      util::Statistics& statistics, LiaComponentTiming timing)
       : properties_{.id = "lia",
                     .shared_sorts = {shared_sort},
                     .stably_infinite = theory::StableInfiniteness::Yes,
@@ -9685,7 +9697,8 @@ class LiaComponentAdapter final : public theory::TheorySolver {
                   /*collect_model_variables=*/true, options.lra_least_violated_leaving,
                   lra_tuning_from_options(options.lra_tuning)),
         options_(options),
-        statistics_(statistics) {
+        statistics_(statistics),
+        timing_(timing) {
     integer_vars_.reserve(prepared_.variables_by_term.size());
     for (const auto& [term, variable] : prepared_.variables_by_term) {
       if (terms_.get(term).sort == terms_.symbols().int_sort()) {
@@ -9730,8 +9743,34 @@ class LiaComponentAdapter final : public theory::TheorySolver {
       assigned.push_back(
           assigned_theory_atom(PureTheoryFilterMode::Off, atoms_[index], assignment[index].value));
     }
-    LiaComponentCheck result =
-        check_lia_component_assignment(prepared_, assigned, integer_vars_, options_, statistics_);
+    LiaComponentCheck result = check_lia_component_assignment(prepared_, assigned, integer_vars_,
+                                                              options_, statistics_, timing_);
+    return translate(std::move(result));
+  }
+
+  const PreparedLraTheory& prepared() const { return prepared_; }
+  const theory::arithmetic::LraTableau& model() const { return last_model_.value(); }
+
+  theory::TheoryCheckResult complete_integer_model(
+      std::span<const theory::AssignedTheoryLiteral> assignment,
+      const theory::arithmetic::LraTableau& rational_model) {
+    ScopedStatisticsTimer timer(statistics_, timing_.check);
+    if (assignment.size() != atoms_.size()) {
+      throw std::logic_error("LIA component assignment size mismatch");
+    }
+    std::vector<AssignedTheoryAtom> assigned;
+    assigned.reserve(assignment.size());
+    for (std::size_t index = 0; index < assignment.size(); ++index) {
+      assigned.push_back(
+          assigned_theory_atom(PureTheoryFilterMode::Off, atoms_[index], assignment[index].value));
+    }
+    LiaComponentCheck result = complete_lia_integer_model(
+        rational_model, prepared_, assigned, integer_vars_, options_, statistics_, timing_);
+    return translate(std::move(result));
+  }
+
+ private:
+  theory::TheoryCheckResult translate(LiaComponentCheck result) {
     last_model_ = std::move(result.model);
     switch (result.status) {
       case LiaComponentCheck::Status::Sat:
@@ -9775,49 +9814,6 @@ class LiaComponentAdapter final : public theory::TheorySolver {
     throw std::logic_error("unreachable LIA component status");
   }
 
-  const PreparedLraTheory& prepared() const { return prepared_; }
-  const theory::arithmetic::LraTableau& model() const { return last_model_.value(); }
-
-  theory::TheoryCheckResult complete_integer_model(
-      std::span<const theory::AssignedTheoryLiteral> assignment,
-      const theory::arithmetic::LraTableau& rational_model) {
-    ScopedStatisticsTimer timer(statistics_, ":time.qf-uflia.lia-check-us");
-    if (assignment.size() != atoms_.size()) {
-      throw std::logic_error("LIA component assignment size mismatch");
-    }
-    std::vector<AssignedTheoryAtom> assigned;
-    assigned.reserve(assignment.size());
-    for (std::size_t index = 0; index < assignment.size(); ++index) {
-      assigned.push_back(
-          assigned_theory_atom(PureTheoryFilterMode::Off, atoms_[index], assignment[index].value));
-    }
-    LiaComponentCheck result = complete_lia_integer_model(rational_model, prepared_, assigned,
-                                                          integer_vars_, options_, statistics_);
-    last_model_ = std::move(result.model);
-    if (result.status == LiaComponentCheck::Status::Sat) {
-      theory::TheoryCheckResult check;
-      check.status = theory::TheoryCheckStatus::Consistent;
-      return check;
-    }
-    if (result.status == LiaComponentCheck::Status::Unsat) {
-      return theory::TheoryCheckResult{.status = theory::TheoryCheckStatus::LearnedClause,
-                                       .clause = std::move(result.conflict),
-                                       .model = {},
-                                       .entailed_lit = {},
-                                       .reasons = {},
-                                       .decision = {},
-                                       .diagnostic = {}};
-    }
-    return theory::TheoryCheckResult{.status = theory::TheoryCheckStatus::ResourceLimit,
-                                     .clause = {},
-                                     .model = {},
-                                     .entailed_lit = {},
-                                     .reasons = {},
-                                     .decision = {},
-                                     .diagnostic = "integer branch-and-bound node limit"};
-  }
-
- private:
   theory::TheoryProperties properties_;
   const core::TermManager& terms_;
   std::vector<BooleanClausifier::TheoryAtom> atoms_;
@@ -9829,18 +9825,23 @@ class LiaComponentAdapter final : public theory::TheorySolver {
   std::vector<theory::arithmetic::LraVarId> integer_vars_;
   CheckSatOptions options_;
   util::Statistics& statistics_;
+  LiaComponentTiming timing_;
   std::optional<theory::arithmetic::LraTableau> last_model_;
 };
 
-// New production adapters own both full-model and online state. Their public
+// Component adapters own both full-model and online state. Their public
 // boundary contains no SAT backend, tableau, or EUF closure. Legacy preparations
 // remain implementation details until the frozen QF_UFLRA migration is allowed.
 #if PRIMO_HAVE_IPASIR
-class UfliaComponentBase : public theory::TheoryComponent {
+class ComponentAdapterSupport : public theory::TheoryComponent {
  public:
-  UfliaComponentBase(core::TermManager& terms, const CheckSatOptions& options,
-                     util::Statistics& statistics, bool online)
-      : terms_(terms), options_(options), statistics_(statistics), online_(online) {}
+  ComponentAdapterSupport(core::TermManager& terms, const CheckSatOptions& options,
+                          util::Statistics& statistics, bool online, bool produce_model_projection)
+      : terms_(terms),
+        options_(options),
+        statistics_(statistics),
+        online_(online),
+        produce_model_projection_(produce_model_projection) {}
 
   void bind_assignment_view(sat::TrailView view) override {
     theory::TheoryComponent::bind_assignment_view(view);
@@ -9851,7 +9852,7 @@ class UfliaComponentBase : public theory::TheoryComponent {
     shared_.clear();
     for (const auto& scope : scopes) {
       if (scope.sort != terms_.symbols().int_sort()) {
-        throw UnsupportedCombination("QF_UFLIA adapter supports shared Int only");
+        throw UnsupportedCombination("theory adapter supports shared Int only");
       }
       shared_ = scope.terms;
     }
@@ -9930,6 +9931,7 @@ class UfliaComponentBase : public theory::TheoryComponent {
   CheckSatOptions options_;
   util::Statistics& statistics_;
   bool online_;
+  bool produce_model_projection_;
   theory::ComponentDescriptor descriptor_;
   theory::ComponentAssignmentView assignment_;
   std::vector<BooleanClausifier::TheoryAtom> atoms_;
@@ -9939,13 +9941,15 @@ class UfliaComponentBase : public theory::TheoryComponent {
   std::uint64_t revision_ = 0;
 };
 
-class UfliaEufComponent final : public UfliaComponentBase {
+class EufTheoryComponent final : public ComponentAdapterSupport {
  public:
-  UfliaEufComponent(core::TermManager& terms, const CheckSatOptions& options,
-                    util::Statistics& statistics, bool online)
-      : UfliaComponentBase(terms, options, statistics, online) {
+  EufTheoryComponent(core::TermManager& terms, const CheckSatOptions& options,
+                     util::Statistics& statistics, bool online, bool produce_model_projection,
+                     std::string_view check_timer)
+      : ComponentAdapterSupport(terms, options, statistics, online, produce_model_projection),
+        check_timer_(check_timer) {
     descriptor_.id = "euf";
-    descriptor_.fragment = "purified QF_UFLIA uninterpreted symbols and equality";
+    descriptor_.fragment = "uninterpreted symbols and equality; shared Int only";
     descriptor_.signature_families = {"uninterpreted-functions"};
     for (const auto& symbol : terms.symbols().symbols()) {
       if (symbol.kind != core::SymbolKind::Constant) {
@@ -9966,10 +9970,10 @@ class UfliaEufComponent final : public UfliaComponentBase {
         .equality_propagation = theory::EqualityPropagationStrength::Opportunistic};
   }
   void bind_assignment_view(sat::TrailView view) override {
-    UfliaComponentBase::bind_assignment_view(view);
+    ComponentAdapterSupport::bind_assignment_view(view);
     if (execution_) execution_->bind_assignment_view(view);
   }
-  bool owns_atom(core::TermId atom) const override { return is_uflia_euf_atom(terms_, atom); }
+  bool owns_atom(core::TermId atom) const override { return is_euf_component_atom(terms_, atom); }
   std::vector<core::TermId> interface_variables(core::TermId atom) const override {
     std::unordered_set<core::TermId> variables;
     collect_constants_of_sort_in_term(terms_, atom, terms_.symbols().int_sort(), variables);
@@ -9987,8 +9991,8 @@ class UfliaEufComponent final : public UfliaComponentBase {
     if (!full_) {
       full_ = std::make_unique<EufComponentAdapter>(
           terms_, atoms_, terms_.mk_bool(true), terms_.mk_bool(false), terms_.symbols().int_sort(),
-          shared_, 0, options_.qf_uflia_model_combination, options_.euf_explain_search,
-          options_.euf_proof_forest_diagnostics, statistics_);
+          shared_, 0, produce_model_projection_, options_.euf_explain_search,
+          options_.euf_proof_forest_diagnostics, statistics_, check_timer_);
       full_->register_interface_extensions();
     } else {
       for (std::size_t index = previous; index < atoms_.size(); ++index) {
@@ -10042,7 +10046,7 @@ class UfliaEufComponent final : public UfliaComponentBase {
       return result;
     }
     if (execution_) execution_->flush_incremental_stats();
-    if (execution_ && !options_.qf_uflia_model_combination) {
+    if (execution_ && !produce_model_projection_) {
       return stamp(partial(*execution_), epoch);
     }
     full_->set_assignment_epoch(epoch);
@@ -10069,6 +10073,7 @@ class UfliaEufComponent final : public UfliaComponentBase {
   }
 
  private:
+  std::string_view check_timer_;
   std::unique_ptr<EufComponentAdapter> full_;
   // OnlineEufPropagator borrows these options and atoms_; both must outlive it.
   // Destroy execution before changing its borrowed preparation or configuration.
@@ -10077,11 +10082,13 @@ class UfliaEufComponent final : public UfliaComponentBase {
   std::vector<theory::InterfacePair> care_;
 };
 
-class UfliaLiaComponent final : public UfliaComponentBase {
+class LiaTheoryComponent final : public ComponentAdapterSupport {
  public:
-  UfliaLiaComponent(core::TermManager& terms, const CheckSatOptions& options,
-                    util::Statistics& statistics, bool online)
-      : UfliaComponentBase(terms, options, statistics, online) {
+  LiaTheoryComponent(core::TermManager& terms, const CheckSatOptions& options,
+                     util::Statistics& statistics, bool online, bool produce_model_projection,
+                     LiaComponentTiming timing)
+      : ComponentAdapterSupport(terms, options, statistics, online, produce_model_projection),
+        timing_(timing) {
     descriptor_.id = "lia";
     descriptor_.fragment = "purified quantifier-free linear integer arithmetic";
     descriptor_.signature_families = {"integer-linear-arithmetic"};
@@ -10097,7 +10104,7 @@ class UfliaLiaComponent final : public UfliaComponentBase {
                                 .equality_propagation = theory::EqualityPropagationStrength::None};
   }
   void bind_assignment_view(sat::TrailView view) override {
-    UfliaComponentBase::bind_assignment_view(view);
+    ComponentAdapterSupport::bind_assignment_view(view);
     if (execution_) execution_->bind_assignment_view(view);
   }
   bool owns_atom(core::TermId atom) const override {
@@ -10126,8 +10133,8 @@ class UfliaLiaComponent final : public UfliaComponentBase {
     append_atoms(atoms);
     if (!full_) {
       full_ = std::make_unique<LiaComponentAdapter>(terms_, atoms_, terms_.symbols().int_sort(),
-                                                    shared_, 0, options_.qf_uflia_model_combination,
-                                                    options_, statistics_);
+                                                    shared_, 0, produce_model_projection_, options_,
+                                                    statistics_, timing_);
       full_->register_interface_extensions();
     } else {
       for (std::size_t index = previous; index < atoms_.size(); ++index)
@@ -10179,7 +10186,7 @@ class UfliaLiaComponent final : public UfliaComponentBase {
       return result;
     }
     full_->set_assignment_epoch(epoch);
-    if (execution_ && !options_.qf_uflia_model_combination) {
+    if (execution_ && !produce_model_projection_) {
       statistics_.increment(":combination.online-components.integer-completions");
       return stamp(
           full_->complete_integer_model(assignment_.full_assignment(), execution_->tableau()),
@@ -10200,6 +10207,7 @@ class UfliaLiaComponent final : public UfliaComponentBase {
   }
 
  private:
+  LiaComponentTiming timing_;
   std::unique_ptr<LiaComponentAdapter> full_;
   std::unique_ptr<ComponentLraExecution> execution_;
   std::vector<sat::Lit> phases_;
@@ -10229,14 +10237,14 @@ CheckSatOutcome solve_qf_uflia_engine_impl(core::TermManager& terms,
   };
   recipe.factories = {
       [&](bool guided) {
-        auto adapted = options;
-        adapted.qf_uflia_model_combination = guided;
-        return std::make_unique<UfliaLiaComponent>(terms, adapted, statistics, online);
+        return std::make_unique<LiaTheoryComponent>(
+            terms, options, statistics, online, guided,
+            LiaComponentTiming{":time.qf-uflia.lia-check-us", ":time.qf-uflia.lia-rational-us",
+                               ":time.qf-uflia.lia-integer-us"});
       },
       [&](bool guided) {
-        auto adapted = options;
-        adapted.qf_uflia_model_combination = guided;
-        return std::make_unique<UfliaEufComponent>(terms, adapted, statistics, online);
+        return std::make_unique<EufTheoryComponent>(terms, options, statistics, online, guided,
+                                                    ":time.qf-uflia.euf-check-us");
       }};
   return solve_component_recipe(terms, assertions, conversions, options, statistics, recipe);
 #else
@@ -12522,7 +12530,9 @@ std::unique_ptr<theory::TheoryComponent> make_uf_euf_component(core::TermManager
                                                                util::Statistics& statistics,
                                                                bool online) {
 #if PRIMO_HAVE_IPASIR
-  return std::make_unique<UfliaEufComponent>(terms, options, statistics, online);
+  return std::make_unique<EufTheoryComponent>(terms, options, statistics, online,
+                                              options.qf_uflia_model_combination,
+                                              ":time.qf-uflia.euf-check-us");
 #else
   static_cast<void>(terms);
   static_cast<void>(options);

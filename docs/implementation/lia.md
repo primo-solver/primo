@@ -97,6 +97,21 @@ with other Boolean choices.
 keeps the winning tableau, exports shared integer values, or returns a learned
 clause/resource-limit result to the general combination driver. Rational
 online propagation and final integer completion have separate responsibilities.
+`LiaTheoryComponent` owns this adapter and the optional online rational
+execution state. `ComponentAdapterSupport` owns the assignment view, registered
+atoms, interface terms, and model-token revision. Atom growth destroys the
+borrowed online execution state before changing its preparation; assignment
+and backtracking invalidate the exported model token.
+
+The recipe passes model-projection policy and `LiaComponentTiming` explicitly.
+The adapter does not read QF_UFLIA combination options to select its behavior.
+The combined recipe retains its check, rational, and integer timer keys; empty
+keys disable timer sampling. Both rebuilt rational checks and completion of an
+online tableau use `LiaComponentAdapter::translate` to replace the retained
+model and return a consistent, learned-clause, or resource-limit result. Shared
+model projection is produced only when the recipe requests it. This naming
+change does not broaden the shared-sort contract: it remains Int-only.
+
 The {ref}`combination chapter <the-component-collection-route>`
 explains the remaining equality arrangements and model-agreement checks.
 
