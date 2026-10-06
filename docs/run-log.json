@@ -1590,7 +1590,7 @@
             "jobs_artifact": "results/integer-losses-batch2-jobs.txt",
             "measurements_artifact": "results/integer-losses-batch2",
             "replay_job": "173394",
-            "replay_status": "99candidate measurement replays held",
+            "replay_status": "Released at offline checkpoint; pending scheduler dependencies on submitted timing jobs. Validation not yet complete.",
             "submission_note": "Initial manifest glob also selected the jobs log and attempted invalid node jobs; SLURM rejected that submission. Remaining node manifests submitted explicitly; no duplicate valid jobs."
           },
           "loss_reruns_batch3": {
@@ -1609,7 +1609,7 @@
             "manifest": "results/integer-losses-batch3-inputs.json",
             "artifact": "results/integer-losses-batch3",
             "model_replay_job": 173565,
-            "model_replay_status": "held until timings finish",
+            "model_replay_status": "Released at offline checkpoint; pending scheduler dependencies on submitted timing jobs. Validation not yet complete.",
             "preflight": "check-only --no-sync --build-via-slurm passed cfc4136"
           }
         },
@@ -1890,7 +1890,7 @@
             "172970",
             "172971"
           ],
-          "probe_model_status": "submitted held until final timing completion"
+          "probe_model_status": "Released at offline checkpoint; pending scheduler dependencies on submitted timing jobs. Validation not yet complete."
         },
         "observation_followup": {
           "snapshot": "25b44cc2204169ff0cc45a771b5ec56895a0511e",
@@ -2161,7 +2161,7 @@
             "173136",
             "173137"
           ],
-          "probe_model_status": "held until headline timing completes; every successful candidate probe SAT measurement will be replayed",
+          "probe_model_status": "Released at offline checkpoint; pending scheduler dependencies on submitted timing jobs. Validation not yet complete.",
           "static": {
             "job": "172991",
             "status": "completed0:0",
@@ -2428,7 +2428,7 @@
               "shared_profiles": "173365",
               "shared_lra_validator_triage": "173366"
             },
-            "replay_status": "submitted held; release after final timings and any lost-solve rerun dependencies are complete",
+            "replay_status": "All28 recorded model jobs released; scheduler dependencies enforce completion of all submitted timings first. Not yet validated.",
             "acceptance": "No loss reproduced in at least two of three further paired runs; aggregate PAR2 ratio <=1.02 in each full affected division; all candidate ground SAT timing rows independently validated.",
             "held_model_job_inventory": {
               "old_full": [
@@ -8291,13 +8291,205 @@
                 "amd-2": "173427"
               },
               "inputs": 10,
-              "status": "running",
+              "status": "All ten inputs completed three paired reruns; no losses in any rerun. Model replay pending.",
               "inputs_artifact": "results/integer-losses-batch1-inputs.json",
               "jobs_artifact": "results/integer-losses-batch1-jobs.txt",
               "measurements_artifact": "results/integer-losses-batch1",
               "resources": "3paired repetitions60s8GiB1CPU,nomultithread;original node pinned",
               "replay_job": "173428",
-              "replay_status": "30candidate measurement replays held"
+              "replay_status": "Released at offline checkpoint; pending scheduler dependencies on submitted timing jobs. Validation not yet complete.",
+              "amd1_summary": {
+                "aggregate": {
+                  "baseline": {
+                    "error": 0,
+                    "par2": 1249.445483,
+                    "rows": 12,
+                    "sat": 0,
+                    "solved": 3,
+                    "timeout": 9,
+                    "unknown": 0,
+                    "unsat": 3,
+                    "unsupported": 0,
+                    "wrong_answer": 0
+                  },
+                  "baseline_common_seconds": 169.445483,
+                  "candidate": {
+                    "error": 0,
+                    "par2": 1250.131797,
+                    "rows": 12,
+                    "sat": 0,
+                    "solved": 3,
+                    "timeout": 9,
+                    "unknown": 0,
+                    "unsat": 3,
+                    "unsupported": 0,
+                    "wrong_answer": 0
+                  },
+                  "candidate_common_seconds": 170.131797,
+                  "common_runtime_ratio": 1.004050352879575,
+                  "common_solved": 3,
+                  "disagreements": [],
+                  "gained": [],
+                  "lost": [],
+                  "par2_ratio": 1.0005492948746768
+                },
+                "expected_unique_inputs": 4,
+                "families": {
+                  "nec-smt": {
+                    "baseline": {
+                      "error": 0,
+                      "par2": 1249.445483,
+                      "rows": 12,
+                      "sat": 0,
+                      "solved": 3,
+                      "timeout": 9,
+                      "unknown": 0,
+                      "unsat": 3,
+                      "unsupported": 0,
+                      "wrong_answer": 0
+                    },
+                    "baseline_common_seconds": 169.445483,
+                    "candidate": {
+                      "error": 0,
+                      "par2": 1250.131797,
+                      "rows": 12,
+                      "sat": 0,
+                      "solved": 3,
+                      "timeout": 9,
+                      "unknown": 0,
+                      "unsat": 3,
+                      "unsupported": 0,
+                      "wrong_answer": 0
+                    },
+                    "candidate_common_seconds": 170.131797,
+                    "common_runtime_ratio": 1.004050352879575,
+                    "common_solved": 3,
+                    "disagreements": [],
+                    "gained": [],
+                    "lost": [],
+                    "par2_ratio": 1.0005492948746768
+                  }
+                },
+                "identities": {
+                  "baseline": [
+                    "4f5b5e403e0b92fa6543d2afb1bd6608df50f64e6bf6fc7ebc98758a9fc52ce4"
+                  ],
+                  "candidate": [
+                    "f3a3904e9cf7628eece6fb4c30f80de9f29eafa4ab89eca5a48afbf9643901a8"
+                  ]
+                },
+                "loss_counts": {},
+                "loss_rerun_status": "no-repeated-loss",
+                "note": "Three complete paired reruns; a loss in at least two blocks acceptance. This verdict covers the repeat-loss criterion only, not the full-corpus timing thresholds, model validation or recorded-reference evidence. Timeout/unknown rows remain explicit in each pair's metrics.",
+                "ratio_limit": 1.01,
+                "repeated_losses": [],
+                "rounds": [
+                  {
+                    "baseline": {
+                      "error": 0,
+                      "par2": 417.743959,
+                      "rows": 4,
+                      "sat": 0,
+                      "solved": 1,
+                      "timeout": 3,
+                      "unknown": 0,
+                      "unsat": 1,
+                      "unsupported": 0,
+                      "wrong_answer": 0
+                    },
+                    "baseline_common_seconds": 57.743959,
+                    "candidate": {
+                      "error": 0,
+                      "par2": 417.084818,
+                      "rows": 4,
+                      "sat": 0,
+                      "solved": 1,
+                      "timeout": 3,
+                      "unknown": 0,
+                      "unsat": 1,
+                      "unsupported": 0,
+                      "wrong_answer": 0
+                    },
+                    "candidate_common_seconds": 57.084818,
+                    "common_runtime_ratio": 0.9885851089635195,
+                    "common_solved": 1,
+                    "disagreements": [],
+                    "gained": [],
+                    "lost": [],
+                    "par2_ratio": 0.9984221411565642
+                  },
+                  {
+                    "baseline": {
+                      "error": 0,
+                      "par2": 414.678704,
+                      "rows": 4,
+                      "sat": 0,
+                      "solved": 1,
+                      "timeout": 3,
+                      "unknown": 0,
+                      "unsat": 1,
+                      "unsupported": 0,
+                      "wrong_answer": 0
+                    },
+                    "baseline_common_seconds": 54.678704,
+                    "candidate": {
+                      "error": 0,
+                      "par2": 413.725804,
+                      "rows": 4,
+                      "sat": 0,
+                      "solved": 1,
+                      "timeout": 3,
+                      "unknown": 0,
+                      "unsat": 1,
+                      "unsupported": 0,
+                      "wrong_answer": 0
+                    },
+                    "candidate_common_seconds": 53.725804,
+                    "common_runtime_ratio": 0.9825727398367012,
+                    "common_solved": 1,
+                    "disagreements": [],
+                    "gained": [],
+                    "lost": [],
+                    "par2_ratio": 0.9977020763525875
+                  },
+                  {
+                    "baseline": {
+                      "error": 0,
+                      "par2": 417.02282,
+                      "rows": 4,
+                      "sat": 0,
+                      "solved": 1,
+                      "timeout": 3,
+                      "unknown": 0,
+                      "unsat": 1,
+                      "unsupported": 0,
+                      "wrong_answer": 0
+                    },
+                    "baseline_common_seconds": 57.02282,
+                    "candidate": {
+                      "error": 0,
+                      "par2": 419.321175,
+                      "rows": 4,
+                      "sat": 0,
+                      "solved": 1,
+                      "timeout": 3,
+                      "unknown": 0,
+                      "unsat": 1,
+                      "unsupported": 0,
+                      "wrong_answer": 0
+                    },
+                    "candidate_common_seconds": 59.321175,
+                    "common_runtime_ratio": 1.0403058810490255,
+                    "common_solved": 1,
+                    "disagreements": [],
+                    "gained": [],
+                    "lost": [],
+                    "par2_ratio": 1.005511341082006
+                  }
+                ],
+                "timeout": 60.0,
+                "timing_status": "pass"
+              }
             },
             "qf_uflia_full": {
               "artifact": "tmp/integer-unification/evidence/paired-25b-QF_UFLIA-summary.json",
@@ -8796,7 +8988,7 @@
               "verdict": "Accurate interim evidence, not final qualification. Preserve measured small-sample UF slowdown and generic >1% flags; do not dismiss as noise. Full LIA, lost-solve reruns, reference checks and candidate SAT-model replay remain required."
             },
             "loss_reruns_batch2": {
-              "status": "submitted; eight additional provisional losses frozen before remaining full timing arms finish",
+              "status": "All eight inputs completed three paired reruns; getoption_group/prp-19-49 lost once, none lost twice. Model replay pending.",
               "jobs": {
                 "amd-1": 173505,
                 "amd-2": 173506,
@@ -8811,11 +9003,791 @@
               "manifest": "results/integer-losses-batch2-inputs.json",
               "artifact": "results/integer-losses-batch2",
               "model_replay_job": 173520,
-              "model_replay_status": "held until timing ends",
+              "model_replay_status": "Released at offline checkpoint; pending scheduler dependencies on submitted timing jobs. Validation not yet complete.",
               "preflight": "check-only --no-sync --build-via-slurm passed25b44cc",
-              "submission_note": "Initial node glob selected amd nodes; dgx-3 submitted separately before freezing model-replay task mapping."
+              "submission_note": "Initial node glob selected amd nodes; dgx-3 submitted separately before freezing model-replay task mapping.",
+              "completed_groups": {
+                "amd-2": {
+                  "aggregate": {
+                    "baseline": {
+                      "error": 0,
+                      "par2": 323.420897,
+                      "rows": 6,
+                      "sat": 3,
+                      "solved": 6,
+                      "timeout": 0,
+                      "unknown": 0,
+                      "unsat": 3,
+                      "unsupported": 0,
+                      "wrong_answer": 0
+                    },
+                    "baseline_common_seconds": 323.420897,
+                    "candidate": {
+                      "error": 0,
+                      "par2": 324.98434399999996,
+                      "rows": 6,
+                      "sat": 3,
+                      "solved": 6,
+                      "timeout": 0,
+                      "unknown": 0,
+                      "unsat": 3,
+                      "unsupported": 0,
+                      "wrong_answer": 0
+                    },
+                    "candidate_common_seconds": 324.98434399999996,
+                    "common_runtime_ratio": 1.0048340939453888,
+                    "common_solved": 6,
+                    "disagreements": [],
+                    "gained": [],
+                    "lost": [],
+                    "par2_ratio": 1.0048340939453888
+                  },
+                  "expected_unique_inputs": 2,
+                  "families": {
+                    "nec-smt": {
+                      "baseline": {
+                        "error": 0,
+                        "par2": 323.420897,
+                        "rows": 6,
+                        "sat": 3,
+                        "solved": 6,
+                        "timeout": 0,
+                        "unknown": 0,
+                        "unsat": 3,
+                        "unsupported": 0,
+                        "wrong_answer": 0
+                      },
+                      "baseline_common_seconds": 323.420897,
+                      "candidate": {
+                        "error": 0,
+                        "par2": 324.98434399999996,
+                        "rows": 6,
+                        "sat": 3,
+                        "solved": 6,
+                        "timeout": 0,
+                        "unknown": 0,
+                        "unsat": 3,
+                        "unsupported": 0,
+                        "wrong_answer": 0
+                      },
+                      "candidate_common_seconds": 324.98434399999996,
+                      "common_runtime_ratio": 1.0048340939453888,
+                      "common_solved": 6,
+                      "disagreements": [],
+                      "gained": [],
+                      "lost": [],
+                      "par2_ratio": 1.0048340939453888
+                    }
+                  },
+                  "identities": {
+                    "baseline": [
+                      "4f5b5e403e0b92fa6543d2afb1bd6608df50f64e6bf6fc7ebc98758a9fc52ce4"
+                    ],
+                    "candidate": [
+                      "f3a3904e9cf7628eece6fb4c30f80de9f29eafa4ab89eca5a48afbf9643901a8"
+                    ]
+                  },
+                  "loss_counts": {},
+                  "loss_rerun_status": "no-repeated-loss",
+                  "note": "Three complete paired reruns; a loss in at least two blocks acceptance. This verdict covers the repeat-loss criterion only, not the full-corpus timing thresholds, model validation or recorded-reference evidence. Timeout/unknown rows remain explicit in each pair's metrics.",
+                  "ratio_limit": 1.01,
+                  "repeated_losses": [],
+                  "rounds": [
+                    {
+                      "baseline": {
+                        "error": 0,
+                        "par2": 110.611046,
+                        "rows": 2,
+                        "sat": 1,
+                        "solved": 2,
+                        "timeout": 0,
+                        "unknown": 0,
+                        "unsat": 1,
+                        "unsupported": 0,
+                        "wrong_answer": 0
+                      },
+                      "baseline_common_seconds": 110.611046,
+                      "candidate": {
+                        "error": 0,
+                        "par2": 112.005295,
+                        "rows": 2,
+                        "sat": 1,
+                        "solved": 2,
+                        "timeout": 0,
+                        "unknown": 0,
+                        "unsat": 1,
+                        "unsupported": 0,
+                        "wrong_answer": 0
+                      },
+                      "candidate_common_seconds": 112.005295,
+                      "common_runtime_ratio": 1.01260497075491,
+                      "common_solved": 2,
+                      "disagreements": [],
+                      "gained": [],
+                      "lost": [],
+                      "par2_ratio": 1.01260497075491
+                    },
+                    {
+                      "baseline": {
+                        "error": 0,
+                        "par2": 109.551998,
+                        "rows": 2,
+                        "sat": 1,
+                        "solved": 2,
+                        "timeout": 0,
+                        "unknown": 0,
+                        "unsat": 1,
+                        "unsupported": 0,
+                        "wrong_answer": 0
+                      },
+                      "baseline_common_seconds": 109.551998,
+                      "candidate": {
+                        "error": 0,
+                        "par2": 109.735863,
+                        "rows": 2,
+                        "sat": 1,
+                        "solved": 2,
+                        "timeout": 0,
+                        "unknown": 0,
+                        "unsat": 1,
+                        "unsupported": 0,
+                        "wrong_answer": 0
+                      },
+                      "candidate_common_seconds": 109.735863,
+                      "common_runtime_ratio": 1.0016783354330059,
+                      "common_solved": 2,
+                      "disagreements": [],
+                      "gained": [],
+                      "lost": [],
+                      "par2_ratio": 1.0016783354330059
+                    },
+                    {
+                      "baseline": {
+                        "error": 0,
+                        "par2": 103.25785300000001,
+                        "rows": 2,
+                        "sat": 1,
+                        "solved": 2,
+                        "timeout": 0,
+                        "unknown": 0,
+                        "unsat": 1,
+                        "unsupported": 0,
+                        "wrong_answer": 0
+                      },
+                      "baseline_common_seconds": 103.25785300000001,
+                      "candidate": {
+                        "error": 0,
+                        "par2": 103.243186,
+                        "rows": 2,
+                        "sat": 1,
+                        "solved": 2,
+                        "timeout": 0,
+                        "unknown": 0,
+                        "unsat": 1,
+                        "unsupported": 0,
+                        "wrong_answer": 0
+                      },
+                      "candidate_common_seconds": 103.243186,
+                      "common_runtime_ratio": 0.9998579575347164,
+                      "common_solved": 2,
+                      "disagreements": [],
+                      "gained": [],
+                      "lost": [],
+                      "par2_ratio": 0.9998579575347164
+                    }
+                  ],
+                  "timeout": 60.0,
+                  "timing_status": "pass"
+                },
+                "dgx-3": {
+                  "aggregate": {
+                    "baseline": {
+                      "error": 0,
+                      "par2": 342.672918,
+                      "rows": 6,
+                      "sat": 3,
+                      "solved": 6,
+                      "timeout": 0,
+                      "unknown": 0,
+                      "unsat": 3,
+                      "unsupported": 0,
+                      "wrong_answer": 0
+                    },
+                    "baseline_common_seconds": 342.672918,
+                    "candidate": {
+                      "error": 0,
+                      "par2": 341.927647,
+                      "rows": 6,
+                      "sat": 3,
+                      "solved": 6,
+                      "timeout": 0,
+                      "unknown": 0,
+                      "unsat": 3,
+                      "unsupported": 0,
+                      "wrong_answer": 0
+                    },
+                    "candidate_common_seconds": 341.927647,
+                    "common_runtime_ratio": 0.9978251243070221,
+                    "common_solved": 6,
+                    "disagreements": [],
+                    "gained": [],
+                    "lost": [],
+                    "par2_ratio": 0.9978251243070221
+                  },
+                  "expected_unique_inputs": 2,
+                  "families": {
+                    "nec-smt": {
+                      "baseline": {
+                        "error": 0,
+                        "par2": 342.672918,
+                        "rows": 6,
+                        "sat": 3,
+                        "solved": 6,
+                        "timeout": 0,
+                        "unknown": 0,
+                        "unsat": 3,
+                        "unsupported": 0,
+                        "wrong_answer": 0
+                      },
+                      "baseline_common_seconds": 342.672918,
+                      "candidate": {
+                        "error": 0,
+                        "par2": 341.927647,
+                        "rows": 6,
+                        "sat": 3,
+                        "solved": 6,
+                        "timeout": 0,
+                        "unknown": 0,
+                        "unsat": 3,
+                        "unsupported": 0,
+                        "wrong_answer": 0
+                      },
+                      "candidate_common_seconds": 341.927647,
+                      "common_runtime_ratio": 0.9978251243070221,
+                      "common_solved": 6,
+                      "disagreements": [],
+                      "gained": [],
+                      "lost": [],
+                      "par2_ratio": 0.9978251243070221
+                    }
+                  },
+                  "identities": {
+                    "baseline": [
+                      "4f5b5e403e0b92fa6543d2afb1bd6608df50f64e6bf6fc7ebc98758a9fc52ce4"
+                    ],
+                    "candidate": [
+                      "f3a3904e9cf7628eece6fb4c30f80de9f29eafa4ab89eca5a48afbf9643901a8"
+                    ]
+                  },
+                  "loss_counts": {},
+                  "loss_rerun_status": "no-repeated-loss",
+                  "note": "Three complete paired reruns; a loss in at least two blocks acceptance. This verdict covers the repeat-loss criterion only, not the full-corpus timing thresholds, model validation or recorded-reference evidence. Timeout/unknown rows remain explicit in each pair's metrics.",
+                  "ratio_limit": 1.01,
+                  "repeated_losses": [],
+                  "rounds": [
+                    {
+                      "baseline": {
+                        "error": 0,
+                        "par2": 111.09742,
+                        "rows": 2,
+                        "sat": 1,
+                        "solved": 2,
+                        "timeout": 0,
+                        "unknown": 0,
+                        "unsat": 1,
+                        "unsupported": 0,
+                        "wrong_answer": 0
+                      },
+                      "baseline_common_seconds": 111.09742,
+                      "candidate": {
+                        "error": 0,
+                        "par2": 110.321921,
+                        "rows": 2,
+                        "sat": 1,
+                        "solved": 2,
+                        "timeout": 0,
+                        "unknown": 0,
+                        "unsat": 1,
+                        "unsupported": 0,
+                        "wrong_answer": 0
+                      },
+                      "candidate_common_seconds": 110.321921,
+                      "common_runtime_ratio": 0.9930196488811351,
+                      "common_solved": 2,
+                      "disagreements": [],
+                      "gained": [],
+                      "lost": [],
+                      "par2_ratio": 0.9930196488811351
+                    },
+                    {
+                      "baseline": {
+                        "error": 0,
+                        "par2": 115.353117,
+                        "rows": 2,
+                        "sat": 1,
+                        "solved": 2,
+                        "timeout": 0,
+                        "unknown": 0,
+                        "unsat": 1,
+                        "unsupported": 0,
+                        "wrong_answer": 0
+                      },
+                      "baseline_common_seconds": 115.353117,
+                      "candidate": {
+                        "error": 0,
+                        "par2": 115.435381,
+                        "rows": 2,
+                        "sat": 1,
+                        "solved": 2,
+                        "timeout": 0,
+                        "unknown": 0,
+                        "unsat": 1,
+                        "unsupported": 0,
+                        "wrong_answer": 0
+                      },
+                      "candidate_common_seconds": 115.435381,
+                      "common_runtime_ratio": 1.0007131493464543,
+                      "common_solved": 2,
+                      "disagreements": [],
+                      "gained": [],
+                      "lost": [],
+                      "par2_ratio": 1.0007131493464543
+                    },
+                    {
+                      "baseline": {
+                        "error": 0,
+                        "par2": 116.222381,
+                        "rows": 2,
+                        "sat": 1,
+                        "solved": 2,
+                        "timeout": 0,
+                        "unknown": 0,
+                        "unsat": 1,
+                        "unsupported": 0,
+                        "wrong_answer": 0
+                      },
+                      "baseline_common_seconds": 116.222381,
+                      "candidate": {
+                        "error": 0,
+                        "par2": 116.170345,
+                        "rows": 2,
+                        "sat": 1,
+                        "solved": 2,
+                        "timeout": 0,
+                        "unknown": 0,
+                        "unsat": 1,
+                        "unsupported": 0,
+                        "wrong_answer": 0
+                      },
+                      "candidate_common_seconds": 116.170345,
+                      "common_runtime_ratio": 0.9995522721221827,
+                      "common_solved": 2,
+                      "disagreements": [],
+                      "gained": [],
+                      "lost": [],
+                      "par2_ratio": 0.9995522721221827
+                    }
+                  ],
+                  "timeout": 60.0,
+                  "timing_status": "pass"
+                },
+                "amd-1": {
+                  "aggregate": {
+                    "baseline": {
+                      "error": 0,
+                      "par2": 668.7049490000002,
+                      "rows": 12,
+                      "sat": 12,
+                      "solved": 12,
+                      "timeout": 0,
+                      "unknown": 0,
+                      "unsat": 0,
+                      "unsupported": 0,
+                      "wrong_answer": 0
+                    },
+                    "baseline_common_seconds": 609.8961600000001,
+                    "candidate": {
+                      "error": 0,
+                      "par2": 727.789633,
+                      "rows": 12,
+                      "sat": 11,
+                      "solved": 11,
+                      "timeout": 1,
+                      "unknown": 0,
+                      "unsat": 0,
+                      "unsupported": 0,
+                      "wrong_answer": 0
+                    },
+                    "candidate_common_seconds": 607.789633,
+                    "common_runtime_ratio": 0.9965460890916248,
+                    "common_solved": 11,
+                    "disagreements": [],
+                    "gained": [],
+                    "lost": [
+                      "round-2:nec-smt/large/getoption_group/prp-19-49.smt2"
+                    ],
+                    "par2_ratio": 1.088356881593828
+                  },
+                  "expected_unique_inputs": 4,
+                  "families": {
+                    "nec-smt": {
+                      "baseline": {
+                        "error": 0,
+                        "par2": 668.7049490000002,
+                        "rows": 12,
+                        "sat": 12,
+                        "solved": 12,
+                        "timeout": 0,
+                        "unknown": 0,
+                        "unsat": 0,
+                        "unsupported": 0,
+                        "wrong_answer": 0
+                      },
+                      "baseline_common_seconds": 609.8961600000001,
+                      "candidate": {
+                        "error": 0,
+                        "par2": 727.789633,
+                        "rows": 12,
+                        "sat": 11,
+                        "solved": 11,
+                        "timeout": 1,
+                        "unknown": 0,
+                        "unsat": 0,
+                        "unsupported": 0,
+                        "wrong_answer": 0
+                      },
+                      "candidate_common_seconds": 607.789633,
+                      "common_runtime_ratio": 0.9965460890916248,
+                      "common_solved": 11,
+                      "disagreements": [],
+                      "gained": [],
+                      "lost": [
+                        "round-2:nec-smt/large/getoption_group/prp-19-49.smt2"
+                      ],
+                      "par2_ratio": 1.088356881593828
+                    }
+                  },
+                  "identities": {
+                    "baseline": [
+                      "4f5b5e403e0b92fa6543d2afb1bd6608df50f64e6bf6fc7ebc98758a9fc52ce4"
+                    ],
+                    "candidate": [
+                      "f3a3904e9cf7628eece6fb4c30f80de9f29eafa4ab89eca5a48afbf9643901a8"
+                    ]
+                  },
+                  "loss_counts": {
+                    "nec-smt/large/getoption_group/prp-19-49.smt2": 1
+                  },
+                  "loss_rerun_status": "no-repeated-loss",
+                  "note": "Three complete paired reruns; a loss in at least two blocks acceptance. This verdict covers the repeat-loss criterion only, not the full-corpus timing thresholds, model validation or recorded-reference evidence. Timeout/unknown rows remain explicit in each pair's metrics.",
+                  "ratio_limit": 1.01,
+                  "repeated_losses": [],
+                  "rounds": [
+                    {
+                      "baseline": {
+                        "error": 0,
+                        "par2": 222.542419,
+                        "rows": 4,
+                        "sat": 4,
+                        "solved": 4,
+                        "timeout": 0,
+                        "unknown": 0,
+                        "unsat": 0,
+                        "unsupported": 0,
+                        "wrong_answer": 0
+                      },
+                      "baseline_common_seconds": 222.542419,
+                      "candidate": {
+                        "error": 0,
+                        "par2": 222.972846,
+                        "rows": 4,
+                        "sat": 4,
+                        "solved": 4,
+                        "timeout": 0,
+                        "unknown": 0,
+                        "unsat": 0,
+                        "unsupported": 0,
+                        "wrong_answer": 0
+                      },
+                      "candidate_common_seconds": 222.972846,
+                      "common_runtime_ratio": 1.0019341346334516,
+                      "common_solved": 4,
+                      "disagreements": [],
+                      "gained": [],
+                      "lost": [],
+                      "par2_ratio": 1.0019341346334516
+                    },
+                    {
+                      "baseline": {
+                        "error": 0,
+                        "par2": 225.07150000000001,
+                        "rows": 4,
+                        "sat": 4,
+                        "solved": 4,
+                        "timeout": 0,
+                        "unknown": 0,
+                        "unsat": 0,
+                        "unsupported": 0,
+                        "wrong_answer": 0
+                      },
+                      "baseline_common_seconds": 225.07150000000001,
+                      "candidate": {
+                        "error": 0,
+                        "par2": 219.412678,
+                        "rows": 4,
+                        "sat": 4,
+                        "solved": 4,
+                        "timeout": 0,
+                        "unknown": 0,
+                        "unsat": 0,
+                        "unsupported": 0,
+                        "wrong_answer": 0
+                      },
+                      "candidate_common_seconds": 219.412678,
+                      "common_runtime_ratio": 0.9748576696738591,
+                      "common_solved": 4,
+                      "disagreements": [],
+                      "gained": [],
+                      "lost": [],
+                      "par2_ratio": 0.9748576696738591
+                    },
+                    {
+                      "baseline": {
+                        "error": 0,
+                        "par2": 221.09103,
+                        "rows": 4,
+                        "sat": 4,
+                        "solved": 4,
+                        "timeout": 0,
+                        "unknown": 0,
+                        "unsat": 0,
+                        "unsupported": 0,
+                        "wrong_answer": 0
+                      },
+                      "baseline_common_seconds": 162.282241,
+                      "candidate": {
+                        "error": 0,
+                        "par2": 285.404109,
+                        "rows": 4,
+                        "sat": 3,
+                        "solved": 3,
+                        "timeout": 1,
+                        "unknown": 0,
+                        "unsat": 0,
+                        "unsupported": 0,
+                        "wrong_answer": 0
+                      },
+                      "candidate_common_seconds": 165.404109,
+                      "common_runtime_ratio": 1.0192372743977574,
+                      "common_solved": 3,
+                      "disagreements": [],
+                      "gained": [],
+                      "lost": [
+                        "nec-smt/large/getoption_group/prp-19-49.smt2"
+                      ],
+                      "par2_ratio": 1.2908895896862032
+                    }
+                  ],
+                  "timeout": 60.0,
+                  "timing_status": "needs-triage"
+                }
+              }
             }
           }
+        }
+      },
+      "offline_checkpoint": {
+        "reason": "User announced imminent offline period; preserve remote progress and explicit unfinished qualification.",
+        "source_commit": "25b44cc2204169ff0cc45a771b5ec56895a0511e",
+        "last_evidence_commit": "385752a",
+        "status": "Implementation and correctness gates complete; migration qualification unfinished. No final acceptance claim.",
+        "completed_timing": "Corrected QF_UFLIA two full paired rounds pass timing:1154/1318 solved both arms, no losses,PAR2ratio0.999350570040824. Corrected18 provisionalQF_LIA lost inputs have three paired reruns each; no input lost in at least two reruns.",
+        "small_preservation_limitation": "Pooled five-round QF_UF small-sample PAR2 regression2.55% remains reported; no noise dismissal or blanket performance acceptance.",
+        "scheduler_release": {
+          "timing_dependencies": [
+            172616,
+            173182,
+            173391,
+            173548,
+            173551,
+            173552,
+            173555
+          ],
+          "model_jobs": {
+            "172666": {
+              "group": "old_full",
+              "dependency": "afterany:172616:173182:173391:173548:173551:173552:173555",
+              "released": true
+            },
+            "172667": {
+              "group": "old_full",
+              "dependency": "afterany:172616:173182:173391:173548:173551:173552:173555",
+              "released": true
+            },
+            "172668": {
+              "group": "old_full",
+              "dependency": "afterany:172616:173182:173391:173548:173551:173552:173555",
+              "released": true
+            },
+            "172669": {
+              "group": "old_full",
+              "dependency": "afterany:172616:173182:173391:173548:173551:173552:173555",
+              "released": true
+            },
+            "172670": {
+              "group": "old_full",
+              "dependency": "afterany:172616:173182:173391:173548:173551:173552:173555",
+              "released": true
+            },
+            "172798": {
+              "group": "old_full",
+              "dependency": "afterany:172616:173182:173391:173548:173551:173552:173555",
+              "released": true
+            },
+            "172799": {
+              "group": "old_shared_triage",
+              "dependency": "afterany:172798",
+              "released": true
+            },
+            "172812": {
+              "group": "old_loss_batch1",
+              "dependency": "afterany:172616:173182:173391:173548:173551:173552:173555",
+              "released": true
+            },
+            "172813": {
+              "group": "old_loss_batch1",
+              "dependency": "afterany:172616:173182:173391:173548:173551:173552:173555",
+              "released": true
+            },
+            "172814": {
+              "group": "old_loss_batch1",
+              "dependency": "afterany:172616:173182:173391:173548:173551:173552:173555",
+              "released": true
+            },
+            "172969": {
+              "group": "retention_probes",
+              "dependency": "afterany:172616:173182:173391:173548:173551:173552:173555",
+              "released": true
+            },
+            "172970": {
+              "group": "retention_probes",
+              "dependency": "afterany:172616:173182:173391:173548:173551:173552:173555",
+              "released": true
+            },
+            "172971": {
+              "group": "retention_probes",
+              "dependency": "afterany:172616:173182:173391:173548:173551:173552:173555",
+              "released": true
+            },
+            "173135": {
+              "group": "observation_probes",
+              "dependency": "afterany:172616:173182:173391:173548:173551:173552:173555",
+              "released": true
+            },
+            "173136": {
+              "group": "observation_probes",
+              "dependency": "afterany:172616:173182:173391:173548:173551:173552:173555",
+              "released": true
+            },
+            "173137": {
+              "group": "observation_probes",
+              "dependency": "afterany:172616:173182:173391:173548:173551:173552:173555",
+              "released": true
+            },
+            "173360": {
+              "group": "corrected_full",
+              "dependency": "afterany:172616:173182:173391:173548:173551:173552:173555",
+              "released": true
+            },
+            "173361": {
+              "group": "corrected_full",
+              "dependency": "afterany:172616:173182:173391:173548:173551:173552:173555",
+              "released": true
+            },
+            "173362": {
+              "group": "corrected_full",
+              "dependency": "afterany:172616:173182:173391:173548:173551:173552:173555",
+              "released": true
+            },
+            "173363": {
+              "group": "corrected_full",
+              "dependency": "afterany:172616:173182:173391:173548:173551:173552:173555",
+              "released": true
+            },
+            "173364": {
+              "group": "corrected_full",
+              "dependency": "afterany:172616:173182:173391:173548:173551:173552:173555",
+              "released": true
+            },
+            "173365": {
+              "group": "corrected_full",
+              "dependency": "afterany:172616:173182:173391:173548:173551:173552:173555",
+              "released": true
+            },
+            "173366": {
+              "group": "corrected_shared_triage",
+              "dependency": "afterany:173365",
+              "released": true
+            },
+            "173394": {
+              "group": "old_loss_batch2",
+              "dependency": "afterany:172616:173182:173391:173548:173551:173552:173555",
+              "released": true
+            },
+            "173414": {
+              "group": "corrected_preservation_reruns",
+              "dependency": "afterany:172616:173182:173391:173548:173551:173552:173555",
+              "released": true
+            },
+            "173428": {
+              "group": "corrected_loss_batch1",
+              "dependency": "afterany:172616:173182:173391:173548:173551:173552:173555",
+              "released": true
+            },
+            "173520": {
+              "group": "corrected_loss_batch2",
+              "dependency": "afterany:172616:173182:173391:173548:173551:173552:173555",
+              "released": true
+            },
+            "173565": {
+              "group": "old_loss_batch3",
+              "dependency": "afterany:172616:173182:173391:173548:173551:173552:173555",
+              "released": true
+            }
+          },
+          "note": "Future loss reruns not yet submitted must wait for these model jobs, or hold them before starting timing. All known timing jobs precede model replay."
+        },
+        "scheduler_verification": "All28 jobs verified PENDING(Dependency) after release; triage jobs depend on their own model-replay parent.",
+        "commands": [
+          "python3 results/primo-offline-model-release.py",
+          "squeue -h -j <28 recorded model jobs> -o \"%F %T %R\""
+        ],
+        "remote_artifacts": [
+          "results/integer-offline-model-release.json",
+          "results/primo-offline-model-release.py",
+          "results/integer-held-model-jobs.json",
+          "results/integer-paired",
+          "results/integer-losses-batch1",
+          "results/integer-losses-batch2",
+          "results/integer-losses-batch3"
+        ],
+        "local_artifacts": "tmp/integer-unification/evidence",
+        "resume": [
+          "Read this entry and active queue. Preserve frozen baseline/cfc/25b binaries and all timing/replay provenance; do not rebuild the referenced workspaces.",
+          "Collect final full QF_LIA timing for rejectedcfc job172616 and corrected25b job173182; summarize all13306inputs and both rounds with scripts/summarize_component_pairs.py. CorrectedQF_UFLIA summary already complete.",
+          "Compute final union of every lost solve over both rounds. For corrected25b subtract batch1(10inputs) and batch2(8inputs); for rejectedcfc subtract first11 and batch2(33) and batch3(17). Additional final losses remain possible and require three new paired reruns60s8GiB1CPU.",
+          "Because model jobs are now released, wait for them to finish before scheduling additional timing reruns, or hold pending model jobs and wait for active validators to exit. Keep validation separate from timing. Submit separate model checks for every successful candidateSAT in future reruns.",
+          "Audit all model replay coverage and saved artifact hashes; triage input-language validation failures separately and preserve any retries. Every successful candidate groundSAT measurement needs independent validation.",
+          "Rejoin completed results to frozen historical references and verify complete input hashes. Historical4GiB reference timings are context only against current8GiB paired runs.",
+          "Reject migration if any loss repeats in at least2of3reruns or either full affected division has aggregatePAR2regression greater than2%; fix/requalify or retain old default and reportunfinished. Preserve generic1% tool flags and small preservation regressions.",
+          "Finish independent evidence/docs review, documentation build/linkchecks/rendered verification as applicable, and final committed qualification evidence. Audit local processes and gitstatus/log before final report."
+        ],
+        "last_documentation_checks": "make docs and make docs-check-links passed;260pages32224local links1033Gitlinks0failures; reviewed interim run-log blob b136cc45a71e002dd7aa89553d262996217a4aae.",
+        "local_execution": "No local solver,ctest,typefuzz,YinYang or browser experiment processes present at checkpoint audit; remotejobs intentionally active.",
+        "independent_review": {
+          "reviewer": "lia_doc_review",
+          "accepted_blob": "45509881e9e78087aa774a88c9da29895b25e2d4",
+          "verdict": "Ready for handoff accuracy only; full timing/model replay/final qualification unfinished. Reviewer checked artifact agreement, not live scheduler."
         }
       }
     },
