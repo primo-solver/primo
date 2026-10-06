@@ -551,6 +551,14 @@ direction. The {source}`node-limit regression
 <tests/unit/qf_lia_solver_tests.cpp#L252-L274>` preserves this incomplete case.
 Adding GCD checks and cuts before DFS does not supply a completeness proof.
 
+Dillig, Dillig and Aiken's *Cuts from proofs* {cite:p}`dillig2011cuts`
+provides a different branching rule based on integer-infeasible intersections.
+Its §3.3 termination argument uses satisfiability-preserving finite variable
+bounds and bounded split coefficients; it is not a guarantee for arbitrary
+unbounded cut generation. The [paper overview](../papers/cuts-from-proofs.md)
+derives the split for the example above and identifies the mechanisms missing
+from Primo.
+
 Bromberger's thesis, Chapter 6, addresses precisely the difference between
 bounded row expressions and bounded variables. Its Double-Bounded reduction
 and Mixed-Echelon-Hermite transformation provide a route to a finite integer
