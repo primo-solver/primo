@@ -13,8 +13,12 @@ solves the [real relaxation](lra.md), then tries to repair the assignment or
 prove that the current Boolean choice has no integer completion.
 
 This chapter describes the integer stages shared by `QF_LIA` and `QF_UFLIA`.
-They are bounded procedures: some inputs return `unknown`. The combination
-of these stages is not a complete decision procedure for integer arithmetic.
+Configured resource limits can stop the search with `unknown`. Removing those
+limits alone does not guarantee a terminating decision procedure for all
+quantifier-free linear integer inputs: with unbounded variables, the current
+branch-and-bound search can follow an infinite path. The
+[budgets and incomplete cases](#lia-limits) section distinguishes this
+algorithmic limitation from resource exhaustion and gives a concrete example.
 
 (lia-representation)=
 ## Representation and ownership
