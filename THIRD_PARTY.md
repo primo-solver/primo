@@ -32,17 +32,20 @@ inventory travels with the assembled site and HTML source-archive contents.
 
 ## Benchmark inputs
 
-Some tracked benchmark seeds and performance cases originate in SMT-LIB.
-Their source headers and provenance notes must be retained. See the
-[input inventory](docs/coverage/third-party-inputs.json) for identities and
-unresolved terms. Missing license headers are not an MIT grant from Primo.
-Current [SMT-LIB submission guidance](https://github.com/SMT-LIB/benchmark-submission)
-encourages CC BY 4.0 but also permits other licenses; it does not establish the
-license of every historical input already in this repository.
+The 19 inventoried imported seeds, performance cases, and regression inputs
+match members of [SMT-LIB release 2025.08.04](https://zenodo.org/records/16740866)
+byte-for-byte. The release metadata declares **CC BY 4.0**. Preserve the
+[SMT-LIB attribution and license notice](LICENSES/SMT-LIB.md) and each file's
+original source header when distributing them. They are not relicensed under
+Primo's MIT license.
 
-Resolve the inventory's missing publication terms before public distribution,
-or agree a specific removal/history treatment with the project owner. No
-benchmark is silently deleted or retrospectively relabeled by this preparation.
+The [input inventory](docs/coverage/third-party-inputs.json) records the release,
+archive checksums, member paths, file hashes, original attributions, and license
+basis. Repository paths were changed, but the matched file contents were not.
+The absence of an embedded license field in these copies is resolved by the
+identified release metadata; it is not a reason to remove the files or rewrite
+history. The comparison covers the listed current files, not every historical
+benchmark version or every other fixture.
 
 ## Papers and bibliography
 

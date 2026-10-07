@@ -8,8 +8,10 @@ machine; never paste a token into an issue, document, or command transcript.
 
 ## Before changing visibility
 
-1. Record institutional/contributor publication authorization and resolve the
-   third-party input inventory. Complete review of remote branches, tags,
+1. Record institutional/contributor publication authorization. The
+   [19 inventoried benchmark imports](../coverage/third-party-inputs.json) have
+   verified SMT-LIB release provenance and CC BY 4.0 attribution; preserve their
+   notice and recheck any additional imports. Complete review of remote branches, tags,
    attachments, release assets, and Actions logs. A local Git scan cannot inspect
    hosted artifacts. Do not delete history without an agreed remediation.
 2. Resolve the [correctness findings](../coverage/page-review.md#correctness-follow-ups),

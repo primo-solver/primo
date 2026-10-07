@@ -1,138 +1,341 @@
 {
-  "scope": "Tracked SMT-LIB files with source headers; not a complete originality or rights certification. Original/generated fixtures without source headers need owner review too.",
+  "scope": "The 19 inventoried tracked SMT-LIB imports match 18 distinct members of SMT-LIB release 2025.08.04 byte-for-byte. Release-level CC BY 4.0 licensing and attribution are recorded here; this is not an originality audit of every other fixture or historical version.",
   "inputs": [
     {
       "path": "benchmarks/performance/qf_uflra/mathsat_randomcoupled_pb_real_30_0600_10_18.smt2",
       "sha256": "3b922f3b52029b8fb11691f792349b9502d0d3d73c798dc7ad8dc830c7c13802",
       "source": "MathSat group",
       "declared_license": null,
-      "review": "publication terms unresolved; identify original release or owner authorization"
+      "review": "Resolved: byte-identical release member; preserve source attribution and CC BY 4.0 notice.",
+      "license": "CC-BY-4.0",
+      "license_basis": "SMT-LIB release 2025.08.04 metadata; no embedded per-file license field.",
+      "upstream": {
+        "archive": "QF_UFLRA.tar.zst",
+        "member": "non-incremental/QF_UFLRA/mathsat/RandomCoupled/pb_real_30_0600_10_18.smt2",
+        "sha256": "3b922f3b52029b8fb11691f792349b9502d0d3d73c798dc7ad8dc830c7c13802"
+      },
+      "modifications": "File contents unchanged; repository paths differ from archive member paths."
     },
     {
       "path": "benchmarks/performance/qf_uflra/mathsat_randomdecoupled_pb_real_40_80_60_01.smt2",
       "sha256": "de25cbe4e8ba7db7c5377b9652cde01dc95b32df1c44dfb6c82d33ab174c1d3d",
       "source": "MathSat group",
       "declared_license": null,
-      "review": "publication terms unresolved; identify original release or owner authorization"
+      "review": "Resolved: byte-identical release member; preserve source attribution and CC BY 4.0 notice.",
+      "license": "CC-BY-4.0",
+      "license_basis": "SMT-LIB release 2025.08.04 metadata; no embedded per-file license field.",
+      "upstream": {
+        "archive": "QF_UFLRA.tar.zst",
+        "member": "non-incremental/QF_UFLRA/mathsat/RandomDecoupled/pb_real_40_80_60_01.smt2",
+        "sha256": "de25cbe4e8ba7db7c5377b9652cde01dc95b32df1c44dfb6c82d33ab174c1d3d"
+      },
+      "modifications": "File contents unchanged; repository paths differ from archive member paths."
     },
     {
       "path": "benchmarks/regression/qf_uf/online_reason_cache.smt2",
       "sha256": "7af5f266e3d993827f7c91aacd627a88c6328d2632fbd9403c5ad0f4fa2ed7ea",
       "source": "http://www.cs.bham.ac.uk/~vxs/quasigroups/benchmark/",
       "declared_license": null,
-      "review": "publication terms unresolved; identify original release or owner authorization"
+      "review": "Resolved: byte-identical release member; preserve source attribution and CC BY 4.0 notice.",
+      "license": "CC-BY-4.0",
+      "license_basis": "SMT-LIB release 2025.08.04 metadata; no embedded per-file license field.",
+      "upstream": {
+        "archive": "QF_UF.tar.zst",
+        "member": "non-incremental/QF_UF/QG-classification/qg5/gensys_brn685.smt2",
+        "sha256": "7af5f266e3d993827f7c91aacd627a88c6328d2632fbd9403c5ad0f4fa2ed7ea"
+      },
+      "modifications": "File contents unchanged; repository paths differ from archive member paths."
     },
     {
       "path": "benchmarks/seeds/qf_lra_real/DTP-Scheduling_constraints-cooking01.smt2",
       "sha256": "fa7a5d2cef4daf5da44908dd7ce0d32f6e2d264282a7afd4ddbfc004143effb3",
       "source": "TLP-GP automated DTP to SMT-LIB encoding for planning\nby F.Maris and P.Regnier, IRIT - Universite Paul Sabatier, Toulouse",
       "declared_license": null,
-      "review": "publication terms unresolved; identify original release or owner authorization"
+      "review": "Resolved: byte-identical release member; preserve source attribution and CC BY 4.0 notice.",
+      "license": "CC-BY-4.0",
+      "license_basis": "SMT-LIB release 2025.08.04 metadata; no embedded per-file license field.",
+      "upstream": {
+        "archive": "QF_LRA.tar.zst",
+        "member": "non-incremental/QF_LRA/DTP-Scheduling/constraints-cooking01.smt2",
+        "sha256": "fa7a5d2cef4daf5da44908dd7ce0d32f6e2d264282a7afd4ddbfc004143effb3"
+      },
+      "modifications": "File contents unchanged; repository paths differ from archive member paths."
     },
     {
       "path": "benchmarks/seeds/qf_lra_real/DTP-Scheduling_constraints-cooking02.smt2",
       "sha256": "79abb3011753e7246262046d0dd14acaa83b630b32b8244727e7c987d827198a",
       "source": "TLP-GP automated DTP to SMT-LIB encoding for planning\nby F.Maris and P.Regnier, IRIT - Universite Paul Sabatier, Toulouse",
       "declared_license": null,
-      "review": "publication terms unresolved; identify original release or owner authorization"
+      "review": "Resolved: byte-identical release member; preserve source attribution and CC BY 4.0 notice.",
+      "license": "CC-BY-4.0",
+      "license_basis": "SMT-LIB release 2025.08.04 metadata; no embedded per-file license field.",
+      "upstream": {
+        "archive": "QF_LRA.tar.zst",
+        "member": "non-incremental/QF_LRA/DTP-Scheduling/constraints-cooking02.smt2",
+        "sha256": "79abb3011753e7246262046d0dd14acaa83b630b32b8244727e7c987d827198a"
+      },
+      "modifications": "File contents unchanged; repository paths differ from archive member paths."
     },
     {
       "path": "benchmarks/seeds/qf_lra_real/DTP-Scheduling_constraints-tempo-depth-2.smt2",
       "sha256": "504f64eb0ae0390c8bba15204bff4c367c5469e640ede51f3b2980a7f2575b23",
       "source": "TLP-GP automated DTP to SMT-LIB encoding for planning\nby F.Maris and P.Regnier, IRIT - Universite Paul Sabatier, Toulouse",
       "declared_license": null,
-      "review": "publication terms unresolved; identify original release or owner authorization"
+      "review": "Resolved: byte-identical release member; preserve source attribution and CC BY 4.0 notice.",
+      "license": "CC-BY-4.0",
+      "license_basis": "SMT-LIB release 2025.08.04 metadata; no embedded per-file license field.",
+      "upstream": {
+        "archive": "QF_LRA.tar.zst",
+        "member": "non-incremental/QF_LRA/DTP-Scheduling/constraints-tempo-depth-2.smt2",
+        "sha256": "504f64eb0ae0390c8bba15204bff4c367c5469e640ede51f3b2980a7f2575b23"
+      },
+      "modifications": "File contents unchanged; repository paths differ from archive member paths."
     },
     {
       "path": "benchmarks/seeds/qf_lra_real/DTP-Scheduling_constraints-tempo-depth-3.smt2",
       "sha256": "2233c6ca84a88362ffcb09ea4fbc1cd7c5a134c0553f9f9b78d15bfb3b601acb",
       "source": "TLP-GP automated DTP to SMT-LIB encoding for planning\nby F.Maris and P.Regnier, IRIT - Universite Paul Sabatier, Toulouse",
       "declared_license": null,
-      "review": "publication terms unresolved; identify original release or owner authorization"
+      "review": "Resolved: byte-identical release member; preserve source attribution and CC BY 4.0 notice.",
+      "license": "CC-BY-4.0",
+      "license_basis": "SMT-LIB release 2025.08.04 metadata; no embedded per-file license field.",
+      "upstream": {
+        "archive": "QF_LRA.tar.zst",
+        "member": "non-incremental/QF_LRA/DTP-Scheduling/constraints-tempo-depth-3.smt2",
+        "sha256": "2233c6ca84a88362ffcb09ea4fbc1cd7c5a134c0553f9f9b78d15bfb3b601acb"
+      },
+      "modifications": "File contents unchanged; repository paths differ from archive member paths."
     },
     {
       "path": "benchmarks/seeds/qf_lra_real/check_bignum_lra1.smt2",
       "sha256": "e420831670683c464148a12e0acbbcbc8848b32abd0a2d6e083a910c02dc022d",
       "source": "SMT-COMP'06 organizers",
       "declared_license": null,
-      "review": "publication terms unresolved; identify original release or owner authorization"
+      "review": "Resolved: byte-identical release member; preserve source attribution and CC BY 4.0 notice.",
+      "license": "CC-BY-4.0",
+      "license_basis": "SMT-LIB release 2025.08.04 metadata; no embedded per-file license field.",
+      "upstream": {
+        "archive": "QF_LRA.tar.zst",
+        "member": "non-incremental/QF_LRA/check/bignum_lra1.smt2",
+        "sha256": "e420831670683c464148a12e0acbbcbc8848b32abd0a2d6e083a910c02dc022d"
+      },
+      "modifications": "File contents unchanged; repository paths differ from archive member paths."
     },
     {
       "path": "benchmarks/seeds/qf_lra_real/check_bignum_lra2.smt2",
       "sha256": "632aa76309595e0f5736f2c2bd94284ea4ff1ffeb5df1e2de0031043165ed47d",
       "source": "SMT-COMP'06 organizers",
       "declared_license": null,
-      "review": "publication terms unresolved; identify original release or owner authorization"
+      "review": "Resolved: byte-identical release member; preserve source attribution and CC BY 4.0 notice.",
+      "license": "CC-BY-4.0",
+      "license_basis": "SMT-LIB release 2025.08.04 metadata; no embedded per-file license field.",
+      "upstream": {
+        "archive": "QF_LRA.tar.zst",
+        "member": "non-incremental/QF_LRA/check/bignum_lra2.smt2",
+        "sha256": "632aa76309595e0f5736f2c2bd94284ea4ff1ffeb5df1e2de0031043165ed47d"
+      },
+      "modifications": "File contents unchanged; repository paths differ from archive member paths."
     },
     {
       "path": "benchmarks/seeds/qf_lra_real/gasburner_gasburner-prop3-1.smt2",
       "sha256": "e72df96aefdcb3f6ecb26092c9e0b57db78e3ad7a34f9dae0c36e8449cc0346e",
       "source": "SAL benchmark suite.  Created at SRI by Bruno Dutertre, John Rushby, Maria\nSorea, and Leonardo de Moura.  Contact demoura@csl.sri.com for more\ninformation.\n\nThis benchmark was automatically translated into SMT-LIB format from\nCVC format using CVC Lite",
       "declared_license": null,
-      "review": "publication terms unresolved; identify original release or owner authorization"
+      "review": "Resolved: byte-identical release member; preserve source attribution and CC BY 4.0 notice.",
+      "license": "CC-BY-4.0",
+      "license_basis": "SMT-LIB release 2025.08.04 metadata; no embedded per-file license field.",
+      "upstream": {
+        "archive": "QF_LRA.tar.zst",
+        "member": "non-incremental/QF_LRA/sal/gasburner/gasburner-prop3-1.smt2",
+        "sha256": "e72df96aefdcb3f6ecb26092c9e0b57db78e3ad7a34f9dae0c36e8449cc0346e"
+      },
+      "modifications": "File contents unchanged; repository paths differ from archive member paths."
     },
     {
       "path": "benchmarks/seeds/qf_lra_real/gasburner_gasburner-prop3-2.smt2",
       "sha256": "3e13b88b92c15002dc8915b8a2e0acc1ca5055c7419f00809dd18ab91030867a",
       "source": "SAL benchmark suite.  Created at SRI by Bruno Dutertre, John Rushby, Maria\nSorea, and Leonardo de Moura.  Contact demoura@csl.sri.com for more\ninformation.\n\nThis benchmark was automatically translated into SMT-LIB format from\nCVC format using CVC Lite",
       "declared_license": null,
-      "review": "publication terms unresolved; identify original release or owner authorization"
+      "review": "Resolved: byte-identical release member; preserve source attribution and CC BY 4.0 notice.",
+      "license": "CC-BY-4.0",
+      "license_basis": "SMT-LIB release 2025.08.04 metadata; no embedded per-file license field.",
+      "upstream": {
+        "archive": "QF_LRA.tar.zst",
+        "member": "non-incremental/QF_LRA/sal/gasburner/gasburner-prop3-2.smt2",
+        "sha256": "3e13b88b92c15002dc8915b8a2e0acc1ca5055c7419f00809dd18ab91030867a"
+      },
+      "modifications": "File contents unchanged; repository paths differ from archive member paths."
     },
     {
       "path": "benchmarks/seeds/qf_lra_real/gasburner_gasburner-prop3-3.smt2",
       "sha256": "7e6cc91c917e6b336a2394ee9dee6dd195bfc7af84ada74652bec3d1594fd90c",
       "source": "SAL benchmark suite.  Created at SRI by Bruno Dutertre, John Rushby, Maria\nSorea, and Leonardo de Moura.  Contact demoura@csl.sri.com for more\ninformation.\n\nThis benchmark was automatically translated into SMT-LIB format from\nCVC format using CVC Lite",
       "declared_license": null,
-      "review": "publication terms unresolved; identify original release or owner authorization"
+      "review": "Resolved: byte-identical release member; preserve source attribution and CC BY 4.0 notice.",
+      "license": "CC-BY-4.0",
+      "license_basis": "SMT-LIB release 2025.08.04 metadata; no embedded per-file license field.",
+      "upstream": {
+        "archive": "QF_LRA.tar.zst",
+        "member": "non-incremental/QF_LRA/sal/gasburner/gasburner-prop3-3.smt2",
+        "sha256": "7e6cc91c917e6b336a2394ee9dee6dd195bfc7af84ada74652bec3d1594fd90c"
+      },
+      "modifications": "File contents unchanged; repository paths differ from archive member paths."
     },
     {
       "path": "benchmarks/seeds/qf_lra_real/gasburner_gasburner-prop3-4.smt2",
       "sha256": "0121a19102eadfbd8f8d982d314f59b1155ce43c702f68dd71318e5f96a653b5",
       "source": "SAL benchmark suite.  Created at SRI by Bruno Dutertre, John Rushby, Maria\nSorea, and Leonardo de Moura.  Contact demoura@csl.sri.com for more\ninformation.\n\nThis benchmark was automatically translated into SMT-LIB format from\nCVC format using CVC Lite",
       "declared_license": null,
-      "review": "publication terms unresolved; identify original release or owner authorization"
+      "review": "Resolved: byte-identical release member; preserve source attribution and CC BY 4.0 notice.",
+      "license": "CC-BY-4.0",
+      "license_basis": "SMT-LIB release 2025.08.04 metadata; no embedded per-file license field.",
+      "upstream": {
+        "archive": "QF_LRA.tar.zst",
+        "member": "non-incremental/QF_LRA/sal/gasburner/gasburner-prop3-4.smt2",
+        "sha256": "0121a19102eadfbd8f8d982d314f59b1155ce43c702f68dd71318e5f96a653b5"
+      },
+      "modifications": "File contents unchanged; repository paths differ from archive member paths."
     },
     {
       "path": "benchmarks/seeds/qf_lra_real/keymaera_bouncing-ball-inv-node1886.smt2",
       "sha256": "9a40e72275700974d90ea80778c60055d3f874008dd6ca1c13da1cd824b47fde",
       "source": "These benchmarks used in the paper:\n\n  Dejan Jovanovic and Leonardo de Moura.  Solving Non-Linear Arithmetic.\n  In IJCAR 2012, published as LNCS volume 7364, pp. 339--354.\n\nThe keymaera family contains VCs from Keymaera verification, see:\n\n  A. Platzer, J.-D. Quesel, and P. Rummer.  Real world verification.\n  In CADE 2009, pages 485-501. Springer, 2009.\n\nSubmitted by Dejan Jovanovic for SMT-LIB.\n\n KeYmaera example: bouncing-ball-inv, node 1886 For more info see: No further information available.",
       "declared_license": null,
-      "review": "publication terms unresolved; identify original release or owner authorization"
+      "review": "Resolved: byte-identical release member; preserve source attribution and CC BY 4.0 notice.",
+      "license": "CC-BY-4.0",
+      "license_basis": "SMT-LIB release 2025.08.04 metadata; no embedded per-file license field.",
+      "upstream": {
+        "archive": "QF_LRA.tar.zst",
+        "member": "non-incremental/QF_LRA/keymaera/bouncing-ball-inv-node1886.smt2",
+        "sha256": "9a40e72275700974d90ea80778c60055d3f874008dd6ca1c13da1cd824b47fde"
+      },
+      "modifications": "File contents unchanged; repository paths differ from archive member paths."
     },
     {
       "path": "benchmarks/seeds/qf_lra_real/keymaera_bouncing-ball-inv-node1935.smt2",
       "sha256": "a79d8ab2176aa8884e1f13fffb50b8fca9aeff5e1641e5308eb6337b28176272",
       "source": "These benchmarks used in the paper:\n\n  Dejan Jovanovic and Leonardo de Moura.  Solving Non-Linear Arithmetic.\n  In IJCAR 2012, published as LNCS volume 7364, pp. 339--354.\n\nThe keymaera family contains VCs from Keymaera verification, see:\n\n  A. Platzer, J.-D. Quesel, and P. Rummer.  Real world verification.\n  In CADE 2009, pages 485-501. Springer, 2009.\n\nSubmitted by Dejan Jovanovic for SMT-LIB.\n\n KeYmaera example: bouncing-ball-inv, node 1935 For more info see: No further information available.",
       "declared_license": null,
-      "review": "publication terms unresolved; identify original release or owner authorization"
+      "review": "Resolved: byte-identical release member; preserve source attribution and CC BY 4.0 notice.",
+      "license": "CC-BY-4.0",
+      "license_basis": "SMT-LIB release 2025.08.04 metadata; no embedded per-file license field.",
+      "upstream": {
+        "archive": "QF_LRA.tar.zst",
+        "member": "non-incremental/QF_LRA/keymaera/bouncing-ball-inv-node1935.smt2",
+        "sha256": "a79d8ab2176aa8884e1f13fffb50b8fca9aeff5e1641e5308eb6337b28176272"
+      },
+      "modifications": "File contents unchanged; repository paths differ from archive member paths."
     },
     {
       "path": "benchmarks/seeds/qf_lra_real/keymaera_bouncing-ball-simple-node1628.smt2",
       "sha256": "1f5637b29ccf421692152522230c0c2e7cbd027633da53a593974de9c6fe06ae",
       "source": "These benchmarks used in the paper:\n\n  Dejan Jovanovic and Leonardo de Moura.  Solving Non-Linear Arithmetic.\n  In IJCAR 2012, published as LNCS volume 7364, pp. 339--354.\n\nThe keymaera family contains VCs from Keymaera verification, see:\n\n  A. Platzer, J.-D. Quesel, and P. Rummer.  Real world verification.\n  In CADE 2009, pages 485-501. Springer, 2009.\n\nSubmitted by Dejan Jovanovic for SMT-LIB.\n\n KeYmaera example: bouncing-ball-simple, node 1628 For more info see: No further information available.",
       "declared_license": null,
-      "review": "publication terms unresolved; identify original release or owner authorization"
+      "review": "Resolved: byte-identical release member; preserve source attribution and CC BY 4.0 notice.",
+      "license": "CC-BY-4.0",
+      "license_basis": "SMT-LIB release 2025.08.04 metadata; no embedded per-file license field.",
+      "upstream": {
+        "archive": "QF_LRA.tar.zst",
+        "member": "non-incremental/QF_LRA/keymaera/bouncing-ball-simple-node1628.smt2",
+        "sha256": "1f5637b29ccf421692152522230c0c2e7cbd027633da53a593974de9c6fe06ae"
+      },
+      "modifications": "File contents unchanged; repository paths differ from archive member paths."
     },
     {
       "path": "benchmarks/seeds/qf_lra_real/keymaera_bouncing-ball-simple-node1629.smt2",
       "sha256": "dcefe07ed20bfce1f3c2a4404188e9621b2b1d98c2f17448c68b4ff954058073",
       "source": "These benchmarks used in the paper:\n\n  Dejan Jovanovic and Leonardo de Moura.  Solving Non-Linear Arithmetic.\n  In IJCAR 2012, published as LNCS volume 7364, pp. 339--354.\n\nThe keymaera family contains VCs from Keymaera verification, see:\n\n  A. Platzer, J.-D. Quesel, and P. Rummer.  Real world verification.\n  In CADE 2009, pages 485-501. Springer, 2009.\n\nSubmitted by Dejan Jovanovic for SMT-LIB.\n\n KeYmaera example: bouncing-ball-simple, node 1629 For more info see: No further information available.",
       "declared_license": null,
-      "review": "publication terms unresolved; identify original release or owner authorization"
+      "review": "Resolved: byte-identical release member; preserve source attribution and CC BY 4.0 notice.",
+      "license": "CC-BY-4.0",
+      "license_basis": "SMT-LIB release 2025.08.04 metadata; no embedded per-file license field.",
+      "upstream": {
+        "archive": "QF_LRA.tar.zst",
+        "member": "non-incremental/QF_LRA/keymaera/bouncing-ball-simple-node1629.smt2",
+        "sha256": "dcefe07ed20bfce1f3c2a4404188e9621b2b1d98c2f17448c68b4ff954058073"
+      },
+      "modifications": "File contents unchanged; repository paths differ from archive member paths."
     },
     {
       "path": "benchmarks/seeds/qf_uflra_scale/mathsat_randomdecoupled_pb_real_40_80_60_01.smt2",
       "sha256": "de25cbe4e8ba7db7c5377b9652cde01dc95b32df1c44dfb6c82d33ab174c1d3d",
       "source": "MathSat group",
       "declared_license": null,
-      "review": "publication terms unresolved; identify original release or owner authorization"
+      "review": "Resolved: byte-identical release member; preserve source attribution and CC BY 4.0 notice.",
+      "license": "CC-BY-4.0",
+      "license_basis": "SMT-LIB release 2025.08.04 metadata; no embedded per-file license field.",
+      "upstream": {
+        "archive": "QF_UFLRA.tar.zst",
+        "member": "non-incremental/QF_UFLRA/mathsat/RandomDecoupled/pb_real_40_80_60_01.smt2",
+        "sha256": "de25cbe4e8ba7db7c5377b9652cde01dc95b32df1c44dfb6c82d33ab174c1d3d"
+      },
+      "modifications": "File contents unchanged; repository paths differ from archive member paths."
     },
     {
       "path": "benchmarks/seeds/qf_uflra_scale/mathsat_randomdecoupled_pb_real_40_80_60_36.smt2",
       "sha256": "2696a128f656eaefa8dd91a9ea3feb042eb70f140b38f09234c93c120ce72a9c",
       "source": "MathSat group",
       "declared_license": null,
-      "review": "publication terms unresolved; identify original release or owner authorization"
+      "review": "Resolved: byte-identical release member; preserve source attribution and CC BY 4.0 notice.",
+      "license": "CC-BY-4.0",
+      "license_basis": "SMT-LIB release 2025.08.04 metadata; no embedded per-file license field.",
+      "upstream": {
+        "archive": "QF_UFLRA.tar.zst",
+        "member": "non-incremental/QF_UFLRA/mathsat/RandomDecoupled/pb_real_40_80_60_36.smt2",
+        "sha256": "2696a128f656eaefa8dd91a9ea3feb042eb70f140b38f09234c93c120ce72a9c"
+      },
+      "modifications": "File contents unchanged; repository paths differ from archive member paths."
     }
-  ]
+  ],
+  "release": {
+    "title": "SMT-LIB release 2025 (non-incremental benchmarks)",
+    "version": "2025.08.04",
+    "doi": "10.5281/zenodo.16740866",
+    "url": "https://zenodo.org/records/16740866",
+    "metadata_url": "https://zenodo.org/api/records/16740866",
+    "license": "cc-by-4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "verified_on": "2026-10-07",
+    "creators": [
+      "Preiner, Mathias",
+      "Schurr, Hans-J\u00f6rg",
+      "Barrett, Clark",
+      "Fontaine, Pascal",
+      "Niemetz, Aina",
+      "Tinelli, Cesare"
+    ],
+    "archives": [
+      {
+        "file": "QF_UF.tar.zst",
+        "url": "https://zenodo.org/records/16740866/files/QF_UF.tar.zst",
+        "published_checksum": "md5:e185bc80a80116bcfea116df190f87d2",
+        "verified_sha256": "c5cec6881390d2bda18482526b84127f5c13cc7881b02944a7ef5dd1525b46ad",
+        "size_bytes": 54182823
+      },
+      {
+        "file": "QF_UFLRA.tar.zst",
+        "url": "https://zenodo.org/records/16740866/files/QF_UFLRA.tar.zst",
+        "published_checksum": "md5:c2e4f57f584e5b7ad820c054c8d14c68",
+        "verified_sha256": "5e812ff0acca9430d8666c7464266375cdfc3609541ff460d47f14096ce5b712",
+        "size_bytes": 162321601
+      },
+      {
+        "file": "QF_LRA.tar.zst",
+        "url": "https://zenodo.org/records/16740866/files/QF_LRA.tar.zst",
+        "published_checksum": "md5:20d2d2e032fa8f7c9ea741e08f59ece1",
+        "verified_sha256": "91a1c814932f18327fd385ccac175ca85fce847c690fdcb4ba02c344096710c6",
+        "size_bytes": 181483353
+      }
+    ]
+  },
+  "verification": {
+    "method": "Compare each complete archive MD5 with the published Zenodo checksum, then compare the SHA-256 of each bundled file with the unmodified archive member. No SMT parsing, rewriting, or solver execution was used.",
+    "files_matched": 19,
+    "distinct_members": 18,
+    "reproduce": [
+      "Download the three version-pinned archives from release.archives[].url and verify their published checksums.",
+      "For each inputs[] entry, compare sha256sum of path with tar --zstd -xOf <upstream.archive> <upstream.member> | sha256sum."
+    ],
+    "notice": "LICENSES/SMT-LIB.md"
+  }
 }

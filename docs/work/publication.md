@@ -21,7 +21,7 @@ Repository visibility has not been changed.
 | Local Git publication audit | [Recorded](../coverage/publication-audit.json); no secret detections or committed reading PDFs in the inspected named history. Hosted assets remain unaudited. |
 | Consolidated reader acceptance | Pending owner review of the [assembled manual](../review.md). |
 | Institutional/contributor publication authorization | Pending owner resolution. |
-| Imported benchmark publication terms | Unresolved for [19 files](../coverage/third-party-inputs.json); source attribution alone does not grant redistribution rights. |
+| Imported benchmark publication terms | Resolved for the [19 inventoried imports](../coverage/third-party-inputs.json): byte-identical members of SMT-LIB release 2025.08.04, whose metadata declares CC BY 4.0; attribution recorded. |
 | GitHub configuration and public visibility | Pending the [owner handoff](github-handoff.md). |
 
 ## Remaining publication work
@@ -30,7 +30,8 @@ The [technical correctness findings](../coverage/page-review.md#correctness-foll
 are closed with regression and qualification evidence. This does not resolve
 the remaining publication decisions below.
 
-The owner must resolve the rights inventory, accept the manual, and review hosted
+The owner must resolve institutional/contributor authorization, accept the manual,
+and review hosted
 branches, attachments, release assets and Actions logs before changing visibility.
 The prepared workflows then need to run on the approved revision. Configure
 required checks, DCO, the protected Pages environment and private vulnerability
@@ -48,6 +49,21 @@ bootstrap remains unverified until GitHub-hosted CI or another connected
 allocation runs it. External-link checks retain four current-book and 13
 historical-book access failures in [their report](../coverage/external-links.json).
 They are separate from passing local/source-link checks.
+
+## Benchmark license verification, 7 October 2026
+
+The [SMT-LIB release record](https://zenodo.org/records/16740866) and its
+[API metadata](https://zenodo.org/api/records/16740866) declare CC BY 4.0.
+All 19 inventoried imports match 18 distinct release members byte-for-byte,
+including the renamed online-reason-cache regression. The QF_UF, QF_LRA, and
+QF_UFLRA archive checksums match the published release checksums. The
+[inventory](../coverage/third-party-inputs.json) records exact members, hashes,
+and reproduction instructions; the
+{download}`benchmark notice <../../LICENSES/SMT-LIB.md>` supplies collection and
+individual attribution, the license link, and the unchanged-content statement.
+This closes the missing-license finding for those files. They remain available
+to tests and experiments, under CC BY 4.0 rather than Primo's MIT license.
+The separate institutional/contributor and hosted-content reviews remain open.
 
 ## Reproducing qualification
 
