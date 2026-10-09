@@ -8,7 +8,7 @@
       "commit": "f0fbe67",
       "branch": "lra-default-candidate-20261009",
       "kind": "isolated-default-policy-committed-campaign",
-      "scope": "Fresh committed automatic default, quiet only; no promotion until generated campaign and retained mutation are classified and paired full/selected timings and complete native SAT replay qualify.",
+      "scope": "Fresh committed automatic default, quiet only. Require generated campaign and retained mutation classification, paired full1753/30s automatic-vs-opt-out compute timings and complete SAT replay before promotion. Selected519/1200s evaluation measures explicit flags in23f945d; f0fbe67 changes option selection, not algorithm implementations.",
       "environment": {
         "type": "slurm",
         "partition": "compute",
@@ -18,7 +18,14 @@
         "generated_campaign_job": 182687,
         "seed_mutation_job": 182696,
         "retained_mutant_replay_job": 182699,
-        "cpu_comparison_rule": "new timing configurations all Xeon E5-2690 v4; never mix Gold/E5 timings"
+        "cpu_comparison_rule": "new timing configurations all Xeon E5-2690 v4; never mix Gold/E5 timings",
+        "mutant_qualification_job": 182726,
+        "candidate_full30_job": 182730,
+        "candidate_full30_model_job": 182731,
+        "candidate_timing_workers": 8,
+        "candidate_memory_gib_per_worker": 7,
+        "candidate_timing_dependency": "afterok:182687:182726; every mutation non-resource outcome blocks timing",
+        "original_selected_models_wait_for_candidate_timing": 182730
       },
       "binary": {
         "git": "f0fbe67",
@@ -43,7 +50,7 @@
         "seconds": 3.91
       },
       "generated_campaign": {
-        "status": "running",
+        "status": "qualified generated stage; mutation remains pending",
         "count": 3000,
         "shards": 6,
         "generator": "FuzzSMT",
@@ -68,7 +75,44 @@
           2026101209
         ],
         "script": "scripts/slurm_lra_default_qualification.sbatch",
-        "artifact": "results/lra-default-candidate-20261009/committed-gate"
+        "artifact": "results/lra-default-candidate-20261009/committed-gate",
+        "answer_summary": {
+          "rows": 3000,
+          "outcomes": {
+            "PASS": 2976,
+            "TIMEOUT": 24
+          }
+        },
+        "status_aware_summary": {
+          "rows": 3000,
+          "outcomes": {
+            "PASS": 2976,
+            "INCOMPLETE": 24
+          },
+          "answers": {
+            "sat/sat": 2563,
+            "unsat/unsat": 413,
+            "timeout/sat": 18,
+            "timeout/timeout": 4,
+            "timeout/unsat": 2
+          }
+        },
+        "model_summary": {
+          "rows": 2563,
+          "outcomes": {
+            "pass": 2563
+          },
+          "validators": {
+            "dolmen": 2563
+          },
+          "nonpass": []
+        },
+        "boolean_arithmetic_summary": {
+          "rows": 1000,
+          "outcomes": {
+            "PASS": 1000
+          }
+        }
       },
       "real_seed_mutation": {
         "status": "running",
@@ -84,7 +128,8 @@
           "scripts/slurm_lra_default_seed_mutation.sbatch",
           "scripts/slurm_lra_default_mutant_replay.sbatch"
         ],
-        "artifact": "results/lra-default-candidate-20261009/seed-mutation"
+        "artifact": "results/lra-default-candidate-20261009/seed-mutation",
+        "qualification_script": "scripts/slurm_lra_default_mutant_qualification.sbatch"
       },
       "commands": {
         "build": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config /tmp/primo-opensmt-ssh.config --remote primo-cluster --remote-dir /home/janotmik/primo-lra-default-candidate-20261009 --local-dir /tmp/primo-lra-default-candidate --reuse-dependencies --build-via-slurm --cmake /home/janotmik/primo-cadical-profile/.venv-build/bin/cmake --cxx-header-manifest /home/janotmik/primo-symmetry-headers.txt --jobs 4 --extra-target primo_qf_lra_solver_tests --extra-target primo_boolean_solver_tests",
@@ -92,7 +137,11 @@
         "gate": "PRIMO_WORKDIR=$PWD PRIMO_EXPECTED_GIT=f0fbe67 PRIMO_CAMPAIGN_OUT=$PWD/results/lra-default-candidate-20261009/committed-gate sbatch --nodes=1 --ntasks=1 --hint=nomultithread --dependency=afterok:182686 scripts/slurm_lra_default_qualification.sbatch"
       },
       "evidence_status": "running",
-      "outcome": "Remote focused tests pass3/3. Fresh default-profile generated and real-seed campaigns launched in compute; no promotion yet."
+      "outcome": "Committed generated stage:2976/3000 agreements,24 resource timeouts; successful SAT semantic models2563/2563 pass; additional1000 Boolean/arithmetic SAT models direct QF_LRA pass. Real-seed campaign and status replay running; paired full30 compute timings and models queued behind qualification. No promotion.",
+      "verification": {
+        "qualification_aggregator": "9 adversarial checks pass; nonzero exits after SAT, changed/missing data and raw bugs block; resource-only timeouts counted separately",
+        "artifact": "results/lra-default-candidate-20261009/qualification-aggregator-checks.json"
+      }
     },
     {
       "id": "2026-10-09-lra-automatic-default-candidate-precommit",
@@ -199,7 +248,7 @@
         "model_partition": "compute; queued selection job moved from gpu on user scheduling concern",
         "model_dependencies": {
           "182359": "afterok:182100",
-          "182360": "afterok:182101:182359"
+          "182360": "afterok:182101:182730; wait for candidate compute timing to prevent validation/timing overlap"
         },
         "timing_node": "gpu-1; CPU-only; no new GPU-node work after user concern"
       },

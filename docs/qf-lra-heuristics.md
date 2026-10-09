@@ -113,9 +113,22 @@ mutation uses `slurm_lra_default_seed_mutation.sbatch`, followed by independent
 retained-input checks through `slurm_lra_default_mutant_replay.sbatch`.
 None of these pending stages is evidence of an accepted default promotion.
 The committed candidate is `f0fbe67`: remote focused tests passed, and fresh
-generated and mutation campaigns are running on the compute partition.
+generated checks gave 2,976 agreements and 24 resource-only timeouts out of
+3,000 inputs. All 2,563 successful SAT models passed direct Dolmen semantic
+replay, and another 1,000 Boolean/arithmetic SAT models passed direct QF_LRA
+checks. Real-seed mutation and its independent replay remain pending.
+The retained-input qualification script requires complete shard coverage,
+unchanged inputs and binary identity, all 17 families, and either an exact
+successful agreement or a classified resource-only timeout. Unsupported inputs,
+nonzero exits after an answer, disagreements, and raw bug artifacts block
+the next timing run.
 `slurm_lra_default_compute_comparison.sbatch` refuses other CPU generations
 and records host, CPU affinity and job identity for each new timing shard.
+It compares the candidate's automatic default with explicit opt-outs over the
+full 1,753-input corpus, followed by separate SAT replay for both arms. The
+longer paper-profile comparison measures explicit flags in source `23f945d`;
+the candidate changes only automatic option selection, not the underlying
+algorithms. Results from these two CPU generations remain separate.
 
 Written 2026-07-27 as a design note and extended through 2026-07-31. It picks
 up where the competitiveness roadmap's items 0-8 (see [](arithmetic.md)'s
