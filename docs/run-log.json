@@ -115,7 +115,7 @@
         }
       },
       "real_seed_mutation": {
-        "status": "running",
+        "status": "qualified",
         "generator": "patched YinYang fork,seeded_opfuzz.py",
         "seed": 2026101300,
         "seed_selection": "two seeds/family,17families,max200000bytes",
@@ -129,7 +129,38 @@
           "scripts/slurm_lra_default_mutant_replay.sbatch"
         ],
         "artifact": "results/lra-default-candidate-20261009/seed-mutation",
-        "qualification_script": "scripts/slurm_lra_default_mutant_qualification.sbatch"
+        "qualification_script": "scripts/slurm_lra_default_mutant_qualification.sbatch",
+        "retained_inputs": 6785,
+        "family_coverage": [
+          "2017-Heizmann-UltimateInvariantSynthesis",
+          "2019-ezsmt",
+          "DTP-Scheduling",
+          "LassoRanker",
+          "TM",
+          "check",
+          "clock_synchro",
+          "keymaera",
+          "latendresse",
+          "meti-tarski",
+          "miplib",
+          "sal",
+          "sc",
+          "spider_benchmarks",
+          "tropical-matrix",
+          "tta_startup",
+          "uart"
+        ],
+        "summary": {
+          "pass": 6749,
+          "timeout": 36,
+          "wrong_answer": 0,
+          "crash": 0,
+          "parser_type_errors": 0,
+          "unsupported": 0,
+          "reference_disagreement": 0
+        },
+        "generator_commit": "04c8618a134e7a6c8b6d54fcd5ee9fd2ec64a2bb; clean patched fork",
+        "qualification_artifact": "results/lra-default-candidate-20261009/mutation-qualification.json"
       },
       "commands": {
         "build": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config /tmp/primo-opensmt-ssh.config --remote primo-cluster --remote-dir /home/janotmik/primo-lra-default-candidate-20261009 --local-dir /tmp/primo-lra-default-candidate --reuse-dependencies --build-via-slurm --cmake /home/janotmik/primo-cadical-profile/.venv-build/bin/cmake --cxx-header-manifest /home/janotmik/primo-symmetry-headers.txt --jobs 4 --extra-target primo_qf_lra_solver_tests --extra-target primo_boolean_solver_tests",
@@ -137,7 +168,7 @@
         "gate": "PRIMO_WORKDIR=$PWD PRIMO_EXPECTED_GIT=f0fbe67 PRIMO_CAMPAIGN_OUT=$PWD/results/lra-default-candidate-20261009/committed-gate sbatch --nodes=1 --ntasks=1 --hint=nomultithread --dependency=afterok:182686 scripts/slurm_lra_default_qualification.sbatch"
       },
       "evidence_status": "running",
-      "outcome": "Committed generated stage:2976/3000 agreements,24 resource timeouts; successful SAT semantic models2563/2563 pass; additional1000 Boolean/arithmetic SAT models direct QF_LRA pass. Real-seed campaign and status replay running; paired full30 compute timings and models queued behind qualification. No promotion.",
+      "outcome": "Committed candidate generated/real-seed correctness gates qualify:2976/3000 generated agreements,24 timeouts;2563 semantic SAT models and1000 Boolean/arithmetic QF_LRA SAT models pass direct Dolmen. Retained mutation6749/6785 agreements,36 timeouts,all17families; every retained input independently classified. Paired full30 compute timings running and SAT replay queued; longer explicit-flag Gold comparison still running. No promotion yet.",
       "verification": {
         "qualification_aggregator": "9 adversarial checks pass; nonzero exits after SAT, changed/missing data and raw bugs block; resource-only timeouts counted separately",
         "artifact": "results/lra-default-candidate-20261009/qualification-aggregator-checks.json"
@@ -156,7 +187,7 @@
         "benchmark_partition_policy": "compute for subsequent work; CPU models must match within any new comparison"
       },
       "binary": {
-        "git": "primo 0.2.0\ngit: 87aa4cc-dirty\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+        "git": "87aa4cc-dirty",
         "sha256": "bd34169face91990fe4b61f189628fc809f76554b98c459c228515505131552e",
         "source_patch_sha256": "35c1ccb5aff3fa144dfbb3371ba54c54f368f1a15e5d65c9f82eda9b337ad1f1",
         "provenance": "results/lra-default-candidate-20261009/local-merge/precommit-provenance.json"

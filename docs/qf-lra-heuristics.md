@@ -116,7 +116,11 @@ The committed candidate is `f0fbe67`: remote focused tests passed, and fresh
 generated checks gave 2,976 agreements and 24 resource-only timeouts out of
 3,000 inputs. All 2,563 successful SAT models passed direct Dolmen semantic
 replay, and another 1,000 Boolean/arithmetic SAT models passed direct QF_LRA
-checks. Real-seed mutation and its independent replay remain pending.
+checks. Real-seed mutation retained 6,785 inputs across all 17 families;
+independent replay gave 6,749 agreements and 36 resource-only timeouts.
+No wrong answers, crashes, parser/type errors, unsupported inputs, or reference
+disagreements remained. The patched YinYang fork is clean at
+`04c8618a134e7a6c8b6d54fcd5ee9fd2ec64a2bb`.
 The retained-input qualification script requires complete shard coverage,
 unchanged inputs and binary identity, all 17 families, and either an exact
 successful agreement or a classified resource-only timeout. Unsupported inputs,
