@@ -93,6 +93,27 @@ the compute partition, including the queued selected-corpus model replay,
 to avoid occupying GPU-node CPU and memory resources. A new timing comparison
 must compare its configurations on matching CPU hardware.
 
+All four native 1,200-second timing arms have completed on that same Gold
+host. Reference timings and the separate 1,115-row native SAT-model replay
+are still running; this table is timing evidence awaiting model qualification.
+
+| Profile | Solved / 519 | Timeouts | PAR2 sum (s) |
+|---|---:|---:|---:|
+| Previous default | 491 | 28 | 84,024.427 |
+| Model phase | 501 | 18 | 59,825.189 |
+| Monotone elimination | 498 | 21 | 67,121.127 |
+| Both | 500 | 19 | 59,868.270 |
+
+Both gains nine net solves and reduces PAR2 by 28.75% against the previous
+default. Model phase alone solves one more input than both at this cutoff,
+with 0.07% lower PAR2. The combined profile therefore does not dominate every
+alternative. The manuscript's corresponding counts were 499 and 504;
+absolute reproduction is limited by different hardware, concurrency, reference
+versions and original rather than competition-scrambled inputs.
+Selected-corpus replay was released after all native timing shards and the
+candidate's compute timing stage completed. It runs on compute nodes while
+the remaining reference timing shards finish on the Gold host.
+
 ```{figure} _static/qf-lra-reverification-20261009-full30.svg
 :alt: Six solver configurations on the full QF_LRA corpus at a 30-second timeout
 

@@ -51,7 +51,7 @@
         "seconds": 3.91
       },
       "generated_campaign": {
-        "status": "qualified generated stage; mutation remains pending",
+        "status": "Qualified: generated checks and semantic SAT replay complete; retained mutation separately qualified.",
         "count": 3000,
         "shards": 6,
         "generator": "FuzzSMT",
@@ -772,7 +772,7 @@
         "model_partition": "compute; queued selection job moved from gpu on user scheduling concern",
         "model_dependencies": {
           "182359": "afterok:182100",
-          "182360": "afterok:182101:182730; wait for candidate compute timing to prevent validation/timing overlap"
+          "182360": "Released after auditing all 256 native selection timing shards complete and all candidate compute timing tasks (182730) complete; remaining 182101 reference timings use a different CPU host. scontrol update JobId=182360 Dependency=\"\". Completed 182730 had left active scheduler state, so afterok:182730 update was rejected."
         },
         "timing_node": "gpu-1; CPU-only; no new GPU-node work after user concern"
       },
