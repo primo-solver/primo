@@ -11,9 +11,10 @@
   "model_jobs": [
     182360,
     183270,
-    183447
+    183447,
+    183565
   ],
-  "model_qualification": "pending",
+  "model_qualification": "complete:all1115successful native SAT rows independently pass direct Dolmen;256shards,exactSATsets and parent/artifact hashes audited;two1260s resource-only timeouts retained and replaced by complete3600s attempts.",
   "summary": {
     "complete": true,
     "expected_rows_per_profile": 519,
@@ -222,14 +223,16 @@
         "model_validation": {
           "completed_shards": 64,
           "statuses": {
-            "complete": 63,
-            "incomplete": 1
+            "complete": 64
           },
           "expected_sat": 276,
-          "dolmen_pass": 275,
+          "dolmen_pass": 276,
           "outcomes": {
-            "pass": 275,
-            "solver-timeout": 1
+            "pass": 276
+          },
+          "selected_attempts": {
+            "model-validation": 63,
+            "model-validation-extended3600": 1
           }
         }
       },
@@ -435,14 +438,17 @@
           }
         },
         "model_validation": {
-          "completed_shards": 62,
+          "completed_shards": 64,
           "statuses": {
-            "complete": 62
+            "complete": 64
           },
-          "expected_sat": 271,
-          "dolmen_pass": 271,
+          "expected_sat": 280,
+          "dolmen_pass": 280,
           "outcomes": {
-            "pass": 271
+            "pass": 280
+          },
+          "selected_attempts": {
+            "model-validation": 64
           }
         }
       },
@@ -647,14 +653,18 @@
           }
         },
         "model_validation": {
-          "completed_shards": 39,
+          "completed_shards": 64,
           "statuses": {
-            "complete": 39
+            "complete": 64
           },
-          "expected_sat": 168,
-          "dolmen_pass": 168,
+          "expected_sat": 279,
+          "dolmen_pass": 279,
           "outcomes": {
-            "pass": 168
+            "pass": 279
+          },
+          "selected_attempts": {
+            "model-validation": 63,
+            "model-validation-extended3600": 1
           }
         }
       },
@@ -860,11 +870,18 @@
           }
         },
         "model_validation": {
-          "completed_shards": 0,
-          "statuses": {},
-          "expected_sat": 0,
-          "dolmen_pass": 0,
-          "outcomes": {}
+          "completed_shards": 64,
+          "statuses": {
+            "complete": 64
+          },
+          "expected_sat": 280,
+          "dolmen_pass": 280,
+          "outcomes": {
+            "pass": 280
+          },
+          "selected_attempts": {
+            "model-validation": 64
+          }
         }
       },
       "opensmt": {
@@ -1073,7 +1090,8 @@
           "statuses": {},
           "expected_sat": 0,
           "dolmen_pass": 0,
-          "outcomes": {}
+          "outcomes": {},
+          "selected_attempts": {}
         }
       },
       "yices": {
@@ -1282,7 +1300,8 @@
           "statuses": {},
           "expected_sat": 0,
           "dolmen_pass": 0,
-          "outcomes": {}
+          "outcomes": {},
+          "selected_attempts": {}
         }
       }
     },
@@ -1350,8 +1369,24 @@
     },
     "comparisons": {
       "model-phase": {
-        "gains": 12,
-        "losses": 2,
+        "gains": [
+          "2017-Heizmann-UltimateInvariantSynthesis/_simple4.i_3_4_2.bpl_11.smt2",
+          "LassoRanker/CooperatingT2/brp_withassume.t2.c_Iteration1_Loop_7-phaseTemplate.smt2",
+          "LassoRanker/CooperatingT2/hongyi1.t2.c_Iteration9_Loop_7-phaseTemplate.smt2",
+          "LassoRanker/CooperatingT2/magic.t2.c_Iteration12_Loop_7-phaseTemplate.smt2",
+          "LassoRanker/SV-COMP/GulwaniJainKoskinen-2009PLDI-Fig1_true-termination.c_Iteration1_Lasso_3-pieceTemplate.smt2",
+          "LassoRanker/SV-COMP/GulwaniJainKoskinen-2009PLDI-Fig1_true-termination.c_Iteration1_Lasso_6-phaseTemplate.smt2",
+          "LassoRanker/SV-COMP/GulwaniJainKoskinen-2009PLDI-Fig1_true-termination.c_Iteration1_Lasso_7-phaseTemplate.smt2",
+          "LassoRanker/SV-COMP/TelAviv-Amir-Minimum_true-termination.c_Iteration1_Lasso_4-pieceTemplate.smt2",
+          "LassoRanker/Ultimate/Braverman-2006CAV-Ex1-int.bpl_Iteration1_Lasso_6-phaseTemplate.smt2",
+          "LassoRanker/Ultimate/Braverman-2006CAV-Ex1-int.bpl_Iteration1_Loop_6-phaseTemplate.smt2",
+          "miplib/pp08a-5000.smt2",
+          "tropical-matrix/constraint-556101.smt2"
+        ],
+        "losses": [
+          "LassoRanker/SV-COMP/LeeJonesBen-Amram-2001POPL-Ex5_true-termination.c_Iteration2_Lasso_4-pieceTemplate.smt2",
+          "latendresse/ecoliMILPglycerolYices3-5000.smt2"
+        ],
         "paired_solved": 489,
         "paired_baseline_at_least_1s": 261,
         "median_candidate_over_baseline": 0.7490463734754639,
@@ -1359,8 +1394,16 @@
         "par2_change_percent": -28.80024181806006
       },
       "monotone": {
-        "gains": 7,
-        "losses": 0,
+        "gains": [
+          "LassoRanker/CooperatingT2/brp_withassume.t2.c_Iteration1_Loop_7-phaseTemplate.smt2",
+          "LassoRanker/CooperatingT2/hongyi1.t2.c_Iteration9_Loop_7-phaseTemplate.smt2",
+          "LassoRanker/CooperatingT2/magic.t2.c_Iteration12_Loop_7-phaseTemplate.smt2",
+          "LassoRanker/SV-COMP/GulwaniJainKoskinen-2009PLDI-Fig1_true-termination.c_Iteration1_Lasso_6-phaseTemplate.smt2",
+          "LassoRanker/SV-COMP/GulwaniJainKoskinen-2009PLDI-Fig1_true-termination.c_Iteration1_Lasso_7-phaseTemplate.smt2",
+          "LassoRanker/Ultimate/Braverman-2006CAV-Ex1-int.bpl_Iteration1_Lasso_6-phaseTemplate.smt2",
+          "LassoRanker/Ultimate/Braverman-2006CAV-Ex1-int.bpl_Iteration1_Loop_6-phaseTemplate.smt2"
+        ],
+        "losses": [],
         "paired_solved": 491,
         "paired_baseline_at_least_1s": 263,
         "median_candidate_over_baseline": 1.0015175177014288,
@@ -1368,8 +1411,23 @@
         "par2_change_percent": -20.117126721594623
       },
       "both": {
-        "gains": 11,
-        "losses": 2,
+        "gains": [
+          "2017-Heizmann-UltimateInvariantSynthesis/_simple4.i_3_4_2.bpl_11.smt2",
+          "LassoRanker/CooperatingT2/brp_withassume.t2.c_Iteration1_Loop_7-phaseTemplate.smt2",
+          "LassoRanker/CooperatingT2/hongyi1.t2.c_Iteration9_Loop_7-phaseTemplate.smt2",
+          "LassoRanker/CooperatingT2/magic.t2.c_Iteration12_Loop_7-phaseTemplate.smt2",
+          "LassoRanker/SV-COMP/GulwaniJainKoskinen-2009PLDI-Fig1_true-termination.c_Iteration1_Lasso_3-pieceTemplate.smt2",
+          "LassoRanker/SV-COMP/GulwaniJainKoskinen-2009PLDI-Fig1_true-termination.c_Iteration1_Lasso_6-phaseTemplate.smt2",
+          "LassoRanker/SV-COMP/TelAviv-Amir-Minimum_true-termination.c_Iteration1_Lasso_4-pieceTemplate.smt2",
+          "LassoRanker/Ultimate/Braverman-2006CAV-Ex1-int.bpl_Iteration1_Lasso_6-phaseTemplate.smt2",
+          "LassoRanker/Ultimate/Braverman-2006CAV-Ex1-int.bpl_Iteration1_Loop_6-phaseTemplate.smt2",
+          "miplib/pp08a-5000.smt2",
+          "tropical-matrix/constraint-556101.smt2"
+        ],
+        "losses": [
+          "LassoRanker/SV-COMP/LeeJonesBen-Amram-2001POPL-Ex5_true-termination.c_Iteration2_Lasso_4-pieceTemplate.smt2",
+          "latendresse/ecoliMILPglycerolYices3-5000.smt2"
+        ],
         "paired_solved": 489,
         "paired_baseline_at_least_1s": 261,
         "median_candidate_over_baseline": 0.6873561296368588,
@@ -1377,8 +1435,35 @@
         "par2_change_percent": -28.748969379318446
       },
       "opensmt": {
-        "gains": 16,
-        "losses": 9,
+        "gains": [
+          "2017-Heizmann-UltimateInvariantSynthesis/_simple4.i_3_4_2.bpl_11.smt2",
+          "2017-Heizmann-UltimateInvariantSynthesis/_standard_strcmp_ground.i_4_2_2.bpl_11.smt2",
+          "LassoRanker/CooperatingT2/brp_withassume.t2.c_Iteration1_Loop_7-phaseTemplate.smt2",
+          "LassoRanker/CooperatingT2/hongyi1.t2.c_Iteration9_Loop_7-phaseTemplate.smt2",
+          "LassoRanker/CooperatingT2/magic.t2.c_Iteration12_Loop_7-phaseTemplate.smt2",
+          "LassoRanker/SV-COMP/GulwaniJainKoskinen-2009PLDI-Fig1_true-termination.c_Iteration1_Lasso_3-pieceTemplate.smt2",
+          "LassoRanker/SV-COMP/GulwaniJainKoskinen-2009PLDI-Fig1_true-termination.c_Iteration1_Lasso_6-phaseTemplate.smt2",
+          "LassoRanker/SV-COMP/GulwaniJainKoskinen-2009PLDI-Fig1_true-termination.c_Iteration1_Lasso_7-phaseTemplate.smt2",
+          "LassoRanker/SV-COMP/TelAviv-Amir-Minimum_true-termination.c_Iteration1_Lasso_4-pieceTemplate.smt2",
+          "LassoRanker/Ultimate/Braverman-2006CAV-Ex1-int.bpl_Iteration1_Lasso_6-phaseTemplate.smt2",
+          "LassoRanker/Ultimate/Braverman-2006CAV-Ex1-int.bpl_Iteration1_Loop_6-phaseTemplate.smt2",
+          "LassoRanker/Ultimate/Braverman-2006CAV-Ex1-int.bpl_Iteration1_Loop_7-phaseTemplate.smt2",
+          "miplib/pp08a-5000.smt2",
+          "tropical-matrix/constraint-251380.smt2",
+          "tropical-matrix/constraint-269735.smt2",
+          "tropical-matrix/constraint-436218.smt2"
+        ],
+        "losses": [
+          "2017-Heizmann-UltimateInvariantSynthesis/_array_ptr_single_elem_init.i_4_2_2.bpl_7.smt2",
+          "2019-ezsmt/Labyrinth/SCC_Strong/0150-labyrinth-16-0.smt2",
+          "LassoRanker/CooperatingT2/firewire.t2.c_Iteration1_Lasso_4-pieceTemplate.smt2",
+          "LassoRanker/CooperatingT2/firewire.t2.c_Iteration1_Lasso_7-phaseTemplate.smt2",
+          "LassoRanker/SV-COMP/LeeJonesBen-Amram-2001POPL-Ex5_true-termination.c_Iteration2_Lasso_4-pieceTemplate.smt2",
+          "LassoRanker/SV-COMP/aviad_true-termination.c_Iteration1_Loop_7-phaseTemplate.smt2",
+          "LassoRanker/Ultimate/bound-scaled200.bpl_Iteration1_Loop_7-phaseTemplate.smt2",
+          "latendresse/ecoliMILPglycerolYices3-5000.smt2",
+          "latendresse/ecoliMILPglycerolYices3-70000.smt2"
+        ],
         "paired_solved": 482,
         "paired_baseline_at_least_1s": 254,
         "median_candidate_over_baseline": 0.5593193317479261,
@@ -1386,8 +1471,32 @@
         "par2_change_percent": -20.912279279853763
       },
       "yices": {
-        "gains": 11,
-        "losses": 11,
+        "gains": [
+          "LassoRanker/CooperatingT2/brp_withassume.t2.c_Iteration1_Loop_7-phaseTemplate.smt2",
+          "LassoRanker/CooperatingT2/hongyi1.t2.c_Iteration9_Loop_7-phaseTemplate.smt2",
+          "LassoRanker/CooperatingT2/magic.t2.c_Iteration12_Loop_7-phaseTemplate.smt2",
+          "LassoRanker/SV-COMP/GulwaniJainKoskinen-2009PLDI-Fig1_true-termination.c_Iteration1_Lasso_3-pieceTemplate.smt2",
+          "LassoRanker/SV-COMP/GulwaniJainKoskinen-2009PLDI-Fig1_true-termination.c_Iteration1_Lasso_6-phaseTemplate.smt2",
+          "LassoRanker/SV-COMP/GulwaniJainKoskinen-2009PLDI-Fig1_true-termination.c_Iteration1_Lasso_7-phaseTemplate.smt2",
+          "LassoRanker/SV-COMP/TelAviv-Amir-Minimum_true-termination.c_Iteration1_Lasso_4-pieceTemplate.smt2",
+          "miplib/opt1217--27.smt2",
+          "miplib/pp08a-5000.smt2",
+          "tropical-matrix/constraint-251380.smt2",
+          "tropical-matrix/constraint-436218.smt2"
+        ],
+        "losses": [
+          "2017-Heizmann-UltimateInvariantSynthesis/_array_ptr_single_elem_init.i_4_2_2.bpl_7.smt2",
+          "2017-Heizmann-UltimateInvariantSynthesis/_array_single_elem_init.i_4_2_2.bpl_7.smt2",
+          "2017-Heizmann-UltimateInvariantSynthesis/_standard_init9_ground.i_3_2_2.bpl_7.smt2",
+          "2019-ezsmt/Labyrinth/SCC_Strong/0150-labyrinth-16-0.smt2",
+          "2019-ezsmt/travellingSalesperson/rand_70_300_1155482584_0.lp.smt2",
+          "LassoRanker/CooperatingT2/firewire.t2.c_Iteration1_Lasso_4-pieceTemplate.smt2",
+          "LassoRanker/CooperatingT2/firewire.t2.c_Iteration1_Lasso_7-phaseTemplate.smt2",
+          "LassoRanker/CooperatingT2/p-46.t2.c_Iteration2_Lasso_7-phaseTemplate.smt2",
+          "LassoRanker/CooperatingT2/sas2.t2.c_Iteration7_Loop_7-phaseTemplate.smt2",
+          "LassoRanker/SV-COMP/LeeJonesBen-Amram-2001POPL-Ex5_true-termination.c_Iteration2_Lasso_4-pieceTemplate.smt2",
+          "latendresse/ecoliMILPglycerolYices3-70000.smt2"
+        ],
         "paired_solved": 480,
         "paired_baseline_at_least_1s": 253,
         "median_candidate_over_baseline": 0.44359579958619577,
@@ -1405,5 +1514,9 @@
     "opensmt": "paper v2.9.2-35-g15b42c6f; measured release2.9.2 differs",
     "input_archive": "Current original/unscrambled inputs; exact paper input archive unavailable",
     "training_manifest": "473instance tuning population;194selected overlap/325test; original tuning manifest unavailable,473 is a population size rather than a random seed."
-  }
+  },
+  "model_retry_artifacts": [
+    "default/shard-63/model-validation-extended3600",
+    "monotone/shard-43/model-validation-extended3600"
+  ]
 }

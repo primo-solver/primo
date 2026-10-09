@@ -1187,9 +1187,9 @@ Every QF_LRA option, its default, and where its evidence lives. Verified
 against `CheckSatOptions` and `--help` on 2026-08-06 by diffing the table
 against `--help` output rather than by eye -- five options were missing.
 
-The 2026-10-09 automatic-policy candidate is under qualification; see
-[](qf-lra-heuristics.md). On this candidate branch, model phase and monotone
-elimination resolve to on only for declared QF_LRA queries in rebuild mode with
+The automatic policy at `f0fbe67` was qualified and accepted on 2026-10-10; see
+[](qf-lra-heuristics.md). Model phase and monotone elimination resolve to on
+only for declared QF_LRA queries in rebuild mode with
 `preprocessing-mode=auto`. Other declared logics, explicit preprocessing profiles,
 and assumptions sessions retain their previous defaults.
 This changes option selection, not either algorithm.

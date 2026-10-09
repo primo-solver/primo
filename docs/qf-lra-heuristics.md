@@ -10,9 +10,11 @@ dedicated QF_UFLRA setting.
 ## Reverification of the paper profile (2026-10-09)
 
 The LPAR manuscript's `Primo*` uses `--lra-model-phase --monotone-elimination`.
-The measured binary keeps both options off by default. This isolated candidate
-branch selects them automatically for declared QF_LRA rebuild queries with auto
-preprocessing and adds independent explicit opt-outs. Its promotion remains pending qualification.
+The original measured binary keeps both options off by default. The qualified
+policy at `f0fbe67`, accepted on 2026-10-10, selects them automatically for
+declared QF_LRA rebuild queries with auto preprocessing and adds independent
+explicit opt-outs. Later commits update workflows and evidence, with the same
+solver sources and tests.
 The August measurements and manuscript tables are historical evidence; neither
 qualifies the current implementation.
 
@@ -46,7 +48,8 @@ regression witnesses. Promotion requires a reproducible solved-count/PAR2 gain,
 an explicit account of losses and family effects, zero untriaged correctness
 failures, and separate direct Dolmen validation of every successful SAT row
 for each Primo profile claimed. A QF_LRA gain alone does not justify enabling
-these flags for QF_LIA or QF_UFLRA. Evaluation and promotion are pending.
+these flags for QF_LIA or QF_UFLRA. The completed evaluation below qualifies
+the scoped QF_LRA promotion.
 
 The current opt-in profile passed the focused tests and all 1,000 generated
 Boolean/arithmetic SAT models with direct Dolmen checks. A separate 3,000-case
@@ -86,17 +89,17 @@ and 20.81% lower PAR2. LassoRanker accounts for most solved-count gains;
 latendresse loses four and uart loses two. These are aggregate gains with
 real regressions. All 3,711 successful native SAT rows passed separate direct
 Dolmen model replay, with unchanged input and binary identities. The
-1,200-second comparison and its SAT-model coverage remain pending.
+1,200-second comparison below is also complete and independently validated.
 Timings use CPU cores on `gpu-1`, with no GPU allocation;
 this host differs from the paper's EPYC 7513. Subsequent qualification uses
-the compute partition, including the queued selected-corpus model replay,
+the compute partition, including the selected-corpus model replay,
 to avoid occupying GPU-node CPU and memory resources. A new timing comparison
 must compare its configurations on matching CPU hardware.
 
 All six 1,200-second timing arms have completed on that same Gold host, with
-no wrong answers, errors or pairwise reference disagreements. The separate
-1,115-row native SAT-model replay is still running; this table is timing
-evidence awaiting model qualification.
+no wrong answers, errors or pairwise reference disagreements. All 1,115
+successful native SAT rows passed separate direct Dolmen replay, with complete
+coverage of all 256 shards and unchanged parent input/binary identities.
 
 | Profile | Solved / 519 | Timeouts | PAR2 sum (s) |
 |---|---:|---:|---:|
@@ -107,8 +110,8 @@ evidence awaiting model qualification.
 | OpenSMT 2.9.2 | 498 | 21 | 66,453.004 |
 | Yices 2.7.0 | 491 | 28 | 83,999.463 |
 
-Both gains 11 inputs and loses two, for nine net solves and 28.75% lower PAR2 against the previous
-default. Model phase alone solves one more input than both at this cutoff,
+Both gains 11 inputs and loses two, for nine net solves and 28.75% lower PAR2
+against the previous default. Model phase alone solves one more input than both at this cutoff,
 with 0.07% lower PAR2. The combined profile therefore does not dominate every
 alternative. The manuscript's corresponding counts were 499 and 504;
 absolute reproduction is limited by different hardware, concurrency and
@@ -119,14 +122,14 @@ archive is unavailable. Its 194/325 split is the intersection with a
 The manuscript applies a 7 GB limit to all solvers in this experiment;
 30 GB describes the actual competition. This run reserves 7 GiB per worker.
 Selected-corpus replay was released after all native timing shards and the
-candidate's compute timing stage completed. It runs on compute nodes while
+candidate's compute timing stage completed. It ran on compute nodes while
 the remaining reference timing shards finished on the Gold host. All new
 work is restricted to compute nodes.
 Unstarted selected-corpus replay tasks moved to
 `slurm_lra_selected_model_replay.sbatch`: 6 GiB per worker with a 5 GiB Dolmen
-cap, leaving space for runtime overhead. Already running replay tasks retain
+cap, leaving space for runtime overhead. Already running replay tasks retained
 their 7 GiB reservation and 6 GiB Dolmen cap. Parent timing limits, inputs,
-binary and arguments do not change. The wrapper dispatches only native
+binary and arguments were unchanged. The wrapper dispatches only native
 profiles and delegates to the existing immutable-parent replay workflow;
 all successful SAT rows still require direct validation. This scheduling
 adjustment uses available compute memory without occupying GPU nodes.
@@ -134,9 +137,19 @@ For future submissions, the compact wrapper defaults to a 2,400-second solver
 replay timeout and a 120-second Dolmen timeout: replay on the older CPUs needs
 headroom beyond the 1,200-second Gold timing limit. The initial submissions
 explicitly selected 1,260 seconds; their recorded limits are unchanged.
-One former-default SAT replay reached that limit on an older compute CPU.
-Its shard is being repeated separately with a 3,600-second solver limit;
-the original timeout and artifacts are retained. No benchmark timing changes.
+Two SAT replays reached that limit on older compute CPUs, one in the former
+default and one with monotone elimination alone. Separate 3,600-second
+replays of their five-SAT-row shards both passed all models. The original
+timeouts and artifacts are retained; the final coverage audit selects those
+complete extended attempts without counting rows twice. No benchmark timing changes.
+
+```{figure} _static/qf-lra-reverification-20261009-selection1200.svg
+:alt: Six solver configurations on the 519 selected QF_LRA inputs at 1200 seconds
+
+Qualified selected-corpus comparison, source `23f945d`. All 1,115 successful
+native SAT rows pass independent direct Dolmen replay. The summary is
+`benchmarks/qf-lra-reverification-20261009-selection1200.json`.
+```
 
 ```{figure} _static/qf-lra-reverification-20261009-full30.svg
 :alt: Six solver configurations on the full QF_LRA corpus at a 30-second timeout
@@ -146,7 +159,7 @@ separately and contributes no time to the curves. The committed summary is
 `benchmarks/qf-lra-reverification-20261009-full30.json`.
 ```
 
-The isolated automatic-policy candidate passed 1,000 fresh generated SAT
+The automatic-policy candidate passed 1,000 fresh generated SAT
 answer checks and 1,000 direct Dolmen checks locally before its source commit,
 as well as 42 C++ tests, 188 Python tests, and all 42 sanitizer tests.
 The `slurm_lra_default_qualification.sbatch` workflow requires another fresh
@@ -156,8 +169,8 @@ input model stage explicitly uses Dolmen's QF_NRA semantic superset. Another
 1,000 Boolean/arithmetic cases use direct QF_LRA model checks. Real-seed
 mutation uses `slurm_lra_default_seed_mutation.sbatch`, followed by independent
 retained-input checks through `slurm_lra_default_mutant_replay.sbatch`.
-These gates establish correctness within their recorded coverage; promotion
-also requires the complete timing and model comparisons.
+These gates and the completed timing/model comparisons qualify the promotion
+within their recorded coverage.
 The committed candidate is `f0fbe67`: remote focused tests passed, and fresh
 generated checks gave 2,976 agreements and 24 resource-only timeouts out of
 3,000 inputs. All 2,563 successful SAT models passed direct Dolmen semantic
@@ -189,6 +202,16 @@ the former default and 935 for the automatic policy, with complete coverage
 of all 64 replay shards and unchanged parent data/binary identities.
 This is an independent compatibility measurement of the
 automatic policy; its timings are not pooled with the Gold-node data.
+
+The gains survive in the current implementation: the manuscript reported
+22.84% lower PAR2 on the full corpus and 27.60% on the selected corpus;
+the new Gold comparison gives 20.81% and 28.75%, and the separate compute
+comparison gives 18.68%. The combined profile is selected for its larger
+full-corpus gain; model phase alone remains a useful long-cutoff alternative,
+available through `--no-monotone-elimination`. All 6,652 successful native
+SAT runs across the three comparisons are independently validated. This
+confirms current relative gains, without attributing absolute timing changes
+to implementation fixes or claiming a reproduced held-out split.
 
 ```{figure} _static/qf-lra-default-policy-20261009-full30.svg
 :alt: Automatic and former Primo defaults on matching compute CPUs

@@ -7,8 +7,8 @@
       "date": "2026-10-09",
       "commit": "f0fbe67",
       "branch": "lra-default-candidate-20261009",
-      "kind": "isolated-default-policy-committed-campaign",
-      "scope": "Fresh committed automatic default, quiet only. Require generated campaign and retained mutation classification, paired full1753/30s automatic-vs-opt-out compute timings and complete SAT replay before promotion. Selected519/1200s evaluation measures explicit flags in23f945d; f0fbe67 changes option selection, not algorithm implementations.",
+      "kind": "qualified-default-profile-promotion",
+      "scope": "Promote both existing heuristics automatically for declared QF_LRA/rebuild/auto preprocessing; independent opt-outs and explicit enabling preserved. Exact qualified C++ sourcef0fbe67; later commits update metadata/workflows/docs only. Full1753/30s paired compute timings/models qualify automatic-vs-opt-out policy. Gold23f945d four-arm plus reference comparisons confirm explicit-flag gains at30s and1200s with unchanged algorithms.",
       "environment": {
         "type": "slurm",
         "partition": "compute",
@@ -168,8 +168,8 @@
         "precheck": "PRIMO_WORKDIR=$PWD PRIMO_EXPECTED_GIT=f0fbe67 sbatch --nodes=1 --ntasks=1 --hint=nomultithread scripts/slurm_lra_default_precheck.sbatch",
         "gate": "PRIMO_WORKDIR=$PWD PRIMO_EXPECTED_GIT=f0fbe67 PRIMO_CAMPAIGN_OUT=$PWD/results/lra-default-candidate-20261009/committed-gate sbatch --nodes=1 --ntasks=1 --hint=nomultithread --dependency=afterok:182686 scripts/slurm_lra_default_qualification.sbatch"
       },
-      "evidence_status": "compute-comparison-qualified-long-cutoff-pending",
-      "outcome": "Fresh default-policy gates and compute full30 timings/models qualify:1525vs1461solved,PAR2 -18.68%,1826/1826directDolmenpasses. Longer23f945d explicit-flag Gold timings complete:both500vslegacy491,PAR2 -28.75%;phasealone501. Selected1115nativeSATqualification still running, including an extended3600s replay after one1260s legacy timeout. Promotion remains pending complete selected SAT validation.",
+      "evidence_status": "complete-qualified-promotion",
+      "outcome": "Accepted both as scoped automatic defaults. FullGold:1485->1553solves (+68;88wins20losses),PAR2 -20.81%. Fullcompute:1461->1525 (+64;89wins25losses),PAR2 -18.68%. SelectedGold:491->500 (+9;11wins2losses),PAR2 -28.75%. Phasealone501at1200s remains an alternative via--no-monotone-elimination. All6652successful nativeSATruns independently pass directDolmen;0wrong/invalidmodels/crashes/reference disagreements. Freshf0fbe67 generated and real-seed gates qualify, resource-only cases recorded separately.",
       "verification": {
         "qualification_aggregator": "9 adversarial checks pass; nonzero exits after SAT, changed/missing data and raw bugs block; resource-only timeouts counted separately",
         "artifact": "results/lra-default-candidate-20261009/qualification-aggregator-checks.json",
@@ -703,6 +703,30 @@
         "qualified_source_commit": "f0fbe67",
         "cpp_tree": "0fbd83f4d49f1d9a40329b86d20317f1f1bce449",
         "later_commits": "Documentation, benchmark metadata and workflows only; git diff f0fbe67 HEAD -- src CMakeLists.txt tests/unit tests/cmake/check_lra_heuristic_cli.cmake benchmarks/smoke/qf_lra/default_heuristics.smt2 is empty."
+      },
+      "accepted_on": "2026-10-10",
+      "default_controls": {
+        "source_commit": "f0fbe67",
+        "automatic_scope": "declaredQF_LRA;IncrementalMode::Rebuild;PreprocessingMode::Auto",
+        "former_default_args": [
+          "--no-lra-model-phase",
+          "--no-monotone-elimination"
+        ],
+        "individual_overrides": "Each negative flag is independent;explicit positive/false-valued flags retain documented behavior.",
+        "performance_scope": "Measured auto-preprocess-selector=legacy. No new performance qualification of the opt-in structural selector or other logics."
+      },
+      "all_claimed_native_sat_models": {
+        "full30_gold": 3711,
+        "selection1200_gold": 1115,
+        "full30_compute": 1826,
+        "total": 6652,
+        "outcome": "all directDolmenpass; exact parentSATsets, zero solver/validator exits, unchanged input/binary identities and parent/artifact hashes independently audited",
+        "resource_retries": "Two original selected solver-timeouts at1260s;five-SAT-row extended3600s attempts both complete;originalfailuresretained and no double counting.",
+        "audit_artifacts": [
+          "results/lra-reverification-20261009/full30-complete-model-check.json",
+          "results/lra-reverification-20261009/selected-complete-model-check.json",
+          "results/lra-default-candidate-20261009/complete-model-coverage-check.json"
+        ]
       }
     },
     {
@@ -756,8 +780,9 @@
         "include_cleaner": "124 tracked CPP advisory scan; added test Statistics direct include; retained self-includes and actively used variant. Existing missing direct includes remain advisory.",
         "efficiency_review": "No added hot-path patterns; constant-time option resolution; no term allocation or algorithm changes."
       },
-      "evidence_status": "candidate-under-qualification",
-      "outcome": "Isolated source candidate passes local merge gate and normal/sanitizer tests. It is not promoted and has no qualified current-commit performance result yet."
+      "evidence_status": "historical-precommit-evidence-superseded-by-qualified-f0fbe67",
+      "outcome": "Isolated source candidate passes local merge gate and normal/sanitizer tests. It is not promoted and has no qualified current-commit performance result yet.",
+      "superseded_by": "2026-10-09-lra-automatic-default-committed-qualification"
     },
     {
       "id": "2026-10-09-lra-paper-profile-reverification",
@@ -1090,7 +1115,8 @@
           },
           "artifact": "results/lra-reverification-20261009/compact-model-scheduling.json"
         },
-        "selection1200_extended_model_job": 183447
+        "selection1200_extended_model_job": 183447,
+        "selection1200_extended_monotone_model_job": 183565
       },
       "binary": {
         "git": "23f945d",
@@ -1323,7 +1349,7 @@
           "sat": 445
         }
       },
-      "gate_status": "All timings and full30 SAT qualification complete; selected SAT qualification pending one resource-only retry and remaining profiles.",
+      "gate_status": "Complete:all timings and every successful nativeSATrow independently qualified;two resource-only initial model timeouts resolved with complete extended attempts.",
       "triage": {
         "legacy_model_driver": "The old gate validates every generated input, appending get-model even after UNSAT. Current interpreter correctly exits nonzero for that invalid model query. Strict Dolmen also rejects constant multiplication of a complex linear expression. Corrective stage selects only successful SAT rows, adds --check-model, --expect-sat and --require-dolmen-pass, and uses --dolmen-arg=--strict=false without changing the logic or assertions.",
         "initial_sat_selector": "Initially required every fuzz answer row to PASS. Corrected to preserve and report timeout-only rows separately, selecting successful SAT passes. Timeouts are not wrong answers.",
@@ -1345,7 +1371,9 @@
         "qualified_cactus": "docs/_static/qf-lra-reverification-20261009-full30.svg",
         "committed_summary": "benchmarks/qf-lra-reverification-20261009-full30.json",
         "compact_model_driver_check": "results/lra-reverification-20261009/compact-model-driver-check.json;8nativeprofile/sharddispatch checks and rejection of reference-profile index passed",
-        "compact_model_timeout_check": "results/lra-reverification-20261009/compact-model-timeout-check.json; future defaults2400/120seconds and explicit3600/180 overrides passed; running job183270 retains explicit1260/120seconds."
+        "compact_model_timeout_check": "results/lra-reverification-20261009/compact-model-timeout-check.json; future defaults2400/120seconds and explicit3600/180 overrides passed; job183270 used explicit1260/120seconds.",
+        "selected_qualified_plot": "docs/_static/qf-lra-reverification-20261009-selection1200.svg",
+        "selected_qualified_summary": "benchmarks/qf-lra-reverification-20261009-selection1200.json"
       },
       "commands": {
         "precheck": "ctest --test-dir build-slurm-rel --timeout 120 -R primo_(qf_lra_solver|boolean_solver)_tests; check_solver_seed_corpus.py for qf_lra (3), qf_lra_real (14), and two Boolean-domain witnesses, each of four profiles vs Z3 at 30s; qf_lra_boolean_arithmetic_fuzz.py --count 250 --seed 2026100905..2026100908 --timeout 5 --dolmen-timeout 10 with both flags (4 tasks).",
@@ -1362,8 +1390,8 @@
           "scripts/slurm_lra_selected_model_replay.sbatch"
         ]
       },
-      "evidence_status": "qualification-in-progress",
-      "outcome": "Qualified full30: both1553 vs previous default1485 (+68;88 gains,20 losses), PAR2sum15923.760 vs20108.495 (-20.81%). All3711 native successful SAT rows passed direct Dolmen replay with immutable input/binary identities. Selected1200 timing still running; no default promotion accepted yet.",
+      "evidence_status": "complete-qualified",
+      "outcome": "Both flags retain aggregate gains in current algorithms:full30Gold+68solves/PAR2-20.81%,selected1200Gold+9/PAR2-28.75%. All3711+1115nativeSATmodels pass directDolmen;no wrong answers,invalidmodels,crashes or reference disagreements. DistinctE5/f0fbe67 automatic-policy comparison separately qualified. Paperhardware differs,OpenSMTrevision differs,Yicesrevision matches;exactinputarchive and473instance tuningmanifest unavailable,soaggregate comparison only.",
       "fuzz_models": {
         "strict_qf_lra": {
           "expected_sat": 2603,
@@ -3152,14 +3180,16 @@
             "model_validation": {
               "completed_shards": 64,
               "statuses": {
-                "complete": 63,
-                "incomplete": 1
+                "complete": 64
               },
               "expected_sat": 276,
-              "dolmen_pass": 275,
+              "dolmen_pass": 276,
               "outcomes": {
-                "pass": 275,
-                "solver-timeout": 1
+                "pass": 276
+              },
+              "selected_attempts": {
+                "model-validation": 63,
+                "model-validation-extended3600": 1
               }
             }
           },
@@ -3365,14 +3395,17 @@
               }
             },
             "model_validation": {
-              "completed_shards": 62,
+              "completed_shards": 64,
               "statuses": {
-                "complete": 62
+                "complete": 64
               },
-              "expected_sat": 271,
-              "dolmen_pass": 271,
+              "expected_sat": 280,
+              "dolmen_pass": 280,
               "outcomes": {
-                "pass": 271
+                "pass": 280
+              },
+              "selected_attempts": {
+                "model-validation": 64
               }
             }
           },
@@ -3577,14 +3610,18 @@
               }
             },
             "model_validation": {
-              "completed_shards": 39,
+              "completed_shards": 64,
               "statuses": {
-                "complete": 39
+                "complete": 64
               },
-              "expected_sat": 168,
-              "dolmen_pass": 168,
+              "expected_sat": 279,
+              "dolmen_pass": 279,
               "outcomes": {
-                "pass": 168
+                "pass": 279
+              },
+              "selected_attempts": {
+                "model-validation": 63,
+                "model-validation-extended3600": 1
               }
             }
           },
@@ -3790,11 +3827,18 @@
               }
             },
             "model_validation": {
-              "completed_shards": 0,
-              "statuses": {},
-              "expected_sat": 0,
-              "dolmen_pass": 0,
-              "outcomes": {}
+              "completed_shards": 64,
+              "statuses": {
+                "complete": 64
+              },
+              "expected_sat": 280,
+              "dolmen_pass": 280,
+              "outcomes": {
+                "pass": 280
+              },
+              "selected_attempts": {
+                "model-validation": 64
+              }
             }
           },
           "opensmt": {
@@ -4003,7 +4047,8 @@
               "statuses": {},
               "expected_sat": 0,
               "dolmen_pass": 0,
-              "outcomes": {}
+              "outcomes": {},
+              "selected_attempts": {}
             }
           },
           "yices": {
@@ -4212,7 +4257,8 @@
               "statuses": {},
               "expected_sat": 0,
               "dolmen_pass": 0,
-              "outcomes": {}
+              "outcomes": {},
+              "selected_attempts": {}
             }
           }
         },
@@ -4326,7 +4372,7 @@
           }
         },
         "reference_disagreements": [],
-        "qualification": "All timings complete:519inputs per6arms,0wrong/errors/reference disagreements. Complete independent1115SATmodels still required; legacy longest SAT case hit1260s oncompute and extended3600s replay is running."
+        "qualification": "Complete timings for519inputs in6arms and complete1115directDolmenSATmodels across4nativearms/256shards. Original1260s timeout artifacts retained;completed3600s retries selected for baseline63 andmonotone43. All parent and model-summary hashes, exactSATsets and zero exits audited."
       },
       "selection1200_model_retry": {
         "job": 183447,
@@ -4373,7 +4419,8 @@
         },
         "wrapper_sha256": "94814b02f90747993c6f7f128ad42ef898d17d73b4c26e6c7274207e534356ac",
         "original_pending_released_after_retry_running": true,
-        "retry_host": "node-05"
+        "retry_host": "node-05",
+        "qualification": "Complete:all5SATmodels directly pass Dolmen,unchanged input/binary. Job183447 completed25m50s. Original1260s timeout retained."
       },
       "paper_protocol": {
         "hardware": "two AMD EPYC7513 32core,512GB RAM,64concurrent workers",
@@ -4383,7 +4430,105 @@
         "opensmt": "paper v2.9.2-35-g15b42c6f; measured release2.9.2 differs",
         "input_archive": "Current original/unscrambled inputs; exact paper input archive unavailable",
         "training_manifest": "473instance tuning population;194selected overlap/325test; original tuning manifest unavailable,473 is a population size rather than a random seed."
-      }
+      },
+      "selection1200_model_retries": [
+        {
+          "job": 183447,
+          "parent_timing_job": 182101,
+          "original_model_job": 183270,
+          "profile": "default",
+          "shard": 63,
+          "initial_failure": [
+            {
+              "file": "/home/janotmik/primo-cadical-profile/tmp/QF_LRA/LassoRanker/CooperatingT2/fir.t2.c_Iteration4_Loop_7-phaseTemplate.smt2",
+              "answer": "",
+              "outcome": "solver-timeout",
+              "validator": "",
+              "solver_exit": "",
+              "dolmen_exit": "",
+              "z3_exit": "",
+              "seconds": "1260.120",
+              "solver_seconds": "1260.120",
+              "validation_seconds": "0.000",
+              "message": "solver timeout"
+            }
+          ],
+          "attempt": "model-validation-extended3600",
+          "solver_timeout_seconds": 3600,
+          "dolmen_timeout_seconds": 120,
+          "memory_gib": 6,
+          "dolmen_size": "5G",
+          "held_only_pending_for_launch": 183270,
+          "command": [
+            "sbatch",
+            "--parsable",
+            "--array=63%1",
+            "--time=06:00:00",
+            "scripts/slurm_lra_selected_model_replay.sbatch"
+          ],
+          "environment": {
+            "PRIMO_WORKDIR": "/home/janotmik/primo-lra-reverification-20261009",
+            "PRIMO_SHARDS": "64",
+            "PRIMO_CAMPAIGN_OUT": "/home/janotmik/primo-lra-reverification-20261009/results/lra-reverification-20261009/selection1200-gold",
+            "PRIMO_MODEL_TIMEOUT": "3600",
+            "PRIMO_DOLMEN_TIMEOUT": "120",
+            "PRIMO_DOLMEN_SIZE": "5G",
+            "PRIMO_REPLAY_ATTEMPT": "model-validation-extended3600"
+          },
+          "wrapper_sha256": "94814b02f90747993c6f7f128ad42ef898d17d73b4c26e6c7274207e534356ac",
+          "original_pending_released_after_retry_running": true,
+          "retry_host": "node-05",
+          "qualification": "Complete:all5SATmodels directly pass Dolmen,unchanged parent input/binary identities;original1260s timeout retained.",
+          "elapsed": "00:25:50"
+        },
+        {
+          "job": 183565,
+          "parent_timing_job": 182101,
+          "original_model_job": 183270,
+          "profile": "monotone",
+          "shard": 43,
+          "initial_failure": [
+            {
+              "file": "/home/janotmik/primo-cadical-profile/tmp/QF_LRA/LassoRanker/CooperatingT2/brp_withassume.t2.c_Iteration8_Loop_6-phaseTemplate.smt2",
+              "answer": "",
+              "outcome": "solver-timeout",
+              "validator": "",
+              "solver_exit": "",
+              "dolmen_exit": "",
+              "z3_exit": "",
+              "seconds": "1260.188",
+              "solver_seconds": "1260.188",
+              "validation_seconds": "0.000",
+              "message": "solver timeout"
+            }
+          ],
+          "attempt": "model-validation-extended3600",
+          "solver_timeout_seconds": 3600,
+          "dolmen_timeout_seconds": 120,
+          "memory_gib": 6,
+          "dolmen_size": "5G",
+          "command": [
+            "sbatch",
+            "--parsable",
+            "--array=171%1",
+            "--time=06:00:00",
+            "scripts/slurm_lra_selected_model_replay.sbatch"
+          ],
+          "environment": {
+            "PRIMO_WORKDIR": "/home/janotmik/primo-lra-reverification-20261009",
+            "PRIMO_SHARDS": "64",
+            "PRIMO_CAMPAIGN_OUT": "/home/janotmik/primo-lra-reverification-20261009/results/lra-reverification-20261009/selection1200-gold",
+            "PRIMO_MODEL_TIMEOUT": "3600",
+            "PRIMO_DOLMEN_TIMEOUT": "120",
+            "PRIMO_DOLMEN_SIZE": "5G",
+            "PRIMO_REPLAY_ATTEMPT": "model-validation-extended3600"
+          },
+          "wrapper_sha256": "94814b02f90747993c6f7f128ad42ef898d17d73b4c26e6c7274207e534356ac",
+          "qualification": "Complete:all5SATmodels directly pass Dolmen,unchanged parent input/binary identities;original1260s timeout retained.",
+          "elapsed": "00:22:00"
+        }
+      ],
+      "selection1200_three_profile_coverage": "836/836directDolmenpass across baseline276,phase280,both280; all192shards,exactSATsets,zeroexits,unchanged identities, parent/artifact SHA256 audited;results/lra-reverification-20261009/selected-three-profile-model-check.json"
     },
     {
       "id": "2026-10-09-qf-lia-opensmt-full-division",

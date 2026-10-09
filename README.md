@@ -29,7 +29,7 @@ keep direct paths without combination overhead.
 
 Start with [current status and qualification](docs/current-status.md),
 [architecture](docs/architecture.md), and [model interpretations](docs/model-interpretation.md).
-The feature branch adds [scoped incremental sessions](docs/incremental-smt.md):
+Primo supports [scoped incremental sessions](docs/incremental-smt.md):
 interactive and file-based `push`/`pop`, repeated checks, and scoped declarations.
 The default rebuild mode gives each query a fresh solver. The opt-in
 `--incremental-mode=assumptions` retains frontend/SAT/arithmetic preparation for
@@ -40,7 +40,9 @@ and limitations.
 Scoped-session correctness and a bounded five-logic preservation sample have
 been checked on SLURM; the session layer has a small measured single-query cost.
 See the linked design page for counts, limitations and qualification evidence.
-Quantifiers, arrays, bit-vectors, nonlinear arithmetic, proof production, and
+Quantified `UF` uses enumerative instantiation with documented incomplete
+outcomes and no model support; see [quantifiers](docs/quantifiers.md).
+Arrays, bit-vectors, nonlinear arithmetic, proof production, and
 dedicated difference-logic frontends are not implemented. Integer resource
 limits can return `unknown`; support is not a promise to solve every input.
 
@@ -86,6 +88,16 @@ make contrib         # all of the above
 With no filename, `./build/primo --quiet` reads SMT-LIB commands directly from
 stdin and flushes each response without waiting for EOF. See the
 [interactive session example](docs/incremental-smt.md#running-and-independently-validating-sessions).
+
+Declared QF_LRA queries use model-phase hints and monotone elimination by
+default in rebuild mode with automatic preprocessing. Disable either
+independently, or reproduce the former default with:
+
+```bash
+./build/primo --no-lra-model-phase --no-monotone-elimination input.smt2
+```
+
+See the [qualified comparisons and tradeoffs](docs/qf-lra-heuristics.md).
 
 QF_UF finite-domain symmetry breaking is enabled by default where applicable.
 For an ablation, disable it with:

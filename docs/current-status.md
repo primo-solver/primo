@@ -1,5 +1,17 @@
 # Current implementation and qualification
 
+**QF_LRA default profile (2026-10-10):** source `f0fbe67` enables model-phase
+hints and monotone elimination automatically for declared QF_LRA rebuild
+queries with `preprocessing-mode=auto`. Each mechanism has an independent
+explicit opt-out. Matching compute CPUs give 1,525 versus 1,461 solves out of
+1,753 at 30 seconds and 18.68% lower PAR2. Separate Gold-host comparisons
+confirm gains at both 30 and 1,200 seconds. All 6,652 successful native SAT
+runs passed independent direct Dolmen replay; fresh generated and real-seed
+mutation campaigns found no wrong answers, crashes or reference disagreements.
+Resource-only incomplete checks and two successful model-timeout retries remain
+recorded separately. See [](qf-lra-heuristics.md) for tradeoffs, exact source
+relations, reference versions, resource limits and the paper comparison.
+
 **Direct stdin parser (2026-09-10):** `e24dfcd` uses a persistent stream lexer
 and one-command parser, with no separate text framer or lookahead after a
 completed command. The fresh 1,000-session recorded-reference replay and 100
@@ -159,6 +171,8 @@ reachable. Important current boundaries are:
 | --- | --- |
 | `--preprocessing-mode` | `auto`; also accepts `off`, `basic`, `strong`. `off` does not bypass mandatory lowering or integer-safe required preparation. |
 | `--auto-preprocess-selector` | `legacy`; `structural` remains opt-in. |
+| `--lra-model-phase` / `--no-lra-model-phase` | Automatic for declared QF_LRA/rebuild/auto preprocessing; independently disable with the negative flag. Explicit enabling remains available. |
+| `--monotone-elimination` / `--no-monotone-elimination` | Same automatic scope; independently disable with the negative flag. Assertion-dependent elimination remains incompatible with assumptions mode. |
 | `--euf-engine` | `incremental`; `lazy` is a diagnostic alternative. |
 | `--no-qf-uflia-model-combination` | Guidance is on; disabling selects complete arrangements through the same collection driver. |
 | `--no-qf-uflia-online-components` | Online components are on with the incremental engine; integer completion remains a final check. |
