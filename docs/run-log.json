@@ -29,8 +29,21 @@
         "rejected_fuzz_replay_selector_job": 182057,
         "fuzz_sat_replay_job": 182070,
         "seeded_mutation_job": 182071,
-        "full30_job": 182080,
-        "selection1200_job": 182081
+        "full30_job": 182100,
+        "selection1200_job": 182101,
+        "superseded_partial_full30_job": 182080,
+        "superseded_dependent_selection1200_job": 182081,
+        "full30_model_replay_job": 182135,
+        "selection1200_model_replay_job": 182136,
+        "seeded_opfuzz_retry_job": 182092,
+        "host_checks": {
+          "amd_launch_failed": 182094,
+          "gold_successful": 182095
+        },
+        "cpu_model": "Intel Xeon Gold 6140 @ 2.30 GHz; two sockets, 18 physical cores/socket",
+        "timing_concurrency": 32,
+        "memory_gib_per_task": 7,
+        "cpu_policy": "One worker per physical core, --ntasks=1 --cpus-per-task=1 --hint=nomultithread; SLURM reserves both sibling logical CPUs. No GPU requested."
       },
       "binary": {
         "git": "23f945d",
@@ -270,16 +283,21 @@
         "family_seed_reference_limits": "Diagnostic checks of the generated 34-seed family corpus found Z3 and Yices reference timeouts on hard LassoRanker/latendresse seeds at 30s. The 17 tracked QF_LRA regression seeds plus two Boolean-domain witnesses passed Z3 for every measured profile. Mutating the broader family bundle does not substitute it for those tracked regression checks.",
         "generated_input_syntax": "With --strict=false, multiplication warnings can be accepted directly, but some FuzzSMT inputs divide by a negative constant denominator, which Dolmen rejects as forbidden in the declared QF_LRA syntax. Preserve these as input-nonconforming, not model passes or incorrect Primo answers. Separate real-corpus SAT validation is still required.",
         "mutation_process_status": "Installed YinYang Fuzzer.py only handles selected nonzero exits before answer parsing. Its raw campaign is not accepted correctness evidence. Retained inputs require independent replay through check_solver_seed_corpus.py, whose post-answer-crash regression passed.",
-        "opfuzz_seed_interface": "The raw opfuzz launcher rejects --seed. Its initial task is setup non-evidence; rerun through scripts/seeded_opfuzz.py, which seeds Python RNG before calling the installed launcher."
+        "opfuzz_seed_interface": "The raw opfuzz launcher rejects --seed. Its initial task is setup non-evidence; rerun through scripts/seeded_opfuzz.py, which seeds Python RNG before calling the installed launcher.",
+        "scheduler": "The compute partition had free CPUs but memory reservations limited the 7GiB jobs to about seven concurrent workers. Cancelled the partial run and its dependent selected run, preserving their artifacts as superseded. A homogeneous idle Gold CPU host in the GPU partition supports 32 workers at the unchanged 7GiB allocation. AMD host probe failed with Job credential expired; Gold probe ran the candidate successfully."
       },
       "artifacts": {
         "local": "results/lra-reverification-20261009",
-        "gate_summary": "results/lra-reverification-20261009/collected-gates/gate-summary.json"
+        "gate_summary": "results/lra-reverification-20261009/collected-gates/gate-summary.json",
+        "full30": "results/lra-reverification-20261009/full30-gold",
+        "selection1200": "results/lra-reverification-20261009/selection1200-gold",
+        "superseded_partial": "results/lra-reverification-20261009/full30"
       },
       "commands": {
         "precheck": "ctest --test-dir build-slurm-rel --timeout 120 -R primo_(qf_lra_solver|boolean_solver)_tests; check_solver_seed_corpus.py for qf_lra (3), qf_lra_real (14), and two Boolean-domain witnesses, each of four profiles vs Z3 at 30s; qf_lra_boolean_arithmetic_fuzz.py --count 250 --seed 2026100905..2026100908 --timeout 5 --dolmen-timeout 10 with both flags (4 tasks).",
         "generated": "slurm_qf_lra_model_fuzz_gate.sbatch tasks 0..5, 500/shard, FuzzSMT seeds 2026100910..2026100915, 5s solver, exact both flags; separate successful-SAT replay at 10s solver/Dolmen, --check-model --expect-sat --require-dolmen-pass --dolmen-arg=--strict=false.",
-        "timing": "slurm_lra_profile_comparison.sbatch benchmark phase: full30, 6 profiles x 32 shards, 30s, 7GiB per allocation, array concurrency 16, 45min task limit, exclude mutation host; selection1200 afterok full30, 6 profiles x 64 shards, 1200s, 7GiB, concurrency16, 3h task limit. Every timing row and input/binary identity is durable; separate replay remains pending."
+        "timing": "slurm_lra_profile_comparison.sbatch benchmark phase: full30-gold, 6 profiles x 32 shards, 30s, 7GiB per allocation, array concurrency32, 45min task limit; selection1200-gold afterok full30-gold, 6 profiles x64 shards, 1200s, 7GiB, concurrency32, 3h task limit. All arms on one homogeneous Gold CPU host, physical-core allocation. Immutable timing rows and input/binary hashes.",
+        "real_models": "The same driver replay phase: four native profiles, full30 32 shards/profile, 90s solver and 60s Dolmen, 6G Dolmen cap; selection1200 64 shards/profile, 1260s solver and120s Dolmen. Direct --require-dolmen-pass --expect-sat --check-model, --dolmen-arg=--strict=false. Full30 model job starts after all selected timing tasks; selected models start after full30 model job, preventing overlap with timing."
       },
       "evidence_status": "qualification-in-progress",
       "outcome": "Focused precheck passed. Generated answer campaign has 2986 PASS and 14 TIMEOUT, zero disagreements/crashes. Additional SAT replay preserves input-syntax limitations. Full30 timings active, selection1200 dependent; retained-mutation replay and every real-corpus SAT model are still pending. No promotion claimed."
