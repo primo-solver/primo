@@ -300,9 +300,11 @@ struct CheckSatOptions {
   bool lra_theory_decisions = false;
   // H5 model-based phase selection: keep CaDiCaL's VSIDS variable choice
   // but refresh arithmetic atom polarities from the online tableau's current
-  // assignment at quiescence points. Pure performance hint; default off until
-  // tropical/sc/uart and broad-regression measurements justify promotion.
-  bool lra_model_phase = false;
+  // assignment at quiescence points. An unset policy resolves to on for declared
+  // QF_LRA rebuild queries with automatic preprocessing, off elsewhere.
+  // Explicit true/false overrides it.
+  // Low-level engines without a declared logic treat an unset policy as off.
+  std::optional<bool> lra_model_phase;
   // Default since 2026-07-29 (heuristics-note item H3). On the 237-file
   // stratified sample this solves 168 against Bland's 144, PAR2 1538.9s
   // against 1962.4s, with zero regressions and zero wrong answers -- see
@@ -413,7 +415,10 @@ struct CheckSatOptions {
   // so this is a real budget rather than a safety valve. **Setting it to 0
   // disables patching**, which is the A/B control. Not yet empirically tuned.
   std::size_t lia_patch_limit = 100;
-  bool monotone_elimination = false;
+  // The same declared-QF_LRA rebuild policy as lra_model_phase. Assumptions
+  // sessions cannot use assertion-dependent elimination; their automatic policy
+  // is off and explicit enabling remains rejected. See docs/arithmetic.md.
+  std::optional<bool> monotone_elimination;
   bool solved_constant_substitution = true;
   bool gaussian_elimination = true;
   bool qf_uflra_candidate_final_scan = false;

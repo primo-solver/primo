@@ -8351,7 +8351,7 @@ CheckSatOutcome solve_qf_lra_impl(core::TermManager& terms,
   OnlineLraPropagator online_propagator(
       prepared_theory, clausifier.theory_atoms(), options.lra_propagation,
       options.lra_row_propagation, options.lra_bidirectional_row_propagation,
-      options.lra_theory_decisions, options.lra_model_phase,
+      options.lra_theory_decisions, options.lra_model_phase.value_or(false),
       options.lra_pivoting_rule == LraPivotingRule::Soi || options.lra_fixed_elimination,
       options.lra_row_propagation_limits, backend, statistics);
   backend.connect_external_propagator(&online_propagator);
@@ -8543,7 +8543,7 @@ CheckSatOutcome solve_qf_lia_impl(core::TermManager& terms,
   OnlineLraPropagator online_propagator(
       prepared_theory, clausifier.theory_atoms(), options.lra_propagation,
       options.lra_row_propagation, options.lra_bidirectional_row_propagation,
-      options.lra_theory_decisions, options.lra_model_phase,
+      options.lra_theory_decisions, options.lra_model_phase.value_or(false),
       options.lra_pivoting_rule == LraPivotingRule::Soi || options.lra_fixed_elimination,
       options.lra_row_propagation_limits, backend, statistics);
   backend.connect_external_propagator(&online_propagator);
@@ -10316,7 +10316,7 @@ class UfliaLiaComponent final : public UfliaComponentBase {
       execution_ = std::make_unique<ComponentLraExecution>(
           full_->prepared(), atoms_, options_.lra_propagation, options_.lra_row_propagation,
           options_.lra_bidirectional_row_propagation, options_.lra_theory_decisions,
-          options_.lra_model_phase,
+          options_.lra_model_phase.value_or(false),
           options_.lra_pivoting_rule == LraPivotingRule::Soi || options_.lra_fixed_elimination,
           options_.lra_row_propagation_limits, [this](sat::Lit phase) { phases_.push_back(phase); },
           statistics_);
@@ -11364,7 +11364,7 @@ CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
     online_lra_propagator.emplace(
         base_prepared_lra_theory, lra_atoms, options.lra_propagation, options.lra_row_propagation,
         options.lra_bidirectional_row_propagation, options.lra_theory_decisions,
-        options.lra_model_phase,
+        options.lra_model_phase.value_or(false),
         options.lra_pivoting_rule == LraPivotingRule::Soi || mixed_fixed_elimination,
         options.lra_row_propagation_limits, backend, statistics);
     statistics.set(":no.interface.lra-online-enabled", 1);
@@ -12556,7 +12556,7 @@ class IncrementalLraEngine final : public IncrementalEngine {
     OnlineLraPropagator propagator(
         prepared_, clausifier_.theory_atoms(), options.lra_propagation, options.lra_row_propagation,
         options.lra_bidirectional_row_propagation, options.lra_theory_decisions,
-        options.lra_model_phase, options.lra_pivoting_rule == LraPivotingRule::Soi,
+        options.lra_model_phase.value_or(false), options.lra_pivoting_rule == LraPivotingRule::Soi,
         options.lra_row_propagation_limits, backend_, statistics, true);
     std::vector<int> observed;
     for (const auto& atom : clausifier_.theory_atoms())

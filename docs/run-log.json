@@ -3,6 +3,59 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-10-09-lra-automatic-default-candidate-precommit",
+      "date": "2026-10-09",
+      "commit": "87aa4cc-dirty",
+      "branch": "lra-default-candidate-20261009",
+      "kind": "isolated-default-policy-qualification",
+      "scope": "Candidate automatic phase and monotone for declared QF_LRA/rebuild/auto preprocessing only; independent negative overrides; main unchanged pending fresh committed campaign, timings and complete SAT models. Existing algorithm implementations unchanged.",
+      "environment": {
+        "type": "local correctness only",
+        "artifact_root": "results/lra-default-candidate-20261009",
+        "benchmark_partition_policy": "compute for subsequent work; CPU models must match within any new comparison"
+      },
+      "binary": {
+        "git": "primo 0.2.0\ngit: 87aa4cc-dirty\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+        "sha256": "bd34169face91990fe4b61f189628fc809f76554b98c459c228515505131552e",
+        "source_patch_sha256": "35c1ccb5aff3fa144dfbb3371ba54c54f368f1a15e5d65c9f82eda9b337ad1f1",
+        "provenance": "results/lra-default-candidate-20261009/local-merge/precommit-provenance.json"
+      },
+      "fuzz": {
+        "command": "python3 scripts/qf_lra_boolean_arithmetic_fuzz.py --solver build/primo --solver-arg=--quiet --z3 contrib/local/bin/z3 --dolmen contrib/local/bin/dolmen --count 1000 --seed 2026101100 --timeout 5 --dolmen-timeout 10 --out /workspace/results/lra-default-candidate-20261009/local-merge",
+        "generator": "owned Boolean/arithmetic generator",
+        "seed": 2026101100,
+        "count": 1000,
+        "timeout_seconds": 5,
+        "reference": "contrib/local/bin/z3",
+        "validator": "contrib/local/bin/dolmen",
+        "summary": {
+          "pass": 1000,
+          "sat": 1000,
+          "direct_dolmen_pass": 1000,
+          "wrong_answer": 0,
+          "crash": 0,
+          "parser_type_errors": 0,
+          "timeout": 0,
+          "unsupported": 0,
+          "reference_disagreement": 0
+        },
+        "artifact": "results/lra-default-candidate-20261009/local-merge",
+        "qualification": "precommit smoke/merge evidence; a fresh committed campaign remains required for promotion"
+      },
+      "verification": {
+        "make_check": "42 C++ and188 Python pass",
+        "make_asan_test": "42/42 pass",
+        "make_docs": "strict build passes",
+        "make_lint": "passes",
+        "driver_mock_checks": "28 combinations pass, results/lra-default-candidate-20261009/driver-check.json",
+        "whole_tree_clang_tidy": "124 tracked CPP scanned; external CLI11 potential leak and pre-existing constexpr enum-range test analyzer false positives; no added owned-code warning",
+        "include_cleaner": "124 tracked CPP advisory scan; added test Statistics direct include; retained self-includes and actively used variant. Existing missing direct includes remain advisory.",
+        "efficiency_review": "No added hot-path patterns; constant-time option resolution; no term allocation or algorithm changes."
+      },
+      "evidence_status": "candidate-under-qualification",
+      "outcome": "Isolated source candidate passes local merge gate and normal/sanitizer tests. It is not promoted and has no qualified current-commit performance result yet."
+    },
+    {
       "id": "2026-10-09-lra-paper-profile-reverification",
       "date": "2026-10-09",
       "commit": "23f945d",
@@ -33,8 +86,8 @@
         "selection1200_job": 182101,
         "superseded_partial_full30_job": 182080,
         "superseded_dependent_selection1200_job": 182081,
-        "full30_model_replay_job": 182135,
-        "selection1200_model_replay_job": 182136,
+        "full30_model_replay_job": 182359,
+        "selection1200_model_replay_job": 182360,
         "seeded_opfuzz_retry_job": 182092,
         "host_checks": {
           "amd_launch_failed": 182094,
@@ -46,7 +99,17 @@
         "cpu_policy": "One worker per physical core, --ntasks=1 --cpus-per-task=1 --hint=nomultithread; SLURM reserves both sibling logical CPUs. No GPU requested.",
         "mutant_status_replay_job": 182205,
         "mutant_nonlinear_triage_job": 182268,
-        "fuzz_semantic_model_replay_job": 182279
+        "fuzz_semantic_model_replay_job": 182279,
+        "superseded_unstarted_model_replay_jobs": [
+          182135,
+          182136
+        ],
+        "model_partition": "compute; queued selection job moved from gpu on user scheduling concern",
+        "model_dependencies": {
+          "182359": "afterok:182100",
+          "182360": "afterok:182101:182359"
+        },
+        "timing_node": "gpu-1; CPU-only; no new GPU-node work after user concern"
       },
       "binary": {
         "git": "23f945d",
@@ -279,7 +342,7 @@
           "sat": 445
         }
       },
-      "gate_status": "generated and retained-mutation correctness classified; real-corpus SAT models pending",
+      "gate_status": "Generated/mutation correctness classified; full30 SAT replay partly complete; selected timings running.",
       "triage": {
         "legacy_model_driver": "The old gate validates every generated input, appending get-model even after UNSAT. Current interpreter correctly exits nonzero for that invalid model query. Strict Dolmen also rejects constant multiplication of a complex linear expression. Corrective stage selects only successful SAT rows, adds --check-model, --expect-sat and --require-dolmen-pass, and uses --dolmen-arg=--strict=false without changing the logic or assertions.",
         "initial_sat_selector": "Initially required every fuzz answer row to PASS. Corrected to preserve and report timeout-only rows separately, selecting successful SAT passes. Timeouts are not wrong answers.",
@@ -309,7 +372,7 @@
         "semantic_models": "slurm_lra_paper_fuzz_semantic_replay.sbatch array0..5: successful-SAT selection only, exact both flags and --check-model, solver/Dolmen10s, --require-dolmen-pass --expect-sat --dolmen-arg=--strict=false --dolmen-arg=--force-smtlib2-logic=QF_NRA. Separate semantic evidence, not strict input-conformance coverage."
       },
       "evidence_status": "qualification-in-progress",
-      "outcome": "Focused tests, 1000 Boolean-arithmetic model checks, 3000 generated answer checks (2986 agreements/14timeouts), and 8380 retained mutants (7805 agreements/28timeouts/547 invalid generated inputs) classified without solver correctness failures. Generated successful-SAT semantic model replay passes2603/2603; strict QF_LRA grammar replay is incomplete for1466 inputs. Full30 timing profiles still running and selection1200 dependent; every real-corpus SAT model is pending. No promotion claimed.",
+      "outcome": "Full30 timings complete: both1553 vs default1485 (+68,88 gains20 losses), PAR2sum15923.760 vs20108.495 (-20.81%). Separate model replay passed905 default,941 phase,917 monotone SAT rows; both replay still in progress. Selection1200 running. No default promotion accepted yet.",
       "fuzz_models": {
         "strict_qf_lra": {
           "expected_sat": 2603,
@@ -411,6 +474,1484 @@
         "untriaged_failures": 0,
         "concrete_yices_answers_on_nonlinear_inputs": 27,
         "triage": "All 27 candidate rejections with concrete Yices answers are nonlinear products. Both candidate and default exit 2 with a coefficient diagnostic. Z3 exits 1 with nonlinear-arithmetic errors; OpenSMT rejects the nonlinear terms; Dolmen exits 4 for forbidden linear-arithmetic expressions. Remaining 520 invalid mutants have explicit Yices nonlinear or undeclared-name errors and candidate rejection. The OpFuzz run covers all 17 families; the two time-boxed TypeFuzz runs cover only their recorded 7 families each."
+      },
+      "full30": {
+        "complete": true,
+        "expected_rows_per_profile": 1753,
+        "timeout": 30,
+        "profiles": {
+          "default": {
+            "rows": 1753,
+            "solved": 1485,
+            "sat": 905,
+            "unsat": 580,
+            "statuses": {
+              "timeout": 268,
+              "ok": 1485
+            },
+            "wrong": 0,
+            "par2_sum": 20108.494525000002,
+            "par2_mean": 11.470903893325728,
+            "complete_shards": 32,
+            "families": {
+              "2017-Heizmann-UltimateInvariantSynthesis": {
+                "rows": 58,
+                "solved": 20,
+                "sat": 3,
+                "unsat": 17,
+                "statuses": {
+                  "timeout": 38,
+                  "ok": 20
+                },
+                "wrong": 0,
+                "par2_sum": 2447.913872,
+                "par2_mean": 42.2054115862069
+              },
+              "2019-ezsmt": {
+                "rows": 105,
+                "solved": 90,
+                "sat": 69,
+                "unsat": 21,
+                "statuses": {
+                  "timeout": 15,
+                  "ok": 90
+                },
+                "wrong": 0,
+                "par2_sum": 1137.621213,
+                "par2_mean": 10.834487742857142
+              },
+              "DTP-Scheduling": {
+                "rows": 91,
+                "solved": 91,
+                "sat": 91,
+                "unsat": 0,
+                "statuses": {
+                  "ok": 91
+                },
+                "wrong": 0,
+                "par2_sum": 23.061511999999997,
+                "par2_mean": 0.2534232087912088
+              },
+              "LassoRanker": {
+                "rows": 419,
+                "solved": 250,
+                "sat": 176,
+                "unsat": 74,
+                "statuses": {
+                  "ok": 250,
+                  "timeout": 169
+                },
+                "wrong": 0,
+                "par2_sum": 12739.56265,
+                "par2_mean": 30.40468412887828
+              },
+              "TM": {
+                "rows": 25,
+                "solved": 25,
+                "sat": 24,
+                "unsat": 1,
+                "statuses": {
+                  "ok": 25
+                },
+                "wrong": 0,
+                "par2_sum": 46.024766,
+                "par2_mean": 1.84099064
+              },
+              "check": {
+                "rows": 2,
+                "solved": 2,
+                "sat": 1,
+                "unsat": 1,
+                "statuses": {
+                  "ok": 2
+                },
+                "wrong": 0,
+                "par2_sum": 0.017213,
+                "par2_mean": 0.0086065
+              },
+              "clock_synchro": {
+                "rows": 36,
+                "solved": 34,
+                "sat": 0,
+                "unsat": 34,
+                "statuses": {
+                  "ok": 34,
+                  "timeout": 2
+                },
+                "wrong": 0,
+                "par2_sum": 202.88998099999998,
+                "par2_mean": 5.635832805555555
+              },
+              "keymaera": {
+                "rows": 21,
+                "solved": 21,
+                "sat": 0,
+                "unsat": 21,
+                "statuses": {
+                  "ok": 21
+                },
+                "wrong": 0,
+                "par2_sum": 0.145641,
+                "par2_mean": 0.006935285714285714
+              },
+              "latendresse": {
+                "rows": 18,
+                "solved": 15,
+                "sat": 14,
+                "unsat": 1,
+                "statuses": {
+                  "ok": 15,
+                  "timeout": 3
+                },
+                "wrong": 0,
+                "par2_sum": 267.710568,
+                "par2_mean": 14.872809333333334
+              },
+              "meti-tarski": {
+                "rows": 488,
+                "solved": 488,
+                "sat": 338,
+                "unsat": 150,
+                "statuses": {
+                  "ok": 488
+                },
+                "wrong": 0,
+                "par2_sum": 3.2903479999999976,
+                "par2_mean": 0.006742516393442618
+              },
+              "miplib": {
+                "rows": 42,
+                "solved": 18,
+                "sat": 10,
+                "unsat": 8,
+                "statuses": {
+                  "timeout": 24,
+                  "ok": 18
+                },
+                "wrong": 0,
+                "par2_sum": 1529.038144,
+                "par2_mean": 36.4056700952381
+              },
+              "sal": {
+                "rows": 107,
+                "solved": 107,
+                "sat": 11,
+                "unsat": 96,
+                "statuses": {
+                  "ok": 107
+                },
+                "wrong": 0,
+                "par2_sum": 6.022655999999999,
+                "par2_mean": 0.056286504672897184
+              },
+              "sc": {
+                "rows": 144,
+                "solved": 144,
+                "sat": 108,
+                "unsat": 36,
+                "statuses": {
+                  "ok": 144
+                },
+                "wrong": 0,
+                "par2_sum": 265.696556,
+                "par2_mean": 1.8451149722222222
+              },
+              "spider_benchmarks": {
+                "rows": 42,
+                "solved": 42,
+                "sat": 0,
+                "unsat": 42,
+                "statuses": {
+                  "ok": 42
+                },
+                "wrong": 0,
+                "par2_sum": 1.3372450000000002,
+                "par2_mean": 0.031839166666666675
+              },
+              "tropical-matrix": {
+                "rows": 10,
+                "solved": 0,
+                "sat": 0,
+                "unsat": 0,
+                "statuses": {
+                  "timeout": 10
+                },
+                "wrong": 0,
+                "par2_sum": 600,
+                "par2_mean": 60.0
+              },
+              "tta_startup": {
+                "rows": 72,
+                "solved": 68,
+                "sat": 24,
+                "unsat": 44,
+                "statuses": {
+                  "ok": 68,
+                  "timeout": 4
+                },
+                "wrong": 0,
+                "par2_sum": 387.899221,
+                "par2_mean": 5.387489180555556
+              },
+              "uart": {
+                "rows": 73,
+                "solved": 70,
+                "sat": 36,
+                "unsat": 34,
+                "statuses": {
+                  "ok": 70,
+                  "timeout": 3
+                },
+                "wrong": 0,
+                "par2_sum": 450.26293899999996,
+                "par2_mean": 6.167985465753424
+              }
+            },
+            "model_validation": {
+              "completed_shards": 32,
+              "statuses": {
+                "complete": 32
+              },
+              "expected_sat": 905,
+              "dolmen_pass": 905,
+              "outcomes": {
+                "pass": 905
+              }
+            }
+          },
+          "model-phase": {
+            "rows": 1753,
+            "solved": 1534,
+            "sat": 941,
+            "unsat": 593,
+            "statuses": {
+              "timeout": 219,
+              "ok": 1534
+            },
+            "wrong": 0,
+            "par2_sum": 16931.037278999996,
+            "par2_mean": 9.65832132287507,
+            "complete_shards": 32,
+            "families": {
+              "2017-Heizmann-UltimateInvariantSynthesis": {
+                "rows": 58,
+                "solved": 23,
+                "sat": 3,
+                "unsat": 20,
+                "statuses": {
+                  "timeout": 35,
+                  "ok": 23
+                },
+                "wrong": 0,
+                "par2_sum": 2280.299678,
+                "par2_mean": 39.31551168965517
+              },
+              "2019-ezsmt": {
+                "rows": 105,
+                "solved": 94,
+                "sat": 73,
+                "unsat": 21,
+                "statuses": {
+                  "ok": 94,
+                  "timeout": 11
+                },
+                "wrong": 0,
+                "par2_sum": 904.5507930000001,
+                "par2_mean": 8.614769457142858
+              },
+              "DTP-Scheduling": {
+                "rows": 91,
+                "solved": 91,
+                "sat": 91,
+                "unsat": 0,
+                "statuses": {
+                  "ok": 91
+                },
+                "wrong": 0,
+                "par2_sum": 7.648580000000001,
+                "par2_mean": 0.08405032967032967
+              },
+              "LassoRanker": {
+                "rows": 419,
+                "solved": 294,
+                "sat": 211,
+                "unsat": 83,
+                "statuses": {
+                  "ok": 294,
+                  "timeout": 125
+                },
+                "wrong": 0,
+                "par2_sum": 10024.10439,
+                "par2_mean": 23.923876825775658
+              },
+              "TM": {
+                "rows": 25,
+                "solved": 25,
+                "sat": 24,
+                "unsat": 1,
+                "statuses": {
+                  "ok": 25
+                },
+                "wrong": 0,
+                "par2_sum": 24.398009,
+                "par2_mean": 0.9759203599999999
+              },
+              "check": {
+                "rows": 2,
+                "solved": 2,
+                "sat": 1,
+                "unsat": 1,
+                "statuses": {
+                  "ok": 2
+                },
+                "wrong": 0,
+                "par2_sum": 0.018092999999999998,
+                "par2_mean": 0.009046499999999999
+              },
+              "clock_synchro": {
+                "rows": 36,
+                "solved": 36,
+                "sat": 0,
+                "unsat": 36,
+                "statuses": {
+                  "ok": 36
+                },
+                "wrong": 0,
+                "par2_sum": 69.03431799999998,
+                "par2_mean": 1.917619944444444
+              },
+              "keymaera": {
+                "rows": 21,
+                "solved": 21,
+                "sat": 0,
+                "unsat": 21,
+                "statuses": {
+                  "ok": 21
+                },
+                "wrong": 0,
+                "par2_sum": 0.150017,
+                "par2_mean": 0.007143666666666667
+              },
+              "latendresse": {
+                "rows": 18,
+                "solved": 11,
+                "sat": 10,
+                "unsat": 1,
+                "statuses": {
+                  "timeout": 7,
+                  "ok": 11
+                },
+                "wrong": 0,
+                "par2_sum": 458.196812,
+                "par2_mean": 25.455378444444445
+              },
+              "meti-tarski": {
+                "rows": 488,
+                "solved": 488,
+                "sat": 338,
+                "unsat": 150,
+                "statuses": {
+                  "ok": 488
+                },
+                "wrong": 0,
+                "par2_sum": 3.473390999999997,
+                "par2_mean": 0.007117604508196714
+              },
+              "miplib": {
+                "rows": 42,
+                "solved": 20,
+                "sat": 11,
+                "unsat": 9,
+                "statuses": {
+                  "timeout": 22,
+                  "ok": 20
+                },
+                "wrong": 0,
+                "par2_sum": 1412.482066,
+                "par2_mean": 33.630525380952385
+              },
+              "sal": {
+                "rows": 107,
+                "solved": 107,
+                "sat": 11,
+                "unsat": 96,
+                "statuses": {
+                  "ok": 107
+                },
+                "wrong": 0,
+                "par2_sum": 5.956092,
+                "par2_mean": 0.05566441121495327
+              },
+              "sc": {
+                "rows": 144,
+                "solved": 144,
+                "sat": 108,
+                "unsat": 36,
+                "statuses": {
+                  "ok": 144
+                },
+                "wrong": 0,
+                "par2_sum": 224.59740499999998,
+                "par2_mean": 1.5597042013888887
+              },
+              "spider_benchmarks": {
+                "rows": 42,
+                "solved": 42,
+                "sat": 0,
+                "unsat": 42,
+                "statuses": {
+                  "ok": 42
+                },
+                "wrong": 0,
+                "par2_sum": 1.3787539999999998,
+                "par2_mean": 0.032827476190476185
+              },
+              "tropical-matrix": {
+                "rows": 10,
+                "solved": 0,
+                "sat": 0,
+                "unsat": 0,
+                "statuses": {
+                  "timeout": 10
+                },
+                "wrong": 0,
+                "par2_sum": 600,
+                "par2_mean": 60.0
+              },
+              "tta_startup": {
+                "rows": 72,
+                "solved": 68,
+                "sat": 24,
+                "unsat": 44,
+                "statuses": {
+                  "ok": 68,
+                  "timeout": 4
+                },
+                "wrong": 0,
+                "par2_sum": 360.933183,
+                "par2_mean": 5.012960875
+              },
+              "uart": {
+                "rows": 73,
+                "solved": 68,
+                "sat": 36,
+                "unsat": 32,
+                "statuses": {
+                  "ok": 68,
+                  "timeout": 5
+                },
+                "wrong": 0,
+                "par2_sum": 553.815698,
+                "par2_mean": 7.586516410958904
+              }
+            },
+            "model_validation": {
+              "completed_shards": 32,
+              "statuses": {
+                "complete": 32
+              },
+              "expected_sat": 941,
+              "dolmen_pass": 941,
+              "outcomes": {
+                "pass": 941
+              }
+            }
+          },
+          "monotone": {
+            "rows": 1753,
+            "solved": 1508,
+            "sat": 917,
+            "unsat": 591,
+            "statuses": {
+              "timeout": 245,
+              "ok": 1508
+            },
+            "wrong": 0,
+            "par2_sum": 18864.798751,
+            "par2_mean": 10.761436823160295,
+            "complete_shards": 32,
+            "families": {
+              "2017-Heizmann-UltimateInvariantSynthesis": {
+                "rows": 58,
+                "solved": 20,
+                "sat": 3,
+                "unsat": 17,
+                "statuses": {
+                  "timeout": 38,
+                  "ok": 20
+                },
+                "wrong": 0,
+                "par2_sum": 2435.628304,
+                "par2_mean": 41.99359144827586
+              },
+              "2019-ezsmt": {
+                "rows": 105,
+                "solved": 91,
+                "sat": 70,
+                "unsat": 21,
+                "statuses": {
+                  "ok": 91,
+                  "timeout": 14
+                },
+                "wrong": 0,
+                "par2_sum": 1113.328078,
+                "par2_mean": 10.603124552380953
+              },
+              "DTP-Scheduling": {
+                "rows": 91,
+                "solved": 91,
+                "sat": 91,
+                "unsat": 0,
+                "statuses": {
+                  "ok": 91
+                },
+                "wrong": 0,
+                "par2_sum": 24.278033,
+                "par2_mean": 0.26679157142857146
+              },
+              "LassoRanker": {
+                "rows": 419,
+                "solved": 273,
+                "sat": 188,
+                "unsat": 85,
+                "statuses": {
+                  "ok": 273,
+                  "timeout": 146
+                },
+                "wrong": 0,
+                "par2_sum": 11509.822902999998,
+                "par2_mean": 27.469744398568015
+              },
+              "TM": {
+                "rows": 25,
+                "solved": 25,
+                "sat": 24,
+                "unsat": 1,
+                "statuses": {
+                  "ok": 25
+                },
+                "wrong": 0,
+                "par2_sum": 28.823397,
+                "par2_mean": 1.15293588
+              },
+              "check": {
+                "rows": 2,
+                "solved": 2,
+                "sat": 1,
+                "unsat": 1,
+                "statuses": {
+                  "ok": 2
+                },
+                "wrong": 0,
+                "par2_sum": 0.018033,
+                "par2_mean": 0.0090165
+              },
+              "clock_synchro": {
+                "rows": 36,
+                "solved": 34,
+                "sat": 0,
+                "unsat": 34,
+                "statuses": {
+                  "ok": 34,
+                  "timeout": 2
+                },
+                "wrong": 0,
+                "par2_sum": 205.027053,
+                "par2_mean": 5.695195916666666
+              },
+              "keymaera": {
+                "rows": 21,
+                "solved": 21,
+                "sat": 0,
+                "unsat": 21,
+                "statuses": {
+                  "ok": 21
+                },
+                "wrong": 0,
+                "par2_sum": 0.14636500000000002,
+                "par2_mean": 0.006969761904761906
+              },
+              "latendresse": {
+                "rows": 18,
+                "solved": 15,
+                "sat": 14,
+                "unsat": 1,
+                "statuses": {
+                  "ok": 15,
+                  "timeout": 3
+                },
+                "wrong": 0,
+                "par2_sum": 266.939126,
+                "par2_mean": 14.829951444444443
+              },
+              "meti-tarski": {
+                "rows": 488,
+                "solved": 488,
+                "sat": 338,
+                "unsat": 150,
+                "statuses": {
+                  "ok": 488
+                },
+                "wrong": 0,
+                "par2_sum": 3.425996999999999,
+                "par2_mean": 0.007020485655737703
+              },
+              "miplib": {
+                "rows": 42,
+                "solved": 17,
+                "sat": 9,
+                "unsat": 8,
+                "statuses": {
+                  "timeout": 25,
+                  "ok": 17
+                },
+                "wrong": 0,
+                "par2_sum": 1558.744355,
+                "par2_mean": 37.11296083333333
+              },
+              "sal": {
+                "rows": 107,
+                "solved": 107,
+                "sat": 11,
+                "unsat": 96,
+                "statuses": {
+                  "ok": 107
+                },
+                "wrong": 0,
+                "par2_sum": 6.235748999999998,
+                "par2_mean": 0.05827802803738316
+              },
+              "sc": {
+                "rows": 144,
+                "solved": 144,
+                "sat": 108,
+                "unsat": 36,
+                "statuses": {
+                  "ok": 144
+                },
+                "wrong": 0,
+                "par2_sum": 269.87779299999994,
+                "par2_mean": 1.8741513402777774
+              },
+              "spider_benchmarks": {
+                "rows": 42,
+                "solved": 42,
+                "sat": 0,
+                "unsat": 42,
+                "statuses": {
+                  "ok": 42
+                },
+                "wrong": 0,
+                "par2_sum": 1.3826309999999997,
+                "par2_mean": 0.03291978571428571
+              },
+              "tropical-matrix": {
+                "rows": 10,
+                "solved": 0,
+                "sat": 0,
+                "unsat": 0,
+                "statuses": {
+                  "timeout": 10
+                },
+                "wrong": 0,
+                "par2_sum": 600,
+                "par2_mean": 60.0
+              },
+              "tta_startup": {
+                "rows": 72,
+                "solved": 68,
+                "sat": 24,
+                "unsat": 44,
+                "statuses": {
+                  "ok": 68,
+                  "timeout": 4
+                },
+                "wrong": 0,
+                "par2_sum": 391.197525,
+                "par2_mean": 5.433298958333333
+              },
+              "uart": {
+                "rows": 73,
+                "solved": 70,
+                "sat": 36,
+                "unsat": 34,
+                "statuses": {
+                  "ok": 70,
+                  "timeout": 3
+                },
+                "wrong": 0,
+                "par2_sum": 449.92340899999994,
+                "par2_mean": 6.163334369863013
+              }
+            },
+            "model_validation": {
+              "completed_shards": 32,
+              "statuses": {
+                "complete": 32
+              },
+              "expected_sat": 917,
+              "dolmen_pass": 917,
+              "outcomes": {
+                "pass": 917
+              }
+            }
+          },
+          "both": {
+            "rows": 1753,
+            "solved": 1553,
+            "sat": 948,
+            "unsat": 605,
+            "statuses": {
+              "timeout": 200,
+              "ok": 1553
+            },
+            "wrong": 0,
+            "par2_sum": 15923.760169999994,
+            "par2_mean": 9.083719435253848,
+            "complete_shards": 32,
+            "families": {
+              "2017-Heizmann-UltimateInvariantSynthesis": {
+                "rows": 58,
+                "solved": 24,
+                "sat": 3,
+                "unsat": 21,
+                "statuses": {
+                  "timeout": 34,
+                  "ok": 24
+                },
+                "wrong": 0,
+                "par2_sum": 2257.122549,
+                "par2_mean": 38.91590601724138
+              },
+              "2019-ezsmt": {
+                "rows": 105,
+                "solved": 95,
+                "sat": 74,
+                "unsat": 21,
+                "statuses": {
+                  "ok": 95,
+                  "timeout": 10
+                },
+                "wrong": 0,
+                "par2_sum": 880.473265,
+                "par2_mean": 8.385459666666666
+              },
+              "DTP-Scheduling": {
+                "rows": 91,
+                "solved": 91,
+                "sat": 91,
+                "unsat": 0,
+                "statuses": {
+                  "ok": 91
+                },
+                "wrong": 0,
+                "par2_sum": 6.996486999999999,
+                "par2_mean": 0.07688447252747252
+              },
+              "LassoRanker": {
+                "rows": 419,
+                "solved": 311,
+                "sat": 217,
+                "unsat": 94,
+                "statuses": {
+                  "ok": 311,
+                  "timeout": 108
+                },
+                "wrong": 0,
+                "par2_sum": 9071.049212999998,
+                "par2_mean": 21.64928213126491
+              },
+              "TM": {
+                "rows": 25,
+                "solved": 25,
+                "sat": 24,
+                "unsat": 1,
+                "statuses": {
+                  "ok": 25
+                },
+                "wrong": 0,
+                "par2_sum": 25.219884,
+                "par2_mean": 1.00879536
+              },
+              "check": {
+                "rows": 2,
+                "solved": 2,
+                "sat": 1,
+                "unsat": 1,
+                "statuses": {
+                  "ok": 2
+                },
+                "wrong": 0,
+                "par2_sum": 0.018258,
+                "par2_mean": 0.009129
+              },
+              "clock_synchro": {
+                "rows": 36,
+                "solved": 36,
+                "sat": 0,
+                "unsat": 36,
+                "statuses": {
+                  "ok": 36
+                },
+                "wrong": 0,
+                "par2_sum": 68.92055199999999,
+                "par2_mean": 1.9144597777777774
+              },
+              "keymaera": {
+                "rows": 21,
+                "solved": 21,
+                "sat": 0,
+                "unsat": 21,
+                "statuses": {
+                  "ok": 21
+                },
+                "wrong": 0,
+                "par2_sum": 0.146739,
+                "par2_mean": 0.006987571428571429
+              },
+              "latendresse": {
+                "rows": 18,
+                "solved": 11,
+                "sat": 10,
+                "unsat": 1,
+                "statuses": {
+                  "timeout": 7,
+                  "ok": 11
+                },
+                "wrong": 0,
+                "par2_sum": 457.933127,
+                "par2_mean": 25.440729277777777
+              },
+              "meti-tarski": {
+                "rows": 488,
+                "solved": 488,
+                "sat": 338,
+                "unsat": 150,
+                "statuses": {
+                  "ok": 488
+                },
+                "wrong": 0,
+                "par2_sum": 3.3717370000000035,
+                "par2_mean": 0.0069092971311475486
+              },
+              "miplib": {
+                "rows": 42,
+                "solved": 20,
+                "sat": 11,
+                "unsat": 9,
+                "statuses": {
+                  "timeout": 22,
+                  "ok": 20
+                },
+                "wrong": 0,
+                "par2_sum": 1411.045533,
+                "par2_mean": 33.59632221428571
+              },
+              "sal": {
+                "rows": 107,
+                "solved": 107,
+                "sat": 11,
+                "unsat": 96,
+                "statuses": {
+                  "ok": 107
+                },
+                "wrong": 0,
+                "par2_sum": 6.011726999999999,
+                "par2_mean": 0.0561843644859813
+              },
+              "sc": {
+                "rows": 144,
+                "solved": 144,
+                "sat": 108,
+                "unsat": 36,
+                "statuses": {
+                  "ok": 144
+                },
+                "wrong": 0,
+                "par2_sum": 224.51333799999995,
+                "par2_mean": 1.5591204027777774
+              },
+              "spider_benchmarks": {
+                "rows": 42,
+                "solved": 42,
+                "sat": 0,
+                "unsat": 42,
+                "statuses": {
+                  "ok": 42
+                },
+                "wrong": 0,
+                "par2_sum": 1.3925170000000007,
+                "par2_mean": 0.03315516666666668
+              },
+              "tropical-matrix": {
+                "rows": 10,
+                "solved": 0,
+                "sat": 0,
+                "unsat": 0,
+                "statuses": {
+                  "timeout": 10
+                },
+                "wrong": 0,
+                "par2_sum": 600,
+                "par2_mean": 60.0
+              },
+              "tta_startup": {
+                "rows": 72,
+                "solved": 68,
+                "sat": 24,
+                "unsat": 44,
+                "statuses": {
+                  "ok": 68,
+                  "timeout": 4
+                },
+                "wrong": 0,
+                "par2_sum": 357.715362,
+                "par2_mean": 4.968268916666667
+              },
+              "uart": {
+                "rows": 73,
+                "solved": 68,
+                "sat": 36,
+                "unsat": 32,
+                "statuses": {
+                  "ok": 68,
+                  "timeout": 5
+                },
+                "wrong": 0,
+                "par2_sum": 551.8298820000001,
+                "par2_mean": 7.559313452054796
+              }
+            },
+            "model_validation": {
+              "completed_shards": 6,
+              "statuses": {
+                "complete": 6
+              },
+              "expected_sat": 178,
+              "dolmen_pass": 178,
+              "outcomes": {
+                "pass": 178
+              }
+            }
+          },
+          "opensmt": {
+            "rows": 1753,
+            "solved": 1539,
+            "sat": 899,
+            "unsat": 640,
+            "statuses": {
+              "timeout": 214,
+              "ok": 1539
+            },
+            "wrong": 0,
+            "par2_sum": 16800.822217000004,
+            "par2_mean": 9.584040055333716,
+            "complete_shards": 32,
+            "families": {
+              "2017-Heizmann-UltimateInvariantSynthesis": {
+                "rows": 58,
+                "solved": 24,
+                "sat": 3,
+                "unsat": 21,
+                "statuses": {
+                  "timeout": 34,
+                  "ok": 24
+                },
+                "wrong": 0,
+                "par2_sum": 2229.905516,
+                "par2_mean": 38.44664682758621
+              },
+              "2019-ezsmt": {
+                "rows": 105,
+                "solved": 81,
+                "sat": 60,
+                "unsat": 21,
+                "statuses": {
+                  "timeout": 24,
+                  "ok": 81
+                },
+                "wrong": 0,
+                "par2_sum": 1914.58836,
+                "par2_mean": 18.234174857142857
+              },
+              "DTP-Scheduling": {
+                "rows": 91,
+                "solved": 91,
+                "sat": 91,
+                "unsat": 0,
+                "statuses": {
+                  "ok": 91
+                },
+                "wrong": 0,
+                "par2_sum": 3.62126,
+                "par2_mean": 0.03979406593406593
+              },
+              "LassoRanker": {
+                "rows": 419,
+                "solved": 306,
+                "sat": 182,
+                "unsat": 124,
+                "statuses": {
+                  "ok": 306,
+                  "timeout": 113
+                },
+                "wrong": 0,
+                "par2_sum": 9344.109359999999,
+                "par2_mean": 22.30097699284009
+              },
+              "TM": {
+                "rows": 25,
+                "solved": 25,
+                "sat": 24,
+                "unsat": 1,
+                "statuses": {
+                  "ok": 25
+                },
+                "wrong": 0,
+                "par2_sum": 17.188481,
+                "par2_mean": 0.68753924
+              },
+              "check": {
+                "rows": 2,
+                "solved": 2,
+                "sat": 1,
+                "unsat": 1,
+                "statuses": {
+                  "ok": 2
+                },
+                "wrong": 0,
+                "par2_sum": 0.008664000000000002,
+                "par2_mean": 0.004332000000000001
+              },
+              "clock_synchro": {
+                "rows": 36,
+                "solved": 36,
+                "sat": 0,
+                "unsat": 36,
+                "statuses": {
+                  "ok": 36
+                },
+                "wrong": 0,
+                "par2_sum": 90.82375300000001,
+                "par2_mean": 2.522882027777778
+              },
+              "keymaera": {
+                "rows": 21,
+                "solved": 21,
+                "sat": 0,
+                "unsat": 21,
+                "statuses": {
+                  "ok": 21
+                },
+                "wrong": 0,
+                "par2_sum": 0.07966000000000001,
+                "par2_mean": 0.003793333333333334
+              },
+              "latendresse": {
+                "rows": 18,
+                "solved": 10,
+                "sat": 9,
+                "unsat": 1,
+                "statuses": {
+                  "timeout": 8,
+                  "ok": 10
+                },
+                "wrong": 0,
+                "par2_sum": 485.783111,
+                "par2_mean": 26.987950611111113
+              },
+              "meti-tarski": {
+                "rows": 488,
+                "solved": 488,
+                "sat": 338,
+                "unsat": 150,
+                "statuses": {
+                  "ok": 488
+                },
+                "wrong": 0,
+                "par2_sum": 1.7025209999999975,
+                "par2_mean": 0.0034887725409836015
+              },
+              "miplib": {
+                "rows": 42,
+                "solved": 21,
+                "sat": 12,
+                "unsat": 9,
+                "statuses": {
+                  "timeout": 21,
+                  "ok": 21
+                },
+                "wrong": 0,
+                "par2_sum": 1343.403707,
+                "par2_mean": 31.985802547619045
+              },
+              "sal": {
+                "rows": 107,
+                "solved": 107,
+                "sat": 11,
+                "unsat": 96,
+                "statuses": {
+                  "ok": 107
+                },
+                "wrong": 0,
+                "par2_sum": 2.9020180000000004,
+                "par2_mean": 0.027121663551401873
+              },
+              "sc": {
+                "rows": 144,
+                "solved": 144,
+                "sat": 108,
+                "unsat": 36,
+                "statuses": {
+                  "ok": 144
+                },
+                "wrong": 0,
+                "par2_sum": 95.163386,
+                "par2_mean": 0.6608568472222223
+              },
+              "spider_benchmarks": {
+                "rows": 42,
+                "solved": 42,
+                "sat": 0,
+                "unsat": 42,
+                "statuses": {
+                  "ok": 42
+                },
+                "wrong": 0,
+                "par2_sum": 0.5967979999999997,
+                "par2_mean": 0.014209476190476184
+              },
+              "tropical-matrix": {
+                "rows": 10,
+                "solved": 1,
+                "sat": 1,
+                "unsat": 0,
+                "statuses": {
+                  "ok": 1,
+                  "timeout": 9
+                },
+                "wrong": 0,
+                "par2_sum": 547.995228,
+                "par2_mean": 54.7995228
+              },
+              "tta_startup": {
+                "rows": 72,
+                "solved": 67,
+                "sat": 23,
+                "unsat": 44,
+                "statuses": {
+                  "ok": 67,
+                  "timeout": 5
+                },
+                "wrong": 0,
+                "par2_sum": 451.624364,
+                "par2_mean": 6.272560611111111
+              },
+              "uart": {
+                "rows": 73,
+                "solved": 73,
+                "sat": 36,
+                "unsat": 37,
+                "statuses": {
+                  "ok": 73
+                },
+                "wrong": 0,
+                "par2_sum": 271.32602999999983,
+                "par2_mean": 3.716794931506847
+              }
+            },
+            "model_validation": {
+              "completed_shards": 0,
+              "statuses": {},
+              "expected_sat": 0,
+              "dolmen_pass": 0,
+              "outcomes": {}
+            }
+          },
+          "yices": {
+            "rows": 1753,
+            "solved": 1539,
+            "sat": 944,
+            "unsat": 595,
+            "statuses": {
+              "timeout": 214,
+              "ok": 1539
+            },
+            "wrong": 0,
+            "par2_sum": 15408.136708000002,
+            "par2_mean": 8.789581693097547,
+            "complete_shards": 32,
+            "families": {
+              "2017-Heizmann-UltimateInvariantSynthesis": {
+                "rows": 58,
+                "solved": 12,
+                "sat": 3,
+                "unsat": 9,
+                "statuses": {
+                  "timeout": 46,
+                  "ok": 12
+                },
+                "wrong": 0,
+                "par2_sum": 2821.988861,
+                "par2_mean": 48.65498036206896
+              },
+              "2019-ezsmt": {
+                "rows": 105,
+                "solved": 93,
+                "sat": 72,
+                "unsat": 21,
+                "statuses": {
+                  "ok": 93,
+                  "timeout": 12
+                },
+                "wrong": 0,
+                "par2_sum": 879.0673350000001,
+                "par2_mean": 8.372069857142858
+              },
+              "DTP-Scheduling": {
+                "rows": 91,
+                "solved": 91,
+                "sat": 91,
+                "unsat": 0,
+                "statuses": {
+                  "ok": 91
+                },
+                "wrong": 0,
+                "par2_sum": 0.923295,
+                "par2_mean": 0.010146098901098901
+              },
+              "LassoRanker": {
+                "rows": 419,
+                "solved": 309,
+                "sat": 216,
+                "unsat": 93,
+                "statuses": {
+                  "ok": 309,
+                  "timeout": 110
+                },
+                "wrong": 0,
+                "par2_sum": 8190.524365000001,
+                "par2_mean": 19.547790847255374
+              },
+              "TM": {
+                "rows": 25,
+                "solved": 25,
+                "sat": 24,
+                "unsat": 1,
+                "statuses": {
+                  "ok": 25
+                },
+                "wrong": 0,
+                "par2_sum": 4.027041,
+                "par2_mean": 0.16108164
+              },
+              "check": {
+                "rows": 2,
+                "solved": 2,
+                "sat": 1,
+                "unsat": 1,
+                "statuses": {
+                  "ok": 2
+                },
+                "wrong": 0,
+                "par2_sum": 0.007322,
+                "par2_mean": 0.003661
+              },
+              "clock_synchro": {
+                "rows": 36,
+                "solved": 33,
+                "sat": 0,
+                "unsat": 33,
+                "statuses": {
+                  "ok": 33,
+                  "timeout": 3
+                },
+                "wrong": 0,
+                "par2_sum": 256.082348,
+                "par2_mean": 7.113398555555556
+              },
+              "keymaera": {
+                "rows": 21,
+                "solved": 21,
+                "sat": 0,
+                "unsat": 21,
+                "statuses": {
+                  "ok": 21
+                },
+                "wrong": 0,
+                "par2_sum": 0.06840500000000001,
+                "par2_mean": 0.0032573809523809526
+              },
+              "latendresse": {
+                "rows": 18,
+                "solved": 11,
+                "sat": 10,
+                "unsat": 1,
+                "statuses": {
+                  "timeout": 7,
+                  "ok": 11
+                },
+                "wrong": 0,
+                "par2_sum": 473.44186,
+                "par2_mean": 26.302325555555555
+              },
+              "meti-tarski": {
+                "rows": 488,
+                "solved": 488,
+                "sat": 338,
+                "unsat": 150,
+                "statuses": {
+                  "ok": 488
+                },
+                "wrong": 0,
+                "par2_sum": 1.3565910000000003,
+                "par2_mean": 0.0027798995901639353
+              },
+              "miplib": {
+                "rows": 42,
+                "solved": 22,
+                "sat": 10,
+                "unsat": 12,
+                "statuses": {
+                  "ok": 22,
+                  "timeout": 20
+                },
+                "wrong": 0,
+                "par2_sum": 1263.492227,
+                "par2_mean": 30.08314826190476
+              },
+              "sal": {
+                "rows": 107,
+                "solved": 107,
+                "sat": 11,
+                "unsat": 96,
+                "statuses": {
+                  "ok": 107
+                },
+                "wrong": 0,
+                "par2_sum": 0.933133,
+                "par2_mean": 0.008720869158878505
+              },
+              "sc": {
+                "rows": 144,
+                "solved": 144,
+                "sat": 108,
+                "unsat": 36,
+                "statuses": {
+                  "ok": 144
+                },
+                "wrong": 0,
+                "par2_sum": 234.5514970000001,
+                "par2_mean": 1.6288298402777786
+              },
+              "spider_benchmarks": {
+                "rows": 42,
+                "solved": 42,
+                "sat": 0,
+                "unsat": 42,
+                "statuses": {
+                  "ok": 42
+                },
+                "wrong": 0,
+                "par2_sum": 0.20598499999999995,
+                "par2_mean": 0.004904404761904761
+              },
+              "tropical-matrix": {
+                "rows": 10,
+                "solved": 0,
+                "sat": 0,
+                "unsat": 0,
+                "statuses": {
+                  "timeout": 10
+                },
+                "wrong": 0,
+                "par2_sum": 600,
+                "par2_mean": 60.0
+              },
+              "tta_startup": {
+                "rows": 72,
+                "solved": 66,
+                "sat": 24,
+                "unsat": 42,
+                "statuses": {
+                  "ok": 66,
+                  "timeout": 6
+                },
+                "wrong": 0,
+                "par2_sum": 446.483444,
+                "par2_mean": 6.201158944444445
+              },
+              "uart": {
+                "rows": 73,
+                "solved": 73,
+                "sat": 36,
+                "unsat": 37,
+                "statuses": {
+                  "ok": 73
+                },
+                "wrong": 0,
+                "par2_sum": 234.982999,
+                "par2_mean": 3.218945191780822
+              }
+            },
+            "model_validation": {
+              "completed_shards": 0,
+              "statuses": {},
+              "expected_sat": 0,
+              "dolmen_pass": 0,
+              "outcomes": {}
+            }
+          }
+        },
+        "reference_disagreements": [],
+        "comparisons": {
+          "model-phase": {
+            "paired_solved": 1461,
+            "paired_baseline_at_least_1s": 381,
+            "median_candidate_over_baseline": 0.7939243609910135,
+            "geometric_mean_candidate_over_baseline": 0.6899848598717726,
+            "par2_change_percent": -15.801567054408839,
+            "gains": 73,
+            "losses": 24
+          },
+          "monotone": {
+            "paired_solved": 1472,
+            "paired_baseline_at_least_1s": 392,
+            "median_candidate_over_baseline": 0.9989767567533262,
+            "geometric_mean_candidate_over_baseline": 0.9230778958782013,
+            "par2_change_percent": -6.184927332345902,
+            "gains": 36,
+            "losses": 13
+          },
+          "both": {
+            "paired_solved": 1465,
+            "paired_baseline_at_least_1s": 385,
+            "median_candidate_over_baseline": 0.7455302031091486,
+            "geometric_mean_candidate_over_baseline": 0.6406232004341792,
+            "par2_change_percent": -20.810778995898037,
+            "gains": 88,
+            "losses": 20
+          },
+          "opensmt": {
+            "paired_solved": 1439,
+            "paired_baseline_at_least_1s": 360,
+            "median_candidate_over_baseline": 0.5943662884371173,
+            "geometric_mean_candidate_over_baseline": 0.6176351209434676,
+            "par2_change_percent": -16.44912951532853,
+            "gains": 100,
+            "losses": 46
+          },
+          "yices": {
+            "paired_solved": 1440,
+            "paired_baseline_at_least_1s": 361,
+            "median_candidate_over_baseline": 0.359033348543867,
+            "geometric_mean_candidate_over_baseline": 0.27671839181711894,
+            "par2_change_percent": -23.37498618385505,
+            "gains": 99,
+            "losses": 45
+          }
+        },
+        "qualification": "Timing complete; independent SAT replay complete for default, phase, monotone, still running for both."
       }
     },
     {

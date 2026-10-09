@@ -10,8 +10,11 @@ dedicated QF_UFLRA setting.
 ## Reverification of the paper profile (2026-10-09)
 
 The LPAR manuscript's `Primo*` uses `--lra-model-phase --monotone-elimination`.
-Both options remain off by default. The August measurements and the manuscript's
-tables are historical evidence; neither qualifies the current implementation.
+The measured binary keeps both options off by default. This isolated candidate
+branch selects them automatically for declared QF_LRA rebuild queries with auto
+preprocessing and adds independent explicit opt-outs. Its promotion remains pending qualification.
+The August measurements and manuscript tables are historical evidence; neither
+qualifies the current implementation.
 
 Fresh evaluation compares default, model phase alone, monotone elimination alone,
 and both options, using the same binary and resource limits. The two populations
@@ -29,6 +32,13 @@ identities through `benchmark_model_replay.py`. Submit its `benchmark` and
 shard. Optional profiles add OpenSMT and Yices reference timings. Resource
 limits and exact reference versions must accompany the collected comparison;
 cluster hardware differs from the paper's AMD EPYC machine.
+
+For the automatic-policy candidate, the driver uses explicit opt-outs in its
+original four ablation arms and calls the old default `legacy-default`.
+Profile 6 measures the new automatic default with just `--quiet`. Archived
+default-off binaries retain their supported original arguments; detection uses
+the measured binary's CLI help. Replay reads the immutable parent provenance rather than replacing
+its arguments with the candidate's current defaults.
 
 Before broad timing runs, gate the exact candidate flags against reference
 answers, including generated QF_LRA formulas, real-seed mutation, and existing
@@ -59,6 +69,39 @@ The dated `slurm_lra_paper_seeded_mutation.sbatch`,
 and `slurm_lra_paper_fuzz_semantic_replay.sbatch` scripts preserve the workflow.
 Their evidence is recorded in `docs/run-log.json`; separate complete real-corpus
 SAT validation remains required before promotion.
+
+The completed 30-second comparison on a single Xeon Gold 6140 host gives:
+
+| Profile | Solved / 1,753 | Timeouts | PAR2 sum (s) |
+|---|---:|---:|---:|
+| Previous default | 1,485 | 268 | 20,108.495 |
+| Model phase | 1,534 | 219 | 16,931.037 |
+| Monotone elimination | 1,508 | 245 | 18,864.799 |
+| Both | 1,553 | 200 | 15,923.760 |
+| OpenSMT 2.9.2 | 1,539 | 214 | 16,800.822 |
+| Yices 2.7.0 | 1,539 | 214 | 15,408.137 |
+
+Both gains 88 inputs and loses 20 against the previous default, for a net 68
+and 20.81% lower PAR2. LassoRanker accounts for most solved-count gains;
+latendresse loses four and uart loses two. These are aggregate gains with
+real regressions. The 1,200-second comparison and complete SAT-model coverage
+remain pending. Timings use CPU cores on `gpu-1`, with no GPU allocation;
+this host differs from the paper's EPYC 7513. Subsequent qualification uses
+the compute partition, including the queued selected-corpus model replay,
+to avoid occupying GPU-node CPU and memory resources. A new timing comparison
+must compare its configurations on matching CPU hardware.
+
+The isolated automatic-policy candidate passed 1,000 fresh generated SAT
+answer checks and 1,000 direct Dolmen checks locally before its source commit,
+as well as 42 C++ tests, 188 Python tests, and all 42 sanitizer tests.
+The `slurm_lra_default_qualification.sbatch` workflow requires another fresh
+3,000-case campaign against the committed candidate, independently checks
+process exit statuses, and replays only successful SAT answers. Its generated
+input model stage explicitly uses Dolmen's QF_NRA semantic superset. Another
+1,000 Boolean/arithmetic cases use direct QF_LRA model checks. Real-seed
+mutation uses `slurm_lra_default_seed_mutation.sbatch`, followed by independent
+retained-input checks through `slurm_lra_default_mutant_replay.sbatch`.
+None of these pending stages is evidence of an accepted default promotion.
 
 Written 2026-07-27 as a design note and extended through 2026-07-31. It picks
 up where the competitiveness roadmap's items 0-8 (see [](arithmetic.md)'s

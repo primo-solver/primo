@@ -533,7 +533,7 @@ Strategy make_preprocessing_strategy(const CheckSatOptions& options,
       .guarded_real_equality_lowering = options.guarded_real_equality_lowering};
   children.push_back(Strategy::leaf("normalize-arithmetic", arithmetic_options,
                                     make_normalize_arithmetic(arithmetic_options)));
-  if (options.monotone_elimination) {
+  if (options.monotone_elimination.value_or(false)) {
     const EliminateMonotoneOptions monotone_options;
     children.push_back(Strategy::leaf("eliminate-monotone", monotone_options,
                                       make_eliminate_monotone(monotone_options)));
@@ -554,6 +554,14 @@ Strategy make_preprocessing_strategy(const CheckSatOptions& options,
 PreparedPreprocessingStrategy prepare_and_execute_preprocessing_strategy(
     Frontend& frontend, std::vector<core::TermId> assertions, CheckSatOptions& options,
     TacticContext& context) {
+  // Resolve the query's owned copy using its declared logic, before any
+  // transformation can erase the last arithmetic atom or change dispatch.
+  // Assumptions sessions retain their incrementally safe default profile.
+  const bool automatic_lra = frontend.logic() == "QF_LRA" &&
+                             options.incremental_mode == IncrementalMode::Rebuild &&
+                             options.preprocessing_mode == PreprocessingMode::Auto;
+  options.lra_model_phase = options.lra_model_phase.value_or(automatic_lra);
+  options.monotone_elimination = options.monotone_elimination.value_or(automatic_lra);
   initialize_skippable_legacy_statistics(context.statistics());
   const bool is_qf_lia = frontend.logic() == "QF_LIA" || frontend.logic() == "QF_UFLIA";
   if (frontend.logic() == "QF_LIA" && options.preprocessing_mode == PreprocessingMode::Auto) {

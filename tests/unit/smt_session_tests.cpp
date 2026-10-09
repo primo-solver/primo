@@ -13,6 +13,7 @@
 #include "smt/check_sat.hpp"
 #include "smt/smt_session.hpp"
 #include "smtlib/parser.hpp"
+#include "util/statistics.hpp"
 
 using primo::smt::CheckSatResult;
 using primo::smt::ResponseKind;
@@ -641,9 +642,43 @@ void canonical_names_and_categories() {
   }
 }
 
+void automatic_lra_heuristics_do_not_leak_across_reset_or_assumptions() {
+  primo::smt::CheckSatOptions options;
+  options.check_model = true;
+  SmtSession session(options);
+  for (const std::string logic : {"QF_LRA", "QF_UFLRA", "QF_LRA"}) {
+    accept(session, "(set-logic " + logic + ")");
+    accept(session, "(declare-const x Real)");
+    accept(session, "(declare-const p Bool)");
+    accept(session, "(assert (or (>= x 10) p))");
+    const auto response = session.execute("(check-sat)");
+    assert(response.kind == ResponseKind::CheckSat);
+    assert(response.outcome->result == CheckSatResult::Sat);
+    const auto eliminated =
+        response.outcome->statistics.get(primo::util::StatKey::MonotoneEliminationVariables);
+    assert(logic == "QF_LRA" ? eliminated > 0 : eliminated == 0);
+    accept(session, "(reset)");
+  }
+  // Explicit false must remain an opt-out, not optional<bool>'s presence test.
+  options.incremental_mode = primo::smt::IncrementalMode::Assumptions;
+  options.monotone_elimination = false;
+  options.lra_model_phase = false;
+  SmtSession incremental(options);
+  accept(incremental, "(set-logic QF_LRA)");
+  accept(incremental, "(declare-const x Real)");
+  accept(incremental, "(assert (>= x 10))");
+  expect(incremental, CheckSatResult::Sat);
+  accept(incremental, "(push 1)");
+  accept(incremental, "(assert (< x 0))");
+  expect(incremental, CheckSatResult::Unsat);
+  accept(incremental, "(pop 1)");
+  expect(incremental, CheckSatResult::Sat);
+}
+
 }  // namespace
 
 int main() {
+  automatic_lra_heuristics_do_not_leak_across_reset_or_assumptions();
   arithmetic_auxiliaries_keep_scoped_definitions();
   uf_assumption_scopes_and_preparation();
   uf_assumption_atom_scans_follow_only_registry_growth();

@@ -122,7 +122,7 @@ struct SmtSession::Implementation final : SessionExecutor {
       throw std::invalid_argument(
           "assumptions mode rejects portfolios, splitting, fixed-variable "
           "elimination, preprocess-only and custom CaDiCaL options");
-    if (options.monotone_elimination || options.ground_unit_substitution ||
+    if (options.monotone_elimination.value_or(false) || options.ground_unit_substitution ||
         options.guarded_ground_unit_substitution || options.ground_congruence)
       throw std::invalid_argument("assumptions mode rejects assertion-dependent preprocessing");
   }

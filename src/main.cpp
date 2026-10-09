@@ -269,7 +269,10 @@ int run_main(int argc, char** argv) {
   std::size_t qf_uflia_model_decision_budget = solver_options.qf_uflia_model_decision_budget;
   bool qf_uflra_online_euf = solver_options.qf_uflra_online_euf;
   bool guarded_real_equality_lowering = solver_options.guarded_real_equality_lowering;
-  bool monotone_elimination = solver_options.monotone_elimination;
+  bool lra_model_phase = solver_options.lra_model_phase.value_or(false);
+  bool no_lra_model_phase = false;
+  bool monotone_elimination = solver_options.monotone_elimination.value_or(false);
+  bool no_monotone_elimination = false;
   bool top_level_or_tseitin = solver_options.top_level_or_tseitin;
   bool no_top_level_or_tseitin = false;
   bool no_auto_top_level_or_tseitin = false;
@@ -388,10 +391,14 @@ int run_main(int argc, char** argv) {
                         "Enable experimental QF_LRA theory-guided decisions: the arithmetic theory "
                         "ranks candidate atoms via CaDiCaL's cb_decide and supplies the decision "
                         "literal itself instead of leaving every decision to generic VSIDS");
-  add_flag_with_default(app, "--lra-model-phase", solver_options.lra_model_phase,
-                        "Enable experimental QF_LRA model-based SAT phase hints: keep CaDiCaL's "
+  add_flag_with_default(app, "--lra-model-phase", lra_model_phase,
+                        "Enable model-based SAT phase hints (automatic for QF_LRA rebuild "
+                        "queries with auto preprocessing): keep CaDiCaL's "
                         "variable choice, but refresh arithmetic atom polarity from the current "
-                        "tableau assignment at quiescence points");
+                        "tableau assignment at quiescence points")
+      ->option_text("[default: auto]");
+  add_flag_with_default(app, "--no-lra-model-phase", no_lra_model_phase,
+                        "Disable model-based SAT phase hints");
   add_enum_option(app, "--lra-pivoting-rule", solver_options.lra_pivoting_rule,
                   primo::cli::kLraPivotingRuleNames,
                   "QF_LRA Check/Pivot variable-selection rule: sparse (prices "
@@ -517,10 +524,14 @@ int run_main(int argc, char** argv) {
       "Enable experimental incremental EUF callbacks and live final-model closure reuse "
       "in mixed QF_UFLRA solving");
   add_flag_with_default(app, "--monotone-elimination", monotone_elimination,
-                        "Enable experimental monotone (one-sided) real-variable elimination: a\n"
+                        "Enable monotone (one-sided) real-variable elimination (automatic for\n"
+                        "QF_LRA rebuild queries with auto preprocessing): a\n"
                         "variable every constraint pushes the same way is discharged and its\n"
                         "atoms folded to constants, shrinking the Boolean structure. Models are\n"
-                        "reconstructed for eliminated variables");
+                        "reconstructed for eliminated variables")
+      ->option_text("[default: auto]");
+  add_flag_with_default(app, "--no-monotone-elimination", no_monotone_elimination,
+                        "Disable monotone real-variable elimination");
   add_flag_with_default(
       app, "--guarded-real-equality-lowering", guarded_real_equality_lowering,
       "Enable experimental guarded Real equality lowering: rewrite a disjunction "
@@ -816,8 +827,8 @@ int run_main(int argc, char** argv) {
         name == "--qf-uflra-candidate-final-scan" || name == "--qf-uflra-lra-equality-producer" ||
         name == "--qf-uflra-model-reconciliation" || name == "--no-qf-uflra-model-reconciliation" ||
         name == "--no-qf-uflra-fixed-elimination" || name == "--guarded-real-equality-lowering" ||
-        name == "--monotone-elimination" || name == "--lra-least-violated-leaving" ||
-        name == "--mixed-dispatch") {
+        name == "--monotone-elimination" || name == "--no-monotone-elimination" ||
+        name == "--lra-least-violated-leaving" || name == "--mixed-dispatch") {
       return kGroupLra;
     }
     if (starts_with(name, "--lia-") || starts_with(name, "--no-lia-") ||
@@ -980,8 +991,17 @@ int run_main(int argc, char** argv) {
       qf_uflia_online_components && !no_qf_uflia_online_components;
   solver_options.qf_uflia_model_decision_budget = qf_uflia_model_decision_budget;
   solver_options.qf_uflra_online_euf = qf_uflra_online_euf;
-  if (monotone_elimination) {
-    solver_options.monotone_elimination = true;
+  if (app.get_option("--lra-model-phase")->count() != 0) {
+    solver_options.lra_model_phase = lra_model_phase;
+  }
+  if (no_lra_model_phase) {
+    solver_options.lra_model_phase = false;
+  }
+  if (app.get_option("--monotone-elimination")->count() != 0) {
+    solver_options.monotone_elimination = monotone_elimination;
+  }
+  if (no_monotone_elimination) {
+    solver_options.monotone_elimination = false;
   }
   if (guarded_real_equality_lowering) {
     solver_options.guarded_real_equality_lowering = true;

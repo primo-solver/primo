@@ -83,7 +83,9 @@ Strategy make_preprocessing_strategy(const CheckSatOptions& options,
 // Executes initial normalization, analyzes the transformed goal, builds the
 // immutable production strategy, and executes its remaining nodes. QF_LIA's
 // audited preprocessing restriction is reflected back into options for solver
-// dispatch, exactly as in the historical session pipeline.
+// dispatch, exactly as in the historical session pipeline. The declared-QF_LRA
+// automatic heuristic policies resolve in this query-owned options copy before
+// initial normalization; explicit preprocessing profiles keep their prior defaults.
 PreparedPreprocessingStrategy prepare_and_execute_preprocessing_strategy(
     Frontend& frontend, std::vector<core::TermId> assertions, CheckSatOptions& options,
     TacticContext& context);

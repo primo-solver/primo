@@ -313,7 +313,8 @@ The editable TikZ source is `docs/figures/lra-tableau-occurrence-index.tex`.
   paper `DPLL(T^M)` transition system remain unsupported; model-guided
   combination itself is implemented for the documented mixed fragments.
 - **Model-based SAT phase hints** (heuristics item H5, `solver_engines.cpp`,
-  **opt-in** via `CheckSatOptions::lra_model_phase` / `--lra-model-phase`):
+  automatic for declared QF_LRA rebuild queries with auto preprocessing, with explicit overrides
+  via `CheckSatOptions::lra_model_phase` / `--lra-model-phase`):
   `OnlineLraPropagator` keeps the SAT backend's variable choice but refreshes
   arithmetic atom polarities from the current tableau assignment β at
   quiescence points. For each arithmetic atom, it evaluates the atom's TRUE
@@ -1186,18 +1187,45 @@ Every QF_LRA option, its default, and where its evidence lives. Verified
 against `CheckSatOptions` and `--help` on 2026-08-06 by diffing the table
 against `--help` output rather than by eye -- five options were missing.
 
+The 2026-10-09 automatic-policy candidate is under qualification; see
+[](qf-lra-heuristics.md). On this candidate branch, model phase and monotone
+elimination resolve to on only for declared QF_LRA queries in rebuild mode with
+`preprocessing-mode=auto`. Other declared logics, explicit preprocessing profiles,
+and assumptions sessions retain their previous defaults.
+This changes option selection, not either algorithm.
+
+`CheckSatOptions` owns two `std::optional<bool>` policies: unset requests the
+automatic profile, `true` explicitly enables a mechanism, and `false` disables
+it. `prepare_and_execute_preprocessing_strategy` resolves the query's owned
+options copy from `Frontend::logic()` before normalization can remove the last
+Real atom. The session's original policies survive later queries and `reset`.
+Manual strategy construction and low-level engines without declared-logic
+resolution treat unset policies as off. Assumptions engines likewise retain
+their safe automatic profile; explicit assertion-dependent elimination is
+still rejected. No term or model ownership changes.
+
+Use `--no-lra-model-phase --no-monotone-elimination` to reproduce the former
+QF_LRA default. Each opt-out is independent; positive flags still explicitly
+enable the corresponding mechanism outside its automatic scope. False-valued
+positive flags also disable it. If both enabling and disabling flags are given,
+the disabling flag takes precedence. The CLI reports the automatic default;
+unit and command-line tests cover activation, explicit opt-outs, declared-logic
+scope, model reconstruction, reset, and assumptions-session safety.
+
 | option | default | what it does |
 |---|---|---|
 | `--lra-pivoting-rule {bland,dantzig,soi,sparse}` | `sparse` | Check/Pivot variable selection. `sparse` is item H3. |
 | `--no-lra-sparse-leaving` | leaving rule **on** | Ablates the leaving-side half of `sparse`. |
 | `--lra-least-violated-leaving` | **off** | MathSAT's leaving rule (Griggio thesis 2.5.3 p.53): least-violated first, shorter row as tie-break. Only under `sparse`. 167 vs 174 on the bar, but beats most-violated by 5 -- a complementarity candidate, not a win. |
 | `--mixed-dispatch {narrow,wide}` | `narrow` | Which formulas reach the mixed EUF/LRA solver. `wide` counts a Bool-sorted *constant* as an EUF predicate (pre-2026-08-07 behaviour), routing pure QF_LRA plus propositional variables to the mixed path. Usually much worse, but recovers `tropical-matrix/constraint-199552` under `--guarded-real-equality-lowering` (2.2s against a timeout). Portfolio dimension and fuzzing reach; see [](nelson-oppen-qf-lra-regression.md). |
-| `--monotone-elimination` | **off** | One-sided (monotone) variable elimination in preprocessing, with model reconstruction. 173 vs 174, gained 0 -- did not clear its bar. |
+| `--monotone-elimination` | **auto: QF_LRA rebuild, auto preprocessing** | One-sided variable elimination with model reconstruction. Historical measurements are in the heuristics note; current qualification is recorded separately. |
+| `--no-monotone-elimination` | opt-out **off** | Disable monotone elimination explicitly. |
 | `--no-lra-propagation` | propagation **on** | Ablates same-slack propagation (Dutertre & de Moura 4.2). |
 | `--lra-row-propagation` | **off** | Row/interval implied bounds (roadmap item 2). |
 | `--lra-bidirectional-row-propagation` | **off** | Reverse direction: tighten a row term from the row's own bound (item 7). Requires `--lra-row-propagation`. |
 | `--lra-theory-decisions` | **off** | Theory-supplied decision literals via `cb_decide` (item 8). |
-| `--lra-model-phase` | **off** | H5 beta-based phase hints for arithmetic atoms; keeps VSIDS variable choice. |
+| `--lra-model-phase` | **auto: QF_LRA rebuild, auto preprocessing** | H5 beta-based phase hints for arithmetic atoms; keeps VSIDS variable choice. |
+| `--no-lra-model-phase` | opt-out **off** | Disable model-based phase hints explicitly. |
 | `--lra-fixed-elimination` | **off** | Item H7 (LP presolve's fixed-variable removal, Andersen & Andersen 1995). Opt-in; see its falsifier outcome. |
 | `--guarded-real-equality-lowering` | **off** | Opt-in guarded equality distribution inside Real-equality lowering; useful local tropical result but mixed 10-file evidence. |
 | `--lra-row-propagation-max-row-size` | 64 | Longest row row-propagation will derive a bound for. |

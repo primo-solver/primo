@@ -63,6 +63,15 @@ CheckSatOptions monotone_elimination_options() {
   return options;
 }
 
+CheckSatOptions isolated_lra_options() {
+  // Theory/tableau probes need their atoms retained and the original phase control.
+  // Automatic-profile behavior is covered separately, with both mechanisms on.
+  CheckSatOptions options;
+  options.monotone_elimination = false;
+  options.lra_model_phase = false;
+  return options;
+}
+
 // The model must satisfy the ORIGINAL constraints, which is the only thing
 // that makes discharging them legitimate.
 void monotone_elimination_reconstructs_a_satisfying_model() {
@@ -483,19 +492,20 @@ void routes_combined_equality_and_arithmetic_to_mixed_solver() {
   // Uses an uninterpreted-sort equality alongside a Real comparison -- a
   // genuine EUF+LRA mix. (= x y) between two *Real* terms is itself a pure
   // QF_LRA atom (see real_equality_is_not_misclassified_as_euf below).
+  // Two-sided bounds retain arithmetic under automatic monotone elimination.
   const auto result = check_sat_smtlib(R"(
     (set-logic QF_LRA)
     (declare-sort U 0)
     (declare-fun a () U)
     (declare-fun b () U)
     (declare-fun x () Real)
-    (assert (or (= a b) (<= x 5)))
+    (assert (or (= a b) (and (<= x 5) (>= x 0))))
     (check-sat)
   )");
   assert(result.result == CheckSatResult::Sat);
   assert(result.statistics.get(":solver.qf-uflra") == 1);
   assert(result.statistics.get(":no.mixed.euf-atoms") == 1);
-  assert(result.statistics.get(":no.mixed.lra-atoms") == 1);
+  assert(result.statistics.get(":no.mixed.lra-atoms") == 2);
 }
 
 void accepts_separable_qf_uf_lra_mix() {
@@ -3278,13 +3288,13 @@ void same_slack_propagation_drives_boolean_structure() {
     (check-sat)
   )";
 
-  CheckSatOptions with_propagation;
+  CheckSatOptions with_propagation = isolated_lra_options();
   with_propagation.lra_propagation = true;
   const auto propagated = check_sat_smtlib(formula, with_propagation);
   assert(propagated.result == CheckSatResult::Sat);
   assert(propagated.statistics.get(StatKey::LraTheoryPropagations) > 0);
 
-  CheckSatOptions without_propagation;
+  CheckSatOptions without_propagation = isolated_lra_options();
   without_propagation.lra_propagation = false;
   const auto not_propagated = check_sat_smtlib(formula, without_propagation);
   assert(not_propagated.result == CheckSatResult::Sat);
@@ -3307,13 +3317,13 @@ void same_slack_propagation_can_reach_a_conflict() {
     (check-sat)
   )";
 
-  CheckSatOptions with_propagation;
+  CheckSatOptions with_propagation = isolated_lra_options();
   with_propagation.lra_propagation = true;
   const auto propagated = check_sat_smtlib(formula, with_propagation);
   assert(propagated.result == CheckSatResult::Unsat);
   assert(propagated.statistics.get(StatKey::LraTheoryPropagations) > 0);
 
-  CheckSatOptions without_propagation;
+  CheckSatOptions without_propagation = isolated_lra_options();
   without_propagation.lra_propagation = false;
   const auto not_propagated = check_sat_smtlib(formula, without_propagation);
   assert(not_propagated.result == CheckSatResult::Unsat);
@@ -3337,7 +3347,7 @@ void row_based_propagation_drives_boolean_structure() {
     (check-sat)
   )";
 
-  CheckSatOptions with_row_propagation;
+  CheckSatOptions with_row_propagation = isolated_lra_options();
   with_row_propagation.lra_propagation = true;
   with_row_propagation.lra_row_propagation = true;
   const auto propagated = check_sat_smtlib(formula, with_row_propagation);
@@ -3345,7 +3355,7 @@ void row_based_propagation_drives_boolean_structure() {
   assert(propagated.statistics.get(StatKey::LraRowPropagations) > 0);
   assert(propagated.statistics.get(StatKey::LraTheoryPropagations) > 0);
 
-  CheckSatOptions without_row_propagation;
+  CheckSatOptions without_row_propagation = isolated_lra_options();
   without_row_propagation.lra_propagation = true;
   without_row_propagation.lra_row_propagation = false;
   const auto not_propagated = check_sat_smtlib(formula, without_row_propagation);
@@ -3417,7 +3427,7 @@ void row_propagation_limits_are_actually_enforced() {
     (check-sat)
   )";
 
-  CheckSatOptions generous;
+  CheckSatOptions generous = isolated_lra_options();
   generous.lra_propagation = true;
   generous.lra_row_propagation = true;
   generous.lra_row_propagation_limits.max_row_size = 64;
@@ -3474,7 +3484,7 @@ void bidirectional_row_propagation_drives_boolean_structure() {
     (check-sat)
   )";
 
-  CheckSatOptions with_bidirectional;
+  CheckSatOptions with_bidirectional = isolated_lra_options();
   with_bidirectional.lra_propagation = true;
   with_bidirectional.lra_row_propagation = true;
   with_bidirectional.lra_bidirectional_row_propagation = true;
@@ -3483,7 +3493,7 @@ void bidirectional_row_propagation_drives_boolean_structure() {
   assert(propagated.statistics.get(StatKey::LraBidirectionalRowPropagations) > 0);
   assert(propagated.statistics.get(StatKey::LraTheoryPropagations) > 0);
 
-  CheckSatOptions forward_only;
+  CheckSatOptions forward_only = isolated_lra_options();
   forward_only.lra_propagation = true;
   forward_only.lra_row_propagation = true;
   forward_only.lra_bidirectional_row_propagation = false;
@@ -3509,7 +3519,7 @@ void bidirectional_row_propagation_can_reach_a_conflict() {
     (check-sat)
   )";
 
-  CheckSatOptions with_bidirectional;
+  CheckSatOptions with_bidirectional = isolated_lra_options();
   with_bidirectional.lra_propagation = true;
   with_bidirectional.lra_row_propagation = true;
   with_bidirectional.lra_bidirectional_row_propagation = true;
@@ -3517,7 +3527,7 @@ void bidirectional_row_propagation_can_reach_a_conflict() {
   assert(propagated.result == CheckSatResult::Unsat);
   assert(propagated.statistics.get(StatKey::LraBidirectionalRowPropagations) > 0);
 
-  CheckSatOptions forward_only;
+  CheckSatOptions forward_only = isolated_lra_options();
   forward_only.lra_propagation = true;
   forward_only.lra_row_propagation = true;
   forward_only.lra_bidirectional_row_propagation = false;
@@ -3543,7 +3553,7 @@ void theory_decisions_drive_boolean_structure() {
     (check-sat)
   )";
 
-  CheckSatOptions with_theory_decisions;
+  CheckSatOptions with_theory_decisions = isolated_lra_options();
   with_theory_decisions.lra_theory_decisions = true;
   const auto decided = check_sat_smtlib(formula, with_theory_decisions);
   assert(decided.result == CheckSatResult::Sat);
@@ -3551,7 +3561,7 @@ void theory_decisions_drive_boolean_structure() {
   assert(decided.statistics.get(StatKey::LraTheoryDecisions) ==
          decided.statistics.get(StatKey::SatDecisions));
 
-  CheckSatOptions without_theory_decisions;
+  CheckSatOptions without_theory_decisions = isolated_lra_options();
   const auto undecided = check_sat_smtlib(formula, without_theory_decisions);
   assert(undecided.result == CheckSatResult::Sat);
   assert(undecided.statistics.get(StatKey::LraTheoryDecisions) == 0);
@@ -3586,16 +3596,69 @@ void theory_decisions_can_reach_a_conflict() {
     (check-sat)
   )";
 
-  CheckSatOptions with_theory_decisions;
+  CheckSatOptions with_theory_decisions = isolated_lra_options();
   with_theory_decisions.lra_theory_decisions = true;
   const auto decided = check_sat_smtlib(formula, with_theory_decisions);
   assert(decided.result == CheckSatResult::Unsat);
   assert(decided.statistics.get(StatKey::LraTheoryDecisions) > 0);
 
-  CheckSatOptions without_theory_decisions;
+  CheckSatOptions without_theory_decisions = isolated_lra_options();
   const auto undecided = check_sat_smtlib(formula, without_theory_decisions);
   assert(undecided.result == CheckSatResult::Unsat);
   assert(undecided.statistics.get(StatKey::LraTheoryDecisions) == 0);
+}
+
+void automatic_heuristics_use_declared_qf_lra_and_respect_opt_outs() {
+  const std::string input = R"(
+    (set-logic QF_LRA)
+    (declare-const x Real)
+    (declare-const y Real)
+    (declare-const z Real)
+    (assert (>= x (- 5)))
+    (assert (<= x (- 2)))
+    (assert (>= y (- 5)))
+    (assert (<= y 5))
+    (assert (or (<= x (- 1)) (<= y 0)))
+    (assert (or (>= z 10) (<= y 0)))
+    (check-sat)
+  )";
+  const auto automatic = check_sat_smtlib(input);
+  CheckSatOptions enabled;
+  enabled.lra_model_phase = true;
+  enabled.monotone_elimination = true;
+  const auto explicit_profile = check_sat_smtlib(input, enabled);
+  assert(automatic.result == CheckSatResult::Sat);
+  assert(explicit_profile.result == CheckSatResult::Sat);
+  assert(automatic.statistics.get(StatKey::MonotoneEliminationVariables) > 0);
+  assert(automatic.statistics.get(StatKey::LraModelPhaseHints) > 0);
+  for (const auto key : {StatKey::MonotoneEliminationVariables, StatKey::LraModelPhaseHints}) {
+    assert(automatic.statistics.get(key) == explicit_profile.statistics.get(key));
+  }
+
+  CheckSatOptions disabled;
+  disabled.lra_model_phase = false;
+  disabled.monotone_elimination = false;
+  const auto legacy = check_sat_smtlib(input, disabled);
+  assert(legacy.result == CheckSatResult::Sat);
+  assert(legacy.statistics.get(StatKey::MonotoneEliminationVariables) == 0);
+  assert(legacy.statistics.get(StatKey::LraModelPhaseHints) == 0);
+
+  // The pure arithmetic shape must not override a different declared logic.
+  std::string mixed_input = input;
+  mixed_input.replace(mixed_input.find("QF_LRA"), 6, "QF_UFLRA");
+  const auto mixed_default = check_sat_smtlib(mixed_input);
+  assert(mixed_default.result == CheckSatResult::Sat);
+  assert(mixed_default.statistics.get(StatKey::MonotoneEliminationVariables) == 0);
+  assert(mixed_default.statistics.get(StatKey::LraModelPhaseHints) == 0);
+  for (const auto mode : {primo::smt::PreprocessingMode::Off, primo::smt::PreprocessingMode::Basic,
+                          primo::smt::PreprocessingMode::Strong}) {
+    CheckSatOptions custom;
+    custom.preprocessing_mode = mode;
+    const auto result = check_sat_smtlib(input, custom);
+    assert(result.result == CheckSatResult::Sat);
+    assert(result.statistics.get(StatKey::MonotoneEliminationVariables) == 0);
+    assert(result.statistics.get(StatKey::LraModelPhaseHints) == 0);
+  }
 }
 
 void model_phase_refreshes_from_tableau_assignment() {
@@ -3615,6 +3678,7 @@ void model_phase_refreshes_from_tableau_assignment() {
 
   CheckSatOptions with_model_phase;
   with_model_phase.lra_model_phase = true;
+  with_model_phase.monotone_elimination = false;
   const auto hinted = check_sat_smtlib(formula, with_model_phase);
   assert(hinted.result == CheckSatResult::Sat);
   assert(hinted.statistics.get(StatKey::LraModelPhaseRefreshes) >= 2);
@@ -3622,6 +3686,8 @@ void model_phase_refreshes_from_tableau_assignment() {
          hinted.statistics.get(StatKey::TheoryAtoms));
 
   CheckSatOptions without_model_phase;
+  without_model_phase.lra_model_phase = false;
+  without_model_phase.monotone_elimination = false;
   const auto unhinted = check_sat_smtlib(formula, without_model_phase);
   assert(unhinted.result == CheckSatResult::Sat);
   assert(unhinted.statistics.get(StatKey::LraModelPhaseRefreshes) == 0);
@@ -3645,14 +3711,14 @@ void row_based_propagation_can_reach_a_conflict() {
     (check-sat)
   )";
 
-  CheckSatOptions with_row_propagation;
+  CheckSatOptions with_row_propagation = isolated_lra_options();
   with_row_propagation.lra_propagation = true;
   with_row_propagation.lra_row_propagation = true;
   const auto propagated = check_sat_smtlib(formula, with_row_propagation);
   assert(propagated.result == CheckSatResult::Unsat);
   assert(propagated.statistics.get(StatKey::LraRowPropagations) > 0);
 
-  CheckSatOptions without_row_propagation;
+  CheckSatOptions without_row_propagation = isolated_lra_options();
   without_row_propagation.lra_propagation = true;
   without_row_propagation.lra_row_propagation = false;
   const auto not_propagated = check_sat_smtlib(formula, without_row_propagation);
@@ -3681,7 +3747,8 @@ void deferred_check_runs_once_per_quiescence_point_not_per_literal() {
     (assert (or (<= x 3) (>= y2 1000)))
     (assert (or (<= x 4) (>= y3 1000)))
     (check-sat)
-  )");
+  )",
+                                       isolated_lra_options());
   assert(result.result == CheckSatResult::Sat);
   assert(result.statistics.get(StatKey::LraTheoryPropagations) > 0);
   // The actual point: check() runs at most once per quiescence point
@@ -4434,7 +4501,8 @@ void proportional_polynomials_share_one_slack() {
     (assert (<= (+ x y) 5))
     (assert (<= (+ x (* 2 y)) 10))
     (check-sat)
-  )");
+  )",
+                                         isolated_lra_options());
   assert(separate.result == CheckSatResult::Sat);
   assert(separate.statistics.get(StatKey::LraRows) == 2);
 
@@ -4771,6 +4839,7 @@ void mixed_dispatch_wide_routes_propositional_variables_to_the_mixed_solver() {
 }
 
 int main() {
+  automatic_heuristics_use_declared_qf_lra_and_respect_opt_outs();
   mixed_dispatch_wide_routes_propositional_variables_to_the_mixed_solver();
   propositional_variables_do_not_force_the_mixed_solver();
   bool_sorted_application_still_forces_the_mixed_solver();

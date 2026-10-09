@@ -168,6 +168,15 @@ are recorded below, separately from future incremental-state reuse.
 
 ### Rebuild baseline: representation and ownership
 
+The QF_LRA automatic heuristic candidate resolves model-phase and monotone
+policies separately for each rebuild query's declared logic and automatic
+preprocessing profile. Explicit preprocessing profiles retain their prior defaults. Resolution mutates
+only that query's options copy, so neither preprocessing that removes all Real
+atoms nor `reset` leaks the profile into a later QF_UFLRA or integer query.
+Assumptions sessions keep both automatic policies off and continue to reject
+explicit monotone elimination. See [](arithmetic.md) for overrides and the
+candidate's qualification status.
+
 `smt::SmtSession` owns an ordered journal of parsed context commands and stack
 depths, protocol options, and the latest query outcome. Empty scopes are
 compressed into a depth counter rather than allocating one frame per push.
