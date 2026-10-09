@@ -43,7 +43,10 @@
         "cpu_model": "Intel Xeon Gold 6140 @ 2.30 GHz; two sockets, 18 physical cores/socket",
         "timing_concurrency": 32,
         "memory_gib_per_task": 7,
-        "cpu_policy": "One worker per physical core, --ntasks=1 --cpus-per-task=1 --hint=nomultithread; SLURM reserves both sibling logical CPUs. No GPU requested."
+        "cpu_policy": "One worker per physical core, --ntasks=1 --cpus-per-task=1 --hint=nomultithread; SLURM reserves both sibling logical CPUs. No GPU requested.",
+        "mutant_status_replay_job": 182205,
+        "mutant_nonlinear_triage_job": 182268,
+        "fuzz_semantic_model_replay_job": 182279
       },
       "binary": {
         "git": "23f945d",
@@ -276,12 +279,12 @@
           "sat": 445
         }
       },
-      "gate_status": "in_progress",
+      "gate_status": "generated and retained-mutation correctness classified; real-corpus SAT models pending",
       "triage": {
         "legacy_model_driver": "The old gate validates every generated input, appending get-model even after UNSAT. Current interpreter correctly exits nonzero for that invalid model query. Strict Dolmen also rejects constant multiplication of a complex linear expression. Corrective stage selects only successful SAT rows, adds --check-model, --expect-sat and --require-dolmen-pass, and uses --dolmen-arg=--strict=false without changing the logic or assertions.",
         "initial_sat_selector": "Initially required every fuzz answer row to PASS. Corrected to preserve and report timeout-only rows separately, selecting successful SAT passes. Timeouts are not wrong answers.",
         "family_seed_reference_limits": "Diagnostic checks of the generated 34-seed family corpus found Z3 and Yices reference timeouts on hard LassoRanker/latendresse seeds at 30s. The 17 tracked QF_LRA regression seeds plus two Boolean-domain witnesses passed Z3 for every measured profile. Mutating the broader family bundle does not substitute it for those tracked regression checks.",
-        "generated_input_syntax": "With --strict=false, multiplication warnings can be accepted directly, but some FuzzSMT inputs divide by a negative constant denominator, which Dolmen rejects as forbidden in the declared QF_LRA syntax. Preserve these as input-nonconforming, not model passes or incorrect Primo answers. Separate real-corpus SAT validation is still required.",
+        "generated_input_syntax": "With --strict=false, multiplication warnings can be accepted directly, but some FuzzSMT inputs divide by a negative constant denominator, which Dolmen rejects as forbidden in the declared QF_LRA syntax. Preserve these as input-nonconforming, not model passes or incorrect Primo answers. Separate real-corpus SAT validation is still required. The explicitly separate semantic replay forces only Dolmen to QF_NRA, retaining every assertion and the candidate QF_LRA logic. All 2603 selected SAT models pass under this semantic superset; this does not turn the 1466 input-grammar rejections into strict QF_LRA passes.",
         "mutation_process_status": "Installed YinYang Fuzzer.py only handles selected nonzero exits before answer parsing. Its raw campaign is not accepted correctness evidence. Retained inputs require independent replay through check_solver_seed_corpus.py, whose post-answer-crash regression passed.",
         "opfuzz_seed_interface": "The raw opfuzz launcher rejects --seed. Its initial task is setup non-evidence; rerun through scripts/seeded_opfuzz.py, which seeds Python RNG before calling the installed launcher.",
         "scheduler": "The compute partition had free CPUs but memory reservations limited the 7GiB jobs to about seven concurrent workers. Cancelled the partial run and its dependent selected run, preserving their artifacts as superseded. A homogeneous idle Gold CPU host in the GPU partition supports 32 workers at the unchanged 7GiB allocation. AMD host probe failed with Job credential expired; Gold probe ran the candidate successfully."
@@ -291,16 +294,124 @@
         "gate_summary": "results/lra-reverification-20261009/collected-gates/gate-summary.json",
         "full30": "results/lra-reverification-20261009/full30-gold",
         "selection1200": "results/lra-reverification-20261009/selection1200-gold",
-        "superseded_partial": "results/lra-reverification-20261009/full30"
+        "superseded_partial": "results/lra-reverification-20261009/full30",
+        "comparison_summary": "results/lra-reverification-20261009/collected-comparison/comparison-summary.json",
+        "mutation_triage": "results/lra-reverification-20261009/mutant-triage",
+        "semantic_model_summary": "results/lra-reverification-20261009/semantic-model-summary.json"
       },
       "commands": {
         "precheck": "ctest --test-dir build-slurm-rel --timeout 120 -R primo_(qf_lra_solver|boolean_solver)_tests; check_solver_seed_corpus.py for qf_lra (3), qf_lra_real (14), and two Boolean-domain witnesses, each of four profiles vs Z3 at 30s; qf_lra_boolean_arithmetic_fuzz.py --count 250 --seed 2026100905..2026100908 --timeout 5 --dolmen-timeout 10 with both flags (4 tasks).",
         "generated": "slurm_qf_lra_model_fuzz_gate.sbatch tasks 0..5, 500/shard, FuzzSMT seeds 2026100910..2026100915, 5s solver, exact both flags; separate successful-SAT replay at 10s solver/Dolmen, --check-model --expect-sat --require-dolmen-pass --dolmen-arg=--strict=false.",
         "timing": "slurm_lra_profile_comparison.sbatch benchmark phase: full30-gold, 6 profiles x 32 shards, 30s, 7GiB per allocation, array concurrency32, 45min task limit; selection1200-gold afterok full30-gold, 6 profiles x64 shards, 1200s, 7GiB, concurrency32, 3h task limit. All arms on one homogeneous Gold CPU host, physical-core allocation. Immutable timing rows and input/binary hashes.",
-        "real_models": "The same driver replay phase: four native profiles, full30 32 shards/profile, 90s solver and 60s Dolmen, 6G Dolmen cap; selection1200 64 shards/profile, 1260s solver and120s Dolmen. Direct --require-dolmen-pass --expect-sat --check-model, --dolmen-arg=--strict=false. Full30 model job starts after all selected timing tasks; selected models start after full30 model job, preventing overlap with timing."
+        "real_models": "The same driver replay phase: four native profiles, full30 32 shards/profile, 90s solver and 60s Dolmen, 6G Dolmen cap; selection1200 64 shards/profile, 1260s solver and120s Dolmen. Direct --require-dolmen-pass --expect-sat --check-model, --dolmen-arg=--strict=false. Full30 model job starts after all selected timing tasks; selected models start after full30 model job, preventing overlap with timing.",
+        "seed_mutation": "build_fuzz_seed_corpus.py --root corpora/QF_LRA --out benchmarks/seeds/qf_lra_division --per-family 2 --max-bytes 200000; slurm_lra_paper_seeded_mutation.sbatch tasks 0..2: exact both flags, reference scripts/yices_smt2_ref.sh, timeout 5s, wall1500s, deterministic seeds2026101000..1002, OpFuzz200 iterations/seed through seeded_opfuzz.py, TypeFuzz100 iterations/seed with hoist-declarations; keep-logic and keep-mutants.",
+        "mutant_replay": "slurm_lra_paper_mutant_replay.sbatch array0..47, three roots x16 shards, check_solver_seed_corpus.py --ignore-declared-status, exact both flags, Yices wrapper,5s; slurm_lra_paper_mutant_triage.sbatch after replay collects both/default/Z3/OpenSMT/Dolmen diagnostics for all candidate rejections with concrete Yices answers.",
+        "semantic_models": "slurm_lra_paper_fuzz_semantic_replay.sbatch array0..5: successful-SAT selection only, exact both flags and --check-model, solver/Dolmen10s, --require-dolmen-pass --expect-sat --dolmen-arg=--strict=false --dolmen-arg=--force-smtlib2-logic=QF_NRA. Separate semantic evidence, not strict input-conformance coverage."
       },
       "evidence_status": "qualification-in-progress",
-      "outcome": "Focused precheck passed. Generated answer campaign has 2986 PASS and 14 TIMEOUT, zero disagreements/crashes. Additional SAT replay preserves input-syntax limitations. Full30 timings active, selection1200 dependent; retained-mutation replay and every real-corpus SAT model are still pending. No promotion claimed."
+      "outcome": "Focused tests, 1000 Boolean-arithmetic model checks, 3000 generated answer checks (2986 agreements/14timeouts), and 8380 retained mutants (7805 agreements/28timeouts/547 invalid generated inputs) classified without solver correctness failures. Generated successful-SAT semantic model replay passes2603/2603; strict QF_LRA grammar replay is incomplete for1466 inputs. Full30 timing profiles still running and selection1200 dependent; every real-corpus SAT model is pending. No promotion claimed.",
+      "fuzz_models": {
+        "strict_qf_lra": {
+          "expected_sat": 2603,
+          "direct_dolmen_pass": 1137,
+          "input_nonconforming": 1466,
+          "invalid_models": 0
+        },
+        "semantic_superset": {
+          "expected_sat": 2603,
+          "direct_dolmen_pass": 2603,
+          "invalid_models": 0,
+          "changed_answers": 0,
+          "solver_errors": 0,
+          "validator_logic": "QF_NRA",
+          "input_assertions_changed": false,
+          "candidate_logic_unchanged": true,
+          "strict_qf_lra_conformance_certified": false
+        }
+      },
+      "retained_mutation": {
+        "seeded-mutation/task-1": {
+          "retained_inputs": 900,
+          "families": {
+            "2019-ezsmt": 200,
+            "check": 100,
+            "clock_synchro": 100,
+            "keymaera": 100,
+            "meti-tarski": 100,
+            "sal": 100,
+            "tta_startup": 200
+          },
+          "saved_failures": 0
+        },
+        "seeded-mutation/task-2": {
+          "retained_inputs": 700,
+          "families": {
+            "2017-Heizmann-UltimateInvariantSynthesis": 100,
+            "DTP-Scheduling": 100,
+            "clock_synchro": 100,
+            "keymaera": 100,
+            "meti-tarski": 100,
+            "sal": 100,
+            "tta_startup": 100
+          },
+          "saved_failures": 0
+        },
+        "seeded-opfuzz/task-0": {
+          "retained_inputs": 6780,
+          "families": {
+            "2017-Heizmann-UltimateInvariantSynthesis": 400,
+            "2019-ezsmt": 400,
+            "DTP-Scheduling": 400,
+            "LassoRanker": 400,
+            "TM": 400,
+            "check": 400,
+            "clock_synchro": 400,
+            "keymaera": 385,
+            "latendresse": 400,
+            "meti-tarski": 395,
+            "miplib": 400,
+            "sal": 400,
+            "sc": 400,
+            "spider_benchmarks": 400,
+            "tropical-matrix": 400,
+            "tta_startup": 400,
+            "uart": 400
+          },
+          "saved_failures": 0
+        },
+        "independent-root-1": {
+          "rows": 700,
+          "outcomes": {
+            "INCOMPLETE": 348,
+            "PASS": 352
+          }
+        },
+        "independent-root-0": {
+          "rows": 900,
+          "outcomes": {
+            "PASS": 701,
+            "INCOMPLETE": 199
+          }
+        },
+        "independent-root-2": {
+          "rows": 6780,
+          "outcomes": {
+            "PASS": 6752,
+            "INCOMPLETE": 28
+          }
+        }
+      },
+      "retained_mutation_classification": {
+        "total": 8380,
+        "reference_agreement": 7805,
+        "resource_only_incomplete": 28,
+        "invalid_generated_input": 547,
+        "nonlinear_in_declared_qf_lra": 190,
+        "undeclared_terms": 357,
+        "untriaged_failures": 0,
+        "concrete_yices_answers_on_nonlinear_inputs": 27,
+        "triage": "All 27 candidate rejections with concrete Yices answers are nonlinear products. Both candidate and default exit 2 with a coefficient diagnostic. Z3 exits 1 with nonlinear-arithmetic errors; OpenSMT rejects the nonlinear terms; Dolmen exits 4 for forbidden linear-arithmetic expressions. Remaining 520 invalid mutants have explicit Yices nonlinear or undeclared-name errors and candidate rejection. The OpFuzz run covers all 17 families; the two time-boxed TypeFuzz runs cover only their recorded 7 families each."
+      }
     },
     {
       "id": "2026-10-09-qf-lia-opensmt-full-division",

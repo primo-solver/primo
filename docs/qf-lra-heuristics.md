@@ -38,6 +38,28 @@ failures, and separate direct Dolmen validation of every successful SAT row
 for each Primo profile claimed. A QF_LRA gain alone does not justify enabling
 these flags for QF_LIA or QF_UFLRA. Evaluation and promotion are pending.
 
+The current opt-in profile passed the focused tests and all 1,000 generated
+Boolean/arithmetic SAT models with direct Dolmen checks. A separate 3,000-case
+FuzzSMT answer campaign produced 2,986 reference agreements and 14 timeouts.
+Strict QF_LRA model replay accepted 1,137 of its 2,603 successful SAT rows;
+Dolmen rejected the remaining 1,466 inputs' arithmetic syntax. An explicitly
+separate replay accepted all 2,603 models with only the validator's logic
+broadened to QF_NRA. Assertions and the candidate's QF_LRA logic were unchanged;
+this checks model semantics without certifying strict input conformance.
+
+The retained real-seed mutation campaign contains 8,380 inputs: 7,805 independent
+reference agreements, 28 resource-only incomplete checks, and 547 invalid
+generated inputs (190 nonlinear products and 357 undeclared-name cases).
+All 27 candidate rejections with concrete Yices answers were independently
+identified as nonlinear inputs by Z3, OpenSMT, and Dolmen. These are generated
+input limitations, not accepted model passes. The operator mutation run reached
+all 17 families; the two time-boxed TypeFuzz runs each reached seven families.
+The dated `slurm_lra_paper_seeded_mutation.sbatch`,
+`slurm_lra_paper_mutant_replay.sbatch`, `slurm_lra_paper_mutant_triage.sbatch`,
+and `slurm_lra_paper_fuzz_semantic_replay.sbatch` scripts preserve the workflow.
+Their evidence is recorded in `docs/run-log.json`; separate complete real-corpus
+SAT validation remains required before promotion.
+
 Written 2026-07-27 as a design note and extended through 2026-07-31. It picks
 up where the competitiveness roadmap's items 0-8 (see [](arithmetic.md)'s
 Milestone roadmap) left off, and is grounded in a fresh local
