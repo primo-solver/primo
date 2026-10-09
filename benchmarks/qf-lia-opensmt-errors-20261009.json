@@ -1,194 +1,378 @@
 {
-  "job": "181529",
-  "cases": [
-    {
-      "file": "20210219-Dartagnan/ConcurrencySafety-Main/03_incdec-O0.smt2",
-      "input_sha256": "157bf070a07984f54e5868adbe91acbd91608774d3c29cbc4c6ab89c7322f0e9",
-      "category": "memory-exhausted-non-answer",
-      "exit_code": 0,
-      "stdout": "At line 335220: memory exhausted",
-      "stderr": "",
-      "replay_seconds": 1.411531
-    },
-    {
-      "file": "20210219-Dartagnan/ConcurrencySafety-Main/29_conditionals_vs-O0.smt2",
-      "input_sha256": "609594b5b09c4dbe36ebfab41d0d44a7c66441705aba8f4262c0e742526e1987",
-      "category": "memory-exhausted-non-answer",
-      "exit_code": 0,
-      "stdout": "At line 510752: memory exhausted",
-      "stderr": "",
-      "replay_seconds": 1.630014
-    },
-    {
-      "file": "20210219-Dartagnan/ConcurrencySafety-Main/38_rand_cas_vs_concur-O0.smt2",
-      "input_sha256": "2f81a97c13849130b29deaef12fbcb8361ea873a5f9bff9c49937cfcbedda9ee",
-      "category": "SIGSEGV",
-      "exit_code": -11,
-      "stdout": "",
-      "stderr": "",
-      "replay_seconds": 1.54861
-    },
-    {
-      "file": "20210219-Dartagnan/ConcurrencySafety-Main/fib_bench-2-O0.smt2",
-      "input_sha256": "4974a5f607a6709563e56c9f96dc40f2d08b9e5ce94691c1efc1be73dd06694e",
-      "category": "SIGSEGV",
-      "exit_code": -11,
-      "stdout": "",
-      "stderr": "",
-      "replay_seconds": 1.497834
-    },
-    {
-      "file": "20210219-Dartagnan/ReachSafety-Loops/benchmark09_conjunctive-O0.smt2",
-      "input_sha256": "426c96a44fe187f471cff700d7267dfc68379ef44c4747d5e29599b64e34a48a",
-      "category": "SIGSEGV",
-      "exit_code": -11,
-      "stdout": "",
-      "stderr": "",
-      "replay_seconds": 1.576954
-    },
-    {
-      "file": "20210219-Dartagnan/ConcurrencySafety-Main/04_incdec_cas-O0.smt2",
-      "input_sha256": "c7ceccecc898912d92e944fdd61d581e300b86075feac21e7a4b32902bb4dce4",
-      "category": "memory-exhausted-non-answer",
-      "exit_code": 0,
-      "stdout": "At line 541019: memory exhausted",
-      "stderr": "",
-      "replay_seconds": 1.62661
-    },
-    {
-      "file": "20210219-Dartagnan/ConcurrencySafety-Main/30_Function_Pointer3_vs-O0.smt2",
-      "input_sha256": "c4b8df0363d7bd93c75205a45f0abbad92714c9534b8c49cc36a576b342de4cd",
-      "category": "SIGSEGV",
-      "exit_code": -11,
-      "stdout": "",
-      "stderr": "",
-      "replay_seconds": 1.978866
-    },
-    {
-      "file": "20210219-Dartagnan/ConcurrencySafety-Main/39_rand_lock_p0_vs-O0.smt2",
-      "input_sha256": "275127e400ce65a5e224368035208816a8559eea95d3517bb0c8312eec56d6c5",
-      "category": "memory-exhausted-non-answer",
-      "exit_code": 0,
-      "stdout": "At line 345249: memory exhausted",
-      "stderr": "",
-      "replay_seconds": 1.334622
-    },
-    {
-      "file": "20210219-Dartagnan/ConcurrencySafety-Main/fib_bench_longer-1-O0.smt2",
-      "input_sha256": "b80b2e908d011a8d95b705b3e75583537f57a9fc041bc43b2e8d6cf746e84aae",
-      "category": "SIGSEGV",
-      "exit_code": -11,
-      "stdout": "",
-      "stderr": "",
-      "replay_seconds": 1.531416
-    },
-    {
-      "file": "20210219-Dartagnan/ConcurrencySafety-Main/25_stack-O0.smt2",
-      "input_sha256": "941b7e253c0f0916733099bcb05993dd86849b551f96e8489e1b847ece09bd81",
-      "category": "memory-exhausted-non-answer",
-      "exit_code": 0,
-      "stdout": "At line 537747: memory exhausted",
-      "stderr": "",
-      "replay_seconds": 1.609463
-    },
-    {
-      "file": "20210219-Dartagnan/ConcurrencySafety-Main/32_pthread5_vs-O0.smt2",
-      "input_sha256": "0562d82aeb4ad67809a064df67a549028c25de7220ba2eb7cf873c8218a094af",
-      "category": "SIGSEGV",
-      "exit_code": -11,
-      "stdout": "",
-      "stderr": "",
-      "replay_seconds": 1.897388
-    },
-    {
-      "file": "20210219-Dartagnan/ConcurrencySafety-Main/43_NetBSD_sysmon_power_sliced-O0.smt2",
-      "input_sha256": "736b170cfc8a25d5ee102d534d3cbbc30568c1d8b10f715603ea6bed1d4e2fad",
-      "category": "memory-exhausted-non-answer",
-      "exit_code": 0,
-      "stdout": "At line 358453: memory exhausted",
-      "stderr": "",
-      "replay_seconds": 1.440568
-    },
-    {
-      "file": "20210219-Dartagnan/ConcurrencySafety-Main/fk2012-O0.smt2",
-      "input_sha256": "b3db6966fd19d9f6650eb7415c29c80854933a771e94acd6997b9851451455fd",
-      "category": "SIGSEGV",
-      "exit_code": -11,
-      "stdout": "",
-      "stderr": "",
-      "replay_seconds": 1.641799
-    },
-    {
-      "file": "20210219-Dartagnan/ConcurrencySafety-Main/26_stack_cas-O0.smt2",
-      "input_sha256": "757f19821205eb0ff3cc97cf1d02e43563aed22bb0d05fafdcaf7159937bac24",
-      "category": "memory-exhausted-non-answer",
-      "exit_code": 0,
-      "stdout": "At line 520718: memory exhausted",
-      "stderr": "",
-      "replay_seconds": 1.590388
-    },
-    {
-      "file": "20210219-Dartagnan/ConcurrencySafety-Main/35_double_lock_p3_vs-O0.smt2",
-      "input_sha256": "a8f169f4112c4486db260f1c074f3991c7a281f3ec7b5b96884e09f13dab1dac",
-      "category": "SIGSEGV",
-      "exit_code": -11,
-      "stdout": "",
-      "stderr": "",
-      "replay_seconds": 1.709645
-    },
-    {
-      "file": "20210219-Dartagnan/ConcurrencySafety-Main/fib_bench-1-O0.smt2",
-      "input_sha256": "66b4307b84f2226fabad465d3d3bce178318a96b2b0259b9dd82eb923bd7f2ef",
-      "category": "SIGSEGV",
-      "exit_code": -11,
-      "stdout": "",
-      "stderr": "",
-      "replay_seconds": 1.530068
-    },
-    {
-      "file": "20210219-Dartagnan/ConcurrencySafety-Main/qrcu-1-O0.smt2",
-      "input_sha256": "577f098e9bf98af584ba2b89a72496eed3c9bae22e4b190c80a407fe7da4c9f3",
-      "category": "SIGSEGV",
-      "exit_code": -11,
-      "stdout": "",
-      "stderr": "",
-      "replay_seconds": 1.736102
-    }
-  ],
   "schema_version": 1,
-  "scope": "The first 17 captured errors from full reference job 181259; full-corpus classification is pending.",
+  "scope": "Complete classification of all 21 errors from full reference job 181259, 13,306 QF_LIA inputs. Original timing rows remain unchanged.",
+  "full_run_job": "181259",
+  "complete_replay_and_debugger_job": "181727",
+  "earlier_probe_jobs": [
+    "181454",
+    "181529",
+    "181648"
+  ],
   "solver": "OpenSMT 2.9.2, default arguments",
   "binary_sha256": "b7899e9aff299026d3251df7a28f51f56d8bd1e5b0fd7be11bcc72c4f2803a98",
   "resources": {
     "partition": "compute",
     "cpus_per_task": 1,
     "memory_gib": 3,
-    "timeout_seconds": 60
+    "timeout_seconds": 60,
+    "observed_stack_kib": 8192
   },
-  "interpretation": "Seven non-answers report memory exhausted on stdout and exit 0; ten terminate with SIGSEGV and no output. All are errors, excluded from the cactus and charged 120 seconds in PAR2. Internal causes have not been established.",
-  "artifacts": "results/qf-lia-opensmt-20261009/triage-all/",
-  "debugger_probes": {
-    "job": "181648",
-    "gdb_version": "Rocky Linux 10.2-13.el9",
-    "binary": "statically linked and stripped; function names unavailable",
-    "cases": [
-      {
-        "file": "20210219-Dartagnan/ConcurrencySafety-Main/38_rand_cas_vs_concur-O0.smt2",
+  "counts": {
+    "memory-exhausted-non-answer": 7,
+    "SIGSEGV-stack-exhaustion": 14
+  },
+  "interpretation": "All 21 failures reproduce at the original profile. Seven exit-0 non-answers print memory exhausted. All 14 SIGSEGV cases fault immediately below an 8 MiB stack mapping, with the stack pointer at its lower boundary, supporting stack exhaustion. Function names are unavailable in the stripped binary; no function-specific or parser-specific cause is claimed. Every case remains an error, receives a 120-second PAR2 penalty, and contributes no cactus point. Diagnostic times are separate from original timings.",
+  "artifacts": "results/qf-lia-opensmt-20261009/triage-final/",
+  "cases": [
+    {
+      "file": "20210219-Dartagnan/ConcurrencySafety-Main/03_incdec-O0.smt2",
+      "input_sha256": "157bf070a07984f54e5868adbe91acbd91608774d3c29cbc4c6ab89c7322f0e9",
+      "exit_code": 0,
+      "original_seconds": 2.33256,
+      "replay_seconds": 1.377144,
+      "stdout": "At line 335220: memory exhausted",
+      "stderr": "",
+      "category": "memory-exhausted-non-answer"
+    },
+    {
+      "file": "20210219-Dartagnan/ConcurrencySafety-Main/04_incdec_cas-O0.smt2",
+      "input_sha256": "c7ceccecc898912d92e944fdd61d581e300b86075feac21e7a4b32902bb4dce4",
+      "exit_code": 0,
+      "original_seconds": 4.171055,
+      "replay_seconds": 1.610221,
+      "stdout": "At line 541019: memory exhausted",
+      "stderr": "",
+      "category": "memory-exhausted-non-answer"
+    },
+    {
+      "file": "20210219-Dartagnan/ConcurrencySafety-Main/25_stack-O0.smt2",
+      "input_sha256": "941b7e253c0f0916733099bcb05993dd86849b551f96e8489e1b847ece09bd81",
+      "exit_code": 0,
+      "original_seconds": 3.376723,
+      "replay_seconds": 1.582626,
+      "stdout": "At line 537747: memory exhausted",
+      "stderr": "",
+      "category": "memory-exhausted-non-answer"
+    },
+    {
+      "file": "20210219-Dartagnan/ConcurrencySafety-Main/26_stack_cas-O0.smt2",
+      "input_sha256": "757f19821205eb0ff3cc97cf1d02e43563aed22bb0d05fafdcaf7159937bac24",
+      "exit_code": 0,
+      "original_seconds": 3.647197,
+      "replay_seconds": 1.553165,
+      "stdout": "At line 520718: memory exhausted",
+      "stderr": "",
+      "category": "memory-exhausted-non-answer"
+    },
+    {
+      "file": "20210219-Dartagnan/ConcurrencySafety-Main/29_conditionals_vs-O0.smt2",
+      "input_sha256": "609594b5b09c4dbe36ebfab41d0d44a7c66441705aba8f4262c0e742526e1987",
+      "exit_code": 0,
+      "original_seconds": 2.596383,
+      "replay_seconds": 1.60847,
+      "stdout": "At line 510752: memory exhausted",
+      "stderr": "",
+      "category": "memory-exhausted-non-answer"
+    },
+    {
+      "file": "20210219-Dartagnan/ConcurrencySafety-Main/30_Function_Pointer3_vs-O0.smt2",
+      "input_sha256": "c4b8df0363d7bd93c75205a45f0abbad92714c9534b8c49cc36a576b342de4cd",
+      "exit_code": -11,
+      "original_seconds": 2.316081,
+      "replay_seconds": 1.950005,
+      "stdout": "",
+      "stderr": "",
+      "category": "SIGSEGV-stack-exhaustion",
+      "debugger": {
         "fault_address": "0x7fffff7feff8",
         "stack_start": "0x7fffff7ff000",
         "stack_end": "0x7ffffffff000",
         "stack_bytes": 8388608,
-        "gdb_log_sha256": "0b8ad83a747c973d7fec00863e0a4459b54a8bb2883f0cf85c08c3201aac30fc"
-      },
-      {
-        "file": "20210219-Dartagnan/ReachSafety-Loops/benchmark09_conjunctive-O0.smt2",
-        "fault_address": "0x7fffff7feff8",
-        "stack_start": "0x7fffff7ff000",
-        "stack_end": "0x7ffffffff000",
-        "stack_bytes": 8388608,
-        "gdb_log_sha256": "cbd9e8194fe009ced8497e103e1d803320e5915d2f2b6911c3b69b86b3d72154"
+        "rsp": "0x7fffff7feff0",
+        "most_repeated_frame_count": 14,
+        "log": "triage-final/solver-gdb-1/1-30_Function_Pointer3_vs-O0.smt2.gdb.txt",
+        "log_sha256": "f2d094ee4c45df562dc42d151b5263c88bfec9e902009590fa487817c9b5cae4"
       }
-    ],
-    "interpretation": "In these two cases the fault address is eight bytes below the 8 MiB stack mapping, and the backtrace repeats a frame. This supports stack exhaustion in these cases; unseen errors are not generalized from the probes."
-  }
+    },
+    {
+      "file": "20210219-Dartagnan/ConcurrencySafety-Main/32_pthread5_vs-O0.smt2",
+      "input_sha256": "0562d82aeb4ad67809a064df67a549028c25de7220ba2eb7cf873c8218a094af",
+      "exit_code": -11,
+      "original_seconds": 2.171389,
+      "replay_seconds": 1.821006,
+      "stdout": "",
+      "stderr": "",
+      "category": "SIGSEGV-stack-exhaustion",
+      "debugger": {
+        "fault_address": "0x7fffff7fefe8",
+        "stack_start": "0x7fffff7ff000",
+        "stack_end": "0x7ffffffff000",
+        "stack_bytes": 8388608,
+        "rsp": "0x7fffff7feff0",
+        "most_repeated_frame_count": 20,
+        "log": "triage-final/solver-gdb-2/1-32_pthread5_vs-O0.smt2.gdb.txt",
+        "log_sha256": "7bfbb51ac1716cf505dda1808ec0d6ac4bedfff83833b7048e124c68fd0d03fe"
+      }
+    },
+    {
+      "file": "20210219-Dartagnan/ConcurrencySafety-Main/35_double_lock_p3_vs-O0.smt2",
+      "input_sha256": "a8f169f4112c4486db260f1c074f3991c7a281f3ec7b5b96884e09f13dab1dac",
+      "exit_code": -11,
+      "original_seconds": 2.622584,
+      "replay_seconds": 1.656031,
+      "stdout": "",
+      "stderr": "",
+      "category": "SIGSEGV-stack-exhaustion",
+      "debugger": {
+        "fault_address": "0x7fffff7fefe8",
+        "stack_start": "0x7fffff7ff000",
+        "stack_end": "0x7ffffffff000",
+        "stack_bytes": 8388608,
+        "rsp": "0x7fffff7feff0",
+        "most_repeated_frame_count": 19,
+        "log": "triage-final/solver-gdb-3/1-35_double_lock_p3_vs-O0.smt2.gdb.txt",
+        "log_sha256": "f59c9acc0cb83706c1a836ca1b473738aa9f68db53aeb2b139d0b510f1e706fc"
+      }
+    },
+    {
+      "file": "20210219-Dartagnan/ConcurrencySafety-Main/38_rand_cas_vs_concur-O0.smt2",
+      "input_sha256": "2f81a97c13849130b29deaef12fbcb8361ea873a5f9bff9c49937cfcbedda9ee",
+      "exit_code": -11,
+      "original_seconds": 2.375494,
+      "replay_seconds": 1.539314,
+      "stdout": "",
+      "stderr": "",
+      "category": "SIGSEGV-stack-exhaustion",
+      "debugger": {
+        "fault_address": "0x7fffff7feff8",
+        "stack_start": "0x7fffff7ff000",
+        "stack_end": "0x7ffffffff000",
+        "stack_bytes": 8388608,
+        "rsp": "0x7fffff7ff000",
+        "most_repeated_frame_count": 18,
+        "log": "triage-final/solver-gdb-0/1-38_rand_cas_vs_concur-O0.smt2.gdb.txt",
+        "log_sha256": "69aada16f6a1c499ee1e28f0ebd80296494478767104ff92cb4fbc4ff68c4cfa"
+      }
+    },
+    {
+      "file": "20210219-Dartagnan/ConcurrencySafety-Main/39_rand_lock_p0_vs-O0.smt2",
+      "input_sha256": "275127e400ce65a5e224368035208816a8559eea95d3517bb0c8312eec56d6c5",
+      "exit_code": 0,
+      "original_seconds": 2.197089,
+      "replay_seconds": 1.32376,
+      "stdout": "At line 345249: memory exhausted",
+      "stderr": "",
+      "category": "memory-exhausted-non-answer"
+    },
+    {
+      "file": "20210219-Dartagnan/ConcurrencySafety-Main/43_NetBSD_sysmon_power_sliced-O0.smt2",
+      "input_sha256": "736b170cfc8a25d5ee102d534d3cbbc30568c1d8b10f715603ea6bed1d4e2fad",
+      "exit_code": 0,
+      "original_seconds": 2.124382,
+      "replay_seconds": 1.411841,
+      "stdout": "At line 358453: memory exhausted",
+      "stderr": "",
+      "category": "memory-exhausted-non-answer"
+    },
+    {
+      "file": "20210219-Dartagnan/ConcurrencySafety-Main/fib_bench-1-O0.smt2",
+      "input_sha256": "66b4307b84f2226fabad465d3d3bce178318a96b2b0259b9dd82eb923bd7f2ef",
+      "exit_code": -11,
+      "original_seconds": 2.198393,
+      "replay_seconds": 1.457579,
+      "stdout": "",
+      "stderr": "",
+      "category": "SIGSEGV-stack-exhaustion",
+      "debugger": {
+        "fault_address": "0x7fffff7fefe8",
+        "stack_start": "0x7fffff7ff000",
+        "stack_end": "0x7ffffffff000",
+        "stack_bytes": 8388608,
+        "rsp": "0x7fffff7feff0",
+        "most_repeated_frame_count": 19,
+        "log": "triage-final/solver-gdb-3/2-fib_bench-1-O0.smt2.gdb.txt",
+        "log_sha256": "e97dd2d98d9e04d9348c5ed37768dd4471aa37fd193f803dc612721bddb75136"
+      }
+    },
+    {
+      "file": "20210219-Dartagnan/ConcurrencySafety-Main/fib_bench-2-O0.smt2",
+      "input_sha256": "4974a5f607a6709563e56c9f96dc40f2d08b9e5ce94691c1efc1be73dd06694e",
+      "exit_code": -11,
+      "original_seconds": 2.090014,
+      "replay_seconds": 1.461093,
+      "stdout": "",
+      "stderr": "",
+      "category": "SIGSEGV-stack-exhaustion",
+      "debugger": {
+        "fault_address": "0x7fffff7fefe8",
+        "stack_start": "0x7fffff7ff000",
+        "stack_end": "0x7ffffffff000",
+        "stack_bytes": 8388608,
+        "rsp": "0x7fffff7feff0",
+        "most_repeated_frame_count": 19,
+        "log": "triage-final/solver-gdb-0/2-fib_bench-2-O0.smt2.gdb.txt",
+        "log_sha256": "364cdb6bae73d097dafb1e4f322178596299c9c8d19eada8648bc777c043421d"
+      }
+    },
+    {
+      "file": "20210219-Dartagnan/ConcurrencySafety-Main/fib_bench_longer-1-O0.smt2",
+      "input_sha256": "b80b2e908d011a8d95b705b3e75583537f57a9fc041bc43b2e8d6cf746e84aae",
+      "exit_code": -11,
+      "original_seconds": 1.897445,
+      "replay_seconds": 1.459294,
+      "stdout": "",
+      "stderr": "",
+      "category": "SIGSEGV-stack-exhaustion",
+      "debugger": {
+        "fault_address": "0x7fffff7fefe8",
+        "stack_start": "0x7fffff7ff000",
+        "stack_end": "0x7ffffffff000",
+        "stack_bytes": 8388608,
+        "rsp": "0x7fffff7feff0",
+        "most_repeated_frame_count": 19,
+        "log": "triage-final/solver-gdb-1/2-fib_bench_longer-1-O0.smt2.gdb.txt",
+        "log_sha256": "fb1832653d8fe4e57dfea7be91522ed96e6a11b08f744be8c3fa0ded4392c214"
+      }
+    },
+    {
+      "file": "20210219-Dartagnan/ConcurrencySafety-Main/fk2012-O0.smt2",
+      "input_sha256": "b3db6966fd19d9f6650eb7415c29c80854933a771e94acd6997b9851451455fd",
+      "exit_code": -11,
+      "original_seconds": 1.950922,
+      "replay_seconds": 1.546956,
+      "stdout": "",
+      "stderr": "",
+      "category": "SIGSEGV-stack-exhaustion",
+      "debugger": {
+        "fault_address": "0x7fffff7fefc8",
+        "stack_start": "0x7fffff7ff000",
+        "stack_end": "0x7ffffffff000",
+        "stack_bytes": 8388608,
+        "rsp": "0x7fffff7fefc0",
+        "most_repeated_frame_count": 21,
+        "log": "triage-final/solver-gdb-2/2-fk2012-O0.smt2.gdb.txt",
+        "log_sha256": "50dc31c1887afe6c50d896775500669fe99d09bf11f1cd2b39ea5d43690e35c5"
+      }
+    },
+    {
+      "file": "20210219-Dartagnan/ConcurrencySafety-Main/qrcu-1-O0.smt2",
+      "input_sha256": "577f098e9bf98af584ba2b89a72496eed3c9bae22e4b190c80a407fe7da4c9f3",
+      "exit_code": -11,
+      "original_seconds": 1.874896,
+      "replay_seconds": 1.659397,
+      "stdout": "",
+      "stderr": "",
+      "category": "SIGSEGV-stack-exhaustion",
+      "debugger": {
+        "fault_address": "0x7fffff7feff8",
+        "stack_start": "0x7fffff7ff000",
+        "stack_end": "0x7ffffffff000",
+        "stack_bytes": 8388608,
+        "rsp": "0x7fffff7ff000",
+        "most_repeated_frame_count": 19,
+        "log": "triage-final/solver-gdb-3/3-qrcu-1-O0.smt2.gdb.txt",
+        "log_sha256": "5edc355557ed38f07b6f3f2aaf1d5b7c20a32e83ee29ef32e57b152db775a73a"
+      }
+    },
+    {
+      "file": "20210219-Dartagnan/ReachSafety-Loops/benchmark09_conjunctive-O0.smt2",
+      "input_sha256": "426c96a44fe187f471cff700d7267dfc68379ef44c4747d5e29599b64e34a48a",
+      "exit_code": -11,
+      "original_seconds": 2.246022,
+      "replay_seconds": 1.517992,
+      "stdout": "",
+      "stderr": "",
+      "category": "SIGSEGV-stack-exhaustion",
+      "debugger": {
+        "fault_address": "0x7fffff7feff8",
+        "stack_start": "0x7fffff7ff000",
+        "stack_end": "0x7ffffffff000",
+        "stack_bytes": 8388608,
+        "rsp": "0x7fffff7ff000",
+        "most_repeated_frame_count": 18,
+        "log": "triage-final/solver-gdb-0/3-benchmark09_conjunctive-O0.smt2.gdb.txt",
+        "log_sha256": "4c2b28a73888db41e27c7650c1e1ececa3663ec3b1f74c6d1123d63d6e760b70"
+      }
+    },
+    {
+      "file": "20210219-Dartagnan/ReachSafety-Loops/benchmark51_polynomial-O0.smt2",
+      "input_sha256": "8f0f8428f22e9cae100cf9383737355239c94d4ff344277ab624deef122f709d",
+      "exit_code": -11,
+      "original_seconds": 1.662964,
+      "replay_seconds": 1.305207,
+      "stdout": "",
+      "stderr": "",
+      "category": "SIGSEGV-stack-exhaustion",
+      "debugger": {
+        "fault_address": "0x7fffff7feff8",
+        "stack_start": "0x7fffff7ff000",
+        "stack_end": "0x7ffffffff000",
+        "stack_bytes": 8388608,
+        "rsp": "0x7fffff7ff000",
+        "most_repeated_frame_count": 17,
+        "log": "triage-final/solver-gdb-1/3-benchmark51_polynomial-O0.smt2.gdb.txt",
+        "log_sha256": "88465f9a5a8e2a38e55ac39e664570adfca972b2a4365e7d4c90fe4506e400f1"
+      }
+    },
+    {
+      "file": "20210219-Dartagnan/ReachSafety-Loops/bubble_sort-2-O0.smt2",
+      "input_sha256": "a1aefdee854bd3a1d9e61c84d0275a7993855b544ff83048e94fc7df4b0ab3e6",
+      "exit_code": -11,
+      "original_seconds": 2.469663,
+      "replay_seconds": 1.542098,
+      "stdout": "",
+      "stderr": "",
+      "category": "SIGSEGV-stack-exhaustion",
+      "debugger": {
+        "fault_address": "0x7fffff7feff8",
+        "stack_start": "0x7fffff7ff000",
+        "stack_end": "0x7ffffffff000",
+        "stack_bytes": 8388608,
+        "rsp": "0x7fffff7ff000",
+        "most_repeated_frame_count": 20,
+        "log": "triage-final/solver-gdb-2/3-bubble_sort-2-O0.smt2.gdb.txt",
+        "log_sha256": "435c9be14be396cbafa490de42b5ecb85943f469381180b805a4121c29a1dcec"
+      }
+    },
+    {
+      "file": "20210219-Dartagnan/ReachSafety-Loops/css2003-O0.smt2",
+      "input_sha256": "801914beb8c0ebf09c794c95f57afb5098a793a17ef8fd8ef040d1aa86367973",
+      "exit_code": -11,
+      "original_seconds": 2.347932,
+      "replay_seconds": 1.70665,
+      "stdout": "",
+      "stderr": "",
+      "category": "SIGSEGV-stack-exhaustion",
+      "debugger": {
+        "fault_address": "0x7fffff7fefe8",
+        "stack_start": "0x7fffff7ff000",
+        "stack_end": "0x7ffffffff000",
+        "stack_bytes": 8388608,
+        "rsp": "0x7fffff7fefe0",
+        "most_repeated_frame_count": 16,
+        "log": "triage-final/solver-gdb-3/4-css2003-O0.smt2.gdb.txt",
+        "log_sha256": "cf80adeb716460782ffc070d939a15b336659d0f31d1fd85a4b00bf447074baa"
+      }
+    },
+    {
+      "file": "20210219-Dartagnan/ReachSafety-Loops/large_const-O0.smt2",
+      "input_sha256": "ebf4f8c912b6053e1c3e624683aa25e0afc645d92180410f7ad63c12c6419787",
+      "exit_code": -11,
+      "original_seconds": 1.873444,
+      "replay_seconds": 1.346445,
+      "stdout": "",
+      "stderr": "",
+      "category": "SIGSEGV-stack-exhaustion",
+      "debugger": {
+        "fault_address": "0x7fffff7feff8",
+        "stack_start": "0x7fffff7ff000",
+        "stack_end": "0x7ffffffff000",
+        "stack_bytes": 8388608,
+        "rsp": "0x7fffff7ff000",
+        "most_repeated_frame_count": 17,
+        "log": "triage-final/solver-gdb-0/4-large_const-O0.smt2.gdb.txt",
+        "log_sha256": "4445e9ce4405f6bde0a74d66de6ae1f4b64922c79b699e785b2bcdfcba7c00fd"
+      }
+    }
+  ]
 }

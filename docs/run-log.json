@@ -10,7 +10,7 @@
       "kind": "reference-only-full-division-comparison",
       "scope": "Add OpenSMT 2.9.2 to the complete 13,306-file non-incremental QF_LIA comparison at a 60-second per-instance wall limit. Primo is not rebuilt or rerun; retain separately identified historical comparison arms.",
       "environment": {
-        "host": "remote SLURM cluster; compute partition",
+        "host": "remote SLURM cluster; Intel Xeon E5-2690 v4 nodes in the compute partition",
         "solver": "OpenSMT 2.9.2, default arguments, one CPU and 3 GiB per task",
         "binary_sha256": "b7899e9aff299026d3251df7a28f51f56d8bd1e5b0fd7be11bcc72c4f2803a98",
         "corpus": "13,306 files, 8,192,190,039 bytes; reusable cluster corpus hard-linked into the benchmark workspace",
@@ -19,11 +19,12 @@
         "batch_script_sha256": "c4c61820ae6283fbb03b707af7c5f0d8d07df33a4b08fd60605bbfa931f155f2"
       },
       "jobs": {
-        "opensmt": "181259; 320 shards, concurrency ceiling 128, 50-minute task wall limit",
+        "opensmt": "181259; all 320 tasks COMPLETED 0:0, concurrency ceiling 128, 50-minute task wall limit; 2026-10-09 14:29:14 to 16:28:37 UTC",
         "representative_output_triage": "181454; one CPU, 3 GiB, five-minute wall limit; COMPLETED 0:0 in eight seconds, batch MaxRSS 262000K",
         "first_error_replay": "181529; four one-CPU, 3 GiB tasks, seven-minute task wall limit; all COMPLETED 0:0 in seven to nine seconds",
         "debugger_setup_failures": "181607 and 181613; FAILED 124:0 at the 60-second debug-symbol lookup bound; no target backtrace obtained",
-        "representative_crash_debugger": "181648; one CPU, 3 GiB, five-minute task wall limit; COMPLETED 0:0 in three seconds"
+        "representative_crash_debugger": "181648; one CPU, 3 GiB, five-minute task wall limit; COMPLETED 0:0 in three seconds",
+        "complete_failure_and_corpus_check": "181727; four one-CPU, 3 GiB tasks, 15-minute task wall limit; all COMPLETED 0:0, 13 to 97 seconds; original 60-second per-input replay cutoff"
       },
       "commands": {
         "preflight": "scripts/slurm_prepare_benchmark_workspace.py --check-only --no-sync against a clean local worktree at 45a16ad, matching the existing workspace's Primo version stamp; OpenSMT --version and SHA-256 checked separately. No source synchronization or rebuild is performed for this reference-only run.",
@@ -32,7 +33,17 @@
       },
       "artifacts": {
         "remote": "primo-cadical-profile/results/qf-lia-opensmt-20261009/{opensmt,provenance}; matching logs/opensmt-qflia-full-181259-*",
-        "local": "results/qf-lia-opensmt-20261009/"
+        "local": "results/qf-lia-opensmt-20261009/{opensmt,provenance,triage-final,historical,*-raw.tar.gz}",
+        "metadata": "benchmarks/qf-lia-opensmt-20261009.json; benchmarks/qf-lia-opensmt-errors-20261009.{txt,json}",
+        "plot": "docs/_static/qf-lia-cactus.svg"
+      },
+      "results": {
+        "opensmt": "10,654 solved (6,692 SAT, 3,962 UNSAT), 2,631 timeouts, 21 errors, zero clean unknown/unsupported/wrong rows; PAR2 total 361026.801334 seconds",
+        "comparison": "Archived Primo 5efbd02: 9,705 solved, PAR2 470785.158311; retained Z3 5.1.0: 12,144, PAR2 174585.785332; retained cvc5 1.3.4: 9,239, PAR2 507295.331516. OpenSMT solves 949 more than Primo (231 SAT, 718 UNSAT), with 1,566 OpenSMT-only and 617 Primo-only decisions. Different dates/nodes and memory allocations; contextual comparison, not a paired causal experiment.",
+        "coverage": "Every arm covers exactly the same 13,306 unique relative paths, with no missing/duplicate/unexpected rows. The post-run OpenSMT corpus content hash is a7423b6c1f643568d4151e3afa822639ef1f577251ced0a3f63b3c98d7ab811b, matching every archived Primo and Z3 input hash; 8,192,190,039 bytes. Retained cvc5 has no archived per-input content hashes.",
+        "answers": "Zero declared-status contradictions and zero disagreements across all six jointly solved pairs. OpenSMT agrees with Z3 on 10,450 shared decisions, Primo on 9,088, and cvc5 on 8,822.",
+        "models": "Retain the independently qualified archived Primo arm: all 6,461 successful SAT rows pass Dolmen 0.10 in 128 complete coverage records linked to the original timing/provenance hashes. No new Primo run, current-main qualification, or independent reference-model-validation claim.",
+        "families_and_distributions": "All 32 families, per-arm SAT/UNSAT/timeout/unknown/error/unsupported/PAR2 counts, successful-runtime minimum/median/p95/maximum, normalized timing hashes, and raw archive hashes are committed in benchmarks/qf-lia-opensmt-20261009.json."
       },
       "correctness_scope": "Check successful SAT/UNSAT rows against declared status and retained reference answers. This run makes no independent OpenSMT SAT-model-validation claim and changes no Primo behavior or defaults.",
       "output_triage": {
@@ -41,18 +52,25 @@
         "observed": "All four representative Dartagnan cases reproduce a single stdout diagnostic, 'At line <number>: memory exhausted', exit 0, and no SAT/UNSAT answer. These are non-answer input-processing resource failures and stay classified as errors, excluded from the curve and charged 120 seconds in PAR2. The diagnostic job's peak RSS is about 256 MiB, below its 3 GiB allocation; no assertion about the internal cause or parser stack limit is made.",
         "artifacts": "results/qf-lia-opensmt-20261009/triage/ locally and under the remote artifact root",
         "first_complete_replay": "The first 17 captured errors were replayed individually with stdout/stderr capture in array 181529 at the original 60-second cutoff and resource profile. All reproduced: seven exit-0 non-answers print 'At line <number>: memory exhausted'; ten terminate with SIGSEGV (exit -11) and empty stdout/stderr. All belong to 20210219-Dartagnan. Internal crash causes are not established. No failed process is counted as a solve.",
-        "classification": "benchmarks/qf-lia-opensmt-errors-20261009.json; per-input hashes, exit codes, diagnostics, and replay times for these 17 cases; full-run coverage pending",
+        "classification": "benchmarks/qf-lia-opensmt-errors-20261009.{txt,json}; complete 21-case manifest, input hashes, original/replay times, native exit codes, stdout diagnostics, and per-SIGSEGV debugger evidence",
         "representative_crash_debugger": "With DEBUGINFOD_URLS empty, gdb 10.2 reproduced SIGSEGV on 38_rand_cas_vs_concur-O0.smt2 and benchmark09_conjunctive-O0.smt2. Both fault at 0x7fffff7feff8, eight bytes below the stack mapping [0x7fffff7ff000,0x7ffffffff000), size 8 MiB; repeated stack frames support stack exhaustion. The binary is stripped, so no function-specific or parser-specific cause is claimed. The first two debugger jobs timed out on automatic symbol lookup; 181613 also used an unsupported gdb setting. No solver timings are taken from these probes.",
         "debugger_command": "DEBUGINFOD_URLS= timeout 60s gdb -batch -nx -ex 'set pagination off' -ex run -ex 'p $_siginfo' -ex 'info registers rsp rip' -ex 'info proc mappings' -ex 'bt 30' --args <preserved-OpenSMT-binary> <input>; artifacts results/qf-lia-opensmt-20261009/crash-debug-off/",
-        "remaining": "Capture and classify every remaining full-run error before final comparison; the first 17 replay cases and two stack-exhaustion probes do not qualify unseen error rows."
+        "complete_replay": "Job 181727 reproduces all 21 original errors with the original binary, arguments, one-CPU/3-GiB allocation and 60-second cutoff: seven exit-0 memory-exhausted non-answers and fourteen SIGSEGV cases. Every SIGSEGV was also debugged with symbol downloads disabled; each faults just below an 8 MiB stack mapping with its stack pointer at the lower boundary, supporting stack exhaustion. No function-specific or parser-specific cause is claimed for the stripped binary. All errors remain in the denominator, contribute no cactus point, and cost 120 seconds each in PAR2; original timing rows are unchanged.",
+        "reproduction": "python3 scripts/bench_qf_uf_full.py --repo <workspace> --root sandbox/non-incremental/QF_LIA --manifest benchmarks/qf-lia-opensmt-errors-20261009.txt --shards 4 --shard-index <index> --solver <preserved-OpenSMT-binary> --timeout 60 --out <triage>/answers-<index>.csv --summary <triage>/summary-<index>.csv --log-dir <triage>/solver-output-<index>; debugger command as above for each exit -11 row. Exact scheduler wrapper and corpus checker are preserved with hashes in the raw triage archive.",
+        "completion": "All full-run errors are reproduced and classified; all 13,306 corpus content hashes match the archived Primo/Z3 records; preserved solver and driver/batch hashes are unchanged."
       },
-      "evidence_status": "slurm-running; first 17 errors reproduced and classified, complete error classification and full-corpus results pending",
-      "outcome": "Pending complete shard collection, exact input coverage, answer-disagreement triage, family summaries, PAR2, and cactus plot refresh."
+      "evidence_status": "slurm-complete; full coverage and all reference failures classified; retained Primo evidence remains explicitly historical",
+      "verification": {
+        "reports": "make docs passes in strict mode; python3 -m unittest discover -s tests/python -p test_plot_cactus.py passes all 11 tests; JSON parsing and git diff --check pass",
+        "data": "Exact unique input sets, per-arm/family count arithmetic, all six answer comparisons, original/normalized archive hashes, all 21 failure input hashes, all 14 debugger stack-boundary records, post-run corpus hashes and unchanged binary/driver/batch hashes checked",
+        "figure": "SVG XML and all four legend counts checked; rendered PNG inspected for readable curves, labels and full provenance/error captions"
+      },
+      "outcome": "OpenSMT is included in the refreshed complete-division cactus plot with the latest recovered archived Primo arm and retained Z3/cvc5 references. Errors, unknowns, resource differences, dates, model-validation scope and provenance limits are visible. No Primo source or default changes."
     },
     {
       "id": "2026-10-09-recovered-qf-lia-comparison-5efbd02",
       "date": "2026-10-09",
-      "measurement_date": "2026-10-05 for Primo; 2026-09-07 for Z3; original job 127709 for cvc5",
+      "measurement_date": "2026-10-05 for Primo; 2026-09-07 for Z3; 2026-08-21, original job 127709 for cvc5",
       "commit": "5efbd02293e15a53fbaad748ceda78bc7d27bbac",
       "kind": "historical-evidence-recovery",
       "scope": "Recover the latest complete archived QF_LIA Primo timing and independent model-validation records, plus complete retained Z3 and cvc5 arms, for the OpenSMT comparison. The archived Primo object is not present in this local checkout; this is not a current-main evaluation.",
@@ -89,7 +107,7 @@
         "local": "results/qf-lia-opensmt-20261009/{historical,reference-metadata,*-raw.tar.gz}"
       },
       "evidence_status": "historical; complete timing and independent Primo SAT-model coverage recovered; current checkout not revalidated",
-      "outcome": "Use these explicitly identified archived arms in the cactus comparison. Retire the August 26 Primo curve when the fresh OpenSMT arm is complete; keep each measurement's provenance visible."
+      "outcome": "These explicitly identified archived arms are included in the October 9 cactus comparison with fresh OpenSMT. The August 26 Primo curve is replaced; each measurement's date/resource/model-validation provenance remains visible."
     },
     {
       "id": "2026-09-15-quantifiers-merge-into-main",

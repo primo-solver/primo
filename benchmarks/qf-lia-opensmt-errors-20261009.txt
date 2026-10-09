@@ -1,0 +1,23 @@
+# All 21 errors in full QF_LIA OpenSMT job 181259 (13,306 inputs, 60 seconds).
+# Relative to sandbox/non-incremental/QF_LIA; replay with the preserved binary.
+20210219-Dartagnan/ConcurrencySafety-Main/03_incdec-O0.smt2
+20210219-Dartagnan/ConcurrencySafety-Main/04_incdec_cas-O0.smt2
+20210219-Dartagnan/ConcurrencySafety-Main/25_stack-O0.smt2
+20210219-Dartagnan/ConcurrencySafety-Main/26_stack_cas-O0.smt2
+20210219-Dartagnan/ConcurrencySafety-Main/29_conditionals_vs-O0.smt2
+20210219-Dartagnan/ConcurrencySafety-Main/30_Function_Pointer3_vs-O0.smt2
+20210219-Dartagnan/ConcurrencySafety-Main/32_pthread5_vs-O0.smt2
+20210219-Dartagnan/ConcurrencySafety-Main/35_double_lock_p3_vs-O0.smt2
+20210219-Dartagnan/ConcurrencySafety-Main/38_rand_cas_vs_concur-O0.smt2
+20210219-Dartagnan/ConcurrencySafety-Main/39_rand_lock_p0_vs-O0.smt2
+20210219-Dartagnan/ConcurrencySafety-Main/43_NetBSD_sysmon_power_sliced-O0.smt2
+20210219-Dartagnan/ConcurrencySafety-Main/fib_bench-1-O0.smt2
+20210219-Dartagnan/ConcurrencySafety-Main/fib_bench-2-O0.smt2
+20210219-Dartagnan/ConcurrencySafety-Main/fib_bench_longer-1-O0.smt2
+20210219-Dartagnan/ConcurrencySafety-Main/fk2012-O0.smt2
+20210219-Dartagnan/ConcurrencySafety-Main/qrcu-1-O0.smt2
+20210219-Dartagnan/ReachSafety-Loops/benchmark09_conjunctive-O0.smt2
+20210219-Dartagnan/ReachSafety-Loops/benchmark51_polynomial-O0.smt2
+20210219-Dartagnan/ReachSafety-Loops/bubble_sort-2-O0.smt2
+20210219-Dartagnan/ReachSafety-Loops/css2003-O0.smt2
+20210219-Dartagnan/ReachSafety-Loops/large_const-O0.smt2

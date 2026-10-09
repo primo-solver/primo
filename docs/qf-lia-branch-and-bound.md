@@ -1219,25 +1219,32 @@ all three stages -- produced zero disagreements against z3 across the
 full campaign, on top of zero disagreements in ~800 local cases and the
 two hand-checked worked examples before that.
 
-## Where QF_LIA stands (2026-08-26)
+## Where QF_LIA stands (2026-10-09)
 
-The complete division, 13,306 files at 60s, one solver per core (SLURM job
-130136 at `16d0d96`; z3 and cvc5 reuse job 127709 on the same cluster,
-corpus and timeout):
+The comparison covers all 13,306 non-incremental QF_LIA inputs at a
+60-second per-instance wall limit on the cluster's Intel Xeon E5-2690 v4
+compute nodes, with one requested CPU per task. OpenSMT 2.9.2 is the fresh
+arm (October 9, SLURM job 181259; all 320 tasks completed). The latest
+complete recovered Primo arm is the archived October 5 binary at
+`5efbd02293e15a53fbaad748ceda78bc7d27bbac`; its object is absent from this
+local checkout, so this is an archived curve rather than a current-main
+evaluation. Z3 5.1.0 reuses September 7 results, and cvc5 1.3.4 (`f3b21c4`)
+reuses August 21 job 127709.
 
-| solver | solved | sat | unsat | PAR2 |
-| --- | --- | --- | --- | --- |
-| z3 | 12,147 | 7,825 | 4,322 | 174,179 |
-| cvc5 | 9,239 | 6,527 | **2,712** | 507,295 |
-| **primo `16d0d96`** | **9,046** | 6,158 | **2,888** | 533,219 |
+Memory allocations were 8 GiB for Primo, 4 GiB for Z3, and 3 GiB for cvc5
+and OpenSMT. These measurements span different dates and nodes; their
+comparison gives context rather than a paired estimate of a code change.
+PAR2 below is the total in seconds, charging every unsolved input 120 seconds.
 
-(The previous reading at `3c2fbf1` was 9,031. The difference is the cutoff, not
-a change: 24 files gained and 9 lost, every one of them finishing between 54.1s
-and 60.0s against a 60s limit, with zero answer contradictions. Nothing merged
-since touches QF_LIA.)
+| solver | solved | sat | unsat | timeout | clean unknown | error | PAR2 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Z3 5.1.0 | 12,144 | 7,826 | 4,318 | 1,162 | 0 | 0 | 174,586 |
+| OpenSMT 2.9.2 | 10,654 | 6,692 | 3,962 | 2,631 | 0 | 21 | 361,027 |
+| **Primo `5efbd02`** | **9,705** | 6,461 | 3,244 | 2,850 | 751 | 0 | 470,785 |
+| cvc5 1.3.4 | 9,239 | 6,527 | 2,712 | 4,067 | 0 | 0 | 507,295 |
 
 ```{figure} _static/qf-lia-cactus.svg
-:alt: Instances solved against per-instance time budget for z3, cvc5 and primo over the 13,306-file QF_LIA division.
+:alt: Instances solved against per-instance time budget for Z3, OpenSMT, archived Primo 5efbd02 and cvc5 over the complete 13,306-file QF_LIA division.
 :width: 100%
 
 Instances solved against the per-instance time budget, whole division,
@@ -1245,22 +1252,45 @@ nothing filtered out. Legend entries carry each solver's sat/unsat split
 below the total.
 ```
 
-**The sat/unsat split is the part worth reading.** Against cvc5 primo is
-*ahead* on unsat by 166 and behind on sat by 374; the whole deficit, and
-more, is on satisfiable instances. That is what motivated patching
-([](#patching)), and it is still where the remaining gap lives. Against z3
-the shape is different -- 1,444 of the 3,116-file gap is unsat -- which is
-the Diophantine/HNF/cube machinery [](open-leads.md)'s lead 12 names.
+The archived Primo arm solves 466 more inputs than cvc5: 532 more UNSAT
+and 66 fewer SAT. OpenSMT solves 949 more than Primo, split into 231 SAT
+and 718 UNSAT. Their solved sets overlap on 9,088 inputs; OpenSMT alone
+solves 1,566 and Primo alone solves 617. The Primo gap to Z3 is 2,439
+inputs, split into 1,365 SAT and 1,074 UNSAT.
 
-**A counting caveat that applies to every QF_LIA figure.** primo exits
-cleanly with `unknown` when branch-and-bound hits its node limit: 750 files
-here. `bench_qf_uf_full.py`'s `solved` column counts `status == ok` and so
-reads 9,781 for this arm, which would put primo *ahead* of cvc5 on a
-division it is 208 behind on. Every number in this section requires both
-`status == ok` and an answer of `sat` or `unsat`; one timed-out row printed
-`sat` before the harness killed it and therefore does not count as solved.
-`scripts/plot_cactus.py` was corrected to score answers rather than clean
-exits (2026-08-26) and reports the clean-`unknown` count separately.
+No arm contradicts a declared benchmark status, and no jointly solved
+pair disagrees. OpenSMT agrees on 10,450 shared decisions with Z3, 9,088
+with Primo, and 8,822 with cvc5. All 6,461 successful SAT rows of the
+archived Primo arm passed independent Dolmen 0.10 validation; all 128
+coverage records and their parent timing/provenance hashes were checked.
+Model-checking time is separate from the speed measurements. No independent
+reference-solver model validation is claimed.
+
+OpenSMT's 21 errors all belong to `20210219-Dartagnan`. Every error was
+replayed with captured output under the original profile in job 181727:
+seven exit-0 non-answers print `memory exhausted`, and fourteen terminate
+with SIGSEGV. Debugger probes of all fourteen place the fault immediately
+below an 8 MiB stack mapping, with the stack pointer at its lower boundary,
+supporting stack exhaustion. The stripped binary provides no function names;
+no function-specific or parser-specific cause is claimed. These failures
+remain in the denominator and receive the full PAR2 penalty; none contributes
+a cactus point. Diagnostic replay times do not replace the original timings.
+
+Every arm covers the same 13,306 unique relative paths. A post-run content
+check matches the OpenSMT corpus against every archived Primo and Z3 input
+hash. The older cvc5 arm lacks archived per-input content hashes. Exact
+versions, binary hashes where available, commands, runtime distributions,
+all 32 family summaries and artifact digests are recorded in
+`benchmarks/qf-lia-opensmt-20261009.json` and `docs/run-log.json`; the complete
+failure manifest and classification are
+`benchmarks/qf-lia-opensmt-errors-20261009.{txt,json}`.
+
+**A counting caveat that applies to every QF_LIA figure.** Primo exits
+cleanly with `unknown` on 751 inputs here. Counting `status == ok` would
+report 10,456 clean exits instead of 9,705 decisions. Every solved count
+requires both `status == ok` and an answer of `sat` or `unsat`; a decision
+printed by a process that times out or exits unsuccessfully does not count.
+`scripts/plot_cactus.py` reports clean unknowns and failures separately.
 
 (real-world-benchmark-evaluation-and-the-fuzzing-gap)=
 ## Real-world benchmark evaluation and the fuzzing gap

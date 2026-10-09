@@ -1,0 +1,1742 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-09",
+  "kind": "full-division-reference-comparison",
+  "scope": "Fresh OpenSMT reference arm, compared with explicitly identified retained Primo, Z3 and cvc5 arms; no Primo behavior/default change or current-main evaluation.",
+  "corpus": {
+    "logic": "QF_LIA",
+    "division": "SMT-LIB non-incremental",
+    "files": 13306,
+    "families": 32,
+    "bytes": 8192190039,
+    "timeout_seconds": 60,
+    "filter": null,
+    "path_size_manifest_sha256": "5bf3bebecf3a2720033029495a7e9ba6b0aefeb38f7b3041b6d2aafeffb6b22b",
+    "content_manifest_sha256": "a7423b6c1f643568d4151e3afa822639ef1f577251ced0a3f63b3c98d7ab811b",
+    "content_manifest_format": "Sorted relative path, tab, input SHA-256, newline",
+    "coverage": "Exactly the same 13,306 unique relative paths in every arm, with no duplicate/missing/unexpected rows.",
+    "content_check": "Post-run OpenSMT corpus contents match every archived Primo and Z3 input hash. Retained cvc5 has path coverage but no archived content hashes."
+  },
+  "environment": {
+    "host": "CIIRC SLURM cluster",
+    "partition": "compute",
+    "cpu": "Intel Xeon E5-2690 v4",
+    "comparison_limit": "Different dates, nodes and memory allocations; contextual comparison, not a paired causal performance experiment."
+  },
+  "arms": {
+    "z3": {
+      "name": "Z3 5.1.0",
+      "measurement_date": "2026-09-07",
+      "memory_gib": 4,
+      "args": [],
+      "binary_sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+      "cpus_per_task": 1,
+      "counts": {
+        "error": 0,
+        "files": 13306,
+        "par2": 174585.785332,
+        "sat": 7826,
+        "solved": 12144,
+        "solved_seconds": 35145.785332,
+        "timeout": 1162,
+        "unknown": 0,
+        "unsat": 4318,
+        "unsupported": 0,
+        "wrong": 0
+      },
+      "successful_runtime_seconds": {
+        "minimum": 0.013203,
+        "median": 0.0600215,
+        "p95_nearest_rank": 19.996499,
+        "maximum": 59.888755
+      },
+      "normalized_csv": "results/qf-lia-opensmt-20261009/historical/z3/shard-0.csv",
+      "normalized_csv_sha256": "4dc00efbf3cc769c183fc34f9345b95f67a13d45acfd00cd4f495264d2069ae8"
+    },
+    "opensmt": {
+      "name": "OpenSMT 2.9.2",
+      "measurement_date": "2026-10-09",
+      "job": "181259",
+      "memory_gib": 3,
+      "args": [],
+      "binary_sha256": "b7899e9aff299026d3251df7a28f51f56d8bd1e5b0fd7be11bcc72c4f2803a98",
+      "build": "x86-64, statically linked, stripped; compiler/optimization flags not recovered",
+      "cpus_per_task": 1,
+      "counts": {
+        "error": 21,
+        "files": 13306,
+        "par2": 361026.801334,
+        "sat": 6692,
+        "solved": 10654,
+        "solved_seconds": 42786.801334,
+        "timeout": 2631,
+        "unknown": 0,
+        "unsat": 3962,
+        "unsupported": 0,
+        "wrong": 0
+      },
+      "successful_runtime_seconds": {
+        "minimum": 0.005064,
+        "median": 0.0373405,
+        "p95_nearest_rank": 29.581182,
+        "maximum": 59.853358
+      },
+      "normalized_csv": "results/qf-lia-opensmt-20261009/historical/opensmt/shard-0.csv",
+      "normalized_csv_sha256": "2caf4a29f63b270ef0d0688d88faec1785e5007e5f8180e48c9b16903fe100ba"
+    },
+    "primo": {
+      "name": "Primo 0.2.0",
+      "commit": "5efbd02293e15a53fbaad748ceda78bc7d27bbac",
+      "measurement_date": "2026-10-05",
+      "memory_gib": 8,
+      "args": [
+        "--quiet"
+      ],
+      "binary_sha256": "d0f69f50540efa7561e7895d2f24acff26787756a85b9bdb9f67e7eaaed496e0",
+      "build": "Release, no sanitizers; CaDiCaL cadical-3.0.0-7b99c07",
+      "status": "latest complete recovered archived arm; object absent in local checkout; current main not rerun",
+      "cpus_per_task": 1,
+      "counts": {
+        "error": 0,
+        "files": 13306,
+        "par2": 470785.158311,
+        "sat": 6461,
+        "solved": 9705,
+        "solved_seconds": 38665.158311,
+        "timeout": 2850,
+        "unknown": 751,
+        "unsat": 3244,
+        "unsupported": 0,
+        "wrong": 0
+      },
+      "successful_runtime_seconds": {
+        "minimum": 0.005338,
+        "median": 0.014777,
+        "p95_nearest_rank": 30.576253,
+        "maximum": 59.918062
+      },
+      "normalized_csv": "results/qf-lia-opensmt-20261009/historical/primo/shard-0.csv",
+      "normalized_csv_sha256": "00d29163ab3f39212f1c03b997668208023a93fcf49f3a9a4ea70ebf8d69da72"
+    },
+    "cvc5": {
+      "name": "cvc5 1.3.4",
+      "version_git": "f3b21c4",
+      "measurement_date": "2026-08-21",
+      "job": "127709",
+      "memory_gib": 3,
+      "args": [],
+      "binary_sha256": null,
+      "provenance_limit": "Original version is confirmed in job 127709 task 160 output; original binary and per-input content hashes were not archived.",
+      "compiler": "Ubuntu Clang 18.1.3 (1ubuntu1), version output compile date 2026-05-07",
+      "cpus_per_task": 1,
+      "counts": {
+        "error": 0,
+        "files": 13306,
+        "par2": 507295.331516,
+        "sat": 6527,
+        "solved": 9239,
+        "solved_seconds": 19255.331516,
+        "timeout": 4067,
+        "unknown": 0,
+        "unsat": 2712,
+        "unsupported": 0,
+        "wrong": 0
+      },
+      "successful_runtime_seconds": {
+        "minimum": 0.007401,
+        "median": 0.03438,
+        "p95_nearest_rank": 12.665601,
+        "maximum": 59.042229
+      },
+      "normalized_csv": "results/qf-lia-opensmt-20261009/historical/cvc5/shard-0.csv",
+      "normalized_csv_sha256": "756d153f9929ec7d40728db9d26408755d21961581d938ad1236e6790ddad96a"
+    }
+  },
+  "families": {
+    "20180326-Bromberger": {
+      "z3": {
+        "error": 0,
+        "files": 806,
+        "par2": 10462.271184,
+        "sat": 557,
+        "solved": 728,
+        "timeout": 78,
+        "unknown": 0,
+        "unsat": 171,
+        "unsupported": 0
+      },
+      "opensmt": {
+        "error": 0,
+        "files": 806,
+        "par2": 42283.213082,
+        "sat": 297,
+        "solved": 468,
+        "timeout": 338,
+        "unknown": 0,
+        "unsat": 171,
+        "unsupported": 0
+      },
+      "primo": {
+        "error": 0,
+        "files": 806,
+        "par2": 57220.685061,
+        "sat": 236,
+        "solved": 330,
+        "timeout": 404,
+        "unknown": 72,
+        "unsat": 94,
+        "unsupported": 0
+      },
+      "cvc5": {
+        "error": 0,
+        "files": 806,
+        "par2": 37684.365077,
+        "sat": 407,
+        "solved": 508,
+        "timeout": 298,
+        "unknown": 0,
+        "unsat": 101,
+        "unsupported": 0
+      }
+    },
+    "2019-cmodelsdiff": {
+      "z3": {
+        "error": 0,
+        "files": 149,
+        "par2": 3523.141155,
+        "sat": 119,
+        "solved": 125,
+        "timeout": 24,
+        "unknown": 0,
+        "unsat": 6,
+        "unsupported": 0
+      },
+      "opensmt": {
+        "error": 0,
+        "files": 149,
+        "par2": 3928.186703,
+        "sat": 114,
+        "solved": 121,
+        "timeout": 28,
+        "unknown": 0,
+        "unsat": 7,
+        "unsupported": 0
+      },
+      "primo": {
+        "error": 0,
+        "files": 149,
+        "par2": 2670.669743,
+        "sat": 125,
+        "solved": 132,
+        "timeout": 17,
+        "unknown": 0,
+        "unsat": 7,
+        "unsupported": 0
+      },
+      "cvc5": {
+        "error": 0,
+        "files": 149,
+        "par2": 3023.348714,
+        "sat": 122,
+        "solved": 130,
+        "timeout": 19,
+        "unknown": 0,
+        "unsat": 8,
+        "unsupported": 0
+      }
+    },
+    "2019-ezsmt": {
+      "z3": {
+        "error": 0,
+        "files": 123,
+        "par2": 2462.547084,
+        "sat": 93,
+        "solved": 108,
+        "timeout": 15,
+        "unknown": 0,
+        "unsat": 15,
+        "unsupported": 0
+      },
+      "opensmt": {
+        "error": 0,
+        "files": 123,
+        "par2": 2737.618272,
+        "sat": 94,
+        "solved": 109,
+        "timeout": 14,
+        "unknown": 0,
+        "unsat": 15,
+        "unsupported": 0
+      },
+      "primo": {
+        "error": 0,
+        "files": 123,
+        "par2": 2432.04326,
+        "sat": 94,
+        "solved": 108,
+        "timeout": 15,
+        "unknown": 0,
+        "unsat": 14,
+        "unsupported": 0
+      },
+      "cvc5": {
+        "error": 0,
+        "files": 123,
+        "par2": 4572.46359,
+        "sat": 79,
+        "solved": 93,
+        "timeout": 30,
+        "unknown": 0,
+        "unsat": 14,
+        "unsupported": 0
+      }
+    },
+    "20210219-Dartagnan": {
+      "z3": {
+        "error": 0,
+        "files": 153,
+        "par2": 1595.825175,
+        "sat": 24,
+        "solved": 142,
+        "timeout": 11,
+        "unknown": 0,
+        "unsat": 118,
+        "unsupported": 0
+      },
+      "opensmt": {
+        "error": 21,
+        "files": 153,
+        "par2": 3749.275662,
+        "sat": 20,
+        "solved": 125,
+        "timeout": 7,
+        "unknown": 0,
+        "unsat": 105,
+        "unsupported": 0
+      },
+      "primo": {
+        "error": 0,
+        "files": 153,
+        "par2": 7776.082584,
+        "sat": 12,
+        "solved": 96,
+        "timeout": 57,
+        "unknown": 0,
+        "unsat": 84,
+        "unsupported": 0
+      },
+      "cvc5": {
+        "error": 0,
+        "files": 153,
+        "par2": 3471.060461,
+        "sat": 20,
+        "solved": 130,
+        "timeout": 23,
+        "unknown": 0,
+        "unsat": 110,
+        "unsupported": 0
+      }
+    },
+    "20220307-SMPT": {
+      "z3": {
+        "error": 0,
+        "files": 5852,
+        "par2": 20838.921188,
+        "sat": 4200,
+        "solved": 5696,
+        "timeout": 156,
+        "unknown": 0,
+        "unsat": 1496,
+        "unsupported": 0
+      },
+      "opensmt": {
+        "error": 0,
+        "files": 5852,
+        "par2": 7923.675256,
+        "sat": 4234,
+        "solved": 5798,
+        "timeout": 54,
+        "unknown": 0,
+        "unsat": 1564,
+        "unsupported": 0
+      },
+      "primo": {
+        "error": 0,
+        "files": 5852,
+        "par2": 13539.324342,
+        "sat": 4216,
+        "solved": 5770,
+        "timeout": 82,
+        "unknown": 0,
+        "unsat": 1554,
+        "unsupported": 0
+      },
+      "cvc5": {
+        "error": 0,
+        "files": 5852,
+        "par2": 14228.529694,
+        "sat": 4213,
+        "solved": 5763,
+        "timeout": 89,
+        "unknown": 0,
+        "unsat": 1550,
+        "unsupported": 0
+      }
+    },
+    "20230321-UltimateAutomizerSvcomp2023": {
+      "z3": {
+        "error": 0,
+        "files": 2,
+        "par2": 0.03548,
+        "sat": 2,
+        "solved": 2,
+        "timeout": 0,
+        "unknown": 0,
+        "unsat": 0,
+        "unsupported": 0
+      },
+      "opensmt": {
+        "error": 0,
+        "files": 2,
+        "par2": 0.020729,
+        "sat": 2,
+        "solved": 2,
+        "timeout": 0,
+        "unknown": 0,
+        "unsat": 0,
+        "unsupported": 0
+      },
+      "primo": {
+        "error": 0,
+        "files": 2,
+        "par2": 240.0,
+        "sat": 0,
+        "solved": 0,
+        "timeout": 0,
+        "unknown": 2,
+        "unsat": 0,
+        "unsupported": 0
+      },
+      "cvc5": {
+        "error": 0,
+        "files": 2,
+        "par2": 0.023361,
+        "sat": 2,
+        "solved": 2,
+        "timeout": 0,
+        "unknown": 0,
+        "unsat": 0,
+        "unsupported": 0
+      }
+    },
+    "20231117-c_inference": {
+      "z3": {
+        "error": 0,
+        "files": 80,
+        "par2": 5676.490398,
+        "sat": 25,
+        "solved": 34,
+        "timeout": 46,
+        "unknown": 0,
+        "unsat": 9,
+        "unsupported": 0
+      },
+      "opensmt": {
+        "error": 0,
+        "files": 80,
+        "par2": 6671.044371,
+        "sat": 22,
+        "solved": 28,
+        "timeout": 52,
+        "unknown": 0,
+        "unsat": 6,
+        "unsupported": 0
+      },
+      "primo": {
+        "error": 0,
+        "files": 80,
+        "par2": 7269.600948,
+        "sat": 18,
+        "solved": 24,
+        "timeout": 56,
+        "unknown": 0,
+        "unsat": 6,
+        "unsupported": 0
+      },
+      "cvc5": {
+        "error": 0,
+        "files": 80,
+        "par2": 7563.302854,
+        "sat": 18,
+        "solved": 22,
+        "timeout": 58,
+        "unknown": 0,
+        "unsat": 4,
+        "unsupported": 0
+      }
+    },
+    "Averest": {
+      "z3": {
+        "error": 0,
+        "files": 19,
+        "par2": 1.840916,
+        "sat": 9,
+        "solved": 19,
+        "timeout": 0,
+        "unknown": 0,
+        "unsat": 10,
+        "unsupported": 0
+      },
+      "opensmt": {
+        "error": 0,
+        "files": 19,
+        "par2": 89.13517,
+        "sat": 9,
+        "solved": 19,
+        "timeout": 0,
+        "unknown": 0,
+        "unsat": 10,
+        "unsupported": 0
+      },
+      "primo": {
+        "error": 0,
+        "files": 19,
+        "par2": 21.298379,
+        "sat": 9,
+        "solved": 19,
+        "timeout": 0,
+        "unknown": 0,
+        "unsat": 10,
+        "unsupported": 0
+      },
+      "cvc5": {
+        "error": 0,
+        "files": 19,
+        "par2": 28.380096,
+        "sat": 9,
+        "solved": 19,
+        "timeout": 0,
+        "unknown": 0,
+        "unsat": 10,
+        "unsupported": 0
+      }
+    },
+    "CAV_2009_benchmarks": {
+      "z3": {
+        "error": 0,
+        "files": 591,
+        "par2": 487.748113,
+        "sat": 506,
+        "solved": 590,
+        "timeout": 1,
+        "unknown": 0,
+        "unsat": 84,
+        "unsupported": 0
+      },
+      "opensmt": {
+        "error": 0,
+        "files": 591,
+        "par2": 17847.018847,
+        "sat": 386,
+        "solved": 471,
+        "timeout": 120,
+        "unknown": 0,
+        "unsat": 85,
+        "unsupported": 0
+      },
+      "primo": {
+        "error": 0,
+        "files": 591,
+        "par2": 28960.415587,
+        "sat": 266,
+        "solved": 351,
+        "timeout": 123,
+        "unknown": 117,
+        "unsat": 85,
+        "unsupported": 0
+      },
+      "cvc5": {
+        "error": 0,
+        "files": 591,
+        "par2": 3249.363222,
+        "sat": 486,
+        "solved": 571,
+        "timeout": 20,
+        "unknown": 0,
+        "unsat": 85,
+        "unsupported": 0
+      }
+    },
+    "CIRC": {
+      "z3": {
+        "error": 0,
+        "files": 51,
+        "par2": 2277.1652,
+        "sat": 18,
+        "solved": 33,
+        "timeout": 18,
+        "unknown": 0,
+        "unsat": 15,
+        "unsupported": 0
+      },
+      "opensmt": {
+        "error": 0,
+        "files": 51,
+        "par2": 2126.417968,
+        "sat": 18,
+        "solved": 34,
+        "timeout": 17,
+        "unknown": 0,
+        "unsat": 16,
+        "unsupported": 0
+      },
+      "primo": {
+        "error": 0,
+        "files": 51,
+        "par2": 2310.731488,
+        "sat": 18,
+        "solved": 32,
+        "timeout": 19,
+        "unknown": 0,
+        "unsat": 14,
+        "unsupported": 0
+      },
+      "cvc5": {
+        "error": 0,
+        "files": 51,
+        "par2": 2480.635042,
+        "sat": 18,
+        "solved": 31,
+        "timeout": 20,
+        "unknown": 0,
+        "unsat": 13,
+        "unsupported": 0
+      }
+    },
+    "RTCL": {
+      "z3": {
+        "error": 0,
+        "files": 2,
+        "par2": 0.065782,
+        "sat": 2,
+        "solved": 2,
+        "timeout": 0,
+        "unknown": 0,
+        "unsat": 0,
+        "unsupported": 0
+      },
+      "opensmt": {
+        "error": 0,
+        "files": 2,
+        "par2": 0.380733,
+        "sat": 2,
+        "solved": 2,
+        "timeout": 0,
+        "unknown": 0,
+        "unsat": 0,
+        "unsupported": 0
+      },
+      "primo": {
+        "error": 0,
+        "files": 2,
+        "par2": 0.163762,
+        "sat": 2,
+        "solved": 2,
+        "timeout": 0,
+        "unknown": 0,
+        "unsat": 0,
+        "unsupported": 0
+      },
+      "cvc5": {
+        "error": 0,
+        "files": 2,
+        "par2": 0.170652,
+        "sat": 2,
+        "solved": 2,
+        "timeout": 0,
+        "unknown": 0,
+        "unsat": 0,
+        "unsupported": 0
+      }
+    },
+    "RWS": {
+      "z3": {
+        "error": 0,
+        "files": 20,
+        "par2": 888.535967,
+        "sat": 13,
+        "solved": 13,
+        "timeout": 7,
+        "unknown": 0,
+        "unsat": 0,
+        "unsupported": 0
+      },
+      "opensmt": {
+        "error": 0,
+        "files": 20,
+        "par2": 1034.3789,
+        "sat": 12,
+        "solved": 12,
+        "timeout": 8,
+        "unknown": 0,
+        "unsat": 0,
+        "unsupported": 0
+      },
+      "primo": {
+        "error": 0,
+        "files": 20,
+        "par2": 1354.530688,
+        "sat": 9,
+        "solved": 9,
+        "timeout": 11,
+        "unknown": 0,
+        "unsat": 0,
+        "unsupported": 0
+      },
+      "cvc5": {
+        "error": 0,
+        "files": 20,
+        "par2": 1120.789483,
+        "sat": 12,
+        "solved": 12,
+        "timeout": 8,
+        "unknown": 0,
+        "unsat": 0,
+        "unsupported": 0
+      }
+    },
+    "arctic-matrix": {
+      "z3": {
+        "error": 0,
+        "files": 100,
+        "par2": 9951.066406,
+        "sat": 21,
+        "solved": 21,
+        "timeout": 79,
+        "unknown": 0,
+        "unsat": 0,
+        "unsupported": 0
+      },
+      "opensmt": {
+        "error": 0,
+        "files": 100,
+        "par2": 7629.280133,
+        "sat": 42,
+        "solved": 42,
+        "timeout": 58,
+        "unknown": 0,
+        "unsat": 0,
+        "unsupported": 0
+      },
+      "primo": {
+        "error": 0,
+        "files": 100,
+        "par2": 10618.967598,
+        "sat": 14,
+        "solved": 14,
+        "timeout": 86,
+        "unknown": 0,
+        "unsat": 0,
+        "unsupported": 0
+      },
+      "cvc5": {
+        "error": 0,
+        "files": 100,
+        "par2": 11652.821132,
+        "sat": 4,
+        "solved": 4,
+        "timeout": 96,
+        "unknown": 0,
+        "unsat": 0,
+        "unsupported": 0
+      }
+    },
+    "bofill-scheduling": {
+      "z3": {
+        "error": 0,
+        "files": 652,
+        "par2": 1477.474457,
+        "sat": 400,
+        "solved": 645,
+        "timeout": 7,
+        "unknown": 0,
+        "unsat": 245,
+        "unsupported": 0
+      },
+      "opensmt": {
+        "error": 0,
+        "files": 652,
+        "par2": 875.962775,
+        "sat": 403,
+        "solved": 648,
+        "timeout": 4,
+        "unknown": 0,
+        "unsat": 245,
+        "unsupported": 0
+      },
+      "primo": {
+        "error": 0,
+        "files": 652,
+        "par2": 1154.389419,
+        "sat": 403,
+        "solved": 648,
+        "timeout": 4,
+        "unknown": 0,
+        "unsat": 245,
+        "unsupported": 0
+      },
+      "cvc5": {
+        "error": 0,
+        "files": 652,
+        "par2": 3152.229458,
+        "sat": 391,
+        "solved": 636,
+        "timeout": 16,
+        "unknown": 0,
+        "unsat": 245,
+        "unsupported": 0
+      }
+    },
+    "calypto": {
+      "z3": {
+        "error": 0,
+        "files": 37,
+        "par2": 6.466811,
+        "sat": 24,
+        "solved": 37,
+        "timeout": 0,
+        "unknown": 0,
+        "unsat": 13,
+        "unsupported": 0
+      },
+      "opensmt": {
+        "error": 0,
+        "files": 37,
+        "par2": 1.235428,
+        "sat": 24,
+        "solved": 37,
+        "timeout": 0,
+        "unknown": 0,
+        "unsat": 13,
+        "unsupported": 0
+      },
+      "primo": {
+        "error": 0,
+        "files": 37,
+        "par2": 242.891843,
+        "sat": 22,
+        "solved": 35,
+        "timeout": 2,
+        "unknown": 0,
+        "unsat": 13,
+        "unsupported": 0
+      },
+      "cvc5": {
+        "error": 0,
+        "files": 37,
+        "par2": 3.931308,
+        "sat": 24,
+        "solved": 37,
+        "timeout": 0,
+        "unknown": 0,
+        "unsat": 13,
+        "unsupported": 0
+      }
+    },
+    "check": {
+      "z3": {
+        "error": 0,
+        "files": 5,
+        "par2": 0.08391,
+        "sat": 1,
+        "solved": 5,
+        "timeout": 0,
+        "unknown": 0,
+        "unsat": 4,
+        "unsupported": 0
+      },
+      "opensmt": {
+        "error": 0,
+        "files": 5,
+        "par2": 0.108289,
+        "sat": 1,
+        "solved": 5,
+        "timeout": 0,
+        "unknown": 0,
+        "unsat": 4,
+        "unsupported": 0
+      },
+      "primo": {
+        "error": 0,
+        "files": 5,
+        "par2": 120.031454,
+        "sat": 1,
+        "solved": 4,
+        "timeout": 0,
+        "unknown": 1,
+        "unsat": 3,
+        "unsupported": 0
+      },
+      "cvc5": {
+        "error": 0,
+        "files": 5,
+        "par2": 0.053188,
+        "sat": 1,
+        "solved": 5,
+        "timeout": 0,
+        "unknown": 0,
+        "unsat": 4,
+        "unsupported": 0
+      }
+    },
+    "convert": {
+      "z3": {
+        "error": 0,
+        "files": 319,
+        "par2": 987.780452,
+        "sat": 280,
+        "solved": 319,
+        "timeout": 0,
+        "unknown": 0,
+        "unsat": 39,
+        "unsupported": 0
+      },
+      "opensmt": {
+        "error": 0,
+        "files": 319,
+        "par2": 5749.557191,
+        "sat": 237,
+        "solved": 276,
+        "timeout": 43,
+        "unknown": 0,
+        "unsat": 39,
+        "unsupported": 0
+      },
+      "primo": {
+        "error": 0,
+        "files": 319,
+        "par2": 16786.230828,
+        "sat": 141,
+        "solved": 180,
+        "timeout": 9,
+        "unknown": 130,
+        "unsat": 39,
+        "unsupported": 0
+      },
+      "cvc5": {
+        "error": 0,
+        "files": 319,
+        "par2": 16165.092551,
+        "sat": 165,
+        "solved": 204,
+        "timeout": 115,
+        "unknown": 0,
+        "unsat": 39,
+        "unsupported": 0
+      }
+    },
+    "cut_lemmas": {
+      "z3": {
+        "error": 0,
+        "files": 93,
+        "par2": 779.773536,
+        "sat": 0,
+        "solved": 89,
+        "timeout": 4,
+        "unknown": 0,
+        "unsat": 89,
+        "unsupported": 0
+      },
+      "opensmt": {
+        "error": 0,
+        "files": 93,
+        "par2": 171.647802,
+        "sat": 0,
+        "solved": 93,
+        "timeout": 0,
+        "unknown": 0,
+        "unsat": 93,
+        "unsupported": 0
+      },
+      "primo": {
+        "error": 0,
+        "files": 93,
+        "par2": 3476.937273,
+        "sat": 0,
+        "solved": 67,
+        "timeout": 7,
+        "unknown": 19,
+        "unsat": 67,
+        "unsupported": 0
+      },
+      "cvc5": {
+        "error": 0,
+        "files": 93,
+        "par2": 3159.127001,
+        "sat": 0,
+        "solved": 70,
+        "timeout": 23,
+        "unknown": 0,
+        "unsat": 70,
+        "unsupported": 0
+      }
+    },
+    "dillig": {
+      "z3": {
+        "error": 0,
+        "files": 233,
+        "par2": 319.494381,
+        "sat": 230,
+        "solved": 232,
+        "timeout": 1,
+        "unknown": 0,
+        "unsat": 2,
+        "unsupported": 0
+      },
+      "opensmt": {
+        "error": 0,
+        "files": 233,
+        "par2": 8140.200645,
+        "sat": 175,
+        "solved": 178,
+        "timeout": 55,
+        "unknown": 0,
+        "unsat": 3,
+        "unsupported": 0
+      },
+      "primo": {
+        "error": 0,
+        "files": 233,
+        "par2": 11882.299115,
+        "sat": 132,
+        "solved": 135,
+        "timeout": 61,
+        "unknown": 37,
+        "unsat": 3,
+        "unsupported": 0
+      },
+      "cvc5": {
+        "error": 0,
+        "files": 233,
+        "par2": 1830.356092,
+        "sat": 218,
+        "solved": 221,
+        "timeout": 12,
+        "unknown": 0,
+        "unsat": 3,
+        "unsupported": 0
+      }
+    },
+    "fft": {
+      "z3": {
+        "error": 0,
+        "files": 9,
+        "par2": 409.028485,
+        "sat": 3,
+        "solved": 6,
+        "timeout": 3,
+        "unknown": 0,
+        "unsat": 3,
+        "unsupported": 0
+      },
+      "opensmt": {
+        "error": 0,
+        "files": 9,
+        "par2": 393.355361,
+        "sat": 3,
+        "solved": 6,
+        "timeout": 3,
+        "unknown": 0,
+        "unsat": 3,
+        "unsupported": 0
+      },
+      "primo": {
+        "error": 0,
+        "files": 9,
+        "par2": 600.357081,
+        "sat": 2,
+        "solved": 4,
+        "timeout": 5,
+        "unknown": 0,
+        "unsat": 2,
+        "unsupported": 0
+      },
+      "cvc5": {
+        "error": 0,
+        "files": 9,
+        "par2": 481.238945,
+        "sat": 3,
+        "solved": 5,
+        "timeout": 4,
+        "unknown": 0,
+        "unsat": 2,
+        "unsupported": 0
+      }
+    },
+    "mathsat": {
+      "z3": {
+        "error": 0,
+        "files": 121,
+        "par2": 322.271372,
+        "sat": 21,
+        "solved": 120,
+        "timeout": 1,
+        "unknown": 0,
+        "unsat": 99,
+        "unsupported": 0
+      },
+      "opensmt": {
+        "error": 0,
+        "files": 121,
+        "par2": 295.823311,
+        "sat": 21,
+        "solved": 120,
+        "timeout": 1,
+        "unknown": 0,
+        "unsat": 99,
+        "unsupported": 0
+      },
+      "primo": {
+        "error": 0,
+        "files": 121,
+        "par2": 225.08038,
+        "sat": 21,
+        "solved": 121,
+        "timeout": 0,
+        "unknown": 0,
+        "unsat": 100,
+        "unsupported": 0
+      },
+      "cvc5": {
+        "error": 0,
+        "files": 121,
+        "par2": 584.390385,
+        "sat": 20,
+        "solved": 118,
+        "timeout": 3,
+        "unknown": 0,
+        "unsat": 98,
+        "unsupported": 0
+      }
+    },
+    "miplib2003": {
+      "z3": {
+        "error": 0,
+        "files": 16,
+        "par2": 630.733213,
+        "sat": 11,
+        "solved": 11,
+        "timeout": 5,
+        "unknown": 0,
+        "unsat": 0,
+        "unsupported": 0
+      },
+      "opensmt": {
+        "error": 0,
+        "files": 16,
+        "par2": 654.691039,
+        "sat": 11,
+        "solved": 11,
+        "timeout": 5,
+        "unknown": 0,
+        "unsat": 0,
+        "unsupported": 0
+      },
+      "primo": {
+        "error": 0,
+        "files": 16,
+        "par2": 1088.119935,
+        "sat": 7,
+        "solved": 7,
+        "timeout": 9,
+        "unknown": 0,
+        "unsat": 0,
+        "unsupported": 0
+      },
+      "cvc5": {
+        "error": 0,
+        "files": 16,
+        "par2": 1128.829445,
+        "sat": 7,
+        "solved": 7,
+        "timeout": 9,
+        "unknown": 0,
+        "unsat": 0,
+        "unsupported": 0
+      }
+    },
+    "nec-smt": {
+      "z3": {
+        "error": 0,
+        "files": 2780,
+        "par2": 90452.338249,
+        "sat": 955,
+        "solved": 2230,
+        "timeout": 550,
+        "unknown": 0,
+        "unsat": 1275,
+        "unsupported": 0
+      },
+      "opensmt": {
+        "error": 0,
+        "files": 2780,
+        "par2": 210477.955037,
+        "sat": 363,
+        "solved": 1253,
+        "timeout": 1527,
+        "unknown": 0,
+        "unsat": 890,
+        "unsupported": 0
+      },
+      "primo": {
+        "error": 0,
+        "files": 2780,
+        "par2": 209522.897177,
+        "sat": 541,
+        "solved": 1277,
+        "timeout": 1503,
+        "unknown": 0,
+        "unsat": 736,
+        "unsupported": 0
+      },
+      "cvc5": {
+        "error": 0,
+        "files": 2780,
+        "par2": 315117.289702,
+        "sat": 91,
+        "solved": 183,
+        "timeout": 2597,
+        "unknown": 0,
+        "unsat": 92,
+        "unsupported": 0
+      }
+    },
+    "pb2010": {
+      "z3": {
+        "error": 0,
+        "files": 81,
+        "par2": 2190.21825,
+        "sat": 34,
+        "solved": 65,
+        "timeout": 16,
+        "unknown": 0,
+        "unsat": 31,
+        "unsupported": 0
+      },
+      "opensmt": {
+        "error": 0,
+        "files": 81,
+        "par2": 5351.367287,
+        "sat": 15,
+        "solved": 38,
+        "timeout": 43,
+        "unknown": 0,
+        "unsat": 23,
+        "unsupported": 0
+      },
+      "primo": {
+        "error": 0,
+        "files": 81,
+        "par2": 5908.647166,
+        "sat": 11,
+        "solved": 33,
+        "timeout": 48,
+        "unknown": 0,
+        "unsat": 22,
+        "unsupported": 0
+      },
+      "cvc5": {
+        "error": 0,
+        "files": 81,
+        "par2": 6936.132229,
+        "sat": 2,
+        "solved": 24,
+        "timeout": 57,
+        "unknown": 0,
+        "unsat": 22,
+        "unsupported": 0
+      }
+    },
+    "pidgeons": {
+      "z3": {
+        "error": 0,
+        "files": 19,
+        "par2": 1000.154067,
+        "sat": 0,
+        "solved": 11,
+        "timeout": 8,
+        "unknown": 0,
+        "unsat": 11,
+        "unsupported": 0
+      },
+      "opensmt": {
+        "error": 0,
+        "files": 19,
+        "par2": 0.368411,
+        "sat": 0,
+        "solved": 19,
+        "timeout": 0,
+        "unknown": 0,
+        "unsat": 19,
+        "unsupported": 0
+      },
+      "primo": {
+        "error": 0,
+        "files": 19,
+        "par2": 0.239086,
+        "sat": 0,
+        "solved": 19,
+        "timeout": 0,
+        "unknown": 0,
+        "unsat": 19,
+        "unsupported": 0
+      },
+      "cvc5": {
+        "error": 0,
+        "files": 19,
+        "par2": 0.948938,
+        "sat": 0,
+        "solved": 19,
+        "timeout": 0,
+        "unknown": 0,
+        "unsat": 19,
+        "unsupported": 0
+      }
+    },
+    "prime-cone": {
+      "z3": {
+        "error": 0,
+        "files": 37,
+        "par2": 2.44691,
+        "sat": 19,
+        "solved": 37,
+        "timeout": 0,
+        "unknown": 0,
+        "unsat": 18,
+        "unsupported": 0
+      },
+      "opensmt": {
+        "error": 0,
+        "files": 37,
+        "par2": 1.509219,
+        "sat": 19,
+        "solved": 37,
+        "timeout": 0,
+        "unknown": 0,
+        "unsat": 18,
+        "unsupported": 0
+      },
+      "primo": {
+        "error": 0,
+        "files": 37,
+        "par2": 0.428681,
+        "sat": 19,
+        "solved": 37,
+        "timeout": 0,
+        "unknown": 0,
+        "unsat": 18,
+        "unsupported": 0
+      },
+      "cvc5": {
+        "error": 0,
+        "files": 37,
+        "par2": 3.198628,
+        "sat": 19,
+        "solved": 37,
+        "timeout": 0,
+        "unknown": 0,
+        "unsat": 18,
+        "unsupported": 0
+      }
+    },
+    "rings": {
+      "z3": {
+        "error": 0,
+        "files": 294,
+        "par2": 2631.156848,
+        "sat": 0,
+        "solved": 281,
+        "timeout": 13,
+        "unknown": 0,
+        "unsat": 281,
+        "unsupported": 0
+      },
+      "opensmt": {
+        "error": 0,
+        "files": 294,
+        "par2": 6072.44413,
+        "sat": 0,
+        "solved": 248,
+        "timeout": 46,
+        "unknown": 0,
+        "unsat": 248,
+        "unsupported": 0
+      },
+      "primo": {
+        "error": 0,
+        "files": 294,
+        "par2": 32335.590505,
+        "sat": 0,
+        "solved": 26,
+        "timeout": 70,
+        "unknown": 198,
+        "unsat": 26,
+        "unsupported": 0
+      },
+      "cvc5": {
+        "error": 0,
+        "files": 294,
+        "par2": 24888.552669,
+        "sat": 0,
+        "solved": 88,
+        "timeout": 206,
+        "unknown": 0,
+        "unsat": 88,
+        "unsupported": 0
+      }
+    },
+    "rings_preprocessed": {
+      "z3": {
+        "error": 0,
+        "files": 294,
+        "par2": 4564.798625,
+        "sat": 0,
+        "solved": 258,
+        "timeout": 36,
+        "unknown": 0,
+        "unsat": 258,
+        "unsupported": 0
+      },
+      "opensmt": {
+        "error": 0,
+        "files": 294,
+        "par2": 4499.8408,
+        "sat": 0,
+        "solved": 260,
+        "timeout": 34,
+        "unknown": 0,
+        "unsat": 260,
+        "unsupported": 0
+      },
+      "primo": {
+        "error": 0,
+        "files": 294,
+        "par2": 26605.77269,
+        "sat": 0,
+        "solved": 73,
+        "timeout": 64,
+        "unknown": 157,
+        "unsat": 73,
+        "unsupported": 0
+      },
+      "cvc5": {
+        "error": 0,
+        "files": 294,
+        "par2": 24089.166347,
+        "sat": 0,
+        "solved": 94,
+        "timeout": 200,
+        "unknown": 0,
+        "unsat": 94,
+        "unsupported": 0
+      }
+    },
+    "slacks": {
+      "z3": {
+        "error": 0,
+        "files": 233,
+        "par2": 283.290615,
+        "sat": 230,
+        "solved": 232,
+        "timeout": 1,
+        "unknown": 0,
+        "unsat": 2,
+        "unsupported": 0
+      },
+      "opensmt": {
+        "error": 0,
+        "files": 233,
+        "par2": 15686.783423,
+        "sat": 105,
+        "solved": 107,
+        "timeout": 126,
+        "unknown": 0,
+        "unsat": 2,
+        "unsupported": 0
+      },
+      "primo": {
+        "error": 0,
+        "files": 233,
+        "par2": 14071.958443,
+        "sat": 116,
+        "solved": 116,
+        "timeout": 113,
+        "unknown": 4,
+        "unsat": 0,
+        "unsupported": 0
+      },
+      "cvc5": {
+        "error": 0,
+        "files": 233,
+        "par2": 6815.994925,
+        "sat": 182,
+        "solved": 182,
+        "timeout": 51,
+        "unknown": 0,
+        "unsat": 0,
+        "unsupported": 0
+      }
+    },
+    "tightrhombus": {
+      "z3": {
+        "error": 0,
+        "files": 22,
+        "par2": 6.667378,
+        "sat": 0,
+        "solved": 22,
+        "timeout": 0,
+        "unknown": 0,
+        "unsat": 22,
+        "unsupported": 0
+      },
+      "opensmt": {
+        "error": 0,
+        "files": 22,
+        "par2": 1.571219,
+        "sat": 0,
+        "solved": 22,
+        "timeout": 0,
+        "unknown": 0,
+        "unsat": 22,
+        "unsupported": 0
+      },
+      "primo": {
+        "error": 0,
+        "files": 22,
+        "par2": 1680.225671,
+        "sat": 0,
+        "solved": 8,
+        "timeout": 0,
+        "unknown": 14,
+        "unsat": 8,
+        "unsupported": 0
+      },
+      "cvc5": {
+        "error": 0,
+        "files": 22,
+        "par2": 1695.176406,
+        "sat": 0,
+        "solved": 8,
+        "timeout": 14,
+        "unknown": 0,
+        "unsat": 8,
+        "unsupported": 0
+      }
+    },
+    "tropical-matrix": {
+      "z3": {
+        "error": 0,
+        "files": 108,
+        "par2": 10353.749364,
+        "sat": 26,
+        "solved": 26,
+        "timeout": 82,
+        "unknown": 0,
+        "unsat": 0,
+        "unsupported": 0
+      },
+      "opensmt": {
+        "error": 0,
+        "files": 108,
+        "par2": 6631.667762,
+        "sat": 60,
+        "solved": 60,
+        "timeout": 48,
+        "unknown": 0,
+        "unsat": 0,
+        "unsupported": 0
+      },
+      "primo": {
+        "error": 0,
+        "files": 108,
+        "par2": 10664.690833,
+        "sat": 23,
+        "solved": 23,
+        "timeout": 85,
+        "unknown": 0,
+        "unsat": 0,
+        "unsupported": 0
+      },
+      "cvc5": {
+        "error": 0,
+        "files": 108,
+        "par2": 12148.806098,
+        "sat": 9,
+        "solved": 9,
+        "timeout": 99,
+        "unknown": 0,
+        "unsat": 0,
+        "unsupported": 0
+      }
+    },
+    "wisa": {
+      "z3": {
+        "error": 0,
+        "files": 5,
+        "par2": 2.204361,
+        "sat": 3,
+        "solved": 5,
+        "timeout": 0,
+        "unknown": 0,
+        "unsat": 2,
+        "unsupported": 0
+      },
+      "opensmt": {
+        "error": 0,
+        "files": 5,
+        "par2": 1.066379,
+        "sat": 3,
+        "solved": 5,
+        "timeout": 0,
+        "unknown": 0,
+        "unsat": 2,
+        "unsupported": 0
+      },
+      "primo": {
+        "error": 0,
+        "files": 5,
+        "par2": 3.857291,
+        "sat": 3,
+        "solved": 5,
+        "timeout": 0,
+        "unknown": 0,
+        "unsat": 2,
+        "unsupported": 0
+      },
+      "cvc5": {
+        "error": 0,
+        "files": 5,
+        "par2": 19.563823,
+        "sat": 3,
+        "solved": 5,
+        "timeout": 0,
+        "unknown": 0,
+        "unsat": 2,
+        "unsupported": 0
+      }
+    }
+  },
+  "answer_agreement": {
+    "cvc5/opensmt": {
+      "jointly_solved": 8822,
+      "disagreements": 0
+    },
+    "cvc5/primo": {
+      "jointly_solved": 8476,
+      "disagreements": 0
+    },
+    "cvc5/z3": {
+      "jointly_solved": 9124,
+      "disagreements": 0
+    },
+    "opensmt/primo": {
+      "jointly_solved": 9088,
+      "disagreements": 0
+    },
+    "opensmt/z3": {
+      "jointly_solved": 10450,
+      "disagreements": 0
+    },
+    "primo/z3": {
+      "jointly_solved": 9515,
+      "disagreements": 0
+    }
+  },
+  "primo_vs_opensmt": {
+    "primo_only_solved": 617,
+    "opensmt_only_solved": 1566,
+    "jointly_solved": 9088,
+    "opensmt_minus_primo": 949,
+    "sat_delta": 231,
+    "unsat_delta": 718,
+    "disagreements": 0
+  },
+  "correctness": {
+    "declared_status_contradictions": 0,
+    "joint_answer_disagreements": 0,
+    "primo_sat_models": {
+      "expected": 6461,
+      "dolmen_pass": 6461,
+      "shards": 128,
+      "validator": "Dolmen 0.10",
+      "evidence": "All coverage records complete; unchanged inputs/binary; parent timing/provenance hashes checked; --check-model --expect-sat --require-dolmen-pass.",
+      "scope": "Archived Primo 5efbd02; model-checking time excluded from speed measurements."
+    },
+    "reference_models": "No independent reference-solver model-validation claim.",
+    "opensmt_errors": {
+      "total": 21,
+      "memory_exhausted_non_answer": 7,
+      "SIGSEGV_stack_exhaustion": 14,
+      "all_reproduced": true,
+      "all_SIGSEGV_debugged": true,
+      "manifest": "benchmarks/qf-lia-opensmt-errors-20261009.txt",
+      "classification": "benchmarks/qf-lia-opensmt-errors-20261009.json"
+    }
+  },
+  "scoring": "Only status=ok plus sat/unsat counts as solved. Timeout, error, unsupported and clean unknown each receive 120 seconds in PAR2; PAR2 is the total over all inputs. Failures contribute no cactus point. Original timings remain unchanged.",
+  "jobs": {
+    "timing": {
+      "id": "181259",
+      "shards": 320,
+      "state": "all COMPLETED 0:0",
+      "concurrency_ceiling": 128,
+      "task_wall_limit_seconds": 3000,
+      "start_utc": "2026-10-09T14:29:14",
+      "end_utc": "2026-10-09T16:28:37"
+    },
+    "final_error_replay_debugger_and_corpus_check": {
+      "id": "181727",
+      "shards": 4,
+      "state": "all COMPLETED 0:0",
+      "task_wall_limit_seconds": 900
+    },
+    "earlier_probes": [
+      "181454",
+      "181529",
+      "181648"
+    ],
+    "debugger_setup_failures": {
+      "ids": [
+        "181607",
+        "181613"
+      ],
+      "state": "FAILED 124:0",
+      "reason": "Bounded automatic debug-symbol lookup timeout; no target backtrace obtained."
+    }
+  },
+  "driver_sha256": "440325679f12e5da5d891fbf6d0cd5c2147db3a0231cab87019483035a81b4ce",
+  "batch_script_sha256": "c4c61820ae6283fbb03b707af7c5f0d8d07df33a4b08fd60605bbfa931f155f2",
+  "normalization": "Only the CSV file field is normalized to a path relative to the QF_LIA root; all other original timing fields are retained. Raw archives preserve original files.",
+  "commands": {
+    "timing": "PRIMO_COMPARE_SOLVERS='opensmt=<preserved-binary>' PRIMO_COMPARE_SHARDS=320 PRIMO_COMPARE_TIMEOUT=60 PRIMO_COMPARE_OUT_ROOT=<artifact-root> sbatch --job-name=opensmt-qflia-full --array=0-319%128 --time=00:50:00 scripts/slurm_qf_lia_full_solver_compare.sbatch",
+    "error_replay": "python3 scripts/bench_qf_uf_full.py --repo <workspace> --root sandbox/non-incremental/QF_LIA --manifest benchmarks/qf-lia-opensmt-errors-20261009.txt --shards 4 --shard-index <index> --solver <preserved-OpenSMT-binary> --timeout 60 --out <triage>/answers-<index>.csv --summary <triage>/summary-<index>.csv --log-dir <triage>/solver-output-<index>; one CPU, 3 GiB per task",
+    "debugger": "DEBUGINFOD_URLS= timeout 60s gdb -batch -nx -ex 'set pagination off' -ex run -ex 'p $_siginfo' -ex 'info registers rsp rip' -ex 'info proc mappings' -ex 'bt 30' --args <preserved-OpenSMT-binary> <input>; every SIGSEGV case at the original resource profile",
+    "summarize": "python3 scripts/summarize_benchmark_shards.py --timeout 60 --run primo=results/qf-lia-opensmt-20261009/historical/primo --run z3=results/qf-lia-opensmt-20261009/historical/z3 --run cvc5=results/qf-lia-opensmt-20261009/historical/cvc5 --run opensmt=results/qf-lia-opensmt-20261009/historical/opensmt --baseline primo --candidate opensmt",
+    "plot": "python3 scripts/plot_cactus.py --series 'Primo 5efbd02=results/qf-lia-opensmt-20261009/historical/primo' --series 'Z3 5.1.0=results/qf-lia-opensmt-20261009/historical/z3' --series 'cvc5 1.3.4=results/qf-lia-opensmt-20261009/historical/cvc5' --series 'OpenSMT 2.9.2=results/qf-lia-opensmt-20261009/historical/opensmt' --timeout 60 --title 'QF_LIA \u2014 full division (13,306 inputs)' --note 'Primo 5efbd02: Oct 5 archived run; Z3 5.1.0: Sep 7; cvc5 1.3.4: Aug 21.' --note 'OpenSMT 2.9.2: Oct 9, job 181259. All arms: compute nodes, one CPU, 60 s per input.' --note 'Memory/task: Primo 8 GiB, Z3 4 GiB, cvc5/OpenSMT 3 GiB. Different dates; contextual comparison.' --note 'Primo: 751 clean unknowns. OpenSMT: 21 errors (7 memory-exhausted non-answers, 14 SIGSEGV).' --note 'Primo: 6,461/6,461 SAT models passed Dolmen. Archived Primo curve; current checkout not rerun.' --sort-by-solved --highlight-series 'Primo 5efbd02' --out docs/_static/qf-lia-cactus.svg"
+  },
+  "artifacts": {
+    "local": "results/qf-lia-opensmt-20261009",
+    "remote": "primo-cadical-profile/results/qf-lia-opensmt-20261009/",
+    "raw_archive_sha256": {
+      "cvc5-original-raw.tar.gz": "86c58521c9f0a51154b1c7581f11f608ebcc7c7944ada6bfcfb34565df94f630",
+      "opensmt-main-raw.tar.gz": "302aca767fe9e8416577a54b221ae54e26aa68538c58fd71c7571bad1f2096ae",
+      "opensmt-triage-raw.tar.gz": "1c035a7ad7bb6107212d6e5fe2d94b7b3e5337f279ab7b436f97a8e1105190e4",
+      "primo-model-coverage-raw.tar.gz": "87c3b97dc5f163eef0258ceed162a919e5983c048b2399550f07d1d1c6da39f0",
+      "primo-refresh-raw.tar.gz": "7bd4db68de9aa67fc6eefed5b07b76219f20c4e5871ba7e0501036e990484318",
+      "z3-revalidation-raw.tar.gz": "5f94d4d883b72f6e453d0b42a315b905d15baac3ee7f4c99f3db6b01f9ace666"
+    },
+    "diagnostic_workflows": "triage-final/{final-check.sbatch,check_corpus.py}; hashes in triage-final/workflow-sha256.txt; included in opensmt-triage-raw.tar.gz",
+    "plot": "docs/_static/qf-lia-cactus.svg",
+    "run_log": "docs/run-log.json"
+  }
+}
