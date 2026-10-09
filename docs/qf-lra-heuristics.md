@@ -93,9 +93,10 @@ the compute partition, including the queued selected-corpus model replay,
 to avoid occupying GPU-node CPU and memory resources. A new timing comparison
 must compare its configurations on matching CPU hardware.
 
-All four native 1,200-second timing arms have completed on that same Gold
-host. Reference timings and the separate 1,115-row native SAT-model replay
-are still running; this table is timing evidence awaiting model qualification.
+All six 1,200-second timing arms have completed on that same Gold host, with
+no wrong answers, errors or pairwise reference disagreements. The separate
+1,115-row native SAT-model replay is still running; this table is timing
+evidence awaiting model qualification.
 
 | Profile | Solved / 519 | Timeouts | PAR2 sum (s) |
 |---|---:|---:|---:|
@@ -103,16 +104,24 @@ are still running; this table is timing evidence awaiting model qualification.
 | Model phase | 501 | 18 | 59,825.189 |
 | Monotone elimination | 498 | 21 | 67,121.127 |
 | Both | 500 | 19 | 59,868.270 |
+| OpenSMT 2.9.2 | 498 | 21 | 66,453.004 |
+| Yices 2.7.0 | 491 | 28 | 83,999.463 |
 
-Both gains nine net solves and reduces PAR2 by 28.75% against the previous
+Both gains 11 inputs and loses two, for nine net solves and 28.75% lower PAR2 against the previous
 default. Model phase alone solves one more input than both at this cutoff,
 with 0.07% lower PAR2. The combined profile therefore does not dominate every
 alternative. The manuscript's corresponding counts were 499 and 504;
-absolute reproduction is limited by different hardware, concurrency, reference
-versions and original rather than competition-scrambled inputs.
+absolute reproduction is limited by different hardware, concurrency and
+OpenSMT revision. Yices matches the manuscript's `4f19700f` revision.
+This run uses original, unscrambled inputs; the manuscript's exact input
+archive is unavailable. Its 194/325 split is the intersection with a
+473-instance tuning population, whose manifest has not been recovered.
+The manuscript applies a 7 GB limit to all solvers in this experiment;
+30 GB describes the actual competition. This run reserves 7 GiB per worker.
 Selected-corpus replay was released after all native timing shards and the
 candidate's compute timing stage completed. It runs on compute nodes while
-the remaining reference timing shards finish on the Gold host.
+the remaining reference timing shards finished on the Gold host. All new
+work is restricted to compute nodes.
 Unstarted selected-corpus replay tasks moved to
 `slurm_lra_selected_model_replay.sbatch`: 6 GiB per worker with a 5 GiB Dolmen
 cap, leaving space for runtime overhead. Already running replay tasks retain
@@ -125,6 +134,9 @@ For future submissions, the compact wrapper defaults to a 2,400-second solver
 replay timeout and a 120-second Dolmen timeout: replay on the older CPUs needs
 headroom beyond the 1,200-second Gold timing limit. The initial submissions
 explicitly selected 1,260 seconds; their recorded limits are unchanged.
+One former-default SAT replay reached that limit on an older compute CPU.
+Its shard is being repeated separately with a 3,600-second solver limit;
+the original timeout and artifacts are retained. No benchmark timing changes.
 
 ```{figure} _static/qf-lra-reverification-20261009-full30.svg
 :alt: Six solver configurations on the full QF_LRA corpus at a 30-second timeout
