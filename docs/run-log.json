@@ -3,6 +3,98 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-10-09-lra-automatic-default-committed-qualification",
+      "date": "2026-10-09",
+      "commit": "f0fbe67",
+      "branch": "lra-default-candidate-20261009",
+      "kind": "isolated-default-policy-committed-campaign",
+      "scope": "Fresh committed automatic default, quiet only; no promotion until generated campaign and retained mutation are classified and paired full/selected timings and complete native SAT replay qualify.",
+      "environment": {
+        "type": "slurm",
+        "partition": "compute",
+        "remote_workspace": "/home/janotmik/primo-lra-default-candidate-20261009",
+        "build_job": 182650,
+        "precheck_job": 182686,
+        "generated_campaign_job": 182687,
+        "seed_mutation_job": 182696,
+        "retained_mutant_replay_job": 182699,
+        "cpu_comparison_rule": "new timing configurations all Xeon E5-2690 v4; never mix Gold/E5 timings"
+      },
+      "binary": {
+        "git": "f0fbe67",
+        "build": "Release; GCC11.4.1 system-header shim; static GMP/CaDiCaL unchanged",
+        "cadical": "cadical-3.0.0-7b99c07",
+        "sha256": "b5913892253c12981870b92f558b7ae6ec79ddec12c25ce5296ef5eed60686ed",
+        "solver_args": [
+          "--quiet"
+        ],
+        "z3": "5.1.0",
+        "dolmen": "0.10",
+        "yices": "2.7.0,4f19700f0e272f4a68250080d12a873523bc7ac3"
+      },
+      "precheck": {
+        "status": "pass",
+        "tests": [
+          "primo_lra_heuristic_cli",
+          "primo_boolean_solver_tests",
+          "primo_qf_lra_solver_tests"
+        ],
+        "tests_pass": 3,
+        "seconds": 3.91
+      },
+      "generated_campaign": {
+        "status": "running",
+        "count": 3000,
+        "shards": 6,
+        "generator": "FuzzSMT",
+        "seeds": [
+          2026101200,
+          2026101201,
+          2026101202,
+          2026101203,
+          2026101204,
+          2026101205
+        ],
+        "timeout_seconds": 5,
+        "reference": "z3",
+        "arguments": "-ms 1 -Ms 3 -mv 1 -Mv 3 -mf 1 -mp 1 -ma 1 -Ma 2",
+        "exit_status_replay": "check_solver_seed_corpus.py for every generated input",
+        "successful_sat_model_replay": "direct Dolmen with QF_NRA validator semantic superset; does not certify strict QF_LRA syntax",
+        "boolean_arithmetic_count": 1000,
+        "boolean_arithmetic_seeds": [
+          2026101206,
+          2026101207,
+          2026101208,
+          2026101209
+        ],
+        "script": "scripts/slurm_lra_default_qualification.sbatch",
+        "artifact": "results/lra-default-candidate-20261009/committed-gate"
+      },
+      "real_seed_mutation": {
+        "status": "running",
+        "generator": "patched YinYang fork,seeded_opfuzz.py",
+        "seed": 2026101300,
+        "seed_selection": "two seeds/family,17families,max200000bytes",
+        "iterations_per_seed": 200,
+        "wall_seconds": 1500,
+        "timeout_seconds": 5,
+        "reference": "scripts/yices_smt2_ref.sh",
+        "retained_input_status_replay": "16shards; every non-pass row blocks until classification",
+        "scripts": [
+          "scripts/slurm_lra_default_seed_mutation.sbatch",
+          "scripts/slurm_lra_default_mutant_replay.sbatch"
+        ],
+        "artifact": "results/lra-default-candidate-20261009/seed-mutation"
+      },
+      "commands": {
+        "build": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config /tmp/primo-opensmt-ssh.config --remote primo-cluster --remote-dir /home/janotmik/primo-lra-default-candidate-20261009 --local-dir /tmp/primo-lra-default-candidate --reuse-dependencies --build-via-slurm --cmake /home/janotmik/primo-cadical-profile/.venv-build/bin/cmake --cxx-header-manifest /home/janotmik/primo-symmetry-headers.txt --jobs 4 --extra-target primo_qf_lra_solver_tests --extra-target primo_boolean_solver_tests",
+        "precheck": "PRIMO_WORKDIR=$PWD PRIMO_EXPECTED_GIT=f0fbe67 sbatch --nodes=1 --ntasks=1 --hint=nomultithread scripts/slurm_lra_default_precheck.sbatch",
+        "gate": "PRIMO_WORKDIR=$PWD PRIMO_EXPECTED_GIT=f0fbe67 PRIMO_CAMPAIGN_OUT=$PWD/results/lra-default-candidate-20261009/committed-gate sbatch --nodes=1 --ntasks=1 --hint=nomultithread --dependency=afterok:182686 scripts/slurm_lra_default_qualification.sbatch"
+      },
+      "evidence_status": "running",
+      "outcome": "Remote focused tests pass3/3. Fresh default-profile generated and real-seed campaigns launched in compute; no promotion yet."
+    },
+    {
       "id": "2026-10-09-lra-automatic-default-candidate-precommit",
       "date": "2026-10-09",
       "commit": "87aa4cc-dirty",
@@ -342,7 +434,7 @@
           "sat": 445
         }
       },
-      "gate_status": "Generated/mutation correctness classified; full30 SAT replay partly complete; selected timings running.",
+      "gate_status": "Full30 timing and SAT qualification complete; selected timing and replay still pending.",
       "triage": {
         "legacy_model_driver": "The old gate validates every generated input, appending get-model even after UNSAT. Current interpreter correctly exits nonzero for that invalid model query. Strict Dolmen also rejects constant multiplication of a complex linear expression. Corrective stage selects only successful SAT rows, adds --check-model, --expect-sat and --require-dolmen-pass, and uses --dolmen-arg=--strict=false without changing the logic or assertions.",
         "initial_sat_selector": "Initially required every fuzz answer row to PASS. Corrected to preserve and report timeout-only rows separately, selecting successful SAT passes. Timeouts are not wrong answers.",
@@ -360,7 +452,9 @@
         "superseded_partial": "results/lra-reverification-20261009/full30",
         "comparison_summary": "results/lra-reverification-20261009/collected-comparison/comparison-summary.json",
         "mutation_triage": "results/lra-reverification-20261009/mutant-triage",
-        "semantic_model_summary": "results/lra-reverification-20261009/semantic-model-summary.json"
+        "semantic_model_summary": "results/lra-reverification-20261009/semantic-model-summary.json",
+        "qualified_cactus": "docs/_static/qf-lra-reverification-20261009-full30.svg",
+        "committed_summary": "benchmarks/qf-lra-reverification-20261009-full30.json"
       },
       "commands": {
         "precheck": "ctest --test-dir build-slurm-rel --timeout 120 -R primo_(qf_lra_solver|boolean_solver)_tests; check_solver_seed_corpus.py for qf_lra (3), qf_lra_real (14), and two Boolean-domain witnesses, each of four profiles vs Z3 at 30s; qf_lra_boolean_arithmetic_fuzz.py --count 250 --seed 2026100905..2026100908 --timeout 5 --dolmen-timeout 10 with both flags (4 tasks).",
@@ -372,7 +466,7 @@
         "semantic_models": "slurm_lra_paper_fuzz_semantic_replay.sbatch array0..5: successful-SAT selection only, exact both flags and --check-model, solver/Dolmen10s, --require-dolmen-pass --expect-sat --dolmen-arg=--strict=false --dolmen-arg=--force-smtlib2-logic=QF_NRA. Separate semantic evidence, not strict input-conformance coverage."
       },
       "evidence_status": "qualification-in-progress",
-      "outcome": "Full30 timings complete: both1553 vs default1485 (+68,88 gains20 losses), PAR2sum15923.760 vs20108.495 (-20.81%). Separate model replay passed905 default,941 phase,917 monotone SAT rows; both replay still in progress. Selection1200 running. No default promotion accepted yet.",
+      "outcome": "Qualified full30: both1553 vs previous default1485 (+68;88 gains,20 losses), PAR2sum15923.760 vs20108.495 (-20.81%). All3711 native successful SAT rows passed direct Dolmen replay with immutable input/binary identities. Selected1200 timing still running; no default promotion accepted yet.",
       "fuzz_models": {
         "strict_qf_lra": {
           "expected_sat": 2603,
@@ -1423,14 +1517,14 @@
               }
             },
             "model_validation": {
-              "completed_shards": 6,
+              "completed_shards": 32,
               "statuses": {
-                "complete": 6
+                "complete": 32
               },
-              "expected_sat": 178,
-              "dolmen_pass": 178,
+              "expected_sat": 948,
+              "dolmen_pass": 948,
               "outcomes": {
-                "pass": 178
+                "pass": 948
               }
             }
           },
@@ -1903,7 +1997,6 @@
             }
           }
         },
-        "reference_disagreements": [],
         "comparisons": {
           "model-phase": {
             "paired_solved": 1461,
@@ -1951,7 +2044,8 @@
             "losses": 45
           }
         },
-        "qualification": "Timing complete; independent SAT replay complete for default, phase, monotone, still running for both."
+        "reference_disagreements": [],
+        "qualification": "Complete timing and independent direct Dolmen replay of every native successful SAT row; all128 replay shards complete,3711/3711 pass."
       }
     },
     {

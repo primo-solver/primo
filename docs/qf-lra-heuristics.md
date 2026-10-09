@@ -84,12 +84,22 @@ The completed 30-second comparison on a single Xeon Gold 6140 host gives:
 Both gains 88 inputs and loses 20 against the previous default, for a net 68
 and 20.81% lower PAR2. LassoRanker accounts for most solved-count gains;
 latendresse loses four and uart loses two. These are aggregate gains with
-real regressions. The 1,200-second comparison and complete SAT-model coverage
-remain pending. Timings use CPU cores on `gpu-1`, with no GPU allocation;
+real regressions. All 3,711 successful native SAT rows passed separate direct
+Dolmen model replay, with unchanged input and binary identities. The
+1,200-second comparison and its SAT-model coverage remain pending.
+Timings use CPU cores on `gpu-1`, with no GPU allocation;
 this host differs from the paper's EPYC 7513. Subsequent qualification uses
 the compute partition, including the queued selected-corpus model replay,
 to avoid occupying GPU-node CPU and memory resources. A new timing comparison
 must compare its configurations on matching CPU hardware.
+
+```{figure} _static/qf-lra-reverification-20261009-full30.svg
+:alt: Six solver configurations on the full QF_LRA corpus at a 30-second timeout
+
+Qualified 30-second comparison, source `23f945d`. Model validation runs
+separately and contributes no time to the curves. The committed summary is
+`benchmarks/qf-lra-reverification-20261009-full30.json`.
+```
 
 The isolated automatic-policy candidate passed 1,000 fresh generated SAT
 answer checks and 1,000 direct Dolmen checks locally before its source commit,
@@ -102,6 +112,10 @@ input model stage explicitly uses Dolmen's QF_NRA semantic superset. Another
 mutation uses `slurm_lra_default_seed_mutation.sbatch`, followed by independent
 retained-input checks through `slurm_lra_default_mutant_replay.sbatch`.
 None of these pending stages is evidence of an accepted default promotion.
+The committed candidate is `f0fbe67`: remote focused tests passed, and fresh
+generated and mutation campaigns are running on the compute partition.
+`slurm_lra_default_compute_comparison.sbatch` refuses other CPU generations
+and records host, CPU affinity and job identity for each new timing shard.
 
 Written 2026-07-27 as a design note and extended through 2026-07-31. It picks
 up where the competitiveness roadmap's items 0-8 (see [](arithmetic.md)'s
