@@ -3,6 +3,38 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-10-09-qf-lia-opensmt-full-division",
+      "date": "2026-10-09",
+      "commit": "ac0daf4",
+      "branch": "main",
+      "kind": "reference-only-full-division-comparison",
+      "scope": "Add OpenSMT 2.9.2 to the complete 13,306-file non-incremental QF_LIA comparison at a 60-second per-instance wall limit. Primo is not rebuilt or rerun; retain separately identified historical comparison arms.",
+      "environment": {
+        "host": "remote SLURM cluster; compute partition",
+        "solver": "OpenSMT 2.9.2, default arguments, one CPU and 3 GiB per task",
+        "binary_sha256": "b7899e9aff299026d3251df7a28f51f56d8bd1e5b0fd7be11bcc72c4f2803a98",
+        "corpus": "13,306 files, 8,192,190,039 bytes; reusable cluster corpus hard-linked into the benchmark workspace",
+        "path_size_manifest_sha256": "5bf3bebecf3a2720033029495a7e9ba6b0aefeb38f7b3041b6d2aafeffb6b22b",
+        "driver_sha256": "440325679f12e5da5d891fbf6d0cd5c2147db3a0231cab87019483035a81b4ce",
+        "batch_script_sha256": "c4c61820ae6283fbb03b707af7c5f0d8d07df33a4b08fd60605bbfa931f155f2"
+      },
+      "jobs": {
+        "opensmt": "181259; 320 shards, concurrency ceiling 128, 50-minute task wall limit"
+      },
+      "commands": {
+        "preflight": "scripts/slurm_prepare_benchmark_workspace.py --check-only --no-sync against a clean local worktree at 45a16ad, matching the existing workspace's Primo version stamp; OpenSMT --version and SHA-256 checked separately. No source synchronization or rebuild is performed for this reference-only run.",
+        "batch_validation": "python3 scripts/slurm_validate_sbatch.py scripts/slurm_qf_lia_full_solver_compare.sbatch; bash -n scripts/slurm_qf_lia_full_solver_compare.sbatch",
+        "submit": "PRIMO_COMPARE_SOLVERS='opensmt=<preserved-binary>' PRIMO_COMPARE_SHARDS=320 PRIMO_COMPARE_TIMEOUT=60 PRIMO_COMPARE_OUT_ROOT=<artifact-root> sbatch --job-name=opensmt-qflia-full --array=0-319%128 --time=00:50:00 scripts/slurm_qf_lia_full_solver_compare.sbatch"
+      },
+      "artifacts": {
+        "remote": "primo-cadical-profile/results/qf-lia-opensmt-20261009/{opensmt,provenance}; matching logs/opensmt-qflia-full-181259-*",
+        "local": "results/qf-lia-opensmt-20261009/"
+      },
+      "correctness_scope": "Check successful SAT/UNSAT rows against declared status and retained reference answers. This run makes no independent OpenSMT SAT-model-validation claim and changes no Primo behavior or defaults.",
+      "evidence_status": "slurm-running; no full-corpus result or plot update claimed yet",
+      "outcome": "Pending complete shard collection, exact input coverage, answer-disagreement triage, family summaries, PAR2, and cactus plot refresh."
+    },
+    {
       "id": "2026-09-15-quantifiers-merge-into-main",
       "date": "2026-09-15",
       "commit": "90ac7e9",
