@@ -113,6 +113,14 @@ versions and original rather than competition-scrambled inputs.
 Selected-corpus replay was released after all native timing shards and the
 candidate's compute timing stage completed. It runs on compute nodes while
 the remaining reference timing shards finish on the Gold host.
+Unstarted selected-corpus replay tasks moved to
+`slurm_lra_selected_model_replay.sbatch`: 6 GiB per worker with a 5 GiB Dolmen
+cap, leaving space for runtime overhead. Already running replay tasks retain
+their 7 GiB reservation and 6 GiB Dolmen cap. Parent timing limits, inputs,
+binary and arguments do not change. The wrapper dispatches only native
+profiles and delegates to the existing immutable-parent replay workflow;
+all successful SAT rows still require direct validation. This scheduling
+adjustment uses available compute memory without occupying GPU nodes.
 
 ```{figure} _static/qf-lra-reverification-20261009-full30.svg
 :alt: Six solver configurations on the full QF_LRA corpus at a 30-second timeout
