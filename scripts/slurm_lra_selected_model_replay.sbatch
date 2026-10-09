@@ -26,6 +26,8 @@ case $((task / shards)) in
 esac
 export PRIMO_PHASE=replay
 export PRIMO_DOLMEN_SIZE=${PRIMO_DOLMEN_SIZE:-5G}
+export PRIMO_MODEL_TIMEOUT=${PRIMO_MODEL_TIMEOUT:-2400}
+export PRIMO_DOLMEN_TIMEOUT=${PRIMO_DOLMEN_TIMEOUT:-120}
 export PRIMO_CAMPAIGN_OUT="${PRIMO_CAMPAIGN_OUT:?}/$profile"
 export SLURM_ARRAY_TASK_ID=$((task % shards))
 exec bash scripts/slurm_real_corpus_validation.sbatch

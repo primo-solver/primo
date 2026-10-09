@@ -1343,7 +1343,8 @@
         "semantic_model_summary": "results/lra-reverification-20261009/semantic-model-summary.json",
         "qualified_cactus": "docs/_static/qf-lra-reverification-20261009-full30.svg",
         "committed_summary": "benchmarks/qf-lra-reverification-20261009-full30.json",
-        "compact_model_driver_check": "results/lra-reverification-20261009/compact-model-driver-check.json;8nativeprofile/sharddispatch checks and rejection of reference-profile index passed"
+        "compact_model_driver_check": "results/lra-reverification-20261009/compact-model-driver-check.json;8nativeprofile/sharddispatch checks and rejection of reference-profile index passed",
+        "compact_model_timeout_check": "results/lra-reverification-20261009/compact-model-timeout-check.json; future defaults2400/120seconds and explicit3600/180 overrides passed; running job183270 retains explicit1260/120seconds."
       },
       "commands": {
         "precheck": "ctest --test-dir build-slurm-rel --timeout 120 -R primo_(qf_lra_solver|boolean_solver)_tests; check_solver_seed_corpus.py for qf_lra (3), qf_lra_real (14), and two Boolean-domain witnesses, each of four profiles vs Z3 at 30s; qf_lra_boolean_arithmetic_fuzz.py --count 250 --seed 2026100905..2026100908 --timeout 5 --dolmen-timeout 10 with both flags (4 tasks).",

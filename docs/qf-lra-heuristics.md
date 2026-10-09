@@ -121,6 +121,10 @@ binary and arguments do not change. The wrapper dispatches only native
 profiles and delegates to the existing immutable-parent replay workflow;
 all successful SAT rows still require direct validation. This scheduling
 adjustment uses available compute memory without occupying GPU nodes.
+For future submissions, the compact wrapper defaults to a 2,400-second solver
+replay timeout and a 120-second Dolmen timeout: replay on the older CPUs needs
+headroom beyond the 1,200-second Gold timing limit. The initial submissions
+explicitly selected 1,260 seconds; their recorded limits are unchanged.
 
 ```{figure} _static/qf-lra-reverification-20261009-full30.svg
 :alt: Six solver configurations on the full QF_LRA corpus at a 30-second timeout
