@@ -35,6 +35,42 @@
       "outcome": "Pending complete shard collection, exact input coverage, answer-disagreement triage, family summaries, PAR2, and cactus plot refresh."
     },
     {
+      "id": "2026-10-09-recovered-qf-lia-comparison-5efbd02",
+      "date": "2026-10-09",
+      "measurement_date": "2026-10-05 for Primo; 2026-09-07 for Z3; original job 127709 for cvc5",
+      "commit": "5efbd02293e15a53fbaad748ceda78bc7d27bbac",
+      "kind": "historical-evidence-recovery",
+      "scope": "Recover the latest complete archived QF_LIA Primo timing and independent model-validation records, plus complete retained Z3 and cvc5 arms, for the OpenSMT comparison. The archived Primo object is not present in this local checkout; this is not a current-main evaluation.",
+      "environment": {
+        "host": "remote SLURM cluster; Intel Xeon E5-2690 v4 compute nodes",
+        "corpus": "The same 13,306 relative input paths in every arm, 60-second per-instance timeout",
+        "resources": "Primo: one CPU and 8 GiB; retained Z3: one CPU and 4 GiB; original cvc5: one CPU and 3 GiB. Different days and nodes, so performance comparisons are contextual rather than paired hardware experiments.",
+        "primo": "Primo 0.2.0 at 5efbd02; Release, no sanitizers; CaDiCaL cadical-3.0.0-7b99c07; --quiet",
+        "primo_binary_sha256": "d0f69f50540efa7561e7895d2f24acff26787756a85b9bdb9f67e7eaaed496e0",
+        "z3": "Z3 5.1.0, default arguments",
+        "z3_binary_sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+        "cvc5": "cvc5 1.3.4 at f3b21c4, default arguments",
+        "content_manifest_sha256": "a7423b6c1f643568d4151e3afa822639ef1f577251ced0a3f63b3c98d7ab811b",
+        "manifest_format": "Sorted relative path, tab, input SHA-256, newline; merged from all 128 complete Primo shard provenance files"
+      },
+      "results": {
+        "primo": "9,705 solved (6,461 SAT, 3,244 UNSAT), 2,850 timeouts, 751 clean unknowns, zero wrong/error/unsupported rows, PAR2 470785.158311 seconds",
+        "z3": "12,144 solved (7,826 SAT, 4,318 UNSAT), 1,162 timeouts, zero wrong/error/unsupported rows, PAR2 174585.785332 seconds",
+        "cvc5": "9,239 solved (6,527 SAT, 2,712 UNSAT), 4,067 timeouts, zero wrong/error/unsupported rows, PAR2 507295.331516 seconds",
+        "coverage": "Each arm covers exactly the local corpus's 13,306 unique relative paths; no duplicate, missing, or unexpected rows",
+        "answers": "No disagreement in 9,515 jointly solved Primo/Z3 rows, 8,476 Primo/cvc5 rows, or 9,124 Z3/cvc5 rows",
+        "models": "All 6,461 successful Primo SAT rows passed independent Dolmen 0.10 validation in 128 complete shards. Coverage files require unchanged inputs/binary, no missing/malformed rows, zero validator exit status, --expect-sat, --require-dolmen-pass, and --check-model. Parent timing CSV and provenance SHA-256 values were checked against the archived originals for every shard. No independent reference-solver model validation is claimed."
+      },
+      "artifacts": {
+        "primo_remote": "primo-evaluation-20261005/results/refresh-timing/QF_LIA/primo/shard-*/{answers.csv,provenance.json,model-validation/coverage.json}",
+        "z3_remote": "primo-model-fix/results/full-revalidation-287b743/real/QF_LIA/z3/shard-*/{answers.csv,provenance.json}",
+        "cvc5_remote": "primo-cadical-profile/results/qf-lia-full-compare-127709/cvc5/shard-*.csv",
+        "local": "results/qf-lia-opensmt-20261009/{historical,reference-metadata,*-raw.tar.gz}"
+      },
+      "evidence_status": "historical; complete timing and independent Primo SAT-model coverage recovered; current checkout not revalidated",
+      "outcome": "Use these explicitly identified archived arms in the cactus comparison. Retire the August 26 Primo curve when the fresh OpenSMT arm is complete; keep each measurement's provenance visible."
+    },
+    {
       "id": "2026-09-15-quantifiers-merge-into-main",
       "date": "2026-09-15",
       "commit": "90ac7e9",
