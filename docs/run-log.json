@@ -3,6 +3,288 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-10-09-lra-paper-profile-reverification",
+      "date": "2026-10-09",
+      "commit": "23f945d",
+      "branch": "main",
+      "kind": "paper-profile-reverification-and-conditional-promotion",
+      "scope": "Reverify QF_LRA --lra-model-phase --monotone-elimination against current default and individual flags, full 1753 at 30s and official 519 at 1200s, independent SAT validation before any promotion. Restrict any accepted default to the measured logic.",
+      "environment": {
+        "type": "slurm",
+        "build_jobs": {
+          "initial_invalid_test_target": 182007,
+          "successful_corrected_build": 182024
+        },
+        "precheck_job": 182033,
+        "fuzz_answer_and_legacy_model_job": 182034,
+        "legacy_mutation_tasks_cancelled": [
+          6,
+          7,
+          8
+        ],
+        "rejected_mutation_seed_precheck_jobs": [
+          182048,
+          182058
+        ],
+        "rejected_fuzz_replay_selector_job": 182057,
+        "fuzz_sat_replay_job": 182070,
+        "seeded_mutation_job": 182071,
+        "full30_job": 182080,
+        "selection1200_job": 182081
+      },
+      "binary": {
+        "git": "23f945d",
+        "version": "primo 0.2.0\ngit: 23f945d\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+        "binary_sha256": "063012214f1835c52507c5f48c9266ba787c9ea95ed2bbe6679e79b55a8f343f",
+        "instances": 1753,
+        "selected_instances": 519,
+        "corpus_sha256": "26a52bd1e10115473cbefc1d8bfe6ff6bfe542602f239f0cbaee07439ba5af90"
+      },
+      "populations": {
+        "full_qf_lra": 1753,
+        "official_selection": 519,
+        "selection_manifest": "benchmarks/qf-lra-smtcomp2026-selection.txt",
+        "selection_sha256": "0ae74669e5ee69c8894cee44e415ce644047be41942ec23d1de8eef4afecb18c",
+        "original_unscrambled_inputs": true,
+        "paper_train_test_assignment_unavailable": true
+      },
+      "profiles": {
+        "default": [
+          "--quiet"
+        ],
+        "model-phase": [
+          "--quiet",
+          "--lra-model-phase"
+        ],
+        "monotone": [
+          "--quiet",
+          "--monotone-elimination"
+        ],
+        "both": [
+          "--quiet",
+          "--lra-model-phase",
+          "--monotone-elimination"
+        ]
+      },
+      "precheck": {
+        "0": {},
+        "1": {
+          "boolean-domain.csv": {
+            "rows": 2,
+            "outcomes": {
+              "PASS": 2
+            },
+            "sat": 0,
+            "dolmen_pass": 0
+          },
+          "qf_lra_real.csv": {
+            "rows": 14,
+            "outcomes": {
+              "PASS": 14
+            },
+            "sat": 0,
+            "dolmen_pass": 0
+          },
+          "qf_lra.csv": {
+            "rows": 3,
+            "outcomes": {
+              "PASS": 3
+            },
+            "sat": 0,
+            "dolmen_pass": 0
+          }
+        },
+        "2": {
+          "boolean-domain.csv": {
+            "rows": 2,
+            "outcomes": {
+              "PASS": 2
+            },
+            "sat": 0,
+            "dolmen_pass": 0
+          },
+          "qf_lra_real.csv": {
+            "rows": 14,
+            "outcomes": {
+              "PASS": 14
+            },
+            "sat": 0,
+            "dolmen_pass": 0
+          },
+          "qf_lra.csv": {
+            "rows": 3,
+            "outcomes": {
+              "PASS": 3
+            },
+            "sat": 0,
+            "dolmen_pass": 0
+          }
+        },
+        "3": {
+          "boolean-domain.csv": {
+            "rows": 2,
+            "outcomes": {
+              "PASS": 2
+            },
+            "sat": 0,
+            "dolmen_pass": 0
+          },
+          "qf_lra_real.csv": {
+            "rows": 14,
+            "outcomes": {
+              "PASS": 14
+            },
+            "sat": 0,
+            "dolmen_pass": 0
+          },
+          "qf_lra.csv": {
+            "rows": 3,
+            "outcomes": {
+              "PASS": 3
+            },
+            "sat": 0,
+            "dolmen_pass": 0
+          }
+        },
+        "4": {
+          "boolean-domain.csv": {
+            "rows": 2,
+            "outcomes": {
+              "PASS": 2
+            },
+            "sat": 0,
+            "dolmen_pass": 0
+          },
+          "qf_lra_real.csv": {
+            "rows": 14,
+            "outcomes": {
+              "PASS": 14
+            },
+            "sat": 0,
+            "dolmen_pass": 0
+          },
+          "qf_lra.csv": {
+            "rows": 3,
+            "outcomes": {
+              "PASS": 3
+            },
+            "sat": 0,
+            "dolmen_pass": 0
+          }
+        },
+        "5": {
+          "boolean-arithmetic/summary.csv": {
+            "rows": 250,
+            "outcomes": {
+              "PASS": 250
+            },
+            "sat": 250,
+            "dolmen_pass": 250
+          }
+        },
+        "6": {
+          "boolean-arithmetic/summary.csv": {
+            "rows": 250,
+            "outcomes": {
+              "PASS": 250
+            },
+            "sat": 250,
+            "dolmen_pass": 250
+          }
+        },
+        "7": {
+          "boolean-arithmetic/summary.csv": {
+            "rows": 250,
+            "outcomes": {
+              "PASS": 250
+            },
+            "sat": 250,
+            "dolmen_pass": 250
+          }
+        },
+        "8": {
+          "boolean-arithmetic/summary.csv": {
+            "rows": 250,
+            "outcomes": {
+              "PASS": 250
+            },
+            "sat": 250,
+            "dolmen_pass": 250
+          }
+        }
+      },
+      "fuzz_answers": {
+        "0": {
+          "rows": 500,
+          "outcomes": {
+            "PASS": 497,
+            "TIMEOUT": 3
+          },
+          "sat": 437
+        },
+        "1": {
+          "rows": 500,
+          "outcomes": {
+            "PASS": 498,
+            "TIMEOUT": 2
+          },
+          "sat": 423
+        },
+        "2": {
+          "rows": 500,
+          "outcomes": {
+            "PASS": 496,
+            "TIMEOUT": 4
+          },
+          "sat": 441
+        },
+        "3": {
+          "rows": 500,
+          "outcomes": {
+            "PASS": 497,
+            "TIMEOUT": 3
+          },
+          "sat": 422
+        },
+        "4": {
+          "rows": 500,
+          "outcomes": {
+            "PASS": 499,
+            "TIMEOUT": 1
+          },
+          "sat": 435
+        },
+        "5": {
+          "rows": 500,
+          "outcomes": {
+            "PASS": 499,
+            "TIMEOUT": 1
+          },
+          "sat": 445
+        }
+      },
+      "gate_status": "in_progress",
+      "triage": {
+        "legacy_model_driver": "The old gate validates every generated input, appending get-model even after UNSAT. Current interpreter correctly exits nonzero for that invalid model query. Strict Dolmen also rejects constant multiplication of a complex linear expression. Corrective stage selects only successful SAT rows, adds --check-model, --expect-sat and --require-dolmen-pass, and uses --dolmen-arg=--strict=false without changing the logic or assertions.",
+        "initial_sat_selector": "Initially required every fuzz answer row to PASS. Corrected to preserve and report timeout-only rows separately, selecting successful SAT passes. Timeouts are not wrong answers.",
+        "family_seed_reference_limits": "Diagnostic checks of the generated 34-seed family corpus found Z3 and Yices reference timeouts on hard LassoRanker/latendresse seeds at 30s. The 17 tracked QF_LRA regression seeds plus two Boolean-domain witnesses passed Z3 for every measured profile. Mutating the broader family bundle does not substitute it for those tracked regression checks.",
+        "generated_input_syntax": "With --strict=false, multiplication warnings can be accepted directly, but some FuzzSMT inputs divide by a negative constant denominator, which Dolmen rejects as forbidden in the declared QF_LRA syntax. Preserve these as input-nonconforming, not model passes or incorrect Primo answers. Separate real-corpus SAT validation is still required.",
+        "mutation_process_status": "Installed YinYang Fuzzer.py only handles selected nonzero exits before answer parsing. Its raw campaign is not accepted correctness evidence. Retained inputs require independent replay through check_solver_seed_corpus.py, whose post-answer-crash regression passed.",
+        "opfuzz_seed_interface": "The raw opfuzz launcher rejects --seed. Its initial task is setup non-evidence; rerun through scripts/seeded_opfuzz.py, which seeds Python RNG before calling the installed launcher."
+      },
+      "artifacts": {
+        "local": "results/lra-reverification-20261009",
+        "gate_summary": "results/lra-reverification-20261009/collected-gates/gate-summary.json"
+      },
+      "commands": {
+        "precheck": "ctest --test-dir build-slurm-rel --timeout 120 -R primo_(qf_lra_solver|boolean_solver)_tests; check_solver_seed_corpus.py for qf_lra (3), qf_lra_real (14), and two Boolean-domain witnesses, each of four profiles vs Z3 at 30s; qf_lra_boolean_arithmetic_fuzz.py --count 250 --seed 2026100905..2026100908 --timeout 5 --dolmen-timeout 10 with both flags (4 tasks).",
+        "generated": "slurm_qf_lra_model_fuzz_gate.sbatch tasks 0..5, 500/shard, FuzzSMT seeds 2026100910..2026100915, 5s solver, exact both flags; separate successful-SAT replay at 10s solver/Dolmen, --check-model --expect-sat --require-dolmen-pass --dolmen-arg=--strict=false.",
+        "timing": "slurm_lra_profile_comparison.sbatch benchmark phase: full30, 6 profiles x 32 shards, 30s, 7GiB per allocation, array concurrency 16, 45min task limit, exclude mutation host; selection1200 afterok full30, 6 profiles x 64 shards, 1200s, 7GiB, concurrency16, 3h task limit. Every timing row and input/binary identity is durable; separate replay remains pending."
+      },
+      "evidence_status": "qualification-in-progress",
+      "outcome": "Focused precheck passed. Generated answer campaign has 2986 PASS and 14 TIMEOUT, zero disagreements/crashes. Additional SAT replay preserves input-syntax limitations. Full30 timings active, selection1200 dependent; retained-mutation replay and every real-corpus SAT model are still pending. No promotion claimed."
+    },
+    {
       "id": "2026-10-09-qf-lia-opensmt-full-division",
       "date": "2026-10-09",
       "commit": "ac0daf4",
