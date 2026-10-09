@@ -1,0 +1,11 @@
+{
+  "description": "Unique non-incremental QF_LRA inputs in the official SMT-COMP 2026 SingleQuery results. Original SMT-LIB inputs, without competition scrambling.",
+  "source_url": "https://raw.githubusercontent.com/SMT-COMP/smt-comp.github.io/master/data/results-sq-2026.json.gz",
+  "source_sha256": "7abe5cadf800cc84db00506f85176378f714cdaa8c02a0e491059835f5039c58",
+  "manifest": "benchmarks/qf-lra-smtcomp2026-selection.txt",
+  "manifest_sha256": "0ae74669e5ee69c8894cee44e415ce644047be41942ec23d1de8eef4afecb18c",
+  "instances": 519,
+  "paper_reported_train_instances": 194,
+  "paper_reported_test_instances": 325,
+  "train_test_assignment_available": false
+}

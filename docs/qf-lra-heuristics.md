@@ -7,6 +7,37 @@ SMT engine helpers formerly in `check_sat.cpp` now live in `solver_engines.cpp`.
 The default-off pure-LRA fixed-elimination policy is distinct from the default-on
 dedicated QF_UFLRA setting.
 
+## Reverification of the paper profile (2026-10-09)
+
+The LPAR manuscript's `Primo*` uses `--lra-model-phase --monotone-elimination`.
+Both options remain off by default. The August measurements and the manuscript's
+tables are historical evidence; neither qualifies the current implementation.
+
+Fresh evaluation compares default, model phase alone, monotone elimination alone,
+and both options, using the same binary and resource limits. The two populations
+are the complete 1,753-instance non-incremental QF_LRA corpus at 30 seconds and
+the official 519-instance SMT-COMP 2026 selection at 1,200 seconds. The latter
+manifest is `benchmarks/qf-lra-smtcomp2026-selection.txt`; its companion JSON
+records the source and checksums. It contains the original SMT-LIB inputs,
+without competition scrambling. The paper's 194/325 training/test assignment
+has not been recovered, so only the aggregate selected-corpus result is
+reproducible from this manifest.
+
+`scripts/slurm_lra_profile_comparison.sbatch` records timings and input/binary
+identities through `benchmark_model_replay.py`. Submit its `benchmark` and
+`replay` phases separately; each array task selects a profile and an input
+shard. Optional profiles add OpenSMT and Yices reference timings. Resource
+limits and exact reference versions must accompany the collected comparison;
+cluster hardware differs from the paper's AMD EPYC machine.
+
+Before broad timing runs, gate the exact candidate flags against reference
+answers, including generated QF_LRA formulas, real-seed mutation, and existing
+regression witnesses. Promotion requires a reproducible solved-count/PAR2 gain,
+an explicit account of losses and family effects, zero untriaged correctness
+failures, and separate direct Dolmen validation of every successful SAT row
+for each Primo profile claimed. A QF_LRA gain alone does not justify enabling
+these flags for QF_LIA or QF_UFLRA. Evaluation and promotion are pending.
+
 Written 2026-07-27 as a design note and extended through 2026-07-31. It picks
 up where the competitiveness roadmap's items 0-8 (see [](arithmetic.md)'s
 Milestone roadmap) left off, and is grounded in a fresh local
