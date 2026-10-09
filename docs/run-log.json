@@ -21,7 +21,9 @@
       "jobs": {
         "opensmt": "181259; 320 shards, concurrency ceiling 128, 50-minute task wall limit",
         "representative_output_triage": "181454; one CPU, 3 GiB, five-minute wall limit; COMPLETED 0:0 in eight seconds, batch MaxRSS 262000K",
-        "first_error_replay": "181529; four one-CPU, 3 GiB tasks, seven-minute task wall limit; all COMPLETED 0:0 in seven to nine seconds"
+        "first_error_replay": "181529; four one-CPU, 3 GiB tasks, seven-minute task wall limit; all COMPLETED 0:0 in seven to nine seconds",
+        "debugger_setup_failures": "181607 and 181613; FAILED 124:0 at the 60-second debug-symbol lookup bound; no target backtrace obtained",
+        "representative_crash_debugger": "181648; one CPU, 3 GiB, five-minute task wall limit; COMPLETED 0:0 in three seconds"
       },
       "commands": {
         "preflight": "scripts/slurm_prepare_benchmark_workspace.py --check-only --no-sync against a clean local worktree at 45a16ad, matching the existing workspace's Primo version stamp; OpenSMT --version and SHA-256 checked separately. No source synchronization or rebuild is performed for this reference-only run.",
@@ -40,7 +42,9 @@
         "artifacts": "results/qf-lia-opensmt-20261009/triage/ locally and under the remote artifact root",
         "first_complete_replay": "The first 17 captured errors were replayed individually with stdout/stderr capture in array 181529 at the original 60-second cutoff and resource profile. All reproduced: seven exit-0 non-answers print 'At line <number>: memory exhausted'; ten terminate with SIGSEGV (exit -11) and empty stdout/stderr. All belong to 20210219-Dartagnan. Internal crash causes are not established. No failed process is counted as a solve.",
         "classification": "benchmarks/qf-lia-opensmt-errors-20261009.json; per-input hashes, exit codes, diagnostics, and replay times for these 17 cases; full-run coverage pending",
-        "remaining": "Capture and classify every remaining full-run error before final comparison; the first 17 replay cases do not qualify unseen error rows."
+        "representative_crash_debugger": "With DEBUGINFOD_URLS empty, gdb 10.2 reproduced SIGSEGV on 38_rand_cas_vs_concur-O0.smt2 and benchmark09_conjunctive-O0.smt2. Both fault at 0x7fffff7feff8, eight bytes below the stack mapping [0x7fffff7ff000,0x7ffffffff000), size 8 MiB; repeated stack frames support stack exhaustion. The binary is stripped, so no function-specific or parser-specific cause is claimed. The first two debugger jobs timed out on automatic symbol lookup; 181613 also used an unsupported gdb setting. No solver timings are taken from these probes.",
+        "debugger_command": "DEBUGINFOD_URLS= timeout 60s gdb -batch -nx -ex 'set pagination off' -ex run -ex 'p $_siginfo' -ex 'info registers rsp rip' -ex 'info proc mappings' -ex 'bt 30' --args <preserved-OpenSMT-binary> <input>; artifacts results/qf-lia-opensmt-20261009/crash-debug-off/",
+        "remaining": "Capture and classify every remaining full-run error before final comparison; the first 17 replay cases and two stack-exhaustion probes do not qualify unseen error rows."
       },
       "evidence_status": "slurm-running; first 17 errors reproduced and classified, complete error classification and full-corpus results pending",
       "outcome": "Pending complete shard collection, exact input coverage, answer-disagreement triage, family summaries, PAR2, and cactus plot refresh."

@@ -166,5 +166,29 @@
     "timeout_seconds": 60
   },
   "interpretation": "Seven non-answers report memory exhausted on stdout and exit 0; ten terminate with SIGSEGV and no output. All are errors, excluded from the cactus and charged 120 seconds in PAR2. Internal causes have not been established.",
-  "artifacts": "results/qf-lia-opensmt-20261009/triage-all/"
+  "artifacts": "results/qf-lia-opensmt-20261009/triage-all/",
+  "debugger_probes": {
+    "job": "181648",
+    "gdb_version": "Rocky Linux 10.2-13.el9",
+    "binary": "statically linked and stripped; function names unavailable",
+    "cases": [
+      {
+        "file": "20210219-Dartagnan/ConcurrencySafety-Main/38_rand_cas_vs_concur-O0.smt2",
+        "fault_address": "0x7fffff7feff8",
+        "stack_start": "0x7fffff7ff000",
+        "stack_end": "0x7ffffffff000",
+        "stack_bytes": 8388608,
+        "gdb_log_sha256": "0b8ad83a747c973d7fec00863e0a4459b54a8bb2883f0cf85c08c3201aac30fc"
+      },
+      {
+        "file": "20210219-Dartagnan/ReachSafety-Loops/benchmark09_conjunctive-O0.smt2",
+        "fault_address": "0x7fffff7feff8",
+        "stack_start": "0x7fffff7ff000",
+        "stack_end": "0x7ffffffff000",
+        "stack_bytes": 8388608,
+        "gdb_log_sha256": "cbd9e8194fe009ced8497e103e1d803320e5915d2f2b6911c3b69b86b3d72154"
+      }
+    ],
+    "interpretation": "In these two cases the fault address is eight bytes below the 8 MiB stack mapping, and the backtrace repeats a frame. This supports stack exhaustion in these cases; unseen errors are not generalized from the probes."
+  }
 }
