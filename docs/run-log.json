@@ -168,11 +168,13 @@
         "precheck": "PRIMO_WORKDIR=$PWD PRIMO_EXPECTED_GIT=f0fbe67 sbatch --nodes=1 --ntasks=1 --hint=nomultithread scripts/slurm_lra_default_precheck.sbatch",
         "gate": "PRIMO_WORKDIR=$PWD PRIMO_EXPECTED_GIT=f0fbe67 PRIMO_CAMPAIGN_OUT=$PWD/results/lra-default-candidate-20261009/committed-gate sbatch --nodes=1 --ntasks=1 --hint=nomultithread --dependency=afterok:182686 scripts/slurm_lra_default_qualification.sbatch"
       },
-      "evidence_status": "timing-complete-models-pending",
-      "outcome": "Fresh default-policy gates qualify; paired compute full30 timings complete:1525 vs1461 solved (+64,89gains25losses),PAR2sum17495.135 vs21513.642 (-18.68%). All1826 successful SAT rows are being independently replayed. Longer explicit-flag Gold comparison still running. Promotion remains pending complete SAT validation and long-cutoff results.",
+      "evidence_status": "compute-comparison-qualified-long-cutoff-pending",
+      "outcome": "Fresh default-policy generated and retained-mutation gates qualify. Complete compute full30:1525 vs1461 solved (+64,89gains25losses),PAR2sum17495.135 vs21513.642 (-18.68%). All1826 successful SAT rows independently pass direct Dolmen. Longer explicit-flag Gold reference comparison and1115 native SAT checks still running; promotion awaits their completion.",
       "verification": {
         "qualification_aggregator": "9 adversarial checks pass; nonzero exits after SAT, changed/missing data and raw bugs block; resource-only timeouts counted separately",
-        "artifact": "results/lra-default-candidate-20261009/qualification-aggregator-checks.json"
+        "artifact": "results/lra-default-candidate-20261009/qualification-aggregator-checks.json",
+        "model_coverage_audit": "64 coverage records: exact successful SAT sets, solver/Dolmen zero exit, direct Dolmen pass, unchanged identities, parent and model-summary SHA256 hashes;1826/1826pass",
+        "model_coverage_artifact": "results/lra-default-candidate-20261009/complete-model-coverage-check.json"
       },
       "full30_compute": {
         "complete": true,
@@ -408,11 +410,15 @@
               }
             },
             "model_validation": {
-              "completed_shards": 0,
-              "statuses": {},
-              "expected_sat": 0,
-              "dolmen_pass": 0,
-              "outcomes": {}
+              "completed_shards": 32,
+              "statuses": {
+                "complete": 32
+              },
+              "expected_sat": 891,
+              "dolmen_pass": 891,
+              "outcomes": {
+                "pass": 891
+              }
             }
           },
           "default": {
@@ -643,12 +649,40 @@
               }
             },
             "model_validation": {
-              "completed_shards": 0,
-              "statuses": {},
-              "expected_sat": 0,
-              "dolmen_pass": 0,
-              "outcomes": {}
+              "completed_shards": 32,
+              "statuses": {
+                "complete": 32
+              },
+              "expected_sat": 935,
+              "dolmen_pass": 935,
+              "outcomes": {
+                "pass": 935
+              }
             }
+          }
+        },
+        "identities": {
+          "legacy-default": {
+            "solver": {
+              "path": "/home/janotmik/primo-lra-default-candidate-20261009/build-slurm-rel/primo",
+              "sha256": "b5913892253c12981870b92f558b7ae6ec79ddec12c25ce5296ef5eed60686ed",
+              "version": "primo 0.2.0\ngit: f0fbe67\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07"
+            },
+            "solver_args": [
+              "--quiet",
+              "--no-lra-model-phase",
+              "--no-monotone-elimination"
+            ]
+          },
+          "default": {
+            "solver": {
+              "path": "/home/janotmik/primo-lra-default-candidate-20261009/build-slurm-rel/primo",
+              "sha256": "b5913892253c12981870b92f558b7ae6ec79ddec12c25ce5296ef5eed60686ed",
+              "version": "primo 0.2.0\ngit: f0fbe67\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07"
+            },
+            "solver_args": [
+              "--quiet"
+            ]
           }
         },
         "comparisons": {
@@ -663,7 +697,12 @@
           }
         },
         "reference_disagreements": [],
-        "qualification": "timing complete; full direct Dolmen SAT replay running,1826 rows required"
+        "qualification": "Complete timings and all 1826 successful SAT rows independently pass direct Dolmen; all64 replay shards complete, parent data/binary identities unchanged, exact SAT sets and artifact/parent hashes audited."
+      },
+      "source_relation": {
+        "qualified_source_commit": "f0fbe67",
+        "cpp_tree": "0fbd83f4d49f1d9a40329b86d20317f1f1bce449",
+        "later_commits": "Documentation, benchmark metadata and workflows only; git diff f0fbe67 HEAD -- src CMakeLists.txt tests/unit tests/cmake/check_lra_heuristic_cli.cmake benchmarks/smoke/qf_lra/default_heuristics.smt2 is empty."
       }
     },
     {

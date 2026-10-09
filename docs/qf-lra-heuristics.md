@@ -132,7 +132,8 @@ input model stage explicitly uses Dolmen's QF_NRA semantic superset. Another
 1,000 Boolean/arithmetic cases use direct QF_LRA model checks. Real-seed
 mutation uses `slurm_lra_default_seed_mutation.sbatch`, followed by independent
 retained-input checks through `slurm_lra_default_mutant_replay.sbatch`.
-None of these pending stages is evidence of an accepted default promotion.
+These gates establish correctness within their recorded coverage; promotion
+also requires the complete timing and model comparisons.
 The committed candidate is `f0fbe67`: remote focused tests passed, and fresh
 generated checks gave 2,976 agreements and 24 resource-only timeouts out of
 3,000 inputs. All 2,563 successful SAT models passed direct Dolmen semantic
@@ -159,9 +160,19 @@ The paired candidate run on Xeon E5-2690 v4 compute nodes has completed its
 timing stage: 1,525 solves for the automatic default versus 1,461 with both
 opt-outs; PAR2 sums are 17,495.135 and 21,513.642 seconds, respectively.
 The 64 net gains comprise 89 wins and 25 losses, with 18.68% lower PAR2.
-All 1,826 successful SAT rows still require the separate direct Dolmen replay,
-currently running. This is an independent compatibility measurement of the
+All 1,826 successful SAT rows passed separate direct Dolmen replay: 891 for
+the former default and 935 for the automatic policy, with complete coverage
+of all 64 replay shards and unchanged parent data/binary identities.
+This is an independent compatibility measurement of the
 automatic policy; its timings are not pooled with the Gold-node data.
+
+```{figure} _static/qf-lra-default-policy-20261009-full30.svg
+:alt: Automatic and former Primo defaults on matching compute CPUs
+
+Qualified automatic-policy comparison, source `f0fbe67`, Xeon E5-2690 v4.
+The committed summary is `benchmarks/qf-lra-default-policy-20261009-full30.json`.
+The longer Gold-node reference comparison remains a separate population.
+```
 
 Written 2026-07-27 as a design note and extended through 2026-07-31. It picks
 up where the competitiveness roadmap's items 0-8 (see [](arithmetic.md)'s

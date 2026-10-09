@@ -9,7 +9,7 @@
   "memory_gib_per_worker": 7,
   "timing_job": 182730,
   "model_job": 182731,
-  "model_qualification": "pending",
+  "model_qualification": "complete: all 1826 successful native SAT rows pass direct Dolmen with immutable parent input and binary identities",
   "summary": {
     "complete": true,
     "expected_rows_per_profile": 1753,
@@ -244,11 +244,15 @@
           }
         },
         "model_validation": {
-          "completed_shards": 0,
-          "statuses": {},
-          "expected_sat": 0,
-          "dolmen_pass": 0,
-          "outcomes": {}
+          "completed_shards": 32,
+          "statuses": {
+            "complete": 32
+          },
+          "expected_sat": 891,
+          "dolmen_pass": 891,
+          "outcomes": {
+            "pass": 891
+          }
         }
       },
       "default": {
@@ -479,11 +483,15 @@
           }
         },
         "model_validation": {
-          "completed_shards": 0,
-          "statuses": {},
-          "expected_sat": 0,
-          "dolmen_pass": 0,
-          "outcomes": {}
+          "completed_shards": 32,
+          "statuses": {
+            "complete": 32
+          },
+          "expected_sat": 935,
+          "dolmen_pass": 935,
+          "outcomes": {
+            "pass": 935
+          }
         }
       }
     },
@@ -639,5 +647,6 @@
       }
     },
     "reference_disagreements": []
-  }
+  },
+  "corpus_sha256": "26a52bd1e10115473cbefc1d8bfe6ff6bfe542602f239f0cbaee07439ba5af90"
 }
