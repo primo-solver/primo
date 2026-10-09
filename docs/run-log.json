@@ -19,7 +19,8 @@
         "batch_script_sha256": "c4c61820ae6283fbb03b707af7c5f0d8d07df33a4b08fd60605bbfa931f155f2"
       },
       "jobs": {
-        "opensmt": "181259; 320 shards, concurrency ceiling 128, 50-minute task wall limit"
+        "opensmt": "181259; 320 shards, concurrency ceiling 128, 50-minute task wall limit",
+        "representative_output_triage": "181454; one CPU, 3 GiB, five-minute wall limit; COMPLETED 0:0 in eight seconds, batch MaxRSS 262000K"
       },
       "commands": {
         "preflight": "scripts/slurm_prepare_benchmark_workspace.py --check-only --no-sync against a clean local worktree at 45a16ad, matching the existing workspace's Primo version stamp; OpenSMT --version and SHA-256 checked separately. No source synchronization or rebuild is performed for this reference-only run.",
@@ -31,7 +32,14 @@
         "local": "results/qf-lia-opensmt-20261009/"
       },
       "correctness_scope": "Check successful SAT/UNSAT rows against declared status and retained reference answers. This run makes no independent OpenSMT SAT-model-validation claim and changes no Primo behavior or defaults.",
-      "evidence_status": "slurm-running; no full-corpus result or plot update claimed yet",
+      "output_triage": {
+        "manifest": "benchmarks/qf-lia-opensmt-resource-triage.txt",
+        "command": "python3 scripts/bench_qf_uf_full.py --repo <workspace> --root sandbox/non-incremental/QF_LIA --manifest <four-case-manifest> --solver <preserved-OpenSMT-binary> --timeout 60 --out <triage>/answers.csv --summary <triage>/summary.csv --log-dir <triage>/solver-output",
+        "observed": "All four representative Dartagnan cases reproduce a single stdout diagnostic, 'At line <number>: memory exhausted', exit 0, and no SAT/UNSAT answer. These are non-answer input-processing resource failures and stay classified as errors, excluded from the curve and charged 120 seconds in PAR2. The diagnostic job's peak RSS is about 256 MiB, below its 3 GiB allocation; no assertion about the internal cause or parser stack limit is made.",
+        "artifacts": "results/qf-lia-opensmt-20261009/triage/ locally and under the remote artifact root",
+        "remaining": "Capture and classify every full-run error before final comparison; representative probes do not qualify unseen error rows."
+      },
+      "evidence_status": "slurm-running; representative non-answer errors triaged, complete error classification and full-corpus results pending",
       "outcome": "Pending complete shard collection, exact input coverage, answer-disagreement triage, family summaries, PAR2, and cactus plot refresh."
     },
     {
@@ -60,6 +68,12 @@
         "coverage": "Each arm covers exactly the local corpus's 13,306 unique relative paths; no duplicate, missing, or unexpected rows",
         "answers": "No disagreement in 9,515 jointly solved Primo/Z3 rows, 8,476 Primo/cvc5 rows, or 9,124 Z3/cvc5 rows",
         "models": "All 6,461 successful Primo SAT rows passed independent Dolmen 0.10 validation in 128 complete shards. Coverage files require unchanged inputs/binary, no missing/malformed rows, zero validator exit status, --expect-sat, --require-dolmen-pass, and --check-model. Parent timing CSV and provenance SHA-256 values were checked against the archived originals for every shard. No independent reference-solver model validation is claimed."
+      },
+      "commands": {
+        "primo_timing": "python3 scripts/bench_qf_uf_full.py --repo <corpus-root> --root . --solver <5efbd02-binary> --solver-arg=--quiet --manifest <shard-inputs> --shards 1 --shard-index 0 --timeout 60 --out <shard>/answers.csv --summary <shard>/answer-summary.csv --log-dir <shard>/solver-output; 128 manifests",
+        "z3_timing": "python3 scripts/bench_qf_uf_full.py --repo <corpus-root> --root . --solver <Z3-5.1.0-binary> --shards 32 --shard-index <index> --timeout 60 --out <shard>/answers.csv --summary <shard>/answer-summary.csv --log-dir <shard>/solver-output",
+        "cvc5_timing": "scripts/slurm_qf_lia_full_solver_compare.sbatch with cvc5=contrib/local/bin/cvc5, 80 shards, and a 60-second cutoff; original job 127709",
+        "primo_models": "python3 scripts/validate_model.py --solver <5efbd02-binary> --solver-arg=--quiet --solver-arg=--check-model --expect-sat --require-dolmen-pass --dolmen dolmen --dolmen-size 8G --dolmen-arg=--strict=false --timeout 90 --dolmen-timeout 30 --manifest <successful-SAT-manifest> --out <models>; 128 independent coverage records"
       },
       "artifacts": {
         "primo_remote": "primo-evaluation-20261005/results/refresh-timing/QF_LIA/primo/shard-*/{answers.csv,provenance.json,model-validation/coverage.json}",

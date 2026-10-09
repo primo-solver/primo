@@ -1,0 +1,8 @@
+# Representative OpenSMT 2.9.2 input-processing resource failures.
+# Relative to the complete SMT-LIB QF_LIA division, 60-second solver cutoff.
+# Each probe prints "At line ...: memory exhausted", exits 0, and gives no answer.
+# These remain errors in the performance corpus, not solved cases or timeouts.
+20210219-Dartagnan/ConcurrencySafety-Main/03_incdec-O0.smt2
+20210219-Dartagnan/ConcurrencySafety-Main/04_incdec_cas-O0.smt2
+20210219-Dartagnan/ConcurrencySafety-Main/25_stack-O0.smt2
+20210219-Dartagnan/ConcurrencySafety-Main/26_stack_cas-O0.smt2
