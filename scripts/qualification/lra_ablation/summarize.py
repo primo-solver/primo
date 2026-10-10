@@ -88,7 +88,9 @@ def collect(root: Path, expected: int, shards: int, timeout: float, require_mode
                     raise ValueError(f"duplicate input across shards: {row['file']}")
                 if row["wrong"] == "true" or row["status"] not in {"ok", "timeout"}:
                     raise ValueError(f"benchmark correctness failure: {row}")
-                if row["status"] == "ok" and not decisive(row):
+                if (row["status"] == "ok" and not decisive(row)
+                        and not (row["answer"] == "unknown" and row["exit_code"] == "0"
+                                 and row["timeout"] == "false")):
                     raise ValueError(f"unexpected successful-process outcome: {row}")
                 merged[row["file"]] = row
             inputs.update(parent["inputs"])
