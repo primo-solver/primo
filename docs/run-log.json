@@ -3,6 +3,58 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-10-10-migration-lra-option-ablation",
+      "date": "2026-10-10",
+      "kind": "four-profile-ablation",
+      "evidence_status": "prepared-not-run",
+      "branch": "docs/public-repository-migration",
+      "native_source_equivalent_to": "df42f03646590d541130ff7821ca726bb114b037",
+      "scope": "Reverify default, model-phase, monotone-elimination and both on the migration implementation before considering QF_LRA-only promotion. No solver/default changes in this campaign.",
+      "profiles": {
+        "default": [
+          "--quiet"
+        ],
+        "phase": [
+          "--quiet",
+          "--lra-model-phase"
+        ],
+        "monotone": [
+          "--quiet",
+          "--monotone-elimination"
+        ],
+        "both": [
+          "--quiet",
+          "--lra-model-phase",
+          "--monotone-elimination"
+        ]
+      },
+      "datasets": {
+        "full30": {
+          "inputs": 1753,
+          "timeout_seconds": 30
+        },
+        "selection1200": {
+          "inputs": 519,
+          "timeout_seconds": 1200,
+          "manifest": "benchmarks/qf-lra-smtcomp2026-selection.txt",
+          "manifest_sha256": "0ae74669e5ee69c8894cee44e415ce644047be41942ec23d1de8eef4afecb18c"
+        }
+      },
+      "execution": {
+        "environment": "SLURM compute; Xeon E5-2690 v4; one physical CPU and 7 GiB per timing/model task",
+        "artifacts": "results/lra-migration-ablation-20261010",
+        "driver": "scripts/qualification/lra_ablation/run.sbatch",
+        "source_sync": "slurm_prepare_benchmark_workspace.py --build-via-slurm from a clean tracked snapshot"
+      },
+      "correctness": {
+        "status": "pending",
+        "gate": "3000 FuzzSMT plus 1000 Boolean/arithmetic cases per profile, tracked regression seeds, real-seed mutations and independent retained-mutant replay",
+        "fuzz_model_logic": "QF_NRA semantic superset only for constant-denominator syntax; candidate assertions unchanged",
+        "post_timing_models": "Every successful SAT row in all four profiles; separate direct Dolmen replay; original input logic; model times excluded from speed metrics"
+      },
+      "promotion": "Blocked until full timing, reference/paired answer joins, fresh gates, all selected SAT-model coverage and repeated-loss triage complete."
+    },
+    {
       "id": "2026-10-06-gmp-download-fallback",
       "date": "2026-10-06",
       "kind": "dependency-bootstrap-reliability",
