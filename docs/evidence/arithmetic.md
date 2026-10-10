@@ -59,6 +59,29 @@ still missing. They belong in the [evidence work list](../work/evidence.md),
 with the missing commit/manifest/command/artifact identities stated explicitly.
 Matching a corpus size or option pair is insufficient to infer a run identity.
 
+## Migration-branch option ablation
+
+The October 10 recheck compares the migration implementation with both options
+still off by default. Four profiles use the same binary: default, model phase,
+monotone elimination, and both. The earlier October promotion on `main` measured
+a different implementation and does not qualify this branch.
+
+The {ablationsource}`driver <scripts/qualification/lra_ablation/run.py>` and
+{ablationsource}`SLURM wrapper <scripts/qualification/lra_ablation/run.sbatch>`
+record binary and input identities, exact arguments, CPU and allocation metadata. Generated answer/model
+gates and tracked regression seeds precede timings. The timing sets are all
+1,753 QF_LRA inputs at 30 seconds and the 519-input competition selection at
+1,200 seconds. Each profile's successful SAT rows receive a separate direct
+Dolmen replay; model checking does not contribute to runtime or PAR2.
+Generated FuzzSMT model checks explicitly use the QF_NRA semantic superset for
+constant-denominator syntax; real-corpus validation retains the original logic.
+
+Run `2026-10-10-migration-lra-option-ablation` in the ledger records progress
+and acceptance. Its solver sources are equivalent to `df42f03`. Until complete timing,
+answer-comparison, mutation and model coverage are collected, this is pending
+qualification and supplies no new default-promotion claim. The live ledger
+remains in use until the separate results-storage migration is implemented.
+
 Rejected prototypes and unimplemented H4/H6/H11 directions remain discoverable
 through the [research register](../leads/index.md). Keeping their negative
 results prevents a later proposal from mistaking an already rejected design

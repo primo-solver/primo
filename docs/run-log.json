@@ -6,7 +6,7 @@
       "id": "2026-10-10-migration-lra-option-ablation",
       "date": "2026-10-10",
       "kind": "four-profile-ablation",
-      "evidence_status": "prepared-not-run",
+      "evidence_status": "correctness-gates-running",
       "branch": "docs/public-repository-migration",
       "native_source_equivalent_to": "df42f03646590d541130ff7821ca726bb114b037",
       "scope": "Reverify default, model-phase, monotone-elimination and both on the migration implementation before considering QF_LRA-only promotion. No solver/default changes in this campaign.",
@@ -52,7 +52,27 @@
         "fuzz_model_logic": "QF_NRA semantic superset only for constant-denominator syntax; candidate assertions unchanged",
         "post_timing_models": "Every successful SAT row in all four profiles; separate direct Dolmen replay; original input logic; model times excluded from speed metrics"
       },
-      "promotion": "Blocked until full timing, reference/paired answer joins, fresh gates, all selected SAT-model coverage and repeated-loss triage complete."
+      "promotion": "Blocked until full timing, reference/paired answer joins, fresh gates, all selected SAT-model coverage and repeated-loss triage complete.",
+      "solver_revision": "4200525",
+      "binary_sha256": "4ff4f6c58c7ee93f75898639df8e49a6dcbd53d40a6d8565d12ef08ab5e1a90b",
+      "jobs": {
+        "build": "186384",
+        "precheck": "186452",
+        "timing_canary": "186448",
+        "empty_sat_model_canary": "186500",
+        "generated_gates": "186504",
+        "seed_mutation": "186521",
+        "sat_timing_canary": "186558",
+        "sat_model_canary": "186562"
+      },
+      "verification": {
+        "lint": "passed",
+        "docs": "make docs and make docs-full passed; clean assembled link audit: 261 pages, 32079 local links, 1041 unique Git links, zero failures",
+        "independent_doc_review": "ablation_doc_review accepted the new arithmetic-evidence section and pinned workflow links",
+        "precheck": "44/44 C++ tests and both tracked QF_LRA seed groups under all four profiles passed",
+        "collector": "Real timeout/zero-SAT canary accepted; seven adversarial provenance/coverage fixtures correctly rejected"
+      },
+      "timing_status": "Not started; waiting for fresh correctness gates and mutation replay."
     },
     {
       "id": "2026-10-06-gmp-download-fallback",
