@@ -160,7 +160,11 @@ The accepted source `f0fbe67` and preserved binary are reused; no solver
 algorithm changes are involved. Timings and separate direct Dolmen validation
 will be recorded in `benchmarks/qf-lra-default-references-20261010-selection1200.json`.
 `slurm_lra_default_reference_comparison.sbatch` interleaves the five solver
-arms by shard and rejects mismatched CPU generations.
+arms by shard, requires the explicit selection manifest and its hash/count,
+and rejects mismatched CPU generations. The initial jobs `184279`/`184328`
+were cancelled after the archived generic wrapper omitted the manifest and
+started on the full corpus. Those partial artifacts are retained and excluded;
+the corrected driver calls the immutable-parent harness directly.
 
 ```{figure} _static/qf-lra-reverification-20261009-full30.svg
 :alt: Six solver configurations on the full QF_LRA corpus at a 30-second timeout

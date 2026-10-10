@@ -3,7 +3,7 @@
   "date": "2026-10-10",
   "commit": "f0fbe67",
   "kind": "default-profile-reference-comparison",
-  "evidence_status": "running-timings-model-validation-dependent",
+  "evidence_status": "corrected-driver-preflight-pending",
   "scope": "One new-default Primo curve with OpenSMT, Yices, Z3 and cvc5 on the official 519-instance QF_LRA selection at1200s; fresh matching compute CPUs for all five arms; no solver changes.",
   "environment": {
     "type": "slurm",
@@ -15,10 +15,10 @@
     "memory_gib_per_timing_task": 7,
     "model_workers": 16,
     "memory_gib_per_model_task": 6,
-    "timing_job": 184279,
-    "model_job": 184328,
+    "timing_job": null,
+    "model_job": null,
     "timing_array": "0-319%48; task=shard*5+solver_index",
-    "model_array": "0,5,...,315%16; afterok:184279"
+    "model_array": "0,5,...,315%16; afterok:corrected_timing_job"
   },
   "benchmark": {
     "manifest": "benchmarks/qf-lra-smtcomp2026-selection.txt",
@@ -69,9 +69,9 @@
   },
   "artifacts": {
     "root": "results/lra-default-references-20261010",
-    "campaign": "selection1200-compute",
+    "campaign": "selection1200-compute-attempt2",
     "workflow": "scripts/slurm_lra_default_reference_comparison.sbatch",
-    "workflow_sha256": "e9fb1a789551feda74e0a791629afc7798b8fd16da1513290c8874a472d39c80",
+    "workflow_sha256": "454e3f14b330ea3a6bbd2b5d5f1883a6baa10797dd3fd2630143ec1de34f2a80",
     "summary": "benchmarks/qf-lra-default-references-20261010-selection1200.json",
     "plot": "docs/_static/qf-lra-default-references-20261010-selection1200.svg",
     "driver_checks": "results/lra-default-references-20261010/driver-check.json",
@@ -80,7 +80,18 @@
   "verification": {
     "batch_validator": "pass",
     "bash_n": "pass",
-    "mock_dispatch_checks": 28
+    "mock_dispatch_checks": 33,
+    "checks": "Actual harness argv including manifest, independent native/references, frozen binary overrides, replay filters, CPU/hash/count/duplicate guards."
   },
-  "outcome": "Submitted; timing data incomplete and separate native SAT-model validation dependent. No qualified new plot yet."
+  "outcome": "Corrected manifest-mandatory driver verified locally; five-solver one-input cluster canary precedes relaunch. Cancelled full-corpus partial timings retained and excluded.",
+  "cancelled_attempts": [
+    {
+      "timing_job": 184279,
+      "model_job": 184328,
+      "status": "cancelled",
+      "reason": "Archived f0fbe67 generic SLURM wrapper lacked PRIMO_MANIFEST forwarding and selected the full1753 corpus. Detected from live row counts before completion; both jobs cancelled. No rows contribute to requested519-instance plot.",
+      "artifact_root": "results/lra-default-references-20261010/selection1200-compute",
+      "submission": "results/lra-default-references-20261010/submission-aborted.json"
+    }
+  ]
 }

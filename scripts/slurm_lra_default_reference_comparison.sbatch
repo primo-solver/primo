@@ -56,6 +56,7 @@ export PRIMO_MODEL_TIMEOUT=${PRIMO_MODEL_TIMEOUT:-3600}
 export PRIMO_DOLMEN_TIMEOUT=${PRIMO_DOLMEN_TIMEOUT:-120}
 python3 - <<'ENVIRONMENT'
 import json
+import hashlib
 import os
 import pathlib
 import subprocess
@@ -81,6 +82,33 @@ data = {
     'nomultithread': True,
     'phase': os.environ['PRIMO_PHASE'],
 }
+if os.environ['PRIMO_PHASE'] == 'benchmark':
+    manifest = pathlib.Path(os.environ['PRIMO_MANIFEST'])
+    checksum = hashlib.sha256(manifest.read_bytes()).hexdigest()
+    names = [line.split('#', 1)[0].strip() for line in manifest.read_text().splitlines()]
+    names = [name for name in names if name]
+    if checksum != os.environ['PRIMO_MANIFEST_SHA256'] or len(names) != 519 or len(set(names)) != 519:
+        raise SystemExit('selection manifest hash/count mismatch')
+    data['manifest_sha256'] = checksum
+    data['selected_instances'] = len(names)
 (out / ('execution-' + os.environ['PRIMO_PHASE'] + '.json')).write_text(json.dumps(data, indent=2) + '\n')
 ENVIRONMENT
-exec bash scripts/slurm_real_corpus_validation.sbatch
+command=(python3 scripts/benchmark_model_replay.py "$PRIMO_PHASE"
+         --out "$PRIMO_CAMPAIGN_OUT/shard-$shard")
+case "$PRIMO_PHASE" in
+  benchmark)
+    command+=(--root "${PRIMO_CORPUS_ROOT:?}" --solver "$PRIMO_SOLVER"
+              --run-id "${PRIMO_CAMPAIGN_ID:?}-$name" --shards "$shards"
+              --shard-index "$shard" --timeout "${PRIMO_TIMEOUT:?}"
+              --manifest "${PRIMO_MANIFEST:?selection manifest required}")
+    if (( profile == 0 )); then
+      command+=(--expected-git "$PRIMO_EXPECTED_GIT" --solver-arg=--quiet)
+    fi
+    ;;
+  replay)
+    command+=(--model-timeout "$PRIMO_MODEL_TIMEOUT" --dolmen-timeout "$PRIMO_DOLMEN_TIMEOUT"
+              --dolmen-size "$PRIMO_DOLMEN_SIZE" --dolmen-arg=--strict=false
+              --attempt "${PRIMO_REPLAY_ATTEMPT:-model-validation}")
+    ;;
+esac
+exec "${command[@]}"
