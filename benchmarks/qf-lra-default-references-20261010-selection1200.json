@@ -3,7 +3,7 @@
   "date": "2026-10-10",
   "commit": "f0fbe67",
   "kind": "default-profile-reference-comparison",
-  "evidence_status": "corrected-driver-preflight-pending",
+  "evidence_status": "corrected-driver-and-five-solver-canary-qualified",
   "scope": "One new-default Primo curve with OpenSMT, Yices, Z3 and cvc5 on the official 519-instance QF_LRA selection at1200s; fresh matching compute CPUs for all five arms; no solver changes.",
   "environment": {
     "type": "slurm",
@@ -75,15 +75,30 @@
     "summary": "benchmarks/qf-lra-default-references-20261010-selection1200.json",
     "plot": "docs/_static/qf-lra-default-references-20261010-selection1200.svg",
     "driver_checks": "results/lra-default-references-20261010/driver-check.json",
-    "submission": "results/lra-default-references-20261010/submission.json"
+    "submission": "results/lra-default-references-20261010/submission.json",
+    "collector": "scripts/summarize_lra_reference_comparison.py",
+    "collector_sha256": "fa039d734092eb97c0ec3aadcb3f191b53a0bd273d04d919a46e50bd8125e401",
+    "collector_checks": "results/lra-default-references-20261010/collector-check.json"
   },
   "verification": {
     "batch_validator": "pass",
     "bash_n": "pass",
     "mock_dispatch_checks": 33,
-    "checks": "Actual harness argv including manifest, independent native/references, frozen binary overrides, replay filters, CPU/hash/count/duplicate guards."
+    "checks": "Actual harness argv including manifest, independent native/references, frozen binary overrides, replay filters, CPU/hash/count/duplicate guards.",
+    "canary": {
+      "job": 184343,
+      "status": "complete",
+      "solvers": 5,
+      "rows_per_solver": 1,
+      "shards": 519,
+      "selected_shard": 36,
+      "file": "2019-ezsmt/blending/15.smt2",
+      "outcome": "All five exactly one input and successful SAT; full519 manifest/hash forwarded then correctly sharded.",
+      "artifact": "results/lra-default-references-20261010/canary-selection-manifest"
+    },
+    "collector_adversarial_checks": 11
   },
-  "outcome": "Corrected manifest-mandatory driver verified locally; five-solver one-input cluster canary precedes relaunch. Cancelled full-corpus partial timings retained and excluded.",
+  "outcome": "Five-solver canary passed exact selection and answers. Corrected64-shard timing/model comparison ready for resubmission; cancelled full-corpus partial timings remain excluded.",
   "cancelled_attempts": [
     {
       "timing_job": 184279,
@@ -93,5 +108,23 @@
       "artifact_root": "results/lra-default-references-20261010/selection1200-compute",
       "submission": "results/lra-default-references-20261010/submission-aborted.json"
     }
-  ]
+  ],
+  "reproduction": {
+    "summary_command": [
+      "python3",
+      "scripts/summarize_lra_reference_comparison.py",
+      "results/lra-default-references-20261010/selection1200-compute-attempt2",
+      "--expected",
+      "519",
+      "--shards",
+      "64",
+      "--timeout",
+      "1200",
+      "--out",
+      "results/lra-default-references-20261010/comparison-summary.json",
+      "--plot-data",
+      "results/lra-default-references-20261010/plot-data"
+    ],
+    "notes": "For live progress add --allow-incomplete. The cluster stages the collector as an ignored workflow artifact and supplies PYTHONPATH=scripts; archived f0fbe67 solver/tools remain unchanged."
+  }
 }

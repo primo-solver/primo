@@ -165,6 +165,11 @@ and rejects mismatched CPU generations. The initial jobs `184279`/`184328`
 were cancelled after the archived generic wrapper omitted the manifest and
 started on the full corpus. Those partial artifacts are retained and excluded;
 the corrected driver calls the immutable-parent harness directly.
+The five-solver cluster canary (`184343`) selected exactly one intended input
+for each solver, and all five returned SAT successfully. The summary driver
+`summarize_lra_reference_comparison.py` audits matching timing identities,
+input hashes, resource limits and CPUs, checks every pair of decisive answers,
+and requires complete direct Dolmen coverage for Primo before qualification.
 
 ```{figure} _static/qf-lra-reverification-20261009-full30.svg
 :alt: Six solver configurations on the full QF_LRA corpus at a 30-second timeout
