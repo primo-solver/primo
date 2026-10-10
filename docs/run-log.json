@@ -7,7 +7,7 @@
       "date": "2026-10-10",
       "commit": "f0fbe67",
       "kind": "default-profile-reference-comparison",
-      "evidence_status": "timing-complete-native-model-validation-running",
+      "evidence_status": "current",
       "scope": "One new-default Primo curve with OpenSMT, Yices, Z3 and cvc5 on the official 519-instance QF_LRA selection at1200s; fresh matching compute CPUs for all five arms; no solver changes.",
       "environment": {
         "type": "slurm",
@@ -22,7 +22,8 @@
         "timing_job": 184352,
         "model_job": 185269,
         "timing_array": "0-319%48; task=shard*5+solver_index",
-        "model_array": "0,5,...,315%16; submitted after timing184352 and model canary185268 completed"
+        "model_array": "0,5,...,315%16; submitted after timing184352 and model canary185268 completed",
+        "job_accounting": "results/lra-default-references-20261010/job-accounting.txt"
       },
       "benchmark": {
         "manifest": "benchmarks/qf-lra-smtcomp2026-selection.txt",
@@ -86,7 +87,16 @@
         "timing_workflow_sha256": "454e3f14b330ea3a6bbd2b5d5f1883a6baa10797dd3fd2630143ec1de34f2a80",
         "replay_workflow": "results/lra-default-references-20261010/workflow-dolmen-path.sbatch",
         "replay_submission": "results/lra-default-references-20261010/submission-model-retry.json",
-        "failed_model_startup": "results/lra-default-references-20261010/failed-model-startup.json"
+        "failed_model_startup": "results/lra-default-references-20261010/failed-model-startup.json",
+        "raw_summary_archive": "results/lra-default-references-20261010/completed-summary-artifacts.tar.gz",
+        "raw_summary_archive_sha256": "a536e2a2daea2ed264151ae8ced2ffb1ef4db21f379cc1c8e95c29e16d3e237d",
+        "collection_hashes": "results/lra-default-references-20261010/collection-sha256.json",
+        "strict_model_audit": "results/lra-default-references-20261010/complete-model-coverage-check.json",
+        "plot_sha256": "1c894be0658ae02a29d6616533f2b28cf42e8ac791c7e8e6b384e03bd14df4ec",
+        "verification_logs": [
+          "results/lra-default-references-20261010/final-lint.log",
+          "results/lra-default-references-20261010/final-docs.log"
+        ]
       },
       "verification": {
         "batch_validator": "pass",
@@ -115,9 +125,17 @@
           "dolmen_exit": 0,
           "attempt": "model-validation-dolmen-path"
         },
-        "mock_checks_note": "Replay argv also requires an explicit Dolmen executable path; real model canary tests its override."
+        "mock_checks_note": "Replay argv also requires an explicit Dolmen executable path; real model canary tests its override.",
+        "final": {
+          "make_lint": "pass",
+          "make_docs": "pass",
+          "archive_file_hashes_verified": 3279,
+          "strict_sat_coverage_audit": "280 direct Dolmen passes across64 shards; exact selected SAT sets, all zero solver/validator exits and unchanged parent/model hashes",
+          "rendered_svg": "pass; five curves, one highlighted Primo default, no legend or caption clipping",
+          "solver_source_relation": "git diff f0fbe67 HEAD -- src CMakeLists.txt tests/unit tests/cmake/check_lra_heuristic_cli.cmake benchmarks/smoke/qf_lra/default_heuristics.smt2 is empty; prior source qualification reused without new C++ changes"
+        }
       },
-      "outcome": "All five519-input timing arms complete with matching hashes/CPUs and zero wrong answers, errors or answer disagreements. New default499,OpenSMT497,Yices489,Z3 476,cvc5 471 solved. All280 successful native SAT models pending in separate corrected attempt185269 after explicit-Dolmen canary185268; initial184401 had64 tool-path startup failures and zero model rows. No qualified new plot yet.",
+      "outcome": "All five arms complete with identical 519 input hashes and matching E5 CPUs/resources; zero wrong answers, errors and pairwise decisive-answer disagreements. All 280 successful native SAT rows pass separate direct Dolmen validation. One new-default Primo curve plus OpenSMT, Yices, Z3 and cvc5; initial cancelled full-corpus attempt excluded.",
       "cancelled_attempts": [
         {
           "timing_job": 184279,
@@ -151,7 +169,48 @@
           "remote_command": "sbatch --parsable --chdir=/home/janotmik/primo-lra-default-candidate-20261009 --partition=compute --hint=nomultithread --time=04:00:00 --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-lra-default-candidate-20261009,PRIMO_CORPUS_ROOT=/home/janotmik/primo-cadical-profile/tmp/QF_LRA,PRIMO_MANIFEST=benchmarks/qf-lra-smtcomp2026-selection.txt,PRIMO_CAMPAIGN_ID=lra-default-references-20261010-selection1200-compute,PRIMO_CAMPAIGN_OUT=results/lra-default-references-20261010/selection1200-compute-attempt2,PRIMO_SOLVER_DEFAULT=results/lra-default-candidate-20261009/bin/primo-f0fbe67,PRIMO_REFERENCE_BIN_DIR=results/lra-default-references-20261010/bin,PRIMO_EXPECTED_GIT=f0fbe67,PRIMO_SHARDS=64,PRIMO_TIMEOUT=1200,PRIMO_MODEL_TIMEOUT=3600,PRIMO_DOLMEN_TIMEOUT=120,PRIMO_DOLMEN_SIZE=5G,PRIMO_MANIFEST_SHA256=0ae74669e5ee69c8894cee44e415ce644047be41942ec23d1de8eef4afecb18c,PRIMO_PHASE=replay,PRIMO_DOLMEN=/home/janotmik/primo-lra-default-candidate-20261009/contrib/local/bin/dolmen,PRIMO_REPLAY_ATTEMPT=model-validation-dolmen-path --array=0,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100,105,110,115,120,125,130,135,140,145,150,155,160,165,170,175,180,185,190,195,200,205,210,215,220,225,230,235,240,245,250,255,260,265,270,275,280,285,290,295,300,305,310,315%16 --mem=6G --job-name=primo-lra-default-model-retry results/lra-default-references-20261010/workflow-dolmen-path.sbatch",
           "attempt": "model-validation-dolmen-path",
           "canary": false
-        }
+        },
+        "plot_command": [
+          "python3",
+          "scripts/plot_cactus.py",
+          "--timeout",
+          "1200",
+          "--out",
+          "docs/_static/qf-lra-default-references-20261010-selection1200.svg",
+          "--title",
+          "QF_LRA: SMT-COMP 2026 selection, default and references",
+          "--sort-by-solved",
+          "--highlight-series",
+          "Primo (new default)",
+          "--series",
+          "Primo (new default)=results/lra-default-references-20261010/plot-data/primo",
+          "--series",
+          "OpenSMT 2.9.2=results/lra-default-references-20261010/plot-data/opensmt",
+          "--series",
+          "Yices 2.7.0=results/lra-default-references-20261010/plot-data/yices",
+          "--series",
+          "Z3 5.1.0=results/lra-default-references-20261010/plot-data/z3",
+          "--series",
+          "cvc5 1.3.4=results/lra-default-references-20261010/plot-data/cvc5",
+          "--note",
+          "Primo f0fbe67; Xeon E5-2690 v4 compute CPUs; 7 GiB/task; up to 48 physical CPU workers.",
+          "--note",
+          "All 280 successful Primo SAT rows pass separate direct Dolmen replay; validation excluded from timings.",
+          "--note",
+          "Original 519 selected inputs. Times below 0.01s are drawn at the 0.01s boundary."
+        ],
+        "submission_commands": [
+          {
+            "phase": "benchmark",
+            "remote_command": "sbatch --parsable --chdir=/home/janotmik/primo-lra-default-candidate-20261009 --partition=compute --hint=nomultithread --time=04:00:00 --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-lra-default-candidate-20261009,PRIMO_CORPUS_ROOT=/home/janotmik/primo-cadical-profile/tmp/QF_LRA,PRIMO_MANIFEST=benchmarks/qf-lra-smtcomp2026-selection.txt,PRIMO_CAMPAIGN_ID=lra-default-references-20261010-selection1200-compute,PRIMO_CAMPAIGN_OUT=results/lra-default-references-20261010/selection1200-compute-attempt2,PRIMO_SOLVER_DEFAULT=results/lra-default-candidate-20261009/bin/primo-f0fbe67,PRIMO_REFERENCE_BIN_DIR=results/lra-default-references-20261010/bin,PRIMO_EXPECTED_GIT=f0fbe67,PRIMO_SHARDS=64,PRIMO_TIMEOUT=1200,PRIMO_MODEL_TIMEOUT=3600,PRIMO_DOLMEN_TIMEOUT=120,PRIMO_DOLMEN_SIZE=5G,PRIMO_MANIFEST_SHA256=0ae74669e5ee69c8894cee44e415ce644047be41942ec23d1de8eef4afecb18c,PRIMO_PHASE=benchmark --array=0-319%48 --mem=7G --job-name=primo-lra-default-refs results/lra-default-references-20261010/workflow.sbatch",
+            "job": 184352
+          },
+          {
+            "phase": "replay",
+            "remote_command": "sbatch --parsable --chdir=/home/janotmik/primo-lra-default-candidate-20261009 --partition=compute --hint=nomultithread --time=04:00:00 --export=ALL,PRIMO_WORKDIR=/home/janotmik/primo-lra-default-candidate-20261009,PRIMO_CORPUS_ROOT=/home/janotmik/primo-cadical-profile/tmp/QF_LRA,PRIMO_MANIFEST=benchmarks/qf-lra-smtcomp2026-selection.txt,PRIMO_CAMPAIGN_ID=lra-default-references-20261010-selection1200-compute,PRIMO_CAMPAIGN_OUT=results/lra-default-references-20261010/selection1200-compute-attempt2,PRIMO_SOLVER_DEFAULT=results/lra-default-candidate-20261009/bin/primo-f0fbe67,PRIMO_REFERENCE_BIN_DIR=results/lra-default-references-20261010/bin,PRIMO_EXPECTED_GIT=f0fbe67,PRIMO_SHARDS=64,PRIMO_TIMEOUT=1200,PRIMO_MODEL_TIMEOUT=3600,PRIMO_DOLMEN_TIMEOUT=120,PRIMO_DOLMEN_SIZE=5G,PRIMO_MANIFEST_SHA256=0ae74669e5ee69c8894cee44e415ce644047be41942ec23d1de8eef4afecb18c,PRIMO_PHASE=replay --array=0,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100,105,110,115,120,125,130,135,140,145,150,155,160,165,170,175,180,185,190,195,200,205,210,215,220,225,230,235,240,245,250,255,260,265,270,275,280,285,290,295,300,305,310,315%16 --mem=6G --job-name=primo-lra-default-ref-models --dependency=afterok:184352 results/lra-default-references-20261010/workflow.sbatch",
+            "job": 184401
+          }
+        ]
       },
       "model_attempt": "model-validation-dolmen-path; model-validation is a collection alias to this separate attempt",
       "model_startup_failures": [
@@ -168,7 +227,7 @@
         "shards_per_solver": 64,
         "timeout_seconds": 1200.0,
         "timing_complete": true,
-        "fully_qualified": false,
+        "fully_qualified": true,
         "identity_issues": [],
         "profiles": {
           "primo": {
@@ -182,7 +241,7 @@
             },
             "unknown": 0,
             "wrong": 0,
-            "par2": 63324.003153000005,
+            "par2": 63324.003153,
             "expected": 519,
             "complete_shards": 64,
             "coverage_issues": [],
@@ -200,7 +259,9 @@
                 "unknown": 0,
                 "wrong": 0,
                 "par2": 12445.993988,
-                "models": {}
+                "models": {
+                  "pass": 1
+                }
               },
               "2019-ezsmt": {
                 "rows": 37,
@@ -213,8 +274,10 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 2928.535789000001,
-                "models": {}
+                "par2": 2928.535789,
+                "models": {
+                  "pass": 30
+                }
               },
               "DTP-Scheduling": {
                 "rows": 34,
@@ -227,7 +290,9 @@
                 "unknown": 0,
                 "wrong": 0,
                 "par2": 2.298912,
-                "models": {}
+                "models": {
+                  "pass": 34
+                }
               },
               "LassoRanker": {
                 "rows": 191,
@@ -241,7 +306,9 @@
                 "unknown": 0,
                 "wrong": 0,
                 "par2": 21849.524447,
-                "models": {}
+                "models": {
+                  "pass": 121
+                }
               },
               "TM": {
                 "rows": 11,
@@ -254,7 +321,9 @@
                 "unknown": 0,
                 "wrong": 0,
                 "par2": 11.289298,
-                "models": {}
+                "models": {
+                  "pass": 11
+                }
               },
               "clock_synchro": {
                 "rows": 11,
@@ -266,7 +335,7 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 58.81102200000001,
+                "par2": 58.811022,
                 "models": {}
               },
               "keymaera": {
@@ -294,7 +363,9 @@
                 "unknown": 0,
                 "wrong": 0,
                 "par2": 4828.878511,
-                "models": {}
+                "models": {
+                  "pass": 3
+                }
               },
               "miplib": {
                 "rows": 13,
@@ -307,8 +378,10 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 10247.766838000001,
-                "models": {}
+                "par2": 10247.766838,
+                "models": {
+                  "pass": 7
+                }
               },
               "sal": {
                 "rows": 42,
@@ -320,8 +393,10 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 3.529489999999999,
-                "models": {}
+                "par2": 3.52949,
+                "models": {
+                  "pass": 3
+                }
               },
               "sc": {
                 "rows": 62,
@@ -333,8 +408,10 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 163.07706699999994,
-                "models": {}
+                "par2": 163.077067,
+                "models": {
+                  "pass": 43
+                }
               },
               "spider_benchmarks": {
                 "rows": 9,
@@ -361,7 +438,9 @@
                 "unknown": 0,
                 "wrong": 0,
                 "par2": 10510.083647,
-                "models": {}
+                "models": {
+                  "pass": 1
+                }
               },
               "tta_startup": {
                 "rows": 31,
@@ -374,7 +453,9 @@
                 "unknown": 0,
                 "wrong": 0,
                 "par2": 44.057691,
-                "models": {}
+                "models": {
+                  "pass": 9
+                }
               },
               "uart": {
                 "rows": 37,
@@ -386,18 +467,24 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 229.72118000000003,
-                "models": {}
+                "par2": 229.72118,
+                "models": {
+                  "pass": 17
+                }
               }
             },
             "models": {
               "expected_sat": 280,
-              "completed": 0,
-              "missing": 280,
-              "outcomes": {},
-              "shard_states": {},
+              "completed": 280,
+              "missing": 0,
+              "outcomes": {
+                "pass": 280
+              },
+              "shard_states": {
+                "complete": 64
+              },
               "coverage_issues": [],
-              "fully_validated": false
+              "fully_validated": true
             },
             "exception_rows": []
           },
@@ -412,7 +499,7 @@
             },
             "unknown": 0,
             "wrong": 0,
-            "par2": 69871.69311200004,
+            "par2": 69871.693112,
             "expected": 519,
             "complete_shards": 64,
             "coverage_issues": [],
@@ -443,7 +530,7 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 6847.742598999999,
+                "par2": 6847.742599,
                 "models": {}
               },
               "DTP-Scheduling": {
@@ -470,7 +557,7 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 28345.17414500001,
+                "par2": 28345.174145,
                 "models": {}
               },
               "TM": {
@@ -483,7 +570,7 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 3.6348209999999996,
+                "par2": 3.634821,
                 "models": {}
               },
               "clock_synchro": {
@@ -523,7 +610,7 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 7200.607427999999,
+                "par2": 7200.607428,
                 "models": {}
               },
               "miplib": {
@@ -550,7 +637,7 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 1.7990900000000003,
+                "par2": 1.79909,
                 "models": {}
               },
               "sc": {
@@ -563,7 +650,7 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 64.31731800000001,
+                "par2": 64.317318,
                 "models": {}
               },
               "spider_benchmarks": {
@@ -616,7 +703,7 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 139.13637500000002,
+                "par2": 139.136375,
                 "models": {}
               }
             },
@@ -642,7 +729,7 @@
             },
             "unknown": 0,
             "wrong": 0,
-            "par2": 91148.69397899997,
+            "par2": 91148.693979,
             "expected": 519,
             "complete_shards": 64,
             "coverage_issues": [],
@@ -673,7 +760,7 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 7377.822616999997,
+                "par2": 7377.822617,
                 "models": {}
               },
               "DTP-Scheduling": {
@@ -686,7 +773,7 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 0.3787870000000001,
+                "par2": 0.378787,
                 "models": {}
               },
               "LassoRanker": {
@@ -700,7 +787,7 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 38203.005389000005,
+                "par2": 38203.005389,
                 "models": {}
               },
               "TM": {
@@ -713,7 +800,7 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 1.9470740000000002,
+                "par2": 1.947074,
                 "models": {}
               },
               "clock_synchro": {
@@ -726,7 +813,7 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 186.60454699999997,
+                "par2": 186.604547,
                 "models": {}
               },
               "keymaera": {
@@ -739,7 +826,7 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 0.013977999999999999,
+                "par2": 0.013978,
                 "models": {}
               },
               "latendresse": {
@@ -767,7 +854,7 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 9001.430859999999,
+                "par2": 9001.43086,
                 "models": {}
               },
               "sal": {
@@ -780,7 +867,7 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 0.5534020000000002,
+                "par2": 0.5534020000000001,
                 "models": {}
               },
               "sc": {
@@ -793,7 +880,7 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 188.41011999999998,
+                "par2": 188.41012,
                 "models": {}
               },
               "spider_benchmarks": {
@@ -806,7 +893,7 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 0.053471000000000005,
+                "par2": 0.053471,
                 "models": {}
               },
               "tropical-matrix": {
@@ -872,7 +959,7 @@
             },
             "unknown": 0,
             "wrong": 0,
-            "par2": 133299.51946299995,
+            "par2": 133299.519463,
             "expected": 519,
             "complete_shards": 64,
             "coverage_issues": [],
@@ -903,7 +990,7 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 5374.283284000001,
+                "par2": 5374.283284,
                 "models": {}
               },
               "DTP-Scheduling": {
@@ -916,7 +1003,7 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 5.297567000000003,
+                "par2": 5.297567,
                 "models": {}
               },
               "LassoRanker": {
@@ -930,7 +1017,7 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 66280.31164600005,
+                "par2": 66280.311646,
                 "models": {}
               },
               "TM": {
@@ -943,7 +1030,7 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 12.606352000000001,
+                "par2": 12.606352,
                 "models": {}
               },
               "clock_synchro": {
@@ -956,7 +1043,7 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 314.8661390000001,
+                "par2": 314.866139,
                 "models": {}
               },
               "keymaera": {
@@ -983,7 +1070,7 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 7201.102070999999,
+                "par2": 7201.102071,
                 "models": {}
               },
               "miplib": {
@@ -997,7 +1084,7 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 10867.524359,
+                "par2": 10867.524359000001,
                 "models": {}
               },
               "sal": {
@@ -1010,7 +1097,7 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 1.7720710000000004,
+                "par2": 1.772071,
                 "models": {}
               },
               "sc": {
@@ -1036,7 +1123,7 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 0.25513099999999994,
+                "par2": 0.255131,
                 "models": {}
               },
               "tropical-matrix": {
@@ -1062,7 +1149,7 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 164.15754800000002,
+                "par2": 164.157548,
                 "models": {}
               },
               "uart": {
@@ -1075,7 +1162,7 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 678.4728210000001,
+                "par2": 678.472821,
                 "models": {}
               }
             },
@@ -1101,7 +1188,7 @@
             },
             "unknown": 0,
             "wrong": 0,
-            "par2": 168491.13929799994,
+            "par2": 168491.139298,
             "expected": 519,
             "complete_shards": 64,
             "coverage_issues": [],
@@ -1118,7 +1205,7 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 17854.890918999998,
+                "par2": 17854.890919,
                 "models": {}
               },
               "2019-ezsmt": {
@@ -1132,7 +1219,7 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 5896.291002999998,
+                "par2": 5896.291003,
                 "models": {}
               },
               "DTP-Scheduling": {
@@ -1145,7 +1232,7 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 33.70754499999999,
+                "par2": 33.707544999999996,
                 "models": {}
               },
               "LassoRanker": {
@@ -1159,7 +1246,7 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 106914.51129799991,
+                "par2": 106914.511298,
                 "models": {}
               },
               "TM": {
@@ -1172,7 +1259,7 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 21.803370000000005,
+                "par2": 21.80337,
                 "models": {}
               },
               "clock_synchro": {
@@ -1185,7 +1272,7 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 396.69205999999997,
+                "par2": 396.69206,
                 "models": {}
               },
               "keymaera": {
@@ -1198,7 +1285,7 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 0.038026,
+                "par2": 0.038026000000000004,
                 "models": {}
               },
               "latendresse": {
@@ -1226,7 +1313,7 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 14567.620456999997,
+                "par2": 14567.620457,
                 "models": {}
               },
               "sal": {
@@ -1239,7 +1326,7 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 6.649980000000001,
+                "par2": 6.64998,
                 "models": {}
               },
               "sc": {
@@ -1252,7 +1339,7 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 1377.1650029999998,
+                "par2": 1377.165003,
                 "models": {}
               },
               "spider_benchmarks": {
@@ -1265,7 +1352,7 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 0.6028689999999999,
+                "par2": 0.602869,
                 "models": {}
               },
               "tropical-matrix": {
@@ -1291,7 +1378,7 @@
                 },
                 "unknown": 0,
                 "wrong": 0,
-                "par2": 203.79031399999994,
+                "par2": 203.790314,
                 "models": {}
               },
               "uart": {
@@ -1416,6 +1503,15 @@
             "args": []
           }
         }
+      },
+      "recorded_at": "2026-10-10T10:53:49.892558+00:00",
+      "started_at": "2026-10-10T09:51:50+02:00",
+      "new_default_startup_counts": {
+        "0.01": 4,
+        "0.1": 114,
+        "1": 225,
+        "10": 356,
+        "1200": 499
       }
     },
     {

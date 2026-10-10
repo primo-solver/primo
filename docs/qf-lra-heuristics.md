@@ -151,36 +151,60 @@ native SAT rows pass independent direct Dolmen replay. The summary is
 `benchmarks/qf-lra-reverification-20261009-selection1200.json`.
 ```
 
-An additional five-solver plot is being prepared for the same 519-instance
-selection and 1,200-second limit. It includes only Primo's new automatic
-default alongside OpenSMT, Yices, Z3 and cvc5. The existing selected-corpus
-comparison lacks fresh Z3/cvc5 timings on matching hardware, so all five
-configurations will be measured separately on Xeon E5-2690 v4 compute nodes.
-The accepted source `f0fbe67` and preserved binary are reused; no solver
-algorithm changes are involved. Timings and separate direct Dolmen validation
-will be recorded in `benchmarks/qf-lra-default-references-20261010-selection1200.json`.
-`slurm_lra_default_reference_comparison.sbatch` interleaves the five solver
-arms by shard, requires the explicit selection manifest and its hash/count,
-and rejects mismatched CPU generations. The initial jobs `184279`/`184328`
-were cancelled after the archived generic wrapper omitted the manifest and
-started on the full corpus. Those partial artifacts are retained and excluded;
-the corrected driver calls the immutable-parent harness directly.
-The five-solver cluster canary (`184343`) selected exactly one intended input
-for each solver, and all five returned SAT successfully. The summary driver
-`summarize_lra_reference_comparison.py` audits matching timing identities,
-input hashes, resource limits and CPUs, checks every pair of decisive answers,
-and requires complete direct Dolmen coverage for Primo before qualification.
-Shards with no successful SAT rows need no model CSV; a missing CSV for a
-nonempty SAT selection or a recorded artifact hash is rejected.
-All five timing arms are now complete: Primo 499, OpenSMT 497, Yices 489,
-Z3 476 and cvc5 471 solves, with zero wrong answers, errors or decisive-answer
-disagreements. Model qualification remains pending for all 280 native SAT rows.
-The original model job (`184401`) had 64 startup failures because Dolmen was
-installed outside the batch PATH. No models were checked. The wrapper now
-passes the explicit tool path; the direct model canary (`185268`) passed before
-the corrected 64-shard replay (`185269`) was submitted. Empty failed attempts
-and execution records are retained; `model-validation` is a collection alias
-to the separate `model-validation-dolmen-path` attempt.
+The additional five-solver comparison is complete on the same 519-instance
+selection with a 1,200-second limit. It contains one Primo curve using the
+new automatic default, plus OpenSMT, Yices, Z3 and cvc5. All five arms use
+Xeon E5-2690 v4 compute CPUs, 7 GiB per task and at most 48 physical CPU
+workers. The preserved Primo source/binary is `f0fbe67`; current source is
+unchanged. These timings form a separate comparison from the Gold results
+above and the manuscript's EPYC measurements.
+
+| Solver | Solved / 519 | Timeouts | PAR2 sum (s) |
+|---|---:|---:|---:|
+| Primo (new default) | 499 | 20 | 63,324.003 |
+| OpenSMT 2.9.2 | 497 | 22 | 69,871.693 |
+| Yices 2.7.0 | 489 | 30 | 91,148.694 |
+| Z3 5.1.0 | 476 | 43 | 133,299.519 |
+| cvc5 1.3.4 | 471 | 48 | 168,491.139 |
+
+All arms cover identical input content hashes, with no wrong answers,
+errors or disagreements among jointly decisive answers across all ten
+solver pairs. All 280 successful Primo SAT rows pass separate direct
+Dolmen 0.10 replay with unchanged parent identities and complete coverage
+of all 64 native shards. Replay uses 16 workers, 6 GiB per task, a
+3,600-second solver timeout and a 120-second / 5 GiB Dolmen limit.
+Model production and validation time do not enter the original curves or PAR2.
+
+Timing job `184352` and corrected model job `185269` use
+`slurm_lra_default_reference_comparison.sbatch`, which interleaves solver
+arms by shard and checks the explicit selection manifest, its hash/count
+and CPU generation. Initial jobs `184279`/`184328` were cancelled after
+the archived generic wrapper omitted the manifest and started on the full
+corpus. Those artifacts are retained and excluded. The corrected driver
+passed the exact-input five-solver canary (`184343`) before resubmission.
+The first model job (`184401`) had 64 startup failures because Dolmen was
+outside the batch PATH; no models were checked. The wrapper now passes
+the explicit tool path, tested by direct model canary `185268` before retry.
+Empty failed attempts and execution records remain available; collection
+uses `model-validation` as an alias to `model-validation-dolmen-path`.
+`summarize_lra_reference_comparison.py` audits input and solver identities,
+resources, every pair of decisive answers and exact native SAT-model coverage.
+A shard with no successful SAT rows needs no model CSV; missing output
+for a nonempty SAT selection or a recorded artifact hash is rejected.
+
+The committed summary, family counts, binary identities and reproduction
+commands are in `benchmarks/qf-lra-default-references-20261010-selection1200.json`.
+Raw summary artifacts are retained under
+`results/lra-default-references-20261010/completed-summary-artifacts.tar.gz`;
+full solver/model outputs remain in the recorded SLURM workspace.
+
+```{figure} _static/qf-lra-default-references-20261010-selection1200.svg
+:alt: Primo new default, OpenSMT, Yices, Z3 and cvc5 on 519 QF_LRA inputs at 1200 seconds
+
+Qualified new-default reference comparison. All 280 successful Primo
+SAT rows pass independent direct Dolmen replay. Results below 0.01 seconds
+are drawn at the left boundary; the initial jump counts these fast solves.
+```
 
 ```{figure} _static/qf-lra-reverification-20261009-full30.svg
 :alt: Six solver configurations on the full QF_LRA corpus at a 30-second timeout
