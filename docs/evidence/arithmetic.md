@@ -66,6 +66,11 @@ still off by default. Four profiles use the same binary: default, model phase,
 monotone elimination, and both. The earlier October promotion on `main` measured
 a different implementation and does not qualify this branch.
 
+The full 1,753-instance corpus is the primary target for default selection and
+regression assessment. Competition-selection results are supplementary; this
+campaign does not select a competition portfolio. On the full corpus, both
+flags together lead with 65 additional solved inputs and an 18.7% PAR2 reduction.
+
 The {ablationsource}`driver <scripts/qualification/lra_ablation/run.py>` and
 {ablationsource}`SLURM wrapper <scripts/qualification/lra_ablation/run.sbatch>`
 record binary and input identities, exact arguments, CPU and allocation metadata. Generated answer/model
@@ -120,8 +125,11 @@ full run has 28 lost solves with model phase, 9 with monotone elimination, and
 {ablationworkflow}`paired driver <scripts/qualification/lra_ablation/paired.py>` and
 {ablationworkflow}`batch wrapper <scripts/qualification/lra_ablation/paired.sbatch>`
 run three repetitions of each lost solve on a single physical CPU per pair,
-with alternating profile order and separate model replay. Model phase is
-strongest on the selection, whereas both is strongest on the full corpus.
+with alternating profile order and separate model replay. Full-corpus model
+replay waits for its three paired timing arrays, so supplementary selection
+reruns do not delay that correctness stage. Both flags together are the leading
+candidate under the full-corpus priority; their repeated losses still need
+assessment before changing defaults.
 
 Run `2026-10-10-migration-lra-option-ablation` in the ledger records the completed
 timings, model coverage and pending loss triage. Options remain off by default.

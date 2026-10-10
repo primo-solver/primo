@@ -130,7 +130,7 @@
           "sha256": "d9c1cf0cbc78f613fa2e9cd046aa32c9efd242460f34f6aa297a5e8141434bca"
         }
       },
-      "promotion": "Aggregate performance gains confirmed; options remain off by default pending repeated-loss triage. Model phase wins the competition selection; both wins the full30 corpus.",
+      "promotion": "Both flags together are the primary candidate: full30 +65 solves and 18.7% lower PAR2. Options remain off by default pending assessment of repeated full-corpus losses. Competition-selection ranking is supplementary.",
       "solver_revision": "4200525",
       "binary_sha256": "4ff4f6c58c7ee93f75898639df8e49a6dcbd53d40a6d8565d12ef08ab5e1a90b",
       "jobs": {
@@ -160,7 +160,8 @@
         "independent_doc_review": "ablation_doc_review verified completed-result table, PAR2 percentages, model counts, reference joins, loss counts and pinned paired-method links; stale pipeline wording corrected.",
         "precheck": "44/44 C++ tests and both tracked QF_LRA seed groups under all four profiles passed",
         "collector": "Real timeout/zero-SAT canary accepted; seven adversarial provenance/coverage fixtures correctly rejected",
-        "plots": "Both SVGs rendered with ImageMagick and visually inspected; concise provenance captions fit."
+        "plots": "Both SVGs rendered with ImageMagick and visually inspected; concise provenance captions fit.",
+        "priority_review": "Independent ablation_doc_review accepted full-corpus priority and model dependency changes with no findings."
       },
       "timing_status": "All original timing, model, audit and plot jobs COMPLETED 0:0. Paired loss-repetition timings and separate models queued.",
       "results": {
@@ -307,7 +308,7 @@
       },
       "loss_repetitions": {
         "repeats": 3,
-        "method": "Each original lost solve, default versus that profile on one physical compute CPU, 7 GiB. Alternate arm order. Original exact options and timeout. Same binary/input hashes. All paired timings precede separate direct Dolmen model replay.",
+        "method": "Each original lost solve, default versus that profile on one physical compute CPU, 7 GiB. Alternate arm order. Original exact options and timeout. Same binary/input hashes. Full-corpus model stages wait only for all three full-corpus timing arrays; supplementary selection reruns do not delay them.",
         "jobs": {
           "status": "queued",
           "timing_jobs": {
@@ -336,12 +337,55 @@
           "full30-monotone.json": "9c37b4617ebd04357984aaf5568fa4efa5b6fffcc73f1a6b1ca8eb930a7da40a",
           "full30-phase.json": "16ba623875c914fe70b87fb10bcf51c0a966a7ef6a5659e73880a20442a401dc",
           "selection1200-phase.json": "e798e5ca9ab3af2dc6f9db7a6e91b608f60bc0c15b82d01ba470d3e1aec4c891"
+        },
+        "dependency_updates": [
+          {
+            "job": "187893",
+            "dependency": "afterok:187863:187872:187881",
+            "command": [
+              "scontrol",
+              "update",
+              "JobId=187893",
+              "Dependency=afterok:187863:187872:187881"
+            ]
+          },
+          {
+            "job": "187894",
+            "dependency": "afterok:187863:187872:187881",
+            "command": [
+              "scontrol",
+              "update",
+              "JobId=187894",
+              "Dependency=afterok:187863:187872:187881"
+            ]
+          },
+          {
+            "job": "187895",
+            "dependency": "afterok:187863:187872:187881",
+            "command": [
+              "scontrol",
+              "update",
+              "JobId=187895",
+              "Dependency=afterok:187863:187872:187881"
+            ]
+          }
+        ],
+        "preliminary_observation": "At least eight of the first nine complete both-profile cases lost in all three paired full30 reruns. This is partial timing evidence, pending full aggregation and separate model coverage; regressions cannot all be dismissed as cutoff noise.",
+        "preliminary_artifact": {
+          "path": "results/lra-migration-ablation-20261010/full-loss-completed-snapshot.tar.gz",
+          "sha256": "2d6504a02ae5ab04b3e43e7601cb64a9c1465db2fc437e6a6d907b48011d5a39",
+          "scope": "Snapshot of completed full-corpus paired cases; incomplete campaign, not final qualification"
         }
       },
       "plots": [
         "docs/_static/qf-lra-migration-ablation-full30.svg",
         "docs/_static/qf-lra-migration-ablation-selection1200.svg"
-      ]
+      ],
+      "evaluation_priority": {
+        "primary": "Full 1753-input corpus; solved count, PAR2, family effects and repeated regressions determine option/default readiness.",
+        "supplementary": "519-input competition selection. Competition portfolio targeting is outside this task.",
+        "user_direction": "Prioritize the full corpus; competition selection does not select the default."
+      }
     },
     {
       "id": "2026-10-06-gmp-download-fallback",
