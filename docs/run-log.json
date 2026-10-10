@@ -6,7 +6,7 @@
       "id": "2026-10-10-migration-lra-option-ablation",
       "date": "2026-10-10",
       "kind": "four-profile-ablation",
-      "evidence_status": "timings-running-model-stages-queued",
+      "evidence_status": "timings-and-models-qualified-loss-repetitions-running",
       "branch": "docs/public-repository-migration",
       "native_source_equivalent_to": "df42f03646590d541130ff7821ca726bb114b037",
       "scope": "Reverify default, model-phase, monotone-elimination and both on the migration implementation before considering QF_LRA-only promotion. No solver/default changes in this campaign.",
@@ -48,7 +48,7 @@
         "queued_commands": "results/lra-migration-ablation-20261010/pipeline-jobs.json"
       },
       "correctness": {
-        "status": "Fresh generated and retained-mutation answer gates qualified; real-corpus post-timing SAT models pending",
+        "status": "Fresh gates and complete original-corpus SAT-model coverage qualified; selected reference answers agree",
         "gate": "3000 FuzzSMT plus 1000 Boolean/arithmetic cases per profile, tracked regression seeds, real-seed mutations and independent retained-mutant replay",
         "fuzz_model_logic": "QF_NRA semantic superset only for constant-denominator syntax; candidate assertions unchanged",
         "post_timing_models": "Every successful SAT row in all four profiles; separate direct Dolmen replay; original input logic; model times excluded from speed metrics",
@@ -114,9 +114,23 @@
         },
         "generated_answer_timeouts": 77,
         "triage_artifact": "results/lra-migration-ablation-20261010/mutation-triage-and-replay-clean.tar.gz",
-        "triage_artifact_sha256": "6c24fe38effdbccc0730b5faa8f058d29999d53ac996b1d6e612546c28397654"
+        "triage_artifact_sha256": "6c24fe38effdbccc0730b5faa8f058d29999d53ac996b1d6e612546c28397654",
+        "post_timing_sat_rows_passed": 4779,
+        "selection_reference_join": {
+          "inputs": 519,
+          "reference_profiles": [
+            "opensmt",
+            "yices",
+            "z3",
+            "cvc5"
+          ],
+          "exact_input_hashes_matched": true,
+          "all_28_pairs_disagreements": 0,
+          "artifact": "results/lra-migration-ablation-20261010/reference-join.json",
+          "sha256": "d9c1cf0cbc78f613fa2e9cd046aa32c9efd242460f34f6aa297a5e8141434bca"
+        }
       },
-      "promotion": "Blocked until full timing, reference/paired answer joins, fresh gates, all selected SAT-model coverage and repeated-loss triage complete.",
+      "promotion": "Aggregate performance gains confirmed; options remain off by default pending repeated-loss triage. Model phase wins the competition selection; both wins the full30 corpus.",
       "solver_revision": "4200525",
       "binary_sha256": "4ff4f6c58c7ee93f75898639df8e49a6dcbd53d40a6d8565d12ef08ab5e1a90b",
       "jobs": {
@@ -142,12 +156,192 @@
       },
       "verification": {
         "lint": "passed",
-        "docs": "make docs and make docs-full passed; assembled link audit: 261 pages, 32079 local links, 1043 unique Git links, zero failures",
-        "independent_doc_review": "ablation_doc_review accepted gate counts, mutation exclusions, dependencies and pinned source-navigation correction",
+        "docs": "make docs and make docs-full passed; assembled links: 261 pages, 32081 local links, 1045 Git links, 0 failures",
+        "independent_doc_review": "ablation_doc_review verified completed-result table, PAR2 percentages, model counts, reference joins, loss counts and pinned paired-method links; stale pipeline wording corrected.",
         "precheck": "44/44 C++ tests and both tracked QF_LRA seed groups under all four profiles passed",
-        "collector": "Real timeout/zero-SAT canary accepted; seven adversarial provenance/coverage fixtures correctly rejected"
+        "collector": "Real timeout/zero-SAT canary accepted; seven adversarial provenance/coverage fixtures correctly rejected",
+        "plots": "Both SVGs rendered with ImageMagick and visually inspected; concise provenance captions fit."
       },
-      "timing_status": "Full30 running as 186811. Selection1200 depends on complete full30 audit. Separate SAT-model arrays depend on completion and audit of both timing datasets. Cactus plots queued as 186910 after both complete model audits."
+      "timing_status": "All original timing, model, audit and plot jobs COMPLETED 0:0. Paired loss-repetition timings and separate models queued.",
+      "results": {
+        "full30": {
+          "profiles": {
+            "both": {
+              "direct_dolmen_models": 939,
+              "errors": 0,
+              "inputs": 1753,
+              "par2_sum": 17288.82519499999,
+              "sat": 939,
+              "solved": 1531,
+              "timeouts": 222,
+              "unknown": 0,
+              "wrong": 0
+            },
+            "default": {
+              "direct_dolmen_models": 893,
+              "errors": 0,
+              "inputs": 1753,
+              "par2_sum": 21265.297326999953,
+              "sat": 893,
+              "solved": 1466,
+              "timeouts": 287,
+              "unknown": 0,
+              "wrong": 0
+            },
+            "monotone": {
+              "direct_dolmen_models": 904,
+              "errors": 0,
+              "inputs": 1753,
+              "par2_sum": 20169.971929000032,
+              "sat": 904,
+              "solved": 1487,
+              "timeouts": 266,
+              "unknown": 0,
+              "wrong": 0
+            },
+            "phase": {
+              "direct_dolmen_models": 930,
+              "errors": 0,
+              "inputs": 1753,
+              "par2_sum": 18357.774028000003,
+              "sat": 930,
+              "solved": 1511,
+              "timeouts": 242,
+              "unknown": 0,
+              "wrong": 0
+            }
+          },
+          "comparisons": {
+            "both": {
+              "gains": 88,
+              "losses": 23,
+              "median_common_runtime_ratio": 1.0053956834532376,
+              "par2_ratio": 0.8130065114607569
+            },
+            "monotone": {
+              "gains": 30,
+              "losses": 9,
+              "median_common_runtime_ratio": 1.00872767905574,
+              "par2_ratio": 0.948492354414005
+            },
+            "phase": {
+              "gains": 73,
+              "losses": 28,
+              "median_common_runtime_ratio": 1.0018540151685462,
+              "par2_ratio": 0.8632737998302827
+            }
+          },
+          "decisive_disagreements": 0,
+          "audit_sha256": "9c3c8c96478319c5a399e3c9617c2978f074034e6cd635a92d0762d32c8504fc"
+        },
+        "selection1200": {
+          "profiles": {
+            "both": {
+              "direct_dolmen_models": 280,
+              "errors": 0,
+              "inputs": 519,
+              "par2_sum": 63960.828525999976,
+              "sat": 280,
+              "solved": 499,
+              "timeouts": 20,
+              "unknown": 0,
+              "wrong": 0
+            },
+            "default": {
+              "direct_dolmen_models": 275,
+              "errors": 0,
+              "inputs": 519,
+              "par2_sum": 89428.70360000005,
+              "sat": 275,
+              "solved": 489,
+              "timeouts": 30,
+              "unknown": 0,
+              "wrong": 0
+            },
+            "monotone": {
+              "direct_dolmen_models": 278,
+              "errors": 0,
+              "inputs": 519,
+              "par2_sum": 72377.88194299999,
+              "sat": 278,
+              "solved": 496,
+              "timeouts": 23,
+              "unknown": 0,
+              "wrong": 0
+            },
+            "phase": {
+              "direct_dolmen_models": 280,
+              "errors": 0,
+              "inputs": 519,
+              "par2_sum": 63200.61547500004,
+              "sat": 280,
+              "solved": 501,
+              "timeouts": 18,
+              "unknown": 0,
+              "wrong": 0
+            }
+          },
+          "comparisons": {
+            "both": {
+              "gains": 11,
+              "losses": 1,
+              "median_common_runtime_ratio": 0.9313209544767223,
+              "par2_ratio": 0.715215875342287
+            },
+            "monotone": {
+              "gains": 8,
+              "losses": 1,
+              "median_common_runtime_ratio": 1.001704940234534,
+              "par2_ratio": 0.8093361418581488
+            },
+            "phase": {
+              "gains": 13,
+              "losses": 1,
+              "median_common_runtime_ratio": 0.9576328046506677,
+              "par2_ratio": 0.7067151029907137
+            }
+          },
+          "decisive_disagreements": 0,
+          "audit_sha256": "256b6494fe2b98870f0b055df022c5dc25f18cd0522d39489ac67bd7ce253a5c"
+        }
+      },
+      "loss_repetitions": {
+        "repeats": 3,
+        "method": "Each original lost solve, default versus that profile on one physical compute CPU, 7 GiB. Alternate arm order. Original exact options and timeout. Same binary/input hashes. All paired timings precede separate direct Dolmen model replay.",
+        "jobs": {
+          "status": "queued",
+          "timing_jobs": {
+            "full30-both": "187863",
+            "full30-monotone": "187872",
+            "full30-phase": "187881",
+            "selection1200-both": "187890",
+            "selection1200-monotone": "187891",
+            "selection1200-phase": "187892"
+          },
+          "model_jobs": {
+            "full30-both": "187893",
+            "full30-monotone": "187894",
+            "full30-phase": "187895",
+            "selection1200-both": "187896",
+            "selection1200-monotone": "187897",
+            "selection1200-phase": "187898"
+          }
+        },
+        "plans": "results/lra-migration-ablation-20261010/loss-plans",
+        "artifacts": "results/lra-migration-ablation-20261010/loss-repeats",
+        "plan_sha256": {
+          "selection1200-monotone.json": "ca96936bf22d44f9f6bab4aa2a18ae57e3bf59b9370c4247a16f9013a26acdd4",
+          "selection1200-both.json": "a2c8482b03187b2877acebd9d92822c598a8e0855bb87a931c9078f5a2a224a6",
+          "full30-both.json": "6b258a26c8347e54c26c60e89715cf51665f0f28b84332912b49ab8c48428f82",
+          "full30-monotone.json": "9c37b4617ebd04357984aaf5568fa4efa5b6fffcc73f1a6b1ca8eb930a7da40a",
+          "full30-phase.json": "16ba623875c914fe70b87fb10bcf51c0a966a7ef6a5659e73880a20442a401dc",
+          "selection1200-phase.json": "e798e5ca9ab3af2dc6f9db7a6e91b608f60bc0c15b82d01ba470d3e1aec4c891"
+        }
+      },
+      "plots": [
+        "docs/_static/qf-lra-migration-ablation-full30.svg",
+        "docs/_static/qf-lra-migration-ablation-selection1200.svg"
+      ]
     },
     {
       "id": "2026-10-06-gmp-download-fallback",

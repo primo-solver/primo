@@ -84,19 +84,49 @@ arithmetic. These inputs are recorded by hash and excluded from pass counts;
 timeout-only rows are also counted separately. The original failed replay jobs
 and their diagnostics remain in the artifact trail.
 
-The {ablationworkflow}`queued timing pipeline <scripts/qualification/lra_ablation/queue_followups.py>`
-audits all four full-corpus profiles before starting
-the competition selection. Both timing sets finish before model replay starts.
+The {ablationworkflow}`timing pipeline <scripts/qualification/lra_ablation/queue_followups.py>`
+audited all four full-corpus profiles before starting
+the competition selection. Both timing sets finished before model replay started.
 Failed dependencies stop later stages, and a hard answer failure detected by the
 {ablationworkflow}`guarded wrapper <scripts/qualification/lra_ablation/guarded.sbatch>` cancels its
-timing array. Completion of these jobs still requires comparison with reference
-answers and triage of any repeated performance losses before promotion.
+timing array. Timing, model and selection-reference audits have completed;
+triage of repeated performance losses remains necessary before promotion.
 
-Run `2026-10-10-migration-lra-option-ablation` in the ledger records progress
-and acceptance. Its solver sources are equivalent to `df42f03`. Until complete timing,
-answer-comparison, mutation and model coverage are collected, this is pending
-qualification and supplies no new default-promotion claim. The live ledger
-remains in use until the separate results-storage migration is implemented.
+Both timing arrays and all separate SAT-model audits completed successfully on
+the frozen `4200525` binary. The solver sources are equivalent to `df42f03`.
+The measured results are:
+
+| Profile | Full corpus solved, 30 s | Selection solved, 1,200 s | Full PAR2 reduction | Selection PAR2 reduction |
+| --- | ---: | ---: | ---: | ---: |
+| Default | 1,466 / 1,753 | 489 / 519 | — | — |
+| Model phase | 1,511 / 1,753 | 501 / 519 | 13.7% | 29.3% |
+| Monotone elimination | 1,487 / 1,753 | 496 / 519 | 5.2% | 19.1% |
+| Both | 1,531 / 1,753 | 499 / 519 | 18.7% | 28.5% |
+
+PAR2 reductions compare each profile with default at the same timeout. All
+4,779 successful SAT rows across the two datasets passed direct Dolmen model
+validation, with no answer disagreements among profiles. The selection also
+matches the input hashes of the stored compute-node reference runs: OpenSMT
+497 solved, Yices 489, Z3 476, and cvc5 471. All 28 pairwise joins among the
+four native and four reference profiles have zero decisive disagreements.
+
+![Full QF_LRA corpus ablation at 30 seconds](../_static/qf-lra-migration-ablation-full30.svg)
+
+![Competition selection ablation at 1,200 seconds](../_static/qf-lra-migration-ablation-selection1200.svg)
+
+The aggregate gains do not settle default promotion. Relative to default, the
+full run has 28 lost solves with model phase, 9 with monotone elimination, and
+23 with both; each profile loses one solve on the selection. The
+{ablationworkflow}`paired driver <scripts/qualification/lra_ablation/paired.py>` and
+{ablationworkflow}`batch wrapper <scripts/qualification/lra_ablation/paired.sbatch>`
+run three repetitions of each lost solve on a single physical CPU per pair,
+with alternating profile order and separate model replay. Model phase is
+strongest on the selection, whereas both is strongest on the full corpus.
+
+Run `2026-10-10-migration-lra-option-ablation` in the ledger records the completed
+timings, model coverage and pending loss triage. Options remain off by default.
+The live ledger remains in use until the separate results-storage migration
+is implemented.
 
 Rejected prototypes and unimplemented H4/H6/H11 directions remain discoverable
 through the [research register](../leads/index.md). Keeping their negative
