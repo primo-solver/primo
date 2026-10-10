@@ -7,7 +7,7 @@
       "date": "2026-10-10",
       "commit": "f0fbe67",
       "kind": "default-profile-reference-comparison",
-      "evidence_status": "prepared-not-yet-submitted",
+      "evidence_status": "running-timings-model-validation-dependent",
       "scope": "One new-default Primo curve with OpenSMT, Yices, Z3 and cvc5 on the official 519-instance QF_LRA selection at1200s; fresh matching compute CPUs for all five arms; no solver changes.",
       "environment": {
         "type": "slurm",
@@ -19,10 +19,10 @@
         "memory_gib_per_timing_task": 7,
         "model_workers": 16,
         "memory_gib_per_model_task": 6,
-        "timing_job": null,
-        "model_job": null,
+        "timing_job": 184279,
+        "model_job": 184328,
         "timing_array": "0-319%48; task=shard*5+solver_index",
-        "model_array": "0,5,...,315%16; afterok:timing_job"
+        "model_array": "0,5,...,315%16; afterok:184279"
       },
       "benchmark": {
         "manifest": "benchmarks/qf-lra-smtcomp2026-selection.txt",
@@ -78,14 +78,15 @@
         "workflow_sha256": "e9fb1a789551feda74e0a791629afc7798b8fd16da1513290c8874a472d39c80",
         "summary": "benchmarks/qf-lra-default-references-20261010-selection1200.json",
         "plot": "docs/_static/qf-lra-default-references-20261010-selection1200.svg",
-        "driver_checks": "results/lra-default-references-20261010/driver-check.json"
+        "driver_checks": "results/lra-default-references-20261010/driver-check.json",
+        "submission": "results/lra-default-references-20261010/submission.json"
       },
       "verification": {
         "batch_validator": "pass",
         "bash_n": "pass",
         "mock_dispatch_checks": 28
       },
-      "outcome": "Prepared; no new timing/model claims yet."
+      "outcome": "Submitted; timing data incomplete and separate native SAT-model validation dependent. No qualified new plot yet."
     },
     {
       "id": "2026-10-09-lra-automatic-default-committed-qualification",
