@@ -170,6 +170,8 @@ for each solver, and all five returned SAT successfully. The summary driver
 `summarize_lra_reference_comparison.py` audits matching timing identities,
 input hashes, resource limits and CPUs, checks every pair of decisive answers,
 and requires complete direct Dolmen coverage for Primo before qualification.
+Shards with no successful SAT rows need no model CSV; a missing CSV for a
+nonempty SAT selection or a recorded artifact hash is rejected.
 
 ```{figure} _static/qf-lra-reverification-20261009-full30.svg
 :alt: Six solver configurations on the full QF_LRA corpus at a 30-second timeout

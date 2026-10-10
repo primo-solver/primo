@@ -77,7 +77,7 @@
     "driver_checks": "results/lra-default-references-20261010/driver-check.json",
     "submission": "results/lra-default-references-20261010/submission-attempt2.json",
     "collector": "scripts/summarize_lra_reference_comparison.py",
-    "collector_sha256": "fa039d734092eb97c0ec3aadcb3f191b53a0bd273d04d919a46e50bd8125e401",
+    "collector_sha256": "7051becb549ad2c067e29e4a5d713360f4c254d337273892caa6b0f72c3e3b08",
     "collector_checks": "results/lra-default-references-20261010/collector-check.json"
   },
   "verification": {
@@ -96,7 +96,8 @@
       "outcome": "All five exactly one input and successful SAT; full519 manifest/hash forwarded then correctly sharded.",
       "artifact": "results/lra-default-references-20261010/canary-selection-manifest"
     },
-    "collector_adversarial_checks": 11
+    "collector_adversarial_checks": 14,
+    "empty_sat_coverage": "Valid zero-SAT shard accepted without a model CSV; fabricated artifact hash and missing required SAT output rejected."
   },
   "outcome": "Corrected64-shard five-solver selection run submitted after exact-input canary; model validation waits for all timing arms. No qualified new plot yet.",
   "cancelled_attempts": [

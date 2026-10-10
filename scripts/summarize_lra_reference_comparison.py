@@ -42,12 +42,18 @@ def audit_models(shard: Path, metadata: dict, rows: list[dict]) -> None:
     ):
         if digest(shard / filename) != coverage["provenance"][key]:
             raise ValueError(f"changed model parent: {shard}/{filename}")
-    summary = directory / "models" / "summary.csv"
-    if digest(summary) != coverage["artifacts"]["models/summary.csv"]:
-        raise ValueError(f"changed model summary: {summary}")
     selected = {row["file"] for row in rows if decisive(row) and row["answer"] == "sat"}
-    with summary.open() as stream:
-        models = list(csv.DictReader(stream))
+    summary = directory / "models" / "summary.csv"
+    if summary.exists():
+        if digest(summary) != coverage["artifacts"]["models/summary.csv"]:
+            raise ValueError(f"changed model summary: {summary}")
+        with summary.open() as stream:
+            models = list(csv.DictReader(stream))
+    elif selected or coverage["artifacts"]["models/summary.csv"] is not None:
+        raise ValueError(f"missing model summary: {summary}")
+    else:
+        # The replay harness skips the validator when this shard has no SAT rows.
+        models = []
     names = [str(Path(row["file"]).relative_to(metadata["root"])) for row in models]
     if (
         len(models) != len(selected)
