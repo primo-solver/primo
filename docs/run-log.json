@@ -6,7 +6,7 @@
       "id": "2026-10-10-migration-lra-option-ablation",
       "date": "2026-10-10",
       "kind": "four-profile-ablation",
-      "evidence_status": "correctness-gates-running",
+      "evidence_status": "correctness-gates-qualified-timing-pending",
       "branch": "docs/public-repository-migration",
       "native_source_equivalent_to": "df42f03646590d541130ff7821ca726bb114b037",
       "scope": "Reverify default, model-phase, monotone-elimination and both on the migration implementation before considering QF_LRA-only promotion. No solver/default changes in this campaign.",
@@ -47,10 +47,65 @@
         "source_sync": "slurm_prepare_benchmark_workspace.py --build-via-slurm from a clean tracked snapshot"
       },
       "correctness": {
-        "status": "pending",
+        "status": "Fresh generated and retained-mutation answer gates qualified; real-corpus post-timing SAT models pending",
         "gate": "3000 FuzzSMT plus 1000 Boolean/arithmetic cases per profile, tracked regression seeds, real-seed mutations and independent retained-mutant replay",
         "fuzz_model_logic": "QF_NRA semantic superset only for constant-denominator syntax; candidate assertions unchanged",
-        "post_timing_models": "Every successful SAT row in all four profiles; separate direct Dolmen replay; original input logic; model times excluded from speed metrics"
+        "post_timing_models": "Every successful SAT row in all four profiles; separate direct Dolmen replay; original input logic; model times excluded from speed metrics",
+        "generated_counts": {
+          "both": {
+            "boolean_arithmetic": 1000,
+            "boolean_sat_models": 1000,
+            "generated": 3000,
+            "generated_sat_models": 2608,
+            "generated_timeouts": 17,
+            "invalid_mutations_excluded": 399,
+            "mutant_pass": 3495,
+            "mutant_replays": 3922,
+            "mutant_timeouts": 28
+          },
+          "default": {
+            "boolean_arithmetic": 1000,
+            "boolean_sat_models": 1000,
+            "generated": 3000,
+            "generated_sat_models": 2604,
+            "generated_timeouts": 21,
+            "invalid_mutations_excluded": 399,
+            "mutant_pass": 3490,
+            "mutant_replays": 3922,
+            "mutant_timeouts": 33
+          },
+          "monotone": {
+            "boolean_arithmetic": 1000,
+            "boolean_sat_models": 1000,
+            "generated": 3000,
+            "generated_sat_models": 2604,
+            "generated_timeouts": 21,
+            "invalid_mutations_excluded": 399,
+            "mutant_pass": 3490,
+            "mutant_replays": 3922,
+            "mutant_timeouts": 33
+          },
+          "phase": {
+            "boolean_arithmetic": 1000,
+            "boolean_sat_models": 1000,
+            "generated": 3000,
+            "generated_sat_models": 2607,
+            "generated_timeouts": 18,
+            "invalid_mutations_excluded": 399,
+            "mutant_pass": 3495,
+            "mutant_replays": 3922,
+            "mutant_timeouts": 28
+          }
+        },
+        "generated_sat_models_passed": 14423,
+        "mutation_triage": {
+          "inputs": 3922,
+          "excluded_invalid": 399,
+          "unbound_identifiers": 314,
+          "outside_QF_LRA": 85,
+          "diagnostics": "Every exclusion bound to input SHA256 and original-logic Dolmen exit 4 plus Z3 exit 1. No trailing answer from a failed process accepted. Raw replay jobs failed on these rejected inputs and timeout-only rows; retained unchanged.",
+          "artifact": "results/lra-migration-ablation-20261010/gate-audit.json"
+        }
       },
       "promotion": "Blocked until full timing, reference/paired answer joins, fresh gates, all selected SAT-model coverage and repeated-loss triage complete.",
       "solver_revision": "4200525",
@@ -63,7 +118,9 @@
         "generated_gates": "186504",
         "seed_mutation": "186521",
         "sat_timing_canary": "186558",
-        "sat_model_canary": "186562"
+        "sat_model_canary": "186562",
+        "retained_mutant_replay": "186689",
+        "mutant_triage": "186807"
       },
       "verification": {
         "lint": "passed",
@@ -72,7 +129,7 @@
         "precheck": "44/44 C++ tests and both tracked QF_LRA seed groups under all four profiles passed",
         "collector": "Real timeout/zero-SAT canary accepted; seven adversarial provenance/coverage fixtures correctly rejected"
       },
-      "timing_status": "Not started; waiting for fresh correctness gates and mutation replay."
+      "timing_status": "Ready after fresh correctness audit; full30 submission next."
     },
     {
       "id": "2026-10-06-gmp-download-fallback",
