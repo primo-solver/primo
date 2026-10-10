@@ -76,6 +76,22 @@ Dolmen replay; model checking does not contribute to runtime or PAR2.
 Generated FuzzSMT model checks explicitly use the QF_NRA semantic superset for
 constant-denominator syntax; real-corpus validation retains the original logic.
 
+The fresh gates cover 4,000 generated cases per profile and 14,423 direct SAT
+model checks across the profiles. Independent replay also covers all 3,922
+retained mutations per profile. Dolmen and Z3 identify 399 of those inputs as
+invalid: 314 have unbound identifiers and 85 contain forbidden nonlinear
+arithmetic. These inputs are recorded by hash and excluded from pass counts;
+timeout-only rows are also counted separately. The original failed replay jobs
+and their diagnostics remain in the artifact trail.
+
+The {ablationworkflow}`queued timing pipeline <scripts/qualification/lra_ablation/queue_followups.py>`
+audits all four full-corpus profiles before starting
+the competition selection. Both timing sets finish before model replay starts.
+Failed dependencies stop later stages, and a hard answer failure detected by the
+{ablationworkflow}`guarded wrapper <scripts/qualification/lra_ablation/guarded.sbatch>` cancels its
+timing array. Completion of these jobs still requires comparison with reference
+answers and triage of any repeated performance losses before promotion.
+
 Run `2026-10-10-migration-lra-option-ablation` in the ledger records progress
 and acceptance. Its solver sources are equivalent to `df42f03`. Until complete timing,
 answer-comparison, mutation and model coverage are collected, this is pending

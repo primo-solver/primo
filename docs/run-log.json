@@ -6,7 +6,7 @@
       "id": "2026-10-10-migration-lra-option-ablation",
       "date": "2026-10-10",
       "kind": "four-profile-ablation",
-      "evidence_status": "correctness-gates-qualified-timing-pending",
+      "evidence_status": "timings-running-model-stages-queued",
       "branch": "docs/public-repository-migration",
       "native_source_equivalent_to": "df42f03646590d541130ff7821ca726bb114b037",
       "scope": "Reverify default, model-phase, monotone-elimination and both on the migration implementation before considering QF_LRA-only promotion. No solver/default changes in this campaign.",
@@ -44,7 +44,8 @@
         "environment": "SLURM compute; Xeon E5-2690 v4; one physical CPU and 7 GiB per timing/model task",
         "artifacts": "results/lra-migration-ablation-20261010",
         "driver": "scripts/qualification/lra_ablation/run.sbatch",
-        "source_sync": "slurm_prepare_benchmark_workspace.py --build-via-slurm from a clean tracked snapshot"
+        "source_sync": "slurm_prepare_benchmark_workspace.py --build-via-slurm from a clean tracked snapshot",
+        "queued_commands": "results/lra-migration-ablation-20261010/pipeline-jobs.json"
       },
       "correctness": {
         "status": "Fresh generated and retained-mutation answer gates qualified; real-corpus post-timing SAT models pending",
@@ -105,7 +106,15 @@
           "outside_QF_LRA": 85,
           "diagnostics": "Every exclusion bound to input SHA256 and original-logic Dolmen exit 4 plus Z3 exit 1. No trailing answer from a failed process accepted. Raw replay jobs failed on these rejected inputs and timeout-only rows; retained unchanged.",
           "artifact": "results/lra-migration-ablation-20261010/gate-audit.json"
-        }
+        },
+        "gate_audit_sha256": "c6e6088aceee653e4e75b157daa0e01ce6b133b2175340a6abd78253b5bf776f",
+        "generator_details": {
+          "generated": "FuzzSMT: 6 x 500 per profile; seeds 2026101600..2026101605; 5-second candidate and Z3 timeout. Boolean/arithmetic: 2 x 500 per profile, seeds 2026101606..2026101607; direct Dolmen.",
+          "mutations": "YinYang seeded OpFuzz and two TypeFuzz campaigns; seeds 2026101600..2026101602; 600 seconds each, 100 iterations, 5-second candidate/Z3 timeout, 34 real seeds spanning 17 families; retained replay ignores mutated :status; all four profiles."
+        },
+        "generated_answer_timeouts": 77,
+        "triage_artifact": "results/lra-migration-ablation-20261010/mutation-triage-and-replay-clean.tar.gz",
+        "triage_artifact_sha256": "6c24fe38effdbccc0730b5faa8f058d29999d53ac996b1d6e612546c28397654"
       },
       "promotion": "Blocked until full timing, reference/paired answer joins, fresh gates, all selected SAT-model coverage and repeated-loss triage complete.",
       "solver_revision": "4200525",
@@ -120,16 +129,25 @@
         "sat_timing_canary": "186558",
         "sat_model_canary": "186562",
         "retained_mutant_replay": "186689",
-        "mutant_triage": "186807"
+        "mutant_triage": "186807",
+        "full30": "186811",
+        "full30-audit": "186860",
+        "selection1200": "186861",
+        "selection1200-audit": "186862",
+        "full30-models": "186863",
+        "selection1200-models": "186864",
+        "full30-qualified": "186865",
+        "selection1200-qualified": "186866",
+        "plots": "186910"
       },
       "verification": {
         "lint": "passed",
-        "docs": "make docs and make docs-full passed; clean assembled link audit: 261 pages, 32079 local links, 1041 unique Git links, zero failures",
-        "independent_doc_review": "ablation_doc_review accepted the new arithmetic-evidence section and pinned workflow links",
+        "docs": "make docs and make docs-full passed; assembled link audit: 261 pages, 32079 local links, 1043 unique Git links, zero failures",
+        "independent_doc_review": "ablation_doc_review accepted gate counts, mutation exclusions, dependencies and pinned source-navigation correction",
         "precheck": "44/44 C++ tests and both tracked QF_LRA seed groups under all four profiles passed",
         "collector": "Real timeout/zero-SAT canary accepted; seven adversarial provenance/coverage fixtures correctly rejected"
       },
-      "timing_status": "Ready after fresh correctness audit; full30 submission next."
+      "timing_status": "Full30 running as 186811. Selection1200 depends on complete full30 audit. Separate SAT-model arrays depend on completion and audit of both timing datasets. Cactus plots queued as 186910 after both complete model audits."
     },
     {
       "id": "2026-10-06-gmp-download-fallback",

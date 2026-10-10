@@ -41,6 +41,9 @@ sphinx:
       ablationsource:
         - "https://github.com/primo-solver/primo/blob/42005258b21263500e24faf9f0865bb213663935/%s"
         - "%s"
+      ablationworkflow:
+        - "https://github.com/primo-solver/primo/blob/672e956a1ee7e28817cc223d8bc4f16587ba489a/%s"
+        - "%s"
       profilesource:
         - "https://github.com/primo-solver/primo/blob/90d29667fa8796b9db41967afb65ab202388b54e/%s"
         - "%s"

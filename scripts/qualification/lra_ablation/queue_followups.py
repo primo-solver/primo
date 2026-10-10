@@ -52,6 +52,8 @@ def main() -> int:
             env.update(PRIMO_AUDIT_NAME="qualified-audit" if require_models else "timing-audit",
                        PRIMO_REQUIRE_MODELS=str(require_models).lower())
             wrapper = "audit.sbatch"
+        elif phase == "plots":
+            wrapper = "plots.sbatch"
         else:
             env["PRIMO_PHASE"] = phase
             command.append("--array=0-255%48")
@@ -84,8 +86,9 @@ def main() -> int:
     # No model replay competes with either timing dataset for cluster resources.
     full_models = submit("full30-models", selected_audit, "full30", "replay", 1753, 30)
     selected_models = submit("selection1200-models", selected_audit, "selection1200", "replay", 519, 1200)
-    submit("full30-qualified", full_models, "full30", "audit", 1753, 30, True)
-    submit("selection1200-qualified", selected_models, "selection1200", "audit", 519, 1200, True)
+    full_qualified = submit("full30-qualified", full_models, "full30", "audit", 1753, 30, True)
+    selected_qualified = submit("selection1200-qualified", selected_models, "selection1200", "audit", 519, 1200, True)
+    submit("plots", f"{full_qualified}:{selected_qualified}", "", "plots", 0, 0)
     record["status"] = "queued"
     args.out.write_text(json.dumps(record, indent=2) + "\n")
     return 0
