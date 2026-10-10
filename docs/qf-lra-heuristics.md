@@ -151,6 +151,17 @@ native SAT rows pass independent direct Dolmen replay. The summary is
 `benchmarks/qf-lra-reverification-20261009-selection1200.json`.
 ```
 
+An additional five-solver plot is being prepared for the same 519-instance
+selection and 1,200-second limit. It includes only Primo's new automatic
+default alongside OpenSMT, Yices, Z3 and cvc5. The existing selected-corpus
+comparison lacks fresh Z3/cvc5 timings on matching hardware, so all five
+configurations will be measured separately on Xeon E5-2690 v4 compute nodes.
+The accepted source `f0fbe67` and preserved binary are reused; no solver
+algorithm changes are involved. Timings and separate direct Dolmen validation
+will be recorded in `benchmarks/qf-lra-default-references-20261010-selection1200.json`.
+`slurm_lra_default_reference_comparison.sbatch` interleaves the five solver
+arms by shard and rejects mismatched CPU generations.
+
 ```{figure} _static/qf-lra-reverification-20261009-full30.svg
 :alt: Six solver configurations on the full QF_LRA corpus at a 30-second timeout
 
