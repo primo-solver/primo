@@ -19,16 +19,17 @@ task=${SLURM_ARRAY_TASK_ID:?}
 shards=${PRIMO_SHARDS:?}
 shard=$((task / 5))
 profile=$((task % 5))
+reference_bin_dir=${PRIMO_REFERENCE_BIN_DIR:-contrib/local/bin}
 if (( task < 0 || shard >= shards )); then
   echo 'array task outside the five-solver shard range' >&2
   exit 2
 fi
 case "$profile" in
   0) name=primo; solver=${PRIMO_SOLVER_DEFAULT:-build-slurm-rel/primo}; args=--quiet ;;
-  1) name=opensmt; solver=contrib/local/bin/opensmt; args= ;;
-  2) name=yices; solver=contrib/local/bin/yices-smt2; args= ;;
-  3) name=z3; solver=contrib/local/bin/z3; args= ;;
-  4) name=cvc5; solver=contrib/local/bin/cvc5; args= ;;
+  1) name=opensmt; solver=$reference_bin_dir/opensmt; args= ;;
+  2) name=yices; solver=$reference_bin_dir/yices-smt2; args= ;;
+  3) name=z3; solver=$reference_bin_dir/z3; args= ;;
+  4) name=cvc5; solver=$reference_bin_dir/cvc5; args= ;;
 esac
 case "${PRIMO_PHASE:?}" in
   benchmark) ;;
