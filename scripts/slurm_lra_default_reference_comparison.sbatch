@@ -107,6 +107,7 @@ case "$PRIMO_PHASE" in
     ;;
   replay)
     command+=(--model-timeout "$PRIMO_MODEL_TIMEOUT" --dolmen-timeout "$PRIMO_DOLMEN_TIMEOUT"
+              --dolmen "${PRIMO_DOLMEN:-contrib/local/bin/dolmen}"
               --dolmen-size "$PRIMO_DOLMEN_SIZE" --dolmen-arg=--strict=false
               --attempt "${PRIMO_REPLAY_ATTEMPT:-model-validation}")
     ;;

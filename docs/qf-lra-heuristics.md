@@ -172,6 +172,15 @@ input hashes, resource limits and CPUs, checks every pair of decisive answers,
 and requires complete direct Dolmen coverage for Primo before qualification.
 Shards with no successful SAT rows need no model CSV; a missing CSV for a
 nonempty SAT selection or a recorded artifact hash is rejected.
+All five timing arms are now complete: Primo 499, OpenSMT 497, Yices 489,
+Z3 476 and cvc5 471 solves, with zero wrong answers, errors or decisive-answer
+disagreements. Model qualification remains pending for all 280 native SAT rows.
+The original model job (`184401`) had 64 startup failures because Dolmen was
+installed outside the batch PATH. No models were checked. The wrapper now
+passes the explicit tool path; the direct model canary (`185268`) passed before
+the corrected 64-shard replay (`185269`) was submitted. Empty failed attempts
+and execution records are retained; `model-validation` is a collection alias
+to the separate `model-validation-dolmen-path` attempt.
 
 ```{figure} _static/qf-lra-reverification-20261009-full30.svg
 :alt: Six solver configurations on the full QF_LRA corpus at a 30-second timeout
