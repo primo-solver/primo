@@ -2,10 +2,12 @@
 
 The [completed full-corpus ablation](arithmetic.md#migration-branch-option-ablation)
 confirmed aggregate gains, but its paired repetitions also confirmed substantial
-losses. This investigation identifies three costs behind those losses:
+losses. This investigation locates substantial costs in those slower runs:
 model phase can lead into expensive arithmetic pivoting; elimination can change
 the search enough to outweigh a smaller tableau; and additional conflicts expose
-a full-tableau scan on backtracking. Neither option was promoted or changed.
+a full-tableau scan on backtracking. These observations do not establish
+pathological simplex behavior or an implementation defect. Neither option was
+promoted or changed.
 
 ## Scope and qualification
 
@@ -117,7 +119,7 @@ needs about 270 million and phase exceeds 369 million before cancellation.
 Removing constraints preserves satisfiability, but the resulting SAT decisions,
 theory conflicts and tableau bases need not follow a cheaper trajectory.
 
-## Backtracking scans explain losses with fewer pivots
+## Backtracking is costly even in runs with fewer pivots
 
 For `aviad_true-termination.c_Iteration1_Loop_3-lexTemplate.smt2`, monotone
 elimination reduces pivot term operations from 12,049,293 to 1,771,528 and
@@ -148,11 +150,13 @@ have one arithmetic bottleneck.
 
 ## Next experiments and decision
 
-The most concrete implementation target is **incremental violation-set repair
+One concrete optimization candidate is **incremental violation-set repair
 for bounds-only backtracking**. A design and regression tests must establish
 that only restored bounds can change membership on that path, while assignment,
 basis and SOI restoration retain the necessary broader repair. That optimization
-has not been implemented or qualified here.
+has not been implemented or qualified here. Its hot-path cost does not prove
+that it causes the option regressions; a controlled implementation comparison
+would need to measure whether reducing that cost changes their outcomes.
 
 Separately, compare phase delivery policies with explicit measurements of
 freshness, arithmetic work and SAT search. The severe phase cliff requires
@@ -163,8 +167,13 @@ be evaluated on the full corpus, with fresh fuzzing and separate model checks,
 before any default decision.
 
 The current flags remain opt-in. Their confirmed aggregate gains remain valid
-for the frozen binary, and the diagnosed regressions remain part of that
-assessment. No family-specific routing or competition portfolio is proposed.
+for the frozen binary, and the repeatable regressions remain part of that
+assessment. More pivots or more pivot term work alone is not evidence of a
+pathology: changing the Boolean search, asserted bounds or tableau basis can
+change both pivot count and cost. Promotion should weigh the full-corpus gains
+against the severity and persistence of losses; these diagnostics do not
+establish a requirement to eliminate every regression first. No family-specific
+routing or competition portfolio is proposed.
 
 ## Reproduce the diagnosis
 

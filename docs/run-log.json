@@ -159,7 +159,8 @@
         "native_checks": "No native/build/test changes; qualified frozen binary retained. No new native tests, ASan, fuzz or clang-tidy run for this metadata/documentation-only investigation.",
         "documentation": "make docs; assembled local/Git link audit; independent read-only documentation review accepted R1/R2 repairs, no required findings remain. No external link sweep.",
         "review": "Assigned unit: regression note, arithmetic/implementation paragraphs, newest ledger entry. Baseline abf9d9f; workflow e3a2a6e; R1 removed unmeasured alternative-rule stalled-location claim; R2 added committed source links. Script self-review: no blocking issues found."
-      }
+      },
+      "interpretation": "Repeatable heuristic regressions and dominant costs, not established pathological simplex behavior or implementation defects. More pivoting depends on search, bounds and basis. Full-tableau backtracking repair is an optimization candidate; its causal effect on flag losses is untested. Promotion assessment must weigh full-corpus aggregate gains and tail losses, without requiring zero regressions."
     },
     {
       "id": "2026-10-10-migration-lra-option-ablation",
