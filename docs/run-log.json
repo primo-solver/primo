@@ -3,6 +3,157 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-10-11-migration-lra-regression-diagnosis",
+      "date": "2026-10-11",
+      "kind": "bounded-counters-and-stack-profiling",
+      "evidence_status": "diagnosis-complete-default-promotion-deferred",
+      "branch": "docs/public-repository-migration",
+      "native_source_git": "42005258b21263500e24faf9f0865bb213663935",
+      "binary_sha256": "4ff4f6c58c7ee93f75898639df8e49a6dcbd53d40a6d8565d12ef08ab5e1a90b",
+      "scope": "Investigate all 33 distinct lost solves from the full 1753-input ablation. No native source or default changes.",
+      "manifest": "scripts/qualification/lra_ablation/diagnostic-plan.json",
+      "profiles": {
+        "default": [
+          "--quiet"
+        ],
+        "phase": [
+          "--quiet",
+          "--lra-model-phase"
+        ],
+        "monotone": [
+          "--quiet",
+          "--monotone-elimination"
+        ],
+        "both": [
+          "--quiet",
+          "--lra-model-phase",
+          "--monotone-elimination"
+        ]
+      },
+      "execution": {
+        "environment": "SLURM compute; Xeon E5-2690 v4; one physical CPU; 7 GiB; no GPU",
+        "counter_job": "188174",
+        "profile_job": "188199",
+        "counter_tasks": 33,
+        "profile_tasks": 16,
+        "counter_seconds": 45,
+        "cancellation_grace_seconds": 8,
+        "hard_kill_after_term_seconds": 10,
+        "profile_seconds": 60,
+        "profile_interval_seconds": 0.2,
+        "profile_seed": 1,
+        "artifacts": "results/lra-migration-ablation-20261010/diagnostics-20261011",
+        "remote_artifacts": "/home/janotmik/primo-lra-migration-ablation-20261010/results/lra-migration-ablation-20261010/diagnostics-20261011",
+        "driver": "scripts/qualification/lra_ablation/diagnose.sbatch",
+        "preflights": [
+          "results/lra-migration-ablation-20261010/diagnostic-preflight-counters.log",
+          "results/lra-migration-ablation-20261010/diagnostic-preflight-profile.log",
+          "results/lra-migration-ablation-20261010/diagnostic-preflight-sensitivity.log",
+          "results/lra-migration-ablation-20261010/diagnostic-preflight-followup.log"
+        ],
+        "sensitivity_job": "188225",
+        "followup_profile_job": "188238",
+        "sensitivity_tasks": 12,
+        "followup_profile_tasks": 16,
+        "total_array_tasks": 77,
+        "final_jobs_status": "All 77 tasks COMPLETED 0:0; no campaign jobs remain",
+        "profiler": "GDB/MI on unchanged, unstripped release binary; perf unavailable, perf_event_paranoid=2",
+        "profile_inputs": 8,
+        "command_template": "<frozen-build>/primo <profile flags> --stats --cancel-grace-seconds 8 tmp/QF_LRA/<input>; counter cap45 + SIGTERM grace8; profile_gdb_samples.py --timeout60 --interval0.2 --seed1; sensitivity adds --lra-pivoting-rule=<bland|dantzig|soi>"
+      },
+      "correctness": {
+        "status": "Previously qualified frozen binary; diagnostic answers checked against original default decisive answer; no new behavior implementation.",
+        "models": "Original full ablation and paired-run models remain separate evidence; new counter/profile runs are not model-qualified speed measurements."
+      },
+      "qualification": "Stats/cancellation and GDB perturb timing. A profile reaching the deadline has partial stack evidence, not a successful solve. No headline or default promotion claims from these runs.",
+      "workflow_sha256": {
+        "diagnose.py": "8984b93ea53710f897559d8452435b5f9042715dc33a6bd7e80c39d42ca860dc",
+        "diagnose.sbatch": "f862f4040bc8b2f968fa8dab206c911f43695de112ee1f1a8c12ffe425c88419",
+        "diagnostic-plan.json": "bd60f663bd2e27fe3e024c630372644375ee386bca7f52cb93fbd636e95bf2e9",
+        "run.py": "7edd5ca61e4be0879dc0c4ca283ff0d87e86683793db595e0c78baf18770486c",
+        "profile_gdb_samples.py": "11e12eb28df2bc297decdbd7ecbd73f813dd0513e8040f22c9d25414e42ef4b1"
+      },
+      "results": {
+        "counter_runs": 132,
+        "counter_timeouts": 24,
+        "counter_missing_statistics": 9,
+        "counter_exit_errors": 0,
+        "counter_decisive_disagreements": 0,
+        "profile_runs": 32,
+        "profile_normal_exits": 26,
+        "profile_deadline_partial": 6,
+        "stack_samples": 4501,
+        "sensitivity_runs": 12,
+        "sensitivity_timeouts": 12,
+        "sensitivity_missing_statistics": 6
+      },
+      "findings": {
+        "latendresse5000": {
+          "monotone_variables": 0,
+          "monotone_folded_atoms": 0,
+          "default_monotone_identical_counters": {
+            "sat_decisions": 968,
+            "pivots": 3704,
+            "pivot_term_ops": 71898345,
+            "rational_big_operations": 5188060
+          },
+          "phase_pivot_samples": "287/290",
+          "both_pivot_samples": "283/290",
+          "gmp_samples_each": "182/290",
+          "phase_refresh_samples_each": 0,
+          "limitations": "No final counters for phase/both; samples do not prove cycling or measure coefficient sizes"
+        },
+        "elmhes": {
+          "monotone_variables": 39,
+          "monotone_folded_atoms": 2968,
+          "default_pivot_term_ops": 8134978,
+          "monotone_pivot_term_ops": 429490347,
+          "monotone_pass_seconds": 0.200336,
+          "default_rows": 15796,
+          "monotone_rows": 14328,
+          "both_mitigates_loss": true
+        },
+        "aviad_loop3": {
+          "default_pivot_term_ops": 12049293,
+          "monotone_pivot_term_ops": 1771528,
+          "default_theory_conflicts": 2369,
+          "monotone_theory_conflicts": 3858,
+          "monotone_tableau_vars": 168683,
+          "default_pop_samples": "68/146",
+          "monotone_pop_samples": "78/137",
+          "mechanism": "LraTableau::pop rebuilds violated_vars by scanning all variables after nonempty undo, including bounds-only backtracking"
+        },
+        "alternative_pivot_rules": "All12 bounded probes timeout, including default; not accepted as a general remedy",
+        "phase_interface": "Cached, quiescence-refreshed CaDiCaL forced default phases; no adapter unphase; differs from immediate SPASS-SATT GetPhase timing. Stale preference causation not isolated."
+      },
+      "assessment": "Investigation complete; no native/default changes. First implementation target is violation-set repair for bounds-only backtracking; separate uniform phase policy experiment needs unfinished-check observability and full-corpus qualification. Do not promote either option from this diagnostic evidence.",
+      "paper_read": {
+        "title": "SPASS-SATT: A CDCL(LA) Solver",
+        "sections": "Section3, Figure2, footnote3",
+        "cached_pdf": "docs/papers/SPASS-SATT.pdf",
+        "pdf_sha256": "f0858007426c8f54ba3d6cec5bd31b770855e22a98f9f521553a52c7b30a13e9",
+        "implementation": "Existing model-satisfaction polarity inspected; no new algorithm implemented."
+      },
+      "artifacts": {
+        "results/lra-migration-ablation-20261010/diagnostic-audit.json": "1734a728110da824d83d2f30d225b5058790f43a062e160aacae75e6440e098d",
+        "results/lra-migration-ablation-20261010/completed-diagnostics.tar.gz": "951d897ba180e8925242bdbe5cdf822263dde5ef29ff30d9a8d1fb5121b401fc",
+        "results/lra-migration-ablation-20261010/diagnostic-jobs-status.txt": "886b0821d839cb653c7cf78b9c6fd0d62e6aff27a3d0569cc8f839108dfcba26",
+        "docs/evidence/data/lra-regressions-20261011/profiles.csv": "1462b5defaf818b989b930aab91910f92656be600e34c8a4a14ede2d41df7f70",
+        "docs/evidence/data/lra-regressions-20261011/sensitivity.csv": "ab529b0183776032dccf7656b266b8729a10ff8a63fb21ba3590a1a700e02d07",
+        "docs/evidence/data/lra-regressions-20261011/counters.csv": "d72f7a4543f663455f5fd1995680a32f7ede865e621807b611954ab84ede56c9"
+      },
+      "final_workflow_sha256": {
+        "scripts/qualification/lra_ablation/followup-plan.json": "f573593b494212485dfca9e1b8eb7deb239a51b9c75b6d852550c83b661feca0",
+        "scripts/qualification/lra_ablation/sensitivity-plan.json": "d19421aa4fd2ca699289aa83dfcb79bb21cf5ea3b27abd6f9ebc4015a590e79a",
+        "scripts/qualification/lra_ablation/diagnostic-plan.json": "bd60f663bd2e27fe3e024c630372644375ee386bca7f52cb93fbd636e95bf2e9",
+        "scripts/qualification/lra_ablation/diagnose.py": "73a21898c213ea3f49b1ff111a4c830797f6f0e3385b4fedc850df1799bd34a8",
+        "scripts/qualification/lra_ablation/diagnose.sbatch": "f862f4040bc8b2f968fa8dab206c911f43695de112ee1f1a8c12ffe425c88419",
+        "scripts/qualification/lra_ablation/summarize_diagnostics.py": "200d2d9091b781dae838eba607738b11b8bc8c8b325a82f6d19f55e91f1f12ee"
+      },
+      "workflow_note": "Initial counters/profiles used the original workflow_sha256 diagnose.py; final driver adds only the sensitivity mode. Sensitivity/followup staged separately under workflow-sensitivity, preserving frozen native workspace and initial workflow artifacts.",
+      "documentation": "docs/evidence/lra-regressions.md; docs/evidence/arithmetic.md; docs/implementation/lra.md; compact CSV tables"
+    },
+    {
       "id": "2026-10-10-migration-lra-option-ablation",
       "date": "2026-10-10",
       "kind": "four-profile-ablation",
