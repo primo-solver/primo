@@ -59,7 +59,7 @@
         "final_jobs_status": "All 77 tasks COMPLETED 0:0; no campaign jobs remain",
         "profiler": "GDB/MI on unchanged, unstripped release binary; perf unavailable, perf_event_paranoid=2",
         "profile_inputs": 8,
-        "command_template": "<frozen-build>/primo <profile flags> --stats --cancel-grace-seconds 8 tmp/QF_LRA/<input>; counter cap45 + SIGTERM grace8; profile_gdb_samples.py --timeout60 --interval0.2 --seed1; sensitivity adds --lra-pivoting-rule=<bland|dantzig|soi>"
+        "command_template": "<frozen-build>/primo <profile flags> --stats --cancel-grace-seconds 8 tmp/QF_LRA/<input>; counter cap45 + SIGTERM grace8; profile_gdb_samples.py --timeout 60 --interval 0.2 --seed 1; sensitivity adds --lra-pivoting-rule=<bland|dantzig|soi>"
       },
       "correctness": {
         "status": "Previously qualified frozen binary; diagnostic answers checked against original default decisive answer; no new behavior implementation.",
@@ -151,7 +151,15 @@
         "scripts/qualification/lra_ablation/summarize_diagnostics.py": "200d2d9091b781dae838eba607738b11b8bc8c8b325a82f6d19f55e91f1f12ee"
       },
       "workflow_note": "Initial counters/profiles used the original workflow_sha256 diagnose.py; final driver adds only the sensitivity mode. Sensitivity/followup staged separately under workflow-sensitivity, preserving frozen native workspace and initial workflow artifacts.",
-      "documentation": "docs/evidence/lra-regressions.md; docs/evidence/arithmetic.md; docs/implementation/lra.md; compact CSV tables"
+      "documentation": "docs/evidence/lra-regressions.md; docs/evidence/arithmetic.md; docs/implementation/lra.md; compact CSV tables",
+      "workflow_commit": "e3a2a6e08dd8afbc2e100b17c4d70c7e1ec1a92f",
+      "verification": {
+        "lint": "make lint; nested ruff and py_compile; slurm_validate_sbatch; git diff --check",
+        "audit": "summarize_diagnostics.py: 132 counter runs, all 32 profiles and all 12 sensitivity probes verified",
+        "native_checks": "No native/build/test changes; qualified frozen binary retained. No new native tests, ASan, fuzz or clang-tidy run for this metadata/documentation-only investigation.",
+        "documentation": "make docs; assembled local/Git link audit; independent read-only documentation review accepted R1/R2 repairs, no required findings remain. No external link sweep.",
+        "review": "Assigned unit: regression note, arithmetic/implementation paragraphs, newest ledger entry. Baseline abf9d9f; workflow e3a2a6e; R1 removed unmeasured alternative-rule stalled-location claim; R2 added committed source links. Script self-review: no blocking issues found."
+      }
     },
     {
       "id": "2026-10-10-migration-lra-option-ablation",

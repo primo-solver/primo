@@ -895,6 +895,13 @@ Refresh waits for a conflict-free state, and
 avoids resending an unchanged hint. Hints may become stale between refresh and
 the later SAT decision; no theory lemma is justified by their value.
 
+The adapter delivers these preferences through CaDiCaL's `phase` API, which
+forces a variable's default decision phase; it is not a one-decision callback.
+Primo exposes no matching `unphase` operation. The
+[full-corpus regression investigation](../evidence/lra-regressions.md)
+records the resulting search risks and separates arithmetic work from refresh
+overhead. It does not establish stale phases as the cause of those losses.
+
 SPASS-SATT §3 and footnote 3 describe arithmetic decision recommendations
 {cite:p}`bromberger2019spass`. Primo tests whether the assignment satisfies each
 atom and updates its phase, rather than using the paper's immediate `GetPhase`

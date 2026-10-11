@@ -98,6 +98,7 @@ parts:
       - file: evidence/publication-followups
       - file: evidence/assignment
       - file: evidence/arithmetic
+      - file: evidence/lra-regressions
       - file: evidence/quantifiers
       - file: evidence/archive
       - file: review-history

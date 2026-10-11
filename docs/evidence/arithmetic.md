@@ -151,6 +151,12 @@ Both flags remain the best aggregate full-corpus profile, but default promotion
 is deferred while these regressions are diagnosed. The measured profile remains
 available explicitly; the campaign made no solver or default changes.
 
+The [11 October regression investigation](lra-regressions.md) collected all four
+profiles on the 33 distinct full-corpus losses and sampled eight representative
+inputs. It locates costs in phase-induced arithmetic work, changed search after
+elimination, and full-tableau violation-set reconstruction on backtracking.
+It identifies follow-up experiments without changing or promoting either flag.
+
 Run `2026-10-10-migration-lra-option-ablation` in the ledger records the completed
 timings, complete model coverage and final loss classification. Options remain off by default.
 The live ledger remains in use until the separate results-storage migration
