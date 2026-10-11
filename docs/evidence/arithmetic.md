@@ -162,6 +162,40 @@ timings, complete model coverage and final loss classification. Options remain o
 The live ledger remains in use until the separate results-storage migration
 is implemented.
 
+### Full-corpus comparison with recovered references
+
+The historical full-corpus reference CSVs are available: Z3/cvc5 job `118382`,
+Yices `118904`, and OpenSMT `119045`. Each solver covers all 1,753 manifest
+filenames at a 300-second limit. The earlier
+{source}`reference cactus <docs/_static/qf-lra-cactus.svg>` hid 1,099 inputs
+that every solver solved within 10 seconds; its legend therefore counts only
+the remaining 654 inputs.
+
+The following plot retains every input and overlays the current default and
+both-option Primo profiles with the recovered references. Historical solves
+after 30 seconds are censored in derived CSVs; original timing files remain
+unchanged. At this cutoff, the counts are Primo default 1,466, Primo both 1,531,
+OpenSMT 1,527, Yices 1,525, Z3 1,346, and cvc5 1,209.
+
+![All QF_LRA inputs: current Primo and historical references, 30-second cutoff](../_static/qf-lra-current-vs-historical-references-full30.svg)
+
+This is a comparison with historical measurements: the references ran in August
+with 12 GiB, while Primo `4200525` ran in October with 7 GiB. Both used the CPU
+compute partition; recovered accounting places the reference tasks on
+`node-01` through `node-06`. All eight profiles have identical normalized
+filename coverage and zero decisive disagreements in all 28 pairwise joins,
+including reference answers obtained after 30 seconds. The old campaigns did
+not record per-input hashes, so byte identity is unverified. Current Primo SAT
+models retain their separate validation; this recovery adds no reference-model
+checks. Small count differences between Primo both, OpenSMT and Yices do not
+establish a speed advantage under matched conditions.
+
+Run `2026-10-11-qf-lra-historical-reference-recovery` records versions, resources,
+artifact hashes, audit and plot commands. The
+{recoveredreference}`CSV audit/censoring workflow <scripts/qualification/lra_ablation/reuse_references.py>` reads existing timings;
+downloaded raw data
+and derived CSVs are under `results/qf-lra-historical-references-20261011/`.
+
 Rejected prototypes and unimplemented H4/H6/H11 directions remain discoverable
 through the [research register](../leads/index.md). Keeping their negative
 results prevents a later proposal from mistaking an already rejected design

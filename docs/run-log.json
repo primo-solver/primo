@@ -3,6 +3,178 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-10-11-qf-lra-historical-reference-recovery",
+      "date": "2026-10-11",
+      "kind": "historical-reference-recovery-and-censored-comparison",
+      "evidence_status": "historical-reference-reuse",
+      "branch": "docs/public-repository-migration",
+      "native_source_git": "42005258b21263500e24faf9f0865bb213663935",
+      "scope": "Recover all 1753-input reference timings and overlay current native default/both at 30 seconds. No new solver executions, default changes, or reference model checks.",
+      "benchmark": {
+        "manifest": "benchmarks/qf-lra-full-division.txt",
+        "inputs": 1753,
+        "families": 17,
+        "plot_cutoff_seconds": 30,
+        "historical_reference_timeout_seconds": 300
+      },
+      "original_reference_runs": {
+        "2026-08-01-qf-lra-full-division-300s": {
+          "jobs": "sbatch --array=0-119 --time=08:00:00 scripts/slurm_qf_lra_scrambled_compare.sbatch with PRIMO_COMPARE_ROOT=tmp/QF_LRA, PRIMO_COMPARE_MANIFEST=benchmarks/qf-lra-full-division.txt, PRIMO_COMPARE_TIMEOUT=300, PRIMO_COMPARE_SHARDS=40",
+          "commit": "aa44320"
+        },
+        "2026-08-03-qf-lra-division-four-solver": {
+          "jobs": "sbatch --array=0-79 --time=10:00:00 scripts/slurm_qf_lra_scrambled_compare.sbatch with PRIMO_COMPARE_ROOT=tmp/QF_LRA, PRIMO_COMPARE_MANIFEST=benchmarks/qf-lra-full-division.txt, PRIMO_COMPARE_TIMEOUT=300, PRIMO_COMPARE_SHARDS=40, PRIMO_COMPARE_SOLVERS='primo=build-slurm-rel/primo --quiet;yices=contrib/local/bin/yices-smt2'",
+          "commit": "b6b8d55"
+        },
+        "2026-08-03-qf-lra-division-opensmt": {
+          "jobs": "sbatch --array=0-39 --time=10:00:00 scripts/slurm_qf_lra_scrambled_compare.sbatch with PRIMO_COMPARE_ROOT=tmp/QF_LRA, PRIMO_COMPARE_MANIFEST=benchmarks/qf-lra-full-division.txt, PRIMO_COMPARE_TIMEOUT=300, PRIMO_COMPARE_SHARDS=40, PRIMO_COMPARE_SOLVERS='opensmt=contrib/local/bin/opensmt'",
+          "commit": "f04fd42"
+        }
+      },
+      "reference_versions": {
+        "opensmt": "2.9.2",
+        "yices": "2.7.0",
+        "z3": "5.0.0",
+        "cvc5": "1.3.4"
+      },
+      "reference_jobs": {
+        "opensmt": "119045",
+        "yices": "118904",
+        "z3": "118382",
+        "cvc5": "118382"
+      },
+      "execution": {
+        "native": "October 2026, compute Xeon E5-2690 v4, one physical CPU, 7 GiB, source 4200525; original ablation artifacts unchanged",
+        "historical": "August 2026, compute node-01 through node-06, AllocCPUS=2, ReqMem=12G; original wrapper requests cpus-per-task=1",
+        "recovery": "Read-only SSH archive and accounting; local metadata analysis and plotting only; no GPU jobs"
+      },
+      "commands": {
+        "audit": "python3 scripts/qualification/lra_ablation/reuse_references.py --historical results/qf-lra-historical-references-20261011 --native results/lra-migration-ablation-20261010/full30/plot-data --out results/qf-lra-historical-references-20261011/derived30",
+        "plot": "python3 scripts/plot_cactus.py --series 'Primo default=results/qf-lra-historical-references-20261011/derived30/primo-default' --series 'Primo both=results/qf-lra-historical-references-20261011/derived30/primo-both' --series 'OpenSMT 2.9.2=results/qf-lra-historical-references-20261011/derived30/opensmt' --series 'Yices 2.7.0=results/qf-lra-historical-references-20261011/derived30/yices' --series 'Z3 5.0.0=results/qf-lra-historical-references-20261011/derived30/z3' --series 'cvc5 1.3.4=results/qf-lra-historical-references-20261011/derived30/cvc5' --timeout 30 --out docs/_static/qf-lra-current-vs-historical-references-full30.svg --title 'Full QF_LRA: current Primo and historical references' --highlight-series 'Primo both' --sort-by-solved --note 'All 1,753 inputs; no easy-input filtering. Primo 4200525, October 2026: 30 s, 7 GiB, compute CPUs.' --note 'Historical references, August 2026: 300 s, 12 GiB, compute CPUs; stored timings censored at 30 s.' --note 'Reference jobs: OpenSMT 119045; Yices 118904; Z3/cvc5 118382. Mixed dates and memory limits.' --note 'Same normalized filenames; historical input hashes absent. This is not a fresh matched evaluation.'",
+        "accounting": "sacct -j 118382,118904,119045 --format=JobID,State,NodeList,Partition,AllocCPUS,ReqMem -n -X -P",
+        "remote_archive": "cd /home/janotmik/primo-qflra && tar -czf /tmp/primo-qflra-historical-references-20261011.tar.gz results/qf-lra-scrambled-118382/z3*.csv results/qf-lra-scrambled-118382/cvc5*.csv results/qf-lra-scrambled-118904/yices*.csv results/qf-lra-scrambled-119045/opensmt*.csv"
+      },
+      "coverage": {
+        "reference_csvs": 160,
+        "shards_per_reference": 40,
+        "normalized_filename_sets_identical": true,
+        "answer_pairs_checked": 28,
+        "decisive_disagreements": 0,
+        "historical_input_sha256_available": false
+      },
+      "summary": {
+        "primo-default": {
+          "inputs": 1753,
+          "solved": 1466,
+          "unsolved": 287,
+          "errors": 0,
+          "wrong": 0,
+          "original_solved": 1466,
+          "censored_solves": 0,
+          "par2_sum_seconds": 21265.297327,
+          "derived_csv_sha256": "e2f21baa547cd0bcc009f0e0caf16ccaa5f5d57509912213c63193093cecb23a"
+        },
+        "primo-phase": {
+          "inputs": 1753,
+          "solved": 1511,
+          "unsolved": 242,
+          "errors": 0,
+          "wrong": 0,
+          "original_solved": 1511,
+          "censored_solves": 0,
+          "par2_sum_seconds": 18357.774028,
+          "derived_csv_sha256": "90433d8c057530b3601b7ef36c116265bc437e90f04ddac125e4dba738205c6f"
+        },
+        "primo-monotone": {
+          "inputs": 1753,
+          "solved": 1487,
+          "unsolved": 266,
+          "errors": 0,
+          "wrong": 0,
+          "original_solved": 1487,
+          "censored_solves": 0,
+          "par2_sum_seconds": 20169.971929,
+          "derived_csv_sha256": "11662e25b408671c9629ebc08e1ca2a1d052e7f59498d96f7e5ff0be868910dc"
+        },
+        "primo-both": {
+          "inputs": 1753,
+          "solved": 1531,
+          "unsolved": 222,
+          "errors": 0,
+          "wrong": 0,
+          "original_solved": 1531,
+          "censored_solves": 0,
+          "par2_sum_seconds": 17288.825195,
+          "derived_csv_sha256": "899fc31369ac9566a9cb25f214fb567fd1206fafe4295a2c449bffc8ed805469"
+        },
+        "opensmt": {
+          "inputs": 1753,
+          "solved": 1527,
+          "unsolved": 226,
+          "errors": 0,
+          "wrong": 0,
+          "original_solved": 1670,
+          "censored_solves": 143,
+          "par2_sum_seconds": 17470.07615,
+          "derived_csv_sha256": "dd20dbd6d63c583db3cfba9df8d4ad29ba9948eb674dd070461275f98677abee"
+        },
+        "yices": {
+          "inputs": 1753,
+          "solved": 1525,
+          "unsolved": 228,
+          "errors": 0,
+          "wrong": 0,
+          "original_solved": 1645,
+          "censored_solves": 120,
+          "par2_sum_seconds": 16525.064283,
+          "derived_csv_sha256": "bd305538364e4aa8880733948692b07eed8990e21ed8a6a015d99b5ecc4aed6b"
+        },
+        "z3": {
+          "inputs": 1753,
+          "solved": 1346,
+          "unsolved": 407,
+          "errors": 0,
+          "wrong": 0,
+          "original_solved": 1584,
+          "censored_solves": 238,
+          "par2_sum_seconds": 27536.086688,
+          "derived_csv_sha256": "bf0b1f509c38c4d12525d1c157bfc65f4e9045466f16c38978a122469afa5d85"
+        },
+        "cvc5": {
+          "inputs": 1753,
+          "solved": 1209,
+          "unsolved": 544,
+          "errors": 0,
+          "wrong": 0,
+          "original_solved": 1511,
+          "censored_solves": 302,
+          "par2_sum_seconds": 35124.02919,
+          "derived_csv_sha256": "5d43acc0c602fda303a7fea4f57d7cb95b07c1f59074b78c284b36b1592b9e31"
+        }
+      },
+      "limitations": [
+        "Historical input identity checked by filename only; original input hashes absent.",
+        "Historical references: August 2026 compute, 12 GiB; native: October 2026 compute, 7 GiB.",
+        "Derived cutoff is censoring stored timings, not a fresh 30-second reference run.",
+        "Native models separately validated; no new historical-reference model validation.",
+        "Small count differences are not evidence of superiority under matched execution conditions."
+      ],
+      "artifacts": {
+        "local_root": "results/qf-lra-historical-references-20261011",
+        "local_audit": "results/qf-lra-historical-references-20261011/derived30/audit.json",
+        "remote_original_root": "/home/janotmik/primo-qflra/results",
+        "remote_archive": "/tmp/primo-qflra-historical-references-20261011.tar.gz",
+        "plot": "docs/_static/qf-lra-current-vs-historical-references-full30.svg",
+        "family_counts": "results/qf-lra-historical-references-20261011/derived30/audit.json: summary.<solver>.families",
+        "status": "Raw archive and audit downloaded locally; original raw CSVs persist on cluster; plot and workflow tracked"
+      },
+      "artifact_sha256": {
+        "results/qf-lra-historical-references-20261011/primo-qflra-historical-references-20261011.tar.gz": "51d9ff3e39cfb2401421030e8fce3541cf8d66f416cf76dbc9400860f36e374a",
+        "results/qf-lra-historical-references-20261011/derived30/audit.json": "244933fe04ec9972c34ca526598e27a17fa4d3dc66943a2bfc43f00a9f13c598",
+        "results/qf-lra-historical-references-20261011/slurm-accounting.txt": "0ee50e873b5bd25c0fb0325486cc3d167d20ce7f97c2e73e68da8be40488182f"
+      }
+    },
+    {
       "id": "2026-10-11-migration-lra-regression-diagnosis",
       "date": "2026-10-11",
       "kind": "bounded-counters-and-stack-profiling",

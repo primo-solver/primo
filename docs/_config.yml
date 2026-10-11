@@ -47,6 +47,9 @@ sphinx:
       regressionworkflow:
         - "https://github.com/primo-solver/primo/blob/e3a2a6e08dd8afbc2e100b17c4d70c7e1ec1a92f/%s"
         - "%s"
+      recoveredreference:
+        - "https://github.com/primo-solver/primo/blob/feffdbc9713ecbfebd7c83147344053eaf8d0e76/%s"
+        - "%s"
       profilesource:
         - "https://github.com/primo-solver/primo/blob/90d29667fa8796b9db41967afb65ab202388b54e/%s"
         - "%s"
