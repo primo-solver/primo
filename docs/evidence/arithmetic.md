@@ -94,8 +94,8 @@ audited all four full-corpus profiles before starting
 the competition selection. Both timing sets finished before model replay started.
 Failed dependencies stop later stages, and a hard answer failure detected by the
 {ablationworkflow}`guarded wrapper <scripts/qualification/lra_ablation/guarded.sbatch>` cancels its
-timing array. Timing, model and selection-reference audits have completed;
-triage of repeated performance losses remains necessary before promotion.
+timing array. Timing, model, selection-reference and paired-loss audits have
+completed.
 
 Both timing arrays and all separate SAT-model audits completed successfully on
 the frozen `4200525` binary. The solver sources are equivalent to `df42f03`.
@@ -119,20 +119,40 @@ four native and four reference profiles have zero decisive disagreements.
 
 ![Competition selection ablation at 1,200 seconds](../_static/qf-lra-migration-ablation-selection1200.svg)
 
-The aggregate gains do not settle default promotion. Relative to default, the
-full run has 28 lost solves with model phase, 9 with monotone elimination, and
-23 with both; each profile loses one solve on the selection. The
+The aggregate gains coexist with repeatable performance regressions. Relative
+to default, the full run had 28 lost solves with model phase, 9 with monotone
+elimination, and 23 with both. The
 {ablationworkflow}`paired driver <scripts/qualification/lra_ablation/paired.py>` and
 {ablationworkflow}`batch wrapper <scripts/qualification/lra_ablation/paired.sbatch>`
-run three repetitions of each lost solve on a single physical CPU per pair,
+ran three repetitions of each lost solve on a single physical CPU per pair,
 with alternating profile order and separate model replay. Full-corpus model
-replay waits for its three paired timing arrays, so supplementary selection
-reruns do not delay that correctness stage. Both flags together are the leading
-candidate under the full-corpus priority; their repeated losses still need
-assessment before changing defaults.
+replay waited for its three paired timing arrays, independently of supplementary
+selection reruns. The full-corpus losses classified as follows:
+
+| Profile | Original lost solves | Lost in all three pairs | Did not repeat in two or more pairs |
+| --- | ---: | ---: | ---: |
+| Model phase | 28 | 24 | 4 |
+| Monotone elimination | 9 | 6 | 3 |
+| Both | 23 | 19 | 4 |
+
+All 378 timing parents and their model coverage passed the
+{ablationworkflow}`paired audit <scripts/qualification/lra_ablation/audit_pairs.py>`. The
+127 additional successful SAT rows passed direct Dolmen validation; there were
+no wrong answers, invalid models, or decisive answer disagreements.
+
+These losses include substantial cliffs. On the full-corpus input
+`latendresse/ecoliMILPglycerolYices3-5000.smt2`, default solved in about 8.5 seconds
+in all three pairs while both flags timed out at 30 seconds. Supplementary
+1,200-second reruns of that same input still timed out with both flags, while
+default took about 8.7–9.3 seconds. This is a repeatable search regression,
+not merely variation at the 30-second cutoff.
+
+Both flags remain the best aggregate full-corpus profile, but default promotion
+is deferred while these regressions are diagnosed. The measured profile remains
+available explicitly; the campaign made no solver or default changes.
 
 Run `2026-10-10-migration-lra-option-ablation` in the ledger records the completed
-timings, model coverage and pending loss triage. Options remain off by default.
+timings, complete model coverage and final loss classification. Options remain off by default.
 The live ledger remains in use until the separate results-storage migration
 is implemented.
 

@@ -6,7 +6,7 @@
       "id": "2026-10-10-migration-lra-option-ablation",
       "date": "2026-10-10",
       "kind": "four-profile-ablation",
-      "evidence_status": "timings-and-models-qualified-loss-repetitions-running",
+      "evidence_status": "evaluation-complete-default-promotion-deferred",
       "branch": "docs/public-repository-migration",
       "native_source_equivalent_to": "df42f03646590d541130ff7821ca726bb114b037",
       "scope": "Reverify default, model-phase, monotone-elimination and both on the migration implementation before considering QF_LRA-only promotion. No solver/default changes in this campaign.",
@@ -130,7 +130,7 @@
           "sha256": "d9c1cf0cbc78f613fa2e9cd046aa32c9efd242460f34f6aa297a5e8141434bca"
         }
       },
-      "promotion": "Both flags together are the primary candidate: full30 +65 solves and 18.7% lower PAR2. Options remain off by default pending assessment of repeated full-corpus losses. Competition-selection ranking is supplementary.",
+      "promotion": "Deferred, options remain opt-in: both has best aggregate full30 (+65 solves, PAR2 -18.7%), but 19 of 23 lost solves repeat in all 3 pairs. Diagnose these performance regressions before changing defaults. Competition ranking remains supplementary.",
       "solver_revision": "4200525",
       "binary_sha256": "4ff4f6c58c7ee93f75898639df8e49a6dcbd53d40a6d8565d12ef08ab5e1a90b",
       "jobs": {
@@ -156,14 +156,15 @@
       },
       "verification": {
         "lint": "passed",
-        "docs": "make docs and make docs-full passed; assembled links: 261 pages, 32081 local links, 1045 Git links, 0 failures",
-        "independent_doc_review": "ablation_doc_review verified completed-result table, PAR2 percentages, model counts, reference joins, loss counts and pinned paired-method links; stale pipeline wording corrected.",
+        "docs": "make docs-full passed; assembled links: 261 pages, 32081 local links, 1046 Git links, 0 failures",
+        "independent_doc_review": "ablation_doc_review accepted final paired-loss counts, exact model coverage, severe full-corpus case, deferred promotion and pinned auditor links with no findings.",
         "precheck": "44/44 C++ tests and both tracked QF_LRA seed groups under all four profiles passed",
         "collector": "Real timeout/zero-SAT canary accepted; seven adversarial provenance/coverage fixtures correctly rejected",
-        "plots": "Both SVGs rendered with ImageMagick and visually inspected; concise provenance captions fit.",
-        "priority_review": "Independent ablation_doc_review accepted full-corpus priority and model dependency changes with no findings."
+        "plots": "Final captions updated to deferred promotion; SVGs rendered with ImageMagick; full-corpus rendering visually inspected.",
+        "priority_review": "Independent ablation_doc_review accepted full-corpus priority and model dependency changes with no findings.",
+        "paired_collector": "Complete 378 parents and 127 SAT models audited, plus four adversarial provenance/model-coverage fixtures rejected."
       },
-      "timing_status": "All original timing, model, audit and plot jobs COMPLETED 0:0. Paired loss-repetition timings and separate models queued.",
+      "timing_status": "All original and all twelve paired timing/model arrays COMPLETED 0:0. No campaign jobs remain active.",
       "results": {
         "full30": {
           "profiles": {
@@ -310,7 +311,7 @@
         "repeats": 3,
         "method": "Each original lost solve, default versus that profile on one physical compute CPU, 7 GiB. Alternate arm order. Original exact options and timeout. Same binary/input hashes. Full-corpus model stages wait only for all three full-corpus timing arrays; supplementary selection reruns do not delay them.",
         "jobs": {
-          "status": "queued",
+          "status": "complete",
           "timing_jobs": {
             "full30-both": "187863",
             "full30-monotone": "187872",
@@ -370,11 +371,63 @@
             ]
           }
         ],
-        "preliminary_observation": "At least eight of the first nine complete both-profile cases lost in all three paired full30 reruns. This is partial timing evidence, pending full aggregation and separate model coverage; regressions cannot all be dismissed as cutoff noise.",
         "preliminary_artifact": {
           "path": "results/lra-migration-ablation-20261010/full-loss-completed-snapshot.tar.gz",
           "sha256": "2d6504a02ae5ab04b3e43e7601cb64a9c1465db2fc437e6a6d907b48011d5a39",
           "scope": "Snapshot of completed full-corpus paired cases; incomplete campaign, not final qualification"
+        },
+        "status": "complete",
+        "final_counts": {
+          "full30-both": {
+            "direct_dolmen_models": 39,
+            "inputs": 23,
+            "losses_in_all_three_pairs": 19,
+            "nonrepeated_original_losses": 4,
+            "repeated_losses_at_least_two_pairs": 19
+          },
+          "full30-monotone": {
+            "direct_dolmen_models": 19,
+            "inputs": 9,
+            "losses_in_all_three_pairs": 6,
+            "nonrepeated_original_losses": 3,
+            "repeated_losses_at_least_two_pairs": 6
+          },
+          "full30-phase": {
+            "direct_dolmen_models": 57,
+            "inputs": 28,
+            "losses_in_all_three_pairs": 24,
+            "nonrepeated_original_losses": 4,
+            "repeated_losses_at_least_two_pairs": 24
+          },
+          "selection1200-both": {
+            "direct_dolmen_models": 3,
+            "inputs": 1,
+            "losses_in_all_three_pairs": 1,
+            "nonrepeated_original_losses": 0,
+            "repeated_losses_at_least_two_pairs": 1
+          },
+          "selection1200-monotone": {
+            "direct_dolmen_models": 6,
+            "inputs": 1,
+            "losses_in_all_three_pairs": 0,
+            "nonrepeated_original_losses": 1,
+            "repeated_losses_at_least_two_pairs": 0
+          },
+          "selection1200-phase": {
+            "direct_dolmen_models": 3,
+            "inputs": 1,
+            "losses_in_all_three_pairs": 1,
+            "nonrepeated_original_losses": 0,
+            "repeated_losses_at_least_two_pairs": 1
+          }
+        },
+        "audited_timing_and_model_parents": 378,
+        "direct_dolmen_sat_rows_passed": 127,
+        "audit": {
+          "path": "results/lra-migration-ablation-20261010/paired-audit.json",
+          "sha256": "527739eb222c157277175ce6e9d8f950c0c56358be6b27fb7f0fbc37d1fc7b80",
+          "metadata_archive": "results/lra-migration-ablation-20261010/completed-loss-metadata.tar.gz",
+          "metadata_archive_sha256": "bda01ac1ce5b942860a8b6c34bf610c4f2946f33ed10bc10a815350f8eb6210a"
         }
       },
       "plots": [
@@ -385,6 +438,13 @@
         "primary": "Full 1753-input corpus; solved count, PAR2, family effects and repeated regressions determine option/default readiness.",
         "supplementary": "519-input competition selection. Competition portfolio targeting is outside this task.",
         "user_direction": "Prioritize the full corpus; competition selection does not select the default."
+      },
+      "completion_date": "2026-10-11",
+      "assessment": {
+        "accepted": "Fresh full-corpus ablation evidence for four opt-in profiles, all SAT-model coverage and exact selected reference joins. Both is the aggregate full-corpus winner.",
+        "deferred": "Default promotion; repeatable performance losses need diagnosis. No solver/default changes in this campaign.",
+        "severe_full_corpus_case": "latendresse/ecoliMILPglycerolYices3-5000.smt2: default about 8.5 s versus both timeout at 30 s in all 3 full-corpus pairs. Same input at 1200 s: default 8.7–9.3 s versus both timeout at 1200 s in all 3 pairs.",
+        "next_work": "Diagnose phase-related search regressions on repeated full-corpus losses; remeasure fixes before promotion."
       }
     },
     {
