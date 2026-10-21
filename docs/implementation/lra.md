@@ -801,7 +801,8 @@ theory model construction additionally preserves required shared-value
 orders. Reconstruction of eliminated variables and Boolean values remains
 part of the model builder; a feasible tableau alone is not the printed model.
 
-### Equalities for combination
+(equalities-for-combination)=
+### Propagating equalities between shared variables
 
 The default QF_UFLRA producer uses four rules based on fixed variables and
 matching tableau rows. Their worked examples, bound explanations, and

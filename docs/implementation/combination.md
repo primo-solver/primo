@@ -338,7 +338,8 @@ equalities to it, avoiding enumeration of all pairs. Building these keys
 still requires scanning row entries and performing exact arithmetic. This
 scan differs from the paper's scheduling of the first three rules eagerly
 and the last before a model-based equality choice. The alternative
-`model-unit` producer is explained in [LRA](lra.md#equalities-for-combination)
+`model-unit` producer is explained in
+[LRA](lra.md#propagating-equalities-between-shared-variables)
 and remains opt-in.
 
 These rules are sound but incomplete, and their success depends on the
