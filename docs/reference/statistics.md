@@ -378,6 +378,28 @@ ordinary post-model check or by the CaDiCaL external-clause callback used by
 `:euf.assignments`, `:euf.eq-assignments`, and `:euf.diseq-assignments` count
 theory-literal notifications received by the online/conflict EUF callback.
 Predicate atoms contribute only to `:euf.assignments`.
+## Experimental pure-QF_LRA equality propagation
+
+With `--lra-equality-propagation`, the per-query `OnlineLraPropagator` records:
+
+| Counter | Meaning |
+| --- | --- |
+| `:lra.equality-propagation.targets` | Existing comparison atoms indexed as normalized variable differences. |
+| `:lra.equality-propagation.scans` | Feasible-state model-unit queries after arithmetic changes or backtracking. |
+| `:lra.equality-propagation.backtrack-repairs` | Backtrack callbacks scheduling a feasibility repair before further equality discovery. |
+| `:lra.equality-propagation.equalities` | Explained edges returned by those queries, summed over scans. |
+| `:lra.equality-propagation.rows-inspected` | Candidate basic rows inspected by the producer. |
+| `:lra.equality-propagation.nonzeros-inspected` | Row entries inspected by the producer. |
+| `:lra.equality-propagation.propagations` | Target literals actually delivered to SAT, excluding queued candidates skipped because already assigned. |
+| `:lra.equality-propagation.conflicts` | Indexed target literals found assigned opposite to their explained consequence. |
+| `:time.lra-equality-propagation-us` | Query, component-explanation and target-scan time in microseconds. |
+
+The counters count repeated work; discovered edges need not be distinct across
+scans, and discoveries need not lead to propagation. Fixed-variable matches can
+produce edges without inspecting any basic row. No target index or scan is
+built in the default configuration. See
+[scope and explanation rules](#experimental-pure-arithmetic-equality-propagation).
+
 ## EUF callbacks and resource limits
 
 The callback keeps assignment and pending-propagation membership in fixed

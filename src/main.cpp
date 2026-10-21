@@ -391,6 +391,9 @@ int run_main(int argc, char** argv) {
                         "Enable experimental QF_LRA theory-guided decisions: the arithmetic theory "
                         "ranks candidate atoms via CaDiCaL's cb_decide and supplies the decision "
                         "literal itself instead of leaving every decision to generic VSIDS");
+  add_flag_with_default(app, "--lra-equality-propagation", solver_options.lra_equality_propagation,
+                        "Enable experimental pure QF_LRA model-unit equality discovery and "
+                        "propagation of existing difference comparisons (IPASIR-UP only)");
   add_flag_with_default(app, "--lra-model-phase", solver_options.lra_model_phase,
                         "Enable experimental QF_LRA model-based SAT phase hints: keep CaDiCaL's "
                         "variable choice, but refresh arithmetic atom polarity from the current "

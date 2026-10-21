@@ -7038,13 +7038,19 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
     rebuild_true_interface_bounds();
     published_interface_pairs_.clear();
     conflict_.reset();
-    // Sound to drop unconditionally per notify_assignment_lit's own
+    // Without equality discovery, sound to drop per notify_assignment_lit's
     // verified invariant: a new decision level can never open while a
     // deferred check is still outstanding (cb_has_external_clause -- and
     // thus run_deferred_check_if_needed() -- is always consulted first),
     // so needs_check_ can never be true across a backtrack in a way that
     // would lose an actually-outstanding repair.
-    needs_check_ = false;
+    // The experimental producer additionally queries the retained assignment
+    // after a backtrack, including after an infeasible repair. Re-establish its
+    // feasible-model precondition before using assignments as an equality filter.
+    needs_check_ = equality_propagation_enabled_;
+    if (equality_propagation_enabled_) {
+      statistics_.increment(":lra.equality-propagation.backtrack-repairs");
+    }
     external_clause_.clear();
     external_clause_pending_ = false;
     external_clause_index_ = 0;
@@ -7053,6 +7059,7 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
     // still-valid candidate gets rediscovered next time its slack changes.
     pending_.clear();
     pending_interface_equalities_.clear();
+    equality_scan_dirty_ = equality_propagation_enabled_;
     reason_stream_active_lit_ = 0;
     reason_stream_index_ = 0;
     if (model_phase_backtrack_may_change_beta_) {
@@ -7126,6 +7133,10 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
   // pruning pending_ on every assignment.
   int cb_propagate() override {
     if (conflict_budget_exhausted()) return 0;
+    if (equality_propagation_enabled_) {
+      run_deferred_check_if_needed();
+      scan_variable_equalities_if_needed();
+    }
     if (conflict_.has_value()) {
       return 0;
     }
@@ -7141,6 +7152,9 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
       const bool bidirectional = candidate.bidirectional;
       reasons_[lit] = std::move(candidate.reasons);
       statistics_.increment(kStatLraTheoryPropagations);
+      if (candidate.variable_equality) {
+        statistics_.increment(":lra.equality-propagation.propagations");
+      }
       if (row_based) {
         statistics_.increment(kStatLraRowPropagations);
       }
@@ -7198,6 +7212,37 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
   std::optional<sat::Clause> conflict() const { return conflict_; }
   const theory::arithmetic::LraTableau& tableau() const { return tableau_; }
 
+  // Experimental pure-QF_LRA consumer of Bjørner--Nachmanson Section 3.2.
+  // Index only atoms already present; never manufacture an all-pairs frontier.
+  void enable_variable_equality_propagation() {
+    equality_propagation_enabled_ = true;
+    for (const auto& [polynomial, slack] : prepared_.slack_by_polynomial_) {
+      const auto& terms = polynomial.sorted_terms;
+      if (terms.size() != 2 || terms[0].second != util::Rational(1) ||
+          terms[1].second != util::Rational(-1)) {
+        continue;
+      }
+      const auto found = prepared_.atoms_by_bound_var.find(slack);
+      if (found == prepared_.atoms_by_bound_var.end()) continue;
+      for (const std::size_t index : found->second) {
+        if (prepared_.atoms[index].relation == theory::arithmetic::LraRelation::Eq) continue;
+        equality_targets_.push_back(
+            {prepared_.var_ids_.at(terms[0].first), prepared_.var_ids_.at(terms[1].first), index});
+      }
+    }
+    std::sort(equality_targets_.begin(), equality_targets_.end(),
+              [](const EqualityTarget& a, const EqualityTarget& b) {
+                return a.atom_index < b.atom_index;
+              });
+    statistics_.set(":lra.equality-propagation.targets", equality_targets_.size());
+    if (equality_targets_.empty()) return;
+    for (const auto& [term, variable] : prepared_.var_ids_) {
+      equality_variables_.push_back(variable);
+    }
+    std::sort(equality_variables_.begin(), equality_variables_.end());
+    equality_scan_dirty_ = true;
+  }
+
   // Interface-equality publishing is Nelson-Oppen machinery, and only
   // MixedTheoryPropagationDispatcher ever drains it (see
   // take_interface_equality_propagations). On the pure QF_LRA path nothing
@@ -7237,6 +7282,7 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
     if (external_clause_pending_) return true;
     if (conflict_budget_exhausted()) return false;
     run_deferred_check_if_needed();
+    scan_variable_equalities_if_needed();
     refresh_model_phases_if_ready();
     if (!conflict_.has_value()) return false;
     external_clause_ = conflict_.value();
@@ -7304,6 +7350,7 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
     if (!prepared_atom.is_arithmetic) {
       return;
     }
+    equality_scan_dirty_ = equality_propagation_enabled_;
     const bool bound_var_was_basic = tableau_.is_basic(prepared_atom.bound_var);
     const theory::arithmetic::DeltaRational bound_var_assignment_before =
         tableau_.assignment(prepared_atom.bound_var);
@@ -7506,6 +7553,69 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
     }
     model_phase_dirty_bound_var_list_.clear();
     model_phase_all_dirty_ = false;
+  }
+
+  // Query only a feasible assignment, as required by the model-value filter.
+  // A component's complete edge-premise union is a sound (possibly coarse)
+  // explanation for any indexed pair in that component.
+  void scan_variable_equalities_if_needed() {
+    if (!equality_scan_dirty_ || conflict_.has_value() || equality_targets_.empty()) return;
+    equality_scan_dirty_ = false;
+    ScopedStatisticsTimer timer(statistics_, ":time.lra-equality-propagation-us");
+    statistics_.increment(":lra.equality-propagation.scans");
+    const auto query = tableau_.model_filtered_unit_equalities(equality_variables_);
+    statistics_.increment(":lra.equality-propagation.equalities", query.equalities.size());
+    statistics_.increment(":lra.equality-propagation.rows-inspected", query.stats.rows_inspected);
+    statistics_.increment(":lra.equality-propagation.nonzeros-inspected",
+                          query.stats.nonzeros_inspected);
+    if (query.equalities.empty()) return;
+
+    std::vector<theory::arithmetic::LraVarId> parent(tableau_.variable_count());
+    for (std::size_t i = 0; i < parent.size(); ++i) parent[i] = i;
+    const auto root = [&parent](theory::arithmetic::LraVarId var) {
+      while (parent[var] != var) {
+        parent[var] = parent[parent[var]];
+        var = parent[var];
+      }
+      return var;
+    };
+    for (const auto& equality : query.equalities) {
+      parent[root(equality.rhs)] = root(equality.lhs);
+    }
+    std::unordered_map<theory::arithmetic::LraVarId, std::vector<sat::Lit>> component_reasons;
+    for (const auto& equality : query.equalities) {
+      auto& reasons = component_reasons[root(equality.lhs)];
+      reasons.insert(reasons.end(), equality.reasons.begin(), equality.reasons.end());
+    }
+    for (auto& [representative, reasons] : component_reasons) {
+      std::sort(reasons.begin(), reasons.end(),
+                [](sat::Lit a, sat::Lit b) { return a.value < b.value; });
+      reasons.erase(std::unique(reasons.begin(), reasons.end(),
+                                [](sat::Lit a, sat::Lit b) { return a.value == b.value; }),
+                    reasons.end());
+    }
+    const theory::arithmetic::DeltaRational zero;
+    for (const EqualityTarget& target : equality_targets_) {
+      const auto representative = root(target.lhs);
+      if (representative != root(target.rhs)) continue;
+      const auto& prepared_atom = prepared_.atoms[target.atom_index];
+      const BoundAssertion assertion = bound_assertion(
+          prepared_atom.relation, prepared_atom.rhs, prepared_atom.asserts_lower_when_true,
+          /*atom_value=*/true, prepared_atom.is_integer);
+      const bool holds = assertion.is_upper ? zero <= assertion.value : zero >= assertion.value;
+      const int atom_lit = theory_atoms_[target.atom_index].lit.value;
+      const int lit = holds ? atom_lit : -atom_lit;
+      const auto& reasons = component_reasons.at(representative);
+      if (is_assigned_var(std::abs(lit))) {
+        if (assignment_view().literal(std::abs(lit)) == lit) continue;
+        conflict_ = reasons;
+        conflict_->push_back(sat::Lit{lit});
+        record_query_conflict();
+        statistics_.increment(":lra.equality-propagation.conflicts");
+        return;
+      }
+      pending_.push_back(PendingPropagation{lit, reasons, false, false, true});
+    }
   }
 
   void observe_true_interface_bound(std::size_t atom_index, sat::Lit reason) {
@@ -7752,6 +7862,13 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
     std::vector<sat::Lit> reasons;
     bool row_based;
     bool bidirectional = false;  // competitiveness-roadmap item 7
+    bool variable_equality = false;
+  };
+
+  struct EqualityTarget {
+    theory::arithmetic::LraVarId lhs;
+    theory::arithmetic::LraVarId rhs;
+    std::size_t atom_index;
   };
 
   const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms_;
@@ -7781,6 +7898,10 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
   std::deque<PendingPropagation> pending_;
   std::deque<InterfaceEqualityPropagation> pending_interface_equalities_;
   bool interface_equalities_enabled_ = false;
+  bool equality_propagation_enabled_ = false;
+  bool equality_scan_dirty_ = false;
+  std::vector<theory::arithmetic::LraVarId> equality_variables_;
+  std::vector<EqualityTarget> equality_targets_;
   std::unordered_map<TermPairKey, sat::Lit, TermPairKeyHash> true_lra_le_reasons_;
   std::unordered_set<TermPairKey, TermPairKeyHash> published_interface_pairs_;
   std::unordered_map<int, std::vector<sat::Lit>> reasons_;
@@ -8196,6 +8317,11 @@ CheckSatOutcome solve_qf_lra_impl(core::TermManager& terms,
                                   const std::vector<core::TermId>& model_terms,
                                   const ModelConversionChain& conversions,
                                   const CheckSatOptions& options, util::Statistics& statistics) {
+#if !PRIMO_HAVE_IPASIR
+  if (options.lra_equality_propagation) {
+    throw UnsupportedInput("--lra-equality-propagation requires IPASIR-UP");
+  }
+#endif
   statistics.increment(kStatSolverQfLra);
   sat::CadicalBackend backend(options.cadical_options);
   SolveTerminator terminator(options.cancelled, statistics, options.max_theory_conflicts);
@@ -8227,6 +8353,9 @@ CheckSatOutcome solve_qf_lra_impl(core::TermManager& terms,
       options.lra_theory_decisions, options.lra_model_phase,
       options.lra_pivoting_rule == LraPivotingRule::Soi || options.lra_fixed_elimination,
       options.lra_row_propagation_limits, backend, statistics, false, options.max_theory_conflicts);
+  if (options.lra_equality_propagation) {
+    online_propagator.enable_variable_equality_propagation();
+  }
   const AssignmentConnection assignment_connection(backend, online_propagator);
   for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
     const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
@@ -12269,6 +12398,9 @@ class IncrementalLraEngine final : public IncrementalEngine {
         options.lra_model_phase, options.lra_pivoting_rule == LraPivotingRule::Soi,
         options.lra_row_propagation_limits, backend_, statistics, true,
         options.max_theory_conflicts);
+    if (options.lra_equality_propagation) {
+      propagator.enable_variable_equality_propagation();
+    }
     std::vector<int> observed;
     for (const auto& atom : clausifier_.theory_atoms())
       observed.push_back(std::abs(atom.lit.value));

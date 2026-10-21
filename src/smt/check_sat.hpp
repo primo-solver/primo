@@ -248,6 +248,10 @@ struct CheckSatOptions {
   // the propagation check is exact and cheap (O(atoms sharing a slack)),
   // so there's no heuristic budget/backoff tuning to expose.
   bool lra_propagation = true;
+  // Experimental pure-QF_LRA use of Bjørner--Nachmanson Section 3.2.
+  // Proved variable equalities propagate existing difference comparisons;
+  // the mixed-theory producer remains independently configured below.
+  bool lra_equality_propagation = false;
   // Row-based/interval bound propagation (Dutertre & de Moura Section 4,
   // generalizing lra_propagation's same-slack case to derive an implied
   // bound for a row from its terms' current bounds). Only takes effect

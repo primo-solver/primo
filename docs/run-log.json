@@ -3,6 +3,66 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-10-21-pure-lra-equality-portfolio",
+      "date": "2026-10-21",
+      "kind": "experimental-option-and-portfolio-ablation",
+      "evidence_status": "implementation-awaiting-cluster-qualification",
+      "branch": "docs/public-repository-migration",
+      "baseline_git": "964a39a",
+      "scope": "Default-off pure-QF_LRA application of the existing Bjørner-Nachmanson Section 3.2 model-unit producer to existing difference-comparison atoms; compare default/equality/both/both-equality on all 1753 inputs. No default changes.",
+      "implementation": {
+        "flag": "--lra-equality-propagation",
+        "scope_deviation": "The paper explicitly disables equality discovery for pure QF_LRA; this is a diversification experiment.",
+        "checklist": "docs/implementation/lra.md#experimental-pure-arithmetic-equality-propagation",
+        "driver": "scripts/qualification/lra_equalities/campaign.py",
+        "wrapper": "scripts/qualification/lra_equalities/run.sbatch",
+        "checks": "scripts/qualification/lra_equalities/checks.sbatch"
+      },
+      "profiles": {
+        "default": [
+          "--quiet"
+        ],
+        "equality": [
+          "--quiet",
+          "--lra-equality-propagation"
+        ],
+        "both": [
+          "--quiet",
+          "--lra-model-phase",
+          "--monotone-elimination"
+        ],
+        "both-equality": [
+          "--quiet",
+          "--lra-model-phase",
+          "--monotone-elimination",
+          "--lra-equality-propagation"
+        ]
+      },
+      "local_preliminary": {
+        "status": "Bounded individual diagnostics only, not correctness qualification or performance evidence",
+        "source": "Uncommitted candidate against 964a39a; qualification will use an exact committed snapshot",
+        "binary_sha256": "a59a346adf98d040daadc70f758f1e80298cdd0326ffb6edf7aca76b2c4a578d",
+        "build": "cmake --build build-rel --target primo -j 4",
+        "smoke": "build-rel/primo --quiet --stats --max-theory-conflicts 100 --preprocessing-mode=off --no-solved-constant-substitution --lra-equality-propagation --theory-phase positive --cadical-option=phase=1 benchmarks/seeds/qf_lra/variable_equality_conditional_bounds.smt2",
+        "result": "SAT, 2 backtrack repair callbacks, zero SAT conflicts; this fixture does not establish an infeasible-repair backjump",
+        "lint": "make lint passed",
+        "docs": "make docs passed"
+      },
+      "required_qualification": {
+        "environment": "CPU SLURM compute, 1 physical CPU per measurement, 7 GiB, no GPUs",
+        "generated": "Per profile: 3000 FuzzSMT plus 1000 Boolean/arithmetic cases, status-aware reference checks and separate SAT-model checks",
+        "mutations": "Fresh seeded OpFuzz on tracked real and regression seeds for enabled profiles; deterministic original seed checks first",
+        "tests": "SLURM release CTest/Python/documentation checks and make asan-test",
+        "benchmark": "All 1753 QF_LRA inputs, 30 seconds, 32 shards/profile; model replay strictly after all timing tasks",
+        "models": "Every successful SAT row, direct Dolmen in original logic, separately timed",
+        "acceptance": "No wrong answers, crashes, invalid models or untriaged reference disagreements; report gains/losses and union solves; retain only as experimental portfolio option unless evidence warrants more"
+      },
+      "artifacts": {
+        "local": "results/lra-equality-portfolio-20261021",
+        "status": "Cluster qualification not submitted yet"
+      }
+    },
+    {
       "id": "2026-10-11-qf-lra-historical-reference-recovery",
       "date": "2026-10-11",
       "kind": "historical-reference-recovery-and-censored-comparison",

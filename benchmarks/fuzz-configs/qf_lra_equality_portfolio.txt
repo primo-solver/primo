@@ -1,0 +1,6 @@
+; Quantifier-free, sort/arity-preserving operator mutation classes.
+; Exclude multiplication, division and declaration/scope-changing rewrites.
+=,distinct
+<=,>=,<,>
++,- :arity 2+
+and,or,=>,xor :arity 2

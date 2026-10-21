@@ -833,11 +833,64 @@ previously separate groups; transitivity supplies the remaining connections.
 The surrounding combination solver retains its exact fallback checks.
 
 This is the `model-unit` option. The
-{source}`default remains legacy <src/smt/check_sat.hpp#L396-L402>`; pure
-QF_LRA calls neither producer. The full-corpus comparisons and the unpromoted
+{source}`default remains legacy <src/smt/check_sat.hpp#L396-L402>`; by default,
+pure QF_LRA calls neither producer. The full-corpus comparisons and the unpromoted
 adaptive follow-up are preserved in the
 {source}`2024 paper implementation note <docs/papers/arithmetic-solving-in-z3.md#L280-L464>`.
 The paper's integer and nonlinear procedures are outside this chapter's scope.
+
+(experimental-pure-arithmetic-equality-propagation)=
+#### Experimental pure-arithmetic equality propagation
+
+The default-off `--lra-equality-propagation` experiment reuses the §3.2 model-unit
+recognizer on pure QF_LRA. This deliberately changes the scope: the paper
+explicitly disables this discovery pass for pure QF_LRA/QF_LIA. It is a
+portfolio experiment, not a claim that the paper recommends this setting.
+It requires IPASIR-UP and works independently of `--lra-propagation`.
+The implementation follows this checklist:
+
+- The pure `solve_qf_lra_impl` path enables the feature explicitly on its
+  `OnlineLraPropagator`, as does the retained `IncrementalLraEngine` when it
+  constructs the per-query propagator. Mixed routes and defaults keep their
+  existing behavior.
+- The propagator owns an immutable index of existing comparison atoms whose
+  canonical polynomial is `x - y`, and the original arithmetic variable IDs.
+  It creates no terms, SAT variables, tableau rows, or all-pairs atom frontier.
+- After an arithmetic assignment or backtrack, repair feasibility before
+  querying `LraTableau::model_filtered_unit_equalities`. Equal model values
+  alone never justify a propagation. No scan runs again until the state changes.
+- Join the returned explained edges into components. The union of the bound
+  premises on a component's edges justifies equality of any two members;
+  these reasons may be larger than a minimal path explanation.
+- For an indexed atom whose endpoints are proved equal, evaluate its comparison
+  at `x - y = 0` and queue the corresponding SAT literal with those premises.
+  An opposite assignment produces a guarded conflict. Existing propagation
+  reason lifetimes and backtrack removal apply to delivered literals.
+- Discovery costs a model grouping and candidate-row scan; component building
+  and target lookup add linear traversal plus disjoint-set work. Materializing
+  component explanations adds `O(sum_c R_c log R_c)` sorting work for `R_c`
+  collected reason literals in each component; deduplication and copying
+  reasons to target atoms add work proportional to their sizes. There is no completeness
+  claim: row shapes, the current basis, and existing target atoms restrict it.
+- Test fixed equalities, both unit connector signs, accidental model equality,
+  strict and scaled/reversed comparisons, transitive edges, backtracking and
+  model construction. Qualify on CPU SLURM with fresh differential fuzzing and
+  real-seed mutations, then compare default/option and both-flags/option on
+  all 1,753 inputs with separate direct SAT-model validation. Report complementary
+  solves, not only aggregate runtime. No default or performance claim is made
+  before these checks complete.
+
+For example, bounds `x >= 7`, `x <= 7`, `y >= 7`, `y <= 7` prove `x = y`.
+Their four premise literals justify an existing `x <= y` atom being true or an
+existing `x < y` atom being false. Scaled and reversed comparisons use the
+same normalized difference slack. The index excludes expressions such as
+`2*x - y`, whose value is not determined by equality alone. Internal bounds
+are updated only when SAT assigns the propagated atom, following the existing
+notification protocol. The new unit regressions exercise transitive component
+reasons, strict/scaled targets, accidental model equality, and conditional
+fixing premises; the existing tableau regressions cover the unit-row shapes.
+Qualification and portfolio evaluation are pending; the bounded local smoke
+has demonstrated delivery to both a non-strict and a scaled strict target.
 
 ## Fixed-basic elimination
 

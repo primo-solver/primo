@@ -103,6 +103,11 @@ form dependent groups:
 - Row propagation requires LRA propagation; reverse row propagation also
   requires row propagation. The forward row-size/fanout defaults are 64/64,
   and reverse defaults are 32/32. A limit is useful only when its producer runs.
+- `--lra-equality-propagation` is a default-off pure-QF_LRA experiment requiring
+  IPASIR-UP. It proves variable equalities with the model-unit recognizer and
+  propagates existing difference comparisons. It is independent of the bound
+  propagation switches and the mixed-route equality-producer choice. See
+  [its scope and explanation rules](#experimental-pure-arithmetic-equality-propagation).
 - Sparse pricing and sparse/least-violated leaving choices apply to the sparse
   pivot rule. SOI minimization belongs to the SOI rule. They are not interchangeable
   dimensions of one unconditional tuning space.
