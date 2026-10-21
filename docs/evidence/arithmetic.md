@@ -196,6 +196,104 @@ artifact hashes, audit and plot commands. The
 downloaded raw data
 and derived CSVs are under `results/qf-lra-historical-references-20261011/`.
 
+(pure-lra-equality-portfolio-evidence)=
+## Pure-LRA equality propagation experiment
+
+The October 21 experiment adds the default-off
+[`--lra-equality-propagation`](#experimental-pure-arithmetic-equality-propagation)
+configuration for diversification. It applies the existing model-unit equality
+recognizer to comparisons already in a pure QF_LRA input. The paper explicitly
+disables this discovery pass for pure arithmetic; this experiment changes that
+scope rather than attributing the setting to its authors.
+
+All four profiles use the frozen `4419dc9` binary and the same hashed 1,753
+inputs, with 30 seconds per input, one physical CPU and 7 GiB on SLURM compute
+nodes. No GPU nodes or competition subset are used. Here **both** means
+`--lra-model-phase --monotone-elimination`; **equality** means the new flag.
+
+| Profile | Solved | SAT | UNSAT | Timeouts | PAR2 sum, seconds |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Default | 1,466 | 892 | 574 | 287 | 21,262.3 |
+| Equality | 1,169 | 701 | 468 | 584 | 37,381.9 |
+| Both | 1,533 | 942 | 591 | 220 | 17,185.0 |
+| Both + equality | 1,175 | 701 | 474 | 578 | 37,515.8 |
+
+The timing audit finds no wrong answers, errors, unknown results or decisive
+disagreements among profiles. Every successful SAT row passed separate direct
+Dolmen model replay: 892 default, 701 equality, 942 both, and 701 both/equality,
+for 3,236 checks in the original input logic. All timing tasks finished before
+model replay started; checking time does not enter the table or cactus.
+
+![All QF_LRA inputs: equality-propagation experiment, 30 seconds](../_static/qf-lra-equality-portfolio-full30.svg)
+
+Equality has three gains and 300 losses against default. Both already solves
+all three gains. Adding equality to both has zero gains and 358 losses. The
+default/both union is 1,556, and the four-profile union is also 1,556: this run
+shows no extra solved coverage from the new configuration. These unions allow
+30 seconds **per configuration**; they do not measure a portfolio scheduled
+within one shared 30-second budget. Equality raises PAR2 by 75.8% against
+default; adding it to both raises PAR2 by 118.3% against both.
+
+Exploratory censoring of the same timing rows finds small coverage gains at
+shorter cutoffs. No extra solver runs or portfolio scheduling were performed:
+
+| Cutoff per configuration | Default/both union | Four-profile union | Extra inputs |
+| --- | ---: | ---: | ---: |
+| 0.1 s | 830 | 830 | 0 |
+| 1 s | 1,101 | 1,101 | 0 |
+| 3 s | 1,238 | 1,238 | 0 |
+| 5 s | 1,301 | 1,302 | 1 |
+| 10 s | 1,396 | 1,398 | 2 |
+| 20 s | 1,501 | 1,501 | 0 |
+| 30 s | 1,556 | 1,556 | 0 |
+
+For example, equality solves the Bradley--Manna--Sipma LassoRanker
+`Iteration1_Lasso_7-phaseTemplate` input in 8.36 seconds, versus 19.06 for
+both and a default timeout. Its other ten-second addition is
+`2019-ezsmt/routingMax/SCC_strong/p50.56.smt2`, at 7.66 seconds versus
+13.60 for both. These observations have no paired-repeat confirmation and
+do not establish a useful schedule under a shared budget.
+
+The largest losses are in LassoRanker: default solves 236 and equality 63,
+while both solves 296 and both + equality 71 of its 419 inputs. Other affected
+families include `2019-ezsmt` (90/61 and 94/67), `sc` (144/116 and 144/107),
+and `uart` (70/32 and 66/31), with each pair showing the profile before/after
+enabling equality. All 488 meti-tarski inputs remain solved in every profile.
+
+A separate diagnostic on
+`2019-ezsmt/travellingSalesperson/rand_70_300_1155482584_11.lp.smt2` locates
+the cost in equality discovery. In a five-second counter run, equality spends
+4.56 seconds in 13,443 scans, returning 4,304,669 explained edges but delivering
+only three target literals. A separate GDB run samples the equality consumer
+in 151 of 155 stacks and its tableau producer in 132. These are overlapping
+inclusive counts from an instrumented run, not replacement benchmark times.
+Repeated scans and unproductive discoveries explain this case's overhead;
+the counters do not establish a general search or pivot pathology.
+
+Correctness qualification also passed 44 release and 44 ASan CTest targets,
+242 Python tests, 12 documentation examples, and 18 original seeds in each
+profile. Each profile received 3,000 generated FuzzSMT cases and 1,000
+Boolean/arithmetic cases. Across the status-aware FuzzSMT replays, 83
+timeout-only outcomes are separate from passes. There were 14,389 generated
+SAT-model checks; those from FuzzSMT use the QF_NRA semantic superset for
+constant-division syntax. Fresh real-seed OpFuzz campaigns produced no bug
+triggers, and independent replay passed all 3,600 retained files per profile
+(1,652 distinct contents). Equality-only retained mode passed 1,000 sessions,
+11,000 queries and 8,000 direct SAT-model checks. The initial combined-profile
+assumptions probes hit the existing monotone-elimination configuration guard;
+that unsupported combination is recorded separately, not counted as a pass.
+
+The {equalityworkflow}`campaign driver <scripts/qualification/lra_equalities/campaign.py>`,
+{equalityworkflow}`complete-coverage audit <scripts/qualification/lra_equalities/audit.py>`,
+and {equalityworkflow}`diagnostic plan <scripts/qualification/lra_equalities/diagnostic-plan.json>`
+preserve the profiles and method. Run `2026-10-21-pure-lra-equality-portfolio`
+records the exact binary, input identities, resource limits, jobs and raw
+artifacts under `results/lra-equality-portfolio-20261021/final/`.
+The flag remains an experimental control; defaults are unchanged, and this
+measurement supplies no positive portfolio-coverage evidence at 30 seconds.
+The small exploratory gains at shorter cutoffs remain distinct from the
+aggregate losses and the absence of a measured shared-budget schedule.
+
 Rejected prototypes and unimplemented H4/H6/H11 directions remain discoverable
 through the [research register](../leads/index.md). Keeping their negative
 results prevents a later proposal from mistaking an already rejected design

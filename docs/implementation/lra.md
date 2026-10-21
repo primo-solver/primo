@@ -849,8 +849,9 @@ explicitly disables this discovery pass for pure QF_LRA/QF_LIA. It is a
 portfolio experiment, not a claim that the paper recommends this setting.
 It requires IPASIR-UP and works independently of `--lra-propagation`.
 Retained sessions keep their existing option restrictions: monotone elimination
-is forbidden in assumptions mode, so the combined phase/elimination/equality
-profile is a one-shot configuration.
+is forbidden in assumptions mode. The combined phase/elimination/equality
+profile therefore requires rebuild mode in an incremental session; this
+campaign measures it one-shot.
 The {equalityexperiment}`consumer index <src/smt/solver_engines.cpp#L7217-L7245>`,
 {equalityexperiment}`feasible-state scan <src/smt/solver_engines.cpp#L7561-L7634>`,
 and {equalityexperiment}`backtrack repair <src/smt/solver_engines.cpp#L7031-L7068>`
@@ -900,8 +901,13 @@ reasons, strict/scaled targets, accidental model equality, and conditional
 fixing premises; the existing tableau regressions cover the unit-row shapes.
 The frozen `4419dc9` implementation passed the generated, real-seed mutation,
 retained-session and sanitizer gates recorded in run
-`2026-10-21-pure-lra-equality-portfolio`. Full-corpus timings and their separate
-SAT-model replay are still running. Preliminary profiling locates substantial
+`2026-10-21-pure-lra-equality-portfolio`. Full-corpus timings have completed;
+every successful SAT row passed separate direct Dolmen model replay. The
+[full-corpus comparison](#pure-lra-equality-portfolio-evidence)
+records large aggregate losses and no additional portfolio coverage at 30 seconds.
+Exploratory shorter cutoffs show small coverage gains; no shared-budget
+portfolio schedule has been measured.
+Profiling locates substantial
 overhead in repeated discovery scans: many explained edges can produce very
 few new target literals. The implementation currently scans even when its
 indexed targets are already assigned and may queue duplicate candidates;

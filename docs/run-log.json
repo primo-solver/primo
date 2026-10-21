@@ -6,7 +6,7 @@
       "id": "2026-10-21-pure-lra-equality-portfolio",
       "date": "2026-10-21",
       "kind": "experimental-option-and-portfolio-ablation",
-      "evidence_status": "full-corpus-timings-running-model-replay-dependent",
+      "evidence_status": "qualified-experimental-option-full-corpus-complete",
       "branch": "docs/public-repository-migration",
       "baseline_git": "964a39a",
       "scope": "Default-off pure-QF_LRA application of the existing Bjørner-Nachmanson Section 3.2 model-unit producer to existing difference-comparison atoms; compare default/equality/both/both-equality on all 1753 inputs. No default changes.",
@@ -40,7 +40,7 @@
       },
       "local_preliminary": {
         "status": "Bounded individual diagnostics only, not correctness qualification or performance evidence",
-        "source": "Uncommitted candidate against 964a39a; qualification will use an exact committed snapshot",
+        "source": "Historical development candidate against964a39a, superseded by exact frozen4419dc9 qualification below.",
         "binary_sha256": "a59a346adf98d040daadc70f758f1e80298cdd0326ffb6edf7aca76b2c4a578d",
         "build": "cmake --build build-rel --target primo -j 4",
         "smoke": "build-rel/primo --quiet --stats --max-theory-conflicts 100 --preprocessing-mode=off --no-solved-constant-substitution --lra-equality-propagation --theory-phase positive --cadical-option=phase=1 benchmarks/seeds/qf_lra/variable_equality_conditional_bounds.smt2",
@@ -59,7 +59,7 @@
       },
       "artifacts": {
         "local": "results/lra-equality-portfolio-20261021",
-        "status": "CPU SLURM correctness gates qualified; full-corpus timings running; model replay depends on all timings",
+        "status": "All timing and separate model tasks completed successfully; full audit passed",
         "remote_final": "/home/janotmik/primo-lra-equality-20261021/results/lra-equality-portfolio-20261021/final",
         "gate_audit": "results/lra-equality-portfolio-20261021/final/gate-audit.json"
       },
@@ -69,12 +69,12 @@
         "asan_job": "215617",
         "release": "44/44 C++ tests and deterministic profile seed checks passed; Python and documentation checks completed in release workflow",
         "asan": "Blocked before compiling by missing Make dependency download stamps; attempted CLI11 network download timed out. Workflow now treats preflight-verified dependency files as reusable without modifying shared dependencies.",
-        "remaining": "Superseded by frozen 4419dc9; final correctness gates passed, full-corpus evaluation still running."
+        "remaining": "Superseded by frozen 4419dc9; all final correctness gates, corpus timings and model replay are complete."
       },
       "native_source_git": "4419dc902f03fe12b8933d5dee4378dd11497035",
       "binary_sha256": "e06bd36239ccc7af9fd29ed55af9f595f2e7cbd52f6ba5961b962c9d8d6fc26d",
       "execution": {
-        "environment": "SLURM compute, Xeon E5-2690 v4, 1 physical CPU/7 GiB per gate or measurement; no GPU",
+        "environment": "CPU-only SLURM compute, Xeon E5-2690 v4; no GPU nodes",
         "remote_workspace": "/home/janotmik/primo-lra-equality-20261021",
         "frozen_local_worktree": "/tmp/primo-lra-equality-source",
         "release_build_job": "215620",
@@ -84,11 +84,19 @@
         "generated_gate_job": "215623",
         "mutation_job": "215624",
         "retained_mutant_replay_job": "215625",
-        "timings": "Running128 CPU tasks,32 shards/profile at30 seconds; separate models depend on every timing task finishing successfully",
+        "timings": "All128 tasks completed, 32 shards per profile, 30 seconds per input; model array started only afterward",
         "preflights": "results/lra-equality-portfolio-20261021/preflight-*.log",
         "timing_job": "215702",
         "model_replay_job": "215703",
-        "incremental_job": "215693"
+        "incremental_job": "215693",
+        "model_replay": "All 128 tasks COMPLETED 0:0; started2026-10-21 12:27:34 cluster-local after all timing tasks ended; last ended12:34:29",
+        "timing_window": "2026-10-21 11:46:45–12:27:34 cluster-local (Europe/Prague)",
+        "accounting": "results/lra-equality-portfolio-20261021/sacct-final.psv;128 timing and128 model tasks, allCOMPLETED0:0, temporal separation checked",
+        "resource_limits": {
+          "native_build_and_release_asan_checks": "4 CPUs, 8 GiB",
+          "timings_generated_mutation_incremental_and_model_tasks": "1 physical CPU, 7 GiB per task",
+          "models": "180-second solver cap, 120-second Dolmen cap, 5G Dolmen size; separate from30-second timings"
+        }
       },
       "qualification_progress": {
         "release_cpp": "44/44 CTest passed, including deterministic infeasible-rollback test",
@@ -183,7 +191,8 @@
             "reason": "Existing assumptions-mode guard forbids monotone elimination; one-shot profile remains supported."
           }
         },
-        "configuration_triage": "Four initial combined-profile retained-session probes failed at the existing monotone-elimination/assumptions-mode guard. These are unsupported option combinations, not solver/reference disagreements. Equality-only retained mode passed1000 sessions,11000 queries,8000 direct SAT-model checks. All four one-shot profiles remain supported."
+        "configuration_triage": "Four initial combined-profile retained-session probes failed at the existing monotone-elimination/assumptions-mode guard. These are unsupported option combinations, not solver/reference disagreements. Equality-only retained mode passed1000 sessions,11000 queries,8000 direct SAT-model checks. All four one-shot profiles remain supported.",
+        "complete": true
       },
       "asan_runtime": {
         "rpm": "libasan-11.5.0-14.el9.x86_64.rpm",
@@ -196,7 +205,8 @@
         "clang_tidy": "All128 tracked C++ files scanned, plus final changed solver_engines.cpp rechecked; only external CLI11 leak warning and baseline option-enum negative-test warnings surfaced",
         "include_cleaner": "All128 files scanned; 402 advisory warnings, dominated by existing transitive includes and paired self-includes; inspected changed files, no new unused implementation include",
         "source_review": "Borrow/mutation/use checked; immutable prepared index, fixed-size parent vector, component reasons and queue ownership remain separate",
-        "documentation_review": "Independent reviewer ablation_doc_review accepted E1 feasibility repair, E3 sorting complexity, E4 pinned navigation and optional-backend guards. Follow-up accepted qualification status, profiling counts/limitations and retained-session restriction without findings; final full-results review remains pending."
+        "documentation_review": "Independent read-only reviewer ablation_doc_review accepted final implementation/evidence sections and run-log entry against4419dc9 and qualified artifacts. E1 feasible repair, E3 complexity, E4 navigation and optional-backend guards resolved; final counts, all128 model shards/3236 Dolmen passes, cutoff caveats, accounting separation and hashes independently checked. No required findings remain. Workflow link pin and build/link validation checked separately.",
+        "final_validation": "make lint; qualification Python syntax; SLURM wrapper validation; actual complete-coverage audit --require-models; make docs; assembled-site local/Git link checker; rendered SVG inspection"
       },
       "diagnostics": {
         "status": "complete-diagnostic-only-not-headline-timing",
@@ -312,7 +322,305 @@
         "timings": "PRIMO_PHASE=benchmark sbatch --array=0-127%32 scripts/qualification/lra_equalities/timing.sbatch",
         "models": "PRIMO_PHASE=replay sbatch --array=0-127%32 --time=04:00:00 --dependency=afterok:<timing-array> scripts/qualification/lra_equalities/run.sbatch",
         "audit": "python3 scripts/qualification/lra_equalities/audit.py <campaign-final-root> --require-models --binary-sha256 e06bd36239ccc7af9fd29ed55af9f595f2e7cbd52f6ba5961b962c9d8d6fc26d"
-      }
+      },
+      "workflow_git": "e69bbb42b43a28b54c895069ac3288b25c2af11b",
+      "toolchain": {
+        "compiler": "GCC11.4.1",
+        "build": "Release, no sanitizers in timings",
+        "cadical": "cadical-3.0.0-7b99c07",
+        "reference": {
+          "version": "Z3 5.1.0, 64-bit",
+          "sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0"
+        },
+        "validator": {
+          "version": "Dolmen0.10",
+          "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+        }
+      },
+      "full_corpus": {
+        "inputs": 1753,
+        "timeout_seconds": 30,
+        "shards_per_profile": 32,
+        "input_manifest_sha256": "5aeb59d2a4d34ecf28143d5b004a7046a26c0edbc7210e9975f86112168deffe",
+        "profiles": {
+          "default": {
+            "inputs": 1753,
+            "solved": 1466,
+            "sat": 892,
+            "timeouts": 287,
+            "unknown": 0,
+            "errors": 0,
+            "wrong": 0,
+            "par2_sum": 21262.250912,
+            "direct_dolmen_models": 892
+          },
+          "equality": {
+            "inputs": 1753,
+            "solved": 1169,
+            "sat": 701,
+            "timeouts": 584,
+            "unknown": 0,
+            "errors": 0,
+            "wrong": 0,
+            "par2_sum": 37381.945809000004,
+            "direct_dolmen_models": 701
+          },
+          "both": {
+            "inputs": 1753,
+            "solved": 1533,
+            "sat": 942,
+            "timeouts": 220,
+            "unknown": 0,
+            "errors": 0,
+            "wrong": 0,
+            "par2_sum": 17184.989107,
+            "direct_dolmen_models": 942
+          },
+          "both-equality": {
+            "inputs": 1753,
+            "solved": 1175,
+            "sat": 701,
+            "timeouts": 578,
+            "unknown": 0,
+            "errors": 0,
+            "wrong": 0,
+            "par2_sum": 37515.819358,
+            "direct_dolmen_models": 701
+          }
+        },
+        "decisive_disagreements": 0,
+        "model_status": "Every successful SAT row passed direct Dolmen in original logic;3236 checks total; no fallback qualification",
+        "portfolio": {
+          "all_arms_union": 1556,
+          "default_both_union": 1556,
+          "new_beyond_default_both": 0,
+          "equality_gains_over_default": 3,
+          "equality_losses_against_default": 300,
+          "both_equality_gains_over_both": 0,
+          "both_equality_losses_against_both": 358
+        },
+        "equality_gains_files": [
+          "LassoRanker/CooperatingT2/polyrank4.t2.c_Iteration10_Loop_7-phaseTemplate.smt2",
+          "LassoRanker/SV-COMP/BradleyMannaSipma-2005ICALP-Fig1_true-termination.c_Iteration1_Lasso_7-phaseTemplate.smt2",
+          "LassoRanker/Ultimate/GulwaniResetBranchOnly.bpl_Iteration1_Lasso_7-phaseTemplate.smt2"
+        ],
+        "paired_summary": {
+          "equality_vs_default": {
+            "gains": 3,
+            "losses": 300,
+            "par2_ratio": 1.7581368014005687,
+            "median_common_runtime_ratio": 1.0411026155996383
+          },
+          "both_equality_vs_both": {
+            "gains": 0,
+            "losses": 358,
+            "par2_ratio": 2.183057500031734
+          }
+        },
+        "family_solved": {
+          "2017-Heizmann-UltimateInvariantSynthesis": {
+            "inputs": 58,
+            "default": 18,
+            "equality": 14,
+            "both": 23,
+            "both-equality": 16
+          },
+          "2019-ezsmt": {
+            "inputs": 105,
+            "default": 90,
+            "equality": 61,
+            "both": 94,
+            "both-equality": 67
+          },
+          "DTP-Scheduling": {
+            "inputs": 91,
+            "default": 91,
+            "equality": 86,
+            "both": 91,
+            "both-equality": 91
+          },
+          "LassoRanker": {
+            "inputs": 419,
+            "default": 236,
+            "equality": 63,
+            "both": 296,
+            "both-equality": 71
+          },
+          "TM": {
+            "inputs": 25,
+            "default": 24,
+            "equality": 18,
+            "both": 25,
+            "both-equality": 15
+          },
+          "check": {
+            "inputs": 2,
+            "default": 2,
+            "equality": 2,
+            "both": 2,
+            "both-equality": 2
+          },
+          "clock_synchro": {
+            "inputs": 36,
+            "default": 33,
+            "equality": 33,
+            "both": 35,
+            "both-equality": 34
+          },
+          "keymaera": {
+            "inputs": 21,
+            "default": 21,
+            "equality": 21,
+            "both": 21,
+            "both-equality": 21
+          },
+          "latendresse": {
+            "inputs": 18,
+            "default": 15,
+            "equality": 15,
+            "both": 11,
+            "both-equality": 11
+          },
+          "meti-tarski": {
+            "inputs": 488,
+            "default": 488,
+            "equality": 488,
+            "both": 488,
+            "both-equality": 488
+          },
+          "miplib": {
+            "inputs": 42,
+            "default": 17,
+            "equality": 15,
+            "both": 20,
+            "both-equality": 17
+          },
+          "sal": {
+            "inputs": 107,
+            "default": 107,
+            "equality": 107,
+            "both": 107,
+            "both-equality": 107
+          },
+          "sc": {
+            "inputs": 144,
+            "default": 144,
+            "equality": 116,
+            "both": 144,
+            "both-equality": 107
+          },
+          "spider_benchmarks": {
+            "inputs": 42,
+            "default": 42,
+            "equality": 42,
+            "both": 42,
+            "both-equality": 42
+          },
+          "tropical-matrix": {
+            "inputs": 10,
+            "default": 0,
+            "equality": 0,
+            "both": 0,
+            "both-equality": 0
+          },
+          "tta_startup": {
+            "inputs": 72,
+            "default": 68,
+            "equality": 56,
+            "both": 68,
+            "both-equality": 55
+          },
+          "uart": {
+            "inputs": 73,
+            "default": 70,
+            "equality": 32,
+            "both": 66,
+            "both-equality": 31
+          }
+        },
+        "artifacts": {
+          "timing_audit": "results/lra-equality-portfolio-20261021/final/timing-audit.json",
+          "qualified_audit": "results/lra-equality-portfolio-20261021/final/qualified-audit.json",
+          "csvs": "results/lra-equality-portfolio-20261021/final/full30/plot-data/*.csv",
+          "raw": "CPU SLURM workspace, results/lra-equality-portfolio-20261021/final/full30/{profile}/shard-*; original models and generated inputs retained remotely",
+          "local_timing_archive": "results/lra-equality-portfolio-20261021/timing-full30.tar.gz",
+          "local_qualified_archive": "results/lra-equality-portfolio-20261021/qualified-full30.tar.gz"
+        },
+        "models_complete": true,
+        "derived_cutoffs": [
+          {
+            "cutoff_seconds_per_configuration": 0.1,
+            "default_both_union": 830,
+            "all_arms_union": 830,
+            "additional_files": []
+          },
+          {
+            "cutoff_seconds_per_configuration": 1,
+            "default_both_union": 1101,
+            "all_arms_union": 1101,
+            "additional_files": []
+          },
+          {
+            "cutoff_seconds_per_configuration": 3,
+            "default_both_union": 1238,
+            "all_arms_union": 1238,
+            "additional_files": []
+          },
+          {
+            "cutoff_seconds_per_configuration": 5,
+            "default_both_union": 1301,
+            "all_arms_union": 1302,
+            "additional_files": [
+              "2017-Heizmann-UltimateInvariantSynthesis/_gr2006.c.i_4_4_3.bpl_7.smt2"
+            ]
+          },
+          {
+            "cutoff_seconds_per_configuration": 10,
+            "default_both_union": 1396,
+            "all_arms_union": 1398,
+            "additional_files": [
+              "2019-ezsmt/routingMax/SCC_strong/p50.56.smt2",
+              "LassoRanker/SV-COMP/BradleyMannaSipma-2005ICALP-Fig1_true-termination.c_Iteration1_Lasso_7-phaseTemplate.smt2"
+            ]
+          },
+          {
+            "cutoff_seconds_per_configuration": 20,
+            "default_both_union": 1501,
+            "all_arms_union": 1501,
+            "additional_files": []
+          },
+          {
+            "cutoff_seconds_per_configuration": 30,
+            "default_both_union": 1556,
+            "all_arms_union": 1556,
+            "additional_files": []
+          }
+        ],
+        "derived_cutoff_limitations": "Exploratory censoring of the same30-second measurements, not new benchmark runs. No paired-repeat confirmation and no shared-budget portfolio schedule measured.",
+        "artifact_sha256": {
+          "final/qualified-audit.json": "ad64b452e836c3c45613111002096668194195865c1d5d89eba93f0288065405",
+          "qualified-full30.tar.gz": "9fa2980c9c0362188e455220c2758f2b266449552237a23e322c2b1522540a6a",
+          "sacct-final.psv": "06a2666bc6f00941999054bf1a6dbb6b62747ab94f3772c996dfb5cf50096091",
+          "final/full30/plot-data/both-equality.csv": "ee99e25cda101dd93e36294ef2386eea74ebe95af87839806fef613153c6c834",
+          "final/full30/plot-data/both.csv": "6ee06cc8ab76dba749e8fcbfacc05cfff5fd74e4c12c5bf75386d5c773c4d3a9",
+          "final/full30/plot-data/default.csv": "146f42702da73a9ef3c09c0711ec960ec8c26570232d23ed7b70595df9dc0f4d",
+          "final/full30/plot-data/equality.csv": "682df0b79436324e45510618757a4b80a5c9add453fbd5b85a8e6b474835316e"
+        }
+      },
+      "decision": {
+        "implementation": "Accepted as the user-requested, correctness-qualified default-off experimental control.",
+        "performance": "Negative aggregate result at30 seconds: no added union coverage over default+both; substantial losses. Exploratory5/10-second censoring adds1/2 cases, unconfirmed by repeat pairs.",
+        "portfolio_union_caveat": "Per-configuration time budgets, not a shared-budget scheduled portfolio.",
+        "defaults": "Unchanged; no promotion."
+      },
+      "plot": {
+        "path": "docs/_static/qf-lra-equality-portfolio-full30.svg",
+        "inputs": 1753,
+        "filtering": "None; times below0.01s drawn at left edge. All successful SAT rows model-qualified.",
+        "command": "python3 scripts/plot_cactus.py --series default=results/lra-equality-portfolio-20261021/final/full30/plot-data --series equality=results/lra-equality-portfolio-20261021/final/full30/plot-data --series both=results/lra-equality-portfolio-20261021/final/full30/plot-data --series both-equality=results/lra-equality-portfolio-20261021/final/full30/plot-data --timeout 30 --title 'QF_LRA: pure-arithmetic equality propagation' --sort-by-solved --highlight-series both --note 'Primo 4419dc9; CPU SLURM compute; one physical CPU and 7 GiB per run.' --note 'both = model phase + monotone elimination; equality = variable-equality propagation.' --note 'All 3,236 successful SAT rows separately validated by Dolmen; no default changes.' --note 'Times below 0.01s share the left edge; no easy-instance filtering.' --out docs/_static/qf-lra-equality-portfolio-full30.svg",
+        "summary": "results/lra-equality-portfolio-20261021/plot-summary.txt"
+      },
+      "source_equivalence": "Later changes affect documentation/evaluation scripts only; git diff 4419dc9 -- src tests CMakeLists.txt Makefile is empty."
     },
     {
       "id": "2026-10-11-qf-lra-historical-reference-recovery",

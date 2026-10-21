@@ -125,11 +125,10 @@ def main() -> None:
     if report["binary_sha256"] != args.binary_sha256:
         raise ValueError("unexpected timing binary")
     report["correctness_gates"] = gates
-    solved = {
-        name: {row["file"] for row in rows(args.root / "full30/plot-data" / f"{name}.csv")
-               if summarize.decisive(row)}
-        for name, _ in PROFILES
-    }
+    measurements = {name: rows(args.root / "full30/plot-data" / f"{name}.csv")
+                    for name, _ in PROFILES}
+    solved = {name: {row["file"] for row in observed if summarize.decisive(row)}
+              for name, observed in measurements.items()}
     report["portfolio"] = {
         "all_arms_union": len(set().union(*solved.values())),
         "default_both_union": len(solved["default"] | solved["both"]),
@@ -140,6 +139,21 @@ def main() -> None:
         "both_equality_gains_over_both": sorted(solved["both-equality"] - solved["both"]),
         "both_equality_losses_against_both": sorted(solved["both"] - solved["both-equality"]),
     }
+    # Exploratory censoring of these same measurements, not new timed portfolios.
+    report["derived_cutoffs"] = []
+    for cutoff in (0.1, 1, 3, 5, 10, 20, 30):
+        covered = {
+            name: {row["file"] for row in observed
+                   if summarize.decisive(row) and float(row["seconds"]) <= cutoff}
+            for name, observed in measurements.items()
+        }
+        baseline = covered["default"] | covered["both"]
+        all_arms = set().union(*covered.values())
+        report["derived_cutoffs"].append({
+            "cutoff_seconds_per_configuration": cutoff,
+            "default_both_union": len(baseline), "all_arms_union": len(all_arms),
+            "additional_files": sorted(all_arms - baseline),
+        })
     output = args.root / ("qualified-audit.json" if args.require_models else "timing-audit.json")
     output.write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps({"profiles": report["profiles"], "portfolio": report["portfolio"]}, indent=2))
