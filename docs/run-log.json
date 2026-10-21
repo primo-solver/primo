@@ -206,7 +206,8 @@
         "include_cleaner": "All128 files scanned; 402 advisory warnings, dominated by existing transitive includes and paired self-includes; inspected changed files, no new unused implementation include",
         "source_review": "Borrow/mutation/use checked; immutable prepared index, fixed-size parent vector, component reasons and queue ownership remain separate",
         "documentation_review": "Independent read-only reviewer ablation_doc_review accepted final implementation/evidence sections and run-log entry against4419dc9 and qualified artifacts. E1 feasible repair, E3 complexity, E4 navigation and optional-backend guards resolved; final counts, all128 model shards/3236 Dolmen passes, cutoff caveats, accounting separation and hashes independently checked. No required findings remain. Workflow link pin and build/link validation checked separately.",
-        "final_validation": "make lint; qualification Python syntax; SLURM wrapper validation; actual complete-coverage audit --require-models; make docs; assembled-site local/Git link checker; rendered SVG inspection"
+        "final_validation": "make lint; qualification Python syntax; SLURM wrapper validation; actual complete-coverage audit --require-models; make docs; assembled-site local/Git link checker; rendered SVG inspection",
+        "workflow_link_pin": "Pinned equalityworkflow to dcb548a457df2a151e8c71de0445c367e9023ced; linked campaign/audit/plan files checked in that commit. Solver sources and tests remain identical to4419dc9."
       },
       "diagnostics": {
         "status": "complete-diagnostic-only-not-headline-timing",
@@ -323,7 +324,7 @@
         "models": "PRIMO_PHASE=replay sbatch --array=0-127%32 --time=04:00:00 --dependency=afterok:<timing-array> scripts/qualification/lra_equalities/run.sbatch",
         "audit": "python3 scripts/qualification/lra_equalities/audit.py <campaign-final-root> --require-models --binary-sha256 e06bd36239ccc7af9fd29ed55af9f595f2e7cbd52f6ba5961b962c9d8d6fc26d"
       },
-      "workflow_git": "e69bbb42b43a28b54c895069ac3288b25c2af11b",
+      "workflow_git": "dcb548a457df2a151e8c71de0445c367e9023ced",
       "toolchain": {
         "compiler": "GCC11.4.1",
         "build": "Release, no sanitizers in timings",
