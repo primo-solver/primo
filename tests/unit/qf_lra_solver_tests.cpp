@@ -3364,6 +3364,14 @@ void variable_equality_does_not_propagate_accidental_model_equality() {
   assert(result.result == CheckSatResult::Sat);
   assert(result.statistics.get(":lra.equality-propagation.scans") > 0);
   assert(result.statistics.get(":lra.equality-propagation.equalities") == 0);
+  const auto no_targets = check_sat_smtlib(R"(
+    (set-logic QF_LRA) (declare-fun x () Real)
+    (assert (>= x 0)) (check-sat)
+  )",
+                                           options);
+  assert(no_targets.result == CheckSatResult::Sat);
+  assert(no_targets.statistics.get(":lra.equality-propagation.targets") == 0);
+  assert(no_targets.statistics.get(":lra.equality-propagation.backtrack-repairs") == 0);
 }
 
 void variable_equality_respects_conditional_fixing_bounds() {

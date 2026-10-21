@@ -60,6 +60,14 @@
       "artifacts": {
         "local": "results/lra-equality-portfolio-20261021",
         "status": "Cluster qualification not submitted yet"
+      },
+      "development_attempt": {
+        "source_git": "2fa8c6dba650a2ffd489d9fe90382340259e3e92",
+        "release_job": "215616",
+        "asan_job": "215617",
+        "release": "44/44 C++ tests and deterministic profile seed checks passed; Python and documentation checks completed in release workflow",
+        "asan": "Blocked before compiling by missing Make dependency download stamps; attempted CLI11 network download timed out. Workflow now treats preflight-verified dependency files as reusable without modifying shared dependencies.",
+        "remaining": "Fresh native snapshot adds no-target activation guard and deterministic infeasible-rollback tableau regression. All final gates remain pending."
       }
     },
     {

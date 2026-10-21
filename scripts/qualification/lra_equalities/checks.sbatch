@@ -22,7 +22,11 @@ if [[ ${PRIMO_CHECK_KIND:-release} == asan ]]; then
     cxx_header_flags+=" -isystem $header_root"
   done < "${PRIMO_CXX_HEADER_MANIFEST:?}"
   export CXXFLAGS="${CXXFLAGS:-}$cxx_header_flags"
-  make asan-test ASAN_BUILD_DIR=build-slurm-asan > "$PRIMO_CHECK_OUT/asan.log" 2>&1
+  # Workspace preflight verifies these reusable dependency files. Some shared
+  # installations lack Make's download stamps; do not download/rebuild them.
+  make -o contrib/local/.cli11.stamp -o contrib/local/.cadical.stamp \
+    -o contrib/local/.gmp.stamp asan-test ASAN_BUILD_DIR=build-slurm-asan \
+    > "$PRIMO_CHECK_OUT/asan.log" 2>&1
 else
   cmake --build build-slurm-rel > "$PRIMO_CHECK_OUT/build.log" 2>&1
   ctest --test-dir build-slurm-rel --timeout 180 --output-on-failure -j4 > "$PRIMO_CHECK_OUT/ctest.log" 2>&1

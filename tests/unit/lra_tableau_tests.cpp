@@ -1898,6 +1898,37 @@ void eqrows_rejects_different_nonfixed_polynomials() {
   }));
 }
 
+void model_unit_filter_requires_repair_after_an_infeasible_branch() {
+  LraTableau tableau;
+  const LraVarId y = tableau.add_variable();
+  const LraVarId z = tableau.add_variable();
+  const LraVarId x = tableau.add_variable();
+  const LraVarId u = tableau.add_variable();
+  tableau.add_row(x, {{y, Rational(1)}, {z, Rational(1)}});
+  assert(!tableau.assert_lower(z, rat(1), Lit{41}).has_value());
+  assert(!tableau.assert_upper(z, rat(1), Lit{42}).has_value());
+  assert(!tableau.assert_lower(x, rat(1), Lit{43}).has_value());
+  assert(!tableau.assert_upper(x, rat(1), Lit{44}).has_value());
+  assert(!tableau.assert_lower(u, rat(2), Lit{45}).has_value());
+  assert(!tableau.assert_upper(u, rat(2), Lit{46}).has_value());
+  assert(!tableau.check().has_value());
+  assert(tableau.assignment(x) == rat(1));
+  const auto checkpoint = tableau.push();
+  assert(!tableau.assert_lower(y, rat(1), Lit{47}).has_value());
+  assert(tableau.check().has_value());
+  tableau.pop(checkpoint);
+  // Bounds-only rollback retains the infeasible assignment x=u=2. Its
+  // accidental model equality must not enter the paper's model-value filter:
+  // the surviving bounds actually fix x=1 and u=2. The consumer must repair
+  // first, even if no new arithmetic assignment arrives after this pop.
+  assert(tableau.assignment(x) == rat(2));
+  assert(tableau.assignment(u) == rat(2));
+  assert(!tableau.check().has_value());
+  assert(tableau.assignment(x) == rat(1));
+  assert(tableau.assignment(y) == rat(0));
+  assert(tableau.model_filtered_unit_equalities({x, u}).equalities.empty());
+}
+
 void model_unit_eqrow_avoids_large_fixed_offset_construction() {
   LraTableau tableau;
   const LraVarId y = tableau.add_variable();
@@ -2764,6 +2795,7 @@ int main() {
   eqrows_reports_matching_polynomials_and_emits_a_spanning_set();
   eqrows_rejects_different_nonfixed_polynomials();
   model_unit_eqrow_avoids_large_fixed_offset_construction();
+  model_unit_filter_requires_repair_after_an_infeasible_branch();
   model_unit_two_row_accepts_both_same_unit_signs();
   model_unit_two_row_rejects_opposite_signs_and_nonunit_connectors();
   model_unit_output_is_a_deterministic_spanning_set();

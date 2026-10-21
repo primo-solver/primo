@@ -7215,7 +7215,6 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
   // Experimental pure-QF_LRA consumer of Bjørner--Nachmanson Section 3.2.
   // Index only atoms already present; never manufacture an all-pairs frontier.
   void enable_variable_equality_propagation() {
-    equality_propagation_enabled_ = true;
     for (const auto& [polynomial, slack] : prepared_.slack_by_polynomial_) {
       const auto& terms = polynomial.sorted_terms;
       if (terms.size() != 2 || terms[0].second != util::Rational(1) ||
@@ -7236,6 +7235,7 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
               });
     statistics_.set(":lra.equality-propagation.targets", equality_targets_.size());
     if (equality_targets_.empty()) return;
+    equality_propagation_enabled_ = true;
     for (const auto& [term, variable] : prepared_.var_ids_) {
       equality_variables_.push_back(variable);
     }

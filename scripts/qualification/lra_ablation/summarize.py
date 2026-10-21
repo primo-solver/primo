@@ -115,7 +115,9 @@ def collect(root: Path, expected: int, shards: int, timeout: float, require_mode
             if decisive(row) and decisive(other) and row["answer"] != other["answer"]:
                 raise ValueError(f"profile answer disagreement: {a}/{b}: {name}")
     comparisons = {}
-    for name in ("phase", "monotone", "both"):
+    for name, _ in PROFILES:
+        if name == "default":
+            continue
         baseline, candidate = all_rows["default"], all_rows[name]
         gains = [n for n in baseline if not decisive(baseline[n]) and decisive(candidate[n])]
         losses = [n for n in baseline if decisive(baseline[n]) and not decisive(candidate[n])]

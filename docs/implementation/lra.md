@@ -847,6 +847,10 @@ recognizer on pure QF_LRA. This deliberately changes the scope: the paper
 explicitly disables this discovery pass for pure QF_LRA/QF_LIA. It is a
 portfolio experiment, not a claim that the paper recommends this setting.
 It requires IPASIR-UP and works independently of `--lra-propagation`.
+The {equalityexperiment}`consumer index <src/smt/solver_engines.cpp#L7217-L7245>`,
+{equalityexperiment}`feasible-state scan <src/smt/solver_engines.cpp#L7561-L7634>`,
+and {equalityexperiment}`backtrack repair <src/smt/solver_engines.cpp#L7031-L7068>`
+are separate from the existing tableau recognizer described above.
 The implementation follows this checklist:
 
 - The pure `solve_qf_lra_impl` path enables the feature explicitly on its
@@ -856,6 +860,7 @@ The implementation follows this checklist:
 - The propagator owns an immutable index of existing comparison atoms whose
   canonical polynomial is `x - y`, and the original arithmetic variable IDs.
   It creates no terms, SAT variables, tableau rows, or all-pairs atom frontier.
+  With no indexed targets, it leaves the scan and extra repair scheduling inactive.
 - After an arithmetic assignment or backtrack, repair feasibility before
   querying `LraTableau::model_filtered_unit_equalities`. Equal model values
   alone never justify a propagation. No scan runs again until the state changes.
