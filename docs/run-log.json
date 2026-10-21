@@ -6,7 +6,7 @@
       "id": "2026-10-21-pure-lra-equality-portfolio",
       "date": "2026-10-21",
       "kind": "experimental-option-and-portfolio-ablation",
-      "evidence_status": "implementation-awaiting-cluster-qualification",
+      "evidence_status": "full-corpus-timings-running-model-replay-dependent",
       "branch": "docs/public-repository-migration",
       "baseline_git": "964a39a",
       "scope": "Default-off pure-QF_LRA application of the existing Bjørner-Nachmanson Section 3.2 model-unit producer to existing difference-comparison atoms; compare default/equality/both/both-equality on all 1753 inputs. No default changes.",
@@ -59,7 +59,9 @@
       },
       "artifacts": {
         "local": "results/lra-equality-portfolio-20261021",
-        "status": "Cluster qualification not submitted yet"
+        "status": "CPU SLURM correctness gates qualified; full-corpus timings running; model replay depends on all timings",
+        "remote_final": "/home/janotmik/primo-lra-equality-20261021/results/lra-equality-portfolio-20261021/final",
+        "gate_audit": "results/lra-equality-portfolio-20261021/final/gate-audit.json"
       },
       "development_attempt": {
         "source_git": "2fa8c6dba650a2ffd489d9fe90382340259e3e92",
@@ -67,7 +69,249 @@
         "asan_job": "215617",
         "release": "44/44 C++ tests and deterministic profile seed checks passed; Python and documentation checks completed in release workflow",
         "asan": "Blocked before compiling by missing Make dependency download stamps; attempted CLI11 network download timed out. Workflow now treats preflight-verified dependency files as reusable without modifying shared dependencies.",
-        "remaining": "Fresh native snapshot adds no-target activation guard and deterministic infeasible-rollback tableau regression. All final gates remain pending."
+        "remaining": "Superseded by frozen 4419dc9; final correctness gates passed, full-corpus evaluation still running."
+      },
+      "native_source_git": "4419dc902f03fe12b8933d5dee4378dd11497035",
+      "binary_sha256": "e06bd36239ccc7af9fd29ed55af9f595f2e7cbd52f6ba5961b962c9d8d6fc26d",
+      "execution": {
+        "environment": "SLURM compute, Xeon E5-2690 v4, 1 physical CPU/7 GiB per gate or measurement; no GPU",
+        "remote_workspace": "/home/janotmik/primo-lra-equality-20261021",
+        "frozen_local_worktree": "/tmp/primo-lra-equality-source",
+        "release_build_job": "215620",
+        "release_checks_job": "215621",
+        "asan_link_failure_job": "215622",
+        "asan_runtime_retry_job": "215686",
+        "generated_gate_job": "215623",
+        "mutation_job": "215624",
+        "retained_mutant_replay_job": "215625",
+        "timings": "Running128 CPU tasks,32 shards/profile at30 seconds; separate models depend on every timing task finishing successfully",
+        "preflights": "results/lra-equality-portfolio-20261021/preflight-*.log",
+        "timing_job": "215702",
+        "model_replay_job": "215703",
+        "incremental_job": "215693"
+      },
+      "qualification_progress": {
+        "release_cpp": "44/44 CTest passed, including deterministic infeasible-rollback test",
+        "python": "242 tests passed",
+        "documentation_examples": "12/12 passed",
+        "original_seeds": "18 inputs under each of 4 profiles passed",
+        "generated": {
+          "default": {
+            "generated": 3000,
+            "generated_timeouts": 7,
+            "generated_sat_models": 2611,
+            "boolean_arithmetic": 1000,
+            "boolean_sat_models": 1000
+          },
+          "equality": {
+            "generated": 3000,
+            "generated_timeouts": 32,
+            "generated_sat_models": 2586,
+            "boolean_arithmetic": 1000,
+            "boolean_sat_models": 1000
+          },
+          "both": {
+            "generated": 3000,
+            "generated_timeouts": 10,
+            "generated_sat_models": 2608,
+            "boolean_arithmetic": 1000,
+            "boolean_sat_models": 1000
+          },
+          "both-equality": {
+            "generated": 3000,
+            "generated_timeouts": 34,
+            "generated_sat_models": 2584,
+            "boolean_arithmetic": 1000,
+            "boolean_sat_models": 1000
+          }
+        },
+        "mutations": "All4 OpFuzz tasks completed, 0 bug triggers; all32 independent replay tasks completed",
+        "mutation_replay": {
+          "default": {
+            "files": 3600,
+            "unique_content_sha256": 1652,
+            "pass": 3600,
+            "wrong": 0,
+            "crash": 0,
+            "timeout": 0,
+            "reference_disagreement": 0
+          },
+          "equality": {
+            "files": 3600,
+            "unique_content_sha256": 1652,
+            "pass": 3600,
+            "wrong": 0,
+            "crash": 0,
+            "timeout": 0,
+            "reference_disagreement": 0
+          },
+          "both": {
+            "files": 3600,
+            "unique_content_sha256": 1652,
+            "pass": 3600,
+            "wrong": 0,
+            "crash": 0,
+            "timeout": 0,
+            "reference_disagreement": 0
+          },
+          "both-equality": {
+            "files": 3600,
+            "unique_content_sha256": 1652,
+            "pass": 3600,
+            "wrong": 0,
+            "crash": 0,
+            "timeout": 0,
+            "reference_disagreement": 0
+          }
+        },
+        "asan": "All44 tests passed after providing the previously verified runtime, job215686.",
+        "retained_sessions": {
+          "equality": {
+            "sessions": 1000,
+            "pass": 1000,
+            "queries": 11000,
+            "sat_models": 8000
+          },
+          "both-equality-assumptions": {
+            "status": "unsupported-configuration",
+            "rejected_attempts": [
+              1,
+              3,
+              5,
+              7
+            ],
+            "reason": "Existing assumptions-mode guard forbids monotone elimination; one-shot profile remains supported."
+          }
+        },
+        "configuration_triage": "Four initial combined-profile retained-session probes failed at the existing monotone-elimination/assumptions-mode guard. These are unsupported option combinations, not solver/reference disagreements. Equality-only retained mode passed1000 sessions,11000 queries,8000 direct SAT-model checks. All four one-shot profiles remain supported."
+      },
+      "asan_runtime": {
+        "rpm": "libasan-11.5.0-14.el9.x86_64.rpm",
+        "sha256": "e4670fc0e67a7b8f3553b42816ea94b7027fe69a3eb9eb49775bf69a6794ec23",
+        "provenance": "2026-10-02-publication-qualification; exact retained package hash rechecked",
+        "checks_wrapper": "scripts/qualification/lra_equalities/checks.sbatch; staged as results/lra-equality-portfolio-20261021/asan-checks.sbatch without modifying frozen native source"
+      },
+      "static_review": {
+        "lint": "make lint passed",
+        "clang_tidy": "All128 tracked C++ files scanned, plus final changed solver_engines.cpp rechecked; only external CLI11 leak warning and baseline option-enum negative-test warnings surfaced",
+        "include_cleaner": "All128 files scanned; 402 advisory warnings, dominated by existing transitive includes and paired self-includes; inspected changed files, no new unused implementation include",
+        "source_review": "Borrow/mutation/use checked; immutable prepared index, fixed-size parent vector, component reasons and queue ownership remain separate",
+        "documentation_review": "Independent reviewer ablation_doc_review accepted E1 feasibility repair, E3 sorting complexity, E4 pinned navigation and optional-backend guards. Follow-up accepted qualification status, profiling counts/limitations and retained-session restriction without findings; final full-results review remains pending."
+      },
+      "diagnostics": {
+        "status": "complete-diagnostic-only-not-headline-timing",
+        "source_git": "4419dc902f03fe12b8933d5dee4378dd11497035",
+        "binary_sha256": "e06bd36239ccc7af9fd29ed55af9f595f2e7cbd52f6ba5961b962c9d8d6fc26d",
+        "input": {
+          "file": "2019-ezsmt/travellingSalesperson/rand_70_300_1155482584_11.lp.smt2",
+          "sha256": "709e845fc8c211c1738e6ac8ded35586ce4619de47d69915f33b2fd42d05c413",
+          "expected": "sat"
+        },
+        "environment": "CPU SLURM node-09, one physical CPU/7 GiB, separate from headline timing nodes02/03",
+        "plan": "scripts/qualification/lra_equalities/diagnostic-plan.json",
+        "driver": "scripts/qualification/lra_equalities/diagnostics.py",
+        "wrapper": "scripts/qualification/lra_equalities/diagnostics.sbatch",
+        "commands": {
+          "counters": "PRIMO_DIAG_MODE=counters sbatch --array=0 scripts/qualification/lra_equalities/diagnostics.sbatch",
+          "profile": "PRIMO_DIAG_MODE=profile sbatch --array=1,3 scripts/qualification/lra_equalities/diagnostics.sbatch"
+        },
+        "initial_counter_job": "215758",
+        "initial_counter_failure": "Harness plan omitted expected key; stopped after default SAT. Preserved outputs and initial plan; corrected expected=sat before retry.",
+        "counter_job": "215777",
+        "profile_job": "215759",
+        "local_artifacts": "results/lra-equality-portfolio-20261021/final/diagnostics{,-retry}",
+        "remote_artifacts": "/home/janotmik/primo-lra-equality-20261021/results/lra-equality-portfolio-20261021/final/diagnostics{,-retry}",
+        "counters": {
+          "default": {
+            "answer": "sat",
+            "seconds": 1.3244654461741447,
+            "timeout": false,
+            "exit_code": 0,
+            "statistics": {
+              ":lra.pivots": 6430
+            }
+          },
+          "equality": {
+            "answer": "unknown",
+            "seconds": 5.073286406695843,
+            "timeout": true,
+            "exit_code": 0,
+            "statistics": {
+              ":lra.equality-propagation.backtrack-repairs": 559,
+              ":lra.equality-propagation.equalities": 4304669,
+              ":lra.equality-propagation.nonzeros-inspected": 12034486,
+              ":lra.equality-propagation.propagations": 3,
+              ":lra.equality-propagation.rows-inspected": 690239,
+              ":lra.equality-propagation.scans": 13443,
+              ":lra.equality-propagation.targets": 1140,
+              ":lra.pivots": 1107,
+              ":time.lra-equality-propagation-us": 4564163
+            }
+          },
+          "both": {
+            "answer": "sat",
+            "seconds": 1.674843242391944,
+            "timeout": false,
+            "exit_code": 0,
+            "statistics": {
+              ":lra.pivots": 7152
+            }
+          },
+          "both-equality": {
+            "answer": "unknown",
+            "seconds": 5.040507411584258,
+            "timeout": true,
+            "exit_code": 0,
+            "statistics": {
+              ":lra.equality-propagation.backtrack-repairs": 339,
+              ":lra.equality-propagation.equalities": 3742737,
+              ":lra.equality-propagation.nonzeros-inspected": 5866575,
+              ":lra.equality-propagation.propagations": 56,
+              ":lra.equality-propagation.rows-inspected": 689782,
+              ":lra.equality-propagation.scans": 15476,
+              ":lra.equality-propagation.targets": 1140,
+              ":lra.pivots": 943,
+              ":time.lra-equality-propagation-us": 4567431
+            }
+          }
+        },
+        "stack_samples": {
+          "equality": {
+            "samples": 155,
+            "equality_consumer": 151,
+            "model_unit_producer": 132,
+            "tableau_check": 1,
+            "note": "Overlapping inclusive wall-clock counts; GDB/statistics perturb runtime."
+          },
+          "both-equality": {
+            "samples": 58,
+            "equality_consumer": 56,
+            "model_unit_producer": 45,
+            "tableau_check": 0,
+            "note": "Overlapping inclusive wall-clock counts; GDB/statistics perturb runtime."
+          }
+        },
+        "decision": "Keep source frozen for a complete matched portfolio baseline. Repeated producer work dominates this case; fewer pivots do not imply a faster run. Redundant scans/queued candidates are documented limitations. No speculative optimization or default promotion claimed."
+      },
+      "reproduction": {
+        "manifest": "benchmarks/qf-lra-migration-ablation-full.txt (strip comments/empty lines)",
+        "manifest_sha256": "60e3d3dcbce921058f848536259d6570f147d6a2443019b88e70a716f401fbab",
+        "common_environment": {
+          "PRIMO_EXPECTED_GIT": "4419dc9",
+          "PRIMO_SEED_BASE": "2026102100",
+          "PRIMO_SHARDS": "32",
+          "PRIMO_TIMEOUT": "30",
+          "PRIMO_MODEL_TIMEOUT": "180",
+          "PRIMO_EXPECTED_INPUTS": "1753"
+        },
+        "paths": "PRIMO_WORKDIR: prepared workspace; PRIMO_CAMPAIGN_OUT: phase output; PRIMO_MANIFEST: normalized manifest; PRIMO_CORPUS_ROOT: full corpus. Checks additionally require CMake directory/header manifest; retained sessions require PRIMO_INCREMENTAL_OUT.",
+        "generated": "PRIMO_PHASE=gate sbatch --array=0-31%8 scripts/qualification/lra_equalities/run.sbatch",
+        "mutations": "PRIMO_PHASE=mutation sbatch --array=1,3,5,7%4 scripts/qualification/lra_equalities/run.sbatch",
+        "mutation_replay": "After mutations: PRIMO_PHASE=mutants PRIMO_MUTANT_ROOT=<mutations> sbatch --array=0-31%8 scripts/qualification/lra_equalities/run.sbatch",
+        "retained_sessions": "sbatch scripts/qualification/lra_equalities/incremental.sbatch",
+        "timings": "PRIMO_PHASE=benchmark sbatch --array=0-127%32 scripts/qualification/lra_equalities/timing.sbatch",
+        "models": "PRIMO_PHASE=replay sbatch --array=0-127%32 --time=04:00:00 --dependency=afterok:<timing-array> scripts/qualification/lra_equalities/run.sbatch",
+        "audit": "python3 scripts/qualification/lra_equalities/audit.py <campaign-final-root> --require-models --binary-sha256 e06bd36239ccc7af9fd29ed55af9f595f2e7cbd52f6ba5961b962c9d8d6fc26d"
       }
     },
     {

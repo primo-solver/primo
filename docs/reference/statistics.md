@@ -378,6 +378,7 @@ ordinary post-model check or by the CaDiCaL external-clause callback used by
 `:euf.assignments`, `:euf.eq-assignments`, and `:euf.diseq-assignments` count
 theory-literal notifications received by the online/conflict EUF callback.
 Predicate atoms contribute only to `:euf.assignments`.
+
 ## Experimental pure-QF_LRA equality propagation
 
 With `--lra-equality-propagation`, the per-query `OnlineLraPropagator` records:

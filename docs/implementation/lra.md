@@ -802,7 +802,8 @@ orders. Reconstruction of eliminated variables and Boolean values remains
 part of the model builder; a feasible tableau alone is not the printed model.
 
 (equalities-for-combination)=
-### Propagating equalities between shared variables
+(propagating-equalities-between-shared-variables)=
+### Propagating equalities between variables
 
 The default QF_UFLRA producer uses four rules based on fixed variables and
 matching tableau rows. Their worked examples, bound explanations, and
@@ -847,6 +848,9 @@ recognizer on pure QF_LRA. This deliberately changes the scope: the paper
 explicitly disables this discovery pass for pure QF_LRA/QF_LIA. It is a
 portfolio experiment, not a claim that the paper recommends this setting.
 It requires IPASIR-UP and works independently of `--lra-propagation`.
+Retained sessions keep their existing option restrictions: monotone elimination
+is forbidden in assumptions mode, so the combined phase/elimination/equality
+profile is a one-shot configuration.
 The {equalityexperiment}`consumer index <src/smt/solver_engines.cpp#L7217-L7245>`,
 {equalityexperiment}`feasible-state scan <src/smt/solver_engines.cpp#L7561-L7634>`,
 and {equalityexperiment}`backtrack repair <src/smt/solver_engines.cpp#L7031-L7068>`
@@ -894,8 +898,15 @@ are updated only when SAT assigns the propagated atom, following the existing
 notification protocol. The new unit regressions exercise transitive component
 reasons, strict/scaled targets, accidental model equality, and conditional
 fixing premises; the existing tableau regressions cover the unit-row shapes.
-Qualification and portfolio evaluation are pending; the bounded local smoke
-has demonstrated delivery to both a non-strict and a scaled strict target.
+The frozen `4419dc9` implementation passed the generated, real-seed mutation,
+retained-session and sanitizer gates recorded in run
+`2026-10-21-pure-lra-equality-portfolio`. Full-corpus timings and their separate
+SAT-model replay are still running. Preliminary profiling locates substantial
+overhead in repeated discovery scans: many explained edges can produce very
+few new target literals. The implementation currently scans even when its
+indexed targets are already assigned and may queue duplicate candidates;
+delivery skips assigned candidates. This is a performance limitation, not
+evidence of extra pivoting or an invalid explanation. Defaults remain unchanged.
 
 ## Fixed-basic elimination
 

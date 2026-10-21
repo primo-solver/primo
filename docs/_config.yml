@@ -51,7 +51,7 @@ sphinx:
         - "https://github.com/primo-solver/primo/blob/feffdbc9713ecbfebd7c83147344053eaf8d0e76/%s"
         - "%s"
       equalityexperiment:
-        - "https://github.com/primo-solver/primo/blob/2fa8c6dba650a2ffd489d9fe90382340259e3e92/%s"
+        - "https://github.com/primo-solver/primo/blob/4419dc902f03fe12b8933d5dee4378dd11497035/%s"
         - "%s"
       profilesource:
         - "https://github.com/primo-solver/primo/blob/90d29667fa8796b9db41967afb65ab202388b54e/%s"

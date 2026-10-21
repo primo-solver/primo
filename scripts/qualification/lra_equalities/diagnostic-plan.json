@@ -1,0 +1,14 @@
+{
+  "binary_sha256": "e06bd36239ccc7af9fd29ed55af9f595f2e7cbd52f6ba5961b962c9d8d6fc26d",
+  "inputs": [
+    {
+      "file": "2019-ezsmt/travellingSalesperson/rand_70_300_1155482584_11.lp.smt2",
+      "sha256": "709e845fc8c211c1738e6ac8ded35586ce4619de47d69915f33b2fd42d05c413",
+      "expected": "sat"
+    }
+  ],
+  "profile_inputs": [
+    0
+  ],
+  "counter_seconds": 5
+}
