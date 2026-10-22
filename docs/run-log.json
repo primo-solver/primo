@@ -6,7 +6,7 @@
       "id": "2026-10-22-all-theories-long-limits",
       "date": "2026-10-22",
       "kind": "matched-full-corpus-long-limit-comparison",
-      "evidence_status": "prechecks-complete-generated-gate-awaiting-audit",
+      "evidence_status": "timings-running-models-and-final-report-dependent",
       "branch": "docs/public-repository-migration",
       "native_source_git": "4419dc902f03fe12b8933d5dee4378dd11497035",
       "native_binary_sha256": "e06bd36239ccc7af9fd29ed55af9f595f2e7cbd52f6ba5961b962c9d8d6fc26d",
@@ -53,14 +53,98 @@
         "memory_mib": 8192,
         "per_input_seconds": 1200,
         "models": "After all timings and cross-answer audit: every successful ground Primo SAT row, original logic, same arguments plus model production/check-model;1800-second solver/300-second Dolmen limits,5G Dolmen size. Quantified printed models unsupported and not claimed qualified.",
-        "scheduler": "MaxArraySize1001,MaxJobCount10000; chunked arrays and total timing concurrency at most128."
+        "scheduler": "MaxArraySize1001,MaxJobCount10000; chunked arrays and total timing concurrency at most128.",
+        "gate_audit_submission": "All24 gate shards already terminal in sacct; audit submitted without stale dependency and held until timing arrays were submitted, then released. This avoids scheduler completed-job expiry."
       },
       "jobs": {
         "initial_capability": "218449",
         "inventory": "218450",
         "partial_uf_probe_retry": "218456",
         "strong_quantified_probe": "218483",
-        "fresh_generated_gate": "218459"
+        "fresh_generated_gate": "218459",
+        "campaign_out": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261022/run1",
+        "plan_sha256": "109fa2ec98bc517dddb405f6c47e9a953406e4d59c983e71acebf535f5bd2a37",
+        "timing": [
+          "218486",
+          "218487",
+          "218488",
+          "218489",
+          "218490",
+          "218491",
+          "218492"
+        ],
+        "models": [
+          "218494",
+          "218495"
+        ],
+        "gate_audit": "218485",
+        "chunks": [
+          {
+            "phase": "timing",
+            "job": "218486",
+            "offset": 0,
+            "tasks": 1000,
+            "throttle": 18
+          },
+          {
+            "phase": "timing",
+            "job": "218487",
+            "offset": 1000,
+            "tasks": 1000,
+            "throttle": 18
+          },
+          {
+            "phase": "timing",
+            "job": "218488",
+            "offset": 2000,
+            "tasks": 1000,
+            "throttle": 18
+          },
+          {
+            "phase": "timing",
+            "job": "218489",
+            "offset": 3000,
+            "tasks": 1000,
+            "throttle": 18
+          },
+          {
+            "phase": "timing",
+            "job": "218490",
+            "offset": 4000,
+            "tasks": 1000,
+            "throttle": 18
+          },
+          {
+            "phase": "timing",
+            "job": "218491",
+            "offset": 5000,
+            "tasks": 1000,
+            "throttle": 18
+          },
+          {
+            "phase": "timing",
+            "job": "218492",
+            "offset": 6000,
+            "tasks": 462,
+            "throttle": 18
+          },
+          {
+            "phase": "models",
+            "job": "218494",
+            "offset": 0,
+            "tasks": 1000,
+            "throttle": 32
+          },
+          {
+            "phase": "models",
+            "job": "218495",
+            "offset": 1000,
+            "tasks": 98,
+            "throttle": 32
+          }
+        ],
+        "timing_audit": "218493",
+        "final_report": "218496"
       },
       "attempts": [
         {
@@ -77,28 +161,208 @@
           "job": "218483",
           "status": "completed",
           "result": "Five ground divisions admit Primo,Z3,cvc5,Yices,OpenSMT. Quantified UF admits Primo(partial SAT completion),Z3,cvc5,Yices; OpenSMT explicitly rejects logicUF."
+        },
+        {
+          "status": "submission-path-rejected-no-jobs",
+          "result": "An incorrect workflow hash in the first controller invocation was rejected by sbatch before any timing jobs were submitted. Empty submission state retained; controller now verifies staged driver/configuration hashes before creating state. Retry reads the staged path from its saved record."
         }
       ],
       "artifacts": {
         "local": "results/long-limits-20261022",
         "remote": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261022/run1",
         "initial_workflow": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261022/workflow/setup-v1",
-        "admission_workflow": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261022/workflow/candidate-v3"
+        "admission_workflow": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261022/workflow/candidate-v3",
+        "frozen_workflow": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261022/workflow/25b0d7d558ec05dbf242a95e7a404adb31a337ed",
+        "plan_sha256": "109fa2ec98bc517dddb405f6c47e9a953406e4d59c983e71acebf535f5bd2a37",
+        "gate_artifacts": "/home/janotmik/primo-lra-equality-20261021/results/public-launch/218459"
       },
       "correctness": {
         "native_existing": "Reuse exact4419dc9 release/ASan and QF_LRA profile qualification from2026-10-21; no native changes. Fresh six-route generated gate and reference-admission checks before timings.",
         "unknown_policy": "Integer and quantified resource limits unchanged; unknown/timeouts are unsolved, separate from passes.",
         "model_boundary": "Five ground divisions require complete direct Dolmen coverage for all native profiles. Quantified UF uses reference-answer corroboration and explicitly lacks printed-model qualification.",
-        "status": "Pending fresh gate and full timing/model results"
+        "status": "Fresh gate audited complete:5972 pass,28 QF_LIA timeouts,3551 direct Dolmen ground SAT passes,no wrong answers/crashes/invalid models. Full-corpus timing and model stages pending.",
+        "fresh_generated_gate": {
+          "QF_UF": {
+            "cases": 1000,
+            "pass": 1000,
+            "timeout": 0,
+            "sat_models": 599,
+            "resource_incomplete": 0
+          },
+          "QF_LRA": {
+            "cases": 1000,
+            "pass": 1000,
+            "timeout": 0,
+            "sat_models": 1000,
+            "resource_incomplete": 0
+          },
+          "QF_LIA": {
+            "cases": 1000,
+            "pass": 972,
+            "timeout": 28,
+            "sat_models": 872,
+            "resource_incomplete": 0
+          },
+          "QF_UFLRA": {
+            "cases": 1000,
+            "pass": 1000,
+            "timeout": 0,
+            "sat_models": 574,
+            "resource_incomplete": 0
+          },
+          "QF_UFLIA": {
+            "cases": 1000,
+            "pass": 1000,
+            "timeout": 0,
+            "sat_models": 506,
+            "resource_incomplete": 0
+          },
+          "UF": {
+            "cases": 1000,
+            "pass": 1000,
+            "timeout": 0,
+            "sat_models": 0,
+            "resource_incomplete": 0
+          }
+        }
       },
       "required_outcome": "Complete matching input/binary/resource audits, all-theory cactus plots selecting one measured native profile per theory, family summaries, PAR2/timeouts/unknowns/errors, reference disagreements, separate ground model coverage, committed method and result metadata. Campaign is not complete at submission.",
       "commands": {
         "preflight": "python3 scripts/slurm_prepare_benchmark_workspace.py --local-dir <frozen4419-source> --remote <private-SSH-alias> --remote-dir <source_workspace> --check-only --no-sync --require-tool contrib/local/bin/z3 --require-tool contrib/local/bin/cvc5 --require-tool contrib/local/bin/dolmen",
-        "generated_gate": "PRIMO_EXPECTED_REVISION=4419dc9 PRIMO_GATE_SEED_BASE=2026102200 sbatch --partition=compute --hint=nomultithread --array=0-23%16 scripts/qualification/public_launch.sbatch",
+        "generated_gate": "PRIMO_EXPECTED_REVISION=4419dc9 PRIMO_SEED_BASE=2026102200 sbatch --partition=compute --hint=nomultithread --array=0-23%16 scripts/qualification/public_launch.sbatch",
         "inventory": "PRIMO_CORPORA_ROOT=<corpora_source> PRIMO_LONG_PHASE=inventory sbatch --array=0-5%6 <workflow>/run.sbatch",
         "probes": "PRIMO_LONG_PHASE=probe sbatch --time=00:30:00 <workflow>/run.sbatch",
-        "audit": "PRIMO_LONG_STAGE=gate PRIMO_GATE_JOB=218459 sbatch <workflow>/report.sbatch"
-      }
+        "audit": "PRIMO_LONG_STAGE=gate PRIMO_GATE_JOB=218459 sbatch <workflow>/report.sbatch",
+        "launch": "python3 scripts/qualification/long_limits/launch.py --ssh-config <private-config> --remote <private-alias> --workspace <source_workspace> --local-source <frozen4419-source> --remote-out <remote-artifacts> --workflow <frozen_workflow> --plan <local-artifacts>/plan.json --gate-job 218485 --state <local-artifacts>/submission.json"
+      },
+      "workflow_git": {
+        "frozen_workers": "25b0d7d558ec05dbf242a95e7a404adb31a337ed",
+        "submission_controller": "02211bcfd977a45054148ea84a5f36632deeff30"
+      },
+      "tools": {
+        "primo": {
+          "path": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261022/run1/bin/primo",
+          "sha256": "e06bd36239ccc7af9fd29ed55af9f595f2e7cbd52f6ba5961b962c9d8d6fc26d",
+          "version": "primo 0.2.0\ngit: 4419dc9\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n"
+        },
+        "z3": {
+          "path": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261022/run1/bin/z3",
+          "sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+          "version": "Z3 version 5.1.0 - 64 bit\n"
+        },
+        "cvc5": {
+          "path": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261022/run1/bin/cvc5",
+          "sha256": "4a93548398445cf1a774655583f5465b156c26f63f2cdfb94f4728fdf7adde46",
+          "version": "cvc5 1.3.4 [git f3b21c4 on branch HEAD]\ncompiled with GCC version Ubuntu Clang 18.1.3 (1ubuntu1) on May  7 2026 15:33:02\n\nCopyright (c) 2009-2026 by the authors and their institutional\naffiliations listed at https://cvc5.github.io/people.html\n\ncvc5 is open-source and is covered by the BSD license (modified).\n\nTHIS SOFTWARE IS PROVIDED AS-IS, WITHOUT ANY WARRANTIES.\nUSE AT YOUR OWN RISK.\n\nThis version of cvc5 is linked against the following non-(L)GPL'ed\nthird party libraries.\n\n  CaDiCaL - Simplified Satisfiability Solver\n  See https://github.com/arminbiere/cadical for copyright information.\n\n  SymFPU - The Symbolic Floating Point Unit\n  See https://github.com/martin-cs/symfpu/tree/CVC4 for copyright information.\n\nThis version of cvc5 is linked against the following third party\nlibraries covered by the LGPLv3 license.\nSee licenses/lgpl-3.0.txt for more information.\n\n  GMP - Gnu Multi Precision Arithmetic Library\n  See http://gmplib.org for copyright information.\n\n  LibPoly polynomial library\n  See https://github.com/SRI-CSL/libpoly for copyright and\n  licensing information.\n\ncvc5 is statically linked against these libraries. To recompile\nthis version of cvc5 with different versions of these libraries\nfollow the instructions on https://github.com/cvc5/cvc5/blob/main/INSTALL.md\n\nSee the file COPYING (distributed with the source code, and with\nall binaries) for the full cvc5 copyright, licensing, and (lack of)\nwarranty information.\n\n"
+        },
+        "yices": {
+          "path": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261022/run1/bin/yices-smt2",
+          "sha256": "eab7efbff2a6f0cce2fcd2c25cb4a94e0e048c902d8ef9e6fd7d7989aa54c501",
+          "version": "Yices 2.7.0\nCopyright SRI International.\nLinked with GMP 6.3.0\nCopyright Free Software Foundation, Inc.\nBuild date: 2025-07-17\nPlatform: x86_64-pc-linux-gnu (release/static)\nRevision: 4f19700f0e272f4a68250080d12a873523bc7ac3\n"
+        },
+        "opensmt": {
+          "path": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261022/run1/bin/opensmt",
+          "sha256": "b7899e9aff299026d3251df7a28f51f56d8bd1e5b0fd7be11bcc72c4f2803a98",
+          "version": "v2.9.2\n"
+        },
+        "dolmen": {
+          "path": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261022/run1/bin/dolmen",
+          "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+          "version": "0.10\n"
+        }
+      },
+      "submission_summary": {
+        "timing_tasks": 6462,
+        "native_ground_model_tasks": 1098,
+        "runs": 30,
+        "maximum_timing_concurrency": 126,
+        "maximum_model_concurrency": 64,
+        "all_dependencies_submitted": true
+      },
+      "initial_timing_check": {
+        "observed_at_utc": "2026-10-22T08:51:22.782778+00:00",
+        "completed_shards": 55,
+        "rows": 1869,
+        "bad_rows": [],
+        "failure_files": [],
+        "rows_per_logic": {
+          "QF_LRA": 11,
+          "UF": 49,
+          "QF_UFLIA": 4,
+          "QF_LIA": 528,
+          "QF_UF": 1177,
+          "QF_UFLRA": 100
+        },
+        "hardware": [
+          {
+            "identity": [
+              "node-02.ciircluster",
+              "compute",
+              8192,
+              [
+                "Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz"
+              ]
+            ],
+            "tasks": 48
+          },
+          {
+            "identity": [
+              "node-03.ciircluster",
+              "compute",
+              8192,
+              [
+                "Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz"
+              ]
+            ],
+            "tasks": 37
+          },
+          {
+            "identity": [
+              "node-04.ciircluster",
+              "compute",
+              8192,
+              [
+                "Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz"
+              ]
+            ],
+            "tasks": 36
+          },
+          {
+            "identity": [
+              "node-05.ciircluster",
+              "compute",
+              8192,
+              [
+                "Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz"
+              ]
+            ],
+            "tasks": 42
+          },
+          {
+            "identity": [
+              "node-06.ciircluster",
+              "compute",
+              8192,
+              [
+                "Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz"
+              ]
+            ],
+            "tasks": 18
+          }
+        ],
+        "status": "Partial launch verification only; not a performance result. All six routes have measured rows, no hard failures observed,matched compute CPU/8GiB allocations."
+      },
+      "verification": [
+        "make lint",
+        "python3 -m py_compile scripts/qualification/long_limits/*.py",
+        ".venv/bin/python -m ruff check scripts/qualification/long_limits tests/python/test_long_limit_metadata.py",
+        "python3 -m unittest discover -s tests/python -p test_long_limit_metadata.py (9 tests)",
+        "python3 scripts/slurm_validate_sbatch.py scripts/qualification/long_limits/run.sbatch",
+        "python3 scripts/slurm_validate_sbatch.py scripts/qualification/long_limits/report.sbatch",
+        "make docs",
+        "python3 scripts/check_doc_links.py docs/_build/site",
+        "Native release/ASan and option qualification reused on identical4419dc9/e06binary; no native or behavior changes in this task."
+      ]
     },
     {
       "id": "2026-10-21-pure-lra-equality-portfolio",

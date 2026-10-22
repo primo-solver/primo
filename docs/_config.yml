@@ -56,6 +56,9 @@ sphinx:
       equalityworkflow:
         - "https://github.com/primo-solver/primo/blob/dcb548a457df2a151e8c71de0445c367e9023ced/%s"
         - "%s"
+      longlimitsworkflow:
+        - "https://github.com/primo-solver/primo/blob/02211bcfd977a45054148ea84a5f36632deeff30/%s"
+        - "%s"
       profilesource:
         - "https://github.com/primo-solver/primo/blob/90d29667fa8796b9db41967afb65ab202388b54e/%s"
         - "%s"

@@ -1,8 +1,10 @@
 # Full-corpus evaluation at longer limits
 
 The October 22 campaign evaluates every supported non-incremental division at
-**1,200 seconds per input**. Preparation is running; timings, model replay and
-the final comparison are not complete. Run `2026-10-22-all-theories-long-limits`
+**1,200 seconds per input**. Timings are running; model replay and the final
+comparison remain pending. The generated gate passed 5,972 cases; 28 QF_LIA
+cases timed out at its separate five-second limit. It found no wrong answers,
+crashes or invalid models. Run `2026-10-22-all-theories-long-limits`
 in the [run ledger](../run-log.json) records exact snapshots, jobs and artifacts.
 
 | Division | Inputs |
@@ -47,7 +49,7 @@ when it is returned before the wall limit.
 
 ## Correctness and phase barriers
 
-A fresh generated gate covers the six routes before headline timings. Existing
+A fresh 6,000-case generated gate covered the six routes before headline timings. Existing
 release/ASan checks and the QF_LRA option qualification refer to the identical
 native binary. Capability probes retain Primo's documented incomplete quantified
 SAT behavior separately from wrong answers and unsupported logics.
@@ -83,7 +85,9 @@ passes must not be generalized to this route.
 
 ## Recorded outputs
 
-The campaign writes fresh inventories, capability records, a frozen plan,
+The {longlimitsworkflow}`campaign driver <scripts/qualification/long_limits/campaign.py>`
+and {longlimitsworkflow}`configuration <scripts/qualification/long_limits/config.json>`
+write fresh inventories, capability records, a frozen plan,
 durable timing journals, per-shard provenance, separate model coverage, and
 strict timing/final audits. The final stage generates one full-corpus cactus
 per division, selects the native profile by the rule above, and reports solved,
@@ -91,9 +95,11 @@ SAT/UNSAT, timeout, unknown, error, PAR2 and family totals. Historical 30-, 60-
 and 300-second measurements remain unchanged and are not substituted for fresh
 1,200-second reference runs.
 
-The controller splits arrays below the scheduler's 1,001-task index limit and
+The {longlimitsworkflow}`submission controller <scripts/qualification/long_limits/launch.py>`
+splits arrays below the scheduler's 1,001-task index limit and
 keeps total timing concurrency at or below 128 physical CPUs. Model replay uses
 a separate phase with at most 64 concurrent tasks. Failed dependencies cancel
 later compute rather than leaving a nominally successful partial evaluation.
-The final audit remains explicit about missing results and quantified-model
+The {longlimitsworkflow}`final audit <scripts/qualification/long_limits/report.py>`
+remains explicit about missing results and quantified-model
 limitations. Submission alone is not completion.
