@@ -138,7 +138,7 @@ design and evaluation lead, with no new input support or default change claimed.
 | --- | --- |
 | 2b: dispatch regression | Repaired at the recorded historical revision; retain the diagnosis in the evidence archive. |
 | 3: least-violated leaving rule | Implemented as an option; the original comparison did not justify promotion. See [LRA](../implementation/lra.md). |
-| 3b and 7: occurrence/row layout | The current LRA chapter describes the implemented sorted rows and occurrence maintenance. Hash-set and earlier indexed-removal prototypes remain rejected history. |
+| 3b and 7: occurrence/row layout | The current LRA chapter describes the implemented sorted rows and occurrence maintenance. Hash-set and earlier indexed-removal prototypes remain rejected history. The column-to-row direction remains open as [column-to-row coefficient access](lra-column-coefficients.md). |
 | 9: Real monotone elimination | Implemented, optional. Later full-corpus measurements differ from the early small-sample rejection; see [arithmetic evidence](../evidence/arithmetic.md). |
 | 10: model-unit equality producer | Implemented as an optional producer. Legacy remains default; this is not an unimplemented algorithm. |
 | 12a/12f | Integer-safe preprocessing and patching have current explanations. The old claim that all integer preprocessing is disabled is superseded by the route-specific policies. |

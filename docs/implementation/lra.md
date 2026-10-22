@@ -212,7 +212,9 @@ repairs and arbitrary-precision arithmetic add their own costs. Updating a
 nonbasic assignment visits its dependent rows through `occurs_in_`, but the
 current {source}`update <src/theory/arithmetic/lra_tableau.cpp#L97-L141>` still
 searches each affected row for the coefficient. The occurrence index is not
-a direct pointer to that coefficient.
+a direct pointer to that coefficient. The
+[column-to-row coefficient lead](../leads/lra-column-coefficients.md) lists
+every such lookup and the candidate representations.
 
 The 32-bit occurrence slot assumes fewer than `2^32` occurrences in a column.
 The representation and its capacity assumption are distinct from SAT literal
