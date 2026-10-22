@@ -20,6 +20,16 @@ def main():
     plan_bytes = Path(args.plan).read_bytes()
     plan = json.loads(plan_bytes)
     ssh = ['ssh', '-F', args.ssh_config, args.remote]
+    if args.remote_out != plan['campaign_out'] or not args.gate_job.isdecimal():
+        raise ValueError('campaign directory or gate job does not match the plan')
+    # Reject a mistyped or stale staging path before creating submission state.
+    names = ['campaign.py', 'config.json', 'run.sbatch', 'report.py', 'report.sbatch']
+    staged = subprocess.check_output(
+        [*ssh, shlex.join(['sha256sum', *(args.workflow + '/' + name for name in names)])], text=True)
+    hashes = {Path(line.split()[1]).name: line.split()[0] for line in staged.splitlines()}
+    if (hashes['campaign.py'] != plan['driver_sha256']
+            or hashes['config.json'] != plan['config_sha256']):
+        raise ValueError('staged driver or configuration differs from the plan')
     state_path = Path(args.state)
     if state_path.exists():
         raise ValueError('submission state already exists; inspect it rather than duplicate jobs')

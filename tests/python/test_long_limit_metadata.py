@@ -12,6 +12,9 @@ FILE = Path(__file__).resolve().parents[2] / 'scripts/qualification/long_limits/
 SPEC = importlib.util.spec_from_file_location('long_limit_campaign', FILE)
 CAMPAIGN = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(CAMPAIGN)
+LAUNCH_SPEC = importlib.util.spec_from_file_location('long_limit_launch', FILE.with_name('launch.py'))
+LAUNCH = importlib.util.module_from_spec(LAUNCH_SPEC)
+LAUNCH_SPEC.loader.exec_module(LAUNCH)
 
 
 def row(**changes):
@@ -20,6 +23,26 @@ def row(**changes):
 
 
 class LongLimitMetadataTests(unittest.TestCase):
+    def test_stale_staging_is_rejected_before_creating_submission_state(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            plan = root / 'plan.json'
+            state = root / 'state.json'
+            plan.write_text(json.dumps({'campaign_out': '/campaign',
+                                        'driver_sha256': 'expected', 'config_sha256': 'config'}))
+            arguments = ['launch.py', '--ssh-config', '/private/config', '--remote', 'cluster',
+                         '--workspace', '/work', '--local-source', '/source',
+                         '--remote-out', '/campaign', '--workflow', '/stale', '--plan', str(plan),
+                         '--gate-job', '123', '--state', str(state)]
+            with patch('sys.argv', arguments):
+                with patch.object(LAUNCH.subprocess, 'check_output', return_value=(
+                        'wrong /stale/campaign.py\nconfig /stale/config.json\n')):
+                    with patch.object(LAUNCH.subprocess, 'run') as run:
+                        with self.assertRaisesRegex(ValueError, 'differs from the plan'):
+                            LAUNCH.main()
+                        run.assert_not_called()
+            self.assertFalse(state.exists())
+
     def test_small_manifests_cover_the_same_inputs_for_every_profile(self):
         with tempfile.TemporaryDirectory() as directory:
             out = Path(directory)
