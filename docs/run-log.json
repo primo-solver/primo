@@ -6,7 +6,7 @@
       "id": "2026-10-22-all-theories-long-limits",
       "date": "2026-10-22",
       "kind": "matched-full-corpus-long-limit-comparison",
-      "evidence_status": "recovery-journal-parse-failure-infrastructure-isolation-being-prepared",
+      "evidence_status": "infrastructure-isolated-recovery-timings-running",
       "branch": "docs/public-repository-migration",
       "native_source_git": "4419dc902f03fe12b8933d5dee4378dd11497035",
       "native_binary_sha256": "e06bd36239ccc7af9fd29ed55af9f595f2e7cbd52f6ba5961b962c9d8d6fc26d",
@@ -650,7 +650,7 @@
         }
       },
       "infrastructure_isolation": {
-        "status": "verified-awaiting-resubmission",
+        "status": "timings-running-models-and-final-report-dependent",
         "policy": "Only explicit CorrectnessFailure (native hard error/wrong answer/decisive disagreement) invokes scancel. Live snapshot reads are advisory; terminal CSVs strictly checked. Other harness/I/O failures kill only their own process group and persist task-failures. Full timing audit runs afterany; models still require its afterok success.",
         "unit_tests": 18,
         "smoke_job": "225508",
@@ -706,6 +706,115 @@
             "version": "v2.9.2\n"
           },
           "guard_continued_after_sigsegv": true
+        },
+        "workflow_git": "d0223a8892c61c4c4b85e431135107e1b0223f21",
+        "frozen_workflow": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261022/workflow/d0223a8892c61c4c4b85e431135107e1b0223f21",
+        "jobs": {
+          "campaign_out": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261022/run1",
+          "plan_sha256": "109fa2ec98bc517dddb405f6c47e9a953406e4d59c983e71acebf535f5bd2a37",
+          "timing": [
+            "225512",
+            "225513",
+            "225514",
+            "225516",
+            "225517",
+            "225518",
+            "225519"
+          ],
+          "models": [
+            "225521",
+            "225522"
+          ],
+          "gate_audit": "225511",
+          "chunks": [
+            {
+              "phase": "timing",
+              "job": "225512",
+              "offset": 0,
+              "tasks": 1000,
+              "throttle": 18
+            },
+            {
+              "phase": "timing",
+              "job": "225513",
+              "offset": 1000,
+              "tasks": 1000,
+              "throttle": 18
+            },
+            {
+              "phase": "timing",
+              "job": "225514",
+              "offset": 2000,
+              "tasks": 1000,
+              "throttle": 18
+            },
+            {
+              "phase": "timing",
+              "job": "225516",
+              "offset": 3000,
+              "tasks": 1000,
+              "throttle": 18
+            },
+            {
+              "phase": "timing",
+              "job": "225517",
+              "offset": 4000,
+              "tasks": 1000,
+              "throttle": 18
+            },
+            {
+              "phase": "timing",
+              "job": "225518",
+              "offset": 5000,
+              "tasks": 1000,
+              "throttle": 18
+            },
+            {
+              "phase": "timing",
+              "job": "225519",
+              "offset": 6000,
+              "tasks": 280,
+              "throttle": 18
+            },
+            {
+              "phase": "models",
+              "job": "225521",
+              "offset": 0,
+              "tasks": 1000,
+              "throttle": 32
+            },
+            {
+              "phase": "models",
+              "job": "225522",
+              "offset": 1000,
+              "tasks": 98,
+              "throttle": 32
+            }
+          ],
+          "recovery_sha256": "6ddb07376ef8cb20af87f6196bc15124be453c0626fa79f0894c4bdc4711ffbe",
+          "timing_audit": "225520",
+          "final_report": "225523"
+        },
+        "command": "python3 scripts/qualification/long_limits/launch.py --ssh-config <private-config> --remote <private-alias> --workspace <source_workspace> --local-source <frozen4419-source> --remote-out <remote-artifacts> --workflow <isolation-frozen-workflow> --plan <local-artifacts>/plan.json --gate-job 225511 --state <local-artifacts>/submission-isolation-20261023.json --recovery <local-artifacts>/recovery-isolation.json",
+        "qualification": "Ground models and final comparisons pending. Native source4419dc9, binarye06bd362, input/plan hashes,1200second limits and CPU/memory resources unchanged.",
+        "gate_audit_result": {
+          "job": "225511",
+          "status": "COMPLETED",
+          "exit_code": "0:0"
+        },
+        "initial_health": {
+          "new_worker_executions": 157,
+          "driver_sha256": "d5c7b247a96789db2f8561d4a9e29bcd6b7f4fad49276e0c3a6dad5d23534f8b",
+          "partitions": [
+            "compute"
+          ],
+          "memory_mib": [
+            8192
+          ],
+          "global_failure_files": [],
+          "local_task_failure_files": [],
+          "running_tasks_at_check": 126,
+          "scope": "Launch verification only; no performance conclusion. No global or local task failure records at this check."
         }
       }
     },

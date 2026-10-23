@@ -4,8 +4,9 @@ The October 22 campaign evaluates every supported non-incremental division at
 **1,200 seconds per input**. The initial timing attempt stopped after an OpenSMT
 QF_LIA process segfault. October 23 recovery retained 158 certified timing shards
 and resubmitted the remaining 6,304. A live-journal parsing error then stopped
-that recovery attempt; its infrastructure handling is being repaired. Model
-replay and the final comparison remain pending. The generated gate passed 5,972 cases; 28 QF_LIA
+that recovery attempt. Infrastructure failures are now isolated; the next
+recovery retained 182 certified complete shards and resubmitted the remaining
+6,280. Model replay and the final comparison remain pending. The generated gate passed 5,972 cases; 28 QF_LIA
 cases timed out at its separate five-second limit. It found no wrong answers,
 crashes or invalid models. Run `2026-10-22-all-theories-long-limits`
 in the [run ledger](../run-log.json) records exact snapshots, jobs and artifacts.

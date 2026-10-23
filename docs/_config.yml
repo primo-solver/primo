@@ -57,7 +57,7 @@ sphinx:
         - "https://github.com/primo-solver/primo/blob/dcb548a457df2a151e8c71de0445c367e9023ced/%s"
         - "%s"
       longlimitsworkflow:
-        - "https://github.com/primo-solver/primo/blob/294a15c3791bf5ccbcbefafbd87bd9fa8b304c30/%s"
+        - "https://github.com/primo-solver/primo/blob/d0223a8892c61c4c4b85e431135107e1b0223f21/%s"
         - "%s"
       profilesource:
         - "https://github.com/primo-solver/primo/blob/90d29667fa8796b9db41967afb65ab202388b54e/%s"
