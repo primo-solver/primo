@@ -62,10 +62,11 @@ def timing_shard(out: Path, plan: dict, run: dict, index: int, expected: dict):
     allowed_drivers = {plan['driver_sha256']}
     if resumed:
         allowed_drivers.add(resumed['worker_driver_sha256'])
+        allowed_drivers.update(resumed.get('ancestor_recoveries', {}))
     root = out / 'timing' / logic / label / f'shard-{index}'
     parent = load(root / 'provenance.json')
     execution = load(root / 'execution-timing.json')
-    if resumed and execution['driver_sha256'] == plan['driver_sha256']:
+    if resumed and execution['driver_sha256'] != resumed['worker_driver_sha256']:
         certificate = resumed['reused_shards'].get(f'{logic}/{label}/{index}')
         if not certificate or any(digest(root / name) != checksum for name, checksum in certificate.items()):
             raise ValueError(f'changed or uncertified reused shard: {root}')
@@ -84,9 +85,12 @@ def timing_shard(out: Path, plan: dict, run: dict, index: int, expected: dict):
             or execution['partition'] != 'compute'
             or execution['cpu_models'] != ['Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz']):
         raise ValueError(f'invalid timing provenance: {root}')
-    if execution['driver_sha256'] != plan['driver_sha256'] and (
-            execution.get('recovery_sha256') != digest(out / 'recovery.json')):
-        raise ValueError('recovered timing lacks its immutable recovery identity')
+    if execution['driver_sha256'] != plan['driver_sha256']:
+        expected_recovery = (digest(out / 'recovery.json')
+                             if execution['driver_sha256'] == resumed['worker_driver_sha256']
+                             else resumed['ancestor_recoveries'][execution['driver_sha256']])
+        if execution.get('recovery_sha256') != expected_recovery:
+            raise ValueError('recovered timing lacks its immutable recovery identity')
     with (root / 'answers.csv').open() as stream:
         rows = list(csv.DictReader(stream))
     names = [row['file'] for row in rows]

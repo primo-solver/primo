@@ -97,7 +97,7 @@ def main():
     timing_tasks = resumed['pending_task_indices'] if resumed else plan['tasks']
     arrays('timing', timing_tasks, args.gate_job, plan['config']['maximum_concurrent_tasks'])
     state['timing_audit'] = submit('timing', 'report.sbatch', [
-        '--dependency=afterok:' + ':'.join(state['timing']), '--job-name=primo-long-timing-audit'])
+        '--dependency=afterany:' + ':'.join(state['timing']), '--job-name=primo-long-timing-audit'])
     persist()
     arrays('models', plan['model_tasks'], state['timing_audit'], 64)
     state['final_report'] = submit('final', 'report.sbatch', [

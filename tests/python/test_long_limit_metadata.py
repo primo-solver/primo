@@ -1,6 +1,7 @@
 """Safety checks for benchmark journals and campaign-scoped cancellation."""
 
 import importlib.util
+import csv
 import json
 from pathlib import Path
 import tempfile
@@ -48,6 +49,11 @@ class LongLimitMetadataTests(unittest.TestCase):
                 (out / 'answers.csv.jsonl').write_text(
                     json.dumps(row(status='error', answer='error', exit_code=-11)) + '\n'
                     + json.dumps(row(file='next.smt2')) + '\n')
+                with (out / 'answers.csv').open('w', newline='') as stream:
+                    writer = csv.DictWriter(stream, fieldnames=list(row()))
+                    writer.writeheader()
+                    writer.writerow(row(status='error', answer='error', exit_code=-11))
+                    writer.writerow(row(file='next.smt2'))
                 process = SimpleNamespace(pid=123456, returncode=0, poll=lambda: 0, wait=lambda: 0)
                 with patch.object(CAMPAIGN.subprocess, 'Popen', return_value=process):
                     with patch.object(CAMPAIGN, 'cancel_owned') as cancel:
@@ -60,6 +66,45 @@ class LongLimitMetadataTests(unittest.TestCase):
                             else:
                                 CAMPAIGN.guarded_benchmark([], out, selected, {'runs': []}, out, 0)
                                 cancel.assert_not_called()
+
+    def test_live_journal_decode_failure_is_advisory_but_strict_read_rejects_it(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'rows.jsonl'
+            path.write_text('\n')
+            self.assertEqual(CAMPAIGN.journal(path, live=True), [])
+            with self.assertRaises(json.JSONDecodeError):
+                CAMPAIGN.journal(path)
+
+    def test_harness_failure_does_not_cancel_other_campaign_tasks(self):
+        with tempfile.TemporaryDirectory() as directory:
+            out = Path(directory)
+            process = SimpleNamespace(pid=123456, returncode=1, poll=lambda: 1, wait=lambda: 1)
+            with patch.object(CAMPAIGN.subprocess, 'Popen', return_value=process):
+                with patch.object(CAMPAIGN, 'cancel_owned') as cancel:
+                    with patch.object(CAMPAIGN.os, 'killpg'), patch.object(CAMPAIGN.time, 'sleep'):
+                        selected = {'logic': 'QF_UF', 'solver': 'z3', 'label': 'z3', 'shard': 0}
+                        with self.assertRaisesRegex(RuntimeError, 'harness exited 1'):
+                            CAMPAIGN.guarded_benchmark([], out, selected, {'runs': []}, out, 0)
+                        cancel.assert_not_called()
+            self.assertTrue((out / 'task-failures/timing-0.json').exists())
+            self.assertFalse((out / 'failures').exists())
+
+    def test_bad_live_snapshot_cannot_hide_wrong_terminal_csv(self):
+        with tempfile.TemporaryDirectory() as directory:
+            out = Path(directory)
+            (out / 'answers.csv.jsonl').write_text('\n')
+            with (out / 'answers.csv').open('w', newline='') as stream:
+                writer = csv.DictWriter(stream, fieldnames=list(row()))
+                writer.writeheader()
+                writer.writerow(row(wrong='true'))
+            process = SimpleNamespace(pid=123456, returncode=0, poll=lambda: 0, wait=lambda: 0)
+            with patch.object(CAMPAIGN.subprocess, 'Popen', return_value=process):
+                with patch.object(CAMPAIGN, 'cancel_owned') as cancel:
+                    with patch.object(CAMPAIGN.os, 'killpg'), patch.object(CAMPAIGN.time, 'sleep'):
+                        selected = {'logic': 'QF_UF', 'solver': 'primo', 'label': 'primo', 'shard': 0}
+                        with self.assertRaises(CAMPAIGN.CorrectnessFailure):
+                            CAMPAIGN.guarded_benchmark([], out, selected, {'runs': []}, out, 0)
+                        cancel.assert_called_once_with(out)
 
     def test_recovery_rejects_a_different_parent_plan(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -108,6 +153,21 @@ class LongLimitMetadataTests(unittest.TestCase):
                 'completed_task_indices': [0], 'pending_task_indices': [],
                 'reused_shards': {'QF_LIA/primo/0': certificate}})
             REPORT.timing_shard(out, plan, run, 0, {'case.smt2': 'input'})
+            execution = CAMPAIGN.load(root / 'execution-timing.json')
+            execution.update(driver_sha256='previous-worker', recovery_sha256='previous-recovery')
+            CAMPAIGN.write(root / 'execution-timing.json', execution)
+            resumed = CAMPAIGN.load(out / 'recovery.json')
+            resumed['ancestor_recoveries'] = {'previous-worker': 'previous-recovery'}
+            resumed['reused_shards']['QF_LIA/primo/0'] = {
+                name: CAMPAIGN.digest(root / name) for name in certificate}
+            CAMPAIGN.write(out / 'recovery.json', resumed)
+            REPORT.timing_shard(out, plan, run, 0, {'case.smt2': 'input'})
+            resumed['ancestor_recoveries']['previous-worker'] = 'changed-recovery'
+            CAMPAIGN.write(out / 'recovery.json', resumed)
+            with self.assertRaisesRegex(ValueError, 'immutable recovery identity'):
+                REPORT.timing_shard(out, plan, run, 0, {'case.smt2': 'input'})
+            resumed['ancestor_recoveries']['previous-worker'] = 'previous-recovery'
+            CAMPAIGN.write(out / 'recovery.json', resumed)
             with (root / 'answers.csv').open('a') as stream:
                 stream.write('other.smt2,ok,sat,0,false,false\n')
             with self.assertRaisesRegex(ValueError, 'changed or uncertified reused shard'):

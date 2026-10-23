@@ -37,11 +37,22 @@ def load(path: Path):
     return json.loads(path.read_text())
 
 
-def journal(path: Path) -> list[dict]:
-    if not path.exists():
+def journal(path: Path, *, live: bool = False) -> list[dict]:
+    try:
+        if not path.exists():
+            return []
+        return [json.loads(line) for line in path.read_text().splitlines(keepends=True)
+                if line.endswith('\n')]
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        if not live:
+            raise
+        # A concurrent network-filesystem snapshot is advisory. The terminal
+        # CSV is checked strictly before this task can succeed or be reused.
         return []
-    return [json.loads(line) for line in path.read_text().splitlines(keepends=True)
-            if line.endswith('\n')]
+
+
+class CorrectnessFailure(ValueError):
+    """A confirmed native failure, wrong answer or decisive disagreement."""
 
 
 def decisive(row: dict) -> bool:
@@ -56,11 +67,11 @@ def check_rows(rows: list[dict], peers: list[dict], *, reference: bool = False) 
                 or (row['status'] == 'ok' and
                     (str(row['exit_code']) != '0' or str(row['timeout']).lower() != 'false'
                      or row['answer'] not in {'sat', 'unsat', 'unknown'}))):
-            raise ValueError(f'hard answer failure: {row}')
+            raise CorrectnessFailure(f'hard answer failure: {row}')
     answers = {r['file']: r['answer'] for r in rows if decisive(r)}
     for row in peers:
         if decisive(row) and row['file'] in answers and row['answer'] != answers[row['file']]:
-            raise ValueError(f'decisive solver disagreement: {row}')
+            raise CorrectnessFailure(f'decisive solver disagreement: {row}')
 
 
 def recovery(out: Path, campaign: dict) -> dict | None:
@@ -101,8 +112,8 @@ def guarded_benchmark(command: list[str], directory: Path, selected: dict,
             for run in campaign['runs']:
                 if run['logic'] == selected['logic'] and run['label'] != selected['label']:
                     path = out / 'timing' / run['logic'] / run['label']
-                    peers.extend(journal(path / f"shard-{selected['shard']}" / 'answers.csv.jsonl'))
-            check_rows(journal(directory / 'answers.csv.jsonl'), peers,
+                    peers.extend(journal(path / f"shard-{selected['shard']}" / 'answers.csv.jsonl', live=True))
+            check_rows(journal(directory / 'answers.csv.jsonl', live=True), peers,
                        reference=selected['solver'] != 'primo')
             if process.poll() is not None:
                 break
@@ -111,9 +122,13 @@ def guarded_benchmark(command: list[str], directory: Path, selected: dict,
             except subprocess.TimeoutExpired:
                 pass
         if process.returncode != 0:
-            raise ValueError(f'benchmark harness exited {process.returncode}')
+            raise RuntimeError(f'benchmark harness exited {process.returncode}')
+        with (directory / 'answers.csv').open() as stream:
+            check_rows(list(csv.DictReader(stream)), peers, reference=selected['solver'] != 'primo')
     except BaseException as error:
-        write(out / 'failures' / f'timing-{index}.json', {'error': str(error), 'selected': selected})
+        global_failure = isinstance(error, CorrectnessFailure)
+        folder = 'failures' if global_failure else 'task-failures'
+        write(out / folder / f'timing-{index}.json', {'error': str(error), 'selected': selected})
         for sig in (signal.SIGTERM, signal.SIGKILL):
             try:
                 os.killpg(process.pid, sig)
@@ -122,7 +137,8 @@ def guarded_benchmark(command: list[str], directory: Path, selected: dict,
             if sig == signal.SIGTERM:
                 time.sleep(2)
         process.wait()
-        cancel_owned(out)
+        if global_failure:
+            cancel_owned(out)
         raise
 
 

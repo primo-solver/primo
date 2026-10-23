@@ -2,8 +2,10 @@
 
 The October 22 campaign evaluates every supported non-incremental division at
 **1,200 seconds per input**. The initial timing attempt stopped after an OpenSMT
-QF_LIA process segfault; recovery is being prepared. Model replay and the final
-comparison remain pending. The generated gate passed 5,972 cases; 28 QF_LIA
+QF_LIA process segfault. October 23 recovery retained 158 certified timing shards
+and resubmitted the remaining 6,304. A live-journal parsing error then stopped
+that recovery attempt; its infrastructure handling is being repaired. Model
+replay and the final comparison remain pending. The generated gate passed 5,972 cases; 28 QF_LIA
 cases timed out at its separate five-second limit. It found no wrong answers,
 crashes or invalid models. Run `2026-10-22-all-theories-long-limits`
 in the [run ledger](../run-log.json) records exact snapshots, jobs and artifacts.
@@ -70,7 +72,13 @@ opposite definite answers from any two profiles. A reference process crash or
 parser/execution error is retained as an **error row**, with its exit status and
 raw stdout/stderr. It receives the unsolved PAR2 penalty and never contributes
 a solve or a corroborating answer. These external execution failures do not
-cancel unrelated timing tasks. The final audit includes each such row and hashes
+cancel unrelated timing tasks. CPU job `225508` also passed the crash-then-success test with infrastructure
+isolation enabled. Global cancellation is restricted to an explicit
+correctness-failure type; harness or filesystem failures stop only their own
+task and are recorded separately. Unreadable live-journal snapshots are retried
+as advisory observations. Every terminal CSV is still checked strictly before
+a task succeeds, and the global audit requires complete coverage. The final
+audit includes each reference error row and hashes
 its raw logs; missing evidence still prevents result acceptance.
 
 The first workflow used an overly broad guard: an OpenSMT SIGSEGV on
@@ -80,7 +88,8 @@ preserved. CPU job `225341` reproduced that SIGSEGV under the repaired guard, th
 successfully solved the following known-good input. The regression suite also
 checks that native failures and answer contradictions remain blocking.
 
-Recovery leaves the original plan, limits, executable snapshots and corpus
+The {longlimitsworkflow}`recovery tool <scripts/qualification/long_limits/recover.py>`
+leaves the original plan, limits, executable snapshots and corpus
 inventories unchanged. It validates complete timing shards with the same
 coverage and provenance audit used by reporting, then freezes hashes of each
 reused CSV, provenance and execution record. Interrupted shard directories and
@@ -88,8 +97,12 @@ the original cancellation records move to an explicitly recorded archive;
 only unfinished shards are rescheduled. An immutable recovery record binds the
 old plan and worker identity to the repaired worker and its pending task list.
 Reports verify reused hashes and the recovery identity for new executions.
+Further recovery attempts archive the prior recovery record, retain its worker
+and record hashes as explicit ancestors, and recertify all completed shards;
+identical repeat submission of the same worker is rejected.
 
-The global timing audit must accept all shards before any model replay starts.
+The global timing audit runs after all timing arrays terminate, including
+failed arrays, and must accept all shards before any model replay starts.
 Each model task records that barrier's hash. Wrong answers, native failures,
 reference disagreements and invalid models block result acceptance.
 

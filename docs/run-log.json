@@ -6,7 +6,7 @@
       "id": "2026-10-22-all-theories-long-limits",
       "date": "2026-10-22",
       "kind": "matched-full-corpus-long-limit-comparison",
-      "evidence_status": "initial-attempt-canceled-reference-segfault-recovery-in-preparation",
+      "evidence_status": "recovery-journal-parse-failure-infrastructure-isolation-being-prepared",
       "branch": "docs/public-repository-migration",
       "native_source_git": "4419dc902f03fe12b8933d5dee4378dd11497035",
       "native_binary_sha256": "e06bd36239ccc7af9fd29ed55af9f595f2e7cbd52f6ba5961b962c9d8d6fc26d",
@@ -374,7 +374,8 @@
         "cancellation_time_cluster_local": "2026-10-22T11:34:34",
         "cause": "Guard incorrectly treated reference execution errors as global correctness failures and canceled all registered arrays. Native failure not observed. Dependent model jobs canceled; final audit218496 correctly refused missing model data.",
         "failure_artifact": "results/long-limits-20261022/run1/failures/timing-1041.json",
-        "policy_repair": "Keep reference execution failures as unsolved/error rows with raw log evidence; native failures, wrong answers and reference disagreements remain blocking."
+        "policy_repair": "Keep reference execution failures as unsolved/error rows with raw log evidence; native failures, wrong answers and reference disagreements remain blocking.",
+        "archived_failure_artifact": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261022/run1/attempts/initial-canceled/failures/timing-1041.json"
       },
       "stopped_progress": {
         "completed_shards": 158,
@@ -528,6 +529,184 @@
           "guard_continued_after_sigsegv": true
         },
         "scope": "Actual external reference SIGSEGV followed by successful solve under repaired guard; no native behavior change or speed claim."
+      },
+      "recovery": {
+        "status": "canceled-by-overly-broad-harness-exception-path",
+        "workflow_git": "294a15c3791bf5ccbcbefafbd87bd9fa8b304c30",
+        "worker_driver_sha256": "e63a8b8e7c751cebaeeb31f3c80161cee9f05e86185e862beec6440506d6aa3c",
+        "recovery_sha256": "99c8846a4962305bf5b51306a1890e62e922e2c5bb099328dada2149e2b49cf5",
+        "retained_complete_shards": 158,
+        "pending_timing_shards": 6304,
+        "archived_directories": 126,
+        "artifact": "results/long-limits-20261022/run1/recovery.json",
+        "archive": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261022/run1/attempts/initial-canceled",
+        "policy": "Reference execution errors remain unsolved/error rows with original logs and PAR2 penalty. Primo hard failures, wrong answers and decisive disagreements remain blocking.",
+        "jobs": {
+          "campaign_out": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261022/run1",
+          "plan_sha256": "109fa2ec98bc517dddb405f6c47e9a953406e4d59c983e71acebf535f5bd2a37",
+          "timing": [
+            "225348",
+            "225349",
+            "225350",
+            "225351",
+            "225352",
+            "225353",
+            "225354"
+          ],
+          "models": [
+            "225356",
+            "225357"
+          ],
+          "gate_audit": "225347",
+          "chunks": [
+            {
+              "phase": "timing",
+              "job": "225348",
+              "offset": 0,
+              "tasks": 1000,
+              "throttle": 18
+            },
+            {
+              "phase": "timing",
+              "job": "225349",
+              "offset": 1000,
+              "tasks": 1000,
+              "throttle": 18
+            },
+            {
+              "phase": "timing",
+              "job": "225350",
+              "offset": 2000,
+              "tasks": 1000,
+              "throttle": 18
+            },
+            {
+              "phase": "timing",
+              "job": "225351",
+              "offset": 3000,
+              "tasks": 1000,
+              "throttle": 18
+            },
+            {
+              "phase": "timing",
+              "job": "225352",
+              "offset": 4000,
+              "tasks": 1000,
+              "throttle": 18
+            },
+            {
+              "phase": "timing",
+              "job": "225353",
+              "offset": 5000,
+              "tasks": 1000,
+              "throttle": 18
+            },
+            {
+              "phase": "timing",
+              "job": "225354",
+              "offset": 6000,
+              "tasks": 304,
+              "throttle": 18
+            },
+            {
+              "phase": "models",
+              "job": "225356",
+              "offset": 0,
+              "tasks": 1000,
+              "throttle": 32
+            },
+            {
+              "phase": "models",
+              "job": "225357",
+              "offset": 1000,
+              "tasks": 98,
+              "throttle": 32
+            }
+          ],
+          "recovery_sha256": "99c8846a4962305bf5b51306a1890e62e922e2c5bb099328dada2149e2b49cf5",
+          "timing_audit": "225355",
+          "final_report": "225358"
+        },
+        "frozen_workflow": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261022/workflow/294a15c3791bf5ccbcbefafbd87bd9fa8b304c30",
+        "command": "python3 scripts/qualification/long_limits/launch.py --ssh-config <private-config> --remote <private-alias> --workspace <source_workspace> --local-source <frozen4419-source> --remote-out <remote-artifacts> --workflow <recovery-frozen-workflow> --plan <local-artifacts>/plan.json --gate-job225347 --state <local-artifacts>/submission-recovery-20261023.json --recovery <local-artifacts>/recovery.json",
+        "verification": [
+          "15 metadata unit tests",
+          "make lint",
+          "explicit nested-workflow Ruff and py_compile",
+          "three SLURM script validators",
+          "make docs",
+          "local/Git link check:0failures",
+          "Actual reference crash-then-success smoke225341 complete0",
+          "Certification158complete and6304pending using final audit helper; native implementation and limits unchanged."
+        ],
+        "failure": {
+          "task_index": 2095,
+          "logic": "QF_UF",
+          "profile": "z3",
+          "artifact": "results/long-limits-20261022/run1/failures/timing-2095.json",
+          "error": "Expecting value:line1column1(char0)",
+          "classification": "Live-journal JSON parsing failure, not a solver answer or exit failure. Later inspected journals were well formed; the failing read bytes were not retained. Global BaseException handler incorrectly canceled all arrays.",
+          "archived_artifact": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261022/run1/attempts/recovery-1-canceled/failures/timing-2095.json"
+        }
+      },
+      "infrastructure_isolation": {
+        "status": "verified-awaiting-resubmission",
+        "policy": "Only explicit CorrectnessFailure (native hard error/wrong answer/decisive disagreement) invokes scancel. Live snapshot reads are advisory; terminal CSVs strictly checked. Other harness/I/O failures kill only their own process group and persist task-failures. Full timing audit runs afterany; models still require its afterok success.",
+        "unit_tests": 18,
+        "smoke_job": "225508",
+        "smoke_artifact": "results/long-limits-20261022/run1/recovery-smoke/d5c7b247a967",
+        "scope": "Same actual reference SIGSEGV followed by successful UNSAT under latest guard; no native source or resource limit changes.",
+        "retained_complete_shards": 182,
+        "pending_timing_shards": 6280,
+        "worker_driver_sha256": "d5c7b247a96789db2f8561d4a9e29bcd6b7f4fad49276e0c3a6dad5d23534f8b",
+        "recovery_sha256": "6ddb07376ef8cb20af87f6196bc15124be453c0626fa79f0894c4bdc4711ffbe",
+        "archive": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261022/run1/attempts/recovery-1-canceled",
+        "ancestor_recoveries": {
+          "e63a8b8e7c751cebaeeb31f3c80161cee9f05e86185e862beec6440506d6aa3c": "99c8846a4962305bf5b51306a1890e62e922e2c5bb099328dada2149e2b49cf5"
+        },
+        "smoke_result": {
+          "status": "pass",
+          "rows": [
+            {
+              "row": "1",
+              "file": "20210219-Dartagnan/ReachSafety-Loops/benchmark51_polynomial-O0.smt2",
+              "family": "20210219-Dartagnan",
+              "status": "error",
+              "answer": "error",
+              "expected": "",
+              "wrong": "false",
+              "seconds": "1.092509",
+              "timeout": "false",
+              "timed_out_with_stats": "false",
+              "exit_code": "-11",
+              "stderr_head": "",
+              "stdout_log": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261022/run1/recovery-smoke/d5c7b247a967/solver-output/0001-99a7296b415e-benchmark51_polynomial-O0.smt2.stdout",
+              "stderr_log": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261022/run1/recovery-smoke/d5c7b247a967/solver-output/0001-99a7296b415e-benchmark51_polynomial-O0.smt2.stderr"
+            },
+            {
+              "row": "2",
+              "file": "20180326-Bromberger/more_slacked/cut_lemmas/10-vars/cut_lemma_02_005.smt2.slack.smt2",
+              "family": "20180326-Bromberger",
+              "status": "ok",
+              "answer": "unsat",
+              "expected": "unsat",
+              "wrong": "false",
+              "seconds": "0.004705",
+              "timeout": "false",
+              "timed_out_with_stats": "false",
+              "exit_code": "0",
+              "stderr_head": "",
+              "stdout_log": "",
+              "stderr_log": ""
+            }
+          ],
+          "tool": {
+            "path": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261022/run1/bin/opensmt",
+            "sha256": "b7899e9aff299026d3251df7a28f51f56d8bd1e5b0fd7be11bcc72c4f2803a98",
+            "version": "v2.9.2\n"
+          },
+          "guard_continued_after_sigsegv": true
+        }
       }
     },
     {

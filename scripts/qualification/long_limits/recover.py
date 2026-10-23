@@ -9,17 +9,18 @@ import shutil
 import subprocess
 import sys
 
-from campaign import allocation, decisive, digest, guarded_benchmark, journal, load, write
+from campaign import allocation, decisive, digest, guarded_benchmark, journal, load, recovery, write
 from report import timing_shard
 
 
 def prepare(out: Path) -> None:
-    if (out / 'recovery.json').exists():
-        raise ValueError('recovery already prepared; inspect it instead of replacing it')
     plan = load(out / 'plan.json')
+    prior = recovery(out, plan)
+    if prior and prior['worker_driver_sha256'] == digest(Path(__file__).with_name('campaign.py')):
+        raise ValueError('same recovery worker already prepared; do not duplicate submission')
     jobs = load(out / 'jobs.json')
     owned = set(jobs['timing'] + jobs['models'] + [jobs['timing_audit'], jobs['final_report']])
-    active = subprocess.check_output(['squeue', '--me', '--noheader', '--format=%A'], text=True)
+    active = subprocess.check_output(['squeue', '--me', '--noheader', '--format=%i'], text=True)
     if owned.intersection(line.strip().split('_')[0] for line in active.splitlines()):
         raise ValueError('old campaign still has active jobs')
     complete, pending, reused, moves = [], [], {}, []
@@ -38,18 +39,23 @@ def prepare(out: Path) -> None:
             pending.append(index)
             if root.exists():
                 moves.append(root)
-    archive = out / 'attempts' / 'initial-canceled'
+    ancestors = dict(prior.get('ancestor_recoveries', {})) if prior else {}
+    archive_name = f'recovery-{len(ancestors) + 1}-canceled' if prior else 'initial-canceled'
+    archive = out / 'attempts' / archive_name
     if archive.exists():
         raise ValueError('archive already exists; inspect interrupted preparation')
     archive.mkdir(parents=True)
     shutil.copy2(out / 'jobs.json', archive / 'jobs.json')
+    if prior:
+        ancestors[prior['worker_driver_sha256']] = digest(out / 'recovery.json')
+        shutil.copy2(out / 'recovery.json', archive / 'recovery.json')
     archived = {}
     for root in moves:
         target = archive / root.relative_to(out)
         target.parent.mkdir(parents=True, exist_ok=True)
         root.rename(target)
         archived[str(root)] = str(target)
-    for name in ('failures', 'failed-final-audit.json'):
+    for name in ('failures', 'task-failures', 'failed-timing-audit.json', 'failed-final-audit.json'):
         source = out / name
         if source.exists():
             source.rename(archive / name)
@@ -57,6 +63,7 @@ def prepare(out: Path) -> None:
         'status': 'ready', 'plan_sha256': digest(out / 'plan.json'),
         'parent_driver_sha256': plan['driver_sha256'],
         'worker_driver_sha256': digest(Path(__file__).with_name('campaign.py')),
+        'ancestor_recoveries': ancestors,
         'completed_task_indices': complete, 'pending_task_indices': pending,
         'reused_shards': reused, 'archived_directories': archived,
         'archive': str(archive),
@@ -69,15 +76,16 @@ def smoke(out: Path, workspace: Path) -> None:
     plan = load(out / 'plan.json')
     config = plan['config']
     old = out / 'timing/QF_LIA/opensmt/shard-36/answers.csv.jsonl'
-    records = journal(old)
+    original_smoke = out / 'recovery-smoke/summary.json'
+    records = load(original_smoke)['rows'] if original_smoke.exists() else journal(old)
     failed = next(r for r in records if r['status'] == 'error')
     good = next(r for r in records if decisive(r))
     corpus = load(out / 'inventory/QF_LIA.json')
     tool = plan['tools']['opensmt']
     if digest(Path(tool['path'])) != tool['sha256']:
         raise ValueError('preserved reference changed')
-    directory = out / 'recovery-smoke'
-    directory.mkdir()
+    directory = out / 'recovery-smoke' / digest(Path(__file__).with_name('campaign.py'))[:12]
+    directory.mkdir(parents=True)
     manifest = directory / 'inputs.txt'
     manifest.write_text(f"{failed['file']}\n{good['file']}\n")
     for row in (failed, good):
