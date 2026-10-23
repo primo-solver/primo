@@ -13,7 +13,7 @@ import statistics
 import subprocess
 import sys
 
-from campaign import check_rows, decisive, digest, load, write
+from campaign import check_rows, decisive, digest, load, recovery, write
 
 
 def gate(args, plan_config: dict) -> None:
@@ -55,6 +55,47 @@ def metrics(rows: list[dict], timeout: int) -> dict:
             'median_solved_seconds': statistics.median(times) if times else None}
 
 
+
+def timing_shard(out: Path, plan: dict, run: dict, index: int, expected: dict):
+    logic, label = run['logic'], run['label']
+    resumed = recovery(out, plan)
+    allowed_drivers = {plan['driver_sha256']}
+    if resumed:
+        allowed_drivers.add(resumed['worker_driver_sha256'])
+    root = out / 'timing' / logic / label / f'shard-{index}'
+    parent = load(root / 'provenance.json')
+    execution = load(root / 'execution-timing.json')
+    if resumed and execution['driver_sha256'] == plan['driver_sha256']:
+        certificate = resumed['reused_shards'].get(f'{logic}/{label}/{index}')
+        if not certificate or any(digest(root / name) != checksum for name, checksum in certificate.items()):
+            raise ValueError(f'changed or uncertified reused shard: {root}')
+    selected_names = list(expected)[index::run['shards']]
+    if (parent['status'] != 'complete' or not parent['inputs_unchanged']
+            or parent['inputs'] != {name: expected[name] for name in selected_names}
+            or parent['solver']['sha256'] != plan['tools'][run['solver']]['sha256']
+            or parent['solver_args'] != run['arguments']
+            or parent['timeout'] != plan['config']['timeout_seconds']
+            or parent['shards'] != 1 or parent['shard_index'] != 0
+            or execution['selected']['shard'] != index
+            or execution['selected']['shards'] != run['shards']
+            or execution['plan_sha256'] != digest(out / 'plan.json')
+            or execution['driver_sha256'] not in allowed_drivers
+            or execution['memory_mib'] != plan['config']['memory_mib']
+            or execution['partition'] != 'compute'
+            or execution['cpu_models'] != ['Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz']):
+        raise ValueError(f'invalid timing provenance: {root}')
+    if execution['driver_sha256'] != plan['driver_sha256'] and (
+            execution.get('recovery_sha256') != digest(out / 'recovery.json')):
+        raise ValueError('recovered timing lacks its immutable recovery identity')
+    with (root / 'answers.csv').open() as stream:
+        rows = list(csv.DictReader(stream))
+    names = [row['file'] for row in rows]
+    if len(set(names)) != len(names) or set(names) != set(selected_names):
+        raise ValueError(f'coverage mismatch: {root}')
+    check_rows(rows, [], reference=run['solver'] != 'primo')
+    return root, parent, rows
+
+
 def collect(args, final: bool) -> dict:
     plan = load(args.out / 'plan.json')
     if load(args.out / 'gate-audit.json')['status'] != 'complete':
@@ -70,31 +111,12 @@ def collect(args, final: bool) -> dict:
         expected = {name: value['sha256'] for name, value in inventory['inputs'].items()}
         merged, model_count = {}, 0
         for index in range(run['shards']):
-            root = args.out / 'timing' / logic / label / f'shard-{index}'
-            parent = load(root / 'provenance.json')
-            execution = load(root / 'execution-timing.json')
+            root, parent, rows = timing_shard(args.out, plan, run, index, expected)
             selected_names = list(expected)[index::run['shards']]
-            if (parent['status'] != 'complete' or not parent['inputs_unchanged']
-                    or parent['inputs'] != {name: expected[name] for name in selected_names}
-                    or parent['solver']['sha256'] != plan['tools'][run['solver']]['sha256']
-                    or parent['solver_args'] != run['arguments']
-                    or parent['timeout'] != plan['config']['timeout_seconds']
-                    or parent['shards'] != 1 or parent['shard_index'] != 0
-                    or execution['selected']['shard'] != index
-                    or execution['selected']['shards'] != run['shards']
-                    or execution['plan_sha256'] != digest(args.out / 'plan.json')
-                    or execution['driver_sha256'] != plan['driver_sha256']
-                    or execution['memory_mib'] != plan['config']['memory_mib']
-                    or execution['partition'] != 'compute'
-                    or execution['cpu_models'] != ['Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz']):
-                raise ValueError(f'invalid timing provenance: {root}')
-            with (root / 'answers.csv').open() as stream:
-                rows = list(csv.DictReader(stream))
             names = [row['file'] for row in rows]
             if (len(set(names)) != len(names) or set(names) != set(selected_names)
                     or set(merged) & set(names)):
                 raise ValueError(f'coverage mismatch: {root}')
-            check_rows(rows, [])
             merged.update((r['file'], r) for r in rows)
             if final and run['solver'] == 'primo' and logic != 'UF':
                 model_execution = load(root / 'execution-models.json')
@@ -107,6 +129,9 @@ def collect(args, final: bool) -> dict:
         values = list(merged.values())
         result = metrics(values, plan['config']['timeout_seconds'])
         result['arguments'] = run['arguments']
+        result['execution_failures'] = [
+            {**r, 'log_sha256': {name: digest(Path(r[name])) for name in ('stdout_log', 'stderr_log')}}
+            for r in values if r['status'] == 'error']
         result['direct_dolmen_models'] = model_count if final and run['solver'] == 'primo' and logic != 'UF' else None
         result['families'] = {
             family: metrics([r for r in values if r['family'] == family], plan['config']['timeout_seconds'])
@@ -121,7 +146,8 @@ def collect(args, final: bool) -> dict:
             writer.writerows(values)
     for logic, runs in all_rows.items():
         for first, second in itertools.combinations(runs, 2):
-            check_rows(list(runs[first].values()), list(runs[second].values()))
+            check_rows(list(runs[first].values()), list(runs[second].values()),
+                       reference=not first.startswith('primo'))
     best = {logic: min((label for label in runs if label.startswith('primo')),
                       key=lambda label: (-runs[label]['solved'], runs[label]['par2_sum'], label))
             for logic, runs in reports.items()}
@@ -141,7 +167,8 @@ def collect(args, final: bool) -> dict:
               'selection_rule': 'One profile per entire division: greatest solved, then lowest PAR2, then name.',
               'reference_corroboration': corroboration,
               'quantified_models': 'UF printed models unsupported; no independent model qualification claimed.',
-              'ground_models_complete': final, 'timeout_seconds': plan['config']['timeout_seconds']}
+              'ground_models_complete': final,
+              'recovery_sha256': digest(args.out / 'recovery.json') if recovery(args.out, plan) else None, 'timeout_seconds': plan['config']['timeout_seconds']}
     if final:
         plots = args.out / 'plots'
         for logic, runs in reports.items():

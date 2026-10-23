@@ -6,7 +6,7 @@
       "id": "2026-10-22-all-theories-long-limits",
       "date": "2026-10-22",
       "kind": "matched-full-corpus-long-limit-comparison",
-      "evidence_status": "timings-running-models-and-final-report-dependent",
+      "evidence_status": "initial-attempt-canceled-reference-segfault-recovery-in-preparation",
       "branch": "docs/public-repository-migration",
       "native_source_git": "4419dc902f03fe12b8933d5dee4378dd11497035",
       "native_binary_sha256": "e06bd36239ccc7af9fd29ed55af9f595f2e7cbd52f6ba5961b962c9d8d6fc26d",
@@ -180,7 +180,7 @@
         "native_existing": "Reuse exact4419dc9 release/ASan and QF_LRA profile qualification from2026-10-21; no native changes. Fresh six-route generated gate and reference-admission checks before timings.",
         "unknown_policy": "Integer and quantified resource limits unchanged; unknown/timeouts are unsolved, separate from passes.",
         "model_boundary": "Five ground divisions require complete direct Dolmen coverage for all native profiles. Quantified UF uses reference-answer corroboration and explicitly lacks printed-model qualification.",
-        "status": "Fresh gate audited complete:5972 pass,28 QF_LIA timeouts,3551 direct Dolmen ground SAT passes,no wrong answers/crashes/invalid models. Full-corpus timing and model stages pending.",
+        "status": "Generated gate remains complete on identical native binary. Full timing attempt stopped on external OpenSMT SIGSEGV; ground corpus models not started; no qualified results or new plots.",
         "fresh_generated_gate": {
           "QF_UF": {
             "cases": 1000,
@@ -362,7 +362,173 @@
         "make docs",
         "python3 scripts/check_doc_links.py docs/_build/site",
         "Native release/ASan and option qualification reused on identical4419dc9/e06binary; no native or behavior changes in this task."
-      ]
+      ],
+      "failure": {
+        "solver": "OpenSMT2.9.2",
+        "logic": "QF_LIA",
+        "file": "20210219-Dartagnan/ReachSafety-Loops/benchmark51_polynomial-O0.smt2",
+        "exit_code": -11,
+        "seconds": 1.280211,
+        "task_index": 1041,
+        "array": "218487_41",
+        "cancellation_time_cluster_local": "2026-10-22T11:34:34",
+        "cause": "Guard incorrectly treated reference execution errors as global correctness failures and canceled all registered arrays. Native failure not observed. Dependent model jobs canceled; final audit218496 correctly refused missing model data.",
+        "failure_artifact": "results/long-limits-20261022/run1/failures/timing-1041.json",
+        "policy_repair": "Keep reference execution failures as unsolved/error rows with raw log evidence; native failures, wrong answers and reference disagreements remain blocking."
+      },
+      "stopped_progress": {
+        "completed_shards": 158,
+        "rows": 4930,
+        "bad_rows": [
+          {
+            "answer": "error",
+            "exit_code": -11,
+            "expected": "",
+            "family": "20210219-Dartagnan",
+            "file": "20210219-Dartagnan/ReachSafety-Loops/benchmark51_polynomial-O0.smt2",
+            "row": 3,
+            "seconds": "1.280211",
+            "status": "error",
+            "stderr_head": "",
+            "stderr_log": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261022/run1/timing/QF_LIA/opensmt/shard-36/solver-output/0003-99a7296b415e-benchmark51_polynomial-O0.smt2.stderr",
+            "stdout_log": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261022/run1/timing/QF_LIA/opensmt/shard-36/solver-output/0003-99a7296b415e-benchmark51_polynomial-O0.smt2.stdout",
+            "timed_out_with_stats": "false",
+            "timeout": "false",
+            "wrong": "false"
+          }
+        ],
+        "failure_files": [
+          "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261022/run1/failures/timing-1041.json"
+        ],
+        "rows_per_logic": {
+          "QF_LRA": 310,
+          "UF": 300,
+          "QF_UFLIA": 98,
+          "QF_LIA": 2059,
+          "QF_UF": 1803,
+          "QF_UFLRA": 360
+        },
+        "hardware": [
+          {
+            "identity": [
+              "node-02.ciircluster",
+              "compute",
+              8192,
+              [
+                "Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz"
+              ]
+            ],
+            "tasks": 79
+          },
+          {
+            "identity": [
+              "node-03.ciircluster",
+              "compute",
+              8192,
+              [
+                "Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz"
+              ]
+            ],
+            "tasks": 53
+          },
+          {
+            "identity": [
+              "node-05.ciircluster",
+              "compute",
+              8192,
+              [
+                "Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz"
+              ]
+            ],
+            "tasks": 68
+          },
+          {
+            "identity": [
+              "node-04.ciircluster",
+              "compute",
+              8192,
+              [
+                "Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz"
+              ]
+            ],
+            "tasks": 58
+          },
+          {
+            "identity": [
+              "node-06.ciircluster",
+              "compute",
+              8192,
+              [
+                "Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz"
+              ]
+            ],
+            "tasks": 25
+          },
+          {
+            "identity": [
+              "node-07.ciircluster",
+              "compute",
+              8192,
+              [
+                "Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz"
+              ]
+            ],
+            "tasks": 1
+          }
+        ]
+      },
+      "recovery_smoke": {
+        "job": "225341",
+        "status": "pass",
+        "environment": "CPU compute,node-02,1physicalCPU,8GiB",
+        "command": "PRIMO_WORKDIR=<source_workspace> PRIMO_LONG_RECOVER=<workflow>/recover.py PRIMO_LONG_OUT=<remote-artifacts> sbatch <workflow>/recover.sbatch",
+        "timeout_seconds": 30,
+        "artifact": "results/long-limits-20261022/run1/recovery-smoke",
+        "result": {
+          "status": "pass",
+          "rows": [
+            {
+              "row": "1",
+              "file": "20210219-Dartagnan/ReachSafety-Loops/benchmark51_polynomial-O0.smt2",
+              "family": "20210219-Dartagnan",
+              "status": "error",
+              "answer": "error",
+              "expected": "",
+              "wrong": "false",
+              "seconds": "1.096734",
+              "timeout": "false",
+              "timed_out_with_stats": "false",
+              "exit_code": "-11",
+              "stderr_head": "",
+              "stdout_log": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261022/run1/recovery-smoke/solver-output/0001-99a7296b415e-benchmark51_polynomial-O0.smt2.stdout",
+              "stderr_log": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261022/run1/recovery-smoke/solver-output/0001-99a7296b415e-benchmark51_polynomial-O0.smt2.stderr"
+            },
+            {
+              "row": "2",
+              "file": "20180326-Bromberger/more_slacked/cut_lemmas/10-vars/cut_lemma_02_005.smt2.slack.smt2",
+              "family": "20180326-Bromberger",
+              "status": "ok",
+              "answer": "unsat",
+              "expected": "unsat",
+              "wrong": "false",
+              "seconds": "0.004774",
+              "timeout": "false",
+              "timed_out_with_stats": "false",
+              "exit_code": "0",
+              "stderr_head": "",
+              "stdout_log": "",
+              "stderr_log": ""
+            }
+          ],
+          "tool": {
+            "path": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261022/run1/bin/opensmt",
+            "sha256": "b7899e9aff299026d3251df7a28f51f56d8bd1e5b0fd7be11bcc72c4f2803a98",
+            "version": "v2.9.2\n"
+          },
+          "guard_continued_after_sigsegv": true
+        },
+        "scope": "Actual external reference SIGSEGV followed by successful solve under repaired guard; no native behavior change or speed claim."
+      }
     },
     {
       "id": "2026-10-21-pure-lra-equality-portfolio",

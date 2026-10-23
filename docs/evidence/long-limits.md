@@ -1,7 +1,8 @@
 # Full-corpus evaluation at longer limits
 
 The October 22 campaign evaluates every supported non-incremental division at
-**1,200 seconds per input**. Timings are running; model replay and the final
+**1,200 seconds per input**. The initial timing attempt stopped after an OpenSMT
+QF_LIA process segfault; recovery is being prepared. Model replay and the final
 comparison remain pending. The generated gate passed 5,972 cases; 28 QF_LIA
 cases timed out at its separate five-second limit. It found no wrong answers,
 crashes or invalid models. Run `2026-10-22-all-theories-long-limits`
@@ -64,12 +65,33 @@ shard identity. Explicit small manifests prevent every worker from traversing
 the whole corpus; the shared adapter processes each supplied manifest as one
 local shard. The campaign audit checks the global disjoint coverage.
 
-A journal guard checks errors, wrong answers and opposite definite answers
-from other profiles as measurements arrive. It cancels only arrays registered
-to this campaign; timeouts and legitimate unknown results are not failures.
+The journal guard stops the campaign on Primo hard failures, wrong answers, or
+opposite definite answers from any two profiles. A reference process crash or
+parser/execution error is retained as an **error row**, with its exit status and
+raw stdout/stderr. It receives the unsolved PAR2 penalty and never contributes
+a solve or a corroborating answer. These external execution failures do not
+cancel unrelated timing tasks. The final audit includes each such row and hashes
+its raw logs; missing evidence still prevents result acceptance.
+
+The first workflow used an overly broad guard: an OpenSMT SIGSEGV on
+`20210219-Dartagnan/ReachSafety-Loops/benchmark51_polynomial-O0.smt2` canceled all
+arrays after 158 timing shards completed. That attempt and its partial rows are
+preserved. CPU job `225341` reproduced that SIGSEGV under the repaired guard, then
+successfully solved the following known-good input. The regression suite also
+checks that native failures and answer contradictions remain blocking.
+
+Recovery leaves the original plan, limits, executable snapshots and corpus
+inventories unchanged. It validates complete timing shards with the same
+coverage and provenance audit used by reporting, then freezes hashes of each
+reused CSV, provenance and execution record. Interrupted shard directories and
+the original cancellation records move to an explicitly recorded archive;
+only unfinished shards are rescheduled. An immutable recovery record binds the
+old plan and worker identity to the repaired worker and its pending task list.
+Reports verify reused hashes and the recovery identity for new executions.
+
 The global timing audit must accept all shards before any model replay starts.
-Each model task records that barrier's hash. Solver, parser or reference
-disagreements require triage and block result acceptance.
+Each model task records that barrier's hash. Wrong answers, native failures,
+reference disagreements and invalid models block result acceptance.
 
 Every successful Primo SAT row in the five ground divisions receives a
 separate direct Dolmen check in the original logic, using the same native

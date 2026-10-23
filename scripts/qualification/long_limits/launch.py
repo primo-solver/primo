@@ -15,6 +15,7 @@ def main():
     for name in ('ssh-config', 'remote', 'workspace', 'local-source', 'remote-out',
                  'workflow', 'plan', 'gate-job', 'state'):
         parser.add_argument('--' + name, required=True)
+    parser.add_argument('--recovery', type=Path)
     args = parser.parse_args()
     source = Path(__file__).resolve().parents[3]
     plan_bytes = Path(args.plan).read_bytes()
@@ -27,7 +28,17 @@ def main():
     staged = subprocess.check_output(
         [*ssh, shlex.join(['sha256sum', *(args.workflow + '/' + name for name in names)])], text=True)
     hashes = {Path(line.split()[1]).name: line.split()[0] for line in staged.splitlines()}
-    if (hashes['campaign.py'] != plan['driver_sha256']
+    resumed = json.loads(args.recovery.read_text()) if args.recovery else None
+    expected_driver = resumed['worker_driver_sha256'] if resumed else plan['driver_sha256']
+    if resumed and (resumed['plan_sha256'] != hashlib.sha256(plan_bytes).hexdigest()
+                    or resumed['status'] != 'ready'):
+        raise ValueError('recovery is not ready for this plan')
+    if args.recovery:
+        remote_hash = subprocess.check_output(
+            [*ssh, shlex.join(['sha256sum', args.remote_out + '/recovery.json'])], text=True).split()[0]
+        if remote_hash != hashlib.sha256(args.recovery.read_bytes()).hexdigest():
+            raise ValueError('remote recovery differs from local submission metadata')
+    if (hashes['campaign.py'] != expected_driver
             or hashes['config.json'] != plan['config_sha256']):
         raise ValueError('staged driver or configuration differs from the plan')
     state_path = Path(args.state)
@@ -36,6 +47,8 @@ def main():
     state = {'campaign_out': plan['campaign_out'],
              'plan_sha256': hashlib.sha256(plan_bytes).hexdigest(),
              'timing': [], 'models': [], 'gate_audit': args.gate_job, 'chunks': []}
+    if resumed:
+        state['recovery_sha256'] = hashlib.sha256(args.recovery.read_bytes()).hexdigest()
 
     def persist():
         state_path.write_text(json.dumps(state, indent=2) + '\n')
@@ -81,7 +94,8 @@ def main():
             persist()
 
     persist()
-    arrays('timing', plan['tasks'], args.gate_job, plan['config']['maximum_concurrent_tasks'])
+    timing_tasks = resumed['pending_task_indices'] if resumed else plan['tasks']
+    arrays('timing', timing_tasks, args.gate_job, plan['config']['maximum_concurrent_tasks'])
     state['timing_audit'] = submit('timing', 'report.sbatch', [
         '--dependency=afterok:' + ':'.join(state['timing']), '--job-name=primo-long-timing-audit'])
     persist()

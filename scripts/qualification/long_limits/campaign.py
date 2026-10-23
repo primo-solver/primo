@@ -49,9 +49,10 @@ def decisive(row: dict) -> bool:
             and str(row['exit_code']) == '0' and str(row['timeout']).lower() == 'false')
 
 
-def check_rows(rows: list[dict], peers: list[dict]) -> None:
+def check_rows(rows: list[dict], peers: list[dict], *, reference: bool = False) -> None:
     for row in rows:
-        if (row['wrong'] == 'true' or row['status'] not in {'ok', 'timeout'}
+        allowed = {'ok', 'timeout', 'error'} if reference else {'ok', 'timeout'}
+        if (row['wrong'] == 'true' or row['status'] not in allowed
                 or (row['status'] == 'ok' and
                     (str(row['exit_code']) != '0' or str(row['timeout']).lower() != 'false'
                      or row['answer'] not in {'sat', 'unsat', 'unknown'}))):
@@ -60,6 +61,20 @@ def check_rows(rows: list[dict], peers: list[dict]) -> None:
     for row in peers:
         if decisive(row) and row['file'] in answers and row['answer'] != answers[row['file']]:
             raise ValueError(f'decisive solver disagreement: {row}')
+
+
+def recovery(out: Path, campaign: dict) -> dict | None:
+    path = out / 'recovery.json'
+    if not path.exists():
+        return None
+    value = load(path)
+    if (value['status'] != 'ready' or value['plan_sha256'] != digest(out / 'plan.json')
+            or value['parent_driver_sha256'] != campaign['driver_sha256']):
+        raise ValueError('recovery belongs to a different frozen plan')
+    indices = value['completed_task_indices'] + value['pending_task_indices']
+    if len(indices) != len(campaign['tasks']) or set(indices) != set(range(len(campaign['tasks']))):
+        raise ValueError('recovery tasks do not partition the frozen plan')
+    return value
 
 
 def cancel_owned(out: Path) -> None:
@@ -87,7 +102,8 @@ def guarded_benchmark(command: list[str], directory: Path, selected: dict,
                 if run['logic'] == selected['logic'] and run['label'] != selected['label']:
                     path = out / 'timing' / run['logic'] / run['label']
                     peers.extend(journal(path / f"shard-{selected['shard']}" / 'answers.csv.jsonl'))
-            check_rows(journal(directory / 'answers.csv.jsonl'), peers)
+            check_rows(journal(directory / 'answers.csv.jsonl'), peers,
+                       reference=selected['solver'] != 'primo')
             if process.poll() is not None:
                 break
             try:
@@ -265,9 +281,11 @@ def plan(args, config: dict, out: Path) -> None:
 
 def task(args, config: dict, out: Path, phase: str) -> None:
     campaign = load(out / 'plan.json')
+    resumed = recovery(out, campaign)
     if digest(args.config) != campaign['config_sha256']:
         raise ValueError('worker configuration changed after planning')
-    index = int(os.environ.get('PRIMO_TASK_OFFSET', '0')) + int(os.environ['SLURM_ARRAY_TASK_ID'])
+    scheduled_index = int(os.environ.get('PRIMO_TASK_OFFSET', '0')) + int(os.environ['SLURM_ARRAY_TASK_ID'])
+    index = resumed['pending_task_indices'][scheduled_index] if resumed and phase == 'timing' else scheduled_index
     selected = campaign['model_tasks' if phase == 'models' else 'tasks'][index]
     tools = campaign['tools']
     source = out / 'inventory' / f"{selected['logic']}.json"
@@ -279,6 +297,8 @@ def task(args, config: dict, out: Path, phase: str) -> None:
     directory.mkdir(parents=True, exist_ok=True)
     record = {**allocation(config), 'task_index': index, 'selected': selected,
               'plan_sha256': digest(out / 'plan.json'), 'tool': tool}
+    if resumed:
+        record['recovery_sha256'] = digest(out / 'recovery.json')
     if phase == 'models' and (not selected['label'].startswith('primo') or selected['logic'] == 'UF'):
         return
     if phase == 'models':
@@ -305,7 +325,8 @@ def task(args, config: dict, out: Path, phase: str) -> None:
         command += ['--model-timeout', '1800', '--dolmen-timeout', '300',
                     '--dolmen-size', '5G', '--dolmen', tools['dolmen']['path'],
                     '--dolmen-arg=--strict=false']
-    if digest(Path(__file__)) != campaign['driver_sha256']:
+    expected_driver = resumed['worker_driver_sha256'] if resumed else campaign['driver_sha256']
+    if digest(Path(__file__)) != expected_driver:
         raise ValueError('worker driver changed after planning')
     if phase == 'timing':
         guarded_benchmark(command, directory, selected, campaign, out, index)
@@ -314,11 +335,7 @@ def task(args, config: dict, out: Path, phase: str) -> None:
     if phase == 'timing':
         with (directory / 'answers.csv').open() as stream:
             rows = list(csv.DictReader(stream))
-        bad = [r for r in rows if r['wrong'] == 'true' or r['status'] not in {'ok', 'timeout'}
-               or (r['status'] == 'ok' and (r['exit_code'] != '0' or r['answer'] not in {'sat', 'unsat', 'unknown'}))]
-        if bad:
-            write(out / 'failures' / f'{index}.json', bad)
-            raise ValueError(f'hard timing failure: {selected["logic"]}/{selected["label"]}')
+        check_rows(rows, [], reference=selected['solver'] != 'primo')
         parent = load(directory / 'provenance.json')
         expected = {name: v['sha256'] for name, v in corpus['inputs'].items()}
         if any(expected.get(name) != checksum for name, checksum in parent['inputs'].items()):
