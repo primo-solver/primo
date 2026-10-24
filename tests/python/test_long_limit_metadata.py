@@ -28,6 +28,21 @@ def row(**changes):
 
 
 class LongLimitMetadataTests(unittest.TestCase):
+    def test_explicit_allocation_exhaustion_is_unsolved_not_a_correctness_failure(self):
+        exhausted = row(status='error', answer='error', exit_code=1,
+                        stderr_head='error: std::bad_alloc', seconds='2')
+        CAMPAIGN.check_rows([exhausted], [])
+        result = REPORT.metrics([exhausted], 1200)
+        self.assertEqual((result['solved'], result['memory_out'], result['errors'], result['par2_sum']),
+                         (0, 1, 0, 2400))
+        with self.assertRaises(CAMPAIGN.CorrectnessFailure):
+            CAMPAIGN.check_rows([row(status='error', answer='error', exit_code=-9)], [])
+
+    def test_worker_refuses_an_unlimited_address_space(self):
+        with patch.object(CAMPAIGN.resource, 'getrlimit', return_value=(-1, -1)):
+            with self.assertRaisesRegex(ValueError, 'hard address-space limit missing'):
+                CAMPAIGN.allocation({'memory_mib': 8192})
+
     def test_reference_crash_remains_an_error_and_unsolved(self):
         crash = row(status='error', answer='error', exit_code=-11, seconds='1')
         good = row(file='next.smt2', seconds='2')
@@ -42,7 +57,7 @@ class LongLimitMetadataTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'disagreement'):
             CAMPAIGN.check_rows([row()], [row(answer='unsat')], reference=True)
 
-    def test_journal_guard_isolates_reference_crash_but_stops_native_crash(self):
+    def test_journal_guard_isolates_process_crashes_for_both_solver_roles(self):
         for solver in ('opensmt', 'primo'):
             with self.subTest(solver=solver), tempfile.TemporaryDirectory() as directory:
                 out = Path(directory)
@@ -59,13 +74,8 @@ class LongLimitMetadataTests(unittest.TestCase):
                     with patch.object(CAMPAIGN, 'cancel_owned') as cancel:
                         with patch.object(CAMPAIGN.os, 'killpg'), patch.object(CAMPAIGN.time, 'sleep'):
                             selected = {'logic': 'QF_LIA', 'solver': solver, 'label': solver, 'shard': 0}
-                            if solver == 'primo':
-                                with self.assertRaisesRegex(ValueError, 'hard answer failure'):
-                                    CAMPAIGN.guarded_benchmark([], out, selected, {'runs': []}, out, 0)
-                                cancel.assert_called_once_with(out)
-                            else:
-                                CAMPAIGN.guarded_benchmark([], out, selected, {'runs': []}, out, 0)
-                                cancel.assert_not_called()
+                            CAMPAIGN.guarded_benchmark([], out, selected, {'runs': []}, out, 0)
+                            cancel.assert_not_called()
 
     def test_live_journal_decode_failure_is_advisory_but_strict_read_rejects_it(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -131,7 +141,8 @@ class LongLimitMetadataTests(unittest.TestCase):
             out = Path(directory)
             run = {'logic': 'QF_LIA', 'label': 'primo', 'solver': 'primo', 'shards': 1, 'arguments': []}
             plan = {'driver_sha256': 'original', 'tools': {'primo': {'sha256': 'binary'}},
-                    'config': {'timeout_seconds': 1200, 'memory_mib': 8192}, 'tasks': [run]}
+                    'config': {'timeout_seconds': 1200, 'memory_mib': 8192,
+                               'memory_limit_kind': 'per-process RLIMIT_AS'}, 'tasks': [run]}
             CAMPAIGN.write(out / 'plan.json', plan)
             root = out / 'timing/QF_LIA/primo/shard-0'
             CAMPAIGN.write(root / 'provenance.json', {
@@ -144,6 +155,11 @@ class LongLimitMetadataTests(unittest.TestCase):
                 'cpu_models': ['Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz']})
             (root / 'answers.csv').write_text(
                 'file,status,answer,exit_code,timeout,wrong\ncase.smt2,ok,sat,0,false,false\n')
+            with self.assertRaisesRegex(ValueError, 'invalid timing provenance'):
+                REPORT.timing_shard(out, plan, run, 0, {'case.smt2': 'input'})
+            execution = CAMPAIGN.load(root / 'execution-timing.json')
+            execution['address_space_limit_bytes'] = [8192 * 1024 * 1024] * 2
+            CAMPAIGN.write(root / 'execution-timing.json', execution)
             REPORT.timing_shard(out, plan, run, 0, {'case.smt2': 'input'})
             certificate = {name: CAMPAIGN.digest(root / name) for name in
                            ('provenance.json', 'execution-timing.json', 'answers.csv')}

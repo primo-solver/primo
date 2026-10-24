@@ -11,6 +11,7 @@ import math
 import os
 from pathlib import Path
 import platform
+import resource
 import shutil
 import signal
 import subprocess
@@ -52,7 +53,21 @@ def journal(path: Path, *, live: bool = False) -> list[dict]:
 
 
 class CorrectnessFailure(ValueError):
-    """A confirmed native failure, wrong answer or decisive disagreement."""
+    """A wrong answer/contradiction, or an error rejected by a strict audit caller."""
+
+
+def memory_exhausted(row: dict) -> bool:
+    if row['status'] != 'error':
+        return False
+    diagnostic = str(row.get('stderr_head', ''))
+    for key in ('stdout_log', 'stderr_log'):
+        if row.get(key):
+            with Path(row[key]).open(errors='replace') as stream:
+                diagnostic += '\n' + stream.read(16384)
+    lines = [line.strip().lower() for line in diagnostic.splitlines()]
+    return any(line.startswith(('error: std::bad_alloc', '(error "std::bad_alloc"',
+                                'std::bad_alloc', 'what():  std::bad_alloc',
+                                'error: out of memory', '(error "out of memory')) for line in lines)
 
 
 def decisive(row: dict) -> bool:
@@ -60,10 +75,12 @@ def decisive(row: dict) -> bool:
             and str(row['exit_code']) == '0' and str(row['timeout']).lower() == 'false')
 
 
-def check_rows(rows: list[dict], peers: list[dict], *, reference: bool = False) -> None:
+def check_rows(rows: list[dict], peers: list[dict], *, reference: bool = False,
+               allow_execution_errors: bool = False) -> None:
     for row in rows:
-        allowed = {'ok', 'timeout', 'error'} if reference else {'ok', 'timeout'}
-        if (row['wrong'] == 'true' or row['status'] not in allowed
+        allowed = {'ok', 'timeout', 'error', 'unsupported'} if reference or allow_execution_errors else {'ok', 'timeout'}
+        resource_failure = memory_exhausted(row)
+        if (row['wrong'] == 'true' or (row['status'] not in allowed and not resource_failure)
                 or (row['status'] == 'ok' and
                     (str(row['exit_code']) != '0' or str(row['timeout']).lower() != 'false'
                      or row['answer'] not in {'sat', 'unsat', 'unknown'}))):
@@ -114,7 +131,7 @@ def guarded_benchmark(command: list[str], directory: Path, selected: dict,
                     path = out / 'timing' / run['logic'] / run['label']
                     peers.extend(journal(path / f"shard-{selected['shard']}" / 'answers.csv.jsonl', live=True))
             check_rows(journal(directory / 'answers.csv.jsonl', live=True), peers,
-                       reference=selected['solver'] != 'primo')
+                       allow_execution_errors=True)
             if process.poll() is not None:
                 break
             try:
@@ -124,7 +141,7 @@ def guarded_benchmark(command: list[str], directory: Path, selected: dict,
         if process.returncode != 0:
             raise RuntimeError(f'benchmark harness exited {process.returncode}')
         with (directory / 'answers.csv').open() as stream:
-            check_rows(list(csv.DictReader(stream)), peers, reference=selected['solver'] != 'primo')
+            check_rows(list(csv.DictReader(stream)), peers, allow_execution_errors=True)
     except BaseException as error:
         global_failure = isinstance(error, CorrectnessFailure)
         folder = 'failures' if global_failure else 'task-failures'
@@ -143,6 +160,10 @@ def guarded_benchmark(command: list[str], directory: Path, selected: dict,
 
 
 def allocation(config: dict) -> dict:
+    address_space = resource.getrlimit(resource.RLIMIT_AS)
+    expected_bytes = config['memory_mib'] * 1024 * 1024
+    if address_space != (expected_bytes, expected_bytes):
+        raise ValueError(f'hard address-space limit missing: {address_space}')
     models = sorted({line.split(':', 1)[1].strip()
                      for line in Path('/proc/cpuinfo').read_text().splitlines()
                      if line.startswith('model name')})
@@ -154,6 +175,7 @@ def allocation(config: dict) -> dict:
     return {'job': os.environ['SLURM_JOB_ID'], 'array_job': os.environ.get('SLURM_ARRAY_JOB_ID'),
             'task': os.environ.get('SLURM_ARRAY_TASK_ID'), 'host': platform.node(),
             'partition': 'compute', 'cpu_models': models, 'memory_mib': config['memory_mib'],
+            'address_space_limit_bytes': list(address_space),
             'affinity': sorted(os.sched_getaffinity(0)), 'driver_sha256': digest(Path(__file__))}
 
 
@@ -198,10 +220,13 @@ def prepare(args, config: dict, out: Path) -> None:
     tools = {}
     binaries = out / 'bin'
     binaries.mkdir(exist_ok=True)
+    frozen = load(args.tools_from / 'tools.json') if args.tools_from else None
     for name in ('primo', *config['references'], 'dolmen'):
         filename = 'yices-smt2' if name == 'yices' else name
-        source = args.workspace / ('build-slurm-rel/primo' if name == 'primo'
-                                   else f'contrib/local/bin/{filename}')
+        source = (Path(frozen[name]['path']) if frozen else args.workspace / (
+            'build-slurm-rel/primo' if name == 'primo' else f'contrib/local/bin/{filename}'))
+        if frozen and digest(source) != frozen[name]['sha256']:
+            raise ValueError('frozen reference executable changed')
         target = binaries / filename
         if target.exists():
             raise ValueError('use a fresh campaign directory')
@@ -351,7 +376,7 @@ def task(args, config: dict, out: Path, phase: str) -> None:
     if phase == 'timing':
         with (directory / 'answers.csv').open() as stream:
             rows = list(csv.DictReader(stream))
-        check_rows(rows, [], reference=selected['solver'] != 'primo')
+        check_rows(rows, [], allow_execution_errors=True)
         parent = load(directory / 'provenance.json')
         expected = {name: v['sha256'] for name, v in corpus['inputs'].items()}
         if any(expected.get(name) != checksum for name, checksum in parent['inputs'].items()):
@@ -364,6 +389,7 @@ def main() -> None:
     parser.add_argument('--workspace', type=Path, default=Path(os.environ.get('PRIMO_WORKDIR', '.')))
     parser.add_argument('--out', type=Path, default=Path(os.environ.get('PRIMO_LONG_OUT', '.')))
     parser.add_argument('--config', type=Path, default=Path(__file__).with_name('config.json'))
+    parser.add_argument('--tools-from', type=Path)
     args = parser.parse_args()
     config = load(args.config)
     out = args.out.resolve()

@@ -3,10 +3,142 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-10-24-all-theories-enforced-memory",
+      "date": "2026-10-24",
+      "kind": "matched-full-corpus-long-limit-comparison",
+      "evidence_status": "preparing-fresh-enforced-memory-cohort",
+      "branch": "docs/public-repository-migration",
+      "native_source_git": "4419dc902f03fe12b8933d5dee4378dd11497035",
+      "native_binary_sha256": "e06bd36239ccc7af9fd29ed55af9f595f2e7cbd52f6ba5961b962c9d8d6fc26d",
+      "scope": "Fresh 1200-second non-incremental comparisons over all six supported divisions (32095 inputs). Primo default plus the known phase/monotone QF_LRA candidate, against Z3/cvc5 and capability-admitted Yices/OpenSMT. No easy-instance filtering or per-input oracle Primo selection.",
+      "configuration": {
+        "timeout_seconds": 1200,
+        "memory_mib": 8192,
+        "maximum_inputs_per_shard": 24,
+        "maximum_concurrent_tasks": 128,
+        "native_source_git": "4419dc902f03fe12b8933d5dee4378dd11497035",
+        "native_binary_sha256": "e06bd36239ccc7af9fd29ed55af9f595f2e7cbd52f6ba5961b962c9d8d6fc26d",
+        "corpora": {
+          "QF_UF": 7503,
+          "QF_LRA": 1753,
+          "QF_LIA": 13306,
+          "QF_UFLRA": 1284,
+          "QF_UFLIA": 659,
+          "UF": 7590
+        },
+        "native_profiles": {
+          "primo": [
+            "--quiet"
+          ],
+          "primo-phase-mono": [
+            "--quiet",
+            "--lra-model-phase",
+            "--monotone-elimination"
+          ]
+        },
+        "references": [
+          "z3",
+          "cvc5",
+          "yices",
+          "opensmt"
+        ],
+        "memory_limit_kind": "per-process RLIMIT_AS"
+      },
+      "execution": {
+        "environment": "CPU SLURM compute, Xeon E5-2690 v4, one physical CPU per timed solver; no GPU nodes",
+        "memory": "8192 MiB hard and soft RLIMIT_AS per process, verified before work and recorded in worker provenance; separate SLURM8GiB reservation is not relied on for enforcement.",
+        "source_workspace": "/home/janotmik/primo-lra-equality-20261021",
+        "corpora_source": "/home/janotmik/primo-evaluation-20261005/corpora",
+        "corpus_policy": "Read-only reuse with fresh complete input hashing; fresh timings for every admitted solver. None of the429 old complete shards is reused as bounded timing.",
+        "tools_policy": "Copy exact preserved native/reference/Dolmen executables from October22 cohort after verifying original SHA256; no native source change or rebuild.",
+        "models": "After all timings and cross-answer audit: every successful ground Primo SAT row, original logic, same arguments plus model production/check-model;1800-second solver/300-second Dolmen limits,5G Dolmen size. Quantified printed models unsupported and not claimed qualified.",
+        "timing_shard_wall_limit": "9 hours",
+        "model_shard_wall_limit": "15 hours",
+        "maximum_timing_concurrency": 128,
+        "maximum_model_concurrency": 64
+      },
+      "jobs": {
+        "prepare": "242896",
+        "inventory": "242897"
+      },
+      "memory_probes": {
+        "uncapped": {
+          "job": "242893",
+          "host": "node-04.ciircluster",
+          "requested_memory_mib": 8192,
+          "rlimit_as_bytes": [
+            -1,
+            -1
+          ],
+          "exposed_cgroup_memory_max": "max at every exposed ancestor",
+          "artifact": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261022/run1/memory-probe-242893.json"
+        },
+        "first_small_memory_smoke": {
+          "job": "242894",
+          "status": "FAILED",
+          "reason": "Expected allocation diagnostic assertion failed: native instead aborted with CaDiCaL disconnect_external_propagator invalid-state API diagnostic. This was not a memory-out pass.",
+          "artifact": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261022/run1/memory-native-smoke-242894"
+        },
+        "enforced": {
+          "job": "242895",
+          "status": "COMPLETED",
+          "rlimit_as_bytes": [
+            8589934592,
+            8589934592
+          ],
+          "oversized_mapping_bytes": 9663676416,
+          "oversized_mapping_result": "ENOMEM",
+          "artifact": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261022/run1/memory-probe-242895.json",
+          "native_control": {
+            "limit_bytes": 67108864,
+            "exit_code": -6,
+            "classification": "native-error-under-forced-small-memory",
+            "diagnostic": "CaDiCaL disconnect_external_propagator invalid-state API usage",
+            "artifact": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261022/run1/memory-native-smoke-242895",
+            "input": "sledgehammer/FFT/uf.557340.smt2"
+          }
+        }
+      },
+      "correctness": {
+        "generated_gate_job": "218459",
+        "native_identity": "Identical frozen4419dc9/e06bd362 binary; no native behavior changes.",
+        "generated_gate_summary": {
+          "pass": 5972,
+          "timeout": 28,
+          "timeout_route": "QF_LIA",
+          "sat_models": 3551
+        },
+        "generated_gate_resource_qualification": "Existing correctness evidence only; its original memory cap was unverified and it is not a fresh bounded timing.",
+        "failure_policy": "Wrong answers and opposite definite answers cancel owned arrays. Native/reference process errors, unsupported and explicit memory-out remain unsolved PAR2 rows with raw logs. Native errors permit diagnostic comparison but block headline/default qualification.",
+        "ground_models": "Every successful native SAT row checked separately after strict global timing barrier; original logic, same profile arguments. No model-check time in timing data.",
+        "quantified_limit": "UF printed-model qualification unavailable; reference-answer corroboration and explicit uncorroborated counts only."
+      },
+      "artifacts": {
+        "local": "results/long-limits-20261024",
+        "remote": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261024/run2-as8g",
+        "preparation_workflow": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261024/workflow/memory-candidate-v3"
+      },
+      "reproduction": {
+        "limit_command": "ulimit -v 8388608; both soft/hardRLIMIT_AS must equal8589934592 before any worker workload",
+        "prepare": "CPU SLURM run.sbatch phaseprepare, PRIMO_TOOLS_FROM=<October22-cohort>, freshout; then inventoryarray0-5%6 using existing read-only corpora",
+        "launch": "python3 scripts/qualification/long_limits/launch.py --ssh-config <private-config> --remote <private-alias> --workspace <source_workspace> --local-source <frozen4419-source> --remote-out <remote-artifacts> --workflow <committed-frozen-workflow> --plan <local-artifacts>/plan.json --gate-job <held-gate-audit> --state <local-artifacts>/submission.json",
+        "memory_probe": "CPU SLURM memory_probe.sbatch with PRIMO_ENFORCE_AS=1, PRIMO_MEMORY_BASE=<October22-cohort>, PRIMO_LONG_DRIVER=<frozen-campaign.py>"
+      },
+      "verification": [
+        "20 metadata unit tests pass",
+        "make lint passes",
+        "nested workflow Ruff and Python compile pass",
+        "four SLURM batch script validators pass",
+        "memory proof242895 completed0; explicit oversized mapping rejected",
+        "make docs and assembled-site link check pass (0 failures); independent documentation review accepted; adjacent source pin pending"
+      ],
+      "remaining": "Finish fresh timings, strict timing/cross-answer audit, full successful-ground-SAT model replay, six static-profile/reference cactus comparisons, final audit and committed summary. No performance/default claim yet."
+    },
+    {
       "id": "2026-10-22-all-theories-long-limits",
       "date": "2026-10-22",
       "kind": "matched-full-corpus-long-limit-comparison",
-      "evidence_status": "infrastructure-isolated-recovery-timings-running",
+      "evidence_status": "stopped-native-sigkill-uncapped-historical-not-reused",
       "branch": "docs/public-repository-migration",
       "native_source_git": "4419dc902f03fe12b8933d5dee4378dd11497035",
       "native_binary_sha256": "e06bd36239ccc7af9fd29ed55af9f595f2e7cbd52f6ba5961b962c9d8d6fc26d",
@@ -44,7 +176,7 @@
         ]
       },
       "execution": {
-        "environment": "CPU SLURM compute, Xeon E5-2690 v4, one physical CPU and 8 GiB per measurement; no GPU nodes",
+        "environment": "CPU SLURM compute, Xeon E5-2690 v4, one physical CPU; 8 GiB SLURM reservation was not an effective hard memory cap; no GPU nodes",
         "source_workspace": "/home/janotmik/primo-lra-equality-20261021",
         "corpora_source": "/home/janotmik/primo-evaluation-20261005/corpora",
         "corpus_policy": "Reuse complete existing corpora read-only; fresh per-input hash inventory on compute nodes before comparisons.",
@@ -54,7 +186,8 @@
         "per_input_seconds": 1200,
         "models": "After all timings and cross-answer audit: every successful ground Primo SAT row, original logic, same arguments plus model production/check-model;1800-second solver/300-second Dolmen limits,5G Dolmen size. Quantified printed models unsupported and not claimed qualified.",
         "scheduler": "MaxArraySize1001,MaxJobCount10000; chunked arrays and total timing concurrency at most128.",
-        "gate_audit_submission": "All24 gate shards already terminal in sacct; audit submitted without stale dependency and held until timing arrays were submitted, then released. This avoids scheduler completed-job expiry."
+        "gate_audit_submission": "All24 gate shards already terminal in sacct; audit submitted without stale dependency and held until timing arrays were submitted, then released. This avoids scheduler completed-job expiry.",
+        "memory_enforcement": "Unverified at launch; probe242893 later established unlimited RLIMIT_AS and memory.max=max at all exposed cgroup ancestors on node04. Historical timings excluded from the October24 enforced-memory comparison."
       },
       "jobs": {
         "initial_capability": "218449",
@@ -650,7 +783,7 @@
         }
       },
       "infrastructure_isolation": {
-        "status": "timings-running-models-and-final-report-dependent",
+        "status": "stopped-after-native-sigkill",
         "policy": "Only explicit CorrectnessFailure (native hard error/wrong answer/decisive disagreement) invokes scancel. Live snapshot reads are advisory; terminal CSVs strictly checked. Other harness/I/O failures kill only their own process group and persist task-failures. Full timing audit runs afterany; models still require its afterok success.",
         "unit_tests": 18,
         "smoke_job": "225508",
@@ -796,7 +929,7 @@
           "final_report": "225523"
         },
         "command": "python3 scripts/qualification/long_limits/launch.py --ssh-config <private-config> --remote <private-alias> --workspace <source_workspace> --local-source <frozen4419-source> --remote-out <remote-artifacts> --workflow <isolation-frozen-workflow> --plan <local-artifacts>/plan.json --gate-job 225511 --state <local-artifacts>/submission-isolation-20261023.json --recovery <local-artifacts>/recovery-isolation.json",
-        "qualification": "Ground models and final comparisons pending. Native source4419dc9, binarye06bd362, input/plan hashes,1200second limits and CPU/memory resources unchanged.",
+        "qualification": "Incomplete historical cohort: no final comparison or full SAT-model qualification. No effective hard memory cap established. All timings excluded from replacement bounded comparison.",
         "gate_audit_result": {
           "job": "225511",
           "status": "COMPLETED",
@@ -815,6 +948,71 @@
           "local_task_failure_files": [],
           "running_tasks_at_check": 126,
           "scope": "Launch verification only; no performance conclusion. No global or local task failure records at this check."
+        },
+        "terminal_failure": {
+          "task_index": 4141,
+          "array_job": "225517_5",
+          "actual_job": "225601",
+          "host": "node-04",
+          "logic": "UF",
+          "profile": "primo",
+          "input": "sledgehammer/FFT/uf.557340.smt2",
+          "exit_code": -9,
+          "seconds": 967.252132,
+          "status": "error",
+          "wrong": false,
+          "artifact": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261022/run1/failures/timing-4141.json",
+          "sacct_batch_maxrss": "75096548K",
+          "cause": "SIGKILL cause not captured directly. Large batch MaxRSS is consistent with memory pressure but is not proof of process peak or an OOM kill. The guard then canceled the campaign."
+        },
+        "last_complete_timing_shards": {
+          "complete_timing_shards": 429,
+          "total_shards": 6462,
+          "by_logic": {
+            "QF_LRA": 36,
+            "QF_UFLIA": 12,
+            "QF_LIA": 160,
+            "QF_UF": 181,
+            "QF_UFLRA": 40
+          }
+        }
+      },
+      "memory_audit_20261024": {
+        "uncapped": {
+          "job": "242893",
+          "host": "node-04.ciircluster",
+          "requested_memory_mib": 8192,
+          "rlimit_as_bytes": [
+            -1,
+            -1
+          ],
+          "exposed_cgroup_memory_max": "max at every exposed ancestor",
+          "artifact": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261022/run1/memory-probe-242893.json"
+        },
+        "first_small_memory_smoke": {
+          "job": "242894",
+          "status": "FAILED",
+          "reason": "Expected allocation diagnostic assertion failed: native instead aborted with CaDiCaL disconnect_external_propagator invalid-state API diagnostic. This was not a memory-out pass.",
+          "artifact": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261022/run1/memory-native-smoke-242894"
+        },
+        "enforced": {
+          "job": "242895",
+          "status": "COMPLETED",
+          "rlimit_as_bytes": [
+            8589934592,
+            8589934592
+          ],
+          "oversized_mapping_bytes": 9663676416,
+          "oversized_mapping_result": "ENOMEM",
+          "artifact": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261022/run1/memory-probe-242895.json",
+          "native_control": {
+            "limit_bytes": 67108864,
+            "exit_code": -6,
+            "classification": "native-error-under-forced-small-memory",
+            "diagnostic": "CaDiCaL disconnect_external_propagator invalid-state API usage",
+            "artifact": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261022/run1/memory-native-smoke-242895",
+            "input": "sledgehammer/FFT/uf.557340.smt2"
+          }
         }
       }
     },

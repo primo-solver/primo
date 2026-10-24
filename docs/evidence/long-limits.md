@@ -1,15 +1,16 @@
 # Full-corpus evaluation at longer limits
 
-The October 22 campaign evaluates every supported non-incremental division at
-**1,200 seconds per input**. The initial timing attempt stopped after an OpenSMT
-QF_LIA process segfault. October 23 recovery retained 158 certified timing shards
-and resubmitted the remaining 6,304. A live-journal parsing error then stopped
-that recovery attempt. Infrastructure failures are now isolated; the next
-recovery retained 182 certified complete shards and resubmitted the remaining
-6,280. Model replay and the final comparison remain pending. The generated gate passed 5,972 cases; 28 QF_LIA
-cases timed out at its separate five-second limit. It found no wrong answers,
-crashes or invalid models. Run `2026-10-22-all-theories-long-limits`
-in the [run ledger](../run-log.json) records exact snapshots, jobs and artifacts.
+The evaluation covers every supported non-incremental division at **1,200
+seconds per input**. The October 22–23 attempt stopped with 429 complete timing
+shards after a Primo process was killed on quantified UF. Its memory reservation
+had not established an effective hard cap. Those timings remain preserved as
+an uncapped historical cohort and are excluded from the new bounded comparison.
+
+The October 24 replacement uses a hard **8 GiB virtual-address-space limit per
+process**. Preparation is in progress; timings, full model replay and the final
+comparison are not complete. Runs `2026-10-22-all-theories-long-limits` and
+`2026-10-24-all-theories-enforced-memory` in the [run ledger](../run-log.json)
+record the separate attempts, exact snapshots, limits, jobs and artifacts.
 
 | Division | Inputs |
 | --- | ---: |
@@ -23,10 +24,25 @@ in the [run ledger](../run-log.json) records exact snapshots, jobs and artifacts
 
 This is the full existing corpus, with no competition selection or easy-input
 filter. Existing copies are reused read-only and freshly hashed in CPU SLURM
-allocations. Each timed process receives one physical CPU and 8 GiB on the
-compute partition; GPU nodes are excluded. Primo and references receive the
-same 1,200-second wall limit. A shard contains at most 24 inputs and receives
-nine hours; that allocation limit is distinct from the per-input limit.
+allocations. Each timed solver process uses one physical CPU and inherits an
+8 GiB soft and hard `RLIMIT_AS`; the batch scripts set `ulimit -v 8388608` before
+starting Python. Worker provenance records both byte limits, and workers and
+audits reject a missing or different limit. The SLURM reservation remains
+8 GiB per task; GPU nodes are excluded. This is a per-process virtual-address-
+space limit, including mappings and libraries.
+
+CPU probe `242893` on the failed job's node found `memory.max=max` throughout
+the job cgroup hierarchy, even though SLURM requested 8 GiB and its configuration
+said to constrain RAM. Probe `242895` then verified the explicit process limit:
+both `RLIMIT_AS` values were 8,589,934,592 bytes, and a 9 GiB anonymous mapping
+was rejected with `ENOMEM`. No large physical allocation was needed for that
+check. The old 429 complete shards cannot establish compliance with this new
+limit and are not reused as bounded timings. Input corpora and preserved solver
+executables can be reused with matching hashes.
+
+Primo and references receive the same 1,200-second wall limit and hard address-
+space limit. A shard contains at most 24 inputs and receives nine hours; that
+allocation limit is distinct from the per-input limit.
 
 ## Profiles and references
 
@@ -68,26 +84,37 @@ shard identity. Explicit small manifests prevent every worker from traversing
 the whole corpus; the shared adapter processes each supplied manifest as one
 local shard. The campaign audit checks the global disjoint coverage.
 
-The journal guard stops the campaign on Primo hard failures, wrong answers, or
-opposite definite answers from any two profiles. A reference process crash or
-parser/execution error is retained as an **error row**, with its exit status and
-raw stdout/stderr. It receives the unsolved PAR2 penalty and never contributes
-a solve or a corroborating answer. These external execution failures do not
-cancel unrelated timing tasks. CPU job `225508` also passed the crash-then-success test with infrastructure
-isolation enabled. Global cancellation is restricted to an explicit
-correctness-failure type; harness or filesystem failures stop only their own
-task and are recorded separately. Unreadable live-journal snapshots are retried
-as advisory observations. Every terminal CSV is still checked strictly before
-a task succeeds, and the global audit requires complete coverage. The final
-audit includes each reference error row and hashes
-its raw logs; missing evidence still prevents result acceptance.
+The journal guard cancels the campaign on a wrong answer or opposite definite
+answers from two profiles. Process crashes and execution errors, including
+native failures, remain **unsolved error rows** with their exit status and raw
+stdout/stderr; they do not cancel unrelated tasks. Recognized explicit allocation
+failures, such as `std::bad_alloc`, are counted separately as memory-out results.
+All these outcomes receive the unsolved PAR2 penalty and never corroborate an
+answer. The final audit hashes the retained raw logs.
+
+Native execution errors block headline claims and default promotion. The final
+report names the affected divisions/profiles and labels their plots diagnostic.
+Successful SAT rows still require their separate model checks; a diagnostic
+comparison does not qualify the failing profile. A deliberately reduced 64 MiB
+control on the earlier failing UF input produced a CaDiCaL cleanup abort rather
+than a clean allocation-failure message. It is retained as a native error under
+forced small memory, not counted as a memory-out pass. The actual evaluation
+limit is 8 GiB. This task changes the harness, not the native implementation.
+
+Harness or filesystem failures stop only their own task and are recorded
+separately. Unreadable live-journal snapshots are advisory and retried; every
+terminal CSV and the global coverage audit remain strict. Earlier CPU smoke
+jobs `225341` and `225508` established that a reference SIGSEGV can be followed
+by a successful solve. The memory probe and metadata regressions cover the new
+limit and failure classification.
 
 The first workflow used an overly broad guard: an OpenSMT SIGSEGV on
 `20210219-Dartagnan/ReachSafety-Loops/benchmark51_polynomial-O0.smt2` canceled all
 arrays after 158 timing shards completed. That attempt and its partial rows are
 preserved. CPU job `225341` reproduced that SIGSEGV under the repaired guard, then
 successfully solved the following known-good input. The regression suite also
-checks that native failures and answer contradictions remain blocking.
+checks that execution failures remain unsolved while answer contradictions
+remain blocking. Native failures block headline/default qualification.
 
 The {longlimitsworkflow}`recovery tool <scripts/qualification/long_limits/recover.py>`
 leaves the original plan, limits, executable snapshots and corpus
@@ -104,8 +131,10 @@ identical repeat submission of the same worker is rejected.
 
 The global timing audit runs after all timing arrays terminate, including
 failed arrays, and must accept all shards before any model replay starts.
-Each model task records that barrier's hash. Wrong answers, native failures,
-reference disagreements and invalid models block result acceptance.
+Each model task records that barrier's hash. Wrong answers, decisive
+reference disagreements and invalid models block result acceptance. Native
+execution errors block headline/default qualification even when diagnostic
+plots and successful-row model coverage are available.
 
 Every successful Primo SAT row in the five ground divisions receives a
 separate direct Dolmen check in the original logic, using the same native

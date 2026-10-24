@@ -11,6 +11,9 @@
 #SBATCH --output=logs/%x-%j.out
 #SBATCH --error=logs/%x-%j.err
 set -euo pipefail
+# SLURM reservations are not a verified hard cap on this cluster.
+# Bash applies this virtual-address-space limit to both soft and hard RLIMIT_AS.
+ulimit -v 8388608
 [[ -n ${SLURM_JOB_ID:-} ]]
 cd "${PRIMO_WORKDIR:?}"
 exec python3 "${PRIMO_LONG_REPORT:?}" "${PRIMO_LONG_STAGE:?}" --workspace "$PWD" --out "${PRIMO_LONG_OUT:?}"

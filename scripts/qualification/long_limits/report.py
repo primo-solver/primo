@@ -13,7 +13,7 @@ import statistics
 import subprocess
 import sys
 
-from campaign import check_rows, decisive, digest, load, recovery, write
+from campaign import check_rows, decisive, digest, load, memory_exhausted, recovery, write
 
 
 def gate(args, plan_config: dict) -> None:
@@ -50,7 +50,9 @@ def metrics(rows: list[dict], timeout: int) -> dict:
             'unsat': sum(r['answer'] == 'unsat' for r in solved),
             'timeouts': sum(r['status'] == 'timeout' for r in rows),
             'unknown': sum(r['status'] == 'ok' and r['answer'] == 'unknown' for r in rows),
-            'errors': sum(r['status'] not in {'ok', 'timeout'} for r in rows),
+            'memory_out': sum(memory_exhausted(r) for r in rows),
+            'unsupported': sum(r['status'] == 'unsupported' for r in rows),
+            'errors': sum(r['status'] not in {'ok', 'timeout'} and not memory_exhausted(r) for r in rows),
             'par2_sum': sum(times) + 2 * timeout * (len(rows) - len(solved)),
             'median_solved_seconds': statistics.median(times) if times else None}
 
@@ -82,6 +84,8 @@ def timing_shard(out: Path, plan: dict, run: dict, index: int, expected: dict):
             or execution['plan_sha256'] != digest(out / 'plan.json')
             or execution['driver_sha256'] not in allowed_drivers
             or execution['memory_mib'] != plan['config']['memory_mib']
+            or (plan['config'].get('memory_limit_kind') == 'per-process RLIMIT_AS'
+                and execution.get('address_space_limit_bytes') != [plan['config']['memory_mib'] * 1024 * 1024] * 2)
             or execution['partition'] != 'compute'
             or execution['cpu_models'] != ['Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz']):
         raise ValueError(f'invalid timing provenance: {root}')
@@ -96,7 +100,7 @@ def timing_shard(out: Path, plan: dict, run: dict, index: int, expected: dict):
     names = [row['file'] for row in rows]
     if len(set(names)) != len(names) or set(names) != set(selected_names):
         raise ValueError(f'coverage mismatch: {root}')
-    check_rows(rows, [], reference=run['solver'] != 'primo')
+    check_rows(rows, [], allow_execution_errors=True)
     return root, parent, rows
 
 
@@ -134,8 +138,8 @@ def collect(args, final: bool) -> dict:
         result = metrics(values, plan['config']['timeout_seconds'])
         result['arguments'] = run['arguments']
         result['execution_failures'] = [
-            {**r, 'log_sha256': {name: digest(Path(r[name])) for name in ('stdout_log', 'stderr_log')}}
-            for r in values if r['status'] == 'error']
+            {**r, 'memory_out': memory_exhausted(r), 'log_sha256': {name: digest(Path(r[name])) for name in ('stdout_log', 'stderr_log')}}
+            for r in values if r['status'] not in {'ok', 'timeout'}]
         result['direct_dolmen_models'] = model_count if final and run['solver'] == 'primo' and logic != 'UF' else None
         result['families'] = {
             family: metrics([r for r in values if r['family'] == family], plan['config']['timeout_seconds'])
@@ -151,7 +155,7 @@ def collect(args, final: bool) -> dict:
     for logic, runs in all_rows.items():
         for first, second in itertools.combinations(runs, 2):
             check_rows(list(runs[first].values()), list(runs[second].values()),
-                       reference=not first.startswith('primo'))
+                       allow_execution_errors=True)
     best = {logic: min((label for label in runs if label.startswith('primo')),
                       key=lambda label: (-runs[label]['solved'], runs[label]['par2_sum'], label))
             for logic, runs in reports.items()}
@@ -166,12 +170,19 @@ def collect(args, final: bool) -> dict:
                                    for reference in refs)]
             corroboration[f'{logic}/{label}'] = {'uncorroborated_files': missing,
                                                'uncorroborated_count': len(missing)}
-    report = {'status': 'complete-with-quantified-model-limitation' if final else 'timing-complete',
+    native_errors = {logic: {label: result['errors'] for label, result in runs.items()
+                            if label.startswith('primo') and result['errors']}
+                     for logic, runs in reports.items()}
+    native_errors = {logic: values for logic, values in native_errors.items() if values}
+    report = {'status': ('complete-diagnostic-native-errors' if native_errors else
+                         'complete-with-quantified-model-limitation') if final else 'timing-complete',
               'plan_sha256': digest(args.out / 'plan.json'), 'runs': reports, 'best_static_profiles': best,
               'selection_rule': 'One profile per entire division: greatest solved, then lowest PAR2, then name.',
               'reference_corroboration': corroboration,
               'quantified_models': 'UF printed models unsupported; no independent model qualification claimed.',
               'ground_models_complete': final,
+              'native_execution_errors': native_errors,
+              'headline_and_default_promotion_blocked': bool(native_errors),
               'recovery_sha256': digest(args.out / 'recovery.json') if recovery(args.out, plan) else None, 'timeout_seconds': plan['config']['timeout_seconds']}
     if final:
         plots = args.out / 'plots'
@@ -185,7 +196,9 @@ def collect(args, final: bool) -> dict:
             highlight = 'Primo phase+mono' if best[logic] == 'primo-phase-mono' else 'Primo default'
             command += ['--timeout', '1200', '--title', f'{logic}: full corpus, 1200 seconds',
                         '--highlight-series', highlight, '--sort-by-solved',
-                        '--note', 'Fresh matched CPU compute runs; one physical CPU, 8 GiB; Primo 4419dc9.',
+                        '--note', 'One physical CPU; hard 8 GiB virtual-address-space limit per process; Primo 4419dc9.',
+                        '--note', ('Diagnostic: native execution errors block headline/default promotion.'
+                                   if logic in native_errors else 'Execution failures count as unsolved; see audit counts.'),
                         '--note', ('Quantified UF: no printed-model qualification; see reference corroboration.'
                                    if logic == 'UF' else 'All successful Primo SAT rows separately validated by Dolmen.'),
                         '--note', 'No easy-input filtering. Times below 0.01s share the left edge.',

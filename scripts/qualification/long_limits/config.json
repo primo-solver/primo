@@ -14,8 +14,20 @@
     "UF": 7590
   },
   "native_profiles": {
-    "primo": ["--quiet"],
-    "primo-phase-mono": ["--quiet", "--lra-model-phase", "--monotone-elimination"]
+    "primo": [
+      "--quiet"
+    ],
+    "primo-phase-mono": [
+      "--quiet",
+      "--lra-model-phase",
+      "--monotone-elimination"
+    ]
   },
-  "references": ["z3", "cvc5", "yices", "opensmt"]
+  "references": [
+    "z3",
+    "cvc5",
+    "yices",
+    "opensmt"
+  ],
+  "memory_limit_kind": "per-process RLIMIT_AS"
 }
