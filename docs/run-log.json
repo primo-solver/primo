@@ -59,7 +59,8 @@
       },
       "jobs": {
         "prepare": "242896",
-        "inventory": "242897"
+        "inventory": "242897",
+        "gate_audit": "242903"
       },
       "memory_probes": {
         "uncapped": {
@@ -116,7 +117,8 @@
       "artifacts": {
         "local": "results/long-limits-20261024",
         "remote": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261024/run2-as8g",
-        "preparation_workflow": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261024/workflow/memory-candidate-v3"
+        "preparation_workflow": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261024/workflow/memory-candidate-v3",
+        "frozen_workflow": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261024/workflow/a7b02725143c32ca6726f580d9c4762ae71cac3a"
       },
       "reproduction": {
         "limit_command": "ulimit -v 8388608; both soft/hardRLIMIT_AS must equal8589934592 before any worker workload",
@@ -130,9 +132,11 @@
         "nested workflow Ruff and Python compile pass",
         "four SLURM batch script validators pass",
         "memory proof242895 completed0; explicit oversized mapping rejected",
-        "make docs and assembled-site link check pass (0 failures); independent documentation review accepted; adjacent source pin pending"
+        "make docs and assembled-site link check pass (263pages,32582local links,1067Gitlinks,0failures); independent documentation review and final a7b0272 source-pin check accepted"
       ],
-      "remaining": "Finish fresh timings, strict timing/cross-answer audit, full successful-ground-SAT model replay, six static-profile/reference cactus comparisons, final audit and committed summary. No performance/default claim yet."
+      "remaining": "Finish fresh timings, strict timing/cross-answer audit, full successful-ground-SAT model replay, six static-profile/reference cactus comparisons, final audit and committed summary. No performance/default claim yet.",
+      "workflow_git": "a7b02725143c32ca6726f580d9c4762ae71cac3a",
+      "admission": "Fresh capped probes242896 passed all five solver candidates on ground divisions; quantifiedUF admits Primo(partial SAT completion),Z3,cvc5,Yices; OpenSMT explicitly unavailable."
     },
     {
       "id": "2026-10-22-all-theories-long-limits",
