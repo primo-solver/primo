@@ -6,7 +6,7 @@
       "id": "2026-10-24-all-theories-enforced-memory",
       "date": "2026-10-24",
       "kind": "matched-full-corpus-long-limit-comparison",
-      "evidence_status": "preparing-fresh-enforced-memory-cohort",
+      "evidence_status": "fresh-enforced-memory-timings-running",
       "branch": "docs/public-repository-migration",
       "native_source_git": "4419dc902f03fe12b8933d5dee4378dd11497035",
       "native_binary_sha256": "e06bd36239ccc7af9fd29ed55af9f595f2e7cbd52f6ba5961b962c9d8d6fc26d",
@@ -60,7 +60,89 @@
       "jobs": {
         "prepare": "242896",
         "inventory": "242897",
-        "gate_audit": "242903"
+        "gate_audit": "242903",
+        "campaign_out": "/home/janotmik/primo-lra-equality-20261021/results/long-limits-20261024/run2-as8g",
+        "plan_sha256": "dd01e5c49cdbb9a75b4e2c819d15cc4f15514c0f2506506d6030127946db48ca",
+        "timing": [
+          "242904",
+          "242905",
+          "242906",
+          "242907",
+          "242908",
+          "242909",
+          "242910"
+        ],
+        "models": [
+          "242912",
+          "242913"
+        ],
+        "chunks": [
+          {
+            "phase": "timing",
+            "job": "242904",
+            "offset": 0,
+            "tasks": 1000,
+            "throttle": 18
+          },
+          {
+            "phase": "timing",
+            "job": "242905",
+            "offset": 1000,
+            "tasks": 1000,
+            "throttle": 18
+          },
+          {
+            "phase": "timing",
+            "job": "242906",
+            "offset": 2000,
+            "tasks": 1000,
+            "throttle": 18
+          },
+          {
+            "phase": "timing",
+            "job": "242907",
+            "offset": 3000,
+            "tasks": 1000,
+            "throttle": 18
+          },
+          {
+            "phase": "timing",
+            "job": "242908",
+            "offset": 4000,
+            "tasks": 1000,
+            "throttle": 18
+          },
+          {
+            "phase": "timing",
+            "job": "242909",
+            "offset": 5000,
+            "tasks": 1000,
+            "throttle": 18
+          },
+          {
+            "phase": "timing",
+            "job": "242910",
+            "offset": 6000,
+            "tasks": 462,
+            "throttle": 18
+          },
+          {
+            "phase": "models",
+            "job": "242912",
+            "offset": 0,
+            "tasks": 1000,
+            "throttle": 32
+          },
+          {
+            "phase": "models",
+            "job": "242913",
+            "offset": 1000,
+            "tasks": 98,
+            "throttle": 32
+          }
+        ],
+        "timing_audit": "242911",
+        "final_report": "242914"
       },
       "memory_probes": {
         "uncapped": {
@@ -132,11 +214,144 @@
         "nested workflow Ruff and Python compile pass",
         "four SLURM batch script validators pass",
         "memory proof242895 completed0; explicit oversized mapping rejected",
-        "make docs and assembled-site link check pass (263pages,32582local links,1067Gitlinks,0failures); independent documentation review and final a7b0272 source-pin check accepted"
+        "make docs and assembled-site link check pass (263pages,32582local links,1067Gitlinks,0failures); independent documentation review and final a7b0272 source-pin check accepted",
+        "No native C++ changes: native test/ASan/tidy/include-cleaner reruns are inapplicable to this harness-only fix; identical native binary and generated correctness-gate audit retained. Full separate ground-model stage remains pending."
       ],
       "remaining": "Finish fresh timings, strict timing/cross-answer audit, full successful-ground-SAT model replay, six static-profile/reference cactus comparisons, final audit and committed summary. No performance/default claim yet.",
       "workflow_git": "a7b02725143c32ca6726f580d9c4762ae71cac3a",
-      "admission": "Fresh capped probes242896 passed all five solver candidates on ground divisions; quantifiedUF admits Primo(partial SAT completion),Z3,cvc5,Yices; OpenSMT explicitly unavailable."
+      "admission": "Fresh capped probes242896 passed all five solver candidates on ground divisions; quantifiedUF admits Primo(partial SAT completion),Z3,cvc5,Yices; OpenSMT explicitly unavailable.",
+      "plan": {
+        "timing_shards": 6462,
+        "model_shards": 1098,
+        "series": 30,
+        "timed_inputs": 154638,
+        "sha256": "dd01e5c49cdbb9a75b4e2c819d15cc4f15514c0f2506506d6030127946db48ca"
+      },
+      "initial_health": {
+        "new_worker_executions": 169,
+        "address_space_limits_bytes": [
+          [
+            8589934592,
+            8589934592
+          ]
+        ],
+        "partitions": [
+          "compute"
+        ],
+        "hosts": [
+          "node-02.ciircluster",
+          "node-03.ciircluster",
+          "node-04.ciircluster",
+          "node-05.ciircluster",
+          "node-06.ciircluster"
+        ],
+        "complete_timing_csvs": 43,
+        "global_failure_files": [],
+        "local_task_failure_files": [],
+        "gate_status": "complete",
+        "gate_routes": {
+          "QF_UF": {
+            "cases": 1000,
+            "pass": 1000,
+            "timeout": 0,
+            "sat_models": 599,
+            "resource_incomplete": 0
+          },
+          "QF_LRA": {
+            "cases": 1000,
+            "pass": 1000,
+            "timeout": 0,
+            "sat_models": 1000,
+            "resource_incomplete": 0
+          },
+          "QF_LIA": {
+            "cases": 1000,
+            "pass": 972,
+            "timeout": 28,
+            "sat_models": 872,
+            "resource_incomplete": 0
+          },
+          "QF_UFLRA": {
+            "cases": 1000,
+            "pass": 1000,
+            "timeout": 0,
+            "sat_models": 574,
+            "resource_incomplete": 0
+          },
+          "QF_UFLIA": {
+            "cases": 1000,
+            "pass": 1000,
+            "timeout": 0,
+            "sat_models": 506,
+            "resource_incomplete": 0
+          },
+          "UF": {
+            "cases": 1000,
+            "pass": 1000,
+            "timeout": 0,
+            "sat_models": 0,
+            "resource_incomplete": 0
+          }
+        },
+        "scope": "Launch verification only, not a performance conclusion or a crash-free claim. All observed workers record both AS limits exactly8GiB; no global/task harness-failure records at this check."
+      },
+      "inventory": {
+        "QF_LIA": {
+          "count": 13306,
+          "job": "242900",
+          "address_space_limit_bytes": [
+            8589934592,
+            8589934592
+          ],
+          "sha256": "fbf6a3fb102519bb9570df411efdf143607014f921115ad09666818367945f89"
+        },
+        "QF_UFLRA": {
+          "count": 1284,
+          "job": "242901",
+          "address_space_limit_bytes": [
+            8589934592,
+            8589934592
+          ],
+          "sha256": "2726a1874ca5f77cd7274e4e88853da5ee505f3492cb6bd6e83cff337059e366"
+        },
+        "QF_UFLIA": {
+          "count": 659,
+          "job": "242902",
+          "address_space_limit_bytes": [
+            8589934592,
+            8589934592
+          ],
+          "sha256": "9d675833a2663e8eba6ce531bac8000b8b46934659d00833c8b0f73338806a33"
+        },
+        "QF_UF": {
+          "count": 7503,
+          "job": "242898",
+          "address_space_limit_bytes": [
+            8589934592,
+            8589934592
+          ],
+          "sha256": "eb3490fa872839b193072cf765787640d02144e2f84fe8ec8d41bc0ca37dacbf"
+        },
+        "QF_LRA": {
+          "count": 1753,
+          "job": "242899",
+          "address_space_limit_bytes": [
+            8589934592,
+            8589934592
+          ],
+          "sha256": "17249b025b789c9bdcdf3292e4b17ec50e536b82fb67c012bb1287fdfd227e3d"
+        },
+        "UF": {
+          "count": 7590,
+          "job": "242897",
+          "address_space_limit_bytes": [
+            8589934592,
+            8589934592
+          ],
+          "sha256": "5f7808516b2168fe3fb501f77041d124fcecd9febfd9ac96c31057d198849789"
+        }
+      },
+      "submission": "All7 timing arrays and dependent timing audit,2 model arrays and final audit submitted with preflight before each sbatch; held gate audit242903 released after submission and completed0. Total timing throttle126, model throttle64."
     },
     {
       "id": "2026-10-22-all-theories-long-limits",

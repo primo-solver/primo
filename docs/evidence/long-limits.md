@@ -7,8 +7,10 @@ had not established an effective hard cap. Those timings remain preserved as
 an uncapped historical cohort and are excluded from the new bounded comparison.
 
 The October 24 replacement uses a hard **8 GiB virtual-address-space limit per
-process**. Preparation is in progress; timings, full model replay and the final
-comparison are not complete. Runs `2026-10-22-all-theories-long-limits` and
+process**. All six inventories and admission probes are complete, and the
+replacement timing arrays are running. Initial worker provenance confirms both
+limits are exactly 8 GiB. Full timings, model replay and the final comparison
+are not complete. Runs `2026-10-22-all-theories-long-limits` and
 `2026-10-24-all-theories-enforced-memory` in the [run ledger](../run-log.json)
 record the separate attempts, exact snapshots, limits, jobs and artifacts.
 
