@@ -257,6 +257,8 @@ int run_main(int argc, char** argv) {
   bool no_eq_bridge = false;
   bool no_quantifier_instance_simplification = false;
   bool no_lra_propagation = false;
+  std::string lra_bound_probe_path;
+  std::ofstream lra_bound_probe_stream;
   bool no_solved_constant_substitution = false;
   bool no_gaussian_elimination = false;
   bool no_lia_conflict_generalization = false;
@@ -354,6 +356,10 @@ int run_main(int argc, char** argv) {
                         "Add equalities implied by every branch of selected QF_UF disjunctions");
   add_flag_with_default(app, "--no-eq-bridge", no_eq_bridge,
                         "Disable equality bridging unless required by the preprocessing preset");
+  app.add_option("--lra-bound-probe", lra_bound_probe_path,
+                 "Write diagnostic online LRA bound/reason JSONL (does not change propagation)");
+  app.add_option("--lra-bound-probe-limit", solver_options.lra_bound_probe_limit,
+                 "Maximum diagnostic events per online LRA checker (default 20000)");
   add_flag_with_default(app, "--lra-propagation", solver_options.lra_propagation,
                         "Enable QF_LRA same-slack bound propagation (Milestone 3b)");
   add_flag_with_default(app, "--no-lra-propagation", no_lra_propagation,
@@ -1061,6 +1067,14 @@ int run_main(int argc, char** argv) {
     solver_options.cadical_options.push_back(parsed.value());
   }
 
+  if (!lra_bound_probe_path.empty()) {
+    lra_bound_probe_stream.open(lra_bound_probe_path);
+    if (!lra_bound_probe_stream) {
+      std::cerr << "error: cannot open LRA bound probe: " << lra_bound_probe_path << "\n";
+      return 1;
+    }
+    solver_options.lra_bound_probe = &lra_bound_probe_stream;
+  }
   if (!quiet) {
     print_startup_banner();
   }

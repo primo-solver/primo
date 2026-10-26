@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <iosfwd>
 #include <memory>
 #include <optional>
 #include <string>
@@ -248,6 +249,10 @@ struct CheckSatOptions {
   // the propagation check is exact and cheap (O(atoms sharing a slack)),
   // so there's no heuristic budget/backoff tuning to expose.
   bool lra_propagation = true;
+  // Borrowed diagnostic stream; it must outlive each check/session using these
+  // options. Null disables observation. The probe never installs deductions.
+  std::ostream* lra_bound_probe = nullptr;
+  std::size_t lra_bound_probe_limit = 20000;
   // Row-based/interval bound propagation (Dutertre & de Moura Section 4,
   // generalizing lra_propagation's same-slack case to derive an implied
   // bound for a row from its terms' current bounds). Only takes effect

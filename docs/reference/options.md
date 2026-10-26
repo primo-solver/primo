@@ -97,3 +97,11 @@ as explained in [tactics](tactics.md).
 ```{literalinclude} ../examples/primo-help.txt
 :language: text
 ```
+
+## LRA bound diagnostics
+
+`--lra-bound-probe FILE` writes online LRA bound and reason events as JSONL.
+`--lra-bound-probe-limit N` caps events per checker (default 20000). This expensive
+observer is off by default and changes no deductions. See the
+[observation contract](../papers/lra-bound-structure-probe.md) for coverage and
+trace interpretation.
