@@ -154,7 +154,9 @@ reproducible layout probe and the remaining ownership and evaluation questions.
 A strict bound uses an exact symbolic infinitesimal.
 {source}`DeltaRational <src/theory/arithmetic/lra_tableau.hpp#L24-L56>` stores
 two rationals `(q, k)`, interpreted as `q + k*δ`, ordered lexicographically.
-There is no floating-point tolerance. For an unflipped Real atom:
+The rational part is compared first; the infinitesimal part breaks ties.
+Thus $0<\delta<r$ for every positive rational $r$, and
+$2-\delta<2<2+\delta$. There is no floating-point tolerance. For an unflipped Real atom:
 
 | Atom | Assigned true | Assigned false |
 | --- | --- | --- |
@@ -275,6 +277,23 @@ become an incorrect conflict. See
 
 ## Follow a strict conflict
 
+### Feasibility without an optimization objective
+
+Proving UNSAT with delta rationals does not require optimizing $\delta$ or
+introducing an objective function. The ordinary repair procedure checks
+**feasibility**: whether the tableau equations and active bounds have a common
+solution in the lexicographically ordered pairs. Dutertre–de Moura §3.3 shows
+that this encoding preserves satisfiability for finite systems of rational
+linear constraints with strict inequalities. Consequently, a contradiction
+in the encoded system proves that the original constraints are unsatisfiable.
+
+During this check, $\delta$ stays symbolic. Choosing a sufficiently small
+positive rational to replace it belongs to
+[constructing a satisfying model](#rollback-and-model-values), after feasibility has
+been established; an UNSAT proof needs no such choice.
+
+### A bound contradiction and its cancellation proof
+
 Let SAT assign `p`, `q` and `r` true for:
 
 ```text
@@ -294,6 +313,26 @@ following is a trace of theory operations, not a prescribed SAT search order:
 The row and the two lower bounds imply `s >= 2 + δ`, contradicting `s <= 2`.
 The resulting clause is `¬p ∨ ¬q ∨ ¬r`.
 
+The same contradiction can be checked by rewriting the three encoded bounds
+with $\le$ and adding them:
+
+$$
+\begin{aligned}
+ x+y &\le 2,\\
+ -x &\le -2,\\
+ -y &\le -\delta
+\end{aligned}
+\qquad\Longrightarrow\qquad 0\le-\delta.
+$$
+
+The variables cancel, and the last inequality is false because
+$-\delta=(0,-1)<(0,0)=0$. All three weights in this combination are the
+nonnegative rational $1$, so adding the inequalities preserves their
+direction. More generally, nonnegative rational combinations of inequalities
+can certify a conflict when all variable coefficients cancel and the
+right-hand side is negative in the delta ordering. This explains the
+mathematical proof; it does not imply that Primo exports those weights.
+
 Primo stores **the negation of the asserting SAT literal** with each bound,
 at the {source}`assignment boundary <src/smt/solver_engines.cpp#L7302-L7310>`.
 {source}`build_conflict <src/theory/arithmetic/lra_tableau.cpp#L433-L446>`
@@ -301,6 +340,17 @@ collects the violated bound's reason and the row bounds that block movement.
 It returns clause literals directly; the caller must not negate them again.
 This is the row-based explanation of Dutertre–de Moura §3.2.2. The returned
 object is a SAT clause, not an exported proof certificate with coefficients.
+
+This clause excludes the current combination of arithmetic assertions.
+For a Boolean combination of constraints, SAT uses such clauses to continue
+the search; one arithmetic conflict alone need not make the whole formula
+UNSAT. See the [DPLL(T) chapter](dpllt.md).
+
+The optional [sum of infeasibilities](#lra-soi) mode uses an objective to guide
+repair. A zero sum means all bounds hold; a **proven positive minimum**
+establishes infeasibility. A positive violation at an arbitrary assignment
+does not suffice. This objective is a search method, not a requirement imposed
+by delta rationals, and $\delta$ itself is never the optimization variable.
 
 ## Propagation and online checking
 
