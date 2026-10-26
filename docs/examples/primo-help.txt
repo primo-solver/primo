@@ -254,6 +254,11 @@ Preprocessing options:
                               adaptive pass
 
 QF_LRA theory options:
+          --lra-bound-probe TEXT
+                              Write diagnostic online LRA bound/reason JSONL (does not change
+                              propagation)
+          --lra-bound-probe-limit UINT [20000]
+                              Maximum diagnostic events per online LRA checker (default 20000)
           --lra-propagation [default: on]
                               Enable QF_LRA same-slack bound propagation (Milestone 3b)
           --no-lra-propagation [default: off]

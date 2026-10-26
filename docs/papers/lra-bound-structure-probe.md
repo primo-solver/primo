@@ -105,3 +105,16 @@ does not independently certify that row against the original assertions. Tracing
 can change timeouts and cancellation outcomes, even though it changes no logical
 deduction. The driver checks declared known statuses and jointly decisive
 reference answers, then independently replays successful SAT rows with Dolmen.
+
+
+Exact atom matching compares the full $(q,d)$ pair in $q+d\delta$. Two strict
+bounds at the same rational threshold can have different delta coefficients.
+An unnamed exact numerical value therefore need not express a new SMT-LIB
+constraint. The separate entailment count uses the existing tableau's
+lexicographic comparison, including that coefficient.
+
+The SLURM driver has separate `check`, `fuzz`, `asan`, and `probe` phases.
+For a cluster with a separately provisioned sanitizer runtime, set
+`PRIMO_ASAN_RUNTIME_DIR` to a directory containing `libasan.so`; the ASan phase
+adds its link and runtime search paths. Keep compiler/runtime provenance with
+the job artifacts. This changes verification setup, not the solver profile.

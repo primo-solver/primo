@@ -26,6 +26,15 @@ case "${PRIMO_PROBE_PHASE:?}" in
     done < tmp/cxx-header-paths.txt
     export CXXFLAGS="$probe_cxxflags"
     export CMAKE_BUILD_PARALLEL_LEVEL=2
+    asan_config=(-DCMAKE_BUILD_TYPE=Debug -DPRIMO_SANITIZERS=address
+      "-DCMAKE_PREFIX_PATH=$PWD/contrib/local"
+      "-DPRIMO_GIT_REVISION_OVERRIDE=$PRIMO_EXPECTED_GIT")
+    if [[ -n ${PRIMO_ASAN_RUNTIME_DIR:-} ]]; then
+      test -f "$PRIMO_ASAN_RUNTIME_DIR/libasan.so"
+      asan_config+=("-DCMAKE_EXE_LINKER_FLAGS=-L$PRIMO_ASAN_RUNTIME_DIR")
+      export LD_LIBRARY_PATH="$PRIMO_ASAN_RUNTIME_DIR${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+    fi
+    cmake -S . -B build-bound-probe-asan "${asan_config[@]}"
     # Reuse the prepared, hash-recorded dependencies; rebuild owned code with ASan.
     make -o contrib-required asan-test ASAN_BUILD_DIR=build-bound-probe-asan
     ;;
