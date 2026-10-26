@@ -6,7 +6,7 @@
       "id": "2026-10-24-all-theories-enforced-memory",
       "date": "2026-10-24",
       "kind": "matched-full-corpus-long-limit-comparison",
-      "evidence_status": "fresh-enforced-memory-timings-running",
+      "evidence_status": "timings-running-native-errors-diagnostic-promotion-blocked",
       "branch": "docs/public-repository-migration",
       "native_source_git": "4419dc902f03fe12b8933d5dee4378dd11497035",
       "native_binary_sha256": "e06bd36239ccc7af9fd29ed55af9f595f2e7cbd52f6ba5961b962c9d8d6fc26d",
@@ -351,7 +351,105 @@
           "sha256": "5f7808516b2168fe3fb501f77041d124fcecd9febfd9ac96c31057d198849789"
         }
       },
-      "submission": "All7 timing arrays and dependent timing audit,2 model arrays and final audit submitted with preflight before each sbatch; held gate audit242903 released after submission and completed0. Total timing throttle126, model throttle64."
+      "submission": "All7 timing arrays and dependent timing audit,2 model arrays and final audit submitted with preflight before each sbatch; held gate audit242903 released after submission and completed0. Total timing throttle126, model throttle64.",
+      "progress_checks": [
+        {
+          "snapshot_start_utc": "2026-10-26T13:29:16.088169+00:00",
+          "captured_by_utc": "2026-10-26T13:35:44.206882+00:00",
+          "artifact": "results/long-limits-20261024/status-20261026.json",
+          "artifact_sha256": "ccb56813029d5c3cc70efd25b0b9505845e93e591f679fc724c3533a18af0100",
+          "accounting_artifact": "results/long-limits-20261024/accounting-20261026.txt",
+          "completed_timing_shards": 4525,
+          "planned_timing_shards": 6462,
+          "started_timing_shards": 4633,
+          "running_tasks_at_scheduler_check": 108,
+          "by_logic": {
+            "QF_UF": {
+              "complete_shards": 990,
+              "planned_shards": 1565
+            },
+            "QF_LRA": {
+              "complete_shards": 356,
+              "planned_shards": 444
+            },
+            "QF_LIA": {
+              "complete_shards": 2048,
+              "planned_shards": 2775
+            },
+            "QF_UFLRA": {
+              "complete_shards": 245,
+              "planned_shards": 270
+            },
+            "QF_UFLIA": {
+              "complete_shards": 140,
+              "planned_shards": 140
+            },
+            "UF": {
+              "complete_shards": 746,
+              "planned_shards": 1268
+            }
+          },
+          "incorrect_limit_records": 0,
+          "global_failure_records": 0,
+          "task_failure_records": 0,
+          "wrong_flags_in_completed_rows": 0,
+          "model_execution_records": 0,
+          "plots": [],
+          "native_completed_row_errors": {
+            "QF_UF/primo": {
+              "completed_rows": 4743,
+              "error_rows": 0,
+              "sigabrt_rows": 0,
+              "other_error_exit_2_rows": 0
+            },
+            "QF_LRA/primo": {
+              "completed_rows": 1425,
+              "error_rows": 4,
+              "sigabrt_rows": 4,
+              "other_error_exit_2_rows": 0
+            },
+            "QF_LRA/primo-phase-mono": {
+              "completed_rows": 1401,
+              "error_rows": 2,
+              "sigabrt_rows": 2,
+              "other_error_exit_2_rows": 0
+            },
+            "QF_LIA/primo": {
+              "completed_rows": 9850,
+              "error_rows": 415,
+              "sigabrt_rows": 168,
+              "other_error_exit_2_rows": 247
+            },
+            "QF_UFLRA/primo": {
+              "completed_rows": 1164,
+              "error_rows": 8,
+              "sigabrt_rows": 5,
+              "other_error_exit_2_rows": 3
+            },
+            "QF_UFLIA/primo": {
+              "completed_rows": 659,
+              "error_rows": 4,
+              "sigabrt_rows": 0,
+              "other_error_exit_2_rows": 4
+            },
+            "UF/primo": {
+              "completed_rows": 4470,
+              "error_rows": 452,
+              "sigabrt_rows": 448,
+              "other_error_exit_2_rows": 4
+            }
+          },
+          "native_error_rows": 885,
+          "native_sigabrt_rows": 627,
+          "error_triage": "Inspected native SIGABRT rows show CaDiCaL disconnect_external_propagator invalid-state cleanup diagnostic, matching the earlier forced64MiB control. Exact cause of every abort is not established. Other observed error rows explicitly report std::bad_alloc. Do not relabel all aborts as memory-out. Rows stay unsolved; native execution errors block headline/default qualification. References also have unsolved process-error rows.",
+          "qualification": "Active diagnostic timing collection only. Full cross-answer audit and all successful ground SAT-model replay remain pending; no winner or default-promotion conclusion.",
+          "verification": [
+            "Read SLURM squeue/sacct for recorded campaign jobs",
+            "Read completed provenance/CSV rows and all4633 observed worker execution records; each records both AS limits8589934592bytes",
+            "Cross-checked snapshot totals, native exit counts and zero wrong flags; JSON run ledger parses. No native execution or source changes in this status check."
+          ]
+        }
+      ]
     },
     {
       "id": "2026-10-22-all-theories-long-limits",
