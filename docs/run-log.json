@@ -6,7 +6,7 @@
       "id": "2026-10-24-all-theories-enforced-memory",
       "date": "2026-10-24",
       "kind": "matched-full-corpus-long-limit-comparison",
-      "evidence_status": "timings-running-native-errors-diagnostic-promotion-blocked",
+      "evidence_status": "timings-running-confirmed-oom-and-remaining-aborts-under-triage",
       "branch": "docs/public-repository-migration",
       "native_source_git": "4419dc902f03fe12b8933d5dee4378dd11497035",
       "native_binary_sha256": "e06bd36239ccc7af9fd29ed55af9f595f2e7cbd52f6ba5961b962c9d8d6fc26d",
@@ -449,7 +449,143 @@
             "Cross-checked snapshot totals, native exit counts and zero wrong flags; JSON run ledger parses. No native execution or source changes in this status check."
           ]
         }
-      ]
+      ],
+      "oom_exception_diagnostic": {
+        "date": "2026-10-26",
+        "status": "confirmed-allocation-failure-before-cleanup-abort-in-both-replays",
+        "job": "256560",
+        "script": "scripts/qualification/long_limits/trace_oom.sbatch",
+        "script_sha256": "6a0d57fc3e9769a774df44e96c27b369ee64941207b59642d612f1c98dffddc2",
+        "cases_artifact": "results/long-limits-20261024/oom-trace-cases-20261026.json",
+        "remote_artifact_relative_to_campaign": "diagnostics/oom-exception-20261026/6a0d57fc3e97",
+        "native_binary_sha256": "e06bd36239ccc7af9fd29ed55af9f595f2e7cbd52f6ba5961b962c9d8d6fc26d",
+        "native_source_git": "4419dc902f03fe12b8933d5dee4378dd11497035",
+        "cases": [
+          {
+            "logic": "QF_LIA",
+            "file": "nec-smt/large/getoption_user/prp-23-48.smt2",
+            "arguments": [
+              "--quiet"
+            ],
+            "original_exit": "-6",
+            "original_seconds": "57.141900"
+          },
+          {
+            "logic": "UF",
+            "file": "sledgehammer/FFT/uf.706467.smt2",
+            "arguments": [
+              "--quiet"
+            ],
+            "original_exit": "-6",
+            "original_seconds": "54.896868"
+          }
+        ],
+        "resources": {
+          "partition": "compute",
+          "physical_cpus_per_case": 1,
+          "debugger_as_bytes": 17179869184,
+          "inferior_as_bytes": 8589934592,
+          "case_timeout_seconds": 720,
+          "slurm_wall_time": "15min",
+          "array_concurrency": 2
+        },
+        "purpose": "Stop at original C++ exception before external-propagator cleanup, record exception and stack plus inferior /proc/status and /proc/limits, then continue to terminal abort. Same preserved executable, arguments, input hashes and8GiB target cap. No speed measurements or native source changes.",
+        "attempts": [
+          {
+            "job": "256544",
+            "status": "canceled-debugger-startup-stall-no-native-result",
+            "script_sha256": "a39f4d665e3f33e63ed27c3033f603b5c4a2acd8ae36aac8bd7e31af55cc0ffa",
+            "evidence": "SLURM process inspection showed only debugger processes; GDB open fd pointed to debuginfod_client temporary debuginfo and a socket, waiting in poll. No inferior exception result. Canceled both diagnostic tasks only; full timing arrays untouched.",
+            "artifact_relative_to_campaign": "diagnostics/oom-exception-20261026/a39f4d665e3f"
+          }
+        ],
+        "debugger_startup": "Disable init files (-nx) and debuginfod downloads (DEBUGINFOD_URLS empty); process-group cleanup on720s timeout.",
+        "results": {
+          "status": "confirmed-allocation-failure-before-cleanup-abort-in-both-replays",
+          "cases": [
+            {
+              "logic": "QF_LIA",
+              "file": "nec-smt/large/getoption_user/prp-23-48.smt2",
+              "arguments": [
+                "--quiet"
+              ],
+              "input_sha256": "fe0ac9494967e8f59799db3d25e9e3023d895344531f577f9adcd174c8847ec8",
+              "native_sha256": "e06bd36239ccc7af9fd29ed55af9f595f2e7cbd52f6ba5961b962c9d8d6fc26d",
+              "job": "256561",
+              "artifact": "results/long-limits-20261024/oom-exception-20261026/results/256560-0",
+              "first_exception": "libstdc++ operator new(unsigned long) allocation-failure path -> __cxa_throw",
+              "allocation_context": "CaDiCaL binary-clause vector growth in Closure::extract_binaries / SAT preprocessing",
+              "observed_inferior_as_bytes": [
+                8589934592,
+                8589934592
+              ],
+              "proc_measurements_kib": {
+                "VmPeak": 7947452,
+                "VmSize": 7750840,
+                "VmRSS": 7047412
+              },
+              "continued_outcome": "SIGABRT in external-propagator disconnection via AssignmentConnection destruction during exception unwinding",
+              "debugger_type_introspection": "p $_exception could not resolve std types without library debug info; allocation origin is established by exception stack, not by RTTI printing.",
+              "file_sha256": {
+                "metadata.json": "773916c5452ca18617f3db2b868301118b51e3f6dc15960d5fd13bb7b80595a7",
+                "inferior.json": "03e1c251a1e5eed1b305011765ea4ca9162ad5fc29e8bcc9a45934322626c84e",
+                "stdout": "2b5ab7b1d4951023970e91da7c2e96010073a2693e0a26bf1d4e3d611308654b",
+                "stderr": "c2cc0d1bc4a6f57ed8d5ffdc425c563e0a9f9e4043046475092a4e2291e0708d"
+              }
+            },
+            {
+              "logic": "UF",
+              "file": "sledgehammer/FFT/uf.706467.smt2",
+              "arguments": [
+                "--quiet"
+              ],
+              "input_sha256": "ba33f3b7107f9c45fc65ef9574fc0f56bf4ee1ee9b0b3f4d33ae8bce040ad558",
+              "native_sha256": "e06bd36239ccc7af9fd29ed55af9f595f2e7cbd52f6ba5961b962c9d8d6fc26d",
+              "job": "256560",
+              "artifact": "results/long-limits-20261024/oom-exception-20261026/results/256560-1",
+              "first_exception": "libstdc++ operator new(unsigned long) allocation-failure path -> __cxa_throw",
+              "allocation_context": "TermManager::intern term-vector growth during QuantifierComponent::enumerate / instantiate",
+              "observed_inferior_as_bytes": [
+                8589934592,
+                8589934592
+              ],
+              "proc_measurements_kib": {
+                "VmPeak": 7678520,
+                "VmSize": 7678520,
+                "VmRSS": 6084608
+              },
+              "continued_outcome": "SIGABRT in external-propagator disconnection via AssignmentConnection destruction during exception unwinding",
+              "debugger_type_introspection": "p $_exception could not resolve std types without library debug info; allocation origin is established by exception stack, not by RTTI printing.",
+              "file_sha256": {
+                "metadata.json": "68d6adf350fabbb98ea494781143cfaf429c10c31f93cb28a8f616dfc85d58d6",
+                "inferior.json": "e3ef269354851bf530bf3f023a505d5b6506abe2bcc0caafef92ae5e395efa49",
+                "stdout": "67bd049f503932f4c0e1a57f5defd22d2b3bff6240149c5ed4ef68e113d3096e",
+                "stderr": "c2cc0d1bc4a6f57ed8d5ffdc425c563e0a9f9e4043046475092a4e2291e0708d"
+              }
+            }
+          ],
+          "native_error_census": {
+            "artifact": "results/long-limits-20261024/native-error-census-20261026.json",
+            "sha256": "2c5fdf57f3ea7336b26a7df8497e9642acb146dee05e3cef45f06789a89004ef",
+            "counts": {
+              "cadical-disconnect-invalid-state": 652,
+              "explicit-std-bad-alloc": 266
+            },
+            "scope": "Native error rows in CSVs present during the scan; not a complete campaign audit. Matching cleanup diagnostic alone does not establish cause for each untraced case."
+          },
+          "interpretation": "Both traced SIGABRT cases are confirmed memory exhaustion followed by a secondary cleanup failure. Count these exact input/profile/binary cases as unsolved resource exhaustion for interpretation. Retain original raw SIGABRT rows. No native source or timing measurements changed; the generic report has not been taught case-specific triage overrides. Remaining matching aborts are strongly consistent with this mechanism but not individually confirmed."
+        },
+        "verification": [
+          "Both256560 array tasks completed0 (debugger controller outcome, not a solved SMT result)",
+          "Actual inferior limits recorded8GiB soft/hard; preserved binary and input hashes checked",
+          "Caught allocation throw first, continued to SIGABRT with the same cleanup diagnostic",
+          "SLURM batch validator, bash-n, embedded Python AST parse, make lint passed",
+          "Native C++ unchanged: no solver/ASan/fuzz/tidy rerun required for this diagnostic workflow; original campaign remains intentionally active.",
+          "Generated GDB Python parsed; final batch script SHA256 matches executed immutable copy",
+          "make docs and assembled-site local/Git link check pass:263pages,32583local links,1068Gitlinks,0failures",
+          "Independent read-only review accepted the new evidence section, ledger results, script and artifacts with no required findings; baseline eb8783c."
+        ]
+      }
     },
     {
       "id": "2026-10-22-all-theories-long-limits",

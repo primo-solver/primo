@@ -103,6 +103,37 @@ than a clean allocation-failure message. It is retained as a native error under
 forced small memory, not counted as a memory-out pass. The actual evaluation
 limit is 8 GiB. This task changes the harness, not the native implementation.
 
+Two October 26 diagnostic replays then established the allocation-failure path
+at the **actual 8 GiB evaluation limit**, using the preserved binary and original
+input hashes. The {download}`exception replay script <../../scripts/qualification/long_limits/trace_oom.sbatch>`
+uses GDB on CPU SLURM allocations; its target inherits exactly 8 GiB soft and
+hard address-space limits, while the debugger has a separate 16 GiB budget.
+The debugger stops at the first C++ throw and records the allocation stack and
+target process limits before continuing to the abort.
+
+| Replayed division/input | Failing allocation |
+| --- | --- |
+| QF_LIA: `nec-smt/large/getoption_user/prp-23-48.smt2` | Binary-clause vector growth in SAT preprocessing |
+| UF: `sledgehammer/FFT/uf.706467.smt2` | Term-vector growth during quantifier instantiation |
+
+Both traces stop in the allocation-failure path of `operator new`, then abort
+while {equalityexperiment}`AssignmentConnection <src/smt/assignment_coordinator.hpp>`
+is destroyed and calls external-propagator disconnection during exception
+unwinding. These exact runs are confirmed memory exhaustion followed by a
+cleanup failure; the QF_LIA trace does not establish integer branching as the
+cause. GDB could not print the exception's C++ type without library debug info,
+but the allocation origin and subsequent abort stacks were retained.
+
+The contemporaneous native CSV census found 266 explicit `std::bad_alloc` rows
+and 652 rows with the same cleanup diagnostic. The two replays establish the
+mechanism for their exact input/profile/binary combinations; the matching
+message alone does not individually confirm every remaining abort. Confirmed
+memory-outs are ordinary unsolved budget exhaustion. Raw timing rows retain
+their original exit codes, and the generic report still counts cleanup aborts
+as execution errors; the case-specific triage is recorded separately in the run
+ledger. These diagnostic runs contribute no speed measurements, and full
+SAT-model qualification remains pending.
+
 Harness or filesystem failures stop only their own task and are recorded
 separately. Unreadable live-journal snapshots are advisory and retried; every
 terminal CSV and the global coverage audit remain strict. Earlier CPU smoke
