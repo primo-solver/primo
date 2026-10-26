@@ -183,6 +183,13 @@ instances and live roots. This distinguishes the potential benefit of producing
 fewer terms from reclaiming terms no longer needed; the trace alone proves
 neither redundant instantiation nor reclaimable garbage.
 
+In particular, an instance can simplify substantially while its original graph
+remains interned and its original ID remains in duplicate and simplifier caches.
+A filter applied after construction can reduce emitted lemmas without removing
+that storage. The [raw-instance retention question](incremental-memory.md#raw-instances-retained-after-simplification)
+asks for before/after term-graph measurements and an explicit cache-lifetime
+policy; the memory-out alone does not establish the size of this effect.
+
 ## Acceptance
 
 Choose one change at a time and retain the unchanged enumerator as a control.

@@ -75,17 +75,40 @@ measure the cost of releasing and later reconstructing that work. Reference
 counting alone would not reclaim objects still retained by such caches; their
 ownership and retention policy are part of the question.
 
-A concrete place to measure is
-{equalityexperiment}`QuantifierComponent::add_instance <src/theory/quantifiers/quantifier_component.cpp#L212-L247>`:
-instantiation has already constructed terms before this function rejects a
-normalized duplicate or trivial instance. Its raw and canonical instance caches
-retain term IDs, and
-{equalityexperiment}`their records survive SAT backtracking <src/theory/quantifiers/quantifier_component.cpp#L72-L73>`.
-Count the terms and bytes associated with intermediate forms, useful emitted lemmas,
-and these caches before deciding whether reclamation or
-[fewer generated instances](quantifier-instantiation.md) is the appropriate
-intervention. These are profiling questions, not a finding that the caches
-leak memory or can safely be cleared.
+(simplified-instance-retention)=
+### Raw instances retained after simplification
+
+A specific risk is constructing a large ground instance, simplifying it to a
+much smaller formula, and retaining the original term graph. The current
+{equalityexperiment}`add_instance path <src/theory/quantifiers/quantifier_component.cpp#L212-L247>`
+records the original instance ID in `raw_instances_` before calling the
+simplifier. `canonical_instances_` records the simplified result, while
+{equalityexperiment}`InstanceSimplifier::memo_ <src/theory/quantifiers/instance_simplifier.cpp#L22-L65>`
+remembers original-to-simplified term IDs for the simplifier's lifetime. The
+instance caches and enumeration records
+{equalityexperiment}`survive SAT backtracking <src/theory/quantifiers/quantifier_component.cpp#L72-L73>`.
+A normalized duplicate or trivial instance can therefore add no useful lemma
+while its previously constructed nodes remain in the manager.
+
+These caches hold numeric IDs, not owning term handles. Today the
+`TermManager` itself retains the nodes and hash-cons entries until destruction;
+clearing a cache alone would not reclaim them. A future reference-counting or
+collection design must specify whether cache entries keep original terms alive,
+use non-owning entries with safe invalidation, or can be discarded and rebuilt.
+Keeping strong owners for every raw instance and simplifier key would preserve
+this retention even after adding reference counting. Hash-consing shares common
+subterms, so retention does not imply two independent full copies of a formula.
+
+On the UF candidate, measure nodes and bytes created during instantiation,
+those reachable from the simplified result, and the remainder retained only
+through the manager or caches. Exclude nodes also needed by other live roots
+and avoid counting shared subterms repeatedly. Correlate these measurements
+with simplified, normalized-duplicate and trivial instances; also separate
+memo-table bytes from term storage. This tests whether substantial
+post-simplification retention actually occurs on the failing input before
+choosing reclamation or [fewer generated instances](quantifier-instantiation.md).
+The code establishes the retention mechanism, but not its contribution to this
+memory-out or whether the caches can safely be cleared.
 
 For both inputs, attribute the full footprint to core nodes, hash-cons keys,
 child/payload allocations, quantifier state, SAT/theory state, allocator

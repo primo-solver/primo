@@ -66,7 +66,7 @@ requires equality reasoning after instantiation.
 
 ## Representation and ownership
 
-All syntax lives in the session's `core::TermManager`. Theory solvers store
+All syntax lives in the current frontend's `core::TermManager`. Theory solvers store
 `TermId`s; they do not own or copy term nodes. New instances, witnesses, and
 lemmas are constructed through that manager.
 
@@ -86,9 +86,13 @@ The concrete owners are
 Enumeration, witness, and lemma caches survive SAT backtracking: retained
 formulas are guarded and witnesses belong to their recorded atom and polarity.
 They are not a cross-query instantiation cache. The default session rebuilds
-solving state for each query.
-Destroying the solver does not reclaim its generated terms from the
-manager; they remain subject to the [core lifetime rules](core.md#allocation-and-borrowed-references).
+solving state for each query. Destroying a quantifier component alone does not
+release individual nodes from a still-live term manager. In the current
+quantified UF rebuild path, however, the
+{equalityexperiment}`query owns the frontend and its manager <src/smt/solver_session.cpp#L346-L348>`;
+that owner is destroyed when the query ends. This establishes retention within
+one query, not accumulation across queries. See the
+[core lifetime rules](core.md#allocation-and-borrowed-references).
 
 ### What a de Bruijn index means
 
@@ -400,6 +404,18 @@ opaque. For `forall x,y. p(x) or p(y)`, tuples `(a,b)` and `(b,a)` can therefore
 yield the same normalized instance. This simplifier does not ask whether EUF
 or the current SAT assignment entails that instance. Fail masks, E-matching,
 relevant-domain restrictions, and model-based instantiation are absent.
+
+Normalization does not release the original ground instance's term storage.
+The raw-instance cache records its ID before simplification, and the
+{equalityexperiment}`simplifier memo <src/theory/quantifiers/instance_simplifier.cpp#L22-L65>`
+records original-to-result IDs. The term manager continues to own the original
+nodes even when a much smaller normalized instance is emitted or a duplicate
+is rejected. These ID caches belong to one quantifier component; nodes remain
+until their owning manager is destroyed. The current quantified rebuild query
+discards that manager at query end, as described above. The
+[raw-instance retention lead](../leads/incremental-memory.md#raw-instances-retained-after-simplification)
+asks how much storage remains needed after simplification and what cache and
+reclamation policy could safely release the rest.
 
 ## Budgets, costs, and observability
 
