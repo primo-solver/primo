@@ -3,6 +3,567 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-10-26-lra-explanation-backend-pilot",
+      "date": "2026-10-26",
+      "kind": "backend-minimization-shrinking-diagnostic",
+      "evidence_status": "complete-diagnostic-timings-and-SAT-models; no-default-promotion",
+      "branch": "docs/public-repository-migration",
+      "source_commit": "9f6b920726462f0a297727b8b31ca07e0b4bd2d0",
+      "scope": "Diagnostic backend ablation; no arithmetic minimizer implemented or default changed. This is not a fuzz qualification or a full-corpus result.",
+      "benchmark": {
+        "manifest": "benchmarks/qf-lra-explanation-probe.txt",
+        "manifest_sha256": "71b187670c6f5a744afa0d3800bb5ca0b082c45c11a0a01228e01cdf3902cd94",
+        "selection": "First two listed entries per family of benchmarks/qf-lra-stratified-sample.txt; sorted families; selected before timing.",
+        "inputs": 34,
+        "families": 17,
+        "declared_statuses": {
+          "sat": 16,
+          "unsat": 15,
+          "unknown": 3
+        },
+        "timeout_seconds": 10,
+        "native_repetitions": 2,
+        "reference_repetitions": 1
+      },
+      "profiles": {
+        "default": [
+          "--quiet",
+          "--stats"
+        ],
+        "no-shrinking": [
+          "--quiet",
+          "--stats",
+          "--cadical-option",
+          "shrink=0"
+        ],
+        "no-minimization-or-shrinking": [
+          "--quiet",
+          "--stats",
+          "--cadical-option",
+          "shrink=0",
+          "--cadical-option",
+          "minimize=0"
+        ]
+      },
+      "execution": {
+        "environment": "SLURM compute",
+        "cpu": "Intel Xeon E5-2690 v4 @ 2.60GHz",
+        "node_topology": "2 sockets, 14 cores/socket, 2 hardware threads/core",
+        "build_job_id": "256407",
+        "metadata_job_id": "256453",
+        "timing_resources": "1 physical CPU, --cpus-per-task=1 --hint=nomultithread; scheduler reports 2 logical CPUs; 4 GiB; 10 min job limit; up to 4 concurrent tasks",
+        "model_resources": "same CPU and memory; 15 min job limit; up to 3 concurrent tasks after all timings completed",
+        "compiler": "GNU C++ 11.4.1",
+        "build_type": "Release; no sanitizers",
+        "cadical_library_sha256": "2e90229ddc034e64da2720c9e4a2ca81a89dd70b65c362ecb17ad360fcd2b354",
+        "raw_artifacts": "results/lra-explanation-probe-20261026",
+        "raw_artifact_storage": "local ignored results and isolated SLURM workspace; connection details in untracked plan.json",
+        "timing_driver": "scripts/slurm_real_corpus_validation.sbatch",
+        "model_solver_timeout_seconds": 30,
+        "model_dolmen_timeout_seconds": 15,
+        "model_dolmen_size": "2G",
+        "model_dolmen_args": [
+          "--strict=false"
+        ]
+      },
+      "commands": {
+        "preflight": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config $SSH_CONFIG --remote $REMOTE --remote-dir $WORK --check-only --no-sync --require-tool contrib/local/bin/z3 --require-tool contrib/local/bin/dolmen",
+        "build": "python3 scripts/slurm_prepare_benchmark_workspace.py --ssh-config $SSH_CONFIG --remote $REMOTE --remote-dir $WORK --build-via-slurm --build-slurm-nodelist $TIMING_NODE --jobs 2 --reuse-dependencies --cmake $CMAKE --cxx-header-manifest $WORK/tmp/cxx-header-paths.txt --require-tool contrib/local/bin/z3 --require-tool contrib/local/bin/dolmen",
+        "stage": "python3 scripts/slurm_stage_manifest_files.py --ssh-config $SSH_CONFIG --remote $REMOTE --remote-dir $WORK --root sandbox/non-incremental/QF_LRA --manifest benchmarks/qf-lra-explanation-probe.txt",
+        "timing_driver": "scripts/slurm_real_corpus_validation.sbatch with PRIMO_PHASE=benchmark, PRIMO_TIMEOUT=10, PRIMO_SHARDS=1, PRIMO_EXPECTED_GIT=9f6b920 and exact profile args above; reference uses contrib/local/bin/z3 without Primo args. Selected physical corpus contains exactly the 34 manifested inputs.",
+        "models_driver": "scripts/slurm_real_corpus_validation.sbatch with PRIMO_PHASE=replay, PRIMO_MODEL_TIMEOUT=30, PRIMO_DOLMEN_TIMEOUT=15, PRIMO_DOLMEN_SIZE=2G, PRIMO_REPLAY_ATTEMPT=model-validation. Replays original profiles plus --check-model, --expect-sat and --require-dolmen-pass.",
+        "exact_submissions": "results/lra-explanation-probe-20261026/{timing-jobs,model-jobs}.json retain all exact sbatch argument arrays, resource requests, dependencies and environment; private connection/workspace names remain outside tracked files."
+      },
+      "jobs": [
+        {
+          "job_id": "256422",
+          "profile": "default",
+          "repetition": 0,
+          "phase": "benchmark"
+        },
+        {
+          "job_id": "256423",
+          "profile": "no-shrinking",
+          "repetition": 0,
+          "phase": "benchmark"
+        },
+        {
+          "job_id": "256424",
+          "profile": "no-minimization-or-shrinking",
+          "repetition": 0,
+          "phase": "benchmark"
+        },
+        {
+          "job_id": "256425",
+          "profile": "reference-z3",
+          "repetition": 0,
+          "phase": "benchmark"
+        },
+        {
+          "job_id": "256427",
+          "profile": "no-minimization-or-shrinking",
+          "repetition": 1,
+          "phase": "benchmark"
+        },
+        {
+          "job_id": "256428",
+          "profile": "no-shrinking",
+          "repetition": 1,
+          "phase": "benchmark"
+        },
+        {
+          "job_id": "256429",
+          "profile": "default",
+          "repetition": 1,
+          "phase": "benchmark"
+        },
+        {
+          "job_id": "256445",
+          "profile": "default",
+          "repetition": 0,
+          "phase": "replay"
+        },
+        {
+          "job_id": "256446",
+          "profile": "no-shrinking",
+          "repetition": 0,
+          "phase": "replay"
+        },
+        {
+          "job_id": "256447",
+          "profile": "no-minimization-or-shrinking",
+          "repetition": 0,
+          "phase": "replay"
+        },
+        {
+          "job_id": "256448",
+          "profile": "no-minimization-or-shrinking",
+          "repetition": 1,
+          "phase": "replay"
+        },
+        {
+          "job_id": "256449",
+          "profile": "no-shrinking",
+          "repetition": 1,
+          "phase": "replay"
+        },
+        {
+          "job_id": "256450",
+          "profile": "default",
+          "repetition": 1,
+          "phase": "replay"
+        }
+      ],
+      "results": {
+        "default-r0": {
+          "solver": {
+            "sha256": "7863e26a5264d3bd4b55608d2019fdc5a8b31dfb0ef28a92715a4c260259e396",
+            "version": "primo 0.2.0\ngit: 9f6b920\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07"
+          },
+          "solver_args": [
+            "--quiet",
+            "--stats"
+          ],
+          "inputs": 34,
+          "solved": 26,
+          "sat": 13,
+          "unsat": 13,
+          "timeout": 8,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 5.171262264705882,
+          "total_elapsed_seconds": 99.740473,
+          "solved_runtime_seconds": {
+            "min": 0.007284,
+            "median": 0.062494999999999995,
+            "p90_nearest_rank": 1.559444,
+            "max": 6.304249
+          },
+          "reference_comparable": 24,
+          "reference_disagreements": [],
+          "model_validation": {
+            "status": "complete",
+            "expected_sat": 13,
+            "dolmen_pass": 13,
+            "completed": 13,
+            "outcomes": {
+              "pass": 13
+            },
+            "missing": [],
+            "malformed_rows": false,
+            "inputs_and_binary_unchanged": true,
+            "job_id": "256445",
+            "coverage_sha256": "1fb0756949d766f296d104f6cf1459adcb8d93e45129a01ed8cef1a6b770c0c3",
+            "validator": {
+              "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+              "version": "0.10"
+            }
+          }
+        },
+        "default-r1": {
+          "solver": {
+            "sha256": "7863e26a5264d3bd4b55608d2019fdc5a8b31dfb0ef28a92715a4c260259e396",
+            "version": "primo 0.2.0\ngit: 9f6b920\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07"
+          },
+          "solver_args": [
+            "--quiet",
+            "--stats"
+          ],
+          "inputs": 34,
+          "solved": 26,
+          "sat": 13,
+          "unsat": 13,
+          "timeout": 8,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 5.165613794117647,
+          "total_elapsed_seconds": 99.58748,
+          "solved_runtime_seconds": {
+            "min": 0.007497,
+            "median": 0.0625195,
+            "p90_nearest_rank": 1.523432,
+            "max": 6.326534
+          },
+          "reference_comparable": 24,
+          "reference_disagreements": [],
+          "model_validation": {
+            "status": "complete",
+            "expected_sat": 13,
+            "dolmen_pass": 13,
+            "completed": 13,
+            "outcomes": {
+              "pass": 13
+            },
+            "missing": [],
+            "malformed_rows": false,
+            "inputs_and_binary_unchanged": true,
+            "job_id": "256450",
+            "coverage_sha256": "3dc6384b7611a19651b01e527629b1a296ef9afdf776847556573dbe4e03f135",
+            "validator": {
+              "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+              "version": "0.10"
+            }
+          }
+        },
+        "no-minimization-or-shrinking-r0": {
+          "solver": {
+            "sha256": "7863e26a5264d3bd4b55608d2019fdc5a8b31dfb0ef28a92715a4c260259e396",
+            "version": "primo 0.2.0\ngit: 9f6b920\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07"
+          },
+          "solver_args": [
+            "--quiet",
+            "--stats",
+            "--cadical-option",
+            "shrink=0",
+            "--cadical-option",
+            "minimize=0"
+          ],
+          "inputs": 34,
+          "solved": 28,
+          "sat": 15,
+          "unsat": 13,
+          "timeout": 6,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 4.27807894117647,
+          "total_elapsed_seconds": 88.395966,
+          "solved_runtime_seconds": {
+            "min": 0.007482,
+            "median": 0.07530999999999999,
+            "p90_nearest_rank": 6.069058,
+            "max": 6.867067
+          },
+          "reference_comparable": 26,
+          "reference_disagreements": [],
+          "model_validation": {
+            "status": "complete",
+            "expected_sat": 15,
+            "dolmen_pass": 15,
+            "completed": 15,
+            "outcomes": {
+              "pass": 15
+            },
+            "missing": [],
+            "malformed_rows": false,
+            "inputs_and_binary_unchanged": true,
+            "job_id": "256447",
+            "coverage_sha256": "771c583d8aad0df362d13177ea226aacfc336601324d2f0bd6d056ae35634949",
+            "validator": {
+              "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+              "version": "0.10"
+            }
+          }
+        },
+        "no-minimization-or-shrinking-r1": {
+          "solver": {
+            "sha256": "7863e26a5264d3bd4b55608d2019fdc5a8b31dfb0ef28a92715a4c260259e396",
+            "version": "primo 0.2.0\ngit: 9f6b920\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07"
+          },
+          "solver_args": [
+            "--quiet",
+            "--stats",
+            "--cadical-option",
+            "shrink=0",
+            "--cadical-option",
+            "minimize=0"
+          ],
+          "inputs": 34,
+          "solved": 28,
+          "sat": 15,
+          "unsat": 13,
+          "timeout": 6,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 4.2735218823529415,
+          "total_elapsed_seconds": 87.839764,
+          "solved_runtime_seconds": {
+            "min": 0.007381,
+            "median": 0.0750825,
+            "p90_nearest_rank": 6.001756,
+            "max": 6.865436
+          },
+          "reference_comparable": 26,
+          "reference_disagreements": [],
+          "model_validation": {
+            "status": "complete",
+            "expected_sat": 15,
+            "dolmen_pass": 15,
+            "completed": 15,
+            "outcomes": {
+              "pass": 15
+            },
+            "missing": [],
+            "malformed_rows": false,
+            "inputs_and_binary_unchanged": true,
+            "job_id": "256448",
+            "coverage_sha256": "7c7f07b86a5b0b8db71916230f606d306d70456c8ce3cb9a77573638cc74da3a",
+            "validator": {
+              "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+              "version": "0.10"
+            }
+          }
+        },
+        "no-shrinking-r0": {
+          "solver": {
+            "sha256": "7863e26a5264d3bd4b55608d2019fdc5a8b31dfb0ef28a92715a4c260259e396",
+            "version": "primo 0.2.0\ngit: 9f6b920\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07"
+          },
+          "solver_args": [
+            "--quiet",
+            "--stats",
+            "--cadical-option",
+            "shrink=0"
+          ],
+          "inputs": 34,
+          "solved": 28,
+          "sat": 15,
+          "unsat": 13,
+          "timeout": 6,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 4.272433411764705,
+          "total_elapsed_seconds": 87.784484,
+          "solved_runtime_seconds": {
+            "min": 0.007431,
+            "median": 0.073876,
+            "p90_nearest_rank": 5.94508,
+            "max": 6.867602
+          },
+          "reference_comparable": 26,
+          "reference_disagreements": [],
+          "model_validation": {
+            "status": "complete",
+            "expected_sat": 15,
+            "dolmen_pass": 15,
+            "completed": 15,
+            "outcomes": {
+              "pass": 15
+            },
+            "missing": [],
+            "malformed_rows": false,
+            "inputs_and_binary_unchanged": true,
+            "job_id": "256446",
+            "coverage_sha256": "376cf353cd1ebcbf6a216aa4a3002156e0047a91ce2da6af98d3cd785c8974b8",
+            "validator": {
+              "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+              "version": "0.10"
+            }
+          }
+        },
+        "no-shrinking-r1": {
+          "solver": {
+            "sha256": "7863e26a5264d3bd4b55608d2019fdc5a8b31dfb0ef28a92715a4c260259e396",
+            "version": "primo 0.2.0\ngit: 9f6b920\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07"
+          },
+          "solver_args": [
+            "--quiet",
+            "--stats",
+            "--cadical-option",
+            "shrink=0"
+          ],
+          "inputs": 34,
+          "solved": 28,
+          "sat": 15,
+          "unsat": 13,
+          "timeout": 6,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 4.252224647058823,
+          "total_elapsed_seconds": 86.98642,
+          "solved_runtime_seconds": {
+            "min": 0.007405,
+            "median": 0.0742975,
+            "p90_nearest_rank": 5.534304,
+            "max": 6.783098
+          },
+          "reference_comparable": 26,
+          "reference_disagreements": [],
+          "model_validation": {
+            "status": "complete",
+            "expected_sat": 15,
+            "dolmen_pass": 15,
+            "completed": 15,
+            "outcomes": {
+              "pass": 15
+            },
+            "missing": [],
+            "malformed_rows": false,
+            "inputs_and_binary_unchanged": true,
+            "job_id": "256449",
+            "coverage_sha256": "b12456f08fb2e9a64294a55efa9f5b9eb296a62a0154c4ece4d919ba6c04adea",
+            "validator": {
+              "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+              "version": "0.10"
+            }
+          }
+        },
+        "reference-z3-r0": {
+          "solver": {
+            "sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+            "version": "Z3 version 5.1.0 - 64 bit"
+          },
+          "solver_args": [],
+          "inputs": 34,
+          "solved": 26,
+          "sat": 14,
+          "unsat": 12,
+          "timeout": 8,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 5.203790352941176,
+          "total_elapsed_seconds": 97.07738,
+          "solved_runtime_seconds": {
+            "min": 0.012639,
+            "median": 0.045569,
+            "p90_nearest_rank": 1.385194,
+            "max": 6.901369
+          },
+          "reference_comparable": 26,
+          "reference_disagreements": []
+        }
+      },
+      "correctness": {
+        "status": "All 86/86 successful native SAT rows directly passed Dolmen 0.10 in a separate stage; no answer changes, invalid models, errors, missing rows or validator incompleteness.",
+        "reference": "No contradiction on jointly solved Z3 rows or declared sat/unsat statuses. Z3 timed out on eight rows; UNSAT has answer comparison, not independent proof checking.",
+        "fuzz": "No fresh fuzz campaign: this pilot changes no solver implementation or defaults and is not promotion qualification."
+      },
+      "analysis": "Keep defaults. Shrinking disabled solves two additional Labyrinth inputs in both repeats. Extra minimization disabling has identical collected search counters on all 28 solved inputs. The sample does not identify which explanations SAT already reduces or establish arithmetic weakening opportunity; next theory instrumentation remains proposed.",
+      "paired_comparisons": {
+        "no-shrinking-r0": {
+          "baseline": "default-r0",
+          "common_solved": 26,
+          "median_candidate_over_baseline_seconds": 1.0013638869480492,
+          "geomean_candidate_over_baseline_seconds": 0.9374077604298925,
+          "gains": [
+            "2019-ezsmt/Labyrinth/SCC_Strong/0011-labyrinth-12-0.smt2",
+            "2019-ezsmt/Labyrinth/SCC_Strong/0051-labyrinth-12-0.smt2"
+          ],
+          "losses": [],
+          "improvements_below_half_time": [
+            "sc/sc-17.induction3.cvc.smt2",
+            "tta_startup/simple_startup_12nodes.missing.induct.smt2"
+          ],
+          "regressions_above_twice_time": []
+        },
+        "no-minimization-or-shrinking-r0": {
+          "baseline": "default-r0",
+          "common_solved": 26,
+          "median_candidate_over_baseline_seconds": 1.0061460685614385,
+          "geomean_candidate_over_baseline_seconds": 0.9252773087112967,
+          "gains": [
+            "2019-ezsmt/Labyrinth/SCC_Strong/0011-labyrinth-12-0.smt2",
+            "2019-ezsmt/Labyrinth/SCC_Strong/0051-labyrinth-12-0.smt2"
+          ],
+          "losses": [],
+          "improvements_below_half_time": [
+            "sc/sc-17.induction3.cvc.smt2",
+            "tta_startup/simple_startup_12nodes.missing.induct.smt2"
+          ],
+          "regressions_above_twice_time": [],
+          "counters_identical_to_no_shrinking_on_all_28_solved": true
+        },
+        "no-shrinking-r1": {
+          "baseline": "default-r1",
+          "common_solved": 26,
+          "median_candidate_over_baseline_seconds": 0.9918608546048371,
+          "geomean_candidate_over_baseline_seconds": 0.9249593702651833,
+          "gains": [
+            "2019-ezsmt/Labyrinth/SCC_Strong/0011-labyrinth-12-0.smt2",
+            "2019-ezsmt/Labyrinth/SCC_Strong/0051-labyrinth-12-0.smt2"
+          ],
+          "losses": [],
+          "improvements_below_half_time": [
+            "sc/sc-17.induction3.cvc.smt2",
+            "tta_startup/simple_startup_12nodes.missing.induct.smt2"
+          ],
+          "regressions_above_twice_time": []
+        },
+        "no-minimization-or-shrinking-r1": {
+          "baseline": "default-r1",
+          "common_solved": 26,
+          "median_candidate_over_baseline_seconds": 0.9961919541272906,
+          "geomean_candidate_over_baseline_seconds": 0.9222352276237499,
+          "gains": [
+            "2019-ezsmt/Labyrinth/SCC_Strong/0011-labyrinth-12-0.smt2",
+            "2019-ezsmt/Labyrinth/SCC_Strong/0051-labyrinth-12-0.smt2"
+          ],
+          "losses": [],
+          "improvements_below_half_time": [
+            "sc/sc-17.induction3.cvc.smt2",
+            "tta_startup/simple_startup_12nodes.missing.induct.smt2"
+          ],
+          "regressions_above_twice_time": [],
+          "counters_identical_to_no_shrinking_on_all_28_solved": true
+        }
+      },
+      "limitations": [
+        "Small deterministic development sample, two native repeats, one reference repeat, no whole-corpus conclusion.",
+        "Profiles ran with up to four concurrent one-core jobs on the same compute node; it was separate from the existing user timing campaign.",
+        "Recorded SAT/theory conflict counts do not expose theory-reason or final learned-clause size distributions. Effective linked version and requested overrides are recorded; untouched library options were not dumped from the linked backend.",
+        "No theory shared-antecedent traversal, internal-bound proof graph, or arithmetic bound weakening prototype was implemented."
+      ],
+      "artifacts": {
+        "committed_summary": "docs/coverage/lra-explanation-backend-pilot.json",
+        "inputs": "benchmarks/qf-lra-explanation-probe.json",
+        "raw": "results/lra-explanation-probe-20261026",
+        "storage": "Raw CSV, JSONL, models, logs and preserved native binary collected locally under ignored results and retained in isolated SLURM workspace; compact per-input outcomes and counters committed in summary."
+      }
+    },
+    {
       "id": "2026-10-10-migration-lra-option-ablation",
       "date": "2026-10-10",
       "kind": "four-profile-ablation",

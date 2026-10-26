@@ -1,9 +1,9 @@
 # Conflict explanations, minimization, and shared antecedents
 
-**Status: Literature intake complete for the reading scopes below; implementation
-and measurement are open.** This note separates improvements to an arithmetic
-explanation from SAT conflict analysis and learned-clause minimization. No solver
-behavior or performance result is changed by this survey.
+**Status: Literature intake and a small backend ablation are complete; arithmetic
+explanation instrumentation remains proposed.** This note separates improvements
+to an arithmetic explanation from SAT conflict analysis and learned-clause
+minimization. The experiment below changes no solver implementation or defaults.
 
 ## Which problem are we trying to solve?
 
@@ -263,7 +263,7 @@ run for these metadata queries.
 | Ordinary LRA conflict construction | {source}`build_conflict <src/theory/arithmetic/lra_tableau.cpp#L433-L446>` collects the current row's blocking-bound reasons. No shared-antecedent regression or greedy alternative-bound search follows it. |
 | SOI conflict reduction | {source}`SOI minimization <src/theory/arithmetic/lra_tableau.cpp#L744-L886>` reduces a set of violated rows using a restricted-row conflict test. It does not implement King's §2.2.9 bound weakening. |
 | Dedicated LRA propagation | {source}`Reason delivery <src/smt/solver_engines.cpp#L7147-L7179>` supplies stored external propagation reasons to SAT. [Row propagation](../implementation/lra.md#propagate-and-explain-consequences) proves existing atoms; a numeric derived bound is not installed unless an atom asserting it is assigned. |
-| SAT integration | {source}`ExternalPropagator <src/sat/ipasir_up.hpp>` and {source}`CaDiCaL adapter <src/sat/cadical_backend.cpp>` delegate reason callbacks and conflict analysis. They do not expose the complete Boolean reason graph to LRA. Installed CLI metadata is recorded above; effective linked-backend settings and reduction coverage remain unaudited. |
+| SAT integration | {source}`ExternalPropagator <src/sat/ipasir_up.hpp>` and {source}`CaDiCaL adapter <src/sat/cadical_backend.cpp>` delegate reason callbacks and conflict analysis. They do not expose the complete Boolean reason graph to LRA. The pilot below records its linked version and requested option overrides; coverage of individual explanation reductions remains unmeasured. |
 
 This audit reads Primo's code and the stated primary sections; it does not
 copy another solver's source or establish a speedup. The existing
@@ -294,5 +294,67 @@ paired SLURM runs with the same backend settings. Compare time, solved counts,
 PAR2, theory-clause size, learned-clause statistics where available, and explanation
 work. A reduction already performed by SAT, rare opportunities, or extra work
 without a search benefit are grounds to reject a prototype. Record commands,
-revision, resources, job IDs and results in the run log. No such campaign or
-baseline measurement was run for this literature intake.
+revision, resources, job IDs and results in the run log. The backend-only pilot
+below supplies an initial comparison; the theory probes in this table remain
+unimplemented.
+
+
+## Backend pilot: 34 QF_LRA inputs
+
+The 2026-10-26 diagnostic compared existing CaDiCaL settings before adding any
+arithmetic minimizer. The [fixed manifest](https://github.com/primo-solver/primo/blob/9f6b920/benchmarks/qf-lra-explanation-probe.txt)
+selects the first two listed inputs per family from the existing stratified
+sample: 34 inputs across 17 families. Selection preceded timing. Each native
+profile ran twice at a 10-second limit; Z3 ran once. All jobs ran on SLURM compute,
+on a Xeon E5-2690 v4, with one physical CPU and 4 GiB per task, at most four
+concurrent timing tasks. A separate workspace and compute node kept this probe
+apart from the user's existing timing campaign.
+
+The measured binary was Release revision `9f6b920`, reporting
+`cadical-3.0.0-7b99c07`. Every native command included `--quiet --stats`.
+The {source}`backend constructor <src/sat/cadical_backend.cpp#L109-L134>`
+passes the requested overrides to the linked library and rejects invalid names;
+this single-query path retains library defaults for other options. The experiment
+did not dump every effective library option. The installed CLI help above is
+supporting metadata, rather than a complete configuration snapshot.
+
+| Profile | Extra options | Solved per repeat | Timeouts per repeat | Mean PAR2 seconds, repeats 0 / 1 | Direct Dolmen SAT passes |
+| --- | --- | --- | --- | --- | --- |
+| Default | none | 26 / 26 | 8 / 8 | 5.171 / 5.166 | 13 / 13 |
+| Shrinking disabled | `--cadical-option shrink=0` | 28 / 28 | 6 / 6 | 4.272 / 4.252 | 15 / 15 |
+| Shrinking and minimization disabled | `--cadical-option shrink=0 --cadical-option minimize=0` | 28 / 28 | 6 / 6 | 4.278 / 4.274 | 15 / 15 |
+| Z3 reference | none | 26 | 8 | 5.204 | not selected for model replay |
+
+Mean PAR2 charges each unsolved input 20 seconds and uses elapsed time for a
+successful `sat` or `unsat` answer. Errors and timeouts override any answer
+printed while terminating. All seven timing runs had zero wrong answers,
+non-timeout errors or unsupported outcomes. Answers agreed with declared known
+statuses and with Z3 wherever both solved the input; UNSAT answers were compared,
+not independently proof-checked. After all timings finished, separate jobs
+replayed every successful native SAT row with the same binary and options,
+`--check-model`, and independent Dolmen 0.10: **86/86 passed**, including both
+repetitions. Model-production and validation time is excluded from the table.
+
+Both disabled-shrinking profiles gained the same two Labyrinth inputs,
+`0011-labyrinth-12-0.smt2` and `0051-labyrinth-12-0.smt2`, in each repeat, with no
+lost solves. On the 26 commonly solved inputs, disabling shrinking gave median
+candidate/default runtime ratios of 1.001 and 0.992. Two cases improved by more
+than a factor of two in both repeats: `sc/sc-17.induction3.cvc.smt2` and
+`tta_startup/simple_startup_12nodes.missing.induct.smt2`; none regressed beyond
+twice the runtime. Disabling minimization as well produced identical collected
+SAT conflict, decision, propagation and theory-conflict counts on all 28 solved
+inputs. It supplied no additional measured search benefit in this pilot.
+
+This is a useful sensitivity result for backend settings, but it does not count
+how many theory explanations SAT already reduces. Neither theory-reason sizes nor
+final learned-clause size distributions were captured. Shared-antecedent traversal
+and weaker sufficient bounds remain the next proposed theory probes. Keep the
+current defaults: this small sample and its model checks do not replace a full
+evaluation or a fresh fuzz gate for promotion.
+
+The [committed evidence](../coverage/lra-explanation-backend-pilot.json)
+contains per-input results, family summaries, runtime distributions, paired
+comparisons, binary hashes and model coverage. The
+[run log](../run-log.json) entry
+`2026-10-26-lra-explanation-backend-pilot` records job IDs, reproduction commands
+and the raw artifact location.

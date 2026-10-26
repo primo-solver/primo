@@ -1,0 +1,5615 @@
+{
+  "schema_version": 1,
+  "id": "2026-10-26-lra-explanation-backend-pilot",
+  "source_commit": "9f6b920726462f0a297727b8b31ca07e0b4bd2d0",
+  "scope": "Diagnostic backend ablation; no arithmetic minimizer implemented or default changed. This is not a fuzz qualification or a full-corpus result.",
+  "manifest": "benchmarks/qf-lra-explanation-probe.txt",
+  "manifest_sha256": "71b187670c6f5a744afa0d3800bb5ca0b082c45c11a0a01228e01cdf3902cd94",
+  "input_count": 34,
+  "family_count": 17,
+  "timeout_seconds": 10,
+  "par2_definition": "Mean over 34 rows: elapsed seconds for successful sat/unsat, otherwise 2 * 10 seconds. Timeout cleanup can exceed 10 seconds; it is excluded from PAR2.",
+  "execution": {
+    "environment": "SLURM compute",
+    "cpu": "Intel Xeon E5-2690 v4 @ 2.60GHz",
+    "node_topology": "2 sockets, 14 cores/socket, 2 hardware threads/core",
+    "build_job_id": "256407",
+    "metadata_job_id": "256453",
+    "timing_resources": "1 physical CPU, --cpus-per-task=1 --hint=nomultithread; scheduler reports 2 logical CPUs; 4 GiB; 10 min job limit; up to 4 concurrent tasks",
+    "model_resources": "same CPU and memory; 15 min job limit; up to 3 concurrent tasks after all timings completed",
+    "compiler": "GNU C++ 11.4.1",
+    "build_type": "Release; no sanitizers",
+    "cadical_library_sha256": "2e90229ddc034e64da2720c9e4a2ca81a89dd70b65c362ecb17ad360fcd2b354",
+    "raw_artifacts": "results/lra-explanation-probe-20261026",
+    "raw_artifact_storage": "local ignored results and isolated SLURM workspace; connection details in untracked plan.json",
+    "timing_driver": "scripts/slurm_real_corpus_validation.sbatch",
+    "model_solver_timeout_seconds": 30,
+    "model_dolmen_timeout_seconds": 15,
+    "model_dolmen_size": "2G",
+    "model_dolmen_args": [
+      "--strict=false"
+    ]
+  },
+  "runs": {
+    "default-r0": {
+      "solver": {
+        "sha256": "7863e26a5264d3bd4b55608d2019fdc5a8b31dfb0ef28a92715a4c260259e396",
+        "version": "primo 0.2.0\ngit: 9f6b920\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07"
+      },
+      "solver_args": [
+        "--quiet",
+        "--stats"
+      ],
+      "timing_job_id": "256422",
+      "summary": {
+        "inputs": 34,
+        "solved": 26,
+        "sat": 13,
+        "unsat": 13,
+        "timeout": 8,
+        "error": 0,
+        "unsupported": 0,
+        "unknown": 0,
+        "wrong": 0,
+        "par2_mean_seconds": 5.171262264705882,
+        "total_elapsed_seconds": 99.740473,
+        "solved_runtime_seconds": {
+          "min": 0.007284,
+          "median": 0.062494999999999995,
+          "p90_nearest_rank": 1.559444,
+          "max": 6.304249
+        }
+      },
+      "reference_comparable": 24,
+      "reference_disagreements": [],
+      "families": {
+        "2017-Heizmann-UltimateInvariantSynthesis": {
+          "inputs": 2,
+          "solved": 0,
+          "sat": 0,
+          "unsat": 0,
+          "timeout": 2,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 20.0,
+          "total_elapsed_seconds": 20.730702,
+          "solved_runtime_seconds": {
+            "min": null,
+            "median": null,
+            "p90_nearest_rank": null,
+            "max": null
+          }
+        },
+        "2019-ezsmt": {
+          "inputs": 2,
+          "solved": 0,
+          "sat": 0,
+          "unsat": 0,
+          "timeout": 2,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 20.0,
+          "total_elapsed_seconds": 20.840242,
+          "solved_runtime_seconds": {
+            "min": null,
+            "median": null,
+            "p90_nearest_rank": null,
+            "max": null
+          }
+        },
+        "DTP-Scheduling": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 2,
+          "unsat": 0,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.010399499999999999,
+          "total_elapsed_seconds": 0.020798999999999998,
+          "solved_runtime_seconds": {
+            "min": 0.010212,
+            "median": 0.010399499999999999,
+            "p90_nearest_rank": 0.010587,
+            "max": 0.010587
+          }
+        },
+        "LassoRanker": {
+          "inputs": 2,
+          "solved": 1,
+          "sat": 1,
+          "unsat": 0,
+          "timeout": 1,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 10.779722,
+          "total_elapsed_seconds": 12.593979999999998,
+          "solved_runtime_seconds": {
+            "min": 1.559444,
+            "median": 1.559444,
+            "p90_nearest_rank": 1.559444,
+            "max": 1.559444
+          }
+        },
+        "TM": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 2,
+          "unsat": 0,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.18423299999999998,
+          "total_elapsed_seconds": 0.36846599999999996,
+          "solved_runtime_seconds": {
+            "min": 0.094112,
+            "median": 0.18423299999999998,
+            "p90_nearest_rank": 0.274354,
+            "max": 0.274354
+          }
+        },
+        "check": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 1,
+          "unsat": 1,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.008957,
+          "total_elapsed_seconds": 0.017914,
+          "solved_runtime_seconds": {
+            "min": 0.008662,
+            "median": 0.008957,
+            "p90_nearest_rank": 0.009252,
+            "max": 0.009252
+          }
+        },
+        "clock_synchro": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 0,
+          "unsat": 2,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 3.1638425000000003,
+          "total_elapsed_seconds": 6.327685000000001,
+          "solved_runtime_seconds": {
+            "min": 0.023436,
+            "median": 3.1638425000000003,
+            "p90_nearest_rank": 6.304249,
+            "max": 6.304249
+          }
+        },
+        "keymaera": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 0,
+          "unsat": 2,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.0074325,
+          "total_elapsed_seconds": 0.014865,
+          "solved_runtime_seconds": {
+            "min": 0.007284,
+            "median": 0.0074325,
+            "p90_nearest_rank": 0.007581,
+            "max": 0.007581
+          }
+        },
+        "latendresse": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 2,
+          "unsat": 0,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.7683059999999999,
+          "total_elapsed_seconds": 1.5366119999999999,
+          "solved_runtime_seconds": {
+            "min": 0.768232,
+            "median": 0.7683059999999999,
+            "p90_nearest_rank": 0.76838,
+            "max": 0.76838
+          }
+        },
+        "meti-tarski": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 1,
+          "unsat": 1,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.0079205,
+          "total_elapsed_seconds": 0.015841,
+          "solved_runtime_seconds": {
+            "min": 0.007385,
+            "median": 0.0079205,
+            "p90_nearest_rank": 0.008456,
+            "max": 0.008456
+          }
+        },
+        "miplib": {
+          "inputs": 2,
+          "solved": 1,
+          "sat": 0,
+          "unsat": 1,
+          "timeout": 1,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 10.043134,
+          "total_elapsed_seconds": 10.190673,
+          "solved_runtime_seconds": {
+            "min": 0.086268,
+            "median": 0.086268,
+            "p90_nearest_rank": 0.086268,
+            "max": 0.086268
+          }
+        },
+        "sal": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 0,
+          "unsat": 2,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.030547,
+          "total_elapsed_seconds": 0.061094,
+          "solved_runtime_seconds": {
+            "min": 0.011317,
+            "median": 0.030547,
+            "p90_nearest_rank": 0.049777,
+            "max": 0.049777
+          }
+        },
+        "sc": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 2,
+          "unsat": 0,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.1420835,
+          "total_elapsed_seconds": 0.284167,
+          "solved_runtime_seconds": {
+            "min": 0.060437,
+            "median": 0.1420835,
+            "p90_nearest_rank": 0.22373,
+            "max": 0.22373
+          }
+        },
+        "spider_benchmarks": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 0,
+          "unsat": 2,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.059636999999999996,
+          "total_elapsed_seconds": 0.11927399999999999,
+          "solved_runtime_seconds": {
+            "min": 0.054721,
+            "median": 0.059636999999999996,
+            "p90_nearest_rank": 0.064553,
+            "max": 0.064553
+          }
+        },
+        "tropical-matrix": {
+          "inputs": 2,
+          "solved": 0,
+          "sat": 0,
+          "unsat": 0,
+          "timeout": 2,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 20.0,
+          "total_elapsed_seconds": 21.207670999999998,
+          "solved_runtime_seconds": {
+            "min": null,
+            "median": null,
+            "p90_nearest_rank": null,
+            "max": null
+          }
+        },
+        "tta_startup": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 1,
+          "unsat": 1,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 2.482523,
+          "total_elapsed_seconds": 4.965046,
+          "solved_runtime_seconds": {
+            "min": 0.166451,
+            "median": 2.482523,
+            "p90_nearest_rank": 4.798595,
+            "max": 4.798595
+          }
+        },
+        "uart": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 1,
+          "unsat": 1,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.222721,
+          "total_elapsed_seconds": 0.445442,
+          "solved_runtime_seconds": {
+            "min": 0.15849,
+            "median": 0.222721,
+            "p90_nearest_rank": 0.286952,
+            "max": 0.286952
+          }
+        }
+      },
+      "artifacts_sha256": {
+        "provenance.json": "5e9f9831205e0ed62cbeca49926805afdb7fbf64ec4982c4e244af2079e026f4",
+        "answers.csv": "2ff764c07c18f762dce8ad78c23a48bbbf6f1a5533adcb49245721cb4484aee4",
+        "answers.csv.jsonl": "2bd1c3e09b435cc3efd81839a463bfe858d540e2ca110a71b71306c3ce1f9b62"
+      },
+      "rows": [
+        {
+          "file": "2017-Heizmann-UltimateInvariantSynthesis/_count_up_down.i_3_11_2.bpl_13.smt2",
+          "status": "timeout",
+          "answer": "unknown",
+          "expected": "unsat",
+          "seconds": 10.321789,
+          "counters": {
+            ":sat.conflicts": 952,
+            ":sat.decisions": 31105,
+            ":sat.propagations": 194163,
+            ":theory.conflicts": 3962
+          }
+        },
+        {
+          "file": "2017-Heizmann-UltimateInvariantSynthesis/_functions1.i_3_5_2.bpl_11.smt2",
+          "status": "timeout",
+          "answer": "unknown",
+          "expected": "unsat",
+          "seconds": 10.408913,
+          "counters": {
+            ":sat.conflicts": 3179,
+            ":sat.decisions": 20033,
+            ":sat.propagations": 250590,
+            ":theory.conflicts": 4634
+          }
+        },
+        {
+          "file": "2019-ezsmt/Labyrinth/SCC_Strong/0011-labyrinth-12-0.smt2",
+          "status": "timeout",
+          "answer": "unknown",
+          "expected": "",
+          "seconds": 10.386598,
+          "counters": {
+            ":sat.conflicts": 3566,
+            ":sat.decisions": 49047,
+            ":sat.propagations": 20560239,
+            ":theory.conflicts": 1860
+          }
+        },
+        {
+          "file": "2019-ezsmt/Labyrinth/SCC_Strong/0051-labyrinth-12-0.smt2",
+          "status": "timeout",
+          "answer": "unknown",
+          "expected": "",
+          "seconds": 10.453644,
+          "counters": {
+            ":sat.conflicts": 2911,
+            ":sat.decisions": 67346,
+            ":sat.propagations": 17347560,
+            ":theory.conflicts": 3291
+          }
+        },
+        {
+          "file": "DTP-Scheduling/constraints-cooking04.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.010587,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 312,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "DTP-Scheduling/constraints-cooking06.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.010212,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 450,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "LassoRanker/CooperatingT2/brp_withassume.t2.c_Iteration8_Loop_7-phaseTemplate.smt2",
+          "status": "timeout",
+          "answer": "unknown",
+          "expected": "sat",
+          "seconds": 11.034536,
+          "counters": {}
+        },
+        {
+          "file": "LassoRanker/CooperatingT2/byron-2.t2.c_Iteration2_Loop_7-phaseTemplate.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 1.559444,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 26780,
+            ":sat.propagations": 86359,
+            ":theory.conflicts": 1063
+          }
+        },
+        {
+          "file": "TM/p-0-bucket_s13.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.274354,
+          "counters": {
+            ":sat.conflicts": 235,
+            ":sat.decisions": 5177,
+            ":sat.propagations": 72794,
+            ":theory.conflicts": 427
+          }
+        },
+        {
+          "file": "TM/p-0-bucket_s7.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.094112,
+          "counters": {
+            ":sat.conflicts": 89,
+            ":sat.decisions": 1045,
+            ":sat.propagations": 16954,
+            ":theory.conflicts": 164
+          }
+        },
+        {
+          "file": "check/bignum_lra1.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.009252,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 31,
+            ":sat.propagations": 45,
+            ":theory.conflicts": 5
+          }
+        },
+        {
+          "file": "check/bignum_lra2.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.008662,
+          "counters": {
+            ":sat.conflicts": 4,
+            ":sat.decisions": 62,
+            ":sat.propagations": 108,
+            ":theory.conflicts": 12
+          }
+        },
+        {
+          "file": "clock_synchro/clocksynchro_10clocks.worst_case_skew.induct.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 6.304249,
+          "counters": {
+            ":sat.conflicts": 1528,
+            ":sat.decisions": 12241,
+            ":sat.propagations": 122153,
+            ":theory.conflicts": 1987
+          }
+        },
+        {
+          "file": "clock_synchro/clocksynchro_2clocks.main_invar.base.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.023436,
+          "counters": {
+            ":sat.conflicts": 1,
+            ":sat.decisions": 2214,
+            ":sat.propagations": 2830,
+            ":theory.conflicts": 45
+          }
+        },
+        {
+          "file": "keymaera/bouncing-ball-inv-node1886.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.007581,
+          "counters": {
+            ":sat.conflicts": 1,
+            ":sat.decisions": 0,
+            ":sat.propagations": 2,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "keymaera/bouncing-ball-inv-node1935.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.007284,
+          "counters": {
+            ":sat.conflicts": 1,
+            ":sat.decisions": 0,
+            ":sat.propagations": 2,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "latendresse/ecoliFBAyicesTest-15875-16.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.768232,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 14304,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "latendresse/ecoliFBAyicesTest-31875-32.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.76838,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 14304,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "meti-tarski/Chua/1/IL/U/Chua-1-IL-U-chunk-0069.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.008456,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 1,
+            ":sat.propagations": 10,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "meti-tarski/Chua/1/VC1/L/Chua-1-VC1-L-chunk-0113.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.007385,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 9,
+            ":theory.conflicts": 1
+          }
+        },
+        {
+          "file": "miplib/danoint-30.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.086268,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 5128,
+            ":theory.conflicts": 1
+          }
+        },
+        {
+          "file": "miplib/danoint-66.smt2",
+          "status": "timeout",
+          "answer": "unknown",
+          "expected": "sat",
+          "seconds": 10.104405,
+          "counters": {
+            ":sat.conflicts": 77,
+            ":sat.decisions": 6711,
+            ":sat.propagations": 61744,
+            ":theory.conflicts": 222
+          }
+        },
+        {
+          "file": "sal/carpark/Carpark2-ausgabe-1.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.011317,
+          "counters": {
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "sal/carpark/Carpark2-ausgabe-5.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.049777,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 152,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "sc/sc-14.induction.cvc.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.060437,
+          "counters": {
+            ":sat.conflicts": 3,
+            ":sat.decisions": 2203,
+            ":sat.propagations": 5444,
+            ":theory.conflicts": 107
+          }
+        },
+        {
+          "file": "sc/sc-17.induction3.cvc.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.22373,
+          "counters": {
+            ":sat.conflicts": 122,
+            ":sat.decisions": 10104,
+            ":sat.propagations": 57277,
+            ":theory.conflicts": 474
+          }
+        },
+        {
+          "file": "spider_benchmarks/current_frame.induction.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.054721,
+          "counters": {
+            ":sat.conflicts": 33,
+            ":sat.decisions": 512,
+            ":sat.propagations": 6700,
+            ":theory.conflicts": 25
+          }
+        },
+        {
+          "file": "spider_benchmarks/fs_frame_gap.induction.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.064553,
+          "counters": {
+            ":sat.conflicts": 36,
+            ":sat.decisions": 1053,
+            ":sat.propagations": 7059,
+            ":theory.conflicts": 97
+          }
+        },
+        {
+          "file": "tropical-matrix/constraint-1007893.smt2",
+          "status": "timeout",
+          "answer": "unknown",
+          "expected": "",
+          "seconds": 10.191759,
+          "counters": {
+            ":sat.conflicts": 125,
+            ":sat.decisions": 34446,
+            ":sat.propagations": 241005,
+            ":theory.conflicts": 295
+          }
+        },
+        {
+          "file": "tropical-matrix/constraint-199552.smt2",
+          "status": "timeout",
+          "answer": "unknown",
+          "expected": "sat",
+          "seconds": 11.015912,
+          "counters": {}
+        },
+        {
+          "file": "tta_startup/simple_startup_11nodes.abstract.base.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.166451,
+          "counters": {
+            ":sat.conflicts": 1,
+            ":sat.decisions": 0,
+            ":sat.propagations": 826,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "tta_startup/simple_startup_12nodes.missing.induct.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 4.798595,
+          "counters": {
+            ":sat.conflicts": 802,
+            ":sat.decisions": 312494,
+            ":sat.propagations": 1074494,
+            ":theory.conflicts": 7604
+          }
+        },
+        {
+          "file": "uart/uart-10.base.cvc.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.286952,
+          "counters": {
+            ":sat.conflicts": 608,
+            ":sat.decisions": 12235,
+            ":sat.propagations": 150610,
+            ":theory.conflicts": 1065
+          }
+        },
+        {
+          "file": "uart/uart-11.induction.cvc.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.15849,
+          "counters": {
+            ":sat.conflicts": 145,
+            ":sat.decisions": 9068,
+            ":sat.propagations": 49020,
+            ":theory.conflicts": 690
+          }
+        }
+      ],
+      "model_validation": {
+        "status": "complete",
+        "expected_sat": 13,
+        "dolmen_pass": 13,
+        "completed": 13,
+        "outcomes": {
+          "pass": 13
+        },
+        "missing": [],
+        "malformed_rows": false,
+        "inputs_and_binary_unchanged": true,
+        "job_id": "256445",
+        "coverage_sha256": "1fb0756949d766f296d104f6cf1459adcb8d93e45129a01ed8cef1a6b770c0c3",
+        "validator": {
+          "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+          "version": "0.10"
+        }
+      }
+    },
+    "default-r1": {
+      "solver": {
+        "sha256": "7863e26a5264d3bd4b55608d2019fdc5a8b31dfb0ef28a92715a4c260259e396",
+        "version": "primo 0.2.0\ngit: 9f6b920\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07"
+      },
+      "solver_args": [
+        "--quiet",
+        "--stats"
+      ],
+      "timing_job_id": "256429",
+      "summary": {
+        "inputs": 34,
+        "solved": 26,
+        "sat": 13,
+        "unsat": 13,
+        "timeout": 8,
+        "error": 0,
+        "unsupported": 0,
+        "unknown": 0,
+        "wrong": 0,
+        "par2_mean_seconds": 5.165613794117647,
+        "total_elapsed_seconds": 99.58748,
+        "solved_runtime_seconds": {
+          "min": 0.007497,
+          "median": 0.0625195,
+          "p90_nearest_rank": 1.523432,
+          "max": 6.326534
+        }
+      },
+      "reference_comparable": 24,
+      "reference_disagreements": [],
+      "families": {
+        "2017-Heizmann-UltimateInvariantSynthesis": {
+          "inputs": 2,
+          "solved": 0,
+          "sat": 0,
+          "unsat": 0,
+          "timeout": 2,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 20.0,
+          "total_elapsed_seconds": 20.590887000000002,
+          "solved_runtime_seconds": {
+            "min": null,
+            "median": null,
+            "p90_nearest_rank": null,
+            "max": null
+          }
+        },
+        "2019-ezsmt": {
+          "inputs": 2,
+          "solved": 0,
+          "sat": 0,
+          "unsat": 0,
+          "timeout": 2,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 20.0,
+          "total_elapsed_seconds": 20.791497,
+          "solved_runtime_seconds": {
+            "min": null,
+            "median": null,
+            "p90_nearest_rank": null,
+            "max": null
+          }
+        },
+        "DTP-Scheduling": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 2,
+          "unsat": 0,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.0102875,
+          "total_elapsed_seconds": 0.020575,
+          "solved_runtime_seconds": {
+            "min": 0.010072,
+            "median": 0.0102875,
+            "p90_nearest_rank": 0.010503,
+            "max": 0.010503
+          }
+        },
+        "LassoRanker": {
+          "inputs": 2,
+          "solved": 1,
+          "sat": 1,
+          "unsat": 0,
+          "timeout": 1,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 10.761716,
+          "total_elapsed_seconds": 12.559809999999999,
+          "solved_runtime_seconds": {
+            "min": 1.523432,
+            "median": 1.523432,
+            "p90_nearest_rank": 1.523432,
+            "max": 1.523432
+          }
+        },
+        "TM": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 2,
+          "unsat": 0,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.18325,
+          "total_elapsed_seconds": 0.3665,
+          "solved_runtime_seconds": {
+            "min": 0.093515,
+            "median": 0.18325,
+            "p90_nearest_rank": 0.272985,
+            "max": 0.272985
+          }
+        },
+        "check": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 1,
+          "unsat": 1,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.008461,
+          "total_elapsed_seconds": 0.016922,
+          "solved_runtime_seconds": {
+            "min": 0.008255,
+            "median": 0.008461,
+            "p90_nearest_rank": 0.008667,
+            "max": 0.008667
+          }
+        },
+        "clock_synchro": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 0,
+          "unsat": 2,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 3.175103,
+          "total_elapsed_seconds": 6.350206,
+          "solved_runtime_seconds": {
+            "min": 0.023672,
+            "median": 3.175103,
+            "p90_nearest_rank": 6.326534,
+            "max": 6.326534
+          }
+        },
+        "keymaera": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 0,
+          "unsat": 2,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.0077575000000000005,
+          "total_elapsed_seconds": 0.015515000000000001,
+          "solved_runtime_seconds": {
+            "min": 0.007497,
+            "median": 0.0077575000000000005,
+            "p90_nearest_rank": 0.008018,
+            "max": 0.008018
+          }
+        },
+        "latendresse": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 2,
+          "unsat": 0,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.7689455000000001,
+          "total_elapsed_seconds": 1.5378910000000001,
+          "solved_runtime_seconds": {
+            "min": 0.768423,
+            "median": 0.7689455000000001,
+            "p90_nearest_rank": 0.769468,
+            "max": 0.769468
+          }
+        },
+        "meti-tarski": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 1,
+          "unsat": 1,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.0085515,
+          "total_elapsed_seconds": 0.017103,
+          "solved_runtime_seconds": {
+            "min": 0.007758,
+            "median": 0.0085515,
+            "p90_nearest_rank": 0.009345,
+            "max": 0.009345
+          }
+        },
+        "miplib": {
+          "inputs": 2,
+          "solved": 1,
+          "sat": 0,
+          "unsat": 1,
+          "timeout": 1,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 10.0435035,
+          "total_elapsed_seconds": 10.140841,
+          "solved_runtime_seconds": {
+            "min": 0.087007,
+            "median": 0.087007,
+            "p90_nearest_rank": 0.087007,
+            "max": 0.087007
+          }
+        },
+        "sal": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 0,
+          "unsat": 2,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.0307945,
+          "total_elapsed_seconds": 0.061589,
+          "solved_runtime_seconds": {
+            "min": 0.01138,
+            "median": 0.0307945,
+            "p90_nearest_rank": 0.050209,
+            "max": 0.050209
+          }
+        },
+        "sc": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 2,
+          "unsat": 0,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.142513,
+          "total_elapsed_seconds": 0.285026,
+          "solved_runtime_seconds": {
+            "min": 0.060914,
+            "median": 0.142513,
+            "p90_nearest_rank": 0.224112,
+            "max": 0.224112
+          }
+        },
+        "spider_benchmarks": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 0,
+          "unsat": 2,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.0592815,
+          "total_elapsed_seconds": 0.118563,
+          "solved_runtime_seconds": {
+            "min": 0.054438,
+            "median": 0.0592815,
+            "p90_nearest_rank": 0.064125,
+            "max": 0.064125
+          }
+        },
+        "tropical-matrix": {
+          "inputs": 2,
+          "solved": 0,
+          "sat": 0,
+          "unsat": 0,
+          "timeout": 2,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 20.0,
+          "total_elapsed_seconds": 21.484015,
+          "solved_runtime_seconds": {
+            "min": null,
+            "median": null,
+            "p90_nearest_rank": null,
+            "max": null
+          }
+        },
+        "tta_startup": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 1,
+          "unsat": 1,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 2.398235,
+          "total_elapsed_seconds": 4.79647,
+          "solved_runtime_seconds": {
+            "min": 0.162377,
+            "median": 2.398235,
+            "p90_nearest_rank": 4.634093,
+            "max": 4.634093
+          }
+        },
+        "uart": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 1,
+          "unsat": 1,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.21703499999999998,
+          "total_elapsed_seconds": 0.43406999999999996,
+          "solved_runtime_seconds": {
+            "min": 0.152853,
+            "median": 0.21703499999999998,
+            "p90_nearest_rank": 0.281217,
+            "max": 0.281217
+          }
+        }
+      },
+      "artifacts_sha256": {
+        "provenance.json": "eb1e410a3877d940ad180b9f1375d82405309d1ed5f7300db98a8c64e5765837",
+        "answers.csv": "69ffc997f28824da619f364c0f1e4239add6e546c40ee5606485ef15b77415e4",
+        "answers.csv.jsonl": "e0c85456e710bc0b92488c8e4849ffd32dba7ed543a5c2c64404f5cdddd809fe"
+      },
+      "rows": [
+        {
+          "file": "2017-Heizmann-UltimateInvariantSynthesis/_count_up_down.i_3_11_2.bpl_13.smt2",
+          "status": "timeout",
+          "answer": "unknown",
+          "expected": "unsat",
+          "seconds": 10.14703,
+          "counters": {
+            ":sat.conflicts": 952,
+            ":sat.decisions": 31105,
+            ":sat.propagations": 194163,
+            ":theory.conflicts": 3962
+          }
+        },
+        {
+          "file": "2017-Heizmann-UltimateInvariantSynthesis/_functions1.i_3_5_2.bpl_11.smt2",
+          "status": "timeout",
+          "answer": "unknown",
+          "expected": "unsat",
+          "seconds": 10.443857,
+          "counters": {
+            ":sat.conflicts": 3179,
+            ":sat.decisions": 20033,
+            ":sat.propagations": 250590,
+            ":theory.conflicts": 4634
+          }
+        },
+        {
+          "file": "2019-ezsmt/Labyrinth/SCC_Strong/0011-labyrinth-12-0.smt2",
+          "status": "timeout",
+          "answer": "unknown",
+          "expected": "",
+          "seconds": 10.418241,
+          "counters": {
+            ":sat.conflicts": 3407,
+            ":sat.decisions": 48651,
+            ":sat.propagations": 18978133,
+            ":theory.conflicts": 1836
+          }
+        },
+        {
+          "file": "2019-ezsmt/Labyrinth/SCC_Strong/0051-labyrinth-12-0.smt2",
+          "status": "timeout",
+          "answer": "unknown",
+          "expected": "",
+          "seconds": 10.373256,
+          "counters": {
+            ":sat.conflicts": 3198,
+            ":sat.decisions": 68264,
+            ":sat.propagations": 19379343,
+            ":theory.conflicts": 3296
+          }
+        },
+        {
+          "file": "DTP-Scheduling/constraints-cooking04.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.010503,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 312,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "DTP-Scheduling/constraints-cooking06.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.010072,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 450,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "LassoRanker/CooperatingT2/brp_withassume.t2.c_Iteration8_Loop_7-phaseTemplate.smt2",
+          "status": "timeout",
+          "answer": "unknown",
+          "expected": "sat",
+          "seconds": 11.036378,
+          "counters": {}
+        },
+        {
+          "file": "LassoRanker/CooperatingT2/byron-2.t2.c_Iteration2_Loop_7-phaseTemplate.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 1.523432,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 26780,
+            ":sat.propagations": 86359,
+            ":theory.conflicts": 1063
+          }
+        },
+        {
+          "file": "TM/p-0-bucket_s13.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.272985,
+          "counters": {
+            ":sat.conflicts": 235,
+            ":sat.decisions": 5177,
+            ":sat.propagations": 72794,
+            ":theory.conflicts": 427
+          }
+        },
+        {
+          "file": "TM/p-0-bucket_s7.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.093515,
+          "counters": {
+            ":sat.conflicts": 89,
+            ":sat.decisions": 1045,
+            ":sat.propagations": 16954,
+            ":theory.conflicts": 164
+          }
+        },
+        {
+          "file": "check/bignum_lra1.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.008667,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 31,
+            ":sat.propagations": 45,
+            ":theory.conflicts": 5
+          }
+        },
+        {
+          "file": "check/bignum_lra2.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.008255,
+          "counters": {
+            ":sat.conflicts": 4,
+            ":sat.decisions": 62,
+            ":sat.propagations": 108,
+            ":theory.conflicts": 12
+          }
+        },
+        {
+          "file": "clock_synchro/clocksynchro_10clocks.worst_case_skew.induct.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 6.326534,
+          "counters": {
+            ":sat.conflicts": 1528,
+            ":sat.decisions": 12241,
+            ":sat.propagations": 122153,
+            ":theory.conflicts": 1987
+          }
+        },
+        {
+          "file": "clock_synchro/clocksynchro_2clocks.main_invar.base.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.023672,
+          "counters": {
+            ":sat.conflicts": 1,
+            ":sat.decisions": 2214,
+            ":sat.propagations": 2830,
+            ":theory.conflicts": 45
+          }
+        },
+        {
+          "file": "keymaera/bouncing-ball-inv-node1886.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.008018,
+          "counters": {
+            ":sat.conflicts": 1,
+            ":sat.decisions": 0,
+            ":sat.propagations": 2,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "keymaera/bouncing-ball-inv-node1935.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.007497,
+          "counters": {
+            ":sat.conflicts": 1,
+            ":sat.decisions": 0,
+            ":sat.propagations": 2,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "latendresse/ecoliFBAyicesTest-15875-16.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.768423,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 14304,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "latendresse/ecoliFBAyicesTest-31875-32.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.769468,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 14304,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "meti-tarski/Chua/1/IL/U/Chua-1-IL-U-chunk-0069.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.009345,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 1,
+            ":sat.propagations": 10,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "meti-tarski/Chua/1/VC1/L/Chua-1-VC1-L-chunk-0113.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.007758,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 9,
+            ":theory.conflicts": 1
+          }
+        },
+        {
+          "file": "miplib/danoint-30.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.087007,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 5128,
+            ":theory.conflicts": 1
+          }
+        },
+        {
+          "file": "miplib/danoint-66.smt2",
+          "status": "timeout",
+          "answer": "unknown",
+          "expected": "sat",
+          "seconds": 10.053834,
+          "counters": {
+            ":sat.conflicts": 74,
+            ":sat.decisions": 6679,
+            ":sat.propagations": 60045,
+            ":theory.conflicts": 219
+          }
+        },
+        {
+          "file": "sal/carpark/Carpark2-ausgabe-1.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.01138,
+          "counters": {
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "sal/carpark/Carpark2-ausgabe-5.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.050209,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 152,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "sc/sc-14.induction.cvc.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.060914,
+          "counters": {
+            ":sat.conflicts": 3,
+            ":sat.decisions": 2203,
+            ":sat.propagations": 5444,
+            ":theory.conflicts": 107
+          }
+        },
+        {
+          "file": "sc/sc-17.induction3.cvc.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.224112,
+          "counters": {
+            ":sat.conflicts": 122,
+            ":sat.decisions": 10104,
+            ":sat.propagations": 57277,
+            ":theory.conflicts": 474
+          }
+        },
+        {
+          "file": "spider_benchmarks/current_frame.induction.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.054438,
+          "counters": {
+            ":sat.conflicts": 33,
+            ":sat.decisions": 512,
+            ":sat.propagations": 6700,
+            ":theory.conflicts": 25
+          }
+        },
+        {
+          "file": "spider_benchmarks/fs_frame_gap.induction.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.064125,
+          "counters": {
+            ":sat.conflicts": 36,
+            ":sat.decisions": 1053,
+            ":sat.propagations": 7059,
+            ":theory.conflicts": 97
+          }
+        },
+        {
+          "file": "tropical-matrix/constraint-1007893.smt2",
+          "status": "timeout",
+          "answer": "unknown",
+          "expected": "",
+          "seconds": 10.468352,
+          "counters": {
+            ":sat.conflicts": 125,
+            ":sat.decisions": 34501,
+            ":sat.propagations": 242079,
+            ":theory.conflicts": 297
+          }
+        },
+        {
+          "file": "tropical-matrix/constraint-199552.smt2",
+          "status": "timeout",
+          "answer": "unknown",
+          "expected": "sat",
+          "seconds": 11.015663,
+          "counters": {}
+        },
+        {
+          "file": "tta_startup/simple_startup_11nodes.abstract.base.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.162377,
+          "counters": {
+            ":sat.conflicts": 1,
+            ":sat.decisions": 0,
+            ":sat.propagations": 826,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "tta_startup/simple_startup_12nodes.missing.induct.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 4.634093,
+          "counters": {
+            ":sat.conflicts": 802,
+            ":sat.decisions": 312494,
+            ":sat.propagations": 1074494,
+            ":theory.conflicts": 7604
+          }
+        },
+        {
+          "file": "uart/uart-10.base.cvc.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.281217,
+          "counters": {
+            ":sat.conflicts": 608,
+            ":sat.decisions": 12235,
+            ":sat.propagations": 150610,
+            ":theory.conflicts": 1065
+          }
+        },
+        {
+          "file": "uart/uart-11.induction.cvc.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.152853,
+          "counters": {
+            ":sat.conflicts": 145,
+            ":sat.decisions": 9068,
+            ":sat.propagations": 49020,
+            ":theory.conflicts": 690
+          }
+        }
+      ],
+      "model_validation": {
+        "status": "complete",
+        "expected_sat": 13,
+        "dolmen_pass": 13,
+        "completed": 13,
+        "outcomes": {
+          "pass": 13
+        },
+        "missing": [],
+        "malformed_rows": false,
+        "inputs_and_binary_unchanged": true,
+        "job_id": "256450",
+        "coverage_sha256": "3dc6384b7611a19651b01e527629b1a296ef9afdf776847556573dbe4e03f135",
+        "validator": {
+          "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+          "version": "0.10"
+        }
+      }
+    },
+    "no-minimization-or-shrinking-r0": {
+      "solver": {
+        "sha256": "7863e26a5264d3bd4b55608d2019fdc5a8b31dfb0ef28a92715a4c260259e396",
+        "version": "primo 0.2.0\ngit: 9f6b920\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07"
+      },
+      "solver_args": [
+        "--quiet",
+        "--stats",
+        "--cadical-option",
+        "shrink=0",
+        "--cadical-option",
+        "minimize=0"
+      ],
+      "timing_job_id": "256424",
+      "summary": {
+        "inputs": 34,
+        "solved": 28,
+        "sat": 15,
+        "unsat": 13,
+        "timeout": 6,
+        "error": 0,
+        "unsupported": 0,
+        "unknown": 0,
+        "wrong": 0,
+        "par2_mean_seconds": 4.27807894117647,
+        "total_elapsed_seconds": 88.395966,
+        "solved_runtime_seconds": {
+          "min": 0.007482,
+          "median": 0.07530999999999999,
+          "p90_nearest_rank": 6.069058,
+          "max": 6.867067
+        }
+      },
+      "reference_comparable": 26,
+      "reference_disagreements": [],
+      "families": {
+        "2017-Heizmann-UltimateInvariantSynthesis": {
+          "inputs": 2,
+          "solved": 0,
+          "sat": 0,
+          "unsat": 0,
+          "timeout": 2,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 20.0,
+          "total_elapsed_seconds": 20.501505,
+          "solved_runtime_seconds": {
+            "min": null,
+            "median": null,
+            "p90_nearest_rank": null,
+            "max": null
+          }
+        },
+        "2019-ezsmt": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 2,
+          "unsat": 0,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 6.4680625,
+          "total_elapsed_seconds": 12.936125,
+          "solved_runtime_seconds": {
+            "min": 6.069058,
+            "median": 6.4680625,
+            "p90_nearest_rank": 6.867067,
+            "max": 6.867067
+          }
+        },
+        "DTP-Scheduling": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 2,
+          "unsat": 0,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.010213,
+          "total_elapsed_seconds": 0.020426,
+          "solved_runtime_seconds": {
+            "min": 0.010204,
+            "median": 0.010213,
+            "p90_nearest_rank": 0.010222,
+            "max": 0.010222
+          }
+        },
+        "LassoRanker": {
+          "inputs": 2,
+          "solved": 1,
+          "sat": 1,
+          "unsat": 0,
+          "timeout": 1,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 10.773439,
+          "total_elapsed_seconds": 12.580563,
+          "solved_runtime_seconds": {
+            "min": 1.546878,
+            "median": 1.546878,
+            "p90_nearest_rank": 1.546878,
+            "max": 1.546878
+          }
+        },
+        "TM": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 2,
+          "unsat": 0,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.19639600000000002,
+          "total_elapsed_seconds": 0.39279200000000003,
+          "solved_runtime_seconds": {
+            "min": 0.096586,
+            "median": 0.19639600000000002,
+            "p90_nearest_rank": 0.296206,
+            "max": 0.296206
+          }
+        },
+        "check": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 1,
+          "unsat": 1,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.008552,
+          "total_elapsed_seconds": 0.017104,
+          "solved_runtime_seconds": {
+            "min": 0.008307,
+            "median": 0.008552,
+            "p90_nearest_rank": 0.008797,
+            "max": 0.008797
+          }
+        },
+        "clock_synchro": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 0,
+          "unsat": 2,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 3.4335999999999998,
+          "total_elapsed_seconds": 6.8671999999999995,
+          "solved_runtime_seconds": {
+            "min": 0.023629,
+            "median": 3.4335999999999998,
+            "p90_nearest_rank": 6.843571,
+            "max": 6.843571
+          }
+        },
+        "keymaera": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 0,
+          "unsat": 2,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.007611,
+          "total_elapsed_seconds": 0.015222,
+          "solved_runtime_seconds": {
+            "min": 0.007482,
+            "median": 0.007611,
+            "p90_nearest_rank": 0.00774,
+            "max": 0.00774
+          }
+        },
+        "latendresse": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 2,
+          "unsat": 0,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.7638255,
+          "total_elapsed_seconds": 1.527651,
+          "solved_runtime_seconds": {
+            "min": 0.76299,
+            "median": 0.7638255,
+            "p90_nearest_rank": 0.764661,
+            "max": 0.764661
+          }
+        },
+        "meti-tarski": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 1,
+          "unsat": 1,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.0080925,
+          "total_elapsed_seconds": 0.016185,
+          "solved_runtime_seconds": {
+            "min": 0.007538,
+            "median": 0.0080925,
+            "p90_nearest_rank": 0.008647,
+            "max": 0.008647
+          }
+        },
+        "miplib": {
+          "inputs": 2,
+          "solved": 1,
+          "sat": 0,
+          "unsat": 1,
+          "timeout": 1,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 10.0432585,
+          "total_elapsed_seconds": 10.416023000000001,
+          "solved_runtime_seconds": {
+            "min": 0.086517,
+            "median": 0.086517,
+            "p90_nearest_rank": 0.086517,
+            "max": 0.086517
+          }
+        },
+        "sal": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 0,
+          "unsat": 2,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.0309065,
+          "total_elapsed_seconds": 0.061813,
+          "solved_runtime_seconds": {
+            "min": 0.011526,
+            "median": 0.0309065,
+            "p90_nearest_rank": 0.050287,
+            "max": 0.050287
+          }
+        },
+        "sc": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 2,
+          "unsat": 0,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.085741,
+          "total_elapsed_seconds": 0.171482,
+          "solved_runtime_seconds": {
+            "min": 0.061492,
+            "median": 0.085741,
+            "p90_nearest_rank": 0.10999,
+            "max": 0.10999
+          }
+        },
+        "spider_benchmarks": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 0,
+          "unsat": 2,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.05952299999999999,
+          "total_elapsed_seconds": 0.11904599999999999,
+          "solved_runtime_seconds": {
+            "min": 0.054943,
+            "median": 0.05952299999999999,
+            "p90_nearest_rank": 0.064103,
+            "max": 0.064103
+          }
+        },
+        "tropical-matrix": {
+          "inputs": 2,
+          "solved": 0,
+          "sat": 0,
+          "unsat": 0,
+          "timeout": 2,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 20.0,
+          "total_elapsed_seconds": 21.076586,
+          "solved_runtime_seconds": {
+            "min": null,
+            "median": null,
+            "p90_nearest_rank": null,
+            "max": null
+          }
+        },
+        "tta_startup": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 1,
+          "unsat": 1,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.611925,
+          "total_elapsed_seconds": 1.22385,
+          "solved_runtime_seconds": {
+            "min": 0.165219,
+            "median": 0.611925,
+            "p90_nearest_rank": 1.058631,
+            "max": 1.058631
+          }
+        },
+        "uart": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 1,
+          "unsat": 1,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.22619650000000002,
+          "total_elapsed_seconds": 0.45239300000000005,
+          "solved_runtime_seconds": {
+            "min": 0.160093,
+            "median": 0.22619650000000002,
+            "p90_nearest_rank": 0.2923,
+            "max": 0.2923
+          }
+        }
+      },
+      "artifacts_sha256": {
+        "provenance.json": "9f5651f5b79c053a0109fb7529c9993da1370716b211daeb18e230ae5f6a9681",
+        "answers.csv": "aa3cb1f137b3641e749380d6f77dfb74e23dd41033c596a9838bfe1947782a91",
+        "answers.csv.jsonl": "a80e69117d2ff6b405fcdd68ca4c3577c3ee7444b44e96a61ac3f166a3d3671e"
+      },
+      "rows": [
+        {
+          "file": "2017-Heizmann-UltimateInvariantSynthesis/_count_up_down.i_3_11_2.bpl_13.smt2",
+          "status": "timeout",
+          "answer": "unknown",
+          "expected": "unsat",
+          "seconds": 10.477149,
+          "counters": {
+            ":sat.conflicts": 536,
+            ":sat.decisions": 27838,
+            ":sat.propagations": 154329,
+            ":theory.conflicts": 3102
+          }
+        },
+        {
+          "file": "2017-Heizmann-UltimateInvariantSynthesis/_functions1.i_3_5_2.bpl_11.smt2",
+          "status": "timeout",
+          "answer": "unknown",
+          "expected": "unsat",
+          "seconds": 10.024356,
+          "counters": {
+            ":sat.conflicts": 3105,
+            ":sat.decisions": 24939,
+            ":sat.propagations": 254118,
+            ":theory.conflicts": 4689
+          }
+        },
+        {
+          "file": "2019-ezsmt/Labyrinth/SCC_Strong/0011-labyrinth-12-0.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "",
+          "seconds": 6.069058,
+          "counters": {
+            ":sat.conflicts": 260,
+            ":sat.decisions": 40406,
+            ":sat.propagations": 1816521,
+            ":theory.conflicts": 3142
+          }
+        },
+        {
+          "file": "2019-ezsmt/Labyrinth/SCC_Strong/0051-labyrinth-12-0.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "",
+          "seconds": 6.867067,
+          "counters": {
+            ":sat.conflicts": 597,
+            ":sat.decisions": 55863,
+            ":sat.propagations": 3432025,
+            ":theory.conflicts": 3442
+          }
+        },
+        {
+          "file": "DTP-Scheduling/constraints-cooking04.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.010204,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 312,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "DTP-Scheduling/constraints-cooking06.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.010222,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 450,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "LassoRanker/CooperatingT2/brp_withassume.t2.c_Iteration8_Loop_7-phaseTemplate.smt2",
+          "status": "timeout",
+          "answer": "unknown",
+          "expected": "sat",
+          "seconds": 11.033685,
+          "counters": {}
+        },
+        {
+          "file": "LassoRanker/CooperatingT2/byron-2.t2.c_Iteration2_Loop_7-phaseTemplate.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 1.546878,
+          "counters": {
+            ":sat.conflicts": 4,
+            ":sat.decisions": 28123,
+            ":sat.propagations": 92576,
+            ":theory.conflicts": 1077
+          }
+        },
+        {
+          "file": "TM/p-0-bucket_s13.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.296206,
+          "counters": {
+            ":sat.conflicts": 330,
+            ":sat.decisions": 4798,
+            ":sat.propagations": 73686,
+            ":theory.conflicts": 506
+          }
+        },
+        {
+          "file": "TM/p-0-bucket_s7.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.096586,
+          "counters": {
+            ":sat.conflicts": 162,
+            ":sat.decisions": 1642,
+            ":sat.propagations": 26406,
+            ":theory.conflicts": 187
+          }
+        },
+        {
+          "file": "check/bignum_lra1.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.008797,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 31,
+            ":sat.propagations": 45,
+            ":theory.conflicts": 5
+          }
+        },
+        {
+          "file": "check/bignum_lra2.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.008307,
+          "counters": {
+            ":sat.conflicts": 4,
+            ":sat.decisions": 62,
+            ":sat.propagations": 108,
+            ":theory.conflicts": 12
+          }
+        },
+        {
+          "file": "clock_synchro/clocksynchro_10clocks.worst_case_skew.induct.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 6.843571,
+          "counters": {
+            ":sat.conflicts": 1763,
+            ":sat.decisions": 16369,
+            ":sat.propagations": 151960,
+            ":theory.conflicts": 2295
+          }
+        },
+        {
+          "file": "clock_synchro/clocksynchro_2clocks.main_invar.base.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.023629,
+          "counters": {
+            ":sat.conflicts": 1,
+            ":sat.decisions": 2214,
+            ":sat.propagations": 2830,
+            ":theory.conflicts": 45
+          }
+        },
+        {
+          "file": "keymaera/bouncing-ball-inv-node1886.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.00774,
+          "counters": {
+            ":sat.conflicts": 1,
+            ":sat.decisions": 0,
+            ":sat.propagations": 2,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "keymaera/bouncing-ball-inv-node1935.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.007482,
+          "counters": {
+            ":sat.conflicts": 1,
+            ":sat.decisions": 0,
+            ":sat.propagations": 2,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "latendresse/ecoliFBAyicesTest-15875-16.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.76299,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 14304,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "latendresse/ecoliFBAyicesTest-31875-32.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.764661,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 14304,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "meti-tarski/Chua/1/IL/U/Chua-1-IL-U-chunk-0069.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.008647,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 1,
+            ":sat.propagations": 10,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "meti-tarski/Chua/1/VC1/L/Chua-1-VC1-L-chunk-0113.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.007538,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 9,
+            ":theory.conflicts": 1
+          }
+        },
+        {
+          "file": "miplib/danoint-30.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.086517,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 5128,
+            ":theory.conflicts": 1
+          }
+        },
+        {
+          "file": "miplib/danoint-66.smt2",
+          "status": "timeout",
+          "answer": "unknown",
+          "expected": "sat",
+          "seconds": 10.329506,
+          "counters": {
+            ":sat.conflicts": 84,
+            ":sat.decisions": 5508,
+            ":sat.propagations": 75489,
+            ":theory.conflicts": 254
+          }
+        },
+        {
+          "file": "sal/carpark/Carpark2-ausgabe-1.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.011526,
+          "counters": {
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "sal/carpark/Carpark2-ausgabe-5.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.050287,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 152,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "sc/sc-14.induction.cvc.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.061492,
+          "counters": {
+            ":sat.conflicts": 3,
+            ":sat.decisions": 2203,
+            ":sat.propagations": 5444,
+            ":theory.conflicts": 107
+          }
+        },
+        {
+          "file": "sc/sc-17.induction3.cvc.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.10999,
+          "counters": {
+            ":sat.conflicts": 10,
+            ":sat.decisions": 5031,
+            ":sat.propagations": 14418,
+            ":theory.conflicts": 205
+          }
+        },
+        {
+          "file": "spider_benchmarks/current_frame.induction.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.054943,
+          "counters": {
+            ":sat.conflicts": 34,
+            ":sat.decisions": 456,
+            ":sat.propagations": 6188,
+            ":theory.conflicts": 21
+          }
+        },
+        {
+          "file": "spider_benchmarks/fs_frame_gap.induction.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.064103,
+          "counters": {
+            ":sat.conflicts": 32,
+            ":sat.decisions": 1001,
+            ":sat.propagations": 6611,
+            ":theory.conflicts": 90
+          }
+        },
+        {
+          "file": "tropical-matrix/constraint-1007893.smt2",
+          "status": "timeout",
+          "answer": "unknown",
+          "expected": "",
+          "seconds": 11.022007,
+          "counters": {}
+        },
+        {
+          "file": "tropical-matrix/constraint-199552.smt2",
+          "status": "timeout",
+          "answer": "unknown",
+          "expected": "sat",
+          "seconds": 10.054579,
+          "counters": {
+            ":sat.conflicts": 693,
+            ":sat.decisions": 24092,
+            ":sat.propagations": 282097,
+            ":theory.conflicts": 1406
+          }
+        },
+        {
+          "file": "tta_startup/simple_startup_11nodes.abstract.base.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.165219,
+          "counters": {
+            ":sat.conflicts": 1,
+            ":sat.decisions": 0,
+            ":sat.propagations": 826,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "tta_startup/simple_startup_12nodes.missing.induct.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 1.058631,
+          "counters": {
+            ":sat.conflicts": 299,
+            ":sat.decisions": 206325,
+            ":sat.propagations": 669816,
+            ":theory.conflicts": 2677
+          }
+        },
+        {
+          "file": "uart/uart-10.base.cvc.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.2923,
+          "counters": {
+            ":sat.conflicts": 620,
+            ":sat.decisions": 13916,
+            ":sat.propagations": 148307,
+            ":theory.conflicts": 1135
+          }
+        },
+        {
+          "file": "uart/uart-11.induction.cvc.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.160093,
+          "counters": {
+            ":sat.conflicts": 131,
+            ":sat.decisions": 12345,
+            ":sat.propagations": 53292,
+            ":theory.conflicts": 800
+          }
+        }
+      ],
+      "model_validation": {
+        "status": "complete",
+        "expected_sat": 15,
+        "dolmen_pass": 15,
+        "completed": 15,
+        "outcomes": {
+          "pass": 15
+        },
+        "missing": [],
+        "malformed_rows": false,
+        "inputs_and_binary_unchanged": true,
+        "job_id": "256447",
+        "coverage_sha256": "771c583d8aad0df362d13177ea226aacfc336601324d2f0bd6d056ae35634949",
+        "validator": {
+          "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+          "version": "0.10"
+        }
+      }
+    },
+    "no-minimization-or-shrinking-r1": {
+      "solver": {
+        "sha256": "7863e26a5264d3bd4b55608d2019fdc5a8b31dfb0ef28a92715a4c260259e396",
+        "version": "primo 0.2.0\ngit: 9f6b920\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07"
+      },
+      "solver_args": [
+        "--quiet",
+        "--stats",
+        "--cadical-option",
+        "shrink=0",
+        "--cadical-option",
+        "minimize=0"
+      ],
+      "timing_job_id": "256427",
+      "summary": {
+        "inputs": 34,
+        "solved": 28,
+        "sat": 15,
+        "unsat": 13,
+        "timeout": 6,
+        "error": 0,
+        "unsupported": 0,
+        "unknown": 0,
+        "wrong": 0,
+        "par2_mean_seconds": 4.2735218823529415,
+        "total_elapsed_seconds": 87.839764,
+        "solved_runtime_seconds": {
+          "min": 0.007381,
+          "median": 0.0750825,
+          "p90_nearest_rank": 6.001756,
+          "max": 6.865436
+        }
+      },
+      "reference_comparable": 26,
+      "reference_disagreements": [],
+      "families": {
+        "2017-Heizmann-UltimateInvariantSynthesis": {
+          "inputs": 2,
+          "solved": 0,
+          "sat": 0,
+          "unsat": 0,
+          "timeout": 2,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 20.0,
+          "total_elapsed_seconds": 20.140425,
+          "solved_runtime_seconds": {
+            "min": null,
+            "median": null,
+            "p90_nearest_rank": null,
+            "max": null
+          }
+        },
+        "2019-ezsmt": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 2,
+          "unsat": 0,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 6.433596,
+          "total_elapsed_seconds": 12.867192,
+          "solved_runtime_seconds": {
+            "min": 6.001756,
+            "median": 6.433596,
+            "p90_nearest_rank": 6.865436,
+            "max": 6.865436
+          }
+        },
+        "DTP-Scheduling": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 2,
+          "unsat": 0,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.010237,
+          "total_elapsed_seconds": 0.020474,
+          "solved_runtime_seconds": {
+            "min": 0.01012,
+            "median": 0.010237,
+            "p90_nearest_rank": 0.010354,
+            "max": 0.010354
+          }
+        },
+        "LassoRanker": {
+          "inputs": 2,
+          "solved": 1,
+          "sat": 1,
+          "unsat": 0,
+          "timeout": 1,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 10.766676,
+          "total_elapsed_seconds": 12.569325000000001,
+          "solved_runtime_seconds": {
+            "min": 1.533352,
+            "median": 1.533352,
+            "p90_nearest_rank": 1.533352,
+            "max": 1.533352
+          }
+        },
+        "TM": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 2,
+          "unsat": 0,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.19570400000000002,
+          "total_elapsed_seconds": 0.39140800000000003,
+          "solved_runtime_seconds": {
+            "min": 0.096534,
+            "median": 0.19570400000000002,
+            "p90_nearest_rank": 0.294874,
+            "max": 0.294874
+          }
+        },
+        "check": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 1,
+          "unsat": 1,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.008666,
+          "total_elapsed_seconds": 0.017332,
+          "solved_runtime_seconds": {
+            "min": 0.008335,
+            "median": 0.008666,
+            "p90_nearest_rank": 0.008997,
+            "max": 0.008997
+          }
+        },
+        "clock_synchro": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 0,
+          "unsat": 2,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 3.414854,
+          "total_elapsed_seconds": 6.829708,
+          "solved_runtime_seconds": {
+            "min": 0.023547,
+            "median": 3.414854,
+            "p90_nearest_rank": 6.806161,
+            "max": 6.806161
+          }
+        },
+        "keymaera": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 0,
+          "unsat": 2,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.007399,
+          "total_elapsed_seconds": 0.014798,
+          "solved_runtime_seconds": {
+            "min": 0.007381,
+            "median": 0.007399,
+            "p90_nearest_rank": 0.007417,
+            "max": 0.007417
+          }
+        },
+        "latendresse": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 2,
+          "unsat": 0,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.7645755,
+          "total_elapsed_seconds": 1.529151,
+          "solved_runtime_seconds": {
+            "min": 0.763106,
+            "median": 0.7645755,
+            "p90_nearest_rank": 0.766045,
+            "max": 0.766045
+          }
+        },
+        "meti-tarski": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 1,
+          "unsat": 1,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.008027,
+          "total_elapsed_seconds": 0.016054,
+          "solved_runtime_seconds": {
+            "min": 0.007394,
+            "median": 0.008027,
+            "p90_nearest_rank": 0.00866,
+            "max": 0.00866
+          }
+        },
+        "miplib": {
+          "inputs": 2,
+          "solved": 1,
+          "sat": 0,
+          "unsat": 1,
+          "timeout": 1,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 10.0433565,
+          "total_elapsed_seconds": 10.391257,
+          "solved_runtime_seconds": {
+            "min": 0.086713,
+            "median": 0.086713,
+            "p90_nearest_rank": 0.086713,
+            "max": 0.086713
+          }
+        },
+        "sal": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 0,
+          "unsat": 2,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.0309825,
+          "total_elapsed_seconds": 0.061965,
+          "solved_runtime_seconds": {
+            "min": 0.012212,
+            "median": 0.0309825,
+            "p90_nearest_rank": 0.049753,
+            "max": 0.049753
+          }
+        },
+        "sc": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 2,
+          "unsat": 0,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.0853955,
+          "total_elapsed_seconds": 0.170791,
+          "solved_runtime_seconds": {
+            "min": 0.061987,
+            "median": 0.0853955,
+            "p90_nearest_rank": 0.108804,
+            "max": 0.108804
+          }
+        },
+        "spider_benchmarks": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 0,
+          "unsat": 2,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.058961,
+          "total_elapsed_seconds": 0.117922,
+          "solved_runtime_seconds": {
+            "min": 0.05447,
+            "median": 0.058961,
+            "p90_nearest_rank": 0.063452,
+            "max": 0.063452
+          }
+        },
+        "tropical-matrix": {
+          "inputs": 2,
+          "solved": 0,
+          "sat": 0,
+          "unsat": 0,
+          "timeout": 2,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 20.0,
+          "total_elapsed_seconds": 21.059078,
+          "solved_runtime_seconds": {
+            "min": null,
+            "median": null,
+            "p90_nearest_rank": null,
+            "max": null
+          }
+        },
+        "tta_startup": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 1,
+          "unsat": 1,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.59698,
+          "total_elapsed_seconds": 1.19396,
+          "solved_runtime_seconds": {
+            "min": 0.161689,
+            "median": 0.59698,
+            "p90_nearest_rank": 1.032271,
+            "max": 1.032271
+          }
+        },
+        "uart": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 1,
+          "unsat": 1,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.224462,
+          "total_elapsed_seconds": 0.448924,
+          "solved_runtime_seconds": {
+            "min": 0.157836,
+            "median": 0.224462,
+            "p90_nearest_rank": 0.291088,
+            "max": 0.291088
+          }
+        }
+      },
+      "artifacts_sha256": {
+        "provenance.json": "749de4621a7fc3bc002cd421c5b44b3ecc67fcfc9f94311654142fb9d5403483",
+        "answers.csv": "318eb5a3c54302d80cc295349889d0edea15c9bfe8d8f07ec501a65e4ad9bdc2",
+        "answers.csv.jsonl": "9425a3c992faaa048e6db3ae4f8f3513f7bd58ac65ec62edf7f844347aac6017"
+      },
+      "rows": [
+        {
+          "file": "2017-Heizmann-UltimateInvariantSynthesis/_count_up_down.i_3_11_2.bpl_13.smt2",
+          "status": "timeout",
+          "answer": "unknown",
+          "expected": "unsat",
+          "seconds": 10.113784,
+          "counters": {
+            ":sat.conflicts": 536,
+            ":sat.decisions": 27827,
+            ":sat.propagations": 154302,
+            ":theory.conflicts": 3094
+          }
+        },
+        {
+          "file": "2017-Heizmann-UltimateInvariantSynthesis/_functions1.i_3_5_2.bpl_11.smt2",
+          "status": "timeout",
+          "answer": "unknown",
+          "expected": "unsat",
+          "seconds": 10.026641,
+          "counters": {
+            ":sat.conflicts": 3132,
+            ":sat.decisions": 25093,
+            ":sat.propagations": 256761,
+            ":theory.conflicts": 4737
+          }
+        },
+        {
+          "file": "2019-ezsmt/Labyrinth/SCC_Strong/0011-labyrinth-12-0.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "",
+          "seconds": 6.001756,
+          "counters": {
+            ":sat.conflicts": 260,
+            ":sat.decisions": 40406,
+            ":sat.propagations": 1816521,
+            ":theory.conflicts": 3142
+          }
+        },
+        {
+          "file": "2019-ezsmt/Labyrinth/SCC_Strong/0051-labyrinth-12-0.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "",
+          "seconds": 6.865436,
+          "counters": {
+            ":sat.conflicts": 597,
+            ":sat.decisions": 55863,
+            ":sat.propagations": 3432025,
+            ":theory.conflicts": 3442
+          }
+        },
+        {
+          "file": "DTP-Scheduling/constraints-cooking04.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.010354,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 312,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "DTP-Scheduling/constraints-cooking06.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.01012,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 450,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "LassoRanker/CooperatingT2/brp_withassume.t2.c_Iteration8_Loop_7-phaseTemplate.smt2",
+          "status": "timeout",
+          "answer": "unknown",
+          "expected": "sat",
+          "seconds": 11.035973,
+          "counters": {}
+        },
+        {
+          "file": "LassoRanker/CooperatingT2/byron-2.t2.c_Iteration2_Loop_7-phaseTemplate.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 1.533352,
+          "counters": {
+            ":sat.conflicts": 4,
+            ":sat.decisions": 28123,
+            ":sat.propagations": 92576,
+            ":theory.conflicts": 1077
+          }
+        },
+        {
+          "file": "TM/p-0-bucket_s13.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.294874,
+          "counters": {
+            ":sat.conflicts": 330,
+            ":sat.decisions": 4798,
+            ":sat.propagations": 73686,
+            ":theory.conflicts": 506
+          }
+        },
+        {
+          "file": "TM/p-0-bucket_s7.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.096534,
+          "counters": {
+            ":sat.conflicts": 162,
+            ":sat.decisions": 1642,
+            ":sat.propagations": 26406,
+            ":theory.conflicts": 187
+          }
+        },
+        {
+          "file": "check/bignum_lra1.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.008997,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 31,
+            ":sat.propagations": 45,
+            ":theory.conflicts": 5
+          }
+        },
+        {
+          "file": "check/bignum_lra2.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.008335,
+          "counters": {
+            ":sat.conflicts": 4,
+            ":sat.decisions": 62,
+            ":sat.propagations": 108,
+            ":theory.conflicts": 12
+          }
+        },
+        {
+          "file": "clock_synchro/clocksynchro_10clocks.worst_case_skew.induct.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 6.806161,
+          "counters": {
+            ":sat.conflicts": 1763,
+            ":sat.decisions": 16369,
+            ":sat.propagations": 151960,
+            ":theory.conflicts": 2295
+          }
+        },
+        {
+          "file": "clock_synchro/clocksynchro_2clocks.main_invar.base.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.023547,
+          "counters": {
+            ":sat.conflicts": 1,
+            ":sat.decisions": 2214,
+            ":sat.propagations": 2830,
+            ":theory.conflicts": 45
+          }
+        },
+        {
+          "file": "keymaera/bouncing-ball-inv-node1886.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.007417,
+          "counters": {
+            ":sat.conflicts": 1,
+            ":sat.decisions": 0,
+            ":sat.propagations": 2,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "keymaera/bouncing-ball-inv-node1935.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.007381,
+          "counters": {
+            ":sat.conflicts": 1,
+            ":sat.decisions": 0,
+            ":sat.propagations": 2,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "latendresse/ecoliFBAyicesTest-15875-16.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.763106,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 14304,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "latendresse/ecoliFBAyicesTest-31875-32.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.766045,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 14304,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "meti-tarski/Chua/1/IL/U/Chua-1-IL-U-chunk-0069.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.00866,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 1,
+            ":sat.propagations": 10,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "meti-tarski/Chua/1/VC1/L/Chua-1-VC1-L-chunk-0113.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.007394,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 9,
+            ":theory.conflicts": 1
+          }
+        },
+        {
+          "file": "miplib/danoint-30.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.086713,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 5128,
+            ":theory.conflicts": 1
+          }
+        },
+        {
+          "file": "miplib/danoint-66.smt2",
+          "status": "timeout",
+          "answer": "unknown",
+          "expected": "sat",
+          "seconds": 10.304544,
+          "counters": {
+            ":sat.conflicts": 84,
+            ":sat.decisions": 5508,
+            ":sat.propagations": 75489,
+            ":theory.conflicts": 254
+          }
+        },
+        {
+          "file": "sal/carpark/Carpark2-ausgabe-1.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.012212,
+          "counters": {
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "sal/carpark/Carpark2-ausgabe-5.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.049753,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 152,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "sc/sc-14.induction.cvc.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.061987,
+          "counters": {
+            ":sat.conflicts": 3,
+            ":sat.decisions": 2203,
+            ":sat.propagations": 5444,
+            ":theory.conflicts": 107
+          }
+        },
+        {
+          "file": "sc/sc-17.induction3.cvc.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.108804,
+          "counters": {
+            ":sat.conflicts": 10,
+            ":sat.decisions": 5031,
+            ":sat.propagations": 14418,
+            ":theory.conflicts": 205
+          }
+        },
+        {
+          "file": "spider_benchmarks/current_frame.induction.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.05447,
+          "counters": {
+            ":sat.conflicts": 34,
+            ":sat.decisions": 456,
+            ":sat.propagations": 6188,
+            ":theory.conflicts": 21
+          }
+        },
+        {
+          "file": "spider_benchmarks/fs_frame_gap.induction.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.063452,
+          "counters": {
+            ":sat.conflicts": 32,
+            ":sat.decisions": 1001,
+            ":sat.propagations": 6611,
+            ":theory.conflicts": 90
+          }
+        },
+        {
+          "file": "tropical-matrix/constraint-1007893.smt2",
+          "status": "timeout",
+          "answer": "unknown",
+          "expected": "",
+          "seconds": 11.021889,
+          "counters": {}
+        },
+        {
+          "file": "tropical-matrix/constraint-199552.smt2",
+          "status": "timeout",
+          "answer": "unknown",
+          "expected": "sat",
+          "seconds": 10.037189,
+          "counters": {
+            ":sat.conflicts": 712,
+            ":sat.decisions": 24136,
+            ":sat.propagations": 283387,
+            ":theory.conflicts": 1417
+          }
+        },
+        {
+          "file": "tta_startup/simple_startup_11nodes.abstract.base.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.161689,
+          "counters": {
+            ":sat.conflicts": 1,
+            ":sat.decisions": 0,
+            ":sat.propagations": 826,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "tta_startup/simple_startup_12nodes.missing.induct.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 1.032271,
+          "counters": {
+            ":sat.conflicts": 299,
+            ":sat.decisions": 206325,
+            ":sat.propagations": 669816,
+            ":theory.conflicts": 2677
+          }
+        },
+        {
+          "file": "uart/uart-10.base.cvc.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.291088,
+          "counters": {
+            ":sat.conflicts": 620,
+            ":sat.decisions": 13916,
+            ":sat.propagations": 148307,
+            ":theory.conflicts": 1135
+          }
+        },
+        {
+          "file": "uart/uart-11.induction.cvc.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.157836,
+          "counters": {
+            ":sat.conflicts": 131,
+            ":sat.decisions": 12345,
+            ":sat.propagations": 53292,
+            ":theory.conflicts": 800
+          }
+        }
+      ],
+      "model_validation": {
+        "status": "complete",
+        "expected_sat": 15,
+        "dolmen_pass": 15,
+        "completed": 15,
+        "outcomes": {
+          "pass": 15
+        },
+        "missing": [],
+        "malformed_rows": false,
+        "inputs_and_binary_unchanged": true,
+        "job_id": "256448",
+        "coverage_sha256": "7c7f07b86a5b0b8db71916230f606d306d70456c8ce3cb9a77573638cc74da3a",
+        "validator": {
+          "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+          "version": "0.10"
+        }
+      }
+    },
+    "no-shrinking-r0": {
+      "solver": {
+        "sha256": "7863e26a5264d3bd4b55608d2019fdc5a8b31dfb0ef28a92715a4c260259e396",
+        "version": "primo 0.2.0\ngit: 9f6b920\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07"
+      },
+      "solver_args": [
+        "--quiet",
+        "--stats",
+        "--cadical-option",
+        "shrink=0"
+      ],
+      "timing_job_id": "256423",
+      "summary": {
+        "inputs": 34,
+        "solved": 28,
+        "sat": 15,
+        "unsat": 13,
+        "timeout": 6,
+        "error": 0,
+        "unsupported": 0,
+        "unknown": 0,
+        "wrong": 0,
+        "par2_mean_seconds": 4.272433411764705,
+        "total_elapsed_seconds": 87.784484,
+        "solved_runtime_seconds": {
+          "min": 0.007431,
+          "median": 0.073876,
+          "p90_nearest_rank": 5.94508,
+          "max": 6.867602
+        }
+      },
+      "reference_comparable": 26,
+      "reference_disagreements": [],
+      "families": {
+        "2017-Heizmann-UltimateInvariantSynthesis": {
+          "inputs": 2,
+          "solved": 0,
+          "sat": 0,
+          "unsat": 0,
+          "timeout": 2,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 20.0,
+          "total_elapsed_seconds": 20.081119,
+          "solved_runtime_seconds": {
+            "min": null,
+            "median": null,
+            "p90_nearest_rank": null,
+            "max": null
+          }
+        },
+        "2019-ezsmt": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 2,
+          "unsat": 0,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 6.406340999999999,
+          "total_elapsed_seconds": 12.812681999999999,
+          "solved_runtime_seconds": {
+            "min": 5.94508,
+            "median": 6.406340999999999,
+            "p90_nearest_rank": 6.867602,
+            "max": 6.867602
+          }
+        },
+        "DTP-Scheduling": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 2,
+          "unsat": 0,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.011171,
+          "total_elapsed_seconds": 0.022342,
+          "solved_runtime_seconds": {
+            "min": 0.010871,
+            "median": 0.011171,
+            "p90_nearest_rank": 0.011471,
+            "max": 0.011471
+          }
+        },
+        "LassoRanker": {
+          "inputs": 2,
+          "solved": 1,
+          "sat": 1,
+          "unsat": 0,
+          "timeout": 1,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 10.7690835,
+          "total_elapsed_seconds": 12.572796,
+          "solved_runtime_seconds": {
+            "min": 1.538167,
+            "median": 1.538167,
+            "p90_nearest_rank": 1.538167,
+            "max": 1.538167
+          }
+        },
+        "TM": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 2,
+          "unsat": 0,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.197299,
+          "total_elapsed_seconds": 0.394598,
+          "solved_runtime_seconds": {
+            "min": 0.097783,
+            "median": 0.197299,
+            "p90_nearest_rank": 0.296815,
+            "max": 0.296815
+          }
+        },
+        "check": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 1,
+          "unsat": 1,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.008915,
+          "total_elapsed_seconds": 0.01783,
+          "solved_runtime_seconds": {
+            "min": 0.008338,
+            "median": 0.008915,
+            "p90_nearest_rank": 0.009492,
+            "max": 0.009492
+          }
+        },
+        "clock_synchro": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 0,
+          "unsat": 2,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 3.4072185,
+          "total_elapsed_seconds": 6.814437,
+          "solved_runtime_seconds": {
+            "min": 0.023363,
+            "median": 3.4072185,
+            "p90_nearest_rank": 6.791074,
+            "max": 6.791074
+          }
+        },
+        "keymaera": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 0,
+          "unsat": 2,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.007598000000000001,
+          "total_elapsed_seconds": 0.015196000000000001,
+          "solved_runtime_seconds": {
+            "min": 0.007431,
+            "median": 0.007598000000000001,
+            "p90_nearest_rank": 0.007765,
+            "max": 0.007765
+          }
+        },
+        "latendresse": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 2,
+          "unsat": 0,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.7629175,
+          "total_elapsed_seconds": 1.525835,
+          "solved_runtime_seconds": {
+            "min": 0.761977,
+            "median": 0.7629175,
+            "p90_nearest_rank": 0.763858,
+            "max": 0.763858
+          }
+        },
+        "meti-tarski": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 1,
+          "unsat": 1,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.008809999999999998,
+          "total_elapsed_seconds": 0.017619999999999997,
+          "solved_runtime_seconds": {
+            "min": 0.008058,
+            "median": 0.008809999999999998,
+            "p90_nearest_rank": 0.009562,
+            "max": 0.009562
+          }
+        },
+        "miplib": {
+          "inputs": 2,
+          "solved": 1,
+          "sat": 0,
+          "unsat": 1,
+          "timeout": 1,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 10.042431,
+          "total_elapsed_seconds": 10.393991999999999,
+          "solved_runtime_seconds": {
+            "min": 0.084862,
+            "median": 0.084862,
+            "p90_nearest_rank": 0.084862,
+            "max": 0.084862
+          }
+        },
+        "sal": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 0,
+          "unsat": 2,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.0306895,
+          "total_elapsed_seconds": 0.061379,
+          "solved_runtime_seconds": {
+            "min": 0.012208,
+            "median": 0.0306895,
+            "p90_nearest_rank": 0.049171,
+            "max": 0.049171
+          }
+        },
+        "sc": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 2,
+          "unsat": 0,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.0839705,
+          "total_elapsed_seconds": 0.167941,
+          "solved_runtime_seconds": {
+            "min": 0.059634,
+            "median": 0.0839705,
+            "p90_nearest_rank": 0.108307,
+            "max": 0.108307
+          }
+        },
+        "spider_benchmarks": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 0,
+          "unsat": 2,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.058284,
+          "total_elapsed_seconds": 0.116568,
+          "solved_runtime_seconds": {
+            "min": 0.053678,
+            "median": 0.058284,
+            "p90_nearest_rank": 0.06289,
+            "max": 0.06289
+          }
+        },
+        "tropical-matrix": {
+          "inputs": 2,
+          "solved": 0,
+          "sat": 0,
+          "unsat": 0,
+          "timeout": 2,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 20.0,
+          "total_elapsed_seconds": 21.096870000000003,
+          "solved_runtime_seconds": {
+            "min": null,
+            "median": null,
+            "p90_nearest_rank": null,
+            "max": null
+          }
+        },
+        "tta_startup": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 1,
+          "unsat": 1,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.6088155,
+          "total_elapsed_seconds": 1.217631,
+          "solved_runtime_seconds": {
+            "min": 0.164988,
+            "median": 0.6088155,
+            "p90_nearest_rank": 1.052643,
+            "max": 1.052643
+          }
+        },
+        "uart": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 1,
+          "unsat": 1,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.227824,
+          "total_elapsed_seconds": 0.455648,
+          "solved_runtime_seconds": {
+            "min": 0.159416,
+            "median": 0.227824,
+            "p90_nearest_rank": 0.296232,
+            "max": 0.296232
+          }
+        }
+      },
+      "artifacts_sha256": {
+        "provenance.json": "49c8310af8b9ff09cbcabe5685c75a33ffa79107f16cd3554dac86e22ac63cfe",
+        "answers.csv": "94577c70e47968ed5c88c4bc0577075a7db3b13d41991b09f9383e67b8c9f65a",
+        "answers.csv.jsonl": "f9dfa57b53726d2dd4f79cb075ed305c4d416c3ad155effc3d5600f66317aec8"
+      },
+      "rows": [
+        {
+          "file": "2017-Heizmann-UltimateInvariantSynthesis/_count_up_down.i_3_11_2.bpl_13.smt2",
+          "status": "timeout",
+          "answer": "unknown",
+          "expected": "unsat",
+          "seconds": 10.057274,
+          "counters": {
+            ":sat.conflicts": 536,
+            ":sat.decisions": 27827,
+            ":sat.propagations": 154302,
+            ":theory.conflicts": 3094
+          }
+        },
+        {
+          "file": "2017-Heizmann-UltimateInvariantSynthesis/_functions1.i_3_5_2.bpl_11.smt2",
+          "status": "timeout",
+          "answer": "unknown",
+          "expected": "unsat",
+          "seconds": 10.023845,
+          "counters": {
+            ":sat.conflicts": 3119,
+            ":sat.decisions": 25016,
+            ":sat.propagations": 255759,
+            ":theory.conflicts": 4717
+          }
+        },
+        {
+          "file": "2019-ezsmt/Labyrinth/SCC_Strong/0011-labyrinth-12-0.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "",
+          "seconds": 5.94508,
+          "counters": {
+            ":sat.conflicts": 260,
+            ":sat.decisions": 40406,
+            ":sat.propagations": 1816521,
+            ":theory.conflicts": 3142
+          }
+        },
+        {
+          "file": "2019-ezsmt/Labyrinth/SCC_Strong/0051-labyrinth-12-0.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "",
+          "seconds": 6.867602,
+          "counters": {
+            ":sat.conflicts": 597,
+            ":sat.decisions": 55863,
+            ":sat.propagations": 3432025,
+            ":theory.conflicts": 3442
+          }
+        },
+        {
+          "file": "DTP-Scheduling/constraints-cooking04.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.010871,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 312,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "DTP-Scheduling/constraints-cooking06.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.011471,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 450,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "LassoRanker/CooperatingT2/brp_withassume.t2.c_Iteration8_Loop_7-phaseTemplate.smt2",
+          "status": "timeout",
+          "answer": "unknown",
+          "expected": "sat",
+          "seconds": 11.034629,
+          "counters": {}
+        },
+        {
+          "file": "LassoRanker/CooperatingT2/byron-2.t2.c_Iteration2_Loop_7-phaseTemplate.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 1.538167,
+          "counters": {
+            ":sat.conflicts": 4,
+            ":sat.decisions": 28123,
+            ":sat.propagations": 92576,
+            ":theory.conflicts": 1077
+          }
+        },
+        {
+          "file": "TM/p-0-bucket_s13.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.296815,
+          "counters": {
+            ":sat.conflicts": 330,
+            ":sat.decisions": 4798,
+            ":sat.propagations": 73686,
+            ":theory.conflicts": 506
+          }
+        },
+        {
+          "file": "TM/p-0-bucket_s7.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.097783,
+          "counters": {
+            ":sat.conflicts": 162,
+            ":sat.decisions": 1642,
+            ":sat.propagations": 26406,
+            ":theory.conflicts": 187
+          }
+        },
+        {
+          "file": "check/bignum_lra1.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.009492,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 31,
+            ":sat.propagations": 45,
+            ":theory.conflicts": 5
+          }
+        },
+        {
+          "file": "check/bignum_lra2.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.008338,
+          "counters": {
+            ":sat.conflicts": 4,
+            ":sat.decisions": 62,
+            ":sat.propagations": 108,
+            ":theory.conflicts": 12
+          }
+        },
+        {
+          "file": "clock_synchro/clocksynchro_10clocks.worst_case_skew.induct.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 6.791074,
+          "counters": {
+            ":sat.conflicts": 1763,
+            ":sat.decisions": 16369,
+            ":sat.propagations": 151960,
+            ":theory.conflicts": 2295
+          }
+        },
+        {
+          "file": "clock_synchro/clocksynchro_2clocks.main_invar.base.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.023363,
+          "counters": {
+            ":sat.conflicts": 1,
+            ":sat.decisions": 2214,
+            ":sat.propagations": 2830,
+            ":theory.conflicts": 45
+          }
+        },
+        {
+          "file": "keymaera/bouncing-ball-inv-node1886.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.007765,
+          "counters": {
+            ":sat.conflicts": 1,
+            ":sat.decisions": 0,
+            ":sat.propagations": 2,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "keymaera/bouncing-ball-inv-node1935.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.007431,
+          "counters": {
+            ":sat.conflicts": 1,
+            ":sat.decisions": 0,
+            ":sat.propagations": 2,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "latendresse/ecoliFBAyicesTest-15875-16.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.761977,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 14304,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "latendresse/ecoliFBAyicesTest-31875-32.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.763858,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 14304,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "meti-tarski/Chua/1/IL/U/Chua-1-IL-U-chunk-0069.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.009562,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 1,
+            ":sat.propagations": 10,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "meti-tarski/Chua/1/VC1/L/Chua-1-VC1-L-chunk-0113.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.008058,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 9,
+            ":theory.conflicts": 1
+          }
+        },
+        {
+          "file": "miplib/danoint-30.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.084862,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 5128,
+            ":theory.conflicts": 1
+          }
+        },
+        {
+          "file": "miplib/danoint-66.smt2",
+          "status": "timeout",
+          "answer": "unknown",
+          "expected": "sat",
+          "seconds": 10.30913,
+          "counters": {
+            ":sat.conflicts": 84,
+            ":sat.decisions": 5508,
+            ":sat.propagations": 75489,
+            ":theory.conflicts": 254
+          }
+        },
+        {
+          "file": "sal/carpark/Carpark2-ausgabe-1.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.012208,
+          "counters": {
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "sal/carpark/Carpark2-ausgabe-5.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.049171,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 152,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "sc/sc-14.induction.cvc.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.059634,
+          "counters": {
+            ":sat.conflicts": 3,
+            ":sat.decisions": 2203,
+            ":sat.propagations": 5444,
+            ":theory.conflicts": 107
+          }
+        },
+        {
+          "file": "sc/sc-17.induction3.cvc.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.108307,
+          "counters": {
+            ":sat.conflicts": 10,
+            ":sat.decisions": 5031,
+            ":sat.propagations": 14418,
+            ":theory.conflicts": 205
+          }
+        },
+        {
+          "file": "spider_benchmarks/current_frame.induction.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.053678,
+          "counters": {
+            ":sat.conflicts": 34,
+            ":sat.decisions": 456,
+            ":sat.propagations": 6188,
+            ":theory.conflicts": 21
+          }
+        },
+        {
+          "file": "spider_benchmarks/fs_frame_gap.induction.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.06289,
+          "counters": {
+            ":sat.conflicts": 32,
+            ":sat.decisions": 1001,
+            ":sat.propagations": 6611,
+            ":theory.conflicts": 90
+          }
+        },
+        {
+          "file": "tropical-matrix/constraint-1007893.smt2",
+          "status": "timeout",
+          "answer": "unknown",
+          "expected": "",
+          "seconds": 11.022247,
+          "counters": {}
+        },
+        {
+          "file": "tropical-matrix/constraint-199552.smt2",
+          "status": "timeout",
+          "answer": "unknown",
+          "expected": "sat",
+          "seconds": 10.074623,
+          "counters": {
+            ":sat.conflicts": 693,
+            ":sat.decisions": 24092,
+            ":sat.propagations": 282097,
+            ":theory.conflicts": 1406
+          }
+        },
+        {
+          "file": "tta_startup/simple_startup_11nodes.abstract.base.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.164988,
+          "counters": {
+            ":sat.conflicts": 1,
+            ":sat.decisions": 0,
+            ":sat.propagations": 826,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "tta_startup/simple_startup_12nodes.missing.induct.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 1.052643,
+          "counters": {
+            ":sat.conflicts": 299,
+            ":sat.decisions": 206325,
+            ":sat.propagations": 669816,
+            ":theory.conflicts": 2677
+          }
+        },
+        {
+          "file": "uart/uart-10.base.cvc.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.296232,
+          "counters": {
+            ":sat.conflicts": 620,
+            ":sat.decisions": 13916,
+            ":sat.propagations": 148307,
+            ":theory.conflicts": 1135
+          }
+        },
+        {
+          "file": "uart/uart-11.induction.cvc.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.159416,
+          "counters": {
+            ":sat.conflicts": 131,
+            ":sat.decisions": 12345,
+            ":sat.propagations": 53292,
+            ":theory.conflicts": 800
+          }
+        }
+      ],
+      "model_validation": {
+        "status": "complete",
+        "expected_sat": 15,
+        "dolmen_pass": 15,
+        "completed": 15,
+        "outcomes": {
+          "pass": 15
+        },
+        "missing": [],
+        "malformed_rows": false,
+        "inputs_and_binary_unchanged": true,
+        "job_id": "256446",
+        "coverage_sha256": "376cf353cd1ebcbf6a216aa4a3002156e0047a91ce2da6af98d3cd785c8974b8",
+        "validator": {
+          "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+          "version": "0.10"
+        }
+      }
+    },
+    "no-shrinking-r1": {
+      "solver": {
+        "sha256": "7863e26a5264d3bd4b55608d2019fdc5a8b31dfb0ef28a92715a4c260259e396",
+        "version": "primo 0.2.0\ngit: 9f6b920\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07"
+      },
+      "solver_args": [
+        "--quiet",
+        "--stats",
+        "--cadical-option",
+        "shrink=0"
+      ],
+      "timing_job_id": "256428",
+      "summary": {
+        "inputs": 34,
+        "solved": 28,
+        "sat": 15,
+        "unsat": 13,
+        "timeout": 6,
+        "error": 0,
+        "unsupported": 0,
+        "unknown": 0,
+        "wrong": 0,
+        "par2_mean_seconds": 4.252224647058823,
+        "total_elapsed_seconds": 86.98642,
+        "solved_runtime_seconds": {
+          "min": 0.007405,
+          "median": 0.0742975,
+          "p90_nearest_rank": 5.534304,
+          "max": 6.783098
+        }
+      },
+      "reference_comparable": 26,
+      "reference_disagreements": [],
+      "families": {
+        "2017-Heizmann-UltimateInvariantSynthesis": {
+          "inputs": 2,
+          "solved": 0,
+          "sat": 0,
+          "unsat": 0,
+          "timeout": 2,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 20.0,
+          "total_elapsed_seconds": 20.067805,
+          "solved_runtime_seconds": {
+            "min": null,
+            "median": null,
+            "p90_nearest_rank": null,
+            "max": null
+          }
+        },
+        "2019-ezsmt": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 2,
+          "unsat": 0,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 6.0603195,
+          "total_elapsed_seconds": 12.120639,
+          "solved_runtime_seconds": {
+            "min": 5.534304,
+            "median": 6.0603195,
+            "p90_nearest_rank": 6.586335,
+            "max": 6.586335
+          }
+        },
+        "DTP-Scheduling": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 2,
+          "unsat": 0,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.010822,
+          "total_elapsed_seconds": 0.021644,
+          "solved_runtime_seconds": {
+            "min": 0.010483,
+            "median": 0.010822,
+            "p90_nearest_rank": 0.011161,
+            "max": 0.011161
+          }
+        },
+        "LassoRanker": {
+          "inputs": 2,
+          "solved": 1,
+          "sat": 1,
+          "unsat": 0,
+          "timeout": 1,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 10.7796815,
+          "total_elapsed_seconds": 12.594610999999999,
+          "solved_runtime_seconds": {
+            "min": 1.559363,
+            "median": 1.559363,
+            "p90_nearest_rank": 1.559363,
+            "max": 1.559363
+          }
+        },
+        "TM": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 2,
+          "unsat": 0,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.197966,
+          "total_elapsed_seconds": 0.395932,
+          "solved_runtime_seconds": {
+            "min": 0.098041,
+            "median": 0.197966,
+            "p90_nearest_rank": 0.297891,
+            "max": 0.297891
+          }
+        },
+        "check": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 1,
+          "unsat": 1,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.0090275,
+          "total_elapsed_seconds": 0.018055,
+          "solved_runtime_seconds": {
+            "min": 0.008592,
+            "median": 0.0090275,
+            "p90_nearest_rank": 0.009463,
+            "max": 0.009463
+          }
+        },
+        "clock_synchro": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 0,
+          "unsat": 2,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 3.4030405,
+          "total_elapsed_seconds": 6.806081,
+          "solved_runtime_seconds": {
+            "min": 0.022983,
+            "median": 3.4030405,
+            "p90_nearest_rank": 6.783098,
+            "max": 6.783098
+          }
+        },
+        "keymaera": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 0,
+          "unsat": 2,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.007438500000000001,
+          "total_elapsed_seconds": 0.014877000000000001,
+          "solved_runtime_seconds": {
+            "min": 0.007405,
+            "median": 0.007438500000000001,
+            "p90_nearest_rank": 0.007472,
+            "max": 0.007472
+          }
+        },
+        "latendresse": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 2,
+          "unsat": 0,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.7617455,
+          "total_elapsed_seconds": 1.523491,
+          "solved_runtime_seconds": {
+            "min": 0.760924,
+            "median": 0.7617455,
+            "p90_nearest_rank": 0.762567,
+            "max": 0.762567
+          }
+        },
+        "meti-tarski": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 1,
+          "unsat": 1,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.0079635,
+          "total_elapsed_seconds": 0.015927,
+          "solved_runtime_seconds": {
+            "min": 0.007414,
+            "median": 0.0079635,
+            "p90_nearest_rank": 0.008513,
+            "max": 0.008513
+          }
+        },
+        "miplib": {
+          "inputs": 2,
+          "solved": 1,
+          "sat": 0,
+          "unsat": 1,
+          "timeout": 1,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 10.0431855,
+          "total_elapsed_seconds": 10.33011,
+          "solved_runtime_seconds": {
+            "min": 0.086371,
+            "median": 0.086371,
+            "p90_nearest_rank": 0.086371,
+            "max": 0.086371
+          }
+        },
+        "sal": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 0,
+          "unsat": 2,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.0303305,
+          "total_elapsed_seconds": 0.060661,
+          "solved_runtime_seconds": {
+            "min": 0.011609,
+            "median": 0.0303305,
+            "p90_nearest_rank": 0.049052,
+            "max": 0.049052
+          }
+        },
+        "sc": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 2,
+          "unsat": 0,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.0823815,
+          "total_elapsed_seconds": 0.164763,
+          "solved_runtime_seconds": {
+            "min": 0.058995,
+            "median": 0.0823815,
+            "p90_nearest_rank": 0.105768,
+            "max": 0.105768
+          }
+        },
+        "spider_benchmarks": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 0,
+          "unsat": 2,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.057638999999999996,
+          "total_elapsed_seconds": 0.11527799999999999,
+          "solved_runtime_seconds": {
+            "min": 0.053054,
+            "median": 0.057638999999999996,
+            "p90_nearest_rank": 0.062224,
+            "max": 0.062224
+          }
+        },
+        "tropical-matrix": {
+          "inputs": 2,
+          "solved": 0,
+          "sat": 0,
+          "unsat": 0,
+          "timeout": 2,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 20.0,
+          "total_elapsed_seconds": 21.063989999999997,
+          "solved_runtime_seconds": {
+            "min": null,
+            "median": null,
+            "p90_nearest_rank": null,
+            "max": null
+          }
+        },
+        "tta_startup": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 1,
+          "unsat": 1,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.6097935,
+          "total_elapsed_seconds": 1.219587,
+          "solved_runtime_seconds": {
+            "min": 0.166716,
+            "median": 0.6097935,
+            "p90_nearest_rank": 1.052871,
+            "max": 1.052871
+          }
+        },
+        "uart": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 1,
+          "unsat": 1,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.22648449999999998,
+          "total_elapsed_seconds": 0.45296899999999996,
+          "solved_runtime_seconds": {
+            "min": 0.161382,
+            "median": 0.22648449999999998,
+            "p90_nearest_rank": 0.291587,
+            "max": 0.291587
+          }
+        }
+      },
+      "artifacts_sha256": {
+        "provenance.json": "4d446b23044b5950d6e2e3169d608caaac3045d29b67a2206e68ea6513a05eb9",
+        "answers.csv": "8000f89bf587e3ea2e9a933c36cc154bbf4f93513e7e1c2a732b575696f8fdad",
+        "answers.csv.jsonl": "dff002a5b12a26a37a5b3cc5982c812b2e7db5a43c1b45d46aa502ce88622151"
+      },
+      "rows": [
+        {
+          "file": "2017-Heizmann-UltimateInvariantSynthesis/_count_up_down.i_3_11_2.bpl_13.smt2",
+          "status": "timeout",
+          "answer": "unknown",
+          "expected": "unsat",
+          "seconds": 10.0449,
+          "counters": {
+            ":sat.conflicts": 536,
+            ":sat.decisions": 27805,
+            ":sat.propagations": 154233,
+            ":theory.conflicts": 3085
+          }
+        },
+        {
+          "file": "2017-Heizmann-UltimateInvariantSynthesis/_functions1.i_3_5_2.bpl_11.smt2",
+          "status": "timeout",
+          "answer": "unknown",
+          "expected": "unsat",
+          "seconds": 10.022905,
+          "counters": {
+            ":sat.conflicts": 3119,
+            ":sat.decisions": 25005,
+            ":sat.propagations": 255318,
+            ":theory.conflicts": 4707
+          }
+        },
+        {
+          "file": "2019-ezsmt/Labyrinth/SCC_Strong/0011-labyrinth-12-0.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "",
+          "seconds": 5.534304,
+          "counters": {
+            ":sat.conflicts": 260,
+            ":sat.decisions": 40406,
+            ":sat.propagations": 1816521,
+            ":theory.conflicts": 3142
+          }
+        },
+        {
+          "file": "2019-ezsmt/Labyrinth/SCC_Strong/0051-labyrinth-12-0.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "",
+          "seconds": 6.586335,
+          "counters": {
+            ":sat.conflicts": 597,
+            ":sat.decisions": 55863,
+            ":sat.propagations": 3432025,
+            ":theory.conflicts": 3442
+          }
+        },
+        {
+          "file": "DTP-Scheduling/constraints-cooking04.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.010483,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 312,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "DTP-Scheduling/constraints-cooking06.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.011161,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 450,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "LassoRanker/CooperatingT2/brp_withassume.t2.c_Iteration8_Loop_7-phaseTemplate.smt2",
+          "status": "timeout",
+          "answer": "unknown",
+          "expected": "sat",
+          "seconds": 11.035248,
+          "counters": {}
+        },
+        {
+          "file": "LassoRanker/CooperatingT2/byron-2.t2.c_Iteration2_Loop_7-phaseTemplate.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 1.559363,
+          "counters": {
+            ":sat.conflicts": 4,
+            ":sat.decisions": 28123,
+            ":sat.propagations": 92576,
+            ":theory.conflicts": 1077
+          }
+        },
+        {
+          "file": "TM/p-0-bucket_s13.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.297891,
+          "counters": {
+            ":sat.conflicts": 330,
+            ":sat.decisions": 4798,
+            ":sat.propagations": 73686,
+            ":theory.conflicts": 506
+          }
+        },
+        {
+          "file": "TM/p-0-bucket_s7.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.098041,
+          "counters": {
+            ":sat.conflicts": 162,
+            ":sat.decisions": 1642,
+            ":sat.propagations": 26406,
+            ":theory.conflicts": 187
+          }
+        },
+        {
+          "file": "check/bignum_lra1.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.009463,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 31,
+            ":sat.propagations": 45,
+            ":theory.conflicts": 5
+          }
+        },
+        {
+          "file": "check/bignum_lra2.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.008592,
+          "counters": {
+            ":sat.conflicts": 4,
+            ":sat.decisions": 62,
+            ":sat.propagations": 108,
+            ":theory.conflicts": 12
+          }
+        },
+        {
+          "file": "clock_synchro/clocksynchro_10clocks.worst_case_skew.induct.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 6.783098,
+          "counters": {
+            ":sat.conflicts": 1763,
+            ":sat.decisions": 16369,
+            ":sat.propagations": 151960,
+            ":theory.conflicts": 2295
+          }
+        },
+        {
+          "file": "clock_synchro/clocksynchro_2clocks.main_invar.base.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.022983,
+          "counters": {
+            ":sat.conflicts": 1,
+            ":sat.decisions": 2214,
+            ":sat.propagations": 2830,
+            ":theory.conflicts": 45
+          }
+        },
+        {
+          "file": "keymaera/bouncing-ball-inv-node1886.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.007472,
+          "counters": {
+            ":sat.conflicts": 1,
+            ":sat.decisions": 0,
+            ":sat.propagations": 2,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "keymaera/bouncing-ball-inv-node1935.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.007405,
+          "counters": {
+            ":sat.conflicts": 1,
+            ":sat.decisions": 0,
+            ":sat.propagations": 2,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "latendresse/ecoliFBAyicesTest-15875-16.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.760924,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 14304,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "latendresse/ecoliFBAyicesTest-31875-32.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.762567,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 14304,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "meti-tarski/Chua/1/IL/U/Chua-1-IL-U-chunk-0069.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.008513,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 1,
+            ":sat.propagations": 10,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "meti-tarski/Chua/1/VC1/L/Chua-1-VC1-L-chunk-0113.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.007414,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 9,
+            ":theory.conflicts": 1
+          }
+        },
+        {
+          "file": "miplib/danoint-30.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.086371,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 5128,
+            ":theory.conflicts": 1
+          }
+        },
+        {
+          "file": "miplib/danoint-66.smt2",
+          "status": "timeout",
+          "answer": "unknown",
+          "expected": "sat",
+          "seconds": 10.243739,
+          "counters": {
+            ":sat.conflicts": 84,
+            ":sat.decisions": 5508,
+            ":sat.propagations": 75489,
+            ":theory.conflicts": 254
+          }
+        },
+        {
+          "file": "sal/carpark/Carpark2-ausgabe-1.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.011609,
+          "counters": {
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "sal/carpark/Carpark2-ausgabe-5.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.049052,
+          "counters": {
+            ":sat.conflicts": 0,
+            ":sat.decisions": 0,
+            ":sat.propagations": 152,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "sc/sc-14.induction.cvc.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.058995,
+          "counters": {
+            ":sat.conflicts": 3,
+            ":sat.decisions": 2203,
+            ":sat.propagations": 5444,
+            ":theory.conflicts": 107
+          }
+        },
+        {
+          "file": "sc/sc-17.induction3.cvc.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.105768,
+          "counters": {
+            ":sat.conflicts": 10,
+            ":sat.decisions": 5031,
+            ":sat.propagations": 14418,
+            ":theory.conflicts": 205
+          }
+        },
+        {
+          "file": "spider_benchmarks/current_frame.induction.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.053054,
+          "counters": {
+            ":sat.conflicts": 34,
+            ":sat.decisions": 456,
+            ":sat.propagations": 6188,
+            ":theory.conflicts": 21
+          }
+        },
+        {
+          "file": "spider_benchmarks/fs_frame_gap.induction.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.062224,
+          "counters": {
+            ":sat.conflicts": 32,
+            ":sat.decisions": 1001,
+            ":sat.propagations": 6611,
+            ":theory.conflicts": 90
+          }
+        },
+        {
+          "file": "tropical-matrix/constraint-1007893.smt2",
+          "status": "timeout",
+          "answer": "unknown",
+          "expected": "",
+          "seconds": 11.021593,
+          "counters": {}
+        },
+        {
+          "file": "tropical-matrix/constraint-199552.smt2",
+          "status": "timeout",
+          "answer": "unknown",
+          "expected": "sat",
+          "seconds": 10.042397,
+          "counters": {
+            ":sat.conflicts": 693,
+            ":sat.decisions": 24092,
+            ":sat.propagations": 282097,
+            ":theory.conflicts": 1406
+          }
+        },
+        {
+          "file": "tta_startup/simple_startup_11nodes.abstract.base.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.166716,
+          "counters": {
+            ":sat.conflicts": 1,
+            ":sat.decisions": 0,
+            ":sat.propagations": 826,
+            ":theory.conflicts": 0
+          }
+        },
+        {
+          "file": "tta_startup/simple_startup_12nodes.missing.induct.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 1.052871,
+          "counters": {
+            ":sat.conflicts": 299,
+            ":sat.decisions": 206325,
+            ":sat.propagations": 669816,
+            ":theory.conflicts": 2677
+          }
+        },
+        {
+          "file": "uart/uart-10.base.cvc.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.291587,
+          "counters": {
+            ":sat.conflicts": 620,
+            ":sat.decisions": 13916,
+            ":sat.propagations": 148307,
+            ":theory.conflicts": 1135
+          }
+        },
+        {
+          "file": "uart/uart-11.induction.cvc.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.161382,
+          "counters": {
+            ":sat.conflicts": 131,
+            ":sat.decisions": 12345,
+            ":sat.propagations": 53292,
+            ":theory.conflicts": 800
+          }
+        }
+      ],
+      "model_validation": {
+        "status": "complete",
+        "expected_sat": 15,
+        "dolmen_pass": 15,
+        "completed": 15,
+        "outcomes": {
+          "pass": 15
+        },
+        "missing": [],
+        "malformed_rows": false,
+        "inputs_and_binary_unchanged": true,
+        "job_id": "256449",
+        "coverage_sha256": "b12456f08fb2e9a64294a55efa9f5b9eb296a62a0154c4ece4d919ba6c04adea",
+        "validator": {
+          "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+          "version": "0.10"
+        }
+      }
+    },
+    "reference-z3-r0": {
+      "solver": {
+        "sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+        "version": "Z3 version 5.1.0 - 64 bit"
+      },
+      "solver_args": [],
+      "timing_job_id": "256425",
+      "summary": {
+        "inputs": 34,
+        "solved": 26,
+        "sat": 14,
+        "unsat": 12,
+        "timeout": 8,
+        "error": 0,
+        "unsupported": 0,
+        "unknown": 0,
+        "wrong": 0,
+        "par2_mean_seconds": 5.203790352941176,
+        "total_elapsed_seconds": 97.07738,
+        "solved_runtime_seconds": {
+          "min": 0.012639,
+          "median": 0.045569,
+          "p90_nearest_rank": 1.385194,
+          "max": 6.901369
+        }
+      },
+      "reference_comparable": 26,
+      "reference_disagreements": [],
+      "families": {
+        "2017-Heizmann-UltimateInvariantSynthesis": {
+          "inputs": 2,
+          "solved": 0,
+          "sat": 0,
+          "unsat": 0,
+          "timeout": 2,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 20.0,
+          "total_elapsed_seconds": 20.028127,
+          "solved_runtime_seconds": {
+            "min": null,
+            "median": null,
+            "p90_nearest_rank": null,
+            "max": null
+          }
+        },
+        "2019-ezsmt": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 2,
+          "unsat": 0,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 6.2694665,
+          "total_elapsed_seconds": 12.538933,
+          "solved_runtime_seconds": {
+            "min": 5.637564,
+            "median": 6.2694665,
+            "p90_nearest_rank": 6.901369,
+            "max": 6.901369
+          }
+        },
+        "DTP-Scheduling": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 2,
+          "unsat": 0,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.015814,
+          "total_elapsed_seconds": 0.031628,
+          "solved_runtime_seconds": {
+            "min": 0.015547,
+            "median": 0.015814,
+            "p90_nearest_rank": 0.016081,
+            "max": 0.016081
+          }
+        },
+        "LassoRanker": {
+          "inputs": 2,
+          "solved": 0,
+          "sat": 0,
+          "unsat": 0,
+          "timeout": 2,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 20.0,
+          "total_elapsed_seconds": 20.048205,
+          "solved_runtime_seconds": {
+            "min": null,
+            "median": null,
+            "p90_nearest_rank": null,
+            "max": null
+          }
+        },
+        "TM": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 2,
+          "unsat": 0,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.7340465,
+          "total_elapsed_seconds": 1.468093,
+          "solved_runtime_seconds": {
+            "min": 0.082899,
+            "median": 0.7340465,
+            "p90_nearest_rank": 1.385194,
+            "max": 1.385194
+          }
+        },
+        "check": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 1,
+          "unsat": 1,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.013774,
+          "total_elapsed_seconds": 0.027548,
+          "solved_runtime_seconds": {
+            "min": 0.013302,
+            "median": 0.013774,
+            "p90_nearest_rank": 0.014246,
+            "max": 0.014246
+          }
+        },
+        "clock_synchro": {
+          "inputs": 2,
+          "solved": 1,
+          "sat": 0,
+          "unsat": 1,
+          "timeout": 1,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 10.0108095,
+          "total_elapsed_seconds": 10.035744999999999,
+          "solved_runtime_seconds": {
+            "min": 0.021619,
+            "median": 0.021619,
+            "p90_nearest_rank": 0.021619,
+            "max": 0.021619
+          }
+        },
+        "keymaera": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 0,
+          "unsat": 2,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.0130685,
+          "total_elapsed_seconds": 0.026137,
+          "solved_runtime_seconds": {
+            "min": 0.012973,
+            "median": 0.0130685,
+            "p90_nearest_rank": 0.013164,
+            "max": 0.013164
+          }
+        },
+        "latendresse": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 2,
+          "unsat": 0,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.540475,
+          "total_elapsed_seconds": 1.08095,
+          "solved_runtime_seconds": {
+            "min": 0.539917,
+            "median": 0.540475,
+            "p90_nearest_rank": 0.541033,
+            "max": 0.541033
+          }
+        },
+        "meti-tarski": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 1,
+          "unsat": 1,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.0130175,
+          "total_elapsed_seconds": 0.026035,
+          "solved_runtime_seconds": {
+            "min": 0.012639,
+            "median": 0.0130175,
+            "p90_nearest_rank": 0.013396,
+            "max": 0.013396
+          }
+        },
+        "miplib": {
+          "inputs": 2,
+          "solved": 1,
+          "sat": 0,
+          "unsat": 1,
+          "timeout": 1,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 10.033705,
+          "total_elapsed_seconds": 10.082920000000001,
+          "solved_runtime_seconds": {
+            "min": 0.06741,
+            "median": 0.06741,
+            "p90_nearest_rank": 0.06741,
+            "max": 0.06741
+          }
+        },
+        "sal": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 0,
+          "unsat": 2,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.021087500000000002,
+          "total_elapsed_seconds": 0.042175000000000004,
+          "solved_runtime_seconds": {
+            "min": 0.015525,
+            "median": 0.021087500000000002,
+            "p90_nearest_rank": 0.02665,
+            "max": 0.02665
+          }
+        },
+        "sc": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 2,
+          "unsat": 0,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.1438705,
+          "total_elapsed_seconds": 0.287741,
+          "solved_runtime_seconds": {
+            "min": 0.071887,
+            "median": 0.1438705,
+            "p90_nearest_rank": 0.215854,
+            "max": 0.215854
+          }
+        },
+        "spider_benchmarks": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 0,
+          "unsat": 2,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.037876499999999994,
+          "total_elapsed_seconds": 0.07575299999999999,
+          "solved_runtime_seconds": {
+            "min": 0.034022,
+            "median": 0.037876499999999994,
+            "p90_nearest_rank": 0.041731,
+            "max": 0.041731
+          }
+        },
+        "tropical-matrix": {
+          "inputs": 2,
+          "solved": 0,
+          "sat": 0,
+          "unsat": 0,
+          "timeout": 2,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 20.0,
+          "total_elapsed_seconds": 20.04254,
+          "solved_runtime_seconds": {
+            "min": null,
+            "median": null,
+            "p90_nearest_rank": null,
+            "max": null
+          }
+        },
+        "tta_startup": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 1,
+          "unsat": 1,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.36887149999999996,
+          "total_elapsed_seconds": 0.7377429999999999,
+          "solved_runtime_seconds": {
+            "min": 0.049407,
+            "median": 0.36887149999999996,
+            "p90_nearest_rank": 0.688336,
+            "max": 0.688336
+          }
+        },
+        "uart": {
+          "inputs": 2,
+          "solved": 2,
+          "sat": 1,
+          "unsat": 1,
+          "timeout": 0,
+          "error": 0,
+          "unsupported": 0,
+          "unknown": 0,
+          "wrong": 0,
+          "par2_mean_seconds": 0.24855349999999998,
+          "total_elapsed_seconds": 0.49710699999999997,
+          "solved_runtime_seconds": {
+            "min": 0.089386,
+            "median": 0.24855349999999998,
+            "p90_nearest_rank": 0.407721,
+            "max": 0.407721
+          }
+        }
+      },
+      "artifacts_sha256": {
+        "provenance.json": "041dacb700546d27df72740ac8cdf71477251a399e6bdca2a74207f28a0fe45d",
+        "answers.csv": "d40db6589dcb243a11f56d90328964b5e3fc204a09e6cf1ad4b3cc909d480edf",
+        "answers.csv.jsonl": "557b7539fb6f82f09f88f1bc52033d649b41649960726824119eac1e889571d2"
+      },
+      "rows": [
+        {
+          "file": "2017-Heizmann-UltimateInvariantSynthesis/_count_up_down.i_3_11_2.bpl_13.smt2",
+          "status": "timeout",
+          "answer": "error",
+          "expected": "unsat",
+          "seconds": 10.013782,
+          "counters": {}
+        },
+        {
+          "file": "2017-Heizmann-UltimateInvariantSynthesis/_functions1.i_3_5_2.bpl_11.smt2",
+          "status": "timeout",
+          "answer": "error",
+          "expected": "unsat",
+          "seconds": 10.014345,
+          "counters": {}
+        },
+        {
+          "file": "2019-ezsmt/Labyrinth/SCC_Strong/0011-labyrinth-12-0.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "",
+          "seconds": 5.637564,
+          "counters": {}
+        },
+        {
+          "file": "2019-ezsmt/Labyrinth/SCC_Strong/0051-labyrinth-12-0.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "",
+          "seconds": 6.901369,
+          "counters": {}
+        },
+        {
+          "file": "DTP-Scheduling/constraints-cooking04.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.015547,
+          "counters": {}
+        },
+        {
+          "file": "DTP-Scheduling/constraints-cooking06.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.016081,
+          "counters": {}
+        },
+        {
+          "file": "LassoRanker/CooperatingT2/brp_withassume.t2.c_Iteration8_Loop_7-phaseTemplate.smt2",
+          "status": "timeout",
+          "answer": "error",
+          "expected": "sat",
+          "seconds": 10.028229,
+          "counters": {}
+        },
+        {
+          "file": "LassoRanker/CooperatingT2/byron-2.t2.c_Iteration2_Loop_7-phaseTemplate.smt2",
+          "status": "timeout",
+          "answer": "error",
+          "expected": "sat",
+          "seconds": 10.019976,
+          "counters": {}
+        },
+        {
+          "file": "TM/p-0-bucket_s13.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 1.385194,
+          "counters": {}
+        },
+        {
+          "file": "TM/p-0-bucket_s7.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.082899,
+          "counters": {}
+        },
+        {
+          "file": "check/bignum_lra1.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.014246,
+          "counters": {}
+        },
+        {
+          "file": "check/bignum_lra2.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.013302,
+          "counters": {}
+        },
+        {
+          "file": "clock_synchro/clocksynchro_10clocks.worst_case_skew.induct.smt2",
+          "status": "timeout",
+          "answer": "error",
+          "expected": "unsat",
+          "seconds": 10.014126,
+          "counters": {}
+        },
+        {
+          "file": "clock_synchro/clocksynchro_2clocks.main_invar.base.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.021619,
+          "counters": {}
+        },
+        {
+          "file": "keymaera/bouncing-ball-inv-node1886.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.013164,
+          "counters": {}
+        },
+        {
+          "file": "keymaera/bouncing-ball-inv-node1935.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.012973,
+          "counters": {}
+        },
+        {
+          "file": "latendresse/ecoliFBAyicesTest-15875-16.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.539917,
+          "counters": {}
+        },
+        {
+          "file": "latendresse/ecoliFBAyicesTest-31875-32.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.541033,
+          "counters": {}
+        },
+        {
+          "file": "meti-tarski/Chua/1/IL/U/Chua-1-IL-U-chunk-0069.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.013396,
+          "counters": {}
+        },
+        {
+          "file": "meti-tarski/Chua/1/VC1/L/Chua-1-VC1-L-chunk-0113.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.012639,
+          "counters": {}
+        },
+        {
+          "file": "miplib/danoint-30.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.06741,
+          "counters": {}
+        },
+        {
+          "file": "miplib/danoint-66.smt2",
+          "status": "timeout",
+          "answer": "error",
+          "expected": "sat",
+          "seconds": 10.01551,
+          "counters": {}
+        },
+        {
+          "file": "sal/carpark/Carpark2-ausgabe-1.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.015525,
+          "counters": {}
+        },
+        {
+          "file": "sal/carpark/Carpark2-ausgabe-5.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.02665,
+          "counters": {}
+        },
+        {
+          "file": "sc/sc-14.induction.cvc.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.071887,
+          "counters": {}
+        },
+        {
+          "file": "sc/sc-17.induction3.cvc.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.215854,
+          "counters": {}
+        },
+        {
+          "file": "spider_benchmarks/current_frame.induction.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.034022,
+          "counters": {}
+        },
+        {
+          "file": "spider_benchmarks/fs_frame_gap.induction.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.041731,
+          "counters": {}
+        },
+        {
+          "file": "tropical-matrix/constraint-1007893.smt2",
+          "status": "timeout",
+          "answer": "error",
+          "expected": "",
+          "seconds": 10.026027,
+          "counters": {}
+        },
+        {
+          "file": "tropical-matrix/constraint-199552.smt2",
+          "status": "timeout",
+          "answer": "error",
+          "expected": "sat",
+          "seconds": 10.016513,
+          "counters": {}
+        },
+        {
+          "file": "tta_startup/simple_startup_11nodes.abstract.base.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.049407,
+          "counters": {}
+        },
+        {
+          "file": "tta_startup/simple_startup_12nodes.missing.induct.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.688336,
+          "counters": {}
+        },
+        {
+          "file": "uart/uart-10.base.cvc.smt2",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "seconds": 0.407721,
+          "counters": {}
+        },
+        {
+          "file": "uart/uart-11.induction.cvc.smt2",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "seconds": 0.089386,
+          "counters": {}
+        }
+      ]
+    }
+  },
+  "paired_comparisons": {
+    "no-shrinking-r0": {
+      "baseline": "default-r0",
+      "common_solved": 26,
+      "median_candidate_over_baseline_seconds": 1.0013638869480492,
+      "geomean_candidate_over_baseline_seconds": 0.9374077604298925,
+      "gains": [
+        "2019-ezsmt/Labyrinth/SCC_Strong/0011-labyrinth-12-0.smt2",
+        "2019-ezsmt/Labyrinth/SCC_Strong/0051-labyrinth-12-0.smt2"
+      ],
+      "losses": [],
+      "improvements_below_half_time": [
+        "sc/sc-17.induction3.cvc.smt2",
+        "tta_startup/simple_startup_12nodes.missing.induct.smt2"
+      ],
+      "regressions_above_twice_time": []
+    },
+    "no-minimization-or-shrinking-r0": {
+      "baseline": "default-r0",
+      "common_solved": 26,
+      "median_candidate_over_baseline_seconds": 1.0061460685614385,
+      "geomean_candidate_over_baseline_seconds": 0.9252773087112967,
+      "gains": [
+        "2019-ezsmt/Labyrinth/SCC_Strong/0011-labyrinth-12-0.smt2",
+        "2019-ezsmt/Labyrinth/SCC_Strong/0051-labyrinth-12-0.smt2"
+      ],
+      "losses": [],
+      "improvements_below_half_time": [
+        "sc/sc-17.induction3.cvc.smt2",
+        "tta_startup/simple_startup_12nodes.missing.induct.smt2"
+      ],
+      "regressions_above_twice_time": [],
+      "counters_identical_to_no_shrinking_on_all_28_solved": true
+    },
+    "no-shrinking-r1": {
+      "baseline": "default-r1",
+      "common_solved": 26,
+      "median_candidate_over_baseline_seconds": 0.9918608546048371,
+      "geomean_candidate_over_baseline_seconds": 0.9249593702651833,
+      "gains": [
+        "2019-ezsmt/Labyrinth/SCC_Strong/0011-labyrinth-12-0.smt2",
+        "2019-ezsmt/Labyrinth/SCC_Strong/0051-labyrinth-12-0.smt2"
+      ],
+      "losses": [],
+      "improvements_below_half_time": [
+        "sc/sc-17.induction3.cvc.smt2",
+        "tta_startup/simple_startup_12nodes.missing.induct.smt2"
+      ],
+      "regressions_above_twice_time": []
+    },
+    "no-minimization-or-shrinking-r1": {
+      "baseline": "default-r1",
+      "common_solved": 26,
+      "median_candidate_over_baseline_seconds": 0.9961919541272906,
+      "geomean_candidate_over_baseline_seconds": 0.9222352276237499,
+      "gains": [
+        "2019-ezsmt/Labyrinth/SCC_Strong/0011-labyrinth-12-0.smt2",
+        "2019-ezsmt/Labyrinth/SCC_Strong/0051-labyrinth-12-0.smt2"
+      ],
+      "losses": [],
+      "improvements_below_half_time": [
+        "sc/sc-17.induction3.cvc.smt2",
+        "tta_startup/simple_startup_12nodes.missing.induct.smt2"
+      ],
+      "regressions_above_twice_time": [],
+      "counters_identical_to_no_shrinking_on_all_28_solved": true
+    }
+  },
+  "decision": "Keep defaults. Shrinking disabled solves two additional Labyrinth inputs in both repeats. Extra minimization disabling has identical collected search counters on all 28 solved inputs. The sample does not identify which explanations SAT already reduces or establish arithmetic weakening opportunity; next theory instrumentation remains proposed."
+}
