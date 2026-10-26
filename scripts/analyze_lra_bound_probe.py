@@ -15,7 +15,8 @@ def number(pair):
 
 
 def add(a, b):
-    return tuple(x + y for x, y in zip(a, b, strict=True))
+    assert len(a) == len(b) == 2
+    return tuple(x + y for x, y in zip(a, b))
 
 
 def scale(a, c):

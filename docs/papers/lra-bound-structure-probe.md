@@ -13,7 +13,7 @@ lexicographically ordered delta rationals. This is a read-only observer of the
 existing interval helpers, not a new implementation of an optimized propagation
 algorithm. The checklist below is an original diagnostic design.
 
-- The SMT layer owns the [event sink `LraBoundProbe`](https://github.com/primo-solver/primo/blob/docs/public-repository-migration/src/smt/lra_bound_probe.hpp), which borrows an output stream from
+- The SMT layer owns the [event sink `LraBoundProbe`](https://github.com/primo-solver/primo/blob/47e5dee/src/smt/lra_bound_probe.hpp), which borrows an output stream from
   `CheckSatOptions`. The CLI owns the file for the entire session. No term or
   SAT storage is mutated by the observer; no pointer into growing term storage
   survives a term-creating operation.
@@ -84,7 +84,7 @@ substitutions would erase the structure being studied. Real-corpus runs should
 also record ordinary preprocessing behavior rather than silently suppress it.
 
 
-The [offline analyzer](https://github.com/primo-solver/primo/blob/docs/public-repository-migration/scripts/analyze_lra_bound_probe.py)
+The [offline analyzer](https://github.com/primo-solver/primo/blob/47e5dee/scripts/analyze_lra_bound_probe.py)
 checks each interval snapshot with Python `Fraction`, then reconstructs historical
 theory ancestry. Run it as `python3 scripts/analyze_lra_bound_probe.py TRACE.jsonl
 --out SUMMARY.json`. Counts of unnamed numerical bounds and stronger-than-installed
