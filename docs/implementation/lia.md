@@ -529,7 +529,7 @@ branch bounds, so the caller can extract the model. On `Unsat` or
 `LimitReached`, the procedure removes its speculative bounds. With the
 default sparse simplex, popping restores bounds rather than the previous
 assignment and basis. The optional SOI path also trails assignments and
-pivots; see [LRA backtracking](lra.md#rollback-and-model-values).
+pivots; see [LRA backtracking](lra.md#incrementality-and-rollback).
 Callers should rely on the bound-restoration contract, not require identical
 internal tableau states.
 
