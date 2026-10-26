@@ -12,7 +12,6 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-
 SCRIPT = Path(__file__).parents[2] / "scripts" / "slurm_prepare_benchmark_workspace.py"
 SPEC = importlib.util.spec_from_file_location(
     "slurm_prepare_benchmark_workspace", SCRIPT
@@ -72,6 +71,8 @@ class SshDiagnosticsTest(unittest.TestCase):
                     "--remote-dir",
                     "/cluster/work space",
                     "--build-via-slurm",
+                    "--build-slurm-nodelist",
+                    "node[07-09]",
                     "--jobs",
                     "2",
                     "--reuse-dependencies",
@@ -101,6 +102,7 @@ class SshDiagnosticsTest(unittest.TestCase):
         words = shlex.split(command)
         self.assertIn("--cpus-per-task=2", words)
         self.assertIn("--ntasks=1", words)
+        self.assertIn("--nodelist=node[07-09]", words)
         self.assertEqual(words[-3:-1], ["bash", "-c"])
         self.assertIn("cd '/cluster/work space'", words[-1])
         self.assertIn("--target primo -j2", words[-1])
@@ -133,6 +135,17 @@ class SshDiagnosticsTest(unittest.TestCase):
             ["ssh", "-F", "config", "cluster", "false"], check=False
         )
         self.assertEqual(output.getvalue(), "remote stdout\nremote stderr\n")
+
+    def test_node_selection_without_slurm_is_rejected_before_remote_work(self) -> None:
+        with (
+            mock.patch.object(sys, "argv", [str(SCRIPT), "--build-slurm-nodelist", "node07"]),
+            mock.patch.object(MODULE, "run") as run,
+            contextlib.redirect_stderr(io.StringIO()),
+            self.assertRaises(SystemExit) as failure,
+        ):
+            MODULE.main()
+        self.assertEqual(failure.exception.code, 2)
+        run.assert_not_called()
 
 
 if __name__ == "__main__":

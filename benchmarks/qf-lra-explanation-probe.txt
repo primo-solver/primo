@@ -1,0 +1,36 @@
+# QF_LRA explanation pilot: first two entries per family in the fixed stratified sample.
+# Corpus root: sandbox/non-incremental/QF_LRA; 34 inputs in 17 families.
+2017-Heizmann-UltimateInvariantSynthesis/_count_up_down.i_3_11_2.bpl_13.smt2
+2017-Heizmann-UltimateInvariantSynthesis/_functions1.i_3_5_2.bpl_11.smt2
+2019-ezsmt/Labyrinth/SCC_Strong/0011-labyrinth-12-0.smt2
+2019-ezsmt/Labyrinth/SCC_Strong/0051-labyrinth-12-0.smt2
+DTP-Scheduling/constraints-cooking04.smt2
+DTP-Scheduling/constraints-cooking06.smt2
+LassoRanker/CooperatingT2/brp_withassume.t2.c_Iteration8_Loop_7-phaseTemplate.smt2
+LassoRanker/CooperatingT2/byron-2.t2.c_Iteration2_Loop_7-phaseTemplate.smt2
+TM/p-0-bucket_s13.smt2
+TM/p-0-bucket_s7.smt2
+check/bignum_lra1.smt2
+check/bignum_lra2.smt2
+clock_synchro/clocksynchro_10clocks.worst_case_skew.induct.smt2
+clock_synchro/clocksynchro_2clocks.main_invar.base.smt2
+keymaera/bouncing-ball-inv-node1886.smt2
+keymaera/bouncing-ball-inv-node1935.smt2
+latendresse/ecoliFBAyicesTest-15875-16.smt2
+latendresse/ecoliFBAyicesTest-31875-32.smt2
+meti-tarski/Chua/1/IL/U/Chua-1-IL-U-chunk-0069.smt2
+meti-tarski/Chua/1/VC1/L/Chua-1-VC1-L-chunk-0113.smt2
+miplib/danoint-30.smt2
+miplib/danoint-66.smt2
+sal/carpark/Carpark2-ausgabe-1.smt2
+sal/carpark/Carpark2-ausgabe-5.smt2
+sc/sc-14.induction.cvc.smt2
+sc/sc-17.induction3.cvc.smt2
+spider_benchmarks/current_frame.induction.smt2
+spider_benchmarks/fs_frame_gap.induction.smt2
+tropical-matrix/constraint-1007893.smt2
+tropical-matrix/constraint-199552.smt2
+tta_startup/simple_startup_11nodes.abstract.base.smt2
+tta_startup/simple_startup_12nodes.missing.induct.smt2
+uart/uart-10.base.cvc.smt2
+uart/uart-11.induction.cvc.smt2
