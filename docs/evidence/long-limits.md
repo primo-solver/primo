@@ -134,6 +134,12 @@ as execution errors; the case-specific triage is recorded separately in the run
 ledger. These diagnostic runs contribute no speed measurements, and full
 SAT-model qualification remains pending.
 
+The two exact inputs are also recorded as
+[memory-attribution candidates](../leads/incremental-memory.md#current-memory-exhaustion-candidates).
+The UF case motivates term-storage and reclamation profiling; the QF_LIA case
+helps distinguish backend storage pressure. Neither trace establishes that
+reference counting would avoid the failure.
+
 Harness or filesystem failures stop only their own task and are recorded
 separately. Unreadable live-journal snapshots are advisory and retried; every
 terminal CSV and the global coverage audit remain strict. Earlier CPU smoke

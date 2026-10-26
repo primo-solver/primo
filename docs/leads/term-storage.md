@@ -56,6 +56,15 @@ The probe performs no solving or dynamic allocation measurement. Total storage
 also includes child arrays, big-number allocations, hash-table entries,
 capacity, and auxiliary data; see the [core chapter](../implementation/core.md).
 
+The reproduced 8 GiB memory-out on quantified UF
+`sledgehammer/FFT/uf.706467.smt2` is a concrete full-solver evaluation candidate:
+its failing allocation grows the core term vector during instantiation. See the
+[memory lead's trace and attribution questions](incremental-memory.md#current-memory-exhaustion-candidates).
+Measure term records, interning keys, child/payload storage and transient vector
+capacity separately on this input. The trace does not establish that the
+current node layout dominates memory or that any particular replacement would
+avoid exhaustion; distinguish smaller live storage from reclaiming unused terms.
+
 ## Design questions
 
 The [Yices survey](../papers/yices.md#other-ideas-retained-from-the-talk)

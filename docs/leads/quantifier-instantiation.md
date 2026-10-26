@@ -171,6 +171,18 @@ interruption must neither lose tuples nor turn incomplete enumeration into
 `sat`. Measure scans, useful lemmas, SAT re-entry costs, and retained memory
 before choosing a policy or changing the defaults.
 
+## Memory-growth candidate
+
+On `sledgehammer/FFT/uf.706467.smt2`, the preserved `4419dc9` binary fails a
+term-vector allocation during instantiation under an 8 GiB address-space cap;
+the [diagnostic traces](../evidence/long-limits.md) establish the allocation
+failure before the secondary cleanup abort. Use this as a candidate for the
+filters above and the [memory-retention investigation](incremental-memory.md#current-memory-exhaustion-candidates).
+Measure generated terms and retained cache/lemma bytes alongside useful
+instances and live roots. This distinguishes the potential benefit of producing
+fewer terms from reclaiming terms no longer needed; the trace alone proves
+neither redundant instantiation nor reclaimable garbage.
+
 ## Acceptance
 
 Choose one change at a time and retain the unchanged enumerator as a control.

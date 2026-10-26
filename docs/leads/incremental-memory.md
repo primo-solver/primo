@@ -2,8 +2,9 @@
 
 **Status: Open lead. Owner: unassigned.**
 
-Historical measurements and current owners are identified below. Reproduction
-on the current implementation and reclamation design have not started.
+Historical session measurements, current owners, and two reproduced single-query
+allocation failures are identified below. Live-versus-retained memory profiling,
+current incremental reproduction, and reclamation design remain pending.
 
 Can Primo support long-lived incremental sessions and a library API without
 reference-counted term handles? High memory use has been observed during
@@ -48,6 +49,51 @@ ownership for some objects. The open question concerns term/context lifetime
 and reclaiming unused storage; it is not whether Primo uses any reference
 counting at all. Define that boundary together with the
 [library API](library-api.md).
+
+(memory-exhaustion-candidates)=
+## Current memory-exhaustion candidates
+
+The [October 26 allocation traces](../evidence/long-limits.md) provide concrete
+inputs for memory attribution. They used Primo `4419dc9`, the preserved binary
+recorded in run `2026-10-24-all-theories-enforced-memory` in the
+[run ledger](../run-log.json), default arguments `--quiet`, and an actual 8 GiB
+address-space limit per solver process. These are non-incremental, single-query
+cases; they extend this lead to storage retained within one solve and do not
+reproduce accumulation across `push`/`pop` cycles.
+
+| Input | Observed allocation failure | Investigation role |
+| --- | --- | --- |
+| UF: `sledgehammer/FFT/uf.706467.smt2` | Term-vector growth in `TermManager::intern`, reached through quantifier enumeration and instantiation | Direct candidate for term-storage and term-lifetime profiling. |
+| QF_LIA: `nec-smt/large/getoption_user/prp-23-48.smt2` | Binary-clause vector growth during SAT preprocessing | Comparison case for attributing core versus backend memory and temporary allocation peaks. |
+
+The UF trace makes [compact term storage](term-storage.md) and reclamation worth
+investigating, but does not show that terms were dead or reclaimable. Measure
+which generated terms remain needed by active formulas, candidate pools, queued
+or retained lemmas, SAT/theory mappings, explanations and model construction.
+Also identify terms retained only to avoid regenerating earlier work, and
+measure the cost of releasing and later reconstructing that work. Reference
+counting alone would not reclaim objects still retained by such caches; their
+ownership and retention policy are part of the question.
+
+A concrete place to measure is
+{equalityexperiment}`QuantifierComponent::add_instance <src/theory/quantifiers/quantifier_component.cpp#L212-L247>`:
+instantiation has already constructed terms before this function rejects a
+normalized duplicate or trivial instance. Its raw and canonical instance caches
+retain term IDs, and
+{equalityexperiment}`their records survive SAT backtracking <src/theory/quantifiers/quantifier_component.cpp#L72-L73>`.
+Count the terms and bytes associated with intermediate forms, useful emitted lemmas,
+and these caches before deciding whether reclamation or
+[fewer generated instances](quantifier-instantiation.md) is the appropriate
+intervention. These are profiling questions, not a finding that the caches
+leak memory or can safely be cleared.
+
+For both inputs, attribute the full footprint to core nodes, hash-cons keys,
+child/payload allocations, quantifier state, SAT/theory state, allocator
+retention and transient vector growth. The QF_LIA failing allocation is in
+backend storage; that location neither identifies the largest existing owner
+nor establishes a need for core-term reference counting. The subsequent
+external-propagator cleanup abort is a separate error-handling defect, not
+evidence that a collection policy would recover enough memory.
 
 ## Lifetime of flattened EUF terms
 
@@ -111,6 +157,9 @@ and maintenance cost as well as reclaimed memory.
   assumptions modes on the same inputs. Include repeated
   `push`/assert/`check-sat`/`pop` cycles with fresh terms, a bounded active
   problem, and runs with and without caller-retained models or handles.
+- Profile the single-query candidates above alongside the incremental cases.
+  Measure unreachable storage, deliberately cached state and indispensable live
+  data separately; record address-space/capacity peaks as well as RSS.
 - Measure current RSS over time as well as peak RSS, live versus retained term
   counts, hash-cons entries, symbols, clauses, theory data, caches, and scratch
   capacity. Peak RSS alone cannot show reclamation; allocator retention and
