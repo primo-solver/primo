@@ -55,6 +55,7 @@ parts:
       - file: papers/lia-primal-heuristics
       - file: papers/yices
       - file: papers/clause-forgetting
+      - file: papers/conflict-explanation-minimization
       - file: papers/polarity-aware-cnf
       - file: papers/relevance-filtering
   - caption: Open leads

@@ -337,6 +337,35 @@ selects the corresponding reasons according to coefficient signs. The row
 identity needs no SAT premise. Collecting its selected bound reasons forms the
 conflict clause; the mathematical inequalities explain why that clause is valid.
 
+### Minimization and alternative explanations
+
+The default single-row procedure has no separate minimization pass. It uses
+the current blocking bounds, with one active bound per direction on each
+variable; it does not search weaker sufficient bounds or expand shared
+propagation antecedents. SAT can resolve propagated literals through their
+reasons during conflict analysis. Its final learned clause can differ from
+the theory explanation.
+
+A derived numeric bound need not have a SAT naming literal. If used to explain
+a conflict, its internal proof must first be expanded to SAT-visible premises
+by the theory. Compatible assigned stronger bounds do tighten the tableau:
+the new value and its asserting literal's reason replace the previous pair;
+an immediately contradictory bound returns a conflict instead. For a propagated
+literal, the SMT callback separately retains its antecedents for SAT analysis;
+see [the worked tightening explanation](../papers/conflict-explanation-minimization.md#tightening-a-bound-and-preserving-its-reason).
+Current row propagation returns derived values with those
+premise reasons and proves registered atoms; it does not install a general
+graph of internal derived bounds. The survey distinguishes these cases from
+[temporary bounds in private equality probes](../papers/conflict-explanation-minimization.md#bounds-without-a-sat-literal).
+
+The optional [SOI minimizer](#lra-soi) reduces selected violated rows. It is
+separate from arithmetic bound weakening and from SAT learned-clause
+minimization. Classical SAT minimization deletes literals; all-UIP shrinking
+can introduce replacement antecedents. King's thesis §2.2.9 describes another
+choice: weaken bound premises while preserving the numerical contradiction.
+These distinctions, current implementation limits and worked examples are
+in the [literature survey and proposed probe](../papers/conflict-explanation-minimization.md).
+
 ### Why one current row suffices after pivoting
 
 A current tableau row can combine several original equations. For example,
