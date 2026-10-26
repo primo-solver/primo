@@ -7017,9 +7017,12 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
       bound_probe_ = std::make_unique<LraBoundProbe>(*probe_stream, probe_limit);
       for (const auto& [term_id, var_id] : prepared_.var_ids_) {
         const auto& term = prepared_.terms_.get(term_id);
-        const std::string_view name = term.kind == core::TermKind::Constant
-                                          ? prepared_.terms_.symbols().get_symbol(term.symbol).name
-                                          : "";
+        // Own the name until synchronous serialization finishes. A view into a
+        // string/string-literal conditional would outlive its temporary string.
+        std::string name;
+        if (term.kind == core::TermKind::Constant) {
+          name = prepared_.terms_.symbols().get_symbol(term.symbol).name;
+        }
         bound_probe_->variable(var_id, term_id, name);
       }
       for (std::size_t i = 0; i < prepared_.atoms.size(); ++i) {

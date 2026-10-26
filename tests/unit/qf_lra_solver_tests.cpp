@@ -3324,6 +3324,20 @@ void same_slack_propagation_can_reach_a_conflict() {
   assert(not_propagated.result == CheckSatResult::Unsat);
 }
 
+void bound_probe_copies_symbol_names_for_output() {
+  // Exercise both short and heap-sized names after the temporary-string lifetime bug.
+  const std::string long_name = "bound_probe_name_longer_than_small_string_storage";
+  const std::string formula = "(set-logic QF_LRA) (declare-fun x () Real) (declare-fun " +
+                              long_name + " () Real) (assert (or (<= x 2) (<= " + long_name +
+                              " 3))) (check-sat)";
+  auto options = no_preprocessing_or_substitution();
+  std::ostringstream trace;
+  options.lra_bound_probe = &trace;
+  assert(check_sat_smtlib(formula, options).result == CheckSatResult::Sat);
+  assert(trace.str().find("\"name\":\"x\"") != std::string::npos);
+  assert(trace.str().find("\"name\":\"" + long_name + "\"") != std::string::npos);
+}
+
 void bound_probe_observes_without_changing_search() {
   const std::string formula = R"(
     (set-logic QF_LRA)
@@ -4942,6 +4956,7 @@ int main() {
   atoms_sharing_identical_polynomial_solve_correctly();
   same_slack_propagation_drives_boolean_structure();
   same_slack_propagation_can_reach_a_conflict();
+  bound_probe_copies_symbol_names_for_output();
   bound_probe_observes_without_changing_search();
   row_based_propagation_drives_boolean_structure();
   row_based_propagation_can_reach_a_conflict();

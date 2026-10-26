@@ -97,7 +97,10 @@ propagations and conflicts retain their event counts.
 
 Tests cover exact strict reverse reasoning with a negative coefficient, shared
 leaves, removal and reassignment of literal instances, unchanged verdict/search
-counters with tracing enabled, and trace truncation. These tests do not establish
+counters with tracing enabled, trace truncation, and output names
+from both short and long symbol strings. Variable names are copied into owned
+strings before synchronous serialization, so a temporary cannot leave a dangling
+view in the observer. These tests do not establish
 coverage of Boolean SAT reasons or independently prove UNSAT.
 
 Snapshot checking validates the interval computation using the recorded row. It

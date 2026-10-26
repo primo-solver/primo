@@ -18,6 +18,7 @@ case "${PRIMO_PROBE_PHASE:?}" in
   check)
     ctest --test-dir build-slurm-rel --timeout 120 --output-on-failure
     python3 -m unittest discover -s tests/python -p 'test_*.py'
+    python3 scripts/check_doc_examples.py --solver build-slurm-rel/primo
     ;;
   asan)
     probe_cxxflags=""
@@ -25,7 +26,7 @@ case "${PRIMO_PROBE_PHASE:?}" in
       probe_cxxflags="$probe_cxxflags -isystem $header"
     done < tmp/cxx-header-paths.txt
     export CXXFLAGS="$probe_cxxflags"
-    export CMAKE_BUILD_PARALLEL_LEVEL=2
+    export CMAKE_BUILD_PARALLEL_LEVEL=${SLURM_CPUS_PER_TASK:-2}
     asan_config=(-DCMAKE_BUILD_TYPE=Debug -DPRIMO_SANITIZERS=address
       "-DCMAKE_PREFIX_PATH=$PWD/contrib/local"
       "-DPRIMO_GIT_REVISION_OVERRIDE=$PRIMO_EXPECTED_GIT")
