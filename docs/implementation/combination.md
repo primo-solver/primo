@@ -272,7 +272,7 @@ equalities for each class. A class of `k` terms needs `k - 1` such edges:
 transitivity supplies the remaining equalities.
 
 Arithmetic also propagates ordinary bound predicates within its own solver.
-The [LRA propagation section](lra.md#propagation-and-online-checking) derives
+The [LRA propagation section](lra.md#propagate-and-explain-consequences) derives
 their explanation clauses from individual bounds and tableau rows. Here the
 conclusions cross the theory boundary as shared equalities. Both mechanisms
 must explain entailment from active constraints, not from coincident values

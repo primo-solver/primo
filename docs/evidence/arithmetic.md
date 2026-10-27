@@ -25,6 +25,45 @@ All named run IDs below are in the {source}`run ledger <docs/run-log.json>`.
 | SOI and its repairs | LRA objective, breakpoint walk and conflict explanation | {source}`arithmetic history <docs/arithmetic.md>` and {source}`paper deviation map <docs/papers/fast-linear-arithmetic-dpllt.md>` distinguish the optional algorithm from the default repair loop. |
 | Integer patching, GCD, cuts and branching | LIA chapter and its [preservation map](../coverage/lia.md) | The original integer record retains the scaling/auxiliary/infinitesimal defects, mutation failures, and later repair gates; early clean random campaigns did not cover all real-seed shapes. |
 
+## Integer-driver model audit (7 October 2026)
+
+The model-coverage audit for candidate `25b44cc` is complete. It reconciles
+successful SAT measurements with separate Dolmen replays of the same binary,
+input hashes and solver options. The audit checks exact shard and row coverage,
+replay identities, process exits, and saved assertion/model hashes. Timing data
+and PAR2 remain unchanged.
+
+| Measurement scope | SAT measurements | Direct Dolmen passes | Explicit syntax exceptions |
+| --- | ---: | ---: | ---: |
+| Full QF_LIA, two rounds | 13,187 | 13,187 | 0 |
+| Full QF_UFLIA, two rounds | 814 | 814 | 0 |
+| Preservation profiles, reruns and probes | 584 | 564 | 20 |
+| Previously audited lost-case reruns | 50 | 50 | 0 |
+
+The 20 exceptions are LRA inputs whose constant-denominator syntax Dolmen
+rejects under their declared logic. Dolmen accepted the same saved assertions
+and models with its logic setting widened to QF_NRA. A fresh recheck records
+the validator executable hash and exact command. These remain separately
+classified; they are not direct passes under the original logic. Across the
+selected records there are no missing SAT measurements, invalid models, or
+changed replay answers. Repairing 21 failed setup attempts supplied 213 of the
+preservation passes above; their original failed attempts remain available.
+
+The recorded-reference join found 20,796 agreeing full-corpus measurements and
+no disagreements. Another 261 measurements, representing 138 distinct inputs,
+have no decisive recorded reference answer. The join includes completed rows
+from an interrupted cvc5 campaign for answer comparison only. Model checks do
+not certify UNSAT answers, and missing reference answers are not counted as
+agreements.
+
+This closes the outstanding model-coverage reconciliation, not the migration's
+performance acceptance. The repeated `prp-67-50` cutoff loss and the recorded
+small-suite runtime flags remain as previously measured. Generated and retained
+session gates retain their separate audits. Exact commands, hashes, resources,
+SLURM jobs and artifact locations are recorded in the run ledger under
+`2026-10-07-integer-model-coverage-audit`, linked to
+`2026-10-06-integer-completion-unification`.
+
 ## Different routes can justify different choices
 
 At `3c2fbf1`, the model-phase/monotone comparison recorded 1,655 default QF_LRA
@@ -200,7 +239,7 @@ and derived CSVs are under `results/qf-lra-historical-references-20261011/`.
 ## Pure-LRA equality propagation experiment
 
 The October 21 experiment adds the default-off
-[`--lra-equality-propagation`](#experimental-pure-arithmetic-equality-propagation)
+{ref}`--lra-equality-propagation <experimental-pure-arithmetic-equality-propagation>`
 configuration for diversification. It applies the existing model-unit equality
 recognizer to comparisons already in a pure QF_LRA input. The paper explicitly
 disables this discovery pass for pure arithmetic; this experiment changes that

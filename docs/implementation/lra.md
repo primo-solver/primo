@@ -25,7 +25,28 @@ GCD checks, Gomory cuts and branching. It covers their explanations, budgets
 and incomplete cases; [its preservation map](../coverage/lia.md) retains
 the dated experiments separately.
 
-## Representation and ownership
+## Theory responsibilities and defaults
+
+The four main theory operations are collected below. The setup introduces
+what their bounds and tableau rows represent; each operation then states its
+input, result, default method and correctness condition.
+
+| Operation | Question answered | Default method |
+| --- | --- | --- |
+| [Check consistency](#check-consistency) | Do the currently asserted arithmetic literals have a common solution? | Exact simplex feasibility repair with Sparse pivot selection and eventual Bland fallback. |
+| [Explain a theory conflict](#explain-theory-conflicts) | Which assertions are inconsistent, and how is their clause obtained? | Two contradictory bounds, or a blocked row of the current tableau and its selected bounds. |
+| [Propagate and explain consequences](#propagate-and-explain-consequences) | Which additional registered literals follow from the active bounds? | Same-variable bound propagation; forward and reverse row propagation are off by default. |
+| [Construct a model](#model-construction) | How does a feasible symbolic assignment become concrete rational values? | Choose a sufficiently small positive rational for the symbolic infinitesimal, then build and reconstruct the typed model. |
+
+Conflict detection and explanation are sufficient for the arithmetic
+consistency decision; theory propagation is an additional search aid.
+[SOI](#lra-soi) is an optional alternative feasibility procedure. The
+[implementation details](#optional-algorithms-and-implementation-details)
+also cover pivot policies, sparse storage and theory-combination mechanisms.
+
+## Setup and maintained state
+
+### Representation and ownership
 
 The input to arithmetic preparation is typed core terms plus their Boolean
 abstraction. The tableau itself receives variable IDs, exact bounds and reason
@@ -52,7 +73,31 @@ extend the prepared base between SAT calls, for example for a new interface
 equality. This is separate from asserting a bound on the live tableau;
 `add_row` is not a trailed search operation.
 
-## From atoms to bounds
+### Tableau equations and bounds
+
+The tableau partitions its variables into **basic** variables, each defined
+by a row, and **nonbasic** variables, whose values can be chosen independently
+before recomputing the basic values. A row has the form
+
+$$
+x_b=\sum_{j\in N}a_{bj}x_j,
+$$
+
+where $N$ is the nonbasic set and every coefficient $a_{bj}$ is rational.
+Write $\beta(x)$ for the current assignment and $l(x),u(x)$ for the active
+lower and upper bounds when present. Bounds and assignments use delta
+rationals. Each bound carries the negation of its asserting SAT literal as
+its **reason**; those reasons will identify the premises of a conflict or
+propagation clause.
+
+The equations are identities introduced by arithmetic preparation. Pivoting
+solves one row for a different variable and substitutes that equation into
+the other rows. It changes the basis while preserving the represented
+system. The linked `LraTableau` owns these rows, values and bound reasons;
+[the sparse representation](#sparse-rows-and-reverse-occurrences) describes
+their storage and update costs.
+
+### From atoms to bounds
 
 {source}`LinearPolynomial::from_term <src/theory/arithmetic/linear_polynomial.cpp#L12-L50>`
 collects additions and constant scaling. Core `Times` stores a rational
@@ -135,7 +180,7 @@ restriction on surface Real disequality. See the
 {source}`equality-lowering design <docs/arithmetic.md#L130-L173>` and
 {source}`bound assertion boundary <src/smt/solver_engines.cpp#L3222-L3254>`.
 
-## Exact numbers and strict bounds
+### Exact numbers and strict bounds
 
 {source}`util::Rational <src/util/rational.hpp#L197-L199>` uses an inline signed
 64-bit numerator and denominator for values fitting its small representation.
@@ -154,7 +199,9 @@ reproducible layout probe and the remaining ownership and evaluation questions.
 A strict bound uses an exact symbolic infinitesimal.
 {source}`DeltaRational <src/theory/arithmetic/lra_tableau.hpp#L24-L56>` stores
 two rationals `(q, k)`, interpreted as `q + k*δ`, ordered lexicographically.
-There is no floating-point tolerance. For an unflipped Real atom:
+The rational part is compared first; the infinitesimal part breaks ties.
+Thus $0<\delta<r$ for every positive rational $r$, and
+$2-\delta<2<2+\delta$. There is no floating-point tolerance. For an unflipped Real atom:
 
 | Atom | Assigned true | Assigned false |
 | --- | --- | --- |
@@ -168,57 +215,31 @@ interpretation here is for Real arithmetic. The basis is Dutertre–de Moura
 §3.3, including the argument that a sufficiently small positive rational
 can replace `δ` in a satisfying model.
 
-## Sparse rows and reverse occurrences
+## Check consistency
 
-A basic variable is defined by a row `x_b = Σ a_bj*x_j` over nonbasic
-variables. The row contains only nonzero coefficients, in increasing variable
-order, with one entry per variable. The actual entry is
-{source}`RowEntry {var, coeff, occ_slot} <src/theory/arithmetic/lra_tableau.hpp#L290-L295>`.
-Its reverse link satisfies:
+| Contract | Meaning |
+| --- | --- |
+| Input | The prepared tableau equations, plus currently asserted bounds with their reason literals. |
+| Result | A successful `check()` returns no conflict; a failed bound assertion or check returns an owned vector of SAT clause literals. |
+| Default method | Ordinary feasibility repair with Sparse pivot selection and eventual Bland fallback. |
+| Correctness condition | Success means one assignment satisfies every tableau equation and active bound. Failure must be justified by an inconsistent subset of asserted bounds. |
 
-```text
-For entry e in rows_[b]:  occurs_in_[e.var][e.occ_slot] == b
-```
+### Feasibility without an optimization objective
 
-`occurs_in_[v]` lists the basic rows containing `v`. Its order is immaterial.
-`occ_slot` locates the column occurrence, not the row entry. Removing an
-occurrence swaps the last column element into its place and repairs that
-element's row backlink using binary search. Thus
-{source}`unlink_occurrence <src/theory/arithmetic/lra_tableau.cpp#L2004-L2024>`
-avoids scanning the column, but repair is logarithmic in the moved row's
-length. It is not the constant-time unlink of a doubly linked matrix.
+Proving UNSAT with delta rationals does not require optimizing $\delta$ or
+introducing an objective function. The ordinary repair procedure checks
+**feasibility**: whether the tableau equations and active bounds have a common
+solution in the lexicographically ordered pairs. Dutertre–de Moura §3.3 shows
+that this encoding preserves satisfiability for finite systems of rational
+linear constraints with strict inequalities. Consequently, a contradiction
+in the encoded system proves that the original constraints are unsatisfiable.
 
-```{figure} ../_static/lra-tableau-occurrence-index.svg
-:alt: Sorted tableau rows linked by occ_slot to unordered column occurrence lists, with swap-pop removal and backlink repair.
+During this check, $\delta$ stays symbolic. Choosing a sufficiently small
+positive rational to replace it belongs to
+[constructing a satisfying model](#model-construction), after feasibility has
+been established; an UNSAT proof needs no such choice.
 
-Sorted rows and their reverse occurrence index. Each row entry's `occ_slot`
-locates its entry in a column list; `occ` abbreviates `occurs_in_`.
-The {source}`editable TikZ source <docs/figures/lra-tableau-occurrence-index.tex>`
-is retained with the figure.
-```
-
-The distinction among the thesis representations matters. King §2.2.7 uses
-unsorted, doubly linked rows and columns, with a dense scratch map for row
-addition. Griggio §2.5.2 discusses sorted contiguous coefficient arrays.
-Bromberger §7.1.4 uses sorted doubly linked rows, unordered columns and a
-common denominator per row. Primo uses sorted vectors, individual rational
-coefficients and the indexed occurrences above. These designs support the
-same sparse operations with different allocation and removal costs.
-
-{source}`pivot <src/theory/arithmetic/lra_tableau.cpp#L143-L315>` merges sorted
-rows, drops exact cancellations and updates occurrences only when membership
-changes. The coefficient merge is linear in the two row lengths; occurrence
-repairs and arbitrary-precision arithmetic add their own costs. Updating a
-nonbasic assignment visits its dependent rows through `occurs_in_`, but the
-current {source}`update <src/theory/arithmetic/lra_tableau.cpp#L97-L141>` still
-searches each affected row for the coefficient. The occurrence index is not
-a direct pointer to that coefficient.
-
-The 32-bit occurrence slot assumes fewer than `2^32` occurrences in a column.
-The representation and its capacity assumption are distinct from SAT literal
-encoding. Hash-consing core terms does not bound either quantity.
-
-## Repairing an assignment
+### Repairing an assignment
 
 Dutertre–de Moura §3.2 separates three obligations:
 
@@ -243,35 +264,150 @@ and every other row depending on `s`. Each pivot preserves the equations.
 If no eligible entering variable exists, current bounds prevent repairing
 that row, and the solver explains a conflict.
 
-The solver's default is **Sparse**, although a directly constructed
-`LraTableau` defaults to Bland. The
-{source}`solver options <src/smt/check_sat.hpp#L282-L294>` select the policy:
+The solver selects Sparse by default and eventually uses Bland to ensure
+termination; a directly constructed `LraTableau` defaults to Bland. The
+[policy details](#pivot-selection-policies) describe the choices and fallback
+threshold. If no basic variable remains violated, `check()` succeeds. If a
+row is blocked, [conflict explanation](#explain-theory-conflicts) identifies
+the assertions responsible. The complete rational feasibility procedure
+can therefore decide inconsistency without enabling theory propagation or
+SOI. This completeness claim concerns linear real arithmetic; the
+[integer relaxation](lia.md) needs additional integer reasoning.
 
-| Policy | Implemented choice |
+### Deferred consistency checks
+
+The online propagator applies each assigned bound immediately but defers
+simplex repair until a consistency check is needed. This batches `check()`
+calls, not the bound updates themselves; deferred assignment updates remain
+a different proposal. An immediate bound conflict must survive the deferred
+check because the rejected bound never entered the tableau. See
+{source}`notification and deferred repair <src/smt/solver_engines.cpp#L7310-L7413>`.
+Delivered propagation reasons remain available until their assignments are
+removed, following the shared-assignment protocol in [DPLL(T)](dpllt.md).
+
+## Explain theory conflicts
+
+| Contract | Meaning |
 | --- | --- |
-| Default sparse leaving | Shortest violated row; greatest violation breaks ties. |
-| Sparse entering | Fewest column occurrences among eligible candidates considered; unit coefficient, then variable ID break ties. By default, compare at most 16 eligible candidates. The scan may visit more entries to find them. |
-| Optional least-violated leaving | Griggio §2.5.3: smallest violation first, then shortest row. This overrides the default leaving policy under Sparse. |
-| Optional Dantzig | Greatest violation first; largest absolute entering coefficient, with variable IDs breaking ties. |
-| Bland | Smallest eligible variable IDs on both sides; also the termination fallback. |
-| Optional SOI | Maintains a joint objective for all current violations; see [sum of infeasibilities](#lra-soi). |
+| Input | Either two contradictory bounds on one variable, or a violated basic row for which no eligible repair variable exists. |
+| Result | A clause containing the negations of the asserting SAT literals for the conflicting bounds. |
+| Default method | Direct bound comparison, followed when necessary by a single-row explanation after feasibility pivots. |
+| Correctness condition | The selected assertions and tableau identities imply a contradiction. Their negations therefore form a theory-valid clause. |
 
-Monniaux §3 also describes preferring shorter rows and fewer column
-occurrences to reduce pivot cost, in the context of forced pivoting. Primo's
-sparse policy applies that rationale to ordinary feasibility search;
-it does not import the surrounding floating-point/forced-pivot procedure.
-King §2.2.12 provides the direct comparison for minimum-column selection
-and eventual Bland fallback in SMT.
+These are explanations of **theory conflicts**. A propagation explanation
+instead justifies an additional literal and is covered in
+[propagation](#propagate-and-explain-consequences). The ordinary conflict
+procedure follows Dutertre–de Moura §3.2.2.
 
-Heuristic selection eventually switches to Bland within each `check()` call.
-The default threshold is `4 * variable_count + 64`; this is a tuning choice,
-not a bound on the total pivots needed. King §2.2.12 explains why eventual
-Bland selection matters. The selection scan must still find an eligible
-candidate beyond an unproductive row prefix; otherwise a cost cap could
-become an incorrect conflict. See
-{source}`select_entering_variable <src/theory/arithmetic/lra_tableau.cpp#L901-L986>`.
+### Directly contradictory bounds
 
-## Follow a strict conflict
+If assertions `p` and `q` impose $x\ge l$ and $x\le u$ with $u<l$,
+`assert_upper` or `assert_lower` returns the existing bound's reason and the
+incoming bound's reason, forming $\neg p\lor\neg q$. The comparison is exact,
+including infinitesimal parts. The rejected bound need not be installed and no pivot is required;
+the [bound assertion operations](#repairing-an-assignment) handle this case.
+
+### Selecting bounds from a blocked row
+
+Consider a current basic row $x_b=\sum_j a_jx_j$. If
+$\beta(x_b)<l(x_b)$ and no nonbasic variable can move to increase $x_b$,
+the positive-coefficient variables are at their upper bounds and the
+negative-coefficient variables are at their lower bounds. These bounds imply
+
+$$
+x_b\le U=\sum_{a_j>0}a_j u(x_j)+\sum_{a_j<0}a_j l(x_j)
+       =\beta(x_b)<l(x_b).
+$$
+
+The explanation selects the violated lower bound on $x_b$ and each bound
+used in $U$. For a variable above its upper bound, the symmetric calculation is
+
+$$
+x_b\ge L=\sum_{a_j>0}a_j l(x_j)+\sum_{a_j<0}a_j u(x_j)
+       =\beta(x_b)>u(x_b).
+$$
+
+Here the explanation selects the violated upper bound and the bounds used
+in $L$. Every selected bound exists: an absent blocking bound would leave
+an eligible movement direction. The
+{source}`entering-variable selection <src/theory/arithmetic/lra_tableau.cpp#L901-L986>`
+establishes that the row is blocked, and
+{source}`build_conflict <src/theory/arithmetic/lra_tableau.cpp#L433-L446>`
+selects the corresponding reasons according to coefficient signs. The row
+identity needs no SAT premise. Collecting its selected bound reasons forms the
+conflict clause; the mathematical inequalities explain why that clause is valid.
+
+### Minimization and alternative explanations
+
+The default single-row procedure has no separate minimization pass. It uses
+the current blocking bounds, with one active bound per direction on each
+variable; it does not search weaker sufficient bounds or expand shared
+propagation antecedents. SAT can resolve propagated literals through their
+reasons during conflict analysis. Its final learned clause can differ from
+the theory explanation.
+
+A derived numeric bound need not have a SAT naming literal. If used to explain
+a conflict, its internal proof must first be expanded to SAT-visible premises
+by the theory. Compatible assigned stronger bounds do tighten the tableau:
+the new value and its asserting literal's reason replace the previous pair;
+an immediately contradictory bound returns a conflict instead. For a propagated
+literal, the SMT callback separately retains its antecedents for SAT analysis;
+see [the worked tightening explanation](../papers/conflict-explanation-minimization.md#tightening-a-bound-and-preserving-its-reason).
+Current row propagation returns derived values with those
+premise reasons and proves registered atoms; it does not install a general
+graph of internal derived bounds. The survey distinguishes these cases from
+[temporary bounds in private equality probes](../papers/conflict-explanation-minimization.md#bounds-without-a-sat-literal).
+
+The optional [SOI minimizer](#lra-soi) reduces selected violated rows. It is
+separate from arithmetic bound weakening and from SAT learned-clause
+minimization. Classical SAT minimization deletes literals; all-UIP shrinking
+can introduce replacement antecedents. King's thesis §2.2.9 describes another
+choice: weaken bound premises while preserving the numerical contradiction.
+These distinctions, current implementation limits and worked examples are
+in the [literature survey and proposed probe](../papers/conflict-explanation-minimization.md).
+
+### Why one current row suffices after pivoting
+
+A current tableau row can combine several original equations. For example,
+let SAT assert all three literals
+
+```text
+p: x + y <= -1       q: x - y <= -1       r: x >= 0
+```
+
+Introduce basic variables $s_1=x+y$ and $s_2=x-y$, carrying upper bounds
+$s_1\le-1$ from `p` and $s_2\le-1$ from `q`. Initially set $x=y=0$;
+both basic variables violate their upper bounds. Each row can be repaired
+individually by moving $y$ while keeping $x\ge0$.
+
+One possible feasibility pivot repairs $s_1$ using $y$. Solving the first
+row and substituting into the second gives
+
+$$
+y=s_1-x,\qquad s_2=x-(s_1-x)=2x-s_1.
+$$
+
+Setting the now-nonbasic $s_1=-1$ gives $y=-1$ and $s_2=1$ when $x=0$.
+The single current row for $s_2$ is now blocked: decreasing $x$ is prevented
+by $x\ge0$, and increasing $s_1$ is prevented by $s_1\le-1$. Its selected
+bounds imply
+
+$$
+s_2=2x-s_1\ge2\cdot0-(-1)=1,
+\qquad s_2\le-1,
+$$
+
+a contradiction explained by $\neg p\lor\neg q\lor\neg r$.
+This is an illustrative pivot sequence; the selection policy can choose
+another sequence leading to a conflict. The
+{source}`pivot operation <src/theory/arithmetic/lra_tableau.cpp#L143-L315>`
+maintains the substituted identities, so the final explanation needs only
+the current row and its bounds. A single original constraint need not
+already expose the contradiction. SOI can also combine these two rows
+[directly](#combining-rows-into-a-conflict), but is not required to explain it.
+
+(a-bound-contradiction-and-its-cancellation-proof)=
+### Follow a strict conflict
 
 Let SAT assign `p`, `q` and `r` true for:
 
@@ -292,6 +428,26 @@ following is a trace of theory operations, not a prescribed SAT search order:
 The row and the two lower bounds imply `s >= 2 + δ`, contradicting `s <= 2`.
 The resulting clause is `¬p ∨ ¬q ∨ ¬r`.
 
+The same contradiction can be checked by rewriting the three encoded bounds
+with $\le$ and adding them:
+
+$$
+\begin{aligned}
+ x+y &\le 2,\\
+ -x &\le -2,\\
+ -y &\le -\delta
+\end{aligned}
+\qquad\Longrightarrow\qquad 0\le-\delta.
+$$
+
+The variables cancel, and the last inequality is false because
+$-\delta=(0,-1)<(0,0)=0$. All three weights in this combination are the
+nonnegative rational $1$, so adding the inequalities preserves their
+direction. More generally, nonnegative rational combinations of inequalities
+can certify a conflict when all variable coefficients cancel and the
+right-hand side is negative in the delta ordering. This explains the
+mathematical proof; it does not imply that Primo exports those weights.
+
 Primo stores **the negation of the asserting SAT literal** with each bound,
 at the {source}`assignment boundary <src/smt/solver_engines.cpp#L7302-L7310>`.
 {source}`build_conflict <src/theory/arithmetic/lra_tableau.cpp#L433-L446>`
@@ -300,7 +456,26 @@ It returns clause literals directly; the caller must not negate them again.
 This is the row-based explanation of Dutertre–de Moura §3.2.2. The returned
 object is a SAT clause, not an exported proof certificate with coefficients.
 
-## Propagation and online checking
+This clause excludes the current combination of arithmetic assertions.
+For a Boolean combination of constraints, SAT uses such clauses to continue
+the search; one arithmetic conflict alone need not make the whole formula
+UNSAT. See the [DPLL(T) chapter](dpllt.md).
+
+The optional [sum of infeasibilities](#lra-soi) mode uses an objective to guide
+repair. A zero sum means all bounds hold; a **proven positive minimum**
+establishes infeasibility. A positive violation at an arbitrary assignment
+does not suffice. This objective is a search method, not a requirement imposed
+by delta rationals, and $\delta$ itself is never the optimization variable.
+
+(propagation-and-online-checking)=
+## Propagate and explain consequences
+
+| Contract | Meaning |
+| --- | --- |
+| Input | Active bounds with reasons, tableau equations, and registered arithmetic atoms with SAT names. |
+| Result | An implied SAT literal and a clause consisting of that literal and the negated premises. No consequence is also a valid result. |
+| Default method | Compare bounds on the same variable. Forward and reverse row propagation require their separate options. |
+| Correctness condition | The asserted premises imply the propagated literal. Discovery of all consequences is not required. |
 
 Arithmetic propagation proves the value of an existing Boolean atom from
 active bounds and the tableau equations. It returns that literal with an
@@ -455,23 +630,163 @@ every bound-refinement policy described for Z3.
 For mixed Real problems, a proved comparison can also contribute to
 [online shared-equality propagation](combination.md#online-equality-propagation):
 assigned `x <= y` and `y <= x` justify `x = y`. The default
-[tableau equality rules](#lra-default-equality-rules) are another producer,
+{ref}`tableau equality rules <lra-default-equality-rules>` are another producer,
 with their own scheduling and completeness limits. These are separate from
 guessing an equality because two current model values happen to coincide.
 
-### Deferred consistency checks
+## Model construction
 
-The online propagator applies each assigned bound immediately but defers
-simplex repair until a consistency check is needed. This batches `check()`
-calls, not the bound updates themselves; deferred assignment updates remain
-a different proposal. An immediate bound conflict must survive the deferred
-check because the rejected bound never entered the tableau. See
-{source}`notification and deferred repair <src/smt/solver_engines.cpp#L7310-L7413>`.
-Delivered propagation reasons remain available until their assignments are
-removed, following the shared-assignment protocol in [DPLL(T)](dpllt.md).
+| Contract | Meaning |
+| --- | --- |
+| Input | A feasible tableau for the accepted arithmetic assignment, prepared term-to-variable mappings, and model reconstruction information. |
+| Result | Concrete rational values incorporated into the typed model. |
+| Default method | Instantiate the symbolic infinitesimal with a sufficiently small positive rational and reconstruct the model. |
+| Correctness condition | All selected arithmetic literals remain true; tableau equations and required shared-value relationships are preserved. |
+
+### From delta rationals to rational values
+
+For a satisfying Real model,
+{source}`choose_concrete_delta <src/smt/solver_engines.cpp#L3516-L3561>`
+finds a positive rational small enough to preserve the assigned bounds and
+evaluates `q + k*δ` at that value. Where a crossing point limits `δ`, it
+chooses half the smallest positive limit; otherwise it uses one. Mixed
+theory model construction additionally preserves required shared-value
+orders. Reconstruction of eliminated variables and Boolean values remains
+part of the model builder; a feasible tableau alone is not the printed model.
+
+For example, $x>2$ and $x\le3$ can have the symbolic assignment
+$x=2+\delta$. Preserving its encoded upper bound requires $\delta\le1$.
+The crossing limit is $1$, so the choice $\delta=1/2$ yields $x=5/2$,
+which satisfies both original inequalities. Each variable uses the same
+chosen value of $\delta$, preserving rational linear equations.
+
+The {source}`Real model construction path <src/smt/solver_engines.cpp#L3620-L3651>`
+uses `real_model_values_from_lra` to map prepared term IDs to concrete values
+and `build_qf_lra_model` to pass those values, Boolean atom assignments and
+model conversions to the typed model builder. These values are an output
+assignment, not new entailed bounds. For mixed theories,
+[model reconciliation](combination.md) also has to agree on shared values.
+
+(rollback-and-model-values)=
+## Incrementality and rollback
+
+`push()` returns an undo-trail position. With the default sparse policy,
+{source}`pop <src/theory/arithmetic/lra_tableau.cpp#L1896-L1966>` restores
+bounds and rebuilds the set of violated basic variables. It retains the
+current basis and assignment. Relaxing bounds preserves nonbasic feasibility,
+and the assignment still satisfies the retained equations. Basic feasibility
+is established by `check()`, not by the act of popping alone.
+
+This is an implementation choice within the fixed-equation approach. The
+technical report §3.2.4 describes saving a successful assignment;
+Bromberger §7.1.3 compares that with keeping the current assignment and
+rechecking. Primo neither restores an old assignment against a changed basis
+nor unconditionally runs `check()` inside `pop()`. SAT decision rollback and
+SMT-LIB assertion scopes remain different operations. The latter's reuse
+design is described in the {source}`retained LRA session note <docs/assumption-incremental-lra.md>`.
+
+The [SOI objective](#lra-soi) depends on which basic variables currently
+violate which bounds. Restoring bounds alone would leave its cached directions
+and row describing the abandoned state. Primo therefore trails assignments,
+pivoted rows, and objective changes in SOI mode, as selected by
+{source}`trails_assignments_and_pivots <src/theory/arithmetic/lra_tableau.hpp#L843>`.
+Each {source}`FRowTrailEntry <src/theory/arithmetic/lra_tableau.hpp#L790-L800>`
+saves the previous objective row together with the changed variable's previous
+direction. Undo restores both, and `pop` rebuilds the occurrence index after
+row restoration and the violated-variable set after all undo operations.
+This is Primo's current restoration strategy; an alternative could recompute
+the objective from the retained basis and restored bounds.
+
+## Optional algorithms and implementation details
+
+The sections above describe the standard theory operations. The following
+sections give optional alternatives, storage and selection details, and
+the additional mechanisms used for theory combination. Each states its
+own defaults and scope.
+
+### Pivot-selection policies
+
+The solver's default is **Sparse**, although a directly constructed
+`LraTableau` defaults to Bland. The
+{source}`solver options <src/smt/check_sat.hpp#L282-L294>` select the policy:
+
+| Policy | Implemented choice |
+| --- | --- |
+| Default sparse leaving | Shortest violated row; greatest violation breaks ties. |
+| Sparse entering | Fewest column occurrences among eligible candidates considered; unit coefficient, then variable ID break ties. By default, compare at most 16 eligible candidates. The scan may visit more entries to find them. |
+| Optional least-violated leaving | Griggio §2.5.3: smallest violation first, then shortest row. This overrides the default leaving policy under Sparse. |
+| Optional Dantzig | Greatest violation first; largest absolute entering coefficient, with variable IDs breaking ties. |
+| Bland | Smallest eligible variable IDs on both sides; also the termination fallback. |
+| Optional SOI | Maintains a joint objective for all current violations; see [sum of infeasibilities](#lra-soi). |
+
+Monniaux §3 also describes preferring shorter rows and fewer column
+occurrences to reduce pivot cost, in the context of forced pivoting. Primo's
+sparse policy applies that rationale to ordinary feasibility search;
+it does not import the surrounding floating-point/forced-pivot procedure.
+King §2.2.12 provides the direct comparison for minimum-column selection
+and eventual Bland fallback in SMT.
+
+Heuristic selection eventually switches to Bland within each `check()` call.
+The default threshold is `4 * variable_count + 64`; this is a tuning choice,
+not a bound on the total pivots needed. King §2.2.12 explains why eventual
+Bland selection matters. The selection scan must still find an eligible
+candidate beyond an unproductive row prefix; otherwise a cost cap could
+become an incorrect conflict. See
+{source}`select_entering_variable <src/theory/arithmetic/lra_tableau.cpp#L901-L986>`.
+
+### Sparse rows and reverse occurrences
+
+The tableau stores each basic row as a sorted vector of nonzero coefficients,
+with one entry per nonbasic variable. The actual entry is
+{source}`RowEntry {var, coeff, occ_slot} <src/theory/arithmetic/lra_tableau.hpp#L290-L295>`.
+Its reverse link satisfies:
+
+```text
+For entry e in rows_[b]:  occurs_in_[e.var][e.occ_slot] == b
+```
+
+`occurs_in_[v]` lists the basic rows containing `v`. Its order is immaterial.
+`occ_slot` locates the column occurrence, not the row entry. Removing an
+occurrence swaps the last column element into its place and repairs that
+element's row backlink using binary search. Thus
+{source}`unlink_occurrence <src/theory/arithmetic/lra_tableau.cpp#L2004-L2024>`
+avoids scanning the column, but repair is logarithmic in the moved row's
+length. It is not the constant-time unlink of a doubly linked matrix.
+
+```{figure} ../_static/lra-tableau-occurrence-index.svg
+:alt: Sorted tableau rows linked by occ_slot to unordered column occurrence lists, with swap-pop removal and backlink repair.
+
+Sorted rows and their reverse occurrence index. Each row entry's `occ_slot`
+locates its entry in a column list; `occ` abbreviates `occurs_in_`.
+The {source}`editable TikZ source <docs/figures/lra-tableau-occurrence-index.tex>`
+is retained with the figure.
+```
+
+The distinction among the thesis representations matters. King §2.2.7 uses
+unsorted, doubly linked rows and columns, with a dense scratch map for row
+addition. Griggio §2.5.2 discusses sorted contiguous coefficient arrays.
+Bromberger §7.1.4 uses sorted doubly linked rows, unordered columns and a
+common denominator per row. Primo uses sorted vectors, individual rational
+coefficients and the indexed occurrences above. These designs support the
+same sparse operations with different allocation and removal costs.
+
+{source}`pivot <src/theory/arithmetic/lra_tableau.cpp#L143-L315>` merges sorted
+rows, drops exact cancellations and updates occurrences only when membership
+changes. The coefficient merge is linear in the two row lengths; occurrence
+repairs and arbitrary-precision arithmetic add their own costs. Updating a
+nonbasic assignment visits its dependent rows through `occurs_in_`, but the
+current {source}`update <src/theory/arithmetic/lra_tableau.cpp#L97-L141>` still
+searches each affected row for the coefficient. The occurrence index is not
+a direct pointer to that coefficient. The
+[column-to-row coefficient lead](../leads/lra-column-coefficients.md) lists
+every such lookup and the candidate representations.
+
+The 32-bit occurrence slot assumes fewer than `2^32` occurrences in a column.
+The representation and its capacity assumption are distinct from SAT literal
+encoding. Hash-consing core terms does not bound either quantity.
 
 (lra-soi)=
-## Optional sum of infeasibilities
+### Optional sum of infeasibilities
 
 `--lra-pivoting-rule soi` selects **sum of infeasibilities (SOI)**. This mode
 uses all current bound violations to guide a repair step. The ordinary
@@ -481,7 +796,7 @@ King, Barrett and Dutertre's
 FMCAD 2013, §V, and [King's thesis](https://cs.nyu.edu/media/publications/king_tim.pdf),
 §§3.2–3.3. The implementation choices and departures are described below.
 
-### The violation objective and its row
+#### The violation objective and its row
 
 Write $\beta(x)$ for the current exact assignment, and $l(x)$ and $u(x)$
 for the active bounds when present. Define the violation of a variable by
@@ -532,7 +847,7 @@ update finish, the row must again equal the signed sum of the violated rows.
 The selector uses its coefficients, rather than treating the auxiliary
 variable's stored assignment as $V$.
 
-### Selecting a step at a bound crossing
+#### Selecting a step at a bound crossing
 
 {source}`soi_select <src/theory/arithmetic/lra_tableau.cpp#L517-L693>` considers
 a nonbasic $x_j$ occurring in the objective row if it can move in the direction
@@ -579,7 +894,7 @@ it only updates that variable. Otherwise, Primo first pivots the selected
 basic variable out, then sets it to the reached bound. This produces the same
 final assignment as updating the entering variable and then pivoting it in.
 
-### A worked pivot
+#### A worked pivot
 
 The paper's Figure 6 starts with
 
@@ -611,7 +926,8 @@ checks the resulting basis and values. It adds $x_2\ge1$ to establish the
 initial assignment through the public bound API; that extra bound does not
 restrict the increasing walk used here.
 
-### Combining rows into a conflict
+(combining-rows-into-a-conflict)=
+#### Combining rows into a conflict
 
 If the objective has no flexible variable and $E$ is empty, `check()` succeeds.
 If $E$ is nonempty, the current assignment minimizes the linear expression
@@ -651,7 +967,7 @@ collects the blocking nonbasic-bound reasons and each selected violated-bound
 reason. They already have their clause signs, as in the
 [single-row explanation](#follow-a-strict-conflict).
 
-### Shrinking the explanation
+#### Shrinking the explanation
 
 The initial set $E$ can include unrelated conflicts. The default
 {source}`QuickXplain-style minimizer <src/theory/arithmetic/lra_tableau.cpp#L744-L814>`
@@ -676,7 +992,7 @@ selected violated bound **and** each nonzero coefficient's blocking bound;
 minimizing the number of selected rows does not necessarily minimize the
 number of clause literals.
 
-### Cost, termination and implemented scope
+#### Cost, termination and implemented scope
 
 Primo follows the paper's violation objective, breakpoint walk and multi-row
 conflict derivation. It makes several concrete choices:
@@ -707,7 +1023,8 @@ conflict derivation. It makes several concrete choices:
   a row-combination conflict when its objective has no flexible variable;
   ordinary row-conflict checking also remains available after fallback.
 - SOI also maintains its objective during bound assertion and SAT rollback.
-  Its extra trail state is described [below](#rollback-and-model-values).
+  Its extra trail state is described in
+  [Incrementality and rollback](#incrementality-and-rollback).
 
 ```{admonition} Starting exactly on a bound
 :class: note
@@ -763,44 +1080,6 @@ timeouts. It found no wrong answers, crashes or input rejections. See
 `2026-09-29-soi-endpoint-correction` in the bundled run log for qualification
 and limits; this is not a new overall performance claim.
 
-## Rollback and model values
-
-`push()` returns an undo-trail position. With the default sparse policy,
-{source}`pop <src/theory/arithmetic/lra_tableau.cpp#L1896-L1966>` restores
-bounds and rebuilds the set of violated basic variables. It retains the
-current basis and assignment. Relaxing bounds preserves nonbasic feasibility,
-and the assignment still satisfies the retained equations. Basic feasibility
-is established by `check()`, not by the act of popping alone.
-
-This is an implementation choice within the fixed-equation approach. The
-technical report §3.2.4 describes saving a successful assignment;
-Bromberger §7.1.3 compares that with keeping the current assignment and
-rechecking. Primo neither restores an old assignment against a changed basis
-nor unconditionally runs `check()` inside `pop()`. SAT decision rollback and
-SMT-LIB assertion scopes remain different operations. The latter's reuse
-design is described in the {source}`retained LRA session note <docs/assumption-incremental-lra.md>`.
-
-The [SOI objective](#lra-soi) depends on which basic variables currently
-violate which bounds. Restoring bounds alone would leave its cached directions
-and row describing the abandoned state. Primo therefore trails assignments,
-pivoted rows, and objective changes in SOI mode, as selected by
-{source}`trails_assignments_and_pivots <src/theory/arithmetic/lra_tableau.hpp#L843>`.
-Each {source}`FRowTrailEntry <src/theory/arithmetic/lra_tableau.hpp#L790-L800>`
-saves the previous objective row together with the changed variable's previous
-direction. Undo restores both, and `pop` rebuilds the occurrence index after
-row restoration and the violated-variable set after all undo operations.
-This is Primo's current restoration strategy; an alternative could recompute
-the objective from the retained basis and restored bounds.
-
-For a satisfying Real model,
-{source}`choose_concrete_delta <src/smt/solver_engines.cpp#L3516-L3561>`
-finds a positive rational small enough to preserve the assigned bounds and
-evaluates `q + k*δ` at that value. Where a crossing point limits `δ`, it
-chooses half the smallest positive limit; otherwise it uses one. Mixed
-theory model construction additionally preserves required shared-value
-orders. Reconstruction of eliminated variables and Boolean values remains
-part of the model builder; a feasible tableau alone is not the printed model.
-
 (equalities-for-combination)=
 (propagating-equalities-between-shared-variables)=
 ### Propagating equalities between variables
@@ -808,7 +1087,7 @@ part of the model builder; a feasible tableau alone is not the printed model.
 The default QF_UFLRA producer uses four rules based on fixed variables and
 matching tableau rows. Their worked examples, bound explanations, and
 incompleteness are described in
-[the combination chapter](#lra-default-equality-rules). That chapter also gives
+{ref}`the combination chapter <lra-default-equality-rules>`. That chapter also gives
 the [model-mutation schedule](combination.md#when-model-mutation-runs): the
 dedicated Real route attempts scratch diversification before its final
 equality-exchange passes and model reconciliation.
@@ -834,8 +1113,8 @@ previously separate groups; transitivity supplies the remaining connections.
 The surrounding combination solver retains its exact fallback checks.
 
 This is the `model-unit` option. The
-{source}`default remains legacy <src/smt/check_sat.hpp#L396-L402>`; by default,
-pure QF_LRA calls neither producer. The full-corpus comparisons and the unpromoted
+{source}`default remains legacy <src/smt/check_sat.hpp#L396-L402>`; pure
+QF_LRA calls neither producer by default. The full-corpus comparisons and the unpromoted
 adaptive follow-up are preserved in the
 {source}`2024 paper implementation note <docs/papers/arithmetic-solving-in-z3.md#L280-L464>`.
 The paper's integer and nonlinear procedures are outside this chapter's scope.
@@ -903,7 +1182,7 @@ The frozen `4419dc9` implementation passed the generated, real-seed mutation,
 retained-session and sanitizer gates recorded in run
 `2026-10-21-pure-lra-equality-portfolio`. Full-corpus timings have completed;
 every successful SAT row passed separate direct Dolmen model replay. The
-[full-corpus comparison](#pure-lra-equality-portfolio-evidence)
+{ref}`full-corpus comparison <pure-lra-equality-portfolio-evidence>`
 records large aggregate losses and no additional portfolio coverage at 30 seconds.
 Exploratory shorter cutoffs show small coverage gains; no shared-budget
 portfolio schedule has been measured.
@@ -914,7 +1193,7 @@ indexed targets are already assigned and may queue duplicate candidates;
 delivery skips assigned candidates. This is a performance limitation, not
 evidence of extra pivoting or an invalid explanation. Defaults remain unchanged.
 
-## Fixed-basic elimination
+### Fixed-basic elimination
 
 When the lower and upper bounds of a basic variable become equal, its value is
 fixed while those bounds hold. With fixed elimination enabled,
@@ -949,7 +1228,7 @@ The {source}`fixed-elimination regression <tests/unit/qf_lra_solver_tests.cpp#L4
 checks SAT and UNSAT examples with the option both enabled and disabled, and
 requires nonzero elimination counters when enabled.
 
-## Model phase hints
+### Model phase hints
 
 `--lra-model-phase` lets the arithmetic assignment suggest a Boolean polarity
 for an arithmetic atom. If the current tableau assigns $x=2$, it recommends

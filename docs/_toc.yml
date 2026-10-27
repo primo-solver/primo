@@ -55,6 +55,7 @@ parts:
       - file: papers/lia-primal-heuristics
       - file: papers/yices
       - file: papers/clause-forgetting
+      - file: papers/conflict-explanation-minimization
       - file: papers/polarity-aware-cnf
       - file: papers/relevance-filtering
   - caption: Open leads
@@ -70,6 +71,7 @@ parts:
       - file: leads/arithmetic-symmetry
       - file: leads/lra-floating-point
       - file: leads/lra-equality-basis
+      - file: leads/lra-column-coefficients
       - file: leads/lia-extended-gcd
       - file: leads/lia-patching
       - file: leads/lia-infinitesimals

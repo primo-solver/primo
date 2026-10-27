@@ -3842,6 +3842,334 @@
       }
     },
     {
+      "id": "2026-10-07-integer-model-coverage-audit",
+      "date": "2026-10-07",
+      "kind": "post-benchmark-model-evidence-audit",
+      "parent_run": "2026-10-06-integer-completion-unification",
+      "scope": "Close current 25b44cc full-corpus and preservation/probe model-coverage reconciliation; keep old candidate attempts historical and performance acceptance separate.",
+      "candidate_commit": "25b44cc2204169ff0cc45a771b5ec56895a0511e",
+      "baseline_commit": "8ca8ebe8db75966fc8aefdd928a0878e648e7f10",
+      "audit_base_commit": "df42f03",
+      "candidate_binary_sha256": "f3a3904e9cf7628eece6fb4c30f80de9f29eafa4ab89eca5a48afbf9643901a8",
+      "validator": {
+        "name": "Dolmen",
+        "version": "0.10",
+        "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+      },
+      "status": "Model-coverage audit closed with 20 explicit declared-logic syntax exceptions, all rechecked with wider QF_NRA. No missing SAT records, invalid models or changed answers. Performance acceptance remains unfinished.",
+      "method": [
+        "Enumerate exact expected 616 parent shards and timing input manifests; select only status=ok, answer=sat, exit=0, timeout=false.",
+        "Join replay to parent provenance/answer digests; compare actual validator metadata, ordered solver options and frozen binary/validator identities; check completed row and outcome counts.",
+        "Rehash original input, saved adapted assertions and model; preserve per-measurement evidence in partition rows.json files.",
+        "Keep direct Dolmen acceptance distinct from constant-denominator LRA syntax rejection. Recheck all 20 same saved assertion/model pairs with --force-smtlib2-logic=QF_NRA and explicit executable identity.",
+        "Join immutable full-corpus timing answers to hash-matched recorded Z3/cvc5 rows. Completed JSONL rows of partial cvc5 campaigns are answer evidence only; unavailable references stay explicit."
+      ],
+      "results": {
+        "status": "audited-with-explicit-validator-syntax-exceptions",
+        "groups": {
+          "integer-paired/QF_LIA": {
+            "shards": 512,
+            "timing_rows": 26612,
+            "expected_sat": 13187,
+            "direct_dolmen_pass": 13187
+          },
+          "integer-paired/QF_UFLIA": {
+            "shards": 32,
+            "timing_rows": 1318,
+            "expected_sat": 814,
+            "direct_dolmen_pass": 814
+          },
+          "integer-preservation-paired/QF_UF": {
+            "shards": 2,
+            "timing_rows": 40,
+            "expected_sat": 8,
+            "direct_dolmen_pass": 8
+          },
+          "integer-preservation-paired/QF_UFLRA": {
+            "shards": 2,
+            "timing_rows": 40,
+            "expected_sat": 24,
+            "direct_dolmen_pass": 24
+          },
+          "integer-shared-paired/default": {
+            "shards": 8,
+            "timing_rows": 240,
+            "expected_sat": 104,
+            "direct_dolmen_pass": 94,
+            "wider_logic_pass": 10
+          },
+          "integer-shared-paired/lazy-uf": {
+            "shards": 8,
+            "timing_rows": 62,
+            "expected_sat": 20,
+            "direct_dolmen_pass": 20
+          },
+          "observation-probe": {
+            "shards": 9,
+            "timing_rows": 9,
+            "expected_sat": 9,
+            "direct_dolmen_pass": 9
+          },
+          "integer-preservation-reruns/QF_UFLRA": {
+            "shards": 3,
+            "timing_rows": 60,
+            "expected_sat": 36,
+            "direct_dolmen_pass": 36
+          },
+          "integer-shared-paired/online": {
+            "shards": 8,
+            "timing_rows": 240,
+            "expected_sat": 104,
+            "direct_dolmen_pass": 94,
+            "wider_logic_pass": 10
+          },
+          "integer-shared-paired/offline-uflia": {
+            "shards": 8,
+            "timing_rows": 32,
+            "expected_sat": 12,
+            "direct_dolmen_pass": 12
+          },
+          "integer-preservation-reruns/QF_UF": {
+            "shards": 3,
+            "timing_rows": 60,
+            "expected_sat": 12,
+            "direct_dolmen_pass": 12
+          },
+          "integer-shared-lazy-reruns": {
+            "shards": 3,
+            "timing_rows": 93,
+            "expected_sat": 30,
+            "direct_dolmen_pass": 30
+          },
+          "integer-preservation-paired/QF_UFLIA": {
+            "shards": 2,
+            "timing_rows": 40,
+            "expected_sat": 34,
+            "direct_dolmen_pass": 34
+          },
+          "integer-preservation-paired/QF_LIA": {
+            "shards": 2,
+            "timing_rows": 40,
+            "expected_sat": 28,
+            "direct_dolmen_pass": 28
+          },
+          "integer-shared-online-loss": {
+            "shards": 3,
+            "timing_rows": 3,
+            "expected_sat": 0
+          },
+          "integer-preservation-reruns/QF_UFLIA": {
+            "shards": 3,
+            "timing_rows": 60,
+            "expected_sat": 51,
+            "direct_dolmen_pass": 51
+          },
+          "integer-preservation-reruns/QF_LIA": {
+            "shards": 3,
+            "timing_rows": 60,
+            "expected_sat": 42,
+            "direct_dolmen_pass": 42
+          },
+          "integer-preservation-paired/QF_LRA": {
+            "shards": 2,
+            "timing_rows": 40,
+            "expected_sat": 28,
+            "direct_dolmen_pass": 28
+          },
+          "integer-preservation-reruns/QF_LRA": {
+            "shards": 3,
+            "timing_rows": 60,
+            "expected_sat": 42,
+            "direct_dolmen_pass": 42
+          }
+        },
+        "totals": {
+          "shards": 616,
+          "timing_rows": 29109,
+          "expected_sat": 14585,
+          "direct_dolmen_pass": 14565,
+          "wider_logic_pass": 20
+        },
+        "candidate_sha256": "f3a3904e9cf7628eece6fb4c30f80de9f29eafa4ab89eca5a48afbf9643901a8",
+        "dolmen_sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+        "invalid_models": 0,
+        "changed_answers": 0,
+        "missing_rows": 0,
+        "parts": {
+          "0": "f97359022fd650377b85aca78e875fadcc1d2e89bf14ee85a374c664a942c43f",
+          "1": "ed12e175f1077c02be8b572e8e609254355969514d0d80c1df74815ceca44b4b",
+          "2": "e84bad7752ae7c844d02973f309ac3a2c8fdafe33b9c7cf4ce1875280a6322e6",
+          "3": "a8f7cea7e7f4744e9afe6a98cc80f1e6b1bc20b2f0db1f77e8e2a3cd7fc20194",
+          "4": "bc84ea7640dc90f48430194284be269e9b6321cefc7dc5aeabb234fcd933f0a8",
+          "5": "6842ed14608c0a4bdc35f857eb7f1c4c8f2a5bc2e680bfc2d2de566cef6bc8a0",
+          "6": "079095c691afd1f234b199d478993bba4ba2a4737c6bca51a8c52d86f881ff82",
+          "7": "d0cfb9751943b0128812ae5562c1ce7832f26315393836686528a93cb7f5ffc0",
+          "8": "05a8334023e054fc58d8824b6ef10babe353e2d7af6754f7060af3b11d3e2755",
+          "9": "f4f2ceab686e54ffed19e3de7122c1ce7b56155eb7ab729247963a584cb12e91",
+          "10": "7714022076f825cdd6891e4f319ba5f6c2cb11400c22c084798d3c228cb2e0f4",
+          "11": "810ac48eacfdd14da16c9b41d20f8c6c896d32bf07204456f146ed2d2189de2c",
+          "12": "762e8aaf5309a151f165f48511830b14fa349c284fc33ae0ba425ee919beacbc",
+          "13": "ef4b2fe902fd538e2992da34725dd7e6994e8705a104353ef7bc0d75009fd3d4",
+          "14": "ff854d06006b71d468f1eb35afadc41a1bc6ce493ca89c81fa32762775534424",
+          "15": "2bced107121ebbcba5e51508387c0a790bedfab3bc68eced9d832f9338258fe6"
+        },
+        "note": "Saved evidence audit; no solver execution. Wider-logic checks remain distinct from direct acceptance under the declared logic. Lost-case reruns and generated/session gates have separate audits."
+      },
+      "previously_audited_lost_cases": {
+        "parent_field": "driver_migration.observation_followup.timing.lost_case_recovery",
+        "shards": 138,
+        "expected_sat": 50,
+        "direct_dolmen_pass": 50,
+        "job": "175199",
+        "note": "Separate prior audit; not included in the 616-shard totals above."
+      },
+      "repair": {
+        "failed_original_job": "173414",
+        "reason": "Original preservation replay setup could not resolve Dolmen; no coverage files were produced.",
+        "new_job": "175600",
+        "tasks": 21,
+        "states": "all COMPLETED 0:0",
+        "sat_measurements": 213,
+        "attempt": "model-validation-audit",
+        "solver_timeout_seconds": 180,
+        "dolmen_timeout_seconds": 60,
+        "dolmen_size": "8G",
+        "slurm_memory": "12G",
+        "cpus": 1,
+        "job_time_limit": "00:20:00",
+        "solver_options": "Replay exact timing options, adding --check-model and model requests; explicit contrib/local/bin/dolmen; --strict=false.",
+        "task_manifest_sha256": "e970bc2e58a24063cbb67dd77f44f0dcaa1b61019e56784828b1495da561cdf5",
+        "relative_parent_shards": [
+          "integer-preservation-reruns/QF_LIA/round-0/candidate/shard-0",
+          "integer-preservation-reruns/QF_LIA/round-1/candidate/shard-0",
+          "integer-preservation-reruns/QF_LIA/round-2/candidate/shard-0",
+          "integer-preservation-reruns/QF_LRA/round-0/candidate/shard-0",
+          "integer-preservation-reruns/QF_LRA/round-1/candidate/shard-0",
+          "integer-preservation-reruns/QF_LRA/round-2/candidate/shard-0",
+          "integer-preservation-reruns/QF_UF/round-0/candidate/shard-0",
+          "integer-preservation-reruns/QF_UF/round-1/candidate/shard-0",
+          "integer-preservation-reruns/QF_UF/round-2/candidate/shard-0",
+          "integer-preservation-reruns/QF_UFLIA/round-0/candidate/shard-0",
+          "integer-preservation-reruns/QF_UFLIA/round-1/candidate/shard-0",
+          "integer-preservation-reruns/QF_UFLIA/round-2/candidate/shard-0",
+          "integer-preservation-reruns/QF_UFLRA/round-0/candidate/shard-0",
+          "integer-preservation-reruns/QF_UFLRA/round-1/candidate/shard-0",
+          "integer-preservation-reruns/QF_UFLRA/round-2/candidate/shard-0",
+          "integer-shared-lazy-reruns/round-0/candidate/shard-0",
+          "integer-shared-lazy-reruns/round-1/candidate/shard-0",
+          "integer-shared-lazy-reruns/round-2/candidate/shard-0",
+          "integer-shared-online-loss/round-0/candidate/shard-0",
+          "integer-shared-online-loss/round-1/candidate/shard-0",
+          "integer-shared-online-loss/round-2/candidate/shard-0"
+        ],
+        "task_manifest_recipe": "Prefix each ordered relative_parent_shards entry with <observation-workspace>/results/ and write one per line, including a final newline."
+      },
+      "audit_jobs": {
+        "175621": "Serial hashing attempt cancelled to shard storage reads; no acceptance based on partial output.",
+        "175622": "All 16 initial audit partitions completed 0:0.",
+        "175638": "All 16 final strengthened audit partitions completed 0:0.",
+        "175654": "20 saved wider-logic models rechecked; COMPLETED 0:0."
+      },
+      "audit_resources": {
+        "partition": "compute,gpu",
+        "cpus_per_task": 1,
+        "memory": "4G",
+        "time_limit": "00:20:00",
+        "partitions": 16,
+        "note": "Audit reads/hashes artifacts; solver replay only in repair job. Wider-logic recheck uses 4G/1CPU/5-minute SLURM limit, Dolmen size2G and30-second per-model limit."
+      },
+      "reference_join": {
+        "status": "joined",
+        "counts": {
+          "QF_LIA/round-0": {
+            "agree": 9800,
+            "candidate-unsolved": 3383,
+            "no-decisive-reference": 123
+          },
+          "QF_LIA/round-1": {
+            "agree": 9842,
+            "candidate-unsolved": 3326,
+            "no-decisive-reference": 138
+          },
+          "QF_UFLIA/round-0": {
+            "candidate-unsolved": 82,
+            "agree": 577
+          },
+          "QF_UFLIA/round-1": {
+            "candidate-unsolved": 82,
+            "agree": 577
+          }
+        },
+        "totals": {
+          "agree": 20796,
+          "candidate-unsolved": 6873,
+          "no-decisive-reference": 261
+        },
+        "no_decisive_reference_unique_inputs": 138,
+        "unique_without_reference_by_candidate_answer": {
+          "sat": 49,
+          "unsat": 89
+        },
+        "note": "Hash-matched recorded answer comparison, including completed rows from partial reference campaigns. Unavailable reference answers remain explicit; no UNSAT proof certification or new timing claim.",
+        "artifact": "tmp/integer-model-audit/reference-final.json",
+        "sha256": "87524bd13d93a079610f1adca1fd3f2ef1927ed03320a5e4cd5153d573e56840"
+      },
+      "artifacts": {
+        "remote_workspace_role": "frozen integer-unification observation workspace",
+        "remote": "results/integer-model-audit-reviewed",
+        "local": "tmp/integer-model-audit",
+        "summary_sha256": "555e2fc051d795f43eeee8d8ad1f06974e2775b4307f3a8456d1d44c6e9abeb4",
+        "triage_recheck_sha256": "b105ad3c838506a0a272353286468c18104c406c54f1821ebca948ed55422c0e",
+        "metadata_archive_sha256": "95ca57dd819a873fd867398a704f4ec22a4451c7c02a14e483f7b5a5f947121a",
+        "reviewed_archive_sha256": "b018f57fd602712c3b484c4c00d082a72817f4bf7452535acd80695571141266",
+        "availability": "SLURM-backed original models and timing rows; collected audit/metadata local. Large generated artifacts not tracked.",
+        "final_job_states_sha256": "1d326f6732e832a108a4d237c5fbff38046b28f9e5f20230722a2dc545538596"
+      },
+      "commands": [
+        "python3 scripts/slurm_prepare_benchmark_workspace.py --check-only --no-sync --local-dir <frozen-25b44cc-checkout> --remote-dir <observation-workspace> --require-tool contrib/local/bin/dolmen",
+        "scp -F <ssh-config> scripts/qualification/integer_unification/audit_models.py scripts/qualification/integer_unification/audit_models.sbatch scripts/qualification/integer_unification/loss_models.sbatch scripts/qualification/integer_unification/recheck_triage.sbatch tmp/integer-model-audit/replay-tasks.txt <remote>:<observation-workspace>/results/",
+        "PRIMO_WORKDIR=<observation-workspace> PRIMO_REPLAY_TASKS=<observation-workspace>/results/replay-tasks.txt PRIMO_MODEL_ATTEMPT=model-validation-audit sbatch --partition=compute,gpu --array=0-20%8 --hint=nomultithread results/loss_models.sbatch",
+        "PRIMO_WORKDIR=<observation-workspace> sbatch --partition=compute,gpu --array=0-15%16 results/audit_models.sbatch",
+        "python3 scripts/qualification/integer_unification/audit_models.py --results <collected-results> --out <collected-results>/integer-model-audit-reviewed --parts 16 --collect",
+        "PRIMO_WORKDIR=<observation-workspace> sbatch --partition=compute,gpu results/recheck_triage.sbatch",
+        "python3 scripts/qualification/integer_unification/audit_references.py --candidate tmp/integer-model-audit/results/integer-paired --reference results/evaluation-refresh-20261005/historical-reference-metadata --out tmp/integer-model-audit/reference-final.json"
+      ],
+      "script_sha256": {
+        "scripts/qualification/integer_unification/audit_models.py": "8ccfae9294edc29f4467a4f4f0a44e0ce09ff7660df05e746fc4753212fa96e1",
+        "scripts/qualification/integer_unification/audit_models.sbatch": "72182f3206fe793d42560b02c595d7eef7ade9422a9eb5094adf1fe4f10979de",
+        "scripts/qualification/integer_unification/audit_references.py": "e5b7023b095e76509b600ac9b15c439fc434794d63902516e19fd58a622046ce",
+        "scripts/qualification/integer_unification/recheck_triage.sbatch": "1cc009e1fa1ddbff8db0f1b89493aa300110a627443a5d4463163f38aa1bf05e",
+        "scripts/qualification/integer_unification/loss_models.sbatch": "e184b5ed144501dbc2456e617088fd9540a6aca2f09090b565df7cd341137584"
+      },
+      "limitations": [
+        "No new timing measurement or solver build; this audits frozen25b44cc, not later source changes.",
+        "20 syntax exceptions are not direct acceptance under the declared logic.",
+        "261 timing rows on138uniqueinputs lack a decisive recorded reference; no UNSAT proof certification is claimed.",
+        "Generated and retained-session gates keep their earlier independent audits.",
+        "Repeated prp-67-50 loss and small-suite runtime flags are unaffected; no migration/default-promotion acceptance."
+      ],
+      "review": {
+        "reviewer": "model_audit_review",
+        "baseline": "df42f03",
+        "files": [
+          "docs/evidence/arithmetic.md",
+          "docs/run-log.json",
+          "scripts/qualification/integer_unification/audit_models.py"
+        ],
+        "findings": "R1 actual validator metadata checks added; R2 exact model-validation invocation enforced; R3 historical wider-logic executable identity supplemented by fresh recheck175654. Independent re-review verifies16partition hashes,14585unique measurement rows,20fresh triage records and1248referenceartifact hashes. R4 staging command and staged digest added. Final independent verdict: ready; R1-R4 resolved, no required findings remain.",
+        "accepted_scope": "Changed arithmetic evidence section, audit entry and status updates, and reviewed audit scripts against df42f03; final rendered section readable without clipping.",
+        "unchecked": "Reviewer did not independently witness remote execution or rerun historical lost-case audit; external URLs unchecked."
+      },
+      "local_checks": {
+        "lint": "passed",
+        "syntax": "both Python scripts py_compile; both sbatch scripts slurm_validate_sbatch passed",
+        "docs": "make docs passed",
+        "links": "make docs-check-links passed;261HTMLpages,32631local links,1039Git targets,zero failures;385 external URLs deferred",
+        "render": "/tmp/primo-model-audit.png; inspected the rendered arithmetic evidence section and table; no clipping or overlap."
+      },
+      "staging": "Audit/replay tools copied as result artifacts into the frozen workspace results/ directory; solver source and binaries were not synchronized or rebuilt. Staged bytes match script_sha256; audit_models.py SHA2568ccfae9294edc29f4467a4f4f0a44e0ce09ff7660df05e746fc4753212fa96e1."
+    },
+    {
       "id": "2026-10-06-gmp-download-fallback",
       "date": "2026-10-06",
       "kind": "dependency-bootstrap-reliability",
@@ -3999,7 +4327,7 @@
         "qualification_scripts_local": "scripts/qualification/integer_unification",
         "collected_evidence_local": "tmp/integer-unification/evidence (including extraction-fuzz-final-summary.json and integer-extraction-checks-172200/)"
       },
-      "remaining": "Corrected25b full timing and all46lost-case three-pair reruns are collected. Repeat-loss gate FAILED onprp-67-50: migration requires a fix and requalification or retention of the old default, and remains unfinished. All50SATmeasurements in lost-case reruns are model-validated. Remaining broader qualification work: audit main-corpus model coverage, repair/triage other preservation and probe replays, final reference joins, preservation acceptance, and final documentation/evidence.",
+      "remaining": "Model coverage and recorded-reference reconciliation closed by2026-10-07-integer-model-coverage-audit. All14001full-corpusSAT measurements pass Dolmen directly; preservation/probes564direct+20explicit wider-logic checks; lost-case50direct. Recorded references agree on20796measurements;261rows/138inputs lack decisive references. Migration remains unfinished due repeatedprp-67-50loss and retained small-suite performance flags; final migration acceptance is not granted by this audit.",
       "preceding_extraction_snapshot": "b86126f2d916ab2c638aad26412758bbfa5dbed4",
       "baseline_binary_sha256": "4f5b5e403e0b92fa6543d2afb1bd6608df50f64e6bf6fc7ebc98758a9fc52ce4",
       "baseline_corpora": {
@@ -4413,7 +4741,7 @@
           "slurm_summary": "results/integer-migration-qualified-slurm.json",
           "slurm_status": "completed0:0; same audited coverage"
         },
-        "remaining": "Corrected25b full timing and all46lost-case three-pair reruns are collected. Repeat-loss gate FAILED onprp-67-50: migration requires a fix and requalification or retention of the old default, and remains unfinished. All50SATmeasurements in lost-case reruns are model-validated. Remaining broader qualification work: audit main-corpus model coverage, repair/triage other preservation and probe replays, final reference joins, preservation acceptance, and final documentation/evidence.",
+        "remaining": "Model coverage and recorded-reference reconciliation closed by2026-10-07-integer-model-coverage-audit. All14001full-corpusSAT measurements pass Dolmen directly; preservation/probes564direct+20explicit wider-logic checks; lost-case50direct. Recorded references agree on20796measurements;261rows/138inputs lack decisive references. Migration remains unfinished due repeatedprp-67-50loss and retained small-suite performance flags; final migration acceptance is not granted by this audit.",
         "commands": {
           "build": "python3 scripts/slurm_prepare_benchmark_workspace.py --local-dir /tmp/primo-integer-extraction --build-via-slurm --remote-dir primo-integer-unification-extraction --reuse-dependencies --cmake <existing-cmake> --cxx-header-manifest <matching-header-manifest> --extra-target all --jobs 4",
           "checks": "PRIMO_EXPECTED_REVISION=cfc4136 sbatch scripts/qualification/integer_unification/migration_checks.sbatch",
@@ -6051,7 +6379,7 @@
             "173136",
             "173137"
           ],
-          "probe_model_status": "Released at offline checkpoint; pending scheduler dependencies on submitted timing jobs. Validation not yet complete.",
+          "probe_model_status": "Audited:9/9SAT measurements directly accepted by Dolmen; see2026-10-07-integer-model-coverage-audit.",
           "static": {
             "job": "172991",
             "status": "completed0:0",
@@ -6318,7 +6646,7 @@
               "shared_profiles": "173365",
               "shared_lra_validator_triage": "173366"
             },
-            "replay_status": "All28 recorded model jobs released; scheduler dependencies enforce completion of all submitted timings first. Not yet validated.",
+            "replay_status": "Audited: full-corpus14001direct passes; preservation/probes564direct and20explicit wider-logic checks; no missing SAT records. See2026-10-07-integer-model-coverage-audit.",
             "acceptance": "No loss reproduced in at least two of three further paired runs; aggregate PAR2 ratio <=1.02 in each full affected division; all candidate ground SAT timing rows independently validated.",
             "held_model_job_inventory": {
               "old_full": [
@@ -9446,7 +9774,7 @@
               }
             },
             "preservation_reruns": {
-              "status": "All timing reruns complete; no repeated loss. Independent model replay pending; runtime flags retained.",
+              "status": "Timing reruns complete with no repeated loss; all213SAT measurements directly validated after repairing setup in175600. Runtime flags retained.",
               "jobs": {
                 "QF_UF": "173404",
                 "QF_LIA": "173405",
@@ -15248,7 +15576,8 @@
                 "processes": "No local solver/test/fuzzer experiments running",
                 "cpp_checks": "NoC++source changed in this investigation; previous solver checks retained, no new solver acceptance claim."
               }
-            }
+            },
+            "model_coverage_audit": "2026-10-07-integer-model-coverage-audit"
           },
           "profiling": {
             "status": "Profiles complete; no solver change or performance qualification claim",
