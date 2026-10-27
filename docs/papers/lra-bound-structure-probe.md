@@ -235,5 +235,7 @@ count. All 47 screening runs timed out; these are selection observations, not
 successful solves. Family round-robin selection takes the ten SAT cases first,
 then ten UNSAT cases, ranking conflicts/pivots within each family. The
 [selection script](https://github.com/primo-solver/primo/blob/a39cbab/scripts/select_lra_bound_hard_inputs.py)
-and [manifest](https://github.com/primo-solver/primo/blob/a39cbab/benchmarks/qf-lra-bound-long-probe.json) record the input hashes and both baseline sources. This is planned
+and [manifest](https://github.com/primo-solver/primo/blob/a39cbab/benchmarks/qf-lra-bound-long-probe.json) record the input hashes and both baseline sources. The
+[screening evidence](../coverage/lra-bound-hard-screen.json) retains all 47 input
+identities and work counters, including excluded candidates. This is planned
 follow-up evidence until the longer jobs are collected and judged.
