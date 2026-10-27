@@ -187,6 +187,33 @@ receives reference-answer corroboration and explicit uncorroborated-answer
 counts, **without independent printed-model qualification**. Ground model
 passes must not be generalized to this route.
 
+## Progress cactus snapshots
+
+The {download}`snapshot exporter <../../scripts/qualification/long_limits/preview.py>`
+can plot all six divisions before the campaign finishes, without advancing the
+strict timing/model barriers. It writes a fresh output directory and reads the
+measurement tree without modifying its rows or original phase reports. Run it
+in the CPU SLURM audit allocation, with the same frozen worker adapter and a
+fresh `PRIMO_PREVIEW_OUT`; the maintained audit batch wrapper invokes its
+`preview` stage.
+
+Within each division it selects only complete shard indices shared by every
+planned solver/profile, including both native QF_LRA profiles. Every plotted
+series therefore covers identical inputs; unknown, timeout, allocation-failure
+and process-error rows remain in that cohort as unsolved. Each included shard
+receives the normal strict timing-provenance audit, and definite answers are
+cross-checked before plotting. One static Primo profile is selected by solved
+count, then PAR2, then name on this cohort. There is no per-input oracle and no
+easy-input filter.
+
+The gallery and SVG captions distinguish full timing coverage from a partial,
+completion-selected cohort. Full-corpus rankings can change when pending shards
+arrive. Neither kind of progress plot establishes independent SAT-model
+qualification. The exporter retains minimal series CSVs, exact input hashes,
+source-file certificates, outcome/family summaries and its `selection.json`.
+Pass that selection to `--selection` with a fresh output directory to reproduce
+the same cohort. The run ledger records each saved snapshot and its limits.
+
 ## Recorded outputs
 
 The {longlimitsworkflow}`campaign driver <scripts/qualification/long_limits/campaign.py>`

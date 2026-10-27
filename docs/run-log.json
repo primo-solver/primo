@@ -659,6 +659,540 @@
           "make docs and assembled-site local/Git link check pass:263pages,32583local links,1068Gitlinks,0failures",
           "Independent read-only review accepted the new evidence section, ledger results, script and artifacts with no required findings; baseline eb8783c."
         ]
+      },
+      "progress_cactus_snapshot": {
+        "date": "2026-10-27",
+        "status": "complete-diagnostic-matched-snapshot",
+        "job": "257745",
+        "script": "scripts/qualification/long_limits/preview.py",
+        "script_sha256": "74047974fe723dcf8e59f4f2dd97e18c91465b6da1282f595e2d36e8486c0a3c",
+        "remote_artifact_relative_to_campaign": "previews/20261027-1",
+        "frozen_workflow_relative_to_run_root": "workflow/preview-74047974fe72",
+        "resources": "CPU compute audit allocation, one physicalCPU,8GiB soft/hardRLIMIT_AS,1hour; no solver runs or model-validation work.",
+        "selection": "Only shard indices with terminal complete provenance in every planned profile/solver for a division; no selection by answer or speed. Strict timing provenance, matching input hashes, process/answer consistency and cross-solver definite-answer checks before plotting. Native best selected statically on this cohort, most solved then PAR2 then name.",
+        "qualification": "Diagnostic timing snapshot only, all SAT-model qualification pending. Partial matched cohorts may change final rankings; full divisions identified separately. Unknown, timeout, explicitmemory-out and process errors remain unsolved; raw error rows not relabeled.",
+        "reproduction": "CPU SLURM report.sbatch with PRIMO_LONG_REPORT=<frozen-preview.py>, PRIMO_LONG_STAGE=preview, PRIMO_PREVIEW_OUT=<fresh-output>; optional --selection=<prior-selection.json> via preview CLI reproduces the frozen cohort.",
+        "verification": [
+          "22 metadata unit tests passed, including completion intersection across native profiles and reference, and static profile selection without per-input oracle",
+          "make lint, nested-workflow Ruff and Python compile passed",
+          "Reused report.sbatch validated before submission; frozen4419 source/binary/tool preflight passed immediately before sbatch",
+          "No native C++ changes: solver tests/ASan/fuzz/tidy are not rerun for this reporting-only addition.",
+          "SLURM job257745 completed0; all six SVGs and standalone gallery collected with matched series CSVs and source certificates",
+          "Independent method/prose and final exported-data reviews accepted with no required findings (baselinef636e12); all30 series checked for identical unique per-division cohorts, solved counts, PAR2 and full/partial labels",
+          "Six-chart PNG overview and1000px desktop/390px mobile gallery screenshots inspected; charts scroll on narrow displays and SVG links retain full resolution",
+          "Contrast checks pass: body13.69:1, muted7.05:1, link/highlight6.87:1, categorical curve colours at least3.32:1; sparse neutral styling with coverage expressed in text",
+          "make docs and assembled-site local/Git links pass; no native solver or timing data changed."
+        ],
+        "local_artifact": "results/long-limits-20261024/plots-20261027-1",
+        "summary_sha256": "8e7603e54810998633c82b3306c2ba9fa218fbe8cdd7fe199c5edbef5762929e",
+        "selection_sha256": "7713e29f0aef3371eeafde610e7675c6979fd88046232a951ea9b237c42cfbf8",
+        "snapshot_interval_utc": [
+          "2026-10-27T07:48:24.848968+00:00",
+          "2026-10-27T07:56:55.823636+00:00"
+        ],
+        "completed_job_exit": "0:0",
+        "divisions": {
+          "QF_UF": {
+            "matched_inputs": 6543,
+            "full_corpus_inputs": 7503,
+            "full_timing_coverage": false,
+            "best_static_profile": "primo",
+            "runs": {
+              "primo": {
+                "inputs": 6543,
+                "solved": 6543,
+                "sat": 2726,
+                "unsat": 3817,
+                "timeouts": 0,
+                "unknown": 0,
+                "memory_out": 0,
+                "unsupported": 0,
+                "errors": 0,
+                "par2_sum": 5054.876720999999,
+                "median_solved_seconds": 0.064557,
+                "arguments": [
+                  "--quiet"
+                ]
+              },
+              "z3": {
+                "inputs": 6543,
+                "solved": 6541,
+                "sat": 2726,
+                "unsat": 3815,
+                "timeouts": 2,
+                "unknown": 0,
+                "memory_out": 0,
+                "unsupported": 0,
+                "errors": 0,
+                "par2_sum": 8284.893866999999,
+                "median_solved_seconds": 0.031557,
+                "arguments": []
+              },
+              "cvc5": {
+                "inputs": 6543,
+                "solved": 6536,
+                "sat": 2726,
+                "unsat": 3810,
+                "timeouts": 7,
+                "unknown": 0,
+                "memory_out": 0,
+                "unsupported": 0,
+                "errors": 0,
+                "par2_sum": 23538.346772999997,
+                "median_solved_seconds": 0.063347,
+                "arguments": []
+              },
+              "yices": {
+                "inputs": 6543,
+                "solved": 6543,
+                "sat": 2726,
+                "unsat": 3817,
+                "timeouts": 0,
+                "unknown": 0,
+                "memory_out": 0,
+                "unsupported": 0,
+                "errors": 0,
+                "par2_sum": 847.8190889999997,
+                "median_solved_seconds": 0.008081,
+                "arguments": []
+              },
+              "opensmt": {
+                "inputs": 6543,
+                "solved": 6539,
+                "sat": 2726,
+                "unsat": 3813,
+                "timeouts": 4,
+                "unknown": 0,
+                "memory_out": 0,
+                "unsupported": 0,
+                "errors": 0,
+                "par2_sum": 21352.180955,
+                "median_solved_seconds": 0.029376,
+                "arguments": []
+              }
+            },
+            "svg": "qf_uf-1200.svg",
+            "svg_sha256": "8be72c59b97537024aade21671078460a6c268a7944dc360ba4e2dd3ae1cc485"
+          },
+          "QF_LRA": {
+            "matched_inputs": 1753,
+            "full_corpus_inputs": 1753,
+            "full_timing_coverage": true,
+            "best_static_profile": "primo-phase-mono",
+            "runs": {
+              "primo": {
+                "inputs": 1753,
+                "solved": 1691,
+                "sat": 1008,
+                "unsat": 683,
+                "timeouts": 58,
+                "unknown": 0,
+                "memory_out": 0,
+                "unsupported": 0,
+                "errors": 4,
+                "par2_sum": 190086.10322600004,
+                "median_solved_seconds": 0.12865,
+                "arguments": [
+                  "--quiet"
+                ]
+              },
+              "primo-phase-mono": {
+                "inputs": 1753,
+                "solved": 1707,
+                "sat": 1015,
+                "unsat": 692,
+                "timeouts": 44,
+                "unknown": 0,
+                "memory_out": 0,
+                "unsupported": 0,
+                "errors": 2,
+                "par2_sum": 146910.28726100002,
+                "median_solved_seconds": 0.141476,
+                "arguments": [
+                  "--quiet",
+                  "--lra-model-phase",
+                  "--monotone-elimination"
+                ]
+              },
+              "z3": {
+                "inputs": 1753,
+                "solved": 1656,
+                "sat": 988,
+                "unsat": 668,
+                "timeouts": 95,
+                "unknown": 0,
+                "memory_out": 2,
+                "unsupported": 0,
+                "errors": 0,
+                "par2_sum": 301190.80217,
+                "median_solved_seconds": 0.08768500000000001,
+                "arguments": []
+              },
+              "cvc5": {
+                "inputs": 1753,
+                "solved": 1639,
+                "sat": 964,
+                "unsat": 675,
+                "timeouts": 114,
+                "unknown": 0,
+                "memory_out": 0,
+                "unsupported": 0,
+                "errors": 0,
+                "par2_sum": 388715.93919999996,
+                "median_solved_seconds": 0.254732,
+                "arguments": []
+              },
+              "yices": {
+                "inputs": 1753,
+                "solved": 1687,
+                "sat": 1008,
+                "unsat": 679,
+                "timeouts": 66,
+                "unknown": 0,
+                "memory_out": 0,
+                "unsupported": 0,
+                "errors": 0,
+                "par2_sum": 202677.907669,
+                "median_solved_seconds": 0.017086,
+                "arguments": []
+              },
+              "opensmt": {
+                "inputs": 1753,
+                "solved": 1703,
+                "sat": 1005,
+                "unsat": 698,
+                "timeouts": 50,
+                "unknown": 0,
+                "memory_out": 0,
+                "unsupported": 0,
+                "errors": 0,
+                "par2_sum": 159450.202838,
+                "median_solved_seconds": 0.100058,
+                "arguments": []
+              }
+            },
+            "svg": "qf_lra-1200.svg",
+            "svg_sha256": "090c357042a6bc5bd31b86bd8f6ec24e04e52736909078089136b08667063ad3"
+          },
+          "QF_LIA": {
+            "matched_inputs": 12154,
+            "full_corpus_inputs": 13306,
+            "full_timing_coverage": false,
+            "best_static_profile": "primo",
+            "runs": {
+              "primo": {
+                "inputs": 12154,
+                "solved": 9908,
+                "sat": 6477,
+                "unsat": 3431,
+                "timeouts": 561,
+                "unknown": 1126,
+                "memory_out": 331,
+                "unsupported": 0,
+                "errors": 228,
+                "par2_sum": 5584047.080688,
+                "median_solved_seconds": 0.042321,
+                "arguments": [
+                  "--quiet"
+                ]
+              },
+              "z3": {
+                "inputs": 12154,
+                "solved": 11825,
+                "sat": 7534,
+                "unsat": 4291,
+                "timeouts": 328,
+                "unknown": 0,
+                "memory_out": 1,
+                "unsupported": 0,
+                "errors": 0,
+                "par2_sum": 1012569.904198,
+                "median_solved_seconds": 0.093606,
+                "arguments": []
+              },
+              "cvc5": {
+                "inputs": 12154,
+                "solved": 9372,
+                "sat": 6442,
+                "unsat": 2930,
+                "timeouts": 2708,
+                "unknown": 0,
+                "memory_out": 35,
+                "unsupported": 0,
+                "errors": 39,
+                "par2_sum": 7103371.516461,
+                "median_solved_seconds": 0.078738,
+                "arguments": []
+              },
+              "yices": {
+                "inputs": 12154,
+                "solved": 11263,
+                "sat": 7078,
+                "unsat": 4185,
+                "timeouts": 857,
+                "unknown": 0,
+                "memory_out": 0,
+                "unsupported": 0,
+                "errors": 34,
+                "par2_sum": 2243728.858352,
+                "median_solved_seconds": 0.010824,
+                "arguments": []
+              },
+              "opensmt": {
+                "inputs": 12154,
+                "solved": 11572,
+                "sat": 7275,
+                "unsat": 4297,
+                "timeouts": 535,
+                "unknown": 0,
+                "memory_out": 27,
+                "unsupported": 0,
+                "errors": 20,
+                "par2_sum": 1974322.3904209996,
+                "median_solved_seconds": 0.062376,
+                "arguments": []
+              }
+            },
+            "svg": "qf_lia-1200.svg",
+            "svg_sha256": "60718f39039907c5a8c92883922054347352d3788498fdb00c4593c9569c9a0a"
+          },
+          "QF_UFLRA": {
+            "matched_inputs": 1284,
+            "full_corpus_inputs": 1284,
+            "full_timing_coverage": true,
+            "best_static_profile": "primo",
+            "runs": {
+              "primo": {
+                "inputs": 1284,
+                "solved": 1274,
+                "sat": 763,
+                "unsat": 511,
+                "timeouts": 2,
+                "unknown": 0,
+                "memory_out": 3,
+                "unsupported": 0,
+                "errors": 5,
+                "par2_sum": 26572.915477,
+                "median_solved_seconds": 0.05577,
+                "arguments": [
+                  "--quiet"
+                ]
+              },
+              "z3": {
+                "inputs": 1284,
+                "solved": 1267,
+                "sat": 759,
+                "unsat": 508,
+                "timeouts": 17,
+                "unknown": 0,
+                "memory_out": 0,
+                "unsupported": 0,
+                "errors": 0,
+                "par2_sum": 46031.065471,
+                "median_solved_seconds": 0.03687,
+                "arguments": []
+              },
+              "cvc5": {
+                "inputs": 1284,
+                "solved": 1276,
+                "sat": 765,
+                "unsat": 511,
+                "timeouts": 6,
+                "unknown": 0,
+                "memory_out": 1,
+                "unsupported": 0,
+                "errors": 1,
+                "par2_sum": 20735.499896,
+                "median_solved_seconds": 0.06492600000000001,
+                "arguments": []
+              },
+              "yices": {
+                "inputs": 1284,
+                "solved": 1278,
+                "sat": 767,
+                "unsat": 511,
+                "timeouts": 6,
+                "unknown": 0,
+                "memory_out": 0,
+                "unsupported": 0,
+                "errors": 0,
+                "par2_sum": 14972.448671,
+                "median_solved_seconds": 0.008716499999999999,
+                "arguments": []
+              },
+              "opensmt": {
+                "inputs": 1284,
+                "solved": 1271,
+                "sat": 760,
+                "unsat": 511,
+                "timeouts": 12,
+                "unknown": 0,
+                "memory_out": 0,
+                "unsupported": 0,
+                "errors": 1,
+                "par2_sum": 34956.965418,
+                "median_solved_seconds": 0.036642,
+                "arguments": []
+              }
+            },
+            "svg": "qf_uflra-1200.svg",
+            "svg_sha256": "1dea50452b87d02d2586dec177ab60b9dafb9638699b9d5405c5e6ff3b3d776e"
+          },
+          "QF_UFLIA": {
+            "matched_inputs": 659,
+            "full_corpus_inputs": 659,
+            "full_timing_coverage": true,
+            "best_static_profile": "primo",
+            "runs": {
+              "primo": {
+                "inputs": 659,
+                "solved": 583,
+                "sat": 410,
+                "unsat": 173,
+                "timeouts": 72,
+                "unknown": 0,
+                "memory_out": 4,
+                "unsupported": 0,
+                "errors": 0,
+                "par2_sum": 188008.551823,
+                "median_solved_seconds": 0.238568,
+                "arguments": [
+                  "--quiet"
+                ]
+              },
+              "z3": {
+                "inputs": 659,
+                "solved": 623,
+                "sat": 432,
+                "unsat": 191,
+                "timeouts": 36,
+                "unknown": 0,
+                "memory_out": 0,
+                "unsupported": 0,
+                "errors": 0,
+                "par2_sum": 87955.094095,
+                "median_solved_seconds": 0.024409,
+                "arguments": []
+              },
+              "cvc5": {
+                "inputs": 659,
+                "solved": 617,
+                "sat": 427,
+                "unsat": 190,
+                "timeouts": 42,
+                "unknown": 0,
+                "memory_out": 0,
+                "unsupported": 0,
+                "errors": 0,
+                "par2_sum": 105526.220325,
+                "median_solved_seconds": 0.079537,
+                "arguments": []
+              },
+              "yices": {
+                "inputs": 659,
+                "solved": 627,
+                "sat": 434,
+                "unsat": 193,
+                "timeouts": 29,
+                "unknown": 0,
+                "memory_out": 0,
+                "unsupported": 0,
+                "errors": 3,
+                "par2_sum": 83552.502197,
+                "median_solved_seconds": 0.006419,
+                "arguments": []
+              },
+              "opensmt": {
+                "inputs": 659,
+                "solved": 616,
+                "sat": 427,
+                "unsat": 189,
+                "timeouts": 41,
+                "unknown": 0,
+                "memory_out": 1,
+                "unsupported": 0,
+                "errors": 1,
+                "par2_sum": 110514.238362,
+                "median_solved_seconds": 0.16894350000000002,
+                "arguments": []
+              }
+            },
+            "svg": "qf_uflia-1200.svg",
+            "svg_sha256": "c9246c44532b56dd4a4612c49830f8fc336db6eacd8656ecc53bd82d21b76b61"
+          },
+          "UF": {
+            "matched_inputs": 6150,
+            "full_corpus_inputs": 7590,
+            "full_timing_coverage": false,
+            "best_static_profile": "primo",
+            "runs": {
+              "primo": {
+                "inputs": 6150,
+                "solved": 1722,
+                "sat": 1,
+                "unsat": 1721,
+                "timeouts": 1396,
+                "unknown": 2382,
+                "memory_out": 5,
+                "unsupported": 0,
+                "errors": 645,
+                "par2_sum": 10670722.553348,
+                "median_solved_seconds": 0.049176,
+                "arguments": [
+                  "--quiet"
+                ]
+              },
+              "z3": {
+                "inputs": 6150,
+                "solved": 2296,
+                "sat": 81,
+                "unsat": 2215,
+                "timeouts": 883,
+                "unknown": 6,
+                "memory_out": 2965,
+                "unsupported": 0,
+                "errors": 0,
+                "par2_sum": 9260626.349262,
+                "median_solved_seconds": 0.052473,
+                "arguments": []
+              },
+              "cvc5": {
+                "inputs": 6150,
+                "solved": 2600,
+                "sat": 1,
+                "unsat": 2599,
+                "timeouts": 3012,
+                "unknown": 528,
+                "memory_out": 9,
+                "unsupported": 0,
+                "errors": 1,
+                "par2_sum": 8530801.315815,
+                "median_solved_seconds": 0.11458,
+                "arguments": []
+              },
+              "yices": {
+                "inputs": 6150,
+                "solved": 1897,
+                "sat": 54,
+                "unsat": 1843,
+                "timeouts": 4183,
+                "unknown": 0,
+                "memory_out": 0,
+                "unsupported": 0,
+                "errors": 70,
+                "par2_sum": 10243589.266467,
+                "median_solved_seconds": 0.022587,
+                "arguments": []
+              }
+            },
+            "svg": "uf-1200.svg",
+            "svg_sha256": "7a5b7d77bcc33b13e7a3386255645354e0248a888fbd94b9ba423f21c39c5f6e"
+          }
+        },
+        "download_archive": {
+          "local": "results/long-limits-20261024/cactus-1200s-20261027.zip",
+          "sha256": "1cb7a449e52f21d26937f86d500437a36ae82475293d3036c870f8030ebc5d65"
+        }
       }
     },
     {

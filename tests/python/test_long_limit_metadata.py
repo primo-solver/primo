@@ -20,6 +20,10 @@ REPORT_SPEC = importlib.util.spec_from_file_location('long_limit_report', FILE.w
 REPORT = importlib.util.module_from_spec(REPORT_SPEC)
 with patch.dict('sys.modules', {'campaign': CAMPAIGN}):
     REPORT_SPEC.loader.exec_module(REPORT)
+PREVIEW_SPEC = importlib.util.spec_from_file_location('long_limit_preview', FILE.with_name('preview.py'))
+PREVIEW = importlib.util.module_from_spec(PREVIEW_SPEC)
+with patch.dict('sys.modules', {'campaign': CAMPAIGN, 'report': REPORT}):
+    PREVIEW_SPEC.loader.exec_module(PREVIEW)
 
 
 def row(**changes):
@@ -28,6 +32,39 @@ def row(**changes):
 
 
 class LongLimitMetadataTests(unittest.TestCase):
+    def test_preview_cohort_requires_terminal_shards_from_every_profile(self):
+        with tempfile.TemporaryDirectory() as directory:
+            out = Path(directory)
+            runs = [{'logic': 'QF_LRA', 'label': label, 'shards': 3}
+                    for label in ('primo', 'primo-phase-mono', 'z3')]
+            for run in runs:
+                for index in (0, 1):
+                    CAMPAIGN.write(out / 'timing/QF_LRA' / run['label'] / f'shard-{index}' / 'provenance.json',
+                                   {'status': 'complete'})
+            # A native alternative is unfinished: completed reference/default
+            # data must not make that shard part of the matched comparison.
+            CAMPAIGN.write(out / 'timing/QF_LRA/primo-phase-mono/shard-1/provenance.json',
+                           {'status': 'running'})
+            damaged = out / 'timing/QF_LRA/z3/shard-2/provenance.json'
+            damaged.parent.mkdir(parents=True)
+            damaged.write_text('{')
+            indices, unreadable = PREVIEW.shared_shards(out, runs)
+            self.assertEqual(indices, [0])
+            self.assertEqual(len(unreadable), 1)
+            self.assertIn(str(damaged), unreadable[0])
+
+    def test_preview_selects_one_static_native_profile_not_the_per_input_union(self):
+        slow = row(file='a', seconds='2')
+        crash = row(file='b', status='error', answer='error', exit_code=-6, seconds='1')
+        results = {'primo': REPORT.metrics([slow, crash], 1200),
+                   'primo-phase-mono': REPORT.metrics([
+                       {**crash, 'file': 'a'}, row(file='b', seconds='3')], 1200),
+                   'z3': REPORT.metrics([slow, row(file='b', seconds='1')], 1200)}
+        chosen = PREVIEW.best_profile(results)
+        self.assertEqual(chosen, 'primo')
+        self.assertEqual(results[chosen]['solved'], 1)
+        self.assertEqual(results[chosen]['par2_sum'], 2402)
+
     def test_explicit_allocation_exhaustion_is_unsolved_not_a_correctness_failure(self):
         exhausted = row(status='error', answer='error', exit_code=1,
                         stderr_head='error: std::bad_alloc', seconds='2')
