@@ -522,6 +522,102 @@
             "Read global/task failure directories and gate/timing/final audit markers",
             "Cross-checked task-index/offset logic totals against frozen plan; no solver execution or source changes."
           ]
+        },
+        {
+          "checked_at_utc": "2026-10-27T08:37:42.645514+00:00",
+          "scope": "Scheduler status only; no new result or correctness audit.",
+          "artifact": "results/long-limits-20261024/remaining-20261027.txt",
+          "completed_timing_tasks": 5882,
+          "running_timing_tasks": 67,
+          "total_timing_tasks": 6462,
+          "remaining_by_solver_and_theory": {
+            "QF_LIA/cvc5": {
+              "total": 555,
+              "completed": 510,
+              "running": 8,
+              "queued": 37
+            },
+            "QF_LIA/opensmt": {
+              "total": 555,
+              "completed": 517,
+              "running": 1,
+              "queued": 37
+            },
+            "QF_LIA/primo": {
+              "total": 555,
+              "completed": 517,
+              "running": 1,
+              "queued": 37
+            },
+            "QF_LIA/yices": {
+              "total": 555,
+              "completed": 517,
+              "running": 1,
+              "queued": 37
+            },
+            "QF_LIA/z3": {
+              "total": 555,
+              "completed": 518,
+              "running": 1,
+              "queued": 36
+            },
+            "QF_UF/cvc5": {
+              "total": 313,
+              "completed": 276,
+              "running": 0,
+              "queued": 37
+            },
+            "QF_UF/opensmt": {
+              "total": 313,
+              "completed": 276,
+              "running": 0,
+              "queued": 37
+            },
+            "QF_UF/primo": {
+              "total": 313,
+              "completed": 276,
+              "running": 0,
+              "queued": 37
+            },
+            "QF_UF/yices": {
+              "total": 313,
+              "completed": 276,
+              "running": 0,
+              "queued": 37
+            },
+            "QF_UF/z3": {
+              "total": 313,
+              "completed": 276,
+              "running": 0,
+              "queued": 37
+            },
+            "UF/cvc5": {
+              "total": 317,
+              "completed": 268,
+              "running": 13,
+              "queued": 36
+            },
+            "UF/primo": {
+              "total": 317,
+              "completed": 267,
+              "running": 14,
+              "queued": 36
+            },
+            "UF/yices": {
+              "total": 317,
+              "completed": 261,
+              "running": 20,
+              "queued": 36
+            },
+            "UF/z3": {
+              "total": 317,
+              "completed": 273,
+              "running": 8,
+              "queued": 36
+            }
+          },
+          "validation": "Timing audit242911 and model arrays242912/242913 remain pending dependencies.",
+          "verification": "squeue/sacct inspected; array task offsets mapped to the immutable plan. No jobs or solver sources changed."
         }
       ],
       "oom_exception_diagnostic": {
