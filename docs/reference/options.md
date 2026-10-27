@@ -105,3 +105,9 @@ as explained in [tactics](tactics.md).
 observer is off by default and changes no deductions. See the
 [observation contract](../papers/lra-bound-structure-probe.md) for coverage and
 trace interpretation.
+
+`--lra-bound-probe-snapshot-limit M` separates numerical snapshots from the
+causal-event budget. With it, `--lra-bound-probe-limit N` limits causal events;
+the initial catalog is recorded independently. Zero snapshots selects a causal
+trace without numerical row scanning. Leaving the new option unset preserves
+the original shared-budget behavior.

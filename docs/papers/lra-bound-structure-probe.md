@@ -35,9 +35,14 @@ algorithm. The checklist below is an original diagnostic design.
 - The existing exact arithmetic computes the candidate. An offline reader must
   recompute its value and reason selection from the snapshot, including negative
   coefficients and infinitesimal parts, before counting it as checked evidence.
-- The event limit bounds trace size. An `end` with `limit_reached=true` means a
-  prefix, not complete search coverage. A killed process can lack `end`; a path
-  solved in preprocessing or using another engine can produce no block.
+- In legacy mode, one event limit covers catalog, causal events and numerical
+  snapshots. Opt-in split mode gives causal events and numerical snapshots
+  independent limits; the finite initial catalog consumes neither. Once the
+  numerical budget is exhausted, row scanning stops while assignments,
+  propagations, conflicts and backtracks continue to be recorded.
+- An `end` with `limit_reached=true` marks a causal prefix. In schema 2,
+  `snapshot_limit_reached` describes numerical coverage separately. A killed
+  process can lack `end`; preprocessing or another engine can produce no block.
 
 A row with $k$ terms costs $O(k)$ exact operations for its forward bound and
 $O(k^2)$ for all reverse bounds, plus serialization. Whole-row scans repeat after
@@ -70,7 +75,12 @@ atom is not evidence that a hidden bound was installed in the tableau.
 ## Running the probe
 
 `--lra-bound-probe FILE` enables the observer and
-`--lra-bound-probe-limit N` caps events per checker (default 20000). The stream
+`--lra-bound-probe-limit N` caps events per checker (default 20000). Adding
+`--lra-bound-probe-snapshot-limit M` selects schema 2: `N` then caps only causal
+records and `M` caps numerical snapshots. `M=0` disables numerical snapshots.
+Catalog size is bounded by the registered problem, not by either event budget.
+The analyzer reports causal and numerical coverage independently and keeps
+propagation and conflict width/depth/sharing metrics separate. The stream
 must outlive any programmatic checks using its borrowed pointer. The observer
 currently follows `OnlineLraPropagator`, including its mixed and rebuilt
 assumptions-session uses; other engines are not instrumented. A missing block is
@@ -192,3 +202,35 @@ The [run log](../run-log.json), entry `2026-10-27-lra-bound-structure-probe`, re
 source/input revisions, commands, resources, rejected attempts and job IDs.
 Raw traces, models, logs and the measured binary are retained under
 `results/lra-bound-structure-20261026` and in the isolated SLURM workspace.
+
+
+## Longer probe with harder inputs
+
+The follow-up keeps the original 34 inputs at 30 seconds and adds a separate
+20–30-input hard stratum at 120 seconds. Selection uses untraced baseline
+solving time and theory-work counters, excludes the original 34, balances known
+SAT/UNSAT cases, and spans several families. Baseline source/profile/input hashes
+are recorded with the manifest; historical selection evidence is not a timing
+comparison against the new candidate.
+
+Both theory profiles keep SAT settings fixed. Each checker allows 200000 causal
+events and 1000 numerical snapshots with a complete initial catalog. These are
+bounded observations: a causal cap or process timeout still leaves a prefix.
+Conflict-specific metrics count shared ancestry and compare immediate distinct
+premises with expanded distinct leaves; they remain measurements of recorded
+LRA reasons, with opaque Boolean reasons. Five representative examples are kept
+without retaining every expanded explanation in the analyzer's output storage.
+The existing exact interval checks and independent SAT-model replay remain
+required. No explanation is replaced and no bound is installed by the probe.
+
+The selected hard stratum contains 20 inputs: ten declared SAT and ten declared
+UNSAT across nine families, with at most four per family. The historical
+30-second baseline identifies 47 candidates outside the original 34. A fresh
+five-second untraced screen (`6c4f9c5`, job `257798`) confirms active online LRA
+work for 35: at least 100 theory conflicts or 500 pivots, plus a nonzero check
+count. All 47 screening runs timed out; these are selection observations, not
+successful solves. Family round-robin selection takes the ten SAT cases first,
+then ten UNSAT cases, ranking conflicts/pivots within each family. The
+selection script `select_lra_bound_hard_inputs.py`
+and manifest record the input hashes and both baseline sources. This is planned
+follow-up evidence until the longer jobs are collected and judged.

@@ -6983,7 +6983,8 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
                       sat::IpasirUpBackend& backend, util::Statistics& statistics,
                       bool count_query_conflicts = false,
                       std::optional<std::size_t> conflict_limit = std::nullopt,
-                      std::ostream* probe_stream = nullptr, std::size_t probe_limit = 20000)
+                      std::ostream* probe_stream = nullptr, std::size_t probe_limit = 20000,
+                      std::optional<std::size_t> probe_snapshot_limit = std::nullopt)
       : theory_atoms_(theory_atoms),
         prepared_(prepared),
         tableau_(prepared.base_tableau),
@@ -7014,7 +7015,8 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
       atom_index_by_var_[static_cast<std::size_t>(var)] = i;
     }
     if (probe_stream != nullptr) {
-      bound_probe_ = std::make_unique<LraBoundProbe>(*probe_stream, probe_limit);
+      bound_probe_ =
+          std::make_unique<LraBoundProbe>(*probe_stream, probe_limit, probe_snapshot_limit);
       for (const auto& [term_id, var_id] : prepared_.var_ids_) {
         const auto& term = prepared_.terms_.get(term_id);
         // Own the name until synchronous serialization finishes. A view into a
@@ -7301,14 +7303,14 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
     unlimited.max_row_size = tableau_.variable_count();
     unlimited.bidirectional_max_row_size = tableau_.variable_count();
     for (theory::arithmetic::LraVarId row = 0; row < tableau_.variable_count(); ++row) {
-      if (bound_probe_->full()) return;
+      if (bound_probe_->snapshots_full()) return;
       if (!tableau_.is_basic(row)) continue;
       for (bool upper : {false, true}) {
         if (auto bound = compute_implied_bound(tableau_, row, upper, unlimited)) {
           bound_probe_->derived(tableau_, row, row, upper, bound->first, bound->second);
         }
         for (const auto& term : tableau_.row(row)) {
-          if (bound_probe_->full()) return;
+          if (bound_probe_->snapshots_full()) return;
           if (auto bound = compute_implied_child_bound(tableau_, row, term.var, term.coeff, upper,
                                                        unlimited)) {
             bound_probe_->derived(tableau_, row, term.var, upper, bound->first, bound->second);
@@ -8294,7 +8296,8 @@ CheckSatOutcome solve_qf_lra_impl(core::TermManager& terms,
       options.lra_theory_decisions, options.lra_model_phase,
       options.lra_pivoting_rule == LraPivotingRule::Soi || options.lra_fixed_elimination,
       options.lra_row_propagation_limits, backend, statistics, false, options.max_theory_conflicts,
-      options.lra_bound_probe, options.lra_bound_probe_limit);
+      options.lra_bound_probe, options.lra_bound_probe_limit,
+      options.lra_bound_probe_snapshot_limit);
   const AssignmentConnection assignment_connection(backend, online_propagator);
   for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
     const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
@@ -11102,7 +11105,8 @@ CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
         options.lra_model_phase,
         options.lra_pivoting_rule == LraPivotingRule::Soi || mixed_fixed_elimination,
         options.lra_row_propagation_limits, backend, statistics, false,
-        options.max_theory_conflicts, options.lra_bound_probe, options.lra_bound_probe_limit);
+        options.max_theory_conflicts, options.lra_bound_probe, options.lra_bound_probe_limit,
+        options.lra_bound_probe_snapshot_limit);
     statistics.set(":no.interface.lra-online-enabled", 1);
   }
   const bool publish_lra_interface_equalities =
@@ -12336,7 +12340,8 @@ class IncrementalLraEngine final : public IncrementalEngine {
         options.lra_bidirectional_row_propagation, options.lra_theory_decisions,
         options.lra_model_phase, options.lra_pivoting_rule == LraPivotingRule::Soi,
         options.lra_row_propagation_limits, backend_, statistics, true,
-        options.max_theory_conflicts, options.lra_bound_probe, options.lra_bound_probe_limit);
+        options.max_theory_conflicts, options.lra_bound_probe, options.lra_bound_probe_limit,
+        options.lra_bound_probe_snapshot_limit);
     std::vector<int> observed;
     for (const auto& atom : clausifier_.theory_atoms())
       observed.push_back(std::abs(atom.lit.value));

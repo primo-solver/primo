@@ -3360,6 +3360,17 @@ void bound_probe_observes_without_changing_search() {
   assert(trace.str().find("\"event\":\"derived\"") != std::string::npos);
   assert(trace.str().find("[\"5\",\"-1\"]") != std::string::npos);
   assert(trace.str().find("\"limit_reached\":false") != std::string::npos);
+  std::ostringstream split;
+  options.lra_bound_probe = &split;
+  options.lra_bound_probe_snapshot_limit = 1;
+  assert(check_sat_smtlib(formula, options).result == baseline.result);
+  const auto snapshot = split.str().find("\"event\":\"derived\"");
+  assert(snapshot != std::string::npos);
+  assert(split.str().find("\"event\":\"derived\"", snapshot + 1) == std::string::npos);
+  assert(split.str().find("\"event\":\"propagate\"", snapshot) != std::string::npos);
+  assert(split.str().find("\"snapshot_limit_reached\":true") != std::string::npos);
+  assert(split.str().find("\"limit_reached\":false") != std::string::npos);
+  options.lra_bound_probe_snapshot_limit.reset();
   std::ostringstream capped;
   options.lra_bound_probe = &capped;
   options.lra_bound_probe_limit = 1;

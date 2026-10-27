@@ -20,18 +20,32 @@ class LraBoundProbe {
   using Value = theory::arithmetic::DeltaRational;
   using Tableau = theory::arithmetic::LraTableau;
 
-  LraBoundProbe(std::ostream& out, std::size_t limit) : out_(out), limit_(limit) {
-    out_ << "{\"event\":\"begin\",\"schema\":1}\n";
+  LraBoundProbe(std::ostream& out, std::size_t limit,
+                std::optional<std::size_t> snapshot_limit = std::nullopt)
+      : out_(out), limit_(limit), snapshot_limit_(snapshot_limit) {
+    out_ << "{\"event\":\"begin\",\"schema\":" << (snapshot_limit_ ? 2 : 1);
+    if (snapshot_limit_) {
+      out_ << ",\"causal_limit\":" << limit_ << ",\"snapshot_limit\":" << *snapshot_limit_;
+    }
+    out_ << "}\n";
   }
   ~LraBoundProbe() {
     out_ << "{\"event\":\"end\",\"events\":" << events_
-         << ",\"limit_reached\":" << (full() ? "true" : "false") << "}\n";
+         << ",\"limit_reached\":" << (full() ? "true" : "false");
+    if (snapshot_limit_) {
+      out_ << ",\"causal_events\":" << causal_events_ << ",\"snapshot_events\":" << snapshot_events_
+           << ",\"snapshot_limit_reached\":" << (snapshots_full() ? "true" : "false");
+    }
+    out_ << "}\n";
     out_.flush();
   }
   LraBoundProbe(const LraBoundProbe&) = delete;
   LraBoundProbe& operator=(const LraBoundProbe&) = delete;
 
-  bool full() const { return events_ >= limit_; }
+  bool full() const { return (snapshot_limit_ ? causal_events_ : events_) >= limit_; }
+  bool snapshots_full() const {
+    return snapshot_limit_ ? snapshot_events_ >= *snapshot_limit_ : full();
+  }
 
   void variable(Var var, std::size_t term, std::string_view name) {
     if (!start("variable")) return;
@@ -130,7 +144,17 @@ class LraBoundProbe {
 
  private:
   bool start(std::string_view event) {
-    if (full()) return false;
+    if (snapshot_limit_) {
+      if (event == "derived") {
+        if (snapshots_full()) return false;
+        ++snapshot_events_;
+      } else if (event != "variable" && event != "atom") {
+        if (full()) return false;
+        ++causal_events_;
+      }
+    } else if (full()) {
+      return false;
+    }
     out_ << "{\"event\":\"" << event << "\",\"seq\":" << ++events_;
     return true;
   }
@@ -162,6 +186,9 @@ class LraBoundProbe {
   std::ostream& out_;
   std::size_t limit_;
   std::size_t events_ = 0;
+  std::optional<std::size_t> snapshot_limit_;
+  std::size_t causal_events_ = 0;
+  std::size_t snapshot_events_ = 0;
 };
 
 }  // namespace primo::smt

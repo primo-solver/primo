@@ -359,7 +359,11 @@ int run_main(int argc, char** argv) {
   app.add_option("--lra-bound-probe", lra_bound_probe_path,
                  "Write diagnostic online LRA bound/reason JSONL (does not change propagation)");
   app.add_option("--lra-bound-probe-limit", solver_options.lra_bound_probe_limit,
-                 "Maximum diagnostic events per online LRA checker (default 20000)");
+                 "Maximum causal events in split mode; otherwise maximum total events");
+  app.add_option("--lra-bound-probe-snapshot-limit", solver_options.lra_bound_probe_snapshot_limit,
+                 "Cap numerical snapshots independently of causal events")
+      ->type_name("UINT")
+      ->default_str("");
   add_flag_with_default(app, "--lra-propagation", solver_options.lra_propagation,
                         "Enable QF_LRA same-slack bound propagation (Milestone 3b)");
   add_flag_with_default(app, "--no-lra-propagation", no_lra_propagation,

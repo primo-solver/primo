@@ -58,6 +58,9 @@ def main():
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--timeout", type=float, default=3)
     parser.add_argument("--limit", type=int, default=4000)
+    parser.add_argument("--snapshot-limit", type=int)
+    parser.add_argument("--model-timeout", type=float, default=30)
+    parser.add_argument("--dolmen-timeout", type=float, default=15)
     parser.add_argument("--constructed", action="store_true")
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=False)
@@ -88,6 +91,9 @@ def main():
         "manifest_sha256": digest(args.manifest),
         "timeout": args.timeout,
         "limit": args.limit,
+        "snapshot_limit": args.snapshot_limit,
+        "model_timeout": args.model_timeout,
+        "dolmen_timeout": args.dolmen_timeout,
         "profiles": profiles,
         "common": common,
         "records": records,
@@ -116,6 +122,11 @@ def main():
                 str(args.limit),
                 str(path.resolve()),
             ]
+            if args.snapshot_limit is not None:
+                command[-1:-1] = [
+                    "--lra-bound-probe-snapshot-limit",
+                    str(args.snapshot_limit),
+                ]
             run = invoke(command, args.timeout, case_dir / profile)
             if run["status"] == "ok" and run["answer"] is None:
                 run["status"] = "error"
@@ -175,9 +186,9 @@ def main():
             "2G",
             "--dolmen-arg=--strict=false",
             "--timeout",
-            "30",
+            str(args.model_timeout),
             "--dolmen-timeout",
-            "15",
+            str(args.dolmen_timeout),
             "--manifest",
             str(manifest),
             "--out",
@@ -193,7 +204,15 @@ def main():
             str(args.limit),
         ]:
             command.append("--solver-arg=" + flag)
-        record = invoke(command, 900, args.out / f"{profile}-models-driver")
+        if args.snapshot_limit is not None:
+            command += [
+                "--solver-arg=--lra-bound-probe-snapshot-limit",
+                "--solver-arg=" + str(args.snapshot_limit),
+            ]
+        replay_budget = max(
+            900, len(selected) * (args.model_timeout + args.dolmen_timeout + 5)
+        )
+        record = invoke(command, replay_budget, args.out / f"{profile}-models-driver")
         metadata.setdefault("model_replays", {})[profile] = record
         (args.out / "summary.json").write_text(json.dumps(metadata, indent=2) + "\n")
         if record["status"] != "ok":

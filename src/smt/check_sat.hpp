@@ -253,6 +253,9 @@ struct CheckSatOptions {
   // options. Null disables observation. The probe never installs deductions.
   std::ostream* lra_bound_probe = nullptr;
   std::size_t lra_bound_probe_limit = 20000;
+  // When set, separate causal-event and numerical-snapshot budgets; the atom
+  // catalog does not consume either. Unset retains the original shared limit.
+  std::optional<std::size_t> lra_bound_probe_snapshot_limit;
   // Row-based/interval bound propagation (Dutertre & de Moura Section 4,
   // generalizing lra_propagation's same-slack case to derive an implied
   // bound for a row from its terms' current bounds). Only takes effect

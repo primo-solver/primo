@@ -68,6 +68,9 @@ def analyze(path):
     blocks = 0
     ends = 0
     capped = 0
+    snapshots_capped = 0
+    snapshots_disabled = 0
+    event_metrics = defaultdict(Counter)
     unknown = 0
     partial_line = False
 
@@ -90,7 +93,7 @@ def analyze(path):
         )
         return leaves, depth + 1, sharing
 
-    with path.open() as stream:
+    with path.open(errors="replace") as stream:
         for line in stream:
             try:
                 event = json.loads(line)
@@ -103,6 +106,9 @@ def analyze(path):
             counts[kind] += 1
             if kind == "begin":
                 blocks += 1
+                snapshots_disabled += (
+                    event.get("schema") == 2 and event.get("snapshot_limit") == 0
+                )
                 active.clear()
                 pending.clear()
                 catalog.clear()
@@ -112,6 +118,9 @@ def analyze(path):
             elif kind == "end":
                 ends += 1
                 capped += bool(event["limit_reached"])
+                snapshots_capped += bool(
+                    event.get("snapshot_limit_reached", event["limit_reached"])
+                )
             elif kind == "atom":
                 catalog[event["var"], event["upper"]].append(
                     (event["lit"], number(event["value"]))
@@ -131,6 +140,17 @@ def analyze(path):
                 if kind == "propagate":
                     pending[event["lit"]] = (leaves, depth)
                     kinds[event["kind"]] += 1
+                metric = event_metrics[kind]
+                raw_width = len(set(event["reasons"]))
+                leaf_width = len(leaves)
+                metric["events"] += 1
+                metric["shared_ancestry_events"] += theory_sharing > 0
+                metric["raw_distinct_premises"] += raw_width
+                metric["expanded_distinct_leaves"] += leaf_width
+                metric["expanded_smaller"] += leaf_width < raw_width
+                metric["expanded_equal"] += leaf_width == raw_width
+                metric["expanded_larger"] += leaf_width > raw_width
+                metric["max_theory_depth"] = max(metric["max_theory_depth"], depth)
                 counts["theory_expansions_with_shared_leaves"] += theory_sharing > 0
                 shared = sum(leaves.values()) - len(leaves)
                 counts["expanded_leaf_occurrences"] += sum(leaves.values())
@@ -149,6 +169,11 @@ def analyze(path):
                             "leaves": dict(sorted(leaves.items())),
                         }
                     )
+                examples.sort(
+                    key=lambda e: e["expanded_occurrences"] - e["expanded_distinct"],
+                    reverse=True,
+                )
+                del examples[5:]
             elif kind == "derived":
                 check_derived(event)
                 counts["checked_derived"] += 1
@@ -189,6 +214,21 @@ def analyze(path):
         if not blocks
         else ("prefix" if capped or blocks != ends or partial_line else "complete"),
         "capped_blocks": capped,
+        "numerical_coverage": "missing"
+        if not blocks
+        else (
+            "disabled"
+            if snapshots_disabled == blocks
+            else (
+                "prefix"
+                if snapshots_capped or blocks != ends or partial_line
+                else "complete"
+            )
+        ),
+        "numerical_capped_blocks": snapshots_capped,
+        "event_metrics": {
+            kind: dict(metrics) for kind, metrics in event_metrics.items()
+        },
         "counts": dict(counts),
         "propagation_kinds": dict(kinds),
         "reason_width_histogram": dict(sorted(reasons_hist.items())),

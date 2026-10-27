@@ -11,6 +11,26 @@ SPEC.loader.exec_module(PROBE)
 
 
 class ProbeTests(unittest.TestCase):
+    def test_numerical_cap_does_not_mark_causal_trace_as_prefix(self):
+        events = [
+            {"event": "begin", "schema": 2, "snapshot_limit": 1},
+            {"event": "assignment", "lit": 1, "conflict": False},
+            {"event": "propagate", "seq": 3, "lit": 2, "kind": "row", "reasons": [-1]},
+            {"event": "assignment", "lit": 2, "conflict": False},
+            {"event": "conflict", "seq": 4, "reasons": [-1, -2]},
+            {"event": "end", "limit_reached": False, "snapshot_limit_reached": True},
+        ]
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "trace.jsonl"
+            path.write_text("".join(json.dumps(e) + "\n" for e in events))
+            result = PROBE.analyze(path)
+        self.assertEqual(result["coverage"], "complete")
+        self.assertEqual(result["numerical_coverage"], "prefix")
+        self.assertEqual(
+            result["event_metrics"]["conflict"]["shared_ancestry_events"], 1
+        )
+        self.assertEqual(result["event_metrics"]["conflict"]["expanded_smaller"], 1)
+
     def test_exact_strict_negative_reverse_interval(self):
         # s = -2*x + y, s <= 0 and y > 1 imply x > 1/2.
         bound = lambda value, reason: {"value": value, "reason": reason}
