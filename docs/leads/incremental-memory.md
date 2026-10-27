@@ -75,6 +75,14 @@ measure the cost of releasing and later reconstructing that work. Reference
 counting alone would not reclaim objects still retained by such caches; their
 ownership and retention policy are part of the question.
 
+The {ref}`paired UF measurement <uf-rollback-resource-measurement>`
+on October 27 reruns the saved FFT case and a second explicit-allocation-failure
+case, `sledgehammer/Fundamental_Theorem_Algebra/uf.828004.smt2`, under the same
+8 GiB address-space cap. Removing dormant EUF rollback arrays recovers neither
+case and leaves their virtual-memory peaks essentially unchanged. These remain
+useful attribution candidates; the rerun does not establish whether retained
+terms are dead, live, or beneficially cached.
+
 (simplified-instance-retention)=
 ### Raw instances retained after simplification
 

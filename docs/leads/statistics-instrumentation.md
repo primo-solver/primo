@@ -30,6 +30,9 @@ not a completed whole-tree classification.
 
 ## Proposed boundary
 
+See also the concrete {ref}`quantified-UF counter-publication gap <quantified-uf-counter-publication>`
+below: availability must be distinguished from a reported zero.
+
 **Design preference:** avoid string-key lookups on solver execution paths.
 Use typed counter IDs or component-local fields, resolving names when reporting.
 String-key diagnostics are acceptable only behind a build-time boundary that
@@ -102,3 +105,27 @@ for measurements that were never collected.
 
 The proposal is based on Primo's instrumentation and its consumers identified
 above. Measurements must establish whether their overhead warrants a change.
+
+(quantified-uf-counter-publication)=
+## Quantified UF can leave EUF counters unpublished
+
+The {ref}`October 27 paired measurement <uf-rollback-resource-measurement>`
+reports zero `:euf.incremental.terms` and `:euf.incremental.backtracks` on two
+successful quantified-UF UNSAT cases. These zeros cannot establish that no EUF
+work occurred. The {diagnosticsource}`quantified solver recipe <src/smt/quantifiers/quantified_solver.cpp#L134-L154>`
+uses online EUF. Its {diagnosticsource}`incremental closure <src/smt/solver_engines.cpp#L1673-L1680>`
+buffers statistics with `flush_live_stats=false`. In
+{diagnosticsource}`EufTheoryComponent::check <src/smt/solver_engines.cpp#L9977-L10000>`,
+partial checks return before `flush_incremental_stats`; only full checks flush.
+The {diagnosticsource}`shared solve loop <src/smt/component_solver.cpp#L379-L398>`
+can return UNSAT directly after the SAT backend, before a full theory check.
+{diagnosticsource}`Registering new atoms <src/smt/solver_engines.cpp#L9931-L9959>`
+also resets the online execution object, so buffered statistics need a
+publication policy across both reset and final exit.
+
+Audit all exit and replacement paths and add a flush contract before relying on
+these counters for quantified search comparisons. A regression should exercise
+an UNSAT result reached before a full model check and a lemma-growth reset.
+Keep this separate from collecting peak resident node counts or allocated bytes:
+the existing term counter is cumulative. This is an observed reporting gap and
+an implementation follow-up, not a solver fix included in the measurement.

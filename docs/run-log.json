@@ -3,6 +3,65 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-10-27-uf-rollback-memory",
+      "date": "2026-10-27",
+      "kind": "paired-resource-diagnostic",
+      "evidence_status": "complete focused sample; no full-corpus/default claim; neither prior failure recovered",
+      "jobs": {
+        "paired_cpu_array": "258443"
+      },
+      "measurement_commit": "170d0ec",
+      "qualification": "docs/coverage/uf-rollback-memory-20261027.json",
+      "manifest": "benchmarks/uf-rollback-memory-20261027.json",
+      "raw_artifacts": "results/uf-rollback-memory-20261027/258443/",
+      "native_source_git": {
+        "baseline": "0d5970400743e1403b7160b7f0126de6ececa8fe",
+        "fixed": "ed8c227aea49925ed8117f656bf44f14a030a4b9"
+      },
+      "binary_sha256": {
+        "baseline": "3b464f63254ff87309c18850f3ea2e3f36bdd45c82cf97842faa5434e0f3e901",
+        "fixed": "4a680d24feef6b49947bf1ec6610170b78bc6d7307ccce055a1874d41bee40d4"
+      },
+      "execution": {
+        "location": "CPU SLURM compute partition; Xeon E5-2690 v4; one pinned CPU per paired case",
+        "reservation": "10GiB; requested 1 CPU, allocated 2 logical CPUs, pinned to one",
+        "solver_rlimit_as_bytes": 8589934592,
+        "solver_timeout_seconds": 180,
+        "solver_args": [
+          "--quiet",
+          "--stats"
+        ],
+        "repetitions_per_binary_per_case": 3,
+        "order": "alternating AB/BA; same allocation per input",
+        "memory": "wait4 process max RSS; /proc VmPeak sampled every 50ms is a lower bound"
+      },
+      "summary": {
+        "inputs": 6,
+        "quantified_uf_inputs": 4,
+        "qf_uf_inputs": 2,
+        "solver_runs": 36,
+        "solved_inputs_per_binary": 4,
+        "unsat_runs": 24,
+        "explicit_allocation_failure_runs": 6,
+        "cleanup_abort_runs": 6,
+        "timeouts": 0,
+        "other_errors": 0,
+        "declared_or_paired_answer_disagreements": 0,
+        "sat_answers_requiring_validation": 0
+      },
+      "correctness": "Fixed native binary is already correctness-qualified in 2026-10-27-static-diagnostic-repair. All successful runs agree with declared UNSAT and paired answers; no new independent UNSAT certification. No SAT answers to replay. Cleanup abort is preserved separately, not blanket-classified as a confirmed fresh OOM trace.",
+      "analysis": "Neither memory failure recovered. Solved-case median time changes -2.24% to +0.46%, mixed memory changes; all non-timer counters match per solved input. Quantified UNSAT incremental EUF zeros expose an unflushed-statistics limitation, not measured resident-node counts.",
+      "commands": [
+        "sbatch scripts/qualification/uf_memory/paired.sbatch (PRIMO_WORKDIR, PRIMO_UF_PLAN, PRIMO_UF_ROOT, PRIMO_QF_UF_ROOT, PRIMO_UF_OUT, PRIMO_UF_BASELINE, PRIMO_UF_FIXED supplied outside tracked files)",
+        "python3 scripts/summarize_uf_memory.py --plan benchmarks/uf-rollback-memory-20261027.json --results results/uf-rollback-memory-20261027/258443 --output docs/coverage/uf-rollback-memory-20261027.json"
+      ],
+      "limitations": [
+        "Six selected diagnostics, not an unbiased full-corpus evaluation.",
+        "No final solver counters on failed runs; no peak closure-size or unreachable-term measurement.",
+        "Quantified UNSAT EUF counter publication needs repair; this task changes no solver source."
+      ]
+    },
+    {
       "id": "2026-10-27-static-diagnostic-repair",
       "date": "2026-10-27",
       "kind": "resource-regression-and-static-triage",

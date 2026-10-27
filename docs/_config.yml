@@ -41,6 +41,9 @@ sphinx:
       diagnosticsource:
         - "https://github.com/primo-solver/primo/blob/f318be143cfa4b5625e16a7a8723c678eacc1dd2/%s"
         - "%s"
+      ufmemorysource:
+        - "https://github.com/primo-solver/primo/blob/170d0ec67ecf14cf18fe60e77f5ab077313970a3/%s"
+        - "%s"
       rollbacksource:
         - "https://github.com/primo-solver/primo/blob/f318be143cfa4b5625e16a7a8723c678eacc1dd2/%s"
         - "%s"

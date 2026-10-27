@@ -131,3 +131,80 @@ help/version path; it is not proof that every dependency path is leak-free.
 The remaining priorities are the checkpoint exception contract, direct-header
 hygiene and avoidable const-payload copies. No performance-profile promotion
 or full-corpus performance conclusion follows from this review.
+
+(uf-rollback-resource-measurement)=
+## UF resource measurement after the repair
+
+CPU SLURM job `258443` compares frozen native sources `0d59704` and `ed8c227`.
+Their production source differs only in the guarded proof-array resizing in
+`FlatCongruenceClosure::pop`. Both use the same Release compiler, `-O3 -DNDEBUG`,
+explicit C++ header search paths and CaDiCaL `3.0.0-7b99c07`; no sanitizers.
+The fixed binary is the correctness-qualified candidate described above.
+The {ufmemorysource}`six-input manifest <benchmarks/uf-rollback-memory-20261027.json>`
+selects two previous quantified-UF failures, two successful quantified-UF cases
+and two QF_UF controls. Historical selection times are not the measured baseline.
+
+Each input has three repetitions per binary, alternating execution order within
+one allocation. The controller pins itself and its children to one CPU on an
+Intel Xeon E5-2690 v4. SLURM allocates two logical CPUs despite a one-CPU request;
+the explicit affinity restricts execution to one. The scheduler reservation is
+10 GiB; each solver has an observed hard and soft 8 GiB `RLIMIT_AS`, a 180-second
+deadline and arguments `--quiet --stats`. All six array tasks completed their
+six measurements, for 36 solver runs total. No run reached its deadline.
+
+The table gives medians over three repetitions. Failure times measure time to
+failure, not solve time. Peak RSS is the kernel's per-process `wait4` measurement.
+
+| Input suffix (logic) | Result, both binaries | Time before → after (s) | Peak RSS before → after (MiB) |
+| --- | --- | ---: | ---: |
+| `FFT/uf.706467` (UF) | Cleanup abort | 54.09 → 54.13 | 5942.5 → 5943.4 |
+| `Fundamental_Theorem_Algebra/uf.828004` (UF) | Explicit `bad_alloc` | 83.43 → 83.34 | 6345.8 → 6344.3 |
+| `dl_copy_loop_check_heap_access_31_6` (UF) | UNSAT | 22.67 → 22.16 | 111.3 → 110.7 |
+| `QEpres/uf.804465` (UF) | UNSAT | 22.20 → 22.00 | 133.3 → 139.2 |
+| `PEQ011_size8` (QF_UF) | UNSAT | 14.44 → 14.44 | 24.7 → 24.2 |
+| `iso_icl_nogen_sk007` (QF_UF) | UNSAT | 22.08 → 22.18 | 364.6 → 365.5 |
+
+Each binary solves four of six inputs in every repetition. All 24 successful
+runs agree with the declared UNSAT status and their paired binary. There are
+six explicit allocation-failure runs and six cleanup-abort runs, zero timeouts
+and no other execution errors. No SAT answer needs post-run model validation;
+this does not independently certify the UNSAT answers. The cleanup abort has
+the same signature as the [earlier allocation trace](long-limits.md), but this
+measurement does not collect a fresh allocation stack trace.
+
+All reported non-timer counters match across binaries and repetitions for each
+successful input. The two quantified cases report respectively 15,641 and
+19,564 instances, 4,311 and 10,976 pool terms, and 1,249 and 259 SAT conflicts.
+The QF_UF controls report 27,841 and 119,338 incremental-EUF backtracks and
+5,890 and 161,966 SAT conflicts. Quantified UNSAT's zero incremental-EUF
+counters have a {ref}`publication limitation <quantified-uf-counter-publication>`;
+they do not measure resident closure size. Failed runs print no final counters.
+
+Neither failing case is recovered. Their sampled virtual-memory peaks are
+essentially unchanged: about 7,498.5 and 8,145.2 MiB. Sampling every 50 ms gives
+lower bounds on those peaks; an allocation can fail below the address-space cap
+when its next buffer cannot fit. The successful cases have mixed memory changes,
+and timing differences from −2.24% to +0.46% on this small selected sample do not
+establish a general speedup. The removed dormant arrays are a real allocation
+defect, but these measurements do not attribute the prior memory-outs to it.
+[Term-lifetime and storage attribution](../leads/incremental-memory.md) remains open.
+
+The {ufmemorysource}`machine-readable report <docs/coverage/uf-rollback-memory-20261027.json>`
+contains full source and binary hashes, metric ranges, selected counters and
+raw-artifact fingerprints. Local raw results are
+`results/uf-rollback-memory-20261027/258443/`. Reproduce execution with the
+{ufmemorysource}`CPU batch script <scripts/qualification/uf_memory/paired.sbatch>`:
+set `PRIMO_WORKDIR`, `PRIMO_UF_PLAN`, `PRIMO_UF_ROOT`, `PRIMO_QF_UF_ROOT`,
+`PRIMO_UF_OUT`, `PRIMO_UF_BASELINE` and `PRIMO_UF_FIXED` to the prepared workspace,
+manifest, corpus roots, fresh output directory and fingerprint-matching binaries,
+then submit with `sbatch`. The controller is single-threaded, as required by its
+child-only `preexec_fn` resource-limit setup. Rebuild the summary with the
+{ufmemorysource}`summary script <scripts/summarize_uf_memory.py>` without running
+the solver:
+
+```sh
+python3 scripts/summarize_uf_memory.py \
+  --plan benchmarks/uf-rollback-memory-20261027.json \
+  --results results/uf-rollback-memory-20261027/258443 \
+  --output docs/coverage/uf-rollback-memory-20261027.json
+```
