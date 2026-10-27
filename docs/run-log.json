@@ -448,6 +448,80 @@
             "Read completed provenance/CSV rows and all4633 observed worker execution records; each records both AS limits8589934592bytes",
             "Cross-checked snapshot totals, native exit counts and zero wrong flags; JSON run ledger parses. No native execution or source changes in this status check."
           ]
+        },
+        {
+          "checked_at_utc": "2026-10-27T06:22:26.934013+00:00",
+          "scope": "SLURM scheduler and phase-marker status only; completed task counts are not a fresh CSV/provenance/cross-answer audit. Known allocation-failure/error rows remain separate.",
+          "scheduler_snapshot": "results/long-limits-20261024/accounting-20261027.txt",
+          "scheduler_snapshot_sha256": "14ff0177b36e6d885ddf3188cb7cf738cdb0c941dfe70e55759c7cda2334d53c",
+          "phase_snapshot": "results/long-limits-20261024/phase-status-20261027.json",
+          "complete_timing_tasks": 5757,
+          "total_timing_tasks": 6462,
+          "running_timing_tasks": 72,
+          "pending_timing_tasks": 633,
+          "active_timing_arrays": [
+            "242905",
+            "242906",
+            "242907",
+            "242908"
+          ],
+          "by_logic": {
+            "QF_LIA": {
+              "complete": 2531,
+              "total": 2775,
+              "running": 16
+            },
+            "QF_LRA": {
+              "complete": 444,
+              "total": 444,
+              "running": 0
+            },
+            "QF_UF": {
+              "complete": 1340,
+              "total": 1565,
+              "running": 0
+            },
+            "QF_UFLIA": {
+              "complete": 140,
+              "total": 140,
+              "running": 0
+            },
+            "QF_UFLRA": {
+              "complete": 270,
+              "total": 270,
+              "running": 0
+            },
+            "UF": {
+              "complete": 1032,
+              "total": 1268,
+              "running": 56
+            }
+          },
+          "timing_terminal_failures": [],
+          "phase_status": {
+            "global_failures": {},
+            "task_failures": {},
+            "audits": {
+              "gate-audit": {
+                "status": "complete"
+              }
+            },
+            "plots": []
+          },
+          "dependent_jobs": {
+            "timing_audit": "242911",
+            "models": [
+              "242912",
+              "242913"
+            ],
+            "final_report": "242914"
+          },
+          "model_validation": "Not started; timing audit and model arrays pending dependencies.",
+          "verification": [
+            "Read squeue and sacct for the recorded campaign job IDs",
+            "Read global/task failure directories and gate/timing/final audit markers",
+            "Cross-checked task-index/offset logic totals against frozen plan; no solver execution or source changes."
+          ]
         }
       ],
       "oom_exception_diagnostic": {
