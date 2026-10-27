@@ -8,8 +8,14 @@ CADICAL_TAG ?= rel-3.0.0
 PYTHON ?= python3
 RUFF ?= .venv/bin/python -m ruff
 PATH_WITH_CONTRIB := $(CURDIR)/$(CONTRIB_PREFIX)/bin:$(PATH)
-CPP_FORMAT_FILES := $$(rg --files src tests -g '*.cpp' -g '*.hpp' -g '*.h')
-CPP_TIDY_FILES := $$(git ls-files | rg '^(src|tests)/.*\.cpp$$')
+CPP_FORMAT_FILES := $$(rg --files src tests docs/examples -g '*.cpp' -g '*.hpp' -g '*.h')
+STATIC_BUILD_DIR ?= build-static
+STATIC_RUN_STAMP := $(shell date -u +%Y%m%dT%H%M%SZ)
+STATIC_REPORT_DIR ?= results/static-$(STATIC_RUN_STAMP)
+STATIC_JOBS ?= 2
+STATIC_CXX ?= clang++-18
+CLANG_TIDY ?= clang-tidy-18
+RUN_CLANG_TIDY ?= /usr/bin/python3 /usr/bin/run-clang-tidy-18
 CLI11_STAMP := $(CONTRIB_PREFIX)/.cli11.stamp
 CADICAL_STAMP := $(CONTRIB_PREFIX)/.cadical.stamp
 GMP_STAMP := $(CONTRIB_PREFIX)/.gmp.stamp
@@ -118,19 +124,24 @@ lint:
 		exit 1; \
 	fi
 
-tidy: build
-	@if command -v clang-tidy >/dev/null 2>&1; then \
-		clang-tidy -p $(BUILD_DIR) $(CPP_TIDY_FILES); \
-	else \
-		echo "clang-tidy is not installed; skipping C++ tidy."; \
-	fi
+.PHONY: analysis-db tidy include-cleaner check-headers
+analysis-db:
+	"$(CLANG_TIDY)" --version
+	"$(STATIC_CXX)" --version
+	cmake -S . -B "$(STATIC_BUILD_DIR)" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER="$(STATIC_CXX)" -DCMAKE_PREFIX_PATH="$(CURDIR)/$(CONTRIB_PREFIX)"
+	cmake -DPRIMO_SOURCE_DIR="$(CURDIR)" -DPRIMO_GIT_REVISION_HEADER="$(STATIC_BUILD_DIR)/generated/primo_git_revision.hpp" -P scripts/write_git_revision.cmake
+	$(PYTHON) scripts/prepare_static_analysis.py --build "$(STATIC_BUILD_DIR)" --out "$(STATIC_REPORT_DIR)/database"
 
-include-cleaner: build
-	@if command -v clang-tidy >/dev/null 2>&1; then \
-		clang-tidy -p $(BUILD_DIR) -checks='-*,clang-diagnostic-*,misc-include-cleaner' $(CPP_TIDY_FILES); \
-	else \
-		echo "clang-tidy is not installed; skipping include-cleaner scan."; \
-	fi
+tidy: analysis-db
+	@status=0; $(RUN_CLANG_TIDY) -p "$(STATIC_REPORT_DIR)/database" -j $(STATIC_JOBS) -clang-tidy-binary "$(CLANG_TIDY)" -export-fixes "$(STATIC_REPORT_DIR)/tidy.yaml" > "$(STATIC_REPORT_DIR)/tidy.log" 2>&1 || status=$$?; \
+	$(PYTHON) scripts/summarize_static_analysis.py --manifest "$(STATIC_REPORT_DIR)/database/manifest.json" --log "$(STATIC_REPORT_DIR)/tidy.log" --exit-code $$status --out "$(STATIC_REPORT_DIR)/tidy-summary.json"
+
+include-cleaner: analysis-db
+	@status=0; $(RUN_CLANG_TIDY) -p "$(STATIC_REPORT_DIR)/database" -j $(STATIC_JOBS) -clang-tidy-binary "$(CLANG_TIDY)" '-checks=-*,clang-diagnostic-*,misc-include-cleaner' -export-fixes "$(STATIC_REPORT_DIR)/includes.yaml" > "$(STATIC_REPORT_DIR)/includes.log" 2>&1 || status=$$?; \
+	$(PYTHON) scripts/summarize_static_analysis.py --manifest "$(STATIC_REPORT_DIR)/database/manifest.json" --log "$(STATIC_REPORT_DIR)/includes.log" --exit-code $$status --out "$(STATIC_REPORT_DIR)/includes-summary.json"
+
+check-headers: analysis-db
+	$(PYTHON) scripts/check_static_headers.py --database "$(STATIC_REPORT_DIR)/database/compile_commands.json" --out "$(STATIC_REPORT_DIR)/headers" --jobs $(STATIC_JOBS)
 
 format:
 	@if command -v clang-format >/dev/null 2>&1; then \

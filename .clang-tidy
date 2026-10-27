@@ -1,0 +1,10 @@
+Checks: >
+  -*,
+  clang-diagnostic-*,
+  clang-analyzer-*,
+  bugprone-*,
+  performance-*,
+  portability-*,
+  misc-include-cleaner
+HeaderFilterRegex: '(^|/)(src|tests|docs/examples)/'
+FormatStyle: file
