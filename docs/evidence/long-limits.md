@@ -231,6 +231,17 @@ splits arrays below the scheduler's 1,001-task index limit and
 keeps total timing concurrency at or below 128 physical CPUs. Model replay uses
 a separate phase with at most 64 concurrent tasks. Failed dependencies cancel
 later compute rather than leaving a nominally successful partial evaluation.
+
+The initial controller divides the timing budget once: seven arrays each get
+an 18-task throttle, for at most 126 workers. It does not automatically transfer
+unused shares when an array drains. On October 27, idle CPU nodes and pending
+`JobArrayTaskLimit` work exposed this avoidable tail. The three arrays with
+queued work were raised to 36 tasks each while the draining array retained its
+18-task cap: the maximum across the four arrays remains 126, below the original
+128-task ceiling. The run ledger records this scheduler-only adjustment and
+its verification; solver binaries, per-input limits, inputs and timing rows
+were unchanged. Automatic redistribution remains unimplemented.
+
 The {longlimitsworkflow}`final audit <scripts/qualification/long_limits/report.py>`
 remains explicit about missing results and quantified-model
 limitations. Submission alone is not completion.

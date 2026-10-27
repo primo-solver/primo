@@ -1400,6 +1400,164 @@
             "2026-10-28T10:58:17+02:00"
           ],
           "stage_scope": "Remaining timing work only; model validation and final report follow and are not included. No model-stage throughput data yet."
+        },
+        {
+          "checked_at_utc": "2026-10-27T08:58:17+00:00",
+          "clock_zone": "UTC accounting, display Europe/Athens",
+          "artifacts": [
+            "results/long-limits-20261024/eta-utc-20261027.txt"
+          ],
+          "method": "Rough planning estimate: simulate per-array36-slot queues after rebalance using observed per-solver/theory completed shard durations and conditional remaining durations for active shards. Arrays do not steal slots. Also report6/12/24-hour completion throughput. Completed samples can underrepresent current long-tail work; these are not calibrated confidence intervals.",
+          "running_tasks": 66,
+          "queued_tasks": 499,
+          "throughput": {
+            "242905": {
+              "active": 12,
+              "queued": 0,
+              "6h": {
+                "completed": 73,
+                "tasks_per_hour": 12.166666666666666,
+                "hours_queued_at_rate": 0.0
+              },
+              "12h": {
+                "completed": 167,
+                "tasks_per_hour": 13.916666666666666,
+                "hours_queued_at_rate": 0.0
+              },
+              "24h": {
+                "completed": 335,
+                "tasks_per_hour": 13.958333333333334,
+                "hours_queued_at_rate": 0.0
+              }
+            },
+            "242906": {
+              "active": 18,
+              "queued": 157,
+              "6h": {
+                "completed": 82,
+                "tasks_per_hour": 13.666666666666666,
+                "hours_queued_at_rate": 11.487804878048781
+              },
+              "12h": {
+                "completed": 163,
+                "tasks_per_hour": 13.583333333333334,
+                "hours_queued_at_rate": 11.558282208588956
+              },
+              "24h": {
+                "completed": 322,
+                "tasks_per_hour": 13.416666666666666,
+                "hours_queued_at_rate": 11.701863354037268
+              }
+            },
+            "242907": {
+              "active": 18,
+              "queued": 188,
+              "6h": {
+                "completed": 77,
+                "tasks_per_hour": 12.833333333333334,
+                "hours_queued_at_rate": 14.649350649350648
+              },
+              "12h": {
+                "completed": 159,
+                "tasks_per_hour": 13.25,
+                "hours_queued_at_rate": 14.18867924528302
+              },
+              "24h": {
+                "completed": 326,
+                "tasks_per_hour": 13.583333333333334,
+                "hours_queued_at_rate": 13.840490797546012
+              }
+            },
+            "242908": {
+              "active": 18,
+              "queued": 154,
+              "6h": {
+                "completed": 85,
+                "tasks_per_hour": 14.166666666666666,
+                "hours_queued_at_rate": 10.870588235294118
+              },
+              "12h": {
+                "completed": 165,
+                "tasks_per_hour": 13.75,
+                "hours_queued_at_rate": 11.2
+              },
+              "24h": {
+                "completed": 335,
+                "tasks_per_hour": 13.958333333333334,
+                "hours_queued_at_rate": 11.032835820895523
+              }
+            }
+          },
+          "conditional_sampling_hours": {
+            "all_completed": {
+              "0.1": 11.298333333333334,
+              "0.5": 11.805555555555555,
+              "0.9": 12.546666666666667
+            },
+            "last24h_completed": {
+              "0.1": 10.950277777777778,
+              "0.5": 11.519444444444444,
+              "0.9": 12.206666666666667
+            }
+          },
+          "includes_model_validation": false,
+          "planning_range_hours": [
+            10,
+            14
+          ],
+          "simulation_snapshot_utc": "2026-10-27T08:58:17+00:00",
+          "rebalanced_at_utc": "2026-10-27T09:09:24.931961+00:00",
+          "planning_finish_range_athens": [
+            "2026-10-27T21:09:24.931961+02:00",
+            "2026-10-28T01:09:24.931961+02:00"
+          ],
+          "scope": "Timing completion only, conditional on36-task caps and available compute capacity; model validation follows and is not included."
+        }
+      ],
+      "scheduler_adjustments": [
+        {
+          "date_utc": "2026-10-27T09:08:57.127529+00:00",
+          "before_throttles": {
+            "242905": 18,
+            "242906": 18,
+            "242907": 18,
+            "242908": 18
+          },
+          "verified_throttles": {
+            "242905": 18,
+            "242906": 36,
+            "242907": 36,
+            "242908": 36
+          },
+          "worst_case_sum_for_active_arrays": 126,
+          "approved_timing_task_ceiling": 128,
+          "commands": [
+            "scontrol update JobId=242906 ArrayTaskThrottle=36",
+            "scontrol update JobId=242907 ArrayTaskThrottle=36",
+            "scontrol update JobId=242908 ArrayTaskThrottle=36"
+          ],
+          "controller_bookkeeping_warning": "The parent242907 update returned exit1 for already-finished task records; effective parent/active-task throttle nevertheless became36, independently verified by scontrol showjob.",
+          "remaining_command_results": [
+            {
+              "command": "scontrol update JobId=242908 ArrayTaskThrottle=36",
+              "exit": 0,
+              "stdout": "",
+              "stderr": ""
+            }
+          ],
+          "scope": "Reallocate existing timing concurrency only; no solver/options/time/memory/corpus/measurement changes, no resubmitted tasks or dependency changes.",
+          "post_adjustment_observation": {
+            "at_utc": "2026-10-27T09:12:53Z",
+            "running_timing_workers": 118,
+            "partition": "compute",
+            "artifact": "results/long-limits-20261024/after-rebalance-20261027.txt"
+          },
+          "verification": [
+            "scontrol re-read confirms18/36/36/36; worst-case active-array sum126 is below original128 ceiling",
+            "New workers observed running on compute; no source, input, limits or dependency changes",
+            "Independent read-only source/operational/ETA documentation review accepted; no required findings",
+            "make docs and assembled-site local/Git links passed with0failures; cap arithmetic and JSON ledger checked. Native tests/fuzz/ASan/tidy not rerun because no solver code changed."
+          ]
         }
       ]
     },
