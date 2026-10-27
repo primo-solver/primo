@@ -3,6 +3,29 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-10-27-publication-secret-audit",
+      "date": "2026-10-27",
+      "kind": "publication-secret-audit",
+      "evidence_status": "four local scans clean; hosted content and publication rights outside scope",
+      "candidate_git": "7bdfa8bf09179db9369c37686e88c6cb83ca1d0c",
+      "report": "docs/coverage/secret-audit-20261027.json",
+      "raw_artifacts": "results/secret-audit-20261027/",
+      "tool": "Gitleaks 8.30.1, checksum-verified official binary; default rules, no project suppressions, full redaction",
+      "summary": {
+        "reachable_commits": 1700,
+        "complete_historical_blobs": 8211,
+        "tracked_worktree_files": 1240,
+        "remote_branches": 36,
+        "remote_tags": 2,
+        "local_mirror_refs": 102,
+        "secret_detections": 0,
+        "credential_ssh_reading_binary_archive_filename_candidates": 0
+      },
+      "coverage": "Git patches, full historical blobs, tracked working tree, commit messages, ref/tag annotations and historical path names. Remote refs identical before/after. Separate synthetic private-key positive control passes.",
+      "execution": "Local static analysis only; no solver run or history rewrite. Supplemental full-blob scan restricted to two CPUs during execution.",
+      "limitations": "Hosted Actions logs/artifacts, release assets and issue/PR attachments unreviewed: no GitHub API authentication. No content-rights approval or guarantee of absence of all secret types. Patch-count difference documented and supplemented by full-blob/metadata coverage."
+    },
+    {
       "id": "2026-10-27-uf-rollback-memory",
       "date": "2026-10-27",
       "kind": "paired-resource-diagnostic",
