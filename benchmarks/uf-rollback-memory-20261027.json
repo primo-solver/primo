@@ -1,0 +1,78 @@
+{
+  "id": "uf-rollback-memory-20261027",
+  "timeout_seconds": 180,
+  "as_limit_bytes": 8589934592,
+  "repetitions": 3,
+  "solver_args": [
+    "--quiet",
+    "--stats"
+  ],
+  "cases": [
+    {
+      "logic": "UF",
+      "file": "sledgehammer/FFT/uf.706467.smt2",
+      "sha256": "ba33f3b7107f9c45fc65ef9574fc0f56bf4ee1ee9b0b3f4d33ae8bce040ad558",
+      "expected": "",
+      "selection_status": "error",
+      "selection_answer": "error",
+      "selection_seconds": 54.896868,
+      "selection_stderr": "cadical: fatal error: invalid API usage of 'void CaDiCaL::Solver::disconnect_external_propagator()' in '../src/solver.cpp': solver in invalid state",
+      "bytes": 48692
+    },
+    {
+      "logic": "UF",
+      "file": "sledgehammer/Fundamental_Theorem_Algebra/uf.828004.smt2",
+      "sha256": "5ae97277b2ad9d79e9f71050955243fb08f5598e5b3b7bc365e37bb041a158a3",
+      "expected": "unsat",
+      "selection_status": "error",
+      "selection_answer": "error",
+      "selection_seconds": 85.353185,
+      "selection_stderr": "std::bad_alloc",
+      "bytes": 35480
+    },
+    {
+      "logic": "UF",
+      "file": "grasshopper/uninstantiated/dl_copy_loop_check_heap_access_31_6.smt2",
+      "sha256": "e66917eaab24e25aca4aa8fc273901661a27a24160a07cd5b886a52e142d1d71",
+      "expected": "unsat",
+      "selection_status": "ok",
+      "selection_answer": "unsat",
+      "selection_seconds": 23.937308,
+      "selection_stderr": "",
+      "bytes": 15164
+    },
+    {
+      "logic": "UF",
+      "file": "sledgehammer/QEpres/uf.804465.smt2",
+      "sha256": "84cf0ef218b6dcddac56e829625129859a4188e9b0afc060ce305a7f03660aa3",
+      "expected": "unsat",
+      "selection_status": "ok",
+      "selection_answer": "unsat",
+      "selection_seconds": 24.727756,
+      "selection_stderr": "",
+      "bytes": 60988
+    },
+    {
+      "logic": "QF_UF",
+      "file": "PEQ/PEQ011_size8.smt2",
+      "sha256": "5beaa9e86fa2355fa51156b467ca8a290a54ebe1a003caea4383900159761fb3",
+      "expected": "unsat",
+      "selection_status": "ok",
+      "selection_answer": "unsat",
+      "selection_seconds": 14.568409,
+      "selection_stderr": "",
+      "bytes": 67782
+    },
+    {
+      "logic": "QF_UF",
+      "file": "QG-classification/qg7/iso_icl_nogen_sk007.smt2",
+      "sha256": "fe3693b6f59618083ca4734c299a200c4cfd5b3edcd15457add15e04663781f7",
+      "expected": "unsat",
+      "selection_status": "ok",
+      "selection_answer": "unsat",
+      "selection_seconds": 22.541389,
+      "selection_stderr": "",
+      "bytes": 6012899
+    }
+  ]
+}

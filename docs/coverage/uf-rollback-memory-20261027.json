@@ -1,0 +1,1186 @@
+{
+  "id": "uf-rollback-memory-20261027",
+  "job": "258443",
+  "native_source_git": {
+    "baseline": "0d5970400743e1403b7160b7f0126de6ececa8fe",
+    "fixed": "ed8c227aea49925ed8117f656bf44f14a030a4b9"
+  },
+  "binary_sha256": {
+    "baseline": "3b464f63254ff87309c18850f3ea2e3f36bdd45c82cf97842faa5434e0f3e901",
+    "fixed": "4a680d24feef6b49947bf1ec6610170b78bc6d7307ccce055a1874d41bee40d4"
+  },
+  "plan_sha256": "e08fff6f96b4b3183291c98b71f424b2aab941ab48cb66c7200a0f5799cc852a",
+  "executed_sbatch_sha256": "b686adcc8641425509deb88968d3994fc3f5502521a26bd242a922b3d60a180e",
+  "timeout_seconds": 180,
+  "as_limit_bytes": 8589934592,
+  "solver_args": [
+    "--quiet",
+    "--stats"
+  ],
+  "repetitions": 3,
+  "build": "Release, /usr/bin/c++, -O3 -DNDEBUG, identical explicit C++ header paths, no sanitizers; CaDiCaL 3.0.0-7b99c07",
+  "execution": "CPU compute partition; requested 1 CPU, scheduler allocated 2 logical CPUs, pinned controller/children to 1; 10G reservation, 8GiB hard child RLIMIT_AS",
+  "scope": "Six selected diagnostics, not a full-corpus evaluation. Failed-run time is time to failure. RSS is wait4 process peak; sampled VmPeak is a lower bound. Counters are cumulative, not resident storage. Quantified UNSAT EUF counters can remain unflushed; failed runs print no final counters.",
+  "cases": [
+    {
+      "logic": "UF",
+      "file": "sledgehammer/FFT/uf.706467.smt2",
+      "sha256": "ba33f3b7107f9c45fc65ef9574fc0f56bf4ee1ee9b0b3f4d33ae8bce040ad558",
+      "cpu_models": [
+        "Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz"
+      ],
+      "profiles": {
+        "baseline": {
+          "statuses": [
+            "cleanup-abort",
+            "cleanup-abort",
+            "cleanup-abort"
+          ],
+          "answers": [
+            null,
+            null,
+            null
+          ],
+          "metrics": {
+            "wall_seconds": {
+              "median": 54.09456527605653,
+              "min": 54.082402147352695,
+              "max": 54.13502883538604
+            },
+            "user_seconds": {
+              "median": 47.090124,
+              "min": 46.978328,
+              "max": 47.179826
+            },
+            "system_seconds": {
+              "median": 6.268208,
+              "min": 6.225904,
+              "max": 6.278329
+            },
+            "max_rss_kib": {
+              "median": 6085096,
+              "min": 6084064,
+              "max": 6087640
+            },
+            "minor_faults": {
+              "median": 953260,
+              "min": 951914,
+              "max": 963163
+            },
+            "major_faults": {
+              "median": 0,
+              "min": 0,
+              "max": 0
+            }
+          },
+          "sampled_vm_peak_kib": [
+            7678508,
+            7678508,
+            7678508
+          ],
+          "counters": {
+            ":sat.conflicts": [
+              null,
+              null,
+              null
+            ],
+            ":sat.decisions": [
+              null,
+              null,
+              null
+            ],
+            ":quant.instances": [
+              null,
+              null,
+              null
+            ],
+            ":quant.pool-terms": [
+              null,
+              null,
+              null
+            ],
+            ":euf.incremental.terms": [
+              null,
+              null,
+              null
+            ],
+            ":euf.incremental.backtracks": [
+              null,
+              null,
+              null
+            ]
+          }
+        },
+        "fixed": {
+          "statuses": [
+            "cleanup-abort",
+            "cleanup-abort",
+            "cleanup-abort"
+          ],
+          "answers": [
+            null,
+            null,
+            null
+          ],
+          "metrics": {
+            "wall_seconds": {
+              "median": 54.13002407178283,
+              "min": 53.47950782254338,
+              "max": 54.233421728014946
+            },
+            "user_seconds": {
+              "median": 47.057581,
+              "min": 46.476906,
+              "max": 47.137749
+            },
+            "system_seconds": {
+              "median": 6.309208,
+              "min": 6.218004,
+              "max": 6.334137
+            },
+            "max_rss_kib": {
+              "median": 6086000,
+              "min": 6085040,
+              "max": 6087164
+            },
+            "minor_faults": {
+              "median": 954364,
+              "min": 951801,
+              "max": 956831
+            },
+            "major_faults": {
+              "median": 0,
+              "min": 0,
+              "max": 0
+            }
+          },
+          "sampled_vm_peak_kib": [
+            7678300,
+            7678300,
+            7678300
+          ],
+          "counters": {
+            ":sat.conflicts": [
+              null,
+              null,
+              null
+            ],
+            ":sat.decisions": [
+              null,
+              null,
+              null
+            ],
+            ":quant.instances": [
+              null,
+              null,
+              null
+            ],
+            ":quant.pool-terms": [
+              null,
+              null,
+              null
+            ],
+            ":euf.incremental.terms": [
+              null,
+              null,
+              null
+            ],
+            ":euf.incremental.backtracks": [
+              null,
+              null,
+              null
+            ]
+          }
+        }
+      }
+    },
+    {
+      "logic": "UF",
+      "file": "sledgehammer/Fundamental_Theorem_Algebra/uf.828004.smt2",
+      "sha256": "5ae97277b2ad9d79e9f71050955243fb08f5598e5b3b7bc365e37bb041a158a3",
+      "cpu_models": [
+        "Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz"
+      ],
+      "profiles": {
+        "baseline": {
+          "statuses": [
+            "explicit-allocation-failure",
+            "explicit-allocation-failure",
+            "explicit-allocation-failure"
+          ],
+          "answers": [
+            null,
+            null,
+            null
+          ],
+          "metrics": {
+            "wall_seconds": {
+              "median": 83.43307203613222,
+              "min": 82.74213998392224,
+              "max": 83.638333696872
+            },
+            "user_seconds": {
+              "median": 79.249777,
+              "min": 78.478758,
+              "max": 79.425042
+            },
+            "system_seconds": {
+              "median": 3.215991,
+              "min": 3.175666,
+              "max": 3.229627
+            },
+            "max_rss_kib": {
+              "median": 6498056,
+              "min": 6497920,
+              "max": 6499900
+            },
+            "minor_faults": {
+              "median": 938234,
+              "min": 937171,
+              "max": 939205
+            },
+            "major_faults": {
+              "median": 0,
+              "min": 0,
+              "max": 0
+            }
+          },
+          "sampled_vm_peak_kib": [
+            8340676,
+            8340676,
+            8340676
+          ],
+          "counters": {
+            ":sat.conflicts": [
+              null,
+              null,
+              null
+            ],
+            ":sat.decisions": [
+              null,
+              null,
+              null
+            ],
+            ":quant.instances": [
+              null,
+              null,
+              null
+            ],
+            ":quant.pool-terms": [
+              null,
+              null,
+              null
+            ],
+            ":euf.incremental.terms": [
+              null,
+              null,
+              null
+            ],
+            ":euf.incremental.backtracks": [
+              null,
+              null,
+              null
+            ]
+          }
+        },
+        "fixed": {
+          "statuses": [
+            "explicit-allocation-failure",
+            "explicit-allocation-failure",
+            "explicit-allocation-failure"
+          ],
+          "answers": [
+            null,
+            null,
+            null
+          ],
+          "metrics": {
+            "wall_seconds": {
+              "median": 83.33536188863218,
+              "min": 83.10181158594787,
+              "max": 83.64707263186574
+            },
+            "user_seconds": {
+              "median": 79.030015,
+              "min": 78.81402,
+              "max": 79.377873
+            },
+            "system_seconds": {
+              "median": 3.257276,
+              "min": 3.236716,
+              "max": 3.267569
+            },
+            "max_rss_kib": {
+              "median": 6496544,
+              "min": 6495612,
+              "max": 6496884
+            },
+            "minor_faults": {
+              "median": 938219,
+              "min": 938040,
+              "max": 940047
+            },
+            "major_faults": {
+              "median": 0,
+              "min": 0,
+              "max": 0
+            }
+          },
+          "sampled_vm_peak_kib": [
+            8340680,
+            8340680,
+            8340680
+          ],
+          "counters": {
+            ":sat.conflicts": [
+              null,
+              null,
+              null
+            ],
+            ":sat.decisions": [
+              null,
+              null,
+              null
+            ],
+            ":quant.instances": [
+              null,
+              null,
+              null
+            ],
+            ":quant.pool-terms": [
+              null,
+              null,
+              null
+            ],
+            ":euf.incremental.terms": [
+              null,
+              null,
+              null
+            ],
+            ":euf.incremental.backtracks": [
+              null,
+              null,
+              null
+            ]
+          }
+        }
+      }
+    },
+    {
+      "logic": "UF",
+      "file": "grasshopper/uninstantiated/dl_copy_loop_check_heap_access_31_6.smt2",
+      "sha256": "e66917eaab24e25aca4aa8fc273901661a27a24160a07cd5b886a52e142d1d71",
+      "cpu_models": [
+        "Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz"
+      ],
+      "profiles": {
+        "baseline": {
+          "statuses": [
+            "solved",
+            "solved",
+            "solved"
+          ],
+          "answers": [
+            "unsat",
+            "unsat",
+            "unsat"
+          ],
+          "metrics": {
+            "wall_seconds": {
+              "median": 22.668654412031174,
+              "min": 22.403388569131494,
+              "max": 22.855338098481297
+            },
+            "user_seconds": {
+              "median": 22.111941,
+              "min": 21.844779,
+              "max": 22.282926
+            },
+            "system_seconds": {
+              "median": 0.26075,
+              "min": 0.23686,
+              "max": 0.261801
+            },
+            "max_rss_kib": {
+              "median": 113972,
+              "min": 112972,
+              "max": 115636
+            },
+            "minor_faults": {
+              "median": 97717,
+              "min": 95275,
+              "max": 98766
+            },
+            "major_faults": {
+              "median": 0,
+              "min": 0,
+              "max": 0
+            }
+          },
+          "sampled_vm_peak_kib": [
+            123744,
+            123744,
+            123744
+          ],
+          "counters": {
+            ":sat.conflicts": [
+              1249,
+              1249,
+              1249
+            ],
+            ":sat.decisions": [
+              857058,
+              857058,
+              857058
+            ],
+            ":quant.instances": [
+              15641,
+              15641,
+              15641
+            ],
+            ":quant.pool-terms": [
+              4311,
+              4311,
+              4311
+            ],
+            ":euf.incremental.terms": [
+              0,
+              0,
+              0
+            ],
+            ":euf.incremental.backtracks": [
+              0,
+              0,
+              0
+            ]
+          }
+        },
+        "fixed": {
+          "statuses": [
+            "solved",
+            "solved",
+            "solved"
+          ],
+          "answers": [
+            "unsat",
+            "unsat",
+            "unsat"
+          ],
+          "metrics": {
+            "wall_seconds": {
+              "median": 22.161965342238545,
+              "min": 22.10178764909506,
+              "max": 22.24965005926788
+            },
+            "user_seconds": {
+              "median": 21.578639,
+              "min": 21.526246,
+              "max": 21.66219
+            },
+            "system_seconds": {
+              "median": 0.26564499999999996,
+              "min": 0.254972,
+              "max": 0.274686
+            },
+            "max_rss_kib": {
+              "median": 113392,
+              "min": 113316,
+              "max": 118216
+            },
+            "minor_faults": {
+              "median": 101746,
+              "min": 101370,
+              "max": 105578
+            },
+            "major_faults": {
+              "median": 0,
+              "min": 0,
+              "max": 0
+            }
+          },
+          "sampled_vm_peak_kib": [
+            124540,
+            124540,
+            124540
+          ],
+          "counters": {
+            ":sat.conflicts": [
+              1249,
+              1249,
+              1249
+            ],
+            ":sat.decisions": [
+              857058,
+              857058,
+              857058
+            ],
+            ":quant.instances": [
+              15641,
+              15641,
+              15641
+            ],
+            ":quant.pool-terms": [
+              4311,
+              4311,
+              4311
+            ],
+            ":euf.incremental.terms": [
+              0,
+              0,
+              0
+            ],
+            ":euf.incremental.backtracks": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      }
+    },
+    {
+      "logic": "UF",
+      "file": "sledgehammer/QEpres/uf.804465.smt2",
+      "sha256": "84cf0ef218b6dcddac56e829625129859a4188e9b0afc060ce305a7f03660aa3",
+      "cpu_models": [
+        "Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz"
+      ],
+      "profiles": {
+        "baseline": {
+          "statuses": [
+            "solved",
+            "solved",
+            "solved"
+          ],
+          "answers": [
+            "unsat",
+            "unsat",
+            "unsat"
+          ],
+          "metrics": {
+            "wall_seconds": {
+              "median": 22.203303759917617,
+              "min": 21.903832463547587,
+              "max": 22.378318024799228
+            },
+            "user_seconds": {
+              "median": 21.720555,
+              "min": 21.450973,
+              "max": 21.861826
+            },
+            "system_seconds": {
+              "median": 0.158279,
+              "min": 0.152249,
+              "max": 0.159376
+            },
+            "max_rss_kib": {
+              "median": 136472,
+              "min": 136092,
+              "max": 136532
+            },
+            "minor_faults": {
+              "median": 58490,
+              "min": 57839,
+              "max": 59237
+            },
+            "major_faults": {
+              "median": 0,
+              "min": 0,
+              "max": 0
+            }
+          },
+          "sampled_vm_peak_kib": [
+            158060,
+            158060,
+            158060
+          ],
+          "counters": {
+            ":sat.conflicts": [
+              259,
+              259,
+              259
+            ],
+            ":sat.decisions": [
+              827904,
+              827904,
+              827904
+            ],
+            ":quant.instances": [
+              19564,
+              19564,
+              19564
+            ],
+            ":quant.pool-terms": [
+              10976,
+              10976,
+              10976
+            ],
+            ":euf.incremental.terms": [
+              0,
+              0,
+              0
+            ],
+            ":euf.incremental.backtracks": [
+              0,
+              0,
+              0
+            ]
+          }
+        },
+        "fixed": {
+          "statuses": [
+            "solved",
+            "solved",
+            "solved"
+          ],
+          "answers": [
+            "unsat",
+            "unsat",
+            "unsat"
+          ],
+          "metrics": {
+            "wall_seconds": {
+              "median": 21.99878805503249,
+              "min": 21.89879592321813,
+              "max": 22.157121770083904
+            },
+            "user_seconds": {
+              "median": 21.491803,
+              "min": 21.356029,
+              "max": 21.638091
+            },
+            "system_seconds": {
+              "median": 0.220028,
+              "min": 0.214937,
+              "max": 0.221043
+            },
+            "max_rss_kib": {
+              "median": 142492,
+              "min": 141276,
+              "max": 142764
+            },
+            "minor_faults": {
+              "median": 78301,
+              "min": 76709,
+              "max": 78332
+            },
+            "major_faults": {
+              "median": 0,
+              "min": 0,
+              "max": 0
+            }
+          },
+          "sampled_vm_peak_kib": [
+            159736,
+            159736,
+            159736
+          ],
+          "counters": {
+            ":sat.conflicts": [
+              259,
+              259,
+              259
+            ],
+            ":sat.decisions": [
+              827904,
+              827904,
+              827904
+            ],
+            ":quant.instances": [
+              19564,
+              19564,
+              19564
+            ],
+            ":quant.pool-terms": [
+              10976,
+              10976,
+              10976
+            ],
+            ":euf.incremental.terms": [
+              0,
+              0,
+              0
+            ],
+            ":euf.incremental.backtracks": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      }
+    },
+    {
+      "logic": "QF_UF",
+      "file": "PEQ/PEQ011_size8.smt2",
+      "sha256": "5beaa9e86fa2355fa51156b467ca8a290a54ebe1a003caea4383900159761fb3",
+      "cpu_models": [
+        "Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz"
+      ],
+      "profiles": {
+        "baseline": {
+          "statuses": [
+            "solved",
+            "solved",
+            "solved"
+          ],
+          "answers": [
+            "unsat",
+            "unsat",
+            "unsat"
+          ],
+          "metrics": {
+            "wall_seconds": {
+              "median": 14.436069022864103,
+              "min": 14.334732044488192,
+              "max": 14.688779018819332
+            },
+            "user_seconds": {
+              "median": 14.201704,
+              "min": 14.098772,
+              "max": 14.441189
+            },
+            "system_seconds": {
+              "median": 0.019888,
+              "min": 0.017887999999999998,
+              "max": 0.019895
+            },
+            "max_rss_kib": {
+              "median": 25316,
+              "min": 24868,
+              "max": 25316
+            },
+            "minor_faults": {
+              "median": 6360,
+              "min": 6359,
+              "max": 6363
+            },
+            "major_faults": {
+              "median": 0,
+              "min": 0,
+              "max": 0
+            }
+          },
+          "sampled_vm_peak_kib": [
+            31420,
+            31420,
+            31420
+          ],
+          "counters": {
+            ":sat.conflicts": [
+              5890,
+              5890,
+              5890
+            ],
+            ":sat.decisions": [
+              39441,
+              39441,
+              39441
+            ],
+            ":quant.instances": [
+              null,
+              null,
+              null
+            ],
+            ":quant.pool-terms": [
+              null,
+              null,
+              null
+            ],
+            ":euf.incremental.terms": [
+              1407,
+              1407,
+              1407
+            ],
+            ":euf.incremental.backtracks": [
+              27841,
+              27841,
+              27841
+            ]
+          }
+        },
+        "fixed": {
+          "statuses": [
+            "solved",
+            "solved",
+            "solved"
+          ],
+          "answers": [
+            "unsat",
+            "unsat",
+            "unsat"
+          ],
+          "metrics": {
+            "wall_seconds": {
+              "median": 14.441460352391005,
+              "min": 14.391041196882725,
+              "max": 14.489674651995301
+            },
+            "user_seconds": {
+              "median": 14.221285,
+              "min": 14.177787,
+              "max": 14.269711
+            },
+            "system_seconds": {
+              "median": 0.019885,
+              "min": 0.017868,
+              "max": 0.023868999999999998
+            },
+            "max_rss_kib": {
+              "median": 24804,
+              "min": 24800,
+              "max": 24804
+            },
+            "minor_faults": {
+              "median": 6344,
+              "min": 6341,
+              "max": 6345
+            },
+            "major_faults": {
+              "median": 0,
+              "min": 0,
+              "max": 0
+            }
+          },
+          "sampled_vm_peak_kib": [
+            31364,
+            31364,
+            31364
+          ],
+          "counters": {
+            ":sat.conflicts": [
+              5890,
+              5890,
+              5890
+            ],
+            ":sat.decisions": [
+              39441,
+              39441,
+              39441
+            ],
+            ":quant.instances": [
+              null,
+              null,
+              null
+            ],
+            ":quant.pool-terms": [
+              null,
+              null,
+              null
+            ],
+            ":euf.incremental.terms": [
+              1407,
+              1407,
+              1407
+            ],
+            ":euf.incremental.backtracks": [
+              27841,
+              27841,
+              27841
+            ]
+          }
+        }
+      }
+    },
+    {
+      "logic": "QF_UF",
+      "file": "QG-classification/qg7/iso_icl_nogen_sk007.smt2",
+      "sha256": "fe3693b6f59618083ca4734c299a200c4cfd5b3edcd15457add15e04663781f7",
+      "cpu_models": [
+        "Intel(R) Xeon(R) CPU E5-2690 v4 @ 2.60GHz"
+      ],
+      "profiles": {
+        "baseline": {
+          "statuses": [
+            "solved",
+            "solved",
+            "solved"
+          ],
+          "answers": [
+            "unsat",
+            "unsat",
+            "unsat"
+          ],
+          "metrics": {
+            "wall_seconds": {
+              "median": 22.076680220663548,
+              "min": 22.02336060628295,
+              "max": 22.127754420042038
+            },
+            "user_seconds": {
+              "median": 21.551248,
+              "min": 21.523576,
+              "max": 21.560646
+            },
+            "system_seconds": {
+              "median": 0.216072,
+              "min": 0.197096,
+              "max": 0.218962
+            },
+            "max_rss_kib": {
+              "median": 373372,
+              "min": 372656,
+              "max": 376688
+            },
+            "minor_faults": {
+              "median": 82508,
+              "min": 82498,
+              "max": 82768
+            },
+            "major_faults": {
+              "median": 0,
+              "min": 0,
+              "max": 0
+            }
+          },
+          "sampled_vm_peak_kib": [
+            457848,
+            457848,
+            457848
+          ],
+          "counters": {
+            ":sat.conflicts": [
+              161966,
+              161966,
+              161966
+            ],
+            ":sat.decisions": [
+              377322,
+              377322,
+              377322
+            ],
+            ":quant.instances": [
+              null,
+              null,
+              null
+            ],
+            ":quant.pool-terms": [
+              null,
+              null,
+              null
+            ],
+            ":euf.incremental.terms": [
+              312,
+              312,
+              312
+            ],
+            ":euf.incremental.backtracks": [
+              119338,
+              119338,
+              119338
+            ]
+          }
+        },
+        "fixed": {
+          "statuses": [
+            "solved",
+            "solved",
+            "solved"
+          ],
+          "answers": [
+            "unsat",
+            "unsat",
+            "unsat"
+          ],
+          "metrics": {
+            "wall_seconds": {
+              "median": 22.1786764934659,
+              "min": 22.157009294256568,
+              "max": 22.3309743180871
+            },
+            "user_seconds": {
+              "median": 21.627011,
+              "min": 21.626314999999998,
+              "max": 21.754398
+            },
+            "system_seconds": {
+              "median": 0.222904,
+              "min": 0.216503,
+              "max": 0.234931
+            },
+            "max_rss_kib": {
+              "median": 374304,
+              "min": 372464,
+              "max": 375504
+            },
+            "minor_faults": {
+              "median": 81996,
+              "min": 81850,
+              "max": 82457
+            },
+            "major_faults": {
+              "median": 0,
+              "min": 0,
+              "max": 0
+            }
+          },
+          "sampled_vm_peak_kib": [
+            457848,
+            457848,
+            457848
+          ],
+          "counters": {
+            ":sat.conflicts": [
+              161966,
+              161966,
+              161966
+            ],
+            ":sat.decisions": [
+              377322,
+              377322,
+              377322
+            ],
+            ":quant.instances": [
+              null,
+              null,
+              null
+            ],
+            ":quant.pool-terms": [
+              null,
+              null,
+              null
+            ],
+            ":euf.incremental.terms": [
+              312,
+              312,
+              312
+            ],
+            ":euf.incremental.backtracks": [
+              119338,
+              119338,
+              119338
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "raw_artifact_sha256": {
+    "case-0/complete.json": "78178686372e9d67ea7a60e791e7f378c46d5a90369036c608f8bad0f4f8abea",
+    "case-0/metadata.json": "520877e78f47737d5f8d3ee90d3a49bdd5a90d4aadc71d32f1badcb33ac16f5a",
+    "case-0/round-0-baseline/result.json": "64893a06e69edd5b9170eb97b1417d822621aa69df5445c7212fdbe9cb1a1aec",
+    "case-0/round-0-baseline/stderr": "c2cc0d1bc4a6f57ed8d5ffdc425c563e0a9f9e4043046475092a4e2291e0708d",
+    "case-0/round-0-baseline/stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "case-0/round-0-fixed/result.json": "4580dca7ec1dcc94f54bd3f4ad3ff7469981bd7d27ee84201fed96ecbdb3b319",
+    "case-0/round-0-fixed/stderr": "c2cc0d1bc4a6f57ed8d5ffdc425c563e0a9f9e4043046475092a4e2291e0708d",
+    "case-0/round-0-fixed/stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "case-0/round-1-baseline/result.json": "f62a7c9b5de24fdfaea3c193a5484e424f496b2eae65023045acda9ad9a9dc55",
+    "case-0/round-1-baseline/stderr": "c2cc0d1bc4a6f57ed8d5ffdc425c563e0a9f9e4043046475092a4e2291e0708d",
+    "case-0/round-1-baseline/stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "case-0/round-1-fixed/result.json": "c0b70122d2d55a3e4128faf1ca6ffd27469fadf1e34670791dba9642a2a9b4dc",
+    "case-0/round-1-fixed/stderr": "c2cc0d1bc4a6f57ed8d5ffdc425c563e0a9f9e4043046475092a4e2291e0708d",
+    "case-0/round-1-fixed/stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "case-0/round-2-baseline/result.json": "f1117baa42496f2e7a77b60355f01a264ff10648c49a9396929e9838467da991",
+    "case-0/round-2-baseline/stderr": "c2cc0d1bc4a6f57ed8d5ffdc425c563e0a9f9e4043046475092a4e2291e0708d",
+    "case-0/round-2-baseline/stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "case-0/round-2-fixed/result.json": "bbf46fffcd8ab65dcf2a0fff836416ada8a214ece29b03e69cf3d9fcf2192ef1",
+    "case-0/round-2-fixed/stderr": "c2cc0d1bc4a6f57ed8d5ffdc425c563e0a9f9e4043046475092a4e2291e0708d",
+    "case-0/round-2-fixed/stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "case-0/summary.json": "514cb5632fbc9bdf277a5b37b47ecc03208eadbe12d367511b07d7c0b3006d24",
+    "case-1/complete.json": "78178686372e9d67ea7a60e791e7f378c46d5a90369036c608f8bad0f4f8abea",
+    "case-1/metadata.json": "351e746bf6506f53ad6f93da5b41912243e45941aab64ffa9773bc8b62eb059e",
+    "case-1/round-0-baseline/result.json": "043b215d066479c344ef37ec9565457878aa94d637219f5305d05ce6904d3c8e",
+    "case-1/round-0-baseline/stderr": "5c9ae8ca796e4bb7c5019d9c7c91edb7b13a2a166e9f758625cd5f8b709f7862",
+    "case-1/round-0-baseline/stdout": "0b587f3c8e4bb99a4ff60e875d953eab326dca1c5d2981dadd63c1547654f727",
+    "case-1/round-0-fixed/result.json": "5198af6f101f64002bd1e5ce743ea2bfbd713475f19b14767630ddb9217bcc44",
+    "case-1/round-0-fixed/stderr": "5c9ae8ca796e4bb7c5019d9c7c91edb7b13a2a166e9f758625cd5f8b709f7862",
+    "case-1/round-0-fixed/stdout": "0b587f3c8e4bb99a4ff60e875d953eab326dca1c5d2981dadd63c1547654f727",
+    "case-1/round-1-baseline/result.json": "614523d165a9c25e1bdc57626ff81379c988e4647f6f258641a1d593e311fcb6",
+    "case-1/round-1-baseline/stderr": "5c9ae8ca796e4bb7c5019d9c7c91edb7b13a2a166e9f758625cd5f8b709f7862",
+    "case-1/round-1-baseline/stdout": "0b587f3c8e4bb99a4ff60e875d953eab326dca1c5d2981dadd63c1547654f727",
+    "case-1/round-1-fixed/result.json": "9549b2a24e8f61e156f1738a62c4712ab8fddde078289856d01e1c5742ecedc8",
+    "case-1/round-1-fixed/stderr": "5c9ae8ca796e4bb7c5019d9c7c91edb7b13a2a166e9f758625cd5f8b709f7862",
+    "case-1/round-1-fixed/stdout": "0b587f3c8e4bb99a4ff60e875d953eab326dca1c5d2981dadd63c1547654f727",
+    "case-1/round-2-baseline/result.json": "ce75b3f4a607e1d89f0c5ea3ea40b2bd6c3f402073d4f51a0551259e06cf9cbf",
+    "case-1/round-2-baseline/stderr": "5c9ae8ca796e4bb7c5019d9c7c91edb7b13a2a166e9f758625cd5f8b709f7862",
+    "case-1/round-2-baseline/stdout": "0b587f3c8e4bb99a4ff60e875d953eab326dca1c5d2981dadd63c1547654f727",
+    "case-1/round-2-fixed/result.json": "468a49eceec5c899872b936e50b461008e099159352386fb6db8a4f060f75b4b",
+    "case-1/round-2-fixed/stderr": "5c9ae8ca796e4bb7c5019d9c7c91edb7b13a2a166e9f758625cd5f8b709f7862",
+    "case-1/round-2-fixed/stdout": "0b587f3c8e4bb99a4ff60e875d953eab326dca1c5d2981dadd63c1547654f727",
+    "case-1/summary.json": "91ec8adf79f763fa1738b8b31e0edd83947b65245c5e6c3d8fae96b99eac8e69",
+    "case-2/complete.json": "78178686372e9d67ea7a60e791e7f378c46d5a90369036c608f8bad0f4f8abea",
+    "case-2/metadata.json": "0ac18d3fd404f988cb98f8c31da2b11056d57b1d3ca335ae1770a4489db6b02b",
+    "case-2/round-0-baseline/result.json": "f75aac048c36ba7e038dd2861b2a0c8381d54beb030f16a9557b16c68203c15b",
+    "case-2/round-0-baseline/stderr": "22a332a6bbcb01eb65b981fd0522471e46b3142d956b0ad8dedb39ae7667d020",
+    "case-2/round-0-baseline/stdout": "5c17dfcc2a8f1f30d9e96df6a9825a5030ade046d560332c19de74d93d591a18",
+    "case-2/round-0-fixed/result.json": "f7d466e008519c20ffca253cdcf691ddbb006a63d44258eec0740fde42bb05af",
+    "case-2/round-0-fixed/stderr": "51b5692207d0d2a31b2dc44b2f27a714535ac45eeb2781aeff36b2b4ce732ad8",
+    "case-2/round-0-fixed/stdout": "5c17dfcc2a8f1f30d9e96df6a9825a5030ade046d560332c19de74d93d591a18",
+    "case-2/round-1-baseline/result.json": "4063df8c807441ff9a66227fb02e5f8bb4e1366cf85fd65c7c5ef687b17f4ea4",
+    "case-2/round-1-baseline/stderr": "c0a82bbca28f1125edd95a027f763d9a7e0d0c88effb0f1e7bb9b37b4bd1c0c4",
+    "case-2/round-1-baseline/stdout": "5c17dfcc2a8f1f30d9e96df6a9825a5030ade046d560332c19de74d93d591a18",
+    "case-2/round-1-fixed/result.json": "d7d82e1efaa59393e5efc7248042ee8bd77b718ee59ab697a4e6fb53d5a28ea0",
+    "case-2/round-1-fixed/stderr": "1b6ea46b853684cf5a428a799bd0b12fc84a2b6c976403987696199eb212c142",
+    "case-2/round-1-fixed/stdout": "5c17dfcc2a8f1f30d9e96df6a9825a5030ade046d560332c19de74d93d591a18",
+    "case-2/round-2-baseline/result.json": "235ddc3ec5ea8e54562c1f91dc31b97737efb32dbb731d8ff7afa65d65a6bb1e",
+    "case-2/round-2-baseline/stderr": "984d584f63b96a04ee1fb028ae7f077cf8c61689002465ca93ab5909c80b6c9b",
+    "case-2/round-2-baseline/stdout": "5c17dfcc2a8f1f30d9e96df6a9825a5030ade046d560332c19de74d93d591a18",
+    "case-2/round-2-fixed/result.json": "4718dde887bad52cf60122d0358072ee56856bb59c1d487f8e18e4226779e2e9",
+    "case-2/round-2-fixed/stderr": "60b5b8680138867abcd6c3cee9ae058ede6a6c9f5a0a98956c0f9531d5eabbf7",
+    "case-2/round-2-fixed/stdout": "5c17dfcc2a8f1f30d9e96df6a9825a5030ade046d560332c19de74d93d591a18",
+    "case-2/summary.json": "8917a847d8d275a619615f8503d87a8f46e93263ee715f065b441704f5046a5f",
+    "case-3/complete.json": "78178686372e9d67ea7a60e791e7f378c46d5a90369036c608f8bad0f4f8abea",
+    "case-3/metadata.json": "d2448822515916c3516ba8bb6dddd88f7b0dfce138dd6a820cc9413ea6af1d71",
+    "case-3/round-0-baseline/result.json": "bc495f5b68d64ccc8114e0437c3291227e67503043b295197822af9451fc1926",
+    "case-3/round-0-baseline/stderr": "8c7b670db78b3afca9ee98e5d5adcf6e1cd023a7cb00cb9e0219b11f385ba56b",
+    "case-3/round-0-baseline/stdout": "5c17dfcc2a8f1f30d9e96df6a9825a5030ade046d560332c19de74d93d591a18",
+    "case-3/round-0-fixed/result.json": "a7ca883f7eb2485b079c456b0bc40a8652b0797cb20a91890af2c10356f748dd",
+    "case-3/round-0-fixed/stderr": "15df1e908e0fdf94d694fac0f24b859d8a035d95e9ebb5c8f75a79aedb28f541",
+    "case-3/round-0-fixed/stdout": "5c17dfcc2a8f1f30d9e96df6a9825a5030ade046d560332c19de74d93d591a18",
+    "case-3/round-1-baseline/result.json": "4ac5a92bbfbcc2b63a7bdefff2980c27839f9d1c7535e75cd862e4e7aff2b534",
+    "case-3/round-1-baseline/stderr": "10425b30d4cb34e2db19e74fb5a65e06e9496b37aae1ac463e092c6c22f83dfc",
+    "case-3/round-1-baseline/stdout": "5c17dfcc2a8f1f30d9e96df6a9825a5030ade046d560332c19de74d93d591a18",
+    "case-3/round-1-fixed/result.json": "b4426cc9dab4dba147bb759f3e996e09c73d31d240b5d7c806b6b6611f8799c6",
+    "case-3/round-1-fixed/stderr": "a4ef273353f26cace49aedddb2419e8a87ddd021c9d082c389b934c5a167bd98",
+    "case-3/round-1-fixed/stdout": "5c17dfcc2a8f1f30d9e96df6a9825a5030ade046d560332c19de74d93d591a18",
+    "case-3/round-2-baseline/result.json": "a1c00daf00613f3621716bc4e959421327c0ba1cdf8cd80a8b22e07b63c46a90",
+    "case-3/round-2-baseline/stderr": "48f7e1976ee158c230db7a24f2bc9128018376e99e0473ee745c53810d493517",
+    "case-3/round-2-baseline/stdout": "5c17dfcc2a8f1f30d9e96df6a9825a5030ade046d560332c19de74d93d591a18",
+    "case-3/round-2-fixed/result.json": "735b41203be0cccad55d7760f968ca27266fde9458896ebbe1ce296d1261a80f",
+    "case-3/round-2-fixed/stderr": "edc7e9437ad7b1752ef8bb4a6608938f6f828245da3420db218d259c7e417702",
+    "case-3/round-2-fixed/stdout": "5c17dfcc2a8f1f30d9e96df6a9825a5030ade046d560332c19de74d93d591a18",
+    "case-3/summary.json": "6e190d4e201f02c5aba5684273a7c66edebdfe4211111dd3608704c6b51a9b2c",
+    "case-4/complete.json": "78178686372e9d67ea7a60e791e7f378c46d5a90369036c608f8bad0f4f8abea",
+    "case-4/metadata.json": "3b67ec1d046e40639a6319b3410604b1026f4f668a5a0aab93d5aac151d1c88e",
+    "case-4/round-0-baseline/result.json": "da559a2216afa7981be02aab3bec2a01ac2a82f14e3b3ea8d090e47db6b5519b",
+    "case-4/round-0-baseline/stderr": "38575adb9994516e459b9deace3b36c19e1354cbaa34e128a085a57f66c53d8b",
+    "case-4/round-0-baseline/stdout": "5c17dfcc2a8f1f30d9e96df6a9825a5030ade046d560332c19de74d93d591a18",
+    "case-4/round-0-fixed/result.json": "991ad5e5691f46e27d6b1eed4f155162fc4446083fcdc0254481c8545ec8b8f1",
+    "case-4/round-0-fixed/stderr": "a95c20b40a3a5cefbc4388a872312a4898ef23898b5956de4e7727fea0c0926d",
+    "case-4/round-0-fixed/stdout": "5c17dfcc2a8f1f30d9e96df6a9825a5030ade046d560332c19de74d93d591a18",
+    "case-4/round-1-baseline/result.json": "67cf3fc0a37c4806a81a828a235c0eb1d24937c26c40f21a2cf8796aff0d6146",
+    "case-4/round-1-baseline/stderr": "2107e39089cd61dc58a0925d526060c60b5305d2e98ab874132fe504d6faf566",
+    "case-4/round-1-baseline/stdout": "5c17dfcc2a8f1f30d9e96df6a9825a5030ade046d560332c19de74d93d591a18",
+    "case-4/round-1-fixed/result.json": "c48dff63c020c8fb3c3ef9090eefa76858cb4503cfa8b847e74ce581ac77f64c",
+    "case-4/round-1-fixed/stderr": "6c7373dbc7b948d06d53285aec5557b980f0e62ce509e41ae1021170c2323971",
+    "case-4/round-1-fixed/stdout": "5c17dfcc2a8f1f30d9e96df6a9825a5030ade046d560332c19de74d93d591a18",
+    "case-4/round-2-baseline/result.json": "56733371d4b38cd049bd9c006913785aa117affb451d8a75bcfd236f5b3e2402",
+    "case-4/round-2-baseline/stderr": "cda724292c91e07728b6ee675cbdc43dc574b0d0b11479c4d740ded4691c7651",
+    "case-4/round-2-baseline/stdout": "5c17dfcc2a8f1f30d9e96df6a9825a5030ade046d560332c19de74d93d591a18",
+    "case-4/round-2-fixed/result.json": "1a06de0345ff455efe8e6ad2b8fe03cfa61d1b6c437ac4477a44d9e4814c6681",
+    "case-4/round-2-fixed/stderr": "755877cb03e9fc318db06ce49dfe565cdfe0ed9945281c5eceef0a7cf502d32c",
+    "case-4/round-2-fixed/stdout": "5c17dfcc2a8f1f30d9e96df6a9825a5030ade046d560332c19de74d93d591a18",
+    "case-4/summary.json": "a2d95ceab95eb0dd7faa8f547531e3b67739a4f61b0829b7b57b145556d442fe",
+    "case-5/complete.json": "78178686372e9d67ea7a60e791e7f378c46d5a90369036c608f8bad0f4f8abea",
+    "case-5/metadata.json": "b57aa5edb5e0dd46250959c7b0af134ba398b7e8cd58be133e93e837523b394d",
+    "case-5/round-0-baseline/result.json": "6e2f371cc8d4c7dac1443082e3c60ce28dd3a68aceea158b053abba50d2ec014",
+    "case-5/round-0-baseline/stderr": "971c72f0a4b1a0956158b91144b5d2b872475682a69719c0477a91c38ca7cdf5",
+    "case-5/round-0-baseline/stdout": "5c17dfcc2a8f1f30d9e96df6a9825a5030ade046d560332c19de74d93d591a18",
+    "case-5/round-0-fixed/result.json": "b64f46aef835d75aee586bc51005ae3e5eb1eb02a742b3b69c6127070361bee6",
+    "case-5/round-0-fixed/stderr": "2dfa69c1af4d0342708aa0e8cfaed0ac520de7e466dfb73555c82bbbe0b39ad2",
+    "case-5/round-0-fixed/stdout": "5c17dfcc2a8f1f30d9e96df6a9825a5030ade046d560332c19de74d93d591a18",
+    "case-5/round-1-baseline/result.json": "2d3b2e4c5408d736792e1fccf6cf5cde2ba5607588351317bd435baa0c35a03d",
+    "case-5/round-1-baseline/stderr": "bab2f59f2becac52c72751ee913fe842287839a37298f79a6e1b329688a37ece",
+    "case-5/round-1-baseline/stdout": "5c17dfcc2a8f1f30d9e96df6a9825a5030ade046d560332c19de74d93d591a18",
+    "case-5/round-1-fixed/result.json": "cafe84f7c4a87e61447745f6279023352f7846d245e7518143de7e6576d03eae",
+    "case-5/round-1-fixed/stderr": "121e42ee8b138d913853ce32ebbf2baf0cf8b0645510a105b1d2b2ff7d0dfaa2",
+    "case-5/round-1-fixed/stdout": "5c17dfcc2a8f1f30d9e96df6a9825a5030ade046d560332c19de74d93d591a18",
+    "case-5/round-2-baseline/result.json": "5586bd10daae470af2ed07e54d66f067c5333ae78ca5905ac4796b124ade0c14",
+    "case-5/round-2-baseline/stderr": "ac7ca8ae7a6c219b51d75fec39e17746e60334f2147c1d91ab72e1cdb57754de",
+    "case-5/round-2-baseline/stdout": "5c17dfcc2a8f1f30d9e96df6a9825a5030ade046d560332c19de74d93d591a18",
+    "case-5/round-2-fixed/result.json": "cbb0963b44275886e9d349c6b91ee25819faa6b16ff12858bf6725f1f6ca66ce",
+    "case-5/round-2-fixed/stderr": "b8e2a1ec90a75189a11c2eab0c682a40e1ceae7a351d5c63d384dbd361c81afa",
+    "case-5/round-2-fixed/stdout": "5c17dfcc2a8f1f30d9e96df6a9825a5030ade046d560332c19de74d93d591a18",
+    "case-5/summary.json": "fac4f350654992425571da55711a989a20f480acbcc6c2596e021a3c893b4932"
+  }
+}
