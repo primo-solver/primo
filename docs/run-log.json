@@ -3,6 +3,369 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-10-27-lra-bound-structure-probe",
+      "source_commit": "6c4f9c5bb1a013512490134f58965f661031bd21",
+      "input_fix_commit": "1702619edc6109048522d79684681518db21df36",
+      "binary_sha256": "9b6ac207a3013a7649453bb1de840e77da63fa44f0b7cdea464a39ea7e248cf2",
+      "scope": "Read-only theory-bound and reason observation; unchanged SAT settings; no explanation transformation, bound installation or default promotion.",
+      "execution": {
+        "environment": "SLURM compute; Xeon E5-2690 v4",
+        "probe_job_id": "257633",
+        "build_job_id": "256623",
+        "check_job_id": "256630",
+        "fuzz_job_id": "256631",
+        "asan_job_id": "256632",
+        "static_job_id": "256633",
+        "probe_resources": "2 requested CPUs, 8 GiB, 45 minute job limit",
+        "build_resources": "4 requested CPUs, 8 GiB",
+        "asan_static_resources": "4 requested CPUs, 12 GiB",
+        "corpus_timeout_seconds": 3,
+        "examples_timeout_seconds": 5,
+        "corpus_event_limit": 4000,
+        "examples_event_limit": 20000,
+        "model_timeout_seconds": 30,
+        "dolmen_timeout_seconds": 15,
+        "dolmen_size": "2G",
+        "dolmen_version": "0.10",
+        "asan_runtime": "Preinstalled GCCcore 11.3.0 runtime, copied into isolated experiment workspace",
+        "asan_runtime_sha256": "a6c2f988d2ec345e58f8f0c58b951bcf536c77ea5e96900c2f28ddfe4dcbcb71",
+        "artifacts": "results/lra-bound-structure-20261026",
+        "storage": "Raw results and measured binary collected locally under ignored results; also retained in isolated SLURM workspaces."
+      },
+      "qualification": {
+        "release_ctest_groups": 44,
+        "release_python_tests": 246,
+        "documentation_examples": 12,
+        "asan_ctest_groups": 44,
+        "status": "passed on corrected C++ source6c4f9c5; static advisories recorded separately"
+      },
+      "fuzz": {
+        "count": 1000,
+        "seed": 2026102601,
+        "pass": 1000,
+        "sat": 1000,
+        "unsat": 0,
+        "wrong": 0,
+        "crash": 0,
+        "timeout": 0,
+        "unsupported": 0,
+        "reference_disagreement": 0,
+        "direct_dolmen_models": 1000,
+        "summary_sha256": "7e627963d466a43839213660a13ff364a39aba515196ff5bbed8970897f2ae76",
+        "provenance_note": "Generator metadata reports commit unknown in the Git-less archive; the job separately enforced binary git:6c4f9c5 and its SHA256 is recorded above."
+      },
+      "sat_model_replays": {
+        "expected": 33,
+        "direct_dolmen_pass": 33,
+        "invalid": 0,
+        "changed_answers": 0,
+        "incomplete": 0
+      },
+      "static_review": {
+        "translation_units": 132,
+        "all_tracked_cpp_covered": true,
+        "all_source_hashes_match": true,
+        "compile_errors": 0,
+        "warning_categories": {
+          "misc-include-cleaner": 410,
+          "clang-analyzer-cplusplus.NewDeleteLeaks": 2,
+          "clang-analyzer-optin.core.EnumCastOutOfRange": 16
+        },
+        "triage": [
+          "410 include-cleaner advisories retained; unused-include diagnostics are paired header self-includes, which are intentionally kept. Direct-header suggestions are advisory, including the ostream type exposed by the probe public header.",
+          "16 enum-range diagnostics occur in guarded enumeration-table validation tests.",
+          "Two leak diagnostics follow standard-library ownership: Goal::Data retains its assertions through shared_ptr, and CLI11 retains/moves its std::function callback. Reviewed as RAII-modeling diagnostics; no raw owning pointer escapes are introduced."
+        ],
+        "summary_sha256": "dc493132bf698a0915469e7c43b0249f316bef0d91bb8814557a89b31a19ca82"
+      },
+      "rejected_attempts": [
+        {
+          "source": "4892c61",
+          "jobs": [
+            "256553",
+            "256570",
+            "256581"
+          ],
+          "status": "rejected qualification",
+          "reasons": [
+            "Missing cluster ASan runtime at first link; staged existing runtime.",
+            "Public checks found stale help fixture; fixed.",
+            "ASan caught temporary-string lifetime bug in observer name output; fixed with owned strings and short/long regression."
+          ],
+          "probe_jobs_cancelled": [
+            "256556",
+            "256576",
+            "256583"
+          ],
+          "static_partial_cancelled": "256555"
+        },
+        {
+          "source": "6c4f9c5",
+          "job": "256634",
+          "status": "invalid constructed fixture; collection aborted",
+          "reason": "Bare -2 was an undeclared SMT-LIB symbol. Fixed to unary minus in input commit1702619 and reran as257633."
+        }
+      ],
+      "limitations": [
+        "Corpus traces are bounded prefixes, not full search coverage; missing blocks include preprocessing-only and early-timeout paths.",
+        "Opaque SAT leaves are not necessarily original assertions; Boolean SAT reasons and decision levels are not recorded.",
+        "Full delta-pair matching can differ from semantic strict-threshold equivalence.",
+        "The Fraction checker validates recorded interval calculations, not tableau identities against original assertions or UNSAT proofs.",
+        "No explanation is transformed, no unnamed bound is installed, no speedup or minimization benefit is claimed."
+      ],
+      "date": "2026-10-27",
+      "kind": "theory-bound-structure-diagnostic",
+      "evidence_status": "complete-diagnostic; no-default-promotion",
+      "profiles": {
+        "examples": {
+          "default": {
+            "args": [
+              "--quiet",
+              "--preprocessing-mode",
+              "off",
+              "--no-solved-constant-substitution",
+              "--no-gaussian-elimination"
+            ],
+            "inputs": 5,
+            "status_counts": {
+              "ok/sat": 4,
+              "ok/unsat": 1
+            },
+            "coverage": {
+              "complete": 5
+            },
+            "counts": {
+              "begin": 5,
+              "variable": 13,
+              "atom": 52,
+              "assignment": 31,
+              "derived": 65,
+              "checked_derived": 65,
+              "derived_stronger_than_installed": 8,
+              "stronger_without_exact_atom": 5,
+              "distinct_derived": 13,
+              "derived_without_exact_atom": 7,
+              "derived_without_entailed_atom": 4,
+              "backtrack": 16,
+              "end": 5,
+              "propagate": 1,
+              "theory_expansions_with_shared_leaves": 0,
+              "expanded_leaf_occurrences": 5,
+              "expanded_distinct_leaves": 5,
+              "conflict": 2
+            },
+            "theory_depth_histogram": {
+              "1": 3
+            },
+            "propagation_kinds": {
+              "same-variable": 1
+            },
+            "reason_width_histogram": {
+              "1": 1,
+              "2": 2
+            },
+            "reference_comparable": 5,
+            "wrong_answers": 0,
+            "reference_disagreements": 0,
+            "sat_expected": 4,
+            "direct_dolmen_pass": 4,
+            "model_summary_sha256": "7f113c3b7cadbcdb510a68d4a49c99ff3b0f69b8f6e045e292c214fa21684f15"
+          },
+          "rows": {
+            "args": [
+              "--quiet",
+              "--preprocessing-mode",
+              "off",
+              "--no-solved-constant-substitution",
+              "--no-gaussian-elimination",
+              "--lra-row-propagation",
+              "--lra-bidirectional-row-propagation"
+            ],
+            "inputs": 5,
+            "status_counts": {
+              "ok/sat": 4,
+              "ok/unsat": 1
+            },
+            "coverage": {
+              "complete": 5
+            },
+            "counts": {
+              "begin": 5,
+              "variable": 13,
+              "atom": 52,
+              "assignment": 31,
+              "derived": 54,
+              "checked_derived": 54,
+              "derived_stronger_than_installed": 9,
+              "stronger_without_exact_atom": 5,
+              "distinct_derived": 13,
+              "derived_without_exact_atom": 7,
+              "derived_without_entailed_atom": 4,
+              "propagate": 7,
+              "theory_expansions_with_shared_leaves": 1,
+              "expanded_leaf_occurrences": 20,
+              "expanded_distinct_leaves": 19,
+              "reasons_with_shared_leaves": 1,
+              "backtrack": 10,
+              "end": 5,
+              "conflict": 2
+            },
+            "theory_depth_histogram": {
+              "1": 7,
+              "2": 2
+            },
+            "propagation_kinds": {
+              "reverse-row": 3,
+              "row": 3,
+              "same-variable": 1
+            },
+            "reason_width_histogram": {
+              "1": 1,
+              "2": 8
+            },
+            "reference_comparable": 5,
+            "wrong_answers": 0,
+            "reference_disagreements": 0,
+            "sat_expected": 4,
+            "direct_dolmen_pass": 4,
+            "model_summary_sha256": "2bdca8be436fedf3dc74e267b56e4610e45b3ef1a674227e90969aa36ed0b35d"
+          }
+        },
+        "corpus": {
+          "default": {
+            "args": [
+              "--quiet"
+            ],
+            "inputs": 34,
+            "status_counts": {
+              "timeout/None": 10,
+              "ok/sat": 12,
+              "ok/unsat": 12
+            },
+            "coverage": {
+              "prefix": 22,
+              "missing": 3,
+              "complete": 9
+            },
+            "counts": {
+              "begin": 31,
+              "variable": 15473,
+              "atom": 54061,
+              "assignment": 2129,
+              "derived": 18887,
+              "checked_derived": 18887,
+              "derived_stronger_than_installed": 722,
+              "stronger_without_exact_atom": 624,
+              "distinct_derived": 883,
+              "derived_without_exact_atom": 723,
+              "derived_without_entailed_atom": 349,
+              "propagate": 158,
+              "theory_expansions_with_shared_leaves": 0,
+              "expanded_leaf_occurrences": 395,
+              "expanded_distinct_leaves": 395,
+              "conflict": 36,
+              "backtrack": 58,
+              "end": 23
+            },
+            "theory_depth_histogram": {
+              "1": 194
+            },
+            "propagation_kinds": {
+              "same-variable": 158
+            },
+            "reason_width_histogram": {
+              "1": 158,
+              "2": 2,
+              "3": 2,
+              "4": 15,
+              "5": 3,
+              "6": 1,
+              "7": 2,
+              "12": 11
+            },
+            "reference_comparable": 23,
+            "wrong_answers": 0,
+            "reference_disagreements": 0,
+            "sat_expected": 12,
+            "direct_dolmen_pass": 12,
+            "model_summary_sha256": "3c5462618e9677671462757c2bb402646ef012878bc57f12e78b5cee362a7956"
+          },
+          "rows": {
+            "args": [
+              "--quiet",
+              "--lra-row-propagation",
+              "--lra-bidirectional-row-propagation"
+            ],
+            "inputs": 34,
+            "status_counts": {
+              "timeout/None": 9,
+              "ok/sat": 13,
+              "ok/unsat": 12
+            },
+            "coverage": {
+              "prefix": 23,
+              "complete": 9,
+              "missing": 2
+            },
+            "counts": {
+              "begin": 32,
+              "variable": 16815,
+              "atom": 56744,
+              "assignment": 2134,
+              "derived": 18931,
+              "checked_derived": 18931,
+              "derived_stronger_than_installed": 658,
+              "stronger_without_exact_atom": 576,
+              "distinct_derived": 835,
+              "derived_without_exact_atom": 686,
+              "derived_without_entailed_atom": 358,
+              "propagate": 181,
+              "theory_expansions_with_shared_leaves": 0,
+              "expanded_leaf_occurrences": 464,
+              "expanded_distinct_leaves": 464,
+              "conflict": 34,
+              "backtrack": 55,
+              "end": 24
+            },
+            "theory_depth_histogram": {
+              "1": 215
+            },
+            "propagation_kinds": {
+              "same-variable": 147,
+              "reverse-row": 13,
+              "row": 21
+            },
+            "reason_width_histogram": {
+              "1": 147,
+              "2": 17,
+              "3": 17,
+              "4": 18,
+              "5": 3,
+              "6": 1,
+              "7": 1,
+              "12": 11
+            },
+            "reference_comparable": 24,
+            "wrong_answers": 0,
+            "reference_disagreements": 0,
+            "sat_expected": 13,
+            "direct_dolmen_pass": 13,
+            "model_summary_sha256": "a025278495f5919c8c25059f5aa98ff8f756c4af69ee0f0a9659d1ae3578fb85"
+          }
+        }
+      },
+      "committed_evidence": "docs/coverage/lra-bound-structure-probe.json",
+      "commands": {
+        "build": "slurm_prepare_benchmark_workspace.py --build-via-slurm --reuse-dependencies --extra-target all --jobs 4 --build-slurm-nodelist <isolated-node> --cxx-header-manifest <matching-header-manifest> --require-tool contrib/local/bin/z3 --require-tool contrib/local/bin/dolmen <connection-options>",
+        "qualification": "scripts/slurm_lra_bound_structure_probe.sbatch with PRIMO_PROBE_PHASE=check/fuzz/asan and PRIMO_EXPECTED_GIT=6c4f9c5; ASan adds PRIMO_ASAN_RUNTIME_DIR=<staged-runtime>",
+        "static": "scripts/slurm_lra_bound_static_review.sbatch; 4 workers; default clang-analyzer and advisory misc-include-cleaner; all132 tracked .cpp including docs examples",
+        "collection": "scripts/slurm_lra_bound_structure_probe.sbatch with PRIMO_PROBE_PHASE=probe; run_lra_bound_probe.py selects both profiles, collects JSONL, compares Z3 and declared statuses, then replays all successful SAT rows through validate_model.py --check-model --expect-sat --require-dolmen-pass",
+        "inputs": "slurm_stage_manifest_files.py --root benchmarks/smoke/lra-bound-probe --manifest benchmarks/lra-bound-probe-examples.txt; corpus root sandbox/non-incremental/QF_LRA with benchmarks/qf-lra-explanation-probe.txt",
+        "exact_submissions": "results/lra-bound-structure-20261026/jobs-fixed.json; private connection/workspace names remain outside tracked files",
+        "preflight": "slurm_prepare_benchmark_workspace.py --check-only --no-sync immediately before sbatch; corrected-fixture run uses clean detached source6c4f9c5 for preflight and separately staged input commit1702619"
+      }
+    },
+    {
       "id": "2026-10-26-lra-explanation-backend-pilot",
       "date": "2026-10-26",
       "kind": "backend-minimization-shrinking-diagnostic",

@@ -121,3 +121,74 @@ For a cluster with a separately provisioned sanitizer runtime, set
 `PRIMO_ASAN_RUNTIME_DIR` to a directory containing `libasan.so`; the ASan phase
 adds its link and runtime search paths. Keep compiler/runtime provenance with
 the job artifacts. This changes verification setup, not the solver profile.
+
+## Observed structure
+
+The completed probe used C++ revision `6c4f9c5`, five constructed examples and
+34 fixed QF_LRA inputs from 17 families. Both profiles retained the same SAT
+settings. `default` used ordinary theory propagation; `rows` additionally enabled
+forward and reverse row propagation. The constructed examples disabled
+preprocessing, substitution and Gaussian elimination to retain their structure.
+The real corpus used ordinary preprocessing. This is a structural diagnostic,
+not a runtime comparison or default promotion.
+
+In the shared-parent example, candidate atoms for $x\le2$, $z\le1$ and
+$x+z\le3$ were registered through disjunctions with free Boolean variables.
+With row propagation, the recorded reasons were
+
+$$
+\begin{aligned}
+(x\le2y)\land(y\le1)&\implies x\le2,\\
+(z\le y)\land(y\le1)&\implies z\le1,\\
+(x\le2)\land(z\le1)&\implies x+z\le3.
+\end{aligned}
+$$
+
+The first two arithmetic premises are sides of the asserted equalities.
+The final propagation has two immediate premises. Expanding their theory
+reasons gives four leaf occurrences and three distinct leaves: $y\le1$ occurs
+twice. Thus sharing exists, but blindly flattening this reason increases its
+width from two to three. Given the equations, $y\le1$ is the common arithmetic
+antecedent; a standalone theory explanation still needs the equality-side
+premises. The ordinary profile delivered no theory propagation in this particular
+example; its SAT reasoning is outside the recorded theory ancestry.
+
+The unnamed-sum example is more direct: $x\le2$ and $y\le5$ give the numerical
+candidate $s=x+y\le7$. Only $s\le8$ has a registered atom. The row profile
+propagated that atom with the two input bounds as its reason, then installed
+**8**, with the propagated literal as the tableau reason. A subsequent snapshot
+still computed **7**, with the original two premises. The tighter number was
+never installed or given a new SAT name.
+
+| Corpus observation | Default | Forward/reverse rows enabled |
+| --- | ---: | ---: |
+| Delivered LRA propagations | 158 | 181 |
+| Same-variable / forward-row / reverse-row | 158 / 0 / 0 | 147 / 21 / 13 |
+| Recorded theory conflicts | 36 | 34 |
+| Maximum recorded theory depth | 1 | 1 |
+| Exact interval snapshots checked | 18887 | 18931 |
+| Complete / prefix / missing traces | 9 / 22 / 3 | 9 / 23 / 2 |
+
+No shared theory ancestry was observed in those corpus prefixes. This is limited
+coverage: event caps and three-second timeouts omit later search, and Boolean SAT
+reasons remain opaque. The constructed example establishes that depth-two sharing
+is possible; this sample does not establish a conflict-minimization benefit.
+Across both constructed and corpus runs, all **37937** recorded finite interval
+calculations passed the exact offline check. All **33/33** successful SAT results
+passed separate direct Dolmen model replay; decisive answers agreed with Z3 and
+known declared statuses. UNSAT was compared, not independently proof-checked.
+
+Qualification on the corrected source passed 44 release CTest groups, 246 Python
+tests, 12 documentation checks, 44 ASan CTest groups, and 1000 generated
+SAT cases against Z3 with direct Dolmen model checks. Whole-source static scans
+covered all 132 tracked C++ translation units; their advisory diagnostics and
+triage are recorded separately. The observer's temporary-string lifetime bug was
+caught and fixed before this collection. No bound or explanation transformation
+was introduced.
+
+The [portable evidence](../coverage/lra-bound-structure-probe.json) contains
+per-input counts, trace hashes, representative events and validation coverage.
+The [run log](../run-log.json), entry `2026-10-27-lra-bound-structure-probe`, records
+source/input revisions, commands, resources, rejected attempts and job IDs.
+Raw traces, models, logs and the measured binary are retained under
+`results/lra-bound-structure-20261026` and in the isolated SLURM workspace.

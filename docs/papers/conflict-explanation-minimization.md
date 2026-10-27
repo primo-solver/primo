@@ -1,7 +1,7 @@
 # Conflict explanations, minimization, and shared antecedents
 
-**Status: Literature intake and a small backend ablation are complete; arithmetic
-explanation instrumentation remains proposed.** This note separates improvements
+**Status: Literature intake and a small backend ablation are complete; read-only theory
+bound instrumentation is implemented, while explanation transformations remain proposed.** This note separates improvements
 to an arithmetic explanation from SAT conflict analysis and learned-clause
 minimization. The experiment below changes no solver implementation or defaults.
 
@@ -358,3 +358,9 @@ comparisons, binary hashes and model coverage. The
 [run log](../run-log.json) entry
 `2026-10-26-lra-explanation-backend-pilot` records job IDs, reproduction commands
 and the raw artifact location.
+
+The subsequent [theory-bound structure probe](lra-bound-structure-probe.md#observed-structure)
+records actual LRA reasons and numerical interval candidates. It demonstrates
+shared ancestry on the constructed example, including a case where flattening
+enlarges the reason. It implements observation only; bound weakening and
+explanation replacement remain prospective.

@@ -1,0 +1,3949 @@
+{
+  "schema_version": 1,
+  "id": "2026-10-27-lra-bound-structure-probe",
+  "source_commit": "6c4f9c5bb1a013512490134f58965f661031bd21",
+  "input_fix_commit": "1702619edc6109048522d79684681518db21df36",
+  "binary_sha256": "9b6ac207a3013a7649453bb1de840e77da63fa44f0b7cdea464a39ea7e248cf2",
+  "scope": "Read-only theory-bound and reason observation; unchanged SAT settings; no explanation transformation, bound installation or default promotion.",
+  "execution": {
+    "environment": "SLURM compute; Xeon E5-2690 v4",
+    "probe_job_id": "257633",
+    "build_job_id": "256623",
+    "check_job_id": "256630",
+    "fuzz_job_id": "256631",
+    "asan_job_id": "256632",
+    "static_job_id": "256633",
+    "probe_resources": "2 requested CPUs, 8 GiB, 45 minute job limit",
+    "build_resources": "4 requested CPUs, 8 GiB",
+    "asan_static_resources": "4 requested CPUs, 12 GiB",
+    "corpus_timeout_seconds": 3,
+    "examples_timeout_seconds": 5,
+    "corpus_event_limit": 4000,
+    "examples_event_limit": 20000,
+    "model_timeout_seconds": 30,
+    "dolmen_timeout_seconds": 15,
+    "dolmen_size": "2G",
+    "dolmen_version": "0.10",
+    "asan_runtime": "Preinstalled GCCcore 11.3.0 runtime, copied into isolated experiment workspace",
+    "asan_runtime_sha256": "a6c2f988d2ec345e58f8f0c58b951bcf536c77ea5e96900c2f28ddfe4dcbcb71",
+    "artifacts": "results/lra-bound-structure-20261026",
+    "storage": "Raw results and measured binary collected locally under ignored results; also retained in isolated SLURM workspaces."
+  },
+  "groups": {
+    "examples": {
+      "profiles": {
+        "default": {
+          "args": [
+            "--quiet",
+            "--preprocessing-mode",
+            "off",
+            "--no-solved-constant-substitution",
+            "--no-gaussian-elimination"
+          ],
+          "inputs": 5,
+          "status_counts": {
+            "ok/sat": 4,
+            "ok/unsat": 1
+          },
+          "coverage": {
+            "complete": 5
+          },
+          "counts": {
+            "begin": 5,
+            "variable": 13,
+            "atom": 52,
+            "assignment": 31,
+            "derived": 65,
+            "checked_derived": 65,
+            "derived_stronger_than_installed": 8,
+            "stronger_without_exact_atom": 5,
+            "distinct_derived": 13,
+            "derived_without_exact_atom": 7,
+            "derived_without_entailed_atom": 4,
+            "backtrack": 16,
+            "end": 5,
+            "propagate": 1,
+            "theory_expansions_with_shared_leaves": 0,
+            "expanded_leaf_occurrences": 5,
+            "expanded_distinct_leaves": 5,
+            "conflict": 2
+          },
+          "theory_depth_histogram": {
+            "1": 3
+          },
+          "propagation_kinds": {
+            "same-variable": 1
+          },
+          "reason_width_histogram": {
+            "1": 1,
+            "2": 2
+          },
+          "reference_comparable": 5,
+          "wrong_answers": 0,
+          "reference_disagreements": 0,
+          "sat_expected": 4,
+          "direct_dolmen_pass": 4,
+          "model_summary_sha256": "7f113c3b7cadbcdb510a68d4a49c99ff3b0f69b8f6e045e292c214fa21684f15"
+        },
+        "rows": {
+          "args": [
+            "--quiet",
+            "--preprocessing-mode",
+            "off",
+            "--no-solved-constant-substitution",
+            "--no-gaussian-elimination",
+            "--lra-row-propagation",
+            "--lra-bidirectional-row-propagation"
+          ],
+          "inputs": 5,
+          "status_counts": {
+            "ok/sat": 4,
+            "ok/unsat": 1
+          },
+          "coverage": {
+            "complete": 5
+          },
+          "counts": {
+            "begin": 5,
+            "variable": 13,
+            "atom": 52,
+            "assignment": 31,
+            "derived": 54,
+            "checked_derived": 54,
+            "derived_stronger_than_installed": 9,
+            "stronger_without_exact_atom": 5,
+            "distinct_derived": 13,
+            "derived_without_exact_atom": 7,
+            "derived_without_entailed_atom": 4,
+            "propagate": 7,
+            "theory_expansions_with_shared_leaves": 1,
+            "expanded_leaf_occurrences": 20,
+            "expanded_distinct_leaves": 19,
+            "reasons_with_shared_leaves": 1,
+            "backtrack": 10,
+            "end": 5,
+            "conflict": 2
+          },
+          "theory_depth_histogram": {
+            "1": 7,
+            "2": 2
+          },
+          "propagation_kinds": {
+            "reverse-row": 3,
+            "row": 3,
+            "same-variable": 1
+          },
+          "reason_width_histogram": {
+            "1": 1,
+            "2": 8
+          },
+          "reference_comparable": 5,
+          "wrong_answers": 0,
+          "reference_disagreements": 0,
+          "sat_expected": 4,
+          "direct_dolmen_pass": 4,
+          "model_summary_sha256": "2bdca8be436fedf3dc74e267b56e4610e45b3ef1a674227e90969aa36ed0b35d"
+        }
+      },
+      "records": [
+        {
+          "file": "shared-parent.smt2",
+          "input_sha256": "11cd7f0aab45c25756b87ce6fee4c386b984d2709a99393f7caaf4caf3d20c98",
+          "profile": "default",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "",
+          "reference": {
+            "status": "ok",
+            "answer": "sat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "complete",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 3,
+              "atom": 18,
+              "assignment": 9,
+              "derived": 48,
+              "checked_derived": 48,
+              "derived_stronger_than_installed": 4,
+              "stronger_without_exact_atom": 2,
+              "distinct_derived": 9,
+              "derived_without_exact_atom": 4,
+              "derived_without_entailed_atom": 4,
+              "backtrack": 6,
+              "end": 1
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "9a2c1c0aa7890ed7045555e36ba51df8c29d07229601c339d39568f0a67b9b8f"
+        },
+        {
+          "file": "shared-parent.smt2",
+          "input_sha256": "11cd7f0aab45c25756b87ce6fee4c386b984d2709a99393f7caaf4caf3d20c98",
+          "profile": "rows",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "",
+          "reference": {
+            "status": "ok",
+            "answer": "sat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "complete",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 3,
+              "atom": 18,
+              "assignment": 9,
+              "derived": 39,
+              "checked_derived": 39,
+              "derived_stronger_than_installed": 5,
+              "stronger_without_exact_atom": 2,
+              "distinct_derived": 9,
+              "derived_without_exact_atom": 4,
+              "derived_without_entailed_atom": 4,
+              "propagate": 3,
+              "theory_expansions_with_shared_leaves": 1,
+              "expanded_leaf_occurrences": 8,
+              "expanded_distinct_leaves": 7,
+              "reasons_with_shared_leaves": 1,
+              "backtrack": 3,
+              "end": 1
+            },
+            "propagation_kinds": {
+              "reverse-row": 2,
+              "row": 1
+            },
+            "reason_width_histogram": {
+              "2": 3
+            },
+            "theory_depth_histogram": {
+              "1": 2,
+              "2": 1
+            },
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": [
+              {
+                "seq": 53,
+                "event": "propagate",
+                "theory_shared_leaves": 1,
+                "raw_distinct": 2,
+                "expanded_occurrences": 4,
+                "expanded_distinct": 3,
+                "depth": 2,
+                "leaves": {
+                  "1": 1,
+                  "3": 1,
+                  "6": 2
+                }
+              }
+            ]
+          },
+          "trace_sha256": "819b7b40035e4c05ecd36014d80a224844e24808492034cf23af2e586f1957e3"
+        },
+        {
+          "file": "unnamed-sum.smt2",
+          "input_sha256": "a0412d1d278d8c0ee2e1a293ba8bf942cbb8702d4cc3d59e337fb6e0c171bec7",
+          "profile": "default",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "",
+          "reference": {
+            "status": "ok",
+            "answer": "sat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "complete",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 2,
+              "atom": 6,
+              "assignment": 3,
+              "derived": 4,
+              "checked_derived": 4,
+              "derived_stronger_than_installed": 1,
+              "stronger_without_exact_atom": 1,
+              "distinct_derived": 1,
+              "derived_without_exact_atom": 1,
+              "derived_without_entailed_atom": 0,
+              "backtrack": 2,
+              "end": 1
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "aa3eca81f9a3c25ccef8ac52684837e902fc767ebaf02e2dcb737ad6b117a271"
+        },
+        {
+          "file": "unnamed-sum.smt2",
+          "input_sha256": "a0412d1d278d8c0ee2e1a293ba8bf942cbb8702d4cc3d59e337fb6e0c171bec7",
+          "profile": "rows",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "",
+          "reference": {
+            "status": "ok",
+            "answer": "sat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "complete",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 2,
+              "atom": 6,
+              "assignment": 3,
+              "derived": 3,
+              "checked_derived": 3,
+              "derived_stronger_than_installed": 1,
+              "stronger_without_exact_atom": 1,
+              "distinct_derived": 1,
+              "derived_without_exact_atom": 1,
+              "derived_without_entailed_atom": 0,
+              "propagate": 1,
+              "theory_expansions_with_shared_leaves": 0,
+              "expanded_leaf_occurrences": 2,
+              "expanded_distinct_leaves": 2,
+              "backtrack": 1,
+              "end": 1
+            },
+            "propagation_kinds": {
+              "row": 1
+            },
+            "reason_width_histogram": {
+              "2": 1
+            },
+            "theory_depth_histogram": {
+              "1": 1
+            },
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "2cedb02b8d9d6a846b3b447d8a1058149f2b6213157d913c1fb59e2f183acfd0"
+        },
+        {
+          "file": "strict-negative.smt2",
+          "input_sha256": "437221d6748dcad84327509d38772efc44f4b13556edba25d7318a352a780588",
+          "profile": "default",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "",
+          "reference": {
+            "status": "ok",
+            "answer": "sat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "complete",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 3,
+              "atom": 10,
+              "assignment": 5,
+              "derived": 4,
+              "checked_derived": 4,
+              "derived_stronger_than_installed": 1,
+              "stronger_without_exact_atom": 1,
+              "distinct_derived": 1,
+              "derived_without_exact_atom": 1,
+              "derived_without_entailed_atom": 0,
+              "backtrack": 2,
+              "end": 1
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "8c89bb5bfc70b2beda9b3f6d1507f53887f3b9610554ba91c0255a91642603cc"
+        },
+        {
+          "file": "strict-negative.smt2",
+          "input_sha256": "437221d6748dcad84327509d38772efc44f4b13556edba25d7318a352a780588",
+          "profile": "rows",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "",
+          "reference": {
+            "status": "ok",
+            "answer": "sat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "complete",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 3,
+              "atom": 10,
+              "assignment": 5,
+              "derived": 4,
+              "checked_derived": 4,
+              "derived_stronger_than_installed": 1,
+              "stronger_without_exact_atom": 1,
+              "distinct_derived": 1,
+              "derived_without_exact_atom": 1,
+              "derived_without_entailed_atom": 0,
+              "backtrack": 2,
+              "end": 1
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "8c89bb5bfc70b2beda9b3f6d1507f53887f3b9610554ba91c0255a91642603cc"
+        },
+        {
+          "file": "two-stage.smt2",
+          "input_sha256": "e97934cfe0ade2e9c8f05fd7cd8a0d83ffcd0deb5770eca54e59e872a71aa517",
+          "profile": "default",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "",
+          "reference": {
+            "status": "ok",
+            "answer": "sat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "complete",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 3,
+              "atom": 10,
+              "assignment": 5,
+              "derived": 9,
+              "checked_derived": 9,
+              "derived_stronger_than_installed": 2,
+              "distinct_derived": 2,
+              "derived_without_exact_atom": 1,
+              "derived_without_entailed_atom": 0,
+              "stronger_without_exact_atom": 1,
+              "backtrack": 4,
+              "end": 1
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "0492f478f8b20360e0d8520bf3784abf16bbff5f0e6fa761a332682fa44ae54c"
+        },
+        {
+          "file": "two-stage.smt2",
+          "input_sha256": "e97934cfe0ade2e9c8f05fd7cd8a0d83ffcd0deb5770eca54e59e872a71aa517",
+          "profile": "rows",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "",
+          "reference": {
+            "status": "ok",
+            "answer": "sat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "complete",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 3,
+              "atom": 10,
+              "assignment": 5,
+              "derived": 8,
+              "checked_derived": 8,
+              "derived_stronger_than_installed": 2,
+              "distinct_derived": 2,
+              "derived_without_exact_atom": 1,
+              "derived_without_entailed_atom": 0,
+              "propagate": 2,
+              "theory_expansions_with_shared_leaves": 0,
+              "expanded_leaf_occurrences": 5,
+              "expanded_distinct_leaves": 5,
+              "stronger_without_exact_atom": 1,
+              "backtrack": 2,
+              "end": 1
+            },
+            "propagation_kinds": {
+              "reverse-row": 1,
+              "row": 1
+            },
+            "reason_width_histogram": {
+              "2": 2
+            },
+            "theory_depth_histogram": {
+              "1": 1,
+              "2": 1
+            },
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "0b6f02f8daf1577a5d080f9d96cb430fe9082155aab9acf13ff8339c82a3e797"
+        },
+        {
+          "file": "branch-conflict.smt2",
+          "input_sha256": "c2ca2b4da1e87781f57a0050372be193961a9ade89f118476a0998042c81cb0e",
+          "profile": "default",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "",
+          "reference": {
+            "status": "ok",
+            "answer": "unsat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "complete",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 2,
+              "atom": 8,
+              "assignment": 9,
+              "propagate": 1,
+              "theory_expansions_with_shared_leaves": 0,
+              "expanded_leaf_occurrences": 5,
+              "expanded_distinct_leaves": 5,
+              "conflict": 2,
+              "backtrack": 2,
+              "end": 1
+            },
+            "propagation_kinds": {
+              "same-variable": 1
+            },
+            "reason_width_histogram": {
+              "1": 1,
+              "2": 2
+            },
+            "theory_depth_histogram": {
+              "1": 3
+            },
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "1626143b1e5fd302fb8a36c7829065775de2bc95732b9b205553d99e20fca372"
+        },
+        {
+          "file": "branch-conflict.smt2",
+          "input_sha256": "c2ca2b4da1e87781f57a0050372be193961a9ade89f118476a0998042c81cb0e",
+          "profile": "rows",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "",
+          "reference": {
+            "status": "ok",
+            "answer": "unsat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "complete",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 2,
+              "atom": 8,
+              "assignment": 9,
+              "propagate": 1,
+              "theory_expansions_with_shared_leaves": 0,
+              "expanded_leaf_occurrences": 5,
+              "expanded_distinct_leaves": 5,
+              "conflict": 2,
+              "backtrack": 2,
+              "end": 1
+            },
+            "propagation_kinds": {
+              "same-variable": 1
+            },
+            "reason_width_histogram": {
+              "1": 1,
+              "2": 2
+            },
+            "theory_depth_histogram": {
+              "1": 3
+            },
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "1626143b1e5fd302fb8a36c7829065775de2bc95732b9b205553d99e20fca372"
+        }
+      ],
+      "raw_summary_sha256": "ae59ce1446160ecfad750140d30bc7368f3ce0e772ce0534f10c1992eea30e6f"
+    },
+    "corpus": {
+      "profiles": {
+        "default": {
+          "args": [
+            "--quiet"
+          ],
+          "inputs": 34,
+          "status_counts": {
+            "timeout/None": 10,
+            "ok/sat": 12,
+            "ok/unsat": 12
+          },
+          "coverage": {
+            "prefix": 22,
+            "missing": 3,
+            "complete": 9
+          },
+          "counts": {
+            "begin": 31,
+            "variable": 15473,
+            "atom": 54061,
+            "assignment": 2129,
+            "derived": 18887,
+            "checked_derived": 18887,
+            "derived_stronger_than_installed": 722,
+            "stronger_without_exact_atom": 624,
+            "distinct_derived": 883,
+            "derived_without_exact_atom": 723,
+            "derived_without_entailed_atom": 349,
+            "propagate": 158,
+            "theory_expansions_with_shared_leaves": 0,
+            "expanded_leaf_occurrences": 395,
+            "expanded_distinct_leaves": 395,
+            "conflict": 36,
+            "backtrack": 58,
+            "end": 23
+          },
+          "theory_depth_histogram": {
+            "1": 194
+          },
+          "propagation_kinds": {
+            "same-variable": 158
+          },
+          "reason_width_histogram": {
+            "1": 158,
+            "2": 2,
+            "3": 2,
+            "4": 15,
+            "5": 3,
+            "6": 1,
+            "7": 2,
+            "12": 11
+          },
+          "reference_comparable": 23,
+          "wrong_answers": 0,
+          "reference_disagreements": 0,
+          "sat_expected": 12,
+          "direct_dolmen_pass": 12,
+          "model_summary_sha256": "3c5462618e9677671462757c2bb402646ef012878bc57f12e78b5cee362a7956"
+        },
+        "rows": {
+          "args": [
+            "--quiet",
+            "--lra-row-propagation",
+            "--lra-bidirectional-row-propagation"
+          ],
+          "inputs": 34,
+          "status_counts": {
+            "timeout/None": 9,
+            "ok/sat": 13,
+            "ok/unsat": 12
+          },
+          "coverage": {
+            "prefix": 23,
+            "complete": 9,
+            "missing": 2
+          },
+          "counts": {
+            "begin": 32,
+            "variable": 16815,
+            "atom": 56744,
+            "assignment": 2134,
+            "derived": 18931,
+            "checked_derived": 18931,
+            "derived_stronger_than_installed": 658,
+            "stronger_without_exact_atom": 576,
+            "distinct_derived": 835,
+            "derived_without_exact_atom": 686,
+            "derived_without_entailed_atom": 358,
+            "propagate": 181,
+            "theory_expansions_with_shared_leaves": 0,
+            "expanded_leaf_occurrences": 464,
+            "expanded_distinct_leaves": 464,
+            "conflict": 34,
+            "backtrack": 55,
+            "end": 24
+          },
+          "theory_depth_histogram": {
+            "1": 215
+          },
+          "propagation_kinds": {
+            "same-variable": 147,
+            "reverse-row": 13,
+            "row": 21
+          },
+          "reason_width_histogram": {
+            "1": 147,
+            "2": 17,
+            "3": 17,
+            "4": 18,
+            "5": 3,
+            "6": 1,
+            "7": 1,
+            "12": 11
+          },
+          "reference_comparable": 24,
+          "wrong_answers": 0,
+          "reference_disagreements": 0,
+          "sat_expected": 13,
+          "direct_dolmen_pass": 13,
+          "model_summary_sha256": "a025278495f5919c8c25059f5aa98ff8f756c4af69ee0f0a9659d1ae3578fb85"
+        }
+      },
+      "records": [
+        {
+          "file": "2017-Heizmann-UltimateInvariantSynthesis/_count_up_down.i_3_11_2.bpl_13.smt2",
+          "input_sha256": "43390a33a8f03786e66dceb59b045de861b4a3d01fedb2d066f9711f3291fb8e",
+          "profile": "default",
+          "status": "timeout",
+          "answer": null,
+          "expected": "unsat",
+          "reference": {
+            "status": "timeout",
+            "answer": null,
+            "exit_code": null
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 0,
+            "coverage": "prefix",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 442,
+              "atom": 3545
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "1878e1d2aef08a2d74fff04dc1b5e1121203f9113d836bc92939724b4c851a97"
+        },
+        {
+          "file": "2017-Heizmann-UltimateInvariantSynthesis/_count_up_down.i_3_11_2.bpl_13.smt2",
+          "input_sha256": "43390a33a8f03786e66dceb59b045de861b4a3d01fedb2d066f9711f3291fb8e",
+          "profile": "rows",
+          "status": "timeout",
+          "answer": null,
+          "expected": "unsat",
+          "reference": {
+            "status": "timeout",
+            "answer": null,
+            "exit_code": null
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 0,
+            "coverage": "prefix",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 442,
+              "atom": 3545
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "1878e1d2aef08a2d74fff04dc1b5e1121203f9113d836bc92939724b4c851a97"
+        },
+        {
+          "file": "2017-Heizmann-UltimateInvariantSynthesis/_functions1.i_3_5_2.bpl_11.smt2",
+          "input_sha256": "3f46d7eba5506d859de4560fe12b5342fbb3e34ea4b93153202dbe3839f9daf9",
+          "profile": "default",
+          "status": "timeout",
+          "answer": null,
+          "expected": "unsat",
+          "reference": {
+            "status": "timeout",
+            "answer": null,
+            "exit_code": null
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 0,
+            "coverage": "prefix",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 112,
+              "atom": 1504,
+              "assignment": 330,
+              "derived": 2041,
+              "checked_derived": 2041,
+              "derived_stronger_than_installed": 36,
+              "stronger_without_exact_atom": 19,
+              "distinct_derived": 62,
+              "derived_without_exact_atom": 19,
+              "derived_without_entailed_atom": 13,
+              "propagate": 3,
+              "theory_expansions_with_shared_leaves": 0,
+              "expanded_leaf_occurrences": 13,
+              "expanded_distinct_leaves": 13,
+              "conflict": 2,
+              "backtrack": 2
+            },
+            "propagation_kinds": {
+              "same-variable": 3
+            },
+            "reason_width_histogram": {
+              "1": 3,
+              "5": 2
+            },
+            "theory_depth_histogram": {
+              "1": 5
+            },
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "c030399bc75bc68f485020aaa78c7e9fe8bd3125fde9f1caa5917d396b2e2278"
+        },
+        {
+          "file": "2017-Heizmann-UltimateInvariantSynthesis/_functions1.i_3_5_2.bpl_11.smt2",
+          "input_sha256": "3f46d7eba5506d859de4560fe12b5342fbb3e34ea4b93153202dbe3839f9daf9",
+          "profile": "rows",
+          "status": "timeout",
+          "answer": null,
+          "expected": "unsat",
+          "reference": {
+            "status": "timeout",
+            "answer": null,
+            "exit_code": null
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 0,
+            "coverage": "prefix",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 112,
+              "atom": 1504,
+              "assignment": 330,
+              "derived": 2041,
+              "checked_derived": 2041,
+              "derived_stronger_than_installed": 36,
+              "stronger_without_exact_atom": 19,
+              "distinct_derived": 62,
+              "derived_without_exact_atom": 19,
+              "derived_without_entailed_atom": 13,
+              "propagate": 3,
+              "theory_expansions_with_shared_leaves": 0,
+              "expanded_leaf_occurrences": 13,
+              "expanded_distinct_leaves": 13,
+              "conflict": 2,
+              "backtrack": 2
+            },
+            "propagation_kinds": {
+              "same-variable": 3
+            },
+            "reason_width_histogram": {
+              "1": 3,
+              "5": 2
+            },
+            "theory_depth_histogram": {
+              "1": 5
+            },
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "c030399bc75bc68f485020aaa78c7e9fe8bd3125fde9f1caa5917d396b2e2278"
+        },
+        {
+          "file": "2019-ezsmt/Labyrinth/SCC_Strong/0011-labyrinth-12-0.smt2",
+          "input_sha256": "0009eee16c91cec9022bbdfad760d375f1fb62c9ce0e345d4b9c79fcb7355c77",
+          "profile": "default",
+          "status": "timeout",
+          "answer": null,
+          "expected": "",
+          "reference": {
+            "status": "timeout",
+            "answer": null,
+            "exit_code": null
+          },
+          "trace": {
+            "blocks": 0,
+            "ends": 0,
+            "coverage": "missing",
+            "capped_blocks": 0,
+            "counts": {},
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "file": "2019-ezsmt/Labyrinth/SCC_Strong/0011-labyrinth-12-0.smt2",
+          "input_sha256": "0009eee16c91cec9022bbdfad760d375f1fb62c9ce0e345d4b9c79fcb7355c77",
+          "profile": "rows",
+          "status": "timeout",
+          "answer": null,
+          "expected": "",
+          "reference": {
+            "status": "timeout",
+            "answer": null,
+            "exit_code": null
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 0,
+            "coverage": "prefix",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 1342,
+              "atom": 2585
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "d14b1e91ac97a3dc93e8d86879783a5016376662cf182cdd756a340868107096"
+        },
+        {
+          "file": "2019-ezsmt/Labyrinth/SCC_Strong/0051-labyrinth-12-0.smt2",
+          "input_sha256": "3ddceb4c61cd0b2e13a043f55056a3e9dd5fc444d8998f45defb787038532b3e",
+          "profile": "default",
+          "status": "timeout",
+          "answer": null,
+          "expected": "",
+          "reference": {
+            "status": "timeout",
+            "answer": null,
+            "exit_code": null
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 0,
+            "coverage": "prefix",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 1341,
+              "atom": 2586
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "7dc2507dfbda57cf96ba2a92e742b250377d03a5b5fd128b24dcadc3bdffc2c8"
+        },
+        {
+          "file": "2019-ezsmt/Labyrinth/SCC_Strong/0051-labyrinth-12-0.smt2",
+          "input_sha256": "3ddceb4c61cd0b2e13a043f55056a3e9dd5fc444d8998f45defb787038532b3e",
+          "profile": "rows",
+          "status": "timeout",
+          "answer": null,
+          "expected": "",
+          "reference": {
+            "status": "timeout",
+            "answer": null,
+            "exit_code": null
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 0,
+            "coverage": "prefix",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 1341,
+              "atom": 2586
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "7dc2507dfbda57cf96ba2a92e742b250377d03a5b5fd128b24dcadc3bdffc2c8"
+        },
+        {
+          "file": "DTP-Scheduling/constraints-cooking04.smt2",
+          "input_sha256": "413b4438b5acb185d1cb36f78b126ac1ab9a6f5d3f893a516366afe083dc0821",
+          "profile": "default",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "reference": {
+            "status": "ok",
+            "answer": "sat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "complete",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 25,
+              "atom": 208,
+              "assignment": 104,
+              "derived": 39,
+              "checked_derived": 39,
+              "derived_stronger_than_installed": 14,
+              "stronger_without_exact_atom": 14,
+              "distinct_derived": 39,
+              "derived_without_exact_atom": 39,
+              "derived_without_entailed_atom": 21,
+              "end": 1
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "09cce1a12cfa787a8ef88f3a8cd3450819dab73b962289c1152604c533ff4cf2"
+        },
+        {
+          "file": "DTP-Scheduling/constraints-cooking04.smt2",
+          "input_sha256": "413b4438b5acb185d1cb36f78b126ac1ab9a6f5d3f893a516366afe083dc0821",
+          "profile": "rows",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "reference": {
+            "status": "ok",
+            "answer": "sat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "complete",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 25,
+              "atom": 208,
+              "assignment": 104,
+              "derived": 39,
+              "checked_derived": 39,
+              "derived_stronger_than_installed": 14,
+              "stronger_without_exact_atom": 14,
+              "distinct_derived": 39,
+              "derived_without_exact_atom": 39,
+              "derived_without_entailed_atom": 21,
+              "end": 1
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "09cce1a12cfa787a8ef88f3a8cd3450819dab73b962289c1152604c533ff4cf2"
+        },
+        {
+          "file": "DTP-Scheduling/constraints-cooking06.smt2",
+          "input_sha256": "aeed2ca5fec1b7672569550ef9a7da0fa8110d0a4f215323ab85405d902c7893",
+          "profile": "default",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "reference": {
+            "status": "ok",
+            "answer": "sat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "complete",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 35,
+              "atom": 300,
+              "assignment": 150,
+              "derived": 55,
+              "checked_derived": 55,
+              "derived_stronger_than_installed": 18,
+              "stronger_without_exact_atom": 18,
+              "distinct_derived": 55,
+              "derived_without_exact_atom": 55,
+              "derived_without_entailed_atom": 31,
+              "end": 1
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "4ad11ec50e19f19f3b36e173586a33ff602eb79addaed9ebe0dba0ac9d376bc1"
+        },
+        {
+          "file": "DTP-Scheduling/constraints-cooking06.smt2",
+          "input_sha256": "aeed2ca5fec1b7672569550ef9a7da0fa8110d0a4f215323ab85405d902c7893",
+          "profile": "rows",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "reference": {
+            "status": "ok",
+            "answer": "sat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "complete",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 35,
+              "atom": 300,
+              "assignment": 150,
+              "derived": 55,
+              "checked_derived": 55,
+              "derived_stronger_than_installed": 18,
+              "stronger_without_exact_atom": 18,
+              "distinct_derived": 55,
+              "derived_without_exact_atom": 55,
+              "derived_without_entailed_atom": 31,
+              "end": 1
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "4ad11ec50e19f19f3b36e173586a33ff602eb79addaed9ebe0dba0ac9d376bc1"
+        },
+        {
+          "file": "LassoRanker/CooperatingT2/brp_withassume.t2.c_Iteration8_Loop_7-phaseTemplate.smt2",
+          "input_sha256": "712a1c56e655f7fba4506c2435f086048c8380e1853f67fb8df6fa1b9a7113af",
+          "profile": "default",
+          "status": "timeout",
+          "answer": null,
+          "expected": "sat",
+          "reference": {
+            "status": "timeout",
+            "answer": null,
+            "exit_code": null
+          },
+          "trace": {
+            "blocks": 0,
+            "ends": 0,
+            "coverage": "missing",
+            "capped_blocks": 0,
+            "counts": {},
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "file": "LassoRanker/CooperatingT2/brp_withassume.t2.c_Iteration8_Loop_7-phaseTemplate.smt2",
+          "input_sha256": "712a1c56e655f7fba4506c2435f086048c8380e1853f67fb8df6fa1b9a7113af",
+          "profile": "rows",
+          "status": "timeout",
+          "answer": null,
+          "expected": "sat",
+          "reference": {
+            "status": "timeout",
+            "answer": null,
+            "exit_code": null
+          },
+          "trace": {
+            "blocks": 0,
+            "ends": 0,
+            "coverage": "missing",
+            "capped_blocks": 0,
+            "counts": {},
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "file": "LassoRanker/CooperatingT2/byron-2.t2.c_Iteration2_Loop_7-phaseTemplate.smt2",
+          "input_sha256": "7954f9518878503193598947c40ee3f0dfded32dcb7948d2e2fd666356d95287",
+          "profile": "default",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "reference": {
+            "status": "timeout",
+            "answer": null,
+            "exit_code": null
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "prefix",
+            "capped_blocks": 1,
+            "counts": {
+              "begin": 1,
+              "variable": 1015,
+              "atom": 2985,
+              "end": 1
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "a1dbb07ef425e7df6085310b577fefc10f199b027c931a48f8b5479685e654f7"
+        },
+        {
+          "file": "LassoRanker/CooperatingT2/byron-2.t2.c_Iteration2_Loop_7-phaseTemplate.smt2",
+          "input_sha256": "7954f9518878503193598947c40ee3f0dfded32dcb7948d2e2fd666356d95287",
+          "profile": "rows",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "reference": {
+            "status": "timeout",
+            "answer": null,
+            "exit_code": null
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "prefix",
+            "capped_blocks": 1,
+            "counts": {
+              "begin": 1,
+              "variable": 1015,
+              "atom": 2985,
+              "end": 1
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "a1dbb07ef425e7df6085310b577fefc10f199b027c931a48f8b5479685e654f7"
+        },
+        {
+          "file": "TM/p-0-bucket_s13.smt2",
+          "input_sha256": "1331bde6353899f65d2b6ce6da7cc2b127015d4d952ea5c20017a106383d7796",
+          "profile": "default",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "reference": {
+            "status": "ok",
+            "answer": "sat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "prefix",
+            "capped_blocks": 1,
+            "counts": {
+              "begin": 1,
+              "variable": 357,
+              "atom": 3304,
+              "assignment": 71,
+              "derived": 268,
+              "checked_derived": 268,
+              "derived_stronger_than_installed": 4,
+              "stronger_without_exact_atom": 3,
+              "distinct_derived": 4,
+              "derived_without_exact_atom": 3,
+              "derived_without_entailed_atom": 3,
+              "end": 1
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "c409f2a9822e28be7855690bf8d926d66458ab13d3f7f93b9a4fcef31c45409d"
+        },
+        {
+          "file": "TM/p-0-bucket_s13.smt2",
+          "input_sha256": "1331bde6353899f65d2b6ce6da7cc2b127015d4d952ea5c20017a106383d7796",
+          "profile": "rows",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "reference": {
+            "status": "ok",
+            "answer": "sat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "prefix",
+            "capped_blocks": 1,
+            "counts": {
+              "begin": 1,
+              "variable": 357,
+              "atom": 3304,
+              "assignment": 71,
+              "derived": 268,
+              "checked_derived": 268,
+              "derived_stronger_than_installed": 4,
+              "stronger_without_exact_atom": 3,
+              "distinct_derived": 4,
+              "derived_without_exact_atom": 3,
+              "derived_without_entailed_atom": 3,
+              "end": 1
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "c409f2a9822e28be7855690bf8d926d66458ab13d3f7f93b9a4fcef31c45409d"
+        },
+        {
+          "file": "TM/p-0-bucket_s7.smt2",
+          "input_sha256": "17435d5c5cfef5214283dc7046d265f87bb0578e5d3f6dbd9908ee7c7b9bb7e5",
+          "profile": "default",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "reference": {
+            "status": "ok",
+            "answer": "sat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "prefix",
+            "capped_blocks": 1,
+            "counts": {
+              "begin": 1,
+              "variable": 202,
+              "atom": 1632,
+              "assignment": 230,
+              "derived": 1923,
+              "checked_derived": 1923,
+              "derived_stronger_than_installed": 19,
+              "stronger_without_exact_atom": 12,
+              "distinct_derived": 21,
+              "derived_without_exact_atom": 12,
+              "derived_without_entailed_atom": 9,
+              "propagate": 13,
+              "theory_expansions_with_shared_leaves": 0,
+              "expanded_leaf_occurrences": 13,
+              "expanded_distinct_leaves": 13,
+              "end": 1
+            },
+            "propagation_kinds": {
+              "same-variable": 13
+            },
+            "reason_width_histogram": {
+              "1": 13
+            },
+            "theory_depth_histogram": {
+              "1": 13
+            },
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "98208be8c4c76d7b199813c519b2fe50fec895d5be96f365c93ee7065525b160"
+        },
+        {
+          "file": "TM/p-0-bucket_s7.smt2",
+          "input_sha256": "17435d5c5cfef5214283dc7046d265f87bb0578e5d3f6dbd9908ee7c7b9bb7e5",
+          "profile": "rows",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "reference": {
+            "status": "ok",
+            "answer": "sat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "prefix",
+            "capped_blocks": 1,
+            "counts": {
+              "begin": 1,
+              "variable": 202,
+              "atom": 1632,
+              "assignment": 222,
+              "derived": 1925,
+              "checked_derived": 1925,
+              "derived_stronger_than_installed": 18,
+              "stronger_without_exact_atom": 13,
+              "distinct_derived": 22,
+              "derived_without_exact_atom": 13,
+              "derived_without_entailed_atom": 10,
+              "propagate": 19,
+              "theory_expansions_with_shared_leaves": 0,
+              "expanded_leaf_occurrences": 26,
+              "expanded_distinct_leaves": 26,
+              "end": 1
+            },
+            "propagation_kinds": {
+              "same-variable": 12,
+              "reverse-row": 7
+            },
+            "reason_width_histogram": {
+              "1": 12,
+              "2": 7
+            },
+            "theory_depth_histogram": {
+              "1": 19
+            },
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "48b52827b131018d1109f3ab45d455d5d50b4ee9229497f666a703ccdfc074d7"
+        },
+        {
+          "file": "check/bignum_lra1.smt2",
+          "input_sha256": "e420831670683c464148a12e0acbbcbc8848b32abd0a2d6e083a910c02dc022d",
+          "profile": "default",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "reference": {
+            "status": "ok",
+            "answer": "sat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "complete",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 6,
+              "atom": 50,
+              "assignment": 30,
+              "derived": 569,
+              "checked_derived": 569,
+              "derived_stronger_than_installed": 55,
+              "stronger_without_exact_atom": 50,
+              "distinct_derived": 87,
+              "derived_without_exact_atom": 82,
+              "derived_without_entailed_atom": 56,
+              "conflict": 5,
+              "theory_expansions_with_shared_leaves": 0,
+              "expanded_leaf_occurrences": 30,
+              "expanded_distinct_leaves": 30,
+              "backtrack": 15,
+              "propagate": 5,
+              "end": 1
+            },
+            "propagation_kinds": {
+              "same-variable": 5
+            },
+            "reason_width_histogram": {
+              "1": 5,
+              "3": 1,
+              "4": 1,
+              "5": 1,
+              "6": 1,
+              "7": 1
+            },
+            "theory_depth_histogram": {
+              "1": 10
+            },
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "6c9602ad50168246b37b0a0b691245d102da4fa0c468ff34f12220542dc4bc79"
+        },
+        {
+          "file": "check/bignum_lra1.smt2",
+          "input_sha256": "e420831670683c464148a12e0acbbcbc8848b32abd0a2d6e083a910c02dc022d",
+          "profile": "rows",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "reference": {
+            "status": "ok",
+            "answer": "sat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "complete",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 6,
+              "atom": 50,
+              "assignment": 29,
+              "derived": 556,
+              "checked_derived": 556,
+              "derived_stronger_than_installed": 52,
+              "stronger_without_exact_atom": 48,
+              "distinct_derived": 85,
+              "derived_without_exact_atom": 81,
+              "derived_without_entailed_atom": 57,
+              "conflict": 4,
+              "theory_expansions_with_shared_leaves": 0,
+              "expanded_leaf_occurrences": 31,
+              "expanded_distinct_leaves": 31,
+              "backtrack": 14,
+              "propagate": 6,
+              "end": 1
+            },
+            "propagation_kinds": {
+              "row": 2,
+              "same-variable": 4
+            },
+            "reason_width_histogram": {
+              "1": 4,
+              "3": 3,
+              "5": 1,
+              "6": 1,
+              "7": 1
+            },
+            "theory_depth_histogram": {
+              "1": 10
+            },
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "1a8704ec3b0129039a112b0510a49a70aec4d43662721f8cdbbb1c4068730733"
+        },
+        {
+          "file": "check/bignum_lra2.smt2",
+          "input_sha256": "632aa76309595e0f5736f2c2bd94284ea4ff1ffeb5df1e2de0031043165ed47d",
+          "profile": "default",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "reference": {
+            "status": "ok",
+            "answer": "unsat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "complete",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 6,
+              "atom": 50,
+              "assignment": 100,
+              "derived": 456,
+              "checked_derived": 456,
+              "derived_stronger_than_installed": 107,
+              "stronger_without_exact_atom": 85,
+              "distinct_derived": 118,
+              "derived_without_exact_atom": 90,
+              "derived_without_entailed_atom": 51,
+              "conflict": 12,
+              "theory_expansions_with_shared_leaves": 0,
+              "expanded_leaf_occurrences": 53,
+              "expanded_distinct_leaves": 53,
+              "backtrack": 21,
+              "propagate": 8,
+              "end": 1
+            },
+            "propagation_kinds": {
+              "same-variable": 8
+            },
+            "reason_width_histogram": {
+              "1": 8,
+              "2": 1,
+              "3": 1,
+              "4": 10
+            },
+            "theory_depth_histogram": {
+              "1": 20
+            },
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "600167edc326ab98835af733bb452522cf0f41da995a89cba513b9faeb6ae456"
+        },
+        {
+          "file": "check/bignum_lra2.smt2",
+          "input_sha256": "632aa76309595e0f5736f2c2bd94284ea4ff1ffeb5df1e2de0031043165ed47d",
+          "profile": "rows",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "reference": {
+            "status": "ok",
+            "answer": "unsat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "complete",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 6,
+              "atom": 50,
+              "assignment": 104,
+              "derived": 532,
+              "checked_derived": 532,
+              "derived_stronger_than_installed": 111,
+              "stronger_without_exact_atom": 89,
+              "distinct_derived": 122,
+              "derived_without_exact_atom": 94,
+              "derived_without_entailed_atom": 51,
+              "conflict": 12,
+              "theory_expansions_with_shared_leaves": 0,
+              "expanded_leaf_occurrences": 61,
+              "expanded_distinct_leaves": 61,
+              "backtrack": 21,
+              "propagate": 10,
+              "end": 1
+            },
+            "propagation_kinds": {
+              "same-variable": 8,
+              "row": 2
+            },
+            "reason_width_histogram": {
+              "1": 8,
+              "2": 1,
+              "3": 1,
+              "4": 12
+            },
+            "theory_depth_histogram": {
+              "1": 22
+            },
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "a25646e8e6b68601d7f8f7bba5c0024498d0a301f9b1a4a6b537c7fe9fe0cf85"
+        },
+        {
+          "file": "clock_synchro/clocksynchro_10clocks.worst_case_skew.induct.smt2",
+          "input_sha256": "2038e7a0b0f34b09819599e0a5a667b91e2f55f42387599cdcb52fa5576152bc",
+          "profile": "default",
+          "status": "timeout",
+          "answer": null,
+          "expected": "unsat",
+          "reference": {
+            "status": "timeout",
+            "answer": null,
+            "exit_code": null
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 0,
+            "coverage": "prefix",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 100,
+              "atom": 960,
+              "assignment": 419,
+              "derived": 2486,
+              "checked_derived": 2486,
+              "derived_stronger_than_installed": 153,
+              "stronger_without_exact_atom": 153,
+              "distinct_derived": 153,
+              "derived_without_exact_atom": 153,
+              "derived_without_entailed_atom": 2,
+              "propagate": 9,
+              "theory_expansions_with_shared_leaves": 0,
+              "expanded_leaf_occurrences": 141,
+              "expanded_distinct_leaves": 141,
+              "conflict": 11,
+              "backtrack": 11
+            },
+            "propagation_kinds": {
+              "same-variable": 9
+            },
+            "reason_width_histogram": {
+              "1": 9,
+              "12": 11
+            },
+            "theory_depth_histogram": {
+              "1": 20
+            },
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "92ed02b249b76e81c2b89c9a344193d45562079f5e47b24e9bf514c3e1d57502"
+        },
+        {
+          "file": "clock_synchro/clocksynchro_10clocks.worst_case_skew.induct.smt2",
+          "input_sha256": "2038e7a0b0f34b09819599e0a5a667b91e2f55f42387599cdcb52fa5576152bc",
+          "profile": "rows",
+          "status": "timeout",
+          "answer": null,
+          "expected": "unsat",
+          "reference": {
+            "status": "timeout",
+            "answer": null,
+            "exit_code": null
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 0,
+            "coverage": "prefix",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 100,
+              "atom": 960,
+              "assignment": 419,
+              "derived": 2486,
+              "checked_derived": 2486,
+              "derived_stronger_than_installed": 153,
+              "stronger_without_exact_atom": 153,
+              "distinct_derived": 153,
+              "derived_without_exact_atom": 153,
+              "derived_without_entailed_atom": 2,
+              "propagate": 9,
+              "theory_expansions_with_shared_leaves": 0,
+              "expanded_leaf_occurrences": 141,
+              "expanded_distinct_leaves": 141,
+              "conflict": 11,
+              "backtrack": 11
+            },
+            "propagation_kinds": {
+              "same-variable": 9
+            },
+            "reason_width_histogram": {
+              "1": 9,
+              "12": 11
+            },
+            "theory_depth_histogram": {
+              "1": 20
+            },
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "92ed02b249b76e81c2b89c9a344193d45562079f5e47b24e9bf514c3e1d57502"
+        },
+        {
+          "file": "clock_synchro/clocksynchro_2clocks.main_invar.base.smt2",
+          "input_sha256": "20312aed2df5059179e695b31f727528cb19147430e8ae6cc3f947ce6aaa7c24",
+          "profile": "default",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "reference": {
+            "status": "ok",
+            "answer": "unsat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "prefix",
+            "capped_blocks": 1,
+            "counts": {
+              "begin": 1,
+              "variable": 33,
+              "atom": 378,
+              "assignment": 89,
+              "derived": 3475,
+              "checked_derived": 3475,
+              "derived_stronger_than_installed": 138,
+              "stronger_without_exact_atom": 102,
+              "distinct_derived": 140,
+              "derived_without_exact_atom": 102,
+              "derived_without_entailed_atom": 26,
+              "propagate": 22,
+              "theory_expansions_with_shared_leaves": 0,
+              "expanded_leaf_occurrences": 29,
+              "expanded_distinct_leaves": 29,
+              "conflict": 1,
+              "backtrack": 2,
+              "end": 1
+            },
+            "propagation_kinds": {
+              "same-variable": 22
+            },
+            "reason_width_histogram": {
+              "1": 22,
+              "7": 1
+            },
+            "theory_depth_histogram": {
+              "1": 23
+            },
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "6e2c3a2cc45fd3697cf5da0b86d3b90dfe55ebd275fde2bc1f4045ae5d4c195f"
+        },
+        {
+          "file": "clock_synchro/clocksynchro_2clocks.main_invar.base.smt2",
+          "input_sha256": "20312aed2df5059179e695b31f727528cb19147430e8ae6cc3f947ce6aaa7c24",
+          "profile": "rows",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "reference": {
+            "status": "ok",
+            "answer": "unsat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "prefix",
+            "capped_blocks": 1,
+            "counts": {
+              "begin": 1,
+              "variable": 33,
+              "atom": 378,
+              "assignment": 99,
+              "derived": 3454,
+              "checked_derived": 3454,
+              "derived_stronger_than_installed": 74,
+              "stronger_without_exact_atom": 51,
+              "distinct_derived": 89,
+              "derived_without_exact_atom": 61,
+              "derived_without_entailed_atom": 33,
+              "propagate": 36,
+              "theory_expansions_with_shared_leaves": 0,
+              "expanded_leaf_occurrences": 72,
+              "expanded_distinct_leaves": 72,
+              "end": 1
+            },
+            "propagation_kinds": {
+              "same-variable": 15,
+              "row": 16,
+              "reverse-row": 5
+            },
+            "reason_width_histogram": {
+              "1": 15,
+              "2": 8,
+              "3": 11,
+              "4": 2
+            },
+            "theory_depth_histogram": {
+              "1": 36
+            },
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "599c77ff2f540feb2e1b1626b857a756642ca0b42a394a88d3e560426169d617"
+        },
+        {
+          "file": "keymaera/bouncing-ball-inv-node1886.smt2",
+          "input_sha256": "9a40e72275700974d90ea80778c60055d3f874008dd6ca1c13da1cd824b47fde",
+          "profile": "default",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "reference": {
+            "status": "ok",
+            "answer": "unsat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "complete",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 5,
+              "atom": 16,
+              "assignment": 8,
+              "derived": 4,
+              "checked_derived": 4,
+              "derived_stronger_than_installed": 1,
+              "stronger_without_exact_atom": 1,
+              "distinct_derived": 1,
+              "derived_without_exact_atom": 1,
+              "derived_without_entailed_atom": 1,
+              "end": 1
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "de07be9b40bb3bc131f3b8e65ef5785f3ddf77f1c3fa9604f06d32774d514d7c"
+        },
+        {
+          "file": "keymaera/bouncing-ball-inv-node1886.smt2",
+          "input_sha256": "9a40e72275700974d90ea80778c60055d3f874008dd6ca1c13da1cd824b47fde",
+          "profile": "rows",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "reference": {
+            "status": "ok",
+            "answer": "unsat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "complete",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 5,
+              "atom": 16,
+              "assignment": 8,
+              "derived": 4,
+              "checked_derived": 4,
+              "derived_stronger_than_installed": 1,
+              "stronger_without_exact_atom": 1,
+              "distinct_derived": 1,
+              "derived_without_exact_atom": 1,
+              "derived_without_entailed_atom": 1,
+              "end": 1
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "de07be9b40bb3bc131f3b8e65ef5785f3ddf77f1c3fa9604f06d32774d514d7c"
+        },
+        {
+          "file": "keymaera/bouncing-ball-inv-node1935.smt2",
+          "input_sha256": "a79d8ab2176aa8884e1f13fffb50b8fca9aeff5e1641e5308eb6337b28176272",
+          "profile": "default",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "reference": {
+            "status": "ok",
+            "answer": "unsat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "complete",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 5,
+              "atom": 16,
+              "assignment": 8,
+              "derived": 4,
+              "checked_derived": 4,
+              "derived_stronger_than_installed": 1,
+              "stronger_without_exact_atom": 1,
+              "distinct_derived": 1,
+              "derived_without_exact_atom": 1,
+              "derived_without_entailed_atom": 1,
+              "end": 1
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "62fa094c4da47f397ae5babf92aac7e0994de8589150b7a6dbc30d5fce3b7815"
+        },
+        {
+          "file": "keymaera/bouncing-ball-inv-node1935.smt2",
+          "input_sha256": "a79d8ab2176aa8884e1f13fffb50b8fca9aeff5e1641e5308eb6337b28176272",
+          "profile": "rows",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "reference": {
+            "status": "ok",
+            "answer": "unsat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "complete",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 5,
+              "atom": 16,
+              "assignment": 8,
+              "derived": 4,
+              "checked_derived": 4,
+              "derived_stronger_than_installed": 1,
+              "stronger_without_exact_atom": 1,
+              "distinct_derived": 1,
+              "derived_without_exact_atom": 1,
+              "derived_without_entailed_atom": 1,
+              "end": 1
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "62fa094c4da47f397ae5babf92aac7e0994de8589150b7a6dbc30d5fce3b7815"
+        },
+        {
+          "file": "latendresse/ecoliFBAyicesTest-15875-16.smt2",
+          "input_sha256": "8c673bcbd2bb499b626b4f34a5621073a4dc45d6b6ab5743be5fc350cfc7056f",
+          "profile": "default",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "reference": {
+            "status": "ok",
+            "answer": "sat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "prefix",
+            "capped_blocks": 1,
+            "counts": {
+              "begin": 1,
+              "variable": 1577,
+              "atom": 2423,
+              "end": 1
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "81314cc7234fd90c7a0af69f4423c37940c21a7034273eb96f5665b31b431e29"
+        },
+        {
+          "file": "latendresse/ecoliFBAyicesTest-15875-16.smt2",
+          "input_sha256": "8c673bcbd2bb499b626b4f34a5621073a4dc45d6b6ab5743be5fc350cfc7056f",
+          "profile": "rows",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "reference": {
+            "status": "ok",
+            "answer": "sat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "prefix",
+            "capped_blocks": 1,
+            "counts": {
+              "begin": 1,
+              "variable": 1577,
+              "atom": 2423,
+              "end": 1
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "81314cc7234fd90c7a0af69f4423c37940c21a7034273eb96f5665b31b431e29"
+        },
+        {
+          "file": "latendresse/ecoliFBAyicesTest-31875-32.smt2",
+          "input_sha256": "95f2d05771a2229d3960829da381d8563cc8753682e53d2a41e000cfdb6e9572",
+          "profile": "default",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "reference": {
+            "status": "ok",
+            "answer": "sat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "prefix",
+            "capped_blocks": 1,
+            "counts": {
+              "begin": 1,
+              "variable": 1577,
+              "atom": 2423,
+              "end": 1
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "81314cc7234fd90c7a0af69f4423c37940c21a7034273eb96f5665b31b431e29"
+        },
+        {
+          "file": "latendresse/ecoliFBAyicesTest-31875-32.smt2",
+          "input_sha256": "95f2d05771a2229d3960829da381d8563cc8753682e53d2a41e000cfdb6e9572",
+          "profile": "rows",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "reference": {
+            "status": "ok",
+            "answer": "sat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "prefix",
+            "capped_blocks": 1,
+            "counts": {
+              "begin": 1,
+              "variable": 1577,
+              "atom": 2423,
+              "end": 1
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "81314cc7234fd90c7a0af69f4423c37940c21a7034273eb96f5665b31b431e29"
+        },
+        {
+          "file": "meti-tarski/Chua/1/IL/U/Chua-1-IL-U-chunk-0069.smt2",
+          "input_sha256": "a5ba3846f2bb6c65bc1779ac6a239bd445bd95a29240fcec3a9c94f1d66bcdc3",
+          "profile": "default",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "reference": {
+            "status": "ok",
+            "answer": "sat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "complete",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 3,
+              "atom": 8,
+              "assignment": 4,
+              "backtrack": 1,
+              "end": 1
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "f78bf3038d467a411814a48118b3c214ffcfe1c22dd5f66061765ed7be42bb40"
+        },
+        {
+          "file": "meti-tarski/Chua/1/IL/U/Chua-1-IL-U-chunk-0069.smt2",
+          "input_sha256": "a5ba3846f2bb6c65bc1779ac6a239bd445bd95a29240fcec3a9c94f1d66bcdc3",
+          "profile": "rows",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "reference": {
+            "status": "ok",
+            "answer": "sat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "complete",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 3,
+              "atom": 8,
+              "assignment": 4,
+              "backtrack": 1,
+              "end": 1
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "f78bf3038d467a411814a48118b3c214ffcfe1c22dd5f66061765ed7be42bb40"
+        },
+        {
+          "file": "meti-tarski/Chua/1/VC1/L/Chua-1-VC1-L-chunk-0113.smt2",
+          "input_sha256": "6051c5cea807bba9a6780095f005c17ecf534fb1cf09747e5c7da06fcd9e89f5",
+          "profile": "default",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "reference": {
+            "status": "ok",
+            "answer": "unsat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "complete",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 3,
+              "atom": 6,
+              "assignment": 3,
+              "conflict": 1,
+              "theory_expansions_with_shared_leaves": 0,
+              "expanded_leaf_occurrences": 2,
+              "expanded_distinct_leaves": 2,
+              "end": 1
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {
+              "2": 1
+            },
+            "theory_depth_histogram": {
+              "1": 1
+            },
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "18b0c11d131b1d8c632bb234d81adb2942f15cbd6bad6f57da0845f5ec418699"
+        },
+        {
+          "file": "meti-tarski/Chua/1/VC1/L/Chua-1-VC1-L-chunk-0113.smt2",
+          "input_sha256": "6051c5cea807bba9a6780095f005c17ecf534fb1cf09747e5c7da06fcd9e89f5",
+          "profile": "rows",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "reference": {
+            "status": "ok",
+            "answer": "unsat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "complete",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 3,
+              "atom": 6,
+              "assignment": 3,
+              "conflict": 1,
+              "theory_expansions_with_shared_leaves": 0,
+              "expanded_leaf_occurrences": 2,
+              "expanded_distinct_leaves": 2,
+              "end": 1
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {
+              "2": 1
+            },
+            "theory_depth_histogram": {
+              "1": 1
+            },
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "18b0c11d131b1d8c632bb234d81adb2942f15cbd6bad6f57da0845f5ec418699"
+        },
+        {
+          "file": "miplib/danoint-30.smt2",
+          "input_sha256": "d9f237e70b91b5f39e4a163b4fb07c6db24e097cbf485e75332468f228765df0",
+          "profile": "default",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "reference": {
+            "status": "ok",
+            "answer": "unsat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "prefix",
+            "capped_blocks": 1,
+            "counts": {
+              "begin": 1,
+              "variable": 996,
+              "atom": 3004,
+              "end": 1
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "f061f55ba4e02d980b3316a5f96cead9bbc049e1822d5288abb26b3d43472cfb"
+        },
+        {
+          "file": "miplib/danoint-30.smt2",
+          "input_sha256": "d9f237e70b91b5f39e4a163b4fb07c6db24e097cbf485e75332468f228765df0",
+          "profile": "rows",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "reference": {
+            "status": "ok",
+            "answer": "unsat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "prefix",
+            "capped_blocks": 1,
+            "counts": {
+              "begin": 1,
+              "variable": 996,
+              "atom": 3004,
+              "end": 1
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "f061f55ba4e02d980b3316a5f96cead9bbc049e1822d5288abb26b3d43472cfb"
+        },
+        {
+          "file": "miplib/danoint-66.smt2",
+          "input_sha256": "22e24324e53c647cc34c4199e892c72b2005b74d0c2008d6f29e13b56d227af0",
+          "profile": "default",
+          "status": "timeout",
+          "answer": null,
+          "expected": "sat",
+          "reference": {
+            "status": "timeout",
+            "answer": null,
+            "exit_code": null
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 0,
+            "coverage": "prefix",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 996,
+              "atom": 3003
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "7643b701a96f50bee8f2aa7612b31e2a2044321f5239998bd8d592df39bc1ebd"
+        },
+        {
+          "file": "miplib/danoint-66.smt2",
+          "input_sha256": "22e24324e53c647cc34c4199e892c72b2005b74d0c2008d6f29e13b56d227af0",
+          "profile": "rows",
+          "status": "timeout",
+          "answer": null,
+          "expected": "sat",
+          "reference": {
+            "status": "timeout",
+            "answer": null,
+            "exit_code": null
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 0,
+            "coverage": "prefix",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 996,
+              "atom": 3003
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "7643b701a96f50bee8f2aa7612b31e2a2044321f5239998bd8d592df39bc1ebd"
+        },
+        {
+          "file": "sal/carpark/Carpark2-ausgabe-1.smt2",
+          "input_sha256": "f13077bb1f2242500e62f65149a7025da8fe020aa88914a6451f3021efa49923",
+          "profile": "default",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "reference": {
+            "status": "ok",
+            "answer": "unsat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 0,
+            "ends": 0,
+            "coverage": "missing",
+            "capped_blocks": 0,
+            "counts": {},
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "file": "sal/carpark/Carpark2-ausgabe-1.smt2",
+          "input_sha256": "f13077bb1f2242500e62f65149a7025da8fe020aa88914a6451f3021efa49923",
+          "profile": "rows",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "reference": {
+            "status": "ok",
+            "answer": "unsat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 0,
+            "ends": 0,
+            "coverage": "missing",
+            "capped_blocks": 0,
+            "counts": {},
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "file": "sal/carpark/Carpark2-ausgabe-5.smt2",
+          "input_sha256": "5fc90dafca84d89c84dfaf595d37466c14c16f1d80354ca03b55e7d26baae0b8",
+          "profile": "default",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "reference": {
+            "status": "ok",
+            "answer": "unsat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "complete",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 85,
+              "atom": 722,
+              "assignment": 36,
+              "end": 1
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "0d38b677a96a8693891acb4ed05ea738a122e1cf92c369c04185ef6f7c032e6b"
+        },
+        {
+          "file": "sal/carpark/Carpark2-ausgabe-5.smt2",
+          "input_sha256": "5fc90dafca84d89c84dfaf595d37466c14c16f1d80354ca03b55e7d26baae0b8",
+          "profile": "rows",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "reference": {
+            "status": "ok",
+            "answer": "unsat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "complete",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 85,
+              "atom": 722,
+              "assignment": 36,
+              "end": 1
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "0d38b677a96a8693891acb4ed05ea738a122e1cf92c369c04185ef6f7c032e6b"
+        },
+        {
+          "file": "sc/sc-14.induction.cvc.smt2",
+          "input_sha256": "155d2a2e438dfa490c593295ebf2dd8bdc54856ef6e356c9912b87cb1146b45a",
+          "profile": "default",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "reference": {
+            "status": "ok",
+            "answer": "sat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "prefix",
+            "capped_blocks": 1,
+            "counts": {
+              "begin": 1,
+              "variable": 207,
+              "atom": 1840,
+              "assignment": 228,
+              "derived": 1635,
+              "checked_derived": 1635,
+              "distinct_derived": 21,
+              "derived_without_exact_atom": 3,
+              "derived_without_entailed_atom": 0,
+              "propagate": 80,
+              "theory_expansions_with_shared_leaves": 0,
+              "expanded_leaf_occurrences": 96,
+              "expanded_distinct_leaves": 96,
+              "conflict": 4,
+              "backtrack": 6,
+              "derived_stronger_than_installed": 13,
+              "stronger_without_exact_atom": 3,
+              "end": 1
+            },
+            "propagation_kinds": {
+              "same-variable": 80
+            },
+            "reason_width_histogram": {
+              "1": 80,
+              "4": 4
+            },
+            "theory_depth_histogram": {
+              "1": 84
+            },
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "8e289c941d4db737f11f9033b1b50d8e2d965b4327a7d871e088151fd04d34b5"
+        },
+        {
+          "file": "sc/sc-14.induction.cvc.smt2",
+          "input_sha256": "155d2a2e438dfa490c593295ebf2dd8bdc54856ef6e356c9912b87cb1146b45a",
+          "profile": "rows",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "reference": {
+            "status": "ok",
+            "answer": "sat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "prefix",
+            "capped_blocks": 1,
+            "counts": {
+              "begin": 1,
+              "variable": 207,
+              "atom": 1840,
+              "assignment": 228,
+              "derived": 1635,
+              "checked_derived": 1635,
+              "distinct_derived": 21,
+              "derived_without_exact_atom": 3,
+              "derived_without_entailed_atom": 0,
+              "propagate": 80,
+              "theory_expansions_with_shared_leaves": 0,
+              "expanded_leaf_occurrences": 100,
+              "expanded_distinct_leaves": 100,
+              "conflict": 4,
+              "backtrack": 6,
+              "derived_stronger_than_installed": 13,
+              "stronger_without_exact_atom": 3,
+              "end": 1
+            },
+            "propagation_kinds": {
+              "same-variable": 78,
+              "reverse-row": 1,
+              "row": 1
+            },
+            "reason_width_histogram": {
+              "1": 78,
+              "3": 2,
+              "4": 4
+            },
+            "theory_depth_histogram": {
+              "1": 84
+            },
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "c374b220f4c574219c91b6bb2dfcba766f89331b5cdcbf94c6f1c1b2183f0e94"
+        },
+        {
+          "file": "sc/sc-17.induction3.cvc.smt2",
+          "input_sha256": "9c2dc167d65d593d3eae8f904b77d8cf3f59e69e18b9ea1ba08cdcacd1af954b",
+          "profile": "default",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "reference": {
+            "status": "ok",
+            "answer": "sat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "prefix",
+            "capped_blocks": 1,
+            "counts": {
+              "begin": 1,
+              "variable": 393,
+              "atom": 3490,
+              "assignment": 28,
+              "derived": 89,
+              "checked_derived": 89,
+              "distinct_derived": 4,
+              "derived_without_exact_atom": 0,
+              "derived_without_entailed_atom": 0,
+              "end": 1
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "852ad79bd4e99266308de8e6c6446d593664a716c3c0a945f05fdd813a245232"
+        },
+        {
+          "file": "sc/sc-17.induction3.cvc.smt2",
+          "input_sha256": "9c2dc167d65d593d3eae8f904b77d8cf3f59e69e18b9ea1ba08cdcacd1af954b",
+          "profile": "rows",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "reference": {
+            "status": "ok",
+            "answer": "sat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "prefix",
+            "capped_blocks": 1,
+            "counts": {
+              "begin": 1,
+              "variable": 393,
+              "atom": 3490,
+              "assignment": 28,
+              "derived": 89,
+              "checked_derived": 89,
+              "distinct_derived": 4,
+              "derived_without_exact_atom": 0,
+              "derived_without_entailed_atom": 0,
+              "end": 1
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "852ad79bd4e99266308de8e6c6446d593664a716c3c0a945f05fdd813a245232"
+        },
+        {
+          "file": "spider_benchmarks/current_frame.induction.smt2",
+          "input_sha256": "b6c346644b976379d58ffc70ad11610286eb7de9f80d56c1c04bf19b9810ae15",
+          "profile": "default",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "reference": {
+            "status": "ok",
+            "answer": "unsat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "prefix",
+            "capped_blocks": 1,
+            "counts": {
+              "begin": 1,
+              "variable": 143,
+              "atom": 1598,
+              "assignment": 109,
+              "derived": 2141,
+              "checked_derived": 2141,
+              "derived_stronger_than_installed": 42,
+              "stronger_without_exact_atom": 42,
+              "distinct_derived": 42,
+              "derived_without_exact_atom": 42,
+              "derived_without_entailed_atom": 24,
+              "propagate": 9,
+              "theory_expansions_with_shared_leaves": 0,
+              "expanded_leaf_occurrences": 9,
+              "expanded_distinct_leaves": 9,
+              "end": 1
+            },
+            "propagation_kinds": {
+              "same-variable": 9
+            },
+            "reason_width_histogram": {
+              "1": 9
+            },
+            "theory_depth_histogram": {
+              "1": 9
+            },
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "8ead7208671b243025fe3bba9fa8f50c9a52812a0e04e55dccbd5fb3ea293531"
+        },
+        {
+          "file": "spider_benchmarks/current_frame.induction.smt2",
+          "input_sha256": "b6c346644b976379d58ffc70ad11610286eb7de9f80d56c1c04bf19b9810ae15",
+          "profile": "rows",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "reference": {
+            "status": "ok",
+            "answer": "unsat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "prefix",
+            "capped_blocks": 1,
+            "counts": {
+              "begin": 1,
+              "variable": 143,
+              "atom": 1598,
+              "assignment": 109,
+              "derived": 2141,
+              "checked_derived": 2141,
+              "derived_stronger_than_installed": 42,
+              "stronger_without_exact_atom": 42,
+              "distinct_derived": 42,
+              "derived_without_exact_atom": 42,
+              "derived_without_entailed_atom": 24,
+              "propagate": 9,
+              "theory_expansions_with_shared_leaves": 0,
+              "expanded_leaf_occurrences": 9,
+              "expanded_distinct_leaves": 9,
+              "end": 1
+            },
+            "propagation_kinds": {
+              "same-variable": 9
+            },
+            "reason_width_histogram": {
+              "1": 9
+            },
+            "theory_depth_histogram": {
+              "1": 9
+            },
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "8ead7208671b243025fe3bba9fa8f50c9a52812a0e04e55dccbd5fb3ea293531"
+        },
+        {
+          "file": "spider_benchmarks/fs_frame_gap.induction.smt2",
+          "input_sha256": "d14a260d0501f6b572330733ef9cce629fb6977d8dc5f50efe2fe6a002ce9080",
+          "profile": "default",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "reference": {
+            "status": "ok",
+            "answer": "unsat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "prefix",
+            "capped_blocks": 1,
+            "counts": {
+              "begin": 1,
+              "variable": 142,
+              "atom": 1478,
+              "assignment": 113,
+              "derived": 2258,
+              "checked_derived": 2258,
+              "derived_stronger_than_installed": 32,
+              "stronger_without_exact_atom": 32,
+              "distinct_derived": 46,
+              "derived_without_exact_atom": 32,
+              "derived_without_entailed_atom": 22,
+              "propagate": 9,
+              "theory_expansions_with_shared_leaves": 0,
+              "expanded_leaf_occurrences": 9,
+              "expanded_distinct_leaves": 9,
+              "end": 1
+            },
+            "propagation_kinds": {
+              "same-variable": 9
+            },
+            "reason_width_histogram": {
+              "1": 9
+            },
+            "theory_depth_histogram": {
+              "1": 9
+            },
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "dbf6cefd9f5aec8e50da55b6f6c5fe7a44e94bd66583dbf96ee9846ad403104e"
+        },
+        {
+          "file": "spider_benchmarks/fs_frame_gap.induction.smt2",
+          "input_sha256": "d14a260d0501f6b572330733ef9cce629fb6977d8dc5f50efe2fe6a002ce9080",
+          "profile": "rows",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "reference": {
+            "status": "ok",
+            "answer": "unsat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "prefix",
+            "capped_blocks": 1,
+            "counts": {
+              "begin": 1,
+              "variable": 142,
+              "atom": 1478,
+              "assignment": 113,
+              "derived": 2258,
+              "checked_derived": 2258,
+              "derived_stronger_than_installed": 32,
+              "stronger_without_exact_atom": 32,
+              "distinct_derived": 46,
+              "derived_without_exact_atom": 32,
+              "derived_without_entailed_atom": 22,
+              "propagate": 9,
+              "theory_expansions_with_shared_leaves": 0,
+              "expanded_leaf_occurrences": 9,
+              "expanded_distinct_leaves": 9,
+              "end": 1
+            },
+            "propagation_kinds": {
+              "same-variable": 9
+            },
+            "reason_width_histogram": {
+              "1": 9
+            },
+            "theory_depth_histogram": {
+              "1": 9
+            },
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "dbf6cefd9f5aec8e50da55b6f6c5fe7a44e94bd66583dbf96ee9846ad403104e"
+        },
+        {
+          "file": "tropical-matrix/constraint-1007893.smt2",
+          "input_sha256": "3e44fa8afe9219c4384cebf79fe2680ad76d4b2868ba3f218e14908ffd7dbcaa",
+          "profile": "default",
+          "status": "timeout",
+          "answer": null,
+          "expected": "",
+          "reference": {
+            "status": "timeout",
+            "answer": null,
+            "exit_code": null
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 0,
+            "coverage": "prefix",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 3910
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "752efbb53f90bca049bf7e324272af44c0cb25fc9d1277a2718cf486457c3f2c"
+        },
+        {
+          "file": "tropical-matrix/constraint-1007893.smt2",
+          "input_sha256": "3e44fa8afe9219c4384cebf79fe2680ad76d4b2868ba3f218e14908ffd7dbcaa",
+          "profile": "rows",
+          "status": "timeout",
+          "answer": null,
+          "expected": "",
+          "reference": {
+            "status": "timeout",
+            "answer": null,
+            "exit_code": null
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 0,
+            "coverage": "prefix",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 3910
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "752efbb53f90bca049bf7e324272af44c0cb25fc9d1277a2718cf486457c3f2c"
+        },
+        {
+          "file": "tropical-matrix/constraint-199552.smt2",
+          "input_sha256": "04e51f77b55beb47e4f58f660a119d858ad5f03a90fa9fa8fc7af50cbc1d092d",
+          "profile": "default",
+          "status": "timeout",
+          "answer": null,
+          "expected": "sat",
+          "reference": {
+            "status": "timeout",
+            "answer": null,
+            "exit_code": null
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 0,
+            "coverage": "prefix",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 954,
+              "atom": 2946
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "a3aa2a926cd44d8c623cb45c1a0a2f55c0966dd8cb31d0180f85d4113a787c76"
+        },
+        {
+          "file": "tropical-matrix/constraint-199552.smt2",
+          "input_sha256": "04e51f77b55beb47e4f58f660a119d858ad5f03a90fa9fa8fc7af50cbc1d092d",
+          "profile": "rows",
+          "status": "timeout",
+          "answer": null,
+          "expected": "sat",
+          "reference": {
+            "status": "timeout",
+            "answer": null,
+            "exit_code": null
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 0,
+            "coverage": "prefix",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 954,
+              "atom": 2946
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "a3aa2a926cd44d8c623cb45c1a0a2f55c0966dd8cb31d0180f85d4113a787c76"
+        },
+        {
+          "file": "tta_startup/simple_startup_11nodes.abstract.base.smt2",
+          "input_sha256": "3babcf66669bd06144087eb148455b4c1c3181df741b5f1edb368f61ad710101",
+          "profile": "default",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "reference": {
+            "status": "ok",
+            "answer": "unsat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "prefix",
+            "capped_blocks": 1,
+            "counts": {
+              "begin": 1,
+              "variable": 147,
+              "atom": 3853,
+              "end": 1
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "8a8dc6b8ef22b4f4dce014e4e7423e0cf14562c75263cc8dc5dfe9dbe41f2605"
+        },
+        {
+          "file": "tta_startup/simple_startup_11nodes.abstract.base.smt2",
+          "input_sha256": "3babcf66669bd06144087eb148455b4c1c3181df741b5f1edb368f61ad710101",
+          "profile": "rows",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "reference": {
+            "status": "ok",
+            "answer": "unsat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "prefix",
+            "capped_blocks": 1,
+            "counts": {
+              "begin": 1,
+              "variable": 147,
+              "atom": 3853,
+              "end": 1
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "8a8dc6b8ef22b4f4dce014e4e7423e0cf14562c75263cc8dc5dfe9dbe41f2605"
+        },
+        {
+          "file": "tta_startup/simple_startup_12nodes.missing.induct.smt2",
+          "input_sha256": "33046cd1149aa586aec41af459b3c71db6b93866c93f6684e70ccc61a512f878",
+          "profile": "default",
+          "status": "timeout",
+          "answer": null,
+          "expected": "sat",
+          "reference": {
+            "status": "ok",
+            "answer": "sat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 0,
+            "coverage": "prefix",
+            "capped_blocks": 0,
+            "counts": {
+              "begin": 1,
+              "variable": 211,
+              "atom": 3691
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "5d25926844c89650a99c6d8bfc65933cfca39cac381eed10b14d6f445dddfcaa"
+        },
+        {
+          "file": "tta_startup/simple_startup_12nodes.missing.induct.smt2",
+          "input_sha256": "33046cd1149aa586aec41af459b3c71db6b93866c93f6684e70ccc61a512f878",
+          "profile": "rows",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "reference": {
+            "status": "ok",
+            "answer": "sat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "prefix",
+            "capped_blocks": 1,
+            "counts": {
+              "begin": 1,
+              "variable": 211,
+              "atom": 3789,
+              "end": 1
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "01d01108b7b8acd14827c8258929fee771732ad08c6f51feee33730d2797d892"
+        },
+        {
+          "file": "uart/uart-10.base.cvc.smt2",
+          "input_sha256": "693c5437f540c664bd15d84cd7c93120a322aaf07b2504290559d1c2554f4a4f",
+          "profile": "default",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "reference": {
+            "status": "ok",
+            "answer": "unsat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "prefix",
+            "capped_blocks": 1,
+            "counts": {
+              "begin": 1,
+              "variable": 213,
+              "atom": 2860,
+              "assignment": 38,
+              "derived": 889,
+              "checked_derived": 889,
+              "derived_stronger_than_installed": 49,
+              "stronger_without_exact_atom": 49,
+              "distinct_derived": 49,
+              "derived_without_exact_atom": 49,
+              "derived_without_entailed_atom": 49,
+              "end": 1
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "730a598088cde6a2e400ec669768b17c6a41c159ab38fc4d1486e368734f059a"
+        },
+        {
+          "file": "uart/uart-10.base.cvc.smt2",
+          "input_sha256": "693c5437f540c664bd15d84cd7c93120a322aaf07b2504290559d1c2554f4a4f",
+          "profile": "rows",
+          "status": "ok",
+          "answer": "unsat",
+          "expected": "unsat",
+          "reference": {
+            "status": "ok",
+            "answer": "unsat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "prefix",
+            "capped_blocks": 1,
+            "counts": {
+              "begin": 1,
+              "variable": 213,
+              "atom": 2860,
+              "assignment": 38,
+              "derived": 889,
+              "checked_derived": 889,
+              "derived_stronger_than_installed": 49,
+              "stronger_without_exact_atom": 49,
+              "distinct_derived": 49,
+              "derived_without_exact_atom": 49,
+              "derived_without_entailed_atom": 49,
+              "end": 1
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "730a598088cde6a2e400ec669768b17c6a41c159ab38fc4d1486e368734f059a"
+        },
+        {
+          "file": "uart/uart-11.induction.cvc.smt2",
+          "input_sha256": "d9cf90f1f105126d92572a8d5860eddc52d19e74e30f65291f6c43d3eaf5a8d3",
+          "profile": "default",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "reference": {
+            "status": "ok",
+            "answer": "sat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "prefix",
+            "capped_blocks": 1,
+            "counts": {
+              "begin": 1,
+              "variable": 232,
+              "atom": 3182,
+              "assignment": 31,
+              "derived": 555,
+              "checked_derived": 555,
+              "derived_stronger_than_installed": 40,
+              "stronger_without_exact_atom": 40,
+              "distinct_derived": 40,
+              "derived_without_exact_atom": 40,
+              "derived_without_entailed_atom": 40,
+              "end": 1
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "a5361e2f827483bc615d9e5c887b7f6511e8f7f07e1691fd9f54cfb0ad40ab47"
+        },
+        {
+          "file": "uart/uart-11.induction.cvc.smt2",
+          "input_sha256": "d9cf90f1f105126d92572a8d5860eddc52d19e74e30f65291f6c43d3eaf5a8d3",
+          "profile": "rows",
+          "status": "ok",
+          "answer": "sat",
+          "expected": "sat",
+          "reference": {
+            "status": "ok",
+            "answer": "sat",
+            "exit_code": 0
+          },
+          "trace": {
+            "blocks": 1,
+            "ends": 1,
+            "coverage": "prefix",
+            "capped_blocks": 1,
+            "counts": {
+              "begin": 1,
+              "variable": 232,
+              "atom": 3182,
+              "assignment": 31,
+              "derived": 555,
+              "checked_derived": 555,
+              "derived_stronger_than_installed": 40,
+              "stronger_without_exact_atom": 40,
+              "distinct_derived": 40,
+              "derived_without_exact_atom": 40,
+              "derived_without_entailed_atom": 40,
+              "end": 1
+            },
+            "propagation_kinds": {},
+            "reason_width_histogram": {},
+            "theory_depth_histogram": {},
+            "unrecorded_antecedent_occurrences": 0,
+            "shared_examples": []
+          },
+          "trace_sha256": "a5361e2f827483bc615d9e5c887b7f6511e8f7f07e1691fd9f54cfb0ad40ab47"
+        }
+      ],
+      "raw_summary_sha256": "8c4b7cacaa7a79fe1d32acd4e8641839a1eed292631b430f74ff5623f9c3a856"
+    }
+  },
+  "sat_model_replays": {
+    "expected": 33,
+    "direct_dolmen_pass": 33,
+    "invalid": 0,
+    "changed_answers": 0,
+    "incomplete": 0
+  },
+  "fuzz": {
+    "count": 1000,
+    "seed": 2026102601,
+    "pass": 1000,
+    "sat": 1000,
+    "unsat": 0,
+    "wrong": 0,
+    "crash": 0,
+    "timeout": 0,
+    "unsupported": 0,
+    "reference_disagreement": 0,
+    "direct_dolmen_models": 1000,
+    "summary_sha256": "7e627963d466a43839213660a13ff364a39aba515196ff5bbed8970897f2ae76",
+    "provenance_note": "Generator metadata reports commit unknown in the Git-less archive; the job separately enforced binary git:6c4f9c5 and its SHA256 is recorded above."
+  },
+  "static_review": {
+    "translation_units": 132,
+    "all_tracked_cpp_covered": true,
+    "all_source_hashes_match": true,
+    "compile_errors": 0,
+    "warning_categories": {
+      "misc-include-cleaner": 410,
+      "clang-analyzer-cplusplus.NewDeleteLeaks": 2,
+      "clang-analyzer-optin.core.EnumCastOutOfRange": 16
+    },
+    "triage": [
+      "410 include-cleaner advisories retained; unused-include diagnostics are paired header self-includes, which are intentionally kept. Direct-header suggestions are advisory, including the ostream type exposed by the probe public header.",
+      "16 enum-range diagnostics occur in guarded enumeration-table validation tests.",
+      "Two leak diagnostics follow standard-library ownership: Goal::Data retains its assertions through shared_ptr, and CLI11 retains/moves its std::function callback. Reviewed as RAII-modeling diagnostics; no raw owning pointer escapes are introduced."
+    ],
+    "summary_sha256": "dc493132bf698a0915469e7c43b0249f316bef0d91bb8814557a89b31a19ca82"
+  },
+  "qualification": {
+    "release_ctest_groups": 44,
+    "release_python_tests": 246,
+    "documentation_examples": 12,
+    "asan_ctest_groups": 44,
+    "status": "passed on corrected C++ source6c4f9c5; static advisories recorded separately"
+  },
+  "examples": {
+    "shared_parent": {
+      "events": [
+        {
+          "event": "variable",
+          "seq": 1,
+          "var": 3,
+          "term": 5,
+          "name": "z"
+        },
+        {
+          "event": "variable",
+          "seq": 2,
+          "var": 1,
+          "term": 2,
+          "name": "y"
+        },
+        {
+          "event": "variable",
+          "seq": 3,
+          "var": 0,
+          "term": 0,
+          "name": "x"
+        },
+        {
+          "event": "atom",
+          "seq": 4,
+          "lit": -1,
+          "var": 2,
+          "upper": false,
+          "value": [
+            "0",
+            "1"
+          ]
+        },
+        {
+          "event": "atom",
+          "seq": 5,
+          "lit": 1,
+          "var": 2,
+          "upper": true,
+          "value": [
+            "0",
+            "0"
+          ]
+        },
+        {
+          "event": "atom",
+          "seq": 6,
+          "lit": -2,
+          "var": 2,
+          "upper": true,
+          "value": [
+            "0",
+            "-1"
+          ]
+        },
+        {
+          "event": "atom",
+          "seq": 7,
+          "lit": 2,
+          "var": 2,
+          "upper": false,
+          "value": [
+            "0",
+            "0"
+          ]
+        },
+        {
+          "event": "atom",
+          "seq": 8,
+          "lit": -3,
+          "var": 4,
+          "upper": true,
+          "value": [
+            "0",
+            "-1"
+          ]
+        },
+        {
+          "event": "atom",
+          "seq": 9,
+          "lit": 3,
+          "var": 4,
+          "upper": false,
+          "value": [
+            "0",
+            "0"
+          ]
+        },
+        {
+          "event": "atom",
+          "seq": 10,
+          "lit": -4,
+          "var": 4,
+          "upper": false,
+          "value": [
+            "0",
+            "1"
+          ]
+        },
+        {
+          "event": "atom",
+          "seq": 11,
+          "lit": 4,
+          "var": 4,
+          "upper": true,
+          "value": [
+            "0",
+            "0"
+          ]
+        },
+        {
+          "event": "atom",
+          "seq": 12,
+          "lit": -5,
+          "var": 1,
+          "upper": true,
+          "value": [
+            "0",
+            "-1"
+          ]
+        },
+        {
+          "event": "atom",
+          "seq": 13,
+          "lit": 5,
+          "var": 1,
+          "upper": false,
+          "value": [
+            "0",
+            "0"
+          ]
+        },
+        {
+          "event": "atom",
+          "seq": 14,
+          "lit": -6,
+          "var": 1,
+          "upper": false,
+          "value": [
+            "1",
+            "1"
+          ]
+        },
+        {
+          "event": "atom",
+          "seq": 15,
+          "lit": 6,
+          "var": 1,
+          "upper": true,
+          "value": [
+            "1",
+            "0"
+          ]
+        },
+        {
+          "event": "atom",
+          "seq": 16,
+          "lit": -7,
+          "var": 0,
+          "upper": false,
+          "value": [
+            "2",
+            "1"
+          ]
+        },
+        {
+          "event": "atom",
+          "seq": 17,
+          "lit": 7,
+          "var": 0,
+          "upper": true,
+          "value": [
+            "2",
+            "0"
+          ]
+        },
+        {
+          "event": "atom",
+          "seq": 18,
+          "lit": -9,
+          "var": 3,
+          "upper": false,
+          "value": [
+            "1",
+            "1"
+          ]
+        },
+        {
+          "event": "atom",
+          "seq": 19,
+          "lit": 9,
+          "var": 3,
+          "upper": true,
+          "value": [
+            "1",
+            "0"
+          ]
+        },
+        {
+          "event": "atom",
+          "seq": 20,
+          "lit": -11,
+          "var": 5,
+          "upper": false,
+          "value": [
+            "3",
+            "1"
+          ]
+        },
+        {
+          "event": "atom",
+          "seq": 21,
+          "lit": 11,
+          "var": 5,
+          "upper": true,
+          "value": [
+            "3",
+            "0"
+          ]
+        },
+        {
+          "event": "propagate",
+          "seq": 34,
+          "lit": 7,
+          "kind": "reverse-row",
+          "reasons": [
+            -1,
+            -6
+          ]
+        },
+        {
+          "event": "propagate",
+          "seq": 42,
+          "lit": 9,
+          "kind": "reverse-row",
+          "reasons": [
+            -3,
+            -6
+          ]
+        },
+        {
+          "event": "propagate",
+          "seq": 53,
+          "lit": 11,
+          "kind": "row",
+          "reasons": [
+            -7,
+            -9
+          ]
+        }
+      ]
+    },
+    "unnamed_sum": {
+      "events": [
+        {
+          "event": "variable",
+          "seq": 1,
+          "var": 1,
+          "term": 3,
+          "name": "y"
+        },
+        {
+          "event": "variable",
+          "seq": 2,
+          "var": 0,
+          "term": 0,
+          "name": "x"
+        },
+        {
+          "event": "atom",
+          "seq": 3,
+          "lit": -1,
+          "var": 0,
+          "upper": false,
+          "value": [
+            "2",
+            "1"
+          ]
+        },
+        {
+          "event": "atom",
+          "seq": 4,
+          "lit": 1,
+          "var": 0,
+          "upper": true,
+          "value": [
+            "2",
+            "0"
+          ]
+        },
+        {
+          "event": "atom",
+          "seq": 5,
+          "lit": -2,
+          "var": 1,
+          "upper": false,
+          "value": [
+            "5",
+            "1"
+          ]
+        },
+        {
+          "event": "atom",
+          "seq": 6,
+          "lit": 2,
+          "var": 1,
+          "upper": true,
+          "value": [
+            "5",
+            "0"
+          ]
+        },
+        {
+          "event": "atom",
+          "seq": 7,
+          "lit": -3,
+          "var": 2,
+          "upper": false,
+          "value": [
+            "8",
+            "1"
+          ]
+        },
+        {
+          "event": "atom",
+          "seq": 8,
+          "lit": 3,
+          "var": 2,
+          "upper": true,
+          "value": [
+            "8",
+            "0"
+          ]
+        },
+        {
+          "event": "assignment",
+          "seq": 9,
+          "lit": 1,
+          "var": 0,
+          "conflict": false,
+          "lower": null,
+          "upper": {
+            "value": [
+              "2",
+              "0"
+            ],
+            "reason": -1
+          }
+        },
+        {
+          "event": "assignment",
+          "seq": 10,
+          "lit": 2,
+          "var": 1,
+          "conflict": false,
+          "lower": null,
+          "upper": {
+            "value": [
+              "5",
+              "0"
+            ],
+            "reason": -2
+          }
+        },
+        {
+          "event": "derived",
+          "seq": 11,
+          "row": 2,
+          "target": 2,
+          "upper": true,
+          "value": [
+            "7",
+            "0"
+          ],
+          "reasons": [
+            -1,
+            -2
+          ],
+          "installed": null,
+          "basic_bound": null,
+          "terms": [
+            {
+              "var": 0,
+              "coeff": "1",
+              "lower": null,
+              "upper": {
+                "value": [
+                  "2",
+                  "0"
+                ],
+                "reason": -1
+              }
+            },
+            {
+              "var": 1,
+              "coeff": "1",
+              "lower": null,
+              "upper": {
+                "value": [
+                  "5",
+                  "0"
+                ],
+                "reason": -2
+              }
+            }
+          ]
+        },
+        {
+          "event": "propagate",
+          "seq": 12,
+          "lit": 3,
+          "kind": "row",
+          "reasons": [
+            -1,
+            -2
+          ]
+        },
+        {
+          "event": "assignment",
+          "seq": 13,
+          "lit": 3,
+          "var": 2,
+          "conflict": false,
+          "lower": null,
+          "upper": {
+            "value": [
+              "8",
+              "0"
+            ],
+            "reason": -3
+          }
+        },
+        {
+          "event": "derived",
+          "seq": 14,
+          "row": 2,
+          "target": 2,
+          "upper": true,
+          "value": [
+            "7",
+            "0"
+          ],
+          "reasons": [
+            -1,
+            -2
+          ],
+          "installed": {
+            "value": [
+              "8",
+              "0"
+            ],
+            "reason": -3
+          },
+          "basic_bound": null,
+          "terms": [
+            {
+              "var": 0,
+              "coeff": "1",
+              "lower": null,
+              "upper": {
+                "value": [
+                  "2",
+                  "0"
+                ],
+                "reason": -1
+              }
+            },
+            {
+              "var": 1,
+              "coeff": "1",
+              "lower": null,
+              "upper": {
+                "value": [
+                  "5",
+                  "0"
+                ],
+                "reason": -2
+              }
+            }
+          ]
+        },
+        {
+          "event": "derived",
+          "seq": 15,
+          "row": 2,
+          "target": 2,
+          "upper": true,
+          "value": [
+            "7",
+            "0"
+          ],
+          "reasons": [
+            -1,
+            -2
+          ],
+          "installed": {
+            "value": [
+              "8",
+              "0"
+            ],
+            "reason": -3
+          },
+          "basic_bound": null,
+          "terms": [
+            {
+              "var": 0,
+              "coeff": "1",
+              "lower": null,
+              "upper": {
+                "value": [
+                  "2",
+                  "0"
+                ],
+                "reason": -1
+              }
+            },
+            {
+              "var": 1,
+              "coeff": "1",
+              "lower": null,
+              "upper": {
+                "value": [
+                  "5",
+                  "0"
+                ],
+                "reason": -2
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "rejected_attempts": [
+    {
+      "source": "4892c61",
+      "jobs": [
+        "256553",
+        "256570",
+        "256581"
+      ],
+      "status": "rejected qualification",
+      "reasons": [
+        "Missing cluster ASan runtime at first link; staged existing runtime.",
+        "Public checks found stale help fixture; fixed.",
+        "ASan caught temporary-string lifetime bug in observer name output; fixed with owned strings and short/long regression."
+      ],
+      "probe_jobs_cancelled": [
+        "256556",
+        "256576",
+        "256583"
+      ],
+      "static_partial_cancelled": "256555"
+    },
+    {
+      "source": "6c4f9c5",
+      "job": "256634",
+      "status": "invalid constructed fixture; collection aborted",
+      "reason": "Bare -2 was an undeclared SMT-LIB symbol. Fixed to unary minus in input commit1702619 and reran as257633."
+    }
+  ],
+  "limitations": [
+    "Corpus traces are bounded prefixes, not full search coverage; missing blocks include preprocessing-only and early-timeout paths.",
+    "Opaque SAT leaves are not necessarily original assertions; Boolean SAT reasons and decision levels are not recorded.",
+    "Full delta-pair matching can differ from semantic strict-threshold equivalence.",
+    "The Fraction checker validates recorded interval calculations, not tableau identities against original assertions or UNSAT proofs.",
+    "No explanation is transformed, no unnamed bound is installed, no speedup or minimization benefit is claimed."
+  ]
+}
