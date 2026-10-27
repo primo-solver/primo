@@ -94,9 +94,14 @@ void FlatCongruenceClosure::pop(std::size_t checkpoint) {
   use_list_marks_.resize(state.node_count);
   disequality_lists_.resize(state.node_count);
   edge_adjacency_.resize(state.node_count);
-  proof_parent_.resize(state.node_count);
-  proof_parent_label_endpoint_.resize(state.node_count);
-  proof_parent_edge_.resize(state.node_count);
+  // Match ensure_node_count(): disabled explanation state must stay unallocated
+  // during rollback, including rollback from a temporary model scope.
+  if (proof_forest_diagnostics_ ||
+      explanation_search_mode_ == FlatExplanationSearchMode::ProofForest) {
+    proof_parent_.resize(state.node_count);
+    proof_parent_label_endpoint_.resize(state.node_count);
+    proof_parent_edge_.resize(state.node_count);
+  }
   reoriented_proof_forest_.pop(checkpoint);
   structural_proof_forest_.pop(checkpoint);
   conflict_ = std::move(state.conflict);

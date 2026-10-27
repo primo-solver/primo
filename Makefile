@@ -134,11 +134,11 @@ analysis-db:
 
 tidy: analysis-db
 	@status=0; $(RUN_CLANG_TIDY) -p "$(STATIC_REPORT_DIR)/database" -j $(STATIC_JOBS) -clang-tidy-binary "$(CLANG_TIDY)" -export-fixes "$(STATIC_REPORT_DIR)/tidy.yaml" > "$(STATIC_REPORT_DIR)/tidy.log" 2>&1 || status=$$?; \
-	$(PYTHON) scripts/summarize_static_analysis.py --manifest "$(STATIC_REPORT_DIR)/database/manifest.json" --log "$(STATIC_REPORT_DIR)/tidy.log" --exit-code $$status --out "$(STATIC_REPORT_DIR)/tidy-summary.json"
+	$(PYTHON) scripts/summarize_static_analysis.py --manifest "$(STATIC_REPORT_DIR)/database/manifest.json" --log "$(STATIC_REPORT_DIR)/tidy.log" --exit-code $$status --reject-unused-includes --out "$(STATIC_REPORT_DIR)/tidy-summary.json"
 
 include-cleaner: analysis-db
 	@status=0; $(RUN_CLANG_TIDY) -p "$(STATIC_REPORT_DIR)/database" -j $(STATIC_JOBS) -clang-tidy-binary "$(CLANG_TIDY)" '-checks=-*,clang-diagnostic-*,misc-include-cleaner' -export-fixes "$(STATIC_REPORT_DIR)/includes.yaml" > "$(STATIC_REPORT_DIR)/includes.log" 2>&1 || status=$$?; \
-	$(PYTHON) scripts/summarize_static_analysis.py --manifest "$(STATIC_REPORT_DIR)/database/manifest.json" --log "$(STATIC_REPORT_DIR)/includes.log" --exit-code $$status --out "$(STATIC_REPORT_DIR)/includes-summary.json"
+	$(PYTHON) scripts/summarize_static_analysis.py --manifest "$(STATIC_REPORT_DIR)/database/manifest.json" --log "$(STATIC_REPORT_DIR)/includes.log" --exit-code $$status --reject-unused-includes --out "$(STATIC_REPORT_DIR)/includes-summary.json"
 
 check-headers: analysis-db
 	$(PYTHON) scripts/check_static_headers.py --database "$(STATIC_REPORT_DIR)/database/compile_commands.json" --out "$(STATIC_REPORT_DIR)/headers" --jobs $(STATIC_JOBS)

@@ -134,9 +134,14 @@ class StaticDatabaseTests(unittest.TestCase):
 
     def test_make_tidy_does_not_build_or_execute_solver_targets(self):
         result = subprocess.run(
-            ["make", "-n", "tidy"], cwd=ROOT, text=True, capture_output=True, check=True
+            ["make", "-n", "tidy", "include-cleaner"],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            check=True,
         )
         self.assertIn("prepare_static_analysis.py", result.stdout)
+        self.assertEqual(result.stdout.count("--reject-unused-includes"), 2)
         self.assertNotIn("cmake --build", result.stdout)
         self.assertNotIn("contrib-required", result.stdout)
         self.assertNotIn("ctest", result.stdout)

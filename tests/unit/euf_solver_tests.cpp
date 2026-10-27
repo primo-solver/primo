@@ -33,6 +33,11 @@ using primo::theory::equality::ProofForestObligation;
 namespace primo::theory::equality {
 class FlatCongruenceClosureTestAccess {
  public:
+  static std::size_t representative_proof_storage(const FlatCongruenceClosure& closure) {
+    return closure.proof_parent_.capacity() + closure.proof_parent_label_endpoint_.capacity() +
+           closure.proof_parent_edge_.capacity();
+  }
+
   static bool explain_pair_with_bound(FlatCongruenceClosure& closure, FlatTermId lhs,
                                       FlatTermId rhs, std::vector<primo::sat::Lit>& reason,
                                       std::size_t max_edge_index) {
@@ -387,6 +392,36 @@ void incremental_closure_backtracks_and_rediscoveres_congruence() {
   closure.assert_equal(a_term, b_term, {primo::sat::Lit{-4}});
   check(closure.are_equal(f_a, f_b));
   check(closure.stats().backtracks == 1);
+}
+
+void flat_congruence_closure_pop_preserves_optional_proof_storage() {
+  for (const FlatExplanationSearchMode mode :
+       {FlatExplanationSearchMode::OneSidedBfs, FlatExplanationSearchMode::BidirectionalBfs,
+        FlatExplanationSearchMode::ProofForest, FlatExplanationSearchMode::ReorientedProofForest,
+        FlatExplanationSearchMode::StructuralProofForest}) {
+    for (const bool diagnostics : {false, true}) {
+      FlatCongruenceClosure closure(16, mode, diagnostics);
+      const bool enabled = diagnostics || mode == FlatExplanationSearchMode::ProofForest;
+      const auto capacity = FlatCongruenceClosureTestAccess::representative_proof_storage(closure);
+      check((capacity != 0) == enabled);
+      const auto outer = closure.push();
+      closure.assert_equal(0, 1, {primo::sat::Lit{-1}});
+      const auto inner = closure.push();
+      closure.ensure_node_count(32);
+      closure.assert_equal(1, 31, {primo::sat::Lit{-2}});
+      check(closure.are_equal(0, 31));
+      closure.pop(inner);
+      check(closure.are_equal(0, 1));
+      if (!enabled) {
+        check(FlatCongruenceClosureTestAccess::representative_proof_storage(closure) == 0);
+      }
+      closure.pop(outer);
+      check(!closure.are_equal(0, 1));
+      if (!enabled) {
+        check(FlatCongruenceClosureTestAccess::representative_proof_storage(closure) == 0);
+      }
+    }
+  }
 }
 
 void flat_congruence_closure_protects_borrowed_checkpoint() {
@@ -1469,6 +1504,7 @@ int main() {
   incremental_closure_reports_disequality_conflict();
   incremental_closure_checks_only_inserted_disequality_until_a_merge();
   incremental_closure_backtracks_and_rediscoveres_congruence();
+  flat_congruence_closure_pop_preserves_optional_proof_storage();
   flat_congruence_closure_protects_borrowed_checkpoint();
   flat_terms_curry_nary_applications_deterministically();
   flat_terms_share_nested_subterms_and_flatten_equalities();

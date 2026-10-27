@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 import re
+import shlex
 from collections import Counter
 from pathlib import Path
 
@@ -91,16 +92,118 @@ def summarize(manifest: dict, text: str, exit_code: int) -> dict:
     }
 
 
+def quoted_header(source: Path, include: str, entry: dict) -> Path | None:
+    """Resolve supported quoted-include search flags; unknown search rules deny exemption."""
+    arguments = entry.get("arguments") or shlex.split(entry.get("command", ""))
+    directory = Path(entry.get("directory", source.parent))
+    paths = {"-iquote": [], "-I": [], "-isystem": [], "-idirafter": []}
+    index = 1
+    while index < len(arguments):
+        argument = arguments[index]
+        if argument == "-I-" or argument.startswith(
+            ("-F", "-Wp,", "-Xclang", "-Xpreprocessor", "@", "--config")
+        ):
+            return None
+        matched = False
+        for option, directories in paths.items():
+            if argument == option:
+                index += 1
+                if index == len(arguments):
+                    return None
+                directories.append((directory / arguments[index]).resolve())
+                matched = True
+                break
+            if argument.startswith(option) and len(argument) > len(option):
+                directories.append((directory / argument[len(option) :]).resolve())
+                matched = True
+                break
+        if not matched and argument.startswith(("-i", "--sysroot")):
+            return None
+        index += 1
+    # A directory specified as both user and system has special compiler
+    # deduplication/precedence rules; deny exemption instead of guessing.
+    if set(paths["-I"]) & {*paths["-isystem"], *paths["-idirafter"]}:
+        return None
+    search = [
+        source.parent,
+        *paths["-iquote"],
+        *paths["-I"],
+        *paths["-isystem"],
+        *paths["-idirafter"],
+    ]
+    return next(
+        (
+            (directory / include).resolve()
+            for directory in search
+            if (directory / include).is_file()
+        ),
+        None,
+    )
+
+
+def unused_include_gate(
+    report: dict, repo: Path, commands: list[dict] | None = None
+) -> dict:
+    """Reject redundant includes while retaining each implementation's own header.
+
+    A paired header checks that its declarations compile in isolation. Empty
+    implementation anchors intentionally include it even without symbol uses.
+    Missing-direct-include advice remains visible and advisory in this gate.
+    """
+    paired = []
+    blocking = []
+    for row in report["diagnostics"]:
+        if row["check"] != "misc-include-cleaner" or not row["message"].startswith(
+            "included header "
+        ):
+            continue
+        source = repo / row["file"]
+        lines = source.read_text().splitlines() if source.is_file() else []
+        line = lines[row["line"] - 1] if 0 < row["line"] <= len(lines) else ""
+        include = re.match(r'^\s*#\s*include\s*"([^"]+)"', line)
+        own = False
+        if include and source.suffix == ".cpp":
+            contexts = [
+                entry
+                for entry in commands or []
+                if Path(entry["file"]).resolve() == source.resolve()
+            ]
+            paired_paths = (
+                source.with_suffix(".hpp").resolve(),
+                source.with_suffix(".h").resolve(),
+            )
+            own = bool(contexts) and all(
+                quoted_header(source, include[1], entry) in paired_paths
+                for entry in contexts
+            )
+        (paired if own else blocking).append(row)
+    return {
+        "status": "failed" if blocking else "passed",
+        "blocking": blocking,
+        "paired_self_includes": paired,
+        "policy": "Retain the implementation's own header; other unused includes fail. Missing direct includes remain advisory.",
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--log", type=Path, required=True)
     parser.add_argument("--exit-code", type=int, required=True)
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--reject-unused-includes", action="store_true")
     args = parser.parse_args()
     report = summarize(
         json.loads(args.manifest.read_text()), args.log.read_text(), args.exit_code
     )
+    if args.reject_unused_includes:
+        database = args.manifest.parent / "compile_commands.json"
+        report["unused_include_gate"] = unused_include_gate(
+            report,
+            Path(json.loads(args.manifest.read_text())["source_root"]),
+            json.loads(database.read_text()) if database.is_file() else None,
+        )
+
     args.out.write_text(json.dumps(report, indent=2) + "\n")
     print(
         json.dumps(
@@ -116,7 +219,16 @@ def main() -> int:
             indent=2,
         )
     )
-    return int(report["status"] == "incomplete")
+    if args.reject_unused_includes:
+        gate = report["unused_include_gate"]
+        print(
+            f"Unused include gate: {gate['status']}; {len(gate['blocking'])} blocking, "
+            f"{len(gate['paired_self_includes'])} intentional paired headers"
+        )
+    return int(
+        report["status"] == "incomplete"
+        or report.get("unused_include_gate", {}).get("status") == "failed"
+    )
 
 
 if __name__ == "__main__":

@@ -1,0 +1,660 @@
+{
+  "id": "2026-10-27-static-diagnostic-repair",
+  "date": "2026-10-27",
+  "candidate_git": "ed8c227aea49925ed8117f656bf44f14a030a4b9",
+  "binary_sha256": "4a680d24feef6b49947bf1ec6610170b78bc6d7307ccce055a1874d41bee40d4",
+  "jobs": {
+    "checks": "258339",
+    "asan": "258340",
+    "generated": "258341",
+    "online": "258342",
+    "build": "258327",
+    "baseline": "258350",
+    "asan_cli": "258361",
+    "online_accepted": "258416"
+  },
+  "reference_sha256": {
+    "z3": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+    "cvc5": "4a93548398445cf1a774655583f5465b156c26f63f2cdfb94f4728fdf7adde46",
+    "dolmen": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+  },
+  "routes": {
+    "QF_UF": {
+      "cases": 1000,
+      "pass": 1000,
+      "models": 626,
+      "shards": [
+        {
+          "slot": 0,
+          "cases": 250,
+          "models": 161,
+          "solver_args": [
+            "--quiet"
+          ],
+          "summary_sha256": "4cb34126e4d6b7f248722d3d76336fc1e01206b92bcce748c9c227e3d9170281",
+          "metadata_sha256": "1a7babe7fbeae5fd133f28caf38145c1ea61eec2cbee407c91b1e322189f9a6d",
+          "answers_sha256": "d451d7bf64a71d0ce85ad04375045130843d89e46d3fa071d35fb65359eca291"
+        },
+        {
+          "slot": 1,
+          "cases": 250,
+          "models": 156,
+          "solver_args": [
+            "--quiet"
+          ],
+          "summary_sha256": "eecd38870518f1b8f77205de0cc959a40c3eba557d5078762e02bbabbfecb063",
+          "metadata_sha256": "7944de838cf7633bbf2ca6b27b06c4918d9e86191fcf88b4a5134c3cf0624656",
+          "answers_sha256": "9948f0633d427fad1f3a1871fb1f449ca06974bb340a8187f6ab29282462644e"
+        },
+        {
+          "slot": 2,
+          "cases": 250,
+          "models": 156,
+          "solver_args": [
+            "--quiet"
+          ],
+          "summary_sha256": "c1df4c97fae55daad1e3de1707a8e912d8c1a92631c67743a6d7229499489104",
+          "metadata_sha256": "7944de838cf7633bbf2ca6b27b06c4918d9e86191fcf88b4a5134c3cf0624656",
+          "answers_sha256": "8e7bd1f5e99c87bb439ad76f7662a003fbfaa2caa49e8ffe0a0389c22d4f3432"
+        },
+        {
+          "slot": 3,
+          "cases": 250,
+          "models": 153,
+          "solver_args": [
+            "--quiet"
+          ],
+          "summary_sha256": "4cabcf3cc29adc3e4b1aa442aea15e1224aaf76409b0baab3508f7bc2b973526",
+          "metadata_sha256": "f267a2ebb4114b83f48e7888260126f6b8ffe8a91c4644bfed982be51117e2ba",
+          "answers_sha256": "4b8ab0979c04b433b0f28e8e58290c988e40b751381b57d8a89b9a5b05ff4f75"
+        }
+      ]
+    },
+    "QF_UFLRA": {
+      "cases": 1000,
+      "pass": 1000,
+      "models": 587,
+      "shards": [
+        {
+          "slot": 12,
+          "cases": 250,
+          "models": 146,
+          "solver_args": [
+            "--quiet"
+          ],
+          "summary_sha256": "01b07efd6886851b0e9f1c24df7a5a4dbda8e31825657445dfea263a8dd7f9c8",
+          "metadata_sha256": "58302daeb2df6dcff5faf5e53f254d3516e629017bf8cc09ae8b88fce871bc45",
+          "answers_sha256": "3b170c8038728d2cb21ed391afcf2ba3c5c6303493ebf5e4be312f80bf2ad97b"
+        },
+        {
+          "slot": 13,
+          "cases": 250,
+          "models": 149,
+          "solver_args": [
+            "--quiet"
+          ],
+          "summary_sha256": "54b67824bca553eed5b1c042f33ae384b46baf9fbf1d4845ae3ff88ea1b3c858",
+          "metadata_sha256": "2df0a12c74f368ea64bdbc6ef621480ffffb0ebc752881b4489d51713be5109e",
+          "answers_sha256": "5423556a67eeea689813475774654f20327115b2105c4e37b5203823e624d558"
+        },
+        {
+          "slot": 14,
+          "cases": 250,
+          "models": 147,
+          "solver_args": [
+            "--quiet"
+          ],
+          "summary_sha256": "45a048cb76fcc0961ad217e42c64d95798e819a317da183e8a015aa90bca4d0c",
+          "metadata_sha256": "6aebaf077b4d4ca78bce7723acaebf0c7330cf604d33d90cffbd97cbb1990941",
+          "answers_sha256": "f9726b939e60498158689ea4cfcd681c2962d9aa8116fcd3b1bbf3ea22645af8"
+        },
+        {
+          "slot": 15,
+          "cases": 250,
+          "models": 145,
+          "solver_args": [
+            "--quiet"
+          ],
+          "summary_sha256": "bc7355add3cb7748f5ccb868d71b1e1e872457bdaffc866be29dfd1f38dbbbaa",
+          "metadata_sha256": "a394111c6510da719b577c246f4608e167de7b1b840f949f6e1c9c8aaf0cd259",
+          "answers_sha256": "bf189856445dccedf64ac1e96894294871c9c0d2e61fa44d079075e22a7fb58e"
+        }
+      ]
+    },
+    "incremental_QF_UF": {
+      "cases": 1000,
+      "pass": 1000,
+      "queries": 9000,
+      "models": 6202,
+      "shards": [
+        {
+          "slot": 24,
+          "sessions": 250,
+          "pass": 250,
+          "queries": 2250,
+          "sat_models": 1562,
+          "untriaged_failure": 0,
+          "failures": [],
+          "summary_sha256": "511d351793314dce2ec4a0b5fc24931be80065c7688cd655f0f40b75c4b41caa"
+        },
+        {
+          "slot": 25,
+          "sessions": 250,
+          "pass": 250,
+          "queries": 2250,
+          "sat_models": 1556,
+          "untriaged_failure": 0,
+          "failures": [],
+          "summary_sha256": "4cf6b0b294c7c36ecac7714de2e1257d3432218091ec851f7a7ca6151be40603"
+        },
+        {
+          "slot": 26,
+          "sessions": 250,
+          "pass": 250,
+          "queries": 2250,
+          "sat_models": 1546,
+          "untriaged_failure": 0,
+          "failures": [],
+          "summary_sha256": "9500cf014599d722bbc3f8bb401f769a39cbff38effeb9035ef80aaafe82996f"
+        },
+        {
+          "slot": 27,
+          "sessions": 250,
+          "pass": 250,
+          "queries": 2250,
+          "sat_models": 1538,
+          "untriaged_failure": 0,
+          "failures": [],
+          "summary_sha256": "610977a425020bfc6fc2b3b4fe2102be978dab88168178432e6d5683217084ca"
+        }
+      ]
+    }
+  },
+  "online_euf": {
+    "general": {
+      "cases": 1000,
+      "pass": 1000,
+      "models": 567,
+      "shards": [
+        {
+          "task": 0,
+          "cases": 250,
+          "models": 141,
+          "solver_args": [
+            "--quiet",
+            "--qf-uflra-online-euf"
+          ],
+          "summary_sha256": "e25a22f1c3b3eb617fb51007f07b32654fb24819f88c6f7df2fa6d5565908a20",
+          "metadata_sha256": "437dd57a9dd0382b0829e968fbb211ce44d481d5dfb4a6a28e6b19d26756a68c",
+          "answers_sha256": "4284d4bc7e6ba242ffc0db9d1a233123f039adcb7d2c192b4ac0fbd4195ef6ae"
+        },
+        {
+          "task": 1,
+          "cases": 250,
+          "models": 147,
+          "solver_args": [
+            "--quiet",
+            "--qf-uflra-online-euf"
+          ],
+          "summary_sha256": "9253c64def8d2200cba5b42f5a668b5b33606c5020a50aebfcd1f625dda20bba",
+          "metadata_sha256": "5677b22728ceb25ec40a1c79271bc5a15444cf0c7867c18b816a93dfbae132ba",
+          "answers_sha256": "cea1b03f586b0f4d963f64b6158de6486362fb7e3c6bca2f7b2c519dd560aa14"
+        },
+        {
+          "task": 2,
+          "cases": 250,
+          "models": 144,
+          "solver_args": [
+            "--quiet",
+            "--qf-uflra-online-euf"
+          ],
+          "summary_sha256": "c066692737b5fbb672a38f1bf3bf82490a9cd2cdf1f8affb4995dc131863272b",
+          "metadata_sha256": "8c57177d2e45c567f8c84ff5a9c9ae7e152e2662df6e397e73be9ff2862817b2",
+          "answers_sha256": "b8916cbf285283065bd9d55760b73f0d8c0bd878a08b4b0db05c82cc31d454fb"
+        },
+        {
+          "task": 3,
+          "cases": 250,
+          "models": 135,
+          "solver_args": [
+            "--quiet",
+            "--qf-uflra-online-euf"
+          ],
+          "summary_sha256": "e16f31a2ddc12d1489b120429352d7436e72579f6db11f84e0c680e52cf76fbe",
+          "metadata_sha256": "0e581619c69b066105bba6c62cdf5dbec79d4db85c228b7e40b97bea06413f9a",
+          "answers_sha256": "fbc70f8e6add26f132821940b174d86a9359311650563ebeca56050a20e0a72b"
+        }
+      ]
+    },
+    "finite-qf-uf": {
+      "cases": 100,
+      "pass": 100,
+      "models": 52,
+      "shards": [
+        {
+          "task": 0,
+          "cases": 25,
+          "models": 13,
+          "solver_args": [
+            "--quiet",
+            "--qf-uflra-online-euf",
+            "--preprocessing-mode=strong"
+          ],
+          "summary_sha256": "bc0ccb05eea18305c26d30a93b53e13613938cec46b173bf558c051588fbb543",
+          "metadata_sha256": "8c7d6d9cfd8df1b437ddd7cbef2863424820dc303d49757bd441cca46a18f849",
+          "answers_sha256": "efad3ffee84314dae93217f64fb1e964f6a649255325b363b266cd7c74fea946"
+        },
+        {
+          "task": 1,
+          "cases": 25,
+          "models": 13,
+          "solver_args": [
+            "--quiet",
+            "--qf-uflra-online-euf",
+            "--preprocessing-mode=strong"
+          ],
+          "summary_sha256": "0b23140b4976925861259856dca66f0bffb76a017bd60ef826b32f678bdd9a27",
+          "metadata_sha256": "8c7d6d9cfd8df1b437ddd7cbef2863424820dc303d49757bd441cca46a18f849",
+          "answers_sha256": "743b0ce12a138dae66771dd7eee8661703fdd2dba77e8e4c30a00e4c808111ea"
+        },
+        {
+          "task": 2,
+          "cases": 25,
+          "models": 13,
+          "solver_args": [
+            "--quiet",
+            "--qf-uflra-online-euf",
+            "--preprocessing-mode=strong"
+          ],
+          "summary_sha256": "f89399db17413ee3a3e9699ce33c64122284feb510436cb2c3fb312c59966783",
+          "metadata_sha256": "8c7d6d9cfd8df1b437ddd7cbef2863424820dc303d49757bd441cca46a18f849",
+          "answers_sha256": "8a13ec0c3b21d0c37191f0370d752121f5e25b9554d73ea9cc760f94fb21af0f"
+        },
+        {
+          "task": 3,
+          "cases": 25,
+          "models": 13,
+          "solver_args": [
+            "--quiet",
+            "--qf-uflra-online-euf",
+            "--preprocessing-mode=strong"
+          ],
+          "summary_sha256": "3c9e0bd04e7f068334f10d6e9e6d840f5958b0a9a5dd489f3474c816b874dd12",
+          "metadata_sha256": "8c7d6d9cfd8df1b437ddd7cbef2863424820dc303d49757bd441cca46a18f849",
+          "answers_sha256": "2dc23c0db7744aa426f5028b270a87b9f3733abcc9daeefa7ea87e1988c08778"
+        }
+      ]
+    },
+    "finite-qf-uflra": {
+      "cases": 100,
+      "pass": 100,
+      "models": 52,
+      "shards": [
+        {
+          "task": 0,
+          "cases": 25,
+          "models": 13,
+          "solver_args": [
+            "--quiet",
+            "--qf-uflra-online-euf"
+          ],
+          "summary_sha256": "0cc2b7d95148cace9c0eb282dd2352c4b8fb8b84d625815afb0930ec7dedd2b7",
+          "metadata_sha256": "a96e9daf009841090d306004671925c2fcab9f200b3158d363c0c9b49b1b6e5f",
+          "answers_sha256": "d191bbf00973886d2a97312555d9289de14055967f7bcb6862fc60c28a5d593e"
+        },
+        {
+          "task": 1,
+          "cases": 25,
+          "models": 13,
+          "solver_args": [
+            "--quiet",
+            "--qf-uflra-online-euf"
+          ],
+          "summary_sha256": "cb952c8e2fcf4ee45e26663eeca45eae9d89a8c383c124319d6d9b74588b781b",
+          "metadata_sha256": "a96e9daf009841090d306004671925c2fcab9f200b3158d363c0c9b49b1b6e5f",
+          "answers_sha256": "acccceb542f95d56f6d34c6e24a652acbd40fa0bfb01afa687aac3bb92e369bd"
+        },
+        {
+          "task": 2,
+          "cases": 25,
+          "models": 13,
+          "solver_args": [
+            "--quiet",
+            "--qf-uflra-online-euf"
+          ],
+          "summary_sha256": "741eba84336919ca6ab4f397e4061970129f240b1630658cb413a85a5447752e",
+          "metadata_sha256": "a96e9daf009841090d306004671925c2fcab9f200b3158d363c0c9b49b1b6e5f",
+          "answers_sha256": "320004b370256c1392345cf834f1cb22b8eab49fbccffc063329031dae26e9ad"
+        },
+        {
+          "task": 3,
+          "cases": 25,
+          "models": 13,
+          "solver_args": [
+            "--quiet",
+            "--qf-uflra-online-euf"
+          ],
+          "summary_sha256": "7dcc43d811bbb184d1bb02dce2f7bbad4162bdfc10da64ac40ccc4cd630b38b4",
+          "metadata_sha256": "a96e9daf009841090d306004671925c2fcab9f200b3158d363c0c9b49b1b6e5f",
+          "answers_sha256": "90d1dc03a9239fc7b6b6f1c5cfaaabc1e8d5a76a1163bb5712f7d6267ac7b615"
+        }
+      ]
+    }
+  },
+  "total_cases_or_sessions": 4200,
+  "total_direct_dolmen_models": 8086,
+  "native_tests": {
+    "release": 45,
+    "asan_lsan": 45,
+    "python_at_native_snapshot": 284,
+    "doc_examples": 12
+  },
+  "baseline_regression": {
+    "source_sha256": "627817c5b4756cb4ba9c46519410b0678fe505a69b0102e667cee7e1f1b93fe5",
+    "baseline_library_sha256": {
+      "libprimo_cli_support.a": "a685330b41340f0d67bb403c35347733624489003093e18235abe159522434af",
+      "libprimo_sat.a": "67c3cc67f92e5da9d0067f9f48a1d88c30988d643dd63c385ccd147383aad14a",
+      "libprimo_smt.a": "264cd0aadfa558d49915a110b2ad20e7e10bed6d53c5ccdb417283e4462f968a",
+      "libprimo_smtlib.a": "cfbbfd6f0172332f97468b3370cc4cbf434200a5ff25da2e9be60cca030c38ea",
+      "libprimo_terms.a": "bcc9e7eacdd19c769d311a2a902debb466129f50a01d5fefc2b7863b8a1eeec2",
+      "libprimo_theory.a": "b28bbc2c52fafd6cea410fa589f4517aa144d15cf966bd0e70b538c7bc87ac8f",
+      "libprimo_util.a": "9d579b91c370943f954c8264d5a5c0a0c254d6293f504b30f0e04e2c02704a92"
+    },
+    "test_exit": -6,
+    "scope": "New EUF unit-test translation unit linked to preserved pre-fix libraries."
+  },
+  "asan_cli": {
+    "exit": 0,
+    "stderr": "empty",
+    "paths": [
+      "--help",
+      "--version"
+    ]
+  },
+  "fresh_static": {
+    "status": "complete-with-findings",
+    "analyzed_translation_units": 132,
+    "unique_diagnostics": 745,
+    "counts": {
+      "performance-enum-size": 81,
+      "misc-include-cleaner": 409,
+      "bugprone-easily-swappable-parameters": 40,
+      "bugprone-unchecked-optional-access": 109,
+      "clang-analyzer-optin.performance.Padding": 1,
+      "performance-unnecessary-value-param": 15,
+      "bugprone-exception-escape": 12,
+      "performance-inefficient-vector-operation": 6,
+      "performance-move-const-arg": 23,
+      "performance-unnecessary-copy-initialization": 3,
+      "performance-inefficient-string-concatenation": 8,
+      "clang-analyzer-optin.core.EnumCastOutOfRange": 16,
+      "clang-analyzer-cplusplus.NewDeleteLeaks": 1,
+      "performance-faster-string-find": 3,
+      "bugprone-implicit-widening-of-multiplication-result": 4,
+      "bugprone-assert-side-effect": 6,
+      "bugprone-branch-clone": 5,
+      "performance-no-automatic-move": 1,
+      "bugprone-optional-value-conversion": 2
+    },
+    "tool_exit_code": 0
+  },
+  "triage_counts": {
+    "dependency-leak-followup": 1,
+    "direct-dependency-hygiene": 389,
+    "paired-self-include": 20,
+    "positional-api-advisory": 40,
+    "layout-measurement-candidate": 82,
+    "ownership-boundary-retained": 10,
+    "reserve-candidate": 6,
+    "copy-only-interface": 4,
+    "intentional-equal-branches": 5,
+    "guarded-production-optional": 37,
+    "const-payload-copy-candidate": 5,
+    "cleanup-exception-contract-followup": 2,
+    "redundant-optional-wrap": 2,
+    "copy-reduction-candidate": 8,
+    "return-move-candidate": 1,
+    "bounded-multiplication": 4,
+    "trivial-move-style": 14,
+    "intentional-test-exception-boundary": 10,
+    "test-precondition-optional": 72,
+    "assertions-explicitly-enabled": 6,
+    "test-string-cleanup": 11,
+    "enumerator-guard-correlation": 16
+  },
+  "native_source_sha256": {
+    "docs/examples/boolean-abstraction.cpp": "5649cfaebd9daa2068d6abf29bebaeea3939462b08ed95e9bf45e966698881d0",
+    "docs/examples/rational-layout.cpp": "788f817b56440cb1b7b87103f758643768a9db553d80d2ac883d61f2564e8865",
+    "docs/examples/soi-zero-step.cpp": "924e3f9f12f480680c0f5eca3950d4fc18ce4d6309d8e47dbd16a7c7e038b6da",
+    "docs/examples/term-layout.cpp": "e10cfaf5b63f2fa04bba1a764618bc0a1af69f311cdd855efa858c5a82cf4f0d",
+    "src/cli/driver.cpp": "22d8654b2a6c8fdfe74f9a40977e1e45d462ddb3657e121d76554658efccc1ca",
+    "src/cli/driver.hpp": "6e9481ce90c80ea06c450e8eec1f892a1a2b12175d23efe3fa1831257c49708d",
+    "src/cli/option_names.hpp": "0b0f982ba4e357d3c5a5664731f397f082b467dd445ab08c7f9b1c41c8970963",
+    "src/cli/options.cpp": "9a9558c83fd8967079f80f99bf1eae6745d8f260ebec3c5fd7e75e4c2c5689af",
+    "src/cli/options.hpp": "1a5246382bad2e7ef12f37ea04fd93e9938cec7cfcf76eed03e5fcaf943575d7",
+    "src/cli/response_printer.cpp": "f1c7846191af32d351f28bc5abf5edc90c70da0835cf55c32d182fc9101dbc89",
+    "src/cli/response_printer.hpp": "a5882cef3a39b024f3a3148ecaaa37203a7cc88620453f9a9705e7777b0b74f1",
+    "src/core/binders.cpp": "b3b7df5c54603dfd09a86aa4bba5ca2947bd147cf7181c23940f650bfef26eaf",
+    "src/core/binders.hpp": "b6878ec41c9015dae3f755024691c4cc1efaaeadd77a6f58a713fa4d74f0a981",
+    "src/core/ids.hpp": "f12fdfbe67e4b578fd4600152880b75aef8a0fc4d7f7e04ad4f044a2ccb7d4cd",
+    "src/core/model.cpp": "8e0f49edfd4f31ba1a6d05939f615043f05cb485b78161c888efd2ed0278b9a1",
+    "src/core/model.hpp": "80eaac07670d30004b36dcdcb4c8d55961af35c976551ad67927d43e9791e033",
+    "src/core/rewrite.cpp": "6c943d75752c862ede180cd76580ff5682e3000fcef67324821a3022e452e747",
+    "src/core/rewrite.hpp": "b473b7d8017cefb6f72c0519967f54c872d29c095a4c19f16fb25c7bcab2e950",
+    "src/core/sort.cpp": "b92255075417f5910230c21e1da9dc37aacb704f863a57e2d6fbb210b3521232",
+    "src/core/sort.hpp": "62971fbfb1afc6bd7e9450989a62779b0aa4224a98abfc9c2c1a866e50c54727",
+    "src/core/substitution.cpp": "5c2129e566a7fcc1e10f7bca0e6b68b5cb5b488060104cc8d2c8e66743864c4b",
+    "src/core/substitution.hpp": "f092953a34666eb9a00befe3e212d544b1e9cb7a5bb1a676eca19d98e01301ce",
+    "src/core/symbol_table.cpp": "2f759c0598d997184b000d4c5483add9abd385641c86ee1b75dde571aebd2997",
+    "src/core/symbol_table.hpp": "412c6ce4aa39b2a010d6437f9fc36ac64c9b0db90ce0d1a68d8a007e09f53505",
+    "src/core/term.cpp": "8c92e5aa4d30f3d2d0d8a7dcfe27cf3fb8c8cf7e2a559cc9b16476f14debffc2",
+    "src/core/term.hpp": "6e03be2ccb678b2a56cbf3fd8a58b9bffbb4e0865925aee6ce139047e67339ca",
+    "src/core/term_manager.cpp": "ff5084240c8d48eee234c4925f1973064521da6cc314429a6e5df59b09f064f4",
+    "src/core/term_manager.hpp": "fccd4c3078c5cbf50fc40bd24fbf44fab690fb53bac4aaac15254a36d772f78e",
+    "src/main.cpp": "f1ad272c477b7c634b6705e501d16c2ce0c158f1e21cbe971f75a112ea54283e",
+    "src/sat/assumptions.cpp": "100a918e5218893f53eba2e62e6ccc2a89c821f4d6c98eb722706bf2e6a453ba",
+    "src/sat/assumptions.hpp": "841a24de4b5e0029c6db80b7966dd5f3fbb3d84a8a6d4646f74860d6614c26c0",
+    "src/sat/cadical_backend.cpp": "02c00a0443889e82e0df563e7f69bcfef2e50126ac21f8f2e5ad968ef9eb89fb",
+    "src/sat/cadical_backend.hpp": "f711cf097b268e056f882e7d0e45fd5b7bfc850657f39ede6d7f6c45cb450919",
+    "src/sat/clause.cpp": "7191b9783103fd5f13fd442b4f255b08b86e602f19d23a8864b6bba96c1267cb",
+    "src/sat/clause.hpp": "f2c5c06d436dc7b4ed34d8a89454c53ff613ba248d7203f0be4f9f3a61439dad",
+    "src/sat/cnf.cpp": "0033c91bc990771503f6db58fb4d386316ce8cef7450545e833dcaf9cfeb7b44",
+    "src/sat/cnf.hpp": "00bba2d188955569622dcb01269f29d57fa7418203a6e8f2272ee24f43c3dde0",
+    "src/sat/ipasir_up.cpp": "a35ce7917af6486776ab3f2d7091100bc97a467d05b9f81c6eb0230a1521e223",
+    "src/sat/ipasir_up.hpp": "224f6ad920ca98226c9c27d43143990973b71409129fca5b511a4072155eec06",
+    "src/sat/lit.cpp": "630710fdebd54c89e7759efb4251f30678ed532cf8785d857eea005eeaa4cf17",
+    "src/sat/lit.hpp": "7a426f8aec53f68143e1298b188a4c7b1c86b5df31214152c2fcf91af9f8242d",
+    "src/sat/trail.cpp": "eefed2516ce54122ab2e6c21b6927845217247f29bb9ec7e1300a8a37a41f3e9",
+    "src/sat/trail.hpp": "eed41ef77bb602fe30368e860654383c345efdbe41ade896ed04004493dc4741",
+    "src/sat/trail_view.cpp": "a7d4affacd7e9589df0fccb8a148180fe0d1899c61c11b137a285ea8480bd257",
+    "src/sat/trail_view.hpp": "bdce3311e814f3299dafd09c2a0121b69edbcf431488dded87a2204ea7eedfeb",
+    "src/smt/abstraction.cpp": "19f0b322d6cb5986a756ea3a05f965e24442428ab5a9ac64044120e6e119c9b1",
+    "src/smt/abstraction.hpp": "88f0c3159fb530e718cfbc5c7d5a18f3ccf0964d41bd954607c77f9ae0b3247d",
+    "src/smt/assertion_stack.cpp": "2554e721a1d11c2704dc65d8cdc574130c1956028d56494adca69a7871337499",
+    "src/smt/assertion_stack.hpp": "c8ef11863ee20d282632fa4345342c9aa19bb86a123655869ab45ae9a4e4bd3c",
+    "src/smt/assignment_coordinator.cpp": "596aae5c5878e9be087f75677c3ab33e645aeed0eb5d854fb434c675eed96abe",
+    "src/smt/assignment_coordinator.hpp": "c25e2d21657be61091466eabcc3d64d059700b2561e68d1dbac3a0d490792e36",
+    "src/smt/boolean_solver.cpp": "aafe726520450123d8717605c41e2609271e0e6688529c6a9d2a66265d5a78e2",
+    "src/smt/boolean_solver.hpp": "df3092baf0831f1d728998bee3670a3034b465d7c386f001e6616f7d0e7234ba",
+    "src/smt/check_sat.cpp": "4efbad047bc7db47ba8130529b32edf0e2f2c5ebf19b677bba5a6b5c23e16caf",
+    "src/smt/check_sat.hpp": "1f1271b15e59b45c04341eefe52afc32c46b0b44d7df2d823567c0f9589c1d94",
+    "src/smt/clausifier.cpp": "248652baad9f5c44dae52cf96b9a763b2f5c3c642c4cc905a56632b9e5692fb8",
+    "src/smt/clausifier.hpp": "3acc6a2ccdadb3b8118bb595c160117d98b11efd464e54f1d91a38805fefce27",
+    "src/smt/component_dispatcher.cpp": "23c301b767d6a8fe35baa162512432e9c9c6a5a6f65172f52d84fe55e41cb1d4",
+    "src/smt/component_dispatcher.hpp": "ddbbd26f33aebc7314d7b3fdb4e5257217b56459d8e340e052fc6e78d230d5da",
+    "src/smt/component_model_assembler.cpp": "8f3d47f0590aef9fbd5179c8e2d0a58369690134392cc6db880e374251493df0",
+    "src/smt/component_model_assembler.hpp": "9447fac3a56ab478af2deafcf8bad5ced974f17fe0b340e0c35cdbf333121772",
+    "src/smt/component_model_coordinator.cpp": "c6dd3cc66505054f39854e5993c391afbfa77a6f38b79cb89eb2004c7fc6a428",
+    "src/smt/component_model_coordinator.hpp": "9ef2d4470f92fb40a9ff5b586ea45cfe5a2d4384b7b8231c52cfdfb4747e1360",
+    "src/smt/component_solver.cpp": "9288be447c06660173e8a236c989051644af3ec0ba688725269aa625dddf59b6",
+    "src/smt/component_solver.hpp": "b3367f34762ac77ec690a513e9e7af58db277c34f3801613868ea39d2fcfef84",
+    "src/smt/context.cpp": "06744638351e1dab8bf789f2fdf7b48747028eba3d2b2adca9ea9c7aef8277a0",
+    "src/smt/context.hpp": "d60352493279760af66f602e4f111d8848ca3999e7577d434c0c4e8aeab595f5",
+    "src/smt/experimental_tactics.cpp": "4b9b5334bb3ce2bc63aac9148d1272eb5a548fa1c98ef5c59fbdde5f37b38bc1",
+    "src/smt/experimental_tactics.hpp": "a38e190b065c4205709cfad38683d383421fb97803d944a4ca8619bcd092d644",
+    "src/smt/explanation.cpp": "1b57b2a9dd488121e1ffabc030679584dc9f9c1725959c2ea58d6315710420d0",
+    "src/smt/explanation.hpp": "24adb47361339c804177893c0f25654d535baf150d473ea4564fc9eaba5efe11",
+    "src/smt/formula_analysis.cpp": "b223320a166662352dc00dc2606e629b548f0793051b84d6aeff001077c716ac",
+    "src/smt/formula_analysis.hpp": "c824870a1c49e35c0ac9abf70bdfd6c2f0b707465517a8d7e290a140e9f78f2b",
+    "src/smt/formula_metrics.cpp": "849f4624636e3ff99a4e2c35a57cabada02854ccece189e838302eb8fde661ce",
+    "src/smt/formula_metrics.hpp": "1adc222698f534f15e60ca9bd60b1b82a97fc99ffe58d44768fcd0d9f79c1873",
+    "src/smt/frontend.cpp": "44b3d3d6141b6667cf7af51b4b2373dc3ae876593c8c19d91b9c32ee38c2953d",
+    "src/smt/frontend.hpp": "7416521d2f85ff4c1fc70a7ca8f0089fbaf44a6c16784b587bebfc288dac3746",
+    "src/smt/inconclusive_reason.hpp": "e3f537add51938c1d14ad0c8c8b336e96fa5aea8be9799ec42a8bcf532b61fe7",
+    "src/smt/incremental_engine.hpp": "431bcec3b925ceaebd0534fe792c704834f65cd4ff8d75b41ccf34981bb0e5ef",
+    "src/smt/model_based_combination.cpp": "5bd04838de669d1c2d30ac51b0636813a708b4691c4c32f444131c152a0252d8",
+    "src/smt/model_based_combination.hpp": "8c9f1be69fc83cbe087ff9a6b32d1264e092b24bac80078aa55301ec487dc79a",
+    "src/smt/model_reconstruction.cpp": "5e13ddc5d0cbe849caf47ffacd9551d0bbcf50be889e7980a2364b291966a57f",
+    "src/smt/model_reconstruction.hpp": "5f30a7ecfdc3ebf8b12c06441e62350c82fb7566196bd367bf08628d86df798e",
+    "src/smt/preprocessing.cpp": "04657bf1d9a792f45cc873a1f1ac26f3666380ec7ad344027c4083d495886739",
+    "src/smt/preprocessing.hpp": "2f9c1dd8792a03990a7297052c91cb680a6e5d3234d08682e57cfb92bbc16acb",
+    "src/smt/preprocessing_strategy.cpp": "61acf251934d68ab222581a2e907effa2b97a94fc16fd72b006400526d3a0d4f",
+    "src/smt/preprocessing_strategy.hpp": "9a84310d6c968cce026a238838eef4a1fcbffb9b0ab15c3becf8105649ad6d73",
+    "src/smt/preprocessing_tactics.cpp": "53fb98a0a077707071445337e2d494869ef90593e9660594a02607436d88c3a6",
+    "src/smt/preprocessing_tactics.hpp": "b5fea696c69fad6e55b6b9d091acca842a773d2bc39a1761d2aa7b3c8c4296c9",
+    "src/smt/quantifiers/pool_export.cpp": "31cdccb8188e81c9b1bc9692c65aca326812c3f6cf9774a9a41ab2d4417894b2",
+    "src/smt/quantifiers/pool_export.hpp": "d659da4d179ee9c7212019235578402e7d2406bce49f66b94cda6526e0397ec6",
+    "src/smt/quantifiers/quantified_solver.cpp": "97ef3516f434117a6d633c42dc65a3f4e0d3da3e10494cca47ba1769cb6f3803",
+    "src/smt/quantifiers/quantified_solver.hpp": "cee97660c7ecd1500b0d1a3ead5f9d2d0ff2f253a1d19d9a03817e36b7094bf3",
+    "src/smt/session_portfolio.cpp": "c8b8fe19983ef8ca1e5ae502a07a6fa0fd3d5112d2923fc22c090bdd7127d017",
+    "src/smt/session_portfolio.hpp": "ba05ae9576972050b0256fe24ac8d419116fc03fff65ed231c5478c633a92db5",
+    "src/smt/smt_session.cpp": "58accb86a1e03874640d8e7ee1c584caa09d817c6f85168f146397ab4bb55f91",
+    "src/smt/smt_session.hpp": "9ccd0956aa3f6387203cb2eb5272a3a176e158522be5d5e787f30be750ad3b84",
+    "src/smt/solver_answer.hpp": "9daa31a9d407219323da0ef479d7bdf5403598e739b962625121d94ca7389e8e",
+    "src/smt/solver_engines.cpp": "ea9ff17097978647b233c617f80e765daaf7766dc276388498bc0fc721449030",
+    "src/smt/solver_engines.hpp": "9190fd818bc007f58767bab760c3ed396473314257b3f4a4b5752dcf2c240438",
+    "src/smt/solver_error.hpp": "bc65640bb3e1fd220026323d092695401441f1ed568995be9dda1fb67a69c638",
+    "src/smt/solver_leaves.cpp": "4516cc3ab2165b57f9bd609cc26d12f8ef1e9a6bea6ba57c4de9c74c1ffca9ef",
+    "src/smt/solver_leaves.hpp": "f93d07de523fbacb7eb47d7824508f323a9541846474ce16dcf6b368729c8f9d",
+    "src/smt/solver_runtime.cpp": "df664d8493fa3ef2b488fa875a197af8236ba5235d2c2d6c13968d0688663798",
+    "src/smt/solver_runtime.hpp": "82f100bc0299744b35935a92d03d2aeb6710f14e9ce326badb42bce0d0a71354",
+    "src/smt/solver_session.cpp": "57731fa2e9597a67e0988bb37f4d69e2a2718e595f3c9b378902bcf1a005ba66",
+    "src/smt/solver_session.hpp": "0bba8987401f77508ab6a0ea983507ab73d08d2d4ee0485b0d48f53f0a3548c8",
+    "src/smt/solver_strategy.cpp": "c50429a2e843c46a9052ef45ec8378507804740d356a6b8e4407dba9e3be8441",
+    "src/smt/solver_strategy.hpp": "67e4e9f0d5d4e1a6475ad12b4a2af40efd2a8f187fc5f16b2ca9334f29291024",
+    "src/smt/solver_support.cpp": "27a44147f75a3bc6c418a26c633ed51a41c58b4351344878dfbb3c3cc9033f5a",
+    "src/smt/solver_support.hpp": "6a125dd22440f4e92163f4d42274e738a0b8648f7f0bc88e238fe391871bf0f2",
+    "src/smt/solver_tactic.cpp": "74517ed0f336f88543ba525b6c2e57e830ea5766f4b12f4d77de6fec351c515b",
+    "src/smt/solver_tactic.hpp": "c24fc41a72b90ea60263dad87d194f5b0deb4a0378bc33b4ffa89c6dd3247f8f",
+    "src/smt/strategy.cpp": "31ffe99dddd6a2374f904014d21c9228d46ed92c41787a832e3756eba78ed443",
+    "src/smt/strategy.hpp": "e4a6d56733c1d23b97afa10a17b750c35414233f4d0658452a938c2f7dff9e50",
+    "src/smt/tactic.cpp": "4f1cdcbe11f6d4fbd60ecc2dbf355571daf607186497607d3f24dcb01f5ff5a2",
+    "src/smt/tactic.hpp": "f3e207f416cc0024a77378e886053f4f9279d9aeefab675dc339c083379dd1c0",
+    "src/smt/theory_combination.cpp": "e005e7af68d064573db91b2ed1d1d7595b9454482e5d9d8c2560fa39e843a75b",
+    "src/smt/theory_combination.hpp": "9951f87dd13e3a2e3344551ae54a398038d8d9f527d73b7ff1cf827bd5d40868",
+    "src/smt/theory_combination_plan.cpp": "0532614e2829809d0fd6829b459dda5649313fcc15c1220a28bcba969a2c784c",
+    "src/smt/theory_combination_plan.hpp": "f1c403ff21292fa2ec4f651afb5e83d015c34baf0811788ef8b0f74da38fe44b",
+    "src/smt/typed_model_builder.cpp": "3e9080fde8bc46f407971f1eafa46d05d526e01b19a88e1533eac5bde84f8447",
+    "src/smt/typed_model_builder.hpp": "889f4c797fe9368c0049ec95cdc8e9f30ed72923c574f7d7bfed1a6f71fb5539",
+    "src/smtlib/ast.cpp": "2efcecc01172e151a47d5211718c9e76e40c5db3da5691a7997a7662e2784770",
+    "src/smtlib/ast.hpp": "3c055c6bb6c015292bf6adc30e228f338af19ab2296d427544bdb2d05b5bf737",
+    "src/smtlib/attributes.cpp": "d6cd41bf693205613fb3d078383b29a2a17e2fd5bf2ca1bea6c8f6fda576c9fb",
+    "src/smtlib/attributes.hpp": "6e00de317c9ad7fa38fb9ee729bb29af77709c9fe54a7f9cd2646f27173901d3",
+    "src/smtlib/commands.cpp": "0e0763f80f8700a1a5d1b693b1363f10e46dbe2e42c92d0e96a7d6f54a450c58",
+    "src/smtlib/commands.hpp": "25061e6970c29575cca3b8e3fb97c78d0f7b9a8a2e80bfa86ec08ec1536a1aa9",
+    "src/smtlib/lexer.cpp": "32ef6573aaadce075806a5d499b05569a258026dde8c3c2a4a0851fc4193fcff",
+    "src/smtlib/lexer.hpp": "bf028c059c606497ca261a6d8ecd849ef71cc008fce8d9d1e418c9a76989d0e9",
+    "src/smtlib/parser.cpp": "e09f8c2a2562308fda65a35c796ef77e96bea8a8345e8319245973cd68a73361",
+    "src/smtlib/parser.hpp": "9b08a9e4aa6e6c9d8f9134b5a98675f83ddc913d0f4061f2d1964cd617f0a0e4",
+    "src/smtlib/printer.cpp": "5bfae671b24c4a4296b318ee89c40403508344980790d88cb2ebc1831cee2f75",
+    "src/smtlib/printer.hpp": "eeb22878127086c3c305efc47e3679768c7507694c1d7733254b9deb04e20630",
+    "src/smtlib/term_printer.cpp": "2618daf79c8b40f1bf6baadc520b233a0a0fd1d78ad42b31b216fdbcc7238c3d",
+    "src/smtlib/term_printer.hpp": "d24bac9cf5d54aef5a168e6a47aa34018eb39e5fb424c359c8b018eab5f7811a",
+    "src/theory/arithmetic/difference_logic.cpp": "941f18e99e91e27f9bfb4a3c3dd2002c639bf44163206cd7f60b31237c7f653c",
+    "src/theory/arithmetic/difference_logic.hpp": "40f87f3a20f16711dd3a732c22a6056df209a982e83d7460730d2f94fe82d835",
+    "src/theory/arithmetic/lia_branch_and_bound.cpp": "879ef2e60c86b9fcff7c132de200c9b1cc1c059fc317977fedaf1239c61330fb",
+    "src/theory/arithmetic/lia_branch_and_bound.hpp": "fb3c8b64dc26b7f508cfcce15f652ecbc3495a95d3c82410f8de732074d93a42",
+    "src/theory/arithmetic/lia_completion.cpp": "deca8d86d8423d2910cdf23a20ee383efc5908caa63a75f608a36eb5854b42c2",
+    "src/theory/arithmetic/lia_completion.hpp": "6c84aded43c60c40a80ef8dd3c4b3dbec83c1e60192a0fb689811aae8183be48",
+    "src/theory/arithmetic/lia_explanation.cpp": "c899900e8d75f7a17edf20153ddef20a35eb0ac3eae8add97c54daa766726cc1",
+    "src/theory/arithmetic/lia_explanation.hpp": "e78fe12a4dcc6ef1c89693a5524de59fe6749d355081577058cbd68c8559e56c",
+    "src/theory/arithmetic/lia_gcd_consistency.cpp": "95a95eaa5d5ffe08bdd1dea4173310354884fd9435b6474f6cf0a5b40716b584",
+    "src/theory/arithmetic/lia_gcd_consistency.hpp": "ec638fa818a5e6587a530512ed81d7042569c3eec64b5f25a29bdb4d3b23d412",
+    "src/theory/arithmetic/lia_gomory_cuts.cpp": "4ba398616bc411097755c766f22383e88d19c49ece4bb29549d10f0838b5ab36",
+    "src/theory/arithmetic/lia_gomory_cuts.hpp": "4f1b0e4e8a50b3218a3f7cc288143d21b7427ea5b0e6c770f55c02f3694d54b6",
+    "src/theory/arithmetic/lia_integer_values.hpp": "4788fda6b03ec3e57605e0477c085eb21849b3a9f5ef649ee85a49d744b179cd",
+    "src/theory/arithmetic/lia_patching.cpp": "f9e7bd08e82e069b2f50e21b44c95844b5113a26ad95b834b69c0a1fef72c345",
+    "src/theory/arithmetic/lia_patching.hpp": "7bf05d56d1761962ec77e03d44f34e0579322bf53e3a89f0e319542bf32d7e0f",
+    "src/theory/arithmetic/linear_polynomial.cpp": "7bd8a453b669935bafb8a98196a5a2b523326880419c93df3586005e0204fc0f",
+    "src/theory/arithmetic/linear_polynomial.hpp": "313b3a74c8bc46d2fd1971c38ed76d2acbe695fb5246cec7d0a8a948ce9a7254",
+    "src/theory/arithmetic/lra_atom.cpp": "9544ab560345a58eefc2113106d013ecaa37e7ca821b44ce3a4bbe17ad14c4fb",
+    "src/theory/arithmetic/lra_atom.hpp": "3617f23b07a069ecb58a7df9ccc3ab1186e897b1135d996182c2e98c3f0b43ab",
+    "src/theory/arithmetic/lra_tableau.cpp": "7794fce7c5416c11e47e34fab36ab07c1b4ef9b7e09f4a038e048b6b39253acb",
+    "src/theory/arithmetic/lra_tableau.hpp": "5ece5a9782bb5a6cb35193053f085379afbf073820b59d7e33e01de8815f83af",
+    "src/theory/component_assignment.hpp": "de5baf2bc2a54da1b6adbbff0e146492787a8d3141b6938d723a62025fc29d8e",
+    "src/theory/equality/congruence_closure.cpp": "d4e63cf746b4cf8b556606875e405f054d9f3d058e91f68d5b203aee68f1fc6a",
+    "src/theory/equality/congruence_closure.hpp": "ae6778bb13e197cda4d85e063759158ac4d8dd9119d0ce88598758e95cd42538",
+    "src/theory/equality/congruence_stats.hpp": "450164021400ce191be4dee7ec6cfb1bed1077adce850599dd2d1f374c371bd9",
+    "src/theory/equality/euf_solver.cpp": "4d0b21c211f23619f17073ca90be168e3fc8ed45835cf06b8628e2c8c8bddfd2",
+    "src/theory/equality/euf_solver.hpp": "9512be9c3121f5efd8b1f3b14d290e694d74e1d83d50fb8820196270fc64e313",
+    "src/theory/equality/explained_congruence_closure.cpp": "a0b617fd091f0910ea63a2ce6460da7e5a3ceb68baa3822d1b8188a0aca2e175",
+    "src/theory/equality/explained_congruence_closure.hpp": "79cff9bb6ce4717e468216c31da16b5aec2af62a78b57a30a37a113c7a65bb11",
+    "src/theory/equality/flat_congruence_closure.cpp": "72d271a2b5efd49b12d207f6b7eec90aa6207b026a9e94b51b7e53b2403cf6a6",
+    "src/theory/equality/flat_congruence_closure.hpp": "a66769e5f6a809282a31d26ff0c5f04824874581ae29767f16e1a5a7bcc7ad7e",
+    "src/theory/equality/flat_terms.cpp": "129ab600803fe36cb65ee34751a22ecd77c656f9f2ff9daf6fde6a755750fe5d",
+    "src/theory/equality/flat_terms.hpp": "ab089a4996127015f64753418ed1ec96db5318e3a9604103656e3fe429d82b5a",
+    "src/theory/equality/incremental_congruence_closure.cpp": "1126252542132e3bc2fd2bc4f1b834f22ef9ba9e55f4e6032be817a42b268fdd",
+    "src/theory/equality/incremental_congruence_closure.hpp": "994ae88c06084e17294a43b0e64c39924a806a7b43854ffdf84bb9e2d65a1b7a",
+    "src/theory/equality/proof_forest.cpp": "4d3beed87cd1e375fc1a7d26b71c67a18d91f3aa5b20bf09b69f628f4d54d653",
+    "src/theory/equality/proof_forest.hpp": "48890603f7759fc0f006a3dfdc960611f4a74a9c77f872e251b7f6dc26c26cf7",
+    "src/theory/equality/union_find.cpp": "1053e38a40b434206935346f047b0ee8f6cce3d8e9d0c8ad5d51e3c38c1336b6",
+    "src/theory/equality/union_find.hpp": "32fc19e4bdd00a083c17326e960b0b277099d58c3554491dd8ceb206d405e4a1",
+    "src/theory/quantifiers/instance_simplifier.cpp": "e5361b98a07bd14fb9c0f1792aca968ee64010c5d6629e5f8405e3ef7d12461f",
+    "src/theory/quantifiers/instance_simplifier.hpp": "f2beed16abbbeb2b27ffb35e9cd0824b5394e6f0f2193dd7cc26a317d0bb2797",
+    "src/theory/quantifiers/quantifier_component.cpp": "eb014ddb576b72de3088fc9883d2f36338ae7d5e3da659e962840427a01541c3",
+    "src/theory/quantifiers/quantifier_component.hpp": "f7cab61dc7bf5f42d3d20811cbe6507730a4f93d4067427d4b946e3d888589be",
+    "src/theory/quantifiers/tuple_orders.cpp": "f05774630b68c3f674921557cf92af9f0a8d100ec2864557bfaa585cea902795",
+    "src/theory/quantifiers/tuple_orders.hpp": "a7dfe59edaf0a21a1edddc3e98058bcf6d54bc5374eea96e8cc9af6f6bf6e51f",
+    "src/theory/theory_component.hpp": "f88655118b7fab632a4cf1c0d5a3fc8652f942ef5e5d7f9ff94c4942863f2a08",
+    "src/theory/theory_solver.cpp": "4c75352462e482da0d61f27ce667a8eb79e1fa916ae08f8edcdf22b5d99e1ac7",
+    "src/theory/theory_solver.hpp": "8915980d879a09460f54d1ba08a9df1490bbe9a415a8855d80a367c148cb9f42",
+    "src/util/error.cpp": "35733e20c2e3310cdfa19a5569c4395cca0eb889482c4cd71038111ac3265a33",
+    "src/util/error.hpp": "210e58f9f49cea50a4c83d2a7bf6f68c9ed41a6245588002c3215686f0f962cf",
+    "src/util/logging.cpp": "f5113ce9e9bd999e195c84de76746ceb3be659b8009f782ea8f3c19b20c870ac",
+    "src/util/logging.hpp": "efd9b44342fe2b86150cf20403764f1815fbd0e19dc112d0e8762d40d10edc77",
+    "src/util/rational.cpp": "d32a51e0e86fd7f4402793b699f829eb8b28b3492948be0d3be3d4934cee81c8",
+    "src/util/rational.hpp": "abe4c78683aef36c9663a212b51005fd1f80a89196a8549de77905dd124abfd6",
+    "src/util/result.cpp": "61b7d3ba87dbd4d5eea709d3eeffde9252d80903e5e374a1c4c82fe85dac7a2f",
+    "src/util/result.hpp": "87502fef9ad7388e0a5ba2902b1457900843b3af3ec6e6568cc13b49943bfeab",
+    "src/util/statistics.cpp": "706426f1ad3a14ae9936fbc48b1d2fdb4ecc2bed196ed70caf13a8e89912282f",
+    "src/util/statistics.hpp": "3e58a414e7d9e0b197edeb49a804ff3d8858976aa3e5116a7ac44d4480c3eaf0",
+    "tests/bench/word_gcd_bench.cpp": "6f10c3c650c7d5a4ee2aed954fbc9ca09a984000975c049b41f06e43b00fafbc",
+    "tests/parser_corpus.cpp": "ae9073c04b97d6991abe77a9c2a7ced244f73981537355e2ab580f1506a2e60f",
+    "tests/unit/assignment_coordinator_tests.cpp": "427a61be5cdada3525d124a8d8c6a3674ae061412bc68d93fe9e5bb2249d0d49",
+    "tests/unit/binder_tests.cpp": "2e5fbeb95c821174a2807787bc4eb6e47490bd1a07e8506625f08f0aad2837d5",
+    "tests/unit/boolean_solver_tests.cpp": "6e7117f0cc75a4625e35afba73a20b8d829fef4cdd92e80205746180249388c5",
+    "tests/unit/component_combination_tests.cpp": "9656c6c2d5d11d09263afcf998535d784ffc5f72f4e9ce00f38605cb5d99a0f5",
+    "tests/unit/core_tests.cpp": "2593534d38940cb13baca2d191178cfe2710c94d1264a379ce715b6b0df72dc5",
+    "tests/unit/euf_callback_tests.cpp": "2262af4e39977b9d22874d99977cd75041561ab4b6b1f7df934751bcca42b753",
+    "tests/unit/euf_solver_tests.cpp": "627817c5b4756cb4ba9c46519410b0678fe505a69b0102e667cee7e1f1b93fe5",
+    "tests/unit/instance_simplifier_tests.cpp": "2b49d8812dbe6d879f475bb1aa669e07e0b37a084e97954caefb1f88a3f433c0",
+    "tests/unit/lia_branch_and_bound_tests.cpp": "2ca9342133ec4768ba60b671db5e7ce7908aa23d6557a6b015c829e38006428f",
+    "tests/unit/lia_completion_tests.cpp": "b761d0878e600938b8e97bae2b97989964ce679126ec8c2653ee9f8b0c2dbf30",
+    "tests/unit/lia_explanation_tests.cpp": "60762dab126b8d5b811fb37478a0d0227ac5ee4dd4dd02a87f2f0c90e4e32733",
+    "tests/unit/lia_gcd_consistency_tests.cpp": "12d1656f629a36b5740e44905b70143ea8b51513d093d938a1b86da060e9f9e2",
+    "tests/unit/lia_gomory_cuts_tests.cpp": "6d72e7f712e21a9ba761dbccd9281c045f46617d48fa60ed8f0aa54c8a8f405c",
+    "tests/unit/lia_patching_tests.cpp": "cf7de46592a056e94c112afe82bf1119632f91d27448c9aa2e5fba62d20df729",
+    "tests/unit/linear_polynomial_tests.cpp": "531205c13973436fc211cf8620b4d5cb7e0449b0bd00755dc0cb3934d261f2f7",
+    "tests/unit/lra_atom_tests.cpp": "2de1ba7f29329c34caf317bb6552e14b2cf8a67a96874351810f6648f610a405",
+    "tests/unit/lra_tableau_tests.cpp": "3d5382cf40c1a8a1fda1b8b3721d88e0dd280ae96707c9e2befa179bfe703d90",
+    "tests/unit/model_tests.cpp": "1ce5c09a4f8c7f6436b8aa2593c111d1bb1a8c4714dbdec4ab07f4f209712338",
+    "tests/unit/option_names_tests.cpp": "ef2fb8c0b072226673b15b02e669b2622158810ba977b3d1bb9d5e5ac019801a",
+    "tests/unit/preprocessing_tests.cpp": "b095a8ac95c4a7d89654c7fd58250922de20bf9ea19c75d08aeb325e7cbbad6f",
+    "tests/unit/qf_lia_solver_tests.cpp": "45378b4d10a1eaa88a09f90ba2eb5248fb5ee8018593585b8ec6d9b6aa04e083",
+    "tests/unit/qf_lra_solver_tests.cpp": "634ffbb0497d10b34e338b946da828edf520acd2b677de1f3549dc4a1a1c1ed0",
+    "tests/unit/qf_uflia_solver_tests.cpp": "a918ba938fa5c0aac4ae2c82e0b55d2e7faa0d826283b71806de5e43acd8db49",
+    "tests/unit/quantifier_frontend_tests.cpp": "e9a87f37ba4f6f501cfe8b3fd248c588872e9f67474efec4e3f27f98946f6f69",
+    "tests/unit/quantifier_solver_tests.cpp": "41a3ede2af3eef93c900a4ba016a4b200037842a1efb8802c1ea1d4a749352c9",
+    "tests/unit/rational_tests.cpp": "2bf2610afc611e01c5d739f118b3019716fd5f5ab8326b3d0e0ddc378c9dade4",
+    "tests/unit/sat_backend_tests.cpp": "44a35b63bda6caf479b0bf20c22673b0701f2f5aad085a50bd8de9392605b8aa",
+    "tests/unit/smt_session_tests.cpp": "6c4ce04009a95ac175341da6a07fac7bb60ce45214bfda18a81051772541cd48",
+    "tests/unit/smtlib_parser_tests.cpp": "39fc5a11ef9a4a9df64e7ebf355004098ee6d5ee2b4e4340c1d2e0abb25fd48c",
+    "tests/unit/strategy_lifetime_tests.cpp": "c663ce6f79ad981c42f90c0d18d31c0325aea876cd754d142b6cd21007fc2e72",
+    "tests/unit/tactic_composition_tests.cpp": "4e649c4f1c9d59a97c07c0df612493e8989d0e8616b7b4adad56fb60a825476c",
+    "tests/unit/tactic_tests.cpp": "1ee3e6aede0512e3d80b9b9ee2814218620eeef3876a11fc9dac92a3353acec7",
+    "tests/unit/term_printer_tests.cpp": "05064a8a9f351f161c57ab2c658ec40c413311c1a2a3cc1ee4564e5194436bd7",
+    "tests/unit/theory_combination_tests.cpp": "f6071572cc24dbe444d38f722695edbbd18a5b9aeca04ff8f9aab453d1a43ffe",
+    "tests/unit/tuple_order_tests.cpp": "b260c61eeb775b4a726d1c8c9961226ffa524d12022c8ffa47349450219067bb"
+  },
+  "scope": "Correctness/resource regression qualification, not a timing or default-promotion claim."
+}

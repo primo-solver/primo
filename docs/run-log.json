@@ -3,6 +3,117 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-10-27-static-diagnostic-repair",
+      "date": "2026-10-27",
+      "kind": "resource-regression-and-static-triage",
+      "evidence_status": "correctness-qualified; warnings triaged, follow-ups explicit; no timing/default claim",
+      "native_source_git": "ed8c227aea49925ed8117f656bf44f14a030a4b9",
+      "binary_sha256": "4a680d24feef6b49947bf1ec6610170b78bc6d7307ccce055a1874d41bee40d4",
+      "reference_sha256": {
+        "z3": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+        "cvc5": "4a93548398445cf1a774655583f5465b156c26f63f2cdfb94f4728fdf7adde46",
+        "dolmen": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+      },
+      "jobs": {
+        "checks": "258339",
+        "asan": "258340",
+        "generated": "258341",
+        "online": "258342",
+        "build": "258327",
+        "baseline": "258350",
+        "asan_cli": "258361",
+        "online_accepted": "258416"
+      },
+      "execution": {
+        "native": "CPU SLURM compute partition; isolated source workspace",
+        "local": "Static analysis, result audit, lint and mocked metadata tests only; no local solver batch",
+        "reservations": {
+          "build": "4 CPUs/8GiB/30min",
+          "release_and_asan": "4 CPUs/12GiB/40min each",
+          "public_fuzz_shard": "1CPU/4GiB/30min",
+          "online_fuzz_shard": "1CPU/4GiB/60min",
+          "baseline_probe": "1CPU/4GiB/10min",
+          "asan_cli": "1CPU/2GiB/3min"
+        },
+        "solver_timeout_seconds": 5,
+        "dolmen_timeout_seconds": 10,
+        "session_dolmen_timeout_seconds": 20,
+        "validator_size_limit": "1G",
+        "memory_limit_note": "Scheduler requests are reservations, not claimed hard per-process limits. ASan has no virtual-address-space cap. Local broad analysis used two workers, 8GiB inherited RLIMIT_AS per process and 30min outer deadline."
+      },
+      "qualification": "docs/coverage/static-diagnostic-repair-qualification-20261027.json",
+      "triage": "docs/coverage/local-static-triage-20261027.json",
+      "raw_artifacts": "results/static-diagnostics-20261027/",
+      "summary": {
+        "diagnostics_triaged": 745,
+        "confirmed_issue": "Disabled representative-proof arrays allocated during pop",
+        "release_tests": 45,
+        "asan_lsan_tests": 45,
+        "python_tests_at_native_snapshot": 284,
+        "focused_current_tooling_tests": 27,
+        "generated_inputs_or_sessions": 4200,
+        "direct_dolmen_models": 8086,
+        "incremental_queries": 9000,
+        "wrong_answers": 0,
+        "fuzz_crashes": 0,
+        "untriaged_reference_disagreements": 0,
+        "invalid_models": 0,
+        "fuzz_timeouts": 0,
+        "fresh_static_translation_units": 132,
+        "unused_include_gate_blockers": 0
+      },
+      "commands": [
+        "python3 scripts/slurm_prepare_benchmark_workspace.py --local-dir FROZEN_NATIVE_SNAPSHOT --reuse-dependencies --build-via-slurm --jobs 4 --extra-target all --cxx-header-manifest HEADER_MANIFEST",
+        "PRIMO_MERGE_PHASE=checks|asan sbatch scripts/qualification/migration_main_merge.sbatch",
+        "PRIMO_EXPECTED_REVISION=ed8c227 PRIMO_SEED_BASE=2026102710 sbatch --array=0-3,12-15,24-27%4 scripts/qualification/public_launch.sbatch",
+        "PRIMO_FUZZ_COUNT=250 PRIMO_FINITE_DOMAIN_FUZZ_COUNT=25 PRIMO_FUZZ_SEED_BASE=2026102710 PRIMO_FUZZ_SOLVER_ARGS=--qf-uflra-online-euf PRIMO_EXPECTED_REVISION=ed8c227 sbatch --array=0-3%2 scripts/slurm_qf_uflra_fuzz_gate.sbatch",
+        "sbatch scripts/qualification/rollback_regression.sbatch",
+        "make tidy STATIC_BUILD_DIR=build-static-audit STATIC_REPORT_DIR=results/static-diagnostics-20261027/final-tidy",
+        "make include-cleaner STATIC_BUILD_DIR=build-static-audit STATIC_REPORT_DIR=results/static-diagnostics-20261027/includes",
+        "python3 scripts/qualification/summarize_static_diagnostics.py --artifacts results/static-diagnostics-20261027 --out QUALIFICATION_JSON",
+        "make lint"
+      ],
+      "provisional_attempts": [
+        {
+          "job": 258342,
+          "status": "setup failure: cvc5 missing; no generated solver cases"
+        },
+        {
+          "job": 258365,
+          "status": "answer checks pass; finite-QF_UF models omitted by old gate"
+        },
+        {
+          "job": 258383,
+          "status": "provisional replay: finite-QF_UF omitted forced strong option"
+        },
+        {
+          "job": 258388,
+          "status": "provisional replay: strong was incorrectly added to finite-QF_UFLRA"
+        },
+        {
+          "job": 258405,
+          "status": "profiles correct; superseded by run258416 with before/after binary fingerprints"
+        }
+      ],
+      "scope": "One conditional-storage repair; new unused-include gate and replay/provenance workflow fixes. Follow-ups retain exception-contract, dependency leak, test presence checks, direct includes and copy/layout/API advice. No solver profile/default/search heuristic change.",
+      "workflow_sha256": {
+        "scripts/slurm_qf_uflra_fuzz_gate.sbatch": "cfcfbc95203702dbd1e51092084725bdad37a8b48c517a23b20e40c16f02d2dc",
+        "scripts/qualification/rollback_regression.sbatch": "76bb5a9dcbaaba84f5969a725d5d3fa39221b5c4e62350aad9b643abc47bdf5d",
+        "scripts/qualification/summarize_static_diagnostics.py": "030d1deea3e0abbc4e639b71bfab8ab190c8fc21112a8483f67c11c72aa07ce2",
+        "scripts/summarize_static_analysis.py": "06d2bcaee0c8f113fac3d69ffea776ee5cd5e1387b302d299ab760d65c55da47"
+      },
+      "verification_limits": {
+        "static_tool_tests_current": 26,
+        "model_replay_workflow_tests_current": 1,
+        "model_replay_scenarios": [
+          "default profile",
+          "requested preprocessing override",
+          "binary change rejected"
+        ],
+        "full_python_suite": "284 tests on frozen native snapshot ed8c227; current changed tooling covered separately by 27 focused local tests."
+      }
+    },
+    {
       "id": "2026-10-27-local-static-analysis",
       "date": "2026-10-27",
       "source_git": "88ca31342d15c1e8bdebef176cd6b2d7b15daaec",

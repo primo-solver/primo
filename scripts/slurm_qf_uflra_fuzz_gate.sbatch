@@ -52,7 +52,22 @@ TASK_ID=${SLURM_ARRAY_TASK_ID:-0}
 SEED=$((SEED_BASE + TASK_ID))
 OUT="$OUT_ROOT/task-${TASK_ID}"
 
-./build-slurm-rel/primo --version
+test ! -e "$OUT"
+mkdir -p "$OUT"
+sha256sum ./build-slurm-rel/primo > "$OUT/binary-before.sha256"
+finish_gate() {
+  status=$?
+  trap - EXIT
+  sha256sum ./build-slurm-rel/primo > "$OUT/binary-after.sha256" || status=1
+  if ! cmp -s "$OUT/binary-before.sha256" "$OUT/binary-after.sha256"; then status=1; fi
+  printf '%s\n' "$status" > "$OUT/exit-code"
+  exit "$status"
+}
+trap finish_gate EXIT
+./build-slurm-rel/primo --version | tee "$OUT/version.txt"
+if [[ -n ${PRIMO_EXPECTED_REVISION:-} ]]; then
+  grep -Fx "git: $PRIMO_EXPECTED_REVISION" "$OUT/version.txt"
+fi
 required_tools=(z3 cvc5)
 case "$MODEL_VALIDATION" in
   0) ;;
@@ -67,10 +82,10 @@ for required in "${required_tools[@]}"; do
     echo "required gate tool '$required' not found" >&2
     exit 2
   fi
+  sha256sum "$(command -v "$required")" >> "$OUT/references.sha256"
 done
 solver_args=()
 solver_arg_words=()
-model_solver_args=(--solver-arg=--quiet)
 finite_domain_activation_args=()
 case "$QF_UFLRA_REQUIRE_POST_AMO" in
   0) ;;
@@ -91,9 +106,10 @@ if [[ -n $SOLVER_ARGS_TEXT ]]; then
   read -r -a solver_arg_words <<< "$SOLVER_ARGS_TEXT"
   for arg in "${solver_arg_words[@]}"; do
     solver_args+=(--solver-arg="$arg")
-    model_solver_args+=(--solver-arg="$arg")
   done
 fi
+# Use the same effective option vectors for generation and model replay.
+finite_uf_solver_args=("${solver_args[@]}" --solver-arg=--preprocessing-mode=strong)
 printf 'solver options:'
 printf ' %q' "${solver_arg_words[@]}"
 printf '\n'
@@ -109,8 +125,7 @@ python3 scripts/qf_uflra_smoke_fuzz.py \
 
 python3 scripts/finite_domain_fuzz.py \
     --solver ./build-slurm-rel/primo \
-    "${solver_args[@]}" \
-    --solver-arg=--preprocessing-mode=strong \
+    "${finite_uf_solver_args[@]}" \
     --ref z3 \
     --ref cvc5 \
     --logic QF_UF \
@@ -136,13 +151,17 @@ python3 scripts/finite_domain_fuzz.py \
 
 if ((MODEL_VALIDATION)); then
   model_status=0
-  for corpus in general finite-qf-uflra; do
+  for corpus in general finite-qf-uf finite-qf-uflra; do
     manifest="$OUT/model-validation/$corpus-sat.txt"
     python3 scripts/select_fuzz_sat_inputs.py "$OUT/$corpus/summary.csv" --out "$manifest"
     if [[ ! -s $manifest ]]; then continue; fi
+    replay_solver_args=(--solver-arg=--quiet "${solver_args[@]}")
+    if [[ $corpus == finite-qf-uf ]]; then
+      replay_solver_args=(--solver-arg=--quiet "${finite_uf_solver_args[@]}")
+    fi
     python3 scripts/validate_model.py \
         --solver ./build-slurm-rel/primo \
-        "${model_solver_args[@]}" \
+        "${replay_solver_args[@]}" \
         --expect-sat --require-dolmen-pass --dolmen-arg=--strict=false \
         --timeout "$MODEL_TIMEOUT" \
         --dolmen-timeout "$MODEL_DOLMEN_TIMEOUT" \
