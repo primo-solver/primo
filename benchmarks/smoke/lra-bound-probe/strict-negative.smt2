@@ -1,7 +1,0 @@
-(set-logic QF_LRA)
-(declare-fun x () Real) (declare-fun y () Real) (declare-fun z () Real)
-(declare-fun b () Bool) (declare-fun c () Bool) (declare-fun d () Bool)
-(assert (< y 1)) (assert (>= z 0))
-(assert (= x (+ (* (- 2) y) z)))
-(assert (or (> x (- 2)) b))
-(check-sat)

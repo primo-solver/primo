@@ -254,14 +254,6 @@ Preprocessing options:
                               adaptive pass
 
 QF_LRA theory options:
-          --lra-bound-probe TEXT
-                              Write diagnostic online LRA bound/reason JSONL (does not change
-                              propagation)
-          --lra-bound-probe-limit UINT [20000]
-                              Maximum causal events in split mode; otherwise maximum total
-                              events
-          --lra-bound-probe-snapshot-limit UINT
-                              Cap numerical snapshots independently of causal events
           --lra-propagation [default: on]
                               Enable QF_LRA same-slack bound propagation (Milestone 3b)
           --no-lra-propagation [default: off]

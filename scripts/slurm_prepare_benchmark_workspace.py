@@ -329,10 +329,6 @@ def main() -> int:
         help="Run the clean build in a synchronous SLURM allocation, not on the SSH login host",
     )
     parser.add_argument(
-        "--build-slurm-nodelist",
-        help="Constrain the build allocation to these nodes; requires --build-via-slurm",
-    )
-    parser.add_argument(
         "--cxx-header-manifest",
         help="Remote absolute manifest of pre-provisioned include directories matching the compiler",
     )
@@ -390,8 +386,6 @@ def main() -> int:
 
     if args.jobs < 1:
         raise SystemExit("--jobs must be positive")
-    if args.build_slurm_nodelist and not args.build_via_slurm:
-        parser.error("--build-slurm-nodelist requires --build-via-slurm")
     if not args.ssh_config.is_file():
         raise SystemExit(f"missing SSH config: {args.ssh_config}")
 
@@ -439,14 +433,9 @@ def main() -> int:
         if args.cxx_header_manifest:
             command = with_cxx_headers(command, args.cxx_header_manifest)
         if args.build_via_slurm:
-            node_option = (
-                f"--nodelist={shlex.quote(args.build_slurm_nodelist)} "
-                if args.build_slurm_nodelist
-                else ""
-            )
             command = (
                 f"srun --ntasks=1 --job-name=primo-build --cpus-per-task={args.jobs} --mem=8G "
-                f"--time=00:30:00 {node_option}bash -c {shlex.quote(command)}"
+                f"--time=00:30:00 bash -c {shlex.quote(command)}"
             )
         ssh(args.ssh_config, args.remote, command)
     ssh(

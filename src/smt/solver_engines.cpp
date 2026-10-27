@@ -40,7 +40,6 @@
 #include "smt/frontend.hpp"
 #include "smt/inconclusive_reason.hpp"
 #include "smt/incremental_engine.hpp"
-#include "smt/lra_bound_probe.hpp"
 #include "smt/model_based_combination.hpp"
 #include "smt/model_reconstruction.hpp"
 #include "smt/preprocessing_tactics.hpp"
@@ -6982,9 +6981,7 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
                       const LraRowPropagationLimits& row_propagation_limits,
                       sat::IpasirUpBackend& backend, util::Statistics& statistics,
                       bool count_query_conflicts = false,
-                      std::optional<std::size_t> conflict_limit = std::nullopt,
-                      std::ostream* probe_stream = nullptr, std::size_t probe_limit = 20000,
-                      std::optional<std::size_t> probe_snapshot_limit = std::nullopt)
+                      std::optional<std::size_t> conflict_limit = std::nullopt)
       : theory_atoms_(theory_atoms),
         prepared_(prepared),
         tableau_(prepared.base_tableau),
@@ -7014,30 +7011,6 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
       observed_vars_[static_cast<std::size_t>(var)] = 1;
       atom_index_by_var_[static_cast<std::size_t>(var)] = i;
     }
-    if (probe_stream != nullptr) {
-      bound_probe_ =
-          std::make_unique<LraBoundProbe>(*probe_stream, probe_limit, probe_snapshot_limit);
-      for (const auto& [term_id, var_id] : prepared_.var_ids_) {
-        const auto& term = prepared_.terms_.get(term_id);
-        // Own the name until synchronous serialization finishes. A view into a
-        // string/string-literal conditional would outlive its temporary string.
-        std::string name;
-        if (term.kind == core::TermKind::Constant) {
-          name = prepared_.terms_.symbols().get_symbol(term.symbol).name;
-        }
-        bound_probe_->variable(var_id, term_id, name);
-      }
-      for (std::size_t i = 0; i < prepared_.atoms.size(); ++i) {
-        const auto& atom = prepared_.atoms[i];
-        if (!atom.is_arithmetic || atom.relation == theory::arithmetic::LraRelation::Eq) continue;
-        for (const bool value : {false, true}) {
-          const auto bound = bound_assertion(atom.relation, atom.rhs, atom.asserts_lower_when_true,
-                                             value, atom.is_integer);
-          bound_probe_->atom(value ? theory_atoms_[i].lit.value : -theory_atoms_[i].lit.value,
-                             atom.bound_var, bound.is_upper, bound.value);
-        }
-      }
-    }
     refresh_model_phases();
   }
 
@@ -7053,7 +7026,6 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
     throw std::logic_error("arithmetic backtrack requires the shared removal delta");
   }
   void notify_backtrack_delta(std::size_t new_level, const std::vector<int>& removed) override {
-    if (bound_probe_) bound_probe_->backtrack(removed);
     if (new_level < checkpoints_.size()) {
       tableau_.pop(checkpoints_[new_level]);
       checkpoints_.resize(new_level);
@@ -7167,11 +7139,6 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
       const int lit = candidate.lit;
       const bool row_based = candidate.row_based;
       const bool bidirectional = candidate.bidirectional;
-      if (bound_probe_) {
-        bound_probe_->literals(
-            "propagate", candidate.reasons, lit,
-            bidirectional ? "reverse-row" : (row_based ? "row" : "same-variable"));
-      }
       reasons_[lit] = std::move(candidate.reasons);
       statistics_.increment(kStatLraTheoryPropagations);
       if (row_based) {
@@ -7295,31 +7262,6 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
   }
 
  private:
-  // Read-only exhaustive interval snapshots of reached states. Deliberately
-  // ignores production row/fanout caps, but stops all scanning at the trace cap.
-  // This observes hypothetical numerical bounds; it never installs them.
-  void probe_current_rows() {
-    LraRowPropagationLimits unlimited;
-    unlimited.max_row_size = tableau_.variable_count();
-    unlimited.bidirectional_max_row_size = tableau_.variable_count();
-    for (theory::arithmetic::LraVarId row = 0; row < tableau_.variable_count(); ++row) {
-      if (bound_probe_->snapshots_full()) return;
-      if (!tableau_.is_basic(row)) continue;
-      for (bool upper : {false, true}) {
-        if (auto bound = compute_implied_bound(tableau_, row, upper, unlimited)) {
-          bound_probe_->derived(tableau_, row, row, upper, bound->first, bound->second);
-        }
-        for (const auto& term : tableau_.row(row)) {
-          if (bound_probe_->snapshots_full()) return;
-          if (auto bound = compute_implied_child_bound(tableau_, row, term.var, term.coeff, upper,
-                                                       unlimited)) {
-            bound_probe_->derived(tableau_, row, term.var, upper, bound->first, bound->second);
-          }
-        }
-      }
-    }
-  }
-
   bool conflict_budget_exhausted() const {
     return theory_conflict_limit_reached(statistics_, conflict_limit_);
   }
@@ -7380,10 +7322,6 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
     // totals, so set() (not increment()) is what stays correct across the
     // repeated calls -- and this is the only place they can change.
     publish_elimination_stats();
-    if (bound_probe_) {
-      bound_probe_->assignment(lit, prepared_atom.bound_var, tableau_, direct_conflict.has_value());
-      if (direct_conflict) bound_probe_->literals("conflict", *direct_conflict);
-    }
     if (direct_conflict.has_value()) {
       conflict_ = direct_conflict;
       record_query_conflict();
@@ -7412,7 +7350,6 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
         scan_row_based_propagations(prepared_atom.bound_var);
       }
     }
-    if (bound_probe_) probe_current_rows();
     if (atom_value) {
       observe_true_interface_bound(atom_index, reason);
     }
@@ -7463,12 +7400,7 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
     const std::size_t term_ops_before = tableau_.row_term_op_count();
     statistics_.increment(kStatLraOnlineCheckCalls);
     conflict_ = tableau_.check();
-    if (conflict_) {
-      record_query_conflict();
-      if (bound_probe_) bound_probe_->literals("conflict", *conflict_);
-    } else if (bound_probe_) {
-      probe_current_rows();
-    }
+    if (conflict_) record_query_conflict();
     const std::size_t pivot_delta = tableau_.pivot_count() - pivots_before;
     statistics_.increment(kStatLraBlandFallbacks,
                           tableau_.bland_fallback_count() - fallbacks_before);
@@ -7825,7 +7757,6 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
   const std::vector<BooleanClausifier::TheoryAtom>& theory_atoms_;
   const PreparedLraTheory& prepared_;
   theory::arithmetic::LraTableau tableau_;
-  std::unique_ptr<LraBoundProbe> bound_probe_;
   bool propagation_enabled_;
   bool row_propagation_enabled_;
   bool bidirectional_row_propagation_enabled_;
@@ -8295,9 +8226,7 @@ CheckSatOutcome solve_qf_lra_impl(core::TermManager& terms,
       options.lra_row_propagation, options.lra_bidirectional_row_propagation,
       options.lra_theory_decisions, options.lra_model_phase,
       options.lra_pivoting_rule == LraPivotingRule::Soi || options.lra_fixed_elimination,
-      options.lra_row_propagation_limits, backend, statistics, false, options.max_theory_conflicts,
-      options.lra_bound_probe, options.lra_bound_probe_limit,
-      options.lra_bound_probe_snapshot_limit);
+      options.lra_row_propagation_limits, backend, statistics, false, options.max_theory_conflicts);
   const AssignmentConnection assignment_connection(backend, online_propagator);
   for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
     const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;
@@ -11105,8 +11034,7 @@ CheckSatOutcome solve_qf_uflra_engine_impl(core::TermManager& terms,
         options.lra_model_phase,
         options.lra_pivoting_rule == LraPivotingRule::Soi || mixed_fixed_elimination,
         options.lra_row_propagation_limits, backend, statistics, false,
-        options.max_theory_conflicts, options.lra_bound_probe, options.lra_bound_probe_limit,
-        options.lra_bound_probe_snapshot_limit);
+        options.max_theory_conflicts);
     statistics.set(":no.interface.lra-online-enabled", 1);
   }
   const bool publish_lra_interface_equalities =
@@ -12340,8 +12268,7 @@ class IncrementalLraEngine final : public IncrementalEngine {
         options.lra_bidirectional_row_propagation, options.lra_theory_decisions,
         options.lra_model_phase, options.lra_pivoting_rule == LraPivotingRule::Soi,
         options.lra_row_propagation_limits, backend_, statistics, true,
-        options.max_theory_conflicts, options.lra_bound_probe, options.lra_bound_probe_limit,
-        options.lra_bound_probe_snapshot_limit);
+        options.max_theory_conflicts);
     std::vector<int> observed;
     for (const auto& atom : clausifier_.theory_atoms())
       observed.push_back(std::abs(atom.lit.value));

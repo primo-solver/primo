@@ -97,17 +97,3 @@ as explained in [tactics](tactics.md).
 ```{literalinclude} ../examples/primo-help.txt
 :language: text
 ```
-
-## LRA bound diagnostics
-
-`--lra-bound-probe FILE` writes online LRA bound and reason events as JSONL.
-`--lra-bound-probe-limit N` caps events per checker (default 20000). This expensive
-observer is off by default and changes no deductions. See the
-[observation contract](../papers/lra-bound-structure-probe.md) for coverage and
-trace interpretation.
-
-`--lra-bound-probe-snapshot-limit M` separates numerical snapshots from the
-causal-event budget. With it, `--lra-bound-probe-limit N` limits causal events;
-the initial catalog is recorded independently. Zero snapshots selects a causal
-trace without numerical row scanning. Leaving the new option unset preserves
-the original shared-budget behavior.

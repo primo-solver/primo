@@ -20,10 +20,6 @@ For the maintainer's cluster, use
 with `--build-via-slurm` before submitting jobs, as required by the
 {project}`workspace execution policy <AGENTS.md#L3-L21>`.
 Read its `--help` for connection and staging options.
-To keep compilation away from another campaign, pass
-`--build-slurm-nodelist NODELIST` with `--build-via-slurm`. This constrains the
-build allocation; benchmark jobs still need their own scheduler node selection.
-The preparation helper rejects this build-node option without SLURM mode.
 It synchronizes tracked files; ignored seed corpora must be staged **after each
 sync**. Check dependencies and corpus paths on the execution host, not only on
 the submission host. Do not substitute a symlink for an in-workspace corpus

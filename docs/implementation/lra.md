@@ -1266,7 +1266,3 @@ Bland-fallback and propagation counters; their publication is visible in
 {source}`run_deferred_check_if_needed <src/smt/solver_engines.cpp#L7379-L7413>`.
 Correctness qualification still requires the fresh fuzzing and independent
 model checks described in the [contributor guide](../development/correctness.md).
-
-The [bound-structure diagnostic](../papers/lra-bound-structure-probe.md) observes
-actual theory reasons and read-only numerical interval candidates. Its trace
-never changes installed bounds or generated explanations.

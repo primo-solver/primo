@@ -4,7 +4,6 @@
 
 #include <cassert>
 #include <cstdint>
-#include <sstream>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -3324,60 +3323,6 @@ void same_slack_propagation_can_reach_a_conflict() {
   assert(not_propagated.result == CheckSatResult::Unsat);
 }
 
-void bound_probe_copies_symbol_names_for_output() {
-  // Exercise both short and heap-sized names after the temporary-string lifetime bug.
-  const std::string long_name = "bound_probe_name_longer_than_small_string_storage";
-  const std::string formula = "(set-logic QF_LRA) (declare-fun x () Real) (declare-fun " +
-                              long_name + " () Real) (assert (or (<= x 2) (<= " + long_name +
-                              " 3))) (check-sat)";
-  auto options = no_preprocessing_or_substitution();
-  std::ostringstream trace;
-  options.lra_bound_probe = &trace;
-  assert(check_sat_smtlib(formula, options).result == CheckSatResult::Sat);
-  assert(trace.str().find("\"name\":\"x\"") != std::string::npos);
-  assert(trace.str().find("\"name\":\"" + long_name + "\"") != std::string::npos);
-}
-
-void bound_probe_observes_without_changing_search() {
-  const std::string formula = R"(
-    (set-logic QF_LRA)
-    (declare-fun x () Real) (declare-fun y () Real) (declare-fun w () Real)
-    (assert (<= x 2)) (assert (< y 3))
-    (assert (or (<= (+ x y) 10) (>= w 1000))) (check-sat)
-  )";
-  CheckSatOptions options = no_preprocessing();
-  options.lra_row_propagation = true;
-  const auto baseline = check_sat_smtlib(formula, options);
-  std::ostringstream trace;
-  options.lra_bound_probe = &trace;
-  const auto observed = check_sat_smtlib(formula, options);
-  assert(observed.result == baseline.result);
-  for (auto key : {StatKey::LraTheoryPropagations, StatKey::LraRowPropagations, StatKey::LraPivots,
-                   StatKey::SatConflicts, StatKey::SatDecisions}) {
-    assert(observed.statistics.get(key) == baseline.statistics.get(key));
-  }
-  assert(trace.str().find("\"event\":\"propagate\"") != std::string::npos);
-  assert(trace.str().find("\"event\":\"derived\"") != std::string::npos);
-  assert(trace.str().find("[\"5\",\"-1\"]") != std::string::npos);
-  assert(trace.str().find("\"limit_reached\":false") != std::string::npos);
-  std::ostringstream split;
-  options.lra_bound_probe = &split;
-  options.lra_bound_probe_snapshot_limit = 1;
-  assert(check_sat_smtlib(formula, options).result == baseline.result);
-  const auto snapshot = split.str().find("\"event\":\"derived\"");
-  assert(snapshot != std::string::npos);
-  assert(split.str().find("\"event\":\"derived\"", snapshot + 1) == std::string::npos);
-  assert(split.str().find("\"event\":\"propagate\"", snapshot) != std::string::npos);
-  assert(split.str().find("\"snapshot_limit_reached\":true") != std::string::npos);
-  assert(split.str().find("\"limit_reached\":false") != std::string::npos);
-  options.lra_bound_probe_snapshot_limit.reset();
-  std::ostringstream capped;
-  options.lra_bound_probe = &capped;
-  options.lra_bound_probe_limit = 1;
-  assert(check_sat_smtlib(formula, options).result == baseline.result);
-  assert(capped.str().find("\"events\":1,\"limit_reached\":true") != std::string::npos);
-}
-
 void row_based_propagation_drives_boolean_structure() {
   // x's and y's bounds are each directly asserted, but (+ x y) itself
   // never is -- same-slack propagation alone can't entail
@@ -4967,8 +4912,6 @@ int main() {
   atoms_sharing_identical_polynomial_solve_correctly();
   same_slack_propagation_drives_boolean_structure();
   same_slack_propagation_can_reach_a_conflict();
-  bound_probe_copies_symbol_names_for_output();
-  bound_probe_observes_without_changing_search();
   row_based_propagation_drives_boolean_structure();
   row_based_propagation_can_reach_a_conflict();
   boolean_flattening_runs_after_the_rewriting_passes();
