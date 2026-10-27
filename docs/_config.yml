@@ -44,6 +44,9 @@ sphinx:
       ufmemorysource:
         - "https://github.com/primo-solver/primo/blob/170d0ec67ecf14cf18fe60e77f5ab077313970a3/%s"
         - "%s"
+      actionsworkflow:
+        - "https://github.com/primo-solver/primo/blob/18cd8bb672e2f3399babfa7ce3da2f17aedab605/%s"
+        - "%s"
       rollbacksource:
         - "https://github.com/primo-solver/primo/blob/f318be143cfa4b5625e16a7a8723c678eacc1dd2/%s"
         - "%s"

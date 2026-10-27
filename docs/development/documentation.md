@@ -137,9 +137,24 @@ are excluded. The archive rebuilds without Git history; source-link validation
 still requires a checkout containing the pinned commits. See the root
 `THIRD_PARTY.md` before distributing dependencies or benchmark material.
 
-GitHub Actions builds PR previews with read-only repository access. Pages
-publication is restricted to public `main` and the `github-pages` environment;
+The {actionsworkflow}`CI workflow <.github/workflows/ci.yml>` builds documentation
+previews on pushes to `main` and `docs/public-repository-migration`, on pull
+requests, and on manual runs. It uses read-only repository access, including
+while the repository is private. Download the `documentation-preview` artifact
+from its `docs` job.
+The separate {actionsworkflow}`Publish documentation workflow <.github/workflows/pages.yml>`
+skips its build while the repository is private. Pages publication is restricted
+to public `main` and the `github-pages` environment;
 configure required approval there before enabling deployment. The site is served
 under `/primo/`, including the historical book at `/primo/archive/original/`.
-External-link checks are a separate scheduled/manual workflow so publisher
-rate limits do not obscure deterministic documentation failures.
+{actionsworkflow}`External-link checks <.github/workflows/external-links.yml>`
+are a separate scheduled/manual workflow so publisher rate limits do not obscure
+deterministic documentation failures.
+
+The workflows pin reviewed action releases by full commit SHA and use Node.js 24
+for JavaScript actions, including the Pages uploader's nested upload action.
+The workflows use GitHub-hosted `ubuntu-24.04` runners. A self-hosted replacement
+must support Node.js 24; [checkout documents runner version 2.327.1 or later](https://github.com/actions/checkout/blob/3d3c42e5aac5ba805825da76410c181273ba90b1/README.md#checkout-v5).
+The action runtime is separate from Python 3.12, which runs the documentation
+tools. Pages packaging explicitly includes generated dotfiles such as
+`.nojekyll`; newer Pages upload actions otherwise exclude them by default.
