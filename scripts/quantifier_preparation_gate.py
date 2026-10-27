@@ -17,10 +17,10 @@ import socket
 from collections import Counter
 from pathlib import Path
 
+from compare_preprocessing_size import parse_stats
 from validate_qfuf_models_with_dolmen import command_spans, run_command, write_json
 
 ORDERS = ("sum", "max", "max-colex", "leximax", "deepening", "random")
-DOMAINS = ("registration", "bridge-atoms")
 DEFINITE = {"sat", "unsat"}
 
 
@@ -223,6 +223,18 @@ def classify(status: str, code: int | None, stdout: str) -> str:
     return answers[0] if len(answers) == 1 and "(error" not in stdout else "error"
 
 
+def preprocessing_stopped_before_search(answer: str, stderr: str) -> bool:
+    stats = parse_stats(stderr)
+    return (
+        answer in {"unknown", "unsat"}
+        and stats.get(":sat.solve-calls") == "0"
+        and all(
+            stats.get(key, "0") == "0"
+            for key in (":quant.instances", ":quant.skolem-lemmas", ":time.solve-us")
+        )
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -230,6 +242,11 @@ def main() -> int:
     )
     parser.add_argument("--solver", required=True)
     parser.add_argument("--expected-git", help="Require this embedded Primo revision")
+    parser.add_argument(
+        "--check-preprocess-only",
+        action="store_true",
+        help="Also require the preprocessing diagnostic to stop without search",
+    )
     parser.add_argument(
         "--ref", action="append", required=True, help="Shell-split command, no shell"
     )
@@ -319,15 +336,17 @@ def main() -> int:
                     orders = ORDERS if args.mode == "generated" else ("sum",)
                     configurations = [
                         (
-                            f"{domain}-{order}",
+                            order,
                             [
-                                f"--euf-boolean-domain={domain}",
                                 f"--quantifier-tuple-order={order}",
                             ],
                         )
-                        for domain in DOMAINS
                         for order in orders
                     ]
+                    if args.check_preprocess_only:
+                        configurations.append(
+                            ("preprocess-only", ["--preprocess-only", "--stats"])
+                        )
                 for configuration, options in configurations:
                     actual = command + options
                     if label == "primo":
@@ -341,6 +360,11 @@ def main() -> int:
                         actual, args.timeout
                     )
                     answer = classify(status, code, stdout)
+                    if (
+                        configuration == "preprocess-only"
+                        and not preprocessing_stopped_before_search(answer, stderr)
+                    ):
+                        answer = "error"
                     key = f"{label}-{configuration}".rstrip("-")
                     (folder / f"{key}.stdout").write_text(stdout)
                     (folder / f"{key}.stderr").write_text(stderr)

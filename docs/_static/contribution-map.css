@@ -1,0 +1,58 @@
+/* Scoped to the architecture/contribution navigation in map.md. */
+.primo-map {
+  --map-accent: var(--pst-color-primary, #3265a8);
+}
+.primo-map-flow,
+.primo-map-grid,
+.primo-map-foundations {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+}
+.primo-map-card {
+  padding: 1.1rem;
+  border: 1px solid var(--pst-color-border, #cbd5e1);
+  border-top: 3px solid var(--map-accent);
+  border-radius: .5rem;
+  background: var(--pst-color-surface, #f5f7fa);
+  min-width: 0;
+}
+.primo-map-card h3 {
+  margin: .3rem 0 .65rem;
+  font-size: 1.12rem;
+}
+.primo-map-card p {
+  margin: .55rem 0;
+  font-size: .94rem;
+}
+.primo-map-card .primo-map-label {
+  margin-top: 0;
+  font-size: .8rem;
+  font-weight: 650;
+}
+.primo-map-card .primo-map-lead {
+  border-top: 1px solid var(--pst-color-border, #cbd5e1);
+  padding-top: .7rem;
+  margin-bottom: 0;
+}
+.primo-map-connector {
+  border-left: 3px solid var(--map-accent);
+  padding: .4rem .9rem;
+  margin: 1.3rem 0;
+}
+.primo-map a:focus-visible {
+  outline: 3px solid var(--map-accent);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+@media (max-width: 600px) {
+  .primo-map-flow,
+  .primo-map-grid,
+  .primo-map-foundations {
+    grid-template-columns: 1fr;
+  }
+}
+@media print {
+  .primo-map-card { break-inside: avoid; }
+}

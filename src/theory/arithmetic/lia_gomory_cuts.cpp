@@ -8,7 +8,7 @@
 
 // Adding rows/asserting bounds mid-search, without ever undoing them, is
 // sound here specifically because of how this function is called: once
-// per outer SAT round in solve_qf_lia_impl, on a private `lia_tableau`
+// per full integer check through complete_integer_assignment, on a private `lia_tableau`
 // copy that is discarded and rebuilt fresh every round regardless (see
 // check_sat.cpp). A cut therefore never needs to survive a pop() past its
 // own creation point -- it only needs to last for the remainder of the

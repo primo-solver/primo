@@ -8,6 +8,7 @@ cost a much larger penalty so a fast unsound configuration cannot win a race.
 
 from __future__ import annotations
 
+import json
 import os
 import shlex
 import subprocess
@@ -168,11 +169,17 @@ def main() -> int:
     elapsed = time.perf_counter() - start
     first_line = stdout.strip().splitlines()[0] if stdout.strip() else ""
     answer = first_line if first_line in ANSWERS else "error"
-    wrong = bool(expected) and answer in CHECKABLE and answer != expected
-    if wrong:
-        cost = wrong_penalty
-    elif timed_out or (exit_code != 0 and answer == "error"):
+    wrong = (
+        not timed_out
+        and exit_code == 0
+        and bool(expected)
+        and answer in CHECKABLE
+        and answer != expected
+    )
+    if timed_out or exit_code != 0:
         cost = 2.0 * timeout
+    elif wrong:
+        cost = wrong_penalty
     elif answer in CHECKABLE:
         cost = elapsed
     else:
@@ -185,8 +192,7 @@ def main() -> int:
                 f"{instance},{answer},{expected},{elapsed:.6f},{cost:.6f},{exit_code},"
                 f"{' '.join(shlex.quote(arg) for arg in command)}\n"
             )
-            if stderr and wrong:
-                handle.write(f"# stderr: {' '.join(stderr.splitlines()[:4])}\n")
+            handle.write("# output: " + json.dumps({"stdout": stdout, "stderr": stderr}) + "\n")
     print(f"{cost:.6f}")
     return 0
 

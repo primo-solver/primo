@@ -1,0 +1,305 @@
+{
+  "basis": "Union of all 33 full-corpus lost solves, including non-repeatable losses; paired-audit dc787c8 workflow.",
+  "binary_sha256": "4ff4f6c58c7ee93f75898639df8e49a6dcbd53d40a6d8565d12ef08ab5e1a90b",
+  "counter_seconds": 45,
+  "inputs": [
+    {
+      "expected": "sat",
+      "file": "2019-ezsmt/Labyrinth/SCC_Strong/0028-labyrinth-12-0.smt2",
+      "lost_pairs": {
+        "full30-both": 3,
+        "full30-phase": 3
+      },
+      "sha256": "48227cf53fcd6e4b2df890880e1556640ae5a4cdd7065a20402ddc5ff4b7370c"
+    },
+    {
+      "expected": "sat",
+      "file": "2019-ezsmt/Labyrinth/SCC_Strong/0059-labyrinth-13-0.smt2",
+      "lost_pairs": {
+        "full30-both": 3
+      },
+      "sha256": "bde2210ea818aa10220f74c76bf2ec3964bec10d436e23a449e094b6544e965e"
+    },
+    {
+      "expected": "sat",
+      "file": "2019-ezsmt/Labyrinth/SCC_Strong/0075-labyrinth-13-0.smt2",
+      "lost_pairs": {
+        "full30-both": 3,
+        "full30-phase": 3
+      },
+      "sha256": "1b4e44e0df41fa08700a50fb19551dc3f008b5074ea9964e51dffb03e04000e6"
+    },
+    {
+      "expected": "sat",
+      "file": "2019-ezsmt/routingMax/SCC_strong/p50.56.smt2",
+      "lost_pairs": {
+        "full30-monotone": 1
+      },
+      "sha256": "e236b3363ff25331946d0adf33a6072bacee887d1150f92e15797b33f72e2d79"
+    },
+    {
+      "expected": "unsat",
+      "file": "LassoRanker/CooperatingT2/agafp.t2.c_Iteration1_Lasso_4-pieceTemplate.smt2",
+      "lost_pairs": {
+        "full30-both": 3,
+        "full30-phase": 3
+      },
+      "sha256": "013ac7768c5caac6a7d9b879ac63b0f0f31fb9ca32c65d1af8f27d75520f56fe"
+    },
+    {
+      "expected": "sat",
+      "file": "LassoRanker/CooperatingT2/brp_withassume.t2.c_Iteration1_Loop_6-phaseTemplate.smt2",
+      "lost_pairs": {
+        "full30-monotone": 3,
+        "full30-phase": 3
+      },
+      "sha256": "2ecd86d93cb4a9604a59610f1f3c4437d548cd62ebdc7ec7423b97dcbe0d873f"
+    },
+    {
+      "expected": "unsat",
+      "file": "LassoRanker/CooperatingT2/efegp.t2.c_Iteration1_Lasso_4-pieceTemplate.smt2",
+      "lost_pairs": {
+        "full30-both": 3,
+        "full30-phase": 3
+      },
+      "sha256": "64e6a431cc44337096f7ce27648244e597e14996d3d231844798cc5f35659cde"
+    },
+    {
+      "expected": "sat",
+      "file": "LassoRanker/CooperatingT2/elmhes.c.i.elmhes.pl.t2.nor.t2.rlgfixed.t2.c_Iteration5_Loop_7-phaseTemplate.smt2",
+      "lost_pairs": {
+        "full30-monotone": 3,
+        "full30-phase": 3
+      },
+      "sha256": "d97cb2227b1a629aed9042ce6bdb081de149ceb0fb197477877b145063bb0764"
+    },
+    {
+      "expected": "unsat",
+      "file": "LassoRanker/CooperatingT2/janne_complex.t2.c_Iteration3_Lasso_3-pieceTemplate.smt2",
+      "lost_pairs": {
+        "full30-both": 3,
+        "full30-phase": 3
+      },
+      "sha256": "735cd99fc9acd59dc159cdbb575cacce3c2136a7abfcf7d9e48df4c5f55f30e6"
+    },
+    {
+      "expected": "unsat",
+      "file": "LassoRanker/CooperatingT2/janne_complex.t2.c_Iteration3_Lasso_7-phaseTemplate.smt2",
+      "lost_pairs": {
+        "full30-phase": 1
+      },
+      "sha256": "b78a41000236ebe8546b1343b06ccfd39aa1562a03375927fd4010541f153d22"
+    },
+    {
+      "expected": "sat",
+      "file": "LassoRanker/CooperatingT2/ndes.t2.c_Iteration3_Loop_4-pieceTemplate.smt2",
+      "lost_pairs": {
+        "full30-both": 3,
+        "full30-phase": 3
+      },
+      "sha256": "c00278a6d211019bac0ea755da1429a7591646f2ea7b8bfa7ff928fe56937a78"
+    },
+    {
+      "expected": "sat",
+      "file": "LassoRanker/CooperatingT2/sas2.t2.c_Iteration3_Lasso_4-pieceTemplate.smt2",
+      "lost_pairs": {
+        "full30-both": 0,
+        "full30-phase": 3
+      },
+      "sha256": "4771135c6b43f5bca4b10891c9b353e3346af361f4e8eae614f512f08fa61764"
+    },
+    {
+      "expected": "sat",
+      "file": "LassoRanker/CooperatingT2/sas2.t2.c_Iteration3_Lasso_7-phaseTemplate.smt2",
+      "lost_pairs": {
+        "full30-monotone": 3,
+        "full30-phase": 3
+      },
+      "sha256": "0f645b4eeee0e0de8e789033e80bb399254d5c9ca92dad3dda633df72a1eadbe"
+    },
+    {
+      "expected": "sat",
+      "file": "LassoRanker/CooperatingT2/sas2.t2.c_Iteration5_Lasso_4-pieceTemplate.smt2",
+      "lost_pairs": {
+        "full30-both": 3,
+        "full30-phase": 3
+      },
+      "sha256": "183a41a269f3ae442fc9f50289fe92c81c750f63fba34739d8ac89718916f48b"
+    },
+    {
+      "expected": "sat",
+      "file": "LassoRanker/CooperatingT2/sas2.t2.c_Iteration6_Lasso_5-phaseTemplate.smt2",
+      "lost_pairs": {
+        "full30-monotone": 3
+      },
+      "sha256": "65f9f13694c10ae067b378ce2208674984c4acb70ba4ba7de1fa36a2902bbafb"
+    },
+    {
+      "expected": "sat",
+      "file": "LassoRanker/CooperatingT2/sumit.t2.c_Iteration2_Loop_7-phaseTemplate.smt2",
+      "lost_pairs": {
+        "full30-both": 3,
+        "full30-phase": 3
+      },
+      "sha256": "ecde42811b7ef83b5d63f30763d0137612a379976f2098136efc498976269769"
+    },
+    {
+      "expected": "sat",
+      "file": "LassoRanker/SV-COMP/BradleyMannaSipma-2005CAV-Fig1_true-termination.c_Iteration1_Lasso_4-pieceTemplate.smt2",
+      "lost_pairs": {
+        "full30-both": 0,
+        "full30-phase": 3
+      },
+      "sha256": "d564ca745f94129f4026d3a9418585a6bc3ba95e02ee216a6cca9eabc8b92b0c"
+    },
+    {
+      "expected": "unsat",
+      "file": "LassoRanker/SV-COMP/CookSeeZuleger-2013TACAS-Fig7a_true-termination.c_Iteration1_Loop_3-pieceTemplate.smt2",
+      "lost_pairs": {
+        "full30-both": 1,
+        "full30-monotone": 0,
+        "full30-phase": 3
+      },
+      "sha256": "55f29660c1e322aa8add15fee3c600c09f5385cac08caa1f0279c29b8f83880f"
+    },
+    {
+      "expected": "unsat",
+      "file": "LassoRanker/SV-COMP/GulwaniJainKoskinen-2009PLDI-Fig1_true-termination.c_Iteration1_Lasso_4-lexTemplate.smt2",
+      "lost_pairs": {
+        "full30-both": 3,
+        "full30-monotone": 3
+      },
+      "sha256": "c90bf6757467e02f2ab4b80f99c710be7bdb9c9361a0a014c4927aacf66be11a"
+    },
+    {
+      "expected": "unsat",
+      "file": "LassoRanker/SV-COMP/KroeningSharyginaTsitovichWintersteiger-2010CAV-Fig1_true-termination.c_Iteration1_Lasso_5-phaseTemplate.smt2",
+      "lost_pairs": {
+        "full30-phase": 3
+      },
+      "sha256": "7c94f70c7784eb82d4ada0f0f9ec3235c6adc7e7e4996d8908f48f115f8d2eda"
+    },
+    {
+      "expected": "sat",
+      "file": "LassoRanker/SV-COMP/TelAviv-Amir-Minimum_true-termination.c_Iteration1_Lasso_2-pieceTemplate.smt2",
+      "lost_pairs": {
+        "full30-both": 3,
+        "full30-phase": 3
+      },
+      "sha256": "7007852fa1b8034cae954d293a106e1f184a125ff38609f8612597cb8e61ddce"
+    },
+    {
+      "expected": "sat",
+      "file": "LassoRanker/SV-COMP/aviad_true-termination.c_Iteration1_Loop_3-lexTemplate.smt2",
+      "lost_pairs": {
+        "full30-monotone": 3
+      },
+      "sha256": "293f31038f6eb465f4edba5ffc92daee0cdb03169a6dd5b106447ae7d6190700"
+    },
+    {
+      "expected": "sat",
+      "file": "LassoRanker/SV-COMP/aviad_true-termination.c_Iteration1_Loop_6-nestedTemplate.smt2",
+      "lost_pairs": {
+        "full30-phase": 3
+      },
+      "sha256": "1d8ab123430b51db0ac905bc43d76aeb99bdd419999edaa40ab501e6d3016b9e"
+    },
+    {
+      "expected": "unsat",
+      "file": "LassoRanker/Ultimate/Collatz.bpl_Iteration1_Loop_6-phaseTemplate.smt2",
+      "lost_pairs": {
+        "full30-phase": 3
+      },
+      "sha256": "d0ee76538a95b63119761b14632aa426732669836b0b242f6a363fa8831b2fe9"
+    },
+    {
+      "expected": "unsat",
+      "file": "LassoRanker/Ultimate/OpposedDisjuncts.bpl_Iteration1_Lasso_3-pieceTemplate.smt2",
+      "lost_pairs": {
+        "full30-both": 0,
+        "full30-monotone": 0,
+        "full30-phase": 0
+      },
+      "sha256": "40794f4fe43f43010ea5751d763b5e7d1a64aabeb5b1248058d3bd818c3df0af"
+    },
+    {
+      "expected": "sat",
+      "file": "LassoRanker/Ultimate/simple-scaled100.bpl_Iteration1_Lasso_5-phaseTemplate.smt2",
+      "lost_pairs": {
+        "full30-both": 3,
+        "full30-phase": 3
+      },
+      "sha256": "4d91ef01dd33ab83e37271c997a0fe6d13a3f4ba41d3c55784b44892c498b571"
+    },
+    {
+      "expected": "sat",
+      "file": "LassoRanker/Ultimate/simple-scaled100.bpl_Iteration1_Lasso_6-phaseTemplate.smt2",
+      "lost_pairs": {
+        "full30-both": 3,
+        "full30-phase": 0
+      },
+      "sha256": "752800d9a07854b4b64ee55c70714628530ffb12ccf5c566dad5b37767c9d43d"
+    },
+    {
+      "expected": "sat",
+      "file": "latendresse/ecoliMILPglycerolYices3-5000.smt2",
+      "lost_pairs": {
+        "full30-both": 3,
+        "full30-phase": 3
+      },
+      "sha256": "e49bbde08884db6665d79082d94acec4c4d0c910c2c29238557ea1ee40ff3e0c"
+    },
+    {
+      "expected": "sat",
+      "file": "latendresse/ecoliMILPglycerolYices3-50000.smt2",
+      "lost_pairs": {
+        "full30-both": 3,
+        "full30-phase": 3
+      },
+      "sha256": "58874771278b2d08ce46ef313f11e5a7ae88834e3bab9da8b6997d5c5addf4c1"
+    },
+    {
+      "expected": "sat",
+      "file": "latendresse/ecoliMILPglycerolYices3-60000.smt2",
+      "lost_pairs": {
+        "full30-both": 3,
+        "full30-phase": 3
+      },
+      "sha256": "fb418816942731d432b16d0e8c4b105804532f606e82c46a77dec635167ae396"
+    },
+    {
+      "expected": "sat",
+      "file": "latendresse/ecoliMILPglycerolYices3-80000.smt2",
+      "lost_pairs": {
+        "full30-both": 3,
+        "full30-phase": 3
+      },
+      "sha256": "55822b238bbbfd1f6a89f053f153823185a995ac33e365a307b4840f4929563b"
+    },
+    {
+      "expected": "unsat",
+      "file": "uart/uart-34.base.cvc.smt2",
+      "lost_pairs": {
+        "full30-both": 3,
+        "full30-phase": 0
+      },
+      "sha256": "0dae9834f9d56e3405f3a8b24d2416c3c25b4f1eca7e4ccc3d6ffbf1e22d3753"
+    },
+    {
+      "expected": "unsat",
+      "file": "uart/uart-35.base.cvc.smt2",
+      "lost_pairs": {
+        "full30-both": 3,
+        "full30-phase": 3
+      },
+      "sha256": "170afc2c314ca3ebb4cdb384d00c88e012c25b3547fe3623924823f467a33139"
+    }
+  ],
+  "profile_inputs": [
+    5,
+    14,
+    18,
+    21
+  ],
+  "source_git": "42005258b21263500e24faf9f0865bb213663935"
+}

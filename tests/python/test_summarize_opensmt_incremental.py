@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parents[2] / "scripts"))
-from summarize_opensmt_incremental import checked_rows, compare  # noqa: E402
+from summarize_opensmt_incremental import checked_rows, compare
 
 
 class OpenSmtComparisonTest(unittest.TestCase):

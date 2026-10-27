@@ -4,19 +4,62 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
+import http.client
 import lzma
 import os
 import shutil
 import subprocess
+import sys
 import tarfile
 import urllib.request
 from pathlib import Path
 
 DEFAULT_VERSION = "6.3.0"
 URL_TEMPLATE = "https://ftp.gnu.org/gnu/gmp/gmp-{version}.tar.xz"
+MIRROR_TEMPLATE = "https://mirrors.kernel.org/gnu/gmp/gmp-{version}.tar.xz"
+RELEASE_SHA256 = {
+    "6.3.0": "a3c2b80201b89e68616f4ad30bc66aee4927c3ce50e33929ca819d5c43538898",
+}
 
 
-def run(command: list[str], cwd: Path | None = None, env: dict[str, str] | None = None) -> None:
+def download_archive(version: str, url: str | None, destination: Path) -> None:
+    """Try release mirrors without passing incomplete downloads to extraction."""
+    urls = (
+        [url]
+        if url
+        else [
+            URL_TEMPLATE.format(version=version),
+            MIRROR_TEMPLATE.format(version=version),
+        ]
+    )
+    failures = []
+    for candidate in urls:
+        print(f"Downloading GMP {version} from {candidate}", flush=True)
+        try:
+            with urllib.request.urlopen(candidate, timeout=30) as response:
+                data = response.read()
+        except (OSError, http.client.HTTPException) as error:
+            failures.append(f"{candidate}: {error}")
+            print(f"Download failed: {failures[-1]}", file=sys.stderr, flush=True)
+            continue
+        expected = RELEASE_SHA256.get(version)
+        if expected is not None and hashlib.sha256(data).hexdigest() != expected:
+            failures.append(f"{candidate}: SHA-256 mismatch for GMP {version}")
+            print(f"Download failed: {failures[-1]}", file=sys.stderr, flush=True)
+            continue
+        destination.write_bytes(data)
+        return
+    raise SystemExit(
+        "Unable to download GMP; no build was attempted.\n"
+        + "\n".join(failures)
+        + "\nCheck network access or supply --url with an accessible release archive."
+    )
+
+
+def run(
+    command: list[str], cwd: Path | None = None, env: dict[str, str] | None = None
+) -> None:
     print("+", " ".join(command))
     subprocess.run(command, cwd=cwd, env=env, check=True)
 
@@ -25,7 +68,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--prefix", type=Path, default=Path("contrib/local"))
     parser.add_argument("--version", default=DEFAULT_VERSION)
-    parser.add_argument("--url", default=None)
+    parser.add_argument(
+        "--url", default=None, help="Use only this archive URL (no mirror fallback)."
+    )
     parser.add_argument(
         "--jobs", type=int, default=4, help="Parallel make jobs for the GMP build."
     )
@@ -41,11 +86,8 @@ def main() -> int:
     source_dir = src_root / "gmp"
 
     if not extract_dir.exists():
-        url = args.url or URL_TEMPLATE.format(version=args.version)
         archive = src_root / f"gmp-{args.version}.tar.xz"
-        print(f"Downloading GMP {args.version} from {url}")
-        with urllib.request.urlopen(url, timeout=120) as response:
-            archive.write_bytes(response.read())
+        download_archive(args.version, args.url, archive)
         print(f"Extracting {archive}")
         with lzma.open(archive) as xz, tarfile.open(fileobj=xz) as tar:
             tar.extractall(src_root)

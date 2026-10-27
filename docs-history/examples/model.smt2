@@ -1,0 +1,7 @@
+(set-option :produce-models true)
+(set-logic QF_LRA)
+(declare-const x Real)
+(assert (= x (/ 1 3)))
+(check-sat)
+(get-model)
+(exit)

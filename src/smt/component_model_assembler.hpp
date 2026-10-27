@@ -24,12 +24,15 @@ void validate_component_fragment(const core::TermManager& terms,
                                  std::span<const theory::InterfaceRelation> arrangement,
                                  const theory::ComponentModelFragment& fragment);
 
-// Fragment-only construction: no component-private tableau or closure access.
+// Construction from fragments and driver-owned Boolean constant facts, without
+// component-private tableau or closure access. Propositional facts have no
+// component token or domain values; the borrowed span is consumed in this call.
 // The old typed-model entry point remains unchanged for frozen solver routes.
 std::shared_ptr<const core::Model> assemble_component_model(
     core::TermManager& terms, std::span<const core::TermId> assertions,
     std::span<const theory::ComponentModelFragment> fragments,
     const ModelConversionChain& conversions, std::size_t* completed_integers,
-    util::Statistics* statistics);
+    util::Statistics* statistics,
+    std::span<const theory::ComponentModelFact> propositional_facts = {});
 
 }  // namespace primo::smt

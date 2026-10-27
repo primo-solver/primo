@@ -86,6 +86,43 @@ Explain:
 
 ## Documentation gate
 
+### Independent writer–reviewer loop
+
+For substantive new text, rewrites, or documentation reviews, use two roles:
+the writer owns edits, and a separate agent reviews without editing. Isolated
+typos and link repairs need only the applicable checks. Repository `AGENTS.md`
+authorizes this bounded delegation; it does not authorize solver experiments
+or publishing changes.
+
+1. Define a small review unit: pages/sections, intended reader, and the question
+   each section should answer. Read the relevant code before drafting.
+2. Give the reviewer a fresh context (`fork_turns="none"` when available), the
+   user's requirements, file paths, the baseline revision, and
+   [the review checklist](references/review.md). Let it inspect the draft and
+   sources directly; do not supply the writer's preferred verdict or rationale
+   before its first assessment. It may work alongside independent writer work,
+   but freeze the review unit while it is being checked.
+3. The reviewer returns located findings with stable IDs, separating required
+   repairs from suggestions. The writer fixes each required issue or responds
+   with code/paper evidence explaining a disagreement. Neither silently drops
+   a finding nor treats personal preference as a correctness defect.
+4. Return the revised files and finding dispositions to the same reviewer.
+   It checks the fixes, surrounding prose, and any new claims. Repeat until
+   no required findings remain. After two rounds on the same unresolved issue,
+   identify the missing evidence or actual design choice; do not continue
+   cosmetic rewrites or declare success because a round limit was reached.
+5. Run `make docs`, the local/Git link checker, and inspect the changed rendered
+   sections. Re-review semantic edits made after acceptance. Record reviewed
+   files, baseline and final patch identity, findings/dispositions, the reviewer's
+   verdict, validation, and unchecked scope in the commit or PR description.
+   Independent acceptance applies only to that material, not the whole manual
+   or the user's final reader acceptance.
+
+Use `python3 scripts/check_doc_links.py docs/_build/site` after an incremental
+build; use `make docs-check-links` for a full strict build and link check.
+Missing reviewer tools or primary evidence must be reported explicitly. Continue
+authorized, useful work, but do not label an incomplete review as passed.
+
 Do not treat an implementation task as complete until the documentation says how the implemented representation works.
 
 For any change to parser, terms, symbols, SAT integration, clausification, theory solving, options, or solver control flow:

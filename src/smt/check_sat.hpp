@@ -55,29 +55,6 @@ enum class EufEngine {
   Incremental,
 };
 
-// How the two-element domain of `Bool` is communicated to congruence closure.
-// Bool has fixed cardinality 2, which puts EUF outside Nelson-Oppen's
-// stably-infinite assumption, so a Bool term reachable by congruence has to be
-// known equal to `true` or `false` -- otherwise the closure may give it a
-// third value and report sat for an unsatisfiable formula (see
-// bugs/qf-uf-boolean-argument-congruence).
-//
-//   Registration  registers Bool-sorted ARGUMENTS of uninterpreted
-//                 applications as theory atoms; the existing atom handling
-//                 then asserts `t = true/false` with the term's own literal as
-//                 the reason. No new SAT variable, no clause.
-//   BridgeAtoms   the older encoding: manufacture `(= t true)` / `(= t false)`
-//                 as atoms with selector and exclusion clauses -- 2 atoms and
-//                 3 clauses per bridged term, and it bridges Bool-VALUED
-//                 applications too, which are already atoms.
-//
-// Kept selectable only so the two can be A/B-ed on one binary; BridgeAtoms
-// goes away once that measurement is recorded.
-enum class EufBooleanDomain {
-  Registration,
-  BridgeAtoms,
-};
-
 enum class PureTheoryFilterMode {
   Auto,
   On,
@@ -246,7 +223,6 @@ struct CheckSatOptions {
   std::size_t experimental_split_bools = 0;
   PreprocessingMode preprocessing_mode = PreprocessingMode::Auto;
   EufEngine euf_engine = EufEngine::Incremental;
-  EufBooleanDomain euf_boolean_domain = EufBooleanDomain::Registration;
   EufPropagationMode euf_propagation = EufPropagationMode::Auto;
   PureTheoryFilterMode pure_theory_filter = PureTheoryFilterMode::Auto;
   TheoryPhaseMode theory_phase = TheoryPhaseMode::Negative;
@@ -272,6 +248,10 @@ struct CheckSatOptions {
   // the propagation check is exact and cheap (O(atoms sharing a slack)),
   // so there's no heuristic budget/backoff tuning to expose.
   bool lra_propagation = true;
+  // Experimental pure-QF_LRA use of Bjørner--Nachmanson Section 3.2.
+  // Proved variable equalities propagate existing difference comparisons;
+  // the mixed-theory producer remains independently configured below.
+  bool lra_equality_propagation = false;
   // Row-based/interval bound propagation (Dutertre & de Moura Section 4,
   // generalizing lra_propagation's same-slack case to derive an implied
   // bound for a row from its terms' current bounds). Only takes effect
@@ -458,6 +438,7 @@ struct CheckSatOptions {
   AutoPreprocessTuning auto_preprocess_tuning;
   BooleanImpliesRewriteMode boolean_implies_rewrite = BooleanImpliesRewriteMode::Off;
   QfUfPortfolioMode qf_uf_portfolio = QfUfPortfolioMode::Off;
+  // Diagnostic: stop before search; quantified input stops after the frontend.
   bool preprocess_only = false;
   std::size_t euf_propagation_interval = 32;
   double euf_propagation_assign_threshold = 0.25;
@@ -496,6 +477,8 @@ struct CheckSatOptions {
   std::size_t finite_domain_eqdefs_auto_clause_limit = 5000;
   std::size_t finite_domain_eqdefs_auto_term_limit = 5000;
   std::optional<std::size_t> nelson_oppen_arrangement_probe_limit;
+  // Per-query aggregate SMT conflict budget, shared across retries/fallback.
+  // Counts reports, not propagations, instances or internal arithmetic branches.
   std::optional<std::size_t> max_theory_conflicts;
   // Quantified UF: enumerative instances queued per complete assignment; tuples
   // a quantifier may visit without a new lemma before a round with queued

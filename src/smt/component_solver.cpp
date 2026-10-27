@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdint>
+#include <cstdlib>
 #include <map>
 #include <optional>
 #include <stdexcept>
@@ -11,6 +12,7 @@
 
 #include "core/term.hpp"
 #include "sat/cadical_backend.hpp"
+#include "smt/assignment_coordinator.hpp"
 #include "smt/component_dispatcher.hpp"
 #include "smt/component_model_assembler.hpp"
 #include "smt/component_model_coordinator.hpp"
@@ -36,14 +38,6 @@ class CombinationTimer {
   util::Statistics& statistics_;
   std::string key_;
   std::chrono::steady_clock::time_point start_;
-};
-
-struct DetachComponents {
-  sat::IpasirUpBackend& backend;
-  const std::unique_ptr<ComponentDispatcher>& dispatcher;
-  ~DetachComponents() {
-    if (dispatcher) backend.disconnect_external_propagator();
-  }
 };
 
 using PairKey = std::tuple<core::SortId, core::TermId, core::TermId>;
@@ -85,15 +79,27 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
   for (const auto assertion : assertions) clausifier.assert_formula(assertion);
   if (recipe.prepare_boolean) recipe.prepare_boolean(clausifier);
 
+  sat::Trail completed_assignment;
   std::vector<std::unique_ptr<theory::TheoryComponent>> owned;
   std::vector<theory::TheoryComponent*> components;
   for (const auto& factory : recipe.factories) {
     owned.push_back(factory(recipe.model_guided));
     components.push_back(owned.back().get());
   }
+  const auto boolean_constant = [&](core::TermId term) {
+    const auto& node = terms.get(term);
+    return node.kind == core::TermKind::Constant && node.sort == terms.symbols().bool_sort();
+  };
   std::vector<theory::ComponentAtom> initial_atoms;
   for (const auto& atom : clausifier.theory_atoms()) {
-    if (atom.term != core::kInvalidTermId) initial_atoms.push_back(component_atom(atom));
+    if (atom.term == core::kInvalidTermId) continue;
+    // Keep Boolean arguments with EUF when it owns them. Only otherwise
+    // unowned Boolean constants are purely propositional driver assignments.
+    if (boolean_constant(atom.term) &&
+        std::none_of(components.begin(), components.end(),
+                     [&](const auto* component) { return component->owns_atom(atom.term); }))
+      continue;
+    initial_atoms.push_back(component_atom(atom));
   }
   std::optional<TheoryCombinationPlan> planned;
   try {
@@ -128,9 +134,9 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
   std::map<PairKey, theory::InterfaceRelation> registered;
   std::size_t bridge_clauses = 0;
   std::unique_ptr<ComponentDispatcher> dispatcher;
-  const DetachComponents detach{backend, dispatcher};
+  std::unique_ptr<AssignmentConnection> assignment_connection;
   const auto detach_dispatcher = [&]() {
-    if (dispatcher) backend.disconnect_external_propagator();
+    assignment_connection.reset();
     dispatcher.reset();
   };
   const auto materialize = [&](const theory::InterfacePair& requested) -> std::optional<sat::Lit> {
@@ -215,6 +221,7 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
     }
     for (const auto index : online_order) online_components.push_back(components[index]);
   }
+  std::vector<theory::ComponentAtom> propositional_atoms;
   std::size_t installed_atoms = 0;
   std::size_t installed_pairs = 0;
   const auto install_atoms = [&]() {
@@ -236,7 +243,12 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
           owner = index;
         }
       }
-      if (!owner.has_value()) throw UnsupportedCombination("generated atom has no owner");
+      if (!owner.has_value()) {
+        if (!boolean_constant(all[atom_index].term))
+          throw UnsupportedCombination("generated atom has no owner");
+        propositional_atoms.push_back(component_atom(all[atom_index]));
+        continue;
+      }
       const auto atom = component_atom(all[atom_index]);
       additions[*owner].push_back(atom);
       atoms_by_component[*owner].push_back(atom);
@@ -251,17 +263,35 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
     }
     if (recipe.online) {
       dispatcher = std::make_unique<ComponentDispatcher>(
-          online_components, [&](sat::Lit phase) { backend.phase(phase); });
+          online_components, [&](sat::Lit phase) { backend.phase(phase); },
+          [&] {
+            record_theory_conflict(statistics);
+            return terminator.conflict_limit_reached();
+          },
+          recipe.forgettable_clauses);
       for (std::size_t index = 0; index < online_order.size(); ++index) {
         dispatcher->register_atoms(index, atoms_by_component[online_order[index]]);
         for (const auto phase : online_components[index]->phase_literals()) backend.phase(phase);
       }
-      backend.connect_external_propagator(dispatcher.get());
-      for (const auto& atoms : atoms_by_component) {
-        for (const auto& atom : atoms)
-          backend.add_observed_var(atom.lit.value < 0 ? -atom.lit.value : atom.lit.value);
+      assignment_connection = std::make_unique<AssignmentConnection>(backend, *dispatcher);
+      if (propositional_atoms.empty()) {
+        for (const auto& atoms : atoms_by_component) {
+          for (const auto& atom : atoms)
+            backend.add_observed_var(atom.lit.value < 0 ? -atom.lit.value : atom.lit.value);
+        }
+      } else {
+        // Driver-owned Boolean atoms need the same SAT observation contract as
+        // component atoms. Preserve registry order for the standalone recipe;
+        // dropping these observations changes SAT elimination and search.
+        for (const auto& atom : all) {
+          if (atom.term != core::kInvalidTermId)
+            backend.add_observed_var(atom.lit.value < 0 ? -atom.lit.value : atom.lit.value);
+        }
       }
       statistics.increment(":combination.online-components.rebuilds");
+    } else {
+      for (auto* component : components)
+        component->bind_assignment_view(sat::TrailView(completed_assignment));
     }
     statistics.increment(first ? ":combination.components.full-builds"
                                : ":combination.components.incremental-growths");
@@ -293,6 +323,7 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
     return outcome;
   };
   while (true) {
+    if (auto stop = terminator.stop_outcome()) return *stop;
     if (guided && decision_batches >= recipe.decision_budget)
       return fallback(":combination.model.fallback-budget");
     if (installed_pairs != registered.size()) install_atoms();
@@ -304,11 +335,7 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
       sat_result = backend.solve();
     }
     publish_sat_stats(backend.statistics(), statistics);
-    if (terminator.cancelled_reached())
-      return {CheckSatResult::Unknown, "cancelled", statistics, "", InconclusiveReason::Cancelled};
-    if (terminator.conflict_limit_reached())
-      return {CheckSatResult::Unknown, "theory conflict limit reached", statistics, "",
-              InconclusiveReason::ResourceLimit};
+    if (auto stop = terminator.stop_outcome()) return *stop;
     // Lemma queue: an online component that must add consequences over new
     // atoms stops the search; its queue is drained here, at the established
     // growth boundary, and the problem is solved again. An UNSAT result with a
@@ -386,12 +413,20 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
     {
       CombinationTimer timer(statistics, recipe.timing_prefix + "assignment-extraction-us");
       if (!recipe.online) {
+        completed_assignment.clear();
+        for (const auto& atoms : atoms_by_component) {
+          for (const auto& atom : atoms) {
+            const int var = std::abs(atom.lit.value);
+            const auto value = backend.value(var);
+            if (!value) throw std::logic_error("SAT model omitted a component atom");
+            completed_assignment.assign(*value ? var : -var);
+          }
+        }
         for (std::size_t index = 0; index < components.size(); ++index) {
           std::vector<theory::AssignedTheoryLiteral> assignment;
           for (const auto& atom : atoms_by_component[index]) {
-            const auto value = backend.value(atom.lit.value < 0 ? -atom.lit.value : atom.lit.value);
-            if (!value.has_value()) throw std::logic_error("SAT model omitted a component atom");
-            assignment.push_back({atom.term, atom.lit, *value == (atom.lit.value > 0)});
+            const auto literal = completed_assignment.literal(std::abs(atom.lit.value));
+            assignment.push_back({atom.term, atom.lit, literal == atom.lit.value});
           }
           components[index]->reset();
           components[index]->assign(assignment);
@@ -409,6 +444,11 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
         break;
       case ModelBasedCombinationStatus::LearnClause:
         statistics.increment(util::StatKey::TheoryConflicts);
+        if (std::all_of(combined.clause.begin(), combined.clause.end(), [&](sat::Lit literal) {
+              const auto value = backend.value(std::abs(literal.value));
+              return value && *value != (literal.value > 0);
+            }))
+          record_theory_conflict(statistics);
         backend.add_clause(combined.clause);
         continue;
       case ModelBasedCombinationStatus::DecideEquality:
@@ -454,8 +494,14 @@ CheckSatOutcome solve_component_recipe(core::TermManager& terms,
         fragments.push_back(std::move(fragment));
       }
       std::size_t completed = 0;
+      std::vector<theory::ComponentModelFact> propositional_facts;
+      propositional_facts.reserve(propositional_atoms.size());
+      for (const auto& atom : propositional_atoms) {
+        const auto value = backend.value(std::abs(atom.lit.value));
+        propositional_facts.push_back({atom.term, value.value_or(false) == (atom.lit.value > 0)});
+      }
       outcome.typed_model = assemble_component_model(terms, assertions, fragments, conversions,
-                                                     &completed, &statistics);
+                                                     &completed, &statistics, propositional_facts);
       statistics.set(util::StatKey::ModelInventedIntValues, completed);
       outcome.statistics = statistics;
     }

@@ -1,103 +1,76 @@
 #pragma once
 
+#include <algorithm>
 #include <cstddef>
 #include <limits>
 #include <span>
 #include <stdexcept>
 #include <vector>
 
+#include "sat/trail_view.hpp"
 #include "theory/theory_component.hpp"
 
 namespace primo::theory {
 
-// Component-local assignment ownership. Routes are built once; assignment and
-// undo cost O(delta). Full-model extraction alone scans the registered atoms.
-class ComponentAssignment {
+// Atom-restricted read-only projection. This owns registration metadata only;
+// all truth, order, and decision boundaries belong to the SMT assignment owner.
+// Original protocol and lifetime checklist: docs/dpllt.md.
+class ComponentAssignmentView {
  public:
+  void bind(sat::TrailView view) { view_ = view; }
   void register_atoms(std::span<const ComponentAtom> atoms) {
-    if (!levels_.empty() || !trail_.empty()) {
-      throw std::logic_error("component atom growth requires reset assignment state");
-    }
     for (const auto& atom : atoms) {
       const auto var = variable(atom.lit);
-      if (var >= by_variable_.size()) {
-        by_variable_.resize(var + 1, kAbsent);
-      }
-      if (by_variable_[var] != kAbsent) {
-        throw std::logic_error("duplicate component atom variable");
-      }
+      if (var >= by_variable_.size()) by_variable_.resize(var + 1, kAbsent);
+      if (by_variable_[var] != kAbsent) throw std::logic_error("duplicate component atom variable");
       by_variable_[var] = atoms_.size();
       atoms_.push_back(atom);
-      values_.push_back(0);
     }
   }
-  void reset() {
-    for (const auto index : trail_) {
-      values_[index] = 0;
-    }
-    trail_.clear();
-    levels_.clear();
-  }
-  void push_level() { levels_.push_back(trail_.size()); }
-  void pop_to_level(std::size_t level) {
-    if (level > levels_.size()) {
-      throw std::logic_error("component assignment backtrack beyond current level");
-    }
-    if (level == levels_.size()) {
-      return;
-    }
-    while (trail_.size() > levels_[level]) {
-      values_[trail_.back()] = 0;
-      trail_.pop_back();
-    }
-    levels_.resize(level);
-  }
-  void assign(std::span<const AssignedTheoryLiteral> delta) {
+  void check_delta(std::span<const AssignedTheoryLiteral> delta) const {
     for (const auto& literal : delta) {
       const auto var = variable(literal.lit);
-      if (var >= by_variable_.size() || by_variable_[var] == kAbsent) {
+      if (var >= by_variable_.size() || by_variable_[var] == kAbsent)
         throw std::logic_error("assignment of an unregistered component atom");
-      }
-      const auto index = by_variable_[var];
-      if (atoms_[index].term != literal.atom || atoms_[index].lit.value != literal.lit.value) {
+      const auto& atom = atoms_[by_variable_[var]];
+      if (atom.term != literal.atom || atom.lit.value != literal.lit.value)
         throw std::logic_error("component assignment atom/variable mismatch");
-      }
-      const signed char value = literal.value ? 1 : -1;
-      if (values_[index] != 0) {
-        if (values_[index] != value) {
-          throw std::logic_error("component assignment changed without backtracking");
-        }
-        continue;
-      }
-      values_[index] = value;
-      trail_.push_back(index);
+      const int expected = literal.value ? literal.lit.value : -literal.lit.value;
+      if (view_.literal(static_cast<int>(var)) != expected)
+        throw std::logic_error("component assignment was not committed by its owner");
     }
   }
-  [[nodiscard]] std::vector<AssignedTheoryLiteral> full_assignment() const {
+  [[nodiscard]] bool complete() const {
+    return std::ranges::all_of(atoms_, [&](const auto& atom) {
+      return view_.literal(static_cast<int>(variable(atom.lit))) != 0;
+    });
+  }
+  [[nodiscard]] std::vector<AssignedTheoryLiteral> full_assignment(bool trail_order = false) const {
     std::vector<AssignedTheoryLiteral> result;
     result.reserve(atoms_.size());
-    for (std::size_t index = 0; index < atoms_.size(); ++index) {
-      if (values_[index] == 0) {
-        throw std::logic_error("full component check has an unassigned atom");
-      }
-      result.push_back({atoms_[index].term, atoms_[index].lit, values_[index] > 0});
+    for (const auto& atom : atoms_) {
+      const int assigned = view_.literal(static_cast<int>(variable(atom.lit)));
+      if (assigned == 0) throw std::logic_error("full component check has an unassigned atom");
+      result.push_back({atom.term, atom.lit, assigned == atom.lit.value});
+    }
+    if (trail_order) {
+      std::ranges::sort(result, [&](const auto& lhs, const auto& rhs) {
+        return view_.position(static_cast<int>(variable(lhs.lit))) <
+               view_.position(static_cast<int>(variable(rhs.lit)));
+      });
     }
     return result;
   }
 
  private:
   static std::size_t variable(sat::Lit literal) {
-    if (literal.value == 0 || literal.value == std::numeric_limits<int>::min()) {
+    if (literal.value == 0 || literal.value == std::numeric_limits<int>::min())
       throw std::logic_error("invalid component assignment literal");
-    }
     return static_cast<std::size_t>(literal.value < 0 ? -literal.value : literal.value);
   }
   static constexpr std::size_t kAbsent = std::numeric_limits<std::size_t>::max();
+  sat::TrailView view_;
   std::vector<ComponentAtom> atoms_;
   std::vector<std::size_t> by_variable_;
-  std::vector<signed char> values_;
-  std::vector<std::size_t> trail_;
-  std::vector<std::size_t> levels_;
 };
-
 }  // namespace primo::theory

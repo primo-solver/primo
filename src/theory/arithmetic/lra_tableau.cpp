@@ -510,6 +510,7 @@ namespace {
 struct SoiBreakPoint {
   DeltaRational delta;
   LraVarId k;
+  bool is_upper;
 };
 }  // namespace
 
@@ -546,11 +547,11 @@ std::optional<LraTableau::SoiSelection> LraTableau::soi_select() const {
     // update (nonbasic variables are always within bounds, d_j stays 0).
     if (delta_positive) {
       if (j_state.upper.has_value()) {
-        points.push_back(SoiBreakPoint{j_state.upper->value - j_state.assignment, j});
+        points.push_back(SoiBreakPoint{j_state.upper->value - j_state.assignment, j, true});
       }
     } else {
       if (j_state.lower.has_value()) {
-        points.push_back(SoiBreakPoint{j_state.lower->value - j_state.assignment, j});
+        points.push_back(SoiBreakPoint{j_state.lower->value - j_state.assignment, j, false});
       }
     }
     // Every row k currently referencing j (excluding f_var_ itself, which
@@ -574,13 +575,13 @@ std::optional<LraTableau::SoiSelection> LraTableau::soi_select() const {
       if (k_state.lower.has_value()) {
         const DeltaRational point_delta = (k_state.lower->value - k_state.assignment).scaled(inv);
         if ((delta_positive && point_delta >= kZero) || (!delta_positive && point_delta <= kZero)) {
-          points.push_back(SoiBreakPoint{point_delta, k});
+          points.push_back(SoiBreakPoint{point_delta, k, false});
         }
       }
       if (k_state.upper.has_value()) {
         const DeltaRational point_delta = (k_state.upper->value - k_state.assignment).scaled(inv);
         if ((delta_positive && point_delta >= kZero) || (!delta_positive && point_delta <= kZero)) {
-          points.push_back(SoiBreakPoint{point_delta, k});
+          points.push_back(SoiBreakPoint{point_delta, k, true});
         }
       }
     }
@@ -634,13 +635,13 @@ std::optional<LraTableau::SoiSelection> LraTableau::soi_select() const {
         }
         ++group_end;
       }
-      // Update beta for the next segment: each k in this group transitions
-      // direction as j crosses it (structurally determined by whether
-      // k's assignment is increasing or decreasing through the crossing --
-      // see the plan's derivation for why this collapses to +-1 regardless
-      // of which specific bound is being crossed). j's own entry (k==j)
-      // never contributes: nonbasic variables always satisfy their own
-      // bounds, so d_j stays 0 through its own crossing.
+      // Section V-A: integrate to the crossing before changing its slope.
+      // Away from zero, each crossed bound changes d_k by +/-1. At zero,
+      // d_k already equals 0: only moving OUT of the interval changes it.
+      // Keep the bound kind so a fixed variable's two zero events contribute
+      // once, while its two nonzero crossings still contribute twice.
+      // See docs/arithmetic.md, "SOI endpoint correction". j's own entry
+      // never contributes because the walk stops at its bound.
       for (std::size_t g = index; g < group_end; ++g) {
         const LraVarId k = points[g].k;
         if (k == j) {
@@ -654,6 +655,9 @@ std::optional<LraTableau::SoiSelection> LraTableau::soi_select() const {
           }
         }
         const bool increasing = (coeff.sign() > 0) == (walk_sign > 0);
+        if (this_delta == kZero && increasing != points[g].is_upper) {
+          continue;
+        }
         const int delta_d = increasing ? 1 : -1;
         beta = beta + coeff * util::Rational(delta_d);
       }

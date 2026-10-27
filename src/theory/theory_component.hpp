@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "core/model.hpp"
+#include "sat/trail_view.hpp"
 #include "theory/theory_solver.hpp"
 
 namespace primo::theory {
@@ -89,6 +90,12 @@ struct ComponentModelFragment {
 class TheoryComponent {
  public:
   virtual ~TheoryComponent() = default;
+  virtual void bind_assignment_view(sat::TrailView view) { assignment_view_ = view; }
+  [[nodiscard]] sat::TrailView assignment_view() const { return assignment_view_; }
+  virtual void backtrack(std::size_t level, const std::vector<int>& removed) {
+    (void)removed;
+    pop_to_level(level);
+  }
   [[nodiscard]] virtual const ComponentDescriptor& descriptor() const = 0;
   [[nodiscard]] virtual bool owns_atom(core::TermId atom) const = 0;
   [[nodiscard]] virtual std::vector<core::TermId> interface_variables(core::TermId atom) const = 0;
@@ -127,6 +134,9 @@ class TheoryComponent {
     static_cast<void>(limit);
     return {};
   }
+
+ private:
+  sat::TrailView assignment_view_;
 };
 
 }  // namespace primo::theory

@@ -10,7 +10,6 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-
 SCRIPT = Path(__file__).parents[2] / "contrib" / "install_dolmen.py"
 SPEC = importlib.util.spec_from_file_location("install_dolmen", SCRIPT)
 assert SPEC is not None and SPEC.loader is not None

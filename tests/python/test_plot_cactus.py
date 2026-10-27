@@ -3,7 +3,13 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.plot_cactus import answered, load_series, order_series_by_solved, summarize, svg
+from scripts.plot_cactus import (
+    answered,
+    load_series,
+    order_series_by_solved,
+    summarize,
+    svg,
+)
 
 FIELDS = ["file", "status", "seconds", "wrong", "answer", "stderr_head"]
 

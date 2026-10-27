@@ -670,6 +670,75 @@ void asymmetric_value_use_is_rejected() {
   check(result.constraints.empty());
 }
 
+void symmetry_comparison_preserves_numeric_payloads() {
+  using primo::core::TermId;
+  using primo::core::TermKind;
+  using primo::util::Rational;
+  struct PayloadCase {
+    TermKind kind;
+    Rational first;
+    Rational second;
+  };
+  const Rational large = Rational::parse("123456789012345678901234567890").value();
+  const std::vector<PayloadCase> cases{
+      {TermKind::Rational, Rational(0), Rational(1)},
+      {TermKind::Rational, Rational(1, 3), Rational(2, 3)},
+      {TermKind::Rational, Rational(-1, 3), Rational(1, 3)},
+      {TermKind::Rational, large, large + Rational(1)},
+      {TermKind::Times, Rational(2), Rational(3)},
+      {TermKind::Times, Rational(-2), Rational(2)},
+      {TermKind::Times, Rational(1, 3), Rational(2, 3)},
+      {TermKind::Times, large, large + Rational(1)},
+      {TermKind::IntDiv, Rational(2), Rational(3)},
+      {TermKind::IntMod, Rational(2), Rational(3)},
+  };
+  for (const PayloadCase& test : cases) {
+    for (const bool symmetric : {false, true}) {
+      Fixture fixture;
+      const bool integer = test.kind == TermKind::IntDiv || test.kind == TermKind::IntMod;
+      const auto result_sort = integer ? fixture.symbols.int_sort() : fixture.symbols.real_sort();
+      const auto h = fixture.symbols.declare_function("h", {fixture.sort}, result_sort);
+      const TermId a = fixture.constant(fixture.a);
+      const TermId b = fixture.constant(fixture.b);
+      const TermId x = fixture.constant(fixture.x);
+      const auto atom = [&](TermId argument, const Rational& payload) {
+        const TermId application = fixture.app(h, argument);
+        TermId expression = application;
+        switch (test.kind) {
+          case TermKind::Rational:
+            return fixture.terms.mk_eq(application,
+                                       fixture.terms.mk_rational(payload, result_sort));
+          case TermKind::Times:
+            expression = fixture.terms.mk_times(payload, application);
+            break;
+          case TermKind::IntDiv:
+            expression = fixture.terms.mk_int_div(payload, application);
+            break;
+          case TermKind::IntMod:
+            expression = fixture.terms.mk_int_mod(payload, application);
+            break;
+          default:
+            std::abort();
+        }
+        check(fixture.terms.get(expression).kind == test.kind);
+        return fixture.terms.mk_eq(expression, fixture.terms.mk_rational(Rational(1), result_sort));
+      };
+      const std::vector<TermId> assertions{fixture.neq(a, b), fixture.choices(x, {a, b}),
+                                           atom(a, test.first),
+                                           atom(b, symmetric ? test.first : test.second)};
+      for (const bool value_precedence : {false, true}) {
+        primo::smt::UfSymmetryBreaker breaker(fixture.terms);
+        const auto result = breaker.break_symmetries(assertions, {value_precedence});
+        // Equal numeric payloads must still permit the finite-choice symmetry;
+        // different payloads must reject it before either restriction generator.
+        check(result.accepted_sets == (symmetric ? 1U : 0U));
+        check(result.rejected_noninvariant == (symmetric ? 0U : 1U));
+        check(result.constraints.size() == (symmetric ? 1U : 0U));
+      }
+    }
+  }
+}
+
 void moving_only_symmetry_terms_are_rejected() {
   Fixture fixture;
   const primo::core::TermId a = fixture.constant(fixture.a);
@@ -2228,6 +2297,7 @@ int main() {
   real_or_mixed_value_lists_do_not_gain_semantic_distinctness();
   symmetric_fixed_terms_get_value_precedence();
   asymmetric_value_use_is_rejected();
+  symmetry_comparison_preserves_numeric_payloads();
   moving_only_symmetry_terms_are_rejected();
   mixed_fixed_and_moving_terms_use_fixed_value_precedence_only();
   equality_bridge_derives_common_branch_consequence();

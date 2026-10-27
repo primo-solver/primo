@@ -1,4 +1,4 @@
-.PHONY: build test python-test asan-build asan-test smoke compare fuzz fuzz-finite-domain fuzzsmt tactic-composition-test bench bench-interesting-qf-uf docs docs-venv docs-serve archive lint tidy include-cleaner format check contrib contrib-required contrib-cli11 contrib-z3 contrib-cvc5 contrib-yices contrib-opensmt contrib-yinyang contrib-dolmen contrib-cadical contrib-gmp contrib-fuzzsmt contrib-ddsmt clean
+.PHONY: build test python-test asan-build asan-test smoke compare fuzz fuzz-finite-domain fuzzsmt tactic-composition-test bench bench-interesting-qf-uf docs docs-history docs-site docs-venv docs-serve archive lint tidy include-cleaner format check contrib contrib-required contrib-cli11 contrib-z3 contrib-cvc5 contrib-yices contrib-opensmt contrib-yinyang contrib-dolmen contrib-cadical contrib-gmp contrib-fuzzsmt contrib-ddsmt clean
 
 BUILD_DIR ?= build
 ASAN_BUILD_DIR ?= build-asan
@@ -65,16 +65,37 @@ bench-interesting-qf-uf: build
 
 docs-venv:
 	$(PYTHON) -m venv .venv-docs
-	.venv-docs/bin/python -m pip install --upgrade pip
-	.venv-docs/bin/python -m pip install -r docs/requirements.txt
+	.venv-docs/bin/python -m pip --disable-pip-version-check install --upgrade pip
+	.venv-docs/bin/python -m pip --disable-pip-version-check install -r docs/requirements.txt
 
 docs:
-	bash scripts/build_docs.sh
+	PRIMO_DOCS_DIR=docs bash scripts/build_docs.sh
+
+docs-history:
+	PRIMO_DOCS_DIR=docs-history bash scripts/build_docs.sh
+
+docs-site: docs
+	$(MAKE) docs-history
+	$(PYTHON) scripts/assemble_docs.py
+
+.PHONY: docs-full docs-check-links docs-check-external
+docs-full:
+	PRIMO_DOCS_DIR=docs bash scripts/build_docs.sh --all
+	PRIMO_DOCS_DIR=docs-history bash scripts/build_docs.sh --all
+	$(PYTHON) scripts/assemble_docs.py
+
+docs-check-links: docs-full
+	$(PYTHON) scripts/check_doc_links.py docs/_build/site --report docs/_build/linkcheck-local.json
+
+docs-check-external: docs-check-links
+	@status=0; for book in docs docs-history; do \
+		PRIMO_DOCS_DIR=$$book bash scripts/build_docs.sh --all --builder custom --custom-builder linkcheck || status=1; \
+	done; exit $$status
 
 docs-serve: docs
 	$(PYTHON) -m http.server 8000 -d docs/_build/html
 
-archive: docs
+archive: docs-site
 	$(PYTHON) scripts/create_source_archive.py
 
 lint:
@@ -90,9 +111,11 @@ lint:
 		exit 1; \
 	fi
 	@if $(RUFF) --version >/dev/null 2>&1; then \
-		$(RUFF) check scripts contrib; \
+		$(RUFF) check scripts contrib tests/python; \
 	else \
-		echo "ruff is not installed in the configured Python environment; skipping Python lint."; \
+		echo "error: Ruff is required for Python lint, including executable shebangs and import order."; \
+		echo "       Install the CI-pinned version with .venv/bin/python -m pip install ruff==0.16.1"; \
+		exit 1; \
 	fi
 
 tidy: build
@@ -116,9 +139,11 @@ format:
 		echo "clang-format is not installed; skipping C++ formatting."; \
 	fi
 	@if $(RUFF) --version >/dev/null 2>&1; then \
-		$(RUFF) format scripts contrib; \
+		$(RUFF) check --select I001 --fix scripts contrib tests/python; \
+		$(RUFF) format scripts contrib tests/python; \
 	else \
-		echo "ruff is not installed in the configured Python environment; skipping Python formatting."; \
+		echo "error: Ruff is required for Python formatting."; \
+		exit 1; \
 	fi
 
 check: lint test python-test
@@ -194,4 +219,4 @@ contrib-ddsmt:
 	$(PYTHON) contrib/install_ddsmt.py --prefix $(CONTRIB_PREFIX)
 
 clean:
-	rm -rf $(BUILD_DIR) results fuzz-results _build docs/_build
+	rm -rf $(BUILD_DIR) results fuzz-results _build docs/_build docs-history/_build

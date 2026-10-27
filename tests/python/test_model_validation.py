@@ -12,7 +12,6 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-
 SCRIPT = Path(__file__).parents[2] / "scripts" / "validate_qfuf_models_with_dolmen.py"
 SPEC = importlib.util.spec_from_file_location(
     "validate_qfuf_models_with_dolmen", SCRIPT

@@ -434,7 +434,7 @@ def main() -> int:
             command = with_cxx_headers(command, args.cxx_header_manifest)
         if args.build_via_slurm:
             command = (
-                f"srun --job-name=primo-build --cpus-per-task={args.jobs} --mem=8G "
+                f"srun --ntasks=1 --job-name=primo-build --cpus-per-task={args.jobs} --mem=8G "
                 f"--time=00:30:00 bash -c {shlex.quote(command)}"
             )
         ssh(args.ssh_config, args.remote, command)

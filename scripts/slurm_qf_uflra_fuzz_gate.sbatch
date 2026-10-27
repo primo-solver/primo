@@ -26,6 +26,11 @@
 
 set -euo pipefail
 
+if [[ -z ${SLURM_JOB_ID:-} ]]; then
+  echo 'solver batches require a SLURM allocation' >&2
+  exit 2
+fi
+
 WORKDIR=${PRIMO_WORKDIR:-$PWD}
 COUNT=${PRIMO_FUZZ_COUNT:-750}
 FINITE_COUNT=${PRIMO_FINITE_DOMAIN_FUZZ_COUNT:-125}
@@ -131,21 +136,18 @@ python3 scripts/finite_domain_fuzz.py \
 
 if ((MODEL_VALIDATION)); then
   model_status=0
-  python3 scripts/validate_model.py \
-      --solver ./build-slurm-rel/primo \
-      "${model_solver_args[@]}" \
-      --require-dolmen-pass \
-      --timeout "$MODEL_TIMEOUT" \
-      --dolmen-timeout "$MODEL_DOLMEN_TIMEOUT" \
-      --out "$OUT/model-validation/general" \
-      "$OUT"/general/cases/*.smt2 || model_status=$?
-  python3 scripts/validate_model.py \
-      --solver ./build-slurm-rel/primo \
-      "${model_solver_args[@]}" \
-      --require-dolmen-pass \
-      --timeout "$MODEL_TIMEOUT" \
-      --dolmen-timeout "$MODEL_DOLMEN_TIMEOUT" \
-      --out "$OUT/model-validation/finite-qf-uflra" \
-      "$OUT"/finite-qf-uflra/cases/*.smt2 || model_status=$?
+  for corpus in general finite-qf-uflra; do
+    manifest="$OUT/model-validation/$corpus-sat.txt"
+    python3 scripts/select_fuzz_sat_inputs.py "$OUT/$corpus/summary.csv" --out "$manifest"
+    if [[ ! -s $manifest ]]; then continue; fi
+    python3 scripts/validate_model.py \
+        --solver ./build-slurm-rel/primo \
+        "${model_solver_args[@]}" \
+        --expect-sat --require-dolmen-pass --dolmen-arg=--strict=false \
+        --timeout "$MODEL_TIMEOUT" \
+        --dolmen-timeout "$MODEL_DOLMEN_TIMEOUT" \
+        --out "$OUT/model-validation/$corpus" \
+        --manifest "$manifest" || model_status=$?
+  done
   exit "$model_status"
 fi

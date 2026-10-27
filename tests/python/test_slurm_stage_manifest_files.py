@@ -29,9 +29,11 @@ class SlurmStageManifestFilesTests(unittest.TestCase):
             )
 
     def test_all_smt2_paths_rejects_empty_root(self) -> None:
-        with tempfile.TemporaryDirectory() as temporary:
-            with self.assertRaisesRegex(SystemExit, "no SMT-LIB files found"):
-                slurm_stage.all_smt2_paths(Path(temporary))
+        with (
+            tempfile.TemporaryDirectory() as temporary,
+            self.assertRaisesRegex(SystemExit, 'no SMT-LIB files found'),
+        ):
+            slurm_stage.all_smt2_paths(Path(temporary))
 
     def test_path_size_fingerprint_is_ordered_and_content_independent(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

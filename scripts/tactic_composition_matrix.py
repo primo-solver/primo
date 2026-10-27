@@ -353,15 +353,33 @@ def solver_revision(version_output: str) -> str:
 
 def run_model_validation(
     profile: Profile,
-    cases: list[Case],
+    measured_rows: list[dict[str, str]],
     args: argparse.Namespace,
     solver_path: str,
 ) -> tuple[int, int]:
     profile_out = args.out / profile.identifier / "model-validation"
     profile_out.mkdir(parents=True, exist_ok=True)
+    selected: dict[str, list[dict[str, str]]] = {}
+    for row in measured_rows:
+        if row["profile"] == profile.identifier and row["outcome"] == "pass" and row["answer"] == "sat":
+            selected.setdefault(str(Path(row["file"]).resolve()), []).append(row)
+    coverage = {
+        "profile": profile.identifier,
+        "eligible_models": len(selected),
+        "measured_sat_rows": sum(map(len, selected.values())),
+        "validated_models": 0,
+        "incomplete_models": 0,
+        "rows": [],
+        "errors": [],
+    }
+    coverage_path = profile_out / "coverage.json"
+    if not selected:
+        write_json(coverage_path, coverage)
+        print(f"{profile.identifier}: zero eligible models", flush=True)
+        return 0, 0
     case_manifest = profile_out / "cases.txt"
     case_manifest.write_text(
-        "".join(f"{case.path.resolve()}\n" for case in cases), encoding="utf-8"
+        "".join(f"{path}\n" for path in selected), encoding="utf-8"
     )
     validator = Path(__file__).with_name("validate_model.py")
     command = [
@@ -381,27 +399,45 @@ def run_model_validation(
         str(args.dolmen_timeout),
         "--dolmen-arg=--strict=false",
         "--require-dolmen-pass",
+        "--expect-sat",
         "--out",
         str(profile_out),
     ]
     for solver_arg in ("--quiet", *profile.args):
         command.append(f"--solver-arg={solver_arg}")
-    returncode = subprocess.run(command, check=False).returncode
-    if returncode == 0:
-        return 0, 0
-    if not args.allow_inconclusive:
-        return 1, 0
     summary = profile_out / "summary.csv"
-    if not summary.is_file():
-        return 1, 0
-    with summary.open(newline="", encoding="utf-8") as handle:
-        outcomes = [row["outcome"] for row in csv.DictReader(handle)]
-    accepted = {"pass", "not-sat", "solver-timeout", "solver-unknown"}
-    if any(outcome not in accepted for outcome in outcomes):
-        return 1, 0
-    return 0, sum(
-        outcome in {"solver-timeout", "solver-unknown"} for outcome in outcomes
-    )
+    summary.unlink(missing_ok=True)
+    returncode = subprocess.run(command, check=False).returncode
+    errors = coverage["errors"]
+    results = {}
+    try:
+        with summary.open(newline="", encoding="utf-8") as handle:
+            for row in csv.DictReader(handle):
+                path = str(Path(row["file"]).resolve())
+                if path not in selected:
+                    errors.append(f"unexpected result: {path}")
+                elif path in results:
+                    errors.append(f"duplicate result: {path}")
+                else:
+                    results[path] = row["outcome"]
+    except (OSError, KeyError, TypeError, csv.Error) as error:
+        errors.append(f"invalid validation summary: {error}")
+    for path, measurements in selected.items():
+        outcome = results.get(path, "missing")
+        if outcome == "pass":
+            coverage["validated_models"] += 1
+        elif outcome in {"solver-timeout", "solver-unknown"} and args.allow_inconclusive:
+            coverage["incomplete_models"] += 1
+        else:
+            errors.append(f"{path}: {outcome}")
+        for measurement in measurements:
+            coverage["rows"].append({**measurement, "validation_outcome": outcome})
+    # A failure without any per-input cause is a validator process failure.
+    if returncode not in {0, 1} or (returncode and not errors and not coverage["incomplete_models"]):
+        errors.append(f"validator exit: {returncode}")
+    coverage["validator_returncode"] = returncode
+    write_json(coverage_path, coverage)
+    return len(errors), coverage["incomplete_models"]
 
 
 def main() -> int:
@@ -448,9 +484,6 @@ def main() -> int:
             file=sys.stderr,
         )
         return 2
-    if not args.skip_model_validation and executable(args.dolmen) is None:
-        print(f"Dolmen is unavailable: {args.dolmen}", file=sys.stderr)
-        return 2
 
     args.out.mkdir(parents=True, exist_ok=True)
     solver_version = run_command([solver_path, "--version"], args.timeout)
@@ -489,6 +522,7 @@ def main() -> int:
             profile_out = args.out / profile.identifier / "runs"
             profile_out.mkdir(parents=True, exist_ok=True)
             observed_by_logic: dict[str, set[str]] = {}
+            measured_rows: list[dict[str, str]] = []
             for case_index, case in enumerate(eligible):
                 required = profile.required_stats + profile.required_stats_by_logic.get(
                     case.logic, ()
@@ -548,6 +582,7 @@ def main() -> int:
                         "seconds": f"{result.seconds:.6f}",
                         "statistics": json.dumps(parsed_stats, sort_keys=True),
                     }
+                    measured_rows.append(row)
                     writer.writerow(row)
                     summary.flush()
                     os.fsync(summary.fileno())
@@ -593,7 +628,7 @@ def main() -> int:
 
             if not args.skip_model_validation:
                 model_failures, model_inconclusive = run_model_validation(
-                    profile, eligible, args, solver_path
+                    profile, measured_rows, args, solver_path
                 )
                 failures += model_failures
                 inconclusive += model_inconclusive

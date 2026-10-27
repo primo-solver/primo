@@ -17,10 +17,19 @@ ROOT_FILES = {
     "CMakeLists.txt",
     "LICENSE",
     "Makefile",
+    "README.md",
+    "AGENTS.md",
+    "DESIGN.md",
+    "TODO.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    "CITATION.cff",
+    "THIRD_PARTY.md",
+    ".gitignore",
 }
-CODE_PREFIXES = ("contrib/", "scripts/", "src/", "tests/")
-FORBIDDEN_SUFFIXES = {".markdown", ".md"}
-FORBIDDEN_COMPONENTS = {".git", "_sources"}
+CODE_PREFIXES = ("contrib/", "scripts/", "src/", "tests/", "skills/", ".github/", "docs/", "docs-history/", "LICENSES/")
+FORBIDDEN_SUFFIXES = {".pdf", ".pyc"}
+FORBIDDEN_COMPONENTS = {".git", "_sources", "_build", "__pycache__"}
 
 
 def run_git(repo: Path, *args: str) -> str:
@@ -39,11 +48,11 @@ def is_allowed_tracked_path(relative: PurePosixPath) -> bool:
     if path in ROOT_FILES:
         return True
     if path.startswith("benchmarks/"):
-        return relative.suffix == ".smt2"
+        return not is_forbidden_archive_path(relative)
     if path.startswith(CODE_PREFIXES):
         return (
             relative.name != ".gitkeep"
-            and relative.suffix.lower() not in FORBIDDEN_SUFFIXES
+            and not is_forbidden_archive_path(relative)
         )
     return False
 
@@ -62,8 +71,9 @@ def release_readme(revision: str) -> bytes:
 Revision: {revision}
 
 This archive contains the Primo source code, build and test support, SMT-LIB
-test inputs, and prebuilt HTML documentation. It intentionally contains no Git
-history and no Markdown/MyST documentation sources.
+test inputs, editable current and historical documentation, and prebuilt HTML.
+Git history, downloaded reading papers, dependencies and private artifacts are
+not included. SOURCE-REVISION identifies the original source commit.
 
 Build requirements
 ------------------
@@ -96,10 +106,15 @@ The expected answers are sat, unsat, and unsat, respectively.
 Documentation
 -------------
 
-Open html/index.html in a browser. The rendered site is included as-is except
-for Sphinx's _sources tree, which is omitted to keep the original documentation
-sources out of this distribution. Rebuilding the documentation therefore
-requires the full Git checkout rather than this source snapshot.
+Open html/index.html in a browser. Rebuild the documentation with `make docs`,
+or run `make docs-serve` and open http://localhost:8000. Python venv/pip and network
+access are required for the first documentation build. The editable sources are
+under docs/ and docs-history/. Git-based source-link verification additionally
+requires the referenced history from a repository checkout.
+
+Read THIRD_PARTY.md for dependency and benchmark notices. Primo's MIT license
+does not replace third-party terms. This source archive does not distribute
+linked solver binaries or downloaded reference tools.
 """
     return text.encode("utf-8")
 
@@ -141,7 +156,7 @@ def tracked_release_files(repo: Path) -> list[PurePosixPath]:
 
 
 def html_release_files(repo: Path) -> list[Path]:
-    html_root = repo / "docs" / "_build" / "html"
+    html_root = repo / "docs" / "_build" / "site"
     if not (html_root / "index.html").is_file():
         raise SystemExit("rendered documentation is missing; run `make docs` first")
     files = []
@@ -203,7 +218,7 @@ def create_archive(
                 epoch,
                 executable,
             )
-        html_root = repo / "docs" / "_build" / "html"
+        html_root = repo / "docs" / "_build" / "site"
         for path in html:
             relative = PurePosixPath(path.relative_to(html_root).as_posix())
             add_bytes(

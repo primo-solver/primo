@@ -32,29 +32,25 @@ void generated_boolean_arguments_receive_their_domain() {
   const std::string prelude =
       "(set-logic UF) (declare-sort U 0) (declare-fun h (Bool) U) "
       "(declare-fun p (U) Bool) ";
-  for (const auto domain :
-       {primo::smt::EufBooleanDomain::Registration, primo::smt::EufBooleanDomain::BridgeAtoms}) {
-    CheckSatOptions options;
-    options.euf_boolean_domain = domain;
-    for (const std::string assertion :
-         {"(exists ((b Bool)) (and (distinct (h b) (h true)) "
-          "(distinct (h b) (h false))))",
-          "(not (forall ((b Bool)) (or (= (h b) (h true)) (= (h b) (h false)))))",
-          // A second Skolem batch, then a compound argument named during lowering.
-          "(exists ((x U)) (exists ((b Bool)) (and "
-          "(distinct (h (and b (p x))) (h true)) "
-          "(distinct (h (and b (p x))) (h false)))))"}) {
-      const auto outcome =
-          check_sat_smtlib(prelude + "(assert " + assertion + ")(check-sat)", options);
-      assert(outcome.result == CheckSatResult::Unsat);
-      assert(outcome.statistics.get(":combination.lemmas.batches") >= 1);
-    }
-    for (const std::string assertion :
-         {"(exists ((x U)) (p x))", "(exists ((x U)) (! (p x) :pattern ((p x))))",
-          "(exists ((b Bool)) (= (h b) (h true)))"}) {
-      assert(check_sat_smtlib(prelude + "(assert " + assertion + ")(check-sat)", options).result ==
-             CheckSatResult::Sat);
-    }
+  CheckSatOptions options;
+  for (const std::string assertion :
+       {"(exists ((b Bool)) (and (distinct (h b) (h true)) "
+        "(distinct (h b) (h false))))",
+        "(not (forall ((b Bool)) (or (= (h b) (h true)) (= (h b) (h false)))))",
+        // A second Skolem batch, then a compound argument named during lowering.
+        "(exists ((x U)) (exists ((b Bool)) (and "
+        "(distinct (h (and b (p x))) (h true)) "
+        "(distinct (h (and b (p x))) (h false)))))"}) {
+    const auto outcome =
+        check_sat_smtlib(prelude + "(assert " + assertion + ")(check-sat)", options);
+    assert(outcome.result == CheckSatResult::Unsat);
+    assert(outcome.statistics.get(":combination.lemmas.batches") >= 1);
+  }
+  for (const std::string assertion :
+       {"(exists ((x U)) (p x))", "(exists ((x U)) (! (p x) :pattern ((p x))))",
+        "(exists ((b Bool)) (= (h b) (h true)))"}) {
+    assert(check_sat_smtlib(prelude + "(assert " + assertion + ")(check-sat)", options).result ==
+           CheckSatResult::Sat);
   }
 }
 
@@ -62,51 +58,41 @@ void generated_boolean_arguments_receive_their_domain() {
 // Each iteration introduces a fresh argument after the previous preparation.
 // Varied arena occupancy exercises registry and term reallocations under ASan.
 void domain_preparation_is_closed_and_idempotent() {
-  for (const bool bridges : {false, true}) {
-    primo::core::SymbolTable symbols;
-    primo::core::TermManager terms(symbols);
-    primo::sat::CadicalBackend backend;
-    primo::smt::BooleanClausifier clausifier(backend, terms, false);
-    const auto boolean = symbols.bool_sort();
-    const auto sort = symbols.declare_sort("U");
-    const auto function = symbols.declare_function("h", {boolean}, sort);
-    const auto truth = terms.mk_bool(true);
-    const auto bound = terms.mk_bound_variable(0, boolean);
-    const auto open_application = terms.mk_app(function, {bound});
-    const auto true_application = terms.mk_app(function, {truth});
-    const auto body = terms.mk_eq(open_application, true_application);
-    clausifier.assert_formula(terms.mk_forall({boolean}, body));
-    const auto prepare = [&] {
-      if (bridges)
-        clausifier.materialize_boolean_argument_literals();
-      else
-        static_cast<void>(clausifier.register_boolean_argument_terms());
-    };
-    prepare();
-    assert(clausifier.theory_atoms().size() == 1);
-    for (std::size_t index = 0; index < 257; ++index) {
-      const auto symbol = symbols.declare_internal_constant("b" + std::to_string(index), boolean);
-      const auto argument = terms.mk_constant(symbol);
-      const auto application = terms.mk_app(function, {argument});
-      clausifier.assert_formula(terms.mk_eq(application, true_application));
-      prepare();
-      const auto atoms = clausifier.theory_atoms();
-      const auto term_count = terms.size();
-      const auto bridge_count = clausifier.boolean_domain_bridge_count();
-      const auto registered_count = clausifier.boolean_argument_registration_count();
-      const auto backend_before = backend.statistics();
-      prepare();
-      assert(terms.size() == term_count);
-      assert(clausifier.theory_atoms().size() == atoms.size());
-      assert(clausifier.boolean_domain_bridge_count() == bridge_count);
-      assert(clausifier.boolean_argument_registration_count() == registered_count);
-      assert(backend.statistics().clauses == backend_before.clauses);
-      assert(backend.statistics().variables == backend_before.variables);
-      for (std::size_t atom = 0; atom < atoms.size(); ++atom) {
-        assert(terms.loose_index(atoms[atom].term) == 0);
-        assert(clausifier.theory_atoms()[atom].term == atoms[atom].term);
-        assert(clausifier.theory_atoms()[atom].lit.value == atoms[atom].lit.value);
-      }
+  primo::core::SymbolTable symbols;
+  primo::core::TermManager terms(symbols);
+  primo::sat::CadicalBackend backend;
+  primo::smt::BooleanClausifier clausifier(backend, terms, false);
+  const auto boolean = symbols.bool_sort();
+  const auto sort = symbols.declare_sort("U");
+  const auto function = symbols.declare_function("h", {boolean}, sort);
+  const auto truth = terms.mk_bool(true);
+  const auto bound = terms.mk_bound_variable(0, boolean);
+  const auto open_application = terms.mk_app(function, {bound});
+  const auto true_application = terms.mk_app(function, {truth});
+  const auto body = terms.mk_eq(open_application, true_application);
+  clausifier.assert_formula(terms.mk_forall({boolean}, body));
+  static_cast<void>(clausifier.register_boolean_argument_terms());
+  assert(clausifier.theory_atoms().size() == 1);
+  for (std::size_t index = 0; index < 257; ++index) {
+    const auto symbol = symbols.declare_internal_constant("b" + std::to_string(index), boolean);
+    const auto argument = terms.mk_constant(symbol);
+    const auto application = terms.mk_app(function, {argument});
+    clausifier.assert_formula(terms.mk_eq(application, true_application));
+    static_cast<void>(clausifier.register_boolean_argument_terms());
+    const auto atoms = clausifier.theory_atoms();
+    const auto term_count = terms.size();
+    const auto registered_count = clausifier.boolean_argument_registration_count();
+    const auto backend_before = backend.statistics();
+    static_cast<void>(clausifier.register_boolean_argument_terms());
+    assert(terms.size() == term_count);
+    assert(clausifier.theory_atoms().size() == atoms.size());
+    assert(clausifier.boolean_argument_registration_count() == registered_count);
+    assert(backend.statistics().clauses == backend_before.clauses);
+    assert(backend.statistics().variables == backend_before.variables);
+    for (std::size_t atom = 0; atom < atoms.size(); ++atom) {
+      assert(terms.loose_index(atoms[atom].term) == 0);
+      assert(clausifier.theory_atoms()[atom].term == atoms[atom].term);
+      assert(clausifier.theory_atoms()[atom].lit.value == atoms[atom].lit.value);
     }
   }
 }
@@ -463,9 +449,41 @@ void every_tuple_order_refutes() {
   }
 }
 
+void preprocess_only_never_starts_search() {
+  CheckSatOptions options;
+  options.preprocess_only = true;
+  for (const std::string commands : {
+           "(assert (forall ((x U)) (p x))) (assert (not (p a)))",
+           "(assert (exists ((x U)) (p x)))",
+           "(assert (not (exists ((x U)) (p x)))) (assert (p a))",
+           // Ground goals still take the ordinary preprocessing route.
+           "(assert (p a))",
+           "(assert true)",
+       }) {
+    const auto outcome = solve(commands, options);
+    assert(outcome.result == CheckSatResult::Unknown);
+    assert(outcome.reason == InconclusiveReason::Unknown);
+    assert(outcome.statistics.get(":sat.solve-calls") == 0);
+    assert(outcome.statistics.get(":quant.instances") == 0);
+    assert(outcome.statistics.get(":quant.skolem-lemmas") == 0);
+    assert(outcome.statistics.get(":time.solve-us") == 0);
+    assert(outcome.model.empty());
+    assert(!outcome.typed_model);
+  }
+  const auto contradiction = solve("(assert false)", options);
+  assert(contradiction.result == CheckSatResult::Unsat);
+  assert(contradiction.statistics.get(":sat.solve-calls") == 0);
+  const auto unsupported = check_sat_smtlib(
+      "(set-logic QF_UF) (declare-sort U 0) (declare-fun p (U) Bool) "
+      "(assert (forall ((x U)) (p x))) (check-sat)",
+      options);
+  assert(unsupported.result == CheckSatResult::Unsupported);
+}
+
 }  // namespace
 
 int main() {
+  preprocess_only_never_starts_search();
   generated_boolean_arguments_receive_their_domain();
   domain_preparation_is_closed_and_idempotent();
   stalled_scans_deliver_queued_lemmas();

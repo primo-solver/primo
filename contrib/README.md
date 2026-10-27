@@ -21,6 +21,7 @@ This installs:
 
 - CLI11 single header
 - CaDiCaL/IPASIR headers and static library
+- GMP headers and library
 
 ## Install all optional tools
 

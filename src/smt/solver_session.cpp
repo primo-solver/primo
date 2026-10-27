@@ -449,6 +449,7 @@ CheckSatOutcome run_query(std::string_view input, CheckSatOptions options,
   statistics.set(kStatEufDiseqAssignments, 0);
   statistics.set(kStatTheoryChecks, 0);
   statistics.set(kStatTheoryConflicts, 0);
+  statistics.set(util::StatKey::TheoryConflictCount, 0);
   statistics.set(kStatEufPropagationRounds, 0);
   statistics.set(kStatEufPropagationCandidates, 0);
   statistics.set(kStatEufPropagationDelivered, 0);
@@ -634,6 +635,12 @@ CheckSatOutcome run_query(std::string_view input, CheckSatOptions options,
       if (frontend.logic() != std::optional<std::string>("UF")) {
         return finish(CheckSatResult::Unsupported,
                       "quantified formulas are supported only in logic UF");
+      }
+      // Ground preprocessing does not support binders. The diagnostic must
+      // stop here rather than entering the quantifier solver.
+      if (options.preprocess_only) {
+        return finish(CheckSatResult::Unknown,
+                      "preprocess-only: quantified input skips ground preprocessing");
       }
       const PhaseClock::time_point solve_start = PhaseClock::now();
       CheckSatOutcome outcome =

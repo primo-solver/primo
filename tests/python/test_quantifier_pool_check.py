@@ -1,7 +1,6 @@
 import importlib.util
-from pathlib import Path
 import unittest
-
+from pathlib import Path
 
 SOURCE = Path(__file__).resolve().parents[2] / 'scripts/quantifier_pool_check.py'
 SPEC = importlib.util.spec_from_file_location('quantifier_pool_check', SOURCE)

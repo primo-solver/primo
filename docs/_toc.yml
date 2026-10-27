@@ -1,99 +1,118 @@
 format: jb-book
 root: index
-
-# Theory reference pages are entry points; detailed design and evidence notes
-# are nested beneath the component they qualify.
 parts:
-  - caption: Core architecture
+  - caption: Using Primo
     chapters:
-      - file: current-status
-      - file: architecture
-      - file: incremental-smt
-        sections:
-          - file: lexical-conformance
-          - file: assumption-incremental-lra
-          - file: assumption-incremental-uf
-          - file: uf-z3-profiling
-          - file: incremental-uf-atom-scans
-          - file: opensmt-incremental-comparison
-      - file: model-interpretation
-      - file: tactics
-        sections:
-          - file: tactic-reference
-      - file: boolean-dag-flattening
-      - file: root-polarity-clausification
-      - file: sat-ipasir-up
-      - file: dpllt
-      - file: preprocessing
-      - file: structural-auto-preprocessing
-      - file: quantifiers
-      - file: quantifier-entailment-design
-
-  - caption: Theories
-    chapters:
-      - file: euf
-        sections:
-          - file: euf-boolean-arguments
-          - file: qfuf-disequality-propagation
-      - file: arithmetic
-        sections:
-          - file: qf-lia-branch-and-bound
-            sections:
-              - file: qf-lia-profile
-          - file: qf-lra-heuristics
-          - file: tuning-parameters
-          - file: open-leads
-          - file: tropical-matrix-structure
-          - file: fuzz-coverage-qf-lra
-      - file: nelson-oppen
-        sections:
-          - file: modular-theory-combination
-          - file: n-way-combination-migration
-          - file: qf-uflra-model-guided-performance
-          - file: qf-uflra-convex-no-merge-plan
-          - file: nelson-oppen-qf-lra-regression
-          - file: qf-lra-equality-sharing
-      - file: bool-argument-congruence-bug
-      - file: difference_logic
-
-  - caption: Evidence and practice
-    chapters:
-      - file: experiments
-      - file: run-log
-      - file: debugging
-        sections:
-          - file: finite-domain-fuzzing
-      - file: termid-order-sensitivity
-
-  - caption: Paper notes
-    chapters:
-      - file: literature
-        sections:
-          - file: papers/summaries
-          - file: papers/lra-related-work
-      - file: papers/ipasir-up
-      - file: papers/cvc4-architecture
-      - file: papers/fastsmt-strategy-synthesis
-      - file: papers/tactic-configuration-evidence
-      - file: papers/fast-congruence-closure
-      - file: papers/fast-congruence-closure-implementation
-      - file: papers/smt-symmetry-breaking
-      - file: papers/finite-model-finding-sorts
-      - file: papers/nelson-oppen-closure-methods
-      - file: papers/model-based-theory-combination
-      - file: papers/fast-linear-arithmetic-dpllt
-      - file: papers/arithmetic-solving-in-z3
-        sections:
-          - file: papers/word-gcd-notes
-      - file: papers/integer-division-and-modulo
-      - file: papers/lra-atom-canonicalization
-      - file: papers/griggio-mathsat-thesis
-      - file: papers/bromberger-linear-arithmetic-thesis
-      - file: papers/monotone-variable-elimination
-      - file: papers/difference-constraint-propagation
-      - file: papers/enumerative-instantiation
-      - file: papers/fair-adventurous-enumeration
-
+      - file: map
+      - file: capabilities
+      - file: guide/getting-started
+      - file: guide/input
+      - file: guide/models
+      - file: guide/sessions
   - caption: Reference
     chapters:
-      - file: reference/llm2smt-retrospective
+      - file: reference/options
+      - file: reference/policies
+      - file: reference/tactics
+      - file: reference/statistics
+      - file: reference/backend
+  - caption: Contributing
+    chapters:
+      - file: development/correctness
+      - file: development/contributing-changes
+      - file: development/fuzzing
+      - file: development/validation
+      - file: development/debugging
+      - file: development/experiments
+      - file: development/tuning
+      - file: development/documentation
+  - caption: Understanding Primo
+    chapters:
+      - file: implementation/architecture
+      - file: implementation/core
+      - file: implementation/frontend
+      - file: implementation/sessions
+      - file: implementation/tactics
+      - file: implementation/preprocessing
+      - file: implementation/sat
+      - file: implementation/dpllt
+      - file: implementation/models
+  - caption: Theories
+    chapters:
+      - file: implementation/theory-interface
+      - file: implementation/euf
+      - file: implementation/lra
+      - file: implementation/lia
+      - file: implementation/quantifiers
+      - file: implementation/combination
+  - caption: Literature
+    chapters:
+      - file: literature
+      - file: references
+      - file: papers/primo-qflra-results
+      - file: papers/bromberger-linear-arithmetic
+      - file: papers/cuts-from-proofs
+      - file: papers/lia-primal-heuristics
+      - file: papers/yices
+      - file: papers/clause-forgetting
+      - file: papers/conflict-explanation-minimization
+      - file: papers/polarity-aware-cnf
+      - file: papers/relevance-filtering
+  - caption: Open leads
+    chapters:
+      - file: leads/index
+      - file: leads/library-api
+      - file: leads/incremental-memory
+      - file: leads/term-storage
+      - file: leads/rational-storage
+      - file: leads/statistics-instrumentation
+      - file: leads/theory-lemmas
+      - file: leads/theory-lemma-forgetting
+      - file: leads/arithmetic-symmetry
+      - file: leads/lra-floating-point
+      - file: leads/lra-equality-basis
+      - file: leads/lra-column-coefficients
+      - file: leads/lia-extended-gcd
+      - file: leads/lia-patching
+      - file: leads/lia-infinitesimals
+      - file: leads/care-pair-generation
+      - file: leads/care-guided-combination
+      - file: leads/real-combination-migration
+      - file: leads/model-based-combination
+      - file: leads/quantifier-instantiation
+      - file: leads/quantifier-nnf
+      - file: leads/asserted-quantifiers
+      - file: leads/quantifier-relevance
+      - file: leads/compact-distinct
+      - file: leads/incremental-equations
+      - file: leads/shared-euf-structure
+  - caption: Active work
+    chapters:
+      - file: work/publication
+      - file: work/github-handoff
+      - file: work/documentation
+      - file: work/evidence
+      - file: work/results-storage
+  - caption: Evidence and history
+    chapters:
+      - file: evidence/evaluation-refresh
+      - file: evidence/long-limits
+      - file: evidence/publication
+      - file: evidence/publication-followups
+      - file: evidence/assignment
+      - file: evidence/arithmetic
+      - file: evidence/lra-regressions
+      - file: evidence/quantifiers
+      - file: evidence/archive
+      - file: review-history
+  - caption: Documentation review
+    chapters:
+      - file: review
+        sections:
+          - file: coverage/page-review
+          - file: coverage/index
+          - file: coverage/frontend-sessions
+          - file: coverage/solver
+          - file: coverage/lia
+          - file: coverage/tactics-preprocessing
+          - file: coverage/practice-literature

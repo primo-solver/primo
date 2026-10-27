@@ -652,9 +652,145 @@ void qf_lia_lowers_extended_terms_with_preprocessing_off() {
   assert(result.result == CheckSatResult::Sat);
 }
 
+// One arithmetic component must retain SAT-owned Boolean values without EUF,
+// regardless of unrelated combination options or EUF scheduling.
+void shared_driver_preserves_boolean_models_and_recipe_isolation() {
+  for (const bool guided : {false, true}) {
+    for (const auto euf : {primo::smt::EufEngine::Lazy, primo::smt::EufEngine::Incremental}) {
+      CheckSatOptions options;
+      options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
+      options.qf_uflia_model_combination = guided;
+      options.qf_uflia_online_components = false;
+      options.qf_uflia_model_decision_budget = 0;
+      options.euf_engine = euf;
+      const auto result = check_sat_smtlib(R"(
+        (set-logic QF_LIA)
+        (set-option :produce-models true)
+        (declare-const x Int)
+        (declare-const unused Int)
+        (declare-const p Bool)
+        (declare-const q Bool)
+        (declare-const unused_bool Bool)
+        (assert (= (* 2 x) 4))
+        (assert (or p (> x 3)))
+        (assert (not q))
+        (check-sat)
+        (get-model)
+      )",
+                                           options);
+      assert(result.result == CheckSatResult::Sat);
+      assert(result.model.find("(define-fun p () Bool true)") != std::string::npos);
+      assert(result.model.find("(define-fun q () Bool false)") != std::string::npos);
+      assert(result.model.find("(define-fun unused () Int") != std::string::npos);
+      assert(result.model.find("(define-fun unused_bool () Bool") != std::string::npos);
+      assert(result.statistics.get(":combination.components") == 1);
+      assert(result.statistics.get(":combination.online-components.enabled") == 1);
+      assert(result.statistics.get(":combination.model.materialized-pairs") == 0);
+      assert(result.statistics.get(":combination.arrangement-bridge-clauses") == 0);
+      assert(result.statistics.get(":combination.model.complete-fallbacks") == 0);
+      assert(!result.statistics.contains(":time.qf-uflia.lia-check-us"));
+    }
+  }
+}
+
+void boolean_only_lia_and_solving_without_models() {
+  CheckSatOptions options;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
+  const auto boolean = check_sat_smtlib(R"(
+    (set-logic QF_LIA)
+    (set-option :produce-models true)
+    (declare-const p Bool)
+    (declare-const q Bool)
+    (assert p)
+    (assert (xor p q))
+    (check-sat)
+    (get-model)
+  )",
+                                        options);
+  assert(boolean.result == CheckSatResult::Sat);
+  assert(boolean.model.find("(define-fun p () Bool true)") != std::string::npos);
+  assert(boolean.model.find("(define-fun q () Bool false)") != std::string::npos);
+  assert(boolean.statistics.get(":combination.components") == 1);
+  options.produce_model = false;
+  const auto arithmetic = primo::smt::check_sat_smtlib(R"(
+    (set-logic QF_LIA)
+    (declare-const x Int)
+    (assert (> (* 3 x) 1))
+    (assert (< (* 3 x) 5))
+    (check-sat)
+  )",
+                                                       options);
+  assert(arithmetic.result == CheckSatResult::Sat);
+  assert(arithmetic.model.empty());
+  assert(arithmetic.typed_model == nullptr);
+}
+
+void internal_integer_branches_do_not_spend_the_conflict_budget() {
+  constexpr std::string_view input = R"(
+    (set-logic QF_LIA)
+    (declare-const x Int)
+    (declare-const y Int)
+    (assert (= (+ (* 2 x) (* 3 y)) 5))
+    (assert (>= x 0))
+    (assert (>= y 0))
+    (assert (<= x 3))
+    (assert (<= y 3))
+    (check-sat)
+  )";
+  CheckSatOptions options;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
+  options.lia_patch_limit = 0;
+  options.lia_gomory_cut_limit = 0;
+  options.lia_branch_limit = 0;
+  options.max_theory_conflicts = 1;
+  const auto no_search = check_sat_smtlib(input, options);
+  assert(no_search.result == CheckSatResult::Unknown);
+  assert(no_search.reason == primo::smt::InconclusiveReason::ResourceLimit);
+  assert(no_search.statistics.get(primo::util::StatKey::TheoryConflictCount) == 0);
+  options.lia_branch_limit = 100;
+  const auto searched = check_sat_smtlib(input, options);
+  assert(searched.result == CheckSatResult::Sat);
+  assert(searched.statistics.get(primo::util::StatKey::TheoryConflictCount) == 0);
+}
+
+void shared_driver_preserves_typed_limits_and_cancellation() {
+  constexpr std::string_view input = R"(
+    (set-logic QF_LIA)
+    (declare-const x Int)
+    (declare-const y Int)
+    (assert (= (+ (* 2 x) (* 4 y)) 1))
+    (check-sat)
+  )";
+  CheckSatOptions options;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
+  options.max_theory_conflicts = 1;
+  const auto limited = check_sat_smtlib(input, options);
+  assert(limited.result == CheckSatResult::Unknown);
+  assert(limited.reason == primo::smt::InconclusiveReason::ResourceLimit);
+  assert(limited.statistics.get(primo::util::StatKey::TheoryConflictCount) == 1);
+  options.max_theory_conflicts.reset();
+  const auto complete = check_sat_smtlib(input, options);
+  assert(complete.result == CheckSatResult::Unsat);
+  assert(complete.statistics.get(primo::util::StatKey::TheoryConflictCount) == 1);
+  options.max_theory_conflicts = 0;
+  const auto zero = check_sat_smtlib(input, options);
+  assert(zero.result == CheckSatResult::Unknown);
+  assert(zero.reason == primo::smt::InconclusiveReason::ResourceLimit);
+  assert(zero.statistics.get(primo::util::StatKey::TheoryConflictCount) == 0);
+  options.max_theory_conflicts.reset();
+  options.cancelled = [] { return true; };
+  const auto cancelled = check_sat_smtlib(input, options);
+  assert(cancelled.result == CheckSatResult::Unknown);
+  assert(cancelled.reason == primo::smt::InconclusiveReason::Cancelled);
+}
+
 }  // namespace
 
 int main() {
+  shared_driver_preserves_boolean_models_and_recipe_isolation();
+  boolean_only_lia_and_solving_without_models();
+  shared_driver_preserves_typed_limits_and_cancellation();
+  internal_integer_branches_do_not_spend_the_conflict_budget();
   qf_lia_follows_the_euclidean_division_convention();
   qf_lia_encodes_div_and_mod_over_a_variable();
   qf_lia_supports_abs_and_unit_divisors();

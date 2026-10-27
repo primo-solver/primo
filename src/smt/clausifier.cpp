@@ -76,42 +76,6 @@ struct BooleanClausifier::Implementation {
 
   const std::vector<TheoryAtom>& theory_atoms() const { return theory_atoms_; }
 
-  void materialize_boolean_argument_literals() {
-    std::unordered_set<core::TermId> visited;
-    for (std::size_t index = 0; index < theory_atoms_.size(); ++index) {
-      std::vector<core::TermId> pending{theory_atoms_[index].term};
-      while (!pending.empty()) {
-        const core::TermId term_id = pending.back();
-        pending.pop_back();
-        if (!visited.insert(term_id).second) {
-          continue;
-        }
-        const std::vector<core::TermId> children = terms_.get(term_id).children;
-        const core::TermKind kind = terms_.get(term_id).kind;
-        // Only closed instances enter ground EUF; binder bodies and patterns
-        // must not create domain bridges for bound variables.
-        if (kind == core::TermKind::Forall || kind == core::TermKind::Exists) continue;
-        if (kind == core::TermKind::Application) {
-          if (terms_.get(term_id).sort == terms_.symbols().bool_sort()) {
-            ensure_boolean_domain_bridge(term_id);
-          }
-          for (const core::TermId child : children) {
-            if (terms_.get(child).sort == terms_.symbols().bool_sort()) {
-              ensure_boolean_domain_bridge(child);
-            }
-          }
-        } else if (kind == core::TermKind::Equality) {
-          for (const core::TermId child : children) {
-            if (terms_.get(child).sort == terms_.symbols().bool_sort()) {
-              ensure_boolean_domain_bridge(child);
-            }
-          }
-        }
-        pending.insert(pending.end(), children.begin(), children.end());
-      }
-    }
-  }
-
   // Registers Bool-sorted terms that occur as ARGUMENTS of uninterpreted
   // applications as theory atoms. Registration is all that is needed: once a
   // term is an atom, `add_explained_theory_equality` and
@@ -124,8 +88,8 @@ struct BooleanClausifier::Implementation {
   // and report sat for an unsatisfiable formula -- see
   // bugs/qf-uf-boolean-argument-congruence.
   //
-  // Costs no SAT variable and no clause: theory_atom_for_term reaches
-  // encode_theory_atom_lit, which reuses the literal the term already has.
+  // Reuses the argument's literal, or allocates its first one if not encoded
+  // yet. It creates no separate equality variable or linking clause.
   //
   // Deliberately NOT registered:
   //   * Bool-VALUED applications -- already theory atoms, and their branch in
@@ -172,8 +136,6 @@ struct BooleanClausifier::Implementation {
 
   std::size_t boolean_argument_scan_count() const { return boolean_argument_scan_count_; }
 
-  std::size_t boolean_domain_bridge_count() const { return boolean_domain_bridged_terms_.size(); }
-
  private:
   void register_boolean_argument_term(core::TermId term_id) {
     const core::Term& term = terms_.get(term_id);
@@ -191,43 +153,6 @@ struct BooleanClausifier::Implementation {
     // May return an atom that already exists with polarity flags set from the
     // formula structure; the flag has to be set either way.
     theory_atom_for_term(term_id).theory_relevant_at_both_polarities = true;
-  }
-
-  void ensure_boolean_domain_constants() {
-    if (boolean_domain_constants_initialized_) {
-      return;
-    }
-    boolean_domain_constants_initialized_ = true;
-    const core::TermId true_term = terms_.mk_bool(true);
-    const core::TermId false_term = terms_.mk_bool(false);
-    const core::TermId distinct_term = terms_.mk_eq(true_term, false_term);
-    const sat::Lit distinct_lit = theory_atom_for_term(distinct_term).lit;
-    backend_.add_clause(sat::Clause{negate(distinct_lit)});
-  }
-
-  void ensure_boolean_domain_bridge(core::TermId term_id) {
-    if (terms_.get(term_id).kind == core::TermKind::BoolValue) {
-      return;
-    }
-    if (!boolean_domain_bridged_terms_.insert(term_id).second) {
-      return;
-    }
-    ensure_boolean_domain_constants();
-    const sat::Lit term_lit = encode(term_id);
-    const core::TermId true_term = terms_.mk_bool(true);
-    const core::TermId false_term = terms_.mk_bool(false);
-    const sat::Lit equal_true = theory_atom_for_term(terms_.mk_eq(term_id, true_term)).lit;
-    const sat::Lit equal_false = theory_atom_for_term(terms_.mk_eq(term_id, false_term)).lit;
-    // The SAT value of the Boolean term selects its canonical EUF value.
-    backend_.add_clause(sat::Clause{negate(term_lit), equal_true});
-    backend_.add_clause(sat::Clause{term_lit, equal_false});
-    // Propagation shortcut, NOT a soundness requirement: asserting both
-    // equalities merges t with true and with false, hence true with false,
-    // which the unit disequality above already forbids -- EUF raises that
-    // conflict on its own. This clause only lets SAT prune the combination
-    // without the theory round-trip, and it has not been shown to pay for
-    // itself. See open-leads.md lead 15 before assuming it is load-bearing.
-    backend_.add_clause(sat::Clause{negate(equal_true), negate(equal_false)});
   }
 
   void collect_theory_atom_polarities(core::TermId term_id, bool positive) {
@@ -595,8 +520,6 @@ struct BooleanClausifier::Implementation {
   std::vector<std::uint8_t> polarity_seen_by_term_;
   std::vector<TheoryAtom> theory_atoms_;
   std::size_t boolean_argument_scan_count_ = 0;
-  bool boolean_domain_constants_initialized_ = false;
-  std::unordered_set<core::TermId> boolean_domain_bridged_terms_;
   std::unordered_set<core::TermId> registered_boolean_argument_terms_;
   sat::Lit true_lit_{0};
 };
@@ -626,10 +549,6 @@ const std::vector<BooleanClausifier::TheoryAtom>& BooleanClausifier::theory_atom
   return implementation_->theory_atoms();
 }
 
-void BooleanClausifier::materialize_boolean_argument_literals() {
-  implementation_->materialize_boolean_argument_literals();
-}
-
 std::size_t BooleanClausifier::register_boolean_argument_terms() {
   return implementation_->register_boolean_argument_terms();
 }
@@ -640,10 +559,6 @@ std::size_t BooleanClausifier::boolean_argument_registration_count() const {
 
 std::size_t BooleanClausifier::boolean_argument_scan_count() const {
   return implementation_->boolean_argument_scan_count();
-}
-
-std::size_t BooleanClausifier::boolean_domain_bridge_count() const {
-  return implementation_->boolean_domain_bridge_count();
 }
 
 }  // namespace primo::smt

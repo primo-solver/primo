@@ -5,7 +5,6 @@ from pathlib import Path
 
 from scripts.summarize_benchmark_shards import compare, load_rows, summarize
 
-
 FIELDS = ["file", "family", "status", "answer", "wrong", "seconds"]
 
 

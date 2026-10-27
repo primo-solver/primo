@@ -1,0 +1,13 @@
+file,profile,rule,answer,timeout,diagnostic_seconds,statistics_present
+latendresse/ecoliMILPglycerolYices3-5000.smt2,default,bland,unknown,True,53.03716165199876,False
+latendresse/ecoliMILPglycerolYices3-5000.smt2,default,dantzig,unknown,True,53.03700893558562,False
+latendresse/ecoliMILPglycerolYices3-5000.smt2,default,soi,unknown,True,53.28936326503754,False
+latendresse/ecoliMILPglycerolYices3-5000.smt2,phase,bland,unknown,True,53.03737845644355,False
+latendresse/ecoliMILPglycerolYices3-5000.smt2,phase,dantzig,unknown,True,53.03681422397494,False
+latendresse/ecoliMILPglycerolYices3-5000.smt2,phase,soi,unknown,True,53.28730211779475,False
+LassoRanker/CooperatingT2/elmhes.c.i.elmhes.pl.t2.nor.t2.rlgfixed.t2.c_Iteration5_Loop_7-phaseTemplate.smt2,default,bland,unknown,True,45.47526782564819,True
+LassoRanker/CooperatingT2/elmhes.c.i.elmhes.pl.t2.nor.t2.rlgfixed.t2.c_Iteration5_Loop_7-phaseTemplate.smt2,default,dantzig,unknown,True,46.776896031573415,True
+LassoRanker/CooperatingT2/elmhes.c.i.elmhes.pl.t2.nor.t2.rlgfixed.t2.c_Iteration5_Loop_7-phaseTemplate.smt2,default,soi,unknown,True,46.92722908779979,True
+LassoRanker/CooperatingT2/elmhes.c.i.elmhes.pl.t2.nor.t2.rlgfixed.t2.c_Iteration5_Loop_7-phaseTemplate.smt2,monotone,bland,unknown,True,45.27457203529775,True
+LassoRanker/CooperatingT2/elmhes.c.i.elmhes.pl.t2.nor.t2.rlgfixed.t2.c_Iteration5_Loop_7-phaseTemplate.smt2,monotone,dantzig,unknown,True,45.32483648136258,True
+LassoRanker/CooperatingT2/elmhes.c.i.elmhes.pl.t2.nor.t2.rlgfixed.t2.c_Iteration5_Loop_7-phaseTemplate.smt2,monotone,soi,unknown,True,46.67626877874136,True

@@ -12,7 +12,6 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-
 SCRIPT = Path(__file__).parents[2] / "scripts" / "slurm_prepare_benchmark_workspace.py"
 SPEC = importlib.util.spec_from_file_location(
     "slurm_prepare_benchmark_workspace", SCRIPT
@@ -100,6 +99,7 @@ class SshDiagnosticsTest(unittest.TestCase):
         MODULE.shell_syntax_check(command)
         words = shlex.split(command)
         self.assertIn("--cpus-per-task=2", words)
+        self.assertIn("--ntasks=1", words)
         self.assertEqual(words[-3:-1], ["bash", "-c"])
         self.assertIn("cd '/cluster/work space'", words[-1])
         self.assertIn("--target primo -j2", words[-1])

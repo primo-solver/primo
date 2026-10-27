@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "sat/cadical_backend.hpp"
+#include "smt/assignment_coordinator.hpp"
 
 using primo::sat::CadicalBackend;
 using primo::sat::Clause;
@@ -198,18 +199,17 @@ void reconnect_after_external_reason() {
   int inferred = 0;
   {
     FreshObservedPropagationCallbackPropagator first(backend);
-    backend.reconnect_external_propagator(first, {x});
+    const primo::smt::AssignmentConnection connection(backend, first, {x});
     assert(backend.solve() == SatResult::Sat);
     inferred = *first.fresh_var();
-    backend.disconnect_external_propagator();
+    assert(connection.view().literal(inferred) == inferred);
   }
   AssignmentRecorder second;
-  backend.reconnect_external_propagator(second, {x, inferred});
+  const primo::smt::AssignmentConnection connection(backend, second, {x, inferred});
   assert(backend.solve() == SatResult::Sat);
   assert(second.saw(x) && second.saw(inferred));
   backend.assume(Lit{-inferred});
   assert(backend.solve() == SatResult::Unsat);
-  backend.disconnect_external_propagator();
 }
 
 void reconnect_after_cancellation() {

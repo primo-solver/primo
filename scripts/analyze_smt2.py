@@ -44,7 +44,7 @@ Both are recorded because they bound what a report can be used to claim.
   `tta_startup` (12.1%) a "no one-sided variables" reading is weak evidence:
   it says the analyzer could not tell, not that none exist. Every other
   family in the QF_LRA corpus is at 0.0%.
-* **`inline_lets` materialises the let-DAG into a tree.** `substitute` copies a
+* **`inline_lets` materialises the let-DAG into a tree.** Expansion copies a
   bound term at each use site, so a heavily-shared formula expands well beyond
   its input size; this, not parsing, is what makes the largest files slow
   (~43s and ~1GB at the tail). The fix is to traverse the DAG directly,
@@ -102,72 +102,62 @@ def parse(tokens):
     return top
 
 
+def symbol_key(name):
+    """SMT-LIB 2.7 section 3.1: x and |x| denote the same symbol."""
+    return name[1:-1] if name.startswith('|') and name.endswith('|') else name
+
+
 def inline_lets(term):
-    """Return `term` with all `let` bindings substituted, iteratively.
+    """Expand lexical, parallel SMT-LIB lets into a fresh tree without recursion.
 
-    Bindings are expanded in dependency order by repeated substitution, which
-    terminates because SMT-LIB `let` cannot be recursive.
+    Basis: SMT-LIB 2.7, section 3.6.1, Let (parallel substitution).
+    Each visit owns an immutable outer environment of already expanded trees.
+    RHS visits finish before a body frame installs the new bindings. Substituted
+    trees are copied verbatim, never visited under the receiving environment.
+    This deliberately retains tree expansion and its possible exponential size.
     """
-    # Collect the chain of lets wrapping the body.
-    env: dict = {}
-    cur = term
-    while isinstance(cur, list) and len(cur) == 3 and cur[0] == 'let':
-        for binding in cur[1]:
-            if isinstance(binding, list) and len(binding) == 2:
-                env[binding[0]] = binding[1]
-        cur = cur[2]
-    body = cur
-    if not env:
-        return body
-    # Expand env entries that refer to other env entries.
-    for _ in range(len(env) + 1):
-        changed = False
-        for name, value in list(env.items()):
-            refs = False
-            stack = [value]
-            while stack:
-                node = stack.pop()
-                if isinstance(node, str):
-                    if node in env and node != name:
-                        refs = True
-                        break
-                else:
-                    stack.extend(node)
-            if refs:
-                env[name] = substitute(value, env, skip=name)
-                changed = True
-        if not changed:
-            break
-    return substitute(body, env)
-
-
-def substitute(term, env, skip=None):
-    """Iteratively replace names bound in `env`. Returns a fresh tree."""
-    if isinstance(term, str):
-        repl = env.get(term)
-        if repl is None or term == skip:
-            return term
-        return copy_tree(repl)
-    root: list = [None] * len(term)
-    work = [(term, root)]
+    root = [None]
+    work = [("visit", term, {}, root, 0)]
     while work:
-        src, dst = work.pop()
-        for i, child in enumerate(src):
-            if isinstance(child, str):
-                repl = env.get(child)
-                if repl is None or child == skip:
-                    dst[i] = child
-                elif isinstance(repl, str):
-                    dst[i] = repl
-                else:
-                    sub: list = [None] * len(repl)
-                    dst[i] = sub
-                    work.append((repl, sub))
-            else:
-                sub = [None] * len(child)
-                dst[i] = sub
-                work.append((child, sub))
-    return root
+        kind, node, env, target, index = work.pop()
+        if kind == "body":
+            bindings, values, body = node
+            inner = dict(env)
+            inner.update(zip((symbol_key(binding[0]) for binding in bindings), values))
+            work.append(("visit", body, inner, target, index))
+            continue
+        if isinstance(node, str):
+            key = symbol_key(node)
+            target[index] = copy_tree(env[key]) if key in env else node
+            continue
+        if not isinstance(node, list) or not node:
+            raise ValueError("malformed term in let expansion")
+        head = node[0]
+        if isinstance(head, str) and head in {"forall", "exists", "lambda", "match"}:
+            raise ValueError(f"unsupported binding construct: {head}")
+        if head == "let":
+            if len(node) != 3 or not isinstance(node[1], list) or not node[1]:
+                raise ValueError("malformed let: expected bindings and body")
+            bindings = node[1]
+            names = set()
+            for binding in bindings:
+                if (not isinstance(binding, list) or len(binding) != 2
+                        or not isinstance(binding[0], str)
+                        or not re.fullmatch(r"[a-zA-Z~!@$%^&*_+=<>.?/\-][a-zA-Z0-9~!@$%^&*_+=<>.?/\-]*|\|[^|\\]*\|", binding[0])
+                        or binding[0] in {"let", "forall", "exists", "match", "!", "_", "as"}
+                        or symbol_key(binding[0]) in names):
+                    raise ValueError("malformed or duplicate let binding")
+                names.add(symbol_key(binding[0]))
+            values = [None] * len(bindings)
+            work.append(("body", (bindings, values, node[2]), env, target, index))
+            for i, binding in enumerate(bindings):
+                work.append(("visit", binding[1], env, values, i))
+        else:
+            result = [None] * len(node)
+            target[index] = result
+            for i, child in enumerate(node):
+                work.append(("visit", child, env, result, i))
+    return root[0]
 
 
 def copy_tree(term):
@@ -374,6 +364,10 @@ def analyze(path):
     decls = collections.Counter()
     reals, bools = set(), set()
     for form in forms:
+        if isinstance(form, list) and form and form[0] in (
+            'define-fun', 'define-fun-rec', 'define-funs-rec'
+        ):
+            raise ValueError(f"unsupported binding construct: {form[0]}")
         if isinstance(form, list) and form and form[0] in ('declare-fun', 'declare-const'):
             name = form[1]
             sort = form[-1] if isinstance(form[-1], str) else 'other'
@@ -763,7 +757,10 @@ def main():
         ap.error('give at least one file, or --selftest')
     out = []
     for path in args.files:
-        info = analyze(path)
+        try:
+            info = analyze(path)
+        except ValueError as error:
+            ap.error(f"{path}: {error}")
         out.append(info)
         if not args.json:
             report(info)

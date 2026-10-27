@@ -1,0 +1,2387 @@
+{
+  "schema_version": 1,
+  "snapshot_commit": "3eddb42568278ea6438b8f43ff33867eec6b9760",
+  "snapshot_tag": "docs-before-restructure-2026-09-24",
+  "scope": "83 book pages before the inventory-audit additions; IDs captured from the successful strict HTML build. This is a preservation inventory, not a completed redirect map.",
+  "pages": [
+    {
+      "source": "docs/active-work.md",
+      "html_path": "active-work.html",
+      "content_ids": [
+        "active-work",
+        "documentation-rewrite",
+        "maintaining-this-register",
+        "public-repository-migration-planning"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/architecture.md",
+      "html_path": "architecture.html",
+      "content_ids": [
+        "architecture",
+        "boundaries",
+        "command-line-enum-options",
+        "current-implementation-status",
+        "hash-consing",
+        "interaction-with-smt-lib-let",
+        "layers",
+        "optional-tools",
+        "ownership-and-lifetime",
+        "paper-traceability",
+        "quantifiers-and-bound-variables",
+        "sat-and-theory-views-of-terms",
+        "scoped-smt-lib-command-execution",
+        "sorts-and-symbols",
+        "term-constructors-and-simplification",
+        "term-representation"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/archive/current-status.md",
+      "html_path": "archive/current-status.html",
+      "content_ids": [
+        "evidence-boundary",
+        "extensibility-and-retained-specialized-paths",
+        "qualification-snapshot-before-the-manual-rewrite",
+        "selecting-and-checking-a-profile",
+        "sources-and-implementation-status",
+        "supported-routes",
+        "testing-and-maintenance"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/arithmetic.md",
+      "html_path": "arithmetic.html",
+      "content_ids": [
+        "arithmetic",
+        "equality-and-disequality",
+        "id1",
+        "implemented-milestones-1-4-supported",
+        "implemented-subset-vs-deviations-vs-limitations",
+        "lra-equality-and-disequality",
+        "lra-tableau-occurrence-index",
+        "milestone-roadmap",
+        "model-construction-for-boolean-atoms-in-qf-lra-fixed-2026-08-17",
+        "qf-lra-options-and-statistics-reference",
+        "tableau-sparse-representation",
+        "tableau-sparse-row-and-occurrence-representation",
+        "the-595-file-scrambled-subset-at-300s-for-comparison",
+        "theory-literal-language",
+        "where-qf-lra-work-stands-and-what-is-open-2026-08-07"
+      ],
+      "explicit_labels": [
+        {
+          "label": "lra-equality-and-disequality",
+          "line": 115
+        },
+        {
+          "label": "tableau-sparse-representation",
+          "line": 160
+        }
+      ]
+    },
+    {
+      "source": "docs/assumption-incremental-lra.md",
+      "html_path": "assumption-incremental-lra.html",
+      "content_ids": [
+        "additional-opensmt-reference",
+        "algorithmic-basis-and-deliberate-limits",
+        "assumption-based-incremental-qf-lra-design",
+        "collected-correctness-evidence",
+        "complexity-and-observable-reuse",
+        "implementation-mapping-and-verification-status",
+        "native-session-comparison-and-decision",
+        "ownership-operations-and-invariants",
+        "proof-obligations-and-acceptance-tests"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/assumption-incremental-uf.md",
+      "html_path": "assumption-incremental-uf.html",
+      "content_ids": [
+        "active-lowered-roots-for-uf-model-construction",
+        "algorithmic-basis-and-implemented-subset",
+        "assumption-based-incremental-qf-uf",
+        "correctness-coverage-and-acceptance",
+        "evaluation-and-acceptance",
+        "lead-22-atom-scan-experiment-checklist",
+        "model-replay-bottleneck-and-insertion-checklist",
+        "ownership-and-operations",
+        "profiling-follow-up",
+        "qualified-native-evaluation-at-fa2fe5c",
+        "safe-configuration-and-proof-obligations"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/benchmark-record-storage.md",
+      "html_path": "benchmark-record-storage.html",
+      "content_ids": [
+        "benchmark-records-in-git-with-a-generated-sqlite-index",
+        "corrections-validation-and-query-generation",
+        "data-model-and-invariants",
+        "migration-and-verification",
+        "problem-and-decision",
+        "publication-and-maintenance",
+        "record-layout-and-contributor-workflow",
+        "storage-responsibilities"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/bool-argument-congruence-bug.md",
+      "html_path": "bool-argument-congruence-bug.html",
+      "content_ids": [
+        "cause-two-behaviours-compose",
+        "fix-direction-and-the-trap-in-it",
+        "fixed-2026-08-26-fa44295-corrected-in-d8e8595",
+        "gate-result",
+        "gate-result-and-the-control-run-that-makes-it-mean-something",
+        "reproducer",
+        "seeds-added",
+        "the-harness-that-answers-it",
+        "the-same-area-produced-a-second-wrong-answer-2026-08-26",
+        "what-it-is-not",
+        "why-the-fuzzers-did-not-catch-it-and-what-was-added",
+        "wrong-answer-congruence-is-dropped-for-bool-sorted-function-arguments"
+      ],
+      "explicit_labels": [
+        {
+          "label": "gate-result",
+          "line": 129
+        }
+      ]
+    },
+    {
+      "source": "docs/boolean-dag-flattening.md",
+      "html_path": "boolean-dag-flattening.html",
+      "content_ids": [
+        "algorithmic-basis-and-scope",
+        "are-we-back-to-the-old-behaviour-on-qf-lra",
+        "boolean-dag-representation-and-bounded-associative-flattening",
+        "operations-and-invariants",
+        "ownership-and-data-structures",
+        "post-preprocessing-application",
+        "proof-obligations-and-tests",
+        "statistics",
+        "the-second-application-point-and-why-it-was-needed-2026-08-11",
+        "validation-evidence",
+        "verified-on-the-motivating-instance"
+      ],
+      "explicit_labels": [
+        {
+          "label": "post-preprocessing-application",
+          "line": 164
+        }
+      ]
+    },
+    {
+      "source": "docs/contributing.md",
+      "html_path": "contributing.html",
+      "content_ids": [
+        "contributing-to-primo-draft",
+        "documentation-is-part-of-the-change",
+        "original-implementation-and-algorithm-design",
+        "reporting-problems",
+        "required-fuzzing-before-merge",
+        "review-and-responsibility",
+        "testing-and-evidence",
+        "triage-failures-and-preserve-evidence",
+        "what-we-welcome"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/current-status.md",
+      "html_path": "current-status.html",
+      "content_ids": [
+        "current-implementation-and-qualification",
+        "evidence-boundary",
+        "extensibility-and-retained-specialized-paths",
+        "limits-and-unsupported-features",
+        "selecting-and-checking-a-profile",
+        "sources-and-implementation-status",
+        "supported-routes",
+        "testing-and-maintenance"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/debugging.md",
+      "html_path": "debugging.html",
+      "content_ids": [
+        "bisecting-on-the-slurm-cluster",
+        "failure-taxonomy",
+        "fuzz-result-policy",
+        "fuzzing-and-reduction",
+        "infrastructure-failures",
+        "known-invalid-model-shape",
+        "known-recursion-depth-limit",
+        "model-failures",
+        "model-validation",
+        "required-fuzz-gates",
+        "result-failures",
+        "runtime-failures",
+        "solver-statistics",
+        "the-remote-sanitizer-build"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/development/documentation.md",
+      "html_path": "development/documentation.html",
+      "content_ids": [
+        "build-and-preview",
+        "distribution-status",
+        "logo-assets",
+        "maintain-the-documentation",
+        "page-roles",
+        "source-links-and-revisions"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/difference_logic.md",
+      "html_path": "difference_logic.html",
+      "content_ids": [
+        "difference-logic"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/documentation-restructuring.md",
+      "html_path": "documentation-restructuring.html",
+      "content_ids": [
+        "acceptance-checklist-before-public-release",
+        "canonical-facts-and-page-contracts",
+        "content-moves-and-rewrites",
+        "documentation-restructuring-before-public-release",
+        "execution-milestones",
+        "first-manual-batch-2026-09-23",
+        "inventory-findings",
+        "outcome-and-publication-gate",
+        "page-map-and-target-layout",
+        "proposed-reader-structure",
+        "source-links-and-documented-revisions",
+        "source-revision-workflow",
+        "website-and-deployment-plan"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/dpllt.md",
+      "html_path": "dpllt.html",
+      "content_ids": [
+        "cadical-variable-ownership",
+        "control-flow-and-ownership",
+        "dpll-t-integration",
+        "sources-and-implementation-status"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/euf-boolean-arguments.md",
+      "html_path": "euf-boolean-arguments.html",
+      "content_ids": [
+        "boolean-arguments-in-euf",
+        "boolean-equality-lowering",
+        "completeness-why-arguments-are-enough",
+        "correctness-argument",
+        "current-primo-architecture",
+        "generated-term-preparation-contract",
+        "scope-and-limitations",
+        "semantic-invariant",
+        "soundness",
+        "the-cardinality-axiom-argument-registration",
+        "the-invariant-the-pure-theory-filter-must-respect",
+        "verification-cases",
+        "what-is-not-claimed",
+        "why-congruence-closure-alone-is-incomplete-here"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/euf.md",
+      "html_path": "euf.html",
+      "content_ids": [
+        "congruence-closure",
+        "current-solver-path",
+        "euf-and-congruence-closure",
+        "eufsolver",
+        "implemented-and-deferred",
+        "model-construction-and-boolean-completion",
+        "paper-traceability",
+        "preprocessing-interaction",
+        "pure-theory-filter-precondition",
+        "term-interface",
+        "the-rule-for-future-mechanisms",
+        "where-the-precondition-fails",
+        "why-it-is-sound-and-the-precondition-that-makes-it-so"
+      ],
+      "explicit_labels": [
+        {
+          "label": "pure-theory-filter-precondition",
+          "line": 65
+        }
+      ]
+    },
+    {
+      "source": "docs/experiments.md",
+      "html_path": "experiments.html",
+      "content_ids": [
+        "analyzing-benchmark-shape-use-the-analyzer-not-grep",
+        "baseline-worktrees-and-the-sync-learned-2026-08-01",
+        "cadical-profile-check",
+        "experiments",
+        "formula-analyzer",
+        "full-qf-uf-archive",
+        "interesting-qf-uf-exact-set",
+        "non-standard-unsolved-benchmarks",
+        "qf-uf-gap-tuning-with-smac",
+        "qf-uf-parameter-tuning-with-irace",
+        "qf-uflia-representative-sample",
+        "separate-model-validation-from-speed-measurements",
+        "solver-process-results-are-answer-plus-exit-status",
+        "validator-memory-limit-investigation"
+      ],
+      "explicit_labels": [
+        {
+          "label": "formula-analyzer",
+          "line": 131
+        }
+      ]
+    },
+    {
+      "source": "docs/finite-domain-fuzzing.md",
+      "html_path": "finite-domain-fuzzing.html",
+      "content_ids": [
+        "acceptance",
+        "current-evidence",
+        "finite-domain-fuzzing",
+        "generator-contract",
+        "permanent-gates"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/fuzz-coverage-qf-lra.md",
+      "html_path": "fuzz-coverage-qf-lra.html",
+      "content_ids": [
+        "a-failed-task-state-is-not-a-wrong-answer-either",
+        "a-free-boolean-mixed-with-arithmetic-blind-spot-and-the-bug-it-hid",
+        "how-much-mutation-fuzzing-actually-tests",
+        "knobs-that-do-not-pay-with-the-measurements",
+        "qf-lra-fuzz-coverage",
+        "sec-boolean-arithmetic-gap",
+        "sec-failed-is-not-wrong",
+        "sec-fuzzsmt-profiles",
+        "sec-invalid-seeds",
+        "sec-mutation-yield",
+        "sec-rejected-knobs",
+        "sec-seed-corpus",
+        "sec-yices",
+        "status",
+        "the-clean-room-line",
+        "the-fuzzsmt-parameter-ladder",
+        "the-mutation-seed-corpus",
+        "the-size-limit-that-undid-the-fix",
+        "what-adding-a-reference-broke",
+        "yices-as-a-second-reference"
+      ],
+      "explicit_labels": [
+        {
+          "label": "sec-seed-corpus",
+          "line": 16
+        },
+        {
+          "label": "sec-invalid-seeds",
+          "line": 53
+        },
+        {
+          "label": "sec-yices",
+          "line": 98
+        },
+        {
+          "label": "sec-mutation-yield",
+          "line": 156
+        },
+        {
+          "label": "sec-fuzzsmt-profiles",
+          "line": 216
+        },
+        {
+          "label": "sec-rejected-knobs",
+          "line": 258
+        },
+        {
+          "label": "sec-failed-is-not-wrong",
+          "line": 345
+        },
+        {
+          "label": "sec-boolean-arithmetic-gap",
+          "line": 384
+        }
+      ]
+    },
+    {
+      "source": "docs/guide/getting-started.md",
+      "html_path": "guide/getting-started.html",
+      "content_ids": [
+        "build",
+        "build-and-run-primo",
+        "check-the-build-and-examples",
+        "first-solve",
+        "prerequisites",
+        "read-the-book-locally"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/guide/input.md",
+      "html_path": "guide/input.html",
+      "content_ids": [
+        "a-command-stream",
+        "quantified-uf",
+        "reading-the-result",
+        "smt-lib-input-and-results",
+        "terms-and-arithmetic"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/guide/models.md",
+      "html_path": "guide/models.html",
+      "content_ids": [
+        "representation-and-source",
+        "request-a-model",
+        "when-a-model-is-available"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/guide/sessions.md",
+      "html_path": "guide/sessions.html",
+      "content_ids": [
+        "add-and-retract-an-assertion",
+        "implementation-and-evidence",
+        "optional-reuse-between-queries",
+        "repeated-queries-and-scopes",
+        "scope-rules"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/incremental-smt.md",
+      "html_path": "incremental-smt.html",
+      "content_ids": [
+        "definition-binding-invariant",
+        "design-and-implementation-checklist",
+        "direct-stream-parsing-checklist-2026-09-10",
+        "incremental-append-with-rebuild-on-pop-feasibility-not-implemented",
+        "incremental-smt-sessions",
+        "native-qf-lra-archive-checks",
+        "opt-in-assumptions-engine",
+        "qualification-of-the-rebuild-baseline",
+        "real-file-streaming-and-scoping-check",
+        "rebuild-baseline-operations-costs-and-obligations",
+        "rebuild-baseline-representation-and-ownership",
+        "running-and-independently-validating-sessions",
+        "sources-and-implementation-status",
+        "supported-boundary-and-acceptance-tests"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/incremental-uf-atom-scans.md",
+      "html_path": "incremental-uf-atom-scans.html",
+      "content_ids": [
+        "additional-opensmt-reference",
+        "correctness-and-qualification-boundary",
+        "incremental-uf-scan-only-newly-appended-atoms",
+        "measured-effect",
+        "representation-and-invariant",
+        "reproduction-and-evidence"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/index.md",
+      "html_path": "index.html",
+      "content_ids": [
+        "documentation-policy",
+        "how-the-book-is-organised",
+        "logo-assets",
+        "primo-documentation",
+        "understand-and-contribute",
+        "work-status"
+      ],
+      "explicit_labels": [
+        {
+          "label": "how-the-book-is-organised",
+          "line": 25
+        },
+        {
+          "label": "logo-assets",
+          "line": 46
+        }
+      ]
+    },
+    {
+      "source": "docs/lexical-conformance.md",
+      "html_path": "lexical-conformance.html",
+      "content_ids": [
+        "attribute-validation-repair-checklist",
+        "direct-stream-review-findings-2026-09-10",
+        "implemented-repair-and-selected-compatibility-policy",
+        "inspection-of-griggio-s-generic-parser",
+        "online-coverage-inspected",
+        "repair-qualification",
+        "representation-and-lifetime",
+        "representation-and-missing-invariants",
+        "reproducible-multi-solver-test",
+        "smt-lib-lexical-conformance-audit",
+        "status-and-authoritative-specification"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/literature.md",
+      "html_path": "literature.html",
+      "content_ids": [
+        "algorithm",
+        "cvc4-architecture-and-preprocessing",
+        "data-structures",
+        "efficient-conversion-of-term-ites",
+        "equality-logic-transitivity-constraints-and-selective-ackermannization",
+        "exploiting-symmetry-in-smt-problems",
+        "fuzzing-and-delta-debugging-smt-solvers",
+        "generating-minimum-transitivity-constraints-in-p-time-for-deciding-equality-logic",
+        "id1",
+        "id10",
+        "id11",
+        "id12",
+        "id13",
+        "id14",
+        "id15",
+        "id16",
+        "id17",
+        "id18",
+        "id19",
+        "id2",
+        "id20",
+        "id21",
+        "id22",
+        "id23",
+        "id24",
+        "id25",
+        "id26",
+        "id27",
+        "id28",
+        "id29",
+        "id3",
+        "id30",
+        "id31",
+        "id32",
+        "id33",
+        "id34",
+        "id35",
+        "id36",
+        "id37",
+        "id38",
+        "id39",
+        "id4",
+        "id40",
+        "id41",
+        "id42",
+        "id43",
+        "id44",
+        "id45",
+        "id46",
+        "id47",
+        "id48",
+        "id49",
+        "id5",
+        "id50",
+        "id51",
+        "id52",
+        "id53",
+        "id54",
+        "id55",
+        "id56",
+        "id57",
+        "id58",
+        "id6",
+        "id7",
+        "id8",
+        "id9",
+        "implementation-notes",
+        "lazy-satisfiability-modulo-theories",
+        "lexical-specification-and-external-parser-audit",
+        "literature",
+        "possible-milestone",
+        "relevance",
+        "risks",
+        "scoped-command-sessions-and-incremental-tactics",
+        "symmetry-avoidance-in-mace-style-finite-model-finding",
+        "symmetry-breaking-using-value-precedence",
+        "template",
+        "unconstrained-value-simplification",
+        "using-sat-and-smt-solvers-for-finite-model-finding-with-sorts"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/model-interpretation.md",
+      "html_path": "model-interpretation.html",
+      "content_ids": [
+        "checking-errors-and-verification",
+        "component-adapter-and-replay-checklist",
+        "data-and-ownership",
+        "evaluation-and-proof-obligations",
+        "finalized-model-interpretations",
+        "status-and-acceptance-contract",
+        "visible-signatures-in-retained-sessions"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/modular-theory-combination.md",
+      "html_path": "modular-theory-combination.html",
+      "content_ids": [
+        "amortized-changed-term-notification-draining",
+        "component-contract",
+        "full-corpus-consensus-gap-profiles-2026-09-03",
+        "historical-qf-uflia-performance-diagnosis-2026-09-02",
+        "implemented-subset-and-limitations",
+        "incremental-qf-uflia-implementation-checklist-and-status",
+        "initial-operations-and-complexity",
+        "integer-model-reconstruction",
+        "invariants-and-obligations",
+        "known-rough-edges-in-the-coordinator",
+        "model-guided-transition-layer",
+        "modular-theory-combination",
+        "statistics",
+        "technique-queue-and-current-status"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/n-way-combination-migration.md",
+      "html_path": "n-way-combination-migration.html",
+      "content_ids": [
+        "acceptance-checklist",
+        "adding-another-component",
+        "final-preservation-summary",
+        "linear-ordinary-decision-selection-2026-09-09",
+        "migration-gates",
+        "n-component-combination-migration",
+        "qualification-evidence-through-the-full-qf-uflia-stage",
+        "queued-lemmas",
+        "representation-and-operations",
+        "scope-and-frozen-boundary",
+        "sources-and-proof-obligations"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/nelson-oppen-qf-lra-regression.md",
+      "html_path": "nelson-oppen-qf-lra-regression.html",
+      "content_ids": [
+        "boolean-test-cases",
+        "booleans-have-more-shapes-than-a-propositional-variable-test-all-of-them",
+        "fixing-a-only-after-b-and-measure-it-as-a-dispatch-change",
+        "fixing-b-add-the-missing-third-bucket",
+        "fixing-b2-reuse-the-prepared-theory-across-checks",
+        "how-the-regression-was-measured",
+        "how-to-fix",
+        "how-to-fix-this-safely",
+        "measurement-traps-hit-while-producing-this-note",
+        "mechanism-a-a-propositional-variable-is-treated-as-an-euf-predicate",
+        "mechanism-b-those-variables-are-then-handed-to-congruence-closure",
+        "mechanism-b2-the-euf-theory-is-rebuilt-from-scratch-on-every-check",
+        "mechanism-c-lassoranker-no-bookkeeping-on-the-pure-qf-lra-path-solved",
+        "mechanism-dispatch",
+        "mechanism-euf-atoms",
+        "mechanism-rebuild",
+        "mechanism-unknown",
+        "outcome-fixed-and-past-where-it-started",
+        "prototype-measured-2026-08-07-one-line-sound-and-two-tailed",
+        "routing-cost",
+        "routing-prototype",
+        "solved-2026-08-07",
+        "the-asymmetry-that-decides-the-order",
+        "the-nelson-oppen-qf-lra-regression-evidence-mechanisms-and-how-to-fix-it-safely",
+        "the-routing-fix-has-a-real-cost-and-mixed-dispatch-wide-recovers-it",
+        "what-not-to-do"
+      ],
+      "explicit_labels": [
+        {
+          "label": "mechanism-dispatch",
+          "line": 68
+        },
+        {
+          "label": "mechanism-euf-atoms",
+          "line": 124
+        },
+        {
+          "label": "mechanism-rebuild",
+          "line": 178
+        },
+        {
+          "label": "mechanism-unknown",
+          "line": 225
+        },
+        {
+          "label": "how-to-fix",
+          "line": 302
+        },
+        {
+          "label": "routing-cost",
+          "line": 349
+        },
+        {
+          "label": "routing-prototype",
+          "line": 382
+        },
+        {
+          "label": "boolean-test-cases",
+          "line": 473
+        }
+      ]
+    },
+    {
+      "source": "docs/nelson-oppen.md",
+      "html_path": "nelson-oppen.html",
+      "content_ids": [
+        "cost-boundaries",
+        "default-model-reconciliation",
+        "entailed-equality-exchange",
+        "final-validation-and-models",
+        "implementation-map",
+        "known-limitations",
+        "nelson-oppen-theory-combination",
+        "ownership-and-lifetime",
+        "propagation-modes",
+        "purification",
+        "shared-equality-registry",
+        "soundness-invariants",
+        "statistics",
+        "supported-combination",
+        "user-options"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/open-leads.md",
+      "html_path": "open-leads.html",
+      "content_ids": [
+        "a-enable-the-already-int-safe-preprocessing-passes",
+        "adaptive-early-pruning",
+        "adding-a-lead",
+        "assertion-packaging-is-another-trigger",
+        "at-a-glance",
+        "b-dispatch-is-a-nondeterminism-trigger-not-a-performance-bug",
+        "b-occurs-in-removal-was-a-linear-scan-and-it-dominated-pivot",
+        "b-partial-unit-pivot-gaussian-elimination-for-int",
+        "bounding-transformations-make-branch-and-bound-terminate",
+        "c-search-time-integer-inference-dio-hnf-cube",
+        "compact-handling-of-large-distinct-assertions",
+        "compare-the-row-representation-against-sorted-arrays-of-pairs",
+        "complementarity",
+        "complementarity-losing-on-average-is-not-the-same-as-useless",
+        "complete-implied-equality-basis",
+        "completed-investigations-historical",
+        "convert-cluster",
+        "corpus-level-main-lost-59-files-and-this-branch-recovers-16-of-them",
+        "current-model-filtered-unit-row-equality-recognition",
+        "d-conflict-clause-generalization-farkas-certificates-cdcl-integrated-branching",
+        "delete-the-bridge-atoms-boolean-domain-encoding",
+        "dispatch-nondeterminism",
+        "divisibility-aware-reasoning-for-div-and-mod",
+        "dl6-decide-precision-statically-before-search",
+        "e-extended-gcd-test-for-bounded-but-not-fixed-rows",
+        "evaluate-lra-model-phase-on-qf-lia-and-consider-promoting-it",
+        "extend-pure-theory-filter-to-lra-atoms",
+        "f-patching-paper-sect-4-1-done",
+        "flag-first-decision-ordering",
+        "hardbacktrack-revert-the-bounds-recompute-the-assignment",
+        "how-this-was-found-and-why-that-matters",
+        "how-to-use-it",
+        "if-then-else-preprocessing-cite-simplification-compression-reconstruction",
+        "incremental-uf-avoid-repeated-retained-data-scans",
+        "incrementally-sound-equation-elimination",
+        "investigation-what-king-s-form-would-actually-cost-here",
+        "it-is-not-a-performance-bug-at-15s-the-original-measurement",
+        "justification-goal-directed-decision-heuristics",
+        "lead-2b-corpus",
+        "lead-2b-lassoranker",
+        "lead-3b-cost-elsewhere",
+        "lead-3b-outcome",
+        "lead-aep",
+        "lead-boolean-bridge-exclusion",
+        "lead-bounding-transformations",
+        "lead-decision-recommendation",
+        "lead-divisibility",
+        "lead-dl6",
+        "lead-equality-basis",
+        "lead-flag-first",
+        "lead-hard-backtrack",
+        "lead-incremental-uf-distinct",
+        "lead-incremental-uf-equations",
+        "lead-incremental-uf-scans",
+        "lead-incremental-uf-structure",
+        "lead-ite-preprocessing",
+        "lead-justification",
+        "lead-leaving-rule",
+        "lead-monotone",
+        "lead-monotone-int",
+        "lead-occurs-in",
+        "lead-pure-filter-lra",
+        "lead-qflia",
+        "lead-qflia-conflict-generalization",
+        "lead-qflia-dio-hnf-cube",
+        "lead-qflia-extended-gcd",
+        "lead-qflia-patching",
+        "lead-qflia-preprocessing",
+        "lead-qflia-preprocessing-gauss",
+        "lead-qflia-preprocessing-safe",
+        "lead-qflira",
+        "lead-recursion-audit",
+        "lead-relevancy",
+        "lead-row-representation",
+        "lead-two-lra-paths",
+        "lead-unconstrained-terms",
+        "lead-z3-cheap-shared-equality",
+        "mathsat-s-actual-leaving-variable-rule",
+        "monotone-one-sided-elimination-for-int-not-just-real",
+        "monotone-one-sided-variable-elimination",
+        "not-to-be-fixed-naively",
+        "occurs-in-histogram",
+        "occurs-in-prototypes",
+        "open-leads-register",
+        "outcome-closed-already-implemented",
+        "outcome-implemented-and-it-clears-the-bar-on-the-family-it-targets",
+        "outcome-implemented-and-it-did-not-clear-the-promotion-bar",
+        "outcome-implemented-did-not-clear-the-bar-and-corroborated-the-source",
+        "project-and-tooling-leads",
+        "prototype-1-occurs-in-as-std-unordered-set",
+        "prototype-2-swap-and-pop-with-a-position-index",
+        "prototype-measurement-2026-08-05",
+        "qf-lia-preprocessing-is-fully-disabled-and-conflict-clauses-don-t-generalize",
+        "qf-lira-the-search-core-is-already-mixed-only-the-frontend-is-missing",
+        "quantifiers-bounded-larger-instance-batches",
+        "r1-audit-input-sized-recursion-across-the-repository",
+        "rejected",
+        "rejected-and-closed-leads",
+        "relevancy-propagation",
+        "share-immutable-euf-structure-across-checks",
+        "solver-leads-and-investigation-history",
+        "the-convert-family-three-techniques-one-set-of-instances",
+        "the-other-half-lassoranker-same-path-and-still-10x-slower",
+        "the-real-shape-of-this-lead-the-representation-is-half-a-sparse-matrix",
+        "the-two-rejected-prototypes-and-exactly-why-they-were-rejected",
+        "unconstrained-term-substitution-brummayer-bruttomesso",
+        "upgraded-again-2026-08-07-on-the-full-division-it-is-a-performance-bug",
+        "what-happens",
+        "what-to-actually-record-this-is-a-nondeterminism-trigger",
+        "when-the-erase-actually-happens",
+        "where-it-makes-things-worse-and-why-that-is-predictable",
+        "where-the-scan-cost-actually-lives-and-a-static-prediction-lead"
+      ],
+      "explicit_labels": [
+        {
+          "label": "lead-pure-filter-lra",
+          "line": 131
+        },
+        {
+          "label": "lead-flag-first",
+          "line": 200
+        },
+        {
+          "label": "lead-two-lra-paths",
+          "line": 250
+        },
+        {
+          "label": "lead-2b-corpus",
+          "line": 339
+        },
+        {
+          "label": "lead-2b-lassoranker",
+          "line": 363
+        },
+        {
+          "label": "dispatch-nondeterminism",
+          "line": 424
+        },
+        {
+          "label": "lead-leaving-rule",
+          "line": 507
+        },
+        {
+          "label": "lead-occurs-in",
+          "line": 561
+        },
+        {
+          "label": "occurs-in-prototypes",
+          "line": 823
+        },
+        {
+          "label": "occurs-in-histogram",
+          "line": 876
+        },
+        {
+          "label": "lead-3b-outcome",
+          "line": 915
+        },
+        {
+          "label": "lead-3b-cost-elsewhere",
+          "line": 964
+        },
+        {
+          "label": "lead-aep",
+          "line": 1034
+        },
+        {
+          "label": "lead-relevancy",
+          "line": 1053
+        },
+        {
+          "label": "lead-justification",
+          "line": 1074
+        },
+        {
+          "label": "lead-row-representation",
+          "line": 1089
+        },
+        {
+          "label": "lead-dl6",
+          "line": 1141
+        },
+        {
+          "label": "lead-monotone",
+          "line": 1158
+        },
+        {
+          "label": "lead-z3-cheap-shared-equality",
+          "line": 1311
+        },
+        {
+          "label": "lead-unconstrained-terms",
+          "line": 1368
+        },
+        {
+          "label": "lead-recursion-audit",
+          "line": 1454
+        },
+        {
+          "label": "lead-qflia-preprocessing",
+          "line": 1489
+        },
+        {
+          "label": "lead-qflia",
+          "line": 1490
+        },
+        {
+          "label": "lead-qflia-preprocessing-safe",
+          "line": 1539
+        },
+        {
+          "label": "lead-qflia-preprocessing-gauss",
+          "line": 1638
+        },
+        {
+          "label": "lead-qflia-dio-hnf-cube",
+          "line": 1660
+        },
+        {
+          "label": "lead-qflia-patching",
+          "line": 1743
+        },
+        {
+          "label": "lead-qflia-extended-gcd",
+          "line": 1783
+        },
+        {
+          "label": "lead-qflia-conflict-generalization",
+          "line": 1825
+        },
+        {
+          "label": "complementarity",
+          "line": 1916
+        },
+        {
+          "label": "lead-qflira",
+          "line": 1917
+        },
+        {
+          "label": "lead-monotone-int",
+          "line": 1960
+        },
+        {
+          "label": "lead-boolean-bridge-exclusion",
+          "line": 2025
+        },
+        {
+          "label": "lead-ite-preprocessing",
+          "line": 2067
+        },
+        {
+          "label": "lead-equality-basis",
+          "line": 2267
+        },
+        {
+          "label": "lead-hard-backtrack",
+          "line": 2325
+        },
+        {
+          "label": "lead-bounding-transformations",
+          "line": 2355
+        },
+        {
+          "label": "lead-decision-recommendation",
+          "line": 2402
+        },
+        {
+          "label": "convert-cluster",
+          "line": 2463
+        },
+        {
+          "label": "rejected",
+          "line": 2525
+        },
+        {
+          "label": "lead-divisibility",
+          "line": 2542
+        },
+        {
+          "label": "lead-incremental-uf-scans",
+          "line": 2615
+        },
+        {
+          "label": "lead-incremental-uf-distinct",
+          "line": 2661
+        },
+        {
+          "label": "lead-incremental-uf-equations",
+          "line": 2685
+        },
+        {
+          "label": "lead-incremental-uf-structure",
+          "line": 2712
+        }
+      ]
+    },
+    {
+      "source": "docs/opensmt-incremental-comparison.md",
+      "html_path": "opensmt-incremental-comparison.html",
+      "content_ids": [
+        "opensmt-on-native-incremental-uf-and-lra",
+        "qf-lra-the-two-established-bmw-sessions",
+        "qf-uf-all-1-778-native-sessions",
+        "qualification-and-reproducibility"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/papers/arithmetic-solving-in-z3.md",
+      "html_path": "papers/arithmetic-solving-in-z3.html",
+      "content_ids": [
+        "arithmetic-solving-in-z3",
+        "bibliographic-record",
+        "branching-primo-s-is-theory-internal-z3-s-is-a-sat-literal",
+        "complete-audit-of-what-primo-has-and-lacks-2026-08-22",
+        "cubes-not-implemented-in-primo",
+        "cuts-primo-has-the-base-method-none-of-the-enhancements",
+        "detailed-implementation-contract",
+        "evaluation-and-default-decision",
+        "gap-analysis-against-primo-2026-08-21",
+        "gcd-consistency-primo-has-the-basic-test-not-the-extended-one",
+        "implementation-checklist-and-experimental-producer",
+        "mapping-to-primo",
+        "patching-implemented-2026-08-21-stage-5",
+        "relevant-scope",
+        "resulting-priority",
+        "row-based-propagation-does-not-transfer-to-qf-lia",
+        "section-3-2-cheap-equal-variable-discovery",
+        "section-3-3-bounds-propagation",
+        "section-4-the-integer-waterfall",
+        "section-6-shared-equalities",
+        "what-is-worth-attempting-next-and-the-caveat-over-all-of-it",
+        "what-section-7-says-about-expectations"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/papers/bromberger-linear-arithmetic-thesis.md",
+      "html_path": "papers/bromberger-linear-arithmetic-thesis.html",
+      "content_ids": [
+        "backtracking-through-recalculation-an-untried-cheap-lead",
+        "chapter-4-the-cube-tests-and-what-actually-blocks-them",
+        "chapter-5-the-complete-equality-basis",
+        "chapter-6-bounding-transformations",
+        "chapter-7-spass-iq-s-implementation-and-its-ablations",
+        "chapter-8-1-sat-theory-interaction",
+        "chapter-8-2-preprocessing-is-the-largest-measured-lever-in-this-document",
+        "chapter-map",
+        "citation",
+        "data-structures-a-third-design-point-for-the-row-representation",
+        "decision-procedures-for-linear-arithmetic-bromberger-s-thesis",
+        "decision-recommendation-129-on-qf-lia-and-116-of-them-on-convert",
+        "defined-variable-simplification",
+        "follow-up-leads",
+        "how-this-lands-against-primo",
+        "is-anything-of-his-missing-a-complete-publication-audit",
+        "local-census-supporting-the-chapter-8-claims",
+        "multiple-conflicts-per-theory-check",
+        "nelson-oppen-5-4-the-part-that-bears-on-primo-directly",
+        "pb2010",
+        "pivoting-six-strategies-and-the-result-is-it-doesn-t-matter",
+        "post-thesis-a-different-research-line",
+        "rings-preprocessed-and-if-then-else-reconstruction",
+        "size-measured",
+        "small-cnf-8-2-4",
+        "subsumed-by-the-thesis-with-one-exception",
+        "the-corpora-coincide-which-is-what-makes-the-numbers-usable",
+        "the-detector-strict-cube-lemma-5-2-2",
+        "the-extractor-equality-explanation-lemma-5-2-3",
+        "the-linear-cube-transformation-cor-4-2-2",
+        "the-precondition-this-is-the-correction-to-lead-12c",
+        "the-tableau-form-5-3-1",
+        "the-waterfall",
+        "things-measured-to-be-worth-little",
+        "unate-propagation-and-bound-refinements",
+        "weakened-early-pruning-and-the-reason-it-is-weakened",
+        "what-this-thesis-does-not-answer",
+        "why-nec-smt-behaves-this-way",
+        "why-this-note-exists"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/papers/cvc4-architecture.md",
+      "html_path": "papers/cvc4-architecture.html",
+      "content_ids": [
+        "citation",
+        "cvc4-architecture",
+        "implementation-notes",
+        "milestones",
+        "role-in-primo",
+        "what-we-do-not-implement-initially",
+        "what-we-use"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/papers/difference-constraint-propagation.md",
+      "html_path": "papers/difference-constraint-propagation.html",
+      "content_ids": [
+        "citation",
+        "dl-static-precision",
+        "dl6-decide-precision-statically-before-search",
+        "fast-and-flexible-difference-constraint-propagation-for-dpll-t",
+        "future-milestones",
+        "initial-representation",
+        "not-implemented-initially",
+        "role-in-primo",
+        "what-we-use-later"
+      ],
+      "explicit_labels": [
+        {
+          "label": "dl-static-precision",
+          "line": 44
+        }
+      ]
+    },
+    {
+      "source": "docs/papers/enumerative-instantiation.md",
+      "html_path": "papers/enumerative-instantiation.html",
+      "content_ids": [
+        "implemented-subset-and-deviations",
+        "primo-mapping",
+        "revisiting-enumerative-instantiation",
+        "section-2-the-instantiation-loop",
+        "section-3-which-terms-suffice",
+        "section-4-1-implementation-details-in-cvc4",
+        "section-4-and-figure-2-strategy-u",
+        "tests-derived-from-the-paper"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/papers/fair-adventurous-enumeration.md",
+      "html_path": "papers/fair-adventurous-enumeration.html",
+      "content_ids": [
+        "fair-and-adventurous-enumeration-of-quantifier-instantiations",
+        "primo-mapping",
+        "proposed-work-in-order-of-cost",
+        "section-iii-orders-on-tuples",
+        "section-iv-discarding-redundant-instantiations",
+        "section-v-experiments-cvc5",
+        "tests-to-derive-when-implementing"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/papers/fast-congruence-closure-implementation.md",
+      "html_path": "papers/fast-congruence-closure-implementation.html",
+      "content_ids": [
+        "audit-notes",
+        "complexity-expectations",
+        "counters",
+        "fast-congruence-closure-implementation-note",
+        "invariants",
+        "known-limitations",
+        "paper-operations-to-primo-types",
+        "reference",
+        "tests-derived-from-the-algorithm"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/papers/fast-congruence-closure.md",
+      "html_path": "papers/fast-congruence-closure.html",
+      "content_ids": [
+        "citation",
+        "data-structures",
+        "deferred",
+        "fast-congruence-closure-and-extensions",
+        "implemented-subsets",
+        "invariants",
+        "remaining-implementation-checklist",
+        "role-in-primo",
+        "section-4-5-mechanism-read-directly-from-docs-oliveras-euf-pdf-2026-07-22",
+        "status",
+        "status-section-5-5-structural-class-nodes-correct-but-blocked-on-a-performance-regression",
+        "tests-derived-from-the-paper"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/papers/fast-linear-arithmetic-dpllt.md",
+      "html_path": "papers/fast-linear-arithmetic-dpllt.html",
+      "content_ids": [
+        "a-fast-linear-arithmetic-solver-for-dpll-t",
+        "citation",
+        "deviations-from-the-paper",
+        "extensions-beyond-the-paper",
+        "not-implemented",
+        "role-in-primo",
+        "section-by-section-map"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/papers/fastsmt-strategy-synthesis.md",
+      "html_path": "papers/fastsmt-strategy-synthesis.html",
+      "content_ids": [
+        "checklist-for-future-primo-portfolio-machinery",
+        "experimental-tactic-vocabulary",
+        "fastsmt-strategy-synthesis",
+        "results-and-limitations",
+        "source-and-scope",
+        "what-fastsmt-searches",
+        "which-tactics-survived-synthesis"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/papers/finite-model-finding-sorts.md",
+      "html_path": "papers/finite-model-finding-sorts.html",
+      "content_ids": [
+        "citation",
+        "implementation-status",
+        "mapping-to-primo",
+        "relevance",
+        "using-sat-and-smt-solvers-for-finite-model-finding-with-sorts"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/papers/griggio-mathsat-thesis.md",
+      "html_path": "papers/griggio-mathsat-thesis.html",
+      "content_ids": [
+        "an-effective-smt-engine-for-formal-verification-griggio-s-thesis",
+        "ch1",
+        "ch2",
+        "ch3",
+        "ch4",
+        "ch5",
+        "chapter-1-background-pp-13-38",
+        "chapter-2-details-on-mathsat-pp-39-73",
+        "chapter-3-extraction-of-unsatisfiable-cores-pp-79-103",
+        "chapter-4-generation-of-craig-interpolants-pp-105-177",
+        "chapter-5-software-model-checking-via-large-block-encoding-pp-183-213",
+        "chapter-map",
+        "citation",
+        "follow-up-leads",
+        "id1",
+        "in-detail-the-la-q-solver-pp-47-56",
+        "la-q",
+        "leaving-rule-discrepancy",
+        "role-in-primo",
+        "section-1-5-1-purification-read-2026-09-06-and-it-answers-an-open-bug",
+        "the-one-correction-primo-s-docs-describe-the-wrong-leaving-rule",
+        "what-this-thesis-does-not-answer",
+        "why-this-note-exists"
+      ],
+      "explicit_labels": [
+        {
+          "label": "chapter-map",
+          "line": 44
+        },
+        {
+          "label": "ch1",
+          "line": 64
+        },
+        {
+          "label": "ch2",
+          "line": 95
+        },
+        {
+          "label": "ch3",
+          "line": 172
+        },
+        {
+          "label": "ch4",
+          "line": 193
+        },
+        {
+          "label": "ch5",
+          "line": 217
+        },
+        {
+          "label": "la-q",
+          "line": 229
+        },
+        {
+          "label": "leaving-rule-discrepancy",
+          "line": 296
+        }
+      ]
+    },
+    {
+      "source": "docs/papers/integer-division-and-modulo.md",
+      "html_path": "papers/integer-division-and-modulo.html",
+      "content_ids": [
+        "integer-division-modulo-and-absolute-value",
+        "on-uniqueness",
+        "proposed-encoding-for-primo",
+        "scope-and-deliberate-limits",
+        "tests-this-implies",
+        "the-three-conventions-and-why-the-choice-is-already-made-for-us",
+        "what-the-decision-procedure-literature-says",
+        "what-the-standard-requires",
+        "what-this-is-and-is-not-worth",
+        "where-the-elimination-belongs"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/papers/ipasir-up.md",
+      "html_path": "papers/ipasir-up.html",
+      "content_ids": [
+        "boundaries",
+        "cadical-specific-constraints-used-by-primo",
+        "citation",
+        "ipasir-up-user-propagators-for-cdcl",
+        "role-in-primo",
+        "tests-derived-from-the-interface",
+        "what-we-use"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/papers/lra-atom-canonicalization.md",
+      "html_path": "papers/lra-atom-canonicalization.html",
+      "content_ids": [
+        "algorithmic-basis",
+        "correctness-obligations-and-tests",
+        "early-lra-atom-canonicalization",
+        "evaluation",
+        "full-corpus-evaluation-2026-08-18-a-materially-different-picture",
+        "operations-and-complexity",
+        "ownership-and-data-flow",
+        "representation-and-invariants"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/papers/lra-related-work.md",
+      "html_path": "papers/lra-related-work.html",
+      "content_ids": [
+        "access-status",
+        "alternative-non-simplex-decision-procedures",
+        "direct-extensions-of-simplex-for-dpll-t",
+        "floating-point-guided-exact-simplex-the-rest-of-the-line",
+        "follow-up-leads-found-while-reading-the-above",
+        "lra-related-work",
+        "out-of-scope-for-qf-lra-lia-mixed-quantified-for-later-if-ever",
+        "qf-lra-relevant-despite-an-lia-framing",
+        "standard-simplex-heuristics-general-lp-not-smt-specific"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/papers/model-based-theory-combination.md",
+      "html_path": "papers/model-based-theory-combination.html",
+      "content_ids": [
+        "class-projection-and-reconciliation-checklist",
+        "convex-combination-foundation",
+        "current-primo-anchors",
+        "de-moura-bjorner-model-based-theory-combination",
+        "documentation-claim-to-use",
+        "evaluation-and-generality",
+        "full-appendix-a-integration-checklist",
+        "implementation-checklist",
+        "lra-model-mutation-integration-checklist",
+        "modular-integration-record",
+        "next-implementation-direction",
+        "overall-status",
+        "section-4-model-based-combination",
+        "section-5-2-freedom-interval-mutation",
+        "section-by-section-comparison",
+        "sections-5-and-5-1-simplex-equality-production",
+        "structural-boundary-for-fresh-equality-probes"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/papers/monotone-variable-elimination.md",
+      "html_path": "papers/monotone-variable-elimination.html",
+      "content_ids": [
+        "lp-presolve-read-and-it-is-not-this-rule",
+        "monotone-one-sided-variable-elimination-what-to-cite",
+        "open-citation-work",
+        "the-contrast-that-keeps-this-sound-the-pure-literal-rule",
+        "the-mathematical-fact-fourier-motzkin-single-sign-variable",
+        "the-smt-line-that-looks-like-this-and-is-not-unconstrained-variables",
+        "what-primo-claims",
+        "what-the-paper-is-genuinely-the-right-citation-for",
+        "why-this-note-exists"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/papers/nelson-oppen-closure-methods.md",
+      "html_path": "papers/nelson-oppen-closure-methods.html",
+      "content_ids": [
+        "broader-combination-property-context",
+        "care-scoped-mutation-prototype-checklist",
+        "care-sets-and-reduced-equality-sharing",
+        "core-nelson-oppen-sources",
+        "delayed-and-sat-mediated-combination",
+        "dpll-t-integration",
+        "historical-primo-intake-state",
+        "id1",
+        "id10",
+        "id2",
+        "id3",
+        "id4",
+        "id5",
+        "id6",
+        "id7",
+        "id8",
+        "id9",
+        "implementation-questions-for-primo",
+        "implemented-subset-convex-mixed-qf-uflra-checks",
+        "implemented-subset-interface-bookkeeping",
+        "initial-design-direction",
+        "likely-first-subset",
+        "model-equality-assumption-lifecycle-checklist",
+        "nelson-oppen-closure-methods",
+        "primary-base-paper",
+        "primo-checklist-items",
+        "reference-solver-performance-triage",
+        "relevance",
+        "shared-model-validation-result",
+        "solver-architecture-sources",
+        "status"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/papers/smt-symmetry-breaking.md",
+      "html_path": "papers/smt-symmetry-breaking.html",
+      "content_ids": [
+        "citation",
+        "exploiting-symmetry-in-smt-problems",
+        "implementation-status",
+        "mapping-to-primo",
+        "relevance"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/papers/summaries.md",
+      "html_path": "papers/summaries.html",
+      "content_ids": [
+        "also-read",
+        "andersen-andersen-presolving-in-linear-programming-1995",
+        "andersen-presolving",
+        "how-row-addition-works-without-sortedness",
+        "jonas-strejcek-on-simplification-of-formulas-with-unconstrained-variables-and-quantifiers-sat-2017",
+        "jonas-strejcek-unconstrained",
+        "king-effective-algorithms-for-the-satisfiability-of-quantifier-free-formulas-over-linear-real-and-integer-arithmetic-nyu-2014",
+        "king-thesis",
+        "limits-and-evaluation-risk",
+        "lu-et-al-learning-smt-algorithm-selection-with-high-level-natural-language-descriptions-2026",
+        "lu-smt-select",
+        "paper-summaries",
+        "section-2-2-7-the-tableau-representation",
+        "the-design-fork-this-exposes",
+        "what-transfers-to-primo-s-tactic-work",
+        "where-this-sits"
+      ],
+      "explicit_labels": [
+        {
+          "label": "lu-smt-select",
+          "line": 28
+        },
+        {
+          "label": "andersen-presolving",
+          "line": 106
+        },
+        {
+          "label": "king-thesis",
+          "line": 153
+        },
+        {
+          "label": "jonas-strejcek-unconstrained",
+          "line": 230
+        }
+      ]
+    },
+    {
+      "source": "docs/papers/tactic-configuration-evidence.md",
+      "html_path": "papers/tactic-configuration-evidence.html",
+      "content_ids": [
+        "cross-paper-conclusions-for-primo",
+        "early-generated-strategies-galvez-ramirez-et-al",
+        "evidence-about-useful-tactic-configurations",
+        "logic-and-family-specific-lowering",
+        "papers-still-requiring-primary-text",
+        "parameter-patterns-that-survived",
+        "question-and-evidence-standard",
+        "recurring-preprocessing-core",
+        "sirismt-candidates-and-parameter-ranges-but-no-released-final-program",
+        "tactics-that-survived",
+        "z3alpha-published-programs"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/papers/word-gcd-notes.md",
+      "html_path": "papers/word-gcd-notes.html",
+      "content_ids": [
+        "sources",
+        "standing-warning-this-tuning-is-distribution-dependent",
+        "the-pathology-we-rediscovered",
+        "the-second-workload-we-already-have-qf-lra",
+        "the-standard-practical-form",
+        "what-the-actual-record-holder-is-and-why-it-does-not-apply",
+        "what-the-literature-could-not-tell-us",
+        "when-to-revisit",
+        "why-it-is-not-runtime-configurable",
+        "word-sized-gcd-what-the-literature-says"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/preprocessing.md",
+      "html_path": "preprocessing.html",
+      "content_ids": [
+        "arithmetic-atom-canonicalization",
+        "boolean-unit-propagation",
+        "constant-if-then-else-simplification",
+        "counters",
+        "current-status",
+        "equality-bridge",
+        "experimental-qf-uf-portfolio",
+        "finite-domain-clauses",
+        "forced-atom-propagation",
+        "gaussian-elimination",
+        "historical-worked-examples",
+        "id1",
+        "implementation-notes",
+        "ite-lowering",
+        "model-reconstruction",
+        "monotone-elimination",
+        "monotone-one-sided-variable-elimination",
+        "paper-traceability",
+        "preconditions-all-conservative",
+        "preprocessing",
+        "pure-literal-trap",
+        "qf-uflra-preprocessing-opportunities",
+        "real-equality-lowering",
+        "solved-constant-substitution",
+        "the-pure-literal-rule-does-not-transfer-to-theory-atoms",
+        "uf-symmetry-breaking",
+        "what-belongs-in-a-constructor-and-what-does-not"
+      ],
+      "explicit_labels": [
+        {
+          "label": "monotone-elimination",
+          "line": 638
+        },
+        {
+          "label": "pure-literal-trap",
+          "line": 841
+        },
+        {
+          "label": "real-equality-lowering",
+          "line": 905
+        }
+      ]
+    },
+    {
+      "source": "docs/public-repository-migration.md",
+      "html_path": "public-repository-migration.html",
+      "content_ids": [
+        "completion-boundary",
+        "configure-the-organization-and-verification-workflow",
+        "contribution-model",
+        "decisions-and-remaining-work",
+        "documentation-as-code",
+        "establish-publication-rights-and-inspect-the-material",
+        "make-the-repository-usable-by-an-outside-contributor",
+        "migration-milestones",
+        "public-repository-migration-draft",
+        "purpose",
+        "qualify-and-publish-the-first-release",
+        "restructure-and-qualify-the-documentation"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/qf-lia-branch-and-bound.md",
+      "html_path": "qf-lia-branch-and-bound.html",
+      "content_ids": [
+        "conflict-generalization",
+        "explicitly-out-of-scope",
+        "full-corpus",
+        "fuzzing",
+        "gcd-consistency",
+        "gomory-cuts",
+        "id1",
+        "id2",
+        "id3",
+        "id4",
+        "id5",
+        "id6",
+        "id7",
+        "id8",
+        "int-in-the-frontend",
+        "known-incompleteness",
+        "node-limits",
+        "patching",
+        "qf-lia-branch-and-bound-gcd-consistency-and-gomory-cuts-on-the-existing-simplex",
+        "qf-lira",
+        "qf-lira-the-search-core-is-already-mixed-the-frontend-is-not",
+        "real-world-benchmark-evaluation-and-the-fuzzing-gap",
+        "result",
+        "scope",
+        "status-of-this-claim",
+        "tests",
+        "the-one-lratableau-change",
+        "the-search-theory-arithmetic-branch-and-bound",
+        "two-things-the-obvious-implementation-gets-wrong",
+        "what-actually-blocks-it",
+        "what-each-stage-does-with-a-non-integer-variable",
+        "where-branching-lives",
+        "where-integer-strictness-actually-gets-handled-and-three-bugs-found-here",
+        "where-qf-lia-stands-2026-08-26"
+      ],
+      "explicit_labels": [
+        {
+          "label": "where-integer-strictness-actually-gets-handled-and-three-bugs-found-here",
+          "line": 190
+        },
+        {
+          "label": "gcd-consistency",
+          "line": 306
+        },
+        {
+          "label": "gomory-cuts",
+          "line": 417
+        },
+        {
+          "label": "patching",
+          "line": 531
+        },
+        {
+          "label": "known-incompleteness",
+          "line": 831
+        },
+        {
+          "label": "qf-lira",
+          "line": 867
+        },
+        {
+          "label": "fuzzing",
+          "line": 991
+        },
+        {
+          "label": "real-world-benchmark-evaluation-and-the-fuzzing-gap",
+          "line": 1265
+        }
+      ]
+    },
+    {
+      "source": "docs/qf-lia-profile.md",
+      "html_path": "qf-lia-profile.html",
+      "content_ids": [
+        "correction-the-fast-path-does-not-pay-and-why",
+        "method-and-two-traps-worth-repeating",
+        "reproducing",
+        "result",
+        "the-concrete-opportunity-over-half-the-gcd-work-in-multiply-is-provably-wasted",
+        "two-things-this-settles",
+        "where-qf-lia-time-actually-goes-gprof-2026-08-21"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/qf-lra-equality-sharing.md",
+      "html_path": "qf-lra-equality-sharing.html",
+      "content_ids": [
+        "combination-contract",
+        "exact-fallback-probe-reuse-checklist",
+        "fixed-elimination-for-no",
+        "measured-gap",
+        "model-implied-equalities-the-m-propagate-trigger-5",
+        "model-mutation-via-freedom-intervals-5-2",
+        "model-value-filtering-of-the-exact-fallback",
+        "opportunistic-equality-propagation-5-1",
+        "remaining-arithmetic-work",
+        "should-lra-fixed-elimination-be-on-by-default-for-nelson-oppen",
+        "the-completeness-gap-measured-rather-than-assumed",
+        "two-implemented-equality-enabling-lra-mechanisms",
+        "what-primo-provides-today",
+        "what-qf-lra-owes-nelson-oppen-convexity-and-equality-sharing",
+        "what-the-paper-asks-of-the-simplex-solver",
+        "why-convexity-is-the-whole-point"
+      ],
+      "explicit_labels": [
+        {
+          "label": "fixed-elimination-for-no",
+          "line": 266
+        },
+        {
+          "label": "measured-gap",
+          "line": 309
+        }
+      ]
+    },
+    {
+      "source": "docs/qf-lra-heuristics.md",
+      "html_path": "qf-lra-heuristics.html",
+      "content_ids": [
+        "a-a-flat-profile-of-the-band-at-last-2026-07-31",
+        "a-it-is-a-constant-factor-not-a-wall-and-the-factor-is-small",
+        "b-acting-on-the-profile-h8-and-one-rejection-2026-07-31",
+        "c-where-the-time-goes-now-callgrind-2026-07-31",
+        "candidate-directions-ranked-with-status",
+        "d1",
+        "d1-s-outcome-rejected-on-the-band-job-117726-2026-07-31",
+        "d2",
+        "d3",
+        "d4",
+        "d5",
+        "d5-let-a-library-own-the-small-rational-representation",
+        "evidence-trail",
+        "falsifier-stated-in-advance",
+        "h1",
+        "h1-direct-bounds-for-single-variable-atoms-scale-canonical-polynomials",
+        "h10",
+        "h10-delta-maintained-occurs-in",
+        "h11",
+        "h11-fill-in-aware-pivoting-in-preprocessing-gaussian-elimination",
+        "h11-note-on-the-fix",
+        "h2",
+        "h2-small-rational-fast-path-in-util-rational",
+        "h3",
+        "h3-fill-in-aware-markowitz-style-entering-variable-selection",
+        "h4",
+        "h4-batched-bound-assertion-deferred-update",
+        "h5",
+        "h5-attribution",
+        "h5-model-based-phase-selection-replacing-item-8-s-variable-override",
+        "h6",
+        "h6-a-difference-logic-fast-path",
+        "h7",
+        "h7-fixed-variable-elimination-equality-slacks",
+        "h8",
+        "h8-merge-instead-of-sort-in-pivot-s-affected-row-loop",
+        "h8-merge-instead-of-sort-in-pivot-s-affected-row-loop-promoted",
+        "h9",
+        "h9-bounds-only-backtracking",
+        "incremental-occurs-in-maintenance-built-measured-rejected",
+        "instrumentation-tableau-shape-and-fill-in",
+        "items-at-a-glance",
+        "note-on-the-fix-that-preceded-this",
+        "option",
+        "original-ranking",
+        "profile-the-cost-is-allocation-not-arithmetic",
+        "proposed-heuristics-in-priority-order",
+        "qf-lra-speedup-heuristics-design-note",
+        "re-ranking-after-h2-and-h1-2026-07-28",
+        "sec-6",
+        "sec-6-1a",
+        "sec-6-2a",
+        "sec-6-2b",
+        "sec-6-2c",
+        "sec-6-5",
+        "suggested-order-of-work-and-the-evaluation-each-item-needs",
+        "t1",
+        "t1-guarded-real-equality-distribution-for-tropical-cost-definitions",
+        "t2-row-propagation-on-top-of-t1-rejected-2026-08-04",
+        "terminology-and-sources",
+        "the-2026-07-31-attempt-and-why-it-failed",
+        "the-cost-is-fill-in-and-both-markowitz-factors-blow-up",
+        "the-gap-is-one-band-and-it-is-z3-specific",
+        "the-proposal",
+        "three-distinct-bottleneck-classes-not-one",
+        "tropical-matrix-polarity-follow-up-2026-08-04",
+        "what-is-deliberately-not-proposed",
+        "what-this-rules-out",
+        "what-to-cite-for-lra-model-phase",
+        "what-z3-appears-to-be-doing",
+        "where-the-gap-is-after-h7-2026-07-30",
+        "where-the-remaining-gap-actually-is",
+        "where-this-came-from"
+      ],
+      "explicit_labels": [
+        {
+          "label": "h1",
+          "line": 216
+        },
+        {
+          "label": "h2",
+          "line": 334
+        },
+        {
+          "label": "h3",
+          "line": 433
+        },
+        {
+          "label": "h7",
+          "line": 532
+        },
+        {
+          "label": "h8",
+          "line": 730
+        },
+        {
+          "label": "h9",
+          "line": 839
+        },
+        {
+          "label": "h10",
+          "line": 870
+        },
+        {
+          "label": "h4",
+          "line": 943
+        },
+        {
+          "label": "h5",
+          "line": 975
+        },
+        {
+          "label": "h5-attribution",
+          "line": 1036
+        },
+        {
+          "label": "t1",
+          "line": 1233
+        },
+        {
+          "label": "h6",
+          "line": 1347
+        },
+        {
+          "label": "sec-6",
+          "line": 1504
+        },
+        {
+          "label": "sec-6-1a",
+          "line": 1525
+        },
+        {
+          "label": "sec-6-2a",
+          "line": 1601
+        },
+        {
+          "label": "sec-6-2b",
+          "line": 1680
+        },
+        {
+          "label": "sec-6-2c",
+          "line": 1782
+        },
+        {
+          "label": "sec-6-5",
+          "line": 1871
+        },
+        {
+          "label": "d1",
+          "line": 1900
+        },
+        {
+          "label": "d2",
+          "line": 2033
+        },
+        {
+          "label": "d3",
+          "line": 2114
+        },
+        {
+          "label": "d4",
+          "line": 2210
+        },
+        {
+          "label": "h11",
+          "line": 2313
+        },
+        {
+          "label": "d5",
+          "line": 2314
+        },
+        {
+          "label": "h11-note-on-the-fix",
+          "line": 2432
+        }
+      ]
+    },
+    {
+      "source": "docs/qf-uflra-convex-no-merge-plan.md",
+      "html_path": "qf-uflra-convex-no-merge-plan.html",
+      "content_ids": [
+        "convex-integration-status",
+        "convex-nelson-oppen-merge-plan",
+        "convexity-contract",
+        "integrated-mainline-lra-surface",
+        "ownership-and-invariants",
+        "post-merge-review-status",
+        "required-tests-and-evidence",
+        "return-checkpoint-after-frontend-dag-work"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/qf-uflra-model-guided-performance.md",
+      "html_path": "qf-uflra-model-guided-performance.html",
+      "content_ids": [
+        "complete-convex-model-reconciliation-checklist",
+        "current-convex-reconciliation",
+        "current-evidence",
+        "decision-criteria",
+        "exact-probe-tableau-boundary",
+        "historical-consumer-aware-target",
+        "historical-non-lra-first-roadmap",
+        "historical-shared-model-reconciliation-prototype",
+        "id1",
+        "integrated-lra-work",
+        "integrated-simplex-side-subset",
+        "make-the-equality-ledger-sparse-implemented",
+        "model-state-direction",
+        "non-lra-milestone-gate",
+        "paper-mechanism-still-missing",
+        "preprocessing-tie-in",
+        "preserve-existing-probe-explanations-implemented",
+        "qf-uflra-model-guided-performance-plan",
+        "refresh-at-120s-and-a-recovered-reference-set",
+        "reuse-incremental-euf-in-mixed-search-partial-experimental",
+        "tighten-candidate-scheduling-and-preprocessing",
+        "use-euf-equality-explanations-implemented",
+        "verification-gate"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/qfuf-disequality-propagation.md",
+      "html_path": "qfuf-disequality-propagation.html",
+      "content_ids": [
+        "ackermannization-cost-diagnostic",
+        "candidate-heuristic-shapes",
+        "current-primo-hooks",
+        "dynamic-ackermann-shadow-diagnostic",
+        "evaluation-plan",
+        "existing-primo-implementation",
+        "goal",
+        "h0-measurement-only-baseline",
+        "h1-watched-existing-atom-propagation",
+        "h2-guarded-curried-child-propagation",
+        "h3-clause-generation-experiment",
+        "initial-acceptance-bar",
+        "literature-basis",
+        "qf-uf-disequality-propagation-heuristics",
+        "required-tests"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/quantifier-entailment-design.md",
+      "html_path": "quantifier-entailment-design.html",
+      "content_ids": [
+        "a-read-only-ground-equality-view-owned-by-euf",
+        "deferred",
+        "design",
+        "entailment-checks-and-fail-masks-for-quantifier-instantiation",
+        "fail-masks",
+        "open-questions",
+        "plan",
+        "risks",
+        "three-valued-evaluation-of-an-instance",
+        "what-primo-has",
+        "what-skipping-means",
+        "what-the-papers-specify",
+        "why",
+        "wiring"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/quantifiers.md",
+      "html_path": "quantifiers.html",
+      "content_ids": [
+        "a-named-variables-one-term-per-name-sort",
+        "alternative-considered-variables-with-identity-superseded",
+        "b-de-bruijn-indices",
+        "c-a-fresh-variable-per-binder-occurrence",
+        "core-operations",
+        "d-locally-nameless",
+        "gate",
+        "generated-term-repair-and-instance-rounds",
+        "implementation-status",
+        "invariants",
+        "measurements-smt-lib-uf-7-590-files",
+        "open-questions",
+        "options",
+        "parsing",
+        "proposal-pending-de-bruijn-indices",
+        "quantifiers-parsing-and-term-representation",
+        "references",
+        "representation",
+        "risks",
+        "scope-of-step-1",
+        "what-smt-lib-2-6-requires",
+        "what-the-choice-has-to-fit",
+        "what-the-representation-affects",
+        "what-the-smt-literature-says-about-the-choice",
+        "why-indices-after-all",
+        "why-not-c",
+        "worked-example"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/reference/llm2smt-retrospective.md",
+      "html_path": "reference/llm2smt-retrospective.html",
+      "content_ids": [
+        "affected-set-propagation",
+        "cross-theory-engineering-lessons",
+        "current-comparison-role",
+        "future-optimization-targets",
+        "how-it-may-be-used",
+        "keep-preprocessing-and-solving-comparable",
+        "llm2smt-retrospective",
+        "optimization-styles-that-transferred",
+        "optimize-by-work-avoided",
+        "preserve-soundness-pressure",
+        "profiles-as-experiments-not-defaults",
+        "questions-to-answer-later",
+        "reference-driven-target-selection",
+        "require-counters-before-claims",
+        "stats-first-profiling",
+        "status",
+        "structural-preprocessing-before-search",
+        "styles-to-avoid",
+        "treat-scaffolds-as-temporary-risks",
+        "use-fixed-work-diagnostics",
+        "validate-at-three-scales"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/reference/options.md",
+      "html_path": "reference/options.html",
+      "content_ids": [
+        "command-line-options-and-output",
+        "everyday-use",
+        "output-and-exit-status",
+        "where-defaults-live"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/root-polarity-clausification.md",
+      "html_path": "root-polarity-clausification.html",
+      "content_ids": [
+        "assertion-semantics",
+        "evaluation-and-rejection",
+        "prototype",
+        "root-polarity-clausification-experiment"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/run-log.md",
+      "html_path": "run-log.html",
+      "content_ids": [
+        "local-revision-checks",
+        "policy",
+        "required-fields",
+        "run-log",
+        "sharded-benchmark-summaries"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/sat-ipasir-up.md",
+      "html_path": "sat-ipasir-up.html",
+      "content_ids": [
+        "boundaries",
+        "cadical-option-overrides",
+        "cadical-preprocessing-factoring-bva",
+        "cadical-version-checks",
+        "deferred-scope",
+        "implemented-scope",
+        "local-installation",
+        "mixed-euf-model-scope-callbacks",
+        "protocol-audit-2026-08-03",
+        "query-reconnection-for-the-opt-in-assumptions-engine",
+        "references",
+        "role",
+        "sat-backend-ipasir-up-and-cadical",
+        "search-statistics",
+        "user-propagator-contract"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/structural-auto-preprocessing.md",
+      "html_path": "structural-auto-preprocessing.html",
+      "content_ids": [
+        "complexity-and-limitations",
+        "evaluation-status-2026-08-12",
+        "invariants-and-operations",
+        "ownership-and-data-flow",
+        "proof-obligations-and-tests",
+        "structural-automatic-preprocessing-selection"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/tactic-reference.md",
+      "html_path": "tactic-reference.html",
+      "content_ids": [
+        "composites",
+        "current-limitations-for-portfolio-work",
+        "experimental-goal-generation-tactics",
+        "generic-tacticals",
+        "named-phases-inside-preprocessing-round",
+        "preprocessing-tactics",
+        "solver-tactics",
+        "tactic-reference",
+        "transformations-not-yet-represented-as-tactics"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/tactics.md",
+      "html_path": "tactics.html",
+      "content_ids": [
+        "algorithmic-basis",
+        "composition-verification",
+        "deliberate-deviations-and-limitations",
+        "experimental-exhaustive-boolean-splitting",
+        "immutable-strategy-and-compilation",
+        "implemented-data-structures",
+        "implemented-tacticals-and-probes",
+        "incremental-execution-contract",
+        "invariants-and-complexity",
+        "production-composition",
+        "sequential-evaluation",
+        "tactic-architecture"
+      ],
+      "explicit_labels": []
+    },
+    {
+      "source": "docs/termid-order-sensitivity.md",
+      "html_path": "termid-order-sensitivity.html",
+      "content_ids": [
+        "adding-an-entry",
+        "docket-termid-order-sensitivity",
+        "eager-interning-of-declared-real-constants-2026-08-02-fixed-in-e3059e6",
+        "entries",
+        "gaussian-elimination-pivots-on-the-smallest-termid",
+        "ite-auxiliaries-moved-from-the-frontend-to-the-lowering-leaf",
+        "lravarid-assignment-order-feeds-bland-s-rule",
+        "polynomial-to-term-builds-terms-in-termid-order",
+        "resolved",
+        "termid-1",
+        "termid-2",
+        "termid-3",
+        "termid-4",
+        "termid-resolved-1",
+        "termid-test",
+        "the-test-that-detects-it",
+        "why-this-is-a-docket-and-not-a-bug-list"
+      ],
+      "explicit_labels": [
+        {
+          "label": "termid-test",
+          "line": 27
+        },
+        {
+          "label": "termid-1",
+          "line": 47
+        },
+        {
+          "label": "termid-2",
+          "line": 70
+        },
+        {
+          "label": "termid-3",
+          "line": 89
+        },
+        {
+          "label": "termid-4",
+          "line": 108
+        },
+        {
+          "label": "termid-resolved-1",
+          "line": 203
+        }
+      ]
+    },
+    {
+      "source": "docs/tropical-matrix-structure.md",
+      "html_path": "tropical-matrix-structure.html",
+      "content_ids": [
+        "dont-care",
+        "encoding",
+        "fill-in",
+        "leads",
+        "the-c-variables-are-genuine-don-t-cares-under-their-own-flag",
+        "the-encoding-is-a-tropical-arctic-semiring-not-general-arithmetic",
+        "the-tropical-matrix-family-what-the-formulas-actually-say",
+        "unguarding",
+        "unguarding-is-sound-and-27x-slower-the-guards-are-load-bearing",
+        "what-this-suggests-ranked",
+        "where-the-time-actually-goes-42x-fill-in"
+      ],
+      "explicit_labels": [
+        {
+          "label": "encoding",
+          "line": 15
+        },
+        {
+          "label": "dont-care",
+          "line": 56
+        },
+        {
+          "label": "unguarding",
+          "line": 86
+        },
+        {
+          "label": "fill-in",
+          "line": 114
+        },
+        {
+          "label": "leads",
+          "line": 140
+        }
+      ]
+    },
+    {
+      "source": "docs/tuning-parameters.md",
+      "html_path": "tuning-parameters.html",
+      "content_ids": [
+        "a-knob-is-only-a-dimension-where-it-is-reachable",
+        "already-exposed",
+        "cadical",
+        "dead-knobs",
+        "four-options-that-parse-and-do-nothing",
+        "gaussian-elimination-size-caps",
+        "implemented",
+        "implemented-the-check-pivot-knobs-and-the-soi-minimization-arms",
+        "lra-bland-fallback-factor-lra-bland-fallback-offset-4-64",
+        "lra-check-frequency-the-biggest-gap-and-the-one-with-a-precedent",
+        "lra-check-interval",
+        "lra-sparse-pricing-candidates-default-16-0-unbounded",
+        "model-phase-refresh-interval",
+        "numerical-parameters-what-exists-what-is-hardcoded-what-to-add",
+        "preconditions",
+        "qf-uf-side-caps-the-existing-irace-space-only-toggles-on-and-off",
+        "rational-ksmallmax-a-build-parameter-not-a-search-dimension",
+        "same-slack-propagation-fanout-cap",
+        "soi-conflict-minimization-budget",
+        "solved-constant-substitution-blow-up-budget",
+        "sparse-pricing",
+        "suggested-order",
+        "the-cadical-sub-space",
+        "theory-decision-share",
+        "theory-decision-share-turning-a-cliff-into-a-dial",
+        "tier-0-already-exposed-never-tuned-zero-code-change",
+        "tier-1-hardcoded-constants-still-to-expose-small-local-diffs",
+        "tier-2-parameters-that-need-a-small-mechanism-first",
+        "what-not-to-turn-into-a-parameter",
+        "where-the-tuning-infrastructure-already-is"
+      ],
+      "explicit_labels": [
+        {
+          "label": "preconditions",
+          "line": 30
+        },
+        {
+          "label": "already-exposed",
+          "line": 59
+        },
+        {
+          "label": "dead-knobs",
+          "line": 90
+        },
+        {
+          "label": "cadical",
+          "line": 130
+        },
+        {
+          "label": "implemented",
+          "line": 160
+        },
+        {
+          "label": "sparse-pricing",
+          "line": 188
+        },
+        {
+          "label": "lra-check-interval",
+          "line": 322
+        },
+        {
+          "label": "theory-decision-share",
+          "line": 397
+        }
+      ]
+    },
+    {
+      "source": "docs/uf-z3-profiling.md",
+      "html_path": "uf-z3-profiling.html",
+      "content_ids": [
+        "open-leads-and-suggested-investigation-order",
+        "pairwise-distinct-expansion",
+        "profiling-the-incremental-qf-uf-gap-to-z3",
+        "repeated-work-in-long-sessions",
+        "reproduction-and-evidence-scope",
+        "search-and-missing-incremental-equation-elimination",
+        "the-gap-is-concentrated"
+      ],
+      "explicit_labels": []
+    }
+  ]
+}

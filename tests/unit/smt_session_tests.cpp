@@ -2,6 +2,7 @@
 #undef NDEBUG
 #endif
 
+#include <array>
 #include <cassert>
 #include <cstdint>
 #include <sstream>
@@ -11,7 +12,9 @@
 
 #include "cli/response_printer.hpp"
 #include "smt/check_sat.hpp"
+#include "smt/inconclusive_reason.hpp"
 #include "smt/smt_session.hpp"
+#include "smt/solver_runtime.hpp"
 #include "smtlib/parser.hpp"
 #include "util/statistics.hpp"
 
@@ -220,16 +223,19 @@ void uf_assumption_growth_cancellation_and_options() {
   accept(bounded, "(assert (= a b))");
   accept(bounded, "(push 1)");
   accept(bounded, "(assert (distinct (f a) (f b)))");
-  expect(bounded, CheckSatResult::Unknown);
+  const auto exhausted = bounded.execute("(check-sat)").outcome;
+  assert(exhausted->result == CheckSatResult::Unknown);
+  assert(exhausted->reason == primo::smt::InconclusiveReason::ResourceLimit);
+  assert(exhausted->statistics.get(":theory.conflicts") == 1);
   accept(bounded, "(pop 1)");
-  expect(bounded, CheckSatResult::Sat);
-  for (int invalid = 0; invalid < 4; ++invalid) {
+  const auto resumed = bounded.execute("(check-sat)").outcome;
+  assert(resumed->result == CheckSatResult::Sat);
+  assert(resumed->statistics.get(":theory.conflicts") == 0);
+  for (int invalid = 0; invalid < 3; ++invalid) {
     auto rejected_options = options;
     if (invalid == 0) rejected_options.pure_theory_filter = primo::smt::PureTheoryFilterMode::On;
     if (invalid == 1) rejected_options.euf_engine = primo::smt::EufEngine::Lazy;
-    if (invalid == 2)
-      rejected_options.euf_boolean_domain = primo::smt::EufBooleanDomain::BridgeAtoms;
-    if (invalid == 3) rejected_options.euf_propagation = primo::smt::EufPropagationMode::Model;
+    if (invalid == 2) rejected_options.euf_propagation = primo::smt::EufPropagationMode::Model;
     SmtSession rejected(rejected_options);
     assert(rejected.execute("(set-logic QF_UF)").kind == ResponseKind::Error);
   }
@@ -397,9 +403,14 @@ void assumption_scope_storage_growth_and_budget() {
   accept(bounded, "(assert (>= x 0))");
   accept(bounded, "(push 1)");
   accept(bounded, "(assert (< x 0))");
-  expect(bounded, CheckSatResult::Unknown);
+  const auto exhausted = bounded.execute("(check-sat)").outcome;
+  assert(exhausted->result == CheckSatResult::Unknown);
+  assert(exhausted->reason == primo::smt::InconclusiveReason::ResourceLimit);
+  assert(exhausted->statistics.get(":theory.conflicts") == 1);
   accept(bounded, "(pop 1)");
-  expect(bounded, CheckSatResult::Sat);
+  const auto resumed = bounded.execute("(check-sat)").outcome;
+  assert(resumed->result == CheckSatResult::Sat);
+  assert(resumed->statistics.get(":theory.conflicts") == 0);
 }
 
 void scopes_and_unsafe_simplification() {
@@ -675,10 +686,115 @@ void automatic_lra_heuristics_do_not_leak_across_reset_or_assumptions() {
   expect(incremental, CheckSatResult::Sat);
 }
 
+void uniform_conflict_limits_cover_ground_and_quantified_routes() {
+  using primo::smt::InconclusiveReason;
+  const std::array inputs{
+      R"((set-logic QF_UF) (declare-sort U 0) (declare-const a U) (declare-const b U)
+         (declare-fun f (U) U) (assert (= a b)) (assert (distinct (f a) (f b))))",
+      R"((set-logic QF_UF) (declare-sort U 0) (declare-const q Bool)
+         (declare-const a U) (declare-fun tb (Bool) U)
+         (assert (= (tb q) a)) (assert (= (tb true) (tb false)))
+         (assert (distinct a (tb false))))",
+      R"((set-logic QF_LRA) (declare-const x Real)
+         (assert (or (<= x 0) (>= x 3))) (assert (<= x 2)) (assert (>= x 1)))",
+      R"((set-logic QF_LIA) (declare-const x Int)
+         (assert (or (<= x 0) (>= x 3))) (assert (<= x 2)) (assert (>= x 1)))",
+      R"((set-logic QF_LRA) (declare-const x Real)
+         (assert (<= x 0)) (assert (>= x 1)))",
+      R"((set-logic QF_LIA) (declare-const x Int) (declare-const y Int)
+         (assert (= (- (* 2 x) (* 2 y)) 1)))",
+      R"((set-logic QF_UFLRA) (declare-const x Real) (declare-const y Real)
+         (declare-fun f (Real) Real) (assert (<= x y)) (assert (>= x y))
+         (assert (distinct (f x) (f y))))",
+      R"((set-logic QF_UFLIA) (declare-const x Int) (declare-const y Int)
+         (declare-fun f (Int) Int) (assert (<= x y)) (assert (>= x y))
+         (assert (distinct (f x) (f y))))",
+      R"((set-logic UF) (declare-sort U 0) (declare-const a U) (declare-const b U)
+         (declare-fun f (U) U) (assert (forall ((x U)) (= (f x) x)))
+         (assert (= a b)) (assert (distinct (f a) b)))"};
+  for (const auto* input : inputs) {
+    for (const bool online : {false, true}) {
+      primo::smt::CheckSatOptions options;
+      options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
+      options.solved_constant_substitution = false;
+      options.euf_engine =
+          online ? primo::smt::EufEngine::Incremental : primo::smt::EufEngine::Lazy;
+      options.euf_propagation = primo::smt::EufPropagationMode::Conflict;
+      options.lra_propagation = false;
+      options.qf_uflia_online_components = online;
+      options.qf_uflra_online_euf = online;
+      const std::string query = std::string(input) + "(check-sat)";
+      const auto unlimited = primo::smt::check_sat_smtlib(query, options);
+      if (unlimited.result != CheckSatResult::Unsat)
+        throw std::runtime_error("unlimited conflict fixture failed: " + query + unlimited.message);
+      assert(unlimited.statistics.get(":theory.conflicts") > 0);
+      options.max_theory_conflicts = 1;
+      const auto bounded = primo::smt::check_sat_smtlib(query, options);
+      if (bounded.result != CheckSatResult::Unknown ||
+          bounded.reason != InconclusiveReason::ResourceLimit)
+        throw std::runtime_error("bounded conflict fixture failed: " + query + bounded.message);
+      assert(bounded.message == "theory conflict limit reached");
+      assert(bounded.statistics.get(":theory.conflicts") == 1);
+      options.max_theory_conflicts = unlimited.statistics.get(":theory.conflicts") + 1;
+      assert(primo::smt::check_sat_smtlib(query, options).result == CheckSatResult::Unsat);
+      // Force complete-arrangement fallback under the same small budget.
+      if (std::string(input).find("QF_UFLIA") != std::string::npos) {
+        options.qf_uflia_model_decision_budget = 0;
+        options.max_theory_conflicts = 1;
+        const auto fallback = primo::smt::check_sat_smtlib(query, options);
+        assert(fallback.reason == InconclusiveReason::ResourceLimit);
+        assert(fallback.statistics.get(":theory.conflicts") == 1);
+      }
+    }
+  }
+}
+
+void retained_uf_stops_callback_reports_and_resets_after_pop() {
+  primo::smt::CheckSatOptions options;
+  options.incremental_mode = primo::smt::IncrementalMode::Assumptions;
+  options.max_theory_conflicts = 1;
+  SmtSession session(options);
+  for (const auto* command :
+       {"(set-logic QF_UF)", "(declare-sort U 0)", "(declare-const q Bool)", "(declare-const a U)",
+        "(declare-fun tb (Bool) U)", "(assert (= (tb true) (tb false)))", "(push 1)",
+        "(assert (= (tb q) a))", "(assert (distinct a (tb false)))"})
+    accept(session, command);
+  const auto exhausted = session.execute("(check-sat)").outcome;
+  assert(exhausted->reason == primo::smt::InconclusiveReason::ResourceLimit);
+  assert(exhausted->statistics.get(":theory.conflicts") == 1);
+  accept(session, "(pop 1)");
+  const auto resumed = session.execute("(check-sat)").outcome;
+  assert(resumed->result == CheckSatResult::Sat);
+  assert(resumed->statistics.get(":theory.conflicts") == 0);
+}
+
+void conflict_runtime_keeps_query_consumption_and_ignores_diagnostics() {
+  primo::util::Statistics statistics;
+  primo::smt::SolveTerminator first({}, statistics, 2);
+  statistics.increment(primo::util::StatKey::TheoryConflicts, 100);
+  statistics.increment(primo::util::StatKey::LraTheoryConflicts, 100);
+  assert(!first.terminate());
+  primo::smt::record_theory_conflict(statistics);
+  assert(!first.terminate());
+  primo::smt::SolveTerminator retry({}, statistics, 2);
+  primo::smt::record_theory_conflict(statistics);
+  // No backend poll is needed to observe a final conflict.
+  assert(retry.conflict_limit_reached());
+  assert(retry.stop_outcome()->reason == primo::smt::InconclusiveReason::ResourceLimit);
+  assert(statistics.get(":theory.conflicts") == 2);
+  primo::util::Statistics next;
+  primo::smt::SolveTerminator fresh({}, next, 2);
+  assert(!fresh.terminate());
+  assert(next.get(":theory.conflicts") == 0);
+}
+
 }  // namespace
 
 int main() {
   automatic_lra_heuristics_do_not_leak_across_reset_or_assumptions();
+  conflict_runtime_keeps_query_consumption_and_ignores_diagnostics();
+  uniform_conflict_limits_cover_ground_and_quantified_routes();
+  retained_uf_stops_callback_reports_and_resets_after_pop();
   arithmetic_auxiliaries_keep_scoped_definitions();
   uf_assumption_scopes_and_preparation();
   uf_assumption_atom_scans_follow_only_registry_growth();

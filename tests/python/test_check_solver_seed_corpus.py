@@ -2,11 +2,10 @@ import contextlib
 import csv
 import importlib.util
 import io
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
-
 
 SOURCE = Path(__file__).resolve().parents[2] / 'scripts/check_solver_seed_corpus.py'
 SPEC = importlib.util.spec_from_file_location('check_solver_seed_corpus', SOURCE)

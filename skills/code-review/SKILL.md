@@ -92,7 +92,7 @@ terms) as a potential invalidation boundary for references returned by `get`.
 Copy the needed `TermId`s and scalar payloads before that boundary, then
 reacquire any needed term reference by ID afterwards. Do not carry borrowed
 child ranges or payload references across it. The owning manager must still
-outlive all IDs. See `docs/architecture.md`, "Ownership and Lifetime".
+outlive all IDs. See `docs/implementation/architecture.md`, "Ownership and Lifetime".
 
 Review expressions as well as statements: sibling function arguments need not
 be evaluated left-to-right. An expression such as

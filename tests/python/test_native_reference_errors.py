@@ -41,7 +41,7 @@ class ReferenceErrorsTest(unittest.TestCase):
                 command.append("--continue-after-error")
             if expected_git:
                 command.extend(["--expected-git", "candidate"])
-            run = subprocess.run(command, capture_output=True, text=True, timeout=10)
+            run = subprocess.run(command, capture_output=True, text=True, timeout=10, check=False)
             rows = json.loads((out / "summary.json").read_text()) if out.exists() else []
             metadata = json.loads((out / "run.json").read_text()) if out.exists() else {}
             return run, rows, metadata

@@ -1,49 +1,186 @@
-# Primo documentation
+# Primo
 
-Primo is a clean-room, paper-grounded SMT solver developed with LLM assistance.
+Primo is a paper-grounded SMT solver built from first principles, developed
+with LLM assistance. It decides whether a set of logical assertions can hold
+together and, for supported inputs, can produce a satisfying model. Its SMT
+implementation is original; propositional search is delegated to CaDiCaL
+through IPASIR-UP. Primo-owned code and documentation use the MIT license.
+The {source}`command loop <src/main.cpp#L87-L119>` is the executable entry
+point; {source}`IpasirUpBackend <src/sat/ipasir_up.hpp#L81-L107>` defines the SAT
+boundary.
 
-This documentation is authored in MyST Markdown and built with Jupyter Book.
-Build it from the repository root with `scripts/build_docs.sh`; generated HTML
-is written under `docs/_build/html`.
+Correctness is the first requirement. Wrong answers, invalid models, and crashes
+block acceptance of solver changes. Contributions that change solver behavior
+need explanations, regression tests, fuzzing, and reproducible evidence;
+see [](development/correctness.md).
 
-Start with [](current-status.md) for supported logics, current solver routes,
-model ownership, qualification evidence and remaining limitations. It separates
-the implemented component architecture from older experiments and future work.
-See [](incremental-smt.md) for the new rebuild-based interactive session layer
-and its qualification boundary.
+## Explore and contribute
 
-## Documentation policy
+The [clickable documentation map](map.md) follows a query through the solver,
+links each area to its explanation and open leads, and suggests starting
+points for contributions in documentation, testing, experiments, and code.
 
-- Use MyST Markdown for architecture, design, algorithm, paper, and developer notes.
-- Use notebooks only for executable experiments, benchmark analysis, and plotted reports.
-- Keep claims synchronized with implemented functionality.
-- Cite the paper or design note behind each nontrivial algorithmic component.
-- Keep dependency integration notes separate from algorithm descriptions.
-- Link to an explicit target such as `(h8)=` by its label alone -- `[H8](#h8)`
-  -- rather than by path and fragment, which produces build-order-dependent
-  `xref_missing` warnings.
+## Build and solve a first problem
 
-## How the book is organised
+From a repository checkout, with a C++20 compiler, CMake 3.20+, GNU Make, Git,
+Python 3, and a Unix-like shell:
 
-Five parts, in the order they are normally needed:
+```bash
+make build
+./build/primo --quiet docs/examples/first-solve.smt2
+```
 
-- **Core architecture** covers current status, ownership invariants, typed models,
-  tactics, IPASIR-UP, DPLL(T), and preprocessing.
-- **Theories** gives each implemented theory an entry point. [](euf.md) covers
-  congruence closure and Boolean arguments. [](arithmetic.md) is the QF_LRA
-  reference and entry point to LIA, with heuristics, tuning, investigations, and fuzz evidence
-  nested below it. [](nelson-oppen.md) is the QF_UFLRA combination reference;
-  [](modular-theory-combination.md) defines the generic component boundary and
-  the implemented non-convex QF_UFLIA route; [](n-way-combination-migration.md)
-  specifies the production collection driver and its completed qualification;
-  its nested notes contain performance history, the convex merge plan, pure-LRA
-  isolation regression, and arithmetic equality-sharing details.
-- **Evidence and practice** explains experiments, the canonical run log, debugging,
-  and TermId order sensitivity.
-- **Paper notes** starts with [](literature.md), which defines the reading and
-  confidence policy, followed by the deeply read algorithm papers.
-- **Reference** contains retrospectives that do not describe Primo itself.
+The first build downloads required dependencies into `contrib/local` and needs
+network access. Linux is the development environment checked for this draft.
+The example contains:
 
-For current behavior and flags, use the status guide and relevant theory chapter. For
-design rationale and rejected experiments, read its nested notes. For measured
-results tied to exact commits and commands, use [](run-log.md).
+```{literalinclude} examples/first-solve.smt2
+:language: lisp
+```
+
+The answer is `unsat`: equal arguments must give equal results when passed to
+the same function, so these assertions contradict each other.
+
+(implemented-now)=
+## Implemented
+
+Primo supports quantifier-free uninterpreted functions, linear Real arithmetic,
+linear Int arithmetic, and their supported combinations. Integer search is
+bounded and may return `unknown`. The quantified `UF` route supports
+enumerative instantiation with limited SAT completion; it does not provide
+general quantifier solving or printed models for quantified assertions.
+The admitted logic names are checked by
+{source}`SmtSession <src/smt/smt_session.cpp#L270-L287>`; quantified assertions
+take the {source}`dedicated UF branch <src/smt/solver_session.cpp#L624-L655>`.
+
+The default session engine supports repeated queries and `push`/`pop` by
+rebuilding solving state. Opt-in assumptions engines retain more state for
+`QF_UF` and `QF_LRA`. Arrays, bit-vectors, nonlinear arithmetic, and proof
+production are outside the implemented scope.
+
+The [architecture overview](implementation/architecture.md) explains the
+component boundaries; [terms, symbols, and ownership](implementation/core.md)
+explains the core representation and its lifetimes.
+[Goals, tactics, and strategies](implementation/tactics.md) follows query
+composition and engine selection. [Preprocessing](implementation/preprocessing.md)
+explains the pass order, profile selection, transformations, and model records.
+[Boolean abstraction and SAT integration](implementation/sat.md) follows those
+terms into clauses and describes assumptions and theory callbacks. The full
+interaction is followed in [DPLL(T)](implementation/dpllt.md), including
+explained conflicts, backtracking, and final consistency checks.
+The **Theories** section begins with the
+[theory solver interface](implementation/theory-interface.md), which explains
+the common assignment, explanation, and model contract and maps it to each
+solver's current integration path.
+[EUF: congruence, explanations, and rollback](implementation/euf.md) follows
+the congruence-closure implementation through a conflict and its undo.
+[Linear real arithmetic](implementation/lra.md) covers exact numbers, shared
+polynomial rows, sparse simplex, strict conflicts and rollback, with links to
+the retained arithmetic development and experiments.
+[Linear integer arithmetic](implementation/lia.md) follows the real relaxation
+through patching, divisibility checks, cuts and branching, including conflict
+explanations and resource limits.
+[Theory combination](implementation/combination.md) explains purification,
+Nelson–Oppen equality exchange, model-guided choices, and the implemented general
+component driver used by QF_UFLIA and quantified UF. QF_UFLRA retains its
+dedicated coordinator. [Quantifiers](implementation/quantifiers.md) explains
+binding, universal instances, existential witnesses, and the current answer
+boundary. [Model construction](implementation/models.md) explains typed values,
+function tables, and restoration of expressions removed by preprocessing.
+
+The [capability matrix](capabilities.md) and user guides cover
+[building](guide/getting-started.md), [input](guide/input.md),
+[models](guide/models.md), and [sessions](guide/sessions.md).
+The [reference](reference/options.md) lists options and effective policies.
+
+The [Yices literature survey](papers/yices.md) connects three papers/talks to
+the code and distinguishes implemented mechanisms from ideas for investigation.
+
+[Reported QF_LRA results](papers/primo-qflra-results.md) links Primo's September
+2026 paper and its benchmark tables. Published configurations and results are
+kept separate from current defaults and qualification evidence.
+
+(work-underway)=
+## Active work
+
+The replacement manual is undergoing its consolidated closing review. The
+[review ledger](review.md) records completed checks and pages awaiting acceptance;
+the [preservation audit](coverage/index.md) maps the original material.
+[Replacement preparation](work/documentation.md),
+[evidence work](work/evidence.md), and [results storage](work/results-storage.md)
+record the remaining tasks and their completion conditions.
+
+## Open leads
+
+Primo should also be usable as a library. The
+[library API and embedding work item](leads/library-api.md) records the required
+boundary audit and a first external-consumer prototype; implementation has
+not started.
+
+The related [incremental-memory lead](leads/incremental-memory.md) will
+investigate high memory use, storage reclamation, and whether reference-counted
+term handles are needed.
+
+[Compact term storage](leads/term-storage.md) is a separate open lead: compare
+payload representations and account for future leaf data. The current layout
+remains in use; implementation is deferred.
+
+[Compact rational storage](leads/rational-storage.md) is a related lead.
+A layout probe identifies a possible 24-to-16-byte reduction while retaining
+`unique_ptr` ownership; implementation and solver evaluation remain open.
+
+Further solver extensions and research ideas are listed in the
+{source}`open-leads register <docs/open-leads.md>`, alongside the outcomes of
+earlier experiments. An open lead is a candidate for investigation, with no
+implementation commitment.
+
+[Dynamic Ackermannization and theory-lemma retention](leads/theory-lemmas.md)
+records the remaining selection, reuse, and deletion questions from the Yices
+survey, including the need to measure CaDiCaL's existing reason retention.
+The related [safe-forgetting lead](leads/theory-lemma-forgetting.md) separates
+logical redundancy from reason lifetime and termination across restarts.
+
+[Polarity-aware CNF](papers/polarity-aware-cnf.md) records the directional
+definitions permitted by Plaisted–Greenbaum and their SMT references.
+General PG encoding remains an open lead. The
+[statistics instrumentation lead](leads/statistics-instrumentation.md) proposes
+typed counters and optional diagnostics while preserving solver-control state.
+
+[Floating-point-guided LRA basis selection](leads/lra-floating-point.md)
+proposes using an approximate solver to suggest a basis, then
+perform exact pivots and checking. Its benefit in Primo remains unmeasured.
+
+[Care-pair generation](leads/care-pair-generation.md) investigates more selective
+and cheaper suggestions while retaining complete model checks. The separate
+[care-guided combination lead](leads/care-guided-combination.md) asks when a
+stronger care-function contract can justify reducing those obligations. Both
+are open; the existing care-pair heuristic and general driver are implemented.
+
+The [complete equality-basis lead](leads/lra-equality-basis.md) investigates
+reducing exact arithmetic equality probes. The
+[QF_UFLRA migration lead](leads/real-combination-migration.md) records the
+remaining consolidation onto the existing general driver. The separate
+[model-based transition lead](leads/model-based-combination.md) records
+further `DPLL(T^M)` work. These are open investigations, not active
+implementation tasks.
+
+[Quantifier instantiation efficiency](leads/quantifier-instantiation.md)
+records enumeration modulo current equalities, its completeness obligations,
+model-based filtering of enumerated instances, entailment filtering, fail masks, and
+bounded enumeration work as connected open investigations. The existing
+enumerator and its stall cutoff remain the implemented baseline.
+
+[Optional NNF through quantifiers](leads/quantifier-nnf.md) investigates whether
+normalization simplifies subsequent work. [Directly asserted quantifiers](leads/asserted-quantifiers.md)
+could use their fixed polarity for earlier witness generation and less
+bookkeeping. Both remain optional specializations of the general route.
+
+[Skipping irrelevant quantified obligations](leads/quantifier-relevance.md)
+investigates don't-cares such as `X or Q` when `X` already satisfies the
+assertion. The [supporting survey](papers/relevance-filtering.md) distinguishes
+candidate filtering from relevance maintained during SAT search.
+
+Build the manual with `make docs`; preview it with `make docs-serve` at
+`http://localhost:8000`. The <a href="archive/original/index.html">historical manual</a>
+remains available. [Publication preparation](work/publication.md) records launch
+checks and outstanding owner decisions.

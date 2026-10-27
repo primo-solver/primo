@@ -1,0 +1,17 @@
+[
+  {
+    "file": "LICENSES/CaDiCaL.txt",
+    "url": "https://raw.githubusercontent.com/arminbiere/cadical/rel-3.0.0/LICENSE",
+    "sha256": "e6e43717e3412b8b8dde30581ff5ee4605ee7ade3d30972bb0d2124e67cb922c"
+  },
+  {
+    "file": "LICENSES/CLI11.txt",
+    "url": "https://raw.githubusercontent.com/CLIUtils/CLI11/v2.6.2/LICENSE",
+    "sha256": "009a05a07c254fe5a3bd8da28c8b8db91995e9447a2edb54b302ee5b46d8fa18"
+  },
+  {
+    "file": "LICENSES/YinYang.txt",
+    "url": "https://raw.githubusercontent.com/MikolasJanota/yinyang/master/LICENSE.md",
+    "sha256": "a2ae7648a69fab023d9834ec65fffe5d8e17cc93d134e1eca864b95d28724e55"
+  }
+]

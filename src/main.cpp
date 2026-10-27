@@ -135,6 +135,9 @@ std::optional<primo::smt::AutoBudget> parse_auto_budget(const std::string& text)
     budget.kind = primo::smt::AutoBudget::Kind::Unlimited;
     return budget;
   }
+  if (text.empty() || text.find_first_not_of("0123456789") != std::string::npos) {
+    return std::nullopt;
+  }
   try {
     std::size_t consumed = 0;
     const unsigned long long value = std::stoull(text, &consumed);
@@ -391,6 +394,9 @@ int run_main(int argc, char** argv) {
                         "Enable experimental QF_LRA theory-guided decisions: the arithmetic theory "
                         "ranks candidate atoms via CaDiCaL's cb_decide and supplies the decision "
                         "literal itself instead of leaving every decision to generic VSIDS");
+  add_flag_with_default(app, "--lra-equality-propagation", solver_options.lra_equality_propagation,
+                        "Enable experimental pure QF_LRA model-unit equality discovery and "
+                        "propagation of existing difference comparisons (IPASIR-UP only)");
   add_flag_with_default(app, "--lra-model-phase", lra_model_phase,
                         "Enable model-based SAT phase hints (automatic for QF_LRA rebuild "
                         "queries with auto preprocessing): keep CaDiCaL's "
@@ -575,7 +581,8 @@ int run_main(int argc, char** argv) {
       "problems having 1000-2500 top-level OR nodes and at most 700 negations");
   add_flag_with_default(
       app, "--preprocess-only", solver_options.preprocess_only,
-      "Run parsing and preprocessing, print unknown, and skip SAT/theory solving");
+      "Diagnostic: stop before search; report unsat if preprocessing refutes, otherwise unknown. "
+      "Quantified input stops after the frontend");
   app.add_option("--cancel-grace-seconds", cancel_grace_seconds,
                  "Seconds SIGTERM or SIGINT waits for the cooperative cancellation path, "
                  "which reports statistics, before answering unknown and exiting")
@@ -643,12 +650,6 @@ int run_main(int argc, char** argv) {
                   primo::cli::kEufPropagationNames, "EUF propagation mode");
   add_enum_option(app, "--euf-engine", solver_options.euf_engine, primo::cli::kEufEngineNames,
                   "EUF engine");
-  add_enum_option(app, "--euf-boolean-domain", solver_options.euf_boolean_domain,
-                  primo::cli::kEufBooleanDomainNames,
-                  "How Bool's two-element domain reaches congruence closure: registration\n"
-                  "(register Bool-sorted arguments as theory atoms; no extra SAT variable or\n"
-                  "clause) or bridge-atoms (the older encoding, 2 atoms and 3 clauses per\n"
-                  "term). Selectable only to A/B the two; bridge-atoms is going away");
   add_enum_option(app, "--euf-explain-search", solver_options.euf_explain_search,
                   primo::cli::kEufExplainSearchNames, "Incremental EUF explanation search");
   add_flag_with_default(app, "--euf-proof-forest-diagnostics", euf_proof_forest_diagnostics,

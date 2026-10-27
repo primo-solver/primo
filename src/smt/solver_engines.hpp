@@ -58,14 +58,13 @@ void record_ackermann_cost_diagnostics_for_session(const core::TermManager& term
 
 class BooleanClausifier;
 
-// The QF_UFLIA recipe's EUF component and its Boolean-domain preparation, for
-// recipes outside this file (the quantified UF route). Returns null without an
-// IPASIR backend.
+// The QF_UFLIA recipe's EUF component, also used by the quantified UF route.
+// Returns null without an IPASIR backend.
 std::unique_ptr<theory::TheoryComponent> make_uf_euf_component(core::TermManager& terms,
                                                                const CheckSatOptions& options,
                                                                util::Statistics& statistics,
                                                                bool online);
-void apply_euf_boolean_domain(BooleanClausifier& clausifier, const CheckSatOptions& options,
-                              util::Statistics& statistics);
+// Complete the Boolean-argument registry before an EUF recipe consumes atoms.
+void register_euf_boolean_arguments(BooleanClausifier& clausifier, util::Statistics& statistics);
 
 }  // namespace primo::smt

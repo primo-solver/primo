@@ -337,7 +337,7 @@ class LraTableau {
   //
   // Partitions `shared` by its current model value, returning only the classes
   // with more than one member. This is the `M-Propagate` trigger from de Moura
-  // and Bjorner's Model-based Theory Combination (docs/papers/model-guided-no.pdf,
+  // and Bjorner's Model-based Theory Combination (doi:10.1016/j.entcs.2008.04.079,
   // Section 5): the theories exchange candidate equalities implied by the
   // *current model*, not by the constraint set, and the combination layer turns
   // each candidate into a case split.
@@ -410,7 +410,7 @@ class LraTableau {
   };
 
   // Applies the cheap entailment rules from de Moura and Bjorner's
-  // Model-based Theory Combination, Section 5.1 (docs/papers/model-guided-no.pdf,
+  // Model-based Theory Combination, Section 5.1 (doi:10.1016/j.entcs.2008.04.079,
   // and docs/qf-lra-equality-sharing.md for why we care):
   //
   //   FixedEq   l_i = u_i = l_j = u_j                      ==> x_i = x_j

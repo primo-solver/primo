@@ -2,13 +2,12 @@ from __future__ import annotations
 
 import json
 import os
-from pathlib import Path
 import shlex
 import subprocess
 import sys
 import tempfile
 import unittest
-
+from pathlib import Path
 
 SCRIPT = Path(__file__).parents[2] / "scripts/slurm_qf_uflia_mutation_fuzz_gate.sbatch"
 
@@ -72,6 +71,7 @@ class MutationGateOptionsTests(unittest.TestCase):
                 ["bash", str(SCRIPT)],
                 env=env,
                 capture_output=True,
+                check=False,
                 text=True,
                 timeout=10,
             )
@@ -101,8 +101,8 @@ class MutationGateOptionsTests(unittest.TestCase):
             None,
             "",
             "--no-qf-uflia-model-combination",
-            "  --no-qf-uflia-model-combination\t--preprocessing-mode=strong  "
-            "--max-theory-conflicts 50 ",
+            ("  --no-qf-uflia-model-combination\t--preprocessing-mode=strong  "
+             "--max-theory-conflicts 50 "),
         ):
             with self.subTest(options=options):
                 answer, model = self.run_gate(options)

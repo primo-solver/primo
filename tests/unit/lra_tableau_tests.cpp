@@ -828,6 +828,131 @@ void soi_reproduces_paper_fig6_worked_example() {
   assert(tableau.soi_multi_row_conflict_count() == 0);
 }
 
+void soi_zero_breakpoints_moving_inward_do_not_change_the_slope() {
+  // Section V-A's one-sided starting slope: both initially tight rows move
+  // inward, so neither contributes to the violation objective. Mirror the
+  // entering direction and row signs, including purely infinitesimal steps.
+  for (const int direction : {-1, 1}) {
+    for (const int row_sign : {-1, 1}) {
+      for (const DeltaRational& target : {rat(1), DeltaRational{Rational(0), Rational(1)},
+                                          DeltaRational{Rational(1), Rational(1)}}) {
+        LraTableau tableau(LraTableau::PivotingRule::Soi);
+        const LraVarId x = tableau.add_variable();
+        const LraVarId y = tableau.add_variable();
+        const LraVarId s = tableau.add_variable();
+        const LraVarId r = tableau.add_variable();
+        const LraVarId t = tableau.add_variable();
+        tableau.add_row(s, {{x, Rational(direction)}, {y, Rational(1)}});
+        tableau.add_row(r, {{x, Rational(row_sign)}, {y, Rational(-1)}});
+        tableau.add_row(t, {{x, Rational(-row_sign)}, {y, Rational(-2)}});
+        assert(!tableau.assert_lower(y, rat(0), Lit{1}));
+        assert(!tableau.assert_upper(y, rat(0), Lit{2}));
+        const auto checkpoint = tableau.push();
+
+        for (int replay = 0; replay < 2; ++replay) {
+          assert(!tableau.assert_lower(s, target, Lit{3}));
+          if (direction == row_sign) {
+            assert(!tableau.assert_lower(r, rat(0), Lit{4}));
+            assert(!tableau.assert_upper(t, rat(0), Lit{5}));
+          } else {
+            assert(!tableau.assert_upper(r, rat(0), Lit{4}));
+            assert(!tableau.assert_lower(t, rat(0), Lit{5}));
+          }
+          const auto before = tableau.pivot_count();
+          assert(!tableau.check());
+          assert(tableau.pivot_count() == before + 1);
+          assert(tableau.is_basic(x) && !tableau.is_basic(s));
+          assert(tableau.assignment(x) == target.scaled(Rational(direction)));
+          assert(tableau.assignment(y) == rat(0));
+          assert(tableau.assignment(s) == target);
+          assert(tableau.assignment(r) == tableau.assignment(x).scaled(Rational(row_sign)));
+          assert(tableau.assignment(t) == tableau.assignment(x).scaled(Rational(-row_sign)));
+
+          tableau.pop(checkpoint);
+          assert(!tableau.is_basic(x) && tableau.is_basic(s));
+          assert(tableau.assignment(x) == rat(0));
+        }
+      }
+    }
+  }
+}
+
+void soi_zero_breakpoints_moving_outward_change_the_slope() {
+  // Repairing s by moving x would violate the tight row r twice as fast.
+  // The minimum is at step zero, including for a tight lower bound.
+  for (const int direction : {-1, 1}) {
+    for (const int row_sign : {-1, 1}) {
+      LraTableau tableau(LraTableau::PivotingRule::Soi);
+      const LraVarId x = tableau.add_variable();
+      const LraVarId y = tableau.add_variable();
+      const LraVarId s = tableau.add_variable();
+      const LraVarId r = tableau.add_variable();
+      tableau.add_row(s, {{x, Rational(direction)}, {y, Rational(1)}});
+      tableau.add_row(r, {{x, Rational(2 * row_sign)}, {y, Rational(-1)}});
+      assert(!tableau.assert_lower(y, rat(0), Lit{1}));
+      assert(!tableau.assert_upper(y, rat(0), Lit{2}));
+      assert(!tableau.assert_lower(s, rat(1), Lit{3}));
+      if (direction == row_sign) {
+        assert(!tableau.assert_upper(r, rat(0), Lit{4}));
+      } else {
+        assert(!tableau.assert_lower(r, rat(0), Lit{4}));
+      }
+      const auto conflict = tableau.check();
+      assert(conflict && has_reason(*conflict, Lit{3}) && has_reason(*conflict, Lit{4}));
+      assert(tableau.pivot_count() == 1);
+      assert(tableau.assignment(x) == rat(0));
+      assert(tableau.is_basic(x) && !tableau.is_basic(r));
+    }
+  }
+}
+
+void soi_fixed_variable_at_zero_contributes_one_direction_change() {
+  // V(h) = max(3 - 3h, 0) + |2h| for h >= 0. Its minimum is at h=1.
+  // Counting both initially coincident bounds would incorrectly prefer h=0.
+  for (const int direction : {-1, 1}) {
+    LraTableau tableau(LraTableau::PivotingRule::Soi);
+    const LraVarId x = tableau.add_variable();
+    const LraVarId y = tableau.add_variable();
+    const LraVarId s = tableau.add_variable();
+    const LraVarId t = tableau.add_variable();
+    tableau.add_row(s, {{x, Rational(3 * direction)}, {y, Rational(1)}});
+    tableau.add_row(t, {{x, Rational(2 * direction)}, {y, Rational(-1)}});
+    assert(!tableau.assert_lower(y, rat(0), Lit{1}));
+    assert(!tableau.assert_upper(y, rat(0), Lit{2}));
+    assert(!tableau.assert_lower(s, rat(3), Lit{3}));
+    assert(!tableau.assert_lower(t, rat(0), Lit{4}));
+    assert(!tableau.assert_upper(t, rat(0), Lit{5}));
+    assert(tableau.check());
+    assert(tableau.pivot_count() == 1);
+    assert(tableau.assignment(x) == rat(direction));
+    assert(tableau.is_basic(x) && !tableau.is_basic(s));
+  }
+}
+
+void soi_fixed_variable_at_nonzero_contributes_both_direction_changes() {
+  // V(h) = max(3 - h, 0) + |h - 1|. Reaching the fixed value at h=1
+  // changes its direction from -1 to +1. V is then flat until h=3, so
+  // the nearest-breakpoint tie-break must choose h=1 in either direction.
+  for (const int direction : {-1, 1}) {
+    LraTableau tableau(LraTableau::PivotingRule::Soi);
+    const LraVarId x = tableau.add_variable();
+    const LraVarId y = tableau.add_variable();
+    const LraVarId s = tableau.add_variable();
+    const LraVarId t = tableau.add_variable();
+    tableau.add_row(s, {{x, Rational(direction)}, {y, Rational(1)}});
+    tableau.add_row(t, {{x, Rational(direction)}, {y, Rational(-1)}});
+    assert(!tableau.assert_lower(y, rat(0), Lit{1}));
+    assert(!tableau.assert_upper(y, rat(0), Lit{2}));
+    assert(!tableau.assert_lower(s, rat(3), Lit{3}));
+    assert(!tableau.assert_lower(t, rat(1), Lit{4}));
+    assert(!tableau.assert_upper(t, rat(1), Lit{5}));
+    assert(tableau.check());
+    assert(tableau.pivot_count() == 1);
+    assert(tableau.assignment(x) == rat(direction));
+    assert(tableau.is_basic(x) && !tableau.is_basic(t));
+  }
+}
+
 void soi_matches_bland_on_multi_pivot_scenarios() {
   // Mirrors satisfiable_system_via_a_slack_row/
   // infeasible_system_requires_a_pivot_to_discover under Soi.
@@ -1773,6 +1898,37 @@ void eqrows_rejects_different_nonfixed_polynomials() {
   }));
 }
 
+void model_unit_filter_requires_repair_after_an_infeasible_branch() {
+  LraTableau tableau;
+  const LraVarId y = tableau.add_variable();
+  const LraVarId z = tableau.add_variable();
+  const LraVarId x = tableau.add_variable();
+  const LraVarId u = tableau.add_variable();
+  tableau.add_row(x, {{y, Rational(1)}, {z, Rational(1)}});
+  assert(!tableau.assert_lower(z, rat(1), Lit{41}).has_value());
+  assert(!tableau.assert_upper(z, rat(1), Lit{42}).has_value());
+  assert(!tableau.assert_lower(x, rat(1), Lit{43}).has_value());
+  assert(!tableau.assert_upper(x, rat(1), Lit{44}).has_value());
+  assert(!tableau.assert_lower(u, rat(2), Lit{45}).has_value());
+  assert(!tableau.assert_upper(u, rat(2), Lit{46}).has_value());
+  assert(!tableau.check().has_value());
+  assert(tableau.assignment(x) == rat(1));
+  const auto checkpoint = tableau.push();
+  assert(!tableau.assert_lower(y, rat(1), Lit{47}).has_value());
+  assert(tableau.check().has_value());
+  tableau.pop(checkpoint);
+  // Bounds-only rollback retains the infeasible assignment x=u=2. Its
+  // accidental model equality must not enter the paper's model-value filter:
+  // the surviving bounds actually fix x=1 and u=2. The consumer must repair
+  // first, even if no new arithmetic assignment arrives after this pop.
+  assert(tableau.assignment(x) == rat(2));
+  assert(tableau.assignment(u) == rat(2));
+  assert(!tableau.check().has_value());
+  assert(tableau.assignment(x) == rat(1));
+  assert(tableau.assignment(y) == rat(0));
+  assert(tableau.model_filtered_unit_equalities({x, u}).equalities.empty());
+}
+
 void model_unit_eqrow_avoids_large_fixed_offset_construction() {
   LraTableau tableau;
   const LraVarId y = tableau.add_variable();
@@ -2599,6 +2755,10 @@ int main() {
   least_violated_leaving_matches_bland_on_multi_pivot_scenarios();
   least_violated_leaving_selects_differently_from_most_violated();
   soi_reproduces_paper_fig6_worked_example();
+  soi_zero_breakpoints_moving_inward_do_not_change_the_slope();
+  soi_zero_breakpoints_moving_outward_change_the_slope();
+  soi_fixed_variable_at_zero_contributes_one_direction_change();
+  soi_fixed_variable_at_nonzero_contributes_both_direction_changes();
   soi_matches_bland_on_multi_pivot_scenarios();
   soi_push_pop_restores_state_across_a_pivot();
   soi_multi_row_conflict_includes_every_violated_row();
@@ -2635,6 +2795,7 @@ int main() {
   eqrows_reports_matching_polynomials_and_emits_a_spanning_set();
   eqrows_rejects_different_nonfixed_polynomials();
   model_unit_eqrow_avoids_large_fixed_offset_construction();
+  model_unit_filter_requires_repair_after_an_infeasible_branch();
   model_unit_two_row_accepts_both_same_unit_signs();
   model_unit_two_row_rejects_opposite_signs_and_nonunit_connectors();
   model_unit_output_is_a_deterministic_spanning_set();

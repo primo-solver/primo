@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import contextlib
 import io
-from pathlib import Path
 import sys
 import unittest
+from pathlib import Path
 from unittest import mock
-
 
 SCRIPT = (
     Path(__file__).parents[2] / "scripts" / "slurm_integer_model_reconstruction_gate.sbatch"
@@ -28,7 +27,8 @@ class IntegerModelGateTests(unittest.TestCase):
         )
         for label, answers, models, status, expected in scenarios:
             with self.subTest(label=label):
-                def opened(path: Path, *args: object, **kwargs: object) -> io.StringIO:
+                def opened(path: Path, *args: object, answers=answers, models=models,
+                           **kwargs: object) -> io.StringIO:
                     rows = answers if path.parent.name == "answer" else models
                     return io.StringIO("outcome\n" + rows)
 
@@ -39,7 +39,8 @@ class IntegerModelGateTests(unittest.TestCase):
                     contextlib.redirect_stdout(io.StringIO()),
                     self.assertRaises(SystemExit) as caught,
                 ):
-                    exec(compile(source, "gate-heredoc", "exec"), {})
+                    # Execute only this repository's gate heredoc under mocks.
+                    exec(compile(source, "gate-heredoc", "exec"), {})  # noqa: S102
                 self.assertEqual(caught.exception.code, expected)
 
 

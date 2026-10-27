@@ -20,14 +20,19 @@ struct ComponentDispatchStatistics {
   std::size_t propagations = 0;
 };
 
-// SMT-owned, preindexed literal routing. Components own trails and explanations;
+// SMT-owned, preindexed literal routing. Components own kernel undo and explanations;
 // this solve-scoped dispatcher owns backend callback/streaming state, not kernels.
 // See docs/n-way-combination-migration.md. Registration requires disconnection.
 class ComponentDispatcher final : public sat::ExternalPropagator {
  public:
+  // report_conflict returns true when no further component work is permitted.
   explicit ComponentDispatcher(std::span<theory::TheoryComponent* const> components,
-                               std::function<void(sat::Lit)> publish_phase = {});
+                               std::function<void(sat::Lit)> publish_phase = {},
+                               std::function<bool()> report_conflict = {},
+                               bool forgettable_clauses = true);
   void register_atoms(std::size_t component, std::span<const theory::ComponentAtom> atoms);
+  void bind_assignment_view(sat::TrailView view) override;
+  void notify_backtrack_delta(std::size_t level, const std::vector<int>& removed) override;
   void notify_assignment(const std::vector<int>& lits) override;
   void notify_new_decision_level() override;
   void notify_backtrack(std::size_t level) override;
@@ -59,19 +64,17 @@ class ComponentDispatcher final : public sat::ExternalPropagator {
   std::vector<std::vector<theory::AssignedTheoryLiteral>> deltas_;
   std::vector<std::size_t> touched_;
   std::vector<bool> dirty_;
-  std::vector<int> assignment_;
-  std::vector<int> trail_;
-  std::vector<std::size_t> levels_;
   std::unordered_map<int, Explanation> reasons_;
   std::optional<Explanation> external_clause_;
   std::size_t clause_cursor_ = 0;
   int reason_literal_ = 0;
   std::size_t reason_cursor_ = 0;
-  std::uint64_t epoch_ = 0;
   std::optional<theory::TheoryCheckResult> failure_;
   std::optional<std::size_t> lemmas_pending_;
   ComponentDispatchStatistics statistics_;
   std::function<void(sat::Lit)> publish_phase_;
+  std::function<bool()> report_conflict_;
+  bool forgettable_clauses_;
 };
 
 }  // namespace primo::smt

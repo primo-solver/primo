@@ -1,10 +1,9 @@
 import importlib.util
-from pathlib import Path
 import random
 import sys
 import unittest
+from pathlib import Path
 from unittest.mock import patch
-
 
 spec = importlib.util.spec_from_file_location(
     'seeded_opfuzz', Path(__file__).resolve().parents[2] / 'scripts/seeded_opfuzz.py')

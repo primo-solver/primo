@@ -5,8 +5,10 @@ from __future__ import annotations
 import importlib.util
 import random
 import re
+import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 SCRIPT = Path(__file__).parents[2] / "scripts" / "qf_uf_boolean_fuzz.py"
 SPEC = importlib.util.spec_from_file_location("qf_uf_boolean_fuzz", SCRIPT)
@@ -80,6 +82,43 @@ class ClassificationTests(unittest.TestCase):
 
     def test_agreement_is_a_pass(self) -> None:
         self.assertEqual(MODULE.classify("unsat", "unsat"), "PASS")
+
+
+class ModelReplayTests(unittest.TestCase):
+    def test_only_confirmed_sat_cases_enter_model_replay(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            args = ["qf_uf_boolean_fuzz", "--count=2", "--validate-models", "--out", folder]
+            answers = [("sat", 0), ("sat", 0), ("unsat", 0), ("unsat", 0)]
+            with (
+                mock.patch.object(MODULE.sys, "argv", args),
+                mock.patch.object(MODULE, "run_solver", side_effect=answers),
+                mock.patch.object(MODULE.subprocess, "run", return_value=mock.Mock(returncode=0)) as replay,
+            ):
+                self.assertEqual(MODULE.main(), 0)
+            manifest = Path(folder) / "model-cases.txt"
+            self.assertEqual(
+                manifest.read_text().splitlines(),
+                [str(Path(folder).resolve() / "cases/case-0000.smt2")],
+            )
+            replay.assert_called_once()
+            self.assertIn("--expect-sat", replay.call_args.args[0])
+            self.assertIn(str(manifest), replay.call_args.args[0])
+
+    def test_no_sat_cases_skip_replay_without_hiding_answer_failures(self) -> None:
+        for answers, status in [
+            ([("unsat", 0), ("unsat", 0)], 0),
+            ([("sat", 0), ("unsat", 0)], 1),
+        ]:
+            with self.subTest(answers=answers), tempfile.TemporaryDirectory() as folder:
+                args = ["qf_uf_boolean_fuzz", "--count=1", "--validate-models", "--out", folder]
+                with (
+                    mock.patch.object(MODULE.sys, "argv", args),
+                    mock.patch.object(MODULE, "run_solver", side_effect=answers),
+                    mock.patch.object(MODULE.subprocess, "run") as replay,
+                ):
+                    self.assertEqual(MODULE.main(), status)
+                self.assertEqual((Path(folder) / "model-cases.txt").read_text(), "")
+                replay.assert_not_called()
 
 
 

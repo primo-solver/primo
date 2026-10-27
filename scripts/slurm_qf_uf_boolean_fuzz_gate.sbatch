@@ -10,8 +10,8 @@
 # Differential gate for `Bool` used in every capacity a QF_UF problem allows:
 # as a function argument, as a function result, as a compound formula in
 # argument position, nested, travelling through an uninterpreted sort, and in
-# inferences that need `Bool` to have exactly two elements. Every case is also
-# rerun with model production and checked by Dolmen. Answer comparison alone
+# inferences that need `Bool` to have exactly two elements. Every successful SAT
+# case is rerun with model production and checked by Dolmen. Answer comparison alone
 # cannot detect a satisfiable answer accompanied by an invalid model.
 #
 # Why this gate exists separately from slurm_qfuf_fuzz_gate.sbatch: FuzzSMT
@@ -102,6 +102,8 @@ rows = list(csv.DictReader(open(sys.argv[1])))
 counts = collections.Counter(row["outcome"] for row in rows)
 print("models=%d %s" % (len(rows), dict(counts)))
 PY
+elif [ -f "$OUT_ROOT/$shape/model-cases.txt" ] && [ ! -s "$OUT_ROOT/$shape/model-cases.txt" ]; then
+  echo "No successful SAT cases to validate"
 else
   echo "NO MODEL SUMMARY WRITTEN -- shard did not complete the model gate"
 fi

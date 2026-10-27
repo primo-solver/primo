@@ -62,29 +62,19 @@ void QuantifierComponent::register_atoms(std::span<const ComponentAtom> atoms) {
   // Growth happens at a detached boundary; the next dispatcher replays the
   // assignment from scratch, as for every other component.
   reset();
-  registered_atoms_ += atoms.size();
+  assignment_.register_atoms(atoms);
 }
 
 core::TermId QuantifierComponent::encode_equality(const InterfacePair&) {
   throw std::logic_error("the quantifier component shares no interface terms");
 }
 
-void QuantifierComponent::reset() {
-  trail_.clear();
-  levels_.clear();
-}
-
-void QuantifierComponent::push_level() { levels_.push_back(trail_.size()); }
-
-void QuantifierComponent::pop_to_level(std::size_t level) {
-  if (level < levels_.size()) {
-    trail_.resize(levels_[level]);
-    levels_.resize(level);
-  }
-}
-
+// Enumeration and lemma caches survive SAT backtracking; truth lives in the view.
+void QuantifierComponent::reset() {}
+void QuantifierComponent::push_level() {}
+void QuantifierComponent::pop_to_level(std::size_t) {}
 void QuantifierComponent::assign(std::span<const AssignedTheoryLiteral> delta) {
-  trail_.insert(trail_.end(), delta.begin(), delta.end());
+  assignment_.check_delta(delta);
 }
 
 TheoryCheckResult QuantifierComponent::check(TheoryCheckEffort effort,
@@ -99,7 +89,7 @@ TheoryCheckResult QuantifierComponent::check(TheoryCheckEffort effort,
   }
   const bool full = effort == TheoryCheckEffort::FullModel;
   // Instances are chosen once every quantifier atom is assigned (section 2's loop).
-  if (trail_.size() < registered_atoms_) {
+  if (!assignment_.complete()) {
     result.status = full ? TheoryCheckStatus::Unknown : TheoryCheckStatus::Consistent;
     if (full) result.diagnostic = "a full model left quantifier atoms unassigned";
     return result;
@@ -107,7 +97,7 @@ TheoryCheckResult QuantifierComponent::check(TheoryCheckEffort effort,
 
   std::vector<std::pair<core::TermId, bool>> universal;
   bool uncovered = false;
-  for (const AssignedTheoryLiteral& assigned : trail_) {
+  for (const AssignedTheoryLiteral& assigned : assignment_.full_assignment(true)) {
     const bool exists = terms_.get(assigned.atom).kind == core::TermKind::Exists;
     if (exists != assigned.value) {
       universal.emplace_back(assigned.atom, assigned.value);

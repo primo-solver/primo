@@ -1,36 +1,122 @@
-title: Primo Solver Notes
+title: Primo documentation
 author: Primo contributors
-logo: ""
+logo: _static/primo-logo.svg
+
+bibtex_bibfiles:
+  - references.bib
 
 execute:
   execute_notebooks: "off"
 
 repository:
+  url: https://github.com/primo-solver/primo
+  branch: main
   path_to_book: docs
 
 html:
-  use_repository_button: false
-  use_issues_button: false
-  use_edit_page_button: false
+  favicon: _static/primo-avatar.png
+  use_repository_button: true
+  use_issues_button: true
+  use_edit_page_button: true
 
 parse:
   myst_enable_extensions:
     - colon_fence
     - deflist
+    - dollarmath
     - fieldlist
-    - linkify
     - substitution
     - tasklist
 
 sphinx:
+  extra_extensions:
+    - sphinx.ext.extlinks
+  recursive_update: true
   config:
-    # Generate implicit targets for headings down to level 3, so that an
-    # ordinary `[text](#some-heading)` link resolves as a MyST reference
-    # instead of warning and falling back to a bare HTML anchor.
+    bibtex_reference_style: label
+    extlinks:
+      source:
+        - "https://github.com/primo-solver/primo/blob/c944fa790c2043ebac93b8d6f63c7b02b0c2c235/%s"
+        - "%s"
+      ablationsource:
+        - "https://github.com/primo-solver/primo/blob/42005258b21263500e24faf9f0865bb213663935/%s"
+        - "%s"
+      ablationworkflow:
+        - "https://github.com/primo-solver/primo/blob/dc787c85f7cc2a2877f5c597f8ee2d3575f0823a/%s"
+        - "%s"
+      regressionworkflow:
+        - "https://github.com/primo-solver/primo/blob/e3a2a6e08dd8afbc2e100b17c4d70c7e1ec1a92f/%s"
+        - "%s"
+      recoveredreference:
+        - "https://github.com/primo-solver/primo/blob/feffdbc9713ecbfebd7c83147344053eaf8d0e76/%s"
+        - "%s"
+      equalityexperiment:
+        - "https://github.com/primo-solver/primo/blob/4419dc902f03fe12b8933d5dee4378dd11497035/%s"
+        - "%s"
+      equalityworkflow:
+        - "https://github.com/primo-solver/primo/blob/dcb548a457df2a151e8c71de0445c367e9023ced/%s"
+        - "%s"
+      longlimitsworkflow:
+        - "https://github.com/primo-solver/primo/blob/a7b02725143c32ca6726f580d9c4762ae71cac3a/%s"
+        - "%s"
+      lrapolicysource:
+        - "https://github.com/primo-solver/primo/blob/f0fbe6768ec1619051df1d4019dbc0a6957d55a0/%s"
+        - "%s"
+      profilesource:
+        - "https://github.com/primo-solver/primo/blob/90d29667fa8796b9db41967afb65ab202388b54e/%s"
+        - "%s"
+      retentionsource:
+        - "https://github.com/primo-solver/primo/blob/25b44cc2204169ff0cc45a771b5ec56895a0511e/%s"
+        - "%s"
+      migrationsource:
+        - "https://github.com/primo-solver/primo/blob/cfc4136dd92f7db7928d7d76b10f5d1050bc9b96/%s"
+        - "%s"
+      adaptersource:
+        - "https://github.com/primo-solver/primo/blob/a8ec696ec8a20e3df8350084ee34f8e9b977d20d/%s"
+        - "%s"
+      integersource:
+        - "https://github.com/primo-solver/primo/blob/8e5e5010441a7f9949bbdf1a81f851bb1ff2f3fd/%s"
+        - "%s"
+      docsbuildsource:
+        - "https://github.com/primo-solver/primo/blob/4a2076cae8d64d4b97a999e7ab07d81ff8eb6ee4/%s"
+        - "%s"
+      refreshsource:
+        - "https://github.com/primo-solver/primo/blob/6fa6f0b/%s"
+        - "%s"
+      repairsource:
+        - "https://github.com/primo-solver/primo/blob/5c96568/%s"
+        - "%s"
+      toolsource:
+        - "https://github.com/primo-solver/primo/blob/d16acb42d87a55eaa5f76faf14a904900a9a7e8b/%s"
+        - "%s"
+      project:
+        - "https://github.com/primo-solver/primo/blob/a953edd5a345d8532141eea8c075d1f070772235/%s"
+        - "%s"
+      record:
+        - "https://github.com/primo-solver/primo/blob/1f9f116c73520d960278139a0e82dd0dbd4c9b29/%s"
+        - "%s"
     myst_heading_anchors: 3
+    linkcheck_workers: 4
+    linkcheck_timeout: 15
+    linkcheck_retries: 1
+    linkcheck_rate_limit_timeout: 30
+    linkcheck_allow_unauthorized: false
+    linkcheck_report_timeouts_as_broken: false
+    linkcheck_anchors_ignore_for_url:
+      # GitHub implements code-line fragments dynamically; still check the file URL.
+      - '^https://github\.com/arminbiere/cadical/blob/rel-3\.0\.0/src/cadical\.hpp$'
+    linkcheck_ignore:
+      # Validated from local Git by make docs-check-links; no GitHub login needed.
+      - '^https://github\.com/primo-solver/primo/(?:blob|commit)/'
+      # Repository landing page requires access while the repository is private.
+      - '^https://github\.com/primo-solver/primo/?$'
+    html_css_files:
+      - contribution-map.css
     html_show_copyright: false
     html_show_sourcelink: false
     html_theme_options:
       use_download_button: false
-    suppress_warnings:
-      - myst.header
+      logo:
+        image_light: _static/primo-logo.svg
+        image_dark: _static/primo-logo-dark.svg
+        alt_text: Primo

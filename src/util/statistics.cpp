@@ -104,6 +104,7 @@ constexpr std::array<std::string_view, static_cast<std::size_t>(StatKey::Count)>
     ":euf.diseq-assignments"sv,
     ":euf.checks"sv,
     ":euf.theory-conflicts"sv,
+    ":theory.conflicts"sv,
     ":euf.propagation.rounds"sv,
     ":euf.propagation.candidates"sv,
     ":euf.propagation.delivered"sv,

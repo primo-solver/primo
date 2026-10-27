@@ -1,12 +1,11 @@
 import json
 import os
-from pathlib import Path
 import shlex
 import subprocess
 import sys
 import tempfile
 import unittest
-
+from pathlib import Path
 
 SCRIPT = Path(__file__).resolve().parents[2] / "scripts/slurm_typed_model_mutation_gate.sbatch"
 STUB = r'''
@@ -60,7 +59,7 @@ class TypedMutationGateTests(unittest.TestCase):
                        TEST_SEED_FAILURE='resource' if resource_seed else
                        ('post' if fail_post else str(int(fail_seed))))
             result = subprocess.run(['bash', str(SCRIPT)], env=env,
-                                    capture_output=True, text=True, timeout=10)
+                                    capture_output=True, text=True, timeout=10, check=False)
             self.assertEqual(result.returncode, int(fail_seed or fail_post or resource_seed),
                              result.stdout + result.stderr)
             return [json.loads(line) for line in (root / 'calls.jsonl').read_text().splitlines()]

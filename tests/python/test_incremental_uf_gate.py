@@ -7,9 +7,9 @@ from pathlib import Path
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+import native_uf_sessions
 from incremental_uf_gate import generated, scoped
 from native_uf_sessions import classify, query_metadata, run_session
-import native_uf_sessions
 from validate_incremental import QueryJournal, command_spans
 
 

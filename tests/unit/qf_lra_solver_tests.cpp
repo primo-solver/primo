@@ -2896,6 +2896,7 @@ void qf_uf_lra_live_euf_model_rolls_back_rejected_candidate_merges() {
   options.nelson_oppen_model_equality_mutation = false;
   options.qf_uflra_online_euf = true;
   const auto result = check_sat_smtlib(R"(
+    (set-option :produce-models true)
     (set-logic QF_UFLRA)
     (declare-fun x () Real)
     (declare-fun y () Real)
@@ -2905,15 +2906,18 @@ void qf_uf_lra_live_euf_model_rolls_back_rejected_candidate_merges() {
     (assert (p x))
     (assert (not (p y)))
     (check-sat)
+    (get-model)
   )",
                                        options);
   assert(result.result == CheckSatResult::Sat);
+  assert(!result.model.empty());
   assert(result.statistics.get(":no.shared-model.compatibility-splits") >= 1);
   assert(result.statistics.get(":no.shared-model.split-materializations") >= 1);
   assert(result.statistics.get(":no.interface.euf-live-model-reuses") >= 2);
   assert(result.statistics.get(":no.interface.euf-live-model-fallbacks") == 0);
   assert(result.statistics.get(":no.interface.euf-live-model-incomplete") == 0);
-  assert(result.statistics.get(":no.interface.euf-live-model-callback-assignments") >= 1);
+  // Retained assignments must survive backtracking; this trace needs no
+  // model-callback replay to repair missing assignment markers.
   assert(result.statistics.get(":no.interface.euf-final-closure-rebuilds") == 0);
   assert(result.statistics.get(":no.online.euf-generated-equality-registration-failures") == 0);
 }
@@ -3328,6 +3332,81 @@ void same_slack_propagation_can_reach_a_conflict() {
   const auto not_propagated = check_sat_smtlib(formula, without_propagation);
   assert(not_propagated.result == CheckSatResult::Unsat);
 }
+
+#if PRIMO_HAVE_IPASIR
+void variable_equality_propagates_existing_comparisons() {
+  const std::string formula = R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real) (declare-fun y () Real) (declare-fun z () Real)
+    (declare-fun w () Real)
+    (assert (>= x 7)) (assert (<= x 7))
+    (assert (>= y 7)) (assert (<= y 7))
+    (assert (>= z 7)) (assert (<= z 7))
+    (assert (or (<= y z) (<= w 0)))
+    (assert (or (not (< (* (- 2) y) (* (- 2) z))) (> w 0)))
+    (check-sat)
+  )";
+  auto enabled = no_preprocessing_or_substitution();
+  enabled.lra_equality_propagation = true;
+  enabled.lra_propagation = false;  // The equality consumer is independent.
+  const auto result = check_sat_smtlib(formula, enabled);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":lra.equality-propagation.targets") == 2);
+  assert(result.statistics.get(":lra.equality-propagation.equalities") >= 2);
+  assert(result.statistics.get(":lra.equality-propagation.propagations") >= 2);
+  enabled.lra_equality_propagation = false;
+  const auto baseline = check_sat_smtlib(formula, enabled);
+  assert(baseline.result == result.result);
+  assert(baseline.statistics.get(":lra.equality-propagation.scans") == 0);
+}
+
+void variable_equality_does_not_propagate_accidental_model_equality() {
+  const std::string formula = R"(
+    (set-logic QF_LRA)
+    (declare-fun x () Real) (declare-fun y () Real)
+    (assert (>= x 0)) (assert (>= y 0))
+    (assert (or (< x y) (> x y)))
+    (check-sat)
+  )";
+  auto options = no_preprocessing_or_substitution();
+  options.lra_equality_propagation = true;
+  const auto result = check_sat_smtlib(formula, options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":lra.equality-propagation.scans") > 0);
+  assert(result.statistics.get(":lra.equality-propagation.equalities") == 0);
+  const auto no_targets = check_sat_smtlib(R"(
+    (set-logic QF_LRA) (declare-fun x () Real)
+    (assert (>= x 0)) (check-sat)
+  )",
+                                           options);
+  assert(no_targets.result == CheckSatResult::Sat);
+  assert(no_targets.statistics.get(":lra.equality-propagation.targets") == 0);
+  assert(no_targets.statistics.get(":lra.equality-propagation.backtrack-repairs") == 0);
+}
+
+void variable_equality_respects_conditional_fixing_bounds() {
+  const std::string formula = R"(
+    (set-logic QF_LRA)
+    (declare-fun p () Bool) (declare-fun x () Real) (declare-fun y () Real)
+    (assert (>= x 0)) (assert (>= y 0)) (assert (<= y 0))
+    (assert (or (not p) (<= x 0)))
+    (assert (or p (> x y)))
+    (assert (or (not p) (< x y)))
+    (check-sat)
+  )";
+  auto options = no_preprocessing_or_substitution();
+  options.lra_equality_propagation = true;
+  options.cadical_options.emplace_back("phase", 1);
+  options.cadical_options.emplace_back("lucky", 0);
+  options.cadical_options.emplace_back("walk", 0);
+  const auto result = check_sat_smtlib(formula, options);
+  assert(result.result == CheckSatResult::Sat);
+  assert(result.statistics.get(":lra.equality-propagation.backtrack-repairs") > 0);
+  const auto contradiction =
+      formula.substr(0, formula.find("(check-sat)")) + "(assert p) (check-sat)";
+  assert(check_sat_smtlib(contradiction, options).result == CheckSatResult::Unsat);
+}
+#endif
 
 void row_based_propagation_drives_boolean_structure() {
   // x's and y's bounds are each directly asserted, but (+ x y) itself
@@ -5019,5 +5098,10 @@ int main() {
   guarded_real_equality_lowering_does_not_strengthen_guarded_sat_branch();
   multiple_guarded_real_equalities_use_generic_lowering_end_to_end();
   guarded_real_equality_lowering_is_default_off_end_to_end();
+#if PRIMO_HAVE_IPASIR
+  variable_equality_propagates_existing_comparisons();
+  variable_equality_does_not_propagate_accidental_model_equality();
+  variable_equality_respects_conditional_fixing_bounds();
+#endif
   return 0;
 }

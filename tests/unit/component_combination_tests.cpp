@@ -18,6 +18,7 @@
 #include "core/symbol_table.hpp"
 #include "core/term_manager.hpp"
 #include "sat/cadical_backend.hpp"
+#include "smt/assignment_coordinator.hpp"
 #include "smt/component_dispatcher.hpp"
 #include "smt/component_model_coordinator.hpp"
 #include "smt/component_solver.hpp"
@@ -534,7 +535,16 @@ void incremental_routing_backtracking_and_explanation_lifetime() {
   for (std::size_t index = 0; index < f.atoms.size(); ++index) {
     dispatcher.register_atoms(index, std::span(&f.atoms[index], 1));
   }
-  dispatcher.notify_assignment({1, 3, 99, 1});
+  smt::AssignmentCoordinator owner(dispatcher);
+  bool missing_notifications_rejected = false;
+  try {
+    static_cast<void>(owner.cb_check_found_model({1, 2, 3, 4}));
+  } catch (const std::logic_error&) {
+    missing_notifications_rejected = true;
+  }
+  assert(missing_notifications_rejected);
+  assert(owner.view().size() == 0);
+  owner.notify_assignment({1, 3, 99, 1});
   assert(f.owned[0]->assignments().size() == 1);
   assert(f.owned[1]->assignments().empty());
   assert(f.owned[2]->assignments().size() == 1);
@@ -552,22 +562,22 @@ void incremental_routing_backtracking_and_explanation_lifetime() {
   consequence.reasons = {sat::Lit{1}};
   f.owned[1]->pending_propagation = consequence;
   assert(dispatcher.cb_propagate() == 2);
-  dispatcher.notify_assignment({2});
-  dispatcher.notify_new_decision_level();
-  dispatcher.notify_assignment({-4});
-  dispatcher.notify_new_decision_level();
-  dispatcher.notify_backtrack(0);
+  owner.notify_assignment({2});
+  owner.notify_new_decision_level();
+  owner.notify_assignment({-4});
+  owner.notify_new_decision_level();
+  owner.notify_backtrack(0);
   assert(f.owned[3]->assignments().empty());
   assert(f.owned[1]->assignments().size() == 1);
   // The root propagation's explanation survives unrelated non-root undo.
   assert(dispatcher.cb_add_reason_clause_lit(2) == 2);
   assert(dispatcher.cb_add_reason_clause_lit(2) == -1);
   assert(dispatcher.cb_add_reason_clause_lit(2) == 0);
-  dispatcher.notify_new_decision_level();
-  dispatcher.notify_assignment({4});
+  owner.notify_new_decision_level();
+  owner.notify_assignment({4});
   assert(f.owned[3]->assignments().size() == 1);
   assert(f.owned[3]->assignments()[0].value);
-  dispatcher.notify_backtrack(0);
+  owner.notify_backtrack(0);
 
   f.owned[0]->corrupt = [](auto& result) {
     result.status = theory::TheoryCheckStatus::Cancelled;
@@ -576,6 +586,62 @@ void incremental_routing_backtracking_and_explanation_lifetime() {
   assert(!dispatcher.cb_has_external_clause());
   assert(dispatcher.failure()->status == theory::TheoryCheckStatus::Cancelled);
   assert(dispatcher.cb_propagate() == 0);
+}
+
+void external_clause_retention_follows_recipe_policy() {
+  assert(smt::CombinationRecipe{}.forgettable_clauses);
+  for (const bool forgettable : {false, true}) {
+    Fixture f;
+    const auto x = f.variable("x", f.symbols.int_sort());
+    const auto y = f.variable("y", f.symbols.int_sort());
+    f.add({{{x, y}, partitions(2)}});
+    smt::ComponentDispatcher dispatcher(f.components, {}, {}, forgettable);
+    dispatcher.register_atoms(0, std::span(&f.atoms[0], 1));
+    smt::AssignmentCoordinator owner(dispatcher);
+    owner.notify_assignment({1});
+    f.owned[0]->corrupt = [](auto& result) {
+      result.status = theory::TheoryCheckStatus::LearnedClause;
+      result.clause = {sat::Lit{-1}};
+    };
+    bool observed = !forgettable;
+    assert(dispatcher.cb_has_external_clause(observed));
+    assert(observed == forgettable);
+    assert(dispatcher.cb_add_external_clause_lit() == -1);
+    assert(dispatcher.cb_add_external_clause_lit() == 0);
+  }
+}
+
+void conflict_reports_are_counted_once_and_propagations_are_excluded() {
+  for (const bool conflicting : {false, true}) {
+    Fixture f;
+    const auto x = f.variable("x", f.symbols.int_sort());
+    const auto y = f.variable("y", f.symbols.int_sort());
+    f.add({{{x, y}, partitions(2)}});
+    std::size_t conflicts = 0;
+    smt::ComponentDispatcher dispatcher(f.components, {}, [&] {
+      ++conflicts;
+      return true;
+    });
+    dispatcher.register_atoms(0, std::span(&f.atoms[0], 1));
+    smt::AssignmentCoordinator owner(dispatcher);
+    owner.notify_assignment({1});
+    f.owned[0]->corrupt = [conflicting](auto& result) {
+      result.status = theory::TheoryCheckStatus::LearnedClause;
+      result.clause = {sat::Lit{conflicting ? -1 : 2}};
+    };
+    assert(dispatcher.cb_has_external_clause());
+    assert(dispatcher.cb_has_external_clause());
+    assert(conflicts == (conflicting ? 1 : 0));
+    assert(dispatcher.cb_add_external_clause_lit() == (conflicting ? -1 : 2));
+    assert(dispatcher.cb_add_external_clause_lit() == 0);
+    assert(conflicts == (conflicting ? 1 : 0));
+    if (conflicting) {
+      assert(dispatcher.failure()->status == theory::TheoryCheckStatus::ResourceLimit);
+      assert(!dispatcher.cb_has_external_clause());
+      assert(dispatcher.cb_propagate() == 0);
+      assert(conflicts == 1);
+    }
+  }
 }
 
 void nonconvex_disjunction_and_mutation_side_effects() {
@@ -958,9 +1024,84 @@ void queued_lemmas_are_drained_at_the_growth_boundary() {
   }
 }
 
+void driver_owned_booleans_are_observed_without_component_routing() {
+  for (const bool value : {false, true}) {
+    Fixture f;
+    const auto marker = f.variable("marker", f.symbols.bool_sort());
+    const auto boolean = f.variable("driver_boolean", f.symbols.bool_sort());
+    sat::Lit boolean_lit;
+    bool observed = false;
+    smt::CombinationRecipe recipe;
+    recipe.online = true;
+    recipe.online_order = {0};
+    recipe.model_guided = false;
+    recipe.prepare_boolean = [&](smt::BooleanClausifier& clausifier) {
+      boolean_lit = clausifier.ensure_theory_atom(boolean).lit;
+    };
+    recipe.factories = {[&](bool) {
+      auto component = std::make_unique<PartitionComponent>(f.terms, "marker", marker,
+                                                            std::vector<Restriction>{});
+      auto* observer = component.get();
+      component->corrupt = [&, observer](theory::TheoryCheckResult&) {
+        const int literal = observer->assignment_view().literal(boolean_lit.value);
+        if (literal != 0) {
+          assert(literal == (value ? boolean_lit.value : -boolean_lit.value));
+          observed = true;
+        }
+        for (const auto& assignment : observer->assignments()) assert(assignment.atom == marker);
+      };
+      return component;
+    }};
+    smt::CheckSatOptions options;
+    util::Statistics statistics;
+    const std::vector assertions{marker, value ? boolean : f.terms.mk_not(boolean)};
+    const auto result =
+        smt::solve_component_recipe(f.terms, assertions, {}, options, statistics, recipe);
+    assert(result.result == smt::CheckSatResult::Sat);
+    assert(observed);
+  }
+}
+
+void empty_component_conflicts_respect_the_aggregate_budget() {
+  for (const bool online : {false, true}) {
+    for (const bool limited : {false, true}) {
+      Fixture f;
+      const auto marker = f.variable("marker", f.symbols.bool_sort());
+      smt::CombinationRecipe recipe;
+      recipe.online = online;
+      recipe.online_order = {0};
+      recipe.model_guided = false;
+      recipe.timing_prefix = ":time.empty-conflict-test.";
+      recipe.factories = {[&](bool) {
+        auto component = std::make_unique<PartitionComponent>(f.terms, "empty-conflict", marker,
+                                                              std::vector<Restriction>{});
+        component->corrupt = [](theory::TheoryCheckResult& result) {
+          result.status = theory::TheoryCheckStatus::LearnedClause;
+          result.clause.clear();
+        };
+        return component;
+      }};
+      smt::CheckSatOptions options;
+      if (limited) options.max_theory_conflicts = 1;
+      util::Statistics statistics;
+      const std::vector assertions{marker};
+      const auto result =
+          smt::solve_component_recipe(f.terms, assertions, {}, options, statistics, recipe);
+      assert(result.result ==
+             (limited ? smt::CheckSatResult::Unknown : smt::CheckSatResult::Unsat));
+      assert(!limited || result.reason == smt::InconclusiveReason::ResourceLimit);
+      assert(result.statistics.get(util::StatKey::TheoryConflictCount) == 1);
+    }
+  }
+}
+
 }  // namespace
 
 int main() {
+  driver_owned_booleans_are_observed_without_component_routing();
+  external_clause_retention_follows_recipe_policy();
+  empty_component_conflicts_respect_the_aggregate_budget();
+  conflict_reports_are_counted_once_and_propagations_are_excluded();
   admission_and_normalization();
   sort_nonparticipants_and_disconnected_groups();
   exhaustive_three_and_four_component_sat();

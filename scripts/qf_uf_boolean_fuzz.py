@@ -675,6 +675,7 @@ def main() -> int:
 
     rng = random.Random(args.seed)
     counts: dict[str, int] = {}
+    model_cases: list[Path] = []
     with summary_path.open("w", newline="", encoding="utf-8") as summary:
         writer = csv.DictWriter(
             summary,
@@ -693,6 +694,8 @@ def main() -> int:
             reference, ref_code = run_solver([args.ref, str(case_path)], args.timeout)
             outcome = classify(ours, reference)
             counts[outcome] = counts.get(outcome, 0) + 1
+            if outcome == "PASS" and ours == "sat":
+                model_cases.append(case_path.resolve())
             writer.writerow(
                 {
                     "case": str(case_path),
@@ -730,8 +733,11 @@ def main() -> int:
 
     manifest_path = out_dir / "model-cases.txt"
     manifest_path.write_text(
-        "".join(f"{path}\n" for path in sorted(cases_dir.glob("*.smt2"))), encoding="utf-8"
+        "".join(f"{path}\n" for path in model_cases), encoding="utf-8"
     )
+    if not model_cases:
+        print("No successful SAT cases to validate.", flush=True)
+        return answer_status
     validator = Path(__file__).with_name("validate_qfuf_models_with_dolmen.py")
     model_command = [
         sys.executable,
@@ -742,6 +748,7 @@ def main() -> int:
         args.dolmen,
         "--z3",
         args.ref,
+        "--expect-sat",
         "--require-dolmen-pass",
         "--timeout",
         str(args.timeout),

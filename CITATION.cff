@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "Please cite Primo and identify the commit and configuration used in your experiments."
+type: software
+title: Primo
+authors:
+  - family-names: Janota
+    given-names: Mikoláš
+repository-code: "https://github.com/primo-solver/primo"
+url: "https://primo-solver.github.io/primo/"
+license: MIT

@@ -1,11 +1,10 @@
 import csv
 import importlib.util
 import json
-from pathlib import Path
 import sys
 import tempfile
 import unittest
-
+from pathlib import Path
 
 SCRIPTS = Path(__file__).resolve().parents[2] / 'scripts'
 sys.path.insert(0, str(SCRIPTS))
@@ -18,11 +17,11 @@ class ReferenceJoinTests(unittest.TestCase):
     def make_arm(self, root, answer='sat', digest='abc', complete=True):
         shard = root / 'shard-0'
         shard.mkdir(parents=True)
-        metadata = dict(status='complete' if complete else 'running', inputs_unchanged=True,
-                        inputs={'case.smt2': digest}, solver={'sha256': root.name})
+        metadata = {'status': 'complete' if complete else 'running', 'inputs_unchanged': True,
+                        'inputs': {'case.smt2': digest}, 'solver': {'sha256': root.name}}
         (shard / 'provenance.json').write_text(json.dumps(metadata))
-        row = dict(file='case.smt2', status='ok', answer=answer, exit_code='0',
-                   timeout='false', seconds='1.0')
+        row = {'file': 'case.smt2', 'status': 'ok', 'answer': answer, 'exit_code': '0',
+                   'timeout': 'false', 'seconds': '1.0'}
         with (shard / 'answers.csv').open('w') as stream:
             writer = csv.DictWriter(stream, fieldnames=row)
             writer.writeheader()
