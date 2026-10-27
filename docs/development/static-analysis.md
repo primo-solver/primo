@@ -32,7 +32,7 @@ address-space limit and a 30-minute overall deadline:
 (ulimit -v 8388608; timeout -k 10s 30m make tidy STATIC_JOBS=2)
 ```
 
-The {staticsource}`Makefile` static targets depend on `analysis-db`, which configures
+The {diagnosticsource}`Makefile` static targets depend on `analysis-db`, which configures
 a separate Debug compilation database and generates the Git revision metadata
 header needed by `main.cpp`. There is no dependency on `build` or dependency
 installation. A missing compiler, analyzer or development dependency fails the
@@ -55,14 +55,15 @@ Clang Static Analyzer, bugprone, performance, portability and include-cleaner
 checks. The header filter requests owned source, tests and examples; analyzer
 path reports can still point into dependencies, which retain their own paths
 in the inventory.
-`make include-cleaner` provides a separate advisory include scan. Neither target
-applies suggested edits.
+`make include-cleaner` provides a separate include scan. Both targets reject
+redundant includes through an explicit gate; missing-direct-provider advice
+remains advisory. Neither target applies suggested edits.
 
 The LLVM runner writes `tidy.log` and `tidy.yaml`; the status and diagnostic
 inventory is `tidy-summary.json`. The include-only equivalents are
 `includes.log`, `includes.yaml` and `includes-summary.json`. A nonzero aggregate
 exit must be treated as incomplete even if a selected file later passes a
-retry. {staticsource}`summarize_static_analysis.py <scripts/summarize_static_analysis.py>`
+retry. {diagnosticsource}`summarize_static_analysis.py <scripts/summarize_static_analysis.py>`
 requires a successful aggregate, an observed command for every expected source,
 unchanged recorded C++ sources, owned headers and generated revision header,
 and no compiler errors. It deduplicates repeated
@@ -71,12 +72,21 @@ header diagnostics by location, message and check. Its statuses are:
 | Status | Meaning | Target result |
 | --- | --- | --- |
 | `clean` | Complete scan with no reported diagnostics | Success |
-| `complete-with-findings` | Complete scan with diagnostics requiring review | Success, findings explicitly reported |
+| `complete-with-findings` | Complete scan with diagnostics requiring review | Success if the unused-include gate also passes |
 | `incomplete` | Failed tool, missing source, changed recorded source/header/revision or compiler error | Failure |
 
-The current broad profile is advisory while establishing a baseline. A
-successful target is therefore not a warning-free gate. Formatting and Ruff
-remain blocking in `make lint`. Review diagnostics in their owning function:
+Most of the broad profile is advisory while establishing a baseline. Both
+static targets also set `--reject-unused-includes`: an `unused_include_gate`
+object in the summary records blocking diagnostics and retained paired headers.
+An implementation's own header is retained only when supported quoted-include
+search resolves to the same `.hpp`/`.h` stem in every recorded compile context.
+Source-relative lookup precedes `-iquote`, `-I`, `-isystem` and `-idirafter`;
+shadowing headers are rejected, and unsupported search flags receive no
+exemption. Other unused includes fail the target even when analysis completed.
+The [dated triage](../evidence/static-analysis.md) explains the 20 current
+paired anchors and the separate missing-direct-include backlog. A successful
+target is therefore not a warning-free gate. Formatting and Ruff remain
+blocking in `make lint`. Review diagnostics in their owning function:
 check guards and caller invariants, allocation and invalidation boundaries,
 exception guarantees, and test setup. In particular, a proposed reference in
 place of a copy needs a lifetime argument across intervening mutations. Keep
@@ -96,7 +106,7 @@ instantiations or feature configurations compile.
 | clang-format | Mandatory owned C++ formatting in `make lint` | Formatting alone checks no behavior |
 | Clang compiler diagnostics | Local parsing through clang-tidy and header checks | Full Clang code-generation/link/test qualification remains separate |
 | clang-tidy / Static Analyzer | Broad local whole-source profile | Findings require triage; cross-translation-unit analysis is not configured |
-| misc-include-cleaner | Included in broad scan, separate advisory target | Suggested removals require source review |
+| misc-include-cleaner | Both static targets reject unused includes, retain paired headers and report missing providers | Other intentional includes require source review; direct-provider cleanup remains advisory |
 | clangd | Can use the configured build compilation database in editors | No clangd executable was available in the recorded local audit; no editor diagnostics claimed |
 | ASan / LSan | Existing CPU SLURM merge qualification | Separate runtime evidence, not part of local static analysis |
 | UBSan / MSan / TSan | No result from this local audit | Separate instrumented builds and runtime/dependency coverage are needed |

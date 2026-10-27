@@ -215,6 +215,19 @@ optional proof-forest state. Definitions and nodes added after a closure
 checkpoint are also removed from that closure; definitions installed before it
 remain. Popping consumes the selected checkpoint and all younger checkpoints.
 
+Representative-oriented proof-parent arrays belong only to `proof-forest` or
+explicit proof diagnostics. Their rollback in
+{rollbacksource}`FlatCongruenceClosure::pop <src/theory/equality/flat_congruence_closure.cpp>`
+uses the same mode condition as allocation in `ensure_node_count`. Default
+BFS and the separate reoriented/structural forests keep those unused arrays
+unallocated when diagnostics are off. The
+{rollbacksource}`nested rollback regression <tests/unit/euf_solver_tests.cpp>`
+checks this storage invariant across all five modes and both diagnostic
+settings, including nodes created after a checkpoint. This removes an
+unneeded allocation path during temporary model-scope teardown. The
+[static-analysis triage](../evidence/static-analysis.md) distinguishes that
+repair from the remaining review of `ModelScope`'s exception contract.
+
 This undo log records **what a theory operation changed**. The shared SAT
 assignment view records **which literals are true**. Both are needed: dropping
 `p` from the assignment view alone would not split the classes joined because
