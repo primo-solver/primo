@@ -23,6 +23,7 @@ parts:
       - file: development/fuzzing
       - file: development/validation
       - file: development/debugging
+      - file: development/static-analysis
       - file: development/experiments
       - file: development/tuning
       - file: development/documentation

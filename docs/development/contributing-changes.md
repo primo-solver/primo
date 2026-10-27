@@ -32,7 +32,7 @@ mechanism from fallback behavior, then use [experiments](experiments.md) to
 decide whether an optimization is accepted or rejected.
 
 Run the repository's formatting, lint, unit/Python tests, memory checks and
-static review as applicable. Solver behavior changes additionally require
+[static review](static-analysis.md) as applicable. Solver behavior changes additionally require
 [fuzzing](fuzzing.md); model-affecting work requires
 [independent validation](validation.md). A passing build is not a fuzz gate.
 
