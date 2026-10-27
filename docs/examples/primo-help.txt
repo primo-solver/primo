@@ -258,7 +258,8 @@ QF_LRA theory options:
                               Write diagnostic online LRA bound/reason JSONL (does not change
                               propagation)
           --lra-bound-probe-limit UINT [20000]
-                              Maximum causal events in split mode; otherwise maximum total events
+                              Maximum causal events in split mode; otherwise maximum total
+                              events
           --lra-bound-probe-snapshot-limit UINT
                               Cap numerical snapshots independently of causal events
           --lra-propagation [default: on]

@@ -13,7 +13,7 @@ lexicographically ordered delta rationals. This is a read-only observer of the
 existing interval helpers, not a new implementation of an optimized propagation
 algorithm. The checklist below is an original diagnostic design.
 
-- The SMT layer owns the [event sink `LraBoundProbe`](https://github.com/primo-solver/primo/blob/47e5dee/src/smt/lra_bound_probe.hpp), which borrows an output stream from
+- The SMT layer owns the [event sink `LraBoundProbe`](https://github.com/primo-solver/primo/blob/a39cbab/src/smt/lra_bound_probe.hpp), which borrows an output stream from
   `CheckSatOptions`. The CLI owns the file for the entire session. No term or
   SAT storage is mutated by the observer; no pointer into growing term storage
   survives a term-creating operation.
@@ -94,7 +94,7 @@ substitutions would erase the structure being studied. Real-corpus runs should
 also record ordinary preprocessing behavior rather than silently suppress it.
 
 
-The [offline analyzer](https://github.com/primo-solver/primo/blob/47e5dee/scripts/analyze_lra_bound_probe.py)
+The [offline analyzer](https://github.com/primo-solver/primo/blob/a39cbab/scripts/analyze_lra_bound_probe.py)
 checks each interval snapshot with Python `Fraction`, then reconstructs historical
 theory ancestry. Run it as `python3 scripts/analyze_lra_bound_probe.py TRACE.jsonl
 --out SUMMARY.json`. Counts of unnamed numerical bounds and stronger-than-installed
@@ -126,7 +126,9 @@ An unnamed exact numerical value therefore need not express a new SMT-LIB
 constraint. The separate entailment count uses the existing tableau's
 lexicographic comparison, including that coefficient.
 
-The SLURM driver has separate `check`, `fuzz`, `asan`, and `probe` phases.
+The SLURM driver has separate `check`, `fuzz`, `asan`, `probe` and
+`long-probe` phases; the last assigns one manifest input and both theory
+profiles to each array task.
 For a cluster with a separately provisioned sanitizer runtime, set
 `PRIMO_ASAN_RUNTIME_DIR` to a directory containing `libasan.so`; the ASan phase
 adds its link and runtime search paths. Keep compiler/runtime provenance with
@@ -207,7 +209,7 @@ Raw traces, models, logs and the measured binary are retained under
 ## Longer probe with harder inputs
 
 The follow-up keeps the original 34 inputs at 30 seconds and adds a separate
-20–30-input hard stratum at 120 seconds. Selection uses untraced baseline
+20-input hard stratum at 120 seconds. Selection uses untraced baseline
 solving time and theory-work counters, excludes the original 34, balances known
 SAT/UNSAT cases, and spans several families. Baseline source/profile/input hashes
 are recorded with the manifest; historical selection evidence is not a timing
@@ -225,12 +227,13 @@ required. No explanation is replaced and no bound is installed by the probe.
 
 The selected hard stratum contains 20 inputs: ten declared SAT and ten declared
 UNSAT across nine families, with at most four per family. The historical
-30-second baseline identifies 47 candidates outside the original 34. A fresh
+30-second baseline identifies 47 candidates with declared SAT/UNSAT statuses
+outside the original 34 (57 pass the time threshold before this status filter). A fresh
 five-second untraced screen (`6c4f9c5`, job `257798`) confirms active online LRA
 work for 35: at least 100 theory conflicts or 500 pivots, plus a nonzero check
 count. All 47 screening runs timed out; these are selection observations, not
 successful solves. Family round-robin selection takes the ten SAT cases first,
 then ten UNSAT cases, ranking conflicts/pivots within each family. The
-selection script `select_lra_bound_hard_inputs.py`
-and manifest record the input hashes and both baseline sources. This is planned
+[selection script](https://github.com/primo-solver/primo/blob/a39cbab/scripts/select_lra_bound_hard_inputs.py)
+and [manifest](https://github.com/primo-solver/primo/blob/a39cbab/benchmarks/qf-lra-bound-long-probe.json) record the input hashes and both baseline sources. This is planned
 follow-up evidence until the longer jobs are collected and judged.
