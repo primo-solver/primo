@@ -18,13 +18,25 @@ Repository visibility has not been changed.
 | Public CI and Pages workflow | Prepared and actionlint-checked; actual GitHub runs and settings pending. |
 | Correctness qualification | [Fresh follow-up gate recorded](../evidence/publication-followups.md): 8,000 generated inputs/sessions, 212 real-seed mutants, 800 bounded-budget replays, independent ground-model checks, release and ASan tests. Resource-incomplete outcomes are reported separately. |
 | Page-by-page source review | {ref}`Symmetry payload finding <symmetry-payloads>` reproduced and repaired; fresh SLURM tests, fuzzing and model checks passed. All six supporting-tool/resource-control findings are also repaired and qualified. |
-| Local Git publication audit | [Recorded](../coverage/publication-audit.json); no secret detections or committed reading PDFs in the inspected named history. Hosted assets remain unaudited. |
+| Local Git publication audit | {download}`Refreshed 27 October <../coverage/secret-audit-20261027.json>` at `7bdfa8b`: no secret detections across the tracked tree, historical file contents and Git metadata. The [October 2 report](../coverage/publication-audit.json) remains historical. Hosted assets remain unaudited. |
 | Consolidated reader acceptance | Pending owner review of the [assembled manual](../review.md). |
 | Institutional/contributor publication authorization | Pending owner resolution. |
 | Imported benchmark publication terms | Resolved for the [19 inventoried imports](../coverage/third-party-inputs.json): byte-identical members of SMT-LIB release 2025.08.04, whose metadata declares CC BY 4.0; attribution recorded. |
 | GitHub configuration and public visibility | Pending the [owner handoff](github-handoff.md). |
 
 ## Remaining publication work
+
+The fresh local secret audit covers 1,700 reachable commits and 8,211 complete
+historical file contents, including freshly fetched tips of all 36 remote branches
+and two annotated tags. Four Gitleaks 8.30.1 scans report zero detections: Git patches, the
+1,240 tracked working-tree files, complete historical file contents, and Git
+messages/ref names/tag annotations. Explicit default rules, an empty ignore file
+and disabled inline allow comments prevent project-specific suppressions.
+The filename inventory finds no credential/SSH files, reading PDFs or archives.
+These checks do not establish publication rights or cover hosted Actions logs,
+artifacts, release assets or issue/PR attachments. The raw local evidence is in
+`results/secret-audit-20261027/`; the downloadable report records exact scope,
+scanner and input fingerprints, commands and the patch-count limitation.
 
 The [technical correctness findings](../coverage/page-review.md#correctness-follow-ups)
 are closed with regression and qualification evidence. This does not resolve
