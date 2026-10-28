@@ -5,6 +5,11 @@ with LLM assistance. Its SMT implementation is original; SAT solving is
 delegated to CaDiCaL through IPASIR-UP. Primo-owned code and documentation use
 the [MIT license](LICENSE).
 
+Our goal is to understand all the code we develop with LLM assistance. This
+requires clear documentation throughout the project: how the algorithms work,
+why design choices were made, and what invariants and limitations the
+implementation has.
+
 ## Build and first solve
 
 With a C++20 compiler, CMake 3.20+, GNU Make, Git and Python 3 installed:
