@@ -236,6 +236,12 @@ to visible premises. Common-subproof sharing could then be measured before
 the SAT boundary. Installed SAT minimization alone cannot perform that missing
 arithmetic proof traversal.
 
+The [derived-arithmetic-bounds open lead](../leads/derived-arithmetic-bounds.md)
+connects King's Chapter 2 constraint representation with finite-domain lazy
+clause generation and MCSAT. It separates retaining internal proofs, creating
+SAT naming literals and generating new inequalities during model-based conflict
+analysis, with the primary reading sections and implementation obligations.
+
 ## Installed backend metadata check
 
 On 2026-10-26, read-only CLI queries reported:
