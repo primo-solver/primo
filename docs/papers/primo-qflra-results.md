@@ -27,9 +27,10 @@ processes. References: OpenSMT `v2.9.2-35-g15b42c6f` and Yices 2.7.0
 
 ## Relation to the current manual
 
-This is a dated results report. The current source still declares
-{source}`model-based phase selection <src/smt/check_sat.hpp#L277-L281>` and
-{source}`monotone elimination <src/smt/check_sat.hpp#L392>` off by default.
+This is a dated results report. The current
+{ref}`automatic LRA policy <automatic-lra-heuristics>` enables
+model-based phase selection and monotone elimination for declared QF_LRA
+rebuild queries with automatic preprocessing; other routes default them off.
 The paper's configuration names must stay attached to its measured snapshot.
 Its early capability description also predates the broader implementation
 described in the manual.

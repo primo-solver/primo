@@ -6,8 +6,10 @@ losses. This investigation locates substantial costs in those slower runs:
 model phase can lead into expensive arithmetic pivoting; elimination can change
 the search enough to outweigh a smaller tableau; and additional conflicts expose
 a full-tableau scan on backtracking. These observations do not establish
-pathological simplex behavior or an implementation defect. Neither option was
-promoted or changed.
+pathological simplex behavior or an implementation defect. This diagnostic
+campaign did not change either option. The later
+{ref}`automatic LRA policy <automatic-lra-heuristics>` is
+qualified separately.
 
 ## Scope and qualification
 
@@ -166,11 +168,11 @@ alone is not justified by the severe-case samples. A policy alternative must
 be evaluated on the full corpus, with fresh fuzzing and separate model checks,
 before any default decision.
 
-The current flags remain opt-in. Their confirmed aggregate gains remain valid
-for the frozen binary, and the repeatable regressions remain part of that
+Both flags were opt-in in the frozen binary. Their confirmed aggregate gains
+remain valid for that binary, and the repeatable regressions remain part of that
 assessment. More pivots or more pivot term work alone is not evidence of a
 pathology: changing the Boolean search, asserted bounds or tableau basis can
-change both pivot count and cost. Promotion should weigh the full-corpus gains
+change both pivot count and cost. A default-policy assessment should weigh the full-corpus gains
 against the severity and persistence of losses; these diagnostics do not
 establish a requirement to eliminate every regression first. No family-specific
 routing or competition portfolio is proposed.

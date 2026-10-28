@@ -63,7 +63,7 @@ consequences with a shared earlier cause.
 The state needs reasons, per-literal levels, trail order, per-level working sets
 and a retained original clause if an attempted reduction is rejected. General
 resolution remains sound even when the chosen replacement is not useful.
-**Status: missing bibliography and comparison; backend audit first.** Do not
+**Status: bibliography now recorded; comparison and backend audit remain open.** Do not
 duplicate the SAT implication graph in LRA. The paper's empirical benefits are
 not Primo results or a guarantee for the example below.
 
@@ -88,7 +88,7 @@ of $O(g\,n\log n)$, where $g$ counts slices and $n$ is the largest slice's
 implication-graph size. Linear minimization caching does not by itself make
 arbitrary shrinking or repeated explanation expansion linear.
 
-**Status: missing reference; backend-owned comparison.** The paper evaluates
+**Status: reference now recorded; backend-owned comparison remains open.** The paper evaluates
 CaDiCaL, Kissat and Satch. That history makes a version/configuration audit
 necessary before assuming the mechanism is absent from Primo's backend. It does
 not certify the effective configuration or external-reason handling of our build.
@@ -134,7 +134,7 @@ intermediate resolvents. A stack of removable vertices gives an order for
 resolving each needed variable at most once. Required state is the reason
 graph, per-vertex classification and finishing-order stack.
 
-**Status: missing reference; backend/proof-logging concern.** Section 5 reports
+**Status: reference now recorded; backend/proof-logging work remains open.** Section 5 reports
 the same minimized clauses and literal order within each clause in the compared MiniSat versions;
 the improvement is computation and an ordered proof trace, not finding a shorter
 arithmetic explanation. Shared subgraphs and failed-subsearch reuse are useful

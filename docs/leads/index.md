@@ -144,7 +144,7 @@ design and evaluation lead, with no new input support or default change claimed.
 | 12a/12f | Integer-safe preprocessing and patching have current explanations. The old claim that all integer preprocessing is disabled is superseded by the route-specific policies. |
 | 12d: integer conflict generalization | Implemented and enabled by default. {ref}`Integer explanations <lia-explanations>` collect the reasons used by the search; {source}`generalized_lia_lemma <src/smt/solver_engines.cpp#L8334-L8360>` checks the result and retains the coarse blocking clause as a fallback. |
 | 15: bridge atoms | Removed. Do not restore it as an available alternative or open migration task. |
-| 20: model-phase evaluation | Evaluated on arithmetic divisions; current defaults remain off. Any promotion proposal needs new, route-specific evidence. |
+| 20: model-phase evaluation | Evaluated on arithmetic divisions. Model-phase hints default on for declared QF_LRA rebuild queries with automatic preprocessing, and off on other routes. See {ref}`automatic LRA heuristics <automatic-lra-heuristics>` for the policy and its qualification. |
 | Shared assignment ownership and rollback markers | Implemented/repaired; theory undo logs remain separate. See [DPLL(T)](../implementation/dpllt.md). |
 
 ## Low-level and cross-cutting leads

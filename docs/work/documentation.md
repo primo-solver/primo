@@ -3,9 +3,10 @@
 **Status: replacement prepared; consolidated reader acceptance pending.**
 
 The current manual is in `docs/`; the historical manual remains editable in
-`docs-history/`. `make docs` builds both incrementally and assembles one site.
-`make docs-full` rebuilds both strictly. `make docs-serve` serves the assembled
-site locally. The old draft commands have been removed.
+`docs-history/`. `make docs` builds the current manual in `docs/_build/html`;
+`make docs-serve` serves it locally. `make docs-site` builds both books and
+assembles them in `docs/_build/site`; `make docs-full` rebuilds both strictly
+before assembly. The old draft commands have been removed.
 
 The {download}`compatibility manifest <../coverage/compatibility.json>`
 preserves 1,306 original page/fragment targets.

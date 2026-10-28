@@ -8,7 +8,7 @@ those obligations through explained conflicts and consequences.
 Primo delegates decisions, Boolean propagation, conflict analysis, learning,
 and backjumping to CaDiCaL. Its SMT drivers translate SAT assignments into
 theory facts, schedule theory checks, and decide whether a candidate can become
-a solver answer. A shared SMT driver serves QF_UFLIA and
+a solver answer. A shared SMT driver serves QF_LIA, QF_UFLIA and
 quantified UF; other routes retain dedicated drivers. This chapter describes
 their common contract and the differences that affect correctness. The
 [theory solver interface](theory-interface.md) defines the operations and
@@ -267,16 +267,20 @@ theory, combination, and result-construction obligations.
   <src/smt/solver_engines.cpp#L7058-L7077>` validates observed-atom completeness, finishes
   any deferred tableau check, and rejects a conflict. Eager registration
   normally finishes this repair earlier through the external-clause callback.
-- **General component driver (QF_UFLIA and quantified UF):** the model callback's
+- **General component driver (QF_LIA, QF_UFLIA and quantified UF):** the model callback's
   `Partial` check is not the final combination decision. The outer loop first handles
   {source}`pending lemmas and typed failures
   <src/smt/component_solver.cpp#L305-L349>`. With the propagator disconnected,
   it clausifies new lemmas and registers their atoms before another solve. The
   {source}`coordinator <src/smt/component_model_coordinator.cpp#L140-L208>`
-  then requests `FullModel` checks. It checks the chosen equalities and
+  then requests `FullModel` checks. The
+  {migrationsource}`standalone LIA recipe <src/smt/solver_engines.cpp#L10049-L10076>`
+  uses one arithmetic component: its integer completion must succeed, with no
+  multi-theory model reconciliation. For combined recipes, the coordinator
+  checks the chosen equalities and
   disequalities between shared terms (the *arrangement*) or reconciles the
   components' models on those terms, according to the combination policy.
-  Each theory being consistent on its own is insufficient. Integer search adds
+  Each theory being consistent on its own is insufficient for combination. Integer search adds
   integrality and resource-limit obligations; quantified UF adds
   [instantiation and completion obligations](quantifiers.md#supported-scope-and-answers).
   Neither is explained by the ground-EUF example below.

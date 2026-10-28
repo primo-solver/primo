@@ -146,10 +146,12 @@ quantifier chapter.
 The shared SMT driver,
 {source}`solve_component_recipe <src/smt/component_solver.hpp#L19-L45>`, owns
 the SAT loop and theory solver lifecycle. The
+{migrationsource}`standalone QF_LIA recipe <src/smt/solver_engines.cpp#L10049-L10076>`
+supplies one integer-arithmetic component; the
 {source}`QF_UFLIA recipe <src/smt/solver_engines.cpp#L10245-L10277>` supplies
 EUF and integer arithmetic; the
 {source}`quantified-UF recipe <src/smt/quantifiers/quantified_solver.cpp#L134-L151>`
-supplies EUF and quantifier instantiation. Both use the
+supplies EUF and quantifier instantiation. All three use the
 [theory solver interface](theory-interface.md), called `TheoryComponent` in
 C++. That chapter describes registration, assignment changes, checks,
 explanations, and model contributions.

@@ -8,7 +8,7 @@ Discuss substantial algorithms or changes to defaults before implementation.
 ## License and sign-off
 
 Primo-owned contributions are submitted under the [MIT license](LICENSE).
-New contributions after public launch require certification under the
+New contributions require certification under the
 [Developer Certificate of Origin 1.1](https://developercertificate.org/).
 Add your own sign-off with `git commit -s`; the name and email must identify the
 contributor certifying their right to submit the work. A sign-off is a commit
@@ -16,7 +16,7 @@ message trailer, not a cryptographic signature or copyright assignment. There
 is no separate CLA. Do not sign on someone else's behalf or rewrite historical
 commits merely to satisfy this new process.
 
-The DCO check applies to new pull requests once enabled at launch. Existing
+The DCO check applies to new pull requests. Existing
 history is covered by the separate publication-rights review. Maintainers are
 subject to the contribution requirements too.
 

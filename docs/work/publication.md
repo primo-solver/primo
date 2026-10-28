@@ -1,12 +1,12 @@
 # Public launch preparation
 
 **Status: symmetry soundness bug and all six technical review follow-ups repaired
-and qualified; owner review and GitHub handoff remain pending.**
+and qualified; owner acceptance and final GitHub publication checks remain pending.**
 
 The first launch publishes the repository and manual as a research snapshot.
 A new numbered release, results-repository/SQLite migration, and solver research
 leads are separate work. Primo-owned material retains MIT. New contributions
-will require DCO sign-off; the historical record will not be rewritten to add it.
+require DCO sign-off; the historical record will not be rewritten to add it.
 Repository visibility has not been changed.
 
 ## Completion record
@@ -15,14 +15,14 @@ Repository visibility has not been changed.
 | --- | --- |
 | Documentation correction and replacement | Current book in `docs/`, historical book in `docs-history/`; strict builds, local/source links and 1,306 historical targets checked. |
 | Editable source archives and dependency notices | Prepared and tested, including documentation rebuild without Git and a SLURM source-archive build. Dependency notices travel with rendered HTML. |
-| Public CI and Pages workflow | Prepared and actionlint-checked; actual GitHub runs and settings pending. |
+| Public CI and Pages workflow | Prepared and actionlint-checked; owner reports a downloadable CI documentation artifact. Pages deployment remains pending; record the approved revision and run URLs. |
 | Correctness qualification | [Fresh follow-up gate recorded](../evidence/publication-followups.md): 8,000 generated inputs/sessions, 212 real-seed mutants, 800 bounded-budget replays, independent ground-model checks, release and ASan tests. Resource-incomplete outcomes are reported separately. |
 | Page-by-page source review | {ref}`Symmetry payload finding <symmetry-payloads>` reproduced and repaired; fresh SLURM tests, fuzzing and model checks passed. All six supporting-tool/resource-control findings are also repaired and qualified. |
 | Local Git publication audit | {download}`Refreshed 27 October <../coverage/secret-audit-20261027.json>` at `7bdfa8b`: no secret detections across the tracked tree, historical file contents and Git metadata. The [October 2 report](../coverage/publication-audit.json) remains historical. Hosted assets remain unaudited. |
 | Consolidated reader acceptance | Pending owner review of the [assembled manual](../review.md). |
 | Institutional/contributor publication authorization | Pending owner resolution. |
 | Imported benchmark publication terms | Resolved for the [19 inventoried imports](../coverage/third-party-inputs.json): byte-identical members of SMT-LIB release 2025.08.04, whose metadata declares CC BY 4.0; attribution recorded. |
-| GitHub configuration and public visibility | Pending the [owner handoff](github-handoff.md). |
+| GitHub configuration and public visibility | Owner reports DCO installed and required with `build-and-test` and `docs`; verify enforcement and remaining settings through the [handoff](github-handoff.md). Visibility remains private. |
 
 ## Remaining publication work
 
@@ -44,10 +44,11 @@ the remaining publication decisions below.
 
 The owner must resolve institutional/contributor authorization, accept the manual,
 and review hosted
-branches, attachments, release assets and Actions logs before changing visibility.
-The prepared workflows then need to run on the approved revision. Configure
-required checks, DCO, the protected Pages environment and private vulnerability
-reporting using the handoff. Verify the public clone and deployed site after
+attachments, release assets and Actions logs before changing visibility. Remote
+Git branches and tags are already covered by the refreshed local audit.
+The prepared workflows then need to run on the approved revision. Verify
+required checks and DCO, and complete the protected Pages environment and private
+vulnerability reporting using the handoff. Verify the public clone and deployed site after
 publication. No new numbered release is needed for this launch.
 
 SSH access to the repository works. GitHub CLI/API authentication is unavailable

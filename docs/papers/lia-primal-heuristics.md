@@ -138,8 +138,9 @@ Primo can find $(6,3,2)$ by moving farther.
 | Feasibility pump | **Deferred**; needs an objective-capable LP interface as well as heuristic state. | Design exact distance minimization, auxiliary lifetimes, perturbation and strict-bound handling. |
 | RENS-style restricted search | **Planned comparison**, in private integer-completion state using a bounded search. | Separate neighborhood failure from theory infeasibility; constrain total nodes and preserve the unrestricted fallback. |
 
-The relevant callers are {source}`solve_qf_lia_impl and
-complete_lia_integer_model <src/smt/solver_engines.cpp#L8373-L8684>`.
+The shared stage owner is
+{integersource}`complete_integer_assignment <src/theory/arithmetic/lia_completion.cpp#L13-L35>`,
+called through the [standalone and combined LIA component routes](../implementation/lia.md#when-integer-reasoning-runs).
 Future option wiring also touches {source}`CheckSatOptions
 <src/smt/check_sat.hpp>`. SAT continues to receive theory-valid explanations,
 not heuristic restrictions. Model acceptance remains with the pure or combined

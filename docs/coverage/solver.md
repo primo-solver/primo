@@ -26,7 +26,7 @@ The original roadmap's unchecked parser/SAT/EUF/LRA boxes describe an early
 development stage. The current implementation exists. Dedicated difference
 logic remains future work. The old statement that all integer preprocessing is
 disabled is replaced by route-specific policies. General combination is already
-used by QF_UFLIA and quantified UF; the Real migration remains open.
+used by QF_LIA, QF_UFLIA and quantified UF; the Real migration remains open.
 
 Old source filenames, local prototype timings and default-promotion proposals
 are preserved as historical context, not silently refreshed. Current source

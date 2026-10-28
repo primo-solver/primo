@@ -24,7 +24,8 @@ compare runs mechanically. Hot solver paths use an internal `StatKey` enum for
 registered counters; the printed names below are the compatibility boundary for
 scripts and result artifacts.
 
-For the collection driver, also inspect `:combination.model.snapshots`,
+For the [shared SMT driver](../implementation/combination.md#the-shared-smt-driver),
+also inspect `:combination.model.snapshots`,
 `:combination.model.care-pairs`, `:combination.model.care-pair-agreements`,
 `:combination.model.spanning-pair-checks`, `:combination.model.disagreements`,
 `:combination.model.decisions`, and `:combination.model.complete-fallbacks`.

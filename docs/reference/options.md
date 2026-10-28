@@ -64,8 +64,9 @@ and optional statistics go to stderr. Use `--quiet` when scripting.
 The command loop returns zero when it finishes without a command/unsupported
 failure; this includes normal `sat`, `unsat` and `unknown` responses. It returns
 2 for a command error or an unsupported command/solving result. File-opening and
-explicit option-validation failures return 1; CLI parsing can return its own
-nonzero status. Cancellation and external termination need separate treatment.
+most explicit option-validation failures return 1. The incompatible combination
+of `--qf-uflra-online-euf` and `--model-equality-branching` returns 2; CLI parsing
+can return its own nonzero status. Cancellation and external termination need separate treatment.
 An exit code alone never distinguishes SAT from UNSAT.
 
 Each input file creates a fresh session. A command error stops the current

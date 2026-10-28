@@ -1,20 +1,29 @@
 # Documentation closing review
 
-**Status: page-by-page technical review completed and symmetry soundness bug
-repaired. Six implementation/tool follow-ups and reader acceptance remain pending.**
+**Status: 28 October consistency review covers all 97 current-book Markdown
+pages. The earlier technical findings are closed; reader acceptance remains separate.**
 
 The replacement manual is now the main book. `make docs-serve` previews the
-assembled current and historical books at `http://localhost:8000`. Publication
+current book at `http://localhost:8000`; `make docs-site` assembles both books. Publication
 is a separate operation; changing the source tree does not deploy a website.
 
 ## Coverage and review record
 
-The [2 October page-by-page review](coverage/page-review.md) covers all 84 pages
-of the current manual at its baseline revision, records the corrections and
-lists source findings. The {ref}`numeric-payload omission in symmetry comparison
+The {download}`28 October consistency record <coverage/pre-publication-review-20261028.json>`
+lists all 97 pages at baseline `e397439`, their fingerprints, assigned review
+units, findings and dispositions. It also covers the root README, contribution
+policy, security policy and pull-request template. The pass checked current prose against selected
+owning code, commands, policies and evidence, and removed duplicated lead
+summaries from the landing page. Historical results retain their measured
+revisions; this review does not rerun solver qualification, re-prove the cited
+papers, or independently verify GitHub settings.
+
+The [2 October page-by-page review](coverage/page-review.md) covered all 84 pages
+at its own baseline revision, recorded the corrections and listed source findings. The {ref}`numeric-payload omission in symmetry comparison
 <symmetry-payloads>` was confirmed to produce false UNSAT answers, then repaired
 and qualified on SLURM with regressions, differential fuzzing and separate model
-checks. Six supporting-tool and resource-control findings remain open.
+checks. The six supporting-tool and resource-control findings were subsequently
+[repaired and qualified](evidence/publication-followups.md).
 
 The [preservation audit](coverage/index.md) accounts for 91 old pages, 1,150
 section headings, 126 supporting entries, and 1,306 original URL targets.
@@ -35,7 +44,8 @@ remain proposals; accepting their descriptions does not approve implementation.
 The [earlier page-by-page review record](review-history.md)
 retains the detailed chronology and literature-reading notes.
 
-## Closing corrections
+(closing-corrections)=
+## Earlier closing corrections, 2 October
 
 - The frontend chapter now distinguishes core terms, theory literals, and SAT
   literals/clauses. Parser nodes do not cross these solver interfaces.
@@ -50,10 +60,11 @@ retains the detailed chronology and literature-reading notes.
 
 ## Technical verification
 
-The [publication qualification record](evidence/publication.md) records the
-SLURM checks, bounded fuzzing and model validation. Both books build strictly;
+The [publication qualification record](evidence/publication.md) and
+[follow-up record](evidence/publication-followups.md) describe their SLURM checks,
+bounded fuzzing and model validation at the recorded revisions. Both books build strictly;
 local targets, pinned source links and historical routes are checked together.
-Browser inspection covered the project URL prefix, equations, navigation,
+The earlier browser inspection covered the project URL prefix, equations, navigation,
 favicon and an archived route. External-host access failures remain explicit
 in the link report. Technical checks do not substitute for reader acceptance.
 

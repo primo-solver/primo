@@ -7,10 +7,11 @@ had not established an effective hard cap. Those timings remain preserved as
 an uncapped historical cohort and are excluded from the new bounded comparison.
 
 The October 24 replacement uses a hard **8 GiB virtual-address-space limit per
-process**. All six inventories and admission probes are complete, and the
-replacement timing arrays are running. Initial worker provenance confirms both
-limits are exactly 8 GiB. Full timings, model replay and the final comparison
-are not complete. Runs `2026-10-22-all-theories-long-limits` and
+process**. A read-only inspection on **28 October 2026** found timing and
+selected ground SAT-model replay complete. The final audit is
+`complete-diagnostic-native-errors`: successful ground SAT rows have model
+coverage, but native execution errors still block headline claims and default
+promotion. Worker provenance records both address-space limits as exactly 8 GiB. Runs `2026-10-22-all-theories-long-limits` and
 `2026-10-24-all-theories-enforced-memory` in the [run ledger](../run-log.json)
 record the separate attempts, exact snapshots, limits, jobs and artifacts.
 
@@ -46,13 +47,33 @@ Primo and references receive the same 1,200-second wall limit and hard address-
 space limit. A shard contains at most 24 inputs and receives nine hours; that
 allocation limit is distinct from the per-input limit.
 
+## Completion snapshot, 28 October 2026
+
+The {download}`audit summary <../coverage/long-limits-status-20261028.json>`
+records the inspection time, full audit-file hashes, immutable plan identity,
+native outcomes and remaining reference-corroboration gaps. The timing audit
+reports `timing-complete`; the final audit reports complete coverage for all
+**13,484 successful ground SAT rows** across the measured Primo profiles,
+checked separately with Dolmen. No owner jobs remained in the scheduler queue
+at the recorded inspection time. These statements report the existing audits;
+this documentation review did not rerun or reaggregate the experiment.
+
+The final audit retains **1,052 native execution-error rows** across QF_LRA,
+QF_LIA, QF_UFLRA and quantified UF, so the comparison remains diagnostic.
+Explicit allocation failures remain separate from cleanup aborts. The earlier
+case-specific memory triage below does not reclassify every error. Quantified
+UF has no independent printed-model validation, and some definite answers lack
+reference corroboration. Complete task coverage therefore does not establish
+unrestricted correctness or qualify the current implementation. The frozen
+revision and resource limits remain the comparison's scope.
+
 ## Profiles and references
 
 The native implementation is frozen at `4419dc9`, with the exact previously
-qualified binary preserved. Current defaults are measured in every division.
+qualified binary preserved. That frozen binary's defaults are measured in every division.
 QF_LRA also measures `--lra-model-phase --monotone-elimination`, its strongest
 recent full-corpus profile. The equality experiment remains outside this
-comparison, and no solver defaults change.
+comparison. This campaign does not qualify later default-policy or solver changes.
 
 The reference candidates are Z3, cvc5, Yices and OpenSMT, each with its defaults.
 Versioned binaries are preserved before measurements. Admission probes run
@@ -131,8 +152,8 @@ message alone does not individually confirm every remaining abort. Confirmed
 memory-outs are ordinary unsolved budget exhaustion. Raw timing rows retain
 their original exit codes, and the generic report still counts cleanup aborts
 as execution errors; the case-specific triage is recorded separately in the run
-ledger. These diagnostic runs contribute no speed measurements, and full
-SAT-model qualification remains pending.
+ledger. These diagnostic runs contribute no speed measurements, and did not supply SAT-model qualification. The separate completed ground
+replay is recorded in the completion snapshot above.
 
 The two exact inputs are also recorded as
 [memory-attribution candidates](../leads/incremental-memory.md#current-memory-exhaustion-candidates).

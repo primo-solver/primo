@@ -715,7 +715,7 @@ queries; online state within a solve does not imply cross-query persistence.
 
 The related [LRA source map](lra.md#sources-and-implementation-status) covers
 the simplex papers and the newer optional equality producer. The
-[review record](#theory-combination-chapter) records the primary
+{ref}`review record <theory-combination-chapter>` records the primary
 sections read for this chapter.
 
 ## Invariants exercised by existing tests
