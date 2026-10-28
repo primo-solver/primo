@@ -134,8 +134,8 @@ online tableau use {migrationsource}`LiaComponentAdapter::translate
 model and return a consistent, learned-clause, or resource-limit result. If
 requested projection omits a shared Int term, translation returns `Unknown`
 with that diagnostic. Shared
-model projection is produced only when the recipe requests it. This naming
-change does not broaden the shared-sort contract: it remains Int-only.
+model projection is produced only when the recipe requests it. The shared-sort
+contract is Int-only.
 
 The {ref}`combination chapter <the-component-collection-route>`
 explains the remaining equality arrangements and model-agreement checks.
@@ -147,7 +147,7 @@ tableau and preserves the supplied integer-variable ordering. On success the
 caller reads the winning assignment directly; after a failed or limited branch
 search, cuts remain but speculative branch bounds are removed. It does not
 restore the entry basis or assignment. The caller discards unsuccessful working
-copies. Limits and stage algorithms are unchanged; in particular, a zero branch
+copies. A zero branch
 budget permits an already integral assignment but no branch node.
 
 Both routes use SMT integration's
@@ -158,14 +158,12 @@ explanation against that clause. Individual failed integer branches do not incre
 aggregate conflict budget; the SMT caller counts the reported theory conflict.
 The {integersource}`patcher's fully_integral statistic
 <src/theory/arithmetic/lia_patching.hpp>` uses its maintained remaining-variable
-count, avoiding another scan. {migrationsource}`Both routes publish it <src/smt/solver_engines.cpp#L8372-L8380>` when patching is enabled;
-this adds previously missing patch-success accounting to the combined route.
+count, avoiding another scan. {migrationsource}`Both routes publish it <src/smt/solver_engines.cpp#L8372-L8380>` when patching is enabled.
 
-The extraction is an ownership and scheduling refactor of the existing stages,
-not a new arithmetic algorithm. Its design obligations are to preserve stage
-order, variable order, limits, the winning assignment, and antecedents from cuts
-used by later branching. It adds no tableau copies, preparation, or full scans.
-The stage-specific sources and limitations below continue to apply.
+The completion boundary preserves stage order, variable order, limits, the
+winning assignment, and antecedents from cuts used by later branching. It
+adds no tableau copies, preparation, or full scans. The stage-specific sources
+and limitations below apply to both callers.
 
 This design keeps integer branch choices inside the theory procedure. SAT
 learns the resulting conflict clause, but does not see individual integer

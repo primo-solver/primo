@@ -238,13 +238,13 @@ filenames at a 300-second limit. The earlier
 that every solver solved within 10 seconds; its legend therefore counts only
 the remaining 654 inputs.
 
-The following plot retains every input and overlays the current default and
-both-option Primo profiles with the recovered references. Historical solves
+The following plot retains every input and overlays the frozen `4200525`
+default and both-option Primo profiles with the recovered references. Historical solves
 after 30 seconds are censored in derived CSVs; original timing files remain
 unchanged. At this cutoff, the counts are Primo default 1,466, Primo both 1,531,
 OpenSMT 1,527, Yices 1,525, Z3 1,346, and cvc5 1,209.
 
-![All QF_LRA inputs: current Primo and historical references, 30-second cutoff](../_static/qf-lra-current-vs-historical-references-full30.svg)
+![All QF_LRA inputs: Primo at 4200525 and historical references, 30-second cutoff](../_static/qf-lra-current-vs-historical-references-full30.svg)
 
 This is a comparison with historical measurements: the references ran in August
 with 12 GiB, while Primo `4200525` ran in October with 7 GiB. Both used the CPU
@@ -252,7 +252,7 @@ compute partition; recovered accounting places the reference tasks on
 `node-01` through `node-06`. All eight profiles have identical normalized
 filename coverage and zero decisive disagreements in all 28 pairwise joins,
 including reference answers obtained after 30 seconds. The old campaigns did
-not record per-input hashes, so byte identity is unverified. Current Primo SAT
+not record per-input hashes, so byte identity is unverified. Primo SAT
 models retain their separate validation; this recovery adds no reference-model
 checks. Small count differences between Primo both, OpenSMT and Yices do not
 establish a speed advantage under matched conditions.

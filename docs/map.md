@@ -107,7 +107,8 @@ performance evidence before acceptance.
 | APIs and data structures | Audit ownership or prototype an external library consumer before proposing interface changes. | [Library API lead](leads/library-api.md) and [contribution requirements](development/contributing-changes.md) |
 
 The [correctness requirements](development/correctness.md) apply across these
-areas. Solver batches, fuzzing, and benchmarks belong in SLURM; the
+areas. In the maintainer's workspace, solver batches, fuzzing, and benchmarks
+belong in SLURM; contributors may use a suitable machine. The
 [experiment workflow](development/experiments.md) explains preparation and
 recording results. A card is a starting point, not a claim that its investigation
 is small or ready for implementation.

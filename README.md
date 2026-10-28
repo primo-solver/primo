@@ -57,7 +57,7 @@ record verification and outstanding acceptance. The intended public manual is
 Start with [CONTRIBUTING.md](CONTRIBUTING.md) for MIT/DCO and the contribution guide. Source, tests and
 affected documentation are reviewed together. Correctness comes before
 performance: solver behavior changes require fresh
-[fuzzing evidence](docs/development/correctness.md#required-fuzzing), and
+[fuzzing evidence](docs/development/correctness.md#choose-a-fuzz-gate), and
 wrong answers, invalid models, or crashes block acceptance. Keep current
 behavior distinct from experiments and proposals.
 

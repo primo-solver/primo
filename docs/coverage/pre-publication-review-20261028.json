@@ -1,0 +1,1301 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-28",
+  "review_kind": "pre-publication prose consistency and staleness review",
+  "baseline_git": "e3974390750af76d068b4772dd01c84dff6a1abb",
+  "status": "ready: all required findings resolved; independent content rechecks accepted; strict combined build and local/Git link checks passed",
+  "scope": {
+    "current_book_markdown_pages": 97,
+    "additional_root_documents": 3,
+    "historical_book": "Retained unchanged; historical review chronology read as dated evidence, not refreshed qualification.",
+    "additional_workflow_documents": 1
+  },
+  "method": "All current Markdown prose read in assigned units. Root owns edits; separate read-only agents review source accuracy, explanatory consistency and fixes. Source and evidence checks are selective, not algorithm proof or fresh solver qualification.",
+  "pages": [
+    {
+      "path": "docs/capabilities.md",
+      "sha256": "fbb1a0efee35785682756694c7e1b2cfbc981c721924e210bcf3c1bc33e9c942",
+      "lines": 63,
+      "review_unit": "user-reference",
+      "full_prose_read": true,
+      "reviewed_sha256": "fbb1a0efee35785682756694c7e1b2cfbc981c721924e210bcf3c1bc33e9c942"
+    },
+    {
+      "path": "docs/coverage/frontend-sessions.md",
+      "sha256": "ff92560301fc5af572350700e92b839a91c84cadd531efbbd4791988d21bdd0e",
+      "lines": 33,
+      "review_unit": "coverage-history-literature",
+      "full_prose_read": true,
+      "reviewed_sha256": "ff92560301fc5af572350700e92b839a91c84cadd531efbbd4791988d21bdd0e"
+    },
+    {
+      "path": "docs/coverage/index.md",
+      "sha256": "d15f206c481f7beb076bb7b67859f09548744ec68dfe80e6e0119c614cdbcd41",
+      "lines": 55,
+      "review_unit": "coverage-history-literature",
+      "full_prose_read": true,
+      "reviewed_sha256": "d15f206c481f7beb076bb7b67859f09548744ec68dfe80e6e0119c614cdbcd41"
+    },
+    {
+      "path": "docs/coverage/lia.md",
+      "sha256": "bbf6b40fa7dedacc1a473c15786fc09510cbbf3197ed0d1377f1b3364f7ff230",
+      "lines": 82,
+      "review_unit": "coverage-history-literature",
+      "full_prose_read": true,
+      "reviewed_sha256": "bbf6b40fa7dedacc1a473c15786fc09510cbbf3197ed0d1377f1b3364f7ff230"
+    },
+    {
+      "path": "docs/coverage/page-review.md",
+      "sha256": "a54ba25d3e5b1df27510b755bea9ad70e33966baf2eace26adb765c18984cd21",
+      "lines": 336,
+      "review_unit": "coverage-history-literature",
+      "full_prose_read": true,
+      "reviewed_sha256": "a54ba25d3e5b1df27510b755bea9ad70e33966baf2eace26adb765c18984cd21"
+    },
+    {
+      "path": "docs/coverage/practice-literature.md",
+      "sha256": "5fd21b97643fa3f75a12d6c7337af4d323747b35b59e16b0f4dbc3d3668ed698",
+      "lines": 23,
+      "review_unit": "coverage-history-literature",
+      "full_prose_read": true,
+      "reviewed_sha256": "5fd21b97643fa3f75a12d6c7337af4d323747b35b59e16b0f4dbc3d3668ed698"
+    },
+    {
+      "path": "docs/coverage/solver.md",
+      "sha256": "c662a918ebfa33a73c18a51f0080be4777be02428cef7e05203cf43a77f0a152",
+      "lines": 34,
+      "review_unit": "coverage-history-literature",
+      "full_prose_read": true,
+      "reviewed_sha256": "6f29482d69715c63784d2a8f8a8b3377984784825740e4a8b926567ad0305d66"
+    },
+    {
+      "path": "docs/coverage/tactics-preprocessing.md",
+      "sha256": "95d89e2b0dac872ec9afc9ec204ed6592bca84b1b5e6f0c3d7aaa7462c1d50f2",
+      "lines": 91,
+      "review_unit": "coverage-history-literature",
+      "full_prose_read": true,
+      "reviewed_sha256": "95d89e2b0dac872ec9afc9ec204ed6592bca84b1b5e6f0c3d7aaa7462c1d50f2"
+    },
+    {
+      "path": "docs/development/contributing-changes.md",
+      "sha256": "be24e942839946acd86a91137803a36b72d672680e60231918c0443474e4bd41",
+      "lines": 48,
+      "review_unit": "user-reference",
+      "full_prose_read": true,
+      "reviewed_sha256": "be24e942839946acd86a91137803a36b72d672680e60231918c0443474e4bd41"
+    },
+    {
+      "path": "docs/development/correctness.md",
+      "sha256": "153c7c36fb7b5b82e810dadeb7847b03ceae00bb6dcc226ebe27d6a7a48d0d97",
+      "lines": 204,
+      "review_unit": "user-reference",
+      "full_prose_read": true,
+      "reviewed_sha256": "153c7c36fb7b5b82e810dadeb7847b03ceae00bb6dcc226ebe27d6a7a48d0d97"
+    },
+    {
+      "path": "docs/development/debugging.md",
+      "sha256": "824bb7dc1c281cf513e4a29cbfa723c37fb715b4eb9e5558d9c7d103a4ff2993",
+      "lines": 103,
+      "review_unit": "user-reference",
+      "full_prose_read": true,
+      "reviewed_sha256": "824bb7dc1c281cf513e4a29cbfa723c37fb715b4eb9e5558d9c7d103a4ff2993"
+    },
+    {
+      "path": "docs/development/documentation.md",
+      "sha256": "8fe449a0eb49c0449b4d7b819354773dcaa1a6b09f2c2f000d9a9d44d6775363",
+      "lines": 160,
+      "review_unit": "user-reference",
+      "full_prose_read": true,
+      "reviewed_sha256": "8fe449a0eb49c0449b4d7b819354773dcaa1a6b09f2c2f000d9a9d44d6775363"
+    },
+    {
+      "path": "docs/development/experiments.md",
+      "sha256": "13494049b526fa3639b05ceace34eefb5f7ea02ca1ea443868b61cef8ec02f35",
+      "lines": 213,
+      "review_unit": "user-reference",
+      "full_prose_read": true,
+      "reviewed_sha256": "13494049b526fa3639b05ceace34eefb5f7ea02ca1ea443868b61cef8ec02f35"
+    },
+    {
+      "path": "docs/development/fuzzing.md",
+      "sha256": "00a61a200438707e76dd1ea2135507231e68bcd1301bac8089abc59bab17adeb",
+      "lines": 103,
+      "review_unit": "user-reference",
+      "full_prose_read": true,
+      "reviewed_sha256": "00a61a200438707e76dd1ea2135507231e68bcd1301bac8089abc59bab17adeb"
+    },
+    {
+      "path": "docs/development/static-analysis.md",
+      "sha256": "85870262f3939af5fbf4a0d7485fa40343f4726ea5edbc23ddaa0a3e8141e594",
+      "lines": 130,
+      "review_unit": "user-reference",
+      "full_prose_read": true,
+      "reviewed_sha256": "99f0d92b42ee85039bc4037af4e23e7818d12ecb6fdeca6db546ec848b8102a4"
+    },
+    {
+      "path": "docs/development/tuning.md",
+      "sha256": "022c7a95d86280d39b47d2689b6d31d0ef0a8e9f07ddf7bb908e448c5fa0fdc1",
+      "lines": 65,
+      "review_unit": "user-reference",
+      "full_prose_read": true,
+      "reviewed_sha256": "022c7a95d86280d39b47d2689b6d31d0ef0a8e9f07ddf7bb908e448c5fa0fdc1"
+    },
+    {
+      "path": "docs/development/validation.md",
+      "sha256": "07a7709bd69f176eaeb230b01098277a6d29d137ae6fbd61fd5a3d128198cde5",
+      "lines": 95,
+      "review_unit": "user-reference",
+      "full_prose_read": true,
+      "reviewed_sha256": "07a7709bd69f176eaeb230b01098277a6d29d137ae6fbd61fd5a3d128198cde5"
+    },
+    {
+      "path": "docs/evidence/archive.md",
+      "sha256": "b9c95539a9a85aea427d3ebb2c617be0c9debc771b7da3267430978238e58b5b",
+      "lines": 555,
+      "review_unit": "papers-evidence",
+      "full_prose_read": true,
+      "reviewed_sha256": "b9c95539a9a85aea427d3ebb2c617be0c9debc771b7da3267430978238e58b5b"
+    },
+    {
+      "path": "docs/evidence/arithmetic.md",
+      "sha256": "fe5fda56ff491c5a1df0ca61dc9732d6776edc11fe140067c069c33410e8c636",
+      "lines": 367,
+      "review_unit": "papers-evidence",
+      "full_prose_read": true,
+      "reviewed_sha256": "33d7c7d51ed9c387f65b5c3750ecbf067b2d52813a43d670bb04d4aa5f61a90f"
+    },
+    {
+      "path": "docs/evidence/assignment.md",
+      "sha256": "93c6c93404f3843168871bad2b262902970be7e3280da562bdcbefc576fbaa74",
+      "lines": 52,
+      "review_unit": "papers-evidence",
+      "full_prose_read": true,
+      "reviewed_sha256": "93c6c93404f3843168871bad2b262902970be7e3280da562bdcbefc576fbaa74"
+    },
+    {
+      "path": "docs/evidence/evaluation-refresh.md",
+      "sha256": "5151e4b6b65d6066caab932504865b2b50c152a51b47d1d3dbd9cf3cc90fae1c",
+      "lines": 164,
+      "review_unit": "papers-evidence",
+      "full_prose_read": true,
+      "reviewed_sha256": "5151e4b6b65d6066caab932504865b2b50c152a51b47d1d3dbd9cf3cc90fae1c"
+    },
+    {
+      "path": "docs/evidence/long-limits.md",
+      "sha256": "bdc150a3ff627227d0be111bea3660ce4144535186c3204b90f8f434a1141a73",
+      "lines": 247,
+      "review_unit": "papers-evidence",
+      "full_prose_read": true,
+      "reviewed_sha256": "16487f61c474e3a620d0b434128c2a699ea60f937756c84242cdfcd1ac1bb89e"
+    },
+    {
+      "path": "docs/evidence/lra-regressions.md",
+      "sha256": "1f1d461b4b70bf338f4d6c5fa5b3068455379f018c262d8a253c514ae7d6a4f4",
+      "lines": 206,
+      "review_unit": "papers-evidence",
+      "full_prose_read": true,
+      "reviewed_sha256": "62fd5abde174d102864c0fd7cdde4d3c6da8c87476380b36f2fb1d429ff5fcab"
+    },
+    {
+      "path": "docs/evidence/publication-followups.md",
+      "sha256": "5fc66fd82ec9c433fdd6f426954d480779fbf66e3b177a10b15b26a1ef65073e",
+      "lines": 99,
+      "review_unit": "papers-evidence",
+      "full_prose_read": true,
+      "reviewed_sha256": "5fc66fd82ec9c433fdd6f426954d480779fbf66e3b177a10b15b26a1ef65073e"
+    },
+    {
+      "path": "docs/evidence/publication.md",
+      "sha256": "f74b382ecf89b7c562c80ca78bd4e0ca3a8a208f5e1b33f33a0fd39ef605555f",
+      "lines": 111,
+      "review_unit": "papers-evidence",
+      "full_prose_read": true,
+      "reviewed_sha256": "f74b382ecf89b7c562c80ca78bd4e0ca3a8a208f5e1b33f33a0fd39ef605555f"
+    },
+    {
+      "path": "docs/evidence/quantifiers.md",
+      "sha256": "a002d6c93422903c0361bc5a965685a718d74f4e6365c70048915a8c7fde45a9",
+      "lines": 99,
+      "review_unit": "papers-evidence",
+      "full_prose_read": true,
+      "reviewed_sha256": "a002d6c93422903c0361bc5a965685a718d74f4e6365c70048915a8c7fde45a9"
+    },
+    {
+      "path": "docs/evidence/static-analysis.md",
+      "sha256": "63acb7157e6bcb532d1aa677bab7e053f5326172b724030e17a29f1b761d417f",
+      "lines": 210,
+      "review_unit": "papers-evidence",
+      "full_prose_read": true,
+      "reviewed_sha256": "63acb7157e6bcb532d1aa677bab7e053f5326172b724030e17a29f1b761d417f"
+    },
+    {
+      "path": "docs/guide/getting-started.md",
+      "sha256": "6b4598c95d16ee86e6d10b9e3d20127a572b2fc74d61a6de4a2290aa8f3166a4",
+      "lines": 111,
+      "review_unit": "user-reference",
+      "full_prose_read": true,
+      "reviewed_sha256": "905462b7a3ce1dbacf721cfaef04439e3b1592f2613b9ef568e04979017815f7"
+    },
+    {
+      "path": "docs/guide/input.md",
+      "sha256": "4a21d0dcbe72615a4b564c288177be22100afbb2453751c482dea0f85f451333",
+      "lines": 100,
+      "review_unit": "user-reference",
+      "full_prose_read": true,
+      "reviewed_sha256": "4a21d0dcbe72615a4b564c288177be22100afbb2453751c482dea0f85f451333"
+    },
+    {
+      "path": "docs/guide/models.md",
+      "sha256": "e4437296548f7ee45734bd68ee898aa4e89c40e3577021847de7cb3b0a46483b",
+      "lines": 65,
+      "review_unit": "user-reference",
+      "full_prose_read": true,
+      "reviewed_sha256": "e4437296548f7ee45734bd68ee898aa4e89c40e3577021847de7cb3b0a46483b"
+    },
+    {
+      "path": "docs/guide/sessions.md",
+      "sha256": "c99acb65bcbf3662858f10004c74069738980659c8ab30ddbe217cbe931c5338",
+      "lines": 86,
+      "review_unit": "user-reference",
+      "full_prose_read": true,
+      "reviewed_sha256": "c99acb65bcbf3662858f10004c74069738980659c8ab30ddbe217cbe931c5338"
+    },
+    {
+      "path": "docs/implementation/architecture.md",
+      "sha256": "43cff2894faba3ee711c6a3064991c599e239e234de9043ed0afbbe946edb64f",
+      "lines": 227,
+      "review_unit": "core-euf-quantifiers",
+      "full_prose_read": true,
+      "reviewed_sha256": "c7d7ceb3b4e6fea1d8af4e294eeb122d55b0569d208c498f234d5b8390f05473"
+    },
+    {
+      "path": "docs/implementation/combination.md",
+      "sha256": "6f97d96b4faef09d9f37a4abfa7635ae41b639c3de3a9b476d012b4e2eb1835c",
+      "lines": 763,
+      "review_unit": "arithmetic-combination-leads",
+      "full_prose_read": true,
+      "reviewed_sha256": "01617fe394a0fec18f4c2de0406d26858b000717a00f9511fb1289b69d8661df"
+    },
+    {
+      "path": "docs/implementation/core.md",
+      "sha256": "0b74f156c8e4ca23773f2ea62203ee8ee03e999e56a2a293bc93ba62d4045581",
+      "lines": 302,
+      "review_unit": "core-euf-quantifiers",
+      "full_prose_read": true,
+      "reviewed_sha256": "0b74f156c8e4ca23773f2ea62203ee8ee03e999e56a2a293bc93ba62d4045581"
+    },
+    {
+      "path": "docs/implementation/dpllt.md",
+      "sha256": "36a01eeca4c71668039cacb9adcd64fa2ee5d478dd7b98056360fed3e5bc5ec2",
+      "lines": 410,
+      "review_unit": "core-euf-quantifiers",
+      "full_prose_read": true,
+      "reviewed_sha256": "76be65f1c97a780eb0b64a66871ec288ad580ceaf6519c824ade0ec1aa2d6d14"
+    },
+    {
+      "path": "docs/implementation/euf.md",
+      "sha256": "4081f2c018a0b92329fa38f50a9e127e897c13dc5ff14a283c1f85bc5ac6e757",
+      "lines": 484,
+      "review_unit": "core-euf-quantifiers",
+      "full_prose_read": true,
+      "reviewed_sha256": "4081f2c018a0b92329fa38f50a9e127e897c13dc5ff14a283c1f85bc5ac6e757"
+    },
+    {
+      "path": "docs/implementation/frontend.md",
+      "sha256": "8b23c49a50266a003c3d5015a701be554f000b0b0743a3c1cc5563aef741e495",
+      "lines": 165,
+      "review_unit": "core-euf-quantifiers",
+      "full_prose_read": true,
+      "reviewed_sha256": "8b23c49a50266a003c3d5015a701be554f000b0b0743a3c1cc5563aef741e495"
+    },
+    {
+      "path": "docs/implementation/lia.md",
+      "sha256": "3695cca3be26f91245598b55d93604424a2899b35c51620e87de803dc05e4572",
+      "lines": 725,
+      "review_unit": "arithmetic-combination-leads",
+      "full_prose_read": true,
+      "reviewed_sha256": "a5b3845bb3670c512b719f50a7bad9ce491c2e10407cc8e1f73d502ea194eb7c"
+    },
+    {
+      "path": "docs/implementation/lra.md",
+      "sha256": "0e3b4b1fb8fb31ea4dec30b766df08ac61ad707bc6c76c8c0f6db0651587f208",
+      "lines": 1353,
+      "review_unit": "arithmetic-combination-leads",
+      "full_prose_read": true,
+      "reviewed_sha256": "0e3b4b1fb8fb31ea4dec30b766df08ac61ad707bc6c76c8c0f6db0651587f208"
+    },
+    {
+      "path": "docs/implementation/models.md",
+      "sha256": "e337c38e6ef51fae0554e9c9cf563b21ba5f2d23513a74f0fd91b0566cd3f5e6",
+      "lines": 365,
+      "review_unit": "core-euf-quantifiers",
+      "full_prose_read": true,
+      "reviewed_sha256": "48ea7d86f102a51962151cd65fa82da694504ec46f9b53abf6390bdaa289f900"
+    },
+    {
+      "path": "docs/implementation/preprocessing.md",
+      "sha256": "5bf0ddf9441339ba814c5da1d3e5a0f4ab257201af0025490d0698aeafff3890",
+      "lines": 553,
+      "review_unit": "core-euf-quantifiers",
+      "full_prose_read": true,
+      "reviewed_sha256": "5bf0ddf9441339ba814c5da1d3e5a0f4ab257201af0025490d0698aeafff3890"
+    },
+    {
+      "path": "docs/implementation/quantifiers.md",
+      "sha256": "8cdbc9e5c100176678f9c6bb6be92c8a856531dae405df3e34a434c5e7c8debd",
+      "lines": 529,
+      "review_unit": "core-euf-quantifiers",
+      "full_prose_read": true,
+      "reviewed_sha256": "8cdbc9e5c100176678f9c6bb6be92c8a856531dae405df3e34a434c5e7c8debd"
+    },
+    {
+      "path": "docs/implementation/sat.md",
+      "sha256": "750c73ebdc3f0e88fa4ea0b90aa69fe27b5598f8c6c38390bd742bdf1d7d2cba",
+      "lines": 344,
+      "review_unit": "core-euf-quantifiers",
+      "full_prose_read": true,
+      "reviewed_sha256": "750c73ebdc3f0e88fa4ea0b90aa69fe27b5598f8c6c38390bd742bdf1d7d2cba"
+    },
+    {
+      "path": "docs/implementation/sessions.md",
+      "sha256": "5f99b4f05c509b156c09158e3040dad2c97efbd210a9efd85f613aeb7e26f52d",
+      "lines": 168,
+      "review_unit": "core-euf-quantifiers",
+      "full_prose_read": true,
+      "reviewed_sha256": "5f99b4f05c509b156c09158e3040dad2c97efbd210a9efd85f613aeb7e26f52d"
+    },
+    {
+      "path": "docs/implementation/tactics.md",
+      "sha256": "96ca3592c5905eba3cb8edc646b9367179ed2f709f43ff952e05ce47b4097e6a",
+      "lines": 374,
+      "review_unit": "core-euf-quantifiers",
+      "full_prose_read": true,
+      "reviewed_sha256": "96ca3592c5905eba3cb8edc646b9367179ed2f709f43ff952e05ce47b4097e6a"
+    },
+    {
+      "path": "docs/implementation/theory-interface.md",
+      "sha256": "005f288afb786c21e90993bbff1c020e8e4049b4a254939ab1a23d4b33f4199f",
+      "lines": 305,
+      "review_unit": "arithmetic-combination-leads",
+      "full_prose_read": true,
+      "reviewed_sha256": "005f288afb786c21e90993bbff1c020e8e4049b4a254939ab1a23d4b33f4199f"
+    },
+    {
+      "path": "docs/index.md",
+      "sha256": "97d5bdeb915770adab015e654925a4e4e84ebdd15f728957218508f10cce6564",
+      "lines": 186,
+      "review_unit": "landing-work-review",
+      "full_prose_read": true,
+      "reviewed_sha256": "37be27539e198acfb92199d4275e515b3fef1cb2c5962c49b08096557e16e60d"
+    },
+    {
+      "path": "docs/leads/arithmetic-symmetry.md",
+      "sha256": "11025565aad87a54e2d1b20cf52dde0f27fef54ecbf8a1de8eea3e1691bb72f8",
+      "lines": 69,
+      "review_unit": "arithmetic-combination-leads",
+      "full_prose_read": true,
+      "reviewed_sha256": "11025565aad87a54e2d1b20cf52dde0f27fef54ecbf8a1de8eea3e1691bb72f8"
+    },
+    {
+      "path": "docs/leads/asserted-quantifiers.md",
+      "sha256": "d0e62a19de9f44b22f891d67134a03259a312f99d09c20b91e034a615aa31da2",
+      "lines": 101,
+      "review_unit": "arithmetic-combination-leads",
+      "full_prose_read": true,
+      "reviewed_sha256": "d0e62a19de9f44b22f891d67134a03259a312f99d09c20b91e034a615aa31da2"
+    },
+    {
+      "path": "docs/leads/care-guided-combination.md",
+      "sha256": "c02c09b903d3904203382652a86f51b5816e564f0a99ef50bf4d4c57d0f45a06",
+      "lines": 85,
+      "review_unit": "arithmetic-combination-leads",
+      "full_prose_read": true,
+      "reviewed_sha256": "c02c09b903d3904203382652a86f51b5816e564f0a99ef50bf4d4c57d0f45a06"
+    },
+    {
+      "path": "docs/leads/care-pair-generation.md",
+      "sha256": "334f6ab53d6d97903a8587230a16f9c9cde21f1dddd52fa8d2afc5b1251f03af",
+      "lines": 76,
+      "review_unit": "arithmetic-combination-leads",
+      "full_prose_read": true,
+      "reviewed_sha256": "334f6ab53d6d97903a8587230a16f9c9cde21f1dddd52fa8d2afc5b1251f03af"
+    },
+    {
+      "path": "docs/leads/compact-distinct.md",
+      "sha256": "e21381712476845161ebdc9138468a12b14d0f517abf3b11bb856d53946438b6",
+      "lines": 22,
+      "review_unit": "arithmetic-combination-leads",
+      "full_prose_read": true,
+      "reviewed_sha256": "e21381712476845161ebdc9138468a12b14d0f517abf3b11bb856d53946438b6"
+    },
+    {
+      "path": "docs/leads/incremental-equations.md",
+      "sha256": "f41123bbb6ce752f4c7f8e70eb69b50e8ed0fa28d1e6b0e5e3ef79a390c67fdc",
+      "lines": 32,
+      "review_unit": "arithmetic-combination-leads",
+      "full_prose_read": true,
+      "reviewed_sha256": "f41123bbb6ce752f4c7f8e70eb69b50e8ed0fa28d1e6b0e5e3ef79a390c67fdc"
+    },
+    {
+      "path": "docs/leads/incremental-memory.md",
+      "sha256": "258ddd54bb21fe3093cfb8e5dfeb1b5d9e3289409cecdd5701dd11344bcef41d",
+      "lines": 220,
+      "review_unit": "arithmetic-combination-leads",
+      "full_prose_read": true,
+      "reviewed_sha256": "258ddd54bb21fe3093cfb8e5dfeb1b5d9e3289409cecdd5701dd11344bcef41d"
+    },
+    {
+      "path": "docs/leads/index.md",
+      "sha256": "c894d3b4187519a51876f17a61214ea9a336a0490c253c656ac424dc1408e28d",
+      "lines": 164,
+      "review_unit": "arithmetic-combination-leads",
+      "full_prose_read": true,
+      "reviewed_sha256": "a5339f22d3e87459e8bb746d8488c371bb9f75130666490076a16e70777d59b6"
+    },
+    {
+      "path": "docs/leads/lia-extended-gcd.md",
+      "sha256": "00f8659e8205d69ae4c8919db7ff87b0621e884f97f8c84c11c6e3de293ce083",
+      "lines": 79,
+      "review_unit": "arithmetic-combination-leads",
+      "full_prose_read": true,
+      "reviewed_sha256": "00f8659e8205d69ae4c8919db7ff87b0621e884f97f8c84c11c6e3de293ce083"
+    },
+    {
+      "path": "docs/leads/lia-infinitesimals.md",
+      "sha256": "66fcb9ffb22c06e29e6ac1d62687981884dd25476dd61d4c95b178060ffc393b",
+      "lines": 95,
+      "review_unit": "arithmetic-combination-leads",
+      "full_prose_read": true,
+      "reviewed_sha256": "66fcb9ffb22c06e29e6ac1d62687981884dd25476dd61d4c95b178060ffc393b"
+    },
+    {
+      "path": "docs/leads/lia-patching.md",
+      "sha256": "40b06636cd0b88fcdb1823e8e3fbce932b752ba93e43efbc1caf3cb4db71a41c",
+      "lines": 84,
+      "review_unit": "arithmetic-combination-leads",
+      "full_prose_read": true,
+      "reviewed_sha256": "40b06636cd0b88fcdb1823e8e3fbce932b752ba93e43efbc1caf3cb4db71a41c"
+    },
+    {
+      "path": "docs/leads/library-api.md",
+      "sha256": "7000f3b5e4c7174a6f09e9b7b50c692f77c342385e9d46999d746d69e19f4123",
+      "lines": 89,
+      "review_unit": "arithmetic-combination-leads",
+      "full_prose_read": true,
+      "reviewed_sha256": "7000f3b5e4c7174a6f09e9b7b50c692f77c342385e9d46999d746d69e19f4123"
+    },
+    {
+      "path": "docs/leads/lra-column-coefficients.md",
+      "sha256": "633c8d69c602d123784c7aa96fd3eb19c6e794a5abdec95bd85194e426126bea",
+      "lines": 198,
+      "review_unit": "arithmetic-combination-leads",
+      "full_prose_read": true,
+      "reviewed_sha256": "633c8d69c602d123784c7aa96fd3eb19c6e794a5abdec95bd85194e426126bea"
+    },
+    {
+      "path": "docs/leads/lra-equality-basis.md",
+      "sha256": "78072d948c2b6fbb137de7898f3db6e992f95b85b77ef8c279183d9708c4cca0",
+      "lines": 48,
+      "review_unit": "arithmetic-combination-leads",
+      "full_prose_read": true,
+      "reviewed_sha256": "78072d948c2b6fbb137de7898f3db6e992f95b85b77ef8c279183d9708c4cca0"
+    },
+    {
+      "path": "docs/leads/lra-floating-point.md",
+      "sha256": "2fc48e29d37a2710cb533ac535b4d0bb40ada5fe945bad70c4e2bd33d2cbf6ee",
+      "lines": 81,
+      "review_unit": "arithmetic-combination-leads",
+      "full_prose_read": true,
+      "reviewed_sha256": "2fc48e29d37a2710cb533ac535b4d0bb40ada5fe945bad70c4e2bd33d2cbf6ee"
+    },
+    {
+      "path": "docs/leads/model-based-combination.md",
+      "sha256": "970d7ef04ad41071c16e36caed9f4d21edc275380300cd8c94366f07b6ae768f",
+      "lines": 46,
+      "review_unit": "arithmetic-combination-leads",
+      "full_prose_read": true,
+      "reviewed_sha256": "970d7ef04ad41071c16e36caed9f4d21edc275380300cd8c94366f07b6ae768f"
+    },
+    {
+      "path": "docs/leads/quantifier-instantiation.md",
+      "sha256": "bdb01c1951a795c995ca309b876d6a872d1d6a937cf9c46124a934582c51e435",
+      "lines": 204,
+      "review_unit": "arithmetic-combination-leads",
+      "full_prose_read": true,
+      "reviewed_sha256": "bdb01c1951a795c995ca309b876d6a872d1d6a937cf9c46124a934582c51e435"
+    },
+    {
+      "path": "docs/leads/quantifier-nnf.md",
+      "sha256": "ffefb74702e328e03209179c2f63bb53c988a33369a74b81f60a446b27f9de24",
+      "lines": 103,
+      "review_unit": "arithmetic-combination-leads",
+      "full_prose_read": true,
+      "reviewed_sha256": "ffefb74702e328e03209179c2f63bb53c988a33369a74b81f60a446b27f9de24"
+    },
+    {
+      "path": "docs/leads/quantifier-relevance.md",
+      "sha256": "73775a826b40cf866f88fc91934422ab846f20923bdf4869a1b30fab20bfd82e",
+      "lines": 144,
+      "review_unit": "arithmetic-combination-leads",
+      "full_prose_read": true,
+      "reviewed_sha256": "73775a826b40cf866f88fc91934422ab846f20923bdf4869a1b30fab20bfd82e"
+    },
+    {
+      "path": "docs/leads/rational-storage.md",
+      "sha256": "2764fe0436a08c480b0ce444637c351f51b3dbdba82e8f39b21af7891d3cf9f2",
+      "lines": 105,
+      "review_unit": "arithmetic-combination-leads",
+      "full_prose_read": true,
+      "reviewed_sha256": "2764fe0436a08c480b0ce444637c351f51b3dbdba82e8f39b21af7891d3cf9f2"
+    },
+    {
+      "path": "docs/leads/real-combination-migration.md",
+      "sha256": "35f80c5f7c3e2e6585660b9c365b8f654177b19af93075e90bb3f00f1f50e547",
+      "lines": 39,
+      "review_unit": "arithmetic-combination-leads",
+      "full_prose_read": true,
+      "reviewed_sha256": "35f80c5f7c3e2e6585660b9c365b8f654177b19af93075e90bb3f00f1f50e547"
+    },
+    {
+      "path": "docs/leads/shared-euf-structure.md",
+      "sha256": "358dca68ca43affa7e3140df22afa9e76116e0a38701d5c961909797ce78922a",
+      "lines": 29,
+      "review_unit": "arithmetic-combination-leads",
+      "full_prose_read": true,
+      "reviewed_sha256": "358dca68ca43affa7e3140df22afa9e76116e0a38701d5c961909797ce78922a"
+    },
+    {
+      "path": "docs/leads/statistics-instrumentation.md",
+      "sha256": "8b0196ce902dbdc14472326065bf5c226afc66faa443b65ccabcf1ee3291071a",
+      "lines": 131,
+      "review_unit": "arithmetic-combination-leads",
+      "full_prose_read": true,
+      "reviewed_sha256": "8b0196ce902dbdc14472326065bf5c226afc66faa443b65ccabcf1ee3291071a"
+    },
+    {
+      "path": "docs/leads/term-storage.md",
+      "sha256": "962fafec8469037b6e9c13c4fea486e642ec2fe04af04d8f4163be0b988f385b",
+      "lines": 113,
+      "review_unit": "arithmetic-combination-leads",
+      "full_prose_read": true,
+      "reviewed_sha256": "962fafec8469037b6e9c13c4fea486e642ec2fe04af04d8f4163be0b988f385b"
+    },
+    {
+      "path": "docs/leads/theory-lemma-forgetting.md",
+      "sha256": "e9db8fed3730befbdd10372b252d5657d2c7ce3cf33d9b4ac23218a48ecd3de8",
+      "lines": 58,
+      "review_unit": "arithmetic-combination-leads",
+      "full_prose_read": true,
+      "reviewed_sha256": "82b75904c2c2b99dbe30232ce0a7d863d6390f8b98b649f130b9529278536f05"
+    },
+    {
+      "path": "docs/leads/theory-lemmas.md",
+      "sha256": "622e48beb63fce5170cd76337a52a213893e5903ebb547841001cc841dac2230",
+      "lines": 51,
+      "review_unit": "arithmetic-combination-leads",
+      "full_prose_read": true,
+      "reviewed_sha256": "622e48beb63fce5170cd76337a52a213893e5903ebb547841001cc841dac2230"
+    },
+    {
+      "path": "docs/literature.md",
+      "sha256": "72676118f6bac6e8b24d2a404b8878b4298110f28a98f1b18cc8160ff415909f",
+      "lines": 94,
+      "review_unit": "coverage-history-literature",
+      "full_prose_read": true,
+      "reviewed_sha256": "72676118f6bac6e8b24d2a404b8878b4298110f28a98f1b18cc8160ff415909f"
+    },
+    {
+      "path": "docs/map.md",
+      "sha256": "0499df76f7ddbc511a2ef825da9237ef2aed1b5c247ab54c7ce60d4d860b3740",
+      "lines": 121,
+      "review_unit": "user-reference",
+      "full_prose_read": true,
+      "reviewed_sha256": "6ccd6e14549407d69a09c0cbf74ddff4788585305eabb2c13a3f197f03beb685"
+    },
+    {
+      "path": "docs/papers/bromberger-linear-arithmetic.md",
+      "sha256": "f5c276c5c1c2bf9afedb863872994295c2c21268ce30e0887cb8e4dcea2389ec",
+      "lines": 138,
+      "review_unit": "papers-evidence",
+      "full_prose_read": true,
+      "reviewed_sha256": "f5c276c5c1c2bf9afedb863872994295c2c21268ce30e0887cb8e4dcea2389ec"
+    },
+    {
+      "path": "docs/papers/clause-forgetting.md",
+      "sha256": "0448ce0409b7e1c553c1f77f8665987b627017e2d2aee8d803bf80020a97613f",
+      "lines": 153,
+      "review_unit": "papers-evidence",
+      "full_prose_read": true,
+      "reviewed_sha256": "2842d091e4db3957c60de136cc72a317dff4e91f94485dfed9db1aef4bafe1dc"
+    },
+    {
+      "path": "docs/papers/conflict-explanation-minimization.md",
+      "sha256": "e21df6b1696c79220e67e72f076a981b3a4564fe25eef3640d52f2083c23950d",
+      "lines": 298,
+      "review_unit": "papers-evidence",
+      "full_prose_read": true,
+      "reviewed_sha256": "77c92b898020d38d326a60ac533ff7cf5937cbac378a1ea4084e44ee9f968fa4"
+    },
+    {
+      "path": "docs/papers/cuts-from-proofs.md",
+      "sha256": "0919a36269771cea00333f7df90612e1bbdbdecf025519b93b93acfe015029b1",
+      "lines": 240,
+      "review_unit": "papers-evidence",
+      "full_prose_read": true,
+      "reviewed_sha256": "8dc1e4b1d81a4c512ef1df021d0c23d7c0a85bcc6a674d1dc373c6562198c03c"
+    },
+    {
+      "path": "docs/papers/lia-primal-heuristics.md",
+      "sha256": "d3434dbc2f267ca93b125ca87dbe9fd35b9fce562045860263e2d5b89a45628f",
+      "lines": 160,
+      "review_unit": "papers-evidence",
+      "full_prose_read": true,
+      "reviewed_sha256": "27138fca41d3ee6fcc3e45a714ce58756fcd4f6736a9ae5ddc11499bb483539e"
+    },
+    {
+      "path": "docs/papers/polarity-aware-cnf.md",
+      "sha256": "c101830422ea78ef55e384b0ff67bd22536ca87b5d3493c3a71aa77f0fba0236",
+      "lines": 128,
+      "review_unit": "papers-evidence",
+      "full_prose_read": true,
+      "reviewed_sha256": "c101830422ea78ef55e384b0ff67bd22536ca87b5d3493c3a71aa77f0fba0236"
+    },
+    {
+      "path": "docs/papers/primo-qflra-results.md",
+      "sha256": "bebee05e22b167cbc8de4ebec3c589357d952672d9a33df697381e2b6e6ccfab",
+      "lines": 43,
+      "review_unit": "papers-evidence",
+      "full_prose_read": true,
+      "reviewed_sha256": "4d70d9cf749d33ed49a8959871be8112c18ca417d682b2da25b8fdd3398b4f76"
+    },
+    {
+      "path": "docs/papers/relevance-filtering.md",
+      "sha256": "5c7e15705ca2991f07e1a978c48164fca8b3caabd600d409af69495c931cd27d",
+      "lines": 127,
+      "review_unit": "papers-evidence",
+      "full_prose_read": true,
+      "reviewed_sha256": "5c7e15705ca2991f07e1a978c48164fca8b3caabd600d409af69495c931cd27d"
+    },
+    {
+      "path": "docs/papers/yices.md",
+      "sha256": "3ad75ecf0f92794721cba8571f833eb6ff3b53980f278bd115126506edd50892",
+      "lines": 256,
+      "review_unit": "papers-evidence",
+      "full_prose_read": true,
+      "reviewed_sha256": "3ad75ecf0f92794721cba8571f833eb6ff3b53980f278bd115126506edd50892"
+    },
+    {
+      "path": "docs/reference/backend.md",
+      "sha256": "6bef96bbd4079828c1b5926b47223626dcb935392ad3d97067a9e8c006f53b9a",
+      "lines": 75,
+      "review_unit": "user-reference",
+      "full_prose_read": true,
+      "reviewed_sha256": "6bef96bbd4079828c1b5926b47223626dcb935392ad3d97067a9e8c006f53b9a"
+    },
+    {
+      "path": "docs/reference/options.md",
+      "sha256": "fc7d28c0a1e37424cac27037df6cdf495e9d054e89c10e44141ac1079ef3e8ef",
+      "lines": 101,
+      "review_unit": "user-reference",
+      "full_prose_read": true,
+      "reviewed_sha256": "4f3927d1f68b83ddfb221df32468909db83db70bb24eef785ddb9100532f7dd1"
+    },
+    {
+      "path": "docs/reference/policies.md",
+      "sha256": "333cf894392f64c954d272221f56a4d25900743ac6b1fc4d319ceed65e633a7d",
+      "lines": 160,
+      "review_unit": "user-reference",
+      "full_prose_read": true,
+      "reviewed_sha256": "333cf894392f64c954d272221f56a4d25900743ac6b1fc4d319ceed65e633a7d"
+    },
+    {
+      "path": "docs/reference/statistics.md",
+      "sha256": "0a6ca9350e69d81aa45782adc820ec6373818fc595c767e194b6c321283dde1e",
+      "lines": 1161,
+      "review_unit": "user-reference",
+      "full_prose_read": true,
+      "reviewed_sha256": "da7a82cfbf26df3bb54727de40e48c7df77e15469122bf1e6d97c654ee2e7457"
+    },
+    {
+      "path": "docs/reference/tactics.md",
+      "sha256": "a72b98f71bd5d8efe6004c6b4a0addc8a5ec1f0104f9111f2f46d3a52eabffa5",
+      "lines": 237,
+      "review_unit": "user-reference",
+      "full_prose_read": true,
+      "reviewed_sha256": "a72b98f71bd5d8efe6004c6b4a0addc8a5ec1f0104f9111f2f46d3a52eabffa5"
+    },
+    {
+      "path": "docs/references.md",
+      "sha256": "7446ba70eef4a9ce779857a2439f09a83dd65bc30a65b956dcd4d82d1f8938f2",
+      "lines": 13,
+      "review_unit": "coverage-history-literature",
+      "full_prose_read": true,
+      "reviewed_sha256": "7446ba70eef4a9ce779857a2439f09a83dd65bc30a65b956dcd4d82d1f8938f2"
+    },
+    {
+      "path": "docs/review-history.md",
+      "sha256": "461f7749d4a1c55c10a7f6ca24fb022d038ff3fef94d853802b7dc0b91cf05a7",
+      "lines": 1826,
+      "review_unit": "coverage-history-literature",
+      "full_prose_read": true,
+      "reviewed_sha256": "461f7749d4a1c55c10a7f6ca24fb022d038ff3fef94d853802b7dc0b91cf05a7"
+    },
+    {
+      "path": "docs/review.md",
+      "sha256": "d024c77b57d955b5378318529a417e0cda170ad56172c3eb4b394bb277daef22",
+      "lines": 73,
+      "review_unit": "landing-work-review",
+      "full_prose_read": true,
+      "reviewed_sha256": "0fbb8c99eefa4d67f274e7d44313ee1327dc5af2ac5fcc17bbe71f76bc88446a"
+    },
+    {
+      "path": "docs/work/documentation.md",
+      "sha256": "35080d6c1b7b6196fb2d0bfb2bab0c566222daa3f61bf6b0ba1f1323928c8182",
+      "lines": 21,
+      "review_unit": "landing-work-review",
+      "full_prose_read": true,
+      "reviewed_sha256": "c0bff1290c69480a30ddfea73bf0e697ad7acfaf6ab10f880218a751bfb71b30"
+    },
+    {
+      "path": "docs/work/evidence.md",
+      "sha256": "d617aee71a13e25aa7f54c3a5b31eda5970bcd27ada4682bb44b8dbef544f82c",
+      "lines": 25,
+      "review_unit": "landing-work-review",
+      "full_prose_read": true,
+      "reviewed_sha256": "d617aee71a13e25aa7f54c3a5b31eda5970bcd27ada4682bb44b8dbef544f82c"
+    },
+    {
+      "path": "docs/work/github-handoff.md",
+      "sha256": "b72a6c4d4b1a69b3c86f3ef7ad82e925debecefbc24a0ece65d0c568a32f6dc1",
+      "lines": 76,
+      "review_unit": "landing-work-review",
+      "full_prose_read": true,
+      "reviewed_sha256": "9a7906c0868c6f363601578336c5b1411f5cd282847a9b48b06964d0214f4e13"
+    },
+    {
+      "path": "docs/work/publication.md",
+      "sha256": "cd2ec68fb4a5bdc6c7146519b89ead8b153be2693a83cfcc410329513430eeda",
+      "lines": 99,
+      "review_unit": "landing-work-review",
+      "full_prose_read": true,
+      "reviewed_sha256": "01efcc81895efb4a59b085adb8b55c0899b3c48df84ee116fbe232d32ab45cf3"
+    },
+    {
+      "path": "docs/work/results-storage.md",
+      "sha256": "9ba693968401af0801e09e6fe76b8441036e57760040c7985e5e48cb6edf9883",
+      "lines": 17,
+      "review_unit": "landing-work-review",
+      "full_prose_read": true,
+      "reviewed_sha256": "9ba693968401af0801e09e6fe76b8441036e57760040c7985e5e48cb6edf9883"
+    }
+  ],
+  "additional_documents": [
+    {
+      "path": "README.md",
+      "sha256": "9321064fb9cfb45d8d2573c55827759b4faf225f8d477226a6320bf29f37679e",
+      "reviewed_sha256": "446d455c392e47743821f0196cdb2e94a69c2b014a20838553da37fc6c8497c0",
+      "review_unit": "user-reference",
+      "full_prose_read": true
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "sha256": "04fb53a23966f1a6c8e35d4bd51775c34b63e5b512ddc877caf39ed0c3647306",
+      "reviewed_sha256": "b9c3157bb791d0cc1d0a3cc3e6bbb2e7f164b7d8d7b5d0aa6ae794d6e296138b",
+      "review_unit": "user-reference",
+      "full_prose_read": true
+    },
+    {
+      "path": "SECURITY.md",
+      "sha256": "dcad027db3cace4b8f9d2e8424024cd0f2d4d97d4bd30643546cbecb2b788883",
+      "reviewed_sha256": "dcad027db3cace4b8f9d2e8424024cd0f2d4d97d4bd30643546cbecb2b788883",
+      "review_unit": "user-reference",
+      "full_prose_read": true
+    },
+    {
+      "path": ".github/PULL_REQUEST_TEMPLATE.md",
+      "sha256": "a5725ea4b24b79433f5c8328754dccccbf3c1148489fc20549ca082efca9395e",
+      "reviewed_sha256": "e508c4c6fefefae7f800b5f56708aa3b39e92118e731019f3440283a3603cb8b",
+      "review_unit": "user-reference",
+      "full_prose_read": true
+    }
+  ],
+  "review_units": {
+    "user-reference": {
+      "reviewer": "docs_user_reference_review",
+      "files": [
+        "docs/capabilities.md",
+        "docs/development/contributing-changes.md",
+        "docs/development/correctness.md",
+        "docs/development/debugging.md",
+        "docs/development/documentation.md",
+        "docs/development/experiments.md",
+        "docs/development/fuzzing.md",
+        "docs/development/static-analysis.md",
+        "docs/development/tuning.md",
+        "docs/development/validation.md",
+        "docs/guide/getting-started.md",
+        "docs/guide/input.md",
+        "docs/guide/models.md",
+        "docs/guide/sessions.md",
+        "docs/map.md",
+        "docs/reference/backend.md",
+        "docs/reference/options.md",
+        "docs/reference/policies.md",
+        "docs/reference/statistics.md",
+        "docs/reference/tactics.md",
+        "README.md",
+        "CONTRIBUTING.md",
+        "SECURITY.md",
+        ".github/PULL_REQUEST_TEMPLATE.md"
+      ],
+      "verdict": "ready; required findings resolved and revised content accepted"
+    },
+    "papers-evidence": {
+      "reviewer": "docs_user_reference_review",
+      "files": [
+        "docs/evidence/archive.md",
+        "docs/evidence/arithmetic.md",
+        "docs/evidence/assignment.md",
+        "docs/evidence/evaluation-refresh.md",
+        "docs/evidence/long-limits.md",
+        "docs/evidence/lra-regressions.md",
+        "docs/evidence/publication-followups.md",
+        "docs/evidence/publication.md",
+        "docs/evidence/quantifiers.md",
+        "docs/evidence/static-analysis.md",
+        "docs/papers/bromberger-linear-arithmetic.md",
+        "docs/papers/clause-forgetting.md",
+        "docs/papers/conflict-explanation-minimization.md",
+        "docs/papers/cuts-from-proofs.md",
+        "docs/papers/lia-primal-heuristics.md",
+        "docs/papers/polarity-aware-cnf.md",
+        "docs/papers/primo-qflra-results.md",
+        "docs/papers/relevance-filtering.md",
+        "docs/papers/yices.md"
+      ],
+      "verdict": "ready; required findings resolved and revised content accepted"
+    },
+    "arithmetic-combination-leads": {
+      "reviewer": "docs_arithmetic_combination_review",
+      "files": [
+        "docs/implementation/combination.md",
+        "docs/implementation/lia.md",
+        "docs/implementation/lra.md",
+        "docs/implementation/theory-interface.md",
+        "docs/leads/arithmetic-symmetry.md",
+        "docs/leads/asserted-quantifiers.md",
+        "docs/leads/care-guided-combination.md",
+        "docs/leads/care-pair-generation.md",
+        "docs/leads/compact-distinct.md",
+        "docs/leads/incremental-equations.md",
+        "docs/leads/incremental-memory.md",
+        "docs/leads/index.md",
+        "docs/leads/lia-extended-gcd.md",
+        "docs/leads/lia-infinitesimals.md",
+        "docs/leads/lia-patching.md",
+        "docs/leads/library-api.md",
+        "docs/leads/lra-column-coefficients.md",
+        "docs/leads/lra-equality-basis.md",
+        "docs/leads/lra-floating-point.md",
+        "docs/leads/model-based-combination.md",
+        "docs/leads/quantifier-instantiation.md",
+        "docs/leads/quantifier-nnf.md",
+        "docs/leads/quantifier-relevance.md",
+        "docs/leads/rational-storage.md",
+        "docs/leads/real-combination-migration.md",
+        "docs/leads/shared-euf-structure.md",
+        "docs/leads/statistics-instrumentation.md",
+        "docs/leads/term-storage.md",
+        "docs/leads/theory-lemma-forgetting.md",
+        "docs/leads/theory-lemmas.md"
+      ],
+      "verdict": "ready; required findings resolved and revised content accepted"
+    },
+    "core-euf-quantifiers": {
+      "reviewer": "docs_core_euf_quantifiers_review",
+      "files": [
+        "docs/implementation/architecture.md",
+        "docs/implementation/core.md",
+        "docs/implementation/dpllt.md",
+        "docs/implementation/euf.md",
+        "docs/implementation/frontend.md",
+        "docs/implementation/models.md",
+        "docs/implementation/preprocessing.md",
+        "docs/implementation/quantifiers.md",
+        "docs/implementation/sat.md",
+        "docs/implementation/sessions.md",
+        "docs/implementation/tactics.md"
+      ],
+      "verdict": "ready; required findings resolved and revised content accepted"
+    },
+    "coverage-history-literature": {
+      "reviewer": "docs_core_euf_quantifiers_review",
+      "files": [
+        "docs/coverage/frontend-sessions.md",
+        "docs/coverage/index.md",
+        "docs/coverage/lia.md",
+        "docs/coverage/page-review.md",
+        "docs/coverage/practice-literature.md",
+        "docs/coverage/solver.md",
+        "docs/coverage/tactics-preprocessing.md",
+        "docs/literature.md",
+        "docs/references.md",
+        "docs/review-history.md"
+      ],
+      "verdict": "ready; required findings resolved and revised content accepted"
+    },
+    "landing-work-review": {
+      "reviewer": "docs_arithmetic_combination_review",
+      "files": [
+        "docs/index.md",
+        "docs/review.md",
+        "docs/work/documentation.md",
+        "docs/work/evidence.md",
+        "docs/work/github-handoff.md",
+        "docs/work/publication.md",
+        "docs/work/results-storage.md"
+      ],
+      "verdict": "ready; required findings resolved and revised content accepted"
+    }
+  },
+  "findings": [
+    {
+      "id": "UA-001",
+      "files": [
+        "docs/guide/getting-started.md",
+        "docs/work/documentation.md",
+        "docs/review.md"
+      ],
+      "classification": "required",
+      "summary": "Distinguish current-book preview from current-plus-historical site assembly.",
+      "disposition": "resolved; independent recheck accepted"
+    },
+    {
+      "id": "UA-002",
+      "files": [
+        "docs/reference/options.md"
+      ],
+      "classification": "required",
+      "summary": "Document the explicit incompatible-option exit status of 2.",
+      "disposition": "resolved; independent recheck accepted"
+    },
+    {
+      "id": "UA-003",
+      "files": [
+        "README.md"
+      ],
+      "classification": "required",
+      "summary": "Repair the fuzz-gate link fragment.",
+      "disposition": "resolved; independent recheck accepted"
+    },
+    {
+      "id": "UA-004",
+      "files": [
+        "docs/map.md",
+        "docs/development/static-analysis.md"
+      ],
+      "classification": "required",
+      "summary": "Scope mandatory SLURM execution to the maintainer workspace.",
+      "disposition": "resolved; independent recheck accepted"
+    },
+    {
+      "id": "UA-005",
+      "files": [
+        "docs/reference/statistics.md"
+      ],
+      "classification": "required",
+      "summary": "Name and link the shared SMT driver.",
+      "disposition": "resolved; independent recheck accepted"
+    },
+    {
+      "id": "CQ-001",
+      "files": [
+        "docs/implementation/architecture.md",
+        "docs/implementation/dpllt.md",
+        "docs/index.md"
+      ],
+      "classification": "required",
+      "summary": "Include standalone LIA in current shared-driver inventories and distinguish single-component completion from reconciliation.",
+      "disposition": "resolved; independent recheck accepted"
+    },
+    {
+      "id": "CQ-002",
+      "files": [
+        "docs/implementation/models.md"
+      ],
+      "classification": "required",
+      "summary": "Repair the cross-page historical model-review link.",
+      "disposition": "resolved; independent recheck accepted"
+    },
+    {
+      "id": "AC-001",
+      "files": [
+        "docs/leads/index.md"
+      ],
+      "classification": "required",
+      "summary": "Replace stale default-off phase status with the conditional automatic LRA policy.",
+      "disposition": "resolved; independent recheck accepted"
+    },
+    {
+      "id": "AC-002",
+      "files": [
+        "docs/leads/theory-lemma-forgetting.md"
+      ],
+      "classification": "required",
+      "summary": "Describe recipe-controlled retention and the standalone LIA exception.",
+      "disposition": "resolved; independent recheck accepted"
+    },
+    {
+      "id": "AC-003",
+      "files": [
+        "docs/implementation/combination.md"
+      ],
+      "classification": "required",
+      "summary": "Repair the cross-page theory-combination review link.",
+      "disposition": "resolved; independent recheck accepted"
+    },
+    {
+      "id": "AC-004",
+      "files": [
+        "docs/implementation/lia.md"
+      ],
+      "classification": "suggestion",
+      "summary": "Remove refactor-relative commentary while retaining ownership, order, limit and explanation contracts.",
+      "disposition": "resolved; independent recheck accepted"
+    },
+    {
+      "id": "RC-001",
+      "files": [
+        "docs/coverage/solver.md"
+      ],
+      "classification": "suggestion",
+      "summary": "Include migrated standalone LIA in the current summary.",
+      "disposition": "resolved; independent recheck accepted"
+    },
+    {
+      "id": "PR-001",
+      "files": [
+        "docs/papers/clause-forgetting.md"
+      ],
+      "classification": "required",
+      "summary": "Synchronize the callback retention-policy map and source snapshot.",
+      "disposition": "resolved; independent recheck accepted"
+    },
+    {
+      "id": "PR-002",
+      "files": [
+        "docs/papers/primo-qflra-results.md"
+      ],
+      "classification": "required",
+      "summary": "Link current conditional defaults without changing published measurements.",
+      "disposition": "resolved; independent recheck accepted"
+    },
+    {
+      "id": "PR-003",
+      "files": [
+        "docs/papers/conflict-explanation-minimization.md"
+      ],
+      "classification": "required",
+      "summary": "Mark bibliography intake as completed while leaving backend investigations open.",
+      "disposition": "resolved; independent recheck accepted"
+    },
+    {
+      "id": "PR-004",
+      "files": [
+        "docs/papers/lia-primal-heuristics.md",
+        "docs/papers/cuts-from-proofs.md"
+      ],
+      "classification": "suggestion",
+      "summary": "Link the shared integer-completion owner.",
+      "disposition": "resolved; independent recheck accepted"
+    },
+    {
+      "id": "E-001",
+      "files": [
+        "docs/evidence/lra-regressions.md",
+        "docs/evidence/arithmetic.md",
+        "docs/evidence/long-limits.md"
+      ],
+      "classification": "required",
+      "summary": "Scope profile/default labels to the frozen measured revisions.",
+      "disposition": "resolved; independent recheck accepted"
+    },
+    {
+      "id": "E-002",
+      "files": [
+        "docs/evidence/long-limits.md",
+        "docs/coverage/long-limits-status-20261028.json",
+        "docs/run-log.json"
+      ],
+      "classification": "required",
+      "summary": "Replace running status with dated inspection of existing timing and final audits; retain native errors, reference gaps and model limitations.",
+      "disposition": "resolved; independent recheck accepted"
+    },
+    {
+      "id": "E-003",
+      "files": [
+        "docs/run-log.json"
+      ],
+      "classification": "required",
+      "summary": "Remove obsolete in-progress limitation from the completed October 5 refresh entry.",
+      "disposition": "resolved; independent recheck accepted"
+    },
+    {
+      "id": "RT-001",
+      "files": [
+        "docs/review.md"
+      ],
+      "classification": "required",
+      "summary": "Correct the six follow-ups still open claim and distinguish current97-page consistency review from dated84-page review.",
+      "disposition": "resolved; independent recheck accepted"
+    },
+    {
+      "id": "RT-002",
+      "files": [
+        "docs/work/github-handoff.md",
+        "docs/work/publication.md"
+      ],
+      "classification": "required",
+      "summary": "Record owner-reported CI/DCO/ruleset progress without claiming independent hosted verification; update workflow source pins.",
+      "disposition": "resolved; independent recheck accepted"
+    },
+    {
+      "id": "RT-003",
+      "files": [
+        "docs/index.md"
+      ],
+      "classification": "suggestion",
+      "summary": "Replace duplicated lead summaries and archived current-register link with concise navigation to the maintained register.",
+      "disposition": "resolved; independent recheck accepted"
+    },
+    {
+      "id": "RT-004",
+      "files": [
+        "CONTRIBUTING.md",
+        ".github/PULL_REQUEST_TEMPLATE.md"
+      ],
+      "classification": "required",
+      "summary": "Remove obsolete at-launch timing from the already-required DCO policy and pull-request template.",
+      "disposition": "resolved; independent recheck accepted by user-reference reviewer"
+    }
+  ],
+  "validation": {
+    "make docs": "passed after repairing the initial explicit-label warnings",
+    "make docs-check-links": {
+      "status": "passed",
+      "strict_builds": [
+        "current book",
+        "historical book"
+      ],
+      "pages_checked": 267,
+      "local_links_checked": 33731,
+      "git_urls_checked": 1126,
+      "external_urls_deferred": 415,
+      "failures": 0,
+      "historical_targets_preserved": 1306
+    },
+    "root Markdown links": {
+      "status": "passed",
+      "README_local_links": 18,
+      "CONTRIBUTING_local_links": 5,
+      "README_fuzz_fragment": "resolved against rendered manual"
+    },
+    "changed rendered sections": {
+      "status": "passed",
+      "article_pages": 26,
+      "method": "HTML article text and link inspection; targeted policy, route, status and cross-page reference checks. No new visual-browser certification."
+    },
+    "git diff --check": "passed",
+    "initial build correction": "Five MyST explicit-label fragment warnings corrected to named references before passing strict full build."
+  },
+  "unchecked_scope": [
+    "Fresh primary-paper proof and attribution review.",
+    "Raw historical experiment artifact reaggregation or solver reruns.",
+    "Live external URL access and authenticated hosted GitHub settings/artifacts.",
+    "Owner reader acceptance, publication authorization and visibility change."
+  ],
+  "supporting_evidence": [
+    "docs/coverage/long-limits-status-20261028.json",
+    "docs/coverage/page-review.md",
+    "docs/evidence/publication-followups.md"
+  ],
+  "patch_identity": "Baseline SHA256 plus reviewed_sha256 per page/document and accepted scoped Git-diff digests bind the accepted prose. The review JSON is excluded from its own fingerprint. Final commit identifies the metadata.",
+  "accepted_patch_groups": [
+    {
+      "scope": "user-reference",
+      "files": [
+        "README.md",
+        "docs/guide/getting-started.md",
+        "docs/reference/options.md",
+        "docs/map.md",
+        "docs/development/static-analysis.md",
+        "docs/reference/statistics.md",
+        "docs/papers/clause-forgetting.md",
+        "docs/papers/conflict-explanation-minimization.md",
+        "docs/papers/cuts-from-proofs.md",
+        "docs/papers/lia-primal-heuristics.md",
+        "docs/papers/primo-qflra-results.md",
+        "docs/evidence/arithmetic.md",
+        "docs/evidence/lra-regressions.md",
+        "docs/evidence/long-limits.md",
+        "docs/run-log.json"
+      ],
+      "diff_sha256": "913c1e6e88373a9a41ff66ca9fe31708d110988175b96920b6677032bdf3534e",
+      "verdict": "ready by separate read-only reviewer"
+    },
+    {
+      "scope": "core-euf-quantifiers",
+      "files": [
+        "docs/implementation/architecture.md",
+        "docs/implementation/dpllt.md",
+        "docs/implementation/models.md",
+        "docs/coverage/solver.md"
+      ],
+      "diff_sha256": "a8c67607b061de4a2d9cce93a5a475baaa361888bfebef18aee8cbd1ed3116f1",
+      "verdict": "ready by separate read-only reviewer"
+    },
+    {
+      "scope": "arithmetic-combination-leads",
+      "files": [
+        "docs/leads/index.md",
+        "docs/leads/theory-lemma-forgetting.md",
+        "docs/implementation/combination.md",
+        "docs/implementation/lia.md",
+        "docs/work/documentation.md"
+      ],
+      "diff_sha256": "d8b2853c0778ea9138da44ecafc6cd47eb181705f06a7b6e242c37966f74d84d",
+      "verdict": "ready by separate read-only reviewer"
+    },
+    {
+      "scope": "landing-work-review",
+      "files": [
+        "docs/index.md",
+        "docs/review.md",
+        "docs/work/documentation.md",
+        "docs/work/evidence.md",
+        "docs/work/github-handoff.md",
+        "docs/work/publication.md",
+        "docs/work/results-storage.md"
+      ],
+      "diff_sha256": "0c92b5233d8ba6f27f9ee39fd9f378f04e791e6cc4e58f0d5def1e83ce44a791",
+      "verdict": "ready by separate read-only reviewer"
+    },
+    {
+      "scope": "contributor-policy",
+      "files": [
+        "CONTRIBUTING.md",
+        ".github/PULL_REQUEST_TEMPLATE.md"
+      ],
+      "diff_sha256": "43c9aa842ca506464286fc6b69d50034c33444e491ea37449468fac108336149",
+      "verdict": "ready by separate read-only reviewer"
+    }
+  ],
+  "supporting_file_sha256": {
+    "docs/coverage/long-limits-status-20261028.json": "725012ba94bc45fbe658b45f998c6cb25a5484524f0353c2c1d6b1a1dcd98774"
+  },
+  "finding_counts": {
+    "required": 19,
+    "suggestions_implemented": 4,
+    "open_required": 0
+  }
+}

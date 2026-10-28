@@ -1,0 +1,296 @@
+{
+  "inspected_at_utc": "2026-10-28T16:27:46.976614+00:00",
+  "campaign": "long-limits-20261024/run2-as8g",
+  "audit_summaries": {
+    "timing-audit.json": {
+      "status": "timing-complete",
+      "plan_sha256": "dd01e5c49cdbb9a75b4e2c819d15cc4f15514c0f2506506d6030127946db48ca",
+      "best_static_profiles": {
+        "QF_UF": "primo",
+        "QF_LRA": "primo-phase-mono",
+        "QF_LIA": "primo",
+        "QF_UFLRA": "primo",
+        "QF_UFLIA": "primo",
+        "UF": "primo"
+      },
+      "selection_rule": "One profile per entire division: greatest solved, then lowest PAR2, then name.",
+      "quantified_models": "UF printed models unsupported; no independent model qualification claimed.",
+      "ground_models_complete": false,
+      "native_execution_errors": {
+        "QF_LRA": {
+          "primo": 4,
+          "primo-phase-mono": 2
+        },
+        "QF_LIA": {
+          "primo": 252
+        },
+        "QF_UFLRA": {
+          "primo": 5
+        },
+        "UF": {
+          "primo": 789
+        }
+      },
+      "headline_and_default_promotion_blocked": true,
+      "recovery_sha256": null,
+      "timeout_seconds": 1200,
+      "file_sha256": "11458a10e1c0a0252f84742c28f7af4f20a8a7ad32a743182cc510d9d0cb3a45",
+      "native_runs": {
+        "QF_UF": {
+          "primo": {
+            "inputs": 7503,
+            "solved": 7503,
+            "sat": 3142,
+            "unsat": 4361,
+            "timeouts": 0,
+            "unknown": 0,
+            "memory_out": 0,
+            "unsupported": 0,
+            "errors": 0,
+            "direct_dolmen_models": null
+          }
+        },
+        "QF_LRA": {
+          "primo": {
+            "inputs": 1753,
+            "solved": 1691,
+            "sat": 1008,
+            "unsat": 683,
+            "timeouts": 58,
+            "unknown": 0,
+            "memory_out": 0,
+            "unsupported": 0,
+            "errors": 4,
+            "direct_dolmen_models": null
+          },
+          "primo-phase-mono": {
+            "inputs": 1753,
+            "solved": 1707,
+            "sat": 1015,
+            "unsat": 692,
+            "timeouts": 44,
+            "unknown": 0,
+            "memory_out": 0,
+            "unsupported": 0,
+            "errors": 2,
+            "direct_dolmen_models": null
+          }
+        },
+        "QF_LIA": {
+          "primo": {
+            "inputs": 13306,
+            "solved": 10833,
+            "sat": 7146,
+            "unsat": 3687,
+            "timeouts": 605,
+            "unknown": 1238,
+            "memory_out": 378,
+            "unsupported": 0,
+            "errors": 252,
+            "direct_dolmen_models": null
+          }
+        },
+        "QF_UFLRA": {
+          "primo": {
+            "inputs": 1284,
+            "solved": 1274,
+            "sat": 763,
+            "unsat": 511,
+            "timeouts": 2,
+            "unknown": 0,
+            "memory_out": 3,
+            "unsupported": 0,
+            "errors": 5,
+            "direct_dolmen_models": null
+          }
+        },
+        "QF_UFLIA": {
+          "primo": {
+            "inputs": 659,
+            "solved": 583,
+            "sat": 410,
+            "unsat": 173,
+            "timeouts": 72,
+            "unknown": 0,
+            "memory_out": 4,
+            "unsupported": 0,
+            "errors": 0,
+            "direct_dolmen_models": null
+          }
+        },
+        "UF": {
+          "primo": {
+            "inputs": 7590,
+            "solved": 2120,
+            "sat": 1,
+            "unsat": 2119,
+            "timeouts": 1752,
+            "unknown": 2921,
+            "memory_out": 8,
+            "unsupported": 0,
+            "errors": 789,
+            "direct_dolmen_models": null
+          }
+        }
+      },
+      "uncorroborated_counts": {
+        "QF_UF/primo": 0,
+        "QF_LRA/primo": 9,
+        "QF_LRA/primo-phase-mono": 8,
+        "QF_LIA/primo": 2,
+        "QF_UFLRA/primo": 0,
+        "QF_UFLIA/primo": 0,
+        "UF/primo": 23
+      }
+    },
+    "qualified-audit.json": {
+      "status": "complete-diagnostic-native-errors",
+      "plan_sha256": "dd01e5c49cdbb9a75b4e2c819d15cc4f15514c0f2506506d6030127946db48ca",
+      "best_static_profiles": {
+        "QF_UF": "primo",
+        "QF_LRA": "primo-phase-mono",
+        "QF_LIA": "primo",
+        "QF_UFLRA": "primo",
+        "QF_UFLIA": "primo",
+        "UF": "primo"
+      },
+      "selection_rule": "One profile per entire division: greatest solved, then lowest PAR2, then name.",
+      "quantified_models": "UF printed models unsupported; no independent model qualification claimed.",
+      "ground_models_complete": true,
+      "native_execution_errors": {
+        "QF_LRA": {
+          "primo": 4,
+          "primo-phase-mono": 2
+        },
+        "QF_LIA": {
+          "primo": 252
+        },
+        "QF_UFLRA": {
+          "primo": 5
+        },
+        "UF": {
+          "primo": 789
+        }
+      },
+      "headline_and_default_promotion_blocked": true,
+      "recovery_sha256": null,
+      "timeout_seconds": 1200,
+      "file_sha256": "a9fc7f010b15017b88327c6d025f099b0780a4a6c90922f586207bdd5c4c060e",
+      "native_runs": {
+        "QF_UF": {
+          "primo": {
+            "inputs": 7503,
+            "solved": 7503,
+            "sat": 3142,
+            "unsat": 4361,
+            "timeouts": 0,
+            "unknown": 0,
+            "memory_out": 0,
+            "unsupported": 0,
+            "errors": 0,
+            "direct_dolmen_models": 3142
+          }
+        },
+        "QF_LRA": {
+          "primo": {
+            "inputs": 1753,
+            "solved": 1691,
+            "sat": 1008,
+            "unsat": 683,
+            "timeouts": 58,
+            "unknown": 0,
+            "memory_out": 0,
+            "unsupported": 0,
+            "errors": 4,
+            "direct_dolmen_models": 1008
+          },
+          "primo-phase-mono": {
+            "inputs": 1753,
+            "solved": 1707,
+            "sat": 1015,
+            "unsat": 692,
+            "timeouts": 44,
+            "unknown": 0,
+            "memory_out": 0,
+            "unsupported": 0,
+            "errors": 2,
+            "direct_dolmen_models": 1015
+          }
+        },
+        "QF_LIA": {
+          "primo": {
+            "inputs": 13306,
+            "solved": 10833,
+            "sat": 7146,
+            "unsat": 3687,
+            "timeouts": 605,
+            "unknown": 1238,
+            "memory_out": 378,
+            "unsupported": 0,
+            "errors": 252,
+            "direct_dolmen_models": 7146
+          }
+        },
+        "QF_UFLRA": {
+          "primo": {
+            "inputs": 1284,
+            "solved": 1274,
+            "sat": 763,
+            "unsat": 511,
+            "timeouts": 2,
+            "unknown": 0,
+            "memory_out": 3,
+            "unsupported": 0,
+            "errors": 5,
+            "direct_dolmen_models": 763
+          }
+        },
+        "QF_UFLIA": {
+          "primo": {
+            "inputs": 659,
+            "solved": 583,
+            "sat": 410,
+            "unsat": 173,
+            "timeouts": 72,
+            "unknown": 0,
+            "memory_out": 4,
+            "unsupported": 0,
+            "errors": 0,
+            "direct_dolmen_models": 410
+          }
+        },
+        "UF": {
+          "primo": {
+            "inputs": 7590,
+            "solved": 2120,
+            "sat": 1,
+            "unsat": 2119,
+            "timeouts": 1752,
+            "unknown": 2921,
+            "memory_out": 8,
+            "unsupported": 0,
+            "errors": 789,
+            "direct_dolmen_models": null
+          }
+        }
+      },
+      "uncorroborated_counts": {
+        "QF_UF/primo": 0,
+        "QF_LRA/primo": 9,
+        "QF_LRA/primo-phase-mono": 8,
+        "QF_LIA/primo": 2,
+        "QF_UFLRA/primo": 0,
+        "QF_UFLIA/primo": 0,
+        "UF/primo": 23
+      }
+    }
+  },
+  "observation_kind": "Read-only inspection of existing campaign audits; no timing or model-check run was repeated.",
+  "queue_observation": "No owner jobs in squeue at 2026-10-28 16:25:43 UTC.",
+  "limitations": [
+    "Audit summaries were inspected, not recomputed from raw timing/model artifacts.",
+    "Frozen native implementation 4419dc9; this does not qualify later code.",
+    "Native errors retain the audit classification, including known cleanup aborts; no blanket memory-out reclassification.",
+    "Quantified UF has no independent printed-model validation."
+  ]
+}

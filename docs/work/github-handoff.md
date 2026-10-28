@@ -2,9 +2,19 @@
 
 The repository and workflows can be prepared without an authenticated GitHub API
 session. SSH Git access has been tested. The steps below are an owner runbook,
-not a record that settings have been applied. Keep credentials outside Git and
+not independent verification that settings have been applied. Keep credentials outside Git and
 chat. Use an already authenticated browser or run `gh auth login` on a trusted
 machine; never paste a token into an issue, document, or command transcript.
+
+## Owner-reported setup, recorded 28 October 2026
+
+The owner has downloaded the documentation artifact from CI, merged the audit
+and README pull requests, installed DCO for all organization repositories, and
+added `DCO` to the required checks alongside `build-and-test` and `docs` in the
+main-branch ruleset. The repository remains private and Pages deployment is
+pending. These reports establish progress; this workspace has no authenticated
+GitHub API session to verify the settings, run URLs or enforcement on the
+publication revision. Use the steps below to verify the remaining launch items.
 
 ## Before changing visibility
 
@@ -14,17 +24,17 @@ machine; never paste a token into an issue, document, or command transcript.
    notice and recheck any additional imports. Complete review of remote branches, tags,
    attachments, release assets, and Actions logs. A local Git scan cannot inspect
    hosted artifacts. Do not delete history without an agreed remediation.
-2. Resolve the [correctness findings](../coverage/page-review.md#correctness-follow-ups),
+2. Review the closure of the [correctness findings](../coverage/page-review.md#correctness-follow-ups),
    then review the assembled manual and the candidate's qualification report. Record
    consolidated reader acceptance and the exact approved commit.
 3. Push the verified preparation commits if they are not already on the remote.
    Merge the reviewed branch into `main`, preserving the documented source and
    historical commits. Keep visibility private during these preparatory actions.
-4. Run {project}`CI <.github/workflows/ci.yml>` on the merged revision and inspect `build-and-test` and `docs`.
-   Require both checks for future pull requests. Install the
-   [DCO app](https://github.com/apps/dco) only for Primo and require its `DCO`
-   check on new contributions. Enable it after this migration so unsigned
-   historical commits are not misrepresented as new DCO certifications.
+4. Run {actionsworkflow}`CI <.github/workflows/ci.yml>` on the merged revision and inspect `build-and-test` and `docs`.
+   Require both checks for future pull requests. Ensure the
+   [DCO app](https://github.com/apps/dco) covers Primo and require its `DCO`
+   check on new contributions. Preserve historical commits without adding
+   retrospective sign-offs.
 5. In **Settings → Environments**, configure `github-pages` to deploy only from
    `main`, with owner approval required. Enable owner self-review if the owner
    is the only maintainer. If protection is unavailable while private, keep
@@ -46,9 +56,9 @@ reviews for outside contributions and document owner-reviewed maintenance.
 Prevent force pushes and deletion of `main`; use the protected deployment
 environment for publication approval independently of the merge policy.
 
-Run {project}`Publish documentation <.github/workflows/pages.yml>` manually on `main`, approve the environment job,
+Run {actionsworkflow}`Publish documentation <.github/workflows/pages.yml>` manually on `main`, approve the environment job,
 and verify its deployment result. A private-repository run intentionally skips
-deployment. The {project}`External documentation links <.github/workflows/external-links.yml>` workflow is scheduled weekly
+deployment. The {actionsworkflow}`External documentation links <.github/workflows/external-links.yml>` workflow is scheduled weekly
 and can be run manually; inspect its reports rather than overriding failures.
 
 From a fresh unauthenticated environment, verify:

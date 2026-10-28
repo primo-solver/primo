@@ -25,10 +25,11 @@ reasons have a separate lifetime constraint.
 
 The [current-code map](../papers/clause-forgetting.md#representation-and-current-primo-boundary)
 identifies the callback flags, explanation stores, adapter boundary, and the
-component route that does not preserve the callback's forgettability value.
-The component dispatcher sets
-`is_forgettable = true`, whereas the dedicated EUF/LRA conflict callbacks set
-it false. Some current routes therefore already permit forgetting; this lead
+component recipes that choose the callback's forgettability value.
+The component dispatcher sets `is_forgettable` from its recipe-controlled
+`forgettable_clauses_` policy. The standalone LIA recipe sets it false;
+combined recipes retain the default true. Dedicated EUF/LRA conflict callbacks
+set it false. Some current routes therefore already permit forgetting; this lead
 must audit and explain existing behavior as well as any proposed extension.
 Start by auditing those routes and the effective CaDiCaL configuration.
 The SAT backend continues to own clause reduction and watch maintenance.

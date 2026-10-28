@@ -5,5 +5,5 @@ Describe the problem, resulting behavior, and relevant invariant or paper basis.
 - Documentation updated:
 - Known limitations or unfinished checks:
 
-Contributions are under MIT and require your DCO sign-off after public launch.
+Contributions are under MIT and require your DCO sign-off.
 See CONTRIBUTING.md. Do not include credentials or confidential inputs.

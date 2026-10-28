@@ -177,7 +177,8 @@ historical measurements, not predictions for Primo.
 ## Representation and integration checklist for Primo
 
 The following is a proposed decomposition, not implemented code. Source
-claims were checked at revision `934b6ce`.
+claims were checked at revision `934b6ce`; the invocation map below also links
+the later shared integer-completion owner.
 
 | Operation or state | Existing owner and missing work |
 | --- | --- |
@@ -185,7 +186,7 @@ claims were checked at revision `934b6ce`.
 | Integer matrix and proof equation | A new owner under `theory/arithmetic/` would hold exact integer matrices, rank information, stable variable IDs and certificate provenance. No HNF certificate extractor is present in the current integer completion path. |
 | Search and split lifetime | {source}`branch_and_bound <src/theory/arithmetic/lia_branch_and_bound.cpp>` currently stores one variable and a floor value per DFS frame. General expression splits need a representation, bounds and rollback for any added tableau rows. |
 | Explanations | {source}`LiaExplanation <src/theory/arithmetic/lia_explanation.hpp>` accumulates antecedents of existing cuts and closed branches. A new proof split must preserve the distinction between a globally valid integer disjunction and either conditional branch. |
-| Invocation and ownership | {source}`solver engines <src/smt/solver_engines.cpp>` run patching, a GCD check, Gomory rounds and then DFS in both `solve_qf_lia_impl` and `complete_lia_integer_model`. Integer completion uses a private tableau; current cuts precede DFS, rather than running at each branch node. |
+| Invocation and ownership | {integersource}`complete_integer_assignment <src/theory/arithmetic/lia_completion.cpp#L13-L35>` runs patching, a GCD check, Gomory rounds and then DFS for the standalone and combined LIA component routes. Integer completion uses a private tableau; current cuts precede DFS, rather than running at each branch node. |
 | SMT terms and Boolean search | Any CDCL-visible split must pass through SMT abstraction and terms created by the term manager. The arithmetic layer must not construct SMT-LIB AST nodes or encode terms directly in SAT literals. |
 
 The current {source}`Gomory producer

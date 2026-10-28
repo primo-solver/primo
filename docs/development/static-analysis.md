@@ -1,7 +1,8 @@
 # Static analysis and the LLVM toolchain
 
-Static analysis can run locally. Solver builds for qualification, solver test
-batches, fuzzing, benchmarks and corpus validation still belong on CPU SLURM.
+Static analysis can run locally. In the maintainer's workspace, solver builds
+for qualification, solver test batches, fuzzing, benchmarks and corpus
+validation belong on CPU SLURM; contributors may use a suitable machine.
 The commands below configure CMake and parse source; they do not build or run
 Primo. Configuration can compile small compiler/dependency capability probes.
 

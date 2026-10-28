@@ -361,5 +361,5 @@ These are tests to maintain, not new execution results. The earlier model
 redesign's qualification remains in its {source}`dated evidence record
 <docs/model-interpretation.md#L30-L58>`; subsequent component assembly has its
 own {source}`migration evidence <docs/n-way-combination-migration.md>`.
-The [review ledger](#model-construction-chapter-checks) records the
+The {ref}`review ledger <model-construction-chapter-checks>` records the
 documentation checks separately from those historical solver runs.

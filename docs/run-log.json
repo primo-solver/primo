@@ -3,6 +3,26 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-10-28-long-limits-documentation-status",
+      "date": "2026-10-28",
+      "kind": "existing-evidence-status-inspection",
+      "evidence_status": "existing timing and ground-model audit complete; native errors keep comparison diagnostic",
+      "inspected_git": "e3974390750af76d068b4772dd01c84dff6a1abb",
+      "measured_native_git": "4419dc902f03fe12b8933d5dee4378dd11497035",
+      "parent_run": "2026-10-24-all-theories-enforced-memory",
+      "report": "docs/coverage/long-limits-status-20261028.json",
+      "inspection": "Read-only SSH: squeue for owner, SHA256 and selected JSON fields from timing-audit.json and qualified-audit.json. No solver process or benchmark job started.",
+      "resources": "Original campaign: CPU SLURM, 1200s/input, 8GiB soft/hard RLIMIT_AS; no new measurement.",
+      "summary": {
+        "timing_status": "timing-complete",
+        "final_status": "complete-diagnostic-native-errors",
+        "direct_dolmen_ground_models": 13484,
+        "native_execution_errors": 1052,
+        "headline_and_default_promotion_blocked": true
+      },
+      "limitations": "Existing audit summaries inspected, not raw artifacts reaggregated. Frozen binary does not qualify later implementations. Quantified printed models unsupported; reference gaps and original error classifications retained."
+    },
+    {
       "id": "2026-10-27-publication-secret-audit",
       "date": "2026-10-27",
       "kind": "publication-secret-audit",
@@ -23122,7 +23142,7 @@
         "native": "results/refresh-native-{uf,lra}/{timing,validation}"
       },
       "limitations": [
-        "Timing and model replay are still in progress.",
+        "Timing and selected ground/native model replay are complete; resource-incomplete outcomes remain unsolved and reference timing reuse retains its original conditions.",
         "Quantified UF models are not independently validated by the supported ground-model workflow.",
         "Native timings are whole-session measurements; partial query progress and unknown benchmark annotations remain explicit.",
         "Reference timing reruns cancelled by user. Reuse only audited historical references; incomplete or unverified sets remain unavailable. No fresh-reference performance claim."

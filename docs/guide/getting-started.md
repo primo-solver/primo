@@ -104,8 +104,10 @@ make docs-serve
 ```
 
 Open `http://localhost:8000`. This first runs the strict documentation build,
-then serves `docs/_build/site`. Stop the server with Ctrl-C. For just the HTML,
-run `make docs` and open `docs/_build/site/index.html`.
+then serves the current manual from `docs/_build/html`. Stop the server with
+Ctrl-C. For just the HTML, run `make docs` and open `docs/_build/html/index.html`.
 
 The generated book does not require a running solver or database service.
-The same assembled site is the publication artifact; local preview commands do not deploy it.
+Use `make docs-site` to build both current and historical books and assemble
+the publication artifact in `docs/_build/site`. Local preview and build commands
+do not deploy it.
