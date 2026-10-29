@@ -96,9 +96,19 @@ The [reference](reference/options.md) lists options and effective policies.
 The [Yices literature survey](papers/yices.md) connects three papers/talks to
 the code and distinguishes implemented mechanisms from ideas for investigation.
 
-[Reported QF_LRA results](papers/primo-qflra-results.md) links Primo's September
-2026 paper and its benchmark tables. Published configurations and results are
-kept separate from current defaults and qualification evidence.
+## Citing Primo
+
+If you use Primo in research, please cite Mikoláš Janota and Jan Jakubův,
+*Vibe-Coded and Tuned: A State-of-the-Art SMT Solver for QF-LRA*
+{cite:p}`janota2026primo`, *Kalpa Publications in Computing* 23, pages 44–56,
+2026. [DOI: 10.29007/rn52](https://doi.org/10.29007/rn52);
+[publisher copy](https://easychair.org/publications/paper/rPZ9).
+Also report the commit and configuration used in your experiments.
+
+The {download}`BibTeX file <references.bib>` contains the entry
+`janota2026primo`. [Reported QF_LRA results](papers/primo-qflra-results.md)
+summarizes the paper's benchmark tables. Published configurations and results
+are kept separate from current defaults and qualification evidence.
 
 (work-underway)=
 ## Active work

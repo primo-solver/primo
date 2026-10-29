@@ -1,9 +1,16 @@
 # Reported QF_LRA results
 
 Mikoláš Janota and Jan Jakubův, *Vibe-Coded and Tuned: A State-of-the-Art
-SMT Solver for QF-LRA* {cite:p}`janota2026vibecodedtunedstateoftheartsmt`,
-[arXiv:2609.16706v1](https://arxiv.org/abs/2609.16706v1),
-15 September 2026. The paper reports Primo's development and RamParILS tuning.
+SMT Solver for QF-LRA* {cite:p}`janota2026primo`,
+*Kalpa Publications in Computing* 23, pages 44–56, EasyChair, 2026.
+[DOI: 10.29007/rn52](https://doi.org/10.29007/rn52);
+[publisher copy](https://easychair.org/publications/paper/rPZ9),
+published 24 October 2026. The earlier
+[arXiv:2609.16706v1](https://arxiv.org/abs/2609.16706v1) preprint
+{cite:p}`janota2026vibecodedtunedstateoftheartsmt` appeared on 15 September 2026.
+The paper reports Primo's development and RamParILS tuning. The configurations
+and counts summarized below also appear in the published version's Section 4,
+Figure 3 and Tables 1–2.
 
 ## Published experiment
 

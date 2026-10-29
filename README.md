@@ -49,8 +49,39 @@ only that manual; `make docs-history` builds the historical book separately.
 `make docs-full` strictly rebuilds the combined site; `make docs-check-links`
 also validates its links. The
 [closing review](docs/review.md) and [publication checklist](docs/work/publication.md)
-record verification and outstanding acceptance. The intended public manual is
-[Primo documentation](https://primo-solver.github.io/primo/); deployment is pending.
+record verification and outstanding acceptance. The published manual is
+[Primo documentation](https://primo-solver.github.io/primo/).
+
+## Citing Primo
+
+If you use Primo in research, please cite:
+
+Mikoláš Janota and Jan Jakubův.
+[Vibe-Coded and Tuned: A State-of-the-Art SMT Solver for QF-LRA](https://doi.org/10.29007/rn52).
+*Kalpa Publications in Computing*, volume 23, pages 44–56, EasyChair, 2026.
+[Publisher copy](https://easychair.org/publications/paper/rPZ9).
+
+```bibtex
+@inproceedings{janota2026primo,
+  author    = {Mikoláš Janota and Jan Jakubův},
+  title     = {Vibe-Coded and Tuned: A State-of-the-Art {SMT} Solver for {QF-LRA}},
+  booktitle = {Proceedings of 16th International Workshop on the Implementation
+               on Logics. Proceedings of the 26th Conference on Logic for
+               Programming, Artificial Intelligence, and Reasoning (short papers)},
+  editor    = {Stephan Schulz and Konstantin Korovin and Michael Rawson},
+  series    = {Kalpa Publications in Computing},
+  volume    = {23},
+  pages     = {44--56},
+  publisher = {EasyChair},
+  year      = {2026},
+  doi       = {10.29007/rn52},
+  url       = {https://easychair.org/publications/paper/rPZ9}
+}
+```
+
+Also report the commit and configuration used in your experiments.
+[CITATION.cff](CITATION.cff) supplies the paper metadata for GitHub's
+**Cite this repository** button.
 
 ## Contributing and verification
 
