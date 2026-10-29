@@ -1,5 +1,5 @@
 cff-version: 1.2.0
-message: "Please cite Primo and identify the commit and configuration used in your experiments."
+message: "If you use Primo in research, please cite the paper below and identify the commit and configuration used in your experiments."
 type: software
 title: Primo
 authors:
@@ -8,3 +8,33 @@ authors:
 repository-code: "https://github.com/primo-solver/primo"
 url: "https://primo-solver.github.io/primo/"
 license: MIT
+preferred-citation:
+  type: conference-paper
+  authors:
+    - family-names: Janota
+      given-names: Mikoláš
+    - family-names: Jakubův
+      given-names: Jan
+  title: "Vibe-Coded and Tuned: A State-of-the-Art SMT Solver for QF-LRA"
+  collection-title: >-
+    Proceedings of 16th International Workshop on the Implementation on Logics.
+    Proceedings of the 26th Conference on Logic for Programming, Artificial
+    Intelligence, and Reasoning (short papers)
+  collection-type: proceedings
+  editors:
+    - family-names: Schulz
+      given-names: Stephan
+    - family-names: Korovin
+      given-names: Konstantin
+    - family-names: Rawson
+      given-names: Michael
+  volume: 23
+  start: 44
+  end: 56
+  publisher:
+    name: EasyChair
+  year: 2026
+  date-published: "2026-10-24"
+  issn: "2515-1762"
+  doi: "10.29007/rn52"
+  url: "https://easychair.org/publications/paper/rPZ9"
