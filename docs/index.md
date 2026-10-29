@@ -1,18 +1,45 @@
 # Primo
 
-Primo is a paper-grounded SMT solver built from first principles, developed
-with LLM assistance. It decides whether a set of logical assertions can hold
-together and, for supported inputs, can produce a satisfying model. Its SMT
-implementation is original; propositional search is delegated to CaDiCaL
-through IPASIR-UP. Primo-owned code and documentation use the MIT license.
-The {source}`command loop <src/main.cpp#L87-L119>` is the executable entry
-point; {source}`IpasirUpBackend <src/sat/ipasir_up.hpp#L81-L107>` defines the SAT
-boundary.
+Primo is an open-source SMT solver built with LLM assistance. In our
+[published evaluation](papers/primo-qflra-results.md) of quantifier-free linear
+real arithmetic (QF_LRA), a tuned Primo configuration outperformed OpenSMT, the
+[SMT-COMP 2026 QF_LRA single-query winner](https://smt-comp.github.io/2026/results/qf_lra-single-query/),
+with **20 minutes allowed per instance**.
 
-Correctness is the first requirement. Wrong answers, invalid models, and crashes
-block acceptance of solver changes. Contributions that change solver behavior
-need explanations, regression tests, fuzzing, and reproducible evidence;
-see [](development/correctness.md).
+**Correctness comes first:** wrong answers, invalid models and crashes block
+acceptance of solver changes. Our goal is to understand every part we build,
+with clear documentation of the algorithms, design choices, invariants and
+limitations. Contributions that change solver behavior need explanations,
+regression tests, fuzzing and reproducible evidence; see
+[](development/correctness.md).
+
+Primo is implemented in C++20 from research papers and original design notes.
+Its SMT implementation is original; propositional search is delegated to
+CaDiCaL through IPASIR-UP. Primo-owned code and documentation use the MIT license.
+
+**[Try Primo](guide/getting-started.md) ·
+[Benchmark details](papers/primo-qflra-results.md) ·
+[Read the paper](https://easychair.org/publications/paper/rPZ9) ·
+[Source code](https://github.com/primo-solver/primo)**
+
+## Published QF_LRA results
+
+Table 2 of our [2026 paper](https://easychair.org/publications/paper/rPZ9)
+reports the following measurements on the **519-instance SMT-COMP 2026 QF_LRA
+selection**, with a **1,200-second (20-minute) limit per instance** and
+**7 GB memory per solver run**.
+
+| Published configuration | Solved / 519 | PAR2 (seconds; lower is better) |
+| --- | ---: | ---: |
+| Primo ⋆ (tuned) | **504** | **47,653** |
+| OpenSMT (default) | 502 | 54,584 |
+| Yices (default) | 495 | 73,077 |
+
+Primo ⋆ solved two more instances than default OpenSMT with approximately
+**13% lower PAR2**. PAR2 sums runtimes and charges twice the timeout for each
+unsolved instance. These are the paper's measurements; the
+[benchmark report](papers/primo-qflra-results.md) describes the measured
+configurations, hardware, tuning/test split and comparison with current defaults.
 
 ## Explore and contribute
 
@@ -43,6 +70,10 @@ the same function, so these assertions contradict each other.
 
 (implemented-now)=
 ## Implemented
+
+The {source}`command loop <src/main.cpp#L87-L119>` is the executable entry
+point; {source}`IpasirUpBackend <src/sat/ipasir_up.hpp#L81-L107>` defines the SAT
+boundary.
 
 Primo supports quantifier-free uninterpreted functions, linear Real arithmetic,
 linear Int arithmetic, and their supported combinations. Integer search is
