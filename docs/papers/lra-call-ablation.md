@@ -92,7 +92,86 @@ that registered a checker but recorded zero completed calls. All are from
 `latendresse`; their first-check captures directly test the missing tail. Four
 other zero-call timeouts never registered a checker and need separate frontend
 triage. This is a targeted development sample, not all 66 timeout parents.
-Runtime qualification and this new probe are pending.
+Runtime qualification and the targeted probe are complete; results follow.
+
+### Results of the selected-call timeout probe
+
+The ten-second parent pass recovered **nine distinct published, announced
+snapshots**: **five without durable completion records** and four whose selected
+checks completed. All five no-completion captures came from MILP glycerol
+parents with suffixes `60000`, `80000`, `90000`, `100000` and `300000`.
+Seven parent processes timed out overall; one finished SAT and one UNSAT.
+One successful SAT-parent model passed a separate direct Dolmen check.
+The four completed captures show why zero durable calls in the earlier trace
+were a selection hint, not proof that the first numerical check was stuck.
+
+Fresh replays used the same qualified `d4944eb` binary and production defaults,
+with one physical CPU and 8 GiB per task on node-09. Limits were **60 seconds
+per native or reference process**. Eight native replays finished SAT, each with
+exactly one completed numerical check. Their pivot range is **868–4,879** and
+their numerical-check time range is **0.431–14.510 seconds**.
+
+| Parent suffix/name | Selected warm call | Fresh native result | Completed pivots | Check time (s) |
+| --- | --- | --- | ---: | ---: |
+| MILP `5000` | completed | SAT | 1,463 | 2.446 |
+| MILP `60000` | no durable completion | SAT | 2,115 | 7.400 |
+| MILP `70000` | completed | SAT | 3,676 | 10.936 |
+| MILP `80000` | no durable completion | SAT | 3,633 | 10.864 |
+| MILP `90000` | no durable completion | SAT | 3,655 | 11.138 |
+| MILP `100000` | no durable completion | SAT | 4,879 | 14.510 |
+| MILP `300000` | no durable completion | overall timeout | unknown | unknown |
+| `shewanella-compact2` | completed | SAT | 868 | 0.432 |
+| `shewanella-compact2b` | completed | SAT | 868 | 0.431 |
+
+The `300000` conjunction timed out in **both Primo and Z3 at 60 seconds**.
+It remains an **unknown-status research candidate**. These are whole-process
+timeouts: no completed numerical duration or pivot count is assigned to it.
+The four completed warm-call verdicts agree with decisive fresh outcomes.
+In particular, the parent that ultimately returned UNSAT supplied a SAT
+prefix conjunction; the parent answer must not label an individual call.
+
+All **eight native SAT models** passed native `--check-model` and direct Dolmen
+validation under the unchanged QF_LRA annotation. Z3 returned SAT on two inputs
+and timed out on seven; both of its SAT models also passed direct Dolmen checks.
+Validation ran after timing, with exact input hashes and command-adapted
+assertion text checked. There are no disagreements, invalid models or missing
+successful-SAT model checks. Native timing and model stages did not overlap;
+source-parent model jobs ended before fresh timing began, as confirmed by
+SLURM accounting.
+
+The frozen input files keep their original `:status unknown` bytes, preserving
+the measured hashes and capture provenance. **Eight SAT labels live in an
+independent expected-status map; one entry remains unknown.** Future ablation
+runs must pass that map through
+{capturebench}`the harness <scripts/run_lra_call_distribution.py>`'s
+`--expected-statuses FILE` option (or `PRIMO_CALL_EXPECTED_STATUSES` in
+{capturebench}`the batch wrapper <scripts/slurm_lra_call_ablation.sbatch>`). This makes a wrong
+answer fail even if the reference solver times out, without altering the saved
+conjunction. Conflicting known labels in SMT-LIB and metadata are rejected.
+
+- {capturebench}`All nine snapshots <benchmarks/qf-lra-captured-calls/manifest.txt>`.
+- {capturebench}`Eight independently proven SAT inputs <benchmarks/qf-lra-captured-calls/manifest-known.txt>`.
+- {capturebench}`One unresolved candidate <benchmarks/qf-lra-captured-calls/manifest-unknown.txt>`.
+- {capturebench}`Expected statuses <benchmarks/qf-lra-captured-calls/expected-statuses.json>` and
+  {capturebench}`classification, proof joins and per-input measurements <benchmarks/qf-lra-captured-calls/classification.json>`.
+- [Fresh numerical-check report](../coverage/lra-captured-fresh-20261030.json) and
+  [historical submission arguments](../coverage/lra-capture-jobs-20261030.json).
+
+{capturebench}`scripts/collect_lra_call_captures.py` excludes missing or
+unannounced snapshots and deduplicates the saved bytes.
+{capturebench}`scripts/qualify_lra_call_captures.py` joins native and reference
+SAT models to the exact captured assertions, checks completed warm-call
+verdicts against fresh outcomes, and writes the known/unknown manifests and
+expected-status map. Source capture and fresh replay remain separate states.
+This small, single-family development sample supports the value of retaining
+interrupted calls; it does not establish a representative ablation distribution.
+
+The native snapshot passed 44 release and 44 ASan CTest groups, 247 Python tests,
+12 documentation checks and 1,000 generated cases with **capture enabled** for
+every solver invocation. The whole-tree 133-translation-unit scan matches all
+current C++ source hashes. Two additional offline metadata tests cover applying
+known labels to unknown-annotated files and rejecting contradictions. No native
+solver algorithm or default was changed by this observer.
 
 ## Exported numerical conjunction
 
@@ -290,7 +369,7 @@ command-adapted assertion text, and writes the two baseline subsets.
 The [submission record](../coverage/lra-call-jobs-20261030.json) contains the
 historical argument vectors with workspace/CMake placeholders; reruns require
 fresh dependency job IDs and the repository's read-only preflight before each
-submission. Use {callsource}`scripts/slurm_lra_call_ablation.sbatch` to collect
+submission. Use {capturebench}`scripts/slurm_lra_call_ablation.sbatch` to collect
 these files on SLURM, setting the corpus root and manifest through its environment
 parameters. The plotting dependency is optional for collection and aggregation.
 
@@ -327,7 +406,7 @@ pilot above retains its original `97a3229` binary identity and measurements.
 Offline aggregation is standard-library Python; the optional plot renderer uses
 Matplotlib 3.11.2 in the documentation environment. No plot dependency is needed
 on SLURM. The collection, analysis, summary and restricted-format audit live in
-{callsource}`scripts/run_lra_call_distribution.py`,
+{capturebench}`scripts/run_lra_call_distribution.py`,
 {callsource}`scripts/analyze_lra_call_profile.py`,
 {callsource}`scripts/summarize_lra_call_distribution.py` and
 {callsource}`scripts/prepare_lra_call_replay.py`.

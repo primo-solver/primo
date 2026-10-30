@@ -64,7 +64,8 @@
         "asan": "44/44 passed withleak detection andstrictinit order",
         "static": "133/133 currentCPP hashes match;all return0;existing analyzer advisories remainseparatelytriaged",
         "offline": "5analyzer tests,lint/docs/sbatchsyntax pass",
-        "metadata_tests": "2offline tests:knownindependentSAT overridesunknowncaptureannotation;contradictoryknownmetadata fails;unknownmetadata preservessourceknownstatus"
+        "metadata_tests": "2offline tests:knownindependentSAT overridesunknowncaptureannotation;contradictoryknownmetadata fails;unknownmetadata preservessourceknownstatus",
+        "code_review": "No blocking issues in implementation/borrow-lifetime/efficiencyself-review;133TUcurrenthashscanmatches. Snapshotatmostonce,clockexcludesserialization,defaultcaptureoff;existingstaticadvisoriesnotclaimedwarningfree."
       },
       "documentation_review": {
         "reviewer": "read-only derived_bounds_lead_review",
@@ -72,7 +73,16 @@
         "digest": "1db5a66991937ff28e925b1ac9945c437a5da788d623ca1bc50ff39155f6e312",
         "findings": "CAP01/02 resolved(prepublicationwindows andannouncedcapturerequirement)",
         "remaining": "native sourcepins updated tod494;empirical results pending",
-        "runtime": "Allnativegates/replays completed;final empirical documentation review pending."
+        "runtime": "Nativegates,modelsandtimedprobecomplete;finalexpositionaccepted.",
+        "final": {
+          "verdict": "ready;CAP-RESULT-01resolved",
+          "baseline": "8d81ef98a891a91fd072f816406855ca8a0d9707",
+          "digest": "f675c8ad5a0969ee7a601fe29c285f79678c4e19e24ff32e75ed700176dd475c",
+          "scope": "Native/sourceworkflowpins,9captures/5uncompleted/4controls,alltablemetrics,8native+2referenceSATmodeljoins,truthmap/unknownmanifest,133currentCPPhashes,ownjobaccountingandstageordering independentlyverified.",
+          "fix": "Newexpectedstatusharness/wrapper links target8d81ef9;nativeCPPpinsd4944eb.",
+          "validation": "Lint/docsbuild+assembledsite local/Git linkchecker pass;capturecontract/resultsrenderedinspected.",
+          "unchecked": "Nofullablationmatrix/speed/defaultpromotion;unknown300000remainsunresolved."
+        }
       },
       "results": {
         "source_parents": 9,
@@ -114,7 +124,8 @@
         "dataset": "benchmarks/qf-lra-captured-calls",
         "classification": "benchmarks/qf-lra-captured-calls/classification.json",
         "truth_map": "benchmarks/qf-lra-captured-calls/expected-statuses.json",
-        "fresh_report": "docs/coverage/lra-captured-fresh-20261030.json"
+        "fresh_report": "docs/coverage/lra-captured-fresh-20261030.json",
+        "source_parent_direct_dolmen_passes": 1
       },
       "limitations": [
         "Onlyfirstchecker,onepositivecall index perprocess;default1.",
