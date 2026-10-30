@@ -195,6 +195,14 @@ def main():
             proofs[label] = model_checks(
                 directory, args.corpus, selected_sat, native=(label == "primo")
             )
+    label_directory = args.results / "label-models"
+    label_names = {
+        "cubes/" + Path(row["file"]).name
+        for path in label_directory.glob("shard-*/summary.csv")
+        for row in csv_rows(path)
+    }
+    assert all(expected[name] == "sat" for name in label_names)
+    label_proofs = model_checks(label_directory, args.corpus, label_names, native=True)
     records = []
     verified = Counter()
     outcomes = {}
@@ -214,9 +222,9 @@ def main():
         known = expected[name]
         assert not verdicts or known == "unknown" or verdicts == {known}
         if known == "sat":
-            assert any(name in checks for checks in proofs.values()), (
-                "SAT label has no direct model check"
-            )
+            assert name in label_proofs or any(
+                name in checks for checks in proofs.values()
+            ), "SAT label has no direct model check"
             verified["sat"] += 1
         elif known == "unsat":
             assert any(
@@ -254,6 +262,7 @@ def main():
                     for label in answers
                 },
                 "models": {label: checks.get(name) for label, checks in proofs.items()},
+                "additional_label_model": label_proofs.get(name),
             }
         )
     result = {
@@ -272,6 +281,7 @@ def main():
         "direct_dolmen_model_passes": {
             label: len(checks) for label, checks in proofs.items()
         },
+        "additional_label_model_passes": len(label_proofs),
         "native_check_counts": dict(
             Counter(r["fresh_completed_checks"] for r in records)
         ),
