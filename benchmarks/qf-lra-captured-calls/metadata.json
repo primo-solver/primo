@@ -1,0 +1,225 @@
+{
+  "status": "provisional-unclassified-captures",
+  "source_version": "primo 0.2.0\ngit: d4944eb\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+  "binary_sha256": "710929c58c18970cf4fccf7eb479fb95bb1410e6b46559433e4af80b55a9eee8",
+  "source_timeout_seconds": 10.0,
+  "source_manifest_sha256": "05e34b8282e025823cf88f0eded7321c7cf7dca552a23a8deeb4b005a39065ce",
+  "coverage": {
+    "no-durable-completion": 5,
+    "completed": 4
+  },
+  "unique_inputs": 9,
+  "records": [
+    {
+      "sha256": "2cc8e805e52c410677ed5e4792c0f6c43054198448df4c8a3175640a523a108f",
+      "expected": "unknown",
+      "occurrences": [
+        {
+          "parent": "latendresse/ecoliMILPglycerolYices3-100000.smt2",
+          "parent_sha256": "0c3345d471525c27f3c26d01b068669386265a47a1a04255c3ed28c935c6c034",
+          "parent_status": "timeout",
+          "classification": "no-durable-completion",
+          "capture": {
+            "event": "capture",
+            "checker": 1,
+            "call": 1,
+            "file": "capture.smt2",
+            "completion": null
+          }
+        }
+      ]
+    },
+    {
+      "sha256": "f9c4f0cde5245b21ead3c5188eb9251861fe65a4677d6fc6c33b5fc1459c7940",
+      "expected": "unknown",
+      "occurrences": [
+        {
+          "parent": "latendresse/ecoliMILPglycerolYices3-300000.smt2",
+          "parent_sha256": "7b675791976af25f25b976edd2ed304f31e4db0082c68b49b4b2f0e875cbc04a",
+          "parent_status": "timeout",
+          "classification": "no-durable-completion",
+          "capture": {
+            "event": "capture",
+            "checker": 1,
+            "call": 1,
+            "file": "capture.smt2",
+            "completion": null
+          }
+        }
+      ]
+    },
+    {
+      "sha256": "fdb4e04e83e390b2edfd2cd5bf9dbe257a35c8a59fba261b6bcdd75a938012fc",
+      "expected": "unknown",
+      "occurrences": [
+        {
+          "parent": "latendresse/ecoliMILPglycerolYices3-5000.smt2",
+          "parent_sha256": "e49bbde08884db6665d79082d94acec4c4d0c910c2c29238557ea1ee40ff3e0c",
+          "parent_status": "ok",
+          "classification": "completed",
+          "capture": {
+            "event": "capture",
+            "checker": 1,
+            "call": 1,
+            "file": "capture.smt2",
+            "completion": {
+              "event": "check",
+              "checker": 1,
+              "call": 1,
+              "pivots": 1925,
+              "nanoseconds": 6062427316,
+              "row_updates": 30147,
+              "term_ops": 39593344,
+              "conflict": false,
+              "export": ""
+            }
+          }
+        }
+      ]
+    },
+    {
+      "sha256": "e6d93724758dd975b724a70476ad945c970d3c43df5e3d939ed58ccf49f48233",
+      "expected": "unknown",
+      "occurrences": [
+        {
+          "parent": "latendresse/ecoliMILPglycerolYices3-60000.smt2",
+          "parent_sha256": "fb418816942731d432b16d0e8c4b105804532f606e82c46a77dec635167ae396",
+          "parent_status": "timeout",
+          "classification": "no-durable-completion",
+          "capture": {
+            "event": "capture",
+            "checker": 1,
+            "call": 1,
+            "file": "capture.smt2",
+            "completion": null
+          }
+        }
+      ]
+    },
+    {
+      "sha256": "65e8ed60e241d6eaae460b1fe407828710f3c5b50007d965f80c436b9047610c",
+      "expected": "unknown",
+      "occurrences": [
+        {
+          "parent": "latendresse/ecoliMILPglycerolYices3-70000.smt2",
+          "parent_sha256": "2655c7614e4e3e84d1ed5aa70333b835a5698c9de26e37442e87fcaec92d0f7a",
+          "parent_status": "timeout",
+          "classification": "completed",
+          "capture": {
+            "event": "capture",
+            "checker": 1,
+            "call": 1,
+            "file": "capture.smt2",
+            "completion": {
+              "event": "check",
+              "checker": 1,
+              "call": 1,
+              "pivots": 2057,
+              "nanoseconds": 8398113345,
+              "row_updates": 46254,
+              "term_ops": 61257694,
+              "conflict": false,
+              "export": ""
+            }
+          }
+        }
+      ]
+    },
+    {
+      "sha256": "10d6c2814a35f91b63e083ff39c322a3193548094a6f68a620534841a0412a0b",
+      "expected": "unknown",
+      "occurrences": [
+        {
+          "parent": "latendresse/ecoliMILPglycerolYices3-80000.smt2",
+          "parent_sha256": "55822b238bbbfd1f6a89f053f153823185a995ac33e365a307b4840f4929563b",
+          "parent_status": "timeout",
+          "classification": "no-durable-completion",
+          "capture": {
+            "event": "capture",
+            "checker": 1,
+            "call": 1,
+            "file": "capture.smt2",
+            "completion": null
+          }
+        }
+      ]
+    },
+    {
+      "sha256": "45973acea1915c33dd52f36b79cdc1a7975053c15354d92816fd589f8f3dd8c8",
+      "expected": "unknown",
+      "occurrences": [
+        {
+          "parent": "latendresse/ecoliMILPglycerolYices3-90000.smt2",
+          "parent_sha256": "4d42d83cf7e03745641f7b8672f6f337015d0dfa70c1b8513cfe40c588e398db",
+          "parent_status": "timeout",
+          "classification": "no-durable-completion",
+          "capture": {
+            "event": "capture",
+            "checker": 1,
+            "call": 1,
+            "file": "capture.smt2",
+            "completion": null
+          }
+        }
+      ]
+    },
+    {
+      "sha256": "18d86f3f5937116369c957bcbceaf40b3dffe59d83e521acfda1871ce1a3bb9a",
+      "expected": "unknown",
+      "occurrences": [
+        {
+          "parent": "latendresse/shewanella-compact2.smt2",
+          "parent_sha256": "f757d0a400548afba5d87903bc435fa4962477a6367353cdee8d28a5c8050c72",
+          "parent_status": "ok",
+          "classification": "completed",
+          "capture": {
+            "event": "capture",
+            "checker": 1,
+            "call": 1,
+            "file": "capture.smt2",
+            "completion": {
+              "event": "check",
+              "checker": 1,
+              "call": 1,
+              "pivots": 935,
+              "nanoseconds": 504447849,
+              "row_updates": 11126,
+              "term_ops": 6825405,
+              "conflict": false,
+              "export": ""
+            }
+          }
+        }
+      ]
+    },
+    {
+      "sha256": "ee2ee1f93bcfb44b80ab1123b5e1e19ed177ca5cc766fb64b3e88367994eb343",
+      "expected": "unknown",
+      "occurrences": [
+        {
+          "parent": "latendresse/shewanella-compact2b.smt2",
+          "parent_sha256": "d0fef60368b295a1bc63b83e7616079dee403cb590690bde4bc970f47328fe50",
+          "parent_status": "timeout",
+          "classification": "completed",
+          "capture": {
+            "event": "capture",
+            "checker": 1,
+            "call": 1,
+            "file": "capture.smt2",
+            "completion": {
+              "event": "check",
+              "checker": 1,
+              "call": 1,
+              "pivots": 935,
+              "nanoseconds": 504750300,
+              "row_updates": 11126,
+              "term_ops": 6825405,
+              "conflict": false,
+              "export": ""
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

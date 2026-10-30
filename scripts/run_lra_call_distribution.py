@@ -19,6 +19,16 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def expected_status(path, root, statuses):
+    declared = parse_smtlib_status(path)
+    supplied = statuses.get(str(path.relative_to(root)), "unknown")
+    if supplied != "unknown":
+        if declared and declared != supplied:
+            raise ValueError("contradictory expected status metadata")
+        return supplied
+    return declared
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--solver", type=Path, required=True)
@@ -29,6 +39,7 @@ def main():
     parser.add_argument("--timeout", type=float, default=5)
     parser.add_argument("--shards", type=int, default=1)
     parser.add_argument("--index", type=int, default=0)
+    parser.add_argument("--expected-statuses", type=Path)
     parser.add_argument("--capture-call", type=int)
     parser.add_argument("--export-min-pivots", type=int)
     parser.add_argument("--export-limit", type=int, default=5)
@@ -36,6 +47,13 @@ def main():
     args = parser.parse_args()
     if args.capture_call is not None and args.capture_call <= 0:
         parser.error("capture call must be positive")
+    expected_statuses = (
+        json.loads(args.expected_statuses.read_text()) if args.expected_statuses else {}
+    )
+    if any(
+        value not in ("sat", "unsat", "unknown") for value in expected_statuses.values()
+    ):
+        parser.error("expected statuses must be sat, unsat or unknown")
     args.root = args.root.resolve()
     assert args.shards > 0 and 0 <= args.index < args.shards
     args.out.mkdir(parents=True, exist_ok=False)
@@ -61,6 +79,9 @@ def main():
         "job_id": os.environ.get("SLURM_JOB_ID"),
         "array_job_id": os.environ.get("SLURM_ARRAY_JOB_ID"),
         "affinity": sorted(os.sched_getaffinity(0)),
+        "expected_statuses_sha256": digest(args.expected_statuses)
+        if args.expected_statuses
+        else None,
         "capture_call": args.capture_call,
         "export_min_pivots": args.export_min_pivots,
         "export_limit": args.export_limit,
@@ -104,7 +125,7 @@ def main():
         for label, run in [("native", native), ("reference", ref)]:
             (case / (label + ".stdout")).write_text(run.pop("stdout"))
             (case / (label + ".stderr")).write_text(run.pop("stderr"))
-        expected = parse_smtlib_status(path)
+        expected = expected_status(path, args.root, expected_statuses)
         checked = [
             r["answer"]
             for r in [native, ref]

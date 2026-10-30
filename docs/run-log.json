@@ -3,6 +3,126 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-10-30-lra-uncompleted-call-capture",
+      "date": "2026-10-30",
+      "kind": "selected-precheck-capture-and-timeout-probe",
+      "evidence_status": "capture-and-replay-complete-eight-proven-sat-one-unknown",
+      "branch": "experiment/qf-lra-call-ablation",
+      "native_source_commit": "d4944ebbe6cf202c0485e783655209ba204df71c",
+      "binary_sha256": "710929c58c18970cf4fccf7eb479fb95bb1410e6b46559433e4af80b55a9eee8",
+      "scope": "One selected call(default1) of firstchecker snapshotted beforecheck,unknownstatus,atomicpublish+flushedevent;completionflushed. Probe9original5stimeouts withregisteredchecker andzero completions;exclude4nochecker cases. No warmcheckpoint/reasongraph restoration or runtime inferred frommissing completion.",
+      "dataset": {
+        "manifest": "benchmarks/qf-lra-uncompleted-first-check.txt",
+        "files": 9,
+        "bytes": 2473623,
+        "fingerprint": "b7ca893c388a102ac2c268f1d6c643381e1965c0e5747610163237140ce2f1bc"
+      },
+      "execution": {
+        "workspace": "~/primo-lra-call-capture-20261030",
+        "environment": "SLURMcompute,node-09(onephysicalcore8GiBperparent),9arraytasks,10s native+10sZ3,2s terminationgrace",
+        "jobs": {
+          "check": "267780",
+          "fuzz": "267781",
+          "asan": "267782",
+          "static": "267783",
+          "capture": "267784",
+          "parent-models": "267785",
+          "fresh-default": "267802",
+          "fresh-models": "267811",
+          "reference-models": "267812"
+        },
+        "artifacts": "results/lra-interrupted-call-20261030",
+        "build": "Repository --build-via-slurm cleanarchive;first8cebuild failed Wshadow,variable renamedind494;cleanrebuild passed.",
+        "workflow": "Nativearchive d494;later replayjobartifact scripts from37f4a63/hashrecorded,tmp/replay-job-artifacts. PrivateSSHroute external.",
+        "commands_file": "results/lra-interrupted-call-20261030/jobs.json",
+        "build_jobs": {
+          "267778": "initial8ce failedWshadow;correctedind494",
+          "267779": "d494cleanbuildCOMPLETED0:0 3m20s"
+        },
+        "replay": "9arraytasks onephysicalCPU8GiB,node-09;60snative/60sZ3;nativeSATmodels60s/Dolmen30s;referenceSATmodels90s/Dolmen30s. Separate dependent stages. Sourceparentmodelstage ended14:09:15 beforefreshstart14:10:23(clustertime),verifiedaccounting.",
+        "replay_workflow_artifact_sha256": {
+          "analyze_lra_call_profile.py": "d6198ead70d0345697725274c9ebd9e2b7ca206fb61665370e147b6a0b18c793",
+          "run_lra_call_distribution.py": "02b8a942a6b9fa4c050c5427d83b1b1edbb4f859b384408418df728d6e950b8a",
+          "slurm_lra_call_ablation.sbatch": "e5e575648a08bfa877e66c13ff20bf9314b084c47297fd46afcbd1a832099ab8",
+          "prepare_lra_call_replay.py": "1fa7f586406cbfb75e20bfbda36255490fc186d3c6f3731d8bb2bd739bd860d6"
+        }
+      },
+      "qualification": {
+        "release": "44/44CTest+247Python+12docchecks pass",
+        "fuzz": {
+          "count": 1000,
+          "seed": 2026103002,
+          "pass": 1000,
+          "reference": "Z3 5.1.0",
+          "validator": "Dolmen0.10",
+          "capture_mode": "wrapper enablescapturefirst for every invocation;unique retainedmktemp directory",
+          "script": "scripts/qualification/lra_call_ablation/capture_fuzz_solver.sh",
+          "native_and_reference_timeout": 5,
+          "validator_timeout": 10,
+          "failures": 0
+        },
+        "asan": "44/44 passed withleak detection andstrictinit order",
+        "static": "133/133 currentCPP hashes match;all return0;existing analyzer advisories remainseparatelytriaged",
+        "offline": "5analyzer tests,lint/docs/sbatchsyntax pass",
+        "metadata_tests": "2offline tests:knownindependentSAT overridesunknowncaptureannotation;contradictoryknownmetadata fails;unknownmetadata preservessourceknownstatus"
+      },
+      "documentation_review": {
+        "reviewer": "read-only derived_bounds_lead_review",
+        "prep_accepted_commit": "8ce0ea0ad924b062ea679286c7c84e3cf699eb27",
+        "digest": "1db5a66991937ff28e925b1ac9945c437a5da788d623ca1bc50ff39155f6e312",
+        "findings": "CAP01/02 resolved(prepublicationwindows andannouncedcapturerequirement)",
+        "remaining": "native sourcepins updated tod494;empirical results pending",
+        "runtime": "Allnativegates/replays completed;final empirical documentation review pending."
+      },
+      "results": {
+        "source_parents": 9,
+        "published_announced_captures": 9,
+        "no_durable_completion": 5,
+        "captured_call_completed": 4,
+        "unannounced_or_missing": 0,
+        "distinct_conjunctions": 9,
+        "source_parent_outcomes": {
+          "sat": 1,
+          "unsat": 1,
+          "timeout": 7
+        },
+        "fresh_native": {
+          "sat": 8,
+          "timeout": 1
+        },
+        "fresh_reference": {
+          "sat": 2,
+          "timeout": 7
+        },
+        "native_sat_direct_dolmen": 8,
+        "reference_sat_direct_dolmen": 2,
+        "native_completed_checks": 8,
+        "native_completed_pivots_range": [
+          868,
+          4879
+        ],
+        "native_completed_check_seconds_range": [
+          0.431298918,
+          14.509825914
+        ],
+        "answer_disagreements": 0,
+        "model_errors": 0,
+        "unclassified": 1,
+        "unknown_input_sha256": "f9c4f0cde5245b21ead3c5188eb9251861fe65a4677d6fc6c33b5fc1459c7940",
+        "unknown_parent": "latendresse/ecoliMILPglycerolYices3-300000.smt2",
+        "unknown_note": "NativeandZ3 wholeprocess60stimeouts,notclaimed completednumericdurationorpivots. File remains:statusunknown;noexpectedtruthinvented.",
+        "dataset": "benchmarks/qf-lra-captured-calls",
+        "classification": "benchmarks/qf-lra-captured-calls/classification.json",
+        "truth_map": "benchmarks/qf-lra-captured-calls/expected-statuses.json",
+        "fresh_report": "docs/coverage/lra-captured-fresh-20261030.json"
+      },
+      "limitations": [
+        "Onlyfirstchecker,onepositivecall index perprocess;default1.",
+        "Publishedfile plusdurableevent withoutcompletion isprovisional,notSAT/UNSATor elapsedchecktime.",
+        "Unknown captures must remainseparate until independent replay/modelvalidation."
+      ]
+    },
+    {
       "id": "2026-10-30-qf-lra-call-ablation-pilot",
       "date": "2026-10-30",
       "kind": "numerical-call-distribution-and-conjunction-extraction",

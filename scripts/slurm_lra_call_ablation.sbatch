@@ -71,6 +71,9 @@ case "${PRIMO_CALL_PHASE:?}" in
  ;;
  profile|extract|capture)
  arguments=()
+ if [[ -n ${PRIMO_CALL_EXPECTED_STATUSES:-} ]]; then
+  arguments+=(--expected-statuses "$PRIMO_CALL_EXPECTED_STATUSES")
+ fi
  if [[ $PRIMO_CALL_PHASE == capture ]]; then
   arguments+=(--capture-call "${PRIMO_CALL_CAPTURE_CALL:-1}")
  fi

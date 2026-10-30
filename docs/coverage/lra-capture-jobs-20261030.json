@@ -1,0 +1,197 @@
+{
+  "description": "Historical exactsbatch vectors withprivateworkspace/CMake paths templated;newruns requirefreshdependency IDs. Native d494, replayartifactworkflow37f4a63.",
+  "jobs": {
+    "check": {
+      "id": "267780",
+      "command": [
+        "sbatch",
+        "--parsable",
+        "--partition=compute",
+        "--nodelist=node-09",
+        "--ntasks=1",
+        "--hint=nomultithread",
+        "--cpus-per-task=2",
+        "--mem=8G",
+        "--time=00:30:00",
+        "--job-name=lra-cap-check",
+        "--chdir=${WORKSPACE}",
+        "--output=${WORKSPACE}/slurm_logs/%x-%A_%a.out",
+        "--error=${WORKSPACE}/slurm_logs/%x-%A_%a.err",
+        "--export=ALL,PRIMO_WORKDIR=${WORKSPACE},PRIMO_CMAKE_DIR=${CMAKE_BIN},PRIMO_EXPECTED_GIT=d4944eb,PRIMO_CALL_OUT=${WORKSPACE}/results/lra-call-capture-20261030/check,PRIMO_CALL_PHASE=check,PRIMO_REVIEW_OUT_DIR=${WORKSPACE}/results/lra-call-capture-20261030/static,PRIMO_CALL_JOB_ARTIFACTS=${WORKSPACE}/scripts,PRIMO_CALL_MANIFEST=${WORKSPACE}/benchmarks/qf-lra-uncompleted-first-check.txt,PRIMO_CALL_SHARDS=9,PRIMO_CALL_TIMEOUT=10,PRIMO_CALL_MIN_PIVOTS=128,PRIMO_CALL_PARENT_OUT=${WORKSPACE}/results/lra-call-capture-20261030/capture",
+        "${WORKSPACE}/scripts/slurm_lra_call_ablation.sbatch"
+      ]
+    },
+    "fuzz": {
+      "id": "267781",
+      "command": [
+        "sbatch",
+        "--parsable",
+        "--partition=compute",
+        "--nodelist=node-09",
+        "--ntasks=1",
+        "--hint=nomultithread",
+        "--cpus-per-task=2",
+        "--mem=8G",
+        "--time=00:30:00",
+        "--job-name=lra-cap-fuzz",
+        "--chdir=${WORKSPACE}",
+        "--output=${WORKSPACE}/slurm_logs/%x-%A_%a.out",
+        "--error=${WORKSPACE}/slurm_logs/%x-%A_%a.err",
+        "--export=ALL,PRIMO_WORKDIR=${WORKSPACE},PRIMO_CMAKE_DIR=${CMAKE_BIN},PRIMO_EXPECTED_GIT=d4944eb,PRIMO_CALL_OUT=${WORKSPACE}/results/lra-call-capture-20261030/fuzz,PRIMO_CALL_PHASE=capture-fuzz,PRIMO_REVIEW_OUT_DIR=${WORKSPACE}/results/lra-call-capture-20261030/static,PRIMO_CALL_JOB_ARTIFACTS=${WORKSPACE}/scripts,PRIMO_CALL_MANIFEST=${WORKSPACE}/benchmarks/qf-lra-uncompleted-first-check.txt,PRIMO_CALL_SHARDS=9,PRIMO_CALL_TIMEOUT=10,PRIMO_CALL_MIN_PIVOTS=128,PRIMO_CALL_PARENT_OUT=${WORKSPACE}/results/lra-call-capture-20261030/capture",
+        "--dependency=afterok:267780",
+        "${WORKSPACE}/scripts/slurm_lra_call_ablation.sbatch"
+      ]
+    },
+    "asan": {
+      "id": "267782",
+      "command": [
+        "sbatch",
+        "--parsable",
+        "--partition=compute",
+        "--nodelist=node-09",
+        "--ntasks=1",
+        "--hint=nomultithread",
+        "--cpus-per-task=4",
+        "--mem=12G",
+        "--time=00:30:00",
+        "--job-name=lra-cap-asan",
+        "--chdir=${WORKSPACE}",
+        "--output=${WORKSPACE}/slurm_logs/%x-%A_%a.out",
+        "--error=${WORKSPACE}/slurm_logs/%x-%A_%a.err",
+        "--export=ALL,PRIMO_WORKDIR=${WORKSPACE},PRIMO_CMAKE_DIR=${CMAKE_BIN},PRIMO_EXPECTED_GIT=d4944eb,PRIMO_CALL_OUT=${WORKSPACE}/results/lra-call-capture-20261030/asan,PRIMO_CALL_PHASE=asan,PRIMO_REVIEW_OUT_DIR=${WORKSPACE}/results/lra-call-capture-20261030/static,PRIMO_CALL_JOB_ARTIFACTS=${WORKSPACE}/scripts,PRIMO_CALL_MANIFEST=${WORKSPACE}/benchmarks/qf-lra-uncompleted-first-check.txt,PRIMO_CALL_SHARDS=9,PRIMO_CALL_TIMEOUT=10,PRIMO_CALL_MIN_PIVOTS=128,PRIMO_CALL_PARENT_OUT=${WORKSPACE}/results/lra-call-capture-20261030/capture",
+        "--dependency=afterok:267780",
+        "${WORKSPACE}/scripts/slurm_lra_call_ablation.sbatch"
+      ]
+    },
+    "static": {
+      "id": "267783",
+      "command": [
+        "sbatch",
+        "--parsable",
+        "--partition=compute",
+        "--nodelist=node-09",
+        "--ntasks=1",
+        "--hint=nomultithread",
+        "--cpus-per-task=8",
+        "--mem=24G",
+        "--time=00:30:00",
+        "--job-name=lra-cap-static",
+        "--chdir=${WORKSPACE}",
+        "--output=${WORKSPACE}/slurm_logs/%x-%A_%a.out",
+        "--error=${WORKSPACE}/slurm_logs/%x-%A_%a.err",
+        "--export=ALL,PRIMO_WORKDIR=${WORKSPACE},PRIMO_CMAKE_DIR=${CMAKE_BIN},PRIMO_EXPECTED_GIT=d4944eb,PRIMO_CALL_OUT=${WORKSPACE}/results/lra-call-capture-20261030/static,PRIMO_CALL_PHASE=static,PRIMO_REVIEW_OUT_DIR=${WORKSPACE}/results/lra-call-capture-20261030/static,PRIMO_CALL_JOB_ARTIFACTS=${WORKSPACE}/scripts,PRIMO_CALL_MANIFEST=${WORKSPACE}/benchmarks/qf-lra-uncompleted-first-check.txt,PRIMO_CALL_SHARDS=9,PRIMO_CALL_TIMEOUT=10,PRIMO_CALL_MIN_PIVOTS=128,PRIMO_CALL_PARENT_OUT=${WORKSPACE}/results/lra-call-capture-20261030/capture",
+        "--dependency=afterok:267780",
+        "${WORKSPACE}/scripts/qualification/lra_call_ablation/static.sbatch"
+      ]
+    },
+    "capture": {
+      "id": "267784",
+      "command": [
+        "sbatch",
+        "--parsable",
+        "--partition=compute",
+        "--nodelist=node-09",
+        "--ntasks=1",
+        "--hint=nomultithread",
+        "--cpus-per-task=1",
+        "--mem=8G",
+        "--time=00:30:00",
+        "--job-name=lra-cap-capture",
+        "--chdir=${WORKSPACE}",
+        "--output=${WORKSPACE}/slurm_logs/%x-%A_%a.out",
+        "--error=${WORKSPACE}/slurm_logs/%x-%A_%a.err",
+        "--export=ALL,PRIMO_WORKDIR=${WORKSPACE},PRIMO_CMAKE_DIR=${CMAKE_BIN},PRIMO_EXPECTED_GIT=d4944eb,PRIMO_CALL_OUT=${WORKSPACE}/results/lra-call-capture-20261030/capture,PRIMO_CALL_PHASE=capture,PRIMO_REVIEW_OUT_DIR=${WORKSPACE}/results/lra-call-capture-20261030/static,PRIMO_CALL_JOB_ARTIFACTS=${WORKSPACE}/scripts,PRIMO_CALL_MANIFEST=${WORKSPACE}/benchmarks/qf-lra-uncompleted-first-check.txt,PRIMO_CALL_SHARDS=9,PRIMO_CALL_TIMEOUT=10,PRIMO_CALL_MIN_PIVOTS=128,PRIMO_CALL_PARENT_OUT=${WORKSPACE}/results/lra-call-capture-20261030/capture",
+        "--array=0-8%9",
+        "--dependency=afterok:267780:267781:267782:267783",
+        "${WORKSPACE}/scripts/slurm_lra_call_ablation.sbatch"
+      ]
+    },
+    "parent-models": {
+      "id": "267785",
+      "command": [
+        "sbatch",
+        "--parsable",
+        "--partition=compute",
+        "--nodelist=node-09",
+        "--ntasks=1",
+        "--hint=nomultithread",
+        "--cpus-per-task=1",
+        "--mem=8G",
+        "--time=00:30:00",
+        "--job-name=lra-cap-parent-models",
+        "--chdir=${WORKSPACE}",
+        "--output=${WORKSPACE}/slurm_logs/%x-%A_%a.out",
+        "--error=${WORKSPACE}/slurm_logs/%x-%A_%a.err",
+        "--export=ALL,PRIMO_WORKDIR=${WORKSPACE},PRIMO_CMAKE_DIR=${CMAKE_BIN},PRIMO_EXPECTED_GIT=d4944eb,PRIMO_CALL_OUT=${WORKSPACE}/results/lra-call-capture-20261030/parent-models,PRIMO_CALL_PHASE=models,PRIMO_REVIEW_OUT_DIR=${WORKSPACE}/results/lra-call-capture-20261030/static,PRIMO_CALL_JOB_ARTIFACTS=${WORKSPACE}/scripts,PRIMO_CALL_MANIFEST=${WORKSPACE}/benchmarks/qf-lra-uncompleted-first-check.txt,PRIMO_CALL_SHARDS=9,PRIMO_CALL_TIMEOUT=10,PRIMO_CALL_MIN_PIVOTS=128,PRIMO_CALL_PARENT_OUT=${WORKSPACE}/results/lra-call-capture-20261030/capture",
+        "--array=0-8%9",
+        "--dependency=afterok:267784",
+        "${WORKSPACE}/scripts/slurm_lra_call_ablation.sbatch"
+      ]
+    },
+    "fresh-default": {
+      "id": "267802",
+      "command": [
+        "sbatch",
+        "--parsable",
+        "--partition=compute",
+        "--nodelist=node-09",
+        "--ntasks=1",
+        "--hint=nomultithread",
+        "--cpus-per-task=1",
+        "--mem=8G",
+        "--time=00:30:00",
+        "--job-name=lra-cap-fresh-default",
+        "--chdir=${WORKSPACE}",
+        "--output=${WORKSPACE}/slurm_logs/%x-%A_%a.out",
+        "--error=${WORKSPACE}/slurm_logs/%x-%A_%a.err",
+        "--export=ALL,PRIMO_WORKDIR=${WORKSPACE},PRIMO_CMAKE_DIR=${CMAKE_BIN},PRIMO_EXPECTED_GIT=d4944eb,PRIMO_CALL_OUT=${WORKSPACE}/results/lra-call-capture-20261030/fresh-default,PRIMO_CALL_PHASE=profile,PRIMO_CALL_JOB_ARTIFACTS=${WORKSPACE}/tmp/replay-job-artifacts,PRIMO_CALL_ROOT=${WORKSPACE}/tmp/replay-corpus,PRIMO_CALL_MANIFEST=${WORKSPACE}/tmp/replay-corpus/manifest.txt,PRIMO_CALL_SHARDS=9,PRIMO_CALL_TIMEOUT=60,PRIMO_CALL_PARENT_OUT=${WORKSPACE}/results/lra-call-capture-20261030/fresh-default",
+        "--array=0-8%9",
+        "${WORKSPACE}/tmp/replay-job-artifacts/slurm_lra_call_ablation.sbatch"
+      ]
+    },
+    "fresh-models": {
+      "id": "267811",
+      "command": [
+        "sbatch",
+        "--parsable",
+        "--partition=compute",
+        "--nodelist=node-09",
+        "--ntasks=1",
+        "--hint=nomultithread",
+        "--cpus-per-task=1",
+        "--mem=8G",
+        "--time=00:30:00",
+        "--job-name=lra-cap-fresh-models",
+        "--chdir=${WORKSPACE}",
+        "--output=${WORKSPACE}/slurm_logs/%x-%A_%a.out",
+        "--error=${WORKSPACE}/slurm_logs/%x-%A_%a.err",
+        "--export=ALL,PRIMO_WORKDIR=${WORKSPACE},PRIMO_CMAKE_DIR=${CMAKE_BIN},PRIMO_EXPECTED_GIT=d4944eb,PRIMO_CALL_OUT=${WORKSPACE}/results/lra-call-capture-20261030/fresh-models,PRIMO_CALL_PHASE=models,PRIMO_CALL_JOB_ARTIFACTS=${WORKSPACE}/tmp/replay-job-artifacts,PRIMO_CALL_ROOT=${WORKSPACE}/tmp/replay-corpus,PRIMO_CALL_MANIFEST=${WORKSPACE}/tmp/replay-corpus/manifest.txt,PRIMO_CALL_SHARDS=9,PRIMO_CALL_TIMEOUT=60,PRIMO_CALL_PARENT_OUT=${WORKSPACE}/results/lra-call-capture-20261030/fresh-default",
+        "--array=0-8%9",
+        "--dependency=afterok:267802",
+        "${WORKSPACE}/tmp/replay-job-artifacts/slurm_lra_call_ablation.sbatch"
+      ]
+    },
+    "reference-models": {
+      "id": "267812",
+      "command": [
+        "sbatch",
+        "--parsable",
+        "--partition=compute",
+        "--nodelist=node-09",
+        "--ntasks=1",
+        "--hint=nomultithread",
+        "--cpus-per-task=1",
+        "--mem=8G",
+        "--time=00:30:00",
+        "--job-name=lra-cap-reference-models",
+        "--chdir=${WORKSPACE}",
+        "--output=${WORKSPACE}/slurm_logs/%x-%A_%a.out",
+        "--error=${WORKSPACE}/slurm_logs/%x-%A_%a.err",
+        "--export=ALL,PRIMO_WORKDIR=${WORKSPACE},PRIMO_CMAKE_DIR=${CMAKE_BIN},PRIMO_EXPECTED_GIT=d4944eb,PRIMO_CALL_OUT=${WORKSPACE}/results/lra-call-capture-20261030/reference-models,PRIMO_CALL_PHASE=reference-models,PRIMO_CALL_JOB_ARTIFACTS=${WORKSPACE}/tmp/replay-job-artifacts,PRIMO_CALL_ROOT=${WORKSPACE}/tmp/replay-corpus,PRIMO_CALL_MANIFEST=${WORKSPACE}/tmp/replay-corpus/manifest.txt,PRIMO_CALL_SHARDS=9,PRIMO_CALL_TIMEOUT=60,PRIMO_CALL_PARENT_OUT=${WORKSPACE}/results/lra-call-capture-20261030/fresh-default",
+        "--array=0-8%9",
+        "--dependency=afterok:267811",
+        "${WORKSPACE}/tmp/replay-job-artifacts/slurm_lra_call_ablation.sbatch"
+      ]
+    }
+  }
+}
