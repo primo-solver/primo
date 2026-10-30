@@ -42,9 +42,9 @@ LraCallProfiler::LraCallProfiler(const std::string& path, std::string export_dir
   if (capture_call_ == 0) throw std::invalid_argument("LRA capture call must be positive");
   out_.exceptions(std::ios::failbit | std::ios::badbit);
   out_.open(path);
-  for (const auto& path : {export_directory_, capture_directory_}) {
-    if (path.empty()) continue;
-    const std::filesystem::path directory(path);
+  for (const auto& output_directory : {export_directory_, capture_directory_}) {
+    if (output_directory.empty()) continue;
+    const std::filesystem::path directory(output_directory);
     if (std::filesystem::exists(directory) && !std::filesystem::is_empty(directory)) {
       throw std::invalid_argument("LRA call output directory must be empty");
     }
