@@ -43,7 +43,7 @@ case "${PRIMO_CALL_PHASE:?}" in
   python3 scripts/validate_model.py --solver build-slurm-rel/primo --expect-sat \
    --require-dolmen-pass --dolmen contrib/local/bin/dolmen --dolmen-size 2G \
    --dolmen-arg=--strict=false --timeout 60 --dolmen-timeout 30 \
-   --solver-arg=--quiet --solver-arg=--stats \
+   --solver-arg=--quiet --solver-arg=--stats --solver-arg=--check-model \
    --solver-arg=--lra-call-profile --solver-arg="$OUT/replay-profile-${SLURM_ARRAY_TASK_ID}.jsonl" \
    --manifest "$manifest" --out "$OUT/shard-${SLURM_ARRAY_TASK_ID}"
  fi
