@@ -3,6 +3,83 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-10-30-qf-lra-call-ablation-pilot",
+      "date": "2026-10-30",
+      "kind": "numerical-call-distribution-and-conjunction-extraction",
+      "evidence_status": "qualification-running-pilot-queued",
+      "branch": "experiment/qf-lra-call-ablation",
+      "native_source_commit": "97a3229e3026faf52ab1df151d1e6dec11b136d0",
+      "workflow_commit": "2bb28bf342398e452bf1b91e252f9cedcdb9633f",
+      "binary_sha256": "82715b2ffa2328231807d886faaa11eb764f9958339f0b5a1b8dc280d451c36f",
+      "scope": "Initial distribution of warm numerical check pivots and check-only nanoseconds on 237 fixed QF_LRA development inputs; later data-selected bounded export and separate fresh replay. No algorithm/default change or performance comparison.",
+      "dataset": {
+        "manifest": "benchmarks/qf-lra-stratified-sample.txt",
+        "inputs": 237,
+        "manifest_sha256": "c540ebb30e484cf1202192a597398e0bca4c0cdff4f18b373e8a6f2ff3b41b52",
+        "ordered_files_size_fingerprint": "1bd6136ef5355f44bff8e92b5e45c079b4205f16cb481b979e8b03b7ab0b5e0f",
+        "bytes": 298152786
+      },
+      "execution": {
+        "environment": "SLURM compute node-09, physical-core affinity, isolated workspace",
+        "build_job": "267713",
+        "build_result": "COMPLETED 0:0; 3m28s, 4 CPU, 8G. SSH transport hung after successful completion; stopped stale transport and passed fresh read-only preflight.",
+        "jobs": {
+          "check": "267720",
+          "fuzz": "267721",
+          "asan": "267722",
+          "static": "267723",
+          "profile": "267724",
+          "models": "267725"
+        },
+        "first_attempt": {
+          "check_job": "267714",
+          "result": "Version-guard failure before tests: expected full Git hash but binary prints short97a3229. Dependent267715-267719 cancelled; resubmitted after guard correction."
+        },
+        "resources": {
+          "check": "2 CPU,8G",
+          "fuzz": "2 CPU,8G",
+          "asan": "4 CPU,12G",
+          "static": "4 CPU,12G",
+          "profile": "8 array tasks,each1 CPU,8G;5s native and5s Z3,2s termination grace",
+          "models": "8 array tasks,each1 CPU,8G;native60s,Dolmen30s;separate after timing"
+        },
+        "artifacts": "results/lra-call-ablation-20261030",
+        "remote_workspace": "~/primo-lra-call-ablation-20261030",
+        "job_commands": "results/lra-call-ablation-20261030/jobs.json",
+        "job_artifact_sha256": {
+          "primo-call-static.sbatch": "f5f8c01175432dc615218f064a739fb8e3002e36e08bfaad177d7aca9e134b39",
+          "analyze_lra_call_profile.py": "0ab768f09c1460b13f54d2c4a5efb5f2893b7cb467ebba102dd0119234772118",
+          "run_lra_call_distribution.py": "4f0438050889bf08af2263c039d960783f3fac77d96440a5bcfb2a1c6f83cd74",
+          "slurm_lra_call_ablation.sbatch": "3453130bd5bcf69049991e1739fe238238931156e1973901294da7fd9fb61a84"
+        },
+        "native_source_sync": "Clean97a3229 archive via slurm_prepare_benchmark_workspace.py --build-via-slurm; check-only --no-sync immediately before every submission",
+        "workflow_deployment": "Hash-recorded scripts in tmp/job-artifacts outside immutable native snapshot; corrected help fixture from f3946fc only source-tree override, no C++ override."
+      },
+      "correctness": {
+        "release": "44/44 CTest,242/242 Python,12/12 documentation checks passed in267720",
+        "offline_analyzer": "4/4 tests passed; independent reviewer repaired prefix/missing-trace edge cases",
+        "fuzz": "1000/1000 Boolean/arithmetic generated cases seed2026103001 passed native+Z3+Dolmen in267721; profile enabled",
+        "asan": "running",
+        "static": "running; whole tracked C++ plus standalone doc examples, analyzer and advisory include-cleaner",
+        "parent_models": "queued after all pilot timing tasks"
+      },
+      "commands": {
+        "profile": "python3 scripts/run_lra_call_distribution.py --solver build-slurm-rel/primo --reference contrib/local/bin/z3 --root tmp/QF_LRA --manifest benchmarks/qf-lra-stratified-sample.txt --timeout 5 --shards 8 --index ARRAY_ID --out OUT/shard-ID (actual scripts deployed as tmp job artifacts)",
+        "fuzz": "python3 scripts/qf_lra_boolean_arithmetic_fuzz.py --solver build-slurm-rel/primo --solver-arg=--lra-call-profile --solver-arg=OUT/current-profile.jsonl --z3 contrib/local/bin/z3 --dolmen contrib/local/bin/dolmen --count 1000 --seed 2026103001 --timeout 5 --dolmen-timeout 10 --out OUT/fuzz"
+      },
+      "limitations": [
+        "Completed checks only; timeout unfinished call and buffered tail censored.",
+        "Includes zero-pivot calls; inputs with no recorded calls retained.",
+        "Warm basis/search-dependent work is distinct from fresh standalone conjunction replay.",
+        "Export independent validation and results pending; no pivot cutoff accepted yet."
+      ],
+      "documentation_review": {
+        "reviewer": "separate read-only derived_bounds_lead_review",
+        "accepted_commit": "2bb28bf342398e452bf1b91e252f9cedcdb9633f",
+        "scope": "Preparatory design and trace/parser contract only; LCAP-DOC-01/02/03 and LCAP-OBS-01/02 resolved. Empirical results not yet reviewed."
+      }
+    },
+    {
       "id": "2026-10-10-migration-lra-option-ablation",
       "date": "2026-10-10",
       "kind": "four-profile-ablation",
