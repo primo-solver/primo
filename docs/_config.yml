@@ -53,8 +53,11 @@ sphinx:
       capturebench:
         - "https://github.com/primo-solver/primo/blob/8d81ef98a891a91fd072f816406855ca8a0d9707/%s"
         - "%s"
+      casestudydata:
+        - "https://github.com/primo-solver/primo/blob/33cfbd53d8ba617f0394c88bfb8433e0d3b48384/%s"
+        - "%s"
       casestudytools:
-        - "https://github.com/primo-solver/primo/blob/f04bbeaf34191dfcd23918be5cc03aa06278dd60/%s"
+        - "https://github.com/primo-solver/primo/blob/8402c7dbcdadd23c3ccffd9516166cb683773d77/%s"
         - "%s"
       casestudysource:
         - "https://github.com/primo-solver/primo/blob/659432e23587bdd356f8f9e7afb84a02495892e8/%s"

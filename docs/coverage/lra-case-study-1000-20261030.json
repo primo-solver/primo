@@ -1,0 +1,2816 @@
+{
+  "status": "qualified-known-labels-with-explicit-unknown-research-candidate",
+  "inputs": 1000,
+  "expected_statuses": {
+    "sat": 679,
+    "unsat": 320,
+    "unknown": 1
+  },
+  "native_version": "primo 0.2.0\ngit: d4944eb\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+  "native_binary_sha256": "710929c58c18970cf4fccf7eb479fb95bb1410e6b46559433e4af80b55a9eee8",
+  "manifest_sha256": "df3b5b731ea341f1d3f88520443b0078e92c8c1d09c413364005869f6f389267",
+  "expected_statuses_sha256": "24d5d14936c5ac6e39ed38317b4afaea1ff5390431a495b802526b5aff655866",
+  "timeout_seconds": 15.0,
+  "references": {
+    "yices-smt2": {
+      "sha256": "eab7efbff2a6f0cce2fcd2c25cb4a94e0e048c902d8ef9e6fd7d7989aa54c501",
+      "version": "Yices 2.7.0\nCopyright SRI International.\nLinked with GMP 6.3.0\nCopyright Free Software Foundation, Inc.\nBuild date: 2025-07-17\nPlatform: x86_64-pc-linux-gnu (release/static)\nRevision: 4f19700f0e272f4a68250080d12a873523bc7ac3"
+    },
+    "opensmt": {
+      "sha256": "b7899e9aff299026d3251df7a28f51f56d8bd1e5b0fd7be11bcc72c4f2803a98",
+      "version": "v2.9.2"
+    },
+    "z3": {
+      "sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+      "version": "Z3 version 5.1.0 - 64 bit"
+    }
+  },
+  "validator": {
+    "sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+    "version": "0.10"
+  },
+  "native_solver_args": [],
+  "outcomes": {
+    "primo": {
+      "sat": 676,
+      "unsat": 320,
+      "timeout": 4
+    },
+    "z3": {
+      "sat": 663,
+      "unsat": 320,
+      "timeout": 17
+    },
+    "yices-smt2": {
+      "sat": 678,
+      "unsat": 320,
+      "timeout": 2
+    },
+    "opensmt": {
+      "sat": 674,
+      "unsat": 320,
+      "timeout": 6
+    }
+  },
+  "direct_dolmen_model_passes": {
+    "primo": 676,
+    "z3": 663,
+    "yices-smt2": 678,
+    "opensmt": 674
+  },
+  "additional_label_model_passes": 1,
+  "native_check_counts": {
+    "1": 997,
+    "0": 3
+  },
+  "fresh_coverage": {
+    "complete": 996,
+    "prefix": 4
+  },
+  "complete_single_check_inputs": 996,
+  "fresh_single_check_pivots": {
+    "min": 1,
+    "median": 129,
+    "p90": 593,
+    "p99": 2185,
+    "max": 6782
+  },
+  "fresh_single_check_ns": {
+    "min": 4805,
+    "median": 2604109,
+    "p90": 32646047,
+    "p99": 615911472,
+    "max": 11457673218
+  },
+  "fresh_single_check_bins": {
+    "128-1023": 467,
+    "32-127": 417,
+    "1024+": 36,
+    "0-31": 76
+  },
+  "counting_families": {
+    "DTP-Scheduling": 105,
+    "sc": 102,
+    "tropical-matrix": 110,
+    "clock_synchro": 105,
+    "uart": 102,
+    "tta_startup": 22,
+    "2017-Heizmann-UltimateInvariantSynthesis": 109,
+    "LassoRanker": 105,
+    "miplib": 112,
+    "2019-ezsmt": 103,
+    "sal": 8,
+    "latendresse": 17
+  },
+  "counting_parents": 460,
+  "max_selected_per_parent": 12,
+  "retained_inputs": 42,
+  "limitations": [
+    "Conjunction identity ignores comments/status/whitespace, not logical equivalence.",
+    "One source corpus and first qualifying exports; quotas do not establish representativeness.",
+    "No warm basis, assignment, reason graph or original Boolean context is replayed.",
+    "Whole-process timeouts and unfinished checks are censored, not completed durations.",
+    "No algorithmic winner, speedup or default promotion is claimed."
+  ],
+  "native_source_commit": "d4944ebbe6cf202c0485e783655209ba204df71c",
+  "dataset_commit": "33cfbd53d8ba617f0394c88bfb8433e0d3b48384",
+  "qualifier_commit": "8402c7dbcdadd23c3ccffd9516166cb683773d77",
+  "dataset": "benchmarks/qf-lra-case-study-1000",
+  "input_bytes": 254394158,
+  "selection_sha256": "ddc00c567bc44bbe27dba309d5195d3ec6b7fdcfce0986a4d6f1e516a86b96bd",
+  "qualified_metadata_sha256": "57324bdf98353d98370dca73f5eb10790f0f844c5520a0e1cb4c30f735389a98",
+  "selection": {
+    "seed": 20261030,
+    "max_per_parent": 25,
+    "max_per_family": 400,
+    "candidates": 4333,
+    "retained": 42,
+    "raw_occurrences": 4384,
+    "source_inputs": 1753,
+    "source_manifest_sha256": "e217caf09bb2bc8d3aefc4a5d8a4cfed4792462582b69c884698c3ce69ee76f4",
+    "source_timeout_seconds": 5.0,
+    "export_min_pivots": 32,
+    "export_limit": 64
+  },
+  "normalization": "Token order retained; comments, whitespace and status annotations ignored. No logical equivalence, renaming or assertion reordering test.",
+  "warm_max_pivots_scope": "Completed-call export records only; zero is the absent-record default for retained captures. Captured-call completions remain in selection.json.",
+  "execution": {
+    "location": "SLURM node-09",
+    "cpus_per_task": "one physical CPU",
+    "memory_per_task": "8 GiB",
+    "timing_shards": 32,
+    "max_timing_concurrency": 16,
+    "model_concurrency_per_array": 8,
+    "native_and_z3_timing_timeout_seconds": 15,
+    "yices_and_opensmt_timing_timeout_seconds": 15,
+    "termination_grace_seconds": 2,
+    "native_model_timeout_seconds": 60,
+    "reference_model_timeout_seconds": 90,
+    "dolmen_timeout_seconds": 30,
+    "dolmen_size": "2G",
+    "dolmen_args": [
+      "--strict=false"
+    ],
+    "native_model_args": [
+      "--quiet",
+      "--stats",
+      "--check-model",
+      "--lra-call-profile",
+      "PER_SHARD_TRACE"
+    ],
+    "timing_end_cluster_time": "2026-10-30T20:45:39",
+    "model_start_cluster_time": "2026-10-30T20:45:39",
+    "stages_ordered": true,
+    "final_binary_identities_unchanged": true,
+    "jobs": {
+      "extract": "280861",
+      "collect": "280893",
+      "fresh": "280894",
+      "references": "280895",
+      "models": "280896",
+      "reference-models": "280897",
+      "z3-models": "280898",
+      "qualify_superseded": "280899",
+      "qualify_without_label_proof": "280900",
+      "label-models": "281120",
+      "qualify": "281121"
+    },
+    "submissions": {
+      "extract": {
+        "id": "280861",
+        "command": [
+          "sbatch",
+          "--parsable",
+          "--partition=compute",
+          "--nodelist=node-09",
+          "--array=0-31%16",
+          "--hint=nomultithread",
+          "--cpus-per-task=1",
+          "--mem=8G",
+          "--time=00:30:00",
+          "--job-name=lra-case-extract",
+          "--chdir=${WORKSPACE}",
+          "--output=${WORKSPACE}/slurm_logs/%x-%A_%a.out",
+          "--error=${WORKSPACE}/slurm_logs/%x-%A_%a.err",
+          "--export=ALL,PRIMO_WORKDIR=${WORKSPACE},PRIMO_CMAKE_DIR=${CMAKE_BIN},PRIMO_EXPECTED_GIT=d4944eb,PRIMO_CALL_JOB_ARTIFACTS=${WORKSPACE}/tmp/case-study-job-artifacts,PRIMO_CALL_SHARDS=32,PRIMO_CALL_TIMEOUT=5,PRIMO_CALL_OUT=${WORKSPACE}/results/lra-case-study-1000-20261030/extract,PRIMO_CALL_PHASE=extract,PRIMO_CALL_ROOT=${WORKSPACE}/sandbox/non-incremental/QF_LRA,PRIMO_CALL_MANIFEST=${WORKSPACE}/tmp/case-study-job-artifacts/qf-lra-case-study-sources.txt,PRIMO_CALL_MIN_PIVOTS=32,PRIMO_CALL_EXPORT_LIMIT=64",
+          "${WORKSPACE}/tmp/case-study-job-artifacts/slurm_lra_call_ablation.sbatch"
+        ]
+      },
+      "collect": {
+        "id": "280893",
+        "command": [
+          "sbatch",
+          "--parsable",
+          "--partition=compute",
+          "--nodelist=node-09",
+          "--hint=nomultithread",
+          "--cpus-per-task=1",
+          "--mem=8G",
+          "--time=00:30:00",
+          "--job-name=lra-case-collect",
+          "--chdir=${WORKSPACE}",
+          "--output=${WORKSPACE}/slurm_logs/%x-%A_%a.out",
+          "--error=${WORKSPACE}/slurm_logs/%x-%A_%a.err",
+          "--dependency=afterok:280861",
+          "--export=ALL,PRIMO_WORKDIR=${WORKSPACE},PRIMO_CMAKE_DIR=${CMAKE_BIN},PRIMO_EXPECTED_GIT=d4944eb,PRIMO_CALL_JOB_ARTIFACTS=${WORKSPACE}/tmp/case-study-job-artifacts,PRIMO_CASE_ARTIFACTS=${WORKSPACE}/tmp/case-study-job-artifacts,PRIMO_CASE_RESULTS=${WORKSPACE}/results/lra-case-study-1000-20261030,PRIMO_CASE_CORPUS=${WORKSPACE}/results/lra-case-study-1000-20261030/selected,PRIMO_CASE_PHASE=collect",
+          "${WORKSPACE}/tmp/case-study-job-artifacts/case_study.sbatch"
+        ]
+      },
+      "fresh": {
+        "id": "280894",
+        "command": [
+          "sbatch",
+          "--parsable",
+          "--partition=compute",
+          "--nodelist=node-09",
+          "--hint=nomultithread",
+          "--cpus-per-task=1",
+          "--mem=8G",
+          "--time=00:30:00",
+          "--job-name=lra-case-fresh",
+          "--chdir=${WORKSPACE}",
+          "--output=${WORKSPACE}/slurm_logs/%x-%A_%a.out",
+          "--error=${WORKSPACE}/slurm_logs/%x-%A_%a.err",
+          "--dependency=afterok:280893",
+          "--export=ALL,PRIMO_WORKDIR=${WORKSPACE},PRIMO_CMAKE_DIR=${CMAKE_BIN},PRIMO_EXPECTED_GIT=d4944eb,PRIMO_CALL_JOB_ARTIFACTS=${WORKSPACE}/tmp/case-study-job-artifacts,PRIMO_CASE_ARTIFACTS=${WORKSPACE}/tmp/case-study-job-artifacts,PRIMO_CASE_RESULTS=${WORKSPACE}/results/lra-case-study-1000-20261030,PRIMO_CASE_CORPUS=${WORKSPACE}/results/lra-case-study-1000-20261030/selected,PRIMO_CASE_PHASE=fresh,PRIMO_CALL_PHASE=profile,PRIMO_CALL_OUT=${WORKSPACE}/results/lra-case-study-1000-20261030/fresh,PRIMO_CALL_ROOT=${WORKSPACE}/results/lra-case-study-1000-20261030/selected,PRIMO_CALL_MANIFEST=${WORKSPACE}/results/lra-case-study-1000-20261030/selected/manifest.txt,PRIMO_CALL_EXPECTED_STATUSES=${WORKSPACE}/results/lra-case-study-1000-20261030/selected/expected-statuses.json,PRIMO_CALL_SHARDS=32,PRIMO_CALL_TIMEOUT=15",
+          "--array=0-31%16",
+          "${WORKSPACE}/tmp/case-study-job-artifacts/slurm_lra_call_ablation.sbatch"
+        ]
+      },
+      "references": {
+        "id": "280895",
+        "command": [
+          "sbatch",
+          "--parsable",
+          "--partition=compute",
+          "--nodelist=node-09",
+          "--hint=nomultithread",
+          "--cpus-per-task=1",
+          "--mem=8G",
+          "--time=00:30:00",
+          "--job-name=lra-case-references",
+          "--chdir=${WORKSPACE}",
+          "--output=${WORKSPACE}/slurm_logs/%x-%A_%a.out",
+          "--error=${WORKSPACE}/slurm_logs/%x-%A_%a.err",
+          "--dependency=afterok:280894",
+          "--export=ALL,PRIMO_WORKDIR=${WORKSPACE},PRIMO_CMAKE_DIR=${CMAKE_BIN},PRIMO_EXPECTED_GIT=d4944eb,PRIMO_CALL_JOB_ARTIFACTS=${WORKSPACE}/tmp/case-study-job-artifacts,PRIMO_CASE_ARTIFACTS=${WORKSPACE}/tmp/case-study-job-artifacts,PRIMO_CASE_RESULTS=${WORKSPACE}/results/lra-case-study-1000-20261030,PRIMO_CASE_CORPUS=${WORKSPACE}/results/lra-case-study-1000-20261030/selected,PRIMO_CASE_PHASE=references",
+          "--array=0-63%16",
+          "${WORKSPACE}/tmp/case-study-job-artifacts/case_study.sbatch"
+        ]
+      },
+      "models": {
+        "id": "280896",
+        "command": [
+          "sbatch",
+          "--parsable",
+          "--partition=compute",
+          "--nodelist=node-09",
+          "--hint=nomultithread",
+          "--cpus-per-task=1",
+          "--mem=8G",
+          "--time=00:30:00",
+          "--job-name=lra-case-models",
+          "--chdir=${WORKSPACE}",
+          "--output=${WORKSPACE}/slurm_logs/%x-%A_%a.out",
+          "--error=${WORKSPACE}/slurm_logs/%x-%A_%a.err",
+          "--dependency=afterok:280895",
+          "--export=ALL,PRIMO_WORKDIR=${WORKSPACE},PRIMO_CMAKE_DIR=${CMAKE_BIN},PRIMO_EXPECTED_GIT=d4944eb,PRIMO_CALL_JOB_ARTIFACTS=${WORKSPACE}/tmp/case-study-job-artifacts,PRIMO_CASE_ARTIFACTS=${WORKSPACE}/tmp/case-study-job-artifacts,PRIMO_CASE_RESULTS=${WORKSPACE}/results/lra-case-study-1000-20261030,PRIMO_CASE_CORPUS=${WORKSPACE}/results/lra-case-study-1000-20261030/selected,PRIMO_CASE_PHASE=models,PRIMO_CALL_PHASE=models,PRIMO_CALL_OUT=${WORKSPACE}/results/lra-case-study-1000-20261030/models,PRIMO_CALL_PARENT_OUT=${WORKSPACE}/results/lra-case-study-1000-20261030/fresh",
+          "--array=0-31%8",
+          "${WORKSPACE}/tmp/case-study-job-artifacts/slurm_lra_call_ablation.sbatch"
+        ]
+      },
+      "reference-models": {
+        "id": "280897",
+        "command": [
+          "sbatch",
+          "--parsable",
+          "--partition=compute",
+          "--nodelist=node-09",
+          "--hint=nomultithread",
+          "--cpus-per-task=1",
+          "--mem=8G",
+          "--time=00:30:00",
+          "--job-name=lra-case-reference-models",
+          "--chdir=${WORKSPACE}",
+          "--output=${WORKSPACE}/slurm_logs/%x-%A_%a.out",
+          "--error=${WORKSPACE}/slurm_logs/%x-%A_%a.err",
+          "--dependency=afterok:280895",
+          "--export=ALL,PRIMO_WORKDIR=${WORKSPACE},PRIMO_CMAKE_DIR=${CMAKE_BIN},PRIMO_EXPECTED_GIT=d4944eb,PRIMO_CALL_JOB_ARTIFACTS=${WORKSPACE}/tmp/case-study-job-artifacts,PRIMO_CASE_ARTIFACTS=${WORKSPACE}/tmp/case-study-job-artifacts,PRIMO_CASE_RESULTS=${WORKSPACE}/results/lra-case-study-1000-20261030,PRIMO_CASE_CORPUS=${WORKSPACE}/results/lra-case-study-1000-20261030/selected,PRIMO_CASE_PHASE=reference-models",
+          "--array=0-63%8",
+          "${WORKSPACE}/tmp/case-study-job-artifacts/case_study.sbatch"
+        ]
+      },
+      "z3-models": {
+        "id": "280898",
+        "command": [
+          "sbatch",
+          "--parsable",
+          "--partition=compute",
+          "--nodelist=node-09",
+          "--hint=nomultithread",
+          "--cpus-per-task=1",
+          "--mem=8G",
+          "--time=00:30:00",
+          "--job-name=lra-case-z3-models",
+          "--chdir=${WORKSPACE}",
+          "--output=${WORKSPACE}/slurm_logs/%x-%A_%a.out",
+          "--error=${WORKSPACE}/slurm_logs/%x-%A_%a.err",
+          "--dependency=afterok:280895",
+          "--export=ALL,PRIMO_WORKDIR=${WORKSPACE},PRIMO_CMAKE_DIR=${CMAKE_BIN},PRIMO_EXPECTED_GIT=d4944eb,PRIMO_CALL_JOB_ARTIFACTS=${WORKSPACE}/tmp/case-study-job-artifacts,PRIMO_CASE_ARTIFACTS=${WORKSPACE}/tmp/case-study-job-artifacts,PRIMO_CASE_RESULTS=${WORKSPACE}/results/lra-case-study-1000-20261030,PRIMO_CASE_CORPUS=${WORKSPACE}/results/lra-case-study-1000-20261030/selected,PRIMO_CASE_PHASE=z3-models,PRIMO_CALL_PHASE=reference-models,PRIMO_CALL_OUT=${WORKSPACE}/results/lra-case-study-1000-20261030/z3-models,PRIMO_CALL_PARENT_OUT=${WORKSPACE}/results/lra-case-study-1000-20261030/fresh",
+          "--array=0-31%8",
+          "${WORKSPACE}/tmp/case-study-job-artifacts/slurm_lra_call_ablation.sbatch"
+        ]
+      },
+      "qualify_superseded": {
+        "id": "280899",
+        "command": [
+          "sbatch",
+          "--parsable",
+          "--partition=compute",
+          "--nodelist=node-09",
+          "--hint=nomultithread",
+          "--cpus-per-task=1",
+          "--mem=8G",
+          "--time=00:30:00",
+          "--job-name=lra-case-qualify",
+          "--chdir=${WORKSPACE}",
+          "--output=${WORKSPACE}/slurm_logs/%x-%A_%a.out",
+          "--error=${WORKSPACE}/slurm_logs/%x-%A_%a.err",
+          "--dependency=afterok:280896:280897:280898",
+          "--export=ALL,PRIMO_WORKDIR=${WORKSPACE},PRIMO_CMAKE_DIR=${CMAKE_BIN},PRIMO_EXPECTED_GIT=d4944eb,PRIMO_CALL_JOB_ARTIFACTS=${WORKSPACE}/tmp/case-study-job-artifacts,PRIMO_CASE_ARTIFACTS=${WORKSPACE}/tmp/case-study-job-artifacts,PRIMO_CASE_RESULTS=${WORKSPACE}/results/lra-case-study-1000-20261030,PRIMO_CASE_CORPUS=${WORKSPACE}/results/lra-case-study-1000-20261030/selected,PRIMO_CASE_PHASE=qualify",
+          "${WORKSPACE}/tmp/case-study-job-artifacts/qualify_case_study.sbatch"
+        ],
+        "reason": "Queued wrapper snapshot lacked later required tool-identities argument. Canceled before execution; replaced with current committed wrapper."
+      },
+      "qualify_without_label_proof": {
+        "id": "280900",
+        "command": [
+          "sbatch",
+          "--parsable",
+          "--partition=compute",
+          "--nodelist=node-09",
+          "--hint=nomultithread",
+          "--cpus-per-task=1",
+          "--mem=8G",
+          "--time=00:30:00",
+          "--job-name=lra-case-qualify",
+          "--chdir=${WORKSPACE}",
+          "--output=${WORKSPACE}/slurm_logs/%x-%A_%a.out",
+          "--error=${WORKSPACE}/slurm_logs/%x-%A_%a.err",
+          "--dependency=afterok:280896:280897:280898",
+          "--export=ALL,PRIMO_WORKDIR=${WORKSPACE},PRIMO_CMAKE_DIR=${CMAKE_BIN},PRIMO_EXPECTED_GIT=d4944eb,PRIMO_CALL_JOB_ARTIFACTS=${WORKSPACE}/tmp/case-study-job-artifacts,PRIMO_CASE_ARTIFACTS=${WORKSPACE}/tmp/case-study-job-artifacts,PRIMO_CASE_RESULTS=${WORKSPACE}/results/lra-case-study-1000-20261030,PRIMO_CASE_CORPUS=${WORKSPACE}/results/lra-case-study-1000-20261030/selected,PRIMO_CASE_PHASE=qualify",
+          "${WORKSPACE}/tmp/case-study-job-artifacts/qualify_case_study.sbatch"
+        ],
+        "reason": "Short timings left one known-SAT label without a fresh model proof. Artifact audit was canceled; supplementary model stage and a dependent audit replace it. Timing rows unchanged."
+      },
+      "label-models": {
+        "id": "281120",
+        "command": [
+          "sbatch",
+          "--parsable",
+          "--partition=compute",
+          "--nodelist=node-09",
+          "--hint=nomultithread",
+          "--cpus-per-task=1",
+          "--mem=8G",
+          "--time=00:30:00",
+          "--job-name=lra-case-label-models",
+          "--chdir=${WORKSPACE}",
+          "--output=${WORKSPACE}/slurm_logs/%x-%A_%a.out",
+          "--error=${WORKSPACE}/slurm_logs/%x-%A_%a.err",
+          "--dependency=afterok:280895",
+          "--export=ALL,PRIMO_WORKDIR=${WORKSPACE},PRIMO_CMAKE_DIR=${CMAKE_BIN},PRIMO_EXPECTED_GIT=d4944eb,PRIMO_CALL_JOB_ARTIFACTS=${WORKSPACE}/tmp/case-study-job-artifacts,PRIMO_CASE_ARTIFACTS=${WORKSPACE}/tmp/case-study-job-artifacts,PRIMO_CASE_RESULTS=${WORKSPACE}/results/lra-case-study-1000-20261030,PRIMO_CASE_CORPUS=${WORKSPACE}/results/lra-case-study-1000-20261030/selected,PRIMO_CASE_PHASE=label-models,PRIMO_CASE_LABEL_MANIFEST=${WORKSPACE}/results/lra-case-study-1000-20261030/label-models-manifest.txt",
+          "${WORKSPACE}/tmp/case-study-job-artifacts/label_models.sbatch"
+        ]
+      },
+      "qualify": {
+        "id": "281121",
+        "command": [
+          "sbatch",
+          "--parsable",
+          "--partition=compute",
+          "--nodelist=node-09",
+          "--hint=nomultithread",
+          "--cpus-per-task=1",
+          "--mem=8G",
+          "--time=00:30:00",
+          "--job-name=lra-case-qualify",
+          "--chdir=${WORKSPACE}",
+          "--output=${WORKSPACE}/slurm_logs/%x-%A_%a.out",
+          "--error=${WORKSPACE}/slurm_logs/%x-%A_%a.err",
+          "--dependency=afterok:280896:280897:280898:281120",
+          "--export=ALL,PRIMO_WORKDIR=${WORKSPACE},PRIMO_CMAKE_DIR=${CMAKE_BIN},PRIMO_EXPECTED_GIT=d4944eb,PRIMO_CALL_JOB_ARTIFACTS=${WORKSPACE}/tmp/case-study-job-artifacts,PRIMO_CASE_ARTIFACTS=${WORKSPACE}/tmp/case-study-job-artifacts,PRIMO_CASE_RESULTS=${WORKSPACE}/results/lra-case-study-1000-20261030,PRIMO_CASE_CORPUS=${WORKSPACE}/results/lra-case-study-1000-20261030/selected,PRIMO_CASE_PHASE=qualify",
+          "${WORKSPACE}/tmp/case-study-job-artifacts/qualify_case_study.sbatch"
+        ]
+      }
+    },
+    "accounting": [
+      {
+        "job": "280861_0",
+        "name": "lra-case-extract",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:21:35",
+        "end": "2026-10-30T20:25:58",
+        "elapsed": "00:04:23"
+      },
+      {
+        "job": "280861_1",
+        "name": "lra-case-extract",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:21:35",
+        "end": "2026-10-30T20:25:25",
+        "elapsed": "00:03:50"
+      },
+      {
+        "job": "280861_2",
+        "name": "lra-case-extract",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:21:35",
+        "end": "2026-10-30T20:25:13",
+        "elapsed": "00:03:38"
+      },
+      {
+        "job": "280861_3",
+        "name": "lra-case-extract",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:21:35",
+        "end": "2026-10-30T20:25:19",
+        "elapsed": "00:03:44"
+      },
+      {
+        "job": "280861_4",
+        "name": "lra-case-extract",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:21:36",
+        "end": "2026-10-30T20:25:39",
+        "elapsed": "00:04:03"
+      },
+      {
+        "job": "280861_5",
+        "name": "lra-case-extract",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:21:36",
+        "end": "2026-10-30T20:25:33",
+        "elapsed": "00:03:57"
+      },
+      {
+        "job": "280861_6",
+        "name": "lra-case-extract",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:21:36",
+        "end": "2026-10-30T20:25:19",
+        "elapsed": "00:03:43"
+      },
+      {
+        "job": "280861_7",
+        "name": "lra-case-extract",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:21:36",
+        "end": "2026-10-30T20:25:18",
+        "elapsed": "00:03:42"
+      },
+      {
+        "job": "280861_8",
+        "name": "lra-case-extract",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:21:36",
+        "end": "2026-10-30T20:25:19",
+        "elapsed": "00:03:43"
+      },
+      {
+        "job": "280861_9",
+        "name": "lra-case-extract",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:21:36",
+        "end": "2026-10-30T20:25:35",
+        "elapsed": "00:03:59"
+      },
+      {
+        "job": "280861_10",
+        "name": "lra-case-extract",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:21:36",
+        "end": "2026-10-30T20:24:52",
+        "elapsed": "00:03:16"
+      },
+      {
+        "job": "280861_11",
+        "name": "lra-case-extract",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:21:36",
+        "end": "2026-10-30T20:25:42",
+        "elapsed": "00:04:06"
+      },
+      {
+        "job": "280861_12",
+        "name": "lra-case-extract",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:21:36",
+        "end": "2026-10-30T20:25:30",
+        "elapsed": "00:03:54"
+      },
+      {
+        "job": "280861_13",
+        "name": "lra-case-extract",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:21:36",
+        "end": "2026-10-30T20:25:28",
+        "elapsed": "00:03:52"
+      },
+      {
+        "job": "280861_14",
+        "name": "lra-case-extract",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:21:36",
+        "end": "2026-10-30T20:24:55",
+        "elapsed": "00:03:19"
+      },
+      {
+        "job": "280861_15",
+        "name": "lra-case-extract",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:21:36",
+        "end": "2026-10-30T20:25:32",
+        "elapsed": "00:03:56"
+      },
+      {
+        "job": "280861_16",
+        "name": "lra-case-extract",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:24:52",
+        "end": "2026-10-30T20:29:09",
+        "elapsed": "00:04:17"
+      },
+      {
+        "job": "280861_17",
+        "name": "lra-case-extract",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:24:56",
+        "end": "2026-10-30T20:28:17",
+        "elapsed": "00:03:21"
+      },
+      {
+        "job": "280861_18",
+        "name": "lra-case-extract",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:25:13",
+        "end": "2026-10-30T20:28:05",
+        "elapsed": "00:02:52"
+      },
+      {
+        "job": "280861_19",
+        "name": "lra-case-extract",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:25:18",
+        "end": "2026-10-30T20:28:51",
+        "elapsed": "00:03:33"
+      },
+      {
+        "job": "280861_20",
+        "name": "lra-case-extract",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:25:19",
+        "end": "2026-10-30T20:28:43",
+        "elapsed": "00:03:24"
+      },
+      {
+        "job": "280861_21",
+        "name": "lra-case-extract",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:25:19",
+        "end": "2026-10-30T20:29:11",
+        "elapsed": "00:03:52"
+      },
+      {
+        "job": "280861_22",
+        "name": "lra-case-extract",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:25:19",
+        "end": "2026-10-30T20:28:37",
+        "elapsed": "00:03:18"
+      },
+      {
+        "job": "280861_23",
+        "name": "lra-case-extract",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:25:25",
+        "end": "2026-10-30T20:29:32",
+        "elapsed": "00:04:07"
+      },
+      {
+        "job": "280861_24",
+        "name": "lra-case-extract",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:25:28",
+        "end": "2026-10-30T20:29:25",
+        "elapsed": "00:03:57"
+      },
+      {
+        "job": "280861_25",
+        "name": "lra-case-extract",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:25:30",
+        "end": "2026-10-30T20:29:05",
+        "elapsed": "00:03:35"
+      },
+      {
+        "job": "280861_26",
+        "name": "lra-case-extract",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:25:32",
+        "end": "2026-10-30T20:29:03",
+        "elapsed": "00:03:31"
+      },
+      {
+        "job": "280861_27",
+        "name": "lra-case-extract",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:25:33",
+        "end": "2026-10-30T20:29:02",
+        "elapsed": "00:03:29"
+      },
+      {
+        "job": "280861_28",
+        "name": "lra-case-extract",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:25:35",
+        "end": "2026-10-30T20:29:49",
+        "elapsed": "00:04:14"
+      },
+      {
+        "job": "280861_29",
+        "name": "lra-case-extract",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:25:40",
+        "end": "2026-10-30T20:29:24",
+        "elapsed": "00:03:44"
+      },
+      {
+        "job": "280861_30",
+        "name": "lra-case-extract",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:25:42",
+        "end": "2026-10-30T20:29:42",
+        "elapsed": "00:04:00"
+      },
+      {
+        "job": "280861_31",
+        "name": "lra-case-extract",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:25:58",
+        "end": "2026-10-30T20:30:24",
+        "elapsed": "00:04:26"
+      },
+      {
+        "job": "280893",
+        "name": "lra-case-collect",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:30:24",
+        "end": "2026-10-30T20:43:10",
+        "elapsed": "00:12:46"
+      },
+      {
+        "job": "280894_0",
+        "name": "lra-case-fresh",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:43:10",
+        "end": "2026-10-30T20:43:44",
+        "elapsed": "00:00:34"
+      },
+      {
+        "job": "280894_1",
+        "name": "lra-case-fresh",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:43:10",
+        "end": "2026-10-30T20:44:06",
+        "elapsed": "00:00:56"
+      },
+      {
+        "job": "280894_2",
+        "name": "lra-case-fresh",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:43:10",
+        "end": "2026-10-30T20:43:34",
+        "elapsed": "00:00:24"
+      },
+      {
+        "job": "280894_3",
+        "name": "lra-case-fresh",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:43:10",
+        "end": "2026-10-30T20:43:41",
+        "elapsed": "00:00:31"
+      },
+      {
+        "job": "280894_4",
+        "name": "lra-case-fresh",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:43:10",
+        "end": "2026-10-30T20:43:43",
+        "elapsed": "00:00:33"
+      },
+      {
+        "job": "280894_5",
+        "name": "lra-case-fresh",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:43:10",
+        "end": "2026-10-30T20:43:38",
+        "elapsed": "00:00:28"
+      },
+      {
+        "job": "280894_6",
+        "name": "lra-case-fresh",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:43:10",
+        "end": "2026-10-30T20:43:41",
+        "elapsed": "00:00:31"
+      },
+      {
+        "job": "280894_7",
+        "name": "lra-case-fresh",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:43:10",
+        "end": "2026-10-30T20:43:57",
+        "elapsed": "00:00:47"
+      },
+      {
+        "job": "280894_8",
+        "name": "lra-case-fresh",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:43:10",
+        "end": "2026-10-30T20:43:31",
+        "elapsed": "00:00:21"
+      },
+      {
+        "job": "280894_9",
+        "name": "lra-case-fresh",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:43:10",
+        "end": "2026-10-30T20:44:57",
+        "elapsed": "00:01:47"
+      },
+      {
+        "job": "280894_10",
+        "name": "lra-case-fresh",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:43:10",
+        "end": "2026-10-30T20:43:32",
+        "elapsed": "00:00:22"
+      },
+      {
+        "job": "280894_11",
+        "name": "lra-case-fresh",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:43:10",
+        "end": "2026-10-30T20:44:04",
+        "elapsed": "00:00:54"
+      },
+      {
+        "job": "280894_12",
+        "name": "lra-case-fresh",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:43:10",
+        "end": "2026-10-30T20:43:28",
+        "elapsed": "00:00:18"
+      },
+      {
+        "job": "280894_13",
+        "name": "lra-case-fresh",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:43:10",
+        "end": "2026-10-30T20:43:28",
+        "elapsed": "00:00:18"
+      },
+      {
+        "job": "280894_14",
+        "name": "lra-case-fresh",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:43:10",
+        "end": "2026-10-30T20:44:02",
+        "elapsed": "00:00:52"
+      },
+      {
+        "job": "280894_15",
+        "name": "lra-case-fresh",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:43:10",
+        "end": "2026-10-30T20:43:26",
+        "elapsed": "00:00:16"
+      },
+      {
+        "job": "280894_16",
+        "name": "lra-case-fresh",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:43:26",
+        "end": "2026-10-30T20:43:50",
+        "elapsed": "00:00:24"
+      },
+      {
+        "job": "280894_17",
+        "name": "lra-case-fresh",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:43:28",
+        "end": "2026-10-30T20:43:39",
+        "elapsed": "00:00:11"
+      },
+      {
+        "job": "280894_18",
+        "name": "lra-case-fresh",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:43:28",
+        "end": "2026-10-30T20:44:27",
+        "elapsed": "00:00:59"
+      },
+      {
+        "job": "280894_19",
+        "name": "lra-case-fresh",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:43:31",
+        "end": "2026-10-30T20:44:29",
+        "elapsed": "00:00:58"
+      },
+      {
+        "job": "280894_20",
+        "name": "lra-case-fresh",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:43:32",
+        "end": "2026-10-30T20:43:50",
+        "elapsed": "00:00:18"
+      },
+      {
+        "job": "280894_21",
+        "name": "lra-case-fresh",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:43:34",
+        "end": "2026-10-30T20:43:49",
+        "elapsed": "00:00:15"
+      },
+      {
+        "job": "280894_22",
+        "name": "lra-case-fresh",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:43:38",
+        "end": "2026-10-30T20:43:53",
+        "elapsed": "00:00:15"
+      },
+      {
+        "job": "280894_23",
+        "name": "lra-case-fresh",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:43:39",
+        "end": "2026-10-30T20:44:27",
+        "elapsed": "00:00:48"
+      },
+      {
+        "job": "280894_24",
+        "name": "lra-case-fresh",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:43:41",
+        "end": "2026-10-30T20:44:20",
+        "elapsed": "00:00:39"
+      },
+      {
+        "job": "280894_25",
+        "name": "lra-case-fresh",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:43:41",
+        "end": "2026-10-30T20:44:25",
+        "elapsed": "00:00:44"
+      },
+      {
+        "job": "280894_26",
+        "name": "lra-case-fresh",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:43:43",
+        "end": "2026-10-30T20:44:14",
+        "elapsed": "00:00:31"
+      },
+      {
+        "job": "280894_27",
+        "name": "lra-case-fresh",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:43:44",
+        "end": "2026-10-30T20:44:18",
+        "elapsed": "00:00:34"
+      },
+      {
+        "job": "280894_28",
+        "name": "lra-case-fresh",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:43:49",
+        "end": "2026-10-30T20:44:24",
+        "elapsed": "00:00:35"
+      },
+      {
+        "job": "280894_29",
+        "name": "lra-case-fresh",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:43:50",
+        "end": "2026-10-30T20:44:47",
+        "elapsed": "00:00:57"
+      },
+      {
+        "job": "280894_30",
+        "name": "lra-case-fresh",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:43:50",
+        "end": "2026-10-30T20:44:09",
+        "elapsed": "00:00:19"
+      },
+      {
+        "job": "280894_31",
+        "name": "lra-case-fresh",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:43:53",
+        "end": "2026-10-30T20:44:19",
+        "elapsed": "00:00:26"
+      },
+      {
+        "job": "280895_0",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:44:57",
+        "end": "2026-10-30T20:45:00",
+        "elapsed": "00:00:03"
+      },
+      {
+        "job": "280895_1",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:44:57",
+        "end": "2026-10-30T20:45:00",
+        "elapsed": "00:00:03"
+      },
+      {
+        "job": "280895_2",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:44:57",
+        "end": "2026-10-30T20:45:01",
+        "elapsed": "00:00:04"
+      },
+      {
+        "job": "280895_3",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:44:57",
+        "end": "2026-10-30T20:45:00",
+        "elapsed": "00:00:03"
+      },
+      {
+        "job": "280895_4",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:44:57",
+        "end": "2026-10-30T20:45:02",
+        "elapsed": "00:00:05"
+      },
+      {
+        "job": "280895_5",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:44:57",
+        "end": "2026-10-30T20:45:00",
+        "elapsed": "00:00:03"
+      },
+      {
+        "job": "280895_6",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:44:57",
+        "end": "2026-10-30T20:45:00",
+        "elapsed": "00:00:03"
+      },
+      {
+        "job": "280895_7",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:44:57",
+        "end": "2026-10-30T20:45:00",
+        "elapsed": "00:00:03"
+      },
+      {
+        "job": "280895_8",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:44:57",
+        "end": "2026-10-30T20:45:00",
+        "elapsed": "00:00:03"
+      },
+      {
+        "job": "280895_9",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:44:57",
+        "end": "2026-10-30T20:45:18",
+        "elapsed": "00:00:21"
+      },
+      {
+        "job": "280895_10",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:44:57",
+        "end": "2026-10-30T20:45:00",
+        "elapsed": "00:00:03"
+      },
+      {
+        "job": "280895_11",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:44:57",
+        "end": "2026-10-30T20:45:00",
+        "elapsed": "00:00:03"
+      },
+      {
+        "job": "280895_12",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:44:57",
+        "end": "2026-10-30T20:45:00",
+        "elapsed": "00:00:03"
+      },
+      {
+        "job": "280895_13",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:44:57",
+        "end": "2026-10-30T20:45:00",
+        "elapsed": "00:00:03"
+      },
+      {
+        "job": "280895_14",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:44:57",
+        "end": "2026-10-30T20:45:00",
+        "elapsed": "00:00:03"
+      },
+      {
+        "job": "280895_15",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:44:57",
+        "end": "2026-10-30T20:45:00",
+        "elapsed": "00:00:03"
+      },
+      {
+        "job": "280895_16",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:00",
+        "end": "2026-10-30T20:45:01",
+        "elapsed": "00:00:01"
+      },
+      {
+        "job": "280895_17",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:00",
+        "end": "2026-10-30T20:45:01",
+        "elapsed": "00:00:01"
+      },
+      {
+        "job": "280895_18",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:00",
+        "end": "2026-10-30T20:45:03",
+        "elapsed": "00:00:03"
+      },
+      {
+        "job": "280895_19",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:00",
+        "end": "2026-10-30T20:45:17",
+        "elapsed": "00:00:17"
+      },
+      {
+        "job": "280895_20",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:00",
+        "end": "2026-10-30T20:45:02",
+        "elapsed": "00:00:02"
+      },
+      {
+        "job": "280895_21",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:00",
+        "end": "2026-10-30T20:45:01",
+        "elapsed": "00:00:01"
+      },
+      {
+        "job": "280895_22",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:00",
+        "end": "2026-10-30T20:45:01",
+        "elapsed": "00:00:01"
+      },
+      {
+        "job": "280895_23",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:00",
+        "end": "2026-10-30T20:45:02",
+        "elapsed": "00:00:02"
+      },
+      {
+        "job": "280895_24",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:00",
+        "end": "2026-10-30T20:45:02",
+        "elapsed": "00:00:02"
+      },
+      {
+        "job": "280895_25",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:00",
+        "end": "2026-10-30T20:45:02",
+        "elapsed": "00:00:02"
+      },
+      {
+        "job": "280895_26",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:00",
+        "end": "2026-10-30T20:45:02",
+        "elapsed": "00:00:02"
+      },
+      {
+        "job": "280895_27",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:00",
+        "end": "2026-10-30T20:45:15",
+        "elapsed": "00:00:15"
+      },
+      {
+        "job": "280895_28",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:00",
+        "end": "2026-10-30T20:45:02",
+        "elapsed": "00:00:02"
+      },
+      {
+        "job": "280895_29",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:01",
+        "end": "2026-10-30T20:45:05",
+        "elapsed": "00:00:04"
+      },
+      {
+        "job": "280895_30",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:01",
+        "end": "2026-10-30T20:45:03",
+        "elapsed": "00:00:02"
+      },
+      {
+        "job": "280895_31",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:01",
+        "end": "2026-10-30T20:45:03",
+        "elapsed": "00:00:02"
+      },
+      {
+        "job": "280895_32",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:01",
+        "end": "2026-10-30T20:45:11",
+        "elapsed": "00:00:10"
+      },
+      {
+        "job": "280895_33",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:01",
+        "end": "2026-10-30T20:45:09",
+        "elapsed": "00:00:08"
+      },
+      {
+        "job": "280895_34",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:02",
+        "end": "2026-10-30T20:45:08",
+        "elapsed": "00:00:06"
+      },
+      {
+        "job": "280895_35",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:02",
+        "end": "2026-10-30T20:45:08",
+        "elapsed": "00:00:06"
+      },
+      {
+        "job": "280895_36",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:02",
+        "end": "2026-10-30T20:45:20",
+        "elapsed": "00:00:18"
+      },
+      {
+        "job": "280895_37",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:02",
+        "end": "2026-10-30T20:45:09",
+        "elapsed": "00:00:07"
+      },
+      {
+        "job": "280895_38",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:02",
+        "end": "2026-10-30T20:45:09",
+        "elapsed": "00:00:07"
+      },
+      {
+        "job": "280895_39",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:02",
+        "end": "2026-10-30T20:45:07",
+        "elapsed": "00:00:05"
+      },
+      {
+        "job": "280895_40",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:02",
+        "end": "2026-10-30T20:45:09",
+        "elapsed": "00:00:07"
+      },
+      {
+        "job": "280895_41",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:03",
+        "end": "2026-10-30T20:45:39",
+        "elapsed": "00:00:36"
+      },
+      {
+        "job": "280895_42",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:03",
+        "end": "2026-10-30T20:45:09",
+        "elapsed": "00:00:06"
+      },
+      {
+        "job": "280895_43",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:03",
+        "end": "2026-10-30T20:45:13",
+        "elapsed": "00:00:10"
+      },
+      {
+        "job": "280895_44",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:05",
+        "end": "2026-10-30T20:45:11",
+        "elapsed": "00:00:06"
+      },
+      {
+        "job": "280895_45",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:07",
+        "end": "2026-10-30T20:45:13",
+        "elapsed": "00:00:06"
+      },
+      {
+        "job": "280895_46",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:08",
+        "end": "2026-10-30T20:45:16",
+        "elapsed": "00:00:08"
+      },
+      {
+        "job": "280895_47",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:08",
+        "end": "2026-10-30T20:45:13",
+        "elapsed": "00:00:05"
+      },
+      {
+        "job": "280895_48",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:09",
+        "end": "2026-10-30T20:45:15",
+        "elapsed": "00:00:06"
+      },
+      {
+        "job": "280895_49",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:09",
+        "end": "2026-10-30T20:45:13",
+        "elapsed": "00:00:04"
+      },
+      {
+        "job": "280895_50",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:09",
+        "end": "2026-10-30T20:45:31",
+        "elapsed": "00:00:22"
+      },
+      {
+        "job": "280895_51",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:09",
+        "end": "2026-10-30T20:45:30",
+        "elapsed": "00:00:21"
+      },
+      {
+        "job": "280895_52",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:09",
+        "end": "2026-10-30T20:45:15",
+        "elapsed": "00:00:06"
+      },
+      {
+        "job": "280895_53",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:11",
+        "end": "2026-10-30T20:45:15",
+        "elapsed": "00:00:04"
+      },
+      {
+        "job": "280895_54",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:11",
+        "end": "2026-10-30T20:45:17",
+        "elapsed": "00:00:06"
+      },
+      {
+        "job": "280895_55",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:13",
+        "end": "2026-10-30T20:45:24",
+        "elapsed": "00:00:11"
+      },
+      {
+        "job": "280895_56",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:13",
+        "end": "2026-10-30T20:45:22",
+        "elapsed": "00:00:09"
+      },
+      {
+        "job": "280895_57",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:13",
+        "end": "2026-10-30T20:45:22",
+        "elapsed": "00:00:09"
+      },
+      {
+        "job": "280895_58",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:13",
+        "end": "2026-10-30T20:45:21",
+        "elapsed": "00:00:08"
+      },
+      {
+        "job": "280895_59",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:15",
+        "end": "2026-10-30T20:45:22",
+        "elapsed": "00:00:07"
+      },
+      {
+        "job": "280895_60",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:15",
+        "end": "2026-10-30T20:45:22",
+        "elapsed": "00:00:07"
+      },
+      {
+        "job": "280895_61",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:15",
+        "end": "2026-10-30T20:45:37",
+        "elapsed": "00:00:22"
+      },
+      {
+        "job": "280895_62",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:15",
+        "end": "2026-10-30T20:45:22",
+        "elapsed": "00:00:07"
+      },
+      {
+        "job": "280895_63",
+        "name": "lra-case-references",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:16",
+        "end": "2026-10-30T20:45:23",
+        "elapsed": "00:00:07"
+      },
+      {
+        "job": "280896_0",
+        "name": "lra-case-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:39",
+        "end": "2026-10-30T20:45:55",
+        "elapsed": "00:00:16"
+      },
+      {
+        "job": "280896_1",
+        "name": "lra-case-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:39",
+        "end": "2026-10-30T20:45:50",
+        "elapsed": "00:00:11"
+      },
+      {
+        "job": "280896_2",
+        "name": "lra-case-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:39",
+        "end": "2026-10-30T20:45:59",
+        "elapsed": "00:00:20"
+      },
+      {
+        "job": "280896_3",
+        "name": "lra-case-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:39",
+        "end": "2026-10-30T20:45:52",
+        "elapsed": "00:00:13"
+      },
+      {
+        "job": "280896_4",
+        "name": "lra-case-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:39",
+        "end": "2026-10-30T20:45:53",
+        "elapsed": "00:00:14"
+      },
+      {
+        "job": "280896_5",
+        "name": "lra-case-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:39",
+        "end": "2026-10-30T20:46:05",
+        "elapsed": "00:00:26"
+      },
+      {
+        "job": "280896_6",
+        "name": "lra-case-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:39",
+        "end": "2026-10-30T20:46:02",
+        "elapsed": "00:00:23"
+      },
+      {
+        "job": "280896_7",
+        "name": "lra-case-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:39",
+        "end": "2026-10-30T20:45:55",
+        "elapsed": "00:00:16"
+      },
+      {
+        "job": "280896_8",
+        "name": "lra-case-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:50",
+        "end": "2026-10-30T20:46:09",
+        "elapsed": "00:00:19"
+      },
+      {
+        "job": "280896_9",
+        "name": "lra-case-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:52",
+        "end": "2026-10-30T20:46:21",
+        "elapsed": "00:00:29"
+      },
+      {
+        "job": "280896_10",
+        "name": "lra-case-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:54",
+        "end": "2026-10-30T20:46:15",
+        "elapsed": "00:00:21"
+      },
+      {
+        "job": "280896_11",
+        "name": "lra-case-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:55",
+        "end": "2026-10-30T20:46:39",
+        "elapsed": "00:00:44"
+      },
+      {
+        "job": "280896_12",
+        "name": "lra-case-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:55",
+        "end": "2026-10-30T20:46:10",
+        "elapsed": "00:00:15"
+      },
+      {
+        "job": "280896_13",
+        "name": "lra-case-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:59",
+        "end": "2026-10-30T20:46:09",
+        "elapsed": "00:00:10"
+      },
+      {
+        "job": "280896_14",
+        "name": "lra-case-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:02",
+        "end": "2026-10-30T20:46:12",
+        "elapsed": "00:00:10"
+      },
+      {
+        "job": "280896_15",
+        "name": "lra-case-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:05",
+        "end": "2026-10-30T20:46:11",
+        "elapsed": "00:00:06"
+      },
+      {
+        "job": "280896_16",
+        "name": "lra-case-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:09",
+        "end": "2026-10-30T20:46:30",
+        "elapsed": "00:00:21"
+      },
+      {
+        "job": "280896_17",
+        "name": "lra-case-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:09",
+        "end": "2026-10-30T20:46:17",
+        "elapsed": "00:00:08"
+      },
+      {
+        "job": "280896_18",
+        "name": "lra-case-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:10",
+        "end": "2026-10-30T20:46:52",
+        "elapsed": "00:00:42"
+      },
+      {
+        "job": "280896_19",
+        "name": "lra-case-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:11",
+        "end": "2026-10-30T20:46:39",
+        "elapsed": "00:00:28"
+      },
+      {
+        "job": "280896_20",
+        "name": "lra-case-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:12",
+        "end": "2026-10-30T20:46:20",
+        "elapsed": "00:00:08"
+      },
+      {
+        "job": "280896_21",
+        "name": "lra-case-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:15",
+        "end": "2026-10-30T20:46:29",
+        "elapsed": "00:00:14"
+      },
+      {
+        "job": "280896_22",
+        "name": "lra-case-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:17",
+        "end": "2026-10-30T20:46:28",
+        "elapsed": "00:00:11"
+      },
+      {
+        "job": "280896_23",
+        "name": "lra-case-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:20",
+        "end": "2026-10-30T20:46:38",
+        "elapsed": "00:00:18"
+      },
+      {
+        "job": "280896_24",
+        "name": "lra-case-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:21",
+        "end": "2026-10-30T20:46:33",
+        "elapsed": "00:00:12"
+      },
+      {
+        "job": "280896_25",
+        "name": "lra-case-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:28",
+        "end": "2026-10-30T20:46:39",
+        "elapsed": "00:00:11"
+      },
+      {
+        "job": "280896_26",
+        "name": "lra-case-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:29",
+        "end": "2026-10-30T20:46:51",
+        "elapsed": "00:00:22"
+      },
+      {
+        "job": "280896_27",
+        "name": "lra-case-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:30",
+        "end": "2026-10-30T20:46:50",
+        "elapsed": "00:00:20"
+      },
+      {
+        "job": "280896_28",
+        "name": "lra-case-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:33",
+        "end": "2026-10-30T20:46:47",
+        "elapsed": "00:00:14"
+      },
+      {
+        "job": "280896_29",
+        "name": "lra-case-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:38",
+        "end": "2026-10-30T20:47:14",
+        "elapsed": "00:00:36"
+      },
+      {
+        "job": "280896_30",
+        "name": "lra-case-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:39",
+        "end": "2026-10-30T20:46:56",
+        "elapsed": "00:00:17"
+      },
+      {
+        "job": "280896_31",
+        "name": "lra-case-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:39",
+        "end": "2026-10-30T20:47:04",
+        "elapsed": "00:00:25"
+      },
+      {
+        "job": "280897_0",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:39",
+        "end": "2026-10-30T20:45:48",
+        "elapsed": "00:00:09"
+      },
+      {
+        "job": "280897_1",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:39",
+        "end": "2026-10-30T20:45:47",
+        "elapsed": "00:00:08"
+      },
+      {
+        "job": "280897_2",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:39",
+        "end": "2026-10-30T20:45:51",
+        "elapsed": "00:00:12"
+      },
+      {
+        "job": "280897_3",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:39",
+        "end": "2026-10-30T20:45:48",
+        "elapsed": "00:00:09"
+      },
+      {
+        "job": "280897_4",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:39",
+        "end": "2026-10-30T20:45:47",
+        "elapsed": "00:00:08"
+      },
+      {
+        "job": "280897_5",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:39",
+        "end": "2026-10-30T20:45:50",
+        "elapsed": "00:00:11"
+      },
+      {
+        "job": "280897_6",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:39",
+        "end": "2026-10-30T20:45:50",
+        "elapsed": "00:00:11"
+      },
+      {
+        "job": "280897_7",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:39",
+        "end": "2026-10-30T20:45:47",
+        "elapsed": "00:00:08"
+      },
+      {
+        "job": "280897_8",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:47",
+        "end": "2026-10-30T20:45:57",
+        "elapsed": "00:00:10"
+      },
+      {
+        "job": "280897_9",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:47",
+        "end": "2026-10-30T20:46:00",
+        "elapsed": "00:00:13"
+      },
+      {
+        "job": "280897_10",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:47",
+        "end": "2026-10-30T20:45:59",
+        "elapsed": "00:00:12"
+      },
+      {
+        "job": "280897_11",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:48",
+        "end": "2026-10-30T20:46:08",
+        "elapsed": "00:00:20"
+      },
+      {
+        "job": "280897_12",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:48",
+        "end": "2026-10-30T20:45:57",
+        "elapsed": "00:00:09"
+      },
+      {
+        "job": "280897_13",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:50",
+        "end": "2026-10-30T20:45:57",
+        "elapsed": "00:00:07"
+      },
+      {
+        "job": "280897_14",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:50",
+        "end": "2026-10-30T20:45:57",
+        "elapsed": "00:00:07"
+      },
+      {
+        "job": "280897_15",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:51",
+        "end": "2026-10-30T20:45:54",
+        "elapsed": "00:00:03"
+      },
+      {
+        "job": "280897_16",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:54",
+        "end": "2026-10-30T20:46:05",
+        "elapsed": "00:00:11"
+      },
+      {
+        "job": "280897_17",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:57",
+        "end": "2026-10-30T20:46:03",
+        "elapsed": "00:00:06"
+      },
+      {
+        "job": "280897_18",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:57",
+        "end": "2026-10-30T20:46:15",
+        "elapsed": "00:00:18"
+      },
+      {
+        "job": "280897_19",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:57",
+        "end": "2026-10-30T20:46:13",
+        "elapsed": "00:00:16"
+      },
+      {
+        "job": "280897_20",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:57",
+        "end": "2026-10-30T20:46:03",
+        "elapsed": "00:00:06"
+      },
+      {
+        "job": "280897_21",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:59",
+        "end": "2026-10-30T20:46:08",
+        "elapsed": "00:00:09"
+      },
+      {
+        "job": "280897_22",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:00",
+        "end": "2026-10-30T20:46:07",
+        "elapsed": "00:00:07"
+      },
+      {
+        "job": "280897_23",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:03",
+        "end": "2026-10-30T20:46:23",
+        "elapsed": "00:00:20"
+      },
+      {
+        "job": "280897_24",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:03",
+        "end": "2026-10-30T20:46:11",
+        "elapsed": "00:00:08"
+      },
+      {
+        "job": "280897_25",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:05",
+        "end": "2026-10-30T20:46:21",
+        "elapsed": "00:00:16"
+      },
+      {
+        "job": "280897_26",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:07",
+        "end": "2026-10-30T20:46:18",
+        "elapsed": "00:00:11"
+      },
+      {
+        "job": "280897_27",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:08",
+        "end": "2026-10-30T20:46:34",
+        "elapsed": "00:00:26"
+      },
+      {
+        "job": "280897_28",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:08",
+        "end": "2026-10-30T20:46:17",
+        "elapsed": "00:00:09"
+      },
+      {
+        "job": "280897_29",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:11",
+        "end": "2026-10-30T20:46:26",
+        "elapsed": "00:00:15"
+      },
+      {
+        "job": "280897_30",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:13",
+        "end": "2026-10-30T20:46:23",
+        "elapsed": "00:00:10"
+      },
+      {
+        "job": "280897_31",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:15",
+        "end": "2026-10-30T20:46:29",
+        "elapsed": "00:00:14"
+      },
+      {
+        "job": "280897_32",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:17",
+        "end": "2026-10-30T20:46:28",
+        "elapsed": "00:00:11"
+      },
+      {
+        "job": "280897_33",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:18",
+        "end": "2026-10-30T20:46:27",
+        "elapsed": "00:00:09"
+      },
+      {
+        "job": "280897_34",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:21",
+        "end": "2026-10-30T20:46:35",
+        "elapsed": "00:00:14"
+      },
+      {
+        "job": "280897_35",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:23",
+        "end": "2026-10-30T20:46:33",
+        "elapsed": "00:00:10"
+      },
+      {
+        "job": "280897_36",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:23",
+        "end": "2026-10-30T20:46:29",
+        "elapsed": "00:00:06"
+      },
+      {
+        "job": "280897_37",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:26",
+        "end": "2026-10-30T20:46:41",
+        "elapsed": "00:00:15"
+      },
+      {
+        "job": "280897_38",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:27",
+        "end": "2026-10-30T20:46:40",
+        "elapsed": "00:00:13"
+      },
+      {
+        "job": "280897_39",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:28",
+        "end": "2026-10-30T20:46:39",
+        "elapsed": "00:00:11"
+      },
+      {
+        "job": "280897_40",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:29",
+        "end": "2026-10-30T20:46:42",
+        "elapsed": "00:00:13"
+      },
+      {
+        "job": "280897_41",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:29",
+        "end": "2026-10-30T20:46:42",
+        "elapsed": "00:00:13"
+      },
+      {
+        "job": "280897_42",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:33",
+        "end": "2026-10-30T20:46:49",
+        "elapsed": "00:00:16"
+      },
+      {
+        "job": "280897_43",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:34",
+        "end": "2026-10-30T20:47:00",
+        "elapsed": "00:00:26"
+      },
+      {
+        "job": "280897_44",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:35",
+        "end": "2026-10-30T20:46:47",
+        "elapsed": "00:00:12"
+      },
+      {
+        "job": "280897_45",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:39",
+        "end": "2026-10-30T20:46:47",
+        "elapsed": "00:00:08"
+      },
+      {
+        "job": "280897_46",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:40",
+        "end": "2026-10-30T20:46:50",
+        "elapsed": "00:00:10"
+      },
+      {
+        "job": "280897_47",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:41",
+        "end": "2026-10-30T20:46:46",
+        "elapsed": "00:00:05"
+      },
+      {
+        "job": "280897_48",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:42",
+        "end": "2026-10-30T20:46:56",
+        "elapsed": "00:00:14"
+      },
+      {
+        "job": "280897_49",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:42",
+        "end": "2026-10-30T20:46:50",
+        "elapsed": "00:00:08"
+      },
+      {
+        "job": "280897_50",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:46",
+        "end": "2026-10-30T20:47:05",
+        "elapsed": "00:00:19"
+      },
+      {
+        "job": "280897_51",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:47",
+        "end": "2026-10-30T20:47:05",
+        "elapsed": "00:00:18"
+      },
+      {
+        "job": "280897_52",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:47",
+        "end": "2026-10-30T20:46:54",
+        "elapsed": "00:00:07"
+      },
+      {
+        "job": "280897_53",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:49",
+        "end": "2026-10-30T20:46:58",
+        "elapsed": "00:00:09"
+      },
+      {
+        "job": "280897_54",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:50",
+        "end": "2026-10-30T20:46:58",
+        "elapsed": "00:00:08"
+      },
+      {
+        "job": "280897_55",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:50",
+        "end": "2026-10-30T20:47:15",
+        "elapsed": "00:00:25"
+      },
+      {
+        "job": "280897_56",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:54",
+        "end": "2026-10-30T20:47:05",
+        "elapsed": "00:00:11"
+      },
+      {
+        "job": "280897_57",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:56",
+        "end": "2026-10-30T20:47:17",
+        "elapsed": "00:00:21"
+      },
+      {
+        "job": "280897_58",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:58",
+        "end": "2026-10-30T20:47:12",
+        "elapsed": "00:00:14"
+      },
+      {
+        "job": "280897_59",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:58",
+        "end": "2026-10-30T20:47:14",
+        "elapsed": "00:00:16"
+      },
+      {
+        "job": "280897_60",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:47:00",
+        "end": "2026-10-30T20:47:12",
+        "elapsed": "00:00:12"
+      },
+      {
+        "job": "280897_61",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:47:05",
+        "end": "2026-10-30T20:47:20",
+        "elapsed": "00:00:15"
+      },
+      {
+        "job": "280897_62",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:47:05",
+        "end": "2026-10-30T20:47:18",
+        "elapsed": "00:00:13"
+      },
+      {
+        "job": "280897_63",
+        "name": "lra-case-reference-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:47:05",
+        "end": "2026-10-30T20:47:23",
+        "elapsed": "00:00:18"
+      },
+      {
+        "job": "280898_0",
+        "name": "lra-case-z3-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:39",
+        "end": "2026-10-30T20:45:53",
+        "elapsed": "00:00:14"
+      },
+      {
+        "job": "280898_1",
+        "name": "lra-case-z3-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:39",
+        "end": "2026-10-30T20:45:48",
+        "elapsed": "00:00:09"
+      },
+      {
+        "job": "280898_2",
+        "name": "lra-case-z3-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:39",
+        "end": "2026-10-30T20:45:57",
+        "elapsed": "00:00:18"
+      },
+      {
+        "job": "280898_3",
+        "name": "lra-case-z3-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:39",
+        "end": "2026-10-30T20:45:51",
+        "elapsed": "00:00:12"
+      },
+      {
+        "job": "280898_4",
+        "name": "lra-case-z3-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:39",
+        "end": "2026-10-30T20:45:45",
+        "elapsed": "00:00:06"
+      },
+      {
+        "job": "280898_5",
+        "name": "lra-case-z3-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:39",
+        "end": "2026-10-30T20:45:58",
+        "elapsed": "00:00:19"
+      },
+      {
+        "job": "280898_6",
+        "name": "lra-case-z3-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:39",
+        "end": "2026-10-30T20:45:56",
+        "elapsed": "00:00:17"
+      },
+      {
+        "job": "280898_7",
+        "name": "lra-case-z3-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:39",
+        "end": "2026-10-30T20:45:51",
+        "elapsed": "00:00:12"
+      },
+      {
+        "job": "280898_8",
+        "name": "lra-case-z3-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:45",
+        "end": "2026-10-30T20:46:02",
+        "elapsed": "00:00:17"
+      },
+      {
+        "job": "280898_9",
+        "name": "lra-case-z3-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:48",
+        "end": "2026-10-30T20:46:03",
+        "elapsed": "00:00:15"
+      },
+      {
+        "job": "280898_10",
+        "name": "lra-case-z3-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:51",
+        "end": "2026-10-30T20:46:09",
+        "elapsed": "00:00:18"
+      },
+      {
+        "job": "280898_11",
+        "name": "lra-case-z3-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:51",
+        "end": "2026-10-30T20:46:32",
+        "elapsed": "00:00:41"
+      },
+      {
+        "job": "280898_12",
+        "name": "lra-case-z3-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:53",
+        "end": "2026-10-30T20:46:10",
+        "elapsed": "00:00:17"
+      },
+      {
+        "job": "280898_13",
+        "name": "lra-case-z3-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:56",
+        "end": "2026-10-30T20:46:07",
+        "elapsed": "00:00:11"
+      },
+      {
+        "job": "280898_14",
+        "name": "lra-case-z3-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:57",
+        "end": "2026-10-30T20:46:07",
+        "elapsed": "00:00:10"
+      },
+      {
+        "job": "280898_15",
+        "name": "lra-case-z3-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:45:58",
+        "end": "2026-10-30T20:46:04",
+        "elapsed": "00:00:06"
+      },
+      {
+        "job": "280898_16",
+        "name": "lra-case-z3-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:02",
+        "end": "2026-10-30T20:46:21",
+        "elapsed": "00:00:19"
+      },
+      {
+        "job": "280898_17",
+        "name": "lra-case-z3-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:03",
+        "end": "2026-10-30T20:46:12",
+        "elapsed": "00:00:09"
+      },
+      {
+        "job": "280898_18",
+        "name": "lra-case-z3-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:04",
+        "end": "2026-10-30T20:46:32",
+        "elapsed": "00:00:28"
+      },
+      {
+        "job": "280898_19",
+        "name": "lra-case-z3-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:07",
+        "end": "2026-10-30T20:46:33",
+        "elapsed": "00:00:26"
+      },
+      {
+        "job": "280898_20",
+        "name": "lra-case-z3-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:07",
+        "end": "2026-10-30T20:46:15",
+        "elapsed": "00:00:08"
+      },
+      {
+        "job": "280898_21",
+        "name": "lra-case-z3-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:09",
+        "end": "2026-10-30T20:46:21",
+        "elapsed": "00:00:12"
+      },
+      {
+        "job": "280898_22",
+        "name": "lra-case-z3-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:10",
+        "end": "2026-10-30T20:46:21",
+        "elapsed": "00:00:11"
+      },
+      {
+        "job": "280898_23",
+        "name": "lra-case-z3-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:13",
+        "end": "2026-10-30T20:46:49",
+        "elapsed": "00:00:36"
+      },
+      {
+        "job": "280898_24",
+        "name": "lra-case-z3-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:15",
+        "end": "2026-10-30T20:46:30",
+        "elapsed": "00:00:15"
+      },
+      {
+        "job": "280898_25",
+        "name": "lra-case-z3-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:21",
+        "end": "2026-10-30T20:46:32",
+        "elapsed": "00:00:11"
+      },
+      {
+        "job": "280898_26",
+        "name": "lra-case-z3-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:21",
+        "end": "2026-10-30T20:46:41",
+        "elapsed": "00:00:20"
+      },
+      {
+        "job": "280898_27",
+        "name": "lra-case-z3-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:21",
+        "end": "2026-10-30T20:46:40",
+        "elapsed": "00:00:19"
+      },
+      {
+        "job": "280898_28",
+        "name": "lra-case-z3-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:30",
+        "end": "2026-10-30T20:46:42",
+        "elapsed": "00:00:12"
+      },
+      {
+        "job": "280898_29",
+        "name": "lra-case-z3-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:32",
+        "end": "2026-10-30T20:46:53",
+        "elapsed": "00:00:21"
+      },
+      {
+        "job": "280898_30",
+        "name": "lra-case-z3-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:32",
+        "end": "2026-10-30T20:46:49",
+        "elapsed": "00:00:17"
+      },
+      {
+        "job": "280898_31",
+        "name": "lra-case-z3-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:46:32",
+        "end": "2026-10-30T20:46:55",
+        "elapsed": "00:00:23"
+      },
+      {
+        "job": "280899",
+        "name": "lra-case-qualify",
+        "state": "CANCELLED",
+        "exit_code": "0:0",
+        "start": "None",
+        "end": "2026-10-30T20:39:25",
+        "elapsed": "00:00:00"
+      },
+      {
+        "job": "280900",
+        "name": "lra-case-qualify",
+        "state": "CANCELLED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:47:23",
+        "end": "2026-10-30T20:49:17",
+        "elapsed": "00:01:54"
+      },
+      {
+        "job": "281120",
+        "name": "lra-case-label-models",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:49:29",
+        "end": "2026-10-30T20:49:45",
+        "elapsed": "00:00:16"
+      },
+      {
+        "job": "281121",
+        "name": "lra-case-qualify",
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "start": "2026-10-30T20:50:27",
+        "end": "2026-10-30T20:58:45",
+        "elapsed": "00:08:18"
+      }
+    ]
+  },
+  "source_extraction": {
+    "inputs": 1753,
+    "families": 17,
+    "native_outcomes": {
+      "sat": 765,
+      "unsat": 461,
+      "timeout": 527
+    },
+    "errors": 0,
+    "unsupported": 0,
+    "disagreements": 0,
+    "raw_export_files": 4420,
+    "announced_export_records": 4342,
+    "unannounced_files_excluded": 78,
+    "stage_scope": "Instrumented parent runs are extraction diagnostics; SAT-model qualification covers the selected conjunctions, not all parent SAT answers.",
+    "inventory_artifact": "results/lra-case-study-1000-20261030/extraction-export-inventory.tsv",
+    "inventory_sha256": "ba00c1f7a85d01c4d3d3721e76e3c6a97813ee455a6317472e3d76677f2ee3a7",
+    "unannounced_parent_outcomes": {
+      "timeout": 78
+    }
+  },
+  "correctness": {
+    "known_labels": 999,
+    "unknown_research_candidates": 1,
+    "sat_timing_rows": 2691,
+    "sat_timing_rows_direct_dolmen_pass": 2691,
+    "additional_native_label_model_pass": 1,
+    "unsat_labels_with_all_three_references_agreeing": 320,
+    "wrong_answers": 0,
+    "solver_errors": 0,
+    "unsupported": 0,
+    "invalid_models": 0,
+    "missing_successful_sat_model_checks": 0
+  },
+  "baselines": {
+    "complete_single_check_ge128": 503,
+    "complete_single_check_lt128_controls": 493,
+    "censored_processes": 4,
+    "observed_completed_checks": 997,
+    "completed_checks_in_censored_prefixes": 1,
+    "censored_prefixes_without_completed_check": 3,
+    "completed_prefix_pivots": 4879,
+    "completed_inputs_with_bland_fallback": 9
+  },
+  "artifacts": {
+    "raw": "SLURM workspace results/lra-case-study-1000-20261030",
+    "collected_summaries": "results/lra-case-study-1000-20261030",
+    "fresh_counter_report": "docs/coverage/lra-case-study-fresh-20261030.json",
+    "full_qualification_report": "benchmarks/qf-lra-case-study-1000/metadata.json"
+  },
+  "verification": {
+    "offline_tests": 6,
+    "offline_command": "python3 -W error::ResourceWarning -m unittest discover -s tests/python -p 'test_*lra_case_study.py'",
+    "native_code_changed": false,
+    "native_gate": "Reuse exact d4944eb binary qualification from 2026-10-30-lra-uncompleted-call-capture; no fresh C++ test, ASan, fuzz or static-scan claim.",
+    "preflight": "Repository --check-only --no-sync from clean d4944eb worktree immediately before every submission; actual private route and workspace stay outside tracked files."
+  }
+}

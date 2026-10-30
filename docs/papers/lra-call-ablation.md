@@ -1,7 +1,7 @@
 # QF_LRA call distribution and conjunction extraction
 
-**Status: The first source-input distribution and a 33-input conjunction pilot
-are qualified.** Work is isolated on `experiment/qf-lra-call-ablation`.
+**Status: A 1,000-input conjunction corpus is frozen, with 999 verified labels
+and one unknown research candidate.** Work is isolated on `experiment/qf-lra-call-ablation`.
 This note defines the measured call, records its pivot/time distribution, and
 provides frozen inputs for the next ablation stage.
 
@@ -206,58 +206,127 @@ versions and hashes, commands, limits, timings, model joins and job IDs.
 Raw artifacts are retained under `results/lra-reference-panel-20261030` locally
 and in the SLURM workspace; [the run ledger](../run-log.json) links this evidence.
 
-## Expansion toward a 1,000-input case study
+## Frozen 1,000-input case study
 
-The next collection targets **1,000 distinct conjunctions**, retaining the
-existing 42 inputs and their labels. The source manifest expands from 237 to
-all **1,753 locally available QF_LRA inputs in 17 families**. This remains a
-development corpus rather than a competition-wide representative sample.
+The expanded corpus contains **1,000 distinct conjunctions**, retaining the
+original 42 inputs. Its labels are **679 SAT, 320 UNSAT and one unknown**.
+The source manifest covers all **1,753 locally available QF_LRA inputs in 17
+families**. This is a development corpus; selection intentionally emphasizes
+numerical work rather than representing the original call frequencies.
 The fixed source manifest and configurable export budget are in
 {casestudysource}`the extraction preparation <benchmarks/qf-lra-case-study-sources.txt>`
 and {casestudysource}`the batch wrapper <scripts/slurm_lra_call_ablation.sbatch>`.
-`PRIMO_CALL_EXPORT_LIMIT` defaults to five; this pass sets it to **64**.
+`PRIMO_CALL_EXPORT_LIMIT` defaults to five; this pass used **64**.
 
-The first wider pass allows **five seconds per native/reference parent process**
-and exports completed warm checks with at least **32 pivots**, up to that
-64-file budget per parent. Sixteen concurrent SLURM tasks each use one physical
-CPU and 8 GiB; 32 shards cover the manifest. Native context remains the already
-qualified `d4944eb` binary, with production defaults. Its solver algorithm is
-unchanged. Durable trace prefixes from parent timeouts remain eligible;
-unannounced or incompletely written exports are excluded. The nine earlier
-pre-check captures remain available, including the unresolved hard input.
+The wider pass allowed **five seconds per native/Z3 parent process** and
+exported completed warm checks with at least **32 pivots**, up to that
+64-file budget per parent. Sixteen concurrent SLURM tasks each used one physical
+CPU and 8 GiB; 32 shards covered the manifest on node-09. Native context remained
+the qualified `d4944eb` binary with production defaults. No solver algorithm or
+default changed. Parent runs are extraction diagnostics, not model-qualified
+whole-input performance results.
 
-Selection must count conjunctions rather than differing call-number comments.
-The {casestudytools}`collection workflow <scripts/prepare_lra_case_study.py>`
-audits the generated linear syntax, then hashes tokens
-with comments, whitespace and status annotations removed. It preserves one
-original file and all occurrence metadata for each such identity. This collapses
-repeated conjunction texts; it does not detect logical equivalence, renamed
-variables, or reordered assertions. Conflicting known labels for the same
-identity stop collection.
+There were **4,342 announced exports**. Another 78 published files lacked a
+durable matching export record after termination and were excluded. Adding the
+42 retained inputs gave **4,384 occurrences**, reduced to **4,333 distinct token
+identities**. The {casestudytools}`collector <scripts/prepare_lra_case_study.py>`
+audits the generated linear syntax and hashes tokens with comments, whitespace
+and status annotations removed. It preserves original file bytes and all source
+occurrences. This collapses repeated conjunction texts; it does not detect
+logical equivalence, renamed variables or reordered assertions. Conflicting
+known labels for one identity stop collection.
 
-Keep the existing 42 first. For new candidates, visit source families in sorted
-round-robin order and choose the eligible parent with the fewest selected
-inputs, breaking ties by path. Within a parent, rank candidates by a fixed
-seeded hash, interleaving three warm checks with at least 128 pivots and one
-with fewer than 128 when available. If an identity has several source parents,
-its lexicographically smallest parent determines its counting parent and family;
-its largest recorded completed warm pivot count determines the selection stratum.
-All source occurrences remain attached to it. Use seed **20261030**, a **25-input parent
-cap** and **400-input family cap**, including retained inputs. These are maximum
-counts, not promised quotas or a fixed 75% final difficulty ratio. If the pool
-cannot supply 1,000 under those caps, report the shortfall and extend extraction
-before changing the selection policy.
+Selection kept the existing 42 first, then visited families in sorted round-robin
+order, choosing the eligible parent with the fewest selected inputs and breaking
+ties by path. Within each parent, a seeded hash ranks candidates, interleaving
+three warm checks with at least 128 pivots and one below 128 when available.
+For an identity occurring in several parents, its lexicographically smallest
+parent determines its counting parent and family; its maximum completed-call
+export pivot count determines its selection stratum. Retained pre-check captures
+bypass stratification. All occurrences remain attached. Seed **20261030**, a **25-input parent cap** and a **400-input family
+cap** are fixed before variant comparisons. The selector fails if it cannot
+supply the target under these caps.
 
-Freeze selection before variant comparisons. Fresh native replays determine
-pivot/time distributions independently of the warm selection stratum. Successful
-SAT answers require separate native model checking and direct Dolmen validation;
-UNSAT labels require independent reference agreement. A whole-process timeout
-can retain completed numerical observations in a censored trace prefix; only
-unfinished checks lack completed pivot/time values. The conjunction's verdict
-remains explicitly unresolved if no validated verdict is available.
-Collection, replay, qualification and a final frozen
-case-study manifest are separate milestones; **the 1,000-input set is not yet
-qualified**.
+The selected set spans **460 counting parents and 12 counting families**. Its
+actual maxima are **12 inputs per parent** and **112 per family**.
+`selection.json` preserves the pre-qualification selection snapshot;
+`metadata.json` records the completed qualification. The metadata field
+`warm_max_pivots` is the maximum over completed-call export records, with zero
+as the absent-record default for retained captures. Captured-call completions
+remain in `selection.json`; that zero does not assert a zero-pivot warm check.
+
+### Fresh replay, labels and model checks
+
+The frozen conjunctions were replayed with production-default Primo and default
+Z3 5.1.0, Yices 2.7.0 and OpenSMT 2.9.2 commands, with **15 seconds per process**.
+All timing stages finished before model validation began. Successful SAT rows
+were separately replayed with model production and direct Dolmen 0.10 checks
+under unchanged QF_LRA annotations. Native model replays also used
+`--check-model`. Their solver/Dolmen budgets were 60/30 seconds for Primo and
+90/30 seconds for references, with a 2 GiB Dolmen limit.
+
+| Solver | SAT | UNSAT | Timeout | Direct Dolmen passes for successful SAT timing rows |
+| --- | ---: | ---: | ---: | ---: |
+| Primo | 676 | 320 | 4 | 676 / 676 |
+| Z3 5.1.0 | 663 | 320 | 17 | 663 / 663 |
+| Yices 2.7.0 | 678 | 320 | 2 | 678 / 678 |
+| OpenSMT 2.9.2 | 674 | 320 | 6 | 674 / 674 |
+
+All **2,691 successful SAT rows** passed their exact-input direct-Dolmen checks.
+There were no errors, unsupported inputs, disagreements, invalid models or
+missing successful-SAT checks. All **320 UNSAT labels** have agreement from
+all three independent reference solvers. Two of Primo's three known-SAT timing
+timeouts have passing reference models. The third, the retained MILP `100000`
+conjunction, timed out in every short timing run; an **additional native model
+replay with a 60-second budget** passed native checking and Dolmen. This extra
+label proof is recorded separately and does not replace any timing row.
+
+Thus all **999 known labels** are verified. The retained MILP `300000`
+conjunction remains the single unknown research candidate: all four solvers
+also timed out on its earlier 60-second diagnostic attempts. Timeout alone
+provides no satisfiability verdict.
+
+### Fresh numerical work
+
+**996 completed processes** each recorded exactly one completed numerical
+check. One of the four process-timeout traces retained a completed **4,879-pivot**
+check; the other three recorded no completed checks. Those four traces remain
+censored. Zero sums describe the absence of recorded completed work; the timeout's
+location and any unfinished-check cost remain unknown. The following quantiles cover only the **996 complete
+single-check inputs**; model-validation time is excluded.
+
+| Metric | Minimum | Median | p90 | p99 | Maximum |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Pivots | 1 | 129 | 593 | 2,185 | 6,782 |
+| Time inside the check (ms) | 0.00481 | 2.604 | 32.646 | 615.911 | 11,457.673 |
+
+Of these inputs, **503 require at least 128 pivots**: 467 use 128–1,023 and
+36 use at least 1,024. The other completed inputs provide controls: 417 use
+32–127 pivots and 76 use fewer than 32. These fresh strata belong to this fixed
+baseline; future variants must use the same input manifest rather than
+reselecting by their own pivot counts. Per-input pivot/time pairs are retained
+in the metadata. Nine completed fresh runs record the default Bland fallback;
+the full profiles retain fallback, row-update and term-operation counters.
+
+The frozen artifacts are:
+
+- {casestudydata}`All 1,000 conjunctions <benchmarks/qf-lra-case-study-1000/manifest.txt>`.
+- {casestudydata}`Independent expected-status map <benchmarks/qf-lra-case-study-1000/expected-statuses.json>`;
+  pass it through `--expected-statuses` or `PRIMO_CALL_EXPECTED_STATUSES` when replaying
+  files whose original annotation remains unknown.
+- {casestudydata}`Selection and warm provenance <benchmarks/qf-lra-case-study-1000/selection.json>` and
+  {casestudydata}`fresh measurements and exact model joins <benchmarks/qf-lra-case-study-1000/metadata.json>`.
+- [Portable campaign report and submission arguments](../coverage/lra-case-study-1000-20261030.json),
+  and [full fresh profiles, counters and censored-prefix measurements](../coverage/lra-case-study-fresh-20261030.json).
+
+{casestudytools}`The qualifier <scripts/qualify_lra_case_study.py>` checks input
+identities, consistent replay provenance, every successful SAT/model join and
+the independent UNSAT agreements. Raw traces and models remain under
+`results/lra-case-study-1000-20261030` in the SLURM workspace; collected summaries
+and input copies are also retained locally. This qualifies the corpus, not an
+ablation winner, a solver-strength ordering or a default promotion. Warm basis,
+assignments, explanation graphs and original Boolean context are still omitted.
+
 
 ## Exported numerical conjunction
 
@@ -487,7 +556,9 @@ recording without export, so this serialization repair does not alter that data.
 ## Sources and implementation status
 
 Native code links use the selected-call capture implementation at `d4944eb`.
-The completed-conjunction pilot retains its qualified `791a179` snapshot. The first source
+The 1,000-input case study reuses that native binary; its selection and
+qualification workflows have separate pinned links above. The completed-conjunction
+pilot retains its qualified `791a179` snapshot. The first source
 pilot above retains its original `97a3229` binary identity and measurements.
 Offline aggregation is standard-library Python; the optional plot renderer uses
 Matplotlib 3.11.2 in the documentation environment. No plot dependency is needed

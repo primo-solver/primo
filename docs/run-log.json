@@ -6,7 +6,7 @@
       "id": "2026-10-30-lra-case-study-1000",
       "date": "2026-10-30",
       "kind": "case-study-corpus-expansion",
-      "evidence_status": "extraction-running-not-yet-qualified",
+      "evidence_status": "complete-1000-frozen-999-verified-labels-one-unknown",
       "branch": "experiment/qf-lra-call-ablation",
       "target": 1000,
       "existing_distinct_inputs": 42,
@@ -30,7 +30,27 @@
           "analyze_lra_call_profile.py": "d6198ead70d0345697725274c9ebd9e2b7ca206fb61665370e147b6a0b18c793",
           "prepare_lra_call_replay.py": "1fa7f586406cbfb75e20bfbda36255490fc186d3c6f3731d8bb2bd739bd860d6",
           "slurm_lra_call_ablation.sbatch": "69e7e79a6461765291cc5a852bae42533cfc9cef730eaee5bfa2b84d08342b10"
-        }
+        },
+        "jobs": {
+          "extract": "280861",
+          "collect": "280893",
+          "fresh": "280894",
+          "references": "280895",
+          "models": "280896",
+          "reference-models": "280897",
+          "z3-models": "280898",
+          "qualify_superseded": "280899",
+          "qualify_without_label_proof": "280900",
+          "label-models": "281120",
+          "qualify": "281121"
+        },
+        "stage_order": {
+          "timing_end": "2026-10-30T20:45:39",
+          "model_start": "2026-10-30T20:45:39",
+          "all_timing_finished_before_models": true
+        },
+        "reports": "docs/coverage/lra-case-study-1000-20261030.json and docs/coverage/lra-case-study-fresh-20261030.json",
+        "attempts": "280899 canceled before running after wrapper CLI extension;280900 artifact audit canceled for a separate missing short-budget SAT-label proof. Neither supplied accepted results;281121 is the successful final audit. All solver timing rows retained unchanged."
       },
       "selection_policy": {
         "warm_min_pivots": 32,
@@ -43,17 +63,129 @@
         "family_cap": 400,
         "order": "Family round-robin, least-selected eligible parent, three >=128-pivot warm candidates per one lower-pivot control when available; fixed hash ranking within strata."
       },
-      "remaining": [
-        "Collect and audit pool; meet quotas or extend extraction.",
-        "Fresh native replay and independent reference checks.",
-        "Separate exact-input SAT model validation.",
-        "Freeze and commit selected corpus, provenance and summarized distribution."
-      ],
+      "remaining": [],
       "limitations": [
-        "No native algorithm, solver option default, or performance profile change.",
-        "1753 available development inputs are not the full SMT-LIB competition corpus.",
-        "Target and sampling policy do not establish that 1000 qualified inputs already exist."
-      ]
+        "Conjunction identity ignores comments/status/whitespace, not logical equivalence.",
+        "One source corpus and first qualifying exports; quotas do not establish representativeness.",
+        "No warm basis, assignment, reason graph or original Boolean context is replayed.",
+        "Whole-process timeouts and unfinished checks are censored, not completed durations.",
+        "No algorithmic winner, speedup or default promotion is claimed.",
+        "Known labels verified; the single unknown remains a research candidate. This is corpus preparation, not a completed ablation comparison."
+      ],
+      "extraction": {
+        "sources": 1753,
+        "native_outcomes": {
+          "sat": 765,
+          "unsat": 461,
+          "timeout": 527
+        },
+        "error": 0,
+        "unsupported": 0,
+        "disagreement": 0,
+        "raw_export_files": 4420,
+        "announced_export_records": 4342,
+        "unannounced_files_excluded": 78
+      },
+      "workflow_commits": {
+        "collector": "f04bbea",
+        "reference_models": "9bc6df9",
+        "qualification": "8402c7dbcdadd23c3ccffd9516166cb683773d77"
+      },
+      "dataset_commit": "33cfbd53d8ba617f0394c88bfb8433e0d3b48384",
+      "selection": {
+        "pool": 4333,
+        "raw_occurrences": 4384,
+        "selected": 1000,
+        "retained": 42,
+        "counting_parents": 460,
+        "counting_families": 12,
+        "actual_max_per_parent": 12,
+        "actual_max_per_family": 112,
+        "input_bytes": 254394158,
+        "manifest_sha256": "df3b5b731ea341f1d3f88520443b0078e92c8c1d09c413364005869f6f389267",
+        "expected_statuses_sha256": "24d5d14936c5ac6e39ed38317b4afaea1ff5390431a495b802526b5aff655866"
+      },
+      "results": {
+        "expected_statuses": {
+          "sat": 679,
+          "unsat": 320,
+          "unknown": 1
+        },
+        "outcomes": {
+          "primo": {
+            "sat": 676,
+            "unsat": 320,
+            "timeout": 4
+          },
+          "z3": {
+            "sat": 663,
+            "unsat": 320,
+            "timeout": 17
+          },
+          "yices-smt2": {
+            "sat": 678,
+            "unsat": 320,
+            "timeout": 2
+          },
+          "opensmt": {
+            "sat": 674,
+            "unsat": 320,
+            "timeout": 6
+          }
+        },
+        "direct_dolmen_model_passes": {
+          "primo": 676,
+          "z3": 663,
+          "yices-smt2": 678,
+          "opensmt": 674
+        },
+        "additional_label_model_passes": 1,
+        "fresh_coverage": {
+          "complete": 996,
+          "prefix": 4
+        },
+        "complete_single_check_inputs": 996,
+        "fresh_single_check_pivots": {
+          "min": 1,
+          "median": 129,
+          "p90": 593,
+          "p99": 2185,
+          "max": 6782
+        },
+        "fresh_single_check_ns": {
+          "min": 4805,
+          "median": 2604109,
+          "p90": 32646047,
+          "p99": 615911472,
+          "max": 11457673218
+        },
+        "fresh_single_check_bins": {
+          "128-1023": 467,
+          "32-127": 417,
+          "1024+": 36,
+          "0-31": 76
+        }
+      },
+      "correctness": {
+        "known_labels": 999,
+        "unknown_research_candidates": 1,
+        "sat_timing_rows": 2691,
+        "sat_timing_rows_direct_dolmen_pass": 2691,
+        "additional_native_label_model_pass": 1,
+        "unsat_labels_with_all_three_references_agreeing": 320,
+        "wrong_answers": 0,
+        "solver_errors": 0,
+        "unsupported": 0,
+        "invalid_models": 0,
+        "missing_successful_sat_model_checks": 0
+      },
+      "verification": {
+        "offline_tests": 6,
+        "offline_command": "python3 -W error::ResourceWarning -m unittest discover -s tests/python -p 'test_*lra_case_study.py'",
+        "native_code_changed": false,
+        "native_gate": "Reuse exact d4944eb binary qualification from 2026-10-30-lra-uncompleted-call-capture; no fresh C++ test, ASan, fuzz or static-scan claim.",
+        "preflight": "Repository --check-only --no-sync from clean d4944eb worktree immediately before every submission; actual private route and workspace stay outside tracked files."
+      }
     },
     {
       "id": "2026-10-30-lra-captured-yices-opensmt-panel",
