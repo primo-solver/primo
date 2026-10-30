@@ -1,0 +1,390 @@
+{
+  "status": "complete",
+  "script_commit": "c0c125c2f79221bbc954307cfc1201dcfb080633",
+  "native_context_commit": "d4944ebbe6cf202c0485e783655209ba204df71c",
+  "corpus": "benchmarks/qf-lra-captured-calls",
+  "inputs": 9,
+  "timing_manifest_sha256": "602d976f78a3683019fe56a5dacdce61dcb8db218cc4acd8a90f72e24dfbcd23",
+  "expected_statuses_sha256": "140bfb9a5213e1c3cb304dd64004e5892e29b1751a872401911920501ef0dbf9",
+  "execution": {
+    "environment": "SLURM node-09; one physical CPU and 8 GiB per task",
+    "timing_array": "267836",
+    "models_array": "267838",
+    "timing_timeout_seconds": 60,
+    "termination_grace_seconds": 2,
+    "model_solver_timeout_seconds": 90,
+    "dolmen_timeout_seconds": 30,
+    "dolmen_size": "2G",
+    "dolmen_version": "0.10",
+    "dolmen_sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+    "dolmen_args": [
+      "--strict=false"
+    ],
+    "timing_end": "2026-10-30T15:04:30",
+    "model_start": "2026-10-30T15:04:30",
+    "stage_order": "afterok dependency on entire timing array; model time excluded from timing",
+    "artifacts": "results/lra-reference-panel-20261030/remote"
+  },
+  "references": {
+    "yices-smt2": {
+      "version": "Yices 2.7.0\nCopyright SRI International.\nLinked with GMP 6.3.0\nCopyright Free Software Foundation, Inc.\nBuild date: 2025-07-17\nPlatform: x86_64-pc-linux-gnu (release/static)\nRevision: 4f19700f0e272f4a68250080d12a873523bc7ac3",
+      "binary_sha256": "eab7efbff2a6f0cce2fcd2c25cb4a94e0e048c902d8ef9e6fd7d7989aa54c501",
+      "solver_args": [],
+      "timing_array_task": "267836_0",
+      "model_array_task": "267838_0",
+      "cpu_affinity": [
+        0,
+        28
+      ],
+      "summary": {
+        "sat": 8,
+        "unsat": 0,
+        "timeout": 1,
+        "error": 0,
+        "unsupported": 0,
+        "disagreement": 0,
+        "direct_dolmen_pass": 8,
+        "missing_sat_model_checks": 0,
+        "invalid_models": 0,
+        "solved_median_seconds": 2.0411175,
+        "solved_min_seconds": 0.166602,
+        "solved_max_seconds": 23.088107,
+        "whole_process_sum_seconds": 105.943642,
+        "par2_seconds": 18.431135222222224
+      },
+      "records": [
+        {
+          "file": "cubes/f9c4f0cde5245b21ead3c5188eb9251861fe65a4677d6fc6c33b5fc1459c7940.smt2",
+          "sha256": "f9c4f0cde5245b21ead3c5188eb9251861fe65a4677d6fc6c33b5fc1459c7940",
+          "expected": "unknown",
+          "command": [
+            "yices-smt2",
+            "$INPUT_ROOT/cubes/f9c4f0cde5245b21ead3c5188eb9251861fe65a4677d6fc6c33b5fc1459c7940.smt2"
+          ],
+          "status": "timeout",
+          "answer": null,
+          "seconds": 60.063425,
+          "exit_code": -15,
+          "model": null
+        },
+        {
+          "file": "cubes/10d6c2814a35f91b63e083ff39c322a3193548094a6f68a620534841a0412a0b.smt2",
+          "sha256": "10d6c2814a35f91b63e083ff39c322a3193548094a6f68a620534841a0412a0b",
+          "expected": "sat",
+          "command": [
+            "yices-smt2",
+            "$INPUT_ROOT/cubes/10d6c2814a35f91b63e083ff39c322a3193548094a6f68a620534841a0412a0b.smt2"
+          ],
+          "status": "ok",
+          "answer": "sat",
+          "seconds": 1.606981,
+          "exit_code": 0,
+          "model": {
+            "outcome": "pass",
+            "validator": "dolmen",
+            "adapted_sha256": "15722112da05cea2c6e8699f5ee834537c9ed376e61185488c05463b48b40618"
+          }
+        },
+        {
+          "file": "cubes/18d86f3f5937116369c957bcbceaf40b3dffe59d83e521acfda1871ce1a3bb9a.smt2",
+          "sha256": "18d86f3f5937116369c957bcbceaf40b3dffe59d83e521acfda1871ce1a3bb9a",
+          "expected": "sat",
+          "command": [
+            "yices-smt2",
+            "$INPUT_ROOT/cubes/18d86f3f5937116369c957bcbceaf40b3dffe59d83e521acfda1871ce1a3bb9a.smt2"
+          ],
+          "status": "ok",
+          "answer": "sat",
+          "seconds": 13.503577,
+          "exit_code": 0,
+          "model": {
+            "outcome": "pass",
+            "validator": "dolmen",
+            "adapted_sha256": "a3eb8c5120178d5a11eccc837a5e12b4bd8dcab6b8486fc70844e12f4c16e129"
+          }
+        },
+        {
+          "file": "cubes/2cc8e805e52c410677ed5e4792c0f6c43054198448df4c8a3175640a523a108f.smt2",
+          "sha256": "2cc8e805e52c410677ed5e4792c0f6c43054198448df4c8a3175640a523a108f",
+          "expected": "sat",
+          "command": [
+            "yices-smt2",
+            "$INPUT_ROOT/cubes/2cc8e805e52c410677ed5e4792c0f6c43054198448df4c8a3175640a523a108f.smt2"
+          ],
+          "status": "ok",
+          "answer": "sat",
+          "seconds": 23.088107,
+          "exit_code": 0,
+          "model": {
+            "outcome": "pass",
+            "validator": "dolmen",
+            "adapted_sha256": "00731da287a00a305a2cc2653b64cea228b2eb80787ecd45ddc9bb3ad4aa133b"
+          }
+        },
+        {
+          "file": "cubes/45973acea1915c33dd52f36b79cdc1a7975053c15354d92816fd589f8f3dd8c8.smt2",
+          "sha256": "45973acea1915c33dd52f36b79cdc1a7975053c15354d92816fd589f8f3dd8c8",
+          "expected": "sat",
+          "command": [
+            "yices-smt2",
+            "$INPUT_ROOT/cubes/45973acea1915c33dd52f36b79cdc1a7975053c15354d92816fd589f8f3dd8c8.smt2"
+          ],
+          "status": "ok",
+          "answer": "sat",
+          "seconds": 1.447451,
+          "exit_code": 0,
+          "model": {
+            "outcome": "pass",
+            "validator": "dolmen",
+            "adapted_sha256": "ac9cfd2c0ce75594e7e27b44db58d29432bceceb0d56dd760b83c6f3c38e9bc0"
+          }
+        },
+        {
+          "file": "cubes/65e8ed60e241d6eaae460b1fe407828710f3c5b50007d965f80c436b9047610c.smt2",
+          "sha256": "65e8ed60e241d6eaae460b1fe407828710f3c5b50007d965f80c436b9047610c",
+          "expected": "sat",
+          "command": [
+            "yices-smt2",
+            "$INPUT_ROOT/cubes/65e8ed60e241d6eaae460b1fe407828710f3c5b50007d965f80c436b9047610c.smt2"
+          ],
+          "status": "ok",
+          "answer": "sat",
+          "seconds": 2.552182,
+          "exit_code": 0,
+          "model": {
+            "outcome": "pass",
+            "validator": "dolmen",
+            "adapted_sha256": "d0748ca0aa810c5af71a231167a690bd05126a96541a265cb15e8bd27b1e3a9c"
+          }
+        },
+        {
+          "file": "cubes/e6d93724758dd975b724a70476ad945c970d3c43df5e3d939ed58ccf49f48233.smt2",
+          "sha256": "e6d93724758dd975b724a70476ad945c970d3c43df5e3d939ed58ccf49f48233",
+          "expected": "sat",
+          "command": [
+            "yices-smt2",
+            "$INPUT_ROOT/cubes/e6d93724758dd975b724a70476ad945c970d3c43df5e3d939ed58ccf49f48233.smt2"
+          ],
+          "status": "ok",
+          "answer": "sat",
+          "seconds": 2.475254,
+          "exit_code": 0,
+          "model": {
+            "outcome": "pass",
+            "validator": "dolmen",
+            "adapted_sha256": "c9773d227ec3db798cc59217e705520e0ecaf571ef9458855d3a804eb7221cf2"
+          }
+        },
+        {
+          "file": "cubes/ee2ee1f93bcfb44b80ab1123b5e1e19ed177ca5cc766fb64b3e88367994eb343.smt2",
+          "sha256": "ee2ee1f93bcfb44b80ab1123b5e1e19ed177ca5cc766fb64b3e88367994eb343",
+          "expected": "sat",
+          "command": [
+            "yices-smt2",
+            "$INPUT_ROOT/cubes/ee2ee1f93bcfb44b80ab1123b5e1e19ed177ca5cc766fb64b3e88367994eb343.smt2"
+          ],
+          "status": "ok",
+          "answer": "sat",
+          "seconds": 1.040063,
+          "exit_code": 0,
+          "model": {
+            "outcome": "pass",
+            "validator": "dolmen",
+            "adapted_sha256": "0fe7f84c506504f117a9b24a744df110f04a78ad187b23df8c57e66d543c4674"
+          }
+        },
+        {
+          "file": "cubes/fdb4e04e83e390b2edfd2cd5bf9dbe257a35c8a59fba261b6bcdd75a938012fc.smt2",
+          "sha256": "fdb4e04e83e390b2edfd2cd5bf9dbe257a35c8a59fba261b6bcdd75a938012fc",
+          "expected": "sat",
+          "command": [
+            "yices-smt2",
+            "$INPUT_ROOT/cubes/fdb4e04e83e390b2edfd2cd5bf9dbe257a35c8a59fba261b6bcdd75a938012fc.smt2"
+          ],
+          "status": "ok",
+          "answer": "sat",
+          "seconds": 0.166602,
+          "exit_code": 0,
+          "model": {
+            "outcome": "pass",
+            "validator": "dolmen",
+            "adapted_sha256": "22d77ca08e6c36b9093526638ab227cae93fe8dc74c2d04e9a6b3ea333ad08ba"
+          }
+        }
+      ]
+    },
+    "opensmt": {
+      "version": "v2.9.2",
+      "binary_sha256": "b7899e9aff299026d3251df7a28f51f56d8bd1e5b0fd7be11bcc72c4f2803a98",
+      "solver_args": [],
+      "timing_array_task": "267836_1",
+      "model_array_task": "267838_1",
+      "cpu_affinity": [
+        1,
+        29
+      ],
+      "summary": {
+        "sat": 3,
+        "unsat": 0,
+        "timeout": 6,
+        "error": 0,
+        "unsupported": 0,
+        "disagreement": 0,
+        "direct_dolmen_pass": 3,
+        "missing_sat_model_checks": 0,
+        "invalid_models": 0,
+        "solved_median_seconds": 0.530268,
+        "solved_min_seconds": 0.468147,
+        "solved_max_seconds": 0.531283,
+        "whole_process_sum_seconds": 361.954279,
+        "par2_seconds": 80.16996644444446
+      },
+      "records": [
+        {
+          "file": "cubes/f9c4f0cde5245b21ead3c5188eb9251861fe65a4677d6fc6c33b5fc1459c7940.smt2",
+          "sha256": "f9c4f0cde5245b21ead3c5188eb9251861fe65a4677d6fc6c33b5fc1459c7940",
+          "expected": "unknown",
+          "command": [
+            "opensmt",
+            "$INPUT_ROOT/cubes/f9c4f0cde5245b21ead3c5188eb9251861fe65a4677d6fc6c33b5fc1459c7940.smt2"
+          ],
+          "status": "timeout",
+          "answer": null,
+          "seconds": 60.083928,
+          "exit_code": 1,
+          "model": null
+        },
+        {
+          "file": "cubes/10d6c2814a35f91b63e083ff39c322a3193548094a6f68a620534841a0412a0b.smt2",
+          "sha256": "10d6c2814a35f91b63e083ff39c322a3193548094a6f68a620534841a0412a0b",
+          "expected": "sat",
+          "command": [
+            "opensmt",
+            "$INPUT_ROOT/cubes/10d6c2814a35f91b63e083ff39c322a3193548094a6f68a620534841a0412a0b.smt2"
+          ],
+          "status": "timeout",
+          "answer": null,
+          "seconds": 60.08283,
+          "exit_code": 1,
+          "model": null
+        },
+        {
+          "file": "cubes/18d86f3f5937116369c957bcbceaf40b3dffe59d83e521acfda1871ce1a3bb9a.smt2",
+          "sha256": "18d86f3f5937116369c957bcbceaf40b3dffe59d83e521acfda1871ce1a3bb9a",
+          "expected": "sat",
+          "command": [
+            "opensmt",
+            "$INPUT_ROOT/cubes/18d86f3f5937116369c957bcbceaf40b3dffe59d83e521acfda1871ce1a3bb9a.smt2"
+          ],
+          "status": "ok",
+          "answer": "sat",
+          "seconds": 0.531283,
+          "exit_code": 0,
+          "model": {
+            "outcome": "pass",
+            "validator": "dolmen",
+            "adapted_sha256": "a3eb8c5120178d5a11eccc837a5e12b4bd8dcab6b8486fc70844e12f4c16e129"
+          }
+        },
+        {
+          "file": "cubes/2cc8e805e52c410677ed5e4792c0f6c43054198448df4c8a3175640a523a108f.smt2",
+          "sha256": "2cc8e805e52c410677ed5e4792c0f6c43054198448df4c8a3175640a523a108f",
+          "expected": "sat",
+          "command": [
+            "opensmt",
+            "$INPUT_ROOT/cubes/2cc8e805e52c410677ed5e4792c0f6c43054198448df4c8a3175640a523a108f.smt2"
+          ],
+          "status": "timeout",
+          "answer": null,
+          "seconds": 60.074758,
+          "exit_code": 1,
+          "model": null
+        },
+        {
+          "file": "cubes/45973acea1915c33dd52f36b79cdc1a7975053c15354d92816fd589f8f3dd8c8.smt2",
+          "sha256": "45973acea1915c33dd52f36b79cdc1a7975053c15354d92816fd589f8f3dd8c8",
+          "expected": "sat",
+          "command": [
+            "opensmt",
+            "$INPUT_ROOT/cubes/45973acea1915c33dd52f36b79cdc1a7975053c15354d92816fd589f8f3dd8c8.smt2"
+          ],
+          "status": "timeout",
+          "answer": null,
+          "seconds": 60.062952,
+          "exit_code": 1,
+          "model": null
+        },
+        {
+          "file": "cubes/65e8ed60e241d6eaae460b1fe407828710f3c5b50007d965f80c436b9047610c.smt2",
+          "sha256": "65e8ed60e241d6eaae460b1fe407828710f3c5b50007d965f80c436b9047610c",
+          "expected": "sat",
+          "command": [
+            "opensmt",
+            "$INPUT_ROOT/cubes/65e8ed60e241d6eaae460b1fe407828710f3c5b50007d965f80c436b9047610c.smt2"
+          ],
+          "status": "timeout",
+          "answer": null,
+          "seconds": 60.034108,
+          "exit_code": 1,
+          "model": null
+        },
+        {
+          "file": "cubes/e6d93724758dd975b724a70476ad945c970d3c43df5e3d939ed58ccf49f48233.smt2",
+          "sha256": "e6d93724758dd975b724a70476ad945c970d3c43df5e3d939ed58ccf49f48233",
+          "expected": "sat",
+          "command": [
+            "opensmt",
+            "$INPUT_ROOT/cubes/e6d93724758dd975b724a70476ad945c970d3c43df5e3d939ed58ccf49f48233.smt2"
+          ],
+          "status": "timeout",
+          "answer": null,
+          "seconds": 60.086005,
+          "exit_code": 1,
+          "model": null
+        },
+        {
+          "file": "cubes/ee2ee1f93bcfb44b80ab1123b5e1e19ed177ca5cc766fb64b3e88367994eb343.smt2",
+          "sha256": "ee2ee1f93bcfb44b80ab1123b5e1e19ed177ca5cc766fb64b3e88367994eb343",
+          "expected": "sat",
+          "command": [
+            "opensmt",
+            "$INPUT_ROOT/cubes/ee2ee1f93bcfb44b80ab1123b5e1e19ed177ca5cc766fb64b3e88367994eb343.smt2"
+          ],
+          "status": "ok",
+          "answer": "sat",
+          "seconds": 0.530268,
+          "exit_code": 0,
+          "model": {
+            "outcome": "pass",
+            "validator": "dolmen",
+            "adapted_sha256": "0fe7f84c506504f117a9b24a744df110f04a78ad187b23df8c57e66d543c4674"
+          }
+        },
+        {
+          "file": "cubes/fdb4e04e83e390b2edfd2cd5bf9dbe257a35c8a59fba261b6bcdd75a938012fc.smt2",
+          "sha256": "fdb4e04e83e390b2edfd2cd5bf9dbe257a35c8a59fba261b6bcdd75a938012fc",
+          "expected": "sat",
+          "command": [
+            "opensmt",
+            "$INPUT_ROOT/cubes/fdb4e04e83e390b2edfd2cd5bf9dbe257a35c8a59fba261b6bcdd75a938012fc.smt2"
+          ],
+          "status": "ok",
+          "answer": "sat",
+          "seconds": 0.468147,
+          "exit_code": 0,
+          "model": {
+            "outcome": "pass",
+            "validator": "dolmen",
+            "adapted_sha256": "22d77ca08e6c36b9093526638ab227cae93fe8dc74c2d04e9a6b3ea333ad08ba"
+          }
+        }
+      ]
+    }
+  },
+  "limitations": [
+    "Nine selected conjunctions from one source family; no general solver ranking.",
+    "Default reference commands only; no claim of configuration optimality.",
+    "Earlier Primo/Z3 recordings are separate historical stages; no paired timing claim.",
+    "Timeouts provide no satisfiability verdict or completed pivot count."
+  ]
+}

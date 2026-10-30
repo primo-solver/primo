@@ -53,6 +53,9 @@ sphinx:
       capturebench:
         - "https://github.com/primo-solver/primo/blob/8d81ef98a891a91fd072f816406855ca8a0d9707/%s"
         - "%s"
+      callreferences:
+        - "https://github.com/primo-solver/primo/blob/c0c125c2f79221bbc954307cfc1201dcfb080633/%s"
+        - "%s"
       profilesource:
         - "https://github.com/primo-solver/primo/blob/90d29667fa8796b9db41967afb65ab202388b54e/%s"
         - "%s"

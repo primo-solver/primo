@@ -173,6 +173,39 @@ current C++ source hashes. Two additional offline metadata tests cover applying
 known labels to unknown-annotated files and rejecting contradictions. No native
 solver algorithm or default was changed by this observer.
 
+### Yices and OpenSMT reference checks
+
+The same nine captured conjunctions were also run with **Yices 2.7.0** and
+**OpenSMT 2.9.2**, using each binary's default command, one physical CPU and
+8 GiB per task on node-09, and a **60-second limit per input**. The unresolved
+`300000` conjunction was first in the manifest. Both reference passes completed
+before a separate SAT-model stage began.
+
+| Reference | SAT | Timeout | Direct Dolmen model passes | Successful whole-process times (s), min / median / max |
+| --- | ---: | ---: | ---: | ---: |
+| Yices 2.7.0 | 8 | 1 | 8 / 8 | 0.167 / 2.041 / 23.088 |
+| OpenSMT 2.9.2 | 3 | 6 | 3 / 3 | 0.468 / 0.530 / 0.531 |
+
+There were no errors, unsupported inputs, answer disagreements or invalid
+models. Each successful SAT result was joined to a direct Dolmen pass using
+the input hash and exact command-adapted assertions, retaining the QF_LRA logic.
+Model-production and validation time are excluded from the solve times above.
+
+The `300000` conjunction timed out in both additional references. It therefore
+remains unknown after **60-second attempts in Primo, Z3, Yices and OpenSMT**.
+Retaining it is useful for harder-call experiments, but a timeout supplies no
+satisfiability verdict or completed pivot count. Earlier Primo/Z3 results came
+from separate stages; this small, selected, single-family sample establishes
+neither paired speedups nor a general ordering of solver strength. No alternate
+reference configurations were explored.
+
+The {callreferences}`reference batch script <scripts/qualification/lra_call_ablation/references.sbatch>`
+defines the timing and dependent model stages. The
+[per-input report](../coverage/lra-reference-panel-20261030.json) records binary
+versions and hashes, commands, limits, timings, model joins and job IDs.
+Raw artifacts are retained under `results/lra-reference-panel-20261030` locally
+and in the SLURM workspace; [the run ledger](../run-log.json) links this evidence.
+
 ## Exported numerical conjunction
 
 A requested export combines two pieces:

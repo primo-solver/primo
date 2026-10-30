@@ -6,9 +6,9 @@
       "id": "2026-10-30-lra-captured-yices-opensmt-panel",
       "date": "2026-10-30",
       "kind": "additional-reference-solvers",
-      "evidence_status": "timing-running-model-stage-queued",
+      "evidence_status": "complete-all-reference-sat-models-direct-dolmen-validated",
       "branch": "experiment/qf-lra-call-ablation",
-      "scope": "CompareYices/OpenSMT answers onexact9capturedconjunctions;unresolved300000first. No nativealgorithmchange or general solver ranking.",
+      "scope": "Yices and OpenSMT default-command references on the exact nine captured conjunctions, with the unresolved 300000 case first. No native algorithm change or general solver ranking.",
       "native_context_commit": "d4944eb",
       "native_binary_sha256": "710929c58c18970cf4fccf7eb479fb95bb1410e6b46559433e4af80b55a9eee8",
       "manifest_sha256": "602d976f78a3683019fe56a5dacdce61dcb8db218cc4acd8a90f72e24dfbcd23",
@@ -27,30 +27,70 @@
         }
       },
       "execution": {
-        "environment": "SLURMnode-09,onephysicalCPU8GiBpertask;2arraytasks,60sperreferenceinput+2sgrace;separatemodelstage90ssolver30sDolmen2GiB",
+        "environment": "SLURM node-09; one physical CPU and 8 GiB per task; two array tasks. Timing: 60 s per input plus 2 s termination grace. Separate models: 90 s solver, 30 s Dolmen, 2 GiB Dolmen limit.",
         "workspace": "~/primo-lra-call-capture-20261030",
-        "references": "Read-only existing standalone binaries linked underowned tmp/reference-panel;shareddependencies unchanged.",
+        "references": "Read-only existing standalone binaries linked under owned tmp/reference-panel; shared dependencies unchanged.",
         "jobs": {
           "timing": "267836",
           "models": "267838"
         },
         "script": "scripts/qualification/lra_call_ablation/references.sbatch",
         "script_sha256": "762e241c68f8748aa8726f36def335051ae06f74d56aa1dbc7126d4c4ceea6a2",
-        "preflight": "Repositorycheck-only/no-sync nativecontextd494andCaDiCaL3plusbothreferenceversionsimmediatelybeforeeachsbatch",
+        "preflight": "Repository --check-only --no-sync confirmed native context d4944eb, CaDiCaL 3, and both reference versions immediately before each sbatch.",
         "artifacts": "results/lra-reference-panel-20261030",
         "commands_file": "results/lra-reference-panel-20261030/jobs.json"
       },
-      "preliminary": {
-        "yices": "8SAT1timeout;timingcomplete",
-        "opensmt": "timingstillrunning",
-        "unknown_case": "bothreferences60stimeout;noverdictassigned",
-        "models": "queuedafterwhole timingarray"
-      },
       "limitations": [
-        "Small single-family diagnostic corpus;notbroadsolverordering.",
-        "EarlierPrimo/Z3recordingsarehistoricaldistinctstages;no pairedspeedupclaim.",
-        "SATresultsrequireseparatedirectDolmenvalidation;timeoutsarenotanswers."
-      ]
+        "Nine selected conjunctions from one source family; no general solver ranking.",
+        "Default reference commands only; no claim of configuration optimality.",
+        "Earlier Primo/Z3 recordings are separate historical stages; no paired timing claim.",
+        "Timeouts provide no satisfiability verdict or completed pivot count."
+      ],
+      "results": {
+        "yices-smt2": {
+          "sat": 8,
+          "unsat": 0,
+          "timeout": 1,
+          "error": 0,
+          "unsupported": 0,
+          "disagreement": 0,
+          "direct_dolmen_pass": 8,
+          "missing_sat_model_checks": 0,
+          "invalid_models": 0,
+          "solved_median_seconds": 2.0411175,
+          "solved_min_seconds": 0.166602,
+          "solved_max_seconds": 23.088107,
+          "whole_process_sum_seconds": 105.943642,
+          "par2_seconds": 18.431135222222224
+        },
+        "opensmt": {
+          "sat": 3,
+          "unsat": 0,
+          "timeout": 6,
+          "error": 0,
+          "unsupported": 0,
+          "disagreement": 0,
+          "direct_dolmen_pass": 3,
+          "missing_sat_model_checks": 0,
+          "invalid_models": 0,
+          "solved_median_seconds": 0.530268,
+          "solved_min_seconds": 0.468147,
+          "solved_max_seconds": 0.531283,
+          "whole_process_sum_seconds": 361.954279,
+          "par2_seconds": 80.16996644444446
+        },
+        "unresolved_case": "300000 remains unknown: both new references timed out at 60 seconds, matching the earlier Primo and Z3 timeouts."
+      },
+      "models": {
+        "status": "complete",
+        "selected_sat": 11,
+        "direct_dolmen_pass": 11,
+        "invalid": 0,
+        "missing": 0,
+        "validator": "Dolmen 0.10 --strict=false, unchanged QF_LRA logic",
+        "join": "Input SHA-256 and exact command-adapted assertion text checked; model array depended on entire timing array; timing data unchanged."
+      },
+      "report": "docs/coverage/lra-reference-panel-20261030.json"
     },
     {
       "id": "2026-10-30-lra-uncompleted-call-capture",
