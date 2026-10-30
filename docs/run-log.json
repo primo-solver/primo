@@ -6,7 +6,7 @@
       "id": "2026-10-30-qf-lra-call-ablation-pilot",
       "date": "2026-10-30",
       "kind": "numerical-call-distribution-and-conjunction-extraction",
-      "evidence_status": "source-pilot-qualified-initial-exports-rejected-repair-qualification-pending",
+      "evidence_status": "complete-qualified-pilot-corpus-initial-export-attempt-rejected",
       "branch": "experiment/qf-lra-call-ablation",
       "native_source_commit": "97a3229e3026faf52ab1df151d1e6dec11b136d0",
       "workflow_commit": "2bb28bf342398e452bf1b91e252f9cedcdb9633f",
@@ -63,7 +63,8 @@
           "job": "267725",
           "reason": "Replaced before execution to add native --check-model alongside required independent Dolmen."
         },
-        "revised_model_batch_sha256": "ef42f492a81c46a310a50bec3b111e593dd4b6bd8e2c5ca04901e3efe6a2ff90"
+        "revised_model_batch_sha256": "ef42f492a81c46a310a50bec3b111e593dd4b6bd8e2c5ca04901e3efe6a2ff90",
+        "portable_job_commands": "docs/coverage/lra-call-jobs-20261030.json"
       },
       "correctness": {
         "release": "44/44 CTest,242/242 Python,12/12 documentation checks passed in267720",
@@ -75,14 +76,16 @@
       },
       "commands": {
         "profile": "python3 scripts/run_lra_call_distribution.py --solver build-slurm-rel/primo --reference contrib/local/bin/z3 --root tmp/QF_LRA --manifest benchmarks/qf-lra-stratified-sample.txt --timeout 5 --shards 8 --index ARRAY_ID --out OUT/shard-ID (actual scripts deployed as tmp job artifacts)",
-        "fuzz": "python3 scripts/qf_lra_boolean_arithmetic_fuzz.py --solver build-slurm-rel/primo --solver-arg=--lra-call-profile --solver-arg=OUT/current-profile.jsonl --z3 contrib/local/bin/z3 --dolmen contrib/local/bin/dolmen --count 1000 --seed 2026103001 --timeout 5 --dolmen-timeout 10 --out OUT/fuzz"
+        "fuzz": "python3 scripts/qf_lra_boolean_arithmetic_fuzz.py --solver build-slurm-rel/primo --solver-arg=--lra-call-profile --solver-arg=OUT/current-profile.jsonl --z3 contrib/local/bin/z3 --dolmen contrib/local/bin/dolmen --count 1000 --seed 2026103001 --timeout 5 --dolmen-timeout 10 --out OUT/fuzz",
+        "strict_export_syntax": "https://smt-lib.org/logics-all.shtml#QF_LRA :extensions; signed integer numerator in rational concrete coefficient"
       },
       "limitations": [
-        "Completed checks only; timeout unfinished call and buffered tail censored.",
-        "Includes zero-pivot calls;43 inputs with no recorded calls retained.",
-        "Warm search-dependent work differs from fresh standalone conjunction replay.",
-        "128-pivot pilot covers14.10%of recorded time;not a final ablation selection or performance claim.",
-        "Initial raw exports rejected for declared-logic coefficient grammar; repaired exporter qualification/regeneration/replay pending."
+        "5s source pilot includes66timeout prefixes;unfinished checks andbuffered tails censored.",
+        "43 inputs havezero observed calls;all237 remain incoverage denominator.",
+        "Warm basis, assignment andbound-reason graph omitted;fresh replay is a different state.",
+        "128-pivot stratum is an initial development filter;freeze baseline manifests before ablating variants.",
+        "TwoSATreference timeouts in33-input corpus are independently validated withDolmen;notZ3agreements.",
+        "Initial97a rawexports rejected for coefficient grammar;repaired791exports fully qualified."
       ],
       "documentation_review": {
         "reviewer": "separate read-only derived_bounds_lead_review",
@@ -100,7 +103,7 @@
           "baseline": "68647085ba18583560ec5319bfb317bb0a51b1b6",
           "patch_digest": "b2e38807c01b649dc225e883cec6b8a5805f4007a2bb69d30f1866b02a30b5f5",
           "finding": "LCAP-SYNTAX-01 repaired33native31Z3agreements2reference timeouts; sourcefix/valuepreservation/audit/unit verified read-only fromprimarylogicgrammar",
-          "qualification": "pending"
+          "qualification": "Fresh791native gates and33conjunction replay/model validation passed;final result exposition review pending."
         }
       },
       "results": {
@@ -171,6 +174,115 @@
           "run_lra_call_distribution.py": "741a00bfb3222b93d8070791dba4fc29721e7d0fb5aa62c7a12e39396980546c",
           "slurm_lra_call_ablation.sbatch": "6b8d500413e0ad560dda4922cea20cb9824f1e81a81e72658428351c6a97de81"
         }
+      },
+      "repaired_exporter": {
+        "native_source_commit": "791a179adc94e4797428bca463dd2363b67620fc",
+        "binary_sha256": "500e56a6f8b355e86acf148516165705ad74d6ca00d8f20eb757a9fc4c37ad5b",
+        "remote_workspace": "~/primo-lra-call-ablation-literals-20261030",
+        "build": {
+          "job": "267754",
+          "state": "COMPLETED0:0",
+          "elapsed": "3m20s",
+          "node": "node-02",
+          "cpu": 4,
+          "memory": "8GiB"
+        },
+        "jobs": {
+          "check": "267755",
+          "fuzz": "267756",
+          "asan": "267757",
+          "static": "267758",
+          "extract": "267759",
+          "parent-models": "267760",
+          "fresh-default": "267768",
+          "fresh-models": "267772"
+        },
+        "resources": "Release2CPU8G;fuzz2CPU8G;ASAN4CPU12G;whole133-TUstatic8CPU24G;extraction4tasks each1CPU8G onnode-09. Every timing stage after qualification; sourceSATmodels afterextraction.",
+        "corpus": {
+          "manifest": "benchmarks/qf-lra-call-extraction-pilot.txt",
+          "files": 13,
+          "bytes": 2274258,
+          "combined_path_size_fingerprint": "7ecb8eceb51321f2f0d13c1bd46117df6c6cdc726306d41ff65ca4adf4e49ba1"
+        },
+        "provenance": "Clean tracked791archive via repository --build-via-slurm helper; fresh read-only preflight before every sbatch. Native and workflow scripts both from791source; newworkspace preserves rejected97aexports andoriginaltimingbinary.",
+        "commands_file": "results/lra-call-ablation-20261030/fixed-jobs.json",
+        "status": "qualified;all requested pilot stages terminal;33 conjunction inputs available",
+        "qualification": {
+          "release_ctest": "44/44",
+          "python": "246/246",
+          "doc_examples": "12/12",
+          "asan_ctest": "44/44 with leak detection andstrict-init-order",
+          "fuzz": {
+            "generated": 1000,
+            "seed": 2026103001,
+            "pass": 1000,
+            "wrong_answer": 0,
+            "crash": 0,
+            "parser_or_type_errors": 0,
+            "timeout": 0,
+            "unsupported": 0,
+            "reference_disagreement": 0,
+            "reference": "Z3 5.1.0",
+            "model_validator": "Dolmen0.10 direct",
+            "command": "same scripts/qf_lra_boolean_arithmetic_fuzz.py profile-enabled command as initial, fresh791binary,5s native/Z3,10s validator",
+            "artifacts": "~/primo-lra-call-ablation-literals-20261030/results/lra-call-fixed-20261030/fuzz/fuzz"
+          },
+          "static": "133/133 source hashes match current CPP;all return0;no new warnings;10 new direct-include advisories removed;18 existing analyzer advisories(16guarded enumtests,2modelRAII) unchanged",
+          "lint": "make lint passes locally",
+          "source_model_replay": "5/5 successful extraction-parent SAT rows directDolmen plusnativecheck;exact input/adaptation hashes verified;separate timing stage"
+        },
+        "conjunction_corpus": {
+          "inputs": 33,
+          "expected_status": {
+            "unsat": 20,
+            "sat": 13
+          },
+          "direct_dolmen_model_passes": 13,
+          "native_outcomes": {
+            "unsat": 20,
+            "sat": 13
+          },
+          "reference_outcomes": {
+            "unsat": 20,
+            "sat": 11,
+            "timeout": 2
+          },
+          "fresh_ge_cutoff": 23,
+          "fresh_below_cutoff_controls": 10,
+          "fresh_pivot_quantiles": {
+            "p50": 333,
+            "p90": 946,
+            "p99": 3682
+          },
+          "fresh_check_ns": {
+            "min": 62174,
+            "median": 16778196,
+            "p90": 242227029,
+            "max": 5566897289,
+            "sum": 7258823704
+          },
+          "fresh_bland_fallback_calls": 1,
+          "path": "benchmarks/qf-lra-call-pilot",
+          "manifest": "benchmarks/qf-lra-call-pilot/manifest.txt",
+          "hard_manifest": "benchmarks/qf-lra-call-pilot/fresh-ge128.txt",
+          "controls_manifest": "benchmarks/qf-lra-call-pilot/fresh-lt128-controls.txt",
+          "metadata": "benchmarks/qf-lra-call-pilot/metadata.json",
+          "fresh_data": "docs/coverage/lra-call-fresh-20261030.json",
+          "source_model_coverage": "docs/coverage/lra-call-extraction-parent-models-20261030.json",
+          "syntax": "All33 pass linear-literal/concrete-coefficient audit. AllSAT inputs accepted directly byDolmen QF_LRA;no logic widening.",
+          "reference_coverage": "20/20UNSAT and11/13SAT agree withZ3;2SATreference timeouts have passing independent Dolmen model checks. No wrong answers or invalid models.",
+          "actual_check_calls": "one completed numerical check perconjunction;33total;17,713pivots;7.258823704s summed checktime;11.125676s summed nativeprocesswall",
+          "budget_bias": "first5 qualifying calls perselected parent;not a final representative ablation selection"
+        },
+        "dependencies": {
+          "cadical": "cadical-3.0.0-7b99c07",
+          "cadical_library_sha256": "2e90229ddc034e64da2720c9e4a2ca81a89dd70b65c362ecb17ad360fcd2b354",
+          "z3": "5.1.0",
+          "z3_sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+          "dolmen": "0.10",
+          "dolmen_sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e"
+        },
+        "scheduling_note": "First final-replay submission was rejected withoutjob because afterok target267760 hadexpired fromcontroller. All4parent-model tasks independently confirmedCOMPLETED0:0 viaaccounting, then freshpreflight andsubmitted withoutobsolete dependency. No compute or measurements in rejected submission."
       }
     },
     {

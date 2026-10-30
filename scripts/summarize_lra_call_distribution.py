@@ -69,6 +69,7 @@ def main():
     assert shards and len(shards) == shards[0]["shards"]
     for shard in shards:
         assert shard["complete"]
+        assert shard.get("solver_args", []) == shards[0].get("solver_args", [])
         for key in (
             "solver_sha256",
             "reference_sha256",
@@ -110,6 +111,7 @@ def main():
     relevant = {
         ":input.assertions",
         ":lra.pivots",
+        ":lra.bland-fallbacks",
         ":lra.online-check-calls",
         ":lra.pivot-row-updates",
         ":lra.pivot-term-ops",
@@ -138,6 +140,7 @@ def main():
     result.update(
         {
             "schema": 1,
+            "solver_args": shards[0].get("solver_args", []),
             "job_ids": [shard["job_id"] for shard in shards],
             "all_observed": aggregate(records),
             "completed_sources": aggregate(

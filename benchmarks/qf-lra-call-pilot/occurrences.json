@@ -1,0 +1,959 @@
+[
+  {
+    "sha256": "9ee384c56b442ee38bb71b7c9b6b59c2360bac5caa412079dfe381543227d467",
+    "syntax": {
+      "equalities": 273,
+      "bounds": 289,
+      "strict_bounds": 85,
+      "queries": 1,
+      "variables": 385,
+      "expected": "unsat"
+    },
+    "occurrences": [
+      {
+        "parent": "2017-Heizmann-UltimateInvariantSynthesis/_functions1.i_3_5_2.bpl_11.smt2",
+        "parent_sha256": "3f46d7eba5506d859de4560fe12b5342fbb3e34ea4b93153202dbe3839f9daf9",
+        "parent_coverage": "prefix",
+        "call": {
+          "event": "check",
+          "checker": 1,
+          "call": 12189,
+          "pivots": 1671,
+          "nanoseconds": 590550450,
+          "row_updates": 191729,
+          "term_ops": 4823930,
+          "conflict": true,
+          "export": "checker-1-call-12189.smt2"
+        }
+      }
+    ]
+  },
+  {
+    "sha256": "7c02f889710477c2f8ad37699598fb544ed01283e5e1fea616d2ce097e0948f3",
+    "syntax": {
+      "equalities": 273,
+      "bounds": 228,
+      "strict_bounds": 44,
+      "queries": 1,
+      "variables": 385,
+      "expected": "unsat"
+    },
+    "occurrences": [
+      {
+        "parent": "2017-Heizmann-UltimateInvariantSynthesis/_functions1.i_3_5_2.bpl_11.smt2",
+        "parent_sha256": "3f46d7eba5506d859de4560fe12b5342fbb3e34ea4b93153202dbe3839f9daf9",
+        "parent_coverage": "prefix",
+        "call": {
+          "event": "check",
+          "checker": 1,
+          "call": 17219,
+          "pivots": 1632,
+          "nanoseconds": 616095969,
+          "row_updates": 192115,
+          "term_ops": 5518303,
+          "conflict": true,
+          "export": "checker-1-call-17219.smt2"
+        }
+      }
+    ]
+  },
+  {
+    "sha256": "309a825dadc257e69fd383969ae84105de4942666b652baf0067aa172f49a48b",
+    "syntax": {
+      "equalities": 273,
+      "bounds": 231,
+      "strict_bounds": 57,
+      "queries": 1,
+      "variables": 385,
+      "expected": "unsat"
+    },
+    "occurrences": [
+      {
+        "parent": "2017-Heizmann-UltimateInvariantSynthesis/_functions1.i_3_5_2.bpl_11.smt2",
+        "parent_sha256": "3f46d7eba5506d859de4560fe12b5342fbb3e34ea4b93153202dbe3839f9daf9",
+        "parent_coverage": "prefix",
+        "call": {
+          "event": "check",
+          "checker": 1,
+          "call": 19738,
+          "pivots": 1613,
+          "nanoseconds": 977959958,
+          "row_updates": 191707,
+          "term_ops": 5357871,
+          "conflict": true,
+          "export": "checker-1-call-19738.smt2"
+        }
+      }
+    ]
+  },
+  {
+    "sha256": "a8891987564dd0cb46a5bf107b7ddccfbdd12237afcd0b14d2a243a487dd4687",
+    "syntax": {
+      "equalities": 273,
+      "bounds": 220,
+      "strict_bounds": 53,
+      "queries": 1,
+      "variables": 385,
+      "expected": "unsat"
+    },
+    "occurrences": [
+      {
+        "parent": "2017-Heizmann-UltimateInvariantSynthesis/_functions1.i_3_5_2.bpl_11.smt2",
+        "parent_sha256": "3f46d7eba5506d859de4560fe12b5342fbb3e34ea4b93153202dbe3839f9daf9",
+        "parent_coverage": "prefix",
+        "call": {
+          "event": "check",
+          "checker": 1,
+          "call": 19794,
+          "pivots": 1605,
+          "nanoseconds": 602192525,
+          "row_updates": 141409,
+          "term_ops": 3651209,
+          "conflict": true,
+          "export": "checker-1-call-19794.smt2"
+        }
+      }
+    ]
+  },
+  {
+    "sha256": "c41210b862f068f1629b6d6c3e35f1b30e836d2a47c9c82c05c653912d867441",
+    "syntax": {
+      "equalities": 273,
+      "bounds": 288,
+      "strict_bounds": 95,
+      "queries": 1,
+      "variables": 385,
+      "expected": "unsat"
+    },
+    "occurrences": [
+      {
+        "parent": "2017-Heizmann-UltimateInvariantSynthesis/_functions1.i_3_5_2.bpl_11.smt2",
+        "parent_sha256": "3f46d7eba5506d859de4560fe12b5342fbb3e34ea4b93153202dbe3839f9daf9",
+        "parent_coverage": "prefix",
+        "call": {
+          "event": "check",
+          "checker": 1,
+          "call": 20852,
+          "pivots": 1651,
+          "nanoseconds": 531632761,
+          "row_updates": 192926,
+          "term_ops": 4323372,
+          "conflict": true,
+          "export": "checker-1-call-20852.smt2"
+        }
+      }
+    ]
+  },
+  {
+    "sha256": "43cba8f47372885f9728370684058e7a9b7498bd01d6caff7f1bde1762dc1f25",
+    "syntax": {
+      "equalities": 301,
+      "bounds": 182,
+      "strict_bounds": 61,
+      "queries": 1,
+      "variables": 373,
+      "expected": "sat"
+    },
+    "occurrences": [
+      {
+        "parent": "LassoRanker/Ultimate/Braverman-2006CAV-Ex1-int.bpl_Iteration1_Lasso_5-phaseTemplate.smt2",
+        "parent_sha256": "778667b000171332d33d67b5cff0a13146bb755a4a358f8f9fd3fa3d15416761",
+        "parent_coverage": "complete",
+        "call": {
+          "event": "check",
+          "checker": 1,
+          "call": 2853,
+          "pivots": 1559,
+          "nanoseconds": 958549644,
+          "row_updates": 234556,
+          "term_ops": 10332689,
+          "conflict": false,
+          "export": "checker-1-call-2853.smt2"
+        }
+      }
+    ]
+  },
+  {
+    "sha256": "304ff8ce01f3c6b6a5e7f69d94442967e923d34f09457f7293a5024f9dd814ae",
+    "syntax": {
+      "equalities": 301,
+      "bounds": 189,
+      "strict_bounds": 63,
+      "queries": 1,
+      "variables": 373,
+      "expected": "sat"
+    },
+    "occurrences": [
+      {
+        "parent": "LassoRanker/Ultimate/Braverman-2006CAV-Ex1-int.bpl_Iteration1_Lasso_5-phaseTemplate.smt2",
+        "parent_sha256": "778667b000171332d33d67b5cff0a13146bb755a4a358f8f9fd3fa3d15416761",
+        "parent_coverage": "complete",
+        "call": {
+          "event": "check",
+          "checker": 1,
+          "call": 2913,
+          "pivots": 1562,
+          "nanoseconds": 856871337,
+          "row_updates": 234954,
+          "term_ops": 9660520,
+          "conflict": false,
+          "export": "checker-1-call-2913.smt2"
+        }
+      }
+    ]
+  },
+  {
+    "sha256": "9ac413bfad64926c8b10676062396b9627a5dc9bc8bc4f936cbef04f6adba120",
+    "syntax": {
+      "equalities": 695,
+      "bounds": 4543,
+      "strict_bounds": 0,
+      "queries": 1,
+      "variables": 2272,
+      "expected": "sat"
+    },
+    "occurrences": [
+      {
+        "parent": "latendresse/ecoliFBAyicesTest-31875-32.smt2",
+        "parent_sha256": "95f2d05771a2229d3960829da381d8563cc8753682e53d2a41e000cfdb6e9572",
+        "parent_coverage": "complete",
+        "call": {
+          "event": "check",
+          "checker": 1,
+          "call": 1,
+          "pivots": 847,
+          "nanoseconds": 633559778,
+          "row_updates": 10936,
+          "term_ops": 8657668,
+          "conflict": false,
+          "export": "checker-1-call-1.smt2"
+        }
+      }
+    ]
+  },
+  {
+    "sha256": "922b274ad06c1c2774ccfb112bb66af887ce9314250b0f2726b34b99f909830b",
+    "syntax": {
+      "equalities": 2346,
+      "bounds": 2518,
+      "strict_bounds": 30,
+      "queries": 1,
+      "variables": 3873,
+      "expected": "sat"
+    },
+    "occurrences": [
+      {
+        "parent": "tropical-matrix/constraint-330061.smt2",
+        "parent_sha256": "2caf503fbf1b238607a5de55a1b71fac24d358ef489bfba8a7d31d6e12c569c5",
+        "parent_coverage": "prefix",
+        "call": {
+          "event": "check",
+          "checker": 1,
+          "call": 302,
+          "pivots": 677,
+          "nanoseconds": 19044876,
+          "row_updates": 5382,
+          "term_ops": 123325,
+          "conflict": false,
+          "export": "checker-1-call-302.smt2"
+        }
+      }
+    ]
+  },
+  {
+    "sha256": "e4b918d3ccc9566fc3b8395089a61143741d2f707d6b6ca5fb846995504b619f",
+    "syntax": {
+      "equalities": 2346,
+      "bounds": 2519,
+      "strict_bounds": 31,
+      "queries": 1,
+      "variables": 3873,
+      "expected": "sat"
+    },
+    "occurrences": [
+      {
+        "parent": "tropical-matrix/constraint-330061.smt2",
+        "parent_sha256": "2caf503fbf1b238607a5de55a1b71fac24d358ef489bfba8a7d31d6e12c569c5",
+        "parent_coverage": "prefix",
+        "call": {
+          "event": "check",
+          "checker": 1,
+          "call": 550,
+          "pivots": 162,
+          "nanoseconds": 11392304,
+          "row_updates": 2183,
+          "term_ops": 120853,
+          "conflict": false,
+          "export": "checker-1-call-550.smt2"
+        }
+      }
+    ]
+  },
+  {
+    "sha256": "90257399f55a7ed1eac36be554d34f084c40e18bf0e8200f63e909a0d5b676ad",
+    "syntax": {
+      "equalities": 2346,
+      "bounds": 2308,
+      "strict_bounds": 54,
+      "queries": 1,
+      "variables": 3873,
+      "expected": "sat"
+    },
+    "occurrences": [
+      {
+        "parent": "tropical-matrix/constraint-330061.smt2",
+        "parent_sha256": "2caf503fbf1b238607a5de55a1b71fac24d358ef489bfba8a7d31d6e12c569c5",
+        "parent_coverage": "prefix",
+        "call": {
+          "event": "check",
+          "checker": 1,
+          "call": 6265,
+          "pivots": 179,
+          "nanoseconds": 115599799,
+          "row_updates": 19266,
+          "term_ops": 2277736,
+          "conflict": false,
+          "export": "checker-1-call-6265.smt2"
+        }
+      }
+    ]
+  },
+  {
+    "sha256": "af1e52f353d82f253485a4cb49253e746d39c97d7af01bd7e4dcfe32a3a88ef2",
+    "syntax": {
+      "equalities": 249,
+      "bounds": 190,
+      "strict_bounds": 66,
+      "queries": 1,
+      "variables": 325,
+      "expected": "unsat"
+    },
+    "occurrences": [
+      {
+        "parent": "2017-Heizmann-UltimateInvariantSynthesis/_standard_copy1_ground.i_3_2_2.bpl_11.smt2",
+        "parent_sha256": "78c82bf7ba9407005b56559347771934b894ae698924eae21d6c39fb7c02fb29",
+        "parent_coverage": "prefix",
+        "call": {
+          "event": "check",
+          "checker": 1,
+          "call": 14363,
+          "pivots": 1377,
+          "nanoseconds": 97887313,
+          "row_updates": 105835,
+          "term_ops": 1566922,
+          "conflict": true,
+          "export": "checker-1-call-14363.smt2"
+        }
+      }
+    ]
+  },
+  {
+    "sha256": "bd476719ea1da6dfad42ec5029399a2c55232c5c2f1e6c9cbfda6b166a01a663",
+    "syntax": {
+      "equalities": 844,
+      "bounds": 783,
+      "strict_bounds": 53,
+      "queries": 1,
+      "variables": 1095,
+      "expected": "unsat"
+    },
+    "occurrences": [
+      {
+        "parent": "clock_synchro/clocksynchro_7clocks.main_invar.induct.smt2",
+        "parent_sha256": "b66bda92b20a70cff5b9c2c15d4cc5922a6511cb8e826cdf34fbef19c81924fa",
+        "parent_coverage": "prefix",
+        "call": {
+          "event": "check",
+          "checker": 1,
+          "call": 2503,
+          "pivots": 4450,
+          "nanoseconds": 4397397269,
+          "row_updates": 993491,
+          "term_ops": 51678420,
+          "conflict": true,
+          "export": "checker-1-call-2503.smt2"
+        }
+      }
+    ]
+  },
+  {
+    "sha256": "0a325d8bf263d6301dee9c92cadec3ed96193e27b9e2dc9f7b6ab3795bf74b11",
+    "syntax": {
+      "equalities": 236,
+      "bounds": 855,
+      "strict_bounds": 2,
+      "queries": 1,
+      "variables": 752,
+      "expected": "unsat"
+    },
+    "occurrences": [
+      {
+        "parent": "miplib/vpm2-20.smt2",
+        "parent_sha256": "154b9819c9e78bbeeff7253b6a6d4aecc03061ea91eef64e2c3cacbb96ad143e",
+        "parent_coverage": "complete",
+        "call": {
+          "event": "check",
+          "checker": 1,
+          "call": 1253,
+          "pivots": 168,
+          "nanoseconds": 22435610,
+          "row_updates": 2039,
+          "term_ops": 303381,
+          "conflict": true,
+          "export": "checker-1-call-1253.smt2"
+        }
+      }
+    ]
+  },
+  {
+    "sha256": "7042b072cb873dbbf37ff2fe575070379f712317b2a01f589c7d5172c91640f5",
+    "syntax": {
+      "equalities": 236,
+      "bounds": 835,
+      "strict_bounds": 5,
+      "queries": 1,
+      "variables": 752,
+      "expected": "unsat"
+    },
+    "occurrences": [
+      {
+        "parent": "miplib/vpm2-20.smt2",
+        "parent_sha256": "154b9819c9e78bbeeff7253b6a6d4aecc03061ea91eef64e2c3cacbb96ad143e",
+        "parent_coverage": "complete",
+        "call": {
+          "event": "check",
+          "checker": 1,
+          "call": 3139,
+          "pivots": 180,
+          "nanoseconds": 35783625,
+          "row_updates": 2323,
+          "term_ops": 491930,
+          "conflict": true,
+          "export": "checker-1-call-3139.smt2"
+        }
+      }
+    ]
+  },
+  {
+    "sha256": "6ec2f53a71e55a94aef443750175fe8fe6959f36c684a71e15cd45350700fe14",
+    "syntax": {
+      "equalities": 236,
+      "bounds": 979,
+      "strict_bounds": 2,
+      "queries": 1,
+      "variables": 752,
+      "expected": "unsat"
+    },
+    "occurrences": [
+      {
+        "parent": "miplib/vpm2-20.smt2",
+        "parent_sha256": "154b9819c9e78bbeeff7253b6a6d4aecc03061ea91eef64e2c3cacbb96ad143e",
+        "parent_coverage": "complete",
+        "call": {
+          "event": "check",
+          "checker": 1,
+          "call": 3309,
+          "pivots": 170,
+          "nanoseconds": 29294443,
+          "row_updates": 2000,
+          "term_ops": 396908,
+          "conflict": true,
+          "export": "checker-1-call-3309.smt2"
+        }
+      }
+    ]
+  },
+  {
+    "sha256": "475d15aa20fe6b085a5ab053fc1c173032e2529719b4697afa5200d293c25ba9",
+    "syntax": {
+      "equalities": 236,
+      "bounds": 710,
+      "strict_bounds": 1,
+      "queries": 1,
+      "variables": 752,
+      "expected": "unsat"
+    },
+    "occurrences": [
+      {
+        "parent": "miplib/vpm2-20.smt2",
+        "parent_sha256": "154b9819c9e78bbeeff7253b6a6d4aecc03061ea91eef64e2c3cacbb96ad143e",
+        "parent_coverage": "complete",
+        "call": {
+          "event": "check",
+          "checker": 1,
+          "call": 4996,
+          "pivots": 3094,
+          "nanoseconds": 288043967,
+          "row_updates": 31181,
+          "term_ops": 4515903,
+          "conflict": true,
+          "export": "checker-1-call-4996.smt2"
+        }
+      }
+    ]
+  },
+  {
+    "sha256": "7adf212c6fbaa97c3f40247d434f015ddf1101ccae331159a4366d3a080954b8",
+    "syntax": {
+      "equalities": 236,
+      "bounds": 1040,
+      "strict_bounds": 0,
+      "queries": 1,
+      "variables": 752,
+      "expected": "unsat"
+    },
+    "occurrences": [
+      {
+        "parent": "miplib/vpm2-20.smt2",
+        "parent_sha256": "154b9819c9e78bbeeff7253b6a6d4aecc03061ea91eef64e2c3cacbb96ad143e",
+        "parent_coverage": "complete",
+        "call": {
+          "event": "check",
+          "checker": 1,
+          "call": 5579,
+          "pivots": 352,
+          "nanoseconds": 65780130,
+          "row_updates": 4657,
+          "term_ops": 909150,
+          "conflict": true,
+          "export": "checker-1-call-5579.smt2"
+        }
+      }
+    ]
+  },
+  {
+    "sha256": "7aca68b0896409624320c67130ca3503cfc63b1e91f92dee0c2768d9be9707b0",
+    "syntax": {
+      "equalities": 2873,
+      "bounds": 929,
+      "strict_bounds": 256,
+      "queries": 1,
+      "variables": 3067,
+      "expected": "sat"
+    },
+    "occurrences": [
+      {
+        "parent": "DTP-Scheduling/constraints-tempo-matrix8x8.pddl.smt2",
+        "parent_sha256": "c0816a4345152e3f6c11447a8f819531b21f1ab7b9b4374f851489d52adae085",
+        "parent_coverage": "complete",
+        "call": {
+          "event": "check",
+          "checker": 1,
+          "call": 1,
+          "pivots": 440,
+          "nanoseconds": 20517631,
+          "row_updates": 16365,
+          "term_ops": 139870,
+          "conflict": false,
+          "export": "checker-1-call-1.smt2"
+        }
+      }
+    ]
+  },
+  {
+    "sha256": "332b993042b17d276d1fe1631503aa8a6029d14ce6085580e3bfe68491fbbfeb",
+    "syntax": {
+      "equalities": 683,
+      "bounds": 758,
+      "strict_bounds": 54,
+      "queries": 1,
+      "variables": 888,
+      "expected": "sat"
+    },
+    "occurrences": [
+      {
+        "parent": "clock_synchro/clocksynchro_6clocks.main_invar.induct.smt2",
+        "parent_sha256": "a5b9a93e2993218a37e3ba02fd4388288638cdb327d8d4ee88795da63c3a3c70",
+        "parent_coverage": "complete",
+        "call": {
+          "event": "check",
+          "checker": 1,
+          "call": 2493,
+          "pivots": 3776,
+          "nanoseconds": 3891275580,
+          "row_updates": 599975,
+          "term_ops": 28291463,
+          "conflict": false,
+          "export": "checker-1-call-2493.smt2"
+        }
+      }
+    ]
+  },
+  {
+    "sha256": "1e434f72890a8c9dbca1c09f4af843904e3dd7058a12e2800a1235063601618c",
+    "syntax": {
+      "equalities": 683,
+      "bounds": 722,
+      "strict_bounds": 73,
+      "queries": 1,
+      "variables": 888,
+      "expected": "unsat"
+    },
+    "occurrences": [
+      {
+        "parent": "clock_synchro/clocksynchro_6clocks.main_invar.induct.smt2",
+        "parent_sha256": "a5b9a93e2993218a37e3ba02fd4388288638cdb327d8d4ee88795da63c3a3c70",
+        "parent_coverage": "complete",
+        "call": {
+          "event": "check",
+          "checker": 1,
+          "call": 5781,
+          "pivots": 3725,
+          "nanoseconds": 2129811714,
+          "row_updates": 396085,
+          "term_ops": 19499065,
+          "conflict": true,
+          "export": "checker-1-call-5781.smt2"
+        }
+      }
+    ]
+  },
+  {
+    "sha256": "6dbb3b9293bbd22a6d06528bdabd5f08e4471a79a155bfbafd3900f1e72770a4",
+    "syntax": {
+      "equalities": 236,
+      "bounds": 855,
+      "strict_bounds": 2,
+      "queries": 1,
+      "variables": 752,
+      "expected": "unsat"
+    },
+    "occurrences": [
+      {
+        "parent": "miplib/vpm2-13.75.smt2",
+        "parent_sha256": "e8d66eb8673924de3133d4bf24e50c08f4ee206917dc9b36e1c82da85403ae95",
+        "parent_coverage": "prefix",
+        "call": {
+          "event": "check",
+          "checker": 1,
+          "call": 1253,
+          "pivots": 305,
+          "nanoseconds": 53695648,
+          "row_updates": 3995,
+          "term_ops": 776317,
+          "conflict": true,
+          "export": "checker-1-call-1253.smt2"
+        }
+      }
+    ]
+  },
+  {
+    "sha256": "71885e4aa3b1f1bfd45e7cb4c293cd24bd98a7d1dae996481aeb58a65c283b79",
+    "syntax": {
+      "equalities": 236,
+      "bounds": 928,
+      "strict_bounds": 2,
+      "queries": 1,
+      "variables": 752,
+      "expected": "unsat"
+    },
+    "occurrences": [
+      {
+        "parent": "miplib/vpm2-13.75.smt2",
+        "parent_sha256": "e8d66eb8673924de3133d4bf24e50c08f4ee206917dc9b36e1c82da85403ae95",
+        "parent_coverage": "prefix",
+        "call": {
+          "event": "check",
+          "checker": 1,
+          "call": 2028,
+          "pivots": 226,
+          "nanoseconds": 39871917,
+          "row_updates": 2842,
+          "term_ops": 592077,
+          "conflict": true,
+          "export": "checker-1-call-2028.smt2"
+        }
+      }
+    ]
+  },
+  {
+    "sha256": "7a8b4e0bee3171d6d0af3d641f291768e18e65f5c96bcc78b068332f214e54e7",
+    "syntax": {
+      "equalities": 236,
+      "bounds": 952,
+      "strict_bounds": 2,
+      "queries": 1,
+      "variables": 752,
+      "expected": "unsat"
+    },
+    "occurrences": [
+      {
+        "parent": "miplib/vpm2-13.75.smt2",
+        "parent_sha256": "e8d66eb8673924de3133d4bf24e50c08f4ee206917dc9b36e1c82da85403ae95",
+        "parent_coverage": "prefix",
+        "call": {
+          "event": "check",
+          "checker": 1,
+          "call": 3373,
+          "pivots": 231,
+          "nanoseconds": 34586331,
+          "row_updates": 3127,
+          "term_ops": 571387,
+          "conflict": true,
+          "export": "checker-1-call-3373.smt2"
+        }
+      }
+    ]
+  },
+  {
+    "sha256": "2a7e96a5282c31e0d983c3a17f3a4dba709fd6dc58a660b059ab5bad5b87cc70",
+    "syntax": {
+      "equalities": 236,
+      "bounds": 935,
+      "strict_bounds": 2,
+      "queries": 1,
+      "variables": 752,
+      "expected": "unsat"
+    },
+    "occurrences": [
+      {
+        "parent": "miplib/vpm2-13.75.smt2",
+        "parent_sha256": "e8d66eb8673924de3133d4bf24e50c08f4ee206917dc9b36e1c82da85403ae95",
+        "parent_coverage": "prefix",
+        "call": {
+          "event": "check",
+          "checker": 1,
+          "call": 3374,
+          "pivots": 214,
+          "nanoseconds": 36065151,
+          "row_updates": 2612,
+          "term_ops": 527228,
+          "conflict": true,
+          "export": "checker-1-call-3374.smt2"
+        }
+      }
+    ]
+  },
+  {
+    "sha256": "ab9bd8d71166a47dbe15c3018ad6f22ffcf652b685bfd893cd65909cbfa5d920",
+    "syntax": {
+      "equalities": 236,
+      "bounds": 987,
+      "strict_bounds": 2,
+      "queries": 1,
+      "variables": 752,
+      "expected": "unsat"
+    },
+    "occurrences": [
+      {
+        "parent": "miplib/vpm2-13.75.smt2",
+        "parent_sha256": "e8d66eb8673924de3133d4bf24e50c08f4ee206917dc9b36e1c82da85403ae95",
+        "parent_coverage": "prefix",
+        "call": {
+          "event": "check",
+          "checker": 1,
+          "call": 3693,
+          "pivots": 196,
+          "nanoseconds": 33841592,
+          "row_updates": 2115,
+          "term_ops": 451231,
+          "conflict": true,
+          "export": "checker-1-call-3693.smt2"
+        }
+      }
+    ]
+  },
+  {
+    "sha256": "8f25ae68c070809cb5c65bc6f99b56e1dc37bd150fb5b882ee2e5364aed83b50",
+    "syntax": {
+      "equalities": 358,
+      "bounds": 418,
+      "strict_bounds": 120,
+      "queries": 1,
+      "variables": 450,
+      "expected": "sat"
+    },
+    "occurrences": [
+      {
+        "parent": "DTP-Scheduling/constraints-tempo-depth-30.smt2",
+        "parent_sha256": "910f7f61677d2047e4dc9e8d0992df84b2112071a5e11b8fcad812375b4c9b00",
+        "parent_coverage": "complete",
+        "call": {
+          "event": "check",
+          "checker": 1,
+          "call": 1,
+          "pivots": 297,
+          "nanoseconds": 14280477,
+          "row_updates": 13999,
+          "term_ops": 346238,
+          "conflict": false,
+          "export": "checker-1-call-1.smt2"
+        }
+      }
+    ]
+  },
+  {
+    "sha256": "f69baef3ccbedc4df58b003e3680cf7543ccd6533c32d72dde4c3b36d31f9ad8",
+    "syntax": {
+      "equalities": 695,
+      "bounds": 4543,
+      "strict_bounds": 0,
+      "queries": 1,
+      "variables": 2272,
+      "expected": "sat"
+    },
+    "occurrences": [
+      {
+        "parent": "latendresse/ecoliFBAyicesTest-15875-16.smt2",
+        "parent_sha256": "8c673bcbd2bb499b626b4f34a5621073a4dc45d6b6ab5743be5fc350cfc7056f",
+        "parent_coverage": "complete",
+        "call": {
+          "event": "check",
+          "checker": 1,
+          "call": 1,
+          "pivots": 847,
+          "nanoseconds": 630753789,
+          "row_updates": 10936,
+          "term_ops": 8657668,
+          "conflict": false,
+          "export": "checker-1-call-1.smt2"
+        }
+      }
+    ]
+  },
+  {
+    "sha256": "490a9758ddba46aef697b09d32bdc471ad9675606fa7bd03dd1a5a4d9b7f4831",
+    "syntax": {
+      "equalities": 4112,
+      "bounds": 5392,
+      "strict_bounds": 30,
+      "queries": 1,
+      "variables": 6688,
+      "expected": "sat"
+    },
+    "occurrences": [
+      {
+        "parent": "tropical-matrix/constraint-556101.smt2",
+        "parent_sha256": "672b48c509bc79acc548a9c6b5d752f75eec7a31b77be55bbfc107d91329e804",
+        "parent_coverage": "prefix",
+        "call": {
+          "event": "check",
+          "checker": 1,
+          "call": 782,
+          "pivots": 373,
+          "nanoseconds": 3973099,
+          "row_updates": 1053,
+          "term_ops": 18862,
+          "conflict": false,
+          "export": "checker-1-call-782.smt2"
+        }
+      }
+    ]
+  },
+  {
+    "sha256": "302ace7205751063dee238ae281fcd67060786cf56c6100fd7950a85c83bc8f8",
+    "syntax": {
+      "equalities": 4112,
+      "bounds": 5715,
+      "strict_bounds": 40,
+      "queries": 1,
+      "variables": 6688,
+      "expected": "sat"
+    },
+    "occurrences": [
+      {
+        "parent": "tropical-matrix/constraint-556101.smt2",
+        "parent_sha256": "672b48c509bc79acc548a9c6b5d752f75eec7a31b77be55bbfc107d91329e804",
+        "parent_coverage": "prefix",
+        "call": {
+          "event": "check",
+          "checker": 1,
+          "call": 966,
+          "pivots": 888,
+          "nanoseconds": 40239293,
+          "row_updates": 7670,
+          "term_ops": 234281,
+          "conflict": false,
+          "export": "checker-1-call-966.smt2"
+        }
+      }
+    ]
+  },
+  {
+    "sha256": "fcc17c0acc9ad1a6f3b96ce63cc04c3990061113fcf110c080af2d8358144b46",
+    "syntax": {
+      "equalities": 4112,
+      "bounds": 2316,
+      "strict_bounds": 7,
+      "queries": 1,
+      "variables": 6688,
+      "expected": "sat"
+    },
+    "occurrences": [
+      {
+        "parent": "tropical-matrix/constraint-556101.smt2",
+        "parent_sha256": "672b48c509bc79acc548a9c6b5d752f75eec7a31b77be55bbfc107d91329e804",
+        "parent_coverage": "prefix",
+        "call": {
+          "event": "check",
+          "checker": 1,
+          "call": 3785,
+          "pivots": 193,
+          "nanoseconds": 118626518,
+          "row_updates": 23704,
+          "term_ops": 2149006,
+          "conflict": false,
+          "export": "checker-1-call-3785.smt2"
+        }
+      }
+    ]
+  },
+  {
+    "sha256": "3c5ae1317cbca811b8b466599d50143b94d958863a2036d6ac81ba71336c5829",
+    "syntax": {
+      "equalities": 4112,
+      "bounds": 3585,
+      "strict_bounds": 67,
+      "queries": 1,
+      "variables": 6688,
+      "expected": "unsat"
+    },
+    "occurrences": [
+      {
+        "parent": "tropical-matrix/constraint-556101.smt2",
+        "parent_sha256": "672b48c509bc79acc548a9c6b5d752f75eec7a31b77be55bbfc107d91329e804",
+        "parent_coverage": "prefix",
+        "call": {
+          "event": "check",
+          "checker": 1,
+          "call": 7074,
+          "pivots": 164,
+          "nanoseconds": 346039358,
+          "row_updates": 49068,
+          "term_ops": 6268285,
+          "conflict": true,
+          "export": "checker-1-call-7074.smt2"
+        }
+      }
+    ]
+  },
+  {
+    "sha256": "0111fd9dff56c67e7daa42ad4f4e1e6d9067461ee3851c3c212128b7e38c2ebd",
+    "syntax": {
+      "equalities": 4112,
+      "bounds": 2789,
+      "strict_bounds": 18,
+      "queries": 1,
+      "variables": 6688,
+      "expected": "unsat"
+    },
+    "occurrences": [
+      {
+        "parent": "tropical-matrix/constraint-556101.smt2",
+        "parent_sha256": "672b48c509bc79acc548a9c6b5d752f75eec7a31b77be55bbfc107d91329e804",
+        "parent_coverage": "prefix",
+        "call": {
+          "event": "check",
+          "checker": 1,
+          "call": 9036,
+          "pivots": 135,
+          "nanoseconds": 189655875,
+          "row_updates": 27035,
+          "term_ops": 3570519,
+          "conflict": true,
+          "export": "checker-1-call-9036.smt2"
+        }
+      }
+    ]
+  }
+]

@@ -1,0 +1,1608 @@
+{
+  "schema": 1,
+  "status": "qualified-pilot-not-final-ablation-selection",
+  "native_source": "791a179adc94e4797428bca463dd2363b67620fc",
+  "binary_sha256": "500e56a6f8b355e86acf148516165705ad74d6ca00d8f20eb757a9fc4c37ad5b",
+  "native_version": "primo 0.2.0\ngit: 791a179\nbuild: Release, sanitizers: none\ncadical: cadical-3.0.0-7b99c07\n",
+  "native_solver_args": [
+    "--quiet",
+    "--stats",
+    "--lra-call-profile",
+    "PER_INPUT_TRACE"
+  ],
+  "reference_sha256": "54bae839dd54e262edac6f755fc99659ce2a121301faff20a3e3b94478dcead0",
+  "timeout_seconds": 15.0,
+  "timing_job_ids": [
+    "267769",
+    "267770",
+    "267771",
+    "267768"
+  ],
+  "model_job": "267772",
+  "dolmen_sha256": "08b5fc3b17fb7eb54cb82141e9cabaf01039c686b2ac2512363344fbf23c052e",
+  "model_options": [
+    "--check-model",
+    "--require-dolmen-pass",
+    "--expect-sat",
+    "--dolmen-arg=--strict=false",
+    "--dolmen-size=2G",
+    "--timeout=60",
+    "--dolmen-timeout=30"
+  ],
+  "inputs": 33,
+  "expected_status": {
+    "unsat": 20,
+    "sat": 13
+  },
+  "direct_dolmen_model_passes": 13,
+  "native_outcomes": {
+    "unsat": 20,
+    "sat": 13
+  },
+  "reference_outcomes": {
+    "unsat": 20,
+    "sat": 11,
+    "timeout": 2
+  },
+  "cold_pivot_cutoff": 128,
+  "fresh_ge_cutoff": 23,
+  "fresh_below_cutoff_controls": 10,
+  "fresh_pivot_quantiles": {
+    "p50": 333,
+    "p90": 946,
+    "p99": 3682
+  },
+  "fresh_bland_fallback_calls": 1,
+  "fresh_check_ns": {
+    "min": 62174,
+    "median": 16778196,
+    "p90": 242227029,
+    "max": 5566897289,
+    "sum": 7258823704
+  },
+  "limitations": [
+    "Warm basis, assignment, bound-reason graph and original Boolean context are omitted.",
+    "Input order and pivot counts belong to this baseline; freeze manifests before comparing variants.",
+    "Selection is biased toward first qualifying calls of high observed-max-pivot source parents.",
+    "2 SAT reference timeouts are covered by direct independent model validation, not counted as Z3 agreements."
+  ],
+  "records": [
+    {
+      "file": "cubes/0111fd9dff56c67e7daa42ad4f4e1e6d9067461ee3851c3c212128b7e38c2ebd.smt2",
+      "sha256": "0111fd9dff56c67e7daa42ad4f4e1e6d9067461ee3851c3c212128b7e38c2ebd",
+      "syntax": {
+        "equalities": 4112,
+        "bounds": 2789,
+        "strict_bounds": 18,
+        "queries": 1,
+        "variables": 6688,
+        "expected": "unsat"
+      },
+      "source_families": [
+        "tropical-matrix"
+      ],
+      "warm_occurrences": [
+        {
+          "parent": "tropical-matrix/constraint-556101.smt2",
+          "parent_sha256": "672b48c509bc79acc548a9c6b5d752f75eec7a31b77be55bbfc107d91329e804",
+          "parent_coverage": "prefix",
+          "call": {
+            "event": "check",
+            "checker": 1,
+            "call": 9036,
+            "pivots": 135,
+            "nanoseconds": 189655875,
+            "row_updates": 27035,
+            "term_ops": 3570519,
+            "conflict": true,
+            "export": "checker-1-call-9036.smt2"
+          }
+        }
+      ],
+      "fresh_pivots": 894,
+      "bland_fallbacks": 0,
+      "fresh_check_ns": 39109172,
+      "native_wall_seconds": "0.452629",
+      "reference": {
+        "status": "ok",
+        "answer": "unsat",
+        "seconds": "0.417666",
+        "exit_code": 0,
+        "stats": {}
+      },
+      "model_check": null
+    },
+    {
+      "file": "cubes/0a325d8bf263d6301dee9c92cadec3ed96193e27b9e2dc9f7b6ab3795bf74b11.smt2",
+      "sha256": "0a325d8bf263d6301dee9c92cadec3ed96193e27b9e2dc9f7b6ab3795bf74b11",
+      "syntax": {
+        "equalities": 236,
+        "bounds": 855,
+        "strict_bounds": 2,
+        "queries": 1,
+        "variables": 752,
+        "expected": "unsat"
+      },
+      "source_families": [
+        "miplib"
+      ],
+      "warm_occurrences": [
+        {
+          "parent": "miplib/vpm2-20.smt2",
+          "parent_sha256": "154b9819c9e78bbeeff7253b6a6d4aecc03061ea91eef64e2c3cacbb96ad143e",
+          "parent_coverage": "complete",
+          "call": {
+            "event": "check",
+            "checker": 1,
+            "call": 1253,
+            "pivots": 168,
+            "nanoseconds": 22435610,
+            "row_updates": 2039,
+            "term_ops": 303381,
+            "conflict": true,
+            "export": "checker-1-call-1253.smt2"
+          }
+        }
+      ],
+      "fresh_pivots": 224,
+      "bland_fallbacks": 0,
+      "fresh_check_ns": 16696681,
+      "native_wall_seconds": "0.053944",
+      "reference": {
+        "status": "ok",
+        "answer": "unsat",
+        "seconds": "0.074780",
+        "exit_code": 0,
+        "stats": {}
+      },
+      "model_check": null
+    },
+    {
+      "file": "cubes/1e434f72890a8c9dbca1c09f4af843904e3dd7058a12e2800a1235063601618c.smt2",
+      "sha256": "1e434f72890a8c9dbca1c09f4af843904e3dd7058a12e2800a1235063601618c",
+      "syntax": {
+        "equalities": 683,
+        "bounds": 722,
+        "strict_bounds": 73,
+        "queries": 1,
+        "variables": 888,
+        "expected": "unsat"
+      },
+      "source_families": [
+        "clock_synchro"
+      ],
+      "warm_occurrences": [
+        {
+          "parent": "clock_synchro/clocksynchro_6clocks.main_invar.induct.smt2",
+          "parent_sha256": "a5b9a93e2993218a37e3ba02fd4388288638cdb327d8d4ee88795da63c3a3c70",
+          "parent_coverage": "complete",
+          "call": {
+            "event": "check",
+            "checker": 1,
+            "call": 5781,
+            "pivots": 3725,
+            "nanoseconds": 2129811714,
+            "row_updates": 396085,
+            "term_ops": 19499065,
+            "conflict": true,
+            "export": "checker-1-call-5781.smt2"
+          }
+        }
+      ],
+      "fresh_pivots": 368,
+      "bland_fallbacks": 0,
+      "fresh_check_ns": 78711366,
+      "native_wall_seconds": "0.125178",
+      "reference": {
+        "status": "ok",
+        "answer": "unsat",
+        "seconds": "0.519365",
+        "exit_code": 0,
+        "stats": {}
+      },
+      "model_check": null
+    },
+    {
+      "file": "cubes/2a7e96a5282c31e0d983c3a17f3a4dba709fd6dc58a660b059ab5bad5b87cc70.smt2",
+      "sha256": "2a7e96a5282c31e0d983c3a17f3a4dba709fd6dc58a660b059ab5bad5b87cc70",
+      "syntax": {
+        "equalities": 236,
+        "bounds": 935,
+        "strict_bounds": 2,
+        "queries": 1,
+        "variables": 752,
+        "expected": "unsat"
+      },
+      "source_families": [
+        "miplib"
+      ],
+      "warm_occurrences": [
+        {
+          "parent": "miplib/vpm2-13.75.smt2",
+          "parent_sha256": "e8d66eb8673924de3133d4bf24e50c08f4ee206917dc9b36e1c82da85403ae95",
+          "parent_coverage": "prefix",
+          "call": {
+            "event": "check",
+            "checker": 1,
+            "call": 3374,
+            "pivots": 214,
+            "nanoseconds": 36065151,
+            "row_updates": 2612,
+            "term_ops": 527228,
+            "conflict": true,
+            "export": "checker-1-call-3374.smt2"
+          }
+        }
+      ],
+      "fresh_pivots": 333,
+      "bland_fallbacks": 0,
+      "fresh_check_ns": 20752037,
+      "native_wall_seconds": "0.059525",
+      "reference": {
+        "status": "ok",
+        "answer": "unsat",
+        "seconds": "0.067169",
+        "exit_code": 0,
+        "stats": {}
+      },
+      "model_check": null
+    },
+    {
+      "file": "cubes/302ace7205751063dee238ae281fcd67060786cf56c6100fd7950a85c83bc8f8.smt2",
+      "sha256": "302ace7205751063dee238ae281fcd67060786cf56c6100fd7950a85c83bc8f8",
+      "syntax": {
+        "equalities": 4112,
+        "bounds": 5715,
+        "strict_bounds": 40,
+        "queries": 1,
+        "variables": 6688,
+        "expected": "sat"
+      },
+      "source_families": [
+        "tropical-matrix"
+      ],
+      "warm_occurrences": [
+        {
+          "parent": "tropical-matrix/constraint-556101.smt2",
+          "parent_sha256": "672b48c509bc79acc548a9c6b5d752f75eec7a31b77be55bbfc107d91329e804",
+          "parent_coverage": "prefix",
+          "call": {
+            "event": "check",
+            "checker": 1,
+            "call": 966,
+            "pivots": 888,
+            "nanoseconds": 40239293,
+            "row_updates": 7670,
+            "term_ops": 234281,
+            "conflict": false,
+            "export": "checker-1-call-966.smt2"
+          }
+        }
+      ],
+      "fresh_pivots": 946,
+      "bland_fallbacks": 0,
+      "fresh_check_ns": 30983981,
+      "native_wall_seconds": "0.487517",
+      "reference": {
+        "status": "ok",
+        "answer": "sat",
+        "seconds": "0.455415",
+        "exit_code": 0,
+        "stats": {}
+      },
+      "model_check": {
+        "validator": "dolmen",
+        "outcome": "pass",
+        "adapted_sha256": "5451d10f0a17d882fddfd96988efae1345fbe1430c913b25ca30d7537ef9496d"
+      }
+    },
+    {
+      "file": "cubes/304ff8ce01f3c6b6a5e7f69d94442967e923d34f09457f7293a5024f9dd814ae.smt2",
+      "sha256": "304ff8ce01f3c6b6a5e7f69d94442967e923d34f09457f7293a5024f9dd814ae",
+      "syntax": {
+        "equalities": 301,
+        "bounds": 189,
+        "strict_bounds": 63,
+        "queries": 1,
+        "variables": 373,
+        "expected": "sat"
+      },
+      "source_families": [
+        "LassoRanker"
+      ],
+      "warm_occurrences": [
+        {
+          "parent": "LassoRanker/Ultimate/Braverman-2006CAV-Ex1-int.bpl_Iteration1_Lasso_5-phaseTemplate.smt2",
+          "parent_sha256": "778667b000171332d33d67b5cff0a13146bb755a4a358f8f9fd3fa3d15416761",
+          "parent_coverage": "complete",
+          "call": {
+            "event": "check",
+            "checker": 1,
+            "call": 2913,
+            "pivots": 1562,
+            "nanoseconds": 856871337,
+            "row_updates": 234954,
+            "term_ops": 9660520,
+            "conflict": false,
+            "export": "checker-1-call-2913.smt2"
+          }
+        }
+      ],
+      "fresh_pivots": 62,
+      "bland_fallbacks": 0,
+      "fresh_check_ns": 5375295,
+      "native_wall_seconds": "0.029042",
+      "reference": {
+        "status": "ok",
+        "answer": "sat",
+        "seconds": "0.048268",
+        "exit_code": 0,
+        "stats": {}
+      },
+      "model_check": {
+        "validator": "dolmen",
+        "outcome": "pass",
+        "adapted_sha256": "5fd908e25ee3990ab68932eb434822d53f3a84bb37a2201ad3de2c294765bbf8"
+      }
+    },
+    {
+      "file": "cubes/309a825dadc257e69fd383969ae84105de4942666b652baf0067aa172f49a48b.smt2",
+      "sha256": "309a825dadc257e69fd383969ae84105de4942666b652baf0067aa172f49a48b",
+      "syntax": {
+        "equalities": 273,
+        "bounds": 231,
+        "strict_bounds": 57,
+        "queries": 1,
+        "variables": 385,
+        "expected": "unsat"
+      },
+      "source_families": [
+        "2017-Heizmann-UltimateInvariantSynthesis"
+      ],
+      "warm_occurrences": [
+        {
+          "parent": "2017-Heizmann-UltimateInvariantSynthesis/_functions1.i_3_5_2.bpl_11.smt2",
+          "parent_sha256": "3f46d7eba5506d859de4560fe12b5342fbb3e34ea4b93153202dbe3839f9daf9",
+          "parent_coverage": "prefix",
+          "call": {
+            "event": "check",
+            "checker": 1,
+            "call": 19738,
+            "pivots": 1613,
+            "nanoseconds": 977959958,
+            "row_updates": 191707,
+            "term_ops": 5357871,
+            "conflict": true,
+            "export": "checker-1-call-19738.smt2"
+          }
+        }
+      ],
+      "fresh_pivots": 56,
+      "bland_fallbacks": 0,
+      "fresh_check_ns": 3006516,
+      "native_wall_seconds": "0.026394",
+      "reference": {
+        "status": "ok",
+        "answer": "unsat",
+        "seconds": "0.032844",
+        "exit_code": 0,
+        "stats": {}
+      },
+      "model_check": null
+    },
+    {
+      "file": "cubes/332b993042b17d276d1fe1631503aa8a6029d14ce6085580e3bfe68491fbbfeb.smt2",
+      "sha256": "332b993042b17d276d1fe1631503aa8a6029d14ce6085580e3bfe68491fbbfeb",
+      "syntax": {
+        "equalities": 683,
+        "bounds": 758,
+        "strict_bounds": 54,
+        "queries": 1,
+        "variables": 888,
+        "expected": "sat"
+      },
+      "source_families": [
+        "clock_synchro"
+      ],
+      "warm_occurrences": [
+        {
+          "parent": "clock_synchro/clocksynchro_6clocks.main_invar.induct.smt2",
+          "parent_sha256": "a5b9a93e2993218a37e3ba02fd4388288638cdb327d8d4ee88795da63c3a3c70",
+          "parent_coverage": "complete",
+          "call": {
+            "event": "check",
+            "checker": 1,
+            "call": 2493,
+            "pivots": 3776,
+            "nanoseconds": 3891275580,
+            "row_updates": 599975,
+            "term_ops": 28291463,
+            "conflict": false,
+            "export": "checker-1-call-2493.smt2"
+          }
+        }
+      ],
+      "fresh_pivots": 321,
+      "bland_fallbacks": 0,
+      "fresh_check_ns": 179500476,
+      "native_wall_seconds": "0.227523",
+      "reference": {
+        "status": "ok",
+        "answer": "sat",
+        "seconds": "2.531993",
+        "exit_code": 0,
+        "stats": {}
+      },
+      "model_check": {
+        "validator": "dolmen",
+        "outcome": "pass",
+        "adapted_sha256": "7e02bc4043dd86cb00f3be1c11c2b54f1356d1a42433a513278f16027e02c9a6"
+      }
+    },
+    {
+      "file": "cubes/3c5ae1317cbca811b8b466599d50143b94d958863a2036d6ac81ba71336c5829.smt2",
+      "sha256": "3c5ae1317cbca811b8b466599d50143b94d958863a2036d6ac81ba71336c5829",
+      "syntax": {
+        "equalities": 4112,
+        "bounds": 3585,
+        "strict_bounds": 67,
+        "queries": 1,
+        "variables": 6688,
+        "expected": "unsat"
+      },
+      "source_families": [
+        "tropical-matrix"
+      ],
+      "warm_occurrences": [
+        {
+          "parent": "tropical-matrix/constraint-556101.smt2",
+          "parent_sha256": "672b48c509bc79acc548a9c6b5d752f75eec7a31b77be55bbfc107d91329e804",
+          "parent_coverage": "prefix",
+          "call": {
+            "event": "check",
+            "checker": 1,
+            "call": 7074,
+            "pivots": 164,
+            "nanoseconds": 346039358,
+            "row_updates": 49068,
+            "term_ops": 6268285,
+            "conflict": true,
+            "export": "checker-1-call-7074.smt2"
+          }
+        }
+      ],
+      "fresh_pivots": 1207,
+      "bland_fallbacks": 0,
+      "fresh_check_ns": 68592802,
+      "native_wall_seconds": "0.491162",
+      "reference": {
+        "status": "ok",
+        "answer": "unsat",
+        "seconds": "0.486674",
+        "exit_code": 0,
+        "stats": {}
+      },
+      "model_check": null
+    },
+    {
+      "file": "cubes/43cba8f47372885f9728370684058e7a9b7498bd01d6caff7f1bde1762dc1f25.smt2",
+      "sha256": "43cba8f47372885f9728370684058e7a9b7498bd01d6caff7f1bde1762dc1f25",
+      "syntax": {
+        "equalities": 301,
+        "bounds": 182,
+        "strict_bounds": 61,
+        "queries": 1,
+        "variables": 373,
+        "expected": "sat"
+      },
+      "source_families": [
+        "LassoRanker"
+      ],
+      "warm_occurrences": [
+        {
+          "parent": "LassoRanker/Ultimate/Braverman-2006CAV-Ex1-int.bpl_Iteration1_Lasso_5-phaseTemplate.smt2",
+          "parent_sha256": "778667b000171332d33d67b5cff0a13146bb755a4a358f8f9fd3fa3d15416761",
+          "parent_coverage": "complete",
+          "call": {
+            "event": "check",
+            "checker": 1,
+            "call": 2853,
+            "pivots": 1559,
+            "nanoseconds": 958549644,
+            "row_updates": 234556,
+            "term_ops": 10332689,
+            "conflict": false,
+            "export": "checker-1-call-2853.smt2"
+          }
+        }
+      ],
+      "fresh_pivots": 58,
+      "bland_fallbacks": 0,
+      "fresh_check_ns": 4963898,
+      "native_wall_seconds": "0.028606",
+      "reference": {
+        "status": "ok",
+        "answer": "sat",
+        "seconds": "0.047118",
+        "exit_code": 0,
+        "stats": {}
+      },
+      "model_check": {
+        "validator": "dolmen",
+        "outcome": "pass",
+        "adapted_sha256": "6266d2bddbe0d9ca9a2c3f1d7a8c286d50f47467bb358206ae4322c3da2620b1"
+      }
+    },
+    {
+      "file": "cubes/475d15aa20fe6b085a5ab053fc1c173032e2529719b4697afa5200d293c25ba9.smt2",
+      "sha256": "475d15aa20fe6b085a5ab053fc1c173032e2529719b4697afa5200d293c25ba9",
+      "syntax": {
+        "equalities": 236,
+        "bounds": 710,
+        "strict_bounds": 1,
+        "queries": 1,
+        "variables": 752,
+        "expected": "unsat"
+      },
+      "source_families": [
+        "miplib"
+      ],
+      "warm_occurrences": [
+        {
+          "parent": "miplib/vpm2-20.smt2",
+          "parent_sha256": "154b9819c9e78bbeeff7253b6a6d4aecc03061ea91eef64e2c3cacbb96ad143e",
+          "parent_coverage": "complete",
+          "call": {
+            "event": "check",
+            "checker": 1,
+            "call": 4996,
+            "pivots": 3094,
+            "nanoseconds": 288043967,
+            "row_updates": 31181,
+            "term_ops": 4515903,
+            "conflict": true,
+            "export": "checker-1-call-4996.smt2"
+          }
+        }
+      ],
+      "fresh_pivots": 85,
+      "bland_fallbacks": 0,
+      "fresh_check_ns": 1060028,
+      "native_wall_seconds": "0.036308",
+      "reference": {
+        "status": "ok",
+        "answer": "unsat",
+        "seconds": "0.048348",
+        "exit_code": 0,
+        "stats": {}
+      },
+      "model_check": null
+    },
+    {
+      "file": "cubes/490a9758ddba46aef697b09d32bdc471ad9675606fa7bd03dd1a5a4d9b7f4831.smt2",
+      "sha256": "490a9758ddba46aef697b09d32bdc471ad9675606fa7bd03dd1a5a4d9b7f4831",
+      "syntax": {
+        "equalities": 4112,
+        "bounds": 5392,
+        "strict_bounds": 30,
+        "queries": 1,
+        "variables": 6688,
+        "expected": "sat"
+      },
+      "source_families": [
+        "tropical-matrix"
+      ],
+      "warm_occurrences": [
+        {
+          "parent": "tropical-matrix/constraint-556101.smt2",
+          "parent_sha256": "672b48c509bc79acc548a9c6b5d752f75eec7a31b77be55bbfc107d91329e804",
+          "parent_coverage": "prefix",
+          "call": {
+            "event": "check",
+            "checker": 1,
+            "call": 782,
+            "pivots": 373,
+            "nanoseconds": 3973099,
+            "row_updates": 1053,
+            "term_ops": 18862,
+            "conflict": false,
+            "export": "checker-1-call-782.smt2"
+          }
+        }
+      ],
+      "fresh_pivots": 30,
+      "bland_fallbacks": 0,
+      "fresh_check_ns": 62174,
+      "native_wall_seconds": "0.445179",
+      "reference": {
+        "status": "ok",
+        "answer": "sat",
+        "seconds": "0.429862",
+        "exit_code": 0,
+        "stats": {}
+      },
+      "model_check": {
+        "validator": "dolmen",
+        "outcome": "pass",
+        "adapted_sha256": "c2ade2705dfd2df0493eb6059a2c7cd5f1b57faa71240ed4a85a3c568f7e193e"
+      }
+    },
+    {
+      "file": "cubes/6dbb3b9293bbd22a6d06528bdabd5f08e4471a79a155bfbafd3900f1e72770a4.smt2",
+      "sha256": "6dbb3b9293bbd22a6d06528bdabd5f08e4471a79a155bfbafd3900f1e72770a4",
+      "syntax": {
+        "equalities": 236,
+        "bounds": 855,
+        "strict_bounds": 2,
+        "queries": 1,
+        "variables": 752,
+        "expected": "unsat"
+      },
+      "source_families": [
+        "miplib"
+      ],
+      "warm_occurrences": [
+        {
+          "parent": "miplib/vpm2-13.75.smt2",
+          "parent_sha256": "e8d66eb8673924de3133d4bf24e50c08f4ee206917dc9b36e1c82da85403ae95",
+          "parent_coverage": "prefix",
+          "call": {
+            "event": "check",
+            "checker": 1,
+            "call": 1253,
+            "pivots": 305,
+            "nanoseconds": 53695648,
+            "row_updates": 3995,
+            "term_ops": 776317,
+            "conflict": true,
+            "export": "checker-1-call-1253.smt2"
+          }
+        }
+      ],
+      "fresh_pivots": 224,
+      "bland_fallbacks": 0,
+      "fresh_check_ns": 16778196,
+      "native_wall_seconds": "0.054583",
+      "reference": {
+        "status": "ok",
+        "answer": "unsat",
+        "seconds": "0.074049",
+        "exit_code": 0,
+        "stats": {}
+      },
+      "model_check": null
+    },
+    {
+      "file": "cubes/6ec2f53a71e55a94aef443750175fe8fe6959f36c684a71e15cd45350700fe14.smt2",
+      "sha256": "6ec2f53a71e55a94aef443750175fe8fe6959f36c684a71e15cd45350700fe14",
+      "syntax": {
+        "equalities": 236,
+        "bounds": 979,
+        "strict_bounds": 2,
+        "queries": 1,
+        "variables": 752,
+        "expected": "unsat"
+      },
+      "source_families": [
+        "miplib"
+      ],
+      "warm_occurrences": [
+        {
+          "parent": "miplib/vpm2-20.smt2",
+          "parent_sha256": "154b9819c9e78bbeeff7253b6a6d4aecc03061ea91eef64e2c3cacbb96ad143e",
+          "parent_coverage": "complete",
+          "call": {
+            "event": "check",
+            "checker": 1,
+            "call": 3309,
+            "pivots": 170,
+            "nanoseconds": 29294443,
+            "row_updates": 2000,
+            "term_ops": 396908,
+            "conflict": true,
+            "export": "checker-1-call-3309.smt2"
+          }
+        }
+      ],
+      "fresh_pivots": 844,
+      "bland_fallbacks": 0,
+      "fresh_check_ns": 119944042,
+      "native_wall_seconds": "0.159522",
+      "reference": {
+        "status": "ok",
+        "answer": "unsat",
+        "seconds": "0.089017",
+        "exit_code": 0,
+        "stats": {}
+      },
+      "model_check": null
+    },
+    {
+      "file": "cubes/7042b072cb873dbbf37ff2fe575070379f712317b2a01f589c7d5172c91640f5.smt2",
+      "sha256": "7042b072cb873dbbf37ff2fe575070379f712317b2a01f589c7d5172c91640f5",
+      "syntax": {
+        "equalities": 236,
+        "bounds": 835,
+        "strict_bounds": 5,
+        "queries": 1,
+        "variables": 752,
+        "expected": "unsat"
+      },
+      "source_families": [
+        "miplib"
+      ],
+      "warm_occurrences": [
+        {
+          "parent": "miplib/vpm2-20.smt2",
+          "parent_sha256": "154b9819c9e78bbeeff7253b6a6d4aecc03061ea91eef64e2c3cacbb96ad143e",
+          "parent_coverage": "complete",
+          "call": {
+            "event": "check",
+            "checker": 1,
+            "call": 3139,
+            "pivots": 180,
+            "nanoseconds": 35783625,
+            "row_updates": 2323,
+            "term_ops": 491930,
+            "conflict": true,
+            "export": "checker-1-call-3139.smt2"
+          }
+        }
+      ],
+      "fresh_pivots": 581,
+      "bland_fallbacks": 0,
+      "fresh_check_ns": 72981411,
+      "native_wall_seconds": "0.111815",
+      "reference": {
+        "status": "ok",
+        "answer": "unsat",
+        "seconds": "0.075723",
+        "exit_code": 0,
+        "stats": {}
+      },
+      "model_check": null
+    },
+    {
+      "file": "cubes/71885e4aa3b1f1bfd45e7cb4c293cd24bd98a7d1dae996481aeb58a65c283b79.smt2",
+      "sha256": "71885e4aa3b1f1bfd45e7cb4c293cd24bd98a7d1dae996481aeb58a65c283b79",
+      "syntax": {
+        "equalities": 236,
+        "bounds": 928,
+        "strict_bounds": 2,
+        "queries": 1,
+        "variables": 752,
+        "expected": "unsat"
+      },
+      "source_families": [
+        "miplib"
+      ],
+      "warm_occurrences": [
+        {
+          "parent": "miplib/vpm2-13.75.smt2",
+          "parent_sha256": "e8d66eb8673924de3133d4bf24e50c08f4ee206917dc9b36e1c82da85403ae95",
+          "parent_coverage": "prefix",
+          "call": {
+            "event": "check",
+            "checker": 1,
+            "call": 2028,
+            "pivots": 226,
+            "nanoseconds": 39871917,
+            "row_updates": 2842,
+            "term_ops": 592077,
+            "conflict": true,
+            "export": "checker-1-call-2028.smt2"
+          }
+        }
+      ],
+      "fresh_pivots": 220,
+      "bland_fallbacks": 0,
+      "fresh_check_ns": 10919803,
+      "native_wall_seconds": "0.049134",
+      "reference": {
+        "status": "ok",
+        "answer": "unsat",
+        "seconds": "0.079312",
+        "exit_code": 0,
+        "stats": {}
+      },
+      "model_check": null
+    },
+    {
+      "file": "cubes/7a8b4e0bee3171d6d0af3d641f291768e18e65f5c96bcc78b068332f214e54e7.smt2",
+      "sha256": "7a8b4e0bee3171d6d0af3d641f291768e18e65f5c96bcc78b068332f214e54e7",
+      "syntax": {
+        "equalities": 236,
+        "bounds": 952,
+        "strict_bounds": 2,
+        "queries": 1,
+        "variables": 752,
+        "expected": "unsat"
+      },
+      "source_families": [
+        "miplib"
+      ],
+      "warm_occurrences": [
+        {
+          "parent": "miplib/vpm2-13.75.smt2",
+          "parent_sha256": "e8d66eb8673924de3133d4bf24e50c08f4ee206917dc9b36e1c82da85403ae95",
+          "parent_coverage": "prefix",
+          "call": {
+            "event": "check",
+            "checker": 1,
+            "call": 3373,
+            "pivots": 231,
+            "nanoseconds": 34586331,
+            "row_updates": 3127,
+            "term_ops": 571387,
+            "conflict": true,
+            "export": "checker-1-call-3373.smt2"
+          }
+        }
+      ],
+      "fresh_pivots": 304,
+      "bland_fallbacks": 0,
+      "fresh_check_ns": 24999756,
+      "native_wall_seconds": "0.063346",
+      "reference": {
+        "status": "ok",
+        "answer": "unsat",
+        "seconds": "0.047867",
+        "exit_code": 0,
+        "stats": {}
+      },
+      "model_check": null
+    },
+    {
+      "file": "cubes/7aca68b0896409624320c67130ca3503cfc63b1e91f92dee0c2768d9be9707b0.smt2",
+      "sha256": "7aca68b0896409624320c67130ca3503cfc63b1e91f92dee0c2768d9be9707b0",
+      "syntax": {
+        "equalities": 2873,
+        "bounds": 929,
+        "strict_bounds": 256,
+        "queries": 1,
+        "variables": 3067,
+        "expected": "sat"
+      },
+      "source_families": [
+        "DTP-Scheduling"
+      ],
+      "warm_occurrences": [
+        {
+          "parent": "DTP-Scheduling/constraints-tempo-matrix8x8.pddl.smt2",
+          "parent_sha256": "c0816a4345152e3f6c11447a8f819531b21f1ab7b9b4374f851489d52adae085",
+          "parent_coverage": "complete",
+          "call": {
+            "event": "check",
+            "checker": 1,
+            "call": 1,
+            "pivots": 440,
+            "nanoseconds": 20517631,
+            "row_updates": 16365,
+            "term_ops": 139870,
+            "conflict": false,
+            "export": "checker-1-call-1.smt2"
+          }
+        }
+      ],
+      "fresh_pivots": 440,
+      "bland_fallbacks": 0,
+      "fresh_check_ns": 12009193,
+      "native_wall_seconds": "0.193390",
+      "reference": {
+        "status": "ok",
+        "answer": "sat",
+        "seconds": "0.199959",
+        "exit_code": 0,
+        "stats": {}
+      },
+      "model_check": {
+        "validator": "dolmen",
+        "outcome": "pass",
+        "adapted_sha256": "3b731b601de1031d4b9eac5ad04d0130cdd5cdae0595b1620e40b551ec2bcca6"
+      }
+    },
+    {
+      "file": "cubes/7adf212c6fbaa97c3f40247d434f015ddf1101ccae331159a4366d3a080954b8.smt2",
+      "sha256": "7adf212c6fbaa97c3f40247d434f015ddf1101ccae331159a4366d3a080954b8",
+      "syntax": {
+        "equalities": 236,
+        "bounds": 1040,
+        "strict_bounds": 0,
+        "queries": 1,
+        "variables": 752,
+        "expected": "unsat"
+      },
+      "source_families": [
+        "miplib"
+      ],
+      "warm_occurrences": [
+        {
+          "parent": "miplib/vpm2-20.smt2",
+          "parent_sha256": "154b9819c9e78bbeeff7253b6a6d4aecc03061ea91eef64e2c3cacbb96ad143e",
+          "parent_coverage": "complete",
+          "call": {
+            "event": "check",
+            "checker": 1,
+            "call": 5579,
+            "pivots": 352,
+            "nanoseconds": 65780130,
+            "row_updates": 4657,
+            "term_ops": 909150,
+            "conflict": true,
+            "export": "checker-1-call-5579.smt2"
+          }
+        }
+      ],
+      "fresh_pivots": 879,
+      "bland_fallbacks": 0,
+      "fresh_check_ns": 111043827,
+      "native_wall_seconds": "0.151390",
+      "reference": {
+        "status": "ok",
+        "answer": "unsat",
+        "seconds": "0.109214",
+        "exit_code": 0,
+        "stats": {}
+      },
+      "model_check": null
+    },
+    {
+      "file": "cubes/7c02f889710477c2f8ad37699598fb544ed01283e5e1fea616d2ce097e0948f3.smt2",
+      "sha256": "7c02f889710477c2f8ad37699598fb544ed01283e5e1fea616d2ce097e0948f3",
+      "syntax": {
+        "equalities": 273,
+        "bounds": 228,
+        "strict_bounds": 44,
+        "queries": 1,
+        "variables": 385,
+        "expected": "unsat"
+      },
+      "source_families": [
+        "2017-Heizmann-UltimateInvariantSynthesis"
+      ],
+      "warm_occurrences": [
+        {
+          "parent": "2017-Heizmann-UltimateInvariantSynthesis/_functions1.i_3_5_2.bpl_11.smt2",
+          "parent_sha256": "3f46d7eba5506d859de4560fe12b5342fbb3e34ea4b93153202dbe3839f9daf9",
+          "parent_coverage": "prefix",
+          "call": {
+            "event": "check",
+            "checker": 1,
+            "call": 17219,
+            "pivots": 1632,
+            "nanoseconds": 616095969,
+            "row_updates": 192115,
+            "term_ops": 5518303,
+            "conflict": true,
+            "export": "checker-1-call-17219.smt2"
+          }
+        }
+      ],
+      "fresh_pivots": 47,
+      "bland_fallbacks": 0,
+      "fresh_check_ns": 2277491,
+      "native_wall_seconds": "0.024571",
+      "reference": {
+        "status": "ok",
+        "answer": "unsat",
+        "seconds": "0.030156",
+        "exit_code": 0,
+        "stats": {}
+      },
+      "model_check": null
+    },
+    {
+      "file": "cubes/8f25ae68c070809cb5c65bc6f99b56e1dc37bd150fb5b882ee2e5364aed83b50.smt2",
+      "sha256": "8f25ae68c070809cb5c65bc6f99b56e1dc37bd150fb5b882ee2e5364aed83b50",
+      "syntax": {
+        "equalities": 358,
+        "bounds": 418,
+        "strict_bounds": 120,
+        "queries": 1,
+        "variables": 450,
+        "expected": "sat"
+      },
+      "source_families": [
+        "DTP-Scheduling"
+      ],
+      "warm_occurrences": [
+        {
+          "parent": "DTP-Scheduling/constraints-tempo-depth-30.smt2",
+          "parent_sha256": "910f7f61677d2047e4dc9e8d0992df84b2112071a5e11b8fcad812375b4c9b00",
+          "parent_coverage": "complete",
+          "call": {
+            "event": "check",
+            "checker": 1,
+            "call": 1,
+            "pivots": 297,
+            "nanoseconds": 14280477,
+            "row_updates": 13999,
+            "term_ops": 346238,
+            "conflict": false,
+            "export": "checker-1-call-1.smt2"
+          }
+        }
+      ],
+      "fresh_pivots": 297,
+      "bland_fallbacks": 0,
+      "fresh_check_ns": 13980572,
+      "native_wall_seconds": "0.039471",
+      "reference": {
+        "status": "ok",
+        "answer": "sat",
+        "seconds": "0.037501",
+        "exit_code": 0,
+        "stats": {}
+      },
+      "model_check": {
+        "validator": "dolmen",
+        "outcome": "pass",
+        "adapted_sha256": "dc7bf0ac746644b5b39a35b79f16e632ce24c4e44c6f67df2d5818f8a8e60c10"
+      }
+    },
+    {
+      "file": "cubes/90257399f55a7ed1eac36be554d34f084c40e18bf0e8200f63e909a0d5b676ad.smt2",
+      "sha256": "90257399f55a7ed1eac36be554d34f084c40e18bf0e8200f63e909a0d5b676ad",
+      "syntax": {
+        "equalities": 2346,
+        "bounds": 2308,
+        "strict_bounds": 54,
+        "queries": 1,
+        "variables": 3873,
+        "expected": "sat"
+      },
+      "source_families": [
+        "tropical-matrix"
+      ],
+      "warm_occurrences": [
+        {
+          "parent": "tropical-matrix/constraint-330061.smt2",
+          "parent_sha256": "2caf503fbf1b238607a5de55a1b71fac24d358ef489bfba8a7d31d6e12c569c5",
+          "parent_coverage": "prefix",
+          "call": {
+            "event": "check",
+            "checker": 1,
+            "call": 6265,
+            "pivots": 179,
+            "nanoseconds": 115599799,
+            "row_updates": 19266,
+            "term_ops": 2277736,
+            "conflict": false,
+            "export": "checker-1-call-6265.smt2"
+          }
+        }
+      ],
+      "fresh_pivots": 944,
+      "bland_fallbacks": 0,
+      "fresh_check_ns": 54725068,
+      "native_wall_seconds": "0.232931",
+      "reference": {
+        "status": "ok",
+        "answer": "sat",
+        "seconds": "0.271601",
+        "exit_code": 0,
+        "stats": {}
+      },
+      "model_check": {
+        "validator": "dolmen",
+        "outcome": "pass",
+        "adapted_sha256": "b83ece2cc3a6cf1fcd8affb9bf475cd7794e5f2fdd41d7f4952d7869d9296dd3"
+      }
+    },
+    {
+      "file": "cubes/922b274ad06c1c2774ccfb112bb66af887ce9314250b0f2726b34b99f909830b.smt2",
+      "sha256": "922b274ad06c1c2774ccfb112bb66af887ce9314250b0f2726b34b99f909830b",
+      "syntax": {
+        "equalities": 2346,
+        "bounds": 2518,
+        "strict_bounds": 30,
+        "queries": 1,
+        "variables": 3873,
+        "expected": "sat"
+      },
+      "source_families": [
+        "tropical-matrix"
+      ],
+      "warm_occurrences": [
+        {
+          "parent": "tropical-matrix/constraint-330061.smt2",
+          "parent_sha256": "2caf503fbf1b238607a5de55a1b71fac24d358ef489bfba8a7d31d6e12c569c5",
+          "parent_coverage": "prefix",
+          "call": {
+            "event": "check",
+            "checker": 1,
+            "call": 302,
+            "pivots": 677,
+            "nanoseconds": 19044876,
+            "row_updates": 5382,
+            "term_ops": 123325,
+            "conflict": false,
+            "export": "checker-1-call-302.smt2"
+          }
+        }
+      ],
+      "fresh_pivots": 619,
+      "bland_fallbacks": 0,
+      "fresh_check_ns": 14498799,
+      "native_wall_seconds": "0.195919",
+      "reference": {
+        "status": "ok",
+        "answer": "sat",
+        "seconds": "0.199897",
+        "exit_code": 0,
+        "stats": {}
+      },
+      "model_check": {
+        "validator": "dolmen",
+        "outcome": "pass",
+        "adapted_sha256": "b9aef073462b21513f075d19c341e43ebf1cf64443ebc1280506190cb4736dba"
+      }
+    },
+    {
+      "file": "cubes/9ac413bfad64926c8b10676062396b9627a5dc9bc8bc4f936cbef04f6adba120.smt2",
+      "sha256": "9ac413bfad64926c8b10676062396b9627a5dc9bc8bc4f936cbef04f6adba120",
+      "syntax": {
+        "equalities": 695,
+        "bounds": 4543,
+        "strict_bounds": 0,
+        "queries": 1,
+        "variables": 2272,
+        "expected": "sat"
+      },
+      "source_families": [
+        "latendresse"
+      ],
+      "warm_occurrences": [
+        {
+          "parent": "latendresse/ecoliFBAyicesTest-31875-32.smt2",
+          "parent_sha256": "95f2d05771a2229d3960829da381d8563cc8753682e53d2a41e000cfdb6e9572",
+          "parent_coverage": "complete",
+          "call": {
+            "event": "check",
+            "checker": 1,
+            "call": 1,
+            "pivots": 847,
+            "nanoseconds": 633559778,
+            "row_updates": 10936,
+            "term_ops": 8657668,
+            "conflict": false,
+            "export": "checker-1-call-1.smt2"
+          }
+        }
+      ],
+      "fresh_pivots": 508,
+      "bland_fallbacks": 0,
+      "fresh_check_ns": 249722489,
+      "native_wall_seconds": "0.383336",
+      "reference": {
+        "status": "timeout",
+        "answer": "error",
+        "seconds": "15.020458",
+        "exit_code": -15,
+        "stats": {}
+      },
+      "model_check": {
+        "validator": "dolmen",
+        "outcome": "pass",
+        "adapted_sha256": "e3e5b9fdafb882a8b34957bb7a964c825081ebb57a179fdee78e04925cb674e1"
+      }
+    },
+    {
+      "file": "cubes/9ee384c56b442ee38bb71b7c9b6b59c2360bac5caa412079dfe381543227d467.smt2",
+      "sha256": "9ee384c56b442ee38bb71b7c9b6b59c2360bac5caa412079dfe381543227d467",
+      "syntax": {
+        "equalities": 273,
+        "bounds": 289,
+        "strict_bounds": 85,
+        "queries": 1,
+        "variables": 385,
+        "expected": "unsat"
+      },
+      "source_families": [
+        "2017-Heizmann-UltimateInvariantSynthesis"
+      ],
+      "warm_occurrences": [
+        {
+          "parent": "2017-Heizmann-UltimateInvariantSynthesis/_functions1.i_3_5_2.bpl_11.smt2",
+          "parent_sha256": "3f46d7eba5506d859de4560fe12b5342fbb3e34ea4b93153202dbe3839f9daf9",
+          "parent_coverage": "prefix",
+          "call": {
+            "event": "check",
+            "checker": 1,
+            "call": 12189,
+            "pivots": 1671,
+            "nanoseconds": 590550450,
+            "row_updates": 191729,
+            "term_ops": 4823930,
+            "conflict": true,
+            "export": "checker-1-call-12189.smt2"
+          }
+        }
+      ],
+      "fresh_pivots": 72,
+      "bland_fallbacks": 0,
+      "fresh_check_ns": 7854280,
+      "native_wall_seconds": "0.031635",
+      "reference": {
+        "status": "ok",
+        "answer": "unsat",
+        "seconds": "0.096261",
+        "exit_code": 0,
+        "stats": {}
+      },
+      "model_check": null
+    },
+    {
+      "file": "cubes/a8891987564dd0cb46a5bf107b7ddccfbdd12237afcd0b14d2a243a487dd4687.smt2",
+      "sha256": "a8891987564dd0cb46a5bf107b7ddccfbdd12237afcd0b14d2a243a487dd4687",
+      "syntax": {
+        "equalities": 273,
+        "bounds": 220,
+        "strict_bounds": 53,
+        "queries": 1,
+        "variables": 385,
+        "expected": "unsat"
+      },
+      "source_families": [
+        "2017-Heizmann-UltimateInvariantSynthesis"
+      ],
+      "warm_occurrences": [
+        {
+          "parent": "2017-Heizmann-UltimateInvariantSynthesis/_functions1.i_3_5_2.bpl_11.smt2",
+          "parent_sha256": "3f46d7eba5506d859de4560fe12b5342fbb3e34ea4b93153202dbe3839f9daf9",
+          "parent_coverage": "prefix",
+          "call": {
+            "event": "check",
+            "checker": 1,
+            "call": 19794,
+            "pivots": 1605,
+            "nanoseconds": 602192525,
+            "row_updates": 141409,
+            "term_ops": 3651209,
+            "conflict": true,
+            "export": "checker-1-call-19794.smt2"
+          }
+        }
+      ],
+      "fresh_pivots": 46,
+      "bland_fallbacks": 0,
+      "fresh_check_ns": 1849058,
+      "native_wall_seconds": "0.024463",
+      "reference": {
+        "status": "ok",
+        "answer": "unsat",
+        "seconds": "0.117380",
+        "exit_code": 0,
+        "stats": {}
+      },
+      "model_check": null
+    },
+    {
+      "file": "cubes/ab9bd8d71166a47dbe15c3018ad6f22ffcf652b685bfd893cd65909cbfa5d920.smt2",
+      "sha256": "ab9bd8d71166a47dbe15c3018ad6f22ffcf652b685bfd893cd65909cbfa5d920",
+      "syntax": {
+        "equalities": 236,
+        "bounds": 987,
+        "strict_bounds": 2,
+        "queries": 1,
+        "variables": 752,
+        "expected": "unsat"
+      },
+      "source_families": [
+        "miplib"
+      ],
+      "warm_occurrences": [
+        {
+          "parent": "miplib/vpm2-13.75.smt2",
+          "parent_sha256": "e8d66eb8673924de3133d4bf24e50c08f4ee206917dc9b36e1c82da85403ae95",
+          "parent_coverage": "prefix",
+          "call": {
+            "event": "check",
+            "checker": 1,
+            "call": 3693,
+            "pivots": 196,
+            "nanoseconds": 33841592,
+            "row_updates": 2115,
+            "term_ops": 451231,
+            "conflict": true,
+            "export": "checker-1-call-3693.smt2"
+          }
+        }
+      ],
+      "fresh_pivots": 1524,
+      "bland_fallbacks": 0,
+      "fresh_check_ns": 242227029,
+      "native_wall_seconds": "0.283006",
+      "reference": {
+        "status": "ok",
+        "answer": "unsat",
+        "seconds": "0.094069",
+        "exit_code": 0,
+        "stats": {}
+      },
+      "model_check": null
+    },
+    {
+      "file": "cubes/af1e52f353d82f253485a4cb49253e746d39c97d7af01bd7e4dcfe32a3a88ef2.smt2",
+      "sha256": "af1e52f353d82f253485a4cb49253e746d39c97d7af01bd7e4dcfe32a3a88ef2",
+      "syntax": {
+        "equalities": 249,
+        "bounds": 190,
+        "strict_bounds": 66,
+        "queries": 1,
+        "variables": 325,
+        "expected": "unsat"
+      },
+      "source_families": [
+        "2017-Heizmann-UltimateInvariantSynthesis"
+      ],
+      "warm_occurrences": [
+        {
+          "parent": "2017-Heizmann-UltimateInvariantSynthesis/_standard_copy1_ground.i_3_2_2.bpl_11.smt2",
+          "parent_sha256": "78c82bf7ba9407005b56559347771934b894ae698924eae21d6c39fb7c02fb29",
+          "parent_coverage": "prefix",
+          "call": {
+            "event": "check",
+            "checker": 1,
+            "call": 14363,
+            "pivots": 1377,
+            "nanoseconds": 97887313,
+            "row_updates": 105835,
+            "term_ops": 1566922,
+            "conflict": true,
+            "export": "checker-1-call-14363.smt2"
+          }
+        }
+      ],
+      "fresh_pivots": 34,
+      "bland_fallbacks": 0,
+      "fresh_check_ns": 1397873,
+      "native_wall_seconds": "0.023357",
+      "reference": {
+        "status": "ok",
+        "answer": "unsat",
+        "seconds": "0.048684",
+        "exit_code": 0,
+        "stats": {}
+      },
+      "model_check": null
+    },
+    {
+      "file": "cubes/bd476719ea1da6dfad42ec5029399a2c55232c5c2f1e6c9cbfda6b166a01a663.smt2",
+      "sha256": "bd476719ea1da6dfad42ec5029399a2c55232c5c2f1e6c9cbfda6b166a01a663",
+      "syntax": {
+        "equalities": 844,
+        "bounds": 783,
+        "strict_bounds": 53,
+        "queries": 1,
+        "variables": 1095,
+        "expected": "unsat"
+      },
+      "source_families": [
+        "clock_synchro"
+      ],
+      "warm_occurrences": [
+        {
+          "parent": "clock_synchro/clocksynchro_7clocks.main_invar.induct.smt2",
+          "parent_sha256": "b66bda92b20a70cff5b9c2c15d4cc5922a6511cb8e826cdf34fbef19c81924fa",
+          "parent_coverage": "prefix",
+          "call": {
+            "event": "check",
+            "checker": 1,
+            "call": 2503,
+            "pivots": 4450,
+            "nanoseconds": 4397397269,
+            "row_updates": 993491,
+            "term_ops": 51678420,
+            "conflict": true,
+            "export": "checker-1-call-2503.smt2"
+          }
+        }
+      ],
+      "fresh_pivots": 3682,
+      "bland_fallbacks": 1,
+      "fresh_check_ns": 5566897289,
+      "native_wall_seconds": "5.623491",
+      "reference": {
+        "status": "ok",
+        "answer": "unsat",
+        "seconds": "0.211611",
+        "exit_code": 0,
+        "stats": {}
+      },
+      "model_check": null
+    },
+    {
+      "file": "cubes/c41210b862f068f1629b6d6c3e35f1b30e836d2a47c9c82c05c653912d867441.smt2",
+      "sha256": "c41210b862f068f1629b6d6c3e35f1b30e836d2a47c9c82c05c653912d867441",
+      "syntax": {
+        "equalities": 273,
+        "bounds": 288,
+        "strict_bounds": 95,
+        "queries": 1,
+        "variables": 385,
+        "expected": "unsat"
+      },
+      "source_families": [
+        "2017-Heizmann-UltimateInvariantSynthesis"
+      ],
+      "warm_occurrences": [
+        {
+          "parent": "2017-Heizmann-UltimateInvariantSynthesis/_functions1.i_3_5_2.bpl_11.smt2",
+          "parent_sha256": "3f46d7eba5506d859de4560fe12b5342fbb3e34ea4b93153202dbe3839f9daf9",
+          "parent_coverage": "prefix",
+          "call": {
+            "event": "check",
+            "checker": 1,
+            "call": 20852,
+            "pivots": 1651,
+            "nanoseconds": 531632761,
+            "row_updates": 192926,
+            "term_ops": 4323372,
+            "conflict": true,
+            "export": "checker-1-call-20852.smt2"
+          }
+        }
+      ],
+      "fresh_pivots": 53,
+      "bland_fallbacks": 0,
+      "fresh_check_ns": 1283136,
+      "native_wall_seconds": "0.025366",
+      "reference": {
+        "status": "ok",
+        "answer": "unsat",
+        "seconds": "0.032748",
+        "exit_code": 0,
+        "stats": {}
+      },
+      "model_check": null
+    },
+    {
+      "file": "cubes/e4b918d3ccc9566fc3b8395089a61143741d2f707d6b6ca5fb846995504b619f.smt2",
+      "sha256": "e4b918d3ccc9566fc3b8395089a61143741d2f707d6b6ca5fb846995504b619f",
+      "syntax": {
+        "equalities": 2346,
+        "bounds": 2519,
+        "strict_bounds": 31,
+        "queries": 1,
+        "variables": 3873,
+        "expected": "sat"
+      },
+      "source_families": [
+        "tropical-matrix"
+      ],
+      "warm_occurrences": [
+        {
+          "parent": "tropical-matrix/constraint-330061.smt2",
+          "parent_sha256": "2caf503fbf1b238607a5de55a1b71fac24d358ef489bfba8a7d31d6e12c569c5",
+          "parent_coverage": "prefix",
+          "call": {
+            "event": "check",
+            "checker": 1,
+            "call": 550,
+            "pivots": 162,
+            "nanoseconds": 11392304,
+            "row_updates": 2183,
+            "term_ops": 120853,
+            "conflict": false,
+            "export": "checker-1-call-550.smt2"
+          }
+        }
+      ],
+      "fresh_pivots": 621,
+      "bland_fallbacks": 0,
+      "fresh_check_ns": 14503712,
+      "native_wall_seconds": "0.194716",
+      "reference": {
+        "status": "ok",
+        "answer": "sat",
+        "seconds": "0.196862",
+        "exit_code": 0,
+        "stats": {}
+      },
+      "model_check": {
+        "validator": "dolmen",
+        "outcome": "pass",
+        "adapted_sha256": "c61fd065183cabc8cab792232047db5ffa9d7433f843b11d9fd3319ec93d8876"
+      }
+    },
+    {
+      "file": "cubes/f69baef3ccbedc4df58b003e3680cf7543ccd6533c32d72dde4c3b36d31f9ad8.smt2",
+      "sha256": "f69baef3ccbedc4df58b003e3680cf7543ccd6533c32d72dde4c3b36d31f9ad8",
+      "syntax": {
+        "equalities": 695,
+        "bounds": 4543,
+        "strict_bounds": 0,
+        "queries": 1,
+        "variables": 2272,
+        "expected": "sat"
+      },
+      "source_families": [
+        "latendresse"
+      ],
+      "warm_occurrences": [
+        {
+          "parent": "latendresse/ecoliFBAyicesTest-15875-16.smt2",
+          "parent_sha256": "8c673bcbd2bb499b626b4f34a5621073a4dc45d6b6ab5743be5fc350cfc7056f",
+          "parent_coverage": "complete",
+          "call": {
+            "event": "check",
+            "checker": 1,
+            "call": 1,
+            "pivots": 847,
+            "nanoseconds": 630753789,
+            "row_updates": 10936,
+            "term_ops": 8657668,
+            "conflict": false,
+            "export": "checker-1-call-1.smt2"
+          }
+        }
+      ],
+      "fresh_pivots": 508,
+      "bland_fallbacks": 0,
+      "fresh_check_ns": 249769261,
+      "native_wall_seconds": "0.382376",
+      "reference": {
+        "status": "timeout",
+        "answer": "error",
+        "seconds": "15.021164",
+        "exit_code": -15,
+        "stats": {}
+      },
+      "model_check": {
+        "validator": "dolmen",
+        "outcome": "pass",
+        "adapted_sha256": "47105dcd0b973262188c01a73f5652213078ce8f90a5b120452801423a5ba504"
+      }
+    },
+    {
+      "file": "cubes/fcc17c0acc9ad1a6f3b96ce63cc04c3990061113fcf110c080af2d8358144b46.smt2",
+      "sha256": "fcc17c0acc9ad1a6f3b96ce63cc04c3990061113fcf110c080af2d8358144b46",
+      "syntax": {
+        "equalities": 4112,
+        "bounds": 2316,
+        "strict_bounds": 7,
+        "queries": 1,
+        "variables": 6688,
+        "expected": "sat"
+      },
+      "source_families": [
+        "tropical-matrix"
+      ],
+      "warm_occurrences": [
+        {
+          "parent": "tropical-matrix/constraint-556101.smt2",
+          "parent_sha256": "672b48c509bc79acc548a9c6b5d752f75eec7a31b77be55bbfc107d91329e804",
+          "parent_coverage": "prefix",
+          "call": {
+            "event": "check",
+            "checker": 1,
+            "call": 3785,
+            "pivots": 193,
+            "nanoseconds": 118626518,
+            "row_updates": 23704,
+            "term_ops": 2149006,
+            "conflict": false,
+            "export": "checker-1-call-3785.smt2"
+          }
+        }
+      ],
+      "fresh_pivots": 682,
+      "bland_fallbacks": 0,
+      "fresh_check_ns": 20346993,
+      "native_wall_seconds": "0.414851",
+      "reference": {
+        "status": "ok",
+        "answer": "sat",
+        "seconds": "0.379391",
+        "exit_code": 0,
+        "stats": {}
+      },
+      "model_check": {
+        "validator": "dolmen",
+        "outcome": "pass",
+        "adapted_sha256": "e371115d4c0ae98c519be4a5d75414c429887221a1fb3791bfe91aa9f2dc272c"
+      }
+    }
+  ]
+}

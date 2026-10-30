@@ -1,0 +1,44 @@
+{
+  "native_source": "791a179adc94e4797428bca463dd2363b67620fc",
+  "binary_sha256": "500e56a6f8b355e86acf148516165705ad74d6ca00d8f20eb757a9fc4c37ad5b",
+  "job_id": "267760",
+  "expected_sat": 5,
+  "direct_dolmen_passes": 5,
+  "rows": [
+    {
+      "file": "latendresse/ecoliFBAyicesTest-31875-32.smt2",
+      "input_sha256": "95f2d05771a2229d3960829da381d8563cc8753682e53d2a41e000cfdb6e9572",
+      "adapted_sha256": "109efed4637fa38051912587843abbe3f51128bbe99b283fd6e6f38033613f7c",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "miplib/vpm2-20.smt2",
+      "input_sha256": "154b9819c9e78bbeeff7253b6a6d4aecc03061ea91eef64e2c3cacbb96ad143e",
+      "adapted_sha256": "dd961de1a43ac138f6099c41d5b88a4b313af9ddbbdc1207647a243d8b6f4d5e",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "DTP-Scheduling/constraints-tempo-matrix8x8.pddl.smt2",
+      "input_sha256": "c0816a4345152e3f6c11447a8f819531b21f1ab7b9b4374f851489d52adae085",
+      "adapted_sha256": "baf8c8cbe88c4cd53e64108d508e4488aa083ab1b5113dd9648a59c23c1a84bd",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "DTP-Scheduling/constraints-tempo-depth-30.smt2",
+      "input_sha256": "910f7f61677d2047e4dc9e8d0992df84b2112071a5e11b8fcad812375b4c9b00",
+      "adapted_sha256": "4c93592ddc1a097b495c783a71ceac6aac64e151bb0ffd577dfd0727f54fbe8a",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "latendresse/ecoliFBAyicesTest-15875-16.smt2",
+      "input_sha256": "8c673bcbd2bb499b626b4f34a5621073a4dc45d6b6ab5743be5fc350cfc7056f",
+      "adapted_sha256": "2845da8e8eb287a1842bbe40c040a24a09741c4cc0efbbb3dd4e2baa98f727c9",
+      "outcome": "pass",
+      "validator": "dolmen"
+    }
+  ]
+}
