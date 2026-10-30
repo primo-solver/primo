@@ -258,9 +258,9 @@ QF_LRA theory options:
                               Record online QF_LRA check pivots and time as JSONL
           --lra-call-export TEXT
                               Export bounded conjunctions from profiled checks
-          --lra-call-export-min-pivots UINT
+          --lra-call-export-min-pivots UINT [100]
                               Minimum pivots per exported check (default 100)
-          --lra-call-export-limit UINT
+          --lra-call-export-limit UINT [20]
                               Maximum exported checks per process (default 20)
           --lra-propagation [default: on]
                               Enable QF_LRA same-slack bound propagation (Milestone 3b)

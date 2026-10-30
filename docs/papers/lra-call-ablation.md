@@ -50,11 +50,11 @@ maximum pivot count is not a bound on the uncompleted call, and a timeout is
 not a completed long-duration observation.
 
 The implementation owners are
-{source}`the options <src/smt/check_sat.hpp>`,
-{source}`the CLI <src/main.cpp>` and
-{source}`the online callback <src/smt/solver_engines.cpp>`.
-The new diagnostic helper is `LraCallProfiler` in `src/smt/lra_call_profiler.*`;
-its revision-pinned source link will be added after the preparation commit.
+[the options](https://github.com/primo-solver/primo/blob/97a3229/src/smt/check_sat.hpp),
+[the CLI](https://github.com/primo-solver/primo/blob/97a3229/src/main.cpp) and
+[the online callback](https://github.com/primo-solver/primo/blob/97a3229/src/smt/solver_engines.cpp).
+The [diagnostic helper `LraCallProfiler`](https://github.com/primo-solver/primo/blob/97a3229/src/smt/lra_call_profiler.cpp)
+owns serialization and export budgets.
 The caller retains shared ownership until all callbacks have been destroyed.
 
 ## Exported numerical conjunction
