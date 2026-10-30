@@ -3,6 +3,56 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-10-30-lra-captured-yices-opensmt-panel",
+      "date": "2026-10-30",
+      "kind": "additional-reference-solvers",
+      "evidence_status": "timing-running-model-stage-queued",
+      "branch": "experiment/qf-lra-call-ablation",
+      "scope": "CompareYices/OpenSMT answers onexact9capturedconjunctions;unresolved300000first. No nativealgorithmchange or general solver ranking.",
+      "native_context_commit": "d4944eb",
+      "native_binary_sha256": "710929c58c18970cf4fccf7eb479fb95bb1410e6b46559433e4af80b55a9eee8",
+      "manifest_sha256": "602d976f78a3683019fe56a5dacdce61dcb8db218cc4acd8a90f72e24dfbcd23",
+      "expected_statuses_sha256": "140bfb9a5213e1c3cb304dd64004e5892e29b1751a872401911920501ef0dbf9",
+      "inputs": 9,
+      "known_sat": 8,
+      "unknown": 1,
+      "references": {
+        "yices-smt2": {
+          "version": "2.7.0",
+          "sha256": "eab7efbff2a6f0cce2fcd2c25cb4a94e0e048c902d8ef9e6fd7d7989aa54c501"
+        },
+        "opensmt": {
+          "version": "2.9.2",
+          "sha256": "b7899e9aff299026d3251df7a28f51f56d8bd1e5b0fd7be11bcc72c4f2803a98"
+        }
+      },
+      "execution": {
+        "environment": "SLURMnode-09,onephysicalCPU8GiBpertask;2arraytasks,60sperreferenceinput+2sgrace;separatemodelstage90ssolver30sDolmen2GiB",
+        "workspace": "~/primo-lra-call-capture-20261030",
+        "references": "Read-only existing standalone binaries linked underowned tmp/reference-panel;shareddependencies unchanged.",
+        "jobs": {
+          "timing": "267836",
+          "models": "267838"
+        },
+        "script": "scripts/qualification/lra_call_ablation/references.sbatch",
+        "script_sha256": "762e241c68f8748aa8726f36def335051ae06f74d56aa1dbc7126d4c4ceea6a2",
+        "preflight": "Repositorycheck-only/no-sync nativecontextd494andCaDiCaL3plusbothreferenceversionsimmediatelybeforeeachsbatch",
+        "artifacts": "results/lra-reference-panel-20261030",
+        "commands_file": "results/lra-reference-panel-20261030/jobs.json"
+      },
+      "preliminary": {
+        "yices": "8SAT1timeout;timingcomplete",
+        "opensmt": "timingstillrunning",
+        "unknown_case": "bothreferences60stimeout;noverdictassigned",
+        "models": "queuedafterwhole timingarray"
+      },
+      "limitations": [
+        "Small single-family diagnostic corpus;notbroadsolverordering.",
+        "EarlierPrimo/Z3recordingsarehistoricaldistinctstages;no pairedspeedupclaim.",
+        "SATresultsrequireseparatedirectDolmenvalidation;timeoutsarenotanswers."
+      ]
+    },
+    {
       "id": "2026-10-30-lra-uncompleted-call-capture",
       "date": "2026-10-30",
       "kind": "selected-precheck-capture-and-timeout-probe",
