@@ -96,7 +96,7 @@ def analyze(path, command_status="ok"):
         if end is not None and not partial and command_status == "ok"
         else "prefix"
     )
-    if not checkers and end is not None and command_status == "ok":
+    if not checkers and coverage == "complete":
         coverage = "no-checks"
     result = {
         "coverage": coverage,
@@ -134,8 +134,15 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("trace", type=Path)
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument(
+        "--command-status",
+        required=True,
+        choices=["ok", "timeout", "error", "unsupported"],
+    )
     args = parser.parse_args()
-    args.out.write_text(json.dumps(analyze(args.trace), indent=2) + "\n")
+    args.out.write_text(
+        json.dumps(analyze(args.trace, args.command_status), indent=2) + "\n"
+    )
 
 
 if __name__ == "__main__":

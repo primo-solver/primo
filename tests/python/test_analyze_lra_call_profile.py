@@ -56,6 +56,13 @@ class CallProfileTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "malformed complete"):
             self.analyze(rows, '{"event":\n')
 
+    def test_empty_trace_with_truncated_tail_stays_censored(self):
+        rows = [
+            {"event": "begin", "schema": 1},
+            {"event": "end", "checkers": 0, "calls": 0, "exported": 0},
+        ]
+        self.assertEqual(self.analyze(rows, '{"event":')["coverage"], "prefix")
+
     def test_nonconsecutive_calls_rejected(self):
         rows = [
             {"event": "begin", "schema": 1},

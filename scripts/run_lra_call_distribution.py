@@ -38,6 +38,13 @@ def main():
     reference = str(args.reference.resolve())
     metadata = {
         "solver_sha256": digest(args.solver),
+        "workflow_sha256": {
+            p.name: digest(p)
+            for p in [
+                Path(__file__),
+                Path(__file__).with_name("analyze_lra_call_profile.py"),
+            ]
+        },
         "reference_sha256": digest(args.reference),
         "version": subprocess.check_output([solver, "--version"], text=True),
         "manifest_sha256": digest(args.manifest),
@@ -109,7 +116,7 @@ def main():
             "reference": ref,
             "wrong": bool(wrong),
             "command": [*command, str(path)],
-            "trace_sha256": digest(profile),
+            "trace_sha256": digest(profile) if profile.exists() else None,
             "analysis": analysis,
         }
         metadata["records"].append(record)
