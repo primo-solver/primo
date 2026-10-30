@@ -128,7 +128,7 @@ The fixed, seed-42 stratified development sample covers 17 families, with at mos
 five seconds per source input, with a two-second termination grace. Eight SLURM
 tasks each use one physical CPU and 8 GiB on node-09. These are instrumented
 observations, not a solver speed comparison. Exact hashes, versions, job IDs and
-commands are in the [run log](../run-log.md).
+commands are in the [run log](../run-log.json).
 
 Primo finished 171 inputs (90 SAT, 81 UNSAT), with 66 timeouts and no errors or
 unsupported results. Z3 finished 159, with 78 timeouts. The 158 jointly decisive
@@ -187,6 +187,24 @@ Boolean/arithmetic cases compared with Z3 and checked with Dolmen. The whole-tre
 133-translation-unit analyzer scan found no new analyzer warning class; the
 advisory include scan is triaged separately in the ledger. These checks qualify
 the diagnostic path; they do not establish an algorithmic performance improvement.
+
+### Export syntax repair found during validation
+
+The initial `97a3229` exporter wrote a negative fraction as `(- (/ n d))`.
+This has the intended Real value: Primo replayed all 33 initial exports with
+the expected answers, and Z3 agreed on 31 with two reference timeouts. However,
+11 of the 13 SAT exports failed Dolmen's
+input-conformance check before model validation: a multiplication coefficient
+must follow the [SMT-LIB QF_LRA concrete-coefficient grammar](https://smt-lib.org/logics-all.shtml#QF_LRA).
+The conforming form is `(/ (- n) d)`, with a nonzero positive numeral denominator.
+The exporter now uses that form, and the generated-format audit checks concrete
+multiplication coefficients explicitly. The regression includes a negative
+fractional row coefficient as well as a negative fractional bound.
+
+The original traces, files, fresh runs and rejected validator outputs remain as
+rejected extraction evidence. Fresh qualification, extraction and replay of the
+repaired exporter are pending. The accepted first source-input distribution uses
+recording without export, so this serialization repair does not alter that data.
 
 ## Sources and implementation status
 

@@ -30,6 +30,20 @@ def check_conjunction(text):
     counts = {"equalities": 0, "bounds": 0, "strict_bounds": 0, "queries": 0}
     expected = None
 
+    def concrete_coefficient(term):
+        if isinstance(term, str):
+            return bool(re.fullmatch(r"[0-9]+", term))
+        if len(term) == 2 and term[0] == "-":
+            return isinstance(term[1], str) and bool(re.fullmatch(r"[0-9]+", term[1]))
+        return (
+            len(term) == 3
+            and term[0] == "/"
+            and concrete_coefficient(term[1])
+            and isinstance(term[2], str)
+            and bool(re.fullmatch(r"[1-9][0-9]*", term[2]))
+            and (isinstance(term[1], str) or term[1][0] == "-")
+        )
+
     def degree(term):
         if isinstance(term, str):
             assert term in variables or re.fullmatch(r"[0-9]+", term), term
@@ -42,6 +56,13 @@ def check_conjunction(text):
             or (op == "-" and len(args) in (1, 2))
             or (op == "/" and len(args) == 2)
         )
+        if op == "*":
+            assert (
+                len(args) == 2
+                and concrete_coefficient(args[0])
+                and isinstance(args[1], str)
+                and args[1] in variables
+            ), "nonconforming QF_LRA coefficient"
         if op == "/":
             assert degrees[1] == 0, "nonconstant denominator"
             return degrees[0]

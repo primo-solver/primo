@@ -1,9 +1,15 @@
 #include "smt/lra_call_profiler.hpp"
 
+#include <cstddef>
+#include <cstdint>
 #include <filesystem>
+#include <ios>
 #include <sstream>
 #include <stdexcept>
+#include <string>
 #include <utility>
+
+#include "util/rational.hpp"
 
 namespace primo::smt {
 namespace {
@@ -14,7 +20,11 @@ std::string numeral(const util::Rational& value) {
   if (negative) text.erase(0, 1);
   const auto slash = text.find('/');
   if (slash != std::string::npos) {
-    text = "(/ " + text.substr(0, slash) + " " + text.substr(slash + 1) + ")";
+    // QF_LRA concrete coefficients use (/ c n), with the sign on integer c.
+    // See SMT-LIB's QF_LRA :extensions, not an outer negation of division.
+    const std::string numerator =
+        negative ? "(- " + text.substr(0, slash) + ")" : text.substr(0, slash);
+    return "(/ " + numerator + " " + text.substr(slash + 1) + ")";
   }
   return negative ? "(- " + text + ")" : text;
 }

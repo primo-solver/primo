@@ -6,7 +6,7 @@
       "id": "2026-10-30-qf-lra-call-ablation-pilot",
       "date": "2026-10-30",
       "kind": "numerical-call-distribution-and-conjunction-extraction",
-      "evidence_status": "pilot-qualified-extraction-replay-running",
+      "evidence_status": "source-pilot-qualified-initial-exports-rejected-repair-qualification-pending",
       "branch": "experiment/qf-lra-call-ablation",
       "native_source_commit": "97a3229e3026faf52ab1df151d1e6dec11b136d0",
       "workflow_commit": "2bb28bf342398e452bf1b91e252f9cedcdb9633f",
@@ -82,7 +82,7 @@
         "Includes zero-pivot calls;43 inputs with no recorded calls retained.",
         "Warm search-dependent work differs from fresh standalone conjunction replay.",
         "128-pivot pilot covers14.10%of recorded time;not a final ablation selection or performance claim.",
-        "Independent export replay is pending."
+        "Initial raw exports rejected for declared-logic coefficient grammar; repaired exporter qualification/regeneration/replay pending."
       ],
       "documentation_review": {
         "reviewer": "separate read-only derived_bounds_lead_review",
@@ -94,6 +94,13 @@
           "portable_sha256": "fdad2610bdea2b53fe8fbd7d78cf0a77115ea4339fd8937622ca3dc16eea409b",
           "figure_sha256": "9de3d2f7b5265f14c9d0e6f44215cfe1adcef2e8ec784ff8fb648ee670b895cc",
           "findings": "LCAP-PILOT-01 hidden log-scale tail repaired with grouped bars/ymin0.5;LCAP-PILOT-02 ledger status synchronized. Numbers/17families/90model matches independently verified. Extraction outside acceptance."
+        },
+        "syntax_repair": {
+          "verdict": "ready for preparation only",
+          "baseline": "68647085ba18583560ec5319bfb317bb0a51b1b6",
+          "patch_digest": "b2e38807c01b649dc225e883cec6b8a5805f4007a2bb69d30f1866b02a30b5f5",
+          "finding": "LCAP-SYNTAX-01 repaired33native31Z3agreements2reference timeouts; sourcefix/valuepreservation/audit/unit verified read-only fromprimarylogicgrammar",
+          "qualification": "pending"
         }
       },
       "results": {
@@ -147,7 +154,16 @@
         "expected_unsat": 20,
         "syntax": "all33 restricted-format audits pass; linear arithmetic literal assertions, no Boolean branching",
         "skips": 0,
-        "fresh_replay": "submitted; independent expected-status checks and SAT-model stage pending",
+        "fresh_replay": {
+          "native_expected": 33,
+          "z3_agreements": 31,
+          "z3_timeouts": 2,
+          "native_models_check": "13SAT replay successfully with native--check-model; independentDolmen2pass11input-nonconforming",
+          "rejection_reason": "Initial97a exporter wraps negative rational coefficient as(-(/n d)); mathematically linear but outside declaredQF_LRA concrete-coefficient grammar. No invalid model observed;11models notchecked.",
+          "raw_artifacts": "results/lra-call-ablation-20261030/{replay-corpus,remote/fresh-default,remote/fresh-models}",
+          "repair": "Serializer now emits(/(-n)d), stricter generated-format audit and negative fractional coefficient/bound regression; fresh SLURM qualification andregeneration required.",
+          "cancelled_source_extract_model_job": "267750; dependent on failed initial direct-conformance stage, cancelled before execution"
+        },
         "workflow_commit": "3333c639b918c271f7275771a01721d57d88ac89",
         "job_artifact_sha256": {
           "qf-lra-call-extraction-pilot.txt": "10fc12a3afd6d6a424b5944d8c1f75a985197fddb1220d15790ff8c8e1230a3b",

@@ -13,8 +13,11 @@
 #include <string_view>
 #include <utility>
 
+#include "sat/lit.hpp"
 #include "smt/check_sat.hpp"
 #include "smt/lra_call_profiler.hpp"
+#include "theory/arithmetic/lra_tableau.hpp"
+#include "util/rational.hpp"
 #include "util/statistics.hpp"
 
 using primo::smt::CheckSatOptions;
@@ -4797,7 +4800,7 @@ void lra_call_profile_is_read_only_and_exports_conjunctions() {
   const auto x = base.add_variable();
   const auto y = base.add_variable();
   const auto sum = base.add_variable();
-  base.add_row(sum, {{x, Rational(-2)}, {y, Rational(1)}});
+  base.add_row(sum, {{x, Rational(-3, 2)}, {y, Rational(1)}});
   {
     primo::smt::LraCallProfiler profile((root / "manual.jsonl").string(), (root / "cubes").string(),
                                         0, 2);
@@ -4818,8 +4821,8 @@ void lra_call_profile_is_read_only_and_exports_conjunctions() {
     profile.record(checker, feasible, 0, 1, 0, 0, false);
   }
   const auto sat_cube = read(root / "cubes/checker-1-call-1.smt2");
-  assert(sat_cube.find("(- 2)") != std::string::npos);
-  assert(sat_cube.find("(assert (> v2 (- (/ 3 2))))") != std::string::npos);
+  assert(sat_cube.find("(* (/ (- 3) 2) v0)") != std::string::npos);
+  assert(sat_cube.find("(assert (> v2 (/ (- 3) 2)))") != std::string::npos);
   assert(sat_cube.find("(assert (< v0 (/ 3 2)))") != std::string::npos);
   assert(check_sat_smtlib(sat_cube).result == CheckSatResult::Sat);
   assert(check_sat_smtlib(read(root / "cubes/checker-1-call-2.smt2")).result ==
