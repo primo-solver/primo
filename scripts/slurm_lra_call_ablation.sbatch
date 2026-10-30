@@ -78,7 +78,7 @@ case "${PRIMO_CALL_PHASE:?}" in
   arguments+=(--capture-call "${PRIMO_CALL_CAPTURE_CALL:-1}")
  fi
  if [[ $PRIMO_CALL_PHASE == extract ]]; then
-  arguments+=(--export-min-pivots "${PRIMO_CALL_MIN_PIVOTS:?}" --export-limit 5)
+  arguments+=(--export-min-pivots "${PRIMO_CALL_MIN_PIVOTS:?}" --export-limit "${PRIMO_CALL_EXPORT_LIMIT:-5}")
  fi
  python3 "${PRIMO_CALL_JOB_ARTIFACTS:?}/run_lra_call_distribution.py" \
   --solver build-slurm-rel/primo --reference contrib/local/bin/z3 \
