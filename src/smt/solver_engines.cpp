@@ -7403,6 +7403,7 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
     const std::size_t row_updates_before = tableau_.row_update_count();
     const std::size_t term_ops_before = tableau_.row_term_op_count();
     statistics_.increment(kStatLraOnlineCheckCalls);
+    if (call_profiler_) call_profiler_->capture_before_check(*call_checker_, tableau_);
     const auto started =
         call_profiler_ ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
     conflict_ = tableau_.check();

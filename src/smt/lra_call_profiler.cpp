@@ -32,20 +32,25 @@ std::string numeral(const util::Rational& value) {
 }  // namespace
 
 LraCallProfiler::LraCallProfiler(const std::string& path, std::string export_directory,
-                                 std::size_t export_min_pivots, std::size_t export_limit)
+                                 std::size_t export_min_pivots, std::size_t export_limit,
+                                 std::string capture_directory, std::size_t capture_call)
     : export_directory_(std::move(export_directory)),
       export_min_pivots_(export_min_pivots),
-      export_limit_(export_limit) {
+      export_limit_(export_limit),
+      capture_directory_(std::move(capture_directory)),
+      capture_call_(capture_call) {
+  if (capture_call_ == 0) throw std::invalid_argument("LRA capture call must be positive");
   out_.exceptions(std::ios::failbit | std::ios::badbit);
   out_.open(path);
-  if (!export_directory_.empty()) {
-    const std::filesystem::path directory(export_directory_);
+  for (const auto& path : {export_directory_, capture_directory_}) {
+    if (path.empty()) continue;
+    const std::filesystem::path directory(path);
     if (std::filesystem::exists(directory) && !std::filesystem::is_empty(directory)) {
-      throw std::invalid_argument("LRA call export directory must be empty");
+      throw std::invalid_argument("LRA call output directory must be empty");
     }
     std::filesystem::create_directories(directory);
   }
-  out_ << "{\"event\":\"begin\",\"schema\":1}\n";
+  out_ << "{\"event\":\"begin\",\"schema\":" << (capture_directory_.empty() ? 1 : 2) << "}\n";
   out_.flush();
 }
 
@@ -63,14 +68,15 @@ LraCallProfiler::Checker LraCallProfiler::register_checker(const Tableau& base) 
   std::size_t nonzeros = 0;
   std::ostringstream definitions;
   for (std::size_t var = 0; var < checker.variables; ++var) {
-    if (!export_directory_.empty()) definitions << "(declare-fun v" << var << " () Real)\n";
+    if (!export_directory_.empty() || !capture_directory_.empty())
+      definitions << "(declare-fun v" << var << " () Real)\n";
   }
   for (std::size_t var = 0; var < checker.variables; ++var) {
     if (!base.is_basic(var)) continue;
     ++rows;
     const auto& row = base.row(var);
     nonzeros += row.size();
-    if (export_directory_.empty()) continue;
+    if (export_directory_.empty() && capture_directory_.empty()) continue;
     definitions << "(assert (= v" << var << " ";
     if (row.empty()) {
       definitions << '0';
@@ -91,8 +97,9 @@ LraCallProfiler::Checker LraCallProfiler::register_checker(const Tableau& base) 
   return checker;
 }
 
-std::string LraCallProfiler::export_cube(const Checker& checker, const Tableau& tableau,
-                                         bool conflict) {
+std::string LraCallProfiler::write_cube(const Checker& checker, const Tableau& tableau,
+                                        const std::string& directory, const std::string& name,
+                                        const std::string& status, std::size_t call) const {
   if (tableau.variable_count() != checker.variables) return "skip-variable-count";
   std::ostringstream body;
   for (std::size_t var = 0; var < checker.variables; ++var) {
@@ -106,18 +113,43 @@ std::string LraCallProfiler::export_cube(const Checker& checker, const Tableau& 
            << "))\n";
     }
   }
-  const std::string name =
-      "checker-" + std::to_string(checker.id) + "-call-" + std::to_string(checker.calls) + ".smt2";
   std::ofstream cube;
   cube.exceptions(std::ios::failbit | std::ios::badbit);
-  cube.open(std::filesystem::path(export_directory_) / name);
+  const auto destination = std::filesystem::path(directory) / name;
+  const auto temporary = std::filesystem::path(directory) / (name + ".tmp");
+  cube.open(temporary);
   cube << "; Numeric feasibility conjunction; tableau definitions and active bounds only.\n"
        << "; Original Boolean context, disequality splitting and warm basis are not replayed.\n"
-       << "(set-logic QF_LRA)\n(set-info :status " << (conflict ? "unsat" : "sat") << ")\n"
+       << "; checker " << checker.id << " call " << call << "\n"
+       << "(set-logic QF_LRA)\n(set-info :status " << status << ")\n"
        << checker.definitions << body.str() << "(check-sat)\n";
   cube.close();
-  ++exported_;
+  std::filesystem::rename(temporary, destination);
   return name;
+}
+
+std::string LraCallProfiler::export_cube(const Checker& checker, const Tableau& tableau,
+                                         bool conflict) {
+  const std::string name =
+      "checker-" + std::to_string(checker.id) + "-call-" + std::to_string(checker.calls) + ".smt2";
+  const auto result = write_cube(checker, tableau, export_directory_, name,
+                                 conflict ? "unsat" : "sat", checker.calls);
+  if (result == name) ++exported_;
+  return result;
+}
+
+void LraCallProfiler::capture_before_check(const Checker& checker, const Tableau& tableau) {
+  if (capture_directory_.empty() || capture_attempted_ || checker.id != 1 ||
+      checker.calls + 1 != capture_call_)
+    return;
+  capture_attempted_ = true;
+  // Publish a complete unknown-status conjunction before entering the selected
+  // check. No signal handler reads or serializes mutable tableau state.
+  const auto file =
+      write_cube(checker, tableau, capture_directory_, "capture.smt2", "unknown", capture_call_);
+  out_ << "{\"event\":\"capture\",\"checker\":" << checker.id << ",\"call\":" << capture_call_
+       << ",\"file\":\"" << file << "\"}\n";
+  out_.flush();
 }
 
 void LraCallProfiler::record(Checker& checker, const Tableau& tableau, std::size_t pivots,
@@ -134,7 +166,9 @@ void LraCallProfiler::record(Checker& checker, const Tableau& tableau, std::size
        << ",\"row_updates\":" << row_updates << ",\"term_ops\":" << term_ops
        << ",\"conflict\":" << (conflict ? "true" : "false") << ",\"export\":\"" << exported
        << "\"}\n";
-  if (calls_ % 1024 == 0) out_.flush();
+  if (calls_ % 1024 == 0 ||
+      (!capture_directory_.empty() && checker.id == 1 && checker.calls == capture_call_))
+    out_.flush();
 }
 
 }  // namespace primo::smt

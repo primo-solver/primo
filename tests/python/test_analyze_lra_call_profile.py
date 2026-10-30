@@ -63,6 +63,35 @@ class CallProfileTests(unittest.TestCase):
         ]
         self.assertEqual(self.analyze(rows, '{"event":')["coverage"], "prefix")
 
+    def test_capture_completion_and_abandoned_end(self):
+        rows = [
+            {"event": "begin", "schema": 2},
+            {"event": "checker", "checker": 1},
+            {"event": "capture", "checker": 1, "call": 1, "file": "capture.smt2"},
+        ]
+        result = self.analyze(rows, status="timeout")
+        self.assertIsNone(result["captures"][0]["completion"])
+        self.assertEqual(result["coverage"], "prefix")
+        end = {"event": "end", "calls": 0, "checkers": 1, "exported": 0}
+        self.assertEqual(self.analyze([*rows, end])["coverage"], "prefix")
+        rows.append(
+            {
+                "event": "check",
+                "checker": 1,
+                "call": 1,
+                "pivots": 5,
+                "nanoseconds": 1000,
+                "conflict": True,
+                "export": "",
+            }
+        )
+        end["calls"] = 1
+        result = self.analyze([*rows, end])
+        self.assertEqual(result["coverage"], "complete")
+        self.assertTrue(result["captures"][0]["completion"]["conflict"])
+        with self.assertRaisesRegex(ValueError, "duplicate capture"):
+            self.analyze([*rows[:3], rows[2]])
+
     def test_nonconsecutive_calls_rejected(self):
         rows = [
             {"event": "begin", "schema": 1},

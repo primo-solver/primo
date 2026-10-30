@@ -52,8 +52,19 @@ case "${PRIMO_CALL_PHASE:?}" in
    --manifest "$manifest" --out "$OUT/shard-${SLURM_ARRAY_TASK_ID}" "${extra[@]}"
  fi
  ;;
- profile|extract)
+ capture-fuzz)
+ export PRIMO_CAPTURE_FUZZ_DIR="$OUT/capture-traces"
+ mkdir -p "$PRIMO_CAPTURE_FUZZ_DIR"
+ python3 scripts/qf_lra_boolean_arithmetic_fuzz.py \
+  --solver scripts/qualification/lra_call_ablation/capture_fuzz_solver.sh \
+  --z3 contrib/local/bin/z3 --dolmen contrib/local/bin/dolmen \
+  --count 1000 --seed 2026103002 --timeout 5 --dolmen-timeout 10 --out "$OUT/fuzz"
+ ;;
+ profile|extract|capture)
  arguments=()
+ if [[ $PRIMO_CALL_PHASE == capture ]]; then
+  arguments+=(--capture-call "${PRIMO_CALL_CAPTURE_CALL:-1}")
+ fi
  if [[ $PRIMO_CALL_PHASE == extract ]]; then
   arguments+=(--export-min-pivots "${PRIMO_CALL_MIN_PIVOTS:?}" --export-limit 5)
  fi

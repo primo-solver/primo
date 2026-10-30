@@ -245,6 +245,8 @@ int run_main(int argc, char** argv) {
   primo::smt::CheckSatOptions solver_options;
   std::string lra_call_profile_path;
   std::string lra_call_export_directory;
+  std::string lra_call_capture_directory;
+  std::size_t lra_call_capture_call = 1;
   std::size_t lra_call_export_min_pivots = 100;
   std::size_t lra_call_export_limit = 20;
   solver_options.cancelled = [] { return g_cancel_requested != 0; };
@@ -362,6 +364,11 @@ int run_main(int argc, char** argv) {
                         "Disable equality bridging unless required by the preprocessing preset");
   app.add_option("--lra-call-profile", lra_call_profile_path,
                  "Record online QF_LRA check pivots and time as JSONL");
+  app.add_option("--lra-call-capture", lra_call_capture_directory,
+                 "Capture one unknown-status conjunction before a selected check");
+  app.add_option("--lra-call-capture-call", lra_call_capture_call,
+                 "Call to capture in the first checker (default 1)")
+      ->check(CLI::PositiveNumber);
   app.add_option("--lra-call-export", lra_call_export_directory,
                  "Export bounded conjunctions from profiled checks");
   app.add_option("--lra-call-export-min-pivots", lra_call_export_min_pivots,
@@ -909,14 +916,15 @@ int run_main(int argc, char** argv) {
     return app.exit(error);
   }
 
-  if (!lra_call_export_directory.empty() && lra_call_profile_path.empty()) {
-    std::cerr << "error: --lra-call-export requires --lra-call-profile\n";
+  if ((!lra_call_export_directory.empty() || !lra_call_capture_directory.empty()) &&
+      lra_call_profile_path.empty()) {
+    std::cerr << "error: --lra-call-export and --lra-call-capture require --lra-call-profile\n";
     return 2;
   }
   if (!lra_call_profile_path.empty()) {
     solver_options.lra_call_profiler = std::make_shared<primo::smt::LraCallProfiler>(
         lra_call_profile_path, lra_call_export_directory, lra_call_export_min_pivots,
-        lra_call_export_limit);
+        lra_call_export_limit, lra_call_capture_directory, lra_call_capture_call);
   }
 
   if (qf_uflra_online_euf && nelson_oppen_model_equality_branching) {

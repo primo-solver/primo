@@ -56,6 +56,44 @@ The {callsource}`diagnostic helper LraCallProfiler <src/smt/lra_call_profiler.cp
 owns serialization and export budgets.
 The caller retains shared ownership until all callbacks have been destroyed.
 
+## Capture before a potentially interrupted check
+
+The completed-call exporter misses a check that never returns. An opt-in
+`--lra-call-capture DIR` therefore saves the selected call of the **first
+registered checker**, before entering `check()`. `--lra-call-capture-call N`
+chooses a positive one-based call number; the default is 1. The existing
+profiler owns the directory string, target number and an attempt flag, so it
+serializes at most once per process. It snapshots the same base equations and
+current bounds as a completed export, with `:status unknown`; it captures no
+basis, assignment or reason graph. No signal handler accesses tableau state.
+
+The writer closes a temporary file in the destination directory and renames it
+to `capture.smt2`, then flushes a `capture` event with checker/call IDs. A kill
+before publication can leave no file or a temporary file, possibly complete;
+a kill between
+publication and event flushing leaves an unannounced snapshot. Neither is
+classified as an interrupted check. Serialization and event flushing precede
+the numerical timer. This one-call selection avoids serializing millions of
+cheap checks merely to reach a later hard call.
+
+Capture mode uses trace schema 2; ordinary completed-call profiling keeps
+schema 1. If the selected call returns, its ordinary `check` record is flushed
+immediately. The analyzer joins capture and completion IDs, independently of
+file presence or an `end` marker. A published, announced capture without a
+durable completion remains a **provisional no-completion candidate**. It does
+not establish SAT/UNSAT, elapsed check time, or that every moment before process
+termination was spent inside `check()`: entry and postcheck logging/export can precede durable completion.
+A separately replayed conjunction can behave differently from the interrupted
+warm state. Reference answers and successful SAT models must be checked before
+assigning an expected verdict; timeout-only replays remain unknown.
+
+The next bounded probe selects the nine original five-second timeout inputs
+that registered a checker but recorded zero completed calls. All are from
+`latendresse`; their first-check captures directly test the missing tail. Four
+other zero-call timeouts never registered a checker and need separate frontend
+triage. This is a targeted development sample, not all 66 timeout parents.
+Runtime qualification and this new probe are pending.
+
 ## Exported numerical conjunction
 
 A requested export combines two pieces:

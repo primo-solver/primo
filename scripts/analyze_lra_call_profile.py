@@ -31,6 +31,7 @@ def analyze(path, command_status="ok"):
     conflicts = Counter()
     joint = Counter()
     export_decisions = Counter()
+    captures = []
     exports = []
     largest = []
     calls = total_pivots = total_ns = 0
@@ -51,6 +52,8 @@ def analyze(path, command_status="ok"):
             if event == "begin":
                 if begin is not None or checkers or calls:
                     raise ValueError("duplicate or late begin")
+                if row.get("schema") not in (1, 2):
+                    raise ValueError("unsupported trace schema")
                 begin = row
             elif begin is None:
                 raise ValueError("missing begin")
@@ -58,11 +61,24 @@ def analyze(path, command_status="ok"):
                 if row["checker"] != len(checkers) + 1:
                     raise ValueError("invalid checker sequence")
                 checkers[row["checker"]] = {**row, "calls": 0}
+            elif event == "capture":
+                if begin["schema"] != 2 or captures:
+                    raise ValueError("unexpected or duplicate capture")
+                checker = checkers[row["checker"]]
+                if row["checker"] != 1 or row["call"] != checker["calls"] + 1:
+                    raise ValueError("invalid capture sequence")
+                captures.append({**row, "completion": None})
             elif event == "check":
                 checker = checkers[row["checker"]]
                 if row["call"] != checker["calls"] + 1:
                     raise ValueError("invalid call sequence")
                 checker["calls"] += 1
+                for capture in captures:
+                    if (row["checker"], row["call"]) == (
+                        capture["checker"],
+                        capture["call"],
+                    ):
+                        capture["completion"] = row
                 pivots, ns = row["pivots"], row["nanoseconds"]
                 if pivots < 0 or ns < 0:
                     raise ValueError("negative metric")
@@ -104,6 +120,8 @@ def analyze(path, command_status="ok"):
         if end is not None and not partial and command_status == "ok"
         else "prefix"
     )
+    if any(capture["completion"] is None for capture in captures):
+        coverage = "prefix"
     if not checkers and coverage == "complete":
         coverage = "no-checks"
     result = {
@@ -122,6 +140,7 @@ def analyze(path, command_status="ok"):
         "joint_time_bit_length": dict(joint),
         "largest_calls": largest,
         "exports": exports,
+        "captures": captures,
         "export_decisions": dict(export_decisions),
     }
     for group, values in timings.items():

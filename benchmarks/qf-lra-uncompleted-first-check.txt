@@ -1,0 +1,10 @@
+# Original5s timeouts with registered checker andzero durable completions;capturefirstcall.
+latendresse/ecoliMILPglycerolYices3-100000.smt2
+latendresse/ecoliMILPglycerolYices3-300000.smt2
+latendresse/ecoliMILPglycerolYices3-5000.smt2
+latendresse/ecoliMILPglycerolYices3-60000.smt2
+latendresse/ecoliMILPglycerolYices3-70000.smt2
+latendresse/ecoliMILPglycerolYices3-80000.smt2
+latendresse/ecoliMILPglycerolYices3-90000.smt2
+latendresse/shewanella-compact2.smt2
+latendresse/shewanella-compact2b.smt2

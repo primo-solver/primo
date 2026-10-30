@@ -109,3 +109,10 @@ feasibility conjunctions from checks with at least
 be empty; the profile file must be outside it. Both diagnostics are off by
 default. See the [measurement and export contract](../papers/lra-call-ablation.md)
 for warm-state dependence, omissions, strict bounds and censored traces.
+
+`--lra-call-capture DIR` saves an unknown-status conjunction before one selected
+call of the first checker; `--lra-call-capture-call N` selects its positive
+one-based number (default 1). Capture requires profiling and an empty directory, with the profile outside it.
+A successfully published snapshot plus a flushed capture event with matching
+IDs, without a matching completion, is a provisional no-completion candidate.
+Only one snapshot is taken per process; its serialization precedes the timer.

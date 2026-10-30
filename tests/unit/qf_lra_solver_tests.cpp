@@ -4803,12 +4803,14 @@ void lra_call_profile_is_read_only_and_exports_conjunctions() {
   base.add_row(sum, {{x, Rational(-3, 2)}, {y, Rational(1)}});
   {
     primo::smt::LraCallProfiler profile((root / "manual.jsonl").string(), (root / "cubes").string(),
-                                        0, 2);
+                                        0, 2, (root / "selected").string(), 2);
     auto checker = profile.register_checker(base);
     Tableau feasible = base;
     feasible.assert_lower(x, Value::from_rational(Rational(1)), primo::sat::Lit{-1});
     feasible.assert_lower(sum, Value{Rational(-3, 2), Rational(1)}, primo::sat::Lit{-2});
     feasible.assert_upper(x, Value{Rational(3, 2), Rational(-1)}, primo::sat::Lit{-3});
+    profile.capture_before_check(checker, feasible);
+    assert(!fs::exists(root / "selected/capture.smt2"));
     const auto conflict = feasible.check();
     assert(!conflict);
     profile.record(checker, feasible, feasible.pivot_count(), 42, 1, 2, false);
@@ -4816,6 +4818,12 @@ void lra_call_profile_is_read_only_and_exports_conjunctions() {
     infeasible.assert_lower(x, Value::from_rational(Rational(1)), primo::sat::Lit{-1});
     infeasible.assert_upper(y, Value::from_rational(Rational(0)), primo::sat::Lit{-2});
     infeasible.assert_lower(sum, Value::from_rational(Rational(0)), primo::sat::Lit{-3});
+    profile.capture_before_check(checker, infeasible);
+    const auto captured = read(root / "selected/capture.smt2");
+    assert(captured.find("(set-info :status unknown)") != std::string::npos);
+    assert(captured.find("; checker 1 call 2") != std::string::npos);
+    assert(!fs::exists(root / "selected/capture.smt2.tmp"));
+    assert(check_sat_smtlib(captured).result == CheckSatResult::Unsat);
     assert(infeasible.check());
     profile.record(checker, infeasible, infeasible.pivot_count(), 43, 0, 0, true);
     profile.record(checker, feasible, 0, 1, 0, 0, false);
@@ -4831,6 +4839,16 @@ void lra_call_profile_is_read_only_and_exports_conjunctions() {
   const auto manual = read(root / "manual.jsonl");
   assert(manual.find("\"calls\":3,\"exported\":2") != std::string::npos);
 
+  {
+    primo::smt::LraCallProfiler interrupted((root / "interrupted.jsonl").string(), "", 100, 20,
+                                            (root / "interrupted").string());
+    auto checker = interrupted.register_checker(base);
+    interrupted.capture_before_check(checker, base);
+    // Simulate losing control after publishing the input, without a completion.
+  }
+  assert(fs::exists(root / "interrupted/capture.smt2"));
+  assert(read(root / "interrupted.jsonl").find("\"calls\":0") != std::string::npos);
+
   const std::string formula = R"((set-logic QF_LRA)
     (declare-fun x () Real)(declare-fun y () Real)
     (assert (>= (+ x y) 1))(assert (<= x 2))(assert (<= y 2))(check-sat))";
@@ -4839,8 +4857,8 @@ void lra_call_profile_is_read_only_and_exports_conjunctions() {
   options.gaussian_elimination = false;
   options.solved_constant_substitution = false;
   const auto baseline = check_sat_smtlib(formula, options);
-  options.lra_call_profiler =
-      std::make_shared<primo::smt::LraCallProfiler>((root / "online.jsonl").string());
+  options.lra_call_profiler = std::make_shared<primo::smt::LraCallProfiler>(
+      (root / "online.jsonl").string(), "", 100, 20, (root / "online-capture").string());
   const auto observed = check_sat_smtlib(formula, options);
   options.lra_call_profiler.reset();
   assert(baseline.result == observed.result);
@@ -4849,6 +4867,7 @@ void lra_call_profile_is_read_only_and_exports_conjunctions() {
     assert(baseline.statistics.get(key) == observed.statistics.get(key));
   }
   const auto online = read(root / "online.jsonl");
+  assert(fs::exists(root / "online-capture/capture.smt2"));
   assert(online.find("\"event\":\"check\"") != std::string::npos);
   assert(online.find("\"event\":\"end\"") != std::string::npos);
   fs::remove_all(root);

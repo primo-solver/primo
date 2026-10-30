@@ -12,6 +12,7 @@ from pathlib import Path
 
 from analyze_lra_call_profile import analyze
 from bench_qf_uf_full import family_for, parse_smtlib_status, read_manifest, run_solver
+from prepare_lra_call_replay import check_conjunction
 
 
 def digest(path):
@@ -28,10 +29,13 @@ def main():
     parser.add_argument("--timeout", type=float, default=5)
     parser.add_argument("--shards", type=int, default=1)
     parser.add_argument("--index", type=int, default=0)
+    parser.add_argument("--capture-call", type=int)
     parser.add_argument("--export-min-pivots", type=int)
     parser.add_argument("--export-limit", type=int, default=5)
     parser.add_argument("--solver-arg", action="append", default=[])
     args = parser.parse_args()
+    if args.capture_call is not None and args.capture_call <= 0:
+        parser.error("capture call must be positive")
     args.root = args.root.resolve()
     assert args.shards > 0 and 0 <= args.index < args.shards
     args.out.mkdir(parents=True, exist_ok=False)
@@ -44,6 +48,7 @@ def main():
             for p in [
                 Path(__file__),
                 Path(__file__).with_name("analyze_lra_call_profile.py"),
+                Path(__file__).with_name("prepare_lra_call_replay.py"),
             ]
         },
         "reference_sha256": digest(args.reference),
@@ -56,6 +61,7 @@ def main():
         "job_id": os.environ.get("SLURM_JOB_ID"),
         "array_job_id": os.environ.get("SLURM_ARRAY_JOB_ID"),
         "affinity": sorted(os.sched_getaffinity(0)),
+        "capture_call": args.capture_call,
         "export_min_pivots": args.export_min_pivots,
         "export_limit": args.export_limit,
         "records": [],
@@ -76,6 +82,13 @@ def main():
             "--lra-call-profile",
             str(profile.resolve()),
         ]
+        if args.capture_call is not None:
+            command += [
+                "--lra-call-capture",
+                str((case / "capture").resolve()),
+                "--lra-call-capture-call",
+                str(args.capture_call),
+            ]
         if args.export_min_pivots is not None:
             command += [
                 "--lra-call-export",
@@ -122,6 +135,28 @@ def main():
             "trace_sha256": digest(profile) if profile.exists() else None,
             "analysis": analysis,
         }
+        if args.capture_call is not None:
+            snapshot = case / "capture/capture.smt2"
+            event = analysis.get("captures", [])
+            record["capture"] = {
+                "saved": snapshot.exists(),
+                "event": event[0] if event else None,
+            }
+            if snapshot.exists():
+                record["capture"].update(
+                    {
+                        "sha256": digest(snapshot),
+                        "syntax": check_conjunction(snapshot.read_text()),
+                        "classification": "unannounced"
+                        if not event
+                        else "no-durable-completion"
+                        if event[0]["completion"] is None
+                        else "completed",
+                    }
+                )
+                assert record["capture"]["syntax"]["expected"] == "unknown"
+                if event:
+                    assert event[0]["file"] == "capture.smt2"
         metadata["records"].append(record)
         summary.write_text(json.dumps(metadata, indent=2) + "\n")
         print(

@@ -76,7 +76,9 @@ def check_conjunction(text):
             assert args == ["QF_LRA"]
         elif head == "set-info":
             assert (
-                len(args) == 2 and args[0] == ":status" and args[1] in ("sat", "unsat")
+                len(args) == 2
+                and args[0] == ":status"
+                and args[1] in ("sat", "unsat", "unknown")
             )
             assert expected is None
             expected = args[1]

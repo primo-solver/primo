@@ -256,6 +256,10 @@ Preprocessing options:
 QF_LRA theory options:
           --lra-call-profile TEXT
                               Record online QF_LRA check pivots and time as JSONL
+          --lra-call-capture TEXT
+                              Capture one unknown-status conjunction before a selected check
+          --lra-call-capture-call UINT:POSITIVE [1]
+                              Call to capture in the first checker (default 1)
           --lra-call-export TEXT
                               Export bounded conjunctions from profiled checks
           --lra-call-export-min-pivots UINT [100]
