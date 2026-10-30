@@ -1,0 +1,15 @@
+# Initial128-pivot extraction: up to2 highest observed-max-pivot parents per qualifying family.
+# Selected from fixed237-input,5s pilot; ties by relative path. Not representative.
+2017-Heizmann-UltimateInvariantSynthesis/_functions1.i_3_5_2.bpl_11.smt2
+2017-Heizmann-UltimateInvariantSynthesis/_standard_copy1_ground.i_3_2_2.bpl_11.smt2
+DTP-Scheduling/constraints-tempo-matrix8x8.pddl.smt2
+DTP-Scheduling/constraints-tempo-depth-30.smt2
+LassoRanker/Ultimate/Braverman-2006CAV-Ex1-int.bpl_Iteration1_Lasso_5-phaseTemplate.smt2
+clock_synchro/clocksynchro_7clocks.main_invar.induct.smt2
+clock_synchro/clocksynchro_6clocks.main_invar.induct.smt2
+latendresse/ecoliFBAyicesTest-15875-16.smt2
+latendresse/ecoliFBAyicesTest-31875-32.smt2
+miplib/vpm2-20.smt2
+miplib/vpm2-13.75.smt2
+tropical-matrix/constraint-556101.smt2
+tropical-matrix/constraint-330061.smt2

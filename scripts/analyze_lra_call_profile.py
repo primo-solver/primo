@@ -30,6 +30,7 @@ def analyze(path, command_status="ok"):
     timings = defaultdict(lambda: array("Q"))
     conflicts = Counter()
     joint = Counter()
+    export_decisions = Counter()
     exports = []
     largest = []
     calls = total_pivots = total_ns = 0
@@ -79,6 +80,13 @@ def analyze(path, command_status="ok"):
                         key=lambda r: (r["pivots"], r["nanoseconds"]), reverse=True
                     )
                     del largest[10:]
+                export_decisions[
+                    row["export"]
+                    if row["export"].startswith("skip-")
+                    else "exported"
+                    if row["export"].endswith(".smt2")
+                    else "not-exported"
+                ] += 1
                 if row["export"].endswith(".smt2"):
                     exports.append(row)
             elif event == "end":
@@ -114,6 +122,7 @@ def analyze(path, command_status="ok"):
         "joint_time_bit_length": dict(joint),
         "largest_calls": largest,
         "exports": exports,
+        "export_decisions": dict(export_decisions),
     }
     for group, values in timings.items():
         values = sorted(values)

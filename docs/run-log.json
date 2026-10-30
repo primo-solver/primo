@@ -6,7 +6,7 @@
       "id": "2026-10-30-qf-lra-call-ablation-pilot",
       "date": "2026-10-30",
       "kind": "numerical-call-distribution-and-conjunction-extraction",
-      "evidence_status": "qualification-running-pilot-queued",
+      "evidence_status": "qualified-pilot-running",
       "branch": "experiment/qf-lra-call-ablation",
       "native_source_commit": "97a3229e3026faf52ab1df151d1e6dec11b136d0",
       "workflow_commit": "2bb28bf342398e452bf1b91e252f9cedcdb9633f",
@@ -29,7 +29,7 @@
           "asan": "267722",
           "static": "267723",
           "profile": "267724",
-          "models": "267725"
+          "models": "267726"
         },
         "first_attempt": {
           "check_job": "267714",
@@ -53,14 +53,19 @@
           "slurm_lra_call_ablation.sbatch": "3453130bd5bcf69049991e1739fe238238931156e1973901294da7fd9fb61a84"
         },
         "native_source_sync": "Clean97a3229 archive via slurm_prepare_benchmark_workspace.py --build-via-slurm; check-only --no-sync immediately before every submission",
-        "workflow_deployment": "Hash-recorded scripts in tmp/job-artifacts outside immutable native snapshot; corrected help fixture from f3946fc only source-tree override, no C++ override."
+        "workflow_deployment": "Hash-recorded scripts in tmp/job-artifacts outside immutable native snapshot; corrected help fixture from f3946fc only source-tree override, no C++ override.",
+        "cancelled_model_submission": {
+          "job": "267725",
+          "reason": "Replaced before execution to add native --check-model alongside required independent Dolmen."
+        },
+        "revised_model_batch_sha256": "ef42f492a81c46a310a50bec3b111e593dd4b6bd8e2c5ca04901e3efe6a2ff90"
       },
       "correctness": {
         "release": "44/44 CTest,242/242 Python,12/12 documentation checks passed in267720",
         "offline_analyzer": "4/4 tests passed; independent reviewer repaired prefix/missing-trace edge cases",
         "fuzz": "1000/1000 Boolean/arithmetic generated cases seed2026103001 passed native+Z3+Dolmen in267721; profile enabled",
-        "asan": "running",
-        "static": "running; whole tracked C++ plus standalone doc examples, analyzer and advisory include-cleaner",
+        "asan": "44/44 CTest passed in267722; Release observer binary unchanged",
+        "static": "133/133 translation units returned0 in267723; every scanned source hash matches native97a snapshot. Existing16 guarded invalid-enum test warnings and2 model-RAII leak advisories unchanged;10 extra direct-include advisories, no new analyzer class or unused include.",
         "parent_models": "queued after all pilot timing tasks"
       },
       "commands": {

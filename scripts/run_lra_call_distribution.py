@@ -30,6 +30,7 @@ def main():
     parser.add_argument("--index", type=int, default=0)
     parser.add_argument("--export-min-pivots", type=int)
     parser.add_argument("--export-limit", type=int, default=5)
+    parser.add_argument("--solver-arg", action="append", default=[])
     args = parser.parse_args()
     args.root = args.root.resolve()
     assert args.shards > 0 and 0 <= args.index < args.shards
@@ -49,6 +50,7 @@ def main():
         "version": subprocess.check_output([solver, "--version"], text=True),
         "manifest_sha256": digest(args.manifest),
         "timeout_seconds": args.timeout,
+        "solver_args": args.solver_arg,
         "shards": args.shards,
         "index": args.index,
         "job_id": os.environ.get("SLURM_JOB_ID"),
@@ -70,6 +72,7 @@ def main():
             solver,
             "--quiet",
             "--stats",
+            *args.solver_arg,
             "--lra-call-profile",
             str(profile.resolve()),
         ]

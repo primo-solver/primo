@@ -106,6 +106,24 @@ def main():
                 for name in ("native", "reference")
             }
         )
+    # Raw shards retain all345 counters; the portable report keeps study counters.
+    relevant = {
+        ":input.assertions",
+        ":lra.pivots",
+        ":lra.online-check-calls",
+        ":lra.pivot-row-updates",
+        ":lra.pivot-term-ops",
+        ":sat.vars",
+        ":sat.clauses",
+        ":sat.conflicts",
+        ":sat.decisions",
+        ":sat.propagations",
+    }
+    for row in portable:
+        for name in ("native", "reference"):
+            row[name]["stats"] = {
+                k: v for k, v in row[name]["stats"].items() if k in relevant
+            }
     result = {
         key: shards[0][key]
         for key in (

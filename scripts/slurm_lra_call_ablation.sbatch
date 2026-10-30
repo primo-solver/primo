@@ -14,6 +14,10 @@ mkdir -p "$OUT"
 build-slurm-rel/primo --version | tee "$OUT/version-${SLURM_ARRAY_TASK_ID:-single}.txt"
 build-slurm-rel/primo --version | grep -Fx "git: ${PRIMO_EXPECTED_GIT:?}"
 lscpu | sed -n '/Model name/p;/^CPU(s):/p'
+extra=()
+if [[ ${PRIMO_CALL_REPLAY_KERNEL:-0} == 1 ]]; then
+ extra+=(--solver-arg=--preprocessing-mode=off --solver-arg=--no-gaussian-elimination --solver-arg=--no-solved-constant-substitution)
+fi
 case "${PRIMO_CALL_PHASE:?}" in
  check)
  ctest --test-dir build-slurm-rel --timeout 120 --output-on-failure
@@ -45,7 +49,7 @@ case "${PRIMO_CALL_PHASE:?}" in
    --dolmen-arg=--strict=false --timeout 60 --dolmen-timeout 30 \
    --solver-arg=--quiet --solver-arg=--stats --solver-arg=--check-model \
    --solver-arg=--lra-call-profile --solver-arg="$OUT/replay-profile-${SLURM_ARRAY_TASK_ID}.jsonl" \
-   --manifest "$manifest" --out "$OUT/shard-${SLURM_ARRAY_TASK_ID}"
+   --manifest "$manifest" --out "$OUT/shard-${SLURM_ARRAY_TASK_ID}" "${extra[@]}"
  fi
  ;;
  profile|extract)
@@ -55,10 +59,10 @@ case "${PRIMO_CALL_PHASE:?}" in
  fi
  python3 "${PRIMO_CALL_JOB_ARTIFACTS:?}/run_lra_call_distribution.py" \
   --solver build-slurm-rel/primo --reference contrib/local/bin/z3 \
-  --root tmp/QF_LRA --manifest "${PRIMO_CALL_MANIFEST:?}" \
+  --root "${PRIMO_CALL_ROOT:-tmp/QF_LRA}" --manifest "${PRIMO_CALL_MANIFEST:?}" \
   --timeout "${PRIMO_CALL_TIMEOUT:-5}" --shards "${PRIMO_CALL_SHARDS:-8}" \
   --index "${SLURM_ARRAY_TASK_ID:-0}" --out "$OUT/shard-${SLURM_ARRAY_TASK_ID:-0}" \
-  "${arguments[@]}"
+  "${arguments[@]}" "${extra[@]}"
  ;;
  *) exit 2 ;;
 esac
