@@ -1,10 +1,9 @@
 # QF_LRA call distribution and conjunction extraction
 
-**Status: Experimental observer and exporter; the first SLURM pilot is complete
-and runtime qualification passed.** Work is isolated on `experiment/qf-lra-call-ablation`. The first
-question is how completed numerical feasibility calls distribute across pivot
-counts and elapsed time. Choosing a pivot cutoff and a full ablation matrix
-comes after this observation, not before it.
+**Status: The first source-input distribution and a 33-input conjunction pilot
+are qualified.** Work is isolated on `experiment/qf-lra-call-ablation`.
+This note defines the measured call, records its pivot/time distribution, and
+provides frozen inputs for the next ablation stage.
 
 ## What constitutes a call?
 
@@ -87,7 +86,9 @@ literal. Replaced weaker bounds are numerically redundant. Disequality splitting
 and the source Boolean context are not reconstructed: this is a corpus of
 **convex numerical feasibility calls**, not a claim that the original SMT
 assertions are a conjunction or that every SAT assignment was already feasible
-with its disequalities. A feasible exported conjunction can come from an
+with its disequalities. Bound-reason graphs and original explanation literals
+are also omitted; studying explanation minimization on the original propagation
+graph would require additional state capture. A feasible exported conjunction can come from an
 ultimately UNSAT parent input. Its expected status comes from the numerical
 check, not the parent's `:status`.
 
@@ -117,14 +118,14 @@ are inputs for a future ablation, not warm tableau checkpoints.
 Solver builds, qualification, fuzzing, profiling and corpus replays run on SLURM.
 Record source/binary/input identities, exact flags, seeds, limits and jobs in the
 run log before citing results. Stop on incorrect exports, invalid models,
-crashes or untriaged reference disagreements. No pivot cutoff, algorithmic
+crashes or untriaged reference disagreements. No final corpus cutoff, algorithmic
 winner, default change or performance improvement is claimed by the first probe.
 
 ## Pilot results: 237 source inputs
 
 The fixed, seed-42 stratified development sample covers 17 families, with at most
-15 inputs per family. Native source is `97a3229`, using production defaults plus
-`--quiet --stats --lra-call-profile FILE`; Z3 is an answer reference. Both receive
+15 inputs per family. Native source is `97a3229`, using production defaults (sparse pivot selection with its Bland fallback,
+Gaussian elimination enabled) plus `--quiet --stats --lra-call-profile FILE`; Z3 is an answer reference. Both receive
 five seconds per source input, with a two-second termination grace. Eight SLURM
 tasks each use one physical CPU and 8 GiB on node-09. These are instrumented
 observations, not a solver speed comparison. Exact hashes, versions, job IDs and
@@ -174,10 +175,11 @@ account for 85.90% of recorded time; row size, rational arithmetic and operation
 counts can make lower-pivot calls costly. Most recorded time (176.827 seconds)
 comes from timeout prefixes, so longer runs may change the tail substantially.
 
-The bounded second pass selects up to two parents per qualifying family, ordered
+The bounded second pass selected up to two parents per qualifying family, ordered
 by descending observed maximum pivots and then relative path: 13 parents.
-Its committed manifest is `benchmarks/qf-lra-call-extraction-pilot.txt`.
-It allows 15 seconds per solver per parent and exports the first five checks
+Its committed manifest is
+{callsource}`benchmarks/qf-lra-call-extraction-pilot.txt`.
+It allowed 15 seconds per solver per parent and exported the first five checks
 with at least 128 pivots per process. This deliberately biased pilot tests
 extraction and fresh replay; it is not yet the ablation benchmark selection.
 
@@ -187,6 +189,79 @@ Boolean/arithmetic cases compared with Z3 and checked with Dolmen. The whole-tre
 133-translation-unit analyzer scan found no new analyzer warning class; the
 advisory include scan is triaged separately in the ledger. These checks qualify
 the diagnostic path; they do not establish an algorithmic performance improvement.
+
+## Frozen conjunction pilot and fresh replay
+
+The corrected `791a179` exporter produced **33 distinct conjunctions** from
+those 13 parents: **13 SAT and 20 UNSAT**, with no export skips. Across the
+observed source traces, 99 checks qualified for export; 33 were saved and
+66 were omitted by the per-process budget. Further qualifying calls in an
+uncompleted search remain unknown. The source input/call IDs, hashes and warm
+measurements remain attached to each file.
+
+The committed inputs and baseline subsets are:
+
+- {callbench}`All 33 conjunctions <benchmarks/qf-lra-call-pilot/manifest.txt>`.
+- {callbench}`23 fresh checks with at least 128 pivots <benchmarks/qf-lra-call-pilot/fresh-ge128.txt>`:
+  10 SAT and 13 UNSAT.
+- {callbench}`10 lower-pivot controls <benchmarks/qf-lra-call-pilot/fresh-lt128-controls.txt>`.
+- {callbench}`Per-input provenance and measurements <benchmarks/qf-lra-call-pilot/metadata.json>` and
+  {callbench}`original export occurrences <benchmarks/qf-lra-call-pilot/occurrences.json>`.
+
+Every file consists solely of Real declarations, linear equality/inequality
+assertions, status metadata and one `check-sat`. The assertions together form
+one conjunction. The generated-format audit checks linearity and concrete
+coefficient syntax. All 33 native fresh replays returned the expected answers;
+**every replay performed exactly one completed numerical check**. The native
+binary, default options and one-CPU/8-GiB node-09 allocation match the corrected
+extraction; the fresh per-solver limit was 15 seconds.
+
+| Fresh-check metric | Minimum | Median | p90 | Maximum |
+| --- | ---: | ---: | ---: | ---: |
+| Pivots | 30 | 333 | 946 | 3,682 |
+| Check time (ms) | 0.062 | 16.778 | 242.227 | 5,566.897 |
+
+The 33 checks sum to 17,713 pivots and 7.259 seconds inside `check()`;
+whole native processes sum to 11.126 seconds. These are different timing
+boundaries. One fresh check activated the default sparse policy's Bland
+fallback: the 3,682-pivot, 5.567-second maximum includes that fallback work.
+It is identified by `bland_fallbacks` in the per-input metadata.
+
+Z3 agreed on **all 20 UNSAT and 11 SAT** cases; its other two SAT attempts
+timed out. All **13 SAT** cases passed separate native `--check-model` replays
+and direct Dolmen checks under their unchanged QF_LRA annotation. Thus the two
+reference timeouts have independent passing model checks; they are not counted
+as Z3 agreements. All five successful SAT parents in the corrected extraction
+also passed independent model checks. No wrong answer, invalid model or missing
+SAT validation remains in this pilot.
+
+Fresh reconstruction changed the pivot stratum: all saved warm calls used at
+least 128 pivots, but only 23 fresh checks did. A pivot cutoff belongs to a
+specified baseline and state, not inherently to the logical conjunction.
+Freeze the manifest and content hashes **before comparing ablation variants**;
+reselecting by each variant's own pivot count would change the benchmark set.
+Keep lower-pivot controls and broader source coverage when designing the full
+study: this pilot is biased toward early qualifying calls of parents with high
+observed maxima.
+
+The [fresh report](../coverage/lra-call-fresh-20261030.json) retains numerical
+call measurements and source-independent replay outcomes.
+{callbench}`scripts/qualify_lra_call_corpus.py` checks every file's hash,
+joins every successful SAT row to its direct-Dolmen result, verifies the exact
+command-adapted assertion text, and writes the two baseline subsets.
+The [submission record](../coverage/lra-call-jobs-20261030.json) contains the
+historical argument vectors with workspace/CMake placeholders; reruns require
+fresh dependency job IDs and the repository's read-only preflight before each
+submission. Use {callsource}`scripts/slurm_lra_call_ablation.sbatch` to collect
+these files on SLURM, setting the corpus root and manifest through its environment
+parameters. The plotting dependency is optional for collection and aggregation.
+
+Qualification of the repaired native snapshot passed 44 release and 44 ASan
+CTest groups, 246 Python tests, 12 documentation checks and a fresh 1,000-case
+Boolean/arithmetic gate. The 133-translation-unit analyzer scan matched every
+current C++ source hash, introduced no warnings, and confirmed removal of the
+ten new direct-include advisories. The ledger distinguishes existing analyzer
+advisories, the rejected initial export attempt and these accepted results.
 
 ### Export syntax repair found during validation
 
@@ -203,10 +278,21 @@ fractional row coefficient as well as a negative fractional bound.
 
 The original traces, files, fresh runs and rejected validator outputs remain as
 rejected extraction evidence. Fresh qualification, extraction and replay of the
-repaired exporter are pending. The accepted first source-input distribution uses
+repaired exporter passed as recorded above. The accepted first source-input distribution uses
 recording without export, so this serialization repair does not alter that data.
 
 ## Sources and implementation status
+
+Code links use the repaired exporter's `791a179` snapshot. The first source
+pilot above retains its original `97a3229` binary identity and measurements.
+Offline aggregation is standard-library Python; the optional plot renderer uses
+Matplotlib 3.11.2 in the documentation environment. No plot dependency is needed
+on SLURM. The collection, analysis, summary and restricted-format audit live in
+{callsource}`scripts/run_lra_call_distribution.py`,
+{callsource}`scripts/analyze_lra_call_profile.py`,
+{callsource}`scripts/summarize_lra_call_distribution.py` and
+{callsource}`scripts/prepare_lra_call_replay.py`.
+
 
 Dutertre–de Moura's simplex report supplies the row-equation, bound, pivot and
 strict-arithmetic invariants {cite:p}`dutertre2006simplexreport`. The existing
@@ -217,5 +303,5 @@ Current tests check unchanged verdict/search counters with profiling enabled,
 negative-rational/strict serialization, same-Primo round trips for feasible and
 infeasible exports, and export-budget handling. Independent reference answers
 and SAT-model validation for the first source pilot passed as recorded above.
-Independent export replay and fresh replay difficulty remain separate empirical
-questions.
+The corrected export corpus and its independent checks are recorded above;
+the full ablation matrix remains a later study.

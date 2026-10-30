@@ -103,7 +103,16 @@
           "baseline": "68647085ba18583560ec5319bfb317bb0a51b1b6",
           "patch_digest": "b2e38807c01b649dc225e883cec6b8a5805f4007a2bb69d30f1866b02a30b5f5",
           "finding": "LCAP-SYNTAX-01 repaired33native31Z3agreements2reference timeouts; sourcefix/valuepreservation/audit/unit verified read-only fromprimarylogicgrammar",
-          "qualification": "Fresh791native gates and33conjunction replay/model validation passed;final result exposition review pending."
+          "qualification": "Fresh791native gates and33conjunction replay/model validation passed;finalexposition independently accepted."
+        },
+        "final": {
+          "reviewer": "separate read-only derived_bounds_lead_review",
+          "verdict": "ready;no required findings or suggestions",
+          "baseline": "4a2d218c4dfd646fd270140e80e472dc70335cdf",
+          "reviewed_ten_file_digest": "283144d889e282045f807a67dc2dc6821c6d0bb9fd77b8d67d8ceb09737e35d7",
+          "scope": "Entire result note,source roles,latestledger,corpusmetadata/manifests andfresh report joined to rawshards/models/accounting;all33hashes/onecheck each/23hard10controls/13directSATmodelpasses/5parents/99qualifying33saved66budgetomissions verified;initialpilot/figure previously accepted.",
+          "validation": "make lint;make docs;assembled-site linkchecker265pages33757local links1089Git links0failures;rendered pilot/fresh/syntax sections inspected",
+          "unchecked_scope": "No algorithmic speed/default promotion or full ablation matrix claimed. Existing static advisories triaged, not warning-free whole-tree claim."
         }
       },
       "results": {
@@ -229,7 +238,8 @@
           },
           "static": "133/133 source hashes match current CPP;all return0;no new warnings;10 new direct-include advisories removed;18 existing analyzer advisories(16guarded enumtests,2modelRAII) unchanged",
           "lint": "make lint passes locally",
-          "source_model_replay": "5/5 successful extraction-parent SAT rows directDolmen plusnativecheck;exact input/adaptation hashes verified;separate timing stage"
+          "source_model_replay": "5/5 successful extraction-parent SAT rows directDolmen plusnativecheck;exact input/adaptation hashes verified;separate timing stage",
+          "code_review": "No blocking issues found in full-branch self-review, borrow/mutation checks,efficiency review and133-TU matching-source static evidence;diagnostic clock/IO disabled unlessrequested."
         },
         "conjunction_corpus": {
           "inputs": 33,
@@ -272,7 +282,10 @@
           "syntax": "All33 pass linear-literal/concrete-coefficient audit. AllSAT inputs accepted directly byDolmen QF_LRA;no logic widening.",
           "reference_coverage": "20/20UNSAT and11/13SAT agree withZ3;2SATreference timeouts have passing independent Dolmen model checks. No wrong answers or invalid models.",
           "actual_check_calls": "one completed numerical check perconjunction;33total;17,713pivots;7.258823704s summed checktime;11.125676s summed nativeprocesswall",
-          "budget_bias": "first5 qualifying calls perselected parent;not a final representative ablation selection"
+          "budget_bias": "first5 qualifying calls perselected parent;not a final representative ablation selection",
+          "observed_qualifying_export_calls": 99,
+          "observed_qualifying_omitted_by_budget": 66,
+          "export_skips": 0
         },
         "dependencies": {
           "cadical": "cadical-3.0.0-7b99c07",

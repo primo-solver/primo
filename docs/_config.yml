@@ -45,7 +45,10 @@ sphinx:
         - "https://github.com/primo-solver/primo/blob/9048acd6536faf75551c7d1378111741aa8bb122/%s"
         - "%s"
       callsource:
-        - "https://github.com/primo-solver/primo/blob/97a3229e3026faf52ab1df151d1e6dec11b136d0/%s"
+        - "https://github.com/primo-solver/primo/blob/791a179adc94e4797428bca463dd2363b67620fc/%s"
+        - "%s"
+      callbench:
+        - "https://github.com/primo-solver/primo/blob/4a2d218c4dfd646fd270140e80e472dc70335cdf/%s"
         - "%s"
       profilesource:
         - "https://github.com/primo-solver/primo/blob/90d29667fa8796b9db41967afb65ab202388b54e/%s"
