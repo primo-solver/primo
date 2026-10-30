@@ -321,7 +321,8 @@ recording without export, so this serialization repair does not alter that data.
 
 ## Sources and implementation status
 
-Code links use the repaired exporter's `791a179` snapshot. The first source
+Native code links use the selected-call capture implementation at `d4944eb`.
+The completed-conjunction pilot retains its qualified `791a179` snapshot. The first source
 pilot above retains its original `97a3229` binary identity and measurements.
 Offline aggregation is standard-library Python; the optional plot renderer uses
 Matplotlib 3.11.2 in the documentation environment. No plot dependency is needed

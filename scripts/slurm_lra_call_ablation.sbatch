@@ -41,6 +41,15 @@ case "${PRIMO_CALL_PHASE:?}" in
   "-DCMAKE_EXE_LINKER_FLAGS=-L$PWD/tmp/asan-runtime"
  make -o contrib-required asan-test ASAN_BUILD_DIR=build-call-asan
  ;;
+ reference-models)
+ manifest="${PRIMO_CALL_PARENT_OUT:?}/shard-${SLURM_ARRAY_TASK_ID}/references-sat.txt"
+ if [[ -s $manifest ]]; then
+  python3 scripts/validate_model.py --solver contrib/local/bin/z3 --expect-sat \
+   --require-dolmen-pass --dolmen contrib/local/bin/dolmen --dolmen-size 2G \
+   --dolmen-arg=--strict=false --timeout 90 --dolmen-timeout 30 \
+   --manifest "$manifest" --out "$OUT/shard-${SLURM_ARRAY_TASK_ID}"
+ fi
+ ;;
  models)
  manifest="${PRIMO_CALL_PARENT_OUT:?}/shard-${SLURM_ARRAY_TASK_ID}/parents-sat.txt"
  if [[ -s $manifest ]]; then

@@ -176,6 +176,14 @@ def main():
     (args.out / "parents-sat.txt").write_text(
         "".join(path + "\n" for path in sat_inputs)
     )
+    ref_sat = [
+        str(args.root / row["file"])
+        for row in metadata["records"]
+        if row["reference"]["status"] == "ok" and row["reference"]["answer"] == "sat"
+    ]
+    (args.out / "references-sat.txt").write_text(
+        "".join(path + "\n" for path in ref_sat)
+    )
     metadata["sat_replays_expected"] = len(sat_inputs)
     metadata["complete"] = True
     summary.write_text(json.dumps(metadata, indent=2) + "\n")
