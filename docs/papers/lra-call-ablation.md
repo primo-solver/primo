@@ -206,6 +206,59 @@ versions and hashes, commands, limits, timings, model joins and job IDs.
 Raw artifacts are retained under `results/lra-reference-panel-20261030` locally
 and in the SLURM workspace; [the run ledger](../run-log.json) links this evidence.
 
+## Expansion toward a 1,000-input case study
+
+The next collection targets **1,000 distinct conjunctions**, retaining the
+existing 42 inputs and their labels. The source manifest expands from 237 to
+all **1,753 locally available QF_LRA inputs in 17 families**. This remains a
+development corpus rather than a competition-wide representative sample.
+The fixed source manifest and configurable export budget are in
+{casestudysource}`the extraction preparation <benchmarks/qf-lra-case-study-sources.txt>`
+and {casestudysource}`the batch wrapper <scripts/slurm_lra_call_ablation.sbatch>`.
+`PRIMO_CALL_EXPORT_LIMIT` defaults to five; this pass sets it to **64**.
+
+The first wider pass allows **five seconds per native/reference parent process**
+and exports completed warm checks with at least **32 pivots**, up to that
+64-file budget per parent. Sixteen concurrent SLURM tasks each use one physical
+CPU and 8 GiB; 32 shards cover the manifest. Native context remains the already
+qualified `d4944eb` binary, with production defaults. Its solver algorithm is
+unchanged. Durable trace prefixes from parent timeouts remain eligible;
+unannounced or incompletely written exports are excluded. The nine earlier
+pre-check captures remain available, including the unresolved hard input.
+
+Selection must count conjunctions rather than differing call-number comments.
+The {casestudytools}`collection workflow <scripts/prepare_lra_case_study.py>`
+audits the generated linear syntax, then hashes tokens
+with comments, whitespace and status annotations removed. It preserves one
+original file and all occurrence metadata for each such identity. This collapses
+repeated conjunction texts; it does not detect logical equivalence, renamed
+variables, or reordered assertions. Conflicting known labels for the same
+identity stop collection.
+
+Keep the existing 42 first. For new candidates, visit source families in sorted
+round-robin order and choose the eligible parent with the fewest selected
+inputs, breaking ties by path. Within a parent, rank candidates by a fixed
+seeded hash, interleaving three warm checks with at least 128 pivots and one
+with fewer than 128 when available. If an identity has several source parents,
+its lexicographically smallest parent determines its counting parent and family;
+its largest recorded completed warm pivot count determines the selection stratum.
+All source occurrences remain attached to it. Use seed **20261030**, a **25-input parent
+cap** and **400-input family cap**, including retained inputs. These are maximum
+counts, not promised quotas or a fixed 75% final difficulty ratio. If the pool
+cannot supply 1,000 under those caps, report the shortfall and extend extraction
+before changing the selection policy.
+
+Freeze selection before variant comparisons. Fresh native replays determine
+pivot/time distributions independently of the warm selection stratum. Successful
+SAT answers require separate native model checking and direct Dolmen validation;
+UNSAT labels require independent reference agreement. A whole-process timeout
+can retain completed numerical observations in a censored trace prefix; only
+unfinished checks lack completed pivot/time values. The conjunction's verdict
+remains explicitly unresolved if no validated verdict is available.
+Collection, replay, qualification and a final frozen
+case-study manifest are separate milestones; **the 1,000-input set is not yet
+qualified**.
+
 ## Exported numerical conjunction
 
 A requested export combines two pieces:

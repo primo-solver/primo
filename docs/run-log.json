@@ -3,6 +3,59 @@
   "description": "Canonical lightweight ledger for Primo benchmark, fuzzing, profiling, tuning, and reference-comparison runs.",
   "entries": [
     {
+      "id": "2026-10-30-lra-case-study-1000",
+      "date": "2026-10-30",
+      "kind": "case-study-corpus-expansion",
+      "evidence_status": "extraction-running-not-yet-qualified",
+      "branch": "experiment/qf-lra-call-ablation",
+      "target": 1000,
+      "existing_distinct_inputs": 42,
+      "native_context_commit": "d4944ebbe6cf202c0485e783655209ba204df71c",
+      "native_binary_sha256": "710929c58c18970cf4fccf7eb479fb95bb1410e6b46559433e4af80b55a9eee8",
+      "preparation_commit": "659432e23587bdd356f8f9e7afb84a02495892e8",
+      "source_manifest": "benchmarks/qf-lra-case-study-sources.txt",
+      "source_inputs": 1753,
+      "families": 17,
+      "source_manifest_sha256": "e217caf09bb2bc8d3aefc4a5d8a4cfed4792462582b69c884698c3ce69ee76f4",
+      "execution": {
+        "environment": "SLURM node-09, 32 shards, concurrency 16, one physical CPU and 8 GiB per task. Five seconds per native/Z3 parent plus two-second termination grace; 30 minute task limit.",
+        "extraction_job": "280861",
+        "workspace": "~/primo-lra-call-capture-20261030",
+        "commands_file": "results/lra-case-study-1000-20261030/jobs.json",
+        "artifacts": "results/lra-case-study-1000-20261030",
+        "source_staging": "Repository staging helper reused remote complete 1753-file, 2575846184-byte corpus; path/size fingerprint 02f94ba0450b5fac954450c4e60188033725f0d7c3ca1ad505a31760c1470d5d. No corpus upload.",
+        "preflight": "Repository --check-only --no-sync against clean d4944eb source before sbatch; Z3, Dolmen, Yices and OpenSMT available. Native binary unchanged.",
+        "workflow_sha256": {
+          "run_lra_call_distribution.py": "0243de5cdb94f1c960abe1b8ba0fb03b0a970a241849b49be1b8903327fd7631",
+          "analyze_lra_call_profile.py": "d6198ead70d0345697725274c9ebd9e2b7ca206fb61665370e147b6a0b18c793",
+          "prepare_lra_call_replay.py": "1fa7f586406cbfb75e20bfbda36255490fc186d3c6f3731d8bb2bd739bd860d6",
+          "slurm_lra_call_ablation.sbatch": "69e7e79a6461765291cc5a852bae42533cfc9cef730eaee5bfa2b84d08342b10"
+        }
+      },
+      "selection_policy": {
+        "warm_min_pivots": 32,
+        "per_parent_export_limit": 64,
+        "target": 1000,
+        "retain_existing": 42,
+        "deduplication": "Ignore comments, whitespace and status annotation; preserve tokens in order. This is not logical equivalence checking.",
+        "selection_seed": 20261030,
+        "parent_cap": 25,
+        "family_cap": 400,
+        "order": "Family round-robin, least-selected eligible parent, three >=128-pivot warm candidates per one lower-pivot control when available; fixed hash ranking within strata."
+      },
+      "remaining": [
+        "Collect and audit pool; meet quotas or extend extraction.",
+        "Fresh native replay and independent reference checks.",
+        "Separate exact-input SAT model validation.",
+        "Freeze and commit selected corpus, provenance and summarized distribution."
+      ],
+      "limitations": [
+        "No native algorithm, solver option default, or performance profile change.",
+        "1753 available development inputs are not the full SMT-LIB competition corpus.",
+        "Target and sampling policy do not establish that 1000 qualified inputs already exist."
+      ]
+    },
+    {
       "id": "2026-10-30-lra-captured-yices-opensmt-panel",
       "date": "2026-10-30",
       "kind": "additional-reference-solvers",
