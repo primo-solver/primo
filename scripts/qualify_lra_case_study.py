@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Join the frozen case-study inputs to fresh answers and exact Dolmen model checks."""
+"""Join frozen inputs to answers and exact models per docs/papers/lra-call-ablation.md."""
 
 from __future__ import annotations
 
@@ -114,6 +114,7 @@ def main():
     parser.add_argument("--corpus", type=Path, required=True)
     parser.add_argument("--results", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--identities", type=Path, required=True)
     args = parser.parse_args()
     selection = json.loads((args.corpus / "selection.json").read_text())
     files = (args.corpus / "manifest.txt").read_text().splitlines()
@@ -134,6 +135,9 @@ def main():
         args.corpus / "expected-statuses.json"
     )
     assert provenance["solver_sha256"] == selection["binary_sha256"]
+    identities = json.loads(args.identities.read_text())
+    assert identities["primo"]["sha256"] == provenance["solver_sha256"]
+    assert identities["z3"]["sha256"] == provenance["reference_sha256"]
     answers = {
         "primo": {n: r["native"] for n, r in fresh.items()},
         "z3": {n: r["reference"] for n, r in fresh.items()},
@@ -158,6 +162,9 @@ def main():
         assert set(rows) == set(files)
         answers[label] = rows
         references[label] = {k: identity[k] for k in ("sha256", "version")}
+        assert references[label]["sha256"] == identities[label]["sha256"]
+        references[label] = identities[label]
+    references["z3"] = identities["z3"]
     proofs = {}
     for label, runs in answers.items():
         selected_sat = {name for name, run in runs.items() if decisive(run) == "sat"}
@@ -259,6 +266,7 @@ def main():
         "expected_statuses_sha256": provenance["expected_statuses_sha256"],
         "timeout_seconds": provenance["timeout_seconds"],
         "references": references,
+        "validator": identities["dolmen"],
         "native_solver_args": provenance["solver_args"],
         "outcomes": outcomes,
         "direct_dolmen_model_passes": {

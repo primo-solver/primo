@@ -10,4 +10,5 @@ cd "${PRIMO_WORKDIR:?}"
 export PYTHONPATH="$PWD/scripts"
 python3 "${PRIMO_CASE_ARTIFACTS:?}/qualify_lra_case_study.py" \
  --corpus "${PRIMO_CASE_CORPUS:?}" --results "${PRIMO_CASE_RESULTS:?}" \
+ --identities "$PRIMO_CASE_RESULTS/tool-identities.json" \
  --out "$PRIMO_CASE_CORPUS/metadata.json"
