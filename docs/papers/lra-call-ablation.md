@@ -1,7 +1,7 @@
 # QF_LRA call distribution and conjunction extraction
 
-**Status: Experimental observer and exporter; qualification and the first pilot
-are pending.** Work is isolated on `experiment/qf-lra-call-ablation`. The first
+**Status: Experimental observer and exporter; the first SLURM pilot is complete
+and runtime qualification passed.** Work is isolated on `experiment/qf-lra-call-ablation`. The first
 question is how completed numerical feasibility calls distribute across pivot
 counts and elapsed time. Choosing a pivot cutoff and a full ablation matrix
 comes after this observation, not before it.
@@ -120,6 +120,74 @@ run log before citing results. Stop on incorrect exports, invalid models,
 crashes or untriaged reference disagreements. No pivot cutoff, algorithmic
 winner, default change or performance improvement is claimed by the first probe.
 
+## Pilot results: 237 source inputs
+
+The fixed, seed-42 stratified development sample covers 17 families, with at most
+15 inputs per family. Native source is `97a3229`, using production defaults plus
+`--quiet --stats --lra-call-profile FILE`; Z3 is an answer reference. Both receive
+five seconds per source input, with a two-second termination grace. Eight SLURM
+tasks each use one physical CPU and 8 GiB on node-09. These are instrumented
+observations, not a solver speed comparison. Exact hashes, versions, job IDs and
+commands are in the [run log](../run-log.md).
+
+Primo finished 171 inputs (90 SAT, 81 UNSAT), with 66 timeouts and no errors or
+unsupported results. Z3 finished 159, with 78 timeouts. The 158 jointly decisive
+answers agree; no observed answer contradicts declared status. Every one of the
+90 successful native SAT inputs passed a separate native `--check-model` replay
+and direct Dolmen validation, outside the timing stage.
+
+There are **4,078,921 observed completed numerical checks**, from 194 inputs.
+The remaining 43 inputs stay in the denominator with zero observed calls.
+Of the observations, 1,866,111 calls come from completed source inputs and
+2,212,810 from timeout prefixes. The latter omit unfinished calls and possibly
+buffered tails; they are not complete distributions for those 66 inputs.
+Total recorded check time is 217.868 seconds. Call-weighted pivot quantiles are
+**median 0, p90 1, p99 6**, with an observed maximum of **4,450**.
+
+| Pivots per warm check | Observed calls | Total check time (s) | Mean check time (ms) |
+| --- | ---: | ---: | ---: |
+| 0 | 3,658,626 | 0.604 | 0.000165 |
+| 1 | 212,437 | 26.723 | 0.126 |
+| 2–7 | 181,168 | 77.852 | 0.430 |
+| 8–31 | 24,873 | 61.790 | 2.484 |
+| 32–127 | 1,428 | 20.186 | 14.136 |
+| 128–1023 | 358 | 15.489 | 43.266 |
+| 1024 and above | 31 | 15.225 | 491.121 |
+
+![Warm numerical-check pivot counts, time by pivot bin and joint timing density](../_static/lra-call-distribution-20261030.png)
+
+The left panel separates completed sources from censored prefixes. The middle
+panel sums only recorded `check()` time. The right panel groups durations into
+powers-of-two nanosecond buckets; color shows `log10(calls + 1)`. The mean of
+zero-pivot timings is close to timer overhead and is not a calibrated cost of a
+mathematical operation. No per-input medians are averaged into these means.
+The [portable data](../coverage/lra-call-distribution-20261030.json) retain
+per-input hashes, outcomes, checker dimensions, pivot histograms, timing bins,
+call maxima and family summaries. Raw durable-prefix traces remain in the
+SLURM artifact directory recorded in the ledger.
+
+A **128-pivot** first extraction stratum contains 389 observed calls across
+36 source inputs in seven families: only 0.00954% of calls, but 14.10% of
+recorded check time. This is a useful way to find difficult episodes, not a
+sufficient definition of the final ablation corpus. Calls below 128 pivots still
+account for 85.90% of recorded time; row size, rational arithmetic and operation
+counts can make lower-pivot calls costly. Most recorded time (176.827 seconds)
+comes from timeout prefixes, so longer runs may change the tail substantially.
+
+The bounded second pass selects up to two parents per qualifying family, ordered
+by descending observed maximum pivots and then relative path: 13 parents.
+Its committed manifest is `benchmarks/qf-lra-call-extraction-pilot.txt`.
+It allows 15 seconds per solver per parent and exports the first five checks
+with at least 128 pivots per process. This deliberately biased pilot tests
+extraction and fresh replay; it is not yet the ablation benchmark selection.
+
+Qualification for the native observer includes 44 release and 44 ASan CTest
+groups, 242 Python tests, 12 documentation checks, and 1,000 generated
+Boolean/arithmetic cases compared with Z3 and checked with Dolmen. The whole-tree
+133-translation-unit analyzer scan found no new analyzer warning class; the
+advisory include scan is triaged separately in the ledger. These checks qualify
+the diagnostic path; they do not establish an algorithmic performance improvement.
+
 ## Sources and implementation status
 
 Dutertre–de Moura's simplex report supplies the row-equation, bound, pivot and
@@ -130,5 +198,6 @@ paper-backed solving algorithm. It never optimizes or changes a theory clause.
 Current tests check unchanged verdict/search counters with profiling enabled,
 negative-rational/strict serialization, same-Primo round trips for feasible and
 infeasible exports, and export-budget handling. Independent reference answers
-and SAT-model validation belong to the pending SLURM qualification/replay stages. Qualifying observations and
-fresh replay difficulty remain empirical questions.
+and SAT-model validation for the first source pilot passed as recorded above.
+Independent export replay and fresh replay difficulty remain separate empirical
+questions.

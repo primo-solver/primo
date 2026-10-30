@@ -6,7 +6,7 @@
       "id": "2026-10-30-qf-lra-call-ablation-pilot",
       "date": "2026-10-30",
       "kind": "numerical-call-distribution-and-conjunction-extraction",
-      "evidence_status": "qualified-pilot-running",
+      "evidence_status": "pilot-qualified-extraction-replay-running",
       "branch": "experiment/qf-lra-call-ablation",
       "native_source_commit": "97a3229e3026faf52ab1df151d1e6dec11b136d0",
       "workflow_commit": "2bb28bf342398e452bf1b91e252f9cedcdb9633f",
@@ -20,7 +20,7 @@
         "bytes": 298152786
       },
       "execution": {
-        "environment": "SLURM compute node-09, physical-core affinity, isolated workspace",
+        "environment": "SLURM compute node-09; IntelXeonE5-2690v4@2.60GHz,56logical CPUs; each timing task one physical core,8GiB",
         "build_job": "267713",
         "build_result": "COMPLETED 0:0; 3m28s, 4 CPU, 8G. SSH transport hung after successful completion; stopped stale transport and passed fresh read-only preflight.",
         "jobs": {
@@ -29,7 +29,12 @@
           "asan": "267722",
           "static": "267723",
           "profile": "267724",
-          "models": "267726"
+          "models": "267726",
+          "models_initial_cancelled": "267725",
+          "extract": "267741",
+          "fresh-default": "267745",
+          "fresh-models": "267749",
+          "extract-parent-models": "267750"
         },
         "first_attempt": {
           "check_job": "267714",
@@ -66,7 +71,7 @@
         "fuzz": "1000/1000 Boolean/arithmetic generated cases seed2026103001 passed native+Z3+Dolmen in267721; profile enabled",
         "asan": "44/44 CTest passed in267722; Release observer binary unchanged",
         "static": "133/133 translation units returned0 in267723; every scanned source hash matches native97a snapshot. Existing16 guarded invalid-enum test warnings and2 model-RAII leak advisories unchanged;10 extra direct-include advisories, no new analyzer class or unused include.",
-        "parent_models": "queued after all pilot timing tasks"
+        "parent_models": "90/90 successful pilot SAT rows passed native --check-model plus direct Dolmen, no fallback; job267726, separate after all timing shards. Exact source hashes and command-adapted assertion text verified offline."
       },
       "commands": {
         "profile": "python3 scripts/run_lra_call_distribution.py --solver build-slurm-rel/primo --reference contrib/local/bin/z3 --root tmp/QF_LRA --manifest benchmarks/qf-lra-stratified-sample.txt --timeout 5 --shards 8 --index ARRAY_ID --out OUT/shard-ID (actual scripts deployed as tmp job artifacts)",
@@ -74,14 +79,82 @@
       },
       "limitations": [
         "Completed checks only; timeout unfinished call and buffered tail censored.",
-        "Includes zero-pivot calls; inputs with no recorded calls retained.",
-        "Warm basis/search-dependent work is distinct from fresh standalone conjunction replay.",
-        "Export independent validation and results pending; no pivot cutoff accepted yet."
+        "Includes zero-pivot calls;43 inputs with no recorded calls retained.",
+        "Warm search-dependent work differs from fresh standalone conjunction replay.",
+        "128-pivot pilot covers14.10%of recorded time;not a final ablation selection or performance claim.",
+        "Independent export replay is pending."
       ],
       "documentation_review": {
         "reviewer": "separate read-only derived_bounds_lead_review",
         "accepted_commit": "2bb28bf342398e452bf1b91e252f9cedcdb9633f",
-        "scope": "Preparatory design and trace/parser contract only; LCAP-DOC-01/02/03 and LCAP-OBS-01/02 resolved. Empirical results not yet reviewed."
+        "scope": "Preparatory design and trace/parser contract only; LCAP-DOC-01/02/03 and LCAP-OBS-01/02 resolved. Empirical results not yet reviewed.",
+        "pilot": {
+          "verdict": "ready for completed first pilot",
+          "baseline": "3333c639b918c271f7275771a01721d57d88ac89",
+          "portable_sha256": "fdad2610bdea2b53fe8fbd7d78cf0a77115ea4339fd8937622ca3dc16eea409b",
+          "figure_sha256": "9de3d2f7b5265f14c9d0e6f44215cfe1adcef2e8ec784ff8fb648ee670b895cc",
+          "findings": "LCAP-PILOT-01 hidden log-scale tail repaired with grouped bars/ymin0.5;LCAP-PILOT-02 ledger status synchronized. Numbers/17families/90model matches independently verified. Extraction outside acceptance."
+        }
+      },
+      "results": {
+        "inputs": 237,
+        "native_outcomes": {
+          "timeout": 66,
+          "unsat": 81,
+          "sat": 90
+        },
+        "reference_outcomes": {
+          "timeout": 78,
+          "sat": 84,
+          "unsat": 75
+        },
+        "coverage": {
+          "prefix": 66,
+          "complete": 167,
+          "no-checks": 4
+        },
+        "inputs_with_calls": 194,
+        "calls": 4078921,
+        "zero_pivot_calls": 3658626,
+        "total_pivots": 1345694,
+        "total_check_seconds": 217.868483364,
+        "max_pivots": 4450,
+        "pivot_quantiles": {
+          "p50": 0,
+          "p90": 1,
+          "p99": 6
+        },
+        "jointly_decisive_agreements": 158,
+        "answer_disagreements": 0,
+        "complete_source_calls": 1866111,
+        "censored_prefix_calls": 2212810,
+        "portable_data": "docs/coverage/lra-call-distribution-20261030.json",
+        "portable_data_sha256": "fdad2610bdea2b53fe8fbd7d78cf0a77115ea4339fd8937622ca3dc16eea409b",
+        "parent_model_coverage": "docs/coverage/lra-call-parent-models-20261030.json",
+        "figure": "docs/_static/lra-call-distribution-20261030.png"
+      },
+      "extraction": {
+        "manifest": "benchmarks/qf-lra-call-extraction-pilot.txt",
+        "cutoff_pivots": 128,
+        "selection": "up to2 descending observed-max-pivot parents per qualifying family;relativepath tie break",
+        "parents": 13,
+        "timeout_seconds_per_solver": 15,
+        "shards": 4,
+        "export_limit_per_parent": 5,
+        "export_occurrences": 33,
+        "unique_content_hashes": 33,
+        "expected_sat": 13,
+        "expected_unsat": 20,
+        "syntax": "all33 restricted-format audits pass; linear arithmetic literal assertions, no Boolean branching",
+        "skips": 0,
+        "fresh_replay": "submitted; independent expected-status checks and SAT-model stage pending",
+        "workflow_commit": "3333c639b918c271f7275771a01721d57d88ac89",
+        "job_artifact_sha256": {
+          "qf-lra-call-extraction-pilot.txt": "10fc12a3afd6d6a424b5944d8c1f75a985197fddb1220d15790ff8c8e1230a3b",
+          "analyze_lra_call_profile.py": "d69306de49eefc5205ce6cc237bbac82a0e651b8fff08d1aac0b5d3e1183fa1e",
+          "run_lra_call_distribution.py": "741a00bfb3222b93d8070791dba4fc29721e7d0fb5aa62c7a12e39396980546c",
+          "slurm_lra_call_ablation.sbatch": "6b8d500413e0ad560dda4922cea20cb9824f1e81a81e72658428351c6a97de81"
+        }
       }
     },
     {

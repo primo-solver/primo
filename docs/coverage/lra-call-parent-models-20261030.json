@@ -1,0 +1,642 @@
+{
+  "parent_manifest_sha256": "c540ebb30e484cf1202192a597398e0bca4c0cdff4f18b373e8a6f2ff3b41b52",
+  "binary_sha256": "82715b2ffa2328231807d886faaa11eb764f9958339f0b5a1b8dc280d451c36f",
+  "job_id": "267726",
+  "expected_sat": 90,
+  "direct_dolmen_passes": 90,
+  "changed_answers": 0,
+  "invalid_models": 0,
+  "errors": 0,
+  "rows": [
+    {
+      "file": "DTP-Scheduling/constraints-cooking07.smt2",
+      "input_sha256": "a00f16a7d30033bff5e176d05a1afa581eb4e1da9701c30ee545a20dc3e789ad",
+      "adapted_sha256": "f2948ccb5c101d64ff5891ea02d46c6f70eb5c66e8ec26b9a94eeffc1a019fa7",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "DTP-Scheduling/constraints-tempo-width-6.smt2",
+      "input_sha256": "b6e774467df33bd5db0f0d062671fb32bd8e1c8d36018087b86279c86dca5ee8",
+      "adapted_sha256": "2facfee26bbcf85cd61dea729e0be98a51f879218b9ffc60b4c5e48da2723e6f",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "LassoRanker/CooperatingT2/elmhes.t2.c_Iteration5_Loop_4-pieceTemplate.smt2",
+      "input_sha256": "2ebf8c68a8893bb3bc883a4071c5f4284648e21aae8a4344683eb151a9f52398",
+      "adapted_sha256": "3a2f2993babb95ab8645861a3fc74ca0f0d380461cd7f9f2eb40a81422a4be78",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "TM/p-driverlogNumeric_s7.smt2",
+      "input_sha256": "2c74bb1803996c306278318d496f4ac0138e72cf61769fad0e5dc8f5f1f23ea0",
+      "adapted_sha256": "3475d1dc11bacedfd6f9facc5f9c8eb474d20769ef1122cb10dc6970c58d07ad",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "TM/p7-driverlogNumeric_s7.smt2",
+      "input_sha256": "fd8bd428f2bfb02091905a93e6e933d16438e61ca9f93884a19023bd7cb0aed4",
+      "adapted_sha256": "1af001b5bda951f37d6bf1be03f67c34a770fe66e433f7e3ce0336f30563f688",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "latendresse/ecoliFBAyicesTest-875.smt2",
+      "input_sha256": "a30451c776c3a4ca712c08f13b0ad50a4858ed818951f29f40f175a87a4fd549",
+      "adapted_sha256": "9ed2fe29a2699ef15391c17b5363d496dd405a2b2be9a071b753c35bb20cbd4f",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "meti-tarski/sqrt/1mcosq/7/sqrt-1mcosq-7-chunk-0122.smt2",
+      "input_sha256": "7898761f101d069138e1440faf5d74e6734b074d0520a537544237c33c6095e5",
+      "adapted_sha256": "6534ac7e1dd890ff7397d71cd89cbcfb198f03cfa5b69d323a901636993c1d61",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "sc/sc-17.induction3.cvc.smt2",
+      "input_sha256": "9c2dc167d65d593d3eae8f904b77d8cf3f59e69e18b9ea1ba08cdcacd1af954b",
+      "adapted_sha256": "efc5095b246fcbfb3e676b037f1653c4ca9030bd1e934d4c408be6a3becc1061",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "sc/sc-38.induction3.cvc.smt2",
+      "input_sha256": "1eb18a438b8ce5503daf645a3cb6d030fcaf994cf3b8fe6a0389fe53e57aa8ae",
+      "adapted_sha256": "04e962322d051f1fcfe1d30e37c3acac359bca8a72c16c7d0b33dff7dfba5674",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "tta_startup/simple_startup_12nodes.missing.induct.smt2",
+      "input_sha256": "33046cd1149aa586aec41af459b3c71db6b93866c93f6684e70ccc61a512f878",
+      "adapted_sha256": "975d9cc7e00b1c953eb514d114509fcb8abd8e6f7905a5ada79ec0322431dff1",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "tta_startup/simple_startup_5nodes.missing.induct.smt2",
+      "input_sha256": "ce732827f3c54a005f34b88b167032c39d880135f275eab722ecb5bb9eb7c9ee",
+      "adapted_sha256": "5de08698cc22a2bdbffd857331e2b41c7b711742bec826ac8f8dedfb2db5c7bd",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "uart/uart-12.induction.cvc.smt2",
+      "input_sha256": "129391b0d1ca07cde20f7a1afdfadbb1f96d46d42303b961fe936b4dfc5c2535",
+      "adapted_sha256": "374f09feb3cdd0215e8cbd4cf33cbfa4751d04b923743e8a86acbde761cbd9a5",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "uart/uart-26.induction.cvc.smt2",
+      "input_sha256": "7aaaa91119430184e04d03ab7aa1a557f904129d8d0da92584db9551746bda94",
+      "adapted_sha256": "ea2aa5ae96302a43881134b38b4cc598ea54cd289bee509c420e5a9812b2f6f2",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "DTP-Scheduling/constraints-cooking10.smt2",
+      "input_sha256": "3b6bf2de275e2227a88712b81f70f2f2967de2e9073b24ea0e34b18a25212df3",
+      "adapted_sha256": "8fa1947f2f6d86d4ce8069d97737669c4d343209f3227e90bed5cde32784ab36",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "DTP-Scheduling/constraints-tempo-width-7.smt2",
+      "input_sha256": "fa9e7237508acb970d0a0ce853745507677b9e1a644cad7c34dddb0ca9331d9a",
+      "adapted_sha256": "2562a61503a88acc755fce9f233e1f52fdace15950ccedc0cf3d5b69c45fe7c3",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "TM/p2-zenonumeric_s6.smt2",
+      "input_sha256": "883c17e4213150bdffbcd76d718edb77185e88d128642b813343eb7bb90e5edd",
+      "adapted_sha256": "2eb9feec9e3859ec9f346cc70adcdbb64e20e9f6b70d4f81f7166fced37c025c",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "uart/uart-13.induction.cvc.smt2",
+      "input_sha256": "af0cffbc063329f90c58d381a7b07027363054b8f2ab02bcc46b1523b563d048",
+      "adapted_sha256": "5eeef22ed3b84ba07a571b744f4ec6d560f2c03873ee83e15acdd6f02f80b205",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "2019-ezsmt/routingMin/SCC_strong/d50.9.smt2",
+      "input_sha256": "156203cfb28de345ecb8b1f010cc9b73991295978607c877ab0dc4595499f253",
+      "adapted_sha256": "c360aca9be9184eee2a6bca0f95c2609076bc7b021d4f34f476fb19b47780823",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "DTP-Scheduling/constraints-cooking12.smt2",
+      "input_sha256": "9b660be2fde609ac1c0cac7c037c858592a1c7a3d7825c600f6463c7dc801dec",
+      "adapted_sha256": "6df2e5eb2015306b1910de96c1c421faaf2f092e4a65c19d6a53af345046e388",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "DTP-Scheduling/constraints-tempo-width-8.smt2",
+      "input_sha256": "186369f824602bb4295ababa101ad3d2ae629fa33553bd4ccfce3287d97f3430",
+      "adapted_sha256": "d7b8e387629c4aff9b80e247bbca2f38329178af61b369a72a076a29ca559af1",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "LassoRanker/CooperatingT2/ludcmp.t2.c_Iteration8_Loop_6-phaseTemplate.smt2",
+      "input_sha256": "ddc46c562c3efdc85dd5d2dd2d4dc4c7244ab9b7fb54ca572078e1c5ecadfe79",
+      "adapted_sha256": "62d503ff7259980bf57ae60cd02436987aa03f06148d9d9afacb645758d176c1",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "TM/p3-zenonumeric_s5.smt2",
+      "input_sha256": "71168e5d6f2509ebc6547affc9d01822c656638320802a68f87a1f149b899a19",
+      "adapted_sha256": "5ab8969042f04684f1f393a4d4a452f50de005bc40edf10255513711594b3949",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "TM/p7-zenonumeric_s6.smt2",
+      "input_sha256": "bbcf6c96bf7d4c642b86fc4bf751b76518d142df4b9c147a89e7db100104b728",
+      "adapted_sha256": "99d4c692ae80cd2fcbe51b3b435c52d4c3e8b1822a5a1dc4f30e051a254d90fe",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "meti-tarski/Chua/1/IL/U/Chua-1-IL-U-chunk-0069.smt2",
+      "input_sha256": "a5ba3846f2bb6c65bc1779ac6a239bd445bd95a29240fcec3a9c94f1d66bcdc3",
+      "adapted_sha256": "4c9c8c8a746b00e9a0c0f6feea7b251f901ee8eb0394b6262d7572aebd7d9b1d",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "meti-tarski/polypaver/bench-exp-3d/polypaver-bench-exp-3d-chunk-0017.smt2",
+      "input_sha256": "808cb1d96632e62d5ababaf80ec2b2ea6a2bb6adefd806d247f7fc5a9450ab25",
+      "adapted_sha256": "1e6c2b22a8378ad8879a1dfdf6fd5e8a71bd455eeafc1c0a303ad0a8bd805530",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "miplib/pp08a-11000.smt2",
+      "input_sha256": "26c5346cdda264ccea56654669e5dae4343e2679850544d1c91dbc4c5226ba9f",
+      "adapted_sha256": "4d870ebd307310c45467bb90a477aecbec58d050690022b21b523096ef1824a4",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "sc/sc-19.induction3.cvc.smt2",
+      "input_sha256": "ee86431f3ba45bfdae7c61b11a6a9c213eef6d495061295194df66967c23063a",
+      "adapted_sha256": "d4e3df6c068d9c5ad4b23cd2af0621b08694bb1071a031da09e10ecb5262c796",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "tta_startup/simple_startup_14nodes.missing.induct.smt2",
+      "input_sha256": "75f749c8238069342b1e3c7de6a9644cb0cec2a3fc140532d4be80056f731543",
+      "adapted_sha256": "3e1159d226e1ae1f128da935450e7d161d66b7ee00dce7cf9d0dd7fdf74d281c",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "uart/uart-36.induction.cvc.smt2",
+      "input_sha256": "ff252f38cb71ce70f6475b1a12720a264543a332e7b91c79a9d1f8c61c6cee1b",
+      "adapted_sha256": "ba2786a2b2ecc7ba363b6698e31ebe29d925adcecff8d7c391d43089e85ad4ec",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "2019-ezsmt/travellingSalesperson/rand_70_300_1155482584_5.lp.smt2",
+      "input_sha256": "1a57f427505fa8788f9139f85f5558a9be4fcd975f2bbc31007528e7f576ffad",
+      "adapted_sha256": "4a45d02341dc3333efaf19c17e47fddab49930f8d191d48b274c3e947f80cb72",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "DTP-Scheduling/constraints-tempo-depth-30.smt2",
+      "input_sha256": "910f7f61677d2047e4dc9e8d0992df84b2112071a5e11b8fcad812375b4c9b00",
+      "adapted_sha256": "4c93592ddc1a097b495c783a71ceac6aac64e151bb0ffd577dfd0727f54fbe8a",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "DTP-Scheduling/constraints-temporal-machine-shop-2-3-A20.smt2",
+      "input_sha256": "e858b1fa3d5028c8b8dc758de97128c20377cfd6b76d4b2a20d4c9cc486c542e",
+      "adapted_sha256": "2852c486c5333b2f40149e1144761af15b30cd3adbe8d993d275d4ae7d7354cb",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "LassoRanker/CooperatingT2/p-43.t2.c_Iteration5_Loop_4-pieceTemplate.smt2",
+      "input_sha256": "0bf2acd5dbd9cdd2a34ae6ccdc21059a5d3d4d5b939521f19fe4a18c4df2127d",
+      "adapted_sha256": "2ab4ec9a01f9f9bf451dee9d874215b5f7c1c4ea1e586b050513ef34e049e7ac",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "TM/p5-zenonumeric_s5.smt2",
+      "input_sha256": "95de143cbfa01ee5b71881d281027b0c23044e5085189fdb442d7dc9ae8591f0",
+      "adapted_sha256": "267b974ecd922b8b4d9ece0790e4ee7a4a124b92e2b99d9609109de4e9d428b6",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "check/bignum_lra1.smt2",
+      "input_sha256": "e420831670683c464148a12e0acbbcbc8848b32abd0a2d6e083a910c02dc022d",
+      "adapted_sha256": "4afc3efeb15e49da213567e84d86580b6fddf178bac59e70d4c3cfc8ad747bda",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "latendresse/ecoliFBAyicesTest-15875-16.smt2",
+      "input_sha256": "8c673bcbd2bb499b626b4f34a5621073a4dc45d6b6ab5743be5fc350cfc7056f",
+      "adapted_sha256": "2845da8e8eb287a1842bbe40c040a24a09741c4cc0efbbb3dd4e2baa98f727c9",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "meti-tarski/polypaver/bench-exp-3d/polypaver-bench-exp-3d-chunk-0020.smt2",
+      "input_sha256": "44196895392df07fa7e596c8bbbd9ac43a38d89fdef3f444c9cd78a1b3020c27",
+      "adapted_sha256": "36667924faa7c4b07a5d41291f44da61031cdebf30f4a82143b94a77680413f3",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "miplib/pp08a-12000.smt2",
+      "input_sha256": "0a52cb16405fcebaf7e5059776309cedb8e6e05a059b32f7ffd837754222711a",
+      "adapted_sha256": "1a13b8c041117858832f865499b1be70c322a67fad74b18b54f22823a6a28409",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "sc/sc-21.induction3.cvc.smt2",
+      "input_sha256": "fc3fa945335912f5f50d25010af4c35c4700364866965bde478f1ae0b08d86cf",
+      "adapted_sha256": "950ccd01e07f47018823fbe9701b51cfda8d5cea66aab9ef80cef90e1e47e1d0",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "sc/sc-5.induction2.cvc.smt2",
+      "input_sha256": "da9a585d19c2e8f2b302e7cd2e080641ff550c5a5bc2b94aa020a50468d9080c",
+      "adapted_sha256": "fe277e86732296013c1bf2d33c76c9251b73e6ca539ae52f75509dc8f0b4d794",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "uart/uart-16.induction.cvc.smt2",
+      "input_sha256": "e501795fb38f4a33a1577af40a68cb8a45a5a95ceccccc90b5455246474687d1",
+      "adapted_sha256": "ec8815137d5eb0c24d674c92f26d98a7edd4737dc7242b700d3551da1aa58afc",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "2019-ezsmt/blending/17.smt2",
+      "input_sha256": "142da753bd7962a2fc2ea27f32b84066484436de26d7ec17ca55450dd7f5df13",
+      "adapted_sha256": "7bd58fe513d25e83dac59ea747f8afe8e086f3bdfc07bfaa44640cf3374a77a0",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "2019-ezsmt/travellingSalesperson/rand_80_340_1159656267_0.lp.smt2",
+      "input_sha256": "e6a270f45672c181771476f2e1aec6ee0529ca0f3664166ac52cbc4a18625c7d",
+      "adapted_sha256": "d33242709775cb1b20d2e08baceea86f52d34f85dbfcbe879f57b50bd802a554",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "DTP-Scheduling/constraints-tempo-matrix8x8.pddl.smt2",
+      "input_sha256": "c0816a4345152e3f6c11447a8f819531b21f1ab7b9b4374f851489d52adae085",
+      "adapted_sha256": "baf8c8cbe88c4cd53e64108d508e4488aa083ab1b5113dd9648a59c23c1a84bd",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "DTP-Scheduling/constraints-tms-2-3-light-06.smt2",
+      "input_sha256": "1ed41a1d4fae479fd9d6f588e41cd2cb1698e2b9be2630e41266f5b97b50548d",
+      "adapted_sha256": "413a60446a45c104719770b2434a1f5193b2451116927034f0ad5ee6001eae9e",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "TM/p-0-bucket_s13.smt2",
+      "input_sha256": "1331bde6353899f65d2b6ce6da7cc2b127015d4d952ea5c20017a106383d7796",
+      "adapted_sha256": "7a6fe456e3e482219673ff4f5ba9a7aa6e5221fad3ee8b60fbb4fb9e5e419880",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "TM/p5-zenonumeric_s7.smt2",
+      "input_sha256": "eb5ff43a3939fb9f42861c7f2a33a53f853d90c609f6015a1797e6b7a220722e",
+      "adapted_sha256": "ae00d487f0b491a16d74b7ad3a185273f7be51c97c1229e25e9f93f32ed225a6",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "latendresse/ecoliFBAyicesTest-31875-32.smt2",
+      "input_sha256": "95f2d05771a2229d3960829da381d8563cc8753682e53d2a41e000cfdb6e9572",
+      "adapted_sha256": "109efed4637fa38051912587843abbe3f51128bbe99b283fd6e6f38033613f7c",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "meti-tarski/Chua/1/VC1/U/Chua-1-VC1-U-chunk-0071.smt2",
+      "input_sha256": "6305bbd7d50ff35460186e8c044b6fd5aba3591aced681433951734564d5835b",
+      "adapted_sha256": "d254070dfef7e386b2c98b01529993874a7b3baa118dea8e7a97f25c6d3a20b8",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "meti-tarski/sin/problem/7/weak/sin-problem-7-weak-chunk-0031.smt2",
+      "input_sha256": "317eaca3f99073ad7161725b8f910d05e1bc7e4f121b3c3fa030f7fb3d8fd9de",
+      "adapted_sha256": "338da45a233a6cf0e506836e47eb02888fcc9089f0cface69b7c3d19f9bae6ed",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "sc/sc-8.induction3.cvc.smt2",
+      "input_sha256": "c06836b4727c1b882c8215baf4adef911b0b6fe55279308f4116bbace06b1d11",
+      "adapted_sha256": "d6d5eb69f4b68968a64b92ee167f31d32e9df77a3283c638c376b0c81bc29ca9",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "uart/uart-17.induction.cvc.smt2",
+      "input_sha256": "f1c436bbd458e12bc730650fa2c543a274ed0f243fde3ecc6c0e25477f03ad46",
+      "adapted_sha256": "97e16718615475c6d4ff3643e3f76b178d150fe9e6b38a01bce8e8891920e581",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "uart/uart-40.induction.cvc.smt2",
+      "input_sha256": "943c7ea4828a34bed0e72d9d07fbfa51b2213215da09e27be5eb12803cdb6873",
+      "adapted_sha256": "11fac5db9bff6ffb31d610b2cd9a51d191065650cb6df703844fb74a6f37cf15",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "2019-ezsmt/blending/24.smt2",
+      "input_sha256": "864ccdb50fa10270ef2e637d77ca53da75892bdd87013c416ddfee1ecf7f5c9f",
+      "adapted_sha256": "f02f20411c99d78392af325de9fa630287ab28b4af3a8e1e23f211c573484f44",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "2019-ezsmt/travellingSalesperson/rand_80_340_1159656267_18.lp.smt2",
+      "input_sha256": "ec407c5a0799030f5107ab65c38291de428265736a1060b43a78d5efab72e592",
+      "adapted_sha256": "47f4925c9839adb301c12c1d7bad649c3832cc78d74e3d2de3b1c968aca6ee75",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "DTP-Scheduling/constraints-tempo-width-30.smt2",
+      "input_sha256": "c4c1c32d29a043c15d543e04e6ddee728ecce004791f678a917aa5d4a0148a64",
+      "adapted_sha256": "c06463792c9823f39f67aeb3d0d74b4b2e18c7b99a9b8653c6d9cb8c8f988352",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "TM/p-0-bucket_s7.smt2",
+      "input_sha256": "17435d5c5cfef5214283dc7046d265f87bb0578e5d3f6dbd9908ee7c7b9bb7e5",
+      "adapted_sha256": "b37ba112ec1d9ff610e9e8808e69bc7967f289929846eead203307b13d6a8368",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "TM/p6-driverlogNumeric_s5.smt2",
+      "input_sha256": "41924d87c457468140759a08a0e1dbb4f3ee97f842fa45cec60e1366b90f3ea8",
+      "adapted_sha256": "ed74d2642d88e4eeeaab3a0345edbf9e8f86844635d5d1eabaf357de585ce14d",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "latendresse/ecoliFBAyicesTest-500.smt2",
+      "input_sha256": "8111a4c67d496553c020bc4ed7bbb0cca93e09fe633beca49331b892d94a975d",
+      "adapted_sha256": "ab22e3f66cf21ab3df9ac2a77e9558c8b64aef8e626b763c48a4295302784080",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "meti-tarski/Chua/1/VC2/L/Chua-1-VC2-L-chunk-0011.smt2",
+      "input_sha256": "cdd323261f8d2b6f72648b58dc6666ea02d5191214268a7dc09d0fbdc63a82d6",
+      "adapted_sha256": "7aef1dd543d87c0e96e7759f12e28145bb56676d779deabac5274a5f53888624",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "meti-tarski/sin/problem/7/weak/sin-problem-7-weak-chunk-0047.smt2",
+      "input_sha256": "97566a4bb77aedf3b95ab3135eef9d78577deaea87113c777c58f15be24e75ea",
+      "adapted_sha256": "758cf54ab03d7af0ed3cec1704e581465f82c36c82139fce54c43adf0a28e2e3",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "miplib/opt1217--1.smt2",
+      "input_sha256": "39883404840a5e9580e6cd9f2b7f2f4e1ff7454e793a36682e14cfc50ee63c30",
+      "adapted_sha256": "fa978759260d559c2f4e21540baf2b27970f10d7563d533ca8187a4681a4bc80",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "sc/sc-27.induction.cvc.smt2",
+      "input_sha256": "4c310da807f85684c4f41b0db7b4d40ecc2642e07929184e2cba8b3f559d4815",
+      "adapted_sha256": "8444861fef9eee25104ef369be351ff07088d4f5268b7cdb95118b22ba59b1b8",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "sc/sc-9.induction2.cvc.smt2",
+      "input_sha256": "d5f441635f8dda8f8d7562f25532190026d36db070595a0b93a734f39ee8fa30",
+      "adapted_sha256": "957ebb332da491abfaf3162a6352948249112673ac6b9e720f09a2ff12c61089",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "tta_startup/simple_startup_3nodes.missing.induct.smt2",
+      "input_sha256": "c72e8531d98fdc694634a4fdab93ee09112743e8ad3d42a679becf327726f466",
+      "adapted_sha256": "c1aac84f144aba676297e0a9326d147845072a927ccb4f7982f09b8f7df7fd75",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "uart/uart-18.induction.cvc.smt2",
+      "input_sha256": "dc355c2a9104a865636742db2cec88afa700cde5dc6825d743a762be3c02456c",
+      "adapted_sha256": "4aba1442b68fe0c0fb18f90f9c2290a969f52c36372505f517d7c87279f2a61b",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "2019-ezsmt/blending/3.smt2",
+      "input_sha256": "98d7ced0057ebd77cdab10fcf7ad5a4192f3e6a44d91d0d759dab86350661330",
+      "adapted_sha256": "ccb3bf1545c3aec69f88f9316971174119cdef66e5f8fc45327505d6339033a8",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "DTP-Scheduling/constraints-cooking04.smt2",
+      "input_sha256": "413b4438b5acb185d1cb36f78b126ac1ab9a6f5d3f893a516366afe083dc0821",
+      "adapted_sha256": "214e489a3c586dc7de35b5dc475456d134000f4a0b835dfac73bd27b8972b783",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "DTP-Scheduling/constraints-tempo-width-40.smt2",
+      "input_sha256": "a1ca3e6c5e857baceadef3e109965e0e9282f2647b54d515627bf798886df700",
+      "adapted_sha256": "e416321277781f95382dab8489826dddb8a272ee9c3b6c0430c2c74c466e275d",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "LassoRanker/CooperatingT2/byron-2.t2.c_Iteration2_Loop_7-phaseTemplate.smt2",
+      "input_sha256": "7954f9518878503193598947c40ee3f0dfded32dcb7948d2e2fd666356d95287",
+      "adapted_sha256": "bc0878e85a978d3989147c54c081ac60c02004863fa811d6244e93590906ba65",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "LassoRanker/CooperatingT2/selectSort.t2.c_Iteration3_Loop_7-phaseTemplate.smt2",
+      "input_sha256": "17d7e2c4f62d500cefabcd1a7ff52ecc8341c91a0c456b85a863c2030da63369",
+      "adapted_sha256": "f1e3ed25d9bc067d1f919dfd16a556e4987efacaa9cf551556e1c8b2a96667c3",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "TM/p-1-bucket_s9.smt2",
+      "input_sha256": "9dd4457826c25f3632a9c339ee959ba401cce0008c7aa1c8eb76f16bab5bc92e",
+      "adapted_sha256": "1a3c751104efb6b1917791bbe0c6121f8f229cde7e782270d0fa592dda4e00a8",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "TM/p6-zenonumeric_s5.smt2",
+      "input_sha256": "888d3e8cfbd6ae5cf10ea8e09264b3f8c78fa0cb245c50e7087074618db4bfa2",
+      "adapted_sha256": "57be8941642588cc4ded12c0988181e76393ab4ed190306bfb5849045a38a724",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "latendresse/ecoliFBAyicesTest-63875-64.smt2",
+      "input_sha256": "5370b4d6dd64cf09f6848b6bcdf441d14010b83e8f80a824098bb2729e14dfb7",
+      "adapted_sha256": "2c6dfaffc79aa024b4636a626299b45ef81eb3813ef684ff71f9da2a6cef30c0",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "meti-tarski/Chua/1/VC2/L/Chua-1-VC2-L-chunk-0069.smt2",
+      "input_sha256": "b970b2a42836ee997bc8e37aa68a472e682710c1f185ea60e06f77b8f8cc58f0",
+      "adapted_sha256": "e66fc6912687e192a3cd84bcfcfb0746f48e024f70dea8c4cc19d0c2ea9fa3a5",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "meti-tarski/sin/problem/7/weak/sin-problem-7-weak-chunk-0052.smt2",
+      "input_sha256": "2cc3576af91836fc5bac09ee185c26fd33c82e05c1c941639ffbf455a8aa950e",
+      "adapted_sha256": "aff60d041f85456c72daeb0e606293c0cb8c81f1552cd4b2d77cf0b75fb49986",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "miplib/opt1217--11.smt2",
+      "input_sha256": "bfd46b452cf8bfd647ff39b8daa9c78d46243b88899294746f5b457918970b0b",
+      "adapted_sha256": "b3432a28d5348ce6054ed3699d05595fa003e62d40c7341529317ed7794539a8",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "sc/sc-31.induction2.cvc.smt2",
+      "input_sha256": "b0251493074bb264e9295cf833718d51f4835fe728ca56e6837149fcb51e0977",
+      "adapted_sha256": "ab6738b1e2ba5c0b31cd3d5bc1c7683bb820d974bc472c2e135e2bb859c0b61d",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "tta_startup/simple_startup_4nodes.bug.induct.smt2",
+      "input_sha256": "524f46d5b2fd0c424094e7e766dca51af322d9be64e088b4819bde9dff409b72",
+      "adapted_sha256": "ea89f4fdadb111f7dd3f530408dc40b337f425a3dd76d9fe2df31aa6dba5de3b",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "DTP-Scheduling/constraints-cooking06.smt2",
+      "input_sha256": "aeed2ca5fec1b7672569550ef9a7da0fa8110d0a4f215323ab85405d902c7893",
+      "adapted_sha256": "5d931577d18e010a67b9a02cbd9242dd1c1cb99f67d131d0403c4f8d47cec1c7",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "DTP-Scheduling/constraints-tempo-width-50.smt2",
+      "input_sha256": "53eda1e22e9d02087343e63d2cc65155d91ca2da13ceeb8b829a28e196305da9",
+      "adapted_sha256": "8a73244ffce09cee578ac5c7fe06045f0a6567dff13da3ca6940de321037c96e",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "LassoRanker/CooperatingT2/elmhes.c.i.elmhes.pl.t2.nor.t2.rlgfixed.t2.c_Iteration5_Loop_7-phaseTemplate.smt2",
+      "input_sha256": "d97cb2227b1a629aed9042ce6bdb081de149ceb0fb197477877b145063bb0764",
+      "adapted_sha256": "d94c6ce9ef9e885396ac30e3eae6886865017f94577e4d34d56590863ef5b198",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "TM/p-DepotsNum_s8.msat.smt2",
+      "input_sha256": "05f29561bafe402b2d2925e919f3874f692c94b6db79390deb7912127cfb504e",
+      "adapted_sha256": "9602172e5a2e35a8e84a7e87c05ee576570e1631a5f9befffb013da5cede4c01",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "TM/p6-zenonumeric_s9.smt2",
+      "input_sha256": "7610d66362845f4131fa80c24ef17891568035a01036d48cb7b3aed3536f5614",
+      "adapted_sha256": "2abad89fb8c9b78cde7b8a2f402b4337f670d8a0e6306f639ec37f504bb810ef",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "latendresse/ecoliFBAyicesTest-750.smt2",
+      "input_sha256": "01376d766e5e4e646206cab8700083659ea3a4c15a1ab01d9555aecd2f87b334",
+      "adapted_sha256": "c82b4b9d6d1712c02f1028b18a792a8db1c30e6c4a4d80d811fb588aab70f306",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "meti-tarski/sin/problem/8/weak/sin-problem-8-weak-chunk-0017.smt2",
+      "input_sha256": "59334c23d86055df906844b62ec3a38c90f1a413f52b1be3b47524d5e79758d0",
+      "adapted_sha256": "1279e89ba2f1643a6209cf05da743f004423c2883229e9dfe5fa0d7bb3c429f3",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "sc/sc-14.induction.cvc.smt2",
+      "input_sha256": "155d2a2e438dfa490c593295ebf2dd8bdc54856ef6e356c9912b87cb1146b45a",
+      "adapted_sha256": "a0f5aa9900e994caca3cc4cbf37abeece9fd43c146e1b2b4fe30d5eef68310b1",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "sc/sc-37.induction2.cvc.smt2",
+      "input_sha256": "8b660dc1debe27fe09a0eb3ca9e4e3833f075f89a66e71b90dfe102e250bc962",
+      "adapted_sha256": "6ae55dd7c7da0f4608e340985247c736a5342e8cbebeb511abfd65412b83e0ae",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "uart/uart-11.induction.cvc.smt2",
+      "input_sha256": "d9cf90f1f105126d92572a8d5860eddc52d19e74e30f65291f6c43d3eaf5a8d3",
+      "adapted_sha256": "4198fb7ddf6223aa437cae4f3b6c5d1b17db5d43b9796c7ff953e960e4c9ab2d",
+      "outcome": "pass",
+      "validator": "dolmen"
+    },
+    {
+      "file": "uart/uart-25.induction.cvc.smt2",
+      "input_sha256": "c6ee7eb441503229825e1bd815d2527da92de3bbba92aac2400d0f159605d0ba",
+      "adapted_sha256": "9904855c2c4223f67aaf02edc134d8a458da97c8c78106e8b825eb69d6b91a58",
+      "outcome": "pass",
+      "validator": "dolmen"
+    }
+  ]
+}

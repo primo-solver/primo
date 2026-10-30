@@ -178,27 +178,18 @@ def plot(result, path):
     bins = result["all_observed"]["pivot_bins"]
     names = list(bins)
     fig, axes = plt.subplots(1, 3, figsize=(16, 4.5), layout="constrained")
-    for label, color, key in [
+    groups = [
         ("Completed source inputs", "#3178a8", "completed_sources"),
-        ("Timeout/missing prefixes", "#c17c34", "censored_sources"),
-    ]:
+        ("Timeout prefixes", "#c17c34", "censored_sources"),
+    ]
+    for index, (label, color, key) in enumerate(groups):
         values = result[key]["pivot_bins"]
-        base = (
-            [
-                result["completed_sources"]["pivot_bins"].get(name, {}).get("calls", 0)
-                for name in names
-            ]
-            if key == "censored_sources"
-            else None
-        )
-        axes[0].bar(
-            names,
-            [values.get(name, {}).get("calls", 0) for name in names],
-            bottom=base,
-            label=label,
-            color=color,
-        )
+        counts = [values.get(name, {}).get("calls", 0) for name in names]
+        positions = [i + (index - 0.5) * 0.42 for i in range(len(names))]
+        axes[0].bar(positions, counts, width=0.4, label=label, color=color)
+    axes[0].set_xticks(range(len(names)), names)
     axes[0].set_yscale("log")
+    axes[0].set_ylim(bottom=0.5)
     axes[0].set_ylabel("Observed completed calls (log scale)")
     axes[0].legend(fontsize=8)
     axes[1].bar(names, [bins[name]["sum_ns"] / 1e9 for name in names], color="#3178a8")
@@ -212,7 +203,9 @@ def plot(result, path):
     heat = axes[2].imshow(grid, origin="lower", aspect="auto", cmap="Blues")
     axes[2].set_xticks(range(len(names)), names)
     ticks = list(range(0, max_bit + 1, 4))
-    axes[2].set_yticks(ticks, [f"{2 ** max(0, bit - 1) / 1e6:g}" for bit in ticks])
+    axes[2].set_yticks(
+        ticks, [f"{(2 ** (bit - 1) if bit else 0) / 1e6:.3g}" for bit in ticks]
+    )
     axes[2].set_ylabel("Check duration bucket lower edge (ms)")
     fig.colorbar(heat, ax=axes[2], label="log10(calls + 1)", shrink=0.8)
     for ax in axes:
