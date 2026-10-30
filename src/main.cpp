@@ -12,6 +12,7 @@
 #include <fstream>
 #include <iostream>
 #include <limits>
+#include <memory>
 #include <optional>
 #include <sstream>
 #include <string>
@@ -25,6 +26,7 @@
 #include "sat/cadical_backend.hpp"
 #include "smt/check_sat.hpp"
 #include "smt/experimental_tactics.hpp"
+#include "smt/lra_call_profiler.hpp"
 #include "smt/smt_session.hpp"
 #include "smtlib/parser.hpp"
 #include "util/statistics.hpp"
@@ -241,6 +243,10 @@ int run_main(int argc, char** argv) {
   // Wired before the command line is parsed so a signal arriving during
   // parsing is not dropped on the floor.
   primo::smt::CheckSatOptions solver_options;
+  std::string lra_call_profile_path;
+  std::string lra_call_export_directory;
+  std::size_t lra_call_export_min_pivots = 100;
+  std::size_t lra_call_export_limit = 20;
   solver_options.cancelled = [] { return g_cancel_requested != 0; };
   std::vector<std::string> files;
   bool quiet = false;
@@ -354,6 +360,14 @@ int run_main(int argc, char** argv) {
                         "Add equalities implied by every branch of selected QF_UF disjunctions");
   add_flag_with_default(app, "--no-eq-bridge", no_eq_bridge,
                         "Disable equality bridging unless required by the preprocessing preset");
+  app.add_option("--lra-call-profile", lra_call_profile_path,
+                 "Record online QF_LRA check pivots and time as JSONL");
+  app.add_option("--lra-call-export", lra_call_export_directory,
+                 "Export bounded conjunctions from profiled checks");
+  app.add_option("--lra-call-export-min-pivots", lra_call_export_min_pivots,
+                 "Minimum pivots per exported check (default 100)");
+  app.add_option("--lra-call-export-limit", lra_call_export_limit,
+                 "Maximum exported checks per process (default 20)");
   add_flag_with_default(app, "--lra-propagation", solver_options.lra_propagation,
                         "Enable QF_LRA same-slack bound propagation (Milestone 3b)");
   add_flag_with_default(app, "--no-lra-propagation", no_lra_propagation,
@@ -893,6 +907,16 @@ int run_main(int argc, char** argv) {
     app.parse(argc, argv);
   } catch (const CLI::ParseError& error) {
     return app.exit(error);
+  }
+
+  if (!lra_call_export_directory.empty() && lra_call_profile_path.empty()) {
+    std::cerr << "error: --lra-call-export requires --lra-call-profile\n";
+    return 2;
+  }
+  if (!lra_call_profile_path.empty()) {
+    solver_options.lra_call_profiler = std::make_shared<primo::smt::LraCallProfiler>(
+        lra_call_profile_path, lra_call_export_directory, lra_call_export_min_pivots,
+        lra_call_export_limit);
   }
 
   if (qf_uflra_online_euf && nelson_oppen_model_equality_branching) {

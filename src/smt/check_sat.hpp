@@ -18,6 +18,8 @@
 
 namespace primo::smt {
 
+class LraCallProfiler;
+
 enum class IncrementalMode { Rebuild, Assumptions };
 
 enum class PreprocessingMode {
@@ -248,6 +250,9 @@ struct CheckSatOptions {
   // the propagation check is exact and cheap (O(atoms sharing a slack)),
   // so there's no heuristic budget/backoff tuning to expose.
   bool lra_propagation = true;
+  // Optional read-only profiler for the dedicated, rebuilt QF_LRA online checker.
+  // Shared ownership keeps the stream alive across sequential queries.
+  std::shared_ptr<LraCallProfiler> lra_call_profiler;
   // Row-based/interval bound propagation (Dutertre & de Moura Section 4,
   // generalizing lra_propagation's same-slack case to derive an implied
   // bound for a row from its terms' current bounds). Only takes effect

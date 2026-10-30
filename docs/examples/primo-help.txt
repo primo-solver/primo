@@ -254,6 +254,14 @@ Preprocessing options:
                               adaptive pass
 
 QF_LRA theory options:
+          --lra-call-profile TEXT
+                              Record online QF_LRA check pivots and time as JSONL
+          --lra-call-export TEXT
+                              Export bounded conjunctions from profiled checks
+          --lra-call-export-min-pivots UINT
+                              Minimum pivots per exported check (default 100)
+          --lra-call-export-limit UINT
+                              Maximum exported checks per process (default 20)
           --lra-propagation [default: on]
                               Enable QF_LRA same-slack bound propagation (Milestone 3b)
           --no-lra-propagation [default: off]

@@ -3,12 +3,18 @@
 #endif
 
 #include <cassert>
+#include <chrono>
 #include <cstdint>
+#include <filesystem>
+#include <fstream>
+#include <iterator>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <utility>
 
 #include "smt/check_sat.hpp"
+#include "smt/lra_call_profiler.hpp"
 #include "util/statistics.hpp"
 
 using primo::smt::CheckSatOptions;
@@ -4774,7 +4780,79 @@ void mixed_dispatch_wide_routes_propositional_variables_to_the_mixed_solver() {
   assert(wide_result.statistics.get(":solver.qf-uflra") == 1);
 }
 
+void lra_call_profile_is_read_only_and_exports_conjunctions() {
+  namespace fs = std::filesystem;
+  const auto root = fs::temp_directory_path() /
+                    ("primo-call-profile-" +
+                     std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+  fs::create_directories(root);
+  const auto read = [](const fs::path& path) {
+    std::ifstream stream(path);
+    return std::string(std::istreambuf_iterator<char>(stream), {});
+  };
+  using Tableau = primo::theory::arithmetic::LraTableau;
+  using Value = primo::theory::arithmetic::DeltaRational;
+  using Rational = primo::util::Rational;
+  Tableau base;
+  const auto x = base.add_variable();
+  const auto y = base.add_variable();
+  const auto sum = base.add_variable();
+  base.add_row(sum, {{x, Rational(-2)}, {y, Rational(1)}});
+  {
+    primo::smt::LraCallProfiler profile((root / "manual.jsonl").string(), (root / "cubes").string(),
+                                        0, 2);
+    auto checker = profile.register_checker(base);
+    Tableau feasible = base;
+    feasible.assert_lower(x, Value::from_rational(Rational(1)), primo::sat::Lit{-1});
+    feasible.assert_lower(sum, Value{Rational(-3, 2), Rational(1)}, primo::sat::Lit{-2});
+    feasible.assert_upper(x, Value{Rational(3, 2), Rational(-1)}, primo::sat::Lit{-3});
+    const auto conflict = feasible.check();
+    assert(!conflict);
+    profile.record(checker, feasible, feasible.pivot_count(), 42, 1, 2, false);
+    Tableau infeasible = base;
+    infeasible.assert_lower(x, Value::from_rational(Rational(1)), primo::sat::Lit{-1});
+    infeasible.assert_upper(y, Value::from_rational(Rational(0)), primo::sat::Lit{-2});
+    infeasible.assert_lower(sum, Value::from_rational(Rational(0)), primo::sat::Lit{-3});
+    assert(infeasible.check());
+    profile.record(checker, infeasible, infeasible.pivot_count(), 43, 0, 0, true);
+    profile.record(checker, feasible, 0, 1, 0, 0, false);
+  }
+  const auto sat_cube = read(root / "cubes/checker-1-call-1.smt2");
+  assert(sat_cube.find("(- 2)") != std::string::npos);
+  assert(sat_cube.find("(assert (> v2 (- (/ 3 2))))") != std::string::npos);
+  assert(sat_cube.find("(assert (< v0 (/ 3 2)))") != std::string::npos);
+  assert(check_sat_smtlib(sat_cube).result == CheckSatResult::Sat);
+  assert(check_sat_smtlib(read(root / "cubes/checker-1-call-2.smt2")).result ==
+         CheckSatResult::Unsat);
+  assert(!fs::exists(root / "cubes/checker-1-call-3.smt2"));
+  const auto manual = read(root / "manual.jsonl");
+  assert(manual.find("\"calls\":3,\"exported\":2") != std::string::npos);
+
+  const std::string formula = R"((set-logic QF_LRA)
+    (declare-fun x () Real)(declare-fun y () Real)
+    (assert (>= (+ x y) 1))(assert (<= x 2))(assert (<= y 2))(check-sat))";
+  CheckSatOptions options;
+  options.preprocessing_mode = primo::smt::PreprocessingMode::Off;
+  options.gaussian_elimination = false;
+  options.solved_constant_substitution = false;
+  const auto baseline = check_sat_smtlib(formula, options);
+  options.lra_call_profiler =
+      std::make_shared<primo::smt::LraCallProfiler>((root / "online.jsonl").string());
+  const auto observed = check_sat_smtlib(formula, options);
+  options.lra_call_profiler.reset();
+  assert(baseline.result == observed.result);
+  for (const auto key : {StatKey::LraPivots, StatKey::LraOnlineCheckCalls, StatKey::SatDecisions,
+                         StatKey::SatConflicts}) {
+    assert(baseline.statistics.get(key) == observed.statistics.get(key));
+  }
+  const auto online = read(root / "online.jsonl");
+  assert(online.find("\"event\":\"check\"") != std::string::npos);
+  assert(online.find("\"event\":\"end\"") != std::string::npos);
+  fs::remove_all(root);
+}
+
 int main() {
+  lra_call_profile_is_read_only_and_exports_conjunctions();
   mixed_dispatch_wide_routes_propositional_variables_to_the_mixed_solver();
   propositional_variables_do_not_force_the_mixed_solver();
   bool_sorted_application_still_forces_the_mixed_solver();

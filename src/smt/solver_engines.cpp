@@ -40,6 +40,7 @@
 #include "smt/frontend.hpp"
 #include "smt/inconclusive_reason.hpp"
 #include "smt/incremental_engine.hpp"
+#include "smt/lra_call_profiler.hpp"
 #include "smt/model_based_combination.hpp"
 #include "smt/model_reconstruction.hpp"
 #include "smt/preprocessing_tactics.hpp"
@@ -6981,7 +6982,8 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
                       const LraRowPropagationLimits& row_propagation_limits,
                       sat::IpasirUpBackend& backend, util::Statistics& statistics,
                       bool count_query_conflicts = false,
-                      std::optional<std::size_t> conflict_limit = std::nullopt)
+                      std::optional<std::size_t> conflict_limit = std::nullopt,
+                      std::shared_ptr<LraCallProfiler> call_profiler = nullptr)
       : theory_atoms_(theory_atoms),
         prepared_(prepared),
         tableau_(prepared.base_tableau),
@@ -6995,7 +6997,9 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
         backend_(backend),
         statistics_(statistics),
         count_query_conflicts_(count_query_conflicts),
-        conflict_limit_(conflict_limit) {
+        conflict_limit_(conflict_limit),
+        call_profiler_(std::move(call_profiler)) {
+    if (call_profiler_) call_checker_ = call_profiler_->register_checker(prepared.base_tableau);
     int max_theory_var = 0;
     for (const BooleanClausifier::TheoryAtom& atom : theory_atoms_) {
       max_theory_var =
@@ -7399,7 +7403,17 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
     const std::size_t row_updates_before = tableau_.row_update_count();
     const std::size_t term_ops_before = tableau_.row_term_op_count();
     statistics_.increment(kStatLraOnlineCheckCalls);
+    const auto started =
+        call_profiler_ ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
     conflict_ = tableau_.check();
+    if (call_profiler_) {
+      const auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(
+          std::chrono::steady_clock::now() - started);
+      call_profiler_->record(*call_checker_, tableau_, tableau_.pivot_count() - pivots_before,
+                             static_cast<std::uint64_t>(elapsed.count()),
+                             tableau_.row_update_count() - row_updates_before,
+                             tableau_.row_term_op_count() - term_ops_before, conflict_.has_value());
+    }
     if (conflict_) record_query_conflict();
     const std::size_t pivot_delta = tableau_.pivot_count() - pivots_before;
     statistics_.increment(kStatLraBlandFallbacks,
@@ -7801,6 +7815,8 @@ class OnlineLraPropagator final : public sat::ExternalPropagator {
   // not trail state; a stale position after backtracking is harmless
   // (worst case, this decision's order is less well-chosen than usual).
   std::size_t decide_cursor_ = 0;
+  std::shared_ptr<LraCallProfiler> call_profiler_;
+  std::optional<LraCallProfiler::Checker> call_checker_;
 };
 
 class MixedTheoryPropagationDispatcher final : public sat::ExternalPropagator {
@@ -8226,7 +8242,8 @@ CheckSatOutcome solve_qf_lra_impl(core::TermManager& terms,
       options.lra_row_propagation, options.lra_bidirectional_row_propagation,
       options.lra_theory_decisions, options.lra_model_phase,
       options.lra_pivoting_rule == LraPivotingRule::Soi || options.lra_fixed_elimination,
-      options.lra_row_propagation_limits, backend, statistics, false, options.max_theory_conflicts);
+      options.lra_row_propagation_limits, backend, statistics, false, options.max_theory_conflicts,
+      options.lra_call_profiler);
   const AssignmentConnection assignment_connection(backend, online_propagator);
   for (const BooleanClausifier::TheoryAtom& atom : clausifier.theory_atoms()) {
     const int var = atom.lit.value > 0 ? atom.lit.value : -atom.lit.value;

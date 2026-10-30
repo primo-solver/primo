@@ -97,3 +97,15 @@ as explained in [tactics](tactics.md).
 ```{literalinclude} ../examples/primo-help.txt
 :language: text
 ```
+
+## QF_LRA call profiling and conjunction export
+
+`--lra-call-profile FILE` records completed `LraTableau::check()` episodes in
+one JSONL stream. It observes the dedicated rebuilt QF_LRA online path; it does
+not change deductions. `--lra-call-export DIR` additionally exports numerical
+feasibility conjunctions from checks with at least
+`--lra-call-export-min-pivots N` pivots (default 100), up to
+`--lra-call-export-limit N` files per process (default 20). The directory must
+be empty; the profile file must be outside it. Both diagnostics are off by
+default. See the [measurement and export contract](../papers/lra-call-ablation.md)
+for warm-state dependence, omissions, strict bounds and censored traces.
